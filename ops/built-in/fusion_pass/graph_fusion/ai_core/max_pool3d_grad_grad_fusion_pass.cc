@@ -150,11 +150,11 @@ Status MaxPool3DGradGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
 
   std::vector<int32_t> ksize;
   FUSION_PASS_CHECK(maxpool3dGradGradOperator.GetAttr("ksize", ksize) == ge::GRAPH_FAILED,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "get attr ksize failed."), return ge::GRAPH_FAILED);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "get attr ksize failed."), return ge::NOT_CHANGED);
 
   FUSION_PASS_CHECK(GetDHW(ksize, D, H, W, origFormat) == -1,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "maxpool3dGradGradVNode's GetDHW failed, fusion failed."),
-                    return PARAM_INVALID);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "maxpool3dGradGradVNode's GetDHW failed, fusion failed."),
+                    return NOT_CHANGED);
 
   vector<int64_t> assistShapeVec;
   assistShapeVec.push_back(1);  // N
@@ -177,9 +177,9 @@ Status MaxPool3DGradGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
     FUSION_PASS_CHECK(inputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                       return PARAM_INVALID);
     Status ret = NnSet(dimNums, FLOAT_NUM_ZERO, *reinterpret_cast<float*>(inputAssit.get()));
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "NnSet failed."), return NOT_CHANGED);
     ret = MaxPool3DGradGradAssitHelpFP32(D, H, W, dimNums, inputAssit.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "AssitHelpFP32 failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "AssitHelpFP32 failed."), return NOT_CHANGED);
     tensorDesc.SetShape(assistShape);
     tensorDesc.SetOriginShape(assistShape);
     tensorDesc.SetDataType(ge::DT_FLOAT);
@@ -195,9 +195,9 @@ Status MaxPool3DGradGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
     FUSION_PASS_CHECK(inputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                       return PARAM_INVALID);
     Status ret = NnSet(dimNums, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(inputAssit.get()));
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "NnSet failed."), return NOT_CHANGED);
     ret = MaxPool3DGradGradAssitHelpFP16(D, H, W, dimNums, inputAssit.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "AssitHelpFP16 failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "AssitHelpFP16 failed."), return NOT_CHANGED);
     tensorDesc.SetShape(assistShape);
     tensorDesc.SetOriginShape(assistShape);
     tensorDesc.SetDataType(ge::DT_FLOAT16);

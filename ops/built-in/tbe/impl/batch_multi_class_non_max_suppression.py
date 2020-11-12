@@ -15,10 +15,12 @@
 """
 batch_multi_class_non_max_suppression
 """
+import math
+
 from functools import reduce
 from te import tik
 from te import platform as tbe_platform
-from te.utils.op_utils import *
+from te.utils import para_check
 from impl.batch_multi_class_nms_topk import sort_within_ub
 from impl.batch_multi_class_nms_topk import sort_with_ub
 
@@ -91,8 +93,8 @@ class BatchMultiClassNonMaxSuppression:
         self.max_total_size = max_total_size
         self.change_coordinate_frame = change_coordinate_frame
 
-        check_shape(self.boxes_shape, min_rank=4, max_rank=4, param_name="boxes")
-        check_shape(self.scores_shape, min_rank=3, max_rank=3, param_name="scores")
+        para_check.check_shape(self.boxes_shape, min_rank=4, max_rank=4, param_name="boxes")
+        para_check.check_shape(self.scores_shape, min_rank=3, max_rank=3, param_name="scores")
         # parsing input
         _, self.boxes_classes, _, _ = self.boxes_shape
         self.batch, self.classes, self.boxes_num = self.scores_shape
@@ -184,7 +186,7 @@ class BatchMultiClassNonMaxSuppression:
         def error_code_002_check(op_name, param_name, value_range, value):
             if value < value_range[0] or value > value_range[1]:
                 error_info = {
-                    'errCode': OP_ERROR_CODE_002,
+                    'errCode': para_check.OP_ERROR_CODE_002,
                     'op_name': op_name,
                     'param_name': param_name,
                     'min_value': value_range[0],
@@ -199,7 +201,7 @@ class BatchMultiClassNonMaxSuppression:
         def error_code_000_check(op_name, param_name, excepted_value, value):
             if excepted_value != value:
                 error_info = {
-                    'errCode': OP_ERROR_CODE_000,
+                    'errCode': para_check.OP_ERROR_CODE_000,
                     'op_name': op_name,
                     'param_name': param_name,
                     'excepted_value': excepted_value,
@@ -226,7 +228,7 @@ class BatchMultiClassNonMaxSuppression:
             error_code_002_check("BatchMultiClassNonMaxSuppression", "input boxes num(when need valid_num)",
                                  [1, 1024], self.scores_shape[2])
 
-        check_dtype(self.boxes_type, ("float16",), param_name="boxes")
+        para_check.check_dtype(self.boxes_type, ("float16",), param_name="boxes")
 
     def get_tik_instance(self):
         """get_tik_instance
@@ -1654,10 +1656,12 @@ def batch_multi_class_nms_output(tik_instance, core_idx, _batch_idx, nms):
                                            output_batch_offset, workspace_offset)
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT, OPTION_INPUT,
-                 REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT,
-                 REQUIRED_ATTR_FLOAT, REQUIRED_ATTR_FLOAT, REQUIRED_ATTR_INT, REQUIRED_ATTR_INT,
-                 REQUIRED_ATTR_BOOL, REQUIRED_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
+                            para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_FLOAT,
+                            para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_INT,
+                            para_check.REQUIRED_ATTR_BOOL, para_check.REQUIRED_ATTR_BOOL, para_check.KERNEL_NAME)
 def batch_multi_class_non_max_suppression(boxes, scores, clip_window, num_valid_boxes,
                                           nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_num,
                                           score_threshold, iou_threshold, max_size_per_class,

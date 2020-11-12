@@ -23,15 +23,6 @@ namespace fe {
 
     }
 
-    ge::Status OpKernelStoreDefaultMock::GenerateTask(const ge::Node &node, ge::RunContext &context,
-                                                      std::vector<domi::TaskDef> &tasks) {
-        return SUCCESS;
-    }
-
-    ge::Status OpKernelStoreDefaultMock::CalcOpRunningParam(ge::Node &node) {
-        return SUCCESS;
-    }
-
     OpsKernelInfoStorePtr defaultOpKernelStore = make_shared<OpKernelStoreDefaultMock>();
 
     class falseCheckOpKernelStoreMock : public OpKernelStoreDefaultMock {

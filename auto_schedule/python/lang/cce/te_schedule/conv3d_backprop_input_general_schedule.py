@@ -122,7 +122,9 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
 
     def _al1_and_bl1_process():
         if kd_reduce_flag:
-            reduce_axis_kd_outer_outer, _ = sch[c_col].split(reduce_axis_kd_outer, kd_tiling_l1_factor)
+            reduce_axis_kd_outer_outer, reduce_axis_kd_outer_inner = \
+                sch[c_col].split(reduce_axis_kd_outer, kd_tiling_l1_factor)
+
         if k_al1_factor > k_bl1_factor:
             factor_outer, factor_inner = k_al1_factor//k_bl1_factor, k_bl1_factor
             c_col_k_outer_outer, c_col_k_outer_inner = sch[c_col].split(c_col_k_outer, factor=factor_inner)
@@ -134,7 +136,9 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
                     reduce_axis_kd_outer_outer,
                     c_col_k_outer_outer_outer,
                     c_col_k_outer_outer_inner,
-                    c_col_k_outer_inner, c_col_m_outer)
+                    c_col_k_outer_inner,
+                    reduce_axis_kd_outer_inner,
+                    c_col_m_outer)
             else:
                 sch[c_col].reorder(
                     c_col_k_outer_outer_outer, c_col_k_outer_outer_inner,
@@ -152,6 +156,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
                     c_col_k_outer_outer_outer,
                     c_col_k_outer_outer_inner,
                     c_col_k_outer_inner,
+                    reduce_axis_kd_outer_inner,
                     c_col_m_outer)
             else:
                 sch[c_col].reorder(
@@ -532,12 +537,105 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
             sch[c_ddr].reorder(bl1_at_ddr_n_outer,
                                al1_at_ddr_m_outer, batch_inner)
 
+    def _get_h_l1(howo_size):
+        left = 0
+        right = 0
+        max_dis = 0
+
+        for x in range(1, te_util.int_ceil_div(cdder_h * cdder_w, howo_size)):
+            m_length = x * howo_size
+            right = m_length // wo_l1
+            distance = right - left + 1 if (m_length % wo_l1 != 0) else right - left
+            if max_dis < distance:
+                max_dis = distance
+            left = right
+
+        h_l1 = min(kernel_h - 1 + max_dis, ho_l1)
+        if cdder_h * cdder_w <= howo_size:
+            h_l1 = ho_l1
+
+        return h_l1
+
+    def _check_exceed_l1_buffer(howo_size):
+        c0_size = 16
+        n_dim = tiling['block_dim'][1]
+
+        if not tiling['BL1_shape']:
+            b_l1_size = b_ddr_kd * b_ddr_n1 * b_ddr_k1 \
+                        * b_ddr_k0 * b_ddr_n0 // n_dim * 2
+        elif (bl1_tilling_k == kernel_h * kernel_w * bl1_co0 * bl1_co1 and
+              kd_factor * kd_tiling_l1_factor == b_ddr_kd):
+            b_l1_size = b_ddr_kd * bl1_tilling_k * bl1_tilling_n \
+                        * cl0_tiling_nc * c0_size * 2
+        else:
+            b_l1_k = bl1_tilling_n * cl0_tiling_nc * kernel_h * kernel_w
+            b_l1_n = bl1_tilling_k // (kernel_h * kernel_w) // c0_size
+            b_l1_size = kd_factor * kd_tiling_l1_factor * b_l1_n \
+                        * b_l1_k * c0_size * c0_size * 2
+
+        d_factor = min((b_ddr_kd - 2 +
+                        al0_tiling_dfactor + stride_d - 1) // stride_d + 1,
+                       dy_depth)
+        if (b_ddr_kd == stride_d):
+            d_factor = max(d_factor - 1, 1)
+
+        h_l1 = _get_h_l1(howo_size)
+
+        dy_l1_size = d_factor * dy_cout1 * h_l1 \
+                     * (wo_l1 + padl + padr) * c0_size * 2
+
+        if (dy_l1_size + b_l1_size) > tbe_platform.get_soc_spec("L1_SIZE"):
+            return True
+
+        return False
+
+    def _check_exceed_ub_buffer():
+        c0_size = 16
+        aub_tiling_k, aub_tiling_m, _, _ = tiling.get("AUB_shape")
+        aub_tiling_k_factor, aub_tiling_m_factor = \
+            aub_tiling_k // (kernel_h * kernel_w * 16), aub_tiling_m
+        d_factor = min((b_ddr_kd - 2 +
+                        al0_tiling_dfactor + stride_d - 1) // stride_d + 1,
+                       dy_depth)
+        if (b_ddr_kd == stride_d):
+            d_factor = max(d_factor - 1, 1)
+
+        dedy_ub_size = d_factor * aub_tiling_k_factor * \
+                       te_util.int_ceil_div(aub_tiling_m_factor, stride_h) \
+                       * dy_w * c0_size * 2
+
+        dy_filing_size = d_factor * aub_tiling_k_factor * aub_tiling_m_factor \
+                         * (dy_w * stride_w) * c0_size * 2
+        c_ub_size = cub_tiling_nc_factor * cub_tiling_mc_factor \
+                    * c0_size * c0_size * 2 * cub_pbuffer
+
+        if ((dedy_ub_size + dy_filing_size + c_ub_size) >
+            tbe_platform.get_soc_spec("UB_SIZE")):
+            return True
+
+        return False
+
+    def _check_exceed_buffer(howo_size):
+        if _check_exceed_l1_buffer(howo_size):
+            return True
+
+        if stride_h > 1 or stride_w > 1:
+            if _check_exceed_ub_buffer():
+                return True
+
+        return False
+
     def _do_compute_at():
-        if not tiling['AL1_shape']:
+        m_dim = tiling['block_dim'][2]
+        howo_out = cdder_h * cdder_w
+        howo_deep_outer = te_util.int_ceil_div(howo_out, m_dim)
+        howo_m_outer = al1_tilling_m * al0_tiling_ma * al0_tiling_m0
+        if (not tiling['AL1_shape'] and not
+            _check_exceed_buffer(howo_deep_outer)):
             sch[a_l1].compute_at(sch[c_ddr], c_ddr_deep_outer)
             sch[a_col_before].compute_at(sch[c_ddr], c_ddr_deep_outer)
-        elif ((kd_reduce_flag is False) and
-            al1_tilling_k == kernel_h * kernel_w * al1_co1 * al1_co0):
+        elif (al1_tilling_k == kernel_h * kernel_w * al1_co1 * al1_co0 and
+              not _check_exceed_buffer(howo_m_outer)):
             sch[a_l1].compute_at(sch[c_ddr], al1_at_ddr_m_outer)
             sch[a_col_before].compute_at(sch[c_ddr], al1_at_ddr_m_outer)
         else:
@@ -766,8 +864,9 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
     tensor_attr['pad_head'] = pad_head
     tensor_attr['pad_tail'] = pad_tail
     _, _, _, _, kernel_h, kernel_w, _ = list(i.value for i in a_col_before.shape)
+    _, _, _, ho_l1, wo_l1, _ = list(i.value for i in a_l1.shape)
     img_shape = list(i.value for i in a_ddr.shape)
-    _, dy_depth, dy_cout1, _, _, _ = img_shape
+    _, dy_depth, dy_cout1, _, dy_w, _ = img_shape
     b_ddr_kd, b_ddr_n1, b_ddr_k1, b_ddr_k0, b_ddr_n0 = list(i.value for i in b_ddr.shape)
 
     filter_shape = [b_ddr_k1 * b_ddr_k0,

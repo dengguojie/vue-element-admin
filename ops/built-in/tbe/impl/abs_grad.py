@@ -39,6 +39,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 SHAPE_SIZE_LIMIT = 2147483648
 
@@ -111,11 +112,11 @@ def abs_grad(y, dy, z, kernel_name="abs_grad"):
     dtype_y = dtype_y.lower()
     dtype_dy = dtype_dy.lower()
     if not operator.eq(shape_y, shape_dy):
-        raise RuntimeError(
-            "abs_grad only support input shape while input_shape1 equals to input_shape2")
+        error_detail = "shape of y and dy should be same"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "y", "dy", error_detail)
     if dtype_y != dtype_dy:
-        raise RuntimeError(
-            "abs_grad only support dtype while input_dtype1 equals to input_dtype2")
+        error_detail = "dtype of y and dy should be same"
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "y", "dy", error_detail)
     shape_y, _ = shape_util.refine_shape_axes(shape_y, [])
     shape_dy, _ = shape_util.refine_shape_axes(shape_dy, [])
 

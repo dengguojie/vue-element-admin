@@ -20,56 +20,56 @@
  */
 #include "inc/lookup_ops.h"
 #include "graph/operator.h"
+#include "graph/utils/type_utils.h"
 #include "op_log.h"
+#include "util/error_util.h"
 #include "util/common_shape_fns.h"
 #include "util/lookup_ops_shape_fns.h"
 
 namespace ge {
+
 IMPLEMT_INFERFUNC(LookupTableFind, LookupTableFindInfer) {
-  Shape shape;
-  if (WithRank(op.GetInputDesc(0), 0, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input handle rank must be 0");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+
+  const char *op_name = op_desc->GetName().c_str();
+
+  auto handle_desc = op_desc->MutableInputDesc(0);
+  GeShape handle_shape;
+  if (WithRank(handle_desc, 0, handle_shape) != GRAPH_SUCCESS) {
+    OP_LOGE(op_name, "input handle must be 0-D, real rank is %lld",
+            handle_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
-  Shape shape_default_value;
-  if (WithRankAtMost(op.GetInputDesc(2), 0, shape_default_value, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input default_value rank must be 0");
+  auto default_value_desc = op_desc->MutableInputDesc(2);
+  GeShape default_value_shape;
+  // Default value must be scalar or vector.
+  if (WithRankAtMost(default_value_desc, 1, default_value_shape) != GRAPH_SUCCESS) {
+    OP_LOGE(op_name, "input default_value at most be 1-D, real rank is %lld",
+            default_value_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
-  auto p_context = op.GetInferenceContext();
-  const std::vector<std::vector<ShapeAndType>>& value_shape_and_types = p_context->GetInputHandleShapesAndTypes();
-
-  Shape output_shape(UNKNOWN_SHAPE);
-  if (value_shape_and_types.size() != 0) {
-    if (value_shape_and_types[0].size() != 2) {
-      OP_LOGE(op.GetName().c_str(), "value_shape_and_types[0].size's rank must be 2");
-      return GRAPH_FAILED;
-    }
-
-    std::vector<ShapeAndType> handle_data;
-    handle_data.emplace_back(value_shape_and_types[0][0]);
-    handle_data.emplace_back(value_shape_and_types[0][1]);
-
-    ShapeAndType output_shape_and_type;
-    if (ValidateTableResourceHandle(shape, handle_data, output_shape_and_type, true, op.GetName().c_str()) ==
-        GRAPH_FAILED) {
-      return GRAPH_FAILED;
-    }
-    output_shape = output_shape_and_type.GetShape();
-  }
-
-  ge::DataType Tout;
+  auto keys_desc = op_desc->MutableInputDesc(1);
+  DataType Tin = keys_desc->GetDataType();
+  DataType Tout = DT_FLOAT;
   if (op.GetAttr("Tout", Tout) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get Attr dtypes error.");
+    OP_LOGW(op.GetName().c_str(), "GetAttr Tout dtypes failed, use default type DT_FLOAT");
   }
 
-  TensorDesc y_desc = op.GetOutputDesc("values");
-  y_desc.SetShape(output_shape);
-  y_desc.SetDataType(Tout);
-  op.UpdateOutputDesc("values", y_desc);
+  ShapeAndType output_shape_and_type;
+  // ShapeAndType only support old version tensor shape
+  Shape keys_shape = op.GetInputDesc(1).GetShape();
+  if (ValidateTableResourceHandle(
+        op, keys_shape, Tin, Tout, true, output_shape_and_type, op.GetName().c_str()) ==
+      GRAPH_FAILED) {
+    OP_LOGE(op.GetName().c_str(), "ValidateTableResourceHandle failed");
+    return GRAPH_FAILED;
+  }
+  GeShape values_shape(output_shape_and_type.GetShape().GetDims());
 
+  auto values_desc = op_desc->MutableOutputDesc(0);
+  (void)FillOpDesc(values_desc, values_shape, Tout);
   return GRAPH_SUCCESS;
 }
 INFER_FUNC_REG(LookupTableFind, LookupTableFindInfer);
@@ -185,14 +185,31 @@ IMPLEMT_INFERFUNC(HashTable, HashTableInfer) {
   }
   if (key_type == DT_INT64) {
     if (!((value_type == DT_INT64) || (value_type == DT_INT32) || (value_type == DT_FLOAT) ||
-          (value_type == DT_DOUBLE))) {
-      OP_LOGE(op.GetName().c_str(), "value_type illegal when key_type is DT_INT64");
+          (value_type == DT_DOUBLE) || (value_type == DT_STRING))) {
+      std::string report_info = ConcatString("valid value_type[DT_INT32, DT_INT64, DT_FLOAT, DT_DOUBLE, DT_STRING]",
+        " when key_type is DT_INT64, but the value_type is ", TypeUtils::DataTypeToSerialString(value_type));
+      InferShapeOtherErrReport(op.GetName(), report_info);
+      OP_LOGE(op.GetName().c_str(), "%s", report_info.c_str());
       return GRAPH_PARAM_INVALID;
     }
   }
   if (key_type == DT_INT32) {
-    if (!((value_type == DT_INT32) || (value_type == DT_FLOAT) || (value_type == DT_DOUBLE))) {
-      OP_LOGE(op.GetName().c_str(), "value_type illegal when key_type is DT_INT32");
+    if (!((value_type == DT_INT32) || (value_type == DT_FLOAT) || (value_type == DT_DOUBLE) ||
+          (value_type == DT_STRING))) {
+      std::string report_info = ConcatString("valid value_type[DT_INT32, DT_FLOAT, DT_DOUBLE, DT_STRING]",
+        " when key_type is DT_INT32, but the value_type is ", TypeUtils::DataTypeToSerialString(value_type));
+      InferShapeOtherErrReport(op.GetName(), report_info);
+      OP_LOGE(op.GetName().c_str(), "%s", report_info.c_str());
+      return GRAPH_PARAM_INVALID;
+    }
+  }
+  if (key_type == DT_STRING) {
+    if (!((value_type == DT_BOOL) || (value_type == DT_INT32) || (value_type == DT_INT64) ||
+          (value_type == DT_FLOAT) || (value_type == DT_DOUBLE))) {
+      std::string report_info = ConcatString("valid value_type[DT_BOOL, DT_INT32, DT_INT64, DT_FLOAT, DT_DOUBLE]",
+        " when key_type is DT_STRING, but the value_type is ", TypeUtils::DataTypeToSerialString(value_type));
+      InferShapeOtherErrReport(op.GetName(), report_info);
+      OP_LOGE(op.GetName().c_str(), "%s", report_info.c_str());
       return GRAPH_PARAM_INVALID;
     }
   }

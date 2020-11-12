@@ -129,16 +129,18 @@ Status MulAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
     return NOT_CHANGED;
   }
 
-  // set mul node new name
-  mul_desc->SetType("FusedMulAdd");
-
+  //change mul type for add find the other side
+  mul_desc->SetType("MulBeforeAdd");
   // link changed
   // add_node second input link to mul_node third input
   uint32_t add_input_index = 1;
 
-  if (add_node->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode()->GetType() == "FusedMulAdd") {
+  if (add_node->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode()->GetType() == "MulBeforeAdd") {
     add_input_index = 0;
   }
+
+  mul_desc->SetType("FusedMulAdd");
+
   ge::NodePtr input_node_add = add_node->GetInDataAnchor(add_input_index)->GetPeerOutAnchor()->GetOwnerNode();
 
   if (input_node_add->GetAllOutDataAnchors().size() != 1) {

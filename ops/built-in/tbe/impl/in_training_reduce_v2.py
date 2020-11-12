@@ -17,8 +17,6 @@ in_training_reduce_v2
 """
 from __future__ import division
 
-import math
-
 import te.lang.cce
 import te.platform.cce_params as cce_params
 import te.platform.cce_emitinsn_params as cce_emitinsn_params
@@ -27,9 +25,8 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te.platform import cce_util
 from te.platform.cce_build import build_config
-
 from topi import generic
-from te.utils.op_utils import *
+from te.utils import para_check
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 
@@ -72,8 +69,8 @@ def _check_input(data_format, shape):
     -------
     None
     """
-    check_format(data_format.upper(), ("NC1HWC0",), param_name="x")
-    check_shape(shape, min_rank=5, max_rank=5, param_name="x")
+    para_check.check_format(data_format.upper(), ("NC1HWC0",), param_name="x")
+    para_check.check_shape(shape, min_rank=5, max_rank=5, param_name="x")
 
 
 def _reduce_compute(x):
@@ -130,8 +127,8 @@ def in_training_reduce_compute(x, kernel_name="in_training_reduce_v2"):
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT,
-                 KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def in_training_reduce_v2(x, sum, square_sum,
                           kernel_name="in_training_reduce_v2"):
     """
@@ -159,8 +156,8 @@ def in_training_reduce_v2(x, sum, square_sum,
     shape_x = x.get("shape")
     dtype_x = x.get("dtype")
 
-    check_shape(shape_x, param_name="x")
-    check_dtype(dtype_x.lower(), ("float16", "float32"), param_name="x")
+    para_check.check_shape(shape_x, param_name="x")
+    para_check.check_dtype(dtype_x.lower(), ("float16", "float32"), param_name="x")
 
     data_format = x.get("format")
     _check_input(data_format, shape_x)

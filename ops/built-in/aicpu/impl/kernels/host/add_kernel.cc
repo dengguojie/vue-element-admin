@@ -20,21 +20,21 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char* ADD = "Add";
+const char *ADD = "Add";
 
-#define ADD_COMPUTE_CASE(DTYPE, TYPE, CTX)              \
-  case (DTYPE): {                                       \
-    if (AddCompute<TYPE>(CTX) != KERNEL_STATUS_OK) {    \
-      KERNEL_LOG_ERROR("Add kernel compute failed.");   \
-      return KERNEL_STATUS_PARAM_INVALID;               \
-    }                                                   \
-    break;                                              \
+#define ADD_COMPUTE_CASE(DTYPE, TYPE, CTX)            \
+  case (DTYPE): {                                     \
+    if (AddCompute<TYPE>(CTX) != KERNEL_STATUS_OK) {  \
+      KERNEL_LOG_ERROR("Add kernel compute failed."); \
+      return KERNEL_STATUS_PARAM_INVALID;             \
+    }                                                 \
+    break;                                            \
   }
 
-#define ADD_CALCULATE_CASE(RANK, T)     \
-  case (RANK): {                        \
-    AddCalculate<RANK, T>(calc_info);   \
-    break;                              \
+#define ADD_CALCULATE_CASE(RANK, T)   \
+  case (RANK): {                      \
+    AddCalculate<RANK, T>(calc_info); \
+    break;                            \
   }
 }
 
@@ -46,7 +46,8 @@ uint32_t AddKernel::Compute(CpuKernelContext &ctx) {
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
-  auto data_type = static_cast<DataType>(ctx.Input(kFirstInputIndex)->GetDataType());
+  auto data_type =
+      static_cast<DataType>(ctx.Input(kFirstInputIndex)->GetDataType());
   switch (data_type) {
     ADD_COMPUTE_CASE(DT_INT8, int8_t, ctx)
     ADD_COMPUTE_CASE(DT_INT16, int16_t, ctx)
@@ -74,14 +75,19 @@ uint32_t AddKernel::AddCompute(CpuKernelContext &ctx) {
   calc_info.input_0 = ctx.Input(kFirstInputIndex);
   calc_info.input_1 = ctx.Input(kSecondInputIndex);
   calc_info.output = ctx.Output(kFirstOutputIndex);
-  KERNEL_CHECK_NULLPTR(calc_info.input_0->GetData(), KERNEL_STATUS_PARAM_INVALID, "Get input 0 data failed")
-  KERNEL_CHECK_NULLPTR(calc_info.input_1->GetData(), KERNEL_STATUS_PARAM_INVALID, "Get input 1 data failed")
-  KERNEL_CHECK_NULLPTR(calc_info.output->GetData(), KERNEL_STATUS_PARAM_INVALID, "Get output data failed")
-  KERNEL_LOG_INFO("Add %s, input0: addr=%p, size=%llu; input1: addr=%p, size=%llu; output: addr %p, size %llu.",
-                  ctx.GetOpType().c_str(),
-                  calc_info.input_0->GetData(), calc_info.input_0->GetDataSize(),
-                  calc_info.input_1->GetData(), calc_info.input_1->GetDataSize(),
-                  calc_info.output->GetData(), calc_info.output->GetDataSize());
+  KERNEL_CHECK_NULLPTR(calc_info.input_0->GetData(),
+                       KERNEL_STATUS_PARAM_INVALID, "Get input 0 data failed")
+  KERNEL_CHECK_NULLPTR(calc_info.input_1->GetData(),
+                       KERNEL_STATUS_PARAM_INVALID, "Get input 1 data failed")
+  KERNEL_CHECK_NULLPTR(calc_info.output->GetData(), KERNEL_STATUS_PARAM_INVALID,
+                       "Get output data failed")
+  KERNEL_LOG_INFO(
+      "Add %s, input0: addr=%p, size=%llu; input1: addr=%p, size=%llu; output: "
+      "addr %p, size %llu.",
+      ctx.GetOpType().c_str(), calc_info.input_0->GetData(),
+      calc_info.input_0->GetDataSize(), calc_info.input_1->GetData(),
+      calc_info.input_1->GetDataSize(), calc_info.output->GetData(),
+      calc_info.output->GetDataSize());
 
   Bcast bcast;
   if (bcast.GenerateBcastInfo(calc_info) != KERNEL_STATUS_OK) {
@@ -98,14 +104,15 @@ uint32_t AddKernel::AddCompute(CpuKernelContext &ctx) {
       *(value_out) = v0 + v1;
       break;
     }
-    ADD_CALCULATE_CASE(1, T)
-    ADD_CALCULATE_CASE(2, T)
-    ADD_CALCULATE_CASE(3, T)
-    ADD_CALCULATE_CASE(4, T)
-    ADD_CALCULATE_CASE(5, T)
-    ADD_CALCULATE_CASE(6, T)
+      ADD_CALCULATE_CASE(1, T)
+      ADD_CALCULATE_CASE(2, T)
+      ADD_CALCULATE_CASE(3, T)
+      ADD_CALCULATE_CASE(4, T)
+      ADD_CALCULATE_CASE(5, T)
+      ADD_CALCULATE_CASE(6, T)
     default:
-      KERNEL_LOG_ERROR("Add kernel not support rank=%zu.", calc_info.shape_out.size());
+      KERNEL_LOG_ERROR("Add kernel not support rank=%zu.",
+                       calc_info.shape_out.size());
       return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -114,19 +121,22 @@ uint32_t AddKernel::AddCompute(CpuKernelContext &ctx) {
 
 template <int32_t RANK, typename T>
 void AddKernel::AddCalculate(CalcInfo &calc_info) {
-  Eigen::TensorMap<Eigen::Tensor<T, 1>> eigen_input_0(static_cast<T *>(calc_info.input_0->GetData()),
-                                                      calc_info.input_0->GetTensorShape()->NumElements());
-  Eigen::TensorMap<Eigen::Tensor<T, 1>> eigen_input_1(static_cast<T *>(calc_info.input_1->GetData()),
-                                                      calc_info.input_1->GetTensorShape()->NumElements());
-  Eigen::TensorMap<Eigen::Tensor<T, 1>> eigen_output(static_cast<T *>(calc_info.output->GetData()),
-                                                     calc_info.output->GetTensorShape()->NumElements());
+  Eigen::TensorMap<Eigen::Tensor<T, 1>> eigen_input_0(
+      static_cast<T *>(calc_info.input_0->GetData()),
+      calc_info.input_0->GetTensorShape()->NumElements());
+  Eigen::TensorMap<Eigen::Tensor<T, 1>> eigen_input_1(
+      static_cast<T *>(calc_info.input_1->GetData()),
+      calc_info.input_1->GetTensorShape()->NumElements());
+  Eigen::TensorMap<Eigen::Tensor<T, 1>> eigen_output(
+      static_cast<T *>(calc_info.output->GetData()),
+      calc_info.output->GetTensorShape()->NumElements());
 
   Eigen::DSizes<Eigen::DenseIndex, RANK> reshape_0;
   Eigen::DSizes<Eigen::DenseIndex, RANK> reshape_1;
   Eigen::DSizes<Eigen::DenseIndex, RANK> shape_out;
   Eigen::array<Eigen::DenseIndex, RANK> bcast_0;
   Eigen::array<Eigen::DenseIndex, RANK> bcast_1;
-  for (int32_t i = 0; i < RANK; i++){
+  for (int32_t i = 0; i < RANK; i++) {
     reshape_0[i] = calc_info.reshape_0[i];
     reshape_1[i] = calc_info.reshape_1[i];
     shape_out[i] = calc_info.shape_out[i];
@@ -137,8 +147,9 @@ void AddKernel::AddCalculate(CalcInfo &calc_info) {
   Eigen::ThreadPool thread_pool(kThreadNum);
   Eigen::ThreadPoolDevice thread_pool_device(&thread_pool, kThreadNum);
   eigen_output.reshape(shape_out).device(thread_pool_device) =
-          eigen_input_0.reshape(reshape_0).broadcast(bcast_0) + eigen_input_1.reshape(reshape_1).broadcast(bcast_1);
+      eigen_input_0.reshape(reshape_0).broadcast(bcast_0) +
+      eigen_input_1.reshape(reshape_1).broadcast(bcast_1);
 }
 
 REGISTER_CPU_KERNEL(ADD, AddKernel);
-} // namespace aicpu
+}  // namespace aicpu

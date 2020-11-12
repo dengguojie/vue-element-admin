@@ -33,6 +33,7 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
+#include "error_util.h"
 
 namespace fe {
 namespace {
@@ -87,28 +88,28 @@ Status GemmTransFusionPass::Relink(ge::NodePtr a_node,
   FUSION_PASS_CHECK(
       ge::GraphUtils::RemoveEdge(a_node->GetOutDataAnchor(0),
                                  gemm_node->GetInDataAnchor(anchor)) != SUCCESS,
-      OP_LOGE(FUSED_OP_TYPE.c_str(),
+      ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),
               "fail to remove edge between a_node and gemm_node"),
       return FAILED);
 
   FUSION_PASS_CHECK(
       ge::GraphUtils::AddEdge(a_node->GetOutDataAnchor(0),
                               transpose_a_node->GetInDataAnchor(0)) != SUCCESS,
-      OP_LOGE(FUSED_OP_TYPE.c_str(),
+      ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),
               "fail to add edge between a_node and transpose_a_node"),
       return FAILED);
 
   FUSION_PASS_CHECK(
       ge::GraphUtils::AddEdge(transpose_a_node->GetOutDataAnchor(0),
                               gemm_node->GetInDataAnchor(anchor)) != SUCCESS,
-      OP_LOGE(FUSED_OP_TYPE.c_str(),
+      ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),
               "fail to add edge between transpose_a_node and gemm_node"),
       return FAILED);
 
   FUSION_PASS_CHECK(
       gemm_node->GetOpDesc()->UpdateInputDesc(
           anchor, transpose_a_node->GetOpDesc()->GetOutputDesc(0)) != SUCCESS,
-      OP_LOGE(FUSED_OP_TYPE.c_str(),
+      ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),
               "fail to update input description of transdataANode"),
       return FAILED);
 
@@ -181,6 +182,11 @@ Status GemmTransFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
     n_direction_length = b_shape_vector[1];
   }
 
+  if (PatternFusionUtil::IsUnknownShape(n_direction_length)) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "GemmTransFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
+
   bool need_transpose = true;
 
   if (a_format == ge::FORMAT_ND && b_format == ge::FORMAT_ND &&
@@ -200,12 +206,12 @@ Status GemmTransFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
     FUSION_PASS_CHECK(
         GenerateTransposeNode(&graph, a_out_desc, &gemm_a_in_desc, trans_perm,
                               &transpose_a_node, basename_a) != SUCCESS,
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "fail to generate transpose node A"),
+        ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to generate transpose node A"),
         return FAILED);
     // relink a
     FUSION_PASS_CHECK(
         Relink(a_node, transpose_a_node, gemm_node, a_anchor) != SUCCESS,
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "fail to relink nodes"), return FAILED);
+        ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to relink nodes"), return FAILED);
     fusion_nodes.push_back(transpose_a_node);
     op.SetAttr("transpose_a", false);
   }
@@ -215,12 +221,12 @@ Status GemmTransFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
     FUSION_PASS_CHECK(
         GenerateTransposeNode(&graph, b_out_desc, &gemm_b_in_desc, trans_perm,
                               &transpose_b_node, basename_b) != SUCCESS,
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "fail to generate transpose node B"),
+        ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to generate transpose node B"),
         return FAILED);
     // relink b
     FUSION_PASS_CHECK(
         Relink(b_node, transpose_b_node, gemm_node, b_anchor) != SUCCESS,
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "fail to relink nodes"), return FAILED);
+        ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to relink nodes"), return FAILED);
     fusion_nodes.push_back(transpose_b_node);
     op.SetAttr("transpose_b", false);
   }

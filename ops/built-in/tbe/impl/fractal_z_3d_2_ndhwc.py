@@ -19,7 +19,7 @@ from functools import reduce as functools_reduce
 from te import platform as cce
 import te.platform.cce_params as cce_params
 from te import tik
-from te.utils.op_utils import *
+from te.utils import para_check
 
 # available ub size
 UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
@@ -735,12 +735,12 @@ def _check_parameters(src, dst, src_format, dst_format):
         raise RuntimeError("dst_format must be NDHWC!")
 
     check_list = ("float16", "float32")
-    check_dtype(dtype, check_list)
+    para_check.check_dtype(dtype, check_list)
     if dtype != dtype_dst:
         raise RuntimeError("dtype of src and dst are different !")
 
-    check_shape(src_shape, min_rank=4, max_rank=4)
-    check_shape(dst_shape, min_rank=5, max_rank=5)
+    para_check.check_shape(src_shape, min_rank=4, max_rank=4)
+    para_check.check_shape(dst_shape, min_rank=5, max_rank=5)
 
     if src_shape[2] != 16:
         raise RuntimeError(
@@ -772,7 +772,8 @@ def _check_parameters(src, dst, src_format, dst_format):
             "it must be D*C1*H*W !")
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_STR, REQUIRED_ATTR_STR, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_STR,
+                            para_check.REQUIRED_ATTR_STR, para_check.KERNEL_NAME)
 def fractal_z_3d_2_ndhwc(src, dst, src_format, dst_format,
                          kernel_name="fractal_z_3d_2_ndhwc"):
     """

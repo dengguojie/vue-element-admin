@@ -17,12 +17,10 @@ conv3d compute
 """
 import te.platform as tbe_platform
 from te.domain.tiling import tiling_query
-from te.utils import para_check
 from te.utils.error_manager import error_manager_util
-from te.lang.cce.te_compute import util as te_util
 from te.lang.cce.te_compute import cube_util
+from te.lang.cce.te_compute import util as te_util
 from te import tvm
-
 
 OP_TAG = "conv3d_"
 TENSOR_MAP = {}
@@ -43,7 +41,7 @@ FMAP_HW_MIN = 1
 FMAP_HW_MAX = 4096
 
 
-def _check_d_dimension(fmap_d, filter_d, pad_d, stride_d):
+def _check_d_dimension(fmap_d, filter_d, pad_d, stride_d, dilation_d):
     if filter_d < FILTER_DHW_MIN or filter_d > FILTER_DHW_MAX:
         dict_args = {
             'errCode': 'E62003',
@@ -55,11 +53,11 @@ def _check_d_dimension(fmap_d, filter_d, pad_d, stride_d):
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
 
-    if (fmap_d + pad_d[0] + pad_d[1]) < filter_d:
+    if (fmap_d + pad_d[0] + pad_d[1]) < ((filter_d - 1) * dilation_d + 1):
         dict_args = {
             'errCode': 'E60012',
             'depth_of_x': str(fmap_d + pad_d[0] + pad_d[1]),
-            'depth_of_filter': str(filter_d),
+            'depth_of_filter': str((filter_d - 1) * dilation_d - 1),
         }
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
@@ -98,7 +96,7 @@ def _check_d_dimension(fmap_d, filter_d, pad_d, stride_d):
                            error_manager_util.get_error_message(dict_args))
 
 
-def _check_h_dimension(fmap_h, filter_h, pad_h, stride_h):
+def _check_h_dimension(fmap_h, filter_h, pad_h, stride_h, dilation_h):
     if fmap_h < FMAP_HW_MIN or fmap_h > FMAP_HW_MAX:
         dict_args = {
             'errCode': 'E62003',
@@ -127,13 +125,13 @@ def _check_h_dimension(fmap_h, filter_h, pad_h, stride_h):
             'param_name': 'pad',
             'dim': 'H',
             'range': '[{}, {}]'.format(PAD_MIN, PAD_MAX),
-            'actual_value': 'pad_d[0] = {}, pad_d[1] = {}'.format(pad_h[0],
+            'actual_value': 'pad_h[0] = {}, pad_h[1] = {}'.format(pad_h[0],
                                                                   pad_h[1])
         }
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
 
-    if filter_h > (fmap_h + pad_h[0] + pad_h[1]):
+    if (fmap_h + pad_h[0] + pad_h[1]) < ((filter_h - 1) * dilation_h + 1):
         # Chip Design demand, Load3D
         dict_args = {
             'errCode': 'E60014',
@@ -164,7 +162,7 @@ def _check_h_dimension(fmap_h, filter_h, pad_h, stride_h):
                            error_manager_util.get_error_message(dict_args))
 
 
-def _check_w_dimension(fmap_w, filter_w, pad_w, stride_w):
+def _check_w_dimension(fmap_w, filter_w, pad_w, stride_w, dilation_w):
     if fmap_w < FMAP_HW_MIN or fmap_w > FMAP_HW_MAX:
         dict_args = {
             'errCode': 'E62003',
@@ -230,8 +228,8 @@ def _check_w_dimension(fmap_w, filter_w, pad_w, stride_w):
                            error_manager_util.get_error_message(dict_args))
 
 
-def check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, fmp_dtype,
-                       w_dtype):
+def check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
+                       fmp_dtype, w_dtype, groups):
     """
     algorithm: check the input params of conv3d
 
@@ -246,21 +244,25 @@ def check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, fmp_dtype,
     pads: tuple/list of 6 integers
         [pad_head, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
 
-    stride_dhw: A list of `ints` that has length `== 3`.
+    stride_dhw: A list of `ints` that has length `== 3`
+
+    dilation_dhw: A list of `ints` that has length `== 3`
 
     fmp_dtype: the dtype of feature
 
     w_dtype: the dtype of filter
 
+    groups: The groups for group convolution
+
     Returns
     -------
     None
     """
-    if shape_fm[1] != shape_filter[1]:
+    if shape_fm[1] != shape_filter[1] * groups:
         dict_args = {
             'errCode': 'E60010',
             'channel_of_x': str(shape_fm[1]),
-            'channel_of_filter': str(shape_filter[1])
+            'channel_of_filter': str(shape_filter[1] * groups)
         }
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
@@ -269,13 +271,13 @@ def check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, fmp_dtype,
     filter_n, filter_c, filter_d, filter_h, filter_w = shape_filter
 
     pad_d = [pads[0], pads[1]]
-    _check_d_dimension(fmap_d, filter_d, pad_d, stride_dhw[0])
+    _check_d_dimension(fmap_d, filter_d, pad_d, stride_dhw[0], dilation_dhw[0])
 
     pad_h = [pads[2], pads[3]]
-    _check_h_dimension(fmap_h, filter_h, pad_h, stride_dhw[1])
+    _check_h_dimension(fmap_h, filter_h, pad_h, stride_dhw[1], dilation_dhw[1])
 
     pad_w = [pads[4], pads[5]]
-    _check_w_dimension(fmap_w, filter_w, pad_w, stride_dhw[2])
+    _check_w_dimension(fmap_w, filter_w, pad_w, stride_dhw[2], dilation_dhw[2])
 
     # C dimension should align 16
     block_size_k = tbe_platform.CUBE_MKN[fmp_dtype]['mac'][1]
@@ -341,7 +343,7 @@ def check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, fmp_dtype,
             'errCode': 'E60026',
         }
         raise RuntimeError(dict_args,
-                          error_manager_util.get_error_message(dict_args))
+                           error_manager_util.get_error_message(dict_args))
 
 
 class Conv3DParam(object):
@@ -365,15 +367,16 @@ class Conv3DParam(object):
 
 
 def _cube_3d_compute(fmap,
-                    weight,
-                    mad_dtype,
-                    res_dtype,
-                    pads,
-                    stride_dhw,
-                    shape_filter_ncdhw,
-                    cyclebuffer_flag,
-                    bias=False,
-                    tiling=None):
+                     weight,
+                     mad_dtype,
+                     res_dtype,
+                     pads,
+                     stride_dhw,
+                     shape_filter_ncdhw,
+                     cyclebuffer_flag,
+                     group_dict,
+                     bias=None,
+                     tiling=None):
     """
     conv
 
@@ -399,6 +402,8 @@ def _cube_3d_compute(fmap,
 
     tiling: default none, tiling
 
+    group_dict: the information needed for group convolution
+
     -------
     Returns
 
@@ -409,9 +414,6 @@ def _cube_3d_compute(fmap,
 
     TENSOR_MAP["fmap"] = fmap
     TENSOR_MAP["filter"] = weight
-
-    if isinstance(bias, tvm.tensor.Tensor):
-        TENSOR_MAP["bias"] = bias
 
     fmap_shape = te_util.shape_to_list(fmap.shape)
     batch_size = fmap_shape[0]
@@ -438,19 +440,31 @@ def _cube_3d_compute(fmap,
     TENSOR_MAP["d_out"] = d_out
     TENSOR_MAP["d_dim"] = tiling["block_dim"][-1]
 
+    TENSOR_MAP["group_dict"] = group_dict
+    if (group_dict['use_group_flag'] == True):
+        real_g = group_dict["real_g"]
+        cin1_g = group_dict["cin1_g"]
+        cout_g = group_dict["cout_g"]
+        cin_ori = group_dict["cin_ori"]
+        cout_ori = group_dict["cout_ori"]
+    else:
+        cin1_g = -1  # Meaning Less parameter for function im2col_fractal_3d
+        cout_ori = filter_cout
+
     fmap_fuse_shape = (batch_size * d_out, filter_d * fmap_c1, fmap_h, fmap_w,
                        fmap_c0)
     fuse_fmap_tensor = _get_fuse_fmap_tensor(fmap_fuse_shape,
-                                            fmap,
-                                            d_out,
-                                            filter_d,
-                                            stride_d,
-                                            stride_h,
-                                            pad_head,
-                                            tiling,
-                                            opti_h_flag,
-                                            cyclebuffer_flag,
-                                            tag=OP_TAG)
+                                             fmap,
+                                             d_out,
+                                             filter_d,
+                                             stride_d,
+                                             stride_h,
+                                             pad_head,
+                                             tiling,
+                                             opti_h_flag,
+                                             cyclebuffer_flag,
+                                             tag=OP_TAG)
+
     TENSOR_MAP["fmap_do_tensor"] = fuse_fmap_tensor
 
     # set_fmatrix
@@ -476,70 +490,100 @@ def _cube_3d_compute(fmap,
                 1) // block_size_m * block_size_m
 
     # new data layout (N,HoWo,C1,Hk,Wk,C0) -> (N,loop_m,loop_k,cube_m,cube_k)
-    fmap_im2col_fractal_shape = (fmap_fuse_shape[0], howo_mad // block_size_m,
-                                 fmap_fuse_shape[1] * filter_h * filter_w,
-                                 block_size_m, block_size_k)
-    fmap_im2col_fractal_res = cube_util.im2col_fractal_3d(fmap_im2col_fractal_shape,
-                                                          fmap_im2col_row_major_res,
-                                                          fmap_c1,
-                                                          d_out,
-                                                          filter_d,
-                                                          stride_d,
-                                                          cyclebuffer_flag,
-                                                          tag=OP_TAG)
+    if (group_dict['use_group_flag']):
+        fmap_im2col_fractal_shape = (
+        real_g, fmap_fuse_shape[0], howo_mad // block_size_m,
+        filter_d * cin1_g * filter_h * filter_w,
+        block_size_m, block_size_k)
+    else:
+        fmap_im2col_fractal_shape = (
+            1, fmap_fuse_shape[0], howo_mad // block_size_m,
+            fmap_fuse_shape[1] * filter_h * filter_w,
+            block_size_m, block_size_k)
+    fmap_im2col_fractal_res = cube_util.im2col_fractal_3d(
+        fmap_im2col_fractal_shape,
+        fmap_im2col_row_major_res,
+        fmap_c1,
+        d_out,
+        filter_d,
+        stride_d,
+        cin1_g,
+        cyclebuffer_flag,
+        tag=OP_TAG)
     TENSOR_MAP["fmap_im2col_fractal_res"] = fmap_im2col_fractal_res
-
     config = tbe_platform.CUBE_MKN[res_dtype]
 
-    l0a_load2d_flag = _get_load2d_flag(stride_dhw, pads, shape_filter_ncdhw)
-
-    TENSOR_MAP["l0a_load2d_flag"] = l0a_load2d_flag
-
-    mad_shape = (fmap_fuse_shape[0],
-                 (filter_cout + config['mac'][2] - 1) // (config['mac'][2]),
-                 howo_mad, config['mac'][2])
+    l0a_load2d_flag = TENSOR_MAP["l0a_load2d_flag"]
+    if (group_dict['use_group_flag']):
+        mad_shape = (real_g, fmap_fuse_shape[0],
+                     (cout_g + config['mac'][2] - 1) // (config['mac'][2]),
+                     howo_mad, config['mac'][2])
+    else:
+        mad_shape = (1, fmap_fuse_shape[0],
+                     (filter_cout + config['mac'][2] - 1) // (config['mac'][2]),
+                     howo_mad, config['mac'][2])
 
     config = tbe_platform.CUBE_MKN[w_dtype]
 
     if l0a_load2d_flag:
         c_col = _mad_by_load2d(mad_shape, fmap, weight, config, mad_dtype,
-                               pads, stride_d, d_out, filter_d)
+                               pads, stride_d, d_out, filter_d, group_dict)
     else:
         c_col = _mad(mad_shape, fmap_im2col_fractal_res, weight, config,
-                    mad_dtype, pads, stride_d, d_out, fmap_d, filter_d)
+                     mad_dtype, pads, stride_d, d_out, fmap_d, filter_d,
+                     group_dict)
+
     TENSOR_MAP["c_col"] = c_col
 
     conv_shape = (fmap_fuse_shape[0],
-                  (filter_cout + config['mac'][2] - 1) // (config['mac'][2]),
+                  (cout_ori + config['mac'][2] - 1) // (config['mac'][2]),
                   height_out * width_out, config['mac'][2])
+    conv_aligned_shape = (fmap_fuse_shape[0],
+                  (cout_ori + config['mac'][2] - 1) // (config['mac'][2]),
+                  howo_mad, config['mac'][2])
     DIM_MAP["out_img_shape"] = conv_shape
 
-    c_ub = tvm.compute(mad_shape,
-                       lambda n, i, j, k: c_col(n, i, j, k).astype(res_dtype),
-                       name='C_UB',
-                       tag=OP_TAG + "C_UB",
-                       attrs={
-                           'true_shape': conv_shape,
-                           'sqrt': False,
-                           'res_dtype': res_dtype,
-                           'kernel_h': filter_h,
-                           'kernel_w': filter_w,
-                           'padding': pads[2:],
-                           'stride': stride_dhw[1:]
-                       })
-
+    attrs_dict = {'true_shape': conv_shape,
+                  'sqrt': False,
+                  'res_dtype': res_dtype,
+                  'kernel_h': filter_h,
+                  'kernel_w': filter_w,
+                  'kernel_d': filter_d,
+                  'padding': pads[2:],
+                  'stride': stride_dhw[1:]}
+    if (group_dict['use_group_flag']):
+        cout1_g = cout_g // config['mac'][2]
+        c_ub = tvm.compute(conv_aligned_shape,
+                           lambda n, i, j, k: c_col(i // cout1_g, n,
+                                                    i % cout1_g, j, k).astype(
+                               res_dtype),
+                           name='C_UB',
+                           tag=OP_TAG + "C_UB",
+                           attrs=attrs_dict)
+    else:
+        c_ub = tvm.compute(conv_aligned_shape,
+                           lambda n, i, j, k: c_col(0, n, i, j, k).astype(
+                               res_dtype),
+                           name='C_UB',
+                           tag=OP_TAG + "C_UB",
+                           attrs=attrs_dict)
     TENSOR_MAP["c_ub"] = c_ub
     dim_map1 = _im2col_dim(te_util.shape_to_list(fuse_fmap_tensor.shape),
-                          shape_filter_ncdhw, list(pads), list(stride_dhw),
-                          config)
+                           shape_filter_ncdhw, list(pads), list(stride_dhw),
+                           config)
     dim_map_copy = DIM_MAP.copy()
     dim_map_copy.update(dim_map1)
 
     Conv3DParam.TENSOR_MAP = TENSOR_MAP
     Conv3DParam.dim_map = dim_map_copy
     Conv3DParam.tiling = None
+    # ub fusion
+    res = c_ub
 
-    return c_ub
+    if isinstance(bias, tvm.tensor.Tensor):
+        res = _bias_add(c_ub, bias, attrs_dict)
+
+    return res
 
 
 def _get_fuse_fmap_tensor(fmap_fuse_shape, fmap, d_out, kernel_d, stride_d,
@@ -586,18 +630,18 @@ def _get_fuse_fmap_tensor(fmap_fuse_shape, fmap, d_out, kernel_d, stride_d,
                 lambda n, dc, h, w, c0: tvm.select(
                     tvm.all(
                         n % d_out * stride_d + (dc // fmap_c1 + n % d_out *
-                        (kernel_d - stride_d)) % kernel_d - pad_head >= 0,
+                                                (kernel_d - stride_d)) % kernel_d - pad_head >= 0,
                         n % d_out * stride_d + (dc // fmap_c1 + n % d_out *
-                        (kernel_d - stride_d)) % kernel_d - pad_head < fmap_d,
+                                                (kernel_d - stride_d)) % kernel_d - pad_head < fmap_d,
                         tvm.any(
                             n % d_out * stride_d + (dc // fmap_c1 + n % d_out *
-                            (kernel_d - stride_d)) % kernel_d >
+                                                    (kernel_d - stride_d)) % kernel_d >
                             (n % d_out - 1) * stride_d + kernel_d - 1,
                             n % (d_out // d_dim) == 0)),
                     fmap(
                         n // d_out, n % d_out * stride_d +
                         (dc // fmap_c1 + n % d_out * (kernel_d - stride_d)) %
-                        kernel_d - pad_head, dc % fmap_c1, h*stride_h, w,
+                        kernel_d - pad_head, dc % fmap_c1, h * stride_h, w,
                         c0)),
                 name='fuse_fmap_tensor',
                 tag=tag + 'fuse_fmap_tensor')
@@ -607,12 +651,12 @@ def _get_fuse_fmap_tensor(fmap_fuse_shape, fmap, d_out, kernel_d, stride_d,
                 lambda n, dc, h, w, c0: tvm.select(
                     tvm.all(
                         n % d_out * stride_d + (dc // fmap_c1 + n % d_out *
-                        (kernel_d - stride_d)) % kernel_d - pad_head >= 0,
+                                                (kernel_d - stride_d)) % kernel_d - pad_head >= 0,
                         n % d_out * stride_d + (dc // fmap_c1 + n % d_out *
-                        (kernel_d - stride_d)) % kernel_d - pad_head < fmap_d,
+                                                (kernel_d - stride_d)) % kernel_d - pad_head < fmap_d,
                         tvm.any(
                             n % d_out * stride_d + (dc // fmap_c1 + n % d_out *
-                            (kernel_d - stride_d)) % kernel_d >
+                                                    (kernel_d - stride_d)) % kernel_d >
                             (n % d_out - 1) * stride_d + kernel_d - 1,
                             n % (d_out // d_dim) == 0)),
                     fmap(
@@ -633,7 +677,7 @@ def _get_fuse_fmap_tensor(fmap_fuse_shape, fmap, d_out, kernel_d, stride_d,
                             (n % d_out) *
                             stride_d - pad_head + dc // fmap_c1 < fmap_d),
                     fmap(n // d_out, (n % d_out) * stride_d - pad_head + dc //
-                         fmap_c1, dc % fmap_c1, h*stride_h, w, c0)),
+                         fmap_c1, dc % fmap_c1, h * stride_h, w, c0)),
                 name='fuse_fmap_tensor',
                 tag=tag + 'fuse_fmap_tensor')
         else:
@@ -653,7 +697,7 @@ def _get_fuse_fmap_tensor(fmap_fuse_shape, fmap, d_out, kernel_d, stride_d,
 
 
 def _mad_by_load2d(mad_shape, fmap, weight, config, mad_dtype, pads, stride_d,
-                  d_out, filter_d):
+                   d_out, filter_d, group_dict):
     """
     calculate mad
     Parameters
@@ -688,6 +732,9 @@ def _mad_by_load2d(mad_shape, fmap, weight, config, mad_dtype, pads, stride_d,
     fmap_h = fmap_shape[3]
     fmap_w = fmap_shape[4]
     fmap_c0 = fmap_shape[5]
+    if (group_dict['use_group_flag']):
+        real_g = group_dict["real_g"]
+        cin1_g = group_dict["cin1_g"]
     shape_al1_load2d = (batch_size * fmap_d, fmap_c1, fmap_h * fmap_w, fmap_c0)
     al1_load2d = tvm.compute(
         shape_al1_load2d,
@@ -698,18 +745,26 @@ def _mad_by_load2d(mad_shape, fmap, weight, config, mad_dtype, pads, stride_d,
 
     hw_dim = te_util.int_ceil_div(fmap_h * fmap_w,
                                   tbe_platform.CUBE_MKN[fmap.dtype]["mac"][0])
-    shape_al0_load2d = (batch_size * fmap_d, hw_dim, fmap_c1,
-                        tbe_platform.CUBE_MKN[fmap.dtype]["mac"][0], fmap_c0)
-
+    if (group_dict['use_group_flag']):
+        shape_al0_load2d = (real_g, batch_size * fmap_d, hw_dim, cin1_g,
+                            tbe_platform.CUBE_MKN[fmap.dtype]["mac"][0],
+                            fmap_c0)
+    else:
+        shape_al0_load2d = (1, batch_size * fmap_d, hw_dim, fmap_c1,
+                            tbe_platform.CUBE_MKN[fmap.dtype]["mac"][0],
+                            fmap_c0)
     al0_load2d = tvm.compute(
         shape_al0_load2d,
-        lambda n, m1, c1, m0, c0: al1_load2d(
-            n, c1, m0 + tbe_platform.CUBE_MKN[fmap.dtype]["mac"][0] * m1, c0),
+        lambda g, n, m1, c1, m0, c0:
+        al1_load2d(n, c1,
+                   m0 + tbe_platform.CUBE_MKN[fmap.dtype]["mac"][0] * m1,
+                   c0),
         name=OP_TAG + "al0_load2d")
+
     TENSOR_MAP["al0_load2d"] = al0_load2d
 
     c_col = _mad(mad_shape, al0_load2d, weight, config, mad_dtype, pads,
-                stride_d, d_out, fmap_d, filter_d)
+                 stride_d, d_out, fmap_d, filter_d, group_dict)
     return c_col
 
 
@@ -732,13 +787,15 @@ def _get_load2d_flag(stride, pads, shape_filter_ncdhw):
     l0a_load2d_flag = False
     _, _, filter_d, filter_h, filter_w = shape_filter_ncdhw
 
-    if list(pads) == [0, 0, 0, 0, 0, 0] and list(stride) == [1, 1, 1] and [filter_d, filter_h, filter_w] == [1, 1, 1]:
+    if (list(pads) == [0, 0, 0, 0, 0, 0]
+        and list(stride) == [1, 1, 1]
+        and [filter_d, filter_h, filter_w] == [1, 1, 1]):
         l0a_load2d_flag = True
     return l0a_load2d_flag
 
 
 def _get_cyclebuffer_flag(tiling, shape_w, w_dtype, shape_fmap, stride_d,
-                         pad_d, l0a_load2d_flag):
+                          pad_d, l0a_load2d_flag):
     """
     calculate whether to do cyclebuffer
 
@@ -842,7 +899,7 @@ def _im2col_dim(shape_fmap, shape_filter_ncdhw, pads, stride_dhw, config):
 
 
 def _mad(mad_shape, fmap, weight, config, mad_dtype, pads, stride_d, d_out,
-        fmap_d, filter_d):
+         fmap_d, filter_d, group_dict):
     """
     calculate mad result tensor
     Parameters
@@ -874,21 +931,20 @@ def _mad(mad_shape, fmap, weight, config, mad_dtype, pads, stride_d, d_out,
     block_size = config['mac'][1]
     block_size_m = config['mac'][0]
     pad_head = pads[0]
-    c1khkw = weight.shape[0] // filter_d
+    c1khkw = weight.shape[1] // filter_d
 
-    axis_k1 = tvm.reduce_axis((0, weight.shape[0]), name='k1')
+    axis_k1 = tvm.reduce_axis((0, weight.shape[1]), name='k1')
     axis_k0 = tvm.reduce_axis((0, block_size), name='k0')
 
     if mad_dtype in ["float16", "int32"]:
         mode = 'f162f16'
     else:
         mode = 'f162f32'
-
     c_col = tvm.compute(
         mad_shape,
-        lambda n, index_j1, i, index_j0: tvm.sum(
-            (fmap[n, i // block_size_m, axis_k1, i % block_size_m, axis_k0] *
-             weight[axis_k1, index_j1, index_j0, axis_k0]).astype(mad_dtype),
+        lambda g, n, index_j1, i, index_j0: tvm.sum(
+            (fmap[g, n, i // block_size_m, axis_k1, i % block_size_m, axis_k0] *
+             weight[g, axis_k1, index_j1, index_j0, axis_k0]).astype(mad_dtype),
             axis=[axis_k1, axis_k0]),
         name='mad1',
         tag=OP_TAG + "c_col",
@@ -902,7 +958,7 @@ def _mad(mad_shape, fmap, weight, config, mad_dtype, pads, stride_d, d_out,
     return c_col
 
 
-def _bias_add(in_tensor0, in_tensor1):
+def _bias_add(in_tensor0, in_tensor1, attrs={}):
     """
     calculate conv res + bias in UB
     Parameters
@@ -922,10 +978,55 @@ def _bias_add(in_tensor0, in_tensor1):
     with tvm.tag_scope('conv_vector_bias_add'):
         c_add_vector = tvm.compute(
             dim_map["out_img_shape"],
-            lambda *indice: in_tensor0(*indice) + in_tensor1(indice[
-                1] * tbe_platform.CUBE_MKN[in_tensor0.dtype]['mac'][2] + indice[3]),
-            name='bias_add_vector' + "_cc_" + str(NAME_INDEX[0]))
+            lambda *indice: in_tensor0(*indice)
+                            + in_tensor1(indice[1] 
+                            * tbe_platform.CUBE_MKN[in_tensor0.dtype]['mac'][2]
+                            +indice[3]),
+            name='bias_add_vector' + "_cc_" + str(NAME_INDEX[0]),
+            attrs=attrs)
+
     return c_add_vector
+
+
+def _loc_bias_add(c_col, bias, conv_shape, group_dict, w_dtype=None):
+    """
+    calculate conv res + bias in l0c
+    Parameters
+    ----------
+    c_col: fmap & filter matrix multi res tensor
+
+    bias: bias vector
+
+    Returns
+    -------
+    c_col_bias tensor
+    """
+    block_size = tbe_platform.CUBE_MKN[w_dtype]['mac'][1]
+    if group_dict['use_group_flag']:
+        cout_g = group_dict["cout_g"]
+        cout1_g = cout_g // block_size
+    else:
+        cout1_g = group_dict['cout_ori']
+
+    bias_ub_brc_tensor = tvm.compute(conv_shape,
+                                     lambda i, j, k, l: bias(
+                                         j * block_size + l),
+                                     name=OP_TAG + 'bias_ub_brc')
+    TENSOR_MAP["bias_ub_brc"] = bias_ub_brc_tensor
+
+    bias_l0c = tvm.compute(conv_shape,
+                           lambda *indices: bias(*indices),
+                           name=OP_TAG + 'bias_l0c')
+    TENSOR_MAP["bias_l0c"] = bias_l0c
+
+    c_col_bias = tvm.compute(conv_shape,
+                             lambda i, j, k, l: c_col(j // cout1_g, i,
+                                                      j % cout1_g, k, l) + \
+                                                bias_l0c(i, j, k, l),
+                             name=OP_TAG + 'c_col_bias')
+    TENSOR_MAP["c_col_bias"] = c_col_bias
+
+    return c_col_bias
 
 
 def _remove_pad(res, res_remove_pad_shape):
@@ -946,12 +1047,35 @@ def _remove_pad(res, res_remove_pad_shape):
         res_tensor = tvm.compute(res_remove_pad_shape,
                                  lambda *indice: res(*indice),
                                  name='remove_pad' + "_cc_" +
-                                 str(NAME_INDEX[0]))
+                                      str(NAME_INDEX[0]))
     return res_tensor
 
 
+def _handle_res_c(res, conv_shape):
+    """
+    res_c
+    Parameters
+    ----------
+    res: input tensor
+
+    conv_shape: res_c true shape
+
+    Returns
+    -------
+    res_c tensor
+    """
+    res_c = tvm.compute(conv_shape,
+                        lambda batch, cout1, howo, cout0:
+                        res(batch, cout1, howo, cout0),
+                        name='C',
+                        tag=OP_TAG + "C")
+
+    TENSOR_MAP["C"] = res_c
+    return res_c
+
+
 @tvm.target.generic_func
-def conv3d(data, weight, para_dict):
+def conv3d(data, weight, para_dict, fusion_flag=True):
     """
     conv
 
@@ -972,6 +1096,7 @@ def conv3d(data, weight, para_dict):
     bias_tensor = para_dict["bias_tensor"]
     bias_flag = (bias_tensor is not None)
 
+    group_dict = para_dict["group_dict"]
     pads = para_dict["pads"]
     pad_head, pad_tail, pad_top, pad_bottom, pad_left, pad_right = pads
     pad_d = [pad_head, pad_tail]
@@ -994,6 +1119,16 @@ def conv3d(data, weight, para_dict):
 
     fmap_shape_ndc1hwc0 = te_util.shape_to_list(data.shape)
 
+    if (group_dict['use_group_flag']):
+        # for tiling
+        cin1_g = group_dict["cin1_g"]
+        cout_g = group_dict["cout_g"]
+
+        fmap_n, fmap_d, fmap_c1, fmap_h, fmap_w, fmap_c0 = fmap_shape_ndc1hwc0
+        fmap_shape_ndc1hwc0 = [fmap_n, fmap_d, cin1_g, fmap_h, fmap_w, fmap_c0]
+        shape_w_ndc1hwc0 = [cout_g, filter_d, cin1_g, filter_h, filter_w,
+                            block_size_k]
+
     Conv3DParam.tiling_query_param = {
         "fmap_shape_ndc1hwc0": fmap_shape_ndc1hwc0,
         "shape_w_ndc1hwc0": shape_w_ndc1hwc0,
@@ -1010,7 +1145,9 @@ def conv3d(data, weight, para_dict):
         "bias_flag": bias_flag,
         "default_tiling": False
     }
+    TENSOR_MAP["kernel_name"] = para_dict["kernel_name"]
 
+    fuse_num = 4 if fusion_flag else 0
     tiling_new = tiling_query.tiling_query(a_shape=fmap_shape_ndc1hwc0,
                                            b_shape=shape_w_ndc1hwc0,
                                            a_dtype=in_dtype,
@@ -1027,14 +1164,17 @@ def conv3d(data, weight, para_dict):
                                            stridew=stride_w,
                                            strided=stride_d,
                                            bias_flag=bias_flag,
+                                           # Fixed Number for now
+                                           fused_double_operand_num=fuse_num,
                                            op_tag="convolution_3d",
                                            kernel_name=para_dict["kernel_name"])
 
     TENSOR_MAP["tiling_new"] = tiling_new
     l0a_load2d_flag = _get_load2d_flag(stride_dhw, pads, shape_filter_ncdhw)
+    TENSOR_MAP["l0a_load2d_flag"] = l0a_load2d_flag
     cyclebuffer_flag = _get_cyclebuffer_flag(tiling_new, shape_w_ndc1hwc0,
-                                            w_dtype, fmap_shape_ndc1hwc0,
-                                            stride_d, pad_d, l0a_load2d_flag)
+                                             w_dtype, fmap_shape_ndc1hwc0,
+                                             stride_d, pad_d, l0a_load2d_flag)
 
     TENSOR_MAP["cyclebuffer_flag"] = cyclebuffer_flag
 
@@ -1046,15 +1186,19 @@ def conv3d(data, weight, para_dict):
                                 stride_dhw,
                                 shape_filter_ncdhw,
                                 cyclebuffer_flag,
-                                bias=False,
+                                group_dict,
+                                bias=bias_tensor,
                                 tiling=tiling_new)
     res = conv_res
-    if bias_flag:
-        res = _bias_add(conv_res, bias_tensor)
-
-    # Remove H-aligned data in the output shape
     res_remove_pad_shape = list(res.shape)
     res_remove_pad_shape[2] = conv_res.op.attrs['true_shape'][2].value
+    TENSOR_MAP["fusion_flag"] = fusion_flag
+    if fusion_flag:
+        res_c = _handle_res_c(res, res_remove_pad_shape)
+        return res_c
+
+
+    # Remove H-aligned data in the output shape
     res_remove_pad = _remove_pad(res, res_remove_pad_shape)
 
     return res_remove_pad

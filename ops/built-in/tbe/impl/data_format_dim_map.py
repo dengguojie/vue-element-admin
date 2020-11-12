@@ -41,11 +41,45 @@ from te.platform.fusion_manager import fusion_manager
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 # mod rhs
 MOD_RHS = 4
 # quarter
 QUARTER = 0.25
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(x,
+                        y,
+                        src_format="NHWC",
+                        dst_format="NCHW",
+                        kernel_name="data_format_dim_map"):
+    format_x = x.get("format").upper()
+    shape_x_len = len(x.get("shape"))
+    if format_x == "ND":
+        axis_split_matrix=[]
+        for i in range(0, shape_x_len):
+            split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]])]
+            axis_split_matrix.append(split_0)
+        axis_reduce_list = None
+
+    elif format_x == "NC1HWC0":
+        axis_split_matrix=[
+            [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+            [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])],
+            [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [3]])]
+        ]
+        axis_reduce_list = None
+
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 def _data_format_dim_map_mod(data):
@@ -166,14 +200,12 @@ def data_format_dim_map(x,
 
     # check length of format
     if len(src_format) != 4:
-        raise ValueError(
-            "source format must of length 4, received src_format = %s" %
-            src_format)
+        error_manager_vector.raise_err_input_value_invalid(kernel_name, "src_format", \
+                                                           "length 4", len(src_format))
 
     if len(dst_format) != 4:
-        raise ValueError(
-            "destination format must of length 4, received dst_format = %s" %
-            dst_format)
+        error_manager_vector.raise_err_input_value_invalid(kernel_name, "dst_format", \
+                                                           "length 4", len(dst_format))
     # get data and compute
     data_input = tvm.placeholder(shape_input,
                                  dtype=dtype_input,

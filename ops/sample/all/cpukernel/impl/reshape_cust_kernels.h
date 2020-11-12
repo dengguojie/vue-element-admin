@@ -10,9 +10,9 @@
 
 namespace aicpu {
 class ReshapeCustCpuKernel : public CpuKernel {
-public:
-    ~ReshapeCustCpuKernel() = default;
-    uint32_t Compute(CpuKernelContext &ctx) override;
+ public:
+  ~ReshapeCustCpuKernel() = default;
+  uint32_t Compute(CpuKernelContext &ctx) override;
 };
-} // namespace aicpu
+}  // namespace aicpu
 #endif

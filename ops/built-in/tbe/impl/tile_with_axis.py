@@ -22,9 +22,12 @@ from te import platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
-from te.utils import op_utils
+from te.utils import para_check
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 
 @fusion_manager.register("tile_with_axis")
@@ -120,9 +123,30 @@ def op_select_format(input_x, output_y, tiles, axis=1, kernel_name="tile_with_ax
     return param_dynamic_in_json
 
 
-@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_OUTPUT,
-                          op_utils.REQUIRED_ATTR_INT, op_utils.OPTION_ATTR_INT,
-                          op_utils.KERNEL_NAME)
+# pylint: disable = unused-argument
+def get_op_support_info(input_x, output_y, tiles, axis, kernel_name="tile_with_axis"):
+    shape_x_len = len(input_x.get("shape"))
+    format_x = input_x.get("format").upper()
+    if axis < 0:
+        axis += shape_x_len
+    if format_x == "NC1HWC0" or format_x == "ND":
+        axis_split_matrix=[]
+        for i in range(0, shape_x_len):
+            if i != axis:
+                split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]])]
+                axis_split_matrix.append(split_0)
+        axis_reduce_list = None
+
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
+
+
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_INT, para_check.OPTION_ATTR_INT,
+                            para_check.KERNEL_NAME)
 def tile_with_axis(input_x, output_y, tiles, axis=1, kernel_name="tile_with_axis"):
     """
     algorithm: tile.
@@ -214,14 +238,14 @@ def check_param(input_x, output_y, tiles, axis, kernel_name):
     shape_y = output_y.get("shape")
     dtype_y = output_y.get("dtype").lower()
     
-    op_utils.check_shape(shape_x, param_name="input_x")
-    op_utils.check_shape(shape_y, param_name="input_y")
+    para_check.check_shape(shape_x, param_name="input_x")
+    para_check.check_shape(shape_y, param_name="input_y")
 
     check_list = ["int8", "int16", "int32", "int64", "uint8", "uint16",
                   "uint32", "uint64", "float16", "float32"]
     
-    op_utils.check_dtype(dtype_x, check_list, param_name="input_x")
-    op_utils.check_dtype(dtype_y, check_list, param_name="input_x")
+    para_check.check_dtype(dtype_x, check_list, param_name="input_x")
+    para_check.check_dtype(dtype_y, check_list, param_name="input_x")
 
     if dtype_x != dtype_y:
         error_info = {}
@@ -233,7 +257,7 @@ def check_param(input_x, output_y, tiles, axis, kernel_name):
         error_info['input2_dtype'] = str(dtype_y)
         raise RuntimeError(
             "In op[%s], the shape of input[%s] and input[%s] should be the same, but actually are [%s] and [%s]."
-            % (error_info[op_name], error_info['input1_name'], error_info['input2_name'],
+            % (error_info['op_name'], error_info['input1_name'], error_info['input2_name'],
                error_info['input1_dtype'], error_info['input2_dtype']))
 
     if tiles <= 0:

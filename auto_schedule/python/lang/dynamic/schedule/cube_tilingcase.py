@@ -24,7 +24,7 @@ from abc import abstractmethod
 from te.tvm.expr import IntImm
 from te.tvm.expr import Expr
 
-from te.platform.operation import add_compile_info
+from te.lang.base.operation import add_compile_info
 
 
 class CubeTilingOp:
@@ -112,6 +112,9 @@ class TilingSelection:
         -------
         tilings_cases: list, calculated tilings
         """
+        def _correct_seed_range(seed_area):
+            funcs = (max, min, max, min)
+            return [func(ta, sa) for func, ta, sa in zip(funcs, tgt_area, seed_area)]
 
         tgt_area = tuple(tgt_area[0] + tgt_area[1])
         candidates = {}
@@ -120,30 +123,28 @@ class TilingSelection:
 
         for seed in repo_seeds:
             seed_hw = tuple(seed[self.op.key][2:4])
-            if not _point_in_rect(seed_hw, tgt_area) or seed_hw in seed_points:
+            seed_range = self.op.get_tiling_range(seed['tiling'], seed[self.op.key])
+            if seed_hw in seed_points or _cal_overlap(seed_range, tgt_area)[0] == 0:
                 continue
             seed_points.add(seed_hw)
-            seed_range = self.op.get_tiling_range(seed['tiling'], seed[self.op.key])
+            seed_range = _correct_seed_range(seed_range)
             candidates[next(self.seed_cnt)] = [seed_range, seed['tiling'], seed_hw]
 
-        # seed_range may be changed in selection
-        repo_selections, cost_cases = self._select_tiling(tgt_area, candidates)
+        cost_cases = self._select_tiling(tgt_area, candidates)
         tiling_cases = [
-            self.op.assembly_case(candidates[k][1], candidates[k][0], k)
-            for k in repo_selections.keys()
-        ]
+            self.op.assembly_case(v[1], v[0], k) for k, v in candidates.items()]
 
-        add_compile_info("repo_seeds",
-                                   {k: v[-1]
-                                    for k, v in candidates.items()})
-        tiling_range = {k: v for k, v in repo_selections.items() if v}
+        add_compile_info("repo_seeds", {k: v[-1] for k, v in candidates.items()})
+        repo_range = {k: v[0] for k, v in candidates.items()}
 
         # call cost model
-        tiling_cases += self._calc_costmodel(cost_cases, tiling_range)
+        cost_tilings, cost_range = self._calc_costmodel(cost_cases)
+        tiling_cases += cost_tilings
         if not tiling_cases:
             raise RuntimeError("No tiling generated for this shape and range")
 
-        add_compile_info("tiling_range", tiling_range)
+        add_compile_info("repo_range", repo_range)
+        add_compile_info("cost_range", cost_range)
         return tiling_cases
 
     def _calc_batch(self, tgt_area):
@@ -282,38 +283,22 @@ class TilingSelection:
                                   key=lambda x: _cal_overlap(tgt_area, x[1][0])[0],
                                   reverse=True)
         rest_area = set([tgt_area])
-        res = defaultdict(list)
 
         for t_id, t_info in sort_tiling_list:
             generate_area = set()
             delete_area = set()
             for ra in rest_area:
-                overlap, covered = _cal_overlap(ra, t_info[0])
+                overlap, _ = _cal_overlap(ra, t_info[0])
                 if overlap == 0:
                     continue
-                res[t_id].append(covered)
                 generate_area |= set(_cut_rectangle(ra, t_info[0]))
                 delete_area.add(ra)
 
-            # if no area covered, use itself as range
-            # otherwise set range to cover all covered_area
-            if not res[t_id]:
-                repo_tilings[t_id][0] = (t_info[2][0], t_info[2][0],
-                                         t_info[2][1], t_info[2][1])
-            else:
-                tmp_covered = list(zip(*res[t_id]))
-                repo_tilings[t_id][0] = [
-                    min(*tmp_covered[0], t_info[2][0]),
-                    max(*tmp_covered[1], t_info[2][0]),
-                    min(*tmp_covered[2], t_info[2][1]),
-                    max(*tmp_covered[3], t_info[2][1])
-                ]
-
             rest_area = (rest_area - delete_area) | generate_area
 
-        return res, deque(rest_area)
+        return deque(rest_area)
 
-    def _calc_costmodel(self, cost_cases, tiling_range):
+    def _calc_costmodel(self, cost_cases):
         """
         calculate cost model to cover rest area after repo seeds
 
@@ -329,6 +314,7 @@ class TilingSelection:
         """
 
         cost_tilings = []
+        tiling_range = {}
         while cost_cases:
             cost_len = len(cost_cases)
             for _ in range(cost_len):
@@ -347,9 +333,9 @@ class TilingSelection:
                 cost_tilings.append(
                     self.op.assembly_case(cost_seed['tiling'], covered_area,
                                           cur_seed_cnt))
-                tiling_range[cur_seed_cnt] = [covered_area]
+                tiling_range[cur_seed_cnt] = covered_area
 
-        return cost_tilings
+        return cost_tilings, tiling_range
 
 
 def _cal_overlap(rect1, rect2):
@@ -361,7 +347,7 @@ def _cal_overlap(rect1, rect2):
     bottom = min(rect1[1], rect2[1])
     left = max(rect1[2], rect2[2])
     right = min(rect1[3], rect2[3])
-    intersection = (top, bottom, left, right)
+    intersection = [top, bottom, left, right]
 
     if left > right or top > bottom:
         overlap = 0
@@ -403,16 +389,6 @@ def _cut_line(base_line, cut_line):
     if base_line[1] > cut_line[1]:
         segments.append([cut_line[1] + 1, base_line[1]])
     return segments
-
-
-def _point_in_rect(point, rect):
-    """
-    rect in (top, bottom, left, right) format
-    """
-
-    if rect[0] <= point[0] <= rect[1] and rect[2] <= point[1] <= rect[3]:
-        return True
-    return False
 
 
 class TilingUtils:

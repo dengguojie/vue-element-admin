@@ -69,8 +69,8 @@ Status ArgMaxWithKFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   ge::AttrUtils::GetInt(fusedDesc, "topk", topk);
 
   if (topk < 1) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's attr topk is not valid, fusion failed.", fusedNode->GetName().c_str());
-    return PARAM_INVALID;
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Node:%s's attr topk is not valid, fusion failed.", fusedNode->GetName().c_str());
+    return NOT_CHANGED;
   }
 
   // when topk == 1 or not need output index, no need x_index

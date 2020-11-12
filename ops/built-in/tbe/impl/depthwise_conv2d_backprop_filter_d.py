@@ -17,7 +17,7 @@ depthwise_conv2d_backprop_filter_d
 """
 
 import te.platform as tbe_platform
-from te.utils import check_para
+from te.utils import para_check
 from te.utils.error_manager import error_manager_util
 from te.utils.error_manager import error_manager_conv2d
 from te.lang.cce.te_compute.depthwise_conv2d_compute import \
@@ -177,12 +177,12 @@ def _check_stride(strides, dilations, dim_n, dim_c, dim_h, dim_w):
 
 
 # pylint: disable=locally-disabled, too-many-locals, too-many-arguments,
-@check_para.check_op_params(
-    check_para.REQUIRED_INPUT, check_para.REQUIRED_INPUT,
-    check_para.REQUIRED_OUTPUT,
-    check_para.REQUIRED_ATTR_LIST_INT, check_para.REQUIRED_ATTR_LIST_INT,
-    check_para.OPTION_ATTR_LIST_INT, check_para.REQUIRED_ATTR_LIST_INT,
-    check_para.OPTION_ATTR_STR, check_para.KERNEL_NAME)
+@para_check.check_op_params(
+    para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+    para_check.REQUIRED_OUTPUT,
+    para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
+    para_check.OPTION_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
+    para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
 def depthwise_conv2d_backprop_filter_d(
         input_fm,
         out_backprop,
@@ -270,22 +270,22 @@ def depthwise_conv2d_backprop_filter_d(
         # NCHW to HWCK(HWCN)
         shape_w = (shape_w[2], shape_w[3], shape_w[1], shape_w[0])
 
-    check_para.check_dtype(in_dtype.lower(), ('float16', ),
+    para_check.check_dtype(in_dtype.lower(), ('float16', ),
                            param_name="input_fm")
-    check_para.check_dtype(dout_dtype.lower(), ('float16', ),
+    para_check.check_dtype(dout_dtype.lower(), ('float16', ),
                            param_name="out_backprop")
-    check_para.check_dtype(w_dtype.lower(), ('float32', ),
+    para_check.check_dtype(w_dtype.lower(), ('float32', ),
                            param_name="filter_grad")
 
-    check_para.check_shape(shape_in, min_rank=FEATURE_MAP_DIM,
+    para_check.check_shape(shape_in, min_rank=FEATURE_MAP_DIM,
                            max_rank=FEATURE_MAP_DIM, param_name="input_fm")
-    check_para.check_shape(shape_w, min_rank=FILTER_DIM,
+    para_check.check_shape(shape_w, min_rank=FILTER_DIM,
                            max_rank=FILTER_DIM, param_name="filter_grad")
-    check_para.check_shape(shape_dout, min_rank=FEATURE_MAP_DIM,
+    para_check.check_shape(shape_dout, min_rank=FEATURE_MAP_DIM,
                            max_rank=FEATURE_MAP_DIM, param_name="out_backprop")
-    check_para.check_shape(strides, min_rank=STRIDES_DIM,
+    para_check.check_shape(strides, min_rank=STRIDES_DIM,
                            max_rank=STRIDES_DIM, param_name="strides")
-    check_para.check_shape(dilations, min_rank=DILATION_DIM,
+    para_check.check_shape(dilations, min_rank=DILATION_DIM,
                            max_rank=DILATION_DIM, param_name="dilations")
 
     # index of the origin dimension

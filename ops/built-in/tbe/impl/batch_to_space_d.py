@@ -19,9 +19,30 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from impl.batch_to_space_nd_d import batch_to_space_nd_d_compute
+from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 DIM_CNT = 5
 CROPS_LEN = 2
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(x, y, block_size, crops, kernel_name="batch_to_space_d"):
+    format_x = x.get("format").upper()
+    if format_x == "NC1HWC0":
+        axis_split_matrix=[
+            [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]])],
+            [SplitInput([0, [4], [-1], [-1]]), SplitOutput([0, [4]])]
+        ]
+        axis_reduce_list = None
+
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 # pylint: disable=locally-disabled,invalid-name
@@ -59,26 +80,30 @@ def batch_to_space_d(x, y, block_size, crops, kernel_name="batch_to_space_d"):
 
     if len([x for x in input_shape if isinstance(x, int) and x > 0])\
             != len(input_shape):
-        raise RuntimeError("input_shape should be positive integer")
+        error_detail = "input_shape of x should be positive integer"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
 
     if len(input_shape) != DIM_CNT:
-        raise RuntimeError("the length of input_shape must be 5,\
-        while it is: %d" % len(input_shape))
+        error_detail = "the length of input_shape must be 5,while it is: %d" \
+                       %len(input_shape)
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
 
     if not (len(crops) == CROPS_LEN and len(crops[0]) == CROPS_LEN
             and len(crops[1]) == CROPS_LEN):
-        raise RuntimeError("shape of crops should be 2*2")
+        error_detail = "shape of crops should be 2*2"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "crops", error_detail)
 
     if not (isinstance(crops[0][0], int) and crops[0][0] >= 0
             and isinstance(crops[0][1], int) and crops[0][1] >= 0
             and isinstance(crops[1][0], int) and crops[1][0] >= 0
             and isinstance(crops[1][1], int) and crops[1][1] >= 0):
-        raise RuntimeError("crops  must be >= 0")
+        error_detail = "crops  must be >= 0"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "crops", error_detail)
 
     batch_size = input_shape[0]
     if batch_size % (block_size * block_size) != 0:
-        raise RuntimeError("batch_size  should be divisible by\
-        the square of block_size")
+        error_detail = "batch_size of x should be divisible by the square of block_size"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
     output_shape = (input_shape[0] // block_size // block_size, input_shape[1],
                     input_shape[2] * block_size - crops[0][0] - crops[0][1],
                     input_shape[3] * block_size - crops[1][0] - crops[1][1],

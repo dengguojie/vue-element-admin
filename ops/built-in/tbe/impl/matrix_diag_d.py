@@ -21,10 +21,30 @@ from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 
 # define a scalar, value = 2
 SCALAR_TWO = 2
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(input_diagonal, input_help, output_diagonal,
+                        kernel_name="matrix_diag_d"):
+    format_diagonal = input_diagonal.get("format").upper()
+    if format_diagonal == "ND":
+        axis_split_matrix=[[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
+        axis_reduce_list = None
+
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
+
 
 # pylint: disable=locally-disabled,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("matrix_diag_d")
@@ -101,10 +121,11 @@ def matrix_diag_d(input_diagonal, input_help, output_diagonal,
     para_check.check_shape(input_diagonal_shape_chgshape, param_name="input_diagonal")
 
     if len(input_help_shape) < SCALAR_TWO:
-        raise RuntimeError("Only the rank of input tensors >= 2 are supported!")
+        error_detail = "Only the rank of input tensors >= 2 are supported!"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "input_help", error_detail)
     if input_help_shape[-1] != input_help_shape[-2]:
-        raise RuntimeError("the last two dimensions of shape_b"
-                           "must be the same!")
+        error_detail = "the last two dimensions of shape_b must be the same!"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "input_help", error_detail)
 
     check_list = ("float16", "float32", "int32", "int8", "uint8")
     input_diagonal_dtype = input_diagonal_dtype.lower()

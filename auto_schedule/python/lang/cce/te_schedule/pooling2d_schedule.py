@@ -24,6 +24,7 @@ from te.platform import get_soc_spec
 from te.platform import cce_emitinsn_params as cce_params
 from te.platform.cce_conf import CceProductParams as pver
 from te.platform.cce_policy import get_L1_info
+from te.utils.error_manager.error_manager_util import get_error_message
 from .max_pool2d_schedule import schedule as schedule_max_pool
 from .avg_pool2d_schedule import schedule as schedule_avg_pool
 from . import util
@@ -757,8 +758,11 @@ def pooling2d_tiling(pooling_params, fusion_params=None):
     else:
         res_try_tiling = _try_tiling(ub_size, l1_size)
         if not res_try_tiling:
-            raise RuntimeError("cutH and C1, can not find" +
-                               " valid tiling params, cutW support needed")
+            dict_args = dict()
+            dict_args["errCode"] = "E90003"
+            dict_args["detailed_cause"] = "cutH and C1, can not find valid " \
+                                          "tiling params, cutW support needed"
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
     is_cut_l1_to_ub = tiling["is_cut_l1_to_ub"]
     need_cut_c1 = tiling["need_cut_c1"]
@@ -1020,7 +1024,10 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
         cut_hi_factor = tiling_params["cut_hi_factor"]
         cut_wi_factor = tiling_params["cut_wi_factor"]
     else:
-        raise RuntimeError("Can't find valid tiling.")
+        dict_args = dict()
+        dict_args["errCode"] = "E90003"
+        dict_args["detailed_cause"] = "Can't find valid tiling."
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     cce_params.cceEmitParamsIns.insert_param("cut_ci_factor", cut_ci_factor)
     cce_params.cceEmitParamsIns.insert_param("cut_hi_factor", cut_hi_factor)
@@ -1245,9 +1252,12 @@ def _get_from_attr(attrs, name):
 def _check_blockdims(batch_size, batch_factor, device_core_num):
     if batch_size >= device_core_num and \
             batch_size / batch_factor > MAX_VALUE_OF_16BIT:
-        raise RuntimeError("Invalid cut batch factor, "
-                           "batch factor should be "
-                           "less than 65535.")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "Invalid cut batch factor, " \
+                                      "batch_size / batch_factor [%s] should " \
+                                      "be less than 65535." % batch_size / batch_factor
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
 def _copy_item(source_dict, target_dict):
@@ -1402,7 +1412,10 @@ def pooling2d_schedule(res, sch_list):
 
     def check_antiquant_gmp():
         if fused_anti_quant and pooling_mode == "GMP":
-            raise RuntimeError("Pool antiquant cannot support GMP mode now!")
+            dict_args = dict()
+            dict_args["errCode"] = "E90003"
+            dict_args["detailed_cause"] = "Pool antiquant cannot support GMP mode now!"
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
     check_antiquant_gmp()
 
@@ -1508,13 +1521,19 @@ def pooling2d_schedule(res, sch_list):
             invalid_ddr_in_l1_fusion = (l1_fusion_type == L1_DEPTH_FUSION) and \
                                        (not in_l1) and (not has_necessary_para)
             if invalid_ddr_in_l1_fusion:
-                raise RuntimeError("The fmap come in from ddr, "
-                                   "but lack of necessary pass parameters")
+                dict_args = dict()
+                dict_args["errCode"] = "E90001"
+                dict_args["detailed_cause"] = "The fmap come in from ddr, " \
+                                              "but lack of necessary pass parameters"
+                raise RuntimeError(dict_args, get_error_message(dict_args))
 
             invalid_l1_para = ((input_l1_flag == 1) and (l1_valid_size <= 0))
             if invalid_l1_para:
-                raise RuntimeError("L1 flag is one, but l1 valid size "
-                                   "less than or equal zero")
+                dict_args = dict()
+                dict_args["errCode"] = "E90001"
+                dict_args["detailed_cause"] = "L1 flag is one, but l1 valid " \
+                                              "size less than or equal zero"
+                raise RuntimeError(dict_args, get_error_message(dict_args))
 
             # invalid combination of parameter as follows:
             # in_l1_flag  input_l1_flag  l1_fusion_type
@@ -1526,7 +1545,10 @@ def pooling2d_schedule(res, sch_list):
                                   (in_l1_flag and
                                    l1_fusion_type == L1_BREADTH_FUSION)))
             if invalid_comb_para:
-                raise RuntimeError("Invalid combinations of parameter.")
+                dict_args = dict()
+                dict_args["errCode"] = "E90001"
+                dict_args["detailed_cause"] = "Invalid combinations of parameter."
+                raise RuntimeError(dict_args, get_error_message(dict_args))
 
         def _put_tensor_into_l1_fusion_list():
             if not is_l1fusion:

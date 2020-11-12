@@ -20,8 +20,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
-from te.utils import error_manager
-
+from te.utils.error_manager import error_manager_vector
 
 # pylint: disable=locally-disabled,too-few-public-methods,no-init
 def _format_check(arg_input):
@@ -72,7 +71,7 @@ def _check_dims_equal(shape_x, shape, data_format):
             index_c = 3
         if shape_x[index_c] != shape[0]:
             shape_rule = "The dimension value of mean or variance must be equal to C value of input_x"
-            error_manager.error_manager_vector.raise_err_check_params_rules("bninference_d", shape_rule, "x",
+            error_manager_vector.raise_err_check_params_rules("bninference_d", shape_rule, "x",
                                                                             shape_x[index_c])
 
 
@@ -120,13 +119,13 @@ def param_scale_check(shape_x, shape_scale):
     if not (length_scale == 1 and shape_scale[0] == 1):
         if length_x != length_scale:
             error_detail = "The dims of input tensor x and tensor scale should be equal"
-            error_manager.error_manager_vector.raise_err_two_input_shape_invalid("Scale", "input_x", "scale",
+            error_manager_vector.raise_err_two_input_shape_invalid("Scale", "input_x", "scale",
                                                                                  error_detail)
 
         for i in range(length_scale):
             if shape_scale[i] != shape_x[i] and shape_scale[i] != 1:
                 error_detail = "The inputs x and scale could not be broadcast together with mismatched shapes"
-                error_manager.error_manager_vector.raise_err_two_input_shape_invalid("Scale", "input_x", "scale",
+                error_manager_vector.raise_err_two_input_shape_invalid("Scale", "input_x", "scale",
                                                                                      error_detail)
 
 
@@ -326,6 +325,13 @@ def bninference_d_compute(x, mean, variance, scale, bias, y,
     fuse_y = y
     if y is None:
         fuse_y = {"addr_type": 0, "valid_shape": [], "slice_offset": []}
+
+    # if l1 fusion x format must 5hd
+    l1_fusion_type = x.op.attrs["L1_fusion_type"].value if "L1_fusion_type" in x.op.attrs else -1
+    if l1_fusion_type != -1 and y.get("format").upper() != 'NC1HWC0':
+        shape_rule = "when L1_FUSION is enabled for the bninference operator, the input format must be 5HD"
+        error_manager_vector.raise_err_check_params_rules("bninference_d", shape_rule, "x",
+                                                                        y.get("format").upper())
 
     fusion_params = get_fusion_params(x, mean, variance, scale, bias, fuse_y)
 

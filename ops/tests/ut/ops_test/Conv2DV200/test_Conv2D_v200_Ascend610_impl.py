@@ -40,6 +40,9 @@ def test_conv2d_v200(test_arg):
             #   23:Conv2d+Eltwise(Add)+ReLU
             #   24:conv2d+LeakyRelu
             #   25:Conv2d+LeakyReLU+Eltwise(Add)
+            #   60: convfp16+quant double out
+            #   61: convfp16+leakyrelu+quant double out
+            #   62: convfp16+leakyrelu+ele+quant double out
             # quant fusion
             # 0:  conv2d+Requant(Relu)
             # 6 :（1）conv2d+AscendDequant(relu)
@@ -63,6 +66,12 @@ def test_conv2d_v200(test_arg):
             "conv_v200_bias_1_flow_23": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 23, 1, 0, 0),
             "conv_v200_bias_1_flow_24": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 24, 1, 0, 0),
             "conv_v200_bias_1_flow_25": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 25, 1, 0, 0),
+            "conv_v200_bias_1_flow_60": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 60, 1, 0, 0),
+            "conv_v200_bias_1_flow_61": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 61, 1, 0, 0),
+            "conv_v200_bias_1_flow_62": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 62, 1, 0, 0),
+            "conv_v200_bias_0_flow_60": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 60, 0, 0, 0),
+            "conv_v200_bias_0_flow_61": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 61, 0, 0, 0),
+            "conv_v200_bias_0_flow_62": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 62, 0, 0, 0),
             "conv_v200_bias_1_requantrelu": ((1, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 0, 1, 1, 0),
             "conv_v200_bias_1_requant": ((1, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 0, 1, 0, 0),
             "conv_v200_bias_1_requantrelu_vector": ((1, 32, 7, 7), \
@@ -182,7 +191,13 @@ def test_conv2d_v200(test_arg):
             # 110 0000 1100 0010 0000 0000 0000 pattern_value:6,oplist_num:3-4,2-3
             "47": 101457920,
             # 110 0000 1000 0010 0000 0000 0000 pattern_value:6,oplist_num:2-4,2-3
-            "48": 101195776
+            "48": 101195776,
+            # 1100 0000 0000 0000 0000 0000 0000 pattern_value:12,oplist_num:0-4,0-3
+            "60": 201326592,
+            # 1100 0000 0000 0001 0000 0000 0000 pattern_value:12,oplist_num:0-4,1-3
+            "61": 201330688,
+            # 1100 0000 0100 0001 0000 0000 0000 pattern_value:12,oplist_num:1-4,1-3
+            "62": 201592832
             }
 
         data_flow_fution_type_map_bias_false = {
@@ -221,7 +236,13 @@ def test_conv2d_v200(test_arg):
             # 101 0000 1100 0010 0000 0000 0000 pattern_value:5,oplist_num:3-4,2-3
             "47": 84680704,
             # 101 0000 1000 0010 0000 0000 0000 pattern_value:5,oplist_num:2-4,2-3
-            "48": 84418560
+            "48": 84418560,
+            # 1011 0000 0000 0000 0000 0000 0000 pattern_value:11,oplist_num:0-4,0-3
+            "60": 184549376,
+            # 1011 0000 0000 0001 0000 0000 0000 pattern_value:11,oplist_num:0-4,1-3
+            "61": 184553472,
+            # 1011 0000 0100 0001 0000 0000 0000 pattern_value:11,oplist_num:1-4,1-3
+            "62": 184815616
             }
         with tvm.target.cce():
             # conv2d
@@ -231,7 +252,7 @@ def test_conv2d_v200(test_arg):
             else:
                 shape_req = (1, 1, 1, 1, 1)
             shape_c = (1, c_out, 1, 1, 16)
-            if data_flow in (21, 22, 23, 24,25):
+            if data_flow in (21, 22, 23, 24, 25, 60, 61, 62):
                 fm = tvm.placeholder(shape_in, name='fm', dtype='float16', attrs={'ori_format': 'NCHW'})
                 filter_w = tvm.placeholder(shape_w, name='filter_w', dtype='float16',
                                     attrs={'ori_shape': orig_shape_w, 'ori_format': 'NCHW'})
@@ -258,7 +279,7 @@ def test_conv2d_v200(test_arg):
                 sch = generic.auto_schedule(out)
                 tensor_list = [fm, filter_w, vreq_reg, out]
             elif data_flow in (6, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, \
-                42, 43, 44, 45, 46, 47, 48):
+                42, 43, 44, 45, 46, 47, 48, 60, 61, 62):
                 # conv + dequant
                 deq16_reg = tvm.placeholder(shape_req, name='deq_reg', dtype='uint64',
                     attrs={'ori_shape': [c_out*16 if vector_flag else 1]})
@@ -266,10 +287,14 @@ def test_conv2d_v200(test_arg):
                     relu_flag = False
                 else:
                     relu_flag = True
-                out = ascend_dequant_compute(conv_res, deq16_reg, None, sqrt_mode=False, relu_flag=relu_flag)
-
+                if data_flow in (60, 61, 62):
+                    out = conv_res
+                    tensor_list = [fm, filter_w]
+                else:
+                    out = ascend_dequant_compute(
+                        conv_res, deq16_reg, None, sqrt_mode=False, relu_flag=relu_flag)
+                    tensor_list = [fm, filter_w, deq16_reg]
                 fm2 = tvm.placeholder(out.shape, name='fmap2', dtype="float16", attrs={'ori_format': 'NCHW'})
-                tensor_list = [fm, filter_w, deq16_reg]
                 if data_flow == 30:
                     out = ascend_quant_compute(out, None, scale=0.1, offset=0.2, sqrt_mode=True)
                 if data_flow in (31, 33):
@@ -345,6 +370,16 @@ def test_conv2d_v200(test_arg):
                         else:
                             out = res_quant
                         tensor_list.append(fm2)
+                if data_flow in (60, 61, 62):
+                    if data_flow in (61, 62):
+                        out = leaky_relu_compute(out, None, negative_slope=0.1)
+                    if data_flow == 62:
+                        out = eltwise_compute([fm2, out], None)
+                        tensor_list.append(fm2)
+                    res_quant = ascend_quant_compute(
+                        out, None, scale=0.1, offset=0.2, sqrt_mode=True)
+                    res_fp16 = out
+                    out = [res_fp16, res_quant]
                 if bias_flag:
                     tensor_list.append(bias_tensor)
                 import collections.abc
@@ -352,7 +387,7 @@ def test_conv2d_v200(test_arg):
                     tensor_list.extend(out)
                 else:
                     tensor_list.append(out)
-                if data_flow in (33, 36, 38, 39, 44, 45):
+                if data_flow in (33, 36, 38, 39, 44, 45, 60, 61, 62):
                     double_out_res = [res_fp16, res_quant]
                     out_f16, out_s8 = double_out_res
                     res_out_fp16 = tvm.compute(out_f16.shape, \
@@ -399,7 +434,7 @@ def test_conv2d_v200(test_arg):
             else:
                 pass
             if bias_flag and data_flow not in (6, 30, 31, 32, 33, 34, 35, 36, \
-                37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48):
+                37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 60, 61, 62):
                 tensor_list.append(bias_tensor)
             if bias_flag:
                 fution_type = \
@@ -424,7 +459,7 @@ def test_conv2d_v200(test_arg):
         block_size_n = 16
         batch, channel, height, weight = fm_shape
         C0 = 32
-        if data_flow in (21, 22, 23, 24,25):
+        if data_flow in (21, 22, 23, 24, 25, 60, 61, 62):
             block_size_k = 16
             C0 = 16
         C1 = (channel + C0 - 1) // C0

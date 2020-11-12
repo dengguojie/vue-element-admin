@@ -10,9 +10,12 @@ try:
     import sys
     import os
     import subprocess
-    from interface import utils
+    from . import utils
+    from op_test_frame.common import op_status
+    from . import op_st_case_info
 except ImportError as import_error:
-    sys.exit("[excel_parse] Unable to import module: %s." % str(import_error))
+    sys.exit("[acl_op_runner] Unable to import module: %s." % str(
+        import_error))
 
 CMAKE_LIST_FILE_NAME = 'CMakeLists.txt'
 BUILD_INTERMEDIATES_HOST = 'build/intermediates/host'
@@ -25,9 +28,10 @@ class AclOpRunner:
     Class for compile and run acl op test code.
     """
 
-    def __init__(self, path, soc_version):
+    def __init__(self, path, soc_version, report):
         self.path = path
         self.soc_version = soc_version
+        self.report = report
 
     def compile(self):
         """
@@ -49,11 +53,18 @@ class AclOpRunner:
         cmake_cmd = ['cmake', '../../..', '-DCMAKE_CXX_COMPILER=g++',
                      '-DCMAKE_SKIP_RPATH=TRUE']
         make_cmd = ['make']
-        utils.print_info_log("Compile command line: cd %s && %s && %s" % (
-            build_path, " ".join(cmake_cmd), " ".join(make_cmd)))
-        self._execute_command(cmake_cmd)
-        self._execute_command(make_cmd)
+        cmd_str = "cd %s && %s && %s" % (build_path, " ".join(cmake_cmd),
+                                         " ".join(make_cmd))
+        utils.print_info_log("Compile command line: %s " % cmd_str)
+        try:
+            self._execute_command(cmake_cmd)
+            self._execute_command(make_cmd)
+        except utils.OpTestGenException:
+            self.add_op_st_stage_result(op_status.FAILED, "compile_acl_code",
+            None, cmd_str)
         utils.print_info_log('Finish to compile %s.' % self.path)
+        self.add_op_st_stage_result(op_status.SUCCESS, "compile_acl_code",
+                                    None, cmd_str)
 
         # do atc single op model conversion
         utils.print_info_log('Start to convert single op.')
@@ -61,10 +72,25 @@ class AclOpRunner:
         os.chdir(run_out_path)
         atc_cmd = ['atc', '--singleop=test_data/config/acl_op.json',
                    '--soc_version=' + self.soc_version, '--output=op_models']
-        utils.print_info_log("ATC command line: cd %s && %s " % (
-            run_out_path, " ".join(atc_cmd)))
-        self._execute_command(atc_cmd)
+        cmd_str = "cd %s && %s " % (run_out_path, " ".join(atc_cmd))
+        utils.print_info_log("ATC command line: %s" % cmd_str)
+        try:
+            self._execute_command(atc_cmd)
+        except utils.OpTestGenException:
+            self.add_op_st_stage_result(op_status.FAILED,
+                                        "atc_single_op_convert",
+                                        None, cmd_str)
+        self.add_op_st_stage_result(op_status.SUCCESS,
+                                    "atc_single_op_convert",
+                                    None, cmd_str)
         utils.print_info_log('Finish to convert single op.')
+
+    def add_op_st_stage_result(self, status=op_status.FAILED,
+                               stage_name=None, result=None, cmd=None):
+        stage_result = op_st_case_info.OpSTStageResult(
+            status, stage_name, result, cmd)
+        for case_report in self.report.report_list:
+            case_report.trace_detail.add_stage_result(stage_result)
 
     @staticmethod
     def _execute_command(cmd):

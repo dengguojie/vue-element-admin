@@ -17,8 +17,9 @@ dynamic add_n
 """
 import functools
 
-import te.lang.dynamic as dynamic
+import te.lang.cce as tbe
 import te.platform as tbe_platform
+import te.lang.base as tbe_base
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
@@ -42,25 +43,25 @@ def add_n_compute(datas, output, tensor_num, kernel_name="add_n"):
     """
     data_type = datas[0].dtype
     has_covert_float32 = (data_type == "float16" and
-                          tbe_platform.api_check_support("te.lang.dynamic.vadd", "float32"))
+                          tbe_platform.api_check_support("te.lang.cce.vadd", "float32"))
 
-    first_data = datas[0] if not has_covert_float32 else dynamic.cast_to(datas[0], "float32")
+    first_data = datas[0] if not has_covert_float32 else tbe.cast_to(datas[0], "float32")
     res = first_data
 
     for i, data_i in enumerate(datas):
         if i == 0:
             continue
         tmp_data = data_i if not has_covert_float32 else \
-            dynamic.cast_to(data_i, "float32")
-        res = dynamic.vadd(res, tmp_data)
+            tbe.cast_to(data_i, "float32")
+        res = tbe.vadd(res, tmp_data)
 
     if has_covert_float32:
-        res = dynamic.cast_to(res, "float16")
+        res = tbe.cast_to(res, "float16")
 
     return res
 
 
-@tbe_platform.register_operator("AddN")
+@tbe_base.register_operator("AddN")
 @para_check.check_op_params(para_check.DYNAMIC_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
                             para_check.KERNEL_NAME)
 def add_n(inputs, output, tensor_num, kernel_name="add_n"):
@@ -145,10 +146,10 @@ def add_n(inputs, output, tensor_num, kernel_name="add_n"):
                                    error_info['param1_dtype'],
                                    error_info['param2_dtype']))
 
-    ins = tbe_platform.classify(inputs, tbe_platform.Mode.ELEWISE)
+    ins = tbe_base.classify(inputs, tbe_base.Mode.ELEWISE)
     schedules, tensors = [], []
     for inputs in ins:
-        with tbe_platform.compute():
+        with tbe_base.compute():
             shape_normlize = shape_util.variable_shape(inputs)
             fuse_shape = [1]
             datas = []
@@ -163,10 +164,10 @@ def add_n(inputs, output, tensor_num, kernel_name="add_n"):
 
             tensors.append(datas)
         with tvm.target.cce():
-            sch = dynamic.auto_schedule(res)
+            sch = tbe.auto_schedule(res)
         schedules.append(sch)
 
     # build
     datas.append(res)
     config = {"name": kernel_name, "tensor_list": tensors}
-    dynamic.build(schedules, config)
+    tbe.build(schedules, config)

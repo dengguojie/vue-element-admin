@@ -21,8 +21,7 @@ import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
-from te.utils import shape_util
-from te.utils import error_manager
+from te.utils.error_manager import error_manager_vector
 from impl import ascend_quant_util
 from te.utils import shape_util
 
@@ -54,7 +53,7 @@ def _check_params(x, deq_scale, sqrt_mode, kernel_name):
 
     if deq_shape[0] != 1 or deq_shape[2] != 1 or deq_shape[3] != 1:
         detail = "deq_scale shape must be 1 in n,h,w"
-        error_manager.error_manager_vector.raise_err_input_shape_invalid(kernel_name, "deq_scale", detail)
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "deq_scale", detail)
 
     para_check.check_dtype(x_dtype, ("int32",), param_name="x")
 
@@ -69,7 +68,7 @@ def _check_params(x, deq_scale, sqrt_mode, kernel_name):
 
     if deq_dtype == "uint64" and sqrt_mode:
         rule = "when deq_scale dtype is uint64, sqrt_mode only support False"
-        error_manager.error_manager_vector.raise_err_check_params_rules(kernel_name, rule, "sqrt_mode", sqrt_mode)
+        error_manager_vector.raise_err_check_params_rules(kernel_name, rule, "sqrt_mode", sqrt_mode)
 
 
 def _is_support_v200_instruction():
@@ -157,39 +156,90 @@ def _matmul_compute(x, x_shape, deq_scale, sqrt_mode, relu_flag, shape_matmul_or
     return res_out
 
 
-def _vector_dequant_v100(x, x_shape, align_shape, deq_scale, relu_flag, sqrt_mode):
+def _vector_dequant_v100(x, x_shape, align_shape, deq_scale, relu_flag, sqrt_mode, conv_flag):
     """
     dequant for vector in v100
     """
-    if relu_flag:
-        res_f16 = tvm.compute(align_shape,
-                              lambda i, j, k, l: tvm.relu(x(i, j, k, l).astype("float16") * deq_scale(0, j, 0, 0, l)),
-                              name="dequant1", tag="dequant1_vector", attrs={"relu_flag": 1})
-    else:
-        res_f16 = tvm.compute(align_shape,
-                              lambda i, j, k, l: x(i, j, k, l).astype("float16") * deq_scale(0, j, 0, 0, l),
-                              name="dequant1", tag="dequant1_vector", attrs={"relu_flag": 0})
+    if conv_flag:
+        group = align_shape[0]
+        cout1_opt = align_shape[2]
+        if relu_flag:
+            res_f16 = tvm.compute(
+                align_shape,
+                lambda g, i, j, k, l:
+                    tvm.relu(x(g*(x_shape[0]//group)+i, j, k, l).astype("float16") * deq_scale(0, j, 0, 0, l)),
+                name="dequant1", tag="dequant1_vector", attrs={"relu_flag": 1})
+        else:
+            res_f16 = tvm.compute(
+                align_shape,
+                lambda g, i, j, k, l:
+                    x(g*(x_shape[0]//group)+i, j, k, l).astype("float16") * deq_scale(0, j, 0, 0, l),
+                name="dequant1", tag="dequant1_vector", attrs={"relu_flag": 0})
 
-    res = tvm.compute(x_shape, lambda *indice: res_f16(*indice), name="dequant_remove_pad", tag="dequant_remove_pad")
+        if group == 1:
+            res = tvm.compute(x_shape,
+                              lambda batch, cout1, howo, cout0:
+                                  res_f16(0, batch, cout1, howo, cout0),
+                              name='dequant_remove_pad',
+                              tag="dequant_remove_pad")
+        else:
+            res = tvm.compute(x_shape,
+                              lambda batch, cout1, howo, cout0:
+                                  res_f16(cout1 // cout1_opt, batch, cout1 % cout1_opt, howo, cout0),
+                              name='dequant_remove_pad',
+                              tag="dequant_remove_pad")
+    else:
+        if relu_flag:
+            res_f16 = tvm.compute(align_shape,
+                                  lambda i, j, k, l:
+                                      tvm.relu(x(i, j, k, l).astype("float16") * deq_scale(0, j, 0, 0, l)),
+                                  name="dequant1", tag="dequant1_vector", attrs={"relu_flag": 1})
+        else:
+            res_f16 = tvm.compute(align_shape,
+                                  lambda i, j, k, l: x(i, j, k, l).astype("float16") * deq_scale(0, j, 0, 0, l),
+                                  name="dequant1", tag="dequant1_vector", attrs={"relu_flag": 0})
+
+        res = tvm.compute(x_shape,
+                          lambda *indice: res_f16(*indice), name="dequant_remove_pad", tag="dequant_remove_pad")
 
     if sqrt_mode:
         res = tvm.compute(x_shape,
                           lambda i, j, k, l: (res(i, j, k, l) * deq_scale(0, j, 0, 0, l)),
                           name="dequant2", tag="dequant2_vector")
-
     return res
 
 
-def _scalar_dequant_v100(x, x_shape, align_shape, deq_scale, relu_flag, sqrt_mode):
+def _scalar_dequant_v100(x, x_shape, align_shape, deq_scale, relu_flag, sqrt_mode, conv_flag):
     """
     dequant for scale in v100
     """
-    res_f16 = tvm.compute(align_shape,
-                          lambda i, j, k, l: (x(i, j, k, l).astype("float16") * deq_scale(0, 0, 0, 0, 0)),
-                          name="dequant1", tag="dequant1_scale")
+    if conv_flag:
+        group = align_shape[0]
+        cout1_opt = align_shape[2]
+        res_f16 = tvm.compute(
+            align_shape,
+            lambda g, i, j, k, l:
+                (x(g*(x_shape[0]//group)+i, j, k, l).astype("float16") * deq_scale(0, 0, 0, 0, 0)),
+            name="dequant1", tag="dequant1_scale")
 
-    res = tvm.compute(x_shape,
-                      lambda *indice: res_f16(*indice), name="dequant_remove_pad", tag="dequant_remove_pad")
+        if group == 1:
+            res = tvm.compute(x_shape,
+                              lambda batch, cout1, howo, cout0: res_f16(0, batch, cout1, howo, cout0),
+                              name='dequant_remove_pad',
+                              tag="dequant_remove_pad")
+        else:
+            res = tvm.compute(x_shape,
+                              lambda batch, cout1, howo, cout0:
+                                  res_f16(cout1 // cout1_opt, batch, cout1 % cout1_opt, howo, cout0),
+                              name='dequant_remove_pad',
+                              tag="dequant_remove_pad")
+    else:
+        res_f16 = tvm.compute(align_shape,
+                              lambda i, j, k, l: (x(i, j, k, l).astype("float16") * deq_scale(0, 0, 0, 0, 0)),
+                              name="dequant1", tag="dequant1_scale")
+        res = tvm.compute(x_shape,
+                          lambda *indice: res_f16(*indice), name="dequant_remove_pad", tag="dequant_remove_pad")
+
 
     if relu_flag:
         res = tvm.compute(x_shape, lambda *indices: tvm.relu(res(*indices)), name="dequant_relu", tag="dequant_relu")
@@ -201,16 +251,39 @@ def _scalar_dequant_v100(x, x_shape, align_shape, deq_scale, relu_flag, sqrt_mod
     return res
 
 
-def _vector_dequant_v200(x, x_shape, align_shape, deq_scale, relu_flag):
+def _vector_dequant_v200(x, x_shape, align_shape, deq_scale, relu_flag, conv_flag):
     """
     dequant for vector in v200
     """
-    res_f16 = tvm.compute(align_shape,
-                          lambda i, j, k, l:
-                          tvm.vdeq_cast(x(i, j, k, l), deq_scale(0, j, 0, 0, l), dtype="float16", do_relu=relu_flag),
-                          name="dequant", tag="dequant_vector")
+    if conv_flag:
+        group = align_shape[0]
+        cout1_opt = align_shape[2]
+        res_f16 = tvm.compute(
+            align_shape,
+            lambda g, i, j, k, l:
+                tvm.vdeq_cast(x(g*(x_shape[0]//group)+i, j, k, l),
+                              deq_scale(0, j, 0, 0, l), dtype="float16", do_relu=relu_flag),
+            name="dequant", tag="dequant_vector")
 
-    res = tvm.compute(x_shape, lambda *indice: res_f16(*indice), name="dequant_remove_pad", tag="dequant_remove_pad")
+        if group == 1:
+            res = tvm.compute(x_shape,
+                              lambda batch, cout1, howo, cout0: res_f16(0, batch, cout1, howo, cout0),
+                              name='dequant_remove_pad',
+                              tag="dequant_remove_pad")
+        else:
+            res = tvm.compute(x_shape,
+                              lambda batch, cout1, howo, cout0:
+                                  res_f16(cout1 // cout1_opt, batch, cout1 % cout1_opt, howo, cout0),
+                              name='dequant_remove_pad',
+                              tag="dequant_remove_pad")
+    else:
+        res_f16 = tvm.compute(
+            align_shape,
+            lambda i, j, k, l:
+                tvm.vdeq_cast(x(i, j, k, l), deq_scale(0, j, 0, 0, l), dtype="float16", do_relu=relu_flag),
+            name="dequant", tag="dequant_vector")
+        res = tvm.compute(x_shape,
+                          lambda *indice: res_f16(*indice), name="dequant_remove_pad", tag="dequant_remove_pad")
 
     return res
 
@@ -314,16 +387,37 @@ def _scalar_depthwise_fused_v200(x, x_shape, align_shape, deq_scale, relu_flag):
     return res
 
 
-def _scalar_dequant_v200(x, x_shape, align_shape, deq_scale):
+def _scalar_dequant_v200(x, x_shape, align_shape, deq_scale, conv_flag):
     """
     dequant for scale in v200
     """
-    res_f16 = tvm.compute(align_shape,
-                          lambda i, j, k, l: tvm.deq_cast(x(i, j, k, l), deq_scale(0, 0, 0, 0, 0), dtype="float16"),
-                          name="dequant", tag="dequant_scale")
+    if conv_flag:
+        group = align_shape[0]
+        cout1_opt = align_shape[2]
+        res_f16 = tvm.compute(
+            align_shape,
+            lambda g, i, j, k, l:
+                tvm.deq_cast(x(g*(x_shape[0]//group)+i, j, k, l),
+                             deq_scale(0, 0, 0, 0, 0), dtype="float16"),
+                name="dequant", tag="dequant_scale")
 
-    res = tvm.compute(x_shape, lambda *indice: res_f16(*indice), name="dequant_remove_pad", tag="dequant_remove_pad")
-
+        if group == 1:
+            res = tvm.compute(x_shape,
+                lambda batch, cout1, howo, cout0: res_f16(0, batch, cout1, howo, cout0),
+                name="dequant_remove_pad",
+                tag="dequant_remove_pad")
+        else:
+            res = tvm.compute(x_shape,
+                lambda batch, cout1, howo, cout0:
+                    res_f16(cout1 // cout1_opt, batch, cout1 % cout1_opt, howo, cout0),
+                name='dequant_remove_pad',
+                tag="dequant_remove_pad")
+    else:
+        res_f16 = tvm.compute(align_shape,
+                              lambda i, j, k, l: tvm.deq_cast(x(i, j, k, l), deq_scale(0, 0, 0, 0, 0), dtype="float16"),
+                              name="dequant", tag="dequant_scale")
+        res = tvm.compute(x_shape,
+                          lambda *indice: res_f16(*indice), name="dequant_remove_pad", tag="dequant_remove_pad")
     return res
 
 
@@ -345,6 +439,9 @@ def ascend_dequant_compute(x, deq_scale, y, sqrt_mode=False, relu_flag=False, ke
     -------
     res : the result of ascend_dequant
     """
+    conv_flag = 0
+    if len(x.op.input_tensors) and x.op.input_tensors[0].name in ('mad1', 'convolution_c_col_bias'):
+        conv_flag = 1
 
     def shape_to_list(shape):
         """
@@ -354,7 +451,6 @@ def ascend_dequant_compute(x, deq_scale, y, sqrt_mode=False, relu_flag=False, ke
         for i in shape:
             tmp.append(i.value)
         return tmp
-
     x_shape = x.shape
     deq_shape = deq_scale.shape
     x_shape_list = shape_to_list(x_shape)
@@ -366,9 +462,14 @@ def ascend_dequant_compute(x, deq_scale, y, sqrt_mode=False, relu_flag=False, ke
     if deq_dim > 1:
         tensor_flag = True
 
-    align_shape = x_shape_list.copy()
-    if x.op.tag != "depthwise_conv2d":
-        align_shape[2] = (align_shape[2] + 15) // 16 * 16
+    if conv_flag:
+        align_shape = shape_to_list(x.op.input_tensors[0].shape)
+        if x.op.tag != "depthwise_conv2d":
+            align_shape[3] = (align_shape[3] + 15) // 16 * 16
+    else:
+        align_shape = x_shape_list.copy()
+        if x.op.tag != "depthwise_conv2d":
+            align_shape[2] = (align_shape[2] + 15) // 16 * 16
 
     if x.op.tag == "matmul" or x.op.tag == "matmul_gemv" or x.op.tag == "matmul_gevm":
         shape_matmul_origin = x.op.attrs["shape"]
@@ -395,10 +496,19 @@ def ascend_dequant_compute(x, deq_scale, y, sqrt_mode=False, relu_flag=False, ke
             tensor_dict["filter_reshape"] = tensor_dict["mad"].op.input_tensors[1]
             tensor_dict["filter_buf"] = tensor_dict["filter_reshape"].op.input_tensors[0]
             tensor_dict["im2col_row_major"] = tensor_dict["im2col_fractal"].op.input_tensors[0]
-            tensor_dict["fmap"] = tensor_dict["im2col_row_major"].op.input_tensors[0]
+
+            tensor_dict["temp"] = tensor_dict["im2col_row_major"].op.input_tensors[0]
+            if tensor_dict["temp"].op.input_tensors:
+                tensor_dict["fmap"] = tensor_dict["temp"].op.input_tensors[0]
+            else:
+                tensor_dict["fmap"] = tensor_dict["im2col_row_major"].op.input_tensors[0]
             x_ori_shape = tensor_dict["fmap"].op.attrs["ori_shape"]
+            x_ori_format = tensor_dict["fmap"].op.attrs["ori_format"]
             x_ori_shape_list = shape_util.shape_to_list(x_ori_shape)
-            align_shape[1] = (x_ori_shape_list[3] + 15) // 16
+            if x_ori_format == "NCHW":
+                align_shape[1] = (x_ori_shape_list[1] + 15) // 16
+            else:
+                align_shape[1] = (x_ori_shape_list[3] + 15) // 16
         else:
             align_shape[1] = (deq_shape_list[1] * deq_shape_list[4]) // 16
         align_shape[0] = x_shape_list[0]
@@ -418,14 +528,14 @@ def ascend_dequant_compute(x, deq_scale, y, sqrt_mode=False, relu_flag=False, ke
 
     if tensor_flag:
         if _is_support_v200_instruction():
-            res = _vector_dequant_v200(x, x_shape, align_shape, deq_scale, relu_flag)
+            res = _vector_dequant_v200(x, x_shape, align_shape, deq_scale, relu_flag, conv_flag)
         else:
-            res = _vector_dequant_v100(x, x_shape, align_shape, deq_scale, relu_flag, sqrt_mode)
+            res = _vector_dequant_v100(x, x_shape, align_shape, deq_scale, relu_flag, sqrt_mode, conv_flag)
     else:
         if _is_support_v200_instruction():
-            res = _scalar_dequant_v200(x, x_shape, align_shape, deq_scale)
+            res = _scalar_dequant_v200(x, x_shape, align_shape, deq_scale, conv_flag)
         else:
-            res = _scalar_dequant_v100(x, x_shape, align_shape, deq_scale, relu_flag, sqrt_mode)
+            res = _scalar_dequant_v100(x, x_shape, align_shape, deq_scale, relu_flag, sqrt_mode, conv_flag)
 
     return res
 
@@ -547,6 +657,13 @@ def ascend_dequant_compute_v2(x, deq_scale, y, sqrt_mode=False, relu_flag=False,
         else:
             res = _scalar_dequant_v100_v2(x_l0c, deq_ub, align_shape, x.shape, relu_flag, sqrt_mode)
     return res
+
+
+def get_op_support_info(x, deq_scale, y, sqrt_mode=False, relu_mode=False, kernel_name="ascend_dequant"):
+    """
+    get split info
+    """
+    return ascend_quant_util.get_quant_support_info(x)
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,

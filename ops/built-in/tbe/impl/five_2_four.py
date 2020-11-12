@@ -28,6 +28,7 @@ import te.platform.cce_params as cce_params
 from topi.cce import util
 from impl import slice_d
 from impl.five_2_four_v200_fp32fp16 import five_2_four_v200_fp32fp16
+from impl.c1hwc0_2_chw import c1hwc0_2_chw
 from te import platform as tbe_platform
 
 # available ub size
@@ -8497,12 +8498,20 @@ def _func_nhwc_fp16_split_hw_mod(args):
         _move_nhwc_fp16_split_hw(args)
     with tvm_ib.else_scope():
         # to avoid write data to same address in parallel
-        hw_len = hw_mod
-        hw_before = hw_i - hw_len
-        args = tvm_ib, data, dst, data_ub, data_res, data_tail, reg, \
-               addr_array, addr_array_buf, cp_align_len, float_size, ub_ele, \
-               n_index, hw_before, hw_len
-        _move_nhwc_fp16_split_hw(args)
+        with tvm_ib.if_scope(hw_mod * dst.shape[3] >= cp_align_len):
+            hw_len = hw_mod
+            hw_before = hw_i - hw_len
+            args = tvm_ib, data, dst, data_ub, data_res, data_tail, reg, \
+                   addr_array, addr_array_buf, cp_align_len, float_size, ub_ele, \
+                   n_index, hw_before, hw_len
+            _move_nhwc_fp16_split_hw(args)
+        with tvm_ib.else_scope():
+            hw_len = _ceil_fill(hw_mod, cp_align_len)
+            hw_before = hw_i - hw_len
+            args = tvm_ib, data, dst, data_ub, data_res, data_tail, reg, \
+                   addr_array, addr_array_buf, cp_align_len, float_size, ub_ele, \
+                   n_index, hw_before, hw_len
+            _move_nhwc_fp16_split_hw(args)
 
 
 def _func_nhwc_fp16_split_hw_nomod(args):
@@ -9884,13 +9893,20 @@ def five_2_four(src, dst, src_format, dst_format, kernel_name='five_2_four'):
     dst_shape = list(dst.get("shape"))
     dtype = src.get("dtype")
 
-    #te.lang.cce.vaddrelu support float32 @ 1951
-    #te.lang.cce.compute_five2four has no 1951 supporting dtype info
+    # Notes: vaddrelu support float32 @ 1951
     if dst_format.lower() == "nchw" and \
             tbe_platform.cce_conf.api_check_support(\
             "te.lang.cce.vaddrelu", "float32") and\
             dtype == "float32":
         five_2_four_v200_fp32fp16(src, dst, src_format, dst_format, kernel_name)
+    # Notes: vbi only supported by 1951
+    elif dst_format.lower() == "nchw" and \
+            not tbe_platform.cce_conf.api_check_support("te.lang.cce.vaddrelu", "float32") and \
+            not tbe_platform.cce_conf.intrinsic_check_support("Intrinsic_vbi", "float16") and \
+            dtype == "float16" and src_shape == [1,3,53,90,16] and dst_shape == [1,39,53,90]:
+        new_src_shape = [3, 53*90, 16]
+        new_dst_shape = [39, 53*90]
+        c1hwc0_2_chw(new_src_shape, new_dst_shape, dtype, kernel_name)
     else:
         if dst_format.lower() == "nchw":
             n_i, c_i, h_i, w_i = dst_shape

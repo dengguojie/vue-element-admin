@@ -20,6 +20,7 @@ from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 from impl import reduce_min_d_tik
+import te.platform as tbe_platform
 
 
 # define the type of None
@@ -27,6 +28,7 @@ NONETYPE = type(None)
 
 
 # pylint: disable=locally-disabled,unused-argument
+@tbe_platform.fusion_manager.fusion_manager.register("reduce_min_d")
 def reduce_min_d_compute(input_min, output_min, axis,
                          keep_dims, kernel_name="reduce_min_d"):
     """

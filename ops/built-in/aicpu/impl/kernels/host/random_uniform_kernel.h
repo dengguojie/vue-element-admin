@@ -31,8 +31,8 @@ class RandomUniformKernel : public CpuKernel {
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  template<typename T>
+  template <typename T>
   uint32_t Generate(CpuKernelContext &ctx, Tensor *output);
 };
-} // namespace aicpu
-#endif   // _AICPU_AICPU_DEVICE_CPU_KERNELS_KERNELS_RANDOM_UNIFORM_KERNEL_H_
+}  // namespace aicpu
+#endif  // _AICPU_AICPU_DEVICE_CPU_KERNELS_KERNELS_RANDOM_UNIFORM_KERNEL_H_

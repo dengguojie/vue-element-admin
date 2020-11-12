@@ -27,12 +27,11 @@ namespace fe {
 class LarsV2FusionPass : public PatternFusionBasePass {
  protected:
   vector<FusionPattern*> DefinePatterns() override;
-  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
+  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
 
  private:
-  const string FUSED_OP_TYPE = "SquareSumAll_LarsV2Update";
+  const string kFusedOpType = "SquareSumAll_LarsV2Update";
 };
-
 }  // namespace fe
 
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_LARS_V2_FUSION_PASS_H_

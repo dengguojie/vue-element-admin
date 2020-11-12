@@ -23,6 +23,7 @@ from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 # pylint: disable=locally-disabled,redefined-builtin,too-many-locals
@@ -243,16 +244,19 @@ def fake_quant_with_min_max_args_gradient(gradients, x, y, min=-6,
     shape_gradients = gradients.get("shape")
     shape_x = x.get("shape")
     if shape_gradients != shape_x:
-        raise RuntimeError("shape of two input must be same")
+        error_detail = "shape of gradients and x should be same"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "gradients", "x", error_detail)
     shape_util.compare_tensor_dict_key(gradients, x, "dtype")
 
     para_check.check_shape(shape_x, param_name="x")
     input_dtype = x.get("dtype").lower()
     para_check.check_dtype(input_dtype, ["float32"], param_name="x")
     if min >= max:
-        raise RuntimeError("min must be less than max")
+        excepted_value = "min must be less than max"
+        real_value = "min is (%d) and max is (%d)"%(min, max)
+        error_manager_vector.raise_err_input_value_invalid(kernel_name, "min", excepted_value, real_value)
     if num_bits < 2 or num_bits > 16:
-        raise RuntimeError("num_bits is between 2 and 16")
+        error_manager_vector.raise_err_input_param_not_in_range(kernel_name, "num_bits", "2", "16", num_bits)
     shape_x = (functools.reduce(lambda x, y: x * y, shape_x[:]),)
     gradients = tvm.placeholder(shape_x, name="gradients", dtype=input_dtype)
     x = tvm.placeholder(shape_x, name="x", dtype=input_dtype)

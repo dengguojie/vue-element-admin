@@ -17,14 +17,14 @@ elewise tiling case
 """
 from enum import Enum, auto  # pylint: disable=E0611
 
+from . import CompileInfo
 from . import DTYPE_BYTE_MAPPING
 from . import Pattern
-from . import CompileInfo
 from . import util
-from te.platform.operation import register_tiling_case
-from te.platform.operation import register_build
-from te.platform import operation
 
+from te.lang.base import operation
+from te.lang.base.operation import register_build_pointcut
+from te.lang.base.operation import register_tiling_case
 
 COMMON = "common"
 BROADCAST = "broadcast"
@@ -72,7 +72,7 @@ def calc(outs, option=None):
                 if axis == COMMON:
                     _base_key += base
                 if axis == BROADCAST:
-                    _base_key += (base*2)
+                    _base_key += (base * 2)
                 base //= 10
         elif mode == CONST:
             _base_key = operation.get_context().get("const_base_key")
@@ -83,13 +83,13 @@ def calc(outs, option=None):
             operation.get_context().add("const_base_key", _base_key)
         elif mode == SPECIAL_SCALAR:
             pattern = operation.get_context().get_current_compute().get("pattern")
-            _base_key = 300000000
+            _base_key = 200000000
             base = 10000000
             for axis in pattern:
                 if axis == SCALAR:
-                    _base_key += base
+                    _base_key += (base*3)
                 if axis == BROADCAST:
-                    _base_key += (base*2)
+                    _base_key += (base * 2)
                 base //= 10
         else:
             _base_key = 0
@@ -167,41 +167,109 @@ def _calc_general(outs, base_key):
     return cases
 
 
-# noinspection PyUnusedLocal
-@register_build(pattern=Pattern.ELEMWISE)
-def build(schedules_list, config_map=None):
-    """
-    :param schedules_list:
-    :param config_map:
-    :return:
-    """
+def _pre_build(schedules_list):
+    def _flatten_sch(_schedules: list):
+        for sub_schs in schedules_list:
+            if isinstance(sub_schs, list):
+                _schedules.extend(sub_schs)
+            else:
+                _schedules.append(sub_schs)
+
+    def _name_to_int(_var_names):
+        for index, name in enumerate(_var_names):
+            names = name.split("_")
+            if names[0] == "dim":
+                _var_names[index] = 100 + int(names[1]) * 10 + int(names[2])
+            elif names[0] == "block":
+                _var_names[index] = 200 + int(names[2])
+            elif names[0] == "ub":
+                _var_names[index] = 300 + int(names[2])
+        return _var_names
+
+    def _get_pattern_key(_mode, _pattern):
+        _pattern_key = 0
+        if _mode == SPECIAL or _mode == SPECIAL_SCALAR:
+            base = 1
+            for axis in _pattern:
+                _pattern_key *= 10
+                if axis == COMMON:
+                    _pattern_key += base
+                elif axis == BROADCAST:
+                    _pattern_key += (base*2)
+                else:
+                    _pattern_key += (base*3)
+        return str(_pattern_key).ljust(3, '0')
+
+    operation.add_compile_info(CompileInfo.ONLY_CONST_TILING, False)
     support_broadcast = operation.get_context().get("support_broadcast")
-    operation.add_compile_info(CompileInfo.IS_SUPPORT_BROADCAST,
-                               support_broadcast)
     fusion_flag = util.get_build_cfg()
     if fusion_flag == "disable":
-        operation.add_compile_info(CompileInfo.FUSION, 0)
+        _fusion = 0
     else:
-        _fusion = operation.get_compile_info().get(CompileInfo.FUSION)
+        _fusion = operation.get_context().get(CompileInfo.FUSION)
         if _fusion is None:
-            operation.add_compile_info(CompileInfo.FUSION, 1)
-    if operation.get_context().get("mode") == CONST:
-        const_shapes = operation.get_context().get("const_shapes")
-        operation.add_compile_info(CompileInfo.IS_CONST_SHAPES, True)
-        operation.add_compile_info(CompileInfo.CONST_SHAPES, const_shapes)
-        const_block_dims = operation.get_context().get("const_block_dims")
-        operation.add_compile_info(CompileInfo.CONST_BLOCK_DIMS,
-                                   const_block_dims)
-    else:
-        operation.add_compile_info(CompileInfo.IS_CONST_SHAPES, False)
-
-    support_absorbable_broadcast = operation.get_context().get("support_absorbable_broadcast")
-    operation.add_compile_info(CompileInfo.IS_SUPPORT_ABSORBABLE_BROADCAST,
-                               support_absorbable_broadcast is True)
-
+            _fusion = 1
     cpt_computes = operation.get_context().get_computes()
     use_special_pattern = False
+    support_absorbable_broadcast = False
     for compute in cpt_computes:
         if compute.get("mode") != ORIGINAL:
             use_special_pattern = True
-    operation.add_compile_info(CompileInfo.USE_SPECIAL_PATTERN, use_special_pattern)
+        if compute.get("mode") == SPECIAL_SCALAR:
+            support_absorbable_broadcast = True
+    if operation.get_context().get("mode") == CONST:
+        const_shapes, const_block_dims = [], []
+        for compute in cpt_computes:
+            const_shapes.append(compute.get("const_shape"))
+            const_block_dims.append(compute.get("const_block_dim"))
+        is_const_shapes = True
+        operation.add_compile_info(CompileInfo.CONST_SHAPES, const_shapes)
+        operation.add_compile_info(CompileInfo.CONST_BLOCK_DIMS, const_block_dims)
+        flag_info = [support_broadcast, use_special_pattern, support_absorbable_broadcast, is_const_shapes, _fusion]
+        operation.add_compile_info(CompileInfo.FLAG_INFO, flag_info)
+        return
+    else:
+        is_const_shapes = False
+    flag_info = [support_broadcast, use_special_pattern, support_absorbable_broadcast, is_const_shapes, _fusion]
+    operation.add_compile_info(CompileInfo.FLAG_INFO, flag_info)
+
+    schedules = []
+    _flatten_sch(schedules)
+
+    te_vars_list = []
+    op_vars = operation.get_context().get_vars()
+    base_info = {}
+    for i, cpt in enumerate(cpt_computes):
+        cpt_vars = cpt.get_vars()
+        cpt_ub_sizes, cpt_max_dtypes, cpt_coexisting_quantitys, cores = [], [], [], []
+        for sch_context in cpt.get_schedules():
+            sch_vars = sch_context.get_vars()
+            cpt_ub_sizes.append(sch_context.get(CompileInfo.UB_SIZE))
+            cpt_max_dtypes.append(sch_context.get(CompileInfo.MAX_DTYPE))
+            cpt_coexisting_quantitys.append(sch_context.get(CompileInfo.COEXISTING_QUANTITY))
+            cores.append(sch_context.get(CompileInfo.CORE_NUM))
+            te_vars_list.append(op_vars + cpt_vars + sch_vars)
+        pattern_key = _get_pattern_key(cpt.get("mode"), cpt.get("pattern"))
+        base_info[pattern_key] = [min(cpt_ub_sizes), max(cpt_max_dtypes), max(cpt_coexisting_quantitys), max(cores)]
+    operation.add_compile_info(CompileInfo.BASE_INFO, base_info)
+
+    compile_vars = {}
+    for sch, te_vars in zip(schedules, te_vars_list):
+        if sch is None:
+            continue
+        var_names = [x.get_name() for x in te_vars]
+        compile_vars[sch.tiling_key] = _name_to_int(var_names)
+    operation.add_compile_info(CompileInfo.ELEWISE_VARS, compile_vars)
+
+
+@register_build_pointcut(pattern=Pattern.ELEMWISE)
+def build_pointcut(func, *args, **kwargs):
+    """
+    build pointcut
+    :param func:
+    :param args:
+    :param kwargs:
+    :return:
+    """
+    _pre_build(args[0])
+    func(*args, **kwargs)

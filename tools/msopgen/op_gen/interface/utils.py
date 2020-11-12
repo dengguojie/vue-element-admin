@@ -13,7 +13,6 @@ try:
     import time
     import re
     import stat
-    import shutil
     import json
     from shutil import copytree
     from shutil import copy2
@@ -93,6 +92,9 @@ INFO_PARAM_FORMAT_KEY = "format_list"
 
 
 class GenModeType:
+    """
+       CLass for gen mode type
+       """
     GEN_PROJECT = '0'
     GEN_OPERATOR = '1'
 
@@ -105,18 +107,23 @@ INPUT_OUTPUT_DTYPE_MAP = {
     "half": "DT_FLOAT16",
     "uint32": "DT_UINT32",
     "uint64": "DT_UINT64",
-    "numbertype": "DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_INT8, DT_INT16, DT_INT32,"
-                  "DT_INT64, DT_UINT8, DT_UINT16, DT_UINT32, DT_UINT64, DT_QINT8,"
-                  "DT_QUINT8, DT_QINT16, DT_QUINT16, DT_QINT32, DT_BOOL",
-    "realnumbertype": "DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_INT8, DT_INT16, DT_INT32,"
-                      "DT_INT64, DT_UINT8, DT_UINT16, DT_UINT32, DT_UINT64, DT_QINT8,"
-                      "DT_QUINT8, DT_QINT16, DT_QUINT16, DT_QINT32, DT_BOOL",
+    "numbertype": "DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_INT8, DT_INT16, "
+                  "DT_INT32,DT_INT64, DT_UINT8, DT_UINT16, DT_UINT32,"
+                  "DT_UINT64, DT_QINT8,DT_QUINT8, DT_QINT16, DT_QUINT16, "
+                  "DT_QINT32, DT_BOOL",
+    "realnumbertype": "DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_INT8, DT_INT16, "
+                      "DT_INT32, DT_INT64, DT_UINT8, DT_UINT16, DT_UINT32, "
+                      "DT_UINT64, DT_QINT8, DT_QUINT8, DT_QINT16, "
+                      "DT_QUINT16, DT_QINT32, DT_BOOL",
     "quantizedtype": "DT_QINT8, DT_QUINT8, DT_QINT16, DT_QUINT16, DT_QINT32",
-    "all": "DT_FLOAT,DT_DOUBLE,DT_INT32,DT_UINT8,DT_INT16,DT_INT8,DT_STRING,DT_COMPLEX64,DT_INT64,DT_BOOL,DT_QINT8,"
-           "DT_QUINT8,DT_QINT32,DT_Bfp16,DT_QINT16,DT_QUINT16,DT_UINT16,DT_COMPLEX128,DT_HALF,DT_RESOURCE,"
-           "DT_VARIANT,DT_UINT32,DT_UINT64",
-    "BasicType": "DT_FLOAT,DT_DOUBLE,DT_INT32,DT_UINT8,DT_INT16,DT_INT8,DT_COMPLEX64,DT_INT64,DT_QINT8,"
-           "DT_QUINT8,DT_QINT32,DT_QINT16,DT_QUINT16,DT_UINT16,DT_COMPLEX128,DT_HALF,DT_UINT32,DT_UINT64",
+    "all": "DT_FLOAT,DT_DOUBLE,DT_INT32,DT_UINT8,DT_INT16,DT_INT8,DT_STRING,"
+           "DT_COMPLEX64,DT_INT64,DT_BOOL,DT_QINT8, DT_QUINT8,DT_QINT32,"
+           "DT_Bfp16,DT_QINT16,DT_QUINT16,DT_UINT16,DT_COMPLEX128,DT_HALF,"
+           "DT_RESOURCE, DT_VARIANT,DT_UINT32,DT_UINT64",
+    "BasicType": "DT_FLOAT,DT_DOUBLE,DT_INT32,DT_UINT8,DT_INT16,DT_INT8,"
+                 "DT_COMPLEX64,DT_INT64,DT_QINT8, DT_QUINT8,DT_QINT32, "
+                 "DT_QINT16,DT_QUINT16,DT_UINT16,DT_COMPLEX128,DT_HALF,"
+                 "DT_UINT32,DT_UINT64",
     "IndexNumberType": "DT_INT32,DT_INT64 ",
     "int8": "DT_INT8",
     "int16": "DT_INT16",
@@ -312,17 +319,15 @@ def copy_template(src, dst, is_skip_exist=False):
                 if os.path.isdir(dstname) and len(os.listdir(dstname)) != 0:
                     if is_skip_exist:
                         continue
-                    else:
-                        print_error_log(
-                            dstname + " is not empty,please check.")
-                        sys.exit(MS_OP_GEN_INVALID_PATH_ERROR)
+                    print_error_log(
+                        dstname + " is not empty,please check.")
+                    sys.exit(MS_OP_GEN_INVALID_PATH_ERROR)
                 copytree(srcname, dstname)
             else:
                 copy2(srcname, dstname)
         except (OSError, os.error) as why:
             errors.append((srcname, dstname, str(why)))
-        except OSError as err:
-            errors.extend(err.args[0])
+
     if errors:
         print_error_log(errors)
         raise MsOpGenException(MS_OP_GEN_WRITE_FILE_ERROR)
@@ -385,7 +390,8 @@ def write_files(op_file, new_str):
         if os.path.exists(op_file):
             print_warn_log(op_file + " already exists!")
             return
-        with os.fdopen(os.open(op_file, WRITE_FLAGS, WRITE_MODES), 'w') as fout:
+        with os.fdopen(os.open(op_file, WRITE_FLAGS, WRITE_MODES), 'w') as \
+                fout:
             fout.write(new_str)
     except OSError as err:
         print_error_log("Unable to write file(%s): %s." % op_file % str(err))

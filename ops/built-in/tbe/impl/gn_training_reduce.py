@@ -19,7 +19,7 @@ import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
-from te.utils.op_utils import *
+from te.utils import para_check
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 
@@ -68,13 +68,13 @@ def _shape_check(shape_x, data_format, num_groups):
     elif data_format == "NHWC":
         c_index_ = 3
     else:
-        check_format(data_format, ("NCHW", "NHWC"), param_name="x")
+        para_check.check_format(data_format, ("NCHW", "NHWC"), param_name="x")
 
-    check_shape(shape_x, min_rank=4, max_rank=4, param_name="x")
+    para_check.check_shape(shape_x, min_rank=4, max_rank=4, param_name="x")
     if shape_x[c_index_] % num_groups != 0:
         error_info = {}
-        error_info['errCode'] = OP_ERROR_CODE_009
-        error_info['op_name'] = OP_NAME
+        error_info['errCode'] = para_check.OP_ERROR_CODE_009
+        error_info['op_name'] = para_check.OP_NAME
         error_info['param_name'] = "channel and num_groups"
         error_info['rule_desc'] = "num_groups must divide C channel"
         error_info['param_value'] = "{} and {}".format(
@@ -118,8 +118,8 @@ def gn_training_reduce_compute(x, data_format, kernel_name="gn_training_reduce")
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT,
-                 OPTION_ATTR_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def gn_training_reduce(x, sum, square_sum, num_groups=2, kernel_name="gn_training_reduce"):
     """
     calculating data
@@ -147,7 +147,7 @@ def gn_training_reduce(x, sum, square_sum, num_groups=2, kernel_name="gn_trainin
     input_dtype = dtype_x.lower()
 
     _shape_check(shape_x, data_format, num_groups)
-    check_dtype(input_dtype, ("float16", "float32"), param_name="x")
+    para_check.check_dtype(input_dtype, ("float16", "float32"), param_name="x")
 
     # Reshape NCHW -> N[GD]HW
     if data_format == "NCHW":

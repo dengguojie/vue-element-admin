@@ -389,6 +389,7 @@ Status AvgPoolFusionPass::DoBiasOptimizeAvgpool(ge::ComputeGraph& graph, ge::Nod
 
 Status AvgPoolFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode, string& padding,
                                    vector<int64_t>& dimInfo, vector<int64_t> ksize, vector<int64_t> stride) {
+  int64_t outputN = 0;
   int64_t outputH = 0;
   int64_t outputW = 0;
   int64_t outputC = 0;
@@ -414,12 +415,14 @@ Status AvgPoolFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode
   vector<int64_t> dimOut = outputShape.GetDims();
   if (dimOut.size() != 0) {
     if (inputDesc0OriginFormat == FORMAT_NHWC) {
+      outputN = dimOut[0];
       outputH = dimOut[1];
       outputW = dimOut[2];
       outputC = dimOut[3];
       dimH = dimInfo[1];
       dimW = dimInfo[2];
     } else {
+      outputN = dimOut[0];
       outputH = dimOut[2];
       outputW = dimOut[3];
       outputC = dimOut[1];
@@ -568,8 +571,8 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
       output_w = out_dimInfo[3];
     }
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "dimInfo is not right, please check!");
-    return PARAM_INVALID;
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "dimInfo is not right, please check!");
+    return NOT_CHANGED;
   }
 
   inputC1 = (inputC + COUT - 1) / COUT;
@@ -596,8 +599,8 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
       stridesH = strides[1];
       stridesW = strides[2];
     } else {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "ksize or strides is null, please check!");
-      return PARAM_INVALID;
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "ksize or strides is null, please check!");
+      return NOT_CHANGED;
     }
   } else if (dataFormat == "NCHW") {
     if (ksize.size() != 0 and strides.size() != 0) {
@@ -606,12 +609,12 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
       stridesH = strides[2];
       stridesW = strides[3];
     } else {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "ksize or strides is null, please check!");
-      return PARAM_INVALID;
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "ksize or strides is null, please check!");
+      return NOT_CHANGED;
     }
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "dataFormat is wrong, please check!");
-    return PARAM_INVALID;
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "dataFormat is wrong, please check!");
+    return NOT_CHANGED;
   }
   window = {ksizeH, ksizeW};
   stride = {stridesH, stridesW};
@@ -654,7 +657,7 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
           return PARAM_INVALID;
         }
         dequantNode = inDataAnchorPtr->GetOwnerNode();
-        if ((dequantNode->GetType() == "AscendDequant") or (dequantNode->GetType() == "AscendRequant")) {
+        if ((dequantNode->GetType() == "AscendDequant") || (dequantNode->GetType() == "AscendRequant")) {
           break;
         }
       }
@@ -675,15 +678,16 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
 
     NodePtr HostcpuNode = outDataAnchorPtr->GetOwnerNode();
     std::string type = ge::NodeUtils::GetInConstNodeTypeCrossSubgraph(HostcpuNode);
-    if ((HostcpuNode->GetType() != "RequantHostCpuOp") and (type != "Const")) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "dont find op RequantHostCpuOp or not find const");
-      return PARAM_INVALID;
+    if ((HostcpuNode->GetType() != "RequantHostCpuOp") && (type != "Const") &&
+    (HostcpuNode->GetType() != "RequantHostCpuOpV2")) {
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "dont find op RequantHostCpuOp or not find const");
+      return NOT_CHANGED;
     }
 
     inputC1 = (inputC + COUT32 - 1) / COUT32;
 
     int64_t matrixSize = inputC * 1 * ksizeH * ksizeW;
-    FUSION_PASS_CHECK(matrixSize <= 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "matrixSize is Invalid"), return PARAM_INVALID);
+    FUSION_PASS_CHECK(matrixSize <= 0, OP_LOGW(FUSED_OP_TYPE.c_str(), "matrixSize is Invalid"), return NOT_CHANGED);
     unique_ptr<int8_t[]> inputAssitInt8(new (std::nothrow) int8_t[matrixSize]());
     FUSION_PASS_CHECK(inputAssitInt8.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssitInt8 is NULL"),
                       return PARAM_INVALID);
@@ -724,12 +728,12 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
                         OP_LOGE(FUSED_OP_TYPE.c_str(), "AddCoffe failed."), return ret);
     } else if (padding == "VALID") {
       OP_LOGD(FUSED_OP_TYPE.c_str(), "padding is VALID");
-      if (HostcpuNode->GetType() == "RequantHostCpuOp") {
+      if (HostcpuNode->GetType() == "RequantHostCpuOp" || HostcpuNode->GetType() == "RequantHostCpuOpV2") {
         FUSION_PASS_CHECK(!ge::AttrUtils::SetStr(HostcpuNode->GetOpDesc(), "padding", padding),
-                          OP_LOGI(FUSED_OP_TYPE.c_str(), "Set axis attr failed."), return FAILED);
+                          OP_LOGI(FUSED_OP_TYPE.c_str(), "Set padding attr failed."), return FAILED);
         float areaFactor = 1.0 / (ksizeH * ksizeW);
         FUSION_PASS_CHECK(!ge::AttrUtils::SetFloat(HostcpuNode->GetOpDesc(), "area_factor", areaFactor),
-                          OP_LOGI(FUSED_OP_TYPE.c_str(), "Set axis attr failed."), return FAILED);
+                          OP_LOGI(FUSED_OP_TYPE.c_str(), "Set area_factor attr failed."), return FAILED);
       } else {
         float areaFactor = 1.0 / (ksizeH * ksizeW);
         FUSION_PASS_CHECK(UpdateDequantConst(graph, HostcpuNode, areaFactor) != SUCCESS,
@@ -737,8 +741,8 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
       }
 
     } else {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "padding is wrong, please check!");
-      return PARAM_INVALID;
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "padding is wrong, please check!");
+      return NOT_CHANGED;
     }
 
     //  set const node shape
@@ -799,8 +803,8 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
       FUSION_PASS_CHECK(AddCoffe(graph, mulNode, padding, dimInfo, window, stride) != SUCCESS,
                         OP_LOGE(FUSED_OP_TYPE.c_str(), "AddCoffe failed."), return ret);
     } else {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "padding is wrong, please check!");
-      return PARAM_INVALID;
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "padding is wrong, please check!");
+      return NOT_CHANGED;
     }
 
     FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateFilterFP16 failed."), return ret);
@@ -830,8 +834,8 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     if (constInputNodes.size() != 0) {
       constInput = constInputNodes[0];
     } else {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "constInputNodes is null, please check!");
-      return PARAM_INVALID;
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "constInputNodes is null, please check!");
+      return NOT_CHANGED;
     }
     constInput->GetOpDesc()->SetType(CONSTANTOP);
   }

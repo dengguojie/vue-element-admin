@@ -16,8 +16,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 strided_slice_grad
 """
 import te
-from te import platform as tbe_platform
-from te.utils.op_utils import *
+from te.utils import para_check
 from te import tik
 from impl.dynamic import pad_align
 from impl.dynamic import pad_not_align
@@ -25,6 +24,7 @@ from impl.dynamic import pad_common
 
 # number of cores
 INT32_BLOCK = 8
+INT64_BLOCK = 4
 
 
 # pylint: disable=invalid-name, too-many-instance-attributes
@@ -65,7 +65,7 @@ def grad_compute(obj, mask_list):
         # init tiling_params
         # =====================
         obj.tik_instance.data_move(obj.tiling_buf, obj.tiling_gm, 0, 1,
-                                   obj.tiling_buf_size // INT32_BLOCK, 0, 0)
+                                   obj.tiling_buf_size // INT64_BLOCK, 0, 0)
         pad_common.init_params(obj)
 
         # ======================
@@ -144,7 +144,7 @@ def strided_slice_grad(shape, begin, end, strides, dy, output, begin_mask=0,
     None.
     """
     dtype = dy.get("dtype").lower()
-    check_dtype(dtype, ("float16", "float32", "int32"), param_name="dy")
+    para_check.check_dtype(dtype, ("float16", "float32", "int32"), param_name="dy")
     _check_mask(new_axis_mask)
     _check_mask(shrink_axis_mask, True)
 

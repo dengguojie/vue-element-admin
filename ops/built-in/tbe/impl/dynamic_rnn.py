@@ -27,7 +27,7 @@ from te.lang.cce import vmul
 from te.lang.cce import vmuls
 from te.lang.cce import vrec
 from te.lang.cce import vsub
-from te.lang.cce.rl_bank import rl_bank
+from te.domain.rl_bank import rl_bank
 from te.platform import scope_ca
 from te.platform import scope_cb
 from te.platform import scope_cbuf
@@ -40,7 +40,7 @@ from te.tik import Tik
 from te.tik import scope_gm
 from te.tvm import api as tvm
 from te.tvm.schedule import create_schedule
-from te.utils import check_para
+from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 def sigmoid(x):
@@ -537,20 +537,20 @@ def check_prama_dtype(input_x, weight, bias, init_h, init_c, y, output_h,
     """
 
     x_dtype = input_x.get("dtype").lower()
-    check_para.check_dtype(x_dtype, ["float16"], param_name="x")
+    para_check.check_dtype(x_dtype, ["float16"], param_name="x")
 
     w_dtype = weight.get("dtype").lower()
-    check_para.check_dtype(w_dtype, ["float16"], param_name="w")
+    para_check.check_dtype(w_dtype, ["float16"], param_name="w")
 
     output_h_dtype = output_h.get("dtype").lower()
-    check_para.check_dtype(output_h_dtype, ["float16"], param_name="output_h")
+    para_check.check_dtype(output_h_dtype, ["float16"], param_name="output_h")
 
     if init_h is not None:
         init_h_dtype = init_h.get("dtype").lower()
-        check_para.check_dtype(init_h_dtype, ["float16"], param_name="init_h")
+        para_check.check_dtype(init_h_dtype, ["float16"], param_name="init_h")
 
     bias_dtype = bias.get("dtype").lower()
-    check_para.check_dtype(bias_dtype, ["float16", "float32"], param_name="bias")
+    para_check.check_dtype(bias_dtype, ["float16", "float32"], param_name="bias")
 
     # check optional input
     if init_c is not None:
@@ -695,18 +695,18 @@ def check_attr(cell_type, direction, cell_depth, use_peephole, keep_prob,
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "attr activation only support tanh, please check!")
 
 
-@check_para.check_op_params(check_para.REQUIRED_INPUT, check_para.REQUIRED_INPUT, check_para.REQUIRED_INPUT,
-                            check_para.OPTION_INPUT, check_para.OPTION_INPUT,
-                            check_para.OPTION_INPUT, check_para.OPTION_INPUT, check_para.OPTION_INPUT,
-                            check_para.OPTION_INPUT, check_para.OPTION_INPUT,
-                            check_para.REQUIRED_OUTPUT, check_para.REQUIRED_OUTPUT, check_para.REQUIRED_OUTPUT,
-                            check_para.OPTION_OUTPUT, check_para.OPTION_OUTPUT,
-                            check_para.OPTION_OUTPUT, check_para.OPTION_OUTPUT, check_para.OPTION_OUTPUT,
-                            check_para.OPTION_ATTR_STR, check_para.OPTION_ATTR_STR,
-                            check_para.OPTION_ATTR_INT, check_para.OPTION_ATTR_BOOL, check_para.OPTION_ATTR_FLOAT,
-                            check_para.OPTION_ATTR_FLOAT, check_para.OPTION_ATTR_INT, check_para.OPTION_ATTR_BOOL,
-                            check_para.OPTION_ATTR_STR, check_para.OPTION_ATTR_FLOAT,
-                            check_para.OPTION_ATTR_BOOL, check_para.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.OPTION_INPUT, para_check.OPTION_INPUT,
+                            para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT,
+                            para_check.OPTION_INPUT, para_check.OPTION_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_OUTPUT, para_check.OPTION_OUTPUT,
+                            para_check.OPTION_OUTPUT, para_check.OPTION_OUTPUT, para_check.OPTION_OUTPUT,
+                            para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_STR,
+                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL,
+                            para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
 # pylint: disable=too-many-function-args,too-many-statements
 def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
@@ -757,6 +757,8 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
     is_gate_output = True
 
     tik_instance = Tik(Dprofile())
+
+    sync = tik_instance.Tensor(shape=(128,), dtype="int64", scope=scope_gm, name='sync', is_workspace=True, is_atomic_add=True)
 
     input_x = tik_instance.Tensor(shape=shape_x, dtype=input_dtype,
                                   scope=scope_gm, name='input_x')
@@ -902,7 +904,7 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
 
             input_list = [input_x_var, weight, bias, s_init_h_gm_var,
                           s_init_c_gm_var, state_h_last,
-                          state_c_last]
+                          state_c_last, sync]
 
             if is_gate_output:
                 output_list = [update_h_gm_var, update_c_gm_var,
@@ -949,6 +951,7 @@ def dynamic_rnn_tik(input_list, custom_list):
     s_init_c_gm = input_list[4]
     s_state_h_gm_last = input_list[5]
     s_state_c_gm_last = input_list[6]
+    sync0 = input_list[7]
 
     is_gate_output = custom_list[0]
     is_first_round = custom_list[1]
@@ -956,7 +959,7 @@ def dynamic_rnn_tik(input_list, custom_list):
     forget_bias = custom_list[3]
 
     return dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
-                            s_state_h_gm_last, s_state_c_gm_last,
+                            s_state_h_gm_last, s_state_c_gm_last, sync0,
                             is_gate_output, is_first_round, is_global_init,
                             forget_bias)
 
@@ -964,7 +967,7 @@ def dynamic_rnn_tik(input_list, custom_list):
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
 # pylint: disable=too-many-statements
 def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
-                     s_state_h_gm_last, s_state_c_gm_last,
+                     s_state_h_gm_last, s_state_c_gm_last, sync0,
                      is_gate_output, is_first_round, is_global_init,
                      forget_bias):
 
@@ -1025,12 +1028,6 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                                    lambda _, i, j, k, l: s_state_c_gm_last[
                                        0, i, j, k, l], name="s_state_c_ub")
 
-    weight_ub = \
-        tvm.compute(
-            shape_b,
-            lambda *indices: weight(*indices),
-            name="weight_ub")
-
     # input and s_start_h is Nz, need trans to zZ
     # so change axis 1 and 2
     a_ub = tvm.compute(shape_a_z_bigz,
@@ -1054,7 +1051,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                        name='a_l1',
                        tag="out_to_l1")
     b_l1 = tvm.compute(shape_b,
-                       lambda *indices: weight_ub(*indices),
+                       lambda *indices: weight(*indices),
                        name='b_l1',
                        tag="out_to_l1")
 
@@ -1344,7 +1341,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                        c_t_tanh_gm]
     else:
         return_list = [update_h_gm, update_c_gm, update_h_gm_as_y]
-    return_list, s = rl_bank.tik_dsl_bank_proc(return_list)
+    return_list, s = rl_bank.tik_dsl_bank_proc(return_list, sync_tensor=sync0)
     if s is not None:
         return return_list, s
 
@@ -1391,7 +1388,6 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     s[s_state_h_ub].set_scope(scope_ubuf)
     s[s_state_c_ub].set_scope(scope_ubuf)
 
-    s[weight_ub].set_scope(scope_ubuf)
     s[a_ub].set_scope(scope_ubuf)
 
     if fp16_input_output:
@@ -1466,7 +1462,6 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                      c_l0c.op.axis[4 + 1], l0_k_inner,
                      c_l0c.op.reduce_axis[1])
 
-    s[weight_ub].compute_at(s[c_l0c], l1_k_outer)
     s[a_ub].compute_at(s[c_l0c], l1_k_outer)
     s[s_state_h_ub].compute_at(s[c_l0c], l1_k_outer)
 
@@ -1611,7 +1606,6 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     s[a_l0a].emit_insn(a_l0a.op.axis[0], 'dma_copy')
     s[b_l0b].emit_insn(b_l0b.op.axis[0], 'dma_copy')
 
-    s[weight_ub].emit_insn(weight_ub.op.axis[0], 'dma_copy')
     s[a_ub].emit_insn(a_ub.op.axis[0], 'dma_copy')
 
     if fp16_input_output:
@@ -1645,6 +1639,11 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
 
     s[update_c_gm].emit_insn(s[update_c_gm].op.axis[1], 'dma_copy')
     s[update_h_gm].emit_insn(s[update_h_gm].op.axis[3], 'dma_copy')
+
+    block = tvm.thread_axis('blockIdx.x')
+    s[update_h_gm].bind(vn_o_outer, block)
+    s[update_h_gm].wait_block_sync(axis=vn_m_outer, tensor=sync0[0], bottom=True)
+    s[update_h_gm].set_block_sync(axis=vn_m_outer, tensor=sync0[0], bottom=True)
 
     if is_gate_output:
         if fp16_input_output:

@@ -16,7 +16,7 @@ map_index
 
 from te import tik
 from te import platform as tbe_platform
-from te.utils.op_utils import *
+from te.utils import para_check
 
 
 def map_index_vec_dup(tik_instance, mask, dst, const, length):
@@ -238,8 +238,8 @@ class MapIndexProcess:
         return self.tik_instance
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT,
-                 REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def map_index(x_dic, data_seq_dic, level_index_dic, y_dic,
               kernel_name="map_index"):
     """
@@ -254,15 +254,15 @@ def map_index(x_dic, data_seq_dic, level_index_dic, y_dic,
     check_list = ["int32"]
     x_shape = x_dic.get("shape")
     x_dtype = x_dic.get("dtype")
-    check_dtype(x_dtype.lower(), check_list, param_name="x")
+    para_check.check_dtype(x_dtype.lower(), check_list, param_name="x")
 
     data_seq_shape = data_seq_dic.get("shape")
     data_seq_dtype = data_seq_dic.get("dtype")
-    check_dtype(data_seq_dtype.lower(), check_list,
+    para_check.check_dtype(data_seq_dtype.lower(), check_list,
                 param_name="data_seq")
 
     y_dtype = y_dic.get("dtype")
-    check_dtype(y_dtype.lower(), check_list, param_name="y")
+    para_check.check_dtype(y_dtype.lower(), check_list, param_name="y")
 
     if x_shape[0] > 8:
         raise RuntimeError("the length of x should "
@@ -276,8 +276,7 @@ def map_index(x_dic, data_seq_dic, level_index_dic, y_dic,
 
     if level_index_dic:
         level_index_dtype = level_index_dic.get("dtype")
-        check_dtype(level_index_dtype.lower(), check_list,
-                    param_name="level_index")
+        para_check.check_dtype(level_index_dtype.lower(), check_list, param_name="level_index")
 
         map_index_result = MapIndexProcess((tik_instance, x_dic, data_seq_dic,
                                             y_dic, level_index_dic))

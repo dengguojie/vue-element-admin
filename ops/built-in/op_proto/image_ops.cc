@@ -128,13 +128,20 @@ IMPLEMT_INFERFUNC(CropAndResize, CropAndResizeInfer) {
   auto box_index_dims = box_index_shape.GetDims();
   auto crop_size_dims = crop_size_shape.GetDims();
 
-  if (boxes_dims[0] != UNKNOWN_DIM && box_index_dims[0] != UNKNOWN_DIM && boxes_dims[0] != box_index_dims[0]) {
-    OP_LOGE(op.GetName().c_str(), "the 0th dimension of boxes and box_index must be equal");
+  if (boxes_dims[0] != UNKNOWN_DIM &&
+      box_index_dims[0] != UNKNOWN_DIM &&
+      boxes_dims[0] != box_index_dims[0]) {
+    OP_LOGE(op.GetName().c_str(),
+            "the 0th dimension of boxes and box_index must be equal"
+            "the real dims are: boxes[0]=%lld, box_index[0]=%lld",
+            boxes_dims[0], box_index_dims[0]);
     return GRAPH_FAILED;
   }
 
   if (crop_size_dims[0] != 2 && crop_size_dims[0] != UNKNOWN_DIM) {
-    OP_LOGE(op.GetName().c_str(), "crop_size must be a 1-D tensor containing 2 elements");
+    OP_LOGE(op.GetName().c_str(),
+            "crop_size must be a 1-D tensor containing 2 elements, real dim is %lld",
+            crop_size_dims[0]);
     return GRAPH_FAILED;
   }
 
@@ -164,7 +171,17 @@ IMPLEMT_INFERFUNC(CropAndResize, CropAndResizeInfer) {
   }
 
   auto y_desc = op_desc->MutableOutputDesc(0);
-  y_desc->SetShape(GeShape(y_dims));
+  GeShape y_shape(y_dims);
+  if (!ShapeFullyDefined(y_shape)) {
+    std::vector<std::pair<int64_t, int64_t>> y_range;
+    for (const int64_t& y_dim : y_dims) {
+      y_range.push_back(y_dim == UNKNOWN_DIM ? std::pair<int64_t, int64_t>{1, -1} :
+                                               std::pair<int64_t, int64_t>{y_dim, y_dim});
+
+    }
+    y_desc->SetShapeRange(y_range);
+  }
+  y_desc->SetShape(y_shape);
   y_desc->SetDataType(DT_FLOAT);
 
   return GRAPH_SUCCESS;
@@ -253,26 +270,12 @@ IMPLEMT_INFERFUNC(CropAndResizeGradImage, CropAndResizeGradImageInfer) {
   auto boxes_dims = boxes_shape.GetDims();
   auto box_index_dims = box_index_shape.GetDims();
 
-  if (grads_dims[0] != UNKNOWN_DIM && boxes_dims[0] != UNKNOWN_DIM && box_index_dims[0] != UNKNOWN_DIM) {
-    if (grads_dims[0] != boxes_dims[0] && boxes_dims[0] != box_index_dims[0]) {
-      OP_LOGE(op.GetName().c_str(), "the 0th dimension of grads, boxes and box_index must be equal");
-      return GRAPH_FAILED;
-    }
-  } else if (grads_dims[0] != UNKNOWN_DIM && boxes_dims[0] != UNKNOWN_DIM && box_index_dims[0] == UNKNOWN_DIM) {
-    if (grads_dims[0] != boxes_dims[0]) {
-      OP_LOGE(op.GetName().c_str(), "the 0th dimension of grads, boxes and box_index must be equal");
-      return GRAPH_FAILED;
-    }
-  } else if (grads_dims[0] != UNKNOWN_DIM && boxes_dims[0] == UNKNOWN_DIM && box_index_dims[0] != UNKNOWN_DIM) {
-    if (grads_dims[0] != box_index_dims[0]) {
-      OP_LOGE(op.GetName().c_str(), "the 0th dimension of grads, boxes and box_index must be equal");
-      return GRAPH_FAILED;
-    }
-  } else if (grads_dims[0] == UNKNOWN_DIM && boxes_dims[0] != UNKNOWN_DIM && box_index_dims[0] != UNKNOWN_DIM) {
-    if (boxes_dims[0] != box_index_dims[0]) {
-      OP_LOGE(op.GetName().c_str(), "the 0th dimension of grads, boxes and box_index must be equal");
-      return GRAPH_FAILED;
-    }
+  if (!DimsAllEqualOrUnknown({grads_dims[0], boxes_dims[0], box_index_dims[0]})) {
+    OP_LOGE(op.GetName().c_str(),
+            "the 0th dimension of grads, boxes and box_index must be equal"
+            "real dims are: grads[0]=%lld, boxes[0]=%lld, box_index[0]=%lld",
+            grads_dims[0], boxes_dims[0], box_index_dims[0]);
+    return GRAPH_FAILED;
   }
 
   auto image_size_dims = image_size_shape.GetDims();
@@ -318,7 +321,17 @@ IMPLEMT_INFERFUNC(CropAndResizeGradImage, CropAndResizeGradImageInfer) {
   }
 
   auto y_desc = op_desc->MutableOutputDesc(0);
-  y_desc->SetShape(GeShape(y_dims));
+  GeShape y_shape(y_dims);
+  if (!ShapeFullyDefined(y_shape)) {
+    std::vector<std::pair<int64_t, int64_t>> y_range;
+    for (const int64_t& y_dim : y_dims) {
+      y_range.push_back(y_dim == UNKNOWN_DIM ? std::pair<int64_t, int64_t>{1, -1} :
+                                               std::pair<int64_t, int64_t>{y_dim, y_dim});
+
+    }
+    y_desc->SetShapeRange(y_range);
+  }
+  y_desc->SetShape(y_shape);
   y_desc->SetDataType(type);
 
   return GRAPH_SUCCESS;
@@ -482,19 +495,25 @@ INFER_FUNC_REG(ResizeBicubic, ResizeBicubicInfer);
 
 IMPLEMT_INFERFUNC(ResizeNearestNeighborV2Grad, ResizeNearestNeighborV2GradInfer) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-
+  auto y_desc = op_desc->MutableOutputDesc(0);
+  auto size_desc = op_desc->MutableInputDesc(1);
+  auto grads_desc = op_desc->MutableInputDesc(0);
+  if (op.GetInputDesc("grads").GetShape().GetShapeSize() == UNKNOWN_DIM || 
+      op.GetInputDesc("size").GetShape().GetShapeSize() == UNKNOWN_DIM) {
+    y_desc->SetShape(GeShape({UNKNOWN_DIM}));
+    y_desc->SetDataType(grads_desc->GetDataType());
+    return GRAPH_SUCCESS;
+  }
   // unknown shape support
   std::vector<std::string> input_infer_depends = {"size"};
   op_desc->SetOpInferDepends(input_infer_depends);
 
-  auto grads_desc = op_desc->MutableInputDesc(0);
   GeShape grads_shape;
   if (WithRank(grads_desc, 4, grads_shape) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input grads must be 4-D, real rank is %lld", grads_desc->GetShape().GetDimNum());
     return GRAPH_PARAM_INVALID;
   }
 
-  auto size_desc = op_desc->MutableInputDesc(1);
   GeShape size_shape;
   if (WithRank(size_desc, 1, size_shape) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input size must be 1-D, real rank is %lld", size_desc->GetShape().GetDimNum());
@@ -532,10 +551,18 @@ IMPLEMT_INFERFUNC(ResizeNearestNeighborV2Grad, ResizeNearestNeighborV2GradInfer)
   } else {
     OP_LOGE(op.GetName().c_str(), "Not supported this format: %d", input_format);
   }
+  GeShape output_shape(output_dims);
+  if (ShapeFullyDefined(output_shape) == false) {
+    std::vector<std::pair<int64_t, int64_t>> output_range;
+    for (const int64_t& output_dim : output_dims) {
+      output_range.push_back(output_dim == UNKNOWN_DIM ? std::pair<int64_t, int64_t>{1, -1} :
+                                               std::pair<int64_t, int64_t>{output_dim, output_dim});
 
-  auto y_desc = op_desc->MutableOutputDesc(0);
+    }
+    y_desc->SetShapeRange(output_range);
+  }
   y_desc->SetDataType(grads_desc->GetDataType());
-  y_desc->SetShape(GeShape(output_dims));
+  y_desc->SetShape(output_shape);
 
   return GRAPH_SUCCESS;
 }
@@ -696,238 +723,257 @@ IMPLEMT_INFERFUNC(DrawBoundingBoxes, DrawBoundingBoxesInfer) {
 INFER_FUNC_REG(DrawBoundingBoxes, DrawBoundingBoxesInfer);
 
 IMPLEMT_INFERFUNC(NonMaxSuppression, NonMaxSuppressionInfer) {
-  Shape boxes;
-  Shape scores;
-  Shape max_output_size;
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
 
-  if (WithRank(op.GetInputDesc(0), 2, boxes, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of boxes must be 2");
+  GeShape boxes_shape;
+  auto boxes_desc = op_desc->MutableInputDesc(0);
+  if (WithRank(boxes_desc, 2, boxes_shape) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "The rank of boxes must be 2, real rank is %lld",
+            boxes_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
-  if (WithRank(op.GetInputDesc(1), 1, scores, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of scores must be 1");
+  GeShape scores_shape;
+  auto scores_desc = op_desc->MutableInputDesc(1);
+  if (WithRank(scores_desc, 1, scores_shape) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "The rank of scores must be 1, real rank is %lld",
+            scores_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
-  if (WithRank(op.GetInputDesc(2), 0, max_output_size, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of max_output_size must be 0");
+  GeShape max_output_size_shape;
+  auto max_output_size_desc = op_desc->MutableInputDesc(2);
+  if (WithRank(max_output_size_desc, 0, max_output_size_shape) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "The rank of max_output_size must be 0, real rank is %lld",
+            max_output_size_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
-  int64_t un_used;
-
-  if (Merge(boxes.GetDim(0), scores.GetDim(0), un_used) != GRAPH_SUCCESS) {
+  int64_t unused_dim;
+  if (Merge(boxes_shape.GetDim(0), scores_shape.GetDim(0), unused_dim) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Failed to merge dim of boxes[0] and scores[0].");
     return GRAPH_FAILED;
   }
 
-  if (boxes.GetDim(1) != 4) {
-    if (boxes.GetDim(1) != UNKNOWN_DIM) {
-      OP_LOGE(op.GetName().c_str(), "The dim of boxes[1] is not 4");
-      return GRAPH_FAILED;
-    }
+  if (boxes_shape.GetDim(1) != 4 && boxes_shape.GetDim(1) != UNKNOWN_DIM) {
+    OP_LOGE(op.GetName().c_str(), "The dim of boxes[1] is not 4 but %lld", boxes_shape.GetDim(1));
+    return GRAPH_FAILED;
   }
 
-  TensorDesc out_desc = op.GetOutputDesc("selected_indices");
-  out_desc.SetShape(Shape({UNKNOWN_DIM}));
-  out_desc.SetDataType(DT_INT32);
-  return op.UpdateOutputDesc("selected_indices", out_desc);
+  auto selected_indices_desc = op_desc->MutableOutputDesc("selected_indices");
+  selected_indices_desc->SetShape(GeShape({UNKNOWN_DIM}));
+  selected_indices_desc->SetShapeRange({std::pair<int64_t, int64_t>(1, -1)});
+  selected_indices_desc->SetDataType(DT_INT32);
+  return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(NonMaxSuppression, NonMaxSuppressionInfer);
 
 IMPLEMT_INFERFUNC(NonMaxSuppressionV2, NonMaxSuppressionV2Infer) {
-  Shape boxes;
-  Shape scores;
-  Shape max_output_size;
-  Shape iouThreshold;
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
 
-  if (WithRank(op.GetInputDesc(0), 2, boxes, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of boxes must be 2");
+  GeShape boxes_shape;
+  auto boxes_desc = op_desc->MutableInputDesc(0);
+  if (WithRank(boxes_desc, 2, boxes_shape) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "The rank of boxes must be 2, real rank is %lld",
+            boxes_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
-  if (WithRank(op.GetInputDesc(1), 1, scores, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of scores must be 1");
+  GeShape scores_shape;
+  auto scores_desc = op_desc->MutableInputDesc(1);
+  if (WithRank(scores_desc, 1, scores_shape) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "The rank of scores must be 1, real rank is %lld",
+            scores_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
-  if (WithRank(op.GetInputDesc(2), 0, max_output_size, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of max_output_size must be 0");
+  GeShape max_output_size_shape;
+  auto max_output_size_desc = op_desc->MutableInputDesc(2);
+  if (WithRank(max_output_size_desc, 0, max_output_size_shape) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "The rank of max_output_size must be 0, real rank is %lld",
+            max_output_size_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
-  if (WithRank(op.GetInputDesc(3), 0, iouThreshold, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of iou_threshold must be 0");
+  GeShape iou_threshold_shape;
+  auto iou_threshold_desc = op_desc->MutableInputDesc(3);
+  if (WithRank(iou_threshold_desc, 0, iou_threshold_shape) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "The rank of iou_threshold must be 0, real rank is %lld",
+            iou_threshold_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
-  int64_t un_used;
-
-  if (Merge(boxes.GetDim(0), scores.GetDim(0), un_used) != GRAPH_SUCCESS) {
+  int64_t unused_dim;
+  if (Merge(boxes_shape.GetDim(0), scores_shape.GetDim(0), unused_dim) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Failed to merge dim of boxes[0] and scores[0].");
     return GRAPH_FAILED;
   }
 
-  if (boxes.GetDim(1) != 4) {
-    if (boxes.GetDim(1) != UNKNOWN_DIM) {
-      OP_LOGE(op.GetName().c_str(), "The dim of boxes[1] is not 4");
-      return GRAPH_FAILED;
-    }
+  if (boxes_shape.GetDim(1) != 4 && boxes_shape.GetDim(1) != UNKNOWN_DIM) {
+    OP_LOGE(op.GetName().c_str(), "The dim of boxes[1] is not 4 but %lld", boxes_shape.GetDim(1));
+    return GRAPH_FAILED;
   }
 
-  TensorDesc out_desc = op.GetOutputDesc("selected_indices");
-  out_desc.SetShape(Shape({UNKNOWN_DIM}));
-  out_desc.SetDataType(DT_INT32);
-  return op.UpdateOutputDesc("selected_indices", out_desc);
+  auto selected_indices_desc = op_desc->MutableOutputDesc("selected_indices");
+  selected_indices_desc->SetShape(GeShape({UNKNOWN_DIM}));
+  selected_indices_desc->SetShapeRange({std::pair<int64_t, int64_t>(1, -1)});
+  selected_indices_desc->SetDataType(DT_INT32);
+  return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(NonMaxSuppressionV2, NonMaxSuppressionV2Infer);
 
 IMPLEMT_INFERFUNC(NonMaxSuppressionV3, NonMaxSuppressionV3Infer) {
-  Shape boxes;
-  Shape scores;
-  Shape max_output_size;
-  Shape iouThreshold;
-  Shape scoreThreshold;
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
 
-  if (WithRank(op.GetInputDesc(0), 2, boxes, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of boxes must be 2");
+  GeShape boxes_shape;
+  auto boxes_desc = op_desc->MutableInputDesc(0);
+  if (WithRank(boxes_desc, 2, boxes_shape) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "The rank of boxes must be 2, real rank is %lld",
+            boxes_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
-  if (WithRank(op.GetInputDesc(1), 1, scores, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of scores must be 1");
+  GeShape scores_shape;
+  auto scores_desc = op_desc->MutableInputDesc(1);
+  if (WithRank(scores_desc, 1, scores_shape) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "The rank of scores must be 1, real rank is %lld",
+            scores_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
-  if (WithRank(op.GetInputDesc(2), 0, max_output_size, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of max_output_size must be 0");
+  GeShape max_output_size_shape;
+  auto max_output_size_desc = op_desc->MutableInputDesc(2);
+  if (WithRank(max_output_size_desc, 0, max_output_size_shape) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "The rank of max_output_size must be 0, real rank is %lld",
+            max_output_size_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
-  if (WithRank(op.GetInputDesc(3), 0, iouThreshold, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of iou_threshold must be 0");
+  GeShape iou_threshold_shape;
+  auto iou_threshold_desc = op_desc->MutableInputDesc(3);
+  if (WithRank(iou_threshold_desc, 0, iou_threshold_shape) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "The rank of iou_threshold must be 0, real rank is %lld",
+            iou_threshold_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
-  if (WithRank(op.GetInputDesc(4), 0, scoreThreshold, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of score_threshold must be 0");
+  GeShape score_threshold_shape;
+  auto score_threshold_desc = op_desc->MutableInputDesc(4);
+  if (WithRank(score_threshold_desc, 0, score_threshold_shape) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "The rank of score_threshold must be 0, real rank is %lld",
+            score_threshold_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
-  int64_t un_used;
-
-  if (Merge(boxes.GetDim(0), scores.GetDim(0), un_used) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to merge dim of boxes[0] and scores[0].");
+  int64_t unused_dim;
+  if (Merge(boxes_shape.GetDim(0), scores_shape.GetDim(0), unused_dim) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Failed to merge boxes[0]=%lld and scores[0]=%lld",
+            boxes_shape.GetDim(0), scores_shape.GetDim(0));
     return GRAPH_FAILED;
   }
 
-  if (boxes.GetDim(1) != 4) {
-    if (boxes.GetDim(1) != UNKNOWN_DIM) {
-      OP_LOGE(op.GetName().c_str(), "The dim of boxes[1] is not 4");
-      return GRAPH_FAILED;
-    }
+  if (boxes_shape.GetDim(1) != 4 && boxes_shape.GetDim(1) != UNKNOWN_DIM) {
+    OP_LOGE(op.GetName().c_str(), "The dim of boxes[1] is not 4 but %lld", boxes_shape.GetDim(1));
+    return GRAPH_FAILED;
   }
 
-  TensorDesc out_desc = op.GetOutputDesc("selected_indices");
-  out_desc.SetShape(Shape({UNKNOWN_DIM}));
-  out_desc.SetDataType(DT_INT32);
-  return op.UpdateOutputDesc("selected_indices", out_desc);
+  auto selected_indices_desc = op_desc->MutableOutputDesc(0);
+  selected_indices_desc->SetDataType(DT_INT32);
+  selected_indices_desc->SetShape(GeShape({UNKNOWN_DIM}));
+  selected_indices_desc->SetShapeRange({std::pair<int64_t, int64_t>(1, -1)});
+
+  return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(NonMaxSuppressionV3, NonMaxSuppressionV3Infer);
 
 IMPLEMT_INFERFUNC(NonMaxSuppressionV4, NonMaxSuppressionV4Infer) {
-  Shape boxes;
-  Shape scores;
-  Shape max_output_size;
-  Shape iouThreshold;
-  Shape scoreThreshold;
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
 
-  if (WithRank(op.GetInputDesc(0), 2, boxes, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of boxes must be 2");
+  // unknwon shape support
+  std::vector<std::string> input_infer_depends = {"max_output_size"};
+  op_desc->SetOpInferDepends(input_infer_depends);
+
+  GeShape boxes_shape;
+  auto boxes_desc = op_desc->MutableInputDesc(0);
+  if (WithRank(boxes_desc, 2, boxes_shape) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "The rank of boxes must be 2, real rank is %lld",
+            boxes_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
-  if (WithRank(op.GetInputDesc(1), 1, scores, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of scores must be 1");
+  GeShape scores_shape;
+  auto scores_desc = op_desc->MutableInputDesc(1);
+  if (WithRank(scores_desc, 1, scores_shape) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "The rank of scores must be 1, real rank is %lld",
+            scores_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
-  if (WithRank(op.GetInputDesc(2), 0, max_output_size, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of max_output_size must be 0");
+  GeShape max_output_size_shape;
+  auto max_output_size_desc = op_desc->MutableInputDesc(2);
+  if (WithRank(max_output_size_desc, 0, max_output_size_shape) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "The rank of max_output_size must be 0, real rank is %lld",
+            max_output_size_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
-  if (WithRank(op.GetInputDesc(3), 0, iouThreshold, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of iou_threshold must be 0");
+  GeShape iou_threshold_shape;
+  auto iou_threshold_desc = op_desc->MutableInputDesc(3);
+  if (WithRank(iou_threshold_desc, 0, iou_threshold_shape) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "The rank of iou_threshold must be 0, real rank is %lld",
+            iou_threshold_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
-  if (WithRank(op.GetInputDesc(4), 0, scoreThreshold, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of score_threshold must be 0");
+  GeShape score_threshold_shape;
+  auto score_threshold_desc = op_desc->MutableInputDesc(4);
+  if (WithRank(score_threshold_desc, 0, score_threshold_shape) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "The rank of score_threshold must be 0, real rank is %lld",
+            score_threshold_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
-  int64_t un_used;
-
-  if (Merge(boxes.GetDim(0), scores.GetDim(0), un_used) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to merge dim of boxes[0] and scores[0].");
+  int64_t unused_dim;
+  if (Merge(boxes_shape.GetDim(0), scores_shape.GetDim(0), unused_dim) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Failed to merge dim of boxes[0]=%lld and scores[0]=%lld.",
+            boxes_shape.GetDim(0), scores_shape.GetDim(0));
     return GRAPH_FAILED;
   }
-
-  if (boxes.GetDim(1) != 4) {
-    if (boxes.GetDim(1) != UNKNOWN_DIM) {
-      OP_LOGE(op.GetName().c_str(), "The dim of boxes[1] is not 4");
+  if (WithValue(boxes_shape.GetDim(1), 4, unused_dim, op.GetName().c_str()) != GRAPH_SUCCESS) {
+      OP_LOGE(op.GetName().c_str(), "The dim of boxes[1] is not 4, real dim is %lld",
+              boxes_shape.GetDim(1));
       return GRAPH_FAILED;
-    }
   }
 
-  bool pad_to_max;
-  if (ge::GRAPH_SUCCESS != op.GetAttr("pad_to_max_output_size", pad_to_max)) {
+  std::vector<int64_t> selected_indices_dims{UNKNOWN_DIM};
+  bool pad_to_max = false;
+  if (op.GetAttr("pad_to_max_output_size", pad_to_max) != ge::GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "The tile op GetOpAttr ConstValue failed!");
     return GRAPH_FAILED;
   }
-
-  TensorDesc out_desc = op.GetOutputDesc("selected_indices");
-  out_desc.SetDataType(DT_INT32);
-  if (!pad_to_max) {
-    out_desc.SetShape(Shape({UNKNOWN_DIM}));
-    if (op.UpdateOutputDesc("selected_indices", out_desc) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "fail to update output selected_indices.");
-      return GRAPH_FAILED;
-    }
-  } else {
-    Tensor in_tensor;
-    if (op.GetInputConstData("max_output_size", in_tensor) != GRAPH_SUCCESS) {
-      out_desc.SetShape(Shape({UNKNOWN_DIM}));
-      if (op.UpdateOutputDesc("selected_indices", out_desc) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "fail to update output selected_indices.");
+  if (pad_to_max) {
+    Tensor selected_indices_tensor;
+    if (op.GetInputConstData("max_output_size", selected_indices_tensor) == GRAPH_SUCCESS) {
+      const int32_t *selected_indices_data =
+          reinterpret_cast<const int32_t*>(selected_indices_tensor.GetData());
+      int32_t selected_indices_data_0 = *selected_indices_data;
+      if (selected_indices_data_0 < 0) {
+        OP_LOGE(op.GetName().c_str(),
+                "The tensor value of max_output_size must be non-negative, real value is %d",
+                selected_indices_data_0);
         return GRAPH_FAILED;
       }
-    } else {
-      const int32_t* size_data = reinterpret_cast<const int32_t*>(in_tensor.GetData());
-      if (*size_data < 0) {
-        OP_LOGE(op.GetName().c_str(), "The dim size of max_output_size must be non-negative");
-        return GRAPH_FAILED;
-      }
-      out_desc.SetShape(Shape({*size_data}));
-      if (op.UpdateOutputDesc("selected_indices", out_desc) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "fail to update output selected_indices.");
-        return GRAPH_FAILED;
-      }
+      selected_indices_dims[0] = selected_indices_data_0;
     }
   }
+  auto selected_indices_desc = op_desc->MutableOutputDesc("selected_indices");
+  (void)FillOpDesc(selected_indices_desc, GeShape(selected_indices_dims), DT_INT32);
 
-  TensorDesc out_desc1 = op.GetOutputDesc("valid_outputs");
-  out_desc1.SetShape(Shape());
-  out_desc1.SetDataType(DT_INT32);
-  if (op.UpdateOutputDesc("valid_outputs", out_desc1) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output valid_outputs.");
-    return GRAPH_FAILED;
-  }
+  auto valid_outputs_desc = op_desc->MutableOutputDesc("valid_outputs");
+  (void)FillOpDesc(valid_outputs_desc, GeShape(), DT_INT32);
 
   return GRAPH_SUCCESS;
 }
@@ -1051,7 +1097,7 @@ IMPLEMT_COMMON_INFERFUNC(ResizeConstInferShape) {
   y_desc->SetDataType(x_desc->GetDataType());
 
   GeShape y_shape(y_dims);
-  if (ShapeFullyDefined(y_shape) == false) {
+  if (!ShapeFullyDefined(y_shape)) {
     std::vector<std::pair<int64_t, int64_t>> y_shape_range;
     for (const int64_t& y_dim : y_dims) {
       y_shape_range.push_back((y_dim == UNKNOWN_DIM) ? std::pair<int64_t, int64_t>(1, -1)

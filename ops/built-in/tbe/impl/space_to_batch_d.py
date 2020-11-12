@@ -19,6 +19,8 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te import tvm
 from impl import space_to_batch_nd_d
+from te.utils.error_manager import error_manager_vector
+from impl.util import util_select_op_base
 
 
 # pylint: disable=invalid-name,unused-argument
@@ -33,10 +35,11 @@ def _check_param(x, y, paddings, block_size, kernel_name):
     para_check.check_dtype(dtype, dtype_list, param_name="x")
 
     if len(shape) != 5:
-        raise RuntimeError(
-            "the shape of image_input should be 5, but got: %d" % len(shape))
+        error_detail = "the shape of image_input should be 5, but got: %d" % len(shape)
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
     if block_size < 2:
-        raise RuntimeError("the attr block_size must be greater than one")
+        error_manager_vector.raise_err_input_value_invalid(kernel_name, "block_size", \
+                                                           "greater than one", block_size)
 
     _check_padding(paddings)
 
@@ -47,8 +50,8 @@ def _check_param(x, y, paddings, block_size, kernel_name):
 
     padding_height, padding_width = padding_shape[2], padding_shape[3]
     if padding_height % block_size != 0 or padding_width % block_size != 0:
-        raise RuntimeError(
-            "both height_pad and width_pad must be divisible by block_size")
+        error_detail = "both height_pad and width_pad must be divisible by block_size"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "paddings", error_detail)
 
     output_shape = (padding_shape[0] * block_size * block_size,
                     padding_shape[1], padding_shape[2] // block_size,
@@ -61,19 +64,33 @@ def _check_padding(paddings):
     check the paddings
     """
     if len(paddings) != 2 or len(paddings[0]) != 2 or len(paddings[1]) != 2:
-        raise RuntimeError("the shape of paddings should be 2x2")
+        error_detail = "the shape of paddings should be 2x2"
+        error_manager_vector.raise_err_input_shape_invalid("space_to_batch_d", "paddings", \
+                                                           error_detail)
 
     def _check_padding_val(val):
         """
         check the padding value
         """
         if not (isinstance(val, int) and val >= 0):
-            raise RuntimeError("paddings should be integer and must be >= 0")
+            error_detail = "paddings should be integer and must be >= 0"
+            error_manager_vector.raise_err_input_shape_invalid("space_to_batch_d", "paddings", \
+                                                           error_detail)
 
     _check_padding_val(paddings[0][0])
     _check_padding_val(paddings[0][1])
     _check_padding_val(paddings[1][0])
     _check_padding_val(paddings[1][1])
+
+
+def get_op_support_info(x, y, block_size, paddings, kernel_name="space_to_batch_d"):
+    """
+    get split info
+    """
+    axis_split_list = None
+    axis_reduce_list = None
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_list, axis_reduce_list)
+    return op_cal_info_in_json
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,

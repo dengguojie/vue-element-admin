@@ -39,5 +39,5 @@ class AddKernel : public CpuKernel {
   template <int32_t RANK, typename T>
   static void AddCalculate(CalcInfo &calc_info);
 };
-} // namespace aicpu
-#endif   // _AICPU_AICPU_DEVICE_CPU_KERNELS_KERNELS_ADD_KERNEL_H_
+}  // namespace aicpu
+#endif  // _AICPU_AICPU_DEVICE_CPU_KERNELS_KERNELS_ADD_KERNEL_H_

@@ -23,6 +23,7 @@ from te import platform as cceconf
 from te import tvm
 from te.platform import log
 from te.platform import cce_emitinsn_params
+from te.utils.error_manager.error_manager_util import get_error_message
 from .cce_schedule_declarations import OpSpecTypes
 from .util import get_align_factor
 from .util import dfs_tensor_graph
@@ -281,7 +282,10 @@ class VectorSchedule(object):
         l1_fusion_type = self._fusion_params.get("l1_fusion_type",
                                                  GET_DEFAULT_VALUE)
         if l1_fusion_type == L1_BREADTH_FUSION:
-            raise RuntimeError("L1 fusion only support depth fusion!")
+            dict_args = dict()
+            dict_args["errCode"] = "E90003"
+            dict_args["detailed_cause"] = "L1 fusion only support depth fusion!"
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
         self._is_l1fusion = l1_fusion_type == L1_DEPTH_FUSION
 
@@ -528,7 +532,12 @@ class VectorSchedule(object):
                     self._schedule[out_tensor].bind_buffer(
                         out_tensor.op.axis[1], hwc0, 0)
                 else:
-                    raise RuntimeError("select write only support 5HD!")
+                    dict_args = dict()
+                    dict_args["errCode"] = "E90003"
+                    dict_args["detailed_cause"] = "select write only support" \
+                                                  " 5HD! while out_tensor " \
+                                                  "shape len is [%s]" % len(out_tensor.shape)
+                    raise RuntimeError(dict_args, get_error_message(dict_args))
 
         for stage in self._emit_insn_map:
             scope_iter_var = self._emit_insn_map[stage]["scope"]
@@ -607,10 +616,6 @@ class VectorSchedule(object):
                 if (temp_size * i) > bound_size:
                     split_size = i - 1
                     break
-
-            if bound_size == 30:
-                while shape[split_axis] % split_size != 0:
-                    split_size -= 1
 
         return split_axis, split_size
 

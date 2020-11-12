@@ -126,13 +126,13 @@ Status RangeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     int constData2;
     int constData3;
     if (ge::GRAPH_SUCCESS != op.GetAttr("start", constData1)) {
-      return GRAPH_FAILED;
+      return NOT_CHANGED;
     }
     if (ge::GRAPH_SUCCESS != op.GetAttr("limit", constData2)) {
-      return GRAPH_FAILED;
+      return NOT_CHANGED;
     }
     if (ge::GRAPH_SUCCESS != op.GetAttr("delta", constData3)) {
-      return GRAPH_FAILED;
+      return NOT_CHANGED;
     }
     int assist_num;
     int assist_num_one;
@@ -144,13 +144,13 @@ Status RangeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     float constData2;
     float constData3;
     if (ge::GRAPH_SUCCESS != op.GetAttr("start", constData1)) {
-      return GRAPH_FAILED;
+      return NOT_CHANGED;
     }
     if (ge::GRAPH_SUCCESS != op.GetAttr("limit", constData2)) {
-      return GRAPH_FAILED;
+      return NOT_CHANGED;
     }
     if (ge::GRAPH_SUCCESS != op.GetAttr("delta", constData3)) {
-      return GRAPH_FAILED;
+      return NOT_CHANGED;
     }
     float assist_num;
     float assist_num_one;

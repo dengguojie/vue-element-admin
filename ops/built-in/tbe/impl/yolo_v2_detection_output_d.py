@@ -22,10 +22,26 @@ from te import tik
 from impl import constant_util as constant
 from impl import common_util
 from impl import yolo_v2_cls_prob
+from impl.util import util_select_op_base
 
 # 10k
 UB_NUM = 10240
 PRE_NMS_TOPN = 1024
+
+
+def get_op_support_info(coord_data, obj_prob, classes_prob,
+                        img_info, windex, hindex,
+                        box_out, box_out_num,
+                        biases, boxes=5, coords=4,
+                        classes=80, relative=True, obj_threshold=0.5,
+                        post_nms_topn=1024, score_threshold=0.5,
+                        iou_threshold=0.45, pre_nms_topn=1024,
+                        kernel_name="yolo_v2_detection_output_d"):
+    """
+    get split info
+    only support split N
+    """
+    return util_select_op_base.get_split_n_info([0, 1, 2, 3], [0, 1])
 
 
 def yolo_v2_detection_output_d(coord_data, obj_prob, classes_prob,

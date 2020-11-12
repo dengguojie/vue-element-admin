@@ -28,10 +28,12 @@ from te import platform as cce
 from te import tvm
 from te.platform.cce_build import build_config
 from topi.cce import util
-
+from te.utils import para_check
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
-from te.utils.op_utils import *
+from te.utils.error_manager import error_manager_vector
+from impl.util.util_common import write_code
+
 
 MAX_REPEAT_NUM = 255
 BLOCK_BYTE = 32
@@ -1441,12 +1443,13 @@ def _multi_in_multi_out_fun_large(num_segments, input_buf, segment_ids,
             params.device_core_num = 1
 
     else:
+        if ids_buf_len > params.unified_buffer_len // 2 or one_time_len <= 0:
+            return False        
         if params.src_dtype == "float16" and params.element_len % one_time_len < 16:
             params.device_core_num = 1
         if params.src_dtype in("float32", "int32") and params.element_len % one_time_len < 8:
             params.device_core_num = 1
-        if ids_buf_len > params.unified_buffer_len // 2 or one_time_len <= 0:
-            return False
+
     element_len = params.element_len
     if params.src_dtype == "int8" or params.src_dtype == "uint8":
         _apply_bufs_cast(ids_len, one_time_len, one_time_len, params)
@@ -1742,25 +1745,6 @@ def _multi_in_multi_out_fun_ids(num_segments, input_buf, segment_ids, params):
     _multi_core(_core_func, num_segments, params)
 
     return True
-
-
-def _write_code(wkspace_dict, fname):
-    """
-    write workspaces to json file
-
-    """
-    fname = os.path.realpath(fname)
-    if fname.startswith(os.getcwd()):
-        if os.path.exists(fname):
-            with open(fname, "r") as f_var:
-                load_dict = json.load(f_var)
-            load_dict.update(wkspace_dict)
-            with open(fname, "w") as f_var:
-                json.dump(load_dict,
-                          f_var,
-                          sort_keys=True,
-                          indent=4,
-                          separators=(',', ':'))
 
 
 def _new_alloc(tvm_ib, dtype, shape, name, scope, double_buffer=False):
@@ -2576,7 +2560,8 @@ def _intrin_factor(in_shape, num_segments, dtype, ins, output_buf, gm_align):
 
 
 # pylint: disable=locally-disabled,too-many-arguments,invalid-name
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def unsorted_segment_sum_d(x,
                            segment_ids,
                            y,
@@ -2603,19 +2588,21 @@ def unsorted_segment_sum_d(x,
     """
     shape_x = x.get("shape")
     shape_y = segment_ids.get("shape")
-    check_shape(shape_x, param_name="x")
-    check_shape(shape_y, param_name="segment_ids")
+    para_check.check_shape(shape_x, param_name="x")
+    para_check.check_shape(shape_y, param_name="segment_ids")
     if num_segments <= 0:
-        raise RuntimeError("num_segments must be more than 0.")
+        error_manager_vector.raise_err_input_value_invalid(kernel_name, "num_segments", \
+                                                           "more than 0", num_segments)
     check_list = ("float16", "float32", "int32", "int8", "uint8")
     dtype = x.get("dtype").lower()
     dtype_segment_ids = segment_ids.get("dtype").lower()
-    check_dtype(dtype, check_list, param_name="x")
-    check_dtype(dtype_segment_ids, check_list, param_name="segment_ids")
+    para_check.check_dtype(dtype, check_list, param_name="x")
+    para_check.check_dtype(dtype_segment_ids, check_list, param_name="segment_ids")
     if len(shape_y) == 1:
         if shape_x[0] != shape_y[0]:
-            raise RuntimeError(
-                "shape_x and shape_y are not the same length at axis 0.")
+            error_detail = "shape_x and shape_y are not the same length at axis 0."
+            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", \
+                                                               "segment_ids", error_detail)
 
         if len(shape_x) == 1:
             shape_x = (shape_x[0], 1)
@@ -2635,15 +2622,14 @@ def unsorted_segment_sum_d(x,
         len_shape_x = len(shape_x)
         len_shape_y = len(shape_y)
         if len_shape_x < len_shape_y:
-            raise RuntimeError(
-                "len of input should be larger or equal than len of"
-                "segment_ids"
-            )
+            error_detail = "len of input should be larger or equal than len of segment_ids"
+            error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", \
+                                                                   "segment_ids", error_detail)
 
         if not operator.eq(shape_x[0:len_shape_y], shape_y):
-            raise RuntimeError(
-                "the front of input shape should be same with the segment_ids"
-                " shape")
+            error_detail = "the front of input shape should be same with the segment_ids shape"
+            error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", \
+                                                                   "segment_ids", error_detail)
 
         if len_shape_x == len_shape_y:
             shape_x = (_get_prod(shape_x), 1)
@@ -2676,17 +2662,17 @@ def unsorted_segment_sum_d(x,
     if (not large_flag) and (dtype == "float32") and \
             (align_flag or shape_x[-1] == 1):
         parameter_dict = {"parameters": [0, 0, 1]}
-        _write_code(parameter_dict, "kernel_meta/" + kernel_name + ".json")
+        write_code(parameter_dict, kernel_name)
     elif (dtype == "float16") and (shape_x[1] % 128 == 0) and \
             _is_all_ids_in(shape_x, num_segments, dtype, segment_ids) and \
             _check_repeat_valid((shape_x[1], ), dtype):
         parameter_dict = {"parameters": [0, 0, 1]}
-        _write_code(parameter_dict, "kernel_meta/" + kernel_name + ".json")
+        write_code(parameter_dict, kernel_name)
     else:
         size_align = 1 * dtype_size + 32
         total_size = [size_align]
         num_workspace = 1
         workspace_dict = \
             {"workspace": {"num": num_workspace, "size": total_size}}
-        _write_code(workspace_dict, "kernel_meta/" + kernel_name + ".json")
+        write_code(workspace_dict,  kernel_name)
 

@@ -12,26 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
+"""
+model run utils
+"""
 import os
 import re
+import stat
 import ctypes
 from ctypes import Structure
 from ctypes import c_int
 from ctypes import c_char_p
 from functools import reduce as func_reduce
+from multiprocessing import Pool
+from op_test_frame.utils import file_util
 
 SO_NAME = "libmodel_run_tool.so"
 
 CAMODEL_LOG_PATH_ENV = "CAMODEL_LOG_PATH"
 LD_LIBRARY_PATH_ENV = "LD_LIBRARY_PATH"
+DATA_DIR_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
 
-run_mode = None
-model_soc_version = None
-simulator_path = None
-op_run_utils = None
-simulator_so_handlers = []
-mode_setted = False
+RUN_MODE = None
+MODEL_SOC_VERSION = None
+SIMULATOR_PATH = None
+OP_RUN_UTILS = None
+SIMULATOR_SO_HANDLERS = []
+MODE_SETTED = False
 
 SUPPORT_MODEL_LIST = ["pv", "ca", "tm"]
 MODEL_SO_LIST_MAP = {
@@ -44,35 +50,48 @@ MODEL_SO_LIST_MAP = {
 
 
 def set_run_mode(mode, soc_version, simulator_dir):
-    global run_mode
-    global simulator_path
-    global model_soc_version
-    global mode_setted
-    if mode_setted:
+    """
+    set run mode
+    :param mode: can be "pv", "tm"
+    :param soc_version: soc verison
+    :param simulator_dir: simulator dir
+    :return: None
+    """
+    global RUN_MODE  # pylint: disable=global-statement
+    global SIMULATOR_PATH  # pylint: disable=global-statement
+    global MODEL_SOC_VERSION  # pylint: disable=global-statement
+    global MODE_SETTED  # pylint: disable=global-statement
+    if MODE_SETTED:
         if mode not in MODEL_SO_LIST_MAP.keys():
             raise RuntimeError(
                 "Not support mode: %s, supported mode is [%s]." % (mode, ",".join(MODEL_SO_LIST_MAP.keys())))
 
-        if run_mode != mode:
+        if RUN_MODE != mode:
             raise RuntimeError(
                 "Only support run one mode in process, current run mode is %s, try to set mode %s failed." % (
-                    run_mode, mode))
+                    RUN_MODE, mode))
 
-        if model_soc_version != soc_version:
+        if MODEL_SOC_VERSION != soc_version:
             raise RuntimeError("Only support run one soc version, current soc version: %s, try run soc version: %s" % (
-                model_soc_version, soc_version))
+                MODEL_SOC_VERSION, soc_version))
 
     else:
-        simulator_dir_soc_path = os.path.join(os.path.realpath(simulator_dir), soc_version, "lib")
+        simulator_dir = os.path.realpath(simulator_dir)
+        simulator_dir_soc_path = os.path.join(simulator_dir, soc_version, "lib")
         load_simulator_so(mode, simulator_dir_soc_path)
         os.environ['LD_LIBRARY_PATH'] = os.environ['LD_LIBRARY_PATH'] + ":" + simulator_dir_soc_path
-        mode_setted = True
-        model_soc_version = soc_version
-        simulator_path = simulator_dir
-        run_mode = mode
+        common_data_path = os.path.join(simulator_dir, "common", "data")
+        os.environ['LD_LIBRARY_PATH'] = os.environ['LD_LIBRARY_PATH'] + ":" + common_data_path
+        MODE_SETTED = True
+        MODEL_SOC_VERSION = soc_version
+        SIMULATOR_PATH = simulator_dir
+        RUN_MODE = mode
 
 
-class OpPrams(Structure):
+class OpPrams(Structure):  # pylint: disable=too-few-public-methods, too-many-instance-attributes
+    """
+    op params
+    """
     _fields_ = [("inputCnt", c_int),
                 ("outputCnt", c_int),
                 ("inputSizes", c_char_p),
@@ -85,42 +104,58 @@ class OpPrams(Structure):
 
 
 def load_simulator_so(run_mode_tmp, simulator_dir):
+    """
+    load simulator so
+    :param run_mode_tmp: run_mode
+    :param simulator_dir: simulator directory
+    :return: None
+    """
     so_list = MODEL_SO_LIST_MAP[run_mode_tmp]
     for so_name in so_list:
         so_path = os.path.join(simulator_dir, so_name)
         so_handler = ctypes.CDLL(so_path, mode=ctypes.RTLD_GLOBAL)
-        simulator_so_handlers.append(so_handler)
+        SIMULATOR_SO_HANDLERS.append(so_handler)
 
 
 def load_model_run_tool_so():
-    global op_run_utils
-    if not mode_setted:
+    """
+    load model run tool so
+    :return: None
+    """
+    global OP_RUN_UTILS  # pylint: disable=global-statement
+    if not MODE_SETTED:
         raise RuntimeError(
             "Not set run model, please call set_run_mode(mode, soc_version, simulator_dir), "
             "you may not set simulator mode or simulator lib path")
-    if op_run_utils:
+    if OP_RUN_UTILS:
         # already loaded
         return
     lib_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "libs")
     so_path = os.path.join(lib_path, SO_NAME)
     if os.path.isfile(so_path):
-        op_run_utils = ctypes.CDLL(so_path, mode=ctypes.RTLD_LOCAL)
+        OP_RUN_UTILS = ctypes.CDLL(so_path, mode=ctypes.RTLD_LOCAL)
         return
     if os.environ.get(LD_LIBRARY_PATH_ENV):
         all_ld_paths = os.environ[LD_LIBRARY_PATH_ENV].split(":")
-        for onePath in all_ld_paths:
-            so_path = os.path.join(onePath, SO_NAME)
+        for one_path in all_ld_paths:
+            so_path = os.path.join(one_path, SO_NAME)
             if os.path.isfile(so_path):
-                op_run_utils = ctypes.cdll.LoadLibrary(so_path)
-                break;
+                OP_RUN_UTILS = ctypes.cdll.LoadLibrary(so_path)
+                break
 
-    if not op_run_utils:
+    if not OP_RUN_UTILS:
         raise RuntimeError("Not found %s in LD_LIBRARY_PATH, please check your configuration." % SO_NAME)
-    if op_run_utils:
-        op_run_utils.RunOp.argtypes = [OpPrams]
+    if OP_RUN_UTILS:
+        OP_RUN_UTILS.RunOp.argtypes = [OpPrams]
 
 
 def calc_input_size(shape, dtype):
+    """
+    calc input size
+    :param shape: shape
+    :param dtype: dtype
+    :return: input size
+    """
     bit_cnt = int(re.findall(r"\d+", dtype)[0])
     byte_cnt = bit_cnt / 8
     shape_size = func_reduce(lambda x, y: x * y, shape)
@@ -128,6 +163,11 @@ def calc_input_size(shape, dtype):
 
 
 def check_op_params(op_param):
+    """
+    check op param
+    :param op_param: op param
+    :return: True or False
+    """
     op_param_info_keys = op_param.keys()
 
     if "binFilePath" not in op_param_info_keys:
@@ -143,6 +183,11 @@ def check_op_params(op_param):
 
 
 def build_model_run_params(op_param):
+    """
+    build model run params
+    :param op_param: op param
+    :return: run param
+    """
     # check input count match input shape and data path info
     op_param_info_keys = op_param.keys()
     input_infos = []
@@ -157,32 +202,47 @@ def build_model_run_params(op_param):
         print("[Warning] this op param has no output info")
 
     model_run_params = OpPrams()
-    model_run_params.inputCnt = c_int(len(input_infos))
-    model_run_params.outputCnt = c_int(len(output_infos))
+    # this is match c++ object, so is camel case
+    model_run_params.inputCnt = c_int(len(input_infos))  # pylint: disable=invalid-name, attribute-defined-outside-init
+    model_run_params.outputCnt = c_int(  # pylint: disable=invalid-name, attribute-defined-outside-init
+        len(output_infos))
     input_data_path = ";".join([x["dataPath"] for x in input_infos])
     output_data_path = ";".join([x["dataPath"] for x in output_infos])
-    model_run_params.inputDataPaths = bytes(input_data_path, encoding="utf8")
-    model_run_params.outputDataPaths = bytes(output_data_path, encoding="utf8")
-    model_run_params.binFilePath = bytes(op_param["binFilePath"], encoding="utf8")
-    model_run_params.kernelFuncName = bytes(op_param["kernelFuncName"], encoding="utf8")
-    model_run_params.jsonFilePath = bytes(op_param["jsonFilePath"], encoding="utf8")
+    model_run_params.inputDataPaths = bytes(  # pylint: disable=invalid-name, attribute-defined-outside-init
+        input_data_path, encoding="utf8")
+    model_run_params.outputDataPaths = bytes(  # pylint: disable=invalid-name, attribute-defined-outside-init
+        output_data_path, encoding="utf8")
+    model_run_params.binFilePath = bytes(  # pylint: disable=invalid-name, attribute-defined-outside-init
+        op_param["binFilePath"], encoding="utf8")
+    model_run_params.kernelFuncName = bytes(  # pylint: disable=invalid-name, attribute-defined-outside-init
+        op_param["kernelFuncName"], encoding="utf8")
+    model_run_params.jsonFilePath = bytes(  # pylint: disable=invalid-name, attribute-defined-outside-init
+        op_param["jsonFilePath"], encoding="utf8")
     input_sizes = [calc_input_size(x["shape"], x["dtype"]) for x in input_infos]
     output_sizes = [calc_input_size(x["shape"], x["dtype"]) for x in output_infos]
     input_size_str = ";".join([str(ipt_size) for ipt_size in input_sizes])
-    model_run_params.inputSizes = bytes(input_size_str, encoding="utf8")
+    model_run_params.inputSizes = bytes(  # pylint: disable=invalid-name, attribute-defined-outside-init
+        input_size_str, encoding="utf8")
     output_size_str = ";".join([str(opt_size) for opt_size in output_sizes])
-    model_run_params.outputSizes = bytes(output_size_str, encoding="utf8")
+    model_run_params.outputSizes = bytes(  # pylint: disable=invalid-name, attribute-defined-outside-init
+        output_size_str, encoding="utf8")
     return model_run_params
 
 
 def set_camodel_log_path(ca_model_log_path):
-    # if has "CAMODEL_LOG_PATH" env, and not ca_model_log_path, use default env config
-    # if has "CAMODEL_LOG_PATH" env, and ca_model_log_path is not none,
-    #       set ca_model_log_path to env, and reset env after call
-    # if has not "CAMODEL_LOG_PATH" env, and ca_model_log_path is none,
-    #       set "./model" to env, and clear env after call
-    # if has not "CAMODEL_LOG_PATH" env, and ca_model_log_path is not none,
-    #       set ca_model_log_path to env, and clear env after call
+    """
+    set_camodel_log_path
+        if has "CAMODEL_LOG_PATH" env, and not ca_model_log_path, use default env config
+        if has "CAMODEL_LOG_PATH" env, and ca_model_log_path is not none,
+            set ca_model_log_path to env, and reset env after call
+        if has not "CAMODEL_LOG_PATH" env, and ca_model_log_path is none,
+              set "./model" to env, and clear env after call
+        if has not "CAMODEL_LOG_PATH" env, and ca_model_log_path is not none,
+             set ca_model_log_path to env, and clear env after call
+    :param ca_model_log_path: ca model log path
+    :return: None
+    """
+
     if ca_model_log_path:
         new_log_path = ca_model_log_path
     old_log_path = os.environ.get(CAMODEL_LOG_PATH_ENV)
@@ -192,7 +252,7 @@ def set_camodel_log_path(ca_model_log_path):
         new_log_path = os.path.realpath(new_log_path)
         print(new_log_path)
         if not os.path.exists(new_log_path):
-            os.makedirs(new_log_path)
+            file_util.makedirs(new_log_path, DATA_DIR_MODES)
         os.environ[CAMODEL_LOG_PATH_ENV] = new_log_path
 
     return new_log_path, old_log_path
@@ -211,15 +271,16 @@ def _run_op(params):
             "kernelFuncName": "cce_add_1_1_float32__kernel0",
             "jsonFilePath": "kernel_meta/cce_add_1_float32.json"
         }
-    :param ca_model_log_path: the ca model dump file saved path, default is ./model or your environment config "CAMODEL_LOG_PATH", this param will cover default and your env configuration
+    :param ca_model_log_path: the ca model dump file saved path, default is ./model
+    or your environment config "CAMODEL_LOG_PATH", this param will cover default and your env configuration
     :return:
     """
-    global op_run_utils
+    global OP_RUN_UTILS  # pylint: disable=global-statement
 
     op_param = params.get("op_param")
     ca_model_log_path = params.get("ca_model_log_path")
 
-    if not op_run_utils:
+    if not OP_RUN_UTILS:
         load_model_run_tool_so()
 
     if not check_op_params(op_param):
@@ -229,7 +290,7 @@ def _run_op(params):
 
     new_log_path, old_log_path = set_camodel_log_path(ca_model_log_path)
 
-    op_run_utils.RunOp(model_run_param)
+    OP_RUN_UTILS.RunOp(model_run_param)
 
     if new_log_path:
         if old_log_path:
@@ -239,7 +300,6 @@ def _run_op(params):
 
 
 def _run_op_on_ca(op_param, ca_model_log_path=None):
-    from multiprocessing import Pool
     with Pool(processes=1) as pool:
         pool.map(_run_op, [{"op_param": op_param, "ca_model_log_path": ca_model_log_path}, ])
 
@@ -257,12 +317,13 @@ def run_op(op_param, ca_model_log_path=None):
             "kernelFuncName": "cce_add_1_1_float32__kernel0",
             "jsonFilePath": "kernel_meta/cce_add_1_float32.json"
         }
-    :param ca_model_log_path: the ca model dump file saved path, default is ./model or your environment config "CAMODEL_LOG_PATH", this param will cover default and your env configuration
+    :param ca_model_log_path: the ca model dump file saved path, default is:
+     ./model or your environment config "CAMODEL_LOG_PATH", this param will cover default and your env configuration
     :return:
     """
-    global op_run_utils
+    global OP_RUN_UTILS  # pylint: disable=global-statement
 
-    if run_mode == 'ca':
+    if RUN_MODE == 'ca':
         _run_op_on_ca(op_param, ca_model_log_path)
     else:
         _run_op({"op_param": op_param, "ca_model_log_path": ca_model_log_path})

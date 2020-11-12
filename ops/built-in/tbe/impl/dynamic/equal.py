@@ -15,22 +15,14 @@
 """
 dynamic equal
 """
-import te.lang.dynamic
+import te.lang.cce as tbe
 from te import platform as tbe_platform
+import te.lang.base as tbe_base
 from te import tvm
-from te.platform.shape_classifier import classify
-from te.platform.shape_classifier import Mode
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import check_elewise_shape_range
-from te.utils.op_utils import variable_shape
-from te.utils.op_utils import refine_shapes_for_broadcast
-from te.utils.op_utils import broadcast_shapes
-from te.utils.op_utils import OP_ERROR_CODE_018
-from topi import generic
+from te.utils import shape_util
+from te.lang.base.shape_classifier import classify
+from te.lang.base.shape_classifier import Mode
+from te.utils import para_check
 
 # define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
 SCALAR_MIN_FP32 = 2 ** (-126)
@@ -68,9 +60,9 @@ def equal_compute(input_x, input_y, output_z, kernel_name="equal"):
         the result of compute
     """
     dtype_x = input_x.dtype
-    shape_x = te.lang.dynamic.shape_to_list(input_x.shape)
-    shape_y = te.lang.dynamic.shape_to_list(input_y.shape)
-    shape_x, shape_y, shape_broad = broadcast_shapes(shape_x, shape_y,
+    shape_x = shape_util.shape_to_list(input_x.shape)
+    shape_y = shape_util.shape_to_list(input_y.shape)
+    shape_x, shape_y, shape_broad = shape_util.broadcast_shapes(shape_x, shape_y,
                                                      param_name_input1="input_x",
                                                      param_name_input2="input_y")
 
@@ -85,37 +77,38 @@ def equal_compute(input_x, input_y, output_z, kernel_name="equal"):
         scalar_one = tvm.const(-1 * SCALAR_ONE, dtype="float16")
 
     if dtype_x in ("int8", "uint8"):
-        input_x = te.lang.dynamic.cast_to(input_x, "float16")
-        input_y = te.lang.dynamic.cast_to(input_y, "float16")
+        input_x = tbe.cast_to(input_x, "float16")
+        input_y = tbe.cast_to(input_y, "float16")
 
-    x_brod = te.lang.dynamic.broadcast(input_x, shape_broad)
-    y_brod = te.lang.dynamic.broadcast(input_y, shape_broad)
+    x_brod = tbe.broadcast(input_x, shape_broad)
+    y_brod = tbe.broadcast(input_y, shape_broad)
 
-    res_vsub = te.lang.dynamic.vsub(x_brod, y_brod)
-    if tbe_platform.cce_conf.api_check_support("te.lang.dynamic.vabs",
+    res_vsub = tbe.vsub(x_brod, y_brod)
+    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vabs",
                                                res_vsub.dtype):
-        res_vabs = te.lang.dynamic.vabs(res_vsub)
+        res_vabs = tbe.vabs(res_vsub)
     else:
-        res_vsub = te.lang.dynamic.cast_to(res_vsub, "float32")
-        res_vabs = te.lang.dynamic.vabs(res_vsub)
-    res_min = te.lang.dynamic.vmins(res_vabs, scalar_min)
-    res_vmul = te.lang.dynamic.vmuls(res_min, scalar_mul)
-    res_vmul1 = te.lang.dynamic.vmuls(res_vmul, scalar_mul)
+        res_vsub = tbe.cast_to(res_vsub, "float32")
+        res_vabs = tbe.vabs(res_vsub)
+    res_min = tbe.vmins(res_vabs, scalar_min)
+    res_vmul = tbe.vmuls(res_min, scalar_mul)
+    res_vmul1 = tbe.vmuls(res_vmul, scalar_mul)
 
     if dtype_x == "float32":
-        res_vmul2 = te.lang.dynamic.vmuls(res_vmul1, scalar_mul1)
-        res_vsub1 = te.lang.dynamic.vadds(res_vmul2, scalar_one)
-        res_vabs1 = te.lang.dynamic.vabs(res_vsub1)
+        res_vmul2 = tbe.vmuls(res_vmul1, scalar_mul1)
+        res_vsub1 = tbe.vadds(res_vmul2, scalar_one)
+        res_vabs1 = tbe.vabs(res_vsub1)
     else:
-        res_vsub1 = te.lang.dynamic.vadds(res_vmul1, scalar_one)
-        res_vabs1 = te.lang.dynamic.vabs(res_vsub1)
+        res_vsub1 = tbe.vadds(res_vmul1, scalar_one)
+        res_vabs1 = tbe.vabs(res_vsub1)
 
-    res = te.lang.dynamic.cast_to(res_vabs1, "int8", True)
+    res = tbe.cast_to(res_vabs1, "int8", True)
     return res
 
 
-@te.op.register_operator("Equal")
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@tbe_base.register_operator("Equal")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def equal(input_x, input_y, output_z, kernel_name="equal"):
     """
     Returns the truth value of (x = y) element-wise
@@ -144,12 +137,12 @@ def equal(input_x, input_y, output_z, kernel_name="equal"):
     x_dtype = input_x.get("dtype").lower()
     y_dtype = input_y.get("dtype").lower()
     check_list = ("float16", "float32", "int32", "uint8", "int8")
-    check_dtype(x_dtype, check_list, param_name="input_x")
-    check_dtype(y_dtype, check_list, param_name="input_y")
-    check_elewise_shape_range([input_x, input_y], support_broadcast=True)
+    para_check.check_dtype(x_dtype, check_list, param_name="input_x")
+    para_check.check_dtype(y_dtype, check_list, param_name="input_y")
+    para_check.check_elewise_shape_range([input_x, input_y], support_broadcast=True)
     if x_dtype != y_dtype:
         error_info = {}
-        error_info['errCode'] = OP_ERROR_CODE_018
+        error_info['errCode'] = para_check.OP_ERROR_CODE_018
         error_info['op_name'] = 'equal'
         error_info['param_name1'] = 'x_dtype'
         error_info['param_name2'] = 'y_dtype'
@@ -167,17 +160,16 @@ def equal(input_x, input_y, output_z, kernel_name="equal"):
     ins = classify([input_x, input_y], Mode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (input_x, input_y) in ins:
-        with te.op.compute():
-            x_shape, y_shape = variable_shape([input_x, input_y],
-                                              support_broadcast=True)
-            x_shape, y_shape = refine_shapes_for_broadcast(x_shape, y_shape)
+        with tbe_base.compute():
+            x_shape, y_shape = shape_util.variable_shape([input_x, input_y], support_broadcast=True)
+            x_shape, y_shape = shape_util.refine_shapes_for_broadcast(x_shape, y_shape)
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")
             tensor_y = tvm.placeholder(y_shape, y_dtype, "tensor_y")
             res = equal_compute(tensor_x, tensor_y, output_z, kernel_name)
             tensors.append([tensor_x, tensor_y, res])
         with tvm.target.cce():
-            sch = generic.auto_schedule(res)
+            sch = tbe.auto_schedule(res)
         schedules.append(sch)
 
     config = {"name": kernel_name, "tensor_list": tensors}
-    te.lang.dynamic.build(schedules, config)
+    tbe.build(schedules, config)

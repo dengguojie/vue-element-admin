@@ -78,6 +78,8 @@ PATTERN_CONVINT32_DEQUANT_QUANT_DOUBLEOUT = 7
 PATTERN_CONVINT32_DEQUANT_QUANT_DOUBLEOUT_BIAS = 8
 PATTERN_CONVFP16_QUANT = 9
 PATTERN_CONVFP16_QUANT_BIAS = 10
+PATTERN_CONVFP16_ELE_QUANT_DOUBLEOUT = 11
+PATTERN_CONVFP16_ELE_QUANT_DOUBLEOUT_BIAS = 12
 MAX_ELEMENT_OP_NUM = 20
 SINGLE_OP_NUMBER_BIT = 6
 BINARY_OP_NUMBER_BIT = 6
@@ -348,25 +350,44 @@ def reget_tensor_list(outs):
     if check_conv_bn1(outs):
         conv_out, _, _ = outs
         conv_res_shape = tuple(conv_out.shape)
+        # add for group pattern
+        conv_shape = (
+            ConvParam.para_dict["a_shape"][0],
+            (ConvParam.para_dict["weight_ori_shape_nchw"][0] + 16 - 1) // 16,
+            ConvParam.h_out*ConvParam.w_out, 16)
+        cout1_opt = ConvParam.para_dict["cout1_opt"]
+        # end for group pattern
         reduce_shape = (conv_res_shape[1], conv_res_shape[3])
         k_0 = tvm.reduce_axis((0, conv_res_shape[0]), name='k_0')
         k_1 = tvm.reduce_axis((0, conv_res_shape[2]), name='k_1')
         cub = conv_out.op.input_tensors[0]
         c_col = cub.op.input_tensors[0]
         c_ub = tvm.compute(cub.shape,
-                           lambda n, i, j, k: c_col(n, i, j, k),
+                           lambda g, n, i, j, k: c_col(g, n, i, j, k),
                            name='c_ub',
                            tag="convolution_" + "c_ub",
                            attrs=cub.op.attrs)
         ConvParam.tensor_map["c_ub"] = c_ub
-        c_res = tvm.compute(conv_res_shape,
-                            lambda *indice: c_ub(*indice),
-                            name="C",
-                            tag="convolution_" + "C")
-        ConvParam.tensor_map["C"] = c_res
+        # add for group pattern
+        if ConvParam.para_dict["group"] == 1:
+            res_c = tvm.compute(conv_shape,
+                                lambda batch, cout1, howo, cout0:
+                                c_ub(0, batch, cout1, howo, cout0),
+                                name='C',
+                                tag="convolution_" + "C",
+                                attrs={"width_out": ConvParam.w_out})
+        else:
+            res_c = tvm.compute(conv_shape,
+                                lambda batch, cout1, howo, cout0:
+                                c_ub(cout1 // cout1_opt, batch, cout1 % cout1_opt, howo, cout0),
+                                name='C',
+                                tag="convolution_" + "C",
+                                attrs={"width_out": ConvParam.w_out})
+        ConvParam.tensor_map["C"] = res_c
+        # end for group pattern
         cast_0_ub = tvm.compute(conv_res_shape,
                                 lambda *indice:
-                                c_res(*indice).astype("float16"),
+                                res_c(*indice).astype("float16"),
                                 name="cast_0_ub")
         cast_0 = tvm.compute(conv_res_shape,
                              lambda *indice: cast_0_ub(*indice),
@@ -489,7 +510,7 @@ def reset_mask_insn(i_b, type_, bits=128, mask_func=None):
         tvm.const(mask2, dtype="uint64")))
 
 
-def check_feature_map(tiling_new, al1_factor):
+def check_feature_map(tiling_new, al1_factor, axis_sequence):
     """
     check whether feature_map is overload
 
@@ -500,19 +521,49 @@ def check_feature_map(tiling_new, al1_factor):
     al1_factor: al1_factor[0] == 1 means AL1 k is full load,
                 al1_factor[1] == 1 means AL1 m is full load
 
+    axis_sequence: axis_sequence true means M axis out of N
+                   axis_sequence flase means N axis out of M
+
     Returns
     -------
     true for overload, false for not overload
     """
     if tiling_new["block_dim"][1] > 1:
         return True
-    if al1_factor[0] != 1:
+    if not axis_sequence:
         return True
     if ((ConvParam.stride_h < ConvParam.filter_h or
          ConvParam.stride_w < ConvParam.filter_w) and (al1_factor[1] != 1)):
         return True
 
     return False
+
+
+def check_axis_sequence(reorder_flag, bl1_factor, al1_factor, block_dim):
+    """
+    check M N axis sequence
+
+    Parameters
+    ----------
+    reorder_flag : reorder_flag
+
+    al1_factor: al1_factor[0] == 1 means AL1 k is full load,
+                al1_factor[1] == 1 means AL1 m is full load
+
+    bl1_factor: bl1_factor[0] == 1 means BL1 k is full load,
+                bl1_factor[1] == 1 means BL1 m is full load
+
+    block_dim: block_dim
+
+    Returns
+    -------
+    true for (M out of N), false for (N out of M)
+    """
+    bl1_at_c_axis_value = bl1_factor[1]//block_dim[1]
+    #AL1 compute_at in m_outer_outer_outer_inner
+    axis_sequence = (al1_factor[0] == 1 and reorder_flag) or \
+            (al1_factor[0] == 1 and (not reorder_flag) and bl1_at_c_axis_value == 1)
+    return axis_sequence
 
 
 class CceConvOp:
@@ -589,7 +640,8 @@ class CceConvOp:
                                "elewise_single_lrelu": "vector_auto",
                                "elewise_binary_addrelu": "vector_addrelu",
                                "elewise_binary_subrelu": "vector_subrelu",
-                               "elewise_multiple_sel": "vector_select_bool"}
+                               "elewise_multiple_sel": "vector_select_bool",
+                               "elewise_single_rec": "vector_rec"}
         self._l1_size = cce_conf.get_soc_spec("L1_SIZE")
         self._corenum = cce_conf.get_soc_spec("CORE_NUM")
         self._ub_size = cce_conf.get_soc_spec("UB_SIZE")
@@ -878,6 +930,9 @@ class CceConvOp:
                         if cache_buffer.dtype == "float16":
                             double_num_cl0 += 1
 
+                    for cache_buffer in v200_fm2_cache_buffer:
+                        double_num_cl0 += 1
+
                 return double_num_cl0
 
             def get_compress_tiling_shape(tiling_ok_flag):
@@ -952,6 +1007,10 @@ class CceConvOp:
                     special_mode_dict["use_c04_mode"] = ConvC04Mode.V100_MODE.value
                 elif c04_v200_flag:
                     special_mode_dict["use_c04_mode"] = ConvC04Mode.V200_MODE.value
+                if res.op.tag == "conv_virtual_res" and w_dtype == "float16":
+                    special_mode_dict["convfp16_double_out"] = True
+                else:
+                    special_mode_dict["convfp16_double_out"] = False
                 in_mem = list(map(int, self._input_memory_type))
                 out_mem = list(map(int, self._output_memory_type))
                 pooling_shape = [0, 0]
@@ -962,13 +1021,17 @@ class CceConvOp:
                 elif self.conv_pool_2_2_fused_flag:
                     pooling_shape = [POOLING_2_2_WINDOW, POOLING_2_2_WINDOW]
                     pooling_stride = [POOLING_STRIDE, POOLING_STRIDE]
+                if res.op.tag == "conv_virtual_res":
+                    c_dtype = "int8"
+                else:
+                    c_dtype = res_dtype
                 info_dict = {"op_type": 'conv2d',
                              "a_shape": fmap_shape_nc1hwc0,
                              "b_shape": shape_w_nc1hwc0,
                              "c_shape": c_shape,
                              "a_dtype": in_dtype,
                              "b_dtype": w_dtype,
-                             "c_dtype": res_dtype,
+                             "c_dtype": c_dtype,
                              "mad_dtype": mad_dtype,
                              "pad": [ConvParam.pad_w[0], ConvParam.pad_w[1],
                                      ConvParam.pad_h[0], ConvParam.pad_h[1]],
@@ -1215,8 +1278,8 @@ class CceConvOp:
             h_out = ConvParam.h_out
 
             c_ub_shape = list(tensor_map["c_ub"].shape)
-            c_shape = [c_ub_shape[0], c_ub_shape[1],
-                       h_out, w_out, c_ub_shape[3]]
+            c_shape = [c_ub_shape[1], c_ub_shape[2],
+                       h_out, w_out, c_ub_shape[4]]
             if self._dynamic_mode:
                 c_shape = list(c_shape)
             else:
@@ -1268,6 +1331,10 @@ class CceConvOp:
                         special_mode_dict["use_c04_mode"] = ConvC04Mode.V100_MODE.value
                     elif c04_v200_flag:
                         special_mode_dict["use_c04_mode"] = ConvC04Mode.V200_MODE.value
+                    if res.op.tag == "conv_virtual_res" and w_dtype == "float16":
+                        special_mode_dict["convfp16_double_out"] = True
+                    else:
+                        special_mode_dict["convfp16_double_out"] = False
                     info_dict = {"op_type": 'conv2d',
                                  "a_shape": fmap_shape_nc1hwc0,
                                  "b_shape": shape_w_nc1hwc0,
@@ -1637,7 +1704,11 @@ class CceConvOp:
                 if has_vector_flag and not ConvParam.swrite_flag:
                     if double_buffer_flag["UBG_pbuffer"] == 2:
                         if self._fused_flag:
-                            sch[res_ub].double_buffer()
+                            if res.op.name != "conv_virtual_res":
+                                sch[res_ub].double_buffer()
+                            else:
+                                sch[self._res_tensor.op.input_tensors[0].op.input_tensors[0]].double_buffer()
+                                sch[self._res_tensor.op.input_tensors[1].op.input_tensors[0]].double_buffer()
                         else:
                             sch[self._res_tensor.op.input_tensors[0]].double_buffer()
 
@@ -1681,20 +1752,20 @@ class CceConvOp:
                         sch[c_col_bias].emit_insn(c_col_bias.op.axis[0],
                                                   'phony_insn')
                     else:
-                        sch[bias_l0c].pragma(bias_l0c.op.axis[0],
+                        sch[bias_l0c].pragma(bias_l0c.op.axis[1],
                                              'reuse_output', 1)
-                        sch[c_col_bias].pragma(c_col_bias.op.axis[0],
+                        sch[c_col_bias].pragma(c_col_bias.op.axis[1],
                                                'replace_output', 1)
-                        sch[c_col_bias].pragma(c_col_bias.op.axis[0], 'empty')
+                        sch[c_col_bias].pragma(c_col_bias.op.axis[1], 'empty')
                         sch[c_col].pragma(k_outer_inner, 'replace_output', 1)
 
                     if bias_optimize_flag:
                         _, _ = sch[bias_l0c].split(
-                            bias_l0c.op.axis[2], 16)
+                            bias_l0c.op.axis[3], 16)
                         sch[bias_l0c].emit_insn(
-                            bias_l0c.op.axis[1], 'dma_copy')
+                            bias_l0c.op.axis[2], 'dma_copy')
                         sch[bias_ub].emit_insn(bias_ub.op.axis[0], 'dma_copy')
-                        sch[bias_ub_brc].emit_insn(bias_ub_brc.op.axis[0],
+                        sch[bias_ub_brc].emit_insn(bias_ub_brc.op.axis[1],
                                                    'vector_auto')
                     else:
                         sch[bias_l0c].emit_insn(
@@ -1866,7 +1937,7 @@ class CceConvOp:
                 V100 quant emit_insn and pragma
                 """
                 if self._lhisi_dequant_quant_para['deq_vector']:
-                    sch[c_ub].pragma(c_ub.op.axis[2], 'deq_scale', 'vector')
+                    sch[c_ub].pragma(c_ub.op.axis[3], 'deq_scale', 'vector')
                 else:
                     sch[c_ub].pragma(c_ub.op.axis[0], 'deq_scale', 'scalar')
 
@@ -1920,7 +1991,7 @@ class CceConvOp:
                 if weight_dtype == "float16":
                     return weight_compress_tiling_size*2, weight_shape_size*2
 
-                raise RuntimeError("weight compress only support int8 and float16")
+                err_man.raise_err_value_or_format_invalid("conv2d_compress", "weight", "float16 or int8", "")
 
             def get_all_factor(k_or_n_number):
                 """
@@ -2198,12 +2269,12 @@ class CceConvOp:
                 pragma for v100 quant situation
                 """
                 if not self._v200_data_flow_type and self._lhisi_data_flow_type is None:
-                    sch[c_ub].emit_insn(c_ub.op.axis[0], 'dma_copy')
+                    sch[c_ub].emit_insn(c_ub.op.axis[1], 'dma_copy')
                 else:
                     # for v200 dequant, performance will be better
-                    # when emit_insn on axis[2]
+                    # when emit_insn on axis[3]
                     if is_support_v200():
-                        sch[c_ub].emit_insn(c_ub.op.axis[2], 'dma_copy')
+                        sch[c_ub].emit_insn(c_ub.op.axis[3], 'dma_copy')
 
             def handle_l0a_emit_insn():
                 """
@@ -2215,7 +2286,7 @@ class CceConvOp:
                     if strideh_opti_flag:
                         setfmatrix_dict["conv_stride_h"] = 1
                     sch[fmap_col_before].emit_insn(
-                        fmap_col_before.op.axis[0],
+                        fmap_col_before.op.axis[1],
                         'set_fmatrix', setfmatrix_dict)
                     sch[fmap_col].emit_insn(new_fmap_col_axis[3], 'im2col')
 
@@ -2241,7 +2312,7 @@ class CceConvOp:
                 emit_insn in v200 situation
                 """
                 if self._v200_data_flow_type == DataFlowType.S32TOS8:
-                    sch[c_ub_reform].emit_insn(c_ub_reform.op.axis[2], 'dma_copy')
+                    sch[c_ub_reform].emit_insn(c_ub_reform.op.axis[3], 'dma_copy')
                 elif self._v200_data_flow_type in [DataFlowType.S16ELTWISES8,
                                                    DataFlowType.S16ELTWISES8S16]:
                     if "requant_s16_vaddrelu" in tensor_map:
@@ -2308,18 +2379,31 @@ class CceConvOp:
             if c_ub_reform is not None:
                 sch[c_result_ub_deq].compute_inline()
                 reform_outer, reform_inner = sch[c_ub_reform].split(
-                    c_ub_reform.op.axis[3], nparts=2)
+                    c_ub_reform.op.axis[-1], nparts=2)
                 sch[c_ub_reform].compute_at(sch[res_c], m_outer_inner_outer)
-                sch[c_ub_reform].reorder(c_ub_reform.op.axis[0],
-                                         c_ub_reform.op.axis[1],
-                                         reform_outer,
-                                         c_ub_reform.op.axis[2],
-                                         reform_inner)
-                sch[c_ub_reform].buffer_align(
-                    (1, 1),
-                    (1, 1),
-                    (1, CUBE_MKN[c_result_ub_deq.dtype]["mac"][0]),
-                    (1, CUBE_MKN[c_result_ub_deq.dtype]["mac"][2]))
+                if len(c_ub_reform.op.axis) == 5:
+                    sch[c_ub_reform].reorder(c_ub_reform.op.axis[0],
+                                             c_ub_reform.op.axis[1],
+                                             c_ub_reform.op.axis[2],
+                                             reform_outer,
+                                             c_ub_reform.op.axis[3],
+                                             reform_inner)
+                    sch[c_ub_reform].buffer_align(
+                        (1, 1),
+                        (1, 1), (1, 1),
+                        (1, CUBE_MKN[c_result_ub_deq.dtype]["mac"][0]),
+                        (1, CUBE_MKN[c_result_ub_deq.dtype]["mac"][2]))
+                else:
+                    sch[c_ub_reform].reorder(c_ub_reform.op.axis[0],
+                                             c_ub_reform.op.axis[1],
+                                             reform_outer,
+                                             c_ub_reform.op.axis[2],
+                                             reform_inner)
+                    sch[c_ub_reform].buffer_align(
+                        (1, 1),
+                        (1, 1),
+                        (1, CUBE_MKN[c_result_ub_deq.dtype]["mac"][0]),
+                        (1, CUBE_MKN[c_result_ub_deq.dtype]["mac"][2]))
 
         def checkout_quant_dequant(res, tensor_map):
             """
@@ -2338,7 +2422,7 @@ class CceConvOp:
                 """
                 check dataflow according to current op.tag
                 """
-                if temp_tensor.op.tag == "conv_virtual_res":
+                if temp_tensor.op.tag == "conv_virtual_res" and tensor_map['c_col'].dtype == "int32":
                     self._lhisi_data_flow_type = DataFlowTypeLhisi.S32TOFP16S8
                 elif "dequant1" in temp_tensor.op.tag:
                     if not self._lhisi_data_flow_type:
@@ -2400,9 +2484,11 @@ class CceConvOp:
             """
             add a cache write stage at the end for v100 dequant+eletwise fusion
             """
+            wselect_swrite_flag = "strided_write" in res.op.name and "write_select" in res.op.input_tensors[0].op.name
+
             if self._lhisi_data_flow_type == DataFlowTypeLhisi.S32TOFP16:
                 if "dequant_remove_pad" not in res.op.tag and "write_select" not in res.op.name and \
-                        not ConvParam.swrite_dequant_flag:
+                        not ConvParam.swrite_dequant_flag and not wselect_swrite_flag:
                     c_ub_res = sch.cache_write(res_c, cce.scope_ubuf)
                     tensor_map["c_ub_res"] = c_ub_res
 
@@ -2590,6 +2676,7 @@ class CceConvOp:
                     (None, None),
                     (None, None),
                     (None, None),
+                    (None, None),
                     (None, kernel_h),
                     (None, None),
                     (None, None))
@@ -2627,16 +2714,17 @@ class CceConvOp:
                 if c04_v200_flag:
                     sch[fmap_col_before].buffer_align(
                         (1, 1),
+                        (1, 1),
                         (__lcm(w_out, 16), __lcm(w_out, 16)),
                         (1, 1), (1, 1), (1, 1),
                         (1, CUBE_MKN[fmap_col_before.dtype]["mac"][1]))
                 elif self._conv1d_split_w_flag:
                     sch[fmap_col_before].buffer_align(
-                        (1, 1), (1, 1), (1, 1), (1, 1), (1, 1),
+                        (1, 1), (1, 1), (1, 1), (1, 1), (1, 1), (1, 1),
                         (1, CUBE_MKN[fmap_col_before.dtype]["mac"][1]))
                 else:
                     sch[fmap_col_before].buffer_align(
-                        (1, 1), (w_out, w_out), (1, 1), (1, 1), (1, 1),
+                        (1, 1), (1, 1), (w_out, w_out), (1, 1), (1, 1), (1, 1),
                         (1, CUBE_MKN[fmap_col_before.dtype]["mac"][1]))
 
         def _non_convolution_body_set_scope():
@@ -2705,8 +2793,8 @@ class CceConvOp:
             """
             calculate double_num and update tensor_map for v100 situation
             """
-            if "write_select" in res.op.name or ("write_select" in res.op.input_tensors[0].op.name and \
-                    self._v200_data_flow_type in (DataFlowType.S32TOS8, DataFlowType.S32TOFP16)):
+            if "write_select" in res.op.name or ("strided_write" in res.op.name and \
+                    "write_select" in res.op.input_tensors[0].op.name):
                 self._write_select = True
                 double_num, tensor_map = checkout_quant_dequant(res.op.input_tensors[0], tensor_map)
             else:
@@ -2806,7 +2894,8 @@ class CceConvOp:
                 """
                 res ub tensor compute at flag
                 """
-                flag = has_vector_flag and self._fused_flag and not ConvParam.swrite_flag
+                flag = has_vector_flag and self._fused_flag and res.op.name != "conv_virtual_res" and \
+                not ConvParam.swrite_flag
                 return flag
 
             def _fuse_body_ops_compute_at():
@@ -2819,38 +2908,6 @@ class CceConvOp:
                 else:
                     pass
 
-            def _buffertile_pooling(lop):
-                """
-                for conv + 3*3pooling fusion, tile UB for data reuse
-                """
-                offset_bound_first = int_ceil_div(al1_nparts, block_dim[2])*al1_facter_pooling*POOLING_STRIDE*block_tile
-                offset_bound = (m_outer_outer_outer_inner*al1_facter_pooling + m_outer_outer_inner)*POOLING_STRIDE + 1
-                offset_bound += (offset_bound_first - pooling_padding[0])
-                offset_bound_first -= (pooling_padding[0]*block_tile)
-
-                extend_first = POOLING_WINDOW*conv_w
-                extend = POOLING_STRIDE*conv_w
-                if conv_w % 16 != 0:
-                    extend_first = int_ceil_div(extend_first, 16)*16
-                    extend = int_ceil_div(extend, 16)*16
-                self._schedule[lop["dst_buffer"]].buffer_tile(
-                    (None, None),
-                    (None, None),
-                    (tvm.select(
-                        m_outer_outer_outer_inner.var == 0,
-                        tvm.select(m_outer_outer_inner.var == 0,
-                                   offset_bound_first*conv_w,
-                                   offset_bound*conv_w),
-                        offset_bound*conv_w),
-                     tvm.select(
-                         m_outer_outer_outer_inner.var == 0,
-                         tvm.select(m_outer_outer_inner.var == 0,
-                                    extend_first,
-                                    extend),
-                         extend)),
-                    (None, None),
-                )
-
             def _pooling_reused(pooling_bias_add, pooling_relu):
                 """
                 force op relu reuse the buffer of C
@@ -2860,56 +2917,141 @@ class CceConvOp:
                     if conv_w % 16 != 0 and pooling_relu is not None:
                         sch[pooling_relu].reused_by(ConvParam.tensor_map["C"])
 
-            def al1_nparts_flag(lop):
+            def _compute_at_handle_continue_flag():
                 """
-                pool fuse, al1 nparts flag
+                Return the continue flag in body ops compute at handle process.
+                True means go on comput at process.
+                False means no need go on.
                 """
-                flag = (self.conv_pool_fused_flag or self.conv_pool_2_2_fused_flag) and \
-                len(lop["dst_buffer"].shape) == 4
-                return flag
+                continue_flg = self._lhisi_data_flow_type or (lop["op"] == "conv_vector_remove_pad") or \
+                        (self._v200_data_flow_type is not None) or (lop["op"] == "mean_out" and self._convbn1_flag) or \
+                        ("pooling2d_max" in lop["op"])
+                read_write_select_flg = ("fusion_fmap_select" in lop["op"]) or \
+                        ("write_select" in lop["op"] and not ConvParam.swrite_flag)
+                return continue_flg or read_write_select_flg
+
+            def _body_ops_major_compute_at_handle(lop, pooling_bias_add, pooling_relu):
+                """
+                Body ops major compute_at handle for convfp16 fusion.
+                """
+                def _body_ops_compute_at_flag(lop):
+                    """
+                    Return the compute_at flag in body ops compute at handle process.
+                    True means enter into this branch to do comput at.
+                    False means go to the next branch to do compute at.
+                    """
+                    compute_at_flag = lop["dst_buffer"].op.name != "fmap_l1" and \
+                            lop["dst_buffer"].op.tag not in ("strided_read", "strided_write") and \
+                            lop["dst_buffer"].op.tag != "aipp_res" and lop["dst_buffer"].op.name != "conv_virtual_res"
+                    return compute_at_flag
+
+                def al1_nparts_flag(lop):
+                    """
+                    pool fuse, al1 nparts flag
+                    """
+                    flag = (self.conv_pool_fused_flag or self.conv_pool_2_2_fused_flag) and \
+                    len(lop["dst_buffer"].shape) == 4 or ("conv_vector_bias_add" in lop["op"] \
+                    and (self.conv_pool_fused_flag or self.conv_pool_2_2_fused_flag))
+                    return flag
+
+                def _buffertile_pooling(lop):
+                    """
+                    for conv + 3*3pooling fusion, tile UB for data reuse
+                    """
+                    offset_bound_first = int_ceil_div(al1_nparts, block_dim[2])*al1_facter_pooling*POOLING_STRIDE*block_tile
+                    offset_bound = (m_outer_outer_outer_inner*al1_facter_pooling + m_outer_outer_inner)*POOLING_STRIDE + 1
+                    offset_bound += (offset_bound_first - pooling_padding[0])
+                    offset_bound_first -= (pooling_padding[0]*block_tile)
+
+                    extend_first = POOLING_WINDOW*conv_w
+                    extend = POOLING_STRIDE*conv_w
+                    if conv_w % 16 != 0:
+                        extend_first = int_ceil_div(extend_first, 16)*16
+                        extend = int_ceil_div(extend, 16)*16
+                    if ConvParam.para_dict["group"] == 1 and "conv_vector_bias_add" in lop["op"]:
+                        self._schedule[lop["dst_buffer"]].buffer_tile(
+                            (None, None),
+                            (None, None),
+                            (None, None),
+                            (tvm.select(
+                                m_outer_outer_outer_inner.var == 0,
+                                tvm.select(m_outer_outer_inner.var == 0,
+                                           offset_bound_first*conv_w,
+                                           offset_bound*conv_w),
+                                offset_bound*conv_w),
+                             tvm.select(
+                                 m_outer_outer_outer_inner.var == 0,
+                                 tvm.select(m_outer_outer_inner.var == 0,
+                                            extend_first,
+                                            extend),
+                                 extend)),
+                            (None, None),
+                        )
+                    else:
+                        self._schedule[lop["dst_buffer"]].buffer_tile(
+                            (None, None),
+                            (None, None),
+                            (tvm.select(
+                                m_outer_outer_outer_inner.var == 0,
+                                tvm.select(m_outer_outer_inner.var == 0,
+                                           offset_bound_first*conv_w,
+                                           offset_bound*conv_w),
+                                offset_bound*conv_w),
+                             tvm.select(
+                                 m_outer_outer_outer_inner.var == 0,
+                                 tvm.select(m_outer_outer_inner.var == 0,
+                                            extend_first,
+                                            extend),
+                                 extend)),
+                            (None, None),
+                        )
+
+                if _body_ops_compute_at_flag(lop):
+                    if lop["op"] == "input_ub":
+                        quant_input = tensor_map["quant_input"]
+                        if quant_input.op.attrs["c_out"].value % 2 == 1:
+                            self._schedule[lop["dst_buffer"]].compute_at(self._schedule[res_c], m_outer_inner_outer)
+                            self._lhisi_dequant_quant_para["quant_padding"] = True
+                        else:
+                            self._schedule[lop["dst_buffer"]].compute_inline()
+                    else:
+                        self._schedule[lop["dst_buffer"]].compute_at(
+                            self._schedule[self._compute_at_buffer[1]],
+                            self._compute_at_axis[1])
+
+                if al1_nparts_flag(lop):
+                    al1_nparts = int_ceil_div(pooling_out[0], al1_facter_pooling)
+                    if self.conv_pool_fused_flag:
+                        _buffertile_pooling(lop)
+                    if lop["dst_buffer"].op.tag in ("elewise_single_relu", "elewise_single_lrelu"):
+                        pooling_relu = lop["dst_buffer"]
+                    if lop["dst_buffer"].op.tag == "conv_vector_bias_add":
+                        pooling_bias_add = lop["dst_buffer"]
+
+                if not self._fused_flag:
+                    if _body_ops_compute_at_flag(lop):
+                        self._schedule[lop["dst_buffer"]].buffer_align(
+                            (1, 1),
+                            (1, 1), (1, 1),
+                            (1, tiling[
+                                "CL0_matrix"][1]*tiling["CL0_matrix"][2]),
+                            (1, 1))
+                return pooling_bias_add, pooling_relu
 
             pooling_bias_add = None
             pooling_relu = None
             for lop in self._op_graph.body_ops:
                 if (("convolution" not in lop["op"]) or ("convolution_A" in lop["op"])) or \
                         (self._fused_flag and (lop["op"] == "convolution_C")):
-                    continue_flg = self._lhisi_data_flow_type or (lop["op"] == "conv_vector_remove_pad") or \
-                        (self._v200_data_flow_type is not None) or (lop["op"] == "mean_out" and self._convbn1_flag) or \
-                        ("pooling2d_max" in lop["op"])
 
-                    read_write_select_flg = ("fusion_fmap_select" in lop["op"]) or \
-                        ("write_select" in lop["op"] and not ConvParam.swrite_flag)
-
-                    if continue_flg or read_write_select_flg:
+                    if _compute_at_handle_continue_flag():
                         continue
 
-                    compute_at_flag = lop["dst_buffer"].op.name != "fmap_l1" and \
-                        lop["dst_buffer"].op.tag not in ("strided_read", "strided_write") and \
-                        lop["dst_buffer"].op.tag != "aipp_res"
-
-                    if compute_at_flag:
-                        self._schedule[lop["dst_buffer"]].compute_at(
-                            self._schedule[self._compute_at_buffer[1]],
-                            self._compute_at_axis[1])
-                    if al1_nparts_flag(lop):
-                        al1_nparts = int_ceil_div(pooling_out[0], al1_facter_pooling)
-                        if self.conv_pool_fused_flag:
-                            _buffertile_pooling(lop)
-                        if lop["dst_buffer"].op.tag in ("elewise_single_relu", "elewise_single_lrelu"):
-                            pooling_relu = lop["dst_buffer"]
-                        if lop["dst_buffer"].op.tag == "conv_vector_bias_add":
-                            pooling_bias_add = lop["dst_buffer"]
-                    if not self._fused_flag:
-                        if compute_at_flag:
-                            self._schedule[lop["dst_buffer"]].buffer_align(
-                                (1, 1),
-                                (1, 1),
-                                (1, tiling[
-                                    "CL0_matrix"][1]*tiling["CL0_matrix"][2]),
-                                (1, 1))
+                    pooling_bias_add, pooling_relu = _body_ops_major_compute_at_handle(lop, pooling_bias_add, pooling_relu)
 
                 _fuse_body_ops_compute_at()
-            _pooling_reused(pooling_bias_add, pooling_relu)
+            if not set_biasrelu_optim_flag():
+                _pooling_reused(pooling_bias_add, pooling_relu)
 
         def _body_ops_convbn1_flag(multiout_ub2):
             """
@@ -2987,6 +3129,7 @@ class CceConvOp:
                 self._schedule[c_ub].buffer_tile(
                     (None, None),
                     (None, None),
+                    (None, None),
                     (tvm.select(m_outer_outer_outer_inner.var == 0,
                                 tvm.select(m_outer_outer_inner.var == 0,
                                            offset_bound_first,
@@ -3000,6 +3143,7 @@ class CceConvOp:
                     (None, None),
                 )
                 sch[c_col].buffer_tile(
+                    (None, None),
                     (None, None),
                     (None, None),
                     (tvm.select(m_outer_outer_outer_inner.var == 0,
@@ -3036,6 +3180,7 @@ class CceConvOp:
 
                 sch[fmap_col].buffer_tile(
                     (None, None),
+                    (None, None),
                     (tvm.select(m_outer_outer_outer_inner.var == 0,
                                 tvm.select(m_outer_outer_inner.var == 0,
                                            fmap_col_offset_bound_first
@@ -3068,6 +3213,7 @@ class CceConvOp:
                     fcol_before_offset_bound_first -= align_16_nums*conv_w
 
                 sch[fmap_col_before].buffer_tile(
+                    (None, None),
                     (None, None),
                     (tvm.select(m_outer_outer_outer_inner.var == 0,
                                 fcol_before_offset_bound_first,
@@ -3133,6 +3279,7 @@ class CceConvOp:
                     fcol_before_offset_bound_first -= align_16_nums * conv_w
 
                 sch[fmap_col_before].buffer_tile(
+                    (None, None),
                     (None, None),
                     (fcol_before_offset_bound_first, extend_fmap_col_before_first),
                     (None, None),
@@ -3203,7 +3350,7 @@ class CceConvOp:
                 flag = self._aipp_fuse_flag and al1.op.attrs["input_format"] == "YUV420SP_U8"
                 return flag
 
-            def c04_v200_flag():
+            def c04_and_v200_flag():
                 """
                 v200 and c04 flag.
                 """
@@ -3229,7 +3376,7 @@ class CceConvOp:
 
                     howo_offset = data_in_l1*mooo
 
-                    if c04_v200_flag():
+                    if c04_and_v200_flag():
                         howo_offset = howo_offset // __lcm(width_out, 16)*__lcm(width_out, 16)
 
                     ho_offset = howo_offset // width_out
@@ -3241,7 +3388,7 @@ class CceConvOp:
 
                     yuv_align = hi_offset % 2
 
-                    if c04_v200_flag():
+                    if c04_and_v200_flag():
                         pad_offset = tvm.select(
                             tvm.any(hi_offset_with_pad >= 0,
                                     hi_offset_with_pad <= -ConvParam.padding[0]),
@@ -3324,28 +3471,28 @@ class CceConvOp:
             stride_h, _ = c_ub.op.attrs['stride']
             l0c_mc, l0c_m0 = tiling['CL0_matrix'][1:3]
             stride_update = 1 if strideh_opti_flag else stride_h
+            fmap_shape_nc1hwc0 = ConvParam.tiling_query_param.get("fmap_shape_nc1hwc0")
+            _, fmap_c1, _, _, fmap_c0 = fmap_shape_nc1hwc0
             if tiling['AL1_shape']:
                 al1_m = tiling['AL1_shape'][1]*l0c_mc*l0c_m0
             else:
                 al1_m_raw = int_ceil_div_tvm(dim_map["out_img_shape"][-2], al1_factor[1])
                 al1_m = int_ceil_div_tvm(al1_m_raw, l0c_m0)*l0c_m0
 
-            if l0a_load2d_flag:
-                return al1_m
-
-            if al1_m % w_out == 0:
-                extend_h = 0
-            elif al1_m*2 % w_out == 0:
-                extend_h = 1
-            else:
-                extend_h = 2
-            ho_len = tvm.floordiv(al1_m, w_out) + extend_h
-            hi_max = c_ub.op.attrs['kernel_h'] + (ho_len - 1)*stride_update
-
+            if not l0a_load2d_flag:
+                if al1_m % w_out == 0:
+                    extend_h = 0
+                elif al1_m*2 % w_out == 0:
+                    extend_h = 1
+                else:
+                    extend_h = 2
+                ho_len = tvm.floordiv(al1_m, w_out) + extend_h
+                hi_max = c_ub.op.attrs['kernel_h'] + (ho_len - 1)*stride_update
+                al1_m = hi_max*ConvParam.w_in
             if tiling["AL1_shape"]:
-                al1_bound = hi_max*w_out*tiling["AL1_shape"][0]*l0c_m0
+                al1_bound = al1_m*tiling["AL1_shape"][0]*fmap_c0
             else:
-                al1_bound = hi_max*w_out*dim_map['out_img_shape'][1]*l0c_m0
+                al1_bound = al1_m*fmap_c1*fmap_c0
 
             return al1_bound
 
@@ -3540,12 +3687,10 @@ class CceConvOp:
             sch.set_var_range(var_map['batch_n'], batch_range[0],
                               batch_range[1])
 
-        if cce_conf.get_soc_spec("SOC_VERSION") in \
-                ("Ascend310", "Hi3796CV300ES") or is_support_v200():
-            double_num, tensor_map = \
-                _mini_or_hisi_checkout_quant_dequant(tensor_map)
+        double_num, tensor_map = \
+            _mini_or_hisi_checkout_quant_dequant(tensor_map)
         double_operand_num_fetch()
-        if is_support_v200():
+        if is_support_v200() or tensor_map['c_col'].dtype != "int32":
             self._lhisi_data_flow_type = None
 
         # mark if sread + conv + swrite or conv + swrite
@@ -3561,8 +3706,9 @@ class CceConvOp:
                                  swrite_stride*swrite_hw*swrite_c0,
                                  0)
             if swrite_stride*swrite_hw*swrite_c0 > BIND_BUFFER_MAX:
-                raise RuntimeError(
-                    "swrite_stride*hw*c0 exceeds int32 limitation!")
+                err_man.raise_err_scene_limitation("conv2d", "stride_write",
+                                                   "swrite_stride*hw*c0", "smaller than int32")
+
             if "quant" in res.op.input_tensors[0].op.tag:
                 for i, j in enumerate(self._op_graph.body_ops):
                     if j["op"] == "quant":
@@ -3725,27 +3871,27 @@ class CceConvOp:
         elif self.conv_pool_2_2_fused_flag:
             sch[c_ub].buffer_align((1, 1),
                                    (1, 1),
+                                   (1, 1),
                                    (16, 16),
                                    (1, 1))
         else:
-            sch[c_ub].buffer_align((1, 1),
+            sch[c_ub].buffer_align((1, 1), (1, 1),
                                    (1, 1),
                                    (1, CUBE_MKN[c_ub.dtype]["mac"][0]),
                                    (1, CUBE_MKN[c_ub.dtype]["mac"][2]))
 
         has_vector_flag = False
 
-        if not ((cce_conf.get_soc_spec("SOC_VERSION") in \
-            ("Ascend310", "Hi3796CV300ES") or is_support_v200()) \
-        and ConvParam.res_dtype == 'int32') and not self.conv_pool_fused_flag \
-        and not self.conv_pool_2_2_fused_flag:
+        if not (ConvParam.res_dtype == 'int32') \
+                and not self.conv_pool_fused_flag \
+                and not self.conv_pool_2_2_fused_flag:
             has_vector_flag = (c_ub.op.attrs['no_vector'].value == 0)
 
         if self._convbn1_flag or "write_select" in \
                 self._op_graph.output_ops[0]["op"]:
             has_vector_flag = 0
 
-        if (has_vector_flag and self._fused_flag) or \
+        if (has_vector_flag and self._fused_flag and res.op.name != "conv_virtual_res") or \
                 (self._v200_data_flow_type == DataFlowType.V200_GENERAL_FUSION and
                  res.op.name != "conv_virtual_res" and res.op.tag != "quant" and not self._write_select):
             if not ConvParam.swrite_flag:
@@ -3885,36 +4031,36 @@ class CceConvOp:
         factor_k = tiling["AL0_matrix"][1]
 
         a1_axis, a3_axis = sch[fmap_col].split(
-            sch[fmap_col].op.axis[1], factor_m)
+            sch[fmap_col].op.axis[2], factor_m)
         a2_axis, a4_axis = sch[fmap_col].split(
-            sch[fmap_col].op.axis[2], factor_k)
+            sch[fmap_col].op.axis[3], factor_k)
 
         # split N begin
         fmap_col_no, fmap_col_ni = sch[fmap_col].split(
-            sch[fmap_col].op.axis[0], 1)
+            sch[fmap_col].op.axis[1], 1)
 
-        sch[fmap_col].reorder(
-            fmap_col_no, a1_axis, a2_axis, fmap_col_ni, a3_axis, a4_axis,
-            sch[fmap_col].op.axis[3], sch[fmap_col].op.axis[4])
+        sch[fmap_col].reorder(sch[fmap_col].op.axis[0],
+                              fmap_col_no, a1_axis, a2_axis, fmap_col_ni, a3_axis, a4_axis,
+                              sch[fmap_col].op.axis[4], sch[fmap_col].op.axis[5])
         new_fmap_col_axis = [fmap_col_no, a1_axis, a2_axis,
                              fmap_col_ni, a3_axis, a4_axis,
-                             sch[fmap_col].op.axis[3],
-                             sch[fmap_col].op.axis[4]]
+                             sch[fmap_col].op.axis[4],
+                             sch[fmap_col].op.axis[5]]
         # split N end
 
         # in certain case, nrepeat of load3dv1 >= 256, k axis needs further split
         _update_load3dv1_split_for_largek()
 
-        new_c_col_axis = [sch[c_col].op.axis[0], sch[c_col].op.axis[1],
-                          sch[c_col].op.axis[2], sch[c_col].op.axis[3]]
+        new_c_col_axis = [sch[c_col].op.axis[1], sch[c_col].op.axis[2],
+                          sch[c_col].op.axis[3], sch[c_col].op.axis[4]]
         _, _, _, nn_axis = new_c_col_axis
 
         if "bias" in tensor_map.keys():
             a2_axis, a3_axis = sch[c_col_bias].split(
-                sch[c_col_bias].op.axis[2], config["mac"][0])
-            sch[c_col_bias].reorder(
-                sch[c_col_bias].op.axis[0], sch[c_col_bias].op.axis[1],
-                a2_axis, a3_axis, sch[c_col_bias].op.axis[3])
+                sch[c_col_bias].op.axis[3], config["mac"][0])
+            sch[c_col_bias].reorder(sch[c_col_bias].op.axis[0],
+                                    sch[c_col_bias].op.axis[1], sch[c_col_bias].op.axis[2],
+                                    a2_axis, a3_axis, sch[c_col_bias].op.axis[4])
 
         c_tiling_factor = [tiling["CL0_matrix"][0],
                            tiling["CL0_matrix"][1]*tiling["CL0_matrix"][2]]
@@ -3942,7 +4088,7 @@ class CceConvOp:
         else:
             al1_factor = [1, 1]
 
-        self.overload_flag = check_feature_map(tiling, al1_factor)
+
 
         if tiling["BL1_shape"]:
             if len(tiling["BL1_shape"]) > 1:
@@ -4010,9 +4156,12 @@ class CceConvOp:
             sch_list.append(sum_x_global)
             sch_list.append(square_sum_x_global)
 
+            # add for group pattern
+            cout1_group, cout1_ori = sch[sum_x_global].split(
+                sum_x_global.op.axis[0], nparts=ConvParam.para_dict["group_opt"])
             c_rf_outer_outer, c_rf_outer_inner = sch[sum_x_global].split(
-                sum_x_global.op.axis[0],
-                (sum_x_global.shape[0].value // c_factor[0]))
+                cout1_ori, (sum_x_global.shape[0].value // c_factor[0]))
+            # end for group pattern
             tmp_value = (sum_x_global.op.axis[0].dom.extent) // \
                 (sum_x_global.shape[0].value // c_factor[0])
             factor_ac0 = tmp_value // bl1_factor[1]
@@ -4025,9 +4174,12 @@ class CceConvOp:
             c_rf_outer_outer_outer_outer, c_rf_outer_outer_outer_inner = sch[
                 sum_x_global].split(c_rf_outer_outer_outer, factor_ac)
 
+            # add for group pattern
+            cout1_group_rf, cout1_ori_rf = sch[sum_x_ub_rf].split(
+                sum_x_ub_rf.op.axis[1], nparts=ConvParam.para_dict["group_opt"])
             c_outer_outer, c_outer_inner = sch[sum_x_ub_rf].split(
-                sum_x_ub_rf.op.axis[1],
-                (sum_x_ub_rf.shape[1].value // c_factor[0]))
+                cout1_ori_rf, (sum_x_ub_rf.shape[1].value // c_factor[0]))
+            # end for group pattern
             c_outer_outer_outer, c_outer_outer_inner = sch[sum_x_ub_rf].split(
                 c_outer_outer, factor_ac0)
             c_outer_outer_outer_outer, c_outer_outer_outer_inner = sch[
@@ -4039,6 +4191,8 @@ class CceConvOp:
 
             if self._l0b_first_flag:
                 sch[sum_x_ub_rf].reorder(
+                    cout1_group_rf,
+                    sum_x_ub_rf.op.axis[0],
                     c_outer_outer_outer_outer, c_outer_outer_outer_inner,
                     batch_inner_outer, sum_x_ub_rf.op.reduce_axis[1],
                     c_outer_outer_inner, sum_x_ub_rf.op.reduce_axis[2],
@@ -4046,6 +4200,8 @@ class CceConvOp:
                     batch_inner_inner, sum_x_ub_rf.op.axis[2])
             else:
                 sch[sum_x_ub_rf].reorder(
+                    cout1_group_rf,
+                    sum_x_ub_rf.op.axis[0],
                     c_outer_outer_outer_outer, batch_inner_outer,
                     c_outer_outer_inner, c_outer_outer_outer_inner,
                     sum_x_ub_rf.op.reduce_axis[1],
@@ -4054,6 +4210,7 @@ class CceConvOp:
                     batch_inner_inner, sum_x_ub_rf.op.axis[2])
 
             sch[sum_x_global].reorder(
+                cout1_group,
                 sum_x_global.op.reduce_axis[0],
                 c_rf_outer_outer_outer_outer, c_rf_outer_outer_inner,
                 c_rf_outer_outer_outer_inner, c_rf_outer_inner,
@@ -4080,8 +4237,10 @@ class CceConvOp:
             res_c = sum_x_ub_rf
         else:
             if self._dynamic_mode == "dynamic_hw":
+                cout1_group, cout1_ori = sch[res_c].split(
+                    res_c.op.axis[1], nparts=ConvParam.para_dict["group_opt"])
                 c_outer_outer, c_outer_inner = sch[res_c].split(
-                    res_c.op.axis[1], (res_c.shape[1].value // c_factor[0]))
+                    cout1_ori, (res_c.shape[1].value // c_factor[0]))
 
                 # split for mul_core
                 m_mulcore_factor = int_ceil_div(dim_map["out_img_shape"][-2],
@@ -4145,8 +4304,10 @@ class CceConvOp:
                 c_outer_outer_outer, c_outer_outer_inner = \
                     sch[res_c].split(c_outer_outer, nparts=bl1_factor[1])
             else:
+                cout1_group, cout1_ori = sch[res_c].split(
+                    res_c.op.axis[1], nparts=ConvParam.para_dict["group_opt"])
                 c_outer_outer, c_outer_inner = sch[res_c].split(
-                    res_c.op.axis[1], (res_c.shape[1].value // c_factor[0]))
+                    cout1_ori, (res_c.shape[1].value // c_factor[0]))
                 m_outer_outer, m_outer_inner = sch[res_c].split(
                     res_c.op.axis[2], c_tiling_factor[1])
                 sch[res_c].reorder(c_outer_outer, m_outer_outer,
@@ -4187,7 +4348,8 @@ class CceConvOp:
                 m_outer_inner, nparts=1)
 
             if self._l0b_first_flag:
-                sch[res_c].reorder(batch_outer,
+                sch[res_c].reorder(cout1_group,
+                                   batch_outer,
                                    c_outer_outer_outer_outer,
                                    m_outer_outer_outer_outer,
                                    c_outer_outer_outer_inner,
@@ -4200,7 +4362,8 @@ class CceConvOp:
                                    batch_inner_inner,
                                    m_outer_inner_inner)
             else:
-                sch[res_c].reorder(batch_outer,
+                sch[res_c].reorder(cout1_group,
+                                   batch_outer,
                                    c_outer_outer_outer_outer,
                                    m_outer_outer_outer_outer,
                                    batch_inner_outer,
@@ -4237,9 +4400,6 @@ class CceConvOp:
         if not mc_flag:
             bido = noo
 
-        if self._dynamic_mode is None:
-            set_overload_flag(self.overload_flag,
-                              self._schedule[res], noi)
 
         reorder_flag = handle_res_c_reorder()
 
@@ -4253,6 +4413,12 @@ class CceConvOp:
                     (not self._l0b_first_flag):
                 sch[res_c].reorder(c_outer_outer_outer_inner, noo)
                 batch_cout_reorder_flag = True
+
+        axis_sequence = check_axis_sequence(reorder_flag, bl1_factor, al1_factor, block_dim)
+        self.overload_flag = check_feature_map(tiling, al1_factor, axis_sequence)
+        if self._dynamic_mode is None:
+            set_overload_flag(self.overload_flag,
+                              self._schedule[res], noi)
 
         # ========= handle conv + Pooling fusion========
         if self.conv_pool_fused_flag or self.conv_pool_2_2_fused_flag:
@@ -4285,7 +4451,6 @@ class CceConvOp:
                 if lop["op"] in compute_at_list:
                     self._schedule[lop["dst_buffer"]].compute_at(
                         self._schedule[res_c], m_outer_inner_outer)
-                # fm2 read select in L1 fusion
                 if lop["dst_buffer"].op.name in ("output_ub_4d", "output_ub_5d"):
                     v200_fm2_cache_buffer.append(lop["dst_buffer"])
 
@@ -4366,7 +4531,7 @@ class CceConvOp:
             k_outer_outer_inner_size = int(k_outer_outer_size // bl1_factor[0])
 
         # split N begin
-        c_col_batch, cn_axis = sch[c_col].split(c_col.op.axis[0], 1)
+        c_col_batch, cn_axis = sch[c_col].split(c_col.op.axis[1], 1)
 
         if self._l0b_first_flag:
             sch[c_col].reorder(k_outer_outer,
@@ -4394,7 +4559,8 @@ class CceConvOp:
                                reduce_kk)
             sch[c_col].compute_at(sch[res_c], c_slice_axis)
         else:
-            sch[c_col].reorder(k_outer_outer,
+            sch[c_col].reorder(sch[c_col].op.axis[0],
+                               k_outer_outer,
                                coo,
                                boo,
                                cn_axis,
@@ -4799,8 +4965,12 @@ class CceConvOp:
                 if 'write_select' in lop["op"]:
                     if ConvParam.swrite_flag:
                         self._schedule[lop["dst_buffer"]].compute_inline()
+                        if lop["dst_buffer"].op.input_tensors[0].op.tag in (
+                                "dequant_remove_pad", "requant_remove_pad", "quant"):
+                            self._schedule[lop["dst_buffer"].op.input_tensors[0]].compute_inline()
                         align_length = int(lop["dst_buffer"].op.attrs["HWC0"])
                         self._schedule[self._res_tensor].bind_buffer(self._res_tensor.op.axis[1], align_length, 0)
+                        self._schedule[self._res_tensor].emit_insn(c_pragma_axis, 'dma_copy')
                     else:
                         align_length = int(cache_buffer.op.attrs["HWC0"])
                         self._schedule[cache_buffer].bind_buffer(lop["dst_buffer"].op.axis[1], align_length, 0)
@@ -4828,7 +4998,12 @@ class CceConvOp:
                     self._schedule[c_reform_vector].reorder(coo, *axis_list)
                     self._schedule[c_reform_vector].emit_insn(self._schedule[c_reform_vector].op.axis[2], "vector_auto")
 
-            if lop["op"] in dma_move_list:
+            def _op_in_dma_move_list():
+                """
+                Op in dma_move_list
+                """
+                if self._conv_quant_fused_flag and self._res_tensor.op.tag == "conv_virtual_res":
+                    self._schedule[cache_buffer].emit_insn(tensorize_axis, 'dma_copy')
                 if not self._conv_quant_fused_flag:
                     if self._lhisi_data_flow_type == DataFlowTypeLhisi.S32TOFP16S8 or self._write_select or \
                             (self._v200_data_flow_type == DataFlowType.V200_GENERAL_FUSION and \
@@ -4836,6 +5011,9 @@ class CceConvOp:
                         self._schedule[cache_buffer].emit_insn(tensorize_axis, 'dma_copy')
                     else:
                         self._schedule[cache_buffer].emit_insn(c_pragma_axis, 'dma_copy')
+
+            if lop["op"] in dma_move_list:
+                _op_in_dma_move_list()
             elif "reform" in lop["op"]:
                 c_reform_vector = lop['dst_buffer']
                 ndim = len(self._schedule[c_reform_vector].op.axis)
@@ -4848,7 +5026,8 @@ class CceConvOp:
                 _reform_emit_insn_optimize()
             elif lop["op"] == "cast_i8_ub":
                 round_mode_emit_insn = 'vector_conv_%s' % self._lhisi_dequant_quant_para['quant_round'].value.lower()
-                if cce_conf.get_soc_spec("SOC_VERSION") == "Ascend310":
+                if cce_conf.get_soc_spec("SOC_VERSION") == "Ascend310" or \
+                        "Ascend910" in cce_conf.get_soc_spec("SOC_VERSION"):
                     round_mode_emit_insn = 'vector_conv'
                 self._schedule[cache_buffer].emit_insn(tensorize_axis, round_mode_emit_insn)
             elif lop["op"] == "conv_virtual_res":
@@ -4868,7 +5047,9 @@ class CceConvOp:
                     # write_select
                     self._schedule[lop["dst_buffer"]].compute_inline()
                     # remove pad
-                    self._schedule[lop["dst_buffer"].op.input_tensors[0]].compute_inline()
+                    if lop["dst_buffer"].op.input_tensors[0].op.tag in (
+                            "dequant_remove_pad", "requant_remove_pad", "quant"):
+                        self._schedule[lop["dst_buffer"].op.input_tensors[0]].compute_inline()
 
                     align_length = int(lop["dst_buffer"].op.attrs["HWC0"])
                     self._schedule[self._res_tensor].bind_buffer(self._res_tensor.op.axis[1], align_length, 0)
@@ -5140,8 +5321,7 @@ class AutoScheduleOp:
         if "weight_unzip" in tmp_op["op"]:
             self.weight_zip_flag = True
         # this c_ub is stand for tensor first in ub which in conv2d quant fuse
-        if cce_conf.get_soc_spec("SOC_VERSION") in ("Ascend310", "Hi3796CV300ES") or is_support_v200():
-            handle_int8_tensor_map()
+        handle_int8_tensor_map()
 
         return tmp_op
 
@@ -5371,7 +5551,9 @@ class AutoScheduleOp:
                 "1_6_7_8": PATTERN_CONVINT32_DEQUANT_QUANT_DOUBLEOUT,
                 "1_6_7_8_9": PATTERN_CONVINT32_DEQUANT_QUANT_DOUBLEOUT_BIAS,
                 "1_7": PATTERN_CONVFP16_QUANT,
-                "1_2_7": PATTERN_CONVFP16_QUANT_BIAS
+                "1_2_7": PATTERN_CONVFP16_QUANT_BIAS,
+                "1_7_8": PATTERN_CONVFP16_ELE_QUANT_DOUBLEOUT,
+                "1_2_7_8": PATTERN_CONVFP16_ELE_QUANT_DOUBLEOUT_BIAS
             }
 
             # look up the fusion_type_dict for a given fusion_type_list

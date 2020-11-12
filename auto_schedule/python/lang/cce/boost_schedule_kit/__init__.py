@@ -17,4 +17,3 @@ boost schedule kit
 """
 from .util import Compare, enhance_check_tiling
 from .schedule_agent import ScheduleAgent
-from .affine_shape import TilingToAffineShape, TilingBufferID

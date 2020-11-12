@@ -20,7 +20,8 @@ from te import tik
 from topi.cce import util
 from te import platform as tbe_platform
 from impl.resize_nearest_neighbor_grad_d_h import resize_nearest_neighbor_grad_d_h
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 # C0 size
 C0_SIZE = 16
@@ -619,8 +620,8 @@ def check_supported(grads, y, size, align_corners=False,
     return True
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, OPTION_ATTR_BOOL,
-                 OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def resize_nearest_neighbor_v2_grad_d(
         grads, y, size, align_corners=False, half_pixel_centers=False,
         kernel_name="resize_nearest_neighbor_v2_grad"):
@@ -651,28 +652,29 @@ def resize_nearest_neighbor_v2_grad_d(
     for input_data in input_list:
         input_shape = input_data.get("shape")
         input_dtype = input_data.get("dtype").lower()
-        check_shape(input_shape, param_name="grads")
+        para_check.check_shape(input_shape, param_name="grads")
         check_list = {"float32"}
-        check_dtype(input_dtype, check_list, param_name="grads")
+        para_check.check_dtype(input_dtype, check_list, param_name="grads")
     if half_pixel_centers:
         if align_corners:
-            raise RuntimeError("If half_pixel_centers is True, "
-                               "align_corners must be False.")
+            rule_desc = "If half_pixel_centers is True, align_corners must be False."
+            error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "align_corners", align_corners)
     if len(size) != 2:
-        raise RuntimeError("the length of size should be 2")
+        rule_desc = "the length of size should be 2"
+        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "size", len(size))
     grads_shape = grads.get("shape")
     if len(grads_shape) != 5:
-        raise RuntimeError(
-            "the length of grads_sharp must be 5,"
-            " while it is: %d" % len(grads_shape))
+        error_detail = "the shape'rank of grads must be 5"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "grads", error_detail)
 
     y_shape = y.get("shape")
     if len(y_shape) != 5:
-        raise RuntimeError("the length of y_sharp must be 5,"
-                           " while it is: %d" % len(y_shape))
+        error_detail = "the shape'rank of y must be 5"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "y", error_detail)
 
     if (grads_shape[2] + grads_shape[3]) >= 8 * 1024:
-        raise RuntimeError("the w of grads_shape and y_sharp is too big")
+        error_detail = "the h*w of grads_shape is too big, should less than 8*1024"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "grads", error_detail)
     grads_num = _prod(grads_shape)
     grads_limt = ((1 << 31) - 1) // 4
     weight_out = y_shape[3]

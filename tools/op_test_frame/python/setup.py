@@ -23,17 +23,19 @@ __version__ = "0.1"
 class BinaryDistribution(Distribution):
     def has_ext_modules(self):
         return True
-
     def is_pure(self):
         return False
 
 
 with open("MANIFEST.in", "w") as fo:
-    fo.write("include op_test_frame/libs/libmodel_run_tool.so\n")
+    fo.write("include libs/libmodel_run_tool.so\n"
+             "recursive-include op_test_frame/st/template *\n"
+             "include op_test_frame/st/interface/framework/framework.json\n")
 
 setup_kwargs = {
     "include_package_data": True
 }
+
 
 def read_txt(file_name):
     return open(file_name).read()
@@ -41,30 +43,16 @@ def read_txt(file_name):
 setup(
     name="op_test_frame",
     version=__version__,
-    scripts=['op_test_frame/scripts/op_ut_run', 'op_test_frame/scripts/op_ut_helper'],
+    scripts=['op_test_frame/scripts/op_ut_run',
+             'op_test_frame/scripts/op_ut_helper',
+             'op_test_frame/scripts/msopst'],
     zip_safe=False,
     packages=find_packages(),
     install_requires=[],
+    distclass=BinaryDistribution,
     license=read_txt("LICENSE"),
-    **{
+    ** {
         "include_package_data": True,
-        "data_files": [('lib', ['op_test_frame/libs/libmodel_run_tool.so']),
-		       ('output_dir', ['op_test_frame/st/template/acl_op_src/CMakeLists.txt']),
-                       ('output_dir', ['op_test_frame/st/template/acl_op_src/inc/common.h']),
-                       ('output_dir', ['op_test_frame/st/template/acl_op_src/inc/op_execute.h']),
-                       ('output_dir', ['op_test_frame/st/template/acl_op_src/inc/op_runner.h']),
-                       ('output_dir', ['op_test_frame/st/template/acl_op_src/inc/op_test_desc.h']),
-                       ('output_dir', ['op_test_frame/st/template/acl_op_src/inc/op_test.h']),
-                       ('output_dir', ['op_test_frame/st/template/acl_op_src/run/out/test_data/config/acl.json']),
-                       ('output_dir', ['op_test_frame/st/template/acl_op_src/run/out/test_data/config/acl_op.json']),
-                       ('output_dir', ['op_test_frame/st/template/acl_op_src/src/CMakeLists.txt']),
-                       ('output_dir', ['op_test_frame/st/template/acl_op_src/src/common.cpp']),
-                       ('output_dir', ['op_test_frame/st/template/acl_op_src/src/main.cpp']),
-                       ('output_dir', ['op_test_frame/st/template/acl_op_src/src/op_execute.cpp']),
-                       ('output_dir', ['op_test_frame/st/template/acl_op_src/src/op_runner.cpp']),
-                       ('output_dir', ['op_test_frame/st/template/acl_op_src/src/op_test.cpp']),
-                       ('output_dir', ['op_test_frame/st/template/acl_op_src/src/op_test_desc.cpp']),
-                       ('output_dir', ['op_test_frame/st/template/acl_op_src/src/testcase.cpp'])]
+        "data_files": [('lib', ['op_test_frame/libs/libmodel_run_tool.so'])]
     }
-
 )

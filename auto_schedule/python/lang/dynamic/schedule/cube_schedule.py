@@ -24,7 +24,7 @@ from te.lang.cce.te_schedule.conv2d_backprop_input_schedule import \
 from te.lang.cce.te_schedule.conv2d_backprop_filter_schedule import \
     CceConv2dBackpropFilterOp
 
-from te.platform.operation import register_schedule
+from te.lang.base.operation import register_schedule
 
 from . import Pattern
 

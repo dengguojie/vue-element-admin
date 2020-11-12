@@ -22,12 +22,32 @@ from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 
 # define a scalar, value = -1
 SCALAR_NEGATIVE_ONE = -1
 # define a scalar, value = 2
 SCALAR_TWO = 2
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(input_matrix, input_diagonal, input_help, output_matrix,
+                        kernel_name="matrix_set_diag_d"):
+    format_matrix = input_matrix.get("format").upper()
+    format_diagonal = input_diagonal.get("format").upper()
+    if format_matrix == "ND" and format_diagonal == "ND":
+        axis_split_matrix=[[SplitInput([0, [0], [-1], [-1]], [1, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
+        axis_reduce_list = None
+
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 def _check_tensor_size(shape_x, shape_y):
@@ -49,14 +69,19 @@ def _check_tensor_size(shape_x, shape_y):
     len_y = len(shape_y)
 
     if (len_x < SCALAR_TWO) or (len_y < SCALAR_TWO):
-        raise RuntimeError("Only the rank of input tensors >= 2 are supported!")
+        error_detail = "Only the rank of input tensors >= 2 are supported!"
+        error_manager_vector.raise_err_two_input_shape_invalid("matrix_set_diag_d", "input_matrix", \
+                                                               "input_help", error_detail)
     if len_x == len_y:
         for i in range(len_x):
             if shape_x[i] != shape_y[i]:
-                raise RuntimeError(
-                    "The input_x and input_y are not with the same dimension!")
+                error_detail = "The input_matrix and input_help are not with the same dimension!"
+                error_manager_vector.raise_err_two_input_shape_invalid("matrix_set_diag_d", "input_matrix", \
+                                                                       "input_help", error_detail)
     else:
-        raise RuntimeError("The input_x and input_y are not with the same rank!")
+        error_detail = "The input_x and input_y are not with the same rank!"
+        error_manager_vector.raise_err_two_input_shape_invalid("matrix_set_diag_d", "input_matrix", \
+                                                               "input_help", error_detail)
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals

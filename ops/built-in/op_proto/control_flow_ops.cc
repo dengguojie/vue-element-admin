@@ -155,29 +155,41 @@ graphStatus MergeInferImpl(Operator& op) {
 }
 
 graphStatus SwitchInferImpl(Operator& op) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+
+  auto data_desc = op_desc->MutableInputDesc("data");
+  auto pred_desc = op_desc->MutableInputDesc("pred");
+  auto output_false_desc = op_desc->MutableOutputDesc("output_false");
+  auto output_true_desc = op_desc->MutableOutputDesc("output_true");
+
+  std::vector<std::pair<int64_t, int64_t>> data_range;
+  data_desc->GetShapeRange(data_range);
   // check "pred" scalar type be bool
-  auto pred_dims = op.GetInputDesc("pred").GetShape().GetDims();
+  auto pred_dims = pred_desc->GetShape().GetDims();
   if (pred_dims.size() != 0) {
     GeInfershapeErrReport(op.GetName(), op.GetOpType(), "pred dims", "pred should be a scalar");
     GE_OP_LOGE(op.GetName().c_str(), "pred should be a scalar, actually size=%zu", pred_dims.size());
     return GRAPH_FAILED;
   }
-  DataType pred_type = op.GetInputDesc("pred").GetDataType();
+  DataType pred_type = pred_desc->GetDataType();
   if (pred_type != DT_BOOL) {
     GeInfershapeErrReport(op.GetName(), op.GetOpType(), "dtype", "pred should be bool type");
     GE_OP_LOGE(op.GetName().c_str(), "pred should be bool type, actually type=%u", pred_type);
     return GRAPH_FAILED;
   }
-  auto data_dims = op.GetInputDesc("data").GetShape().GetDims();
-  TensorDesc output_false = op.GetOutputDesc("output_false");
-  TensorDesc output_true = op.GetOutputDesc("output_true");
-  output_false.SetShape(ge::Shape(data_dims));
-  output_true.SetShape(ge::Shape(data_dims));
-  DataType data_type = op.GetInputDesc("data").GetDataType();
-  output_false.SetDataType(data_type);
-  output_true.SetDataType(data_type);
-  (void)op.UpdateOutputDesc("output_false", output_false);
-  (void)op.UpdateOutputDesc("output_true", output_true);
+
+  DataType data_type = data_desc->GetDataType();
+  auto data_dims = data_desc->GetShape().GetDims();
+
+  output_false_desc->SetShapeRange(data_range);
+  output_true_desc->SetShapeRange(data_range);
+  output_false_desc->SetShape(GeShape(data_dims));
+  output_false_desc->SetOriginShape(GeShape(data_dims));
+  output_true_desc->SetShape(GeShape(data_dims));
+  output_true_desc->SetOriginShape(GeShape(data_dims));
+  output_false_desc->SetDataType(data_type);
+  output_true_desc->SetDataType(data_type);
+
   auto context = op.GetInferenceContext();
   std::vector<std::vector<ShapeAndType>> in_shapes_and_types = context->GetInputHandleShapesAndTypes();
   if ((!in_shapes_and_types.empty()) && (!in_shapes_and_types.at(0).empty())) {

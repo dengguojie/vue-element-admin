@@ -24,6 +24,9 @@
 #include <vector>
 #include "graph/tensor.h"
 #include "graph/inference_context.h"
+#include "graph/operator.h"
+#include "graph/op_desc.h"
+#include "graph/utils/op_desc_utils.h"
 
 namespace ge {
 /**
@@ -36,6 +39,23 @@ namespace ge {
  */
 graphStatus ValidateTableResourceHandle(Shape keys, std::vector<ShapeAndType> handleData,
                                         ShapeAndType& output_shape_and_type, bool is_lookup, const char* op_name);
+
+/**
+ * Validate table resource handle
+ * @param op op context
+ * @param keys keys of the shape
+ * @param handleData vector of handle data
+ * @param output_shape_and_type shape and type that created
+ * @param is_lookup if is lookup
+ * @return status whether this operation success
+ */
+graphStatus ValidateTableResourceHandle(const Operator& op,
+                                        Shape& keys,
+                                        const DataType& key_dtype,
+                                        const DataType& value_dtype,
+                                        const bool& is_lookup,
+                                        ShapeAndType& output_shape_and_type,
+                                        const char* op_name);
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_UTIL_LOOKUP_OPS_SHAPE_FNS_H_

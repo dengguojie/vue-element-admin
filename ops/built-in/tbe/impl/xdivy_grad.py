@@ -18,7 +18,7 @@ xdivy_grad
 import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
-from te.utils import operate_shape
+from te.utils import shape_util
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
@@ -159,16 +159,16 @@ def xdivy_grad(x1, x2, grad, y1, y2, kernel_name="xdivy_grad"):
     para_check.check_shape(shape_grad, param_name="grad")
     check_list = ("float16", "float32")
     para_check.check_dtype(dtype_x1, check_list, param_name="x1")
-    shape_x1, shape_x2, shape_max_x1x2 = operate_shape.produce_shapes(shape_x1, shape_x2)
+    shape_x1, shape_x2, shape_max_x1x2 = shape_util.produce_shapes(shape_x1, shape_x2)
     if len(shape_max_x1x2) < len(shape_grad):
-        error_manager_vector.raise_err_input_shpae_invalid(
+        error_manager_vector.raise_err_input_shape_invalid(
             kernel_name, "grad", "the length of shape_grad can not be longer than the maximum length of x1 and x2.")
 
-    shape_grad, _, shape_max = operate_shape.produce_shapes(shape_grad, shape_max_x1x2)
+    shape_grad, _, shape_max = shape_util.produce_shapes(shape_grad, shape_max_x1x2)
 
     for (x, y) in zip(shape_max_x1x2, shape_grad):
         if x < y:
-            error_manager_vector.raise_err_input_shpae_invalid(
+            error_manager_vector.raise_err_input_shape_invalid(
                 kernel_name, "grad", "the dim of grad's shape can not be bigger than the maximum dim of x1 and x2.")
 
     para_check.check_shape(shape_max, param_name="x")

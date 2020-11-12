@@ -18,7 +18,8 @@ resize_bilinear_v2_grad
 from te import tik
 from topi.cce import util
 from te import platform as tbe_platform
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 # parameters for vector instruct
 MASK = 64
@@ -81,19 +82,21 @@ def _check_param(grads, images, kernel_name, align_corners, half_pixel_centers):
     """
     if half_pixel_centers:
         if align_corners:
-            raise RuntimeError("If half_pixel_centers is True, "
-                               "align_corners must be False.")
+            rule_desc = "if half_pixel_centers is True, align_corners must be False"
+            param_value = "%s and %s"%(align_corners, half_pixel_centers)
+            error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, \
+                                                          "align_corners and half_pixel_centers", param_value)
     grads_shape = grads.get("shape")
     grads_dtype = grads.get("dtype")
     images_shape = images.get("shape")
     images_dtype = images.get("dtype")
     data_limit = ((1 << 31) - 1) // (4 if images_dtype == "float32" else 2)
-    check_shape(grads_shape, param_name="grads")
-    check_shape(images_shape, param_name="images")
+    para_check.check_shape(grads_shape, param_name="grads")
+    para_check.check_shape(images_shape, param_name="images")
     check_list_grads = ("float32")
     check_list_images = ("float32")
-    check_dtype(grads_dtype.lower(), check_list_grads, param_name="grads")
-    check_dtype(images_dtype.lower(), check_list_images, param_name="images")
+    para_check.check_dtype(grads_dtype.lower(), check_list_grads, param_name="grads")
+    para_check.check_dtype(images_dtype.lower(), check_list_images, param_name="images")
 
 
 # pylint: disable=unused-argument,invalid-name, unused-variable
@@ -129,7 +132,9 @@ def check_supported(grads, images, y, align_corners=False,
         in_size_h = grads_shape[2]
         in_size_w = grads_shape[3]
     else:
-        raise RuntimeError("The format of grads is not supported")
+        excepted_format_list = "NHWC,NCHW,NC1HWC0"
+        error_manager_vector.raise_err_input_format_invalid(kernel_name, "grads", \
+                                                            excepted_format_list, format_grads)
 
     try:
         if in_size_h > 10000 or in_size_w > 10000:
@@ -141,8 +146,8 @@ def check_supported(grads, images, y, align_corners=False,
     return True
 
 # pylint: disable=unused-argument,too-many-lines,invalid-name,too-many-arguments
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_BOOL,
-                 OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def resize_bilinear_v2_grad(grads, images, y, align_corners=False, half_pixel_centers=False,
                             kernel_name="resize_bilinear_v2_grad"):
     """

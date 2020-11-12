@@ -146,7 +146,7 @@ Status BatchNormBnInferFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
     // copy attr
     float epsilon;
     FUSION_PASS_CHECK(!ge::AttrUtils::GetFloat(batchNormNode->GetOpDesc(), EPSILON, epsilon),
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Get epsilon attr failed."), return FAILED);
+                      OP_LOGW(FUSED_OP_TYPE.c_str(), "Get epsilon attr failed."), return NOT_CHANGED);
 
     FUSION_PASS_CHECK(!ge::AttrUtils::SetFloat(newNode->GetOpDesc(), EPSILON, epsilon),
                       OP_LOGE(FUSED_OP_TYPE.c_str(), "Set epsilon attr failed"), return FAILED);
@@ -292,8 +292,8 @@ Status BatchNormBnInferFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   float epsilon;
   if (!ge::AttrUtils::GetFloat(batchNormNode->GetOpDesc(), EPSILON, epsilon)){
     momentumPtr = nullptr;
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Get epsilon attr failed.");
-    return FAILED;
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Get epsilon attr failed.");
+    return NOT_CHANGED;
   }
   if (!ge::AttrUtils::SetFloat(newNode->GetOpDesc(), EPSILON, epsilon)){
     momentumPtr = nullptr;

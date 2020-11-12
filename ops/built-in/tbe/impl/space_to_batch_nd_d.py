@@ -20,11 +20,14 @@ from te import platform as tbe_platform
 from te.platform.cce_build import build_config
 from te.platform.cce_intrin_md import reset_mask_insn
 from te.utils.op_utils import *
+from te import tvm
 from impl.copy_only import copy_only
 from impl.transpose_d import transpose_d
+from te.utils.error_manager import error_manager_vector
+from impl.util import util_select_op_base
 
 
-# pylint: disable=too-many-instance-attributes,useless-object-inheritance
+# pylint: disable=too-many-instance-attributes,useless-object-inheritance,unused-argument,invalid-name
 class _SpaceToBatch(object):
     """init parameters for space_to_batch."""
 
@@ -423,37 +426,47 @@ def _check_parms(shape, dtype, block_shape, paddings, kernel_name):
     check_dtype(dtype, dtype_list, param_name="x")
 
     if len(shape) != 5:
-        raise RuntimeError("the shape of image_input should be 5, "
-                           "but got: %d" % len(shape))
+        error_detail = "the shape'rank of x should be 5 bug got: %d"%len(shape)
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
 
     if len(block_shape) != 2:
-        raise RuntimeError("the shape of block_shape should be 2, "
-                           "but got: %d" % len(block_shape))
+        error_detail = "the shape'rank of block_shape should be 2 bug got: %d"%len(block_shape)
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "block_shape", error_detail)
 
     if len(paddings) != 2 or len(paddings[0]) != 2 or len(paddings[1]) != 2:
-        raise RuntimeError("the shape of paddings should be 2x2")
+        error_detail = "the shape of paddings should be 2x2"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "paddings", error_detail)
 
     if not (isinstance(block_shape[0], int) and isinstance(block_shape[1], int)
             and block_shape[0] > 0 and block_shape[1] > 0):
-        raise RuntimeError(
-            "the value of block_shape should be integer and be greater to 0")
+        error_detail = "the value of block_shape should be integer and be greater to 0"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "block_shape", error_detail)
 
     if not (isinstance(paddings[0][0], int) and paddings[0][0] >= 0 and
             isinstance(paddings[0][1], int) and paddings[0][1] >= 0 and
             isinstance(paddings[1][0], int) and paddings[1][0] >= 0 and
             isinstance(paddings[1][1], int) and paddings[1][1] >= 0):
-        raise RuntimeError("the value of paddings should be integer and "
-                           "be greater or equal to 0")
+        error_detail = "the value of paddings should be integer and be greater or equal to 0"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "paddings", error_detail)
 
     if (shape[2] + paddings[0][0] + paddings[0][1]) % block_shape[0] != 0:
-        raise RuntimeError(
-            "paddings height should be exactly divisible by block height")
+        error_detail = "paddings height should be exactly divisible by block height"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "paddings", error_detail)
     if (shape[3] + paddings[1][0] + paddings[1][1]) % block_shape[1] != 0:
-        raise RuntimeError(
-            "paddings width should be exactly divisible by block width")
+        error_detail = "paddings width should be exactly divisible by block width"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "paddings", error_detail)
 
 
-# pylint: disable=invalid-name
+def get_op_support_info(x, y, block_shape, paddings, kernel_name="space_to_batch_nd_d"):
+    """
+    get split info
+    """
+    axis_split_list = None
+    axis_reduce_list = None
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_list, axis_reduce_list)
+    return op_cal_info_in_json
+
+
 def space_to_batch_nd_d_compute(x,
                                 y,
                                 block_shape,
@@ -524,7 +537,7 @@ def space_to_batch_nd_d(x,
     ori_format = x.get("ori_format")
 
     if input_format not in ("NC1HWC0",):
-        raise RuntimeError("The input_format must be NC1HWC0.")
+        error_manager_vector.raise_err_input_format_invalid(kernel_name, "x", "NC1HWC0", input_format)
 
     if ori_format in ("NHWC",):
         if len(paddings) == 4:
@@ -533,16 +546,18 @@ def space_to_batch_nd_d(x,
         if len(block_shape) == 3 and block_shape[0] == 1:
             block_shape = [block_shape[1], block_shape[2]]
         else:
-            raise RuntimeError("The value of first block_shape must be 1")
+            error_detail = "The value of first block_shape must be 1"
+            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "block_shape", error_detail)
         if len(paddings) == 6 and paddings[0] == 0 and paddings[1] == 0:
             paddings = [[paddings[2], paddings[3]], [paddings[4], paddings[5]]]
         elif len(paddings) == 3 and len(paddings[0]) == 2 and len(paddings[1]) == 2 \
                 and len(paddings[2]) == 2 and paddings[0][0] == 0 and paddings[0][1] == 0:
             paddings = [[paddings[1][0], paddings[1][1]], [paddings[2][0], paddings[2][1]]]
         else:
-            raise RuntimeError("The value of first paddings must be 0")
+            error_detail = "The value of first paddings must be 0"
+            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "paddings", error_detail)
     else:
-        raise RuntimeError("The ori_format is not supported")
+        error_manager_vector.raise_err_input_format_invalid(kernel_name, "x", "NHWC,NCHW", ori_format)
 
     _check_parms(shape, dtype, block_shape, paddings, kernel_name)
 

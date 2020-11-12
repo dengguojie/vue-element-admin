@@ -2,6 +2,9 @@
 # -*- coding: UTF-8 -*-
 
 from op_test_frame.ut import OpUT
+from op_test_frame.common import precision_info
+import numpy as np
+import tensorflow as tf
 ut_case = OpUT("MaxPool", None, None)
 
 case1 = {"params": [{"shape": (1,3,35,49,16), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 3, 35, 49, 16),"ori_format": "NHWC"},
@@ -22,11 +25,76 @@ case2 = {"params": [{"shape": (1,4,23,111,16), "dtype": "float16", "format": "NH
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-         
+
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 
+#precision cases
+def NC1HWC02NCHW(fmi, fmi_shape, precise):
+    if precise=='int8':
+        fmo = np.zeros((fmi_shape[0], fmi_shape[1]*fmi_shape[4], fmi_shape[2], fmi_shape[3]), dtype=np.int8)
+    else:
+        fmo = np.zeros((fmi_shape[0], fmi_shape[1]*fmi_shape[4], fmi_shape[2], fmi_shape[3]), dtype=np.float16)
+    for n in range(fmi_shape[0]):
+        for c1 in range(fmi_shape[1]):
+            for h in range(fmi_shape[2]):
+                for w in range(fmi_shape[3]):
+                    for c0 in range(fmi_shape[4]):
+                        fmo[n][c1*fmi_shape[4]+c0][h][w] = fmi[n][c1][h][w][c0]
+    return fmo
 
+#NCHW2NC1HWC0
+def NCHW2NC1HWC0(fmi, fmo_shape, precise):
+    if precise=='int8':
+        fmo = np.zeros((fmo_shape[0], fmo_shape[1], fmo_shape[2], fmo_shape[3], fmo_shape[4]), dtype=np.int8)
+    else:
+        fmo = np.zeros((fmo_shape[0], fmo_shape[1], fmo_shape[2], fmo_shape[3], fmo_shape[4]), dtype=np.float16)
+    for n in range(fmo_shape[0]):
+        for c1 in range(fmo_shape[1]):
+            for h in range(fmo_shape[2]):
+                for w in range(fmo_shape[3]):
+                    for c0 in range(fmo_shape[4]):
+                        fmo[n][c1][h][w][c0] = fmi[n][c1*fmo_shape[4]+c0][h][w]
+    return fmo
 
-if __name__ == '__main__':
-    ut_case.run("Ascend910")
+def calc_expect_func(x, y, ksize, strides, padding):
+    inputArr = x['value']
+    shape = x['shape']
+    inputArr_NCHW = NC1HWC02NCHW(inputArr, shape, "float16")
+    inputArr_NHWC = np.transpose(inputArr_NCHW, (0, 2, 3, 1))
+    mat_2 = tf.nn.max_pool(inputArr_NHWC, ksize=ksize, strides=strides, padding=padding, data_format="NHWC")
+    with tf.Session() as sess:
+        outputArr_NHWC = sess.run(mat_2)
+    outputArr_NCHW = np.transpose(outputArr_NHWC, (0, 3, 1, 2))
+    #output shape
+    batch, channel, height, width = outputArr_NCHW.shape
+    C0 = shape[4]
+    C1 = (channel + C0 - 1) // shape[4]
+    shape_output = [batch, C1, height, width, C0]
+    outputArr = NCHW2NC1HWC0(outputArr_NCHW, shape_output, "float16")
+    return outputArr
+
+# ut_case.add_precision_case("Ascend910", {"params": [{"shape": (1,3,35,49,16), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 3, 35, 49, 16),"ori_format": "NHWC", "param_type": "input", "value_range":[-65504, 65504]},
+#                                                     {"shape": (1,3,17,24,16), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 3, 17, 24, 16),"ori_format": "NHWC", "param_type": "output"},
+#                                                     [1, 1, 1, 3],
+#                                                     [1, 1, 1, 2],
+#                                                     "VALID"],
+#                                          "expect": "success",
+#                                          "calc_expect_func": calc_expect_func,
+#                                          "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)})
+# ut_case.add_precision_case("Ascend910", {"params": [{"shape": (2,3,11,33,16), "dtype": "float16", "format": "NHWC", "ori_shape": (2,3,11,33,16),"ori_format": "NHWC", "param_type": "input", "value_range":[-65504, 65504]},
+#                                                     {"shape": (2,3,11,33,16), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 3, 17, 24, 16),"ori_format": "NHWC", "param_type": "output"},
+#                                                     [1, 2, 2, 1],
+#                                                     [1, 2, 2, 1],
+#                                                     "VALID"],
+#                                          "expect": "success",
+#                                          "calc_expect_func": calc_expect_func,
+#                                          "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)})
+ut_case.add_precision_case("Ascend910", {"params": [{"shape": (1, 1, 5, 3, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 3, 35, 49, 16),"ori_format": "NHWC", "param_type": "input", "value_range":[-65504, 65504]},
+                                                    {"shape": (1, 1, 5, 3, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 3, 17, 24, 16),"ori_format": "NHWC", "param_type": "output"},
+                                                    [1, 1, 1, 1],
+                                                    [1, 1, 1, 1],
+                                                    "SAME"],
+                                         "expect": "success",
+                                         "calc_expect_func": calc_expect_func,
+                                         "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)})

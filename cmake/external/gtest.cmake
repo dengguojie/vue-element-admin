@@ -46,3 +46,11 @@ set_target_properties(gtest PROPERTIES IMPORTED_LOCATION ${BINARY_DIR}/googlemoc
 add_library(gtest_main SHARED IMPORTED)
 add_dependencies(gtest_main external_gtest)
 set_target_properties(gtest_main PROPERTIES IMPORTED_LOCATION ${BINARY_DIR}/googlemock/gtest/libgtest_main.so)
+
+add_library(gmock SHARED IMPORTED)
+add_dependencies(gmock external_gtest)
+set_target_properties(gmock PROPERTIES IMPORTED_LOCATION ${BINARY_DIR}/googlemock/libgmock.so)
+
+add_library(gmock_main SHARED IMPORTED)
+add_dependencies(gmock_main external_gtest)
+set_target_properties(gmock_main PROPERTIES IMPORTED_LOCATION ${BINARY_DIR}/googlemock/libgmock_main.so)

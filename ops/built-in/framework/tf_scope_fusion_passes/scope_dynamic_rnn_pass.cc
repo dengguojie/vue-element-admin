@@ -25,6 +25,7 @@ static const char* const kScopeType = "DynamicRNN";
 static const char* const kLstmCellTanhType = "general_basic_lstm_cell_tanh";
 static const char* const kFwWhileType = "fw_while";
 static const char* const kBwWhileType = "bw_while";
+static const char* const kRnnWhileType = "rnn_while";
 static const char* const kFwWhile_noTranposeType = "fw_no_transpose_while";
 static const char* const kBwWhile_noTranposeType = "bw_no_transpose_while";
 static const char* const kKernelBiasType = "kernel_bias_in";
@@ -156,6 +157,20 @@ void ScopeDynamicRNNPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
   bw_no_trans_while->AddNodeOpTypeFeature(NodeOpTypeFeature("ReverseV2", -1, 0));
   bw_no_trans_while->AddScopeFeature(ScopeFeature(kKernelBiasType, 0));
   batch3.push_back(bw_no_trans_while);
+
+  ScopePattern* rnn_while = new (std::nothrow) ScopePattern();
+  if (rnn_while == nullptr) {
+    ScopeUtil::FreeScopePatterns(patterns);
+    ScopeUtil::FreeOneBatchPattern(batch3);
+    OP_LOGE(kOpType, "Alloc an object failed.");
+    return;
+  }
+  rnn_while->SetSubType(kRnnWhileType);
+  rnn_while->AddScopeFeature(ScopeFeature(kWhileType, 1, "rnn"));
+  rnn_while->AddScopeFeature(ScopeFeature(kKernelBiasType, 0));
+  rnn_while->AddNodeOpTypeFeature(NodeOpTypeFeature("TensorArrayV3", 0, 1));
+  rnn_while->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", 2, 0));
+  batch3.push_back(rnn_while);
   patterns.push_back(batch3);
 }
 
@@ -172,7 +187,8 @@ Status ScopeDynamicRNNPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& s
   }
   // Class ScopeGraph guarantees scope_tree is not empty.
   const std::vector<Scope*>& scopes = scope_tree->GetAllScopes();
-  std::set<string> support_types = {kFwWhileType, kBwWhileType, kFwWhile_noTranposeType, kBwWhile_noTranposeType};
+  std::set<string> support_types = {kFwWhileType, kBwWhileType, kFwWhile_noTranposeType, kBwWhile_noTranposeType,
+                                    kRnnWhileType};
   for (auto& scope : scopes) {
     // Class ScopeTree guarantees scope is not empty.
     if (support_types.count(scope->SubType()) != 0) {
@@ -211,7 +227,8 @@ void ScopeDynamicRNNPass::GenerateFusionResult(const std::vector<Scope*>& scopes
         break;
       }
     }
-    if (scope->SubType() == kFwWhileType || scope->SubType() == kBwWhileType) {
+    if (scope->SubType() == kFwWhileType || scope->SubType() == kBwWhileType ||
+        scope->SubType() == kRnnWhileType) {
       fusion_rlt->InsertInputs("transpose", {0, kFusionDisableIndex});  // Input 0 : x
       fusion_rlt->InsertOutputs("transpose_1", {0});                    // Output index 0 : outputs
     }
@@ -220,8 +237,12 @@ void ScopeDynamicRNNPass::GenerateFusionResult(const std::vector<Scope*>& scopes
                                {kFusionDisableIndex, kFusionDisableIndex, 0, kFusionDisableIndex});  // Input 0 : x
       fusion_rlt->InsertOutputs("TensorArrayStack/TensorArrayGatherV3", {0});  // Output index 0 : outputs
     }
-    fusion_rlt->InsertInputs(w_in_node_name, {1});  // Input index 3 : w
-    fusion_rlt->InsertInputs(b_in_node_name, {2});  // Input index 4 : b
+    if (scope->SubType() == kRnnWhileType) {
+      fusion_rlt->InsertInputs("while/Enter_4", {4});  // Input 4 : init_h
+      fusion_rlt->InsertInputs("while/Enter_3", {5});  // Input 5 : init_c
+    }
+    fusion_rlt->InsertInputs(w_in_node_name, {1});  // Input index 1 : w
+    fusion_rlt->InsertInputs(b_in_node_name, {2});  // Input index 2 : b
     fusion_rlt->SetType(kScopeType);
     fusion_rlt->SetDescription("");
     std::string scope_name = scope->Name();

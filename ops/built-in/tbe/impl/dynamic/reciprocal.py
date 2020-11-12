@@ -18,18 +18,14 @@ reciprocal
 
 import json
 from te import tvm
-from topi import generic
-import te.lang.dynamic
+import te.lang.cce as tbe
 from te import platform as tbe_platform
+import te.lang.base as tbe_base
 from functools import reduce as reduceIns
-from te.platform.shape_classifier import classify
-from te.platform.shape_classifier import Mode
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import variable_shape
+from te.utils import shape_util
+from te.lang.base.shape_classifier import classify
+from te.lang.base.shape_classifier import Mode
+from te.utils import para_check
 
 SHAPE_SIZE_LIMIT = 2147483648  # shape limit
 
@@ -81,24 +77,24 @@ def op_select_format(input_x, output_y, kernel_name="reciprocal"):
 
 
 def reciprocal_compute(input_x, output_y, kernel_name="reciprocal"):
-    if tbe_platform.cce_conf.api_check_support("te.lang.dynamic.vdiv",
+    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vdiv",
                                                "float32"):
         dtype = input_x.dtype
-        shape = te.lang.dynamic.shape_to_list(input_x.shape)
+        shape = shape_util.shape_to_list(input_x.shape)
         if dtype == "float16":
-            input_x = te.lang.dynamic.cast_to(input_x, "float32")
-        data_one = te.lang.dynamic.broadcast(tvm.const(1, "float32"), shape)
-        res = te.lang.dynamic.vdiv(data_one, input_x)
+            input_x = tbe.cast_to(input_x, "float32")
+        data_one = tbe.broadcast(tvm.const(1, "float32"), shape)
+        res = tbe.vdiv(data_one, input_x)
         if dtype == "float16":
-            res = te.lang.dynamic.cast_to(res, "float16")
+            res = tbe.cast_to(res, "float16")
     else:
-        res = te.lang.dynamic.vrec(input_x)
+        res = tbe.vrec(input_x)
 
     return res
 
 
-@te.op.register_operator("Reciprocal")
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@tbe_base.register_operator("Reciprocal")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def reciprocal(input_x, output_y, kernel_name="reciprocal"):
     """
     algorithm: reciprocal
@@ -122,12 +118,12 @@ def reciprocal(input_x, output_y, kernel_name="reciprocal"):
     dtype = input_x.get("dtype")
     check_list = ("float16", "float32")
     input_dtype = dtype.lower()
-    check_dtype(input_dtype, check_list, param_name="input_x")
+    para_check.check_dtype(input_dtype, check_list, param_name="input_x")
     schedules, tensors = [], []
     ins = classify([input_x], Mode.ELEWISE)
     for (input_x,) in ins:
-        with te.op.compute():
-            x_shape = variable_shape([input_x])
+        with tbe_base.compute():
+            x_shape = shape_util.variable_shape([input_x])
             fuse_shape = [1]
             fuse_shape[0] = reduceIns(lambda x, y: x * y, x_shape[0])
             data_input = tvm.placeholder(fuse_shape, dtype=input_dtype,
@@ -135,10 +131,10 @@ def reciprocal(input_x, output_y, kernel_name="reciprocal"):
             res = reciprocal_compute(data_input, output_y, kernel_name)
             tensors.append([data_input, res])
         with tvm.target.cce():
-            sch = generic.auto_schedule(res)
+            sch = tbe.auto_schedule(res)
         schedules.append(sch)
     config = {"name": kernel_name,
               "print_ir": False,
               "tensor_list": tensors
               }
-    te.lang.dynamic.build(schedules, config)
+    tbe.build(schedules, config)

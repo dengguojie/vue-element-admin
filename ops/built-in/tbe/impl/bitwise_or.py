@@ -20,6 +20,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -89,7 +90,8 @@ def bitwise_or(x1, x2, y, kernel_name="bitwise_or",):
     para_check.check_dtype(input_data_type, check_tuple, param_name="x1")
 
     if dtype_x != dtype_y:
-        raise RuntimeError("The type of input must be the same")
+        error_detail = "dtype of x1 and x2 should be same"
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "x1", "x2", error_detail)
 
     shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
                                                               shape_y,

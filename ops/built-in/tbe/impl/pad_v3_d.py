@@ -15,14 +15,16 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 pad_v3
 """
-from te.utils.op_utils import *
+from te.utils import para_check
 from impl.pad_d import pad_d
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-branches,
 # pylint: disable=locally-disabled,too-many-statements
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_LIST_INT,
-                 OPTION_ATTR_INT, OPTION_ATTR_STR, OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_LIST_LIST_INT,
+                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_BOOL,
+                            para_check.KERNEL_NAME)
 def pad_v3_d(input_x, output_x, paddings, constant_values=0, mode="constant", paddings_contiguous=True,
              kernel_name="pad_v3_d"):
     """ calculating pad tensor by paddings parameters
@@ -55,7 +57,7 @@ def pad_v3_d(input_x, output_x, paddings, constant_values=0, mode="constant", pa
     """
     shape = list(input_x.get("shape"))
     paddings = list(paddings)
-    check_shape(shape, param_name="input_x")
+    para_check.check_shape(shape, param_name="input_x")
     if len(paddings) is not len(shape):
         raise RuntimeError("Paddings and shape are not the same length.")
     for padding in paddings:

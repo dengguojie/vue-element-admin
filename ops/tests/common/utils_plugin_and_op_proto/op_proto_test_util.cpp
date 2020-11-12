@@ -56,3 +56,22 @@ ge::TensorDesc create_desc_shape_range(
   tensorDesc.SetShapeRange(shape_range);
   return tensorDesc;
 }
+
+ge::TensorDesc create_desc_shape_range(
+    const std::vector<int64_t>& shape_dims,
+    ge::DataType dt,
+    ge::Format format,
+    const std::vector<int64_t>& ori_shape_dims,
+    ge::Format ori_format,
+    std::vector<std::pair<int64_t,int64_t>> shape_range) {
+  ge::TensorDesc tensorDesc;
+  ge::Shape shape(shape_dims);
+  ge::Shape ori_shape(ori_shape_dims);
+  tensorDesc.SetDataType(dt);
+  tensorDesc.SetShape(shape);
+  tensorDesc.SetFormat(format);
+  tensorDesc.SetOriginShape(ori_shape);
+  tensorDesc.SetOriginFormat(ori_format);
+  tensorDesc.SetShapeRange(shape_range);
+  return tensorDesc;
+}

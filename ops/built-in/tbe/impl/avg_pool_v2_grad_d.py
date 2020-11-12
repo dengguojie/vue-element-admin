@@ -25,16 +25,7 @@ from te.lang.cce.te_compute import common
 from te.platform import insn_cmd
 from topi import generic
 from te.utils.error_manager import error_manager_vector
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_shape
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import OPTION_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import REQUIRED_ATTR_LIST_INT
-from te.utils.op_utils import OPTION_ATTR_STR
-from te.utils.op_utils import OPTION_ATTR_BOOL
-from te.utils.op_utils import KERNEL_NAME
+from te.utils import para_check
 
 BLOCK_SIZE = cce_params.BLOCK_REDUCE
 
@@ -69,10 +60,10 @@ def parameter_check(shape_in, shape_k, shape_out, dtype, strides,
     """
     function of parameter check
     """
-    check_shape(shape_in, min_rank=INPUT_DIM, max_rank=INPUT_DIM)
-    check_shape(shape_k, min_rank=FILTER_DIM, max_rank=FILTER_DIM)
-    check_shape(shape_out, min_rank=OUTPUT_DIM, max_rank=OUTPUT_DIM)
-    check_shape(strides, min_rank=STRIDES_DIM, max_rank=STRIDES_DIM)
+    para_check.check_shape(shape_in, min_rank=INPUT_DIM, max_rank=INPUT_DIM)
+    para_check.check_shape(shape_k, min_rank=FILTER_DIM, max_rank=FILTER_DIM)
+    para_check.check_shape(shape_out, min_rank=OUTPUT_DIM, max_rank=OUTPUT_DIM)
+    para_check.check_shape(strides, min_rank=STRIDES_DIM, max_rank=STRIDES_DIM)
     # stride's shape is (stride_h, stride_w)
     # shape_in and shape_out is "NCHW"
     # shape_k is "HWC1"
@@ -96,7 +87,7 @@ def parameter_check(shape_in, shape_k, shape_out, dtype, strides,
         error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "shape_in", "shape_out", error_detail)
 
     inp_dtype = dtype.lower()
-    check_dtype(inp_dtype, ('float16',))
+    para_check.check_dtype(inp_dtype, ('float16',))
 
     if padding_mode.lower() not in ("same", "valid", "calculated"):
         expected_value = "SAME VALID or CALCULATED"
@@ -608,13 +599,13 @@ def avg_pool_grad_schedule(res):
     return s
 
 
-@check_op_params(
-    REQUIRED_INPUT, OPTION_INPUT, OPTION_INPUT,
-    REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT,
-    REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_LIST_INT,
-    OPTION_ATTR_STR, REQUIRED_ATTR_LIST_INT,
-    OPTION_ATTR_STR, OPTION_ATTR_BOOL, OPTION_ATTR_BOOL,
-    OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(
+    para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT,
+    para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
+    para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
+    para_check.OPTION_ATTR_STR, para_check.REQUIRED_ATTR_LIST_INT,
+    para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL,
+    para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def avg_pool_v2_grad_d(input_grad,
                        mean_matrix,
                        kernel_matrix,
@@ -692,14 +683,14 @@ def avg_pool_v2_grad_d(input_grad,
     out_grad_shape = out_grad.get("shape")
     dtype = input_grad.get("dtype").lower()
 
-    check_shape(input_grad_shape,
+    para_check.check_shape(input_grad_shape,
                          min_rank = INPUT_DIM,
                          max_rank = INPUT_DIM)
-    check_shape(orig_input_shape,
+    para_check.check_shape(orig_input_shape,
                          min_rank = INPUT_DIM,
                          max_rank = INPUT_DIM)
-    check_shape(strides, min_rank = SHAPE_SIZE, max_rank = SHAPE_SIZE)
-    check_shape(ksize, min_rank = SHAPE_SIZE, max_rank = SHAPE_SIZE)
+    para_check.check_shape(strides, min_rank=SHAPE_SIZE, max_rank=SHAPE_SIZE)
+    para_check.check_shape(ksize, min_rank=SHAPE_SIZE, max_rank=SHAPE_SIZE)
 
     if out_grad_shape != orig_input_shape:
         error_detail = "the shape of out_grad_shape and orig_input_shape must be equal"
@@ -710,8 +701,12 @@ def avg_pool_v2_grad_d(input_grad,
         expected_value = "greater than or equal to 1"
         real_value = "smaller than 1"
         error_manager_vector.raise_err_input_value_invalid(kernel_name, "stride", expected_value, real_value)
+
+    if ceil_mode and (padding_mode == "VALID"):
+        raise RuntimeError("When padding_mode is VALID, ceil_mode must be False.")
+
     data_dtype = dtype.lower()
-    check_dtype(data_dtype, ('float16',))
+    para_check.check_dtype(data_dtype, ('float16',))
 
     _, _, HH, WW, _ = orig_input_shape
 

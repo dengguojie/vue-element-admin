@@ -16,18 +16,14 @@
 dynamic div
 """
 from functools import reduce as reduceIns
-from te.platform.shape_classifier import classify
-from te.platform.shape_classifier import Mode
-import te.lang.dynamic
+from te.lang.base.shape_classifier import classify
+from te.lang.base.shape_classifier import Mode
+import te.lang.cce as tbe
 from te import platform as tbe_platform
+import te.lang.base as tbe_base
 from te import tvm
-from topi import generic
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import variable_shape
+from te.utils import shape_util
+from te.utils import para_check
 
 
 def sqrt_compute(input_data, output_data, kernel_name="sqrt"):
@@ -51,19 +47,19 @@ def sqrt_compute(input_data, output_data, kernel_name="sqrt"):
     dtype = input_data.dtype
     has_improve_precision = False
     if dtype == "float16" and tbe_platform.cce_conf.api_check_support(
-            "te.lang.dynamic.vsqrt", "float32"):
-        input_data = te.lang.dynamic.cast_to(input_data, "float32")
+            "te.lang.cce.vsqrt", "float32"):
+        input_data = tbe.cast_to(input_data, "float32")
         has_improve_precision = True
-    result = te.lang.dynamic.vsqrt(input_data)
+    result = tbe.vsqrt(input_data)
 
     if has_improve_precision:
-        result = te.lang.dynamic.cast_to(result, "float16")
+        result = tbe.cast_to(result, "float16")
 
     return result
 
 
-@te.op.register_operator("Sqrt")
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@tbe_base.register_operator("Sqrt")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def sqrt(input_x, output_y, kernel_name="sqrt"):
     """
     algorithm: sqrt
@@ -86,14 +82,14 @@ def sqrt(input_x, output_y, kernel_name="sqrt"):
     # check dtype
     x_dtype = input_x.get("dtype").lower()
     check_list = ("float16", "float32")
-    check_dtype(x_dtype, check_list, param_name="input_x")
+    para_check.check_dtype(x_dtype, check_list, param_name="input_x")
 
     ins = classify([input_x], Mode.ELEWISE)
     schedules, tensors = [], []
     for (input_x,) in ins:
-        with te.op.compute():
+        with tbe_base.compute():
             # shape
-            x_shape = variable_shape([input_x])
+            x_shape = shape_util.variable_shape([input_x])
             fuseshape = [1]
             fuseshape[0] = reduceIns(lambda x, y: x * y, x_shape[0])
             # div_compute
@@ -103,9 +99,9 @@ def sqrt(input_x, output_y, kernel_name="sqrt"):
 
             tensors.append([input_data, res])
         with tvm.target.cce():
-            sch = generic.auto_schedule(res)
+            sch = tbe.auto_schedule(res)
         schedules.append(sch)
 
     # build
     config = {"name": kernel_name, "tensor_list": tensors}
-    te.lang.dynamic.build(schedules, config)
+    tbe.build(schedules, config)

@@ -20,6 +20,7 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
+from te.utils.error_manager import error_manager_vector
 
 
 def _compare_value_int32(data_x, data_y, shape_dz):
@@ -170,7 +171,9 @@ def minimum_grad_compute(data_x, data_y, data_dz, y1, y2, grad_x, grad_y,
 
     if shape_x != shape_dz or shape_y != shape_dz:
         if dtype == "int32":
-            raise RuntimeError("sum not support int32")
+            rule_desc = "sum not support int32"
+            error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, \
+                                                              "data_x", dtype)
         result_dx, result_dy = _reduce_result(shape_x, shape_y, shape_dz,
                                               result_dx, result_dy)
 
@@ -228,10 +231,15 @@ def minimum_grad(grads, x1, x2, y1, y2, grad_x=True, grad_y=True,
     para_check.check_shape(shape_max, param_name="shape_max")
 
     if list(shape_dz) != list(shape_max):
-        raise RuntimeError("minimum_grad shape_dz != shape_max")
+        error_detail = "minimum_grad shape_dz != shape_max"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "grads", \
+                                                               "shape_max", error_detail)
 
     if dtype_x != dtype_y != dtype_dz:
-        raise RuntimeError("the dtypes of intputs should be same")
+        rule_desc = "the dtypes of intputs should be same"
+        param_value = "%s,%s,%s"%(dtype_x, dtype_y, dtype_dz)
+        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, \
+                                                          "grads,x1,x2", param_value)
 
     check_list = ("float16", "float32", "int32")
     para_check.check_dtype(dtype_dz, check_list, param_name="grads")

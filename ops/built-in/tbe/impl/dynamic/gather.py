@@ -20,19 +20,13 @@ from te import tvm
 import te.lang.dynamic
 from te import tik
 from te import platform as tbe_platform
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import OPTION_ATTR_BOOL
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import check_dtype
+from te.utils import para_check
 
 
 @te.op.register_operator("Gather")
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def gather(x, indices, y, validate_indices=True, kernel_name="Gather"):
-# @check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
-# def gather(x, indices, y, kernel_name="Gather"):
     """
     gather interface
 

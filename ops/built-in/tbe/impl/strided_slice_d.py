@@ -22,16 +22,51 @@ import functools
 import te.platform as tbe_platform
 from te.utils import para_check
 from te import tvm
-from te.lang.cce.rl_bank import rl_bank
+from te.domain.rl_bank import rl_bank
 from impl import strided_slice_for_last_dim
 from impl import copy_only
 from impl import strided_slice_two_turn_one
 from impl import strided_slice_fast_last_dim
 from impl import strided_slice_last_dim_one
 from impl import strided_slice_for_last_dim_mte
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 SHRINK_AXIS = -1
 NEW_AXIS = -2
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(input_x,
+                        output_x,
+                        begin,
+                        end,
+                        strides=None,
+                        begin_mask=0,
+                        end_mask=0,
+                        ellipsis_mask=0,
+                        new_axis_mask=0,
+                        shrink_axis_mask=0,
+                        kernel_name="strided_slice_d"):
+    format_x = input_x.get("format").upper()
+    shape_x_len = len(input_x.get("shape"))
+    slice_len = len(begin)
+    if format_x == "ND":
+        axis_split_matrix=[]
+        for i in range(slice_len, shape_x_len):
+            split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]])]
+            axis_split_matrix.append(split_0)
+        if slice_len == shape_x_len:
+            axis_split_matrix = None
+        axis_reduce_list = None
+
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
+
 
 def _shape_to_list(shape):
     """
@@ -652,7 +687,7 @@ def _schedule_last_axis(sch, shape, in_data, output, dtype):
 
 def _check_last_axis_situation(input_shape, begin, end, strides):
     """
-    check the iput args for last_dim_schedule
+    check the input args for last_dim_schedule
     """
     result = False
     axis_list = [184320, 46080, 11520, 2880, 1280]

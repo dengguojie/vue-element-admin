@@ -32,13 +32,6 @@ namespace fe
         // whether the opsKernelInfoStore is supported based on the operator attribute
         bool CheckSupported(const ge::OpDescPtr &opDescPtr, std::string &un_supported_reason) const override;
 
-        // memory allocation requirement
-        ge::Status CalcOpRunningParam(ge::Node &node) override;
-
-        // generate task for op。
-        ge::Status GenerateTask(const ge::Node &node, ge::RunContext &context,
-                                std::vector<domi::TaskDef> &tasks) override;
-
     };
 
     class FusionPassTestUtils {

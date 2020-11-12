@@ -20,6 +20,7 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
+from te.utils.error_manager import error_manager_vector
 
 # define a scalar, value = 1
 SCALAR_ONE = 1
@@ -123,9 +124,9 @@ def softplus_grad(input_gradients, input_features, output_backprops,
     dtype_x = input_features.get("dtype")
 
     if dtype_dy.lower() != dtype_x.lower():
-        raise RuntimeError(
-            "type of dy and type of x must be same, \
-             while the types are different")
+        error_detail = "Dtype of tensor input_gradients and input_features must be same!"
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "input_gradients", \
+                                                               "input_features", error_detail)
     dtype = dtype_dy
 
     para_check.check_shape(shape_dy, param_name="input_gradients")

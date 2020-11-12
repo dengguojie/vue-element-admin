@@ -441,7 +441,14 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
     OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]Matmul GetOpAttr transpose_x2 failed!");
     return GRAPH_FAILED;
   }
-
+  if (shapeX.GetDims().size() != 2 && shapeX.GetDims().size() != 4){
+    OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]Matmul the first input dims is not 2!");
+    return GRAPH_FAILED;
+  }
+  if (shapeY.GetDims().size() != 2 && shapeY.GetDims().size() != 4){
+    OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]Matmul the second input dims is not 2!");
+    return GRAPH_FAILED;
+  }
   std::vector<int64_t> dimVector;
   if (transposeA) {
     if (transposeB) {
@@ -570,6 +577,9 @@ VERIFY_FUNC_REG(GEMM, GemmVerify);
 // ----------------BatchMatMul-------------------
 
 // Check the dtype and attr of the input tensor description.
+// ----------------BatchMatMul-------------------
+
+// Check the dtype and attr of the input tensor description.
 IMPLEMT_VERIFIER(BatchMatMul, BatchMatMulVerify) {
   return GRAPH_SUCCESS;
 }
@@ -642,6 +652,96 @@ COMMON_INFER_FUNC_REG(BatchMatMul, BatchMatMulInferShape);
 
 // Registered verify function
 VERIFY_FUNC_REG(BatchMatMul, BatchMatMulVerify);
+
+
+// ----------------BatchMatMulV2-------------------
+// Check the dtype and attr of the input tensor description.
+IMPLEMT_VERIFIER(BatchMatMulV2, BatchMatMulV2Verify) {
+    return GRAPH_SUCCESS;
+}
+
+// Obtains the processing function of the output tensor description.
+IMPLEMT_COMMON_INFERFUNC(BatchMatMulV2InferShape) {
+    TensorDesc g_tensordesc_output = op.GetOutputDesc("y");
+    ge::TensorDesc g_inputTensorDescX = op.GetInputDesc("x1");
+    ge::TensorDesc g_inputTensorDescY = op.GetInputDesc("x2");
+
+    ge::Shape g_shapeX = g_inputTensorDescX.GetShape();
+    ge::Shape g_shapeY = g_inputTensorDescY.GetShape();
+
+    size_t g_dimNumX = g_shapeX.GetDimNum();
+    size_t g_dimNumY = g_shapeY.GetDimNum();
+
+    ge::TensorDesc g_outputTensorDesc = g_inputTensorDescX;
+
+    bool g_transposeA = false;
+    bool g_transposeB = false;
+
+    if (ge::GRAPH_SUCCESS != op.GetAttr("adj_x1", g_transposeA)) {
+        OpsGetAttrErrReport(op.GetName(), "g_transposeA");
+        printf("GetOpAttr transpose_a or transpose_a failed!");
+        return GRAPH_FAILED;
+    }
+    if (ge::GRAPH_SUCCESS != op.GetAttr("adj_x2", g_transposeB)) {
+        OpsGetAttrErrReport(op.GetName(), "g_transposeB");
+        printf("GetOpAttr transpose_a or transpose_b failed!");
+        return GRAPH_FAILED;
+    }
+    if (g_dimNumX < 3 || g_dimNumX > 8) {
+        return GRAPH_FAILED;
+    }
+    std::vector<int64_t> g_dimVector;
+    int g_dimM = 0;
+    int g_dimN = 0;
+    int g_dimNum = g_dimNumX;
+    if (g_dimNumX < g_dimNumY) {
+        g_dimNum = g_dimNumY;
+    }
+    if (g_transposeA == true) {
+        if (g_transposeB == true) {
+            g_dimM = g_dimNumX - 1;
+            g_dimN = g_dimNumY - 2;
+        } else {
+            g_dimM = g_dimNumX - 1;
+            g_dimN = g_dimNumY - 1;
+        }
+    } else if (g_transposeB == true) {
+        g_dimM = g_dimNumX - 2;
+        g_dimN = g_dimNumY - 2;
+    } else {
+        g_dimM = g_dimNumX - 2;
+        g_dimN = g_dimNumY - 1;
+    }
+
+    if (g_dimNumX < g_dimNumY) {
+        for (int i = 0; i < g_dimNum - 2; i++) {
+            g_dimVector.push_back(g_shapeY.GetDim(i));
+        }
+    } else {
+        for (int i = 0; i < g_dimNum - 2; i++) {
+            g_dimVector.push_back(g_shapeX.GetDim(i));
+        }
+    }
+    for (int i = 0; i < g_dimNum - 2; i++) {
+        g_dimVector.push_back(g_shapeX.GetDim(i));
+    }
+    g_dimVector.push_back(g_shapeX.GetDim(g_dimM));
+    g_dimVector.push_back(g_shapeY.GetDim(g_dimN));
+
+    ge::Shape g_outputShape(g_dimVector);
+
+    g_tensordesc_output.SetShape(g_outputShape);
+    g_tensordesc_output.SetDataType(op.GetInputDesc("x1").GetDataType());
+
+    (void)op.UpdateOutputDesc("y", g_tensordesc_output);
+    return GRAPH_SUCCESS;
+}
+
+// Registered inferfunction
+COMMON_INFER_FUNC_REG(BatchMatMulV2, BatchMatMulV2InferShape);
+
+// Registered verify function
+VERIFY_FUNC_REG(BatchMatMulV2, BatchMatMulV2Verify);
 
 // - ---------------L2Loss-------------------
 IMPLEMT_COMMON_INFERFUNC(L2LossInferShape) {

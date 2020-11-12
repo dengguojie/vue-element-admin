@@ -155,6 +155,13 @@ def ascend_anti_quant_compute(x, y, scale, offset, sqrt_mode=False, kernel_name=
     return res
 
 
+def get_op_support_info(x, y, scale, offset, sqrt_mode=False, kernel_name="ascend_anti_quant"):
+    """
+    get split info
+    """
+    return util.get_quant_support_info(x)
+
+
 # pylint: disable=too-many-arguments,invalid-name,unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT,
                             para_check.REQUIRED_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)

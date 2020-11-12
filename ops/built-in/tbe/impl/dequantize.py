@@ -18,7 +18,7 @@ dequantize op, Dequantize the 'input' tensor into a float tensor.
 import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
-from te.utils import operate_shape
+from te.utils import shape_util
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
@@ -228,10 +228,10 @@ def dequantize_compute(x, min_range, max_range, y, mode="MIN_COMBINED", kernel_n
 
     input_tensor = x
 
-    shape_x = operate_shape.shape_to_list(x.shape)
-    shape_range = operate_shape.shape_to_list(max_range.shape)
+    shape_x = shape_util.shape_to_list(x.shape)
+    shape_range = shape_util.shape_to_list(max_range.shape)
 
-    shape_x, shape_range, shape_max = operate_shape.broadcast_shapes(shape_x,
+    shape_x, shape_range, shape_max = shape_util.broadcast_shapes(shape_x,
                                                                      shape_range,
                                                                      param_name_input1="x",
                                                                      param_name_input2="max_range")
@@ -373,12 +373,12 @@ def dequantize(x, min_range, max_range, y, mode="MIN_COMBINED", kernel_name="deq
                                                           'mode only support MIN_COMBINED, MIN_FIRST, SCALED', 'mode',
                                                           mode)
 
-    shape_x, shape_range, _ = operate_shape.broadcast_shapes(shape_x,
+    shape_x, shape_range, _ = shape_util.broadcast_shapes(shape_x,
                                                              shape_range,
                                                              param_name_input1="x",
                                                              param_name_input2="min_range")
 
-    shape_x, shape_range = operate_shape.refine_shapes_for_broadcast(shape_x, shape_range)
+    shape_x, shape_range = shape_util.refine_shapes_for_broadcast(shape_x, shape_range)
     input_tensor = tvm.placeholder(shape_x, dtype=dtype_x, name="x")
     min_range = tvm.placeholder(shape_range, dtype="float32", name="input_min_range")
     max_range = tvm.placeholder(shape_range, dtype="float32", name="input_max_range")

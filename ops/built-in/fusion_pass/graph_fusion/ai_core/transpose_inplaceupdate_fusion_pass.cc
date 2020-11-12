@@ -100,12 +100,12 @@ Status TransposeInplaceUpdateFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
   std::vector<int64_t> perm0;
   if (ge::GRAPH_SUCCESS != op_trans0.GetAttr("perm", perm0)) {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "get attr perm failed.");
-    return GRAPH_FAILED;
+    return NOT_CHANGED;
   }
   std::vector<int64_t> perm1;
   if (ge::GRAPH_SUCCESS != op_trans1.GetAttr("perm", perm1)) {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "get attr perm failed.");
-    return GRAPH_FAILED;
+    return NOT_CHANGED;
   }
 
   // verify

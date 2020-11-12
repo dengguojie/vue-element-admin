@@ -22,18 +22,18 @@
 #define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MUL_ADDN_L2LOSS_FUSION_PASS_H_
 
 #include <vector>
+
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
 namespace fe {
 class MulAddNL2LossFusionPass : public PatternFusionBasePass {
  protected:
   vector<FusionPattern*> DefinePatterns() override;
-  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
+  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& new_nodes) override;
 
  private:
-  const string FUSED_OP_TYPE = "FusedMulAddNL2loss";
+  const string kFusedOpType = "FusedMulAddNL2loss";
 };
-
 }  // namespace fe
 
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MUL_ADDN_L2LOSS_FUSION_PASS_H_

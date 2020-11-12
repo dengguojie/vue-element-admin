@@ -22,6 +22,7 @@
 #include <vector>
 #include <string>
 #include "util/util.h"
+#include "util/error_util.h"
 #include "op_log.h"
 #include "inc/nn_detect_ops.h"
 
@@ -33,6 +34,7 @@ IMPLEMT_INFERFUNC(PSROIPooling, PSROIPoolingInferShape) {
   // The value of group_size must be less than 128
   if (group_size >= 128) {
     OP_LOGE(op.GetName().c_str(), "The value of group_size not support, is %ld", group_size);
+    OpsAttrValueErrReport(op.GetName(), "group_size", "less than 128", ConcatString(group_size));
     return GRAPH_FAILED;
   }
 
@@ -44,6 +46,8 @@ IMPLEMT_INFERFUNC(PSROIPooling, PSROIPoolingInferShape) {
   int64_t c_output_dim = x_shape.GetDim(1) / (group_size * group_size);
   if (c_output_dim != output_dim) {
     OP_LOGE(op.GetName().c_str(), "The c of input fm is invalid, is %ld, %ld", x_shape.GetDim(1), output_dim);
+    OpsInputShapeErrReport(op.GetName(), "c_output_dim shoule be equal to output_dim",
+                          "c_output_dim", ConcatString(c_output_dim));
     return GRAPH_FAILED;
   }
 
@@ -68,12 +72,14 @@ IMPLEMT_VERIFIER(PSROIPooling, PSROIPoolingVerify) {
             "input x shape must be 4d,"
             "input x shape size is %d",
             x_shape.GetDims().size());
+    OpsAttrValueErrReport(op.GetName(), "x_shape's size", "4", ConcatString(x_shape.GetDims().size()));
     return GRAPH_FAILED;
   }
 
   Format x_format = op.get_input_desc_x().GetFormat();
   if (x_format != FORMAT_NCHW) {
     OP_LOGE(op.GetName().c_str(), "input x format must be NCHW");
+    OpsInputFormatErrReport(op.GetName(), "x", "NCHW", ConcatString(x_format));
     return GRAPH_FAILED;
   }
 
@@ -84,6 +90,8 @@ IMPLEMT_VERIFIER(PSROIPooling, PSROIPoolingVerify) {
             "input rois shape must be equal 3,"
             "input rois shape size is %d",
             rois_shape.GetDims().size());
+    OpsAttrValueErrReport(op.GetName(), "rois_shape's size", "3",
+                          ConcatString(rois_shape.GetDims().size()));
     return GRAPH_FAILED;
   }
 

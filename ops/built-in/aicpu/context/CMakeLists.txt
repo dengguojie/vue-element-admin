@@ -1,0 +1,158 @@
+cmake_minimum_required(VERSION 3.14.1)
+project(cpu_kernels_context)
+get_filename_component(TOP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../.." ABSOLUTE)
+set(BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+set(proto_src_files
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/me_attr.proto
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/me_node_def.proto
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/me_tensor.proto
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/me_tensor_shape.proto
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/me_types.proto
+)
+
+protobuf_generate(aicpu PROTO_SRCS PROTO_HDRS ${proto_src_files})
+
+set (local_context_src_files
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/node_def.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/node_def_impl.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/tensor.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/tensor_impl.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/tensor_shape.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/tensor_shape_impl.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/attr_value.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/attr_value_impl.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/device.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/context.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/device_cpu_kernel.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/cpu_kernel_register.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/cpu_kernel_utils.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/host_sharder.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/device_sharder.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/eigen_threadpool.cc
+    ${PROTO_SRCS}
+)
+
+set(local_context_stub_files
+   ${CMAKE_CURRENT_SOURCE_DIR}/stub/aicpu_sharder.cc
+)
+
+set(local_context_inc_path
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/common
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto
+    ${TOP_DIR}/inc
+    ${TOP_DIR}/inc/aicpu
+    ${TOP_DIR}/inc/aicpu/common
+    ${TOP_DIR}/inc/aicpu/cpu_kernels
+    ${TOP_DIR}/inc/external/aicpu
+    ${TOP_DIR}/libc_sec/include
+    ${TOP_DIR}/third_party/protobuf/include
+    ${TOP_DIR}/third_party/eigen/src/eigen-3.3.7
+    ${TOP_DIR}/out/${product}
+    ${CMAKE_BINARY_DIR}/proto/aicpu/proto/cpu_proto/proto
+    ${CMAKE_BINARY_DIR}/proto/aicpu/proto
+    ${CMAKE_BINARY_DIR}/proto/aicpu
+)
+
+add_library(cpu_kernels_context SHARED
+    ${local_context_src_files}
+    $<$<STREQUAL:${PRODUCT},npuf10>:${local_context_stub_files}>
+)
+
+add_library(cpu_kernels_context_static STATIC
+    ${local_context_src_files}
+    ${local_context_stub_files}
+)
+
+if(${PRODUCT_SIDE} STREQUAL "host")
+target_link_libraries(cpu_kernels_context PRIVATE
+    $<BUILD_INTERFACE:intf_pub>
+    slog
+    PUBLIC c_sec
+    ascend_protobuf
+    -ldl
+    -shared
+    -Wl,-Bsymbolic -Wl,--exclude-libs,ALL
+    -Wl,-z,relro,-z,now
+    -s
+)
+else()
+target_link_libraries(cpu_kernels_context PRIVATE
+    $<BUILD_INTERFACE:intf_pub>
+    slog
+    PUBLIC c_sec
+    ascend_protobuf
+    $<$<NOT:$<STREQUAL:${PRODUCT},npuf10>>:aicpu_sharder>
+    -ldl
+    -shared
+    -Wl,-z,relro,-z,now
+    -s
+)
+
+endif()
+
+##cpu_kernels_context
+target_include_directories(cpu_kernels_context PRIVATE
+     ${local_context_inc_path}
+)
+
+target_compile_definitions(cpu_kernels_context PRIVATE
+    _FORTIFY_SOURCE=2
+    $<$<STREQUAL:${PRODUCT_SIDE},host>:VISIBILITY>
+    google=ascend_private
+)
+
+target_compile_options(cpu_kernels_context PRIVATE
+    -O2
+    -std=c++11
+    -ftrapv
+    $<$<STREQUAL:${PRODUCT_SIDE},host>:-fvisibility-inlines-hidden>
+    $<$<STREQUAL:${PRODUCT_SIDE},host>:-fvisibility=hidden>
+)
+
+target_include_directories(cpu_kernels_context_static PRIVATE
+     ${local_context_inc_path}
+)
+
+target_compile_definitions(cpu_kernels_context_static PRIVATE
+    _FORTIFY_SOURCE=2
+    VISIBILITY
+    google=ascend_private
+)
+
+target_compile_options(cpu_kernels_context_static PRIVATE
+    -O2
+    -std=c++11
+    -ftrapv
+    -fstack-protector-all
+)
+
+target_link_libraries(cpu_kernels_context_static PRIVATE
+    $<BUILD_INTERFACE:intf_pub>
+    -Wl,-z,relro,-z,now
+    -s
+    -ldl
+    -shared
+) 
+ 
+set(INSTALL_LIBRARY_DIR lib)
+
+install(TARGETS cpu_kernels_context OPTIONAL
+    EXPORT cpu_kernels_context-targets
+    LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
+)
+
+install(TARGETS cpu_kernels_context_static OPTIONAL
+    EXPORT cpu_kernels_context_static-targets
+    LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
+)
+
+set(cpu_kernels_context_static ${CMAKE_CURRENT_BINARY_DIR}/libcpu_kernels_context_static.a)
+
+set_target_properties(cpu_kernels_context_static
+    PROPERTIES
+    OUTPUT_NAME cpu_kernels_context
+)
+
+
+

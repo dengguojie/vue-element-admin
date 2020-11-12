@@ -19,6 +19,7 @@ arg_min_d
 import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 # define a scalar, value = (2**16 - 1)
 SCALAR_MAX_FP16 = (2**16 - 1)
@@ -115,7 +116,8 @@ def _param_check(shape_x, dtype_x, axis, kernel_name):
     """
     dim_num = len(shape_x)
     if axis < -dim_num or axis >= dim_num:
-        raise RuntimeError("Axis value out of range")
+        error_manager_vector.raise_err_input_param_range_invalid(kernel_name, "x", \
+                                                                 -dim_num, dim_num, axis)
     para_check.check_shape(shape_x, param_name="x")
 
     check_list = ("float16", "float32")

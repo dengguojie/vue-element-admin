@@ -910,4 +910,129 @@ Status PatternFusionUtil::UpdateInputAndOutputName(const ge::OpDescPtr opDescPtr
   node_op.BreakConnect();
   return SUCCESS;
 }
+
+// unknown shape value
+const int64_t UNKNOWN_SHAPE_VALUE = -1;
+const int64_t SHAPE_UNKNOWN_DIM_NUM = -2;
+
+bool PatternFusionUtil::IsUnknownShape(const int64_t& dims) {
+  if (dims == UNKNOWN_SHAPE_VALUE || dims == SHAPE_UNKNOWN_DIM_NUM) {
+    return true;
+  }
+  return false;
+}
+
+ge::NodePtr PatternFusionUtil::InsertInputNode(ge::ComputeGraph &graph, ge::NodePtr &src_node, const string &op_type,
+                                               const int32_t &index, std::atomic<uint64_t> &name_id) {
+  ge::OpDescPtr op_desc;
+  ge::NodePtr single_node = nullptr;
+  int32_t input_size = static_cast<int32_t>(src_node->GetAllInDataAnchorsSize());
+  if (input_size <= index) {
+    OP_LOGD(src_node->GetName().c_str(), "insert node anchor index[%d] is out of input's range.", index);
+    return nullptr;
+  }
+  FUSION_PASS_MAKE_SHARED(op_desc = std::make_shared<ge::OpDesc>(src_node->GetName() + "_" +
+          op_type + "_" + std::to_string(name_id), op_type), return nullptr);
+  auto in_anchor = src_node->GetInAnchor(index);
+  FUSION_PASS_CHECK(in_anchor == nullptr,
+                    OP_LOGE(src_node->GetName().c_str(), "data anchor is nullptr."), return nullptr);
+  auto peer_anchors = in_anchor->GetPeerAnchors();
+  FUSION_PASS_CHECK(peer_anchors.empty() || peer_anchors.size() > 1,
+                    OP_LOGE(src_node->GetName().c_str(), "out data anchor's peer in anchor is empty or more than 1."),
+                    return nullptr);
+  auto peer_anchor = peer_anchors.at(0);
+  auto peer_anchor_idx = peer_anchor->GetIdx();
+  GeTensorDesc input_desc;
+  GeTensorDesc output_desc;
+  if (peer_anchor_idx >= 0) {
+    input_desc = peer_anchor->GetOwnerNode()->GetOpDesc()->GetOutputDesc(peer_anchor_idx);
+  }
+  if (index >= 0) {
+    output_desc = src_node->GetOpDesc()->GetInputDesc(index);
+  }
+  (void)op_desc->AddInputDesc(input_desc);
+  (void)op_desc->AddOutputDesc(output_desc);
+  single_node = graph.AddNode(op_desc);
+  FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(peer_anchor, in_anchor) != SUCCESS,
+                    OP_LOGE(src_node->GetName().c_str(), "remove edge failed."), return nullptr);
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(peer_anchor, single_node->GetInAnchor(0)) != SUCCESS,
+                    OP_LOGE(src_node->GetName().c_str(), "add edge failed."), return nullptr);
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(single_node->GetOutAnchor(0), in_anchor) != SUCCESS,
+                    OP_LOGE(src_node->GetName().c_str(), "add edge failed."), return nullptr);
+  return single_node;
+}
+
+ge::NodePtr PatternFusionUtil::InsertOutputNode(ge::ComputeGraph &graph, ge::NodePtr &src_node, const string &op_type,
+                                                const int32_t &index, std::atomic<uint64_t> &name_id) {
+  ge::OpDescPtr op_desc;
+  ge::NodePtr single_node = nullptr;
+  int32_t output_size = static_cast<int32_t>(src_node->GetAllOutDataAnchorsSize());
+  if (output_size <= index) {
+    OP_LOGD(src_node->GetName().c_str(), "insert node anchor index[%d] is out of output's range.", index);
+    return nullptr;
+  }
+  FUSION_PASS_MAKE_SHARED(op_desc = std::make_shared<ge::OpDesc>(src_node->GetName() + "_" +
+          op_type + "_" + std::to_string(name_id), op_type), return nullptr);
+  auto out_anchor = src_node->GetOutAnchor(index);
+  FUSION_PASS_CHECK(out_anchor == nullptr,
+                    OP_LOGE(src_node->GetName().c_str(), "data anchor is nullptr."), return nullptr);
+  auto peer_anchors = out_anchor->GetPeerAnchors();
+  for (auto peer_anchor : peer_anchors) {
+    FUSION_PASS_CHECK(peer_anchor == nullptr,
+                      OP_LOGE(src_node->GetName().c_str(), "data anchor is nullptr."), return nullptr);
+  }
+  FUSION_PASS_CHECK(peer_anchors.empty(),
+                    OP_LOGE(src_node->GetName().c_str(), "out data anchor's peer in anchor is empty."), return nullptr);
+  GeTensorDesc output_desc;
+  GeTensorDesc input_desc;
+  if (index >= 0) {
+    auto peer_anchor_idx = peer_anchors.at(0)->GetIdx();
+    output_desc = peer_anchors.at(0)->GetOwnerNode()->GetOpDesc()->GetInputDesc(peer_anchor_idx);
+    input_desc = src_node->GetOpDesc()->GetOutputDesc(index);
+  }
+  (void) op_desc->AddInputDesc(input_desc);
+  (void) op_desc->AddOutputDesc(output_desc);
+  single_node = graph.AddNode(op_desc);
+  for (auto peer_anchor : peer_anchors) {
+    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(out_anchor, peer_anchor) != SUCCESS,
+                      OP_LOGE(src_node->GetName().c_str(), "remove edge failed."), return nullptr);
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(single_node->GetOutAnchor(0), peer_anchor) != SUCCESS,
+                      OP_LOGE(src_node->GetName().c_str(), "add edge failed."), return nullptr);
+  }
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(out_anchor, single_node->GetInAnchor(0)) != SUCCESS,
+                    OP_LOGE(src_node->GetName().c_str(), "add edge failed."), return nullptr);
+  return single_node;
+}
+
+/*
+ * insert single node before of behind src node
+ * if insert input node, make sure the input anchor of src node have only one peer anchor
+ * if insert output node, we will connect all peer anchors of src node's out anchor to single node
+ *
+ *         input node                               src node
+ *              |                                       |
+ *         single node                             single node
+ *              |                                   /   |   \
+ *          src node                            node1 node2 node3
+ */
+ge::NodePtr PatternFusionUtil::InsertSingleNode(ge::ComputeGraph &graph, ge::NodePtr &src_node, const string &op_type,
+        const bool &is_input, const int32_t &index, vector<ge::NodePtr> &fusion_nodes) {
+  ge::NodePtr single_node = nullptr;
+  static std::atomic<uint64_t> name_id(0);
+  if (is_input) {
+    single_node = InsertInputNode(graph, src_node, op_type, index, name_id);
+    FUSION_PASS_CHECK(single_node == nullptr,
+            OP_LOGE(src_node->GetName().c_str(), "Insert input node failed."), return nullptr);
+    name_id.fetch_add(1, std::memory_order_relaxed);
+    fusion_nodes.push_back(single_node);
+  } else {
+    single_node = InsertOutputNode(graph, src_node, op_type, index, name_id);
+    FUSION_PASS_CHECK(single_node == nullptr,
+            OP_LOGE(src_node->GetName().c_str(), "Insert output node failed."), return nullptr);
+    name_id.fetch_add(1, std::memory_order_relaxed);
+    fusion_nodes.push_back(single_node);
+  }
+  return single_node;
+}
+
 }  // namespace fe

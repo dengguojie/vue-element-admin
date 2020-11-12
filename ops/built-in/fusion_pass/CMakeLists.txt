@@ -14,40 +14,44 @@
 # ============================================================================
 
 set(_proto_srcs
-  "${CANN_ROOT}/third_party/metadef/inc/common/proto/task.proto"
+  "${METADEF_INCLUDE}/common/proto/task.proto"
 )
 
-# the output path of generated files
-set(_proto_include "${CMAKE_CURRENT_BINARY_DIR}/proto_tmp")
-protobuf_generate_cc(_proto_h _proto_cc ${_proto_include} ${_proto_srcs})
+protobuf_generate(opp _proto_cc _proto_h ${_proto_srcs})
 
 set(_common_fusion_pass_inc
-  ${CMAKE_CURRENT_SOURCE_DIR}/common
-  ${CANN_ROOT}/ops/common/inc
-  ${CANN_ROOT}/third_party/fwkacllib/inc
-  ${CANN_ROOT}/third_party/metadef/inc
-  ${CANN_ROOT}/third_party/metadef/inc/external
-  ${CANN_ROOT}/third_party/metadef/inc/register
-  ${CANN_ROOT}/third_party/metadef/third_party/graphengine/inc
-  ${CANN_ROOT}/third_party/metadef/third_party/graphengine/inc/external
-  ${CANN_ROOT}/third_party/metadef/third_party/graphengine/inc/framework
-  ${_proto_include}
+  ${OPS_DIR}/built-in/fusion_pass/common
+  ${OPS_DIR}/built-in/op_proto/util
+  ${OPS_INCLUDE}
+  ${FWKACLLIB_INCLUDE}
+  ${METADEF_INCLUDE}
+  ${METADEF_INCLUDE}/external
+  ${METADEF_INCLUDE}/external/graph
+  ${METADEF_INCLUDE}/register
+  ${GRAPHENGINE_INCLUDE}
+  ${GRAPHENGINE_INCLUDE}/external
+  ${GRAPHENGINE_INCLUDE}/framework
+  ${PROTO_BINARY_DIR}/opp
   ${JSON_INCLUDE}
   ${Protobuf_INCLUDE}
 )
 
 set(_common_fusion_pass_dep
-  ${graph}
-  ${register}
-  ${slog}
-  ${error_manager}
-  ${platform}
-  ${protobuf}
-  c_sec
+  $<BUILD_INTERFACE:intf_pub>
+  -Wl,--no-as-needed
+    graph
+    register
+    slog
+    error_manager
+    platform
+    ascend_protobuf
+  -Wl,--as-needed
+    c_sec
 )
 
 set(_common_srcs
   ${_proto_h}
+  ../op_proto/util/error_util.cc
   common/fp16_t.cc
   common/fusion_addoutput_registry.cc
   common/fusion_const2attr_registry.cc
@@ -57,24 +61,22 @@ set(_common_srcs
   common/quant_host_cpu_op_common.cc
 )
 
-set(_buffer_fusion
-  # TODO(liuzhenyu): fix compiling errors
-  # buffer_fusion/ai_core/matmul/matmul_fastgelugrad_ub_fusion.cc
+set(_aicore_fusion_srcs
   buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_conv_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_conv_relu_maxpooling_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_conv_relu_quant_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_conv_single_in_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_fusion_rule.cc
   buffer_fusion/ub_fusion/ai_core/conv2d_backprop_input/conv2d_bp_input_elemwise_pass.cc
+  buffer_fusion/ub_fusion/ai_core/conv3d/conv3d_elemwise_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/conv2d_dequant_add_mul_quant_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/conv2d_writeselect_stridewrite_pass.cc
   buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_confusiontranspose_ub_fusion.cc
   buffer_fusion/ub_fusion/ai_core/matmul/matmul_confusiontranspose_ub_fusion.cc
   buffer_fusion/ub_fusion/ai_core/matmul/matmul_gelugrad_ub_fusion.cc
+  buffer_fusion/ub_fusion/ai_core/matmul/matmul_fastgelugrad_ub_fusion.cc
+  buffer_fusion/ub_fusion/ai_core/matmul/tbe_fullyconnection_elemwise_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/matmul/tbe_matmul_elemwise.cc
-)
-
-set(_graph_fusion
   graph_fusion/ai_core/a_a_square_sum_maximum_rsqrt_mul_fusion_pass.cc
   graph_fusion/ai_core/a_conv2d_mul_fusion_pass.cc
   graph_fusion/ai_core/add_n_fusion_pass.cc
@@ -88,6 +90,7 @@ set(_graph_fusion
   graph_fusion/ai_core/a_reduce_prod_fusion_pass.cc
   graph_fusion/ai_core/a_reduce_sum_fusion_pass.cc
   graph_fusion/ai_core/arg_max_with_k_fusion_pass.cc
+  graph_fusion/ai_core/avg_pool3d_fusion_pass.cc
   graph_fusion/ai_core/avg_pool_1d_fusion_pass.cc
   graph_fusion/ai_core/avg_pool_grad_fusion_pass.cc
   graph_fusion/ai_core/avg_pool_pass.cc
@@ -122,6 +125,8 @@ set(_graph_fusion
   graph_fusion/ai_core/derelu_fusion_pass.cc
   graph_fusion/ai_core/diag_fusion_pass.cc
   graph_fusion/ai_core/diag_part_fusion_pass.cc
+  graph_fusion/ai_core/dynamic_gru_v2_fusion_pass.cc
+  graph_fusion/ai_core/dynamic_gru_v2_grad_fusion_pass.cc
   graph_fusion/ai_core/dynamic_rnn_grad_fusion_pass.cc
   graph_fusion/ai_core/dynamic_rnn_insert_transpose_pass.cc
   graph_fusion/ai_core/extremum_grad_fusion_pass.cc
@@ -169,6 +174,7 @@ set(_graph_fusion
   graph_fusion/ai_core/padd_depthwise_conv2d_fusion_pass.cc
   graph_fusion/ai_core/padd_maxpool_fusion_pass.cc
   graph_fusion/ai_core/pad_fusion_pass.cc
+  graph_fusion/ai_core/pad_v2_fusion_pass.cc
   graph_fusion/ai_core/pad_v3_fusion_pass.cc
   graph_fusion/ai_core/pass_through_fusion_pass.cc
   graph_fusion/ai_core/pass_through_second_fusion_pass.cc
@@ -197,6 +203,7 @@ set(_graph_fusion
   graph_fusion/ai_core/softmax_grad_ext_fusion_pass.cc
   graph_fusion/ai_core/softmax_grad_ext_v2_fusion_pass.cc
   graph_fusion/ai_core/softmax_transpose_fusion_pass.cc
+  graph_fusion/ai_core/softplus_tanh_mul_fusion.cc
   graph_fusion/ai_core/space_to_batch_fusion_pass.cc
   graph_fusion/ai_core/space_to_batch_nd_fusion_pass.cc
   graph_fusion/ai_core/space_to_depth_fusion_pass.cc
@@ -228,18 +235,13 @@ set(_graph_fusion
   graph_fusion/ai_core/yolo_v3_detection_output_v2_fusion_pass.cc
 )
 
-set(_aic_srcs
-  ${_common_srcs}
-  ${_buffer_fusion}
-  ${_graph_fusion}
-)
-
-set(_vec_srcs
-  ${_common_srcs}
-)
-
 set(ops_fusion_pass_path "${INSTALL_PATH}/opp/fusion_pass/built_in")
 
+
+set(_aic_srcs
+  ${_common_srcs}
+  ${_aicore_fusion_srcs}
+)
 
 add_library(ops_fusion_pass_aicore SHARED ${_aic_srcs})
 
@@ -256,14 +258,30 @@ add_dependencies(ops_fusion_pass_aicore json_headers)
 # to solve the compile warnings in fp16_t.cc
 target_compile_options(ops_fusion_pass_aicore PRIVATE
   "-fno-strict-aliasing"
+  -O2
+  -Dgoogle=ascend_private
+  # TODO: Fix warnings
+  # -Werror
 )
 
-cann_install(
-  TARGET      ops_fusion_pass_aicore
-  FILES       $<TARGET_FILE:ops_fusion_pass_aicore>
-  DESTINATION "${ops_fusion_pass_path}"
-)
+if(BUILD_OPEN_PROJECT)
+  cann_install(
+    TARGET      ops_fusion_pass_aicore
+    FILES       $<TARGET_FILE:ops_fusion_pass_aicore>
+    DESTINATION "${ops_fusion_pass_path}"
+  )
+else()
+  install(
+    TARGETS ops_fusion_pass_aicore OPTIONAL
+    EXPORT  ops_fusion_pass_aicore-targets
+    LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
+  )
+endif()
 
+
+set(_vec_srcs
+  ${_common_srcs}
+)
 
 add_library(ops_fusion_pass_vectorcore SHARED ${_vec_srcs})
 
@@ -278,11 +296,23 @@ target_link_libraries(ops_fusion_pass_vectorcore PRIVATE
 # to solve the compile warnings in fp16_t.cc
 target_compile_options(ops_fusion_pass_vectorcore PRIVATE
   "-fno-strict-aliasing"
+  -O2
+  -Werror
+  -Dgoogle=ascend_private
 )
 
 add_dependencies(ops_fusion_pass_vectorcore json_headers)
-cann_install(
-  TARGET      ops_fusion_pass_vectorcore
-  FILES       $<TARGET_FILE:ops_fusion_pass_vectorcore>
-  DESTINATION "${ops_fusion_pass_path}/vector_core"
-)
+
+if(BUILD_OPEN_PROJECT)
+  cann_install(
+    TARGET      ops_fusion_pass_vectorcore
+    FILES       $<TARGET_FILE:ops_fusion_pass_vectorcore>
+    DESTINATION "${ops_fusion_pass_path}/vector_core"
+  )
+else()
+  install(
+    TARGETS ops_fusion_pass_vectorcore OPTIONAL
+    EXPORT  ops_fusion_pass_vectorcore-targets
+    LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
+  )
+endif()

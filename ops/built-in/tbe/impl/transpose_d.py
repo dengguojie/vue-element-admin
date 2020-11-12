@@ -31,6 +31,11 @@ from te.platform.cce_build import build_config
 import te.platform.cce_params as cce_params
 from te.utils.op_utils import *
 from impl.hwc_2_chw import hwc_2_chw
+from te.utils.error_manager import error_manager_vector
+from impl.util.util_common import write_code
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 # General limitation of the size for input shape: 2**31 - 1
 SHAPE_SIZE_LIMIT = 2147483647
@@ -38,6 +43,108 @@ SHAPE_SIZE_LIMIT = 2147483647
 UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
 # available number of cores
 AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(input_x, output_y, perm, kernel_name="transpose_d"):
+    format_x = input_x.get("format").upper()
+    shape = list(input_x.get("shape"))
+    perm = list(perm)
+    if format_x == "ND":
+        if perm == [0, 3, 4, 1, 2] or perm == [0, 2, 3, 1]:
+            axis_split_matrix=[[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
+            axis_reduce_list = None
+        elif perm == [3, 2, 0, 1]:
+            if shape[3] == 1:
+                axis_split_matrix=[[SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])]]
+            elif shape[0] == 1 and shape[2] == 1:
+                axis_split_matrix=[
+                    [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [2]])],
+                    [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [1]])]
+                ]
+            else:
+                axis_split_matrix=[
+                    [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [3]])],
+                    [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [2]])],
+                    [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [0]])],
+                    [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [1]])]
+                ]
+            axis_reduce_list = None
+        elif perm == [0, 3, 1, 2, 4]:
+            axis_split_matrix=[
+                [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+                [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [1]])],
+                [SplitInput([0, [4], [-1], [-1]]), SplitOutput([0, [3]])]
+            ]
+            axis_reduce_list = None
+        elif (list(perm) == [1, 2, 3, 0] and shape[1] == 1 and shape[3] == 1) or \
+                (list(perm) == [3, 2, 1, 0] and shape[1] == 1 and shape[3] == 1):
+            axis_split_matrix=[
+                [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [2]])],
+                [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])]
+            ]
+            axis_reduce_list = None
+        elif (list(perm) == [3, 0, 2, 1] and shape[0] == 1 and shape[2] == 1):
+            axis_split_matrix=[
+                [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [2]])],
+                [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [1]])]
+            ]
+            axis_reduce_list = None
+        elif perm == [0, 2, 1]:
+            if shape[1] == 1 or shape[2] == 1:
+                axis_split_matrix=[[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
+            else:
+                axis_split_matrix=[
+                    [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+                    [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [2]])],
+                    [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])]
+                ]
+            axis_reduce_list = None
+        elif perm == [1, 0, 2]:
+            if shape[0] == 1 or shape[1] == 1:
+                axis_split_matrix=[[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
+            else:
+                axis_split_matrix=[
+                    [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [2]])],
+                    [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]])],
+                    [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [3]])]
+                ]
+            axis_reduce_list = None
+        elif perm == [0, 3, 1, 2]:
+            axis_split_matrix=[
+                [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [2]])],
+                [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [1]])]
+            ]
+            axis_reduce_list = None
+        elif perm == [0, 1, 3, 2]:
+            axis_split_matrix=[
+                [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])],
+                [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [1]])]
+            ]
+            axis_reduce_list = None
+        elif perm == [0, 1, 2, 4, 3]:
+            axis_split_matrix=[
+                [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [2]])],
+                [SplitInput([0, [4], [-1], [-1]]), SplitOutput([0, [1]])]
+            ]
+            axis_reduce_list = None
+        elif perm == [2, 0, 1]:
+            axis_split_matrix=[[SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])]]
+            axis_reduce_list = None
+        elif perm == [0, 2, 3, 4, 1]:
+            axis_split_matrix=[[SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [2]])]]
+            axis_reduce_list = None
+        elif perm == [0, 4, 1, 2, 3]:
+            axis_split_matrix=[[SplitInput([0, [4], [-1], [-1]]), SplitOutput([0, [1]])]]
+            axis_reduce_list = None
+        else:
+            axis_split_matrix = None
+            axis_reduce_list = None
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 # pylint: disable=locally-disabled,too-many-lines
@@ -355,14 +462,16 @@ def _check_params(shape, perm, dtype):
     check_shape(shape, param_name="input_x")
     len_shape = len(shape)
     if len(shape) != len(perm):
-        raise RuntimeError(
-            "length of perm must be equal to the length of shape")
+        error_detail = "length of perm must be equal to the length of shape"
+        error_manager_vector.raise_err_two_input_shape_invalid("transpose_d", "input_x", \
+                                                               "perm", error_detail)
 
     list_range = list(range(len_shape))
     list_perm = list(perm[:])
     list_perm.sort()
     if operator.ne(list_range, list_perm):
-        raise RuntimeError("value of perm is wrong")
+        error_detail = "value of perm is wrong"
+        error_manager_vector.raise_err_input_shape_invalid("transpose_d", "perm", error_detail)
 
     check_list = ("int8", "int16", "int32", "int64",
                   "uint8", "uint16", "uint32", "uint64",
@@ -391,22 +500,6 @@ def _add_last_axis(shape, perm, dtype):
             return True
 
     return False
-
-
-def _write_code(wkspace_dict, fname):
-    """
-    write workspaces to json file
-
-    """
-    fname = os.path.realpath(fname)
-    if fname.startswith(os.getcwd()):
-        if os.path.exists(fname):
-            with open(fname, "r") as f_var:
-                load_dict = json.load(f_var)
-            load_dict.update(wkspace_dict)
-            with open(fname, "w") as f_var:
-                json.dump(load_dict, f_var, sort_keys=True,
-                          indent=4, separators=(',', ':'))
 
 
 def _get_perm_one(perm):
@@ -24481,4 +24574,4 @@ def transpose_d(input_x, output_y, perm, kernel_name="transpose_d"):
 
         if num > 0:
             workspace_dict = {"workspace": {"num": num, "size": total_size}}
-            _write_code(workspace_dict, "kernel_meta/" + kernel_name + ".json")
+            write_code(workspace_dict, kernel_name)

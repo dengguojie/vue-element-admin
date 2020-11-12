@@ -106,11 +106,21 @@ Status MatMulBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
     FUSION_PASS_CHECK(biasShape.GetDimNum() != 1 && inputShape.GetDimNum() != 1,
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "Add input is not scalar"), return NOT_CHANGED);
     if (biasShape.GetDimNum() == 1) {
+      if (PatternFusionUtil::IsUnknownShape(biasShape.GetDim(0)) ||
+          PatternFusionUtil::IsUnknownShape(inputShape.GetDim(1))) {
+        OP_LOGW(FUSED_OP_TYPE.c_str(), "MatMulBiasAddFusionPass cannot be applied for unknown shape.");
+        return NOT_CHANGED;
+      }
       uint32_t biasDim = biasShape.GetDim(0);
       FUSION_PASS_CHECK(biasDim != inputShape.GetDim(1),
                         OP_LOGI(FUSED_OP_TYPE.c_str(), "bias shape is not equal to input second dim."),
                         return NOT_CHANGED);
     } else {
+      if (PatternFusionUtil::IsUnknownShape(biasShape.GetDim(1)) ||
+          PatternFusionUtil::IsUnknownShape(inputShape.GetDim(0))) {
+        OP_LOGW(FUSED_OP_TYPE.c_str(), "MatMulBiasAddFusionPass cannot be applied for unknown shape.");
+        return NOT_CHANGED;
+      }
       uint32_t biasDim = inputShape.GetDim(0);
       FUSION_PASS_CHECK(biasDim != biasShape.GetDim(1),
                         OP_LOGI(FUSED_OP_TYPE.c_str(), "bias shape is not equal to input second dim."),

@@ -23,7 +23,7 @@ from te import tvm
 from te import platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
-from te.utils.op_utils import *
+from te.utils import para_check
 
 NONETYPE = type(None)
 
@@ -42,21 +42,21 @@ def _check_shape(shape, data_format="NC1HWC0", param_name="x"):
      -------
      None
      """
-    check_shape(shape, min_rank=5, max_rank=5,
+    para_check.check_shape(shape, min_rank=5, max_rank=5,
                 param_name=param_name)
-    check_format(data_format.upper(), ("NC1HWC0",),
+    para_check.check_format(data_format.upper(), ("NC1HWC0",),
                  param_name=param_name)
 
 
-def check_rule(data, rule_desc, param_name=PARAM_NAME):
+def check_rule(data, rule_desc, param_name=para_check.PARAM_NAME):
     """
     The special check rule for tensor
     """
     if data is None or rule_desc is None:
         return
     error_info = {}
-    error_info['errCode'] = OP_ERROR_CODE_009
-    error_info['op_name'] = OP_NAME
+    error_info['errCode'] = para_check.OP_ERROR_CODE_009
+    error_info['op_name'] = para_check.OP_NAME
     error_info['param_name'] = param_name
     error_info['rule_desc'] = rule_desc
     error_info['param_value'] = data
@@ -195,10 +195,10 @@ def instance_norm_inf_compute(x, scale, offset, mean, variance,
     return res
 
 
-@check_op_params(REQUIRED_INPUT, OPTION_INPUT, OPTION_INPUT,
-                 OPTION_INPUT, OPTION_INPUT, OPTION_INPUT,
-                 REQUIRED_OUTPUT, OPTION_OUTPUT, OPTION_OUTPUT,
-                 KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT,
+                            para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_OUTPUT, para_check.OPTION_OUTPUT,
+                            para_check.KERNEL_NAME)
 def in_infer_v2d(x, gamma, beta, mean, variance, variance_sqrt,
                  y, batch_mean, batch_variance, kernel_name="in_infer_v2"):
     """
@@ -243,7 +243,7 @@ def in_infer_v2d(x, gamma, beta, mean, variance, variance_sqrt,
     dtype_x = x.get("dtype")
     data_format = x.get("format")
     _check_shape(shape_input, data_format, "x")
-    check_dtype(dtype_x.lower(), ("float16", "float32"), param_name="x")
+    para_check.check_dtype(dtype_x.lower(), ("float16", "float32"), param_name="x")
 
     x_input = tvm.placeholder(shape_input, name="x_input",
                               dtype=dtype_x.lower())
@@ -257,8 +257,8 @@ def in_infer_v2d(x, gamma, beta, mean, variance, variance_sqrt,
         shape_beta = beta.get("shape")
         dtype_gamma = gamma.get("dtype")
         dtype_beta = beta.get("dtype")
-        check_dtype(dtype_gamma.lower(), ("float32",), param_name="gamma")
-        check_dtype(dtype_beta.lower(), ("float32",), param_name="beta")
+        para_check.check_dtype(dtype_gamma.lower(), ("float32",), param_name="gamma")
+        para_check.check_dtype(dtype_beta.lower(), ("float32",), param_name="beta")
         _check_shape(shape_gamma, data_format, "gamma")
         _check_shape(shape_beta, data_format, "beta")
         _check_dims_equal(shape_input, shape_gamma)
@@ -273,11 +273,11 @@ def in_infer_v2d(x, gamma, beta, mean, variance, variance_sqrt,
 
         dtype_mean = mean.get("dtype")
         dtype_variance = variance.get("dtype")
-        check_dtype(dtype_mean.lower(), ("float32",), param_name="mean")
-        check_dtype(dtype_variance.lower(), ("float32",), param_name="variance")
+        para_check.check_dtype(dtype_mean.lower(), ("float32",), param_name="mean")
+        para_check.check_dtype(dtype_variance.lower(), ("float32",), param_name="variance")
 
         dtype_variance_sqrt = variance_sqrt.get("dtype")
-        check_dtype(dtype_variance_sqrt.lower(), ("float32",),
+        para_check.check_dtype(dtype_variance_sqrt.lower(), ("float32",),
                     param_name="variance_sqrt")
 
         shape_mean = mean.get("shape")

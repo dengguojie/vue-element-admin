@@ -185,7 +185,7 @@ class Crop:
                 thread_num = 2
         return thread_num
 
-    def prepare_src_pattern(self, index):
+    def prepare_src_pattern(self, index, num=1):
         """
         prepare src1_pattern tensor for vreduce instruction
         """
@@ -199,8 +199,8 @@ class Crop:
         else:
             dtype = "uint32"
             align_size = 32
-        size_align = (x_size + align_size - 1) // align_size * align_size
-        pattern_list = _get_input_offset_list(size_align, shape_x, shape_y, offset_in, shape_y[-1])
+        size_align = (x_size * num + align_size - 1) // align_size * align_size
+        pattern_list = _get_input_offset_list(size_align, shape_x, shape_y, offset_in, shape_y[-1], num)
         src1_pattern = self.instance.Tensor(dtype, (size_align // align_size,),
                                             name="src1_pattern", scope=tbe_platform.scope_ubuf)
         scalar = self.instance.Scalar(dtype, name="pattern_scalar")
@@ -286,7 +286,7 @@ class Crop:
             with self.instance.for_range(0, loop) as l_i:
                 _get_input_offset(shape_x, shape_y, offset_in, loop_start + l_i * ub_in_num,
                                   pattern_index, x1_offset)
-                n_burst = common_util.get_datamove_nburst(self.instance, in_element * ub_in_num * self.dsize)
+                n_burst = (in_element * ub_in_num * self.dsize + constant.BLOCK_SIZE - 1) // constant.BLOCK_SIZE
                 self.instance.data_move(src_ub, self.x1_gm[x1_offset * in_element],
                                         constant.SID, constant.DEFAULT_NBURST, n_burst,
                                         constant.STRIDE_ZERO, constant.STRIDE_ZERO)
@@ -317,7 +317,7 @@ class Crop:
         out_offset = loop_time * out_element
         src_ub = self.instance.Tensor(self.dtype, (ub_size,), name="src_ub", scope=tbe_platform.scope_ubuf)
         dst_ub = self.instance.Tensor(self.dtype, (ub_size,), name="dst_ub", scope=tbe_platform.scope_ubuf)
-        n_burst_out = common_util.get_datamove_nburst(self.instance, out_element * reduce_loop * self.dsize)
+        n_burst_out = (out_element * reduce_loop * self.dsize + constant.BLOCK_SIZE - 1) // constant.BLOCK_SIZE
         rsvd_index = self.instance.Scalar("uint32", "reduce_index")
         rsvd_index.set_as(0)
         num = shape_y[pattern_index - 1]
@@ -349,17 +349,74 @@ class Crop:
                 self.reduce_loop_compute(tail, loop_dict)
 
         with self.instance.if_scope(move_flag):
-            input_dict = {
-                "instance": self.instance,
-                "out_ub": dst_ub,
-                "out_gm": self.y_gm,
-                "gm_offset": out_offset,
-                "element_num": out_element * reduce_loop,
-                "dsize": self.dsize,
-            }
-            common_util.move_out_non32_alignment(input_dict)
+            each_burst_num = constant.BLOCK_SIZE // self.dsize
+            n_burst = ((out_element * reduce_loop * self.dsize) // constant.BLOCK_SIZE)
+            self.instance.data_move(self.y_gm[out_offset], dst_ub, constant.SID,
+                                    constant.DEFAULT_NBURST,
+                                    n_burst, constant.STRIDE_ZERO, constant.STRIDE_ZERO)
+            offset = out_element * reduce_loop - each_burst_num
+            scalar = self.instance.Scalar(dst_ub.dtype)
+            with self.instance.for_range(0, each_burst_num) as time:
+                scalar.set_as(dst_ub[offset + time])
+                dst_ub[time].set_as(scalar)
+            self.instance.data_move(self.y_gm[out_offset + offset], dst_ub,
+                                    constant.SID, constant.DEFAULT_NBURST,
+                                    constant.DEFAULT_BURST_LEN,
+                                    constant.STRIDE_ZERO, constant.STRIDE_ZERO)
         with self.instance.else_scope():
             self.instance.data_move(self.y_gm[out_offset], dst_ub, constant.SID, constant.DEFAULT_NBURST, n_burst_out,
+                                    constant.STRIDE_ZERO, constant.STRIDE_ZERO)
+
+    def reduce_move_consequent(self, input_dict):
+        """
+        use reduce to continuously process a piece of data
+        """
+        shape_x = self.input_dict.get("x1").get("shape")
+        shape_y = self.input_dict.get("y").get("shape")
+        offset_in = self.input_dict.get("offset")
+        x1_offset = self.instance.Scalar("uint32", name="x1_offset")
+        src1_pattern_ub = input_dict.get("src1_pattern_ub")
+        ub_size = input_dict.get("ub_size")
+        offset_index = input_dict.get("offset_index")
+        in_element = input_dict.get("in_element")
+        out_element = input_dict.get("out_element")
+        pattern_index = input_dict.get("pattern_index")
+        move_flag = input_dict.get("move_flag")
+        num = input_dict.get("num")
+
+        _get_input_offset(shape_x, shape_y, offset_in, offset_index, pattern_index, x1_offset)
+        src_ub = self.instance.Tensor(self.dtype, (ub_size,), name="src_ub", scope=tik.scope_ubuf)
+        dst_ub = self.instance.Tensor(self.dtype, (ub_size,), name="dst_ub", scope=tik.scope_ubuf)
+        n_burst = (in_element * num * self.dsize + constant.BLOCK_SIZE - 1) // constant.BLOCK_SIZE
+        n_burst_out = (out_element * num * self.dsize + constant.BLOCK_SIZE - 1) // constant.BLOCK_SIZE
+
+        self.instance.data_move(src_ub, self.x1_gm[x1_offset * in_element],
+                                constant.SID, constant.DEFAULT_NBURST, n_burst,
+                                constant.STRIDE_ZERO, constant.STRIDE_ZERO)
+
+        self.instance.vreduce(in_element * num, dst_ub, src_ub, src1_pattern_ub,
+                              constant.REPEAT_TIME_ONCE, constant.BLOCK_STRIDE_ONE,
+                              constant.REPEAT_STRIDE_EIGHT,
+                              constant.STRIDE_ONE, 0, None, "counter")
+
+        with self.instance.if_scope(move_flag):
+            each_burst_num = constant.BLOCK_SIZE // self.dsize
+            n_burst = ((out_element * num * self.dsize) // constant.BLOCK_SIZE)
+            self.instance.data_move(self.y_gm[offset_index * out_element], dst_ub, constant.SID,
+                                    constant.DEFAULT_NBURST,
+                                    n_burst, constant.STRIDE_ZERO, constant.STRIDE_ZERO)
+            offset = out_element * num - each_burst_num
+            scalar = self.instance.Scalar(dst_ub.dtype)
+            with self.instance.for_range(0, each_burst_num) as time:
+                scalar.set_as(dst_ub[offset + time])
+                dst_ub[time].set_as(scalar)
+            self.instance.data_move(self.y_gm[offset_index * out_element + offset], dst_ub,
+                                    constant.SID, constant.DEFAULT_NBURST,
+                                    constant.DEFAULT_BURST_LEN,
+                                    constant.STRIDE_ZERO, constant.STRIDE_ZERO)
+        with self.instance.else_scope():
+            self.instance.data_move(self.y_gm[offset_index * out_element], dst_ub, constant.SID,
+                                    constant.DEFAULT_NBURST, n_burst_out,
                                     constant.STRIDE_ZERO, constant.STRIDE_ZERO)
 
     def compute_with_reduce(self, pattern_index):
@@ -398,52 +455,86 @@ class Crop:
             if tail > 0:
                 with self.instance.if_scope(block_id >= tail):
                     offset.set_as(block_id * (each_loop + 1) - (block_id - tail))
-            ub_out_num = ub_size // out_element
-            loop_mv = self.instance.Scalar("uint32", name="loop_mv")
-            tail_mv = self.instance.Scalar("uint32", name="tail_mv")
-            loop_32b = self.instance.Scalar("uint32", name="loop_32b")
-            align_32b = out_element_align_num
-            with self.instance.if_scope(tik.any(each_loop % ub_out_num >= align_32b, each_loop <= align_32b)):
-                loop_mv.set_as(each_loop // ub_out_num)
-                tail_mv.set_as(each_loop % ub_out_num)
-                loop_32b.set_as(0)
-            with self.instance.else_scope():
-                loop_mv.set_as((each_loop - align_32b) // ub_out_num)
-                tail_mv.set_as((each_loop - align_32b) % ub_out_num)
-                loop_32b.set_as(align_32b)
-            thread_num = 1
-            if inner_loop // ub_out_num > 1:
-                thread_num = 2
 
-            reduce_move_dict = {
-                "ub_size": ub_size,
-                "in_element": in_element,
-                "out_element": out_element,
-                "pattern_index": pattern_index
-            }
-            with self.instance.if_scope(loop_mv > 0):
+            ub_out_num = ub_size // out_element
+            ub_in_num = ub_size // in_element
+            block_index = _get_index_num(shape_y, 0, len(shape_y), 1, block_num)
+            pattern_before = shape_y[pattern_index - 1]
+            axis = self.input_dict.get("axis")
+            if block_index + 1 == pattern_index:
+                pattern_num = inner_loop + 1
+            else:
+                pattern_num = pattern_before
+            if ub_in_num < pattern_num:
+                pattern_num = ub_in_num
+            pattern_num = _get_tail_num(inner_loop, pattern_num, out_element_align_num, -1,
+                                        out_element_align_num)
+
+            move_consequent_flag = pattern_num >= out_element_align_num and (
+                    pattern_index <= axis or
+                    (block_index == 0 and pattern_index == 1) or
+                    (tail == 0 and pattern_num == pattern_before and inner_loop % pattern_num == 0))
+            if move_consequent_flag:
+                loop = each_loop // pattern_num
+                loop_tail = each_loop % pattern_num
+                thread_num = 1
+                if inner_loop // pattern_num >= 2:
+                    thread_num = 2
+                src1_pattern_ub = self.prepare_src_pattern(pattern_index, pattern_num)
+                with self.instance.for_range(0, loop, thread_num=thread_num) as l_i:
+                    input_dict = {
+                        "src1_pattern_ub": src1_pattern_ub,
+                        "ub_size": ub_size,
+                        "offset_index": offset + l_i * pattern_num,
+                        "in_element": in_element,
+                        "out_element": out_element,
+                        "pattern_index": pattern_index,
+                        "move_flag": tik.all(l_i == loop - 1, loop_tail == 0,
+                                             (out_element * pattern_num * self.dsize) % constant.BLOCK_SIZE != 0),
+                        "num": pattern_num
+                    }
+                    self.reduce_move_consequent(input_dict)
+                with self.instance.if_scope(loop_tail > 0):
+                    input_dict = {
+                        "src1_pattern_ub": src1_pattern_ub,
+                        "ub_size": ub_size,
+                        "offset_index": offset + loop * pattern_num,
+                        "in_element": in_element,
+                        "out_element": out_element,
+                        "pattern_index": pattern_index,
+                        "move_flag": (out_element * loop_tail * self.dsize) % constant.BLOCK_SIZE != 0,
+                        "num": loop_tail
+                    }
+                    self.reduce_move_consequent(input_dict)
+            else:
+                pattern_num = _get_tail_num(inner_loop, ub_out_num, out_element_align_num, -1,
+                                            out_element_align_num)
+                loop_mv = each_loop // pattern_num
+                tail_mv = each_loop % pattern_num
+                thread_num = 1
+                if inner_loop // pattern_num >= 2:
+                    thread_num = 2
+                reduce_move_dict = {
+                    "ub_size": ub_size,
+                    "in_element": in_element,
+                    "out_element": out_element,
+                    "pattern_index": pattern_index
+                }
+                src1_pattern_ub = self.prepare_src_pattern(pattern_index)
                 with self.instance.for_range(0, loop_mv, thread_num=thread_num) as l_i:
-                    src1_pattern_ub = self.prepare_src_pattern(pattern_index)
                     reduce_move_dict["src1_pattern_ub"] = src1_pattern_ub
-                    reduce_move_dict["reduce_loop"] = ub_out_num
-                    reduce_move_dict["loop_time"] = offset + l_i * ub_out_num
-                    reduce_move_dict["move_flag"] = tik.all(l_i == loop_mv - 1, tail_mv == 0, loop_32b == 0,
-                                                            block_num > 1)
+                    reduce_move_dict["reduce_loop"] = pattern_num
+                    reduce_move_dict["loop_time"] = offset + l_i * pattern_num
+                    reduce_move_dict["move_flag"] = tik.all(l_i == loop_mv - 1, tail_mv == 0, block_num > 1, (
+                            out_element * pattern_num * self.dsize) % constant.BLOCK_SIZE != 0)
                     self.reduce_move(reduce_move_dict)
-            with self.instance.if_scope(tail_mv > 0):
-                src1_pattern_ub = self.prepare_src_pattern(pattern_index)
-                reduce_move_dict["src1_pattern_ub"] = src1_pattern_ub
-                reduce_move_dict["reduce_loop"] = tail_mv
-                reduce_move_dict["loop_time"] = offset + loop_mv * ub_out_num
-                reduce_move_dict["move_flag"] = tik.all(loop_32b == 0, block_num > 1)
-                self.reduce_move(reduce_move_dict)
-            with self.instance.if_scope(loop_32b > 0):
-                src1_pattern_ub = self.prepare_src_pattern(pattern_index)
-                reduce_move_dict["src1_pattern_ub"] = src1_pattern_ub
-                reduce_move_dict["reduce_loop"] = loop_32b
-                reduce_move_dict["loop_time"] = offset + loop_mv * ub_out_num + tail_mv
-                reduce_move_dict["move_flag"] = block_num > 1
-                self.reduce_move(reduce_move_dict)
+                with self.instance.if_scope(tail_mv > 0):
+                    reduce_move_dict["src1_pattern_ub"] = src1_pattern_ub
+                    reduce_move_dict["reduce_loop"] = tail_mv
+                    reduce_move_dict["loop_time"] = offset + loop_mv * pattern_num
+                    reduce_move_dict["move_flag"] = tik.all(block_num > 1, (
+                            out_element * tail_mv * self.dsize) % constant.BLOCK_SIZE != 0)
+                    self.reduce_move(reduce_move_dict)
 
     def compute_crop(self):
         """
@@ -460,7 +551,8 @@ class Crop:
         dtype_flag = self.dtype in ["int16", "uint16", "float16", "int32", "uint32", "float32"]
         v200_flag = tbe_platform.get_soc_spec("SOC_VERSION") in ("Ascend710", "Ascend610", "Ascend615")
         pattern_index = self.get_pattern_index_num()
-        if dtype_flag and v200_flag and 0 < pattern_index < len(shape_x):
+        flag = dtype_flag and v200_flag
+        if flag and 0 < pattern_index < len(shape_x):
             self.compute_with_reduce(pattern_index)
             return
 
@@ -722,6 +814,34 @@ def get_loop_param(length, max_ub_num):
     return loop_cycle, last_ub_num
 
 
+def get_op_support_info(x, size, y, axis=2, offsets=(0), kernel_name="crop"):
+    """
+    get split info
+    """
+    ori_shape = x.get("ori_shape")
+    if axis < 0:
+        axis = axis + len(ori_shape)
+    dim_x = len(x.get("shape"))
+    format_x = x.get("format").upper()
+    not_cut_dim = []
+    if format_x == "NC1HWC0":
+        not_cut_dim = [1, 4]
+
+    if format_x == "ND" or format_x == "NC1HWC0":
+        axis_split_list = []
+        for i in range(dim_x):
+            if i < axis and i not in not_cut_dim:
+                split = [util_select_op_base.SplitInput([0, [i], [-1], [-1]],
+                                                        [1, [i], [-1], [-1]]),
+                         util_select_op_base.SplitOutput([0, [i]])]
+                axis_split_list.append(split)
+    else:
+        axis_split_list = None
+    axis_reduce_list = None
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_list, axis_reduce_list)
+    return op_cal_info_in_json
+
+
 def op_select_format(x, size, y, axis=2, offsets=(0), kernel_name="crop"):
     """
     select format dynamically
@@ -935,24 +1055,26 @@ def get_elem_of_each_dim(shape, element_num):
     return elem_of_each_dim
 
 
-def _get_input_offset_list(size, shape_x, shape_y, offset_in, element_size):
+def _get_input_offset_list(size, shape_x, shape_y, offset_in, element_size, num):
     """
     get the input offset list
     """
+    x_size = get_shape_total_number(shape_x)
     y_size = get_shape_total_number(shape_y)
     offset_list = [0] * size
     x1_shape_list = get_elem_of_each_dim(shape_x, len(shape_x))
     x2_shape_list = get_elem_of_each_dim(shape_y, len(shape_y) - 1)
-
-    for i in range(y_size // element_size):
-        offset = 0
-        for q in range(len(shape_y)):
-            mod = i
-            for s in range(q):
-                mod %= x2_shape_list[s]
-            mod = mod // x2_shape_list[q] + offset_in[q]
-            offset = offset + mod * x1_shape_list[q]
-        offset_list[offset:offset + element_size] = [1] * element_size
+    for m in range(num):
+        start = m * x_size
+        for i in range(y_size // element_size):
+            offset = 0
+            for q in range(len(shape_y)):
+                mod = i
+                for s in range(q):
+                    mod %= x2_shape_list[s]
+                mod = mod // x2_shape_list[q] + offset_in[q]
+                offset = offset + mod * x1_shape_list[q]
+            offset_list[start + offset:start + offset + element_size] = [1] * element_size
     return offset_list
 
 
@@ -984,3 +1106,17 @@ def _get_input_offset(shape_x, shape_y, offset_in, loop_i, pattern_index, x_offs
         mod = mod // x2_shape_list[j] + offset_in[j]
         offset = offset + mod * x1_shape_list[j]
     x_offset.set_as(offset)
+
+
+def _get_tail_num(size, start, end, step, threshold):
+    """
+    get the tail num
+    """
+    if threshold == 1:
+        return start
+    val_cnt = 1
+    for i in range(start, end, step):
+        if size % i >= threshold:
+            val_cnt = i
+            break
+    return val_cnt

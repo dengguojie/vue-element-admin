@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
+import numpy as np
+from op_test_frame.common import precision_info
 ut_case = OpUT("FusedMulAdd", None, None)
 
 case1 = {"params": [{"shape": (1,2,4), "dtype": "float32", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
@@ -49,6 +51,47 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 
-if __name__ == '__main__':
-    ut_case.run("Ascend910")
-    exit(0)
+def calc_expect_func(x1, x2, x3, y):
+    mul = x1['value'] * x2['value']
+    res = mul + x3['value']
+    res = res.astype(y['dtype'])
+    return res
+
+precision_case1 = {"params": [{"shape": (1, ), "dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1, ), "param_type":"input"},
+                              {"shape": (1, ), "dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1, ),"param_type":"input"},
+                              {"shape": (1,), "dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1,),"param_type":"input"},
+                              {"shape": (1, ), "dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1, ),"param_type":"output"}],
+                   "expect": "success",
+                   "calc_expect_func": calc_expect_func,
+                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
+
+precision_case2 = {"params": [{"shape": (33, ), "dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (33, ), "param_type":"input"},
+                              {"shape": (33, ), "dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (33, ),"param_type":"input"},
+                              {"shape": (1,), "dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1,),"param_type":"input"},
+                              {"shape": (33, ), "dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (33, ),"param_type":"output"}],
+                   "expect": "success",
+                   "calc_expect_func": calc_expect_func,
+                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
+
+precision_case3 = {"params": [{"shape": (16, 16, 64, 32), "dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (16, 16, 64, 32), "param_type":"input"},
+                              {"shape": (16, 16, 64, 32), "dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (16, 16, 64, 32),"param_type":"input"},
+                              {"shape": (1,), "dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1,),"param_type":"input"},
+                              {"shape": (16, 16, 64, 32), "dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (16, 16, 64, 32),"param_type":"output"}],
+                   "expect": "success",
+                   "calc_expect_func": calc_expect_func,
+                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
+
+precision_case4 = {"params": [{"shape": (4, 4, 16, 16), "dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (4, 4, 16, 16), "param_type":"input"},
+                              {"shape": (4, 4, 16, 16), "dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (4, 4, 16, 16),"param_type":"input"},
+                              {"shape": (1,), "dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1,),"param_type":"input"},
+                              {"shape": (4, 4, 16, 16), "dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (4, 4, 16, 16),"param_type":"output"}],
+                   "expect": "success",
+                   "calc_expect_func": calc_expect_func,
+                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
+
+
+ut_case.add_precision_case(["Ascend310", "Ascend910"], precision_case1)
+ut_case.add_precision_case(["Ascend310", "Ascend910"], precision_case2)
+ut_case.add_precision_case(["Ascend310", "Ascend910"], precision_case3)
+ut_case.add_precision_case(["Ascend310", "Ascend910"], precision_case4)
+

@@ -19,10 +19,9 @@ from __future__ import division
 
 import te.lang.cce
 from te import tvm
-from te.utils.op_utils import refine_shapes_for_broadcast
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
-from te.utils.op_utils import *
+from te.utils import para_check
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 
@@ -77,15 +76,15 @@ def op_select_format(x, sum, square_sum, scale, offset, mean, variance,
     return param_dynamic_in_json
 
 
-def check_rule(data, rule_desc, param_name=PARAM_NAME):
+def check_rule(data, rule_desc, param_name=para_check.PARAM_NAME):
     """
     The special check rule for tensor
     """
     if data is None or rule_desc is None:
         return
     error_info = {}
-    error_info['errCode'] = OP_ERROR_CODE_009
-    error_info['op_name'] = OP_NAME
+    error_info['errCode'] = para_check.OP_ERROR_CODE_009
+    error_info['op_name'] = para_check.OP_NAME
     error_info['param_name'] = param_name
     error_info['rule_desc'] = rule_desc
     error_info['param_value'] = data
@@ -98,7 +97,7 @@ def check_rule(data, rule_desc, param_name=PARAM_NAME):
 
 
 def check_input_shape(shape, data_format="NCHW", num_groups=2):
-    check_shape(shape, min_rank=4, max_rank=4, param_name="x")
+    para_check.check_shape(shape, min_rank=4, max_rank=4, param_name="x")
     c_index = data_format.index("C")
     if shape[c_index] % num_groups != 0:
         check_rule("{} and {}".format(shape[c_index], num_groups),
@@ -112,8 +111,8 @@ def check_couple_shape(shape_a, shape_b, ori_shape, data_format,
         first_value = ori_shape[0]
     else:
         first_value = 1
-    check_shape(shape_a, min_rank=5, max_rank=5, param_name="x")
-    check_shape(shape_b, min_rank=5, max_rank=5, param_name="x")
+    para_check.check_shape(shape_a, min_rank=5, max_rank=5, param_name="x")
+    para_check.check_shape(shape_b, min_rank=5, max_rank=5, param_name="x")
     if data_format == "NCHW":
         aim_shape = (first_value, num_groups, 1, 1, 1)
     else:
@@ -213,11 +212,11 @@ def gn_training_update_compute(x,
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 OPTION_INPUT, OPTION_INPUT,
-                 OPTION_INPUT, OPTION_INPUT,
-                 REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT,
-                 OPTION_ATTR_FLOAT, OPTION_ATTR_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.OPTION_INPUT, para_check.OPTION_INPUT,
+                            para_check.OPTION_INPUT, para_check.OPTION_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def gn_training_update(x, sum, square_sum,
                        scale, offset, mean, variance,
                        y, batch_mean, batch_variance,
@@ -264,7 +263,7 @@ def gn_training_update(x, sum, square_sum,
     None
     """
     data_format = x.get("format")
-    check_format(data_format, ("NCHW", "NHWC"), param_name="x")
+    para_check.check_format(data_format, ("NCHW", "NHWC"), param_name="x")
 
     # Process x, sum, square_sum
     shape_origin = x.get("shape")
@@ -281,7 +280,7 @@ def gn_training_update(x, sum, square_sum,
         shape_x = [shape_origin[0], shape_origin[1], shape_origin[2],
                    num_groups, shape_origin[3] // num_groups]
 
-    check_dtype(dtype_x.lower(), ("float16", "float32"), param_name="x")
+    para_check.check_dtype(dtype_x.lower(), ("float16", "float32"), param_name="x")
 
     shape_sum = sum.get("shape")
     shape_square_sum = square_sum.get("shape")
@@ -290,9 +289,8 @@ def gn_training_update(x, sum, square_sum,
 
     dtype_sum = sum.get("dtype")
     dtype_square_sum = square_sum.get("dtype")
-    check_dtype(dtype_sum.lower(), ("float32",), param_name="sum")
-    check_dtype(dtype_square_sum.lower(), ("float32",),
-                param_name="square_sum")
+    para_check.check_dtype(dtype_sum.lower(), ("float32",), param_name="sum")
+    para_check.check_dtype(dtype_square_sum.lower(), ("float32",), param_name="square_sum")
 
     x_input = tvm.placeholder(shape_x, name="x_input",
                               dtype=dtype_x.lower())
@@ -317,8 +315,8 @@ def gn_training_update(x, sum, square_sum,
                            data_format,
                            num_groups)
 
-        check_dtype(dtype_scale.lower(), ("float32",), param_name="scale")
-        check_dtype(dtype_offset.lower(), ("float32",), param_name="offset")
+        para_check.check_dtype(dtype_scale.lower(), ("float32",), param_name="scale")
+        para_check.check_dtype(dtype_offset.lower(), ("float32",), param_name="offset")
 
         scale_input = tvm.placeholder(shape_scale, name="scale_input",
                                       dtype=dtype_scale.lower())

@@ -21,6 +21,7 @@ import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te.utils import para_check
 from te import tvm
+from te.utils.error_manager import error_manager_vector
 
 # shape size limit for aicore is 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -96,9 +97,9 @@ def tanh_grad(y, dy, z, kernel_name="tanh_grad"):
     dtype = y.get("dtype").lower()
     para_check.check_dtype(dtype, check_list, param_name="y")
     if list(shape_y) != list(shape_dy):
-        raise RuntimeError(
-            "tanh_grad only support input shape"
-            "while input_shape1 equals to input_shape2")
+        error_detail = "shape of y and dy should be same"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "y", \
+                                                               "dy", error_detail)
     fuseshape = [1]
     fuseshape[0] = functools.reduce(lambda x, y: x*y, shape_y)
     data_y = tvm.placeholder(fuseshape, dtype=dtype, name="data1")

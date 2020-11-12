@@ -31,6 +31,7 @@ class Conv2DMulFusionPass : public PatternFusionBasePass {
 
  private:
   const string fused_op_type_ = "Conv2D_Mul";
+  Status GetInputChannel(const ge::NodePtr input_node, int64_t& input_channel);
 };
 
 }  // namespace fe

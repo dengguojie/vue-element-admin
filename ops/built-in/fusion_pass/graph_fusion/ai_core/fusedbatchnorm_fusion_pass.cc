@@ -234,8 +234,8 @@ Status FusedBatchnormFusionPass::MatchSubNode(NodePtr subNodePtr, PassMatchResul
   }
 
   // mul has a output node assignSub
-  if (mulNodePtr->GetAllOutDataAnchors().size() != 1) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "The mul node has 0 or more than 1 output.");
+  if (mulNodePtr->GetOutDataNodesSize() != 1) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "The mul node has 0 or more than 1 output node.");
     return FAILED;
   }
 

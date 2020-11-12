@@ -22,6 +22,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 NUM_ONE = 1.0
 NUM_ZERO = 0.0
@@ -104,12 +105,15 @@ def approximate_equal(input_x, input_y, output_z, tolerance=1e-5,
     in_y_dtype = input_y.get("dtype")
 
     if tolerance < 0:
-        raise RuntimeError("tolerance should >= 0")
+        error_manager_vector.raise_err_input_value_invalid(kernel_name, "tolerance", \
+                                                           ">= 0", tolerance)
 
 
     # check shape
     if not operator.eq(shape_x, shape_y):
-        raise RuntimeError("all input shape must same")
+        error_detail = "shape of input_x and input_y should be same"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "input_x", \
+                                                               "input_y", error_detail)
     para_check.check_shape(shape_x, param_name="input_x")
     shape_x, _ = shape_util.refine_shape_axes(shape_x, [])
     shape_y, _ = shape_util.refine_shape_axes(shape_y, [])
@@ -121,7 +125,9 @@ def approximate_equal(input_x, input_y, output_z, tolerance=1e-5,
     in_dtype = input_x.get("dtype").lower()
     in_y_dtype = input_y.get("dtype").lower()
     if not operator.eq(in_dtype, in_y_dtype):
-        raise RuntimeError("all input type must same.")
+        error_detail = "dtype of input_x and input_y should be same"
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "input_x", \
+                                                               "input_y", error_detail)
 
     in_data_x = tvm.placeholder(shape_x, name="shape_x", dtype=in_dtype)
     in_data_y = tvm.placeholder(shape_y, name="shape_y", dtype=in_dtype)

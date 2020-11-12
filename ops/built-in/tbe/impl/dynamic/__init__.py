@@ -18,7 +18,7 @@ dynamic operator
 from __future__ import absolute_import as _abs
 
 from .unsorted_segment_sum import unsorted_segment_sum
-from . import gather_nd
+from .gather_nd import gather_nd
 from .gather import gather
 from .gather_v2 import gather_v2
 from .scatter_nd import scatter_nd
@@ -69,7 +69,10 @@ from .conv2d_backprop_filter import conv2d_backprop_filter
 from .sub import sub
 from .transpose_d import transpose_d
 from .unpack import unpack
+from .top_k_d import top_k_d
 from .pad_d import pad_d
 from .split_d import split_d
 from .strided_slice_grad import strided_slice_grad
 from .fill import fill
+from .tanh import tanh
+from .sigmoid_cross_entropy_with_logits import sigmoid_cross_entropy_with_logits

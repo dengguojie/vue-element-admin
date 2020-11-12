@@ -12,11 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
+"""
+precision info module
+"""
 from op_test_frame.common import op_status
 
 
 class PrecisionStandard:
+    """
+    precision standard
+    """
+
     def __init__(self, rtol, atol, max_atol=None, precision_type="percent"):
         """
         init methos
@@ -30,6 +36,10 @@ class PrecisionStandard:
         self.max_atol = max_atol
 
     def to_json_obj(self):
+        """
+        get json obj
+        :return: json obj
+        """
         return {
             "precision_type": self.precision_type,
             "rtol": self.rtol,
@@ -39,22 +49,39 @@ class PrecisionStandard:
 
     @staticmethod
     def parse_json_obj(json_obj):
+        """
+        parser json obj to PrecisionStandard
+        :param json_obj: json obj
+        :return: PrecisionStandard
+        """
         if json_obj:
             return PrecisionStandard(json_obj['rtol'], json_obj['atol'], json_obj['max_atol'],
                                      json_obj['precision_type'])
-        else:
-            return None
+
+        return None
 
 
 class PrecisionCompareResult:
+    """
+    precision compare result
+    """
+
     def __init__(self, status, err_msg=None):
         self.status = status
         self.err_msg = err_msg
 
     def is_success(self):
+        """
+        check success
+        :return: True or False
+        """
         return self.status == op_status.SUCCESS
 
     def to_json_obj(self):
+        """
+        get json obj
+        :return: json obj
+        """
         return {
             "status": self.status,
             "err_msg": self.err_msg
@@ -62,15 +89,25 @@ class PrecisionCompareResult:
 
     @staticmethod
     def parse_json_obj(json_obj):
+        """
+        parser json obj to PrecisionStandard
+        :param json_obj: json obj
+        :return: PrecisionStandard
+        """
         return PrecisionCompareResult(json_obj['status'], json_obj['err_msg'])
 
 
 def get_default_standard(dtype):
+    """
+    get default standard by dtype
+    :param dtype: dtype
+    :return: PrecisionStandard
+    """
     if dtype == "float16":
         return PrecisionStandard(0.001, 0.001, 0.1)
-    elif dtype == "float32":
+    if dtype == "float32":
         return PrecisionStandard(0.0001, 0.0001, 0.01)
-    elif dtype == "int8" or dtype == "uint8":
+    if dtype in ("int8", "uint8"):
         return PrecisionStandard(0.001, 1, 1, precision_type="absolute")
-    else:
-        return PrecisionStandard(0.001, 0.001, 0.1)
+
+    return PrecisionStandard(0.001, 0.001, 0.1)

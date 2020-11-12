@@ -22,6 +22,7 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
+from te.utils.error_manager import error_manager_vector
 
 SHAPE_SIZE_LIMIT = 2147483648  # shape limit
 
@@ -75,7 +76,9 @@ def sign(input_x, output_y, kernel_name="sign"):
     check_list = ["float16", "float32", "int32"]
     inp_dtype = input_x.get("dtype").lower()
     if not inp_dtype in check_list:
-        raise RuntimeError("sign only support float16, float32, int32")
+        excepted_dtype_list = "float16, float32, int32"
+        error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, "input_x", \
+                                                                 excepted_dtype_list, inp_dtype)
 
     shape = shape_util.shape_refine(shape)
     fuseshape = [1]

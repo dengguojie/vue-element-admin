@@ -83,7 +83,7 @@ Status SoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     inputW = dimInfo[1];
     inputC = dimInfo[2];
   } else {
-    return SUCCESS;
+    return NOT_CHANGED;
   }
   bool isUsePattern = false;
   isUsePattern = CheckISUsePattern(inputW, inputC);
@@ -202,7 +202,7 @@ Status SoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     }
     return SUCCESS;
   } else {
-    return SUCCESS;
+    return NOT_CHANGED;
   }
 }
 

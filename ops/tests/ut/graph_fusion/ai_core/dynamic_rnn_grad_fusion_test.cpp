@@ -180,14 +180,19 @@ TEST_F(dynamic_rnn_grad_fusion_test, dynamic_rnn_grad_fusion_test_1) {
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
   fe::FusionPassTestUtils::RunGraphFusionPass("DynamicRNNGradFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
-  bool findLstmInputGrad = false;
+  bool findBasicLSTMCellCStateGradV2 = false;
+  bool findMatMulV2 = false;
   bool findSplit = false;
   bool findConcat = false;
   bool findBatchMatmul = false;
   bool findReduceSum = false;
   for (auto node: compute_graph_ptr->GetAllNodes()) {
-        if (node->GetType() == "LSTMInputGrad") {
-            findLstmInputGrad = true;
+        if (node->GetType() == "BasicLSTMCellCStateGradV2") {
+            findBasicLSTMCellCStateGradV2 = true;
+        }
+        
+        if (node->GetType() == "MatMulV2") {
+            findMatMulV2 = true;
         }
 
         if (node->GetType() == "SplitVD") {
@@ -208,7 +213,8 @@ TEST_F(dynamic_rnn_grad_fusion_test, dynamic_rnn_grad_fusion_test_1) {
 
     }
 
-  EXPECT_EQ(findLstmInputGrad, true);
+  EXPECT_EQ(findBasicLSTMCellCStateGradV2, true);
+  EXPECT_EQ(findMatMulV2, true);
   EXPECT_EQ(findSplit, true);
   EXPECT_EQ(findConcat, true);
   EXPECT_EQ(findBatchMatmul, true);

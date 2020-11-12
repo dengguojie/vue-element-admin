@@ -22,7 +22,8 @@ import warnings
 from enum import Enum
 from functools import reduce as _reduce
 from functools import wraps
-from te.platform import operation
+from te.lang.base import operation
+from te.utils import error_manager
 
 SHAPE_SIZE_LIMIT = 2 ** 31 - 1
 SHAPE_SIZE_ZERO = 0
@@ -877,14 +878,27 @@ def _check_input_type_dict(input_dict, input_key, input_name):
 
     def _check_input_type(input_key, input_type):
         if not isinstance(input_dict[input_key], input_type):
+            args_dict = {
+                "errCode": "E60037",
+                "param_name": "{}".format(input_key),
+                "type_list": "{}".format(input_type),
+                "type": "{}".format(type(input_dict[input_key]))
+            }
             raise RuntimeError(
-                "Input parameter error, please check input parameter!")
+                args_dict,
+                error_manager.get_error_message(args_dict)
+            )
 
     for key in input_dict.keys():
         if key not in input_key:
+            args_dict = {
+                "errCode": "E60038",
+                "desc": "input parameter value must have property {}".format(key)
+            }
             raise RuntimeError(
-                "Input parameter value must have property, please check!")
-
+                args_dict,
+                error_manager.get_error_message(args_dict)
+            )
         # check shape's type of input_dict, if have shape
         if key == "shape":
             _check_input_type(key, (list, tuple))
@@ -923,14 +937,37 @@ def check_input_type(*type_args, **type_kwargs):
                     _check_input_type_dict(args[i], args[i].keys(),
                                           formal_parameter_list[i][0])
                 if not isinstance(args[i], formal_parameter_list[i][1]):
+                    args_dict = {
+                        "errCode": "E60038",
+                        "desc":
+                            "Input parameter type error, expected type is {}, "
+                            "actual input is {}".format(
+                                formal_parameter_list[i][1],
+                                type(args[i])
+                            )
+                    }
                     raise RuntimeError(
-                        "Input parameter type error, please check!")
+                        args_dict,
+                        error_manager.get_error_message(args_dict)
+                    )
             for i in kwargs:
                 for j in formal_parameter_list:
                     if i in j:
                         if not isinstance(kwargs[i], j[1]):
+                            args_dict = {
+                                "errCode": "E60038",
+                                "desc":
+                                    "Input {} type error, "
+                                    "expected type is {}, actual input is {}".format(
+                                        i,
+                                        j[1],
+                                        type(kwargs[i])
+                                    )
+                            }
                             raise RuntimeError(
-                                "Input parameter type error, please check!")
+                                args_dict,
+                                error_manager.get_error_message(args_dict)
+                            )
                         break
             return func(*args, **kwargs)
 
@@ -939,16 +976,38 @@ def check_input_type(*type_args, **type_kwargs):
     return out_wrapper
 
 
-def check_dtype_rule(dtype, check_list):
+def check_dtype_rule(dtype, check_list, param_name="default"):
     """
     The common check rule for tensor dtype
     """
     if dtype is None:
-        raise RuntimeError("dtype is None")
+        args_dict = {
+            "errCode": "E60038",
+            "desc": "dtype is None"
+        }
+        raise RuntimeError(
+            args_dict,
+            error_manager.get_error_message(args_dict)
+        )
 
     if dtype.lower() not in check_list:
-        raise RuntimeError(
-            "The data type is not supported. Please check the data type")
+        if param_name == "default":
+            args_dict = {
+                "errCode": "E60038",
+                "desc": "The data type is not supported. Please check the data type"
+            }
+            raise RuntimeError(
+                args_dict,
+                error_manager.get_error_message(args_dict)
+            )
+        else:
+            args_dict = {
+                "errCode": "E60005",
+                "param_name": param_name,
+                "expected_dtype_list": "{}".format(check_list),
+                "dtype": "{}".format(dtype.lower()),
+            }
+            raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
 
 
 def check_shape_rule(shape, min_dim=None, max_dim=None, max_shape_num=None):
@@ -965,19 +1024,54 @@ def check_shape_rule(shape, min_dim=None, max_dim=None, max_shape_num=None):
         max_shape_num = DEFAULT_MAX_SHAPE_NUM
 
     if not isinstance(shape, (tuple, list)):
+        args_dict = {
+            "errCode": "E60037",
+            "param_name": "shape",
+            "type_list": "[tuple, list]",
+            "type": "{}".format(type(shape))
+        }
         raise RuntimeError(
-            "Wrong type of input shape,"
-            "the shape must be type of tuple or list")
+            args_dict,
+            error_manager.get_error_message(args_dict)
+        )
 
     if len(shape) < min_dim or len(shape) > max_dim:
+        args_dict = {
+            "errCode": "E60011",
+            "attr_name": "shape dim",
+            "range": "[{}, {}]".format(min_dim, max_dim),
+            "value": "{}".format(len(shape))
+        }
         raise RuntimeError(
-            "The ndim of input must more than %d and less than %d, "
-            "actual input is %d" % (min_dim, max_dim, len(shape)))
+            args_dict,
+            error_manager.get_error_message(args_dict)
+        )
 
     for i in range(len(shape)):
-        if type(shape[i]) != int or shape[i] <= 0:
+        if type(shape[i]) != int:
+            args_dict = {
+                "errCode": "E60037",
+                "param_name": "shape axis",
+                "type_list": "[int]",
+                "type": "{}".format(type(shape[i]))
+            }
             raise RuntimeError(
-                "The type of axis must be positive int and value more than 0")
+                args_dict,
+                error_manager.get_error_message(args_dict)
+            )
+        if shape[i] <= 0:
+            args_dict = {
+                "errCode": "E60039",
+                "attr_name": "axis",
+                "param_name": "shape",
+                "comparator": "more",
+                "expected_value": "0",
+                "input_value": "{}".format(shape[i])
+            }
+            raise RuntimeError(
+                args_dict,
+                error_manager.get_error_message(args_dict)
+            )
 
 
 def check_kernel_name(kernel_name):
@@ -997,19 +1091,42 @@ def check_kernel_name(kernel_name):
         try:
             kernel_name = str(kernel_name)
         except ValueError:
-            raise ValueError(
-                "kernel name input error! It must be string or None")
+            args_dict = {
+                "errCode": "E60037",
+                "param_name": "kernel_name",
+                "type_list": "[str, None]",
+                "type": "{}".format(type(kernel_name))
+            }
+            raise RuntimeError(
+                args_dict,
+                error_manager.get_error_message(args_dict)
+            )
 
     if len(kernel_name) > MAX_KERNEL_NAME_LEN:
-        raise ValueError(
-            "kernel_name len must be less than %d, "
-            "but got %d" % (MAX_KERNEL_NAME_LEN, len(kernel_name)))
+        args_dict = {
+            "errCode": "E60039",
+            "attr_name": "length",
+            "param_name": "kernel_name",
+            "comparator": "less",
+            "expected_value": "{}".format(MAX_KERNEL_NAME_LEN),
+            "input_value": "{}".format(len(kernel_name))
+        }
+        raise RuntimeError(
+            args_dict,
+            error_manager.get_error_message(args_dict)
+        )
 
     pattern = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
     if not pattern.match(kernel_name):
+        args_dict = {
+            "errCode": "E60038",
+            "desc": "kernel_name can only contain letters, numbers and underscores,"
+                    "and begin with underscores or letters"
+        }
         raise RuntimeError(
-            "kernel_name can only contain letters, numbers and underscores, "
-            "and begin with underscores or letters")
+            args_dict,
+            error_manager.get_error_message(args_dict)
+        )
 
 
 def check_and_init_5hdc_reduce_support(input_tensor, axis):
@@ -1019,7 +1136,15 @@ def check_and_init_5hdc_reduce_support(input_tensor, axis):
         if "ori_shape" in input_tensor and "ori_format" in input_tensor:
             return True
         else:
-            raise RuntimeError("Original shape needed for 5HD reduce")
+            args_dict = {
+                "errCode": "E60040",
+                "param_name": "input tensor",
+                "attr_name": "ori_shape and ori_format"
+            }
+            raise RuntimeError(
+                args_dict,
+                error_manager.get_error_message(args_dict)
+            )
     return False
 
 
@@ -1054,8 +1179,18 @@ def check_shape_size(shape, limit=SHAPE_SIZE_LIMIT+1):
     from functools import reduce
     product = reduce(lambda x, y: x * y, shape[:])  # product of all dimension
     if product >= limit:
+        args_dict = {
+            "errCode": "E60039",
+            "attr_name": "size",
+            "param_name": "shape",
+            "comparator": "less",
+            "expected_value": "{}".format(limit),
+            "input_value": "{}".format(product)
+        }
         raise RuntimeError(
-            "The shape size for operator has exceeded the maximum")
+            args_dict,
+            error_manager.get_error_message(args_dict)
+        )
 
 
 def check_tensor_shape_size(shape):

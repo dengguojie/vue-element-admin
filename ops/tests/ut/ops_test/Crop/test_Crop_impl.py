@@ -81,6 +81,3 @@ ut_case.add_precision_case("all",
 #                                                    (0, 0, 0), kernel_name="crop_5"))
 
 
-if __name__ == '__main__':
-    ut_case.run(["Ascend910"], simulator_mode="pv",
-                simulator_lib_path="/disk1/ty_mindstudio/.mindstudio/huawei/adk/1.76.T1.0.B010/toolkit/tools/simulator")

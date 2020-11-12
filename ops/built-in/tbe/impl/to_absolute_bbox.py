@@ -18,7 +18,7 @@ to_absolute_bbox
 import math
 from te import tik
 from te import platform as tbe_platform
-from te.utils.op_utils import *
+from te.utils import para_check
 
 # available ub size
 UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
@@ -305,7 +305,7 @@ class ToAbsoluteBBox:
             self.tik_instance.vconv(4, '', self.hw_ub_float, self.hw_ub_temp, 1, 1, 1, 0, 0)
         else:
             error_info = {
-                'errCode': OP_ERROR_CODE_008,
+                'errCode': para_check.OP_ERROR_CODE_008,
                 'op_name': 'to_absolute_bbox',
                 'param_name': 'normalized_boxes',
                 'excepted_dtype_list': ["float16", "float32"],
@@ -597,7 +597,7 @@ class ToAbsoluteBBox:
         None
         """
         error_info = {
-            "errCode": OP_ERROR_CODE_009,
+            "errCode": para_check.OP_ERROR_CODE_009,
             "op_name": "to_absolute_bbox",
             "rule_desc": "the boxes' shape must be 3 dimension",
             "param_name": "normalized_boxes",
@@ -727,7 +727,8 @@ class ToAbsoluteBBox:
 
 
 # pylint: disable=unused-argument,invalid-name
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_BOOL, para_check.KERNEL_NAME)
 def to_absolute_bbox(normalized_boxes, shape_hw, y, reversed_box=False, kernel_name="to_absolute_bbox"):
     """
     Normalize the pre-selected box that passes through the NMS in Prediction

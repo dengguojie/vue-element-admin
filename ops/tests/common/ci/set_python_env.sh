@@ -19,12 +19,14 @@ TOOLCHAIN_HOME="bin/toolchain/x86/ubuntu/ccec_libs/ccec_x86_ubuntu_16_04_adk"
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910
+mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend920
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend310
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend710
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend610
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/Hi3796CV300ES
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/Hi3796CV300CS
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in
+mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend920/built-in
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend310/built-in
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend710/built-in
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend610/built-in
@@ -34,9 +36,13 @@ mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/Hi3796CV300CS/bu
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_32_L1_FUSION_cost_model_Ascend910A_conv2d_forward.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_32_L1_FUSION_cost_model_Ascend910ProA_conv2d_forward.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_30_L1_FUSION_cost_model_Ascend910B_conv2d_forward.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_30_L1_FUSION_cost_model_Ascend910ProB_conv2d_forward.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_32_L1_FUSION_cost_model_Ascend910PremiumA_conv2d_forward.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_32_NO_L1_FUSION_cost_model_Ascend910A_conv2d_forward.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_32_NO_L1_FUSION_cost_model_Ascend910ProA_conv2d_forward.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_30_NO_L1_FUSION_cost_model_Ascend910B_conv2d_forward.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_30_NO_L1_FUSION_cost_model_Ascend910ProB_conv2d_forward.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_32_NO_L1_FUSION_cost_model_Ascend910PremiumA_conv2d_forward.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_32_L1_FUSION_cost_model_Ascend910A_conv2d_bp_input.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_32_NO_L1_FUSION_cost_model_Ascend910A_conv2d_bp_input.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910A_conv2d_bp_filter.bin
@@ -46,30 +52,52 @@ cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/ou
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_32_L1_FUSION_cost_model_Ascend910ProA_conv2d_bp_input.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_32_NO_L1_FUSION_cost_model_Ascend910ProA_conv2d_bp_input.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910ProA_conv2d_bp_filter.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_30_L1_FUSION_cost_model_Ascend910ProB_conv2d_bp_input.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_30_NO_L1_FUSION_cost_model_Ascend910ProB_conv2d_bp_input.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910ProB_conv2d_bp_filter.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_32_L1_FUSION_cost_model_Ascend910PremiumA_conv2d_bp_input.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_32_NO_L1_FUSION_cost_model_Ascend910PremiumA_conv2d_bp_input.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910PremiumA_conv2d_bp_filter.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_32_L1_FUSION_cost_model_Ascend910A_depthwise_conv2d_forward.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_32_L1_FUSION_cost_model_Ascend910ProA_depthwise_conv2d_forward.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_30_L1_FUSION_cost_model_Ascend910B_depthwise_conv2d_forward.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_32_L1_FUSION_cost_model_Ascend910PremiumA_depthwise_conv2d_forward.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_30_L1_FUSION_cost_model_Ascend910ProB_depthwise_conv2d_forward.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_32_NO_L1_FUSION_cost_model_Ascend910A_depthwise_conv2d_forward.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_32_NO_L1_FUSION_cost_model_Ascend910ProA_depthwise_conv2d_forward.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_30_NO_L1_FUSION_cost_model_Ascend910B_depthwise_conv2d_forward.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_32_NO_L1_FUSION_cost_model_Ascend910PremiumA_depthwise_conv2d_forward.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/AIC_30_NO_L1_FUSION_cost_model_Ascend910ProB_depthwise_conv2d_forward.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910A_depthwise_bp_input.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910A_depthwise_bp_filter.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910B_depthwise_bp_input.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910B_depthwise_bp_filter.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910ProA_depthwise_bp_input.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910ProA_depthwise_bp_filter.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910ProB_depthwise_bp_input.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910ProB_depthwise_bp_filter.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910PremiumA_depthwise_bp_input.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910PremiumA_depthwise_bp_filter.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910A_conv3d_forward.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910A_conv3d_bp_input.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910A_conv3d_bp_filter.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910ProA_conv3d_forward.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910ProA_conv3d_bp_input.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910ProA_conv3d_bp_filter.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910ProB_conv3d_forward.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910ProB_conv3d_bp_input.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910ProB_conv3d_bp_filter.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910PremiumA_conv3d_forward.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910PremiumA_conv3d_bp_input.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910PremiumA_conv3d_bp_filter.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910B_conv3d_forward.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910B_conv3d_bp_input.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910B_conv3d_bp_filter.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910B_matmul.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910A_matmul.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910ProA_matmul.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910ProB_matmul.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in/cost_model_ascend910PremiumA_matmul.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend310/built-in/cost_model_ascend310_conv3d_forward.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend310/built-in/cost_model_ascend310_conv3d_bp_input.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend710/built-in/AIC_8_L1_FUSION_cost_model_Ascend710_conv2d_forward.bin
@@ -133,11 +161,12 @@ cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/ou
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/Hi3796CV300CS/built-in/cost_model_Hi3796CV300CS_conv2d_bp_filter.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/Hi3796CV300CS/built-in/cost_model_Hi3796CV300CS_depthwise_bp_input.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/Hi3796CV300CS/built-in/cost_model_Hi3796CV300CS_depthwise_bp_filter.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend920/built-in/cost_model_ascend920A_matmul.bin
 cp $cur_dir/tensor_engine/tiling_config $cur_dir/out/${product}/llt/$test_type/obj/
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/lib/simulator/common/data
 cp $cur_dir/bin/cmodel/data/* $cur_dir/out/${product}/llt/$test_type/obj/lib/simulator/common/data/.
 #PYTHONPATH
-export PYTHONPATH=$cur_dir/tensor_engine/python:$cur_dir/tensor_engine/topi/python:$cur_dir/ops/built-in/tbe:$cur_dir/toolchain/tensor_utils/op_test_frame/python:$PYTHONPATH
+export PYTHONPATH=$cur_dir/tensor_engine/python:$cur_dir/tensor_engine/topi/python:$cur_dir/cann/ops/built-in/tbe:$cur_dir/toolchain/tensor_utils/op_test_frame/python:$PYTHONPATH
 
 #PATH
 export PATH=$cur_dir/${TOOLCHAIN_HOME}/bin:$PATH

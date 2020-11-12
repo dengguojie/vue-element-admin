@@ -20,6 +20,7 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
+from te.utils.error_manager import error_manager_vector
 
 # shape limit for aicore equals 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -113,10 +114,16 @@ def reduce_all_d(input_data, output_data, axes,
     if not isinstance(axes, int):
         for i in axes:
             if i >= len(input_shape):
-                raise RuntimeError("axes should be less than dimension")
+                rule_desc = "axes should be less than dimension"
+                param_value = "%d,%d"%(i, len(input_shape))
+                error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, \
+                                                          "i,input_shape", param_value)
     else:
         if axes >= len(input_shape):
-            raise RuntimeError("axes should be less than dimension")
+            rule_desc = "axes should be less than dimension"
+            param_value = "%d,%d"%(axes, len(input_shape))
+            error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, \
+                                                              "axes,input_shape", param_value)
 
     # 5HD Special param for 5hd schedule
     is_5hdc = para_check.check_and_init_5hdc_reduce_support(input_data, axes)

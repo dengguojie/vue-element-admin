@@ -27,12 +27,7 @@ from te import tik
 from te import platform
 from topi import generic
 from functools import reduce as reduceIns
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import OPTION_ATTR_BOOL
-from te.utils.op_utils import KERNEL_NAME
+from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
@@ -710,9 +705,10 @@ def traversal_idx(tik_instance,
 
 
 @te.op.register_operator("SparseApplyProximalAdagradD")
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 REQUIRED_OUTPUT, OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def sparse_apply_proximal_adagrad_d(var_dict, accum_dict, lr_dict, l1_dict,
                                     l2_dict, grad_dict, indices_dict,
                                     var_out_dict, accum_out_dict,
@@ -743,32 +739,32 @@ def sparse_apply_proximal_adagrad_d(var_dict, accum_dict, lr_dict, l1_dict,
     indices_dtype_check_list = ("int32")
 
     var_dtype = var_dict.get("dtype").lower()
-    check_dtype(var_dtype, var_dtype_check_list, param_name="var_dict")
+    para_check.check_dtype(var_dtype, var_dtype_check_list, param_name="var_dict")
 
     accum_dtype = accum_dict.get("dtype").lower()
-    check_dtype(accum_dtype, var_dtype_check_list, param_name="accum_dict")
+    para_check.check_dtype(accum_dtype, var_dtype_check_list, param_name="accum_dict")
 
     lr_dtype = lr_dict.get("dtype").lower()
-    check_dtype(lr_dtype, var_dtype_check_list, param_name="lr_dict")
+    para_check.check_dtype(lr_dtype, var_dtype_check_list, param_name="lr_dict")
 
     l1_dtype = l1_dict.get("dtype").lower()
-    check_dtype(l1_dtype, var_dtype_check_list, param_name="l1_dict")
+    para_check.check_dtype(l1_dtype, var_dtype_check_list, param_name="l1_dict")
 
     l2_dtype = l2_dict.get("dtype").lower()
-    check_dtype(l2_dtype, var_dtype_check_list, param_name="l2_dict")
+    para_check.check_dtype(l2_dtype, var_dtype_check_list, param_name="l2_dict")
 
     grad_dtype = grad_dict.get("dtype").lower()
-    check_dtype(grad_dtype, var_dtype_check_list, param_name="grad_dict")
+    para_check.check_dtype(grad_dtype, var_dtype_check_list, param_name="grad_dict")
 
     indices_dtype = indices_dict.get("dtype").lower()
-    check_dtype(indices_dtype, indices_dtype_check_list,
+    para_check.check_dtype(indices_dtype, indices_dtype_check_list,
                 param_name="indices_dict")
 
     var_out_dtype = var_out_dict.get("dtype").lower()
-    check_dtype(var_out_dtype, var_dtype_check_list, param_name="var_out_dict")
+    para_check.check_dtype(var_out_dtype, var_dtype_check_list, param_name="var_out_dict")
 
     accum_out_dtype = accum_out_dict.get("dtype").lower()
-    check_dtype(accum_out_dtype, var_dtype_check_list,
+    para_check.check_dtype(accum_out_dtype, var_dtype_check_list,
                 param_name="accum_out_dict")
 
     if var_dtype != var_out_dtype:

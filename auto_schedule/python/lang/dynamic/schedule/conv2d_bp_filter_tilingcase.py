@@ -24,8 +24,8 @@ from te.lang.cce.te_compute.conv2d_backprop_filter_compute import \
     DynamicConv2dBpFilterParams as DynamicParams
 
 from te.domain.tiling.get_tiling import get_tiling
-from te.platform.operation import register_tiling_case
-from te.platform.operation import get_te_var
+from te.lang.base.operation import register_tiling_case
+from te.lang.base.operation import get_te_var
 
 from .cube_tilingcase import TilingSelection
 from .cube_tilingcase import CubeTilingOp
@@ -114,11 +114,22 @@ class Conv2dBpFilterTiling(CubeTilingOp):
     def get_tiling_range(self, tiling, fmap_shape):
         """
         get the covered area of a tiling
+
+        Parameters
+        ----------
+        tiling : dict, result of tiling fetch
+
+        fmap_shape : list, size of fmap_shape
+
+        Returns
+        -------
+        list, range covered for tiling_in
         """
 
         _, _, h_i, w_i, _ = fmap_shape
 
-        if not tiling["AL1_shape"]:
+        if not tiling["BL1_shape"]:
+            # fully load in BL1, covering lower region
             return [1, h_i, 1, w_i]
 
         self._set_padding_list(h_i, w_i)
@@ -127,35 +138,41 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         hi_min = max(self.k_h - self.cur_pads[2] - self.cur_pads[3], 1)
         wi_min = max(self.k_w - self.cur_pads[0] - self.cur_pads[1], 1)
 
-        # get max value
         hi_max = h_i
         cur_w_size = w_i
-        if not self._check_tiling_match(tiling, cur_w_size, h_i):
+
+        # check tiling covering itself situation
+        if not self._check_tiling_match(tiling, cur_w_size, h_i) \
+            or h_i > H_RANGE or w_i > W_RANGE:
             return [0, 0, 0, 0]
 
+        # searching down-ward for w_min
         while self._check_tiling_match(tiling, cur_w_size, h_i) and \
             cur_w_size > max(self.k_w - self.cur_pads[0] - self.cur_pads[1], 1):
             wi_min = cur_w_size
             cur_w_size = cur_w_size - W_DELTA
 
+        # searching up-ward for w_max
         cur_w_size = w_i
         while self._check_tiling_match(tiling, cur_w_size, h_i) \
-                and cur_w_size <= W_RANGE:
+            and cur_w_size <= W_RANGE:
             wi_max = cur_w_size
             cur_w_size = cur_w_size + W_DELTA
 
         perf_wi_min = max(wi_min, w_i - W_LEN)
         perf_wi_max = min(wi_max, w_i + W_LEN)
 
+        # searching down-ward for h_min based on w_min
         perf_hi_min = max(hi_min, h_i - H_LEN)
         cur_h_size = h_i
         while self._check_tiling_match(tiling, perf_wi_min, cur_h_size) \
             and cur_h_size > \
-                max(self.k_h - self.cur_pads[2] - self.cur_pads[3], 1):
+            max(self.k_h - self.cur_pads[2] - self.cur_pads[3], 1):
             hi_min = cur_h_size
             cur_h_size = cur_h_size - W_DELTA
         perf_hi_min = max(hi_min, h_i - H_LEN)
 
+        # searching up-ward for h_max based on w_max
         cur_h_size = h_i
         while self._check_tiling_match(tiling, perf_wi_max, cur_h_size) \
                 and cur_h_size <= H_RANGE:
@@ -173,7 +190,18 @@ class Conv2dBpFilterTiling(CubeTilingOp):
     def get_batch_range(self, tiling, fmap_shape):
         """
         get the covered area of a tiling
+
+        Parameters
+        ----------
+        tiling : dict, result of tiling fetch
+
+        fmap_shape : list, size of fmap_shape
+
+        Returns
+        -------
+        list, range covered for tiling_in
         """
+
         n_i, _, h_i, w_i, _ = fmap_shape
         self._set_padding_list(h_i, w_i)
         h_o = self._get_output_h(h_i)
@@ -188,11 +216,14 @@ class Conv2dBpFilterTiling(CubeTilingOp):
             fmap_l1_tiling_nparts = self._check_full_k(tiling, dy_shape)
         batch_num_sc = utils.icd(n_i, block_dim_batch)
 
+        # based on l0_attach and l1_attach
         if (full_k_in_l0a <= 0 and full_k_in_l0b <= 0) \
             and (grads_l1_tiling_nparts[0] != 1 \
             and fmap_l1_tiling_nparts[0] != 1):
-                return [ni_min, ni_max]
+            # batch wont influence attach flag
+            return [ni_min, ni_max]
         else:
+            # attach flag with different batch situation
             if batch_num_sc == 1:
                 return [ni_min, block_dim_batch]
             else:
@@ -312,44 +343,35 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         flag_fmap_load2d = local_tiling_flag[-2]
         flag_conv1d_case = local_tiling_flag[-3]
 
+        # load2d instructions refer to data_mov with raw lens
         if flag_fmap_load2d:
             return bl1_k
 
         if bl1_k < width_grads:
-            if not flag_conv1d_case:
-                if width_fmap % \
-                        (tiling["BL0_matrix"][0] * utils.CUBE_SIZE) == 0:
-                    # check if only need to load int times of bl0
-                    return width_fmap
-                else:
-                    # else then need to load an extra line
-                    return width_fmap * 2
+            # tiling load lens less then width_grads, need to load a full line
+            if flag_conv1d_case:
+                return tiling["BL1_shape"][0]
             else:
-                # the extend of w according to that of k_axis
-                if not tiling["BL1_shape"]:
-                    width_fmap_align = utils.align(width_fmap, utils.CUBE_SIZE)
-                    kbl1_data = utils.icd(width_fmap_align, block_dim_hw)
-                else:
-                    kbl1_data = tiling["BL1_shape"][0]
-                return kbl1_data
-
-        # load3d can not split wo
-        if bl1_k % width_grads == 0:
-            # fully load wo in bl1_k
-            additional_rows = 0
-        elif bl1_k * 2 % width_grads == 0:
-            # only 0.5 line need to load out of bl1_k (1 extra line = 0.5*2)
-            # and fully loaded with 2 bl1_k
-            additional_rows = 1
+                # if res_data exists then need to load 2 lines
+                ho_len = 1 if (width_fmap % bl1_k == 0) else 2
         else:
-            # other situation need 2 extra lines
-            additional_rows = 2
+            # load3d instructions refer to load extra lines with pad/stride/filter
+            if bl1_k % width_grads == 0:
+                # full line could load without extra lines
+                additional_rows = 0
+            elif bl1_k * 2 % width_grads == 0 or \
+                bl1_k % width_grads == 1:
+                # every 2 load3d covered only 1 extra line
+                additional_rows = 1
+            else:
+                # other situations need 2 extra lines in case
+                additional_rows = 2
+            ho_len = bl1_k // width_grads + additional_rows
 
-        ho_len = bl1_k // width_grads + additional_rows
         hi_max = self.k_h + (ho_len - 1) * self.stride_h
-        bl1_k = width_fmap * hi_max
+        bl1_k_full = width_fmap * hi_max
 
-        return bl1_k
+        return bl1_k_full
 
     def _check_tiling_match(self, tiling, current_w, current_h):
         """
@@ -398,34 +420,32 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         if seed_tiling_flag[:-2] != local_tiling_flag[:-2]:
             return False
 
-        # fmap size
-        if tiling['BL1_shape']:
-            # align tiling["BL1_shape"] for k_h * k_w
-            tiling["BL1_shape"][1] = utils.align(
-                tiling["BL1_shape"][1] * tiling["BL0_matrix"][1],
-                self.k_h * self.k_w) // tiling["BL0_matrix"][1]
-            # k_length in BL1
-            bl1_bound = self._get_bound_fmap(tiling,
-                                             w_o, w_i, local_tiling_flag)
+        # align tiling["BL1_shape"] for k_h * k_w
+        tiling["BL1_shape"][1] = utils.align(
+            tiling["BL1_shape"][1] * tiling["BL0_matrix"][1],
+            self.k_h * self.k_w) // tiling["BL0_matrix"][1]
 
-            # fmap size in L1
-            fmap_l1_size = utils.FP16_SIZE * bl1_bound * \
-                           tiling['BL1_shape'][1] * \
-                           tiling["BL0_matrix"][1] // (self.k_h * self.k_w) * \
-                           utils.FP16_N * \
-                           tiling['manual_pingpong_buffer']['BL1_pbuffer']
-        else:
-            fmap_l1_size = utils.FP16_SIZE * self.k_cin * \
-                           utils.align(h_i * w_i // block_dim_hw, 16)
+        # get K axis length in al1
+        bl1_bound = self._get_bound_fmap(tiling,
+                                         w_o, w_i, local_tiling_flag)
+
+        # fmap size in L1 ( K * N * db * 2byte)
+        fmap_l1_size = utils.FP16_SIZE * bl1_bound * \
+                       tiling['BL1_shape'][1] * \
+                       tiling["BL0_matrix"][1] // (self.k_h * self.k_w) * \
+                       utils.FP16_N * \
+                       tiling['manual_pingpong_buffer']['BL1_pbuffer']
 
         # grad size
         if tiling["AL1_shape"]:
+            # tiling size in L1 ( M * K * db * 2byte)
             al1_m = tiling["AL1_shape"][1] * tiling["AL0_matrix"][0] * \
                     utils.FP16_M
             grad_l1_size = utils.FP16_SIZE * tiling["AL1_shape"][0] * \
                            al1_m * \
                            tiling['manual_pingpong_buffer']['AL1_pbuffer']
         else:
+            # fully load in AL1
             al1_m = self.k_cout
             grad_l1_size = utils.FP16_SIZE * howo_align * al1_m
 

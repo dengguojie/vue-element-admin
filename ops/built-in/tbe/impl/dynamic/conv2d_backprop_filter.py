@@ -19,9 +19,9 @@ from __future__ import absolute_import
 
 from te import tvm
 import te.lang.cce as tbe
-import te.lang.dynamic as dynamic
 import te.platform as tbe_platform
-from te.utils import check_para
+import te.lang.base as tbe_base
+from te.utils import para_check
 from te.utils import error_manager
 
 
@@ -288,18 +288,18 @@ def _get_input_shape(fmap_nchw, dedy_nchw, dedw_nchw, fmap_range):
                            error_manager.get_error_message(dict_args))
 
     if fmap_nchw[2] == -1 and fmap_nchw[3] == -1 and -1 not in fmap_nchw[:2]:
-        fmap_h = tbe_platform.var("fmap_h", bound=fmap_range[2])
-        fmap_w = tbe_platform.var("fmap_w", bound=fmap_range[3])
-        dedy_h = tbe_platform.var("dedy_h")
-        dedy_w = tbe_platform.var("dedy_w")
-        tbe_platform.add_exclude_bound_var(fmap_h)
-        tbe_platform.add_exclude_bound_var(fmap_w)
-        tbe_platform.add_exclude_bound_var(dedy_h)
-        tbe_platform.add_exclude_bound_var(dedy_w)
+        fmap_h = tbe_base.var("fmap_h", bound=fmap_range[2])
+        fmap_w = tbe_base.var("fmap_w", bound=fmap_range[3])
+        dedy_h = tbe_base.var("dedy_h")
+        dedy_w = tbe_base.var("dedy_w")
+        tbe_base.add_exclude_bound_var(fmap_h)
+        tbe_base.add_exclude_bound_var(fmap_w)
+        tbe_base.add_exclude_bound_var(dedy_h)
+        tbe_base.add_exclude_bound_var(dedy_w)
         dynamic_mode = "dynamic_hw"
     elif fmap_nchw[0] == -1 and -1 not in fmap_nchw[1:]:
-        fmap_n = tbe_platform.var("batch", bound=fmap_range[0])
-        tbe_platform.add_exclude_bound_var(fmap_n)
+        fmap_n = tbe_base.var("batch", bound=fmap_range[0])
+        tbe_base.add_exclude_bound_var(fmap_n)
         dynamic_mode = "dynamic_batch"
     else:
         dict_args = dict()
@@ -339,9 +339,9 @@ def _range_correction(fmap_range, kernel, padding, stride, dilation, out_shape):
 
 
 def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
-                                  padding, dilations, fmap_dtype, dedy_dtype,
-                                  dedw_dtype, kernel_name, dynamic_mode,
-                                  fmap_range):
+                                  padding, dilations, groups, fmap_dtype,
+                                  dedy_dtype, dedw_dtype, kernel_name,
+                                  dynamic_mode, fmap_range):
 
     def _check_attr_range_dw(name, value, attr_min=None, attr_max=None):
         if (not isinstance(value, int)) or value > attr_max \
@@ -379,23 +379,23 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     # First : Base check, Mainly required by interface appearance
     # ===========================================================
     # util check
-    check_para.check_kernel_name(kernel_name)
+    para_check.check_kernel_name(kernel_name)
     dedy_range = _range_correction(fmap_range, dedw_nchw, padding, strides,
                                    dilations, dedy_shape)
     lower_bound, upper_bound = zip(*fmap_range)
     lower_bound_dedy, upper_bound_dedy = zip(*dedy_range)
-    check_para.check_shape_rule(lower_bound, CONV_BACKPROP_SHAPE_DIM,
+    para_check.check_shape_rule(lower_bound, CONV_BACKPROP_SHAPE_DIM,
                                 CONV_BACKPROP_SHAPE_DIM, DEFAULT_MAX_SHAPE_NUM)
-    check_para.check_shape_rule(upper_bound, CONV_BACKPROP_SHAPE_DIM,
+    para_check.check_shape_rule(upper_bound, CONV_BACKPROP_SHAPE_DIM,
                                 CONV_BACKPROP_SHAPE_DIM, DEFAULT_MAX_SHAPE_NUM)
-    check_para.check_shape_rule(dedw_nchw, CONV_BACKPROP_SHAPE_DIM,
+    para_check.check_shape_rule(dedw_nchw, CONV_BACKPROP_SHAPE_DIM,
                                 CONV_BACKPROP_SHAPE_DIM, DEFAULT_MAX_SHAPE_NUM)
     # stride check
-    check_para.check_shape_rule(strides,
+    para_check.check_shape_rule(strides,
                                 STRIDES_SHAPE_DIM, STRIDES_SHAPE_DIM,
                                 DEFAULT_MAX_SHAPE_NUM)
     # dilation check
-    check_para.check_shape_rule(dilations,
+    para_check.check_shape_rule(dilations,
                                 CONV_BACKPROP_SHAPE_DIM, CONV_BACKPROP_SHAPE_DIM,
                                 DEFAULT_MAX_SHAPE_NUM)
     dilation_n, dilation_c, dilation_h, dilation_w = dilations
@@ -403,6 +403,15 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
                          DILATION_MIN, DILATION_MAX)
     _check_attr_range_dw("dilations's W", dilation_w,
                          DILATION_MIN, DILATION_MAX)
+    # group check
+    if groups != 1:
+        dict_args = {
+            'errCode': 'E50060',
+            'op_name': 'dynamic conv2d_backprop_filter',
+            'description': "only supports groups=1"
+        }
+        raise RuntimeError(dict_args,
+                           error_manager.get_error_message(dict_args))
 
     if dilation_n != 1 or dilation_c != 1:
         dict_args = {}
@@ -417,9 +426,9 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     dedy_dtype = dedy_dtype.lower()
     dedw_dtype = dedw_dtype.lower()
 
-    check_para.check_dtype_rule(fmap_dtype, ["float16"])
-    check_para.check_dtype_rule(dedy_dtype, ["float16"])
-    check_para.check_dtype_rule(dedw_dtype, ["float16", "float32"])
+    para_check.check_dtype_rule(fmap_dtype, ["float16"])
+    para_check.check_dtype_rule(dedy_dtype, ["float16"])
+    para_check.check_dtype_rule(dedw_dtype, ["float16", "float32"])
 
     # Second : Furture Check, Mainly required by SRS
     # ===========================================================
@@ -477,10 +486,14 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     _check_attr_range_dw("Fmap's maxW", upper_fmap_w, fmap_w_min, fmap_hw_max)
 
     # Dedy value limit
-    _check_attr_range_dw("Dedy's minH", lower_dedy_h, dedy_hw_min, dedy_hw_max)
-    _check_attr_range_dw("Dedy's minW", lower_dedy_w, dedy_hw_min, dedy_hw_max)
-    _check_attr_range_dw("Dedy's maxH", upper_dedy_h, dedy_hw_min, dedy_hw_max)
-    _check_attr_range_dw("Dedy's maxW", upper_dedy_w, dedy_hw_min, dedy_hw_max)
+    _check_attr_range_dw("Dedy's minH inferenced from Fmap's minH",
+                         lower_dedy_h, dedy_hw_min, dedy_hw_max)
+    _check_attr_range_dw("Dedy's minW inferenced from Fmap's minW",
+                         lower_dedy_w, dedy_hw_min, dedy_hw_max)
+    _check_attr_range_dw("Dedy's maxH inferenced from Fmap's maxH",
+                         upper_dedy_h, dedy_hw_min, dedy_hw_max)
+    _check_attr_range_dw("Dedy's maxW inferenced from Fmap's maxW",
+                         upper_dedy_w, dedy_hw_min, dedy_hw_max)
 
     # stride value limit
     _check_attr_range_dw("stride's H", stride_h, STRIDE_HW_MIN, STRIDE_HW_MAX)
@@ -488,7 +501,7 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
 
     def _check_axis_hw():
         _check_equal(dedy_c, filter_n, "Dedy's C", "Filter's N")
-        _check_equal(fmap_c, filter_c, "Fmap's C", "Filter's C")
+        _check_equal(fmap_c, filter_c*groups, "Fmap's C", "Filter's C")
         if padding != "SAME":
             if filter_w_dilation > upper_fmap_w_padding:
                 dict_args = dict()
@@ -579,32 +592,46 @@ def _conv2d_backprop_filter_compute(x, filter_size, out_backprop, y,
 
     fmap_shape, dedy_shape = _check_conv2dbp_filter_params(
         fmap_shape, dedy_shape, dedw_nchw, strides, padding, dilations,
-        x_dtype, dedy_dtype, dedw_dtype, kernel_name, dynamic_mode,
+        groups, x_dtype, dedy_dtype, dedw_dtype, kernel_name, dynamic_mode,
         fmap_range)
 
     fmap = tvm.placeholder(fmap_shape, name="fmap", dtype=x_dtype)
     filter_size = tvm.placeholder([4], name="filter_size", dtype="int32")
     dedy = tvm.placeholder(dedy_shape, name="dedy", dtype=dedy_dtype)
 
-    dedw = tbe.conv2d_backprop_filter_compute(
-        input_x=fmap,
-        out_backprop=dedy,
-        filter_sizes=dedw_nchw,
-        strides=strides,
-        padding=pads,
-        dilations=dilations,
-        res_dtype=dedw_dtype,
-        kernel_name=kernel_name
-    )
+    if 1 == groups:
+        # for old fwkacllib version
+        dedw = tbe.conv2d_backprop_filter_compute(
+            input_x=fmap,
+            out_backprop=dedy,
+            filter_sizes=dedw_nchw,
+            strides=strides,
+            padding=pads,
+            dilations=dilations,
+            res_dtype=dedw_dtype,
+            kernel_name=kernel_name
+        )
+    else:
+        dedw = tbe.conv2d_backprop_filter_compute(
+            input_x=fmap,
+            out_backprop=dedy,
+            filter_sizes=dedw_nchw,
+            strides=strides,
+            padding=pads,
+            dilations=dilations,
+            groups=groups,
+            res_dtype=dedw_dtype,
+            kernel_name=kernel_name
+        )
 
     return {'op_placeholder': [fmap, filter_size, dedy], 'op_res': [dedw]}
 
 
-@tbe_platform.register_operator('Conv2DBackpropFilter')
-@check_para.check_input_type(dict, dict, dict, dict, (tuple, list),
+@tbe_base.register_operator('Conv2DBackpropFilter')
+@para_check.check_input_type(dict, dict, dict, dict, (tuple, list),
                              (str, tuple, list), (tuple, list), int, str, str)
 def conv2d_backprop_filter(x, filter_size, out_backprop, y, strides, pads,
-                           dilations=(1, 1, 1, 1), groups=None,
+                           dilations=(1, 1, 1, 1), groups=1,
                            data_format='NHWC',
                            kernel_name="conv2d_backprop_filter"):
     """
@@ -618,7 +645,7 @@ def conv2d_backprop_filter(x, filter_size, out_backprop, y, strides, pads,
     filter_size: dict, will not be used
 
     out_backprop: dict with keys(shape and dtype)
-                  input weight tensor
+                  out_backprop tensor
 
     y: dict with keys(shape and dtype)
        output tensor, dtype must be assigned
@@ -633,7 +660,7 @@ def conv2d_backprop_filter(x, filter_size, out_backprop, y, strides, pads,
                filter expand size of dilated conv2d_backprop_filter
 
     groups: int
-            param for group conv2d_backprop_filter
+            The number of filter's group. Default value is 1.
 
     data_format: str
             An optional string from: "NHWC", "NCHW". Defaults to "NHWC".
@@ -647,7 +674,7 @@ def conv2d_backprop_filter(x, filter_size, out_backprop, y, strides, pads,
     None
     """
 
-    with tbe_platform.compute():
+    with tbe_base.compute():
         res = _conv2d_backprop_filter_compute(
             x, filter_size, out_backprop, y, strides, pads, dilations,
             groups, data_format, kernel_name)
@@ -662,4 +689,4 @@ def conv2d_backprop_filter(x, filter_size, out_backprop, y, strides, pads,
               'name': kernel_name,
               'tensor_list': tensor_list,
               'build_args': {'constant_realize_extent_in_infer_bound': False}}
-    dynamic.build(sch, config)
+    tbe.build(sch, config)

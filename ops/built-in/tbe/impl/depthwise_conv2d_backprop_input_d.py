@@ -17,7 +17,7 @@ Depthwise conv2D backprop input for the computation of
 gradients of depthwise convolution with respect to the input.
 """
 import te.platform as tbe_platform
-from te.utils import check_para
+from te.utils import para_check
 from te.utils.error_manager import error_manager_util
 from te.utils.error_manager import error_manager_conv2d
 from te.lang.cce.te_compute.depthwise_conv2d_compute import \
@@ -61,12 +61,12 @@ def _check_params(shape, dtype, format):
     None
     """
     if format == "NCHW":
-        check_para.check_shape(shape,
+        para_check.check_shape(shape,
                                min_rank=FEATURE_MAP_DIM,
                                max_rank=FEATURE_MAP_DIM)
     if format in ("HWCK", "HWCN"):
-        check_para.check_shape(shape, min_rank=FILTER_DIM, max_rank=FILTER_DIM)
-    check_para.check_dtype(dtype.lower(), ('float16', ))
+        para_check.check_shape(shape, min_rank=FILTER_DIM, max_rank=FILTER_DIM)
+    para_check.check_dtype(dtype.lower(), ('float16', ))
 
 
 def _ceil(x_size):
@@ -256,12 +256,12 @@ def _check_pad(pads):
 
 # pylint: disable=too-many-statements, redefined-builtin
 # pylint: disable=locally-disabled, too-many-locals, too-many-arguments
-@check_para.check_op_params(
-    check_para.REQUIRED_INPUT, check_para.REQUIRED_INPUT,
-    check_para.REQUIRED_OUTPUT,
-    check_para.REQUIRED_ATTR_LIST_INT, check_para.REQUIRED_ATTR_LIST_INT,
-    check_para.OPTION_ATTR_LIST_INT, check_para.REQUIRED_ATTR_LIST_INT,
-    check_para.OPTION_ATTR_STR, check_para.KERNEL_NAME)
+@para_check.check_op_params(
+    para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+    para_check.REQUIRED_OUTPUT,
+    para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
+    para_check.OPTION_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
+    para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
 def depthwise_conv2d_backprop_input_d(
         filter,
         out_backprop,
@@ -367,15 +367,15 @@ def depthwise_conv2d_backprop_input_d(
     _check_params(filter_shape, filter_dtype, "HWCK")
     _check_params(output_shape, output_dtype, "NCHW")
     _check_params(input_shape, input_dtype, "NCHW")
-    check_para.check_shape(output_shape, min_rank=FEATURE_MAP_DIM,
+    para_check.check_shape(output_shape, min_rank=FEATURE_MAP_DIM,
                            max_rank=FEATURE_MAP_DIM, param_name="out_backprop")
-    check_para.check_shape(filter_shape, min_rank=FILTER_DIM,
+    para_check.check_shape(filter_shape, min_rank=FILTER_DIM,
                            max_rank=FILTER_DIM, param_name="filter")
-    check_para.check_shape(input_shape, min_rank=FEATURE_MAP_DIM,
+    para_check.check_shape(input_shape, min_rank=FEATURE_MAP_DIM,
                            max_rank=FEATURE_MAP_DIM, param_name="input_grad")
-    check_para.check_shape(strides, min_rank=STRIDES_DIM,
+    para_check.check_shape(strides, min_rank=STRIDES_DIM,
                            max_rank=STRIDES_DIM, param_name="strides")
-    check_para.check_shape(dilations, min_rank=DILATIONS_DIM,
+    para_check.check_shape(dilations, min_rank=DILATIONS_DIM,
                            max_rank=DILATIONS_DIM, param_name="dilations")
 
     _check_stride(strides, dim_s_h, dim_s_w, dim_s_n, dim_s_c)

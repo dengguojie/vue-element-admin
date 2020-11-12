@@ -14,6 +14,8 @@ http://www.apache.org/licenses/LICENSE-2.0
 AbsGrad ut case
 """
 from op_test_frame.ut import OpUT
+from op_test_frame.common import precision_info
+import numpy as np
 ut_case = OpUT("AbsGrad", None, None)
 
 case1 = {"params": [{"shape": (10,10241), "dtype": "float16", "format": "ND", "ori_shape": (10,10241),"ori_format": "ND"}, #x
@@ -63,6 +65,29 @@ ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
 
-if __name__ == '__main__':
-    ut_case.run(["Ascend910","Ascend310","Ascend710"])
-    exit(0)
+#precision cases
+def calc_expect_func(x1, x2, y):
+    input_Arr = x1['value']
+    tmpResult1 = input_Arr / np.abs(input_Arr)
+    res = tmpResult1 * x2['value']
+    return res
+
+ut_case.add_precision_case("Ascend910", {"params": [{"shape": (5, 13, 4), "dtype": "float32", "format": "ND", "ori_shape": (5, 13, 4),"ori_format": "ND", "param_type": "input"},
+                                                    {"shape": (5, 13, 4), "dtype": "float32", "format": "ND", "ori_shape": (5, 13, 4),"ori_format": "ND", "param_type": "input"},
+                                                    {"shape": (5, 13, 4), "dtype": "float32", "format": "ND", "ori_shape": (5, 13, 4),"ori_format": "ND", "param_type": "output"}],
+                                         "calc_expect_func": calc_expect_func,
+                                         "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                         })
+ut_case.add_precision_case("Ascend910", {"params": [{"shape": (1, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 2),"ori_format": "ND", "param_type": "input"},
+                                                    {"shape": (1, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 2),"ori_format": "ND", "param_type": "input"},
+                                                    {"shape": (1, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 2),"ori_format": "ND", "param_type": "output"}],
+                                         "calc_expect_func": calc_expect_func,
+                                         "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                         })
+ut_case.add_precision_case("Ascend910", {"params": [{"shape": (32, 16), "dtype": "float32", "format": "ND", "ori_shape": (32, 16),"ori_format": "ND", "param_type": "input"},
+                                                    {"shape": (32, 16), "dtype": "float32", "format": "ND", "ori_shape": (32, 16),"ori_format": "ND", "param_type": "input"},
+                                                    {"shape": (32, 16), "dtype": "float32", "format": "ND", "ori_shape": (32, 16),"ori_format": "ND", "param_type": "output"}],
+                                         "calc_expect_func": calc_expect_func,
+                                         "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                         })
+

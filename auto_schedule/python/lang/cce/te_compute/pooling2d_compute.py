@@ -24,6 +24,7 @@ from te.platform.cce_conf import CceProductParams as pver
 from te.lang.cce.te_compute.common import img2col
 from te.lang.cce.te_compute.common import im2col_fractal
 from te.platform.cce_policy import get_L1_info
+from te.utils.error_manager.error_manager_util import get_error_message
 
 from .cast_compute import _cast
 from .max_pool2d_compute import max_pool2d
@@ -69,16 +70,27 @@ def check_fmap_shape(batch_size, c1_value, in_size_h, in_size_w, c_block_size):
     check feature shape whether valid
     """
     if batch_size <= 0 or c1_value <= 0:
-        raise RuntimeError("invalid featur map shape params, "
-                           "shape must be uint format and each dim >=1, C0 must be equal to 16")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "invalid featur map shape params," \
+                                      " batch [%s] and c1 [%s] must must be " \
+                                      "uint format and >= 1" % (batch_size, c1_value)
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if in_size_h <= 0 or in_size_w <= 0:
-        raise RuntimeError("invalid featur map shape params, "
-                           "shape must be uint format and each dim >=1, C0 must be equal to 16")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "invalid featur map shape params," \
+                                      " in_size_h [%s] and in_size_w [%s] must" \
+                                      " be uint format and >= 1" % (in_size_h, in_size_w)
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if c_block_size <= 0 or (c_block_size != 16):
-        raise RuntimeError("invalid featur map shape params, "
-                           "shape must be uint format and each dim >=1, C0 must be equal to 16")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "invalid featur map shape params, " \
+                                      "C0 [%s] must be equal to 16" % c_block_size
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-arguments
@@ -147,8 +159,12 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
             is_stride_invalid = stride[0] > 2 * window[0] or \
                 stride[1] > 2 * window[1]
             if is_stride_invalid:
-                raise RuntimeError("stride_h should be <= 2*window_h, "
-                                   "stride_w should be <= 2*window_w.")
+                dict_args = dict()
+                dict_args["errCode"] = "E90001"
+                dict_args["detailed_cause"] = "stride_h [%s] should be <= 2*window_h [%s], " \
+                                              "stride_w [%s] should be <= 2*window_w [%s]." \
+                                              % (stride[0], window[0], stride[1], window[1])
+                raise RuntimeError(dict_args, get_error_message(dict_args))
     check_stride_window_rule(pooling_mode, stride, window)
 
     # avg or max pooling
@@ -156,8 +172,12 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
         # only in AVG pooling related, img2col instrin nRepeat in [1,255]
         if pooling_mode in ["AVG"]:
             if window_h * window_w > 255:
-                raise RuntimeError("invalid window params, window_h * "
-                                   "window_w should be <= 255")
+                dict_args = dict()
+                dict_args["errCode"] = "E90001"
+                dict_args["detailed_cause"] = "invalid window params, " \
+                                              "window_h * window_w should be <= 255, " \
+                                              "while window_h is [%s], window_w is [%s]" % (window_h, window_w)
+                raise RuntimeError(dict_args, get_error_message(dict_args))
 
         if data_mode == 0:
             out_size_h, out_size_w, pad_top, pad_bottom, pad_left, pad_right \
@@ -218,12 +238,20 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
         if data_mode == 1:
             not_global_flag = window_h < in_size_h or window_w < in_size_w
             if not_global_flag:
-                raise RuntimeError("invalid window params in GAP or GMP mode, "
-                                   "window size should be equal to input size")
+                dict_args = dict()
+                dict_args["errCode"] = "E90001"
+                dict_args["detailed_cause"] = "invalid window params in GAP " \
+                                              "or GMP mode, window size [%s, %s] " \
+                                              "should be equal to input size [%s, %s]" \
+                                              % (window_h, window_w, in_size_h, in_size_w)
+                raise RuntimeError(dict_args, get_error_message(dict_args))
 
             if padding_mode == "SAME":
-                raise RuntimeError("invalid padding_mode params in GAP or "
-                                   "GMP mode, adding_mode can only be VALID")
+                dict_args = dict()
+                dict_args["errCode"] = "E90001"
+                dict_args["detailed_cause"] = "invalid padding_mode params " \
+                                              "in GAP or GMP mode, adding_mode can only be VALID"
+                raise RuntimeError(dict_args, get_error_message(dict_args))
 
         stride_h = 1
         stride_w = 1
@@ -278,14 +306,22 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
                        "conv_fm_h": in_size_h,
                        "conv_fm_w": in_size_w,
                        }
-
-    def check_avg_is_spe(in_size_h, in_size_w, window_h, window_w, data_mode):
+    def check_avg_is_spe(in_size_h, in_size_w, window_h, window_w, data_mode, padding_mode, stride_h, stride_w):
         if in_size_h != window_h and in_size_w == window_w and data_mode == 0:
             return True
-        return False
+        if data_mode == 1:
+            if padding_mode == "SAME":
+                output_h = (in_size_h + stride_h - 1) // stride_h
+                output_w = (in_size_w + stride_w - 1) // stride_w
+            else:
+                output_h = (in_size_h - window_h + 1 + (stride_h - 1)) // stride_h
+                output_w = (in_size_w - window_w + 1 + (stride_w - 1)) // stride_w
+            if output_h != 1 and output_w == 1 and (in_size_h != window_h or in_size_w != window_w):
+                return True
 
+        return False
     is_spe_avg = check_avg_is_spe(in_size_h, in_size_w,
-                                  window_h, window_w, data_mode)
+                                  window_h, window_w, data_mode, padding_mode, stride_h, stride_w)
 
     def chose_avg_pooling_model(is_spe_avg, tensor_in, fusion_params,
                                 fmap_fractal_tmp_1, res_output_shape, window_h,
@@ -334,60 +370,136 @@ def check_attr_rule(tensor_in, window, stride, pooling_mode, padding_mode, pad=(
     :return: pooling result
     """
     if not isinstance(tensor_in, tvm.tensor.Tensor):
-        raise RuntimeError("invalid tensor_in params, type of tensor_in must be tvm.tensor.Tensor.")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "invalid tensor_in params, type of " \
+                                      "tensor_in must be tvm.tensor.Tensor, " \
+                                      "while type is [%s]" % type(tensor_in)
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if not isinstance(window, tuple) and not isinstance(window, list):
-        raise RuntimeError("invalid window params, type of window must be tuple or list.")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "invalid window params, type of " \
+                                      "window must be tuple or list, " \
+                                      "while type is [%s]" % type(window)
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if not isinstance(stride, tuple) and not isinstance(stride, list):
-        raise RuntimeError("invalid stride params, type of stride must be tuple or list.")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "invalid stride params, type of " \
+                                      "stride must be tuple or list, " \
+                                      "while type is [%s]" % type(stride)
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if not isinstance(padding_mode, str):
-        raise RuntimeError("invalid padding_mode params, type of padding_mode must be str.")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "invalid padding_mode params, type of " \
+                                      "padding_mode must be str, " \
+                                      "while type is [%s]" % type(padding_mode)
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if not isinstance(pad, tuple) and not isinstance(pad, list):
-        raise RuntimeError("invalid pad params, type of pad must be tuple or list.")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "invalid pad params, type of " \
+                                      "pad must be tuple or list, " \
+                                      "while type is [%s]" % type(pad)
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if not isinstance(dilation, tuple) and not isinstance(dilation, list):
-        raise RuntimeError("invalid dilation params, type of dilation must be tuple or list.")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "invalid dilation params, type of " \
+                                      "dilation must be tuple or list, " \
+                                      "while type is [%s]" % type(dilation)
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if len(tensor_in.shape) != 5:
-        raise RuntimeError("invalid shape params, input feature map must be 5D format in kernel.")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "invalid tensor_in params, input feature " \
+                                      "map must be 5D format in kernel, " \
+                                      "while shape dims is [%s]" % len(tensor_in.shape)
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if len(window) != 2:
-        raise RuntimeError("invalid window params, window dim must be 2.")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "invalid window params, window dim must" \
+                                      " be 2, while window dims is [%s]" % len(window)
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if window[0] > 32768 or window[0] < 1:
-        raise RuntimeError("invalid window params, window_h size must be [1, 32768].")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "invalid window params, window_h [%s]" \
+                                      " size must be [1, 32768]" % window[0]
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if window[1] > 32768 or window[1] < 1:
-        raise RuntimeError("invalid window params, window_w size must be [1, 32768].")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "invalid window params, window_w [%s]" \
+                                      " size must be [1, 32768]" % window[0]
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     check_stride_rule(tensor_in, data_mode, padding_mode, pooling_mode, window,
                       stride)
 
     if str(tensor_in.dtype) not in ["float16"]:
-        raise RuntimeError("can only support float16 dtype of tensor_in.")
+        dict_args = dict()
+        dict_args["errCode"] = "E90003"
+        dict_args["detailed_cause"] = "can only support float16 dtype of " \
+                                      "tensor_in, while dtype is " % str(tensor_in.dtype)
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     # GAP is short for global avg pooling
     # GMP is short for global max pooling
     if pooling_mode not in ["AVG", "MAX", "GAP", "GMP"]:
-        raise RuntimeError("can only support AVG or MAX or GAP or GMP pooling mode.")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "can only support AVG or MAX or GAP or" \
+                                      " GMP pooling mode. while pooling mode is [%s]" % pooling_mode
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if len(pad) != 4 or pad[0] < 0 or pad[1] < 0 or pad[2] < 0 or pad[3] < 0:
-        raise RuntimeError("invalid pad params, pad size must be 4 with uint format, each dim >= 0")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "invalid pad params, pad size must be" \
+                                      " 4 with uint format, each dim >= 0, while pad is [%s]" % pad
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if len(dilation) != 2:
-        raise RuntimeError("invalid dilation params, dilation dim must be 2.")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "invalid dilation params, dilation dim" \
+                                      " must be 2, while dim is [%s]" % len(dilation)
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if dilation[0] > 255 or dilation[0] < 1:
-        raise RuntimeError("invalid dilation params, dilation_h size must be [1,255].")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "invalid dilation params, dilation_h" \
+                                      " size must be [1,255]. while dilation_h is [%s]" % dilation[0]
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if dilation[1] > 255 or dilation[1] < 1:
-        raise RuntimeError("invalid dilation params, dilation_w size must be [1,255].")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "invalid dilation params, dilation_h" \
+                                      " size must be [1,255]. while dilation_w is [%s]" % \
+                                      dilation[1]
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if data_mode not in [0, 1]:
-        raise RuntimeError("data mode only support 0:CAFFE or 1:TENSORFLOW.")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "data mode only support 0:CAFFE or " \
+                                      "1:TENSORFLOW. while data_mode is [%s]" % data_mode
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if data_mode == 0:
         check_caffe_attr_rule(ceil_mode)
@@ -403,7 +515,12 @@ def check_caffe_attr_rule(ceil_mode):
     :return:
     """
     if ceil_mode not in [0, 1]:
-        raise RuntimeError("can only support 0:PCEIL or 1:RoundMode_FLOOR padding mode.")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "can only support 0:PCEIL or " \
+                                      "1:RoundMode_FLOOR padding mode. " \
+                                      "while ceil_mode is [%s]" % ceil_mode
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
 def check_tensorflow_attr_rule(padding_mode):
@@ -412,9 +529,18 @@ def check_tensorflow_attr_rule(padding_mode):
     :return:
     """
     if not isinstance(padding_mode, str):
-        raise RuntimeError("invalid padding_mode params, type of padding_mode must be str.")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "invalid padding_mode params, " \
+                                      "type of padding_mode must be str. " \
+                                      "while padding_mode type is [%s]" % type(padding_mode)
+        raise RuntimeError(dict_args, get_error_message(dict_args))
     if padding_mode not in ["SAME", "VALID"]:
-        raise RuntimeError("can only support SAME or VALID padding mode.")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "can only support SAME or VALID " \
+                                      "padding mode. while padding_mode is [%s]" % padding_mode
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
 def check_stride_rule(tensor_in, data_mode, padding_mode, pooling_mode, window,
@@ -428,7 +554,11 @@ def check_stride_rule(tensor_in, data_mode, padding_mode, pooling_mode, window,
     :return:
     """
     if len(stride) != 2:
-        raise RuntimeError("invalid stride params, stride dim must be 2.")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "invalid stride params, stride dim " \
+                                      "must be 2. while dim is [%s]" % len(stride)
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     in_size_h = tensor_in.shape[2].value
     in_size_w = tensor_in.shape[3].value
@@ -441,12 +571,19 @@ def check_stride_rule(tensor_in, data_mode, padding_mode, pooling_mode, window,
     # global
     if pooling_mode not in ["GAP", "GMP"]:
         if stride[0] > 63 or stride[0] < 1:
-            raise RuntimeError(
-                "invalid stride params, stride_h size must be [1,63].")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "invalid stride params, stride_h " \
+                                          "size must be [1,63]. while stride_h is [%s]" % stride[0]
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
         if stride[1] > 63 or stride[1] < 1:
-            raise RuntimeError(
-                "invalid stride params, stride_w size must be [1,63].")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "invalid stride params, stride_w " \
+                                          "size must be [1,63]. while stride_w is [%s]" % \
+                                          stride[1]
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-arguments
@@ -470,8 +607,13 @@ def get_tensorflow_pooling_mode(padding_mode, pooling_mode, in_size_h, in_size_w
     # pylint: disable=no-else-raise
     if padding_mode == "VALID":
         if window_h > in_size_h or window_w > in_size_w:
-            raise RuntimeError("invalid window params, "
-                               "in VALID mode window must be <= feature map.")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "invalid window params, in VALID " \
+                                          "mode window must be <= feature map. " \
+                                          "while window is [%s, %s], hw is [%s, %s]" \
+                                          % (window_h, window_w, in_size_h, in_size_w)
+            raise RuntimeError(dict_args, get_error_message(dict_args))
         if window_h == in_size_h and window_w == in_size_w:
             if pooling_mode == "MAX":
                 pooling_mode = "GMP"
@@ -522,8 +664,11 @@ def check_ub_tiling(data_mode, pooling_mode, padding_mode, out_size_w, window_h,
                                          c_block_size, True)
 
     if data_size >= ub_size:
-        raise RuntimeError("cutH and C1, can not find valid tiling params, "
-                           "cutW support needed")
+        dict_args = dict()
+        dict_args["errCode"] = "E90003"
+        dict_args["detailed_cause"] = "cutH and C1, can not find valid " \
+                                      "tiling params, cutW support needed"
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
 # pylint: disable=too-many-locals, too-many-arguments
@@ -597,9 +742,25 @@ def get_caffe_out_size_and_pad(ceil_mode, in_size_h, in_size_w, window_h, window
             out_size_w -= 1
 
         if (out_size_h - 1)*stride_h >= in_size_h + pad_top:
-            raise RuntimeError("CHECK_LT((out_size_h - 1) * stride_h, in_size_h + pad_top)")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "CHECK_LT((out_size_h - 1) * stride_h, in_size_h + pad_top)," \
+                                          " while out_size_h is [%s], " \
+                                          "stride_h is [%s], " \
+                                          "in_size_h is [%s], " \
+                                          "pad_top is [%s]" \
+                                          % (out_size_h, stride_h, in_size_h, pad_top)
+            raise RuntimeError(dict_args, get_error_message(dict_args))
         if (out_size_w - 1)*stride_w >= in_size_w + pad_left:
-            raise RuntimeError("CHECK_LT((out_size_w - 1) * stride_w, in_size_w + pad_left)")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "CHECK_LT((out_size_w - 1) * stride_w, in_size_w + pad_left)," \
+                                          " while out_size_w is [%s], " \
+                                          "stride_w is [%s], " \
+                                          "in_size_w is [%s], " \
+                                          "pad_left is [%s]" \
+                                          % (out_size_h, stride_h, in_size_h, pad_top)
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
     # floor mode modify davici pad
     if ceil_mode == 0:

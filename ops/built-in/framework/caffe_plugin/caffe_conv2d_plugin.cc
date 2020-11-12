@@ -18,10 +18,11 @@
  * \file caffe_conv2d_plugin.cpp
  * \brief
  */
+#include <string>
 #include "proto/caffe/caffe.pb.h"
 #include "register/register.h"
 #include "op_log.h"
-#include "common/util/error_manager/error_manager.h"
+#include "../../op_proto/util/error_util.h"
 
 namespace domi {
 
@@ -37,13 +38,7 @@ static bool SetPads(const caffe::ConvolutionParameter& conv_param, ge::Operator&
   const int kPadSize = conv_param.pad_size();
   if (conv_param.has_pad_h() || conv_param.has_pad_w()) {
     if (kPadSize != 0) {
-      OP_LOGE(op.GetName().c_str(), "set either pad or pad_h/w, not both.");
-      map<string, string> err_map;
-      err_map["op_name"] = op.GetName();
-      err_map["param1_name"] = "pad";
-      err_map["param2_name"] = "pad_h/w";
-      std::string report_error_code = "E50057";
-      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+      ge::OpsConvSetAttrErrReport(op.GetName(), "pad", "pad_h/w");
       return false;
     }
     pad[0] = conv_param.pad_h();
@@ -54,12 +49,8 @@ static bool SetPads(const caffe::ConvolutionParameter& conv_param, ge::Operator&
         pad[i] = conv_param.pad((kPadSize == 1) ? 0 : i);
       }
     } else if (kPadSize != 0) {
+      ge::OpsConvShapeErrReport(op.GetName(), "pad size [" + std::to_string(kPadSize) + "] is not supported.");
       OP_LOGE(op.GetName().c_str(), "pad size [%d] is not supported.", kPadSize);
-      map<string, string> err_map;
-      err_map["op_name"] = op.GetName();
-      err_map["description"] = "pad size [" + std::to_string(kPadSize) + "] is not supported.";
-      std::string report_error_code = "E50060";
-      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
       return false;
     }
   }
@@ -85,13 +76,7 @@ static bool SetStrides(const caffe::ConvolutionParameter& conv_param, ge::Operat
   const int kStrideSize = conv_param.stride_size();
   if (conv_param.has_stride_h() || conv_param.has_stride_w()) {
     if (kStrideSize != 0) {
-      OP_LOGE(op.GetName().c_str(), "set either stride or stride_h/w, not both.");
-      map<string, string> err_map;
-      err_map["op_name"] = op.GetName();
-      err_map["param1_name"] = "stride";
-      err_map["param2_name"] = "stride_h/w";
-      std::string report_error_code = "E50057";
-      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+      ge::OpsConvSetAttrErrReport(op.GetName(), "stride", "stride_h/w");
       return false;
     }
     stride[0] = conv_param.stride_h();
@@ -102,12 +87,8 @@ static bool SetStrides(const caffe::ConvolutionParameter& conv_param, ge::Operat
         stride[i] = conv_param.stride((kStrideSize == 1) ? 0 : i);
       }
     } else if (kStrideSize != 0) {
+      ge::OpsConvShapeErrReport(op.GetName(), "stride size [" + std::to_string(kStrideSize) + "] is not supported.");
       OP_LOGE(op.GetName().c_str(), "stride size [%d] is not supported.", kStrideSize);
-      map<string, string> err_map;
-      err_map["op_name"] = op.GetName();
-      err_map["description"] = "stride size [" + std::to_string(kStrideSize) + "] is not supported.";
-      std::string report_error_code = "E50060";
-      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
       return false;
     }
   }
@@ -136,12 +117,8 @@ static bool SetDilations(const caffe::ConvolutionParameter& conv_param, ge::Oper
       dilation[i] = conv_param.dilation((kDilationSize == 1) ? 0 : i);
     }
   } else if (kDilationSize != 0) {
+    ge::OpsConvShapeErrReport(op.GetName(), "dilation size [" + std::to_string(kDilationSize) + "] is not supported.");
     OP_LOGE(op.GetName().c_str(), "dilation size [%d] is not supported.", kDilationSize);
-    map<string, string> err_map;
-    err_map["op_name"] = op.GetName();
-    err_map["description"] = "dilation size [" + std::to_string(kDilationSize) + "] is not supported.";
-    std::string report_error_code = "E50060";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return false;
   }
   std::vector<int64_t> dilation_list;
@@ -163,25 +140,15 @@ static bool SetDilations(const caffe::ConvolutionParameter& conv_param, ge::Oper
 static bool ProcSpecParams(const caffe::ConvolutionParameter& conv_param, ge::Operator& op) {
   int num_output = conv_param.num_output();
   if (num_output < 1) {
+    ge::OpsConvAttrValueErrReport(op.GetName(), "num_output", "positive", std::to_string(num_output));
     OP_LOGE(op.GetName().c_str(), "num of output should be positive.");
-    map<string, string> err_map;
-    err_map["param_name"] = "output number";
-    err_map["op_name"] = op.GetName();
-    err_map["expected_value"] = ">0";
-    err_map["input_value"] = std::to_string(num_output);
-    std::string report_error_code = "E50029";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return false;
   }
 
   int group = conv_param.group();
   if (group < 1 || num_output % group != 0) {
+    ge::OpsConvShapeErrReport(op.GetName(), "group should be positive and divisible by num of output.");
     OP_LOGE(op.GetName().c_str(), "group should be positive and divisible by num of output.");
-    map<string, string> err_map;
-    err_map["op_name"] = op.GetName();
-    err_map["description"] = "group should be positive and divisible by num of output.";
-    std::string report_error_code = "E50060";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return false;
   }
   op.SetAttr("groups", static_cast<int64_t>(group));
@@ -190,13 +157,8 @@ static bool ProcSpecParams(const caffe::ConvolutionParameter& conv_param, ge::Op
   int kernel[2] = {0, 0};
   if (conv_param.has_kernel_h() || conv_param.has_kernel_w()) {
     if (kKernelSize != 0) {
+      ge::OpsConvSetAttrErrReport(op.GetName(), "kernel_size", "kernel_h/w");
       OP_LOGE(op.GetName().c_str(), "set kernel_size or kernel_h/w, not both.");
-      map<string, string> err_map;
-      err_map["op_name"] = op.GetName();
-      err_map["param1_name"] = "kernel_size";
-      err_map["param2_name"] = "kernel_h/w";
-      std::string report_error_code = "E50057";
-      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
       return false;
     }
     kernel[0] = conv_param.kernel_h();
@@ -207,53 +169,33 @@ static bool ProcSpecParams(const caffe::ConvolutionParameter& conv_param, ge::Op
         kernel[i] = conv_param.kernel_size((kKernelSize == 1) ? 0 : i);
       }
     } else {
+      ge::OpsConvAttrValueErrReport(op.GetName(), "kernel size", "1 or 2", std::to_string(kKernelSize));
       OP_LOGE(op.GetName().c_str(), "kernel size [%d] is not supported.", kKernelSize);
-      map<string, string> err_map;
-      err_map["param_name"] = "kernel size";
-      err_map["op_name"] = op.GetName();
-      err_map["expected_value"] = "1 or 2";
-      err_map["input_value"] = std::to_string(kKernelSize);
-      std::string report_error_code = "E50029";
-      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
       return false;
     }
   }
 
   for (size_t i = 0; i < 2; i++) {
     if (kernel[i] < 1) {
+      ge::OpsConvAttrValueErrReport(op.GetName(), "kernel dimensions", ">0", std::to_string(kernel[i]));
       OP_LOGE(op.GetName().c_str(), "kernel dimensions should be positive.");
-      map<string, string> err_map;
-      err_map["param_name"] = "kernel dimensions";
-      err_map["op_name"] = op.GetName();
-      err_map["expected_value"] = ">0";
-      err_map["input_value"] = std::to_string(kernel[i]);
-      std::string report_error_code = "E50029";
-      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
       return false;
     }
   }
 
   int channel_axis = conv_param.axis();
   if ((channel_axis + 4) % 4 != 1) {
+    ge::OpsConvShapeErrReport(op.GetName(), "only support 2D convolution and C-channel on the second axis.");
     OP_LOGE(op.GetName().c_str(),
             "only support 2D convolution and C-channel on the second"
             " axis.");
-    map<string, string> err_map;
-    err_map["op_name"] = op.GetName();
-    err_map["description"] = "only support 2D convolution and C-channel on the second axis.";
-    std::string report_error_code = "E50058";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return false;
   }
 
   bool force_nd_im2col = conv_param.force_nd_im2col();
   if (force_nd_im2col) {
+    ge::OpsConvShapeErrReport(op.GetName(), "only support 2D convolution.");
     OP_LOGE(op.GetName().c_str(), "only support 2D convolution.");
-    map<string, string> err_map;
-    err_map["op_name"] = op.GetName();
-    err_map["description"] = "only support 2D convolution.";
-    std::string report_error_code = "E50058";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return false;
   }
 
@@ -269,32 +211,22 @@ static bool ProcSpecParams(const caffe::ConvolutionParameter& conv_param, ge::Op
 static Status ParseParamsConv2D(const Message* op_src, ge::Operator& op) {
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_src);
   if (layer == nullptr) {
+    ge::OpsConvShapeErrReport(op.GetName(), "convert src op failed.");
     OP_LOGE(op.GetName().c_str(), "convert src op failed.");
-    map<string, string> err_map;
-    err_map["op_name"] = op.GetName();
-    err_map["description"] = "convert src op failed.";
-    std::string report_error_code = "E50058";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return FAILED;
   }
 
   if (layer->bottom_size() != 1) {
+    ge::OpsConvShapeErrReport(op.GetName(),
+                            "Convolution layer bottom num(" + std::to_string(layer->bottom_size()) + ") must be 1.");
     OP_LOGE(op.GetName().c_str(), "Convolution layer bottom num(%d) must be 1", layer->bottom_size());
-    map<string, string> err_map;
-    err_map["op_name"] = op.GetName();
-    err_map["description"] = "Convolution layer bottom num(" + std::to_string(layer->bottom_size()) + ") must be 1";
-    std::string report_error_code = "E50058";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return FAILED;
   }
 
   if (layer->top_size() != 1) {
     OP_LOGE(op.GetName().c_str(), "Convolution layer top num(%d) must be 1", layer->top_size());
-    map<string, string> err_map;
-    err_map["op_name"] = op.GetName();
-    err_map["description"] = "Convolution layer top num(" + std::to_string(layer->top_size()) + ") must be 1";
-    std::string report_error_code = "E50058";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    ge::OpsConvShapeErrReport(op.GetName(),
+                            "Convolution layer top num(" + std::to_string(layer->top_size()) + ") must be 1.");
     return FAILED;
   }
 

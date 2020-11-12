@@ -43,48 +43,86 @@ set(_optiling_files
   strided_slice_grad.cc
   tile_d.cc
   tiling_dispatch.cc
+  top_k.cc
   transpose_d.cc
   unpack.cc
   unsorted_segment_sum.cc
 )
 
-add_library(optiling SHARED ${_optiling_files})
-
-target_include_directories(optiling PRIVATE
-  ${CANN_ROOT}/ops/common/inc
-  ${CANN_ROOT}/ops/built-in
-  ${CANN_ROOT}/inc/external
-  ${CANN_ROOT}/inc/external/graph
-  ${CANN_ROOT}/third_party/fwkacllib/inc
-  ${CANN_ROOT}/third_party/metadef
-  ${CANN_ROOT}/third_party/metadef/inc
-  ${CANN_ROOT}/third_party/metadef/inc/external
-  ${CANN_ROOT}/third_party/metadef/inc/external/graph
-  ${CANN_ROOT}/third_party/metadef/third_party/graphengine/inc
-  ${CANN_ROOT}/third_party/metadef/third_party/graphengine/inc/external
+set(_op_tiling_include
+  ${OPS_INCLUDE}
+  ${OPS_DIR}/built-in
+  ${FWKACLLIB_INCLUDE}
+  ${METADEF_DIR}
+  ${METADEF_INCLUDE}
+  ${METADEF_INCLUDE}/external
+  ${METADEF_INCLUDE}/external/graph
+  ${GRAPHENGINE_INCLUDE}
+  ${GRAPHENGINE_INCLUDE}/external
   ${JSON_INCLUDE}
   ${Protobuf_INCLUDE}
 )
 
-target_link_libraries(optiling PRIVATE
-  ${graph}
-  ${register}
-  ${slog}
-  ${error_manager}
-  ${protobuf}
-  c_sec
+set(_op_tiling_link_libs
+  -Wl,--no-as-needed
+    graph
+    register
+    slog
+    error_manager
+    ascend_protobuf
+  -Wl,--as-needed
+    c_sec
 )
 
-add_dependencies(optiling json_headers)
+if(NOT DEFINED ENABLE_TEST)
+  add_library(optiling SHARED ${_optiling_files})
+  target_include_directories(optiling PRIVATE
+    ${_op_tiling_include}
+  )
+  target_compile_options(optiling PRIVATE
+    -O2
+    -Dgoogle=ascend_private
+    # TODO: Fix warnings
+    # -Werror
+  )
+  target_link_libraries(optiling PRIVATE
+    $<BUILD_INTERFACE:intf_pub>
+    ${_op_tiling_link_libs}
+  )
+  add_dependencies(optiling json_headers)
+  # to solve the compile warnings in fp16_t.cc
+  target_compile_options(optiling PRIVATE
+    "-fno-strict-aliasing"
+  )
 
-# to solve the compile warnings in fp16_t.cc
-target_compile_options(optiling PRIVATE
-  "-fno-strict-aliasing"
-)
-
-set(OP_TILING_PATH "${INSTALL_PATH}/opp/op_impl/built-in/ai_core/tbe/op_tiling")
-cann_install(
-  TARGET      optiling
-  FILES       $<TARGET_FILE:optiling>
-  DESTINATION "${OP_TILING_PATH}"
-)
+  if(BUILD_OPEN_PROJECT)
+    set(OP_TILING_PATH "${INSTALL_PATH}/opp/op_impl/built-in/ai_core/tbe/op_tiling")
+    cann_install(
+      TARGET      optiling
+      FILES       $<TARGET_FILE:optiling>
+      DESTINATION "${OP_TILING_PATH}"
+    )
+  else()
+    install(
+      TARGETS optiling OPTIONAL
+      EXPORT  optiling-targets
+      LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
+    )
+  endif()
+else()
+  add_library(optiling_llt STATIC ${_optiling_files})
+  target_include_directories(optiling_llt PUBLIC
+    ${_op_tiling_include}
+  )
+  target_compile_options(optiling_llt PUBLIC
+    -O0
+    -Dgoogle=ascend_private
+  )
+  target_link_libraries(optiling_llt
+    PRIVATE
+      $<BUILD_INTERFACE:intf_llt_pub>
+    PUBLIC
+      ${_op_tiling_link_libs}
+  )
+  add_dependencies(optiling_llt json_headers)
+endif()

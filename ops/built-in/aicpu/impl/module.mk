@@ -1,27 +1,31 @@
 LOCAL_PATH := $(call my-dir)
 
 local_normalized_kernels := kernels/normalized/drop_out_gen_mask_kernels.cc \
-                           kernels/normalized/meshgrid_kernels.cc \
-                           kernels/normalized/expanddims_kernel.cc \
-                           kernels/normalized/reshape_kernels.cc \
-                           kernels/normalized/less_kernels.cc \
-                           kernels/normalized/top_k_v2_kernels.cc \
-                           kernels/normalized/edit_distance_kernels.cc \
-                           kernels/normalized/search_cache_idx_kernels.cc \
-                           kernels/normalized/cache_swap_hashmap_kernels.cc \
-                           kernels/normalized/cache_swap_table_kernels.cc \
-                           kernels/normalized/update_cache_kernels.cc \
-                           kernels/normalized/gather_kernels.cc \
-                           kernels/normalized/identity_kernels.cc \
-                           kernels/normalized/unique_with_pad_kernels.cc \
-                           kernels/normalized/ceil_kernels.cc \
-                           kernels/normalized/realdiv_kernels.cc \
-                           kernels/normalized/sparse_to_dense_kernels.cc \
-                           kernels/normalized/deformable_offsets_kernels.cc\
-                           utils/sparse_group.cc \
-                           utils/eigen_tensor.cc \
-                           utils/sparse_tensor.cc \
-                           utils/bcast.cc \
+                            kernels/normalized/meshgrid_kernels.cc \
+                            kernels/normalized/expanddims_kernel.cc \
+                            kernels/normalized/reshape_kernels.cc \
+                            kernels/normalized/less_kernels.cc \
+                            kernels/normalized/top_k_kernels.cc \
+                            kernels/normalized/edit_distance_kernels.cc \
+                            kernels/normalized/search_cache_idx_kernels.cc \
+                            kernels/normalized/cache_swap_hashmap_kernels.cc \
+                            kernels/normalized/cache_swap_table_kernels.cc \
+                            kernels/normalized/update_cache_kernels.cc \
+                            kernels/normalized/gather_kernels.cc \
+                            kernels/normalized/get_dynamic_dims.cc \
+                            kernels/normalized/identity_kernels.cc \
+                            kernels/normalized/unique_with_pad_kernels.cc \
+                            kernels/normalized/ceil_kernels.cc \
+                            kernels/normalized/realdiv_kernels.cc \
+                            kernels/normalized/sparse_to_dense_kernels.cc \
+                            kernels/normalized/deformable_offsets_kernels.cc \
+                            kernels/normalized/cast_kernels.cc \
+                            kernels/normalized/concatv2_kernels.cc \
+                            kernels/normalized/round_kernels.cc \
+                            utils/sparse_group.cc \
+                            utils/eigen_tensor.cc \
+                            utils/sparse_tensor.cc \
+                            utils/bcast.cc \
 
 local_host_kernels := kernels/host/add_kernel.cc \
                       kernels/host/mul_kernel.cc \

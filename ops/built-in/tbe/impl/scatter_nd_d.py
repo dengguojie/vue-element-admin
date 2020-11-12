@@ -21,6 +21,7 @@ from te import tik
 from impl import scatter_nd_d_help
 from impl import constant_util
 from impl import common_util
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=invalid-name, too-many-locals
@@ -176,11 +177,14 @@ def check_param(indices, updates, output_y, shape, kernel_name):
         constant_util.DATA_TYPE_INT8, constant_util.DATA_TYPE_UINT8), param_name="output_y")
 
     if updates_dtype != y_dtype:
-        raise RuntimeError("updates's datatype must be the same as output_y's datatype")
+        error_detail = "Dtype of tensor updates and output_y must be equal!"
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "updates", \
+                                                           "output_y", error_detail)
 
     if not check_same_shape(y_shape, shape):
-        raise RuntimeError(
-            "y's shape must be the same as shape")
+        error_detail = "y's shape must be the same as shape"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "output_y", \
+                                                               "shape", error_detail)
 
 
 def check_same_shape(shape_x, shape_y):

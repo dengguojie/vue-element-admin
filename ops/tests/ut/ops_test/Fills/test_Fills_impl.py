@@ -16,6 +16,8 @@ fills ut case
 import numpy as np
 from op_test_frame.common import precision_info
 from op_test_frame.ut import OpUT
+import os
+
 ut_case = OpUT("Fills")
 
 case1 = {"params": [{"shape": (125, 125), "dtype": "float16", "format": "ND", "ori_shape": (125, 125),"ori_format": "ND"},
@@ -102,5 +104,6 @@ ut_case.add_precision_case("all", {
 })
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910"], simulator_mode="pv",
-                simulator_lib_path="/home/maying/.mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")
+    user_home_path = os.path.expanduser("~")
+    simulator_lib_path = os.path.join(user_home_path, ".mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")
+    ut_case.run(["Ascend910"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)

@@ -39,6 +39,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 CONST_ONE = 1
 
@@ -119,7 +120,8 @@ def atan_grad(y, dy, z, kernel_name="atan_grad"):
     para_check.check_shape(shape, param_name="y")
     para_check.check_shape(shape_grad, param_name="dy")
     if not operator.eq(shape, shape_grad):
-        raise RuntimeError("all input shape must be the same")
+        error_detail = "shape of y and dy should be same"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "y", "dy", error_detail)
     shape, _ = shape_util.refine_shape_axes(shape, [])
 
     # check whether dtypes are fp16,fp32 and whether they are the same
@@ -128,7 +130,8 @@ def atan_grad(y, dy, z, kernel_name="atan_grad"):
     para_check.check_dtype(dtype_grad, check_list, param_name="dy")
     dtype = dtype.lower()
     if dtype != dtype_grad.lower():
-        raise RuntimeError("all input dtype must be same")
+        error_detail = "dtype of y and dy should be same"
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "y", "dy", error_detail)
 
     # get 2 input placeholders: data_input, grad
     data_input = tvm.placeholder(shape, name="input_data", dtype=dtype)

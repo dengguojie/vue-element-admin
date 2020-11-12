@@ -22,21 +22,21 @@
 #define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_AVG_POOL_1D_FUSION_PASS_H_
 
 #include <vector>
+
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 namespace fe {
 class AvgPool1DFusionPass : public PatternFusionBasePass {
  protected:
   vector<FusionPattern*> DefinePatterns() override;
-  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
+  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
 
  private:
   template <typename T>
-  Status AvgValueTableGen(const vector<int64_t>& dim_info, int64_t kernel_size, int64_t stride_size,
-                          const vector<int64_t>& padding, bool ceil_mode, bool count_include_pad,
-                          ge::Format data_format, ge::DataType input_type, vector<int64_t>& assit_dimInfo, T* output);
-  const string FUSED_OP_TYPE = "AvgPool1DD";
+  Status AvgValueTableGen(const vector<int64_t>& dim_info, const int64_t kernel_size, const int64_t stride_size,
+                          const vector<int64_t>& padding, const bool ceil_mode, const bool count_include_pad,
+                          vector<int64_t>& assit_dim_info, T* output);
+  const string kFusedOpType = "AvgPool1DD";
 };
-
 }  // namespace fe
 
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_AVG_POOL_1D_FUSION_PASS_H_

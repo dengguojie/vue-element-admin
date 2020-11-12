@@ -293,6 +293,10 @@ class DynamicShapeInfer {
       }                                                     \
     } while(0)
 
+#define PREPARE_DYNAMIC_SHAPE_WITH_NO_DEPENDS() auto op_desc = OpDescUtils::GetOpDescFromOperator(op);\
+    DynamicShapeInfer shapeInfer{op, op_desc};              \
+    shapeInfer.CatchFormatAndShape();
+
 #define IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(fuction_name) \
   IMPLEMT_COMMON_INFERFUNC(fuction_name) {                  \
     auto op_desc = OpDescUtils::GetOpDescFromOperator(op);  \

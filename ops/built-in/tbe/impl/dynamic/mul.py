@@ -15,21 +15,13 @@
 """
 dynamic mul
 """
-import te.lang.dynamic
+import te.lang.cce as tbe
+import te.lang.base as tbe_base
 from te import tvm
-from te.platform.shape_classifier import classify
-from te.platform.shape_classifier import Mode
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import check_elewise_shape_range
-from te.utils.op_utils import variable_shape
-from te.utils.op_utils import refine_shapes_for_broadcast
-from te.utils.op_utils import broadcast_shapes
-from te.utils.op_utils import OP_ERROR_CODE_018
-from topi import generic
+from te.utils import shape_util
+from te.lang.base.shape_classifier import classify
+from te.lang.base.shape_classifier import Mode
+from te.utils import para_check
 
 
 def mul_compute(input1, input2, output, kernel_name="mul"):
@@ -51,20 +43,21 @@ def mul_compute(input1, input2, output, kernel_name="mul"):
     -------
     res : output of the data's mul
     """
-    x0_shape = te.lang.dynamic.shape_to_list(input1.shape)
-    x1_shape = te.lang.dynamic.shape_to_list(input2.shape)
-    x0_shape, x1_shape, y_shape = broadcast_shapes(x0_shape, x1_shape,
+    x0_shape = shape_util.shape_to_list(input1.shape)
+    x1_shape = shape_util.shape_to_list(input2.shape)
+    x0_shape, x1_shape, y_shape = shape_util.broadcast_shapes(x0_shape, x1_shape,
                                                    param_name_input1="input1",
                                                    param_name_input2="input2")
-    input1 = te.lang.dynamic.broadcast(input1, y_shape)
-    input2 = te.lang.dynamic.broadcast(input2, y_shape)
-    res = te.lang.dynamic.vmul(input1, input2)
+    input1 = tbe.broadcast(input1, y_shape)
+    input2 = tbe.broadcast(input2, y_shape)
+    res = tbe.vmul(input1, input2)
 
     return res
 
 
-@te.op.register_operator("Mul")
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@tbe_base.register_operator("Mul")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def mul(input1, input2, output, kernel_name="mul"):
     """
     algorithm: mul
@@ -93,12 +86,12 @@ def mul(input1, input2, output, kernel_name="mul"):
     dtype_x1 = input1.get("dtype").lower()
     dtype_x2 = input2.get("dtype").lower()
     check_list = ("float16", "float32", "int32")
-    check_dtype(dtype_x1, check_list, param_name="input1")
-    check_dtype(dtype_x2, check_list, param_name="input2")
-    check_elewise_shape_range([input1, input1], support_broadcast=True)
+    para_check.check_dtype(dtype_x1, check_list, param_name="input1")
+    para_check.check_dtype(dtype_x2, check_list, param_name="input2")
+    para_check.check_elewise_shape_range([input1, input1], support_broadcast=True)
     if dtype_x1 != dtype_x2:
         error_info = {}
-        error_info['errCode'] = OP_ERROR_CODE_018
+        error_info['errCode'] = para_check.OP_ERROR_CODE_018
         error_info['op_name'] = 'mul'
         error_info['param_name1'] = 'dtype_x1'
         error_info['param_name2'] = 'dtype_x2'
@@ -116,12 +109,10 @@ def mul(input1, input2, output, kernel_name="mul"):
     ins = classify([input1, input2], Mode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (input1, input2) in ins:
-        with te.op.compute():
+        with tbe_base.compute():
             # shape
-            shape_x1, shape_x2 = variable_shape([input1, input2],
-                                                support_broadcast=True)
-            shape_x1, shape_x2 = refine_shapes_for_broadcast(shape_x1,
-                                                             shape_x2)
+            shape_x1, shape_x2 = shape_util.variable_shape([input1, input2], support_broadcast=True)
+            shape_x1, shape_x2 = shape_util.refine_shapes_for_broadcast(shape_x1, shape_x2)
             # mul_compute
             data_x1 = tvm.placeholder(shape_x1, dtype=dtype_x1, name="data_x1")
             data_x2 = tvm.placeholder(shape_x2, dtype=dtype_x2, name="data_x2")
@@ -129,9 +120,9 @@ def mul(input1, input2, output, kernel_name="mul"):
 
             tensors.append((data_x1, data_x2, res))
         with tvm.target.cce():
-            sch = generic.auto_schedule(res)
+            sch = tbe.auto_schedule(res)
         schedules.append(sch)
 
     # build
     config = {"name": kernel_name, "tensor_list": tensors}
-    te.lang.dynamic.build(schedules, config)
+    tbe.build(schedules, config)

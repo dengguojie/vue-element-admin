@@ -18,8 +18,8 @@ compress_fully_connection
 from __future__ import absolute_import
 import te.lang.cce
 from te import tvm
-from te.utils.op_utils import *
 from topi.cce import util
+from te.utils import para_check
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from impl.util.util_select_op_base import gen_param
@@ -231,17 +231,17 @@ def fully_connection_check_rule(x, w, compress_index, b, offset_w, y,
                         "C0 must be 32 when quant condition! for axis = 2: the last dim must be 16!"
                         % (error_info['op_name']))
 
-    check_dtype(dtype_x, ['float16', 'int8'], param_name="x")
-    check_format(format_x, ('NC1HWC0', 'FRACTAL_NZ', 'FRACTAL_Z'), param_name="x")
+    para_check.check_dtype(dtype_x, ['float16', 'int8'], param_name="x")
+    para_check.check_format(format_x, ('NC1HWC0', 'FRACTAL_NZ', 'FRACTAL_Z'), param_name="x")
 
     # w info
     shape_w = w.get('shape')
     dtype_w = w.get('dtype')
     format_w = w.get('format')
 
-    check_dtype(dtype_w, ['float16', 'int8'], param_name="w")
+    para_check.check_dtype(dtype_w, ['float16', 'int8'], param_name="w")
 
-    check_format(format_w, ["FRACTAL_Z"], param_name="w")
+    para_check.check_format(format_w, ["FRACTAL_Z"], param_name="w")
     # format shape info
     if dtype_x == 'float16' and (shape_w[2] != 16 or shape_w[3] != 16):
         raise RuntimeError("for no quant, w last two dims must be 16!")
@@ -273,8 +273,8 @@ def fully_connection_check_rule(x, w, compress_index, b, offset_w, y,
         b_size = shape_b[1] * shape_b[4]
 
         # Check info
-        check_dtype(dtype_b, ['float16', 'int32'], param_name="b")
-        check_format(format_b, ('NC1HWC0'), param_name="b")
+        para_check.check_dtype(dtype_b, ['float16', 'int32'], param_name="b")
+        para_check.check_format(format_b, ('NC1HWC0'), param_name="b")
         if b_size != n_shape:
             raise RuntimeError("For bias, the C1*C0 must equal to aligned_Cout!")
 
@@ -336,8 +336,10 @@ def compress_fully_connection_compute(
     return result
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT, OPTION_INPUT,
-                REQUIRED_OUTPUT, REQUIRED_ATTR_INT, OPTION_ATTR_BOOL, REQUIRED_ATTR_INT, REQUIRED_ATTR_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_INT, para_check.OPTION_ATTR_BOOL, para_check.REQUIRED_ATTR_INT,
+                            para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def compress_fully_connection(x, w, compress_index, b, offset_w, y,
                               num_output, transpose, axis, offset_x,
                               kernel_name="compress_fully_connection"):

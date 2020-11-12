@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef OPP_COMMON_LAYER_H
-#define OPP_COMMON_LAYER_H
+#ifndef MODEL_RUN_TOOL_COMMON_LAYER_H
+#define MODEL_RUN_TOOL_COMMON_LAYER_H
 
 #include <vector>
 #include <string>
@@ -70,6 +70,16 @@ public:
         vector<int32_t> deviceIds;
     };
 
+public:
+    CommonLayer();
+
+    explicit CommonLayer(const OpParams &opParams);
+
+    ~CommonLayer();
+
+    bool Run();
+
+private:
     int inputCnt;
     int outputCnt;
     vector<uint64_t> inputSizes;
@@ -81,27 +91,19 @@ public:
     string kernelFuncName;
     string content;
 
-    CommonLayer();
-
-    CommonLayer(const OpParams &opParams);
-
-    ~CommonLayer();
-
+private:
     bool RegisterBinaryKernel(const string &filePath, const string &kernelFuncKey, const string &kernelFuncName);
 
     uint64_t AlignSize(uint64_t size);
 
-    bool Run();
-
-private:
     bool PrepareKernelArgs(vector<void *> &inputAddrs, vector<void *> &outputAddrs, vector<void *> &workspaceAddrs,
                            RtResourceCleanHelper &resourceCleanHelper);
 
     bool MallocAndCpyInputToDevice(vector<void *> &inputAddrs, RtResourceCleanHelper &resourceCleanHelper);
 
-    bool MallocOutputBuffeInDevice(vector<void *> &inputAddrs, RtResourceCleanHelper &resourceCleanHelper);
+    bool MallocOutputBufferInDevice(vector<void *> &inputAddrs, RtResourceCleanHelper &resourceCleanHelper);
 
-    bool MallocWorkspaceBuffeInDevice(vector<void *> &workspaceAddrs, RtResourceCleanHelper &resourceCleanHelper);
+    bool MallocWorkspaceBufferInDevice(vector<void *> &workspaceAddrs, RtResourceCleanHelper &resourceCleanHelper);
 
     bool DumpOutputBuffer(vector<void *> &outputAddrs);
 
@@ -109,4 +111,4 @@ private:
 };
 
 
-#endif //OPP_COMMON_LAYER_H
+#endif //MODEL_RUN_TOOL_COMMON_LAYER_H

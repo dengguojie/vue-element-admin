@@ -174,8 +174,4 @@ ut_case.add_precision_case("Ascend910", gen_precision_case((16 * 1, 4), (16, 2),
 ut_case.add_precision_case("Ascend910", gen_precision_case((16 * 15, 4), (16, 16), "float16", "float16", 0.5, 0.01, 16))
 ut_case.add_precision_case("Ascend910", gen_precision_case((32 * 5, 4), (32, 6), "float16", "float16", 0.5, 0.01, 32))
 
-if __name__ == '__main__':
-    ut_case.run(["Ascend910"], simulator_mode="pv",
-                simulator_lib_path="/disk1/ty_mindstudio/.mindstudio/huawei/adk/1.76.T1.0.B010/toolkit/tools/simulator")
-
 

@@ -14,5 +14,28 @@ case1 = {"params": [{"shape": (1,), "dtype": "float32", "format": "ND", "ori_sha
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 
-if __name__ == '__main__':
-    ut_case.run("Ascend910")
+def calc_expect_func(x1, x2, y):
+    res =  x2['value'] - x1['value']
+    return res.astype(y['dtype'])
+
+# ut_case.add_precision_case("all", {"params": [{"shape": (15,32), "dtype": "float16", "format": "ND", "ori_shape": (15,32),"ori_format": "ND", "param_type": "input"},
+#                                               {"shape": (15,32), "dtype": "float16", "format": "ND", "ori_shape": (15,32),"ori_format": "ND", "param_type": "input"},
+#                                               {"shape": (15,32), "dtype": "float16", "format": "ND", "ori_shape": (15,32),"ori_format": "ND", "param_type": "output"},
+#                                               ],
+#                                    "calc_expect_func": calc_expect_func,
+#                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#                                    })
+# ut_case.add_precision_case("all", {"params": [{"shape": (16, 2 ,32), "dtype": "float32", "format": "ND", "ori_shape": (16, 2 ,32),"ori_format": "ND", "param_type": "input"},
+#                                               {"shape": (16, 2 ,32), "dtype": "float32", "format": "ND", "ori_shape": (16, 2 ,32),"ori_format": "ND", "param_type": "input"},
+#                                               {"shape": (16, 2 ,32), "dtype": "float32", "format": "ND", "ori_shape": (16, 2 ,32),"ori_format": "ND", "param_type": "output"},
+#                                               ],
+#                                    "calc_expect_func": calc_expect_func,
+#                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#                                    })
+# ut_case.add_precision_case("all", {"params": [{"shape": (5, 13, 64), "dtype": "float16", "format": "ND", "ori_shape": (5, 13, 64),"ori_format": "ND", "param_type": "input"},
+#                                               {"shape": (5, 13, 64), "dtype": "float16", "format": "ND", "ori_shape": (5, 13, 64),"ori_format": "ND", "param_type": "input"},
+#                                               {"shape": (5, 13, 64), "dtype": "float16", "format": "ND", "ori_shape": (5, 13, 64),"ori_format": "ND", "param_type": "output"},
+#                                               ],
+#                                    "calc_expect_func": calc_expect_func,
+#                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#                                    })

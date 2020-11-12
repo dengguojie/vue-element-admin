@@ -19,6 +19,21 @@ from te.platform.fusion_manager import fusion_manager
 from te import tik
 from topi.cce import util
 from te import platform as tbe_platform
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(src, dst, kernel_name="tensor_move"):
+    shape_x_len = len(src.get("shape"))
+    axis_split_matrix=[]
+    for i in range(0, shape_x_len):
+        split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]])]
+        axis_split_matrix.append(split_0)
+    axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 def _apply_mem(tik_instance, dtype, shape, name, scope=tik.scope_ubuf):

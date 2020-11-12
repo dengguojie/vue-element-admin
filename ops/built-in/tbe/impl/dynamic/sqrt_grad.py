@@ -18,21 +18,14 @@ sqrt_grad
 
 import operator
 from functools import reduce as reduce_ins
-import te.lang.dynamic
+import te.lang.cce as tbe
 from te import platform as tbe_platform
+import te.lang.base as tbe_base
 from te import tvm
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_elewise_shape_range
-from te.platform.shape_classifier import classify
-from te.platform.shape_classifier import Mode
-from topi import generic
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import variable_shape
-from te.utils.op_utils import broadcast_shapes
-from te.utils.op_utils import refine_shapes_for_broadcast
+from te.lang.base.shape_classifier import classify
+from te.lang.base.shape_classifier import Mode
+from te.utils import para_check
+from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
 # General limitation of the reduce size for input shape: 2**30
@@ -63,14 +56,15 @@ def sqrt_grad_compute(x, dx, out, kernel_name="sqrt_grad"):
     if dtype == "float32" and not mul_support:
         error_detail = "not support dtype(float32) on this platform!"
         error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "x", 'dx', error_detail)
-    const_val_half = tvm.const(0.5, dtype)
-    div_val = te.lang.dynamic.vdiv(dx, x)
-    res = te.lang.dynamic.vmuls(div_val, const_val_half)
+    const_val_half = tvm.const(2, dtype)
+    mul_val = tbe.vmuls(x, const_val_half)
+    res = tbe.vdiv(dx, mul_val)
     return res
 
 
-@te.op.register_operator("SqrtGrad")
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@tbe_base.register_operator("SqrtGrad")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def sqrt_grad(x, dx, out, kernel_name="sqrt_grad"):
     """
     algorithm: sqrt_grad_cce
@@ -93,24 +87,24 @@ def sqrt_grad(x, dx, out, kernel_name="sqrt_grad"):
     x_dtype = x.get("dtype").lower()
     dx_dtype = dx.get("dtype").lower()
     check_list = ("float16", "float32")
-    check_dtype(x_dtype, check_list, param_name="x")
-    check_dtype(dx_dtype, check_list, param_name="dx")
-    check_elewise_shape_range([x, dx], support_broadcast=False)
+    para_check.check_dtype(x_dtype, check_list, param_name="x")
+    para_check.check_dtype(dx_dtype, check_list, param_name="dx")
+    para_check.check_elewise_shape_range([x, dx], support_broadcast=False)
     if x_dtype != dx_dtype:
         error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "x", "dx",
                                                               x_dtype, dx_dtype)
     ins = classify([x, dx], Mode.ELEWISE)
     schedules, tensors = [], []
     for (x, dx) in ins:
-        with te.op.compute():
-            x_shape, dx_shape = variable_shape([x, dx], support_broadcast=False)
-            x_shape, dx_shape = refine_shapes_for_broadcast(x_shape, dx_shape)
+        with tbe_base.compute():
+            x_shape, dx_shape = shape_util.variable_shape([x, dx], support_broadcast=False)
+            x_shape, dx_shape = shape_util.refine_shapes_for_broadcast(x_shape, dx_shape)
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")
             tensor_dx = tvm.placeholder(dx_shape, dx_dtype, "tensor_dx")
             res = sqrt_grad_compute(tensor_x, tensor_dx, out, kernel_name)
             tensors.append([tensor_x, tensor_dx, res])
         with tvm.target.cce():
-            sch = generic.auto_schedule(res)
+            sch = tbe.auto_schedule(res)
         schedules.append(sch)
     config = {"name": kernel_name, "tensor_list": tensors}
-    te.lang.dynamic.build(schedules, config)
+    tbe.build(schedules, config)

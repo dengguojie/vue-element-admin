@@ -22,8 +22,8 @@ from te.platform import cce_conf
 from te.platform import cce_params
 from te.tvm import api as tvm
 from te.tvm.tensor import Tensor
-from te.utils import check_para
-from te.utils import operate_shape
+from te.utils import para_check
+from te.utils import shape_util
 from te.utils.error_manager import error_manager_util
 
 
@@ -282,12 +282,11 @@ def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
 
             if a_block_reduce != k_block_size:
                 args_dict = {
-                    "errCode": "E60101",
-                    "param_name": "tensor a",
-                    "expected_two_dims": "({},{})".format(
-                        cce_params.BLOCK_IN, cce_params.BLOCK_VECTOR
+                    "errCode": "E60104",
+                    "expected_value": "{} or {}".format(
+                        cce_params.BLOCK_REDUCE_INT8, cce_params.BLOCK_REDUCE
                     ),
-                    "actual_two_dim": "{}".format(a_block_reduce)
+                    "value": "{}".format(a_block_reduce)
                 }
                 raise RuntimeError(
                     args_dict, error_manager_util.get_error_message(args_dict)
@@ -295,12 +294,11 @@ def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
 
             if a_block_in not in (cce_params.BLOCK_VECTOR, cce_params.BLOCK_IN):
                 args_dict = {
-                    "errCode": "E60101",
-                    "param_name": "tensor a",
-                    "expected_two_dims": "({},{})".format(
-                        cce_params.BLOCK_IN, cce_params.BLOCK_VECTOR
+                    "errCode": "E60103",
+                    "expected_value": "{} or {}".format(
+                        cce_params.BLOCK_VECTOR, cce_params.BLOCK_IN
                     ),
-                    "actual_two_dim": "{}".format(a_block_in)
+                    "value": "{}".format(a_block_in)
                 }
                 raise RuntimeError(
                     args_dict, error_manager_util.get_error_message(args_dict)
@@ -309,12 +307,11 @@ def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
                 is_vector_a = True
                 if m_shape != cce_params.BLOCK_VECTOR:
                     args_dict = {
-                        "errCode": "E60101",
-                        "param_name": "tensor a",
-                        "expected_two_dims": "({},{})".format(
-                            cce_params.BLOCK_IN, cce_params.BLOCK_VECTOR
+                        "errCode": "E60114",
+                        "reason": "when block_in of a is {}, m_shape of a should be {}".format(
+                            cce_params.BLOCK_VECTOR, cce_params.BLOCK_VECTOR
                         ),
-                        "actual_two_dim": "{}".format(m_shape)
+                        "value": "{}".format(m_shape)
                     }
                     raise RuntimeError(
                         args_dict, error_manager_util.get_error_message(args_dict)
@@ -366,10 +363,11 @@ def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
 
             if b_block_reduce != k_block_size:
                 args_dict = {
-                    "errCode": "E60101",
-                    "param_name": "tensor b",
-                    "expected_two_dims": "{}".format(k_block_size),
-                    "actual_two_dim": "{}".format(b_block_reduce)
+                    "errCode": "E60106",
+                    "expected_value": "{} or {}".format(
+                        cce_params.BLOCK_REDUCE_INT8, cce_params.BLOCK_REDUCE
+                    ),
+                    "value": "{}".format(b_block_reduce)
                 }
                 raise RuntimeError(
                     args_dict, error_manager_util.get_error_message(args_dict)
@@ -377,12 +375,11 @@ def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
 
             if b_block_out not in (cce_params.BLOCK_VECTOR, cce_params.BLOCK_IN):
                 args_dict = {
-                    "errCode": "E60101",
-                    "param_name": "tensor b",
-                    "expected_two_dims": "({},{})".format(
-                        cce_params.BLOCK_IN, cce_params.BLOCK_VECTOR
+                    "errCode": "E60105",
+                    "expected_value": "{} or {}".format(
+                        cce_params.BLOCK_VECTOR, cce_params.BLOCK_IN
                     ),
-                    "actual_two_dim": "{}".format(b_block_out)
+                    "value": "{}".format(b_block_out)
                 }
                 raise RuntimeError(
                     args_dict, error_manager_util.get_error_message(args_dict)
@@ -400,12 +397,11 @@ def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
                     )
                 if n_shape != 1:
                     args_dict = {
-                        "errCode": "E60101",
-                        "param_name": "tensor b",
-                        "expected_two_dims": "({},{})".format(
-                            cce_params.BLOCK_IN, cce_params.BLOCK_VECTOR
+                        "errCode": "E60114",
+                        "reason": "when block_out of b is {}, n_shape of b should be {}".format(
+                            cce_params.BLOCK_VECTOR, cce_params.BLOCK_VECTOR
                         ),
-                        "actual_two_dim": "{}".format(n_shape)
+                        "value": "{}".format(n_shape)
                     }
                     raise RuntimeError(
                         args_dict, error_manager_util.get_error_message(args_dict)
@@ -474,8 +470,31 @@ def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
 
     _check_bias()
 
+    def _check_n_align():
+        """
+        When the input and output tensors share the memory,
+        n not align to block_out is not supported.
+        Input: None
+        ------------------------
+        Return: None
+        """
+        n_shape = shape_b[0] if trans_b else shape_b[1]
+        if format_b == "ND" and (n_shape % cce_params.BLOCK_OUT != 0):
+            reason = ("When the input format is ND, "
+                      "the n direction must be aligned to {}.".format(cce_params.BLOCK_OUT))
+            args_dict = {
+                "errCode": "E60108",
+                "op_name": "GEMM",
+                "reason": reason
+            }
+            raise RuntimeError(
+                args_dict, error_manager_util.get_error_message(args_dict)
+            )
 
-@check_para.check_input_type(
+    _check_n_align()
+
+
+@para_check.check_input_type(
     Tensor, Tensor, Tensor, Tensor, bool, bool, str, str, str, (type(None), Tensor)
 )
 def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
@@ -595,14 +614,14 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
 
             tensor_alpha_ub = tvm.compute(
                 tensor_alpha.shape,
-                lambda *indices: operate_shape.cast(
+                lambda *indices: shape_util.cast(
                     tensor_alpha_temp_ub(*indices), dtype="float32"
                 ),
                 name="tensor_alpha_ub"
             )
             tensor_beta_ub = tvm.compute(
                 tensor_beta.shape,
-                lambda *indices: operate_shape.cast(
+                lambda *indices: shape_util.cast(
                     tensor_beta_temp_ub(*indices), dtype="float32"
                 ),
                 name="tensor_beta_ub"
@@ -1036,8 +1055,7 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
 
     def _do_align(tensor_need_align, shape_aligned, name, in_dtype):
         """
-        do align for a_martix or b_martix, We have two way to pad zero.
-        pad zero by zero martix or pad zero along the way
+        do align for a_martix or b_martix, pad zero along the way.
         input:
             tensor_need_align: tensor, the tensor need align
             shape_aligned: shape, tensor_need_align's aligned shape
@@ -1048,63 +1066,20 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
         """
         ax_outer = int(tensor_need_align.shape[0])
         ax_inner = int(tensor_need_align.shape[1])
-
-        use_zero_martix = get_zero_martix_flag(name, ax_inner,
-                                               ax_outer, in_dtype)
-
-        if use_zero_martix:
-            tensor_zero = tvm.compute(
-                shape_aligned,
-                lambda *indice: tvm.convert(0).astype(in_dtype),
-                name="tensor_{}_zero".format(name),
-                tag="init_zero"
-            )
-            tensor_normalize_ub = tvm.compute(
-                shape_aligned,
-                lambda i, j: tvm.select(
-                    i < ax_outer,
-                    tvm.select(
-                        j < ax_inner, tensor_need_align[i, j], tensor_zero[i, j]
-                    ),
-                    tensor_zero[i, j]
-                ),
-                name="tensor_{}_normalize_ub".format(name)
-            )
-        else:
-            tensor_normalize_ub = tvm.compute(
-                shape_aligned,
-                lambda i, j: tvm.select(
-                    i < ax_outer,
-                    tvm.select(
-                        j < ax_inner,
-                        tensor_need_align[i, j],
-                        tvm.convert(0).astype(in_dtype)
-                    ),
+        tensor_normalize_ub = tvm.compute(
+            shape_aligned,
+            lambda i, j: tvm.select(
+                i < ax_outer,
+                tvm.select(
+                    j < ax_inner,
+                    tensor_need_align[i, j],
                     tvm.convert(0).astype(in_dtype)
                 ),
-                name="tensor_{}_normalize_ub".format(name)
-            )
+                tvm.convert(0).astype(in_dtype)
+            ),
+            name="tensor_{}_normalize_ub".format(name)
+        )
         return tensor_normalize_ub
-
-    def get_zero_martix_flag(tensor_name, ax_inner, ax_outer, in_dtype):
-        """
-        Determine whether to use zero matrix to pad
-        tensor_name: str, "a" or "b"
-        ax_inner: int, tensor_dim
-        ax_outer: int, tensor_dim
-        in_dtype: str, input data type
-
-        return : the flag whether to use zero matrix to pad
-        """
-
-        # ax_inner small than ax_outer may will result in poor performance
-        use_zero_martix = (tensor_name == "a") or ((ax_inner / ax_outer) > 2)
-        # When the input data type is float16 and m < 16 or k < 16,
-        # use zero martix to pad may cause calculation error
-        if in_dtype == "float16" and (ax_inner < 16 or ax_outer < 16):
-            use_zero_martix = False
-
-        return use_zero_martix
 
 
     def check_shape_align(shape, factor):
@@ -1171,7 +1146,7 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
             ):
                 tensor_float32_bias_ub = tvm.compute(
                     tensor_bias_ub_fract.shape,
-                    lambda *indices: operate_shape.cast(
+                    lambda *indices: shape_util.cast(
                         tensor_bias_ub_fract(*indices), dtype="float32"
                     ),
                     name="tensor_float32_bias_ub"
@@ -1192,7 +1167,7 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
             if tensor_beta_ub.dtype == "float32" and tensor_bias_ub.dtype == "float16":
                 tensor_float32_bias_ub = tvm.compute(
                     tensor_bias_ub.shape,
-                    lambda *indices: operate_shape.cast(
+                    lambda *indices: shape_util.cast(
                         tensor_bias_ub(*indices), dtype="float32"
                     ),
                     name="tensor_float32_bias_ub"
@@ -1260,7 +1235,7 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
                     )
                 tensor_a_normalize_ub = tvm.compute(
                     gm_a_shape_normalize,
-                    lambda *indices: operate_shape.cast(
+                    lambda *indices: shape_util.cast(
                         tensor_a_normalize_ub(*indices), "float16"
                     ),
                     name="tensor_a_float16_normalize_ub"
@@ -1341,7 +1316,7 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
                             )
                             tensor_float16_a_ub = tvm.compute(
                                 gm_a_shape_normalize,
-                                lambda *indices: operate_shape.cast(
+                                lambda *indices: shape_util.cast(
                                     tensor_a_ub(*indices), "float16"
                                 ),
                                 name="tensor_float16_a_ub"
@@ -1416,7 +1391,7 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
                                 )
                             tensor_a_normalize_ub = tvm.compute(
                                 gm_a_shape_normalize,
-                                lambda *indices: operate_shape.cast(
+                                lambda *indices: shape_util.cast(
                                     tensor_a_normalize_ub(*indices), "float16"
                                 ),
                                 name="tensor_a_float16_normalize_ub"
@@ -1573,7 +1548,7 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
                     )
                 tensor_b_normalize_ub = tvm.compute(
                     gm_b_shape_normalize,
-                    lambda *indices: operate_shape.cast(
+                    lambda *indices: shape_util.cast(
                         tensor_b_normalize_ub(*indices), "float16"
                     ),
                     name="tensor_b_float16_normalize_ub"
@@ -1631,7 +1606,7 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
                     )
                     tensor_float16_b_ub = tvm.compute(
                         tensor_b.shape,
-                        lambda *indices: operate_shape.cast(
+                        lambda *indices: shape_util.cast(
                             tensor_b_ub(*indices), "float16"
                         ),
                         name="tensor_float16_b_ub"
@@ -1713,7 +1688,7 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
                     )
                 tensor_b_normalize_ub = tvm.compute(
                     gm_b_shape_normalize,
-                    lambda *indices: operate_shape.cast(
+                    lambda *indices: shape_util.cast(
                         tensor_b_normalize_ub(*indices), "float16"
                     ),
                     name="tensor_b_float16_normalize_ub"
@@ -1931,14 +1906,14 @@ def _get_tensor_c_ub(  # pylint: disable=too-many-arguments
     if temp.dtype == "int32" and dst_dtype == "float32":
         tensor_c_float16_before_mul_ub = tvm.compute(
             out_shape,
-            lambda *indices: operate_shape.cast(
+            lambda *indices: shape_util.cast(
                 tensor_c_before_mul_ub(*indices), dtype="float16"
             ),
             name="tensor_c_float16_before_mul_ub"
         )
         tensor_c_float32_before_mul_ub = tvm.compute(
             out_shape,
-            lambda *indices: operate_shape.cast(
+            lambda *indices: shape_util.cast(
                 tensor_c_float16_before_mul_ub(*indices), dtype="float32"
             ),
             name="tensor_c_float32_before_mul_ub"
@@ -1974,7 +1949,7 @@ def _get_tensor_c_ub(  # pylint: disable=too-many-arguments
     if dst_dtype == "float16" and l0c_support_fp32:
         tensor_c_ub = tvm.compute(
             tensor_c_ub_temp.shape,
-            lambda *indices: operate_shape.cast(
+            lambda *indices: shape_util.cast(
                 tensor_c_ub_temp(*indices),
                 dtype="float16"
             ),

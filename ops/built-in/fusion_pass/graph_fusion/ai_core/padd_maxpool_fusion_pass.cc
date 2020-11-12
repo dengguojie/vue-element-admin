@@ -94,20 +94,20 @@ Status PaddMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   // attr:paddings
   std::vector<std::vector<int64_t>> paddings;
   if (ge::GRAPH_SUCCESS != op_pad.GetAttr("paddings", paddings)) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "get attr padddings failed.");
-    return GRAPH_FAILED;
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "get attr padddings failed.");
+    return NOT_CHANGED;
   }
   // attr:ksize
   std::vector<int32_t> ksize;
   if (GRAPH_SUCCESS != op_maxpool.GetAttr("ksize", ksize)) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "get attr ksize failed.");
-    return GRAPH_FAILED;
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "get attr ksize failed.");
+    return NOT_CHANGED;
   }
   // attr:strides
   std::vector<int32_t> strides;
   if (GRAPH_SUCCESS != op_maxpool.GetAttr("strides", strides)) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "get attr strides failed.");
-    return GRAPH_FAILED;
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "get attr strides failed.");
+    return NOT_CHANGED;
   }
   std::string padding;
   if (ge::GRAPH_SUCCESS != op_maxpool.GetAttr("padding", padding)) {

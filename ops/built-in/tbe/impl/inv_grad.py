@@ -21,6 +21,7 @@ from te import platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 # define a scalar , value = -1
 SCALAR_NEGATIVE_ONE = -1
@@ -110,13 +111,17 @@ def inv_grad(input_y, input_dy, output_z, kernel_name="inv_grad"):
     shape_input_dy = shape_util.shape_refine(shape_input_dy)
 
     if list(shape_input_y) != list(shape_input_dy):
-        raise RuntimeError("the shape of input must be equal!")
+        error_detail = "the shape of input_y and input_dy must be equal!"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "input_y", \
+                                                               "input_dy", error_detail)
 
     dtype_input_y = dtype_input_y.lower()
     dtype_input_dy = dtype_input_dy.lower()
 
     if dtype_input_dy != dtype_input_y:
-        raise RuntimeError("the dtype of input must be equal!")
+        error_detail = "dtype of input_y and input_dy must be the same"
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "input_y", \
+                                                               "input_dy", error_detail)
 
     check_list = ("float16", "float32", "int32", "int8")
     para_check.check_dtype(dtype_input_y, check_list, param_name="input_y")

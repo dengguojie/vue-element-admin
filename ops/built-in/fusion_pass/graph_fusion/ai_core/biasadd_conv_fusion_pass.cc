@@ -106,12 +106,11 @@ Status BiasaddConvFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
                       return NOT_CHANGED);
     /* The weights will be the weight of BiasAdd node */
   }
-
   Status result = PatternFusionUtil::CopyMultiReferenceConstNode(graph, src_node);
   FUSION_PASS_CHECK(result != SUCCESS,
-                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Src_node[%s]: can not copy multiReference const node.",
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Src_node[%s]: can not copy multiReference const node.",
                             src_node->GetName().c_str()),
-                    return result);
+                    return NOT_CHANGED);
 
   ge::OpDescPtr src_op = src_node->GetOpDesc();
   FUSION_PASS_CHECK(src_op == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.",
@@ -141,6 +140,10 @@ Status BiasaddConvFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   int64_t newShape = 1;
   if (biases->GetTensorDesc().GetShape().GetDims().size() != 1) {
     for (int64_t dim : biases->GetTensorDesc().GetShape().GetDims()) {
+      if (PatternFusionUtil::IsUnknownShape(dim)) {
+        OP_LOGW(FUSED_OP_TYPE.c_str(), "BiasaddConvFusionPass cannot be applied for unknown shape.");
+        return NOT_CHANGED;
+      }
       if (dim == DIM1) {
         dim1Count++;
       } else {

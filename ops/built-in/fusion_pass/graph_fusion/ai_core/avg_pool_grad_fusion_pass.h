@@ -27,18 +27,19 @@ namespace fe {
 class AvgPoolGradFusionPass : public PatternFusionBasePass {
  protected:
   vector<FusionPattern*> DefinePatterns() override;
-  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
+  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
 
  private:
-  Status AvgValueTableGen(vector<int64_t> dimInfo, vector<int64_t> Ksize, vector<int64_t> strides, string padding,
-                          string data_format, vector<int64_t>& assitDimInfo, uint16_t* output);
-  Status WindowedOutputSize(int32_t input, int32_t kSize, int32_t stride, string padding, int32_t& output,
-                            int32_t& padBefor, int32_t& padAfter);
-  Status TransposeNCHW2NHWC(int32_t nOutput, int32_t hOutput, int32_t wOutput, int32_t cOutput, uint16_t* avgpoolout);
+  Status AvgValueTableGen(const vector<int64_t> dim_info, const vector<int64_t> k_size, const vector<int64_t> strides,
+                          const string padding, const string data_format, vector<int64_t>& assit_dim_info,
+                          uint16_t* output);
+  Status WindowedOutputSize(const int32_t input, const int32_t k_size, const int32_t stride, const string padding,
+                            int32_t& output, int32_t& pad_befor, int32_t& pad_after);
+  Status TransposeNCHW2NHWC(const int32_t n_output, const int32_t h_output, const int32_t w_output,
+                            const int32_t c_output, uint16_t* avgpoolout);
 
-  const string FUSED_OP_TYPE = "AVGPOOLGRAD";
+  const string kFusedOpType = "AVGPOOLGRAD";
 };
-
 }  // namespace fe
 
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_AVG_POOL_GRAD_FUSION_PASS_H_

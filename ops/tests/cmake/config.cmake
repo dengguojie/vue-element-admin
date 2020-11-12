@@ -1,4 +1,4 @@
-set(CMAKE_CXX_FLAGS "-std=c++11 -fPIC -fprofile-arcs -ftest-coverage")
+set(CMAKE_CXX_FLAGS "-std=c++11 -fPIC -fprofile-arcs -ftest-coverage -Dgoogle=ascend_private")
 
 SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--no-as-needed")
 # disable abi
@@ -36,7 +36,7 @@ if (USE_ATC)
     # these two variable will used everywhere for the sub project to find .h and .cpp
     set(TOP_INC_ROOT ${ASCEND_ATC_INC})
     if ("${OPS_SOURCE_CODE_ROOT}" STREQUAL "")
-        set(OPS_SOURCE_CODE_ROOT ${TOP_DIR}/ops/built-in)
+        set(OPS_SOURCE_CODE_ROOT ${TOP_DIR}/cann/ops/built-in)
     endif ()
 
     link_directories(${ASCEND_ATC_LIB}
@@ -60,7 +60,7 @@ else ()
     # these two variable will used everywhere for the sub project to find .h and .cpp
     set(TOP_INC_ROOT ${TOP_DIR}/inc/external)
     if ("${OPS_SOURCE_CODE_ROOT}" STREQUAL "")
-        set(OPS_SOURCE_CODE_ROOT ${TOP_DIR}/ops/built-in)
+        set(OPS_SOURCE_CODE_ROOT ${TOP_DIR}/cann/ops/built-in)
     endif ()
 
     link_directories(${TOP_DIR}/llt/third_party/googletest/lib/4.9

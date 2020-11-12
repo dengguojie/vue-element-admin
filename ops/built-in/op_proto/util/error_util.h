@@ -162,8 +162,23 @@ void OpsTwoInputDtypeErrReport(const std::string& op_name, const std::string& in
 void OpsAippErrReport(const std::string& aipp_output_H, const std::string& aipp_output_W, const std::string& data_H,
                       const std::string& data_W);
 
+void OpsConvAttrValueErrReport(const std::string& op_name, const std::string& param_name, const std::string& expected_value,
+                           const std::string& input_value);
+
+void OpsConvSetAttrErrReport(const std::string& op_name, const std::string& param1_name,
+                           const std::string& param2_name);
+
+void OpsConvShapeErrReport(const std::string& op_name, const std::string& description);
+
 void GeInfershapeErrReport(const std::string& op_name, const std::string& op_type, const std::string& value,
                            const std::string& reason);
+/*
+ * log common runtime error
+ * param[in] opname op name
+ * param[in] error description
+ * return void
+ */
+void CommonRuntimeErrLog(const std::string& opname, const std::string& description);
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_UTIL_ERROR_UTIL_H_

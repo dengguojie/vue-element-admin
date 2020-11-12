@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <vector>
-#include "inc/nn_pooling_ops.h"
+#include "nn_pooling_ops.h"
 
 class MaxPoolV3Test : public testing::Test {
 protected:
@@ -40,6 +40,6 @@ TEST_F(MaxPoolV3Test, max_pool_v3_test_case_1) {
     // compare dtype and shape of op output
     auto output_desc = max_pool_v3_op.GetOutputDesc("y");
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
-    std::vector<int64_t> expected_output_shape = {1, 64, 28, 28};
+    std::vector<int64_t> expected_output_shape = {1, 64, 27, 27};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }

@@ -23,7 +23,7 @@
 using namespace ge;
 namespace domi {
 
-const int INPUT_FILTER = 1;
+const int kInputFilter = 1;
 
 // Replace ge ParseParams fuction to process graph conv2d node attrs
 Status ParseParamsDeformableConv2D(const Message* op_src, ge::Operator& op) {
@@ -33,10 +33,10 @@ Status ParseParamsDeformableConv2D(const Message* op_src, ge::Operator& op) {
 
     // The filter format shuold be HWCN, not NHWC or NCHW, so set here to fix this problem
     auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
-    ge::GeTensorDesc orgTensorW = op_dsc->GetInputDesc(INPUT_FILTER);
-    orgTensorW.SetOriginFormat(ge::FORMAT_HWCN);
-    orgTensorW.SetFormat(ge::FORMAT_HWCN);
-    auto ret = op_dsc->UpdateInputDesc(INPUT_FILTER, orgTensorW);
+    ge::GeTensorDesc org_tensor_w = op_dsc->GetInputDesc(kInputFilter);
+    org_tensor_w.SetOriginFormat(ge::FORMAT_HWCN);
+    org_tensor_w.SetFormat(ge::FORMAT_HWCN);
+    auto ret = op_dsc->UpdateInputDesc(kInputFilter, org_tensor_w);
     if (ret != ge::GRAPH_SUCCESS) {
         OP_LOGE(op.GetName().c_str(), "update filter format failed.");
         map<string, string> err_map;
@@ -46,11 +46,6 @@ Status ParseParamsDeformableConv2D(const Message* op_src, ge::Operator& op) {
         ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
         return FAILED;
     }
-
-    // Escape GE require attr [pads] check here
-    std::vector<int32_t> padList = {0,0,0,0};
-    op.SetAttr("pads", padList);
-
     return SUCCESS;
 }
 
@@ -60,4 +55,3 @@ REGISTER_CUSTOM_OP("DeformableConv2D")
     .ParseParamsFn(ParseParamsDeformableConv2D)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi
-

@@ -15,4 +15,6 @@
 
 add_subdirectory(built-in)
 
-add_subdirectory(sample)
+if(BUILD_OPEN_PROJECT)
+  add_subdirectory(sample)
+endif()

@@ -27,13 +27,14 @@ namespace fe {
 class UnpackFusionPass : public PatternFusionBasePass {
  protected:
   vector<FusionPattern*> DefinePatterns() override;
-  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
+  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& new_nodes) override;
 
  private:
-  Status AddUnpackOps(ge::OpDescPtr fused_desc, ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes,
-                      std::vector<ge::GeTensorDesc> output_desc, ge::NodePtr fused_node, ge::NodePtr splitvd_base_node,
-                      int64_t num, int64_t axis, int64_t i, int64_t j, int64_t mini_out);
-  const string FUSED_OP_TYPE = "SplitVD_Unpack";
+  Status AddUnpackOps(ge::OpDescPtr fused_desc, ge::ComputeGraph& graph, vector<ge::NodePtr>& new_nodes,
+                      std::vector<ge::GeTensorDesc> output_desc, const ge::NodePtr fused_node,
+                      const ge::NodePtr splitvd_base_node, const int64_t num, const int64_t axis, const int64_t i,
+                      const int64_t j, const int64_t mini_out);
+  const string kFusedOpType = "SplitVD_Unpack";
 };
 }  // namespace fe
 

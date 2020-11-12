@@ -23,9 +23,13 @@ from te import platform as tbe_platform
 from te.platform.cce_build import build_config
 from te.platform.cce_conf import CceProductParams
 from te.platform import cce_params as param
+from te.platform.fusion_manager import fusion_manager
 from te.utils.op_utils import *
+from impl.resize_bilinear_tik import ResizeBilinear
+from impl.resize_bilinear_tik import resize_bilinear
 # pylint: disable=ungrouped-imports
 from te.lang.cce.te_compute import irbuilder_api as kernel_api
+from te.utils.error_manager import error_manager_vector
 
 # H, W size threshold 256
 HW_SIZE_256 = 256
@@ -122,8 +126,9 @@ def check_supported(images,
         h_in = image_shape[2]
         w_in = image_shape[3]
     else:
-        raise RuntimeError("The input format is not supported,"
-                           " which is, ", image_format)
+        excepted_format_list = "NHWC,NCHW,NC1HWC0"
+        error_manager_vector.raise_err_input_format_invalid(kernel_name, "images", \
+                                                            excepted_format_list, image_format)
 
     try:
 
@@ -6723,18 +6728,38 @@ def resize_bilinear_v2_d(images,
     check_shape(size, param_name="size")
     check_list = ["float16", "float32"]
     if image_dtype not in check_list:
-        raise RuntimeError("only support %s while dtype is %s" %
-                           (str(check_list), image_dtype))
+        excepted_dtype_list = "float16,float32"
+        error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, "images", \
+                                                                 excepted_dtype_list, image_dtype)
     if len(image_shape) != 5:
-        raise RuntimeError("The ndim of input iamge shape must be 5!")
+        error_detail = "The ndim of input iamge shape must be 5!"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "images", error_detail)
     if len(size) != 2:
-        raise RuntimeError("The ndim of size must be 2!")
+        rule_desc = "The ndim of size must be 2!"
+        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, \
+                                                          "size'length", len(size))
     if (image_shape[2] > HW_SIZE_2048 or image_shape[3] > HW_SIZE_2048) or \
             (size[0] > HW_SIZE_2048 or size[1] > HW_SIZE_2048):
-        raise RuntimeError("in or out h/w size should be less than 2048!")
+        error_detail = "in or out h/w size should be less than 2048!"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "images", \
+                                                               "size", error_detail)
     if align_corners is True and half_pixel_centers is True:
-        raise RuntimeError("If half_pixel_centers is True, "
-                           "align_corners must be False.")
+        rule_desc = "if half_pixel_centers is True, align_corners must be False"
+        param_value = "%s and %s"%(align_corners, half_pixel_centers)
+        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, \
+                                                          "align_corners and half_pixel_centers", param_value)
+
+    if (image_shape[0] == 16 and (image_shape[1]*image_shape[4] == 128
+                                  or image_shape[1]*image_shape[4] == 256)) \
+            or (image_shape[0] ==100 and image_shape[1]*image_shape[4] == 2048):
+        # begin to check where user branch concat tik
+        resize_tik = ResizeBilinear(images, y, size)
+        if_tik_support = resize_tik.check_supported_tik()
+
+        if if_tik_support:
+            resize_bilinear(images, y, size, kernel_name)
+            return
+        # end to check where user branch concat tik
 
     image_data = tvm.placeholder(image_shape,
                                  dtype=image_dtype,
@@ -6742,8 +6767,8 @@ def resize_bilinear_v2_d(images,
     res = resize_bilinear_v2_d_compute(image_data, y, size, align_corners,
                                        half_pixel_centers,
                                        kernel_name)
-
     # build & output
     sch = tvm.create_schedule(res.op)
     with build_config:
         tvm.build(sch, [image_data, res], "cce", name=kernel_name)
+

@@ -23,16 +23,25 @@ from op_test_frame.common import op_status
 from op_test_frame.common import precision_info
 
 
-class UTCaseFileInfo:
+class UTCaseFileInfo:  # pylint: disable=too-few-public-methods
+    """
+    UT case file info, contains case_file and op_module_name
+    """
+
     def __init__(self, case_file, op_module_name):
         self.case_file = case_file
         self.op_module_name = op_module_name
 
 
 class OpUTSuite:
-    def __init__(self, soc, soc_suite: TestSuite, test_res_trace_hook, test_data_dir_hook, dump_model_dir_hook,
-                 simulator_mode_hook):
+    """
+    Op ut suite
+    """
+
+    def __init__(self, soc, soc_suite: TestSuite, test_res_trace_hook,  # pylint: disable=too-many-arguments
+                 test_data_dir_hook, dump_model_dir_hook, simulator_mode_hook, op_type=None):
         self.soc = soc
+        self.op_type = op_type
         self.soc_suite = soc_suite
         self._test_res_trace = test_res_trace_hook
         self._test_data_dir_hook = test_data_dir_hook
@@ -40,79 +49,199 @@ class OpUTSuite:
         self._simulator_mode_hook = simulator_mode_hook
 
     def clear_test_trace(self):
+        """
+        clear test trace
+        :return: None
+        """
         self._test_res_trace[:] = []
 
     def get_test_trace(self):
+        """
+        get test trace
+        :return: test trace
+        """
         return self._test_res_trace
 
     def set_test_data_dir(self, data_dir):
+        """
+        set test data save dir
+        :param data_dir: data directory
+        :return: None
+        """
         self._test_data_dir_hook.insert(0, data_dir)
 
     def set_dump_model_dir(self, model_dir):
+        """
+        set dump model dump data save directory
+        :param model_dir: model dump data save directory
+        :return: None
+        """
         self._dump_model_dir_hook.insert(0, model_dir)
 
     def set_simulator_mode(self, simulator_mode):
+        """
+        set simulator mode
+        :param simulator_mode: simulator mode, can be "pv", "tm"
+        :return: None
+        """
         self._simulator_mode_hook.insert(0, simulator_mode)
 
 
 class CaseUsage(Enum):
+    """
+    case usage Enum
+    """
     IMPL = "compile"
     CHECK_SUPPORT = "check_support"
     SELECT_FORMAT = "op_select_format"
     CFG_COVERAGE_CHECK = "op_config_coverage_check"
     PRECISION = "precision"
+    CUSTOM = "custom"
 
     def to_str(self):
+        """
+        get case usage string
+        :return: string type case usage
+        """
         return self.value
 
     @staticmethod
     def parser_str(type_str):
+        """
+        parser str to CaseUsage Enum
+        :param type_str: string type case usage
+        :return: CaseUsage Enum
+        """
         str_enum_map = {
             "compile": CaseUsage.IMPL,
             "check_support": CaseUsage.CHECK_SUPPORT,
             "op_select_format": CaseUsage.SELECT_FORMAT,
             "op_config_coverage_check": CaseUsage.CFG_COVERAGE_CHECK,
             "precision": CaseUsage.PRECISION,
+            "custom": CaseUsage.CUSTOM
         }
         if not type_str or type_str not in str_enum_map.keys():
             return None
-        else:
-            return str_enum_map[type_str]
+
+        return str_enum_map[type_str]
 
 
-class OpUTCase:
+class OpUTBaseCase:
+    """
+    Op ut base case info
+    """
 
-    def __init__(self, support_soc=None, op_type=None, case_name=None,
-                 op_params=None, expect=None, case_usage: CaseUsage = CaseUsage.IMPL,
-                 expect_out_fn=None, case_file=None, case_line_num=None,
-                 precision_standard: precision_info.PrecisionStandard = None,
-                 op_imply_type="static"):
+    def __init__(self, support_soc=None, op_type=None, case_name=None,  # pylint: disable=too-many-arguments
+                 case_usage: CaseUsage = CaseUsage.IMPL, case_file=None, case_line_num=None):
         self.support_soc = support_soc
         self.op_type = op_type
         self.case_name = case_name
-        self.op_params = op_params
-        self.expect = expect
         self.case_usage = case_usage
-        self.expect_out_fn = expect_out_fn
         self.case_file = case_file
         self.case_line_num = case_line_num
-        self.precision_standard = precision_standard
-        self.op_imply_type = op_imply_type
 
     def to_json_obj(self):
-        def _build_input_output_obj(info):
-            json_obj = {}
-            for key, val in info.items():
-                if key != "value":
-                    json_obj[key] = val
-            return json_obj
+        """
+        convert to json object
+        :return: json object
+        """
+        return {
+            "support_soc": self.support_soc,
+            "op_type": self.op_type,
+            "case_name": self.case_name,
+            "case_usage": self.case_usage.to_str(),
+            "case_file": self.case_file,
+            "case_line_num": self.case_line_num
+        }
+
+    @staticmethod
+    def parser_json_obj(json_obj):
+        """
+        convert json object to OpUTBaseCase object
+        :param json_obj: json object
+        :return: OpUTBaseCase object
+        """
+        if not json_obj:
+            return None
+        case_usage = CaseUsage.parser_str(json_obj["case_usage"])
+        if case_usage == CaseUsage.CUSTOM:
+            return OpUTCustomCase.parser_json_obj(json_obj)
+
+        return OpUTCase.parser_json_obj(json_obj)
+
+
+class OpUTCase(OpUTBaseCase):  # pylint: disable=too-many-instance-attributes
+    """
+    op ut case
+    """
+
+    def __init__(self, support_soc=None, op_type=None, case_name=None,  # pylint: disable=too-many-arguments
+                 op_params=None, expect=None, case_usage: CaseUsage = CaseUsage.IMPL,
+                 expect_out_fn=None, case_file=None, case_line_num=None,
+                 precision_standard: precision_info.PrecisionStandard = None,
+                 op_imply_type="static", addition_params=None):
+        super().__init__(support_soc=support_soc, op_type=op_type, case_name=case_name, case_usage=case_usage,
+                         case_file=case_file, case_line_num=case_line_num)
+
+        self.op_params = op_params
+        self.expect = expect
+        self.expect_out_fn = expect_out_fn
+        self.precision_standard = precision_standard
+        self.op_imply_type = op_imply_type
+        self.addition_params = addition_params
+
+    def to_json_obj(self):
+        """
+        convert to json object
+        :return: json object
+        """
+
+        def _build_op_param_json(op_params):
+            json_list = []
+            for op_param in op_params:
+                if isinstance(op_param, (tuple, list)):
+                    if not op_param:
+                        json_list.append(op_param)
+                        continue
+                    if isinstance(op_param[0], dict) and "shape" in op_param[0].keys():
+                        # this is input or output
+                        json_param = []
+                        for sub_param in op_param:
+                            json_param.append({
+                                "dtype": sub_param.get("dtype"),
+                                "shape": sub_param.get("shape"),
+                                "format": sub_param.get("format"),
+                                "ori_shape": sub_param.get("ori_shape"),
+                                "ori_format": sub_param.get("ori_format"),
+                                "data_path": sub_param.get("data_path"),
+                                "expect_data_path": sub_param.get("expect_data_path"),
+                                "range": sub_param.get("range")
+                            })
+                        json_list.append(json_param)
+                    else:
+                        json_list.append(op_param)
+                elif isinstance(op_param, dict):
+                    if "shape" in op_param.keys():
+                        json_list.append({
+                            "dtype": op_param.get("dtype"),
+                            "shape": op_param.get("shape"),
+                            "format": op_param.get("format"),
+                            "ori_shape": op_param.get("ori_shape"),
+                            "ori_format": op_param.get("ori_format"),
+                            "data_path": op_param.get("data_path"),
+                            "expect_data_path": op_param.get("expect_data_path"),
+                            "range": op_param.get("range")
+                        })
+                else:
+                    json_list.append(op_param)
+            return json_list
 
         return {
             "support_soc": self.support_soc,
             "op_type": self.op_type,
             "case_name": self.case_name,
-            "op_params": [op_param if not isinstance(op_param, dict) else _build_input_output_obj(op_param)
-                          for op_param in self.op_params],
+            "op_params": _build_op_param_json(self.op_params),
+            "addition_params": self.addition_params,
             "expect": self.expect if isinstance(self.expect, str) else self.expect.__class__.__name__,
             "case_usage": self.case_usage.to_str(),
             "case_file": self.case_file,
@@ -123,6 +252,11 @@ class OpUTCase:
 
     @staticmethod
     def parser_json_obj(json_obj):
+        """
+        convert json object to OpUTCase object
+        :param json_obj: json object
+        :return: OpUTCase object
+        """
         if not json_obj:
             return None
         return OpUTCase(support_soc=json_obj["support_soc"],
@@ -135,11 +269,56 @@ class OpUTCase:
                         case_line_num=json_obj.get("case_line_num"),
                         precision_standard=precision_info.PrecisionStandard.parse_json_obj(
                             json_obj.get("precision_standard")),
-                        op_imply_type=json_obj.get("op_imply_type"))
+                        op_imply_type=json_obj.get("op_imply_type"),
+                        addition_params=json_obj.get("addition_params"))
+
+
+class OpUTCustomCase(OpUTBaseCase):
+    """
+    op custom ut case
+    """
+
+    def __init__(self, support_soc=None, op_type=None, case_name=None,  # pylint: disable=too-many-arguments
+                 case_usage: CaseUsage = CaseUsage.CUSTOM, case_file=None, case_line_num=None,
+                 test_func_name=None, test_func=None):
+        super().__init__(support_soc, op_type, case_name, case_usage, case_file, case_line_num)
+        self.test_func_name = test_func_name
+        self.test_func = test_func
+
+    def to_json_obj(self):
+        """
+        convert to json object
+        :return: json object
+        """
+        json_obj = super().to_json_obj()
+        json_obj["test_func_name"] = self.test_func_name
+        return json_obj
+
+    @staticmethod
+    def parser_json_obj(json_obj):
+        """
+        convert json object to OpUTCustomCase object
+        :param json_obj: json object
+        :return: OpUTCustomCase object
+        """
+        if not json_obj:
+            return None
+        return OpUTCustomCase(support_soc=json_obj["support_soc"],
+                              op_type=json_obj["op_type"],
+                              case_name=json_obj["case_name"],
+                              case_usage=CaseUsage.parser_str(json_obj["case_usage"]),
+                              case_file=json_obj.get("case_file"),
+                              case_line_num=json_obj.get("case_line_num"),
+                              test_func_name=json_obj.get("test_func_name"))
 
 
 class OpUTStageResult:
-    def __init__(self, status, stage_name=None, result=None, err_msg=None, err_trace=None):
+    """
+    op ut run stage result info
+    """
+
+    def __init__(self, status, stage_name=None, result=None,  # pylint: disable=too-many-arguments
+                 err_msg=None, err_trace=None):
         self.status = status
         self.result = result
         self.err_msg = err_msg
@@ -147,9 +326,17 @@ class OpUTStageResult:
         self.stage_name = stage_name
 
     def is_success(self):
+        """
+        check stage status is success
+        :return: True or False
+        """
         return self.status == op_status.SUCCESS
 
     def to_json_obj(self):
+        """
+        convert to json object
+        :return: json object
+        """
         return {
             "status": self.status,
             "result": self.result,
@@ -160,20 +347,38 @@ class OpUTStageResult:
 
     @staticmethod
     def parser_json_obj(json_obj):
+        """
+        convert json object to OpUTStageResult object
+        :param json_obj: json object
+        :return: OpUTStageResult object
+        """
         return OpUTStageResult(json_obj["status"], json_obj["stage_name"], json_obj["result"], json_obj["err_msg"],
                                json_obj["err_trace"])
 
 
 class OpUTCaseTrace:
-    def __init__(self, soc_version, ut_case_info: OpUTCase):
+    """
+    op ut case run trace
+    """
+
+    def __init__(self, soc_version, ut_case_info: OpUTBaseCase):
         self.ut_case_info = ut_case_info
         self.stage_result = []
         self.run_soc = soc_version
 
     def add_stage_result(self, stage_res: OpUTStageResult):
+        """
+        add a stage result into trace
+        :param stage_res: stage result
+        :return: None
+        """
         self.stage_result.append(stage_res)
 
     def to_json_obj(self):
+        """
+        convert to json object
+        :return: json object
+        """
         return {
             "run_soc": self.run_soc,
             "ut_case_info": self.ut_case_info.to_json_obj(),
@@ -182,8 +387,13 @@ class OpUTCaseTrace:
 
     @staticmethod
     def parser_json_obj(json_obj):
+        """
+        convert json object to OpUTCaseTrace object
+        :param json_obj: json object
+        :return: OpUTCaseTrace object
+        """
         if not json_obj:
             return None
-        res = OpUTCaseTrace(json_obj["run_soc"], OpUTCase.parser_json_obj(json_obj["ut_case_info"]))
+        res = OpUTCaseTrace(json_obj["run_soc"], OpUTBaseCase.parser_json_obj(json_obj["ut_case_info"]))
         res.stage_result = [OpUTStageResult.parser_json_obj(stage_obj) for stage_obj in json_obj["stage_result"]]
         return res

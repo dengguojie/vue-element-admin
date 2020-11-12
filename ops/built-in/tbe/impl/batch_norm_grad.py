@@ -20,6 +20,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 # define a scalar, value = 0.0
 SCALAR_ZERO = 0.0
@@ -220,11 +221,11 @@ def _format_check(arg_input, data_format):
     """
     format_data = arg_input.get("format")
     if format_data not in ("NHWC", "NCHW", "NC1HWC0"):
-        raise RuntimeError(
-            "Format of input only support 4D and 5HD")
+        error_manager_vector.raise_err_input_format_invalid("batch_norm_grad", "arg_input", \
+                                                            ["NHWC", "NCHW", "NC1HWC0"], format_data)
     if data_format not in ("NHWC", "NCHW"):
-        raise RuntimeError(
-            "The data_format only support 'NHWC' and 'NCHW'")
+        error_manager_vector.raise_err_input_format_invalid("batch_norm_grad", "data_format", \
+                                                            ["NHWC", "NCHW"], data_format)
 
 
 def _check_shape_len(shape_y_backprop, shape_x, shape_scale,
@@ -252,20 +253,29 @@ def _check_shape_len(shape_y_backprop, shape_x, shape_scale,
      """
     if data_format in ("NHWC", "NCHW"):
         if len(shape_x) != 4:
-            raise RuntimeError("This operator can only support 4D, but some "
-                               "input's shape length is not 4!")
+            error_detail = "This operator can only support 4D, " \
+                           "but x's shape length is not 4!"
+            error_manager_vector.raise_err_input_shape_invalid("batch_norm_grad", \
+                                                               "x", error_detail)
         if len(shape_scale) != 1 or len(shape_reserve_space_1) != 1 or len(
                 shape_reserve_space_2) != 1:
-            raise RuntimeError("invalid shape params, input feature map must "
-                               "be 1D format in kernel!")
+            error_detail = "input feature map must be 1D format in kernel!" \
+                           "but scale,reserve_space_1,reserve_space_2 is %d,%d,%d"\
+                           %(len(shape_scale), len(shape_reserve_space_1), len(shape_reserve_space_2))
+            error_manager_vector.raise_err_input_shape_invalid("batch_norm_grad", \
+                                                               "scale,reserve_space_1,reserve_space_2", error_detail)
     else:
         if len(shape_y_backprop) != 5 or len(shape_x) != 5 or len(
                 shape_scale) != 5:
-            raise RuntimeError("This operator can only support 5D, but some "
-                               "input's shape length is not 5!")
+            error_detail = "This operator can only support 5D, " \
+                           "but (y_backprop,x,scale)'s shape length is %d,%d,%d" \
+                           %(len(shape_y_backprop), len(shape_x), len(shape_scale))
+            error_manager_vector.raise_err_input_shape_invalid("batch_norm_grad", \
+                                                               "y_backprop,x,scale", error_detail)
         if len(shape_reserve_space_1) != 5 or len(shape_reserve_space_2) != 5:
-            raise RuntimeError("This operator can only support 5D, but some "
-                               "input's shape length is not 5!")
+            error_detail = "the shape length of reserve_space_1 and reserve_space_2 is not 5!"
+            error_manager_vector.raise_err_two_input_shape_invalid("batch_norm_grad", "reserve_space_1", \
+                                                               "reserve_space_2", error_detail)
 
 
 def _check_shape(shape_y_backprop, shape_x, shape_scale, shape_reserve_space_1,
@@ -297,22 +307,29 @@ def _check_shape(shape_y_backprop, shape_x, shape_scale, shape_reserve_space_1,
 
     if data_format == "NHWC":
         if shape_scale[-1] != shape_y_backprop[-1]:
-            raise RuntimeError(
-                "shape_scale's last dim must be same as shape_y_backprop's!")
+            error_detail = "shape_scale's last dim must be same as shape_y_backprop's!"
+            error_manager_vector.raise_err_two_input_shape_invalid("batch_norm_grad", "scale", \
+                                                                   "y_backprop", error_detail)
     elif data_format == "NCHW":
         if shape_scale[-1] != shape_y_backprop[1]:
-            raise RuntimeError("shape_scale's last dim must be same as "
-                               "shape_y_backprop's second dim!")
+            error_detail = "shape_scale's last dim must be same as shape_y_backprop's second dim!"
+            error_manager_vector.raise_err_two_input_shape_invalid("batch_norm_grad", "scale", \
+                                                                   "y_backprop", error_detail)
     else:
         dim_c1 = shape_y_backprop[1]
         dim_c0 = shape_y_backprop[4]
         if dim_c0 != 16:
-            raise RuntimeError("shape_y_backprop last dim must be 16")
+            error_detail = "shape_y_backprop last dim must be 16"
+            error_manager_vector.raise_err_input_shape_invalid("batch_norm_grad", \
+                                                               "y_backprop", error_detail)
         if shape_scale[0] != 1 or shape_scale[2] != 1 or shape_scale[3] != 1:
-            raise RuntimeError(
-                "Dimensions except Dimension C must be one for shape_scale")
+            error_detail = "Dimensions except Dimension C must be one for shape_scale"
+            error_manager_vector.raise_err_input_shape_invalid("batch_norm_grad", \
+                                                               "scale", error_detail)
         if shape_scale[1] != dim_c1 or shape_scale[4] != dim_c0:
-            raise RuntimeError("Dimension C must be equal")
+            error_detail = "Dimension C must be equal"
+            error_manager_vector.raise_err_input_shape_invalid("batch_norm_grad", \
+                                                               "scale", error_detail)
 
 
 def _change_shape(shape_scale, shape_reserve_space_1, shape_reserve_space_2,

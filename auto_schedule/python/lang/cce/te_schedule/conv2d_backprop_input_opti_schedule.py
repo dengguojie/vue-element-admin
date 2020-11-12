@@ -25,6 +25,8 @@ from te.lang.cce.te_compute.conv2d_backprop_input_opti_compute import (
 )
 from te.lang.cce.te_compute.cube_util import calc_info_of_iter_vars
 from te.lang.cce.te_compute.cube_util import shape_to_list
+from te.lang.cce.te_compute.cube_util import GroupDictKeys
+from te.lang.cce.te_compute.util import int_ceil_div
 from te.lang.cce.te_schedule.util import L1CommonParam
 from te.platform import cce_conf
 from te.platform import cce_params
@@ -33,7 +35,7 @@ from te.utils.error_manager import error_manager_util
 # Don't modify,used in log_util
 DX_SUPPORT_TAG_LOG_PREFIX = "#Conv2DBackpropInput only support#"
 # default False
-DEBUG_MODE = False
+DEBUG_MODE = 0
 CONST_L1_SHAPE_DIM = 4
 DTYPE_BYTE_MAP = {"float16": 2, "float32": 4, "int8": 1, "int32": 4}
 CUB_BUFFER_LIMIT = 4096
@@ -129,7 +131,7 @@ def _print_ir_conv(process, sch):
     :return: IR process
     ---------------------------------------------------------------
     """
-    if DEBUG_MODE and "to print ir" in process:
+    if DEBUG_MODE and process:
         start = process + " IR start"
         end = process + " IR end\n"
         sch = sch.normalize()
@@ -500,7 +502,7 @@ def _check_and_set_default_tiling(tiling, atype, btype):
                 m_al0 = m_cl0 = dy_w // block_m
             else:
                 # add one is needed by buffer_tile of ub
-                m_al0 = m_cl0 = _int_ceil_div(dy_w, block_m) + 1
+                m_al0 = m_cl0 = int_ceil_div(dy_w, block_m) + 1
 
         tiling["AUB_shape"] = None
         tiling["BUB_shape"] = None
@@ -583,10 +585,21 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
         FUSION_DX_DEQUANT_QUANT,
         FUSION_DX_REQUANT
     ):
-        co_dim, ci_dim, _, _ = DIM_MAP["filter_shape"]
+        # DIM_MAP["filter_shape"] : co_dim, ci_dim, _, _
+        filter_shape_g = [
+            DIM_MAP[GroupDictKeys.dy_c1_extend] * block_k,
+            DIM_MAP[GroupDictKeys.dx_c1_extend],
+            1,
+            1,
+            block_n]
     else:
-        ci_dim, co_dim, _, _ = DIM_MAP["filter_shape"]
-    filter_shape = [co_dim * block_k, ci_dim, 1, 1, block_n]
+        # DIM_MAP["filter_shape"] : ci_dim, co_dim, _, _
+        filter_shape_g = [
+            DIM_MAP[GroupDictKeys.dy_c1_extend] * block_k,
+            DIM_MAP[GroupDictKeys.dx_c1_extend],
+            1,
+            1,
+            block_n]
 
     if TENSOR_MAP.get("dilate_ub") is None:
         strideh, stridew = 1, 1
@@ -596,7 +609,7 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
     _calc_double_op_num(fusion_type)
 
     if fusion_type in (FUSION_DX_DEQUANT_QUANT, FUSION_DX_REQUANT):
-        filter_shape[1] = (filter_shape[1] + 1) // 2 * 2
+        filter_shape_g[1] = (filter_shape_g[1] + 1) // 2 * 2
 
     bias_flag = _get_bias_flag()
 
@@ -607,8 +620,8 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
             out_fm_memory_type = DeconvParam.get_para_map("output_memory_type")
             info_dict = {
                 "op_type": "conv2d_backprop_input",
-                "A_shape": list(DIM_MAP["img_shape"]),
-                "B_shape": list(filter_shape),
+                "A_shape": list(DIM_MAP["dy_6GD_shape"][1:]),
+                "B_shape": list(filter_shape_g),
                 "C_shape": None,
                 "A_dtype": str(TENSOR_MAP["img_placehold"].dtype),
                 "B_dtype": str(TENSOR_MAP["filter_placehold"].dtype),
@@ -624,7 +637,7 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
                 "strideW_expand": stridew,
                 "dilationH": 1,
                 "dilationW": 1,
-                "group": 1,
+                "group": DIM_MAP[GroupDictKeys.g_extend],
                 "bias_flag": bias_flag,
                 "fused_double_operand_num": FUSION_TYPE_2_OPERAND_NUM.get(fusion_type),
                 "kernel_name": kernel_name.value,
@@ -636,7 +649,6 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
             TILING = get_tiling(info_dict)
         else:
             TILING = deepcopy(tiling_case)
-
     TILING = _check_and_set_default_tiling(
         TILING, TENSOR_MAP["img_placehold"].dtype, TENSOR_MAP["filter_placehold"].dtype
     )
@@ -645,7 +657,7 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
         "opti dx shape, kernel_name:",
         kernel_name,
         "filter:",
-        filter_shape,
+        filter_shape_g,
         "dy:",
         DIM_MAP["img_shape"],
         "dx:",
@@ -707,20 +719,6 @@ def _get_bias_flag():
     else:
         bias_flag = 0
     return bias_flag
-
-
-def _int_ceil_div(divisor_a, divisor_b):
-    """
-    round up function
-
-    Paramater:
-    :param divisor_a: int.
-    :param divisor_b: int.
-    :return: int
-    """
-    if divisor_b == 0:
-        _raise_dx_opti_err("division by zero")
-    return (divisor_a + divisor_b - 1) // divisor_b
 
 
 def _get_src_tensor(tensor, index):
@@ -1279,7 +1277,7 @@ def _set_data_layout(
     sch[a_l0a].set_scope(cce_params.scope_ca)
 
     l0a_m0, l0a_k0, _ = cce_params.CUBE_MKN[a_l0a.dtype]["mac"]
-    sch[a_l0a].buffer_align((1, 1), (1, 1), (1, 1), (1, l0a_m0), (1, l0a_k0))
+    sch[a_l0a].buffer_align((1, 1), (1, 1), (1, 1), (1, 1), (1, l0a_m0), (1, l0a_k0))
     TENSOR_MAP["a_l0a"] = a_l0a
     if TENSOR_MAP.get("c_add_bias") is not None:
         sch[c_add_bias].set_scope(cce_params.scope_cc)
@@ -1296,6 +1294,11 @@ def _set_data_layout(
     TENSOR_MAP["filter_placehold"] = weight_l1.op.input_tensors[0]
 
     # fill in dimmap
+    DIM_MAP["group_dict"] =  tensor_dx_gm.op.attrs["group_dict"]
+    group_dict_map = DIM_MAP["group_dict"]
+    DIM_MAP[GroupDictKeys.g_extend] = group_dict_map[GroupDictKeys.g_extend].value
+    DIM_MAP[GroupDictKeys.dy_c1_extend] = group_dict_map[GroupDictKeys.dy_c1_extend].value
+    DIM_MAP[GroupDictKeys.dx_c1_extend] = group_dict_map[GroupDictKeys.dx_c1_extend].value
     if dynamic_para is not None:
         DIM_MAP["out_img_shape"] = shape_to_list(res.shape)
         DIM_MAP["img_shape"] = shape_to_list(TENSOR_MAP["img_placehold"].shape)
@@ -1303,6 +1306,9 @@ def _set_data_layout(
         DIM_MAP["B_matrix_dim"] = list(weight_l0.shape)
         DIM_MAP["filter_shape"] = list(weight_l1.op.input_tensors[0].shape)
         DIM_MAP["dx_5D_shape"] = list(tensor_dx_gm.op.attrs["dx_5D_shape"])
+        DIM_MAP["dx_6GD_shape"] = [DIM_MAP[GroupDictKeys.g_extend],
+                                  DIM_MAP["dx_5D_shape"][0],
+                                  DIM_MAP[GroupDictKeys.dx_c1_extend]] + DIM_MAP["dx_5D_shape"][2:]
     else:
         DIM_MAP["out_img_shape"] = [int(i) for i in res.shape]
         DIM_MAP["img_shape"] = [int(i) for i in TENSOR_MAP["img_placehold"].shape]
@@ -1310,6 +1316,14 @@ def _set_data_layout(
         DIM_MAP["B_matrix_dim"] = [int(i) for i in weight_l0.shape]
         DIM_MAP["filter_shape"] = [int(i) for i in weight_l1.op.input_tensors[0].shape]
         DIM_MAP["dx_5D_shape"] = [int(i) for i in tensor_dx_gm.op.attrs["dx_5D_shape"]]
+        DIM_MAP["dx_6GD_shape"] = [DIM_MAP[GroupDictKeys.g_extend],
+                                  DIM_MAP["dx_5D_shape"][0],
+                                  DIM_MAP[GroupDictKeys.dx_c1_extend]] + DIM_MAP["dx_5D_shape"][2:]
+
+        DIM_MAP["dy_6GD_shape"] = [DIM_MAP[GroupDictKeys.g_extend],
+                                   DIM_MAP["img_shape"][0],
+                                   DIM_MAP[GroupDictKeys.dy_c1_extend]]+ DIM_MAP["img_shape"][2:]
+
 
     if TENSOR_MAP.get("dilate_ub") is not None:
         if dynamic_para == "dynamic_hw":
@@ -1435,9 +1449,7 @@ def _get_aicore_tiling_factor(
     # get factor from l0c, ub to ddr
     mc_from_tiling = TILING["CL0_matrix"][1] * TILING["CL0_matrix"][2]
     l0c_tiling_factor = [TILING["CL0_matrix"][0], mc_from_tiling]
-    undilate_l0c_m = (mc_from_tiling // DIM_MAP["img_shape"][3]) * DIM_MAP["img_shape"][
-        3
-    ]
+    undilate_l0c_m = (mc_from_tiling // DIM_MAP["img_shape"][3]) * DIM_MAP["img_shape"][3]
 
     need_buffer_tile = False
     if DIM_MAP.get("dilate_dim") is not None:
@@ -1458,39 +1470,35 @@ def _get_aicore_tiling_factor(
         if (
             l0c_tiling_factor[1] % block_m != 0
             or (
-                DIM_MAP["out_img_shape"][2]
-                - DIM_MAP["out_img_shape"][2]
-                // l0c_tiling_factor[1]
-                * l0c_tiling_factor[1]
-            )
-            % block_m
-            != 0
+                DIM_MAP["out_img_shape"][2] -
+                DIM_MAP["out_img_shape"][2] // l0c_tiling_factor[1] * l0c_tiling_factor[1]
+            ) % block_m != 0
         ):
             TILING["CUB_matrix"][0] = 1
 
     # From LOC to GM [NumOfparts for N axis, NumOfparts for M axis ]
     l0c_parts = [
-        _int_ceil_div(
+        int_ceil_div(
             DIM_MAP.get("out_img_shape")[1] // TILING["block_dim"][1],
             l0c_tiling_factor[0]
         ),
-        _int_ceil_div(
+        int_ceil_div(
             DIM_MAP.get("out_img_shape")[2] // TILING["block_dim"][2],
             l0c_tiling_factor[1]
         )
     ]
 
     if dynamic_para == "dynamic_hw":
-        l0c_parts[1] = _int_ceil_div(
-            _int_ceil_div(DIM_MAP.get("out_img_shape")[2], TILING["block_dim"][2]),
+        l0c_parts[1] = int_ceil_div(
+            int_ceil_div(DIM_MAP.get("out_img_shape")[2], TILING["block_dim"][2]),
             l0c_tiling_factor[1]
         )
 
     # C_UB_factor is size of each part from l0c to ub, second item is 1
     # From L0C to UB,[NumOfparts for N axis, NumOfparts for M axis]
     l0c_ub_parts = [
-        _int_ceil_div(l0c_tiling_factor[0], TILING["CUB_matrix"][0]),
-        _int_ceil_div(
+        int_ceil_div(l0c_tiling_factor[0], TILING["CUB_matrix"][0]),
+        int_ceil_div(
             l0c_tiling_factor[1], TILING["CUB_matrix"][1] * TILING["CUB_matrix"][2]
         )
     ]
@@ -1502,11 +1510,11 @@ def _get_aicore_tiling_factor(
     if TILING["AL1_shape"]:  # AL1_shape = [C1,H*W,16,16],batch=1
         # parts of k-axis from DDR to L1---need div by H*W
         al1_parts = [
-            _int_ceil_div(
+            int_ceil_div(
                 DIM_MAP["A_matrix_dim"][1],
-                _int_ceil_div(TILING["AL1_shape"][0], block_k)
+                int_ceil_div(TILING["AL1_shape"][0], block_k)
             ),
-            _int_ceil_div(l0c_parts[1], TILING["AL1_shape"][1])
+            int_ceil_div(l0c_parts[1], TILING["AL1_shape"][1])
         ]
 
     bl1_parts = [1, 1]
@@ -1516,11 +1524,11 @@ def _get_aicore_tiling_factor(
                 "second value of BL1_shape should be factor of n block num"
             )
         bl1_parts = [
-            _int_ceil_div(
+            int_ceil_div(
                 DIM_MAP["B_matrix_dim"][0],
-                _int_ceil_div(TILING["BL1_shape"][0], block_k)
+                int_ceil_div(TILING["BL1_shape"][0], block_k)
             ),
-            _int_ceil_div(l0c_parts[0], TILING["BL1_shape"][1])
+            int_ceil_div(l0c_parts[0], TILING["BL1_shape"][1])
         ]
 
     return (
@@ -1550,6 +1558,7 @@ def _get_mmad_factor():
 def _bind_multi_core(  # pylint: disable=R0913,R0914
     sch,
     c_gm,
+    g_outer,
     l1_n_outer_outer,
     l1_n_out_inner,
     l1_m_outer_outer,
@@ -1563,11 +1572,12 @@ def _bind_multi_core(  # pylint: disable=R0913,R0914
     blockidx = []
     # split batch axis
     if dynamic_para == "dynamic_batch":
-        batch_dim_factor = _int_ceil_div(DIM_MAP["out_img_shape"][0], block_dim[0])
+        batch_dim_factor = int_ceil_div(DIM_MAP["out_img_shape"][0], block_dim[0])
         batch_dim_factor = tvm.max(1, batch_dim_factor)
         batch_out, batch_in = sch[c_gm].split(c_gm.op.axis[0], batch_dim_factor)
     else:
         batch_out, batch_in = sch[c_gm].split(c_gm.op.axis[0], nparts=block_dim[0])
+    g_outer, g_inner = sch[c_gm].split(g_outer, nparts=block_dim[3])
     l1_n_out_inner_out, l1_n_out_inner_in = sch[c_gm].split(
         l1_n_out_inner, nparts=block_dim[1]
     )
@@ -1577,9 +1587,11 @@ def _bind_multi_core(  # pylint: disable=R0913,R0914
 
     # reorder
     sch[c_gm].reorder(
+        g_outer,
         batch_out,
         l1_n_out_inner_out,
         l1_m_outer_inner_out,
+        g_inner,
         batch_in,
         l1_n_outer_outer,
         l1_n_out_inner_in,
@@ -1587,9 +1599,9 @@ def _bind_multi_core(  # pylint: disable=R0913,R0914
         l1_m_outer_inner_in
     )
 
-    blocks = block_dim[0] * block_dim[1] * block_dim[2]
+    blocks = block_dim[0] * block_dim[1] * block_dim[2] * block_dim[3]
     if blocks != 1:
-        out_fused = sch[c_gm].fuse(batch_out, l1_n_out_inner_out, l1_m_outer_inner_out)
+        out_fused = sch[c_gm].fuse(g_outer, batch_out, l1_n_out_inner_out, l1_m_outer_inner_out)
         out_fused_out, _ = sch[c_gm].split(out_fused, nparts=blocks)
         bind_out, bind_in = sch[c_gm].split(out_fused_out, 1)
         blockidx = tvm.thread_axis("blockIdx.x")
@@ -1597,12 +1609,12 @@ def _bind_multi_core(  # pylint: disable=R0913,R0914
         if blocks == block_dim[0]:
             sch[c_gm].pragma(bind_in, "json_info_batchBindOnly")
     else:
-        blockidx = [batch_out, l1_n_out_inner_out, l1_m_outer_inner_out]
-    return batch_in, l1_m_outer_inner_in, l1_n_out_inner_in, blockidx
+        blockidx = [g_outer, batch_out, l1_n_out_inner_out, l1_m_outer_inner_out]
+    return batch_in, g_inner, l1_m_outer_inner_in, l1_n_out_inner_in, blockidx
 
 
 def _get_l0c_and_l1_axis(  # pylint: disable=R0914,R0913,W0613
-    sch, c_gm, l0c_factor, al1_parts, bl1_parts, num_batch, dynamic_para
+    sch, c_gm, l0c_factor, al1_parts, bl1_parts, num_batch, g_extend, dynamic_para
 ):
     """
     get l0c and l1 axis
@@ -1646,9 +1658,10 @@ def _get_l0c_and_l1_axis(  # pylint: disable=R0914,R0913,W0613
         return reorder_flag
 
     # split c_gm according to factor of loc and out_shape
-    l0c_n_outer, l0c_n_inner = sch[c_gm].split(c_gm.op.axis[1], l0c_factor[0])
+    g_outer, c_gm_inner = sch[c_gm].split(c_gm.op.axis[1], nparts=g_extend)
+    l0c_n_outer, l0c_n_inner = sch[c_gm].split(c_gm_inner, l0c_factor[0])
     l0c_m_outer, l0c_m_inner = sch[c_gm].split(c_gm.op.axis[2], l0c_factor[1])
-    sch[c_gm].reorder(l0c_n_outer, l0c_m_outer, l0c_n_inner, l0c_m_inner)
+    sch[c_gm].reorder(g_outer, c_gm.op.axis[0], l0c_n_outer, l0c_m_outer, l0c_n_inner, l0c_m_inner)
 
     # split c_gm according to factor of a_l1 and b_l1
     l1_m_outer_outer, l1_m_outer_inner = sch[c_gm].split(
@@ -1656,9 +1669,10 @@ def _get_l0c_and_l1_axis(  # pylint: disable=R0914,R0913,W0613
     )
     l1_n_outer_outer, l1_n_out_inner = sch[c_gm].split(l0c_n_outer, nparts=bl1_parts[1])
     _print_ir_conv("split gm by loc_factor and l1_parts", sch)
-    batch_in, l1_m_outer_inner_in, l1_n_out_inner_in, blockidx = _bind_multi_core(
+    batch_in, g_inner, l1_m_outer_inner_in, l1_n_out_inner_in, blockidx = _bind_multi_core(
         sch,
         c_gm,
+        g_outer,
         l1_n_outer_outer,
         l1_n_out_inner,
         l1_m_outer_outer,
@@ -1669,6 +1683,7 @@ def _get_l0c_and_l1_axis(  # pylint: disable=R0914,R0913,W0613
     # reorder al1 and bl1 axis according to double buffer
     batch_in_out_axis, batch_in_inner_axis = sch[c_gm].split(batch_in, factor=1)
 
+    # m or n reorder flag, if m_outer is smaller, reorder is true
     reorder_flag = False
     if not dynamic_para:
         reorder_flag = _get_reorder_flag(al1_parts, bl1_parts, reorder_flag)
@@ -1693,6 +1708,7 @@ def _get_l0c_and_l1_axis(  # pylint: disable=R0914,R0913,W0613
         l1_m_outer_outer,
         l1_n_out_inner_in,
         blockidx,
+        g_inner,
         overload_axis,
         overload_flag_gm,
         l0c_m_outer
@@ -1724,8 +1740,7 @@ def _get_l0a_and_l0b_axis(  # pylint: disable=R0913,R0914
     bl0_n_outer, bl0_n_inner = sch[c_l0c].split(new_c_col_axis[1], bl0_axis_factor[1])
     # for reduce axis, al0 and b_l0b should be the same
     k_outer_outer, k_outer_inner = sch[c_l0c].split(reduce_out, reduce_axis_factor)
-    _, batch_l0c_inner = sch[c_l0c].split(c_l0c.op.axis[0], 1)
-
+    _, batch_l0c_inner = sch[c_l0c].split(c_l0c.op.axis[1], 1)
     sch[c_l0c].reorder(
         k_outer_outer,
         bl0_n_outer,
@@ -1830,18 +1845,19 @@ def opti_schedule(
             # cub buffertile hw axis
             block_m = cce_params.CUBE_MKN[TENSOR_MAP.get("c_ub").dtype]["mac"][0]
             mm_coefficient_factor = undilate_l0c_m
-            moo_coefficient_unzero = _int_ceil_div(
-                _int_ceil_div(DIM_MAP["out_img_shape"][2], l0c_factor[1]), al1_parts[1]
+            moo_coefficient_unzero = int_ceil_div(
+                int_ceil_div(DIM_MAP["out_img_shape"][2], l0c_factor[1]), al1_parts[1]
             )
+
             moo_coefficient = 0 if al1_parts[1] == 1 else moo_coefficient_unzero
             moio_coefficient = (
                 0
                 if TILING["block_dim"][2] == 1
-                else _int_ceil_div(moo_coefficient_unzero, TILING["block_dim"][2])
+                else int_ceil_div(moo_coefficient_unzero, TILING["block_dim"][2])
             )
             moii_coefficient = (
                 0
-                if _int_ceil_div(moo_coefficient_unzero, TILING["block_dim"][2]) == 1
+                if int_ceil_div(moo_coefficient_unzero, TILING["block_dim"][2]) == 1
                 else 1
             )
             cub_buffertile_m_min = (
@@ -1859,27 +1875,40 @@ def opti_schedule(
         def _get_cub_buffertile_n_min():
             # cub buffertile cout axis
             no_coefficient = l0c_factor[0]
-            noo_coefficient_unzero = _int_ceil_div(
-                _int_ceil_div(DIM_MAP["out_img_shape"][1], l0c_factor[0]), bl1_parts[1]
+            noo_coefficient_unzero = int_ceil_div(
+                int_ceil_div(DIM_MAP["dx_6GD_shape"][2], l0c_factor[0]), bl1_parts[1]
             )
             noo_coefficient = 0 if bl1_parts[1] == 1 else noo_coefficient_unzero
             noio_coefficient = (
                 0
                 if TILING["block_dim"][1] == 1
-                else _int_ceil_div(noo_coefficient_unzero, TILING["block_dim"][1])
+                else int_ceil_div(noo_coefficient_unzero, TILING["block_dim"][1])
+            )
+            go_coefficient = (
+                0
+                if TILING["block_dim"][3] == 1
+                else int_ceil_div(DIM_MAP["dx_6GD_shape"][0], TILING["block_dim"][3])
+            )
+            gi_coefficient = (
+                0
+                if DIM_MAP["dx_6GD_shape"][0] == 1
+                else 1
             )
             noii_coefficient = (
                 0
-                if _int_ceil_div(noo_coefficient_unzero, TILING["block_dim"][1]) == 1
+                if int_ceil_div(noo_coefficient_unzero, TILING["block_dim"][1]) == 1
                 else 1
             )
             nio_coefficient = (
                 0
                 if l0c_ub_parts[0] == 1
-                else _int_ceil_div(l0c_factor[0], l0c_ub_parts[0])
+                else int_ceil_div(l0c_factor[0], l0c_ub_parts[0])
             )
             cub_buffertile_n_min = (
-                bl1_at_c_axis.var * noo_coefficient
+                (
+                go_coefficient * group_axis
+                + gi_coefficient * g_inner) * DIM_MAP["dx_6GD_shape"][2]
+                + bl1_at_c_axis.var * noo_coefficient
                 + noio_coefficient * noio_axis
                 + noii_coefficient * noii_axis.var
             ) * no_coefficient + nio_coefficient * l0c_n_inner_outer.var
@@ -1889,17 +1918,21 @@ def opti_schedule(
 
         # multi core and one core
         if isinstance(blockidx, list):
-            batcho_axis = blockidx[0]
-            noio_axis = blockidx[1]
-            moio_axis = blockidx[2]
+            group_axis = blockidx[0]
+            batcho_axis = blockidx[1]
+            noio_axis = blockidx[2]
+            moio_axis = blockidx[3]
         else:
+            group_axis = blockidx.var // (
+                    TILING["block_dim"][1] * TILING["block_dim"][2] * TILING["block_dim"][0]
+            )
             batcho_axis = blockidx.var // (
                 TILING["block_dim"][1] * TILING["block_dim"][2]
-            )
+            ) %  TILING["block_dim"][0]
             noio_axis = blockidx.var // TILING["block_dim"][2] % TILING["block_dim"][1]
             moio_axis = blockidx.var % TILING["block_dim"][2]
         # cub buffertile batch axis
-        batch_factor = _int_ceil_div(DIM_MAP["img_shape"][0], TILING["block_dim"][0])
+        batch_factor = int_ceil_div(DIM_MAP["img_shape"][0], TILING["block_dim"][0])
         batcho_coefficient = 0 if TILING["block_dim"][0] == 1 else batch_factor
         batchio_coefficient = 0 if batch_factor == 1 else 1
         batch_dim = [
@@ -2283,7 +2316,7 @@ def opti_schedule(
                 sch[a_l0a_before].emit_insn(
                     a_l0a_before.op.axis[0], "set_fmatrix", setfmatrix_dict
                 )
-                sch[a_l0a].emit_insn(a_l0a.op.axis[0], "im2col")
+                sch[a_l0a].emit_insn(a_l0a.op.axis[1], "im2col")
             else:
                 sch[a_l0a].emit_insn(a_l0a.op.axis[0], "dma_copy")
             if DeconvParam.get_para_map("write_select"):
@@ -2371,8 +2404,8 @@ def opti_schedule(
         if bias_ub_brc is not None:
             sch[bias_l0c].reused_by(c_add_bias, c_l0c)
             sch[c_add_bias].emit_insn(c_add_bias.op.axis[0], 'phony_insn')
-            sch[bias_l0c].split(bias_l0c.op.axis[2], BRC_STANDARD_BLOCK_SIZE)
-            sch[bias_l0c].emit_insn(bias_l0c.op.axis[1], 'dma_copy')
+            k_out, k_inner = sch[bias_l0c].split(bias_l0c.op.axis[3], BRC_STANDARD_BLOCK_SIZE)
+            sch[bias_l0c].emit_insn(k_out, 'dma_copy')
             sch[bias_ub].emit_insn(bias_ub.op.axis[0], 'dma_copy')
             sch[bias_ub_brc].emit_insn(bias_ub_brc.op.axis[0], 'vector_auto')
             mad_dict["init_bias"] = 1
@@ -2567,7 +2600,7 @@ def opti_schedule(
     al0_axis_factor, bl0_axis_factor, reduce_axis_factor = _get_mmad_factor()
     num_batch = DIM_MAP["img_shape"][0]
     _print_ir_conv("before split", sch)
-
+    g_extend = DIM_MAP[GroupDictKeys.g_extend]
     # split and get axis of l0c, al1, bl1
     (
         batch_in_out_axis,
@@ -2579,11 +2612,12 @@ def opti_schedule(
         tile_axis,
         noii_axis,
         blockidx,
+        g_inner,
         overload_axis,
         overload_flag_gm,
         l0c_m_outer
     ) = _get_l0c_and_l1_axis(
-        sch, c_gm, l0c_factor, al1_parts, bl1_parts, num_batch, dynamic_para
+        sch, c_gm, l0c_factor, al1_parts, bl1_parts, num_batch, g_extend, dynamic_para
     )
     al1_at_c_axis = batch_in_inner_axis
     bl1_at_c_axis = l1_n_outer_outer
@@ -2610,10 +2644,10 @@ def opti_schedule(
 
     # attach tensor of l0c
     new_c_col_axis = [
-        sch[c_l0c].op.axis[0],
         sch[c_l0c].op.axis[1],
         sch[c_l0c].op.axis[2],
-        sch[c_l0c].op.axis[3]
+        sch[c_l0c].op.axis[3],
+        sch[c_l0c].op.axis[4]
     ]
     sch[c_l0c].compute_at(sch[c_gm], c_slice_axis)
     if bias_l0c is not None:

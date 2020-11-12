@@ -61,7 +61,7 @@ Status SpatialTransformerDPass::StnHIndexFP16(const int32_t h, const int32_t w, 
     for (int32_t j = 0; j < w; ++j) {
       fp16_t t;
       t.val = 0;
-      float normnize = i * 1.0 / w * 2.0 - 1.0;
+      float normnize = i * 1.0 / h * 2.0 - 1.0;
       t = normnize;
       output1[i * w + j] = t.val;
     }
@@ -339,7 +339,7 @@ Status SpatialTransformerDPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   FUSION_PASS_MAKE_SHARED((stnPreOp = std::make_shared<ge::OpDesc>("stn_pre", "StnPre")), return INTERNAL_ERROR);
 
   FUSION_PASS_CHECK(SUCCESS != MakeStnPreLayer(stnPreOp, spatialTransformerDOpDesc, oriInAnchorPtr1 != nullptr),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "make stn_pre layer failed."), return FAILED);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "make stn_pre layer failed."), return NOT_CHANGED);
 
   stnPreNode = graph.AddNode(stnPreOp);
 

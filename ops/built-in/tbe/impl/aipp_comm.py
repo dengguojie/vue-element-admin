@@ -1743,7 +1743,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                 raise_runtime_error(cause_desc)
 
         if ('padding' in aipp_config and aipp_config.get('padding') == 1):
-            if cur_cce_product in ["Ascend310", "Ascend610", "Ascend710"]:
+            if cur_cce_product in ["Ascend310", "Ascend910", "Ascend610", "Ascend710"]:
                 if w > 1080:
                     cause_desc = "after padding, aipp output w[%d] should " \
                                  "be less than or eaqual to 1080" % w
@@ -1868,6 +1868,12 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                          "XRGB8888_U8, NC1HWC0DI_FP16, NC1HWC0DI_S8, " \
                          "RGB888_U8, YUV400_U8, current input format is %s" % \
                          aipp_config.get('input_format')
+            raise_runtime_error(cause_desc)
+
+    if cur_cce_product in ["Ascend910"]:
+        if aipp_config.get('input_format') not in ["YUV420SP_U8", "XRGB8888_U8", "RGB888_U8", "YUV400_U8"]:
+            cause_desc = "Ascend910 only support YUV420SP_U8, XRGB8888_U8, RGB888_U8, YUV400_U8, " \
+                         "current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 
     if cur_cce_product in ["Ascend610", "Ascend710"]:

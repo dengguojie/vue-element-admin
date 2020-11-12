@@ -19,7 +19,7 @@ corresponding schedule template for user's compute
 from enum import Enum, auto  # pylint: disable=E0611
 
 from te import tvm
-from te.platform import operation
+from te.lang.base import operation
 
 from . import Pattern
 from . import util
@@ -38,13 +38,13 @@ ELEWISE_COMPUTE = {
     "elewise_single_relu", "elewise_single_not", "elewise_single_sqrt",
     "elewise_single_rsqrt", "elewise_multiple_mla",
     "elewise_multiple_madd", "elewise_multiple_maddrelu",
+    "elewise_multiple_sel", "elewise_binary_scalar_axpy",
     "elewise_binary_cmpsel_gt", "elewise_binary_cmpsel_ge",
     "elewise_binary_cmpsel_lt", "elewise_binary_cmpsel_le",
     "elewise_binary_cmpsel_eq", "elewise_binary_cmpsel_ne",
     "elewise_binary_vcmpv_gt", "elewise_binary_vcmpv_ge",
     "elewise_binary_vcmpv_lt", "elewise_binary_vcmpv_le",
     "elewise_binary_vcmpv_eq", "elewise_binary_vcmpv_ne",
-    "elewise_multiple_sel",
 }
 
 CAST_COMPUTE = {

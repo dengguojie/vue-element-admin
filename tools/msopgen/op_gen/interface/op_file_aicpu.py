@@ -18,6 +18,9 @@ except (ImportError,) as import_error:
 
 
 class OpFileAiCpu(OPFile):
+    """
+    CLass for generate aicpu op files
+    """
     def generate_impl(self):
         """
         Function Description:
@@ -33,8 +36,9 @@ class OpFileAiCpu(OPFile):
     def _generate_cmake_lists(self):
         impl_dir = os.path.join(self.output_path, 'cpukernel')
         utils.make_dirs(impl_dir)
-        template_path = os.path.join(os.path.split(os.path.realpath(__file__))[
-                                         0], utils.OP_TEMPLATE_AICPU_PATH)
+        template_path = os.path.join(
+            os.path.split(os.path.realpath(__file__))[0],
+            utils.OP_TEMPLATE_AICPU_PATH)
         utils.copy_template(template_path, impl_dir, True)
 
     def _generate_impl_cc(self, op_info):

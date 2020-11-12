@@ -19,15 +19,7 @@ import te.lang.cce
 from te import tvm
 from te import platform as tbe_platform
 from te.utils import shape_util
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import check_shape
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import OPTION_OUTPUT
-from te.utils.op_utils import OPTION_ATTR_FLOAT
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import refine_shapes_for_broadcast
-from te.utils.op_utils import broadcast_shapes
+from te.utils import para_check
 from te.platform.fusion_manager import fusion_manager
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
@@ -371,7 +363,7 @@ def _infer_shape(format_pattern, x, y):
     shape_y = shape_util.scalar2tensor_one(shape_y)
 
     if format_pattern == 1:
-        ori_shape_x, shape_y, _ = broadcast_shapes(ori_shape_x, shape_y, param_name_input1='x',
+        ori_shape_x, shape_y, _ = shape_util.broadcast_shapes(ori_shape_x, shape_y, param_name_input1='x',
                                                    param_name_input2='y')
         if shape_y[-2] == 1 and shape_y[-1] == ori_shape_x[-1]:
             shape_y.append(1)
@@ -390,7 +382,7 @@ def _infer_shape(format_pattern, x, y):
             shape_y.append(1)
 
     elif format_pattern == 2:
-        shape_x, ori_shape_y, _ = broadcast_shapes(shape_x, ori_shape_y, param_name_input1='x',
+        shape_x, ori_shape_y, _ = shape_util.broadcast_shapes(shape_x, ori_shape_y, param_name_input1='x',
                                                    param_name_input2='y')
         if shape_x[-2] == 1 and shape_x[-1] == ori_shape_y[-1]:
             shape_x.append(1)
@@ -442,14 +434,14 @@ def axpy_compute(x1, x2, y, alpha, kernel_name="axpy"):
     neg_1_axis_flag = 0
     if shape_x != shape_y:
         # if shape not equal, then apply broadcast.
-        shape_x, shape_y, shape_max = broadcast_shapes(shape_x, shape_y, param_name_input1='x1',
+        shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y, param_name_input1='x1',
                                                        param_name_input2='x2')
 
         for i in range(len(shape_x) - 1):
             if shape_x[i] != shape_y[i]:
                 neg_1_axis_flag = 1
                 break
-        check_shape(shape_max, param_name="x1")
+        para_check.check_shape(shape_max, param_name="x1")
         x1 = te.lang.cce.broadcast(x1, shape_max)
         x2 = te.lang.cce.broadcast(x2, shape_max)
 
@@ -505,8 +497,8 @@ def axpy_compute(x1, x2, y, alpha, kernel_name="axpy"):
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, OPTION_OUTPUT,
-                 OPTION_ATTR_FLOAT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_OUTPUT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def axpy(x1, x2, y, alpha, kernel_name="axpy"):
     """
     calculating data
@@ -533,29 +525,29 @@ def axpy(x1, x2, y, alpha, kernel_name="axpy"):
 
     # check shape
     shape_x1 = shape_util.scalar2tensor_one(shape_x1)
-    check_shape(shape_x1, param_name="shape_x1")
+    para_check.check_shape(shape_x1, param_name="shape_x1")
 
     shape_x2 = shape_util.scalar2tensor_one(shape_x2)
-    check_shape(shape_x2, param_name="shape_x2")
+    para_check.check_shape(shape_x2, param_name="shape_x2")
 
     # check dtype
     dtype_list = ("float16", "float32", "int32")
 
     dtype_x1 = x1.get("dtype").lower()
-    check_dtype(dtype_x1, dtype_list)
+    para_check.check_dtype(dtype_x1, dtype_list)
     dtype_x2 = x2.get("dtype").lower()
-    check_dtype(dtype_x2, dtype_list)
+    para_check.check_dtype(dtype_x2, dtype_list)
 
     # produce shapes
-    shape_x1, shape_x2, shape_max = broadcast_shapes(shape_x1, shape_x2, param_name_input1='x1',
+    shape_x1, shape_x2, shape_max = shape_util.broadcast_shapes(shape_x1, shape_x2, param_name_input1='x1',
                                                      param_name_input2='x2')
     if shape_x1[-1] == 1 and shape_x2[-1] == 1 and shape_max[-1] == 1:
         shape_x1 = shape_x1 if len(shape_x1) == 1 else shape_x1[:-1]
         shape_x2 = shape_x2 if len(shape_x2) == 1 else shape_x2[:-1]
         shape_max = shape_max if len(shape_max) == 1 else shape_max[:-1]
-    check_shape(shape_max, param_name="shape_max")
+    para_check.check_shape(shape_max, param_name="shape_max")
 
-    shape_x1, shape_x2 = refine_shapes_for_broadcast(shape_x1, shape_x2)
+    shape_x1, shape_x2 = shape_util.refine_shapes_for_broadcast(shape_x1, shape_x2)
 
     data_input_x1 = tvm.placeholder(shape_x1, name="data_input_x1", dtype=dtype_x1)
     data_input_x2 = tvm.placeholder(shape_x2, name="data_input_x2", dtype=dtype_x2)

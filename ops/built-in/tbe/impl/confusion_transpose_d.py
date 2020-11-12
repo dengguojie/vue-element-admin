@@ -20,6 +20,9 @@ from te.utils import para_check
 from te.utils import shape_util
 from impl.transpose_d import transpose_d
 from impl.util import util_select_op_base
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 SIZE_SIXTEEN = 16
 
@@ -525,6 +528,120 @@ def op_select_format(x, y, perm, shape, transpose_first,
     param_list = [input0, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
     return param_dynamic_in_json
+
+
+def get_op_support_info(x, y, perm, shape, transpose_first,
+                        kernel_name="confusion_transpose_d"):
+    format_x = x.get("format").upper()
+    shape_x = list(x.get("shape"))
+    perm = list(perm)
+    if format_x == "FRACTAL_NZ":
+        nd_shape = []
+        nd_shape += \
+            [shape_x[i] for _, i in enumerate(range(len(shape_x)-4))]
+        nd_shape += [shape_x[-3] * shape_x[-2]]
+        nd_shape += [shape_x[-1] * shape_x[-4]]
+        # transpose_reshape
+        if transpose_first:
+            transpose_in = nd_shape
+            reshape_in = _shape_after_transpose(transpose_in, perm)
+            final_shape, final_perm = _transpose_reshape(perm, reshape_in, shape)
+        # reshape_transpose
+        else:
+            reshape_in = nd_shape
+            final_shape, final_perm = _reshape_transpose(perm, reshape_in, shape)
+        x["shape"] = final_shape
+        perm = final_perm
+        if perm == [0, 2, 1, 3]:
+            axis_split_matrix=[
+                [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+                [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [2]])]
+            ]
+        else:
+            axis_split_matrix = None
+        axis_reduce_list = None
+    elif format_x == "ND":
+        if perm == [0, 3, 4, 1, 2] or perm == [0, 2, 3, 1]:
+            axis_split_matrix=[[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
+        elif perm == [3, 2, 0, 1]:
+            if shape_x[3] == 1:
+                axis_split_matrix=[[SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])]]
+            elif shape_x[0] == 1 and shape_x[2] == 1:
+                axis_split_matrix=[
+                    [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [2]])],
+                    [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [1]])]
+                ]
+            else:
+                axis_split_matrix=[
+                    [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [3]])],
+                    [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [2]])],
+                    [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [0]])],
+                    [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [1]])]
+                ]
+        elif perm == [0, 3, 1, 2, 4]:
+            axis_split_matrix=[
+                [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+                [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [1]])],
+                [SplitInput([0, [4], [-1], [-1]]), SplitOutput([0, [3]])]
+            ]
+        elif (list(perm) == [1, 2, 3, 0] and shape_x[1] == 1 and shape_x[3] == 1) or \
+                (list(perm) == [3, 2, 1, 0] and shape_x[1] == 1 and shape_x[3] == 1):
+            axis_split_matrix=[
+                [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [2]])],
+                [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])]
+            ]
+        elif (list(perm) == [3, 0, 2, 1] and shape_x[0] == 1 and shape_x[2] == 1):
+            axis_split_matrix=[
+                [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [2]])],
+                [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [1]])]
+            ]
+        elif perm == [0, 2, 1]:
+            if shape_x[1] == 1 or shape_x[2] == 1:
+                axis_split_matrix=[[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
+            else:
+                axis_split_matrix=[
+                    [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+                    [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [2]])],
+                    [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])]
+                ]
+        elif perm == [1, 0, 2]:
+            if shape_x[0] == 1 or shape_x[1] == 1:
+                axis_split_matrix=[[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
+            else:
+                axis_split_matrix=[
+                    [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [2]])],
+                    [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]])],
+                    [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [3]])]
+                ]
+        elif perm == [0, 3, 1, 2]:
+            axis_split_matrix=[
+                [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [2]])],
+                [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [1]])]
+            ]
+        elif perm == [0, 1, 3, 2]:
+            axis_split_matrix=[
+                [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [2]])],
+                [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [1]])]
+            ]
+        elif perm == [0, 1, 2, 4, 3]:
+            axis_split_matrix=[
+                [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [2]])],
+                [SplitInput([0, [4], [-1], [-1]]), SplitOutput([0, [1]])]
+            ]
+        elif perm == [2, 0, 1]:
+            axis_split_matrix=[[SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])]]
+        elif perm == [0, 2, 3, 4, 1]:
+            axis_split_matrix=[[SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [2]])]]
+        elif perm == [0, 4, 1, 2, 3]:
+            axis_split_matrix=[[SplitInput([0, [4], [-1], [-1]]), SplitOutput([0, [1]])]]
+        else:
+            axis_split_matrix = None
+        axis_reduce_list = None
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 # pylint: disable=too-many-boolean-expressions

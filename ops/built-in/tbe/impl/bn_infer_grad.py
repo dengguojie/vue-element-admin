@@ -20,7 +20,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
-from te.utils import error_manager
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
@@ -104,25 +104,25 @@ def _check_shape(shape_grads, shape_batch_variance):
 
     if len(shape_grads) != 5:
         error_detail = "This operator can only support 5D"
-        error_manager.error_manager_vector.raise_err_input_shape_invalid("bn_infer_grad", "grads", error_detail)
+        error_manager_vector.raise_err_input_shape_invalid("bn_infer_grad", "grads", error_detail)
     if dim_c0 != 16:
         error_detail = "shape_grads last dim must be 16"
-        error_manager.error_manager_vector.raise_err_input_shape_invalid("bn_infer_grad", "grads", error_detail)
+        error_manager_vector.raise_err_input_shape_invalid("bn_infer_grad", "grads", error_detail)
 
     if len(shape_batch_variance) != 5:
         error_detail = "This operator can only support 5D"
-        error_manager.error_manager_vector.raise_err_input_shape_invalid("bn_infer_grad", "batch_variance",
+        error_manager_vector.raise_err_input_shape_invalid("bn_infer_grad", "batch_variance",
                                                                          error_detail)
 
     if shape_batch_variance[0] != 1 or shape_batch_variance[2] != 1 \
        or shape_batch_variance[3] != 1:
         error_detail = "Dimensions except Dimension C must be one for shape_batch_mean"
-        error_manager.error_manager_vector.raise_err_input_shape_invalid("bn_infer_grad", "batch_variance",
+        error_manager_vector.raise_err_input_shape_invalid("bn_infer_grad", "batch_variance",
                                                                          error_detail)
 
     if shape_batch_variance[1] != dim_c1 or shape_batch_variance[4] != dim_c0:
         batch_variance_rule = "Dimension C of grads and batch_variance must be equal"
-        error_manager.error_manager_vector.raise_err_check_params_rules("bn_infer_grad",
+        error_manager_vector.raise_err_check_params_rules("bn_infer_grad",
                                                                         batch_variance_rule, "batch_variance",
                                                                         shape_batch_variance[1] *
                                                                         shape_batch_variance[4])

@@ -12,7 +12,9 @@ try:
     import os
     import sys
     import itertools
-    from interface import utils
+    from . import utils
+    from . import st_report
+    from . import op_st_case_info
 except ImportError as import_error:
     sys.exit("[case_design] Unable to import module: %s." % str(import_error))
 
@@ -35,7 +37,7 @@ class CaseDesign:
     the class for design test case.
     """
 
-    def __init__(self, json_path_list, case_name_list):
+    def __init__(self, json_path_list, case_name_list, report):
         self.json_path_list = json_path_list.split(',')
         if case_name_list == 'all':
             self.case_name_list = None
@@ -44,6 +46,7 @@ class CaseDesign:
         self.current_json_path = ''
         self.case_name_to_json_file_map = {}
         self.multi = False
+        self.report = report
 
     def check_argument_valid(self):
         """
@@ -328,8 +331,8 @@ class CaseDesign:
             cross_list = [list(x) for x in itertools.product(*cross_list)]
             case_list = []
             for case in cross_list:
-                cur_params = {cross_key_list[x]: case[x] for x in
-                              range(len(cross_key_list))}
+                cur_params = {cross_key_list[x]: case[x] for x, _ in
+                              enumerate(cross_key_list)}
                 case_list.append(cur_params)
             total_case_list.append(case_list)
         return total_case_list
@@ -391,6 +394,7 @@ class CaseDesign:
                     prefix += 'sub_case_'
                 else:
                     prefix += 'case_'
+                self._check_expect_output_param(json_obj)
                 for index in range(count):
                     case = {OP: json_obj[OP], INPUT_DESC: [], OUTPUT_DESC: [],
                             'case_name': prefix + '%03d' % case_idx}
@@ -403,11 +407,43 @@ class CaseDesign:
                         output_index = index % len(output_case_list)
                     for output_case in output_case_list:
                         case[OUTPUT_DESC].append(output_case[output_index])
+                    self._parse_expect_output_param(json_obj, case)
                     case_idx += 1
                     total_case_in_file.append(case)
+                    # deal with report
+                    case_info = op_st_case_info.OpSTCase(case['case_name'],
+                                                         case)
+                    st_case_trace = op_st_case_info.OpSTCaseTrace(case_info)
+                    case_rpt = st_report.OpSTCaseReport(st_case_trace)
+                    self.report.add_case_report(case_rpt)
                 utils.print_info_log('Create %d sub test cases for %s.'
                                      % (count, json_obj[CASE_NAME]))
         return total_case_in_file
+
+    @staticmethod
+    def _check_expect_output_param(json_obj):
+        expect_str = json_obj.get("calc_expect_func_file")
+        if not expect_str:
+            expect_str = json_obj.get("calc_expect_func")
+        if not expect_str:
+            utils.print_warn_log("There is no expect output function in "
+                                 "the case json, if no need to compare "
+                                 "output data, ignore.")
+
+    @staticmethod
+    def _parse_expect_output_param(json_obj, case):
+        expect_str = json_obj.get("calc_expect_func_file")
+        if expect_str:
+            if ":" in expect_str:
+                pyfile, function = expect_str.split(":")
+            else:
+                pyfile = expect_str
+                function = json_obj[OP]
+            utils.check_path_valid(pyfile)
+            case.update({"calc_expect_func_file": pyfile})
+            case.update({"calc_expect_func_file_func": function})
+        elif json_obj.get("calc_expect_func"):
+            case.update({"calc_expect_func": json_obj.get("calc_expect_func")})
 
     def design(self):
         """

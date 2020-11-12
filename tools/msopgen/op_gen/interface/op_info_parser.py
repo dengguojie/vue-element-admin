@@ -28,8 +28,7 @@ class OpInfoParser:
 
     @staticmethod
     def _create_op_info(argument: ArgParser):
-        if argument.input_path.endswith(".xlsx") or argument.input_path.endswith(
-                ".xls"):
+        if argument.input_path.endswith(".xlsx") \
+                or argument.input_path.endswith(".xls"):
             return IROpInfo(argument)
-        else:
-            return TFOpInfo(argument.input_path)
+        return TFOpInfo(argument.input_path)

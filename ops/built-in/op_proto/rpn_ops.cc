@@ -44,18 +44,24 @@ IMPLEMT_COMMON_INFERFUNC(NMSWithMaskShapeAndType) {
 
   out_box_desc.SetShape(in_desc.GetShape());
   out_box_desc.SetDataType(in_desc.GetDataType());
-  (void)op.UpdateOutputDesc("selected_boxes", out_box_desc);
+  if (op.UpdateOutputDesc("selected_boxes", out_box_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    return GRAPH_FAILED;
+  }
 
   std::vector<int64_t> dims_in = in_desc.GetShape().GetDims();
-
-  out_idx_desc.SetShape(ge::Shape(std::vector<int64_t>{dims_in.front()}));
+  out_idx_desc.SetShape(Shape(std::vector<int64_t>{dims_in.front()}));
   out_idx_desc.SetDataType(DT_INT32);
-  (void)op.UpdateOutputDesc("selected_idx", out_idx_desc);
-
-  out_mask_desc.SetShape(ge::Shape(std::vector<int64_t>{dims_in.front()}));
+  if (op.UpdateOutputDesc("selected_idx", out_idx_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    return GRAPH_FAILED;
+  }
+  out_mask_desc.SetShape(Shape(std::vector<int64_t>{dims_in.front()}));
   out_mask_desc.SetDataType(DT_UINT8);
-  (void)op.UpdateOutputDesc("selected_mask", out_mask_desc);
-
+  if (op.UpdateOutputDesc("selected_mask", out_mask_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 

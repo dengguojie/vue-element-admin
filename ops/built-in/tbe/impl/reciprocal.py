@@ -23,6 +23,7 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
+from impl.util import util_select_op_base
 
 SHAPE_SIZE_LIMIT = 2147483648  # shape limit
 
@@ -32,17 +33,28 @@ def op_select_format(input_x, output_y, kernel_name="reciprocal"):
     """
     Get support format according to input_x
     """
-    shape = input_x.get("shape")
+    shape = input_x.get("ori_shape")
     shape_len = len(shape)
     format = input_x.get("ori_format")
     format_4d_list = ["NCHW", "NHWC", "HWCN"]
+    format_5d_list = ["NDHWC", "DHWCN", "NCDHW"]
+    dtype_list = ["float", "float16"]
     support_format = "ND,ND,NCHW,NCHW,NHWC,NHWC,HWCN,HWCN"
-    ini_dict = {"input0": {"name": "x", "format": "ND",
-                           "dtype": "float,float16"},
-                "output0": {"name": "y", "format": "ND",
-                            "dtype": "float,float16"}}
+    support_format = support_format.split(',')
 
-    # whether support format NC1HWC0、FRACTAL_Z、C1HWNCoC0
+    if (len(shape) == 5 and format in format_5d_list):
+        c_dim = shape[format.index("C")]
+        n_dim = shape[format.index("N")]
+
+    # NDC1HWC0 FRACTAL_Z_3D
+    if len(shape) == 5 and format in ['NDHWC']:
+        if c_dim % 16 == 0:
+            support_format.append("NDC1HWC0")
+    if len(shape) == 5 and format in format_5d_list:
+        if c_dim % 16 == 0 and n_dim % 16 == 0:
+            support_format.append("FRACTAL_Z_3D")
+
+    # whether support format NC1HWC0 FRACTAL_Z C1HWNCoC0
     if shape_len == 4 and format in format_4d_list:
         if format == "NCHW":
             n_dim = shape[0]
@@ -55,20 +67,26 @@ def op_select_format(input_x, output_y, kernel_name="reciprocal"):
             c_dim = shape[2]
         # whether support format NC1HWC0
         if c_dim % 16 == 0:
-            support_format += ("," + "NC1HWC0") * 2
+            support_format.append("NC1HWC0")
         # whether support format FRACTAL_Z and C1HWNCoC0
         if n_dim % 16 == 0 and c_dim % 16 == 0:
-            support_format += ("," + "FRACTAL_Z") * 2
-            support_format += ("," + "C1HWNCoC0") * 2
+            support_format.append("FRACTAL_Z")
+            support_format.append("C1HWNCoC0")
 
-    ini_dict["input0"]["format"] = support_format
-    ini_dict["input0"]["dtype"] = "float,float16," *\
-            (len(support_format.split(",")) // 2 - 1) + "float,float16"
-    ini_dict["output0"]["format"] = support_format
-    ini_dict["output0"]["dtype"] = "float,float16," *\
-            (len(support_format.split(",")) // 2 - 1) + "float,float16"
+    dtype_total = []
+    for dtype in dtype_list:
+        dtype_total = dtype_total + [dtype] * len(support_format)
+    format_list = support_format * len(dtype_list)
+    format_list_input = format_list
+    format_list_output = format_list
+    input0 = util_select_op_base.gen_param(classify="input0", name="x", datatype=",".join(dtype_total),
+                                           format=",".join(format_list_input))
+    output0 = util_select_op_base.gen_param(classify="output0", name="y", datatype=",".join(dtype_total),
+                                            format=",".join(format_list_output))
 
-    return json.dumps(ini_dict, indent=4)
+    param_list = [input0, output0]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+    return param_dynamic_in_json
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("reciprocal")
@@ -130,3 +148,4 @@ def reciprocal(input_x, output_y, kernel_name="reciprocal"):
               "tensor_list": [data, res]}
 
     tbe.cce_build_code(sch, config)
+

@@ -28,15 +28,13 @@ class OpFileGenerator:
     @staticmethod
     def _create_op_file(argument: ArgParser):
         if argument.core_type == utils.CoreType.AICORE:
+            utils.print_info_log("Start to generator aicore operator files.")
             return OpFileAiCore(argument)
-        elif argument.core_type == utils.CoreType.AICPU:
-            utils.print_info_log("Start to generator aicpu operator files.")
-            return OpFileAiCpu(argument)
-        else:
-            raise utils.MsOpGenException(
-                utils.MS_OP_GEN_UNKNOWN_CORE_TYPE_ERROR)
+        utils.print_info_log("Start to generator aicpu operator files.")
+        return OpFileAiCpu(argument)
 
     def generate(self):
+        """
+        generate op files
+        """
         self.op_file.generate()
-
-

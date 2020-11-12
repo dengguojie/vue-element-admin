@@ -26,10 +26,29 @@ from te import tvm
 from impl import aipp_comm
 from impl import aipp_resize_padding
 from impl import aipp_dynamic
+from impl.util import util_select_op_base
 
 
 # pylint: disable=invalid-name,unused-argument,too-many-statements
 # pylint: disable=too-many-arguments,too-many-locals,
+
+
+def get_op_support_info(input_data, input_dync_param, output_data, aipp_config_json, kernel_name="aipp"):
+    format_images = input_data.get("format")
+    if format_images == "NCHW" or format_images == "NHWC" or format_images == "NC1HWC0_C04":
+        axis_split_list = []
+        split_0 = [util_select_op_base.SplitInput([0, [0], [-1], [-1]]),
+                   util_select_op_base.SplitOutput([0, [0]])]
+        axis_split_list.append(split_0)
+        axis_reduce_list = None
+
+    else:
+        axis_split_list = None
+        axis_reduce_list = None
+
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_list, axis_reduce_list, 0, 0)
+
+    return op_cal_info_in_json
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("aipp")
@@ -213,7 +232,7 @@ def aipp_compute_single(input_tensor, input_shape, input_format,
 
         cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
 
-        if cur_cce_product not in ["Ascend310", "Ascend610", "Ascend710",
+        if cur_cce_product not in ["Ascend310", "Ascend910", "Ascend610", "Ascend710",
                                    "Ascend615", "Hi3796CV300ES", "Hi3796CV300CS"]:
             cause_desc = "Only support is Ascend310,Ascend610,Ascend710,Ascend615," \
                         "Hi3796CV300ES,Hi3796CV300CS. " \
@@ -908,7 +927,7 @@ def aipp(input_data, input_dync_param, output_data, aipp_config_json, kernel_nam
         para_check.check_shape(input_dync_param_shape, param_name="input_dync_param")
 
         para_check.check_dtype(input_dync_param_dtype, ["uint8"], param_name="input_dync_param_dtype")
-        if cur_cce_product not in ["Ascend310", "Ascend610", "Ascend710", "Ascend615",
+        if cur_cce_product not in ["Ascend310", "Ascend910", "Ascend610", "Ascend710", "Ascend615",
                                    "Hi3796CV300ES", "Hi3796CV300CS"]:
             cause_desc = "dynamic aipp only support " \
                          "Ascend310, Ascend610, Ascend710, Ascend615, " \
@@ -1006,7 +1025,7 @@ def aipp(input_data, input_dync_param, output_data, aipp_config_json, kernel_nam
         if ("resize" in aipp_config and aipp_config.get("resize") == 1) or \
            ("padding" in aipp_config and aipp_config.get("padding") == 1) or \
            aipp_config.get("input_format") in ["RGB16", "RGB20", "RGB24",
-                                               "RGB8_IR", "RGB1_IR",
+                                               "RGB8_IR", "RGB16_IR",
                                                "RGB24_IR"]:
             tbe_platform.fusion_manager.fusion_manager.set_current_op_pattern("Opaque")
         else:

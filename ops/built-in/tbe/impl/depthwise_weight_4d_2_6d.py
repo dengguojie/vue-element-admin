@@ -16,7 +16,7 @@
 Schedule for cce depthwise_weight_4d_2_6d
 """
 import te.platform as tbe_platform
-from te.utils import check_para
+from te.utils import para_check
 from te.utils.error_manager import error_manager_util
 from te import tvm
 
@@ -621,11 +621,11 @@ class _Four2SixParam:
 
 
 # pylint: disable=locally-disabled, invalid-name, unused-argument
-@check_para.check_op_params(check_para.REQUIRED_INPUT,
-                            check_para.REQUIRED_OUTPUT,
-                            check_para.REQUIRED_ATTR_STR,
-                            check_para.REQUIRED_ATTR_STR,
-                            check_para.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_STR,
+                            para_check.REQUIRED_ATTR_STR,
+                            para_check.KERNEL_NAME)
 def depthwise_weight_4d_2_6d(x,
                              y,
                              src_format,
@@ -676,10 +676,10 @@ def depthwise_weight_4d_2_6d(x,
 
     input_shape = x.get("shape")
     dtype = x.get("dtype")
-    check_para.check_shape(input_shape, param_name="x")
+    para_check.check_shape(input_shape, param_name="x")
     check_list = ("float16", "float32", "int32", "uint16")
     dtype = dtype.lower()
-    check_para.check_dtype(dtype, check_list, param_name="x")
+    para_check.check_dtype(dtype, check_list, param_name="x")
 
     input_data = tvm.placeholder(input_shape, name="input_data", dtype=dtype)
     four2six = _Four2SixParam(input_shape)

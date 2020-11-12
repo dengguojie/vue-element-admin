@@ -17,3 +17,9 @@ set(LIBRARY_OUTPUT_PATH ${CAFFE_PLUGIN_TARGET_OUT_DIR})
 
 include_directories(./proto/caffe)
 add_library(${CAFFE_PLUGIN_TARGET} SHARED ${SRCS})
+
+target_compile_definitions(${CAFFE_PLUGIN_TARGET} PRIVATE
+        google=ascend_private
+        )
+
+target_link_libraries(${CAFFE_PLUGIN_TARGET} ${ASCEND_INC}/../lib64/libgraph.so)

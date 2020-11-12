@@ -13,41 +13,8 @@
 # limitations under the License.
 # ============================================================================
 
-set(_ut_proto_files
-  ops_test/max_pool_v3/test_max_pool_v3_proto.cpp
-)
+# testcases for op_proto
+add_subdirectory(ops_test)
 
-add_executable(ops_cpp_proto_utest
-  ${_ut_proto_files}
-)
-
-target_include_directories(ops_cpp_proto_utest PRIVATE
-  ${CANN_ROOT}/ops/common/inc
-  ${CANN_ROOT}/ops/built-in/op_proto
-  ${CANN_ROOT}/inc
-  ${CANN_ROOT}/inc/external
-  ${CANN_ROOT}/third_party/fwkacllib/inc
-  ${CANN_ROOT}/third_party/metadef/inc
-  ${CANN_ROOT}/third_party/metadef/inc/external
-  ${CANN_ROOT}/third_party/metadef/inc/external/graph
-  ${GTEST_INCLUDE}
-)
-
-target_link_libraries(ops_cpp_proto_utest PRIVATE
-  opsproto
-  ${graph}
-  ${regiser}
-  ${slog}
-  ${error_mangager}
-  ${protobuf}
-  c_sec
-  gtest
-  gtest_main
-)
-
-set(OP_PROTO_UTEST "${INSTALL_PATH}/tests/ops/ut/op_proto")
-cann_install(
-  TARGET      ops_cpp_proto_utest
-  FILES       $<TARGET_FILE:ops_cpp_proto_utest>
-  DESTINATION "${OP_PROTO_UTEST}"
-)
+# testcases for op_tiling
+add_subdirectory(op_tiling_test)

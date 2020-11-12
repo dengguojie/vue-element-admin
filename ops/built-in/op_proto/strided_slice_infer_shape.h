@@ -24,6 +24,8 @@
 
 #include <vector>
 #include <string>
+#include "../op_proto/util/op_common_util.h"
+
 
 constexpr int32_t kStridedSliceNewAxis = -2;
 
@@ -83,6 +85,25 @@ struct StridedSliceParams {
   uint64_t ellipsis_mask;
   uint64_t new_axis_mask;
   uint64_t shrink_axis_mask;
+  bool begin_valid;
+  bool end_valid;
+  bool stride_valid;
+  std::string to_string() const {
+    std::string result = "input_shape:" + ops::to_string(input_shape);
+    result += " begin:" + ops::to_string(begin);
+    result += " end:" + ops::to_string(end);
+    result += " strides:" + ops::to_string(strides);
+    result += " ranges:" + ops::to_string(ranges);
+    result += " begin_mask:" + std::to_string(begin_mask);
+    result += " end_mask:" + std::to_string(end_mask);
+    result += " ellipsis_mask:" + std::to_string(ellipsis_mask);
+    result += " new_axis_mask:" + std::to_string(new_axis_mask);
+    result += " shrink_axis_mask:" + std::to_string(shrink_axis_mask);
+    result += " begin_valid:" + std::to_string(begin_valid);
+    result += " end_valid:" + std::to_string(end_valid);
+    result += " stride_valid:" + std::to_string(stride_valid);
+    return result;
+  }
 };
 
 static inline uint64_t bit1value(int i) {
@@ -159,10 +180,123 @@ static bool StridedSliceBuildDenseSpec(std::string op_name,
   return true;
 }
 
+static std::pair<int64_t, int64_t> CalcRange(const std::vector<int64_t> &shape,
+                                             const std::vector<int64_t> &begin,
+                                             const std::vector<int64_t> &end,
+                                             const std::vector<int64_t> &strides,
+                                             const StridedSliceParams &params,
+                                             const std::array<uint64_t, 2>& masks_i,
+                                             int i) {
+  const auto ranges = params.ranges;
+  size_t index = static_cast<size_t>(i);
+  if (index >= shape.size() || index >= ranges.size()) {
+    return {1, -1};
+  }
+
+  if (shape[index] >= 0) {
+    return {shape[index], shape[index]};
+  }
+
+  const auto shape_i = shape[index];
+  auto begin_i = begin[index];
+  auto end_i = end[index];
+  auto stride_i = strides[index];
+  const auto& range_i = ranges[index];
+  auto get_output_interval = [shape_i, &begin_i, &end_i, &stride_i, masks_i](int64_t interval) -> int64_t {
+    const std::array<int64_t, 2> valid_range = {
+        {stride_i > 0 ? 0 : -1, stride_i > 0 ? interval : interval - 1}};
+    auto canonical = [stride_i, interval, masks_i, valid_range](int64_t x, int c) ->int64_t {
+      if (masks_i[c]) {
+        return stride_i > 0 ? valid_range[c] : valid_range[static_cast<uint64_t>(c + 1) & static_cast<uint64_t>(1)];
+      } else {
+        int64_t x_fwd = x < 0 ? interval + x : x;  // make negative indices positive
+        return x_fwd < valid_range[0]
+               ? valid_range[0]
+               : std::min(x_fwd, valid_range[1]);
+      }
+    };
+
+    auto left = canonical(begin_i, 0);
+    auto end = canonical(end_i, 1);
+    auto output_interval = end - left;
+    if ((output_interval < 0) != (stride_i < 0)) {
+      return 0;
+    }
+
+    return output_interval / stride_i + (output_interval % stride_i != 0 ? 1 : 0);
+  };
+
+  int64_t range_left = get_output_interval(range_i.first);
+
+  bool unknown_begin_i = !params.begin_valid && masks_i[0] == 0;
+  if (unknown_begin_i) {
+    range_left = 1;
+    begin_i = 0;
+  }
+
+  bool unknown_end_i = !params.end_valid && masks_i[1] == 0;
+  if (unknown_end_i) {
+    range_left = 1;
+    end_i = range_i.second;
+  }
+
+  if (!params.stride_valid) {
+    range_left = 1;
+    stride_i = 1;
+  }
+
+  int64_t range_right = -1;
+  if (range_i.second != -1) {
+    range_right = get_output_interval(range_i.second);
+  } else {
+    if (masks_i[0] != 0) {
+      begin_i = 0;
+    }
+
+    if (masks_i[1] != 0) {
+      end_i = -1;
+    }
+
+    if ((begin_i < 0) == (end_i < 0)) {
+      range_right = get_output_interval(std::max(std::abs(end_i), std::abs(begin_i)));
+    } else if (stride_i > 0) {
+      if (begin_i < 0) {
+        // stride_i > 0, range_i.second ==-1, begin_i < 0, end_i >= 0
+        range_left = 1;
+        range_right = get_output_interval(std::min(std::abs(end_i), std::abs(begin_i)));
+      } else {
+        // stride_i > 0, range_i.second ==-1, begin_i >= 0, end_i < 0
+        range_right = -1;
+      }
+    } else if (stride_i < 0) {
+      if (begin_i >= 0) {
+        // stride_i < 0, range_i.second ==-1, begin_i >= 0, end_i < 0
+        range_right = range_left;
+        range_left = 1;
+      } else {
+        // stride_i < 0, range_i.second ==-1, begin_i < 0, end_i >= 0
+        range_right = -1;
+      }
+    }
+  }
+
+  if (range_left == 0) {
+    range_left = 1;
+  }
+
+  if (range_right == 0) {
+    range_right = 1;
+  }
+
+  return {static_cast<int64_t>(std::min(static_cast<uint64_t>(range_left), static_cast<uint64_t>(range_right))),
+          static_cast<int64_t>(std::max(static_cast<uint64_t>(range_left), static_cast<uint64_t>(range_right)))};
+}
+
 static bool StridedSliceCommonInferShape(std::string op_name,
                                          StridedSliceParams &params,
                                          std::vector<int64_t> &output_shape,
                                          std::vector<std::pair<int64_t, int64_t>> &output_ranges) {
+  OP_LOGD(op_name.c_str(), "input params:%s.", params.to_string().c_str());
   // Use bit compares to ensure ellipsis_mask is 0 or a power of 2
   // i.e. there exists only no more than one ellipsis
   auto &ellipsis_mask = params.ellipsis_mask;
@@ -179,7 +313,6 @@ static bool StridedSliceCommonInferShape(std::string op_name,
   auto &new_axis_mask = params.new_axis_mask;
   auto &shrink_axis_mask = params.shrink_axis_mask;
   auto &input_shape = params.input_shape;
-  auto &ranges = params.ranges;
 
   // Step 1: Account for ellipsis and new axis
   //
@@ -231,8 +364,8 @@ static bool StridedSliceCommonInferShape(std::string op_name,
                                       strides};
 
   // make sure begin and end always valid (has values)
-  dense_spec.begin_valid = true;
-  dense_spec.end_valid = true;
+  dense_spec.begin_valid = params.begin_valid;
+  dense_spec.end_valid = params.end_valid;
 
   if (!StridedSliceBuildDenseSpec(op_name, sparse_spec, &dense_spec)) {
     return false;
@@ -251,74 +384,6 @@ static bool StridedSliceCommonInferShape(std::string op_name,
   vector<int64_t> processing_end;
   vector<int64_t> processing_strides;
   vector<std::pair<int64_t, int64_t>> processing_ranges;
-  auto calc_range = [&ranges, &input_shape, &begin, &end, &strides](int i) {
-    size_t index = static_cast<size_t>(i);
-
-    if (index > input_shape.size()) {
-      return std::pair<int64_t, int64_t>(1, -1);
-    }
-
-    if (input_shape[index] >= 0) {
-      return std::pair<int64_t, int64_t>(input_shape[index], input_shape[index]);
-    }
-
-    if (index < ranges.size()) {
-      const int64_t range_left = ranges[index].first;
-      const int64_t range_right = ranges[index].second;
-      const auto temp_begin = begin[index];
-      const auto temp_end = end[index];
-      int64_t temp_begin_left = 0;
-      int64_t temp_end_left = 0;
-      int64_t temp_begin_right = 0;
-      int64_t temp_end_right = 0;
-
-      if (range_right == -1) {
-        if (temp_begin >= 0 && temp_end >= 0) {
-          temp_begin_left = std::min(temp_begin, range_left);
-          temp_begin_right = temp_begin;
-          temp_end_left = std::min(temp_end, range_left);
-          temp_end_right = temp_end;
-          int64_t tmp_range_left = static_cast<int64_t>(std::ceil(std::abs(
-              static_cast<double>(temp_end_left - temp_begin_left) / strides[index])));
-          int64_t tmp_range_right = static_cast<int64_t>(std::ceil(std::abs(
-              static_cast<double>(temp_end_right - temp_begin_right) / strides[index])));
-          return std::pair<int64_t, int64_t>(std::max<int64_t>(tmp_range_left, 1),
-                                             std::max<int64_t>(tmp_range_right, 1));
-        }
-
-        if (temp_begin < 0 && temp_end < 0) {
-          int64_t tmp_range = static_cast<int64_t>(std::ceil(std::abs(
-              static_cast<double>(temp_end - temp_begin) / strides[index])));
-          return std::pair<int64_t, int64_t>(1, std::max<int64_t>(tmp_range, 1));
-        }
-      } else {
-        if (temp_begin >= 0) {
-          temp_begin_left = std::min(temp_begin, range_left);
-          temp_begin_right = std::min(temp_begin, range_right);
-        } else {
-          temp_begin_left = range_left + temp_begin;
-          temp_begin_right = range_right + temp_begin;
-        }
-
-        if (temp_end >= 0) {
-          temp_end_left = std::min(temp_end, range_left);
-          temp_end_right = std::min(temp_end, range_right);
-        } else {
-          temp_end_left = range_left + temp_end;
-          temp_end_right = range_right + temp_end;
-        }
-
-        int64_t tmp_range_left = static_cast<int64_t>(std::ceil(std::abs(
-            static_cast<double>(temp_end_left - temp_begin_left) / strides[index])));
-        int64_t tmp_range_right = static_cast<int64_t>(std::ceil(std::abs(
-            static_cast<double>(temp_end_right - temp_begin_right) / strides[index])));
-        return std::pair<int64_t, int64_t>(std::max<int64_t>(tmp_range_left, 1), std::max<int64_t>(tmp_range_right, 1));
-      }
-    }
-
-    return std::pair<int64_t, int64_t>(1, -1);
-  };
-
   for (int i = 0; i < static_cast<int>(input_shape.size()); ++i) {
     auto &begin_i = begin[i];
     auto &end_i = end[i];
@@ -331,17 +396,23 @@ static bool StridedSliceCommonInferShape(std::string op_name,
 
     const uint64_t bit_i = bit1value(i);
     bool shrink_i = (dense_spec.shrink_axis_mask & bit_i);
+    const std::array<uint64_t, 2> masks = {
+        {dense_spec.begin_mask & bit_i, dense_spec.end_mask & bit_i}};
     if (dim_i == -1) {
       processing_shape.push_back(shrink_i ? 1 : -1);
-      processing_ranges.push_back(shrink_i ? std::pair<int64_t, int64_t>(1, 1) : calc_range(i));
       processing_begin.push_back(begin_i);
-      processing_end.push_back(shrink_i ? (begin_i + 1) : -1);
+      processing_end.push_back(shrink_i ? (begin_i + 1) : end_i);
       processing_strides.push_back(shrink_i ? 1 : stride_i);
+      if (shrink_i) {
+        processing_ranges.push_back({1, 1});
+      } else {
+        auto unknown_range = CalcRange(processing_shape, processing_begin, processing_end, processing_strides,
+                                       params, masks, i);
+        processing_ranges.push_back(unknown_range);
+      }
       continue;
     }
 
-    const std::array<uint64_t, 2> masks = {
-        {dense_spec.begin_mask & bit_i, dense_spec.end_mask & bit_i}};
     const std::array<int64_t, 2> valid_range = {
         {stride_i > 0 ? 0 : -1, stride_i > 0 ? dim_i : dim_i - 1}};
 
@@ -393,6 +464,9 @@ static bool StridedSliceCommonInferShape(std::string op_name,
     } else {
       is_identity = is_identity && (stride_i == 1 && begin_and_end_masked);
       slice_dim0 = slice_dim0 && ((i == 0 && stride_i == 1) || begin_and_end_masked);
+      processing_begin.push_back(begin_i);
+      processing_end.push_back(end_i);
+      processing_strides.push_back(1);
     }
 
     // Compute the processing shape (the intermediate Eigen will produce)
@@ -432,7 +506,9 @@ static bool StridedSliceCommonInferShape(std::string op_name,
       processing_ranges.push_back({size_i, size_i});
     } else {
       processing_shape.push_back(-1);
-      processing_ranges.push_back(calc_range(i));
+      auto unknown_range = CalcRange(processing_shape, processing_begin, processing_end, processing_strides,
+                                     params, masks, i);
+      processing_ranges.push_back(unknown_range);
     }
   }
 
@@ -486,6 +562,7 @@ static bool StridedSliceCommonInferShape(std::string op_name,
   begin = final_input_begin;
   end = final_input_end;
   strides = final_input_strides;
+
 
   return true;
 }

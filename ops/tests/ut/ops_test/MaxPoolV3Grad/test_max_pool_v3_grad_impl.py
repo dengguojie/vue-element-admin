@@ -157,11 +157,6 @@ output = {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": o
 ut_case.add_case(["Ascend910"], case={
     "params": [ori_input, ori_output, grad, output, ksize, strides, "CALCULATED", pads, "NCHW", False, False],
 })
-# coding cases here
-ut_case.add_precision_case("all", {
-    "params": [ori_input, ori_output, grad, output, ksize, strides, "CALCULATED", pads, "NCHW", False, False],
-    "calc_expect_func": max_pooling_backward,
-})
 
 if __name__ == '__main__':
     ut_case.run("Ascend910")

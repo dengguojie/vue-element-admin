@@ -20,6 +20,7 @@
  */
 #include "conv2d_group_fusion_pass.h"
 #include <vector>
+#include <sstream>
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/node_utils.h"
@@ -35,6 +36,7 @@ namespace fe {
 const string PATTERN_CONV2D_ID = "conv2d_group_id";
 const string CONV2D_TYPE = "Conv2D";
 const string ATTR_GROUPS = "groups";
+const int MAX_DIM_NUM = 4;
 
 enum { DIM_N = 0, DIM_C = 1, DIM_H = 2, DIM_W = 3 };
 
@@ -46,10 +48,6 @@ vector<FusionPattern*> Conv2DGroupFusionPass::DefinePatterns() {
   pattern->AddOpDesc(PATTERN_CONV2D_ID, {CONV2D_TYPE}).SetOutput(PATTERN_CONV2D_ID);
   patterns.push_back(pattern);
   return patterns;
-}
-
-namespace {
-const int MAX_DIM_NUM = 4;
 }
 
 Status Conv2DGroupFusionPass::SwapNumChn(OpDescPtr opDesc, bool bInput, uint32_t index) {
@@ -93,6 +91,10 @@ Status Conv2DGroupFusionPass::ProcessDepthwiseConv(NodePtr convNode) {
                     return PARAM_INVALID);
 
   OpDescPtr convDesc = convNode->GetOpDesc();
+  if (PatternFusionUtil::IsUnknownShape(convDesc->GetInputDesc(1).GetShape().GetDim(1))) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Conv2DGroupFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
   FUSION_PASS_CHECK(convDesc->GetInputDesc(1).GetShape().GetDim(1) != 1,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Filter channel must be 1 in depthwise conv"), return PARAM_INVALID);
   FUSION_PASS_CHECK(SwapNumChn(filterDesc, false, 0) != SUCCESS,
@@ -108,6 +110,355 @@ Status Conv2DGroupFusionPass::ProcessDepthwiseConv(NodePtr convNode) {
   FUSION_PASS_CHECK(!ge::AttrUtils::SetStr(convDesc, "data_format", "NCHW"),
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "set data_format NCHW fail"), return FAILED);
   convDesc->DelAttr("groups");
+  return SUCCESS;
+}
+
+int64_t Conv2DGroupFusionPass::GetGroups(ge::OpDescPtr &convDesc) {
+  int64_t groups = 1;
+  bool hasGroup = ge::AttrUtils::GetInt(convDesc, "groups", groups);
+  return hasGroup ? groups : 1;
+}
+
+bool Conv2DGroupFusionPass::GenerateSplitNode(ge::ComputeGraph &graph, ge::OpDescPtr &convDesc, int64_t &groups,
+                                              ge::NodePtr &splitNode, ge::GeTensorDesc &splitOutDesc) {
+  OpDescPtr sliceDesc;
+  string convOpName = convDesc->GetName();
+  GeTensorDesc inputDesc = convDesc->GetInputDesc(0);
+  inputDesc.SetOriginDataType(DT_FLOAT16);
+  inputDesc.SetDataType(DT_FLOAT16);
+  GeShape inputShape = inputDesc.GetShape();
+  size_t inChannelIdx = -1;
+  FUSION_PASS_CHECK(SUCCESS != PatternFusionUtil::ParseChannelIdx(inputDesc, inChannelIdx),
+           OP_LOGE(FUSED_OP_TYPE.c_str(),
+                   "The original format of the conv node[name=%s, type=%s]'s input0 is %s, which is unsupportable.",
+                   convDesc->GetName().c_str(), convDesc->GetType().c_str(),
+                   ge::TypeUtils::FormatToSerialString(inputDesc.GetFormat()).c_str()),
+           return FAILED);
+  int newInputChn = inputShape.GetDim(inChannelIdx);
+  GeShape splitOutShape = inputShape;
+  splitOutShape.SetDim(inChannelIdx, newInputChn / groups);
+
+  FUSION_PASS_MAKE_SHARED((sliceDesc = std::make_shared<ge::OpDesc>(convOpName+"_split", "SplitD")), return FAILED);
+  AttrUtils::SetInt(sliceDesc, "split_dim", inChannelIdx);
+  AttrUtils::SetInt(sliceDesc, "num_split", groups);
+  splitOutDesc = inputDesc;
+  splitOutDesc.Update(splitOutShape, inputDesc.GetOriginFormat(), DT_FLOAT16);
+  splitOutDesc.SetOriginShape(splitOutShape);
+  sliceDesc->AddInputDesc(inputDesc);
+  for (int i = 0; i < groups; i++) {
+    sliceDesc->AddOutputDesc(splitOutDesc);
+  }
+  splitNode = graph.AddNode(sliceDesc);
+  return true;
+}
+
+bool Conv2DGroupFusionPass::GenerateNewConvNodes(ge::ComputeGraph &graph, ge::OpDescPtr &convDesc,
+                                                 const ge::GeTensorDesc &splitOutDesc, vector<ge::NodePtr> &newConvNodes,
+                                                 ge::GeTensorDesc &newConvOutDesc) {
+  int64_t groups = GetGroups(convDesc);
+
+  GeTensorDesc inDesc = splitOutDesc;
+  inDesc.SetOriginDataType(convDesc->GetInputDesc(0).GetOriginDataType());
+  inDesc.SetDataType(convDesc->GetInputDesc(0).GetDataType());
+
+  string convOpName = convDesc->GetName();
+  GeTensorDesc outputDesc = convDesc->GetOutputDesc(0);
+  GeShape newConvOutShape = outputDesc.GetShape();
+  size_t outChannelIdx = -1;
+  FUSION_PASS_CHECK(SUCCESS != PatternFusionUtil::ParseChannelIdx(outputDesc, outChannelIdx),
+           OP_LOGE(FUSED_OP_TYPE.c_str(),
+                   "The original format of the conv node[name=%s, type=%s]'s input0 is %s, which is unsupportable.",
+                   convDesc->GetName().c_str(), convDesc->GetType().c_str(),
+                   ge::TypeUtils::FormatToSerialString(outputDesc.GetFormat()).c_str()),
+           return FAILED);
+  int newConvOutChn = newConvOutShape.GetDim(outChannelIdx) / groups;
+  newConvOutShape.SetDim(outChannelIdx, newConvOutChn);
+  newConvOutDesc = outputDesc;
+  newConvOutDesc.Update(newConvOutShape, outputDesc.GetOriginFormat(), convDesc->GetOutputDesc(0).GetDataType());
+  newConvOutDesc.SetOriginShape(newConvOutShape);
+  newConvOutDesc.SetOriginDataType(convDesc->GetOutputDesc(0).GetOriginDataType());
+  for (int64_t i = 0; i < groups; i++) {
+    ostringstream newConvName;
+    newConvName << convOpName << "_" << i;
+    OpDescPtr newConvDesc = AttrUtils::CopyOpDesc(convDesc);
+    FUSION_PASS_CHECK(newConvDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.",
+                                                      convDesc->GetName().c_str()),
+                      return PARAM_INVALID);
+    newConvDesc->SetName(newConvName.str());
+    (void)newConvDesc->UpdateInputDesc(0, inDesc);
+    for (unsigned int j = 1; j < convDesc->GetAllInputsDesc().size(); j++) {
+      newConvDesc->UpdateInputDesc(j, inDesc);
+    }
+    FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != newConvDesc->UpdateOutputDesc(0, newConvOutDesc),
+             OP_LOGE("Update node:%s's 1st outputfailed.", convDesc->GetName().c_str()),
+             return false);
+    AttrUtils::SetInt(newConvDesc, "groups", 1);
+    NodePtr newConvNode = graph.AddNode(newConvDesc);
+    newConvNodes.push_back(newConvNode);
+  }
+  return true;
+}
+
+bool Conv2DGroupFusionPass::GenerateConcatNode(ge::ComputeGraph &graph, ge::OpDescPtr &convDesc, const int64_t &groups,
+                                               ge::GeTensorDesc &newConvOutDesc, ge::NodePtr &concatNode) {
+  string convOpName = convDesc->GetName();
+  OpDescPtr concatDesc;
+  newConvOutDesc.SetOriginDataType(DT_FLOAT16);
+  newConvOutDesc.SetDataType(DT_FLOAT16);
+  FUSION_PASS_MAKE_SHARED((concatDesc = std::make_shared<ge::OpDesc>(convOpName+"_concat", "ConcatD")), return false);
+  for (int i = 0; i < groups; i++) {
+    concatDesc->AddInputDesc(newConvOutDesc);
+  }
+  concatDesc->AddOutputDesc(convDesc->GetOutputDesc(0));
+  GeTensorDesc inputDesc = convDesc->GetInputDesc(0);
+  size_t inChannelIdx = -1;
+  FUSION_PASS_CHECK(SUCCESS != PatternFusionUtil::ParseChannelIdx(inputDesc, inChannelIdx),
+           OP_LOGE(FUSED_OP_TYPE.c_str(),
+                   "The original format of the conv node[name=%s, type=%s]'s input0 is %s, which is unsupportable.",
+                   convDesc->GetName().c_str(), convDesc->GetType().c_str(),
+                   ge::TypeUtils::FormatToSerialString(inputDesc.GetFormat()).c_str()),
+           return FAILED);
+  AttrUtils::SetInt(concatDesc, "concat_dim", inChannelIdx); // c axis concat
+  concatNode = graph.AddNode(concatDesc);
+  return true;
+}
+
+bool Conv2DGroupFusionPass::Relink(ge::NodePtr &convNode, ge::NodePtr &splitNode, vector<ge::NodePtr> &newConvNodes,
+                                   ge::NodePtr &concatNode) {
+  auto op_desc = convNode->GetOpDesc();
+  int64_t groups = GetGroups(op_desc);
+
+  Node::Vistor<NodePtr> inNodes = convNode->GetInAllNodes();
+  FUSION_PASS_CHECK(inNodes.size() < 2,
+           OP_LOGE(FUSED_OP_TYPE.c_str(), "conv input nodes num(%d) < 2", inNodes.size()), return false);
+
+  Node::Vistor<NodePtr> outNodes = convNode->GetOutAllNodes();
+
+  int inAnchorIndex = convNode->GetInDataAnchor(0)->GetPeerOutAnchor()->GetIdx();
+  vector<int> outAnchorIndexes;
+  for (size_t i = 0; i < outNodes.size(); i++) {
+    outAnchorIndexes.push_back(convNode->GetOutDataAnchor(0)->GetPeerInDataAnchors().at(i)->GetIdx());
+  }
+  for (auto outAnchor : convNode->GetAllOutDataAnchors()) {
+    if (outAnchor != nullptr) {
+      outAnchor->UnlinkAll();
+    }
+  }
+
+  graphStatus status = GraphUtils::AddEdge(inNodes.at(0)->GetOutAnchor(inAnchorIndex), splitNode->GetInDataAnchor(0));
+  FUSION_PASS_CHECK(status != GRAPH_SUCCESS,
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "add data to slice edge fail"), return false);
+  for (int i = 0; i < groups; i++) {
+    status = GraphUtils::AddEdge(splitNode->GetOutDataAnchor(i), newConvNodes[i]->GetInDataAnchor(0));
+    FUSION_PASS_CHECK(status != GRAPH_SUCCESS,
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "add slice to conv edge fail"), return false);
+    status = GraphUtils::AddEdge(newConvNodes[i]->GetOutDataAnchor(0), concatNode->GetInDataAnchor(i));
+    FUSION_PASS_CHECK(status != GRAPH_SUCCESS,
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "add conv to concat edge fail"), return false);
+  }
+
+  for (size_t i = 0; i < outNodes.size(); i++) {
+    status = GraphUtils::AddEdge(concatNode->GetOutAnchor(0),
+                                 outNodes.at(i)->GetInDataAnchor(outAnchorIndexes[i]));
+    FUSION_PASS_CHECK(status != GRAPH_SUCCESS,
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "add concat to output edge fail"), return false);
+  }
+  return true;
+}
+
+Status Conv2DGroupFusionPass::CloneAndLinkQuants(ge::ComputeGraph &graph, const ge::NodePtr &splitNode, const int64_t &group,
+                                                 vector<ge::NodePtr> &newConvNodes) {
+
+  /*
+      1. unlink slice node output anchors
+      2. copy quant nodes
+      3. link to slice node's out anchors
+      4. link to conv nodes
+      5. remove origin quant node
+  */
+
+  OpDescPtr opDescNew     = nullptr;
+  NodePtr quantNode       = nullptr;
+  NodePtr newQuantNode    = nullptr;
+
+  quantNode = splitNode->GetInAllNodes().at(0);
+  if (quantNode == nullptr || quantNode->GetType() != "AscendQuant")
+    return SUCCESS;
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Start proc quant node: %s", quantNode->GetName().c_str());
+
+  for (const auto& outAnchor : splitNode->GetAllOutDataAnchors()) {
+    if (outAnchor != nullptr) {
+      outAnchor->UnlinkAll();
+    }
+  }
+
+  for (int i = 0; i < group; i++) {
+    opDescNew = ge::AttrUtils::CloneOpDesc(quantNode->GetOpDesc());
+    opDescNew->SetName(opDescNew->GetName() + to_string(i));
+    FUSION_PASS_CHECK(SUCCESS != opDescNew->UpdateInputDesc(0, splitNode->GetOpDesc()->GetOutputDesc(0)),
+             OP_LOGE(FUSED_OP_TYPE.c_str(), "node %s UpdateInputDesc failed.",
+                     opDescNew->GetName().c_str()), return FAILED);
+    FUSION_PASS_CHECK(SUCCESS != opDescNew->UpdateOutputDesc(0, newConvNodes[i]->GetOpDesc()->GetInputDesc(0)),
+             OP_LOGE(FUSED_OP_TYPE.c_str(), "node %s UpdateInputDesc failed.",
+                     opDescNew->GetName().c_str()), return FAILED);
+    if (opDescNew == nullptr)
+      return FAILED;
+    newQuantNode = graph.AddNode(opDescNew);
+    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(splitNode->GetOutDataAnchor(i),
+                                                newQuantNode->GetInDataAnchor(0)),
+             OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                     splitNode->GetName().c_str(), newQuantNode->GetName().c_str()),
+             return FAILED);
+    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(newQuantNode->GetOutDataAnchor(0),
+                                                newConvNodes[i]->GetInDataAnchor(0)),
+             OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                     newQuantNode->GetName().c_str(), newConvNodes[i]->GetName().c_str()),
+             return FAILED);
+  }
+
+  FUSION_PASS_CHECK(SUCCESS != graph.RemoveNode(quantNode),
+           OP_LOGE(FUSED_OP_TYPE.c_str(), "RemoveNode %s failed.", quantNode->GetName().c_str()),
+           return FAILED);
+
+  return SUCCESS;
+}
+
+Status Conv2DGroupFusionPass::SplitDequant(ge::ComputeGraph &graph, const ge::NodePtr &concatNode, const int64_t &group,
+                                           vector<ge::NodePtr> &newConvNodes) {
+
+  /*
+    1. unlink concat node input anchors
+    2. copy dequant nodes
+    3. link to concat node's in anchors
+    4. link to conv nodes
+    5. splite dequant scale
+    6. remove origin dequant node
+  */
+
+  // next node must be dquant, or we do nothing
+  NodePtr dequantNode = concatNode->GetOutAllNodes().at(0);
+  if (dequantNode == nullptr || dequantNode->GetType() != "AscendDequant"
+      || concatNode->GetOutAllNodes().size() != 1)
+    return SUCCESS;
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Start proc dequant node: %s", dequantNode->GetName().c_str());
+
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "GetWeights failed, node name %s, weight size is [%d]",
+          dequantNode->GetName().c_str(), OpDescUtils::GetWeights(dequantNode).size());
+  vector<NodePtr> newDequantNodes;
+
+  for (int i = 0; i < group; i++) {
+    OpDescPtr opDescNew = nullptr;
+    opDescNew = ge::AttrUtils::CloneOpDesc(dequantNode->GetOpDesc());
+    opDescNew->SetName(opDescNew->GetName() + to_string(i));
+    GeTensorDesc inTensor = newConvNodes[0]->GetOpDesc()->GetOutputDesc(0);
+    GeTensorDesc outTensor = concatNode->GetOpDesc()->GetInputDesc(0);
+    outTensor.SetOriginDataType(DT_FLOAT16);
+    outTensor.SetDataType(DT_FLOAT16);
+    FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != opDescNew->UpdateInputDesc(0, inTensor),
+             OP_LOGE(FUSED_OP_TYPE.c_str(), "UpdateInputDesc node %s failed", opDescNew->GetName().c_str()),
+             return FAILED);
+    FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != opDescNew->UpdateOutputDesc(0, outTensor),
+             OP_LOGE(FUSED_OP_TYPE.c_str(), "UpdateOutputDesc node %s failed", opDescNew->GetName().c_str()),
+             return FAILED);
+    FUSION_PASS_CHECK(SUCCESS != concatNode->GetOpDesc()->UpdateInputDesc(i, outTensor),
+             OP_LOGE(FUSED_OP_TYPE.c_str(), "node %s UpdateInputDesc failed.",
+                     concatNode->GetName().c_str()), return FAILED);
+    NodePtr newDequantNode = graph.AddNode(opDescNew);
+    newDequantNodes.push_back(newDequantNode);
+  }
+  FUSION_PASS_CHECK(PatternFusionUtil::InsertSliceDNodes(graph, dequantNode, 1,
+                                                newDequantNodes, group, 0) != SUCCESS,
+           OP_LOGE(FUSED_OP_TYPE.c_str(), "Insert SliceD node between node[%s] and weight node falied.",
+                   dequantNode->GetName().c_str()),
+           return FAILED);
+  for (int i = 0; i < group; i++) {
+    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(newConvNodes[i]->GetOutDataAnchor(0),
+                                                newDequantNodes[i]->GetInDataAnchor(0)),
+             OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                     newConvNodes[i]->GetName().c_str(), newDequantNodes[i]->GetName().c_str()),
+             return FAILED);
+    if (concatNode->GetInDataAnchor(i) != nullptr) {
+      concatNode->GetInDataAnchor(i)->UnlinkAll();
+    }
+    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(newDequantNodes[i]->GetOutDataAnchor(0),
+                                                concatNode->GetInDataAnchor(i)),
+             OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                     newDequantNodes[i]->GetName().c_str(), concatNode->GetName().c_str()),
+             return FAILED);
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "add edge from [%s] to [%s]",
+            newDequantNodes[i]->GetName().c_str(), concatNode->GetName().c_str());
+  }
+
+  FUSION_PASS_CHECK(SUCCESS != graph.RemoveNode(dequantNode),
+           OP_LOGE(FUSED_OP_TYPE.c_str(), "RemoveNode %s failed.", dequantNode->GetName().c_str()),
+           return FAILED);
+
+  return SUCCESS;
+
+}
+
+Status Conv2DGroupFusionPass::ProcQuantIfNeed(ge::ComputeGraph &graph, const ge::NodePtr &splitNode, const ge::NodePtr &concatNode,
+                                              const int64_t &groups, vector<ge::NodePtr> &newConvNodes) {
+  Status ret;
+  ret = CloneAndLinkQuants(graph, splitNode, groups, newConvNodes);
+  if (SUCCESS != ret) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "CloneAndLinkQuants failed!");
+    return FAILED;
+  }
+
+  ret = SplitDequant(graph, concatNode, groups, newConvNodes);
+  if (SUCCESS != ret) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "SplitDequant failed!");
+    return FAILED;
+  }
+
+  return SUCCESS;
+}
+
+Status Conv2DGroupFusionPass::ProcessGroupConv(ge::ComputeGraph &graph, ge::NodePtr &convNode) {
+  NodePtr splitNode = nullptr;
+  GeTensorDesc splitOutDesc;
+  OpDescPtr convDesc = convNode->GetOpDesc();
+  int64_t groups = GetGroups(convDesc);
+  FUSION_PASS_CHECK(!GenerateSplitNode(graph, convDesc, groups, splitNode, splitOutDesc),
+           OP_LOGE(FUSED_OP_TYPE.c_str(), "generate split node fail"), return FAILED);
+
+  vector<NodePtr> newConvNodes;
+  GeTensorDesc newConvOutDesc;
+  FUSION_PASS_CHECK(!GenerateNewConvNodes(graph, convDesc, splitOutDesc, newConvNodes, newConvOutDesc),
+           OP_LOGE(FUSED_OP_TYPE.c_str(), "generate new conv nodes fail"), return FAILED);
+
+  NodePtr concatNode;
+  FUSION_PASS_CHECK(!GenerateConcatNode(graph, convDesc, groups, newConvOutDesc, concatNode),
+           OP_LOGE(FUSED_OP_TYPE.c_str(), "generate concat fail"), return FAILED);
+
+  FUSION_PASS_CHECK(!Relink(convNode, splitNode, newConvNodes, concatNode),
+           OP_LOGE(FUSED_OP_TYPE.c_str(), "relink fail"), return FAILED);
+
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "conv[%s]'s weight size is [%zu]",
+          convNode->GetName().c_str(), OpDescUtils::GetWeights(convNode).size());
+  // find sliceD of conv's 2nd or 3rd, 4th input
+  for (unsigned int i = 1; i < convNode->GetInAllNodes().size(); i++) {
+    FUSION_PASS_CHECK(PatternFusionUtil::InsertSliceDNodes(graph, convNode, i,
+                                                  newConvNodes, groups, 0) != SUCCESS,
+             OP_LOGE(FUSED_OP_TYPE.c_str(), "Insert SliceD node between node[%s] and weight node falied.",
+                     convNode->GetName().c_str()),
+             return FAILED);
+  }
+
+  FUSION_PASS_CHECK(SUCCESS != ProcQuantIfNeed(graph, splitNode, concatNode, groups,
+                                      newConvNodes),
+           OP_LOGE(FUSED_OP_TYPE.c_str(), "CloneAndLinkQuants fail, conv name %s",
+                   convNode->GetName().c_str()), return FAILED);
+
+  for (auto inAnchor : convNode->GetAllInDataAnchors()) {
+    if (inAnchor != nullptr) {
+      inAnchor->UnlinkAll();
+    }
+  }
+  FUSION_PASS_CHECK(SUCCESS != graph.RemoveNode(convNode),
+           OP_LOGE(FUSED_OP_TYPE.c_str(), "RemoveNode %s failed.", convNode->GetName().c_str()),
+           return FAILED);
   return SUCCESS;
 }
 
@@ -130,34 +481,42 @@ Status Conv2DGroupFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   size_t inChannelIdx = -1;
   FUSION_PASS_CHECK(
       SUCCESS != PatternFusionUtil::ParseChannelIdx(inputDesc, inChannelIdx),
-      OP_LOGE(FUSED_OP_TYPE.c_str(),
+      OP_LOGW(FUSED_OP_TYPE.c_str(),
               "The original format of the conv node[name=%s, type=%s]'s input0 is %s, which is unsupportable.",
               convDesc->GetName().c_str(), convDesc->GetType().c_str(),
               ge::TypeUtils::FormatToSerialString(inputDesc.GetFormat()).c_str()),
-      return FAILED);
+      return NOT_CHANGED);
   int64_t inChn = inputDesc.GetOriginShape().GetDim(inChannelIdx);
 
   GeTensorDesc outputDesc = convDesc->GetOutputDesc(0);
   size_t outChannelIdx = -1;
   FUSION_PASS_CHECK(
       SUCCESS != PatternFusionUtil::ParseChannelIdx(outputDesc, outChannelIdx),
-      OP_LOGE(FUSED_OP_TYPE.c_str(),
+      OP_LOGW(FUSED_OP_TYPE.c_str(),
               "The original format of the conv node[name=%s, type=%s]'s output0 is %s, which is unsupportable.",
               convDesc->GetName().c_str(), convDesc->GetType().c_str(),
               ge::TypeUtils::FormatToSerialString(outputDesc.GetFormat()).c_str()),
-      return FAILED);
+      return NOT_CHANGED);
   int64_t outChn = outputDesc.GetOriginShape().GetDim(outChannelIdx);
-
+  if (PatternFusionUtil::IsUnknownShape(outChn) ||
+      PatternFusionUtil::IsUnknownShape(inChn)) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Conv2DGroupFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
   if (groups == inChn && groups == outChn) {
     return ProcessDepthwiseConv(convNode);
   } else if (inChn % groups == 0 && outChn % groups == 0) {
-    return PatternFusionUtil::ProcessGroupPadding(graph, convNode, groups);
+    if (convNode->GetInAllNodes().at(1)->GetType() == "Variable") {
+      return ProcessGroupConv(graph, convNode);
+    } else {
+      return PatternFusionUtil::ProcessGroupPadding(graph, convNode, groups);
+    }
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(),
+    OP_LOGW(FUSED_OP_TYPE.c_str(),
             "The number of input channel(%lld) or output channel(%lld) of "
             "the conv node[name=%s, type=%s] is not divisible by groups(%lld)",
             inChn, outChn, convDesc->GetName().c_str(), convDesc->GetType().c_str(), groups);
-    return FAILED;
+    return NOT_CHANGED;
   }
 }
 REGISTER_PASS("GroupConv2DFusionPass", BUILT_IN_GRAPH_PASS, Conv2DGroupFusionPass);

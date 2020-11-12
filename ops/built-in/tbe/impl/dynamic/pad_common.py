@@ -21,10 +21,13 @@ import math
 
 # maximum of gm
 MAX_INT32 = 2**31 - 1
-# byte of int32
+# byte of int32, int64
 INT32_BYTE = 4
+INT64_BYTE = 8
 # numbers in the block
 INT32_BLOCK = 8
+INT64_BLOCK = 4
+
 
 
 def _prod(values):
@@ -269,46 +272,46 @@ class PadInit(object):
         """
         # Params In Circulation Layer:
         self.axis_amount, self.padding = calc_axis_amount(self.padding, self.fuse_mark)
-        self.branch = malloc_tiling_scalar(tik_instance, "int32", "branch_", 1)
-        self.depth = malloc_tiling_scalar(tik_instance, "int32", "depth_", 1)
-        self.top_vol = malloc_tiling_scalar(tik_instance, "int32", "top_vol_", self.axis_amount)
-        self.top_address = malloc_tiling_scalar(tik_instance, "int32", "top_address_", self.axis_amount)
-        self.top_div_core = malloc_tiling_scalar(tik_instance, "int32", "top_div_core_", self.axis_amount)
-        self.top_total_core = malloc_tiling_scalar(tik_instance, "int32", "top_total_core_", self.axis_amount)
-        self.top_core_vol_0 = malloc_tiling_scalar(tik_instance, "int32", "top_core_vol_0_", self.axis_amount)
-        self.top_core_vol_1 = malloc_tiling_scalar(tik_instance, "int32", "top_core_vol_1_", self.axis_amount)
-        self.top_core_gap_0 = malloc_tiling_scalar(tik_instance, "int32", "top_core_gap_0_", self.axis_amount)
-        self.top_core_gap_1 = malloc_tiling_scalar(tik_instance, "int32", "top_core_gap_1_", self.axis_amount)
+        self.branch = malloc_tiling_scalar(tik_instance, "int64", "branch_", 1)
+        self.depth = malloc_tiling_scalar(tik_instance, "int64", "depth_", 1)
+        self.top_vol = malloc_tiling_scalar(tik_instance, "int64", "top_vol_", self.axis_amount)
+        self.top_address = malloc_tiling_scalar(tik_instance, "int64", "top_address_", self.axis_amount)
+        self.top_div_core = malloc_tiling_scalar(tik_instance, "int64", "top_div_core_", self.axis_amount)
+        self.top_total_core = malloc_tiling_scalar(tik_instance, "int64", "top_total_core_", self.axis_amount)
+        self.top_core_vol_0 = malloc_tiling_scalar(tik_instance, "int64", "top_core_vol_0_", self.axis_amount)
+        self.top_core_vol_1 = malloc_tiling_scalar(tik_instance, "int64", "top_core_vol_1_", self.axis_amount)
+        self.top_core_gap_0 = malloc_tiling_scalar(tik_instance, "int64", "top_core_gap_0_", self.axis_amount)
+        self.top_core_gap_1 = malloc_tiling_scalar(tik_instance, "int64", "top_core_gap_1_", self.axis_amount)
 
-        self.bottom_vol = malloc_tiling_scalar(tik_instance, "int32", "bottom_vol_", self.axis_amount)
-        self.bottom_address = malloc_tiling_scalar(tik_instance, "int32", "bottom_address_", self.axis_amount)
-        self.bottom_div_core = malloc_tiling_scalar(tik_instance, "int32", "bottom_div_core_", self.axis_amount)
-        self.bottom_total_core = malloc_tiling_scalar(tik_instance, "int32", "bottom_total_core_", self.axis_amount)
-        self.bottom_core_vol_0 = malloc_tiling_scalar(tik_instance, "int32", "bottom_core_vol_0_", self.axis_amount)
-        self.bottom_core_vol_1 = malloc_tiling_scalar(tik_instance, "int32", "bottom_core_vol_1_", self.axis_amount)
-        self.bottom_core_gap_0 = malloc_tiling_scalar(tik_instance, "int32", "bottom_core_gap_0_", self.axis_amount)
-        self.bottom_core_gap_1 = malloc_tiling_scalar(tik_instance, "int32", "bottom_core_gap_1_", self.axis_amount)
+        self.bottom_vol = malloc_tiling_scalar(tik_instance, "int64", "bottom_vol_", self.axis_amount)
+        self.bottom_address = malloc_tiling_scalar(tik_instance, "int64", "bottom_address_", self.axis_amount)
+        self.bottom_div_core = malloc_tiling_scalar(tik_instance, "int64", "bottom_div_core_", self.axis_amount)
+        self.bottom_total_core = malloc_tiling_scalar(tik_instance, "int64", "bottom_total_core_", self.axis_amount)
+        self.bottom_core_vol_0 = malloc_tiling_scalar(tik_instance, "int64", "bottom_core_vol_0_", self.axis_amount)
+        self.bottom_core_vol_1 = malloc_tiling_scalar(tik_instance, "int64", "bottom_core_vol_1_", self.axis_amount)
+        self.bottom_core_gap_0 = malloc_tiling_scalar(tik_instance, "int64", "bottom_core_gap_0_", self.axis_amount)
+        self.bottom_core_gap_1 = malloc_tiling_scalar(tik_instance, "int64", "bottom_core_gap_1_", self.axis_amount)
 
         # Params In Recursion Layer:
-        self.recur_total_core = malloc_tiling_scalar(tik_instance, "int32", "recur_total_core_", 1)
-        self.recur_div_core = malloc_tiling_scalar(tik_instance, "int32", "recur_div_core_", 1)
-        self.recur_in_vol = malloc_tiling_scalar(tik_instance, "int32", "recur_in_vol_", 1)
-        self.recur_loop_0 = malloc_tiling_scalar(tik_instance, "int32", "recur_loop_0_", 1)
-        self.recur_loop_1 = malloc_tiling_scalar(tik_instance, "int32", "recur_loop_1_", 1)
-        self.recur_gap_0 = malloc_tiling_scalar(tik_instance, "int32", "recur_gap_0_", 1)
-        self.recur_gap_1 = malloc_tiling_scalar(tik_instance, "int32", "recur_gap_1_", 1)
-        self.recur_cond = malloc_tiling_scalar(tik_instance, "int32", "recur_cond_", 1)
-        self.recur_start_address = malloc_tiling_scalar(tik_instance, "int32", "recur_start_address_", 1)
+        self.recur_total_core = malloc_tiling_scalar(tik_instance, "int64", "recur_total_core_", 1)
+        self.recur_div_core = malloc_tiling_scalar(tik_instance, "int64", "recur_div_core_", 1)
+        self.recur_in_vol = malloc_tiling_scalar(tik_instance, "int64", "recur_in_vol_", 1)
+        self.recur_loop_0 = malloc_tiling_scalar(tik_instance, "int64", "recur_loop_0_", 1)
+        self.recur_loop_1 = malloc_tiling_scalar(tik_instance, "int64", "recur_loop_1_", 1)
+        self.recur_gap_0 = malloc_tiling_scalar(tik_instance, "int64", "recur_gap_0_", 1)
+        self.recur_gap_1 = malloc_tiling_scalar(tik_instance, "int64", "recur_gap_1_", 1)
+        self.recur_cond = malloc_tiling_scalar(tik_instance, "int64", "recur_cond_", 1)
+        self.recur_start_address = malloc_tiling_scalar(tik_instance, "int64", "recur_start_address_", 1)
 
-        self.new_in_shape = malloc_tiling_scalar(tik_instance, "int32", "new_in_shape_", self.axis_amount)
-        self.new_out_shape = malloc_tiling_scalar(tik_instance, "int32", "new_out_shape", self.axis_amount)
-        self.new_padding_top = malloc_tiling_scalar(tik_instance, "int32", "new_padding_top_", self.axis_amount)
-        self.new_padding_bottom = malloc_tiling_scalar(tik_instance, "int32", "new_padding_bottom_", self.axis_amount)
-        self.recur_model = malloc_tiling_scalar(tik_instance, "int32", "recur_model_", self.axis_amount)
-        self.recur_dup_mk = malloc_tiling_scalar(tik_instance, "int32", "recur_dup_mk_", self.axis_amount)
-        self.recur_gm2buf_mk = malloc_tiling_scalar(tik_instance, "int32", "recur_gm2buf_mk_", self.axis_amount)
-        self.prod_new_in = malloc_tiling_scalar(tik_instance, "int32", "prod_new_in_", self.axis_amount)
-        self.prod_new_out = malloc_tiling_scalar(tik_instance, "int32", "prod_new_out_", self.axis_amount)
+        self.new_in_shape = malloc_tiling_scalar(tik_instance, "int64", "new_in_shape_", self.axis_amount)
+        self.new_out_shape = malloc_tiling_scalar(tik_instance, "int64", "new_out_shape", self.axis_amount)
+        self.new_padding_top = malloc_tiling_scalar(tik_instance, "int64", "new_padding_top_", self.axis_amount)
+        self.new_padding_bottom = malloc_tiling_scalar(tik_instance, "int64", "new_padding_bottom_", self.axis_amount)
+        self.recur_model = malloc_tiling_scalar(tik_instance, "int64", "recur_model_", self.axis_amount)
+        self.recur_dup_mk = malloc_tiling_scalar(tik_instance, "int64", "recur_dup_mk_", self.axis_amount)
+        self.recur_gm2buf_mk = malloc_tiling_scalar(tik_instance, "int64", "recur_gm2buf_mk_", self.axis_amount)
+        self.prod_new_in = malloc_tiling_scalar(tik_instance, "int64", "prod_new_in_", self.axis_amount)
+        self.prod_new_out = malloc_tiling_scalar(tik_instance, "int64", "prod_new_out_", self.axis_amount)
 
         # avoid exceed axis: prod_value = 1
         self.prod_new_out.append(1)
@@ -317,7 +320,7 @@ class PadInit(object):
         # last param
         self.tiling_arg_kind = 25 + 11
         self.tiling_arg_num = self.axis_amount * 25 + 11
-        self.tiling_buf_size = math.ceil(self.tiling_arg_num/INT32_BLOCK) * INT32_BLOCK
+        self.tiling_buf_size = math.ceil(self.tiling_arg_num/INT64_BLOCK) * INT64_BLOCK
 
         # "Param":list represent begin idx of the param and length in tiling_buf
         num0, num1 = 1, self.axis_amount
@@ -338,12 +341,12 @@ class PadInit(object):
         """
         set buf tensor(UB)
         """
-        self.tiling_buf = tik_instance.Tensor("int32",
+        self.tiling_buf = tik_instance.Tensor("int64",
                                               (self.tiling_buf_size, ),
                                               name="tiling_buf",
                                               scope=tik.scope_ubuf)
 
-        tiling_args_byte = self.tiling_buf_size * INT32_BYTE
+        tiling_args_byte = self.tiling_buf_size * INT64_BYTE
         ub_byte = self.max_ub_size - tiling_args_byte
         self.buf_size = ub_byte // self.num_bit // self.mask * self.mask
         self.buf = tik_instance.Tensor(self.dtype,
@@ -358,7 +361,7 @@ class PadInit(object):
         """
         set tiling, input, output tensor(gm)
         """
-        self.tiling_gm = tik_instance.Tensor("int32", (self.tiling_buf_size, ),
+        self.tiling_gm = tik_instance.Tensor("int64", (self.tiling_buf_size, ),
                                              name="tiling_gm", scope=tik.scope_gm)
 
         self.input_gm = tik_instance.Tensor(self.dtype, (MAX_INT32, ),

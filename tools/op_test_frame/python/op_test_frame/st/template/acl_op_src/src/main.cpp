@@ -8,7 +8,6 @@
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 */
 #include "op_test.h"
-#include "common.h"
 
 int main(int argc, char *argv[])
 {

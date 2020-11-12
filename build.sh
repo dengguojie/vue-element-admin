@@ -24,11 +24,13 @@ CMAKE_PATH="${BUILD_PATH}/cann"
 # print usage message
 usage() {
   echo "Usage:"
-  echo "    bash build.sh [-h] [-j[n]] [-v] [-g]"
+  echo "    bash build.sh [-h] [-j[n]] [-u] [-s] [-v] [-g]"
   echo ""
   echo "Options:"
   echo "    -h Print usage"
   echo "    -j[n] Set the number of threads used to build CANN, default is 8"
+  echo "    -u Build UT"
+  echo "    -s Build ST"
   echo "    -v Verbose"
   echo "    -g GCC compiler prefix, used to specify the compiler toolchain"
   echo "to be continued ..."
@@ -43,13 +45,17 @@ checkopts() {
   VERBOSE=""
   THREAD_NUM=8
   GCC_PREFIX=""
+  UT_TEST=False
+  ST_TEST=False
   # Process the options
-  while getopts 'hj:vg:' opt
+  while getopts 'hj:usvg:' opt
   do
     case "${opt}" in
       h) usage
          exit 0 ;;
       j) THREAD_NUM=$OPTARG ;;
+      u) UT_TEST=True ;;
+      s) ST_TEST=True ;;
       v) VERBOSE="VERBOSE=1" ;;
       g) GCC_PREFIX=$OPTARG ;;
       *) logging "Undefined option: ${opt}"
@@ -69,9 +75,15 @@ mk_dir() {
 # create build path
 build_cann() {
   logging "Create build directory and build CANN"
-  CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH"
+  CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=true"
   if [[ "$GCC_PREFIX" != "" ]]; then
     CMAKE_ARGS="$CMAKE_ARGS -DGCC_PREFIX=$GCC_PREFIX"
+  fi
+  if [[ "$UT_TEST" == "True" ]]; then
+    CMAKE_ARGS="$CMAKE_ARGS -DUT_TEST=True"
+  fi
+  if [[ "$ST_TEST" == "True" ]]; then
+    CMAKE_ARGS="$CMAKE_ARGS -DST_TEST=True"
   fi
   logging "CMake Args: ${CMAKE_ARGS}"
 

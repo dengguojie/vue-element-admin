@@ -21,7 +21,7 @@ import operator
 import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
-from te.utils import operate_shape
+from te.utils import shape_util
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
@@ -111,7 +111,7 @@ def _check_para_and_getplaceholder(scalar_input, tensor_input, input_dict):
     var_dtype = input_dict["var"].get("dtype")
     list_placeholder = []
     for key, value in input_dict.items():
-        shape = operate_shape.scalar2tensor_one(value.get("shape"))
+        shape = shape_util.scalar2tensor_one(value.get("shape"))
         para_check.check_shape(shape)
         if value in scalar_input:
             if not para_check.is_scalar(shape):

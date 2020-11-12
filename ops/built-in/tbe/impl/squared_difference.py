@@ -18,13 +18,52 @@ squared_difference
 import te.lang.cce as tbe
 from te.utils import para_check
 from te.utils import shape_util
+from te import platform as tbe_platform
 from te import tvm
+from te.utils.error_manager import error_manager_vector
 
 SHAPE_SIZE_LIMIT = 2147483648
 
 
+# pylint: disable=locally-disabled,too-many-locals,unused-argument
+@tbe_platform.fusion_manager.fusion_manager.register("squared_difference")
+def squared_difference_compute(data_x, data_y, y, kernel_name="squared_difference"):
+    """
+    squared_difference compute
+    calculating data's squared_difference
+
+    Parameters
+    ----------
+    data_x: TVM tensor
+        the placeholder of data_x
+    data_y: TVM tensor
+        the placeholder of data_y
+    y: dict
+        dict with keys(shape and dtype) of output
+    kernel_name: str
+        kernel name, default value is "squared_difference"
+
+    Returns
+    -------
+    res: TVM tensor
+        the result of squared_difference compute
+    """
+    input_data1 = shape_util.shape_to_list(data_x.shape)
+    input_data2 = shape_util.shape_to_list(data_y.shape)
+    shape_list = shape_util.broadcast_shapes(input_data1, input_data2,
+                                             param_name_input1="data_x",
+                                             param_name_input2="data_y")
+    data_x_broad = tbe.broadcast(data_x, shape_list[2])
+    data_y_broad = tbe.broadcast(data_y, shape_list[2])
+
+    data_sub = tbe.vsub(data_x_broad, data_y_broad)
+    res = tbe.vmul(data_sub, data_sub)
+
+    return res
+
+
 # pylint: disable=locally-disabled,too-many-locals,invalid-name
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, 
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def squared_difference(x1, x2, y, kernel_name="squared_difference"):
     """
@@ -56,8 +95,8 @@ def squared_difference(x1, x2, y, kernel_name="squared_difference"):
     dtype = x1.get("dtype").lower()
 
     if not dtype in check_list:
-        raise RuntimeError(
-            "tf_squared_difference_cce only support float16, float32, int32")
+        error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, "x1", \
+                                                                 check_list, dtype)
 
     shape_x, shape_y, shape_max = \
         shape_util.broadcast_shapes(shape_x, shape_y, param_name_input1="x1", param_name_input2="x2")
@@ -66,13 +105,8 @@ def squared_difference(x1, x2, y, kernel_name="squared_difference"):
     data_x = tvm.placeholder(shape_x, dtype=dtype, name="data_x")
     data_y = tvm.placeholder(shape_y, dtype=dtype, name="data_y")
 
+    res = squared_difference_compute(data_x, data_y, y, kernel_name)
     with tvm.target.cce():
-        shape_x, shape_y, shape_max = \
-            shape_util.broadcast_shapes(shape_x, shape_y, param_name_input1="x1", param_name_input2="x2")
-        data_x_tmp = tbe.broadcast(data_x, shape_max)
-        data_y_tmp = tbe.broadcast(data_y, shape_max)
-        data_sub = tbe.vsub(data_x_tmp, data_y_tmp)
-        res = tbe.vmul(data_sub, data_sub)
         sch = tbe.auto_schedule(res)
 
     config = {"print_ir": False,

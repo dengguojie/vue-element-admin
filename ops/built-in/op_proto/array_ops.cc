@@ -510,8 +510,20 @@ IMPLEMT_INFERFUNC(_ParallelConcatStart, ParallelConcatStartInfer) {
 INFER_FUNC_REG(_ParallelConcatStart, ParallelConcatStartInfer);
 
 IMPLEMT_INFERFUNC(Snapshot, SnapshotInferFunc) {
-  TensorDesc input_desc = op.GetInputDesc("x");
-  (void)op.UpdateOutputDesc("y", input_desc);
+  OP_LOGI(op.GetName().c_str(), "Snapshot infershape start");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc_x = op_desc->MutableInputDesc("x");
+  auto output_desc_y = op_desc->MutableOutputDesc("y");
+
+  auto x_dims = input_desc_x->MutableShape().GetDims();
+  auto x_type = input_desc_x->GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> x_range;
+  input_desc_x->GetShapeRange(x_range);
+  output_desc_y->SetShape(GeShape(x_dims));
+  output_desc_y->SetOriginShape(GeShape(x_dims));
+  output_desc_y->SetShapeRange(x_range);
+  output_desc_y->SetDataType(x_type);
+  OP_LOGI(op.GetName().c_str(), "Snapshot infershape end");
   return GRAPH_SUCCESS;
 }
 
@@ -526,23 +538,30 @@ IMPLEMT_INFERFUNC(GuaranteeConst, GuaranteeConstInfer) {
 INFER_FUNC_REG(GuaranteeConst, GuaranteeConstInfer);
 
 IMPLEMT_INFERFUNC(BroadcastArgs, BroadcastArgsInferFunc) {
-  TensorDesc x1_desc = op.GetInputDesc("x1");
-  TensorDesc x2_desc = op.GetInputDesc("x2");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto x1_desc = op_desc->MutableInputDesc("x1");
+  auto x2_desc = op_desc->MutableInputDesc("x2");
+  auto y_desc = op_desc->MutableOutputDesc("y");
+  auto x1_dims = x1_desc->GetShape().GetDims();
+  auto x2_dims = x2_desc->GetShape().GetDims();
+  auto data_type = x1_desc->GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> x1_range;
+  std::vector<std::pair<int64_t, int64_t>> x2_range;
+  std::vector<std::pair<int64_t, int64_t>> out_range;
+  x1_desc->GetShapeRange(x1_range);
+  x2_desc->GetShapeRange(x2_range);
 
-  bool data_type_check = ((x1_desc.GetDataType() != DT_INT32 && x1_desc.GetDataType() != DT_INT64) ||
-                          (x2_desc.GetDataType() != DT_INT32 && x2_desc.GetDataType() != DT_INT64));
+
+  bool data_type_check = ((x1_desc->GetDataType() != DT_INT32 && x1_desc->GetDataType() != DT_INT64) ||
+                          (x2_desc->GetDataType() != DT_INT32 && x2_desc->GetDataType() != DT_INT64));
   if (data_type_check) {
-    string reason = "x1[" + std::to_string(x1_desc.GetDataType()) + "] + and + x2[" +
-                    std::to_string(x1_desc.GetDataType()) + "] must DT_INT32 or DT_INT64";
+    string reason = "x1[" + std::to_string(x1_desc->GetDataType()) + "] + and + x2[" +
+                    std::to_string(x1_desc->GetDataType()) + "] must DT_INT32 or DT_INT64";
     GeInfershapeErrReport(op.GetName(), op.GetOpType(), "dtype", reason);
     GE_OP_LOGE(op.GetName().c_str(), "Data type check fail. x1[%u] and x2[%u] must DT_INT32 or DT_INT64",
-               x1_desc.GetDataType(), x2_desc.GetDataType());
+               x1_desc->GetDataType(), x2_desc->GetDataType());
     return GRAPH_PARAM_INVALID;
   }
-
-  TensorDesc y_desc = op.GetOutputDesc("y");
-  auto x1_dims = x1_desc.GetShape().GetDims();
-  auto x2_dims = x2_desc.GetShape().GetDims();
 
   if (x1_dims.size() > 1 || x2_dims.size() > 1) {
     string reason = "x1[" + std::to_string(x1_dims.size()) + "] + and + x2[" + std::to_string(x2_dims.size()) +
@@ -553,17 +572,58 @@ IMPLEMT_INFERFUNC(BroadcastArgs, BroadcastArgsInferFunc) {
     return GRAPH_PARAM_INVALID;
   }
 
-  if (x1_dims.empty()) {
-    y_desc.SetShape(ge::Shape(x2_dims));
-  } else if (x2_dims.empty()) {
-    y_desc.SetShape(ge::Shape(x1_dims));
-  } else {
-    auto dims = x1_dims[0] > x2_dims[0] ? x1_dims : x2_dims;
-    y_desc.SetShape(ge::Shape(dims));
+  if (x1_dims == UNKNOWN_RANK || x2_dims == UNKNOWN_RANK) {
+    GE_OP_LOGD(op.GetName().c_str(), "all two inputs are unknown rank!");
+    y_desc->SetShape(GeShape(UNKNOWN_SHAPE));
+    y_desc->SetOriginShape(GeShape(UNKNOWN_SHAPE));
+    y_desc->SetDataType(data_type);
+    return GRAPH_SUCCESS;
   }
 
-  y_desc.SetDataType(x1_desc.GetDataType());
-  (void)op.UpdateOutputDesc("y", y_desc);
+  if (x1_dims == UNKNOWN_SHAPE && x2_dims == UNKNOWN_SHAPE) {
+    GE_OP_LOGD(op.GetName().c_str(), "all two inputs are unknown shape!");
+    y_desc->SetShape(GeShape(UNKNOWN_SHAPE));
+    y_desc->SetOriginShape(GeShape(UNKNOWN_SHAPE));
+    y_desc->SetDataType(data_type);
+    y_desc->SetShapeRange(x1_range);
+    return GRAPH_SUCCESS;
+  } else if (x1_dims == UNKNOWN_SHAPE) {
+    GE_OP_LOGD(op.GetName().c_str(), "x1 is unknown shape!");
+    int64_t range_max = x2_dims.size();
+    std::pair<int64_t, int64_t> pair({1, range_max});
+    out_range.emplace_back(pair);
+    y_desc->SetShape(GeShape(UNKNOWN_SHAPE));
+    y_desc->SetOriginShape(GeShape(UNKNOWN_SHAPE));
+    y_desc->SetDataType(data_type);
+    y_desc->SetShapeRange(out_range);
+    return GRAPH_SUCCESS;
+  } else if (x2_dims == UNKNOWN_SHAPE) {
+    GE_OP_LOGD(op.GetName().c_str(), "x2 is unknown shape!");
+    int64_t range_max = x2_dims.size();
+    std::pair<int64_t, int64_t> pair({1, range_max});
+    out_range.emplace_back(pair);
+    y_desc->SetShape(GeShape(UNKNOWN_SHAPE));
+    y_desc->SetOriginShape(GeShape(UNKNOWN_SHAPE));
+    y_desc->SetDataType(data_type);
+    y_desc->SetShapeRange(out_range);
+    return GRAPH_SUCCESS;
+  }
+
+  if (x1_dims.empty()) {
+    y_desc->SetShape(GeShape(x2_dims));
+  } else if (x2_dims.empty()) {
+    y_desc->SetShape(GeShape(x1_dims));
+  } else {
+    auto dims = x1_dims[0] > x2_dims[0] ? x1_dims : x2_dims;
+    y_desc->SetShape(GeShape(dims));
+  }
+
+  int64_t range_max = x1_dims.size() > x2_dims.size() ? x1_dims.size() : x2_dims.size();
+  std::pair<int64_t, int64_t> pair({1, range_max});
+  out_range.emplace_back(pair);
+  y_desc->SetShapeRange(out_range);
+  y_desc->SetDataType(x1_desc->GetDataType());
+
 
   return GRAPH_SUCCESS;
 }
@@ -657,16 +717,41 @@ IMPLEMT_INFERFUNC(BroadcastGradientArgs, BroadcastGradientArgsInfer) {
 INFER_FUNC_REG(BroadcastGradientArgs, BroadcastGradientArgsInfer);
 
 IMPLEMT_INFERFUNC(PreventGradient, PreventGradientInferFunc) {
-  TensorDesc input_desc = op.GetInputDesc("x");
-  (void)op.UpdateOutputDesc("y", input_desc);
+  OP_LOGI(op.GetName().c_str(), "PreventGradient infershape start");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc_x = op_desc->MutableInputDesc("x");
+  auto output_desc_y = op_desc->MutableOutputDesc("y");
+
+  auto x_dims = input_desc_x->MutableShape().GetDims();
+  auto x_type = input_desc_x->GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> x_range;
+  input_desc_x->GetShapeRange(x_range);
+  output_desc_y->SetShape(GeShape(x_dims));
+  output_desc_y->SetOriginShape(GeShape(x_dims));
+  output_desc_y->SetShapeRange(x_range);
+  output_desc_y->SetDataType(x_type);
+  OP_LOGI(op.GetName().c_str(), "PreventGradient infershape end");
   return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(PreventGradient, PreventGradientInferFunc);
 
 IMPLEMT_INFERFUNC(StopGradient, StopGradientInferFunc) {
-  TensorDesc input_desc = op.GetInputDesc("x");
-  (void)op.UpdateOutputDesc("y", input_desc);
+  OP_LOGI(op.GetName().c_str(), "StopGradient infershape start");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc_x = op_desc->MutableInputDesc("x");
+  auto output_desc_y = op_desc->MutableOutputDesc("y");
+
+  auto x_dims = input_desc_x->MutableShape().GetDims();
+  auto x_type = input_desc_x->GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> x_range;
+  input_desc_x->GetShapeRange(x_range);
+  output_desc_y->SetShape(GeShape(x_dims));
+  output_desc_y->SetOriginShape(GeShape(x_dims));
+  output_desc_y->SetShapeRange(x_range);
+  output_desc_y->SetShapeRange(x_range);
+  output_desc_y->SetDataType(x_type);
+  OP_LOGI(op.GetName().c_str(), "StopGradient infershape end");
   return GRAPH_SUCCESS;
 }
 
@@ -754,7 +839,7 @@ IMPLEMT_INFERFUNC(ExpandDims, ExpandDimsInfer) {
     GE_OP_LOGE(op.GetName().c_str(), "no const data when get data from tensor!");
     return GRAPH_FAILED;
   }
-  int64_t axis{0};
+  int64_t axis;
   if (axis_type == DT_INT32) {
     axis = *const_cast<int32_t*>(reinterpret_cast<const int32_t*>(pbuff));
   } else if (axis_type == DT_INT64) {
@@ -803,10 +888,10 @@ IMPLEMT_INFERFUNC(ExpandDims, ExpandDimsInfer) {
 INFER_FUNC_REG(ExpandDims, ExpandDimsInfer);
 
 template <typename T>
-static graphStatus ValidateShape(const Tensor& tenosr, int64_t& product, int& unknow_index, GeShape& output,
+static graphStatus ValidateShape(const GeTensorPtr& tenosr, int64_t& product, int& unknow_index, GeShape& output,
                                  Operator& op) {
-  int64_t dim_num = tenosr.GetTensorDesc().GetShape().GetDim(0);
-  T* shape_data = const_cast<T*>(reinterpret_cast<const T*>(tenosr.GetData()));
+  int64_t dim_num = tenosr->MutableTensorDesc().MutableShape().GetDim(0);
+  T* shape_data = const_cast<T*>(reinterpret_cast<const T*>(tenosr->GetData().GetData()));
   std::vector<int64_t> out_dims = output.GetDims();
   if (shape_data == nullptr) {
     GE_OP_LOGE(op.GetName().c_str(), "truth shape data is invalid");
@@ -850,6 +935,66 @@ static graphStatus ValidateShape(const Tensor& tenosr, int64_t& product, int& un
 static graphStatus CaffeReshapeInferShape(const vector<int64_t>& dims, const int64_t& axis, const int64_t& num_axes,
                                           Operator& op) {
   GE_OP_LOGI(op.GetName().c_str(), "Reshape infer shape start");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto x_desc = op_desc->MutableInputDesc("x");
+  auto shape_desc = op_desc->MutableInputDesc("shape");
+  auto y_desc = op_desc->MutableOutputDesc("y");
+  auto x_dims = x_desc->GetShape().GetDims();
+  auto data_type = x_desc->GetDataType();
+
+  if (x_dims == UNKNOWN_RANK && dims == UNKNOWN_RANK) {
+    y_desc->SetShape(GeShape(UNKNOWN_SHAPE));
+    y_desc->SetOriginShape(GeShape(UNKNOWN_SHAPE));
+    y_desc->SetDataType(data_type);
+    return GRAPH_SUCCESS;
+  } else if (x_dims != UNKNOWN_RANK && dims == UNKNOWN_RANK ) {
+    y_desc->SetShape(GeShape(UNKNOWN_SHAPE));
+    y_desc->SetOriginShape(GeShape(UNKNOWN_SHAPE));
+    y_desc->SetDataType(data_type);
+    return GRAPH_SUCCESS;
+  } else if (x_dims == UNKNOWN_RANK && dims != UNKNOWN_RANK) {
+    if (axis == 0 && num_axes == -1) {
+      y_desc->SetShape(GeShape(dims));
+      y_desc->SetOriginShape(GeShape(dims));
+      y_desc->SetDataType(data_type);
+    } else {
+      y_desc->SetShape(GeShape(UNKNOWN_SHAPE));
+      y_desc->SetOriginShape(GeShape(UNKNOWN_SHAPE));
+      y_desc->SetDataType(data_type);
+    }
+    return GRAPH_SUCCESS;
+  }
+
+  std::vector<std::pair<int64_t, int64_t>> x_range;
+  x_desc->GetShapeRange(x_range);
+  if (x_dims == UNKNOWN_SHAPE && dims == UNKNOWN_SHAPE) {
+    y_desc->SetShape(GeShape(UNKNOWN_SHAPE));
+    y_desc->SetOriginShape(GeShape(UNKNOWN_SHAPE));
+    y_desc->SetDataType(data_type);
+    y_desc->SetShapeRange(x_range);
+    return GRAPH_SUCCESS;
+  } else if (x_dims == UNKNOWN_SHAPE) {
+    if (axis == 0 && num_axes == -1) {
+      y_desc->SetShape(GeShape(dims));
+      y_desc->SetOriginShape(GeShape(dims));
+      y_desc->SetDataType(data_type);
+      y_desc->SetShapeRange(x_range);
+    } else {
+      y_desc->SetShape(GeShape(UNKNOWN_SHAPE));
+      y_desc->SetOriginShape(GeShape(UNKNOWN_SHAPE));
+      y_desc->SetDataType(data_type);
+      y_desc->SetShapeRange(x_range);
+    }
+    return GRAPH_SUCCESS;
+  } else if(dims == UNKNOWN_SHAPE) {
+    y_desc->SetShape(GeShape(UNKNOWN_SHAPE));
+    y_desc->SetOriginShape(GeShape(UNKNOWN_SHAPE));
+    y_desc->SetDataType(data_type);
+    y_desc->SetShapeRange(x_range);
+    return GRAPH_SUCCESS;
+  }
+
+
   int64_t inferred_axis = -1;
   int64_t constant_count = 1;
   vector<int64_t> copy_axes;
@@ -892,6 +1037,7 @@ static graphStatus CaffeReshapeInferShape(const vector<int64_t>& dims, const int
                bottom_shape_size);
     return GRAPH_PARAM_INVALID;
   }
+
   int64_t end_axis = 0;
   if (num_axes < -1) {
     GeInfershapeErrReport(op.GetName(), op.GetOpType(), kAttrNumAxes, "it must be greater than or equal to -1");
@@ -996,6 +1142,81 @@ static graphStatus CaffeReshapeInferShape(const vector<int64_t>& dims, const int
   return GRAPH_SUCCESS;
 }
 
+bool IsEmptyTensor(GeTensorDescPtr tensor_desc) {
+  bool is_empty = false;
+  for (const auto &dim : tensor_desc->MutableShape().GetDims()) {
+    if (dim == 0) {
+      is_empty = true;
+      break;
+    }
+  }
+  return is_empty;
+}
+
+template <typename T>
+graphStatus GetOutShapeFromTensor(OpDescPtr op_desc, GeTensorPtr tensor, std::vector<int64_t> &v_out) {
+  auto shape_desc = tensor->MutableTensorDesc();
+  T* shape_data = const_cast<T*>(reinterpret_cast<const T*>(tensor->GetData().GetData()));
+  if (shape_data == nullptr) {
+    GE_OP_LOGE(op_desc->GetName().c_str(), "const shape data is invalid");
+    return GRAPH_PARAM_INVALID;
+  }
+  for (int i = 0; i < shape_desc.MutableShape().GetDim(0); i++) {
+    v_out.emplace_back(shape_data[i]);
+  }
+  return GRAPH_SUCCESS;
+}
+
+graphStatus EmptyTensorProcess(const Operator &op, const GeTensorDesc &x_desc, const GeTensorPtr &shape_tensor,
+                               GeTensorDesc &out_desc) {
+  GE_OP_LOGD("Start empty-tensor preprocess!");
+
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto shape_type = op_desc->MutableInputDesc("shape")->GetDataType();
+  std::vector<int64_t> shape_shape;
+  graphStatus ret = GRAPH_SUCCESS;
+
+  if (shape_type == DT_INT32) {
+    ret = GetOutShapeFromTensor<int32_t>(op_desc, shape_tensor, shape_shape);
+  } else if (shape_type == DT_INT64) {
+    ret = GetOutShapeFromTensor<int32_t>(op_desc, shape_tensor, shape_shape);
+  } else {
+    GeInfershapeErrReport(op.GetName(), op.GetOpType(), kShapeDtype,
+      "Dim type must be DT_INT32 or DT_INT64.");
+    GE_OP_LOGE(op.GetName().c_str(), "Dim type must be DT_INT32 or DT_INT64.");
+    return GRAPH_PARAM_INVALID;
+  }
+
+  if (ret != GRAPH_SUCCESS) {
+    return ret;
+  }
+
+  GE_OP_LOGD(op.GetName().c_str(), "x shape: %s shape shape: %s", x_desc.GetShape().ToString().c_str(),
+      GeShape(shape_shape).ToString().c_str());
+
+  int64_t num_of_neg_1 = 0;
+  int64_t product = 1;
+  for (auto &dim : shape_shape) {
+    if (dim == -1) { // -1 stand for highest dim here
+      num_of_neg_1++;
+      dim = 0;
+    }
+    product *= dim;
+  }
+
+  // check valid
+  if ((num_of_neg_1 == 0 && product == 0) || (num_of_neg_1 == 1)) {
+    out_desc.SetShape(GeShape(shape_shape));
+    out_desc.SetOriginShape(GeShape(shape_shape));
+    out_desc.SetDataType(x_desc.GetDataType());
+    out_desc.SetOriginDataType(x_desc.GetDataType());
+    return GRAPH_SUCCESS;
+  }
+  GE_OP_LOGE(op.GetName().c_str(),
+    "Param is invalid!.Please check!Input shape contains -1 num is %ld, product is %ld", num_of_neg_1, product);
+  return GRAPH_FAILED;
+}
+
 IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
   bool zero_flag = false;
   vector<int64_t> attr_dims;
@@ -1011,6 +1232,8 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
   std::vector<string> dep_inputs = {"shape"};
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   op_desc->SetOpInferDepends(dep_inputs);
+  auto x_desc = op_desc->MutableInputDesc("x");
+  auto y_desc = op_desc->MutableOutputDesc("y");
 
   int64_t attr_axis = 0;
   op.GetAttr("axis", attr_axis);
@@ -1025,8 +1248,13 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
   }
 
   GE_OP_LOGI(op.GetName().c_str(), "Reshape infer shape start");
-  Tensor tensor;
-  graphStatus state = op.GetInputConstData("shape", tensor);
+  GeTensorPtr tensor = nullptr;
+  auto node = NodeUtils::GetNodeFromOperator(op);
+  if (node == nullptr) {
+    OP_LOGE(op.GetName().c_str(), "get null node ptr!");
+    return GRAPH_PARAM_INVALID;
+  }
+  graphStatus state = NodeUtils::GetInputConstData(node, "shape", tensor);
   if (state != GRAPH_SUCCESS) {
     GE_OP_LOGW(op.GetName().c_str(), "Op get input const data of shape failed");
     auto input_shape = op_desc->MutableInputDesc("x")->MutableShape();
@@ -1081,6 +1309,10 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
     td->SetOriginShape(GeShape({-2}));
     td->SetDataType(x_type);
     return GRAPH_SUCCESS;
+  }
+
+  if (IsEmptyTensor(x_desc)) {
+    return EmptyTensorProcess(op, *x_desc, tensor, *y_desc);
   }
   std::vector<std::pair<int64_t, int64_t>> x_range;
   std::vector<std::pair<int64_t, int64_t>> y_range;
@@ -1433,24 +1665,32 @@ IMPLEMT_INFERFUNC(Unsqueeze, UnsqueezeInfer) {
 INFER_FUNC_REG(Unsqueeze, UnsqueezeInfer);
 
 IMPLEMT_INFERFUNC(Rank, RankInfer) {
+  OP_LOGI(op.GetName().c_str(), "Rank infershape start");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto output_desc_y = op_desc->MutableOutputDesc("y");
   std::vector<int64_t> oShapeVector;
-  Shape oShape(oShapeVector);
-  TensorDesc td = op.GetOutputDesc("y");
-  td.SetShape(ge::Shape(oShape));
-  td.SetDataType(DT_INT32);
-  (void)op.UpdateOutputDesc("y", td);
+  output_desc_y->SetShape(GeShape(oShapeVector));
+  output_desc_y->SetOriginShape(GeShape(oShapeVector));
+  output_desc_y->SetDataType(DT_INT32);
+  OP_LOGI(op.GetName().c_str(), "Rank infershape end"); 
   return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(Rank, RankInfer);
 
 IMPLEMT_INFERFUNC(Size, SizeInfer) {
-  TensorDesc td = op.GetOutputDesc("y");
-  td.SetShape(ge::Shape());
-  uint32_t out_type = DT_INT32;
-  (void)op.GetAttr("dtype", out_type);
-  td.SetDataType((DataType)out_type);
-  (void)op.UpdateOutputDesc("y", td);
+  OP_LOGI(op.GetName().c_str(), "Size infershape start");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto output_desc_y = op_desc->MutableOutputDesc("y");
+  std::vector<int64_t> oShapeVector;
+  output_desc_y->SetShape(GeShape(oShapeVector));
+
+  DataType out_type = DT_INT32;
+  GeAttrValue out_type_value;
+  op_desc->GetAttr("dtype", out_type_value);
+  out_type_value.GetValue<DataType>(out_type);
+  output_desc_y->SetDataType(out_type);
+  OP_LOGI(op.GetName().c_str(), "Size infershape end");
   return GRAPH_SUCCESS;
 }
 
@@ -1534,19 +1774,52 @@ IMPLEMT_INFERFUNC(ShapeN, ShapeNInfer) {
 INFER_FUNC_REG(ShapeN, ShapeNInfer);
 
 IMPLEMT_INFERFUNC(IdentityN, IdentityNInfer) {
+  OP_LOGI(op.GetName().c_str(), "IdentityN infershape start");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   for (size_t i = 0; i < op.GetInputsSize(); i++) {
-    TensorDesc input_desc = op.GetDynamicInputDesc("x", i);
-    (void)op.UpdateDynamicOutputDesc("y", i, input_desc);
+
+    auto input_desc = op_desc->MutableInputDesc(i);
+    auto input_dims = input_desc->MutableShape().GetDims();
+    auto output_desc = op_desc->MutableOutputDesc(i);
+    auto intput_dtype = input_desc->GetDataType();
+
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    input_desc->GetShapeRange(input_range);
+    output_desc->SetShape(GeShape(input_dims));
+    output_desc->SetOriginShape(GeShape(input_dims));
+    output_desc->SetDataType(intput_dtype);
+    output_desc->SetShapeRange(input_range);
   }
+
+  OP_LOGI(op.GetName().c_str(), "IdentityN infershape end");
+
   return GRAPH_SUCCESS;
+
 }
 
 INFER_FUNC_REG(IdentityN, IdentityNInfer);
 
 IMPLEMT_INFERFUNC(Identity, IdentityInfer) {
-  TensorDesc input_desc = op.GetInputDesc("x");
-  (void)op.UpdateOutputDesc("y", input_desc);
+  OP_LOGI(op.GetName().c_str(), "Identity infershape start");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc_x = op_desc->MutableInputDesc("x");
+  auto output_desc_y = op_desc->MutableOutputDesc("y");
+
+  std::vector<int64_t> vec_dim;
+  vec_dim = input_desc_x->MutableShape().GetDims();
+
+  std::vector<std::pair<int64_t, int64_t>> x_range;
+  input_desc_x->GetShapeRange(x_range);
+
+  DataType data_type = input_desc_x->GetDataType();
+
+  output_desc_y->SetDataType(data_type);
+  output_desc_y->SetShape(GeShape(vec_dim));
+  output_desc_y->SetOriginShape(GeShape(vec_dim));
+  output_desc_y->SetShapeRange(x_range);
+  OP_LOGI(op.GetName().c_str(), "Identity infershape end");
   return GRAPH_SUCCESS;
+
 }
 
 INFER_FUNC_REG(Identity, IdentityInfer);
@@ -1574,26 +1847,50 @@ static void CaclDims(const Tensor& data, std::vector<int64_t>& vec_dim) {
 }
 
 IMPLEMT_INFERFUNC(Empty, EmptyInfer) {
-  TensorDesc td = op.GetOutputDesc("y");
-  Tensor data;
-  graphStatus ret = op.GetInputConstData("shape", data);
-  if (ret == GRAPH_SUCCESS) {
-    DataType data_type = data.GetTensorDesc().GetDataType();
-    std::vector<int64_t> vec_dim;
-    if (data_type == DT_INT32) {
-      CaclDims<int32_t>(data, vec_dim);
-    } else {
-      GeInfershapeErrReport(op.GetName(), op.GetOpType(), "dtype", "Empty only support shape type 'DT_INT32'");
-      GE_OP_LOGE(op.GetName().c_str(), "Empty only support shape type 'DT_INT32'");
-      return GRAPH_PARAM_INVALID;
-    }
-    td.SetShape(Shape(vec_dim));
+  OP_LOGI(op.GetName().c_str(), "Empty infershape start");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc_shape = op_desc->MutableInputDesc("shape");
+  auto output_desc_y = op_desc->MutableOutputDesc("y");
+
+  std::vector<std::pair<int64_t, int64_t>> shape_range;
+  std::vector<std::pair<int64_t, int64_t>> y_range;
+  input_desc_shape->GetShapeRange(shape_range);
+
+  DataType data_type = input_desc_shape->GetDataType();
+  std::vector<int64_t> vec_dim;
+  if (data_type == DT_INT32) {
+    vec_dim = input_desc_shape->MutableShape().GetDims();
+  } else {
+    GeInfershapeErrReport(op.GetName(), op.GetOpType(), "dtype", "Empty only support shape type 'DT_INT32'");
+    GE_OP_LOGE(op.GetName().c_str(), "Empty only support shape type 'DT_INT32'");
+    return GRAPH_PARAM_INVALID;
   }
 
+  if (vec_dim == UNKNOWN_RANK) {
+    GE_OP_LOGD(op.GetName().c_str(), "all inputs are unknown rank!");
+    output_desc_y->SetShape(GeShape(UNKNOWN_SHAPE));
+    output_desc_y->SetOriginShape(GeShape(UNKNOWN_SHAPE));
+    output_desc_y->SetDataType(data_type);
+    return GRAPH_SUCCESS;
+  }
+
+  if (vec_dim == UNKNOWN_SHAPE) {
+    GE_OP_LOGD(op.GetName().c_str(), "shape is unknown shape!");
+    std::pair<int64_t, int64_t> pair({1, shape_range.size()});
+    y_range.emplace_back(pair);
+    output_desc_y->SetShape(GeShape(UNKNOWN_SHAPE));
+    output_desc_y->SetOriginShape(GeShape(UNKNOWN_SHAPE));
+    output_desc_y->SetDataType(data_type);
+    output_desc_y->SetShapeRange(y_range);
+    return GRAPH_SUCCESS;
+  }
+
+  output_desc_y->SetShape(GeShape(vec_dim));
+  output_desc_y->SetOriginShape(GeShape(vec_dim));
   uint32_t dtype = DT_INT32;
   (void)op.GetAttr("dtype", dtype);
-  td.SetDataType((DataType)dtype);
-  (void)op.UpdateOutputDesc("y", td);
+  output_desc_y->SetDataType((DataType)dtype);
+  OP_LOGI(op.GetName().c_str(), "Empty infershape end");
   return GRAPH_SUCCESS;
 }
 

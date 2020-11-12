@@ -25,7 +25,40 @@ from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
+
+# pylint: disable=unused-argument
+def get_op_support_info(x, y, num, axis, kernel_name="unpack"):
+    """
+    get unpack slice info
+    """
+    format_x = x.get("format")
+    shape_x = x.get("shape")
+    # infer the value of num
+    real_axis = axis + len(shape_x) if axis < 0 else axis
+    support_format = ["NC1HWC0", "ND", "NCHW", "NHWC"]
+    if num is None:
+        num = shape_x[real_axis]
+    if format_x in support_format:
+        axis_split_matrix = []
+        axis_reduce_list = None
+        for idx, _ in enumerate(shape_x):
+            output_split = []
+            if idx == real_axis:
+                continue
+            for output_idx in range(num):
+                output_split.append([output_idx, [idx]])
+            split_info = [SplitInput([0, [idx], [-1], [-1]]), SplitOutput(*output_split)]
+            axis_split_matrix.append(split_info)
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+
+    return op_cal_info_in_json
 
 # pylint: disable=unused-argument,invalid-name,too-many-arguments
 def op_select_format(x, y, num, axis, kernel_name="unpack"):
@@ -265,6 +298,12 @@ def _tiling_axis(shape, dtype):
     if split_axis < 0:
         split_axis = 0
         split_factor = tiling_shape[0]
+
+    if split_axis == 0 and tiling_shape[0] % split_factor != 0:
+        while (tiling_shape[0] % split_factor) * shape[-1] < ele_each_block:
+            split_factor -= 1
+            if split_factor == 1:
+                break
 
     return split_axis, split_factor
 

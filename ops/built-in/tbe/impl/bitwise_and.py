@@ -20,8 +20,8 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
-# from te.utils.op_utils import refine_shapes_for_broadcast
 
 # pylint: disable=unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("bitwise_and")
@@ -80,8 +80,8 @@ def _check_parameters(x1, x2, y, kernel_name):
     para_check.check_dtype(dtype_y, check_tuple, param_name="x2")
     para_check.check_dtype(dtype_z, check_tuple, param_name="y")
     if dtype_x != dtype_y:
-        raise RuntimeError(
-            "two input type must be the same")
+        error_detail = "dtype of x1 and x2 should be same"
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "x1", "x2", error_detail)
 
     return shape_x, shape_y, dtype_x
 

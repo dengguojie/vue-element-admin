@@ -22,6 +22,7 @@ from te.utils import para_check
 from impl.util import util_apply_op_schedule
 from impl.util import util_build
 from impl.util import util_compute
+from te.utils.error_manager import error_manager_vector
 
 # scalar in apply_adagrad_da_d
 NUM_ONE = 1.0
@@ -238,7 +239,13 @@ def apply_adagrad_da_d(var, gradient_accumulator,
         dtype = d.get('dtype')
         normalized_dtype_list[i] = dtype.lower()
     if any(elem != normalized_dtype_list[0] for elem in normalized_dtype_list):
-        raise RuntimeError("All input data types must be the same")
+        rule_desc = "All input data types must be the same"
+        param_value = "%s,%s,%s,%s,%s,%s,%s"%(var.get('dtype'), gradient_accumulator.get('dtype'),
+                                              gradient_squared_accumulator.get('dtype'), grad.get('dtype'),
+                                              lr.get('dtype'), l1.get('dtype'), l2.get('dtype'))
+        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc,
+                                                          "var,gradient_accumulator,gradient_squared_accumulator,grad,lr,l1,l2",
+                                                          param_value)
 
     # check global_step dtype
     dtype = global_step.get("dtype").lower()

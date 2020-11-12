@@ -71,7 +71,7 @@ Status FusedBatchNormInfGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping&
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "batchNormGrad is null, fusion failed."), return PARAM_INVALID);
   bool isTraing = true;
   FUSION_PASS_CHECK(!ge::AttrUtils::GetBool(batchNormGradNode->GetOpDesc(), IS_TRAING, isTraing),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Get is_traing attr failed."), return FAILED);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Get is_traing attr failed."), return NOT_CHANGED);
 
   FUSION_PASS_CHECK(isTraing, OP_LOGI(FUSED_OP_TYPE.c_str(), "is_traing is true, no need fusion."), return NOT_CHANGED);
 
@@ -169,7 +169,7 @@ Status FusedBatchNormInfGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping&
   // copy attr
   float epsilon;
   FUSION_PASS_CHECK(!ge::AttrUtils::GetFloat(batchNormGradNode->GetOpDesc(), EPSILON, epsilon),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Get epsilon attr failed."), return FAILED);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Get epsilon attr failed."), return NOT_CHANGED);
 
   FUSION_PASS_CHECK(!ge::AttrUtils::SetFloat(newNode->GetOpDesc(), EPSILON, epsilon),
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Set epsilon attr failed"), return FAILED);

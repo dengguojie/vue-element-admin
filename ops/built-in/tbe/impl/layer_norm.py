@@ -21,11 +21,40 @@ from te import platform as tbe_platform
 from impl.util import util_select_op_base
 from te.utils import shape_util
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import ReduceInput
+from impl.util.util_select_op_base import ReduceOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 # General limitation of the size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
 
 SIZE_SIXTEEN = 16
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(input_x, input_gamma, input_beta,
+                        output_y, output_mean, output_variance,
+                        begin_norm_axis, begin_params_axis,
+                        epsilon=1e-12, kernel_name="layer_norm",
+                        impl_mode="high_performance"):
+    format_x = input_x.get("format").upper()
+    ori_shape_x = list(input_x.get("ori_shape"))
+    index_list = tuple(index for index, _ in enumerate(ori_shape_x))
+    reduce_axis = index_list[begin_norm_axis:]
+    reduce_axis = to_frac_z_axis(ori_shape_x, reduce_axis)
+    if format_x in ("FRACTAL_NZ", "ND", "NCHW", "NHWC", "NC1HWC0"):
+        axis_reduce_matrix=[]
+        for i in reduce_axis:
+            split_0 = [ReduceInput([0, [i]]), ReduceOutput([1, 0, False])]
+            axis_reduce_matrix.append(split_0)
+        axis_split_list = None
+
+    else:
+        axis_split_list = None
+        axis_reduce_matrix = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_list, axis_reduce_matrix, 0, 0)
+    return op_cal_info_in_json
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -34,11 +63,15 @@ def _division_sixteen(shape):
 
     if len(shape) < 2:
         if shape[-1] == 0:
-            raise RuntimeError("value of shape is illegal")
+            error_detail = "value of shape_x is illegal"
+            error_manager_vector.raise_err_input_shape_invalid("layer_norm", "input_x", \
+                                                               error_detail)
         return False
 
     if shape[-1] == 0 or shape[-2] == 0:
-        raise RuntimeError("value of shape is illegal")
+        error_detail = "value of shape_x is illegal"
+        error_manager_vector.raise_err_input_shape_invalid("layer_norm", "input_x", \
+                                                           error_detail)
 
     if shape[-1] % SIZE_SIXTEEN == 0 and shape[-2] % SIZE_SIXTEEN == 0:
         return True
@@ -413,7 +446,7 @@ def layer_norm_compute(input_x, input_gamma, input_beta,
     cast_dtype_precision = dtype
     if dtype == "float16" and \
             ((tbe_platform.cce_conf.api_check_support
-                  ("tbe.vexp", "float32") and
+                  ("te.lang.cce.vexp", "float32") and
               impl_mode == "high_performance") or
              impl_mode == "high_precision"):
         cast_dtype = "float32"
@@ -565,13 +598,20 @@ def layer_norm(input_x, input_gamma, input_beta,
 
         if input_gamma_format == "FRACTAL_NZ" or \
                 input_beta_format == "FRACTAL_NZ":
-            raise RuntimeError("gamma and beta not support Nz in bert")
+            error_detail = "gamma and beta not support Nz in bert"
+            error_manager_vector.raise_err_two_input_format_invalid(kernel_name, "input_gamma", \
+                                                                    "input_beta", error_detail)
         if shape_gamma != shape_beta:
-            raise RuntimeError("gamma and beta's must be same.")
+            error_detail = "gamma and beta's shape must be same."
+            error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "input_gamma", \
+                                                                   "input_beta", error_detail)
         if ori_shape_x[begin_params_axis:] != shape_gamma:
-            raise RuntimeError("x or gamma or begin_params_axis is wrong.")
+            error_detail = "x or gamma or begin_params_axis is wrong."
+            error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", \
+                                                                   "input_gamma", error_detail)
         if len(shape_gamma) > 1:
-            raise RuntimeError("shape of gamma or beta only support 1D in bert")
+            error_detail = "shape of gamma or beta only support 1D in bert"
+            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "input_gamma", error_detail)
 
         # make shape_x,shape_gamma,shape_beta dim same
         if begin_params_axis != 0:
@@ -590,19 +630,25 @@ def layer_norm(input_x, input_gamma, input_beta,
         begin_params_axis = shape_util.axis_check(len(shape_x), begin_params_axis)
 
         if shape_gamma != shape_beta:
-            raise RuntimeError("gamma and beta's must be same.")
+            error_detail = "gamma and beta's shape must be same."
+            error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "input_gamma", \
+                                                                   "input_beta", error_detail)
         no_need_fix_gamma = False
         no_need_fix_beta = False
         if shape_x[begin_params_axis:] != shape_gamma:
             if len(shape_x) == len(shape_gamma):
                 no_need_fix_gamma = True
             else:
-                raise RuntimeError("x or gamma or begin_params_axis is wrong.")
+                error_detail = "x or gamma or begin_params_axis is wrong."
+                error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", \
+                                                                       "input_gamma", error_detail)
         if shape_x[begin_params_axis:] != shape_beta:
             if len(shape_x) == len(shape_beta):
                 no_need_fix_beta = True
             else:
-                raise RuntimeError("x or beta or begin_params_axis is wrong.")
+                error_detail = "x or gamma or begin_params_axis is wrong."
+                error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", \
+                                                                       "input_beta", error_detail)
         # make shape_x,shape_gamma,shape_beta dim same
         if begin_params_axis != 0 and not no_need_fix_gamma:
             for i in range(begin_params_axis):

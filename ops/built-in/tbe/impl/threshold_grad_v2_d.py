@@ -21,8 +21,8 @@ from te.lang.cce.te_compute.elewise_compute import vcmpsel as _vcmpsel
 from te.platform.fusion_manager import fusion_manager
 from te.tvm import api as tvm
 from te.tvm.target import cce
-from te.utils import check_para
-from te.utils import operate_shape
+from te.utils import para_check
+from te.utils import shape_util
 from te.utils.cce import auto_schedule
 
 
@@ -58,8 +58,8 @@ def threshold_grad_v2_d_compute(input_gradients, input_features,
     return result
 
 
-@check_para.check_op_params(check_para.REQUIRED_INPUT, check_para.REQUIRED_INPUT,
-                 check_para.REQUIRED_OUTPUT, check_para.REQUIRED_ATTR_FLOAT, check_para.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                 para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
 def threshold_grad_v2_d(input_gradients, input_features, output_backprops,
                         threshold, kernel_name="threshold_grad_v2_d"):
     """
@@ -89,15 +89,15 @@ def threshold_grad_v2_d(input_gradients, input_features, output_backprops,
     shape_input_features = input_features.get("shape")
     dtype_input_features = input_features.get("dtype").lower()
 
-    shape_list = operate_shape.produce_shapes(shape_input_gradients,
+    shape_list = shape_util.produce_shapes(shape_input_gradients,
                                      shape_input_features)
-    check_para.check_tensor_shape_size(shape_list[2])
+    para_check.check_tensor_shape_size(shape_list[2])
     shape_input_gradients, shape_input_features = \
-        operate_shape.refine_shapes_for_broadcast(shape_list[0], shape_list[1])
+        shape_util.refine_shapes_for_broadcast(shape_list[0], shape_list[1])
 
     check_list = ("float16", "float32", "int32", "int8", "uint8")
-    check_para.check_dtype(dtype_input_gradients, check_list)
-    check_para.check_dtype(dtype_input_features, check_list)
+    para_check.check_dtype(dtype_input_gradients, check_list)
+    para_check.check_dtype(dtype_input_features, check_list)
 
     data_input_gradients = tvm.placeholder(shape_input_gradients,
                                            name="data_input_gradients",

@@ -18,7 +18,6 @@ maximum
 
 import te.lang.cce as tbe
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
@@ -93,7 +92,7 @@ def maximum(x1, x2, y, kernel_name="maximum"):
     para_check.check_shape(shape1, param_name="x1")
     para_check.check_shape(shape2, param_name="x2")
 
-    check_list = ["float16", "float32", "int32"]
+    check_list = ["float16", "float32", "int32", "int8"]
     dtype = x1.get("dtype").lower()
     dtype_x2 = x2.get("dtype").lower()
     para_check.check_dtype(dtype, check_list, param_name="x1")

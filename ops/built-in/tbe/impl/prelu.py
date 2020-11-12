@@ -23,6 +23,19 @@ from te.utils.error_manager import error_manager_vector
 from te import tvm
 
 
+def reshape(tensor_in, new_shape):
+    """
+    :params:
+    :input: tensor to be reshaped
+    :new_shape: shape after input tensor reshaped
+    :return: reshape tensor
+    """
+    def _nd2nz_compute(tensor, indices):
+        axis_0, axis_1, axis_2, axis_3 = indices
+        return tensor(axis_0 * 16 + axis_3)
+    return tvm.compute(new_shape, lambda *indices: _nd2nz_compute(tensor_in, indices), name='reshape')
+
+
 # pylint: disable=unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("prelu")
 def prelu_compute(input_x, weight_input, output_y, kernel_name="prelu"):
@@ -51,6 +64,15 @@ def prelu_compute(input_x, weight_input, output_y, kernel_name="prelu"):
         scalar_zero = tvm.const(0, dtype="float32")
     val_max = tbe.vmaxs(input_x, scalar_zero)
     val_min = tbe.vmins(input_x, scalar_zero)
+    if "format" in input_x.op.attrs:
+        format_x = input_x.op.attrs["format"].value
+        shape_weight =  shape_util.shape_to_list(weight_input.shape)
+        if format_x == "FRACTAL_NZ":
+            target_shape = [1] * len(shape_x)
+            if sum(shape_weight) != 1:
+                target_shape[0] = shape_x[0]
+                target_shape[-1] = shape_x[-1]
+            weight_input = reshape(weight_input, target_shape)
     weight_input = tbe.broadcast(weight_input, shape_x)
     val_prod = tbe.vmul(val_min, weight_input)
     res = tbe.vadd(val_max, val_prod)

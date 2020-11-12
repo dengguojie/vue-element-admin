@@ -22,10 +22,69 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te import tik
 from impl import common_util
+from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 
 # available ub size
 UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(values, output_data, shape, num, kernel_name="parallel_concat"):
+    shape_value_len = len(values[0].get("shape"))
+    format_value = values[0].get("format").upper()
+    if format_value == "ND":
+        axis_split_matrix=[]
+        for i in range(1, shape_value_len):
+            input_list = []
+            for j in range(0, num):
+                input_0 = [j, [i], [-1], [-1]]
+                input_list.append(input_0)
+            split_0 = [SplitInput(*input_list), SplitOutput([0, [i]])]
+            axis_split_matrix.append(split_0)
+        axis_reduce_list = None
+
+    elif format_value == "NCHW":
+        axis_split_matrix=[]
+        for i in range(2, shape_value_len):
+            input_list = []
+            for j in range(0, num):
+                input_0 = [j, [i], [-1], [-1]]
+                input_list.append(input_0)
+            split_0 = [SplitInput(*input_list), SplitOutput([0, [i]])]
+            axis_split_matrix.append(split_0)
+        axis_reduce_list = None
+
+    elif format_value == "NC1HWC0":
+        axis_split_matrix=[]
+        for i in range(2, shape_value_len-1):
+            input_list = []
+            for j in range(0, num):
+                input_0 = [j, [i], [-1], [-1]]
+                input_list.append(input_0)
+            split_0 = [SplitInput(*input_list), SplitOutput([0, [i]])]
+            axis_split_matrix.append(split_0)
+        axis_reduce_list = None
+
+    elif format_value == "NHWC":
+        axis_split_matrix=[]
+        for i in range(1, shape_value_len-1):
+            input_list = []
+            for j in range(0, num):
+                input_0 = [j, [i], [-1], [-1]]
+                input_list.append(input_0)
+            split_0 = [SplitInput(*input_list), SplitOutput([0, [i]])]
+            axis_split_matrix.append(split_0)
+        axis_reduce_list = None
+
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 def ceil_align(ori_num, divider):
@@ -74,13 +133,10 @@ def _check_param(input_values, shape, kernel_name):
     check_list = ("int8", "int16", "int32", "int64", "uint8",
                   "uint16", "uint32", "uint64", "float16", "float32")
     if shape[0] != len(input_values):
-        raise RuntimeError(
-            "first dim of output shape must be equal to the num of"
-            "input tensors,"
-            "the first dim of output shape is {0}, "
-            "while the num of input tensors is {1}".format(
-                shape[0], len(input_values))
-        )
+        error_detail = "first dim of output shape must be equal to the num of input tensors," \
+                       "the first dim of output shape is {0}, " \
+                       "while the num of input tensors is {1}".format(shape[0], len(input_values))
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "shape", error_detail)
     first_shape = input_values[0].get("shape")
     first_dtype = input_values[0].get("dtype")
     for i, input_dict in enumerate(input_values):
@@ -89,25 +145,24 @@ def _check_param(input_values, shape, kernel_name):
         para_check.check_shape(shape_input, param_name="values")
         para_check.check_dtype(dtype_input, check_list, param_name="values")
         if shape_input != first_shape:
-            raise RuntimeError(
-                "the input tensors shape must be same, "
-                "while the {}th input shape is {}, "
-                "not same with the first shape {}".format(i, shape_input, first_shape)
-            )
+            error_detail = "the input tensors shape must be same, " \
+                           "while the {}th input shape is {}, " \
+                           "not same with the first shape {}".format(i, shape_input, first_shape)
+            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "values", error_detail)
         if shape_input[0] != 1:
-            raise RuntimeError(
-                "the first dim of all input tensor must be 1, "
-                "while the {}th input shape is {}".format(i, shape_input)
-            )
+            error_detail = "he first dim of all input tensor must be 1, " \
+                           "while the {}th input shape is {}".format(i, shape_input)
+            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "values", error_detail)
         if first_dtype != dtype_input:
-            raise RuntimeError(
-                "the input tensors dtype must be same,"
-                "while the {}th input dtype is {}, "
-                "not same with the first dtype {}".format(i, dtype_input, first_dtype)
-            )
+            error_detail = "the input tensors dtype must be same," \
+                           "while the {}th input dtype is {}, " \
+                           "not same with the first dtype {}".format(i, dtype_input, first_dtype)
+            error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "dtype_input", \
+                                                               "first_dtype", error_detail)
     if list(shape[1:]) != list(first_shape[1:]):
-        raise RuntimeError(
-            "the input shape {} do not match the output shape {}".format(first_shape, shape))
+        error_detail = "the input shape {} do not match the output shape {}".format(first_shape, shape)
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "first_shape", \
+                                                               "shape", error_detail)
 
 
 # pylint: disable=too-many-locals,invalid-name,unused-argument
@@ -129,7 +184,10 @@ def parallel_concat(values, output_data, shape, num, kernel_name="parallel_conca
     None
     """
     if len(values) != num:
-        raise RuntimeError('The size of input and num must be same.')
+        rule_desc = "The size of input and num must be same."
+        param_value = "%d,%d"%(len(values), num)
+        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, \
+                                                          "values'size,num", param_value)
 
     _check_param(values, shape, kernel_name)
     fun = ParallelConcat(values, shape, kernel_name)

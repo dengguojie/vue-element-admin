@@ -17,7 +17,7 @@ inplace_update
 """
 from te import tik
 from te import platform as tbe_platform
-from te.utils.op_utils import *
+from te.utils import para_check
 
 
 # pylint: disable=unused-argument,invalid-name
@@ -49,8 +49,8 @@ def check_supported(x, indices, v, y, kernel_name="inplace_update"):
 
 
 # pylint: disable=invalid-name,too-many-instance-attributes
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def inplace_update(x, indices, v, y, kernel_name="inplace_update"):
     """
     Updates specified rows with values in v
@@ -422,12 +422,12 @@ class InplaceUpdate():
         None
         """
         check_tuple = ("float16", "float32", "int32")
-        check_shape(self.shape_x, param_name="x")
-        check_shape(self.shape_indices, param_name="indices")
-        check_shape(self.shape_v, param_name="v")
-        check_dtype(self.dtype_x, check_tuple, param_name="x")
-        check_dtype(self.dtype_indices, ("int32",), param_name="indices")
-        check_dtype(self.dtype_v, check_tuple, param_name="v")
+        para_check.check_shape(self.shape_x, param_name="x")
+        para_check.check_shape(self.shape_indices, param_name="indices")
+        para_check.check_shape(self.shape_v, param_name="v")
+        para_check.check_dtype(self.dtype_x, check_tuple, param_name="x")
+        para_check.check_dtype(self.dtype_indices, ("int32",), param_name="indices")
+        para_check.check_dtype(self.dtype_v, check_tuple, param_name="v")
         if len(self.shape_x) != len(self.shape_v):
             raise RuntimeError("The number of dimension x must"
                                " be same as dimension v")

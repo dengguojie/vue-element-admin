@@ -20,6 +20,7 @@ import math
 from te import platform as cceconf
 from te import tvm
 from te.platform.cce_conf import CceProductParams as pver
+from te.utils.error_manager.error_manager_util import get_error_message
 from . import util
 from .elewise_schedule_new import ElewiseSchedule
 from .elewise_schedule_new import NON_LAST_BROADCAST_UNIT_THRESHOLD
@@ -416,6 +417,21 @@ class ReduceMultiSchedule(ElewiseSchedule):
                 if self.__check_tiling_res(tiling_shape):
                     break
 
+        if not self.__check_support_log_softmax_grad_tiling():
+            return False
+
+        return True
+
+    def __check_support_log_softmax_grad_tiling(self):
+        # log_softmax_grad_fp16 shape (20, 21136) (xxx, 21136)
+        # Ascend710 not support
+        max_last_reduce_size = 21136
+        if (self._pattern == "log_softmax_grad_fp16_1980") and \
+                self._reduce_include_last_axis and \
+                (self._default_shape[-1] >= max_last_reduce_size) and \
+                pver().is_ng1_version():
+            return False
+
         return True
 
     def __check_tiling_res(self, tiling_shape):
@@ -628,7 +644,11 @@ class ReduceMultiSchedule(ElewiseSchedule):
         else:
             total_width = self._get_total_width() + 1
         if not total_width:
-            raise RuntimeError("Can not calculate with no compute")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "Can not calculate with no compute, " \
+                                          "total_width is [%s]" % total_width
+            raise RuntimeError(dict_args, get_error_message(dict_args))
         self._max_ub_count = int(total_size / total_width)
         # align by repeat
         coef = util.VECTOR_ONE_REPEAT_UNIT
@@ -953,7 +973,10 @@ class ReduceMultiSchedule(ElewiseSchedule):
             ub_target_axis = res_axes[ub_tiling_axis]
             res_ub_outer, res_ub_inner = sch[res].split(ub_target_axis, factor=ub_tiling_factor)
         else:
-            raise RuntimeError("Tiling Falied!!")
+            dict_args = dict()
+            dict_args["errCode"] = "E90003"
+            dict_args["detailed_cause"] = "Tiling Falied!"
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
         # reorder
         axes_order = [block_target_axis]

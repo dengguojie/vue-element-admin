@@ -7,17 +7,36 @@ conv2d common
 provide common function used by conv2d
 """
 
+import math
 import te.lang.cce as tbe
 import te.platform as tbe_platform
-from te.utils import check_para
+from te.utils import para_check
 from te.utils.error_manager import error_manager_conv2d as err_man
 
 
 PAD_SHAPE_DIM = 2
 
 
+def lcm(a_val, b_val):
+    return (a_val*b_val)//math.gcd(a_val, b_val)
+
+
+def _shape_to_list(shape):
+    """
+    translate tvm.shape to list type in python
+    """
+    if isinstance(shape, (list, tuple)):
+        return shape
+    tmp = []
+    if shape == "":
+        return ()
+    for i in shape:
+        tmp.append(i.value)
+    return tmp
+
+
 def calc_para_from_tensor(inputs, weights, bias, offset_w, strides, pads,
-                          dilations, offset_x, kernel_name,
+                          dilations, offset_x, groups, kernel_name,
                           data_format="NCHW"):
 
     shape_w = []
@@ -39,9 +58,11 @@ def calc_para_from_tensor(inputs, weights, bias, offset_w, strides, pads,
     pos_c = format_w.find('C')
     pos_h = format_w.find('H')
     pos_w = format_w.find('W')
+    pos_cout = format_w.find('N')
     weight_h = shape_w[pos_h]
     weight_w = shape_w[pos_w]
     shape_c = shape_w[pos_c]
+    cout_all = shape_w[pos_cout]
 
     if len(strides) != 4:
         err_man.raise_err_should_be_4d("conv2d", "strides")
@@ -81,24 +102,31 @@ def calc_para_from_tensor(inputs, weights, bias, offset_w, strides, pads,
     strideh = _trans_stride(input_h, weight_h, strideh, padh, dlt_h)
     stridew = _trans_stride(input_w, weight_w, stridew, padw, dlt_w)
 
+    c0_val = 16
+    if weights.dtype == "int8":
+        c0_val = 32
+    cin_ori = shape_c//groups
+    cout_ori = 16*(math.ceil(cout_all/16))//groups
+    enlarge = min(lcm(lcm(cin_ori, c0_val)//cin_ori, lcm(cout_ori, 16)//cout_ori), groups)
+    c1_opt = math.ceil(cin_ori*enlarge/c0_val)
+    cout1_opt = math.ceil(cout_ori*enlarge/16)
+    group_opt = math.ceil(groups/enlarge)
+
     para_dict = {"pad_h": padh, "pad_w": padw, "stride_h": strideh,
                  "stride_w": stridew, "dilate_h": dlt_h, "dilate_w": dlt_w,
                  "offset_x": offset_x, "filter_h": weight_h,
                  "filter_w": weight_w, "bias_tensor": bias,
                  "offset_w_tensor": offset_w,
                  "fusion_para": fusion_para,
-                 "kernel_name": kernel_name}
-
-    if tbe_platform.get_soc_spec("SOC_VERSION") in \
-    ("Hi3796CV300ES", "Hi3796CV300CS"):
-        para_dict["mad_dtype"] = "float16"
-        if weights.dtype != "float16":
-            para_dict["mad_dtype"] = "int32"
-    else:
-        if tbe_platform.get_soc_spec("SOC_VERSION") in ("Ascend310",) \
-        and weights.dtype == "int8":
-            para_dict["mad_dtype"] = "int32"
-
+                 "kernel_name": kernel_name,
+                 "group": groups,
+                 "enlarge": enlarge,
+                 "c1_opt": c1_opt,
+                 "cout1_opt": cout1_opt,
+                 "group_opt": group_opt,
+                 "a_shape": _shape_to_list(inputs.shape),
+                 "weight_fracz_shape": _shape_to_list(weights.shape),
+                 "weight_ori_shape_nchw": [cout_all, shape_c, weight_h, weight_w]}
     c0_optim_flg = False
     use_v200_c04_flg = False
     if shape_c <= 4 and ("format" in weights.op.attrs and
@@ -213,7 +241,7 @@ def calc_para_from_dict(inputs, weights, strides, pads,
            dlt_h, dlt_w, optim_dict, fusion_para
 
 
-@check_para.check_input_type((list, tuple), (list, tuple), (list, int), (list, int),
+@para_check.check_input_type((list, tuple), (list, tuple), (list, int), (list, int),
                        int, int, str, str, str, str,
                        bool, str, int, int, dict, dict)
 def conv_layer_cce_para_check(shape_in, shape_w, padh, padw, strideh, stridew,
@@ -261,17 +289,11 @@ def conv_layer_cce_para_check(shape_in, shape_w, padh, padw, strideh, stridew,
     None
 
     """
-    check_para.check_kernel_name(kernel_name)
-    check_para.check_dtype_rule(offset_w_dtype, ['int32'])
-    if tbe_platform.get_soc_spec("SOC_VERSION") in ("Ascend310", "Hi3796CV300ES", \
-        "Ascend710", "Ascend615", "Ascend610", "Hi3796CV300CS"):
-        check_para.check_dtype_rule(in_dtype, ('int8', "float16"))
-        check_para.check_dtype_rule(w_dtype, ('int8', "float16"))
-        check_para.check_dtype_rule(res_dtype, ('int32', "float16"))
-    else:
-        check_para.check_dtype_rule(in_dtype, ['float16'])
-        check_para.check_dtype_rule(w_dtype, ['float16'])
-        check_para.check_dtype_rule(res_dtype, ['float16'])
+    para_check.check_kernel_name(kernel_name)
+    para_check.check_dtype_rule(offset_w_dtype, ['int32'])
+    para_check.check_dtype_rule(in_dtype, ('int8', "float16"))
+    para_check.check_dtype_rule(w_dtype, ('int8', "float16"))
+    para_check.check_dtype_rule(res_dtype, ('int32', "float16"))
 
     if isinstance(padh, list):
         if len(padh) != PAD_SHAPE_DIM:
@@ -309,11 +331,6 @@ def conv_layer_cce_para_check(shape_in, shape_w, padh, padw, strideh, stridew,
                        "l1_fusion_type": -1, \
                        "fmap_l1_addr_flag": 0, \
                        "fmap_l1_valid_size": -1}
-
-    dilation_not_pass = (dilateh > 1 or dilatew > 1) and w_dtype == 'int8'
-    if dilation_not_pass:
-        err_man.raise_err_specific_user("conv2d", "Quant conv does not "\
-            + "support dilate > 1.")
 
     shape_in, shape_w = tbe.check_conv_shape(shape_in, shape_w,
                                          pad_top, pad_bottom,
@@ -498,20 +515,6 @@ def _conv2d_fusion_para(inputs, outputs):
                    "fmap_l1_valid_size": fmap_l1_valid_size}
 
     return fusion_para
-
-
-def _shape_to_list(shape):
-    """
-    translate tvm.shape to list type in python
-    """
-    if isinstance(shape, (list, tuple)):
-        return shape
-    tmp = []
-    if shape == "":
-        return ()
-    for i in shape:
-        tmp.append(i.value)
-    return tmp
 
 
 def _lcm(num1, num2):

@@ -13,4 +13,14 @@
 # limitations under the License.
 # ============================================================================
 
-add_subdirectory(ut)
+set(OP_TEST_COMMON_SOURCE
+  ${OPS_DIR}/tests/common/utils_plugin_and_op_proto/op_proto_test_util.cpp
+)
+
+set(OP_TEST_COMMON_INCLUDE
+  ${OPS_DIR}/tests/common/utils_plugin_and_op_proto
+)
+
+if(ENABLE_TEST STREQUAL UT)
+  add_subdirectory(ut)
+endif()

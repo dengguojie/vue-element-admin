@@ -22,10 +22,33 @@ from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 
 # define a VALUE, value = 2
 VALUE_TWO = 2
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(x, assist, y, kernel_name="diag_part_d"):
+    format_x = x.get("format").upper()
+    shape_x_len = len(x.get("shape"))
+    if format_x == "ND":
+        axis_split_matrix=[]
+        for i in range(0, shape_x_len):
+            split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]])]
+            axis_split_matrix.append(split_0)
+        axis_reduce_list = None
+
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
+
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name,no-member
 @tbe_platform.fusion_manager.fusion_manager.register("diag_part_d")
@@ -101,17 +124,24 @@ def diag_part_d(x, assist, y, kernel_name="diag_part_d"):
     para_check.check_shape(shape_assist, param_name="assist")
 
     if len(shape_x) not in (2, 4, 6, 8):
-        raise RuntimeError("Input tensors of rank 2,4,6,8 are supported!")
+        error_detail = "Input x of rank 2,4,6,8 are supported!"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
     if list(shape_x) != list(shape_assist):
-        raise RuntimeError("the shape of data must be equal!")
+        error_detail = "the shape of x and assist must be equal!"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", \
+                                                               "assist", error_detail)
     len_shape_out = len(shape_x) // VALUE_TWO
     for i in range(len_shape_out):
         if shape_x[i] != shape_x[i + len_shape_out]:
-            raise RuntimeError("the shape of input is not supported!")
+            error_detail = "the shape of input x is not supported!"
+            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
     if list(shape_x) != list(shape_y + shape_y):
-        raise RuntimeError("the shape of output is not supported!")
+        error_detail = "the shape of output y is not supported!"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "y", error_detail)
     if list(shape_x) != list(shape_assist):
-        raise RuntimeError("the shape of data must be equal!")
+        error_detail = "the shape of x and assist must be equal!"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", \
+                                                               "assist", error_detail)
 
     check_list = ("float16", "float32", "int32")
     dtype_x = dtype_x.lower()
@@ -119,7 +149,8 @@ def diag_part_d(x, assist, y, kernel_name="diag_part_d"):
     dtype_assist = dtype_assist.lower()
     para_check.check_dtype(dtype_assist, check_list, param_name="assist")
     if dtype_assist != dtype_x:
-        raise RuntimeError("the dtype of data must be equal!")
+        error_detail = "dtype of x and assist must be the same"
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "x", "assist", error_detail)
 
     data_x = tvm.placeholder(shape_x, name="data_x",
                              dtype=dtype_x)

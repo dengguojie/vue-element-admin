@@ -15,8 +15,9 @@
 """
 less_equal
 """
-import te.lang.dynamic as dynamic
+import te.lang.cce as tbe
 from te import platform as tbe_platform
+import te.lang.base as tbe_base
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
@@ -58,8 +59,8 @@ def less_equal_compute(input_x, input_y, output_z, kernel_name="less_equal"):
         the result of compute
     """
     dtype_x = input_x.dtype
-    shape_x = dynamic.shape_to_list(input_x.shape)
-    shape_y = dynamic.shape_to_list(input_y.shape)
+    shape_x = shape_util.shape_to_list(input_x.shape)
+    shape_y = shape_util.shape_to_list(input_y.shape)
     shape_x, shape_y, shape_broadcast = shape_util.broadcast_shapes(shape_x, shape_y,
         param_name_input1="input_x", param_name_input2="input_y")
 
@@ -74,39 +75,39 @@ def less_equal_compute(input_x, input_y, output_z, kernel_name="less_equal"):
         scalar_neg_one = tvm.const(SCALAR_NEG_ONE, dtype="float16")
 
     if dtype_x in ("int8", "uint8"):
-        input_x = dynamic.cast_to(input_x, "float16")
-        input_y = dynamic.cast_to(input_y, "float16")
+        input_x = tbe.cast_to(input_x, "float16")
+        input_y = tbe.cast_to(input_y, "float16")
 
-    input_x = dynamic.broadcast(input_x, shape_broadcast)
-    input_y = dynamic.broadcast(input_y, shape_broadcast)
+    input_x = tbe.broadcast(input_x, shape_broadcast)
+    input_y = tbe.broadcast(input_y, shape_broadcast)
 
-    res_max = dynamic.vmax(input_x, input_y)
-    res_vsub = dynamic.vsub(input_y, res_max)
-    if tbe_platform.cce_conf.api_check_support("te.lang.dynamic.vabs",
+    res_max = tbe.vmax(input_x, input_y)
+    res_vsub = tbe.vsub(input_y, res_max)
+    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vabs",
                                                res_vsub.dtype):
-        res_vabs = dynamic.vabs(res_vsub)
+        res_vabs = tbe.vabs(res_vsub)
     else:
-        res_vsub = dynamic.cast_to(res_vsub, "float32")
-        res_vabs = dynamic.vabs(res_vsub)
+        res_vsub = tbe.cast_to(res_vsub, "float32")
+        res_vabs = tbe.vabs(res_vsub)
 
-    res_min = dynamic.vmins(res_vabs, scalar_min)
-    res_vmul = dynamic.vmuls(res_min, scalar_mul)
-    res_vmul1 = dynamic.vmuls(res_vmul, scalar_mul)
+    res_min = tbe.vmins(res_vabs, scalar_min)
+    res_vmul = tbe.vmuls(res_min, scalar_mul)
+    res_vmul1 = tbe.vmuls(res_vmul, scalar_mul)
 
     if dtype_x == "float32":
-        res_vmul2 = dynamic.vmuls(res_vmul1, scalar_mul1)
-        res_vsub1 = dynamic.vadds(res_vmul2, scalar_neg_one)
-        res_vabs1 = dynamic.vabs(res_vsub1)
+        res_vmul2 = tbe.vmuls(res_vmul1, scalar_mul1)
+        res_vsub1 = tbe.vadds(res_vmul2, scalar_neg_one)
+        res_vabs1 = tbe.vabs(res_vsub1)
     else:
-        res_vsub1 = dynamic.vadds(res_vmul1, scalar_neg_one)
-        res_vabs1 = dynamic.vabs(res_vsub1)
+        res_vsub1 = tbe.vadds(res_vmul1, scalar_neg_one)
+        res_vabs1 = tbe.vabs(res_vsub1)
 
-    res = dynamic.cast_to(res_vabs1, "int8", True)
+    res = tbe.cast_to(res_vabs1, "int8", True)
 
     return res
 
 
-@tbe_platform.register_operator("LessEqual")
+@tbe_base.register_operator("LessEqual")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def less_equal(input_x, input_y, output_z, kernel_name="less_equal"):
@@ -156,10 +157,10 @@ def less_equal(input_x, input_y, output_z, kernel_name="less_equal"):
                                error_info['param1_dtype'],
                                error_info['param2_dtype']))
 
-    ins = tbe_platform.classify([input_x, input_y], tbe_platform.Mode.ELEWISE_WITH_BROADCAST)
+    ins = tbe_base.classify([input_x, input_y], tbe_base.Mode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (input_x, input_y) in ins:
-        with tbe_platform.compute():
+        with tbe_base.compute():
             # shape
             x_shape, y_shape = shape_util.variable_shape([input_x, input_y],
                                               support_broadcast=True)
@@ -172,8 +173,8 @@ def less_equal(input_x, input_y, output_z, kernel_name="less_equal"):
 
             tensors.append([tensor_x, tensor_y, res])
         with tvm.target.cce():
-            sch = dynamic.auto_schedule(res)
+            sch = tbe.auto_schedule(res)
         schedules.append(sch)
 
     config = {"name": kernel_name, "tensor_list": tensors}
-    dynamic.build(schedules, config)
+    tbe.build(schedules, config)

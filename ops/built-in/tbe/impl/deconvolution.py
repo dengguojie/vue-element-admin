@@ -18,8 +18,10 @@ deconvolution
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from impl.util import util_deconv_comm
+from impl.util import util_select_op_base
 from te import tvm
 from te.lang.cce.te_compute.cube_util import shape_to_list
+from te.platform import cce_params
 from te.utils import error_manager
 from te.utils import para_check
 
@@ -35,8 +37,113 @@ NoneType = type(None)
 MEMORY_DDR = 0
 MEMORY_L1 = 1
 MEMORY_L2 = 2
-
+L1FUSION_INPUT_CTR = 2
 DECONV_SHAPE_DIM = 4
+
+
+def _cal_min_l1space(x,  # pylint: disable=invalid-name
+                     weight, y, strides, dilations, pads):
+    """
+    cal the mini l1space using in lxfusion
+    """
+    def _cal_al1_size():
+        w_value = shape_x[3] * strides[1]
+        if shape_res[3] > c0_size:
+            h_value_max = filter_h_dilation + 1
+        elif c0_size % shape_res[3] == 0:
+            h_value_max = filter_h_dilation + c0_size // shape_res[3] - 1
+        else:
+            h_value_max = filter_h_dilation + c0_size // shape_res[3] + 1
+        a_l1_size = h_value_max * w_value * c0_size_k * \
+                    util_deconv_comm.BIT_RATIO_DICT.get(filters_dtype)
+        return a_l1_size
+
+    shape_filters = util_deconv_comm.get_filter_shape(
+        weight.get("ori_format"), weight.get("ori_shape")
+    )
+    shape_x = util_deconv_comm.get_shape_out_backprop(
+        x.get("ori_format"), x.get("ori_shape"))
+    shape_res = util_deconv_comm.get_shape_res(
+        y.get("ori_format"), y.get("ori_shape"))
+    filters_dtype = weight.get("dtype")
+
+    c0_size = cce_params.C0_SIZE
+    c0_size_k = cce_params.CUBE_MKN[filters_dtype]['mac'][1]
+    filter_h_dilation = (shape_filters[2] - 1) * dilations[0] + 1
+
+    bl1_size = shape_filters[2] * shape_filters[3] * c0_size * c0_size_k * \
+               util_deconv_comm.BIT_RATIO_DICT.get(filters_dtype)
+    al1_size = 0
+    if (list(pads) != [0, 0, 0, 0] or list(shape_filters[2:]) != [1, 1]) \
+            and list(strides) != [1, 1]:
+        al1_size = _cal_al1_size()
+    return al1_size + bl1_size
+
+
+def get_op_support_info(x,  # pylint: disable=invalid-name,R0913,R0914,W0613
+                        weight,
+                        bias,
+                        offset_w,
+                        y,
+                        strides,
+                        pads,
+                        dilations=(1, 1, 1, 1),
+                        group=1,
+                        data_format="NCHW",
+                        offset_x=0,
+                        kernel_name="deconvolution"):
+    """
+    get the deconvolution split
+    """
+    format_x = x.get("format")
+    dtype_x = x.get("dtype")
+    shape_filters = util_deconv_comm.get_filter_shape(
+        weight.get("ori_format"), weight.get("ori_shape")
+    )
+    head_overlap_h = -1 if (shape_filters[2] == 1 and strides[0] == 1) else 0
+    tail_overlap_h = head_overlap_h
+    head_overlap_w = -1 if (shape_filters[3] == 1 and strides[1] == 1) else 0
+    tail_overlap_w = head_overlap_w
+
+    if format_x == "NC1HWC0":
+        axis_split_matrix = [
+            # cut N
+            [util_select_op_base.SplitInput([0, [0], [-1], [-1]]),
+             util_select_op_base.SplitOutput([0, [0]])],
+            # cut H
+            [util_select_op_base.SplitInput([0, [2], [head_overlap_h], [tail_overlap_h]]),
+             util_select_op_base.SplitOutput([0, [2]])],
+            # cut W
+            [util_select_op_base.SplitInput([0, [3], [head_overlap_w], [tail_overlap_w]]),
+             util_select_op_base.SplitOutput([0, [3]])],
+        ]
+        # cut Cin
+        c_axis = 0 if dtype_x == "float16" else 1
+        head_overlap_c = 0 if dtype_x == "float16" else -1
+        tail_overlap_c = head_overlap_c
+        if bias:
+            axis_split_matrix_bias = [
+                [util_select_op_base.SplitInput([1, [c_axis], [head_overlap_c], [tail_overlap_c]],
+                                                [2, [0], [-1], [-1]]),
+                 util_select_op_base.SplitOutput([0, [1]])],
+            ]
+        else:
+            axis_split_matrix_bias = [
+                [util_select_op_base.SplitInput([1, [c_axis], [head_overlap_c], [tail_overlap_c]]),
+                 util_select_op_base.SplitOutput([0, [1]])],
+            ]
+        axis_split_matrix += axis_split_matrix_bias
+        axis_reduce_list = None
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+
+    min_l1space = _cal_min_l1space(x, weight, y, strides, dilations, pads)
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(
+        axis_split_matrix, axis_reduce_list, L1FUSION_INPUT_CTR, min_l1space)
+
+    return op_cal_info_in_json
+
 
 @para_check.check_op_params(
     para_check.REQUIRED_INPUT,
@@ -179,6 +286,7 @@ def deconvolution(  # pylint: disable=invalid-name,R0913,R0914,W0613
         strides,
         pads,
         dilations=dilations,
+        groups=groups,
         filter_dtype=filters_dtype,
         x_dtype=x_dtype,
         res_dtype=res_dtype,
@@ -186,6 +294,7 @@ def deconvolution(  # pylint: disable=invalid-name,R0913,R0914,W0613
         offset_x=offset_x,
         fusion_para=fusion_para,
         kernel_name=kernel_name,
+        ori_format_weight=ori_format_filters
     )
 
 
@@ -322,14 +431,15 @@ def deconvolution_compute(  # pylint: disable=invalid-name,R0913,R0914,W0613
         w_index = data_format.find("W")
         strides = [strides[h_index], strides[w_index]]
 
-    if weight_dtype == "int8":
-        ori_shape_weight[0], ori_shape_weight[1] = (
-            ori_shape_weight[1],
-            ori_shape_weight[0],
-        )
     shape_weight = util_deconv_comm.get_filter_shape(
         ori_format_weight, ori_shape_weight
     )
+    if weight_dtype == "int8":
+        shape_weight[0], shape_weight[1] = (
+            shape_weight[1],
+            shape_weight[0],
+        )
+
     shape_x = util_deconv_comm.get_shape_out_backprop(ori_format_x, ori_shape_x)
     shape_res = util_deconv_comm.get_shape_res(ori_format_res, ori_shape_res)
     dilations = util_deconv_comm.get_shape_dilation(ori_format_x, dilations)
@@ -338,6 +448,13 @@ def deconvolution_compute(  # pylint: disable=invalid-name,R0913,R0914,W0613
     if valid_shape and valid_shape[2] == shape_x[2]:
         fusion_para["valid_shape"] = ()
         fusion_para["slice_offset"] = ()
+
+    group_dict = util_deconv_comm.calculate_group(
+        shape_weight,
+        groups,
+        weight_dtype,
+        ori_format_weight
+    )
 
     util_deconv_comm.check_conv2dbp_input_params(
         shape_weight,
@@ -351,26 +468,45 @@ def deconvolution_compute(  # pylint: disable=invalid-name,R0913,R0914,W0613
         res_dtype,
         kernel_name,
         fusion_para,
+        group_dict=group_dict
     )
 
     pads = util_deconv_comm.get_padlist(
         pads, shape_res, strides, shape_weight, dilations
     )
 
-    res = tbe.conv2d_backprop_input_compute(
-        weight,
-        x,
-        shape_weight,
-        shape_res,
-        strides,
-        pads,
-        dilations,
-        res_dtype=res_dtype,
-        tensor_bias=bias,
-        offset_x=offset_x,
-        fusion_para=fusion_para,
-        kernel_name=kernel_name,
-    )
+    if 1 == groups:
+        # for old fwkacllib version
+        res = tbe.conv2d_backprop_input_compute(
+            weight,
+            x,
+            shape_weight,
+            shape_res,
+            strides,
+            pads,
+            dilations,
+            res_dtype=res_dtype,
+            tensor_bias=bias,
+            offset_x=offset_x,
+            fusion_para=fusion_para,
+            kernel_name=kernel_name
+        )
+    else:
+        res = tbe.conv2d_backprop_input_compute(
+            weight,
+            x,
+            shape_weight,
+            shape_res,
+            strides,
+            pads,
+            dilations,
+            res_dtype=res_dtype,
+            tensor_bias=bias,
+            offset_x=offset_x,
+            fusion_para=fusion_para,
+            kernel_name=kernel_name,
+            group_dict=group_dict
+        )
 
     return res
 
@@ -382,12 +518,14 @@ def deconvolution_compute(  # pylint: disable=invalid-name,R0913,R0914,W0613
     (list, tuple),
     (str, list, tuple),
     (list, tuple),
+    int,
     str,
     str,
     str,
     bool,
     int,
     (dict, NoneType),
+    str,
     str,
 )
 def _deconvolution_cce(  # pylint: disable=R0913, R0914
@@ -397,6 +535,7 @@ def _deconvolution_cce(  # pylint: disable=R0913, R0914
     strides,
     pads,
     dilations=(1, 1, 1, 1),
+    groups=1,
     filter_dtype="float16",
     x_dtype="float16",
     res_dtype="float16",
@@ -404,6 +543,7 @@ def _deconvolution_cce(  # pylint: disable=R0913, R0914
     offset_x=0,
     fusion_para=None,
     kernel_name="deconvolution_cce",
+    ori_format_weight="NCHW",
 ):
     """
     Topi interface of deconvolution
@@ -426,6 +566,8 @@ def _deconvolution_cce(  # pylint: disable=R0913, R0914
 
     dilations : An optional tuple of ints. Default value is (1, 1, 1, 1).
 
+    groups : The params of group_dict. Default to 1.
+
     filter_dtype : The dtype of filter data. Default value is float16.
 
     x_dtype : The dtype of gradients data. Default value is float16.
@@ -439,6 +581,8 @@ def _deconvolution_cce(  # pylint: disable=R0913, R0914
     fusion_para: the L1 fusion para
 
     kernel_name : Cce kernel name. Default value is "deconvolution_cce"
+
+    ori_format_weight : The original format of weight. Default to NCHW.
 
     Returns : None
     ----------
@@ -463,6 +607,12 @@ def _deconvolution_cce(  # pylint: disable=R0913, R0914
             shape_filter[2],
             shape_filter[3],
         ]
+    group_dict = util_deconv_comm.calculate_group(
+        shape_filter,
+        groups,
+        filter_dtype,
+        ori_format_weight
+    )
     res = util_deconv_comm.check_conv2dbp_input_params(
         shape_filter,
         shape_x,
@@ -475,6 +625,7 @@ def _deconvolution_cce(  # pylint: disable=R0913, R0914
         res_dtype,
         kernel_name,
         fusion_para,
+        group_dict=group_dict
     )
 
     (
@@ -502,21 +653,27 @@ def _deconvolution_cce(  # pylint: disable=R0913, R0914
         dedy_w,
         dy_k0,
     )
-    filter_channel = util_deconv_comm.align(filter_channel, w_n0)
+
+    g_extend = group_dict.get(util_deconv_comm.GroupDictKeys.g_extend)
+    dx_c1_extend = group_dict.get(util_deconv_comm.GroupDictKeys.dx_c1_extend)
+    dy_c1_extend = group_dict.get(util_deconv_comm.GroupDictKeys.dy_c1_extend)
+    groups = group_dict.get(util_deconv_comm.GroupDictKeys.groups)
+
     if filter_dtype == "int8" and x_dtype == "int8":
         shape_filter_frac = (
-            util_deconv_comm.ceil(filter_batch, w_k0) * filter_h * filter_w,
-            util_deconv_comm.ceil(filter_channel, w_n0),
+            g_extend * dy_c1_extend * filter_h * filter_w,
+            dx_c1_extend,
             w_n0,
             w_k0,
         )
     else:
         shape_filter_frac = (
-            util_deconv_comm.ceil(filter_channel, w_n0) * filter_h * filter_w,
-            util_deconv_comm.ceil(filter_batch, w_k0),
+            g_extend * dx_c1_extend * filter_h * filter_w,
+            dy_c1_extend,
             w_k0,
             w_n0,
         )
+
     tensor_dedy = tvm.placeholder(shape_dedy, name="dedy", dtype=x_dtype)
 
     tensor_filter_frac = tvm.placeholder(
@@ -525,24 +682,43 @@ def _deconvolution_cce(  # pylint: disable=R0913, R0914
 
     tensor_bias = None
     if bias:
+        input_channel = util_deconv_comm.align(input_sizes[1], w_n0)
         tensor_bias = tvm.placeholder(
-            (filter_channel,), name="tensor_bias", dtype=res_dtype
+            (input_channel,), name="tensor_bias", dtype=res_dtype
         )
 
-    dedx = tbe.conv2d_backprop_input_compute(
-        filters=tensor_filter_frac,
-        out_backprop=tensor_dedy,
-        filter_sizes=shape_filter,
-        input_sizes=input_sizes,
-        strides=strides,
-        padding=pads,
-        dilations=dilations,
-        res_dtype=res_dtype,
-        tensor_bias=tensor_bias,
-        offset_x=offset_x,
-        fusion_para=fusion_para,
-        kernel_name=kernel_name,
-    )
+    if 1 == groups:
+        # for old fwkacllib version
+        dedx = tbe.conv2d_backprop_input_compute(
+            filters=tensor_filter_frac,
+            out_backprop=tensor_dedy,
+            filter_sizes=shape_filter,
+            input_sizes=input_sizes,
+            strides=strides,
+            padding=pads,
+            dilations=dilations,
+            res_dtype=res_dtype,
+            tensor_bias=tensor_bias,
+            offset_x=offset_x,
+            fusion_para=fusion_para,
+            kernel_name=kernel_name
+        )
+    else:
+        dedx = tbe.conv2d_backprop_input_compute(
+            filters=tensor_filter_frac,
+            out_backprop=tensor_dedy,
+            filter_sizes=shape_filter,
+            input_sizes=input_sizes,
+            strides=strides,
+            padding=pads,
+            dilations=dilations,
+            res_dtype=res_dtype,
+            tensor_bias=tensor_bias,
+            offset_x=offset_x,
+            fusion_para=fusion_para,
+            kernel_name=kernel_name,
+            group_dict=group_dict
+        )
     if bias:
         tensor_list = [tensor_dedy, tensor_filter_frac, tensor_bias, dedx]
     else:

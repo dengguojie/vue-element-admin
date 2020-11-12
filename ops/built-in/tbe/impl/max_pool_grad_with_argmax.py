@@ -23,6 +23,7 @@ from te.utils import para_check
 from impl import max_pool_grad_with_argmax_cut_one_h as argmax_cut_one_h
 from impl import max_pool_grad_with_argmax_resnet50 as resnet50
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 # size of 5HD format
@@ -503,10 +504,14 @@ def check_shape_5hd(shape):
     """
     para_check.check_shape(shape, param_name="x")
     if len(shape) != DIM_5HD:
-        raise RuntimeError("The dim of tensor must be %d, actual dim is %d" % (DIM_5HD, len(shape)))
+        error_detail = "The dim of tensor must be %d, actual dim is %d" % (DIM_5HD, len(shape))
+        error_manager_vector.raise_err_input_shape_invalid("max_pool_grad_with_argmax", \
+                                                           "x or grad", error_detail)
 
     if shape[DIM_5HD - 1] != C0:
-        raise RuntimeError("The value of C0 must be %d, actual input is (%d)" % (C0, shape[DIM_5HD - 1]))
+        error_detail = "The value of C0 must be %d, actual input is (%d)" % (C0, shape[DIM_5HD - 1])
+        error_manager_vector.raise_err_input_shape_invalid("max_pool_grad_with_argmax", \
+                                                           "x or grad", error_detail)
 
 
 def check_padding(padding, check_list):
@@ -514,7 +519,8 @@ def check_padding(padding, check_list):
     The common check rule for padding
     """
     if padding not in check_list:
-        raise RuntimeError("The padding only support SAME, VALID")
+        error_manager_vector.raise_err_input_value_invalid("max_pool_grad_with_argmax", \
+                                                           "padding", check_list, padding)
 
 
 # pylint: disable=locally-disabled,too-many-locals
@@ -523,16 +529,23 @@ def check_output_dim_with_ksize_stride(padding, input_gard_shape, y_shape, ksize
     The common check rule for output dim and ksize and strides
     """
     if len(ksize) < ATTR_SHAPE_MIN or len(strides) < ATTR_SHAPE_MIN:
-        raise RuntimeError(
-            "The shape length of ksize or strides must be more than 4")
+        error_detail = "The shape length of ksize or strides must be more than 4"
+        error_manager_vector.raise_err_two_input_shape_invalid("max_pool_grad_with_argmax", \
+                                                               "ksize", "strides", error_detail)
     if ksize[0] != 1 or ksize[3] != 1:
-        raise RuntimeError("MaxPoolGradWithArgmax only supports pooling across width/height,"
-                           "and other ksize dimension should be one")
+        error_detail = "MaxPoolGradWithArgmax only supports pooling across width/height," \
+                       "and other ksize dimension should be one"
+        error_manager_vector.raise_err_input_shape_invalid("max_pool_grad_with_argmax", \
+                                                           "ksize", error_detail)
     if strides[0] != 1 or strides[3] != 1:
-        raise RuntimeError("MaxPoolGradWithArgmax only supports pooling across width/height,"
-                           "and other strides dimension should be one")
+        error_detail = "MaxPoolGradWithArgmax only supports pooling across width/height," \
+                       "and other strides dimension should be one"
+        error_manager_vector.raise_err_input_shape_invalid("max_pool_grad_with_argmax", \
+                                                           "strides", error_detail)
     if ksize[1] * ksize[2] > 255:
-        raise RuntimeError("invalid window params, window_h*window_w should be <=255")
+        error_detail = "invalid window params, window_h*window_w should be <=255"
+        error_manager_vector.raise_err_input_shape_invalid("max_pool_grad_with_argmax", \
+                                                           "ksize", error_detail)
 
     input_height = y_shape[2]
     input_weight = y_shape[3]
@@ -556,7 +569,9 @@ def check_output_dim_with_ksize_stride(padding, input_gard_shape, y_shape, ksize
         dyw = (input_weight - windoww + strides[2]) // strides[2]
 
     if ksize[1] > input_height or ksize[2] > input_weight:
-        raise RuntimeError("can not support global pooling now")
+        error_detail = "can not support global pooling now"
+        error_manager_vector.raise_err_input_shape_invalid("max_pool_grad_with_argmax", \
+                                                           "ksize", error_detail)
 
     if dyh != output_height or dyw != output_weight or input_batch != dyn or xc1 != dyc1 or xc0 != dyc0:
         raise RuntimeError("dimentions of dx dy padMode window stride is wrong,please check!")
@@ -596,7 +611,9 @@ def check_param(x, grad, argmax, y, ksize, strides, padding, kernel_name):
     para_check.check_dtype(y_dtype, ("float16", "float32", "int32"), param_name="x")
 
     if y_dtype != grad_dtype or y_dtype_arg != y_dtype:
-        raise RuntimeError("The dtype of tensor must be same")
+        rule_desc = "The dtype of tensor must be same"
+        param_value = "%s,%s,%s"%(y_dtype, grad_dtype, y_dtype_arg)
+        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "x,grad,y", param_value)
 
     check_padding(padding, ("SAME", "VALID"))
     check_output_dim_with_ksize_stride(padding, input_gard_shape, y_shape, ksize, strides)

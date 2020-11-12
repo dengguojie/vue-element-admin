@@ -21,10 +21,23 @@ yolo
 import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
+from impl.util import util_select_op_base
 
 RESV_UB = 512
 FP16_MINI = -65504
 FP32_MINI = -3.4 * (10**38)
+
+
+def get_op_support_info(input_dic, coord_out_dic, obj_out_dic, class_out_dic,
+                        boxes, coords, classes, yolo_version="V3",
+                        softmax=False, background=False, softmaxtree=False,
+                        kernel_name="yolo"):
+    """
+    get split info
+    input_dict: [batch, boxes*(coords + 1+ calsses), height, width]
+    only support split N
+    """
+    return util_select_op_base.get_split_n_info([0], [0, 1, 2])
 
 
 def ceil_x(total_len, align_value):

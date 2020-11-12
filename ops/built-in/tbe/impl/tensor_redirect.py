@@ -19,10 +19,10 @@ GetFloatStatus
 from te import platform as tbe_platform
 from topi.cce import util
 from te import tik
-from te.utils.op_utils import *
+from te.utils import para_check
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def tensor_redirect(x, output_x, kernel_name="tensor_redirect"):
     """
     the main function of TensorRedirect
@@ -42,7 +42,7 @@ def tensor_redirect(x, output_x, kernel_name="tensor_redirect"):
     input_dtype = dtype.lower()
     check_list = ["float16", "float32", "int8", "int32", "uint8",
                   "int16", "uint16", "uint32", "int64", "uint64"]
-    check_dtype(input_dtype, check_list)
+    para_check.check_dtype(input_dtype, check_list)
 
     tik_instance = tik.Tik()
 

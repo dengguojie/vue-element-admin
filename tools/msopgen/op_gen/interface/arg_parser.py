@@ -20,7 +20,6 @@ class ArgParser:
     """
     CLass for parsing input arguments
     """
-
     def __init__(self):
         parse = argparse.ArgumentParser()
         subparsers = parse.add_subparsers(help='commands')
@@ -195,8 +194,8 @@ class ArgParser:
             unit_parse_list = unit.split("-", 1)
             if len(unit_parse_list) == 1:
                 if self.framework == "pytorch" and \
-                        unit_parse_list[
-                            0].lower() in utils.AICPU_CORE_TYPE_LIST:
+                        unit_parse_list[0].lower() in \
+                        utils.AICPU_CORE_TYPE_LIST:
                     utils.print_error_log(
                         "Unsupported compute unit {compute_unit} for Pytorch"
                         .format(compute_unit=unit_parse_list[0]))
@@ -225,8 +224,8 @@ class ArgParser:
     def _check_mode_valid(self, mode):
         if str(mode) not in utils.GEN_MODE_LIST:
             utils.print_error_log('Unsupported mode: %s, only %s supported. '
-                                  'Please check the input mode.' % (
-                                  str(mode), ','.join(utils.GEN_MODE_LIST)))
+                                  'Please check the input mode.' %
+                                  (str(mode), ','.join(utils.GEN_MODE_LIST)))
             raise utils.MsOpGenException(
                 utils.MS_OP_GEN_CONFIG_UNSUPPORTED_MODE_ERROR)
         self.mode = mode

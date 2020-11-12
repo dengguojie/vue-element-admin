@@ -20,7 +20,7 @@ from te.tvm import api as tvm
 from te.platform import cce_conf
 from te.platform import cce_params
 from te.lang.cce.te_compute import common
-from te.utils import check_para
+from te.utils import para_check
 from te.utils.error_manager import error_manager_util as err_mana
 
 BLOCK_SIZE = cce_params.BLOCK_REDUCE
@@ -30,21 +30,24 @@ FRACTAL_N = 16
 NAME_INDEX = [0]
 
 
+# pylint: disable=too-few-public-methods
 class DepthwiseConv2dParam:
     """
     class of DepthwiseConv2dParam
     """
-
     def __init__(self):
         pass
 
-    fusion_para = {"input_memory_type": 0,
-                   "output_memory_type": 0,
-                   "valid_shape": (),
-                   "slice_offset": (),
-                   "l1_fusion_type": -1,
-                   "fmap_l1_addr_flag": -1,
-                   "fmap_l1_valid_size": -1}
+    fusion_para = {
+        "input_memory_type": 0,
+        "output_memory_type": 0,
+        "valid_shape": (),
+        "slice_offset": (),
+        "l1_fusion_type": -1,
+        "fmap_l1_addr_flag": -1,
+        "fmap_l1_valid_size": -1
+    }
+
 
 def check_support_v200():
     """
@@ -57,9 +60,10 @@ def check_support_v200():
     False: Other version
     """
     soc_version = cce_conf.get_soc_spec("SOC_VERSION")
-    if soc_version in ("Ascend710", "Ascend610", "Ascend615","Hi3796CV300CS"):
+    if soc_version in ("Ascend710", "Ascend610", "Ascend615", "Hi3796CV300CS"):
         return True
     return False
+
 
 def _fusion_fmap_select(fmap, l1_fusion_para):
     """
@@ -78,32 +82,24 @@ def _fusion_fmap_select(fmap, l1_fusion_para):
     fmp_select_w = fmap_w
 
     if offset and valid_shape and input_memory_type == 0:
-        fmp_select_n, fmp_select_c1, fmp_select_h, \
-            fmp_select_w, fmp_select_c0 = valid_shape
+        fmp_select_n, fmp_select_c1, fmp_select_h, fmp_select_w, fmp_select_c0 = valid_shape
         if len(fmap.shape) == 5:
             n_offset, c1_offset, h_offset, w_offset, c0_offset = offset
-            data_res = tvm.compute(valid_shape, lambda n, c1, h, w, c0:
-                                   fmap(n + n_offset,
-                                        c1 + c1_offset,
-                                        h + h_offset,
-                                        w + w_offset,
-                                        c0 + c0_offset),
-                                   name="fusion_fmap_select")
+            data_res = tvm.compute(
+                valid_shape,
+                lambda n, c1, h, w, c0: fmap(n + n_offset, c1 + c1_offset, h + h_offset, w + w_offset, c0 + c0_offset),
+                name="fusion_fmap_select")
         elif len(fmap.shape) == 6:
             n_offset, c1_offset, h_offset, w_offset, c0_offset = offset
-            valid_shape = fmp_select_n, fmp_select_c1, 1, fmp_select_h, \
-                fmp_select_w, fmp_select_c0
-            data_res = tvm.compute(valid_shape, lambda n, c1, cg, h, w, c0:
-                                   fmap(n + n_offset,
-                                        c1 + c1_offset,
-                                        cg,
-                                        h + h_offset,
-                                        w + w_offset,
-                                        c0 + c0_offset),
+            valid_shape = fmp_select_n, fmp_select_c1, 1, fmp_select_h, fmp_select_w, fmp_select_c0
+            data_res = tvm.compute(valid_shape,
+                                   lambda n, c1, cg, h, w, c0: fmap(n + n_offset, c1 + c1_offset, cg, h + h_offset, w +
+                                                                    w_offset, c0 + c0_offset),
                                    name="fusion_fmap_select")
         else:
             raise RuntimeError("feature_map shape length only support 5 or 6")
-
+    if valid_shape and input_memory_type == 1:
+        fmp_select_n, fmp_select_c1, fmp_select_h, fmp_select_w, fmp_select_c0 = valid_shape
     return data_res, fmp_select_h, fmp_select_w
 
 
@@ -131,17 +127,14 @@ def bias_add(res, bias):
     dim_map = {}
     dim_map["out_img_shape"] = shape_to_list(res.shape)
     fractal_n_split = dim_map["out_img_shape"][2]
-    c_add_vector = tvm.compute(
-        dim_map["out_img_shape"], lambda *indice:
-        res(*indice) +
-        bias((indice[1]*fractal_n_split + indice[2])*cce_params.BLOCK_REDUCE
-             + indice[4]),
-        name='bias_add_vector' + "_cc",
-        tag='depthwise_conv2d')
+    c_add_vector = tvm.compute(dim_map["out_img_shape"],
+                               lambda *indice: res(*indice) + bias(
+                                   (indice[1] * fractal_n_split + indice[2]) * cce_params.BLOCK_REDUCE + indice[4]),
+                               name='bias_add_vector' + "_cc",
+                               tag='depthwise_conv2d')
     return c_add_vector
 
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-locals
 def _img2col(input_img, col_shape, filter_h, filter_w, pad, stride, dilations):
     """
     img2col for depthwise conv2d backprop filter
@@ -173,36 +166,23 @@ def _img2col(input_img, col_shape, filter_h, filter_w, pad, stride, dilations):
     -------
         tensor after img2col.
     """
-
     def _img2col_compute(indices):
         """img2col for depthwise conv2d backprop filter"""
-        # input_img.shape is (fmap_cg, fmap_c1, fmap_n, fmap_h, fmap_w, fmap_c0)
+        # input_img.shape is (fmap_cg, fmap_c1, fmap_n,
+        #           fmap_h, fmap_w, fmap_c0)
         _, _, _, fmap_h, fmap_w, _ = input_img.shape
-        col_cg, col_n, col_howo, col_c1, col_hw, col_ww, col_c0 = indices
-        stride_h, stride_w = stride
-        dilation_h, dilation_w = dilations
-        pad_top, _, pad_left, pad_right = pad
 
-        kernel_dilate_w = (filter_w - 1) * dilation_w + 1
-        output_w = (fmap_w.value + pad_left + pad_right -
-                    kernel_dilate_w) // stride_w + 1
+        kernel_dilate_w = (filter_w - 1) * dilations[1] + 1
+        output_w = (fmap_w.value + pad[2] + pad[3] - kernel_dilate_w) // stride[1] + 1
 
-        img_cg_index = col_cg
-        ori_n_index = col_n
-        img_c1_index = col_c1
-        ori_h_index = (col_howo // output_w) * stride_h + col_hw * dilation_h
-        img_w_index = (col_howo % output_w) * stride_w + col_ww * dilation_w
-        img_c0_index = col_c0
+        ori_h_index = (indices[2] // output_w) * stride[0] + indices[4] * dilations[0]
+        img_w_index = (indices[2] % output_w) * stride[1] + indices[5] * dilations[1]
+        img_c0_index = indices[6]
 
         return tvm.select(
-            tvm.any(ori_h_index < pad_top,
-                    ori_h_index > fmap_h.value + pad_top - 1,
-                    img_w_index < pad_left,
-                    img_w_index > fmap_w.value + pad_left - 1),
-            tvm.const(0.0, input_img.dtype),
-            input_img(img_cg_index, ori_n_index, img_c1_index,
-                      ori_h_index - pad_top, img_w_index - pad_left,
-                      img_c0_index))
+            tvm.any(ori_h_index < pad[0], ori_h_index > fmap_h.value + pad[0] - 1, img_w_index < pad[2],
+                    img_w_index > fmap_w.value + pad[2] - 1), tvm.const(0.0, input_img.dtype),
+            input_img(indices[0], indices[1], indices[3], ori_h_index - pad[0], img_w_index - pad[2], img_c0_index))
 
     return tvm.compute(col_shape,
                        lambda *indices: _img2col_compute(indices),
@@ -216,7 +196,6 @@ def _img2col(input_img, col_shape, filter_h, filter_w, pad, stride, dilations):
                        })
 
 
-# pylint: disable=locally-disabled,invalid-name
 def _im2col_fractal(col_shape, img, dout_h, dout_w):
     """
     fractal(in L0B) for depthwise conv2d backprop filter after img2col
@@ -239,37 +218,30 @@ def _im2col_fractal(col_shape, img, dout_h, dout_w):
     -------
         tensor in fractal(in L0B).
     """
-
     def __im2col_fractal_indices(indices, img, dout_h, dout_w):
-        """fractal(in L0B) for depthwise conv2d backprop filter after img2col"""
+        """
+        fractal(in L0B) for depthwise conv2d backprop filter after img2col
+        """
         _, _, _, _, kernel_h, kernel_w, _ = img.shape
-        cg, b, i1, j1, j0, i0 = indices
 
-        n_index = b
-        hw_index = i1 * BLOCK_SIZE + i0
+        hw_index = indices[2] * BLOCK_SIZE + indices[5]
         howo = dout_h * dout_w
 
-        c1_index = (((j1 * BLOCK_SIZE + j0) // BLOCK_SIZE) //
-                    kernel_w.value) // kernel_h.value
-        kh_index = ((j1 * BLOCK_SIZE + j0) // BLOCK_SIZE) // kernel_w.value
-        kw_index = ((j1 * BLOCK_SIZE + j0) // BLOCK_SIZE) % kernel_w.value
-        c0_index = (j1 * BLOCK_SIZE + j0) % BLOCK_SIZE
+        c1_index = (((indices[3] * BLOCK_SIZE + indices[4]) // BLOCK_SIZE) // kernel_w.value) // kernel_h.value
+        kh_index = ((indices[3] * BLOCK_SIZE + indices[4]) // BLOCK_SIZE) // kernel_w.value
+        kw_index = ((indices[3] * BLOCK_SIZE + indices[4]) // BLOCK_SIZE) % kernel_w.value
+        c0_index = (indices[3] * BLOCK_SIZE + indices[4]) % BLOCK_SIZE
 
-        return tvm.select(
-            tvm.any(hw_index < 0, hw_index > howo - 1),
-            tvm.const(0.0, img.dtype),
-            img(cg, n_index, hw_index, c1_index, kh_index, kw_index, c0_index))
+        return tvm.select(tvm.any(hw_index < 0, hw_index > howo - 1), tvm.const(0.0, img.dtype),
+                          img(indices[0], indices[1], hw_index, c1_index, kh_index, kw_index, c0_index))
 
     return tvm.compute(col_shape,
-                       lambda *indices: __im2col_fractal_indices(
-                           indices, img, dout_h, dout_w),
+                       lambda *indices: __im2col_fractal_indices(indices, img, dout_h, dout_w),
                        name='im2col_fractal',
                        tag='im2col_fractal')
 
 
-# pylint: disable=locally-disabled,too-many-locals
-def _backprop_filter_matmul(mad_shape, left_tensor, right_tensor, dout_hw,
-                            dout_n, res_type):
+def _backprop_filter_matmul(mad_shape, left_tensor, right_tensor, dout_hw, dout_n, res_type):
     """
     depthwiese conv2d backprop filter matmul.
 
@@ -309,25 +281,84 @@ def _backprop_filter_matmul(mad_shape, left_tensor, right_tensor, dout_hw,
     # right_tensor.shape is (fmap_cgroup, dout_n, dout_hw_pad // BLOCK_SIZE,
     #                        fmap_c1*kernel_h*kernel_w, BLOCK_SIZE,
     #                        BLOCK_SIZE)
-    return tvm.compute(
-        mad_shape,
-        lambda cg, j1, i, j0: tvm.sum(
-            (left_tensor[cg, k_n, i // BLOCK_SIZE, k1, i % BLOCK_SIZE, k0] *
-             right_tensor[cg, k_n, k1, j1, j0, k0]).astype(res_type),
-            axis=[k_n, k_hw]),
-        name='mad')
+    return tvm.compute(mad_shape,
+                       lambda cg, j1, i, j0: tvm.sum((left_tensor[cg, k_n, i // BLOCK_SIZE, k1, i % BLOCK_SIZE, k0] *
+                                                      right_tensor[cg, k_n, k1, j1, j0, k0]).astype(res_type),
+                                                     axis=[k_n, k_hw]),
+                       name='mad')
+
 
 def _check_stride_rule(stride):
+    """
+    check stride rule
+    """
     if stride[0] > 63 or stride[0] < 1:
-        raise RuntimeError(
-            "invalid stride params, stride_h size must be [1,63].")
+        raise RuntimeError("invalid stride params, stride_h size must be [1,63].")
     if stride[1] > 63 or stride[1] < 1:
-        raise RuntimeError(
-            "invalid stride params, stride_w size must be [1,63].")
+        raise RuntimeError("invalid stride params, stride_w size must be [1,63].")
 
-# pylint: disable=locally-disabled,too-many-locals
-def depthwise_conv2d_compute(fmap, weight, depthwise_res_dtype, stride,
-                             pad, dilation, para_dict, l1_fusion_para,
+
+def _get_mad_info(fmap, depthwise_res_dtype):
+    """
+    float32 for cloud, float16 for mini, int8 for quant;
+    How to tell the two get_version
+    """
+    if not cce_conf.intrinsic_check_support("Intrinsic_mmad", "f162f32") and fmap.dtype == "float16":
+        mad_out_dtype = "float16"
+        mad_res_block_size = BLOCK_SIZE
+        fractal_n_split = 1
+        if depthwise_res_dtype != "float16":
+            dict_args = dict()
+            dict_args["errCode"] = "E60005"
+            dict_args["param_name"] = "depthwise_res_dtype"
+            dict_args["op_name"] = "depthwise_conv2d"
+            dict_args["expected_dtype_list"] = "float16"
+            dict_args["dtype"] = depthwise_res_dtype
+            raise RuntimeError(dict_args, err_mana.get_error_message(dict_args))
+    elif fmap.dtype in ("int8", "uint8"):
+        mad_out_dtype = "int32"
+        mad_res_block_size = BLOCK_INT8_SIZE
+        fractal_n_split = 2
+        if depthwise_res_dtype != "int32":
+            dict_args = dict()
+            dict_args["errCode"] = "E60005"
+            dict_args["param_name"] = "depthwise_res_dtype"
+            dict_args["op_name"] = "depthwise_conv2d"
+            dict_args["expected_dtype_list"] = "int32"
+            dict_args["dtype"] = depthwise_res_dtype
+            raise RuntimeError(dict_args, err_mana.get_error_message(dict_args))
+    elif cce_conf.intrinsic_check_support("Intrinsic_mmad", "f162f32") and fmap.dtype == "float16":
+
+        mad_out_dtype = "float32"
+        mad_res_block_size = BLOCK_SIZE
+        fractal_n_split = 1
+        if depthwise_res_dtype != "float16":
+            dict_args = dict()
+            dict_args["errCode"] = "E60005"
+            dict_args["param_name"] = "depthwise_res_dtype"
+            dict_args["op_name"] = "depthwise_conv2d"
+            dict_args["expected_dtype_list"] = "float16"
+            dict_args["dtype"] = depthwise_res_dtype
+            raise RuntimeError(dict_args, err_mana.get_error_message(dict_args))
+    else:
+        dict_args = dict()
+        dict_args["errCode"] = "E60004"
+        dict_args["param_name"] = "depthwise_res_dtype"
+        dict_args["op_name"] = "depthwise_conv2d"
+        dict_args["expected_dtype_list"] = "int32 or float16 or float32"
+        dict_args["dtype"] = depthwise_res_dtype
+        raise RuntimeError(dict_args, err_mana.get_error_message(dict_args))
+    return mad_out_dtype, mad_res_block_size, fractal_n_split
+
+
+def depthwise_conv2d_compute(fmap,
+                             weight,
+                             depthwise_res_dtype,
+                             stride,
+                             pad,
+                             dilation,
+                             para_dict,
+                             l1_fusion_para,
                              kernel_name="depthwise_conv2d_compute"):
     """
     algorithm: depthwise_conv2d_compute
@@ -361,8 +392,8 @@ def depthwise_conv2d_compute(fmap, weight, depthwise_res_dtype, stride,
 
     fmap_shape = [int(i.value) for i in fmap.shape]
     weight_shape = [int(i.value) for i in weight.shape]
-    check_para.check_shape_rule(fmap_shape)
-    check_para.check_shape_rule(weight_shape)
+    para_check.check_shape_rule(fmap_shape)
+    para_check.check_shape_rule(weight_shape)
     _check_stride_rule(stride)
 
     stride_h, stride_w = stride
@@ -376,24 +407,25 @@ def depthwise_conv2d_compute(fmap, weight, depthwise_res_dtype, stride,
     # padding_mode's pads is [0, 0, 0, 0]
     valid_mode_pad = [0, 0, 0, 0]
     # if howo == 1, howo_one_flag is 1
-    howo_one_flag = (fmap_h == kernel_h) and (fmap_w == kernel_w) and \
-                    (list(pad) == list(valid_mode_pad)) and \
-                    (fmap.dtype == "float16")
+    howo_one_flag = (fmap_h == kernel_h) and (fmap_w == kernel_w) and (list(pad)
+                                                                       == list(valid_mode_pad)) and (fmap.dtype
+                                                                                                     == "float16")
     # modify fmatrix's pad_right value to accelerate load3d
     if howo_one_flag:
         pad = (0, 0, 0, 15)
 
     if l1_fusion_para is None:
-        l1_fusion_para = {"input_memory_type": 0,
-                          "output_memory_type": 0,
-                          "valid_shape": (),
-                          "slice_offset": (),
-                          "l1_fusion_type": -1,
-                          "fmap_l1_addr_flag": -1,
-                          "fmap_l1_valid_size": -1}
+        l1_fusion_para = {
+            "input_memory_type": 0,
+            "output_memory_type": 0,
+            "valid_shape": (),
+            "slice_offset": (),
+            "l1_fusion_type": -1,
+            "fmap_l1_addr_flag": -1,
+            "fmap_l1_valid_size": -1
+        }
     DepthwiseConv2dParam.fusion_para = l1_fusion_para
-    fmap_select, fmap_select_h, fmap_select_w = _fusion_fmap_select(
-        fmap, l1_fusion_para)
+    fmap_select, fmap_select_h, fmap_select_w = _fusion_fmap_select(fmap, l1_fusion_para)
 
     pad_top, pad_bottom, pad_left, pad_right = pad
     full_height = fmap_select_h + pad_top + pad_bottom
@@ -412,85 +444,29 @@ def depthwise_conv2d_compute(fmap, weight, depthwise_res_dtype, stride,
 
     # float32 for cloud, float16 for mini, int8 for quant;
     # How to tell the two get_version
-    if not cce_conf.intrinsic_check_support("Intrinsic_mmad", "f162f32") \
-            and fmap.dtype == "float16":
-        mad_out_dtype = "float16"
-        mad_res_block_size = BLOCK_SIZE
-        fractal_n_split = 1
-        if depthwise_res_dtype != "float16":
-            dict_args = dict()
-            dict_args["errCode"] = "E60005"
-            dict_args["param_name"] = "depthwise_res_dtype"
-            dict_args["op_name"] = "depthwise_conv2d"
-            dict_args["expected_dtype_list"] = "float16"
-            dict_args["dtype"] = depthwise_res_dtype
-            raise RuntimeError(dict_args,
-                               err_mana.get_error_message(dict_args))
-    elif fmap.dtype in ("int8", "uint8"):
-        mad_out_dtype = "int32"
-        mad_res_block_size = BLOCK_INT8_SIZE
-        fractal_n_split = 2
-        if depthwise_res_dtype != "int32":
-            dict_args = dict()
-            dict_args["errCode"] = "E60005"
-            dict_args["param_name"] = "depthwise_res_dtype"
-            dict_args["op_name"] = "depthwise_conv2d"
-            dict_args["expected_dtype_list"] = "int32"
-            dict_args["dtype"] = depthwise_res_dtype
-            raise RuntimeError(dict_args,
-                               err_mana.get_error_message(dict_args))
-    elif cce_conf.intrinsic_check_support("Intrinsic_mmad", "f162f32") \
-            and fmap.dtype == "float16":
+    mad_out_dtype, mad_res_block_size, fractal_n_split = _get_mad_info(fmap, depthwise_res_dtype)
 
-        mad_out_dtype = "float32"
-        mad_res_block_size = BLOCK_SIZE
-        fractal_n_split = 1
-        if depthwise_res_dtype != "float16":
-            dict_args = dict()
-            dict_args["errCode"] = "E60005"
-            dict_args["param_name"] = "depthwise_res_dtype"
-            dict_args["op_name"] = "depthwise_conv2d"
-            dict_args["expected_dtype_list"] = "float16"
-            dict_args["dtype"] = depthwise_res_dtype
-            raise RuntimeError(dict_args,
-                               err_mana.get_error_message(dict_args))
-    else:
-        dict_args = dict()
-        dict_args["errCode"] = "E60004"
-        dict_args["param_name"] = "depthwise_res_dtype"
-        dict_args["op_name"] = "depthwise_conv2d"
-        dict_args["expected_dtype_list"] = "int32 or float16 or float32"
-        dict_args["dtype"] = depthwise_res_dtype
-        raise RuntimeError(dict_args,
-                           err_mana.get_error_message(dict_args))
-
-    fmap_im2col_row_major_shape = (fmap_n, fmap_c1, output_h * output_w, 1,
-                                   kernel_h, kernel_w, mad_res_block_size)
-    feature_col = common.im2col_6d(fmap_select, fmap_im2col_row_major_shape,
-                                   kernel_h, kernel_w, pad, stride, offset_x)
+    fmap_im2col_row_major_shape = (fmap_n, fmap_c1, output_h * output_w, 1, kernel_h, kernel_w, mad_res_block_size)
+    feature_col = common.im2col_6d(fmap_select, fmap_im2col_row_major_shape, kernel_h, kernel_w, pad, stride, offset_x,
+                                   dilation)
 
     # fractal M == 16; fractal N == 16; quant mode,
     # M*K*N == 16*32*16; no-quant mode, M*K*N == 16*16*16
     howo_mad = (output_h * output_w + FRACTAL_M - 1) // FRACTAL_M * FRACTAL_M
-    fmap_im2col_fractal_shape = (fmap_n, fmap_c1, howo_mad // FRACTAL_M,
-                                 1 * kernel_h * kernel_w, FRACTAL_M,
+    fmap_im2col_fractal_shape = (fmap_n, fmap_c1, howo_mad // FRACTAL_M, 1 * kernel_h * kernel_w, FRACTAL_M,
                                  mad_res_block_size)
 
-    feature_col_pad = common.im2col_fractal_6d(fmap_im2col_fractal_shape,
-                                               feature_col)
+    feature_col_pad = common.im2col_fractal_6d(fmap_im2col_fractal_shape, feature_col)
 
     if mad_out_dtype == "int32":
         filter_reshape = tvm.compute(
             (filter_c1, kernel_h * kernel_w, 2, FRACTAL_N, filter_c0),
-            lambda cg, hw, co1, co0, c0: weight(
-                cg, hw // kernel_w, hw % kernel_w, co1 * FRACTAL_N + co0, c0),
+            lambda cg, hw, co1, co0, c0: weight(cg, hw // kernel_w, hw % kernel_w, co1 * FRACTAL_N + co0, c0),
             name='filter_reshape')
     elif mad_out_dtype in ("float16", "float32"):
-        filter_reshape = tvm.compute(
-            (filter_c1, kernel_h * kernel_w, 1, filter_co, filter_c0),
-            lambda cg, hw, co1, co0, c0: weight(cg, hw // kernel_w, hw %
-                                                kernel_w, co0, c0),
-            name='filter_reshape')
+        filter_reshape = tvm.compute((filter_c1, kernel_h * kernel_w, 1, filter_co, filter_c0),
+                                     lambda cg, hw, co1, co0, c0: weight(cg, hw // kernel_w, hw % kernel_w, co0, c0),
+                                     name='filter_reshape')
     else:
         dict_args = dict()
         dict_args["errCode"] = "E60004"
@@ -498,13 +474,11 @@ def depthwise_conv2d_compute(fmap, weight, depthwise_res_dtype, stride,
         dict_args["op_name"] = "depthwise_conv2d"
         dict_args["expected_dtype_list"] = "int32 or float16 or float32"
         dict_args["dtype"] = mad_out_dtype
-        raise RuntimeError(dict_args,
-                           err_mana.get_error_message(dict_args))
+        raise RuntimeError(dict_args, err_mana.get_error_message(dict_args))
 
     mad_shape = (fmap_n, fmap_c1, fractal_n_split, howo_mad, FRACTAL_N)
     v200_flag = check_support_v200()
-    mad_res = common.mad(mad_shape, feature_col_pad, filter_reshape,
-                         mad_out_dtype, offset_x, v200_flag)
+    mad_res = common.mad(mad_shape, feature_col_pad, filter_reshape, mad_out_dtype, offset_x, v200_flag)
 
     # if bias true, increase data flow, else hide bias
     bias_tensor_flag = (bias_tensor is not None and bias_tensor != {})
@@ -513,61 +487,55 @@ def depthwise_conv2d_compute(fmap, weight, depthwise_res_dtype, stride,
         # bias model: data flow
         # dsl_flag == 1: bias add in l0c, then cast in ub
         # dsl_flag == 0: cast in ub, then bias add in ub
-        if dsl_flag == True and mad_out_dtype == "int32":
+        if dsl_flag is True and mad_out_dtype == "int32":
             bias_ub_brc_shape = list(mad_shape)
             bias_ub_brc_shape[3] = bias_ub_brc_shape[3] // 16
             # bias UB broadcast ho*wo//16
             bias_ub_brc = tvm.compute(bias_ub_brc_shape,
-                                      lambda i, j, a, k, l:
-                                      bias_tensor(
-                                          j * 2 * 16 + a * 16 + l),
+                                      lambda i, j, a, k, l: bias_tensor(j * 2 * 16 + a * 16 + l),
                                       name='bias_ub_brc')
             # bias l0c broadcast ho*wo
-            bias_l0c = tvm.compute(mad_shape, lambda i1, j1, a1, k1, l1:
-                                   bias_ub_brc(i1, j1, a1, k1 // 16, l1),
+            bias_l0c = tvm.compute(mad_shape,
+                                   lambda i1, j1, a1, k1, l1: bias_ub_brc(i1, j1, a1, k1 // 16, l1),
                                    name='bias_l0c')
             # l0c add
-            mad_res = tvm.compute(mad_shape,
-                                  lambda *index: bias_l0c(*index) + mad_res(
-                                      *index),
-                                  name='c_col_bias')
+            mad_res = tvm.compute(mad_shape, lambda *index: bias_l0c(*index) + mad_res(*index), name='c_col_bias')
         # l0c---ub cast
-        depthwise_cast = tvm.compute(
-            mad_res.shape,
-            lambda *index: mad_res(*index).astype(depthwise_res_dtype),
-            name='depthwise_cast',
-            attrs={
-                'kernel_h': kernel_h,
-                'kernel_w': kernel_w,
-                'padding': pad,
-                'howo_one_flag': howo_one_flag,
-                'stride': stride
-            })
-        if dsl_flag == True and mad_out_dtype == "int32":
+        depthwise_cast = tvm.compute(mad_res.shape,
+                                     lambda *index: mad_res(*index).astype(depthwise_res_dtype),
+                                     name='depthwise_cast',
+                                     attrs={
+                                         'kernel_h': kernel_h,
+                                         'kernel_w': kernel_w,
+                                         'padding': pad,
+                                         'howo_one_flag': howo_one_flag,
+                                         'stride': stride,
+                                         'dilation': dilation
+                                     })
+        if dsl_flag is True and mad_out_dtype == "int32":
             depthwise_res_bias = depthwise_cast
         else:
             depthwise_res_bias = bias_add(depthwise_cast, bias_tensor)
     else:
         bias_flag = False
-        depthwise_cast = tvm.compute(
-            mad_res.shape,
-            lambda *index: mad_res(*index).astype(depthwise_res_dtype),
-            name='depthwise_cast',
-            attrs={
-                'kernel_h': kernel_h,
-                'kernel_w': kernel_w,
-                'padding': pad,
-                'howo_one_flag': howo_one_flag,
-                'stride': stride
-            })
+        depthwise_cast = tvm.compute(mad_res.shape,
+                                     lambda *index: mad_res(*index).astype(depthwise_res_dtype),
+                                     name='depthwise_cast',
+                                     attrs={
+                                         'kernel_h': kernel_h,
+                                         'kernel_w': kernel_w,
+                                         'padding': pad,
+                                         'howo_one_flag': howo_one_flag,
+                                         'stride': stride,
+                                         'dilation': dilation
+                                     })
         depthwise_res_bias = depthwise_cast
 
     if howo_one_flag:
         output_h = 1
         output_w = 1
 
-    res_shape = (fmap_n, fmap_c1, fractal_n_split, output_h * output_w,
-                 FRACTAL_N)
+    res_shape = (fmap_n, fmap_c1, fractal_n_split, output_h * output_w, FRACTAL_N)
     depthwise_res = tvm.compute(
         res_shape,
         lambda *index: depthwise_res_bias(*index).astype(depthwise_res_dtype),
@@ -578,14 +546,19 @@ def depthwise_conv2d_compute(fmap, weight, depthwise_res_dtype, stride,
             "dsl_flag": dsl_flag,
             "kernel_name": kernel_name,
             "l1_fusion_para": l1_fusion_para
-        }, )
+        },
+    )
     return depthwise_res
 
 
-# pylint: disable=locally-disabled,invalid-name
-def depthwise_conv2d_backprop_filter_d_compute(fmap, dout,
-                                               kernel_h, kernel_w, stride, pad,
-                                               dilations, w_dtype,
+def depthwise_conv2d_backprop_filter_d_compute(fmap,
+                                               dout,
+                                               kernel_h,
+                                               kernel_w,
+                                               stride,
+                                               pad,
+                                               dilations,
+                                               w_dtype,
                                                kernel_name="depthwise_conv2d_compute"):
     """
     compute of depthwise conv2d backprop filter
@@ -618,7 +591,6 @@ def depthwise_conv2d_backprop_filter_d_compute(fmap, dout,
     depthwise_dfilter_res: tvm tensor
         the tensor of output.
     """
-
     def _ceil(x):
         """
         Return the least multiple of 16 integer number
@@ -628,9 +600,9 @@ def depthwise_conv2d_backprop_filter_d_compute(fmap, dout,
 
     fmap_dtype = fmap.dtype
     dout_dtype = dout.dtype
-    check_para.check_dtype_rule(fmap_dtype, ('float16',))
-    check_para.check_dtype_rule(dout_dtype, ('float16',))
-    check_para.check_dtype_rule(w_dtype, ('float32',))
+    para_check.check_dtype_rule(fmap_dtype, ('float16', ))
+    para_check.check_dtype_rule(dout_dtype, ('float16', ))
+    para_check.check_dtype_rule(w_dtype, ('float32', ))
 
     fmap_shape = (int(i.value) for i in fmap.shape)
     dout_shape = (int(i.value) for i in dout.shape)
@@ -676,38 +648,32 @@ def depthwise_conv2d_backprop_filter_d_compute(fmap, dout,
         raise RuntimeError(dict_args, err_mana.get_error_message(dict_args))
 
     fmap_trans_shape = (fmap_cgroup, fmap_n, fmap_c1, fmap_h, fmap_w, fmap_c0)
-    fmap_transpose = tvm.compute(
-        fmap_trans_shape,
-        lambda cg, n, c1, h, w, c0: fmap(n, cg, c1, h, w, c0),
-        name='fmap_transpose')
+    fmap_transpose = tvm.compute(fmap_trans_shape,
+                                 lambda cg, n, c1, h, w, c0: fmap(n, cg, c1, h, w, c0),
+                                 name='fmap_transpose')
 
     # set_fmatrix CgC1NHiWiC0 --> Cg,NHoWo,C1,Hw,Ww,C0
-    A_im2col_row_major_shape = (fmap_cgroup, dout_n, dout_h * dout_w, fmap_c1,
-                                kernel_h, kernel_w, BLOCK_SIZE)
-    feature_col = _img2col(fmap_transpose, A_im2col_row_major_shape, kernel_h,
-                           kernel_w, pad, (stride_h, stride_w),
+    A_im2col_row_major_shape = (fmap_cgroup, dout_n, dout_h * dout_w, fmap_c1, kernel_h, kernel_w, BLOCK_SIZE)
+    feature_col = _img2col(fmap_transpose, A_im2col_row_major_shape, kernel_h, kernel_w, pad, (stride_h, stride_w),
                            (dilation_h, dilation_w))
 
     dout_hw_pad = _ceil(dout_h * dout_w)
 
-    # Cg,NHoWo,C1,Hw,Ww,C0 (axis K in cube is NHoWo, axis N in cube is C1HwWwC0)
+    # Cg,NHoWo,C1,Hw,Ww,C0 (axis K in cube is NHoWo,axis N in cube is C1HwWwC0)
     # --> Cg,NHoWo // 16,C1HwWw,16,16 (nZ in L0B)
-    A_im2col_fractal_shape = (fmap_cgroup, dout_n, dout_hw_pad // BLOCK_SIZE,
-                              fmap_c1 * kernel_h * kernel_w, BLOCK_SIZE,
+    A_im2col_fractal_shape = (fmap_cgroup, dout_n, dout_hw_pad // BLOCK_SIZE, fmap_c1 * kernel_h * kernel_w, BLOCK_SIZE,
                               BLOCK_SIZE)
 
     # dw_in_L0C (from backward filter view) is transposed dw_in_L0B
     #  (from forward view).
     # dw.T = dout.T <matmul> im2col(fmap)
     # (Co, Ci1.Hk.Wk.Ci0) = (Co, Ho.Wo.N) <matmul> (Ho.Wo.N, Ci1.Hk.Wk.Ci0)
-    feature_col_pad = _im2col_fractal(A_im2col_fractal_shape, feature_col,
-                                      dout_h, dout_w)
+    feature_col_pad = _im2col_fractal(A_im2col_fractal_shape, feature_col, dout_h, dout_w)
 
     # NCgC1HoWoC0 --> CgC1NHoWoC0
     dout_trans_shape = (fmap_cgroup, dout_n, dout_c1, dout_h * dout_w, dout_c0)
     dout_transpose = tvm.compute(dout_trans_shape,
-                                 lambda cg, n, c1, hw, c0: dout(
-                                     n, cg, c1, hw // dout_w, hw % dout_w, c0),
+                                 lambda cg, n, c1, hw, c0: dout(n, cg, c1, hw // dout_w, hw % dout_w, c0),
                                  name='dout_transpose')
 
     def _dout_fractal_compute(index, dout_ph):
@@ -718,47 +684,44 @@ def depthwise_conv2d_backprop_filter_d_compute(fmap, dout,
 
     # CgC1NHoWoC0 (axis M in cube is C1C0, axis K in cube is NHoWo)
     # --> Cg,C1,NHoWo // 16,C0,16 (zZ in L0A)
-    dout_fractal_shape = (fmap_cgroup, dout_n, dout_c1,
-                          dout_hw_pad // BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE)
-    dout_fractal = tvm.compute(
-        dout_fractal_shape,
-        lambda *index: _dout_fractal_compute(index, dout_transpose),
-        name='dout_fractal')
+    dout_fractal_shape = (fmap_cgroup, dout_n, dout_c1, dout_hw_pad // BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE)
+    dout_fractal = tvm.compute(dout_fractal_shape,
+                               lambda *index: _dout_fractal_compute(index, dout_transpose),
+                               name='dout_fractal')
 
     # dw is float32 only.
     res_dtype = "float32"
     # axis M in cube is C1C0, axis N in cube is C1HwWwC0
     # Cg,C1HwWw,C1C0,C0 (zN in L0C)
-    mad_shape = (fmap_cgroup, fmap_c1 * kernel_h * kernel_w,
-                 dout_c1 * BLOCK_SIZE, BLOCK_SIZE)
-    mad_res = _backprop_filter_matmul(mad_shape, dout_fractal, feature_col_pad,
-                                      dout_h * dout_w, dout_n, res_dtype)
+    mad_shape = (fmap_cgroup, fmap_c1 * kernel_h * kernel_w, dout_c1 * BLOCK_SIZE, BLOCK_SIZE)
+    mad_res = _backprop_filter_matmul(mad_shape, dout_fractal, feature_col_pad, dout_h * dout_w, dout_n, res_dtype)
 
     depthwise_dfilter = tvm.compute(
         mad_shape,
-        lambda cg, hw, co, c0: tvm.select(co == c0, mad_res(cg, hw, co, c0),
-                                          tvm.const(0.0, mad_res.dtype)),
+        lambda cg, hw, co, c0: tvm.select(co == c0, mad_res(cg, hw, co, c0), tvm.const(0.0, mad_res.dtype)),
         name='depthwise_dfilter')
 
-    depthwise_dfilter_res = tvm.compute(
-        mad_shape,
-        lambda *index: depthwise_dfilter(*index).astype(w_dtype),
-        name='depthwise_dfilter_res',
-        attrs={
-            'kernel_h': kernel_h,
-            'kernel_w': kernel_w,
-            'padding': pad,
-            'stride': (stride_h, stride_w),
-            'dilations': (dilation_h, dilation_w),
-            'kernel_name': kernel_name
-        })
+    depthwise_dfilter_res = tvm.compute(mad_shape,
+                                        lambda *index: depthwise_dfilter(*index).astype(w_dtype),
+                                        name='depthwise_dfilter_res',
+                                        attrs={
+                                            'kernel_h': kernel_h,
+                                            'kernel_w': kernel_w,
+                                            'padding': pad,
+                                            'stride': (stride_h, stride_w),
+                                            'dilations': (dilation_h, dilation_w),
+                                            'kernel_name': kernel_name
+                                        })
 
     return depthwise_dfilter_res
 
 
-# pylint: disable=locally-disabled,too-many-locals,too-many-statements
-def depthwise_conv2d_backprop_input_d_compute(input_shape, weight, dout,
-                                              weight_sizes, strides, pads,
+def depthwise_conv2d_backprop_input_d_compute(input_shape,
+                                              weight,
+                                              dout,
+                                              weight_sizes,
+                                              strides,
+                                              pads,
                                               kernel_name="depthwise_conv2d_compute"):
     """
     Computes the gradients of depthwise convolution with respect to the input.
@@ -801,52 +764,43 @@ def depthwise_conv2d_backprop_input_d_compute(input_shape, weight, dout,
     dilated_h = dout_h * stride_h - (stride_h - 1)
     dilated_w = dout_w * stride_w - (stride_w - 1)
 
-    dilated_shape = (input_shape[0], input_shape[1], input_shape[2], dilated_h,
-                     dilated_w, input_shape[5])
+    dilated_shape = (input_shape[0], input_shape[1], input_shape[2], dilated_h, dilated_w, input_shape[5])
 
     dilated_pad_top = weight_height - 1 - pad_top
     dilated_pad_bottom = dilated_padded_h - dilated_pad_top - dilated_h
     dilated_pad_left = weight_width - 1 - pad_left
     dilated_pad_right = dilated_padded_w - dilated_pad_left - dilated_w
 
-    dilated_pad = (dilated_pad_top, dilated_pad_bottom, dilated_pad_left,
-                   dilated_pad_right)
+    dilated_pad = (dilated_pad_top, dilated_pad_bottom, dilated_pad_left, dilated_pad_right)
 
     dilated_strides = (1, 1)
 
     # compute of out_backprop dilation
     dout_dilated = tvm.compute(
         dilated_shape,
-        lambda n, cg, c1, h, w, c0: tvm.select(
-            tvm.all(h % strides[0] == 0, w % strides[1] == 0), dout[
-                n, cg, c1, h // strides[0], w // strides[1], c0],
-            tvm.const(0, dout.dtype)),
+        lambda n, cg, c1, h, w, c0: tvm.select(tvm.all(h % strides[0] == 0, w % strides[1] == 0), dout[
+            n, cg, c1, h // strides[0], w // strides[1], c0], tvm.const(0, dout.dtype)),
         attrs={'strides': strides},
         name='dout_dilated')
 
     # image to column of dilated out_backprop
-    dout_im2col_row_major_shape = (dout_n, dout_cgroup, input_h * input_w,
-                                   dout_c1, weight_height, weight_width,
+    dout_im2col_row_major_shape = (dout_n, dout_cgroup, input_h * input_w, dout_c1, weight_height, weight_width,
                                    BLOCK_SIZE)
-    dout_col = common.im2col_6d(dout_dilated, dout_im2col_row_major_shape,
-                                weight_height, weight_width, dilated_pad,
+    dout_col = common.im2col_6d(dout_dilated, dout_im2col_row_major_shape, weight_height, weight_width, dilated_pad,
                                 dilated_strides)
 
     hiwi_mad = (input_h * input_w + BLOCK_SIZE - 1) // BLOCK_SIZE * BLOCK_SIZE
 
-    dout_im2col_fractal_shape = (dout_n, dout_cgroup, hiwi_mad // BLOCK_SIZE,
-                                 dout_c1 * weight_height * weight_width,
+    dout_im2col_fractal_shape = (dout_n, dout_cgroup, hiwi_mad // BLOCK_SIZE, dout_c1 * weight_height * weight_width,
                                  BLOCK_SIZE, BLOCK_SIZE)
 
-    dout_col_pad = common.im2col_fractal_6d(dout_im2col_fractal_shape,
-                                            dout_col)
+    dout_col_pad = common.im2col_fractal_6d(dout_im2col_fractal_shape, dout_col)
 
     # rotate weight with a degree of 180
     weight_rotated = tvm.compute(
         weight.shape,
-        lambda cg, khkw, co1, co0, c0: weight[
-            cg, (weight_height - 1 - khkw // weight_width) * weight_width +
-            (weight_width - 1 - khkw % weight_width), co1, co0, c0],
+        lambda cg, khkw, co1, co0, c0: weight[cg, (weight_height - 1 - khkw // weight_width) * weight_width +
+                                              (weight_width - 1 - khkw % weight_width), co1, co0, c0],
         name='weight_rotated')
 
     # float32 for cloud, float16 for mini. How to tell the two get_version
@@ -856,13 +810,10 @@ def depthwise_conv2d_backprop_input_d_compute(input_shape, weight, dout,
         mad_out_dtype = "float32"
     # matrix multiplication of dilated out_backprop and rotated weight
     mad_shape = (dout_n, dout_cgroup, dout_c1, hiwi_mad, dout_c0)
-    mad_res = common.mad(mad_shape, dout_col_pad, weight_rotated,
-                         mad_out_dtype)
+    mad_res = common.mad(mad_shape, dout_col_pad, weight_rotated, mad_out_dtype)
 
     # cast dX from float32 to float16
-    dx_cast = tvm.compute(mad_res.shape,
-                          lambda *index: mad_res(*index).astype(dout_dtype),
-                          name='dx_cast')
+    dx_cast = tvm.compute(mad_res.shape, lambda *index: mad_res(*index).astype(dout_dtype), name='dx_cast')
 
     # remove the padding of dX
     res_shape = (dout_n, dout_cgroup, dout_c1, input_h * input_w, dout_c0)

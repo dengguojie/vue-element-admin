@@ -173,7 +173,7 @@ def softmax_cross_entropy_with_logits_compute(
     data_log = tbe.vsub(data_sub, data_log_tmp)
     data_mul = tbe.vmul(input_labels, data_log)
     data_muls = tbe.vmuls(data_mul, SCALAR_MINUS_ONE)
-    loss = tbe.sum(data_muls, axis=-1)
+    loss = tbe.sum(data_muls, axis=-1, keepdims=True)
     backprop = tbe.vsub(data_div, input_labels)
 
     if has_improve_precision:

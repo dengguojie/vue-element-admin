@@ -4,41 +4,43 @@ import numpy as np
 
 ut_case = OpUT("SigmoidCrossEntropyWithLogitsV2", "impl.sigmoid_cross_entropy_with_logits_v2", "sigmoid_cross_entropy_with_logits_v2")
 
-def calc_expect_func(predict, target, weight, pos_weight, reduction):
+def calc_expect_func(predict, target, weight, pos_weight, y, reduction):
     predict_shape = predict["shape"]
     predict_value = predict["value"]
     predict_dtype = predict["dtype"]
-    
+
     target_shape = target["shape"]
     target_value = target["value"]
     target_dtype = target["dtype"]
-    
+
     weight_shape = weight["shape"]
     weight_value = weight["value"]
     weight_dtype = weight["dtype"]
-    
+
     pos_weight_shape = pos_weight["shape"]
     pos_weight_value = pos_weight["value"]
     pos_weight_dtype = pos_weight["dtype"]
-    
+
     max_val = -np.maximum(predict_value, 0)
     if pos_weight is not None:
         log_weight = (pos_weight_value - 1) * target_value + 1
         loss = (1 - target_value) * predict_value + (log_weight * (np.log(np.exp(-max_val) + np.exp(-predict_value-max_val)) + max_val))
     else:
-        loss = (1 - target_value) * predict_value + max_val + np.log(np.exp(-max_val) + np.exp(-predict_value-max_val))        
-    
+        loss = (1 - target_value) * predict_value + max_val + np.log(np.exp(-max_val) + np.exp(-predict_value-max_val))
+
     if weight is not None:
         loss = loss * weight_value
-    
+
     if reduction == "mean":
-        return np.mean(loss)
-    
+        res = np.mean(loss)
+        return res.reshape(y['shape'])
+
     if reduction == "sum":
-        return np.sum(loss)
-        
+        res =  np.sum(loss)
+        return res.reshape(y['shape'])
+
     return loss
-    
+
 case1 = {"params": [{"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #predict
                     {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #target
                     {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #weight
@@ -109,6 +111,3 @@ ut_case.add_case(["Ascend910","Ascend310"], case4)
 ut_case.add_case(["Ascend910","Ascend310"], case5)
 ut_case.add_case(["Ascend910","Ascend310"], case6)
 
-if __name__ == '__main__':
-    ut_case.run(["Ascend910"], simulator_mode="pv",
-                simulator_lib_path="/disk1/ty_mindstudio/.mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")

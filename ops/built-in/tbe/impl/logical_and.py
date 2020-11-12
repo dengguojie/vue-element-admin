@@ -21,6 +21,7 @@ from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=too-many-locals,invalid-name
@@ -92,7 +93,8 @@ def logical_and(x1, x2, y, kernel_name="logical_and"):
     para_check.check_shape(shape_y, param_name="x2")
 
     if dtype_x != dtype_y:
-        raise RuntimeError("The type of input must be the same")
+        error_detail = "dtype of x1 and x2 must be the same"
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "x1", "x2", error_detail)
 
     input_data_type = dtype_x.lower()
     check_tuple = ("int8",)

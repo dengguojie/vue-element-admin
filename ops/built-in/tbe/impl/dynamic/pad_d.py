@@ -17,7 +17,6 @@ padD
 """
 from te import tik
 from te import platform as tbe_platform
-from te.utils.op_utils import *
 from te.utils.error_manager import error_manager_vector
 import te.lang.dynamic
 from impl.dynamic import pad_align
@@ -30,6 +29,7 @@ MAX_INT32 = 2**31 - 1
 INT32_BYTE = 4
 # numbers in the block
 INT32_BLOCK = 8
+INT64_BLOCK = 4
 
 
 def pad_compute(obj):
@@ -43,7 +43,7 @@ def pad_compute(obj):
         # init tiling_params
         # =====================
         obj.tik_instance.data_move(obj.tiling_buf, obj.tiling_gm, 0, 1,
-                                   obj.tiling_buf_size//INT32_BLOCK, 0, 0)
+                                   obj.tiling_buf_size//INT64_BLOCK, 0, 0)
         pad_common.init_params(obj)
 
         # ======================

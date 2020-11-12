@@ -1,3 +1,18 @@
+"""
+Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the Apache License Version 2.0.You may not use this file
+except in compliance with the License.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+Apache License for more details at
+http://www.apache.org/licenses/LICENSE-2.0
+
+conv2d_tik
+"""
 from __future__ import absolute_import
 import numpy as np
 from te import tik
@@ -7,12 +22,20 @@ from te.platform.cce_conf import te_set_l2_mode
 
 def conv2d_tik_compute(params):
     tik_instance = tik.Tik()
+
+    # enable l2
     te_set_l2_mode(1)
+
+    # get shape of feature map and weight
     n, c1, h, w, c0 = params["fm_shape"]
     c1, kh, kw, cout, c0 = params["weight_shape"]
+
+    # get value of stride, dilation, pad
     stride_h, stride_w = params["stride_list"]
     dilation_h, dilation_w = params["dilation_list"]
     pad_top, pad_bot, pad_left, pad_right = params["pad_list"]
+
+    # calculate height and width
     kh_dilation = (kh - 1) * dilation_h + 1
     kw_dilation = (kw - 1) * dilation_w + 1
     ho = int(np.ceil((h + pad_top + pad_bot - kh_dilation + 1) / stride_h)) 
@@ -28,7 +51,7 @@ def conv2d_tik_compute(params):
                                  [n, cout // 16, ho, wo, 16],
                                  name='dst_gm', scope=tik.scope_gm)
 
-    core_num = 2
+    core_num = params['core_num']
     pre_core_cout = cout // core_num
     cout_iter_num = pre_core_cout // params["cout_split_factor"]
     Cin_blocks = c1
@@ -120,6 +143,7 @@ def conv2d_tik(inputs, weights, outputs, strides, pads, dilations, kernel_name="
         "stride_list": stride_list,
         "dilation_list": dilation_list,
         "cout_split_factor": 64,
+        "core_num": 2,
         "kernel_name": kernel_name}
 
     conv2d_tik_compute(params)

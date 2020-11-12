@@ -29,7 +29,7 @@ SHAPE_SIZE_LIMIT = 2147483648
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("sqrt")
-def sqrt_compute(input_data, output_data, kernel_name="sqrt"):
+def sqrt_compute(input_data, output_data, kernel_name="sqrt", impl_mode="high_performance"):
     """
     calculating data sqrt,y= x**0.5,mini not support vsqrt, use exp(0.5*log(x))
 
@@ -53,7 +53,10 @@ def sqrt_compute(input_data, output_data, kernel_name="sqrt"):
             tbe_platform.api_check_support("te.lang.cce.vsqrt", "float32"):
         input_data = tbe.cast_to(input_data, "float32")
         has_improve_precision = True
-    result = tbe.vsqrt(input_data)
+    if impl_mode != "high_performance":
+        result = tbe.vsqrt(input_data, 1)
+    else:
+        result = tbe.vsqrt(input_data)
 
     if has_improve_precision:
         result = tbe.cast_to(result, "float16")
@@ -62,7 +65,7 @@ def sqrt_compute(input_data, output_data, kernel_name="sqrt"):
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
-def sqrt(input_x, output_y, kernel_name="sqrt"):
+def sqrt(input_x, output_y, kernel_name="sqrt", impl_mode="high_performance"):
     """
     algorithm: sqrt
     calculating data sqrt,y= x**0.5, mini not support vsqrt, use exp(0.5*log(x))
@@ -90,7 +93,7 @@ def sqrt(input_x, output_y, kernel_name="sqrt"):
     fuseshape[0] = functools.reduce(lambda x, y: x*y, input_shape)
     input_data = tvm.placeholder(fuseshape, name="input_data",
                                  dtype=input_dtype)
-    result = sqrt_compute(input_data, output_y, kernel_name)
+    result = sqrt_compute(input_data, output_y, kernel_name, impl_mode)
 
     with tvm.target.cce():
         sch = tbe.auto_schedule(result)

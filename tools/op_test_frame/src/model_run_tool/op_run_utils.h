@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef OPP_OP_RUN_UTILS_H
-#define OPP_OP_RUN_UTILS_H
+#ifndef MODEL_RUN_TOOL_OP_RUN_UTILS_H
+#define MODEL_RUN_TOOL_OP_RUN_UTILS_H
 
 #include "./common_layer.h"
 
@@ -23,4 +23,4 @@ extern "C" {
 void RunOp(OpParams opParams);
 }
 
-#endif //OPP_OP_RUN_UTILS_H
+#endif //MODEL_RUN_TOOL_OP_RUN_UTILS_H

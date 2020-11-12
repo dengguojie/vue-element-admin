@@ -93,8 +93,8 @@ static bool CheckParams(const string& op, const vector<vector<int64_t>>& input_s
 
   int max_dim = static_cast<int32_t>(shape_length);
   if (dim >= max_dim or dim < -max_dim) {
-    OP_LOGE(op.c_str(), "In op[%s], the parameter[%s]  should be [between %d and %d],  but actually is [%d].",
-            op.c_str(), "concat_dim", min(max_dim - 1, -max_dim), max(max_dim - 1, -max_dim), dim);
+    OP_LOGE(op.c_str(), "the parameter[%s] should be [between %d and %d], but actually is [%d].",
+            "concat_dim", min(max_dim - 1, -max_dim), max(max_dim - 1, -max_dim), dim);
     ge::OpsAttrValueErrReport(op, "concat_dim",
                               ConcatString("between ", min(max_dim - 1, -max_dim), " and ", max(max_dim - 1, -max_dim)),
                               std::to_string(dim));

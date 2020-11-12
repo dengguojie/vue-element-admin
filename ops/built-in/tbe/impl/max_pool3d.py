@@ -25,7 +25,7 @@ from te.platform.fusion_manager import fusion_manager
 from te.platform.cce_build import build_config
 from te.platform.cce_conf import CceProductParams
 from topi.cce import util
-from te.utils.op_utils import *
+from te.utils import para_check
 from topi import generic
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
@@ -107,8 +107,8 @@ def max_pool3d_check_rule(input_shape, output_dtype, ksize, strides,
     :return: None
     """
     # check input and output
-    check_shape(input_shape, param_name="x")
-    check_dtype(output_dtype, ["float16"], param_name="y")
+    para_check.check_shape(input_shape, param_name="x")
+    para_check.check_dtype(output_dtype, ["float16"], param_name="y")
     # check ksize and strides of window
     check_window_rule(ksize, strides)
     # check padding
@@ -126,8 +126,8 @@ def max_pool3d_check_rule_new(input_dtype, output_dtype, ksize, strides):
     """
     # since float32/64 transpose not support yet
     # so check the dtyep here
-    check_dtype(input_dtype, ["float16"],  param_name="x")
-    check_dtype(output_dtype, ["float16"], param_name="y")
+    para_check.check_dtype(input_dtype, ["float16"],  param_name="x")
+    para_check.check_dtype(output_dtype, ["float16"], param_name="y")
     if len(ksize) == 5:
         if ksize[0] != 1 or ksize[4] != 1:
             raise RuntimeError("ksize N and C must be 1")

@@ -20,7 +20,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
-from te.utils import error_manager
+from te.utils.error_manager import error_manager_vector
 tbe_platform.cce_policy.disableL2()
 
 
@@ -44,16 +44,17 @@ def _check_shape(shape_x, shape_scale):
     para_check.check_shape(shape_scale, param_name="scale")
 
     if len(shape_x) != 5 or len(shape_scale) != 5:
-        raise RuntimeError(
-            "The data format is 5HD, "
-            "but some input's shape length is not 5")
+        error_detail = "The data format is 5HD, but x or scale's shape length is not 5"
+        error_manager_vector.raise_err_two_input_shape_invalid("bn_infer", "x", \
+                                                               "scale", error_detail)
 
     dim_c1 = shape_x[1]
     dim_c0 = shape_x[4]
 
     if shape_scale[1] != dim_c1 or shape_scale[4] != dim_c0:
-        raise RuntimeError(
-            "Dimension C must be equal")
+        error_detail = "Dimension C must be equal"
+        error_manager_vector.raise_err_input_shape_invalid("bn_infer", "scale", \
+                                                           error_detail)
 
 
 def _check_dtype(dtype_x, dtype_scale, dtype_offset,
@@ -191,7 +192,7 @@ def bn_infer(x, scale, offset, mean, variance, y,
 
     if data_format not in ("NC1HWC0",):
         format_rule = "Format only support 5HD"
-        error_manager.error_manager_vector.raise_err_check_params_rules("bn_infer", format_rule, "x", data_format)
+        error_manager_vector.raise_err_check_params_rules("bn_infer", format_rule, "x", data_format)
 
     _check_shape(shape_x, shape_scale)
     shape_util.compare_tensor_dict_key(scale, offset, "shape")

@@ -46,8 +46,10 @@ TEST_F(conv_mul_fusion_test, conv_mul_fusion_test_1) {
     std::vector<int64_t> dims_filter{1, 1, 64, 64};
     ge::Shape shape_filter(dims_filter);
     ge::TensorDesc tensorDescFilter(shape_filter, FORMAT_HWCN, DT_FLOAT);
+    tensorDescFilter.SetOriginFormat(FORMAT_HWCN);
     conv_input_filter_tensor.SetTensorDesc(tensorDescFilter);
     conv_input_filter_data.set_attr_value(conv_input_filter_tensor);
+    conv_input_filter_data.update_output_desc_y(tensorDescFilter);
 
     Tensor dims_bias_tensor;
     float *dims_bias_tensor_value = new float[64];

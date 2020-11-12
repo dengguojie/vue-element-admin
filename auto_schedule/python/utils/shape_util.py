@@ -15,8 +15,7 @@
 """
 common function for check ops parameter
 """
-from te.tvm._ffi.node import register_node
-from te.platform import operation
+from te.lang.base import operation
 from te.platform.fusion_manager import fusion_manager
 from te.tvm import expr as _expr
 from te.tvm import make as _make
@@ -212,7 +211,7 @@ def refine_shapes_for_broadcast(shape1, shape2):
         current_index = []
         state = None
         mode = operation.get_context().get("mode")
-        if mode != para_check.ORIGINAL:
+        if mode == para_check.SPECIAL or mode == para_check.SPECIAL_SCALAR:
             return shape1, shape2
         for index, (i_a, i_b) in enumerate(zip(shape1, shape2)):
             if _equals_one(i_a) and _equals_one(i_b):
@@ -298,7 +297,7 @@ def refine_shapes_for_broadcast(shape1, shape2):
     shape2 = [1] * _dv + shape2
 
     if operation.in_dynamic():
-        operation.add_compile_info("_fusion", 2)
+        operation.get_context().add("_fusion", 2)
         fused_shape1, fused_shape2 = \
             _dynamic_refine_shapes_for_broadcast(shape1, shape2)
     else:
@@ -513,6 +512,9 @@ def variable_shape(inputs: list, support_broadcast=False):
     current_compute = operation.get_context().get_current_compute()
     if current_compute:
         current_compute.add("mode", mode)
+        ori_axis = inputs[0].get("ori_axis")
+        if ori_axis is not None:
+            current_compute.add("ori_axis", ori_axis)
     operation.get_context().add("support_broadcast", support_broadcast)
 
     shapes, ranges = _fill(inputs)
@@ -777,10 +779,13 @@ def check_reduce_need_refine(shape, reduce_axis, keep_dims):
 
     # if the reduce axis correspond to shape[axis] is 1,
     # we can not refine the shape,or the reduce axis will be wrong
-    if not keep_dims:
-        return True
-
     if hasattr(reduce_axis, 'index'):
+        if not keep_dims:
+            for i in reduce_axis:
+                if shape[i] != 1:
+                    return True
+            return False
+
         for i in reduce_axis:
             if shape[i] == 1:
                 return False
@@ -923,8 +928,9 @@ def shape_to_list(shape):
     """
     tmp = []
     for i in shape:
-        if isinstance(i, _expr.Var):
-            tmp.append(i)
-        else:
+        if isinstance(i, _expr.ConstExpr):
             tmp.append(i.value)
+        else:
+            tmp.append(i)
+
     return tmp

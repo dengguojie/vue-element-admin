@@ -22,13 +22,13 @@ from te.lang.cce.te_compute.conv2d_backprop_input_general_compute import DeConvP
 from te.lang.cce.te_compute.conv2d_backprop_input_opti_compute import (
     DeConvKernelSize1Pattern
 )
-from te.lang.cce.te_compute.cube_util import check_pad_zero
 from te.lang.cce.te_compute.cube_util import shape_to_list
+from te.lang.cce.te_compute.cube_util import GroupDictKeys
 from te.platform import cce_conf
 from te.platform import cce_params
-from te.platform.operation import get_te_var
+from te.lang.base.operation import get_te_var
 from te.tvm.tensor import Tensor
-from te.utils import check_para
+from te.utils import para_check
 from te.utils.error_manager import error_manager_util
 
 NoneType = type(None)
@@ -45,6 +45,8 @@ DILATION_DIM = 4
 # padH, padW must be in [0,255]
 PAD_MIN = 0
 PAD_MAX = 255
+PAD_UP_INDEX = 0
+PAD_LEFT_INDEX = 2
 
 # dilation must be in [1,255]
 DILATION_MIN = 1
@@ -148,6 +150,7 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
     dilations,
     res_dtype,
     offset_w,
+    group_dict,
     fusion_para=None,
     dynamic_para=None,
     switch_to_general_scheme=False
@@ -174,6 +177,8 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
     res_dtype : dE/dX data type, "float16" by default
 
     offset_w: the offset for weight
+
+    group_dict : The params of group convolution.
 
     fusion_para: the l1 fusion para, default is None
 
@@ -305,6 +310,18 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
             return True
         return False
 
+    g_extend = group_dict.get(GroupDictKeys.g_extend)
+    dx_c1_extend = group_dict.get(GroupDictKeys.dx_c1_extend)
+    dy_c1_extend = group_dict.get(GroupDictKeys.dy_c1_extend)
+    groups = group_dict.get(GroupDictKeys.groups)
+    filter_ori_format = group_dict.get(GroupDictKeys.filter_ori_format)
+    # temp limitation : group must be 1
+    if groups != 1:
+        dict_args = {"errCode": "E60108", "reason": "group must be 1 now"}
+        raise RuntimeError(
+            dict_args, error_manager_util.get_error_message(dict_args)
+        )
+
     valid_dtype_dict = {}
     valid_dtype_dict["filter"] = ("float16", "int8")
     valid_dtype_dict["dedy"] = ("float16", "int8")
@@ -316,7 +333,7 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
     # begin to fetch params
     if filters.dtype == "int8":
         filter_cout1, _, filter_cin0, filter_cout0 = shape_to_list(filters.shape)
-        filter_cout1 = filter_cout1 / filter_sizes[2] / filter_sizes[3]
+        filter_cout1 = filter_cout1 / filter_sizes[2] / filter_sizes[3] / g_extend
     else:
         _, filter_cout1, filter_cout0, filter_cin0 = shape_to_list(filters.shape)
 
@@ -438,16 +455,10 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
     def _check_filter():
         _check_equal_rule(filter_cout0, w_k0, "filter_cout0", str(w_k0))
 
-        _check_equal_rule(
-            filter_cout1 * filter_cout0,
-            filter_cout,
-            "filter_cout1*filter_cout0",
-            "filter_cout"
-        )
+        _check_equal_rule(filter_cout1, dy_c1_extend,
+                          "filter_cout1", "dy_c1_extend")
 
         _check_equal_rule(filter_cin0, w_n0, "filter_cin0", str(w_n0))
-
-        _check_equal_rule(dy_c1 * dy_c0, filter_cout, "dy_c", "filter_cout")
 
         _check_variable_range(filter_h, FILTER_HW_MIN, FILTER_HW_MAX, "filter_h")
 
@@ -508,8 +519,9 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
                     // stride_w + 1",
                 "dy_h"
             )
-
-        _check_equal_rule(dx_c, filter_cin, "dx_cin", "filter_cin")
+        filter_cin_groups = filter_cin if filter_ori_format == "HWCN" else \
+            filter_cin * groups
+        _check_equal_rule(dx_c, filter_cin_groups, "dx_cin", "filter_cin_groups")
 
     # strides
     def _check_strides():
@@ -550,11 +562,10 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
             _check_max(pad_up, filter_h_dilation, "pad_up", "filter_h_dilation")
             _check_max(pad_down, filter_h_dilation, "pad_down", "filter_h_dilation")
 
-        _check_border("pad_left", pad_left)
-        _check_border("pad_right", pad_right)
-
-        _check_max(pad_left, filter_w_dilation, "pad_left", "filter_w_dilation")
-        _check_max(pad_right, filter_w_dilation, "pad_right", "filter_w_dilation")
+            _check_border("pad_left", pad_left)
+            _check_border("pad_right", pad_right)
+            _check_max(pad_left, filter_w_dilation, "pad_left", "filter_w_dilation")
+            _check_max(pad_right, filter_w_dilation, "pad_right", "filter_w_dilation")
 
     # dilation
     def _check_dilation():
@@ -590,7 +601,7 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
         else:
             dx_w = input_sizes[3]
             dy_w = shape_to_list(out_backprop.shape)[3]
-        cce_params.C0_SIZE = cce_params.C0_SIZE
+
         c0_size_k = cce_params.CUBE_MKN[filters.dtype]["mac"][1]
         bl1_size = (
             filter_h_dilation
@@ -661,9 +672,10 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
         else:
             fmap_size = dx_batch * _align(dx_c, dedy_k0) * dx_h * dx_w
             dedy_size = dy_batch * dy_c1 * dy_h * dy_w * dy_c0
+
         filter_size = (
-            _align(filter_cout, w_k0) * _align(filter_cin, w_n0) * filter_h * filter_w
-        )
+                          _align(dy_c1_extend, w_k0) * _align(dx_c1_extend, w_n0)
+                      ) * filter_h * filter_w * g_extend
         _check_64bits_limitation(fmap_size, dtype=res_dtype)
         _check_64bits_limitation(dedy_size, dtype=out_backprop.dtype)
         _check_64bits_limitation(filter_size, dtype=filters.dtype)
@@ -704,7 +716,7 @@ def _get_dynamic_para(out_backprop):
     return dynamic_para
 
 
-@check_para.check_input_type(
+@para_check.check_input_type(
     Tensor,
     Tensor,
     (list, tuple),
@@ -718,7 +730,8 @@ def _get_dynamic_para(out_backprop):
     (Tensor, NoneType),
     (dict, NoneType),
     (dict, NoneType),
-    str
+    str,
+    (dict, NoneType)
 )
 def conv2d_backprop_input_compute(  # pylint: disable=R0913,R0914
     filters,
@@ -734,7 +747,8 @@ def conv2d_backprop_input_compute(  # pylint: disable=R0913,R0914
     offset_w=None,
     fusion_para=None,
     dynamic_para=None,
-    kernel_name="conv2d_backprop_input_cce"
+    kernel_name="conv2d_backprop_input_cce",
+    group_dict=None
 ):
     """
     DSL interface of conv2d backprop input
@@ -765,10 +779,15 @@ def conv2d_backprop_input_compute(  # pylint: disable=R0913,R0914
 
     kernel_name : cce kernel name
 
+    group_dict : The params of group convolution.
+
     Returns
     ----------
     dx_ddr: dE/dX tensor
     """
+
+    def ceil(lhs, rhs):
+        return (lhs + rhs - 1) // rhs
 
     DeconvParam.set_default()
     if fusion_para is None:
@@ -781,6 +800,20 @@ def conv2d_backprop_input_compute(  # pylint: disable=R0913,R0914
             "fmap_l1_addr_flag": False,
             "fmap_l1_valid_size": 0
         }
+
+    if group_dict is None:
+        group_dict = {GroupDictKeys.g_extend: 1,
+                      GroupDictKeys.multiple_extend: 1,
+                      GroupDictKeys.groups: 1,
+                      GroupDictKeys.dx_c1_extend: ceil(input_sizes[1],
+                                                       cce_params.C0_SIZE),
+                      GroupDictKeys.dy_c1_extend: shape_to_list(out_backprop.shape)[1],
+                      GroupDictKeys.dx_c_ori: input_sizes[1],
+                      GroupDictKeys.dy_c_ori: filter_sizes[0],
+                      GroupDictKeys.filter_batch_ori: filter_sizes[0],
+                      GroupDictKeys.filter_c_ori: filter_sizes[1],
+                      GroupDictKeys.filter_ori_format: "NCHW"
+                      }
 
     caller_name = currentframe().f_back.f_back.f_code.co_name
 
@@ -812,6 +845,7 @@ def conv2d_backprop_input_compute(  # pylint: disable=R0913,R0914
     dynamic_para = _get_dynamic_para(out_backprop)
 
     switch_to_general_scheme = _is_switch_to_general_scheme()
+
     _check_input_params(
         filters,
         out_backprop,
@@ -822,6 +856,7 @@ def conv2d_backprop_input_compute(  # pylint: disable=R0913,R0914
         dilations,
         res_dtype,
         offset_w,
+        group_dict,
         fusion_para=fusion_para,
         dynamic_para=dynamic_para,
         switch_to_general_scheme=switch_to_general_scheme
@@ -830,21 +865,26 @@ def conv2d_backprop_input_compute(  # pylint: disable=R0913,R0914
     out_channel, in_channel, filter_h, filter_w = filter_sizes
     dx_batch, dx_c, dx_h, dx_w = input_sizes
 
-    def ceil(lhs, rhs):
-        return (lhs + rhs - 1) // rhs
-
     _, dx_k0, dx_n0 = cce_params.CUBE_MKN[res_dtype]["mac"]
     shape_dx = (dx_batch, ceil(dx_c, dx_n0), dx_h, dx_w, dx_n0)
 
     if dynamic_para:
         DynamicConv2dBpInputParams.dynamic_mode = dynamic_para.get("dynamic_mode")
+
+    shape_dy = shape_to_list(out_backprop.shape)
+    g_extend = group_dict.get(GroupDictKeys.g_extend)
+    dy_c1_extend = group_dict.get(GroupDictKeys.dy_c1_extend)
+    dx_c1_extend = group_dict.get(GroupDictKeys.dx_c1_extend)
+    dy_6gd_shape = [g_extend, shape_dy[0], dy_c1_extend] + shape_dy[2:]
+    dx_6gd_shape = [g_extend, shape_dx[0], dx_c1_extend] + list(shape_dx)[2:]
+
     DynamicConv2dBpInputParams.tiling_info_dict = {
         "op_type": "conv2d_backprop_input",
-        "A_shape": shape_to_list(out_backprop.shape),
-        "B_shape": [ceil(out_channel, dx_k0) * dx_k0,
-                    ceil(in_channel, dx_k0),
-                    filter_h, filter_w, dx_k0],
-        "C_shape": list(shape_dx),
+        "A_shape": dy_6gd_shape[1:],
+        "B_shape": [dy_c1_extend * dx_k0,
+                    dx_c1_extend,
+                    filter_h, filter_w, dx_n0],
+        "C_shape": dx_6gd_shape[1:],
         "A_dtype": out_backprop.dtype,
         "B_dtype": filters.dtype,
         "C_dtype": res_dtype,
@@ -859,7 +899,7 @@ def conv2d_backprop_input_compute(  # pylint: disable=R0913,R0914
         "strideW_expand": strides[1],
         "dilationH": dilations[2],
         "dilationW": dilations[3],
-        "group": 1,
+        "group": group_dict.get(GroupDictKeys.g_extend),
         "bias_flag": False,
         "fused_double_operand_num": 0,
         "in_fm_memory_type": [],
@@ -873,7 +913,8 @@ def conv2d_backprop_input_compute(  # pylint: disable=R0913,R0914
     if (
         filter_h == 1
         and filter_w == 1
-        and (check_pad_zero(padding))
+        and padding[PAD_UP_INDEX] == 0
+        and padding[PAD_LEFT_INDEX] == 0
         and not switch_to_general_scheme
     ):
         pattc = DeConvKernelSize1Pattern(
@@ -884,7 +925,8 @@ def conv2d_backprop_input_compute(  # pylint: disable=R0913,R0914
             fusion_para=fusion_para,
             dynamic_para=dynamic_para,
             kernel_name=kernel_name,
-            offset_x=offset_x
+            offset_x=offset_x,
+            group_dict=group_dict
         )
     else:
         pattc = DeConvPattern(
@@ -896,7 +938,8 @@ def conv2d_backprop_input_compute(  # pylint: disable=R0913,R0914
             offset_x=offset_x,
             fusion_para=fusion_para,
             dynamic_para=dynamic_para,
-            kernel_name=kernel_name
+            kernel_name=kernel_name,
+            group_dict=group_dict
         )
 
     dy_col = pattc.generate_a(out_backprop)

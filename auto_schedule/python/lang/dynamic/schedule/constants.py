@@ -30,18 +30,21 @@ class Pattern:
 
 
 class CompileInfo:
+    BASE_INFO = "_base_info"
+    FLAG_INFO = "_flag_info"
     MAX_DTYPE = "_max_dtype_bytes"
     COEXISTING_QUANTITY = "_coexisting_quantity"
     UB_SIZE = "_ub_size"
     CORE_NUM = "_core_num"
-    IS_SUPPORT_BROADCAST = "_is_support_broadcast"
-    IS_SUPPORT_ABSORBABLE_BROADCAST = "_is_support_absorbable_broadcast"
     FUSION = "_fusion"
-    IS_CONST_SHAPES = "_is_const_shapes"
     CONST_SHAPES = "_const_shapes"
     CONST_BLOCK_DIMS = "_const_block_dims"
-    USE_SPECIAL_PATTERN = "_use_special_pattern"
     VARS = "_vars"
+    ELEWISE_VARS = "_elewise_vars"
+    BLOCK_DIMS = "_block_dims"
+    ATOMIC_FLAGS = "_atomic_flags"
+    ONLY_CONST_TILING = "_only_const_tiling"
+
 
 FAKE_NODE_TAG = "elewise_empty_intrin"
 
@@ -94,7 +97,18 @@ INSN_MAPPING = {
     "elewise_binary_vcmpv_eq": "vector_eq",
     "elewise_binary_vcmpv_ne": "vector_ne",
     "elewise_multiple_sel": "vector_select_bool",
+    "elewise_multiple_mla": "vector_mla",
+    "elewise_multiple_madd": "vector_madd",
+    "elewise_multiple_maddrelu": "vector_maddrelu",
+    "elewise_binary_scalar_axpy": "vector_axpy",
 }
+
+TERNARY_INSNS = [
+    "elewise_multiple_mla",
+    "elewise_multiple_madd",
+    "elewise_multiple_maddrelu",
+    "elewise_binary_scalar_axpy",
+]
 
 # support scalar insn
 # example: tensor - scalar
@@ -103,6 +117,24 @@ SUPPORT_SCALAR_INSNS = [
     "elewise_binary_sub",
     "elewise_binary_mul",
     "elewise_binary_div",
+    "elewise_binary_and",
+    "elewise_binary_or",
+    "elewise_binary_min",
+    "elewise_binary_max",
+    "elewise_single_log",
+    "elewise_single_exp",
+    "elewise_single_rec",
+    "elewise_single_abs",
+    "elewise_single_relu",
+    "elewise_single_not",
+    "elewise_single_sqrt",
+    "elewise_single_rsqrt",
+    "elewise_single_cast",
+    "elewise_single_ceil",
+    "elewise_single_floor",
+    "elewise_single_trunc",
+    "elewise_single_round",
+    "elewise_single_round_d",
 ]
 
 # need a block save scalar
@@ -110,6 +142,12 @@ NEED_TEMP_SPACE_INSNS = [
     "elewise_single_VS_max",
     "elewise_single_VS_min",
     "unknown_broadcast",
+]
+
+# need a block save scalar while dtype is s32
+NEED_SPACE_WITH_DIFF_TYPE = [
+    "elewise_single_VS_add",
+    "elewise_single_VS_mul",
 ]
 
 VSEL_INSNS = "elewise_multiple_sel"

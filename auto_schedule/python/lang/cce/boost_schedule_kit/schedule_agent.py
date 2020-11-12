@@ -186,7 +186,6 @@ class ScopeManager:
     """
 
     def __init__(self, stage):
-        # super(ScopeManager, self).__init__()
         self._stage = stage
         self._axis_unit = dict()
         self._active_scopes = list()
@@ -482,7 +481,7 @@ class ScopeManager:
                          n_axis_inner, m_axis_inner, ...]
         """
         leaf_ivars = self._stage.leaf_iter_vars
-        return leaf_ivars[3]
+        return leaf_ivars[4]
 
     def get_relate_scope(self, scope_key, scope_end=None):
         """
@@ -585,7 +584,6 @@ class ScheduleAgent:
         -------
         the scope that tensor follow with
         """
-        # attach_map = self._attach_map
         scopes = self[parent]
         ax_list, unit = scopes.get_active_scope_and_unit()
         if len(affine_shape) != len(ax_list):

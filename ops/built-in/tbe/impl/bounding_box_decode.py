@@ -21,6 +21,7 @@ import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
 from impl import constant_util as constant
+from te.utils.error_manager import error_manager_vector
 
 
 # The maximum number of float16 data that can be
@@ -79,14 +80,16 @@ def _check_param(rois, deltas, kernel_name):
     para_check.check_shape(deltas_shape, param_name="deltas")
     para_check.check_dtype(deltas_dtype, ("float16", "float32"), param_name="deltas")
     if rois_dtype != deltas_dtype:
-        raise RuntimeError("rois type and deltas type must be the same")
+        error_detail = "dtype of rois and deltas should be same"
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "rois", "deltas", error_detail)
 
     if rois_shape != deltas_shape:
-        raise RuntimeError("the rois shape and the deltas shape must be "
-                           "the same !")
+        error_detail = "shape of rois and deltas should be same"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "rois", "deltas", error_detail)
 
     if rois_shape[-1] != 4:
-        raise RuntimeError("the last dim of shape must equal 4, please check !")
+        error_detail = "the last dim of rois'shape must equal 4"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "rois", error_detail)
 
 
 # pylint: disable=too-many-arguments, too-many-instance-attributes

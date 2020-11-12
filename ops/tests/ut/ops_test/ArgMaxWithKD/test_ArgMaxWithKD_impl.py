@@ -14,6 +14,8 @@ http://www.apache.org/licenses/LICENSE-2.0
 ArgMaxWithKd ut case
 """
 from op_test_frame.ut import OpUT
+import numpy as np
+from op_test_frame.common import precision_info
 ut_case = OpUT("ArgMaxWithKD", "impl.arg_max_with_kd", "arg_max_with_kd")
 
 case1 = {"params": [{"shape": (5, 8,16,16), "dtype": "float16", "format": "NCHW", "ori_shape": (5, 8,16,16),"ori_format": "NCHW"}, #x
@@ -68,7 +70,40 @@ ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
 
+#precision cases
+def naive_arg_top_k(data, top_k, axis):
+    """
+    perform topK based on np.argsort
+    :param data: to be sorted
+    :param K: select and sort the top K items
+    :param axis: dimension to be sorted.
+    :return:
+    """
+    # ascending
+    full_sort = np.argsort(data, axis=axis).astype("int32")
+    # take the top_k
+    top_k_list = range(-top_k, 0)
+    full_sort = full_sort.take(top_k_list, axis=axis)
+    # make it descending
+    return np.flip(full_sort, axis=axis)
 
-if __name__ == '__main__':
-    ut_case.run(["Ascend910","Ascend310","Ascend710"])
-    exit(0)
+def calc_expect_func(input_x, out1, out2, axis=10000, out_max_val=False, top_k=1):
+    shape_x = input_x['shape']
+    x = input_x['value']
+    if axis == 10000:
+        x = x.reshape(shape_x[0], -1)
+        axis = 1
+    indices = naive_arg_top_k(x, top_k, axis=axis)
+    if out_max_val:
+        values = np.take_along_axis(x, indices, axis=axis)
+
+    return indices, values
+
+ut_case.add_precision_case("Ascend910", {"params": [{"shape": (2,16,16), "dtype": "float16", "format": "NCHW", "ori_shape": (2,16,16),"ori_format": "NCHW", "param_type": "input", "value_range":[1,100]}, #x
+                                                    {"shape": (2, 1), "dtype": "int32", "format": "NCHW", "ori_shape": (2, 1),"ori_format": "NCHW", "param_type": "output"}, #h
+                                                    {"shape": (2, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (2, 1),"ori_format": "NCHW", "param_type": "output"}, #h
+                                                    10000, True, 1,
+                                                    ],
+                                         "expect": "success",
+                                         "calc_expect_func": calc_expect_func,
+                                         "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)})

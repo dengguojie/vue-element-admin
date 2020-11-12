@@ -14,12 +14,12 @@
 # ============================================================================
 
 set(_proto_srcs
-  "${CANN_ROOT}/third_party/metadef/inc/common/proto/insert_op.proto"
+  "${METADEF_INCLUDE}/common/proto/insert_op.proto"
 )
 
 # the output path of generated files
 set(_proto_include "${CMAKE_CURRENT_BINARY_DIR}/proto_tmp")
-protobuf_generate_cc(_proto_h _proto_cc ${_proto_include} ${_proto_srcs})
+protobuf_generate(opp _proto_cc _proto_h ${_proto_srcs})
 
 set(_op_proto_utils
   util/array_ops_shape_fns.cc
@@ -39,6 +39,10 @@ set(_op_proto_utils
 )
 
 set(_op_proto_srcs
+  acts_ulq.cc
+  acts_ulq_input_grad.cc
+  act_ulq_clamp_max_grad.cc
+  act_ulq_clamp_min_grad.cc
   aipp.cc
   array_ops.cc
   audio_ops.cc
@@ -102,55 +106,100 @@ set(_op_proto_srcs
   stateless_random_ops.cc
   state_ops.cc
   string_ops.cc
+  target_crop_and_resize.cc
   transformation_ops.cc
   warp_perspective_ops.cc
+  wts_arq.cc
 )
 
-add_library(opsproto SHARED
-   ${_op_proto_srcs}
-   ${_op_proto_utils}
-   ${_proto_h}
-)
-
-target_include_directories(opsproto PRIVATE
+set(_op_proto_include
   util
   inc
-  ${CANN_ROOT}/ops
-  ${CANN_ROOT}/ops/common/inc
-  ${CANN_ROOT}/third_party/fwkacllib/inc
-  ${CANN_ROOT}/third_party/metadef
-  ${CANN_ROOT}/third_party/metadef/inc
-  ${CANN_ROOT}/third_party/metadef/inc/external
-  ${CANN_ROOT}/third_party/metadef/inc/external/graph
-  ${CANN_ROOT}/third_party/metadef/third_party/graphengine/inc
-  ${CANN_ROOT}/third_party/metadef/third_party/graphengine/inc/external
-  ${_proto_include}
+  ${OPS_DIR}
+  ${OPS_INCLUDE}
+  ${FWKACLLIB_INCLUDE}
+  ${METADEF_DIR}
+  ${METADEF_INCLUDE}
+  ${METADEF_INCLUDE}/external
+  ${METADEF_INCLUDE}/external/graph
+  ${GRAPHENGINE_INCLUDE}
+  ${GRAPHENGINE_INCLUDE}/external
+  ${PROTO_BINARY_DIR}/opp
   ${JSON_INCLUDE}
   ${Protobuf_INCLUDE}
 )
 
-target_link_libraries(opsproto PRIVATE
-  ${graph}
-  ${register}
-  ${slog}
-  ${error_manager}
-  ${protobuf}
-  c_sec
+set(_op_proto_link_libs
+  -Wl,--no-as-needed
+    graph
+    register
+    slog
+    error_manager
+    ascend_protobuf
+  -Wl,--as-needed
+    c_sec
 )
 
-add_dependencies(opsproto json_headers)
+if(NOT DEFINED ENABLE_TEST)
+  add_library(opsproto SHARED
+    ${_op_proto_srcs}
+    ${_op_proto_utils}
+    ${_proto_h}
+  )
+  target_include_directories(opsproto PRIVATE
+    ${_op_proto_include}
+  )
+  target_compile_options(opsproto PRIVATE
+    -O2
+    -Dgoogle=ascend_private
+    # TODO: Fix warnings
+    # -Werror
+  )
+  target_link_libraries(opsproto PRIVATE
+    $<BUILD_INTERFACE:intf_pub>
+    ${_op_proto_link_libs}
+  )
+  add_dependencies(opsproto json_headers)
 
-set(OPS_PROTO_PATH "${INSTALL_PATH}/opp/op_proto/built-in")
-cann_install(
-  TARGET      opsproto
-  FILES       $<TARGET_FILE:opsproto>
-  DESTINATION "${OPS_PROTO_PATH}"
-)
+  if(BUILD_OPEN_PROJECT)
+    set(OPS_PROTO_PATH "${INSTALL_PATH}/opp/op_proto/built-in")
+    cann_install(
+      TARGET      opsproto
+      FILES       $<TARGET_FILE:opsproto>
+      DESTINATION "${OPS_PROTO_PATH}"
+    )
 
-
-add_custom_target(copy_op_proto_inc ALL)
-cann_install(
-  TARGET      copy_op_proto_inc
-  DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/inc
-  DESTINATION "${OPS_PROTO_PATH}"
-)
+    add_custom_target(copy_op_proto_inc ALL)
+    cann_install(
+      TARGET      copy_op_proto_inc
+      DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/inc
+      DESTINATION "${OPS_PROTO_PATH}"
+    )
+  else()
+    install(
+      TARGETS opsproto OPTIONAL
+      EXPORT  opsproto-targets
+      LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
+    )
+  endif()
+else()
+  add_library(opsproto_llt STATIC
+    ${_op_proto_srcs}
+    ${_op_proto_utils}
+    ${_proto_h}
+  )
+  target_include_directories(opsproto_llt PUBLIC
+    ${_op_proto_include}
+  )
+  target_compile_options(opsproto_llt PUBLIC
+    -O0
+    -Dgoogle=ascend_private
+  )
+  target_link_libraries(opsproto_llt
+    PRIVATE
+      $<BUILD_INTERFACE:intf_llt_pub>
+    PUBLIC
+      ${_op_proto_link_libs}
+  )
+  add_dependencies(opsproto_llt json_headers)
+endif()

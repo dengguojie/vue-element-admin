@@ -307,7 +307,7 @@ from .apply_power_sign_d import apply_power_sign_d
 from .unpack import unpack
 from .xdivy_grad import xdivy_grad
 from .sgd import sgd
-from .top_k import top_k
+from .top_k_d import top_k_d
 from .xlogy_grad import xlogy_grad
 from .strided_slice_assign_d import strided_slice_assign_d
 from .in_top_k import in_top_k
@@ -434,7 +434,7 @@ from .muls import muls
 from .fills import fills
 from .axpy import axpy
 from .cumulativelogsumexp_d import cumulative_logsumexp_d
-from .avg_pool3d import avg_pool3d
+from .avg_pool3d_d import avg_pool3d_d
 from .avg_pool_1d import avg_pool_1d
 from .kl_div import kl_div
 from .stn_pre import stn_pre

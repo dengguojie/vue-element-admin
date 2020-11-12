@@ -21,6 +21,7 @@ from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 # define a scalar for add
 HALF_ONE = 0.5
@@ -484,16 +485,17 @@ def fake_quant_with_min_max_vars_per_channel_gradient(gradients, x,
     para_check.check_dtype(dtype_max, "float32", param_name="max")
     # check shape_min & shape_max,shape_gradients & shape_inputs
     if list(shape_gradients) != list(shape_inputs):
-        raise RuntimeError("The shapes of gradients and inputs shoud be same")
+        error_detail = "shape of gradients and x should be same"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "gradients", "x", error_detail)
     if list(shape_min) != list(shape_max):
-        raise RuntimeError("The shapes of min and max shoud be same")
+        error_detail = "shape of min and max should be same"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "min", "max", error_detail)
     if shape_min[0] != shape_inputs[-1]:
-        raise RuntimeError(
-            "The shapes of min,max and shape_inputs last one dimension"
-            "shoud be same")
+        error_detail = "The shapes of min,max and shape_inputs last one dimension shoud be same"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "min", "x", error_detail)
     # check num_bits range
     if num_bits > 16 or num_bits < 2:
-        raise RuntimeError("numbits should be range[2,16]")
+        error_manager_vector.raise_err_input_param_not_in_range(kernel_name, "num_bits", "2", "16", num_bits)
 
     # produce shape_min and shape_max for palceholder
     shape_min_broadcast, _, _ = shape_util.broadcast_shapes(shape_min, shape_inputs,

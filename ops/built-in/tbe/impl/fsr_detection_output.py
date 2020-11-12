@@ -22,6 +22,7 @@ from te.utils import para_check
 from impl import nms
 from impl import topk
 from impl import constant_util as constant
+from impl.util import util_select_op_base
 
 
 # pylint: disable=R0913
@@ -45,6 +46,27 @@ BLOCK_SIZE = 32
 VECTOR_BLOCK_SIZE = 256
 DATA_EIGHT = 8
 DATA_ONE = 1
+
+
+def get_op_support_info(rois_dic, bbox_delta_dic, score_dic, im_info_dic,
+                        actual_rois_num_dic, actual_bbox_num_dic, box_dic,
+                        num_classes, score_threshold, iou_threshold, batch_rois=1,
+                        kernel_name="fsr_detection_output"):
+    """
+    get split info
+    rois: [batch, 5, max_rois_num], 5 means (batchId, x1, y1, x2, y2)
+    bbox_delta: [total_rois, num_class*4]
+    score: [total_rois, num_class]
+    img_info
+    actual_rois_num: [batch_rois, 8]
+    actual_bbox_num: [batch, num_classes]
+    box: [batch, numBoxes, 8]
+    """
+    if actual_rois_num_dic:
+        inputs = [0, 3, 4]
+    else:
+        inputs = [0, 3]
+    return util_select_op_base.get_split_n_info(inputs, [0, 1])
 
 
 def get_params(dtype):

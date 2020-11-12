@@ -14,22 +14,20 @@
 # ============================================================================
 
 set(_proto_srcs
-  "${CANN_ROOT}/third_party/metadef/inc/register/proto/tensorflow/versions.proto"
-  "${CANN_ROOT}/third_party/metadef/inc/register/proto/tensorflow/resource_handle.proto"
-  "${CANN_ROOT}/third_party/metadef/inc/register/proto/tensorflow/tensor_shape.proto"
-  "${CANN_ROOT}/third_party/metadef/inc/register/proto/tensorflow/function.proto"
-  "${CANN_ROOT}/third_party/metadef/inc/register/proto/tensorflow/node_def.proto"
-  "${CANN_ROOT}/third_party/metadef/inc/register/proto/tensorflow/graph.proto"
-  "${CANN_ROOT}/third_party/metadef/inc/register/proto/tensorflow/tensor.proto"
-  "${CANN_ROOT}/third_party/metadef/inc/register/proto/tensorflow/attr_value.proto"
-  "${CANN_ROOT}/third_party/metadef/inc/register/proto/tensorflow/graph_library.proto"
-  "${CANN_ROOT}/third_party/metadef/inc/register/proto/tensorflow/types.proto"
-  "${CANN_ROOT}/third_party/metadef/inc/register/proto/tensorflow/op_def.proto"
+  "${METADEF_INCLUDE}/register/proto/tensorflow/versions.proto"
+  "${METADEF_INCLUDE}/register/proto/tensorflow/resource_handle.proto"
+  "${METADEF_INCLUDE}/register/proto/tensorflow/tensor_shape.proto"
+  "${METADEF_INCLUDE}/register/proto/tensorflow/function.proto"
+  "${METADEF_INCLUDE}/register/proto/tensorflow/node_def.proto"
+  "${METADEF_INCLUDE}/register/proto/tensorflow/graph.proto"
+  "${METADEF_INCLUDE}/register/proto/tensorflow/tensor.proto"
+  "${METADEF_INCLUDE}/register/proto/tensorflow/attr_value.proto"
+  "${METADEF_INCLUDE}/register/proto/tensorflow/graph_library.proto"
+  "${METADEF_INCLUDE}/register/proto/tensorflow/types.proto"
+  "${METADEF_INCLUDE}/register/proto/tensorflow/op_def.proto"
 )
 
-# the output path of generated files
-set(_proto_include "${CMAKE_CURRENT_BINARY_DIR}/proto_tmp")
-protobuf_generate_cc(_proto_h _proto_cc ${_proto_include} ${_proto_srcs})
+protobuf_generate(opp _proto_cc _proto_h ${_proto_srcs})
 
 # the list of source files
 set(_tf_plugins
@@ -193,6 +191,8 @@ set(_tf_plugins
   hcom_reduce_scatter_plugin.cc
   hcom_remote_read_plugin.cc
   hcom_remote_write_plugin.cc
+  hcom_remote_ref_read_plugin.cc
+  hcom_remote_scatter_write_plugin.cc
   hcom_send_plugin.cc
   histogram_fixed_width_plugin.cc
   hvd_all_gather_plugin.cc
@@ -208,6 +208,8 @@ set(_tf_plugins
   inv_grad_plugin.cc
   inv_plugin.cc
   l2_loss_plugin.cc
+  lamb_apply_optimizer_assign_plugin.cc
+  lamb_apply_weight_assign_plugin.cc
   lars_v2_plugin.cc
   layer_norm_grad_plugin.cc
   layer_norm_plugin.cc
@@ -226,6 +228,7 @@ set(_tf_plugins
   lookup_table_find_plugin.cc
   lrn_grad_plugin.cc
   lrn_plugin.cc
+  lru_cache_plugin.cc
   many_dynamic_plugin.cc
   mask_2_argmax_plugin.cc
   matmul_plugin.cc
@@ -265,6 +268,7 @@ set(_tf_plugins
   ones_like_plugin.cc
   pack_plugin.cc
   pad_plugin.cc
+  pad_v2_plugin.cc
   parallel_concat_plugin.cc
   partitioned_call_plugin.cc
   population_count_plugin.cc
@@ -426,33 +430,49 @@ add_library(ops_all_plugin SHARED
 )
 
 target_include_directories(ops_all_plugin PRIVATE
-  ${CANN_ROOT}/ops/common/inc
-  ${CANN_ROOT}/inc/external
-  ${CANN_ROOT}/third_party/fwkacllib/inc
-  ${CANN_ROOT}/third_party/metadef
-  ${CANN_ROOT}/third_party/metadef/inc
-  ${CANN_ROOT}/third_party/metadef/inc/external
-  ${CANN_ROOT}/third_party/metadef/inc/external/graph
-  ${CANN_ROOT}/third_party/metadef/third_party/graphengine/inc
-  ${CANN_ROOT}/third_party/metadef/third_party/graphengine/inc/external
-  ${_proto_include}
+  ${OPS_INCLUDE}
+  ${FWKACLLIB_INCLUDE}
+  ${METADEF_DIR}
+  ${METADEF_INCLUDE}
+  ${METADEF_INCLUDE}/external
+  ${METADEF_INCLUDE}/external/graph
+  ${GRAPHENGINE_INCLUDE}/
+  ${GRAPHENGINE_INCLUDE}/external
+  ${PROTO_BINARY_DIR}/opp
   ${Protobuf_INCLUDE}
 )
 
-target_link_libraries(ops_all_plugin PRIVATE
-  ${graph}
-  ${register}
-  ${slog}
-  ${error_manager}
-  ${te_fusion}
-  ${_caffe_parser}
-  ${protobuf}
-  c_sec
+target_compile_options(ops_all_plugin PRIVATE
+  -O2
+  -Werror
+  -Dgoogle=ascend_private
 )
 
-set(TF_PLUGIN_PATH "${INSTALL_PATH}/opp/framework/built-in/tensorflow")
-cann_install(
-  TARGET      ops_all_plugin
-  FILES       $<TARGET_FILE:ops_all_plugin>
-  DESTINATION "${TF_PLUGIN_PATH}"
+target_link_libraries(ops_all_plugin PRIVATE
+  $<BUILD_INTERFACE:intf_pub>
+  -Wl,--no-as-needed
+    graph
+    register
+    slog
+    error_manager
+    te_fusion
+    _caffe_parser
+    ascend_protobuf
+  -Wl,--as-needed
+    c_sec
 )
+
+if(BUILD_OPEN_PROJECT)
+  set(TF_PLUGIN_PATH "${INSTALL_PATH}/opp/framework/built-in/tensorflow")
+  cann_install(
+    TARGET      ops_all_plugin
+    FILES       $<TARGET_FILE:ops_all_plugin>
+    DESTINATION "${TF_PLUGIN_PATH}"
+  )
+else()
+  install(
+    TARGETS ops_all_plugin OPTIONAL
+    EXPORT  ops_all_plugin-targets
+    LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
+  )
+endif()

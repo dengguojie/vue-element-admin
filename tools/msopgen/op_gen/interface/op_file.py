@@ -43,8 +43,9 @@ class OPFile(metaclass=ABCMeta):
             self._generate_project()
 
     def _generate_project(self):
-        template_path = os.path.join(os.path.split(os.path.realpath(__file__))[
-                                         0], utils.OP_TEMPLATE_PATH)
+        template_path = os.path.join(
+            os.path.split(os.path.realpath(__file__))[0],
+            utils.OP_TEMPLATE_PATH)
         utils.copy_template(template_path, self.output_path)
         self._new_operator()
 
@@ -180,7 +181,6 @@ class OPFile(metaclass=ABCMeta):
         Parameter:
         Return Value:
         """
-        pass
 
     @abstractmethod
     def generate_info_cfg(self):
@@ -190,4 +190,3 @@ class OPFile(metaclass=ABCMeta):
         Parameter:
         Return Value:
         """
-        pass

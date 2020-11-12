@@ -21,6 +21,7 @@ import te.lang.cce
 from te import tvm
 from te.platform import cce_emitinsn_params
 from te.platform import cce_util
+from te.utils.error_manager.error_manager_util import get_error_message
 
 
 @tvm.register_func("tvm.intrin.cce.dichotomy_reduce_block_mean")
@@ -128,7 +129,12 @@ def reduce_mean_mid_reduce_high_performance_schedule(outs,  # pylint: disable=R0
         if _tensor not in _tensor_list:
             _tensor_list.append(_tensor)
         if len(_tensor.op.input_tensors) > 1:
-            raise RuntimeError("reduce_mean shouldn't have branches:")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "reduce_mean shouldn't have " \
+                                          "branches, while input_tensors " \
+                                          "num is [%s]" % len(_tensor.op.input_tensors)
+            raise RuntimeError(dict_args, get_error_message(dict_args))
         if len(_tensor.op.input_tensors) == 1:
             src = _tensor.op.input_tensors[0]
             if src in tensor_dict:
@@ -253,7 +259,12 @@ def tiling_calculation(block_elem_num, core_num, element_byte_size,
         # If block_split_axis is not sufficient for all core, change maximum core num to axis size
         estimate_axis_size = original_shape[block_split_axis] / block_elem_num
         if estimate_axis_size < 0.5:
-            raise RuntimeError("reduce mean high performance schedule doesn't support aligned")
+            dict_args = dict()
+            dict_args["errCode"] = "E90003"
+            dict_args["detailed_cause"] = "reduce mean high performance " \
+                                          "schedule doesn't support aligned," \
+                                          " estimate_axis_size is [%s]" % estimate_axis_size
+            raise RuntimeError(dict_args, get_error_message(dict_args))
         estimate_axis_size = math.ceil(estimate_axis_size)
         block_split_nparts = min(core_num, estimate_axis_size)
         # Calculate block split estimated result, if no axis available, it will be 1
@@ -263,8 +274,11 @@ def tiling_calculation(block_elem_num, core_num, element_byte_size,
             # Exact division achieved
             block_split_factor = int(estimate_block_split_factor)
         else:
-            raise RuntimeError("reduce mid mean high performance schedule doesn't support "
-                               "unaligned data:" + str(original_shape))
+            dict_args = dict()
+            dict_args["errCode"] = "E90003"
+            dict_args["detailed_cause"] = "reduce mid mean high performance " \
+                                          "schedule doesn't support unaligned data:" + str(original_shape)
+            raise RuntimeError(dict_args, get_error_message(dict_args))
     else:
         block_split_axis = possible_axes[0]
         block_split_nparts = min(core_num, original_shape[block_split_axis])

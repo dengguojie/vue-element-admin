@@ -19,7 +19,7 @@ import te.platform as tbe_platform
 from impl.util import util_select_op_base
 from te import tvm
 from te.lang import cce as tbe
-from te.utils import operate_shape
+from te.utils import shape_util
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
@@ -101,10 +101,11 @@ def op_select_format(x, y, output, kernel_name="mul"):
     shape_x = x.get("ori_shape")
     shape_y = y.get("ori_shape")
 
-    shape_x = operate_shape.scalar2tensor_one(shape_x)
-    shape_y = operate_shape.scalar2tensor_one(shape_y)
+    shape_x = shape_util.scalar2tensor_one(shape_x)
+    shape_y = shape_util.scalar2tensor_one(shape_y)
 
     format_4d_list = ["NCHW", "NHWC", "HWCN"]
+    format_5d_list = ["NDHWC", "DHWCN", "NCDHW"]
     dtype_list = ["float16", "float", "int32", "int16"]
     vmul_support_s16 = tbe_platform.api_check_support("te.lang.cce.vmul", "int16")
     vmul_support_fp32 = tbe_platform.api_check_support("te.lang.cce.vmul", "float32")
@@ -122,7 +123,8 @@ def op_select_format(x, y, output, kernel_name="mul"):
     format_nz = ["FRACTAL_NZ"]
     len_format_list = len(dtype_list)
 
-    if len(shape_x) == 4 and len(shape_y) == 4 and format_x in format_4d_list and format_y in format_4d_list:
+    if (len(shape_x) == 4 and len(shape_y) == 4 and format_x in format_4d_list and format_y in format_4d_list) or \
+            (len(shape_x) == 5 and len(shape_y) == 5 and format_x == format_y and format_x in format_5d_list):
         x_cdim = shape_x[format_x.index("C")]
         x_wdim = shape_x[format_x.index("W")]
         x_hdim = shape_x[format_x.index("H")]
@@ -131,6 +133,7 @@ def op_select_format(x, y, output, kernel_name="mul"):
         y_wdim = shape_y[format_y.index("W")]
         y_hdim = shape_y[format_y.index("H")]
         y_ndim = shape_y[format_y.index("N")]
+
     if (len(shape_y) == 1 and len(shape_x) == 4) and format_x in format_4d_list:
         x_cdim = shape_x[format_x.index("C")]
         x_ndim = shape_x[format_x.index("N")]
@@ -138,11 +141,24 @@ def op_select_format(x, y, output, kernel_name="mul"):
         y_cdim = shape_y[format_y.index("C")]
         y_ndim = shape_y[format_y.index("N")]
 
+    # NDC1HWC0 FRACTAL_Z_3D
+    if len(shape_x) == 5 and len(shape_y) == 5 and format_x == format_y and format_x in format_5d_list:
+        if list(shape_x) == list(shape_y):
+            format_list.append("NDC1HWC0")
+        elif x_cdim == y_cdim:
+            format_list.append("NDC1HWC0")
+    if len(shape_x) == 5 and len(shape_y) == 5 and format_x == format_y and format_x in format_5d_list:
+        if list(shape_x) == list(shape_y):
+            format_list.append("FRACTAL_Z_3D")
+        elif x_cdim == y_cdim and x_ndim == y_ndim:
+            format_list.append("FRACTAL_Z_3D")
+
     # ND+ND NZ+NZ 5HD+5HD FZ+FZ
-    if len(shape_x) >= 2 and len(shape_y) >= 2 and shape_x[-2:] == shape_y[-2:]:
-        format_list.append("FRACTAL_NZ")
+    if len(shape_x) >= 2 and len(shape_y) >= 2:
+        if shape_x[-2:] == shape_y[-2:]:
+            format_list.append("FRACTAL_NZ")
         if len(shape_x) == 4 and len(shape_y) == 4 and format_x in format_4d_list and format_y in format_4d_list:
-            if x_cdim % 16 == 0 and y_cdim % 16 == 0:
+            if (x_cdim % 16 == 0 and y_cdim % 16 == 0) or x_cdim == y_cdim:
                 if format_x == format_y == "NCHW" and (x_cdim == y_cdim or x_cdim // 16 == 1 or y_cdim // 16
                                                        == 1) and (x_ndim == y_ndim or x_ndim == 1 or y_ndim == 1):
                     format_list.append("NC1HWC0")
@@ -476,8 +492,8 @@ def _mul_check_format(x, y):
     shape1 = x.get("shape")
     shape2 = y.get("shape")
     list_format = [x.get("format"), y.get("format")]
-    shape1 = operate_shape.scalar2tensor_one(shape1)
-    shape2 = operate_shape.scalar2tensor_one(shape2)
+    shape1 = shape_util.scalar2tensor_one(shape1)
+    shape2 = shape_util.scalar2tensor_one(shape2)
     check_list = [["FRACTAL_NZ", "ND"], ["ND", "FRACTAL_NZ"], ["FRACTAL_NZ", "NHWC"], ["NHWC", "FRACTAL_NZ"],
                   ["FRACTAL_NZ", "NCHW"], ["NCHW", "FRACTAL_NZ"]]
     if list_format == check_list[0] and (len(shape2) != 1 or (len(shape2) == 1 and shape2[0] != 1)):
@@ -502,10 +518,10 @@ def _infer_shape(format_pattern, x, y):
     shape_y = y.get("shape")
     ori_shape_x = x.get("ori_shape")
     ori_shape_y = y.get("ori_shape")
-    shape_x = operate_shape.scalar2tensor_one(shape_x)
-    shape_y = operate_shape.scalar2tensor_one(shape_y)
+    shape_x = shape_util.scalar2tensor_one(shape_x)
+    shape_y = shape_util.scalar2tensor_one(shape_y)
     if format_pattern == 1:
-        ori_shape_x, shape_y, shape_max = operate_shape.broadcast_shapes(ori_shape_x,
+        ori_shape_x, shape_y, shape_max = shape_util.broadcast_shapes(ori_shape_x,
                                                                          shape_y,
                                                                          param_name_input1="x",
                                                                          param_name_input2="y")
@@ -531,7 +547,7 @@ def _infer_shape(format_pattern, x, y):
             shape_y.append(1)
 
     elif format_pattern == 2:
-        shape_x, ori_shape_y, shape_max = operate_shape.broadcast_shapes(shape_x,
+        shape_x, ori_shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
                                                                          ori_shape_y,
                                                                          param_name_input1="x",
                                                                          param_name_input2="y")
@@ -579,10 +595,10 @@ def mul_compute(input_x, input_y, output_data, kernel_name="mul"):
     -------
     output of the element-wise mul
     """
-    shape_x = operate_shape.shape_to_list(input_x.shape)
-    shape_y = operate_shape.shape_to_list(input_y.shape)
+    shape_x = shape_util.shape_to_list(input_x.shape)
+    shape_y = shape_util.shape_to_list(input_y.shape)
 
-    shape_x, shape_y, shape_max = operate_shape.broadcast_shapes(shape_x,
+    shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
                                                                  shape_y,
                                                                  param_name_input1="x",
                                                                  param_name_input2="y")
@@ -680,9 +696,9 @@ def mul(x, y, output, kernel_name="mul"):
     format_pattern = _mul_check_format(x, y)
     shape_x, shape_y = _infer_shape(format_pattern, x, y)
 
-    shape_x = operate_shape.scalar2tensor_one(shape_x)
+    shape_x = shape_util.scalar2tensor_one(shape_x)
     dtype_x = x.get("dtype").lower()
-    shape_y = operate_shape.scalar2tensor_one(shape_y)
+    shape_y = shape_util.scalar2tensor_one(shape_y)
     dtype_y = y.get("dtype").lower()
 
     para_check.check_shape(shape_x, param_name="x")
@@ -699,12 +715,12 @@ def mul(x, y, output, kernel_name="mul"):
         new_check_list.remove("float32")
         para_check.check_dtype(dtype_x, new_check_list, param_name="x")
 
-    shape_x, shape_y, shape_max = operate_shape.broadcast_shapes(shape_x,
+    shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
                                                                  shape_y,
                                                                  param_name_input1="x",
                                                                  param_name_input2="y")
 
-    shape_x, shape_y = operate_shape.refine_shapes_for_broadcast(shape_x, shape_y)
+    shape_x, shape_y = shape_util.refine_shapes_for_broadcast(shape_x, shape_y)
     input_x = tvm.placeholder(shape_x, dtype=dtype_x, name="x")
     input_y = tvm.placeholder(shape_y, dtype=dtype_x, name="y")
 
@@ -715,3 +731,4 @@ def mul(x, y, output, kernel_name="mul"):
 
     config = {"name": kernel_name, "tensor_list": (input_x, input_y, res)}
     tbe.cce_build_code(sch, config)
+

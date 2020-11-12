@@ -22,7 +22,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import shape_util
 from te.utils import para_check
-from te.utils import error_manager
+from te.utils.error_manager import error_manager_vector
 from impl import ascend_quant_util as util
 
 
@@ -52,7 +52,7 @@ def _check_params(x, y, scale, offset, sqrt_mode, round_mode, kernel_name):
     round_mode_list = ["Round", "Ceil", "Floor", "Trunc"]
     if round_mode not in round_mode_list:
         rule = "round_mode only support [Round, Ceil, Floor, Trunc]"
-        error_manager.error_manager_vector.raise_err_check_params_rules(kernel_name, rule, "round_mode", round_mode)
+        error_manager_vector.raise_err_check_params_rules(kernel_name, rule, "round_mode", round_mode)
 
 
 def _check_l1_fusion(x, y):
@@ -69,27 +69,27 @@ def _check_l1_fusion(x, y):
 
     if x_l1_fusion_type not in (-1, 0):
         rule = "quant L1_fusion_type only  support (-1, 0)"
-        error_manager.error_manager_vector.raise_err_check_params_rules("ascend_quant", rule, "L1_fusion_type",
+        error_manager_vector.raise_err_check_params_rules("ascend_quant", rule, "L1_fusion_type",
                                                                         x_l1_fusion_type)
 
     if y_l1_fusion_type not in (-1, 0):
         rule = "quant L1_fusion_type only  support (-1, 0)"
-        error_manager.error_manager_vector.raise_err_check_params_rules("ascend_quant", rule, "L1_fusion_type",
+        error_manager_vector.raise_err_check_params_rules("ascend_quant", rule, "L1_fusion_type",
                                                                         y_l1_fusion_type)
 
     if x_valid_shape and len(x_valid_shape) != 5:
         rule = "the len of valid shape should be 5"
-        error_manager.error_manager_vector.raise_err_check_params_rules("ascend_quant", rule, "valid_shape",
+        error_manager_vector.raise_err_check_params_rules("ascend_quant", rule, "valid_shape",
                                                                         x_valid_shape)
 
     if y_valid_shape and len(y_valid_shape) != 5:
         rule = "the len of valid shape should be 5"
-        error_manager.error_manager_vector.raise_err_check_params_rules("ascend_quant", rule, "valid_shape",
+        error_manager_vector.raise_err_check_params_rules("ascend_quant", rule, "valid_shape",
                                                                         y_valid_shape)
 
     if x_slice_offset and len(x_slice_offset) != 5:
         rule = "the len of slice_offset shape should be 5"
-        error_manager.error_manager_vector.raise_err_check_params_rules("ascend_quant", rule, "slice_offset",
+        error_manager_vector.raise_err_check_params_rules("ascend_quant", rule, "slice_offset",
                                                                         x_slice_offset)
 
     attr = {"addr_type": x_addr_type,
@@ -444,6 +444,13 @@ def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round
     return res
 
 
+def get_op_support_info(x, y, scale, offset, sqrt_mode=False, round_mode="Round", kernel_name="ascend_quant"):
+    """
+    get split info
+    """
+    return util.get_quant_support_info(x, l1_fusion_enable=1)
+
+
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_STR,
                             para_check.KERNEL_NAME)
@@ -488,7 +495,7 @@ def ascend_quant(x, y, scale, offset, sqrt_mode=False, round_mode="Round", kerne
     else:
         if x_l1_fusion_type != -1:
             rule = "FRACTAL_NZ not support L1 fusion"
-            error_manager.error_manager_vector.raise_err_check_params_rules(kernel_name, rule, "L1_fusion_type",
+            error_manager_vector.raise_err_check_params_rules(kernel_name, rule, "L1_fusion_type",
                                                                             x_l1_fusion_type)
         batch = 1
         if len(shape) > 4:

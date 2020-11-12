@@ -22,7 +22,7 @@ from te.lang.cce.te_compute.elewise_compute import vcmpsel as _vcmpsel
 from te.platform.fusion_manager import fusion_manager
 from te.tvm import api as tvm
 from te.tvm.target import cce
-from te.utils import check_para
+from te.utils import para_check
 from te.utils.cce import auto_schedule
 
 
@@ -60,8 +60,8 @@ def threshold_v2_d_compute(x, y, threshold, value,
     return data_res
 
 
-@check_para.check_op_params(check_para.REQUIRED_INPUT, check_para.REQUIRED_OUTPUT, check_para.REQUIRED_ATTR_FLOAT,
-                 check_para.REQUIRED_ATTR_FLOAT, check_para.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT,
+                 para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
 # pylint: disable=invalid-name
 def threshold_v2_d(x, y, threshold, value, kernel_name="threshold_v2_d_cce"):
     """
@@ -92,7 +92,7 @@ def threshold_v2_d(x, y, threshold, value, kernel_name="threshold_v2_d_cce"):
 
     # check whether dtypes are right
     check_list = ("float16", "float32", "int8", "uint8", "int32")
-    check_para.check_dtype(dtype_x, check_list)
+    para_check.check_dtype(dtype_x, check_list)
 
     fuseshape = [1]
     fuseshape[0] = reduceIns(lambda x, y: x*y, shape_x)

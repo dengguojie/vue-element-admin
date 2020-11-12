@@ -3,6 +3,7 @@
 from op_test_frame.ut import ElementwiseOpUT
 import numpy as np
 from op_test_frame.common import precision_info
+import os
 
 ut_case = ElementwiseOpUT("Floor", None, None)
 
@@ -58,6 +59,7 @@ ut_case.add_precision_case("all", {"params": [{"shape": (1, 3, 10, 16), "dtype":
 # ============ auto gen ["Ascend910"] test cases end =================
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910"], simulator_mode="pv",
-                simulator_lib_path="/home/maying/.mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")
+    user_home_path = os.path.expanduser("~")
+    simulator_lib_path = os.path.join(user_home_path, ".mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")
+    ut_case.run(["Ascend910"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
 

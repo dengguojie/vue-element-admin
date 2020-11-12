@@ -185,12 +185,14 @@ def conv2d_transpose_d(  # pylint: disable=R0913,R0914,W0613,W0622,C0103
         strides,
         pads,
         dilations=dilations,
+        groups=groups,
         filter_dtype=filters_dtype,
         x_dtype=x_dtype,
         res_dtype=res_dtype,
         bias=bias_flag,
         offset_x=offset_x,
         kernel_name=kernel_name,
+        ori_format_filters=ori_format_filters,
     )
 
 
@@ -299,6 +301,12 @@ def conv2d_transpose_d_compute(  # pylint: disable=R0913,R0914,W0613,C0103,W0622
     shape_res = util_deconv_comm.get_shape_res(ori_format_res, ori_shape_res)
     dilations = util_deconv_comm.get_shape_dilation(ori_format_x, dilations)
 
+    group_dict = util_deconv_comm.calculate_group(
+        shape_filter,
+        groups,
+        filter_dtype,
+        ori_format_filter
+    )
     util_deconv_comm.check_conv2dbp_input_params(
         shape_filter,
         shape_x,
@@ -310,25 +318,43 @@ def conv2d_transpose_d_compute(  # pylint: disable=R0913,R0914,W0613,C0103,W0622
         x_dtype,
         res_dtype,
         kernel_name,
+        group_dict=group_dict
     )
 
     pads = util_deconv_comm.get_padlist(
         pads, shape_res, strides, shape_filter, dilations
     )
 
-    res = tbe.conv2d_backprop_input_compute(
-        filter,
-        x,
-        shape_filter,
-        shape_res,
-        strides,
-        pads,
-        dilations,
-        res_dtype=res_dtype,
-        tensor_bias=bias,
-        offset_x=offset_x,
-        kernel_name=kernel_name,
-    )
+    if 1 == groups:
+        # for old fwkacllib version
+        res = tbe.conv2d_backprop_input_compute(
+            filter,
+            x,
+            shape_filter,
+            shape_res,
+            strides,
+            pads,
+            dilations,
+            res_dtype=res_dtype,
+            tensor_bias=bias,
+            offset_x=offset_x,
+            kernel_name=kernel_name
+        )
+    else:
+        res = tbe.conv2d_backprop_input_compute(
+            filter,
+            x,
+            shape_filter,
+            shape_res,
+            strides,
+            pads,
+            dilations,
+            res_dtype=res_dtype,
+            tensor_bias=bias,
+            offset_x=offset_x,
+            kernel_name=kernel_name,
+            group_dict=group_dict,
+        )
 
     return res
 
@@ -340,12 +366,14 @@ def conv2d_transpose_d_compute(  # pylint: disable=R0913,R0914,W0613,C0103,W0622
     (list, tuple),
     (str, list, tuple),
     (list, tuple),
+    int,
     str,
     str,
     str,
     bool,
     int,
     str,
+    str
 )
 def _conv2d_transpose_cce(
     shape_filter,  # pylint: disable=R0913, R0914
@@ -354,12 +382,14 @@ def _conv2d_transpose_cce(
     strides,
     pads,
     dilations=(1, 1, 1, 1),
+    groups=1,
     filter_dtype="float16",
     x_dtype="float16",
     res_dtype="float16",
     bias=False,
     offset_x=0,
     kernel_name="conv2d_transpose_cce",
+    ori_format_filters="NCHW"
 ):
     """
     Topi interface of conv2d_transpose_d
@@ -383,6 +413,8 @@ def _conv2d_transpose_cce(
 
     dilations: An optional tuple/list of ints. Default to (1, 1, 1, 1).
 
+    groups : The params of group_dict. Default to 1.
+
     filter_dtype: The dtype of filter data. Default to float16.
 
     x_dtype: The dtype of gradients data. Default to float16.
@@ -393,13 +425,18 @@ def _conv2d_transpose_cce(
 
     kernel_name: Cce kernel name. Default to "conv2d_transpose_cce".
 
+    ori_format_weight : The original format of filter. Default to NCHW.
+
     Returns: None
     ----------
     """
 
     def _ceil(x_1, x_2):
         if x_2 == 0:
-            raise RuntimeError("Division by zero")
+            dict_args = {}
+            dict_args['errCode'] = "E60108"
+            dict_args['reason'] = "Division by zero"
+            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
         return (x_1 + x_2 - 1) // x_2
 
     if filter_dtype == "int8" and x_dtype == "int8":
@@ -409,6 +446,13 @@ def _conv2d_transpose_cce(
             shape_filter[2],
             shape_filter[3],
         ]
+
+    group_dict = util_deconv_comm.calculate_group(
+        shape_filter,
+        groups,
+        filter_dtype,
+        ori_format_filters
+    )
     res = util_deconv_comm.check_conv2dbp_input_params(
         shape_filter,
         shape_x,
@@ -420,6 +464,7 @@ def _conv2d_transpose_cce(
         x_dtype,
         res_dtype,
         kernel_name,
+        group_dict=group_dict
     )
 
     (
@@ -441,18 +486,23 @@ def _conv2d_transpose_cce(
     _, dy_k0, _ = tbe_platform.CUBE_MKN[x_dtype]["mac"]
     _, w_k0, w_n0 = tbe_platform.CUBE_MKN[filter_dtype]["mac"]
     shape_dedy = (dedy_batch, _ceil(dedy_channel, dy_k0), dedy_h, dedy_w, dy_k0)
-    filter_channel = util_deconv_comm.align(filter_channel, w_n0)
+
+    g_extend = group_dict.get(util_deconv_comm.GroupDictKeys.g_extend)
+    dx_c1_extend = group_dict.get(util_deconv_comm.GroupDictKeys.dx_c1_extend)
+    dy_c1_extend = group_dict.get(util_deconv_comm.GroupDictKeys.dy_c1_extend)
+    groups = group_dict.get(util_deconv_comm.GroupDictKeys.groups)
+
     if filter_dtype == "int8" and x_dtype == "int8":
         shape_filter_frac = (
-            _ceil(filter_batch, w_k0) * filter_h * filter_w,
-            _ceil(filter_channel, w_n0),
+            g_extend * dy_c1_extend * filter_h * filter_w,
+            dx_c1_extend,
             w_n0,
             w_k0,
         )
     else:
         shape_filter_frac = (
-            _ceil(filter_channel, w_n0) * filter_h * filter_w,
-            _ceil(filter_batch, w_k0),
+            g_extend * dx_c1_extend * filter_h * filter_w,
+            dy_c1_extend,
             w_k0,
             w_n0,
         )
@@ -463,25 +513,44 @@ def _conv2d_transpose_cce(
     )
 
     if bias:
+        input_channel = util_deconv_comm.align(dedy_channel, w_n0)
         tensor_bias = tvm.placeholder(
-            (filter_channel,), name="tensor_bias", dtype=res_dtype
+            (input_channel,), name="tensor_bias", dtype=res_dtype
         )
     else:
         tensor_bias = None
 
-    dedx = tbe.conv2d_backprop_input_compute(
-        filters=tensor_filter_frac,
-        out_backprop=tensor_dedy,
-        filter_sizes=shape_filter,
-        input_sizes=input_size,
-        strides=strides,
-        padding=pads,
-        dilations=dilations,
-        res_dtype=res_dtype,
-        tensor_bias=tensor_bias,
-        offset_x=offset_x,
-        kernel_name=kernel_name,
-    )
+    if 1 == groups:
+        # for old fwkacllib version
+        dedx = tbe.conv2d_backprop_input_compute(
+            filters=tensor_filter_frac,
+            out_backprop=tensor_dedy,
+            filter_sizes=shape_filter,
+            input_sizes=input_size,
+            strides=strides,
+            padding=pads,
+            dilations=dilations,
+            res_dtype=res_dtype,
+            tensor_bias=tensor_bias,
+            offset_x=offset_x,
+            kernel_name=kernel_name
+        )
+    else:
+        dedx = tbe.conv2d_backprop_input_compute(
+            filters=tensor_filter_frac,
+            out_backprop=tensor_dedy,
+            filter_sizes=shape_filter,
+            input_sizes=input_size,
+            strides=strides,
+            padding=pads,
+            dilations=dilations,
+            res_dtype=res_dtype,
+            tensor_bias=tensor_bias,
+            offset_x=offset_x,
+            kernel_name=kernel_name,
+            group_dict=group_dict
+        )
+
     if bias:
         tensor_list = [tensor_dedy, tensor_filter_frac, tensor_bias, dedx]
     else:

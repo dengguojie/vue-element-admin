@@ -20,6 +20,7 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
+from te.utils.error_manager import error_manager_vector
 
 
 def _less_compute(input_x, input_y):
@@ -219,7 +220,9 @@ def pow(input_x, input_y, output_z, kernel_name="pow"):
     input_x_dtype = input_x.get("dtype").lower()
     input_y_dtype = input_y.get("dtype").lower()
     if input_x_dtype != input_y_dtype:
-        raise RuntimeError("Dtype of input_x and input_y must be the same.")
+        error_detail = "Dtype of input_x and input_y must be the same."
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "input_x", \
+                                                               "input_y", error_detail)
     check_list = ("float16", "float32", "int8", "uint8", "int32")
     para_check.check_dtype(input_x_dtype, check_list, param_name="input_x")
 

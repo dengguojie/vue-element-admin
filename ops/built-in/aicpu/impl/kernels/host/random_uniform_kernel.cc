@@ -20,15 +20,16 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char* RANDOM_UNIFORM = "RandomUniform";
+const char *RANDOM_UNIFORM = "RandomUniform";
 
-#define RANDOM_UNIFORM_GENERATE_CASE(DTYPE, TYPE)                                     \
-  case (DTYPE): {                                                                     \
-    if (Generate<TYPE>(ctx, output) != KERNEL_STATUS_OK) {                            \
-      KERNEL_LOG_ERROR("Generate random_distribution failed, data_type=%u", DTYPE);   \
-      return KERNEL_STATUS_PARAM_INVALID;                                             \
-    }                                                                                 \
-    break;                                                                            \
+#define RANDOM_UNIFORM_GENERATE_CASE(DTYPE, TYPE)                           \
+  case (DTYPE): {                                                           \
+    if (Generate<TYPE>(ctx, output) != KERNEL_STATUS_OK) {                  \
+      KERNEL_LOG_ERROR("Generate random_distribution failed, data_type=%u", \
+                       DTYPE);                                              \
+      return KERNEL_STATUS_PARAM_INVALID;                                   \
+    }                                                                       \
+    break;                                                                  \
   }
 }
 
@@ -36,14 +37,17 @@ namespace aicpu {
 uint32_t RandomUniformKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_LOG_INFO("RandomUniform folding kernel in.");
   auto attr_value = ctx.GetAttr(ATTR_NAME_DTYPE);
-  KERNEL_CHECK_NULLPTR(attr_value, KERNEL_STATUS_PARAM_INVALID, "Get attr dtype failed")
+  KERNEL_CHECK_NULLPTR(attr_value, KERNEL_STATUS_PARAM_INVALID,
+                       "Get attr dtype failed")
   auto data_type = static_cast<DataType>(attr_value->GetDataType());
 
   Tensor *output = ctx.Output(kFirstOutputIndex);
   KERNEL_CHECK_NULLPTR(output, KERNEL_STATUS_PARAM_INVALID, "Get output failed")
   if (data_type != output->GetDataType()) {
-    KERNEL_LOG_ERROR("RandomUniform kernel data type not matched, dtype=%u, out_data_type=%u.",
-                     data_type, output->GetDataType());
+    KERNEL_LOG_ERROR(
+        "RandomUniform kernel data type not matched, dtype=%u, "
+        "out_data_type=%u.",
+        data_type, output->GetDataType());
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -52,7 +56,8 @@ uint32_t RandomUniformKernel::Compute(CpuKernelContext &ctx) {
     RANDOM_UNIFORM_GENERATE_CASE(DT_FLOAT, float)
     RANDOM_UNIFORM_GENERATE_CASE(DT_DOUBLE, double)
     default:
-      KERNEL_LOG_ERROR("RandomUniform kernel data type %u not support.", data_type);
+      KERNEL_LOG_ERROR("RandomUniform kernel data type %u not support.",
+                       data_type);
       return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -60,7 +65,7 @@ uint32_t RandomUniformKernel::Compute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-template<typename T>
+template <typename T>
 uint32_t RandomUniformKernel::Generate(CpuKernelContext &ctx, Tensor *output) {
   int64_t final_seed = 0;
   auto attr_seed = ctx.GetAttr(ATTR_NAME_RANDOM_UNIFORM_SEED);
@@ -76,12 +81,14 @@ uint32_t RandomUniformKernel::Generate(CpuKernelContext &ctx, Tensor *output) {
 
   Eigen::ThreadPool pool(kThreadNum);
   Eigen::ThreadPoolDevice device(&pool, kThreadNum);
-  Eigen::TensorMap<Eigen::Tensor<T, 1>> eigen_output(static_cast<T *>(output->GetData()),
-                                                     output->GetTensorShape()->NumElements());
-  eigen_output.device(device) = eigen_output.random(Eigen::internal::UniformRandomGenerator<T>(final_seed));
+  Eigen::TensorMap<Eigen::Tensor<T, 1>> eigen_output(
+      static_cast<T *>(output->GetData()),
+      output->GetTensorShape()->NumElements());
+  eigen_output.device(device) = eigen_output.random(
+      Eigen::internal::UniformRandomGenerator<T>(final_seed));
 
   return KERNEL_STATUS_OK;
 }
 
 REGISTER_CPU_KERNEL(RANDOM_UNIFORM, RandomUniformKernel);
-} // namespace aicpu
+}  // namespace aicpu

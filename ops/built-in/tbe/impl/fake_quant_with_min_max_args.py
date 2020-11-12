@@ -23,6 +23,7 @@ from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
@@ -206,9 +207,11 @@ def fake_quant_with_min_max_args(x, y, min=-6, max=6, num_bits=8,
     input_dtype = x.get("dtype").lower()
     para_check.check_dtype(input_dtype, ["float32"], param_name="x")
     if min >= max:
-        raise RuntimeError("min must be less than max")
+        excepted_value = "min must be less than max"
+        real_value = "min is (%d) and max is (%d)"%(min, max)
+        error_manager_vector.raise_err_input_value_invalid(kernel_name, "min", excepted_value, real_value)
     if num_bits < 2 or num_bits > 16:
-        raise RuntimeError("num_bits is between 2 and 16")
+        error_manager_vector.raise_err_input_param_not_in_range(kernel_name, "num_bits", "2", "16", num_bits)
     shape_x = (functools.reduce(lambda x, y: x * y, shape_x[:]),)
     x = tvm.placeholder(shape_x, name="x", dtype=input_dtype)
     res = fake_quant_with_min_max_args_compute(x, y, float(min), float(max),

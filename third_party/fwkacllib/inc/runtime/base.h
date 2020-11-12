@@ -19,7 +19,7 @@
 
 #include <stdint.h>
 
-#ifdef __cplusplus
+#if defined(__cplusplus) && !defined(COMPILE_OMG_PACKAGE)
 extern "C" {
 #endif
 
@@ -100,6 +100,9 @@ typedef enum tagRtError {
     RT_ERROR_MODEL_ID,
     RT_ERROR_MODEL_EXE_FAILED,
     RT_ERROR_END_OF_SEQUENCE,               // end of sequence
+    RT_ERROR_MODEL_EXIT,
+    RT_ERROR_MODEL_EXIT_STREAM_UNBIND,
+    RT_ERROR_MODEL_EXIT_ID,
 
     RT_ERROR_EVENT_BASE                     = 0x07050000,
     RT_ERROR_EVENT_NULL,
@@ -591,7 +594,7 @@ RTS_API rtError_t rtLabelCreateEx(rtLabel_t *label, rtStream_t stream);
  */
 RTS_API rtError_t rtGetTaskIdAndStreamID(uint32_t *taskid, uint32_t *streamid);
 
-#ifdef __cplusplus
+#if defined(__cplusplus) && !defined(COMPILE_OMG_PACKAGE)
 }
 #endif
 

@@ -20,11 +20,49 @@ avg_pool
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
-from te.utils import op_utils
 from te.utils import para_check
 from te.utils import shape_util
 from te.platform.cce_policy import get_L1_info
 from te.utils.error_manager import error_manager_util as err_man
+from impl.util import util_select_op_base
+
+
+def get_op_support_info(x, filter, bias, y, ksize, strides,
+                        padding="VALID", data_format="NHWC", offset_x=0,
+                        kernel_name="avg_pool"):
+    """
+    get the avgpool split
+    """
+    format_x = x.get("format")
+    input_shape = x.get("shape")
+
+    if data_format in ("NHWC",):
+        ksize_h = ksize[1]
+        ksize_w = ksize[2]
+        window = [ksize[1], ksize[2]]
+    else:
+        ksize_h = ksize[2]
+        ksize_w = ksize[3]
+        window = [ksize[2], ksize[3]]
+
+    if format_x == "NC1HWC0":
+        if (ksize_h == window[0] and ksize_w == window[1]) or padding == "SAME":
+            axis_split_matrix = [[util_select_op_base.SplitInput([0, [0], [-1], [-1]]),
+                                 util_select_op_base.SplitOutput([0, [0]])]]
+        elif padding == "VALID":
+            axis_split_matrix = [
+                [util_select_op_base.SplitInput([0, [0], [-1], [-1]]), util_select_op_base.SplitOutput([0, [0]])],
+                [util_select_op_base.SplitInput([0, [2], [0], [0]]), util_select_op_base.SplitOutput([0, [2]])]]
+        else:
+            axis_split_matrix = None
+        axis_reduce_list = None
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_matrix, axis_reduce_list, 2, 0)
+
+    return op_cal_info_in_json
+
 
 
 def _get_fusion_params(input_data, output_data, is_fused_compute=True):
@@ -170,7 +208,7 @@ def _check_window_rule(ksize, strides, data_format):
     strides_c = strides[3] if data_format in ("NHWC",) else strides[1]
     if len(ksize) != 4:
         error_info = {}
-        error_info['errCode'] = op_utils.OP_ERROR_CODE_012
+        error_info['errCode'] = para_check.OP_ERROR_CODE_012
         error_info['op_name'] = 'avg_pool'
         error_info['param_name'] = 'ksize'
         error_info['min_value'] = '4'
@@ -186,7 +224,7 @@ def _check_window_rule(ksize, strides, data_format):
 
     if len(strides) != 4:
         error_info = {}
-        error_info['errCode'] = op_utils.OP_ERROR_CODE_012
+        error_info['errCode'] = para_check.OP_ERROR_CODE_012
         error_info['op_name'] = 'avg_pool'
         error_info['param_name'] = 'strides'
         error_info['min_value'] = '4'
@@ -202,7 +240,7 @@ def _check_window_rule(ksize, strides, data_format):
 
     if ksize[0] != 1 or (ksize_c != 1):
         error_info = {}
-        error_info['errCode'] = op_utils.OP_ERROR_CODE_000
+        error_info['errCode'] = para_check.OP_ERROR_CODE_000
         error_info['op_name'] = 'avg_pool'
         error_info['param_name'] = ",".join(("ksize[1]", "ksize[3]"))
         error_info['expected_value'] = '1'
@@ -216,7 +254,7 @@ def _check_window_rule(ksize, strides, data_format):
 
     if strides[0] != 1 or strides_c != 1:
         error_info = {}
-        error_info['errCode'] = op_utils.OP_ERROR_CODE_000
+        error_info['errCode'] = para_check.OP_ERROR_CODE_000
         error_info['op_name'] = 'avg_pool'
         error_info['param_name'] = ",".join(("strides[1]", "strodes[3]"))
         error_info['expected_value'] = '1'
@@ -229,7 +267,7 @@ def _check_window_rule(ksize, strides, data_format):
 
     if data_format not in("NCHW", "NHWC", "NC1HWC0"):
         error_info = {}
-        error_info['errCode'] = op_utils.OP_ERROR_CODE_015
+        error_info['errCode'] = para_check.OP_ERROR_CODE_015
         error_info['op_name'] = 'avg_pool'
         error_info['param_name'] = 'x'
         error_info['excepted_format_list'] = ",".join(("NC1HWC0",
@@ -480,6 +518,7 @@ def avg_pool_compute(x, filter, bias, y, ksize, strides, padding="VALID",
     Calculation result
     """
     out_dtype = y.get("dtype")
+    output_shape = y.get("ori_shape")
     # create window and stride for pooling2d
     # check  parameter
     _check_window_rule(ksize, strides, data_format)
@@ -487,9 +526,11 @@ def avg_pool_compute(x, filter, bias, y, ksize, strides, padding="VALID",
     if data_format in ("NHWC",):
         window = [ksize[1], ksize[2]]
         stride = [strides[1], strides[2]]
+        output_w = output_shape[2]
     else:
         window = [ksize[2], ksize[3]]
         stride = [strides[2], strides[3]]
+        output_w = output_shape[3]
 
     shape_x = x.shape
     input_h = shape_x[2]
@@ -498,8 +539,8 @@ def avg_pool_compute(x, filter, bias, y, ksize, strides, padding="VALID",
     dsl_flag = True
     pad = _pad_compute(padding, input_h, input_w, stride, window, dilations)
 
-    if int(input_h) == int(window[0]) and int(input_h) == int(window[1]):
-        res = avg_pool_global_compute(x, y, ksize, strides, padding, data_format,
+    if (int(input_h) == int(window[0]) and int(input_w) == int(window[1])) or output_w == 1:
+        res = _avg_pool_global_compute(x, y, ksize, strides, padding, data_format,
                                       is_fused_compute=True, kernel_name=kernel_name)
     else:
         l1_fusion_para = _avgpool_conv2d_fusion_para(x, y)

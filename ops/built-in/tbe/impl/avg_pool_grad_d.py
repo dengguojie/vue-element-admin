@@ -75,13 +75,8 @@ def _parameter_check(shape_in, shape_k, shape_out, dtype, strides, padding):
     inp_dtype = dtype.lower()
     para_check.check_dtype(inp_dtype, ('float16', ))
 
-    if strides[DIM_S_H] != strides[DIM_S_W]:
-        error_manager_vector.raise_err_check_params_rules('avg_pool_grad_d',
-                                                          'only supports equal length strides in W and H dim',
-                                                          'strides', strides)
-
     if padding.lower() not in ("same", "valid"):
-        error_manager_vector.raise_err_pad_mode_invalid('avg_pool3d', 'VALID or SAME', padding)
+        error_manager_vector.raise_err_pad_mode_invalid('avg_pool_grad_d', 'VALID or SAME', padding)
 
     _, _, hi, wi, _ = shape_in
     _, hk, wk, _, _, _ = shape_k
@@ -254,7 +249,7 @@ def _avg_pool_grad_tiling(input_w, input_h, out_shape, res, stride):
 
     out_w = out_shape[4]
     # compute dilation shape
-    dila_w = out_w * stride - (stride - 1)
+    dila_w = out_w * stride[1] - (stride[1] - 1)
 
     # 2 is for double buffer
     max_l0a_m = l0a_size // (data_size * BLOCK_SIZE * 2)
@@ -283,8 +278,8 @@ def _avg_pool_grad_tiling(input_w, input_h, out_shape, res, stride):
     # than max_h_in_ub, so max_h_in_ub one time
     # into L1. L1 SIZE = 1M, UB SIZE = 256K;
     max_h_in_ub = ((ub_size // data_size - (max_l0a_m * BLOCK_SIZE)) // BLOCK_SIZE +
-                   (stride - 1) * dila_w) // (3 * out_w + stride * dila_w)
-    tile_dile_h_ub = max_h_in_ub * stride - (stride - 1)
+                   (stride[0] - 1) * dila_w) // (3 * out_w + stride[0] * dila_w)
+    tile_dile_h_ub = max_h_in_ub * stride[0] - (stride[0] - 1)
     tile_hd = tile_dile_h_ub
     tile_input_h = tile_hd + dilated_pad_top + dilated_pad_bottom - k_height + 1
     # if tile_input_h > input_h, input_h no tiling
@@ -355,7 +350,9 @@ def _avg_pool_grad_schedule(res):
     _, _, _, dout_dilated_h, dout_dilated_w, _ = dout_dilated.shape
     input_w = dout_dilated_w.value + dilated_pad_left + dilated_pad_right - k_width + 1
     input_h = dout_dilated_h.value + dilated_pad_top + dilated_pad_bottom - k_height + 1
-    stride = dout_dilated.op.attrs["strides"][0].value
+    stride_h = dout_dilated.op.attrs["strides"][0].value
+    stride_w = dout_dilated.op.attrs["strides"][1].value
+    stride = (stride_h, stride_w)
     dout_shape = [int(i.value) for i in dout.shape]
     dout_dilated_shape = [int(i.value) for i in dout_dilated.shape]
     mad_cc_axis_n, mad_cc_axis_cg, mad_cc_axis_co1, mad_cc_axis_howomad, mad_cc_axis_co0 = mad_cc.op.axis
@@ -396,9 +393,9 @@ def _avg_pool_grad_schedule(res):
     dout_dilated_w = dout_dilated_shape[4]
     ub_l1hcut_o, ub_l1hcut_i = s[dout_cbuf_nc1hwc0].split(dout_cbuf_nc1hwc0.op.axis[3], factor=tile_dile_h_ub)
 
-    if stride > 1:
-        dila_o_h, dila_i_h = s[dout_dilated_ubuf].split(dout_dilated_ubuf.op.axis[3], factor=stride)
-        dila_o_w, dila_i_w = s[dout_dilated_ubuf].split(dout_dilated_ubuf.op.axis[4], factor=stride)
+    if stride[0] > 1 or stride[1] > 1:
+        dila_o_h, dila_i_h = s[dout_dilated_ubuf].split(dout_dilated_ubuf.op.axis[3], factor=stride[0])
+        dila_o_w, dila_i_w = s[dout_dilated_ubuf].split(dout_dilated_ubuf.op.axis[4], factor=stride[1])
         s[dout_dilated_ubuf].reorder(dila_i_h, dila_i_w, dila_o_h, dila_o_w)
         s[dout_dilated_ubuf].unroll(dila_i_h)
         s[dout_dilated_ubuf].unroll(dila_i_w)
@@ -584,7 +581,11 @@ def avg_pool_grad_d(input_grad,
                 grad_tmp = tbe.cast_to(grad_tmp, "float16")
             res = tbe.broadcast(grad_tmp, orig_input_shape)
             sch = tbe.auto_schedule(res)
-        config = {"name": kernel_name, "tensor_list": [input_grad, res]}
+        # add two placeholder for mean_matrix and kernel_matrix
+        dummy_placeholder = tvm.placeholder((1,), name="dumy", dtype=data_dtype)
+        config = {"name": kernel_name,
+                  "tensor_list": [input_grad, dummy_placeholder, dummy_placeholder, res],
+                  "dummy_placeholder": True}
         tbe.cce_build_code(sch, config)
     else:
         shape_in = orig_input_shape

@@ -24,6 +24,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <unordered_map>
 
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
@@ -35,7 +36,7 @@ class PoolingFusionPass : public PatternFusionBasePass {
 
  private:
   Status AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode, vector<int64_t> pad, vector<int64_t>& dimInfo,
-                  vector<int64_t> window, vector<int64_t> stride);
+                  vector<int64_t> window, vector<int64_t> stride, std::string& recode);
   ge::NodePtr AddMul(ge::ComputeGraph& graph, ge::NodePtr& avgPoolNode);
   Status Calc4DWeight(const std::vector<int64_t>& filterDims4D, const int64_t& kernelDataCount,
                       const int8_t* filterInt8Data, std::unique_ptr<int32_t[]>& weightInt8Temp);
@@ -46,6 +47,8 @@ class PoolingFusionPass : public PatternFusionBasePass {
                            int64_t ceil_mode);
 
   const string FUSED_OP_TYPE = "Pooling";
+  unordered_map<string, ge::NodePtr> mulConstNode;
+  unordered_map<string, ge::NodePtr> poolConstNode;
 };
 
 }  // namespace fe

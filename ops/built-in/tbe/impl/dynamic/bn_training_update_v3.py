@@ -17,19 +17,12 @@ dynamic bn_training_update_v3
 """
 
 import te
-import te.lang.dynamic
+import te.lang.cce as tbe
 from te import tvm
 from te.platform import log
-from te.platform import operation
-from topi import generic
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_format
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import REQUIRED_ATTR_FLOAT
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import variable_shape
+from te.lang.base import operation
+from te.utils import para_check
+from te.utils import shape_util
 from impl.util import fusion_util
 
 
@@ -65,11 +58,11 @@ def _check_shape_5hd(shape_x, shape_sum, shape_square_sum,
 
 def _check_dtype(dtype_x, dtype_sum, dtype_square_sum,
                  dtype_scale, dtype_offset):
-    check_dtype(dtype_x, ("float16", "float32"))
-    check_dtype(dtype_sum, ("float32",))
-    check_dtype(dtype_square_sum, ("float32",))
-    check_dtype(dtype_scale, ("float32",))
-    check_dtype(dtype_offset, ("float32",))
+    para_check.check_dtype(dtype_x, ("float16", "float32"))
+    para_check.check_dtype(dtype_sum, ("float32",))
+    para_check.check_dtype(dtype_square_sum, ("float32",))
+    para_check.check_dtype(dtype_scale, ("float32",))
+    para_check.check_dtype(dtype_offset, ("float32",))
 
 
 # 'pylint: disable=unused-argument,invalid-name,too-many-arguments,too-many-locals
@@ -124,34 +117,34 @@ def bn_training_update_v3_compute(x, sum, square_sum, scale, offset,
     batch_var_scaler = operation.var("batch_var_scaler", dtype="float32")
 
     # compute the saved mean of x
-    save_mean_reduce = te.lang.dynamic.vmuls(sum, num_rec)
+    save_mean_reduce = tbe.vmuls(sum, num_rec)
 
     # compute the saved variance of x
-    variance_div = te.lang.dynamic.vmuls(square_sum, num_rec)
-    variance_square = te.lang.dynamic.vmul(save_mean_reduce, save_mean_reduce)
-    save_variance_reduce = te.lang.dynamic.vsub(variance_div, variance_square)
+    variance_div = tbe.vmuls(square_sum, num_rec)
+    variance_square = tbe.vmul(save_mean_reduce, save_mean_reduce)
+    save_variance_reduce = tbe.vsub(variance_div, variance_square)
 
     # compute the oefficient of y
-    multiplier_add = te.lang.dynamic.vadds(save_variance_reduce, epsilon)
-    multiplier_sqrt = te.lang.dynamic.vsqrt(multiplier_add)
-    multiplier_div = te.lang.dynamic.vdiv(scale, multiplier_sqrt)
-    multiplier = te.lang.dynamic.broadcast(multiplier_div, shape_x)
+    multiplier_add = tbe.vadds(save_variance_reduce, epsilon)
+    multiplier_sqrt = tbe.vsqrt(multiplier_add)
+    multiplier_div = tbe.vdiv(scale, multiplier_sqrt)
+    multiplier = tbe.broadcast(multiplier_div, shape_x)
 
-    addend_mul = te.lang.dynamic.vmul(multiplier_div, save_mean_reduce)
-    addend_sub = te.lang.dynamic.vsub(offset, addend_mul)
-    addend = te.lang.dynamic.broadcast(addend_sub, shape_x)
+    addend_mul = tbe.vmul(multiplier_div, save_mean_reduce)
+    addend_sub = tbe.vsub(offset, addend_mul)
+    addend = tbe.broadcast(addend_sub, shape_x)
 
     # compute the batch normalization of x
     if x.dtype == "float16":
-        x = te.lang.dynamic.cast_to(x, "float32")
-        res_y = te.lang.dynamic.vadd(te.lang.dynamic.vmul(multiplier, x), addend)
-        res_y = te.lang.dynamic.cast_to(res_y, "float16")
+        x = tbe.cast_to(x, "float32")
+        res_y = tbe.vadd(tbe.vmul(multiplier, x), addend)
+        res_y = tbe.cast_to(res_y, "float16")
     else:
-        res_y = te.lang.dynamic.vadd(te.lang.dynamic.vmul(multiplier, x), addend)
+        res_y = tbe.vadd(tbe.vmul(multiplier, x), addend)
 
     # compute batch_mean and batch_var
-    res_batch_mean = te.lang.dynamic.vmuls(sum, num_rec)
-    res_batch_var = te.lang.dynamic.vmuls(save_variance_reduce, batch_var_scaler)
+    res_batch_mean = tbe.vmuls(sum, num_rec)
+    res_batch_var = tbe.vmuls(save_variance_reduce, batch_var_scaler)
 
     res = [res_y, res_batch_mean, res_batch_var,
            save_mean_reduce, save_variance_reduce]
@@ -226,11 +219,11 @@ def bn_training_update_v3_fusion_compute(x, sum, square_sum, scale, offset,
 
 
 @te.op.register_operator("BnTrainingUpdate")
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT,
-                 REQUIRED_OUTPUT, REQUIRED_OUTPUT,
-                 REQUIRED_ATTR_FLOAT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
 def bn_training_update_v3(x, sum, square_sum, scale, offset,
                           y, batch_mean, batch_variance, reserve_1, reserve_2,
                           epsilon, kernel_name="bn_training_update_v3"):
@@ -296,7 +289,7 @@ def bn_training_update_v3(x, sum, square_sum, scale, offset,
 
     # check format
     check_list = ("NC1HWC0", "NCHW")
-    check_format(data_format, check_list, param_name="x")
+    para_check.check_format(data_format, check_list, param_name="x")
     if data_format == "NCHW" and origin_format not in ("NCHW",):
         raise RuntimeError("The origin format only supports "
                            "NCHW when format is NCHW")
@@ -315,7 +308,7 @@ def bn_training_update_v3(x, sum, square_sum, scale, offset,
         shape_sum = shape_list
 
     # get dynamic shape
-    shape_x, shape_sum = variable_shape([x, sum])
+    shape_x, shape_sum = shape_util.variable_shape([x, sum])
     log.debug("input_x shape: " + str(shape_x))
     log.debug("input_sum shape: " + str(shape_sum))
 
@@ -334,10 +327,10 @@ def bn_training_update_v3(x, sum, square_sum, scale, offset,
 
     # schedule
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     # build
     tensor_list = [in_x, in_sum, in_sqrsum, in_scale, in_offset] + list(res)
     config = {"name": kernel_name,
               "tensor_list": tensor_list}
-    te.lang.dynamic.build(sch, config)
+    tbe.build(sch, config)

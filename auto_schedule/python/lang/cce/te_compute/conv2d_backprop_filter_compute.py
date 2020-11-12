@@ -20,11 +20,12 @@ from __future__ import print_function
 
 from functools import reduce
 
+from te.platform import cce_params
 from te.platform.cce_conf import intrinsic_check_support
 from te.platform.cce_conf import CceProductParams
-from te.platform.operation import get_te_var
+from te.lang.base.operation import get_te_var
 from te.lang.cce.te_compute.cube_util import shape_to_list
-from te.utils import check_para
+from te.utils import para_check
 from te.utils.error_manager import error_manager_util
 
 from te.tvm import api as tvm
@@ -83,6 +84,16 @@ def _ceil_div(dividend, divisor):
         dict_args['reason'] = "Division by zero"
         error_manager_util.raise_runtime_error(dict_args)
     return (dividend + divisor - 1) // divisor
+
+
+def lcm(param1, param2):
+    """
+    calculate least common multiple
+    """
+    temp = param1 * param2
+    while param1 % param2 != 0:
+        param1, param2 = param2, param1 % param2
+    return temp // param2
 
 
 def _check_attr_rule(attr, dim, attr_limit, formats, name):
@@ -167,7 +178,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
     """
 
     def __init__(self, input_x, out_backprop,  # pylint: disable=R0913, R0914
-                 filter_sizes, strides, padding, dilations,
+                 filter_sizes, strides, padding, dilations, groups,
                  res_dtype="float32",
                  kernel_name="conv2d_backprop_filter_cce"):
         """
@@ -186,6 +197,8 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         padding : 4-D shape in up/down/left/right dimension
 
         dilations : 4-D shape in batch/channel/height/width dimension
+
+        groups : The number of filter's group. Default value is 1.
 
         res_dtype : the output data type
 
@@ -208,6 +221,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         self.pad = list(padding)
         self.stride = list(strides)
         self.dilation = list(dilations)
+        self.group = groups
         self.kernel_name = kernel_name
 
         self.optag = "conv2d_backprop_filter"
@@ -285,14 +299,14 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         if self.fmap_dtype != "float16":
             dict_args = dict()
             dict_args["errCode"] = "E60005"
-            dict_args["param_name"] = "fmap_dtype"
+            dict_args["param_name"] = "x"
             dict_args["expected_dtype_list"] = "float16"
             dict_args["dtype"] = self.fmap_dtype
             error_manager_util.raise_runtime_error(dict_args)
         if self.grads_dtype != "float16":
             dict_args = dict()
             dict_args["errCode"] = "E60005"
-            dict_args["param_name"] = "grads_dtype"
+            dict_args["param_name"] = "out_backprop"
             dict_args["expected_dtype_list"] = "float16"
             dict_args["dtype"] = self.grads_dtype
             error_manager_util.raise_runtime_error(dict_args)
@@ -300,7 +314,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                 self.res_dtype != "float16":
             dict_args = dict()
             dict_args["errCode"] = "E60005"
-            dict_args["param_name"] = "res_dtype"
+            dict_args["param_name"] = "y"
             dict_args["expected_dtype_list"] = "float16 for lhisi"
             dict_args["dtype"] = self.res_dtype
             error_manager_util.raise_runtime_error(dict_args)
@@ -308,7 +322,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                 self.res_dtype != "float32":
             dict_args = dict()
             dict_args["errCode"] = "E60005"
-            dict_args["param_name"] = "res_dtype"
+            dict_args["param_name"] = "y"
             dict_args["expected_dtype_list"] = "float32"
             dict_args["dtype"] = self.res_dtype
             error_manager_util.raise_runtime_error(dict_args)
@@ -329,17 +343,18 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         if _ceil_div(self.weight_shape[0], 16) != self.shape_grads_5hd[1]:
             dict_args = {}
             dict_args['errCode'] = "E64002"
-            dict_args['param1'] = "Dedy's C1"
-            dict_args['param2'] = "Filter's N//16"
+            dict_args['param1'] = "out_backprop's C1"
+            dict_args['param2'] = "y's N//16"
             dict_args['actual_value'] = "{}, {}". format(
                 self.shape_grads_5hd[1], _ceil_div(self.weight_shape[0], 16))
             error_manager_util.raise_runtime_error(dict_args)
 
-        if _ceil_div(self.weight_shape[1], 16) != self.shape_x_5hd[1]:
+        if _ceil_div(self.group * self.weight_shape[1],
+                     16) != self.shape_x_5hd[1]:
             dict_args = {}
             dict_args['errCode'] = "E64002"
-            dict_args['param1'] = "Fmap's C1"
-            dict_args['param2'] = "Filter's C//16"
+            dict_args['param1'] = "x's C1"
+            dict_args['param2'] = "y's C//16"
             dict_args['actual_value'] = "{}, {}". format(
                 self.shape_x_5hd[1], _ceil_div(self.weight_shape[1], 16))
             error_manager_util.raise_runtime_error(dict_args)
@@ -347,8 +362,8 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         if self.shape_grads_5hd[0] != self.shape_x_5hd[0]:
             dict_args = {}
             dict_args['errCode'] = "E64002"
-            dict_args['param1'] = "Fmap's N"
-            dict_args['param2'] = "Dedy's N"
+            dict_args['param1'] = "x's N"
+            dict_args['param2'] = "out_backprop's N"
             dict_args['actual_value'] = "{}, {}".\
                 format(self.shape_x_5hd[0], self.shape_grads_5hd[0])
             error_manager_util.raise_runtime_error(dict_args)
@@ -434,7 +449,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         _, grads_channel_1, grads_height, grads_width, grads_c0 \
             = self.shape_grads_5hd
         _, fmap_channel_1, fmap_height, fmap_width, fmap_c0 = self.shape_x_5hd
-        _, _, kernel_height, kernel_width = self.weight_shape
+        _, kernel_channel, kernel_height, kernel_width = self.weight_shape
         dilationn, dilationc, dilationh, dilationw = self.dilation
 
         def _check_dilation():
@@ -450,7 +465,18 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                                   "dilationh")
             _check_variable_range(dilationw, dilation_min, dilation_max,
                                   "dilationw")
+
+        def _check_groups():
+            if self.group != 1 and kernel_channel != 1:
+                dict_args = {
+                    'errCode': 'E50060',
+                    'op_name': 'conv2d_backprop_filter',
+                    'description': "only supports conv/depthwise situation"
+                }
+                error_manager_util.raise_runtime_error(dict_args)
+
         _check_dilation()
+        _check_groups()
 
         # coupling range check
         if not self.dynamic_mode:
@@ -548,6 +574,40 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                              "[up,down,left,right]", "pad")
         return True
 
+
+    def _compute_group_dict(self):
+        """
+        calculate the params of group convlution
+
+        """
+        c0_size = cce_params.C0_SIZE
+        cout, _, _, _ = self.weight_shape
+        _, fmap_c1, _, _, fmap_c0 = self.shape_x_5hd
+        fmap_c = fmap_c1 * fmap_c0
+        groups = self.group
+
+        mag_factor0 = lcm(fmap_c // groups,
+                          c0_size) // (fmap_c // groups)
+        mag_factor1 = lcm(cout // groups,
+                          c0_size) // (cout // groups)
+        mag_factor = min(lcm(mag_factor0, mag_factor1), groups)
+
+        cin1_g = (
+                    mag_factor * fmap_c // groups + c0_size - 1
+                 ) // c0_size
+        cout_g = (
+                    mag_factor * cout // groups + c0_size - 1
+                 ) // c0_size * c0_size
+
+        group_dict = {"real_g": (groups + mag_factor - 1) // mag_factor,
+                      "mag_factor": mag_factor,
+                      "cin1_g": cin1_g,
+                      "cout_g": cout_g,
+                      "cin_ori": fmap_c,
+                      "cout_ori": cout}
+        self.group_dict = group_dict
+
+
     def _deconv_dw_access(self):
         """
         complete compute generation, including input check,
@@ -559,12 +619,13 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         self._deconv_dw_input_check_2()
         if not self.dynamic_mode:
             self._deconv_dw_input_check_3()
+        self._compute_group_dict()
         self._deconv_dw_compute()
         self.res_tensor = self.dw_ddr  # return tensor of this file to topi
 
     def _deconv_dw_compute(self):  # pylint: disable=R0914
         """
-        complege compute definition
+        complete compute definition
 
         """
 
@@ -589,16 +650,22 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
 
                 """
 
-                batch_indices, grads_c1_indices, hw_mad_1_indices, \
-                    grads_c0_indices, hw_mad_0_indices = indices
+                group_dict = self.group_dict
+
+                (group_indices, batch_indices,
+                    grads_c1_indices, hw_mad_1_indices,
+                    grads_c0_indices, hw_mad_0_indices) = indices
 
                 batch_size_index = batch_indices
-                grads_channel_1_index = grads_c1_indices
-                grads_hw_index = hw_mad_1_indices * BLOCK_SIZE \
-                    + hw_mad_0_indices
+                grads_c1_index = (
+                                    group_indices * group_dict["cout_g"]
+                                 ) // BLOCK_SIZE + grads_c1_indices
+                grads_hw_index = (
+                                    hw_mad_1_indices * BLOCK_SIZE
+                                 ) + hw_mad_0_indices
                 grads_c0_index = grads_c0_indices
 
-                return grads_2_matrix(batch_size_index, grads_channel_1_index,
+                return grads_2_matrix(batch_size_index, grads_c1_index,
                                       grads_hw_index, grads_c0_index)
 
             return tvm.compute(grads_shape_fractal,
@@ -628,16 +695,22 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                 do coordinate calculation
 
                 """
-                batch_indices, hw_mad_1_indices, fmap_c1_indices, \
-                    fmap_c0_indices, hw_mad_0_indices = indices
+                (group_indices, batch_indices,
+                    hw_mad_1_indices, fmap_c1_indices,
+                    fmap_c0_indices, hw_mad_0_indices) = indices
 
                 batch_size_index = batch_indices
-                fmap_channel_1_index = fmap_c1_indices
-                fmap_hw_index = hw_mad_1_indices * BLOCK_SIZE \
-                    + hw_mad_0_indices
+                fmap_c1_index = fmap_c1_indices
+                c1_index = (
+                               group_indices * self.group_dict["cin1_g"]
+                           ) + fmap_c1_index
+
+                fmap_hw_index = (
+                                    hw_mad_1_indices * BLOCK_SIZE
+                                ) + hw_mad_0_indices
                 fmap_c0_index = fmap_c0_indices
 
-                return fmap_2_matrix(batch_size_index, fmap_channel_1_index,
+                return fmap_2_matrix(batch_size_index, c1_index,
                                      fmap_hw_index, fmap_c0_index)
 
             return tvm.compute(fmap_shape_fractal,
@@ -652,6 +725,14 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             = self.shape_grads_5hd
         _, fmap_channel_1, fmap_height, fmap_width, fmap_c0 = self.shape_x_5hd
         _, _, kernel_height, kernel_width = self.weight_shape
+
+        # group dict
+        group_dict = self.group_dict
+        real_g = group_dict["real_g"]
+        fmap_c1_g = group_dict["cin1_g"]
+        grads_channel_g = group_dict["cout_g"]
+        cin_ori = group_dict["cin_ori"]
+        cout_ori = group_dict["cout_ori"]
 
         # align to 16
         hw_mad = (grads_height*grads_width + BLOCK_SIZE - 1) \
@@ -669,8 +750,9 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         grads_matrix = self._grads_2_matrix(grads_shape_matrix, self.grads)
 
         # move grads_matrix to L0A and do transpose
-        grads_shape_fractal = (batch_size,
-                               grads_channel_1,
+        grads_shape_fractal = (real_g,
+                               batch_size,
+                               grads_channel_g // grads_c0,
                                hw_mad_1,
                                grads_c0,
                                BLOCK_SIZE)
@@ -682,11 +764,11 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             if not self.dynamic_mode:
                 # shape of fmap_original_matrix, corresponding to set_fmatrix
                 fmap_shape_original_matrix = (batch_size,
-                                            grads_height*grads_width,
-                                            fmap_channel_1,
-                                            kernel_height,
-                                            kernel_width,
-                                            fmap_c0)
+                                              grads_height*grads_width,
+                                              fmap_channel_1,
+                                              kernel_height,
+                                              kernel_width,
+                                              fmap_c0)
 
                 self.shapelist['fmap_original_matrix'] = \
                                                     fmap_shape_original_matrix
@@ -694,10 +776,11 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                 fmap_matrix = self._fmap_2_matrix(fmap_shape_original_matrix,
                                                 self.fmap, fmap_dtype)
                 # move fmap to L0B
-                fmap_shape_fmap_matrix = (batch_size, hw_mad//BLOCK_SIZE,
-                                        fmap_channel_1 * kernel_height *
-                                        kernel_width, fmap_c0,
-                                        BLOCK_SIZE)
+                fmap_shape_fmap_matrix = (real_g, batch_size,
+                                          hw_mad//BLOCK_SIZE,
+                                          fmap_c1_g*kernel_height*kernel_width,
+                                          fmap_c0,
+                                          BLOCK_SIZE)
                 self.shapelist['fmap_fmap_matrix'] = fmap_shape_fmap_matrix
 
                 fmap_fractal = self._fmap_2_fractal(fmap_shape_fmap_matrix,
@@ -710,12 +793,15 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                     return self.fmap(*params)
                 # move fmap to l1
                 fmap_l1 = tvm.compute(fmap_l1_shape, _lambda_func_dynamic_fmap,
-                                    name='dw_fmap_l1', tag="dw_fmap_l1")
+                                    name='dw_fmap_l1', tag="dw_fmap_l1",
+                                    attrs={'group_dict': self.group_dict})
 
-                fmap_shape_fmap_matrix = (batch_size, hw_mad_1,
-                                        fmap_channel_1 * kernel_height *
-                                        kernel_width, fmap_c0,
-                                        BLOCK_SIZE)
+                fmap_shape_fmap_matrix = (real_g,
+                                          batch_size,
+                                          hw_mad_1,
+                                          fmap_c1_g*kernel_height*kernel_width,
+                                          fmap_c0,
+                                          BLOCK_SIZE)
                 img2col_para = (fmap_l1, kernel_height, kernel_width,
                             self.pad, self.stride, grads_width, self.dilation)
                 fmap_fractal = self._im2col_fractal_v2(fmap_shape_fmap_matrix,
@@ -735,9 +821,10 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                                                      self.fmap)
 
             # move fmap to L0B
-            fmap_shape_fractal = (batch_size,
+            fmap_shape_fractal = (real_g,
+                                  batch_size,
                                   hw_mad//BLOCK_SIZE,
-                                  fmap_channel_1*kernel_height*kernel_width,
+                                  fmap_c1_g*kernel_height*kernel_width,
                                   fmap_c0,
                                   BLOCK_SIZE)
             self.shapelist['fmap_matrix'] = fmap_shape_fractal
@@ -746,8 +833,8 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                                                   fmap_matrix)
 
         # shape of result dw [n1,m,n0]
-        dw_shape = (fmap_channel_1*kernel_height*kernel_width,
-                    grads_channel_1*grads_c0, fmap_c0)
+        dw_shape = (real_g, fmap_c1_g*kernel_height*kernel_width,
+                    grads_channel_g, fmap_c0)
         self.shapelist['dw'] = dw_shape
 
         # do mmad
@@ -797,12 +884,12 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
 
             # calculate index of grads according to indice of grads_matrix
             batch_size_index = batch_indices
-            grads_channel_1_index = grads_c1_indices
+            grads_c1_index = grads_c1_indices
             grads_height_index = (hw_mad_indices // grads_width)
             grads_width_index = (hw_mad_indices % grads_width)
             grads_c0_index = grads_c0_indices
 
-            return grads(batch_size_index, grads_channel_1_index,
+            return grads(batch_size_index, grads_c1_index,
                          grads_height_index, grads_width_index, grads_c0_index)
 
         return tvm.compute(grads_shape_matrix,
@@ -896,7 +983,8 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                            tag='fmap_2_col_matrix',
                            attrs={'pad': self.pad, 'stride': self.stride,
                                   'dilation': self.dilation,
-                                  'kernel_size': self.weight_shape})
+                                  'kernel_size': self.weight_shape,
+                                  'group_dict': self.group_dict})
 
     def _fmap_2_matrix_load2d(self, fmap_shape_matrix, fmap):
         """
@@ -921,11 +1009,11 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             batch_indices, fmap_c1_indices, hw_mad_indices, fmap_c0_indices \
                 = indices
             batch_size_index = batch_indices
-            fmap_channel_1_index = fmap_c1_indices
+            fmap_c1_index = fmap_c1_indices
             fmap_height_index = (hw_mad_indices // fmap_width)
             fmap_width_index = (hw_mad_indices % fmap_width)
             fmap_c0_index = fmap_c0_indices
-            return fmap(batch_size_index, fmap_channel_1_index,
+            return fmap(batch_size_index, fmap_c1_index,
                         fmap_height_index, fmap_width_index, fmap_c0_index)
         return tvm.compute(fmap_shape_matrix,
                            lambda *indices:
@@ -934,7 +1022,8 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                            tag='fmap_2_matrix',
                            attrs={'pad': self.pad, 'stride': self.stride,
                                   'dilation': self.dilation,
-                                  'kernel_size': self.weight_shape})
+                                  'kernel_size': self.weight_shape,
+                                  'group_dict': self.group_dict})
 
     def _fmap_2_fractal(self, fmap_shape_fmap_matrix,
                         fmap_2_col_matrix, fmap_dtype):
@@ -981,13 +1070,16 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             # fmap_channel_1*kernel_height*kernel_width
             # fmap_c0
             # block_size_K
-            n_vm_index, hw_mad_1_indices, fkk_indices, \
-                fmap_c0_indices, hw_mad_0_indices \
-                = indices
+            (group_index, n_vm_index,
+                hw_mad_1_indices, fkk_indices,
+                fmap_c0_indices, hw_mad_0_indices) = indices
 
             hw_vm_index = hw_mad_1_indices*BLOCK_SIZE + hw_mad_0_indices
             c1_vm_index = (((fkk_indices*BLOCK_SIZE + fmap_c0_indices)
                             // BLOCK_SIZE) // kernel_width) // kernel_height
+
+            c1_index = group_index * self.group_dict["cin1_g"] + c1_vm_index
+
             kh_vm_index = (((fkk_indices*BLOCK_SIZE + fmap_c0_indices)
                             // BLOCK_SIZE) // kernel_width) % kernel_height
             kw_vm_index = ((fkk_indices*BLOCK_SIZE + fmap_c0_indices)
@@ -1000,7 +1092,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                                       hw_vm_index > hw_fuse - 1),
                               tvm.const(0.0, fmap_dtype),
                               fmap_2_col_matrix(n_vm_index, hw_vm_index,
-                                                c1_vm_index, kh_vm_index,
+                                                c1_index, kh_vm_index,
                                                 kw_vm_index, c0_vm_index))
 
         return tvm.compute(fmap_shape_fmap_matrix,
@@ -1052,10 +1144,10 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             mode = "f162f16"
 
         c_col = tvm.compute(mad_shape,
-                            lambda fkk, grads_c, fmap_c0:
-                            tvm.sum((grads[batch_axis, grads_c // 16,
+                            lambda g, fkk, grads_c, fmap_c0:
+                            tvm.sum((grads[g, batch_axis, grads_c // 16,
                                            k_1, grads_c % 16, k_0] *
-                                     fmap[batch_axis, k_1, fkk, fmap_c0,
+                                     fmap[g, batch_axis, k_1, fkk, fmap_c0,
                                           k_0]).astype(self.res_dtype),
                                     axis=[batch_axis, k_axis]),
                             name='dw', tag="dw",
@@ -1089,7 +1181,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                                                                 img2col_para
 
         def __im2col_idx(idx):
-            batch, col_h, col_w, block_size_w, block_size_h = idx
+            group, batch, col_h, col_w, block_size_w, block_size_h = idx
 
             col_w = (col_w * block_size + block_size_w) // block_size
             virtual_h = col_h * block_size + block_size_h
@@ -1105,8 +1197,11 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                                     back_w < padding[2], \
                                     back_w > fmap.shape[3] + padding[2] - 1),
                             tvm.const(0, fmap.dtype),
-                            fmap(batch, back_c1, back_h - padding[0], \
-                                back_w - padding[2], block_size_w))
+                            fmap(batch,
+                                 back_c1 + group*self.group_dict["cin1_g"],
+                                 back_h - padding[0],
+                                 back_w - padding[2],
+                                 block_size_w))
         return tvm.compute(shape,
                         lambda *idx: __im2col_idx(idx),
                         name='img2col_fractal_v2',
@@ -1115,13 +1210,14 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                                   'dilation': self.dilation,
                                   'kernel_size': self.weight_shape})
 
-@check_para.check_input_type(Tensor, Tensor, (list, tuple),
+@para_check.check_input_type(Tensor, Tensor, (list, tuple),
                              (list, tuple), (list, tuple),
-                             (list, tuple), str, str)
+                             (list, tuple), int, str, str)
 def conv2d_backprop_filter_compute(input_x,  # pylint: disable=R0913
                                    out_backprop, filter_sizes,
                                    strides=None, padding=None,
-                                   dilations=None, res_dtype="float32",
+                                   dilations=None, groups=1,
+                                   res_dtype="float32",
                                    kernel_name="conv2d_backprop_filter_cce"):
     """
     the DSL interface of conv2d backprop filter compute
@@ -1140,6 +1236,8 @@ def conv2d_backprop_filter_compute(input_x,  # pylint: disable=R0913
 
     dilations : 4-D shape, specifies in batch/channel/height/width dimension
 
+    groups : The number of filter's group. Default value is 1.
+
     res_dtype : the output data type
 
     Returns
@@ -1157,6 +1255,7 @@ def conv2d_backprop_filter_compute(input_x,  # pylint: disable=R0913
                                             strides=strides,
                                             padding=padding,
                                             dilations=dilations,
+                                            groups=groups,
                                             res_dtype=res_dtype,
                                             kernel_name=kernel_name)
     deconv_dw_object._deconv_dw_access()

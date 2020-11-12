@@ -559,7 +559,7 @@ def get_tensor_reuse(batch, core_inner_m, k_shape, core_inner_n,
             batch_double = True
 
     double_once = 0
-    if core_inner_m != m_l1_shape or core_inner_n != n_l1_shape:
+    if core_inner_m != m_l1_shape and core_inner_n != n_l1_shape:
         double_once = 1
 
     return tensor_a, tensor_b, batch_double, double_once

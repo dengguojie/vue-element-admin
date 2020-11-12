@@ -16,12 +16,12 @@
 leaky_relu
 """
 from functools import reduce as reduceIns
-from te.utils.op_utils import *
 
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
+from te.utils import para_check
 
 
 def get_fusion_params(x_tensor, y):
@@ -92,8 +92,8 @@ def leaky_relu_compute(x, y, negative_slope=0, kernel_name="leaky_relu"):
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 OPTION_ATTR_FLOAT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
+                            para_check.KERNEL_NAME)
 def leaky_relu(x, y, negative_slope=0, kernel_name="leaky_relu"):
     """leaky_relu op for input tensor
 
@@ -121,11 +121,11 @@ def leaky_relu(x, y, negative_slope=0, kernel_name="leaky_relu"):
     # check input tensor shape
     shape = x.get("shape")
     dtype = x.get("dtype")
-    check_shape(shape, param_name="x")
+    para_check.check_shape(shape, param_name="x")
 
     # check input tensor data_type
     check_list = ["float16", "float32", "int32", "int8"]
-    check_dtype(dtype.lower(), check_list, param_name="x")
+    para_check.check_dtype(dtype.lower(), check_list, param_name="x")
     fuseshape = [1]
     fuseshape[0] = reduceIns(lambda x, y: x*y, shape)
     inp_dtype = dtype.lower()

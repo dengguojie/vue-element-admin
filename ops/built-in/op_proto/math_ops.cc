@@ -59,6 +59,7 @@ IMPLEMT_INFERFUNC(Igamma, IgammaInfer) {
   TensorDesc z_desc = op.GetOutputDesc("z");
   z_desc.SetDataType(a_type);
   if (op.UpdateOutputDesc("z", z_desc) != GRAPH_SUCCESS) {
+    OpsOPUpdateErrReport(op.GetName(),"z");
     OP_LOGE(op.GetName().c_str(), "Failed to update z desc.");
     return GRAPH_FAILED;
   }
@@ -337,6 +338,45 @@ IMPLEMT_INFERFUNC(GetNext, GetNextInfer) {
 }
 
 INFER_FUNC_REG(GetNext, GetNextInfer);
+
+IMPLEMT_INFERFUNC(GetDynamicDims, GetDynamicDimsInfer) {
+  // Check inputs size
+  Operator::OpInt n_attr;
+  if (op.GetAttr("N", n_attr) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "get attr N failed");
+    return GRAPH_FAILED;
+  }
+  size_t inputs_size = op.GetInputsSize();
+  if (static_cast<int64_t>(inputs_size) != n_attr) {
+    OP_LOGE(op.GetName().c_str(), "inputs size [%zu] must equal attr N [%ld]",
+            inputs_size, n_attr);
+    return GRAPH_FAILED;
+  }
+
+  // Set Output as Vector(unknow_dims_num) of DT_INT64
+  Operator::OpListInt shape_info;
+  if (op.GetAttr("shape_info", shape_info) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "get attr shape_info failed");
+    return GRAPH_FAILED;
+  }
+  int64_t unknow_dims_num = std::count(shape_info.begin(),
+                                       shape_info.end(), -1);
+  Shape vector_shape;
+  if (Vector(unknow_dims_num, vector_shape) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "create output shape failed");
+    return GRAPH_FAILED;
+  }
+  auto dims_desc = op.GetOutputDesc("dims");
+  dims_desc.SetShape(vector_shape);
+  dims_desc.SetDataType(DT_INT64);
+  if (op.UpdateOutputDesc("dims", dims_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "update dims desc failed");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(GetDynamicDims, GetDynamicDimsInfer);
 
 // ----------------Erf-------------------
 IMPLEMT_COMMON_INFERFUNC(ErfInferShape) {

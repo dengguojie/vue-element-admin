@@ -18,12 +18,7 @@ import te.lang.dynamic
 from te import tvm
 from topi import generic
 from functools import reduce as reduceIns
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import OPTION_ATTR_BOOL
+from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 MAX_ZERO_DIM_INDICE = 2**31 - 1
@@ -46,9 +41,9 @@ class Scatter():
         self.updatesdtype = updates.get("dtype").lower()
         self.vardtype = var.get("dtype")
         indices_support_dtype_list = ("int32", )
-        check_dtype(self.indicesdtype, indices_support_dtype_list, param_name="indices")
+        para_check.check_dtype(self.indicesdtype, indices_support_dtype_list, param_name="indices")
         updates_support_dtype_list = ("float32",)
-        check_dtype(self.updatesdtype, updates_support_dtype_list, param_name="updates")
+        para_check.check_dtype(self.updatesdtype, updates_support_dtype_list, param_name="updates")
         self.tiling_dtype = "int32"
         if self.updatesdtype != self.vardtype:
             error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "var", "updates",
@@ -560,8 +555,8 @@ class Scatter():
 
 # pylint: disable=unused-argument,invalid-name,too-many-locals
 @te.op.register_operator("ScatterSub")
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def scatter_sub(var, indices, updates, var_out, use_locking=False, kernel_name="ScatterSub"):
     """
         scatter_sub interface

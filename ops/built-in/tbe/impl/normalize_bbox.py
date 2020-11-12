@@ -18,7 +18,7 @@ normalize_bbox
 import math
 from te import tik
 from te import platform as tbe_platform
-from te.utils.op_utils import *
+from te.utils import para_check
 
 # available ub size
 UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
@@ -753,7 +753,8 @@ class NORMALIZEBBOX():
 
 
 # pylint: disable=unused-argument,invalid-name
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_BOOL, para_check.KERNEL_NAME)
 def normalize_bbox(boxes, shape_hw, y, reversed_box=False, kernel_name="normalize_bbox"):
     """
     Normalize the pre-selected box that passes through the NMS in Prediction

@@ -26,6 +26,21 @@ from te.utils.error_manager import error_manager_util as err_man
 # broadcast should be 16
 BRC_STANDARD_BLOCK_SIZE = 16
 
+class GroupDictKeys:
+    """
+    The keys of group_dict
+    """
+    groups = "groups"
+    g_extend = "g_extend"
+    multiple_extend = "multiple_extend"
+    dx_c1_extend = "dx_c1_extend"
+    dy_c1_extend = "dy_c1_extend"
+    dx_c_ori = "dx_c_ori"
+    dy_c_ori = "dy_c_ori"
+    filter_batch_ori = "filter_batch_ori"
+    filter_c_ori = "filter_c_ori"
+    filter_ori_format = "filter_ori_format"
+
 
 def shape_to_list(shape):
     """
@@ -206,38 +221,44 @@ def im2col_fractal(a_im2col_shape, tensor_a_row_major):
         -------
         Returns : im2col_fractal tvm lambda function
         """
-        _, _, _, a_col_m0, a_col_k0 = a_im2col_shape
-        _, a_row_major_hw, _, kernel_h, kernel_w, _ = tensor_a_row_major.shape
-        n_index, m1_index, k1_index, m0_index, k0_index = indices
+        g_after, _, _, a_col_k1, a_col_m0, a_col_k0 = a_im2col_shape
+        _, a_row_major_hw, group_c1, kernel_h, kernel_w, _ = tensor_a_row_major.shape
+        g_index, n_index, m1_index, k1_index, m0_index, k0_index = indices
 
         hw_index = m1_index * a_col_m0 + m0_index
+        k_axis_index = (g_index * a_col_k1 + k1_index) * a_col_k0 + k0_index
 
         c1_index = (
-            ((k1_index * a_col_k0 + k0_index) // a_col_k0) // kernel_w.value
+            (k_axis_index // a_col_k0) // kernel_w.value
         ) // kernel_h.value
 
         kh_index = (
-            ((k1_index * a_col_k0 + k0_index) // a_col_k0) // kernel_w.value
+            (k_axis_index // a_col_k0) // kernel_w.value
         ) % kernel_h.value
 
-        kw_index = ((k1_index * a_col_k0 + k0_index) // a_col_k0) % kernel_w.value
+        kw_index = (k_axis_index // a_col_k0) % kernel_w.value
 
-        c0_index = (k1_index * a_col_k0 + k0_index) % a_col_k0
+        c0_index = k_axis_index % a_col_k0
 
         # dtype is compute_dtype
         return tvm.select(
-            tvm.any(hw_index < 0, hw_index > a_row_major_hw.value - 1),
+            tvm.any(hw_index < 0, hw_index >
+                    a_row_major_hw.value - 1,
+                    c1_index > group_c1-1),
             tvm.const(0.0, tensor_a_row_major.dtype),
-            tensor_a_row_major(
-                n_index, hw_index, c1_index, kh_index, kw_index, c0_index
-            )
+            tensor_a_row_major(n_index,
+                             hw_index,
+                             c1_index,
+                             kh_index,
+                             kw_index,
+                             c0_index)
         )
 
     return tvm.compute(
         a_im2col_shape,
         lambda *indices: __im2col_fractal_indices(indices, tensor_a_row_major),
-        name="im2col_fractal",
-        tag="im2col_fractal"
+        name='im2col_fractal',
+        tag='im2col_fractal'
     )
 
 
@@ -248,6 +269,7 @@ def im2col_fractal_3d(  # pylint: disable=R0913
     d_out,
     filter_d,
     stride_d,
+    cin1_g,
     cyclebuffer_flag,
     tag=""
 ):
@@ -284,27 +306,30 @@ def im2col_fractal_3d(  # pylint: disable=R0913
         -------
         Returns : im2col_fractal tvm lambda function
         """
-        _, _, _, a_col_m0, a_col_k0 = a_im2col_shape
+        _, _, _, _, a_col_m0, a_col_k0 = a_im2col_shape
+        g_index, n_index, m1_index, k1_index, m0_index, k0_index = indices
+
         _, a_row_major_hw, _, kernel_h, kernel_w, _ = tensor_a_row_major.shape
-        n_index, m1_index, k1_index, m0_index, k0_index = indices
 
         hw_index = m1_index * a_col_m0 + m0_index
-
-        if cyclebuffer_flag:
-            c1_index = (
-                ((k1_index * a_col_k0 + k0_index) // a_col_k0) // kernel_w.value
-            ) // kernel_h.value
-            c1_index = (
-                (c1_index // fmap_c1 + (n_index % d_out) * stride_d) % filter_d
-            ) * fmap_c1 + c1_index % fmap_c1
+        if (cin1_g != -1):
+            cyclebuffer_var = 1 if cyclebuffer_flag else 0
+            kdc1_index = k1_index // (kernel_h.value * kernel_w.value)
+            kd_index = (kdc1_index // cin1_g + (n_index % d_out * stride_d) * cyclebuffer_var) % filter_d
+            cin_index = kdc1_index % cin1_g
+            c1_index = kd_index * fmap_c1 + g_index * cin1_g + cin_index
         else:
-            c1_index = (
-                ((k1_index * a_col_k0 + k0_index) // a_col_k0) // kernel_w.value
-            ) // kernel_h.value
+            if cyclebuffer_flag:
+                c1_index = (((k1_index * a_col_k0 + k0_index) // a_col_k0) // kernel_w.value
+                            ) // kernel_h.value
+                c1_index = ((c1_index // fmap_c1 + (n_index % d_out) * stride_d) % filter_d
+                            ) * fmap_c1 + c1_index % fmap_c1
+            else:
+                c1_index = (((k1_index * a_col_k0 + k0_index) // a_col_k0) // kernel_w.value
+                            ) // kernel_h.value
 
-        kh_index = (
-            ((k1_index * a_col_k0 + k0_index) // a_col_k0) // kernel_w.value
-        ) % kernel_h.value
+        kh_index = (((k1_index * a_col_k0 + k0_index) // a_col_k0) // kernel_w.value
+                   ) % kernel_h.value
 
         kw_index = ((k1_index * a_col_k0 + k0_index) // a_col_k0) % kernel_w.value
 
@@ -341,10 +366,10 @@ def im2col_fractal_v2(shape, img2col_para):
     """
 
     block_size = 16
-    fmap, kernel_h, kernel_w, padding, stride, fmap_wo, dilation = img2col_para
+    fmap, kernel_h, kernel_w, padding, stride, fmap_wo, dilation, c1_extend = img2col_para
 
     def __im2col_idx(idx):
-        batch, col_h, col_w, block_size_h, block_size_w = idx
+        group, batch, col_h, col_w, block_size_h, block_size_w = idx
 
         virtual_h = col_h * block_size + block_size_h
         virtual_w = col_w * block_size + block_size_w
@@ -362,7 +387,11 @@ def im2col_fractal_v2(shape, img2col_para):
             ),
             tvm.const(0, fmap.dtype),
             fmap(
-                batch, back_c1, back_h - padding[0], back_w - padding[2], block_size_w
+                batch,
+                back_c1 + group * c1_extend,
+                back_h - padding[0],
+                back_w - padding[2],
+                block_size_w
             )
         )
 
@@ -465,9 +494,9 @@ class CubeDslPattern:
         tensor_c : mad result tensor
         """
         is_conv3d_backprop_input = False
-        a_batch, a_m1, a_k1, a_m0, a_k0 = shape_to_list(tensor_a.shape)
-        axis_k0 = tvm.reduce_axis([0, a_k0], name="axis_k0")
-        axis_k1 = tvm.reduce_axis([0, a_k1], name="axis_k1")
+        a_group, a_batch, a_m1, a_k1, a_m0, a_k0 = shape_to_list(tensor_a.shape)
+        axis_k0 = tvm.reduce_axis([0, a_k0], name='axis_k0')
+        axis_k1 = tvm.reduce_axis([0, a_k1], name='axis_k1')
         if len(tensor_b.shape) == 5:
             is_conv3d_backprop_input = True
         if is_conv3d_backprop_input:
@@ -499,7 +528,7 @@ class CubeDslPattern:
         else:
             _, b_n1, b_n0, _ = shape_to_list(tensor_b.shape)
 
-            shape_c = (a_batch, b_n1, a_m1 * a_m0, b_n0)
+            shape_c = (a_group, a_batch, b_n1, a_m1*a_m0, b_n0)
             type_c = (
                 c_type
                 if c_type is not None
@@ -509,39 +538,37 @@ class CubeDslPattern:
             offset_x = offset_x if is_support_v200() else 0
             tensor_c = tvm.compute(
                 shape_c,
-                lambda n_index, co1_index, m_index, co0_index: tvm.sum(
-                    (
-                        (
-                            tensor_a(
-                                n_index,
-                                m_index // a_m0,
-                                axis_k1,
-                                m_index % a_m0,
-                                axis_k0
-                            )
-                            - offset_x
-                        )
-                        * tensor_b(axis_k1, co1_index, co0_index, axis_k0)
-                    ).astype(type_c),
-                    axis=[axis_k1, axis_k0]
-                ),
+                lambda g_index, n_index, co1_index, m_index, co0_index:
+                tvm.sum(((tensor_a(g_index,
+                                   n_index,
+                                   m_index // a_m0,
+                                   axis_k1,
+                                   m_index % a_m0,
+                                   axis_k0) - offset_x) *
+                          tensor_b(g_index * a_k1 + axis_k1,
+                                   co1_index,
+                                   co0_index,
+                                   axis_k0)).astype(type_c),
+                        axis=[axis_k1, axis_k0]),
                 name="C",
                 tag="mad"
             )
             if tensor_bias is not None:
                 bias_ub_brc_shape = list(shape_c)
-                bias_ub_brc_shape[2] = bias_ub_brc_shape[2] // BRC_STANDARD_BLOCK_SIZE
+                bias_ub_brc_shape[3] = bias_ub_brc_shape[3] // BRC_STANDARD_BLOCK_SIZE
+                co_k = CUBE_MKN[tensor_bias.dtype]["mac"][2]
                 bias_ub_brc = tvm.compute(
                     bias_ub_brc_shape,
-                    lambda *indices: tensor_bias(
-                        indices[1] * CUBE_MKN[tensor_bias.dtype]["mac"][2] + indices[3]
-                    ),
+                    lambda *indices:
+                    tensor_bias(
+                            indices[2] * co_k + indices[4]
+                        ),
                     name="bias_ub_brc"
                 )
                 bias_l0c = tvm.compute(
                     shape_c,
-                    lambda i, j, k, l: bias_ub_brc(
-                        i, j, k // BRC_STANDARD_BLOCK_SIZE, l
+                    lambda g, i, j, k, l: bias_ub_brc(
+                       g, i, j, k // BRC_STANDARD_BLOCK_SIZE, l
                     ),
                     name="bias_l0c"
                 )
@@ -628,18 +655,23 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         return height_out, width_out
 
     def generate_a(  # pylint: disable=R0914
-        self,
-        feature_map,
-        dynamic_para=None,
-        slice_offset=0,
-        valid_shape=()
-    ):
+            self,
+            feature_map,
+            g_after,
+            c1_extend,
+            dynamic_para=None,
+            slice_offset=0,
+            valid_shape=()):
         """
         calculate im2col_fractal tensor
 
         Parameters
         ----------
         feature_map : feature map tensor in the shape of NC1HWC0
+
+        g_after : the group after optimization
+
+        c1_extend : the C1 after group extension
 
         slice_offset : offset of fmap
 
@@ -678,18 +710,19 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
                 padding=new_pad,
                 stride=stride,
                 compute_dtype=feature_map.dtype,
-                dilation=(self._dilate_h, self._dilate_w),
+                dilation=(self._dilate_h,
+                          self._dilate_w),
                 offset_x=self._offset_x,
                 slice_offset=slice_offset
             )
 
         howo = (height_out * width_out + self._m0 - 1) // self._m0 * self._m0
         a_im2col_fractal_shape = (
+            g_after,
             a_batch,
             howo // self._m0,
-            a_c1 * kernel_h * kernel_w,
-            self._m0,
-            a_c0
+            c1_extend * kernel_h * kernel_w,
+            self._m0, a_c0
         )
         if dynamic_para is None:
             a_col = im2col_fractal(a_im2col_fractal_shape, a_row_major)
@@ -701,7 +734,8 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
                 new_pad,
                 stride,
                 width_out,
-                (self._dilate_h, self._dilate_w)
+                (self._dilate_h, self._dilate_w),
+                c1_extend
             )
             a_col = im2col_fractal_v2(a_im2col_fractal_shape, img2col_para)
         return a_col
@@ -862,5 +896,5 @@ def print_iter_vars(iter_vars):
 
     pad = ""
     for _, item in enumerate(iter_vars):
-        print(f"{pad}{item}")
+        print(pad, item)
         pad += "    "

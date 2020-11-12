@@ -21,7 +21,7 @@ import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
-from te.utils.op_utils import *
+from te.utils import para_check
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 
@@ -87,18 +87,18 @@ def _check_shape(shape, param_name=""):
      -------
      None
      """
-    check_shape(shape, min_rank=5, max_rank=5, param_name=param_name)
+    para_check.check_shape(shape, min_rank=5, max_rank=5, param_name=param_name)
 
 
-def check_rule(data, rule_desc, param_name=PARAM_NAME):
+def check_rule(data, rule_desc, param_name=para_check.PARAM_NAME):
     """
     The special check rule for tensor
     """
     if data is None or rule_desc is None:
         return
     error_info = {}
-    error_info['errCode'] = OP_ERROR_CODE_009
-    error_info['op_name'] = OP_NAME
+    error_info['errCode'] = para_check.OP_ERROR_CODE_009
+    error_info['op_name'] = para_check.OP_NAME
     error_info['param_name'] = param_name
     error_info['rule_desc'] = rule_desc
     error_info['param_value'] = data
@@ -242,11 +242,11 @@ def in_training_update_compute(x, sum, square_sum,
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 OPTION_INPUT, OPTION_INPUT,
-                 OPTION_INPUT, OPTION_INPUT,
-                 REQUIRED_OUTPUT, OPTION_OUTPUT, OPTION_OUTPUT,
-                 OPTION_ATTR_FLOAT, OPTION_ATTR_FLOAT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.OPTION_INPUT, para_check.OPTION_INPUT,
+                            para_check.OPTION_INPUT, para_check.OPTION_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_OUTPUT, para_check.OPTION_OUTPUT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def in_training_update_v2(x, sum, square_sum,
                           gamma, beta, mean, variance,
                           y, batch_mean, batch_variance,
@@ -296,10 +296,10 @@ def in_training_update_v2(x, sum, square_sum,
     # Process x, sum, square_sum
     shape_x = x.get("shape")
     dtype_x = x.get("dtype")
-    check_format(data_format, ("NC1HWC0", ), param_name="x")
+    para_check.check_format(data_format, ("NC1HWC0", ), param_name="x")
 
     _check_shape(shape_x, param_name="x")
-    check_dtype(dtype_x.lower(), ("float16", "float32"), param_name="x")
+    para_check.check_dtype(dtype_x.lower(), ("float16", "float32"), param_name="x")
 
     shape_sum = sum.get("shape")
     shape_square_sum = square_sum.get("shape")
@@ -310,8 +310,8 @@ def in_training_update_v2(x, sum, square_sum,
 
     dtype_sum = sum.get("dtype")
     dtype_square_sum = square_sum.get("dtype")
-    check_dtype(dtype_sum.lower(), ("float32",), param_name="sum")
-    check_dtype(dtype_square_sum.lower(), ("float32",),
+    para_check.check_dtype(dtype_sum.lower(), ("float32",), param_name="sum")
+    para_check.check_dtype(dtype_square_sum.lower(), ("float32",),
                 param_name="square_sum")
 
     x_input = tvm.placeholder(shape_x, name="x_input",
@@ -338,8 +338,8 @@ def in_training_update_v2(x, sum, square_sum,
         _check_shape(shape_beta, param_name="beta")
         _check_dims_equal(shape_x, shape_beta)
 
-        check_dtype(dtype_gamma.lower(), ("float32",), param_name="gamma")
-        check_dtype(dtype_beta.lower(), ("float32",), param_name="beta")
+        para_check.check_dtype(dtype_gamma.lower(), ("float32",), param_name="gamma")
+        para_check.check_dtype(dtype_beta.lower(), ("float32",), param_name="beta")
 
         gamma_input = tvm.placeholder(shape_gamma, name="gamma_input",
                                       dtype=dtype_gamma.lower())
@@ -360,8 +360,8 @@ def in_training_update_v2(x, sum, square_sum,
         _check_shape(shape_var, param_name="variance")
         _check_dims_equal(shape_x, shape_var)
 
-        check_dtype(dtype_mean.lower(), ("float32",), param_name="mean")
-        check_dtype(dtype_var.lower(), ("float32",), param_name="variance")
+        para_check.check_dtype(dtype_mean.lower(), ("float32",), param_name="mean")
+        para_check.check_dtype(dtype_var.lower(), ("float32",), param_name="variance")
 
         mean_input = tvm.placeholder(shape_mean, name="mean_input",
                                      dtype=dtype_mean.lower())

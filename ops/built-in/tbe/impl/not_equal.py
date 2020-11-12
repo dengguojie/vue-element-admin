@@ -23,9 +23,10 @@ from te import tvm
 import te.lang.cce
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
-from te.utils.op_utils import refine_shapes_for_broadcast
+from te.utils import para_check
+from te.utils import shape_util
 from topi.cce import util
-from te.utils.op_utils import *
+
 
 # define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
 SCALAR_MIN_FP32 = 2**(-126)
@@ -63,7 +64,7 @@ def not_equal_compute(input_x, input_y, output_z, kernel_name="not_equal"):
     dtype_x = input_x.dtype
     shape_x = te.lang.cce.util.shape_to_list(input_x.shape)
     shape_y = te.lang.cce.util.shape_to_list(input_y.shape)
-    shape_x, shape_y, shape_broadcast = broadcast_shapes(shape_x, shape_y,
+    shape_x, shape_y, shape_broadcast = shape_util.broadcast_shapes(shape_x, shape_y,
                                                          param_name_input1="input_x",
                                                          param_name_input2="input_y")
 
@@ -106,7 +107,8 @@ def not_equal_compute(input_x, input_y, output_z, kernel_name="not_equal"):
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def not_equal(input_x, input_y, output_z, kernel_name="not_equal"):
     """
     Returns the truth value of (x != y) element-wise
@@ -130,22 +132,22 @@ def not_equal(input_x, input_y, output_z, kernel_name="not_equal"):
     dtype_x = input_x.get("dtype")
     shape_y = input_y.get("shape")
     dtype_y = input_y.get("dtype")
-    shape_x, shape_y, shape_broadcast = broadcast_shapes(shape_x, shape_y,
+    shape_x, shape_y, shape_broadcast = shape_util.broadcast_shapes(shape_x, shape_y,
                                                          param_name_input1="input_x",
                                                          param_name_input2="input_y")
 
-    check_shape(shape_x, param_name="input_x")
-    check_shape(shape_y, param_name="input_y")
-    check_shape(shape_broadcast, param_name="shape_broadcast")
+    para_check.check_shape(shape_x, param_name="input_x")
+    para_check.check_shape(shape_y, param_name="input_y")
+    para_check.check_shape(shape_broadcast, param_name="shape_broadcast")
 
     check_list = ("float16", "float32", "int32", "int8", "uint8")
     dtype_x = dtype_x.lower()
-    check_dtype(dtype_x, check_list, param_name="input_x")
+    para_check.check_dtype(dtype_x, check_list, param_name="input_x")
     dtype_y = dtype_y.lower()
-    check_dtype(dtype_y, check_list, param_name="input_y")
+    para_check.check_dtype(dtype_y, check_list, param_name="input_y")
     util.compare_tensor_dict_key(input_x, input_y, "dtype")
 
-    shape_x, shape_y = refine_shapes_for_broadcast(shape_x, shape_y)
+    shape_x, shape_y = shape_util.refine_shapes_for_broadcast(shape_x, shape_y)
     data_input_x = tvm.placeholder(shape_x, name="data_input_x", dtype=dtype_x)
     data_input_y = tvm.placeholder(shape_y, name="data_input_y", dtype=dtype_y)
 

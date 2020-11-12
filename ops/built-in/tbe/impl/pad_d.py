@@ -24,9 +24,40 @@ from te.utils import para_check
 from te import tvm
 from impl import pad_align_reorder_ub
 from impl.util import util_select_op_base
+from te.utils.error_manager import error_manager_vector
+from impl.util.util_common import write_code
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 USED_BUFFER_LEN = 3072
 UINT64_ALL_ONE = 18446744073709551615
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(input_x, output_x, paddings, kernel_name="pad_d"):
+    format_x = input_x.get("format").upper()
+    shape_x_len = len(input_x.get("shape"))
+    if format_x == "ND":
+        axis_split_matrix=[]
+        for i in range(0, shape_x_len):
+            if paddings[i][0] == 0 and paddings[i][1] == 0:
+                split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]])]
+                axis_split_matrix.append(split_0)
+        axis_reduce_list = None
+
+    elif format_x == "NC1HWC0":
+        axis_split_matrix=[
+            [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+            [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]])]
+        ]
+        axis_reduce_list = None
+
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 def _ceil_div(value, block):
@@ -1364,26 +1395,6 @@ def _intrin_factor(input_tensor, output_res, gm_cast, gm_align, output_tensor,
     return ib_.get()
 
 
-def _write_code(wkspace_dict, fname):
-    """
-    write workspaces to json file
-
-    """
-    fname = os.path.realpath(fname)
-    if fname.startswith(os.getcwd()):
-        if os.path.exists(fname):
-            with open(fname, "r") as f_var:
-                load_dict = json.load(f_var)
-            load_dict.update(wkspace_dict)
-            with open(fname, "w") as f_var:
-                json.dump(
-                    load_dict,
-                    f_var,
-                    sort_keys=True,
-                    indent=4,
-                    separators=(',', ':'))
-
-
 def _set_mask(length):
     """
     calculate MASK in cce
@@ -2168,13 +2179,17 @@ def pad_d(input_x, output_x, paddings, kernel_name="pad_d"):
         paddings = [[0, 0], [0, 0], [paddings[1][0], paddings[1][1]], [paddings[2][0], paddings[2][1]], [0, 0]]
 
     if len(paddings) is not len(shape):
-        raise RuntimeError(
-            "Paddings and shape are not the same length.")
+        rule_desc = "Paddings and input_x'shape should have the same length."
+        param_value = "%d,%d"%(len(paddings), len(shape))
+        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, \
+                                                          "paddings,input_x", param_value)
     for padding in paddings:
         if len(padding) != 2:
-            raise RuntimeError("Paddings's shape is not in the form of (n,2)")
+            error_detail = "Paddings's shape is not in the form of (n,2)"
+            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "Paddings", error_detail)
         if (not isinstance(padding[0], int)) or (not isinstance(padding[1], int)):
-            raise RuntimeError("Paddings only suppot int")
+            error_detail = "Paddings only suppot int"
+            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "Paddings", error_detail)
 
     data = tvm.placeholder(shape, name="data", dtype=dtype)
     if dtype == "int8" or dtype == "uint8":
@@ -2245,10 +2260,10 @@ def pad_d(input_x, output_x, paddings, kernel_name="pad_d"):
             total_size = [size_in_cast, size_align, size_out_cast]
             num_workspace = 3
             workspace_dict = {"workspace": {"num": num_workspace, "size": total_size}}
-            _write_code(workspace_dict, "kernel_meta/" + kernel_name + ".json")
+            write_code(workspace_dict, kernel_name)
         else:
             size_align = one_core_align * dtype_size + 32
             total_size = [size_align]
             num_workspace = 1
             workspace_dict = {"workspace": {"num": num_workspace, "size": total_size}}
-            _write_code(workspace_dict, "kernel_meta/" + kernel_name + ".json")
+            write_code(workspace_dict, kernel_name)

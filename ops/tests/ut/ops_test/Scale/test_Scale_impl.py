@@ -2,6 +2,8 @@
 # -*- coding: UTF-8 -*-
 
 from op_test_frame.ut import OpUT
+from op_test_frame.common import precision_info
+import numpy as np
 ut_case = OpUT("Scale", None, None)
 
 
@@ -47,5 +49,33 @@ case2 = scale_cce((1, 1, 448, 448, 16), (1, 1, 448, 448, 16), (1, 1, 448, 448, 1
 ut_case.add_case("Ascend910", case1)
 ut_case.add_case("Ascend910", case2)
 
-if __name__ == '__main__':
-    ut_case.run("Ascend910")
+def calc_expect_func(x, scale, bias, y, axis, num_axes, scale_from_blob):
+    if bias is not None:
+        res = x['value'] * scale['value'] + bias['value']
+    else:
+        res = x['value'] * scale['value']
+    return res
+
+precision_case1 = {"params": [{"shape": (2, 3, 2, 3), "dtype": "float16", "format": "ND", "ori_shape": (2, 3, 2, 3),"ori_format": "ND","param_type":"input"}, #x
+                              {"shape": (2, 3, 2, 3), "dtype": "float16", "format": "ND", "ori_shape": (2, 3, 2, 3),"ori_format": "ND","param_type":"input"},
+                              {"shape": (2, 3, 2, 3), "dtype": "float16", "format": "ND", "ori_shape": (2, 3, 2, 3),"ori_format": "ND","param_type":"input"},
+                              {"shape": (2, 3, 2, 3), "dtype": "float16", "format": "ND", "ori_shape": (2, 3, 2, 3),"ori_format": "ND","param_type":"output"},
+                              1, 1, True
+                              ],
+                   "expect": "success",
+                   "calc_expect_func": calc_expect_func,
+                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
+precision_case2 = {"params": [{"shape": (1,1,4,8,16), "dtype": "float16", "format": "ND", "ori_shape": (1,1,4,8,16),"ori_format": "ND","param_type":"input"}, #x
+                              {"shape": (1,1,4,8,16), "dtype": "float16", "format": "ND", "ori_shape": (1,1,4,8,16),"ori_format": "ND","param_type":"input"},
+                              {"shape": (1,1,4,8,16), "dtype": "float16", "format": "ND", "ori_shape": (1,1,4,8,16),"ori_format": "ND","param_type":"input"},
+                              {"shape": (1,1,4,8,16), "dtype": "float16", "format": "ND", "ori_shape": (1,1,4,8,16),"ori_format": "ND","param_type":"output"},
+                              0, -1, True
+                              ],
+                   "expect": "success",
+                   "calc_expect_func": calc_expect_func,
+                   "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)}
+
+ut_case.add_precision_case("Ascend910", precision_case1)
+ut_case.add_precision_case("Ascend910", precision_case2)
+
+

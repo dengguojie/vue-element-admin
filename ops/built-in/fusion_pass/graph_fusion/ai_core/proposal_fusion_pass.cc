@@ -274,10 +274,10 @@ Status ProposalFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
                     return PARAM_INVALID);
 
   Status ret = NnSet(dimNums, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(inputAssit.get()));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "NnSet failed."), return NOT_CHANGED);
 
   ret = GenerateAnchorsFp16(inputAssit.get(), proposalVNode);
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateAnchorsFp32 failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "GenerateAnchorsFp32 failed."), return NOT_CHANGED);
 
   // define the shape of auxiliary matrix
   ge::GeShape assitShape = proposalInputShape;

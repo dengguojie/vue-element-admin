@@ -26,8 +26,8 @@ from te.tvm import tensor as _tensor
 from te.tvm.schedule import create_schedule
 from te.platform import cce_conf
 from te.platform import cce_params
-from te.utils import check_para
-from te.utils import operate_shape
+from te.utils import para_check
+from te.utils import shape_util
 from te.platform.cce_build import build_config
 from te.platform.cce_build import build_config_update
 
@@ -569,11 +569,11 @@ def _check_shape_rule(input_tensors, dtype_check_list):
     for i, tensor_dict in enumerate(input_tensors):
         shape = tensor_dict.get('shape')
         dtype = tensor_dict.get('dtype')
-        check_para.check_shape_rule(shape)
-        check_para.check_shape_size(shape, check_para.SHAPE_SIZE_LIMIT)
-        check_para.check_dtype_rule(dtype, dtype_check_list)
+        para_check.check_shape_rule(shape)
+        para_check.check_shape_size(shape, para_check.SHAPE_SIZE_LIMIT)
+        para_check.check_dtype_rule(dtype, dtype_check_list)
         normalized_dtype_list[i] = dtype.lower()
-        broadcast_shape_list[i], _, _ = operate_shape.produce_shapes(
+        broadcast_shape_list[i], _, _ = shape_util.produce_shapes(
             shape, input_tensors[0].get('shape'))
     return normalized_dtype_list, broadcast_shape_list
 
@@ -593,7 +593,7 @@ def _check_scalar_shape(shape_list, name_idx_map, scalar_name):
     True or False
     """
     need_to_check = [shape_list[name_idx_map[name]] for name in scalar_name]
-    return all(check_para.is_scalar(item) for item in need_to_check)
+    return all(para_check.is_scalar(item) for item in need_to_check)
 
 
 # pylint: disable=locally-disabled, too-few-public-methods
@@ -678,7 +678,7 @@ def common_apply_op_process(config, kernel_name, same_flag=True):
     """
 
     # check kernel name
-    check_para.check_kernel_name(kernel_name)
+    para_check.check_kernel_name(kernel_name)
 
     # correspondence between tensor name and indexing
     name_idx_map = {name: idx for idx, name in enumerate(config.name.all)}

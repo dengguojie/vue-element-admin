@@ -31,8 +31,8 @@ case_small_shape_same_not_aligned_uint8 = {
                 "ori_format": "NDHWC"
             },
             {
-                "shape": (1, 3, 3, 3, 8),
-                "format": "NDHWC",
+                "shape": (1, 3, 1, 3, 3, 32),
+                "format": "NDC1HWC0",
                 "dtype": "uint8",
                 "ori_shape": (1, 3, 3, 3, 8),
                 "ori_format": "NDHWC"
@@ -56,8 +56,8 @@ case_small_shape_same_not_aligned_fp16 = {
                 "ori_format": "NDHWC"
             },
             {
-                "shape": (1, 3, 3, 3, 136),
-                "format": "NDHWC",
+                "shape": (1, 3, 9, 3, 3, 16),
+                "format": "NDC1HWC0",
                 "dtype": "float16",
                 "ori_shape": (1, 3, 3, 3, 136),
                 "ori_format": "NDHWC"
@@ -81,8 +81,8 @@ case_small_shape_same_aligned_multi_batch_fp16 = {
                 "ori_format": "NDHWC"
             },
             {
-                "shape": (32, 2, 2, 2, 128),
-                "format": "NDHWC",
+                "shape": (32, 2, 8, 2, 2, 16),
+                "format": "NDC1HWC0",
                 "dtype": "float16",
                 "ori_shape": (32, 2, 2, 2, 128),
                 "ori_format": "NDHWC"
@@ -106,8 +106,8 @@ case_medium_shape_same_howo_not_aligned_fp16 = {
                 "ori_format": "NDHWC"
             },
             {
-                "shape": (3, 51, 2, 5, 800),
-                "format": "NDHWC",
+                "shape": (3, 51, 50, 2, 5, 16),
+                "format": "NDC1HWC0",
                 "dtype": "float16",
                 "ori_shape": (3, 51, 2, 5, 800),
                 "ori_format": "NDHWC"
@@ -131,8 +131,8 @@ case_big_shape_same_howo_aligned_fp16 = {
                 "ori_format": "NDHWC"
             },
             {
-                "shape": (1, 1, 512, 512, 3456),
-                "format": "NDHWC",
+                "shape": (1, 1, 216, 512, 512, 16),
+                "format": "NDC1HWC0",
                 "dtype": "float16",
                 "ori_shape": (1, 1, 512, 512, 3456),
                 "ori_format": "NDHWC"
@@ -260,14 +260,21 @@ def calc_expect_func(input_x, output_y, ksizes, strides, padding):
     inputArr1_6hd = input_x["value"]
     N, D, C1, H, W, C0 = inputArr1_6hd.shape
     inputArr1_6hd = inputArr1_6hd.transpose(0, 1, 3, 4, 2, 5).reshape(N, D, H, W, C1*C0)
-    N, D, H, W, C = input_x["ori_shape"]
-    inputArr1 = inputArr1_6hd[:,:,:,:,:C]
+    Ni, Di, Hi, Wi, Ci = input_x["ori_shape"]
+    inputArr1 = inputArr1_6hd[:,:,:,:,:Ci]
     outputArr = _extract_volume_patches(inputArr1, ksizes, strides, padding)
-    return outputArr
+    outputShape = outputArr.shape
+    No, Do, Ho, Wo, Co = outputShape
+    C1o = (outputShape[4] + C0 - 1) // C0
+    C0o = C0
+    outputArr_6hd = np.zeros((No, Do, Ho, Wo, C1o * C0o))
+    outputArr_6hd[:,:,:,:,:Co] = outputArr
+    outputArr_6hd = outputArr_6hd.reshape(No, Do, Ho, Wo, C1o, C0o).transpose(0, 1, 4, 2, 3, 5).copy()
+    return outputArr_6hd
 
 ut_case.add_precision_case("all", {
     "params": [{"shape": (1,6,6,6,32), "format": "NDC1HWC0", "dtype": "uint8", "ori_shape": (1,6,6,6,32), "ori_format": "NDHWC", "param_type": "input", "value":get_input((1,6,6,6,32), "uint8")},
-               {"shape": (1,3,3,3,256), "format": "NDHWC", "dtype": "uint8", "ori_shape": (1,3,3,3,256), "ori_format": "NDHWC", "param_type": "output"},
+               {"shape": (1,3,8,3,3,32), "format": "NDC1HWC0", "dtype": "uint8", "ori_shape": (1,3,3,3,256), "ori_format": "NDHWC", "param_type": "output"},
                (1, 2, 2, 2, 1), (1, 2, 2, 2, 1), "SAME"],
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
@@ -275,7 +282,7 @@ ut_case.add_precision_case("all", {
 
 ut_case.add_precision_case("all", {
     "params": [{"shape": (1,3,3,3,32), "format": "NDC1HWC0", "dtype": "uint8", "ori_shape": (1,3,3,3,32), "ori_format": "NDHWC", "param_type": "input", "value":get_input((1,3,3,3,32), "uint8")},
-               {"shape": (1,2,3,3,256), "format": "NDHWC", "dtype": "uint8", "ori_shape": (1,2,3,3,256), "ori_format": "NDHWC", "param_type": "output"},
+               {"shape": (1,2,8,3,3,32), "format": "NDC1HWC0", "dtype": "uint8", "ori_shape": (1,2,3,3,256), "ori_format": "NDHWC", "param_type": "output"},
                (1, 2, 2, 2, 1), (1, 2, 1, 1, 1), "SAME"],
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
@@ -283,7 +290,7 @@ ut_case.add_precision_case("all", {
 
 ut_case.add_precision_case("all", {
     "params": [{"shape": (1,3,6,9,16), "format": "NDC1HWC0", "dtype": "float16", "ori_shape": (1,3,6,9,16), "ori_format": "NDHWC", "param_type": "input", "value":get_input((1,3,6,9,16), "float16")},
-               {"shape": (1,2,2,5,800), "format": "NDHWC", "dtype": "float16", "ori_shape": (1,2,2,5,800), "ori_format": "NDHWC", "param_type": "output"},
+               {"shape": (1,2,50,2,5,16), "format": "NDC1HWC0", "dtype": "float16", "ori_shape": (1,2,2,5,800), "ori_format": "NDHWC", "param_type": "output"},
                (1, 2, 5, 5, 1), (1, 2, 3, 2, 1), "SAME"],
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
@@ -291,7 +298,7 @@ ut_case.add_precision_case("all", {
 
 ut_case.add_precision_case("all", {
     "params": [{"shape": (1,3,48,9,16), "format": "NDC1HWC0", "dtype": "float16", "ori_shape": (1,3,48,9,16), "ori_format": "NDHWC", "param_type": "input", "value":get_input((1,3,48,9,16), "float16")},
-               {"shape": (1,2,16,5,640), "format": "NDHWC", "dtype": "float16", "ori_shape": (1,2,16,5,640), "ori_format": "NDHWC", "param_type": "output"},
+               {"shape": (1,2,40,16,5,16), "format": "NDC1HWC0", "dtype": "float16", "ori_shape": (1,2,16,5,640), "ori_format": "NDHWC", "param_type": "output"},
                (1, 2, 4, 5, 1), (1, 2, 3, 2, 1), "SAME"],
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)

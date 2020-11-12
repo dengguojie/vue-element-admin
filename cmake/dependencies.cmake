@@ -1,0 +1,48 @@
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+
+# if D_LINK_PATH is set in environment variables, search libraries in given path
+if(DEFINED ENV{D_LINK_PATH})
+  # D_LINK_PATH is set
+  set(CANN_LIB_PATH $ENV{D_LINK_PATH})
+  message("Find env D_LINK_PATH, search libs under ${CANN_LIB_PATH}")
+  find_module(slog libslog.so ${CANN_LIB_PATH})
+  find_module(register libregister.so ${CANN_LIB_PATH})
+  find_module(graph libgraph.so ${CANN_LIB_PATH})
+  find_module(error_manager liberror_manager.so ${CANN_LIB_PATH})
+  find_module(te_fusion libte_fusion.so ${CANN_LIB_PATH})
+  find_module(platform libplatform.so ${CANN_LIB_PATH})
+  find_module(_caffe_parser lib_caffe_parser.so ${CANN_LIB_PATH})
+  find_module(ascend_protobuf libascend_protobuf.so.3.8.0.0 ${CANN_LIB_PATH})
+  set(tbe_whl ${CANN_LIB_PATH}/te-0.4.0-py3-none-any.whl)
+else()
+  # Ascend mode
+  if(DEFINED ENV{ASCEND_CUSTOM_PATH})
+      set(ASCEND_DIR $ENV{ASCEND_CUSTOM_PATH})
+  else()
+      set(ASCEND_DIR /usr/local/Ascend)
+  endif()
+  message("Search libs under install path ${ASCEND_DIR}")
+  set(ASCEND_ATC_DIR ${ASCEND_DIR}/atc/lib64)
+  find_module(slog libslog.so ${ASCEND_ATC_DIR})
+  find_module(register libregister.so ${ASCEND_ATC_DIR})
+  find_module(graph libgraph.so ${ASCEND_ATC_DIR})
+  find_module(error_manager liberror_manager.so ${ASCEND_ATC_DIR})
+  find_module(te_fusion libte_fusion.so ${ASCEND_ATC_DIR})
+  find_module(platform libplatform.so ${ASCEND_ATC_DIR})
+  find_module(_caffe_parser lib_caffe_parser.so ${ASCEND_ATC_DIR})
+  find_module(ascend_protobuf libascend_protobuf.so.3.8.0.0 ${ASCEND_ATC_DIR})
+  find_file(tbe_whl te-0.4.0-py3-none-any.whl ${ASCEND_ATC_DIR})
+endif()

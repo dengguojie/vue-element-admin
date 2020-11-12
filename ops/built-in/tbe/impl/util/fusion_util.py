@@ -20,7 +20,7 @@ from __future__ import absolute_import
 from te.tvm import tensor
 from te.tvm import expr
 from te.tvm import api as tvm
-from te.platform import operation
+from te.lang.base import operation
 from te.platform.cce_emitinsn_params import cceEmitParamsIns
 
 

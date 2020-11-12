@@ -168,3 +168,4 @@ ut_case.add_broadcast_case("all", ["float16", (32, 64, 4, 4, 16, 16), "FRACTAL_N
 #                                })
 
 # ut_case.add_test_cfg_cov_case("all")
+

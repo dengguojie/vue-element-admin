@@ -22,6 +22,7 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
+from te.utils.error_manager import error_manager_vector
 
 # shape size limit for aicore is 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -76,7 +77,8 @@ def square(input_x, output_y, kernel_name="square"):
 
     check_list = ["float16", "float32", "int32"]
     if not dtype in check_list:
-        raise RuntimeError("square only support float16, float32, int32")
+        error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, "input_x", \
+                                                                 check_list, dtype)
 
     shape = shape_util.shape_refine(shape)
     fuseshape = [1]

@@ -31,6 +31,9 @@ from impl.concat_last_dim import ConcatWith5HD
 from impl.concat_tik import ConcatSchedule
 from impl.concat_l1fusion import ConcatL1Fusion
 from impl.util import util_select_op_base
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 
 def is_dynamic_shape(input_values):
@@ -39,6 +42,34 @@ def is_dynamic_shape(input_values):
             return True
 
     return False
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(input_values,
+                        output_data,
+                        axis,
+                        kernel_name="concat_v2_d"):
+    value_len = len(input_values)
+    shape_value_len = len(input_values[0].get("shape"))
+    format_value = input_values[0].get("format").upper()
+    if axis < 0:
+        axis += shape_value_len
+    if format_value == "ND" or format_value == "NC1HWC0":
+        axis_split_matrix=[]
+        for i in range(0, shape_value_len):
+            if i != axis:
+                input_list = []
+                for j in range(0, value_len):
+                    input_0 = [j, [i], [-1], [-1]]
+                    input_list.append(input_0)
+                split_0 = [SplitInput(*input_list), SplitOutput([0, [i]])]
+                axis_split_matrix.append(split_0)
+
+    else:
+        axis_split_matrix = None
+    axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-branches

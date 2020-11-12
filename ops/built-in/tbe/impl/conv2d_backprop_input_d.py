@@ -147,13 +147,13 @@ def conv2d_backprop_input_d(  # pylint: disable=W0622,C0103,R0913,R0914
 
     Parameters
     ----------
-    filter: dict with keys(shape and dtype)
+    filter: dict with keys(ori_shape, ori_format, shape, format, dtype)
         input weight tensor.
 
-    out_backprop: dict with keys(shape and dtype)
+    out_backprop: dict with keys(ori_shape, ori_format, shape, format, dtype)
         The shape of gradients.
 
-    y: dict with keys(shape and dtype)
+    y: dict with keys(ori_shape, ori_format, shape, format, dtype)
         conv2d_backprop_input output tensor, dtype must be assigned.
 
     input_size: tuple/list of 4 integers
@@ -191,7 +191,7 @@ def conv2d_backprop_input_d(  # pylint: disable=W0622,C0103,R0913,R0914
     filters_dtype = filter.get("dtype")
     out_backprop_dtype = out_backprop.get("dtype")
     res_dtype = y.get("dtype")
-
+    filter_ori_format = filter.get("ori_format")
     para_check.check_kernel_name(kernel_name)
     para_check.check_shape_rule(
         ori_shape_filters,
@@ -235,6 +235,13 @@ def conv2d_backprop_input_d(  # pylint: disable=W0622,C0103,R0913,R0914
         topi_flag=1,
     )
     shape_filters, shape_out_backprop, shape_res, strides, dilations = res
+
+    group_dict = util_deconv_comm.calculate_group(
+        shape_filters,
+        groups,
+        filters_dtype,
+        filter_ori_format
+    )
     _conv2d_backprop_input_cce(
         shape_filters,
         shape_out_backprop,
@@ -246,6 +253,7 @@ def conv2d_backprop_input_d(  # pylint: disable=W0622,C0103,R0913,R0914
         out_backprop_dtype,
         res_dtype,
         kernel_name,
+        group_dict
     )
 
 
@@ -306,7 +314,7 @@ def conv2d_backprop_input_d_compute(  # pylint: disable=C0103,W0622,R0913,R0914
     filters_dtype = filter.dtype
     out_backprop_dtype = out_backprop.dtype
     res_dtype = y["dtype"]
-
+    filter_ori_format = filter.op.attrs["ori_format"].value
     res = _check_conv2dbp_input_para(
         filter,
         out_backprop,
@@ -318,6 +326,14 @@ def conv2d_backprop_input_d_compute(  # pylint: disable=C0103,W0622,R0913,R0914
         topi_flag=0,
     )
     shape_filters, shape_out_backprop, shape_res, strides, dilations = res
+
+    group_dict = util_deconv_comm.calculate_group(
+        shape_filters,
+        groups,
+        filters_dtype,
+        filter_ori_format
+    )
+
     util_deconv_comm.check_conv2dbp_input_params(
         shape_filters,
         shape_out_backprop,
@@ -328,24 +344,40 @@ def conv2d_backprop_input_d_compute(  # pylint: disable=C0103,W0622,R0913,R0914
         filters_dtype,
         out_backprop_dtype,
         res_dtype,
-        kernel_name,
+        kernel_name=kernel_name,
+        group_dict=group_dict
     )
 
     pads = util_deconv_comm.get_padlist(
         pads, shape_res, strides, shape_filters, dilations
     )
 
-    res = tbe.conv2d_backprop_input_compute(
-        filter,
-        out_backprop,
-        shape_filters,
-        shape_res,
-        strides,
-        pads,
-        dilations,
-        res_dtype=res_dtype,
-        kernel_name=kernel_name,
-    )
+    if 1 == groups:
+        # for old fwkacllib version
+        res = tbe.conv2d_backprop_input_compute(
+            filter,
+            out_backprop,
+            shape_filters,
+            shape_res,
+            strides,
+            pads,
+            dilations,
+            res_dtype=res_dtype,
+            kernel_name=kernel_name
+        )
+    else:
+        res = tbe.conv2d_backprop_input_compute(
+            filter,
+            out_backprop,
+            shape_filters,
+            shape_res,
+            strides,
+            pads,
+            dilations,
+            res_dtype=res_dtype,
+            kernel_name=kernel_name,
+            group_dict=group_dict
+        )
     return res
 
 
@@ -360,6 +392,7 @@ def conv2d_backprop_input_d_compute(  # pylint: disable=C0103,W0622,R0913,R0914
     str,
     str,
     str,
+    (dict, para_check.NONE_TYPE)
 )
 def _conv2d_backprop_input_cce(  # pylint: disable=R0913,R0914
     shape_filter,
@@ -372,6 +405,7 @@ def _conv2d_backprop_input_cce(  # pylint: disable=R0913,R0914
     out_backprop_dtype="float16",
     res_dtype="float16",
     kernel_name="conv2d_backprop_input_cce",
+    group_dict=None
 ):
     """
     Topi interface of conv2d backprop input
@@ -402,9 +436,12 @@ def _conv2d_backprop_input_cce(  # pylint: disable=R0913,R0914
 
     kernel_name: Cce kernel name. Default to "conv2d_backprop_input_cce".
 
+    group_dict: The params of group_dict.
+
     Returns: None
     ----------
     """
+
 
     res = util_deconv_comm.check_conv2dbp_input_params(
         shape_filter,
@@ -416,7 +453,8 @@ def _conv2d_backprop_input_cce(  # pylint: disable=R0913,R0914
         filter_dtype,
         out_backprop_dtype,
         res_dtype,
-        kernel_name,
+        kernel_name=kernel_name,
+        group_dict=group_dict
     )
     (
         shape_filter,
@@ -443,18 +481,24 @@ def _conv2d_backprop_input_cce(  # pylint: disable=R0913,R0914
         dedy_w,
         dy_k0,
     )
+
+    g_extend = group_dict.get(util_deconv_comm.GroupDictKeys.g_extend)
+    dx_c1_extend = group_dict.get(util_deconv_comm.GroupDictKeys.dx_c1_extend)
+    dy_c1_extend = group_dict.get(util_deconv_comm.GroupDictKeys.dy_c1_extend)
+    groups = group_dict.get(util_deconv_comm.GroupDictKeys.groups)
+
     if filter_dtype == "int8" and out_backprop_dtype == "int8":
-        filter_channel = util_deconv_comm.align(filter_channel, w_n0)
         shape_filter_frac = (
-            util_deconv_comm.ceil(filter_batch, w_k0) * filter_h * filter_w,
-            util_deconv_comm.ceil(filter_channel, w_n0),
+            g_extend * dy_c1_extend * filter_h * filter_w,
+            dx_c1_extend,
             w_n0,
             w_k0,
         )
     else:
         shape_filter_frac = (
-            util_deconv_comm.ceil(filter_channel, w_n0) * filter_h * filter_w,
-            util_deconv_comm.ceil(filter_batch, w_k0),
+            # (GCi1HkWk, Co1, Co0, Ci0); filter_placehold is same to conv2d_forward's filter
+            g_extend * dx_c1_extend * filter_h * filter_w,
+            dy_c1_extend,
             w_k0,
             w_n0,
         )
@@ -462,17 +506,32 @@ def _conv2d_backprop_input_cce(  # pylint: disable=R0913,R0914
 
     filter_frac = tvm.placeholder(shape_filter_frac, name="filter", dtype=filter_dtype)
 
-    dedx = tbe.conv2d_backprop_input_compute(
-        filters=filter_frac,
-        out_backprop=dedy,
-        filter_sizes=shape_filter,
-        input_sizes=input_sizes,
-        strides=strides,
-        padding=pads,
-        dilations=dilations,
-        res_dtype=res_dtype,
-        kernel_name=kernel_name,
-    )
+    if 1 == groups:
+        # for old fwkacllib version
+        dedx = tbe.conv2d_backprop_input_compute(
+            filters=filter_frac,
+            out_backprop=dedy,
+            filter_sizes=shape_filter,
+            input_sizes=input_sizes,
+            strides=strides,
+            padding=pads,
+            dilations=dilations,
+            res_dtype=res_dtype,
+            kernel_name=kernel_name
+        )
+    else:
+        dedx = tbe.conv2d_backprop_input_compute(
+            filters=filter_frac,
+            out_backprop=dedy,
+            filter_sizes=shape_filter,
+            input_sizes=input_sizes,
+            strides=strides,
+            padding=pads,
+            dilations=dilations,
+            res_dtype=res_dtype,
+            kernel_name=kernel_name,
+            group_dict=group_dict
+        )
     tensor_list = [filter_frac, dedy, dedx]
 
     with tvm.target.cce():

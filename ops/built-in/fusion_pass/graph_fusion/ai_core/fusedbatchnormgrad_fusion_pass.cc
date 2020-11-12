@@ -96,7 +96,7 @@ Status FusedBatchNormGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
   for (auto& fusedBatchNormGrad : nodes) {
     if (!ge::AttrUtils::HasAttr(fusedBatchNormGrad->GetOpDesc(), BATCHNORMGRAD_ATTR_TRAINING)) {
       OP_LOGI(FUSED_OP_TYPE.c_str(), "The fused batch norm grad node does not have is training attr.");
-      return FAILED;
+      return NOT_CHANGED;
     }
     bool isTraining;
     ge::AttrUtils::GetBool(fusedBatchNormGrad->GetOpDesc(), BATCHNORMGRAD_ATTR_TRAINING, isTraining);

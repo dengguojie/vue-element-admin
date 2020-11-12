@@ -35,6 +35,7 @@
 
 #include "pattern_fusion_util.h"
 #include "op_log.h"
+#include "error_util.h"
 
 using namespace ge;
 namespace fe {
@@ -65,7 +66,7 @@ vector<FusionPattern*> Conv2DMulFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   string pass_name = "TbeConv2DMulFusion";
   FusionPattern* pattern = new (std::nothrow) FusionPattern(pass_name);
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "new an object failed."), return patterns);
   OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pass_name.c_str());
   pattern->AddOpDesc(kPatternMul, {kMul})
       .AddOpDesc(kPatternSrc, {kConvolution, kConvolution3D})
@@ -83,17 +84,16 @@ vector<FusionPattern*> Conv2DMulFusionPass::DefinePatterns() {
   * @param input_channel The cahnnel num of input node
   * @return success for get input channel
   */
-static Status GetInputChannel(const ge::NodePtr input_node, int64_t& input_channel) {
+Status Conv2DMulFusionPass::GetInputChannel(const ge::NodePtr input_node, int64_t& input_channel) {
   ge::GeTensorDesc node_fm = ge::OpDescUtils::GetNonConstInputTensorDesc(input_node, 0);
   ge::GeShape node_fm_shape = node_fm.GetShape();
   ge::Format node_fm_format = node_fm.GetFormat();
   auto dims = node_fm_shape.GetDims();
   FUSION_PASS_CHECK(dims.empty() || dims.size() != 4 ||
                     (node_fm_format != FORMAT_NCHW && node_fm_format != FORMAT_NHWC),
-                    OP_LOGE("Conv2DMulFusionPass",
-                            "Mul node's fm shape_dim is %d, format is %d,"
-                            "fusion failed, valid fm shape_dim is 4, and valid format is NCHW(0) or NHWC(1).",
-                            dims.size(), node_fm_format),
+                     CommonRuntimeErrLog(fused_op_type_.c_str(), ConcatString("Conv2DMulFusionPass",
+                          " Mul node's fm shape_dim is ", dims.size(), " format is ", node_fm_format,
+                          " fusion failed, valid fm shape_dim is 4, and valid format is NCHW(0) or NHWC(1).")),
                     return FAILED);
   if (node_fm_format == FORMAT_NCHW) {
     input_channel = dims[1];
@@ -115,9 +115,9 @@ Status Conv2DMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   OP_LOGD(fused_op_type_.c_str(), "Enter Conv2DMulFusionPass");
   ge::NodePtr conv_node = GetNodeFromMapping(kPatternSrc, mapping);
   ge::NodePtr mul_node = GetNodeFromMapping(kPatternMul, mapping);
-  FUSION_PASS_CHECK(conv_node == nullptr, OP_LOGE(fused_op_type_.c_str(), "Node conv2d is null, fusion failed."),
+  FUSION_PASS_CHECK(conv_node == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "Node conv2d is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(mul_node == nullptr, OP_LOGE(fused_op_type_.c_str(), "Node mul is null, fusion failed."),
+  FUSION_PASS_CHECK(mul_node == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "Node mul is null, fusion failed."),
                     return PARAM_INVALID);
 
   if (conv_node->GetOutDataNodes().size() > 1) {
@@ -149,12 +149,14 @@ Status Conv2DMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
                     return NOT_CHANGED);
 
   ge::OpDescPtr src_op = conv_node->GetOpDesc();
-  FUSION_PASS_CHECK(src_op == nullptr, OP_LOGE(fused_op_type_.c_str(), "Node:%s's OpDesc is null, fusion failed.",
-                                               conv_node->GetName().c_str()),
+  FUSION_PASS_CHECK(src_op == nullptr,
+                    CommonRuntimeErrLog(fused_op_type_.c_str(), ConcatString("Node: ",conv_node->GetName().c_str(),
+                                                           "'s OpDesc is null, fusion failed.")),
                     return PARAM_INVALID);
   ge::OpDescPtr mul_op = mul_node->GetOpDesc();
-  FUSION_PASS_CHECK(mul_op == nullptr, OP_LOGE(fused_op_type_.c_str(), "Node:%s's OpDesc is null, fusion failed.",
-                                               mul_node->GetName().c_str()),
+  FUSION_PASS_CHECK(mul_op == nullptr,
+                    CommonRuntimeErrLog(fused_op_type_.c_str(), ConcatString("Node: ",conv_node->GetName().c_str(),
+                                                           "'s OpDesc is null, fusion failed.")),
                     return PARAM_INVALID);
 
   OP_LOGI(fused_op_type_.c_str(), "Conv2DMulFusionPass: conv2d [%s] has %u input anchor.", conv_node->GetName().c_str(),
@@ -174,35 +176,44 @@ Status Conv2DMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     hasBias = false;
   }
 
-  if (conv_node->GetAllInDataAnchors().size() == 3) {
+  int anchor_num = 0;
+  for (auto in_data_anchor : conv_node->GetAllInDataAnchors()) {
+    if ((in_data_anchor != nullptr) &&
+        (in_data_anchor->GetPeerOutAnchor() != nullptr) &&
+        (in_data_anchor->GetPeerOutAnchor()->GetOwnerNode() != nullptr)) {
+      anchor_num++;
+    }
+  }
+
+  if (anchor_num == 3) {
     hasBias = true;
   }
 
   OP_LOGI(fused_op_type_.c_str(), "convWeights  size %u .", conv2d_weights.size());
 
   auto conv_filter_anchor = conv_node->GetInDataAnchor(kFilterIndex);
-  FUSION_PASS_CHECK(conv_filter_anchor == nullptr, OP_LOGE(fused_op_type_.c_str(), "filter in anchor is null"),
+  FUSION_PASS_CHECK(conv_filter_anchor == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "filter in anchor is null"),
                     return PARAM_INVALID);
   OutDataAnchorPtr filter_anchor = conv_filter_anchor->GetPeerOutAnchor();
-  FUSION_PASS_CHECK(filter_anchor == nullptr, OP_LOGE(fused_op_type_.c_str(), "filter output anchor is null"),
+  FUSION_PASS_CHECK(filter_anchor == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "filter output anchor is null"),
                     return PARAM_INVALID);
   NodePtr filter_node = filter_anchor->GetOwnerNode();
   FUSION_PASS_CHECK(filter_node == nullptr,
-                    OP_LOGE(fused_op_type_.c_str(), "Conv2DMulFusionPass: filter_node is not exist."),
+                    CommonRuntimeErrLog(fused_op_type_.c_str(), "Conv2DMulFusionPass: filter_node is not exist."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(ge::NodeUtils::GetInConstNodeTypeCrossSubgraph(filter_node) != "Const",
                     OP_LOGW(fused_op_type_.c_str(), "Conv2DMulFusionPass: filter is not const Node."),
                     return NOT_CHANGED);
   if (hasBias) {
     auto conv_bias_anchor = conv_node->GetInDataAnchor(kBiasIndex);
-    FUSION_PASS_CHECK(conv_bias_anchor == nullptr, OP_LOGE(fused_op_type_.c_str(), "bias in anchor is null"),
+    FUSION_PASS_CHECK(conv_bias_anchor == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "bias in anchor is null"),
                       return PARAM_INVALID);
     bias_anchor = conv_bias_anchor->GetPeerOutAnchor();
-    FUSION_PASS_CHECK(bias_anchor == nullptr, OP_LOGE(fused_op_type_.c_str(), "bias anchor is null"),
+    FUSION_PASS_CHECK(bias_anchor == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "bias anchor is null"),
                       return PARAM_INVALID);
     bias_node = bias_anchor->GetOwnerNode();
     FUSION_PASS_CHECK(bias_node == nullptr,
-                      OP_LOGE(fused_op_type_.c_str(), "Conv2DMulFusionPass: bias_node is not exist."),
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "Conv2DMulFusionPass: bias_node is not exist."),
                       return PARAM_INVALID);
     FUSION_PASS_CHECK(ge::NodeUtils::GetInConstNodeTypeCrossSubgraph(bias_node) != "Const",
                       OP_LOGW(fused_op_type_.c_str(), "Conv2DMulFusionPass: bias is not const Node."),
@@ -222,7 +233,7 @@ Status Conv2DMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
                       return NOT_CHANGED);
     ge::ConstGeTensorPtr mul_weight = mul_weights[0];
     FUSION_PASS_CHECK(mul_weight == nullptr,
-                      OP_LOGE(fused_op_type_.c_str(), "Mul node's weight is null, fusion failed."),
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "Mul node's weight is null, fusion failed."),
                       return PARAM_INVALID);
     FUSION_PASS_CHECK(mul_weight->GetTensorDesc().GetShape().GetDims().size() != 0 &&
                           !(mul_weight->GetTensorDesc().GetShape().GetDims().size() == 1 &&
@@ -231,6 +242,11 @@ Status Conv2DMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
                       OP_LOGW(fused_op_type_.c_str(),
                               "Conv2DMulFusionPass: mul's weight should be scalar input or channel_wise input."),
                       return NOT_CHANGED);
+    if (mul_weight->GetTensorDesc().GetShape().GetDims().size() != 0 &&
+        PatternFusionUtil::IsUnknownShape(mul_weight->GetTensorDesc().GetShape().GetDims()[0])) {
+      OP_LOGW(fused_op_type_.c_str(), "Conv2DMulFusionPass cannot be applied for unknown shape.");
+      return NOT_CHANGED;
+    }
   } else if (conv_node->GetType() == "Conv3D") {
     GeTensorDesc input_desc0 = mul_op->GetInputDesc(0);
     GeTensorDesc input_desc1 = mul_op->GetInputDesc(1);
@@ -240,11 +256,25 @@ Status Conv2DMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
                       OP_LOGW(fused_op_type_.c_str(), "Mul's input0 dims size is not 5."),
                       return NOT_CHANGED);
     if (dims1.size() == 1) {
+      if (PatternFusionUtil::IsUnknownShape(dims0.at(4)) ||
+          PatternFusionUtil::IsUnknownShape(dims1.at(0))) {
+        OP_LOGW(fused_op_type_.c_str(), "Conv2DMulFusionPass cannot be applied for unknown shape.");
+        return NOT_CHANGED;
+      }
       if (dims0.at(4) != dims1.at(0)) {
         return NOT_CHANGED;
       }
     } else if (dims1.size() == 5) {
       // NDHWC
+      if (PatternFusionUtil::IsUnknownShape(dims0.at(4)) ||
+          PatternFusionUtil::IsUnknownShape(dims1.at(0)) ||
+          PatternFusionUtil::IsUnknownShape(dims1.at(1)) ||
+          PatternFusionUtil::IsUnknownShape(dims1.at(2)) ||
+          PatternFusionUtil::IsUnknownShape(dims1.at(3)) ||
+          PatternFusionUtil::IsUnknownShape(dims1.at(4))) {
+        OP_LOGW(fused_op_type_.c_str(), "Conv2DMulFusionPass cannot be applied for unknown shape.");
+        return NOT_CHANGED;
+      }
       if (dims1.at(0) != 1 or dims1.at(1) != 1 or dims1.at(2) != 1 or dims1.at(3) != 1 or dims0.at(4) != dims1.at(4)) {
         OP_LOGW(fused_op_type_.c_str(), "Match failed! tensor is not ChannelWise");
         return NOT_CHANGED;
@@ -265,12 +295,13 @@ Status Conv2DMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
 
   // get mul_const_node
   NodePtr mul_const_node = mul_const_nodes[0];
-  FUSION_PASS_CHECK(mul_const_node == nullptr, OP_LOGE(fused_op_type_.c_str(), "mul's const node is null"),
+  FUSION_PASS_CHECK(mul_const_node == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "mul's const node is null"),
                     return FAILED);
   OutDataAnchorPtr const_mul_anchor = mul_const_node->GetOutDataAnchor(0);
   FUSION_PASS_CHECK(const_mul_anchor == nullptr,
-                    OP_LOGE(fused_op_type_.c_str(), "Node [%s]: const output anchor is null",
-                            mul_const_node->GetName().c_str()), return FAILED);
+                    CommonRuntimeErrLog(fused_op_type_.c_str(), ConcatString("Node [", mul_const_node->GetName().c_str(),
+                                                                 "]: const output anchor is null")),
+                    return FAILED);
 
   // copy filter mul op, update input_shape & out_shape
   OpDescPtr filter_mul_op_desc = AttrUtils::CloneOpDesc(mul_op);
@@ -304,53 +335,53 @@ Status Conv2DMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   x_anchor->UnlinkAll();
   for (auto &in_anchor : output_in_anchors) {
     OutDataAnchorPtr y_anchor = conv_node->GetOutDataAnchor(0);
-    FUSION_PASS_CHECK(y_anchor == nullptr, OP_LOGE(fused_op_type_.c_str(), "conv2d output anchor is null"),
+    FUSION_PASS_CHECK(y_anchor == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "conv2d output anchor is null"),
                       return FAILED);
-    FUSION_PASS_CHECK(in_anchor == nullptr, OP_LOGE(fused_op_type_.c_str(), "output input anchor is null"),
+    FUSION_PASS_CHECK(in_anchor == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "output input anchor is null"),
                       return FAILED);
     FUSION_PASS_CHECK(GraphUtils::AddEdge(y_anchor, in_anchor) != GRAPH_SUCCESS,
-                      OP_LOGE(fused_op_type_.c_str(), "add edge from conv2d to output failed"), return FAILED);
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "add edge from conv2d to output failed"), return FAILED);
   }
 
   // unlink filter to conv2d
   InDataAnchorPtr conv_filter_in_anchor = conv_node->GetInDataAnchor(kFilterIndex);
   FUSION_PASS_CHECK(conv_filter_in_anchor == nullptr,
-                    OP_LOGE(fused_op_type_.c_str(), "conv_node filter anchor is null"), return FAILED);
+                    CommonRuntimeErrLog(fused_op_type_.c_str(), "conv_node filter anchor is null"), return FAILED);
   filter_anchor = conv_filter_in_anchor->GetPeerOutAnchor();
-  FUSION_PASS_CHECK(filter_anchor == nullptr, OP_LOGE(fused_op_type_.c_str(), "filter output anchor is null"),
+  FUSION_PASS_CHECK(filter_anchor == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "filter output anchor is null"),
                     return FAILED);
   FUSION_PASS_CHECK(GraphUtils::RemoveEdge(filter_anchor, conv_filter_in_anchor) != GRAPH_SUCCESS,
-                    OP_LOGE(fused_op_type_.c_str(), "remove edge from input to conv2d failed"), return FAILED);
+                    CommonRuntimeErrLog(fused_op_type_.c_str(), "remove edge from input to conv2d failed"), return FAILED);
 
   // unlink bias to conv2d
   if (hasBias) {
     conv_bias_in_anchor = conv_node->GetInDataAnchor(kBiasIndex);
-    FUSION_PASS_CHECK(conv_bias_in_anchor == nullptr, OP_LOGE(fused_op_type_.c_str(), "conv_node bias anchor is null"),
+    FUSION_PASS_CHECK(conv_bias_in_anchor == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "conv_node bias anchor is null"),
                       return FAILED);
     bias_anchor = conv_bias_in_anchor->GetPeerOutAnchor();
-    FUSION_PASS_CHECK(bias_anchor == nullptr, OP_LOGE(fused_op_type_.c_str(), "bias anchor is null"), return FAILED);
+    FUSION_PASS_CHECK(bias_anchor == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "bias anchor is null"), return FAILED);
     FUSION_PASS_CHECK(GraphUtils::RemoveEdge(bias_anchor, conv_bias_in_anchor) != GRAPH_SUCCESS,
-                      OP_LOGE(fused_op_type_.c_str(), "remove edge from input to conv2d failed"), return FAILED);
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "remove edge from input to conv2d failed"), return FAILED);
   }
 
   // add edge for filter->filterMul
   ge::NodePtr filter_mul_op_node = graph.AddNode(filter_mul_op_desc);
-  FUSION_PASS_CHECK(filter_mul_op_node == nullptr, OP_LOGE(fused_op_type_.c_str(), "add filter mul op node failed"),
+  FUSION_PASS_CHECK(filter_mul_op_node == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "add filter mul op node failed"),
                     return FAILED);
   new_nodes.push_back(filter_mul_op_node);
   InDataAnchorPtr filter_mul_non_const_anchor = filter_mul_op_node->GetInDataAnchor(non_const_mul_input_index);
   FUSION_PASS_CHECK(filter_mul_non_const_anchor == nullptr,
-                    OP_LOGE(fused_op_type_.c_str(), "filter_mul input_0 anchor is null"), return FAILED);
+                    CommonRuntimeErrLog(fused_op_type_.c_str(), "filter_mul input_0 anchor is null"), return FAILED);
   FUSION_PASS_CHECK(GraphUtils::AddEdge(filter_anchor, filter_mul_non_const_anchor) != GRAPH_SUCCESS,
-                    OP_LOGE(fused_op_type_.c_str(), "add edge from filter to filter_mul failed"), return FAILED);
+                    CommonRuntimeErrLog(fused_op_type_.c_str(), "add edge from filter to filter_mul failed"), return FAILED);
   InDataAnchorPtr filter_mul_const_anchor = filter_mul_op_node->GetInDataAnchor(const_mul_input_index);
   FUSION_PASS_CHECK(filter_mul_const_anchor == nullptr,
-                    OP_LOGE(fused_op_type_.c_str(), "filter_mul input_1 anchor is null"), return FAILED);
+                    CommonRuntimeErrLog(fused_op_type_.c_str(), "filter_mul input_1 anchor is null"), return FAILED);
   FUSION_PASS_CHECK(GraphUtils::AddEdge(const_mul_anchor, filter_mul_const_anchor) != GRAPH_SUCCESS,
-                    OP_LOGE(fused_op_type_.c_str(), "add edge from filter to filter_mul failed"), return FAILED);
+                    CommonRuntimeErrLog(fused_op_type_.c_str(), "add edge from filter to filter_mul failed"), return FAILED);
   OutDataAnchorPtr filter_mul_out_anchor = filter_mul_op_node->GetOutDataAnchor(0);
   FUSION_PASS_CHECK(GraphUtils::AddEdge(filter_mul_out_anchor, conv_filter_in_anchor) != GRAPH_SUCCESS,
-                    OP_LOGE(fused_op_type_.c_str(), "add edge from filter_mul to conv failed"), return FAILED);
+                    CommonRuntimeErrLog(fused_op_type_.c_str(), "add edge from filter_mul to conv failed"), return FAILED);
 
   if (hasBias) {
     // copy bias mul op, update input_shape & out_shape
@@ -380,28 +411,30 @@ Status Conv2DMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
 
     // add edge for bias->biasMul
     ge::NodePtr bias_mul_op_node = graph.AddNode(bias_mul_op_desc);
-    FUSION_PASS_CHECK(bias_mul_op_node == nullptr, OP_LOGE(fused_op_type_.c_str(), "add bias mul op node failed"),
+    FUSION_PASS_CHECK(bias_mul_op_node == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(),
+                                                   "add bias mul op node failed"),
                       return FAILED);
     new_nodes.push_back(bias_mul_op_node);
     InDataAnchorPtr bias_mul_non_const_anchor = bias_mul_op_node->GetInDataAnchor(non_const_mul_input_index);
     FUSION_PASS_CHECK(bias_mul_non_const_anchor == nullptr,
-                      OP_LOGE(fused_op_type_.c_str(), "bias_mul input_0 anchor is null"), return FAILED);
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "bias_mul input_0 anchor is null"), return FAILED);
     FUSION_PASS_CHECK(GraphUtils::AddEdge(bias_anchor, bias_mul_non_const_anchor) != GRAPH_SUCCESS,
-                      OP_LOGE(fused_op_type_.c_str(), "add edge from bias to bias_mul failed"), return FAILED);
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "add edge from bias to bias_mul failed"), return FAILED);
     InDataAnchorPtr bias_mul_const_anchor = bias_mul_op_node->GetInDataAnchor(const_mul_input_index);
     FUSION_PASS_CHECK(bias_mul_const_anchor == nullptr,
-                      OP_LOGE(fused_op_type_.c_str(), "bias_mul input_1 anchor is null"), return FAILED);
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "bias_mul input_1 anchor is null"), return FAILED);
     FUSION_PASS_CHECK(GraphUtils::AddEdge(const_mul_anchor, bias_mul_const_anchor) != GRAPH_SUCCESS,
-                      OP_LOGE(fused_op_type_.c_str(), "add edge from bias to bias_mul failed"), return FAILED);
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "add edge from bias to bias_mul failed"), return FAILED);
     OutDataAnchorPtr bias_mul_out_anchor = bias_mul_op_node->GetOutDataAnchor(0);
     FUSION_PASS_CHECK(GraphUtils::AddEdge(bias_mul_out_anchor, conv_bias_in_anchor) != GRAPH_SUCCESS,
-                      OP_LOGE(fused_op_type_.c_str(), "add edge from bias_mul to conv failed"), return FAILED);
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "add edge from bias_mul to conv failed"), return FAILED);
   }
   OP_LOGI(fused_op_type_.c_str(), "Conv2DMulFusionPass: conv2d [%s] has %u input anchor.",
           conv_node->GetName().c_str(), conv_node->GetAllInDataAnchors().size());
 
   FUSION_PASS_CHECK(graph.RemoveNode(mul_node) == ge::GRAPH_FAILED,
-                    OP_LOGE(fused_op_type_.c_str(), "remove node %s failed.", mul_node->GetName().c_str()),
+                    CommonRuntimeErrLog(fused_op_type_.c_str(), ConcatString("remove node ",
+                                                                 mul_node->GetName().c_str(), " failed.")),
                     return FAILED);
 
   OP_LOGD(fused_op_type_.c_str(), "Conv2DMulFusionPass fusion success.");

@@ -13,7 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
+"""
+op ut run
+"""
 import os
 from absl import app
 from absl import flags
@@ -44,7 +46,12 @@ flags.DEFINE_string("data_path", None,
                     "expect output, default is './data'")
 
 
-def main(args):
+def main(args):  # pylint: disable=unused-argument
+    """
+    main method
+    :param args: default args
+    :return: None
+    """
     case_files = FLAGS.case_files
     if not case_files:
         case_files = os.path.realpath("./")
@@ -74,10 +81,10 @@ def main(args):
         return
 
     success = op_ut_runner.run_ut(case_dir=case_files, soc_version=soc_version, case_name=case_name,
-                        test_report=test_report, test_report_path=test_report_path,
-                        cov_report=cov_report, cov_report_path=cov_report_path,
-                        simulator_mode=simulator_mode, simulator_lib_path=simulator_lib_path,
-                        simulator_data_path=simulator_data_path, test_data_path=test_data_path)
+                                  test_report=test_report, test_report_path=test_report_path,
+                                  cov_report=cov_report, cov_report_path=cov_report_path,
+                                  simulator_mode=simulator_mode, simulator_lib_path=simulator_lib_path,
+                                  simulator_data_path=simulator_data_path, test_data_path=test_data_path)
     if success != "success":
         print("UT run failed, please see detail report.")
 

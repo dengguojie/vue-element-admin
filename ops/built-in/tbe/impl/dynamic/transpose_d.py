@@ -18,11 +18,7 @@ transpose
 import te.lang.dynamic
 from te import tik
 from te import platform as tbe_platform
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import REQUIRED_ATTR_LIST_INT
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import check_op_params
+from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 # pylint: disable=too-many-lines
@@ -1265,7 +1261,8 @@ def transpose_compute(tik_inst, tensor_list, pos_perm):
 
 
 @te.op.register_operator("TransposeD")
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.KERNEL_NAME)
 def transpose_d(x, y, perm, kernel_name="transpose_d"):
     """
     do transpose by perm attribute

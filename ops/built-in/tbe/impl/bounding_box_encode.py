@@ -18,6 +18,9 @@ bounding_box_encode
 import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 # the number of bits per byte
 THREAD_NUM = 2
@@ -33,6 +36,19 @@ BLOCK_NUMBER_FP16 = 32
 BLOCK_NUMBER_FP32 = 64
 # one block size takes up 32b
 BLOCK_SIZE = 32
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(anchorbox_in_dict,
+                        ground_truth_in_dict,
+                        delta_out_dict,
+                        means_attrs=(0, 0, 0, 0),
+                        stds_attrs=(1, 1, 1, 1),
+                        kernel_name_val="bounding_box_encode"):
+    axis_split_matrix=[[SplitInput([0, [0], [-1], [-1]], [1, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
+    axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 # pylint: disable=too-many-instance-attributes

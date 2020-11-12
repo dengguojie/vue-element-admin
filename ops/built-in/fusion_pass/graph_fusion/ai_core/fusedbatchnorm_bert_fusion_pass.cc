@@ -94,13 +94,13 @@ Status FusedBatchNormBertFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
   batchNormReduceDesc->SetName(batchNormDesc->GetName() + "/BNTrainingReduce");
   batchNormReduceDesc->SetType("BNTrainingReduce");
   if (batchNormReduceDesc->GetInputsSize() < 3) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of input desc", batchNormReduceDesc->GetInputsSize());
-    return FAILED;
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of input desc", batchNormReduceDesc->GetInputsSize());
+    return NOT_CHANGED;
   }
   if (batchNormReduceDesc->GetOutputsSize() < 5) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of output desc",
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of output desc",
             batchNormReduceDesc->GetOutputsSize());
-    return FAILED;
+    return NOT_CHANGED;
   }
   OpDescUtils::ClearInputDesc(batchNormReduceDesc, 4);
   OpDescUtils::ClearInputDesc(batchNormReduceDesc, 3);
@@ -120,14 +120,14 @@ Status FusedBatchNormBertFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
   batchNormUpdateV2Desc->SetName(batchNormDesc->GetName() + "/BNTrainingUpdateV2");
   batchNormUpdateV2Desc->SetType("BNTrainingUpdateV2");
   if (batchNormUpdateV2Desc->GetOutputsSize() < 5) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of output desc",
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of output desc",
             batchNormUpdateV2Desc->GetOutputsSize());
-    return FAILED;
+    return NOT_CHANGED;
   }
   if (batchNormUpdateV2Desc->GetInputsSize() < 3) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of input desc",
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of input desc",
             batchNormUpdateV2Desc->GetInputsSize());
-    return FAILED;
+    return NOT_CHANGED;
   }
   batchNormUpdateV2Desc->AddInputDesc(3, batchNormDesc->GetInputDesc(1));
   batchNormUpdateV2Desc->AddInputDesc(4, batchNormDesc->GetInputDesc(2));

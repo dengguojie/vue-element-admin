@@ -28,13 +28,13 @@ from te.platform.cce_build import build_config
 import te.platform.cce_params as cce_params
 from topi.cce import util
 import te.lang.cce
+from impl.util.util_common import write_code
+
 
 # pylint: disable=locally-disabled,too-many-lines,too-many-statements
 # pylint: disable=too-many-locals,too-many-arguments,invalid-name
 # pylint: disable=too-many-branches,too-few-public-methods,unused-variable
 # pylint: disable=unnecessary-comprehension,too-many-return-statements
-
-
 def _new_alloc(tvm_ib, dtype, shape, name, scope):
     """
     decl new buffer for ir builder make function
@@ -4092,22 +4092,6 @@ def _check_divide_sp_fp16(src_shape, dst_shape, dtype):
     return True
 
 
-def _write_code(wkspace_dict, fname):
-    """
-    write workspaces to json file
-
-    """
-    fname = os.path.realpath(fname)
-    if fname.startswith(os.getcwd()):
-        if os.path.exists(fname):
-            with open(fname, "r") as f_var:
-                load_dict = json.load(f_var)
-            load_dict.update(wkspace_dict)
-            with open(fname, "w") as f_var:
-                json.dump(load_dict, f_var, sort_keys=True,
-                          indent=4, separators=(',', ':'))
-
-
 # pylint: disable=unused-argument
 def compute_five_2_four(input_tensor, output_tensor, src_format, dst_format):
     """
@@ -4434,7 +4418,7 @@ def five_2_four(src, dst, src_format, dst_format, kernel_name='five_2_four'):
             tvm.build(sch, tensor_list, "cce", name=kernel_name)
 
         workspace_dict = {"workspace": {"num": num, "size": total_size}}
-        _write_code(workspace_dict, "kernel_meta/" + kernel_name + ".json")
+        write_code(workspace_dict, kernel_name)
 
     else:
         tensor_list = [data_input, res]

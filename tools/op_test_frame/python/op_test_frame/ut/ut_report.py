@@ -12,24 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
-import json
+"""
+ut report module
+"""
 import os
+import stat
+import json
 import fnmatch
 from enum import Enum
 from op_test_frame.common import logger
 from op_test_frame.common import op_status
+from op_test_frame.utils import file_util
 from op_test_frame.ut.op_ut_case_info import OpUTCaseTrace
+
+DATA_FILE_FLAGS = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+DATA_FILE_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IRGRP
+DATA_DIR_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
 
 
 class TestResultType(Enum):
-    UNKOWN = "unkown"
+    """
+    Test result type Enum: UNKNOWN, SUCCESS, FAILED, ERROR
+    """
+    UNKNOWN = "unknown"
     SUCCESS = "success"
     FAILED = "failed"
     ERROR = "error"
 
 
 class OpUTCaseReport:
+    """
+    op ut case report
+    """
 
     def __init__(self, case_run_trace: OpUTCaseTrace):
         self.op_type = case_run_trace.ut_case_info.op_type
@@ -42,7 +56,7 @@ class OpUTCaseReport:
         for stage_res in stage_list:
             if not stage_res.is_success():
                 self.status = op_status.FAILED
-        if not self.status == op_status.SUCCESS:
+        if self.status != op_status.SUCCESS:
             err_msg = ""
             err_trace = ""
             for stage_res in stage_list:
@@ -55,6 +69,10 @@ class OpUTCaseReport:
         self.trace_detail = case_run_trace
 
     def to_json_obj(self):
+        """
+        get json object info
+        :return: json object
+        """
         return {
             "op_type": self.op_type,
             "case_name": self.case_name,
@@ -65,35 +83,48 @@ class OpUTCaseReport:
         }
 
     def summary_txt(self):
-        if not self.status == op_status.SUCCESS:
+        """
+        get summary info string
+        :return: summary info string
+        """
+        if self.status != op_status.SUCCESS:
             if not self.err_trace:
                 return "%s: [%s]  %s (%s), error msg: %s" % (
                     self.status, self.op_type, self.case_name, self.run_soc, self.err_msg)
-            else:
-                summary_with_trace_str = "{status}: [{op_type}]  {case_name} ({run_soc}), error msg: {err_msg}, \n"
-                summary_with_trace_str += "      Case File \"{case_file}\", line {line_no}\n"
-                summary_with_trace_str += "      Error trace: \n      {trace_info}"
-                return summary_with_trace_str.format_map({
-                    "status": self.status,
-                    "op_type": self.op_type,
-                    "case_name": self.case_name,
-                    "run_soc": self.run_soc,
-                    "err_msg": self.err_msg,
-                    "case_file": self.trace_detail.ut_case_info.case_file,
-                    "line_no": self.trace_detail.ut_case_info.case_line_num,
-                    "trace_info": self.err_trace.replace("\n", "\n      ")
-                })
 
-        return "%s: [%s]  %s (%s)" % (self.status, self.op_type, self.case_name, self.run_soc)
+            summary_with_trace_str = "{status}: [{op_type}]  {case_name} ({run_soc}), error msg: {err_msg}, \n"
+            summary_with_trace_str += "      Case File \"{case_file}\", line {line_no}\n"
+            summary_with_trace_str += "      Error trace: \n      {trace_info}"
+            return summary_with_trace_str.format_map({
+                "status": self.status,
+                "op_type": self.op_type,
+                "case_name": self.case_name,
+                "run_soc": self.run_soc,
+                "err_msg": self.err_msg,
+                "case_file": self.trace_detail.ut_case_info.case_file,
+                "line_no": self.trace_detail.ut_case_info.case_line_num,
+                "trace_info": self.err_trace.replace("\n", "\n      ")
+            })
+
+        return "%s: [%s]  %s (%s) (%s)" % (self.status, self.op_type, self.case_name, self.run_soc,
+                                           self.trace_detail.ut_case_info.case_usage.value)
 
     @staticmethod
     def parser_json_obj(json_obj):
+        """
+        parser from json object
+        :param json_obj: json object
+        :return: OpUTCaseReport
+        """
         if not json_obj:
             return None
         return OpUTCaseReport(OpUTCaseTrace.parser_json_obj(json_obj["trace_detail"]))
 
 
 class OpUTReport:
+    """
+    op ut report
+    """
 
     def __init__(self, run_cmd=None):
         self.run_cmd = run_cmd
@@ -105,7 +136,19 @@ class OpUTReport:
         # map struct is: soc -> status['success', 'failed'] -> case_rpt list
         self._soc_report_map = {}
 
+    def get_case_rpt_list(self):
+        """
+        get case report list
+        :return: case report list
+        """
+        return self._report_list
+
     def add_case_report(self, case_rpt: OpUTCaseReport):
+        """
+        add one test case report
+        :param case_rpt: case report
+        :return: None
+        """
         self._report_list.append(case_rpt)
         self.total_cnt += 1
         if case_rpt.status == op_status.SUCCESS:
@@ -123,16 +166,29 @@ class OpUTReport:
         self._soc_report_map[case_rpt.run_soc][case_rpt.status].append(case_rpt)
 
     def merge_rpt(self, rpt):
-        for case_rpt in rpt._report_list:
+        """
+        merge a report(OpUTReport)
+        :param rpt: another report
+        :return: None
+        """
+        for case_rpt in rpt.get_case_rpt_list():
             self.add_case_report(case_rpt)
 
     def to_json_obj(self):
+        """
+        convert to json object
+        :return: json object
+        """
         return {
             "run_cmd": self.run_cmd,
             "report_list": [case_rpt.to_json_obj() for case_rpt in self._report_list]
         }
 
     def summary_txt(self):
+        """
+        get report summary string
+        :return: summary string
+        """
         total_txt = """========================================================================
 run command: %s
 ------------------------------------------------------------------------
@@ -158,21 +214,43 @@ run command: %s
         return total_txt
 
     def console_print(self):
+        """
+        print report to console
+        :return: None
+        """
         if self.total_cnt > 0:
             print(self.summary_txt())
 
     def txt_report(self, report_path):
+        """
+        txt type report, save report to txt file
+        :param report_path:
+        :return:
+        """
         report_path = os.path.realpath(report_path)
         if not os.path.exists(report_path):
-            os.makedirs(report_path)
+            file_util.makedirs(report_path, mode=DATA_DIR_MODES)
 
         rpt_txt = self.summary_txt()
-        with open(os.path.join(report_path, "ut_test_report.txt"), 'w+') as rpt_file:
-            rpt_file.write(rpt_txt)
+        rpt_file_path = os.path.join(report_path, "ut_test_report.txt")
+        if not os.path.exists(rpt_file_path):
+            with os.fdopen(os.open(rpt_file_path, DATA_FILE_FLAGS, DATA_FILE_MODES), 'w') as rpt_fout:
+                rpt_fout.write(rpt_txt)
+        else:
+            with open(rpt_file_path, 'w') as rpt_file:
+                rpt_file.write(rpt_txt)
 
     def combine_report(self, report_paths, strict=False, file_pattern=None):
+        """
+        combine all report in report paths
+        :param report_paths: report path
+        :param strict: True is not found report will raise runtime exception
+        :param file_pattern: report file pattern
+        :return: None
+        """
+
         def _add_report(rpt: OpUTReport):
-            for case_rpt in rpt._report_list:
+            for case_rpt in rpt.get_case_rpt_list():
                 self.add_case_report(case_rpt)
 
         if not isinstance(report_paths, (tuple, list)):
@@ -205,6 +283,11 @@ run command: %s
             raise RuntimeError("combine_report not found any report to combine in: [%s]" % ", ".join(report_paths))
 
     def load(self, report_file):
+        """
+        load report
+        :param report_file: report file path
+        :return: None
+        """
         with open(report_file) as r_f:
             json_str = r_f.read()
         json_obj = json.loads(json_str)
@@ -213,17 +296,32 @@ run command: %s
             self.add_case_report(case_rpt)
 
     def save(self, report_data_path):
+        """
+        save report
+        :param report_data_path: report data path
+        :return: None
+        """
         json_obj = self.to_json_obj()
         report_data_path = os.path.realpath(report_data_path)
         report_data_dir = os.path.dirname(report_data_path)
         if not os.path.exists(report_data_dir):
-            os.makedirs(report_data_dir)
+            file_util.makedirs(report_data_dir, mode=DATA_DIR_MODES)
         json_str = json.dumps(json_obj, indent=4)
-        with open(os.path.realpath(report_data_path), 'w+') as rpt_data_file:
-            rpt_data_file.write(json_str)
+
+        if not os.path.exists(report_data_path):
+            with os.fdopen(os.open(report_data_path, DATA_FILE_FLAGS, DATA_FILE_MODES), 'w') as rpt_fout:
+                rpt_fout.write(json_str)
+        else:
+            with open(report_data_path, 'w') as rpt_file:
+                rpt_file.write(json_str)
 
     @staticmethod
     def parser_json_obj(json_obj):
+        """
+        parser from json object
+        :param json_obj: json object
+        :return: report object
+        """
         rpt = OpUTReport(json_obj["run_cmd"])
         for case_rpt in [OpUTCaseReport.parser_json_obj(case_obj) for case_obj in json_obj["report_list"]]:
             rpt.add_case_report(case_rpt)

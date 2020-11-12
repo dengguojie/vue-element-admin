@@ -67,7 +67,7 @@ ut_case.add_precision_case("all", {"params": [{"shape": (768,), "dtype": "float3
                                               0, 0
                                               ],
                                    "calc_expect_func": calc_expect_func,
-                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                   "precision_standard": precision_info.PrecisionStandard(0.01, 0.01)
                                    })
 # ut_case.add_precision_case("all", {"params": [{"shape": (2,2,768), "dtype": "float32", "format": "NCHW", "ori_shape": (2,2,768),"ori_format": "NCHW", "param_type": "input"},
 #                                               {"shape": (768,), "dtype": "float32", "format": "NCHW", "ori_shape": (768,),"ori_format": "NCHW", "param_type": "input"},
@@ -80,6 +80,3 @@ ut_case.add_precision_case("all", {"params": [{"shape": (768,), "dtype": "float3
 #                                    "calc_expect_func": calc_expect_func,
 #                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 #                                    })
-if __name__ == '__main__':
-    ut_case.run(["Ascend910"], simulator_mode="pv",
-                simulator_lib_path="/disk1/ty_mindstudio/.mindstudio/huawei/adk/1.76.T1.0.B010/toolkit/tools/simulator")

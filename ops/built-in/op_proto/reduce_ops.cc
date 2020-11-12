@@ -48,16 +48,32 @@ static void GetAllConstValue(const Tensor& data, std::vector<int64_t>& const_vec
 
 static bool InferReduceShape(const ge::Operator& op, const string& input_name, const string& axis_name,
                              const string& keep_dims_name, ge::TensorDesc& result_desc) {
+  // indicates that GE should process related attributes during online infer shape
+  vector<string> input_infer_depends = {"axes"};
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  op_desc->SetOpInferDepends(input_infer_depends);
+
   result_desc = op.GetInputDesc(input_name);
   auto shape = result_desc.GetShape();
   std::vector<int64_t> shapeVector = shape.GetDims();
   int64_t dim_num = shape.GetDimNum();
 
-  vector<string> input_infer_depends = {"axes"};
-  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  op_desc->SetOpInferDepends(input_infer_depends);
+  if (shapeVector.size() == 0) {
+    OP_LOGI(op.GetName().c_str(), "input shape vector size is 0, is scalar.");
+    result_desc.SetShape({});
+    result_desc.SetShapeRange({});
+    return true;
+  }
 
-  // infer output shape range
+  if (shapeVector[0] == -2) {
+    std::vector<int64_t> oShapeVector;
+    oShapeVector.push_back(-2);
+    Shape oShape(oShapeVector);
+    result_desc.SetShape(oShape);
+    result_desc.SetShapeRange({});
+    return true;
+  }
+
   std::vector<std::pair<int64_t, int64_t>> input_shape_range;
   op_desc->MutableInputDesc(input_name)->GetShapeRange(input_shape_range);
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;
@@ -66,14 +82,6 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
     OP_LOGI(op.GetName().c_str(), "reset input shape range.");
     input_shape_range.clear();
     MakeUpShapeRange(shapeVector, input_shape_range);
-  }
-
-  if (shapeVector.size() == 1 && shapeVector[0] == -2) {
-    std::vector<int64_t> oShapeVector;
-    oShapeVector.push_back(-2);
-    Shape oShape(oShapeVector);
-    result_desc.SetShape(oShape);
-    return true;
   }
 
   bool keep_dims;
@@ -102,152 +110,137 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
   }
 
   Tensor data;
+  // axis unknown
   if (GRAPH_SUCCESS != op.GetInputConstData(axis_name, data)) {
-    OP_LOGI(op.GetName().c_str(), "GetInputConstData of %s failed.", axis_name.c_str());
-    ge::TensorDesc axis_desc;
-    axis_desc = op.GetInputDesc(axis_name);
-    auto axis_shape = axis_desc.GetShape();
-    std::vector<int64_t> axis_shapeVector = axis_shape.GetDims();
-    int64_t axis_dimNum = axis_shape.GetDimNum();
+    OP_LOGI(op.GetName().c_str(), "GetInputConstData of %s failed, enter axis unknown scenario.", axis_name.c_str());
+
     std::vector<int64_t> oShapeVector;
 
-    OP_LOGI(op.GetName().c_str(), "axis_dimNum: %lld", axis_dimNum);
     if (axis_dimNum > 1) {
-      OP_LOGE(op.GetName().c_str(),
-              "The dim numbles of axis must be one or zero,"
-              "but actual is %d.",
-              axis_dimNum);
+      OP_LOGE(op.GetName().c_str(), "The dim number of axis must be one or zero, but actual is %d.", axis_dimNum);
       return false;
-    } else if (axis_dimNum == 1) {
-      if (!axis_shapeVector.empty() && axis_shapeVector[0] > dim_num) {
-        OP_LOGE(op.GetName().c_str(), "The size of axisnode must be less than inputx dim_num.");
-        return false;
-      }
-      if (axis_shapeVector[0] == -1 || axis_shapeVector[0] == -2) {
-        OP_LOGI(op.GetName().c_str(), "Reduce axis is unknown in dynamic shape.");
-        if (!keep_dims) {
-          oShapeVector.push_back(-2);
+    }
+
+    if (keep_dims) {
+      for (int64_t item = 0; item < dim_num; ++item) {
+        int64_t range_min_value = 1;
+        int64_t range_max_value = input_shape_range[item].second;
+        output_shape_range.push_back(std::make_pair(range_min_value, range_max_value));
+
+        if (range_max_value == 1) {
+          oShapeVector.push_back(1);
         } else {
-          for (uint32_t item = 0; item < shapeVector.size(); ++item) {
-            // use input shape range
-            int64_t range_min_value = 1;
-            int64_t range_max_value = input_shape_range[item].second;
-            if (range_max_value == 1) {
-              oShapeVector.push_back(1);
-            } else {
-              oShapeVector.push_back(-1);
-            }
-            output_shape_range.push_back(std::make_pair(range_min_value, range_max_value));
-          }
-          result_desc.SetShapeRange(output_shape_range);
+          oShapeVector.push_back(-1);
         }
+      }
+
+      Shape oShape(oShapeVector);
+      result_desc.SetShape(oShape);
+      result_desc.SetShapeRange(output_shape_range);
+    } else {
+      if (!axis_shapeVector.empty() && (axis_shapeVector[0] == -1 || axis_shapeVector[0] == -2)) {
+        OP_LOGI(op.GetName().c_str(), "Can't get reduce axis number.");
+
+        oShapeVector.push_back(-2);
         Shape oShape(oShapeVector);
         result_desc.SetShape(oShape);
-        return true;
+        result_desc.SetShapeRange({});
       } else {
-        if (!keep_dims) {
-          dim_num = dim_num - axis_shapeVector[0];
+        int64_t output_dimNum = 0;
+        if (axis_dimNum == 0) {
+          output_dimNum = dim_num - 1;
+        } else {
+          output_dimNum = dim_num - axis_shapeVector[0];
         }
-      }
-    } else {
-      if (keep_dims && !axis_shapeVector.empty() && (axis_shapeVector[0] == -1 || axis_shapeVector[0] == -2)) {
-        OP_LOGI(op.GetName().c_str(), "Reduce axis is unknown in dynamic shape.");
+        OP_LOGI(op.GetName().c_str(), "Get output dim num %d.", output_dimNum);
+
+        int64_t range_min_value = input_shape_range[0].first;
+        int64_t range_max_value = input_shape_range[0].second;
         for (uint32_t item = 0; item < shapeVector.size(); ++item) {
-          // use input shape range
-          int64_t range_min_value = 1;
-          int64_t range_max_value = input_shape_range[item].second;
-          if (range_max_value == 1) {
-            oShapeVector.push_back(1);
-          } else {
-            oShapeVector.push_back(-1);
+          if (input_shape_range[item].first < range_min_value) {
+            range_min_value = input_shape_range[item].first;
           }
+
+          if (input_shape_range[item].second == -1) {
+            range_max_value = -1;
+          }
+          if (range_max_value != -1 && input_shape_range[item].second > range_max_value) {
+            range_max_value = input_shape_range[item].second;
+          }
+        }
+
+        for (int64_t item = 0; item < output_dimNum; ++item) {
+          oShapeVector.push_back(-1);
           output_shape_range.push_back(std::make_pair(range_min_value, range_max_value));
         }
-        result_desc.SetShapeRange(output_shape_range);
+
         Shape oShape(oShapeVector);
         result_desc.SetShape(oShape);
-        return true;
-      }
-      if (!keep_dims) {
-        dim_num = dim_num - 1;
+        result_desc.SetShapeRange(output_shape_range);
       }
     }
 
-    int64_t range_min_value = 1;
-    int64_t range_max_value = -1;
-    for (uint32_t item = 0; item < shapeVector.size(); ++item) {
-      if (input_shape_range[item].second == -1) {
-        range_max_value = -1;
-        break;
-      }
-      if (input_shape_range[item].second > range_max_value) {
-        range_max_value = input_shape_range[item].second;
+  // axis known
+  } else {
+    std::vector<int64_t> axis{};
+    size_t size = data.GetSize();
+    if (size != 0) {
+      GetAllConstValue(data, axis, axis_type);
+    }
+
+    // reduce axis is empty, reduce all
+    if (axis.size() == 0) {
+      for (size_t i = 0; i < shapeVector.size(); ++i) {
+        axis.push_back(i);
       }
     }
+
+    // convert reduce axis
+    for (size_t i = 0; i < axis.size(); ++i) {
+      if (axis[i] < -dim_num || axis[i] > (dim_num - 1)) {
+        OP_LOGE(op.GetName().c_str(), "reduce verify failed, axis: %d, dim_num:%d.", axis[i], dim_num);
+        return false;
+      }
+      if (axis[i] < 0) {
+        axis[i] = dim_num + axis[i];
+      }
+    }
+
+    std::vector<int64_t> oShapeVector;
+    std::vector<int64_t>::iterator tmp;
     for (int64_t item = 0; item < dim_num; ++item) {
-      oShapeVector.push_back(-1);
-      output_shape_range.push_back(std::make_pair(range_min_value, range_max_value));
+      tmp = std::find(axis.begin(), axis.end(), item);
+      if (tmp != axis.end()) {
+        // item in axis
+        if (keep_dims) {
+          // If keepDims is true, current dimesion set to 1
+          oShapeVector.push_back(1);
+          output_shape_range.push_back(std::make_pair(1, 1));
+        }
+      } else {
+        // item is not in ConstValueAxis
+        oShapeVector.push_back(shapeVector[item]);
+        output_shape_range.push_back(input_shape_range[item]);
+      }
     }
+
+    // clear output shape range during static shape
+    bool is_static_shape = true;
+    for (uint32_t i = 0; i < shapeVector.size(); ++i) {
+      if (shapeVector[i] == -1) {
+         is_static_shape = false;
+         break;
+      }
+    }
+    if (is_static_shape) {
+      output_shape_range.clear();
+    }
+
     Shape oShape(oShapeVector);
     result_desc.SetShape(oShape);
     result_desc.SetShapeRange(output_shape_range);
-    return true;
   }
 
-  std::vector<int64_t> axis{};
-  size_t size = data.GetSize();
-  if (size != 0) {
-    GetAllConstValue(data, axis, axis_type);
-  }
-
-  if (axis.size() == 0) {
-    for (size_t i = 0; i < shapeVector.size(); ++i) {
-      axis.push_back(i);
-    }
-  }
-
-  for (size_t i = 0; i < axis.size(); ++i) {
-    if (axis[i] < -dim_num || axis[i] > (dim_num - 1)) {
-      OP_LOGE(op.GetName().c_str(), "reduce verify failed, axis: %d, dim_num:%d.", axis[i], dim_num);
-      return false;
-    }
-    if (axis[i] < 0) {
-      axis[i] = dim_num + axis[i];
-    }
-  }
-
-  std::vector<int64_t> oShapeVector;
-  std::vector<int64_t>::iterator tmp;
-  for (int64_t item = 0; item < dim_num; ++item) {
-    tmp = std::find(axis.begin(), axis.end(), item);
-    if (tmp != axis.end()) {
-      // item in axis
-      if (keep_dims) {
-        // If keepDims is true, current dimesion set to 1
-        oShapeVector.push_back(1);
-        output_shape_range.push_back(std::make_pair(1, 1));
-      }
-    } else {
-      // item is not in ConstValueAxis
-      oShapeVector.push_back(shapeVector[item]);
-      output_shape_range.push_back(input_shape_range[item]);
-    }
-  }
-
-  bool is_dynamic_shape = false;
-  for (uint32_t i = 0; i < shapeVector.size(); ++i) {
-    if (shapeVector[i] == -1) {
-       is_dynamic_shape = true;
-       break;
-    }
-  }
-  if (!is_dynamic_shape) {
-    output_shape_range.clear();
-  }
-
-  Shape oShape(oShapeVector);
-  result_desc.SetShape(oShape);
-  result_desc.SetShapeRange(output_shape_range);
   return true;
 }
 
@@ -328,14 +321,15 @@ static bool InferReduceDShape(const ge::Operator& op, const string& input_name, 
     }
   }
 
-  bool is_dynamic_shape = false;
+  // clear output shape range during static shape
+  bool is_static_shape = true;
   for (uint32_t i = 0; i < shapeVector.size(); ++i) {
     if (shapeVector[i] == -1) {
-       is_dynamic_shape = true;
+       is_static_shape = false;
        break;
     }
   }
-  if (!is_dynamic_shape) {
+  if (is_static_shape) {
     output_shape_range.clear();
   }
 

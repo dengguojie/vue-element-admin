@@ -21,6 +21,7 @@ from te.lang.cce.boost_schedule_kit import Compare
 from te.lang.cce.boost_schedule_kit import ScheduleAgent
 from te.lang.cce.te_compute.conv2d_backprop_input_general_compute import DeConvPattern
 from te.lang.cce.te_compute.cube_util import shape_to_list
+from te.lang.cce.te_compute.cube_util import GroupDictKeys
 from te.lang.cce.te_schedule.util import L1CommonParam
 from te.platform import cce_conf
 from te.platform import cce_params
@@ -602,6 +603,8 @@ def general_schedule(
             c_ub_ddr = tensor_map["c_ub"].op.input_tensors[0]
             c_ub = c_ub_ddr.op.input_tensors[0]
             output_shape = list(i.value for i in c_ub_ddr.op.attrs["output_shape"])
+            group_dict = c_ub_ddr.op.attrs["group_dict"]
+            tensor_attr["group_dict"] = group_dict
             tensor_attr["output_shape"] = output_shape
             tensor_map["c_ub_cut"] = c_ub_ddr
             sch[c_ub_ddr].compute_inline()
@@ -614,6 +617,8 @@ def general_schedule(
                 c_ub_ddr = tensor_map["c_ub"].op.input_tensors[0]
                 c_ub = c_ub_ddr.op.input_tensors[0]
                 output_shape = list(i.value for i in c_ub_ddr.op.attrs["output_shape"])
+                group_dict = c_ub_ddr.op.attrs["group_dict"]
+                tensor_attr["group_dict"] = group_dict
                 tensor_attr["output_shape"] = output_shape
                 tensor_map["c_ub_cut"] = c_ub_ddr
                 sch[c_ub_ddr].compute_inline()
@@ -632,6 +637,8 @@ def general_schedule(
             c_ub = c_ub_cut.op.input_tensors[0]
             output_shape = list(i.value for i in c_ub_cut.op.attrs["output_shape"])
 
+            group_dict = c_ub_cut.op.attrs["group_dict"]
+            tensor_attr["group_dict"] = group_dict
             tensor_map["c_ub_cut"] = c_ub_cut
             tensor_map["c_ub"] = c_ub
             tensor_attr["output_shape"] = output_shape
@@ -642,12 +649,16 @@ def general_schedule(
                 tensor_map["bias_add_vector"] = c_ub
                 c_ub = c_ub.op.input_tensors[0]
             output_shape = list(i.value for i in c_ub_cut.op.attrs["output_shape"])
+            group_dict = c_ub_cut.op.attrs["group_dict"]
+            tensor_attr["group_dict"] = group_dict
             tensor_map["c_ub_cut"] = c_ub_cut
             tensor_map["c_ub"] = c_ub
             tensor_attr["output_shape"] = output_shape
         elif deconv_res.op.tag == "conv2d_backprop_input":
             c_ub = deconv_res.op.input_tensors[0]
             output_shape = shape_to_list(deconv_res.op.attrs["output_shape"])
+            group_dict = deconv_res.op.attrs["group_dict"]
+            tensor_attr["group_dict"] = group_dict
             if c_ub.op.name == "bias_add_vector":
                 tensor_map["bias_add_vector"] = c_ub
                 c_ub = c_ub.op.input_tensors[0]
@@ -824,6 +835,11 @@ def general_schedule(
     stride_w = tensor_attr.get("stride_w")
     fusion_param = tensor_attr.get("fusion_param")
     n0_32_flag = tensor_attr.get("n0_32_flag")
+    group_dict = tensor_attr.get("group_dict")
+
+    g_after = group_dict[GroupDictKeys.g_extend].value
+    cin1_g = group_dict[GroupDictKeys.dx_c1_extend].value
+    cou1_g = group_dict[GroupDictKeys.dy_c1_extend].value
 
     # fetch tiling
     padu, padd, padl, padr = padding
@@ -834,6 +850,7 @@ def general_schedule(
         kernel_h = tensor_attr.get("kernel_h")
         kernel_w = tensor_attr.get("kernel_w")
     _, _, dx_h, dx_w, _ = output_shape
+    output_shape_g = [g_after, output_shape[0], cin1_g] + output_shape[2:]
 
     def get_img_shape():
         img_shape = shape_to_list(a_ddr.shape)
@@ -842,8 +859,8 @@ def general_schedule(
         return img_shape
 
     img_shape = get_img_shape()
-    _, dy_cout1, dy_h, _, _ = img_shape  # pylint: disable=W0632
-
+    _, dy_cout1, dy_h, dy_w, _ = img_shape  # pylint: disable=W0632
+    img_shape_g = [g_after, img_shape[0], cou1_g] + img_shape[2:]
     # conv1d_situation
     def _check_conv1d_situation():
         if (
@@ -866,33 +883,25 @@ def general_schedule(
 
     def _set_filter_shape():
         if w_trans_flag:
-            # Cout1HkWk, Cin1, Cin0, Cout0
-            b_ddr_k1, b_ddr_n1, b_ddr_n0, b_ddr_k0 = list(i.value for i in b_ddr.shape)
-            # Cout, Cin1, Hk, Wk, Cin0
-            filter_shape = [
-                b_ddr_k1 // (kernel_h * kernel_w) * b_ddr_k0,
-                b_ddr_n1,
-                kernel_h,
-                kernel_w,
-                b_ddr_n0
-            ]
+            # GCout1HkWk, Cin1, Cin0, Cout0
+            b_ddr_k1, b_ddr_n1, b_ddr_n0, b_ddr_k0 \
+                = list(i.value for i in b_ddr.shape)
+            # G, Cout, Cin1, Hk, Wk, Cin0
+            filter_shape_g = [cou1_g * b_ddr_k0,
+                              cin1_g, kernel_h, kernel_w, b_ddr_n0]
         else:
-            # HkWkCin1, Cout1, Cout0, Cin0
-            b_ddr_n1, b_ddr_k1, b_ddr_k0, b_ddr_n0 = shape_to_list(b_ddr.shape)
+            # GCin1HkWk, Cout1, Cout0, Cin0
+            b_ddr_n1, b_ddr_k1, b_ddr_k0, b_ddr_n0 \
+                = shape_to_list(b_ddr.shape)
             # Cout, Cin1, Hk, Wk, Cin0
-            filter_shape = (
-                b_ddr_k1 * b_ddr_k0,
-                b_ddr_n1 // (kernel_h * kernel_w),
-                kernel_h,
-                kernel_w,
-                b_ddr_n0
-            )
+            filter_shape_g = (cou1_g * b_ddr_k0,
+                              cin1_g,
+                              kernel_h, kernel_w, b_ddr_n0)
         if deconv_res.dtype == "int8":
-            filter_shape[1] = (filter_shape[1] + 1) // 2 * 2
+            filter_shape_g[1] = (filter_shape_g[1] + 1) // 2 * 2
 
-        return filter_shape
-
-    filter_shape = _set_filter_shape()
+        return filter_shape_g
+    filter_shape_g = _set_filter_shape()
 
     def _set_bias_flag(c_add_bias, bias_add_vector):
         if c_add_bias is not None or bias_add_vector is not None:
@@ -920,9 +929,9 @@ def general_schedule(
         fusion_type = get_fusion_type()
         info_dict = {
             "op_type": "conv2d_backprop_input",
-            "A_shape": list(img_shape),
-            "B_shape": list(filter_shape),
-            "C_shape": list(output_shape),
+            "A_shape": list(img_shape_g[1:]),
+            "B_shape": list(filter_shape_g),
+            "C_shape": list(output_shape_g[1:]),
             "A_dtype": str(a_ddr.dtype),
             "B_dtype": str(b_ddr.dtype),
             "C_dtype": str(c_ddr.dtype),
@@ -937,7 +946,7 @@ def general_schedule(
             "strideW_expand": stride_w,
             "dilationH": dilation_h,
             "dilationW": dilation_w,
-            "group": 1,
+            "group": g_after,
             "bias_flag": bias_flag,
             "fused_double_operand_num": fusion_param,
             "kernel_name": _kernel_name.value,
@@ -950,21 +959,17 @@ def general_schedule(
     else:
         tiling = tiling_case
 
-    tiling = check_and_set_default_tiling(
-        tiling, a_ddr.dtype, b_ddr.dtype, stride_h, stride_w, filter_shape
-    )
+    tiling = check_and_set_default_tiling(tiling, a_ddr.dtype,
+                                          b_ddr.dtype, stride_h,
+                                          stride_w, filter_shape_g)
     if DEBUG_MODE:
-        print(
-            "general input shape:",
-            "filter:",
-            filter_shape,
-            "dy:",
-            output_shape,
-            "dx:",
-            img_shape
-        )
+        print('general input shape: ', 'filter_g: ', filter_shape_g, 'dy: ',
+              output_shape, 'dx: ', img_shape)
+        print('reshape according group: ', 'output_shape_g: ', output_shape_g,
+              'dx_g: ', img_shape_g, 'filter_g: ', filter_shape_g)
         print("general input tiling", tiling)
         print("general dx fusion tag:", deconv_res.op.tag)
+        print("general dx kernel_name:", _kernel_name)
 
     def _tiling_check_none():
         if (
@@ -1000,35 +1005,32 @@ def general_schedule(
                 bl0_tiling_n0,
                 bl0_tiling_k0
             ) = list(i.value for i in b_col.shape)
+            bl0_tiling_kb = bl0_tiling_kb//g_after
         return bl0_tiling_kb, bl0_tiling_nb, bl0_tiling_n0, bl0_tiling_k0
 
     def _tiling_l1_process():
         if tiling.get("AL1_shape") != []:
             al1_tilling_k, al1_tilling_m, _, _ = tiling.get("AL1_shape")
-            if (
-                al1_tilling_k == kernel_h * kernel_w * al1_co1 * al1_co0
-                and al1_tilling_m
-                == _ceil(
-                    c_l0c_hw, cce_params.CUBE_MKN[c_col.dtype]["mac"][0] * cl0_tiling_mc
-                )
+            if (al1_tilling_k == kernel_h*kernel_w*cou1_g*al1_co0 and \
+               al1_tilling_m == _ceil(c_l0c_hw,
+                                      cce_params.CUBE_MKN[c_col.dtype]["mac"][0] * cl0_tiling_mc)
             ):
                 tiling["AL1_shape"] = []
         else:
             # batch = 1 other axes full load
-            al1_tilling_k = kernel_h * kernel_w * al1_co1 * al1_co0
-            al1_tilling_m = _ceil(
-                c_l0c_hw, (cce_params.CUBE_MKN[c_col.dtype]["mac"][0] * cl0_tiling_mc)
-            )
+            al1_tilling_k = kernel_h*kernel_w*cou1_g*al1_co0
+            al1_tilling_m = _ceil(c_l0c_hw,
+                                  cce_params.CUBE_MKN[c_col.dtype]["mac"][0] * cl0_tiling_mc)
 
         if tiling.get("BL1_shape") != []:
             bl1_tilling_k, bl1_tilling_n, _, _ = tiling.get("BL1_shape")
         else:
             if w_trans_flag:
-                bl1_tilling_k = bl1_co0 * bl1_co1
+                bl1_tilling_k = bl1_co0*bl1_co1//g_after
                 bl1_tilling_n = bl1_k1 // cl0_tiling_nc
             else:
-                bl1_tilling_k = kernel_h * kernel_w * bl1_co0 * bl1_co1
-                bl1_tilling_n = bl1_k1 // (kernel_h * kernel_w * cl0_tiling_nc)
+                bl1_tilling_k = kernel_h*kernel_w*bl1_co0*bl1_co1
+                bl1_tilling_n = bl1_k1//(kernel_h*kernel_w*cl0_tiling_nc*g_after)
         return al1_tilling_k, al1_tilling_m, bl1_tilling_k, bl1_tilling_n
 
     # check tiling
@@ -1043,9 +1045,8 @@ def general_schedule(
             _raise_dx_general_err("ma != mc.")
 
     def _tiling_check_factor():
-        if (kernel_w * kernel_h * dy_cout1) % al0_tiling_ka != 0:
+        if (kernel_w * kernel_h * cou1_g) % al0_tiling_ka != 0:
             _raise_dx_general_err("Co1*Hk*Wk % ka != 0")
-
         if al1_tilling_k % al0_tiling_ka != 0:
             _raise_dx_general_err("k_AL1 % ka != 0.")
 
@@ -1177,7 +1178,7 @@ def general_schedule(
         "AL0_matrix"
     )
 
-    batch_dim, n_dim, m_dim, _ = tiling.get("block_dim")
+    batch_dim, n_dim, m_dim, group_dim = tiling.get("block_dim")
     aub_pbuffer = tiling.get("manual_pingpong_buffer").get("AUB_pbuffer")
     al1_pbuffer = tiling.get("manual_pingpong_buffer").get("AL1_pbuffer")
     bl1_pbuffer = tiling.get("manual_pingpong_buffer").get("BL1_pbuffer")
@@ -1187,16 +1188,16 @@ def general_schedule(
     cub_pbuffer = tiling.get("manual_pingpong_buffer").get("CUB_pbuffer")
 
     _, al1_co1, _, _, al1_co0 = shape_to_list(a_l1.shape)
-    _, _, c_l0c_hw, _ = shape_to_list(c_col.shape)
+    _, _, _, c_l0c_hw, _ = shape_to_list(c_col.shape)
     if w_trans_flag:
-        # Cout1*Hk*Wk, Cin1, Cin0, Cout0
+        # G*Cout1*Hk*Wk, Cin1, Cin0, Cout0
         bl1_co1, bl1_k1, _, bl1_co0 = list(i.value for i in b_l1.shape)
     else:
-        # Cin1*Hk*Wk, Cout1, Cout0, Cin0
+        # G*Cin1*Hk*Wk, Cout1, Cout0, Cin0
         bl1_k1, bl1_co1, bl1_co0, _ = shape_to_list(b_l1.shape)
     c_col_k1, c_col_k0 = list(ax.dom.extent.value for ax in c_col.op.reduce_axis)
     a_col_shape = shape_to_list(a_col.shape)
-    a_col_batch, a_col_ma, a_col_ka, _, _ = a_col_shape
+    a_col_g, a_col_batch, a_col_ma, a_col_ka, _, _ = a_col_shape
 
     bl0_tiling_kb, bl0_tiling_nb, bl0_tiling_n0, bl0_tiling_k0 = _tiling_l0_process()
     al1_tilling_k, al1_tilling_m, bl1_tilling_k, bl1_tilling_n = _tiling_l1_process()
@@ -1210,9 +1211,7 @@ def general_schedule(
             # c_ub will attach on deconv_res in dynamic shape by default
             if not dynamic_mode:
                 status = Compare.compare(affine_cub, op_shape)
-            elif dynamic_mode == "dynamic_batch":
-                status = Compare.compare(affine_cub[1:], op_shape[1:])
-            elif dynamic_mode == "dynamic_hw":
+            else:
                 status = Compare.LESS_EQ
 
             if status == Compare.EQUAL:
@@ -1295,20 +1294,6 @@ def general_schedule(
             )
 
         _attach_cub()
-        # c_ub will attach on deconv_res in dynamic shape by default
-        if not dynamic_mode:
-            status = Compare.compare(affine_cub, op_shape)
-        elif dynamic_mode == "dynamic_batch":
-            status = Compare.compare(affine_cub[1:], op_shape[1:])
-        elif dynamic_mode == "dynamic_hw":
-            status = Compare.LESS_EQ
-
-        if status == Compare.EQUAL:
-            pass
-        elif status == Compare.LESS_EQ:
-            sch_agent.attach_at(c_ub, c_ddr, affine_shape=affine_cub)
-        else:
-            _raise_dx_general_err("c_ub attach error.")
 
         sch[c_ub].buffer_align(
             (1, 1),
@@ -1331,37 +1316,35 @@ def general_schedule(
 
     def _cl0_process(affine_cub):
         if n0_32_flag is not None:
-            affine_l0c = (
-                1,
-                int(cl0_tiling_nc / 2),
-                cl0_tiling_mc * cl0_tiling_m0,
-                cl0_tiling_n0 * 2
-            )
+            affine_l0c = (1,
+                          1,
+                          int(cl0_tiling_nc / 2),
+                          cl0_tiling_mc * cl0_tiling_m0,
+                          cl0_tiling_n0 * 2)
         else:
-            affine_l0c = 1, cl0_tiling_nc, cl0_tiling_mc * cl0_tiling_m0, cl0_tiling_n0
+            affine_l0c = 1, 1, cl0_tiling_nc, cl0_tiling_mc * cl0_tiling_m0, cl0_tiling_n0
         c_col_shape = shape_to_list(c_col.shape)
 
         # c_col will attach on c_ub or c_ddr in dynamic shape by default
         if not dynamic_mode:
             status_ori = Compare.compare(affine_l0c, c_col_shape)
-        elif dynamic_mode == "dynamic_batch":
-            status_ori = Compare.compare(affine_l0c[1:], c_col_shape[1:])
-        elif dynamic_mode == "dynamic_hw":
+        else:
             status_ori = Compare.LESS_EQ
-        status = Compare.compare(affine_l0c, affine_cub)
+        status = Compare.compare(affine_l0c[1:], affine_cub)
 
         if status_ori == Compare.EQUAL:
             pass
         elif status == Compare.EQUAL:
             sch_agent.same_attach(c_col, c_ub)
         elif status == Compare.LESS_EQ:
-            sch_agent.attach_at(c_col, c_ub, affine_shape=affine_l0c)
+            sch_agent.attach_at(c_col, c_ub, affine_shape=affine_l0c[1:])
         elif status == Compare.GREATE_EQ:
-            sch_agent.attach_at(c_col, c_ddr, affine_shape=affine_l0c)
+            sch_agent.attach_at(c_col, c_ddr, affine_shape=affine_l0c[1:])
         else:
             _raise_dx_general_err("c_col attach error.")
 
         sch[c_col].buffer_align(
+            (1, 1),
             (1, 1),
             (1, 1),
             (1, cce_params.CUBE_MKN[c_col.dtype]["mac"][0]),
@@ -1373,26 +1356,33 @@ def general_schedule(
     def _l0a_process():
         l0a2l0c_affine_shape = (
             1,
+            1,
             None,
             al0_tiling_ma * al0_tiling_m0,
             cl0_tiling_n0,
             al0_tiling_ka,
             al0_tiling_k0
         )
-        tiling_ori_l0a = 1, al0_tiling_ma, al0_tiling_ka, al0_tiling_m0, al0_tiling_k0
+        tiling_ori_l0a = (
+            1,
+            1,
+            al0_tiling_ma,
+            al0_tiling_ka,
+            al0_tiling_m0,
+            al0_tiling_k0
+        )
+
         # a_col will attach on c_col, c_ub or c_ddr in dynamic shape
         if not dynamic_mode:
             status_ori = Compare.compare(tiling_ori_l0a, a_col_shape)
-        elif dynamic_mode == "dynamic_batch":
-            status_ori = Compare.compare(tiling_ori_l0a[1:], a_col_shape[1:])
-        elif dynamic_mode == "dynamic_hw":
+        else:
             status_ori = Compare.LESS_EQ
         status = Compare.compare(
             [al0_tiling_ma, al0_tiling_m0, al0_tiling_ka, al0_tiling_k0],
             [cl0_tiling_mc, cl0_tiling_m0, c_col_k1, c_col_k0]
         )
 
-        if status_ori == Compare.EQUAL and not dynamic_mode:
+        if status_ori == Compare.EQUAL:
             pass
         elif status == Compare.EQUAL:
             sch_agent.same_attach(a_col, c_col)
@@ -1411,8 +1401,9 @@ def general_schedule(
 
     def _l0b_process():
         neg_src_stride = True
-        if tiling.get("BL0_matrix") != []:
+        if tiling.get("BL0_matrix") != [] or g_after != 1:
             l0b2l0c_affine_shape = (
+                1,
                 None,
                 bl0_tiling_nb,
                 cl0_tiling_mc * cl0_tiling_m0,
@@ -1420,7 +1411,12 @@ def general_schedule(
                 bl0_tiling_kb,
                 bl0_tiling_k0
             )
-            tiling_ori_l0b = bl0_tiling_kb, bl0_tiling_nb, bl0_tiling_n0, bl0_tiling_k0
+            tiling_ori_l0b = (
+                bl0_tiling_kb,
+                bl0_tiling_nb,
+                bl0_tiling_n0,
+                bl0_tiling_k0
+            )
             b_col_shape = shape_to_list(b_col.shape)
             status_ori = Compare.compare(tiling_ori_l0b, b_col_shape)
             status = Compare.compare(
@@ -1446,6 +1442,7 @@ def general_schedule(
         l1_ka = al1_tilling_k // al0_tiling_k0
         l1a2l0c_affine_shape = (
             1,
+            1,
             None,
             l1_ma * al0_tiling_m0,
             bl0_tiling_n0,
@@ -1453,7 +1450,7 @@ def general_schedule(
             al0_tiling_k0
         )
 
-        if dynamic_mode and tiling.get("AL1_shape") == []:
+        if dynamic_mode == "dynamic_hw" and tiling.get("AL1_shape") == []:
             status = Compare.GREATE_EQ
         else:
             status = Compare.compare(
@@ -1490,7 +1487,7 @@ def general_schedule(
             )
 
     def _bl1_process():
-        if tiling.get("BL1_shape") != []:
+        if tiling.get("BL1_shape") != [] or g_after != 1:
             l1_nb = bl1_tilling_n * bl0_tiling_nb
             _, _k0, _n0 = cce_params.CUBE_MKN[b_l1.dtype]["mac"]
             bl1_shape = shape_to_list(b_l1.shape)
@@ -1507,6 +1504,7 @@ def general_schedule(
                 cl0_tiling_nc_temp //= 2
             l1_kb = bl1_tilling_k // _k0
             l1b2l0c_affine_shape = (
+                1,
                 None,
                 l1_nb,
                 cl0_tiling_m0,
@@ -1612,7 +1610,12 @@ def general_schedule(
                     sch[a_one].double_buffer()
                     sch[vn_tensor].double_buffer()
 
-        if tiling.get("manual_pingpong_buffer").get("AL1_pbuffer") == 2:
+        if dynamic_mode and not tiling.get("AL1_shape"):
+            a_l1_db_flag = 1
+        else:
+            a_l1_db_flag = tiling.get("manual_pingpong_buffer").get("AL1_pbuffer")
+
+        if a_l1_db_flag == 2:
             sch[a_l1].double_buffer()
 
         if tiling.get("manual_pingpong_buffer").get("BL1_pbuffer") == 2:
@@ -1784,9 +1787,8 @@ def general_schedule(
         if offset_flag:
             setfmatrix_dict["conv_fm_offset_h"] = slice_offset[2]
         sch_agent[a_col_before].emit_insn(
-            a_col_before.op.axis[0], "set_fmatrix", setfmatrix_dict
-        )
-        sch_agent[a_col].emit_insn(a_col.op.axis[0], "im2col")
+            a_col_before.op.axis[0], 'set_fmatrix', setfmatrix_dict)
+        sch_agent[a_col].emit_insn(a_col.op.axis[1], 'im2col')
 
     def _dynamic_emit_insn():
         setfmatrix_dict = {
@@ -1839,7 +1841,7 @@ def general_schedule(
             sch_agent[a_ub].emit_insn(sch_agent[a_ub].op.axis[0], "dma_copy")
             c1_inner, _, _, _ = sch_agent[a_l1].nlast_scopes(4)
             sch_agent[a_l1].emit_insn(c1_inner, "dma_copy", setfmatrix_dict)
-        sch[a_col].emit_insn(a_col.op.axis[0], "im2col_v2", setfmatrix_dict)
+        sch[a_col].emit_insn(a_col.op.axis[1], 'im2col_v2', setfmatrix_dict)
 
     def _emit_insn():  # pylint: disable=R0914,R0915
         sch_agent[b_l1].emit_insn(sch_agent[b_l1].op.axis[0], "dma_copy")
@@ -1881,8 +1883,8 @@ def general_schedule(
         else:
             _emit_l1fusion_insn(setfmatrix_dict)
 
-        scopes_intrins = sch_agent[c_col].intrin_scopes(6)
-        scope_insn = scopes_intrins[0]
+        scopes_intrins = sch_agent[c_col].intrin_scopes(7)
+        scope_insn = scopes_intrins[1]
         inner_k_axis = sch_agent[c_col].get_relate_scope(
             c_col.op.reduce_axis[0], scope_insn
         )
@@ -1894,17 +1896,16 @@ def general_schedule(
                 )
             }
         else:
-            inner_n, inner_co, inner_m, inner_co0, inner_k1, inner_k0 = scopes_intrins
+            inner_g, inner_n, inner_co, inner_m, inner_co0, inner_k1, inner_k0 = scopes_intrins
             inner_ko, inner_ki = sch_agent[c_col].split(inner_k1, nparts=1)
             sch_agent[c_col].reorder(
-                inner_ko, inner_n, inner_co, inner_m, inner_co0, inner_ki, inner_k0
-            )
+                inner_ko, inner_g, inner_n, inner_co, inner_m, inner_co0, inner_ki, inner_k0)
             mad_dict = {"mad_pattern": 2, "k_outer": [inner_ko]}
         if bias_ub_brc is not None:
             sch[bias_l0c].reused_by(c_add_bias, c_col)
             sch[c_add_bias].emit_insn(c_add_bias.op.axis[0], 'phony_insn')
-            sch[bias_l0c].split(bias_l0c.op.axis[2], BRC_STANDARD_BLOCK_SIZE)
-            sch[bias_l0c].emit_insn(bias_l0c.op.axis[1], 'dma_copy')
+            sch[bias_l0c].split(bias_l0c.op.axis[3], BRC_STANDARD_BLOCK_SIZE)
+            sch[bias_l0c].emit_insn(bias_l0c.op.axis[2], 'dma_copy')
             sch[bias_ub].emit_insn(bias_ub.op.axis[0], 'dma_copy')
             sch[bias_ub_brc].emit_insn(bias_ub_brc.op.axis[0], 'vector_auto')
             mad_dict["init_bias"] = 1
@@ -1947,7 +1948,6 @@ def general_schedule(
 
         if dynamic_mode == "dynamic_hw":
             sch[a_l1].set_storage_bound(get_al1_bound())
-        if dynamic_mode == "dynamic_hw":
             sch.set_var_range(a_ddr.shape[2], *var_range.get("dedy_h"))
             sch.set_var_range(a_ddr.shape[3], *var_range.get("dedy_w"))
             sch.set_var_range(output_shape[2], *var_range.get("dx_h"))
@@ -2002,12 +2002,12 @@ def general_schedule(
     def _bind_core():
         axs = sch_agent[c_ddr].get_active_scopes()
         ax_ni, ax_ci, ax_hw, _ = axs
+        ax_g, ax_ci = sch_agent[c_ddr].split(ax_ci, nparts=g_after)
         ax_core = sch_agent[c_ddr].bind_core(
-            [ax_ni, ax_ci, ax_hw], [batch_dim, n_dim, m_dim]
-        )
+            [ax_ni, ax_g, ax_ci, ax_hw], [batch_dim, group_dim, n_dim, m_dim])
         ax_core_in = sch_agent[c_ddr].get_superkernel_axis_pragma()
         sch_agent.root_stage_at(c_ddr, ax_core)
-        blocks = batch_dim * n_dim * m_dim
+        blocks = batch_dim * group_dim * n_dim * m_dim
         if blocks == batch_dim:
             sch[c_ddr].pragma(ax_core_in, "json_info_batchBindOnly")
         return ax_core

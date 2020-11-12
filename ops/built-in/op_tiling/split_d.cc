@@ -230,32 +230,31 @@ void CalRunningParams(SplitDTilingParams& runParams, int64_t inputNum, std::vect
       runParams.tilingMode = 1;
       GetLoopParamsFront(runParams, ubSize, runParams.outputSizeSplit, dataBlock);
     } else {
-      runParams.tilingMode = 2;
-      int64_t outNum = runParams.loopEachCore * runParams.outputSizeSplit;
-      if (outNum < dataBlock) {
-        runParams.loopEachCore = dataBlock;
-        runParams.coreNum = CalCeilDiv(shapeBefore, runParams.loopEachCore);
-        runParams.loopLastCore = shapeBefore - (runParams.coreNum - 1) * runParams.loopEachCore;
-      }
-      int64_t outNumLastCore = runParams.loopLastCore * runParams.outputSizeSplit;
-      if (outNumLastCore < dataBlock) {
-        runParams.coreNum = runParams.coreNum - 1;
-        runParams.loopLastCore = runParams.loopLastCore + runParams.loopEachCore;
-      }
-      runParams.ubNumber = (runParams.ubNumber / (numSplit + 1)) * numSplit;
-      runParams.ubNumber = runParams.ubNumber / runParams.inputSizeSplit * runParams.inputSizeSplit;
-      runParams.dataEachCore = runParams.loopEachCore * runParams.inputSizeSplit;
-      runParams.dataLastCore = runParams.loopLastCore * runParams.inputSizeSplit;
-      int64_t loopCount = CalCeilDiv(dataBlock, runParams.inputSizeSplit);
-      int64_t dataValue = CalCeilDiv(dataBlock, (runParams.outputSizeSplit * loopCount));
-      dataValue = dataValue * loopCount * runParams.inputSizeSplit;
-      GetScalarParamsFront(runParams, runParams.ubNumber, runParams.dataEachCore, dataValue, dataBlock);
-      runParams.loopNumLast = runParams.loopNum;
-      runParams.lastNumLast = runParams.lastNum;
-      runParams.loopEachLast = runParams.loopEach;
-      runParams.lastLoopLast = runParams.loopLast;
-      if ((runParams.dataEachCore != runParams.dataLastCore) && (runParams.dataLastCore != 0)) {
-        GetScalarParamsLast(runParams, runParams.ubNumber, dataValue, dataBlock);
+      if (runParams.loopEachCore < dataBlock) {
+        runParams.tilingMode = 3;
+        runParams.coreNum = 1;
+        runParams.loopEachCore = shapeBefore;
+      } else {
+        runParams.tilingMode = 2;
+        if (runParams.loopLastCore < dataBlock) {
+          runParams.coreNum = runParams.coreNum - 1;
+          runParams.loopLastCore = runParams.loopLastCore + runParams.loopEachCore;
+        }
+        runParams.ubNumber = (runParams.ubNumber / (numSplit + 1)) * numSplit;
+        runParams.ubNumber = runParams.ubNumber / runParams.inputSizeSplit * runParams.inputSizeSplit;
+        runParams.dataEachCore = runParams.loopEachCore * runParams.inputSizeSplit;
+        runParams.dataLastCore = runParams.loopLastCore * runParams.inputSizeSplit;
+        int64_t loopCount = CalCeilDiv(dataBlock, runParams.inputSizeSplit);
+        int64_t dataValue = CalCeilDiv(dataBlock, (runParams.outputSizeSplit * loopCount));
+        dataValue = dataValue * loopCount * runParams.inputSizeSplit;
+        GetScalarParamsFront(runParams, runParams.ubNumber, runParams.dataEachCore, dataValue, dataBlock);
+        runParams.loopNumLast = runParams.loopNum;
+        runParams.lastNumLast = runParams.lastNum;
+        runParams.loopEachLast = runParams.loopEach;
+        runParams.lastLoopLast = runParams.loopLast;
+        if ((runParams.dataEachCore != runParams.dataLastCore) && (runParams.dataLastCore != 0)) {
+          GetScalarParamsLast(runParams, runParams.ubNumber, dataValue, dataBlock);
+        }
       }
     }
   } else {

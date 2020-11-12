@@ -114,6 +114,11 @@ class ElewiseSchedule(VectorSchedule):
         self._is_preload_fused_axis_scene = False
         self._preload_fused_axis = None
         self._continue_broadcast_last_axis = []
+        self._special_broadcast_insn_map = {"vector_mul": "vector_mul_with_broadcast",
+                                            "vector_div": "vector_div_with_broadcast",
+                                            "vector_add": "vector_add_with_broadcast",
+                                            "vector_sub": "vector_sub_with_broadcast"
+                                            }
         self._broadcast_enhance_insn_map = \
             {"vector_mul": "vector_mul_with_broadcast_enhance",
              "vector_div": "vector_div_with_broadcast_enhance",
@@ -1338,12 +1343,6 @@ class ElewiseSchedule(VectorSchedule):
         ub_split_axis = ub_tiling_result["axis"]
         res_ub_inner = ub_tiling_result["inner_itervar"]
 
-        special_broadcast_insn_map = {"vector_mul": "vector_mul_with_broadcast",
-                                      "vector_div": "vector_div_with_broadcast",
-                                      "vector_add": "vector_add_with_broadcast",
-                                      "vector_sub": "vector_sub_with_broadcast",
-                                      }
-
         self._get_emit_insn_map()
         self._get_reg_emit_insn_map()
 
@@ -1354,7 +1353,7 @@ class ElewiseSchedule(VectorSchedule):
             return False
 
         def __is_special_non_last_broadcast_factor16_scene(i):
-            if insn in special_broadcast_insn_map.keys() and \
+            if insn in self._special_broadcast_insn_map.keys() and \
                     self._is_special_factor16_broadcast_tensor(i):
                 return True
             return False
@@ -1384,7 +1383,7 @@ class ElewiseSchedule(VectorSchedule):
                     insn = self._broadcast_enhance_insn_map.get(insn)
             elif self._special_non_last_broadcast_factor16_scene:
                 if __is_special_non_last_broadcast_factor16_scene(i):
-                    insn = special_broadcast_insn_map.get(insn)
+                    insn = self._special_broadcast_insn_map.get(insn)
             elif self._special_mix_broadcast_scene:
                 if __is_special_mix_broadcast_scene(i):
                     insn = self._broadcast_enhance_insn_map.get(insn)
@@ -1730,10 +1729,13 @@ class ElewiseSchedule(VectorSchedule):
         if not self._broadcast_not_last_axis_tensors:
             return False
 
+        # The front-end instruction mapping switches the back-end.
+        # example:vector_mul_with_broadcast to vector_mul.
+        # To make the frame structure unchanged, only modify map's value.
         special_insn_map = {"vector_mul": "vector_mul_with_broadcast",
                             "vector_div": "vector_div_with_broadcast",
                             "vector_add": "vector_add_with_broadcast",
-                            "vector_sub": "vector_sub_with_broadcast",
+                            "vector_sub": "vector_sub_with_broadcast"
                             }
 
         for broadcast_tensor in self._broadcast_not_last_axis_tensors:

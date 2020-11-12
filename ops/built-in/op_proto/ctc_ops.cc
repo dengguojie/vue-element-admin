@@ -83,64 +83,49 @@ IMPLEMT_INFERFUNC(CTCLoss, CTCLossInfer) {
 INFER_FUNC_REG(CTCLoss, CTCLossInfer);
 
 IMPLEMT_INFERFUNC(CTCGreedyDecoder, CTCGreedyDecoderInfer) {
-  Shape inputs_shape;
-  auto inputs_desc = op.GetInputDesc(0);
-  if (WithRank(inputs_desc, 3, inputs_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input inputs rank must be 3, got rank %lld", inputs_desc.GetShape().GetDimNum());
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+
+  auto inputs_desc = op_desc->MutableInputDesc(0);
+  GeShape inputs_shape;
+  if (WithRank(inputs_desc, 3, inputs_shape) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "input inputs rank must be 3, got rank %lld",
+            inputs_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
-  Shape sequence_length_shape;
-  auto sequence_length_desc = op.GetInputDesc(1);
-  if (WithRank(sequence_length_desc, 1, sequence_length_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  auto sequence_length_desc = op_desc->MutableInputDesc(1);
+  GeShape sequence_length_shape;
+  if (WithRank(sequence_length_desc, 1, sequence_length_shape) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input sequence_length rank must be 1, got rank %lld",
-            sequence_length_desc.GetShape().GetDimNum());
+            sequence_length_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
-  int64_t batch_size;
+  int64_t batch_size = UNKNOWN_DIM;
   if (Merge(inputs_shape.GetDim(1), sequence_length_shape.GetDim(0), batch_size) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "merge inputs dim 1 value %lld and sequence_length dim 0 value %lld faild",
+    OP_LOGE(op.GetName().c_str(),
+            "merge inputs dim[1] value %lld and sequence_length dim[0] value %lld faild",
             inputs_shape.GetDim(1), sequence_length_shape.GetDim(0));
     return GRAPH_FAILED;
   }
 
-  auto total_decoded_outputs = UNKNOWN_DIM;
+  int64_t total_decoded_outputs = UNKNOWN_DIM;
 
-  auto decoded_indices_desc = op.GetOutputDesc("decoded_indices");
-  decoded_indices_desc.SetShape(Shape({total_decoded_outputs, 2}));
-  decoded_indices_desc.SetDataType(DT_INT64);
-  if (op.UpdateOutputDesc("decoded_indices", decoded_indices_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "failed to update output decoded_indices");
-    return GRAPH_FAILED;
-  }
+  auto decoded_indices_desc = op_desc->MutableOutputDesc("decoded_indices");
+  (void)FillOpDesc(decoded_indices_desc, GeShape({total_decoded_outputs, 2}), DT_INT64);
 
-  auto decoded_values_desc = op.GetOutputDesc("decoded_values");
-  decoded_values_desc.SetShape(Shape({total_decoded_outputs}));
-  decoded_values_desc.SetDataType(DT_INT64);
-  if (op.UpdateOutputDesc("decoded_values", decoded_values_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "failed to update output decoded_values");
-    return GRAPH_FAILED;
-  }
+  auto decoded_values_desc = op_desc->MutableOutputDesc("decoded_values");
+  (void)FillOpDesc(decoded_values_desc, GeShape({total_decoded_outputs}), DT_INT64);
 
-  auto decoded_shape_desc = op.GetOutputDesc("decoded_shape");
-  decoded_shape_desc.SetShape(Shape({2}));
-  decoded_shape_desc.SetDataType(DT_INT64);
-  if (op.UpdateOutputDesc("decoded_shape", decoded_shape_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "failed to update output decoded_shape");
-    return GRAPH_FAILED;
-  }
+  auto decoded_shape_desc = op_desc->MutableOutputDesc("decoded_shape");
+  (void)FillOpDesc(decoded_shape_desc, GeShape({2}), DT_INT64);
 
-  auto log_probability_desc = op.GetOutputDesc("log_probability");
-  log_probability_desc.SetShape(Shape({batch_size, 1}));
-  log_probability_desc.SetDataType(inputs_desc.GetDataType());
-  if (op.UpdateOutputDesc("log_probability", log_probability_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "failed to update output log_probability");
-    return GRAPH_FAILED;
-  }
+  auto log_probability_desc = op_desc->MutableOutputDesc("log_probability");
+  (void)FillOpDesc(log_probability_desc, GeShape({batch_size, 1}), inputs_desc->GetDataType());
 
   return GRAPH_SUCCESS;
 }
+
 
 INFER_FUNC_REG(CTCGreedyDecoder, CTCGreedyDecoderInfer);
 

@@ -202,7 +202,7 @@ Status PassThroughSecondFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
 
   if (passThroughDesc->GetInputDesc(0).GetDataType() != DT_FLOAT16) {
     FUSION_PASS_CHECK(SUCCESS != RemoveWeightNode(graph, passThroughNode),
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove WeightNode failed."), return FAILED);
+                      OP_LOGW(FUSED_OP_TYPE.c_str(), "Remove WeightNode failed."), return NOT_CHANGED);
   } else {
     FUSION_PASS_CHECK(SUCCESS != InsertCurNode(graph, passThroughNode),
                       OP_LOGE(FUSED_OP_TYPE.c_str(), "Insert CurNode failed."), return FAILED);

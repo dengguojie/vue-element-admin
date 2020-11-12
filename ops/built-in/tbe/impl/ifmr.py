@@ -27,13 +27,7 @@ from te.tvm import expr as _expr
 from te.tvm import stmt as _stmt
 from te.platform import cce_params
 from te.platform.cce_runtime import PIPELINES
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import REQUIRED_ATTR_FLOAT
-from te.utils.op_utils import REQUIRED_ATTR_LIST_FLOAT
-from te.utils.op_utils import REQUIRED_ATTR_BOOL
-from te.utils.op_utils import KERNEL_NAME
+from te.utils import para_check
 
 
 SCALAR_MAX_FP16 = (2 ** 16 - 1)
@@ -697,19 +691,19 @@ class Reconstruction():
         return self.tik_instance
 
 
-@check_op_params(
-    REQUIRED_INPUT,
-    REQUIRED_INPUT,
-    REQUIRED_INPUT,
-    REQUIRED_INPUT,
-    REQUIRED_OUTPUT,
-    REQUIRED_OUTPUT,
-    REQUIRED_ATTR_FLOAT,
-    REQUIRED_ATTR_FLOAT,
-    REQUIRED_ATTR_LIST_FLOAT,
-    REQUIRED_ATTR_FLOAT,
-    REQUIRED_ATTR_BOOL,
-    KERNEL_NAME)
+@para_check.check_op_params(
+    para_check.REQUIRED_INPUT,
+    para_check.REQUIRED_INPUT,
+    para_check.REQUIRED_INPUT,
+    para_check.REQUIRED_INPUT,
+    para_check.REQUIRED_OUTPUT,
+    para_check.REQUIRED_OUTPUT,
+    para_check.REQUIRED_ATTR_FLOAT,
+    para_check.REQUIRED_ATTR_FLOAT,
+    para_check.REQUIRED_ATTR_LIST_FLOAT,
+    para_check.REQUIRED_ATTR_FLOAT,
+    para_check.REQUIRED_ATTR_BOOL,
+    para_check.KERNEL_NAME)
 def ifmr(
     data,
     data_min,

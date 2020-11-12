@@ -19,12 +19,7 @@ import math
 from te import tik
 from te import platform as tbe_platform
 import te.lang.dynamic
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import DYNAMIC_OUTPUT
-from te.utils.op_utils import REQUIRED_ATTR_INT
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import check_dtype
+from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 from impl.util.util_select_op_base import gen_param
@@ -244,7 +239,7 @@ class SplitD:
                                                                   self.output_dtype)
 
         dtype_list = ("float16, float32, int32, int8, int16, int64, uint8, uint16, uint32, uint64")
-        check_dtype(self.input_dtype, dtype_list, param_name="x")
+        para_check.check_dtype(self.input_dtype, dtype_list, param_name="x")
 
     def compute_move_copy(self, core_index, loop_num, last_num):
         """
@@ -505,25 +500,28 @@ class SplitD:
             self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, tiling_burst_len, 0, 0)
             self.tiling_args()
             with self.tik_instance.if_scope(self.select_mode == 0):
-                self.compute_move_copy(core_index, self.loop_num, self.last_num)
+                with self.tik_instance.if_scope(core_index < self.act_core_num - 1):
+                    self.compute_move_copy(core_index, self.loop_num, self.last_num)
+                with self.tik_instance.if_scope(core_index == self.act_core_num - 1):
+                    self.compute_move_copy(core_index, self.loop_num_last_core, self.last_num_last_core)
             with self.tik_instance.if_scope(self.select_mode == 1):
                 with self.tik_instance.if_scope(core_index < self.act_core_num - 1):
                     self.compute_first_dim_for_core(core_index, self.loop_each_core)
-                with self.tik_instance.else_scope():
+                with self.tik_instance.if_scope(core_index == self.act_core_num - 1):
                     self.compute_first_dim_for_core(core_index, self.loop_last_core)
             with self.tik_instance.if_scope(self.select_mode == 2):
                 with self.tik_instance.if_scope(core_index < self.act_core_num - 1):
-                    self.compute_for_scalar(core_index, self.loop_num, self.last_num, self.loop_each,
-                                            self.loop_last)
-                with self.tik_instance.else_scope():
+                    self.compute_for_scalar(core_index, self.loop_num, self.last_num, self.loop_each, self.loop_last)
+                with self.tik_instance.if_scope(core_index == self.act_core_num - 1):
                     self.compute_for_scalar(core_index, self.loop_num_last_core, self.last_num_last_core,
                                             self.loop_each_last_core, self.loop_last_last_core)
             with self.tik_instance.if_scope(self.select_mode == 3):
-                self.compute_one_core()
+                with self.tik_instance.if_scope(core_index < 1):
+                    self.compute_one_core()
             with self.tik_instance.if_scope(self.select_mode == 4):
                 with self.tik_instance.if_scope(core_index < self.act_core_num - 1):
                     self.compute_last_dim_for_core(core_index, self.loop_num, self.last_num)
-                with self.tik_instance.else_scope():
+                with self.tik_instance.if_scope(core_index == self.act_core_num - 1):
                     self.compute_last_dim_for_core(core_index, self.loop_num_last_core, self.last_num_last_core)
 
     def split_d_operator(self):
@@ -551,7 +549,8 @@ class SplitD:
         return self.tik_instance
 
 @te.op.register_operator("SplitD")
-@check_op_params(REQUIRED_INPUT, DYNAMIC_OUTPUT, REQUIRED_ATTR_INT, REQUIRED_ATTR_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.DYNAMIC_OUTPUT, para_check.REQUIRED_ATTR_INT,
+                            para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def split_d(x, y, split_dim, num_split, kernel_name="split_d"):
     """
     Split a tensor into `num_split` tensors along one dimension.
@@ -573,5 +572,17 @@ def split_d(x, y, split_dim, num_split, kernel_name="split_d"):
     -------
     compile info
     """
+
+    if num_split < 1:
+        expected_value = "must be greater or equal to 1"
+        real_value = "less to 1"
+        error_manager_vector.raise_err_input_value_invalid("split", "The num_split",
+                                                           expected_value, real_value)
+    if num_split > 63:
+        expected_value = "must be less or equal to 63"
+        real_value = "greater to 63"
+        error_manager_vector.raise_err_input_value_invalid("split", "The num_split",
+                                                           expected_value, real_value)
+
     obj = SplitD(x, y, split_dim, num_split, kernel_name)
     return obj.split_d_operator()

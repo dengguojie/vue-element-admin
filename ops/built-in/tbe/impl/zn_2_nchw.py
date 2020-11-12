@@ -23,6 +23,7 @@ from te import platform as tbe_platform
 from te.utils import para_check
 from te import tvm
 from impl import five_2_four
+from impl.util.util_common import write_code
 
 # available ub size
 UB_SIZE_B = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
@@ -54,22 +55,6 @@ def _new_alloc(tvm_ib, dtype, shape, name, scope):
                                  scope=scope, data=buf_var)
 
     return new_buffer
-
-
-def _write_code(wkspace_dict, fname):
-    """
-    write workspaces to json file
-
-    """
-    fname = os.path.realpath(fname)
-    if fname.startswith(os.getcwd()):
-        if os.path.exists(fname):
-            with open(fname, "r") as f_var:
-                load_dict = json.load(f_var)
-            load_dict.update(wkspace_dict)
-            with open(fname, "w") as f_var:
-                json.dump(load_dict, f_var, sort_keys=True,
-                          indent=4, separators=(',', ':'))
 
 
 def _get_factor(ele_zero, ele_cnt, total_ele):
@@ -775,7 +760,7 @@ def zn_2_nchw(src, dst, src_format, dst_format, kernel_name='zn_2_nchw'):
             size *= item
         total_size = [size * float_size]
         workspace_dict = {"workspace": {"num": 1, "size": total_size}}
-        _write_code(workspace_dict, "kernel_meta/" + kernel_name + ".json")
+        write_code(workspace_dict, kernel_name)
     else:
         _check_parameters(src, dst, src_format, dst_format, kernel_name)
         c_0 = 16
@@ -809,4 +794,4 @@ def zn_2_nchw(src, dst, src_format, dst_format, kernel_name='zn_2_nchw'):
             size *= item
         total_size = [size * float_size, size * float_size]
         workspace_dict = {"workspace": {"num": 2, "size": total_size}}
-        _write_code(workspace_dict, "kernel_meta/" + kernel_name + ".json")
+        write_code(workspace_dict, kernel_name)

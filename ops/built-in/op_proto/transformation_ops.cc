@@ -599,7 +599,9 @@ static graphStatus TransposeCommonInferShape(const std::vector<int64_t>& perm_li
   size_t dim_num = shape.GetDimNum();
   // do perm operation when shape is not -2
   if (shape.GetDims() != UNKNOWN_RANK) {
-    if (perm_list.empty() || (perm_list.size() != dim_num)) {
+    size_t perm_list_size = perm_list.size();
+    if (perm_list.empty() || (perm_list_size != dim_num)) {
+      OpsAttrValueErrReport(op.GetName(), "perm", ConcatString(dim_num), ConcatString(perm_list_size));
       OP_LOGE(op.GetName().c_str(), "perm is empty or perm size is not match shape size");
       return GRAPH_FAILED;
     }
@@ -979,6 +981,7 @@ IMPLEMT_COMMON_INFERFUNC(PermuteInferShape) {
   std::vector<int64_t> perm_list;
   if (ge::GRAPH_SUCCESS != op.GetAttr("order", perm_list)) {
     OP_LOGE(op.GetName().c_str(), "The Permute op GetOpAttr ConstValue failed!");
+    OpsGetAttrErrReport(op.GetName(), "order");
     return GRAPH_FAILED;
   }
   for (size_t i = 0; i < input_shape_dims.size(); ++i) {
@@ -1472,7 +1475,10 @@ IMPLEMT_COMMON_INFERFUNC(UnpackInferShape) {
     tensordesc_output.SetShape(output_shape);
     tensordesc_output.SetShapeRange(out_range);
     tensordesc_output.SetDataType(input_dtype);
-    op.UpdateDynamicOutputDesc("y", i, tensordesc_output);
+    if (op.UpdateDynamicOutputDesc("y", i, tensordesc_output) != GRAPH_SUCCESS) {
+      OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+      return GRAPH_FAILED;
+    }
   }
   OP_LOGI(op.GetName().c_str(), "UnpackInferShape function End!");
   return GRAPH_SUCCESS;
@@ -1482,9 +1488,9 @@ COMMON_INFER_FUNC_REG(Unpack, UnpackInferShape);
 // -----------------Unpack END------------------------
 
 // ----------------ExtractImagePatches-------------------
-static std::vector<int64_t> GetAttrValue(const ge::Operator& op, const std::string& key_name) {
+static std::vector<int64_t> GetAttrValue(const Operator& op, const std::string& key_name) {
   std::vector<int64_t> list;
-  if (op.GetAttr(key_name, list) != ge::GRAPH_SUCCESS) {
+  if (op.GetAttr(key_name, list) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr ConstValue failed!");
   }
   return list;
@@ -1492,8 +1498,8 @@ static std::vector<int64_t> GetAttrValue(const ge::Operator& op, const std::stri
 
 static bool CheckListEmptyAndValue(const std::string& op_name, const std::vector<int64_t>& list,
                                    const std::string& attr_name) {
-  if (list.empty()) {
-    OP_LOGE(op_name.c_str(), "The %s is empty !", attr_name.c_str());
+  if (list.size() < 3) {
+    OP_LOGE(op_name.c_str(), "The %s dose not have enough elements(%u)!", attr_name.c_str(), list.size());
     return false;
   }
   if (list.at(0) != 1 || list.at(1) < 1 || list.at(2) < 1 || list.at(0) != 1) {
@@ -1523,13 +1529,13 @@ IMPLEMT_VERIFIER(ExtractImagePatches, ExtractImagePatchesVerify) {
   }
 
   std::string padding;
-  if (ge::GRAPH_SUCCESS != op.GetAttr("padding", padding)) {
+  if (op.GetAttr("padding", padding) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Get padding failed!");
     return GRAPH_FAILED;
   }
 
   if (padding != "SAME" && padding != "VALID") {
-    OP_LOGE(op.GetName().c_str(), "padding only supported SAME and VALID!");
+    OP_LOGE(op.GetName().c_str(), "Padding only supported SAME and VALID!");
     return GRAPH_FAILED;
   }
 
@@ -1566,17 +1572,37 @@ IMPLEMT_COMMON_INFERFUNC(ExtractImagePatchesInferShape) {
   dilation = GetAttrValue(op, "rates");
 
   std::string padding;
-  if (op.GetAttr("padding", padding) == ge::GRAPH_FAILED) {
+  if (op.GetAttr("padding", padding) == GRAPH_FAILED) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr ConstValue padding failed!");
     return GRAPH_FAILED;
   }
 
-  auto tensor_desc_in = op.GetInputDesc(0);
-  auto tensor_desc_out = op.GetInputDesc(0);
+  auto tensor_desc_in = op.GetInputDesc("x");
   auto dtype = tensor_desc_in.GetDataType();
   auto shape_in = tensor_desc_in.GetShape();
-  auto shape_out = tensor_desc_out.GetShape();
-  tensor_desc_in.SetShape(shape_in);
+  auto shape_out = shape_in;
+
+  // Set data_format for input if input is the default value of ND
+  if (tensor_desc_in.GetOriginFormat() == Format::FORMAT_ND) {
+    std::string data_format;
+    if (op.GetAttr("data_format", data_format) == GRAPH_FAILED) {
+      OP_LOGE(op.GetName().c_str(), "GetOpAttr data_format failed, input format"
+              "must be NHWC or data_format is NHWC!");
+      return GRAPH_FAILED;
+    }
+    if (data_format == "NHWC") {
+      tensor_desc_in.SetOriginFormat(Format::FORMAT_NHWC);
+      tensor_desc_in.SetFormat(Format::FORMAT_NHWC);
+      if (op.UpdateInputDesc("x", tensor_desc_in) != GRAPH_SUCCESS) {
+        OP_LOGE(op.GetName().c_str(), "Update x failed!");
+        return GRAPH_FAILED;
+      }
+    } else {
+      OP_LOGE(op.GetName().c_str(), "Attr data_format(%s) only support NHWC",
+              data_format.c_str());
+       return GRAPH_FAILED;
+    }
+  }
 
   // NHWC
   in_n = shape_in.GetDim(0);
@@ -1611,7 +1637,10 @@ IMPLEMT_COMMON_INFERFUNC(ExtractImagePatchesInferShape) {
   TensorDesc tensordesc_output = op.GetOutputDesc("y");
   tensordesc_output.SetShape(Shape(shape_out));
   tensordesc_output.SetDataType(dtype);
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
+  if (op.UpdateOutputDesc("y", tensordesc_output) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
@@ -1620,9 +1649,9 @@ VERIFY_FUNC_REG(ExtractImagePatches, ExtractImagePatchesVerify);
 // ----------------ExtractImagePatches END-------------------
 
 // ----------------ExtractVolumePatches-------------------
-static std::vector<int64_t> GetAttrValueVolume(const ge::Operator& op, const std::string& key_name) {
+static std::vector<int64_t> GetAttrValueVolume(const Operator& op, const std::string& key_name) {
   std::vector<int64_t> list;
-  if (ge::GRAPH_SUCCESS != op.GetAttr(key_name, list)) {
+  if (op.GetAttr(key_name, list) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr ConstValue failed!");
   }
   return list;
@@ -1630,12 +1659,12 @@ static std::vector<int64_t> GetAttrValueVolume(const ge::Operator& op, const std
 
 static bool CheckListEmptyAndValueVolume(const std::string& op_name, const std::vector<int64_t>& list,
                                          const std::string& attr_name) {
-  if (list.empty()) {
-    OP_LOGE(op_name.c_str(), "the %s is empty !", attr_name.c_str());
+  if (list.size() < 5) {
+    OP_LOGE(op_name.c_str(), "The %s dose not have enough elements(%u)!", attr_name.c_str(), list.size());
     return false;
   }
   if (list.at(0) != 1 || list.at(1) < 1 || list.at(2) < 1 || list.at(3) < 1 || list.at(4) != 1) {
-    OP_LOGE(op_name.c_str(), "the %s value is wrong !", attr_name.c_str());
+    OP_LOGE(op_name.c_str(), "The %s value is wrong !", attr_name.c_str());
     return false;
   }
   return true;
@@ -1655,13 +1684,13 @@ IMPLEMT_VERIFIER(ExtractVolumePatches, ExtractVolumePatchesVerify) {
   }
 
   std::string padding;
-  if (ge::GRAPH_SUCCESS != op.GetAttr("padding", padding)) {
+  if (op.GetAttr("padding", padding) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Get padding failed!");
     return GRAPH_FAILED;
   }
 
   if (padding != "SAME" && padding != "VALID") {
-    OP_LOGE(op.GetName().c_str(), "padding only supported SAME and VALID!");
+    OP_LOGE(op.GetName().c_str(), "Padding only supported SAME and VALID!");
     return GRAPH_FAILED;
   }
 
@@ -1672,39 +1701,61 @@ IMPLEMT_COMMON_INFERFUNC(ExtractVolumePatchesInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter op_proto inferfunction!");
 
   Tensor input_size_tensor;
-
   std::vector<int64_t> ksize;
   ksize = GetAttrValueVolume(op, "ksizes");
-
   std::vector<int64_t> stride;
   stride = GetAttrValueVolume(op, "strides");
 
   std::string padding;
-  if (op.GetAttr("padding", padding) == ge::GRAPH_FAILED) {
+  if (op.GetAttr("padding", padding) == GRAPH_FAILED) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr ConstValue padding failed!");
     return GRAPH_FAILED;
   }
 
-  auto tensor_desc_in = op.GetInputDesc(0);
-  auto tensor_desc_out = op.GetInputDesc(0);
-  auto dtype = tensor_desc_in.GetDataType();
-  auto shape_in = tensor_desc_in.GetShape();
-  auto shape_out = tensor_desc_out.GetShape();
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto desc_in_ptr = op_desc->MutableInputDesc("x");
+  auto shape_in = desc_in_ptr->GetShape();
+  auto dtype = desc_in_ptr->GetDataType();
 
-  // NDHWC
-  int64_t in_n = shape_in.GetDim(0);
-  int64_t in_d = shape_in.GetDim(1);
-  int64_t in_h = shape_in.GetDim(2);
-  int64_t in_w = shape_in.GetDim(3);
-  int64_t in_c = shape_in.GetDim(4);
+  std::string data_format;
+  if (op.GetAttr("data_format", data_format) == GRAPH_FAILED || (data_format != "NDHWC" && data_format != "NCDHW")) {
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr data_format failed, data_format must be NDHWC or NCDHW!");
+    return GRAPH_FAILED;
+  }
 
-  // NDHWC
-  int64_t filter_d = ksize.at(1);
-  int64_t filter_h = ksize.at(2);
-  int64_t filter_w = ksize.at(3);
-  int64_t stride_d = stride.at(1);
-  int64_t stride_h = stride.at(2);
-  int64_t stride_w = stride.at(3);
+  auto x_format = desc_in_ptr->GetOriginFormat();
+  const std::map<std::string, Format> format_map{{"NDHWC", FORMAT_NDHWC}, {"NCDHW", FORMAT_NCDHW}};
+
+  // Set ori_format as data_format if input ori_format is the default value ND.
+  if (x_format == FORMAT_ND) {
+    desc_in_ptr->SetOriginFormat(format_map.at(data_format));
+    desc_in_ptr->SetFormat(format_map.at(data_format));
+  }
+
+  x_format = desc_in_ptr->GetOriginFormat();
+
+  if (x_format != FORMAT_NDHWC && x_format != FORMAT_NCDHW) {
+    OP_LOGE(op.GetName().c_str(), "Attr x_format only support NDHWC or NCDHW");
+    return GRAPH_FAILED;
+  }
+
+  std::map<char, int> idx_map{{'N', 0}, {'D', 1}, {'H', 2},{'W', 3},{'C', 4}};
+  if (x_format == FORMAT_NCDHW) {
+    idx_map = {{'N', 0}, {'C', 1}, {'D', 2}, {'H', 3}, {'W', 4}};
+  }
+
+  int64_t in_n = shape_in.GetDim(idx_map['N']);
+  int64_t in_d = shape_in.GetDim(idx_map['D']);
+  int64_t in_h = shape_in.GetDim(idx_map['H']);
+  int64_t in_w = shape_in.GetDim(idx_map['W']);
+  int64_t in_c = shape_in.GetDim(idx_map['C']);
+
+  int64_t filter_d = ksize.at(idx_map['D']);
+  int64_t filter_h = ksize.at(idx_map['H']);
+  int64_t filter_w = ksize.at(idx_map['W']);
+  int64_t stride_d = stride.at(idx_map['D']);
+  int64_t stride_h = stride.at(idx_map['H']);
+  int64_t stride_w = stride.at(idx_map['W']);
 
   int64_t out_d{0};
   int64_t out_h{0};
@@ -1719,26 +1770,15 @@ IMPLEMT_COMMON_INFERFUNC(ExtractVolumePatchesInferShape) {
     out_w = (in_w + stride_w - 1) / stride_w;
   }
   int64_t out_c = in_c * filter_d * filter_h * filter_w;
-  // NDHWC
-  shape_out.SetDim(0, in_n);
-  shape_out.SetDim(1, out_d);
-  shape_out.SetDim(2, out_h);
-  shape_out.SetDim(3, out_w);
-  shape_out.SetDim(4, out_c);
 
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  std::vector<int64_t> out_dim = {in_n, out_d, out_h, out_w, out_c};
+  if (x_format == FORMAT_NCDHW) {
+    out_dim = {in_n, out_c, out_d, out_h, out_w};
+  }
+  auto des_out_ptr = op_desc->MutableOutputDesc("y");
+  des_out_ptr->SetShape(ge::GeShape(out_dim));
+  des_out_ptr->SetDataType(dtype);
 
-  tensor_desc_in.SetFormat(FORMAT_NDHWC);
-  tensor_desc_in.SetOriginFormat(FORMAT_NDHWC);
-  tensordesc_output.SetFormat(FORMAT_NDHWC);
-  tensordesc_output.SetOriginFormat(FORMAT_NDHWC);
-
-  tensordesc_output.SetShape(Shape(shape_out));
-  tensordesc_output.SetDataType(dtype);
-
-  (void)op.UpdateInputDesc("x", tensor_desc_in);
-
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
   return GRAPH_SUCCESS;
 }
 

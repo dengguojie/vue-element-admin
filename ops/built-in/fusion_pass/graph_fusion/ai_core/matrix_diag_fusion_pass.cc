@@ -150,10 +150,10 @@ Status MatrixDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
     FUSION_PASS_CHECK(inputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                       return PARAM_INVALID);
     Status ret = NnSet(dimNums * dimNums1 * dimNums1, FLOAT_NUM_ZERO, *reinterpret_cast<float*>(inputAssit.get()));
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "NnSet failed."), return NOT_CHANGED);
 
     ret = AssitHelp(dimNums, dimNums1, *inputAssit.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "AssitHelp failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "AssitHelp failed."), return NOT_CHANGED);
 
     // define the shape of auxiliary matrix
     ge::GeShape assitShape = tdShape;
@@ -174,10 +174,10 @@ Status MatrixDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
                       return PARAM_INVALID);
 
     Status ret = NnSet(dimNums * dimNums1 * dimNums1, INT_NUM_ZERO, *reinterpret_cast<int32_t*>(inputAssit.get()));
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "NnSet failed."), return NOT_CHANGED);
 
     ret = AssitHelp(dimNums, dimNums1, *inputAssit.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "AssitHelp failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "AssitHelp failed."), return NOT_CHANGED);
 
     // define the shape of auxiliary matrix
     ge::GeShape assitShape = tdShape;
@@ -197,10 +197,10 @@ Status MatrixDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
     FUSION_PASS_CHECK(inputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                       return PARAM_INVALID);
     Status ret = NnSet(dimNums * dimNums1 * dimNums1, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(inputAssit.get()));
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "NnSet failed."), return NOT_CHANGED);
 
     ret = AssitHelp1(dimNums, dimNums1, *inputAssit.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "AssitHelp failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "AssitHelp failed."), return NOT_CHANGED);
 
     // define the shape of auxiliary matrix
     ge::GeShape assitShape = tdShape;
@@ -221,10 +221,10 @@ Status MatrixDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
                       return PARAM_INVALID);
 
     Status ret = NnSet(dimNums * dimNums1 * dimNums1, INT8_NUM_ZERO, *reinterpret_cast<int8_t*>(inputAssit.get()));
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "NnSet failed."), return NOT_CHANGED);
 
     ret = AssitHelp(dimNums, dimNums1, *inputAssit.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "AssitHelp failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "AssitHelp failed."), return NOT_CHANGED);
 
     // define the shape of auxiliary matrix
     ge::GeShape assitShape = tdShape;
@@ -245,10 +245,10 @@ Status MatrixDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
                       return PARAM_INVALID);
 
     Status ret = NnSet(dimNums * dimNums1 * dimNums1, UINT8_NUM_ZERO, *reinterpret_cast<uint8_t*>(inputAssit.get()));
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "NnSet failed."), return NOT_CHANGED);
 
     ret = AssitHelp(dimNums, dimNums1, *inputAssit.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "AssitHelp failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "AssitHelp failed."), return NOT_CHANGED);
 
     // define the shape of auxiliary matrix
     ge::GeShape assitShape = tdShape;

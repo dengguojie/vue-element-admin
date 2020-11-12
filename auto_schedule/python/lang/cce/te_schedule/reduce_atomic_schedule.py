@@ -22,6 +22,7 @@ from te import tvm
 from te.platform import cce_emitinsn_params
 import te.platform.cce_params as cce
 from te.platform.cce_conf import CceProductParams as pver
+from te.utils.error_manager.error_manager_util import get_error_message
 from . import util
 from .vector_schedule import VectorSchedule
 
@@ -2309,7 +2310,12 @@ class ReduceAtomicSchedule(VectorSchedule):
         def _op_width(op_node):
             num_type = op_node.dtype
             if num_type.lower() not in DTYPE_WIDTH_MAP.keys():
-                raise RuntimeError("Can not calculate with no compute")
+                dict_args = dict()
+                dict_args["errCode"] = "E90001"
+                dict_args["detailed_cause"] = "The dtype must be bool, s8, " \
+                                              "u8, f16, s16, u16, f32, s32, " \
+                                              "u32, s64, u64, [%s] is unsupported!" % num_type
+                raise RuntimeError(dict_args, get_error_message(dict_args))
             tmp_width = 0
             if op_node.op.tag is not None:
                 tag = op_node.op.tag
@@ -2371,7 +2377,11 @@ class ReduceAtomicSchedule(VectorSchedule):
         self._total_size = self._total_size // 2  # div 2 for double buffer
         total_width = self._get_total_width()
         if not total_width:
-            raise RuntimeError("Can not calculate with no compute")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "Can not calculate with no compute, " \
+                                          "total_width is [%s]" % total_width
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
         max_bound = total_width * 128
         max_ub_count = int(self._total_size // max_bound * 128)

@@ -24,6 +24,33 @@ from impl import constant_util as constant
 from impl import ssd_decode_bbox
 from impl import topk
 from impl import nms
+from impl.util import util_select_op_base
+
+
+def get_op_support_info(bbox_delta, score, anchors,
+                        out_boxnum, output_y,
+                        num_classes,
+                        share_location=True,
+                        background_label_id=0,
+                        iou_threshold=0.45,
+                        top_k=400,
+                        eta=1.0,
+                        variance_encoded_in_target=False,
+                        code_type=1,
+                        keep_top_k=-1,
+                        confidence_threshold=0.0,
+                        kernel_name="ssd_detection_output"):
+    """
+    get split info
+    bbox_delta: [batch, N*num_loc_classes*4]
+    score: [batch, N*Num_class]
+    anchors: [1/batch, 2, N*Num_classes]
+    only support split N
+    """
+    if anchors.get("shape")[0] == bbox_delta.get("shape"):
+        return util_select_op_base.get_split_n_info([0, 1, 2], [0, 1])
+    # can not split priorbox
+    return util_select_op_base.get_split_n_info([0, 1], [0, 1])
 
 
 def _check_product_info(input_dict):
@@ -709,7 +736,7 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
 
             with self.instance.if_scope(tik.all(self.keep_top_k > -1,
                                                 topk_num_ecah_class > self.keep_top_k)):
-                with self.instance.if_scope(combin_index <= self.keep_top_k):
+                with self.instance.if_scope(combin_index < self.keep_top_k):
                     combin_out[0, combin_index].set_as(topk3_out_ub[combin_index, 0])
                     combin_out[1, combin_index].set_as(topk3_out_ub[combin_index, 1])
                     combin_out[2, combin_index].set_as(box_data_ub[combin_index, 4])
@@ -771,19 +798,37 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
         with self.instance.if_scope(tik.all(self.keep_top_k > -1,
                                             topk_num_ecah_class > self.keep_top_k)):
             if self.keep_top_k > 0:
-                with self.instance.for_range(0, self.keep_top_k) as index:
-                    self.instance.data_move(self.out_box_gm[batch, index, 0],
-                                            vnchw_dst[index*16], 0, 1, 1, 0, 0)
+                if self.dtype == "float32" or self.keep_top_k < 128:
+                    with self.instance.for_range(0, self.keep_top_k) as index:
+                        self.instance.data_move(self.out_box_gm[batch, index, 0],
+                                                vnchw_dst[index * 16], 0, 1, 1, 0, 0)
+                else:
+                    last_block = self.keep_top_k - 2
+                    with self.instance.for_range(0, last_block) as index:
+                        self.instance.data_move(self.out_box_gm[batch, index, 0],
+                                                vnchw_dst[index * 16], 0, 1, 1, 0, 0)
+                    # copy last two
+                    with self.instance.for_range(0, 8) as idx:
+                        vnchw_dst[last_block * 16 + 8 + idx].set_as(vnchw_dst[(last_block + 1) * 16 + idx])
+                    self.instance.data_move(self.out_box_gm[batch, last_block, 0],
+                                            vnchw_dst[last_block * 16], 0, 1, 1, 0, 0)
         with self.instance.else_scope():
             with self.instance.for_range(0, topk_num_ecah_class) as index:
                 self.instance.data_move(self.out_box_gm[batch, index, 0],
                                         vnchw_dst[index*16], 0, 1, 1, 0, 0)
             # just fill first block
-            scalar_zero = self.instance.Scalar(init_value=0, dtype=self.dtype)
-            self.instance.vector_dup(self.mask, vnchw_dst, scalar_zero, 1, 1, 8)
-            self.instance.data_move(self.out_box_gm[batch, topk_num_ecah_class, 0],
-                                    vnchw_dst, 0, 1, 1, 0, 0)
-
+            if self.dtype == "float32":
+                with self.instance.if_scope(topk_num_ecah_class < self.out_box_gm.shape[1]):
+                    scalar_zero = self.instance.Scalar(init_value=0, dtype=self.dtype)
+                    self.instance.vector_dup(self.mask, vnchw_dst, scalar_zero, 1, 1, 8)
+                    self.instance.data_move(self.out_box_gm[batch, topk_num_ecah_class, 0],
+                                            vnchw_dst, 0, 1, 1, 0, 0)
+            else:
+                with self.instance.if_scope(topk_num_ecah_class < self.out_box_gm.shape[1] - 1):
+                    scalar_zero = self.instance.Scalar(init_value=0, dtype=self.dtype)
+                    self.instance.vector_dup(self.mask, vnchw_dst, scalar_zero, 1, 1, 8)
+                    self.instance.data_move(self.out_box_gm[batch, topk_num_ecah_class, 0],
+                                            vnchw_dst, 0, 1, 1, 0, 0)
 
     def sort_each_class(self, batch, topk1_data_num, topk1_out_actual_num):
         """

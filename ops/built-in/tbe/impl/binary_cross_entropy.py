@@ -21,6 +21,7 @@ from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
 from impl.util import util_select_op_base
+from te.utils.error_manager import error_manager_vector
 
 
 # eps value
@@ -280,7 +281,8 @@ def binary_cross_entropy(x, y, weight, output,
                                   dtype=target_dtype_lower)
 
     if reduction not in ("mean", "sum", "none"):
-        raise RuntimeError("reduction type should in mean/sum/none")
+        rule_desc = "reduction type should in mean/sum/none"
+        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "reduction", reduction)
 
     res = binary_cross_entropy_compute(data_predict, data_target,
                                        data_weight, output,

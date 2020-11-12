@@ -136,7 +136,7 @@ Status SingleBatchNormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   // copy attr
   float epsilon;
   FUSION_PASS_CHECK(!ge::AttrUtils::GetFloat(batchNormNode->GetOpDesc(), EPSILON, epsilon),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Get epsilon attr failed."), return FAILED);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Get epsilon attr failed."), return NOT_CHANGED);
 
   FUSION_PASS_CHECK(!ge::AttrUtils::SetFloat(updateNode->GetOpDesc(), EPSILON, epsilon),
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Set epsilon attr failed"), return FAILED);

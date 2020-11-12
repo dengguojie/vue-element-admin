@@ -238,7 +238,7 @@ class ConcatSchedule:
 
         use_core_num, _, ele_last = \
             self.get_loop_para([self.max_input_dim_size], 0)
-        if use_core_num < self.aicore_num \
+        if use_core_num <= self.aicore_num // 2 \
                 or 0 < ele_last < self.ele_each_block:
             if_supported = False
 
@@ -1381,6 +1381,8 @@ class ConcatSchedule:
             self.concat_last_dim_for_scalar()
         else:
             # tensor move branch
+            self.aicore_num, _, _ = \
+                self.get_loop_para([self.max_input_dim_size], 0)
             with self.tik_instance.for_range(0, self.aicore_num, block_num=self.aicore_num) as index:
                 self.concat_compute_each_core(index)
 

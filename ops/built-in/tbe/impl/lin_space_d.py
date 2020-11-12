@@ -20,6 +20,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 
@@ -124,15 +125,17 @@ def lin_space_d(input_assist, input_start, input_stop,
     shape_stop = tuple(shape_stop)
     shape_num = tuple(shape_num)
     if shape_start != (1,) or shape_stop != (1,) or shape_num != (1,):
-        raise RuntimeError(
-            "lin_space only support rank=1 while shape "
-            "of start or stop or num is not (1,)")
+        error_detail = "lin_space only support rank=1 while shape " \
+                       "of start or stop or num is not (1,)"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, \
+                                                           "input_start,input_stop,input_num", error_detail)
 
     # check shape of assist, only support 1dim
     if len(shape_assist) != 1:
-        raise RuntimeError(
-            "lin_space only support rank=1 while length of assist shape is %d"
-            % (len(shape_assist)))
+        error_detail = "lin_space only support rank=1 while length of assist shape is %d"\
+                       % (len(shape_assist))
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, \
+                                                           "input_assist", error_detail)
 
     assist_input = tvm.placeholder(shape_assist, name="assist_input",
                                    dtype=dtype_input.lower())

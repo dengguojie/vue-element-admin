@@ -158,6 +158,12 @@ IMPLEMT_INFERFUNC(RandomShuffle, RandomShuffleInfer) {
 
   auto type = op.GetInputDesc("x").GetDataType();
   TensorDesc output_desc = op.GetOutputDesc("y");
+  std::vector<std::pair<int64_t,int64_t>> range;
+  auto status = desc.GetShapeRange(range);
+  if (status != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
+  output_desc.SetShapeRange(range);
   output_desc.SetShape(shape);
   output_desc.SetDataType(type);
   return op.UpdateOutputDesc("y", output_desc);

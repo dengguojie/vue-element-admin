@@ -34,6 +34,7 @@ public:
 class TestResult {
 public:
     TestResult() : assert_(true) {}
+    ~TestResult() {}
     bool Passed() const { return assert_; }
     void RecordStartTimeStamp()
     {

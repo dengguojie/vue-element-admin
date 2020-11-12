@@ -142,9 +142,9 @@ Status SpaceToDepthFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   size_t inNumberIdx = -1;
   FUSION_PASS_CHECK(
       SUCCESS != ParseNumberIdx(spaceToDepthInput, inNumberIdx),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Node[%s]: The original format of node's input0 is %s, which is unsupportable.",
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "Node[%s]: The original format of node's input0 is %s, which is unsupportable.",
               spaceToDepthName.c_str(), ge::TypeUtils::FormatToSerialString(assitMatrixFormat).c_str()),
-      return FAILED);
+      return NOT_CHANGED);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s]: The original format of node's input0 is %s.", spaceToDepthName.c_str(),
           ge::TypeUtils::FormatToSerialString(assitMatrixFormat).c_str());
   int64_t spaceToDepthDChannel = spaceToDepthInputDimInfo[inChannelIdx] * blockSize * blockSize;
@@ -171,13 +171,13 @@ Status SpaceToDepthFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
                     return PARAM_INVALID);
 
   Status ret = NnSet(destSize, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(inputAssit.get()));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Node[%s]: NnSet failed.", spaceToDepthName.c_str()),
-                    return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "Node[%s]: NnSet failed.", spaceToDepthName.c_str()),
+                    return NOT_CHANGED);
 
   ret = spaceToDepthAssistHelpFP16(destSize, *inputAssit.get(), spaceToDepthDInputDimInfo);
   FUSION_PASS_CHECK(
       ret != SUCCESS,
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Node[%s]: Generate assist matrix failed.", spaceToDepthName.c_str()), return ret);
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "Node[%s]: Generate assist matrix failed.", spaceToDepthName.c_str()), return NOT_CHANGED);
 
   // define the shape of auxiliary matrix
   tensorDesc.SetShape(ge::GeShape(spaceToDepthDInputDimInfo));

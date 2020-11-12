@@ -14,6 +14,11 @@ http://www.apache.org/licenses/LICENSE-2.0
 LrnGrad ut case
 """
 from op_test_frame.ut import OpUT
+from op_test_frame.common import precision_info
+import numpy as np
+import tensorflow as tf
+from tensorflow.python.ops import gen_nn_ops
+
 ut_case = OpUT("LrnGrad", None, None)
 
 case1 = {"params": [{"shape": (32, 16, 64, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (32, 16, 64, 16),"ori_format": "NHWC"}, #x
@@ -73,5 +78,56 @@ ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
 
-if __name__ == '__main__':
-    ut_case.run(["Ascend910","Ascend310","Ascend710"])
+def calc_expect_func(grads, x, y, z):
+    depth_radius = 5
+    bias=1.0
+    alpha=1.0
+    beta=0.5
+    out_grads_val = grads['value']
+    in_image_val = x['value']
+    out_image_val = y['value']
+    shape = x['shape']
+    out_grads_val = np.transpose(out_grads_val, [0, 2, 3, 1])
+    in_image_val = np.transpose(in_image_val, [0, 2, 3, 1])
+    out_image_val = np.transpose(out_image_val, [0, 2, 3, 1])
+
+    tf_shape = (shape[0], shape[2], shape[3], shape[1])
+    in_image = tf.placeholder("float32", shape=tf_shape)
+    out_image = tf.placeholder("float32", shape=tf_shape)
+    out_grads = tf.placeholder("float32", shape=tf_shape)
+    out = gen_nn_ops.lrn_grad(out_grads, in_image, out_image, depth_radius,
+                              bias, alpha, beta)
+    result = tf.Session().run(out, feed_dict={out_grads:out_grads_val,
+                                              in_image:in_image_val,
+                                              out_image:out_image_val})
+    result = np.transpose(result, [0,3,1,2])
+    return result
+precision_case1 = {"params": [{"shape": (1, 3, 16, 2), "dtype": "float32", "format": "NHWC", "ori_shape": (1, 3, 16, 2),"ori_format": "NHWC","param_type": "input"}, #x
+                              {"shape": (1, 3, 16, 2), "dtype": "float32", "format": "NHWC", "ori_shape": (1, 3, 16, 2),"ori_format": "NHWC","param_type": "input"},
+                              {"shape": (1, 3, 16, 2), "dtype": "float32", "format": "NHWC", "ori_shape": (1, 3, 16, 2),"ori_format": "NHWC","param_type": "input"},
+                              {"shape": (1, 3, 16, 2), "dtype": "float32", "format": "NHWC", "ori_shape": (1, 3, 16, 2),"ori_format": "NHWC","param_type": "output"}
+                              ],
+                   "expect": "success",
+                   "calc_expect_func": calc_expect_func,
+                   "precision_standard": precision_info.PrecisionStandard(0.01, 0.01)}
+precision_case2 = {"params": [{"shape": (1, 16, 64, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (1, 16, 64, 16),"ori_format": "NHWC","param_type": "input"}, #x
+                              {"shape": (1, 16, 64, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (1, 16, 64, 16),"ori_format": "NHWC","param_type": "input"},
+                              {"shape": (1, 16, 64, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (1, 16, 64, 16),"ori_format": "NHWC","param_type": "input"},
+                              {"shape": (1, 16, 64, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (1, 16, 64, 16),"ori_format": "NHWC","param_type": "output"}
+                              ],
+                   "expect": "success",
+                   "calc_expect_func": calc_expect_func,
+                   "precision_standard": precision_info.PrecisionStandard(0.01, 0.01)}
+precision_case3 = {"params": [{"shape": (1, 16, 65, 17), "dtype": "float32", "format": "NHWC", "ori_shape": (1, 16, 65, 17),"ori_format": "NHWC","param_type": "input"}, #x
+                              {"shape": (1, 16, 65, 17), "dtype": "float32", "format": "NHWC", "ori_shape": (1, 16, 65, 17),"ori_format": "NHWC","param_type": "input"},
+                              {"shape": (1, 16, 65, 17), "dtype": "float32", "format": "NHWC", "ori_shape": (1, 16, 65, 17),"ori_format": "NHWC","param_type": "input"},
+                              {"shape": (1, 16, 65, 17), "dtype": "float32", "format": "NHWC", "ori_shape": (1, 16, 65, 17),"ori_format": "NHWC","param_type": "output"}
+                              ],
+                   "expect": "success",
+                   "calc_expect_func": calc_expect_func,
+                   "precision_standard": precision_info.PrecisionStandard(0.01, 0.01)}
+
+ut_case.add_precision_case("Ascend910", precision_case1)
+ut_case.add_precision_case("Ascend910", precision_case2)
+ut_case.add_precision_case("Ascend910", precision_case3)
+

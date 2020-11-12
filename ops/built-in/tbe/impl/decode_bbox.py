@@ -20,11 +20,13 @@ from te import tik
 from te import platform as tbe_platform
 from topi.cce import util
 
+from impl.util import util_select_op_base
 
 # General limitation of the reduce size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
 RESERVED_UB = 20480
 CONFIG_ONE_HALF = 0.5
+NEG_ONE = -1
 CONFIG_ONE = 1
 CONFIG_TWO = 2
 CONFIG_THREE = 3
@@ -38,6 +40,67 @@ CONFIG_FLOAT_SIZE = 64
 CONFIG_BLOCK_SIZE = 128
 MATRIX = 256
 
+
+def get_op_support_info(box_predictions,
+                        anchors,
+                        decoded_boxes,
+                        decode_clip,
+                        kernel_name="decode_bbox"):
+    """
+    :param box_predictions: (CONFIG_FOUR,C,H,W) or (H,W,CONFIG_FOUR)
+    :param anchors: (CONFIG_FOUR,C,H,W) or (H,W,CONFIG_FOUR)
+    :param decoded_boxes: (N, CONFIG_FOUR)
+    :param decode_clip: Donot care
+    :param kernel_name: decode_bbox
+    :return:
+    """
+    format_box_predictions = box_predictions.get("format")
+    dims_box_predictions = box_predictions.get("shape")
+    if format_box_predictions == "ND" \
+            and len(dims_box_predictions) == CONFIG_TWO \
+            and dims_box_predictions[CONFIG_ONE] == CONFIG_FOUR:
+        axis_split_matrix = []
+        for i in range(dims_box_predictions):
+            split_0 = [util_select_op_base.SplitInput(
+                [0, [i], [NEG_ONE], [NEG_ONE]]),
+                util_select_op_base.SplitOutput([0, [i]])]
+            axis_split_matrix.append(split_0)
+        axis_reduce_list = None
+
+    elif format_box_predictions == "NCHW" \
+            and dims_box_predictions[0] == CONFIG_FOUR:
+        axis_split_matrix = [
+            [util_select_op_base.SplitInput(
+                [0, [CONFIG_ONE], [NEG_ONE], [NEG_ONE]]),
+                util_select_op_base.SplitOutput([0, [CONFIG_ONE]])],
+            [util_select_op_base.SplitInput(
+                [0, [CONFIG_TWO], [NEG_ONE], [NEG_ONE]]),
+                util_select_op_base.SplitOutput([0, [CONFIG_TWO]])],
+            [util_select_op_base.SplitInput(
+                [0, [CONFIG_THREE], [NEG_ONE], [NEG_ONE]]),
+                util_select_op_base.SplitOutput([0, [CONFIG_THREE]])]
+        ]
+        axis_reduce_list = None
+    elif format_box_predictions == "NHWC" \
+            and dims_box_predictions[NEG_ONE] == CONFIG_FOUR:
+        axis_split_matrix = [
+            [util_select_op_base.SplitInput(
+                [0, [0], [NEG_ONE], [NEG_ONE]]),
+                util_select_op_base.SplitOutput([0, [0]])],
+            [util_select_op_base.SplitInput(
+                [0, [CONFIG_ONE], [NEG_ONE], [NEG_ONE]]),
+                util_select_op_base.SplitOutput([0, [CONFIG_ONE]])],
+            [util_select_op_base.SplitInput(
+                [0, [CONFIG_TWO], [0], [0]]),
+                util_select_op_base.SplitOutput([0, [CONFIG_TWO]])]
+        ]
+        axis_reduce_list = None
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(
+        axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 def ceil_div(divisor, dividend):
     """
@@ -64,10 +127,6 @@ class InitTikParam:
         self.aicore_num = tik.Dprofile().get_aicore_num()
         if self.aicore_num >= CONFIG_EIGHT:
             self.aicore_num = CONFIG_EIGHT
-        print("product_name:", self.product_name)
-        print("total_ub:", self.total_ub)
-        print("available_ub_size:", self.available_ub_size)
-        print("aicore_num", self.aicore_num)
 
     def set_product_name(self):
         """
@@ -105,23 +164,18 @@ class InitShape(InitTikParam):
     def __init__(self, shape):
         super(InitShape, self).__init__()
         # The minimum Number ono core one time
-        # one loop shape is 16*16*16 one_buf_count 16*16*4
         self.one_loop_count = \
             (self.available_ub_size //
              (CONFIG_SIXTEEN * CONFIG_SIXTEEN * CONFIG_TWELVE))\
             * CONFIG_SIXTEEN
-        print("one_loop_count:", self.one_loop_count)
         self.one_loop_shape = self.one_loop_count * CONFIG_SIXTEEN
         self.one_buf_count = self.one_loop_count * CONFIG_FOUR
         self.one_loop_number = CONFIG_TWO
         self.one_c0_shape = self.one_loop_shape * self.one_loop_number
         # shape of Input : (N,C1,H,W,C0)
         self.input_shape = shape
-        print("shape:", self.input_shape)
-        # shape of Output : ND = (N*C1*H*W,C0//CONFIG_FOUR)
         self.proposal_shape = \
             (reduce(lambda x, y: x * y, shape[:])) // CONFIG_FOUR
-        print("proposal_shape:", self.proposal_shape)
 
     def set_input_shape(self, input_shape):
         """
@@ -246,7 +300,8 @@ class InitMiddleTensor:
                                              name="result_gm",
                                              scope=tik.scope_gm)
         print("shape.input_shape", shape.input_shape)
-        if shape.input_shape[-1] == 4 and len(shape.input_shape) == 3:
+        if shape.input_shape[NEG_ONE] == CONFIG_FOUR \
+                and len(shape.input_shape) == CONFIG_THREE:
             self.a_buffer_ub = \
                 tik_instance.Tensor("float16",
                                     (shape.one_loop_count, CONFIG_SIXTEEN),
@@ -263,7 +318,8 @@ class InitMiddleTensor:
                 tik_instance.Tensor("float16",
                                     (shape.one_loop_count, CONFIG_SIXTEEN),
                                     name="d_buffer_ub", scope=tik.scope_ubuf)
-        if shape.input_shape[0] == 4 and len(shape.input_shape) == 4:
+        if shape.input_shape[0] == CONFIG_FOUR \
+                and len(shape.input_shape) == CONFIG_FOUR:
             self.c_buffer_ub = \
                 tik_instance.Tensor("float16",
                                     (CONFIG_FOUR, shape.one_buf_count),
@@ -307,7 +363,8 @@ class InitTensor(InitMiddleTensor):
             tik_instance.Tensor("float16",
                                 (CONFIG_FOUR, shape.one_buf_count),
                                 name="f_buffer_ub", scope=tik.scope_ubuf)
-        if shape.input_shape[-1] == 4 and len(shape.input_shape) == 3:
+        if shape.input_shape[NEG_ONE] == CONFIG_FOUR \
+                and len(shape.input_shape) == CONFIG_THREE:
             self.g_buffer_ub = \
                 tik_instance.Tensor("float16",
                                     (shape.one_buf_count, CONFIG_SIXTEEN),
@@ -362,7 +419,7 @@ def calculate_process(tik_instance,
                            0, CONFIG_ONE, repeat_data, 0, 0)
     # transpose x1,y1,x2,y2... x1,y1,x2,y2 ... to c_buffer_ub from a_buffer_ub
     # transpose tx,ty,tw,th;tx,ty,tw,th; ... to d_buffer_ub from b_buffer_ub
-    with tik_instance.for_range(0, shape.one_loop_count // CONFIG_SIXTEEN)\
+    with tik_instance.for_range(0, shape.one_loop_count // CONFIG_SIXTEEN) \
             as i:
         tik_instance.vtranspose(data_tensor.c_buffer_ub[MATRIX * i],
                                 data_tensor.a_buffer_ub[MATRIX * i])
@@ -540,22 +597,22 @@ def calculate_process_transpose(tik_instance,
     current_data_address_y1 = ceil_div(current_data_address, CONFIG_FOUR) \
                               + shape.proposal_shape
     current_data_address_x2 = ceil_div(current_data_address, CONFIG_FOUR) \
-                              + shape.proposal_shape * 2
+                              + shape.proposal_shape * CONFIG_TWO
     current_data_address_y2 = ceil_div(current_data_address, CONFIG_FOUR) \
-                              + shape.proposal_shape * 3
+                              + shape.proposal_shape * CONFIG_THREE
     repeat_data_transpose = ceil_div(repeat_data, CONFIG_FOUR)
 
     # move anchors to c_buffer_ub in ub from out (x1,y1,x2,y2)
     tik_instance.data_move(data_tensor.c_buffer_ub,
                            data_tensor.anchors[current_data_address_x1],
                            0, CONFIG_ONE, repeat_data_transpose, 0, 0)
-    tik_instance.data_move(data_tensor.c_buffer_ub[1, 0],
+    tik_instance.data_move(data_tensor.c_buffer_ub[CONFIG_ONE, 0],
                            data_tensor.anchors[current_data_address_y1],
                            0, CONFIG_ONE, repeat_data_transpose, 0, 0)
-    tik_instance.data_move(data_tensor.c_buffer_ub[2, 0],
+    tik_instance.data_move(data_tensor.c_buffer_ub[CONFIG_TWO, 0],
                            data_tensor.anchors[current_data_address_x2],
                            0, CONFIG_ONE, repeat_data_transpose, 0, 0)
-    tik_instance.data_move(data_tensor.c_buffer_ub[3, 0],
+    tik_instance.data_move(data_tensor.c_buffer_ub[CONFIG_THREE, 0],
                            data_tensor.anchors[current_data_address_y2],
                            0, CONFIG_ONE, repeat_data_transpose, 0, 0)
     # move anchors to d_buffer_ub in ub from out (tx,ty,tw,th)
@@ -564,15 +621,15 @@ def calculate_process_transpose(tik_instance,
         data_tensor.box_predictions[current_data_address_x1],
         0, CONFIG_ONE, repeat_data_transpose, 0, 0)
     tik_instance.data_move(
-        data_tensor.d_buffer_ub[1, 0],
+        data_tensor.d_buffer_ub[CONFIG_ONE, 0],
         data_tensor.box_predictions[current_data_address_y1],
         0, CONFIG_ONE, repeat_data_transpose, 0, 0)
     tik_instance.data_move(
-        data_tensor.d_buffer_ub[2, 0],
+        data_tensor.d_buffer_ub[CONFIG_TWO, 0],
         data_tensor.box_predictions[current_data_address_x2],
         0, CONFIG_ONE, repeat_data_transpose, 0, 0)
     tik_instance.data_move(
-        data_tensor.d_buffer_ub[3, 0],
+        data_tensor.d_buffer_ub[CONFIG_THREE, 0],
         data_tensor.box_predictions[current_data_address_y2],
         0, CONFIG_ONE, repeat_data_transpose, 0, 0)
     # the formula is wa = x2 - x1
@@ -711,13 +768,13 @@ def calculate_process_transpose(tik_instance,
                            data_tensor.c_buffer_ub,
                            0, CONFIG_ONE, repeat_data_transpose, 0, 0)
     tik_instance.data_move(data_tensor.result_gm[current_data_address_y1],
-                           data_tensor.c_buffer_ub[1, 0],
+                           data_tensor.c_buffer_ub[CONFIG_ONE, 0],
                            0, CONFIG_ONE, repeat_data_transpose, 0, 0)
     tik_instance.data_move(data_tensor.result_gm[current_data_address_x2],
-                           data_tensor.c_buffer_ub[2, 0],
+                           data_tensor.c_buffer_ub[CONFIG_TWO, 0],
                            0, CONFIG_ONE, repeat_data_transpose, 0, 0)
     tik_instance.data_move(data_tensor.result_gm[current_data_address_y2],
-                           data_tensor.c_buffer_ub[3, 0],
+                           data_tensor.c_buffer_ub[CONFIG_THREE, 0],
                            0, CONFIG_ONE, repeat_data_transpose, 0, 0)
 
 
@@ -752,7 +809,7 @@ def decode_bbox_compute_transpose(tik_instance,
             with tik_instance.for_range(
                     0, shape.one_core_loop_time,
                     thread_num=shape.thread_number) as loop_i:
-                current_data_address =\
+                current_data_address = \
                     block_num * shape.one_core_shape + \
                     (loop_i // shape.one_loop_number) * shape.one_c0_shape + \
                     (loop_i % shape.one_loop_number) * shape.one_loop_shape
@@ -854,7 +911,7 @@ def decode_bbox_compute(tik_instance,
         current_data_address = \
             shape.eight_core_shape + \
             shape.left_one_core_loop_time * shape.one_loop_shape
-        repeat_data_tail =\
+        repeat_data_tail = \
             ((((shape.proposal_shape * CONFIG_FOUR) - current_data_address)
               * CONFIG_TWO) + (CONFIG_DATA_SIZE - CONFIG_ONE)) \
             // CONFIG_DATA_SIZE
@@ -947,9 +1004,9 @@ def decode_bbox(box_predictions,
             != (reduce(lambda x, y: x * y, shape_decoded_boxes[:])):
         raise RuntimeError("the input shape (box_predictions and anchors"
                            "is not equal to out shape(decoded_boxes)")
-    if (shape_box_predictions[-1] == CONFIG_FOUR
+    if (shape_box_predictions[NEG_ONE] == CONFIG_FOUR
             and len(shape_box_predictions) == CONFIG_THREE):
-        if shape_decoded_boxes[1] != CONFIG_FOUR:
+        if shape_decoded_boxes[CONFIG_ONE] != CONFIG_FOUR:
             raise RuntimeError("the output shape_decoded_boxes must be 4")
     else:
         if (shape_box_predictions[0] == CONFIG_FOUR and
@@ -969,7 +1026,7 @@ def decode_bbox(box_predictions,
     # calculate the deocede_bbox
     tik_instance = tik.Tik(tik.Dprofile())
     data_tensor = InitTensor(tik_instance, shape)
-    if shape.input_shape[-1] == CONFIG_FOUR \
+    if shape.input_shape[NEG_ONE] == CONFIG_FOUR \
             and len(shape.input_shape) == CONFIG_THREE:
         decode_bbox_compute(tik_instance,
                             shape,

@@ -19,6 +19,7 @@ import te.lang.cce as tbe
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 # pylint: disable=invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
@@ -47,8 +48,8 @@ def l2_loss(x, y, kernel_name="l2_loss"):
 
     check_list = ("float16", "float32")
     if not dtype.lower() in check_list:
-        raise RuntimeError(
-            "l2_loss only support float16 float32")
+        error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, "x", \
+                                                                 "float16,float32", dtype.lower())
 
     shape, axis = shape_util.simplify_axis_shape(shape, range(len(shape)))
 

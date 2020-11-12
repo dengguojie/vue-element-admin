@@ -21,6 +21,7 @@
 #include "inc/string_ops.h"
 #include "common_shape_fns.h"
 #include "common/inc/op_log.h"
+#include "graph/utils/op_desc_utils.h"
 
 namespace ge {
 IMPLEMT_INFERFUNC(StringSplit, StringSplitInfer) {
@@ -196,14 +197,21 @@ IMPLEMT_INFERFUNC(Substr, SubstrInfer) {
 INFER_FUNC_REG(Substr, SubstrInfer);
 
 IMPLEMT_INFERFUNC(StringToHashBucketFast, StringToHashBucketFastInfer) {
-  TensorDesc desc = op.GetOutputDesc("y");
-  desc.SetShape(op.GetInputDesc("x").GetShape());
-  desc.SetDataType(DT_INT64);
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto y_desc = op_desc->MutableOutputDesc(0);
 
-  if (op.UpdateOutputDesc("y", desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update y desc failed.");
-    return GRAPH_FAILED;
+  GeShape y_shape(op_desc->MutableInputDesc(0)->GetShape());
+  if (!ShapeFullyDefined(y_shape)) {
+    std::vector<std::pair<int64_t, int64_t>> y_range;
+    for (const int64_t& y_dim : y_shape.GetDims()) {
+      y_range.push_back(y_dim == UNKNOWN_DIM ? std::pair<int64_t, int64_t>{1, -1} :
+                                               std::pair<int64_t, int64_t>{y_dim, y_dim});
+    }
+    y_desc->SetShapeRange(y_range);
   }
+  y_desc->SetShape(y_shape);
+  y_desc->SetDataType(DT_INT64);
+
   return GRAPH_SUCCESS;
 }
 

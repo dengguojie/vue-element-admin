@@ -3481,7 +3481,8 @@ def roi_align(feature_map_dict,
               pool_w,
               sample_ratio=2,
               roi_end_mode=1,
-              kernel_name="roi_align"):
+              kernel_name="roi_align",
+              impl_mode="high_performance"):
     """
     ROIAlign operator
     """
@@ -3492,6 +3493,10 @@ def roi_align(feature_map_dict,
         and (dtype == "float16") and \
         (pool_h == 7) and (pool_w == 7) and (roi_end_mode == 1)):
         return roi_align_vbi.roi_align_vbi(feature_map_dict, rois_dict, kernel_name)
+    elif (dtype == "float16") and (impl_mode == "high_precision"):
+        return roi_align_tik(feature_map_dict, rois_dict, roisn_dict,
+                             output, scale, pool_h, pool_w,
+                             sample_ratio, roi_end_mode, kernel_name)
     elif (dtype == "float16") and \
          (cce_product in (tbe_platform.ASCEND_310, tbe_platform.ASCEND_910, tbe_platform.HI3796CV300ES,
                           tbe_platform.ASCEND_610, tbe_platform.ASCEND_710)):

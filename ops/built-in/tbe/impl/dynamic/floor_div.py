@@ -15,8 +15,9 @@
 """
 dynamic floordiv
 """
-import te.lang.dynamic as dynamic
+import te.lang.cce as tbe
 from te import platform as tbe_platform
+import te.lang.base as tbe_base
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
@@ -45,37 +46,37 @@ def floor_div_compute(input_x, input_y, output_z, kernel_name='floor_div'):
            the result of floordiv compute
     """
     dtype_x = input_x.dtype
-    input_x_shape = dynamic.shape_to_list(input_x.shape)
-    input_y_shape = dynamic.shape_to_list(input_y.shape)
+    input_x_shape = shape_util.shape_to_list(input_x.shape)
+    input_y_shape = shape_util.shape_to_list(input_y.shape)
     input_x_shape, input_y_shape, shape_broad = \
         shape_util.broadcast_shapes(input_x_shape, input_y_shape, param_name_input1="input_x",
                                     param_name_input2="input_y")
 
     if dtype_x != "float16" and tbe_platform.cce_conf.api_check_support(
-            "te.lang.dynamic.vdiv", "float32"):
-        input_x = dynamic.cast_to(input_x, 'float32')
-        input_y = dynamic.cast_to(input_y, 'float32')
+            "te.lang.cce.vdiv", "float32"):
+        input_x = tbe.cast_to(input_x, 'float32')
+        input_y = tbe.cast_to(input_y, 'float32')
 
-        input_x = dynamic.broadcast(input_x, shape_broad)
-        input_y = dynamic.broadcast(input_y, shape_broad)
+        input_x = tbe.broadcast(input_x, shape_broad)
+        input_y = tbe.broadcast(input_y, shape_broad)
     else:
-        input_x = dynamic.broadcast(input_x, shape_broad)
-        input_y = dynamic.broadcast(input_y, shape_broad)
+        input_x = tbe.broadcast(input_x, shape_broad)
+        input_y = tbe.broadcast(input_y, shape_broad)
 
-    res = dynamic.vdiv(input_x, input_y)
+    res = tbe.vdiv(input_x, input_y)
 
     if dtype_x != "float16" and tbe_platform.cce_conf.get_soc_spec(
             "SOC_VERSION") == "Ascend310":
-        res = dynamic.cast_to(res, "float16")
+        res = tbe.cast_to(res, "float16")
 
-    res = dynamic.floor(res)
+    res = tbe.floor(res)
 
-    res = dynamic.cast_to(res, dtype_x)
+    res = tbe.cast_to(res, dtype_x)
 
     return res
 
 
-@tbe_platform.register_operator("FloorDiv")
+@tbe_base.register_operator("FloorDiv")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def floor_div(input_x, input_y, output_z, kernel_name="floor_div"):
@@ -118,10 +119,10 @@ def floor_div(input_x, input_y, output_z, kernel_name="floor_div"):
                                error_info['param1_dtype'],
                                error_info['param2_dtype']))
 
-    ins = tbe_platform.classify([input_x, input_y], tbe_platform.Mode.ELEWISE_WITH_BROADCAST)
+    ins = tbe_base.classify([input_x, input_y], tbe_base.Mode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (input_x, input_y) in ins:
-        with tbe_platform.compute():
+        with tbe_base.compute():
             x_shape, y_shape = \
                 shape_util.variable_shape([input_x, input_y],
                                           support_broadcast=True)
@@ -132,8 +133,8 @@ def floor_div(input_x, input_y, output_z, kernel_name="floor_div"):
 
             tensors.append([tensor_x, tensor_y, res])
         with tvm.target.cce():
-            sch = dynamic.auto_schedule(res)
+            sch = tbe.auto_schedule(res)
         schedules.append(sch)
 
     config = {"name": kernel_name, "tensor_list": tensors}
-    dynamic.build(schedules, config)
+    tbe.build(schedules, config)

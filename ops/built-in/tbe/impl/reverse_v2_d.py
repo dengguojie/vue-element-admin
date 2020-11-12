@@ -24,9 +24,35 @@ from te.utils import para_check
 from te.utils import shape_util
 from te import tik
 from impl.util import util_select_op_base
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 
 MAX_BLOCK_NUM = 65536
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(input_x, output_y, axis, kernel_name="reverse_v2_d"):
+    shape_x = input_x.get("shape")
+    dtype_x = input_x.get("dtype")
+    format_x = input_x.get("format").upper()
+    shape_x_len = len(input_x.get("shape"))
+    axis = _param_check(shape_x, dtype_x, axis, kernel_name)
+    axis = omit_axis_point_to_dim_1(shape_x, axis)
+    if format_x == "ND" or format_x == "NC1HWC0":
+        axis_split_matrix=[]
+        for i in range(0, shape_x_len):
+            if i not in axis:
+                split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]])]
+                axis_split_matrix.append(split_0)
+        axis_reduce_list = None
+
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 def op_select_format(input_x, output_y, axis, kernel_name="reverse_v2_d"):
@@ -449,6 +475,13 @@ class ReverseExt2:
                 self.offset_ub = self.tik_instance.Tensor(
                     "int32", (self.offset_size, ),
                     name="offset_ub", scope=tik.scope_ubuf)
+                if self.replace_set_as_b32:
+                    with self.tik_instance.for_range(0, self.offset_size) as elem_i:
+                        self.offset_ub[elem_i].set_as(elem_i * self.dsize)
+                else:
+                    with self.tik_instance.for_range(0, self.offset_size) as elem_i:
+                        self.offset_ub[elem_i].set_as((self.offset_size - 1 -
+                                                       elem_i) * self.dsize)
 
             self.reverse_big_shape(self.outer_shape, 0, 0, 0)
 
@@ -1081,8 +1114,10 @@ class ReverseExt2:
         self.outer_shape = [min_factor, ]
         self.inner_shape = [first_dim // min_factor, ] + self.shape_x[1:]
         self.split_factor = first_dim // min_factor
-
         self.split_axis = 0
+
+        if self.use_vgather and self.inner_shape[-1] != self.shape_x[-1]:
+            self.offset_size = self.inner_shape[-1]
 
 
 class MoveFromGm2Gm:

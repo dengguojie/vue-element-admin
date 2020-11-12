@@ -26,8 +26,8 @@
 #include <string>
 
 #include "graph/debug/ge_log.h"
-
 #include "util/util.h"
+#include "util/error_util.h"
 #include "op_log.h"
 
 namespace ge {
@@ -41,6 +41,7 @@ IMPLEMT_INFERFUNC(SSDDetectionOutput, SSDDetectionOutputInferShape) {
   auto loc_shape = op.get_input_desc_bbox_delta().GetShape().GetDims();
   if (loc_shape.empty()) {
     OP_LOGE(op.GetName().c_str(), "get mbox loc failed.");
+    OpsMissInputErrReport(op.GetName(), "loc_shape");
     return GRAPH_FAILED;
   }
   auto batch = loc_shape[0];

@@ -286,6 +286,26 @@ graphStatus ReplaceDim(const Shape& s, int64_t dim_index_in, int64_t new_dim, Sh
   return GRAPH_SUCCESS;
 }
 
+graphStatus ReplaceDim(const GeShape& s, int64_t dim_index_in, int64_t new_dim, GeShape& out, const char* op_name) {
+  if (!RankKnown(s)) {
+    out = GeShape(UNKNOWN_RANK);
+    return GRAPH_SUCCESS;
+  }
+  int64_t dim_index = dim_index_in;
+  if (dim_index < 0) {
+    dim_index = (int64_t)s.GetDimNum() + dim_index;
+  }
+  if (!FastBoundsCheck(dim_index, s.GetDimNum())) {
+    out = GeShape();
+    OP_LOGE(op_name, "Out of range dim_index %ld for shape with %d dimensions", dim_index_in, s.GetDimNum());
+    return GRAPH_FAILED;
+  }
+  std::vector<int64_t> dims = s.GetDims();
+  dims[dim_index] = new_dim;
+  out = GeShape(dims);
+  return GRAPH_SUCCESS;
+}
+
 template <typename Ta, typename Tb>
 bool FastBoundsCheck(const Ta index, const Tb limit) {
   static_assert(std::is_integral<Ta>::value && std::is_integral<Tb>::value,
@@ -382,13 +402,71 @@ graphStatus SubShape(const Shape& s, int64_t start, int64_t end, int64_t stride,
   return GRAPH_SUCCESS;
 }
 
-graphStatus SubShape(const GeShape& s, size_t start, size_t end, size_t stride, Shape& out, const char* op_name) {
-  Shape output_shape;
-  auto ret = SubShape(Shape(s.GetDims()), start, end, stride, output_shape, op_name);
-  if (ret == GRAPH_SUCCESS) {
-    out = output_shape;
+graphStatus SubShape(const GeShape& src_shape,
+                     int64_t start,
+                     int64_t end,
+                     int64_t stride,
+                     GeShape& out_shape,
+                     const char* op_name) {
+  int64_t src_rank = src_shape.GetDimNum();
+  if (src_rank > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) {
+    OP_LOGE(op_name, "shape rank cannot exceed kint32max, got rank %lld", src_rank);
+    return GRAPH_FAILED;
   }
-  return ret;
+
+  if (start == 0 && stride == 1 &&
+      ((RankKnown(src_shape) && end >= src_rank) ||
+       (end == std::numeric_limits<int64_t>::max()))) {
+    out_shape = src_shape;
+    return GRAPH_SUCCESS;
+  }
+
+  if (start > src_rank) {
+    start = src_rank;
+  }
+
+  if (end > src_rank) {
+    end = src_rank;
+  }
+
+  if (stride < 0 && start == src_rank) {
+    --start;
+  }
+
+  if (start < 0) {
+    start += src_rank;
+    if (start < 0) {
+      OP_LOGE(op_name, "Subshape start %lld out of bounds must be at least 0",
+              start);
+      return GRAPH_FAILED;
+    }
+  }
+
+  if (end < 0) {
+    end += src_rank;
+    if (end < 0) {
+      OP_LOGE(op_name, "Subshape end %lld out of bounds must be at least 0",
+              end);
+      return GRAPH_FAILED;
+    }
+  }
+
+  if (stride > 0 && start > end) {
+    OP_LOGE(op_name, "Subshape must have computed start=%lld <= end=%lld since stride=%lld is positive",
+            start, end, stride);
+    return GRAPH_FAILED;
+  } else if (stride < 0 && start < end) {
+    OP_LOGE(op_name, "Subshape must have computed start=%lld >= end=%lld since stride=%lld is negative",
+            start, end, stride);
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> out_dims;
+  for (int64_t i = start; (stride > 0 ? i < end : i > end); i += stride) {
+    out_dims.push_back(src_shape.GetDim(i));
+  }
+  out_shape = GeShape(out_dims);
+  return GRAPH_SUCCESS;
 }
 
 graphStatus Concatenate(const Shape& s1, const Shape& s2, Shape& out) {
@@ -409,6 +487,26 @@ graphStatus Concatenate(const Shape& s1, const Shape& s2, Shape& out) {
   }
   Shape s(dims);
   out = s;
+  return GRAPH_SUCCESS;
+}
+
+graphStatus Concatenate(const GeShape& s1, const GeShape& s2, GeShape& out) {
+  if (!RankKnown(s1) || !RankKnown(s2)) {
+    out = GeShape(ge::UNKNOWN_RANK);
+    return GRAPH_SUCCESS;
+  }
+  const int64_t s1_rank = s1.GetDimNum();
+  const int64_t s2_rank = s2.GetDimNum();
+  const int64_t out_rank = s1_rank + s2_rank;
+  std::vector<int64_t> out_dims;
+  out_dims.reserve(out_rank);
+  for (int64_t i = 0; i < s1_rank; ++i) {
+    out_dims.push_back(s1.GetDim(i));
+  }
+  for (int64_t i = 0; i < s2_rank; ++i) {
+    out_dims.push_back(s2.GetDim(i));
+  }
+  out = GeShape(out_dims);
   return GRAPH_SUCCESS;
 }
 
@@ -892,4 +990,28 @@ graphStatus ValidateVariableResourceHandle(Operator& op, std::vector<ShapeAndTyp
   }
   return GRAPH_SUCCESS;
 }
+
+void FillOpDesc(GeTensorDescPtr& op_desc, const GeShape& shape, const DataType& data_type) {
+  if (RankKnown(shape)) {
+    auto dims = shape.GetDims();
+    bool shape_fully_defined = true;
+    for (const int64_t& dim : dims) {
+      if (dim == UNKNOWN_DIM) {
+        shape_fully_defined = false;
+        break;
+      }
+    }
+    if (!shape_fully_defined) {
+      std::vector<std::pair<int64_t, int64_t>> shape_range;
+      for (const int64_t& dim : dims) {
+        shape_range.push_back(dim == UNKNOWN_DIM ? std::pair<int64_t, int64_t>{1, -1} :
+                                                   std::pair<int64_t, int64_t>{dim, dim});
+      }
+      op_desc->SetShapeRange(shape_range);
+    }
+  }
+  op_desc->SetShape(shape);
+  op_desc->SetDataType(data_type);
+}
+
 }  // namespace ge

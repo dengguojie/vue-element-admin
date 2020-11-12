@@ -31,11 +31,12 @@ namespace ge {
 *@par Inputs:
 *Input images is a tensor of at least 3 dimensions. The last dimension is
 interpretted as channels, and must be three. Inputs include:
-*@li images:A Tensor of type float. Images to adjust. At least 3-D.
+*@li images:A Tensor of type float. Images to adjust. At least 3-D. The format
+must be NHWC.
 *@li delta:A Tensor of type float. A float delta to add to the hue . \n
 
 *@par Outputs:
-*y:A Tensor of type float . \n
+*y:A Tensor of type float. The format must be NHWC. \n
 
 *@attention Constraints:
 *Input images is a tensor of at least 3 dimensions. The last dimension is
@@ -57,11 +58,12 @@ REG_OP(AdjustHue)
 *@par Inputs:
 *Input images is a tensor of at least 3 dimensions. The last dimension is
 interpretted as channels, and must be three. Inputs include:
-*@li images:A Tensor of type float. Images to adjust. At least 3-D.
+*@li images:A Tensor of type float. Images to adjust. At least 3-D. The format
+must be NHWC.
 *@li scale:A Tensor of type float. A float scale to add to the saturation . \n
 
 *@par Outputs:
-*y:A Tensor of type float . \n
+*y:A Tensor of type float. The format must be NHWC. \n
 
 *@attention Constraints:
 *Input images is a tensor of at least 3 dimensions. The last dimension is
@@ -83,11 +85,12 @@ REG_OP(AdjustSaturation)
 *@par Inputs:
 *Input images is a tensor of at least 3 dimensions. The last 3 dimensions are
 interpreted as '[height, width, channels]'. Inputs include:
-*@li images:A Tensor of type float. Images to adjust. At least 3-D.
+*@li images:A Tensor of type float. Images to adjust. At least 3-D. The format
+must be NHWC.
 *@li scale:A Tensor of type float. A float multiplier for adjusting contrast . \n
 
 *@par Outputs:
-*y:A Tensor of type float . \n
+*y:A Tensor of type float. The format must be NHWC. \n
 
 *@attention Constraints:
 *Input images is a tensor of at least 3 dimensions. The last dimension is
@@ -112,7 +115,7 @@ nearest neighbor sampling to a common output size specified by crop_size . \n
 *Input images must be a 4-D tensor. Inputs include:
 *@li images:A Tensor. Must be one of the following types:uint8, uint16, int8,
 int16, int32, int64, float16, float, double. A 4-D tensor of shape
-[batch, image_height, image_width, depth].
+[batch, image_height, image_width, depth]. The format must be NHWC.
 *@li boxes: A Tensor of type float. A 2-D tensor of shape [num_boxes, 4].
 *@li box_index: A Tensor of type int32. A 1-D tensor of shape [num_boxes] with
 int32 values in [0, batch).
@@ -127,7 +130,7 @@ extrapolation, when applicable.
 NearestNeighbor . \n
 
 *@par Outputs:
-*y:A Tensor of type float . \n
+*y:A Tensor of type float. The format must be NHWC. \n
 
 *@attention Constraints:
 *Input images must be a 4-D tensor . \n
@@ -193,7 +196,9 @@ boxes tensor . \n
 *@par Inputs:
 *Input images and grads must be a 4-D tensor. Inputs include:
 *@li grads: A 4-D tensor of shape [num_boxes, crop_height, crop_width, depth].
+The format must be NHWC.
 *@li images: A 4-D tensor of shape [batch, image_height, image_width, depth].
+The format must be NHWC.
 Both image_height and image_width need to be positive.
 *@li boxes: A 2-D tensor of shape [num_boxes, 4]. The i-th row of the tensor
 specifies the coordinates of a box in the box_ind[i] image and is specified in
@@ -233,6 +238,7 @@ images tensor . \n
 *@par Inputs:
 *Input grads must be a 4-D tensor. Inputs include:
 *@li grads: A 4-D tensor of shape [num_boxes, crop_height, crop_width, depth].
+The format must be NHWC.
 *@li boxes: A 2-D tensor of shape [num_boxes, 4]. The i-th row of the tensor
 specifies the coordinates of a box in the box_ind[i] image and is specified
 in normalized coordinates [y1, x1, y2, x2].
@@ -248,7 +254,8 @@ method: A string specifying the interpolation method. Only 'bilinear' is
 supported for now . \n
 
 *@par Outputs:
-*y:A 4-D tensor of shape [batch, image_height, image_width, depth] . \n
+*y:A 4-D tensor of shape [batch, image_height, image_width, depth]. The format
+must be NHWC. \n
 
 *@attention Constraints:
 *Input grads must be a 4-D tensor . \n
@@ -273,6 +280,7 @@ REG_OP(CropAndResizeGradImage)
 *@par Inputs:
 *Input x must be a 4-D tensor. Inputs include:
 *@li x: A 4-D float tensor of shape [batch_size, height, width, channels].
+The format must be NHWC.
 *@li size: A 1-D tensor of 2 elements containing the size of the glimpses to
 extract. The glimpse height must be specified first, following by the glimpse
 width.
@@ -293,7 +301,7 @@ uniform_noise . \n
 
 *@par Outputs:
 *y:A tensor representing the glimpses [batch_size, glimpse_height,
-glimpse_width, channels] . \n
+glimpse_width, channels]. The format must be NHWC. \n
 
 *@attention Constraints:
 *Input x must be a 4-D tensor . \n
@@ -340,7 +348,8 @@ REG_OP(HSVToRGB)
 
 *@par Inputs:
 *Input images must be a 4-D tensor. Inputs include:
-*@li images: 4-D with shape [batch, height, width, channels].
+*@li images: 4-D with shape [batch, height, width, channels]. The format must
+be NHWC.
 *@li size: A 1-D int32 Tensor of 2 elements: new_height, new_width. The new
 size for the images.
 *@li min: A Tensor of type float.
@@ -354,6 +363,7 @@ the values at the corner pixels. Defaults to false.
 
 *@par Outputs:
 *@li resized_images: 4-D with shape [batch, new_height, new_width, channels].
+The format must be NHWC.
 *@li y_min: A Tensor of type float.
 *@li y_max: A Tensor of type float . \n
 
@@ -381,7 +391,8 @@ REG_OP(QuantizedResizeBilinear)
 
 *@par Inputs:
 *Input images must be a 4-D tensor. Inputs include:
-*@li images: 4-D with shape [batch, height, width, channels].
+*@li images: 4-D with shape [batch, height, width, channels]. The format must
+be NHWC.
 *@li size: A 1-D int32 Tensor of 2 elements: new_height, new_width.
 The new size for the images . \n
 
@@ -391,7 +402,8 @@ output tensors are aligned, preserving the values at the corner pixels.
 Defaults to false . \n
 
 *@par Outputs:
-*y: 4-D with shape [batch, new_height, new_width, channels] . \n
+*y: 4-D with shape [batch, new_height, new_width, channels]. The format must
+be NHWC. \n
 
 *@attention Constraints:
 *Input images can be of different types but output images are always float . \n
@@ -414,10 +426,10 @@ REG_OP(ResizeArea)
 *@par Inputs:
 *Input grads must be a 4-D tensor. Inputs include:
 *@li grads: A Tensor of type float. 4-D with shape [batch, height, width,
-channels].
+channels]. The format must be NHWC.
 *@li original_image: A Tensor. Must be one of the following types: float,
 double. 4-D with shape [batch, orig_height, orig_width, channels], The image
-tensor that was resized . \n
+tensor that was resized. The format must be NHWC. \n
 
 *@par Attributes:
 *@li align_corners: An optional bool. Defaults to False. If true, the centers
@@ -426,10 +438,10 @@ false.
 *@li half_pixel_centers: An optional bool. Defaults to False . \n
 
 *@par Outputs:
-*y: A Tensor. Has the same type as original_image . \n
+*y: A Tensor. Has the same type as original_image. The format must be NHWC. \n
 
 *@attention Constraints:
-*Input images can be of different types but output images are always float . \n
+*Input images can be of different types but output images are always float .
 
 *@par Third-party framework compatibility
 *Compatible with tensorflow ResizeBicubicGrad operator.
@@ -448,7 +460,8 @@ REG_OP(ResizeBicubicGrad)
 
 *@par Inputs:
 *Input images must be a 4-D tensor. Inputs include:
-*@li images: 4-D with shape [batch, height, width, channels].
+*@li images: 4-D with shape [batch, height, width, channels]. The format
+must be NHWC.
 *@li size: A 1-D int32 Tensor of 2 elements: new_height, new_width. The new
 size for the images . \n
 
@@ -459,10 +472,11 @@ Defaults to false.
 *@li half_pixel_centers: An optional bool. Defaults to False . \n
 
 *@par Outputs:
-*y: 4-D with shape [batch, new_height, new_width, channels] . \n
+*y: 4-D with shape [batch, new_height, new_width, channels]. The format
+must be NHWC. \n
 
 *@attention Constraints:
-*Input images can be of different types but output images are always float . \n
+*Input images can be of different types but output images are always float .
 
 *@par Third-party framework compatibility
 *Compatible with tensorflow ResizeBicubic operator.
@@ -729,12 +743,12 @@ REG_OP(ResizeNearestNeighborV2)
 *@par Inputs:
 *Input images must be a 4-D tensor. Inputs include:
 *@li images: A Tensor. Must be one of the following types: float. 4-D with
-shape [batch, height, width, depth]. A batch of images.
+shape [batch, height, width, depth]. A batch of images. The format must be NHWC.
 *@li boxes: A Tensor of type float32. 3-D with shape [batch,
 num_bounding_boxes, 4] containing bounding boxes . \n
 
 *@par Outputs:
-*A Tensor. Has the same type as images . \n
+*A Tensor. Has the same type as images. The format must be NHWC. \n
 
 *@attention Constraints:
 *Input images must be a 4-D tensor . \n

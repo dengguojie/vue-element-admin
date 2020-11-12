@@ -22,7 +22,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from te.utils import para_check
 from te.utils import shape_util
-from te.utils import error_manager
+from te.utils.error_manager import error_manager_vector
 from impl import ascend_quant_util as util
 
 
@@ -190,7 +190,7 @@ def _check_params(x, req_scale, x1, y, y1, dual_output, relu_flag, kernel_name):
 
     if shape_req[0] != 1 or shape_req[2] != 1 or shape_req[3] != 1:
         detail = "req_scale shape must be 1 in n,h,w"
-        error_manager.error_manager_vector.raise_err_input_shape_invalid(kernel_name, "req_scale", detail)
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "req_scale", detail)
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,

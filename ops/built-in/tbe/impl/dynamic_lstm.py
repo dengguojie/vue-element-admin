@@ -27,6 +27,8 @@ from te import tvm
 from te import platform as cce
 from te.platform.cce_build import build_config
 from te.utils.error_manager import error_manager_vector
+from impl.util.util_common import write_code
+
 
 def sigmoid_compute(input_x):
     """
@@ -705,18 +707,6 @@ def dynamic_lstm(input_x, weight, bias,
         """
         modify json after build
         """
-        def _write_code(wkspace_dict, fname):
-            fname = os.path.realpath(fname)
-            if fname.startswith(os.getcwd()):
-                if os.path.exists(fname):
-                    with open(fname, "r") as f:
-                        load_dict = json.load(f)
-
-                    load_dict.update(wkspace_dict)
-                    with open(fname, "w") as f:
-                        json.dump(load_dict, f,
-                                  sort_keys=True, indent=4,
-                                  separators=(',', ':'))
 
         def _get_data_width(ele):
             """
@@ -757,7 +747,7 @@ def dynamic_lstm(input_x, weight, bias,
             wkspace_dict["parameters"] = parameters_list
 
         if wkspace_dict:
-            _write_code(wkspace_dict, "kernel_meta/" + kernel_name + ".json")
+            write_code(wkspace_dict, kernel_name)
 
     with build_config:
         tvm.build(s, new_build_list, "cce", name=kernel_name)

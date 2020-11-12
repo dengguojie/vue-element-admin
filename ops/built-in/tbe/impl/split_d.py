@@ -29,11 +29,42 @@ from impl import copy_only
 from impl import split_last_dim
 from impl.util import util_select_op_base
 from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 # one block size
 BLOCK_SIZE = 32
 # vtranspose can deal 16*16
 TRANSPOSE_SIZE = 256
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(input_value,
+                        output_data,
+                        split_dim,
+                        num_split,
+                        kernel_name="split_d"):
+    shape_value_len = len(input_value.get("shape"))
+    if split_dim < 0:
+        split_dim += shape_value_len
+    format_value = input_value.get("format").upper()
+    if format_value == "ND" or format_value == "NC1HWC0" or format_value == "FRACTAL_NZ":
+        axis_split_matrix=[]
+        for i in range(0, shape_value_len):
+            if i != split_dim:
+                output_list = []
+                for j in range(0, num_split):
+                    output_0 = [j, [i]]
+                    output_list.append(output_0)
+                split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput(*output_list)]
+                axis_split_matrix.append(split_0)
+        axis_reduce_list = None
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
@@ -829,9 +860,9 @@ def split_d(input_value,
         return
 
     if shape[split_dim] % num_split != 0:
-        raise RuntimeError(
-            "The num_split (%d) must be divisible by the length of"
-            "split_dim (%d)" % (num_split, shape[split_dim]))
+        error_detail = "The num_split (%d) must be divisible by the length of split_dim (%d)"\
+                       % (num_split, shape[split_dim])
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "input_value", error_detail)
 
     if num_split == 1:
         copy_only.copy_only(input_value, input_value, kernel_name)

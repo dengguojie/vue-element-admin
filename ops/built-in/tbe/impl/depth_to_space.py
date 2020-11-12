@@ -21,6 +21,10 @@ import functools
 from te import platform as tbe_platform
 from te import tik
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 # available ub size
 TOTAL_UB_MEMORY = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
@@ -38,6 +42,25 @@ SIZE_EIGHT_BYTES = 8
 DATA_MOVE_MIN_UNIT = 32
 # maximum burst number
 MAX_N_BURST = 4095
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(x, y, block_size, data_format='NHWC',
+                        kernel_name="depth_to_space"):
+    format_x = x.get("format").upper()
+    if format_x == "NHWC":
+        axis_split_matrix=[
+            [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+            [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]])],
+            [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])]
+        ]
+        axis_reduce_list = None
+
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 def _cal_core(tik_instance, total_core_loop_num, num_core, core_number):
@@ -1136,16 +1159,18 @@ def depth_to_space(x, y, block_size, data_format='NHWC',
     para_check.check_dtype(input_dtype, check_list, param_name="x")
 
     if len(input_shape) != 4:
-        raise RuntimeError("length of input_shape should be 4 but got: %d" %
-                           len(input_shape))
+        error_detail = "length of x'shape should be 4 but got: %d" %len(input_shape)
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
     if not (isinstance(block_size, int)) or block_size < 2:
-        raise RuntimeError("block_size should be integer and greater than"
-                           "or equal to 2 but got: %d" % block_size)
+        rule_desc = "block_size should be integer and be greater than or equal to 2"
+        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "block_size", block_size)
+    if data_format != "NHWC":
+        error_manager_vector.raise_err_input_format_invalid(kernel_name, "data_format", "NHWC", data_format)
 
     depth_size = input_shape[3]
     if depth_size % (block_size  *  block_size) != 0:
-        raise RuntimeError("depth size should be divisible by the square"
-                           "of block_size")
+        error_detail = "depth size of x should be divisible by the square of block_size"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
 
     depth_to_space_template = DepthToSpaceNHWCCompute(input_shape,
                                                       input_dtype,

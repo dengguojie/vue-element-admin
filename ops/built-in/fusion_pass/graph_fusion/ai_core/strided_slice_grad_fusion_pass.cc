@@ -95,10 +95,10 @@ Status ConstToAttrStridedSliceGradPass::Fusion(ge::ComputeGraph& graph, Mapping&
   if ((ge::GRAPH_SUCCESS != op.GetAttr("ellipsis_mask", ellipsis_mask)) ||
       (ge::GRAPH_SUCCESS != op.GetAttr("new_axis_mask", new_axis_mask)) ||
       (ge::GRAPH_SUCCESS != op.GetAttr("shrink_axis_mask", shrink_axis_mask))) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(),
+    OP_LOGW(FUSED_OP_TYPE.c_str(),
             "op StridedSliceGrad get attribute ellipsis_mask or "
             "new axis mask or shrink axis mask failed");
-    return FAILED;
+    return NOT_CHANGED;
   }
 
   if (0 != new_axis_mask || (0 != shrink_axis_mask && 2 != shrink_axis_mask)) {

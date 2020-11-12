@@ -76,8 +76,8 @@ Status ReduceMaxDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   }
   std::vector<int64_t> axis;
   if (!ge::AttrUtils::GetListInt(max_node->GetOpDesc(), AXIS, axis)) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "get attr axis failed");
-    return FAILED;
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "get attr axis failed");
+    return NOT_CHANGED;
   }
 
   int64_t dims_size = dimInfo.size();

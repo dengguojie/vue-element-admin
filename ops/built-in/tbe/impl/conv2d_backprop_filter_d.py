@@ -103,13 +103,13 @@ def conv2d_backprop_filter_d(
 
     Parameters
     ----------
-    x: dict with keys(shape and dtype)
+    x: dict with keys(ori_shape, ori_format, shape, format, dtype)
         input feature map tensor.
 
-    out_backprop: dict with keys(shape and dtype)
+    out_backprop: dict with keys(ori_shape, ori_format, shape, format, dtype)
         input weight tensor.
 
-    y: dict with keys(shape and dtype)
+    y: dict with keys(ori_shape, ori_format, shape, format, dtype)
         output tensor, dtype must be assigned.
 
     filter_size: tuple/list of 4 integers
@@ -120,7 +120,7 @@ def conv2d_backprop_filter_d(
     strides: tuple/list of 2 integers
         filter move stride.
 
-    pads: string of "SAME" or "VAILD"
+    pads: tuple/list of 4 integers
         [pad_top, pad_bottom, pad_left, pad_right].
 
     dilations: tuple/list of 4 integers
@@ -258,7 +258,7 @@ def conv2d_backprop_filter_d(
     else:
         dict_args = {}
         dict_args["errCode"] = "E60008"
-        dict_args["param_name"] = "res"
+        dict_args["param_name"] = "y"
         dict_args["expected_format_list"] = "[{}, {}, {}]".format(
             "NHWC", "NCHW", "HWCN"
         )
@@ -271,6 +271,7 @@ def conv2d_backprop_filter_d(
         strides,
         pads,
         dilations,
+        groups,
         x_dtype,
         out_backprop_dtype,
         res_dtype,
@@ -306,6 +307,7 @@ def _get_shape_dilation(data_format, dilations):
     (list, tuple),
     (str, list, tuple),
     (list, tuple),
+    int,
     str,
     str,
     str,
@@ -318,6 +320,7 @@ def check_conv2dbp_filter_params(
     strides,
     pads,
     dilations,
+    groups,
     x_dtype,
     out_backprop_dtype,
     res_dtype,
@@ -340,6 +343,8 @@ def check_conv2dbp_filter_params(
     pads: "SAME"or"VALID", indicating the type of pads algorithm to use, or tuple/list.
 
     dilations: An optional tuple/list of ints.
+
+    groups : The number of filter's group. Default value is 1.
 
     x_dtype: Fmeature map data dtype.
 
@@ -430,6 +435,9 @@ def check_conv2dbp_filter_params(
             return True
         return False
 
+    def _need_change_hw():
+        return fmap_w == 1 and filter_w == 1 and dedy_w == 1 and pad_left == 0 and pad_right == 0
+
     # First : Base check, Mainly required by interface appearance
     # ===========================================================
     # util check
@@ -511,6 +519,16 @@ def check_conv2dbp_filter_params(
     filter_h_dilation = (filter_h - 1) * dilation_h + 1
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
 
+    # groups check
+    if groups != 1 and groups != fmap_channel:
+        dict_args = {
+            'errCode': 'E50060',
+            'op_name': 'conv2d_backprop_filter',
+            'description': "only supports conv/depthwise situation"
+        }
+        raise RuntimeError(dict_args,
+                           error_manager.get_error_message(dict_args))
+
     # pads compute
     if pads == "SAME":
         pad_w = _align(fmap_w, stride_w) - stride_w + filter_w_dilation - fmap_w
@@ -549,8 +567,8 @@ def check_conv2dbp_filter_params(
     fmap_hw_min, dedy_hw_min = FMAP_HW_MIN, DEDY_HW_MIN
     dedy_hw_max, fmap_hw_max = DEDY_HW_MAX, FMAP_HW_MAX
 
-    # exchange h and w will not change date in memmory
-    if fmap_w_padding == 1 and filter_w == 1 and dedy_w == 1:
+    # exchange h and w will not change date in memory
+    if _need_change_hw():
         shape_x = (fmap_batch, fmap_channel, fmap_w, fmap_h)
         shape_out_backprop = (dedy_batch, dedy_channel, dedy_w, dedy_h)
         filter_sizes = (filter_batch, filter_channel, filter_w, filter_h)
@@ -561,6 +579,9 @@ def check_conv2dbp_filter_params(
         fmap_h, fmap_w = fmap_w, fmap_h
         filter_h, filter_w = filter_w, filter_h
         filter_h_dilation, filter_w_dilation = filter_w_dilation, filter_h_dilation
+        pad_left, pad_right, pad_up, pad_down = pads
+        pads = pad_up, pad_down, pad_left, pad_right
+
     # limitation by chip:
     # if kernel h,w in [1,11] and fmap h/w after padding equals to filter h/w
     # load3d support h,w is 1
@@ -576,16 +597,16 @@ def check_conv2dbp_filter_params(
         fmap_hw_max = CONV1D_MAX_W
 
     # Dedy value limit
-    _check_attr_range_dw("Dedy's H", dedy_h, dedy_hw_min, dedy_hw_max)
-    _check_attr_range_dw("Dedy's W", dedy_w, dedy_hw_min, dedy_hw_max)
+    _check_attr_range_dw("out_backprop's H", dedy_h, dedy_hw_min, dedy_hw_max)
+    _check_attr_range_dw("out_backprop's W", dedy_w, dedy_hw_min, dedy_hw_max)
 
     # filter value limit
-    _check_attr_range_dw("filter's H", filter_h, FILTER_HW_MIN, FILTER_HW_MAX)
-    _check_attr_range_dw("filter's W", filter_w, FILTER_HW_MIN, FILTER_HW_MAX)
+    _check_attr_range_dw("y's H", filter_h, FILTER_HW_MIN, FILTER_HW_MAX)
+    _check_attr_range_dw("y's W", filter_w, FILTER_HW_MIN, FILTER_HW_MAX)
 
     # Fmap value limit
-    _check_attr_range_dw("Fmap's H", fmap_h, fmap_hw_min, fmap_hw_max)
-    _check_attr_range_dw("Fmap's W", fmap_w, fmap_hw_min, fmap_hw_max)
+    _check_attr_range_dw("x's H", fmap_h, fmap_hw_min, fmap_hw_max)
+    _check_attr_range_dw("x's W", fmap_w, fmap_hw_min, fmap_hw_max)
 
     # stride value limit
     _check_attr_range_dw("stride's H", stride_h, STRIDE_HW_MIN, STRIDE_HW_MAX)
@@ -595,22 +616,22 @@ def check_conv2dbp_filter_params(
         if fmap_batch != dedy_batch:
             dict_args = {}
             dict_args["errCode"] = "E64002"
-            dict_args["param1"] = "Fmap's N"
-            dict_args["param2"] = "Dedy's N"
+            dict_args["param1"] = "x's N"
+            dict_args["param2"] = "out_backprop's N"
             dict_args["actual_value"] = "{}, {}".format(fmap_batch, dedy_batch)
             raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
         if dedy_channel != filter_batch:
             dict_args = {}
             dict_args["errCode"] = "E64002"
-            dict_args["param1"] = "Dedy's C"
+            dict_args["param1"] = "out_backprop's C"
             dict_args["param2"] = "Filter's N"
             dict_args["actual_value"] = "{}, {}".format(dedy_channel, filter_batch)
             raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
-        if fmap_channel != filter_channel:
+        if fmap_channel != filter_channel * groups:
             dict_args = {}
             dict_args["errCode"] = "E64002"
-            dict_args["param1"] = "Fmap's C"
-            dict_args["param2"] = "Filter's C"
+            dict_args["param1"] = "x's C"
+            dict_args["param2"] = "y's C"
             dict_args["actual_value"] = "{}, {}".format(fmap_channel, filter_channel)
             raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
         if filter_w_dilation > fmap_w_padding:
@@ -680,6 +701,7 @@ def check_conv2dbp_filter_params(
         strides,
         pads,
         dilations,
+        groups,
         x_dtype,
         out_backprop_dtype,
         res_dtype,
@@ -695,6 +717,7 @@ def check_conv2dbp_filter_params(
     (list, tuple),
     (str, list, tuple),
     (list, tuple),
+    int,
     str,
     str,
     str,
@@ -707,6 +730,7 @@ def _conv2d_backprop_filter_cce(
     strides,
     pads,
     dilations=(1, 1, 1, 1),
+    groups=1,
     x_dtype="float16",
     out_backprop_dtype="float16",
     res_dtype="float32",
@@ -729,6 +753,8 @@ def _conv2d_backprop_filter_cce(
     pads: "SAME"or"VALID", indicating the type of pads algorithm to use, or tuple/list.
 
     dilations: An optional tuple/list of ints. Default to (1, 1, 1, 1).
+
+    groups : The number of filter's group. Default value is 1.
 
     x_dtype: The dtype of feature map data. Default to float16.
 
@@ -757,6 +783,7 @@ def _conv2d_backprop_filter_cce(
         strides,
         pads,
         dilations,
+        groups,
         x_dtype,
         out_backprop_dtype,
         res_dtype,
@@ -769,6 +796,7 @@ def _conv2d_backprop_filter_cce(
         strides,
         pads,
         dilations,
+        groups,
         x_dtype,
         out_backprop_dtype,
         res_dtype,
@@ -783,16 +811,30 @@ def _conv2d_backprop_filter_cce(
     shape_fmap = (fmap_batch, _ceil(fmap_channel, c0_size), fmap_h, fmap_w, c0_size)
     dedy = tvm.placeholder(shape_dedy, name="dedy", dtype=out_backprop_dtype)
     fmap = tvm.placeholder(shape_fmap, name="fmap", dtype=x_dtype)
-    dedw = tbe.conv2d_backprop_filter_compute(
-        input_x=fmap,
-        out_backprop=dedy,
-        filter_sizes=filter_sizes,
-        strides=strides,
-        padding=pads,
-        dilations=dilations,
-        res_dtype=res_dtype,
-        kernel_name=kernel_name,
-    )
+    if 1 == groups:
+        # for old fwkacllib version
+        dedw = tbe.conv2d_backprop_filter_compute(
+            input_x=fmap,
+            out_backprop=dedy,
+            filter_sizes=filter_sizes,
+            strides=strides,
+            padding=pads,
+            dilations=dilations,
+            res_dtype=res_dtype,
+            kernel_name=kernel_name,
+        )
+    else:
+        dedw = tbe.conv2d_backprop_filter_compute(
+            input_x=fmap,
+            out_backprop=dedy,
+            filter_sizes=filter_sizes,
+            strides=strides,
+            padding=pads,
+            dilations=dilations,
+            groups=groups,
+            res_dtype=res_dtype,
+            kernel_name=kernel_name,
+        )
     tensor_list_input = [fmap, dedy]
 
     with tvm.target.cce():

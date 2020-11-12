@@ -14,12 +14,10 @@
 # ============================================================================
 
 set(_proto_srcs
-  "${CANN_ROOT}/third_party/metadef/inc/register/proto/onnx/ge_onnx.proto"
+  "${METADEF_INCLUDE}/register/proto/onnx/ge_onnx.proto"
 )
 
-# the output path of generated files
-set(_proto_include "${CMAKE_CURRENT_BINARY_DIR}/proto_tmp")
-protobuf_generate_cc(_proto_h _proto_cc ${_proto_include} ${_proto_srcs})
+protobuf_generate(opp _proto_cc _proto_h ${_proto_srcs})
 
 # the list of source files
 set(_onnx_plugins
@@ -49,6 +47,8 @@ set(_onnx_plugins
   sigmoid_plugin.cc
   sqrt_plugin.cc
   sub_plugin.cc
+  tile_plugin.cc
+  topk_plugin.cc
   unsqueeze_plugin.cc
 )
 
@@ -58,31 +58,47 @@ add_library(ops_all_onnx_plugin SHARED
 )
 
 target_include_directories(ops_all_onnx_plugin PRIVATE
-  ${CANN_ROOT}/ops/common/inc
-  ${CANN_ROOT}/inc/external
-  ${CANN_ROOT}/third_party/fwkacllib/inc
-  ${CANN_ROOT}/third_party/metadef/inc
-  ${CANN_ROOT}/third_party/metadef/inc/external
-  ${CANN_ROOT}/third_party/metadef/inc/external/graph
-  ${CANN_ROOT}/third_party/metadef/third_party/graphengine/inc
-  ${_proto_include}
+  ${OPS_INCLUDE}
+  ${FWKACLLIB_INCLUDE}
+  ${METADEF_INCLUDE}
+  ${METADEF_INCLUDE}/external
+  ${METADEF_INCLUDE}/external/graph
+  ${GRAPHENGINE_INCLUDE}
+  ${PROTO_BINARY_DIR}/opp
   ${Protobuf_INCLUDE}
 )
 
-target_link_libraries(ops_all_onnx_plugin PRIVATE
-  ${graph}
-  ${register}
-  ${slog}
-  ${error_manager}
-  ${te_fusion}
-  ${_caffe_parser}
-  ${protobuf}
-  c_sec
+target_compile_options(ops_all_onnx_plugin PRIVATE
+  -O2
+  -Werror
+  -Dgoogle=ascend_private
 )
 
-set(ONNX_PLUGIN_PATH "${INSTALL_PATH}/opp/framework/built-in/onnx")
-cann_install(
-  TARGET      ops_all_onnx_plugin
-  FILES       $<TARGET_FILE:ops_all_onnx_plugin>
-  DESTINATION "${ONNX_PLUGIN_PATH}"
+target_link_libraries(ops_all_onnx_plugin PRIVATE
+  $<BUILD_INTERFACE:intf_pub>
+  -Wl,--no-as-needed
+    graph
+    register
+    slog
+    error_manager
+    te_fusion
+    _caffe_parser
+    ascend_protobuf
+  -Wl,--as-needed
+    c_sec
 )
+
+if(BUILD_OPEN_PROJECT)
+  set(ONNX_PLUGIN_PATH "${INSTALL_PATH}/opp/framework/built-in/onnx")
+  cann_install(
+    TARGET      ops_all_onnx_plugin
+    FILES       $<TARGET_FILE:ops_all_onnx_plugin>
+    DESTINATION "${ONNX_PLUGIN_PATH}"
+  )
+else()
+  install(
+    TARGETS ops_all_onnx_plugin OPTIONAL
+    EXPORT  ops_all_onnx_plugin-targets
+    LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
+  )
+endif()

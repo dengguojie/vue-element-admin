@@ -20,15 +20,34 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
+from impl.util import util_select_op_base
 
 # const value
 CONST_HALF = 0.5
 CONST_SQRT_ITER = 3
 
 
+# pylint: disable = unused-argument
+def get_op_support_info(x, y, normalize_variance=True, across_channels=False, eps=1e-9, kernel_name="mvn"):
+    format_x = x.get("format")
+    axis_split_list = []
+    if format_x == "NCHW":
+        if across_channels:
+            split_0 = [util_select_op_base.SplitInput([0, [0], [-1], [-1]]), util_select_op_base.SplitOutput([0, [0]])]
+            axis_split_list.append(split_0)
+        else:
+            split_0 = [util_select_op_base.SplitInput([0, [0], [-1], [-1]]), util_select_op_base.SplitOutput([0, [0]])]
+            split_1 = [util_select_op_base.SplitInput([0, [1], [-1], [-1]]), util_select_op_base.SplitOutput([0, [1]])]
+            axis_split_list= [split_0, split_1]
+    else:
+        axis_split_list = None
+
+    axis_reduce_list = None
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_list, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
+
+
 # pylint: disable=too-few-public-methods
-
-
 def _check_format_shape(data_format, shape):
     """
     Function to check format and shape of input data.

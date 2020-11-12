@@ -25,6 +25,16 @@ from impl.util import util_select_op_base
 
 MINI_STRIDE = 1
 
+def get_op_support_info(in_dic, filter_dic, out_dic, stride,
+                 reverse, kernel_name="pass_through"):
+    axis_split_matrix=[
+        [ util_select_op_base.SplitInput([0, [0], [-1], [-1]]), util_select_op_base.SplitOutput([0, [0]]) ]
+    ]
+    axis_reduce_list = None
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_matrix, axis_reduce_list)
+
+    return op_cal_info_in_json
+
 
 def op_select_format(in_dic, filter_dic, out_dic,
                      stride, reverse, kernel_name="pass_through"):

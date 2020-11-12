@@ -227,8 +227,7 @@ class TFOpInfo(OpInfo):
     def _get_dynamic_input_output_type(value):
         if "N*" in value:
             return value.replace("N*", "")
-        else:
-            return ""
+        return ""
 
     def _generate_input_info(self):
         for name, value in self.input_info:
@@ -305,22 +304,20 @@ class TFOpInfo(OpInfo):
     def _mapping_attr_type(tf_type):
         if tf_type in utils.TF_ATTR_TYPE_MAP:
             return utils.TF_ATTR_TYPE_MAP.get(tf_type)
-        else:
-            utils.print_warn_log("The attr type '%s'  in "
-                                 "the .txt file is unsupported. Please check "
-                                 "the input or output type. If you aren't "
-                                 "having problems, just ignore the warning."
-                                 % tf_type)
-            return ""
+        utils.print_warn_log("The attr type '%s'  in "
+                             "the .txt file is unsupported. Please check "
+                             "the input or output type. If you aren't "
+                             "having problems, just ignore the warning."
+                             % tf_type)
+        return ""
 
     @staticmethod
     def _mapping_input_output_type(tf_type, name):
         # mapping from tf type to D enum
         if tf_type in TF_INPUT_OUTPUT_DTYPE_MAP:
             return TF_INPUT_OUTPUT_DTYPE_MAP.get(tf_type)
-        else:
-            utils.print_warn_log("The '%s' type '%s' in "
-                                 "the .txt file is unsupported. Please "
-                                 "check. If you aren't having problems, "
-                                 "just ignore the warning." % (name, tf_type))
-            return ""
+        utils.print_warn_log("The '%s' type '%s' in "
+                             "the .txt file is unsupported. Please "
+                             "check. If you aren't having problems, "
+                             "just ignore the warning." % (name, tf_type))
+        return ""

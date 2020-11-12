@@ -29,6 +29,11 @@ from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util.util_common import write_code
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
+
 
 BLOCK_SIZE = 16
 BLOCK_SIZE_FP16 = 16
@@ -40,6 +45,54 @@ INT8_SIZE = 1
 
 MAX_UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 MAX_L1_SIZE = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
+DEVICE_CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+
+
+# pylint: disable = unused-argument,redefined-builtin
+def get_op_support_info(input_x, output_y, ksizes, strides, padding, kernel_name="extract_volume_patches"):
+    """
+    get extract_volume_patches slice info
+    """
+    format_x = input_x.get("format")
+    shape_x = input_x.get("shape")
+    data_format = input_x.get("ori_format")
+    _, filter_d, filter_h, _, _ = ksizes
+    if data_format == "NCDHW":
+        _, _, filter_d, filter_h, _ = ksizes
+    if format_x == "NDC1HWC0":
+        input_d = shape_x[1]
+        input_h = shape_x[3]
+        if (input_h == filter_h and input_d == filter_d) or padding == "SAME":
+            axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]]),
+                                  SplitOutput([0, [0]])]]
+        elif padding == "VALID":
+            if input_h != filter_h and input_d != filter_d:
+                axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]]),
+                                      SplitOutput([0, [0]])],
+                                     [SplitInput([0, [1], [0], [0]]),
+                                      SplitOutput([0, [1]])],
+                                     [SplitInput([0, [3], [0], [0]]),
+                                      SplitOutput([0, [3]])]]
+            elif input_h == filter_h and input_d != filter_d:
+                axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]]),
+                                      SplitOutput([0, [0]])],
+                                     [SplitInput([0, [1], [0], [0]]),
+                                      SplitOutput([0, [1]])]]
+            else:
+                axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]]),
+                                      SplitOutput([0, [0]])],
+                                     [SplitInput([0, [3], [0], [0]]),
+                                      SplitOutput([0, [3]])]]
+        else:
+            axis_split_matrix = None
+
+        axis_reduce_list = None
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+
+    return op_cal_info_in_json
 
 
 # pylint: disable=too-many-arguments, invalid-name, too-many-statements, too-many-branches
@@ -49,10 +102,23 @@ def _check_shape_and_format_vailded(input_x, output_y, ksizes, strides, padding,
     """
     shape_x = input_x.get("ori_shape")
     shape_y = output_y.get("shape")
+    ori_format = input_x.get("ori_format")
+
+    if ori_format not in ("NCDHW", "NDHWC"):
+        error_manager_vector.raise_err_input_format_invalid(kernel_name, "x", 'NDHWC or NCDHW', ori_format)
 
     if len(ksizes) == 5 and len(strides) == 5:
-        _, kernel_d, kernel_h, kernel_w, _ = ksizes
-        _, stride_d, stride_h, stride_w, _ = strides
+        if ori_format == "NDHWC":
+            _, kernel_d, kernel_h, kernel_w, _ = ksizes
+            _, stride_d, stride_h, stride_w, _ = strides
+            fmap_n, fmap_d, fmap_h, fmap_w, fmap_c = shape_x
+        else:
+            _, _, kernel_d, kernel_h, kernel_w = ksizes
+            _, _, stride_d, stride_h, stride_w = strides
+            fmap_n, fmap_c, fmap_d, fmap_h, fmap_w = shape_x
+            shape_x = [fmap_n, fmap_d, fmap_h, fmap_w, fmap_c]
+            ksizes == [1, kernel_d, kernel_h, kernel_w, 1]
+            strides == [1, stride_d, stride_h, stride_w, 1]
     elif len(ksizes) != 5:
         error_manager_vector.raise_err_input_param_range_invalid(kernel_name, 'ksizes', 5, 5, len(ksizes))
     else:
@@ -81,8 +147,6 @@ def _check_shape_and_format_vailded(input_x, output_y, ksizes, strides, padding,
     para_check.check_dtype(dtype_y, ("float16", "uint8", "int8"), param_name="output_y")
     if dtype_x != dtype_y:
         error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "input_x", "output_y", dtype_x, dtype_y)
-
-    fmap_n, fmap_d, fmap_h, fmap_w, fmap_c = shape_x
 
     out_d, _, _ = tbe.te_compute.common.tf_get_windowed_output_size_verbose(fmap_d, kernel_d, stride_d, padding)
     out_h, _, _ = tbe.te_compute.common.tf_get_windowed_output_size_verbose(fmap_h, kernel_h, stride_h, padding)
@@ -115,7 +179,8 @@ def _check_shape_and_format_vailded(input_x, output_y, ksizes, strides, padding,
                 kernel_name,
                 "Invalid params in the platform of cloud, it must be fmap_w + pad_l + pad_r - kernel_w >= stride_w!")
 
-    expect_shape_y = (fmap_n, out_d, out_h, out_w, kernel_d * kernel_h * kernel_w * fmap_c)
+    expect_shape_y = (fmap_n, out_d, (kernel_d * kernel_h * kernel_w * fmap_c + BLOCK_SIZE_ALIGN - 1) \
+                      // BLOCK_SIZE_ALIGN, out_h, out_w, BLOCK_SIZE_ALIGN)
 
     if list(expect_shape_y) != list(shape_y):
         error_manager_vector.raise_err_inputs_shape_not_equal(kernel_name, "expect_shape_y", "output_y",
@@ -127,8 +192,8 @@ def _check_shape_and_format_vailded(input_x, output_y, ksizes, strides, padding,
 
     if len(shape_x) != 5:
         error_manager_vector.raise_err_input_param_range_invalid(kernel_name, 'input_x', 5, 5, len(shape_x))
-    if len(shape_y) != 5:
-        error_manager_vector.raise_err_input_param_range_invalid(kernel_name, 'output_y', 5, 5, len(shape_y))
+    if len(shape_y) != 6:
+        error_manager_vector.raise_err_input_param_range_invalid(kernel_name, 'output_y', 6, 6, len(shape_y))
 
     fmap_c1 = (fmap_c + BLOCK_SIZE_ALIGN - 1) // BLOCK_SIZE_ALIGN
     fmap_c0 = BLOCK_SIZE_ALIGN
@@ -141,6 +206,8 @@ def _check_shape_and_format_vailded(input_x, output_y, ksizes, strides, padding,
             kernel_name, "Input size is too large load to L1, while cut h, need size: %d" %
             (cut_h * fmap_w * fmap_c1 * fmap_c0 * type_size * DOUBLE_BUFFER))
 
+    return shape_x, ksizes, strides
+
 
 def _ceil_to(value, ceil_value):
     """
@@ -152,13 +219,33 @@ def _ceil_to(value, ceil_value):
     return ((value + ceil_value - 1) // ceil_value) * ceil_value
 
 
+def _cal_multi_core_factor_3_axis(m, n, l):
+    """
+    Return the proper cut factors for 3 multicore axis.
+    """
+    def ceil(x, y):
+        return (x + y - 1) // y
+    core_m, core_n, core_l = m, n, l
+    min_cycle_num = ceil(m * n * l, DEVICE_CORE_NUM)
+    min_core = m * n * l
+    for i in range(m, 0, -1):
+        for j in range(n, 0, -1):
+            for k in range(l, 0, -1):
+                if ceil(m, i) * ceil(n, j) * ceil(l, k) * ceil(i * j * k, DEVICE_CORE_NUM) > min_cycle_num:
+                    continue
+                if i * j * k < min_core:
+                    min_core = i * j * k
+                    core_m, core_n, core_l = i, j, k
+    return core_m, core_n, core_l
+
+
 # pylint: disable=invalid-name
-def _din_img2col(image_patches_res_shape, A, padding, stride_d):
+def _din_img2col(image_patches_res_shape, image_patches_res, padding, stride_d, float16_align_flag):
     """
     calculate din_img2col tensor
     Parameters
     ----------
-    A : feature map
+    image_patches_res : image_patches_res
 
     image_patches_res_shape : shape of A_din_img2col
 
@@ -168,14 +255,14 @@ def _din_img2col(image_patches_res_shape, A, padding, stride_d):
     -------
     Returns : A_din_img2col tensor
     """
-    def _din_img2col_compute(indices, A, padding, stride_d):
+    def _din_img2col_compute(indices, image_patches_res, padding, stride_d, float16_align_flag):
         """
         calculate din_img2col tensor
         Parameters
         ----------
         indices : indices in lambda function
 
-        A : feature map
+        image_patches_res : feature map
 
         padding: the padding shape
 
@@ -183,23 +270,46 @@ def _din_img2col(image_patches_res_shape, A, padding, stride_d):
         -------
         Returns : A_din_img2col tvm lambda function
         """
-        _, in_d, _, _, _, _, _ = A.shape
-        n, do, howo1, howo0, kd, c1, khkw, c0 = indices
+        _, in_d, _, _, _, _, _ = image_patches_res.shape
+        if image_patches_res.dtype != "float16" or float16_align_flag:
+            n, dO, howo1, howo0, kd, c1, khkw, c0 = indices
+        else:
+            n, dO, howo1, c1, kd, khkw, howo0, c0 = indices
         padding_top, _, _, _ = padding
 
         n_index = n
-        d_index = do * stride_d + kd
+        d_index = dO * stride_d + kd
         howo1_index = howo1
         howo0_index = howo0
         c1_index = c1
         khkw_index = khkw
         c0_index = c0
-
-        return tvm.select(tvm.any(d_index < padding_top, d_index > in_d.value + padding_top - 1), tvm.const(0, A.dtype),
-                          A(n_index, d_index - padding_top, howo1_index, howo0_index, c1_index, khkw_index, c0_index))
+        if image_patches_res.dtype in ("uint8", "int8"):
+            return tvm.select(
+                tvm.any(d_index < padding_top,
+                        d_index > in_d.value + padding_top - 1),
+                tvm.const(0, image_patches_res.dtype),
+                image_patches_res(n_index, d_index - padding_top, howo1_index, howo0_index, c1_index, khkw_index,
+                                  c0_index))
+        else:
+            if float16_align_flag:
+                return tvm.select(
+                    tvm.any(d_index < padding_top,
+                            d_index > in_d.value + padding_top - 1),
+                    tvm.const(0, image_patches_res.dtype),
+                    image_patches_res(n_index, d_index - padding_top, howo1_index, howo0_index, c1_index, khkw_index,
+                                      c0_index) + tvm.const(0, image_patches_res.dtype))
+            else:
+                return tvm.select(
+                    tvm.any(d_index < padding_top,
+                            d_index > in_d.value + padding_top - 1),
+                    tvm.const(0, image_patches_res.dtype),
+                    image_patches_res(n_index, d_index - padding_top, howo1_index, c1_index, khkw_index, howo0_index,
+                                      c0_index) + tvm.const(0, image_patches_res.dtype))
 
     return tvm.compute(image_patches_res_shape,
-                       lambda *indices: _din_img2col_compute(indices, A, padding, stride_d),
+                       lambda *indices: _din_img2col_compute(indices, image_patches_res,
+                                                             padding, stride_d, float16_align_flag),
                        name='image_patches_res',
                        tag='image_patches_res')
 
@@ -258,8 +368,11 @@ def _img2col(input_img, col_shape, filter_h, filter_w, pad, stride):
         img_c0_index = col_c0
 
         return tvm.select(
-            tvm.any(img_h_index < pad_top, img_h_index > fmap_h.value + pad_top - 1, img_w_index < pad_left,
-                    img_w_index > fmap_w.value + pad_left - 1), tvm.const(0, input_img.dtype),
+            tvm.any(img_h_index < pad_top,
+                    img_h_index > fmap_h.value + pad_top - 1,
+                    img_w_index < pad_left,
+                    img_w_index > fmap_w.value + pad_left - 1),
+            tvm.const(0, input_img.dtype),
             input_img(img_n_index, img_d_index, img_c1_index, img_h_index - pad_top, img_w_index - pad_left,
                       img_c0_index))
 
@@ -276,7 +389,7 @@ def _img2col(input_img, col_shape, filter_h, filter_w, pad, stride):
 
 
 # pylint: disable=too-many-arguments,invalid-name
-def _im2col_fractal(A_im2col_shape, A):
+def _im2col_fractal(A_im2col_shape, fmap):
     """
     calculate im2col_fractal tensor
 
@@ -284,25 +397,25 @@ def _im2col_fractal(A_im2col_shape, A):
     ----------
     A_im2col_shape: shape of A_im2col
 
-    A: feature map
+    fmap: feature map
     -------
     Returns : A_im2col_fractal tensor
     """
-    def _im2col_fractal_indices(indices, A):
+    def _im2col_fractal_indices(indices, fmap):
         """
         calculate im2col_fractal tvm lambda function
         Parameters
         ----------
         indices: indices in lambda function
 
-        A: feature map
+        fmap: feature map
         -------
         Returns : im2col_fractal tvm lambda function
         """
-        _, _, hw, _, kernel_h, kernel_w, _ = A.shape
+        _, _, hw, _, kernel_h, kernel_w, _ = fmap.shape
         batch_size, d, i1, j1, j0, i0 = indices
 
-        if A.dtype in ("int8", "uint8"):
+        if fmap.dtype in ("int8", "uint8"):
             BLOCK_SIZE_ALIGN = BLOCK_SIZE_INT8
         else:
             BLOCK_SIZE_ALIGN = BLOCK_SIZE_FP16  # 16
@@ -315,72 +428,16 @@ def _im2col_fractal(A_im2col_shape, A):
         kw_index = ((j1 * BLOCK_SIZE_ALIGN + j0) // BLOCK_SIZE_ALIGN) % kernel_w.value
         c0_index = (j1 * BLOCK_SIZE_ALIGN + j0) % BLOCK_SIZE_ALIGN
 
-        return tvm.select(tvm.any(hw_index < 0, hw_index > hw.value - 1), tvm.const(0, A.dtype),
-                          A(n_index, d_index, hw_index, c1_index, kh_index, kw_index, c0_index))
+        return tvm.select(
+            tvm.any(hw_index < 0,
+                    hw_index > hw.value - 1),
+            tvm.const(0, fmap.dtype),
+            fmap(n_index, d_index, hw_index, c1_index, kh_index, kw_index, c0_index))
 
     return tvm.compute(A_im2col_shape,
-                       lambda *indices: _im2col_fractal_indices(indices, A),
+                       lambda *indices: _im2col_fractal_indices(indices, fmap),
                        name='im2col_fractal',
                        tag='im2col_fractal')
-
-
-def _tilling_axis(shape, dtype, use_reg_mov):
-    """
-    calculate the split parameters according to different shapes
-
-    Parameters
-    ----------
-    shape : list or tuple
-        shape of tensor
-    dtype : string
-        buffer date type
-
-    Returns
-    -------
-    split_axis : the target axis that is used for spliting the tensor to find
-        the maximum amount of data can be stored and processed every time on UB.
-    split_factor : the factor used when spliting the target axis.
-        For example, for data of float16, [1024, 1024, 256] will be split to
-        [1024, 7, 164, 256], UB processes 164*256 elements every time.
-        In this case, the split_axis is 1 and the split_factor is 164.
-    """
-    # ub_size_bytes is the size of the UB expressed by bytes(mod 8 bits).
-    ub_size_bytes = MAX_UB_SIZE // 2 - 1 * 1024 if use_reg_mov else MAX_UB_SIZE - 1 * 1024
-    # dtype_bytes_size for float16 is 2, for float32 is 4
-    dtype_bytes_size = tbe_platform.get_bit_len(dtype) // 8
-    # total_ele is the maximum amount of data that can be stored in UB.
-    total_ele = ub_size_bytes // dtype_bytes_size
-
-    # To initialize the split_axis and the split_factor.
-    split_axis = 0
-    split_factor = 1
-
-    # To find the appropriate axis from the first one to the last
-    # by comparing the amount of the elements of the split tensor with
-    # the maximum amount of data that can be stored in UB.
-    for index, _ in enumerate(shape):
-        ele_cnt = functools.reduce(lambda x, y: x.astype("int64") * y.astype("int64"), shape[index:])
-        ele_cnt = ele_cnt.value
-        if ele_cnt <= total_ele:
-            split_axis = index - 1
-            split_factor = total_ele // ele_cnt
-            break
-
-    # when the last axis is still over the size of UB, we choose to split the last axis, and the split_factor is set as
-    # the maximum amount of data that can be stored in UB.
-    # For example, [10, 10, 256000] will be split to [10, 10, 7, 42154]
-    if shape[-1].value > total_ele:
-        split_axis = len(shape) - 1
-        split_factor = total_ele
-
-    # when the amount of the elements of the tensor is less than the size of UB, it means UB can process the whole
-    # tensor in one time. But the split_axis has already been set to "-1", split_axis and split_factor should be
-    # initialized into "0" and shape[0]
-    if split_axis < 0:
-        split_axis = 0
-        split_factor = shape[0]
-
-    return split_axis, split_factor
 
 
 # pylint: disable=too-many-arguments,invalid-name,too-many-locals,too-many-statements
@@ -420,8 +477,8 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, m
     max_next_valid_num = max_next_valid_size // data_size
 
     fmap_n, fmap_d, fmap_c1, fmap_h, fmap_w, fmap_c0 = fmap_shape
-    fmap_n, fmap_d, fmap_c1, fmap_h, fmap_w, fmap_c0 = fmap_n.value, \
-         fmap_d.value, fmap_c1.value, fmap_h.value, fmap_w.value, fmap_c0.value
+    fmap_n, fmap_d, fmap_c1, fmap_h, fmap_w, fmap_c0 = \
+        fmap_n.value, fmap_d.value, fmap_c1.value, fmap_h.value, fmap_w.value, fmap_c0.value
     kernel_d, kernel_h, kernel_w = ksize
     stride_d, stride_h, stride_w = strides
     output_d, _, _ = tbe.te_compute.common.tf_get_windowed_output_size_verbose(fmap_d, kernel_d, stride_d,
@@ -450,11 +507,10 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, m
         return False, None, None, None, None
 
     # see if we can do double buffer in l1
-
     l1_double_buffer = False
     min_com_multi = output_w * BLOCK_SIZE // math.gcd(output_w, BLOCK_SIZE)
-    if max_ho_l1 >= min_com_multi // output_w * DOUBLE_BUFFER and max_do_l1 >= min_com_multi // output_w *\
-         DOUBLE_BUFFER:
+    if max_ho_l1 >= min_com_multi // output_w * DOUBLE_BUFFER and \
+            max_do_l1 >= min_com_multi // output_w * DOUBLE_BUFFER:
         max_ho_l1 = max_ho_l1 // DOUBLE_BUFFER
         max_do_l1 = max_do_l1 // DOUBLE_BUFFER
         max_dihiwi_l1 = max_dihiwi_l1 // DOUBLE_BUFFER
@@ -565,7 +621,7 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, m
 
     if tile_l1_wi * tile_l1_hi * tile_l1_di * tile_l1_c0 * DOUBLE_BUFFER > max_l1_valid_num:
         error_manager_vector.raise_err_specific_reson("extract_volume_patches",
-                                                      "L1's memory space is not enough to support the tiling shape!")
+                                                      "L1 Size is not enough")
 
     return True, (l1_n, l1_di, l1_c1, l1_hi, l1_wi,
                   l1_c0), l1_double_buffer, (l0ub_n, l0ub_do, l0ub_howo, l0ub_c1, l0ub_kd, l0ub_khkw,
@@ -620,42 +676,13 @@ def _extract_volume_patches_compute_6hd(data_input, fmap_c, ksizes, strides, pad
                      BLOCK_SIZE_ALIGN)
     fmap_fractal = _im2col_fractal(fractal_shape, fmap_im2col)
 
-    # fmap_fractal_transpose
-    # transpose BLOCK_SIZE
-    # [UB]fmap_fractal:
-    #  (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, fmap_c1 * filter_h * filter_w,
-    #  BLOCK_SIZE, BLOCK_SIZE_ALIGN) ->
-    # [UB]image_patches:
-    #  (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, BLOCK_SIZE,
-    #  fmap_c1 * filter_h * filter_w, BLOCK_SIZE_ALIGN)
-    image_patches_shape = (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, BLOCK_SIZE, fmap_c1 * filter_h * filter_w,
-                           BLOCK_SIZE_ALIGN)
-    image_patches = tvm.compute(image_patches_shape,
-                                lambda n, d, howo1, howo0, c1khkw, c0: fmap_fractal[n, d, howo1, c1khkw, howo0, c0],
-                                name="image_patches")
-
-    # image_patches_split_c1
-    # split c1 & khkw
-    # [UB]image_patches:
-    #  (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, BLOCK_SIZE,
-    #  fmap_c1 * filter_h * filter_w, BLOCK_SIZE_ALIGN) ->
-    # [UB]image_patches_split_c1:
-    #  (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, BLOCK_SIZE,
-    #  fmap_c1, filter_h * filter_w, BLOCK_SIZE_ALIGN)
-    image_patches_split_c1_shape = (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, BLOCK_SIZE, fmap_c1, filter_h * filter_w,
-                                    BLOCK_SIZE_ALIGN)
-    image_patches_split_c1 = tvm.compute(
-        image_patches_split_c1_shape,
-        lambda n, d, howo1, howo0, c1, khkw, c0: image_patches[n, d, howo1, howo0, c1 * filter_h * filter_w + khkw, c0],
-        name="image_patches_split_c1")
-
     # 2nd filter and stride
     filter_h_2nd = filter_d
     stride_h_2nd = stride_d
     filter_w_2nd = 1
     stride_w_2nd = 1
     image_patches_reshape_shape = (fmap_batch, fmap_d, HoWo, fmap_c1 * filter_h * filter_w * BLOCK_SIZE_ALIGN)
-    _, fmap_h_2nd, fmap_w_2nd, _ = image_patches_reshape_shape
+    fmap_h_2nd, fmap_w_2nd = fmap_d, HoWo
     out_h_2nd, padding_h_before_2nd, padding_h_after_2nd = tbe.te_compute.common.tf_get_windowed_output_size_verbose(
         fmap_h_2nd.value, filter_h_2nd, stride_h_2nd, padding)
     dout = out_h_2nd
@@ -663,108 +690,485 @@ def _extract_volume_patches_compute_6hd(data_input, fmap_c, ksizes, strides, pad
         fmap_w_2nd, filter_w_2nd, stride_w_2nd, padding)
     pad_2nd = (padding_h_before_2nd, padding_h_after_2nd, padding_w_before_2nd, padding_w_after_2nd)
 
-    # image_patches_res
-    # expand d axis
-    # [UB]image_patches_split_c1:
-    #  (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, BLOCK_SIZE, fmap_c1, filter_h * filter_w, BLOCK_SIZE) ->
-    # [UB]image_patches_res:
-    #  (fmap_batch, dout, HoWo // BLOCK_SIZE, BLOCK_SIZE, filter_d, fmap_c1, filter_h * filter_w, BLOCK_SIZE_ALIGN)
-    image_patches_res_shape = (fmap_batch, dout, HoWo // BLOCK_SIZE, BLOCK_SIZE, filter_d, fmap_c1, filter_h * filter_w,
+    if original_cin % BLOCK_SIZE_ALIGN != 0 and data_input.dtype == "float16":
+        # fmap_fractal_transpose
+        # transpose BLOCK_SIZE
+        # [UB]fmap_fractal:
+        #  (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, fmap_c1 * filter_h * filter_w, BLOCK_SIZE, BLOCK_SIZE_ALIGN) ->
+        # [UB]image_patches:
+        #  (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, fmap_c1 * filter_h * filter_w, BLOCK_SIZE, BLOCK_SIZE_ALIGN)
+        image_patches_shape = (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, fmap_c1 * filter_h * filter_w, BLOCK_SIZE,
                                BLOCK_SIZE_ALIGN)
-    image_patches_res = _din_img2col(image_patches_res_shape, image_patches_split_c1, pad_2nd, stride_d)
+        image_patches = tvm.compute(image_patches_shape,
+                                    lambda n, d, howo1, c1khkw, howo0, c0: fmap_fractal[n, d, howo1, c1khkw, howo0, c0],
+                                    name="image_patches")
 
-    # workspace_res
-    # dma from ub to workspace and transpose
-    # [UB]image_patches_res:
-    #  (fmap_batch, dout, HoWo // BLOCK_SIZE, BLOCK_SIZE, filter_d, fmap_c1, filter_h * filter_w, BLOCK_SIZE_ALIGN) ->
-    # [WorkSpace]workspace_res:
-    #  (fmap_batch, dout, out_h*out_w, filter_d, filter_h * filter_w, fmap_c1, BLOCK_SIZE_ALIGN)
-    workspace_shape = (fmap_batch, dout, out_h * out_w, filter_d, filter_h * filter_w, fmap_c1, BLOCK_SIZE_ALIGN)
-    workspace_res = tvm.compute(workspace_shape,
-                                lambda n, do, howo, kd, khkw, c1, c0: image_patches_res[n, do, howo // BLOCK_SIZE, howo
-                                                                                        % BLOCK_SIZE, kd, c1, khkw, c0],
-                                name="workspace_res")
+        # [UB]image_patches:
+        #  (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, fmap_c1 * filter_h * filter_w, BLOCK_SIZE, BLOCK_SIZE_ALIGN) ->
+        # [UB]image_patches_split_c1:
+        #  (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, fmap_c1, filter_h * filter_w, BLOCK_SIZE, BLOCK_SIZE_ALIGN)
+        image_patches_split_c1_shape = (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, fmap_c1, filter_h * filter_w, BLOCK_SIZE,
+                                        BLOCK_SIZE_ALIGN)
+        image_patches_split_c1 = tvm.compute(
+            image_patches_split_c1_shape,
+            lambda n, d, howo1, c1, khkw, howo0, c0: image_patches[n, d, howo1, c1 * filter_h * filter_w + khkw, howo0, c0],
+            name="image_patches_split_c1")
 
-    # ub_res
-    # dma from workspace to ub and merge c1c0
-    # [WorkSpace]workspace_res:
-    #  (fmap_batch, dout, out_h*out_w, filter_d, filter_h * filter_w, fmap_c1, BLOCK_SIZE_ALIGN) ->
-    # [UB]ub_res:
-    #  (fmap_batch, dout, out_h*out_w, filter_d, filter_h * filter_w, fmap_c1 * BLOCK_SIZE_ALIGN)
-    ub_res_shape = (fmap_batch, dout, out_h * out_w, filter_d, filter_h * filter_w, fmap_c1 * BLOCK_SIZE_ALIGN)
-    ub_res = tvm.compute(ub_res_shape,
-                         lambda n, do, howo, kd, khkw, c1c0: workspace_res[n, do, howo, kd, khkw, c1c0 //
-                                                                           BLOCK_SIZE_ALIGN, c1c0 % BLOCK_SIZE_ALIGN],
-                         name="ub_res")
+        # expand d axis
+        # [UB]image_patches_split_c1:
+        #  (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, fmap_c1 * filter_h * filter_w, BLOCK_SIZE, BLOCK_SIZE_ALIGN) ->
+        # [UB]image_patches_res:
+        #  (fmap_batch, dout, HoWo // BLOCK_SIZE, fmap_c1, filter_d, filter_h * filter_w, BLOCK_SIZE, BLOCK_SIZE_ALIGN)
+        image_patches_res_shape = (fmap_batch, dout, HoWo // BLOCK_SIZE, fmap_c1, filter_d, filter_h * filter_w,
+                                   BLOCK_SIZE, BLOCK_SIZE_ALIGN)
+        image_patches_res = _din_img2col(image_patches_res_shape, image_patches_split_c1, pad_2nd, stride_d, float16_align_flag=0)
 
-    if original_cin % BLOCK_SIZE_ALIGN != 0 and original_cin < 256:
-        # ub_regmov
-        # reg_mov on ub to remove redundant C data
-        # [UB]ub_regmov:
-        #  (fmap_batch, dout, out_h*out_w, filter_d, filter_h * filter_w, fmap_c1*BLOCK_SIZE_ALIGN)
-        # [UB]ub_regmov:
-        #  (fmap_batch, dout, out_h*out_w, filter_d, filter_h * filter_w, original_Cin)
-        ub_regmov_shape = (fmap_batch, dout, out_h * out_w, filter_d, filter_h * filter_w, original_cin)
+        # transpose c1 axis
+        # [UB]image_patches_res:
+        #  (fmap_batch, dout, HoWo // BLOCK_SIZE, fmap_c1, filter_d,
+        #  filter_h * filter_w, BLOCK_SIZE, BLOCK_SIZE_ALIGN) ->
+        # [UB]image_patches_res_transformat:
+        #  (fmap_batch, dout, HoWo // BLOCK_SIZE, filter_d, filter_h * filter_w, fmap_c1, BLOCK_SIZE, BLOCK_SIZE_ALIGN)
+        image_patches_res_transformat_shape = (fmap_batch, dout, HoWo // BLOCK_SIZE, filter_d, filter_h * filter_w,
+                                               fmap_c1, BLOCK_SIZE, BLOCK_SIZE_ALIGN)
+        image_patches_res_transformat = tvm.compute(image_patches_res_transformat_shape,
+                                                    lambda n, dO, howo_co, kd, khkw, c1, co, c0: image_patches_res[
+                                                        n, dO, howo_co, c1, kd, khkw, co, c0] + tvm.const(0, data_input.dtype),
+                                                    name="image_patches_res_transformat")
 
-        ub_regmov = tvm.compute(ub_regmov_shape, lambda *i: ub_res[i], name="ub_regmov")
+        # workspace_res
+        # dma from ub to workspace
+        # [UB]image_patches_res_transformat:
+        #  (fmap_batch, dout, HoWo // BLOCK_SIZE, filter_d,
+        #  filter_h * filter_w, fmap_c1, BLOCK_SIZE, BLOCK_SIZE_ALIGN) ->
+        # [WorkSpace]workspace_res:
+        #  (fmap_batch, dout, HoWo // BLOCK_SIZE, filter_d, filter_h * filter_w, fmap_c1, BLOCK_SIZE, BLOCK_SIZE_ALIGN)
+        workspace_shape = (fmap_batch, dout, HoWo // BLOCK_SIZE, filter_d,
+                           filter_h * filter_w, fmap_c1, BLOCK_SIZE, BLOCK_SIZE_ALIGN)
+        workspace_res = tvm.compute(workspace_shape,
+                                    lambda n, dO, howo_co, kd, khkw, c1, co, c0: image_patches_res_transformat[
+                                        n, dO, howo_co, kd, khkw, c1, co, c0],
+                                    name="workspace_res")
 
-    extract_params = {}
-    extract_params["padding_mode"] = padding
-    extract_params["original_Cin"] = original_cin
-    extract_params["out_d"] = out_h_2nd
-    extract_params["out_h"] = out_h
-    extract_params["out_w"] = out_w
-    extract_params["fmap_shape"] = fmap_shape
-    extract_params["ksizes"] = (filter_d, filter_h, filter_w)
-    extract_params["strides"] = (stride_d, stride_h, stride_w)
-    extract_params["pad"] = pad
-    extract_params["fmap_vm_shape"] = fmap_vm_shape
-    extract_params["fractal_shape"] = fractal_shape
-    extract_params["HoWo"] = HoWo
-    extract_params["ub_res_shape"] = ub_res_shape
+        tensor0_shape = (fmap_batch, dout, HoWo // BLOCK_SIZE,
+                         filter_d, filter_h * filter_w, fmap_c1, BLOCK_SIZE, BLOCK_SIZE_ALIGN)
+        tensor0 = tvm.compute(tensor0_shape, lambda *i: workspace_res(*i), name="tensor0")
 
-    setfmatrix_dict = {
-        "conv_kernel_h": filter_h,
-        "conv_kernel_w": filter_w,
-        "conv_padding_top": padding_h_before,
-        "conv_padding_bottom": padding_h_after,
-        "conv_padding_left": padding_w_before,
-        "conv_padding_right": padding_w_after,
-        "conv_stride_h": stride_h,
-        "conv_stride_w": stride_w,
-        "conv_fm_c": fmap_c1 * fmap_c0,
-        "conv_fm_h": fmap_h,
-        "conv_fm_w": fmap_w
-    }
+        tensor1_shape = (fmap_batch, dout, HoWo // BLOCK_SIZE, filter_d,
+                         filter_h * filter_w, fmap_c1, BLOCK_SIZE, BLOCK_SIZE_ALIGN)
+        tensor1 = tvm.compute(tensor1_shape, lambda *i: tensor0(*i), name="tensor1")
 
-    if original_cin % BLOCK_SIZE_ALIGN != 0 and original_cin < 256:
-        # out_res
-        # remove redundant c', and split kh and kw, from ub to gm
-        # [UB]ub_regmov: (fmap_batch, dout, out_h*out_w, filter_d, filter_h * filter_w, original_Cin) ->
-        # [GM]out_res: (fmap_batch, dout, out_h*out_w, filter_d, filter_h * filter_w, original_Cin)
-        out_res_shape = (fmap_batch, dout, out_h * out_w, filter_d, filter_h * filter_w, original_cin)
-        out_res = tvm.compute(out_res_shape,
-                              lambda *i: ub_regmov[i],
+        tensor2_shape = (fmap_batch, dout, HoWo // BLOCK_SIZE, filter_d,
+                         filter_h * filter_w, fmap_c1, BLOCK_SIZE_ALIGN, BLOCK_SIZE)
+        tensor2 = tvm.compute(tensor2_shape,
+                              lambda i1, i2, i3, i4, i5, i6, i7, i8: tensor1[
+                                  i1, i2, i3, i4, i5, i6, i8, i7] + tvm.const(0, dtype=data_input.dtype),
+                              name="tensor2")
+
+        tensor3_shape = (fmap_batch, dout, HoWo // BLOCK_SIZE, filter_d, filter_h * filter_w, fmap_c, BLOCK_SIZE)
+        tensor3 = tvm.compute(tensor3_shape,
+                              lambda n, dO, howo_floor, kd, khkw, c, floor: tensor2[
+                                  n, dO, howo_floor, kd, khkw, c // BLOCK_SIZE_ALIGN, c % BLOCK_SIZE_ALIGN, floor] + tvm.const(0, dtype=data_input.dtype),
+                              name="tensor3")
+
+        tensor4_shape = (fmap_batch, dout, HoWo // BLOCK_SIZE, filter_d, filter_h * filter_w * fmap_c, BLOCK_SIZE)
+        tensor4 = tvm.compute(tensor4_shape,
+                              lambda n, dO, howo_floor, kd, khkwc, floor: tensor3[
+                                  n, dO, howo_floor, kd, khkwc // fmap_c, khkwc % fmap_c, floor],
+                              name="tensor4")
+
+        tensor41_shape = (fmap_batch, dout, HoWo // BLOCK_SIZE, filter_d * filter_h * filter_w * fmap_c, BLOCK_SIZE)
+        tensor41 = tvm.compute(tensor41_shape,
+                               lambda n, dO, howo_floor, kdkhkwc, floor: tensor4[
+                                   n, dO, howo_floor, kdkhkwc // (filter_h * filter_w * fmap_c),
+                                   kdkhkwc % (filter_h * filter_w * fmap_c), floor
+                               ],
+                               name="tensor41")
+
+        workspace2_shape = (fmap_batch, dout, HoWo // BLOCK_SIZE, filter_d * filter_h * filter_w * fmap_c, BLOCK_SIZE)
+        workspace2 = tvm.compute(workspace2_shape,
+                                 lambda n, dO, howo_floor, kdkhkwc, floor: tensor41[
+                                     n, dO, howo_floor, kdkhkwc, floor],
+                                 name="workspace2")
+
+        tensor42_shape = (fmap_batch, dout, HoWo // BLOCK_SIZE, filter_d * filter_h * filter_w * fmap_c, BLOCK_SIZE)
+        tensor42 = tvm.compute(tensor42_shape,
+                               lambda n, dO, howo_floor, kdkhkwc, floor: workspace2[
+                                   n, dO, howo_floor, kdkhkwc, floor],
+                               name="tensor42")
+
+        tensor5_shape = (fmap_batch, dout, HoWo // BLOCK_SIZE,
+                         (filter_d * filter_h * filter_w * fmap_c + BLOCK_SIZE_ALIGN - 1) // BLOCK_SIZE_ALIGN,
+                         BLOCK_SIZE_ALIGN, BLOCK_SIZE)
+        tensor5 = tvm.compute(tensor5_shape,
+                              lambda n, dO, howo_floor, kdkhkwc_floor2, floor2, floor: tvm.select(
+                                  tvm.any(
+                                      kdkhkwc_floor2 * BLOCK_SIZE_ALIGN + floor2 > \
+                                      filter_d * filter_h * filter_w * fmap_c - 1
+                                  ),
+                                  tvm.const(0, "float16"),
+                                  tensor42[n, dO, howo_floor, kdkhkwc_floor2 * BLOCK_SIZE_ALIGN + floor2, floor] + \
+                                  tvm.const(0, dtype="float16")
+                              ),
+                              name="tensor5")
+
+        tensor6_shape = (fmap_batch, dout, HoWo // BLOCK_SIZE,
+                         (filter_d * filter_h * filter_w * fmap_c + BLOCK_SIZE_ALIGN - 1) // BLOCK_SIZE_ALIGN,
+                         BLOCK_SIZE, BLOCK_SIZE_ALIGN)
+        tensor6 = tvm.compute(tensor6_shape,
+                              lambda n, dO, howo_floor, kdkhkwc_floor2, floor, floor2: tensor5[
+                                  n, dO, howo_floor, kdkhkwc_floor2, floor2, floor],
+                              name="tensor6")
+
+        tensor7_shape = (fmap_batch, dout,
+                         (filter_d * filter_h * filter_w * fmap_c + BLOCK_SIZE_ALIGN - 1) // BLOCK_SIZE_ALIGN,
+                         HoWo // BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE_ALIGN)
+        tensor7 = tvm.compute(tensor7_shape,
+                              lambda n, dO, kdkhkwc_floor2, howo_floor, floor, floor2: tensor6[
+                                  n, dO, howo_floor, kdkhkwc_floor2, floor, floor2],
+                              name="tensor7")
+
+        extract_params = {}
+        extract_params["padding_mode"] = padding
+        extract_params["original_cin"] = original_cin
+        extract_params["out_d"] = out_h_2nd
+        extract_params["out_h"] = out_h
+        extract_params["out_w"] = out_w
+        extract_params["fmap_shape"] = fmap_shape
+        extract_params["ksizes"] = (filter_d, filter_h, filter_w)
+        extract_params["strides"] = (stride_d, stride_h, stride_w)
+        extract_params["pad"] = pad
+        extract_params["fmap_vm_shape"] = fmap_vm_shape
+        extract_params["fractal_shape"] = fractal_shape
+        extract_params["HoWo"] = HoWo
+
+        setfmatrix_dict = {"conv_kernel_h": filter_h,
+                           "conv_kernel_w": filter_w,
+                           "conv_padding_top": padding_h_before,
+                           "conv_padding_left": padding_w_before,
+                           "conv_padding_right": padding_w_after,
+                           "conv_stride_h": stride_h,
+                           "conv_stride_w": stride_w,
+                           "conv_fm_c": fmap_c1 * fmap_c0,
+                           "conv_fm_h": fmap_h,
+                           "conv_fm_w": fmap_w}
+
+        tensor8_shape = (fmap_batch, dout,
+                         (filter_d * filter_h * filter_w * fmap_c + BLOCK_SIZE_ALIGN - 1) // BLOCK_SIZE_ALIGN,
+                         out_h * out_w, BLOCK_SIZE_ALIGN)
+        tensor8 = tvm.compute(tensor8_shape,
+                              lambda n, dO, kdkhkwc_floor2, j, floor2: tensor7[
+                                  n, dO, kdkhkwc_floor2, j // BLOCK_SIZE_ALIGN, j % BLOCK_SIZE_ALIGN, floor2],
                               name="out_res",
-                              attrs={
-                                  'extract_params': extract_params,
-                                  'setfmatrix_dict': setfmatrix_dict
-                              })
-    else:
-        # out_res
-        # remove redundant c', and split kh and kw, from ub to gm
-        # [UB]ub_res: (fmap_batch, dout, out_h*out_w, filter_d, filter_h * filter_w, fmap_c1 * BLOCK_SIZE) ->
-        # [GM]out_res: (fmap_batch, dout, out_h*out_w, filter_d, filter_h * filter_w, original_Cin)
-        out_res_shape = (fmap_batch, dout, out_h * out_w, filter_d, filter_h * filter_w, original_cin)
-        out_res = tvm.compute(out_res_shape,
-                              lambda *i: ub_res[i],
-                              name="out_res",
-                              attrs={
-                                  'extract_params': extract_params,
-                                  'setfmatrix_dict': setfmatrix_dict
-                              })
+                              attrs={'extract_params': extract_params,
+                                     'setfmatrix_dict': setfmatrix_dict})
+        out_res = tensor8
+        return out_res, workspace_res, workspace2
 
-    return out_res, workspace_res
+    if original_cin % BLOCK_SIZE_ALIGN != 0 and data_input.dtype in ("uint8", "int8"):
+        # fmap_fractal_transpose
+        # transpose BLOCK_SIZE
+        # [UB]fmap_fractal:
+        #  (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, fmap_c1 * filter_h * filter_w,
+        #  BLOCK_SIZE, BLOCK_SIZE_ALIGN) ->
+        # [UB]image_patches:
+        #  (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, BLOCK_SIZE,
+        #  fmap_c1 * filter_h * filter_w, BLOCK_SIZE_ALIGN)
+        image_patches_shape = (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, BLOCK_SIZE, fmap_c1 * filter_h * filter_w,
+                               BLOCK_SIZE_ALIGN)
+        image_patches = tvm.compute(image_patches_shape,
+                                    lambda n, d, howo1, howo0, c1khkw, c0: fmap_fractal[n, d, howo1, c1khkw, howo0, c0],
+                                    name="image_patches")
+        # image_patches_split_c1
+        # split c1 & khkw
+        # [UB]image_patches:
+        #  (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, BLOCK_SIZE,
+        #  fmap_c1 * filter_h * filter_w, BLOCK_SIZE_ALIGN) ->
+        # [UB]image_patches_split_c1:
+        #  (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, BLOCK_SIZE,
+        #  fmap_c1, filter_h * filter_w, BLOCK_SIZE_ALIGN)
+        image_patches_split_c1_shape = (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, BLOCK_SIZE, fmap_c1, filter_h * filter_w,
+                                        BLOCK_SIZE_ALIGN)
+        image_patches_split_c1 = tvm.compute(
+            image_patches_split_c1_shape,
+            lambda n, d, howo1, howo0, c1, khkw, c0: image_patches[n, d, howo1, howo0, c1 * filter_h * filter_w + khkw, c0],
+            name="image_patches_split_c1")
+        # image_patches_res
+        # expand d axis
+        # [UB]image_patches_split_c1:
+        #  (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, BLOCK_SIZE, fmap_c1, filter_h * filter_w, BLOCK_SIZE) ->
+        # [UB]image_patches_res:
+        #  (fmap_batch, dout, HoWo // BLOCK_SIZE, BLOCK_SIZE, filter_d, fmap_c1, filter_h * filter_w, BLOCK_SIZE_ALIGN)
+        image_patches_res_shape = (fmap_batch, dout, HoWo // BLOCK_SIZE, BLOCK_SIZE, filter_d, fmap_c1, filter_h * filter_w,
+                                   BLOCK_SIZE_ALIGN)
+        image_patches_res = _din_img2col(image_patches_res_shape, image_patches_split_c1, pad_2nd, stride_d, float16_align_flag=0)
+
+        # workspace_res
+        # dma from ub to workspace and transpose
+        # [UB]image_patches_res:
+        #  (fmap_batch, dout, HoWo // BLOCK_SIZE, BLOCK_SIZE, filter_d,
+        #  fmap_c1, filter_h * filter_w, BLOCK_SIZE_ALIGN) ->
+        # [WorkSpace]workspace_res:
+        #  (fmap_batch, dout, out_h * out_w, filter_d, filter_h * filter_w, fmap_c1, BLOCK_SIZE_ALIGN)
+        workspace_shape = (fmap_batch, dout, out_h * out_w, filter_d, filter_h * filter_w, fmap_c1, BLOCK_SIZE_ALIGN)
+        workspace_res = tvm.compute(workspace_shape,
+                                    lambda n, dO, howo, kd, khkw, c1, c0: image_patches_res[
+                                        n, dO, howo // BLOCK_SIZE, howo % BLOCK_SIZE, kd, c1, khkw, c0],
+                                    name="workspace_res")
+
+        tensor0_shape = (fmap_batch, dout, out_h*out_w, filter_d, filter_h * filter_w, fmap_c1, BLOCK_SIZE_ALIGN)
+        tensor0 = tvm.compute(tensor0_shape, lambda *i: workspace_res(*i), name="tensor0")
+
+        howo_8bit_align = (out_h * out_w + BLOCK_SIZE_ALIGN - 1) // BLOCK_SIZE_ALIGN * BLOCK_SIZE_ALIGN
+        tensor00_shape = (fmap_batch, dout, howo_8bit_align // BLOCK_SIZE_ALIGN, BLOCK_SIZE_ALIGN, filter_d,
+                          filter_h * filter_w, fmap_c1, BLOCK_SIZE_ALIGN)
+        tensor00 = tvm.compute(tensor00_shape,
+                               lambda n, dO, howo_floor, floor, kd, khkw, c1, c0: tvm.select(
+                                   tvm.any(howo_floor * BLOCK_SIZE_ALIGN + floor > out_h * out_w - 1),
+                                   tvm.const(0, data_input.dtype),
+                                   tensor0[n, dO, howo_floor * BLOCK_SIZE_ALIGN + floor, kd, khkw, c1, c0]
+                               ),
+                               name="tensor00")
+
+        workspace_8bit_shape = (fmap_batch, dout, howo_8bit_align // BLOCK_SIZE_ALIGN, BLOCK_SIZE_ALIGN, filter_d,
+                                filter_h * filter_w, fmap_c1, BLOCK_SIZE_ALIGN)
+        workspace_8bit = tvm.compute(workspace_8bit_shape, lambda *i: tensor00(*i), name="workspace_8bit")
+
+        tensor10_shape = (fmap_batch, dout, howo_8bit_align // BLOCK_SIZE_ALIGN, BLOCK_SIZE_ALIGN, filter_d,
+                          filter_h * filter_w, fmap_c1, BLOCK_SIZE_ALIGN)
+        tensor10 = tvm.compute(tensor10_shape, lambda *i: workspace_8bit(*i), name="tensor10")
+
+        tensor1_shape = (fmap_batch, dout, howo_8bit_align // BLOCK_SIZE_ALIGN, filter_d, filter_h * filter_w,
+                         fmap_c1, BLOCK_SIZE_ALIGN, BLOCK_SIZE_ALIGN)
+        tensor1 = tvm.compute(tensor1_shape,
+                              lambda n, dO, howo_floor, kd, khkw, c1, floor, c0: tensor10[
+                                  n, dO, howo_floor, floor, kd, khkw, c1, c0],
+                              name="tensor1")
+
+        tensor2_shape = (fmap_batch, dout, howo_8bit_align // BLOCK_SIZE_ALIGN, filter_d,
+                         filter_h * filter_w, fmap_c1, BLOCK_SIZE_ALIGN, BLOCK_SIZE_ALIGN)
+        tensor2 = tvm.compute(tensor2_shape,
+                              lambda i1, i2, i3, i4, i5, i6, i7, i8: tensor1[
+                                  i1, i2, i3, i4, i5, i6, i8, i7],
+                              name="tensor2")
+
+        tensor3_shape = (fmap_batch, dout, howo_8bit_align // BLOCK_SIZE_ALIGN, filter_d,
+                         filter_h * filter_w, fmap_c, BLOCK_SIZE_ALIGN)
+        tensor3 = tvm.compute(tensor3_shape,
+                              lambda n, dO, howo_floor, kd, khkw, c, floor: tensor2[
+                                  n, dO, howo_floor, kd, khkw, c // BLOCK_SIZE_ALIGN, c % BLOCK_SIZE_ALIGN, floor],
+                              name="tensor3")
+
+        tensor4_shape = (fmap_batch, dout, howo_8bit_align // BLOCK_SIZE_ALIGN, filter_d,
+                         filter_h * filter_w * fmap_c, BLOCK_SIZE_ALIGN)
+        tensor4 = tvm.compute(tensor4_shape,
+                              lambda n, dO, howo_floor, kd, khkwc, floor: tensor3[
+                                  n, dO, howo_floor, kd, khkwc // fmap_c, khkwc % fmap_c, floor],
+                              name="tensor4")
+
+        tensor41_shape = (fmap_batch, dout, howo_8bit_align // BLOCK_SIZE_ALIGN,
+                          filter_d * filter_h * filter_w * fmap_c, BLOCK_SIZE_ALIGN)
+        tensor41 = tvm.compute(tensor41_shape,
+                               lambda n, dO, howo_floor, kdkhkwc, floor: tensor4[
+                                   n, dO, howo_floor, kdkhkwc // (filter_h * filter_w * fmap_c),
+                                   kdkhkwc % (filter_h * filter_w * fmap_c), floor],
+                               name="tensor41")
+
+        workspace2_shape = (fmap_batch, dout, howo_8bit_align // BLOCK_SIZE_ALIGN,
+                            filter_d * filter_h * filter_w * fmap_c, BLOCK_SIZE_ALIGN)
+        workspace2 = tvm.compute(workspace2_shape,
+                                 lambda n, dO, howo_floor, kdkhkwc, floor: tensor41[n, dO, howo_floor, kdkhkwc, floor],
+                                 name="workspace2")
+
+        tensor42_shape = (fmap_batch, dout, howo_8bit_align // BLOCK_SIZE_ALIGN,
+                          filter_d * filter_h * filter_w * fmap_c, BLOCK_SIZE_ALIGN)
+        tensor42 = tvm.compute(tensor42_shape,
+                               lambda n, dO, howo_floor, kdkhkwc, floor: workspace2[
+                                   n, dO, howo_floor, kdkhkwc, floor],
+                               name="tensor42")
+
+        tensor5_shape = (fmap_batch, dout, howo_8bit_align // BLOCK_SIZE_ALIGN,
+                         (filter_d * filter_h * filter_w * fmap_c + BLOCK_SIZE_ALIGN - 1) // BLOCK_SIZE_ALIGN,
+                         BLOCK_SIZE_ALIGN, BLOCK_SIZE_ALIGN)
+        tensor5 = tvm.compute(tensor5_shape,
+                              lambda n, dO, howo_floor, kdkhkwc_floor2, floor2, floor: tvm.select(
+                                  tvm.any(kdkhkwc_floor2 * BLOCK_SIZE_ALIGN + floor2 > \
+                                          filter_d * filter_h * filter_w * fmap_c - 1),
+                                  tvm.const(0, data_input.dtype),
+                                  tensor42[n, dO, howo_floor, kdkhkwc_floor2 * BLOCK_SIZE_ALIGN + floor2, floor] + tvm.const(0, data_input.dtype)
+                              ),
+                              name="tensor5")
+
+        tensor6_shape = (fmap_batch, dout, howo_8bit_align // BLOCK_SIZE_ALIGN,
+                         (filter_d * filter_h * filter_w * fmap_c + BLOCK_SIZE_ALIGN - 1) // BLOCK_SIZE_ALIGN,
+                         BLOCK_SIZE_ALIGN, BLOCK_SIZE_ALIGN)
+        tensor6 = tvm.compute(tensor6_shape,
+                              lambda n, dO, howo_floor, kdkhkwc_floor2, floor, floor2: tensor5[
+                                  n, dO, howo_floor, kdkhkwc_floor2, floor2, floor],
+                              name="tensor6")
+
+        tensor7_shape = (fmap_batch, dout,
+                         (filter_d * filter_h * filter_w * fmap_c + BLOCK_SIZE_ALIGN - 1) // BLOCK_SIZE_ALIGN,
+                         howo_8bit_align // BLOCK_SIZE_ALIGN,
+                         BLOCK_SIZE_ALIGN, BLOCK_SIZE_ALIGN)
+        tensor7 = tvm.compute(tensor7_shape,
+                              lambda n, dO, kdkhkwc_floor2, howo_floor, floor, floor2: tensor6[
+                                  n, dO, howo_floor, kdkhkwc_floor2, floor, floor2],
+                              name="tensor7")
+
+        extract_params = {}
+        extract_params["padding_mode"] = padding
+        extract_params["original_cin"] = original_cin
+        extract_params["out_d"] = out_h_2nd
+        extract_params["out_h"] = out_h
+        extract_params["out_w"] = out_w
+        extract_params["fmap_shape"] = fmap_shape
+        extract_params["ksizes"] = (filter_d, filter_h, filter_w)
+        extract_params["strides"] = (stride_d, stride_h, stride_w)
+        extract_params["pad"] = pad
+        extract_params["fmap_vm_shape"] = fmap_vm_shape
+        extract_params["fractal_shape"] = fractal_shape
+        extract_params["HoWo"] = HoWo
+        extract_params["howo_8bit_align"] = howo_8bit_align
+
+        setfmatrix_dict = {"conv_kernel_h": filter_h,
+                           "conv_kernel_w": filter_w,
+                           "conv_padding_top": padding_h_before,
+                           "conv_padding_left": padding_w_before,
+                           "conv_padding_right": padding_w_after,
+                           "conv_stride_h": stride_h,
+                           "conv_stride_w": stride_w,
+                           "conv_fm_c": fmap_c1 * fmap_c0,
+                           "conv_fm_h": fmap_h,
+                           "conv_fm_w": fmap_w}
+
+        tensor8_shape = (fmap_batch, dout,
+                         (filter_d * filter_h * filter_w * fmap_c + BLOCK_SIZE_ALIGN - 1) // BLOCK_SIZE_ALIGN,
+                         out_h * out_w, BLOCK_SIZE_ALIGN)
+        tensor8 = tvm.compute(tensor8_shape,
+                              lambda n, dO, kdkhkwc_floor2, j, floor2: tensor7[
+                                  n, dO, kdkhkwc_floor2, j // BLOCK_SIZE_ALIGN, j % BLOCK_SIZE_ALIGN, floor2],
+                              name="out_res",
+                              attrs={'extract_params': extract_params,
+                                     'setfmatrix_dict': setfmatrix_dict})
+        out_res = tensor8
+        return out_res, workspace_res, workspace_8bit, workspace2
+
+    if original_cin % BLOCK_SIZE_ALIGN == 0:
+        # fmap_fractal_transpose
+        # transpose BLOCK_SIZE
+        # [UB]fmap_fractal:
+        #  (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, fmap_c1 * filter_h * filter_w,
+        #  BLOCK_SIZE, BLOCK_SIZE_ALIGN) ->
+        # [UB]image_patches:
+        #  (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, BLOCK_SIZE,
+        #  fmap_c1 * filter_h * filter_w, BLOCK_SIZE_ALIGN)
+        image_patches_shape = (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, BLOCK_SIZE, fmap_c1 * filter_h * filter_w,
+                               BLOCK_SIZE_ALIGN)
+        image_patches = tvm.compute(image_patches_shape,
+                                    lambda n, d, howo1, howo0, c1khkw, c0: fmap_fractal[n, d, howo1, c1khkw, howo0, c0],
+                                    name="image_patches")
+        # image_patches_split_c1
+        # split c1 & khkw
+        # [UB]image_patches:
+        #  (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, BLOCK_SIZE,
+        #  fmap_c1 * filter_h * filter_w, BLOCK_SIZE_ALIGN) ->
+        # [UB]image_patches_split_c1:
+        #  (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, BLOCK_SIZE,
+        #  fmap_c1, filter_h * filter_w, BLOCK_SIZE_ALIGN)
+        image_patches_split_c1_shape = (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, BLOCK_SIZE,
+                                        fmap_c1, filter_h * filter_w, BLOCK_SIZE_ALIGN)
+        image_patches_split_c1 = tvm.compute(
+            image_patches_split_c1_shape,
+            lambda n, d, howo1, howo0, c1, khkw, c0: image_patches[n, d, howo1, howo0,
+                                                                   c1 * filter_h * filter_w + khkw, c0],
+            name="image_patches_split_c1")
+        # image_patches_res
+        # expand d axis
+        # [UB]image_patches_split_c1:
+        #  (fmap_batch, fmap_d, HoWo // BLOCK_SIZE, BLOCK_SIZE, fmap_c1, filter_h * filter_w, BLOCK_SIZE) ->
+        # [UB]image_patches_res:
+        #  (fmap_batch, dout, HoWo // BLOCK_SIZE, BLOCK_SIZE, filter_d, fmap_c1, filter_h * filter_w, BLOCK_SIZE_ALIGN)
+        image_patches_res_shape = (fmap_batch, dout, HoWo // BLOCK_SIZE, BLOCK_SIZE,
+                                   filter_d, fmap_c1, filter_h * filter_w, BLOCK_SIZE_ALIGN)
+        image_patches_res = _din_img2col(image_patches_res_shape,
+                                         image_patches_split_c1, pad_2nd, stride_d, float16_align_flag=1)
+
+        # workspace_res
+        # dma from ub to workspace and transpose
+        # [UB]image_patches_res:
+        #  (fmap_batch, dout, HoWo // BLOCK_SIZE, BLOCK_SIZE, filter_d,
+        #  fmap_c1, filter_h * filter_w, BLOCK_SIZE_ALIGN) ->
+        # [WorkSpace]workspace_res:
+        #  (fmap_batch, dout, out_h*out_w, filter_d, filter_h * filter_w, fmap_c1, BLOCK_SIZE_ALIGN)
+        workspace_shape = (
+            fmap_batch, dout, out_h * out_w, filter_d, filter_h * filter_w, fmap_c1, BLOCK_SIZE_ALIGN)
+        workspace_res = tvm.compute(workspace_shape,
+                                    lambda n, dO, howo, kd, khkw, c1, c0: image_patches_res[
+                                        n, dO, howo // BLOCK_SIZE, howo % BLOCK_SIZE, kd, c1, khkw, c0],
+                                    name="workspace_res")
+
+        # ub_res
+        # dma from workspace to ub and merge c1c0
+        # [WorkSpace]workspace_res:
+        #  (fmap_batch, dout, out_h*out_w, filter_d, filter_h * filter_w, fmap_c1, BLOCK_SIZE_ALIGN) ->
+        # [UB]ub_res:
+        #  (fmap_batch, dout, out_h*out_w, filter_d, filter_h * filter_w, fmap_c1, BLOCK_SIZE_ALIGN)
+        ub_res_shape = (
+            fmap_batch, dout, out_h * out_w, filter_d, filter_h * filter_w, fmap_c1, BLOCK_SIZE_ALIGN)
+        ub_res = tvm.compute(ub_res_shape, lambda n, dO, howo, kd, khkw, c1, c0: workspace_res[
+            n, dO, howo, kd, khkw, c1, c0], name="ub_res")
+
+        extract_params = {}
+        extract_params["padding_mode"] = padding
+        extract_params["original_cin"] = original_cin
+        extract_params["out_d"] = out_h_2nd
+        extract_params["out_h"] = out_h
+        extract_params["out_w"] = out_w
+        extract_params["fmap_shape"] = fmap_shape
+        extract_params["ksizes"] = (filter_d, filter_h, filter_w)
+        extract_params["strides"] = (stride_d, stride_h, stride_w)
+        extract_params["pad"] = pad
+        extract_params["fmap_vm_shape"] = fmap_vm_shape
+        extract_params["fractal_shape"] = fractal_shape
+        extract_params["HoWo"] = HoWo
+        extract_params["ub_res_shape"] = ub_res_shape
+
+        setfmatrix_dict = {"conv_kernel_h": filter_h,
+                           "conv_kernel_w": filter_w,
+                           "conv_padding_top": padding_h_before,
+                           "conv_padding_left": padding_w_before,
+                           "conv_padding_right": padding_w_after,
+                           "conv_stride_h": stride_h,
+                           "conv_stride_w": stride_w,
+                           "conv_fm_c": fmap_c1 * fmap_c0,
+                           "conv_fm_h": fmap_h,
+                           "conv_fm_w": fmap_w}
+
+        # trans_format0
+        # trans format from ub to ub.
+        # [UB]ub_res: (fmap_batch, dout, out_h * out_w, filter_d,
+        #  filter_h * filter_w, fmap_c1, BLOCK_SIZE) ->
+        # [UB]trans_format0: (fmap_batch, dout, fmap_c1, out_h * out_w, filter_d,
+        #  filter_h * filter_w, fmap_c0)
+        trans_format0_shape = (fmap_batch, dout, filter_d,
+                               filter_h * filter_w, fmap_c1, out_h * out_w, BLOCK_SIZE_ALIGN)
+        trans_format0 = tvm.compute(trans_format0_shape,
+                                    lambda n, dO, kd, khkw, c1, howo, c0: ub_res[
+                                        n, dO, howo, kd, khkw, c1, c0],
+                                    name="trans_format0")
+
+        # out_res
+        # from ub to gm
+        # [UB]trans_format0: (fmap_batch, dout, filter_d,
+        #  filter_h * filter_w, fmap_c1, out_h * out_w, BLOCK_SIZE_ALIGN) ->
+        # [GM]out_res: (fmap_batch, dout, out_c1, out_h * out_w, BLOCK_SIZE_ALIGN)
+        out_res_shape = (fmap_batch, dout, filter_d, filter_h * filter_w, fmap_c1, out_h * out_w, BLOCK_SIZE_ALIGN)
+        out_res = tvm.compute(out_res_shape, lambda *i: trans_format0[i], name="out_res",
+                              attrs={'extract_params': extract_params,
+                                     'setfmatrix_dict': setfmatrix_dict})
+
+        return out_res
 
 
 # pylint: disable=unnecessary-lambda,too-many-locals
@@ -786,7 +1190,11 @@ def extract_volume_patches_compute(data_input, fmap_c, ksizes, strides, padding)
     """
     output_image_patches = _extract_volume_patches_compute_6hd(data_input, fmap_c, ksizes, strides, padding)
 
-    return output_image_patches
+    BLOCK_SIZE_ALIGN = 16 if data_input.dtype == "float16" else 32
+    if fmap_c % BLOCK_SIZE_ALIGN == 0:
+        return [output_image_patches]
+    else:
+        return list(output_image_patches)
 
 
 # pylint: disable=locally-disabled, too-many-statements, too-many-locals
@@ -811,14 +1219,46 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
     else:
         BLOCK_SIZE_ALIGN = BLOCK_SIZE_FP16  # 16
 
-    if original_cin % BLOCK_SIZE_ALIGN != 0 and original_cin < 256:
-        ub_regmov = res.op.input_tensors[0]
-        ub_res = ub_regmov.op.input_tensors[0]
-    else:
-        ub_res = res.op.input_tensors[0]
+    dtype_size = 2 if dtype_input == "float16" else 1
 
-    workspace_res = ub_res.op.input_tensors[0]
-    image_patches_res = workspace_res.op.input_tensors[0]
+    if original_cin % BLOCK_SIZE_ALIGN != 0 and dtype_input == "float16":
+        tensor7 = res.op.input_tensors[0]
+        tensor6 = tensor7.op.input_tensors[0]
+        tensor5 = tensor6.op.input_tensors[0]
+        tensor42 = tensor5.op.input_tensors[0]
+        workspace2 = tensor42.op.input_tensors[0]
+        tensor41 = workspace2.op.input_tensors[0]
+        tensor4 = tensor41.op.input_tensors[0]
+        tensor3 = tensor4.op.input_tensors[0]
+        tensor2 = tensor3.op.input_tensors[0]
+        tensor1 = tensor2.op.input_tensors[0]
+        tensor0 = tensor1.op.input_tensors[0]
+        workspace_res = tensor0.op.input_tensors[0]
+        image_patches_res_transformat = workspace_res.op.input_tensors[0]
+        image_patches_res = image_patches_res_transformat.op.input_tensors[0]
+    elif original_cin % BLOCK_SIZE_ALIGN != 0 and dtype_input in ("int8", "uint8"):
+        tensor7 = res.op.input_tensors[0]
+        tensor6 = tensor7.op.input_tensors[0]
+        tensor5 = tensor6.op.input_tensors[0]
+        tensor42 = tensor5.op.input_tensors[0]
+        workspace2 = tensor42.op.input_tensors[0]
+        tensor41 = workspace2.op.input_tensors[0]
+        tensor4 = tensor41.op.input_tensors[0]
+        tensor3 = tensor4.op.input_tensors[0]
+        tensor2 = tensor3.op.input_tensors[0]
+        tensor1 = tensor2.op.input_tensors[0]
+        tensor10 = tensor1.op.input_tensors[0]
+        workspace_8bit = tensor10.op.input_tensors[0]
+        tensor00 = workspace_8bit.op.input_tensors[0]
+        tensor0 = tensor00.op.input_tensors[0]
+        workspace_res = tensor0.op.input_tensors[0]
+        image_patches_res = workspace_res.op.input_tensors[0]
+    else:
+        trans_format0 = res.op.input_tensors[0]
+        ub_res = trans_format0.op.input_tensors[0]
+        workspace_res = ub_res.op.input_tensors[0]
+        image_patches_res = workspace_res.op.input_tensors[0]
+
     image_patches_split_c1 = image_patches_res.op.input_tensors[0]
     image_patches = image_patches_split_c1.op.input_tensors[0]
     fmap_fractal = image_patches.op.input_tensors[0]
@@ -847,23 +1287,59 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
     (stride_d, stride_h, stride_w) = extract_params["strides"]
     (stride_d, stride_h, stride_w) = (stride_d.value, stride_h.value, stride_w.value)
     (fmap_batch, fmap_d, fmap_c1, fmap_h, fmap_w, _) = fmap_shape
-    fmap_batch, fmap_d, fmap_c1, fmap_h, fmap_w = fmap_batch.value, fmap_d.value, fmap_c1.value, fmap_h.value,\
-         fmap_w.value
+    fmap_batch, fmap_d, fmap_c1, fmap_h, fmap_w = \
+        fmap_batch.value, fmap_d.value, fmap_c1.value, fmap_h.value, fmap_w.value
     padding = extract_params["padding_mode"]
-    original_cin = extract_params["original_Cin"]
+    original_cin = extract_params["original_cin"]
     out_d = extract_params['out_d']
     out_w = extract_params['out_w']
+    out_h = extract_params['out_h']
     HoWo = extract_params["HoWo"]
-    ub_res_shape = extract_params["ub_res_shape"]
+
+    compute_inline_tensor42 = 1 if original_cin % BLOCK_SIZE_ALIGN != 0 else 0
+    compute_inline_tensor3_6 = 1 if original_cin % BLOCK_SIZE_ALIGN != 0 and dtype_input == "float16" else 0
+    compute_inline_tensor4_41 = 1
 
     sch[fmap_in_l1].set_scope(tbe_platform.scope_cbuf)
     sch[fmap_im2col].set_scope(tbe_platform.scope_cbuf)
     sch[fmap_fractal].set_scope(tbe_platform.scope_ubuf)
     sch[image_patches_res].set_scope(tbe_platform.scope_ubuf)
     sch[workspace_res].set_scope(tbe_platform.scope_gm)
-    sch[ub_res].set_scope(tbe_platform.scope_ubuf)
-    if original_cin % BLOCK_SIZE_ALIGN != 0 and original_cin < 256:
-        sch[ub_regmov].set_scope(tbe_platform.scope_ubuf)
+    if original_cin % BLOCK_SIZE_ALIGN != 0 and dtype_input == "float16":
+        sch[image_patches_res_transformat].set_scope(tbe_platform.scope_ubuf)
+        sch[tensor0].set_scope(tbe_platform.scope_ubuf)
+        sch[tensor1].set_scope(tbe_platform.scope_ubuf)
+        sch[tensor2].set_scope(tbe_platform.scope_ubuf)
+        if not compute_inline_tensor4_41:
+            sch[tensor4].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor41].set_scope(tbe_platform.scope_ubuf)
+        if not compute_inline_tensor3_6:
+            sch[tensor3].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor6].set_scope(tbe_platform.scope_ubuf)
+        sch[workspace2].set_scope(tbe_platform.scope_gm)
+        sch[tensor42].set_scope(tbe_platform.scope_ubuf)
+        sch[tensor5].set_scope(tbe_platform.scope_ubuf)
+        sch[tensor7].set_scope(tbe_platform.scope_ubuf)
+    elif original_cin % BLOCK_SIZE_ALIGN != 0 and dtype_input in ("uint8", "int8"):
+        sch[tensor0].set_scope(tbe_platform.scope_ubuf)
+        sch[tensor00].set_scope(tbe_platform.scope_ubuf)
+        sch[workspace_8bit].set_scope(tbe_platform.scope_gm)
+        sch[tensor10].set_scope(tbe_platform.scope_ubuf)
+        sch[tensor1].set_scope(tbe_platform.scope_ubuf)
+        sch[tensor2].set_scope(tbe_platform.scope_ubuf)
+        if not compute_inline_tensor4_41:
+            sch[tensor4].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor41].set_scope(tbe_platform.scope_ubuf)
+        if not compute_inline_tensor3_6:
+            sch[tensor3].set_scope(tbe_platform.scope_ubuf)
+            sch[tensor6].set_scope(tbe_platform.scope_ubuf)
+        sch[workspace2].set_scope(tbe_platform.scope_gm)
+        sch[tensor42].set_scope(tbe_platform.scope_ubuf)
+        sch[tensor5].set_scope(tbe_platform.scope_ubuf)
+        sch[tensor7].set_scope(tbe_platform.scope_ubuf)
+    else:
+        sch[ub_res].set_scope(tbe_platform.scope_ubuf)
+        sch[trans_format0].set_scope(tbe_platform.scope_ubuf)
 
     # compute inline
     sch[image_patches].compute_inline()
@@ -873,9 +1349,44 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
     # c1 * BlockSize must be integer multiple of 16B
     sch[fmap_im2col].buffer_align((1, 1), (1, 1), (out_w, out_w), (1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE_ALIGN))
     sch[fmap_fractal].buffer_align((1, 1), (1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE), (1, BLOCK_SIZE_ALIGN))
-    sch[image_patches_res].buffer_align((1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE), (1, 1), (1, 1), (1, 1),
-                                        (1, BLOCK_SIZE_ALIGN))
-    sch[ub_res].storage_align(ub_res.op.axis[4], BLOCK_SIZE_ALIGN, 0)
+    if original_cin % BLOCK_SIZE_ALIGN != 0 and dtype_input == "float16":
+        sch[image_patches_res].buffer_align((1, 1), (1, 1), (1, 1), (1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE),
+                                            (1, BLOCK_SIZE_ALIGN))
+        sch[tensor1].buffer_align((1, 1), (1, 1), (1, 1), (1, 1), (1, 1),
+                                  (1, 1), (1, BLOCK_SIZE), (1, BLOCK_SIZE_ALIGN))
+        sch[tensor2].buffer_align((1, 1), (1, 1), (1, 1), (1, 1), (1, 1),
+                                  (1, 1), (1, BLOCK_SIZE_ALIGN), (1, BLOCK_SIZE))
+        sch[tensor3].buffer_align((1, 1), (1, 1), (1, 1), (1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE))
+        sch[tensor4].buffer_align((1, 1), (1, 1), (1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE))
+        sch[tensor41].buffer_align((1, 1), (1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE))
+
+        sch[tensor42].buffer_align((1, 1), (1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE))
+        sch[tensor5].buffer_align((1, 1), (1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE_ALIGN), (1, BLOCK_SIZE))
+        sch[tensor6].buffer_align((1, 1), (1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE), (1, BLOCK_SIZE_ALIGN))
+        sch[tensor7].buffer_align((1, 1), (1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE), (1, BLOCK_SIZE_ALIGN))
+    elif original_cin % BLOCK_SIZE_ALIGN != 0 and dtype_input in ("uint8", "int8"):
+        sch[image_patches_res].buffer_align((1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE), (1, 1), (1, 1), (1, 1),
+                                            (1, BLOCK_SIZE_ALIGN))
+        sch[tensor0].buffer_align((1, 1), (1, 1), (1, 1), (1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE_ALIGN))
+        sch[tensor00].buffer_align((1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE_ALIGN),
+                                   (1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE_ALIGN))
+        sch[tensor10].buffer_align((1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE_ALIGN),
+                                   (1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE_ALIGN))
+        sch[tensor1].buffer_align((1, 1), (1, 1), (1, 1), (1, 1), (1, 1), (1, 1),
+                                  (1, BLOCK_SIZE_ALIGN), (1, BLOCK_SIZE_ALIGN))
+        sch[tensor2].buffer_align((1, 1), (1, 1), (1, 1), (1, 1), (1, 1), (1, 1),
+                                  (1, BLOCK_SIZE_ALIGN), (1, BLOCK_SIZE_ALIGN))
+        sch[tensor3].buffer_align((1, 1), (1, 1), (1, 1), (1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE_ALIGN))
+        sch[tensor4].buffer_align((1, 1), (1, 1), (1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE_ALIGN))
+        sch[tensor41].buffer_align((1, 1), (1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE_ALIGN))
+        sch[tensor42].buffer_align((1, 1), (1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE_ALIGN))
+        sch[tensor5].buffer_align((1, 1), (1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE_ALIGN), (1, BLOCK_SIZE_ALIGN))
+        sch[tensor6].buffer_align((1, 1), (1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE_ALIGN), (1, BLOCK_SIZE_ALIGN))
+        sch[tensor7].buffer_align((1, 1), (1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE_ALIGN), (1, BLOCK_SIZE_ALIGN))
+    else:
+        sch[image_patches_res].buffer_align((1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE), (1, 1), (1, 1), (1, 1),
+                                            (1, BLOCK_SIZE_ALIGN))
+        sch[ub_res].storage_align(ub_res.op.axis[4], BLOCK_SIZE_ALIGN, 0)
 
     # compute tiling params
     fmap_fractal_size = fmap_batch * fmap_d * HoWo * fmap_c1 * filter_h * filter_w * BLOCK_SIZE_ALIGN
@@ -887,12 +1398,12 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
 
     max_l1_valid_size = MAX_L1_SIZE
 
-    is_tiling_valid, shape_in_l1, is_l1_double_buffer, shape_after_load3d, is_l0_ub_double_buffer,\
-         howo_split = _get_load3d_tiling(fmap_shape, (filter_d, filter_h, filter_w), (stride_d, stride_h, stride_w),\
-              padding, max_l1_valid_size, max_next_valid_size, dtype_input)
+    is_tiling_valid, shape_in_l1, is_l1_double_buffer, shape_after_load3d, is_l0_ub_double_buffer, \
+    howo_split = _get_load3d_tiling(fmap_shape, (filter_d, filter_h, filter_w), (stride_d, stride_h, stride_w), \
+                                    padding, max_l1_valid_size, max_next_valid_size, dtype_input)
 
     if (is_tiling_valid, shape_in_l1, is_l1_double_buffer, shape_after_load3d,
-            is_l0_ub_double_buffer) == (False, None, None, None, None):
+        is_l0_ub_double_buffer) == (False, None, None, None, None):
         error_manager_vector.raise_err_specific_reson(
             "extract_volume_patches",
             "Not supported fmap shape = (%s), kernel = (1, %u, %u, %u, 1), stride = (1, %u, %u, %u, 1)" %
@@ -903,11 +1414,296 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
     # for load3d emit_insn
     _, fmap_im2col_d_inner = sch[fmap_im2col].split(fmap_im2col.op.axis[1], factor=1)
     _, fmap_fractal_d_inner = sch[fmap_fractal].split(fmap_fractal.op.axis[1], factor=1)
-    if original_cin % BLOCK_SIZE_ALIGN != 0:
+    if original_cin % BLOCK_SIZE_ALIGN != 0 and dtype_input == "float16":
         # cut workspace_res
+        workspace_res_n_outer, workspace_res_n_inner = sch[workspace_res].split(
+            workspace_res.op.axis[0], factor=1)
+        workspace_res_do_outer, workspace_res_do_inner = sch[workspace_res].split(
+            workspace_res.op.axis[1],
+            factor=1)
+        workspace_res_howo_outer, workspace_res_howo_inner = sch[workspace_res].split(
+            workspace_res.op.axis[2],
+            factor=(ub_howo + BLOCK_SIZE_ALIGN - 1) // BLOCK_SIZE_ALIGN)
+        workspace_res_kd_outer, workspace_res_kd_inner = sch[workspace_res].split(
+            workspace_res.op.axis[3],
+            factor=ub_kd)
+        workspace_res_khkw_outer, workspace_res_khkw_inner = sch[workspace_res].split(
+            workspace_res.op.axis[4],
+            factor=ub_khkw)
+        workspace_res_c1_outer, workspace_res_c1_inner = sch[workspace_res].split(
+            workspace_res.op.axis[5], factor=1)
+
+        sch[workspace_res].reorder(workspace_res_n_outer, workspace_res_do_outer,
+                                   workspace_res_c1_outer,
+                                   workspace_res_howo_outer, workspace_res_kd_outer,
+                                   workspace_res_khkw_outer,
+                                   workspace_res_n_inner, workspace_res_do_inner,
+                                   workspace_res_c1_inner,
+                                   workspace_res_howo_inner, workspace_res_kd_inner,
+                                   workspace_res_khkw_inner,
+                                   workspace_res.op.axis[6], workspace_res.op.axis[7])
+
+        # for compute_at
+        if howo_split:
+            sch[fmap_in_l1].compute_at(sch[workspace_res], workspace_res_howo_outer)
+            sch[fmap_im2col].compute_at(sch[workspace_res], workspace_res_howo_outer)
+        else:
+            sch[fmap_in_l1].compute_at(sch[workspace_res], workspace_res_kd_outer)
+            sch[fmap_im2col].compute_at(sch[workspace_res], workspace_res_kd_outer)
+
+        sch[fmap_fractal].compute_at(sch[workspace_res], workspace_res_khkw_outer)
+        sch[image_patches_res].compute_at(sch[workspace_res], workspace_res_khkw_outer)
+        sch[image_patches_res_transformat].compute_at(sch[workspace_res], workspace_res_khkw_outer)
+
+        tensor1_shape = tensor1.shape
+        tensor3_shape = tensor3.shape
+        fmap_batch, dout, mHoWo, kd, khkw, fmap_c = tensor3_shape[:6]
+        def _cal_max_devisor(num, factor):
+            max_devisor = 1
+            for i in range(factor, 0, -1):
+                if num % i == 0:
+                    max_devisor = i
+                    break
+            return max_devisor
+
+        def _cal_workspace2_factor():
+            tensor1_num = functools.reduce(lambda x, y: x * y, tensor1_shape[-3:])
+            if hasattr(tensor1_num, "value"):
+                tensor1_num = tensor1_num.value
+            tensor2_num = tensor1_num
+            workspace2_khkw_factor, workspace2_kd_factor, workspace2_mhowo_factor,\
+              split_workspace2_kd_flag, split_workspace2_mhowo_flag = 1, 1, 1, 0, 0
+            workspace2_double_buffer_flag = 1 if (MAX_UB_SIZE // 4) // (tensor1_num + tensor2_num) else 0
+            ub_num = MAX_UB_SIZE // (DOUBLE_BUFFER * dtype_size) \
+                if workspace2_double_buffer_flag else MAX_UB_SIZE // dtype_size
+            max_khkw_factor = ub_num // (tensor1_num + tensor2_num)
+            if max_khkw_factor == 0:
+                error_manager_vector.raise_err_specific_reson(
+                    "extract_volume_patches",
+                    "Not Support shape, needs UB memory size: %d" % ((tensor1_num + tensor2_num) * 2))
+            workspace2_khkw_factor = min(max_khkw_factor, khkw.value)
+            if max_khkw_factor >= khkw.value * 2:
+                split_workspace2_kd_flag = 1
+                max_kd_factor = max_khkw_factor // khkw.value
+                workspace2_kd_factor = min(max_kd_factor, kd.value)
+                if max_kd_factor >= kd.value * 2:
+                    split_workspace2_mhowo_flag = 1
+                    max_mhowo_factor = max_kd_factor // kd.value
+                    workspace2_mhowo_factor = min(max_mhowo_factor, mHoWo.value)
+            return workspace2_khkw_factor, workspace2_kd_factor, workspace2_mhowo_factor, split_workspace2_kd_flag,\
+                   split_workspace2_mhowo_flag, workspace2_double_buffer_flag
+        workspace2_khkw_factor, workspace2_kd_factor, workspace2_mhowo_factor, split_workspace2_kd_flag,\
+          split_workspace2_mhowo_flag, workspace2_double_buffer_flag = _cal_workspace2_factor()
+        if hasattr(khkw, "value"):
+            khkw = khkw.value
+        if hasattr(workspace2_khkw_factor, "value"):
+            workspace2_khkw_factor = workspace2_khkw_factor.value
+        max_khkw_devisor = _cal_max_devisor(khkw, workspace2_khkw_factor)
+
+        workspace2_n_outer, workspace2_n_inner = sch[workspace2].split(workspace2.op.axis[0], factor=1)
+        workspace2_do_outer, workspace2_do_inner = sch[workspace2].split(workspace2.op.axis[1], factor=1)
+        workspace2_mHoWo_outer, workspace2_mHoWo_inner = sch[workspace2].split(workspace2.op.axis[2],
+                                                                               factor=workspace2_mhowo_factor)
+
+        workspace2_kdkhkwc_outer, workspace2_kdkhkwc_inner = sch[workspace2].split(workspace2.op.axis[3],
+                                                                                   factor=khkw * fmap_c)  # kd, khkwc
+        workspace2_kd_outer, workspace2_kd_inner = \
+            sch[workspace2].split(workspace2_kdkhkwc_outer,
+                                  factor=workspace2_kd_factor)  # kd_outer, kd_inner
+        workspace2_khkwc_outer, workspace2_khkwc_inner = sch[workspace2].split(workspace2_kdkhkwc_inner,
+                                                                               factor=fmap_c)  # khkw, c
+        workspace2_khkw_outer, workspace2_khkw_inner = sch[workspace2].split(workspace2_khkwc_outer,
+                                                                             factor=max_khkw_devisor)  # kh, kw
+        sch[workspace2].reorder(workspace2_n_outer, workspace2_do_outer, workspace2_mHoWo_outer, workspace2_kd_outer,
+                                workspace2_khkw_outer, workspace2_khkw_inner,
+                                workspace2_n_inner, workspace2_do_inner, workspace2_mHoWo_inner, workspace2_kd_inner,
+                                workspace2_khkwc_inner, workspace2.op.axis[4])
+
+        if split_workspace2_mhowo_flag:
+            sch[tensor0].compute_at(sch[workspace2], workspace2_mHoWo_outer)
+            sch[tensor1].compute_at(sch[workspace2], workspace2_mHoWo_outer)
+            sch[tensor2].compute_at(sch[workspace2], workspace2_mHoWo_outer)
+            if not compute_inline_tensor4_41:
+                sch[tensor4].compute_at(sch[workspace2], workspace2_mHoWo_outer)
+                sch[tensor41].compute_at(sch[workspace2], workspace2_mHoWo_outer)
+            if not compute_inline_tensor3_6:
+                sch[tensor3].compute_at(sch[workspace2], workspace2_mHoWo_outer)
+        elif split_workspace2_kd_flag:
+            sch[tensor0].compute_at(sch[workspace2], workspace2_kd_outer)
+            sch[tensor1].compute_at(sch[workspace2], workspace2_kd_outer)
+            sch[tensor2].compute_at(sch[workspace2], workspace2_kd_outer)
+            if not compute_inline_tensor4_41:
+                sch[tensor4].compute_at(sch[workspace2], workspace2_kd_outer)
+                sch[tensor41].compute_at(sch[workspace2], workspace2_kd_outer)
+            if not compute_inline_tensor3_6:
+                sch[tensor3].compute_at(sch[workspace2], workspace2_kd_outer)
+        else:
+            sch[tensor0].compute_at(sch[workspace2], workspace2_khkw_outer)
+            sch[tensor1].compute_at(sch[workspace2], workspace2_khkw_outer)
+            sch[tensor2].compute_at(sch[workspace2], workspace2_khkw_outer)
+            if not compute_inline_tensor4_41:
+                sch[tensor4].compute_at(sch[workspace2], workspace2_khkw_outer)
+                sch[tensor41].compute_at(sch[workspace2], workspace2_khkw_outer)
+            if not compute_inline_tensor3_6:
+                sch[tensor3].compute_at(sch[workspace2], workspace2_khkw_outer)
+
+        mhowo = tensor7.shape[-3].value
+        fmap_c = fmap_c.value
+        def _cal_res_factor():
+            tensor5_num = functools.reduce(lambda x, y: x * y, tensor5.shape[-2:])
+            tensor5_num = tensor5_num.value
+            tensor42_num = tensor5_num
+            tensor7_num = tensor42_num
+            res_kdkhkwc_floor_factor, res_mhowo_factor, split_res_kdkhkwc_floor_flag, split_res_mhowo_flag = 1, 1, 0, 0
+            res_double_buffer_flag = 1 if (MAX_UB_SIZE // 4) // (tensor42_num + tensor5_num + tensor7_num) else 0
+            ub_num = MAX_UB_SIZE // (DOUBLE_BUFFER * dtype_size)\
+                if res_double_buffer_flag else MAX_UB_SIZE // dtype_size
+            max_mhowo_factor = ub_num // (tensor42_num + tensor5_num + tensor7_num)
+            if max_mhowo_factor == 0:
+                error_manager_vector.raise_err_specific_reson(
+                    "extract_volume_patches",
+                    "Not Support shape, needs UB memory size: %d" % (tensor42_num + tensor5_num + tensor7_num) * 2)
+            res_mhowo_factor = min(max_mhowo_factor, mhowo)
+            split_res_mhowo_flag = 1
+            if max_mhowo_factor >= mhowo * 2:
+                split_res_kdkhkwc_floor_flag = 1
+                max_kdkhkwc_floor_factor = max_mhowo_factor // mhowo
+                res_kdkhkwc_floor_factor = \
+                    min(max_kdkhkwc_floor_factor,
+                        (filter_d * filter_h * filter_w * fmap_c + BLOCK_SIZE_ALIGN - 1) // BLOCK_SIZE_ALIGN)
+            return res_kdkhkwc_floor_factor, res_mhowo_factor, split_res_kdkhkwc_floor_flag, split_res_mhowo_flag,\
+                   res_double_buffer_flag
+
+        res_kdkhkwc_floor_factor, res_mhowo_factor, split_res_kdkhkwc_floor_flag, split_res_mhowo_flag,\
+          res_double_buffer_flag = _cal_res_factor()
+        res_n_outer, res_n_inner = sch[res].split(res.op.axis[0], factor=1)
+        res_do_outer, res_do_inner = sch[res].split(res.op.axis[1], factor=1)
+        res_kdkhkwc_floor_outer, res_kdkhkwc_floor_inner = sch[res].split(res.op.axis[2],
+                                                                          factor=res_kdkhkwc_floor_factor)
+        # out_h*out_w // BLOCK_SIZE_ALIGN, BLOCK_SIZE_ALIGN
+        res_howo_outer, res_howo_inner = sch[res].split(res.op.axis[3], factor=BLOCK_SIZE_ALIGN)
+        # down to BLOCK_SIZE_ALIGN multiple
+        res_mhowo_outer, res_mhowo_inner = sch[res].split(res_howo_outer, factor=res_mhowo_factor)
+
+        sch[res].reorder(res_n_outer, res_do_outer, res_kdkhkwc_floor_outer, res_mhowo_outer,
+                         res_n_inner, res_do_inner, res_kdkhkwc_floor_inner, res_mhowo_inner,
+                         res_howo_inner, res.op.axis[4])
+
+        if split_res_mhowo_flag:
+            sch[tensor42].compute_at(sch[res], res_mhowo_outer)
+            sch[tensor5].compute_at(sch[res], res_mhowo_outer)
+            if not compute_inline_tensor3_6:
+                sch[tensor6].compute_at(sch[res], res_mhowo_outer)
+            sch[tensor7].compute_at(sch[res], res_mhowo_outer)
+        elif split_res_kdkhkwc_floor_flag:
+            sch[tensor42].compute_at(sch[res], res_kdkhkwc_floor_outer)
+            sch[tensor5].compute_at(sch[res], res_kdkhkwc_floor_outer)
+            if not compute_inline_tensor3_6:
+                sch[tensor6].compute_at(sch[res], res_kdkhkwc_floor_outer)
+            sch[tensor7].compute_at(sch[res], res_kdkhkwc_floor_outer)
+        else:
+            error_manager_vector.raise_err_specific_reson("extract_volume_patches",
+                                                          "Not Support shape, UB memory size overflow")
+
+        # for emit_insn
+        sch[fmap_in_l1].emit_insn(fmap_in_l1.op.axis[0], tbe_platform.DMA_COPY)
+        sch[fmap_im2col].emit_insn(fmap_im2col_d_inner, 'set_fmatrix', setfmatrix_dict)
+        sch[fmap_fractal].emit_insn(fmap_fractal_d_inner, tbe_platform.IM2COL)
+
+        sch[image_patches_res].emit_insn(image_patches_res.op.axis[0], tbe_platform.insn_cmd.ADDVS)
+        sch[image_patches_res_transformat].emit_insn(image_patches_res_transformat.op.axis[0],
+                                                     tbe_platform.insn_cmd.ADDVS)
+        sch[workspace_res].emit_insn(workspace_res_n_inner, tbe_platform.DMA_COPY)
+
+        sch[tensor0].emit_insn(tensor0.op.axis[0], tbe_platform.DMA_COPY)
+        sch[tensor1].emit_insn(tensor1.op.axis[0], tbe_platform.insn_cmd.ADDVS)
+        sch[tensor2].emit_insn(tensor2.op.axis[-2], "vnchwconv")
+        if not compute_inline_tensor4_41:
+            sch[tensor4].emit_insn(tensor4.op.axis[0], tbe_platform.DMA_COPY)
+            sch[tensor41].emit_insn(tensor41.op.axis[0], tbe_platform.DMA_COPY)
+        if not compute_inline_tensor3_6:
+            sch[tensor3].emit_insn(tensor3.op.axis[0], tbe_platform.insn_cmd.ADDVS)
+            sch[tensor6].emit_insn(tensor6.op.axis[-2], "vnchwconv")
+        sch[workspace2].emit_insn(workspace2_n_inner, tbe_platform.DMA_COPY)
+        sch[tensor42].emit_insn(tensor42.op.axis[0], tbe_platform.DMA_COPY)
+        sch[tensor5].emit_insn(tensor5.op.axis[0], tbe_platform.insn_cmd.DMA_PADDING)
+        sch[tensor7].emit_insn(tensor7.op.axis[0], tbe_platform.DMA_COPY)
+        sch[res].emit_insn(res_n_inner, tbe_platform.DMA_COPY)
+
+        # for multi cores
+        res_shape = [int(i.value) for i in res.shape]
+        res_n, res_do, _, _, _ = res_shape
+        fmap_batch = fmap_batch.value
+        dout = dout.value
+        fmap_batch_factor, dout_factor, _ = _cal_multi_core_factor_3_axis(fmap_batch, dout, 1)
+        workspace_cut_n_outer, workspace_cut_n_inner = sch[workspace_res].split(workspace_res_n_outer,
+                                                                                nparts=fmap_batch_factor)
+        workspace2_cut_n_outer, workspace2_cut_n_inner = sch[workspace2].split(workspace2_n_outer,
+                                                                               nparts=fmap_batch_factor)
+        res_cut_n_outer, res_cut_n_inner = sch[res].split(res_n_outer,
+                                                          nparts=fmap_batch_factor)
+        workspace_cut_do_outer, workspace_cut_do_inner = sch[workspace_res].split(workspace_res_do_outer,
+                                                                                  nparts=dout_factor)
+        workspace2_cut_do_outer, workspace2_cut_do_inner = sch[workspace2].split(workspace2_do_outer,
+                                                                                 nparts=dout_factor)
+        res_cut_do_outer, res_cut_do_inner = sch[res].split(res_do_outer,
+                                                            nparts=dout_factor)
+        sch[workspace_res].reorder(workspace_cut_n_outer, workspace_cut_do_outer,
+                                   workspace_cut_n_inner, workspace_cut_do_inner)
+        sch[workspace2].reorder(workspace2_cut_n_outer, workspace2_cut_do_outer,
+                                workspace2_cut_n_inner, workspace2_cut_do_inner)
+        sch[res].reorder(res_cut_n_outer, res_cut_do_outer,
+                         res_cut_n_inner, res_cut_do_inner)
+        workspace_fused_axis = sch[workspace_res].fuse(workspace_cut_n_outer, workspace_cut_do_outer)
+        workspace2_fused_axis = sch[workspace2].fuse(workspace2_cut_n_outer, workspace2_cut_do_outer)
+        res_fused_axis = sch[res].fuse(res_cut_n_outer, res_cut_do_outer)
+
+        block_idx = tvm.thread_axis('blockIdx.x')
+        sch[workspace_res].bind(workspace_fused_axis, block_idx)
+        sch[workspace2].bind(workspace2_fused_axis, block_idx)
+        sch[res].bind(res_fused_axis, block_idx)
+
+        # for double buffer
+        if is_l0_ub_double_buffer:
+            sch[fmap_fractal].double_buffer()
+            sch[image_patches_res].double_buffer()
+            sch[fmap_im2col].double_buffer()
+        if is_l1_double_buffer:
+            sch[fmap_in_l1].double_buffer()
+
+        if workspace2_double_buffer_flag:
+            sch[tensor0].double_buffer()
+            sch[tensor1].double_buffer()
+            sch[tensor2].double_buffer()
+            if not compute_inline_tensor3_6:
+                sch[tensor3].double_buffer()
+            if not compute_inline_tensor4_41:
+                sch[tensor4].double_buffer()
+                sch[tensor41].double_buffer()
+
+        if res_double_buffer_flag:
+            sch[tensor42].double_buffer()
+            sch[tensor5].double_buffer()
+            if not compute_inline_tensor3_6:
+                sch[tensor6].double_buffer()
+            sch[tensor7].double_buffer()
+
+        # for compute_inline
+        sch[image_patches_res_transformat].compute_inline()
+        sch[tensor1].compute_inline()
+        if compute_inline_tensor4_41:
+            sch[tensor41].compute_inline()
+            sch[tensor4].compute_inline()
+        if compute_inline_tensor3_6:
+            sch[tensor3].compute_inline()
+            sch[tensor6].compute_inline()
+        if compute_inline_tensor42:
+            sch[tensor42].compute_inline()
+
+    elif original_cin % BLOCK_SIZE_ALIGN != 0 and dtype_input in ("uint8", "int8"):  # cut workspace_res
         workspace_res_n_outer, workspace_res_n_inner = sch[workspace_res].split(workspace_res.op.axis[0], factor=1)
         workspace_res_do_outer, workspace_res_do_inner = sch[workspace_res].split(workspace_res.op.axis[1],
-                                                                                  factor=ub_do)
+                                                                                  factor=1)
         workspace_res_howo_outer, workspace_res_howo_inner = sch[workspace_res].split(workspace_res.op.axis[2],
                                                                                       factor=ub_howo)
         workspace_res_kd_outer, workspace_res_kd_inner = sch[workspace_res].split(workspace_res.op.axis[3],
@@ -922,13 +1718,6 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
                                    workspace_res_howo_inner, workspace_res_kd_inner, workspace_res_khkw_inner,
                                    workspace_res.op.axis[6])
 
-        use_reg_mov = 1 if (original_cin % BLOCK_SIZE_ALIGN != 0 and original_cin < 256) else 0
-        split_axis, split_factor = _tilling_axis(ub_res_shape[1:], dtype_input, use_reg_mov)
-
-        # cut res
-        res_n_outer, res_n_inner = sch[res].split(res.op.axis[0], factor=1)
-        res_axis_outer, res_axis_inner = sch[res].split(res.op.axis[split_axis + 1], factor=split_factor)
-
         # for compute_at
         if howo_split:
             sch[fmap_in_l1].compute_at(sch[workspace_res], workspace_res_howo_outer)
@@ -940,9 +1729,231 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
         sch[fmap_fractal].compute_at(sch[workspace_res], workspace_res_khkw_outer)
         sch[image_patches_res].compute_at(sch[workspace_res], workspace_res_khkw_outer)
 
-        sch[ub_res].compute_at(sch[res], res_axis_outer)
-        if use_reg_mov:
-            sch[ub_regmov].compute_at(sch[res], res_axis_outer)
+
+        tensor00_shape = tensor00.shape
+        fmap_batch, dout, howo_8bit_align_floor, _, kd, khkw, fmap_c1 = tensor00_shape[:7]
+        def _cal_workspace_8bit_factor():
+            tensor0_num = BLOCK_SIZE_ALIGN * BLOCK_SIZE_ALIGN * fmap_c1
+            tensor0_num = tensor0_num.value
+            tensor00_num = tensor0_num
+            workspace_8bit_khkw_factor, workspace_8bit_kd_factor, workspace_8bit_mHoWo_factor,\
+              split_workspace_8bit_kd_flag, split_workspace_8bit_mhowo_flag = 1, 1, 1, 0, 0
+            workspace_8bit_double_buffer_flag = 1 if (MAX_UB_SIZE // 2) // (tensor0_num + tensor00_num) else 0
+            ub_num = MAX_UB_SIZE // (DOUBLE_BUFFER * dtype_size) \
+                if workspace_8bit_double_buffer_flag else MAX_UB_SIZE // dtype_size
+            max_khkw_factor = ub_num // (tensor0_num + tensor00_num)
+            if max_khkw_factor == 0:
+                error_manager_vector.raise_err_specific_reson(
+                    "extract_volume_patches",
+                    "Not Support shape, needs UB memory size", (tensor00_num + tensor0_num) * 2)
+            workspace_8bit_khkw_factor = min(max_khkw_factor, khkw.value)
+            if max_khkw_factor >= khkw.value * 2:
+                split_workspace_8bit_kd_flag = 1
+                max_kd_factor = max_khkw_factor // khkw.value
+                workspace_8bit_kd_factor = min(max_kd_factor, kd.value)
+                if max_kd_factor >= kd.value * 2:
+                    split_workspace_8bit_mhowo_flag = 1
+                    max_mHoWo_factor = max_kd_factor // kd.value
+                    workspace_8bit_mHoWo_factor = min(max_mHoWo_factor, howo_8bit_align_floor.value)
+            return workspace_8bit_khkw_factor, workspace_8bit_kd_factor, workspace_8bit_mHoWo_factor,\
+                   split_workspace_8bit_kd_flag, split_workspace_8bit_mhowo_flag, workspace_8bit_double_buffer_flag
+        workspace_8bit_khkw_factor, workspace_8bit_kd_factor, workspace_8bit_mHoWo_factor,\
+          split_workspace_8bit_kd_flag, split_workspace_8bit_mhowo_flag, \
+          workspace_8bit_double_buffer_flag = _cal_workspace_8bit_factor()
+        if hasattr(khkw, "value"):
+            khkw = khkw.value
+        if hasattr(workspace_8bit_khkw_factor, "value"):
+            workspace_8bit_khkw_factor = workspace_8bit_khkw_factor.value
+
+        workspace_8bit_n_outer, workspace_8bit_n_inner = sch[workspace_8bit].split(workspace_8bit.op.axis[0],
+                                                                                   factor=1)
+        workspace_8bit_do_outer, workspace_8bit_do_inner = sch[workspace_8bit].split(workspace_8bit.op.axis[1],
+                                                                                     factor=1)
+        workspace_8bit_mHoWo_outer, workspace_8bit_mHoWo_inner = \
+            sch[workspace_8bit].split(workspace_8bit.op.axis[2],
+                                      factor=workspace_8bit_mHoWo_factor)
+
+        workspace_8bit_kd_outer, workspace_8bit_kd_inner = \
+            sch[workspace_8bit].split(workspace_8bit.op.axis[4],
+                                      factor=workspace_8bit_kd_factor)  # kd, khkwc
+        workspace_8bit_khkw_outer, workspace_8bit_khkw_inner = \
+            sch[workspace_8bit].split(workspace_8bit.op.axis[5],
+                                      factor=workspace_8bit_khkw_factor)  # kh, kw
+        sch[workspace_8bit].reorder(workspace_8bit_n_outer, workspace_8bit_do_outer, workspace_8bit_mHoWo_outer,
+                                    workspace_8bit_kd_outer, workspace_8bit_khkw_outer,
+                                    workspace_8bit_n_inner, workspace_8bit_do_inner, workspace_8bit_mHoWo_inner,
+                                    workspace_8bit_kd_inner, workspace_8bit_khkw_inner,
+                                    workspace_8bit.op.axis[3], workspace_8bit.op.axis[6], workspace_8bit.op.axis[7])
+
+        if split_workspace_8bit_mhowo_flag:
+            sch[tensor0].compute_at(sch[workspace_8bit], workspace_8bit_mHoWo_outer)
+            sch[tensor00].compute_at(sch[workspace_8bit], workspace_8bit_mHoWo_outer)
+        elif split_workspace_8bit_kd_flag:
+            sch[tensor0].compute_at(sch[workspace_8bit], workspace_8bit_kd_outer)
+            sch[tensor00].compute_at(sch[workspace_8bit], workspace_8bit_kd_outer)
+        else:
+            sch[tensor0].compute_at(sch[workspace_8bit], workspace_8bit_khkw_outer)
+            sch[tensor00].compute_at(sch[workspace_8bit], workspace_8bit_khkw_outer)
+
+        sch[tensor0].emit_insn(tensor0.op.axis[0], tbe_platform.DMA_COPY)
+        sch[tensor00].emit_insn(tensor00.op.axis[0], tbe_platform.DMA_COPY)
+        sch[workspace_8bit].emit_insn(workspace_8bit_n_inner, tbe_platform.DMA_COPY)
+
+
+        tensor10_shape = tensor10.shape
+        tensor1_shape = tensor1.shape
+        tensor3_shape = tensor3.shape
+        fmap_batch, dout, mHoWo, kd, khkw, fmap_c = tensor3_shape[:6]
+        def _cal_max_devisor(num, factor):
+            max_devisor = 1
+            for i in range(factor, 0, -1):
+                if num % i == 0:
+                    max_devisor = i
+                    break
+            return max_devisor
+
+        def _cal_workspace2_factor():
+            tensor10_num = functools.reduce(lambda x, y: x * y, tensor10_shape[-2:])
+            if hasattr(tensor10_num, "value"):
+                tensor10_num = tensor10_num.value
+            tensor1_num = functools.reduce(lambda x, y: x * y, tensor1_shape[-3:])
+            if hasattr(tensor1_num, "value"):
+                tensor1_num = tensor1_num.value
+            tensor2_num = tensor1_num
+            workspace2_khkw_factor, workspace2_kd_factor, workspace2_mhowo_factor, split_workspace2_kd_flag,\
+              split_workspace2_mhowo_flag = 1, 1, 1, 0, 0
+            workspace2_double_buffer_flag = 1 \
+                if (MAX_UB_SIZE // DOUBLE_BUFFER) // (tensor10_num + tensor1_num + tensor2_num) else 0
+            ub_num = MAX_UB_SIZE // (DOUBLE_BUFFER * dtype_size) \
+                if workspace2_double_buffer_flag else MAX_UB_SIZE // dtype_size
+            max_khkw_factor = ub_num // (tensor10_num + tensor1_num + tensor2_num)
+            if max_khkw_factor == 0:
+                error_manager_vector.raise_err_specific_reson(
+                    "extract_volume_patches",
+                    "Not Support shape, needs UB memory size", (tensor10_num + tensor1_num + tensor2_num) * 2)
+            workspace2_khkw_factor = min(max_khkw_factor, khkw.value)
+            if max_khkw_factor >= khkw.value * 2:
+                split_workspace2_kd_flag = 1
+                max_kd_factor = max_khkw_factor // khkw.value
+                workspace2_kd_factor = min(max_kd_factor, kd.value)
+                if max_kd_factor >= kd.value * 2:
+                    split_workspace2_mhowo_flag = 1
+                    max_mhowo_factor = max_kd_factor // kd.value
+                    workspace2_mhowo_factor = min(max_mhowo_factor, mHoWo.value)
+            return workspace2_khkw_factor, workspace2_kd_factor, workspace2_mhowo_factor, split_workspace2_kd_flag,\
+                   split_workspace2_mhowo_flag, workspace2_double_buffer_flag
+        workspace2_khkw_factor, workspace2_kd_factor, workspace2_mhowo_factor, split_workspace2_kd_flag,\
+          split_workspace2_mhowo_flag, workspace2_double_buffer_flag = _cal_workspace2_factor()
+        if hasattr(khkw, "value"):
+            khkw = khkw.value
+        if hasattr(workspace2_khkw_factor, "value"):
+            workspace2_khkw_factor = workspace2_khkw_factor.value
+        max_khkw_devisor = _cal_max_devisor(khkw, workspace2_khkw_factor)
+
+        workspace2_n_outer, workspace2_n_inner = sch[workspace2].split(workspace2.op.axis[0], factor=1)
+        workspace2_do_outer, workspace2_do_inner = sch[workspace2].split(workspace2.op.axis[1], factor=1)
+        workspace2_mHoWo_outer, workspace2_mHoWo_inner = sch[workspace2].split(workspace2.op.axis[2],
+                                                                               factor=workspace2_mhowo_factor)
+
+        workspace2_kdkhkwc_outer, workspace2_kdkhkwc_inner = sch[workspace2].split(workspace2.op.axis[3],
+                                                                                   factor=khkw * fmap_c)  # kd, khkwc
+        workspace2_kd_outer, workspace2_kd_inner = \
+            sch[workspace2].split(workspace2_kdkhkwc_outer,
+                                  factor=workspace2_kd_factor)  # kd_outer, kd_inner
+        workspace2_khkwc_outer, workspace2_khkwc_inner = sch[workspace2].split(workspace2_kdkhkwc_inner,
+                                                                               factor=fmap_c)  # khkw, c
+        workspace2_khkw_outer, workspace2_khkw_inner = sch[workspace2].split(workspace2_khkwc_outer,
+                                                                             factor=max_khkw_devisor)  # kh, kw
+        sch[workspace2].reorder(workspace2_n_outer, workspace2_do_outer, workspace2_mHoWo_outer, workspace2_kd_outer,
+                                workspace2_khkw_outer, workspace2_khkw_inner,
+                                workspace2_n_inner, workspace2_do_inner, workspace2_mHoWo_inner, workspace2_kd_inner,
+                                workspace2_khkwc_inner, workspace2.op.axis[4])
+
+        if split_workspace2_mhowo_flag:
+            sch[tensor10].compute_at(sch[workspace2], workspace2_mHoWo_outer)
+            sch[tensor1].compute_at(sch[workspace2], workspace2_mHoWo_outer)
+            sch[tensor2].compute_at(sch[workspace2], workspace2_mHoWo_outer)
+            if not compute_inline_tensor4_41:
+                sch[tensor4].compute_at(sch[workspace2], workspace2_mHoWo_outer)
+                sch[tensor41].compute_at(sch[workspace2], workspace2_mHoWo_outer)
+            if not compute_inline_tensor3_6:
+                sch[tensor3].compute_at(sch[workspace2], workspace2_mHoWo_outer)
+        elif split_workspace2_kd_flag:
+            sch[tensor10].compute_at(sch[workspace2], workspace2_kd_outer)
+            sch[tensor1].compute_at(sch[workspace2], workspace2_kd_outer)
+            sch[tensor2].compute_at(sch[workspace2], workspace2_kd_outer)
+            if not compute_inline_tensor4_41:
+                sch[tensor4].compute_at(sch[workspace2], workspace2_kd_outer)
+                sch[tensor41].compute_at(sch[workspace2], workspace2_kd_outer)
+            if not compute_inline_tensor3_6:
+                sch[tensor3].compute_at(sch[workspace2], workspace2_kd_outer)
+        else:
+            sch[tensor10].compute_at(sch[workspace2], workspace2_khkw_outer)
+            sch[tensor1].compute_at(sch[workspace2], workspace2_khkw_outer)
+            sch[tensor2].compute_at(sch[workspace2], workspace2_khkw_outer)
+            if not compute_inline_tensor4_41:
+                sch[tensor4].compute_at(sch[workspace2], workspace2_khkw_outer)
+                sch[tensor41].compute_at(sch[workspace2], workspace2_khkw_outer)
+            if not compute_inline_tensor3_6:
+                sch[tensor3].compute_at(sch[workspace2], workspace2_khkw_outer)
+
+        mhowo = tensor7.shape[-3].value
+        fmap_c = fmap_c.value
+        def _cal_res_factor():
+            tensor5_num = functools.reduce(lambda x, y: x * y, tensor5.shape[-2:])
+            tensor5_num = tensor5_num.value
+            tensor42_num = tensor5_num
+            tensor7_num = tensor42_num
+            res_kdkhkwc_floor_factor, res_mhowo_factor, split_res_kdkhkwc_floor_flag, split_res_mhowo_flag = 1, 1, 0, 0
+            res_double_buffer_flag = 1 if (MAX_UB_SIZE // 4) // (tensor42_num + tensor5_num + tensor7_num) else 0
+            ub_num = MAX_UB_SIZE // (DOUBLE_BUFFER * dtype_size) \
+                if res_double_buffer_flag else MAX_UB_SIZE // dtype_size
+            max_mhowo_factor = ub_num // (tensor42_num + tensor5_num + tensor7_num)
+            if max_mhowo_factor == 0:
+                error_manager_vector.raise_err_specific_reson(
+                    "extract_volume_patches",
+                    "Not Support shape, needs UB memory size", (tensor42_num + tensor5_num + tensor7_num) * 2)
+            res_mhowo_factor = min(max_mhowo_factor, mhowo)
+            split_res_mhowo_flag = 1
+            if max_mhowo_factor >= mhowo * 2:
+                split_res_kdkhkwc_floor_flag = 1
+                max_kdkhkwc_floor_factor = max_mhowo_factor // mhowo
+                res_kdkhkwc_floor_factor = \
+                    min(max_kdkhkwc_floor_factor,
+                        (filter_d * filter_h * filter_w * fmap_c + BLOCK_SIZE_ALIGN - 1) // BLOCK_SIZE_ALIGN)
+            return res_kdkhkwc_floor_factor, res_mhowo_factor, split_res_kdkhkwc_floor_flag, split_res_mhowo_flag,\
+                   res_double_buffer_flag
+
+        res_kdkhkwc_floor_factor, res_mhowo_factor, split_res_kdkhkwc_floor_flag, split_res_mhowo_flag,\
+          res_double_buffer_flag = _cal_res_factor()
+        res_n_outer, res_n_inner = sch[res].split(res.op.axis[0], factor=1)
+        res_do_outer, res_do_inner = sch[res].split(res.op.axis[1], factor=1)
+        res_kdkhkwc_floor_outer, res_kdkhkwc_floor_inner = sch[res].split(res.op.axis[2],
+                                                                          factor=res_kdkhkwc_floor_factor)
+        # out_h*out_w // BLOCK_SIZE_ALIGN, BLOCK_SIZE_ALIGN
+        res_howo_outer, res_howo_inner = sch[res].split(res.op.axis[3],
+                                                        factor=BLOCK_SIZE_ALIGN)  # down to BLOCK_SIZE_ALIGN multiple
+        res_mhowo_outer, res_mhowo_inner = sch[res].split(res_howo_outer, factor=res_mhowo_factor)
+
+        sch[res].reorder(res_n_outer, res_do_outer, res_kdkhkwc_floor_outer, res_mhowo_outer,
+                         res_n_inner, res_do_inner, res_kdkhkwc_floor_inner, res_mhowo_inner,
+                         res_howo_inner, res.op.axis[4])
+
+        if split_res_mhowo_flag:
+            sch[tensor42].compute_at(sch[res], res_mhowo_outer)
+            sch[tensor5].compute_at(sch[res], res_mhowo_outer)
+            if not compute_inline_tensor3_6:
+                sch[tensor6].compute_at(sch[res], res_mhowo_outer)
+            sch[tensor7].compute_at(sch[res], res_mhowo_outer)
+        elif split_res_kdkhkwc_floor_flag:
+            sch[tensor42].compute_at(sch[res], res_kdkhkwc_floor_outer)
+            sch[tensor5].compute_at(sch[res], res_kdkhkwc_floor_outer)
+            if not compute_inline_tensor3_6:
+                sch[tensor6].compute_at(sch[res], res_kdkhkwc_floor_outer)
+            sch[tensor7].compute_at(sch[res], res_kdkhkwc_floor_outer)
+        else:
+            error_manager_vector.raise_err_specific_reson("extract_volume_patches",
+                                                          "Not Support shape, UB memory size overflow")
 
         # for emit_insn
         sch[fmap_in_l1].emit_insn(fmap_in_l1.op.axis[0], tbe_platform.DMA_COPY)
@@ -951,10 +1962,64 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
 
         sch[image_patches_res].emit_insn(image_patches_res.op.axis[0], tbe_platform.DMA_COPY)
         sch[workspace_res].emit_insn(workspace_res_n_inner, tbe_platform.DMA_COPY)
-        sch[ub_res].emit_insn(ub_res.op.axis[0], tbe_platform.DMA_COPY)
-        if use_reg_mov:
-            sch[ub_regmov].emit_insn(ub_regmov.op.axis[0], tbe_platform.DATA_MOV)
-        sch[res].emit_insn(res_axis_inner, tbe_platform.DMA_COPY, {"no_overlap": 1})
+
+        sch[tensor0].emit_insn(tensor0.op.axis[0], tbe_platform.DMA_COPY)
+        sch[tensor00].emit_insn(tensor00.op.axis[0], tbe_platform.DMA_COPY)
+        sch[workspace_8bit].emit_insn(workspace_8bit_n_inner, tbe_platform.DMA_COPY)
+        sch[tensor10].emit_insn(tensor10.op.axis[0], tbe_platform.DMA_COPY)
+        sch[tensor1].emit_insn(tensor1.op.axis[0], tbe_platform.DMA_COPY)
+        sch[tensor2].emit_insn(tensor2.op.axis[-2], "vnchwconv")
+        if not compute_inline_tensor4_41:
+            sch[tensor4].emit_insn(tensor4.op.axis[0], tbe_platform.DMA_COPY)
+            sch[tensor41].emit_insn(tensor41.op.axis[0], tbe_platform.DMA_COPY)
+        if not compute_inline_tensor3_6:
+            sch[tensor3].emit_insn(tensor3.op.axis[0], tbe_platform.DMA_COPY)
+            sch[tensor6].emit_insn(tensor6.op.axis[-2], "vnchwconv")
+        sch[workspace2].emit_insn(workspace2_n_inner, tbe_platform.DMA_COPY)
+        sch[tensor42].emit_insn(tensor42.op.axis[0], tbe_platform.DMA_COPY)
+        sch[tensor5].emit_insn(tensor5.op.axis[0], tbe_platform.DMA_COPY)
+        sch[tensor7].emit_insn(tensor7.op.axis[0], tbe_platform.DMA_COPY)
+        sch[res].emit_insn(res_n_inner, tbe_platform.DMA_COPY)
+
+        # for multi cores
+        res_shape = [int(i.value) for i in res.shape]
+        fmap_batch = fmap_batch.value
+        dout = dout.value
+        fmap_batch_factor, dout_factor, _ = _cal_multi_core_factor_3_axis(fmap_batch, dout, 1)
+        workspace_cut_n_outer, workspace_cut_n_inner = sch[workspace_res].split(workspace_res_n_outer,
+                                                                                nparts=fmap_batch_factor)
+        workspace_8bit_cut_n_outer, workspace_8bit_cut_n_inner = \
+            sch[workspace_8bit].split(workspace_8bit_n_outer, nparts=fmap_batch_factor)
+        workspace2_cut_n_outer, workspace2_cut_n_inner = sch[workspace2].split(workspace2_n_outer,
+                                                                               nparts=fmap_batch_factor)
+        res_cut_n_outer, res_cut_n_inner = sch[res].split(res_n_outer,
+                                                          nparts=fmap_batch_factor)
+        workspace_cut_do_outer, workspace_cut_do_inner = sch[workspace_res].split(workspace_res_do_outer,
+                                                                                  nparts=dout_factor)
+        workspace_8bit_cut_do_outer, workspace_8bit_cut_do_inner = \
+            sch[workspace_8bit].split(workspace_8bit_do_outer, nparts=dout_factor)
+        workspace2_cut_do_outer, workspace2_cut_do_inner = sch[workspace2].split(workspace2_do_outer,
+                                                                                 nparts=dout_factor)
+        res_cut_do_outer, res_cut_do_inner = sch[res].split(res_do_outer, nparts=dout_factor)
+        sch[workspace_res].reorder(workspace_cut_n_outer, workspace_cut_do_outer,
+                                   workspace_cut_n_inner, workspace_cut_do_inner)
+        sch[workspace_8bit].reorder(workspace_8bit_cut_n_outer, workspace_8bit_cut_do_outer,
+                                    workspace_8bit_cut_n_inner, workspace_8bit_cut_do_inner)
+        sch[workspace2].reorder(workspace2_cut_n_outer, workspace2_cut_do_outer,
+                                workspace2_cut_n_inner, workspace2_cut_do_inner)
+        sch[res].reorder(res_cut_n_outer, res_cut_do_outer,
+                         res_cut_n_inner, res_cut_do_inner)
+        workspace_fused_axis = sch[workspace_res].fuse(workspace_cut_n_outer, workspace_cut_do_outer)
+        workspace_8bit_fused_axis = sch[workspace_8bit].fuse(workspace_8bit_cut_n_outer,
+                                                             workspace_8bit_cut_do_outer)
+        workspace2_fused_axis = sch[workspace2].fuse(workspace2_cut_n_outer, workspace2_cut_do_outer)
+        res_fused_axis = sch[res].fuse(res_cut_n_outer, res_cut_do_outer)
+
+        block_idx = tvm.thread_axis('blockIdx.x')
+        sch[workspace_res].bind(workspace_fused_axis, block_idx)
+        sch[workspace_8bit].bind(workspace_8bit_fused_axis, block_idx)
+        sch[workspace2].bind(workspace2_fused_axis, block_idx)
+        sch[res].bind(res_fused_axis, block_idx)
 
         # for double buffer
         if is_l0_ub_double_buffer:
@@ -964,43 +2029,60 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
         if is_l1_double_buffer:
             sch[fmap_in_l1].double_buffer()
 
-        # for multi cores
-        res_fused_axis = sch[res].fuse(res_n_outer)
-        workspace_fused_axis = sch[workspace_res].fuse(workspace_res_n_outer)
-        block_idx = tvm.thread_axis('blockIdx.x')
-        real_multi_num = fmap_shape[0].value
-        device_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        if hasattr(split_factor, "value"):
-            split_factor = split_factor.value
-        dma_shape = res.shape[split_axis + 1:]
-        for index, value in enumerate(dma_shape):
-            if hasattr(dma_shape[index], "value"):
-                dma_shape[index] = dma_shape[index].value
-        if split_factor * functools.reduce(lambda x, y: x * y, dma_shape) >= BLOCK_SIZE_ALIGN:
-            if real_multi_num >= device_core_num:
-                workspace_res_fused_axis_outer, _ = sch[workspace_res].split(workspace_fused_axis,
-                                                                             nparts=device_core_num)
-                res_fused_axis_outer, _ = sch[res].split(res_fused_axis, nparts=device_core_num)
-                sch[workspace_res].bind(workspace_res_fused_axis_outer, block_idx)
-                sch[res].bind(res_fused_axis_outer, block_idx)
-            else:
-                sch[workspace_res].bind(workspace_fused_axis, block_idx)
-                sch[res].bind(res_fused_axis, block_idx)
+        if workspace_8bit_double_buffer_flag:
+            sch[tensor0].double_buffer()
+            sch[tensor00].double_buffer()
+
+        if workspace2_double_buffer_flag:
+            sch[tensor10].double_buffer()
+            sch[tensor1].double_buffer()
+            sch[tensor2].double_buffer()
+            if not compute_inline_tensor3_6:
+                sch[tensor3].double_buffer()
+            if not compute_inline_tensor4_41:
+                sch[tensor4].double_buffer()
+                sch[tensor41].double_buffer()
+
+        if res_double_buffer_flag:
+            sch[tensor42].double_buffer()
+            sch[tensor5].double_buffer()
+            if not compute_inline_tensor3_6:
+                sch[tensor6].double_buffer()
+            sch[tensor7].double_buffer()
+
+        # for compute_inline
+        if compute_inline_tensor4_41:
+            sch[tensor41].compute_inline()
+            sch[tensor4].compute_inline()
+        if compute_inline_tensor3_6:
+            sch[tensor3].compute_inline()
+            sch[tensor6].compute_inline()
+        if compute_inline_tensor42:
+            sch[tensor42].compute_inline()
+
     else:
-        # cut workspace_res
-        sch[workspace_res].compute_inline()
-        sch[ub_res].compute_inline()
+        if fmap_batch < DEVICE_CORE_NUM:
+            ub_do = 1
+        # three tensors has the same size on UBuf.
+        if (ub_do * ub_kd * ub_khkw * ub_howo * BLOCK_SIZE_ALIGN * dtype_size) * 3 > MAX_UB_SIZE:
+            ub_do = max(min(ub_do, (MAX_UB_SIZE // 3) // (ub_kd * ub_khkw * ub_howo * BLOCK_SIZE_ALIGN * dtype_size)),
+                        1)
+
+        if (ub_do * ub_kd * ub_khkw * ub_howo * BLOCK_SIZE_ALIGN * dtype_size) * 3 > MAX_UB_SIZE:
+            ub_kd = max(min(ub_kd, (MAX_UB_SIZE // 3) // (ub_khkw * ub_howo * BLOCK_SIZE_ALIGN * dtype_size)), 1)
+
+        if (ub_do * ub_kd * ub_khkw * ub_howo * BLOCK_SIZE_ALIGN * dtype_size) * 3 > MAX_UB_SIZE:
+            ub_khkw = max(min(ub_khkw, (MAX_UB_SIZE // 3) // (ub_howo * BLOCK_SIZE_ALIGN * dtype_size)), 1)
 
         # cut res
         res_n_outer, res_n_inner = sch[res].split(res.op.axis[0], factor=1)
         res_do_outer, res_do_inner = sch[res].split(res.op.axis[1], factor=ub_do)
-        res_howo_outer, res_howo_inner = sch[res].split(res.op.axis[2], factor=ub_howo)
-        res_kd_outer, res_kd_inner = sch[res].split(res.op.axis[3], factor=ub_kd)
-        res_khkw_outer, res_khkw_inner = sch[res].split(res.op.axis[4], factor=ub_khkw)
-        res_c_outer, res_c_inner = sch[res].split(res.op.axis[5], factor=BLOCK_SIZE_ALIGN)
+        res_kd_outer, res_kd_inner = sch[res].split(res.op.axis[2], factor=ub_kd)
+        res_khkw_outer, res_khkw_inner = sch[res].split(res.op.axis[3], factor=ub_khkw)
+        res_howo_outer, res_howo_inner = sch[res].split(res.op.axis[5], factor=ub_howo)
 
-        sch[res].reorder(res_n_outer, res_do_outer, res_c_outer, res_howo_outer, res_kd_outer, res_khkw_outer,
-                         res_n_inner, res_do_inner, res_c_inner, res_howo_inner, res_kd_inner, res_khkw_inner)
+        sch[res].reorder(res_n_outer, res_do_outer, res.op.axis[4], res_howo_outer, res_kd_outer, res_khkw_outer,
+                         res_n_inner, res_do_inner, res.op.axis[6], res_howo_inner, res_kd_inner, res_khkw_inner)
 
         # for compute_at
         if howo_split:
@@ -1012,12 +2094,21 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
 
         sch[fmap_fractal].compute_at(sch[res], res_khkw_outer)
         sch[image_patches_res].compute_at(sch[res], res_khkw_outer)
+        sch[ub_res].compute_at(sch[res], res_khkw_outer)
+        sch[trans_format0].compute_at(sch[res], res_khkw_outer)
 
         # for emit_insn
         sch[fmap_in_l1].emit_insn(fmap_in_l1.op.axis[0], tbe_platform.DMA_COPY)
         sch[fmap_im2col].emit_insn(fmap_im2col_d_inner, 'set_fmatrix', setfmatrix_dict)
         sch[fmap_fractal].emit_insn(fmap_fractal_d_inner, tbe_platform.IM2COL)
-        sch[image_patches_res].emit_insn(image_patches_res.op.axis[0], tbe_platform.DMA_COPY)
+        if dtype_input == "float16":
+            sch[image_patches_res].emit_insn(image_patches_res.op.axis[0], tbe_platform.insn_cmd.ADDVS)
+            sch[ub_res].emit_insn(ub_res.op.axis[0], tbe_platform.insn_cmd.ADDVS)
+            sch[trans_format0].emit_insn(trans_format0.op.axis[0], tbe_platform.insn_cmd.ADDVS)
+        else:
+            sch[image_patches_res].emit_insn(image_patches_res.op.axis[0], tbe_platform.DMA_COPY)
+            sch[ub_res].emit_insn(ub_res.op.axis[0], tbe_platform.DMA_COPY)
+            sch[trans_format0].emit_insn(trans_format0.op.axis[0], tbe_platform.DMA_COPY)
         sch[res].emit_insn(res_n_inner, tbe_platform.DMA_COPY)
 
         # for double buffer
@@ -1025,47 +2116,25 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
             sch[fmap_fractal].double_buffer()
             sch[image_patches_res].double_buffer()
             sch[fmap_im2col].double_buffer()
+            sch[trans_format0].double_buffer()
         if is_l1_double_buffer:
             sch[fmap_in_l1].double_buffer()
 
+        # for compute_inline
+        sch[workspace_res].compute_inline()
+        sch[ub_res].compute_inline()
+
         # for multi cores
         res_shape = [int(i.value) for i in res.shape]
-        res_n, res_do, _, _, _, _ = res_shape
+        res_n, res_do, _, _, _, _, _ = res_shape
         res_c1 = fmap_c1
-        device_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        if res_n > device_core_num:
-            res_cut_n_outer, _ = sch[res].split(res_n_outer, nparts=device_core_num)
-            res_fused_axis = sch[res].fuse(res_cut_n_outer)
-        elif res_n * res_do > device_core_num:
-            if math.gcd(res_n * res_do, device_core_num) < device_core_num:
-                res_fused_axis = sch[res].fuse(res_n_outer, res_do_outer)
-            else:
-                res_n_factor = math.gcd(res_n, device_core_num)
-                res_do_factor = device_core_num // res_n_factor
-                res_cut_n_outer, res_cut_n_inner = sch[res].split(res_n_outer, nparts=res_n_factor)
-                res_cut_do_outer, res_cut_do_inner = sch[res].split(res_do_outer, nparts=res_do_factor)
-                sch[res].reorder(res_cut_n_outer, res_cut_do_outer, res_cut_n_inner, res_cut_do_inner)
-                res_fused_axis = sch[res].fuse(res_cut_n_outer, res_cut_do_outer)
-        elif res_n * res_do * res_c1 > device_core_num:
-            if math.gcd(res_n * res_do * res_c1, device_core_num) < device_core_num:
-                res_fused_axis = sch[res].fuse(res_n_outer, res_do_outer, res_c_outer)
-            else:
-                res_n_factor = math.gcd(res_n, device_core_num)
-                res_do_factor = math.gcd(res_do, device_core_num)
-                res_c1_factor = math.gcd(res_c1, device_core_num)
-                res_c1_factor = 1 if res_n_factor * res_do_factor > device_core_num else device_core_num // (
-                    res_n_factor * res_c1_factor)
-                res_c1_factor = max(res_c1_factor, 1)
-                res_do_factor = 1 if res_n_factor > device_core_num else device_core_num // res_n_factor
-                res_cut_n_outer, res_cut_n_inner = sch[res].split(res_n_outer, nparts=res_n_factor)
-                res_cut_do_outer, res_cut_do_inner = sch[res].split(res_do_outer, nparts=res_do_factor)
-                res_cut_c1_outer, res_cut_c1_inner = sch[res].split(res_c_outer, nparts=res_c1_factor)
-                sch[res].reorder(res_cut_n_outer, res_cut_do_outer, res_cut_c1_outer, res_cut_n_inner, res_cut_do_inner,
-                                 res_cut_c1_inner)
-                res_fused_axis = sch[res].fuse(res_cut_n_outer, res_cut_do_outer, res_cut_c1_outer)
-        else:
-            res_fused_axis = sch[res].fuse(res_n_outer, res_do_outer, res_c_outer)
-
+        res_n_factor, res_do_factor, res_c1_factor = _cal_multi_core_factor_3_axis(res_n, res_do, res_c1)
+        res_cut_n_outer, res_cut_n_inner = sch[res].split(res_n_outer, nparts=res_n_factor)
+        res_cut_do_outer, res_cut_do_inner = sch[res].split(res_do_outer, nparts=res_do_factor)
+        res_cut_c1_outer, res_cut_c1_inner = sch[res].split(res.op.axis[4], nparts=res_c1_factor)
+        sch[res].reorder(res_cut_n_outer, res_cut_do_outer, res_cut_c1_outer, res_cut_n_inner, res_cut_do_inner,
+                         res_cut_c1_inner)
+        res_fused_axis = sch[res].fuse(res_cut_n_outer, res_cut_do_outer, res_cut_c1_outer)
         block_idx = tvm.thread_axis('blockIdx.x')
         sch[res].bind(res_fused_axis, block_idx)
 
@@ -1093,8 +2162,8 @@ def extract_volume_patches(input_x, output_y, ksizes, strides, padding, kernel_n
     -------
     None
     """
-    _check_shape_and_format_vailded(input_x, output_y, ksizes, strides, padding, kernel_name)
-    ori_shape_5d = input_x.get("ori_shape")
+    ori_shape_5d, ksizes, strides = \
+        _check_shape_and_format_vailded(input_x, output_y, ksizes, strides, padding, kernel_name)
     fmap_n, fmap_d, fmap_h, fmap_w, fmap_c = ori_shape_5d
     dtype = input_x.get("dtype")
     input_dtype = dtype.lower()
@@ -1102,28 +2171,16 @@ def extract_volume_patches(input_x, output_y, ksizes, strides, padding, kernel_n
     shape = (fmap_n, fmap_d, (fmap_c + BLOCK_SIZE_ALIGN - 1) // BLOCK_SIZE_ALIGN, fmap_h, fmap_w, BLOCK_SIZE_ALIGN)
 
     data_input = tvm.placeholder(shape, name="data_input", dtype=input_dtype)
-    res, workspace_res = extract_volume_patches_compute(data_input, fmap_c, ksizes, strides, padding)
+    res = list(extract_volume_patches_compute(data_input, fmap_c, ksizes, strides, padding))
 
-    sch = tvm.create_schedule(res.op)
+    sch = tvm.create_schedule(res[0].op)
 
-    _extract_volume_patches_schedule(res, [sch], fmap_c)
+    _extract_volume_patches_schedule(res[0], [sch], fmap_c)
 
     def _write_workspace_info(workspace_list, kernel_name):
         """
         write workspace information
         """
-        def write_code(wkspace_dict, fname):
-            """
-            write information into json
-            """
-            fname = os.path.realpath(fname)
-            if fname.startswith(os.getcwd()):
-                if os.path.exists(fname):
-                    with open(fname, "r") as f:
-                        load_dict = json.load(f)
-                    load_dict.update(wkspace_dict)
-                    with open(fname, "w") as f:
-                        json.dump(load_dict, f, sort_keys=True, indent=4, separators=(',', ':'))
 
         def shape_to_list(shape):
             """
@@ -1153,9 +2210,10 @@ def extract_volume_patches(input_x, output_y, ksizes, strides, padding, kernel_n
                 os.mkdir("kernel_meta")
                 os.chmod("kernel_meta", stat.S_IRWXU + stat.S_IRGRP + stat.S_IXGRP)
             wkspace_dict = {"workspace": {"num": num, "size": total_size}}
-            write_code(wkspace_dict, "kernel_meta/" + kernel_name + ".json")
+            write_code(wkspace_dict, kernel_name)
 
     with tbe_platform.build_config:
-        tvm.build(sch, [data_input, res, workspace_res], "cce", name=kernel_name)
-        if fmap_c % BLOCK_SIZE_ALIGN != 0:
-            _write_workspace_info([workspace_res], kernel_name)
+        build_list = [data_input] + res
+        tvm.build(sch, build_list, "cce", name=kernel_name)
+        if len(res) > 1:
+            _write_workspace_info(res[1:], kernel_name)

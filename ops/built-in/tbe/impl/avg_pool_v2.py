@@ -17,7 +17,6 @@ avg_pool_v2
 """
 import te.lang.cce as tbe
 from te import tvm
-from te.utils import op_utils
 from te.utils import para_check
 
 
@@ -70,7 +69,7 @@ def _check_window_rule(ksize, strides, pads, data_format):
     """
     if len(pads) != 4:
         error_info = {}
-        error_info['errCode'] = op_utils.OP_ERROR_CODE_012
+        error_info['errCode'] = para_check.OP_ERROR_CODE_012
         error_info['op_name'] = 'avg_pool_v2'
         error_info['param_name'] = 'pads'
         error_info['min_value'] = '4'
@@ -85,7 +84,7 @@ def _check_window_rule(ksize, strides, pads, data_format):
     if data_format in ("NHWC",):
         if len(ksize) != 4:
             error_info = {}
-            error_info['errCode'] = op_utils.OP_ERROR_CODE_012
+            error_info['errCode'] = para_check.OP_ERROR_CODE_012
             error_info['op_name'] = 'avg_pool_v2'
             error_info['param_name'] = 'ksize'
             error_info['min_value'] = '4'
@@ -101,7 +100,7 @@ def _check_window_rule(ksize, strides, pads, data_format):
 
         elif ksize[0] != 1 or ksize[3] != 1:
             error_info = {}
-            error_info['errCode'] = op_utils.OP_ERROR_CODE_000
+            error_info['errCode'] = para_check.OP_ERROR_CODE_000
             error_info['op_name'] = 'avg_pool_v2'
             error_info['param_name'] = ",".join(("ksize[1]", "ksize[3]"))
             error_info['expected_value'] = '1'
@@ -114,7 +113,7 @@ def _check_window_rule(ksize, strides, pads, data_format):
                                 error_info['real_value']))
         if len(strides) != 4:
             error_info = {}
-            error_info['errCode'] = op_utils.OP_ERROR_CODE_012
+            error_info['errCode'] = para_check.OP_ERROR_CODE_012
             error_info['op_name'] = 'avg_pool_v2'
             error_info['param_name'] = 'strides'
             error_info['min_value'] = '4'
@@ -129,7 +128,7 @@ def _check_window_rule(ksize, strides, pads, data_format):
                                 error_info['real_value']))
         elif strides[0] != 1 or strides[3] != 1:
             error_info = {}
-            error_info['errCode'] = op_utils.OP_ERROR_CODE_000
+            error_info['errCode'] = para_check.OP_ERROR_CODE_000
             error_info['op_name'] = 'avg_pool_v2'
             error_info['param_name'] = ",".join(("strides[1]", "strodes[3]"))
             error_info['expected_value'] = '1'
@@ -143,7 +142,7 @@ def _check_window_rule(ksize, strides, pads, data_format):
     elif data_format in ("NC1HWC0", "NCHW"):
         if len(ksize) != 4:
             error_info = {}
-            error_info['errCode'] = op_utils.OP_ERROR_CODE_012
+            error_info['errCode'] = para_check.OP_ERROR_CODE_012
             error_info['op_name'] = 'avg_pool_v2'
             error_info['param_name'] = 'ksize'
             error_info['min_value'] = '4'
@@ -158,7 +157,7 @@ def _check_window_rule(ksize, strides, pads, data_format):
                                 error_info['real_value']))
         elif ksize[0] != 1 or ksize[1] != 1:
             error_info = {}
-            error_info['errCode'] = op_utils.OP_ERROR_CODE_000
+            error_info['errCode'] = para_check.OP_ERROR_CODE_000
             error_info['op_name'] = 'avg_pool_v2'
             error_info['param_name'] = ",".join(("ksize[0]", "ksize[1]"))
             error_info['expected_value'] = '1'
@@ -171,7 +170,7 @@ def _check_window_rule(ksize, strides, pads, data_format):
                                 error_info['real_value']))
         if len(strides) != 4:
             error_info = {}
-            error_info['errCode'] = op_utils.OP_ERROR_CODE_012
+            error_info['errCode'] = para_check.OP_ERROR_CODE_012
             error_info['op_name'] = 'avg_pool_v2'
             error_info['param_name'] = 'strides'
             error_info['min_value'] = '4'
@@ -186,7 +185,7 @@ def _check_window_rule(ksize, strides, pads, data_format):
                                 error_info['real_value']))
         elif strides[0] != 1 or strides[1] != 1:
             error_info = {}
-            error_info['errCode'] = op_utils.OP_ERROR_CODE_000
+            error_info['errCode'] = para_check.OP_ERROR_CODE_000
             error_info['op_name'] = 'avg_pool_v2'
             error_info['param_name'] = ",".join(("strides[0]", "strides[1]"))
             error_info['expected_value'] = '1'
@@ -199,7 +198,7 @@ def _check_window_rule(ksize, strides, pads, data_format):
                                 error_info['real_value']))
     else:
         error_info = {}
-        error_info['errCode'] = op_utils.OP_ERROR_CODE_015
+        error_info['errCode'] = para_check.OP_ERROR_CODE_015
         error_info['op_name'] = 'avg_pool_v2'
         error_info['param_name'] = 'x'
         error_info['excepted_format_list'] = ",".join(("NC1HWC0", "NCHW", "NHWC"))
@@ -219,7 +218,7 @@ def _check_pads(pads, ksize_h, ksize_w):
     """
     if pads[0] >= ksize_h or pads[1] >= ksize_h:
         error_info = {}
-        error_info['errCode'] = op_utils.OP_ERROR_CODE_002
+        error_info['errCode'] = para_check.OP_ERROR_CODE_002
         error_info['op_name'] = 'avg_pool_v2'
         error_info['param_name'] = ",".join(("pads[0]", "pads[1]"))
         error_info['min_value'] = '0'
@@ -233,7 +232,7 @@ def _check_pads(pads, ksize_h, ksize_w):
                             error_info['value']))
     if pads[2] >= ksize_w or pads[3] >= ksize_w:
         error_info = {}
-        error_info['errCode'] = op_utils.OP_ERROR_CODE_002
+        error_info['errCode'] = para_check.OP_ERROR_CODE_002
         error_info['op_name'] = 'avg_pool_v2'
         error_info['param_name'] = ",".join(("pads[2]", "pads[3]"))
         error_info['min_value'] = '0'
@@ -350,7 +349,8 @@ def _calculate_pads(padding, input_h, input_w, stride_h, stride_w, ksize_h, ksiz
 
 
 def avg_pool_v2_compute1(x, y, ksize, strides, padding="VALID", data_format="NHWC",
-                         is_fused_compute=True, kernel_name="avg_pool_v2"):
+                         is_fused_compute=True, kernel_name="avg_pool_v2",
+                         impl_mode="high_performance"):
     """
     function of avg_pool_v2 compute
 
@@ -374,6 +374,8 @@ def avg_pool_v2_compute1(x, y, ksize, strides, padding="VALID", data_format="NHW
     is_fused_compute : fuse or not
 
     kernel_name : cce kernel name, default value is "avg_pool_v2"
+
+    impl_mode : assign high_performance or high_precision
 
     Returns
     -------
@@ -404,7 +406,8 @@ def avg_pool_v2_compute1(x, y, ksize, strides, padding="VALID", data_format="NHW
                                        x(n, c1, h + in_slice_offset[2], w, c0),
                                        name="tensor_read_select",
                                        attrs=x.op.attrs)
-        res = tbe.pooling2d(select_tensor_in, window, stride, "AVG", padding, fusion_params=fusion_params)
+        res = tbe.pooling2d(select_tensor_in, window, stride, "AVG", padding,
+                            fusion_params=fusion_params, impl_mode=impl_mode)
     elif l1_fusion_type == 1:
         x.op.attrs["addr_type"].value = 1
         in_l1_flag = True
@@ -415,9 +418,10 @@ def avg_pool_v2_compute1(x, y, ksize, strides, padding="VALID", data_format="NHW
                                          x(n, c1, h, w, c0),
                                          name="l1_width_fusion_tensor_in",
                                          attrs=x.op.attrs)
-        res = tbe.pooling2d(l1_width_fusion_in, window, stride, "AVG", padding, fusion_params=fusion_params)
+        res = tbe.pooling2d(l1_width_fusion_in, window, stride, "AVG", padding,
+                            fusion_params=fusion_params, impl_mode=impl_mode)
     else:
-        res = tbe.pooling2d(x, window, stride, "AVG", padding, fusion_params=fusion_params)
+        res = tbe.pooling2d(x, window, stride, "AVG", padding, fusion_params=fusion_params, impl_mode=impl_mode)
 
     return res
 
@@ -427,8 +431,10 @@ def avg_pool_v2_compute1(x, y, ksize, strides, padding="VALID", data_format="NHW
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_STR,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-def avg_pool_v2(x, filter, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 0, 0), data_format="NCHW",
-                global_pooling=False, ceil_mode=False, exclusive=True, kernel_name="avg_pool_v2"):
+def avg_pool_v2(x, filter, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 0, 0),
+                data_format="NCHW", global_pooling=False, ceil_mode=False,
+                exclusive=True, kernel_name="avg_pool_v2",
+                impl_mode="high_performance"):
     """
     Parameters
     ----------
@@ -458,6 +464,8 @@ def avg_pool_v2(x, filter, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 
     exclusive : ignore padding area or not when calculating the average
 
     kernel_name : cce kernel name, default value is "avg_pool_v2"
+
+    impl_mode : assign high_performance or high_precision
 
     Returns
     -------
@@ -516,8 +524,10 @@ def avg_pool_v2(x, filter, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 
             ksize[3] = input_w
         padding = 'VALID'
 
-    if list(pads) == [0, 0, 0, 0]:
-        if ksize_h == input_h and ksize_w == input_w:
+    if list(pads) == [0, 0, 0, 0] and ksize_h == input_h and ksize_w == input_w:
+        if padding == "CALCULATED":
+            padding = 'VALID'
+        if padding == "SAME" and stride_h == input_h and stride_w == input_w:
             padding = 'VALID'
 
     if filter is not None:
@@ -542,7 +552,7 @@ def avg_pool_v2(x, filter, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 
 
         tensor_list = [tensor_in, filter_in, res]
     else:
-        res = avg_pool_v2_compute1(tensor_in, y, ksize, strides, padding, data_format, False, kernel_name)
+        res = avg_pool_v2_compute1(tensor_in, y, ksize, strides, padding, data_format, False, kernel_name, impl_mode)
 
         tensor_list = [tensor_in, res]
 

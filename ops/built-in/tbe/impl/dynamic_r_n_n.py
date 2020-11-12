@@ -27,7 +27,7 @@ from te.lang.cce import vmul
 from te.lang.cce import vmuls
 from te.lang.cce import vrec
 from te.lang.cce import vsub
-from te.lang.cce.rl_bank import rl_bank
+from te.domain.rl_bank import rl_bank
 from te.platform import scope_ca
 from te.platform import scope_cb
 from te.platform import scope_cbuf
@@ -40,7 +40,7 @@ from te.tik import Tik
 from te.tik import scope_gm
 from te.tvm import api as tvm
 from te.tvm.schedule import create_schedule
-from te.utils import check_para
+from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 def sigmoid(x):
@@ -537,20 +537,20 @@ def check_prama_dtype(input_x, weight, bias, init_h, init_c, y, output_h,
     """
 
     x_dtype = input_x.get("dtype").lower()
-    check_para.check_dtype(x_dtype, ["float16"], param_name="x")
+    para_check.check_dtype(x_dtype, ["float16"], param_name="x")
 
     w_dtype = weight.get("dtype").lower()
-    check_para.check_dtype(w_dtype, ["float16"], param_name="w")
+    para_check.check_dtype(w_dtype, ["float16"], param_name="w")
 
     output_h_dtype = output_h.get("dtype").lower()
-    check_para.check_dtype(output_h_dtype, ["float16"], param_name="output_h")
+    para_check.check_dtype(output_h_dtype, ["float16"], param_name="output_h")
 
     if init_h is not None:
         init_h_dtype = init_h.get("dtype").lower()
-        check_para.check_dtype(init_h_dtype, ["float16"], param_name="init_h")
+        para_check.check_dtype(init_h_dtype, ["float16"], param_name="init_h")
 
     bias_dtype = bias.get("dtype").lower()
-    check_para.check_dtype(bias_dtype, ["float16", "float32"], param_name="bias")
+    para_check.check_dtype(bias_dtype, ["float16", "float32"], param_name="bias")
 
     # check optional input
     if init_c is not None:
@@ -702,18 +702,18 @@ def check_attr(cell_type, direction, cell_depth, use_peephole, keep_prob,
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "attr activation only support tanh, please check!")
 
 
-@check_para.check_op_params(check_para.REQUIRED_INPUT, check_para.REQUIRED_INPUT, check_para.REQUIRED_INPUT,
-                            check_para.OPTION_INPUT, check_para.OPTION_INPUT,
-                            check_para.OPTION_INPUT, check_para.OPTION_INPUT, check_para.OPTION_INPUT,
-                            check_para.OPTION_INPUT, check_para.OPTION_INPUT,
-                            check_para.OPTION_OUTPUT, check_para.OPTION_OUTPUT, check_para.OPTION_OUTPUT,
-                            check_para.OPTION_OUTPUT, check_para.OPTION_OUTPUT,
-                            check_para.OPTION_OUTPUT, check_para.OPTION_OUTPUT, check_para.OPTION_OUTPUT,
-                            check_para.OPTION_ATTR_STR, check_para.OPTION_ATTR_STR,
-                            check_para.OPTION_ATTR_INT, check_para.OPTION_ATTR_BOOL, check_para.OPTION_ATTR_FLOAT,
-                            check_para.OPTION_ATTR_FLOAT, check_para.OPTION_ATTR_INT, check_para.OPTION_ATTR_BOOL,
-                            check_para.OPTION_ATTR_STR, check_para.OPTION_ATTR_FLOAT,
-                            check_para.OPTION_ATTR_BOOL, check_para.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.OPTION_INPUT, para_check.OPTION_INPUT,
+                            para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT,
+                            para_check.OPTION_INPUT, para_check.OPTION_INPUT,
+                            para_check.OPTION_OUTPUT, para_check.OPTION_OUTPUT, para_check.OPTION_OUTPUT,
+                            para_check.OPTION_OUTPUT, para_check.OPTION_OUTPUT,
+                            para_check.OPTION_OUTPUT, para_check.OPTION_OUTPUT, para_check.OPTION_OUTPUT,
+                            para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_STR,
+                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL,
+                            para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
 # pylint: disable=too-many-function-args,too-many-statements
 def dynamic_r_n_n(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,

@@ -12,3 +12,9 @@ endif()
 set(LIBRARY_OUTPUT_PATH ${TF_PLUGIN_TARGET_OUT_DIR})
 
 add_library(${TF_PLUGIN_TARGET} SHARED ${SRCS})
+
+target_compile_definitions(${TF_PLUGIN_TARGET} PRIVATE
+        google=ascend_private
+        )
+
+target_link_libraries(${TF_PLUGIN_TARGET} ${ASCEND_INC}/../lib64/libgraph.so)

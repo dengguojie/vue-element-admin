@@ -17,8 +17,8 @@ dynamic square
 """
 import functools
 
-import te.lang.dynamic as dynamic
-from te import platform as tbe_platform
+import te.lang.cce as tbe
+import te.lang.base as tbe_base
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
@@ -43,11 +43,11 @@ def square_compute(input_x, output_y, kernel_name="square"):
     res : tvm.tensor
         the result of square
     """
-    res = dynamic.vmul(input_x, input_x)
+    res = tbe.vmul(input_x, input_x)
     return res
 
 
-@tbe_platform.register_operator("Square")
+@tbe_base.register_operator("Square")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def square(input_x, output, kernel_name="square"):
     """
@@ -73,10 +73,10 @@ def square(input_x, output, kernel_name="square"):
     check_list = ("float16", "float32", "int32")
     para_check.check_dtype(x_dtype, check_list, param_name="input_x")
 
-    ins = tbe_platform.classify([input_x], tbe_platform.Mode.ELEWISE)
+    ins = tbe_base.classify([input_x], tbe_base.Mode.ELEWISE)
     schedules, tensors = [], []
     for (input_x,) in ins:
-        with tbe_platform.compute():
+        with tbe_base.compute():
             # shape
             x_shape = shape_util.variable_shape([input_x])
             fuseshape = [1]
@@ -87,9 +87,9 @@ def square(input_x, output, kernel_name="square"):
 
             tensors.append((data_x, res))
         with tvm.target.cce():
-            sch = dynamic.auto_schedule(res)
+            sch = tbe.auto_schedule(res)
         schedules.append(sch)
 
     # build
     config = {"name": kernel_name, "tensor_list": tensors}
-    dynamic.build(schedules, config)
+    tbe.build(schedules, config)

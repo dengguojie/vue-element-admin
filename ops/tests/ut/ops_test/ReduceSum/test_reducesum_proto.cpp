@@ -33,7 +33,7 @@ class ReduceSum : public testing::Test {
   }
 };
 
-TEST_F(ReduceSum, reducesum_infer_shape_fp16) {
+TEST_F(ReduceSum, reducesum_infer_shape_001) {
   ge::op::ReduceSum op;
   std::vector<std::pair<int64_t,int64_t>> shape_range = {{2, 2}, {100, 200}, {4, 8}};
   auto tensor_desc = create_desc_shape_range({-1, 100, 4},
@@ -57,15 +57,15 @@ TEST_F(ReduceSum, reducesum_infer_shape_fp16) {
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
   std::vector<std::pair<int64_t,int64_t>> output_shape_range;
   EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
-  // std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {
-  //     {1, 2},
-  //     {1, 200},
-  //     {1, 8},
-  // };
-  // EXPECT_EQ(output_shape_range, expected_shape_range);
+  std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {
+    {1, 2},
+    {1, 200},
+    {1, 8},
+  };
+  EXPECT_EQ(output_shape_range, expected_shape_range);
 }
 
-TEST_F(ReduceSum, reducesum_infer_shape_fp32) {
+TEST_F(ReduceSum, reducesum_infer_shape_002) {
   ge::op::ReduceSum op;
   std::vector<std::pair<int64_t,int64_t>> shape_range = {{2, 2}, {100, 200}, {4, 8}};
   auto tensor_desc = create_desc_shape_range({-1, 100, 4},
@@ -88,8 +88,306 @@ TEST_F(ReduceSum, reducesum_infer_shape_fp32) {
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
   std::vector<std::pair<int64_t,int64_t>> output_shape_range;
   EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
-  // std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {
-  //     {1, 200}
-  // };
-  // EXPECT_EQ(output_shape_range, expected_shape_range);
+  std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {
+    {2, 200}
+  };
+  EXPECT_EQ(output_shape_range, expected_shape_range);
+}
+
+TEST_F(ReduceSum, reducesum_infer_shape_003) {
+  ge::op::ReduceSum op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {{2, 2}, {7, 7}, {3, 3}};
+  auto tensor_desc = create_desc_shape_range({2, 7, 3},
+                                             ge::DT_FLOAT16, ge::FORMAT_ND,
+                                             {2, 7, 3},
+                                             ge::FORMAT_ND, shape_range);
+
+  auto axes_desc = create_desc_shape_range({-2,},
+                                           ge::DT_INT32, ge::FORMAT_ND,
+                                           {-2,},
+                                           ge::FORMAT_ND, {});
+
+  op.UpdateInputDesc("x", tensor_desc);
+  op.UpdateInputDesc("axes", axes_desc);
+  op.SetAttr("keep_dims", true);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {-1, -1, -1};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  std::vector<std::pair<int64_t,int64_t>> output_shape_range;
+  EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
+  std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {
+    {1, 2},
+    {1, 7},
+    {1, 3},
+  };
+  EXPECT_EQ(output_shape_range, expected_shape_range);
+}
+
+TEST_F(ReduceSum, reducesum_infer_shape_004) {
+  ge::op::ReduceSum op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {{1, 25}, {1, 25}, {1, 25}, {3, 3}, {1, 1}};
+  auto tensor_desc = create_desc_shape_range({-1, -1, -1, 3, 1},
+                                             ge::DT_FLOAT16, ge::FORMAT_ND,
+                                             {-1, -1, -1, 3, 1},
+                                             ge::FORMAT_ND, shape_range);
+
+  auto axes_desc = create_desc_shape_range({2,},
+                                           ge::DT_INT32, ge::FORMAT_ND,
+                                           {2,},
+                                           ge::FORMAT_ND, {});
+
+  op.UpdateInputDesc("x", tensor_desc);
+  op.UpdateInputDesc("axes", axes_desc);
+  op.SetAttr("keep_dims", false);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {-1, -1, -1};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  std::vector<std::pair<int64_t,int64_t>> output_shape_range;
+  EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
+  std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {
+    {1, 25},
+    {1, 25},
+    {1, 25},
+  };
+  EXPECT_EQ(output_shape_range, expected_shape_range);
+}
+
+TEST_F(ReduceSum, reducesum_infer_shape_005) {
+  ge::op::ReduceSum op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {{2, 2}, {13, 13}, {13, 13}, {3, 3}, {1, 1}};
+  auto tensor_desc = create_desc_shape_range({2, 13, 13, 3, 1},
+                                             ge::DT_FLOAT16, ge::FORMAT_ND,
+                                             {2, 13, 13, 3, 1},
+                                             ge::FORMAT_ND, shape_range);
+
+  auto axes_desc = create_desc_shape_range({-1,},
+                                           ge::DT_INT32, ge::FORMAT_ND,
+                                           {-1,},
+                                           ge::FORMAT_ND, {});
+
+  op.UpdateInputDesc("x", tensor_desc);
+  op.UpdateInputDesc("axes", axes_desc);
+  op.SetAttr("keep_dims", true);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {-1, -1, -1, -1, 1};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  std::vector<std::pair<int64_t,int64_t>> output_shape_range;
+  EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
+  std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {
+    {1, 2},
+    {1, 13},
+    {1, 13},
+    {1, 3},
+    {1, 1},
+  };
+  EXPECT_EQ(output_shape_range, expected_shape_range);
+}
+
+TEST_F(ReduceSum, reducesum_infer_shape_006) {
+  ge::op::ReduceSum op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {{2, 2}, {7, 7}, {3, 3}};
+  auto tensor_desc = create_desc_shape_range({2, 7, 3},
+                                             ge::DT_FLOAT16, ge::FORMAT_ND,
+                                             {2, 7, 3},
+                                             ge::FORMAT_ND, shape_range);
+
+  auto axes_desc = create_desc_shape_range({-2,},
+                                           ge::DT_INT32, ge::FORMAT_ND,
+                                           {-2,},
+                                           ge::FORMAT_ND, {});
+
+  op.UpdateInputDesc("x", tensor_desc);
+  op.UpdateInputDesc("axes", axes_desc);
+  op.SetAttr("keep_dims", false);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {-2};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  std::vector<std::pair<int64_t,int64_t>> output_shape_range;
+  EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
+  std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {};
+  EXPECT_EQ(output_shape_range, expected_shape_range);
+}
+
+TEST_F(ReduceSum, reducesum_infer_shape_007) {
+  ge::op::ReduceSum op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {{2, 2}, {4, 7}, {3, 3}};
+  auto tensor_desc = create_desc_shape_range({2, -1, 3},
+                                             ge::DT_FLOAT16, ge::FORMAT_ND,
+                                             {2, -1, 3},
+                                             ge::FORMAT_ND, shape_range);
+
+  auto axes_desc = create_desc_shape_range({-1,},
+                                           ge::DT_INT32, ge::FORMAT_ND,
+                                           {-1,},
+                                           ge::FORMAT_ND, {});
+
+  op.UpdateInputDesc("x", tensor_desc);
+  op.UpdateInputDesc("axes", axes_desc);
+  op.SetAttr("keep_dims", true);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {-1, -1, -1};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  std::vector<std::pair<int64_t,int64_t>> output_shape_range;
+  EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
+  std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {
+    {1, 2},
+    {1, 7},
+    {1, 3},
+  };
+  EXPECT_EQ(output_shape_range, expected_shape_range);
+}
+
+TEST_F(ReduceSum, reducesum_infer_shape_008) {
+  ge::op::ReduceSum op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {};
+  auto tensor_desc = create_desc_shape_range({},
+                                             ge::DT_FLOAT16, ge::FORMAT_ND,
+                                             {},
+                                             ge::FORMAT_ND, shape_range);
+
+  auto axes_desc = create_desc_shape_range({},
+                                           ge::DT_INT32, ge::FORMAT_ND,
+                                           {},
+                                           ge::FORMAT_ND, {});
+
+  op.UpdateInputDesc("x", tensor_desc);
+  op.UpdateInputDesc("axes", axes_desc);
+  op.SetAttr("keep_dims", false);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  std::vector<std::pair<int64_t,int64_t>> output_shape_range;
+  EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
+  std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {};
+  EXPECT_EQ(output_shape_range, expected_shape_range);
+}
+
+TEST_F(ReduceSum, reducesum_infer_shape_009) {
+  ge::op::ReduceSum op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {};
+  auto tensor_desc = create_desc_shape_range({},
+                                             ge::DT_FLOAT16, ge::FORMAT_ND,
+                                             {},
+                                             ge::FORMAT_ND, shape_range);
+
+  auto axes_desc = create_desc_shape_range({},
+                                           ge::DT_INT32, ge::FORMAT_ND,
+                                           {},
+                                           ge::FORMAT_ND, {});
+
+  op.UpdateInputDesc("x", tensor_desc);
+  op.UpdateInputDesc("axes", axes_desc);
+  op.SetAttr("keep_dims", true);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  std::vector<std::pair<int64_t,int64_t>> output_shape_range;
+  EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
+  std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {};
+  EXPECT_EQ(output_shape_range, expected_shape_range);
+}
+
+TEST_F(ReduceSum, reducesum_infer_shape_010) {
+  ge::op::ReduceSum op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {};
+  auto tensor_desc = create_desc_shape_range({},
+                                             ge::DT_FLOAT16, ge::FORMAT_ND,
+                                             {},
+                                             ge::FORMAT_ND, shape_range);
+
+  auto axes_desc = create_desc_shape_range({-2,},
+                                           ge::DT_INT32, ge::FORMAT_ND,
+                                           {-2,},
+                                           ge::FORMAT_ND, {});
+
+  op.UpdateInputDesc("x", tensor_desc);
+  op.UpdateInputDesc("axes", axes_desc);
+  op.SetAttr("keep_dims", false);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  std::vector<std::pair<int64_t,int64_t>> output_shape_range;
+  EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
+  std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {};
+  EXPECT_EQ(output_shape_range, expected_shape_range);
+}
+
+TEST_F(ReduceSum, reducesum_infer_shape_011) {
+  ge::op::ReduceSum op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {};
+  auto tensor_desc = create_desc_shape_range({},
+                                             ge::DT_FLOAT16, ge::FORMAT_ND,
+                                             {},
+                                             ge::FORMAT_ND, shape_range);
+
+  auto axes_desc = create_desc_shape_range({-2,},
+                                           ge::DT_INT32, ge::FORMAT_ND,
+                                           {-2,},
+                                           ge::FORMAT_ND, {});
+
+  op.UpdateInputDesc("x", tensor_desc);
+  op.UpdateInputDesc("axes", axes_desc);
+  op.SetAttr("keep_dims", true);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  std::vector<std::pair<int64_t,int64_t>> output_shape_range;
+  EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
+  std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {};
+  EXPECT_EQ(output_shape_range, expected_shape_range);
+}
+
+TEST_F(ReduceSum, reducesum_infer_shape_012) {
+  ge::op::ReduceSum op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {{2, 25}, {2, 25}, {2, 25}, {3, 3}, {1, 1}};
+  auto tensor_desc = create_desc_shape_range({-1, -1, -1, 3, 1},
+                                             ge::DT_FLOAT16, ge::FORMAT_ND,
+                                             {-1, -1, -1, 3, 1},
+                                             ge::FORMAT_ND, shape_range);
+
+  auto axes_desc = create_desc_shape_range({1,},
+                                           ge::DT_INT32, ge::FORMAT_ND,
+                                           {1,},
+                                           ge::FORMAT_ND, {});
+
+  op.UpdateInputDesc("x", tensor_desc);
+  op.UpdateInputDesc("axes", axes_desc);
+  op.SetAttr("keep_dims", true);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {-1,-1,-1,-1,1};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  std::vector<std::pair<int64_t,int64_t>> output_shape_range;
+  EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
+  std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {{1, 25}, {1, 25}, {1, 25}, {1, 3}, {1, 1}};
+  EXPECT_EQ(output_shape_range, expected_shape_range);
 }

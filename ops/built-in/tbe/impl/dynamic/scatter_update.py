@@ -18,12 +18,7 @@ scatter_update
 from te import tik
 from te import platform as tbe_platform
 import te.lang.dynamic
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import OPTION_ATTR_BOOL
+from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 # max int32
@@ -52,8 +47,8 @@ class ScatterUpdate():
         self.out_dtype = var_out.get("dtype").lower()
         indices_support_dtype_list = ("int32", )
         var_support_dtype_list = ("float32", )
-        check_dtype(self.indices_dtype, indices_support_dtype_list, param_name="indices")
-        check_dtype(self.var_dtype, var_support_dtype_list, param_name="var")
+        para_check.check_dtype(self.indices_dtype, indices_support_dtype_list, param_name="indices")
+        para_check.check_dtype(self.var_dtype, var_support_dtype_list, param_name="var")
         if self.var_dtype != self.updates_dtype:
             error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "updates", "var",
                                                                   self.updates_dtype, self.var_dtype)
@@ -255,8 +250,8 @@ class ScatterUpdate():
 
 # pylint: disable=unused-argument
 @te.op.register_operator("ScatterUpdate")
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def scatter_update(var, indices, updates, var_out, use_locking=False,
                    kernel_name="scatter_update"):
     """

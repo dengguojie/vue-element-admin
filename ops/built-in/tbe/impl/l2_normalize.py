@@ -21,6 +21,7 @@ from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=unused-argument
@@ -102,9 +103,9 @@ def l2_normalize(input_x, output_y, axis, epsilon, kernel_name="l2_normalize"):
 
     for i in axis:
         if not isinstance(i, int):
-            raise RuntimeError("the axis element must be int")
+            error_manager_vector.raise_err_input_value_invalid(kernel_name, "axis", "int", "not int")
         if i >= len(shape) or i < -len(shape):
-            raise RuntimeError("the axis is invalid")
+            error_manager_vector.raise_err_input_param_not_in_range(kernel_name, "axis", -len(shape), len(shape), i)
 
     data_input = tvm.placeholder(shape, name="data_input", dtype=input_dtype)
     res = l2_normalize_compute(data_input, output_y,

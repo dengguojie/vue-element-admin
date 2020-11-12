@@ -21,10 +21,33 @@ from te import tik
 from impl import yolo_v3_cls_prob
 from impl import common_util
 from impl import constant_util as constant
+from impl.util import util_select_op_base
 
 PRE_NMS_TOPN = 1024
 
 UB_NUM = 10240
+
+
+def get_op_support_info(coord_data_low_dic, coord_data_mid_dic,
+                        coord_data_high_dic, obj_prob_low_dic,
+                        obj_prob_mid_dic,
+                        obj_prob_high_dic, classes_prob_low_dic,
+                        classes_prob_mid_dic, classes_prob_high_dic,
+                        img_info_dic, windex1_dic, windex2_dic,
+                        windex3_dic, hindex1_dic, hindex2_dic,
+                        hindex3_dic, box_out_dic, box_out_num_dic,
+                        biases_low, biases_mid, biases_high, boxes=3,
+                        coords=4,
+                        classes=80, relative=True, obj_threshold=0.5,
+                        post_nms_topn=1024, score_threshold=0.5,
+                        iou_threshold=0.45, pre_nms_topn=512,
+                        kernel_name="yolo_v3_detection_output_d"):
+    """
+    get split info
+    only support split N
+    """
+    return util_select_op_base.get_split_n_info(
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [0, 1])
 
 
 # pylint: disable=invalid-name, too-many-locals, too-many-arguments

@@ -101,8 +101,8 @@ Status PassThroughFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   bool reverse = true;
   FUSION_PASS_CHECK(
       !ge::AttrUtils::GetBool(passThroughDesc, "reverse", reverse),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Node[%s]: Can not get passthrough reverse attr.", passThroughName.c_str()),
-      return FAILED);
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "Node[%s]: Can not get passthrough reverse attr.", passThroughName.c_str()),
+      return NOT_CHANGED);
   FUSION_PASS_CHECK(
       reverse,
       OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s]: passthrough reverse is true, do not fusion.", passThroughName.c_str()),

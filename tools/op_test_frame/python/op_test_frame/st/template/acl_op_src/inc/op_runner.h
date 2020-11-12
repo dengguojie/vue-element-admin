@@ -28,7 +28,7 @@ public:
     /**
      * @brief Destructor
      */
-    ~OpRunner();
+    virtual ~OpRunner();
 
     /**
     * @brief Init op runner
@@ -39,55 +39,55 @@ public:
      * @brief Get number of inputs
      * @return number of inputs
      */
-    size_t NumInputs();
+    const size_t NumInputs();
 
     /**
      * @brief Get number of outputs
      * @return number of outputs
      */
-    size_t NumOutputs();
+    const size_t NumOutputs();
 
     /**
      * @brief Get input size by index
      * @param [in] index: input index
      * @return size of the input
      */
-    size_t GetInputSize(size_t index);
+    const size_t GetInputSize(size_t index) const;
 
     /**
      * @brief Get output size by index
      * @param [in] index: output index
      * @return size of the output
      */
-    size_t GetOutputSize(size_t index);
+    size_t GetOutputSize(size_t index) const;
 
     /**
      * @brief Get input element count by index
      * @param i[in] ndex: input index
      * @return element count of the input
      */
-    size_t GetInputElementCount(size_t index);
+    size_t GetInputElementCount(size_t index) const;
 
     /**
      * @brief Get output element count by index
      * @param [in] index: output index
      * @return element count of the output
      */
-    size_t GetOutputElementCount(size_t index);
+    size_t GetOutputElementCount(size_t index) const;
 
     /**
      * @brief Get input shape by index
      * @param [in] index: input index
      * @return shape of the output
      */
-    std::vector<int64_t> GetInputShape(size_t index);
+    std::vector<int64_t> GetInputShape(size_t index) const;
 
     /**
      * @brief Get output shape by index
      * @param [in] index: output index
      * @return shape of the output
      */
-    std::vector<int64_t> GetOutputShape(size_t index);
+    std::vector<int64_t> GetOutputShape(size_t index) const;
 
     /**
      * @brief Get input buffer(host memory) by index

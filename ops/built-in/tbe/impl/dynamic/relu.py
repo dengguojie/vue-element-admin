@@ -17,34 +17,30 @@ dynamic relu
 """
 from __future__ import absolute_import
 
-import te.lang.dynamic
+import te.lang.cce as tbe
 from te import tvm
 from te import platform as tbe_platform
+import te.lang.base as tbe_base
 from functools import reduce as reduceIns
-from te.platform.shape_classifier import classify
-from te.platform.shape_classifier import Mode
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import variable_shape
+from te.lang.base.shape_classifier import classify
+from te.lang.base.shape_classifier import Mode
+from te.utils import shape_util
+from te.utils import para_check
 from impl.util import fusion_util
-from topi import generic
 
 # const value
 CONST_ZERO = 0
 
 
-@te.op.register_fusion_compute("Relu")
-def relu_fusion_compute(x, y, kernel_name="relu"):
-    fusion_util.check_fusion_input([x])
+@tbe_base.register_fusion_compute("Relu")
+def relu_fusion_compute(input_x, output_y, kernel_name="relu"):
+    fusion_util.check_fusion_input([input_x])
 
-    dict_x = fusion_util.extract_dict(x)
+    dict_x = fusion_util.extract_dict(input_x)
     shape_x = fusion_util.normalize_shape([dict_x])[0]
-    ph_x = fusion_util.create_placeholder(x, shape_x)
+    ph_x = fusion_util.create_placeholder(input_x, shape_x)
 
-    res = relu_compute(ph_x, y, kernel_name)
+    res = relu_compute(ph_x, output_y, kernel_name)
 
     return {"op_placeholder": [ph_x], "op_res": [res]}
 
@@ -70,24 +66,24 @@ def relu_compute(x, y, kernel_name="relu"):
     compatible_dtype = x.dtype
 
     if inp_dtype == 'int8' and tbe_platform.cce_conf.api_check_support(
-            'te.lang.dynamic.cast_to', 's82f16'):
-        x = te.lang.dynamic.cast_to(x, 'float16')
+            'te.lang.cce.cast_to', 's82f16'):
+        x = tbe.cast_to(x, 'float16')
         compatible_dtype = 'float16'
-    if tbe_platform.cce_conf.api_check_support('te.lang.dynamic.vrelu',
+    if tbe_platform.cce_conf.api_check_support('te.lang.cce.vrelu',
                                                compatible_dtype):
-        data_res = te.lang.dynamic.vrelu(x)
+        data_res = tbe.vrelu(x)
     else:
-        tensor_zero = te.lang.dynamic.broadcast(
+        tensor_zero = tbe.broadcast(
             tvm.const(CONST_ZERO, compatible_dtype), shape)
-        data_res = te.lang.dynamic.vmax(x, tensor_zero)
+        data_res = tbe.vmax(x, tensor_zero)
 
-    data_res = te.lang.dynamic.cast_to(data_res, inp_dtype)
+    data_res = tbe.cast_to(data_res, inp_dtype)
 
     return data_res
 
 
-@te.op.register_operator("Relu")
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@tbe_base.register_operator("Relu")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def relu(x, y, kernel_name="relu"):
     """
     Algrithm: relu(x) = max(x, 0)
@@ -112,13 +108,13 @@ def relu(x, y, kernel_name="relu"):
     # check input tensor data_type
     dtype_x = x.get("dtype").lower()
     check_list = ("float16", "float32", "int8", "int32")
-    check_dtype(dtype_x, check_list, param_name="x")
+    para_check.check_dtype(dtype_x, check_list, param_name="x")
 
     ins = classify([x], Mode.ELEWISE)
     schedules, tensors = [], []
     for (x,) in ins:
-        with te.op.compute():
-            shape_x = variable_shape([x])
+        with tbe_base.compute():
+            shape_x = shape_util.variable_shape([x])
 
             fuse_shape = [1]
             fuse_shape[0] = reduceIns(lambda x, y: x * y, shape_x[0])
@@ -129,9 +125,9 @@ def relu(x, y, kernel_name="relu"):
 
             tensors.append([input_data, res])
         with tvm.target.cce():
-            sch = generic.auto_schedule(res)
+            sch = tbe.auto_schedule(res)
         schedules.append(sch)
 
     config = {"name": kernel_name, "tensor_list": tensors}
 
-    te.lang.dynamic.build(schedules, config)
+    tbe.build(schedules, config)

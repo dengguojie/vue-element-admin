@@ -104,6 +104,8 @@ static graphStatus PadDInferShapeAndType(ge::Operator& op, std::vector<std::vect
 
 IMPLEMT_COMMON_INFERFUNC(PadDInferShape) {
   OP_LOGD("OP[PadD]", "PadDInferShape Begin.");
+  const vector<string> depends;
+  PREPARE_DYNAMIC_SHAPE(depends);
   std::vector<std::vector<int64_t>> paddings;
   if (ge::GRAPH_SUCCESS != op.GetAttr("paddings", paddings)) {
     OpsGetAttrErrReport(op.GetName(), "paddings");
@@ -180,10 +182,10 @@ static graphStatus PadInferShapeAndType(ge::Operator& op, std::vector<int64_t>& 
 
 IMPLEMT_COMMON_INFERFUNC(PadInferShape) {
   OP_LOGD("OP[Pad]", "PadInferShape Begin.");
+  const vector<string> depend_names = {"paddings"};
+  PREPARE_DYNAMIC_SHAPE(depend_names);
   Tensor paddings_tensor;
-  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  op_desc->SetOpInferDepends({"paddings"});
-
+ 
   if (ge::GRAPH_SUCCESS != op.GetInputConstData("paddings", paddings_tensor)) {
     Shape shape_x = op.GetInputDesc("x").GetShape();
 
@@ -227,6 +229,199 @@ IMPLEMT_COMMON_INFERFUNC(PadInferShape) {
 
 COMMON_INFER_FUNC_REG(Pad, PadInferShape);
 // ----------------Pad Op End-------------------
+
+// ----------------PadV2D Op Begin-------------------
+static graphStatus PadV2DInferShapeAndType(ge::Operator& op, std::vector<std::vector<int64_t>>& paddings) {
+  std::vector<std::pair<int64_t, int64_t>> shape_range;
+  Shape shape_x = op.GetInputDesc("x").GetShape();
+  op.GetInputDesc("x").GetShapeRange(shape_range);
+  // shape_x is UNKNOWN_RANK
+  if (shape_x.GetDims() == UNKNOWN_RANK) {
+    DataType input_dtype = op.GetInputDesc("x").GetDataType();
+    vector<int64_t> shape(1, -2);
+    Shape out_shape(shape);
+    TensorDesc tensordesc_output = op.GetOutputDesc("y");
+    tensordesc_output.SetShape(out_shape);
+    tensordesc_output.SetDataType(input_dtype);
+    (void)op.UpdateOutputDesc("y", tensordesc_output);
+    return GRAPH_SUCCESS;
+  }
+  // adapter net
+  vector<int64_t> shape;
+  int64_t dim_cur = 0;
+  if (shape_x.GetDimNum() != paddings.size()) {
+    OpsInputShapeErrReport(op.GetName(), "Paddings and shape should be the same length", "x",
+                           ConcatString(shape_x.GetDimNum()));
+    OP_LOGE(op.GetName().c_str(),
+            "Paddings and shape are not the same length.");
+    return GRAPH_FAILED;
+  }
+  for (size_t dim = 0; dim < shape_x.GetDimNum(); dim++) {
+    if (paddings[dim].size() != 2) {
+      OpsInputShapeErrReport(op.GetName(), "Paddings's shape should be in the form of (n,2)", "paddings",
+                             ConcatString(paddings[dim].size()));
+      OP_LOGE(op.GetName().c_str(),
+              "Paddings's shape"
+              "is not in the form of (n,2)");
+      return GRAPH_FAILED;
+    }
+  }
+  for (size_t dim = 0; dim < shape_x.GetDimNum(); dim++) {
+    dim_cur = shape_x.GetDim(dim) + paddings[dim][0] + paddings[dim][1];
+    OP_LOGD("OP[PadV2D]", "output_shape[%d] is [%d].", dim, dim_cur);
+    shape.push_back(dim_cur);
+  }
+
+  // Dynamic Set Range
+  std::vector<std::pair<int64_t, int64_t>> out_range = shape_range;
+  if (shape_range.size() > 0) {
+    for (size_t dim = 0; dim < shape_range.size(); dim++) {
+      OP_LOGD("OP[PadV2D]", "Bout_range[%d].first is [%d].", dim, out_range[dim].first);
+      OP_LOGD("OP[PadV2D]", "Bout_range[%d].second is [%d].", dim, out_range[dim].second);
+      out_range[dim].first += (out_range[dim].first >= 0) ? paddings[dim][0] + paddings[dim][1] : 0;
+      out_range[dim].second += (out_range[dim].second >= 0) ? paddings[dim][0] + paddings[dim][1] : 0;
+      OP_LOGD("OP[PadV2D]", "Aout_range[%d].first is [%d].", dim, out_range[dim].first);
+      OP_LOGD("OP[PadV2D]", "Aout_range[%d].second is [%d].", dim, out_range[dim].second);
+    }
+  }
+
+  DataType input_dtype = op.GetInputDesc("x").GetDataType();
+  Shape out_shape(shape);
+  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  tensordesc_output.SetShape(out_shape);
+  tensordesc_output.SetDataType(input_dtype);
+  if (out_range.size() > 0) {
+    tensordesc_output.SetShapeRange(out_range);
+  }
+  (void)op.UpdateOutputDesc("y", tensordesc_output);
+  OP_LOGD("OP[PadV2D]", "PadV2DInferShape END.");
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(PadV2DInferShape) {
+  OP_LOGD("OP[PadV2D]", "PadV2DInferShape Begin.");
+  std::vector<std::vector<int64_t>> paddings;
+  if (ge::GRAPH_SUCCESS != op.GetAttr("paddings", paddings)) {
+    OpsGetAttrErrReport(op.GetName(), "paddings");
+    return GRAPH_FAILED;
+  }
+
+  return PadV2DInferShapeAndType(op, paddings);
+}
+
+COMMON_INFER_FUNC_REG(PadV2D, PadV2DInferShape);
+// ----------------PadV2D Op End-------------------
+
+// ----------------PadV2 Op Begin-------------------
+static graphStatus PadV2InferShapeAndType(ge::Operator& op, std::vector<int64_t>& paddings) {
+  Shape shape_x = op.GetInputDesc("x").GetShape();
+  // shape_x is UNKNOWN_RANK
+  if (shape_x.GetDims() == UNKNOWN_RANK) {
+    OP_LOGD("OP[PadV2]", "shape_x is UNKNOWN_RANK. Couldn't set shape_range");
+    DataType input_dtype = op.GetInputDesc("x").GetDataType();
+    vector<int64_t> shape(1, -2);
+    Shape out_shape(shape);
+    TensorDesc tensordesc_output = op.GetOutputDesc("y");
+    tensordesc_output.SetShape(out_shape);
+    tensordesc_output.SetDataType(input_dtype);
+    (void)op.UpdateOutputDesc("y", tensordesc_output);
+    return GRAPH_SUCCESS;
+  }
+
+  // adapter net
+  vector<int64_t> shape;
+  int64_t dim_cur = 0;
+  if (shape_x.GetDimNum() * 2 != paddings.size()) {
+    return GRAPH_FAILED;
+  }
+
+  for (size_t dim = 0; dim < shape_x.GetDimNum(); dim++) {
+    dim_cur = shape_x.GetDim(dim) + paddings[dim * 2] + paddings[dim * 2 + 1];
+    shape.push_back(dim_cur);
+  }
+
+  for (size_t dim = 0; dim < shape_x.GetDimNum(); dim++) {
+    if (shape_x.GetDim(dim) == UNKNOWN_DIM) {
+      shape[dim] = UNKNOWN_DIM;
+    }
+  }
+
+  std::vector<std::pair<int64_t, int64_t>> shape_range;
+  op.GetInputDesc("x").GetShapeRange(shape_range);
+  std::vector<std::pair<int64_t, int64_t>> out_range = shape_range;
+  // Dynamic Set Range
+  if (shape_range.size() > 0) {
+    for (size_t dim = 0; dim < shape_range.size(); dim++) {
+      OP_LOGD("OP[PadV2]", "Bout_range[%d].first is [%d].", dim, out_range[dim].first);
+      OP_LOGD("OP[PadV2]", "Bout_range[%d].second is [%d].", dim, out_range[dim].second);
+      out_range[dim].first += (out_range[dim].first >= 0) ? paddings[dim * 2] + paddings[dim * 2 + 1] : 0;
+      out_range[dim].second += (out_range[dim].second >= 0) ? paddings[dim * 2] + paddings[dim * 2 + 1] : 0;
+      OP_LOGD("OP[PadV2]", "Aout_range[%d].first is [%d].", dim, out_range[dim].first);
+      OP_LOGD("OP[PadV2]", "Aout_range[%d].second is [%d].", dim, out_range[dim].second);
+    }
+  }
+
+  DataType input_dtype = op.GetInputDesc("x").GetDataType();
+  Shape out_shape(shape);
+  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  tensordesc_output.SetShape(out_shape);
+  tensordesc_output.SetDataType(input_dtype);
+  if (shape_range.size() > 0) {
+    tensordesc_output.SetShapeRange(out_range);
+  }
+  (void)op.UpdateOutputDesc("y", tensordesc_output);
+  OP_LOGD("OP[PadV2]", "PadV2InferShape Branch1 END.");
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(PadV2InferShape) {
+  OP_LOGD("OP[PadV2]", "PadV2InferShape Begin.");
+  Tensor paddings_tensor;
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  //op_desc->SetOpInferDepends({"paddings"});
+
+  if (ge::GRAPH_SUCCESS != op.GetInputConstData("paddings", paddings_tensor)) {
+    Shape shape_x = op.GetInputDesc("x").GetShape();
+
+    // shape_x is UNKNOWN_RANK
+    if (shape_x.GetDims() == UNKNOWN_RANK) {
+      OP_LOGD("OP[PadV2]", "shape_x is UNKNOWN_RANK. Couldn't set shape_range");
+      DataType input_dtype = op.GetInputDesc("x").GetDataType();
+      vector<int64_t> shape(1, -2);
+      Shape out_shape(shape);
+      TensorDesc tensordesc_output = op.GetOutputDesc("y");
+      tensordesc_output.SetShape(out_shape);
+      tensordesc_output.SetDataType(input_dtype);
+      (void)op.UpdateOutputDesc("y", tensordesc_output);
+      return GRAPH_SUCCESS;
+    }
+
+    // shape_x is UNKNOWN_DIM
+    vector<int64_t> shape;
+    for (size_t dim = 0; dim < shape_x.GetDimNum(); dim++) {
+      shape.push_back(UNKNOWN_DIM);
+    }
+    DataType input_dtype = op.GetInputDesc("x").GetDataType();
+    TensorDesc tensordesc_output = op.GetOutputDesc("y");
+    Shape out_shape(shape);
+    tensordesc_output.SetShape(out_shape);
+    tensordesc_output.SetDataType(input_dtype);
+    (void)op.UpdateOutputDesc("y", tensordesc_output);
+    OP_LOGD("OP[PadV2]", "PadV2InferShape Branch0 END.");
+    return GRAPH_SUCCESS;
+  }
+  DataType dtype = op.GetInputDesc("paddings").GetDataType();
+  std::vector<int64_t> paddings;
+  if (!GetConstValue(op, paddings_tensor, dtype, paddings)) {
+    OP_LOGE(op.GetName().c_str(), "Get Const Value failed ");
+    return GRAPH_FAILED;
+  }
+
+  return PadV2InferShapeAndType(op, paddings);
+}
+
+COMMON_INFER_FUNC_REG(PadV2, PadV2InferShape);
+// ----------------PadV2 Op End-------------------
 
 // ----------------PadV3D Op Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(PadV3DInferShape) {
@@ -658,4 +853,5 @@ IMPLEMT_COMMON_INFERFUNC(EmbeddingRankIdInferShape) {
 
 COMMON_INFER_FUNC_REG(EmbeddingRankId, EmbeddingRankIdInferShape);
 // ---------------------EmbeddingRankId END-------------------------------------
+
 }  // namespace ge

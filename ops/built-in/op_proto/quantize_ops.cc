@@ -47,7 +47,10 @@ IMPLEMT_COMMON_INFERFUNC(DequantizeInferShape) {
   TensorDesc tensordesc_output = op.GetOutputDesc("y");
   tensordesc_output.SetShape(shape_x);
   tensordesc_output.SetDataType(min_range_dtype);
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
+  if (op.UpdateOutputDesc("y", tensordesc_output) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 

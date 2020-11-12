@@ -109,6 +109,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
     shape_y = shape_util.scalar2tensor_one(shape_y)
 
     format_4d_list = ["NCHW", "NHWC", "HWCN"]
+    format_5d_list = ["NDHWC", "DHWCN", "NCDHW"]
     cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
     if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
         dtype_list = ["float16", "int32"]
@@ -137,7 +138,8 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
                 add_nz_nd = True
                 break
 
-    if len(shape_x) == 4 and len(shape_y) == 4 and format_x in format_4d_list and format_y in format_4d_list:
+    if (len(shape_x) == 4 and len(shape_y) == 4 and format_x in format_4d_list and format_y in format_4d_list) or \
+            (len(shape_x) == 5 and len(shape_y) == 5 and format_x == format_y and format_x in format_5d_list):
         x_cdim = shape_x[format_x.index("C")]
         x_wdim = shape_x[format_x.index("W")]
         x_hdim = shape_x[format_x.index("H")]
@@ -154,6 +156,18 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
     if (len(shape_x) == 1 and len(shape_y) == 4) and format_y in format_4d_list:
         y_cdim = shape_y[format_y.index("C")]
         y_ndim = shape_y[format_y.index("N")]
+
+    # NDC1HWC0 FRACTAL_Z_3D
+    if len(shape_x) == 5 and len(shape_y) == 5 and format_x == format_y and format_x in format_5d_list:
+        if list(shape_x) == list(shape_y):
+            format_list.append("NDC1HWC0")
+        elif x_cdim == y_cdim:
+            format_list.append("NDC1HWC0")
+    if len(shape_x) == 5 and len(shape_y) == 5 and format_x == format_y and format_x in format_5d_list:
+        if list(shape_x) == list(shape_y):
+            format_list.append("FRACTAL_Z_3D")
+        elif x_cdim == y_cdim and x_ndim == y_ndim:
+            format_list.append("FRACTAL_Z_3D")
 
     # ND+ND NZ+NZ 5HD+5HD FZ+FZ
     if len(shape_x) >= 2 and len(shape_y) >= 2 and shape_x[-2:] == shape_y[-2:]:

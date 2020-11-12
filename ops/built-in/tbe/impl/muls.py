@@ -17,12 +17,7 @@ muls
 """
 import te.lang.cce
 from te import tvm
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import REQUIRED_ATTR_FLOAT
-from te.utils.op_utils import KERNEL_NAME
+from te.utils import para_check
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 
@@ -49,8 +44,8 @@ def muls_compute(x, scalar, kernel_name="muls"):
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_FLOAT,
-                 KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT,
+                            para_check.KERNEL_NAME)
 def muls(x, y, value, kernel_name="muls"):
     """
     calculating data
@@ -75,7 +70,7 @@ def muls(x, y, value, kernel_name="muls"):
     input_dtype = dtype.lower()
 
     check_list = ["float16", "float32", "int32", "int16"]
-    check_dtype(input_dtype, check_list)
+    para_check.check_dtype(input_dtype, check_list)
 
     scalar = tvm.const(value, dtype=input_dtype)
     data_input = tvm.placeholder(shape, name="data_input", dtype=input_dtype)

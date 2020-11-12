@@ -18,6 +18,7 @@ util
 # pylint: disable=import-error
 from decorator import decorator
 from te import tvm
+from te.lang.base import operation
 from te.platform import intrinsic_check_support
 from te.platform.cce_conf import VERSION_CLOUD
 from te.platform.cce_conf import VERSION_MINI
@@ -26,6 +27,7 @@ from te.platform.cce_conf import VERSION_MINI_NG1
 from te.platform.cce_conf import VERSION_MINI_NG1M
 from te.platform.cce_conf import VERSION_MINI_NG1PG2
 from te.platform.cce_conf import CceProductParams as pver
+from te.utils.error_manager.error_manager_util import get_error_message
 
 # Save op's output dtype, when first call the template api,we will save the dtype.
 # Before auto scheduling,get the dtype and convert the res tensor to this dtype,
@@ -192,8 +194,8 @@ DSL_CHECK_SUPPORT_MAP = {
     },
     "reduce_max": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16", "float32", "int32"),  # fp32:last need priority_flag
-        VERSION_CLOUD: ("float16", "float32", "int32"),
+        VERSION_MINI: ("float16", "float32"),  # fp32:last need priority_flag
+        VERSION_CLOUD: ("float16", "float32"),
         VERSION_MINI_NG1: ("float16", "float32"),
         VERSION_MINI_NG1M: ("float16", "float32"), # v200 int32: nlst support, last not
         VERSION_MINI_NG1PG2: ("float16", "float32"),
@@ -210,7 +212,7 @@ DSL_CHECK_SUPPORT_MAP = {
     },
     "reduce_prod": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16", "float32"),  # int32: nlst/last support
+        VERSION_MINI: ("float16"),  # int32: nlst/last support
         VERSION_CLOUD: ("float16", "float32"),
         VERSION_MINI_NG1: ("float16", "float32"),
         VERSION_MINI_NG1M: ("float16", "float32"),
@@ -247,13 +249,13 @@ DSL_CHECK_SUPPORT_MAP = {
         VERSION_SHISI: ("float16", "int32"),
     },
     "vdiv": {
-        "AllSoc": ("float16", "int32"),
-        VERSION_MINI: ("float16", "float32", "int32"),
-        VERSION_CLOUD: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1M: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32", "int32"),
-        VERSION_SHISI: ("float16", "int32"),
+        "AllSoc": ("float16",),
+        VERSION_MINI: ("float16", "float32",),
+        VERSION_CLOUD: ("float16", "float32",),
+        VERSION_MINI_NG1: ("float16", "float32",),
+        VERSION_MINI_NG1M: ("float16", "float32",),
+        VERSION_MINI_NG1PG2: ("float16", "float32",),
+        VERSION_SHISI: ("float16",),
     },
     "vmod": {
         "AllSoc": ("float16",),
@@ -645,19 +647,23 @@ def check_input_type(*type_args, **type_kwargs):
             # pylint: disable=consider-using-enumerate
             for i in range(len(args)):
                 if not isinstance(args[i], formal_parameter_list[i][1]):
-                    raise RuntimeError(
-                        "the input parameter %s must be %s, \
-                            while type of input is %s"
-                        % (formal_parameter_list[i][0],
-                           formal_parameter_list[i][1], type(args[i])))
+                    dict_args = dict()
+                    dict_args["errCode"] = "E90001"
+                    dict_args["detailed_cause"] = "the input parameter %s must" \
+                                                  " be %s, while type of input is %s"\
+                                                  % (formal_parameter_list[i][0],
+                                                     formal_parameter_list[i][1], type(args[i]))
+                    raise RuntimeError(dict_args, get_error_message(dict_args))
             for i in kwargs:
                 for j in formal_parameter_list:
                     if i in j:
                         if not isinstance(kwargs[i], j[1]):
-                            raise RuntimeError(
-                                "the input parameter %s must be %s, \
-                                    while type of input is %s"
-                                % (i, j[1], type(kwargs[i])))
+                            dict_args = dict()
+                            dict_args["errCode"] = "E90001"
+                            dict_args["detailed_cause"] = "the input parameter %s " \
+                                                          "must be %s, while type " \
+                                                          "of input is %s" % (i, j[1], type(kwargs[i]))
+                            raise RuntimeError(dict_args, get_error_message(dict_args))
                         break
             return func(*args, **kwargs)
 
@@ -682,19 +688,33 @@ def dtype_check_decorator(func, *args, **kwargs):
             judge_dtype = args[0].dtype
     elif func_name == "concat":
         if not isinstance(args[0], list):
-            raise RuntimeError("The first input type must be list")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "The first input type must be list," \
+                                          " while type is [%s]" % type(args[0])
+            raise RuntimeError(dict_args, get_error_message(dict_args))
         if not isinstance(args[0][0], tvm.tensor.Tensor):
-            raise RuntimeError(
-                "The first input type must be list of tvm.tensor")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "The first input type must be list" \
+                                          " of tvm.tensor, while type is [%s]" % type(args[0][0])
+            raise RuntimeError(dict_args, get_error_message(dict_args))
         judge_dtype = args[0][0].dtype
     else:
         if not isinstance(args[0], tvm.tensor.Tensor):
-            raise RuntimeError("The first input type must be tvm.tensor")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "The first input type must be " \
+                                          "tvm.tensor, while type is [%s]" % type(args[0])
+            raise RuntimeError(dict_args, get_error_message(dict_args))
         judge_dtype = args[0].dtype
 
     if not dsl_check_support("te.lang.cce."+func_name, judge_dtype):
-        raise RuntimeError("te.lang.cce.%s is not supported %s!"
-                           % (func_name, judge_dtype))
+        dict_args = dict()
+        dict_args["errCode"] = "E90003"
+        dict_args["detailed_cause"] = "te.lang.cce.%s is not supported %s!" \
+                                      % (func_name, judge_dtype)
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     return func(*args, **kwargs)
 
@@ -729,10 +749,18 @@ def get_cast_type(src_type, dst_type):
     get cast type string for vconv_xxxxx
     """
     if src_type not in DTYPE_MAP:
-        raise RuntimeError("%s is unsupported dtype!" % src_type)
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "The dtype must be f16, f32, u8, s8 or " \
+                                      "s32, [%s] is unsupported dtype!" % src_type
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if dst_type not in DTYPE_MAP:
-        raise RuntimeError("%s is unsupported dtype!" % dst_type)
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "The dtype must be f16, f32, u8, s8 or " \
+                                      "s32, [%s] is unsupported dtype!" % dst_type
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     cast_type = DTYPE_MAP[src_type] + "2" + DTYPE_MAP[dst_type]
 
@@ -754,7 +782,13 @@ def judge_var(num):
     for i in var_dict:
         if num_type in var_dict[i]:
             return i
-    raise RuntimeError("Input var Error")
+    dict_args = dict()
+    dict_args["errCode"] = "E90001"
+    dict_args["detailed_cause"] = "The input var type must be int, float, " \
+                                  "tvm.expr.IntImm, tvm.expr.UIntImm, " \
+                                  "tvm.expr.FloatImm or tvm.expr.Var, " \
+                                  "while type is [%s]" % num_type
+    raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
 def shape_to_list(shape):
@@ -763,10 +797,10 @@ def shape_to_list(shape):
     """
     tmp = []
     for i in shape:
-        if isinstance(i, tvm.expr.Var):
-            tmp.append(i)
-        else:
+        if isinstance(i, tvm.expr.ConstExpr):
             tmp.append(i.value)
+        else:
+            tmp.append(i)
     return tmp
 
 
@@ -775,7 +809,10 @@ def int_ceil_div(num_a, num_b):
     upper division
     """
     if num_b == 0:
-        raise RuntimeError(" division by zero")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "division by zero"
+        raise RuntimeError(dict_args, get_error_message(dict_args))
     return (num_a + num_b - 1) // num_b
 
 
@@ -785,7 +822,10 @@ def align(x_1, x_2):
 
     """
     if x_2 == 0:
-        raise RuntimeError("division by zero")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "division by zero"
+        raise RuntimeError(dict_args, get_error_message(dict_args))
     return (x_1 + x_2 - 1) // x_2 * x_2
 
 
@@ -819,14 +859,22 @@ def refine_axis(axis, shape):
         else:
             laxis = i
         if (laxis >= shape_len) or (laxis < 0):
-            raise RuntimeError("wrong axis.")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "laxis [%s] must less than " \
+                                          "shape_len [%s] and bigger than zero!" \
+                                          % (laxis, shape_len)
+            raise RuntimeError(dict_args, get_error_message(dict_args))
         res_axis.append(laxis)
     return sorted(res_axis)
 
 
 def _check(bool_res, append_str):
     if not bool_res:
-        raise RuntimeError(append_str)
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = append_str
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
 def auto_cast_tensor(tensor, intr, supported_types=None, is_auto_cast=True):
@@ -878,10 +926,23 @@ def check_input_tensor_shape(tensor_shape):
     if isinstance(tensor_shape, tvm.tensor.Tensor):
         shape = shape_to_list(tensor_shape.shape)
 
+    in_dynamic = operation.in_dynamic()
     for val in shape:
-        if isinstance(val, int) is False or val <= 0:
-            raise RuntimeError(
-                "The input shape value must be a positive integer")
+        if in_dynamic:
+            if isinstance(val, int) and val <= 0:
+                dict_args = dict()
+                dict_args["errCode"] = "E90001"
+                dict_args["detailed_cause"] = "The dynamic input shape value " \
+                                              "must be positive when is a " \
+                                              "integer while val is [%s]" % val
+                raise RuntimeError(dict_args, get_error_message(dict_args))
+        else:
+            if isinstance(val, int) is False or val <= 0:
+                dict_args = dict()
+                dict_args["errCode"] = "E90001"
+                dict_args["detailed_cause"] = "The static input shape value " \
+                                              "must be a positive integer while val is [%s]" % val
+                raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
 def _axis_value_type_check(shape_len, value):
@@ -889,11 +950,18 @@ def _axis_value_type_check(shape_len, value):
     Check the value of the axis
     """
     if not isinstance(value, int):
-        raise RuntimeError("type of axis value should be int")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "type of axis value should be int, " \
+                                      "while axis's type is [%s]" % type(value)
+        raise RuntimeError(dict_args, get_error_message(dict_args))
     if value >= shape_len or value < -shape_len:
-        raise RuntimeError(
-            "input axis is out of range, axis value can be from %d to %d" %
-            (-shape_len, shape_len - 1))
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "input axis [%s] is out of range, " \
+                                      "axis value can be from [%s] to [%s]" \
+                                      % (value, -shape_len, shape_len - 1)
+        raise RuntimeError(dict_args, get_error_message(dict_args))
     if value < 0:
         value = shape_len + value
     return value
@@ -914,3 +982,87 @@ def reduce_axis_check(shape_len, axis):
     axis = list(set(axis))
     axis.sort()
     return axis
+
+
+def util_astype(scalar, dtype):
+    """
+    :param scalar:
+    :param dtype:
+    :return:
+    """
+    if isinstance(scalar, int):
+        return tvm.const(scalar, "int").astype(dtype)
+    if isinstance(scalar, float):
+        return tvm.const(scalar, "float").astype(dtype)
+    if isinstance(scalar, (tvm.expr.IntImm, tvm.expr.UIntImm,
+                           tvm.expr.FloatImm)):
+        return scalar.astype(dtype)
+    if isinstance(scalar, tvm.expr.Var):
+        return scalar.astype(dtype)
+    if isinstance(scalar, tvm.tensor.TensorSlice):
+        return scalar
+    dict_args = dict()
+    dict_args["errCode"] = "E90001"
+    dict_args["detailed_cause"] = "Scalar must be simple type, but now is [%s]" % type(scalar)
+    raise RuntimeError(dict_args, get_error_message(dict_args))
+
+
+def equal(_a, _b):
+    """
+    :param _a:
+    :param _b:
+    :return:
+    """
+    elements1 = {}
+    elements2 = {}
+
+    single_types = (int, tvm.expr.Var)
+    const_types = (tvm.expr.IntImm,)
+    for expr, elements in zip((_a, _b), (elements1, elements2)):
+        if isinstance(expr, single_types):
+            elements[expr] = elements.get(expr, 0) + 1
+        elif isinstance(expr, const_types):
+            elements[expr.value] = elements.get(expr.value, 0) + 1
+        elif isinstance(expr, tvm.expr.Expr):
+            _parse_expr(expr, elements)
+        else:
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "Unsupported expr: [%s]" % expr
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+
+    return elements1 == elements2
+
+
+def _parse_expr(expr, elements: dict):
+    if isinstance(expr, tvm.expr.Mul):
+        _parse_mul(expr, elements)
+    else:
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "Unsupported expr: [%s]" % expr
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+
+
+def _parse_mul(expr, elements: dict):
+    if not isinstance(expr, tvm.expr.Mul):
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "It is not mul expr: [%s]" % expr
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+
+    const_types = (tvm.expr.IntImm,)
+    var_types = (tvm.expr.Var,)
+    for _x in (expr.a, expr.b):
+        if isinstance(_x, const_types):
+            elements[_x.value] = elements.get(_x.value, 0) + 1
+        elif isinstance(_x, var_types):
+            elements[_x] = elements.get(_x, 0) + 1
+        else:
+            _parse_mul(_x, elements)
+
+
+def _get_priority_flag_value(priority_flag):
+    if isinstance(priority_flag, (int, float)):
+        return priority_flag
+    return priority_flag.value

@@ -19,6 +19,8 @@ cast compute
 from decorator import decorator
 from te import tvm
 from te.platform import intrinsic_check_support
+from te.lang.base import operation
+from te.utils.error_manager.error_manager_util import get_error_message
 from .util import auto_cast_tensor
 from .util import is_cast_support
 from .util import get_cast_type
@@ -31,25 +33,35 @@ NAME_INDEX = [0]
 
 
 @decorator
-def auto_cast_of_cast(func, *args, **kwargs):
+def _auto_cast_of_cast(func, *args, **kwargs):
     '''
     auto cast dectorator.
     Before calling elewise api, check the input tensor is supported by the intr.
     If not supported, casting the input tensor to supported dtype.
+    Only static shape support auto cast.
     (On condition that the cast type is supported.
     If the cast type is not supported,raising a RuntimeError).
     '''
+    if operation.in_dynamic():
+        return func(*args, **kwargs)
     intr = func.__name__
 
     if len(args) == 1:
         if not isinstance(args[0], tvm.tensor.Tensor):
-            raise RuntimeError("The first input type must be tvm.tensor")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "The first input type must be [%s]," \
+                                          " while type is [%s]" % ('tvm.tensor', type(args[0]))
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
         raw_tensor = args[0]
 
         supported_dtypes = dsl_support_dtype(intr)
         if not supported_dtypes:
-            raise RuntimeError("%s is not supported!" % intr)
+            dict_args = dict()
+            dict_args["errCode"] = "E90002"
+            dict_args["detailed_cause"] = "[%s] is not supported!" % intr
+            raise RuntimeError(dict_args, get_error_message(dict_args))
         temp_tensor = auto_cast_tensor(raw_tensor, intr, supported_dtypes)
 
         return func(temp_tensor)
@@ -59,7 +71,9 @@ def auto_cast_of_cast(func, *args, **kwargs):
 
 def _cast(raw_tensor, dst_dtype, is_auto_cast=True):
     """
-    cast tensor from src_type to dst_dtype
+    cast tensor from src_type to dst_dtype, only support float32 to float16,
+    float16 to float32, float16 to int8, int8 to float16,
+    float16 to uint8, uint8 to float16 when shape is dynamic
 
     Parameters
     ----------
@@ -87,7 +101,11 @@ def _cast(raw_tensor, dst_dtype, is_auto_cast=True):
             raw_tensor = _cast_op(raw_tensor, "float16", 'elewise_single_cast')
             src_dtype = raw_tensor.dtype
         else:
-            raise RuntimeError("Unsupported cast type!")
+            dict_args = dict()
+            dict_args["errCode"] = "E90002"
+            dict_args["detailed_cause"] = "Unsupported cast type! src_dtype is [%s]," \
+                                          " dst_dtype is [%s]" % (src_dtype.lower(), dst_dtype.lower())
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
     # Default cast_type is "cast", while float casting to int32 or int16 is "trunc"
     # float to int8 or uint8 doesn't need to use "trunc" mode
@@ -101,7 +119,7 @@ def _cast(raw_tensor, dst_dtype, is_auto_cast=True):
                     is_auto_cast=is_auto_cast)
 
 
-@auto_cast_of_cast
+@_auto_cast_of_cast
 def ceil(raw_tensor):
     """
     cast tensor from src_type to dst_dtype with ceiling method
@@ -118,7 +136,7 @@ def ceil(raw_tensor):
     return _cast_op(raw_tensor, dst_dtype, "elewise_single_ceil")
 
 
-@auto_cast_of_cast
+@_auto_cast_of_cast
 def floor(raw_tensor):
     """
     cast tensor from src_type to dst_dtype with flooring method
@@ -136,7 +154,7 @@ def floor(raw_tensor):
 
 
 # pylint: disable=redefined-builtin
-@auto_cast_of_cast
+@_auto_cast_of_cast
 def round(raw_tensor):
     """
     cast tensor from src_type to dst_dtype with rounding method
@@ -153,7 +171,7 @@ def round(raw_tensor):
     return _cast_op(raw_tensor, dst_dtype, "elewise_single_round")
 
 
-@auto_cast_of_cast
+@_auto_cast_of_cast
 def trunc(raw_tensor):
     """
     cast tensor from src_type to dst_dtype with trunc method
@@ -170,8 +188,11 @@ def trunc(raw_tensor):
     cast_type = DTYPE_MAP[src_dtype] + "2s32z"
     is_support = intrinsic_check_support("Intrinsic_vconv", cast_type)
     if not is_support:
-        raise RuntimeError("the target platform is not support %s trunc"
-                           % src_dtype)
+        dict_args = dict()
+        dict_args["errCode"] = "E90002"
+        dict_args["detailed_cause"] = "the target platform is not " \
+                                      "support %s trunc" % src_dtype
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     dst_dtype = "int32"
     return _cast_op(raw_tensor, dst_dtype, "elewise_single_trunc")
@@ -193,8 +214,11 @@ def round_d(raw_tensor):
     cast_type = DTYPE_MAP[src_dtype] + "2s32a"
     is_support_round_d = intrinsic_check_support("Intrinsic_vconv", cast_type)
     if not is_support_round_d:
-        raise RuntimeError("the target platform is not support %s round"
-                           % src_dtype)
+        dict_args = dict()
+        dict_args["errCode"] = "E90002"
+        dict_args["detailed_cause"] = "the target platform is not " \
+                                      "support %s round" % src_dtype
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     dst_dtype = "int32"
     return _cast_op(raw_tensor, dst_dtype, "elewise_single_round_d")
@@ -207,14 +231,12 @@ def _cast_op(input_tensor, output_dtype, op_type, is_auto_cast=True):
     tensor = input_tensor
     shape = shape_to_list(tensor.shape)
     check_input_tensor_shape(shape)
-
     if op_type == "elewise_single_cast":
         lambda_func = lambda *indice: tensor(*indice).astype(output_dtype)
     elif op_type == "elewise_single_round":
         lambda_func = lambda *indice: tensor(*indice).astype(output_dtype)
     elif op_type == "elewise_single_ceil":
-        lambda_func = lambda *indice: tvm.ceil(tensor(*indice)).astype(
-            output_dtype)
+        lambda_func = lambda *indice: tensor(*indice).astype(output_dtype)
     elif op_type == "elewise_single_floor":
         lambda_func = lambda *indice: tensor(*indice).astype(output_dtype)
     elif op_type == "elewise_single_trunc":
@@ -222,7 +244,10 @@ def _cast_op(input_tensor, output_dtype, op_type, is_auto_cast=True):
     elif op_type == "elewise_single_round_d":
         lambda_func = lambda *indice: tensor(*indice).astype(output_dtype)
     else:
-        raise RuntimeError("operation %s not support yet" % op_type)
+        dict_args = dict()
+        dict_args["errCode"] = "E90003"
+        dict_args["detailed_cause"] = "operation %s not support yet." % op_type
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     name = op_type.split("_")[-1] + "_" + str(NAME_INDEX[0])
     NAME_INDEX[0] += 1

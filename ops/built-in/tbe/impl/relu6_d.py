@@ -22,7 +22,7 @@ import functools
 import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
-from te.utils import operate_shape
+from te.utils import shape_util
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
@@ -74,7 +74,7 @@ def relu6_d(input_x, output_y, scale=1.0, kernel_name="relu6_d"):
     ------
     None
     """
-    input_shape = operate_shape.scalar2tensor_one(input_x.get("shape"))
+    input_shape = shape_util.scalar2tensor_one(input_x.get("shape"))
     input_dtype = input_x.get("dtype").lower()
     para_check.check_shape(input_shape, param_name="input_x")
 

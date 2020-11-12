@@ -27,10 +27,26 @@ from te.platform import cce_conf
 from te.platform import cce_params
 from te.tik import all as _all
 from te.tik import any as _any
+from impl.util import util_select_op_base
 
 PRE_NMS_TOPN = 1024
 
 UB_NUM = 10240
+
+
+def get_op_support_info(input_x, box_out, box_out_num, biases,
+                        boxes=3, coords=4, classes=80,
+                        relative=True, obj_threshold=0.5,
+                        post_nms_topn=1024, score_threshold=0.5,
+                        iou_threshold=0.45, pre_nms_topn=512,
+                        input_num=10, resize_origin_img_to_net=False,
+                        out_box_dim=3,
+                        kernel_name="yolo_v3_detection_output_v2d"):
+    """
+    get split info
+    only support split N
+    """
+    return util_select_op_base.get_split_n_info([0], [0, 1])
 
 
 # pylint: disable=invalid-name, too-many-locals, too-many-arguments

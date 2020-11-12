@@ -41,6 +41,7 @@ from te.platform.fusion_manager import fusion_manager
 import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 NUM_ZERO = 0.0
 NUM_ONE = 1.0
@@ -125,7 +126,8 @@ def elu_grad(grads, activations, y, kernel_name="elu_grad"):
     para_check.check_shape(shape_gradient, param_name="grads")
     para_check.check_shape(shape_activation, param_name="activations")
     if not operator.eq(shape_gradient, shape_activation):
-        raise RuntimeError("all input shape must be equal")
+        error_detail = "shape of grads and activations should be same"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "grads", "activations", error_detail)
     shape_gradient, _ = shape_util.refine_shape_axes(shape_gradient, [])
     shape_activation, _ = shape_util.refine_shape_axes(shape_activation, [])
 
@@ -133,7 +135,8 @@ def elu_grad(grads, activations, y, kernel_name="elu_grad"):
     para_check.check_dtype(dtype_gradient, check_list, param_name="grads")
     para_check.check_dtype(dtype_activation, check_list, param_name="activations")
     if dtype_gradient.lower() != dtype_activation.lower():
-        raise RuntimeError("all input dtype must be same")
+        error_detail = "dtype of grads and activations should be same"
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "grads", "activations", error_detail)
 
     dtype = dtype_gradient.lower()
     data_gradient = tvm.placeholder(shape_gradient, dtype=dtype, name="data_gradient")

@@ -80,18 +80,18 @@ Status LayerNormGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   layerNormXDesc->SetType("LayerNormXBackprop");
   layerNormBetaGammaDesc->SetType("LayerNormBetaGammaBackprop");
   if (layerNormXDesc->GetOutputsSize() < 3) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of output desc", layerNormXDesc->GetInputsSize());
-    return FAILED;
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of output desc", layerNormXDesc->GetInputsSize());
+    return NOT_CHANGED;
   }
   if (layerNormBetaGammaDesc->GetOutputsSize() < 3) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of output desc",
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of output desc",
             layerNormBetaGammaDesc->GetInputsSize());
-    return FAILED;
+    return NOT_CHANGED;
   }
   if (layerNormBetaGammaDesc->GetInputsSize() < 5) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of input desc",
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of input desc",
             layerNormBetaGammaDesc->GetInputsSize());
-    return FAILED;
+    return NOT_CHANGED;
   }
   OpDescUtils::ClearOutputDesc(layerNormXDesc, 2);
   OpDescUtils::ClearOutputDesc(layerNormXDesc, 1);

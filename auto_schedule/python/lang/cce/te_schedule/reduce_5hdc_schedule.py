@@ -21,6 +21,7 @@ import te
 
 from te.platform.cce_params import scope_ubuf
 from te.platform import log
+from te.utils.error_manager.error_manager_util import get_error_message
 from .util import dfs_tensor_graph
 from .util import get_all_axes
 from .util import get_reduce_axes
@@ -105,7 +106,11 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
         # Tiling calculation
         tiling_result = self.calculate_tiling()
         if not tiling_result:
-            raise RuntimeError("5HDC Schedule tiling failure")
+            dict_args = dict()
+            dict_args["errCode"] = "E90003"
+            dict_args[
+                "detailed_cause"] = "5HDC Schedule tiling failure"
+            raise RuntimeError(dict_args, get_error_message(dict_args))
         self.calculate_block_tiling()
         # Information report for debug mode
         self.print_debug("Calculation unit axis", self.tiling_calculation_unit_axis)
@@ -130,9 +135,13 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
         expected_5hd_shape = [self.ori_shape[0], expected_c1,
                               self.ori_shape[1], self.ori_shape[2], 16]
         if self.in_shape != expected_5hd_shape:
-            raise RuntimeError("Expected 5HD shape not match, please check input parameters: " +
-                               "Ori_shape: " + str(self.ori_shape) + " Expect_shape: " +
-                               str(expected_5hd_shape))
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "Expected 5HD shape not match, " \
+                                          "please check input parameters: " \
+                                          "Ori_shape: [%s], " \
+                                          "Expect_shape: [%s]" % (self.ori_shape, expected_5hd_shape)
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
     def collect_info(self, out_tensors, sch_list):
         """Collect necessary information"""
@@ -141,8 +150,13 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
         self._all_tensors, self._input_tensors, \
             self._mid_tensors, self.tensor_map = dfs_tensor_graph(self._out_tensor)
         if len(self._input_tensors) != 1:
-            raise RuntimeError("[Reduce5HDCSchedule] Reduce 5HD C axis " +
-                               "should have only one input tensor")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "[Reduce5HDCSchedule] Reduce 5HD C" \
+                                          " axis should have only one input " \
+                                          "tensor, while tensors num is [%s]" \
+                                          % len(self._input_tensors)
+            raise RuntimeError(dict_args, get_error_message(dict_args))
         self._input_tensor = self._input_tensors[0]
         self.in_shape = list(map(int, self._input_tensor.shape))
         self.out_shape = list(map(int, self._out_tensor.shape))
@@ -180,7 +194,12 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
                 if self.reduce_node is None:
                     self.reduce_node = tensor
                 else:
-                    raise RuntimeError("5HDC Schedule detected multiple reduce node")
+                    dict_args = dict()
+                    dict_args["errCode"] = "E90003"
+                    dict_args[
+                        "detailed_cause"] = "5HDC Schedule detected multiple" \
+                                            " reduce node, reduce_node is [%s]" % self.reduce_node
+                    raise RuntimeError(dict_args, get_error_message(dict_args))
         reduce_in_shape = list(map(int, self.reduce_node.op.input_tensors[0].shape))
         reduce_out_shape = list(map(int, self.reduce_node.shape))
         if len(reduce_in_shape) == len(reduce_out_shape):

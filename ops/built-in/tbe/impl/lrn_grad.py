@@ -21,7 +21,8 @@ from topi.cce import util
 from te import platform as tbe_platform
 from impl import common_util
 from impl import constant_util as constant
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 MAX_REPEAT = 255
 MAX_STRIDE = 65535
@@ -500,9 +501,15 @@ class LrnGrad:
             self._vmuls(dest, dest, y, count)
             self._vexp(dest, dest, count)
         elif self.alpha < 0 and self.bias < 0:
-            raise RuntimeError("alpha and bias should be greater than 0")
+            excepted_value = "greater than 0"
+            real_value = "alpha (%d),bias (%d)"%(self.alpha, self.bias)
+            error_manager_vector.raise_err_input_value_invalid("lrn_grad", "alpha and bias", \
+                                                               excepted_value, real_value)
         else:
-            raise RuntimeError("alpha and bias should be greater than 0")
+            excepted_value = "greater than 0"
+            real_value = "alpha (%d),bias (%d)"%(self.alpha, self.bias)
+            error_manager_vector.raise_err_input_value_invalid("lrn_grad", "alpha and bias", \
+                                                               excepted_value, real_value)
 
     def _sum4windows_cut_hw(self, dest, src, count_one_window):
         tik_instance = self.tik_instance
@@ -1034,32 +1041,38 @@ def _check_param(input_grads, input_image, output_image, depth_radius,
     output_image_dtype = output_image.get("dtype")
 
 
-    check_dtype(input_grads_dtype, ("float16", "float32"), param_name="grads")
-    check_dtype(input_image_dtype, ("float16", "float32"), param_name="x")
-    check_dtype(output_image_dtype, ("float16", "float32"), param_name="y")
+    para_check.check_dtype(input_grads_dtype, ("float16", "float32"), param_name="grads")
+    para_check.check_dtype(input_image_dtype, ("float16", "float32"), param_name="x")
+    para_check.check_dtype(output_image_dtype, ("float16", "float32"), param_name="y")
 
 
     if len(input_grads_shape) != 4:
-        raise RuntimeError("The shape of tensor must be 4D.")
+        error_detail = "The shape of grads must be 4D."
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "grads", error_detail)
 
     if (input_grads_dtype != input_image_dtype or
             input_grads_dtype != output_image_dtype):
-        raise RuntimeError(
-            "The dtype of input_grads,input_image,output_image must be same")
+        rule_desc = "The dtype of input_grads,input_x,output_y must be same"
+        param_value = "%s %s %s"%(input_grads_dtype, input_image_dtype, output_image_dtype)
+        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "grads,x,y", param_value)
 
     if (input_grads_shape != input_image_shape or
             input_grads_shape != output_image_shape):
-        raise RuntimeError(
-            "The shape of input_grads,input_image,output_image must be same")
+        rule_desc = "The shape of input_grads,input_x,output_y must be same"
+        param_value = "%s %s %s"%(input_grads_shape, input_image_shape, output_image_shape)
+        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "grads,x,y", param_value)
 
     if depth_radius > 48 or depth_radius < 0:
-        raise RuntimeError("depth_radius should not between 0 and 48.")
+        rule_desc = "depth_radius should not between 0 and 48."
+        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "depth_radius", depth_radius)
 
 
 # pylint: disable=too-many-arguments, unused-argument, invalid-name
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_INT,
-                 (OPTION_ATTR_FLOAT, OPTION_ATTR_INT), (OPTION_ATTR_FLOAT, OPTION_ATTR_INT),
-                 (OPTION_ATTR_FLOAT, OPTION_ATTR_INT), KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
+                            (para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT),
+                            (para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT),
+                            (para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT), para_check.KERNEL_NAME)
 def lrn_grad(grads, x, y, z, depth_radius=5,
              bias=1.0, alpha=1.0, beta=0.5, kernel_name="lrn_grad"):
     """

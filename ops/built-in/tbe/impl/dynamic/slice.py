@@ -20,15 +20,15 @@ from __future__ import absolute_import
 import te.lang.dynamic
 from topi.cce import util
 from impl import common_util
-from te.utils.op_utils import *
+from te.utils import para_check
 from .strided_slice import StridedSlice
 
 
 # pylint: disable=locally-disabled,too-many-arguments,
 # pylint: unused-argument,too-many-locals
 @te.op.register_operator("Slice")
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def slice(x, offsets, size, y, kernel_name="slice"):
     """
     algorithm: slice
@@ -54,6 +54,9 @@ def slice(x, offsets, size, y, kernel_name="slice"):
     tik instance
     """
     # dynamic slice does not use offsets, end params.
+    input_dtype = x.get("dtype").lower()
+    check_list = ("float32", "float16", "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64")
+    para_check.check_dtype(input_dtype, check_list, param_name="x")
     strided_slice_instance = StridedSlice(x, None, 0, 0, 0, 0, 0, kernel_name)
     strided_slice_instance.strided_slice()
     inst = strided_slice_instance.tik_instance

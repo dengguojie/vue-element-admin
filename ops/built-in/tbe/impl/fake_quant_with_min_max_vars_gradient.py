@@ -22,7 +22,9 @@ from te.platform.cce_conf import api_check_support
 from topi import generic
 from topi.cce import util
 from functools import reduce as functools_reduce
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 # value of default num_bits
 NUM_BITS_MIN = 2
@@ -257,21 +259,22 @@ def _check_parameters(gradients, x, input_min, input_max, kernel_name):
     shape_max = util.scalar2tensor_one(shape_max)
 
     # check kernel name and shape
-    check_shape(shape_gradient, param_name="gradients")
-    check_shape(shape_data, param_name="x")
-    check_shape(shape_min, min_rank=1, max_rank=1, param_name="min")
-    check_shape(shape_max, min_rank=1, max_rank=1, param_name="max")
+    para_check.check_shape(shape_gradient, param_name="gradients")
+    para_check.check_shape(shape_data, param_name="x")
+    para_check.check_shape(shape_min, min_rank=1, max_rank=1, param_name="min")
+    para_check.check_shape(shape_max, min_rank=1, max_rank=1, param_name="max")
 
     # check data type of input tensor
     check_list = (D_TYPE,)
-    check_dtype(dtype_gradient, check_list, param_name="gradients")
-    check_dtype(dtype_data, check_list, param_name="x")
-    check_dtype(dtype_min, check_list, param_name="min")
-    check_dtype(dtype_max, check_list, param_name="max")
+    para_check.check_dtype(dtype_gradient, check_list, param_name="gradients")
+    para_check.check_dtype(dtype_data, check_list, param_name="x")
+    para_check.check_dtype(dtype_min, check_list, param_name="min")
+    para_check.check_dtype(dtype_max, check_list, param_name="max")
 
     # check whether the shape of gradients and x are the same
     if list(shape_gradient) != list(shape_data):
-        raise RuntimeError("dimensions in both shapes must be equal")
+        error_detail = "shape of gradients and x should be same"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "gradients", "x", error_detail)
 
 
 def _both_min_max_zero(input_min, input_max, input_shape, dtype):
@@ -406,9 +409,10 @@ def fake_quant_with_min_max_vars_gradient_compute(gradients, x, min,
 
 
 # pylint: disable=locally-disabled,redefined-builtin,invalid-name
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT, OPTION_ATTR_INT,
-                 OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL,
+                            para_check.KERNEL_NAME)
 def fake_quant_with_min_max_vars_gradient(gradients, x, min, max,
                                           backprops_wrt_x, backprops_wrt_min,
                                           backprops_wrt_max,
@@ -457,26 +461,27 @@ def fake_quant_with_min_max_vars_gradient(gradients, x, min, max,
     _check_parameters(gradients, x, min, max, kernel_name)
 
     if num_bits < NUM_BITS_MIN or num_bits > NUM_BITS_MAX:
-        raise RuntimeError("num_bits must be between 2 and 16")
+        error_manager_vector.raise_err_input_param_not_in_range(kernel_name, "num_bits", \
+                                                                NUM_BITS_MIN, NUM_BITS_MAX, num_bits)
 
     dtype_gradient = gradients.get("dtype").lower()
     shape_gradient = gradients.get("shape")
     dtype_min = min.get("dtype").lower()
     shape_min = min.get("shape")
     shape_max = max.get("shape")
-    check_shape(shape_min, param_name="min")
-    check_shape(shape_max, param_name="max")
+    para_check.check_shape(shape_min, param_name="min")
+    para_check.check_shape(shape_max, param_name="max")
     shape_backprops_wrt_x = backprops_wrt_x.get("shape")
     shape_backprops_wrt_min = backprops_wrt_min.get("shape")
     shape_backprops_wrt_max = backprops_wrt_max.get("shape")
     shape_backprops_wrt_min = util.scalar2tensor_one(shape_backprops_wrt_min)
     shape_backprops_wrt_max = util.scalar2tensor_one(shape_backprops_wrt_max)
-    check_shape(shape_backprops_wrt_x, param_name="backprops_wrt_x")
-    check_shape(shape_backprops_wrt_min, param_name="backprops_wrt_min")
-    check_shape(shape_backprops_wrt_max, param_name="backprops_wrt_max")
+    para_check.check_shape(shape_backprops_wrt_x, param_name="backprops_wrt_x")
+    para_check.check_shape(shape_backprops_wrt_min, param_name="backprops_wrt_min")
+    para_check.check_shape(shape_backprops_wrt_max, param_name="backprops_wrt_max")
     shape_min = util.scalar2tensor_one(shape_min)
     shape_gradient = (functools_reduce(lambda x, y: x * y, shape_gradient[:]),)
-    _, min_new_shape, _ = broadcast_shapes(shape_gradient, shape_min,
+    _, min_new_shape, _ = shape_util.broadcast_shapes(shape_gradient, shape_min,
                                               param_name_input1="gradients",
                                               param_name_input2="min")
     gradient_data = tvm.placeholder(shape_gradient, name="gradient_data",

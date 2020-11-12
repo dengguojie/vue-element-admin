@@ -16,6 +16,7 @@
 pooling2d compute
 """
 from te import tvm
+from te.utils.error_manager.error_manager_util import get_error_message
 
 POOL2D_TAG = "pooling2d_"
 MAX_KERNEL_SIZE_H_MUL_W = 255  # kernel_h * kernel_w
@@ -40,8 +41,13 @@ def max_pool2d(t_x, pooling_params, fusion_params):
     is_support_kernel = (k_h * k_w <= MAX_KERNEL_SIZE_H_MUL_W) or \
                         (k_h <= MAX_KERNEL_SIZE and k_w <= MAX_KERNEL_SIZE)
     if not is_support_kernel:
-        raise RuntimeError("invalid window params, "
-                           "window_h or window_w is too big")
+        dict_args = dict()
+        dict_args["errCode"] = "E90003"
+        dict_args["detailed_cause"] = "kw [%s] and kh [%s] is too big! " \
+                                      "maxpool schedule only support " \
+                                      "(k_h * k_w <= MAX_KERNEL_SIZE_H_MUL_W) " \
+                                      "or (k_h <= MAX_KERNEL_SIZE and k_w <= MAX_KERNEL_SIZE)" % (k_w, k_h)
+        raise RuntimeError(dict_args, get_error_message(dict_args))
     s_h, s_w = pooling_params["stride_h"], pooling_params["stride_w"]
     dtype = t_x.dtype
     o_h, o_w = pooling_params["out_size_h"], pooling_params["out_size_w"]

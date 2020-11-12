@@ -119,8 +119,8 @@ Status ConstToAttrStridedSlicePass::Fusion(ge::ComputeGraph& graph, Mapping& map
       (ge::GRAPH_SUCCESS != op.GetAttr("begin_mask", beginmask)) ||
       (ge::GRAPH_SUCCESS != op.GetAttr("end_mask", endmask)) ||
       (ge::GRAPH_SUCCESS != op.GetAttr("ellipsis_mask", ellipsismask))) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "op strided_slice get attribute mask failed");
-    return FAILED;
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "op strided_slice get attribute mask failed");
+    return NOT_CHANGED;
   }
   if ((ellipsismask != 0) && (newmask != 0) && (shrinkmask != 0) && (beginmask == 0) && (endmask != 0)) {
     OP_LOGI(FUSED_OP_TYPE.c_str(),

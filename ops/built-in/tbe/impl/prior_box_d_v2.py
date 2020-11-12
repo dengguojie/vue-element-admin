@@ -18,24 +18,15 @@ from te import platform as tbe_platform
 from topi.cce import util
 from te import tik
 import math
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_shape
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import REQUIRED_ATTR_LIST_FLOAT
-from te.utils.op_utils import OPTION_ATTR_INT
-from te.utils.op_utils import OPTION_ATTR_FLOAT
-from te.utils.op_utils import OPTION_ATTR_BOOL
-from te.utils.op_utils import OPTION_ATTR_LIST_FLOAT
-from te.utils.op_utils import KERNEL_NAME
+from te.utils import para_check
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_FLOAT,
-                 REQUIRED_ATTR_LIST_FLOAT, OPTION_ATTR_INT, OPTION_ATTR_INT,
-                 OPTION_ATTR_FLOAT, OPTION_ATTR_FLOAT, OPTION_ATTR_BOOL, OPTION_ATTR_BOOL,
-                 OPTION_ATTR_FLOAT, OPTION_ATTR_LIST_FLOAT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_FLOAT,
+                            para_check.REQUIRED_ATTR_LIST_FLOAT, para_check.OPTION_ATTR_INT,
+                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_LIST_FLOAT, para_check.KERNEL_NAME)
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals,invalid-name
 def prior_box_d_v2(feature, img, boxes, y, min_size, max_size, img_h=0,
                    img_w=0, step_h=0.0, step_w=0.0, flip=True, clip=False,
@@ -67,15 +58,15 @@ def prior_box_d_v2(feature, img, boxes, y, min_size, max_size, img_h=0,
     boxes_type = boxes.get("dtype").lower()
 
     check_list = ("float16", "float32")
-    check_dtype(feature_type, check_list, param_name="feature")
+    para_check.check_dtype(feature_type, check_list, param_name="feature")
     check_list = ("float16", "float32")
-    check_dtype(img_type, check_list, param_name="img")
+    para_check.check_dtype(img_type, check_list, param_name="img")
     check_list = ("float16", "float32")
-    check_dtype(boxes_type, check_list, param_name="boxes")
+    para_check.check_dtype(boxes_type, check_list, param_name="boxes")
 
-    check_shape(feature_shape)
-    check_shape(img_shape)
-    check_shape(boxes_shape)
+    para_check.check_shape(feature_shape)
+    para_check.check_shape(img_shape)
+    para_check.check_shape(boxes_shape)
 
     feature_input = tik_instance.Tensor(feature_type, feature_shape, name="feature_input",
                                         scope=tik.scope_gm)

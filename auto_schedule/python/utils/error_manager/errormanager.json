@@ -81,12 +81,12 @@
     },
     {
         "errCode": "E50038",
-        "errMessage": "In op [%s], the 1d value of shape a shoud be equal to 0d value of shape b, actual input are [%s] and [%s]",
+        "errMessage": "In op [%s], the 1d value of shape a should be equal to 0d value of shape b, actual input are [%s] and [%s]",
         "argList": "op_name,a_1d,b_0d"
     },
     {
         "errCode": "E50039",
-        "errMessage": "In op[%s], the channel of x shoud be equal to  filter's, actual input are [%s] and [%s]",
+        "errMessage": "In op[%s], the channel of x should be equal to  filter's, actual input are [%s] and [%s]",
         "argList": "op_name,channel_of_x,channel_of_filter"
     },
     {
@@ -241,12 +241,12 @@
     },
     {
         "errCode": "E60009",
-        "errMessage": "In op [%s], the 1d value of shape a shoud be equal to 0d value of shape b, actual input are [%s] and [%s]",
+        "errMessage": "In op [%s], the 1d value of shape a should be equal to 0d value of shape b, actual input are [%s] and [%s]",
         "argList": "op_name,a_1d,b_0d"
     },
     {
         "errCode": "E60010",
-        "errMessage": "In op[%s], the channel of a shoud be equal to  filter's, actual input are [%s] and [%s]",
+        "errMessage": "In op[%s], the channel of a should be equal to  filter's, actual input are [%s] and [%s]",
         "argList": "op_name,channel_of_x,channel_of_filter"
     },
     {
@@ -338,6 +338,26 @@
         "errCode": "E60036",
         "errMessage": "In op[%s], quant model only surport scale == 1 and sqrt == 0, but scale is [%s], sqrt is [%s]",
         "argList": "op_name,scale_value,sqrt_mode"
+    },
+    {
+        "errCode": "E60037",
+        "errMessage": "In op[%s], the type of [%s] should be in [%s], actual is [%s]",
+        "argList": "op_name,param_name,type_list,type"
+    },
+    {
+        "errCode": "E60038",
+        "errMessage": "In op[%s], [%s]",
+        "argList": "op_name,desc"
+    },
+    {
+        "errCode": "E60039",
+        "errMessage": "In op[%s], the [%s] of [%s] should be [%s] than [%s], actual is [%s]",
+        "argList": "op_name,attr_name,param_name,comparator,expected_value,input_value"
+    },
+    {
+        "errCode": "E60040",
+        "errMessage": "The op[%s] [%s] requires attribute [%s]",
+        "argList": "op_name,param_name,attr_name"
     },
     {
         "errCode": "E60101",
@@ -1048,5 +1068,20 @@
       "errCode": "E81012",
       "errMessage": "Compile op[aipp] failed, cause: %s.",
       "argList": "cause_desc"
+    },
+    {
+      "errCode": "E90001",
+      "errMessage": "Compile operator failed, cause: Parameters check failed, detailed information: %s.",
+      "argList": "detailed_cause"
+    },
+    {
+      "errCode": "E90002",
+      "errMessage": "Compile operator failed, cause: The limitation of instruction, detailed information: %s.",
+      "argList": "detailed_cause"
+    },
+    {
+      "errCode": "E90003",
+      "errMessage": "Compile operator failed, cause: Template constraint, detailed information: %s.",
+      "argList": "detailed_cause"
     }
 ]

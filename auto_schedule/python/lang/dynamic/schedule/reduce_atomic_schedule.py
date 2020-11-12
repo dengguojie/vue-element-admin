@@ -16,12 +16,12 @@
 reduce atomic schedule
 """
 import copy
-import te
 from te import platform as cceconf
 from te import tvm
-from te.platform import operation
+from te.lang.base import operation
 import te.platform.cce_params as cce
 from te.platform.cce_conf import CceProductParams as pver
+from te.utils.error_manager.error_manager_util import get_error_message
 from . import INSN_MAPPING, DTYPE_BYTE_MAPPING
 from .vector_schedule import VectorSchedule
 
@@ -1089,7 +1089,14 @@ class ReduceAtomicSchedule(VectorSchedule):
 
         reduce_axis_index = self._reduce_info["reduce_axis_index"]
         if block_split_axis not in reduce_axis_index:
-            raise RuntimeError("Atomic schedule block tiling can only split reduce axis!")
+            dict_args = dict()
+            dict_args["errCode"] = "E90003"
+            dict_args["detailed_cause"] = "Atomic schedule block tiling can " \
+                                          "only split reduce axis! " \
+                                          "block_split_axis is [%s], " \
+                                          "while reduce_axis is [%s]" \
+                                          % (block_split_axis, reduce_axis_index)
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
         if "axis_var" in block_tiling_para.keys() and \
                 block_tiling_para["axis_var"] is not None:
@@ -1291,7 +1298,10 @@ class ReduceAtomicSchedule(VectorSchedule):
             reduce_axis_index)
 
         if a1_end_index is None:
-            raise RuntimeError("a1_end_index can not be none!")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "a1_end_index can not be none!"
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
         # reorder tensor before reduce,
         # for shape (r4,a4,r3,a3,r2,a2,r1,a1),
@@ -1787,7 +1797,10 @@ class ReduceAtomicSchedule(VectorSchedule):
                     shape_before_reduce,
                     reduce_axis_index)
                 if a1_end_index is None:
-                    raise RuntimeError("a1_end_index can not be none!")
+                    dict_args = dict()
+                    dict_args["errCode"] = "E90001"
+                    dict_args["detailed_cause"] = "a1_end_index can not be none!"
+                    raise RuntimeError(dict_args, get_error_message(dict_args))
                 if a1_start_index <= ub_split_axis <= a1_end_index:
                     if len(ub_tiling_tensor.op.reduce_axis) > 1:
                         res_ub_outer = ub_tiling_tensor.op.reduce_axis[-2]
@@ -1875,7 +1888,10 @@ class ReduceAtomicSchedule(VectorSchedule):
                 shape_before_reduce,
                 reduce_axis_index)
             if a1_end_index is None:
-                raise RuntimeError("a1_end_index can not be none!")
+                dict_args = dict()
+                dict_args["errCode"] = "E90001"
+                dict_args["detailed_cause"] = "a1_end_index can not be none!"
+                raise RuntimeError(dict_args, get_error_message(dict_args))
             if ub_split_axis < a1_start_index and \
                     ub_split_axis not in reduce_axis_index:
                 res_ub_inner = ub_tiling_tensor.op.reduce_axis[-1]
@@ -1970,7 +1986,12 @@ class ReduceAtomicSchedule(VectorSchedule):
         def _op_width(op_node):
             num_type = op_node.dtype
             if num_type.lower() not in DTYPE_BYTE_MAPPING.keys():
-                raise RuntimeError("Can not calculate with no compute")
+                dict_args = dict()
+                dict_args["errCode"] = "E90001"
+                dict_args["detailed_cause"] = "The dtype must be bool, s8, " \
+                                              "u8, f16, s16, u16, f32, s32, " \
+                                              "u32, s64, u64, [%s] is unsupported!" % num_type
+                raise RuntimeError(dict_args, get_error_message(dict_args))
             tmp_width = 0
             if op_node.op.tag is not None:
                 tag = op_node.op.tag
@@ -2032,7 +2053,11 @@ class ReduceAtomicSchedule(VectorSchedule):
         self._total_size = self._total_size // 2  # div 2 for double buffer
         total_width = self._get_total_width()
         if not total_width:
-            raise RuntimeError("Can not calculate with no compute")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "Can not calculate with no compute, " \
+                                          "total_width is [%s]" % total_width
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
         max_bound = total_width * 128
         max_ub_count = int(self._total_size // max_bound * 128)

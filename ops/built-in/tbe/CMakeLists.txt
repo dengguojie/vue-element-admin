@@ -31,7 +31,7 @@ foreach(_file ${OP_FILES})
 
   set(_out_json "${_out_path}/${_json_name}")
   add_custom_command(OUTPUT "${_out_json}"
-    COMMAND "${Python3_EXECUTABLE}" "${INI_PARSER}" "${_file}" "${_out_json}" 1>/dev/null
+    COMMAND "${HI_PYTHON}" "${INI_PARSER}" "${_file}" "${_out_json}" 1>/dev/null
     COMMENT "Parsing ini file ${_ini_name}"
   )
   list(APPEND ALL_JSON_FILES "${_out_json}")
@@ -39,22 +39,31 @@ endforeach()
 
 set(TBE_OP_PATH "${INSTALL_PATH}/opp/op_impl/built-in")
 
-add_custom_target(copy_tbe_op ALL
+add_custom_target(tbe_ops_json_info ALL
   DEPENDS ${ALL_JSON_FILES}
 )
-cann_install(
-  TARGET      copy_tbe_op
-  DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/impl"
-  DESTINATION "${TBE_OP_PATH}/ai_core/tbe"
-)
-cann_install(
-  TARGET      copy_tbe_op
-  COPY_CONTENTS
-  DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}/config/ai_core"
-  DESTINATION "${TBE_OP_PATH}/ai_core/tbe/config"
-)
-cann_install(
-  TARGET      copy_tbe_op
-  FILES       "${CMAKE_CURRENT_BINARY_DIR}/config/vector_core/vector_core_tbe_ops_info.json"
-  DESTINATION "${TBE_OP_PATH}/vector_core/tbe/config"
-)
+if(BUILD_OPEN_PROJECT)
+  add_custom_target(tbe_aicore_ops_impl ALL)
+  cann_install(
+    TARGET      tbe_aicore_ops_impl
+    DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/impl"
+    DESTINATION "${TBE_OP_PATH}/ai_core/tbe"
+  )
+  cann_install(
+    TARGET      tbe_ops_json_info
+    COPY_CONTENTS
+    DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}/config/ai_core"
+    DESTINATION "${TBE_OP_PATH}/ai_core/tbe/config"
+  )
+  cann_install(
+    TARGET      tbe_ops_json_info
+    FILES       "${CMAKE_CURRENT_BINARY_DIR}/config/vector_core/vector_core_tbe_ops_info.json"
+    DESTINATION "${TBE_OP_PATH}/vector_core/tbe/config"
+  )
+else()
+  install(
+    FILES       ${ALL_JSON_FILES}
+    DESTINATION ${INSTALL_LIBRARY_DIR}
+    OPTIONAL
+  )
+endif()

@@ -19,19 +19,13 @@ sub
 """
 from __future__ import absolute_import
 
-import te.lang.dynamic
+import te.lang.cce as tbe
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from te.platform.shape_classifier import classify
-from te.platform.shape_classifier import Mode
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import variable_shape
-from te.utils.op_utils import broadcast_shapes
-from te.utils.op_utils import refine_shapes_for_broadcast
+import te.lang.base as tbe_base
+from te.utils import shape_util
+from te.lang.base.shape_classifier import classify
+from te.lang.base.shape_classifier import Mode
+from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
@@ -55,21 +49,22 @@ def sub_compute(input_x, input_y, output_z, kernel_name="sub"):
     -------
     res : output of the data's sub
     """
-    shape_x = te.lang.dynamic.shape_to_list(input_x.shape)
-    shape_y = te.lang.dynamic.shape_to_list(input_y.shape)
+    shape_x = shape_util.shape_to_list(input_x.shape)
+    shape_y = shape_util.shape_to_list(input_y.shape)
 
-    shape_x, shape_y, shape_max = broadcast_shapes(shape_x, shape_y,
+    shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y,
                                                    param_name_input1="input_x",
                                                    param_name_input2="input_y")
-    input_x = te.lang.dynamic.broadcast(input_x, shape_max)
-    input_y = te.lang.dynamic.broadcast(input_y, shape_max)
-    res = te.lang.dynamic.vsub(input_x, input_y)
+    input_x = tbe.broadcast(input_x, shape_max)
+    input_y = tbe.broadcast(input_y, shape_max)
+    res = tbe.vsub(input_x, input_y)
 
     return res
 
 
-@te.op.register_operator("Sub")
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@tbe_base.register_operator("Sub")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def sub(input_x, input_y, output_z, kernel_name="sub"):
     """
     do element-wise sub operation between two input tensors
@@ -102,19 +97,19 @@ def sub(input_x, input_y, output_z, kernel_name="sub"):
     ins = classify([input_x, input_y], Mode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (x1, x2) in ins:
-        with te.op.compute():
-            x_shape, y_shape = variable_shape([x1, x2], support_broadcast=True)
-            x_shape, y_shape = refine_shapes_for_broadcast(x_shape,
+        with tbe_base.compute():
+            x_shape, y_shape = shape_util.variable_shape([x1, x2], support_broadcast=True)
+            x_shape, y_shape = shape_util.refine_shapes_for_broadcast(x_shape,
                                                            y_shape)
             data1 = tvm.placeholder(x_shape, x_dtype, "data1")
             data2 = tvm.placeholder(y_shape, y_dtype, "data2")
             res = sub_compute(data1, data2, output_z, kernel_name)
             tensors.append([data1, data2, res])
         with tvm.target.cce():
-            sch = generic.auto_schedule(res)
+            sch = tbe.auto_schedule(res)
         schedules.append(sch)
     # build
     config = {"print_ir": False,
               "name": kernel_name,
               "tensor_list": tensors}
-    te.lang.dynamic.build(schedules, config)
+    tbe.build(schedules, config)

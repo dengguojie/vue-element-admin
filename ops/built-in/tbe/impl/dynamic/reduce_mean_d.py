@@ -17,90 +17,13 @@ dynamic reduce mean
 """
 import collections
 
-import te.lang.dynamic as dynamic
+import te.lang.cce as tbe
 from te import platform as tbe_platform
+import te.lang.base as tbe_base
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
-
-
-def fused_reduce_axis(shape, shape_range, reduce_axis):
-    # convert reduce axis
-    for idx, value in enumerate(reduce_axis):
-        if value < 0:
-            reduce_axis[idx] = len(shape) + value
-
-    # if all reduce axis is 1, do not del axis which is 1
-    is_del_axis = False
-    for idx, _ in enumerate(shape):
-        if shape[idx] != 1 and idx in reduce_axis:
-            is_del_axis = True
-
-    shape_new = []
-    reduce_axis_new = []
-    shape_range_new = []
-    fused_rel_dic = {}
-    last_axis_type = "n"
-    for idx, value in enumerate(shape):
-        shape_range_value = list(shape_range[idx])
-        if (is_del_axis and value != 1) or (not is_del_axis):
-            if last_axis_type == "n":
-                if idx in reduce_axis:
-                    reduce_axis_new.append(len(shape_new))
-                    shape_new.append(value)
-                    shape_range_new.append(shape_range_value)
-                    fused_rel_dic[len(shape_new) - 1] = [idx]
-                    last_axis_type = "r"
-                else:
-                    shape_new.append(value)
-                    shape_range_new.append(shape_range_value)
-                    fused_rel_dic[len(shape_new) - 1] = [idx]
-                    last_axis_type = "a"
-            elif last_axis_type == "a":
-                if idx in reduce_axis:
-                    reduce_axis_new.append(len(shape_new))
-                    shape_new.append(value)
-                    shape_range_new.append(shape_range_value)
-                    fused_rel_dic[len(shape_new) - 1] = [idx]
-                    last_axis_type = "r"
-                else:
-                    shape_new[-1] = -1 if shape_new[-1] == -1 or value == -1 \
-                        else shape_new[-1] * value
-                    shape_range_new[-1][0] = None if shape_range_new[-1][0] \
-                        is None or shape_range_value[0] is None or \
-                        shape_range_new[-1][0] * shape_range_value[0] \
-                        > 2147483647 else shape_range_new[-1][0] * \
-                        shape_range_value[0]
-                    shape_range_new[-1][1] = None if shape_range_new[-1][1] \
-                        is None or shape_range_value[1] is None or \
-                        shape_range_new[-1][1] * shape_range_value[1] > \
-                        2147483647 else shape_range_new[-1][1] * \
-                        shape_range_value[1]
-                    fused_rel_dic[len(shape_new) - 1].append(idx)
-                    last_axis_type = "a"
-            elif last_axis_type == "r":
-                if idx in reduce_axis:
-                    shape_new[-1] = -1 if shape_new[-1] == -1 or value == -1 \
-                        else shape_new[-1] * value
-                    shape_range_new[-1][0] = None if shape_range_new[-1][0] \
-                        is None or shape_range_value[0] is None or \
-                        shape_range_new[-1][0] * shape_range_value[0] > \
-                        2147483647 else shape_range_new[-1][0] * \
-                        shape_range_value[0]
-                    shape_range_new[-1][1] = None if shape_range_new[-1][1] \
-                        is None or shape_range_value[1] is None or \
-                        shape_range_new[-1][1] * shape_range_value[1] > \
-                        2147483647 else shape_range_new[-1][1] * \
-                        shape_range_value[1]
-                    fused_rel_dic[len(shape_new) - 1].append(idx)
-                    last_axis_type = "r"
-                else:
-                    shape_new.append(value)
-                    shape_range_new.append(shape_range_value)
-                    fused_rel_dic[len(shape_new) - 1] = [idx]
-                    last_axis_type = "a"
-
-    return shape_new, shape_range_new, reduce_axis_new, fused_rel_dic
+from te.lang.base.operation import add_compile_info
 
 
 def reduce_mean_d_compute(x,
@@ -162,29 +85,29 @@ def reduce_mean_d_compute(x,
         cof = reduce_elts ** (-1)
         cof = tvm.const(cof, dtype=calc_dtype)
     else:
-        cof = tbe_platform.var("cof", dtype=calc_dtype)
+        cof = tbe_base.var("cof", dtype=calc_dtype)
         if calc_dtype == "float16":
-            tbe_platform.var("cof_empty", dtype=calc_dtype)
-        tbe_platform.add_compile_info("reduce_mean_cof_dtype", calc_dtype)
+            tbe_base.var("cof_empty", dtype=calc_dtype)
+        tbe_base.add_compile_info("reduce_mean_cof_dtype", calc_dtype)
 
     if dtype != calc_dtype:
-        data_input_tmp = dynamic.cast_to(x, calc_dtype)
+        data_input_tmp = tbe.cast_to(x, calc_dtype)
     else:
         data_input_tmp = x
 
-    data_input_tmp = dynamic.vmuls(data_input_tmp, cof)
-    res = dynamic.sum(data_input_tmp, axis=axes, keepdims=keepdims)
+    data_input_tmp = tbe.vmuls(data_input_tmp, cof)
+    res = tbe.sum(data_input_tmp, axis=axes, keepdims=keepdims)
 
     if dtype != calc_dtype:
         if dtype in ("int8", "uint8"):
-            res = dynamic.cast_to(res, dtype, False)
+            res = tbe.cast_to(res, dtype, False)
         else:
-            res = dynamic.cast_to(res, dtype)
+            res = tbe.cast_to(res, dtype)
 
     return res
 
 
-@tbe_platform.register_operator("ReduceMeanD")
+@tbe_base.register_operator("ReduceMeanD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def reduce_mean_d(input_x, output_y, axes,
@@ -216,36 +139,36 @@ def reduce_mean_d(input_x, output_y, axes,
     dtype_lower = dtype.lower()
     check_list = ("float16", "float32", "int8", "uint8")
     para_check.check_dtype(dtype_lower, check_list)
+    add_compile_info("_ori_axis", axes)
 
-    with tbe_platform.compute():
-        shape = input_x["shape"]
-        shape_range = input_x["range"]
+    shape = input_x["shape"]
+    shape_len = len(shape)
+    if not axes:
+        axes = range(shape_len)
+    if hasattr(axes, 'index'):
+        axes = list(axes)
+    axes = shape_util.axis_check(shape_len, axes)
 
-        shape_len = len(shape)
-        if not axes:
-            axes = range(shape_len)
-        if hasattr(axes, 'index'):
-            axes = list(axes)
-        # not support 5HD
-        is_5hdc = False
+    schedules = []
+    tensors = []
+    ins = tbe_base.shape_classifier.classify([input_x, axes], tbe_base.shape_classifier.Mode.REDUCE)
 
-        shape_new, shape_range_new, axes_new, fused_rel_dic = \
-            fused_reduce_axis(shape, shape_range, axes)
+    for (input_x, axes) in ins:
+        with tbe_base.compute():
+            # not support 5HD
+            is_5hdc = False
+            shape_var_new = shape_util.variable_shape([input_x])[0]
+            data_input = tvm.placeholder(shape_var_new, name="data_input",
+                                         dtype=dtype_lower)
+            res = reduce_mean_d_compute(data_input, output_y, axes,
+                                        keepdims, impl_mode=impl_mode,
+                                        is_5hdc=is_5hdc)
+            tensors.append([data_input, res])
 
-        tbe_platform.add_compile_info("fused_rel_dic", fused_rel_dic)
-        input_x["shape"] = shape_new
-        input_x["range"] = shape_range_new
-        shape_var_new = shape_util.variable_shape([input_x])[0]
-
-        data_input = tvm.placeholder(shape_var_new, name="data_input",
-                                     dtype=dtype_lower)
-        res = reduce_mean_d_compute(data_input, output_y, axes_new,
-                                    keepdims, impl_mode=impl_mode,
-                                    is_5hdc=is_5hdc)
-
-    with tvm.target.cce():
-        sch = dynamic.auto_schedule(res)
+        with tvm.target.cce():
+            sch = tbe.auto_schedule(res)
+        schedules.append(sch)
 
     config = {"name": kernel_name,
-              "tensor_list": [data_input, res]}
-    dynamic.build(sch, config)
+              "tensor_list": tensors}
+    tbe.build(schedules, config)

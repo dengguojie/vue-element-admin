@@ -27,9 +27,7 @@ from te import tik
 from te import platform
 from topi import generic
 from functools import reduce as reduceIns
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import REQUIRED_ATTR_LIST_INT
-from te.utils.op_utils import KERNEL_NAME
+from te.utils import para_check
 
 # max_int32
 MAX_INT32 = 2 ** 31 - 1
@@ -325,7 +323,7 @@ class DynamicAtomicAddrClean(object):
 
 
 @te.op.register_operator("DynamicAtomicAddrClean")
-@check_op_params(REQUIRED_ATTR_LIST_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_ATTR_LIST_INT, para_check.KERNEL_NAME)
 def dynamic_atomic_addr_clean(size_list, kernel_name="DynamicAtomicAddrClean"):
     """
     clean memory of workspace list

@@ -23,6 +23,7 @@ from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 # define a scalar for add
 HALF_ONE = 0.5
@@ -276,9 +277,7 @@ def fake_quant_with_min_max_vars(x, min, max, y, num_bits,
     para_check.check_shape(max_shape, min_rank=1, max_rank=1, param_name="max")
 
     if num_bits > 16 or num_bits < 2:
-        raise RuntimeError(
-            "The value of num_bits must be between"
-            "2 and 16")
+        error_manager_vector.raise_err_input_param_not_in_range(kernel_name, "num_bits", "2", "16", num_bits)
 
     check_tuple = ("float32",)
     x_type = input_dtype.lower()

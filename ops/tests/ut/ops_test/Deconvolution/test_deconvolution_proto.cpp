@@ -2,7 +2,13 @@
 #include <iostream>
 #include "op_proto_test_util.h"
 #include "nn_calculation_ops.h"
-
+#include "common/util/error_manager/error_manager.h"
+#include "graph/utils/type_utils.h"
+#include "op_log.h"
+#include "op_desc.h"
+#include "utils/op_desc_utils.h"
+#include "utils/attr_utils.h"
+#include "graph/debug/ge_attr_define.h"
 
 // ---------------Deconv test proto-------------------
 class DeconvProtoTest : public testing::Test {
@@ -269,3 +275,98 @@ TEST_F(DeconvProtoTest, deconvBaseFormatTest2) {
     auto ret = deconv.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
+// cut Cin
+TEST_F(DeconvProtoTest, deconvSplicDataTest0) {
+    ge::op::Deconvolution deconv;
+    deconv.UpdateInputDesc("x", create_desc_with_ori({4, 64, 10, 10}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{4, 64, 10, 10}, ge::FORMAT_NCHW));
+    deconv.UpdateInputDesc("filter", create_desc_with_ori({64, 64, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{64, 64, 3, 3}, ge::FORMAT_NCHW));
+    deconv.UpdateOutputDesc("y", create_desc_with_ori({64, 64, 12, 12}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{64, 64, 12, 12},ge::FORMAT_NCHW));
+    deconv.SetAttr("strides", {1, 1});
+    deconv.SetAttr("pads", {0, 0, 0, 0});
+    deconv.SetAttr("dilations", {1, 1, 1, 1});
+    std::vector<std::vector<int64_t>> y_data_slice ={{}, {0, 2}, {}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(deconv);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto status = op_desc->InferDataSlice();
+    ge::GeTensorDescPtr tensor_desc_w = op_desc->MutableInputDesc("filter");
+    std::vector<std::vector<int64_t>> w_data_slice;
+    ge::AttrUtils::GetListListInt(tensor_desc_w, ge::ATTR_NAME_DATA_SLICE, w_data_slice);
+
+    std::vector<std::vector<int64_t>> expect_w_data_slice = {{0, 26}, {}, {}, {}};
+    EXPECT_EQ(expect_w_data_slice, w_data_slice);
+}
+
+// cut N
+TEST_F(DeconvProtoTest, deconvSplicDataTest1) {
+    ge::op::Deconvolution deconv;
+    deconv.UpdateInputDesc("x", create_desc_with_ori({4, 64, 10, 10}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{4, 64, 10, 10}, ge::FORMAT_NCHW));
+    deconv.UpdateInputDesc("filter", create_desc_with_ori({64, 64, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{64, 64, 3, 3}, ge::FORMAT_NCHW));
+    deconv.UpdateOutputDesc("y", create_desc_with_ori({64, 64, 12, 12}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{64, 64, 12, 12},ge::FORMAT_NCHW));
+    deconv.SetAttr("strides", {1, 1});
+    deconv.SetAttr("pads", {0, 0, 0, 0});
+    deconv.SetAttr("dilations", {1, 1, 1, 1});
+    std::vector<std::vector<int64_t>> y_data_slice ={{6, 20}, {}, {}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(deconv);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto status = op_desc->InferDataSlice();
+    ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+    std::vector<std::vector<int64_t>> x_data_slice;
+    ge::AttrUtils::GetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice);
+
+    std::vector<std::vector<int64_t>> expect_x_data_slice = {};
+    EXPECT_EQ(expect_x_data_slice, x_data_slice);
+}
+
+// cut H
+TEST_F(DeconvProtoTest, deconvSplicDataTest2) {
+    ge::op::Deconvolution deconv;
+    deconv.UpdateInputDesc("x", create_desc_with_ori({4, 64, 10, 10}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{4, 64, 10, 10}, ge::FORMAT_NCHW));
+    deconv.UpdateInputDesc("filter", create_desc_with_ori({64, 64, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{64, 64, 3, 3}, ge::FORMAT_NCHW));
+    deconv.UpdateOutputDesc("y", create_desc_with_ori({64, 64, 12, 12}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{64, 64, 12, 12},ge::FORMAT_NCHW));
+    deconv.SetAttr("strides", {1, 1});
+    deconv.SetAttr("pads", {0, 0, 0, 0});
+    deconv.SetAttr("dilations", {1, 1, 1, 1});
+    std::vector<std::vector<int64_t>> y_data_slice ={{}, {}, {0, 5}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(deconv);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto status = op_desc->InferDataSlice();
+    ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+    std::vector<std::vector<int64_t>> x_data_slice;
+    ge::AttrUtils::GetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice);
+    std::vector<std::int64_t> new_pads;
+    deconv.GetAttr("pads", new_pads);
+    std::vector<std::int64_t> new_pads_expect = {0, 2, 0, 0};
+    std::vector<std::vector<int64_t>> expect_x_data_slice = {{}, {}, {0, 5}, {}, {}};
+    EXPECT_EQ(expect_x_data_slice, x_data_slice);
+    EXPECT_EQ(new_pads_expect, new_pads);
+}
+
+// cut w
+TEST_F(DeconvProtoTest, deconvSplicDataTest3) {
+    ge::op::Deconvolution deconv;
+    deconv.UpdateInputDesc("x", create_desc_with_ori({4, 64, 5, 5}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{4, 64, 5, 5}, ge::FORMAT_NCHW));
+    deconv.UpdateInputDesc("filter", create_desc_with_ori({64, 64, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{64, 64, 3, 3}, ge::FORMAT_NCHW));
+    deconv.UpdateOutputDesc("y", create_desc_with_ori({64, 64, 13, 13}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{64, 64, 13, 13},ge::FORMAT_NCHW));
+    deconv.SetAttr("strides", {3, 3});
+    deconv.SetAttr("pads", {1, 1, 1, 1});
+    deconv.SetAttr("dilations", {1, 1, 1, 1});
+    std::vector<std::vector<int64_t>> y_data_slice ={{}, {}, {}, {3, 10}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(deconv);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto status = op_desc->InferDataSlice();
+    ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+    std::vector<std::vector<int64_t>> x_data_slice;
+    ge::AttrUtils::GetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice);
+    std::vector<std::int64_t> new_pads;
+    deconv.GetAttr("pads", new_pads);
+    std::vector<std::int64_t> new_pads_expect = {1, 1, 1, 0};
+    std::vector<std::vector<int64_t>> expect_x_data_slice = {{}, {}, {}, {1, 3}, {}};
+    EXPECT_EQ(expect_x_data_slice, x_data_slice);
+    EXPECT_EQ(new_pads_expect, new_pads);
+}
+
+

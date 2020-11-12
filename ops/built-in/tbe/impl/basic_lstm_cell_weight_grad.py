@@ -20,6 +20,7 @@ import numpy as np
 import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=too-many-instance-attributes
@@ -95,7 +96,9 @@ class LstmCellGradInput():
 
         # check k axis length match
         if self.x_shape[1] != self.dgate_shape[1]:
-            raise RuntimeError("k axis length of inputs must match!")
+            error_detail = "k axis length of inputs x and dgate must match!"
+            error_manager_vector.raise_err_two_input_shape_invalid("basic_lstm_cell_weight_grad", \
+                                                                   "x", "dgate", error_detail)
 
     def init_gm_tensor(self):
         """

@@ -20,6 +20,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 
 # define a scalar, value = 1
@@ -184,12 +185,13 @@ def binary_cross_entropy_grad(
     para_check.check_dtype(predict_dtype_lower, check_list, param_name="x")
 
     if predict_shape != target_shape:
-        raise RuntimeError("predictx(x) and target(y)"
-                           " should have the same shape")
+        error_detail = "shape of x and y should be same"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", "y", error_detail)
 
     if not (predict_dtype_lower == target_dtype_lower and
             predict_dtype_lower == dout_dtype_lower):
-        raise RuntimeError("all input should have the same dtype")
+        error_detail = "dtype of x and y should be same"
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "x", "y", error_detail)
 
     weight_data_input = None
     if weight is not None:
@@ -202,13 +204,14 @@ def binary_cross_entropy_grad(
             [shape_size], name="weight_data_input", dtype=weight_dtype_lower)
 
         if predict_shape != weight_shape:
-            raise RuntimeError("predictx(x) and weight"
-                               " should have the same shape")
+            error_detail = "shape of x and weight should be same"
+            error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", "weight", error_detail)
         if predict_dtype_lower != weight_dtype_lower:
-            raise RuntimeError("predictx(x) and weight"
-                               " should have the same dtype")
+            error_detail = "dtype of x and weight should be same"
+            error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "x", "weight", error_detail)
     if reduction not in ("mean", "sum", "none"):
-        raise RuntimeError("reduction type should in mean/sum/none")
+        rule_desc = "reduction type should in mean/sum/none"
+        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "reduction", reduction)
 
     res = binary_cross_entropy_grad_compute(
         predict_data_input, target_data_input,

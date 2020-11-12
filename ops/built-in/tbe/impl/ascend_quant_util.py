@@ -16,6 +16,7 @@
 ascend_quant_util
 """
 from te import tvm
+from impl.util import util_select_op_base
 
 # 32B to the number of fp16
 FP16_BLOCK_VALUE = 16
@@ -62,3 +63,39 @@ def is_nz_format(tensor, is_quant=False):
             return True
 
     return False
+
+
+# pylint: disable = unused-argument
+def get_quant_support_info(x, x1=None, dual_output=False, l1_fusion_enable=0):
+    """
+    obtains the split information of the quantization operator
+    """
+    dim_x = len(x.get("shape"))
+    format_x = x.get("format")
+
+    # C1 C0  can not split
+    not_cut_dim = [1, 4]
+    if format_x == "FRACTAL_NZ":
+        not_cut_dim = [dim_x - 4, dim_x - 1]
+
+    if format_x == "NC1HWC0" or format_x == "FRACTAL_NZ":
+        axis_split_list = []
+        for i in range(dim_x):
+            if i not in not_cut_dim:
+                if x1 is not None:
+                    split_in = util_select_op_base.SplitInput([0, [i], [-1], [-1]],
+                                                              [2, [i], [-1], [-1]])
+                else:
+                    split_in = util_select_op_base.SplitInput([0, [i], [-1], [-1]])
+                if dual_output:
+                    split_out = util_select_op_base.SplitOutput([0, [i]],
+                                                                [1, [i]])
+                else:
+                    split_out = util_select_op_base.SplitOutput([0, [i]])
+                axis_split_list.append([split_in, split_out])
+    else:
+        axis_split_list = None
+
+    axis_reduce_list = None
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_list, axis_reduce_list, l1_fusion_enable)
+    return op_cal_info_in_json

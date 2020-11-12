@@ -120,10 +120,10 @@ Status LinSpaceFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   FUSION_PASS_CHECK(inputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                     return PARAM_INVALID);
   Status ret = NnSet(num, FLOAT_NUM_ZERO, *reinterpret_cast<float*>(inputAssit.get()));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "NnSet failed."), return NOT_CHANGED);
 
   ret = AssitHelpFloat(num, inputAssit.get());
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "AssitHelp failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "AssitHelp failed."), return NOT_CHANGED);
 
   ge::GeTensorDesc tensorDesc(GeShape(), ge::FORMAT_ND, ge::DT_FLOAT);
   tensorDesc.SetShape(assistShape);

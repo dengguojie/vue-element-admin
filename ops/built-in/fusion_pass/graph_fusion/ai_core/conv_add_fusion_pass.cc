@@ -24,7 +24,7 @@
 #include <map>
 #include <string>
 #include <vector>
-
+#include "error_util.h"
 #include "fp16_t.hpp"
 #include "op_log.h"
 #include "graph/debug/ge_attr_define.h"
@@ -66,7 +66,7 @@ vector<FusionPattern*> ConvAddFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   string pass_name = "TBEConvAddFusion";
   FusionPattern* pattern = new (std::nothrow) FusionPattern(pass_name);
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(fused_op_type_.c_str(), "TBEConvAddFusion new an object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "TBEConvAddFusion new an object failed."),
                     return patterns);
 
   OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pass_name.c_str());
@@ -112,11 +112,18 @@ Status ConvAddFusionPass::ShapeInfoCheck(OpDescPtr add_node_desc, OpDescPtr conv
       OP_LOGW(fused_op_type_.c_str(), "Invalid input format, should be NCHW or NHWC.");
       return NOT_CHANGED;
     }
-
+    if (PatternFusionUtil::IsUnknownShape(non_const_input_channel)) {
+      OP_LOGW(fused_op_type_.c_str(), "ConvAddFusionPass cannot be applied for unknown shape.");
+      return NOT_CHANGED;
+    }
     if (const_dims.size() == 0) {
       /* for scalar */
       channel_for_scalar = non_const_input_channel;
     } else if (const_dims.size() == 1) {
+      if (PatternFusionUtil::IsUnknownShape(const_dims.at(0))) {
+        OP_LOGW(fused_op_type_.c_str(), "ConvAddFusionPass cannot be applied for unknown shape.");
+        return NOT_CHANGED;
+      }
       if (const_dims.at(0) == 1) {
         /* for scalar */
         channel_for_scalar = non_const_input_channel;
@@ -127,6 +134,14 @@ Status ConvAddFusionPass::ShapeInfoCheck(OpDescPtr add_node_desc, OpDescPtr conv
       }
     } else if (const_dims.size() == 4) {
       // NHWC, channel wise exemple: add input [1,1,1,256] and conv input [x,x,x,256]
+      if (PatternFusionUtil::IsUnknownShape(const_dims.at(0)) ||
+          PatternFusionUtil::IsUnknownShape(const_dims.at(1)) ||
+          PatternFusionUtil::IsUnknownShape(const_dims.at(2)) ||
+          PatternFusionUtil::IsUnknownShape(const_dims.at(3)) ||
+          PatternFusionUtil::IsUnknownShape(non_const_input_channel)) {
+        OP_LOGW(fused_op_type_.c_str(), "ConvAddFusionPass cannot be applied for unknown shape.");
+        return NOT_CHANGED;
+      }
       if ((const_dims.at(0) != 1 or const_dims.at(1) != 1 or
         const_dims.at(2) != 1 or non_const_input_channel != const_dims.at(3)) and
         (non_const_input_format == FORMAT_NHWC)) {
@@ -144,11 +159,25 @@ Status ConvAddFusionPass::ShapeInfoCheck(OpDescPtr add_node_desc, OpDescPtr conv
     }
   } else if (conv_node_desc->GetType() == "Conv3D") {
     if (const_dims.size() == 1) {
+      if (PatternFusionUtil::IsUnknownShape(const_dims.at(0)) ||
+          PatternFusionUtil::IsUnknownShape(non_const_dims.at(4))) {
+        OP_LOGW(fused_op_type_.c_str(), "ConvAddFusionPass cannot be applied for unknown shape.");
+        return NOT_CHANGED;
+      }
       if (non_const_dims.at(4) != const_dims.at(0)) {
         return NOT_CHANGED;
       }
     } else if (const_dims.size() == 5) {
       // NDHWC, channel wise  exemple: add input [1,1,1,1,256] and conv input [x,x,x,x,256]
+      if (PatternFusionUtil::IsUnknownShape(const_dims.at(0)) ||
+          PatternFusionUtil::IsUnknownShape(const_dims.at(1)) ||
+          PatternFusionUtil::IsUnknownShape(const_dims.at(2)) ||
+          PatternFusionUtil::IsUnknownShape(const_dims.at(3)) ||
+          PatternFusionUtil::IsUnknownShape(const_dims.at(4)) ||
+          PatternFusionUtil::IsUnknownShape(non_const_dims.at(4))) {
+        OP_LOGW(fused_op_type_.c_str(), "ConvAddFusionPass cannot be applied for unknown shape.");
+        return NOT_CHANGED;
+      }
       if (const_dims.at(0) != 1 or const_dims.at(1) != 1 or const_dims.at(2) != 1 or const_dims.at(3) != 1 or
           non_const_dims.at(4) != const_dims.at(4)) {
         OP_LOGW(fused_op_type_.c_str(), "Match failed! tensor is not ChannelWise");
@@ -168,20 +197,20 @@ Status ConvAddFusionPass::ShapeInfoCheck(OpDescPtr add_node_desc, OpDescPtr conv
   */
 Status ConvAddFusionPass::ConnectConvToOutput(NodePtr conv_node, NodePtr add_node) {
   auto conv_node_anchor = conv_node->GetOutDataAnchor(0);
-  FUSION_PASS_CHECK(conv_node_anchor == nullptr, OP_LOGE(fused_op_type_.c_str(), "conv node anchor is null"),
+  FUSION_PASS_CHECK(conv_node_anchor == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "conv node anchor is null"),
                     return FAILED);
   auto add_node_anchor = add_node->GetOutDataAnchor(0);
-  FUSION_PASS_CHECK(add_node_anchor == nullptr, OP_LOGE(fused_op_type_.c_str(), "add node anchor is null"),
+  FUSION_PASS_CHECK(add_node_anchor == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "add node anchor is null"),
                     return FAILED);
 
   OutDataAnchor::Vistor<InDataAnchorPtr> output_in_anchors = add_node_anchor->GetPeerInDataAnchors();
   add_node_anchor->UnlinkAll();
 
   for (auto in_anchor : output_in_anchors) {
-    FUSION_PASS_CHECK(in_anchor == nullptr, OP_LOGE(fused_op_type_.c_str(), "output node anchor is null"),
+    FUSION_PASS_CHECK(in_anchor == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "output node anchor is null"),
                       return FAILED);
     FUSION_PASS_CHECK(GraphUtils::AddEdge(conv_node_anchor, in_anchor) != GRAPH_SUCCESS,
-                      OP_LOGE(fused_op_type_.c_str(), "add edge from conv to output failed"), return FAILED);
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "add edge from conv to output failed"), return FAILED);
   }
 
   return SUCCESS;
@@ -219,7 +248,7 @@ Status ConvAddFusionPass::BroadcastScalar(int64_t channel_for_scalar, int64_t& n
   DataType data_type = conv_bias_ptr->GetTensorDesc().GetDataType();
   uint32_t length = 0;
   if (!TypeUtils::GetDataTypeLength(data_type, length)) {
-    OP_LOGE(fused_op_type_.c_str(), "Can't GetDataTypeLength of data_type: %s",
+    OP_LOGI(fused_op_type_.c_str(), "Can't GetDataTypeLength of data_type: %s",
             TypeUtils::DataTypeToSerialString(data_type).c_str());
     return NOT_CHANGED;
   }
@@ -260,9 +289,9 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   OP_LOGI(fused_op_type_.c_str(), "Enter ConvAddFusionPass");
   ge::NodePtr conv_node = GetNodeFromMapping(kPatternConv, mapping);
   ge::NodePtr add_node = GetNodeFromMapping(kPatternAdd, mapping);
-  FUSION_PASS_CHECK(conv_node == nullptr, OP_LOGE(fused_op_type_.c_str(), "Conv Node is null, fusion failed."),
+  FUSION_PASS_CHECK(conv_node == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "Conv Node is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(add_node == nullptr, OP_LOGE(fused_op_type_.c_str(), "Node Add is null, fusion failed."),
+  FUSION_PASS_CHECK(add_node == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "Node Add is null, fusion failed."),
                     return PARAM_INVALID);
 
   if (conv_node->GetOutDataNodes().size() > 1) {
@@ -272,8 +301,7 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
 
   ge::OpDescPtr conv_node_desc = conv_node->GetOpDesc();
   FUSION_PASS_CHECK(conv_node_desc == nullptr,
-                    OP_LOGE(fused_op_type_.c_str(), "Node:%s's OpDesc is null, fusion failed.",
-                    conv_node->GetName().c_str()),
+                    CommonRuntimeErrLog(fused_op_type_.c_str(), "Node's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   if ((conv_node_desc->GetType() == "Conv3D") && (add_node->GetOutDataNodes().size() > 1)) {
@@ -290,11 +318,11 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   }
 
   OutDataAnchorPtr filter_anchor = conv_node->GetInDataAnchor(1)->GetPeerOutAnchor();
-  FUSION_PASS_CHECK(filter_anchor == nullptr, OP_LOGE(fused_op_type_.c_str(), "filter output anchor is null"),
+  FUSION_PASS_CHECK(filter_anchor == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "filter output anchor is null"),
                     return PARAM_INVALID);
   NodePtr filter_node = filter_anchor->GetOwnerNode();
   FUSION_PASS_CHECK(filter_node == nullptr,
-                    OP_LOGE(fused_op_type_.c_str(), "ConvAddFusionPass: filter_node is not exist."),
+                    CommonRuntimeErrLog(fused_op_type_.c_str(), "ConvAddFusionPass: filter_node is not exist."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(kNewAddIn.find(filter_node->GetOpDesc()->GetType()) == kNewAddIn.end(),
                     OP_LOGW(fused_op_type_.c_str(), "middle layer's of filter_node is not const type"), return false);
@@ -303,10 +331,10 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   NodePtr bias_node = nullptr;
   if (has_bias) {
     bias_anchor = conv_node->GetInDataAnchor(kBiasIndex)->GetPeerOutAnchor();
-    FUSION_PASS_CHECK(bias_anchor == nullptr, OP_LOGE(fused_op_type_.c_str(), "bias anchor is null"),
+    FUSION_PASS_CHECK(bias_anchor == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "bias anchor is null"),
                       return PARAM_INVALID);
     bias_node = bias_anchor->GetOwnerNode();
-    FUSION_PASS_CHECK(bias_node == nullptr, OP_LOGE(fused_op_type_.c_str(), "bias_node is not exist."),
+    FUSION_PASS_CHECK(bias_node == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "bias_node is not exist."),
                       return PARAM_INVALID);
     FUSION_PASS_CHECK(kNewAddIn.find(bias_node->GetOpDesc()->GetType()) == kNewAddIn.end(),
                       OP_LOGW(fused_op_type_.c_str(), "middle layer's of bias_node is not const type"), return false);
@@ -348,7 +376,7 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   ge::OpDescPtr add_node_desc = add_node->GetOpDesc();
   FUSION_PASS_CHECK(
       add_node_desc == nullptr,
-      OP_LOGE(fused_op_type_.c_str(), "Node:%s's OpDesc is null, fusion failed.", add_node->GetName().c_str()),
+      CommonRuntimeErrLog(fused_op_type_.c_str(), "Node's OpDesc is null, fusion failed."),
       return PARAM_INVALID);
 
   size_t non_const_add_input_index = 0;
@@ -366,10 +394,10 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   if (has_bias) {
     // unlink bias to conv
     InDataAnchorPtr conv_bias_in_anchor = conv_node->GetInDataAnchor(kBiasIndex);
-    FUSION_PASS_CHECK(conv_bias_in_anchor == nullptr, OP_LOGE(fused_op_type_.c_str(), "conv_node bias anchor is null"),
+    FUSION_PASS_CHECK(conv_bias_in_anchor == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "conv_node bias anchor is null"),
                       return FAILED);
     FUSION_PASS_CHECK(GraphUtils::RemoveEdge(bias_anchor, conv_bias_in_anchor) != GRAPH_SUCCESS,
-                      OP_LOGE(fused_op_type_.c_str(), "remove edge from input to conv2d failed"), return FAILED);
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "remove edge from input to conv2d failed"), return FAILED);
 
     // get add_const_node
     vector<ge::NodePtr> add_const_nodes = ge::OpDescUtils::GetConstInputs(add_node);
@@ -379,16 +407,14 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
 
     NodePtr add_const_node = add_const_nodes[0];
     OutDataAnchorPtr const_add_anchor = add_const_node->GetOutDataAnchor(0);
-    OP_LOGE(fused_op_type_.c_str(), "add_const_node[0] [%s]: ", add_const_node->GetName().c_str());
+    OP_LOGI(fused_op_type_.c_str(), "add_const_node[0] [%s]: ", add_const_node->GetName().c_str());
     FUSION_PASS_CHECK(
         const_add_anchor == nullptr,
-        OP_LOGE(fused_op_type_.c_str(), "Node [%s]: const output anchor is null", add_const_node->GetName().c_str()),
-        return FAILED);
+        CommonRuntimeErrLog(fused_op_type_.c_str(), "Node const output anchor is null"), return FAILED);
     // copy add opDesc, update input_shape & out_shape
     OpDescPtr bias_add_node_desc = AttrUtils::CloneOpDesc(add_node_desc);
     FUSION_PASS_CHECK(bias_add_node_desc == nullptr,
-                      OP_LOGI(fused_op_type_.c_str(), "Node:%s's OpDesc is null, clone bias add desc failed.",
-                              add_node->GetName().c_str()),
+                      OP_LOGI(fused_op_type_.c_str(), "Node's OpDesc is null, clone bias add desc failed."),
                       return PARAM_INVALID);
     OP_LOGD(fused_op_type_.c_str(), "bias_add_node_desc %s, optye %s, input %ld, output %ld",
             bias_add_node_desc->GetName().c_str(), bias_add_node_desc->GetType().c_str(),
@@ -423,27 +449,26 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
 
     // add edge for bias->biasMul
     ge::NodePtr bias_mul_op_node = graph.AddNode(bias_add_node_desc);
-    FUSION_PASS_CHECK(bias_mul_op_node == nullptr, OP_LOGE(fused_op_type_.c_str(), "add bnias mul op node failed"),
+    FUSION_PASS_CHECK(bias_mul_op_node == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "add bnias mul op node failed"),
                       return FAILED);
     new_nodes.push_back(bias_mul_op_node);
     InDataAnchorPtr bias_mul0_anchor = bias_mul_op_node->GetInDataAnchor(non_const_add_input_index);
-    FUSION_PASS_CHECK(bias_mul0_anchor == nullptr, OP_LOGE(fused_op_type_.c_str(), "bias_mul input_0 anchor is null"),
+    FUSION_PASS_CHECK(bias_mul0_anchor == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "bias_mul input_0 anchor is null"),
                       return FAILED);
     FUSION_PASS_CHECK(GraphUtils::AddEdge(bias_anchor, bias_mul0_anchor) != GRAPH_SUCCESS,
-                      OP_LOGE(fused_op_type_.c_str(), "add edge from bias to bias_mul failed"), return FAILED);
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "add edge from bias to bias_mul failed"), return FAILED);
     InDataAnchorPtr bias_add1_anchor = bias_mul_op_node->GetInDataAnchor(1 - non_const_add_input_index);
-    FUSION_PASS_CHECK(bias_add1_anchor == nullptr, OP_LOGE(fused_op_type_.c_str(), "bias_mul input_1 anchor is null"),
+    FUSION_PASS_CHECK(bias_add1_anchor == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "bias_mul input_1 anchor is null"),
                       return FAILED);
     FUSION_PASS_CHECK(GraphUtils::AddEdge(const_add_anchor, bias_add1_anchor) != GRAPH_SUCCESS,
-                      OP_LOGE(fused_op_type_.c_str(), "add edge from bias to bias_mul failed"), return FAILED);
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "add edge from bias to bias_mul failed"), return FAILED);
     OutDataAnchorPtr bias_mul_out_anchor = bias_mul_op_node->GetOutDataAnchor(0);
     FUSION_PASS_CHECK(GraphUtils::AddEdge(bias_mul_out_anchor, conv_bias_in_anchor) != GRAPH_SUCCESS,
-                      OP_LOGE(fused_op_type_.c_str(), "add edge from bias_mul to conv failed"), return FAILED);
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "add edge from bias_mul to conv failed"), return FAILED);
     FUSION_PASS_CHECK(ConvAddFusionPass::ConnectConvToOutput(conv_node, add_node) != SUCCESS,
-                      OP_LOGE(fused_op_type_.c_str(), "connect conv node to output failed"), return FAILED);
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "connect conv node to output failed"), return FAILED);
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(add_node),
-                      OP_LOGE(fused_op_type_.c_str(), "Remove node:[%s] failed", add_node->GetName().c_str()),
-                      return FAILED);
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "Remove node failed"), return FAILED);
   } else {
     OP_LOGI(fused_op_type_.c_str(), "ConvAddFusionPass: Conv3d [%s] has %u input anchor.", conv_node->GetName().c_str(),
             conv_node->GetAllInDataAnchors().size());
@@ -457,7 +482,7 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
 
     ge::ConstGeTensorPtr biases = weights[0];
     FUSION_PASS_CHECK(biases == nullptr,
-                      OP_LOGE(fused_op_type_.c_str(), "Biasadd node's weight is null, fusion failed."),
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "Biasadd node's weight is null, fusion failed."),
                       return PARAM_INVALID);
 
     int64_t new_shape = 1;
@@ -468,6 +493,10 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
 
     if (biase_dims_size > 1) {
       for (int64_t dim : biases->GetTensorDesc().GetShape().GetDims()) {
+        if (PatternFusionUtil::IsUnknownShape(dim)) {
+          OP_LOGW(fused_op_type_.c_str(), "ConvAddFusionPass cannot be applied for unknown shape.");
+          return NOT_CHANGED;
+        }
         if (dim != kChannelWiseDim) {
           new_shape = dim;
           break;
@@ -478,19 +507,17 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     }
 
     FUSION_PASS_CHECK(SUCCESS != PatternFusionUtil::LinkControlEdge(add_node, conv_node),
-                      OP_LOGE(fused_op_type_.c_str(), "Link control edge from [%s] to [%s] failed",
-                              add_node->GetName().c_str(), conv_node->GetName().c_str()),
-                      return FAILED);
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "Link control edge failed"), return FAILED);
 
     ge::GeTensorPtr conv_bias_ptr = nullptr;
     conv_bias_ptr = std::make_shared<ge::GeTensor>(biases->Clone());
 
     FUSION_PASS_CHECK(conv_bias_ptr == nullptr,
-                      OP_LOGE(fused_op_type_.c_str(), "Clone Biasadd node's weight is null, fusion failed."),
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "Clone Biasadd node's weight is null, fusion failed."),
                       return PARAM_INVALID);
 
     FUSION_PASS_CHECK(BroadcastScalar(channel_for_scalar, new_shape, conv_bias_ptr) != SUCCESS,
-                      OP_LOGE(fused_op_type_.c_str(), "Broadcase the scalar failed."), return NOT_CHANGED);
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "Broadcase the scalar failed."), return NOT_CHANGED);
 
     std::vector<int64_t> new_dim_vec;
     new_dim_vec.push_back(new_shape);
@@ -505,10 +532,10 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
             conv_bias_ptr->MutableTensorDesc().GetFormat(), conv_bias_ptr->MutableTensorDesc().GetOriginFormat());
 
     FUSION_PASS_CHECK(PatternFusionUtil::SetWeightByIndex(conv_node, conv_bias_ptr, kBiasIndex, graph) != SUCCESS,
-                      OP_LOGE(conv_node->GetName().c_str(), "Fail to add bias const node for pooling node."),
+                      CommonRuntimeErrLog(conv_node->GetName().c_str(), "Fail to add bias const node for pooling node."),
                       return FAILED);
     FUSION_PASS_CHECK(true != ge::AttrUtils::SetBool(conv_node->GetOpDesc(), ge::MATMUL_HAS_BIAS, true),
-                      OP_LOGE(fused_op_type_.c_str(), "Biasadd op weight should be 1-D."), return FAILED);
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "Biasadd op weight should be 1-D."), return FAILED);
     conv_bias_tensor = conv_node_desc->GetInputDesc(kBiasIndex);
     GeTensorDesc input_tensor = conv_node_desc->GetInputDesc(0);
     conv_bias_tensor.SetOriginShape(conv_bias_tensor.GetShape());
@@ -529,8 +556,7 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     OP_LOGI(fused_op_type_.c_str(), "Conv's 2nd input origin format is %d.",
             conv_node_desc->GetInputDesc(2).GetOriginFormat());
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(add_node),
-                      OP_LOGE(fused_op_type_.c_str(), "Remove node:[%s] failed", add_node->GetName().c_str()),
-                      return FAILED);
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "Remove node failed"), return FAILED);
     new_nodes.push_back(conv_node);
   }
 

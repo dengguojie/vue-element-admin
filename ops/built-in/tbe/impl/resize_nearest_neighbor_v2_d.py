@@ -28,7 +28,8 @@ from te.platform.cce_build import build_config
 from te.platform.cce_intrin_md import reset_mask_insn
 from topi.cce import util
 from impl.copy_only import copy_only
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 # one block
 BLOCK_SIZE = 32
@@ -910,7 +911,8 @@ def check_supported(images,
         in_size_h = images_shape[2]
         in_size_w = images_shape[3]
     else:
-        raise RuntimeError("The format of images is not supported")
+        error_manager_vector.raise_err_input_format_invalid(kernel_name, "images", \
+                                                            "NHWC,NCHW,NC1HWC0", images_format)
 
     try:
         if in_size_h > 7680 or in_size_w > 4320:
@@ -1126,8 +1128,8 @@ def resize_nearest_neighbor_v2_d_compute(images,
     return stmt
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, OPTION_ATTR_BOOL,
-                 OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def resize_nearest_neighbor_v2_d(images,
                                  y,
                                  size,
@@ -1159,20 +1161,24 @@ def resize_nearest_neighbor_v2_d(images,
     """
     image_shape = images.get("shape")
     image_dtype = images.get("dtype").lower()
-    check_shape(image_shape, param_name="images")
-    check_shape(size, param_name="size")
+    para_check.check_shape(image_shape, param_name="images")
+    para_check.check_shape(size, param_name="size")
     check_list = ("float16", "float32")
-    check_dtype(image_dtype, check_list, param_name="images")
+    para_check.check_dtype(image_dtype, check_list, param_name="images")
 
     if len(image_shape) != 5:
-        raise RuntimeError("the length of image shape must be 5")
+        error_detail = "the length of image shape must be 5"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "images", error_detail)
 
     if len(size) != 2:
-        raise RuntimeError("the length of size must be 2")
+        rule_desc = "the length of size must be 2"
+        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "size", len(size))
 
     if align_corners and half_pixel_centers:
-        raise RuntimeError(
-            "if half_pixel_centers is True, align_corners must be False")
+        rule_desc = "if half_pixel_centers is True, align_corners must be False"
+        param_value = "%s and %s"%(align_corners, half_pixel_centers)
+        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, \
+                                                          "align_corners and half_pixel_centers", param_value)
 
     output_shape = (image_shape[0], image_shape[1], size[0], size[1],
                     image_shape[4])

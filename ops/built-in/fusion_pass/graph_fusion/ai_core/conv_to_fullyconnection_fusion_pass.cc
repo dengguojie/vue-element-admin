@@ -91,6 +91,16 @@ Status ConvToFullyConnectionFusionPass::CheckHWCEqual(const ge::GeTensorDesc& xT
   int64_t xAixsC = GetDimByAxisName(xTensor, "C");
   int64_t filterAixsC = GetDimByAxisName(filterTensor, "C");
 
+  if (PatternFusionUtil::IsUnknownShape(xAixsH) ||
+      PatternFusionUtil::IsUnknownShape(filterAixsH) ||
+      PatternFusionUtil::IsUnknownShape(xAixsW) ||
+      PatternFusionUtil::IsUnknownShape(filterAixsW) ||
+      PatternFusionUtil::IsUnknownShape(xAixsC) ||
+      PatternFusionUtil::IsUnknownShape(filterAixsC)) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "ConvToFullyConnectionFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
+
   OP_LOGD(FUSED_OP_TYPE.c_str(), "HWC of x is [%ld, %ld, %ld], filter is [%ld, %ld, %ld].", xAixsH, xAixsW, xAixsC,
           filterAixsH, filterAixsW, filterAixsC);
 
@@ -127,7 +137,6 @@ Status ConvToFullyConnectionFusionPass::CheckFusionParm(ge::NodePtr convNode) {
           TypeUtils::FormatToSerialString(xInputDesc.GetOriginFormat()).c_str(),
           TypeUtils::FormatToSerialString(filterInputDesc.GetFormat()).c_str(),
           TypeUtils::FormatToSerialString(filterInputDesc.GetOriginFormat()).c_str());
-
   FUSION_PASS_CHECK(CheckHWCEqual(xInputDesc, filterInputDesc) != SUCCESS,
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "HWC of x and filter are not equal."), return FAILED);
 

@@ -9,10 +9,6 @@ Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 
 try:
     import sys
-    import time
-    import os
-    import argparse
-    import itertools
     from op_gen.interface.arg_parser import ArgParser
     from op_gen.interface.op_file_generator import OpFileGenerator
     from op_gen.interface.op_info_parser import OpInfoParser

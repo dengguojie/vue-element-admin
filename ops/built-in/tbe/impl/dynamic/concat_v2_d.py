@@ -20,10 +20,11 @@ concat_v2_d: Concatenates tensors along one dimension.
 
 """
 from __future__ import absolute_import
+import math
 import te.lang.dynamic
 from topi.cce import util
 from impl import common_util
-from te.utils.op_utils import *
+from te.utils import para_check
 from te import tik
 from impl import constant_util as constant
 from impl.util.util_select_op_base import gen_param
@@ -564,7 +565,8 @@ def __check_params(input_values, axis):
 
 
 @te.op.register_operator("ConcatV2D")
-@check_op_params(DYNAMIC_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.DYNAMIC_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def concat_v2_d(input_values, output_data, axis, kernel_name="concat_v2_d"):
     """
     algorithm: concat_v2_d

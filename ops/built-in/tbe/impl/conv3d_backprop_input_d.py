@@ -432,9 +432,9 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     filter_dtype = filter_dtype.lower()
     out_backprop_dtype = out_backprop_dtype.lower()
     res_dtype = res_dtype.lower()
-    para_check.check_dtype_rule(filter_dtype, ['float16'])
-    para_check.check_dtype_rule(out_backprop_dtype, ['float16'])
-    para_check.check_dtype_rule(res_dtype, ['float16'])
+    para_check.check_dtype_rule(filter_dtype, ['float16'], "filter")
+    para_check.check_dtype_rule(out_backprop_dtype, ['float16'], "out_backprop")
+    para_check.check_dtype_rule(res_dtype, ['float16'], "output")
 
     # the relation limits between shape
     shape_filter = list(shape_filter)
@@ -470,6 +470,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     # pads compute
     pads = list(pads)
     pad_head, pad_tail, pad_up, pad_down, pad_left, pad_right = pads
+    util_common.check_pads_value_3d(pads)
 
     fmap_h_padding = fmap_h + pad_up + pad_down
     fmap_w_padding = fmap_w + pad_left + pad_right

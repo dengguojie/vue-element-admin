@@ -16,7 +16,7 @@
 
 /*!
  * \file gather.cpp
- * \brief
+ * \brief tiling function of op
  */
 #include <string>
 
@@ -25,22 +25,162 @@
 #include "graph/debug/ge_log.h"
 
 #include "../op_proto/util/error_util.h"
+#include "op_log.h"
 
 namespace optiling {
 
-const int32_t BLOCK_SIZE = 32;
+const int64_t BLOCK_SIZE = 32;
+const int64_t PARAMS_CACHED_UB = 100 * 1024;
+const int64_t RESERVED_UB_SIZE = 6 * 1024;
 
+// A. block tiling: indices tiling
 // 1. one params row size is smaller than 32B
 // params is not cache
-const int32_t TILING_MODE_1 = 1;
+const int64_t TILING_MODE_1 = 1;
+// params is cache in UB
+const int64_t TILING_MODE_4 = 4;
+
 // 2. one params row size is greater than or equal to 32B
 // paramsRow is not 32B aligned
-const int32_t TILING_MODE_2 = 2;
-// paramsRow is 32B aligned
-const int32_t TILING_MODE_3 = 3;
+const int64_t TILING_MODE_2 = 2;
+// the data of one params row can not store in half UB, need tiling
+const int64_t TILING_MODE_5 = 5;
 
-bool GatherCheckTensorShape(const std::string& opType, std::vector<int64_t> paramsShape,
-                            std::vector<int64_t> indicesShape, std::vector<int64_t> yShape, int32_t axis) {
+// 3. paramsRow is 32B aligned
+// params is not cache in UB or L1
+const int64_t TILING_MODE_3 = 3;
+// params is cache in UB
+const int64_t TILING_MODE_6 = 6;
+// params is cache in L1
+const int64_t TILING_MODE_7 = 7;
+
+// B. block tiling: params_pre tiling
+// 1. one params row size is smaller than 32B
+// params is not cache
+const int64_t TILING_MODE_8 = 8;
+// params is cache in UB
+const int64_t TILING_MODE_9 = 9;
+
+// 2. paramsRow is 32B aligned
+// params is not cache in UB or L1
+const int64_t TILING_MODE_10 = 10;
+// params is cache in UB
+const int64_t TILING_MODE_11 = 11;
+// params is cache in L1
+const int64_t TILING_MODE_12 = 12;
+
+struct GatherTilingParams {
+  int64_t tilingMode;
+  int64_t paramsPre;
+  int64_t paramsAxis;
+  int64_t paramsRow;
+  int64_t indicesNum;
+  int64_t cacheParams;
+  int64_t need_core_num;
+  int64_t tail_process_core;
+  int64_t indices_num_each_core;
+  int64_t indices_num_remaining;
+  int64_t indices_loop_num;
+  int64_t indices_row_num_once;
+  int64_t indices_row_num_last;
+  int64_t row_num_once_ub;
+  int64_t row_num_once_tail_ub;
+  int64_t inner_loop_num;
+  int64_t row_num_last_ub;
+  int64_t row_num_last_tail_ub;
+  int64_t inner_loop_num_last;
+  int64_t paramsTotal;
+  int64_t oneRowLoop;
+  int64_t oneRowTail;
+  int64_t params_pre_each_core;
+  int64_t params_pre_remaining;
+};
+
+void InitGatherParams(GatherTilingParams& params) {
+  params.tilingMode = 0;
+  params.paramsPre = 1;
+  params.paramsAxis = 1;
+  params.paramsRow = 1;
+  params.indicesNum = 1;
+  params.cacheParams = 0;
+  params.need_core_num = 0;
+  params.tail_process_core = 0;
+  params.indices_num_each_core = 0;
+  params.indices_num_remaining = 0;
+  params.indices_loop_num = 0;
+  params.indices_row_num_once = 0;
+  params.indices_row_num_last = 0;
+  params.row_num_once_ub = 0;
+  params.row_num_once_tail_ub = 0;
+  params.inner_loop_num = 0;
+  params.row_num_last_ub = 0;
+  params.row_num_last_tail_ub = 0;
+  params.inner_loop_num_last = 0;
+  params.paramsTotal = 0;
+  params.oneRowLoop = 0;
+  params.oneRowTail = 0;
+  params.params_pre_each_core = 0;
+  params.params_pre_remaining = 0;
+}
+
+void SetGatherParams(GatherTilingParams& Params, OpRunInfo& runInfo) {
+  // set tiling data
+  ByteBufferPut(runInfo.tiling_data, Params.tilingMode);
+  ByteBufferPut(runInfo.tiling_data, Params.paramsPre);
+  ByteBufferPut(runInfo.tiling_data, Params.paramsAxis);
+  ByteBufferPut(runInfo.tiling_data, Params.paramsRow);
+  ByteBufferPut(runInfo.tiling_data, Params.indicesNum);
+  ByteBufferPut(runInfo.tiling_data, Params.cacheParams);
+  ByteBufferPut(runInfo.tiling_data, Params.need_core_num);
+  ByteBufferPut(runInfo.tiling_data, Params.tail_process_core);
+  ByteBufferPut(runInfo.tiling_data, Params.indices_num_each_core);
+  ByteBufferPut(runInfo.tiling_data, Params.indices_num_remaining);
+  ByteBufferPut(runInfo.tiling_data, Params.indices_loop_num);
+  ByteBufferPut(runInfo.tiling_data, Params.indices_row_num_once);
+  ByteBufferPut(runInfo.tiling_data, Params.indices_row_num_last);
+  ByteBufferPut(runInfo.tiling_data, Params.row_num_once_ub);
+  ByteBufferPut(runInfo.tiling_data, Params.row_num_once_tail_ub);
+  ByteBufferPut(runInfo.tiling_data, Params.inner_loop_num);
+  ByteBufferPut(runInfo.tiling_data, Params.row_num_last_ub);
+  ByteBufferPut(runInfo.tiling_data, Params.row_num_last_tail_ub);
+  ByteBufferPut(runInfo.tiling_data, Params.inner_loop_num_last);
+  ByteBufferPut(runInfo.tiling_data, Params.paramsTotal);
+  ByteBufferPut(runInfo.tiling_data, Params.oneRowLoop);
+  ByteBufferPut(runInfo.tiling_data, Params.oneRowTail);
+  ByteBufferPut(runInfo.tiling_data, Params.params_pre_each_core);
+  ByteBufferPut(runInfo.tiling_data, Params.params_pre_remaining);
+}
+
+void PrintGatherParams(const GatherTilingParams& params) {
+  GELOGD("op [GatherTiling] : tilingMode=%d.", params.tilingMode);
+  GELOGD("op [GatherTiling] : paramsPre=%d.", params.paramsPre);
+  GELOGD("op [GatherTiling] : paramsAxis=%d.", params.paramsAxis);
+  GELOGD("op [GatherTiling] : paramsRow=%d.", params.paramsRow);
+  GELOGD("op [GatherTiling] : indicesNum=%d.", params.indicesNum);
+  GELOGD("op [GatherTiling] : cacheParams=%d.", params.cacheParams);
+  GELOGD("op [GatherTiling] : need_core_num=%d.", params.need_core_num);
+  GELOGD("op [GatherTiling] : tail_process_core=%d.", params.tail_process_core);
+  GELOGD("op [GatherTiling] : indices_num_each_core=%d.", params.indices_num_each_core);
+  GELOGD("op [GatherTiling] : indices_num_remaining=%d.", params.indices_num_remaining);
+  GELOGD("op [GatherTiling] : indices_loop_num=%d.", params.indices_loop_num);
+  GELOGD("op [GatherTiling] : indices_row_num_once=%d.", params.indices_row_num_once);
+  GELOGD("op [GatherTiling] : indices_row_num_last=%d.", params.indices_row_num_last);
+  GELOGD("op [GatherTiling] : row_num_once_ub=%d.", params.row_num_once_ub);
+  GELOGD("op [GatherTiling] : row_num_once_tail_ub=%d.", params.row_num_once_tail_ub);
+  GELOGD("op [GatherTiling] : inner_loop_num=%d.", params.inner_loop_num);
+  GELOGD("op [GatherTiling] : row_num_last_ub=%d.", params.row_num_last_ub);
+  GELOGD("op [GatherTiling] : row_num_last_tail_ub=%d.", params.row_num_last_tail_ub);
+  GELOGD("op [GatherTiling] : inner_loop_num_last=%d.", params.inner_loop_num_last);
+  GELOGD("op [GatherTiling] : paramsTotal=%d.", params.paramsTotal);
+  GELOGD("op [GatherTiling] : oneRowLoop=%d.", params.oneRowLoop);
+  GELOGD("op [GatherTiling] : oneRowTail=%d.", params.oneRowTail);
+  GELOGD("op [GatherTiling] : params_pre_each_core=%d.", params.params_pre_each_core);
+  GELOGD("op [GatherTiling] : params_pre_remaining=%d.", params.params_pre_remaining);
+}
+
+bool checkGatherTensorShape(const std::string& opType, std::vector<int64_t> paramsShape,
+                            std::vector<int64_t> indicesShape,
+                            std::vector<int64_t> yShape, int32_t axis) {
   int32_t paramsDims = paramsShape.size();
   int32_t indicesDims = indicesShape.size();
   int32_t yDims = yShape.size();
@@ -63,14 +203,14 @@ bool GatherCheckTensorShape(const std::string& opType, std::vector<int64_t> para
 
   if (yDims != outputDims) {
     ge::OpsOneInputShapeErrReport(opType.c_str(), "y", "the dim of y must be equal to the dim of output");
-    GE_LOGE("op [GatherTiling] : GatherCheckTensorShape, y Shape is invalid.");
+    OP_LOGE(opType.c_str(), "op [GatherTiling] : checkGatherTensorShape, y Shape is invalid.");
     return false;
   }
 
   for (int32_t i = 0; i < yDims; i++) {
     if (yShape[i] != outputShape[i]) {
       ge::OpsOneInputShapeErrReport(opType.c_str(), "y", "the shape of y must be equal to the shape of output");
-      GE_LOGE("op [GatherTiling] : GatherCheckTensorShape, y Shpae dim is invalid.");
+      OP_LOGE(opType.c_str(), "op [GatherTiling] : checkGatherTensorShape, y Shpae dim is invalid.");
       return false;
     }
   }
@@ -78,43 +218,103 @@ bool GatherCheckTensorShape(const std::string& opType, std::vector<int64_t> para
   return true;
 }
 
-bool GatherCompileParams(const std::string& opType, const nlohmann::json& opCompileInfoJson, int32_t& coreNum,
-                         int32_t& ubSize, int32_t& l1Size, int32_t& paramsDSize, int32_t& indicesDSize) {
+bool GetGatherCompileParams(const std::string& opType, const nlohmann::json& opCompileInfoJson, int64_t& coreNum,
+                            int64_t& ubSize, int64_t& l1Size, int64_t& paramsDSize, int64_t& indicesDSize) {
   using namespace nlohmann;
 
   const auto& allVars = opCompileInfoJson["vars"];
   if (allVars.count("core_num") == 0) {
     ge::OpsGetCompileParamsErrReport(opType.c_str(), "core_num");
-    GE_LOGE("op [GatherTiling] : GetCompileParams, get core_num error");
+    OP_LOGE(opType.c_str(), "op [GatherTiling] : GetCompileParams, get core_num error");
     return false;
   }
-  coreNum = allVars["core_num"].get<std::int32_t>();
+  coreNum = allVars["core_num"].get<std::int64_t>();
   if (allVars.count("ub_size") == 0) {
-    GE_LOGE("op [GatherTiling] : GetCompileParams, get ub_size error");
+    OP_LOGE(opType.c_str(), "op [GatherTiling] : GetCompileParams, get ub_size error");
     ge::OpsGetCompileParamsErrReport(opType.c_str(), "ub_size");
     return false;
   }
-  ubSize = allVars["ub_size"].get<std::int32_t>();
+  ubSize = allVars["ub_size"].get<std::int64_t>();
   if (allVars.count("l1_size") == 0) {
-    GE_LOGE("op [GatherTiling] : GetCompileParams, get l1_size error");
+    OP_LOGE(opType.c_str(), "op [GatherTiling] : GetCompileParams, get l1_size error");
     ge::OpsGetCompileParamsErrReport(opType.c_str(), "l1_size");
     return false;
   }
-  l1Size = allVars["l1_size"].get<std::int32_t>();
+  l1Size = allVars["l1_size"].get<std::int64_t>();
   if (allVars.count("params_dsize") == 0) {
-    GE_LOGE("op [GatherTiling] : GetCompileParams, get params_dsize error");
+    OP_LOGE(opType.c_str(), "op [GatherTiling] : GetCompileParams, get params_dsize error");
     ge::OpsGetCompileParamsErrReport(opType.c_str(), "params_dsize");
     return false;
   }
-  paramsDSize = allVars["params_dsize"].get<std::int32_t>();
+  paramsDSize = allVars["params_dsize"].get<std::int64_t>();
   if (allVars.count("indices_dsize") == 0) {
-    GE_LOGE("op [GatherTiling] : GetCompileParams, get indices_dsize error");
+    OP_LOGE(opType.c_str(), "op [GatherTiling] : GetCompileParams, get indices_dsize error");
     ge::OpsGetCompileParamsErrReport(opType.c_str(), "indices_dsize");
     return false;
   }
-  indicesDSize = allVars["indices_dsize"].get<std::int32_t>();
+  indicesDSize = allVars["indices_dsize"].get<std::int64_t>();
 
   return true;
+}
+
+// compute tiling params for tiling_mode 1&4
+void GatherBlockLessForIndicesTiling(GatherTilingParams& runParams, int64_t& indicesNumPerLoop, int64_t& resUbSize,
+                                     int64_t& paramsDSize, int64_t& blockNum) {
+  runParams.indices_loop_num = runParams.indices_num_each_core / indicesNumPerLoop;
+  runParams.indices_row_num_once = indicesNumPerLoop;
+  if (runParams.indices_num_each_core % runParams.indices_row_num_once != 0) {
+    runParams.indices_row_num_last = runParams.indices_num_each_core % runParams.indices_row_num_once;
+  }
+
+  runParams.row_num_once_ub = resUbSize / (runParams.paramsRow * paramsDSize);
+  if (int(runParams.row_num_once_ub % blockNum) != 0) {
+    runParams.row_num_once_ub = int(runParams.row_num_once_ub / blockNum) * blockNum;
+  }
+  runParams.inner_loop_num = runParams.indices_row_num_once / runParams.row_num_once_ub;
+  if (runParams.indices_row_num_once % runParams.row_num_once_ub != 0) {
+    runParams.row_num_once_tail_ub = runParams.indices_row_num_once % runParams.row_num_once_ub;
+  }
+  if (runParams.inner_loop_num > 0 && runParams.row_num_once_tail_ub > 0 &&
+      runParams.row_num_once_tail_ub * runParams.paramsRow < blockNum) {
+    runParams.inner_loop_num = runParams.inner_loop_num - 1;
+    runParams.row_num_once_tail_ub = runParams.row_num_once_tail_ub + runParams.row_num_once_ub;
+  }
+
+  runParams.row_num_last_ub = resUbSize / (runParams.paramsRow * paramsDSize);
+  if (int(runParams.row_num_last_ub % blockNum) != 0) {
+    runParams.row_num_last_ub = int(runParams.row_num_last_ub / blockNum) * blockNum;
+  }
+  runParams.inner_loop_num_last = runParams.indices_row_num_last / runParams.row_num_last_ub;
+  if (runParams.indices_row_num_last % runParams.row_num_last_ub != 0) {
+    runParams.row_num_last_tail_ub = runParams.indices_row_num_last % runParams.row_num_last_ub;
+  }
+  if (runParams.inner_loop_num_last > 0 && runParams.row_num_last_tail_ub > 0 &&
+      runParams.row_num_last_tail_ub * runParams.paramsRow < blockNum) {
+    runParams.inner_loop_num_last = runParams.inner_loop_num_last - 1;
+    runParams.row_num_last_tail_ub = runParams.row_num_last_tail_ub + runParams.row_num_once_ub;
+  }
+}
+
+// compute tiling params for tiling_mode 3&6&7
+void GatherBlockAlignForIndicesTiling(GatherTilingParams& runParams, int64_t& indicesNumPerLoop,
+                                      int64_t& resUbSize, int64_t& paramsDSize) {
+  runParams.indices_loop_num = runParams.indices_num_each_core / indicesNumPerLoop;
+  runParams.indices_row_num_once = indicesNumPerLoop;
+  if (runParams.indices_num_each_core % runParams.indices_row_num_once != 0) {
+    runParams.indices_row_num_last = runParams.indices_num_each_core % runParams.indices_row_num_once;
+  }
+
+  runParams.row_num_once_ub = resUbSize / (runParams.paramsRow * paramsDSize);
+  runParams.inner_loop_num = runParams.indices_row_num_once / runParams.row_num_once_ub;
+  if (runParams.indices_row_num_once % runParams.row_num_once_ub != 0) {
+    runParams.row_num_once_tail_ub = runParams.indices_row_num_once % runParams.row_num_once_ub;
+  }
+
+  runParams.row_num_last_ub = resUbSize / (runParams.paramsRow * paramsDSize);
+  runParams.inner_loop_num_last = runParams.indices_row_num_last / runParams.row_num_last_ub;
+  if (runParams.indices_row_num_last % runParams.row_num_last_ub != 0) {
+    runParams.row_num_last_tail_ub = runParams.indices_row_num_last % runParams.row_num_last_ub;
+  }
 }
 
 /*
@@ -130,34 +330,26 @@ bool GatherTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   GELOGI("op[%s] GatherTiling running.", opType.c_str());
   using namespace ge;
   if (op_info == nullptr) {
-    GE_LOGE("op[%s] GatherTiling: op_info json error.", opType.c_str());
+    OP_LOGE(opType.c_str(), "op GatherTiling: op_info json error.");
     return false;
   }
   if (opParas.inputs.empty() || opParas.inputs.size() < 2 || opParas.inputs[0].tensor.empty() ||
       opParas.inputs[1].tensor.empty()) {
     ge::OpsOneInputShapeErrReport(opType.c_str(), "x or indices",
                                   "The length of inputs is less than 2 or the inputs is empty");
-    GE_LOGE("op[%s] GatherTiling: input shape error.", opType.c_str());
+    OP_LOGE(opType.c_str(), "op GatherTiling: input shape error.");
     return false;
   }
   if (opParas.outputs.empty() || opParas.outputs.size() < 1 || opParas.outputs[0].tensor.empty()) {
     ge::OpsOneOutputShapeErrReport(opType.c_str(), "y", "The length of outputs is less than 1 or the outputs is empty");
-    GE_LOGE("op[%s] GatherTiling: output shape error.", opType.c_str());
+    OP_LOGE(opType.c_str(), "op GatherTiling: output shape error.");
     return false;
   }
 
   std::vector<int64_t> paramsShape = opParas.inputs[0].tensor[0].shape;
   std::vector<int64_t> indicesShape = opParas.inputs[1].tensor[0].shape;
-  // std::vector<int64_t> axisShape = opParas.inputs[2].tensor[0].shape;
   std::vector<int64_t> yShape = opParas.outputs[0].tensor[0].shape;
 
-  // if (opParas.const_inputs.find("axis") == opParas.const_inputs.end()){
-  //     ge::OpsOneInputShapeErrReport(opType.c_str(), "axis",
-  //         "axis is not exist in const inputs");
-  //     GE_LOGE("op[%s] GatherTiling: axis not exists.", opType.c_str());
-  //     return false;
-  // }
-  // const int32_t* axis_ptr = reinterpret_cast<const int32_t*>(std::get<0>(opParas.const_inputs.at("axis")));
   int32_t axis = 0;
   GELOGD("op [GatherTiling] : axis=%d.", axis);
 
@@ -166,228 +358,166 @@ bool GatherTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   int32_t indicesDims = indicesShape.size();
   if (paramsDims <= 0 || indicesDims <= 0) {
     ge::OpsOneInputShapeErrReport(opType.c_str(), "x or indices", "the dim of x or indices is less than 1");
-    GE_LOGE("op[%s] GatherTiling: paramsDims or indicesDims is 0.", opType.c_str());
+    OP_LOGE("op[%s] GatherTiling: paramsDims or indicesDims is 0.", opType.c_str());
     return false;
   }
   if (axis < -paramsDims || axis >= paramsDims) {
     ge::OpsOneInputShapeErrReport(opType.c_str(), "axis",
                                   "the dim of axis is less than negative x dim, or greater than x dim");
-    GE_LOGE("op[%s] GatherTiling: axis is invalid.", opType.c_str());
+    OP_LOGE(opType.c_str(), "op GatherTiling: axis is invalid.");
     return false;
   }
   if (axis < 0) {
     axis += paramsDims;
   }
 
-  bool ret = GatherCheckTensorShape(opType, paramsShape, indicesShape, yShape, axis);
+  bool ret = checkGatherTensorShape(opType, paramsShape, indicesShape, yShape, axis);
   if (!ret) {
-    GE_LOGE("op[%s] GatherTiling: [GatherCheckTensorShape] failed.", opType.c_str());
+    OP_LOGE(opType.c_str(), "op GatherTiling: [checkGatherTensorShape] failed.");
     return ret;
   }
 
   // get compile info
-  int32_t ubSize = 0;
-  int32_t l1Size = 0;
-  int32_t coreNum = 0;
-  int32_t paramsDSize = 0;
-  int32_t indicesDSize = 0;
-  bool flag = GatherCompileParams(opType, op_info, coreNum, ubSize, l1Size, paramsDSize, indicesDSize);
+  int64_t ubSize = 0;
+  int64_t l1Size = 0;
+  int64_t coreNum = 0;
+  int64_t paramsDSize = 0;
+  int64_t indicesDSize = 0;
+  bool flag = GetGatherCompileParams(opType, op_info, coreNum, ubSize, l1Size, paramsDSize, indicesDSize);
   if (!flag) {
-    GE_LOGE("op[%s] GatherTiling: GatherCompileParams error.", opType.c_str());
+    OP_LOGE("op[%s] GatherTiling: GetGatherCompileParams error.", opType.c_str());
     return false;
   }
 
-  int32_t availableUbSize = ubSize - 2 * 1024;  // reserved 2K
-  int32_t halfUbSize = availableUbSize / 2;
+  int64_t availableUbSize = ubSize - 2 * 1024;  // reserved 2K
+  int64_t halfUbSize = availableUbSize / 2;
+  int64_t blockNum = BLOCK_SIZE / paramsDSize;
+
+  GatherTilingParams runParams;
+  InitGatherParams(runParams);
 
   // params shape convert to 3D:[paramsPre, paramsAxis, paramsRow]
   // indices shape convert to 1D:[indicesNum]
   // output tensor, y shape convert to:[paramsPre, indicesNum, paramsRow]
-  int32_t paramsPre = 1, paramsAxis = 1, paramsRow = 1;
-  int32_t indicesNum = 1;
-
-  // now only support axis is 0
   if (axis == 0) {
-    paramsPre = 1;
+    runParams.paramsPre = 1;
   } else {
     for (int i = 0; i < axis; i++) {
-      paramsPre *= paramsShape[i];
+      runParams.paramsPre *= paramsShape[i];
     }
   }
-  paramsAxis = paramsShape[axis];
+  runParams.paramsAxis = paramsShape[axis];
   if (axis + 1 < paramsDims) {
     for (int i = axis + 1; i < paramsDims; i++) {
-      paramsRow *= paramsShape[i];
+      runParams.paramsRow *= paramsShape[i];
     }
   } else {
-    paramsRow = 1;
+    runParams.paramsRow = 1;
   }
+
+  runParams.paramsTotal = std::accumulate(paramsShape.begin(), paramsShape.end(), 1, std::multiplies<int64_t>());
+  int64_t paramsTotalCeil = (runParams.paramsTotal + blockNum - 1) / blockNum * blockNum;
+
+  int64_t paramsRowCeil = (runParams.paramsRow + blockNum - 1) / blockNum * blockNum;
 
   for (int i = 0; i < indicesDims; i++) {
-    indicesNum *= indicesShape[i];
+    runParams.indicesNum *= indicesShape[i];
   }
 
-  // params tiling mode
-  int32_t tilingMode;
-  // run parameters compute
-  int32_t need_core_num = 0;
-  int32_t tail_process_core = 0;
-  int32_t indices_num_each_core = 0;
-  int32_t indices_num_remaining = 0;
-  int32_t indices_loop_num = 0;
-  int32_t indices_row_num_once = 0;
-  int32_t indices_row_num_last = 0;
-  int32_t row_num_once_ub = 0;
-  int32_t row_num_once_tail_ub = 0;
-  int32_t inner_loop_num = 0;
-  int32_t row_num_last_tail_ub = 0;
-  int32_t row_num_last_ub = 0;
-  int32_t inner_loop_num_last = 0;
+  int64_t resUbSize = halfUbSize;  // store params row data
+  int64_t halfUbIndicesElem = halfUbSize / indicesDSize;
+  int64_t indicesNumPerLoop = halfUbIndicesElem;
+  int64_t halfRemainUbSize = (availableUbSize - PARAMS_CACHED_UB) / 2;
+  int64_t halfRemainIndicesElem = halfRemainUbSize / indicesDSize;
+  int64_t halfRemainParamsElem = halfRemainUbSize / paramsDSize;
+  int64_t halfUbParamsElem = halfUbSize / paramsDSize;
 
-  // block tiling: indices tiling
-  need_core_num = coreNum;
-  tail_process_core = 0;
-  indices_num_each_core = indicesNum / need_core_num;
-  indices_num_remaining = indicesNum % need_core_num;
-  if (indicesNum <= need_core_num) {
-    need_core_num = indicesNum;
-    tail_process_core = 0;
-    indices_num_each_core = 1;
-    indices_num_remaining = 0;
+  runParams.need_core_num = coreNum;
+  runParams.tail_process_core = 0;
+  runParams.indices_num_each_core = runParams.indicesNum / runParams.need_core_num;
+  runParams.indices_num_remaining = runParams.indicesNum % runParams.need_core_num;
+  if (runParams.indicesNum <= runParams.need_core_num) {
+    runParams.need_core_num = runParams.indicesNum;
+    runParams.tail_process_core = 0;
+    runParams.indices_num_each_core = 1;
+    runParams.indices_num_remaining = 0;
   }
-
-  int32_t cacheParams = 0;
-  int32_t resUbSize = halfUbSize;  // store params row data
-  int32_t halfUbIndicesElem = halfUbSize / indicesDSize;
 
   // one params row size is smaller than 32B
-  if (paramsRow * paramsDSize < BLOCK_SIZE) {
-    tilingMode = TILING_MODE_1;
-
-    if ((paramsRow < BLOCK_SIZE) && indices_num_each_core * paramsRow * paramsDSize <= BLOCK_SIZE) {
-      need_core_num = 1;
-      tail_process_core = 0;
-      indices_num_each_core = indicesNum;
-      indices_num_remaining = 0;
+  if (runParams.paramsRow * paramsDSize < BLOCK_SIZE) {
+    if (paramsTotalCeil <= PARAMS_CACHED_UB / paramsDSize) {
+      runParams.tilingMode = TILING_MODE_4;
+    } else {
+      runParams.tilingMode = TILING_MODE_1;
     }
 
-    indices_loop_num = indices_num_each_core / halfUbIndicesElem;
-    indices_row_num_once = halfUbIndicesElem;
-    if (indices_num_each_core % indices_row_num_once != 0) {
-      indices_row_num_last = indices_num_each_core % indices_row_num_once;
+    if ((runParams.paramsRow < BLOCK_SIZE) &&
+        runParams.indices_num_each_core * runParams.paramsRow * paramsDSize <= BLOCK_SIZE) {
+      runParams.need_core_num = 1;
+      runParams.tail_process_core = 0;
+      runParams.indices_num_each_core = runParams.indicesNum;
+      runParams.indices_num_remaining = 0;
     }
 
-    int32_t blockNum = BLOCK_SIZE / paramsDSize;
-    row_num_once_ub = resUbSize / (paramsRow * paramsDSize);
-    if (int(row_num_once_ub % blockNum) != 0) {
-      row_num_once_ub = int(row_num_once_ub / blockNum) * blockNum;
-    }
-    inner_loop_num = indices_row_num_once / row_num_once_ub;
-    if (indices_row_num_once % row_num_once_ub != 0) {
-      row_num_once_tail_ub = indices_row_num_once % row_num_once_ub;
-    }
-    if (inner_loop_num > 0 && row_num_once_tail_ub > 0 && row_num_once_tail_ub * paramsRow < blockNum) {
-      inner_loop_num = inner_loop_num - 1;
-      row_num_once_tail_ub = row_num_once_tail_ub + row_num_once_ub;
+    if (runParams.tilingMode == TILING_MODE_4) {
+      indicesNumPerLoop = halfRemainUbSize / indicesDSize;
+      resUbSize = halfRemainUbSize;
     }
 
-    row_num_last_ub = resUbSize / (paramsRow * paramsDSize);
-    if (int(row_num_last_ub % blockNum) != 0) {
-      row_num_last_ub = int(row_num_last_ub / blockNum) * blockNum;
-    }
-    inner_loop_num_last = indices_row_num_last / row_num_last_ub;
-    if (indices_row_num_last % row_num_last_ub != 0) {
-      row_num_last_tail_ub = indices_row_num_last % row_num_last_ub;
-    }
-    if (inner_loop_num_last > 0 && row_num_last_tail_ub > 0 && row_num_last_tail_ub * paramsRow < blockNum) {
-      inner_loop_num_last = inner_loop_num_last - 1;
-      row_num_last_tail_ub = row_num_last_tail_ub + row_num_once_ub;
-    }
+    GatherBlockLessForIndicesTiling(runParams, indicesNumPerLoop, resUbSize, paramsDSize, blockNum);
   } else {                                            // one params row size is greater than or equal to 32B
-    if (paramsRow * paramsDSize % BLOCK_SIZE != 0) {  // not 32B aligned
-      tilingMode = TILING_MODE_2;
+    if (paramsRowCeil <= halfUbParamsElem) {
+      if (runParams.paramsRow * paramsDSize % BLOCK_SIZE != 0) {  // not 32B aligned
+        runParams.tilingMode = TILING_MODE_2;
 
-      GE_LOGE("op[%s] GatherTiling: inputs shape is not support now, x row size is not 32 bytes align.",
-              opType.c_str());
-      return false;
-    } else {  // 32B aligned
-      tilingMode = TILING_MODE_3;
+        runParams.indices_loop_num = runParams.indices_num_each_core / halfUbIndicesElem;
+        runParams.indices_row_num_once = halfUbIndicesElem;
+        if (runParams.indices_num_each_core % runParams.indices_row_num_once != 0) {
+          runParams.indices_row_num_last = runParams.indices_num_each_core % runParams.indices_row_num_once;
+        }
+      } else {  // 32B aligned
+        if (paramsTotalCeil <= PARAMS_CACHED_UB / paramsDSize && paramsRowCeil <= halfRemainParamsElem) {
+          runParams.tilingMode = TILING_MODE_6;
+        } else if (paramsTotalCeil <= l1Size / paramsDSize) {
+          runParams.tilingMode = TILING_MODE_7;
+        } else {
+          runParams.tilingMode = TILING_MODE_3;
+        }
 
-      indices_loop_num = indices_num_each_core / halfUbIndicesElem;
-      indices_row_num_once = halfUbIndicesElem;
-      if (indices_num_each_core % indices_row_num_once != 0) {
-        indices_row_num_last = indices_num_each_core % indices_row_num_once;
+        if (runParams.tilingMode == TILING_MODE_6) {
+          indicesNumPerLoop = halfRemainUbSize / indicesDSize;
+          resUbSize = halfRemainUbSize;
+        }
+
+        GatherBlockAlignForIndicesTiling(runParams, indicesNumPerLoop, resUbSize, paramsDSize);
+      }
+    } else {
+      runParams.tilingMode = TILING_MODE_5;  // one params row need tiling
+
+      runParams.indices_loop_num = runParams.indices_num_each_core / halfUbIndicesElem;
+      runParams.indices_row_num_once = indicesNumPerLoop;
+      if (runParams.indices_num_each_core % runParams.indices_row_num_once != 0) {
+        runParams.indices_row_num_last = runParams.indices_num_each_core % runParams.indices_row_num_once;
       }
 
-      row_num_once_ub = resUbSize / (paramsRow * paramsDSize);
-      inner_loop_num = indices_row_num_once / row_num_once_ub;
-      if (indices_row_num_once % row_num_once_ub != 0) {
-        row_num_once_tail_ub = indices_row_num_once % row_num_once_ub;
-      }
-
-      row_num_last_ub = resUbSize / (paramsRow * paramsDSize);
-      inner_loop_num_last = indices_row_num_last / row_num_last_ub;
-      if (indices_row_num_last % row_num_last_ub != 0) {
-        row_num_last_tail_ub = indices_row_num_last % row_num_last_ub;
+      runParams.oneRowLoop = runParams.paramsRow / halfUbParamsElem;
+      runParams.oneRowTail = runParams.paramsRow % halfUbParamsElem;
+      if (runParams.oneRowLoop > 0 && runParams.oneRowTail > 0 && runParams.oneRowTail < blockNum) {
+        runParams.oneRowLoop = runParams.oneRowLoop - 1;
+        runParams.oneRowTail = halfUbParamsElem + runParams.oneRowTail;
       }
     }
   }
+  
 
-  // set tiling data
-  ByteBufferPut(runInfo.tiling_data, tilingMode);
-  GELOGD("op [GatherTiling] : tilingMode=%d", tilingMode);
-
-  ByteBufferPut(runInfo.tiling_data, paramsPre);
-  ByteBufferPut(runInfo.tiling_data, paramsAxis);
-  ByteBufferPut(runInfo.tiling_data, paramsRow);
-  ByteBufferPut(runInfo.tiling_data, indicesNum);
-  GELOGD("op gy [GatherTiling] : paramsPre=%d, paramsAxis=%d, paramsRow=%d, indicesNum=%d, paramsDSize=%d",
-    paramsPre,
-    paramsAxis,
-    paramsRow,
-    indicesNum,
-    paramsDSize);
-
-  ByteBufferPut(runInfo.tiling_data, cacheParams);
-  ByteBufferPut(runInfo.tiling_data, need_core_num);
-  ByteBufferPut(runInfo.tiling_data, tail_process_core);
-  ByteBufferPut(runInfo.tiling_data, indices_num_each_core);
-  ByteBufferPut(runInfo.tiling_data, indices_num_remaining);
-  GELOGD("op gy [GatherTiling] : cacheParams=%d, need_core_num=%d, tail_process_core=%d, indices_num_each_core=%d, indices_num_remaining=%d",
-    cacheParams,
-    need_core_num,
-    tail_process_core,
-    indices_num_each_core,
-    indices_num_remaining);
-
-  ByteBufferPut(runInfo.tiling_data, indices_loop_num);
-  ByteBufferPut(runInfo.tiling_data, indices_row_num_once);
-  ByteBufferPut(runInfo.tiling_data, indices_row_num_last);
-  ByteBufferPut(runInfo.tiling_data, row_num_once_ub);
-  ByteBufferPut(runInfo.tiling_data, row_num_once_tail_ub);
-  GELOGD("op gy [GatherTiling] : indices_loop_num=%d, indices_row_num_once=%d, indices_row_num_last=%d, row_num_once_ub=%d, row_num_once_tail_ub=%d",
-    indices_loop_num,
-    indices_row_num_once,
-    indices_row_num_last,
-    row_num_once_ub,
-    row_num_once_tail_ub);
-
-  ByteBufferPut(runInfo.tiling_data, inner_loop_num);
-  ByteBufferPut(runInfo.tiling_data, row_num_last_ub);
-  ByteBufferPut(runInfo.tiling_data, row_num_last_tail_ub);
-  ByteBufferPut(runInfo.tiling_data, inner_loop_num_last);
-  GELOGD("op gy [GatherTiling] : inner_loop_num=%d, row_num_last_ub=%d, row_num_last_tail_ub=%d, inner_loop_num_last=%d",
-    inner_loop_num,
-    row_num_last_ub,
-    row_num_last_tail_ub,
-    inner_loop_num_last);
+  SetGatherParams(runParams, runInfo);
+  PrintGatherParams(runParams);
 
   // block_dim, core num used in tik op
-  runInfo.block_dim = need_core_num;
+  runInfo.block_dim = runParams.need_core_num;
   // workspace, null for tik op
   std::vector<int64_t> workspace;
   runInfo.workspaces = workspace;
-
   GELOGI("op[%s] tiling run success.", opType.c_str());
 
   return true;

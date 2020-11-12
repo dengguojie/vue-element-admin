@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
+"""
+op param util module
+"""
 import random
 import json
 import copy
@@ -25,7 +27,8 @@ def build_op_param(params_info):
     tuple info [dtype, shape, format, ori_shape, ori_format]
     dict info {"dtype": dtype, "shape": shape, "format": format, "ori_shape": ori_shape, "format": ori_format}
 
-    :param params_info: [dtype, shape, format, ori_shape, ori_format], like ["float16", [3,4,5,6], "ND", [3,4,5,6], "ND"]
+    :param params_info: [dtype, shape, format, ori_shape, ori_format], like:
+    ["float16", [3,4,5,6], "ND", [3,4,5,6], "ND"]
     :return: op param
     """
     if len(params_info) == 3:
@@ -40,12 +43,16 @@ def build_op_param(params_info):
 
 
 def broadcast_shape(shape1, shape2):
+    """
+    broadcast shape
+    :param shape1: shape one
+    :param shape2: shape two
+    :return: broadcast shape
+    """
     max_len = max(len(shape1), len(shape2))
     sub_len = abs(len(shape1) - len(shape2))
     if len(shape1) < len(shape2):
-        tmp = shape1
-        shape1 = shape2
-        shape2 = tmp
+        shape1, shape2 = shape2, shape1
     b_shape = []
     for idx in range(max_len):
         if idx >= sub_len:
@@ -57,34 +64,44 @@ def broadcast_shape(shape1, shape2):
 
 
 def trans_shape(shape, ori_format, cur_format):
+    """
+    trans shape by format
+    :param shape: original shape
+    :param ori_format: original format
+    :param cur_format: current format
+    :return: the shape match current format
+    """
     if cur_format == "NC1HWC0":
         if ori_format in ["NCHW", "NHWC", "HWCN"]:
             s_f = dict(zip(list(ori_format), shape))
             cur_shape = [s_f["N"], (s_f["C"] + 15) // 16, s_f["H"], s_f["W"], 16]
             return cur_shape
-        else:
-            cur_shape = [1, (shape[0] + 15) // 16, 1, 1, 16]
-            return cur_shape
+
+        cur_shape = [1, (shape[0] + 15) // 16, 1, 1, 16]
+
     if cur_format == "FRACTAL_NZ":
         cur_shape = list(shape[:-2]) + [(shape[-1] + 15) // 16, (shape[-2] + 15) // 16, 16, 16]
-        return cur_shape
     if cur_format == "FRACTAL_Z":  # C1HW, N, Co, C0
         s_f = dict(zip(list(ori_format), shape))
         cur_shape = [(s_f["C"] + 15) // 16 * s_f["H"] * s_f["W"], (s_f["N"] + 15) // 16, 16, 16]
-        return cur_shape
     if cur_format == "C1HWNCoC0":
         s_f = dict(zip(list(ori_format), shape))
         cur_shape = [(s_f["C"] + 15) // 16, s_f["H"], s_f["W"], (s_f["N"] + 15) // 16, 16, 16]
-        return cur_shape
     if cur_format == "NC1HWC0_C04":
         s_f = dict(zip(list(ori_format), shape))
         cur_shape = [s_f["N"], (s_f["C"] + 3) // 4, s_f["H"], s_f["W"], 4]
-        return cur_shape
     if cur_format == "ND":
         return shape
+    return cur_shape
 
 
 def change_cur_format(op_params, format_list):
+    """
+    change op params's cur_format
+    :param op_params: op params
+    :param format_list: format list
+    :return: changed op params
+    """
     for idx, cur_fm in enumerate(format_list):
         op_params[idx]["format"] = cur_fm
         op_params[idx]["shape"] = trans_shape(op_params[idx]["ori_shape"],
@@ -92,7 +109,13 @@ def change_cur_format(op_params, format_list):
     return op_params
 
 
-def gen_all_format_params(format_res, op_params):
+def gen_all_format_params(format_res, op_params):  # pylint: disable=too-many-locals
+    """
+    generate all format params
+    :param format_res: format
+    :param op_params: op params
+    :return: produced op params by format
+    """
     format_info = json.loads(format_res)
     input_list = []
     output_list = []
@@ -130,18 +153,25 @@ def gen_all_format_params(format_res, op_params):
     return res
 
 
-def cartesian_set_format_dtype(name_list, dtype_list, format_list):
+def cartesian_set_format_dtype(name_list, dtype_list, format_list):  # pylint: disable=too-many-locals
+    """
+    cartesian set format and dtype
+    :param name_list: name list
+    :param dtype_list: dtype list
+    :param format_list: format list
+    :return: cartesian set of format and dtype
+    """
     d_l = len(dtype_list[0])
     f_l = len(format_list[0])
     new_dtype_list = copy.deepcopy(dtype_list)
     new_format_list = copy.deepcopy(format_list)
-    for idx, dt in enumerate(new_dtype_list):
+    for idx, d_t in enumerate(new_dtype_list):
         new_dtype = []
-        for dtype in dt:
+        for dtype in d_t:
             new_dtype += [dtype, ] * f_l
         new_dtype_list[idx] = new_dtype
 
-    for idx, fm in enumerate(new_format_list):
+    for idx, _ in enumerate(new_format_list):
         new_format_list[idx] = new_format_list[idx] * d_l
     result = {}
     for idx, ipt_name in enumerate(name_list[0]):
@@ -161,6 +191,13 @@ def cartesian_set_format_dtype(name_list, dtype_list, format_list):
 
 
 def gen_shape(rank_range=None, size_range=None, dim_limit=None):
+    """
+    generate a shape
+    :param rank_range: shape's rank range
+    :param size_range: shape's size range
+    :param dim_limit: shape's dim size limit
+    :return: shape
+    """
     if size_range is None:
         size_range = [1, 2000 - 1]
     if rank_range is None:
@@ -182,10 +219,15 @@ def gen_shape(rank_range=None, size_range=None, dim_limit=None):
 
 
 def gen_broadcast_shape():
+    """
+    generate two shape which match broadcast relationship
+    :return: two shape
+    """
+
     def _random_broadcast_dims(shape_rank):
         cnt = random.randint(0, shape_rank)
         b_dims = []
-        for idx in range(cnt):
+        for _ in range(cnt):
             b_dim = random.randint(0, shape_rank - 1)
             if b_dim not in b_dims:
                 b_dims.append(b_dim)
@@ -208,6 +250,11 @@ def gen_broadcast_shape():
 
 
 def random_dtype(dtype_list=("float16", "float32", "int32")):
+    """
+    random a type in dtype list
+    :param dtype_list: dtype list
+    :return: a dtype
+    """
     d_len = len(dtype_list)
     idx = random.randint(0, d_len - 1)
     return dtype_list[idx]

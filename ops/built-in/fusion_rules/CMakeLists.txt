@@ -13,23 +13,25 @@
 # limitations under the License.
 # ============================================================================
 
-set(FUSION_FULES_INSTALL_PATH "${INSTALL_PATH}/opp/fusion_rules/built-in")
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ai_core")
-  add_custom_target(copy_aicore_fusion_rules ALL)
-  set(TBE_OP_PATH "${INSTALL_PATH}/opp/op_impl/built-in/ai_core/tbe")
-  cann_install(
-    TARGET      copy_aicore_fusion_rules
-    DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/ai_core"
-    DESTINATION "${FUSION_FULES_INSTALL_PATH}"
-  )
-endif()
+if(BUILD_OPEN_PROJECT)
+  set(FUSION_FULES_INSTALL_PATH "${INSTALL_PATH}/opp/fusion_rules/built-in")
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ai_core")
+    add_custom_target(copy_aicore_fusion_rules ALL)
+    set(TBE_OP_PATH "${INSTALL_PATH}/opp/op_impl/built-in/ai_core/tbe")
+    cann_install(
+      TARGET      copy_aicore_fusion_rules
+      DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/ai_core"
+      DESTINATION "${FUSION_FULES_INSTALL_PATH}"
+    )
+  endif()
 
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vector_core")
-  add_custom_target(copy_veccore_fusion_rules ALL)
-  set(TBE_OP_PATH "${INSTALL_PATH}/opp/op_impl/built-in/ai_core/tbe")
-  cann_install(
-    TARGET      copy_veccore_fusion_rules
-    DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/vector_core"
-    DESTINATION "${FUSION_FULES_INSTALL_PATH}"
-  )
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vector_core")
+    add_custom_target(copy_veccore_fusion_rules ALL)
+    set(TBE_OP_PATH "${INSTALL_PATH}/opp/op_impl/built-in/ai_core/tbe")
+    cann_install(
+      TARGET      copy_veccore_fusion_rules
+      DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/vector_core"
+      DESTINATION "${FUSION_FULES_INSTALL_PATH}"
+    )
+  endif()
 endif()

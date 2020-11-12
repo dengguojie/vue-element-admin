@@ -99,16 +99,20 @@ COMMON_INFER_FUNC_REG(SigmoidCrossEntropyWithLogitsGrad, SigmoidCrossEntropyWith
 // ---------------SigmoidCrossEntropyWithLogitsGrad END-----------------
 
 // -------------------SigmoidCrossEntropyWithLogits---------------------
-IMPLEMT_COMMON_INFERFUNC(SigmoidCrossEntropyWithLogitsInferShape) {
+IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(SigmoidCrossEntropyWithLogitsInferShape)
   auto input_type = op.GetInputDesc("predict").GetDataType();
   auto input_shape = op.GetInputDesc("predict").GetShape();
   TensorDesc td = op.GetOutputDesc("loss");
   td.SetShape(input_shape);
   td.SetDataType(input_type);
 
+  std::vector<std::pair<int64_t, int64_t>> shape_range_x;
+  op.GetInputDesc("predict").GetShapeRange(shape_range_x);
+  td.SetShapeRange(shape_range_x);
+
   (void)op.UpdateOutputDesc("loss", td);
   return GRAPH_SUCCESS;
-}
+IMPLEMT_COMMON_INFERFUNC_HELPER_END()
 
 COMMON_INFER_FUNC_REG(SigmoidCrossEntropyWithLogits, SigmoidCrossEntropyWithLogitsInferShape);
 // ------------------SigmoidCrossEntropyWithLogits END------------------
@@ -537,14 +541,17 @@ IMPLEMT_INFERFUNC(Scale, ScaleInferShape) {
   int64_t num_axes;
   bool scale_from_blob;
   if (GRAPH_SUCCESS != op.GetAttr("axis", axis)) {
+    OpsGetAttrErrReport(op.GetName(), "axis");
     OP_LOGE("[ERROR] GetOpAttr axis failed!");
     return GRAPH_FAILED;
   }
   if (GRAPH_SUCCESS != op.GetAttr("num_axes", num_axes)) {
+    OpsGetAttrErrReport(op.GetName(), "num_axes");
     OP_LOGE("[ERROR] GetOpAttr num_axes failed!");
     return GRAPH_FAILED;
   }
   if (GRAPH_SUCCESS != op.GetAttr("scale_from_blob", scale_from_blob)) {
+    OpsGetAttrErrReport(op.GetName(), "scale_from_blob");
     OP_LOGE("[ERROR] GetOpAttr scale_from_blob failed!");
     return GRAPH_FAILED;
   }
@@ -568,6 +575,7 @@ IMPLEMT_INFERFUNC(Scale, ScaleInferShape) {
     int64_t scale_check_num = axis_ + length_scale;
     if (scale_check_num > length_x) {
       OP_LOGE("[ERROR] scale shape extends x shape when check applied");
+      OpsOneInputShapeErrReport(op.GetName(), "scale", "Scale shape extends x_shape when check applied.");
       return GRAPH_FAILED;
     }
     int64_t begin_idx = length_scale - 1;
@@ -680,10 +688,15 @@ IMPLEMT_VERIFIER(Scale, ScaleVerify) {
 
   if ((axis >= length_x) || (axis < (-length_x))) {
     OP_LOGE("[ERROR] axis out of range index");
+    string minvalue = ConcatString(-length_x);
+    string maxvalue = ConcatString(length_x - 1);
+    string excepted_value = ConcatString("in the range of [", minvalue,",", maxvalue,"]");
+    OpsAttrValueErrReport(op.GetName(), "axis", excepted_value, ConcatString(axis));
     return GRAPH_FAILED;
   }
   if (num_axes < -1) {
     OP_LOGE("[ERROR] num_axes must be non-negative or -1");
+    OpsAttrValueErrReport(op.GetName(), "num_axes", "non-negative or -1", ConcatString(num_axes));
     return GRAPH_FAILED;
   }
 
@@ -700,6 +713,7 @@ IMPLEMT_VERIFIER(Scale, ScaleVerify) {
     int64_t scale_check_num = axis_ + length_scale;
     if (scale_check_num > length_x) {
       OP_LOGE("[ERROR] scale shape extends x shape when check applied");
+      OpsOneInputShapeErrReport(op.GetName(), "scale", "Scale shape extends x_shape when check applied.");
       return GRAPH_FAILED;
     }
     int64_t begin_idx = length_scale - 1;
@@ -725,11 +739,15 @@ IMPLEMT_VERIFIER(Scale, ScaleVerify) {
       int64_t scale_num = length_x - axis_;
       if (length_scale != scale_num) {
         OP_LOGE("[ERROR] length_scale and scale_num must be equal");
+        OpsInputShapeErrReport(op.GetName(),"length_scale and scale_num must be equal",
+                               "length_scale", ConcatString(length_scale));
         return GRAPH_FAILED;
       }
       for (int64_t i = 0; i < scale_num; i++) {
         if (dims_x[axis_ + i] != dims_scale[i]) {
           OP_LOGE("[ERROR] dimensions shape_x and shape_scale must be equal");
+          OpsInputShapeErrReport(op.GetName(), "The dimensions of shape_x and shape_scale must be equal.",
+                                 "shape_scale's dimension", ConcatString(dims_scale[i]));
           return GRAPH_FAILED;
         }
       }
@@ -744,15 +762,20 @@ IMPLEMT_VERIFIER(Scale, ScaleVerify) {
       int64_t num_axis = axis_ + num_axes;
       if (num_axis > length_x) {
         OP_LOGE("[ERROR] scale shape extends x shape when applied");
+        OpsOneInputShapeErrReport(op.GetName(), "scale", "Scale shape extends x_shape when check applied.");
         return GRAPH_FAILED;
       }
       if (length_scale != num_axes) {
         OP_LOGE("[ERROR] length_scale and num_axes must be equal");
+        OpsInputShapeErrReport(op.GetName(),"length_scale and scale_num must be equal",
+                               "length_scale", ConcatString(length_scale));
         return GRAPH_FAILED;
       }
       for (int64_t i = 0; i < num_axes; i++) {
         if (dims_x[axis_ + i] != dims_scale[i]) {
           OP_LOGE("[ERROR] dimensions shape_x and shape_scale must be equal");
+          OpsInputShapeErrReport(op.GetName(), "The dimensions of shape_x and shape_scale must be equal.",
+                                 "shape_scale's dimension", ConcatString(dims_scale[i]));
           return GRAPH_FAILED;
         }
       }
@@ -764,11 +787,14 @@ IMPLEMT_VERIFIER(Scale, ScaleVerify) {
       int64_t scale_num = axis_ + length_scale_new;
       if (scale_num > length_x) {
         OP_LOGE("[ERROR] scale shape extends x shape when applied");
+        OpsOneInputShapeErrReport(op.GetName(), "scale", "Scale shape extends x_shape when check applied.");
         return GRAPH_FAILED;
       }
       for (int64_t i = 0; i < length_scale_new; i++) {
         if (dims_x[axis_ + i] != scale_shape_new[i]) {
           OP_LOGE("[ERROR] dimensions shape_x and shape_scale must be equal");
+          OpsInputShapeErrReport(op.GetName(), "The dimensions of shape_x and shape_scale must be equal.",
+                                 "shape_scale's dimension", ConcatString(scale_shape_new[i]));
           return GRAPH_FAILED;
         }
       }

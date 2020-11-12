@@ -20,7 +20,7 @@ import math
 from te import tik
 from te import platform as tbe_platform
 from te.utils import para_check
-from te.utils import error_manager
+from te.utils.error_manager import error_manager_vector
 from impl import max_pool_with_argmax_resnet50 as resnet50
 
 # min value of fp16
@@ -94,7 +94,7 @@ def _check_param(input_x, ksize, strides, padding, kernel_name):
     if len(input_shape) != 5:
         expected_value = "equal to 5"
         real_value = "not equal to 5"
-        error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name,
+        error_manager_vector.raise_err_input_value_invalid(kernel_name,
                                                                          "length of input_shape",
                                                                          expected_value, real_value)
     # get shape info of feature map in NC1HWC0 format
@@ -103,53 +103,53 @@ def _check_param(input_x, ksize, strides, padding, kernel_name):
     c_block_size = input_shape[4]
 
     if c_block_size != SCALAR_C0:
-        error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name,
+        error_manager_vector.raise_err_input_value_invalid(kernel_name,
                                                                          "input_shape[4]",
                                                                          SCALAR_C0, c_block_size)
 
     if len(ksize) != 4:
         expected_value = "equal to 4"
         real_value = "not equal to 4"
-        error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name,
+        error_manager_vector.raise_err_input_value_invalid(kernel_name,
                                                                          "length of ksize",
                                                                          expected_value, real_value)
 
     if ksize[0] != 1 or ksize[3] != 1:
         expected_value = "equal to 1"
         real_value = "not equal to 1"
-        error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name,
+        error_manager_vector.raise_err_input_value_invalid(kernel_name,
                                                                          "ksize[0] and ksize[3]",
                                                                          expected_value, real_value)
     if len(strides) != 4:
         expected_value = "equal to 4"
         real_value = "not equal to 4"
-        error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name,
+        error_manager_vector.raise_err_input_value_invalid(kernel_name,
                                                                          "length of strides",
                                                                          expected_value, real_value)
 
     if strides[0] != 1 or strides[3] != 1:
         expected_value = "equal to 1"
         real_value = "not equal to 1"
-        error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name,
+        error_manager_vector.raise_err_input_value_invalid(kernel_name,
                                                                          "strides[0] and strides[3]",
                                                                          expected_value, real_value)
 
     if ksize[1] > in_size_h or ksize[2] > in_size_w:
         expected_value = "smaller than or equal to 255"
         real_value = ksize[1]
-        error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name, "ksize",
+        error_manager_vector.raise_err_input_value_invalid(kernel_name, "ksize",
                                                                          expected_value, real_value)
 
     if ksize[1] * ksize[2] > SCALAR_255:
         expected_value = "smaller than or equal to 255"
         real_value = "greater than 255"
-        error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name, "ksize[1] * ksize[2]",
+        error_manager_vector.raise_err_input_value_invalid(kernel_name, "ksize[1] * ksize[2]",
                                                                          expected_value, real_value)
 
     if padding not in ("SAME", "VALID"):
         expected_value = "SAME or VALID"
         real_value = padding
-        error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name, "padding",
+        error_manager_vector.raise_err_input_value_invalid(kernel_name, "padding",
                                                                          expected_value, real_value)
 
 
@@ -382,7 +382,7 @@ class MaxPoolWithargmax():
         if self.window_h * self.in_size_w * self.c_block_size * 2 > L1_SIZE:
             expected_value = "smaller than supported value"
             real_value = "greater than supported value"
-            error_manager.error_manager_vector.raise_err_input_value_invalid("max_pool_with_argmax",
+            error_manager_vector.raise_err_input_value_invalid("max_pool_with_argmax",
                                                                              "ksize or input shape",
                                                                              expected_value, real_value)
 
@@ -1413,7 +1413,7 @@ class MaxPoolWithargmax():
         if cut_w_size < self.window_w:
             expected_value = "smaller than supported value"
             real_value = "greater than supported value"
-            error_manager.error_manager_vector.raise_err_input_value_invalid("max_pool_with_argmax",
+            error_manager_vector.raise_err_input_value_invalid("max_pool_with_argmax",
                                                                              "ksize or input shape",
                                                                              expected_value, real_value)
 

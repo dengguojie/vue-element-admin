@@ -12,11 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
+"""
+shape utils module
+"""
 from functools import reduce
 
 
 def calc_shape_size(shape):
+    """
+    calc shape size
+    :param shape: shape
+    :return: shape's size
+    """
     if not shape:
         return 0
-    reduce(lambda x, y: x * y, shape)
+    return reduce(lambda x, y: x * y, shape)

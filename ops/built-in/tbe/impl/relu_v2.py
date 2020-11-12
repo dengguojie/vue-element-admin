@@ -37,6 +37,7 @@ import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te.utils import para_check
 from te import tvm
+from te.utils.error_manager import error_manager_vector
 
 # const value
 CONST_ZERO = 0
@@ -118,8 +119,8 @@ def relu_v2(x, y, mask, kernel_name="relu_v2"):
     para_check.check_shape(shape, param_name="x")
 
     if shape[-1] % 8 != 0:
-        raise RuntimeError(
-            "the last axis if shape must be dive by 8")
+        error_detail = "the last axis of shape must be dive by 8"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
 
     check_list = ("float16", "float32", "int8", "int32", "uint8")
     para_check.check_dtype(dtype, check_list, param_name="x")

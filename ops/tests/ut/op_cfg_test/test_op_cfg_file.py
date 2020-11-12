@@ -9,7 +9,7 @@ ini_path = os.path.dirname(ini_path)  # llt/ops/llt_new
 ini_path = os.path.dirname(ini_path)  # llt/ops
 ini_path = os.path.dirname(ini_path)  # llt
 ini_path = os.path.dirname(ini_path)  #
-ini_path = os.path.join(ini_path, "ops/built-in/tbe/op_info_cfg/ai_core")  #
+ini_path = os.path.join(ini_path, "cann/ops/built-in/tbe/op_info_cfg/ai_core")  #
 
 
 class Test_OpConfig(unittest.TestCase):
@@ -45,7 +45,7 @@ class Test_OpConfig(unittest.TestCase):
         allow_op_key = ["dynamicFormat.flag", "op.pattern", "compute.cost", "partial.flag", "async.flag",
                         "binfile.name", "kernel.name",
                         "opFile.value", "opInterface.value", "heavyOp.flag", "precision_reduce.flag",
-                        "needCheckSupport.flag","dynamicShapeSupport.flag"]
+                        "needCheckSupport.flag","dynamicShapeSupport.flag", "slicePattern.value"]
         allow_attr_info_key = ["type", "value", "paramType", "defaultValue"]
 
         def check_op_key_info(file_name, op_type, op_key_infos):

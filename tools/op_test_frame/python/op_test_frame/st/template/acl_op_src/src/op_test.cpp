@@ -33,7 +33,7 @@ void SetPartResult(bool assert)
 void RecordPartResult(OpTestDesc &opDesc, bool assert, std::string caseName)
 {
     uint32_t testIndex = UnitTest::GetInstance().GetTestIndex();
-    std::string resStr = std::to_string(testIndex) + " " + caseName;
+    std::string resStr = std::to_string(testIndex) + "  " + caseName;
     resStr += assert ? "  [pass]" : "  [fail]";
     std::ofstream resultFile;
     resultFile.open("./result_files/result.txt", std::ios::out | std::ios::app);
@@ -89,7 +89,7 @@ int UnitTest::Run()
     runCount_ = 0;
     auto start = std::chrono::high_resolution_clock::now();
     std::cout << "[=========]" << " Running " << testInfoVec_.size() << " tests." << std::endl;
-    for(auto &x : testInfoVec_) {
+    for (auto &x : testInfoVec_) {
         testIndex_++;
         if (x->IsSkip()) {
             continue;
@@ -102,7 +102,7 @@ int UnitTest::Run()
     std::cout <<"[=========]" << " Ran " << testInfoVec_.size() << " tests. ( "
         << ms.count() << " ms total )" << std::endl;
 
-    std::cout << "[PASSED] " << runCount_ - failedCount_ << " tests."<<std::endl;
+    std::cout << "[PASSED] " << (runCount_ - failedCount_) << " tests."<<std::endl;
     std::cout << "[FAILED] " << failedCount_ << " tests." << std::endl;
     return 0;
 }

@@ -168,8 +168,7 @@ class IROpInfo(OpInfo):
             ir_template = xlrd.open_workbook(ir_file)
             sheet_names = ir_template.sheet_names()
         except OSError as err:
-            utils.print_error_log("Load excel failed ,%s " % str(err.args[
-                                                                     0]))
+            utils.print_error_log("Load excel failed ,%s " % str(err.args[0]))
             raise utils.MsOpGenException(utils.MS_OP_GEN_READ_FILE_ERROR)
         return ir_template, sheet_names
 
@@ -178,25 +177,24 @@ class IROpInfo(OpInfo):
         # The second row is header, a valid sheet has at least 2 rows
         if sheet_data.nrows < IR_TEMPLATE_FIRST_ROW:
             utils.print_warn_log(
-                "The sheet \"{}\" data is invalid, at least {} rows needed"
-                    .format(sheet_data.name, IR_TEMPLATE_FIRST_ROW))
+                "The sheet '%s' data is invalid, at least %s rows "
+                "needed" % (sheet_data.name, IR_TEMPLATE_FIRST_ROW))
             return False
         if sheet_data.nrows == IR_TEMPLATE_FIRST_ROW:
             utils.print_warn_log(
-                "There is no content in the sheet \"{}\"".format(
-                    sheet_data.name))
+                "There is no content in the sheet '%s'" % sheet_data.name)
             return False
         headers = sheet_data.row_values(1)
         if len(headers) < IR_TEMPLATE_VALID_NCLOS:
-            utils.print_warn_log("The \"{}\" number of headers is invalid: {}"
-                                 .format(sheet_data.name, str(len(headers))))
+            utils.print_warn_log("The '%s' number of headers is invalid: '%s'"
+                                 % (sheet_data.name, str(len(headers))))
             return False
         for i in range(0, IR_TEMPLATE_VALID_NCLOS):
             header = str(headers[i]).strip()
             if header != IR_TEMPLATE_HEADER[i]:
                 utils.print_warn_log(
-                    "The header of the sheet \"{}\" is invalid: {},"
-                    "should be like {} ".format(
+                    "The header of the sheet '%s' is invalid: %s,"
+                    "should be like %s " % (
                         sheet_data.name, header, IR_TEMPLATE_HEADER))
                 return False
         return True
@@ -279,7 +277,7 @@ class IROpInfo(OpInfo):
                         "The input is not a number, please retype!")
         elif len(op_names) == 0:
             utils.print_error_log("There is no op info to read.")
-            return
+            return None
         else:
             utils.print_info_log("Start to parse the op: " + op_names[0])
             return op_names[0]
@@ -298,7 +296,7 @@ class IROpInfo(OpInfo):
         if not ir_type_list:
             utils.print_warn_log("The %s ir type is invalid: %s" % (
                 prefix, types))
-            return
+            return None
         # init  format from Format of IR excel
         op_format = []
         if ir_row.op_format:
@@ -346,11 +344,11 @@ class IROpInfo(OpInfo):
                                             first_count, first_name))
                 if format_count != first_count:
                     utils.print_warn_log("The number(%d) of %s format is "
-                                         "different from that(%d) of %s. " 
+                                         "different from that(%d) of %s. "
                                          "Please check the input numbers in "
-                                         "'Format'."
-                                         % (format_count, name, first_count,
-                                            first_name))
+                                         "'Format'." % (format_count, name,
+                                                        first_count,
+                                                        first_name))
 
     def _add_attr(self, name, op_type, default_value):
         name = name.strip()
@@ -377,31 +375,28 @@ class IROpInfo(OpInfo):
         if param_type in utils.PARAM_TYPE_MAP_INI:
             # the return wont't be none
             return utils.PARAM_TYPE_MAP_INI.get(param_type)
-        else:
-            utils.print_error_log("The \"{}\" config in ir excel is "
-                                  "invalid.".format(param_type))
-            sys.exit(utils.MS_OP_GEN_PARSER_EXCEL_FILE_ERROR)
+        utils.print_error_log("The '%s' config in ir excel is "
+                              "invalid." % param_type)
+        sys.exit(utils.MS_OP_GEN_PARSER_EXCEL_FILE_ERROR)
 
     @staticmethod
     def _mapping_input_output_type(ir_type, ir_name):
         if ir_type in utils.INPUT_OUTPUT_DTYPE_MAP:
             return utils.INPUT_OUTPUT_DTYPE_MAP.get(ir_type)
-        else:
-            utils.print_warn_log("The %s 'TypeRange' '%s' in the .xlsx file "
-                                 "is unsupported. Please check. If you "
-                                 "aren't having problems, "
-                                 "just ignore the warning."
-                                 % (ir_name, ir_type))
-            return ""
+        utils.print_warn_log("The %s 'TypeRange' '%s' in the .xlsx file "
+                             "is unsupported. Please check. If you "
+                             "aren't having problems, "
+                             "just ignore the warning."
+                             % (ir_name, ir_type))
+        return ""
 
     @staticmethod
     def _mapping_attr_type(attr_type):
         if attr_type in utils.IR_ATTR_TYPE_MAP:
             return utils.IR_ATTR_TYPE_MAP.get(attr_type)
-        else:
-            utils.print_warn_log("The attr type '%s' specified in "
-                                 "the .xlsx file is unsupported. Please check "
-                                 "the input or output type. If you aren't "
-                                 "having problems, just ignore the warning."
-                                 % attr_type)
-            return ""
+        utils.print_warn_log("The attr type '%s' specified in "
+                             "the .xlsx file is unsupported. Please check "
+                             "the input or output type. If you aren't "
+                             "having problems, just ignore the warning."
+                             % attr_type)
+        return ""

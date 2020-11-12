@@ -27,11 +27,7 @@ from te import tik
 from te import platform
 from topi import generic
 from functools import reduce as reduceIns
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import KERNEL_NAME
+from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 # fp32 select key
@@ -6049,7 +6045,8 @@ def _tik_int32_add_big_e(block_index,
 
 
 @te.op.register_operator("UnsortedSegmentSum")
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def unsorted_segment_sum(x_dict, segment_ids_dict, num_segments_dict, y_dict,
                          kernel_name="UnsortedSegmentSum"):
     """
@@ -6069,19 +6066,19 @@ def unsorted_segment_sum(x_dict, segment_ids_dict, num_segments_dict, y_dict,
     """
     x_dtype = x_dict.get("dtype").lower()
     x_dtype_check_list = ("float32")
-    check_dtype(x_dtype, x_dtype_check_list, param_name="x_dict")
+    para_check.check_dtype(x_dtype, x_dtype_check_list, param_name="x_dict")
 
     segment_ids_dtype = segment_ids_dict.get("dtype").lower()
     segment_ids_dtype_check_list = ("int32")
-    check_dtype(segment_ids_dtype, segment_ids_dtype_check_list,
+    para_check.check_dtype(segment_ids_dtype, segment_ids_dtype_check_list,
                 param_name="segment_ids_dict")
 
     num_segments_dtype = num_segments_dict.get("dtype").lower()
     num_segments_dtype_check_list = ("int32")
-    check_dtype(num_segments_dtype, num_segments_dtype_check_list, param_name="num_segments_dict")
+    para_check.check_dtype(num_segments_dtype, num_segments_dtype_check_list, param_name="num_segments_dict")
 
     y_dtype = y_dict.get("dtype").lower()
-    check_dtype(y_dtype, x_dtype_check_list, param_name="y_dict")
+    para_check.check_dtype(y_dtype, x_dtype_check_list, param_name="y_dict")
     if x_dtype != y_dtype:
         error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name,
                                                               "x",

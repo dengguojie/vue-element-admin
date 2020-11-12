@@ -13,7 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
+"""
+op ut helper
+"""
+import time
 from absl import app
 from absl import flags
 
@@ -21,6 +24,7 @@ from op_test_frame.ut import op_ut_helper
 
 FLAGS = flags.FLAGS
 flags.DEFINE_bool("get_case_name", False, "get case name")
+flags.DEFINE_bool("print_case_summary", False, "print case summary")
 flags.DEFINE_string("dump_case_name_file", None, "A full file path (with file name) to save get_case_name info.")
 flags.DEFINE_string("case_files", None,
                     '1) Test case file, like test_*_impl.py or a directory which contains test_*_impl.py  '
@@ -29,8 +33,12 @@ flags.DEFINE_string("case_files", None,
 flags.DEFINE_string("soc_version", None, 'soc or soc list, like Ascend910. Multi soc separate by ","')
 
 
-def main(args):
-    import time
+def main(args):  # pylint: disable=unused-argument
+    """
+    main method
+    :param args: default args
+    :return: None
+    """
     start_time = time.time()
     print(FLAGS.get_case_name)
     if FLAGS.get_case_name:
@@ -39,8 +47,19 @@ def main(args):
             return
         case_files = FLAGS.case_files.split(",")
         op_ut_helper.get_case_name(case_files, FLAGS.dump_case_name_file, FLAGS.soc_version)
-    end = time.time()
-    print("cost_time:", end-start_time)
+        end = time.time()
+        print("cost_time:", end - start_time)
+        return
+    if FLAGS.print_case_summary:
+        if not FLAGS.case_files:
+            print("[ERROR] Not set case_files, please see 'op_ut_helper --help'")
+            return
+        case_files = FLAGS.case_files.split(",")
+        op_ut_helper.print_case_summary(case_files, FLAGS.soc_version)
+        end = time.time()
+        print("cost_time:", end - start_time)
+        return
+
 
 if __name__ == "__main__":
     app.run(main)

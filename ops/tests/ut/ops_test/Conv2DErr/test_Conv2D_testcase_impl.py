@@ -11,7 +11,7 @@ def test_conv2d_conv_cce(test_arg):
   import impl
   sys.path.append("./llt/tensor_engine/ut/testcase_python")
   from te import tvm
-  from impl.conv2d import calc_para_from_dict
+  from impl.util.util_conv2d import calc_para_from_dict
   from impl.conv2d import op_select_format
   from impl.conv2d import _conv_layer_cce
   from impl.conv2d import conv2d_compute

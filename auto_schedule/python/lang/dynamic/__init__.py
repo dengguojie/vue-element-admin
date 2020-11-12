@@ -16,17 +16,5 @@
 compute schedule init
 """
 # 'pylint: disable=W0622
+from .schedule.auto_schedule import schedule_cce
 from .schedule.auto_schedule import build
-
-from .compute.elewise_compute import vmuls, vadds, vmaxs, vmins, vlog, vexp, \
-    vabs, vrec, vrelu, vnot, vsqrt, vrsqrt, vadd, vsub, vmul, vdiv, vmin, \
-    vmax, vor, vand, vaxpy, vmla, vmadd, vmaddrelu, vcmpsel, vmod
-from .compute.broadcast_compute import broadcast
-from .compute.cast_compute import cast_to, round_to, ceil, floor, trunc, \
-    round_d
-
-from .compute.util import dsl_check_support, shape_to_list
-from .compute.reduction_compute import sum, reduce_min, reduce_max, \
-    reduce_prod, tuple_sum
-
-from te.utils.cce import auto_schedule

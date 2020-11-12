@@ -97,6 +97,8 @@ class PatternFusionUtil {
                                  ge::ComputeGraph &graph);
 
   static Status UpdateInputAndOutputName(const ge::OpDescPtr opDescPtr);
+
+  static bool IsUnknownShape(const int64_t& shape);
   /**
   * @ingroup fe
   * @brief add a control edge from source node to dest node
@@ -104,6 +106,9 @@ class PatternFusionUtil {
   static Status LinkControlEdge(ge::NodePtr srcNode, ge::NodePtr dstNode);
 
   static Status CopyMultiReferenceConstNode(ge::ComputeGraph& graph, ge::NodePtr nodePtr);
+
+  static ge::NodePtr InsertSingleNode(ge::ComputeGraph &graph, ge::NodePtr &src_node, const string &op_type,
+                                      const bool &is_input, const int32_t &index, vector<ge::NodePtr> &fusion_nodes);
 
  private:
   static void SetConstValueToAttrWithType(ge::OpDescPtr op_desc, const ge::Tensor& const_tensor, const DataType& dtype,
@@ -113,6 +118,10 @@ class PatternFusionUtil {
                                       const NodePtr& weightNode);
   static NodePtr AddGroupPaddingNode(ComputeGraph& graph, ge::GeTensorDesc& inTensor, ge::GeTensorDesc& outTensor,
                                      string nodeName);
+  static ge::NodePtr InsertInputNode(ge::ComputeGraph &graph, ge::NodePtr &src_node, const string &op_type,
+                                     const int32_t &index, std::atomic<uint64_t> &name_id);
+  static ge::NodePtr InsertOutputNode(ge::ComputeGraph &graph, ge::NodePtr &src_node, const string &op_type,
+                                      const int32_t &index, std::atomic<uint64_t> &name_id);
 };
 
 }  // namespace fe

@@ -16,12 +16,15 @@
 auto_schedule template, if user call auto_schedule, this file will choose a
 corresponding schedule template for user's compute
 """
+import te.lang.cce as static
 from te import platform as cce
 from te import tvm
-from te.platform import operation
+from te.lang.base import operation
+from te.tvm.build_module import BuildConfigs
+from te.utils.error_manager.error_manager_util import get_error_message
 
-from . import pattern_parser
 from . import CompileInfo
+from . import pattern_parser
 from . import util
 
 CONST = "const"
@@ -45,16 +48,27 @@ def schedule_cce(outs, option=None):
         return None
 
     tiling_case_func = operation.get_tiling_case(pattern)
-    schedule_func = operation.get_schedule(pattern)
+    tiling_case_ret = tiling_case_func(outs, option)
+
     schedules = []
-    for tiling_case in tiling_case_func(outs, option):
-        param_outs = original_outs.copy()
-        with operation.ScheduleContext():
-            sch = schedule_func(param_outs, tiling_case)
-            if sch is not None:
-                util.add_sch_additional_entry(sch, "original_outs", original_outs)
-                util.add_sch_additional_entry(sch, "real_outs", param_outs)
+    if operation.get_context().get_current_compute().get("_mode") == CONST:
+        with operation.ScheduleContext() as context:
+            sch = static.te_schedule.cce_schedule.schedule_cce(outs, option)
+            sch.tiling_key = tiling_case_ret
+            util.add_sch_additional_entry(sch, "context", context)
         schedules.append(sch)
+    else:
+        schedule_func = operation.get_schedule(pattern)
+        for tiling_case in tiling_case_ret:
+            param_outs = original_outs.copy()
+            with operation.ScheduleContext() as context:
+                sch = schedule_func(param_outs, tiling_case)
+                if sch is not None:
+                    util.add_sch_additional_entry(sch, "original_outs", original_outs)
+                    util.add_sch_additional_entry(sch, "real_outs", param_outs)
+                    util.add_sch_additional_entry(sch, "context", context)
+            schedules.append(sch)
+
     return schedules
 
 
@@ -70,111 +84,195 @@ def build(schedules_list, config_map=None):
         return
 
     pattern = operation.get_context().get_pattern()
-    build_ = operation.get_build(pattern)
-    if build_ is not None:
-        build_["func"](schedules_list, config_map)
-        if build_["break"] is True:
-            return
-
-    _build(schedules_list, config_map)
+    pointcut_func = operation.get_build_pointcut(pattern)
+    if pointcut_func is not None:
+        pointcut_func(_build, schedules_list, config_map)
+    else:
+        _build(schedules_list, config_map)
 
 
-def _build(schedules_list, config_map=None):
-    def flatten_sch(_schedules: list):
-        for sub_schs in schedules_list:
+def _build(schedules_list, config_map):
+    Builder(schedules_list, config_map).build()
+
+
+class Builder:
+    def __init__(self, schedules_list, config_map):
+        self.schedules_list = schedules_list
+        self.config_map = config_map
+
+        self.schedules = self._normalize_schedules()
+        self.tensors = self._normalize_tensors()
+
+    def build(self):
+        self._traverse_context()
+        self._traverse_schedules()
+        self._call_tvm_build()
+        self._handle_compile_info()
+        self._handle_addition()
+
+    def _normalize_schedules(self):
+        schedules = []
+        for sub_schs in self.schedules_list:
             if isinstance(sub_schs, list):
-                _schedules.extend(sub_schs)
+                schedules.extend(sub_schs)
             else:
-                _schedules.append(sub_schs)
+                schedules.append(sub_schs)
 
-    schedules = []
-    flatten_sch(schedules)
+        return schedules
 
-    def check_tensors():
+    def _normalize_tensors(self):
+        op_context = operation.get_context()
+        cpt_contexts = op_context.get_computes()
+        tensors = list(self.config_map["tensor_list"])
+        if len(cpt_contexts) == 1:
+            if not (len(tensors) == 1 and isinstance(tensors[0], (tuple, list))):
+                tensors = [tensors]
+
         if len(cpt_contexts) != len(tensors):
-            raise RuntimeError(
-                "The size of compute, build tensors does not match, "
-                "they are {0} vs {1}.".format(len(cpt_contexts), len(tensors)))
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "The size of compute, build " \
+                                          "tensors does not match, they " \
+                                          "are [%s] vs [%s]." \
+                                          % (len(cpt_contexts), len(tensors))
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
-    op_context = operation.get_context()
-    cpt_contexts = op_context.get_computes()
-    tensors = list(config_map["tensor_list"])
-    if len(cpt_contexts) == 1:
-        if not (len(tensors) == 1 and isinstance(tensors[0], (tuple, list))):
-            tensors = [tensors]
-    check_tensors()
+        return tensors
 
-    te_vars_list = []
-    # exclude bound vars list
-    ebv_list = []
-    op_vars = op_context.get_vars()
-    op_ebv = op_context.get_exclude_bound_vars()
-    sch_tensors_list = []
-    for i, cpt in enumerate(cpt_contexts):
-        cpt_vars = cpt.get_vars()
-        cpt_ebv = cpt.get_exclude_bound_vars()
-        for sch_context in cpt.get_schedules():
-            sch_vars = sch_context.get_vars()
-            sch_ebv = sch_context.get_exclude_bound_vars()
-            te_vars_list.append(op_vars + cpt_vars + sch_vars)
-            ebv_list.append(op_ebv + cpt_ebv + sch_ebv)
-            sch_tensors_list.append(list(tensors[i]))
+    def _traverse_context(self):
+        op_context = operation.get_context()
+        op_vars = op_context.get_vars()
+        op_ebv = op_context.get_exclude_bound_vars()
 
-    lens = [len(schedules), len(te_vars_list), len(ebv_list)]
-    if len(set(lens)) != 1:
-        raise RuntimeError(
-            "The size of schedule, var, and var_bound does not match, "
-            "they are {}.".format(lens))
+        # 'ebv' means 'exclude bound vars'
+        te_vars_list, ebv_list, sch_tensors_list = [], [], []
+        for i, cpt in enumerate(op_context.get_computes()):
+            cpt_vars = cpt.get_vars()
+            cpt_ebv = cpt.get_exclude_bound_vars()
+            for sch_context in cpt.get_schedules():
+                sch_vars = sch_context.get_vars()
+                sch_ebv = sch_context.get_exclude_bound_vars()
+                te_vars_list.append(op_vars + cpt_vars + sch_vars)
+                ebv_list.append(op_ebv + cpt_ebv + sch_ebv)
+                sch_tensors_list.append(list(self.tensors[i]))
 
-    def handle_tensors(_sch_tensors, _sch):
-        _real_sch_tensors = _sch_tensors.copy()
-        original_outs = util.get_sch_additional_entry(_sch, "original_outs")
-        real_outs = util.get_sch_additional_entry(_sch, "real_outs")
-        if original_outs != real_outs:
-            for tensor_i in original_outs:
-                _real_sch_tensors.remove(tensor_i)
-            for tensor_i in real_outs:
-                _real_sch_tensors.append(tensor_i)
-        return _real_sch_tensors
+        lens = [len(self.schedules), len(te_vars_list), len(ebv_list)]
+        if len(set(lens)) != 1:
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "The size of schedule, var, and " \
+                                          "var_bound does not match, " \
+                                          "they are [%s]." % lens
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
-    args_list = []
-    rules = []
-    compile_vars = {}
-    valid_schs = []
-    for sch, te_vars, ebv, sch_tensors in zip(schedules, te_vars_list, ebv_list, sch_tensors_list):
-        if sch is None:
-            continue
-        valid_schs.append(sch)
+        self.te_vars_list = te_vars_list
+        self.ebv_list = ebv_list
+        self.sch_tensors_list = sch_tensors_list
 
-        # handle tensors
-        real_sch_tensors = handle_tensors(sch_tensors, sch)
+    def _traverse_schedules(self):
+        args_list, tiling_keys, valid_schs = [], [], []
+        compile_vars = {}
 
-        # handle vars
-        tvm_vars = [x.get_tvm_var() for x in te_vars]
-        bounds = [x.get_bound() for x in te_vars]
-        for tvm_var, bound in zip(tvm_vars, bounds):
-            need_set_range = tvm_var not in ebv and bound is not None
-            if need_set_range:
-                sch.set_var_range(tvm_var, *bound)
+        for sch, te_vars, ebv, sch_tensors in zip(self.schedules, self.te_vars_list,
+                                                  self.ebv_list, self.sch_tensors_list):
+            if sch is None:
+                continue
 
-        args_list.append(real_sch_tensors + tvm_vars)
-        rules.append(sch.tiling_key)
-        var_names = [x.get_name() for x in te_vars]
-        compile_vars[sch.tiling_key] = var_names
+            valid_schs.append(sch)
+            real_sch_tensors = self._handle_tensors(sch_tensors, sch)
 
-    operation.add_compile_info(CompileInfo.VARS, compile_vars)
+            tvm_vars = [x.get_tvm_var() for x in te_vars]
+            bounds = [x.get_bound() for x in te_vars]
+            for tvm_var, bound in zip(tvm_vars, bounds):
+                need_set_range = tvm_var not in ebv and bound is not None
+                if need_set_range:
+                    sch.set_var_range(tvm_var, *bound)
 
-    build_config_items = {"parse_ddr_args": True,
-                          "build_fatbin": True}
-    if 'build_args' in config_map:
-        build_config_items.update(config_map['build_args'])
+            args_list.append(real_sch_tensors + tvm_vars)
+            tiling_keys.append(sch.tiling_key)
+            var_names = [x.get_name() for x in te_vars]
+            compile_vars[sch.tiling_key] = var_names
 
-    build_config_items.update(operation.get_build_args())
+        self.args_list = args_list
+        self.tiling_keys = tiling_keys
+        self.valid_schs = valid_schs
+        self.compile_vars = compile_vars
 
-    build_config = cce.cce_build.build_config_update_list(
-        cce.cce_build.dynamic_build_config,
-        build_config_items)
+    # noinspection PyMethodMayBeStatic
+    def _handle_tensors(self, sch_tensors, sch):
+        sch_context = util.get_sch_additional_entry(sch, "context")
+        if sch_context.get_compute_context().get("_mode") == CONST:
+            # code from schedule_cce of static shape
 
-    with build_config:
-        tvm.build(valid_schs, args_list, rules=rules, target="cce",
-                  name=config_map["name"])
+            real_out_tensors = sch.cce_special["real_out_tensor"]
+            orign_out_tensors = sch.cce_special["orign_out_tensor"]
+            # update the config_tensor_list:update 1 auto_cast tensor 2 compute
+            # group tensor
+            config_tensor_list_tmp = []
+            for tensor in sch_tensors:
+                if tensor not in orign_out_tensors:
+                    config_tensor_list_tmp.append(tensor)
+                else:
+                    index = orign_out_tensors.index(tensor)
+                    config_tensor_list_tmp.append(real_out_tensors[index])
+            # update special_tensor_list:if the spec node is a output, no need
+            # to use workspace
+            special_tensor_list = []
+            for tensor in sch.cce_special["tensor_list"]:
+                if tensor not in config_tensor_list_tmp:
+                    special_tensor_list.append(tensor)
+            tensor_list = config_tensor_list_tmp + special_tensor_list
+            return tensor_list
+        else:
+            real_sch_tensors = sch_tensors.copy()
+            original_outs = util.get_sch_additional_entry(sch, "original_outs")
+            real_outs = util.get_sch_additional_entry(sch, "real_outs")
+
+            if original_outs != real_outs:
+                for tensor_i in original_outs:
+                    real_sch_tensors.remove(tensor_i)
+                for tensor_i in real_outs:
+                    real_sch_tensors.append(tensor_i)
+            return real_sch_tensors
+
+    def _call_tvm_build(self):
+        # build config use mode: 1 + m + n
+
+        m_config_items = {"parse_ddr_args": True, "build_fatbin": True}
+        if 'build_args' in self.config_map:
+            m_config_items.update(self.config_map['build_args'])
+        m_config_items.update(operation.get_build_args())
+
+        cce_build = cce.cce_build
+        dynamic_config, static_config = cce_build.dynamic_build_config, cce_build.build_config
+        update_func = cce_build.build_config_update_list
+
+        build_configs = [update_func(dynamic_config, m_config_items)]
+        for sch in self.valid_schs:
+            sch_context = util.get_sch_additional_entry(sch, "context")
+            compute_context = sch_context.get_compute_context()
+
+            n_config_items = sch_context.get("_build_config")
+            if n_config_items is not None:
+                m_config_items.update(n_config_items)
+
+            if compute_context.get("_mode") != CONST:
+                build_config = update_func(dynamic_config, m_config_items)
+            else:
+                build_config = update_func(static_config, m_config_items)
+
+            build_configs.append(build_config)
+
+        with BuildConfigs(build_configs):
+            tvm.build(self.valid_schs,
+                      self.args_list,
+                      rules=self.tiling_keys,
+                      target="cce",
+                      name=self.config_map["name"],
+                      )
+
+    def _handle_compile_info(self):
+        operation.add_compile_info(CompileInfo.VARS, self.compile_vars)
+
+    def _handle_addition(self):
+        operation.get_context().add("_tiling_keys", self.tiling_keys)

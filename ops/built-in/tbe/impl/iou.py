@@ -20,6 +20,10 @@ from te import tik
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 # MAX ELIMENT NUM OF FP16 IN 1BLOCK
 FP16_ELIMENTS_BLOCK = 16
@@ -29,6 +33,24 @@ FP32_ELIMENTS_BLOCK = 8
 GTBOX_SEGMENT = 4096 * 4
 # CONST BBOX SLICE SEGMENT
 BBOX_SEGMENT = 4096 * 4
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(bboxes, gtboxes, overlap, mode="iou", kernel_name="iou"):
+    format_bboxes = bboxes.get("format").upper()
+    format_gtboxes = gtboxes.get("format").upper()
+    if format_bboxes == "ND" and format_gtboxes == "ND":
+        axis_split_matrix=[
+            [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [1]])],
+            [SplitInput([1, [0], [-1], [-1]]), SplitOutput([0, [0]])]
+        ]
+        axis_reduce_list = None
+
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 def _apply_mem(tik_instance, dtype,
@@ -825,10 +847,12 @@ def _box_shape_check(input_name, shape):
     """
     shape_len = len(shape)
     if shape_len != 2:
-        raise RuntimeError("the shape len should be 2")
+        error_detail = "the shape len should be 2"
+        error_manager_vector.raise_err_input_shape_invalid("iou", input_name, error_detail)
     last_shape_dim = shape[-1]
     if last_shape_dim != 4:
-        raise RuntimeError("the shape should be [n, 4]")
+        error_detail = "the shape should be [n, 4]"
+        error_manager_vector.raise_err_input_shape_invalid("iou", input_name, error_detail)
 
 
 # pylint: disable=unused-argument
@@ -914,7 +938,7 @@ def iou(bboxes, gtboxes, overlap, mode="iou", kernel_name="iou"):
     # check whether mode is valid
     check_list = ("iou", "iof")
     if mode not in check_list:
-        raise RuntimeError("Mode only support iou and iof")
+        error_manager_vector.raise_err_input_value_invalid(kernel_name, "mode", "iou,iof", mode)
 
     res = iou_compute(bboxes, gtboxes, overlap, mode, kernel_name)
 

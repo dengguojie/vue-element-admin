@@ -225,6 +225,16 @@ Status AvgPoolV2GradFusionPass::AvgValueTableGenV2(vector<int64_t> dimInfo, vect
     fp16_t tmp3;
     tmp3.val = 0;
     tmp3 = 1 / (float)tmp.val;
+    for (int n = 0; n < nOutput; n++) {
+      for (int c = 0; c < cOutput; c++) {
+        for (int h = 0; h < hOutput; h++) {
+          for (int w = 0; w < wOutput; w++) {
+            outOffsetPoint = n * cOutput * hOutput * wOutput + c * hOutput * wOutput + h * wOutput + w;
+            output[outOffsetPoint] += tmp3.val;
+          }
+        }
+      }
+    }
   }
   if (data_format == "NHWC") {
     TransposeNCHW2NHWCV2(nOutput, hOutput, wOutput, cOutput, output);
@@ -319,35 +329,35 @@ Status AvgPoolV2GradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   ge::AttrUtils::GetBool(avgPoolGradDesc, "exclusive", exclusive);
   ge::AttrUtils::GetListInt(avgPoolGradDesc, "orig_input_shape", orig_input_shape_d);
   if (orig_input_shape_d.size() != len_size) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "org_input_shape dimNums must be 4.");
-    return FAILED;
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "org_input_shape dimNums must be 4.");
+    return NOT_CHANGED;
   }
   // gen avgtable matrix
   ge::GeTensorDesc avpPoolInputShapeTensor = fusion_node->GetOpDesc()->GetInputDesc("input_grad");
   ge::GeShape avgPoolShape = avpPoolInputShapeTensor.GetShape();
   vector<int64_t> avgPoolDimInfo = avgPoolShape.GetDims();
   if (ksize.size() != len_size) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "ksize must list of 4 element.");
-    return FAILED;
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "ksize must list of 4 element.");
+    return NOT_CHANGED;
   }
   if (strides.size() != len_size) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "strides must list of 4 element.");
-    return FAILED;
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "strides must list of 4 element.");
+    return NOT_CHANGED;
   }
   if (pads.size() != len_size) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "pads must list of 4 element.");
-    return FAILED;
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "pads must list of 4 element.");
+    return NOT_CHANGED;
   }
   vector<int64_t> origInputShapeV;
   if (dataFormat == "NHWC") {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "AvgPoolV2Grad dataFormat NHWC.");
     if ((ksize[0] != 1) || (ksize[3] != 1)) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "AvgPoolV2Grad NHWC,ksize only surpport ksize[0]==ksize[3]==1.");
-      return FAILED;
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "AvgPoolV2Grad NHWC,ksize only surpport ksize[0]==ksize[3]==1.");
+      return NOT_CHANGED;
     }
     if ((strides[0] != 1) || (strides[3] != 1)) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "AvgPoolV2Grad NHWC stride only surpport strides[0]==strides[3]==1.");
-      return FAILED;
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "AvgPoolV2Grad NHWC stride only surpport strides[0]==strides[3]==1.");
+      return NOT_CHANGED;
     }
     origInputShapeV.push_back(orig_input_shape_d[0]);
     origInputShapeV.push_back(orig_input_shape_d[1]);
@@ -360,8 +370,8 @@ Status AvgPoolV2GradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
     int64_t stride_h = 0;
     int64_t stride_w = 0;
     if ((ksize[0] != 1) || (ksize[1] != 1)) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "AvgPoolV2Grad NCHW, stride only surpport ksize[0]==ksize[3]==1.");
-      return FAILED;
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "AvgPoolV2Grad NCHW, stride only surpport ksize[0]==ksize[3]==1.");
+      return NOT_CHANGED;
     }
     ksize_h = ksize[2];
     ksize_w = ksize[3];
@@ -370,8 +380,8 @@ Status AvgPoolV2GradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
     ksize[2] = ksize_w;
     ksize[3] = 1;
     if ((strides[0] != 1) || (strides[1] != 1)) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "AvgPoolV2Grad NCHW, stride only surpport strides[0]==strides[1]==1.");
-      return FAILED;
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "AvgPoolV2Grad NCHW, stride only surpport strides[0]==strides[1]==1.");
+      return NOT_CHANGED;
     }
     stride_h = strides[2];
     stride_w = strides[3];
@@ -386,8 +396,8 @@ Status AvgPoolV2GradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   }
   // origInputShapeV must NHWC, ksize(1,h,w,1) strides(1,h,w,1) origInputShapeConstTensorPrt(N,H,W,C)
   if (origInputShapeV.size() != len_size) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "origInputShapeV must list of 4 element.");
-    return FAILED;
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "origInputShapeV must list of 4 element.");
+    return NOT_CHANGED;
   }
   if (!(global_pooling) && (!((origInputShapeV[1] + pads[0] + pads[1] <= ksize[1]) &&
                               (origInputShapeV[2] + pads[2] + pads[3] <= ksize[2])))) {
@@ -400,8 +410,8 @@ Status AvgPoolV2GradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
     }
     ge::GeTensorPtr AvgTableAssitPtr = nullptr;
     if (avgPoolDimInfo.size() != len_size) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "avgPoolDimInfo must list of 4 element.");
-      return FAILED;
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "avgPoolDimInfo must list of 4 element.");
+      return NOT_CHANGED;
     }
     int64_t valueTableSize = avgPoolDimInfo[0] * avgPoolDimInfo[1] * avgPoolDimInfo[2] * avgPoolDimInfo[3];
 
@@ -443,8 +453,8 @@ Status AvgPoolV2GradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
       avgPoolConstInput->GetOpDesc()->SetType(CONSTANTOP);
     } else {
       AvgTableAssitPtr = nullptr;
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "avgPoolConstInputNodes is null, please check!");
-      return FAILED;
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "avgPoolConstInputNodes is null, please check!");
+      return NOT_CHANGED;
     }
     avgPoolGradDesc->SetType("AvgPoolV2GradD");
 
@@ -496,8 +506,8 @@ Status AvgPoolV2GradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
     } else {
       AvgTableAssitPtr = nullptr;
       kernelTableassitPtr = nullptr;
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "kernelConstInputNodes is null, please check!");
-      return FAILED;
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "kernelConstInputNodes is null, please check!");
+      return NOT_CHANGED;
     }
     avgPoolGradDesc->SetType("AvgPoolV2GradD");
   } else {

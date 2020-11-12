@@ -22,14 +22,12 @@
 #include <cstdint>
 #include <cstdlib>
 
+#include "cpu_context.h"
 #include "log.h"
 #include "status.h"
-#include "cpu_context.h"
 
 namespace aicpu {
 const uint32_t kThreadNum = 32;
-const uint32_t kInputNum = 2;
-const uint32_t kOutputNum = 1;
 const uint32_t kFirstInputIndex = 0;
 const uint32_t kSecondInputIndex = 1;
 const uint32_t kFirstOutputIndex = 0;
@@ -44,25 +42,36 @@ const std::string ATTR_NAME_RANDOM_UNIFORM_SEED2 = "seed2";
 /// @param [in] ctx  context
 /// @return uint32_t
 inline uint32_t NormalCheck(CpuKernelContext &ctx) {
-  if ((ctx.GetInputsSize() != kInputNum) || (ctx.GetOutputsSize() != kOutputNum)) {
+  const uint32_t kInputNum = 2;
+  const uint32_t kOutputNum = 1;
+
+  if ((ctx.GetInputsSize() != kInputNum) ||
+      (ctx.GetOutputsSize() != kOutputNum)) {
     KERNEL_LOG_ERROR("Unexpected %s node, input size: %u, output size: %u",
-                     ctx.GetOpType().c_str(), ctx.GetInputsSize(), ctx.GetOutputsSize());
+                     ctx.GetOpType().c_str(), ctx.GetInputsSize(),
+                     ctx.GetOutputsSize());
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
   Tensor *input_0 = ctx.Input(kFirstInputIndex);
-  KERNEL_CHECK_NULLPTR(input_0, KERNEL_STATUS_PARAM_INVALID, "Get input 0 failed")
+  KERNEL_CHECK_NULLPTR(input_0, KERNEL_STATUS_PARAM_INVALID,
+                       "Get input 0 failed")
   Tensor *input_1 = ctx.Input(kSecondInputIndex);
-  KERNEL_CHECK_NULLPTR(input_1, KERNEL_STATUS_PARAM_INVALID, "Get input 1 failed")
+  KERNEL_CHECK_NULLPTR(input_1, KERNEL_STATUS_PARAM_INVALID,
+                       "Get input 1 failed")
 
   if (input_0->GetDataType() != input_1->GetDataType()) {
-    KERNEL_LOG_ERROR("Data type of inputs for %s node not matched, data_type_0:%d, data_type_1:%d",
-                     ctx.GetOpType().c_str(), input_0->GetDataType(), input_1->GetDataType());
+    KERNEL_LOG_ERROR(
+        "Data type of inputs for %s node not matched, data_type_0:%d, "
+        "data_type_1:%d",
+        ctx.GetOpType().c_str(), input_0->GetDataType(),
+        input_1->GetDataType());
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
   if ((input_0->GetDataSize() == 0) || (input_1->GetDataSize() == 0)) {
-    KERNEL_LOG_ERROR("Data size of input0 is %llu, input1 is %llu.", input_0->GetDataSize(), input_1->GetDataSize());
+    KERNEL_LOG_ERROR("Data size of input0 is %llu, input1 is %llu.",
+                     input_0->GetDataSize(), input_1->GetDataSize());
     return KERNEL_STATUS_PARAM_INVALID;
   }
 

@@ -86,15 +86,15 @@ Status RpnProposalsFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   rpnProposalPostProcessingDesc->SetType("RpnProposalPostProcessing");
 
   if (rpnProposalPostProcessingDesc->GetInputsSize() != 2) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of input desc",
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of input desc",
             rpnProposalPostProcessingDesc->GetInputsSize());
-    return FAILED;
+    return NOT_CHANGED;
   }
 
   if (scoreFilterPreSortDesc->GetOutputsSize() != 1) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of output desc",
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of output desc",
             scoreFilterPreSortDesc->GetOutputsSize());
-    return FAILED;
+    return NOT_CHANGED;
   }
 
   OpDescUtils::ClearOutputDesc(scoreFilterPreSortDesc, 0);

@@ -128,8 +128,8 @@ Status LogSoftmaxGradFusionPass::DoFusion(ge::ComputeGraph& graph, ge::NodePtr s
                                           ge::NodePtr expNode, ge::NodePtr mulNode, vector<ge::NodePtr>& fusionNodes) {
   auto logsoftmaxGradOp = ge::OperatorFactory::CreateOperator("logSoftmaxGrad", LOGSOFTMAXGRAD);
   if (logsoftmaxGradOp.IsEmpty()) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "create fusion node LogSoftmaxGrad op desc error");
-    return FAILED;
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "create fusion node LogSoftmaxGrad op desc error");
+    return NOT_CHANGED;
   }
   auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(logsoftmaxGradOp);
   logsoftmaxGradOp.BreakConnect();
@@ -139,8 +139,8 @@ Status LogSoftmaxGradFusionPass::DoFusion(ge::ComputeGraph& graph, ge::NodePtr s
   FUSION_PASS_CHECK(logsoftmaxGradNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "logsoftmaxGrad create node failed"),
                     return FAILED);
   if (UpdateAttr(sumNode, logsoftmaxGradNode) == FAILED) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "attr failed");
-    return FAILED;
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "attr failed");
+    return NOT_CHANGED;
   }
   if (PatternFusionUtil::RemoveInputEdge(mulNode) == FAILED) {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "remove mul node input edge failed");

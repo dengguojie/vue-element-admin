@@ -23,6 +23,7 @@ from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 
 # shape limit for aicore equals 2**31
@@ -125,7 +126,9 @@ def log_softmax_grad(input_dy, input_x, output_z, axis=-1,
     axis = shape_util.axis_check(len(shape1), axis)
 
     if not operator.eq(list(shape1), list(shape2)):
-        raise RuntimeError("all input shape must be equal")
+        error_detail = "shape of input_dy and input_x should be same"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "input_dy", \
+                                                               "input_x", error_detail)
 
     shape1, axis = shape_util.shape_refine(list(shape1), axis)
     shape2 = shape1

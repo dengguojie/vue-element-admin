@@ -20,7 +20,7 @@ from topi.cce import util
 import te.platform.cce_params as cce_params
 from te import tik
 from te import platform as cce
-from te.utils.op_utils import *
+from te.utils import para_check
 
 
 def _apply_mem(tik_instance, dtype, shape, name, scope=tik.scope_ubuf):
@@ -268,7 +268,8 @@ def trans_data_2d_compute(src, dst, src_format, dst_format,
     return iou_res.run_tik(kernel_name, mode)
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_STR, REQUIRED_ATTR_STR, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_STR,
+                            para_check.REQUIRED_ATTR_STR, para_check.KERNEL_NAME)
 def trans_data_2d(src, dst, src_format, dst_format,
                   kernel_name):
     """

@@ -41,6 +41,7 @@ from te import tvm
 from impl.util import util_build
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 # tiling size
 TILING_SIZE = 32
@@ -322,7 +323,8 @@ def assign_sub(var, value, out, kernel_name='assign_sub'):
     para_check.check_shape(shape_var, param_name="var")
     para_check.check_shape(shape_value, param_name="value")
     if not operator.eq(shape_var, shape_value):
-        raise RuntimeError("all input shape must be the equal")
+        error_detail = "shape of var and value should be same"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "var", "value", error_detail)
 
     # check whether dtypes are fp16, fp32, int8, uint8, int32
     # and whether they are the same
@@ -332,7 +334,8 @@ def assign_sub(var, value, out, kernel_name='assign_sub'):
     dtype_var = dtype_var.lower()
     dtype_value = dtype_value.lower()
     if dtype_var != dtype_value:
-        raise RuntimeError("all input dtype must be same")
+        error_detail = "dtype of var and value should be same"
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "var", "value", error_detail)
 
     shape, _ = shape_util.refine_shape_axes(shape_var, [])
     data_var = tvm.placeholder(shape, dtype=dtype_var, name='data_var')

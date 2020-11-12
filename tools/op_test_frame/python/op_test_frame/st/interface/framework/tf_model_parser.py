@@ -1,26 +1,28 @@
 # !/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+Function:
+ TFModelParse class. This class mainly get case info from tf model.
+Copyright Information:
+Huawei Technologies Co., Ltd. All Rights Reserved © 2020
+Change History: 2020-07-11 file Created
+"""
 try:
     import os
     import sys
-    import json
     import tensorflow as tf
-    from google.protobuf import text_format
     from tensorflow.core.framework import tensor_shape_pb2
-    from tensorflow.python.platform import gfile
-    from interface import utils
-    import re
+    from .. import utils
 except (ImportError,) as import_error:
     sys.exit(
         "[tf_model_parser] Unable to import module: %s." % str(import_error))
 
-pathSep = os.path.sep
 
 TMP_SHAPE_FILE = 'tmp_shape.json'
 TMP_GA_PATH_FILE = 'tmp_ga_path.json'
 
 
-def map_tf_input_output_dtype(tf_dtype):
+def _map_tf_input_output_dtype(tf_dtype):
     op_dtype = "UNKNOW"
     if tf_dtype == 'float32':
         op_dtype = "float"
@@ -41,8 +43,8 @@ def map_tf_input_output_dtype(tf_dtype):
     elif tf_dtype == 'bool':
         op_dtype = "bool"
     else:
-        utils.print_warn_log("Unmappable op type: %s" % tf_dtype)
-        pass
+        utils.print_warn_log("The op type: %s is unsupported. Please check." %
+                             tf_dtype)
     return op_dtype
 
 
@@ -80,7 +82,8 @@ def _parse_attr(attr_key, value_data):
         attr['value'] += _attr_value_shape_list(value_data.shape.dim)
     elif value_data.list.s:
         attr['type'] = "list(string)"
-        attr['value'] = "".join(x.decode("utf-8") for x in value_data.list.s)
+        attr['value'] = "".join(value_x.decode("utf-8")
+                                for value_x in value_data.list.s)
     elif value_data.list.i:
         attr['type'] = "list(int)"
         attr['value'] += value_data.list.i
@@ -149,21 +152,21 @@ def _get_nodes_list(model_path, ini_op_type):
     graph_def = _tf_utils_load_graph_def(os.path.realpath(model_path))
     all_ops = _tf_utils_get_operators(graph_def)
     ops = []
-    for op in all_ops:
-        op_info = {"name": op.node_def.name, "input_dtype": [],
+    for operator in all_ops:
+        op_info = {"name": operator.node_def.name, "input_dtype": [],
                    "output_dtype": [], "input_shape": [],
                    "output_shape": []}
-        for input_tensor in op.inputs:
+        for input_tensor in operator.inputs:
             op_info["input_shape"].append(input_tensor.get_shape())
             op_info["input_dtype"].append(input_tensor.dtype)
-        for out_tensor in op.outputs:
+        for out_tensor in operator.outputs:
             op_info["output_shape"].append(out_tensor.get_shape())
             op_info["output_dtype"].append(out_tensor.dtype)
         ops.append(op_info)
-    for i in range(len(graph_def.node)):
-        op_type = graph_def.node[i].op
+    for i, node_info in enumerate(graph_def.node):
+        op_type = node_info.op
         if op_type == ini_op_type:
-            op_infos = {"op_type": op_type, "layer": graph_def.node[i].name,
+            op_infos = {"op_type": op_type, "layer": node_info.name,
                         "input_dtype": [],
                         "output_dtype": [], "input_shape": [],
                         "output_shape": [], "attr": []}
@@ -171,20 +174,20 @@ def _get_nodes_list(model_path, ini_op_type):
             input_shape = _tensor_shape_list(ops[i]['input_shape'])
             op_infos["input_shape"] = input_shape
             # input_dtype
-            input_dtype = [map_tf_input_output_dtype(x.name) for x in
+            input_dtype = [_map_tf_input_output_dtype(x.name) for x in
                            ops[i]['input_dtype']]
             op_infos["input_dtype"] = input_dtype
             # output_shape
             output_shape = _tensor_shape_list(ops[i]['output_shape'])
             op_infos["output_shape"] = output_shape
             # output_dtype
-            output_dtype = [map_tf_input_output_dtype(x.name) for x in
+            output_dtype = [_map_tf_input_output_dtype(x.name) for x in
                             ops[i]['output_dtype']]
             op_infos["output_dtype"] = output_dtype
 
             # attr
-            for attr_key in graph_def.node[i].attr.keys():
-                value_data = graph_def.node[i].attr[attr_key]
+            for attr_key in node_info.attr.keys():
+                value_data = node_info.attr[attr_key]
                 attr = _parse_attr(attr_key, value_data)
                 op_infos["attr"].append(attr)
             nodes_list.append(op_infos)
@@ -241,7 +244,7 @@ class TFModelParse:
         return node_shape, new_graph_path
 
     @staticmethod
-    def _get_shape_and_notice(shape, layer_name):
+    def _check_ori_shape_and_notice(shape, layer_name):
         if isinstance(shape, list):
             for dim in shape:
                 if not isinstance(dim, int):
@@ -256,17 +259,16 @@ class TFModelParse:
                         ' 0. Try to change the "placeholder" shape '
                         'to fix the problem.' % (shape, layer_name))
                     return
-            return
         else:
             utils.print_warn_log(
                 'The input shape(%s) format error.Please retype.' % shape)
-            return
+        return
 
     def _get_placeholder_shape_from_user(self, shape_map):
         result = False
         for (layer_name, value) in shape_map.items():
             node_shape = value["ori_shape"]
-            self._get_shape_and_notice(node_shape, layer_name)
+            self._check_ori_shape_and_notice(node_shape, layer_name)
             utils.print_info_log('"%s" layer is a "placeholder" '
                                  'operator , the original input shape : %s'
                                  % (layer_name, node_shape))
@@ -279,13 +281,12 @@ class TFModelParse:
                     utils.print_info_log("Skip change shape.")
                     value["new_shape"] = node_shape
                     break
-                elif self._check_shape_and_notice(new_placeholder_shape):
+                elif self._check_new_shape_and_notice(new_placeholder_shape):
                     value["new_shape"] = new_placeholder_shape.split(',')
                     result = True
                     break
-                else:
-                    utils.print_warn_log(
-                        "The input shape above is invalid, please retype!")
+                utils.print_warn_log(
+                    "The input shape above is invalid, please retype!")
         return result
 
     def get_tf_model_nodes(self, op_type):
@@ -323,9 +324,8 @@ class TFModelParse:
                         "The layer(%s) is \"placeholder\", the shape is "
                         "empty!" % layer_name)
                 else:
-                    placeholder_shape_map.update({layer_name: {
-                                             'ori_shape': value,
-                                             'new_shape': []}})
+                    placeholder_shape_map.update(
+                        {layer_name: {'ori_shape': value, 'new_shape': []}})
         if not placeholder_shape_map:
             utils.print_error_log("There is no \"placeholder\" operator !"
                                   "Please check the model.")
@@ -334,25 +334,24 @@ class TFModelParse:
         return placeholder_shape_map
 
     @staticmethod
-    def _check_shape_and_notice(shape):
+    def _check_new_shape_and_notice(shape):
         if isinstance(shape, str):
             shape = shape.split(',')
             for dim in shape:
                 if not dim.isdigit():
                     utils.print_warn_log(
-                        'The dim(%s) in shape(%s) is not a number.' % (dim,
-                                                                       shape))
+                        'The dim(%s) in shape(%s) is not a number.'
+                        % (dim, shape))
                     return False
                 if int(dim) <= 0:
                     utils.print_warn_log(
-                        'The dim(%s) in shape(%s) must be greater than 0.' %
-                        (dim, shape))
+                        'The dim(%s) in shape(%s) must be greater than 0.'
+                        % (dim, shape))
                     return False
             return True
-        else:
-            utils.print_warn_log(
-                'The input shape(%s) format error.Please retype.' % shape)
-            return False
+        utils.print_warn_log(
+            'The input shape(%s) format error.Please retype.' % shape)
+        return False
 
     def get_shape(self):
         """
@@ -367,11 +366,11 @@ class TFModelParse:
     def _check_get_nodes_argument_valid(self, op_type):
         utils.check_name_valid(op_type)
         utils.check_path_valid(self.model_path)
-        utils.check_path_valid(self.output_path, True)
+        utils.check_path_valid(os.path.realpath(self.output_path), True)
 
     def _check_get_shape_argument_valid(self):
         utils.check_path_valid(self.model_path)
-        utils.check_path_valid(self.output_path, True)
+        utils.check_path_valid(os.path.realpath(self.output_path), True)
 
     def _check_change_shape_argument_valid(self):
         if not self.input_file.endswith(".json"):
@@ -382,7 +381,7 @@ class TFModelParse:
                 utils.OP_TEST_GEN_INVALID_PATH_ERROR)
         utils.check_path_valid(self.input_file)
         utils.check_path_valid(self.model_path)
-        utils.check_path_valid(self.output_path, True)
+        utils.check_path_valid(os.path.realpath(self.output_path), True)
 
     def change_shape(self):
         """
@@ -391,8 +390,8 @@ class TFModelParse:
         """
         self._check_change_shape_argument_valid()
         new_shape_map = utils.load_json_file(self.input_file)
-        shape, new_model_path = self._change_shape_fn(self.model_path,
-                                                      new_shape_map)
+        _, new_model_path = self._change_shape_fn(self.model_path,
+                                                  new_shape_map)
         json_path = os.path.realpath(os.path.join(self.output_path,
                                                   TMP_GA_PATH_FILE))
         utils.write_json_file(json_path, {'new_model_path': new_model_path})
@@ -401,6 +400,7 @@ class TFModelParse:
 def get_model_nodes(args, op_type):
     """
     get layer information  which op type is op_type from tf model
+    :param args: the args config by user
     :param op_type: op_type from ini file, eg:"Add"
     :return: node list to store the layer information
     """

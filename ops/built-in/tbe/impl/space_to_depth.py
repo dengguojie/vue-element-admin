@@ -24,6 +24,8 @@ from impl import constant_util as constant
 from te.utils.op_utils import *
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from te.utils.error_manager import error_manager_vector
+from impl.util import util_select_op_base
 
 # pylint: disable=redefined-builtin
 if "reduce" not in dir(__builtins__):
@@ -82,6 +84,23 @@ def space_to_depth(x, filter,
         return fun.space_to_depth_compute()
 
 
+def get_op_support_info(x, filter, y, block_size, data_format, kernel_name="space_to_depth"):
+    """
+    get split info
+    """
+    format_x = x.get("format").upper()
+    if format_x == "NC1HWC0" or format_x == "NHWC":
+        split_0 = [util_select_op_base.SplitInput([0, [0], [-1], [-1]]),
+                   util_select_op_base.SplitOutput([0, [0]])]
+        axis_split_list = [split_0]
+    else:
+        axis_split_list = None
+
+    axis_reduce_list = None
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_list, axis_reduce_list)
+    return op_cal_info_in_json
+
+
 def op_select_format(x, filter, y, block_size, data_format, kernel_name="space_to_depth"):
     """
     select format dynamically
@@ -133,6 +152,9 @@ def _check_param(x, y, block_size, data_format, kernel_name):
     -------
     None
     """
+    if data_format != NHWC_STR:
+        error_manager_vector.raise_err_input_format_invalid(kernel_name, "data_format", \
+                                                            NHWC_STR, data_format)
     shape = x.get("shape")
     dtype = x.get("dtype").lower()
 
@@ -145,13 +167,18 @@ def _check_param(x, y, block_size, data_format, kernel_name):
                 constant.DATA_TYPE_UINT16, constant.DATA_TYPE_UINT8), param_name="x")
     if dtype != "float16":
         if len(shape) != DIM_CNT_FOUR:
-            raise RuntimeError("The input x only supported 4D")
+            error_detail = "The input x only supported 4D"
+            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", \
+                                                               error_detail)
 
         if block_size < BLOCK_SIZE_MIN:
-            raise RuntimeError("the attr block_size must be greater than one")
+            error_manager_vector.raise_err_input_value_invalid(kernel_name, "block_size", \
+                                                               "greater than one", block_size)
 
         if shape[1] % block_size != 0 or shape[2] % block_size != 0:
-            raise RuntimeError("both height and width must be divisible by block_size")
+            error_detail = "both height and width of x must be divisible by block_size"
+            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", \
+                                                               error_detail)
         output_shape = (shape[0], shape[1] // block_size, shape[2] // block_size,
                         shape[3] * block_size * block_size)
         check_shape(output_shape, param_name="y")

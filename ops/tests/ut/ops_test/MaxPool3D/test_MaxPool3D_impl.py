@@ -184,7 +184,7 @@ case_precision_window_eq_stride = {
                0,                 #ceil_mode
                "NDHWC",           #data_format
                ],
-    "case_name": "case_precision_kernel_eq_stride",
+    "case_name": "case_precision_window_eq_stride",
     "expect": "success",
     "calc_expect_func": calc_expect_func
 }

@@ -22,7 +22,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 import te.platform as tbe_platform
 from te.utils import para_check
-from te.utils import error_manager
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=locally-disabled,unused-argument
@@ -167,52 +167,52 @@ def max_pool_ext2(input_data, output_data, ksize, strides, padding,
         if len(ksize) != 4:
             expected_value = "equal to 4"
             real_value = "not equal to 4"
-            error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name, "length of ksize",
+            error_manager_vector.raise_err_input_value_invalid(kernel_name, "length of ksize",
                                                                expected_value, real_value)
         if ksize[0] != 1 or ksize[3] != 1:
             expected_value = "equal to 1"
             real_value = "not equal to 1"
-            error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name, "ksize[0] and ksize[3]",
+            error_manager_vector.raise_err_input_value_invalid(kernel_name, "ksize[0] and ksize[3]",
                                                                expected_value, real_value)
         if len(strides) != 4:
             expected_value = "equal to 4"
             real_value = "not equal to 4"
-            error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name, "length of strides",
+            error_manager_vector.raise_err_input_value_invalid(kernel_name, "length of strides",
                                                                expected_value, real_value)
         if strides[0] != 1 or strides[3] != 1:
             expected_value = "equal to 1"
             real_value = "not equal to 1"
-            error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name, "strides[0] and strides[3]",
+            error_manager_vector.raise_err_input_value_invalid(kernel_name, "strides[0] and strides[3]",
                                                                expected_value, real_value)
     elif data_format in ("NC1HWC0", "NCHW"):
         if len(ksize) != 4:
             expected_value = "equal to 4"
             real_value = "not equal to 4"
-            error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name, "length of ksize",
+            error_manager_vector.raise_err_input_value_invalid(kernel_name, "length of ksize",
                                                                expected_value, real_value)
         if ksize[0] != 1 or ksize[1] != 1:
             expected_value = "equal to 1"
             real_value = "not equal to 1"
-            error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name, "ksize[0] and ksize[1]",
+            error_manager_vector.raise_err_input_value_invalid(kernel_name, "ksize[0] and ksize[1]",
                                                                expected_value, real_value)
         if len(strides) != 4:
             expected_value = "equal to 4"
             real_value = "not equal to 4"
-            error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name, "length of strides",
+            error_manager_vector.raise_err_input_value_invalid(kernel_name, "length of strides",
                                                                expected_value, real_value)
         if strides[0] != 1 or strides[1] != 1:
             expected_value = "equal to 1"
             real_value = "not equal to 1"
-            error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name, "strides[0] and strides[1]",
+            error_manager_vector.raise_err_input_value_invalid(kernel_name, "strides[0] and strides[1]",
                                                                expected_value, real_value)
     else:
-        error_manager.error_manager_vector.raise_err_input_format_invalid(kernel_name, "data_format",
+        error_manager_vector.raise_err_input_format_invalid(kernel_name, "data_format",
                                                             ["NHWC", "NC1HWC0", "NCHW"], data_format)
 
     if padding not in ("SAME", "VALID"):
         expected_value = "SAME or VALID"
         real_value = padding
-        error_manager.error_manager_vector.raise_err_input_value_invalid(kernel_name, "padding",
+        error_manager_vector.raise_err_input_value_invalid(kernel_name, "padding",
                                                            expected_value, real_value)
 
     # set tensor attrs, during L1 fusion these attrs will assign by te_fusion

@@ -8,15 +8,44 @@ import tensorflow as tf
 
 ut_case = OpUT("AvgPool", "impl.avg_pool", "avg_pool")
 
+def trans_data_to_tf(data_nchwc0):
+    out_size = data_nchwc0.shape
+    nhwc = np.zeros((out_size[0],out_size[-3], out_size[-2], out_size[1]*out_size[-1]), dtype=data_nchwc0.dtype)
+
+    for i in range(out_size[0]):
+        for j in range(out_size[1]):
+            for k in range(out_size[-1]):
+                for h in range(out_size[-3]):
+                    for w in range(out_size[-2]):
+                        nhwc[i][h][w][j*out_size[-1] + k] = data_nchwc0[i][j][h][w][k]
+
+    return nhwc
+
+def trans_tf_data_out(data_nhwc):
+    in_size = data_nhwc.shape
+    if data_nhwc.dtype == "float16":
+        c0 = 16
+    else:
+        c0 = 16
+
+    nchwc0  = np.zeros((in_size[0], in_size[-1] // c0, in_size[-3], in_size[-2], c0), dtype=data_nhwc.dtype)
+
+    for i in range(in_size[0]):
+        for j in range(in_size[-1] // c0):
+            for k in range(c0):
+                for h in range(in_size[-3]):
+                    for w in range(in_size[-2]):
+                        nchwc0[i][j][h][w][k] = data_nhwc[i][h][w][j*c0+k]
+    return nchwc0
 
 def calc_expect_func(x, filter, bias, y, ksize, strides, padding="VALID", data_format="NHWC", offset_x=0):
-    x_holder = tf.placeholder(x["dtype"], shape=x["shape"])
+    x_data = trans_data_to_tf(x['value'])
+    x_holder = tf.placeholder(x["dtype"], shape=x_data.shape)
 
-    y = tf.nn.avg_pool(x_holder, ksize, strides, padding, dataformat)
-    with tf.Session(config=session_config) as sess:
-        result = sess.run([y] ,feed_dict={x_holder:x["value"]})
-        graph = tf.get_default_graph()
-        tf.train.write_graph(graph, "./graph", 'graph_tf_stride_slice_assign.pbtxt', as_text=True)
+    y = tf.nn.avg_pool(x_holder, ksize, strides, padding, data_format)
+    with tf.Session() as sess:
+        result = sess.run(y ,feed_dict={x_holder:x_data})
+    result = trans_tf_data_out(result)
     return result
 
 case1 = {"params": [{"shape": (1,2,32,32,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,32,32,32),"ori_format": "NC1HWC0"},
@@ -63,7 +92,7 @@ case6 = {"params": [{"shape": (1, 8, 32, 32, 16), "dtype": "float16", "format": 
                     "param_type": "input", "value_range": [1.0, 10.0]},
                     None,
                     None,
-                    {"shape": (1, 8, 32, 32, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, 32, 128),"ori_format": "NC1HWC0"},
+                    {"shape": (1, 8, 32, 32, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, 32, 128),"ori_format": "NC1HWC0","param_type": "output"},
                     [1,2,2,1], [1,1,1,1], "SAME"],
          "calc_expect_func": calc_expect_func,
          "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
@@ -72,7 +101,7 @@ case7 = {"params": [{"shape": (3, 4, 16, 16, 16), "dtype": "float16", "format": 
                     "param_type": "input", "value_range": [1.0, 10.0]},
                     None,
                     None,
-                    {"shape": (3, 4, 15, 15, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (3, 15, 15, 64),"ori_format": "NC1HWC0"},
+                    {"shape": (3, 4, 15, 15, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (3, 15, 15, 64),"ori_format": "NC1HWC0","param_type": "output"},
                     [1,2,2,1], [1,1,1,1], "VALID"],
          "calc_expect_func": calc_expect_func,
          "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
@@ -81,7 +110,7 @@ case8 = {"params": [{"shape": (4, 8, 10, 10, 16), "dtype": "float16", "format": 
                      "param_type": "input", "value_range": [1.0, 10.0]},
                     None,
                     None,
-                    {"shape": (4, 8, 8, 8, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (4, 8, 8, 128),"ori_format": "NC1HWC0"},
+                    {"shape": (4, 8, 8, 8, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (4, 8, 8, 128),"ori_format": "NC1HWC0","param_type": "output"},
                     [1,3,3,1], [1,1,1,1], "VALID"],
          "calc_expect_func": calc_expect_func,
          "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}

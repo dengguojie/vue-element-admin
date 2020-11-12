@@ -16,9 +16,11 @@
 conv2d
 """
 from __future__ import absolute_import
+import math
+import json
 from te import tvm
 import te.lang.cce as tbe
-import te.platform as tbe_platform 
+import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_conv2d as err_man
@@ -184,9 +186,11 @@ def conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads,
     -------
     tvm compute
     """
+    if groups != 1:
+        raise RuntimeError("conv2d_compute only supports groups=1")
     para_dict, optim_dict = util_conv2d.calc_para_from_tensor(
         inputs, weights, bias, offset_w, strides, \
-        pads, dilations, offset_x, kernel_name, data_format)
+        pads, dilations, offset_x, groups, kernel_name, data_format)
 
     res = tbe.conv(inputs, weights, para_dict, optim_dict)
 
@@ -236,6 +240,8 @@ def conv2d(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
     -------
     None
     """
+    if groups != 1:
+        raise RuntimeError("conv2d only supports groups=1")
     in_dtype = inputs.get("dtype")
     w_dtype = weights.get("dtype")
     res_dtype = outputs.get("dtype")
@@ -347,6 +353,7 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
 
     shape_in = list(shape_in)
     shape_w = list(shape_w)
+    weight_ori_shape_nchw = shape_w
 
     shape_in, shape_w = \
             util_conv2d.conv_layer_cce_para_check(shape_in, shape_w, padh, padw,
@@ -354,6 +361,19 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
                                       res_dtype, offset_w_dtype, bias,
                                       kernel_name, dilateh, dilatew,
                                       optim_dict, fusion_para)
+
+    c0_val = 16
+    if in_dtype == "int8":
+        c0_val = 32
+    cin_ori = shape_in[1]//groups
+    cout_ori = 16*(math.ceil(shape_w[0]/16))//groups
+
+    enlarge = min(
+        util_conv2d.lcm(util_conv2d.lcm(cin_ori, c0_val)//cin_ori, util_conv2d.lcm(cout_ori, 16)//cout_ori), groups)
+    c1_opt = math.ceil(cin_ori*enlarge/c0_val)
+    cout1_opt = math.ceil(cout_ori*enlarge/16)
+    group_opt = math.ceil(groups/enlarge)
+
 
     out_channel, in_channel_weight, filter_h, filter_w = shape_w
 
@@ -385,7 +405,17 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
                            "offset_x": offset_x, "groups": groups,
                            "res_dtype": res_dtype,
                            "fusion_para": fusion_para,
-                           "kernel_name": kernel_name},
+                           "kernel_name": kernel_name,
+                           "group": groups,
+                           "enlarge": enlarge,
+                           "c1_opt": c1_opt,
+                           "cout1_opt": cout1_opt,
+                           "group_opt": group_opt,
+                           "a_shape": fmap_shape_nc1hwc0,
+                           "weight_fracz_shape": filter_shape_frac_z,
+                           "weight_ori_shape_nchw": weight_ori_shape_nchw,
+                            },
+
             optim_dict=optim_dict,
             dsl_flag=False)
         tensor_list.append(conv_res)
@@ -399,3 +429,73 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
     }
 
     tbe.cce_build_code(sch, config)
+
+def get_op_support_info(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
+           groups=1, data_format='NCHW', offset_x=0, kernel_name="conv2d"):
+    """
+    algorithm: get_op_support_info
+
+    Notice
+    ------
+    get the conv2d split
+
+    Parameters
+    ----------
+    inputs: dict with keys(shape and dtype)
+        input 4d feature map tensor
+    weights: dict with keys(shape and dtype)
+        input 4d weight tensor
+    outputs: dict with keys(shape and dtype)
+        output tensor, dtype must be assigned
+    bias: dict with keys(shape and dtype) or None
+        input bias tensor
+    offset_w: keys(shape and dtype) or None
+        input offset_w tensor
+    strides: tuple/list of 4 integers
+        stride on H/W, format sensitive
+    pads: tuple/list of 4 integers
+        [pad_top, pad_bottom, pad_left, pad_right]
+    dilations: tuple/list of 4 integers
+        dilation on H/W, format sensitive
+    groups: int
+        param for group covolution
+    data_format: string
+        input data format
+    offset_x: int
+        offset of fmap
+    kernel_name: str
+        kernel name, default value is "conv2d"
+
+    Returns
+    -------
+    None
+    """
+    slice_info = {"_op_slice_info":
+            {"splitMaps": [{"inputList": [{"idx": 0, "axis": [0], "headOverLap": [-1], "tailOverLap": [-1]}],"outputList": [{"idx": 0, "axis": [0]}]},
+                           {"inputList": [{"idx": 0, "axis": [2], "headOverLap": [0], "tailOverLap": [0]}],"outputList": [{"idx": 0, "axis": [2]}]},
+                           {"inputList": [{"idx": 0, "axis": [3], "headOverLap": [0], "tailOverLap": [0]}],"outputList": [{"idx": 0, "axis": [3]}]},
+                           {"inputList": [{"idx": 1, "axis": [1], "headOverLap": [-1], "tailOverLap": [-1]}],"outputList": [{"idx": 0, "axis": [1]}]}
+                          ],
+            "reduceMaps": [],
+            "l1FusionEnable": 2,
+            "minTbeL1Space": 0
+            }
+        }
+    if bias:
+        bias_input = [{"idx": 2, "axis": [0], "headOverLap": [-1], "tailOverLap": [-1]}]
+        slice_info['_op_slice_info']["splitMaps"][3]["inputList"].extend(bias_input)
+
+    # special scene: dilations is 1 and kernel is 1 and strides is 1, overlap is -1
+    _, shape_filter, _, _, strideh, stridew, dlt_h, dlt_w, _, _= util_conv2d.calc_para_from_dict(
+        inputs, weights, strides, pads, dilations, outputs, data_format)
+    weight_h = shape_filter[2]
+    weight_w = shape_filter[3]
+    if strideh == 1 and dlt_h == 1 and weight_h ==1:
+        slice_info.get("_op_slice_info").get("splitMaps")[1].get("inputList")[0]["headOverLap"] = [-1]
+        slice_info.get("_op_slice_info").get("splitMaps")[1].get("inputList")[0]["tailOverLap"] = [-1]
+    if stridew == 1 and dlt_w == 1 and weight_w ==1:
+        slice_info.get("_op_slice_info").get("splitMaps")[2].get("inputList")[0]["headOverLap"] = [-1]
+        slice_info.get("_op_slice_info").get("splitMaps")[2].get("inputList")[0]["tailOverLap"] = [-1]
+
+    return json.dumps(slice_info)
+

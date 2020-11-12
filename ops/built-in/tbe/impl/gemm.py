@@ -19,6 +19,7 @@ import math
 
 import te.lang.cce as tbe
 import te.platform as tbe_platform
+from impl.util import util_deconv_comm
 from impl.util import util_select_op_base
 from te import tvm
 from te.utils import error_manager
@@ -26,10 +27,10 @@ from te.utils import para_check
 
 ALPHA_BETA_SHAPE = [1]
 MAX_INT32_LENGTH = 2147483647
+L1FUSION_INPUT_CTR = 2
 
 
-# pylint: disable=too-many-arguments
-def op_select_format(
+def op_select_format(  # pylint: disable=too-many-arguments
     input_x1,
     input_x2,
     alpha,
@@ -141,8 +142,99 @@ def op_select_format(
     return util_select_op_base.get_dynamic_param_in_json(param_list)
 
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-branches
-def _shape_check(
+def _cal_min_l1space(format_b, dtype_b):
+    block_reduce = tbe_platform.CUBE_MKN[dtype_b]["mac"][1]
+    block_out = tbe_platform.CUBE_MKN[dtype_b]["mac"][2]
+    mini_l1space = block_out * block_reduce * \
+                   util_deconv_comm.BIT_RATIO_DICT.get(dtype_b)
+    if format_b == "ND" and dtype_b == "int8":
+        mini_l1space *= 2
+    return mini_l1space
+
+
+def get_op_support_info(input_x1, # pylint: R0913,R0914,W0613
+                        input_x2,
+                        bias,
+                        alpha,
+                        beta,
+                        output_y=None,
+                        trans_a=False,
+                        trans_b=False,
+                        kernel_name="gemm",):
+    """
+    get the GEMM split, which only split the m and n, cannot cut k for c
+
+    """
+
+
+    format_a = input_x1.get("format")
+    format_b = input_x2.get("format")
+    dtype_b = input_x2.get("dtype")
+    format_bias = bias.get("format")
+
+    # cut m
+    if format_a == "FRACTAL_NZ":
+        if format_bias == "FRACTAL_NZ":
+            axis_split_matrix_a = [
+                [util_select_op_base.SplitInput([0, [1], [-1], [-1]], [2, [1], [-1], [-1]]),
+                 util_select_op_base.SplitOutput([0, [1]])],
+            ]
+        else:
+            axis_split_matrix_a = [
+                [util_select_op_base.SplitInput([0, [1], [-1], [-1]], [2, [0], [-1], [-1]]),
+                 util_select_op_base.SplitOutput([0, [1]])],
+            ]
+    else:
+        if trans_a:
+            axis_split_matrix_a = [
+                [util_select_op_base.SplitInput([0, [1], [-1], [-1]], [2, [0], [-1], [-1]]),
+                 util_select_op_base.SplitOutput([0, [0]])],
+            ]
+        else:
+            axis_split_matrix_a = [
+                [util_select_op_base.SplitInput([0, [0], [-1], [-1]], [2, [0], [-1], [-1]]),
+                 util_select_op_base.SplitOutput([0, [0]])],
+            ]
+
+    # cut n
+    if format_b == "FRACTAL_NZ":
+        axis_split_matrix_b = [
+            [util_select_op_base.SplitInput([1, [0], [-1], [-1]], [2, [0], [-1], [-1]]),
+             util_select_op_base.SplitOutput([0, [0]])],
+        ]
+    elif format_b == "FRACTAL_Z":
+        if format_bias == "FRACTAL_NZ":
+            axis_split_matrix_b = [
+                [util_select_op_base.SplitInput([1, [1], [-1], [-1]], [2, [0], [-1], [-1]]),
+                 util_select_op_base.SplitOutput([0, [0]])],
+            ]
+        else:
+            axis_split_matrix_b = [
+                [util_select_op_base.SplitInput([1, [1], [-1], [-1]], [2, [1], [-1], [-1]]),
+                 util_select_op_base.SplitOutput([0, [0]])],
+            ]
+    else:
+        if trans_b:
+            axis_split_matrix_b = [
+                [util_select_op_base.SplitInput([1, [0], [-1], [-1]], [2, [1], [-1], [-1]]),
+                 util_select_op_base.SplitOutput([0, [1]])],
+            ]
+        else:
+            axis_split_matrix_b = [
+                [util_select_op_base.SplitInput([1, [1], [-1], [-1]], [2, [1], [-1], [-1]]),
+                 util_select_op_base.SplitOutput([0, [1]])],
+            ]
+
+    axis_split_matrix = axis_split_matrix_a + axis_split_matrix_b
+    axis_reduce_list = None
+    min_l1space = _cal_min_l1space(format_b, dtype_b)
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(
+        axis_split_matrix, axis_reduce_list, L1FUSION_INPUT_CTR, min_l1space)
+
+    return op_cal_info_in_json
+
+
+def _shape_check(  # pylint: disable=I0011, R0914, R0912
     shape_a,
     shape_b,
     src_dtype,
@@ -151,6 +243,7 @@ def _shape_check(
     alpha_dtype,
     beta_dtype,
     dst_dtype,
+    bias_dtype
 ):
     """
     Check the given input if legal
@@ -169,7 +262,14 @@ def _shape_check(
             If True, shape_a == transposed before multiplication
     trans_b: bool
             If True, shape_b == transposed before multiplication
-
+    alpha_dtype: str
+            The data type of alpha
+    beta_dtype: str
+            The data type of beta
+    dst_dtype: str
+            The data type of dst
+    bias_dtype: str
+            The data type of bias
     Returns None
     """
 
@@ -251,6 +351,82 @@ def _shape_check(
             args_dict = {"errCode": "E60009", "a_1d": km_shape, "b_0d": kn_shape}
             raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
 
+    if bias_dtype != dst_dtype:
+        args_dict = {
+            "errCode": "E60002",
+            "attr_name": "dtype",
+            "param1_name": "c",
+            "param1_value": "{}".format(bias_dtype),
+            "param2_name": "y",
+            "param2_value": "{}".format(dst_dtype),
+        }
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+
+
+def _format_check(
+        src_dtype,
+        dst_dtype,
+        format_a,
+        format_b,
+        format_bias,
+        format_alpha,
+        format_beta,
+        format_dst
+):
+    """
+    src_dtype: str
+        input data type
+    dst_type: str
+        output data type
+    format_a: str
+        format of input a
+    format_b: str
+        format of input b
+    format_bias: str
+        format of input c
+    format_alpha: str
+        format of input alpha
+    format_beta: str
+        format of input beta
+    format_dst: str
+        format of output
+    """
+    flow_type = src_dtype + dst_dtype
+    format_combine = [
+        format_a,
+        format_b,
+        format_bias,
+        format_alpha,
+        format_beta,
+        format_dst
+    ]
+    if format_combine == ["ND", "ND", "ND", "ND", "ND", "ND"]:
+        return
+    support_combine = {
+        "float16float32":
+            ["FRACTAL_NZ", "FRACTAL_NZ", "FRACTAL_NZ", "ND", "ND", "FRACTAL_NZ"],
+        "float16float16":
+            ["FRACTAL_NZ", "FRACTAL_NZ", "FRACTAL_NZ", "ND", "ND", "FRACTAL_NZ"],
+        "int8int32":
+            ["FRACTAL_NZ", "FRACTAL_Z", "ND", "ND", "ND", "FRACTAL_NZ"],
+        "int8float32":
+            ["FRACTAL_NZ", "FRACTAL_Z", "FRACTAL_NZ", "ND", "ND", "FRACTAL_NZ"],
+    }
+    if (support_combine[flow_type] is not None
+            and support_combine[flow_type] != format_combine):
+        args_dict = {
+            "errCode": "E60114",
+            "reason": "for src_dtype = {src_dtype} and dst_type = {dst_dtype} ,"
+                      "format need to be {format_nd} or {format_fractal}".format(
+                src_dtype=src_dtype,
+                dst_dtype=dst_dtype,
+                format_nd=["ND", "ND", "ND", "ND", "ND", "ND"],
+                format_fractal=support_combine[flow_type]
+            ),
+            "value": "{}".format(format_combine)
+        }
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+
 
 def _get_bias_element(shape_bias_element):
     bias_length = shape_bias_element
@@ -298,7 +474,7 @@ def _get_input_shape_b(shape_x, dtype):
     return res
 
 
-def _bias_check(input_x1, input_x2, bias, trans_a, trans_b):
+def _bias_check(input_x1, input_x2, bias, trans_a, trans_b, bias_shape):
     if (
         input_x1["ori_format"] == "ND"
         and input_x2["ori_format"] == "ND"
@@ -344,10 +520,17 @@ def _bias_check(input_x1, input_x2, bias, trans_a, trans_b):
                 "input_value": "{}".format(shape_bias),
             }
             raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+    if len(bias_shape) != 2 and len(bias_shape) != 4:
+        args_dict = {
+            "errCode": "E60006",
+            "param_name": "c",
+            "expected_length": "2 or 4",
+            "length": "{}".format(len(bias_shape)),
+        }
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
 
 
-# pylint: disable=locally-disabled,too-many-arguments, too-many-locals,too-many-statements
-@para_check.check_op_params(
+@para_check.check_op_params(  # pylint: disable=I0011, R0913, R0914, R0915
     para_check.REQUIRED_INPUT,
     para_check.REQUIRED_INPUT,
     para_check.REQUIRED_INPUT,
@@ -358,7 +541,7 @@ def _bias_check(input_x1, input_x2, bias, trans_a, trans_b):
     para_check.REQUIRED_ATTR_BOOL,
     para_check.KERNEL_NAME,
 )
-def gemm(  # pylint: disable=locally-disabled,too-many-arguments, too-many-locals
+def gemm(  # pylint: disable=I0011, R0913, R0914
     input_x1,
     input_x2,
     bias,
@@ -405,7 +588,7 @@ def gemm(  # pylint: disable=locally-disabled,too-many-arguments, too-many-local
     src_dtype = input_x1.get("dtype").lower()
     b_dtype = input_x2.get("dtype").lower()
     dst_dtype = output_y.get("dtype").lower()
-
+    bias_dtype = bias.get("dtype").lower()
     if shape_a is not None:
         if len(shape_a) < 2:
             shape_a = input_x1.get("shape")
@@ -437,8 +620,6 @@ def gemm(  # pylint: disable=locally-disabled,too-many-arguments, too-many-local
         }
         raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
 
-    _bias_check(input_x1, input_x2, bias, trans_a, trans_b)
-
     _shape_check(
         shape_a,
         shape_b,
@@ -448,6 +629,18 @@ def gemm(  # pylint: disable=locally-disabled,too-many-arguments, too-many-local
         alpha_dtype,
         beta_dtype,
         dst_dtype,
+        bias_dtype
+    )
+    _bias_check(input_x1, input_x2, bias, trans_a, trans_b, shape_bias)
+    _format_check(
+        src_dtype,
+        dst_dtype,
+        input_x1.get("format"),
+        input_x2.get("format"),
+        bias.get("format"),
+        alpha.get("format"),
+        beta.get("format"),
+        output_y.get("format")
     )
 
     if bias.get("format") != "ND" and len(shape_bias) == 2:
@@ -600,16 +793,5 @@ def gemm(  # pylint: disable=locally-disabled,too-many-arguments, too-many-local
             "tensor_list": tensor_list,
         }
         tbe.cce_build_code(schedule, config)
-
-    def _is_larger_than_int32(input_tensor):
-        m_bit_ratio = {"float16": 2, "float32": 4, "int8": 1, "int32": 4}
-        res = 1
-        input_shape = input_tensor.get("ori_shape")
-        for axls in input_shape:
-            res *= axls
-        res *= m_bit_ratio.get(input_tensor.get("dtype").lower())
-        if res > MAX_INT32_LENGTH:
-            return True
-        return False
 
     _gemm_local_compute()

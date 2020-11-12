@@ -28,6 +28,16 @@ from te import tik
 from impl import decoded_bbox
 from impl import nms
 from impl import topk
+from impl.util import util_select_op_base
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(cls_prob_dic, bbox_delta_dic, im_info_dic, rpn_bbox_dic, rois_dic, actual_rois_num_dic,
+                        feat_stride, base_size, min_size, ratio, scale, pre_nms_topn, post_nms_topn, iou_threshold,
+                        output_actual_rois_num, kernel_name="cce_proposal"):
+
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(None, None, 0, 0)
+    return op_cal_info_in_json
 
 
 def _get_dtype_size(input_dtype):

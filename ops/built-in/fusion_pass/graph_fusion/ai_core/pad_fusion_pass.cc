@@ -154,8 +154,8 @@ Status PadFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   }
 
   if (PadMoveConsttoAttr(graph, pad_node, "paddings", 1) != SUCCESS) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), " PadMoveConsttoAttr failed.");
-    return PARAM_INVALID;
+    OP_LOGW(FUSED_OP_TYPE.c_str(), " PadMoveConsttoAttr failed.");
+    return NOT_CHANGED;
   }
 
   vector<bool> is_input_const = {false};

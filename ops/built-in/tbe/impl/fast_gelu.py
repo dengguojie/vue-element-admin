@@ -15,19 +15,19 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 fast_gelu
 """
-from __future__ import absolute_import
+import functools
 
-import te.lang.cce
+import te.lang.cce as tbe
 from te import tvm
-from topi import generic
-from functools import reduce as reduce_ins
-from te.utils.op_utils import *
+from te.platform.fusion_manager import fusion_manager
+from te import platform as tbe_platform
+from te.utils import para_check
 
 # const value
 CONST_1 = 1
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
-@fusion_manager.register("fast_gelu")
+@tbe_platform.fusion_manager.fusion_manager.register("fast_gelu")
 def fast_gelu_compute(input_x, output_y, kernel_name="fast_gelu"):
     """
     mathematical formula of fast_gelu(x):
@@ -51,23 +51,24 @@ def fast_gelu_compute(input_x, output_y, kernel_name="fast_gelu"):
     attr_half = attr / 2
     const_0 = tvm.const(attr_opp, dtype)
     const_1 = tvm.const(CONST_1, dtype)
-    abs_x = te.lang.cce.vabs(input_x)
-    mul_abs_x = te.lang.cce.vmuls(abs_x, const_0)
-    exp_abs_x = te.lang.cce.vexp(mul_abs_x)
-    div_down = te.lang.cce.vadds(exp_abs_x, const_1)
+    abs_x =tbe.vabs(input_x)
+    mul_abs_x = tbe.vmuls(abs_x, const_0)
+    exp_abs_x = tbe.vexp(mul_abs_x)
+    div_down = tbe.vadds(exp_abs_x, const_1)
 
     const_2 = tvm.const(attr_half, dtype)
-    pn_x = te.lang.cce.vsub(input_x, abs_x)
-    mul_pn_x = te.lang.cce.vmuls(pn_x, const_2)
-    exp_pn_x = te.lang.cce.vexp(mul_pn_x)
-    div_up = te.lang.cce.vmul(input_x, exp_pn_x)
+    pn_x = tbe.vsub(input_x, abs_x)
+    mul_pn_x = tbe.vmuls(pn_x, const_2)
+    exp_pn_x = tbe.vexp(mul_pn_x)
+    div_up = tbe.vmul(input_x, exp_pn_x)
 
-    result = te.lang.cce.vdiv(div_up, div_down)
+    result = tbe.vdiv(div_up, div_down)
 
     return result
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def fast_gelu(input_x, output_y, kernel_name="fast_gelu"):
     """
     mathematical formula of fast_gelu(x):
@@ -86,23 +87,23 @@ def fast_gelu(input_x, output_y, kernel_name="fast_gelu"):
     """
     attr = 1.702
     shape = input_x.get("shape")
-    check_shape(shape, param_name="input_x")
+    para_check.check_shape(shape, param_name="input_x")
 
     check_list = ("float16", "float32")
     input_dtype = input_x.get("dtype").lower()
-    check_dtype(input_dtype, check_list, param_name="input_x")
+    para_check.check_dtype(input_dtype, check_list, param_name="input_x")
 
     fuseshape = [1]
-    fuseshape[0] = reduce_ins(lambda x, y: x * y, shape)
+    fuseshape[0] = functools.reduce(lambda x, y: x*y, shape)
     data = tvm.placeholder(fuseshape, name="data", dtype=input_dtype)
     result = fast_gelu_compute(data, output_y, kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(result)
+        sch = tbe.auto_schedule(result)
 
     config = {"print_ir": False,
               "name": kernel_name,
               "tensor_list": [data, result]}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)
 

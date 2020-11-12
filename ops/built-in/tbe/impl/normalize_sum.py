@@ -19,6 +19,33 @@ import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
+from impl.util import util_select_op_base
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(x1, y, across_spatial=True, kernel_name="normalize_sum"):
+    format_x = x1.get("format")
+    axis_split_list = []
+    if across_spatial:
+        split_0 = [util_select_op_base.SplitInput([0, [0], [-1], [-1]]), util_select_op_base.SplitOutput([0, [0]])]
+        axis_split_list.append(split_0)
+    elif format_x == "NCHW":
+        split_0 = [util_select_op_base.SplitInput([0, [0], [-1], [-1]]), util_select_op_base.SplitOutput([0, [0]])]
+        split_1 = [util_select_op_base.SplitInput([0, [2], [-1], [-1]]), util_select_op_base.SplitOutput([0, [2]])]
+        split_2 = [util_select_op_base.SplitInput([0, [3], [-1], [-1]]), util_select_op_base.SplitOutput([0, [3]])]
+        axis_split_list=[split_0, split_1, split_2]
+    elif format_x == "NHWC":
+        split_0 = [util_select_op_base.SplitInput([0, [0], [-1], [-1]]), util_select_op_base.SplitOutput([0, [0]])]
+        split_1 = [util_select_op_base.SplitInput([0, [1], [-1], [-1]]), util_select_op_base.SplitOutput([0, [1]])]
+        split_2 = [util_select_op_base.SplitInput([0, [2], [-1], [-1]]), util_select_op_base.SplitOutput([0, [2]])]
+        axis_split_list=[split_0, split_1, split_2]
+    else:
+        axis_split_list = None
+
+    axis_reduce_list = None
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_list, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
+
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("normalize_sum")

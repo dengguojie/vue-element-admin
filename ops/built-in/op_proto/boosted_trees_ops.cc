@@ -33,11 +33,10 @@ IMPLEMT_INFERFUNC(BoostedTreesBucketize, BoostedTreesBucketizeInfer) {
     return GRAPH_FAILED;
   }
 
-  op.create_dynamic_output_y(num_features);
   for (int32_t i = 0; i < num_features; i++) {
     Shape value_shape;
-    if (WithRank(op.GetInputDesc(i), 2, value_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "each member in float_values list must be 2-D.");
+    if (WithRank(op.GetInputDesc(i), 1, value_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+      OP_LOGE(op.GetName().c_str(), "each member in float_values list must be 1-D.");
       return GRAPH_FAILED;
     }
 

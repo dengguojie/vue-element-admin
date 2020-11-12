@@ -20,11 +20,7 @@ import te.lang.dynamic
 from functools import reduce as reduceIns
 from te import tik
 from te import platform as cce
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import KERNEL_NAME
+from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 MAX_INPUT_SIZE = 2**31 - 1
@@ -47,11 +43,11 @@ class ScatterNd():
         self.shape_dtype = shape.get("dtype").lower()
         self.y_dtype = y.get("dtype").lower()
         indices_support_dtype_list = ("int32", )
-        check_dtype(self.indices_dtype, indices_support_dtype_list, param_name="indices")
+        para_check.check_dtype(self.indices_dtype, indices_support_dtype_list, param_name="indices")
         updates_support_dtype_list = ("float32", )
-        check_dtype(self.updates_dtype, updates_support_dtype_list, param_name="updates")
+        para_check.check_dtype(self.updates_dtype, updates_support_dtype_list, param_name="updates")
         shape_support_dtype_list = ("int32", )
-        check_dtype(self.shape_dtype, shape_support_dtype_list, param_name="shape")
+        para_check.check_dtype(self.shape_dtype, shape_support_dtype_list, param_name="shape")
         if self.y_dtype != self.updates_dtype:
             error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "y", "x",
                                                                   self.y_dtype, self.updates_dtype)
@@ -563,7 +559,8 @@ class ScatterNd():
 
 # pylint: disable=unused-argument,invalid-name,too-many-locals
 @te.op.register_operator("ScatterNd")
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def scatter_nd(indices, x, shape, y, kernel_name="ScatterNd"):
     """
         scatter_nd interface

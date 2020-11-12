@@ -20,6 +20,7 @@ from te import tvm
 from te.platform import cce_emitinsn_params as cce_params
 from te.platform import get_soc_spec
 from te.platform.cce_conf import CceProductParams as pver
+from te.utils.error_manager.error_manager_util import get_error_message
 
 # define the quantize tensor name
 CAST_F16_NAME = "cast_f16_ub"
@@ -279,7 +280,11 @@ def _tiling(context, core_n):
     if _try_tiling(ub_size0):
         return False, factors["c1_factor"], factors["ho_factor"], factors[
             "wo_factor"]
-    raise RuntimeError("Cannot find tiling, kw and kh is too big!")
+    dict_args = dict()
+    dict_args["errCode"] = "E90003"
+    dict_args["detailed_cause"] = "Cannot find tiling, kw [%s] and kh [%s] " \
+                                  "is too big!" % (k_w, k_h)
+    raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
 def _set_round_emit_insn(round_mode):

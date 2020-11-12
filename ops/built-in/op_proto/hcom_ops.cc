@@ -318,6 +318,39 @@ IMPLEMT_VERIFIER(HcomRemoteRead, HcomRemoteReadVerify) {
 INFER_FUNC_REG(HcomRemoteRead, HcomRemoteReadInferShape);
 VERIFY_FUNC_REG(HcomRemoteRead, HcomRemoteReadVerify);
 
+IMPLEMT_INFERFUNC(HcomRemoteRefRead, HcomRemoteRefReadInferShape) {
+    std::vector<string> dep_inputs = {"remote","local_offset"};
+    auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+    op_desc->SetOpInferDepends(dep_inputs);
+
+    TensorDesc outTensorDesc = op.get_output_desc_cache_var();
+    auto inShape = op.get_input_desc_remote().GetShape();
+    outTensorDesc.SetShape(inShape);
+    outTensorDesc.SetOriginShape(inShape);
+    op.update_output_desc_cache_var(outTensorDesc);
+    OP_LOGI(op.GetName().c_str(), "the op infershape end");
+    return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(HcomRemoteRefRead, HcomRemoteRefReadVerify) {
+    return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(HcomRemoteRefRead,HcomRemoteRefReadInferShape);
+VERIFY_FUNC_REG(HcomRemoteRefRead, HcomRemoteRefReadVerify);
+
+IMPLEMT_INFERFUNC(HcomRemoteScatterWrite, HcomRemoteScatterWriteInferShape) {
+    std::vector<string> dep_inputs = {"remote"};
+    auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+    op_desc->SetOpInferDepends(dep_inputs);
+    AttrUtils::SetBool(op_desc, "_force_unknown_shape", true);
+    return GRAPH_SUCCESS;
+}
+IMPLEMT_VERIFIER(HcomRemoteScatterWrite, HcomRemoteScatterWriteVerify) {
+    return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(HcomRemoteScatterWrite, HcomRemoteScatterWriteInferShape);
+VERIFY_FUNC_REG(HcomRemoteScatterWrite, HcomRemoteScatterWriteVerify);
+
 // HcomRemoteWrite op
 IMPLEMT_INFERFUNC(HcomRemoteWrite, HcomRemoteWriteInferShape) {
     std::vector<string> dep_inputs = {"remote"};

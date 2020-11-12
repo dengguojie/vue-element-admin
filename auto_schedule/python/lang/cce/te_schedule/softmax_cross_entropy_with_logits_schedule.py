@@ -436,7 +436,7 @@ def get_npart_factor(n_h_w, dtype_bytes, block_dim):
     else:
         npart_factor = n_h_w*dtype_bytes // 32
 
-    if block_dim == 30:
+    if block_dim == 30 and npart_factor != 0:
         while n_h_w % npart_factor != 0:
             npart_factor -= 1
 
@@ -472,7 +472,7 @@ def logits_2d_schedule(res, input_tensors):  # pylint: disable=unused-argument
 
     dtype = output_backprop.dtype
 
-    reduce_ext = te.lang.cce.sum(output_backprop, axis=-1)
+    reduce_ext = te.lang.cce.sum(output_backprop, axis=-1, keepdims=True)
     out = te.lang.cce.vadd(reduce_ext, output_loss)
 
     sch = tvm.create_schedule(out.op)
@@ -667,7 +667,8 @@ def logits_2d_schedule_large_axis(res, input_tensors):
     output_loss = res[0]
     output_backprop = res[1]
     c_size = int(res[1].shape[-1])
-    current_csize_maximum = 20000
+    # If the value is greater than or equal to 20,000, L1 cannot handle the problem
+    current_csize_maximum = 19999
     if c_size > current_csize_maximum:
         return logits_2d_schedule_large_axis_workspace(res, input_tensors)
     # This node can be used to collect reduce result

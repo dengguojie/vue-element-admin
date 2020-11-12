@@ -26,7 +26,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
-from te.utils import error_manager
+from te.utils.error_manager import error_manager_vector
 
 # CSVALUE equals 0.044715
 CSVALUE = tvm.const(0.044715, "float32")
@@ -261,7 +261,7 @@ def gelu_grad(input_dy, input_x, input_y, output_z, kernel_name="gelu_grad"):
 
     if not (operator.eq(shape_dy, shape_x) and operator.eq(shape_dy, shape_y)):
         error_detail = "all input shape must be equal"
-        error_manager.error_manager_vector.raise_err_two_input_shape_invalid("gelu_grad", "shape_dy or shape_x",
+        error_manager_vector.raise_err_two_input_shape_invalid("gelu_grad", "shape_dy or shape_x",
                                                                              "shape_dy or shape_y", error_detail)
 
     fuseshape = [1]

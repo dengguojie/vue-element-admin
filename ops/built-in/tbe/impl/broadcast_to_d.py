@@ -146,6 +146,9 @@ def broadcast_to_d(x, y, shape, kernel_name="broadcast_to_d"):
     check_list = ('float32', 'float16', 'int8', 'uint8', 'int32')
     para_check.check_dtype(inp_dtype, check_list, param_name="x")
 
+    if len(shape) == 0:
+        shape = (1,)
+
     shape_x = x.get('shape')
     para_check.check_shape(shape_x, param_name="x")
     para_check.check_shape(shape, param_name="shape")

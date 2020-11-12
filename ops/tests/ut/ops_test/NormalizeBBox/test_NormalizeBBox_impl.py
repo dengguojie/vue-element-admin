@@ -101,23 +101,23 @@ ut_case.add_case(["Ascend910"],
 
 ut_case.add_case(["Ascend310"],
                  gen_normalize_bbox_case((1, 16001, 5, 4), (1, 3), "float32",
-                                         False, "err_1", "RuntimeError"))
+                                         False, "err_1", RuntimeError))
 
 ut_case.add_case(["Ascend310"],
                  gen_normalize_bbox_case((1, 16001, 4), (1, 2, 3), "float16",
-                                         False, "err_2", "RuntimeError"))
+                                         False, "err_2", RuntimeError))
 
 ut_case.add_case(["Ascend310"],
                  gen_normalize_bbox_case((1, 16001, 5), (1, 3), "float32",
-                                         False, "err_3", "RuntimeError"))
+                                         False, "err_3", RuntimeError))
 
 ut_case.add_case(["Ascend310"],
                  gen_normalize_bbox_case((1, 6, 5), (1, 3), "float32",
-                                         True, "err_4", "RuntimeError"))
+                                         True, "err_4", RuntimeError))
 
 ut_case.add_case(["Ascend310"],
                  gen_normalize_bbox_case((1, 4, 5), (1, 2), "float32",
-                                         True, "err_5", "RuntimeError"))
+                                         True, "err_5", RuntimeError))
 
 
 def calc_expect_func(boxes, shape_hw, y, reversed_box):
@@ -200,13 +200,13 @@ ut_case.add_precision_case("all", gen_normalize_bbox_precision_case((3, 4, 80010
 
 ut_case.add_precision_case("all", gen_normalize_bbox_precision_case((22, 4, 140), (22, 3), "float32", True, 0.0001))
 
-ut_case.add_precision_case("all", gen_normalize_bbox_precision_case((25, 4, 16), (25, 3), "float16", False, 0.001))
+ut_case.add_precision_case("all", gen_normalize_bbox_precision_case((25, 4, 4), (25, 3), "float16", False, 0.001))
 
 ut_case.add_precision_case("all", gen_normalize_bbox_precision_case((3, 4, 4), (3, 3), "float16", False, 0.001))
 
-ut_case.add_precision_case("all", gen_normalize_bbox_precision_case((3, 4, 80010), (3, 3), "float32", False, 0.0001))
+ut_case.add_precision_case("all", gen_normalize_bbox_precision_case((3, 4, 4), (3, 3), "float32", False, 0.0001))
 
-ut_case.add_precision_case("all", gen_normalize_bbox_precision_case((22, 4, 140), (22, 3), "float32", False, 0.0001))
+ut_case.add_precision_case("all", gen_normalize_bbox_precision_case((22, 4, 4), (22, 3), "float32", False, 0.0001))
 
 
 if __name__ == '__main__':

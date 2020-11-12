@@ -22,9 +22,8 @@ from topi import generic
 from topi.cce.util import compare_tensor_dict_key
 from te import platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import check_shape, check_dtype, broadcast_shapes
-from te.utils.op_utils import check_op_params, REQUIRED_INPUT, OPTION_INPUT, \
-    REQUIRED_OUTPUT, OPTION_ATTR_STR, KERNEL_NAME
+from te.utils import shape_util
+from te.utils import para_check
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 
@@ -255,8 +254,9 @@ def sigmoid_cross_entropy_with_logits_v2_compute(predict,
     return loss
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT, OPTION_INPUT, 
-                 REQUIRED_OUTPUT, OPTION_ATTR_STR, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
+                            para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_STR,
+                            para_check.KERNEL_NAME)
 def sigmoid_cross_entropy_with_logits_v2(
         predict, target, weight, pos_weight, loss, reduction="mean",
         kernel_name="sigmoid_cross_entropy_with_logits_v2"):
@@ -288,13 +288,13 @@ def sigmoid_cross_entropy_with_logits_v2(
     
     shape_predict = predict.get("shape")
     dtype_predict = predict.get("dtype").lower()
-    check_shape(shape_predict, param_name="predict")
-    check_dtype(dtype_predict, check_list, param_name="predict")
+    para_check.check_shape(shape_predict, param_name="predict")
+    para_check.check_dtype(dtype_predict, check_list, param_name="predict")
     
     shape_target = target.get("shape")
     dtype_target = target.get("dtype").lower()
-    check_shape(shape_target, param_name="target")
-    check_dtype(dtype_target, check_list, param_name="target")
+    para_check.check_shape(shape_target, param_name="target")
+    para_check.check_dtype(dtype_target, check_list, param_name="target")
     
     compare_tensor_dict_key(predict, target, "shape")
     
@@ -305,9 +305,9 @@ def sigmoid_cross_entropy_with_logits_v2(
     if weight is not None:
         shape_weight = weight.get("shape")
         dtype_weight = weight.get("dtype").lower()
-        check_shape(shape_weight, param_name=weight)
-        check_dtype(dtype_weight, check_list, param_name="weight")
-        _, shape_weight, _ = broadcast_shapes(shape_predict, shape_weight,
+        para_check.check_shape(shape_weight, param_name=weight)
+        para_check.check_dtype(dtype_weight, check_list, param_name="weight")
+        _, shape_weight, _ = shape_util.broadcast_shapes(shape_predict, shape_weight,
                                                    param_name_input1="predict",
                                                    param_name_input2="weight")
         data_weight = tvm.placeholder(shape_weight,
@@ -318,9 +318,9 @@ def sigmoid_cross_entropy_with_logits_v2(
     if pos_weight is not None:
         shape_pos_weight = pos_weight.get("shape")
         dtype_pos_weight = pos_weight.get("dtype").lower()
-        check_shape(shape_pos_weight, param_name=weight)
-        check_dtype(dtype_pos_weight, check_list, param_name="pos_weight")
-        _, shape_pos_weight, _ = broadcast_shapes(shape_predict, shape_pos_weight,
+        para_check.check_shape(shape_pos_weight, param_name=weight)
+        para_check.check_dtype(dtype_pos_weight, check_list, param_name="pos_weight")
+        _, shape_pos_weight, _ = shape_util.broadcast_shapes(shape_predict, shape_pos_weight,
                                                    param_name_input1="predict",
                                                    param_name_input2="pos_weight")
         data_pos_weight = tvm.placeholder(shape_pos_weight,

@@ -17,22 +17,35 @@ cumulativelogsumexp_d
 """
 from topi.cce import util
 from impl.cum_computer import get_computer_by_ctype
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import OPTION_OUTPUT
-from te.utils.op_utils import REQUIRED_ATTR_INT
-from te.utils.op_utils import OPTION_ATTR_BOOL
-from te.utils.op_utils import KERNEL_NAME
+from te.utils import para_check
+from impl.util import util_select_op_base
 
 # the computer type
 COMPUTE_TYPE = "logsumexp"
 
 
+# pylint: disable = unused-argument
+def get_op_support_info(x, y, axis, exclusive=False, reverse=False,
+                        kernel_name="cumulative_logsumexp_d"):
+    format_x = x.get("format")
+    if format_x == "ND":
+        axis_split_list = []
+        for i in range(0, axis):
+            split_0 = [util_select_op_base.SplitInput([0, [i], [-1], [-1]]),
+                       util_select_op_base.SplitOutput([0, [i]])]
+            axis_split_list.append(split_0)
+        axis_reduce_list = None
+    else:
+        axis_split_list = None
+        axis_reduce_list = None
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_list, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
+
+
 # pylint: disable=locally-disabled, unused-argument,invalid-name
 # pylint: disable=locally-disabled, too-many-arguments, not-callable
-@check_op_params(REQUIRED_INPUT, OPTION_OUTPUT, REQUIRED_ATTR_INT,
-                 OPTION_ATTR_BOOL, OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_OUTPUT, para_check.REQUIRED_ATTR_INT,
+                 para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def cumulative_logsumexp_d(x, y, axis, exclusive=False, reverse=False,
                            kernel_name="cumulative_logsumexp_d"):
     """
@@ -84,7 +97,7 @@ def check_param(input_x, axis, kernel_name):
     util.check_kernel_name(kernel_name)
     util.check_shape_rule(input_shape)
     util.check_tensor_shape_size(input_shape)
-    check_dtype(input_dtype, ("float16", "float32"))
+    para_check.check_dtype(input_dtype, ("float16", "float32"))
 
     if axis < len(input_shape) * (-1) or axis >= len(input_shape):
         raise RuntimeError("axis must be in the range [%d, %d). but is %d "

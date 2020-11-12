@@ -10,10 +10,11 @@ from __future__ import absolute_import
 
 from te import tvm
 import te.lang.cce as tbe
-import te.lang.dynamic as dynamic
 import te.platform as tbe_platform
-from te.utils import check_para
+import te.lang.base as tbe_base
+from te.utils import para_check
 from te.utils import error_manager
+from te.utils.error_manager import error_manager_util
 import impl.util.util_deconv_comm as comm
 
 
@@ -58,7 +59,7 @@ def _range_correction(fmap_range, kernel, padding, stride, dilation, out_shape):
 
 
 def _check_and_config_para(filter, out_backprop, y, input_size, strides,
-                           pads, dilations, data_format, kernel_name):
+                           pads, dilations, data_format, groups, kernel_name):
     ori_shape_filters = filter.get("ori_shape")
     ori_shape_out_backprop = out_backprop.get("ori_shape")
     range_y = y.get("range")
@@ -100,16 +101,30 @@ def _check_and_config_para(filter, out_backprop, y, input_size, strides,
             shape_out_backprop, shape_filters, input_size,
             filter_dtype, out_backprop_dtype, range_dedy, range_y, dynamic_mode)
 
+    if groups != 1:
+        dict_args = {"errCode": "E60108", "reason": "group must be 1 now"}
+        raise RuntimeError(
+            dict_args, error_manager_util.get_error_message(dict_args)
+        )
+
+    group_dict = comm.calculate_group(
+        shape_filters,
+        groups,
+        filter_dtype,
+        ori_format_filters,
+    )
     shape_filter, shape_out_backprop, input_sizes, strides, pads, \
         dilations, filter_dtype, out_backprop_dtype, res_dtype, kernel_name \
         = comm.check_conv2dbp_input_params(shape_filters, shape_out_backprop,
                                            input_size, strides, pads,
                                            dilations, filter_dtype,
                                            out_backprop_dtype, res_dtype,
-                                           kernel_name, None, dynamic_mode)
+                                           kernel_name,
+                                           dynamic_mode=dynamic_mode,
+                                           group_dict=group_dict)
 
     return dx_shape, dedy, filter_frac, input_size, shape_filter, shape_out_backprop, \
-        strides, pads, dilations, res_dtype
+        strides, pads, dilations, res_dtype, group_dict
 
 
 def _get_input_size(dx):
@@ -148,19 +163,19 @@ def _config_placeholder(shape_out_backprop, shape_filter, input_size,
                          _ceil(filter_batch, w_k0), w_k0, w_n0)
 
     if dynamic_mode == "dynamic_hw":
-        dedy_h = tbe_platform.var("dedy_h", range_dy[2])
-        dedy_w = tbe_platform.var("dedy_w", range_dy[3])
-        dx_h = tbe_platform.var("dx_h", range_dx[2])
-        dx_w = tbe_platform.var("dx_w", range_dx[3])
-        tbe_platform.add_exclude_bound_var(dedy_h)
-        tbe_platform.add_exclude_bound_var(dedy_w)
-        tbe_platform.add_exclude_bound_var(dx_h)
-        tbe_platform.add_exclude_bound_var(dx_w)
+        dedy_h = tbe_base.var("dedy_h", range_dy[2])
+        dedy_w = tbe_base.var("dedy_w", range_dy[3])
+        dx_h = tbe_base.var("dx_h", range_dx[2])
+        dx_w = tbe_base.var("dx_w", range_dx[3])
+        tbe_base.add_exclude_bound_var(dedy_h)
+        tbe_base.add_exclude_bound_var(dedy_w)
+        tbe_base.add_exclude_bound_var(dx_h)
+        tbe_base.add_exclude_bound_var(dx_w)
         input_size[2] = dx_h
         input_size[3] = dx_w
     elif dynamic_mode == "dynamic_batch":
-        dedy_batch = tbe_platform.var("batch_n", range_dx[0])
-        tbe_platform.add_exclude_bound_var(dedy_batch)
+        dedy_batch = tbe_base.var("batch_n", range_dx[0])
+        tbe_base.add_exclude_bound_var(dedy_batch)
         input_size[0] = dedy_batch
 
     shape_out_backprop = (dedy_batch, dedy_channel, dedy_h, dedy_w)
@@ -181,26 +196,40 @@ def _conv2d_backprop_input_compute(input_size, filter, out_backprop,
                                    groups=1, data_format='NHWC',
                                    kernel_name='conv2d_backprop_input'):
     dx_shape, dedy, filter_frac, input_size, shape_filter, shape_out_backprop, \
-        strides, pads, dilations, res_dtype \
+        strides, pads, dilations, res_dtype, group_dict \
         = _check_and_config_para(filter, out_backprop, y, input_size, strides,
-                                 pads, dilations, data_format, kernel_name)
+                                 pads, dilations, data_format, groups, kernel_name)
 
-    dedx = tbe.conv2d_backprop_input_compute(
-        filters=filter_frac,
-        out_backprop=dedy,
-        filter_sizes=shape_filter,
-        input_sizes=input_size,
-        strides=strides,
-        padding=pads,
-        dilations=dilations,
-        res_dtype=res_dtype,
-        kernel_name=kernel_name)
+    if 1 == groups:
+        # for old fwkacllib version
+        dedx = tbe.conv2d_backprop_input_compute(
+            filters=filter_frac,
+            out_backprop=dedy,
+            filter_sizes=shape_filter,
+            input_sizes=input_size,
+            strides=strides,
+            padding=pads,
+            dilations=dilations,
+            res_dtype=res_dtype,
+            kernel_name=kernel_name)
+    else:
+        dedx = tbe.conv2d_backprop_input_compute(
+            filters=filter_frac,
+            out_backprop=dedy,
+            filter_sizes=shape_filter,
+            input_sizes=input_size,
+            strides=strides,
+            padding=pads,
+            dilations=dilations,
+            res_dtype=res_dtype,
+            kernel_name=kernel_name,
+            group_dict=group_dict)
 
     return {'op_placeholder': [dx_shape, filter_frac, dedy],  'op_res': [dedx]}
 
 
-@tbe_platform.register_operator('Conv2DBackpropInput')
-@check_para.check_input_type(dict, dict, dict, dict, (tuple, list),
+@tbe_base.register_operator('Conv2DBackpropInput')
+@para_check.check_input_type(dict, dict, dict, dict, (tuple, list),
                              (str, tuple, list), (tuple, list), int, str, str,
                              (type(None), dict))
 def conv2d_backprop_input(input_size,  # pylint: disable=W0622,C0103,R0913,R0914
@@ -249,7 +278,7 @@ def conv2d_backprop_input(input_size,  # pylint: disable=W0622,C0103,R0913,R0914
     None
     """
 
-    with tbe_platform.compute():
+    with tbe_base.compute():
         res = _conv2d_backprop_input_compute(
             input_size, filter, out_backprop, y,
             strides, pads, dilations, groups, data_format, kernel_name)
@@ -262,4 +291,4 @@ def conv2d_backprop_input(input_size,  # pylint: disable=W0622,C0103,R0913,R0914
               'name': kernel_name,
               'tensor_list': tensor_list,
               'build_args': {'constant_realize_extent_in_infer_bound': False}}
-    dynamic.build(sch, config)
+    tbe.build(sch, config)

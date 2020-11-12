@@ -18,12 +18,14 @@ schedule util
 from functools import reduce
 from operator import mul
 
+from te.platform.cce_conf import CceProductParams as product_params
 from te import platform as cce
 from te import tvm
-from te.platform import operation
+from te.lang.base import operation
+from te.utils.error_manager.error_manager_util import get_error_message
 
 from . import BROADCAST_INSNS, SUPPORT_SCALAR_INSNS, \
-    NEED_TEMP_SPACE_INSNS, VSEL_INSNS, VCMPSEL_INSNS
+    NEED_TEMP_SPACE_INSNS, VSEL_INSNS, VCMPSEL_INSNS, NEED_SPACE_WITH_DIFF_TYPE
 
 VAR_BOUND_LIMIT = 2147483647
 
@@ -63,19 +65,35 @@ def support_scalar(tensor: tvm.tensor.Tensor):
     return get_dsl_insn(tensor) in SUPPORT_SCALAR_INSNS
 
 
+def is_v100():
+    """
+    :return:
+    """
+    return product_params().is_mini_version() or product_params().is_cloud_version()
+
 def need_temp_space(tensor: tvm.tensor.Tensor):
     """
     :param tensor:
     :return:
     """
-    return get_dsl_insn(tensor) in NEED_TEMP_SPACE_INSNS
+    op_tag = get_dsl_insn(tensor)
+    return op_tag in NEED_TEMP_SPACE_INSNS or \
+           (is_v100() and op_tag in NEED_SPACE_WITH_DIFF_TYPE and tensor.dtype == "int32")
 
 
 def is_vsel_insn(tensor: tvm.tensor.Tensor):
+    """
+    :param tensor:
+    :return:
+    """
     return get_dsl_insn(tensor) == VSEL_INSNS
 
 
 def is_vcmpsel_insn(tensor: tvm.tensor.Tensor):
+    """
+    :param tensor:
+    :return:
+    """
     return get_dsl_insn(tensor) in VCMPSEL_INSNS
 
 
@@ -128,8 +146,11 @@ def get_bound(expr):
     """
     valid_types = (int, tvm.expr.Expr)
     if not isinstance(expr, valid_types):
-        raise RuntimeError(
-            "Only accept (int, expr), but now is{}.".format(expr))
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "Only accept (int, expr), but now " \
+                                      "is [%s]." % type(expr)
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if isinstance(expr, int):
         return expr, expr
@@ -140,7 +161,11 @@ def get_bound(expr):
 
     def _parse(expr_, elements_: list):
         if not isinstance(expr_, tvm.expr.Mul):
-            raise RuntimeError("Only support mul, but no is {}.".format(expr))
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "Only accept (int, expr), but now " \
+                                          "is [%s]." % type(expr_)
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
         single_types = (tvm.expr.IntImm, tvm.expr.Var)
         for _x in (expr_.a, expr_.b):
@@ -165,8 +190,11 @@ def get_bound(expr):
             bound = operation.get_te_var(_e.name).get_bound()
             lower, upper = _mul(lower, bound[0]), _mul(upper, bound[1])
         else:
-            raise RuntimeError(
-                "Only support (IntImm, Var), but no is {}.".format(_e))
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "Only accept (int, expr), but now " \
+                                          "is [%s]." % type(_e)
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
     return lower, upper
 

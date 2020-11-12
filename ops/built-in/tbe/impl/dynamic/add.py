@@ -15,8 +15,8 @@
 """
 dynamic add
 """
-import te.lang.dynamic as dynamic
-import te.platform as tbe_platform
+import te.lang.cce as tbe
+import te.lang.base as tbe_base
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
@@ -126,7 +126,7 @@ def _infer_shape(format_pattern, x, y):
     return shape_x, shape_y
 
 
-@tbe_platform.register_fusion_compute("Add")
+@tbe_base.register_fusion_compute("Add")
 def add_fusion_compute(input_x, input_y, output_z, kernel_name="add"):
     fusion_util.check_fusion_input([input_x, input_y])
 
@@ -163,22 +163,22 @@ def add_compute(input_x, input_y, output_z, kernel_name="add"):
     -------
     res : output of the data's add
     """
-    shape_x = dynamic.shape_to_list(input_x.shape)
-    shape_y = dynamic.shape_to_list(input_y.shape)
+    shape_x = shape_util.shape_to_list(input_x.shape)
+    shape_y = shape_util.shape_to_list(input_y.shape)
 
     shape_x, shape_y, shape_max = \
         shape_util.broadcast_shapes(shape_x, shape_y,
                                     param_name_input1="input_x",
                                     param_name_input2="input_y")
 
-    input_x = dynamic.broadcast(input_x, shape_max)
-    input_y = dynamic.broadcast(input_y, shape_max)
-    res = dynamic.vadd(input_x, input_y)
+    input_x = tbe.broadcast(input_x, shape_max)
+    input_y = tbe.broadcast(input_y, shape_max)
+    res = tbe.vadd(input_x, input_y)
 
     return res
 
 
-@tbe_platform.register_operator("Add")
+@tbe_base.register_operator("Add")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def add(input_x, input_y, output_z, kernel_name="add"):
@@ -243,10 +243,10 @@ def add(input_x, input_y, output_z, kernel_name="add"):
     input_x["shape"] = shape_x
     input_y["shape"] = shape_y
 
-    ins = tbe_platform.classify([input_x, input_y], tbe_platform.Mode.ELEWISE_WITH_BROADCAST)
+    ins = tbe_base.classify([input_x, input_y], tbe_base.Mode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (input_x, input_y) in ins:
-        with tbe_platform.compute():
+        with tbe_base.compute():
             shape_x, shape_y = \
                 shape_util.variable_shape([input_x, input_y], support_broadcast=True)
             shape_x, shape_y = shape_util.refine_shapes_for_broadcast(shape_x, shape_y)
@@ -256,10 +256,10 @@ def add(input_x, input_y, output_z, kernel_name="add"):
 
             tensors.append((data_x, data_y, res))
         with tvm.target.cce():
-            schedule = dynamic.auto_schedule(res)
+            schedule = tbe.auto_schedule(res)
         schedules.append(schedule)
 
     config = {"print_ir": False, "name": kernel_name,
               "tensor_list": tensors}
 
-    dynamic.build(schedules, config)
+    tbe.build(schedules, config)

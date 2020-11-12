@@ -30,12 +30,12 @@ namespace ge {
 
 // Obtains the output tensor description for Apply_op
 void ApplyInferShapeAndDtype(Operator& op, const string& input_name, const string& output_name) {
-  TensorDesc outDesc = op.GetOutputDesc(output_name);
-  TensorDesc inDesc = op.GetInputDesc(input_name);
+  TensorDesc out_desc = op.GetOutputDesc(output_name);
+  TensorDesc in_desc = op.GetInputDesc(input_name);
 
-  outDesc.SetShape(inDesc.GetShape());
-  outDesc.SetDataType(inDesc.GetDataType());
-  if (op.UpdateOutputDesc(output_name, outDesc) != GRAPH_SUCCESS) {
+  out_desc.SetShape(in_desc.GetShape());
+  out_desc.SetDataType(in_desc.GetDataType());
+  if (op.UpdateOutputDesc(output_name, out_desc) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed, maybe output name error!");
   }
 }
@@ -164,8 +164,11 @@ IMPLEMT_COMMON_INFERFUNC(SparseApplyAdagradDInferShape) {
   out_accum_desc.SetShape(ge::Shape(accum_shape));
   out_var_desc.SetDataType(input_dtype);
   out_accum_desc.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("var", out_var_desc);
-  (void)op.UpdateOutputDesc("accum", out_accum_desc);
+  if (op.UpdateOutputDesc("var", out_var_desc) != GRAPH_SUCCESS ||
+      op.UpdateOutputDesc("accum", out_accum_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
@@ -189,9 +192,12 @@ IMPLEMT_COMMON_INFERFUNC(SparseApplyAdagradInferShape) {
   Shape var_shape = op.GetInputDesc("var").GetShape();
   DataType input_dtype = op.GetInputDesc("var").GetDataType();
   TensorDesc out_var_desc = op.GetOutputDesc("var");
-  out_var_desc.SetShape(ge::Shape(var_shape));
+  out_var_desc.SetShape(Shape(var_shape));
   out_var_desc.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("var", out_var_desc);
+  if (op.UpdateOutputDesc("var", out_var_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
@@ -217,13 +223,11 @@ IMPLEMT_COMMON_INFERFUNC(SparseApplyAdagradV2DInferShape) {
 }
 
 IMPLEMT_VERIFIER(SparseApplyAdagradV2D, SparseApplyAdagradV2DVerify) {
-  const std::map<std::string, std::vector<DataType>> kInputTensorMap = {{"var", {DT_FLOAT}}, {"accum", {DT_FLOAT}}};
-
+  const std::map<std::string, std::vector<DataType>> kInputTensorMap{{"var", {DT_FLOAT}}, {"accum", {DT_FLOAT}}};
   // input tensor params, must have same shape and dtype
   if (!CheckInputDtypeAndShape(op, kInputTensorMap)) {
     return GRAPH_FAILED;
   }
-
   return GRAPH_SUCCESS;
 }
 
@@ -236,20 +240,21 @@ IMPLEMT_COMMON_INFERFUNC(SparseApplyAdagradV2InferShape) {
   Shape var_shape = op.GetInputDesc("var").GetShape();
   DataType input_dtype = op.GetInputDesc("var").GetDataType();
   TensorDesc out_var_desc = op.GetOutputDesc("var");
-  out_var_desc.SetShape(ge::Shape(var_shape));
+  out_var_desc.SetShape(Shape(var_shape));
   out_var_desc.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("var", out_var_desc);
+  if (op.UpdateOutputDesc("var", out_var_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_VERIFIER(SparseApplyAdagradV2, SparseApplyAdagradV2Verify) {
-  const std::map<std::string, std::vector<DataType>> kInputTensorMap = {{"var", {DT_FLOAT}}, {"accum", {DT_FLOAT}}};
-
+  const std::map<std::string, std::vector<DataType>> kInputTensorMap{{"var", {DT_FLOAT}}, {"accum", {DT_FLOAT}}};
   // input tensor params, must have same shape and dtype
   if (!CheckInputDtypeAndShape(op, kInputTensorMap)) {
     return GRAPH_FAILED;
   }
-
   return GRAPH_SUCCESS;
 }
 
@@ -1309,39 +1314,39 @@ VERIFY_FUNC_REG(SparseApplyRMSProp, SparseApplyRMSPropVerify);
 
 // ----------------SparseApplyRMSPropD Op-------------------
 // Check the dtype, input and attr of the input tensor description.
-// IMPLEMT_VERIFIER(SparseApplyRMSPropD, SparseApplyRMSPropDVerify) {
-//   OP_LOGI(op.GetName().c_str(), "Enter SparseApplyRMSPropD verifyFunction!");
-// 
-//   // check input const attr for rho, momentum, epsilon
-//   std::vector<float> constAttr;
-//   if (!GetConstAttr(op, {"rho", "momentum", "epsilon"}, constAttr)) {
-//     OP_LOGE(op.GetName().c_str(), "The GetOpAttr ConstValue failed!");
-//   }
-// 
-//   const std::vector<std::string> kInputTensorList{"var", "ms", "mom"};
-//   const std::vector<std::string> kInputScalarList{"lr"};
-//   if (!ApplyVerifyFunc(op, kInputTensorList, kInputScalarList)) {
-//     return GRAPH_FAILED;
-//   }
-// 
-//   auto vector_dims = op.GetInputDesc("indices").GetShape().GetDims();
-//   if (vector_dims.size() != 1) {
-//     OP_LOGE(op.GetName().c_str(), "Input indices must be one-dimensional");
-//     return GRAPH_FAILED;
-//   }
-// 
-//   vector<int64_t> var_dims = op.GetInputDesc("var").GetShape().GetDims();
-//   vector<int64_t> grad_dims = op.GetInputDesc("grad").GetShape().GetDims();
-// 
-//   for (unsigned int dim_index = 1; dim_index < var_dims.size(); dim_index++) {
-//     if (var_dims[dim_index] != grad_dims[dim_index]) {
-//       OP_LOGE(op.GetName().c_str(), "Input var and grad must match in dimension (%u)", dim_index);
-//       return GRAPH_FAILED;
-//     }
-//   }
-// 
-//   return GRAPH_SUCCESS;
-// }
+IMPLEMT_VERIFIER(SparseApplyRMSPropD, SparseApplyRMSPropDVerify) {
+  OP_LOGI(op.GetName().c_str(), "Enter SparseApplyRMSPropD verifyFunction!");
+
+  // check input const attr for rho, momentum, epsilon
+  std::vector<float> constAttr;
+  if (!GetConstAttr(op, {"rho", "momentum", "epsilon"}, constAttr)) {
+    OP_LOGE(op.GetName().c_str(), "The GetOpAttr ConstValue failed!");
+  }
+
+  const std::vector<std::string> kInputTensorList{"var", "ms", "mom"};
+  const std::vector<std::string> kInputScalarList{"lr"};
+  if (!ApplyVerifyFunc(op, kInputTensorList, kInputScalarList)) {
+    return GRAPH_FAILED;
+  }
+
+  auto vector_dims = op.GetInputDesc("indices").GetShape().GetDims();
+  if (vector_dims.size() != 1) {
+    OP_LOGE(op.GetName().c_str(), "Input indices must be one-dimensional");
+    return GRAPH_FAILED;
+  }
+
+  vector<int64_t> var_dims = op.GetInputDesc("var").GetShape().GetDims();
+  vector<int64_t> grad_dims = op.GetInputDesc("grad").GetShape().GetDims();
+
+  for (unsigned int dim_index = 1; dim_index < var_dims.size(); dim_index++) {
+    if (var_dims[dim_index] != grad_dims[dim_index]) {
+      OP_LOGE(op.GetName().c_str(), "Input var and grad must match in dimension (%u)", dim_index);
+      return GRAPH_FAILED;
+    }
+  }
+
+  return GRAPH_SUCCESS;
+}
 // ----------------SparseApplyRMSPropD Op End-------------------
 
 // ----------------SparseApplyAdadelta Op Begin-------------------
@@ -1487,7 +1492,10 @@ IMPLEMT_COMMON_INFERFUNC(SGDInferShape) {
   TensorDesc variable_update_desc = op.GetOutputDesc("parameters");
   variable_update_desc.SetShape(Shape(variabl_shape));
   variable_update_desc.SetDataType(variabl_dtype);
-  op.UpdateOutputDesc("parameters", variable_update_desc);
+  if (op.UpdateOutputDesc("parameters", variable_update_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    return GRAPH_FAILED;
+  }
 
   return GRAPH_SUCCESS;
 }
@@ -1672,7 +1680,10 @@ IMPLEMT_COMMON_INFERFUNC(SparseApplyFtrlInferShape) {
   TensorDesc out_tensor_desc = op.GetOutputDesc("var");
   out_tensor_desc.SetShape(Shape(var_shape));
   out_tensor_desc.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("var", out_tensor_desc);
+  if (op.UpdateOutputDesc("var", out_tensor_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
@@ -1760,7 +1771,10 @@ IMPLEMT_COMMON_INFERFUNC(SparseApplyFtrlV2InferShape) {
   TensorDesc out_tensor_desc = op.GetOutputDesc("var");
   out_tensor_desc.SetShape(ge::Shape(var_shape));
   out_tensor_desc.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("var", out_tensor_desc);
+  if (op.UpdateOutputDesc("var", out_tensor_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 

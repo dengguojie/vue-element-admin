@@ -15,8 +15,8 @@
 """
 dynamic greater_equal
 """
-import te.lang.dynamic as dynamic
-from te import platform as tbe_platform
+import te.lang.cce as tbe
+import te.lang.base as tbe_base
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
@@ -57,30 +57,30 @@ def _greater_equal_compare(data, shape, dtype, data_min):
     the compare result
     """
     if dtype == "int32":
-        data_one = dynamic.broadcast(tvm.const(SCALAR_ONE, "float16"), shape, "float16")
+        data_one = tbe.broadcast(tvm.const(SCALAR_ONE, "float16"), shape, "float16")
     else:
-        data_one = dynamic.broadcast(tvm.const(SCALAR_ONE, dtype), shape, dtype)
+        data_one = tbe.broadcast(tvm.const(SCALAR_ONE, dtype), shape, dtype)
 
-    res_sub = dynamic.vsub(data[1], data[0])
-    res_min = dynamic.vmins(res_sub, data_min)
-    res_max = dynamic.vmaxs(res_min, tvm.const(SCALAR_ZERO, dtype))
+    res_sub = tbe.vsub(data[1], data[0])
+    res_min = tbe.vmins(res_sub, data_min)
+    res_max = tbe.vmaxs(res_min, tvm.const(SCALAR_ZERO, dtype))
 
     if dtype == "float32":
         # max num of float32 is 2**126
         # but cce can only support 2**62, so use 62/62/2 to adaptor 126
-        res_mul1 = dynamic.vmuls(res_max, tvm.const(SCALAR_MUL_FP32, dtype=dtype))
-        res_mul2 = dynamic.vmuls(res_mul1, tvm.const(SCALAR_MUL_FP32, dtype=dtype))
-        res_mul = dynamic.vmuls(res_mul2, tvm.const(SCALAR_MUL1_FP32, dtype=dtype))
+        res_mul1 = tbe.vmuls(res_max, tvm.const(SCALAR_MUL_FP32, dtype=dtype))
+        res_mul2 = tbe.vmuls(res_mul1, tvm.const(SCALAR_MUL_FP32, dtype=dtype))
+        res_mul = tbe.vmuls(res_mul2, tvm.const(SCALAR_MUL1_FP32, dtype=dtype))
     elif dtype == "float16":
         # max num of float16 is 2**24
         # but cce can only support 2**12, so use 12/12 to adaptor 24
-        res_mul1 = dynamic.vmuls(res_max, tvm.const(SCALAR_MUL_FP16, dtype=dtype))
-        res_mul = dynamic.vmuls(res_mul1, tvm.const(SCALAR_MUL_FP16, dtype=dtype))
+        res_mul1 = tbe.vmuls(res_max, tvm.const(SCALAR_MUL_FP16, dtype=dtype))
+        res_mul = tbe.vmuls(res_mul1, tvm.const(SCALAR_MUL_FP16, dtype=dtype))
     else:
-        res_mul = dynamic.cast_to(res_max, "float16")
-    res = dynamic.vsub(data_one, res_mul)
+        res_mul = tbe.cast_to(res_max, "float16")
+    res = tbe.vsub(data_one, res_mul)
 
-    return dynamic.cast_to(res, "uint8", True)
+    return tbe.cast_to(res, "uint8", True)
 
 
 def greater_equal_compute(input_x, input_y, output_z, kernel_name="greater_equal"):
@@ -103,19 +103,19 @@ def greater_equal_compute(input_x, input_y, output_z, kernel_name="greater_equal
     res: TVM tensor
         the result of compute
     """
-    shape_x = dynamic.shape_to_list(input_x.shape)
-    shape_y = dynamic.shape_to_list(input_y.shape)
+    shape_x = shape_util.shape_to_list(input_x.shape)
+    shape_y = shape_util.shape_to_list(input_y.shape)
     shape_x, shape_y, shape_max = \
         shape_util.broadcast_shapes(shape_x, shape_y, param_name_input1="input_x", param_name_input2="input_y")
 
     dtype_x = input_x.dtype
     if dtype_x in ("int8", "uint8"):
-        input_x = dynamic.cast_to(input_x, "float16")
-        input_y = dynamic.cast_to(input_y, "float16")
+        input_x = tbe.cast_to(input_x, "float16")
+        input_y = tbe.cast_to(input_y, "float16")
         dtype_x = "float16"
 
-    input_x = dynamic.broadcast(input_x, shape_max)
-    input_y = dynamic.broadcast(input_y, shape_max)
+    input_x = tbe.broadcast(input_x, shape_max)
+    input_y = tbe.broadcast(input_y, shape_max)
 
     if dtype_x == "float32":
         # minimun num of float32 2**(-126)
@@ -130,7 +130,7 @@ def greater_equal_compute(input_x, input_y, output_z, kernel_name="greater_equal
     return _greater_equal_compare((input_x, input_y), shape_max, dtype_x, data_min)
 
 
-@tbe_platform.register_operator("GreaterEqual")
+@tbe_base.register_operator("GreaterEqual")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def greater_equal(input_x, input_y, output_z, kernel_name="greater_equal"):
@@ -175,10 +175,10 @@ def greater_equal(input_x, input_y, output_z, kernel_name="greater_equal"):
             error_info['op_name'], error_info['param_name1'], error_info['param_name2'], error_info['param1_dtype'],
             error_info['param2_dtype']))
 
-    ins = tbe_platform.classify([input_x, input_y], tbe_platform.Mode.ELEWISE_WITH_BROADCAST)
+    ins = tbe_base.classify([input_x, input_y], tbe_base.Mode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (input_x, input_y) in ins:
-        with tbe_platform.compute():
+        with tbe_base.compute():
             # shape
             x_shape, y_shape = shape_util.variable_shape([input_x, input_y], support_broadcast=True)
             x_shape, y_shape = shape_util.refine_shapes_for_broadcast(x_shape, y_shape)
@@ -190,8 +190,8 @@ def greater_equal(input_x, input_y, output_z, kernel_name="greater_equal"):
 
             tensors.append([tensor_x, tensor_y, res])
         with tvm.target.cce():
-            sch = dynamic.auto_schedule(res)
+            sch = tbe.auto_schedule(res)
         schedules.append(sch)
 
     config = {"name": kernel_name, "tensor_list": tensors}
-    dynamic.build(schedules, config)
+    tbe.build(schedules, config)

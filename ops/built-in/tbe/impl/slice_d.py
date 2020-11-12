@@ -20,6 +20,7 @@ slice_d
 from __future__ import absolute_import
 from __future__ import print_function
 
+import itertools
 from functools import reduce as functools_reduce
 
 from te import platform as cce
@@ -29,8 +30,11 @@ from te import tik
 from te.platform.cce_build import build_config
 from te.platform.fusion_manager import fusion_manager
 import te.platform.cce_params as cce_params
-from te.utils.op_utils import *
+from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util import util_select_op_base
+from impl.util.util_select_op_base import get_op_cal_info
+
 
 BURST_LEN = 65535
 BLOCK_SIZE = 32
@@ -38,6 +42,14 @@ BLOCK_SIZE = 32
 UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
 # available number of cores
 AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(x, y, begin, size, kernel_name="slice_d"):
+    axis_split_matrix = None
+    axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 # pylint: disable=locally-disabled,too-many-lines,too-many-statements
@@ -483,10 +495,10 @@ def _check_parameters(shape, dtype, begin, size, kernel_name):
     check the parameters including shape, dtype, begin, size and kernel_name
 
     """
-    check_dtype(dtype, ("int8", "int16", "int32", "int64", "uint8",
+    para_check.check_dtype(dtype, ("int8", "int16", "int32", "int64", "uint8",
                         "uint16", "uint32", "uint64",
                         "float16", "float32"), param_name="x")
-    check_shape(shape, param_name="x")
+    para_check.check_shape(shape, param_name="x")
 
     if not (len(shape) == len(begin) and len(shape) == len(size)):
         expected_value = "must be equal to shape!"
@@ -7206,7 +7218,205 @@ def _check_last_two_diff_fp16(shape, size, dtype):
     return True
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, REQUIRED_ATTR_LIST_INT, KERNEL_NAME)
+def _update_params_for_other_format(shape, begin, size, input_format, ori_format):
+    """
+    update begin, size base on  ori_format
+    """
+    # modify size base size value if value = -1 size = shape - begin
+    size_new = []
+    for i, item in enumerate(size):
+        if item != -1:
+            size_new.append(item)
+        else:
+            size_new.append(shape[i] - begin[i])
+    size = size_new
+    align_c0 = 16
+    begin = list(begin)
+    size = list(size)
+    if input_format in ["NDC1HWC0", "NC1HWC0", "FRACTAL_Z", "FRACTAL_Z_3D"]:
+        # when NDC1HWC0 or NC1HWC0 will update the C1 and C0 for begin and size
+        # ex: begin [N, D, C, H, W] -> [N, D, C // 16, H, W, 0]
+        #     size  [N, D, C, H, W] -> [N, D, (C + 15) // 16, H, W, -1]
+        # when FRACTAL_Z or FRACTAL_Z_3D will update the C1 and C0 and N1 and N0
+        # ex: begin [N, D, C, H, W] -> [D, C // 16, H, W, N // 16, 0, 0]
+        #     size  [N, D, C, H, W] -> [D, (C + 15) // 16, H, W, (N + 15) // 16, 0, 0]
+        begin_nchw = [begin[ori_format.index("N")], begin[ori_format.index("C")],
+                      begin[ori_format.index("H")], begin[ori_format.index("W")]]
+        size_nchw = [size[ori_format.index("N")], size[ori_format.index("C")],
+                     size[ori_format.index("H")], size[ori_format.index("W")]]
+        begin_c1 = begin_nchw[1] // align_c0
+        begin_c0 = 0
+        begin_n1 = begin_nchw[0] // align_c0
+        begin_n0 = 0
+        size_c1 = _ceil_div(size_nchw[1], align_c0)
+        size_c0 = -1
+        size_n1 = _ceil_div(size_nchw[0], align_c0)
+        size_n0 = -1
+
+        if input_format == "NDC1HWC0":
+            begin_new = [begin_nchw[0], begin[ori_format.index("D")],
+                         begin_c1, begin_nchw[2], begin_nchw[3], begin_c0]
+            size_new = [size_nchw[0], size[ori_format.index("D")],
+                        size_c1, size_nchw[2], size_nchw[3], size_c0]
+        elif input_format == "NC1HWC0":
+            begin_new = [begin_nchw[0], begin_c1, begin_nchw[2], begin_nchw[3], begin_c0]
+            size_new = [size_nchw[0], size_c1, size_nchw[2], size_nchw[3], size_c0]
+        elif input_format == "FRACTAL_Z_3D":
+            begin_new = [begin[ori_format.index("D")],
+                         begin_c1, begin_nchw[2], begin_nchw[3], begin_n1, begin_n0, begin_c0]
+            size_new = [size[ori_format.index("D")],
+                        size_c1, size_nchw[2], size_nchw[3], size_n1, size_n0, size_c0]
+        else:
+            begin_new = [begin_c1, begin_nchw[2], begin_nchw[3], begin_n1, begin_n0, begin_c0]
+            size_new = [size_c1, size_nchw[2], size_nchw[3], size_n1, size_n0, size_c0]
+
+        return begin_new, size_new
+
+    if input_format in ["FRACTAL_NZ"]:
+        # when FRACTAL_NZ will update last two dim
+        # ex: begin [A, B, C, D] -> [A, B, D // 16,  C // 16, 0 , 0]
+        #     size  [A, B, C, D] -> [A, B, (D + 15) // 16,  (C + 15) // 16, -1 , -1]
+        begin_fisrt_last_dim_one = begin[-1] // align_c0
+        begin_fisrt_last_dim_two = 0
+
+        begin_second_last_dim_one = begin[-2] // align_c0
+        begin_second_last_dim_two = 0
+
+        size_fisrt_last_dim_one = _ceil_div(size[-1], align_c0)
+        size_fisrt_last_dim_two = -1
+
+        size_second_last_dim_one = _ceil_div(size[-2], align_c0)
+        size_second_last_dim_two = -1
+
+        begin_new = begin[0:-2] + [begin_fisrt_last_dim_one, begin_second_last_dim_one,
+                                   begin_second_last_dim_two, begin_fisrt_last_dim_two]
+        size_new = size[0:-2] + [size_fisrt_last_dim_one, size_second_last_dim_one,
+                                 size_second_last_dim_two, size_fisrt_last_dim_two]
+
+        return begin_new, size_new
+
+
+def get_fused_str(format_char_list):
+    """get_fused_str for format
+    """
+    format_iter = itertools.permutations(format_char_list, len(format_char_list))
+    format_char_list = list(format_iter)
+    format_str_list = []
+    for i, char_list in enumerate(format_char_list):
+        format_str_list.append(''.join(list(char_list)))
+
+    return format_str_list
+
+
+def op_select_format(x, y, begin, size, kernel_name="slice_d"):
+    """
+    algorithm: op_select_format charge the dtype and format for SliceD
+
+    Parameters
+    ----------
+    x: dict
+        contains shape and dtype information of input tensor
+    y: dict
+        contains shape and dtype information of output tensor
+    begin: list or tuple
+        represents the index of the first value to select
+    size: list or tuple
+        represents the shape of output tensor
+    kernel_name: str
+        cce kernel name, default value is "slice_d".
+
+    Returns
+    -------
+    None
+    """
+    input_ori_shape = x.get("ori_shape")
+    input_ori_format = x.get("ori_format")
+    hd_format_c0 = 16
+    fz_format_n0 = 16
+    nz_format_align = 16
+    # update size the size = -1
+    size = list(size)
+    begin = list(begin)
+    for i, item in enumerate(size):
+        if item == -1:
+            size[i] = input_ori_shape[i] - begin[i]
+
+    # charge whether support 5HD 6HD and FRACTAL_Z/FRACTAL_Z_3D
+    hd_support_format = get_fused_str(["N", "C", "H", "W"]) + get_fused_str(["N", "D", "C", "H", "W"])
+    is_support_hd = False
+    is_support_fz = False
+    if len(input_ori_format) == len(input_ori_shape) and input_ori_format in hd_support_format:
+        dict_zip_begin = dict(zip(list(input_ori_format), begin))
+        dict_zip_size = dict(zip(list(input_ori_format), size))
+        dict_zip_shape = dict(zip(list(input_ori_format), input_ori_shape))
+        begin_c_align_flag = dict_zip_begin["C"] % hd_format_c0 == 0
+        begin_n_align_flag = dict_zip_begin["N"] % fz_format_n0 == 0
+
+        is_size_c_support = \
+            dict_zip_size["C"] % hd_format_c0 == 0 or dict_zip_shape["C"] == dict_zip_size["C"] + dict_zip_begin["C"]
+        # charge whether support 5HD 6HD
+        # condition:
+        # one: C dim in start is c0 align
+        # two: C dim in size is c0 align or size_c = shape_c - start_c(means will slice all remain data from start_c)
+        if begin_c_align_flag and is_size_c_support:
+            is_support_hd = True
+
+        is_size_n_support = \
+            dict_zip_size["N"] % fz_format_n0 == 0 or dict_zip_shape["N"] == dict_zip_size["N"] + dict_zip_begin["N"]
+        # charge whether support FRACTAL_Z，FRACTAL_Z_3D
+        # condition:
+        # one: both N and C dim in start is c0 align
+        # two: C dim in size is c0 align or size_c = shape_c - start_c
+        # three: N dim in size is n0 align or size_n = shape_n - start_n
+        if begin_c_align_flag and begin_n_align_flag and is_size_c_support and is_size_n_support:
+            is_support_fz = True
+
+    # charge whether support FRACTAL_NZ
+    is_support_nz = False
+    if len(input_ori_shape) >= 2:
+        is_first_last_size_support = size[-1] % nz_format_align == 0 or input_ori_shape[-1] == size[-1] + begin[-1]
+        is_second_last_size_support = size[-2] % nz_format_align == 0 or input_ori_shape[-2] == size[-2] + begin[-2]
+        # condition:
+        # one. len >= 2;
+        # two: the value begin[-1] and begin[-2] is align
+        # three: -1 dim in size is align or size = shape - start
+        # four: -2 dim in size is align or size = shape - start
+        if begin[-1] % nz_format_align == 0 and begin[-2] % nz_format_align == 0 \
+                and is_first_last_size_support and is_second_last_size_support:
+            is_support_nz = True
+
+    base_data_type = ["float", "float16", "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64"]
+    other_data_type = ["float", "float16", "int16", "int32", "uint16", "uint32"]
+    dtype_base_out = base_data_type.copy()
+    format_base_out = ["ND"] * len(base_data_type)
+    if is_support_hd:
+        other_format = "NC1HWC0" if len(input_ori_shape) == 4 else "NDC1HWC0"
+        dtype_base_out = dtype_base_out + other_data_type
+        format_base_out = format_base_out + [other_format] * len(other_data_type)
+    if is_support_fz:
+        other_format = "FRACTAL_Z" if len(input_ori_shape) == 4 else "FRACTAL_Z_3D"
+        dtype_base_out = dtype_base_out + other_data_type
+        format_base_out = format_base_out + [other_format] * len(other_data_type)
+    if is_support_nz:
+        other_format = "FRACTAL_NZ"
+        dtype_base_out = dtype_base_out + other_data_type
+        format_base_out = format_base_out + [other_format] * len(other_data_type)
+
+    dtype_str = ','.join(dtype_base_out)
+    format_str = ','.join(format_base_out)
+
+    input0 = util_select_op_base.gen_param(
+        classify="input0", name="x", datatype=dtype_str, format=format_str)
+    output0 = util_select_op_base.gen_param(
+        classify="output0", name="y", datatype=dtype_str, format=format_str)
+    param_list = [input0, output0]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+
+    return param_dynamic_in_json
+
+
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.REQUIRED_ATTR_LIST_INT, para_check.KERNEL_NAME)
 def slice_d(x, y, begin, size, kernel_name="slice_d"):
     """
     algorithm: slice_d
@@ -7231,10 +7441,47 @@ def slice_d(x, y, begin, size, kernel_name="slice_d"):
     -------
     None
     """
+    input_format = x.get("format")
+    ori_format = x.get("ori_format")
+    ori_shape = x.get("ori_shape")
+
     shape = x.get("shape")
     dtype = x.get("dtype").lower()
-    _check_parameters(shape, dtype, begin, size, kernel_name)
-    shape_new, begin_new, size_new = _update_params(shape, begin, size)
+
+    if input_format in ["NDC1HWC0", "NC1HWC0", "FRACTAL_NZ", "FRACTAL_Z", "FRACTAL_Z_3D"]:
+        begin, size = _update_params_for_other_format(ori_shape, begin, size, input_format, ori_format)
+        _check_parameters(shape, dtype, begin, size, kernel_name)
+        shape_new, begin_new, size_new = _update_params(shape, begin, size)
+        shape_new_len = len(shape_new)
+        slice_last_size = 1
+        slice_dim_num = 0
+        is_slice_all = True
+        for i, _ in enumerate(size_new):
+            slice_dim_num = shape_new_len - i - 1
+            shape_dim = shape_new[slice_dim_num]
+            begin_dim = begin_new[slice_dim_num]
+            size_dim = size_new[slice_dim_num]
+            if begin_dim == 0 and shape_dim == size_dim:
+                slice_last_size = slice_last_size * size_dim
+            else:
+                is_slice_all = False
+                break
+        if slice_dim_num < shape_new_len - 1:
+            if not is_slice_all:
+                shape_new = shape_new[:slice_dim_num] + [slice_last_size*shape_new[slice_dim_num]]
+                begin_new = begin_new[:slice_dim_num] + [slice_last_size*begin_new[slice_dim_num]]
+                size_new = size_new[:slice_dim_num] + [slice_last_size*size_new[slice_dim_num]]
+            else:
+                shape_new, begin_new, size_new = [slice_last_size], [0], [slice_last_size]
+        if slice_dim_num == 0 and size_new[0] % AICORE_NUM == 0:
+            shape_split_dim = size_new[0] // AICORE_NUM
+            if begin_new[0] % shape_split_dim == 0 and shape_new[0] % shape_split_dim == 0 and shape_split_dim > 0:
+                shape_new = [shape_new[0] // shape_split_dim, shape_split_dim]
+                begin_new = [begin_new[0] // shape_split_dim, 0]
+                size_new = [AICORE_NUM, shape_split_dim]
+    else:
+        _check_parameters(shape, dtype, begin, size, kernel_name)
+        shape_new, begin_new, size_new = _update_params(shape, begin, size)
 
     if len(shape_new) >= 2:
         if shape_new[0] == 1 and size_new[0] == 1:

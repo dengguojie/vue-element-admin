@@ -16,9 +16,11 @@
 
 #include "./common_layer.h"
 
+#include <memory>
 #include <fstream>
 #include <iostream>
-#include <regex>
+#include <sstream>
+#include <algorithm>
 
 #include "runtime/rt.h"
 #include "runtime/mem.h"
@@ -27,37 +29,57 @@ using namespace std;
 
 const int BUFFER_ALIGN_SIZE = 32;
 
-std::vector <std::string> SplitStr(const std::string &in, const std::string &delim) {
-    std::regex re{delim};
-    return std::vector < std::string > {
-            std::sregex_token_iterator(in.begin(), in.end(), re, -1),
-            std::sregex_token_iterator()
-    };
+std::vector<std::string> SplitString(const std::string &in, const char &delim)
+{
+    vector<string> result;
+    string::size_type i = 0;
+    string::size_type j = i;
+    while (i < in.size()) {
+        if (in[i] == delim) {
+            result.push_back(in.substr(j, i - j));
+            j = i + 1;
+            i++;
+        } else {
+            i++;
+        }
+    }
+    if (j < in.size()) {
+        result.push_back(in.substr(j, in.size() - j));
+    }
+    return result;
 }
 
-uint64_t Str2Int(const std::string &str) {
+uint64_t Str2Int(const std::string &str)
+{
     uint64_t num;
     std::istringstream iss(str);
     iss >> num;
     return num;
 }
 
-string GetValue(const string &line) {
+/**
+ * get line's part, between ':' and ",", or between ':' and end. line should be like xxx: 123
+ * @param line string line
+ * @return line's part
+ */
+string GetValue(const string &line)
+{
     auto startPos = line.find(':') + 1;
     auto endPos = line.find(',');
     auto lenValue = endPos == std::string::npos ? line.size() - startPos : endPos - startPos;
-    return line.substr(line.find(':') + 1, lenValue);
+    return line.substr(startPos, lenValue);
 }
 
 
-bool ParseOpWorkspaceTypes(uint32_t numWorkspace, std::ifstream &ifs, OpJsonInfo &opJsonInfo) {
+bool ParseOpWorkspaceTypes(uint32_t numWorkspace, std::ifstream &ifs, OpJsonInfo &opJsonInfo)
+{
     std::string line;
     std::string value;
     for (uint32_t i = 0; i < numWorkspace; i++) {
         if (std::getline(ifs, line)) {
             line.erase(std::remove_if(line.begin(), line.end(), ::isspace), line.end());
             value = line.substr(0, line.find(','));
-            uint32_t size = Str2Int(value);
+            uint64_t size = Str2Int(value);
             if (size == 0) {
                 OP_ST_LOG(OP_ST_LOG_ERROR, "json error, get zero workspace size!");
                 return false;
@@ -73,7 +95,7 @@ bool ParseOpWorkspaceTypes(uint32_t numWorkspace, std::ifstream &ifs, OpJsonInfo
             std::getline(ifs, line);
             line.erase(std::remove_if(line.begin(), line.end(), ::isspace), line.end());
             value = line.substr(0, line.find(','));
-            uint32_t type = Str2Int(value);
+            uint64_t type = Str2Int(value);
             if (type == 0) {
                 OP_ST_LOG(OP_ST_LOG_ERROR, "json error, get zero workspace type!");
                 return false;
@@ -87,11 +109,12 @@ bool ParseOpWorkspaceTypes(uint32_t numWorkspace, std::ifstream &ifs, OpJsonInfo
     return true;
 }
 
-bool ParseOpWorkspace(std::ifstream &ifs, OpJsonInfo &opJsonInfo) {
+bool ParseOpWorkspace(std::ifstream &ifs, OpJsonInfo &opJsonInfo)
+{
     std::string line;
     std::string value;
     std::getline(ifs, line);
-    uint32_t numWorkspace = Str2Int(GetValue(line));
+    uint64_t numWorkspace = Str2Int(GetValue(line));
     std::getline(ifs, line);
     if (line.find("size") == std::string::npos) {
         OP_ST_LOG(OP_ST_LOG_ERROR, "json error, cannot find workspace number!");
@@ -99,7 +122,7 @@ bool ParseOpWorkspace(std::ifstream &ifs, OpJsonInfo &opJsonInfo) {
     }
 
     if (numWorkspace == 1 && "[" != GetValue(line)) {
-        uint32_t size = Str2Int(GetValue(line));
+        uint64_t size = Str2Int(GetValue(line));
         if (size == 0) {
             OP_ST_LOG(OP_ST_LOG_ERROR, "json error, get zero workspace size!");
             return false;
@@ -111,7 +134,8 @@ bool ParseOpWorkspace(std::ifstream &ifs, OpJsonInfo &opJsonInfo) {
     return ParseOpWorkspaceTypes(numWorkspace, ifs, opJsonInfo);
 }
 
-bool ParseOpJsonInfo(string jsonFilePath, OpJsonInfo &opJsonInfo) {
+bool ParseOpJsonInfo(string jsonFilePath, OpJsonInfo &opJsonInfo)
+{
     OP_ST_LOG(OP_ST_LOG_INFO, "Start parse op json file: %s", jsonFilePath.c_str());
     std::ifstream ifs(jsonFilePath.c_str());
     if (!ifs) {
@@ -143,37 +167,36 @@ bool ParseOpJsonInfo(string jsonFilePath, OpJsonInfo &opJsonInfo) {
     return true;
 }
 
-bool ReadBinFile(const string &filePath, uint64_t &fileSize, string &contents) {
+bool ReadBinFile(const string &filePath, uint64_t &fileSize, string &contents)
+{
     OP_ST_LOG(OP_ST_LOG_INFO, "ReadBinFile file:%s start!", filePath.c_str());
 
     stringstream contentSs;
-    ifstream fileStr(filePath, std::ios::binary);
-    if (!fileStr.is_open()) {
+    ifstream fileStream(filePath, std::ios::binary);
+    if (!fileStream.is_open()) {
         OP_ST_LOG(OP_ST_LOG_ERROR, "Can not open file: %s", filePath.c_str());
         return false;
     }
-    contentSs << fileStr.rdbuf();
+    contentSs << fileStream.rdbuf();
     contents = contentSs.str();
     fileSize = contents.size();
 
     return true;
 }
 
-CommonLayer::CommonLayer() :
-        inputCnt(0),
-        outputCnt(0),
-        binFilePath(""),
-        opJsonInfo(),
-        kernelFuncName("") {
+CommonLayer::CommonLayer() : inputCnt(0), outputCnt(0), opJsonInfo()
+{
 }
 
-CommonLayer::~CommonLayer() {
+CommonLayer::~CommonLayer()
+{
 }
 
-vector <uint64_t> ParserSizeList(const std::string &in) {
+vector<uint64_t> ParserSizeList(const std::string &in)
+{
     OP_ST_LOG(OP_ST_LOG_INFO, "ParserStrToLong: %s", in.c_str());
-    std::vector <std::string> inputSizeStrList = SplitStr(in, ";");
-    std::vector <uint64_t> res;
+    std::vector<std::string> inputSizeStrList = SplitString(in, ';');
+    std::vector<uint64_t> res;
     for (auto sizeStr: inputSizeStrList) {
         uint64_t result = Str2Int(sizeStr);
         OP_ST_LOG(OP_ST_LOG_INFO, "ParserStrToLong value: %lu", result);
@@ -182,20 +205,22 @@ vector <uint64_t> ParserSizeList(const std::string &in) {
     return res;
 }
 
-CommonLayer::CommonLayer(const OpParams &opParams) {
+CommonLayer::CommonLayer(const OpParams &opParams)
+{
     inputCnt = opParams.inputCnt;
     inputSizes = ParserSizeList(opParams.inputSizes);
     outputSizes = ParserSizeList(opParams.outputSizes);
     outputCnt = opParams.outputCnt;
-    inputDataFilePaths = SplitStr(opParams.inputDataPaths, ";");
-    outputDataFilePaths = SplitStr(opParams.outputDataPaths, ";");
+    inputDataFilePaths = SplitString(opParams.inputDataPaths, ';');
+    outputDataFilePaths = SplitString(opParams.outputDataPaths, ';');
     binFilePath = opParams.binFilePath;
     kernelFuncName = opParams.kernelFuncName;
     ParseOpJsonInfo(opParams.jsonFilePath, opJsonInfo);
 }
 
 bool CommonLayer::RegisterBinaryKernel(const string &filePath, const string &kernelFuncKey,
-                                       const string &kernelFuncName) {
+                                       const string &kernelFuncName)
+{
     uint64_t bufferSize = 0;
     if (!ReadBinFile(filePath, bufferSize, content)) {
         OP_ST_LOG(OP_ST_LOG_ERROR, "Read op kernel file failed: %s failed!", filePath.c_str());
@@ -213,8 +238,7 @@ bool CommonLayer::RegisterBinaryKernel(const string &filePath, const string &ker
         return false;
     }
 
-    rtRet = rtFunctionRegister(binHandle, kernelFuncKey.c_str(), kernelFuncName.c_str(),
-                               (void *) kernelFuncName.c_str(), 0);
+    rtRet = rtFunctionRegister(binHandle, kernelFuncKey.c_str(), kernelFuncName.c_str(), kernelFuncName.c_str(), 0);
     if (rtRet != RT_ERROR_NONE) {
         OP_ST_LOG(OP_ST_LOG_ERROR, "rtFunctionRegister: %s failed!", kernelFuncName.c_str());
         return false;
@@ -222,29 +246,35 @@ bool CommonLayer::RegisterBinaryKernel(const string &filePath, const string &ker
     return true;
 }
 
-uint64_t CommonLayer::AlignSize(uint64_t size) {
+uint64_t CommonLayer::AlignSize(uint64_t size)
+{
     return (size + BUFFER_ALIGN_SIZE - 1) / BUFFER_ALIGN_SIZE * BUFFER_ALIGN_SIZE + BUFFER_ALIGN_SIZE;
 }
 
-CommonLayer::RtResourceCleanHelper::RtResourceCleanHelper() : needCleanResources(), deviceIds() {
+CommonLayer::RtResourceCleanHelper::RtResourceCleanHelper() : needCleanResources(), deviceIds()
+{
 }
 
 
-void CommonLayer::RtResourceCleanHelper::AddHBMResource(void *resource) {
+void CommonLayer::RtResourceCleanHelper::AddHBMResource(void *resource)
+{
     needCleanResources.push_back(resource);
 }
 
-bool CommonLayer::RtResourceCleanHelper::SetDevice(int32_t deviceId) {
+bool CommonLayer::RtResourceCleanHelper::SetDevice(int32_t deviceId)
+{
     rtError_t rtRet;
     rtRet = rtSetDevice(deviceId);
     if (rtRet != RT_ERROR_NONE) {
         OP_ST_LOG(OP_ST_LOG_ERROR, "rtSetDevice Error");
         return false;
     }
+    deviceIds.push_back(deviceId);
     return true;
 }
 
-CommonLayer::RtResourceCleanHelper::~RtResourceCleanHelper() {
+CommonLayer::RtResourceCleanHelper::~RtResourceCleanHelper()
+{
     OP_ST_LOG(OP_ST_LOG_INFO, "release rt resources.")
     for (auto resource:needCleanResources) {
         rtFree(resource);
@@ -260,7 +290,8 @@ CommonLayer::RtResourceCleanHelper::~RtResourceCleanHelper() {
 }
 
 
-bool CommonLayer::MallocAndCpyInputToDevice(vector<void *> &inputAddrs, RtResourceCleanHelper &resourceCleanHelper) {
+bool CommonLayer::MallocAndCpyInputToDevice(vector<void *> &inputAddrs, RtResourceCleanHelper &resourceCleanHelper)
+{
     rtError_t error;
     bool mallocSuccess = true;
     int inputIdx = 0;
@@ -308,7 +339,8 @@ bool CommonLayer::MallocAndCpyInputToDevice(vector<void *> &inputAddrs, RtResour
     return true;
 }
 
-bool CommonLayer::MallocOutputBuffeInDevice(vector<void *> &outputAddrs, RtResourceCleanHelper &resourceCleanHelper) {
+bool CommonLayer::MallocOutputBufferInDevice(vector<void *> &outputAddrs, RtResourceCleanHelper &resourceCleanHelper)
+{
     rtError_t error;
     bool mallocSuccess = true;
     OP_ST_LOG(OP_ST_LOG_INFO, "malloc output hbm start.");
@@ -319,6 +351,7 @@ bool CommonLayer::MallocOutputBuffeInDevice(vector<void *> &outputAddrs, RtResou
         if (error != RT_ERROR_NONE) {
             OP_ST_LOG(OP_ST_LOG_ERROR, "rtMalloc failed, malloc size: %lu", AlignSize(outputSize));
             mallocSuccess = false;
+            break;
         }
         OP_ST_LOG(OP_ST_LOG_INFO, "malloc output %d hbm success, size: %lu", outputIdx, AlignSize(outputSize));
         outputAddrs.push_back(hbmOutputAddr);
@@ -333,8 +366,9 @@ bool CommonLayer::MallocOutputBuffeInDevice(vector<void *> &outputAddrs, RtResou
     return true;
 }
 
-bool CommonLayer::MallocWorkspaceBuffeInDevice(vector<void *> &workspaceAddrs,
-                                               RtResourceCleanHelper &resourceCleanHelper) {
+bool CommonLayer::MallocWorkspaceBufferInDevice(vector<void *> &workspaceAddrs,
+                                                RtResourceCleanHelper &resourceCleanHelper)
+{
     rtError_t error;
     bool mallocSuccess = true;
     OP_ST_LOG(OP_ST_LOG_INFO, "malloc workspace hbm start.");
@@ -345,6 +379,7 @@ bool CommonLayer::MallocWorkspaceBuffeInDevice(vector<void *> &workspaceAddrs,
         if (error != RT_ERROR_NONE) {
             OP_ST_LOG(OP_ST_LOG_ERROR, "rtMalloc failed, malloc size: %lu", AlignSize(workspaceSize));
             mallocSuccess = false;
+            break;
         }
         OP_ST_LOG(OP_ST_LOG_INFO, "malloc workspace %d hbm success, size: %lu", workspaceIdx, AlignSize(workspaceSize));
         workspaceAddrs.push_back(workspaceAddr);
@@ -359,25 +394,31 @@ bool CommonLayer::MallocWorkspaceBuffeInDevice(vector<void *> &workspaceAddrs,
 }
 
 bool CommonLayer::PrepareKernelArgs(vector<void *> &inputAddrs, vector<void *> &outputAddrs,
-                                    vector<void *> &workspaceAddrs, RtResourceCleanHelper &resourceCleanHelper) {
+                                    vector<void *> &workspaceAddrs, RtResourceCleanHelper &resourceCleanHelper)
+{
     if (!MallocAndCpyInputToDevice(inputAddrs, resourceCleanHelper)) {
         return false;
     }
 
-    if (!MallocOutputBuffeInDevice(outputAddrs, resourceCleanHelper)) {
+    if (!MallocOutputBufferInDevice(outputAddrs, resourceCleanHelper)) {
         return false;
     }
 
-    if (!MallocWorkspaceBuffeInDevice(workspaceAddrs, resourceCleanHelper)) {
+    if (!MallocWorkspaceBufferInDevice(workspaceAddrs, resourceCleanHelper)) {
         return false;
     }
     return true;
 }
 
-bool CommonLayer::DumpOutputBuffer(vector<void *> &outputAddrs) {
+bool CommonLayer::DumpOutputBuffer(vector<void *> &outputAddrs)
+{
     rtError_t error;
     for (int i = 0; i < outputCnt; i++) {
-        unique_ptr<char> outputData(new char[outputSizes[i]]);
+        unique_ptr<char[]> outputData(new(std::nothrow) char[outputSizes[i]]);
+        if (outputData == nullptr) {
+            OP_ST_LOG(OP_ST_LOG_ERROR, "new unique_ptr for outputData failed!");
+            return false;
+        }
         error = rtMemcpy(outputData.get(), outputSizes[i], outputAddrs[i], outputSizes[i], RT_MEMCPY_DEVICE_TO_HOST);
         if (error != RT_ERROR_NONE) {
             OP_ST_LOG(OP_ST_LOG_ERROR, "rtMemcpy output hbm failed!");
@@ -391,7 +432,8 @@ bool CommonLayer::DumpOutputBuffer(vector<void *> &outputAddrs) {
 }
 
 
-bool CommonLayer::RunOnDeviceAndDumpOutput(RtResourceCleanHelper &resourceCleanHelper) {
+bool CommonLayer::RunOnDeviceAndDumpOutput(RtResourceCleanHelper &resourceCleanHelper)
+{
     rtError_t error;
     vector<void *> inputAddrs;
     vector<void *> outputAddrs;
@@ -437,7 +479,8 @@ bool CommonLayer::RunOnDeviceAndDumpOutput(RtResourceCleanHelper &resourceCleanH
     return true;
 }
 
-bool CommonLayer::Run() {
+bool CommonLayer::Run()
+{
     RtResourceCleanHelper resourceCleanHelper;
     int32_t device = 0;
     if (!resourceCleanHelper.SetDevice(device)) {

@@ -428,6 +428,15 @@ Status Conv2dbackpropFusionPass::ProcessGroupConvFusion(ge::ComputeGraph& graph,
       ParseConvNodeNumberIdx(convInputDesc1, dimNumberIdx) != SUCCESS,
       OP_LOGE(FUSED_OP_TYPE.c_str(), "Get node[%s]'s number index failed.", Conv2DNode->GetName().c_str()),
       return FAILED);
+  if (PatternFusionUtil::IsUnknownShape(Conv2DDesc->GetInputDesc(0).GetShape().GetDim(dimChannelIdx)) ||
+      PatternFusionUtil::IsUnknownShape(Conv2DDesc->GetOutputDesc(0).GetShape().GetDim(dimChannelIdx)) ||
+      PatternFusionUtil::IsUnknownShape(Conv2DBackpropInputDesc->GetInputDesc(1).GetShape().GetDim(dimChannelIdx)) ||
+      PatternFusionUtil::IsUnknownShape(Conv2DBackpropInputDesc->GetOutputDesc(0).GetShape().GetDim(dimChannelIdx)) ||
+      PatternFusionUtil::IsUnknownShape(Conv2DBackpropFilterDesc->GetOutputDesc(0).GetShape().GetDim(dimChannelIdx))
+      ) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Conv2dbackpropFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
   FUSION_PASS_CHECK(
       !GenerateNewNodes(graph, Conv2DDesc, splitNode, newConvNodes, concatNode, Conv2DGroups, dimChannelIdx, 0),
       OP_LOGE(FUSED_OP_TYPE.c_str(), "Generate new nodes for node[%s] failed.", Conv2DDesc->GetName().c_str()),
@@ -529,10 +538,10 @@ Status Conv2dbackpropFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   int64_t Conv2DGroups = -1;
   FUSION_PASS_CHECK(
       CheckValidation(Conv2DDesc, Conv2DBackpropInputDesc, Conv2DBackpropFilterDesc, Conv2DGroups) != SUCCESS,
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Check node[%s], node[%s] and node[%s]'s validation failed.",
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "Check node[%s], node[%s] and node[%s]'s validation failed.",
               Conv2DDesc->GetName().c_str(), Conv2DBackpropInputDesc->GetName().c_str(),
               Conv2DBackpropFilterDesc->GetName().c_str()),
-      return PARAM_INVALID);
+      return NOT_CHANGED);
   // if attr group equals to 1, no need to do fusion
   if (Conv2DGroups == 1) {
     OP_LOGI(FUSED_OP_TYPE.c_str(),
@@ -549,8 +558,13 @@ Status Conv2dbackpropFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   int64_t Conv2DOutputChannel = -1;
   if (ParseConvNodeChannel(Conv2DInanchor0, Conv2DInputChannel) != SUCCESS ||
       ParseConvNodeChannel(Conv2DOutanchor0, Conv2DOutputChannel) != SUCCESS) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Parse node[%s]'s channel info not success.", Conv2DDesc->GetName().c_str());
-    return FAILED;
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Parse node[%s]'s channel info not success.", Conv2DDesc->GetName().c_str());
+    return NOT_CHANGED;
+  }
+  if (PatternFusionUtil::IsUnknownShape(Conv2DInputChannel) ||
+      PatternFusionUtil::IsUnknownShape(Conv2DOutputChannel)) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Conv2dbackpropFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
   }
   // if conv's cin = cout, replace conv and convBackprop nodes to depthwise
   if (Conv2DGroups == Conv2DOutputChannel && Conv2DGroups == Conv2DInputChannel) {
@@ -561,13 +575,17 @@ Status Conv2dbackpropFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s]'s InputChannel[%ld], OutputChannel[%ld] and group is [%ld]",
             Conv2DDesc->GetName().c_str(), Conv2DInputChannel, Conv2DOutputChannel, Conv2DGroups);
     // split conv and convBackprop nodes into groups
-    ProcessGroupConvFusion(graph, Conv2DNode, Conv2DBackpropInputNode, Conv2DBackpropFilterNode, Conv2DGroups);
+    if (ProcessGroupConvFusion(graph, Conv2DNode, Conv2DBackpropInputNode, Conv2DBackpropFilterNode, Conv2DGroups)
+                                                                                                  == NOT_CHANGED) {
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "Conv2dbackpropFusionPass cannot be applied for unknown shape.");
+      return NOT_CHANGED;
+    }
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(),
+    OP_LOGW(FUSED_OP_TYPE.c_str(),
             "InputChannel[%ld] or OutputChannel[%ld] divide group[%ld] not "
             "equal to zero",
             Conv2DInputChannel, Conv2DOutputChannel, Conv2DGroups);
-    return FAILED;
+    return NOT_CHANGED;
   }
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Conv2D + Conv2DBackpropFilterD + Conv2DBackpropInputD fusion success!");
   return SUCCESS;

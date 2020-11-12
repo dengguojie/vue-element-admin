@@ -26,7 +26,7 @@ from te import tvm
 from te import platform as cce
 from te.platform import get_soc_spec
 from te.platform.fusion_manager import fusion_manager
-from te.lang.cce.rl_bank import rl_bank
+from te.domain.rl_bank import rl_bank
 
 
 # pylint: disable=locally-disabled,too-many-locals

@@ -24,12 +24,16 @@
 #include <cmath>
 #include <string>
 #include <vector>
+#include <algorithm>
 #include "graph/operator.h"
 #include "op_log.h"
 #include "common/util/error_manager/error_manager.h"
 #include "util/common_shape_fns.h"
 #include "util/error_util.h"
 #include "util/util.h"
+#include "register/infer_data_slice_registry.h"
+#include "graph/common_error_codes.h"
+#include "graph/debug/ge_attr_define.h"
 
 namespace ge {
 // Obtains the value of the attr.
@@ -128,6 +132,63 @@ static bool Construct3DPadsByPadding(std::string opName, ge::Operator& op, int32
 
   return true;
 }
+
+
+static bool GetStridesAndKSize(ge::Operator& op, Format refer, int32_t& strd, int32_t& strh, int32_t& strw,
+                               int32_t& kd, int32_t& kh, int32_t& kw) {
+  std::vector<int32_t> stride_list;
+  if (GRAPH_SUCCESS != op.GetAttr("strides", stride_list)) {
+    OP_LOGE(op.GetName().c_str(), "Failed to get strides!");
+    return false;
+  }
+
+  std::vector<int32_t> ksizeList;
+  if (GRAPH_SUCCESS != op.GetAttr("ksize", ksizeList)) {
+    OP_LOGE(op.GetName().c_str(), "Failed to get ksize!");
+    return false;
+  }
+
+  if (ksizeList.size() == 1) {
+    kd = ksizeList[0];
+    kh = ksizeList[0];
+    kw = ksizeList[0];
+  } else if (ksizeList.size() == 3) {
+    kd = ksizeList[0];
+    kh = ksizeList[1];
+    kw = ksizeList[2];
+  } else if (ksizeList.size() == 5) {
+    if (refer == FORMAT_NCDHW) {
+      kd = ksizeList[2];
+      kh = ksizeList[3];
+      kw = ksizeList[4];
+    } else {
+      kd = ksizeList[1];
+      kh = ksizeList[2];
+      kw = ksizeList[3];
+    }
+  }
+
+  if (stride_list.size() == 1) {
+    strd = strh = strw = stride_list[0];
+  } else if (stride_list.size() == 3) {
+    strd = stride_list[0];
+    strh = stride_list[1];
+    strw = stride_list[2];
+  } else if (stride_list.size() == 5) {
+    if (refer == FORMAT_NCDHW) {
+      strd = stride_list[2];
+      strh = stride_list[3];
+      strw = stride_list[4];
+    } else {
+      strd = stride_list[1];
+      strh = stride_list[2];
+      strw = stride_list[3];
+    }
+  }
+
+  return true;
+}
+
 
 // ----------------Pooling-------------------
 IMPLEMT_INFERFUNC(Pooling, PoolingInferShape) {
@@ -296,8 +357,182 @@ IMPLEMT_VERIFIER(Pooling, PoolingVerify) {
   }
   return GRAPH_SUCCESS;
 }
+
+IMPLEMT_INFERFORMAT_FUNC(Pooling, PoolingInferFormat) {
+  OP_LOGD(op.GetName().c_str(), "Enter Pooling op_proto infer format function!");
+  std::string dataFormat;
+  TensorDesc tensordesc_input = op.GetInputDesc("x");
+  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  if (GRAPH_SUCCESS == op.GetAttr("data_format", dataFormat)) {
+    if(dataFormat != "NHWC" && dataFormat != "NCHW") {
+      OP_LOGE(op.GetName().c_str(), "dataFormat only support 'NHWC', 'NCHW'.");
+      OpsInputFormatErrReport(op.GetName(), "data", "NCHW or NHWC", ConcatString(dataFormat));
+      return GRAPH_FAILED;
+    }
+    if(dataFormat == "NHWC" && tensordesc_input.GetOriginFormat() == Format::FORMAT_ND) {
+      tensordesc_input.SetOriginFormat(FORMAT_NHWC);
+      tensordesc_output.SetOriginFormat(FORMAT_NHWC);
+      (void)op.UpdateOutputDesc("x", tensordesc_input);
+      (void)op.UpdateOutputDesc("y", tensordesc_output);
+    }
+    if(dataFormat == "NCHW" && tensordesc_input.GetOriginFormat() == Format::FORMAT_ND) {
+      tensordesc_input.SetOriginFormat(FORMAT_NCHW);
+      tensordesc_output.SetOriginFormat(FORMAT_NCHW);
+      (void)op.UpdateOutputDesc("x", tensordesc_input);
+      (void)op.UpdateOutputDesc("y", tensordesc_output);
+    }
+  } else {
+    OP_LOGE(op.GetName().c_str(), "data_format is null, please check!");
+    OpsInputFormatErrReport(op.GetName(), "data", "NHWC, NCHW", "NULL");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+static void InferHWPooling(int64_t kernel, int64_t dilation, int64_t& pad_pre, int64_t& pad_after,
+                           int64_t stride, vector<int64_t>& output, vector<int64_t>& input,
+                           int64_t& ori_input, int64_t& ori_output) {
+  if (kernel != 1) {
+    int64_t first_start = 0;
+    int64_t second_start = 0;
+    int64_t first_end = 0;
+    int64_t second_end = 0;
+    int64_t start = 0;
+    int64_t end = 0;
+    first_start = output[0] * stride - pad_pre;
+    second_start = output[1] * stride - pad_pre;
+    first_end = std::min(first_start + kernel, ori_input + pad_pre);
+    second_end = std::min(second_start + kernel, ori_input);
+
+    start = std::max(first_start, int64_t(0));
+    end = second_end - 1;
+    input = {start, end};
+
+    if (output[0] == 0) {
+       if (output[0] != ori_output - 1) {
+         pad_after = 0;
+       }
+    } else {
+      if (output[0] != ori_output - 1) {
+         pad_pre = 0;
+         pad_after = 0;
+       } else {
+         pad_pre = 0;
+       }
+    }
+  } else {
+    input = output;
+  }
+}
+
+IMPLEMT_INFER_DATA_SLICE(Pooling, PoolingInferDataSlice) {
+  auto globalPooling = op.get_attr_global_pooling();
+  auto window = op.get_attr_window();
+  auto pad = op.get_attr_pad();
+  auto stride = op.get_attr_stride();
+  auto ceilMode = op.get_attr_ceil_mode();
+  auto xShape = op.get_input_desc_x().GetShape().GetDims();
+  auto xFormat = op.get_input_desc_x().GetFormat();
+
+  int64_t dilationH = 0;
+  int64_t inputN = 0;
+  int64_t inputC = 0;
+  int64_t inputH = 0;
+  int64_t inputW = 0;
+
+  if (xFormat == FORMAT_NCHW) {
+    inputN = xShape[0];
+    inputC = xShape[1];
+    inputH = xShape[2];
+    inputW = xShape[3];
+  } else if (xFormat == FORMAT_NHWC) {
+    inputN = xShape[0];
+    inputC = xShape[3];
+    inputH = xShape[1];
+    inputW = xShape[2];
+  } else {
+    OP_LOGE(op.GetName().c_str(),
+            "xFormat should be NCHW or NHWC."
+            " actual is: %d",
+            (int)xFormat);
+    OpsInputFormatErrReport(op.GetName(), "xFormat", "NCHW or NHWC", ConcatString(xFormat));
+    return GRAPH_FAILED;
+  }
+
+  int64_t outputH = inputH;
+  int64_t outputW = inputW;
+  int64_t strH = stride[0];
+  int64_t strW = stride[1];
+  int64_t windowH = window[0];
+  int64_t windowW = window[1];
+  int64_t padT = pad[0];
+  int64_t padB = pad[1];
+  int64_t padL = pad[2];
+  int64_t padR = pad[3];
+   // update output
+  if (ceilMode == 0) {
+    outputH = static_cast<int64_t>(std::ceil((inputH + padT + padB - windowH) * 1.0f / strH)) + 1;
+    outputW = static_cast<int64_t>(std::ceil((inputW + padL + padR - windowW) * 1.0f / strW)) + 1;
+  } else if (ceilMode == 1) {
+    outputH = static_cast<int64_t>(std::floor((inputH + padT + padB - windowH) * 1.0f / strH)) + 1;
+    outputW = static_cast<int64_t>(std::floor((inputW + padL + padR - windowW) * 1.0f / strW)) + 1;
+  } else {
+    OP_LOGE(op.GetName().c_str(), "Unknown rounding mode.");
+    return GRAPH_FAILED;
+  }
+
+  bool hasPad = padT || padL;
+  if (hasPad) {
+    if ((outputH - 1) * strH >= inputH + padT) {
+      --outputH;
+    }
+    if ((outputW - 1) * strW >= inputW + padL) {
+      --outputW;
+    }
+  }
+
+  vector<vector<int64_t>> y_data_slice = {{}, {}, {}, {}, {}};
+  vector<vector<int64_t>> x_data_slice = {{}, {}, {}, {}, {}};
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensor_desc_out = op_desc->MutableOutputDesc("y");
+  GeTensorDescPtr tensor_desc_in = op_desc->MutableInputDesc("x");
+  if (!ge::AttrUtils::GetListListInt(tensor_desc_out, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
+    OP_LOGI(op.GetName().c_str(), "no data slice, use default as {{}, {}, {}, {}, {}}");
+    return GRAPH_FAILED;
+  }
+
+  for(unsigned i = 0; i < y_data_slice.size(); i++) {
+    if (y_data_slice[i].size() > 0) {
+      if (i == 0) {
+        return NO_OVERLAP_DIM;
+      } else if (i == 1 or i == 3 or i == 4) {
+        return NOT_SUPPORT_SLICE;
+      } else if (i == 2) {
+        vector<int64_t> input_h;
+        InferHWPooling(windowH, dilationH, pad[0], pad[1], stride[0], y_data_slice[i], input_h, inputH, outputH);
+        x_data_slice[i] = input_h;
+      }
+    }
+  }
+
+  for(unsigned i = 0; i < x_data_slice.size(); i++) {
+    if (x_data_slice[i].size() > 0) {
+      if(!AttrUtils::SetListListInt(tensor_desc_in, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+        return GRAPH_FAILED;
+      }
+      (void)op.set_attr_pad(pad);
+      return GRAPH_SUCCESS;
+    }
+    return NO_OVERLAP_DIM;
+  }
+
+   return NO_OVERLAP_DIM;
+}
+
 INFER_FUNC_REG(Pooling, PoolingInferShape);
 VERIFY_FUNC_REG(Pooling, PoolingVerify);
+INFER_FORMAT_FUNC_REG(Pooling, PoolingInferFormat);
+INFER_DATA_SLICE_FUNC_REG(Pooling, PoolingInferDataSlice);
 // ----------------Pooling-------------------
 
 // ----------------AvgPool-------------------
@@ -307,8 +542,8 @@ IMPLEMT_VERIFIER(AvgPool, AvgPoolVerify) {
   auto xShape = op.get_input_desc_x().GetShape().GetDims();
   bool invalidParam = (xShape.size() != 4 || ksize.size() != 4 || strides.size() != 4);
   if (invalidParam) {
-    InferShapeOtherErrReport(op.GetName(), "xShape size != 4 or kSize size() != 4, strides size() != 4, pls check!");
-    OP_LOGE(op.GetName().c_str(), "xShape size != 4 or kSize size() != 4, strides size() != 4, pls check!");
+    InferShapeOtherErrReport(op.GetName(), "xShape size != 4 or kSize size() != 4, strides size() != 4, please check!");
+    OP_LOGE(op.GetName().c_str(), "xShape size != 4 or kSize size() != 4, strides size() != 4, please check!");
     return GRAPH_FAILED;
   }
   std::string dataFormat;
@@ -522,8 +757,111 @@ IMPLEMT_INFERFUNC(AvgPool, AvgPoolInferShape) {
   return GRAPH_SUCCESS;
 }
 
+static void InferHWAvgpool(int64_t kernel,int64_t stride, vector<int64_t>& output, vector<int64_t>& input,
+                           int64_t& ori_input) {
+    int64_t first_start = 0;
+    int64_t second_start = 0;
+    int64_t first_end = 0;
+    int64_t second_end = 0;
+    int64_t start = 0;
+    int64_t end = 0;
+    first_start = output[0] * stride;
+    second_start = output[1] * stride;
+    first_end = std::min(first_start + kernel, ori_input);
+    second_end = std::min(second_start + kernel, ori_input);
+    start = std::max(first_start, int64_t(0));
+    end = second_end - 1;
+    input = {start, end};
+}
+
+IMPLEMT_INFER_DATA_SLICE(AvgPool, AvgPoolInferDataSlice){
+  auto inputTensorDesc = op.GetInputDesc("x");
+  auto shape = inputTensorDesc.GetShape();
+  std::vector<int64_t> dims_input = shape.GetDims();
+
+  std::vector<int64_t> ksizeList;
+  std::vector<int64_t> stridesList;
+  std::string dataFormat;
+  std::string paddingMode;
+  op.GetAttr("ksize", ksizeList);
+  op.GetAttr("strides", stridesList);
+  op.GetAttr("data_format", dataFormat);
+  op.GetAttr("padding", paddingMode);
+
+  int64_t inputH = 0;
+  int64_t inputW = 0;
+  int64_t windowH = 0;
+  int64_t windowW = 0;
+  int64_t strideH = 0;
+  int64_t strideW = 0;
+  int64_t dilationH = 0;
+
+  if (dataFormat == "NHWC") {
+    inputH = dims_input[1];
+    inputW = dims_input[2];
+    windowH = ksizeList[1];
+    windowW = ksizeList[2];
+    strideH = stridesList[1];
+    strideW = stridesList[2];
+  } else if(dataFormat == "NCHW") {
+    inputH = dims_input[2];
+    inputW = dims_input[3];
+    windowH = ksizeList[2];
+    windowW = ksizeList[3];
+    strideH = stridesList[2];
+    strideW = stridesList[3];
+  }
+
+  if (dataFormat == "NHWC" && ksizeList[0] == inputH && ksizeList[1] == inputW) {
+    return NO_OVERLAP_DIM;
+  }
+  if (dataFormat == "NCHW" && ksizeList[0] == inputH && ksizeList[1] == inputW) {
+    return NO_OVERLAP_DIM;
+  }
+  if (paddingMode == "SAME") {
+    return NO_OVERLAP_DIM;
+  }
+
+  vector<vector<int64_t>> y_data_slice = {{}, {}, {}, {}, {}};
+  vector<vector<int64_t>> x_data_slice = {{}, {}, {}, {}, {}};
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensor_desc_out = op_desc->MutableOutputDesc("y");
+  GeTensorDescPtr tensor_desc_in = op_desc->MutableInputDesc("x");
+  if (!ge::AttrUtils::GetListListInt(tensor_desc_out, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
+    OP_LOGI(op.GetName().c_str(), "no data slice, use default as {{}, {}, {}, {}, {}}");
+    return GRAPH_FAILED;
+  }
+
+  for(unsigned i = 0; i < y_data_slice.size(); i++) {
+    if (y_data_slice[i].size() > 0) {
+      if (i == 0) {
+        return NO_OVERLAP_DIM;
+      } else if (i == 1 or i == 3 or i == 4){
+        return NOT_SUPPORT_SLICE;
+      } else if (i == 2) {
+        vector<int64_t> input_h;
+        InferHWAvgpool(windowH, strideH, y_data_slice[i], input_h, inputH);
+        x_data_slice[i] = input_h;
+      }
+    }
+  }
+
+  for(unsigned i = 0; i < x_data_slice.size(); i++) {
+    if (x_data_slice[i].size() > 0) {
+      if(!AttrUtils::SetListListInt(tensor_desc_in, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+        return GRAPH_FAILED;
+      }
+      return GRAPH_SUCCESS;
+    }
+    return NO_OVERLAP_DIM;
+  }
+
+  return NO_OVERLAP_DIM;
+}
+
 INFER_FUNC_REG(AvgPool, AvgPoolInferShape);
 VERIFY_FUNC_REG(AvgPool, AvgPoolVerify);
+INFER_DATA_SLICE_FUNC_REG(AvgPool, AvgPoolInferDataSlice);
 // ----------------AvgPool-------------------
 
 // -------------------AvgPoolV2--------------------
@@ -704,6 +1042,8 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolV2InferShape) {
     if (globalPooling) {
       window_h = dims_input[1];
       window_w = dims_input[2];
+      stridesList[1] = dims_input[1];
+      stridesList[2] = dims_input[2];
       padVec = {0, 0, 0, 0};
     } else {
       window_h = (int64_t)ksizeList[1];
@@ -713,6 +1053,8 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolV2InferShape) {
     if (globalPooling) {
       window_h = dims_input[2];
       window_w = dims_input[3];
+      stridesList[2] = dims_input[2];
+      stridesList[3] = dims_input[3];
       padVec = {0, 0, 0, 0};
     } else {
       window_h = (int64_t)ksizeList[2];
@@ -845,7 +1187,7 @@ IMPLEMT_VERIFIER(AvgPool3D, AvgPool3DVerify) {
   auto x_shape = op.get_input_desc_x().GetShape().GetDims();
   bool invalid_param = (x_shape.size() != 5 || ksize.size() != 5 || strides.size() != 5);
   if (invalid_param) {
-    OP_LOGE(op.GetName().c_str(), "Avgpool3d check x or ksize or strides size is invalid!");
+    OP_LOGE(op.GetName().c_str(), "AvgPool3D check x or ksize or strides size is invalid!");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -859,6 +1201,7 @@ IMPLEMT_INFERFUNC(AvgPool3D, AvgPool3DInferShape) {
   std::vector<int32_t> ksize_list;
   if (GRAPH_SUCCESS != op.GetAttr("ksize", ksize_list)) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr ksize_list failed!");
+    OpsGetAttrErrReport(op.GetName(), "ksize");
     return GRAPH_FAILED;
   }
 
@@ -866,6 +1209,7 @@ IMPLEMT_INFERFUNC(AvgPool3D, AvgPool3DInferShape) {
   std::vector<int32_t> strides_list;
   if (GRAPH_SUCCESS != op.GetAttr("strides", strides_list)) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr strides_list failed!");
+    OpsGetAttrErrReport(op.GetName(), "strides");
     return GRAPH_FAILED;
   }
 
@@ -873,20 +1217,96 @@ IMPLEMT_INFERFUNC(AvgPool3D, AvgPool3DInferShape) {
   std::string data_format;
   if (GRAPH_SUCCESS != op.GetAttr("data_format", data_format)) {
     OP_LOGE(op.GetName().c_str(), "The AvgPool3D op GetOpAttr data_format failed!");
+    OpsGetAttrErrReport(op.GetName(), "data_format");
     return GRAPH_FAILED;
   }
 
   std::vector<int64_t> dims_input = shape.GetDims();
+  int32_t id = 0;
+  int32_t ih = 0;
+  int32_t iw = 0;
+  int32_t in = 0;
+  int32_t ic = 0;
+  int32_t kd = 0;
+  int32_t kh = 0;
+  int32_t kw = 0;
+  int32_t strd = 0;
+  int32_t strh = 0;
+  int32_t strw = 0;
+
+  // get input dims
+  if (input_format == FORMAT_NDHWC) {
+    in = dims_input[0];
+    id = dims_input[1];
+    ih = dims_input[2];
+    iw = dims_input[3];
+    ic = dims_input[4];
+  } else if (input_format == FORMAT_NCDHW) {
+    in = dims_input[0];
+    ic = dims_input[1];
+    id = dims_input[2];
+    ih = dims_input[3];
+    iw = dims_input[4];
+  } else {
+    map<string, string> err_map;
+    err_map["param_name"] = "input_format";
+    err_map["op_name"] = "AvgPool3D";
+    err_map["excepted_value"] = "NDHWC or NCDHW";
+    err_map["input_value"] = input_format;
+    std::string report_error_code = "E50029";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return GRAPH_FAILED;
+  }
+
+  if (!GetStridesAndKSize(op, input_format, strd, strh, strw, kd, kh, kw)) {
+    OP_LOGE(op.GetName().c_str(), "Failed to get attr strides or ksize in AvgPool3D.");
+    return GRAPH_FAILED;
+  }
+  if (strd == 0 || strh == 0 || strw == 0 || kd == 0 || kh ==0 || kw == 0) {
+    OP_LOGE(op.GetName().c_str(), "Strides or ksize invalid.");
+    return GRAPH_FAILED;
+  }
+
+  // construct pads attr
+  if (!Construct3DPadsByPadding("AvgPool3D", op, id, ih, iw, kd, kh, kw, strd, strh, strw)) {
+    OP_LOGE(op.GetName().c_str(), "Failed to construct pads in AvgPool3D.");
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int32_t> pad_vec;
+  if (op.GetAttr("pads", pad_vec) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Failed to get pads!");
+    return GRAPH_FAILED;
+  }
+
+  std::string pad_str;
+  if (op.GetAttr("padding", pad_str) == GRAPH_SUCCESS) {
+    if (pad_str.compare("SAME") == 0) {
+      // tensorflow same padding mode, set count_include_pad = false
+      op.SetAttr("count_include_pad",false);
+    }
+  }
+
   // set output shape
   std::vector<int64_t> dim_vector;
+  int64_t outd = 0;
+  int64_t outh = 0;
+  int64_t outw = 0;
+  outd = (id + pad_vec[0] + pad_vec[1] - kd) / strd + 1;
+  outh = (ih + pad_vec[2] + pad_vec[3] - kh) / strh + 1;
+  outw = (iw + pad_vec[4] + pad_vec[5] - kw) / strw + 1;
   if (input_format == FORMAT_NDHWC) {
-    for (size_t i = 0; i < dims_input.size(); i++) {
-      int64_t dims = dims_input[i];
-      if (i == 1 || i == 2 || i == 3) {
-        dims = (dims_input[i] - ksize_list[i] + 1 + (strides_list[i] - 1)) / strides_list[i];
-      }
-      dim_vector.push_back(dims);
-    }
+    dim_vector.push_back(in);
+    dim_vector.push_back(outd);
+    dim_vector.push_back(outh);
+    dim_vector.push_back(outw);
+    dim_vector.push_back(ic);
+  } else if ((input_format == FORMAT_NCDHW)){
+    dim_vector.push_back(in);
+    dim_vector.push_back(ic);
+    dim_vector.push_back(outd);
+    dim_vector.push_back(outh);
+    dim_vector.push_back(outw);
   }
 
   TensorDesc tensor_out = op.GetOutputDesc("y");
@@ -894,13 +1314,163 @@ IMPLEMT_INFERFUNC(AvgPool3D, AvgPool3DInferShape) {
   Shape output_shape(dim_vector);
   tensor_out.SetShape(output_shape);
   tensor_out.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("y", tensor_out);
+  if (op.UpdateOutputDesc("y", tensor_out) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    OpsOPUpdateErrReport(op.GetName(),"y");
+  }
   return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(AvgPool3D, AvgPool3DInferShape);
 VERIFY_FUNC_REG(AvgPool3D, AvgPool3DVerify);
 // ----------------AvgPool3D-------------------
+
+
+// ----------------AvgPool3DD-------------------
+IMPLEMT_VERIFIER(AvgPool3DD, AvgPool3DDVerify) {
+  auto ksize = op.get_attr_ksize();
+  auto strides = op.get_attr_strides();
+  auto x_shape = op.get_input_desc_x().GetShape().GetDims();
+  bool invalid_param = (x_shape.size() != 5 || ksize.size() != 5 || strides.size() != 5);
+  if (invalid_param) {
+    OP_LOGE(op.GetName().c_str(), "AvgPool3DD check x or ksize or strides size is invalid!");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(AvgPool3DD, AvgPool3DDInferShape) {
+  auto input_tensor_desc = op.GetInputDesc("x");
+  auto shape = input_tensor_desc.GetShape();
+  Format input_format = input_tensor_desc.GetFormat();
+  // get input ksize
+  std::vector<int32_t> ksize_list;
+  if (GRAPH_SUCCESS != op.GetAttr("ksize", ksize_list)) {
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr ksize_list failed!");
+    OpsGetAttrErrReport(op.GetName(), "ksize");
+    return GRAPH_FAILED;
+  }
+
+  // get input strides
+  std::vector<int32_t> strides_list;
+  if (GRAPH_SUCCESS != op.GetAttr("strides", strides_list)) {
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr strides_list failed!");
+    OpsGetAttrErrReport(op.GetName(), "strides");
+    return GRAPH_FAILED;
+  }
+
+  // get input data_format
+  std::string data_format;
+  if (GRAPH_SUCCESS != op.GetAttr("data_format", data_format)) {
+    OP_LOGE(op.GetName().c_str(), "The AvgPool3DD op GetOpAttr data_format failed!");
+    OpsGetAttrErrReport(op.GetName(), "data_format");
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> dims_input = shape.GetDims();
+  int32_t id = 0;
+  int32_t ih = 0;
+  int32_t iw = 0;
+  int32_t in = 0;
+  int32_t ic = 0;
+  int32_t kd = 0;
+  int32_t kh = 0;
+  int32_t kw = 0;
+  int32_t strd = 0;
+  int32_t strh = 0;
+  int32_t strw = 0;
+
+  // get input dims
+  if (input_format == FORMAT_NDHWC) {
+    in = dims_input[0];
+    id = dims_input[1];
+    ih = dims_input[2];
+    iw = dims_input[3];
+    ic = dims_input[4];
+  } else if (input_format == FORMAT_NCDHW) {
+    in = dims_input[0];
+    ic = dims_input[1];
+    id = dims_input[2];
+    ih = dims_input[3];
+    iw = dims_input[4];
+  } else {
+    map<string, string> err_map;
+    err_map["param_name"] = "input_format";
+    err_map["op_name"] = "AvgPool3DD";
+    err_map["excepted_value"] = "NDHWC or NCDHW";
+    err_map["input_value"] = input_format;
+    std::string report_error_code = "E50029";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return GRAPH_FAILED;
+  }
+
+  if (!GetStridesAndKSize(op, input_format, strd, strh, strw, kd, kh, kw)) {
+    OP_LOGE(op.GetName().c_str(), "Failed to get attr strides or ksize in AvgPool3D.");
+    return GRAPH_FAILED;
+  }
+  if (strd == 0 || strh == 0 || strw == 0 || kd == 0 || kh ==0 || kw == 0) {
+    OP_LOGE(op.GetName().c_str(), "Strides or ksize invalid.");
+    return GRAPH_FAILED;
+  }
+
+  // construct pads attr
+  if (!Construct3DPadsByPadding("AvgPool3DD", op, id, ih, iw, kd, kh, kw, strd, strh, strw)) {
+    OP_LOGE(op.GetName().c_str(), "Failed to construct pads in AvgPool3D.");
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int32_t> pad_vec;
+  if (op.GetAttr("pads", pad_vec) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Failed to get pads!");
+    return GRAPH_FAILED;
+  }
+
+  std::string pad_str;
+  if (op.GetAttr("padding", pad_str) == GRAPH_SUCCESS) {
+    if (pad_str.compare("SAME") == 0) {
+      // tensorflow same padding mode, set count_include_pad = false
+      op.SetAttr("count_include_pad",false);
+    }
+  }
+
+  // set output shape
+  std::vector<int64_t> dim_vector;
+  int64_t outd = 0;
+  int64_t outh = 0;
+  int64_t outw = 0;
+  outd = (id + pad_vec[0] + pad_vec[1] - kd) / strd + 1;
+  outh = (ih + pad_vec[2] + pad_vec[3] - kh) / strh + 1;
+  outw = (iw + pad_vec[4] + pad_vec[5] - kw) / strw + 1;
+  if (input_format == FORMAT_NDHWC) {
+    dim_vector.push_back(in);
+    dim_vector.push_back(outd);
+    dim_vector.push_back(outh);
+    dim_vector.push_back(outw);
+    dim_vector.push_back(ic);
+  } else if ((input_format == FORMAT_NCDHW)){
+    dim_vector.push_back(in);
+    dim_vector.push_back(ic);
+    dim_vector.push_back(outd);
+    dim_vector.push_back(outh);
+    dim_vector.push_back(outw);
+  }
+
+  TensorDesc tensor_out = op.GetOutputDesc("y");
+  DataType input_dtype = input_tensor_desc.GetDataType();
+  Shape output_shape(dim_vector);
+  tensor_out.SetShape(output_shape);
+  tensor_out.SetDataType(input_dtype);
+  if (op.UpdateOutputDesc("y", tensor_out) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    OpsOPUpdateErrReport(op.GetName(),"y");
+  }
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(AvgPool3DD, AvgPool3DDInferShape);
+VERIFY_FUNC_REG(AvgPool3DD, AvgPool3DDVerify);
+// ----------------AvgPool3D-------------------
+
 
 // ----------------MaxPool-------------------
 IMPLEMT_INFERFUNC(MaxPool, MaxPoolInferShape) {
@@ -1429,10 +1999,12 @@ IMPLEMT_INFERFUNC(MaxPoolGrad, MaxPoolGradInferShape) {
   auto shape_x1 = op.GetInputDesc("x1").GetShape();
   auto input_type = op.GetInputDesc("x1").GetDataType();
 
-  TensorDesc td = op.GetOutputDesc("y");
-  td.SetShape(shape_x1);
-  td.SetDataType(input_type);
-  (void)op.UpdateOutputDesc("y", td);
+  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  tensordesc_output.SetShape(shape_x1);
+  tensordesc_output.SetDataType(input_type);
+  if (op.UpdateOutputDesc("y", tensordesc_output) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+  }
   return GRAPH_SUCCESS;
 }
 
@@ -1490,10 +2062,12 @@ IMPLEMT_INFERFUNC(MaxPoolGradGrad, MaxPoolGradGradInferShape) {
   auto shape_x2 = input_x2.GetShape();
   auto type_x2 = input_x2.GetDataType();
 
-  TensorDesc td = op.GetOutputDesc("y");
-  td.SetShape(shape_x2);
-  td.SetDataType(type_x2);
-  (void)op.UpdateOutputDesc("y", td);
+  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  tensordesc_output.SetShape(shape_x2);
+  tensordesc_output.SetDataType(type_x2);
+  if (op.UpdateOutputDesc("y", tensordesc_output) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+  }
   return GRAPH_SUCCESS;
 }
 
@@ -2318,7 +2892,9 @@ IMPLEMT_INFERFUNC(MaxPoolGradGradWithArgmax, MaxPoolGradGradWithArgmaxInferShape
   Shape output_shape(dim_vector);
   out_tensor_desc.SetShape(output_shape);
   out_tensor_desc.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("y", out_tensor_desc);
+  if (op.UpdateOutputDesc("y", out_tensor_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+  }
 
   return GRAPH_SUCCESS;
 }
@@ -2390,7 +2966,10 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolGradInferShape) {
   TensorDesc tensordesc_output = op.GetOutputDesc("out_grad");
   tensordesc_output.SetShape(Shape(orig_input_size));
   tensordesc_output.SetDataType(output_dtype);
-  (void)op.UpdateOutputDesc("out_grad", tensordesc_output);
+  if (op.UpdateOutputDesc("out_grad", tensordesc_output) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
@@ -2506,14 +3085,14 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolGradDInferShape) {
     tensordesc_mean.SetFormat(FORMAT_NCHW);
     tensordesc_mean.SetOriginFormat(FORMAT_NCHW);
   } else {
-    OP_LOGE(op.GetName().c_str(), "attr data_format(%s) only support NCHW and NHWC", data_format.c_str());
+    OP_LOGE(op.GetName().c_str(), "Attr data_format(%s) only support NCHW and NHWC", data_format.c_str());
   }
 
   tensordesc_mean.SetShape(input_grad_shape);
   tensordesc_mean.SetOriginShape(input_grad_shape);
   tensordesc_mean.SetDataType(input_grad_dtype);
   if (op.UpdateInputDesc("mean_matrix", tensordesc_mean) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update input mean_matrix!");
+    OP_LOGE(op.GetName().c_str(), "Fail to update input mean_matrix!");
     return GRAPH_FAILED;
   }
 
@@ -2530,7 +3109,7 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolGradDInferShape) {
   tensordesc_kernel.SetFormat(FORMAT_HWCN);
   tensordesc_kernel.SetDataType(input_grad_dtype);
   if (op.UpdateInputDesc("kernel_matrix", tensordesc_kernel) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update input kernel_matrix!");
+    OP_LOGE(op.GetName().c_str(), "Fail to update input kernel_matrix!");
     return GRAPH_FAILED;
   }
 
@@ -2538,7 +3117,7 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolGradDInferShape) {
   tensordesc_output.SetShape(Shape(orig_input_size));
   tensordesc_output.SetDataType(input_grad_dtype);
   if (op.UpdateOutputDesc("out_grad", tensordesc_output) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output out_grad!");
+    OP_LOGE(op.GetName().c_str(), "Fail to update output out_grad!");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -2569,7 +3148,8 @@ IMPLEMT_VERIFIER(AvgPoolV2Grad, AvgPoolV2GradVerify) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr ksize failed!");
     return GRAPH_FAILED;
   }
-  if (ksize.size() < 4) {
+  if (ksize.size() != 4) {
+    OP_LOGE(op.GetName().c_str(), "Size of ksize must be 4!");
     return GRAPH_FAILED;
   }
 
@@ -2579,7 +3159,8 @@ IMPLEMT_VERIFIER(AvgPoolV2Grad, AvgPoolV2GradVerify) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr strides failed!");
     return GRAPH_FAILED;
   }
-  if (strides.size() < 4) {
+  if (strides.size() != 4) {
+    OP_LOGE(op.GetName().c_str(), "Size of strides must be 4!");
     return GRAPH_FAILED;
   }
 
@@ -2600,16 +3181,29 @@ IMPLEMT_VERIFIER(AvgPoolV2Grad, AvgPoolV2GradVerify) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr pads failed!");
     return GRAPH_FAILED;
   }
-  if (pads.size() < 4) {
+  if (pads.size() != 4) {
+    OP_LOGE(op.GetName().c_str(), "Size of pads must be 4!");
     return GRAPH_FAILED;
+  }
+
+  // get input ceilMode
+  bool ceilMode;
+  if (GRAPH_SUCCESS != op.GetAttr("ceil_mode", ceilMode)) {
+    OpsGetAttrErrReport(op.GetName(), "ceil_mode");
+    OP_LOGE(op.GetName().c_str(), "The AvgPoolV2Grad op GetOpAttr ceil_mode failed!");
+    return GRAPH_FAILED;
+  }
+
+  if (ceilMode && padding_mode == "VALID") {
+    OP_LOGE(op.GetName().c_str(),
+            "When Attr(padding_mode) is VALID, Attr(ceil_mode) must be False. Received ceil_mode: True.");
   }
 
   std::string data_format;
   if (GRAPH_SUCCESS != op.GetAttr("data_format", data_format)) {
     OpsGetAttrErrReport(op.GetName(), "data_format");
     OP_LOGE(op.GetName().c_str(),
-            "The AvgPoolGradD op GetOpAttr data_format "
-            "failed!");
+            "The AvgPoolV2Grad op GetOpAttr data_format failed!");
     return GRAPH_FAILED;
   }
 
@@ -2686,7 +3280,8 @@ IMPLEMT_VERIFIER(AvgPoolV2GradD, AvgPoolV2GradDVerify) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr ksize failed!");
     return GRAPH_FAILED;
   }
-  if (ksize.size() < 4) {
+  if (ksize.size() != 4) {
+    OP_LOGE(op.GetName().c_str(), "Size of ksize must be 4!");
     return GRAPH_FAILED;
   }
 
@@ -2696,7 +3291,8 @@ IMPLEMT_VERIFIER(AvgPoolV2GradD, AvgPoolV2GradDVerify) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr strides failed!");
     return GRAPH_FAILED;
   }
-  if (strides.size() < 4) {
+  if (strides.size() != 4) {
+    OP_LOGE(op.GetName().c_str(), "Size of strides must be 4!");
     return GRAPH_FAILED;
   }
 
@@ -2717,16 +3313,29 @@ IMPLEMT_VERIFIER(AvgPoolV2GradD, AvgPoolV2GradDVerify) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr pads failed!");
     return GRAPH_FAILED;
   }
-  if (pads.size() < 4) {
+  if (pads.size() != 4) {
+    OP_LOGE(op.GetName().c_str(), "Size of pads must be 4!");
     return GRAPH_FAILED;
+  }
+
+  // get input ceilMode
+  bool ceilMode;
+  if (GRAPH_SUCCESS != op.GetAttr("ceil_mode", ceilMode)) {
+    OpsGetAttrErrReport(op.GetName(), "ceil_mode");
+    OP_LOGE(op.GetName().c_str(), "The AvgPoolV2GradD op GetOpAttr ceil_mode failed!");
+    return GRAPH_FAILED;
+  }
+
+  if (ceilMode && padding_mode == "VALID") {
+    OP_LOGE(op.GetName().c_str(),
+            "When Attr(padding_mode) is VALID, Attr(ceil_mode) must be False. Received ceil_mode: True.");
   }
 
   std::string data_format;
   if (GRAPH_SUCCESS != op.GetAttr("data_format", data_format)) {
     OpsGetAttrErrReport(op.GetName(), "data_format");
     OP_LOGE(op.GetName().c_str(),
-            "The AvgPoolGradD op GetOpAttr data_format "
-            "failed!");
+            "The AvgPoolV2GradD op GetOpAttr data_format failed!");
     return GRAPH_FAILED;
   }
 
@@ -2738,7 +3347,7 @@ IMPLEMT_VERIFIER(AvgPoolV2GradD, AvgPoolV2GradDVerify) {
   if (data_format == "NCHW") {
     if (ksize[0] != 1 || ksize[1] != 1 || strides[0] != 1 || strides[1] != 1) {
       OP_LOGE(op.GetName().c_str(),
-              "AvgPoolV2Grad only supports pooling across width/height"
+              "AvgPoolV2GradD only supports pooling across width/height"
               "and other ksize dimension should be one");
       return GRAPH_FAILED;
     }
@@ -2752,7 +3361,7 @@ IMPLEMT_VERIFIER(AvgPoolV2GradD, AvgPoolV2GradDVerify) {
   if (data_format == "NHWC") {
     if (ksize[0] != 1 || ksize[3] != 1 || strides[0] != 1 || strides[3] != 1) {
       OP_LOGE(op.GetName().c_str(),
-              "AvgPoolV2Grad only supports pooling across width/height"
+              "AvgPoolV2GradD only supports pooling across width/height"
               "and other ksize dimension should be one");
       return GRAPH_FAILED;
     }
@@ -2837,6 +3446,7 @@ IMPLEMT_INFERFUNC(FractionalMaxPoolGrad, FractionalMaxPoolGradInfer) {
   output_desc.SetDataType(type);
   if (op.UpdateOutputDesc("y", output_desc) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Update y desc failed.");
+    OpsOPUpdateErrReport(op.GetName(), "y");
     return GRAPH_FAILED;
   }
 
@@ -3360,11 +3970,14 @@ IMPLEMT_INFERFUNC(AvgPool1D, AvgPool1DInfer) {
     return GRAPH_FAILED;
   }
 
-  Shape output_shape = ge::Shape(dim_vec);
+  Shape output_shape = Shape(dim_vec);
   DataType output_dtype = input_type;
   output_tensor_desc.SetShape(output_shape);
   output_tensor_desc.SetDataType(output_dtype);
-  op.UpdateOutputDesc("y", output_tensor_desc);
+  if (op.UpdateOutputDesc("y", output_tensor_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 INFER_FUNC_REG(AvgPool1D, AvgPool1DInfer);
@@ -3516,7 +4129,10 @@ IMPLEMT_INFERFUNC(AvgPool1DD, AvgPool1DDInfer) {
   DataType output_dtype = input_type;
   output_tensor_desc.SetShape(output_shape);
   output_tensor_desc.SetDataType(output_dtype);
-  op.UpdateOutputDesc("y", output_tensor_desc);
+  if (op.UpdateOutputDesc("y", output_tensor_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 INFER_FUNC_REG(AvgPool1DD, AvgPool1DDInfer);
@@ -3717,6 +4333,11 @@ IMPLEMT_VERIFIER(MaxPoolV3, MaxPoolV3Verify) {
     return GRAPH_FAILED;
   }
 
+  bool ceilMode;
+  if (GRAPH_SUCCESS != op.GetAttr("ceil_mode", ceilMode)) {
+    return GRAPH_FAILED;
+  }
+
   if (data_format != "NCHW" && data_format != "NHWC") {
     OP_LOGE(op.GetName().c_str(), "attr data_format(%s) only support NCHW and NHWC", data_format.c_str());
     return GRAPH_FAILED;
@@ -3724,7 +4345,7 @@ IMPLEMT_VERIFIER(MaxPoolV3, MaxPoolV3Verify) {
   if (data_format == "NCHW") {
     if (ksize[0] != 1 || ksize[1] != 1 || strides[0] != 1 || strides[1] != 1) {
       OP_LOGE(op.GetName().c_str(),
-              "AvgPoolV2Grad only supports pooling across width/height"
+              "MaxPoolV3Grad only supports pooling across width/height"
               "and other ksize dimension should be one");
       return GRAPH_FAILED;
     }
@@ -3753,6 +4374,11 @@ IMPLEMT_VERIFIER(MaxPoolV3, MaxPoolV3Verify) {
   if ((input_format == FORMAT_NCHW && data_format != "NCHW") ||
       (input_format == FORMAT_NHWC && data_format != "NHWC")) {
     OP_LOGE(op.GetName().c_str(), "Format of input must be same with dataFormat!");
+    return GRAPH_FAILED;
+  }
+
+  if(ceilMode && padding_mode == "VALID") {
+    OP_LOGE(op.GetName().c_str(), "When padding_mode is 'VALID', ceil_mode must be False");
     return GRAPH_FAILED;
   }
 
@@ -3792,7 +4418,7 @@ IMPLEMT_COMMON_INFERFUNC(MaxPoolV3InferShape) {
     return GRAPH_FAILED;
   }
 
-  // get input strides
+  // get input pads
   std::vector<int32_t> padVec;
   if (GRAPH_SUCCESS != op.GetAttr("pads", padVec)) {
     return GRAPH_FAILED;
@@ -3822,16 +4448,26 @@ IMPLEMT_COMMON_INFERFUNC(MaxPoolV3InferShape) {
   int64_t window_h, window_w;
   if (FORMAT_NHWC == input_format) {
     if (globalPooling) {
+      paddingMode = "VALID";
       window_h = dims_input[1];
       window_w = dims_input[2];
+      padVec[0] = 0;
+      padVec[1] = 0;
+      padVec[2] = 0;
+      padVec[3] = 0;
     } else {
       window_h = (int64_t)ksizeList[1];
       window_w = (int64_t)ksizeList[2];
     }
   } else {
     if (globalPooling) {
+      paddingMode = "VALID";
       window_h = dims_input[2];
       window_w = dims_input[3];
+      padVec[0] = 0;
+      padVec[1] = 0;
+      padVec[2] = 0;
+      padVec[3] = 0;
     } else {
       window_h = (int64_t)ksizeList[2];
       window_w = (int64_t)ksizeList[3];
@@ -3865,10 +4501,10 @@ IMPLEMT_COMMON_INFERFUNC(MaxPoolV3InferShape) {
       for (size_t i = 0; i < dims_input.size(); i++) {
         if (ceilMode) {
           if (DIM_SIZE1 == i) {
-            int64_t dims = (dims_input[i] - window_h + padVec[0] + padVec[1] + stridesList[0] - 1) / stridesList[i] + 1;
+            int64_t dims = (dims_input[i] - window_h + padVec[0] + padVec[1] + stridesList[i] - 1) / stridesList[i] + 1;
             dimVector.push_back(dims);
           } else if (DIM_SIZE2 == i) {
-            int64_t dims = (dims_input[i] - window_w + padVec[2] + padVec[3] + stridesList[1] - 1) / stridesList[i] + 1;
+            int64_t dims = (dims_input[i] - window_w + padVec[2] + padVec[3] + stridesList[i] - 1) / stridesList[i] + 1;
             dimVector.push_back(dims);
           } else {
             int64_t dims = dims_input[i];
@@ -3917,10 +4553,10 @@ IMPLEMT_COMMON_INFERFUNC(MaxPoolV3InferShape) {
       if (ceilMode) {
         for (size_t i = 0; i < dims_input.size(); i++) {
           if (DIM_SIZE2 == i) {
-            int64_t dims = (dims_input[i] - window_h + padVec[0] + padVec[1] + stridesList[0] - 1) / stridesList[i] + 1;
+            int64_t dims = (dims_input[i] - window_h + padVec[0] + padVec[1] + stridesList[i] - 1) / stridesList[i] + 1;
             dimVector.push_back(dims);
           } else if (DIM_SIZE3 == i) {
-            int64_t dims = (dims_input[i] - window_w + padVec[2] + padVec[3] + stridesList[1] - 1) / stridesList[i] + 1;
+            int64_t dims = (dims_input[i] - window_w + padVec[2] + padVec[3] + stridesList[i] - 1) / stridesList[i] + 1;
             dimVector.push_back(dims);
           } else {
             int64_t dims = dims_input[i];
@@ -4025,7 +4661,7 @@ IMPLEMT_VERIFIER(MaxPoolV3Grad, MaxPoolV3GradVerify) {
     return GRAPH_FAILED;
   }
   std::vector<int64_t> pads;
-  ksize = GetAttrValue(op, "pads");
+  pads = GetAttrValue(op, "pads");
   if (!CheckListEmpty(op.GetName(), pads, "pads")) {
     OP_LOGE(op.GetName().c_str(), "The pads is empty!");
     return GRAPH_FAILED;

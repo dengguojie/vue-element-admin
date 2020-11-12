@@ -1,4 +1,3 @@
-# -*- coding:utf-8 -*-
 """
 Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
 
@@ -57,14 +56,14 @@ def calc_expect_func(x1, x2, grad, y1, y2):
     m1 = np.array(x1['value'])
     m2 = np.nonzero(m1)
     m1[m2] = 1
-    div_Arr1 = np.divide(m1, x2['value'])
-    grad_Arr1 = np.multiply(div_Arr1, grad['value'])
+    div_Arr1 = np.divide(m1, x2['value'].astype("float32"))
+    grad_Arr1 = np.multiply(div_Arr1, grad['value'].astype("float32"))
     outputArr1 = np.sum(grad_Arr1, tuple(rx)).astype(y1['dtype'])
 
-    multi_Arr2 = np.multiply(x1['value'], -1)
+    multi_Arr2 = np.multiply(x1['value'].astype("float32"), -1)
     square_Arr2 = div_Arr1 * div_Arr1
     div_Arr2 = np.multiply(multi_Arr2, square_Arr2)
-    grad_Arr2 = np.multiply(div_Arr2, grad['value'])
+    grad_Arr2 = np.multiply(div_Arr2, grad['value'].astype("float32"))
     outputArr2 = np.sum(grad_Arr2, tuple(ry)).astype(y2['dtype'])
     return outputArr1, outputArr2
 
@@ -380,7 +379,7 @@ precision_case1 = {
         ],
     "expect": "success",
     "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.01, 0.01)
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 }
 
 precision_case2 = {
@@ -429,7 +428,7 @@ precision_case2 = {
         ],
     "expect": "success",
     "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.01, 0.01)
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 }
 precision_case3 = {
     "params":
@@ -477,14 +476,10 @@ precision_case3 = {
         ],
     "expect": "success",
     "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.01, 0.01)
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 }
 
 ut_case.add_precision_case("Ascend910", precision_case1)
 ut_case.add_precision_case("Ascend910", precision_case2)
 ut_case.add_precision_case("Ascend910", precision_case3)
-
-if __name__ == '__main__':
-    ut_case.run(["Ascend910"], simulator_mode="pv",
-                simulator_lib_path="/disk1/ty_mindstudio/.mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")
 

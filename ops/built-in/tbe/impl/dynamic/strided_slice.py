@@ -17,10 +17,11 @@ strided slice
 """
 
 from __future__ import absolute_import
+import math
 import te.lang.dynamic
 from topi.cce import util
 from impl import common_util
-from te.utils.op_utils import *
+from te.utils import para_check
 from te import tik
 from impl import constant_util as constant
 
@@ -328,8 +329,10 @@ class StridedSlice:
 # pylint: disable=locally-disabled,too-many-arguments,
 # pylint: unused-argument,too-many-locals
 @te.op.register_operator("StridedSlice")
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, OPTION_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_INT,
-                 OPTION_ATTR_INT, OPTION_ATTR_INT, OPTION_ATTR_INT, OPTION_ATTR_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
+                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,
+                            para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def strided_slice(input_x, begin, end, strides=None, output_x=None, begin_mask=0, end_mask=0,
                   ellipsis_mask=0, new_axis_mask=0, shrink_axis_mask=0, kernel_name="strided_slice"):
     """
@@ -377,7 +380,7 @@ def strided_slice(input_x, begin, end, strides=None, output_x=None, begin_mask=0
     """
     input_dtype = input_x.get("dtype").lower()
     check_list = ("float16", "float32", "int32", "uint8", "bool", "int8")
-    check_dtype(input_dtype, check_list, param_name="input_x")
+    para_check.check_dtype(input_dtype, check_list, param_name="input_x")
     strided_slice_instance = StridedSlice(input_x, strides, begin_mask, end_mask, ellipsis_mask, new_axis_mask,
                                           shrink_axis_mask, kernel_name)
     strided_slice_instance.strided_slice()

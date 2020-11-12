@@ -36,15 +36,14 @@ const int32_t BLOCK_SIZE = 32;
 const int32_t N_LAST_BROADCAST_THRESHOLD = 512;
 
 struct CompileInfo {
-  int32_t ub_size;
-  int32_t max_dtype;
-  int32_t coexisting_quantity;
-  int32_t core_num;
-  int32_t fusion_flag;
-  bool is_support_broadcast;
-  bool is_support_absorbable_broadcast;
-  bool use_special_pattern;
-  std::vector<std::vector<size_t>> fusion_index;
+  int32_t ub_size{0};
+  int32_t max_dtype{0};
+  int32_t coexisting_quantity{0};
+  int32_t core_num{0};
+  int32_t fusion_flag{-1};
+  bool is_support_broadcast{false};
+  bool is_support_absorbable_broadcast{false};
+  bool use_special_pattern{false};
 };
 
 enum Pattern {
@@ -53,11 +52,13 @@ enum Pattern {
   COMMON_BROADCAST = 120,
   COMMON_BROADCAST_COMMON = 121,
   BROADCAST = 200,
-  BROADCAST_COMMON = 210
+  BROADCAST_COMMON = 210,
+  BROADCAST_SCALAR = 230,
+  SCALAR_BROADCAST = 320
 };
 
 class Eletwise {
- public:
+public:
   explicit Eletwise(const std::string& _op_type, const TeOpParas& _op_paras, const nlohmann::json& _op_info)
       : op_type(_op_type), op_paras(_op_paras), op_info(_op_info) {
   }
@@ -65,9 +66,9 @@ class Eletwise {
   }
   bool Init();
   bool GenerateOutputShape();
-  bool TrySwitchToPerfPattern(std::vector<int64_t>& input_shape_x, std::vector<int64_t>& input_shape_y);
-  bool BroadcastShapes(std::vector<int64_t>& input_shape_x, std::vector<int64_t>& input_shape_y);
-  bool RefineShapesForBroadcast(std::vector<int64_t>& input_shape_x, std::vector<int64_t>& input_shape_y);
+  bool TrySwitchToPerfPattern();
+  bool BroadcastShapes();
+  bool RefineShapesForBroadcast();
   bool CalcTiling();
   bool DoBlockTiling();
   bool DoUbTiling();
@@ -76,14 +77,12 @@ class Eletwise {
   bool WriteTilingData(OpRunInfo& run_info);
   bool DoTiling();
 
- private:
-  bool AddShapeInfo(const std::vector<int64_t>& input_shape_x, const std::vector<int64_t>& input_shape_y);
-
- private:
+private:
   const std::string& op_type;
   const TeOpParas& op_paras;
   const nlohmann::json& op_info;
   bool is_const{false};
+  bool only_const_tiling{false};
   CompileInfo compileInfo;
   int32_t max_available_ub{0};
   std::string in_type;
@@ -94,10 +93,12 @@ class Eletwise {
   int32_t ub_axis{-1};
   int32_t block_dims{1};
   int32_t ub_factor{1};
-  int32_t special_scalar_key{0};
+  int32_t block_factor{1};
   int32_t broadcast_aixs{-1};
+  int32_t block_axis_output{-1};
   Pattern s_pattern{Pattern::ORIGINAL};
-  std::unordered_map<std::string, int32_t> var_names;
+  std::vector<int64_t> input_shape_x;
+  std::vector<int64_t> input_shape_y;
   std::vector<int64_t> output_shape;
 };
 

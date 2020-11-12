@@ -35,6 +35,7 @@ const std::string DEPTHWISECONV2D = "DepthwiseConv2D";
 const std::string CONV3D = "Conv3D";
 const std::string GROUPPADDING = "GroupPadding";
 const std::string CONCATHOSTOP = "Concatv2HostCpuOp";
+const std::string QUANTWEIGHTROLLBACK = "QuantWeightRollBack";
 static const std::string IS_DEPTHWISE_CONV2D = "_is_depthwise_conv2d";
 const int32_t NCHW_DIM_N = 0;
 const int32_t NCHW_DIM_C = 1;

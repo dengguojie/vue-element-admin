@@ -143,7 +143,9 @@ Status ConcatDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
         ge::GeShape ConcatDOutputShape_1 = ConcatDOutputTensor_1.GetShape();
         ConcatDOutputShape_1.SetDim(axis, size);
         ConcatDOutputTensor_1.SetShape(ConcatDOutputShape_1);
-        ConcatDOutputTensor_1.SetOriginShape(ConcatDOutputShape_1);
+        ge::GeShape ConcatDOriginOutputShape_1 = ConcatDOutputTensor_1.GetOriginShape();
+        ConcatDOriginOutputShape_1.SetDim(axis, size);
+        ConcatDOutputTensor_1.SetOriginShape(ConcatDOriginOutputShape_1);
         ConcatdDesc->UpdateOutputDesc(0, ConcatDOutputTensor_1);
         ConcatdBaseDesc->UpdateInputDesc(i, ConcatDOutputTensor_1);
         // infershape end
@@ -200,7 +202,9 @@ Status ConcatDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
         ge::GeShape ConcatDOutputShape_2 = ConcatDOutputTensor_2.GetShape();
         ConcatDOutputShape_2.SetDim(axis, size);
         ConcatDOutputTensor_2.SetShape(ConcatDOutputShape_2);
-        ConcatDOutputTensor_2.SetOriginShape(ConcatDOutputShape_2);
+        ge::GeShape ConcatDOriginOutputShape_2 = ConcatDOutputTensor_2.GetOriginShape();
+        ConcatDOriginOutputShape_2.SetDim(axis, size);
+        ConcatDOutputTensor_2.SetOriginShape(ConcatDOriginOutputShape_2);
         LastConcatDDesc->UpdateOutputDesc(0, ConcatDOutputTensor_2);
         ConcatdBaseDesc->UpdateInputDesc(i, ConcatDOutputTensor_2);
         // the last_node infershape end

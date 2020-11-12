@@ -23,6 +23,31 @@ from te.utils import para_check
 from te.utils import shape_util
 from impl.copy_only import copy_only
 from impl.transpose_d import transpose_d
+from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(x,
+                        y,
+                        block_shape,
+                        crops,
+                        kernel_name="batch_to_space_nd_d"):
+    format_x = x.get("format").upper()
+    if format_x == "NC1HWC0":
+        axis_split_matrix=[
+            [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [3]])],
+            [SplitInput([0, [4], [-1], [-1]]), SplitOutput([0, [4]])]
+        ]
+        axis_reduce_list = None
+
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 # pylint: disable=too-many-instance-attributes,useless-object-inheritance
@@ -367,39 +392,40 @@ def _check_parms(shape, dtype, block_shape, crops, kernel_name):
     para_check.check_dtype(dtype, dtype_list, param_name="x")
 
     if len(shape) != 5:
-        raise RuntimeError(
-            "the shape of input tensor should be 5, but got: %d" % len(shape))
+        error_detail = "the shape'rank of x should be 5 bug got: %d"%len(shape)
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
 
     if len(block_shape) != 2:
-        raise RuntimeError("the shape of block_shape should be 2, "
-                           "but got: %d" % len(block_shape))
+        error_detail = "the shape'rank of block_shape should be 2 bug got: %d"%len(block_shape)
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "block_shape", error_detail)
 
     if len(crops) != 2 or len(crops[0]) != 2 or len(crops[1]) != 2:
-        raise RuntimeError("the shape of crops should be 2x2")
+        error_detail = "the shape of crops should be 2x2"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "crops", error_detail)
 
     if not (isinstance(block_shape[0], int) and isinstance(block_shape[1], int)
             and block_shape[0] > 0 and block_shape[1] > 0):
-        raise RuntimeError(
-            "the value of block_shape should be integer and be greater to 0")
+        error_detail = "the value of block_shape should be integer and be greater to 0"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "block_shape", error_detail)
 
     if not (isinstance(crops[0][0], int) and crops[0][0] >= 0 and
             isinstance(crops[0][1], int) and crops[0][1] >= 0 and
             isinstance(crops[1][0], int) and crops[1][0] >= 0 and
             isinstance(crops[1][1], int) and crops[1][1] >= 0):
-        raise RuntimeError("the value of crops should be integer "
-                           "and be greater or equal to 0")
+        error_detail = "the value of crops should be integer and be greater to 0"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "crops", error_detail)
 
     if crops[0][0] + crops[0][1] >= shape[2] * block_shape[0]:
-        raise RuntimeError("crops in height dimension should less than "
-                           "(input height)*(block height)")
+        error_detail = "crops in height dimension should less than (x height)*(x height)"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "crops", error_detail)
 
     if crops[1][0] + crops[1][1] >= shape[3] * block_shape[1]:
-        raise RuntimeError("crops in width dimension should less than "
-                           "(input width)*(block width)")
+        error_detail = "crops in width dimension should less than (x width)*(x width)"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "crops", error_detail)
 
     if shape[0] % (block_shape[0] * block_shape[1]) != 0:
-        raise RuntimeError(
-            "batch size/(block height*block width) should be integer")
+        error_detail = "x'batch size/(block height*block width) should be integer"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
 
 
 # pylint: disable=invalid-name
@@ -474,7 +500,7 @@ def batch_to_space_nd_d(x,
     ori_format = x.get("ori_format")
 
     if input_format not in ("NC1HWC0",):
-        raise RuntimeError("The input_format must be NC1HWC0.")
+        error_manager_vector.raise_err_input_format_invalid(kernel_name, "x", "NC1HWC0", input_format)
 
     if ori_format in ("NHWC",):
         if len(crops) == 4:
@@ -483,16 +509,18 @@ def batch_to_space_nd_d(x,
         if len(block_shape) == 3 and block_shape[0] == 1:
             block_shape = [block_shape[1], block_shape[2]]
         else:
-            raise RuntimeError("The value of first block_shape must be 1")
+            error_detail = "The value of first block_shape must be 1"
+            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "block_shape", error_detail)
         if len(crops) == 6 and crops[0] == 0 and crops[1] == 0:
             crops = [[crops[2], crops[3]], [crops[4], crops[5]]]
         elif len(crops) == 3 and len(crops[0]) == 2 and len(crops[1]) == 2 \
                 and len(crops[2]) == 2 and crops[0][0] == 0 and crops[0][1] == 0:
             crops = [[crops[1][0], crops[1][1]], [crops[2][0], crops[2][1]]]
         else:
-            raise RuntimeError("The value of first crops must be 0")
+            error_detail = "The value of first crops must be 1"
+            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "crops", error_detail)
     else:
-        raise RuntimeError("The ori_format is not supported")
+        error_manager_vector.raise_err_input_format_invalid(kernel_name, "x", "NHWC,NCHW", ori_format)
 
     _check_parms(shape, dtype, block_shape, crops, kernel_name)
 

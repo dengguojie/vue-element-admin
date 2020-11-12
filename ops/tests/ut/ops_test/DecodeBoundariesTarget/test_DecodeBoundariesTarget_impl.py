@@ -50,7 +50,3 @@ ut_case.add_precision_case("Ascend910", gen_precision_case((3, 1), (3, 4), "floa
 ut_case.add_precision_case("Ascend910", gen_precision_case((100, 1), (100, 4), "float16"))
 ut_case.add_precision_case("Ascend910", gen_precision_case((257, 1), (257, 4), "float16"))
 
-if __name__ == '__main__':
-    ut_case.run(["Ascend910"], simulator_mode="pv",
-                simulator_lib_path="/disk1/ty_mindstudio/.mindstudio/huawei/adk/1.76.T1.0.B010/toolkit/tools/simulator")
-

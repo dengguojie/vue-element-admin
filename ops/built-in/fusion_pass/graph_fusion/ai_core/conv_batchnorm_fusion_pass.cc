@@ -117,6 +117,9 @@ Status ConvBatchnormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(destNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new destNode not success."),
                     return PARAM_INVALID);
+  if (convNode->GetInDataNodes().at(1)->GetType() == QUANTWEIGHTROLLBACK) {
+    return NOT_CHANGED;
+  }
 
   FUSION_PASS_CHECK(CheckWeights(destNode) != SUCCESS,
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "BN node can not fusion, exit ConvBatchnormFusionPass."),

@@ -52,6 +52,7 @@ class Params:
     init_b_zero_matrix = False
     block_in = cce_params.BLOCK_IN
     block_reduce = cce_params.BLOCK_REDUCE
+    block_out = cce_params.BLOCK_OUT
     CONST_AL1_SHAPE_DIM = 4
     CONST_BL1_SHAPE_DIM = 4
     UB_SPACE_SIZE = cce_conf.get_soc_spec("UB_SIZE")
@@ -63,6 +64,10 @@ class Params:
     TILING = {}
     DIM_MAP = {}
     DATA_SIZE = {"int8": 1, "int32": 4, "float16": 2, "float32": 4}
+    cube_vector_split = False
+    trans_a = False
+    trans_b = False
+    cv_split_nd_in_flag = False
 
     def __init__(self):
         self.ops_mode = "fp16fp16"
@@ -103,11 +108,10 @@ def _get_ops_mode():
     Get ops mode from input and output
     :return:
     """
-
     a_type = Params.TENSOR_MAP["a_placehold"].dtype
     a_format = Params.TENSOR_MAP["a_placehold"].shape
     c_type = Params.TENSOR_MAP["c_gm"].dtype
-    if len(a_format) == 2:
+    if len(a_format) == 2 and not Params.cube_vector_split:
         Params.ops_format_mode = "ND"
     else:
         Params.ops_format_mode = "Nz"
@@ -168,7 +172,6 @@ def _get_all_tensors(res):
         :param tensor: c_gm
         :return: all tensor
         """
-
         tensor_list = tensor.op.input_tensors
         for one_tensor in tensor_list:
             # check which tensor has not been checked
@@ -366,15 +369,17 @@ def _get_tiling_result_nd(kernel_name):  # pylint: disable=R0914
         op_tag="matmul",
         kernel_name=kernel_name
     )
+
+    if not tiling:
+        args_dict = {"errCode": "E60114", "reason": "tiling is None", "value": "None"}
+        raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
+
+    tiling = _no_solution_tiling(tiling)
     if _is_int82fp32_nd():
         tiling["AL0_matrix"][2] = 16
         tiling["AL0_matrix"][3] = 16
         tiling["BL0_matrix"][2] = 16
         tiling["BL0_matrix"][3] = 16
-
-    if not tiling:
-        args_dict = {"errCode": "E60114", "reason": "tiling is None", "value": "None"}
-        raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
 
     Params().print_debug("-----------auto tiling result-----------------")
     Params().print_debug(tiling)
@@ -915,41 +920,7 @@ def _get_tiling(kernel_name):  # pylint: disable=too-many-statements
         a_type = Params.TENSOR_MAP["a_placehold"].dtype
         b_type = Params.TENSOR_MAP["b_placehold"].dtype
         c_type = Params.TENSOR_MAP["c_gm"].dtype
-
-        if a_type == "float16":
-            a_shape = [
-                1,
-                Params.DIM_MAP["a_shape"][0],
-                Params.DIM_MAP["a_shape"][1],
-                16,
-                16
-            ]
-            b_shape = [
-                Params.DIM_MAP["b_shape"][1] * 16,
-                Params.DIM_MAP["b_shape"][0],
-                1,
-                1,
-                16
-            ]
-        else:
-            a_shape = [
-                1,
-                Params.DIM_MAP["a_shape"][0],
-                Params.DIM_MAP["a_shape"][1],
-                16,
-                32
-            ]
-            b_shape = [
-                Params.DIM_MAP["b_shape"][0] * 32,
-                Params.DIM_MAP["b_shape"][1],
-                1,
-                1,
-                16
-            ]
-
-        pad_l = Params.AUB_FUSED_NUM.get(Params.ops_mode)
-        pad_r = Params.BUB_FUSED_NUM.get(Params.ops_mode)
-        fused_num = Params.CUB_FUSED_NUM.get(Params.ops_mode)
+        a_shape, b_shape, pad_l, pad_r, fused_num = get_tiling_param_nz()
         mad_type = Params.MAD_TYPE.get(Params.ops_mode)
         tiling = tiling_query(
             a_shape,
@@ -975,7 +946,6 @@ def _get_tiling(kernel_name):  # pylint: disable=too-many-statements
             op_tag="matmul",
             kernel_name=kernel_name
         )
-
         if not tiling:
             args_dict = {
                 "errCode": "E60114",
@@ -1176,7 +1146,6 @@ def _get_tiling(kernel_name):  # pylint: disable=too-many-statements
                 )
 
     Params.TILING = get_tiling_result(kernel_name)
-
     data_amount_al1 = _check_tiling_al1()
     data_amount_bl1 = _check_tiling_bl1()
     Params().print_debug("data_amount_al1:", data_amount_al1 / 1024)
@@ -1718,6 +1687,228 @@ def _get_al1_and_bl1_axis(sch, c_l0c, al1_parts, bl1_parts, k_outer_outer):
     return al1_at_l0c_axis, bl1_at_l0c_axis, reduce_axis_serial
 
 
+def _set_data_layout_cv_split(res, sch):
+    """set data layout for cube vector split
+    input:
+        res: tensor, the res of compute
+        sch: raw schedule
+    --------------------------
+    return:
+        TENSOR_MAP: tenosr info
+        DIM_MAP: shape info
+    """
+    all_tensor = _get_all_tensors(res)
+
+    def _init_map():
+        """set DIM_MAP
+        """
+        # fill in dimmap
+        Params.DIM_MAP["out_shape"] = [int(i) for i in res.shape]
+        Params.DIM_MAP["a_shape"] = [
+            int(i) for i in Params.TENSOR_MAP["a_placehold"].shape
+        ]
+        Params.DIM_MAP["A_matrix_dim"] = [
+            int(i) for i in Params.TENSOR_MAP["a_l0a"].shape
+        ]
+        Params.DIM_MAP["B_matrix_dim"] = [
+            int(i) for i in Params.TENSOR_MAP["b_l0b"].shape
+        ]
+        Params.DIM_MAP["b_shape"] = [
+            int(i) for i in Params.TENSOR_MAP["b_placehold"].shape
+        ]
+
+
+    Params.TENSOR_MAP["c_gm"] = res
+    Params.TENSOR_MAP["a_l0a"] = all_tensor.get("tensor_a_matrix")
+    sch[Params.TENSOR_MAP["a_l0a"]].set_scope(cce_params.scope_ca)
+    Params.TENSOR_MAP["b_l0b"] = all_tensor.get("tensor_b_matrix")
+    sch[Params.TENSOR_MAP["b_l0b"]].set_scope(cce_params.scope_cb)
+
+    Params.TENSOR_MAP["a_placehold"] = all_tensor.get("tensor_a")
+    Params.TENSOR_MAP["b_placehold"] = all_tensor.get("tensor_b")
+
+    if "tensor_a_fract" in all_tensor and "tensor_b_fract" in all_tensor:
+        Params.TENSOR_MAP["a_l1"] = all_tensor.get("tensor_a_fract")
+        sch[Params.TENSOR_MAP["a_l1"]].set_scope(cce_params.scope_cbuf)
+        Params.TENSOR_MAP["b_l1"] = all_tensor.get("tensor_b_fract")
+        sch[Params.TENSOR_MAP["b_l1"]].set_scope(cce_params.scope_cbuf)
+        Params.cv_split_nd_in_flag = True
+    else:
+        Params.TENSOR_MAP["a_l1"] = sch.cache_read(Params.TENSOR_MAP["a_placehold"],
+                                                   cce_params.scope_cbuf,
+                                                   [Params.TENSOR_MAP["a_l0a"]])
+        Params.TENSOR_MAP["b_l1"] = sch.cache_read(Params.TENSOR_MAP["b_placehold"],
+                                                   cce_params.scope_cbuf,
+                                                   [Params.TENSOR_MAP["b_l0b"]])
+        Params.cv_split_nd_in_flag = False
+
+    Params.TENSOR_MAP["fix_pipe_bias"] = all_tensor.get("tensor_bias")
+
+    if "tensor_c_gm" in all_tensor:
+        Params.TENSOR_MAP["c_l0c"] = all_tensor.get("tensor_c_matrix")
+        sch[Params.TENSOR_MAP["c_l0c"]].set_scope(cce_params.scope_cc)
+    else:
+        Params.TENSOR_MAP["c_l0c"] = sch.cache_write(Params.TENSOR_MAP["c_gm"], cce_params.scope_cc)
+
+    _get_ops_mode()
+    _init_map()
+
+
+def get_tiling_param_nz():
+    """
+    get tiling param for nz
+    -------------------------
+    return
+    a_shape: list, a shape, format is nc1hwc0
+    b_shape: list, b shape, format is nc1hwc0
+    pad_l: fused_num in aub
+    pad_r: fused_num in bub
+    fused_num: fused_num in cub
+    """
+    a_type = Params.TENSOR_MAP["a_placehold"].dtype
+    b_type = Params.TENSOR_MAP["b_placehold"].dtype
+    c_type = Params.TENSOR_MAP["c_gm"].dtype
+
+    ori_a_shape = Params.DIM_MAP["a_shape"]
+    ori_b_shape = Params.DIM_MAP["b_shape"]
+    block_reduce = ((2 if (a_type == "int8" and c_type == "float32") else 1)
+                    * Params.block_reduce)
+    if Params.trans_a:
+        index_m = 0
+        index_km = 1
+    else:
+        index_m = 1
+        index_km = 0
+
+    # when b_type is float16, format is Nz
+    # when b_type is int8, format is Zz
+    # so index_n and index_kn may need interchange
+    if b_type == "float16":
+        index_n = 1
+        index_kn = 0
+    else:
+        index_n = 0
+        index_kn = 1
+
+    if Params.trans_b:
+        index_n, index_kn = index_kn, index_n
+
+    if len(ori_a_shape) == 2:
+        a_shape_Nz = [
+            ori_a_shape[1] // block_reduce,
+            ori_a_shape[0] // Params.block_in,
+            Params.block_in,
+            block_reduce
+            ]
+    else:
+        a_shape_Nz = ori_a_shape
+
+
+    if len(ori_b_shape) == 2:
+        b_shape_Nz = [
+            ori_b_shape[1] // Params.block_out,
+            ori_b_shape[0] // block_reduce,
+            block_reduce,
+            Params.block_out
+            ]
+    else:
+        b_shape_Nz = ori_b_shape
+
+    a_shape = [
+        1,
+        a_shape_Nz[index_km],
+        a_shape_Nz[index_m],
+        Params.block_in,
+        block_reduce
+    ]
+    b_shape = [
+        b_shape_Nz[index_n] * block_reduce,
+        b_shape_Nz[index_kn],
+        1,
+        1,
+        Params.block_out
+    ]
+
+    pad_l = 0
+    pad_r = 0
+    fused_num = 0
+    if not Params.cube_vector_split:
+        pad_l = Params.AUB_FUSED_NUM.get(Params.ops_mode)
+        pad_r = Params.BUB_FUSED_NUM.get(Params.ops_mode)
+        fused_num = Params.CUB_FUSED_NUM.get(Params.ops_mode)
+
+    return a_shape, b_shape, pad_l, pad_r, fused_num
+
+def _set_data_layout_enter(res, sch):
+    """
+    if cube and vector split ,
+    get into the func of _set_data_layout_cv_split
+    """
+    if Params.cube_vector_split:
+        _set_data_layout_cv_split(res, sch)
+    else:
+        _set_data_layout(res, sch)
+
+
+def _get_trans_flag_cv_split():
+    """
+    trans_a and trans_b is the flag
+    for cube vector split in current
+    """
+    if Params.cube_vector_split:
+        Params.trans_a = Params.TENSOR_MAP["a_l0a"].op.attrs["trans"] == "1"
+        Params.trans_b = Params.TENSOR_MAP["b_l0b"].op.attrs["trans"] == "1"
+    else:
+        Params.trans_a = False
+        Params.trans_b = False
+
+
+def _no_solution_tiling(tiling):
+    """Determining that there is no solution to tilling
+    and change tiling to default
+    Input:
+       tiling: dict, the tiling from tiling_query
+    -----------------------------
+    Return:
+        default tiling
+    """
+
+    if tiling.get("AL0_matrix") == [1, 1, 32, 16, 1, 1]:
+        block_reduce = Params.block_reduce
+        block_in = Params.block_in
+        block_out = Params.block_out
+        tiling = {'AUB_shape': [block_reduce, 1, 1, 1],
+                  'BUB_shape': [block_reduce, 1, 1, 1],
+                  'AL1_shape': [block_reduce, 1, 1, 1],
+                  'BL1_shape': [block_reduce, 1, 1, 1],
+                  'AL0_matrix': [1, 1, block_in, block_reduce, 1, 1],
+                  'BL0_matrix': [1, 1, block_out, block_reduce, 1, 1],
+                  'CL0_matrix': [1, 1, block_in, block_reduce, 1, 1],
+                  'CUB_matrix': [1, 1, block_in, block_reduce, 1, 1],
+                  'block_dim': [1, 1, 1, 1],
+                  'n_bef_batch_flag': 0,
+                  'n_bef_group_flag': 0,
+                  'batch_bef_group_flag': 0,
+                  'A_overhead_opt_flag': 0,
+                  'B_overhead_opt_flag': 0,
+                  'AUB_channel_wise_flag': None,
+                  'BUB_channel_wise_flag': None,
+                  'CUB_channel_wise_flag': 0,
+                  'manual_pingpong_buffer':
+                  {'AUB_pbuffer': 1,
+                   'BUB_pbuffer': 1,
+                   'AL1_pbuffer': 1,
+                   'BL1_pbuffer': 1,
+                   'AL0_pbuffer': 1,
+                   'BL0_pbuffer': 1,
+                   'CL0_pbuffer': 1,
+                   'CUB_pbuffer': 1,
+                   'UBG_pbuffer': 2
+                   }
+                 }
+    return tiling
+
+
 def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
     """schedule enter
     param:
@@ -1729,82 +1920,74 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
     Params.L0_SPACE_SIZE = cce_conf.get_soc_spec("L0A_SIZE")
     Params.L0C_SPACE_SIZE = cce_conf.get_soc_spec("L0C_SIZE")
     Params.SOC_VERSION = cce_conf.get_soc_spec("SOC_VERSION")
+    Params.cube_vector_split = cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT")
+
     sch = sch_list[0]
-    _set_data_layout(res, sch)
-    kernel_name = Params.TENSOR_MAP["c_gm"].op.attrs["kernel_name"]
+
+    _set_data_layout_enter(res, sch)
+
     Params().print_ir_matmul("orgin", sch)
+    kernel_name = Params.TENSOR_MAP["c_gm"].op.attrs["kernel_name"]
+    _get_trans_flag_cv_split()
     if Params.ops_format_mode != "ND":
         _get_tiling(kernel_name)
 
     # get tensor
-    a_l1, b_l1, a_l0a, b_l0b, c_l0c, c_gm, c_before_mul_ub = (
+    a_l1, b_l1, a_l0a, b_l0b, c_l0c, c_gm = (
         Params.TENSOR_MAP["a_l1"],
         Params.TENSOR_MAP["b_l1"],
         Params.TENSOR_MAP["a_l0a"],
         Params.TENSOR_MAP["b_l0b"],
         Params.TENSOR_MAP["c_l0c"],
-        Params.TENSOR_MAP["c_gm"],
-        Params.TENSOR_MAP["c_before_mul_ub"]
-    )
-    if not (Params.ops_mode == "fp16fp32" and Params.ops_format_mode == "ND"):
-        c_ub = Params.TENSOR_MAP["c_ub"]
-    else:
-        c_ub = None
-    alpha_ub, alpha_c_ub, beta_ub, bias_ub, c_ub_temp, beta_bias_ub = (
-        Params.TENSOR_MAP["alpha_ub"],
-        Params.TENSOR_MAP["alpha_c_ub"],
-        Params.TENSOR_MAP["beta_ub"],
-        Params.TENSOR_MAP["bias_ub"],
-        Params.TENSOR_MAP["c_ub_temp"],
-        Params.TENSOR_MAP["beta_bias_ub"]
+        Params.TENSOR_MAP["c_gm"]
     )
 
-    if Params.ops_mode == "fp16fp16":
-        alpha_temp_ub = Params.TENSOR_MAP["alpha_temp_ub"]
-        beta_temp_ub = Params.TENSOR_MAP["beta_temp_ub"]
-        float32_bias_ub = Params.TENSOR_MAP["float32_bias_ub"]
+    c_ub = Params.TENSOR_MAP.get("c_ub")
 
-    def _get_a_zero_tensor():
-        a_zero = None
-        if Params.init_a_zero_matrix:
-            a_zero = Params.TENSOR_MAP["a_zero"]
-        return a_zero
+    alpha_ub, alpha_c_ub, beta_ub, bias_ub, c_ub_temp, beta_bias_ub, c_before_mul_ub = (
+        Params.TENSOR_MAP.get("alpha_ub"),
+        Params.TENSOR_MAP.get("alpha_c_ub"),
+        Params.TENSOR_MAP.get("beta_ub"),
+        Params.TENSOR_MAP.get("bias_ub"),
+        Params.TENSOR_MAP.get("c_ub_temp"),
+        Params.TENSOR_MAP.get("beta_bias_ub"),
+        Params.TENSOR_MAP.get("c_before_mul_ub")
+    )
 
-    def _get_b_zero_tensor():
-        b_zero = None
-        if Params.init_b_zero_matrix:
-            b_zero = Params.TENSOR_MAP["b_zero"]
-        return b_zero
+    alpha_temp_ub = Params.TENSOR_MAP.get("alpha_temp_ub")
+    beta_temp_ub = Params.TENSOR_MAP.get("beta_temp_ub")
+    float32_bias_ub = Params.TENSOR_MAP.get("float32_bias_ub")
 
     if Params.ops_format_mode == "ND":
-        a_normalize_ub = Params.TENSOR_MAP["a_normalize_ub"]
-        a_fract_k_ub = Params.TENSOR_MAP["a_fract_k_ub"]
-        b_normalize_ub = Params.TENSOR_MAP["b_normalize_ub"]
-        b_fract_ub = Params.TENSOR_MAP["b_fract_ub"]
-        b_transpose_only = Params.TENSOR_MAP["b_transpose_only"]
-        b_transpose_zero = Params.TENSOR_MAP["b_transpose_zero"]
-        b_after_process = Params.TENSOR_MAP["b_after_process"]
-        a_zero = _get_a_zero_tensor()
-        b_zero = _get_b_zero_tensor()
+        a_normalize_ub = Params.TENSOR_MAP.get("a_normalize_ub")
+        a_fract_k_ub = Params.TENSOR_MAP.get("a_fract_k_ub")
+        b_normalize_ub = Params.TENSOR_MAP.get("b_normalize_ub")
+        b_fract_ub = Params.TENSOR_MAP.get("b_fract_ub")
+        b_transpose_only = Params.TENSOR_MAP.get("b_transpose_only")
+        b_transpose_zero = Params.TENSOR_MAP.get("b_transpose_zero")
+        b_after_process = Params.TENSOR_MAP.get("b_after_process")
+        a_zero = Params.TENSOR_MAP.get("a_zero")
+        b_zero =  Params.TENSOR_MAP.get("b_zero")
         if Params.ops_mode == "int8int32":
-            b_matrix_transpose = Params.TENSOR_MAP["b_transpose"]
-            a_matrix_transpose = Params.TENSOR_MAP["a_transpose"]
+            b_matrix_transpose = Params.TENSOR_MAP.get("b_transpose")
+            a_matrix_transpose = Params.TENSOR_MAP.get("a_transpose")
         if _is_int82fp32_nd():
-            a_float16 = Params.TENSOR_MAP["tensor_a_float16_normalize_ub"]
-            b_float16 = Params.TENSOR_MAP["tensor_b_float16_normalize_ub"]
+            a_float16 = Params.TENSOR_MAP.get("tensor_a_float16_normalize_ub")
+            b_float16 = Params.TENSOR_MAP.get("tensor_b_float16_normalize_ub")
 
+    # only Nz int8fp32 will in
     if Params.ops_mode == "int8fp32":
         a_ub, float16_a_ub, zz_a_ub, b_ub, float16_b_ub, zn_b_ub = (
-            Params.TENSOR_MAP["a_ub"],
-            Params.TENSOR_MAP["float16_a_ub"],
-            Params.TENSOR_MAP["zz_a_ub"],
-            Params.TENSOR_MAP["b_ub"],
-            Params.TENSOR_MAP["float16_b_ub"],
-            Params.TENSOR_MAP["zn_b_ub"]
+            Params.TENSOR_MAP.get("a_ub"),
+            Params.TENSOR_MAP.get("float16_a_ub"),
+            Params.TENSOR_MAP.get("zz_a_ub"),
+            Params.TENSOR_MAP.get("b_ub"),
+            Params.TENSOR_MAP.get("float16_b_ub"),
+            Params.TENSOR_MAP.get("zn_b_ub")
         )
 
     if Params.ops_mode == "int8int32" and Params.ops_format_mode != "ND":
-        bias_ub_fract = Params.TENSOR_MAP["bias_ub_fract"]
+        bias_ub_fract = Params.TENSOR_MAP.get("bias_ub_fract")
 
     def _nd_process():  # pylint: disable=R0914,R0915
         """
@@ -2749,48 +2932,127 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
                     sch_agent[b_transpose_zero].op.axis[0], "dma_copy"
                 )
 
+
         def _slove_bank_conflict():
             """slove bank conflict by storage_align
             if aub_k or bub_n bigger than threshold_data_num,
             use storage_align to slove bank conflict of aub/bub
 
             c_ub always conflict, must be use storage_align
+            Input: None
+            ---------------------------------
+            Return: None
             """
 
-            align_value = Params.block_reduce
+            a_trans, b_trans = _get_transpose()
+            (a_ub_storage_align,
+             b_ub_storage_align,
+             c_ub_storage_align) = _check_exceed_ub(a_trans, b_trans)
+
+            # the data gap in ub
+            gap_value = Params.block_reduce
+            c_gap_value = (Params.block_out + 1) * Params.block_in
             aub_k, aub_m, _, _ = tiling.get("AUB_shape")
             bub_k, bub_n, _, _ = tiling.get("BUB_shape")
             aub_m *= cce_params.BLOCK_IN
             bub_n *= cce_params.BLOCK_OUT
-            a_trans, b_trans = _get_transpose()
-            threshold_data_num = 64
-            a_align_value = (aub_m + align_value) if a_trans else (aub_k + align_value)
-            b_align_value = (bub_k + align_value) if b_trans else (bub_n + align_value)
+
+            # the data stride in ub
+            a_align_value = (aub_m + gap_value) if a_trans else (aub_k + gap_value)
+            b_align_value = (bub_k + gap_value) if b_trans else (bub_n + gap_value)
+
             # slove bank conflict in aub/bub
             if _is_int82fp32_nd():
-                a_float16_k = int(a_float16.shape[1])
-                b_float16_n = int(b_float16.shape[1])
-                if a_float16_k % threshold_data_num == 0:
+                if a_ub_storage_align:
                     sch[a_float16].storage_align(a_float16.op.axis[0], a_align_value, 0)
-                if b_float16_n % threshold_data_num == 0:
+                if b_ub_storage_align:
                     sch[b_float16].storage_align(b_float16.op.axis[0], b_align_value, 0)
             else:
-                a_normalize_ub_k = int(a_normalize_ub.shape[1])
-                b_normalize_ub_n = int(b_normalize_ub.shape[1])
-                if (Params.TENSOR_MAP["a_placehold"].dtype == "float16") \
-                        and (a_normalize_ub_k % threshold_data_num == 0):
+                if (Params.TENSOR_MAP["a_placehold"].dtype == "float16") and a_ub_storage_align:
                     if a_zero is not None:
                         sch[a_zero].storage_align(a_zero.op.axis[0], a_align_value, 0)
                     sch[a_normalize_ub].storage_align(a_normalize_ub.op.axis[0], a_align_value, 0)
 
-                if b_normalize_ub_n % threshold_data_num == 0:
+                if b_ub_storage_align:
                     if b_zero is not None:
                         sch[b_zero].storage_align(b_zero.op.axis[0], b_align_value, 0)
                     sch[b_normalize_ub].storage_align(b_normalize_ub.op.axis[0], b_align_value, 0)
 
             # slove bank conflict in cub
-            sch[c_before_mul_ub].storage_align(c_before_mul_ub.op.axis[1], 272, 0)
-            sch[alpha_c_ub].storage_align(alpha_c_ub.op.axis[1], 272, 0)
+            if c_ub_storage_align:
+                sch[c_before_mul_ub].storage_align(c_before_mul_ub.op.axis[1], c_gap_value, 0)
+                sch[alpha_c_ub].storage_align(alpha_c_ub.op.axis[1], c_gap_value, 0)
+
+
+        def _check_exceed_ub(a_trans, b_trans):
+            """
+            if storage_align is used, more UB space is used.
+            Therefore, check the UB space usage after storage_align is used.
+            Input:
+                a_trans: bool, Indicates whether matrix A is transposed.
+                b_trans: bool, Indicates whether matrix B is transposed.
+            -----------------------
+            Return:
+                a_ub_storage_align: bool, Matrix A uses storage_align.
+                b_ub_storage_align: bool, Matrix B uses storage_align.
+                c_ub_storage_align: bool, Matrix C uses storage_align.
+            """
+            threshold_data_num = 64
+            gap_value = Params.block_reduce
+            ub_buffer = Params.UB_SPACE_SIZE
+
+            a_ub_storage_align = False
+            b_ub_storage_align = False
+            c_ub_storage_align = False
+            aub_k, aub_m = tiling.get("AUB_shape")[0:2]
+            bub_k, bub_n = tiling.get("BUB_shape")[0:2]
+            cub_n, cub_m = tiling.get("CUB_matrix")[0:2]
+            all_double_buffer = tiling.get("manual_pingpong_buffer")
+            a_db = all_double_buffer.get("AUB_pbuffer")
+            b_db = all_double_buffer.get("BUB_pbuffer")
+            c_db = all_double_buffer.get("CUB_pbuffer")
+            aub_m *= cce_params.BLOCK_IN
+            bub_n *= cce_params.BLOCK_OUT
+
+            # get fused num for compute use UB size
+            a_fused_num, b_fused_num, c_fused_num = _get_tiling_params(a_trans, b_trans)
+            a_fused_num = a_fused_num / 10.0 + 1
+            b_fused_num = b_fused_num / 10.0 + 1
+            c_fused_num += 1
+
+            # compute before storage_align used UB size
+            base_buffer_size = 0
+            base_buffer_size += (aub_m * aub_k * a_fused_num *
+                                 Params.INPUT_SIZE.get(Params.ops_mode) * a_db)
+            base_buffer_size += (bub_k * bub_n * b_fused_num *
+                                 Params.INPUT_SIZE.get(Params.ops_mode) * b_db)
+            base_buffer_size += (cub_n * cub_m * Params.block_in * Params.block_out *
+                                 c_fused_num * Params.OUTPUT_SIZE.get(Params.ops_mode) * c_db)
+
+            float32_int32_size = 4
+            # if use storage_align, need UB size
+            a_add_size = (gap_value * (aub_k if a_trans else aub_m) *
+                          Params.INPUT_SIZE.get(Params.ops_mode) * a_db)
+            b_add_size = (gap_value * (bub_n if b_trans else bub_k) *
+                          Params.INPUT_SIZE.get(Params.ops_mode) * b_db)
+            c_add_size = Params.block_out * cub_n * cub_m * float32_int32_size * c_db
+
+            if base_buffer_size + c_add_size <= ub_buffer:
+                base_buffer_size += c_add_size
+                c_ub_storage_align = True
+
+            judge_value = aub_m if a_trans else aub_k
+            if judge_value % threshold_data_num == 0 and (base_buffer_size + a_add_size) <= ub_buffer:
+                base_buffer_size += a_add_size
+                a_ub_storage_align = True
+
+            judge_value = bub_k if b_trans else bub_n
+            if judge_value % threshold_data_num == 0 and (base_buffer_size + b_add_size) <= ub_buffer:
+                base_buffer_size += b_add_size
+                b_ub_storage_align = True
+
+            return a_ub_storage_align, b_ub_storage_align, c_ub_storage_align
+
 
         def _emit_insn_int8int32():
             sch_agent[b_fract_ub].emit_insn(
@@ -2981,8 +3243,10 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
         al0_axis_factor, bl0_axis_factor, reduce_axis_factor = _get_mmad_factor()
         # -----------split and get axis of l0c, al1, bl1 or may aub , bub----------------
         small_ub_flag = _get_ub_pos()
+        fix_pipe_bias = Params.TENSOR_MAP.get("fix_pipe_bias")
+        is_with_fix_pipe_bias = fix_pipe_bias is not None
 
-        if Params.ops_mode == "int8fp32" and not small_ub_flag:
+        if Params.ops_mode == "int8fp32" and not small_ub_flag and not Params.cube_vector_split:
             (
                 batch_in_out_axis,
                 bub_at_c_axis,
@@ -3028,24 +3292,37 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
             param: l0c_ub_parts: spilt parts
             return c_gm_at_axis, l0c_n_inner_inner
             """
-            l0c_n_inner_outer, l0c_n_inner_inner = sch[c_gm].split(
-                l0c_n_inner, nparts=l0c_ub_parts[0]
-            )
-            l0c_m_inner_outer, l0c_m_inner_inner = sch[c_gm].split(
-                l0c_m_inner, nparts=l0c_ub_parts[1]
-            )
-            sch[c_gm].reorder(
-                l0c_n_inner_outer,
-                l0c_m_inner_outer,
-                l0c_n_inner_inner,
-                l0c_m_inner_inner
-            )
-            c_gm_at_axis = l0c_m_inner_outer
+            if not Params.cube_vector_split:
+                l0c_n_inner_outer, l0c_n_inner_inner = sch[c_gm].split(
+                    l0c_n_inner, nparts=l0c_ub_parts[0]
+                )
+                l0c_m_inner_outer, l0c_m_inner_inner = sch[c_gm].split(
+                    l0c_m_inner, nparts=l0c_ub_parts[1]
+                )
+                sch[c_gm].reorder(
+                    l0c_n_inner_outer,
+                    l0c_m_inner_outer,
+                    l0c_n_inner_inner,
+                    l0c_m_inner_inner
+                )
+                c_gm_at_axis = l0c_m_inner_outer
+            else:
+                c_gm_at_axis = None
+                l0c_n_inner_inner = l0c_n_inner
             return c_gm_at_axis, l0c_n_inner_inner
 
         c_gm_at_axis, l0c_n_inner_inner = _get_cub_at_axis(
             sch, c_gm, l0c_n_inner, l0c_m_inner, l0c_ub_parts
         )
+
+        def _fix_pipe_bias_process():
+            bias_l1 = sch.cache_read(
+                fix_pipe_bias, cce_params.scope_cbuf, [c_l0c])
+            bias_fix_pipe = sch.cache_read(bias_l1, "local.FB", [c_l0c])
+            sch[bias_fix_pipe].compute_at(sch[c_l0c], bl0_n_outer)
+            sch[bias_l1].compute_at(sch[c_l0c], bl0_n_outer)
+            sch[bias_l1].emit_insn(bias_l1.op.axis[0], "dma_copy")
+            sch[bias_fix_pipe].emit_insn(bias_fix_pipe.op.axis[0], "dma_copy")
 
         def _attach_ub(sch, c_gm, at_axis):
             """
@@ -3066,7 +3343,8 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
             for tensor in tensor_cub_list:
                 sch[tensor].compute_at(sch[c_gm], at_axis)
 
-        _attach_ub(sch, c_gm, c_gm_at_axis)
+        if not Params.cube_vector_split:
+            _attach_ub(sch, c_gm, c_gm_at_axis)
 
         # -----------attach tensor of l0c----------------
 
@@ -3089,7 +3367,7 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
         l0a_at_axis = al0_m_outer
         l0b_at_axis = bl0_n_outer
         # ---split and get axis of al1_at_l0c_axis, bl1_at_l0c_axis---
-        if Params.ops_mode == "int8fp32" and not small_ub_flag:
+        if Params.ops_mode == "int8fp32" and not small_ub_flag and not Params.cube_vector_split:
             (
                 bl0_n_outer_outer,
                 al0_m_outer_outer,
@@ -3185,7 +3463,8 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
         # -----------attach tensor of a_l0a----------------
         sch[a_l0a].compute_at(sch[c_l0c], l0a_at_axis)
         sch[b_l0b].compute_at(sch[c_l0c], l0b_at_axis)
-
+        if is_with_fix_pipe_bias:
+            _fix_pipe_bias_process()
         Params().print_ir_matmul("before attach aub bub", sch)
 
         def _attach_aub_bub(al1_at_tensor, bl1_at_tensor):
@@ -3312,7 +3591,8 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
                 sch[c_before_mul_ub].reused_by(alpha_c_ub, c_ub_temp, c_ub)
                 sch[bias_ub].reused_by(beta_bias_ub)
 
-        def _do_double_buffer():
+
+        def _do_double_buffer_common():
             # double buffer
             # a_l1 b_l1
             temp_tensor_list = list()
@@ -3334,6 +3614,21 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
             # c_l0c C_UB
             if Params.TILING.get("manual_pingpong_buffer")["CL0_pbuffer"] == 2:
                 temp_tensor_list += [c_l0c]
+
+            for temp_tensor in temp_tensor_list:
+                sch[temp_tensor].double_buffer()
+
+
+        def _do_double_buffer_ub():
+            """double buffer for tensor in ub
+            INPUT: None
+            ----------------------------
+            RETURN: None
+            """
+            if Params.cube_vector_split:
+                return None
+
+            temp_tensor_list = list()
             if Params.TILING.get("manual_pingpong_buffer")["CUB_pbuffer"] == 2:
                 temp_tensor_list += [
                     alpha_ub,
@@ -3359,47 +3654,32 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
             for temp_tensor in temp_tensor_list:
                 sch[temp_tensor].double_buffer()
 
-        def _do_intrin_mapping(zn_b_ub_k_out, al1_emit_axis, bl1_emit_axis):
+
+        def _do_intrin_mapping_common(al1_emit_axis, bl1_emit_axis):
             # intrin mapping
             temp_tensor_list = [
                 a_l0a,
                 b_l0b,
-                c_ub,
-                c_before_mul_ub,
-                alpha_ub,
-                beta_ub,
-                bias_ub
             ]
-
             if small_ub_flag:
                 sch[a_l1].emit_insn(al1_emit_axis, "dma_copy")
                 sch[b_l1].emit_insn(bl1_emit_axis, "dma_copy")
+            elif Params.cv_split_nd_in_flag:
+                dma_dict = {"layout_transform": "nd2nz"}
+                sch[a_l1].emit_insn(a_l1.op.axis[0], "dma_copy", dma_dict)
+                sch[b_l1].emit_insn(b_l1.op.axis[0], "dma_copy", dma_dict)
             else:
                 temp_tensor_list.append(a_l1)
                 temp_tensor_list.append(b_l1)
 
-            if Params.ops_mode == "fp16fp16":
-                temp_tensor_list += [alpha_temp_ub, beta_temp_ub, float32_bias_ub]
-            if Params.ops_mode == "int8int32":
-                sch[bias_ub_fract].emit_insn(bias_ub_fract.op.axis[0], "vector_adds")
-            if Params.ops_mode == "int8fp32":
-                sch[zz_a_ub].emit_insn(zz_a_ub.op.axis[0], "vector_auto")
-                sch[zn_b_ub].emit_insn(zn_b_ub_k_out, "vector_auto")
-                temp_tensor_list += [float16_a_ub, float16_b_ub, a_ub, b_ub]
             for temp_tensor in temp_tensor_list:
                 sch[temp_tensor].emit_insn(temp_tensor.op.axis[0], "dma_copy")
 
             sch[c_gm].emit_insn(l0c_n_inner_inner, "dma_copy")
-            sch[alpha_c_ub].emit_insn(alpha_c_ub.op.axis[0], "vector_muls")
 
-            if alpha_c_ub is not None:
-                sch[c_ub_temp].emit_insn(c_ub_temp.op.axis[0], "vector_add")
-            else:
-                sch[c_ub_temp].emit_insn(c_ub_temp.op.axis[0], "vector_muls")
-
-            sch[beta_bias_ub].emit_insn(beta_bias_ub.op.axis[0], "vector_muls")
-
-            if Params.ops_mode == "int8fp32" and not small_ub_flag:
+            if (Params.ops_mode == "int8fp32"
+                and not small_ub_flag
+                and not Params.cube_vector_split):
                 mad_dict = {
                     "mad_pattern": cce_params.GEMM_MODE,
                     "k_outer": [
@@ -3421,16 +3701,61 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
                 }
             sch[c_l0c].emit_insn(bl0_n_inner, "mad", mad_dict)
 
-        al1_at_tensor, bl1_at_tensor = _attach_al1_bl1()
 
-        zn_b_ub_k_out = _attach_aub_bub(al1_at_tensor, bl1_at_tensor)
-        al1_axis, bl1_axis, zn_b_ub_k_out = _attach_aub_bub_small_ub(zn_b_ub_k_out)
-        _do_reused_by()
-        _do_double_buffer()
-        _do_intrin_mapping(zn_b_ub_k_out, al1_axis, bl1_axis)
+        def _do_intrin_mapping_ub(zn_b_ub_k_out):
+            """intrin mapping for tensor in ub
+            INPUT:
+                zn_b_ub_k_out, axis
+            ---------------------------
+            RETURN None
+            """
+            if Params.cube_vector_split:
+                return None
+
+            temp_tensor_list = [
+                c_ub,
+                c_before_mul_ub,
+                alpha_ub,
+                beta_ub,
+                bias_ub
+            ]
+            if Params.ops_mode == "fp16fp16":
+                temp_tensor_list += [alpha_temp_ub, beta_temp_ub, float32_bias_ub]
+            elif Params.ops_mode == "int8int32":
+                sch[bias_ub_fract].emit_insn(bias_ub_fract.op.axis[0], "vector_adds")
+            elif Params.ops_mode == "int8fp32":
+                sch[zz_a_ub].emit_insn(zz_a_ub.op.axis[0], "vector_auto")
+                sch[zn_b_ub].emit_insn(zn_b_ub_k_out, "vector_auto")
+                temp_tensor_list += [float16_a_ub, float16_b_ub, a_ub, b_ub]
+            for temp_tensor in temp_tensor_list:
+                sch[temp_tensor].emit_insn(temp_tensor.op.axis[0], "dma_copy")
+
+            sch[alpha_c_ub].emit_insn(alpha_c_ub.op.axis[0], "vector_muls")
+
+            if alpha_c_ub is not None:
+                sch[c_ub_temp].emit_insn(c_ub_temp.op.axis[0], "vector_add")
+            else:
+                sch[c_ub_temp].emit_insn(c_ub_temp.op.axis[0], "vector_muls")
+
+            sch[beta_bias_ub].emit_insn(beta_bias_ub.op.axis[0], "vector_muls")
+
+
+        al1_at_tensor, bl1_at_tensor = _attach_al1_bl1()
+        if not Params.cube_vector_split:
+            zn_b_ub_k_out = _attach_aub_bub(al1_at_tensor, bl1_at_tensor)
+            al1_axis, bl1_axis, zn_b_ub_k_out = _attach_aub_bub_small_ub(zn_b_ub_k_out)
+            _do_reused_by()
+        else:
+            zn_b_ub_k_out = None
+            al1_axis = None
+            bl1_axis = None
+        _do_double_buffer_common()
+        _do_double_buffer_ub()
+        _do_intrin_mapping_common(al1_axis, bl1_axis)
+        _do_intrin_mapping_ub(zn_b_ub_k_out)
         Params().print_ir_matmul("finish", sch)
 
-    if Params.ops_format_mode == "ND":
+    if Params.ops_format_mode == "ND" and not Params.cube_vector_split:
         _nd_process()
     else:
         _nz_process()

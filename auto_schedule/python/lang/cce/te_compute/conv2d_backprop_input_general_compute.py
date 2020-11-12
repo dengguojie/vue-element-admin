@@ -18,10 +18,13 @@ conv2d backprop input general compute.
 from te.lang.cce.te_compute.cube_util import ConvDslPattern
 from te.lang.cce.te_compute.cube_util import CubeDslPattern
 from te.lang.cce.te_compute.cube_util import shape_to_list
+from te.lang.cce.te_compute.cube_util import GroupDictKeys
 from te.platform import cce_conf
 from te.platform import cce_params
 from te.tvm import api as tvm
 from te.tvm.intrin import abs as tvm_abs
+from te.utils.error_manager import error_manager_util
+
 
 
 class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
@@ -44,6 +47,8 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
 
     kernel_name : cce kernel name
 
+    group_dict : The params of group convolution.
+
     Returns
     -------
     deconv_pattern_instance : instance of deconv pattern
@@ -62,7 +67,8 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
         offset_x,
         fusion_para,
         dynamic_para,
-        kernel_name
+        kernel_name,
+        group_dict
     ):
         super().__init__()
         _, _, kernel_h, kernel_w = kernel_sizes
@@ -77,6 +83,10 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
         self._offset_x = offset_x
         self._fusion_para = fusion_para
         self._dynamic_para = dynamic_para
+        self._group_dict = group_dict
+        self._real_g = self._group_dict.get(GroupDictKeys.g_extend)
+        self._cou1_g = self._group_dict.get(GroupDictKeys.dy_c1_extend)
+        self._cin1_g = self._group_dict.get(GroupDictKeys.dx_c1_extend)
 
     def generate_a(self, dy_ddr):  # pylint: disable=R0914,R0915
         """
@@ -293,17 +303,19 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
         )
 
         if stride_h > 1 or stride_w > 1:
-            dy_col = pat_conv.generate_a(dy_filling_l1, self._dynamic_para)
+            dy_col = pat_conv.generate_a(dy_filling_l1, self._real_g,
+                                         self._cou1_g, self._dynamic_para)
         else:
             offset = 0
             if l1_fusion_type != -1 and input_mem == 1 and valid_shape:
                 offset = slice_offset[2]
             dy_col = pat_conv.generate_a(
                 dy_filling,
+                self._real_g,
+                self._cou1_g,
                 self._dynamic_para,
                 slice_offset=offset,
-                valid_shape=valid_shape
-            )
+                valid_shape=valid_shape)
 
         return dy_col
 
@@ -319,6 +331,7 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
         ----------
         w_col: w tensor of fractal shape after transformation in L0B
         """
+
         if kernels.dtype == "int8":
 
             def _kernel_elem_func(*index):
@@ -331,26 +344,37 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
             w_k1, kernel_cout1, kernel_cout0, w_k0 = shape_to_list(kernels.shape)
             kernel_h, kernel_w = self._kernel_h, self._kernel_w
             if w_k1 % (kernel_h * kernel_w) != 0:
-                raise RuntimeError("w_k1 could not " "be divided by kernel_h*kernel_w ")
-            kernel_cin1 = w_k1 / (kernel_w * kernel_h)
-            shape_w_l0b = (
-                kernel_cout1 * kernel_h * kernel_w,
-                kernel_cin1,
-                w_k0,
-                kernel_cout0
-            )
-            w_col = tvm.compute(
-                shape_w_l0b,
-                lambda w_k1_idx, kernel_cin1_idx, w_k0_idx, kernel_cout0_idx: kernels[
-                    kernel_cin1_idx * kernel_h * kernel_w
-                    + (kernel_h * kernel_w - 1 - w_k1_idx % (kernel_h * kernel_w)),
-                    w_k1_idx // (kernel_h * kernel_w),
-                    kernel_cout0_idx,
-                    w_k0_idx
-                ],
+                dict_args = dict()
+                dict_args["errCode"] = "E60108"
+                dict_args["reason"] = "w_k1 could not be divided by kernel_h*kernel_w"
+                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+
+            shape_w_l0b = (self._real_g * self._cou1_g*kernel_h*kernel_w,
+                           self._cin1_g,
+                           w_k0,
+                           kernel_cout0)
+
+            def __kernel_2_l0_compute(indices, kernels):
+                w_k1_idx, kernel_cin1_idx, w_k0_idx, kernel_cout0_idx = indices
+
+                if self._real_g == 1:
+                    fkk_index = kernel_cin1_idx * kernel_h * kernel_w + (
+                                kernel_h * kernel_w - 1 - w_k1_idx
+                                % (kernel_h * kernel_w))
+                    cout1_index = w_k1_idx // (kernel_h * kernel_w)
+                else:
+                    g_index = w_k1_idx // (kernel_h * kernel_w * self._cou1_g)
+                    fkk_index = g_index * self._cin1_g * kernel_h * kernel_w + (
+                                kernel_cin1_idx * kernel_h * kernel_w) + (
+                                kernel_h * kernel_w - 1 - w_k1_idx
+                                % (kernel_h * kernel_w))
+                    cout1_index = w_k1_idx // (kernel_h * kernel_w) % self._cou1_g
+                return kernels[fkk_index, cout1_index, kernel_cout0_idx, w_k0_idx]
+            w_col = tvm.compute(shape_w_l0b, lambda *indices:
+                __kernel_2_l0_compute(indices, kernels),
                 name="w_col",
-                tag="inverse_trans_dma"
-            )
+                tag="inverse_trans_dma")
+
         return w_col
 
     def generate_c(  # pylint: disable=R0914,R0913
@@ -405,7 +429,7 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
             dy_col, w_col, c_type=res_c_type, tensor_bias=bias, offset_x=self._offset_x
         )
         # mad dx shape
-        dx_batch, dx_c1, dx_hw, dx_c0 = shape_to_list(dx_col.shape)
+        dx_g, dx_batch, dx_c1, dx_hw, dx_c0 = shape_to_list(dx_col.shape)
 
         # real dx shape
         _, dx_cin1, dx_h, dx_w, dx_cin0 = self._output_shape
@@ -416,13 +440,20 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
         if w_col.dtype == "int8" and dy_col.dtype == "int8":
             dx_ub_type = "int32"
 
-        dx_ub = tvm.compute(
-            (dx_batch, dx_c1, dx_hw, dx_c0),
-            lambda dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx: dx_col[
-                dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx
-            ].astype(dx_ub_type),
-            name="c_ub"
-        )
+        if self._real_g == 1:
+            dx_ub = tvm.compute(
+                (dx_batch, dx_cin1, dx_hw, dx_c0),
+                lambda dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
+                dx_col[0, dx_batch_idx,
+                    dx_cin1_idx, dx_hw_idx, dx_cin0_idx]
+                .astype(dx_ub_type), name="c_ub")
+        else:
+            dx_ub = tvm.compute(
+                (dx_batch, dx_cin1, dx_hw, dx_c0),
+                lambda dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
+                dx_col[dx_cin1_idx // self._cin1_g, dx_batch_idx,
+                    dx_cin1_idx % self._cin1_g, dx_hw_idx, dx_cin0_idx]
+                .astype(dx_ub_type), name="c_ub")
 
         if tensor_bias is not None and tensor_bias.dtype == "float16":
             dx_ub = _add_bias_in_ub(dx_ub, tensor_bias)
@@ -434,9 +465,8 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
             ],
             name="c_ddr",
             tag="conv2d_backprop_input",
-            attrs={
-                "output_shape": (dx_batch, dx_cin1, dx_h, dx_w, dx_cin0),
-                "kernel_name": self._kernel_name
-            }
-        )
+            attrs={"output_shape": (dx_batch, dx_cin1, dx_h, dx_w, dx_cin0),
+                   "group_dict": self._group_dict,
+                   "l0c_shape": (dx_g, dx_batch, dx_c1, dx_hw, dx_c0),
+                   "kernel_name": self._kernel_name})
         return dx_ddr

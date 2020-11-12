@@ -67,8 +67,8 @@ Status ReduceMinDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   }
   std::vector<int64_t> axis;
   if (!ge::AttrUtils::GetListInt(minDNode->GetOpDesc(), AXIS, axis)) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "get attr axis failed");
-    return FAILED;
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "get attr axis failed");
+    return NOT_CHANGED;
   }
 
   vector<int64_t> dim_info = tensor_input.GetShape().GetDims();

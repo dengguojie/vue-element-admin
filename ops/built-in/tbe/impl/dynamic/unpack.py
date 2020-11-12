@@ -19,13 +19,9 @@ dynamic unpack
 
 from te import tvm
 import te.platform as tbe_platform
+import te.lang.base as tbe_base
 from te.platform import cce_build
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import DYNAMIC_OUTPUT
-from te.utils.op_utils import OPTION_ATTR_INT
-from te.utils.op_utils import REQUIRED_ATTR_INT
-from te.utils.op_utils import KERNEL_NAME
+from te.utils import para_check
 
 
 class CompileVar:
@@ -474,12 +470,9 @@ class Unpack:
         return tiling_cases
 
 
-@tbe_platform.register_operator("Unpack")
-@check_op_params(REQUIRED_INPUT,
-                 DYNAMIC_OUTPUT,
-                 OPTION_ATTR_INT,
-                 REQUIRED_ATTR_INT,
-                 KERNEL_NAME)
+@tbe_base.register_operator("Unpack")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.DYNAMIC_OUTPUT, para_check.OPTION_ATTR_INT,
+                            para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def unpack(input_x, output_y, num=None, axis=0, kernel_name="unpack"):
     """
     unpacks the given dimension of a rank R tensor into rank (R-1) tensors.
@@ -505,9 +498,9 @@ def unpack(input_x, output_y, num=None, axis=0, kernel_name="unpack"):
     unpack_obj.build_cce()
 
     # Add compile info
-    tbe_platform.add_compile_info("axis", axis)
-    tbe_platform.add_compile_info("ub_size", unpack_obj.ub_size)
-    tbe_platform.add_compile_info("output_num", unpack_obj.output_num)
-    tbe_platform.add_compile_info("core_num", unpack_obj.core_num)
-    tbe_platform.add_compile_info("dtype", unpack_obj.dtype)
-    tbe_platform.add_compile_info("vars", unpack_obj.compile_vars)
+    tbe_base.add_compile_info("axis", axis)
+    tbe_base.add_compile_info("ub_size", unpack_obj.ub_size)
+    tbe_base.add_compile_info("output_num", unpack_obj.output_num)
+    tbe_base.add_compile_info("core_num", unpack_obj.core_num)
+    tbe_base.add_compile_info("dtype", unpack_obj.dtype)
+    tbe_base.add_compile_info("vars", unpack_obj.compile_vars)

@@ -14,10 +14,7 @@
 # ============================================================================
 
 
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import check_op_params
+from te.utils import para_check
 
 
 # pylint: disable=unused-argument
@@ -30,6 +27,7 @@ def check_supported(dims, value, y, kernel_name="fill"):
     return True
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def fill(dims, value, y, kernel_name="fill"):
     pass

@@ -16,5 +16,4 @@ set(LIBRARY_OUTPUT_PATH ${OP_PROTO_TARGET_OUT_DIR})
 message( STATUS "OP_PROTO_TARGET=${OP_PROTO_TARGET}")
 add_library(${OP_PROTO_TARGET} SHARED ${SRCS})
 
-link_directories(/usr/local/Ascend/atc/lib64)
-target_link_libraries(${OP_PROTO_TARGET} /usr/local/Ascend/atc/lib64/libgraph.so)
+target_link_libraries(${OP_PROTO_TARGET} ${ASCEND_INC}/../lib64/libgraph.so)

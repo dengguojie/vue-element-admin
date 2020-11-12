@@ -49,13 +49,8 @@ static bool InferReductionShape(const ge::Operator& operation, const string& inp
     OP_LOGE("Reduction", "The range of the axis must be between %ld and %ld !", -dimNum, dimNum - 1);
     string minvalue = ConcatString(-dimNum);
     string maxvalue = ConcatString(dimNum - 1);
-    map<string, string> err_map;
-    err_map["op_name"] = "Reduction";
-    err_map["param_name"] = "axis";
-    err_map["excepted_value"] = ConcatString("in the range of[", minvalue, ",", maxvalue, "]");
-    err_map["input_value"] = ConcatString(axis);
-    std::string report_error_code = "E70007";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    string excepted_value = ConcatString("in the range of[", minvalue, ",", maxvalue, "]");
+    OpsAttrValueErrReport(operation.GetName(), "axis", excepted_value, ConcatString(axis));
     return false;
   }
 

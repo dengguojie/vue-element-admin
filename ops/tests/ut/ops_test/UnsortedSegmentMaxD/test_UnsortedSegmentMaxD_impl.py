@@ -1,4 +1,3 @@
-# -*- coding:utf-8 -*-
 """
 Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
 
@@ -131,10 +130,10 @@ precision_case2 = {
     "params":
         [
             {
-                "shape": (16, ),  # data
+                "shape": (16, 32),  # data
                 "format": "NC1HWC0",
                 "dtype": "float32",
-                "ori_shape": (16, ),
+                "ori_shape": (16, 32),
                 "ori_format": "ND",
                 "param_type": "input"
             },
@@ -147,10 +146,10 @@ precision_case2 = {
                 "param_type": "input"
             },
             {
-                "shape": (5, ),  # y
+                "shape": (5, 32),  # y
                 "format": "NC1HWC0",
                 "dtype": "float32",
-                "ori_shape": (5, ),
+                "ori_shape": (5, 32),
                 "ori_format": "ND",
                 "param_type": "output"
             },
@@ -162,12 +161,81 @@ precision_case2 = {
     "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)
 }
 
+precision_case3 = {
+    "params":
+        [
+            {
+                "shape": (16, 32, 7),  # data
+                "format": "NC1HWC0",
+                "dtype": "float32",
+                "ori_shape": (16, 32, 7),
+                "ori_format": "ND",
+                "param_type": "input"
+            },
+            {
+                "shape": (16, ),  # segment_ids
+                "format": "ND",
+                "dtype": "int32",
+                "ori_shape": (16, ),
+                "ori_format": "ND",
+                "param_type": "input"
+            },
+            {
+                "shape": (5, 32, 7),  # y
+                "format": "NC1HWC0",
+                "dtype": "float32",
+                "ori_shape": (5, 32, 7),
+                "ori_format": "ND",
+                "param_type": "output"
+            },
+            # num_segments
+            5
+        ],
+    "expect": "success",
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)
+}
+
+precision_case4 = {
+    "params":
+        [
+            {
+                "shape": (16, 32, 7),  # data
+                "format": "NC1HWC0",
+                "dtype": "float32",
+                "ori_shape": (16, 32, 7),
+                "ori_format": "ND",
+                "param_type": "input"
+            },
+            {
+                "shape": (16, ),  # segment_ids
+                "format": "ND",
+                "dtype": "int32",
+                "ori_shape": (16, ),
+                "ori_format": "ND",
+                "param_type": "input"
+            },
+            {
+                "shape": (20, 32, 7),  # y
+                "format": "NC1HWC0",
+                "dtype": "float32",
+                "ori_shape": (20, 32, 7),
+                "ori_format": "ND",
+                "param_type": "output"
+            },
+            # num_segments
+            20
+        ],
+    "expect": "success",
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)
+}
+
 ut_case.add_case(["Ascend910", "Ascend310"], case_small_shape_scalar_fp32)
 ut_case.add_case(["Ascend910", "Ascend310"], case_small_shape_fp32)
 
-ut_case.add_precision_case("Ascend910", precision_case1)
-ut_case.add_precision_case("Ascend910", precision_case2)
+ut_case.add_precision_case(["Ascend910", "Ascend310"], precision_case1)
+ut_case.add_precision_case(["Ascend910", "Ascend310"], precision_case2)
+ut_case.add_precision_case(["Ascend910", "Ascend310"], precision_case3)
+ut_case.add_precision_case(["Ascend910", "Ascend310"], precision_case4)
 
-if __name__ == '__main__':
-    ut_case.run("Ascend910")
-    exit(0)

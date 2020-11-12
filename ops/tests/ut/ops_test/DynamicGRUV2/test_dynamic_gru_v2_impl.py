@@ -115,6 +115,7 @@ def matrix_to_zN(matrix, shape, dtype):  # m, n
                         for jj in range(0, 16):
                             tmp[idx] = matrix[i * 16 + ii][j * 16 + jj]
                             idx = idx + 1
+    tmp = tmp.reshape(shape[:-2] + (w // 16, h // 16, 16, 16))
     return tmp
 
 def maxtrix_zN_reverse(matrix, shape, dtype):

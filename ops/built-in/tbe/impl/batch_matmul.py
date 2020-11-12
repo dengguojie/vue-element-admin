@@ -195,17 +195,17 @@ def op_select_format(input_x, input_y, bias=None, output_z={}, trans_a=False,
 
     if src_dtype == "float16":
         input0 = util_select_op_base.gen_param(classify="input0", name="x1",
-                                               datatype="float16",
-                                               format="FRACTAL_NZ")
+                                               datatype="float16,float16",
+                                               format="FRACTAL_NZ,FRACTAL_NZ")
         input1 = util_select_op_base.gen_param(classify="input1", name="x2",
-                                               datatype="float16",
-                                               format="FRACTAL_NZ")
+                                               datatype="float16,float16",
+                                               format="FRACTAL_NZ,FRACTAL_NZ")
         input2 = util_select_op_base.gen_param(classify="input2", name="bias",
-                                               datatype="float16",
-                                               format="ND")
+                                               datatype="float16,float",
+                                               format="ND,ND")
         output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                datatype="float16",
-                                                format="FRACTAL_NZ")
+                                                datatype="float16,float",
+                                                format="FRACTAL_NZ,FRACTAL_NZ")
     else:
         input0 = util_select_op_base.gen_param(classify="input0", name="x1",
                                                datatype="float16,float,float,int32,int32",

@@ -18,8 +18,10 @@ reduction compute
 # pylint: disable=import-error
 from decorator import decorator
 from te import tvm
+from te.lang.base import operation
 from te.platform import intrinsic_check_support
-
+from te.platform import get_soc_spec
+from te.utils.error_manager.error_manager_util import get_error_message
 from .cast_compute import _cast
 from .elewise_compute import vmuls
 from .util import shape_to_list
@@ -33,11 +35,12 @@ from .util import dsl_support_dtype
 
 # pylint: disable=too-many-branches
 @decorator
-def auto_cast_of_reduce(func, *args, **kwargs):
+def _auto_cast_of_reduce(func, *args, **kwargs):
     '''
     auto cast dectorator.
     Before calling elewise api, check the input tensor is supported by the intr.
     If not supported, casting the input tensor to supported dtype.
+    Only static shape support auto cast.
     (On condition that the cast type is supported.
     If the cast type is not supported,raising a RuntimeError).
     '''
@@ -56,9 +59,29 @@ def auto_cast_of_reduce(func, *args, **kwargs):
 
         return len(shape) - 1 in local_axis
 
+    def _check_dynamic_dtype(raw_tensor, intr, supported_dtypes, is_last_axis):
+        """
+        check dtype for dynamic shape
+        """
+        if not is_last_axis:
+            supported_dtypes.append("int32")
+
+        dtype = raw_tensor.dtype
+
+        if dtype not in supported_dtypes:
+            soc_ver = get_soc_spec("SOC_VERSION")
+            dict_args = dict()
+            dict_args["errCode"] = "E90002"
+            dict_args["detailed_cause"] = "[%s] do not support [%s] in [%s] !" % (intr, dtype, soc_ver)
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+
     if len(args) == 3 or len(args) == 4:
         if not isinstance(args[0], tvm.tensor.Tensor):
-            raise RuntimeError("The first input type must be tvm.tensor")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "The first input type must be [%s]" \
+                                          ", while type is [%s]" \
+                                          % ('tvm.tensor', type(args[0]))
 
         raw_tensor = args[0]
         axis = args[1]
@@ -79,7 +102,14 @@ def auto_cast_of_reduce(func, *args, **kwargs):
 
         supported_dtypes = dsl_support_dtype(intr)
         if not supported_dtypes:
-            raise RuntimeError("%s is not supported!" % intr)
+            dict_args = dict()
+            dict_args["errCode"] = "E90002"
+            dict_args["detailed_cause"] = "[%s] is not supported!" % intr
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+        # dynamic shape do not perform auto cast
+        if operation.in_dynamic():
+            _check_dynamic_dtype(raw_tensor, intr, supported_dtypes, is_last_axis)
+            return func(raw_tensor, axis, keepdims)
 
         # 1. reduce_max/min last v100 with priority_flag
         #    or v200, support float32
@@ -106,7 +136,7 @@ NAME_INDEX = [0]
 
 
 # pylint: disable=redefined-builtin
-@auto_cast_of_reduce
+@_auto_cast_of_reduce
 def sum(raw_tensor, axis, keepdims=False):
     """
     calculate sum of raw_tensor, only support float16
@@ -123,7 +153,7 @@ def sum(raw_tensor, axis, keepdims=False):
     return _single_reduce_op(raw_tensor, axis, "reduce_sum", keepdims)
 
 
-@auto_cast_of_reduce
+@_auto_cast_of_reduce
 def reduce_min(raw_tensor, axis, keepdims=False, priority_flag=False):
     """
     calculate reduce_min of raw_tensor, only support float16
@@ -141,7 +171,7 @@ def reduce_min(raw_tensor, axis, keepdims=False, priority_flag=False):
 
 
 # pylint: disable=unused-argument
-@auto_cast_of_reduce
+@_auto_cast_of_reduce
 def reduce_max(raw_tensor, axis, keepdims=False, priority_flag=False):
     """
     calculate reduce_max of raw_tensor, only support float16
@@ -159,7 +189,7 @@ def reduce_max(raw_tensor, axis, keepdims=False, priority_flag=False):
     return _single_reduce_op(raw_tensor, axis, "reduce_max", keepdims)
 
 
-@auto_cast_of_reduce
+@_auto_cast_of_reduce
 def reduce_prod(raw_tensor, axis, keepdims=False):
     """
     calculate reduce_prod of raw_tensor, only support float16
@@ -182,7 +212,10 @@ def _single_reduce_op(input_tensor,  # pylint: disable=too-many-statements
     keepdims : if true, retains reduced dimensions with length 1, default value is None
     """
     if axis is None:
-        raise RuntimeError("The axis is None!")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "The axis is None!"
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     check_input_tensor_shape(input_tensor)
 
@@ -236,7 +269,12 @@ def _single_reduce_op(input_tensor,  # pylint: disable=too-many-statements
         elif in_op.lower() == "reduce_prod":
             reduce_func = tvm.prod
         else:
-            raise RuntimeError("Not Support yet for op %s." % in_op)
+            dict_args = dict()
+            dict_args["errCode"] = "E90003"
+            dict_args["detailed_cause"] = "Not Support yet for op [%s]. " \
+                                          "in_op must be reduce_min, " \
+                                          "reduce_max, reduce_sum or reduce_prod" % in_op
+            raise RuntimeError(dict_args, get_error_message(dict_args))
         return reduce_func
 
     reduce_func = __get_reduce_fun(in_op)
@@ -247,10 +285,11 @@ def _single_reduce_op(input_tensor,  # pylint: disable=too-many-statements
 
     if keepdims:
         axis = res_axis[:]
-        axis_for_loop = axis.copy()
-        for index in axis_for_loop:
-            if int(input_tensor.shape[index]) == 1:
-                axis.remove(index)
+        if not operation.in_dynamic():
+            axis_for_loop = axis.copy()
+            for index in axis_for_loop:
+                if int(input_tensor.shape[index]) == 1:
+                    axis.remove(index)
     if not axis:
         res = vmuls(input_tensor, tvm.const(1, dtype=input_tensor.dtype))
         return res
@@ -267,7 +306,7 @@ def _single_reduce_op(input_tensor,  # pylint: disable=too-many-statements
 
 
 @decorator
-def auto_cast_of_tuple_reduce(func, *args, **kwargs):
+def _auto_cast_of_tuple_reduce(func, *args, **kwargs):
     '''
     auto cast dectorator.
     Before calling elewise api, check the input tensor is supported by the intr.
@@ -278,7 +317,10 @@ def auto_cast_of_tuple_reduce(func, *args, **kwargs):
     func_name = func.__name__
     supported_types = ("float16", "float32")
     if func_name != "tuple_sum":
-        raise RuntimeError("function name must be tuple_sum")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "function name [%s] must be tuple_sum" % func_name
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     def _is_last_axis(shape, axis):
         if isinstance(axis, (tuple, list)):
@@ -289,12 +331,20 @@ def auto_cast_of_tuple_reduce(func, *args, **kwargs):
 
     def _check_tensor(tensor_list):
         if len(tensor_list) != 2:
-            raise RuntimeError("Tuple reduce input tensors must be 2.")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "Tuple reduce input tensors must be 2. " \
+                                    "while is [%s]" % len(tensor_list)
+            raise RuntimeError(dict_args, get_error_message(dict_args))
         shape1 = shape_to_list(tensor_list[0].shape)
         shape2 = shape_to_list(tensor_list[1].shape)
         if shape1 != shape2:
-            raise RuntimeError(
-                "Tuple reduce input tensors must have same shape.")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "Tuple reduce input tensors must " \
+                                          "have same shape. while shape1 is [%s], " \
+                                          "shape2 is [%s]" % (shape1, shape2)
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
     def _deal_tensor_dtype(raw_tensor, supported_types):
         dtype = raw_tensor.dtype
@@ -312,7 +362,11 @@ def auto_cast_of_tuple_reduce(func, *args, **kwargs):
 
     if len(args) == 3:
         if not isinstance(args[0], (tuple, list)):
-            raise RuntimeError("The first input type must be list or tuple")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "The first input type must be list" \
+                                          " or tuple, while type is [%s]" % type(args[0])
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
         raw_tensor_list = args[0]
         axis = args[1]
@@ -330,7 +384,7 @@ def auto_cast_of_tuple_reduce(func, *args, **kwargs):
     return func(*args, **kwargs)
 
 
-@auto_cast_of_tuple_reduce
+@_auto_cast_of_tuple_reduce
 def tuple_sum(input_tensor_list, axis, keepdims=False):
     """
     calculate sum of raw_tensor, only support float16
@@ -354,7 +408,10 @@ def _tuple_reduce_op(input_tensor_list, axis, in_op, keepdims=False):
     keepdims : if true, retains reduced dimensions with length 1, default value is None
     """
     if axis is None:
-        raise RuntimeError("The axis is None!")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "The axis is None!"
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     check_input_tensor_shape(input_tensor_list[0])
 
@@ -418,7 +475,11 @@ def _tuple_reduce_op(input_tensor_list, axis, in_op, keepdims=False):
     if in_op.lower() == "tuple_reduce_sum":
         reduce_func = tuple_sum_func
     else:
-        raise RuntimeError("Not Support yet for op %s." % in_op)
+        dict_args = dict()
+        dict_args["errCode"] = "E90003"
+        dict_args["detailed_cause"] = "Not Support yet for op [%s], " \
+                                      "in_op must be tuple_reduce_sum" % in_op
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     op_tensor = input_tensor_list[0]
     shape = shape_to_list(op_tensor.shape)

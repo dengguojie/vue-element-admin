@@ -23,7 +23,11 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te.platform.cce_build import build_config
 from topi.cce import util
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import ReduceInput
+from impl.util.util_select_op_base import ReduceOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 # segment num one time for copy_gm_to_ubuf
 SEGMENT_SIZE_COPY_GM_TO_UB = 1024 * 10
@@ -41,6 +45,27 @@ SCALAR_NEGATIVE_ONE = -1
 SCALAR_ONE = 1
 # scalar 0
 SCALAR_ZERO = 0
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(x,
+                        y,
+                        nbins,
+                        dtype="int32",
+                        kernel_name='histogram_fixed_width_d'):
+    format_x = x.get("format").upper()
+    shape_x_len = len(x.get("shape"))
+    if format_x == "ND":
+        axis_reduce_matrix=[]
+        for i in range(shape_x_len):
+            split_0 = [ReduceInput([0, [i]]), ReduceOutput([0, 1, False])]
+            axis_reduce_matrix.append(split_0)
+        axis_split_list = None
+    else:
+        axis_split_list = None
+        axis_reduce_matrix = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_list, axis_reduce_matrix, 0, 0)
+    return op_cal_info_in_json
 
 
 # pylint: disable=too-many-instance-attributes
@@ -918,8 +943,8 @@ def histogram_fixed_width_d_compute(x,
 
 
 # pylint: disable=too-many-arguments,redefined-builtin
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_INT,
-                 OPTION_ATTR_STR, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_INT, para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
 def histogram_fixed_width_d(x,
                             range,
                             y,
@@ -956,20 +981,21 @@ def histogram_fixed_width_d(x,
     input_dtype = x.get("dtype")
     dtype_input = input_dtype.lower()
 
-    check_shape(input_shape_list[0], param_name="x")
-    check_shape(input_shape_list[1], param_name="range")
+    para_check.check_shape(input_shape_list[0], param_name="x")
+    para_check.check_shape(input_shape_list[1], param_name="range")
     util.compare_tensor_dict_key(x, range, "dtype")
     data_shape_size = util.check_tensor_shape_size(list(input_shape_list[0]))
     data_range_shape_size = util.check_tensor_shape_size(
         list(input_shape_list[1]))
 
-    check_dtype(dtype_input, ("float16", "float32", "int32"), param_name="x")
+    para_check.check_dtype(dtype_input, ("float16", "float32", "int32"), param_name="x")
 
     if data_range_shape_size != 2:
-        raise RuntimeError("the shape of range must be (2,) or [2]")
+        error_detail = "the shape of range must be (2,) or [2]"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "range", error_detail)
 
     if nbins <= 0:
-        raise RuntimeError("the nbins must be > 0")
+        error_manager_vector.raise_err_input_value_invalid(kernel_name, "nbins", "larger than 0", nbins)
 
     data = tvm.placeholder([data_shape_size],
                            dtype=dtype_input,

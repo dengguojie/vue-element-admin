@@ -164,7 +164,7 @@ ut_case.add_precision_case("all", {
                {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,1,1), "shape": (1,1,1,1,16),
                 "param_type": "output"},
                (1,1,3,3),
-               (1,1,2,2),
+               (1,1,3,3),
                "SAME",
                (0,0,0,0),
                "NCHW",

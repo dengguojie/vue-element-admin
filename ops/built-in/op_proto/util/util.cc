@@ -25,6 +25,7 @@
 #include <functional>
 #include <algorithm>
 #include "./error_util.h"
+#include "op_common_util.h"
 #include "graph/utils/type_utils.h"
 
 namespace ge {
@@ -456,38 +457,19 @@ bool GetScalerValue(const Operator& op, const Tensor& const_tensor, const DataTy
 }
 
 string to_string(const vector<int64_t>& shape) {
-  std::string shape_string = "(";
-  for (auto item : shape) {
-    shape_string += std::to_string(item);
-    shape_string += ",";
-  }
-  shape_string += ")";
-
-  return shape_string;
+  return ops::to_string(shape);
 }
 
 std::string to_string(const ge::Shape& shape) {
-  const auto shape_dims = shape.GetDims();
-  return to_string(shape_dims);
+  return to_string(shape.GetDims());
 }
 
 std::string to_string(const ge::GeShape& shape) {
-  const auto shape_dims = shape.GetDims();
-  return to_string(shape_dims);
+  return to_string(shape.GetDims());
 }
 
 std::string to_string(const vector<pair<int64_t, int64_t>>& ranges) {
-  std::string ranges_string = "(";
-  for (auto item : ranges) {
-    ranges_string += "(";
-    ranges_string += std::to_string(item.first);
-    ranges_string += ",";
-    ranges_string += std::to_string(item.second);
-    ranges_string += "),";
-  }
-  ranges_string += ")";
-
-  return ranges_string;
+  return ops::to_string(ranges);
 }
 
 bool DynamicShapeInfer::CatchFormatAndShape() {

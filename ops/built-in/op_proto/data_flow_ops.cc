@@ -1046,7 +1046,7 @@ IMPLEMT_INFERFUNC(DynamicStitch, DynamicStitchInfer) {
 
   bool all_indices_constant = true;
   int32_t max_index = 0;
-  Shape last_suffix_shape(ge::UNKNOWN_RANK);
+  GeShape last_suffix_shape(ge::UNKNOWN_RANK);
 
   for (int64_t i = 0; i < num_incides; ++i) {
     auto indices_tensor_name = "indices" + std::to_string(i);
@@ -1089,7 +1089,7 @@ IMPLEMT_INFERFUNC(DynamicStitch, DynamicStitchInfer) {
       }
     }
 
-    Shape data_suffix_shape;
+    GeShape data_suffix_shape;
     if (SubShape(data_shape, rank_of_indices, rank_of_data, 1, data_suffix_shape, op.GetName().c_str()) !=
         GRAPH_SUCCESS) {
       OP_LOGE(op.GetName().c_str(), "get suffix shape of x error !");
@@ -1112,16 +1112,18 @@ IMPLEMT_INFERFUNC(DynamicStitch, DynamicStitchInfer) {
     }
   }
   auto output_dim0 = all_indices_constant ? (max_index + 1) : (ge::UNKNOWN_DIM);
-  Shape output_shape_prefix({output_dim0});
-  Shape output_shape;
+  GeShape output_shape_prefix({output_dim0});
+  GeShape output_shape;
   if (Concatenate(output_shape_prefix, last_suffix_shape, output_shape) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "generate output_shape error! ");
     return GRAPH_FAILED;
   }
 
-  auto y_desc = op_desc->MutableOutputDesc("y");
-  y_desc->SetDataType(op_desc->MutableInputDesc("x0")->GetDataType());
-  y_desc->SetShape(GeShape(output_shape.GetDims()));
+  GeTensorDescPtr y_desc = op_desc->MutableOutputDesc("y");
+  GeShape y_shape(output_shape.GetDims());
+  DataType y_data_type = op_desc->MutableInputDesc("x0")->GetDataType();
+
+  (void)FillOpDesc(y_desc, y_shape, y_data_type);
 
   return GRAPH_SUCCESS;
 }
@@ -1728,6 +1730,8 @@ IMPLEMT_INFERFUNC(ResourceConditionalAccumulator, ResourceConditionalAccumulator
   auto handle_desc = op.GetOutputDesc("handle");
   handle_desc.SetShape(vector_shape);
   handle_desc.SetDataType(DT_RESOURCE);
+
+
   if (op.UpdateOutputDesc("handle", handle_desc) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "update handle desc failed");
     return GRAPH_FAILED;
@@ -1805,5 +1809,110 @@ IMPLEMT_INFERFUNC(OutfeedEnqueueOp, OutfeedEnqueueInfer) {
 }
 
 INFER_FUNC_REG(OutfeedEnqueueOp, OutfeedEnqueueInfer);
+
+// --------------------------------LruCache-------------------------------------
+IMPLEMT_COMMON_INFERFUNC(LruCacheInferShape) {
+  int64_t cache_size;
+  if (op.GetAttr("cache_size", cache_size) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "get attr cache_size error.");
+    return GRAPH_FAILED;
+  }
+  if (cache_size <= 0) {
+    OP_LOGE(op.GetName().c_str(), "cache_size should be >0 , real value is %d.", cache_size);
+    return GRAPH_PARAM_INVALID;
+  }
+
+  float load_factor;
+  if (op.GetAttr("load_factor", load_factor) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "get attr load_factor error.");
+    return GRAPH_FAILED;
+  }
+  if (load_factor <= 0.0 || load_factor > 1.0) {
+    OP_LOGE(op.GetName().c_str(), "load_factor should be in  (0, 1.0] , real value is %d.", load_factor);
+    return GRAPH_PARAM_INVALID;
+  }
+  Shape scalar_shape;
+  (void)Scalar(scalar_shape);
+  TensorDesc output_desc = op.GetOutputDesc("cache");
+  DataType output_type = DT_RESOURCE;
+  output_desc.SetShape(scalar_shape);
+  output_desc.SetDataType(output_type);
+  graphStatus output_status = op.UpdateOutputDesc("cache", output_desc);
+  if (output_status != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "update handle failed");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(LruCache, LruCacheInferShape);
+// ---------------------LruCache END-------------------------------------
+
+// --------------------------------CacheAdd-------------------------------------
+IMPLEMT_COMMON_INFERFUNC(CacheAddInferShape) {
+  OpDescPtr op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr ids = op_desc->MutableInputDesc(1);
+
+  GeShape ids_shape;
+  if (WithRank(ids, 1, ids_shape) != GRAPH_SUCCESS) {
+    ShapeErrReport(0, op.GetName(), DebugString(ids->GetShape().GetDims()), "1D");
+    OP_LOGE(op.GetName().c_str(), "input ids must be 1-D");
+    return GRAPH_FAILED;
+  }
+  DataType output_type = DT_INT64;
+  GeTensorDescPtr swap_in_id_desc = op_desc->MutableOutputDesc(0);
+  GeTensorDescPtr swap_in_idx_desc = op_desc->MutableOutputDesc(1);
+  GeTensorDescPtr swap_out_id_desc = op_desc->MutableOutputDesc(2);
+  GeTensorDescPtr swap_out_idx_desc = op_desc->MutableOutputDesc(3);
+  swap_in_id_desc->SetShape(GeShape({UNKNOWN_DIM}));
+  swap_in_id_desc->SetOriginShape(GeShape({UNKNOWN_DIM}));
+  swap_in_id_desc->SetDataType(ids->GetDataType());
+
+  swap_in_idx_desc->SetShape(GeShape({UNKNOWN_DIM}));
+  swap_in_idx_desc->SetOriginShape(GeShape({UNKNOWN_DIM}));
+  swap_in_idx_desc->SetDataType(output_type);
+
+  swap_out_id_desc->SetShape(GeShape({UNKNOWN_DIM}));
+  swap_out_id_desc->SetOriginShape(GeShape({UNKNOWN_DIM}));
+  swap_out_id_desc->SetDataType(ids->GetDataType());
+
+  swap_out_idx_desc->SetShape(GeShape({UNKNOWN_DIM}));
+  swap_out_idx_desc->SetOriginShape(GeShape({UNKNOWN_DIM}));
+  swap_out_idx_desc->SetDataType(output_type);
+
+  if (ids_shape.GetShapeSize() != UNKNOWN_DIM) {
+    std::vector<std::pair<int64_t, int64_t>> range;
+    int64_t max_dim = ids_shape.GetDim(0);
+    range.emplace_back(std::make_pair(1, max_dim));
+    swap_in_id_desc->SetShapeRange(range);
+    swap_in_idx_desc->SetShapeRange(range);
+    swap_out_id_desc->SetShapeRange(range);
+    swap_out_idx_desc->SetShapeRange(range);
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(CacheAdd, CacheAddInferShape);
+// ---------------------CacheAdd END-------------------------------------
+
+// --------------------------------CacheRemoteIndexToLocal--------------------------------
+IMPLEMT_COMMON_INFERFUNC(CacheRemoteIndexToLocalInferShape) {
+  TensorDesc desc = op.GetInputDesc(1);
+  TensorDesc local_idx_desc = op.GetOutputDesc(0);
+  Shape ids_shape = desc.GetShape();
+  DataType output_type = DT_INT64;
+  std::vector<std::pair<int64_t,int64_t>> range;
+  auto status = desc.GetShapeRange(range);
+  if (status != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
+  local_idx_desc.SetShapeRange(range);
+  local_idx_desc.SetShape(ids_shape);
+  local_idx_desc.SetDataType(output_type);
+  return op.UpdateOutputDesc("local_idx", local_idx_desc);
+}
+
+COMMON_INFER_FUNC_REG(CacheRemoteIndexToLocal, CacheRemoteIndexToLocalInferShape);
+// ---------------------CacheRemoteIndexToLocal END-------------------------------------
 
 }  // namespace ge

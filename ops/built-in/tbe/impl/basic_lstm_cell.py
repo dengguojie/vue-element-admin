@@ -19,6 +19,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 C0 = 16
 
@@ -305,20 +306,25 @@ def basiclstm_cell_check(x, h, c, w, b, ct, ht, it, ft, jt, ot, tanhct):
         raise RuntimeError("c, b, ct, it, ft, jt, ot,"
                            " tanhct dtype not match!")
     if c["dtype"] not in ["float16", "float32"]:
-        raise RuntimeError("c, b, ct, it, ft, jt, ot,"
-                           " tanhct dtype supports float16 and float32 only!")
+        rule_desc = "dtype of c should be one of [float16,float32]"
+        error_manager_vector.raise_err_check_params_rules("basic_lstm_cell", rule_desc, "c", c["dtype"])
 
     if len(x["ori_shape"]) != 2:
-        raise RuntimeError("wrong x ori_shape {}".format(len(x["ori_shape"])))
+        error_detail = "ori_shape'rank of x should be 2"
+        error_manager_vector.raise_err_input_shape_invalid("basic_lstm_cell", "x", error_detail)
     if len(h["ori_shape"]) != 2:
-        raise RuntimeError("wrong h ori_shape {}".format(len(h["ori_shape"])))
+        error_detail = "ori_shape'rank of h should be 2"
+        error_manager_vector.raise_err_input_shape_invalid("basic_lstm_cell", "h", error_detail)
     if len(c["ori_shape"]) != 2:
-        raise RuntimeError("wrong c ori_shape {}".format(len(c["ori_shape"])))
+        error_detail = "ori_shape'rank of c should be 2"
+        error_manager_vector.raise_err_input_shape_invalid("basic_lstm_cell", "c", error_detail)
 
     if len(w["ori_shape"]) != 2:
-        raise RuntimeError("wrong w ori_shape {}".format(len(w["ori_shape"])))
+        error_detail = "ori_shape'rank of w should be 2"
+        error_manager_vector.raise_err_input_shape_invalid("basic_lstm_cell", "w", error_detail)
     if len(b["ori_shape"]) != 1:
-        raise RuntimeError("wrong b ori_shape {}".format(len(b["ori_shape"])))
+        error_detail = "ori_shape'rank of b should be 1"
+        error_manager_vector.raise_err_input_shape_invalid("basic_lstm_cell", "b", error_detail)
 
     batch_dim_x, input_dim_x = x["ori_shape"]
     batch_dim_h, output_dim_h = h["ori_shape"]

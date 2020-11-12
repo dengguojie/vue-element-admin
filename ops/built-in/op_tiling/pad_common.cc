@@ -36,7 +36,7 @@ int padCommon::_numBit(const std::string& dtype) {
 
 int64_t padCommon::_prod(int64_t index, const std::vector<int64_t>& shape) {
   int64_t init = 1;
-  init = std::accumulate(shape.begin() + index, shape.end(), init, std::multiplies<int>());
+  init = std::accumulate(shape.begin() + index, shape.end(), init, std::multiplies<int64_t>());
   return init;
 }
 
@@ -224,7 +224,7 @@ void padCommon::GetDepth(const std::vector<int64_t>& inShape, const std::vector<
 
   // Eliminate "1" in head: [1,1,2,..,] -> [2,...]
   for (int i = 1; i <= size; i++) {
-    pro_value = accumulate(inShape.begin(), inShape.begin() + i, 1, multiplies<int>());
+    pro_value = accumulate(inShape.begin(), inShape.begin() + i, 1, multiplies<int64_t>());
     depth = i;
     if (pro_value != 1) {
       break;
@@ -274,7 +274,7 @@ void padCommon::_calc_core_circulation(int branch, int index, const std::string&
   int64_t loop_0 = 0;
   int64_t loop_1 = 0;
   int64_t block_num = MINI_UNIT / numBit;
-  int64_t prod = std::accumulate(inShape.begin(), inShape.begin() + index, 1, std::multiplies<int>());
+  int64_t prod = std::accumulate(inShape.begin(), inShape.begin() + index, 1, std::multiplies<int64_t>());
   if (vol->at(index) > 0) {
     virCore = (prod != 1) ? inShape[index - 1] : vol->at(index) / block_num;
     total_core->at(index) = (virCore > maxCore) ? maxCore : virCore;
@@ -377,6 +377,7 @@ void padCommon::SplitRL(int64_t& ptrR, int64_t& ptrL, int64_t maxCore, int64_t b
 void padCommon::_MaxDup(PadDTilingParams& params, int64_t idx) {
   int64_t CirDupVol = 0;
   int64_t MovDupVol = 0;
+  int64_t CirPos = 0;
   int64_t MovPos = 0;
   int64_t SortVol = (idx == int64_t(params.recur_inShape.size())) ? 0 : params.prod_recurOut[idx];
 
@@ -384,6 +385,7 @@ void padCommon::_MaxDup(PadDTilingParams& params, int64_t idx) {
   for (int64_t i = 0; i <= params.depth - 1; i++) {
     CirDupVol = (params.top_vol[i] >= params.bottom_vol[i]) ? params.top_vol[i] : params.bottom_vol[i];
     if (CirDupVol > 0) {
+      CirPos = i;
       break;
     }
   }
@@ -429,7 +431,7 @@ void padCommon::GetRecurCore(PadDTilingParams& params, const std::vector<int64_t
   using namespace std;
   int64_t depth = params.depth;
   int64_t block = MINI_UNIT / numBit;
-  int64_t baseCore = accumulate(inShape.begin(), inShape.begin() + depth - 1, 1, std::multiplies<int>());
+  int64_t baseCore = accumulate(inShape.begin(), inShape.begin() + depth - 1, 1, std::multiplies<int64_t>());
   int64_t size = inShape.size();
   int64_t baseData = (size != depth) ? _prod(depth, outShape) : block;
   if (depth <= 0){
@@ -459,16 +461,22 @@ void padCommon::GetRecurCore(PadDTilingParams& params, const std::vector<int64_t
   // Only split two dims as core
   params.recur_inShape = inShape;
   if (depth - 1 > 0) {
-    params.recur_inShape[depth - 2] = 1;
+    for (int i = 0; i <= depth-2; i++){
+      params.recur_inShape[i] = 1;
+    }
   }
   params.recur_inShape[depth - 1] = ptrR;
+
   params.recur_padding = padding;
   for (int i = 0; i < depth; i++) {
     params.recur_padding[i] = {0, 0};
   }
+
   params.recur_outShape = outShape;
   if (depth - 1 > 0) {
-    params.recur_outShape[depth - 2] = 1;
+      for (int i = 0; i <= depth-2; i++){
+        params.recur_outShape[i] = 1;
+      }
   }
   if (depth - 1 >= 0) {
     params.recur_outShape[depth - 1] = ptrR;
@@ -555,7 +563,7 @@ void padCommon::GetRecurCorePro(PadDTilingParams& params, const std::vector<int6
   } else {
     // A B C D
     // eg: depth = 3 size = 4
-    baseCore = accumulate(inShape.begin(), inShape.begin() + depth - 1, 1, std::multiplies<int>());
+    baseCore = accumulate(inShape.begin(), inShape.begin() + depth - 1, 1, std::multiplies<int64_t>());
     baseData = _prod(depth, outShape);
 
     int64_t ptrR = inShape[depth - 1];
@@ -581,16 +589,22 @@ void padCommon::GetRecurCorePro(PadDTilingParams& params, const std::vector<int6
     // Only split two dims as core
     params.recur_inShape = inShape;
     if (depth - 1 > 0) {
-      params.recur_inShape[depth - 2] = 1;
+      for (int i = 0; i <= depth-2; i++){
+        params.recur_inShape[i] = 1;
+      }
     }
     params.recur_inShape[depth - 1] = ptrR;
+
     params.recur_padding = padding;
     for (int i = 0; i < depth; i++) {
       params.recur_padding[i] = {0, 0};
     }
+
     params.recur_outShape = outShape;
     if (depth - 1 > 0) {
-      params.recur_outShape[depth - 2] = 1;
+      for (int i = 0; i <= depth-2; i++){
+        params.recur_outShape[i] = 1;
+      }
     }
     params.recur_outShape[depth - 1] = ptrR;
   }
@@ -644,7 +658,7 @@ void padCommon::SetVectorParams(std::vector<std::vector<int64_t>>& vector_params
 
   for (int i = 0; i < num0; i++) {
     for (int j = 0; j < num1; j++) {
-      ByteBufferPut(runInfo.tiling_data, int32_t(vector_params[i][j]));
+      ByteBufferPut(runInfo.tiling_data, int64_t(vector_params[i][j]));
     }
   }
 }
@@ -712,17 +726,17 @@ void padCommon::SetRunningParams(const PadDTilingParams& params, OpRunInfo& runI
   using namespace std;
   // scalar_params
   // 256
-  ByteBufferPut(runInfo.tiling_data, int32_t(params.branch));
-  ByteBufferPut(runInfo.tiling_data, int32_t(params.depth));
-  ByteBufferPut(runInfo.tiling_data, int32_t(params.total_core));
-  ByteBufferPut(runInfo.tiling_data, int32_t(params.div_core));
-  ByteBufferPut(runInfo.tiling_data, int32_t(params.in_vol));
-  ByteBufferPut(runInfo.tiling_data, int32_t(params.loop_0));
-  ByteBufferPut(runInfo.tiling_data, int32_t(params.loop_1));
-  ByteBufferPut(runInfo.tiling_data, int32_t(params.gap_0));
-  ByteBufferPut(runInfo.tiling_data, int32_t(params.gap_1));
-  ByteBufferPut(runInfo.tiling_data, int32_t(params.cond));
-  ByteBufferPut(runInfo.tiling_data, int32_t(params.address));
+  ByteBufferPut(runInfo.tiling_data, int64_t(params.branch));
+  ByteBufferPut(runInfo.tiling_data, int64_t(params.depth));
+  ByteBufferPut(runInfo.tiling_data, int64_t(params.total_core));
+  ByteBufferPut(runInfo.tiling_data, int64_t(params.div_core));
+  ByteBufferPut(runInfo.tiling_data, int64_t(params.in_vol));
+  ByteBufferPut(runInfo.tiling_data, int64_t(params.loop_0));
+  ByteBufferPut(runInfo.tiling_data, int64_t(params.loop_1));
+  ByteBufferPut(runInfo.tiling_data, int64_t(params.gap_0));
+  ByteBufferPut(runInfo.tiling_data, int64_t(params.gap_1));
+  ByteBufferPut(runInfo.tiling_data, int64_t(params.cond));
+  ByteBufferPut(runInfo.tiling_data, int64_t(params.address));
 
   // vector_params(recur_padding special)
   vector<vector<int64_t>> vector_params = {
@@ -737,11 +751,11 @@ void padCommon::SetRunningParams(const PadDTilingParams& params, OpRunInfo& runI
 
   // recur_padding
   for (int i = 0; i < int64_t(params.recur_padding.size()); i++) {
-    ByteBufferPut(runInfo.tiling_data, int32_t(params.recur_padding[i][0]));
+    ByteBufferPut(runInfo.tiling_data, int64_t(params.recur_padding[i][0]));
   }
 
   for (int i = 0; i < int64_t(params.recur_padding.size()); i++) {
-    ByteBufferPut(runInfo.tiling_data, int32_t(params.recur_padding[i][1]));
+    ByteBufferPut(runInfo.tiling_data, int64_t(params.recur_padding[i][1]));
   }
 }
 

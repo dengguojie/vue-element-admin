@@ -18,6 +18,8 @@
  * \file conv_tiling.cpp
  * \brief
  */
+#include <stdlib.h>
+
 #include "conv_tiling.h"
 
 namespace optiling {
@@ -27,43 +29,48 @@ int32_t ConvTiling(const std::vector<int32_t>& curShape, const std::string& dyna
   if (curShape.empty()) {
     return 0;
   }
-  int32_t tilingID = 0;
+  std::string tilingID("0");
   if (dynamicMode == "dynamic_hw") {
     int32_t h = curShape[0];
     int32_t w = curShape[1];
     auto& tilingSeeds = opInfo.at("repo_seeds");
+    auto& repoRange = opInfo.at("repo_range");
+    int32_t minDist = 1000000;
     for (auto it = tilingSeeds.begin(); it != tilingSeeds.end(); it++) {
-      auto& seed = it.value();
-      if (h == seed[0] && w == seed[1]) {
-        tilingID = std::stoi(it.key());
-        runInfo.block_dim = (uint32_t)opInfo["block_dim"][it.key()];
-      }
-    }
-    if (tilingID == 0) {
-      auto& tilingCases = opInfo.at("tiling_range");
-      for (auto it = tilingCases.begin(); it != tilingCases.end(); it++) {
-        auto& ranges = it.value();
-        for (auto itRange = ranges.begin(); itRange != ranges.end(); itRange++) {
-          if (h >= (*itRange)[0] && h <= (*itRange)[1] && w >= (*itRange)[2] && w <= (*itRange)[3]) {
-            tilingID = std::stoi(it.key());
-            runInfo.block_dim = (uint32_t)opInfo["block_dim"][it.key()];
-          }
+      std::vector<int32_t> seed = it.value().get<std::vector<int32_t>>();
+      auto& range = repoRange[it.key()];
+      if (h >= range[0] && h <= range[1] && w >= range[2] && w <= range[3]) {
+        int32_t dist = abs(curShape[0] - seed[0]) + abs(curShape[1] - seed[1]);
+        if (dist < minDist) {
+          tilingID = it.key();
+          minDist = dist;
         }
       }
     }
-  }
-  if (dynamicMode == "dynamic_batch") {
+    if (tilingID == "0") {
+      auto& costRange = opInfo.at("cost_range");
+      for (auto it = costRange.begin(); it != costRange.end(); it++) {
+        auto& range = it.value();
+        if (h >= range[0] && h <= range[1] && w >= range[2] && w <= range[3]) {
+          tilingID = it.key();
+          break;
+        }
+      }
+    }
+  } else if (dynamicMode == "dynamic_batch") {
     int32_t curB = curShape[0];
     auto& tilingCase = opInfo.at("tiling_range");
     for (auto it = tilingCase.begin(); it != tilingCase.end(); it++) {
       auto& range = it.value();
       if (curB >= range[0] && curB <= range[1]) {
-        tilingID = std::stoi(it.key());
-        runInfo.block_dim = (uint32_t)opInfo["block_dim"][it.key()];
+        tilingID = it.key();
       }
     }
   }
-  return tilingID;
+  if (tilingID != "0") {
+    runInfo.block_dim = (uint32_t)opInfo["block_dim"][tilingID];
+  }
+  return std::stoi(tilingID);
 }
 
 }  // namespace optiling

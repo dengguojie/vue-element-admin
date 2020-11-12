@@ -1,17 +1,28 @@
-/*
- * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
- * Description: api of group iterator
+/**
+ * Copyright 2020 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 #ifndef CPU_KERNEL_UTIL_SPARSE_GROUP_ITERATOR_H_
 #define CPU_KERNEL_UTIL_SPARSE_GROUP_ITERATOR_H_
 
-#include <vector>
 #include <cstdint>
+#include <vector>
 #include "eigen_tensor.h"
 
 namespace aicpu {
-class Group; // Predeclare Group for GroupIterable.
+class Group;  // Predeclare Group for GroupIterable.
 
 // ///////////////
 // GroupIterable
@@ -40,120 +51,115 @@ class Group; // Predeclare Group for GroupIterable.
 
 // Forward declaration of SparseTensor
 class GroupIterable {
-public:
-    typedef std::vector<int64_t> VarDimArray;
+ public:
+  typedef std::vector<int64_t> VarDimArray;
 
-    GroupIterable(Tensor *ix, Tensor *vals, int dims, const VarDimArray &group_dims)
-        : ix_(ix),
-          ix_matrix_(EigenTensor(ix, ix->GetData()).matrix<int64_t>()),
-          vals_(vals),
-          dims_(dims),
-          group_dims_(group_dims.begin(), group_dims.end())
-    {}
+  GroupIterable(Tensor *ix, Tensor *vals, int dims,
+                const VarDimArray &group_dims)
+      : ix_(ix),
+        ix_matrix_(EigenTensor(ix, ix->GetData()).matrix<int64_t>()),
+        vals_(vals),
+        dims_(dims),
+        group_dims_(group_dims.begin(), group_dims.end()) {}
 
-    ~GroupIterable() {}
+  ~GroupIterable() {}
 
-    class IteratorStep;
+  class IteratorStep;
 
-    IteratorStep begin()
-    {
-        return IteratorStep(this, 0);
+  IteratorStep begin() { return IteratorStep(this, 0); }
+
+  IteratorStep at(int64_t loc) {
+    if (!(loc >= 0 &&
+          loc <= static_cast<int64_t>(ix_->GetTensorShape()->GetDimSize(0)))) {
+      KERNEL_LOG_WARN("loc should in [0, %d], but got: %d",
+                      ix_->GetTensorShape()->GetDimSize(0), loc);
+    }
+    return IteratorStep(this, loc);
+  }
+
+  IteratorStep end() {
+    return IteratorStep(this, ix_->GetTensorShape()->GetDimSize(0));
+  }
+
+  template <typename TIX>
+  inline bool GroupMatches(const TIX &ix, int64_t loc_a, int64_t loc_b) const {
+    for (int d : group_dims_) {
+      if (ix(loc_a, d) != ix(loc_b, d)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  class IteratorStep {
+   public:
+    IteratorStep(GroupIterable *iter, int64_t loc)
+        : iter_(iter), loc_(loc), next_loc_(loc_) {
+      UpdateEndOfGroup();
     }
 
-    IteratorStep at(int64_t loc)
-    {
-        if (!(loc >= 0 && loc <= static_cast<int64_t>(ix_->GetTensorShape()->GetDimSize(0)))) {
-            KERNEL_LOG_WARN("loc should in [0, %d], but got: %d", ix_->GetTensorShape()->GetDimSize(0), loc);
-        }
-        return IteratorStep(this, loc);
-    }
+    ~IteratorStep() { iter_ = NULL; }
 
-    IteratorStep end()
-    {
-        return IteratorStep(this, ix_->GetTensorShape()->GetDimSize(0));
-    }
+    void UpdateEndOfGroup();
 
-    template <typename TIX> inline bool GroupMatches(const TIX &ix, int64_t loc_a, int64_t loc_b) const
-    {
-        for (int d : group_dims_) {
-            if (ix(loc_a, d) != ix(loc_b, d)) {
-                return false;
-            }
-        }
-        return true;
-    }
+    bool operator!=(const IteratorStep &rhs) const;
 
-    class IteratorStep {
-    public:
-        IteratorStep(GroupIterable *iter, int64_t loc) : iter_(iter), loc_(loc), next_loc_(loc_)
-        {
-            UpdateEndOfGroup();
-        }
+    bool operator==(const IteratorStep &rhs) const;
 
-        ~IteratorStep() { iter_ = NULL; }
+    IteratorStep &operator++();
 
-        void UpdateEndOfGroup();
+    const IteratorStep operator++(int);
 
-        bool operator != (const IteratorStep &rhs) const;
+    Group operator*() const;
 
-        bool operator == (const IteratorStep &rhs) const;
+    int64_t loc() const { return loc_; }
 
-        IteratorStep &operator ++ ();
+   private:
+    GroupIterable *iter_;
+    int64_t loc_;
+    int64_t next_loc_;
+  };
 
-        const IteratorStep operator ++ (int);
-
-        Group operator*() const;
-
-        int64_t loc() const
-        {
-            return loc_;
-        }
-
-    private:
-        GroupIterable *iter_;
-        int64_t loc_;
-        int64_t next_loc_;
-    };
-
-private:
-    friend class Group;
-    Tensor *ix_;
-    TTypes<int64_t>::Matrix ix_matrix_;
-    Tensor *vals_;
-    const int dims_;
-    const std::vector<int64_t> group_dims_;
+ private:
+  friend class Group;
+  Tensor *ix_;
+  TTypes<int64_t>::Matrix ix_matrix_;
+  Tensor *vals_;
+  const int dims_;
+  const std::vector<int64_t> group_dims_;
 };
 
 // This class is returned when dereferencing a GroupIterable iterator.
 // It provides the methods group(), indices(), and values(), which
 // provide access into the underlying SparseTensor.
 class Group {
-public:
-    Group(GroupIterable *iter, int64_t loc, int64_t next_loc) : iter_(iter), loc_(loc), next_loc_(next_loc) {}
+ public:
+  Group(GroupIterable *iter, int64_t loc, int64_t next_loc)
+      : iter_(iter), loc_(loc), next_loc_(next_loc) {}
 
-    ~Group() { iter_ = NULL; }
+  ~Group() { iter_ = NULL; }
 
-    std::vector<int64_t> group() const;
+  std::vector<int64_t> group() const;
 
-    TTypes<int64_t>::UnalignedConstMatrix indices() const;
+  TTypes<int64_t>::UnalignedConstMatrix indices() const;
 
-    int64_t group_at(size_t index) const
-    {
-        const auto &ix_t = iter_->ix_matrix_;
-        return ix_t(loc_, index);
-    }
+  int64_t group_at(size_t index) const {
+    const auto &ix_t = iter_->ix_matrix_;
+    return ix_t(loc_, index);
+  }
 
-    template <typename T> typename TTypes<T>::UnalignedVec values() const
-    {
-        return typename TTypes<T>::UnalignedVec(&(EigenTensor(iter_->vals_, iter_->vals_->GetData()).vec<T>()(loc_)),
-            next_loc_ - loc_);
-    }
+  template <typename T>
+  typename TTypes<T>::UnalignedVec values() const {
+    return typename TTypes<T>::UnalignedVec(
+        &(EigenTensor(iter_->vals_, iter_->vals_->GetData()).vec<T>()(loc_)),
+        next_loc_ - loc_);
+  }
 
-private:
-    GroupIterable *iter_;
-    int64_t loc_;
-    int64_t next_loc_;
+ private:
+  GroupIterable *iter_;
+  int64_t loc_;
+  int64_t next_loc_;
 };
-} // namespace aicpu
+}  // namespace aicpu
 
-#endif // CPU_KERNEL_UTIL_SPARSE_GROUP_ITERATOR_H_
+#endif  // CPU_KERNEL_UTIL_SPARSE_GROUP_ITERATOR_H_

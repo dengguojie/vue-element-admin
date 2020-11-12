@@ -1,14 +1,33 @@
+/**
+ * Copyright (C)  2019. Huawei Technologies Co., Ltd. All rights reserved.
+
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
+
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Apache License for more details at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * @file conv2d_tik.cpp
+ *
+ * @brief
+ *
+ * @version 1.0
+ *
+ */
+#include "conv2d_tik.h"
+#include <string>
+#include <vector>
+#include <algorithm>
+
 #define CHECK_FORMAT(format)  \
 {                                         \
     if(ge::FORMAT_RESERVED == format) {    \
         return false;     \
     }                     \
 }
-
-#include "conv2d_tik.h"
-#include <string>
-#include <vector>
-#include <algorithm>
 
 namespace ge
 {
@@ -22,7 +41,8 @@ static bool GetPadConv2D(ge::Operator& op,
                          int32_t& padl, int32_t& padr) {
     std::string padStr;
     std::vector<int32_t> padList;
-    if (GRAPH_SUCCESS == op.GetAttr("padding", padStr)){
+    // Adaptation for tensorflow
+    if (GRAPH_SUCCESS == op.GetAttr("padding", padStr)) {
         if (padStr.compare("SAME") == 0){
             int32_t tails_h = ih % strh;
             int32_t tails_w = iw % strw;
@@ -47,9 +67,12 @@ static bool GetPadConv2D(ge::Operator& op,
         op.SetAttr("pads", padList);
     }
     std::vector<int32_t> padVec;
-    op.GetAttr("pads", padVec);
+    if (GRAPH_SUCCESS != op.GetAttr("pads", padVec)) {
+        return false;
+    }
     auto pSize = padVec.size();
     if (pSize != 4) {
+        ERROR_LOG("pSize should be 4. pSize = %d", pSize);
         return false;
     }
     padt = padVec[0];
@@ -57,6 +80,7 @@ static bool GetPadConv2D(ge::Operator& op,
     padl = padVec[2];
     padr = padVec[3];
     if (padt < 0 || padb < 0 || padl < 0 || padr < 0) {
+        ERROR_LOG("The value of pad should not be negative. pad = [%d, %d, %d, %d]", padt, padb, padl, padr);
         return false;
     }
 
@@ -73,15 +97,20 @@ static bool GetAttrsConv2D(ge::Operator& op, Format refer,
                            int32_t& strh, int32_t& strw,
                            int32_t& dilh, int32_t& dilw) {
     std::vector<int32_t> strideList;
-    op.GetAttr("strides", strideList);
+    if (GRAPH_SUCCESS != op.GetAttr("strides", strideList)) {
+        return false;
+    }
     auto sSize = strideList.size();
     if (sSize != 4) {
         return false;
     }
     std::vector<int32_t> dilationList;
-    op.GetAttr("dilations", dilationList);
+    if (GRAPH_SUCCESS != op.GetAttr("dilations", dilationList)) {
+        return false;
+    }
     auto dSize = dilationList.size();
     if (dSize != 4) {
+        ERROR_LOG("dSize should be 4. dSize = %d", dSize);
         return false;
     }
 
@@ -97,9 +126,11 @@ static bool GetAttrsConv2D(ge::Operator& op, Format refer,
         dilw = dilationList[2];
     }
     if (strh <= 0 || strw <= 0) {
+        ERROR_LOG("strh and strw should both > 0. strh = %d, strw = %d", strh, strw);
         return false;
     }
     if (dilh <= 0 || dilw <= 0) {
+        ERROR_LOG("dilh and dilw should both > 0. dilh = %d, dilw = %d", dilh, dilw);
         return false;
     }
 
@@ -141,6 +172,7 @@ IMPLEMT_INFERFUNC(Conv2DTik, Conv2DInfer) {
         ih = xShape[1];
         iw = xShape[2];
     } else {
+        ERROR_LOG("Feature map's format is not supported");
         return GRAPH_FAILED;
     }
 
@@ -160,12 +192,14 @@ IMPLEMT_INFERFUNC(Conv2DTik, Conv2DInfer) {
         kh = wShape[0];
         kw = wShape[1];
     } else {
+        ERROR_LOG("Filter's format is not supported");
         return GRAPH_FAILED;
     }
 
     int64_t groups = 1;
 
     if (ic != kc*groups) {
+        ERROR_LOG("Channel size error");
         return GRAPH_FAILED;
     }
 
@@ -203,6 +237,7 @@ IMPLEMT_INFERFUNC(Conv2DTik, Conv2DInfer) {
         yShape.push_back(ow);
         yShape.push_back(kn);
     } else {
+        ERROR_LOG("Output's format is not supported");
         return GRAPH_FAILED;
     }
     yTensor.SetShape(Shape(yShape));
@@ -233,9 +268,11 @@ IMPLEMT_VERIFIER(Conv2DTik, Conv2DVerify) {
     auto wShape = wTensor.GetShape().GetDims();
 
     if (xShape.size() != 4) {
+        ERROR_LOG("Feature map size should be 4");
         return GRAPH_FAILED;
     }
     if (wShape.size() != 4) {
+        ERROR_LOG("Filter size should be 4");
         return GRAPH_FAILED;
     }
 
@@ -243,6 +280,7 @@ IMPLEMT_VERIFIER(Conv2DTik, Conv2DVerify) {
     auto wDtype = wTensor.GetDataType();
 
     if(xDtype != wDtype) {
+        ERROR_LOG("Inputs should have same dtype");
         return GRAPH_FAILED;
     }
 

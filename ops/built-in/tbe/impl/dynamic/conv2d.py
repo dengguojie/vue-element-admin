@@ -17,14 +17,17 @@ dynamic conv2d
 """
 from __future__ import absolute_import
 
+import math
 from te import tvm
 import te.lang.cce as tbe
 import te.lang.dynamic as dynamic
 import te.platform as tbe_platform
-from te.utils import check_para
+import te.lang.base as tbe_base
+from te.utils import para_check
 from te.utils.error_manager import error_manager_conv2d as err_man
+from te.utils.error_manager import error_manager_util
 from impl.util import fusion_util
-
+from impl.util import util_conv2d
 
 NONETYPE = type(None)
 # n, h, w dim in NCHW/NC1HWC0 format
@@ -35,6 +38,8 @@ W_DIM = 3
 FORMAT_4D_DIMS = 4
 # dim_size of NC1HWC0 format
 FORMAT_5D_DIMS = 5
+HW_MIN = 1
+HW_MAX = 4096
 
 
 def _ceil(x_1, x_2):
@@ -71,7 +76,7 @@ def _set_default_para():
     return optim_dict, fusion_para
 
 
-def _config_dynamic_mode(in_shape, w_shape):
+def _check_dynamic_mode(in_shape, w_shape):
     """
     config dynamic mode
     """
@@ -84,10 +89,24 @@ def _config_dynamic_mode(in_shape, w_shape):
     elif in_shape[N_DIM] == -1 and in_shape[1] != -1 and in_shape[H_DIM] != -1 \
             and in_shape[W_DIM] != -1 and -1 not in w_shape:
         dynamic_mode = "dynamic_batch"
-    else:
+
+    if dynamic_mode is None:
         err_man.raise_err_specific_user(
             "conv2d", "dynamic_only support dynamic_hw or dynamic_batch")
-    return dynamic_mode
+
+
+def _check_variable_range(variable, mini, maxi, name):
+    """
+    check variable range
+
+    """
+    if (not isinstance(variable, int)) or variable < mini or variable > maxi:
+        dict_args = dict()
+        dict_args["errCode"] = "E65006"
+        dict_args["range"] = "[{},{}]".format(mini, maxi)
+        dict_args["attr_name"] = name
+        dict_args["value"] = str(variable)
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
 
 def _check_4d_len(seq, seq_name):
@@ -120,10 +139,10 @@ def _check_and_config_para(inputs, weights, bias, offset_w, outputs, strides,
     w_format = weights.get("ori_format")
     in_range = inputs.get("range")
 
-    check_para.check_kernel_name(kernel_name)
-    check_para.check_dtype_rule(in_dtype, ['float16'])
-    check_para.check_dtype_rule(w_dtype, ['float16'])
-    check_para.check_dtype_rule(outputs.get("dtype"), ['float16'])
+    para_check.check_kernel_name(kernel_name)
+    para_check.check_dtype_rule(in_dtype, ['float16'])
+    para_check.check_dtype_rule(w_dtype, ['float16'])
+    para_check.check_dtype_rule(outputs.get("dtype"), ['float16'])
 
     _check_4d_len(in_shape, "in_shape")
     _check_4d_len(w_shape, "weights")
@@ -143,9 +162,39 @@ def _check_and_config_para(inputs, weights, bias, offset_w, outputs, strides,
     optim_dict, fusion_para = _set_default_para()
     in_shape, w_shape = _round_channel(in_shape, w_shape, in_dtype, w_dtype)
     fmap_range = _get_fmap_range(in_range, in_shape, in_format)
+    y_range = _get_y_range(fmap_range, w_shape, pads, strides, dilations)
+    batch_range, _, h_range, w_range = fmap_range
+    _check_dynamic_mode(in_shape, w_shape)
+    _check_variable_range(h_range[0], HW_MIN, HW_MAX, "fmap_h")
+    _check_variable_range(h_range[1], HW_MIN, HW_MAX, "fmap_h")
+    _check_variable_range(w_range[0], HW_MIN, HW_MAX, "fmap_w")
+    _check_variable_range(w_range[1], HW_MIN, HW_MAX, "fmap_w")
 
     return in_shape, w_shape, pads, strides, dilations, in_dtype, w_dtype, \
-        optim_dict, fusion_para, fmap_range
+        optim_dict, fusion_para, fmap_range, y_range
+
+
+def _get_output(x_in, k_size, pads, stride, dilation):
+    return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
+
+
+def _get_y_range(fmap_range, kernel, pads, stride, dilation):
+    if -1 in pads:
+        y_h_lower = _ceil(fmap_range[H_DIM][0], stride[H_DIM])
+        y_h_upper = _ceil(fmap_range[H_DIM][1], stride[H_DIM])
+        y_w_lower = _ceil(fmap_range[W_DIM][0], stride[W_DIM])
+        y_w_upper = _ceil(fmap_range[W_DIM][1], stride[W_DIM])
+    else:
+        y_h_lower = _get_output(fmap_range[H_DIM][0], kernel[H_DIM],
+                                (pads[0], pads[1]), stride[H_DIM], dilation[H_DIM])
+        y_h_upper = _get_output(fmap_range[H_DIM][1], kernel[H_DIM],
+                                (pads[0], pads[1]), stride[H_DIM], dilation[H_DIM])
+        y_w_lower = _get_output(fmap_range[W_DIM][0], kernel[W_DIM],
+                                (pads[2], pads[3]), stride[W_DIM], dilation[W_DIM])
+        y_w_upper = _get_output(fmap_range[W_DIM][1], kernel[W_DIM],
+                                (pads[2], pads[3]), stride[W_DIM], dilation[W_DIM])
+    return [fmap_range[0], (kernel[0], kernel[0]),
+            (y_h_lower, y_h_upper), (y_w_lower, y_w_upper)]
 
 
 def _round_channel(shape_in, shape_w, in_dtype, w_dtype):
@@ -217,7 +266,33 @@ def _calc_shape(shape_in, shape_w, in_dtype, w_dtype, optim_dict):
     return fmap_shape_nc1hwc0, filter_shape_frac_z
 
 
-@tbe_platform.register_fusion_compute("Conv2D")
+def _calc_pads(fmap_shape_nc1hwc0, shape_filter, strides, dilations, pads):
+    """
+    calculate pads
+    """
+    if -1 in pads:
+        fmap_h, fmap_w = fmap_shape_nc1hwc0[H_DIM], fmap_shape_nc1hwc0[W_DIM]
+        _, _, filter_h, filter_w = shape_filter
+        _, _, stride_h, stride_w = strides
+        _, _, dilation_h, dilation_w = dilations
+
+        filter_h_dilation = (filter_h - 1) * dilation_h + 1
+        filter_w_dilation = (filter_w - 1) * dilation_w + 1
+        pad_h = \
+            _ceil(fmap_h, stride_h) * stride_h - stride_h + filter_h_dilation - fmap_h
+        pad_h = tvm.max(pad_h, 0)
+        pad_up = pad_h // 2
+        pad_down = pad_h - pad_up
+        pad_w = \
+            _ceil(fmap_w, stride_w) * stride_w - stride_w + filter_w_dilation - fmap_w
+        pad_w = tvm.max(pad_w, 0)
+        pad_left = pad_w // 2
+        pad_right = pad_w - pad_left
+        return pad_up, pad_down, pad_left, pad_right
+    else:
+        return pads
+
+@tbe_base.register_fusion_compute("Conv2D")
 def conv2d_fusion_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
                           groups=1, data_format='NHWC', offset_x=0, kernel_name="conv2d",
                           dsl_flag=True):
@@ -274,35 +349,54 @@ def _conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dil
     tvm compute
     """
 
+    if bias:
+        raise RuntimeError("bias is not supported yet in dynamic conv2d")
+    if offset_w:
+        raise RuntimeError("offset_w is not supported yet in dynamic conv2d")
+    if groups != 1:
+        raise RuntimeError("dynamic conv2d only supports groups=1")
+    bias = None
+    offset_w = None
     res_dtype = "float16"
     if not (isinstance(inputs, dict) and isinstance(weights, dict)):
         err_man.raise_err_specific_user(
             "conv2d", "In op[inputs], [weights] must be dict")
 
     shape_fm, shape_filter, pads, strides, dilations, in_dtype, w_dtype, \
-        optim_dict, fusion_para, fmap_range = _check_and_config_para(
+        optim_dict, fusion_para, fmap_range, y_range = _check_and_config_para(
             inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
             data_format, offset_x, kernel_name)
+
+    block_size_k = tbe_platform.CUBE_MKN[in_dtype]['mac'][1]
+    block_size_n = tbe_platform.CUBE_MKN[w_dtype]['mac'][2]
+    cin_ori = shape_fm[1] // groups
+    cout_ori = shape_filter[0] // groups
+    cin_lcm = util_conv2d.lcm(cin_ori, block_size_k) // cin_ori
+    cout_lcm = util_conv2d.lcm(cout_ori, block_size_n) // cout_ori
+    enlarge = min(util_conv2d.lcm(cin_lcm, cout_lcm), groups)
+    c1_opt = math.ceil(cin_ori*enlarge/block_size_k)
+    cout1_opt = math.ceil(cout_ori*enlarge/block_size_n)
+    group_opt = math.ceil(groups/enlarge)
 
     fmap_shape_nc1hwc0, filter_shape_frac_z = _calc_shape(
         shape_fm, shape_filter, in_dtype, w_dtype, optim_dict)
     if fmap_shape_nc1hwc0[H_DIM] == -1 and fmap_shape_nc1hwc0[W_DIM] == -1:
-        fmap_shape_nc1hwc0[H_DIM] = tbe_platform.var("fmap_h", fmap_range[H_DIM])
-        fmap_shape_nc1hwc0[W_DIM] = tbe_platform.var("fmap_w", fmap_range[W_DIM])
-        h_o = tbe_platform.var("ho")
-        w_o = tbe_platform.var("wo")
-        tbe_platform.add_exclude_bound_var(fmap_shape_nc1hwc0[H_DIM])
-        tbe_platform.add_exclude_bound_var(fmap_shape_nc1hwc0[W_DIM])
-        tbe_platform.add_exclude_bound_var(h_o)
-        tbe_platform.add_exclude_bound_var(w_o)
+        fmap_shape_nc1hwc0[H_DIM] = tbe_base.var("fmap_h", fmap_range[H_DIM])
+        fmap_shape_nc1hwc0[W_DIM] = tbe_base.var("fmap_w", fmap_range[W_DIM])
+        h_o = tbe_base.var("ho", y_range[H_DIM])
+        w_o = tbe_base.var("wo", y_range[H_DIM])
+        tbe_base.add_exclude_bound_var(fmap_shape_nc1hwc0[H_DIM])
+        tbe_base.add_exclude_bound_var(fmap_shape_nc1hwc0[W_DIM])
+        tbe_base.add_exclude_bound_var(h_o)
+        tbe_base.add_exclude_bound_var(w_o)
     elif fmap_shape_nc1hwc0[N_DIM] == -1:
-        fmap_shape_nc1hwc0[N_DIM] = tbe_platform.var("batch_n", fmap_range[N_DIM])
-        tbe_platform.add_exclude_bound_var(fmap_shape_nc1hwc0[N_DIM])
+        fmap_shape_nc1hwc0[N_DIM] = tbe_base.var("batch_n", fmap_range[N_DIM])
+        tbe_base.add_exclude_bound_var(fmap_shape_nc1hwc0[N_DIM])
 
     fmap = tvm.placeholder(fmap_shape_nc1hwc0, name='Fmap', dtype=in_dtype)
     weight = tvm.placeholder(filter_shape_frac_z, name='Filter', dtype=w_dtype)
 
-    pad_t, pad_b, pad_l, pad_r = pads
+    pad_t, pad_b, pad_l, pad_r = _calc_pads(fmap_shape_nc1hwc0, shape_filter, strides, dilations, pads)
     op_res = tbe.conv(fmap, weight,
                   {"bias_tensor": bias,
                    "offset_w_tensor": offset_w,
@@ -314,15 +408,23 @@ def _conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dil
                    "offset_x": offset_x,
                    "res_dtype": res_dtype,
                    "fusion_para": fusion_para,
-                   "kernel_name": kernel_name},
+                   "kernel_name": kernel_name,
+                   "group": groups,
+                   "enlarge": enlarge,
+                   "c1_opt": c1_opt,
+                   "cout1_opt": cout1_opt,
+                   "group_opt": group_opt,
+                   "a_shape": fmap_shape_nc1hwc0,
+                   "weight_fracz_shape": filter_shape_frac_z,
+                   "weight_ori_shape_nchw": shape_filter},
                   optim_dict=optim_dict,
                   dsl_flag=dsl_flag)
 
     return {"op_placeholder": [fmap, weight], "op_res": [op_res]}
 
 
-@tbe_platform.register_operator("Conv2D")
-@check_para.check_input_type(dict, dict, (dict, NONETYPE), (dict, NONETYPE), dict,
+@tbe_base.register_operator("Conv2D")
+@para_check.check_input_type(dict, dict, (dict, NONETYPE), (dict, NONETYPE), dict,
                              (tuple, list), (tuple, list), (tuple, list),
                              int, str, int, str, str)
 def conv2d(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
@@ -366,14 +468,7 @@ def conv2d(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
     None
     """
 
-    if bias:
-        raise RuntimeError("bias is not supported yet in dynamic conv2d")
-    if offset_w:
-        raise RuntimeError("offset_w is not supported yet in dynamic conv2d")
-    bias = None
-    offset_w = None
-
-    with tbe_platform.compute():
+    with tbe_base.compute():
         res = _conv2d_compute(
             inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
             groups, data_format, offset_x, kernel_name, dsl_flag=False)
@@ -389,4 +484,4 @@ def conv2d(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
         "build_args": {"constant_realize_extent_in_infer_bound": False}
     }
 
-    dynamic.build(sch, config)
+    tbe.build(sch, config)

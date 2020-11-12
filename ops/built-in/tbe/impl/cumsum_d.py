@@ -18,9 +18,28 @@ cumsum_d
 
 from te.utils import para_check
 from impl import cum_computer
+from te.utils.error_manager import error_manager_vector
+from impl.util import util_select_op_base
 
 # the computer type
 SUM_TYPE = "sum"
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(x, y, axis=0, exclusive=False, reverse=False, kernel_name="cumsum_d"):
+    format_x = x.get("format")
+    if format_x == "ND":
+        axis_split_list = []
+        for i in range(0, axis):
+            split_0 = [util_select_op_base.SplitInput([0, [i], [-1], [-1]]),
+                       util_select_op_base.SplitOutput([0, [i]])]
+            axis_split_list.append(split_0)
+        axis_reduce_list = None
+    else:
+        axis_split_list = None
+        axis_reduce_list = None
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_list, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 # pylint: disable=locally-disabled, unused-argument,invalid-name
@@ -81,5 +100,5 @@ def check_param(input_x, axis, kernel_name):
                 ("float16", "float32", "int32", "int8", "uint8"), param_name="input_x")
 
     if axis < len(input_shape) * (-1) or axis >= len(input_shape):
-        raise RuntimeError("axis must be in the range [%d, %d). but is %d " % (
-            len(input_shape) * (-1), len(input_shape), axis))
+        error_manager_vector.raise_err_input_param_not_in_range(kernel_name, "axis", \
+                                                                len(input_shape)*(-1), len(input_shape), axis)

@@ -14,22 +14,13 @@ http://www.apache.org/licenses/LICENSE-2.0
 leaky_relu_grad
 """
 
-import te.lang.dynamic
+import te.lang.cce as tbe
 from te import tvm
-from topi import generic
-from te.utils.op_utils import broadcast_shapes
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import OPTION_ATTR_INT
-from te.utils.op_utils import OPTION_ATTR_FLOAT
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_elewise_shape_range
-from te.platform.shape_classifier import classify
-from te.platform.shape_classifier import Mode
-from te.utils.op_utils import variable_shape
-from te.utils.op_utils import refine_shapes_for_broadcast
+import te.lang.base as tbe_base
+from te.utils import shape_util
+from te.lang.base.shape_classifier import classify
+from te.lang.base.shape_classifier import Mode
+from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 # define a scalar , value = 0
@@ -64,11 +55,11 @@ def leaky_relu_grad_compute(g, x, y, negative_slope=0,
         the result of leaky_relu_grad_compute
     """
 
-    shape_list = broadcast_shapes(te.lang.dynamic.shape_to_list(g.shape),
-                                  te.lang.dynamic.shape_to_list(x.shape))
+    shape_list = shape_util.broadcast_shapes(shape_util.shape_to_list(g.shape),
+                                  shape_util.shape_to_list(x.shape))
     dtype = g.dtype
-    g = te.lang.dynamic.broadcast(g, shape_list[2])
-    x = te.lang.dynamic.broadcast(x, shape_list[2])
+    g = tbe.broadcast(g, shape_list[2])
+    x = tbe.broadcast(x, shape_list[2])
 
     if dtype == "float32":
         help_min = tvm.const(2 ** (-126), "float32")
@@ -79,30 +70,30 @@ def leaky_relu_grad_compute(g, x, y, negative_slope=0,
         help_rec_one = tvm.const(2 ** 12, "float16")
         help_rec_sec = help_rec_one
 
-    tmp_min_x = te.lang.dynamic.vmins(x, help_min)
-    tmp_max_x = te.lang.dynamic.vmaxs(tmp_min_x,
+    tmp_min_x = tbe.vmins(x, help_min)
+    tmp_max_x = tbe.vmaxs(tmp_min_x,
                                       tvm.const(SCALAR_ZERO, "float32"))
-    tmp_mul_x = te.lang.dynamic.vmuls(tmp_max_x, help_rec_one)
+    tmp_mul_x = tbe.vmuls(tmp_max_x, help_rec_one)
 
     if dtype == "float32":
-        tmp_mul_x = te.lang.dynamic.vmuls(tmp_mul_x, help_rec_sec)
+        tmp_mul_x = tbe.vmuls(tmp_mul_x, help_rec_sec)
 
-    result_tmp_right = te.lang.dynamic.vmuls(tmp_mul_x, help_rec_sec)
+    result_tmp_right = tbe.vmuls(tmp_mul_x, help_rec_sec)
 
-    result_sub = te.lang.dynamic.vadds(result_tmp_right,
+    result_sub = tbe.vadds(result_tmp_right,
                                        tvm.const(NEGATIVE_ONE, "float32"))
-    result_abs = te.lang.dynamic.vabs(result_sub)
-    result_tmp_left = te.lang.dynamic.vmuls(result_abs, negative_slope)
+    result_abs = tbe.vabs(result_sub)
+    result_tmp_left = tbe.vmuls(result_abs, negative_slope)
 
-    result_tmp = te.lang.dynamic.vadd(result_tmp_left, result_tmp_right)
+    result_tmp = tbe.vadd(result_tmp_left, result_tmp_right)
 
-    res = te.lang.dynamic.vmul(g, result_tmp)
+    res = tbe.vmul(g, result_tmp)
     return res
 
 
-@te.op.register_operator("LeakyReluGrad")
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 (OPTION_ATTR_INT, OPTION_ATTR_FLOAT), KERNEL_NAME)
+@tbe_base.register_operator("LeakyReluGrad")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            (para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_FLOAT), para_check.KERNEL_NAME)
 def leaky_relu_grad(g, x, y, negative_slope=0, kernel_name="leaky_relu_grad"):
     """
     calculate the backpropagation of leaky_relu operation
@@ -129,25 +120,25 @@ def leaky_relu_grad(g, x, y, negative_slope=0, kernel_name="leaky_relu_grad"):
     g_dtype = g.get("dtype").lower()
     x_dtype = x.get("dtype").lower()
     check_list = ("float16", "float32")
-    check_dtype(g_dtype, check_list, param_name="input_g")
-    check_dtype(x_dtype, check_list, param_name="input_x")
-    check_elewise_shape_range([g, x], support_broadcast=True)
+    para_check.check_dtype(g_dtype, check_list, param_name="input_g")
+    para_check.check_dtype(x_dtype, check_list, param_name="input_x")
+    para_check.check_elewise_shape_range([g, x], support_broadcast=True)
     if g_dtype != x_dtype:
         error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "g", "x",
                                                               g_dtype, x_dtype)
     ins = classify([g, x], Mode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (g, x) in ins:
-        with te.op.compute():
-            g_shape, x_shape = variable_shape([g, x], support_broadcast=True)
-            g_shape, x_shape = refine_shapes_for_broadcast(g_shape, x_shape)
+        with tbe_base.compute():
+            g_shape, x_shape = shape_util.variable_shape([g, x], support_broadcast=True)
+            g_shape, x_shape = shape_util.refine_shapes_for_broadcast(g_shape, x_shape)
             tensor_g = tvm.placeholder(g_shape, g_dtype, "tensor_g")
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")
             res = leaky_relu_grad_compute(tensor_g, tensor_x, y, negative_slope,
                                           kernel_name)
             tensors.append((tensor_g, tensor_x, res))
         with tvm.target.cce():
-            sch = generic.auto_schedule(res)
+            sch = tbe.auto_schedule(res)
         schedules.append(sch)
     config = {"name": kernel_name, "tensor_list": tensors}
-    te.lang.dynamic.build(schedules, config)
+    tbe.build(schedules, config)

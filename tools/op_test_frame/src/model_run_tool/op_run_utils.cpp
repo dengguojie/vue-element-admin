@@ -16,9 +16,9 @@
 
 #include "op_run_utils.h"
 
-using std::string;
 
-void RunOp(OpParams opParams) {
+void RunOp(OpParams opParams)
+{
     CommonLayer layer{opParams};
     layer.Run();
 }

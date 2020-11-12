@@ -13,6 +13,8 @@
 # limitations under the License.
 # ============================================================================
 
+add_subdirectory(aicpu)
+
 add_subdirectory(framework)
 
 add_subdirectory(fusion_pass)

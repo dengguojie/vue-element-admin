@@ -22,6 +22,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 # General limitation of the size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -134,7 +135,8 @@ def _check_shape(ref_shape, value_shape):
     None
     """
     if operator.ne(list(ref_shape), list(value_shape)):
-        raise RuntimeError("ref and value must have the same shape !")
+        error_detail = "shape of ref and value should be same"
+        error_manager_vector.raise_err_two_input_shape_invalid("assign", "ref", "value", error_detail)
 
     para_check.check_shape(ref_shape, param_name="ref")
 

@@ -21,9 +21,9 @@ from __future__ import absolute_import
 from te.tvm import api as tvm
 from te.platform import get_soc_spec
 from te.platform import cce_params
+from te.utils import para_check
 from te.utils.error_manager import error_manager_util as err_man
 from te.lang.cce.te_compute.cube_util import shape_to_list
-from te.utils import check_para
 
 
 # the dim of shape in conv_backprop must be 4
@@ -74,6 +74,22 @@ DATA_SIZE_MAX = 9223372036854775807
 PADDING_SUPPORT = ('SAME', 'VALID')
 # pads valid mode to be [0, 0, 0, 0]
 PADDING_VAILD = [0, 0, 0, 0]
+
+
+class GroupDictKeys:
+    """
+    The keys of group_dict
+    """
+    groups = "groups"
+    g_extend = "g_extend"
+    multiple_extend = "multiple_extend"
+    dx_c1_extend = "dx_c1_extend"
+    dy_c1_extend = "dy_c1_extend"
+    dx_c_ori = "dx_c_ori"
+    dy_c_ori = "dy_c_ori"
+    filter_batch_ori = "filter_batch_ori"
+    filter_c_ori = "filter_c_ori"
+    filter_ori_format = "filter_ori_format"
 
 
 def get_filter_shape(ori_format_filters, ori_shape_filters):
@@ -173,8 +189,63 @@ def ceil(x_1, x_2):
     return (x_1 + x_2 - 1) // x_2
 
 
-# pylint: disable=too-many-locals,
-def get_padlist(pads, shape_res, strides, shape_filters, dilations):
+def _lcm(param1, param2):
+    """
+    calculate least common multiple
+    """
+    temp = param1 * param2
+    while param1 % param2 != 0:
+        param1, param2 = param2, param1 % param2
+
+    return temp // param2
+
+
+def calculate_group(w_shape_nchw, groups, filter_dtype, filter_ori_format):
+    """
+    calculate groups Parameter
+    """
+    c0_size = cce_params.C0_SIZE
+    c0_size_k = cce_params.CUBE_MKN[filter_dtype]['mac'][1]
+    # if w's famat is HWCN, groups in w's C and dx's C, so dx_c_ori is dx_C/groups, dy_c_ori is filter_N;
+    # if NCHW of NHWC, groups in w's N and dx's C, so dx_c_ori is filter_c, dy_c_ori is filter_N/groups.
+    if filter_ori_format == "HWCN":
+        dx_c_ori = w_shape_nchw[1] // groups
+        dy_c_ori = w_shape_nchw[0]
+        filter_batch_ori = w_shape_nchw[0]
+        filter_c_ori = w_shape_nchw[1] // groups
+    else:
+        dx_c_ori = w_shape_nchw[1]
+        dy_c_ori = w_shape_nchw[0] // groups
+        filter_batch_ori = w_shape_nchw[0] // groups
+        filter_c_ori = w_shape_nchw[1]
+
+    dx_c_extend = _lcm(dx_c_ori, c0_size) // dx_c_ori
+    dy_c_extend = _lcm(dy_c_ori, c0_size_k) // dy_c_ori
+    multiple_extend = min(_lcm(dx_c_extend, dy_c_extend), groups)
+
+    dx_c1_extend = ceil(multiple_extend * dx_c_ori, c0_size)
+    dy_c1_extend = ceil(multiple_extend * dy_c_ori, c0_size_k)
+
+    group_dict = {GroupDictKeys.g_extend: ceil(groups, multiple_extend),
+                  GroupDictKeys.multiple_extend: multiple_extend,
+                  GroupDictKeys.groups: groups,
+                  GroupDictKeys.dx_c1_extend: dx_c1_extend,
+                  GroupDictKeys.dy_c1_extend: dy_c1_extend,
+                  GroupDictKeys.dx_c_ori: dx_c_ori,
+                  GroupDictKeys.dy_c_ori: dy_c_ori,
+                  GroupDictKeys.filter_batch_ori: filter_batch_ori,
+                  GroupDictKeys.filter_c_ori: filter_c_ori,
+                  GroupDictKeys.filter_ori_format: filter_ori_format
+                  }
+    return group_dict
+
+
+def get_padlist(  # pylint: disable=too-many-locals
+    pads,
+    shape_res,
+    strides,
+    shape_filters,
+    dilations):
     """
     Get pad list of int
     :param pads: "SAME" or "VALID" or list of int
@@ -284,16 +355,16 @@ def get_shape_res(ori_format_res, ori_shape_res):
     return shape_res
 
 
-# pylint: disable=too-many-arguments, too-many-locals, too-many-statements
-@check_para.check_input_type(
+@para_check.check_input_type(  # pylint: disable=R0913, R0914, R0915
     (list, tuple), (list, tuple), (list, tuple),
     (list, tuple), (str, list, tuple), (list, tuple),
     str,
     str,
     str,
     str,
-    (dict, check_para.NONE_TYPE),
-    (str, check_para.NONE_TYPE))
+    (dict, para_check.NONE_TYPE),
+    (str, para_check.NONE_TYPE),
+    (dict, para_check.NONE_TYPE))
 def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
                                 strides, pads, dilations,
                                 filter_dtype,
@@ -301,7 +372,9 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
                                 res_dtype,
                                 kernel_name,
                                 fusion_para=None,
-                                dynamic_mode=None):
+                                dynamic_mode=None,
+                                group_dict=None
+                                ):
     """
     The params check function of conv2d backprop input and deconvolution
 
@@ -334,6 +407,8 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
     fusion_para: the l1 fusion para
 
     dynamic_mode : dynamic type, "dynamic_hw" or "dynamic_batch"
+
+    group_dict : The paras of group_dict.
 
     Returns : All transformed params.
     ----------
@@ -385,33 +460,35 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
             raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
 
     def _check_shape_relation():
-        if fmap_channel != filter_channel:
+        if group_dict.get(GroupDictKeys.dx_c_ori) != \
+                group_dict.get(GroupDictKeys.filter_c_ori):
             args_dict = {
                 "errCode": "E60002",
                 "attr_name": "shape",
-                "param1_name": "Fmap'C",
-                "param1_value": fmap_channel,
-                "param2_name": "Filter'C",
-                "param2_value": filter_channel
+                "param1_name": "dx_c_ori",
+                "param1_value": group_dict.get(GroupDictKeys.dx_c_ori),
+                "param2_name": "filter_c_ori",
+                "param2_value": group_dict.get(GroupDictKeys.filter_c_ori)
             }
             raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
-        if dedy_channel != filter_batch:
+        if group_dict.get(GroupDictKeys.dy_c_ori) != \
+                group_dict.get(GroupDictKeys.filter_batch_ori):
             args_dict = {
                 "errCode": "E60002",
                 "attr_name": "shape",
-                "param1_name": "Dedy's C",
-                "param1_value": dedy_channel,
-                "param2_name": "Filter'N",
-                "param2_value": filter_batch
+                "param1_name": "dy_c_ori",
+                "param1_value": group_dict.get(GroupDictKeys.dy_c_ori),
+                "param2_name": "filter_batch_ori",
+                "param2_value": group_dict.get(GroupDictKeys.filter_batch_ori)
             }
             raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
         if fmap_batch != dedy_batch:
             args_dict = {
                 "errCode": "E60002",
                 "attr_name": "shape",
-                "param1_name": "Fmap's N",
+                "param1_name": "y's N",
                 "param1_value": fmap_batch,
-                "param2_name": "Dedy'N",
+                "param2_name": "out_backprop'N",
                 "param2_value": dedy_batch
             }
             raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
@@ -509,7 +586,7 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
         # limitation by chip:
         # Ascend910
         # load3d not support when only fmap w after padding equals to filter w
-        if get_soc_spec("SOC_VERSION") == 'Ascend910' \
+        if 'Ascend910' in get_soc_spec("SOC_VERSION") \
             and fmap_h_padding != filter_h \
             and fmap_w_padding == filter_w:
             return False
@@ -622,15 +699,15 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
 
     def _check_shape_rule():
         if dynamic_mode is None:
-            check_para.check_shape_rule(shape_out_backprop,
+            para_check.check_shape_rule(shape_out_backprop,
                                         CONV_BACKPROP_SHAPE_DIM, CONV_BACKPROP_SHAPE_DIM,
                                         DEFAULT_MAX_SHAPE_NUM)
-            check_para.check_shape_rule(input_sizes,
+            para_check.check_shape_rule(input_sizes,
                                         CONV_BACKPROP_SHAPE_DIM, CONV_BACKPROP_SHAPE_DIM,
                                         DEFAULT_MAX_SHAPE_NUM)
-        check_para.check_shape_rule(dilations, CONV_BACKPROP_SHAPE_DIM,
+        para_check.check_shape_rule(dilations, CONV_BACKPROP_SHAPE_DIM,
                                     CONV_BACKPROP_SHAPE_DIM, DEFAULT_MAX_SHAPE_NUM)
-        check_para.check_shape_rule(strides, STRIDES_SHAPE_DIM, STRIDES_SHAPE_DIM,
+        para_check.check_shape_rule(strides, STRIDES_SHAPE_DIM, STRIDES_SHAPE_DIM,
                                     DEFAULT_MAX_SHAPE_NUM)
 
     def _change_hw_limitation(dedy_hw_min, fmap_hw_min,
@@ -647,10 +724,13 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
             fmap_hw_max = CONV1D_W_MAX
         return dedy_hw_min, fmap_hw_min, dedy_hw_max, fmap_hw_max
 
+    def _need_change_hw():
+        return fmap_w == 1 and filter_w == 1 and dedy_w == 1 and pad_left == 0 and pad_right == 0
+
     # First : Base check, Mainly required by interface appearance
     # util check
-    check_para.check_kernel_name(kernel_name)
-    check_para.check_shape_rule(shape_filter, CONV_BACKPROP_SHAPE_DIM,
+    para_check.check_kernel_name(kernel_name)
+    para_check.check_shape_rule(shape_filter, CONV_BACKPROP_SHAPE_DIM,
                                 CONV_BACKPROP_SHAPE_DIM, DEFAULT_MAX_SHAPE_NUM)
 
     _check_shape_rule()
@@ -674,9 +754,9 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
     filter_dtype = filter_dtype.lower()
     out_backprop_dtype = out_backprop_dtype.lower()
     res_dtype = res_dtype.lower()
-    check_para.check_dtype_rule(filter_dtype, valid_filter_dtype)
-    check_para.check_dtype_rule(out_backprop_dtype, valid_dedy_dtype)
-    check_para.check_dtype_rule(res_dtype, valid_res_dtype)
+    para_check.check_dtype_rule(filter_dtype, valid_filter_dtype)
+    para_check.check_dtype_rule(out_backprop_dtype, valid_dedy_dtype)
+    para_check.check_dtype_rule(res_dtype, valid_res_dtype)
 
     # Second : Furture Check, Mainly required by SRS
     # the relation limits between shape
@@ -706,7 +786,7 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
         = modify_fusion_para(fusion_para, dedy_h, dedy_hw_min, fmap_hw_min)
 
     # exchange h and w will not change date in memmory
-    if fmap_w_padding == 1 and filter_w == 1 and dedy_w == 1:
+    if _need_change_hw():
         input_sizes = (fmap_batch, fmap_channel, fmap_w, fmap_h)
         shape_out_backprop = (dedy_batch, dedy_channel, dedy_w, dedy_h)
         shape_filter = (filter_batch, filter_channel, filter_w, filter_h)
@@ -718,6 +798,8 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
         filter_h, filter_w = filter_w, filter_h
         filter_h_dilation, filter_w_dilation = filter_w_dilation,\
                                                filter_h_dilation
+        pad_left, pad_right, pad_up, pad_down = pads
+        pads = pad_up, pad_down, pad_left, pad_right
 
     dedy_hw_min, fmap_hw_min, dedy_hw_max, fmap_hw_max = \
         _change_hw_limitation(dedy_hw_min, fmap_hw_min, dedy_hw_max, fmap_hw_max)
@@ -727,14 +809,14 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
         _check_pad_relation()
 
         # Dedy value limit
-        _check_attr_range("Dedy's H after expands", dedy_h * stride_h,
+        _check_attr_range("out_backprop's H after expands", dedy_h * stride_h,
                         dedy_hw_min, dedy_hw_max)
         if filter_h == 1 and filter_w == 1:
-            _check_attr_range("Dedy's W after expands",
+            _check_attr_range("out_backprop's W after expands",
                             dedy_w * stride_w * stride_h,
                             dedy_hw_min, dedy_hw_max)
         else:
-            _check_attr_range("Dedy's W after expands", dedy_w * stride_w,
+            _check_attr_range("out_backprop's W after expands", dedy_w * stride_w,
                             dedy_hw_min, dedy_hw_max)
 
     # filter value limit
@@ -743,8 +825,8 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
 
     if dynamic_mode is None:
         # Fmap value limit
-        _check_attr_range("Fmap's H", fmap_h, fmap_hw_min, fmap_hw_max)
-        _check_attr_range("Fmap's W", fmap_w, fmap_hw_min, fmap_hw_max)
+        _check_attr_range("y's H", fmap_h, fmap_hw_min, fmap_hw_max)
+        _check_attr_range("y's W", fmap_w, fmap_hw_min, fmap_hw_max)
 
     # stride value limit
     _check_attr_range("stride's H", stride_h, STRIDE_HW_MIN, STRIDE_HW_MAX)

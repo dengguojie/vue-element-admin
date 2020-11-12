@@ -19,12 +19,7 @@ import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_ATTR_FLOAT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import KERNEL_NAME
+from te.utils import para_check
 
 @fusion_manager.register("adds")
 def adds_compute(x, scalar, kernel_name="adds"):
@@ -48,7 +43,8 @@ def adds_compute(x, scalar, kernel_name="adds"):
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_FLOAT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT,
+                            para_check.KERNEL_NAME)
 def adds(x, y, value, kernel_name="adds"):
     """
     calculating data
@@ -71,7 +67,7 @@ def adds(x, y, value, kernel_name="adds"):
     dtype = x.get("dtype").lower()
 
     check_list = ("float16", "float32", "int32")
-    check_dtype(dtype, check_list, param_name="x")
+    para_check.check_dtype(dtype, check_list, param_name="x")
 
     scalar = tvm.const(value, dtype=dtype)
     data_input = tvm.placeholder(shape, name="data_input", dtype=dtype)

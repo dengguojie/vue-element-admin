@@ -18,6 +18,7 @@ basic_lstm_cell_input_grad
 import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=too-many-instance-attributes
@@ -91,14 +92,20 @@ class LstmCellGradInput():
             para_check.check_shape(shape_check, min_rank=4, max_rank=4, param_name="dgate")
             for check_dim in (shape_check[2], shape_check[3]):
                 if check_dim != 16:
-                    raise RuntimeError("the shape do not match the format!")
+                    error_detail = "the shape do not match the format!"
+                    error_manager_vector.raise_err_input_shape_invalid("basic_lstm_cell_input_grad", \
+                                                                       "w or dgate", error_detail)
 
         # check k axis length match of dgate and w
         if self.dgate_shape[0] != self.w_shape[1]:
-            raise RuntimeError("k axis length of dgate and w must match!")
+            error_detail = "k axis length of dgate and w must match!"
+            error_manager_vector.raise_err_two_input_shape_invalid("basic_lstm_cell_input_grad", \
+                                                                   "dgate", "w", error_detail)
 
         if self.w_shape[1] // 4 > self.w_shape[0]:
-            raise RuntimeError(" the shape of weight is not satisfied!")
+            error_detail = "the shape of weight is not satisfied!"
+            error_manager_vector.raise_err_input_shape_invalid("basic_lstm_cell_input_grad", \
+                                                               "w", error_detail)
 
         para_check.check_dtype(self.dgate_dtype.lower(), ("float16",), param_name="dgate")
         para_check.check_dtype(self.w_dtype.lower(), ("float16",), param_name="w")

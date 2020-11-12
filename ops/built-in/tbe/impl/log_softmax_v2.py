@@ -21,10 +21,32 @@ from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
-
+from impl.util import util_select_op_base
 
 # shape limit for aicore equals 2**31
 SHAPE_SIZE_LIMIT = 2147483648
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(input_x, output_y, axis=-1, kernel_name="log_softmax_v2"):
+    format_x = input_x.get("format")
+    origin_format_x = input_x.get("ori_format")
+    dims_x = len(input_x.get("shape"))
+    if not hasattr(axis, 'index'):
+        new_axis = axis
+    else:
+        new_axis = axis[0]
+    if new_axis < 0:
+        new_axis = new_axis + len(input_x.get("shape"))
+    axis_split_matrix = []
+    for i in range(dims_x):
+        if i != new_axis:
+            split_0 = [util_select_op_base.SplitInput([0, [i], [-1], [-1]]), util_select_op_base.SplitOutput([0, [i]])]
+            axis_split_matrix.append(split_0)
+    axis_reduce_list = None
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
+
 
 # pylint: disable = locally-disabled,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("log_softmax_v2")

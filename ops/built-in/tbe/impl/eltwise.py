@@ -65,6 +65,10 @@ def get_fusion_params(x_tensor, y, x_tensor_num):
         in_select_read_flag_list.append(in_select_read_flag)
 
     l1_fusion_type = 0 if is_l1_depth_fusion is True else -1
+    if l1_fusion_type != -1 and y.get("format").upper() != 'NC1HWC0':
+        shape_rule = "the input format must be 5HD when l1 fusion"
+        error_manager_vector.raise_err_check_params_rules("eltwise", shape_rule, "x",
+                                                          y.get("format").upper())
 
     out_l1_flag = False
     out_valid_shape = []
@@ -106,6 +110,7 @@ def eltwise_compute(x, y, mode=1, coeff=[], kernel_name="eltwise"):
     tmp_y["slice_offset"] = []
     fuse_y = tmp_y if y is None else y
     fusion_params = get_fusion_params(x, fuse_y, tensor_num)
+    case = 0 #depthwise_con2d fusion flag
 
     if mode == 1:
         if len(coeff) != 0 and len(coeff) != tensor_num:
@@ -128,21 +133,28 @@ def eltwise_compute(x, y, mode=1, coeff=[], kernel_name="eltwise"):
             datan_tmp = x[i]
             if mode == 0:
                 data0_tmp = tbe.vmul(data0_tmp, datan_tmp)
+                case = "eltwise_case_0"
             elif mode == 2:
                 data0_tmp = tbe.vmax(data0_tmp, datan_tmp)
+                case = "eltwise_case_2"
             else:
                 if len(coeff) == 0:
                     data0_tmp = tbe.vadd(data0_tmp, datan_tmp)
+                    case = "eltwise_case_1_1"
                 elif coeff[i] == 1:
                     data0_tmp = tbe.vadd(data0_tmp, datan_tmp)
+                    case = "eltwise_case_1_1"
                 else:
                     coeff2 = tvm.const(coeff[i], dtype=inp_dtype)
                     datan_tmp = tbe.vmuls(datan_tmp, coeff2)
                     data0_tmp = tbe.vadd(data0_tmp, datan_tmp)
+                    case = "eltwise_case_1_2"
         res = data0_tmp
 
     res.op.attrs["ele_fusion_params"] = fusion_params
     res.op.attrs["L1_fusion_type"] = fusion_params["l1_fusion_type"]
+    if case:
+        res.op.attrs["eltwise_case"] = case
 
     return res
 

@@ -163,19 +163,19 @@ Status YoloV3DetectionOutputPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
                     return PARAM_INVALID);
 
   Status ret = GenerateWIndexFP16(dimInfo1[2], dimInfo1[3], inputAssitW1.get());
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateWIndex1 failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "GenerateWIndex1 failed."), return NOT_CHANGED);
   ret = GenerateHIndexFP16(dimInfo1[2], dimInfo1[3], inputAssitH1.get());
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateHIndex1 failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "GenerateHIndex1 failed."), return NOT_CHANGED);
 
   ret = GenerateWIndexFP16(dimInfo2[2], dimInfo2[3], inputAssitW2.get());
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateWIndex2 failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "GenerateWIndex2 failed."), return NOT_CHANGED);
   ret = GenerateHIndexFP16(dimInfo2[2], dimInfo2[3], inputAssitH2.get());
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateHIndex2 failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "GenerateHIndex2 failed."), return NOT_CHANGED);
 
   ret = GenerateWIndexFP16(dimInfo3[2], dimInfo3[3], inputAssitW3.get());
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateWIndex3 failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "GenerateWIndex3 failed."), return NOT_CHANGED);
   ret = GenerateHIndexFP16(dimInfo3[2], dimInfo3[3], inputAssitH3.get());
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateHIndex3 failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "GenerateHIndex3 failed."), return NOT_CHANGED);
 
   // define the shape of auxiliary matrix
   vector<int64_t> assitDimInfo1;

@@ -14,6 +14,8 @@ http://www.apache.org/licenses/LICENSE-2.0
 Cast ut case
 """
 from op_test_frame.ut import OpUT
+from op_test_frame.common import precision_info
+import numpy as np
 ut_case = OpUT("Cast", None, None)
 
 case1 = {"params": [{"shape": (2,3,4), "dtype": "int32", "format": "NHWC", "ori_shape": (2,3,4),"ori_format": "NHWC"}, #x
@@ -46,7 +48,32 @@ ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
 # ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 
+def calc_expect_func(x, y, dst):
+    dst_list = ["float32", "float16", "int8", "int32", "uint8", "uint64", "bool"]
+    dst_type = dst_list[dst]
+    input_A_Arr = x['value']
+    if dst_type == 'uint8':
+        outputArr = np.maximum(input_A_Arr,0).astype(dst_type)
+    else:
+        outputArr = input_A_Arr.astype(dst_type)
+    return outputArr
 
-if __name__ == '__main__':
-    ut_case.run(["Ascend910","Ascend310","Ascend710"])
-    exit(0)
+ut_case.add_precision_case("all", {"params": [{"shape": (1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND", "param_type": "input"},
+                                              {"shape": (1, 1), "dtype": "float32", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND", "param_type": "output"},
+                                              0],
+                                   "calc_expect_func": calc_expect_func,
+                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                   })
+ut_case.add_precision_case("all", {"params": [{"shape": (16, 32), "dtype": "int8", "format": "ND", "ori_shape": (16, 32),"ori_format": "ND", "param_type": "input"},
+                                              {"shape": (16, 32), "dtype": "float16", "format": "ND", "ori_shape": (16, 32),"ori_format": "ND", "param_type": "output"},
+                                              1],
+                                   "calc_expect_func": calc_expect_func,
+                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                   })
+ut_case.add_precision_case("all", {"params": [{"shape": (16, 32), "dtype": "int8", "format": "ND", "ori_shape": (16, 1),"ori_format": "ND", "param_type": "input"},
+                                              {"shape": (16, 32), "dtype": "int32", "format": "ND", "ori_shape": (16, 32),"ori_format": "ND", "param_type": "output"},
+                                              3],
+                                   "calc_expect_func": calc_expect_func,
+                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                   })
+

@@ -840,7 +840,9 @@ class CceOp:
                           [4, 4, 546, 7, 2, 2],
                           [3, 4, 4, 71, 12, 1, 2, 2],
                           [1, 4, 93, 110, 2, 2],
-                          [96, 94, 2, 2]]
+                          [96, 94, 2, 2],
+                          [2, 4, 1017, 3, 2, 2],
+                          [3, 5, 5, 3, 1, 41, 2, 2]]
             if shape in shape_list:
                 is_elewise = True
             return is_elewise
@@ -2898,6 +2900,18 @@ class CceOp:
             if self._need_storage_align_falg:
                 self._do_storage_align(self._shape_before_reduce, tmp_reduce_axis_num)
 
+        def __align_fp16_in_and_fp32_out():
+            """ solve input not align for input fp16 and output fp32 """
+            if self._origin_tensor[-1].dtype == "float16" and \
+                    self._res_tensor.dtype == "float32":
+                align_axis_before = self._reduce_axis_num[-1]
+                for i in self._read_cache:
+                    cache_read_buffer = self._cache_buffer_map[i]
+                    align_factor, _ = util.get_align_factor(
+                        cache_read_buffer.dtype)
+                    self._schedule[cache_read_buffer].storage_align(
+                        cache_read_buffer.op.axis[align_axis_before], align_factor, 0)
+
         # the reduce axis is non-last axis and the first axis,
         # tiling with _reduce_nlast_and_fisrt_axis_tiling,
         # others with _mix_reduce_nlast_and_nlast_tiling
@@ -2905,6 +2919,8 @@ class CceOp:
             self._split_axis, self._last_num, ub_split_axis, ub_split_factor = \
                 self._reduce_nlast_and_fisrt_axis_tiling(
                     self._shape_before_reduce, tmp_reduce_axis_num)
+
+            __align_fp16_in_and_fp32_out()
         else:
             self._split_axis, self._last_num, ub_split_axis, ub_split_factor = \
                 self._mix_reduce_nlast_and_nlast_tiling(

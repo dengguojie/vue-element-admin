@@ -23,15 +23,15 @@
 
 #define INFO_LOG(fmt, args...) fprintf(stdout, "[INFO]  " fmt "\n", ##args)
 #define WARN_LOG(fmt, args...) fprintf(stdout, "[WARN]  " fmt "\n", ##args)
-#define ERROR_LOG(fmt, args...) fprintf(stdout, "[ERROR] " fmt "\n", ##args)
+#define ERROR_LOG(fmt, args...) fprintf(stdout, "[ERROR]  " fmt "\n", ##args)
 
 /**
  * @brief Read data from file
  * @param [in] filePath: file path
  * @param [out] fileSize: file size
- * @return file data
+ * @return read result
  */
-char *ReadFile(const std::string &filePath, size_t &fileSize, void *buffer, size_t bufferSize);
+bool ReadFile(const std::string &filePath, size_t &fileSize, void *buffer, size_t bufferSize);
 
 /**
  * @brief Write data to file

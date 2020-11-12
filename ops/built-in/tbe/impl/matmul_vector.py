@@ -25,7 +25,7 @@ from te.platform import insn_cmd
 
 from .transpose_d import _do_storage_align
 from .transpose_d import _tilling_axis_not_last
-from .transpose_d import _write_code
+from impl.util.util_common import write_code
 
 import topi
 
@@ -1468,4 +1468,4 @@ def matmul_vector_cce(shape_a, shape_b, src_type, trans_a, trans_b,
         wk_size_a = shape_a[0] * shape_a[1] * 4
         wk_size_b = shape_b[0] * shape_b[1] * 4
         workspace_dict = {"workspace": {"num": 2, "size": [wk_size_a, wk_size_b]}}
-        _write_code(workspace_dict, "kernel_meta/" + kernel_name + ".json")
+        write_code(workspace_dict, kernel_name)

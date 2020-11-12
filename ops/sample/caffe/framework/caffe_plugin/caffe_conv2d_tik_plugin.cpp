@@ -35,36 +35,36 @@ static bool SetPads(const ge::Operator& op_src, ge::Operator& op_dest)
     const int kDefaultPad = 0;
     int64_t pad[2] = {kDefaultPad, kDefaultPad};
     std::vector<int64_t> pad_attr;
-    int pad_h;
-    int pad_w;
+    int pad_h = 0;
+    int pad_w = 0;
     if (ge::GRAPH_SUCCESS != op_src.GetAttr(PAD, pad_attr)){
         return false;
     }
     const int pSize = pad_attr.size();
     if (ge::GRAPH_SUCCESS == op_src.GetAttr(PAD_H, pad_h) || ge::GRAPH_SUCCESS == op_src.GetAttr(PAD_W, pad_w)){
         if (pSize != 0) {
+            fprintf(stdout, "[ERROR] pSize should be 0. pSize = %d", pSize);
             return false;
         }
         pad[0] = pad_h;
         pad[1] = pad_w;
     }else{
-
         if (pSize == 1 || pSize == 2) {
             for (size_t i = 0; i < 2; i++) {
                 int index = (pSize == 1) ? 0 : i;
                 pad[i] = pad_attr[index];
             }
         } else if (pSize != 0) {
-
+            fprintf(stdout, "[ERROR] pSize should be 0, 1 or 2. pSize = %d", pSize);
             return false;
         }
     }
 
     std::vector<int64_t> pList;
-    pList.push_back(pad[0]);
-    pList.push_back(pad[0]);
-    pList.push_back(pad[1]);
-    pList.push_back(pad[1]);
+    pList.emplace_back(pad[0]);
+    pList.emplace_back(pad[0]);
+    pList.emplace_back(pad[1]);
+    pList.emplace_back(pad[1]);
     op_dest.SetAttr(PADS, (pList));
     return true;
 }
@@ -86,6 +86,7 @@ static bool SetStrides(const ge::Operator& op_src, ge::Operator& op_dest)
     int stride_w;
     if (ge::GRAPH_SUCCESS == op_src.GetAttr(STRIDE_H, stride_h) || ge::GRAPH_SUCCESS == op_src.GetAttr(STRIDE_W, stride_w)){
         if (sSize != 0) {
+            fprintf(stdout, "[ERROR] sSize should be 0. sSize = %d", sSize);
             return false;
         }
         stride[0] = stride_h;
@@ -97,14 +98,15 @@ static bool SetStrides(const ge::Operator& op_src, ge::Operator& op_dest)
                 stride[i] = stride_attr[index];
             }
         } else if (sSize != 0) {
+            fprintf(stdout, "[ERROR] sSize should be 0, 1 or 2. sSize = %d", sSize);
             return false;
         }
     }
     std::vector<int64_t> sList;
-    sList.push_back(1);
-    sList.push_back(1);
-    sList.push_back(stride[0]);
-    sList.push_back(stride[1]);
+    sList.emplace_back(1);
+    sList.emplace_back(1);
+    sList.emplace_back(stride[0]);
+    sList.emplace_back(stride[1]);
     op_dest.SetAttr(STRIDES, (sList));
 
     return true;
@@ -125,15 +127,16 @@ static bool SetDilations(const ge::Operator& op_src, ge::Operator& op_dest)
                 dilation[i] = dilation_attr[index];
             }
         } else if (dSize != 0) {
+            fprintf(stdout, "[ERROR] dSize should be 0, 1 or 2. dSize = %d", dSize);
             return false;
         }
     }
 
     std::vector<int64_t> dList;
-    dList.push_back(1);
-    dList.push_back(1);
-    dList.push_back(dilation[0]);
-    dList.push_back(dilation[1]);
+    dList.emplace_back(1);
+    dList.emplace_back(1);
+    dList.emplace_back(dilation[0]);
+    dList.emplace_back(dilation[1]);
     op_dest.SetAttr(DILATIONS, (dList));
 
     return true;
@@ -146,12 +149,18 @@ static bool ProcSpecParams(const ge::Operator& op_src, ge::Operator& op_dest)
     int num_output;
     if (ge::GRAPH_SUCCESS == op_src.GetAttr(NUM_OUTPUT, num_output)){
         if (num_output < 1) {
+            fprintf(stdout, "[ERROR] num_output should >= 1, num_output is %d", num_output);
             return false;
         }
     }
     int group;
     if (ge::GRAPH_SUCCESS == op_src.GetAttr(GROUP, group)){
-        if (group < 1 || num_output % group != 0) {
+        if (group < 1) {
+            fprintf(stdout, "[ERROR] group should >= 1, group is %d", group);
+			return false;
+		}
+        if (num_output % group != 0) {
+            fprintf(stdout, "[ERROR] num_output %% group should = 0, but get %d", num_output % group);
             return false;
         }
         op_dest.SetAttr(GROUP, (int64_t)group);
@@ -163,30 +172,31 @@ static bool ProcSpecParams(const ge::Operator& op_src, ge::Operator& op_dest)
         return false;
     }
     int kSize = kernel_size.size();
-
     int kernel[2] = {0, 0};
     int kernel_h;
     int kernel_w;
     if (ge::GRAPH_SUCCESS == op_src.GetAttr(KERNEL_H, kernel_h) || ge::GRAPH_SUCCESS == op_src.GetAttr(KERNEL_W, kernel_w)){
         if (kSize != 0) {
+            fprintf(stdout, "[ERROR] kSize should be 0. kSize = %d", kSize);
             return false;
         }
         kernel[0] = kernel_h;
         kernel[1] = kernel_w;
     }else{
-
         if (kSize == 1 || kSize == 2) {
             for (size_t i = 0; i < 2; i++) {
                 int index = (kSize == 1) ? 0 : i;
                 kernel[i] = kernel_size[index];
             }
         } else {
+            fprintf(stdout, "[ERROR] kSize should be 1 or 2. kSize = %d", kSize);
             return false;
         }
     }
 
     for (size_t i = 0; i < 2; i++) {
         if (kernel[i] < 1) {
+            fprintf(stdout, "[ERROR] kernel should >= 1. kernel[%zu] = %d", i, kernel[i]);
             return false;
         }
     }
@@ -194,12 +204,14 @@ static bool ProcSpecParams(const ge::Operator& op_src, ge::Operator& op_dest)
     int channel_axis;
     if (ge::GRAPH_SUCCESS == op_src.GetAttr(AXiS, channel_axis)){
         if ((channel_axis + 4) % 4 != 1) {
+            fprintf(stdout, "[ERROR] (channel_axis + 4) %% 4 should be 1, but get %d", (channel_axis + 4) % 4);
             return false;
        }
     }
     bool force_nd_im2col;
     if (ge::GRAPH_SUCCESS == op_src.GetAttr(FORCE_ND_IM2COL, force_nd_im2col)){
         if (force_nd_im2col) {
+            fprintf(stdout, "[ERROR] force_nd_im2col should be false");
             return false;
         }
     }

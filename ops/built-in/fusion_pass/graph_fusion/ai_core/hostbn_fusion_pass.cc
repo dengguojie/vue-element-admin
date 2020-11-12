@@ -82,9 +82,9 @@ Status HostBNFusionPass::SetAttrValueForNewNode(const ge::OpDescPtr& preOpDescPt
   // get and update output_dim
   ge::GeAttrValue epsValue;
   FUSION_PASS_CHECK(preOpDescPtr->GetAttr(EPSILON, epsValue) == ge::GRAPH_FAILED,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Get attr %s from node %s error", EPSILON.c_str(),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Get attr %s from node %s error", EPSILON.c_str(),
                             preOpDescPtr->GetName().c_str()),
-                    return FAILED);
+                    return SUCCESS);
 
   FUSION_PASS_CHECK(
       newOpDescPtr->SetAttr(EPSILON, epsValue) == ge::GRAPH_FAILED,
@@ -125,7 +125,7 @@ Status HostBNFusionPass::BNFuison(ge::ComputeGraph& graph, ge::NodePtr& bnNodePt
   // update output_dim and group_size
 
   FUSION_PASS_CHECK(SetAttrValueForNewNode(bnOpDescPtr, bnhostOpDescPtr) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Update output_dim and group_size failed."), return FAILED);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Update output_dim and group_size failed."), return NOT_CHANGED);
 
   // create bninference_d opdesc
   ge::OpDescPtr bninferOpDescPtr = nullptr;
@@ -134,32 +134,32 @@ Status HostBNFusionPass::BNFuison(ge::ComputeGraph& graph, ge::NodePtr& bnNodePt
   bninferOpDescPtr->SetType("BNInferenceD");
   bninferOpDescPtr->SetName(bninferOpDescPtr->GetName() + "_BNInferenceD");
   FUSION_PASS_CHECK(SetAttrValue(bnOpDescPtr, bninferOpDescPtr) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Update output_dim and group_size failed."), return FAILED);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Update output_dim and group_size failed."), return NOT_CHANGED);
 
   // get bnhost input
   ge::GeTensorDesc meanInputTensorDesc;
   FUSION_PASS_CHECK(GetSwapInputTensorDesc(bnhostOpDescPtr, meanNodePtr->GetOpDesc(), meanInputTensorDesc) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Create bnhost input mean opDesc failed, fusion failed."),
-                    return FAILED);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Create bnhost input mean opDesc failed, fusion failed."),
+                    return NOT_CHANGED);
   ge::GeTensorDesc varInputTensorDesc;
   FUSION_PASS_CHECK(GetSwapInputTensorDesc(bnhostOpDescPtr, varNodePtr->GetOpDesc(), varInputTensorDesc) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Create bnhost input var opDesc failed, fusion failed."),
-                    return FAILED);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Create bnhost input var opDesc failed, fusion failed."),
+                    return NOT_CHANGED);
   ge::GeTensorDesc momentumInputTensorDesc;
   FUSION_PASS_CHECK(
       GetSwapInputTensorDesc(bnhostOpDescPtr, momentumNodePtr->GetOpDesc(), momentumInputTensorDesc) != SUCCESS,
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Create bnhost input momentum opDesc failed, fusion failed."), return FAILED);
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "Create bnhost input momentum opDesc failed, fusion failed."), return NOT_CHANGED);
 
   ge::GeTensorDesc scaleInputTensorDesc;
   ge::GeTensorDesc offsetInputTensorDesc;
   if (inputNodes.size() == 6) {
     FUSION_PASS_CHECK(
         GetSwapInputTensorDesc(bnhostOpDescPtr, scaleNodePtr->GetOpDesc(), scaleInputTensorDesc) != SUCCESS,
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "Create bnhost input scale opDesc failed, fusion failed."), return FAILED);
+        OP_LOGW(FUSED_OP_TYPE.c_str(), "Create bnhost input scale opDesc failed, fusion failed."), return NOT_CHANGED);
 
     FUSION_PASS_CHECK(
         GetSwapInputTensorDesc(bnhostOpDescPtr, offsetNodePtr->GetOpDesc(), offsetInputTensorDesc) != SUCCESS,
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "Create bnhost input offset opDesc failed, fusion failed."), return FAILED);
+        OP_LOGW(FUSED_OP_TYPE.c_str(), "Create bnhost input offset opDesc failed, fusion failed."), return NOT_CHANGED);
   }
 
   // get bnhost output
@@ -167,12 +167,12 @@ Status HostBNFusionPass::BNFuison(ge::ComputeGraph& graph, ge::NodePtr& bnNodePt
   ge::GeTensorDesc meanOutputTensorDesc;
   FUSION_PASS_CHECK(
       GetMeanOutputTensorDesc(bnhostOpDescPtr, bnOpDescPtr, meanInputTensorDesc, meanOutputTensorDesc) != SUCCESS,
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Create output mean opDesc failed, fusion failed."), return FAILED);
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "Create output mean opDesc failed, fusion failed."), return NOT_CHANGED);
 
   ge::GeTensorDesc varOutputTensorDesc;
   FUSION_PASS_CHECK(
       GetVarOutputTensorDesc(bnhostOpDescPtr, bnOpDescPtr, varInputTensorDesc, varOutputTensorDesc) != SUCCESS,
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Create output var opDesc failed, fusion failed."), return FAILED);
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "Create output var opDesc failed, fusion failed."), return NOT_CHANGED);
 
   // update output origin shape of pad
   bnhostOpDescPtr->AddInputDesc("mean", meanInputTensorDesc);
@@ -189,20 +189,20 @@ Status HostBNFusionPass::BNFuison(ge::ComputeGraph& graph, ge::NodePtr& bnNodePt
   ge::GeTensorDesc bninfermeanInputTensorDesc;
   FUSION_PASS_CHECK(
       GetSwapInputTensorDesc(bninferOpDescPtr, meanNodePtr->GetOpDesc(), bninfermeanInputTensorDesc) != SUCCESS,
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Create bnhost input mean opDesc failed, fusion failed."), return FAILED);
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "Create bnhost input mean opDesc failed, fusion failed."), return NOT_CHANGED);
   ge::GeTensorDesc bninfervarInputTensorDesc;
   FUSION_PASS_CHECK(
       GetSwapInputTensorDesc(bninferOpDescPtr, varNodePtr->GetOpDesc(), bninfervarInputTensorDesc) != SUCCESS,
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Create bnhost input var opDesc failed, fusion failed."), return FAILED);
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "Create bnhost input var opDesc failed, fusion failed."), return NOT_CHANGED);
   // get bninferenced output
   ge::GeTensorDesc bninferdataInputTensorDesc;
   FUSION_PASS_CHECK(GetInputDataTensorDesc(dataNodePtr, bnNodePtr, bninferdataInputTensorDesc) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Create bnhost input var opDesc failed, fusion failed."),
-                    return FAILED);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Create bnhost input var opDesc failed, fusion failed."),
+                    return NOT_CHANGED);
   ge::GeTensorDesc bninferOutputTensorDesc;
   FUSION_PASS_CHECK(GetInferOutputTensorDesc(bninferOpDescPtr, bnOpDescPtr, bninferdataInputTensorDesc,
                                              bninferOutputTensorDesc) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Create output var opDesc failed, fusion failed."), return FAILED);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Create output var opDesc failed, fusion failed."), return NOT_CHANGED);
 
   bninferOpDescPtr->AddInputDesc("x", bninferdataInputTensorDesc);
   bninferOpDescPtr->AddInputDesc("mean", bninfermeanInputTensorDesc);

@@ -15,8 +15,8 @@
 """
 dynamic tile_d
 """
-import te.lang.dynamic as dynamic
-from te import platform as tbe_platform
+import te.lang.cce as tbe
+import te.lang.base as tbe_base
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
@@ -41,18 +41,18 @@ def tile_d_compute(data, output_x, multiples, kernel_name="tile_d"):
     -------
     res
     """
-    shape = dynamic.shape_to_list(data.shape)
+    shape = shape_util.shape_to_list(data.shape)
     out_shape = []
     for shape_i, multiples_i in zip(shape, multiples):
         out_shape_i = shape_i * multiples_i
         out_shape.append(out_shape_i)
-    res = dynamic.broadcast(data, out_shape)
+    res = tbe.broadcast(data, out_shape)
 
     return res
 
 
 # pylint: disable=too-many-locals
-@tbe_platform.register_operator("TileD")
+@tbe_base.register_operator("TileD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_LIST_INT,
                             para_check.KERNEL_NAME)
 def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
@@ -77,7 +77,7 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
         shape and dtype of input
     output_x: dict
         dict of output.
-    multiples : list or tuple.
+    multiples : list or tuple
         Number of the axis replicates.
     kernel_name : str.
         kernel name, default value is "tile_d".
@@ -86,108 +86,76 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
     -------
     None
     """
-
-    dtype = input_x.get("dtype").lower()
+    origin_multiples = list(multiples)
+    input_dtype = input_x.get("dtype").lower()
     check_list = ("float16", "float32", "int32")
-    para_check.check_dtype(dtype, check_list, param_name="input_x")
-    unkown_shape = []
-    shape = input_x.get("shape")
-    for i in range(0, len(shape)):
-        if shape[i] == -1:
-            unkown_shape.append(i)
+    para_check.check_dtype(input_dtype, check_list, param_name="input_x")
+    input_shape = list(input_x.get("shape"))
+    compile_shape = input_shape.copy()
+    input_range = list(input_x.get("range"))
+    if len(input_shape) > len(multiples):
+        error_info = {}
+        error_info['errCode'] = para_check.OP_ERROR_CODE_012
+        error_info['op_name'] = 'tile_d'
+        error_info['param_name'] = 'input_shape'
+        error_info['max_value'] = str(len(multiples))
+        error_info['min_value'] = '1'
+        error_info['real_value'] = str(len(input_shape))
+        raise RuntimeError(error_info, "In op[%s], the num of dimensions of input[%s] should be in the range of "
+                                       "[%s, %s], but actually is [%s]." % (
+                                        error_info['op_name'], error_info['param_name'], error_info['min_value'],
+                                        error_info['max_value'], error_info['real_value']))
+    if len(input_shape) < len(multiples):
+        len_diff = len(multiples) - len(input_shape)
+        input_shape = [1] * len_diff + input_shape
+        input_range = [(1, 1)] * len_diff + input_range
 
-    with tbe_platform.compute():
-        shape = dynamic.shape_to_list(shape_util.variable_shape([input_x])[0])
-        multiples = dynamic.shape_to_list(multiples)
-        origin_multiples = multiples
-
-        input_format = input_x.get("format")
-        output_format = output_x.get("format")
-        if input_format in ("NCHW", "NHWC") and output_format in ("NC1HWC0",):
-            # branch: 4D tile to 5HD ((N, 1, 1, 1) to (N, C1, H, W, C0))
-            # and output C is 16 align
-            # change input shape from (N, 1, 1, 1) to (N, 1, 1, 1, 1)
-            shape = shape + [1]
-            if input_format == "NCHW":
-                # change multiples from (1, C, H, W) to (1, C1, H, W, C0)
-                multiples = [multiples[0], multiples[1] // 16, multiples[2], multiples[3], 16]
-            else:
-                # change multiples from (1, H, W, C) to (1, C1, H, W, C0)
-                multiples = [multiples[0], multiples[3] // 16, multiples[1], multiples[2], 16]
-
-        if len(shape) > len(multiples):
-            error_info = {}
-            error_info['errCode'] = para_check.OP_ERROR_CODE_012
-            error_info['op_name'] = 'tile_d'
-            error_info['param_name'] = 'shape'
-            error_info['max_value'] = str(len(multiples))
-            error_info['min_value'] = '1'
-            error_info['real_value'] = str(len(shape))
-            raise RuntimeError(error_info, "In op[%s], the num of dimensions of input[%s] should be in the range of "
-                                           "[%s, %s], but actually is [%s]." % (error_info['op_name'],
-                                                                                error_info['param_name'],
-                                                                                error_info['min_value'],
-                                                                                error_info['max_value'],
-                                                                                error_info['real_value']))
-        if len(shape) < len(multiples):
-            len_error = len(multiples) - len(shape)
-            shape = [1] * len_error + shape
-
-        shape_adapt = []
-        multiples_adapt = []
-        for i, shape_i in enumerate(shape):
-            multiples_i = multiples[i]
-            if multiples_i != 1 and shape_i != 1:
-                shape_adapt.append(1)
-                multiples_adapt.append(multiples_i)
-                multiples_i = 1
-            shape_adapt.append(shape_i)
+    shape_adapt = []
+    multiples_adapt = []
+    range_adapt = []
+    for shape_i, multiples_i, range_i in zip(input_shape, multiples, input_range):
+        if multiples_i != 1 and shape_i != 1:
+            shape_adapt.append(1)
+            range_adapt.append((1, 1))
             multiples_adapt.append(multiples_i)
+            multiples_i = 1
+        shape_adapt.append(shape_i)
+        range_adapt.append(range_i)
+        multiples_adapt.append(multiples_i)
 
-        shape = shape_adapt
-        multiples = multiples_adapt
+    input_x["shape"] = input_x["ori_shape"] = shape_adapt
+    input_x["range"] = range_adapt
 
-        for shape_i, multiples_i in zip(shape, multiples):
-            if not (shape_i == 1 or multiples_i == 1):
-                error_info = {}
-                error_info['errCode'] = para_check.OP_ERROR_CODE_009
-                error_info['op_name'] = 'tile_d'
-                error_info['rule_desc'] = "Any axis of either shape or multiples have to be 1"
-                error_info['param_name1'] = 'shape_i'
-                error_info['param_name2'] = 'multiples_i'
-                error_info['param1_value'] = str(shape_i)
-                error_info['param2_value'] = str(multiples_i)
-                raise RuntimeError(error_info, "Op[%s] has rule: %s, but [%s] is [%s], [%s] is [%s]." % (
-                    error_info['op_name'], error_info['rule_desc'], error_info['param_name1'],
-                    error_info['param1_value'], error_info['param_name2'], error_info['param2_value']))
-
+    with tbe_base.compute():
+        shape = shape_util.variable_shape([input_x])[0]
         axis_not_multiple = 0
-        for multiples_i in multiples:
+        for multiples_i in multiples_adapt:
             if multiples_i == 1:
                 axis_not_multiple += 1
-        if axis_not_multiple == len(multiples):
+        if axis_not_multiple == len(multiples_adapt):
             error_info = {}
             error_info['errCode'] = para_check.OP_ERROR_CODE_005
             error_info['op_name'] = 'tile_d'
             error_info['param_name'] = 'axis_not_multiple'
             error_info['min_len'] = '1'
-            error_info['max_len'] = str(len(multiples) - 1)
+            error_info['max_len'] = str(len(multiples_adapt) - 1)
             error_info['length'] = str(axis_not_multiple)
             raise RuntimeError(error_info, "In op[%s], the length of parameter[%s] be in the range of [%s, %s], but "
-                                           "actually is [%s]." % (error_info['op_name'], error_info['param_name'],
-                                                                  error_info['min_len'], error_info['max_len'],
-                                                                  error_info['length']))
+                                           "actually is [%s]." % (
+                                            error_info['op_name'], error_info['param_name'], error_info['min_len'],
+                                            error_info['max_len'], error_info['length']))
 
-        data = tvm.placeholder(shape, name="data", dtype=dtype)
+        data = tvm.placeholder(shape, name="data", dtype=input_dtype)
 
-        res = tile_d_compute(data, output_x, multiples, kernel_name)
+        res = tile_d_compute(data, output_x, multiples_adapt, kernel_name)
 
     with tvm.target.cce():
-        sch = dynamic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"print_ir": False, "name": kernel_name, "tensor_list": [data, res]}
 
-    dynamic.build(sch, config)
-    tbe_platform.add_compile_info("_unknown_shape", unkown_shape)
-    tbe_platform.add_compile_info("_origin_multiples", origin_multiples)
-    tbe_platform.add_compile_info("_multiples_adapt", multiples_adapt)
+    tbe.build(sch, config)
+
+    tbe_base.add_compile_info("_compile_shape", compile_shape)
+    tbe_base.add_compile_info("_origin_multiples", origin_multiples)
+    tbe_base.add_compile_info("_flag_info", [True, False, False, False, 1])

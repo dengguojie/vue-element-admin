@@ -19,6 +19,7 @@ def TestConv2dV200(test_arg):
     from impl.leaky_relu import leaky_relu_compute
     from impl.prelu import prelu_compute
     from impl.eltwise import eltwise_compute
+    from impl.ascend_quant import ascend_quant_compute
     from te.lang.cce import AutoScheduleOp
 
     testcases = {
@@ -33,6 +34,9 @@ def TestConv2dV200(test_arg):
             #   23:Conv2d+Eltwise(Add)+ReLU
             #   24:conv2d+LeakyRelu
             #   25:Conv2d+LeakyReLU+Eltwise(Add)
+            #   60: convfp16+quant double out
+            #   61: convfp16+leakyrelu+quant double out
+            #   62: convfp16+leakyrelu+ele+quant double out
             #   quant fusion
             #   49:conv2d+Prelu
             #   50:Conv2d+Eltwise(Add)+Prelu
@@ -48,7 +52,12 @@ def TestConv2dV200(test_arg):
                 [0, 0, 0, 0], [1, 1, 1, 1], 24, 1, 0, 0),
             "conv_v200_bias_1_flow_25": ((2, 32, 7, 7), (32, 32, 2, 2), \
                 [0, 0, 0, 0], [1, 1, 1, 1], 25, 1, 0, 0),
-
+            "conv_v200_bias_1_flow_60": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 60, 1, 0, 0),
+            "conv_v200_bias_1_flow_61": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 61, 1, 0, 0),
+            "conv_v200_bias_1_flow_62": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 62, 1, 0, 0),
+            "conv_v200_bias_0_flow_60": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 60, 0, 0, 0),
+            "conv_v200_bias_0_flow_61": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 61, 0, 0, 0),
+            "conv_v200_bias_0_flow_62": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 62, 0, 0, 0),
             # prelu
             "conv_v200_bias_1_flow_49": ((2, 32, 7, 7), (32, 32, 2, 2), \
                 [0, 0, 0, 0], [1, 1, 1, 1], 49, 1, 0, 0),
@@ -93,7 +102,13 @@ def TestConv2dV200(test_arg):
             # 10 0000 1100 0010 0000 0000 0000 pattern_value:2,oplist_num:3-4,2-3
             "50": 34349056,
             # 10 0000 1100 0010 0000 0000 0000 pattern_value:2,oplist_num:3-4,2-3
-            "51": 34349056
+            "51": 34349056,
+            # 1100 0000 0000 0000 0000 0000 0000 pattern_value:12,oplist_num:0-4,0-3
+            "60": 201326592,
+            # 1100 0000 0100 0001 0000 0000 0000 pattern_value:12,oplist_num:1-4,1-3
+            "61": 201592832,
+            # 1100 0000 1000 0001 0000 0000 0000 pattern_value:12,oplist_num:2-4,1-3
+            "62": 201854976
             }
 
         data_flow_fution_type_map_bias_false = {
@@ -108,7 +123,13 @@ def TestConv2dV200(test_arg):
             # 1 0000 1100 0010 0000 0000 0000 pattern_value:1,oplist_num:3-4,2-3
             "50": 17571840,
             # 1 0000 1100 0010 0000 0000 0000 pattern_value:1,oplist_num:3-4,2-3
-            "51": 17571840
+            "51": 17571840,
+            # 1011 0000 0000 0000 0000 0000 0000 pattern_value:11,oplist_num:0-4,0-3
+            "60": 184549376,
+            # 1011 0000 0100 0001 0000 0000 0000 pattern_value:11,oplist_num:1-4,1-3
+            "61": 184815616,
+            # 1011 0000 1000 0001 0000 0000 0000 pattern_value:11,oplist_num:2-4,1-3
+            "62": 185077760
             }
         with tvm.target.cce():
             # conv2d
@@ -176,8 +197,44 @@ def TestConv2dV200(test_arg):
                 tensor_list.append(out)
                 auto_sch_res = AutoScheduleOp(out)
                 sch = generic.auto_schedule(out)
+            if data_flow in (60, 61, 62):
+                fm2 = tvm.placeholder(conv_res.shape, name='fmap2', dtype="float16", attrs={'ori_format': 'NCHW'})
+                res_fp16 = conv_res
+                tensor_list = [fm, filter_w]
+                if data_flow in (61, 62):
+                    res_fp16 = leaky_relu_compute(res_fp16, None, negative_slope=0.1)
+                if data_flow == 62:
+                    res_fp16 = eltwise_compute([fm2, res_fp16], None)
+                    tensor_list.append(fm2)
+                res_quant = ascend_quant_compute(
+                    conv_res, None, scale=0.1, offset=0.2, sqrt_mode=True)
+                out = [res_fp16, res_quant]
             if bias_flag:
                 tensor_list.append(bias_tensor)
+            if data_flow in (60, 61, 62):
+                import collections.abc
+                if isinstance(out, collections.abc.Sequence):
+                    tensor_list.extend(out)
+                else:
+                    tensor_list.append(out)
+                double_out_res = [res_fp16, res_quant]
+                out_f16, out_s8 = double_out_res
+                res_out_fp16 = tvm.compute(out_f16.shape, \
+                    lambda i, j, k, l: out_f16(i, j, k, l), \
+                    name='res_out_fp16', \
+                    tag='res_out_fp16', \
+                    attrs={"addr_type": 0})
+                virtual_res = tvm.compute(out_s8.shape,
+                                        lambda i, j, k, l:
+                                        out_s8(i, j, k, l) +
+                                        res_out_fp16(i, (j*32 + l) // 16, k,
+                                                    (j*32 + l) % 16),
+                                        name='conv_virtual_res',
+                                        tag="conv_virtual_res",
+                                        )
+                outputs = [virtual_res, res_out_fp16, out_s8]
+                auto_sch_res = AutoScheduleOp(outputs[0])
+                sch = generic.auto_schedule(out)
             if bias_flag:
                 fution_type = \
                 data_flow_fution_type_map_bias_true.get(\
@@ -199,7 +256,7 @@ def TestConv2dV200(test_arg):
         block_size_n = 16
         batch, channel, height, weight = fm_shape
         c0 = 32
-        if data_flow in (21, 22, 23, 24, 25, 49, 50, 51):
+        if data_flow in (21, 22, 23, 24, 25, 49, 50, 51, 60, 61, 62):
             block_size_k = 16
             c0 = 16
         c1 = (channel + c0 - 1) // c0

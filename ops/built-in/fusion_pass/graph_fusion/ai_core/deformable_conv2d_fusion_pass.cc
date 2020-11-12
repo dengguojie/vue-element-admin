@@ -85,7 +85,7 @@ vector<FusionPattern*> DeformableConv2dPass::DefinePatterns() {
   *      [pads]:              use deformable_conv2d
   *      [dilations]:         use deformable_conv2d
   *      [data_format]:       use deformable_conv2d
-  *      [dfm_groups]: use deformable_conv2d
+  *      [dfm_groups]:        use deformable_conv2d
   *
   * @param dfm_conv_node DeforableConv2D node.
   * @param offset_desc New DeforableOffsets node.
@@ -144,9 +144,19 @@ bool DeformableConv2dPass::AddOffsetDesc(ge::NodePtr& dfm_conv_node, ge::OpDescP
   }
   vector<int64_t> y_shape = x_tensor.GetOriginShape().GetDims();
   FUSION_PASS_CHECK(y_shape.size() != 4,
+                    OP_LOGW(fused_op_type_.c_str(), "input x shape is not 4D"), return false);
+  auto y_tensor = dfm_conv_desc->GetOutputDesc(0);
+  vector<int64_t> out_shape = y_tensor.GetOriginShape().GetDims();
+  FUSION_PASS_CHECK(out_shape.size() != 4,
                     OP_LOGW(fused_op_type_.c_str(), "output y shape is not 4D"), return false);
-  y_shape[pos_h] *= ksize[0];
-  y_shape[pos_w] *= ksize[1];
+  AttrUtils::GetStr(y_tensor, kAttrOrgFmt, fmt_str);
+  size_t out_pos_h = fmt_str.find('H');
+  size_t out_pos_w = fmt_str.find('W');
+  if (out_pos_h == std::string::npos || out_pos_w == std::string::npos) {
+    return false;
+  }
+  y_shape[pos_h] = out_shape[out_pos_h] * ksize[0];
+  y_shape[pos_w] = out_shape[out_pos_w] * ksize[1];
   x_tensor.SetShape(ge::GeShape(y_shape));
   x_tensor.SetOriginShape(ge::GeShape(y_shape));
   Status add_res = offset_desc->AddOutputDesc("y", x_tensor);
@@ -204,8 +214,19 @@ bool DeformableConv2dPass::AddConvDesc(ge::NodePtr& dfm_conv_node, ge::OpDescPtr
   vector<int64_t> x_shape = x_tensor.GetOriginShape().GetDims();
   FUSION_PASS_CHECK(x_shape.size() != 4,
                     OP_LOGW(fused_op_type_.c_str(), "input x shape is not 4D"), return false);
-  x_shape[pos_h] *= ksize[0];
-  x_shape[pos_w] *= ksize[1];
+
+  auto y_tensor = dfm_conv_desc->GetOutputDesc(0);
+  vector<int64_t> out_shape = y_tensor.GetOriginShape().GetDims();
+  FUSION_PASS_CHECK(out_shape.size() != 4,
+                    OP_LOGW(fused_op_type_.c_str(), "output y shape is not 4D"), return false);
+  AttrUtils::GetStr(y_tensor, kAttrOrgFmt, fmt_str);
+  size_t out_pos_h = fmt_str.find('H');
+  size_t out_pos_w = fmt_str.find('W');
+  if (out_pos_h == std::string::npos || out_pos_w == std::string::npos) {
+    return false;
+  }
+  x_shape[pos_h] = out_shape[out_pos_h] * ksize[0];
+  x_shape[pos_w] = out_shape[out_pos_w] * ksize[1];
   x_tensor.SetShape(ge::GeShape(x_shape));
   x_tensor.SetOriginShape(ge::GeShape(x_shape));
   std::vector<std::string> conv_in_name = {"x", "filter", "bias", "offset_w"};
@@ -227,8 +248,8 @@ bool DeformableConv2dPass::AddConvDesc(ge::NodePtr& dfm_conv_node, ge::OpDescPtr
   std::vector<int64_t> strides;
   AttrUtils::GetListInt(dfm_conv_desc, kAttrStrides, strides);
   FUSION_PASS_CHECK(strides.size() != 4, OP_LOGE(fused_op_type_.c_str(), "get strides attr failed"), return false);
-  strides[pos_h] *= ksize[0];
-  strides[pos_w] *= ksize[1];
+  strides[pos_h] = ksize[0];
+  strides[pos_w] = ksize[1];
   AttrUtils::SetListInt(conv_desc, kAttrStrides, strides);
   std::vector<int64_t> def_pads(4);
   AttrUtils::SetListInt(conv_desc, kAttrPads, def_pads);

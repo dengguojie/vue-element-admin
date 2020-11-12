@@ -33,6 +33,7 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
+#include "error_util.h"
 
 using namespace ge;
 
@@ -426,7 +427,13 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
                     OP_LOGW(FUSED_OP_TYPE.c_str(),
                             "Not support this format %d.", filter_format),
                     return NOT_CHANGED);
-
+  if (PatternFusionUtil::IsUnknownShape(number) ||
+      PatternFusionUtil::IsUnknownShape(channel) ||
+      PatternFusionUtil::IsUnknownShape(height) ||
+      PatternFusionUtil::IsUnknownShape(weight)) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "DeconvWeightTransFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
   vector<int64_t> complement_dimension(CONST_DIM4_NUM), reshape_in(CONST_DIM3_NUM),
       permute_shape(CONST_DIM4_NUM), reverse_axis(1), reshape_out(CONST_DIM4_NUM);
   GetShapeUsedByIntermediateProcessInDeconvWeightTrans(
@@ -444,7 +451,7 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
         GenerateReshapeNode(graph, filter_out_desc, deconv_weight_in_desc, complement_dimension,
                             dim_comp_node, "dimension_completion",
                             basename) != SUCCESS,
-        OP_LOGE(FUSED_OP_TYPE.c_str(),
+        CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),
                 "fail to generate dimension completion node"),
         return FAILED);
   }
@@ -459,14 +466,14 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
   FUSION_PASS_CHECK(
       GenerateTransposeNode(graph, dim_comp_out_desc, deconv_weight_in_desc,
                             permute_shape, transpose_node, basename) != SUCCESS,
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "fail to generate transpose node"),
+      CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to generate transpose node"),
       return FAILED);
   ge::GeTensorDesc transpose_out_desc =
       transpose_node->GetOpDesc()->GetOutputDesc(0);
   FUSION_PASS_CHECK(
       GenerateReFormatNode(graph, transpose_out_desc, deconv_weight_in_desc,
                            filter_format, reformat_node, basename) != SUCCESS,
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "fail to generate reformat node"),
+      CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to generate reformat node"),
       return FAILED);
   ge::GeTensorDesc reformat_desc = reformat_node->GetOpDesc()->GetOutputDesc(0);
 
@@ -475,7 +482,7 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
     FUSION_PASS_CHECK(
         GenerateReshapeNode(graph, reformat_desc, deconv_weight_in_desc, reshape_in,
                             reshape_in_node, "reshape_in", basename) != SUCCESS,
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "fail to generate reshape in node"),
+        CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to generate reshape in node"),
         return FAILED);
     ge::GeTensorDesc reshape_in_out_desc =
         reshape_in_node->GetOpDesc()->GetOutputDesc(0);
@@ -484,7 +491,7 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
     FUSION_PASS_CHECK(
         GenerateReverseNode(graph, reshape_in_out_desc, deconv_weight_in_desc,
                             reverse_axis, reverse_node, basename) != SUCCESS,
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "fail to generate reverse node"),
+        CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to generate reverse node"),
         return FAILED);
     ge::GeTensorDesc reverse_out_desc =
         reverse_node->GetOpDesc()->GetOutputDesc(0);
@@ -494,14 +501,14 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
         GenerateReshapeNode(graph, reverse_out_desc, deconv_weight_in_desc,
                             reshape_out, reshape_out_node, "reshape_out",
                             basename) != SUCCESS,
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "fail to generate reshape out node"),
+        CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to generate reshape out node"),
         return FAILED);
   }
 
   FUSION_PASS_CHECK(
       Relink(filter_node, dim_comp_node, transpose_node, reformat_node,
              reshape_in_node, reverse_node, reshape_out_node, deconv_node) != SUCCESS,
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "fail to relink nodes"), return FAILED);
+      CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to relink nodes"), return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "End DeconvWeightTransFusionPass.");
   return SUCCESS;

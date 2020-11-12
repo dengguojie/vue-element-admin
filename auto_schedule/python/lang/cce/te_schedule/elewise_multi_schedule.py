@@ -236,6 +236,8 @@ class ElewiseMultiSchedule(ElewiseSchedule):
     def _do_buffer_tile(self):
         """
         Optimize end block by buffer_tile
+        Now, back-end pass has already solved mutil-core trumple
+        So, delete buffer_tile func.
 
         Parameters:
         ----------
@@ -245,31 +247,4 @@ class ElewiseMultiSchedule(ElewiseSchedule):
         -------
         None
         """
-        shape = list(map(int, self._last_output_tensor.shape))
-        if len(self._buffer_tile_out) != 2 and \
-                len(self._buffer_tile_out) != 4 or len(shape) != 1:
-            return
-        if self._cancel_ub_tiling:
-            ub_outer_factor = self._estimate_factor
-            block_axis = self._tiling_para["block_tiling"]["axis"]
-            block_factor = self._tiling_para["block_tiling"]["factor"]
-            buffer_tile_axis = self._tiling_result["ub_tiling"]["outer_itervar"]
-            ub_factor = math.ceil(shape[block_axis]/block_factor / ub_outer_factor)
-            axis_sum = math.ceil(shape[block_axis]/block_factor)
-            out_length = len(self._buffer_tile_out)
-            for _, i in enumerate(range(out_length)):
-                self._schedule[self._buffer_tile_out[i]].buffer_tile(
-                    (None, tvm.min(ub_factor, axis_sum -
-                                   buffer_tile_axis*ub_factor)))
-        else:
-            ub_factor = self._tiling_para["ub_tiling"]["factor"]
-            block_axis = self._tiling_para["block_tiling"]["axis"]
-            block_factor = self._tiling_para["block_tiling"]["factor"]
-
-            buffer_tile_axis = self._tiling_result["ub_tiling"]["outer_itervar"]
-            out_length = len(self._buffer_tile_out)
-            for _, i in enumerate(range(out_length)):
-                self._schedule[self._buffer_tile_out[i]].buffer_tile(
-                    (None, tvm.min(ub_factor,
-                                   math.ceil(shape[block_axis]/block_factor) -
-                                   buffer_tile_axis*ub_factor)))
+        return

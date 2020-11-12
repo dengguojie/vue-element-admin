@@ -6,13 +6,6 @@ project(cann C CXX)
 set(CANN_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
 message(STATUS "CANN_ROOT=${CANN_ROOT}")
 
-# the install path for cann project
-if(NOT BUILD_PATH)
-  set(BUILD_PATH "${CMAKE_CURRENT_BINARY_DIR}")
-endif()
-set(INSTALL_PATH "${BUILD_PATH}/install")
-message(STATUS "INSTALL_PATH=${INSTALL_PATH}")
-
 # configurations
 if(EXISTS "${BUILD_PATH}/config.cmake")
   # the current config
@@ -22,90 +15,94 @@ else()
   include("${CANN_ROOT}/cmake/template/config.cmake")
 endif()
 
-if(GCC_PREFIX)
-  set(CMAKE_C_COMPILER ${GCC_PREFIX}gcc)
-  set(CMAKE_CXX_COMPILER ${GCC_PREFIX}g++)
-  set(CMAKE_LINKER ${GCC_PREFIX}ld)
-  set(CMAKE_AR ${GCC_PREFIX}gcc-ar)
-endif()
+option(BUILD_OPEN_PROJECT "Build open canndev project." FALSE)
 
-# compile and link options
-set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
-if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-  message("Build in Debug mode")
-  set(CMAKE_C_FLAGS "-O0 -g -Wall -fPIC ${CMAKE_C_FLAGS}")
-  set(CMAKE_CXX_FLAGS "-O0 -g -Wall -fPIC ${CMAKE_CXX_FLAGS}")
-  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -rdynamic")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -rdynamic")
+# the install path for cann project
+if(NOT BUILD_PATH)
+  set(BUILD_PATH "${CMAKE_BINARY_DIR}")
+endif()
+set(INSTALL_PATH "${BUILD_PATH}/install")
+set(INSTALL_LIBRARY_DIR lib)
+set(PROTO_BINARY_DIR "${BUILD_PATH}/proto")
+
+# whether building open project
+if(BUILD_OPEN_PROJECT)
+  if(CANN_GCC_PREFIX)
+    set(CMAKE_C_COMPILER ${CANN_GCC_PREFIX}gcc)
+    set(CMAKE_CXX_COMPILER ${CANN_GCC_PREFIX}g++)
+    set(CMAKE_LINKER ${CANN_GCC_PREFIX}ld)
+    set(CMAKE_AR ${CANN_GCC_PREFIX}gcc-ar)
   endif()
-else()
-  set(CMAKE_C_FLAGS "-O2 -Wall -Werror -fPIC ${CMAKE_C_FLAGS}")
-  set(CMAKE_CXX_FLAGS "-O2 -Wall -Werror -fPIC ${CMAKE_CXX_FLAGS}")
-endif()
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fstack-protector-all")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,-z,relro,-z,now,-z,noexecstack")
-set(CMAME_C_FLAGS "${CMAKE_C_FLAGS} -pipe")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fstack-protector-all")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-z,relro,-z,now,-z,noexecstack")
-set(CMAME_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pipe")
-add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=0)
 
-# include useful funcs
-include(cmake/util.cmake)
+  # tests flag
+  set(ENABLE_TEST "")
+  if(UT_TEST AND ST_TEST)
+    set(ENABLE_TEST ALL)
+  elseif(UT_TEST)
+    set(ENABLE_TEST UT)
+  elseif(ST_TEST)
+    set(ENABLE_TEST ST)
+  endif()
 
-# build external prjects
-if(DEFINED ENV{D_PKG_SERVER})
-  set(CANN_PKG_SERVER $ENV{D_PKG_SERVER})
-  message("Download packages from PKG server")
-endif()
-include(ExternalProject)
-include(cmake/external/secure_c.cmake)
-include(cmake/external/nlohmann_json.cmake)
-include(cmake/external/protobuf.cmake)
-include(cmake/external/gtest.cmake)
+  # build external prjects
+  if(DEFINED ENV{D_PKG_SERVER})
+    set(CANN_PKG_SERVER $ENV{D_PKG_SERVER})
+    message("Download packages from PKG server")
+  endif()
 
-# find necessary packages
-find_package(Python3 3.7 COMPONENTS Interpreter)
-
-# if D_LINK_PATH is set in environment variables, search libraries in given path
-if(DEFINED ENV{D_LINK_PATH})
-  # D_LINK_PATH is set
-  set(CANN_LIB_PATH $ENV{D_LINK_PATH})
-  message("Find env D_LINK_PATH, search libs under ${CANN_LIB_PATH}")
-  find_library(slog libslog.so ${CANN_LIB_PATH})
-  find_library(register libregister.so ${CANN_LIB_PATH})
-  find_library(graph libgraph.so ${CANN_LIB_PATH})
-  find_library(error_manager liberror_manager.so ${CANN_LIB_PATH})
-  find_library(te_fusion libte_fusion.so ${CANN_LIB_PATH})
-  find_library(platform libplatform.so ${CANN_LIB_PATH})
-  find_library(_caffe_parser lib_caffe_parser.so ${CANN_LIB_PATH})
-  find_library(protobuf libprotobuf.so.19 ${CANN_LIB_PATH})
-  set(tbe_whl ${CANN_LIB_PATH}/te-0.4.0-py3-none-any.whl)
-else()
-  # Ascend mode
-  if(DEFINED ENV{ASCEND_CUSTOM_PATH})
-      set(ASCEND_DIR $ENV{ASCEND_CUSTOM_PATH})
+  if(WIN32)
+    include(cmake/util/intf_pub_windows.cmake)
+  elseif(UNIX)
+    include(cmake/util/intf_pub_linux.cmake)
+    if(ENABLE_TEST)
+      include(cmake/util/intf_pub_llt_gccnative.cmake)
+    endif()
   else()
-      set(ASCEND_DIR /usr/local/Ascend)
+    message(FATAL_ERROR "System not supported.")
   endif()
-  message("Search libs under install path ${ASCEND_DIR}")
-  set(ASCEND_ATC_DIR ${ASCEND_DIR}/atc/lib64)
-  find_library(slog libslog.so ${ASCEND_ATC_DIR})
-  find_library(register libregister.so ${ASCEND_ATC_DIR})
-  find_library(graph libgraph.so ${ASCEND_ATC_DIR})
-  find_library(error_manager liberror_manager.so ${ASCEND_ATC_DIR})
-  find_library(te_fusion libte_fusion.so ${ASCEND_ATC_DIR})
-  find_library(platform libplatform.so ${ASCEND_ATC_DIR})
-  find_library(_caffe_parser lib_caffe_parser.so ${ASCEND_ATC_DIR})
-  find_library(protobuf libprotobuf.so.19 ${ASCEND_ATC_DIR})
-  find_file(tbe_whl te-0.4.0-py3-none-any.whl ${ASCEND_ATC_DIR})
+
+  # build external prjects
+  include(ExternalProject)
+  include(cmake/util/util.cmake)
+  include(cmake/dependencies.cmake)
+  include(cmake/external/secure_c.cmake)
+  include(cmake/external/nlohmann_json.cmake)
+  include(cmake/external/protobuf.cmake)
+  include(cmake/external/gtest.cmake)
+  include(cmake/external/eigen.cmake)
+
+  # find necessary packages
+  find_package(Python3 3.7 COMPONENTS Interpreter)
+  set(HI_PYTHON ${Python3_EXECUTABLE})
+
+  # includes path
+  set(OPS_DIR ${CANN_ROOT}/ops)
+  set(OPS_INCLUDE ${CANN_ROOT}/ops/common/inc)
+  set(FWKACLLIB_INCLUDE ${CANN_ROOT}/third_party/fwkacllib/inc)
+  set(METADEF_INCLUDE ${CANN_ROOT}/third_party/metadef/inc)
+  set(METADEF_DIR ${CANN_ROOT}/third_party/metadef)
+  set(GRAPHENGINE_INCLUDE ${CANN_ROOT}/third_party/metadef/third_party/graphengine/inc)
+
+  add_subdirectory(ops)
+  add_subdirectory(auto_schedule)
+  add_subdirectory(tools)
+  if(ENABLE_TEST)
+    add_subdirectory(ops/tests)
+  endif()
+
+else()
+  # includes path
+  set(JSON_INCLUDE "${TOP_DIR}/third_party/json/include")
+  # for compatibility in open project
+  add_custom_target(json_headers ALL)
+  set(Protobuf_INCLUDE "${TOP_DIR}/third_party/protobuf/include")
+  set(OPS_DIR ${TOP_DIR}/cann/ops)
+  set(OPS_INCLUDE ${TOP_DIR}/cann/ops/common/inc)
+  set(FWKACLLIB_INCLUDE ${TOP_DIR}/inc)
+  set(METADEF_INCLUDE ${TOP_DIR}/inc)
+  set(METADEF_DIR ${TOP_DIR}/metadef)
+  set(GRAPHENGINE_INCLUDE ${TOP_DIR}/inc)
+
+  add_subdirectory(ops)
+
 endif()
-
-# sub projects
-add_subdirectory(ops)
-add_subdirectory(auto_schedule)
-add_subdirectory(tools)
-
-# tests
-add_subdirectory(ops/tests)

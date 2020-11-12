@@ -19,6 +19,7 @@ import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
 from impl import common_util
+from te.utils.error_manager import error_manager_vector
 
 # count of shape dim
 DIM_CNT = 2
@@ -66,19 +67,21 @@ def check_valid(bbox_tensor, img_metas, valid_tensor,
     img_metas_shape = img_metas.get("shape")
     para_check.check_shape(img_metas_shape, param_name="img_metas")
     if img_metas_dtype != bbox_dtype:
-        raise RuntimeError(
-            "The type of img_metas should be same to bbox_tensor!")
+        error_detail = "dtype of img_metas and bbox_tensor should be same"
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "img_metas", \
+                                                               "bbox_tensor", error_detail)
 
     if len(bbox_shape) != DIM_CNT:
-        raise RuntimeError("the length of bbox_shape must be 2,\
-            while it is: %d" % len(bbox_shape))
+        error_detail = "the length of bbox_tensor'shape must be 2, while it is: %d" % len(bbox_shape)
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "bbox_tensor", error_detail)
     if bbox_shape[-1] != DIM_SECOND_SIZE:
-        raise RuntimeError(
-            "the second dim must be 4, while it's: %d" % bbox_shape[-1])
+        error_detail = "the second dim of bbox_tensor must be 4, while it's: %d" % bbox_shape[-1]
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "bbox_tensor", error_detail)
 
     if bbox_shape[0] != valid_shape[0]:
-        raise RuntimeError(
-            "the dim-0 must be equal between 'bbox_tensor' and 'valid_tensor'")
+        error_detail = "the dim-0 must be equal between bbox_tensor and valid_tensor"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "bbox_tensor", \
+                                                               "valid_tensor", error_detail)
 
     cvd = CheckValid(bbox_tensor, img_metas, valid_tensor, kernel_name)
     return cvd.check_valid()
@@ -351,8 +354,7 @@ class CheckValid(object):
         elif head_type == "valid":
             _unit = 1
         else:
-            raise KeyError(
-                "only support 'bbox' or 'valid', got {}.".format(head_type))
+            error_manager_vector.raise_err_input_value_invalid("check_valid", "head_type", "bbox or valid", head_type)
         element_total_num = self.bbox_shape[0] * _unit
         if self.job_num > 1:
             last_align_job_head = -self.job_buf_row * _unit + element_total_num

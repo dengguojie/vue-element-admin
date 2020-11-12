@@ -16,7 +16,12 @@
 cce
 """
 from __future__ import absolute_import as _abs
+
+import te.lang.cce as static
+import te.lang.dynamic as dynamic
 from te import tvm
+from te.lang.base import operation
+from topi import generic
 
 
 @tvm.target.generic_func
@@ -35,3 +40,28 @@ def auto_schedule(outs, option=None):
         The computation schedule for the op.
     """
     pass
+
+
+@auto_schedule.register("cce")
+@generic.auto_schedule.register("cce")
+def _schedule_cce(outs, option=None):
+    if operation.in_dynamic():
+        return dynamic.schedule_cce(outs, option)
+
+    return static.schedule_cce(outs, option)
+
+
+def build(sch, config_map=None):
+    """
+    :param sch:
+    :param config_map:
+    :return:
+    """
+    if operation.in_dynamic():
+        return dynamic.build(sch, config_map)
+
+    sch = sch[0] if isinstance(sch, list) else sch
+    tensors = config_map.get("tensor_list", [])
+    if len(tensors) == 1 and isinstance(tensors[0], (tuple, list)):
+        config_map["tensor_list"] = tensors[0]
+    return static.cce_build_code(sch, config_map)

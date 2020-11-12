@@ -21,11 +21,7 @@ from topi.cce import util
 from te import tik
 from te import platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import check_dtype
+from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 # data type of int32
@@ -135,8 +131,8 @@ class GatherNd():
         self.tiling_dtype = INT32
         params_support_dtype_list = ("float16", "float32", "int32", "int8", "uint8")
         indices_support_dtype_list = ("int32", "int64")
-        check_dtype(self.params_dtype, params_support_dtype_list, param_name="params")
-        check_dtype(self.indices_dtype, indices_support_dtype_list, param_name="indices")
+        para_check.check_dtype(self.params_dtype, params_support_dtype_list, param_name="params")
+        para_check.check_dtype(self.indices_dtype, indices_support_dtype_list, param_name="indices")
         if self.y_dtype != self.params_dtype:
             error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "y", "x",
                                                                   self.y_dtype, self.params_dtype)
@@ -1400,7 +1396,8 @@ class GatherNd():
 
 
 @te.op.register_operator("GatherNd")
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def gather_nd(x_dict, indices_dict, y_dict, kernel_name="GatherNd"):
     """
     gather_nd interface

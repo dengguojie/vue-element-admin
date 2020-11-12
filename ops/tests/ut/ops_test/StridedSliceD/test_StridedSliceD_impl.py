@@ -14,6 +14,9 @@ http://www.apache.org/licenses/LICENSE-2.0
 SpaceToBatch ut case
 """
 from op_test_frame.ut import OpUT
+from op_test_frame.common import precision_info
+import numpy as np
+import tensorflow as tf
 ut_case = OpUT("StridedSliceD", None, None)
 
 case1 = {"params": [{"shape": (8, 8, 16), "dtype": "float16", "format": "ND", "ori_shape": (8, 8, 16),"ori_format": "ND"}, #x
@@ -90,6 +93,18 @@ ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case6)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case7)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case8)
 
-if __name__ == '__main__':
-    ut_case.run(["Ascend910","Ascend310","Ascend710"])
-    exit(0)
+def calc_expect_func(x, y, begin, end, strides):
+    inputArr = x['value']
+    output = tf.strided_slice(inputArr,np.array(begin),np.array(end),np.array(strides),begin_mask=0,end_mask=0,shrink_axis_mask=0)
+    with tf.Session() as sess:
+        outputArr = sess.run(output)
+    return outputArr
+
+precision_case1 = {"params": [{"shape": (8, 8, 16), "dtype": "float16", "format": "ND", "ori_shape": (8, 8, 16),"ori_format": "ND","param_type":"input"},
+                              {"shape": (2, 2, 16), "dtype": "float16", "format": "ND", "ori_shape": (2, 2, 16),"ori_format": "ND","param_type":"output"},
+                              [0, 0, 0], [4, 8, 16], [3, 4, 1]],
+                   "expect": "success",
+                   "calc_expect_func": calc_expect_func,
+                   "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)}
+
+ut_case.add_precision_case("Ascend910", precision_case1)

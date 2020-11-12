@@ -1577,7 +1577,8 @@ def nms_local(tik_instance, data_tensor, input_param):
                                post_nms_num//CONFIG_SIXTEEN,
                                CONFIG_SIXTEEN - CONFIG_TWO)
         # transpose 4*post_nms_num to post_nms_num*4
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") == "Ascend610":
+        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") \
+                in ("Ascend610", "Ascend710"):
             tik_instance.v4dtrans(True,
                                   selected_reduced_coord_ub,
                                   data_y_last,

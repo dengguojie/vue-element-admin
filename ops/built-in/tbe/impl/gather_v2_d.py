@@ -22,6 +22,10 @@ from te import tvm
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 
 # available soc resources
@@ -30,6 +34,25 @@ L1_SIZE = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
 CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 TOTAL_PARAMS = 255000
 INDICES_LINE = 64
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(x, indices, y, axis=0, kernel_name="gather_v2_d"):
+    format_x = x.get("format").upper()
+    format_indices = indices.get("format").upper()
+    shape_indices_len = len(indices.get("shape"))
+    if format_x == "ND" and format_indices == "ND":
+        axis_split_matrix=[]
+        for j in range(shape_indices_len):
+            split_0 = [SplitInput([1, [j], [-1], [-1]]), SplitOutput([0, [1]])]
+            axis_split_matrix.append(split_0)
+        axis_reduce_list = None
+
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 def _new_alloc(tvm_ib, dtype, shape, name, scope):
@@ -776,7 +799,7 @@ def _compute_axis_not_zero(output, tensor_params, tensor_indices,
     """compute for value of axis is not zero"""
     reg = tvm_ib.allocate(tensor_indices.dtype, (1,),
                           name='reg',
-                          scope=cce.scope_reg)
+                          scope=tbe_platform.scope_reg)
     row_len = int(tensor_params.shape[2])
     burst_indices = _get_burst_len(indices_len,
                                    tensor_indices.dtype)
@@ -913,17 +936,17 @@ def _kernel_ir(output, tensor_params, tensor_indices, axis):
                                                 tensor_params.dtype,
                                                 int(tensor_params.shape[2]),
                                                 "params_ub",
-                                                scope=cce.scope_ubuf)
+                                                scope=tbe_platform.scope_ubuf)
         op_parameters['indices_ub'] = _new_alloc(tvm_ib,
                                                  tensor_indices.dtype,
                                                  indices_len,
                                                  "indices_ub",
-                                                 scope=cce.scope_ubuf)
+                                                 scope=tbe_platform.scope_ubuf)
         op_parameters['ub_for_32B'] = _new_alloc(tvm_ib,
                                                  tensor_params.dtype,
                                                  32,
                                                  "ub_for_32B",
-                                                 scope=cce.scope_ubuf)
+                                                 scope=tbe_platform.scope_ubuf)
         op_parameters['burst_params'] = _get_burst_len(gather_len,
                                                        tensor_params.dtype)
         op_parameters['burst_indices'] = _get_burst_len(indices_len,
@@ -1153,7 +1176,7 @@ def gather_v2_d(x, indices, y, axis=0, kernel_name="gather_v2_d"):
 
     dim_num = len(params_shape)
     if axis < -dim_num or axis >= dim_num:
-        raise RuntimeError("Axis value out of range")
+        error_manager_vector.raise_err_input_param_not_in_range(kernel_name, "axis", -dim_num, dim_num, axis)
 
     dtype_list = ("int8", "int16", "int32", "int64", "uint8", "uint16",
                   "uint32", "uint64", "float16", "float32")

@@ -47,6 +47,314 @@ from impl import ncdhw_2_fractal_z_3d
 from impl import fractal_z_3d_2_ncdhw
 from impl import ndhwc_2_fractal_z_3d
 from impl import fractal_z_3d_2_ndhwc
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(src, dst, src_format, dst_format,
+                        kernel_name='trans_data'):
+    if (src_format.upper() == "NHWC" or src_format.upper() == "NCHW") \
+            and dst_format.upper() == "NC1HWC0":
+        if check_whether_2d(src_format.upper(), src):
+            axis_split_matrix=[[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
+        elif src_format.upper() == "NHWC":
+            axis_split_matrix=[
+                [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+                [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [2]])],
+                [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [3]])]
+            ]
+        elif src_format.upper() == "NCHW":
+            axis_split_matrix=[
+                [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+                [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])],
+                [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [3]])]
+            ]
+        axis_reduce_list = None
+
+    elif src_format.upper() == "NC1HWC0" \
+            and (dst_format.upper() == "NHWC" or dst_format.upper() == "NCHW"):
+        if check_whether_2d(dst_format.upper(), dst):
+            axis_split_matrix=[[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
+        elif dst_format.upper() == "NHWC":
+            axis_split_matrix=[
+                [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+                [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])],
+                [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [2]])]
+            ]
+        elif dst_format.upper() == "NCHW":
+            axis_split_matrix=[
+                [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+                [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])],
+                [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [3]])]
+            ]
+        axis_reduce_list = None
+
+    elif src_format.upper() == "NCHW" \
+            and (dst_format.upper() == "FRACTAL_ZN"
+                 or dst_format.upper() == "FRACTAL_Z"):
+        axis_split_matrix=[
+            [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])],
+            [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [2]])]
+        ]
+        axis_reduce_list = None
+
+    elif src_format.upper() == "ND" \
+            and (dst_format.upper() == "FRACTAL_ZN"
+                 or dst_format.upper() == "FRACTAL_Z"):
+        axis_split_matrix = None
+        axis_reduce_list = None
+    elif (src_format.upper() == "FRACTAL_ZN"
+          or src_format.upper() == "FRACTAL_Z") \
+            and dst_format.upper() == "NCHW":
+        axis_split_matrix = None
+        axis_reduce_list = None
+    elif src_format.upper() == "HWCN" \
+            and (dst_format.upper() == "FRACTAL_ZN"
+                 or dst_format.upper() == "FRACTAL_Z"
+                 or dst_format.upper() == "FRACTAL_ZN_LSTM"):
+        axis_split_matrix=[
+            [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [1]])],
+            [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [2]])]
+        ]
+        axis_reduce_list = None
+
+    elif src_format.upper() == "FRACTAL_ZN_LSTM" and \
+            dst_format.upper() == "HWCN":
+        axis_split_matrix = None
+        axis_reduce_list = None
+    elif (src_format.upper() == "FRACTAL_ZN"
+          or src_format.upper() == "FRACTAL_Z") \
+            and dst_format.upper() == "HWCN":
+        axis_split_matrix = None
+        axis_reduce_list = None
+    elif src_format.upper() == "HWCN" \
+            and dst_format.upper() == "C1HWNCOC0":
+        axis_split_matrix=[
+            [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [1]])],
+            [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [2]])],
+            [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [3]])]
+        ]
+        axis_reduce_list = None
+
+    elif src_format.upper() == "C1HWNCOC0" \
+            and dst_format.upper() == "HWCN":
+        axis_split_matrix=[
+            [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [0]])],
+            [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])],
+            [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [3]])]
+        ]
+        axis_reduce_list = None
+
+    elif (src_format.upper() == "NHWC" or src_format.upper() == "NCHW" \
+          or src_format.upper() == "ND") and \
+            dst_format.upper() == "FRACTAL_NZ":
+        axis_split_matrix = None
+        axis_reduce_list = None
+    elif (src_format.upper() == "FRACTAL_NZ" or
+          src_format == "FORMAT_FRACTAL_Nz") and \
+            (dst_format in ("ND", "NHWC", "NCHW")):
+        axis_split_matrix = None
+        axis_reduce_list = None
+    elif src_format.upper() == "NCHW" and dst_format.upper() == "NHWC":
+        axis_split_matrix=[
+            [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+            [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [3]])],
+            [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])],
+            [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [2]])]
+        ]
+        axis_reduce_list = None
+
+    elif src_format.upper() == "NCHW" and dst_format.upper() == "HWCN":
+        axis_split_matrix=[
+            [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [3]])],
+            [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [2]])],
+            [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [0]])],
+            [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [1]])]
+        ]
+        axis_reduce_list = None
+
+    elif src_format.upper() == "NHWC" and dst_format.upper() == "NCHW":
+        axis_split_matrix=[
+            [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+            [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [2]])],
+            [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [3]])],
+            [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [1]])]
+        ]
+        axis_reduce_list = None
+
+    elif src_format.upper() == "NHWC" and dst_format.upper() == "HWCN":
+        axis_split_matrix=[
+            [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [3]])],
+            [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [0]])],
+            [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])],
+            [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [2]])]
+        ]
+        axis_reduce_list = None
+
+    elif src_format.upper() == "HWCN" and dst_format.upper() == "NCHW":
+        axis_split_matrix=[
+            [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [2]])],
+            [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [3]])],
+            [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])],
+            [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [0]])]
+        ]
+        axis_reduce_list = None
+
+    elif src_format.upper() == "HWCN" and dst_format.upper() == "NHWC":
+        axis_split_matrix=[
+            [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [1]])],
+            [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [2]])],
+            [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [3]])],
+            [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [0]])]
+        ]
+        axis_reduce_list = None
+
+    elif src_format.upper() == "CHWN" and dst_format.upper() == "NCHW":
+        axis_split_matrix=[
+            [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [1]])],
+            [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [2]])],
+            [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [3]])],
+            [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [0]])]
+        ]
+        axis_reduce_list = None
+
+    elif src_format.upper() == "CHWN" and dst_format.upper() == "NHWC":
+        axis_split_matrix=[
+            [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [3]])],
+            [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]])],
+            [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])],
+            [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [0]])]
+        ]
+        axis_reduce_list = None
+
+    elif src_format.upper() == "CHWN" and dst_format.upper() == "HWCN":
+        axis_split_matrix=[
+            [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [2]])],
+            [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [0]])],
+            [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])],
+            [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [3]])]
+        ]
+        axis_reduce_list = None
+
+    elif src_format.upper() == "NDHWC" and dst_format.upper() == "NDC1HWC0":
+        axis_split_matrix=[
+            [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+            [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]])],
+            [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [3]])],
+            [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [4]])]
+        ]
+        axis_reduce_list = None
+
+    elif src_format.upper() == "NDC1HWC0" and dst_format.upper() == "NDHWC":
+        axis_split_matrix=[
+            [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+            [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]])],
+            [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [2]])],
+            [SplitInput([0, [4], [-1], [-1]]), SplitOutput([0, [3]])]
+        ]
+        axis_reduce_list = None
+
+    elif src_format.upper() == "NHWC" and \
+            dst_format.upper() == "FRACTAL_Z_C04":
+        axis_split_matrix = None
+        axis_reduce_list = None
+    elif src_format.upper() == "NCHW" and \
+            dst_format.upper() == "FRACTAL_Z_C04":
+        axis_split_matrix = None
+        axis_reduce_list = None
+    elif src_format.upper() == "HWCN" and \
+            dst_format.upper() == "FRACTAL_Z_C04":
+        axis_split_matrix = None
+        axis_reduce_list = None
+    elif (src_format.upper() in ["NHWC", "NCHW", "HWCN"]) and \
+            dst_format.upper() == "NC1HWC0_C04":
+        if src_format.upper() == "NCHW":
+            axis_split_matrix=[
+                [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+                [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])],
+                [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [3]])]
+            ]
+        if src_format.upper() == "NHWC":
+            axis_split_matrix=[
+                [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+                [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [2]])],
+                [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [3]])]
+            ]
+        if src_format.upper() == "HWCN":
+            axis_split_matrix=[
+                [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [0]])],
+                [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [2]])],
+                [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [3]])]
+            ]
+        axis_reduce_list = None
+
+    elif src_format.upper() == "DHWCN" and \
+            dst_format.upper() == "FRACTAL_Z_3D":
+        axis_split_matrix = None
+        axis_reduce_list = None
+    elif src_format.upper() == "FRACTAL_Z_3D" \
+            and dst_format.upper() == "DHWCN":
+        axis_split_matrix = None
+        axis_reduce_list = None
+    elif src_format.upper() == "NC1HWC0" and \
+            dst_format.upper() == "FRACTAL_Z":
+        axis_split_matrix=[
+            [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])],
+            [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [2]])]
+        ]
+        axis_reduce_list = None
+
+    elif src_format.upper() == "FRACTAL_NZ" \
+            and dst_format.upper() == "NC1HWC0":
+        axis_split_matrix = None
+        axis_reduce_list = None
+    elif src_format.upper() == "NCDHW" and dst_format.upper() == "NDC1HWC0":
+        axis_split_matrix=[
+            [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+            [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])],
+            [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [3]])],
+            [SplitInput([0, [4], [-1], [-1]]), SplitOutput([0, [4]])]
+        ]
+        axis_reduce_list = None
+
+    elif src_format.upper() == "NDC1HWC0" and dst_format.upper() == "NCDHW":
+        axis_split_matrix=[
+            [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+            [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [2]])],
+            [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [3]])],
+            [SplitInput([0, [4], [-1], [-1]]), SplitOutput([0, [4]])]
+        ]
+        axis_reduce_list = None
+
+    elif src_format.upper() == "NCDHW" and dst_format.upper() == "FRACTAL_Z_3D":
+        axis_split_matrix=[
+            [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [0]])],
+            [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [2]])],
+            [SplitInput([0, [4], [-1], [-1]]), SplitOutput([0, [3]])]
+        ]
+        axis_reduce_list = None
+
+    elif src_format.upper() == "FRACTAL_Z_3D" and dst_format.upper() == "NCDHW":
+        axis_split_matrix = None
+        axis_reduce_list = None
+    elif src_format.upper() == "NDHWC" and dst_format.upper() == "FRACTAL_Z_3D":
+        axis_split_matrix=[
+            [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [0]])],
+            [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])],
+            [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [3]])]
+        ]
+        axis_reduce_list = None
+
+    elif src_format.upper() == "FRACTAL_Z_3D" and dst_format.upper() == "NDHWC":
+        axis_split_matrix = None
+        axis_reduce_list = None
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 # pylint: disable=locally-disabled,redefined-builtin,too-many-statements
@@ -80,8 +388,8 @@ def check_whether_2d(format, input_dict):
 
 # pylint: disable=locally-disabled,too-many-branches
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_STR,
-                            para_check.REQUIRED_ATTR_STR, para_check.KERNEL_NAME)
-def trans_data(src, dst, src_format, dst_format,
+                            para_check.REQUIRED_ATTR_STR, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
+def trans_data(src, dst, src_format, dst_format, group=1,
                kernel_name='trans_data'):
     """
     algorithm: format_transfer
@@ -100,6 +408,8 @@ def trans_data(src, dst, src_format, dst_format,
         source data format, can be NHWC, NCHW, FRACTAL_Zn etc.
     dst_format: str
         target data format, can be NC1HWC0, NCHW, FRACTAL_Zn etc.
+    group: int
+        default 1
     kernel_name: str
         kernel name, default value is "format_transfer"
 

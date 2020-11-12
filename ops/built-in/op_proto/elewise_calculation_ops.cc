@@ -995,7 +995,9 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(SqrtGradInferShape)
   tensordesc_output.SetShape(shape_x);
   tensordesc_output.SetDataType(input_dtype);
   tensordesc_output.SetShapeRange(shape_range_x);
-  (void)op.UpdateOutputDesc("z", tensordesc_output);
+  if (op.UpdateOutputDesc("z", tensordesc_output) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+  }
 IMPLEMT_COMMON_INFERFUNC_HELPER_END()
 
 COMMON_INFER_FUNC_REG(SqrtGrad, SqrtGradInferShape);
@@ -1009,7 +1011,10 @@ IMPLEMT_COMMON_INFERFUNC(LogInferShape) {
   TensorDesc tensordesc_output = op.GetOutputDesc("y");
   tensordesc_output.SetShape(x_shape);
   tensordesc_output.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
+  if (op.UpdateOutputDesc("y", tensordesc_output) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
@@ -1044,9 +1049,6 @@ int64_t GetAddNConstValue(const ge::Operator& op) {
   if (ge::GRAPH_SUCCESS != op.GetAttr("N", tensor_num)) {
     OpsGetAttrErrReport(op.GetName(), "N");
     OP_LOGE(op.GetName().c_str(), "The add_n op GetOpAttr failed!");
-  }
-  if (tensor_num < 2) {
-    OP_LOGE(op.GetName().c_str(), "The input tensor num of add_n is wrong !");
   }
   return tensor_num;
 }
@@ -2359,7 +2361,7 @@ IMPLEMT_COMMON_INFERFUNC(ArgMaxDInferShape) {
     dimension += shape_x.GetDimNum();
   }
   vector<int64_t> y_shape;
-  for (int i = 0; i < dim_num; ++i) {
+  for (size_t i = 0; i < dim_num; ++i) {
     y_shape.push_back(shape_x.GetDim(i));
   }
 
@@ -2676,6 +2678,59 @@ INFER_FUNC_REG(AdamApplyOneAssign, AdamApplyOneAssignInferShape);
 VERIFY_FUNC_REG(AdamApplyOneAssign, AdamApplyOneAssignVerify);
 // ----------------AdamApplyOneAssign-------------------
 
+// ----------------LambApplyOptimizerAssign-------------------
+IMPLEMT_COMMON_INFERFUNC(LambApplyOptimizerAssignInferShape) {
+  Shape x_shape = op.GetInputDesc("grad").GetShape();
+  DataType input_dtype = op.GetInputDesc("grad").GetDataType();
+  TensorDesc tensordesc_output = op.GetOutputDesc("output0");
+  tensordesc_output.SetShape(x_shape);
+  tensordesc_output.SetDataType(input_dtype);
+  (void)op.UpdateOutputDesc("output0", tensordesc_output);
+
+  Shape v_shape = op.GetInputDesc("inputv").GetShape();
+  DataType inputv_dtype = op.GetInputDesc("inputv").GetDataType();
+  TensorDesc tensordesc_outputv = op.GetOutputDesc("inputv");
+  tensordesc_outputv.SetShape(v_shape);
+  tensordesc_outputv.SetDataType(inputv_dtype);
+  (void)op.UpdateOutputDesc("inputv", tensordesc_outputv);
+
+  Shape m_shape = op.GetInputDesc("inputm").GetShape();
+  DataType inputm_dtype = op.GetInputDesc("inputm").GetDataType();
+  TensorDesc tensordesc_outputm = op.GetOutputDesc("inputm");
+  tensordesc_outputm.SetShape(m_shape);
+  tensordesc_outputm.SetDataType(inputm_dtype);
+  (void)op.UpdateOutputDesc("inputm", tensordesc_outputm);
+
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(LambApplyOptimizerAssign, LambApplyOptimizerAssignVerify) {
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(LambApplyOptimizerAssign, LambApplyOptimizerAssignInferShape);
+VERIFY_FUNC_REG(LambApplyOptimizerAssign, LambApplyOptimizerAssignVerify);
+// ----------------LambApplyOptimizerAssign-------------------
+
+// ----------------LambApplyWeightAssign-------------------
+IMPLEMT_COMMON_INFERFUNC(LambApplyWeightAssignInferShape) {
+  Shape x_shape = op.GetInputDesc("input_param").GetShape();
+  DataType input_dtype = op.GetInputDesc("input_param").GetDataType();
+  TensorDesc tensordesc_output = op.GetOutputDesc("input_param");
+  tensordesc_output.SetShape(x_shape);
+  tensordesc_output.SetDataType(input_dtype);
+  (void)op.UpdateOutputDesc("input_param", tensordesc_output);
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(LambApplyWeightAssign, LambApplyWeightAssignVerify) {
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(LambApplyWeightAssign, LambApplyWeightAssignInferShape);
+VERIFY_FUNC_REG(LambApplyWeightAssign, LambApplyWeightAssignVerify);
+// ----------------LambApplyWeightAssign-------------------
+
 // ------------SquareSumV2 Op Begin----------------
 IMPLEMT_COMMON_INFERFUNC(SquareSumV2InferShape) {
   auto shape = op.GetInputDesc("input_x").GetShape();
@@ -2824,8 +2879,11 @@ IMPLEMT_COMMON_INFERFUNC(SquareSumALlInferShape) {
   tensor_desc_y1.SetDataType(input_x1_dtype);
   tensor_desc_y2.SetShape(Shape(o_shape));
   tensor_desc_y2.SetDataType(input_x2_dtype);
-  (void)op.UpdateOutputDesc("y1", tensor_desc_y1);
-  (void)op.UpdateOutputDesc("y2", tensor_desc_y2);
+  if (op.UpdateOutputDesc("y1", tensor_desc_y1) != GRAPH_SUCCESS ||
+      op.UpdateOutputDesc("y2", tensor_desc_y2) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
@@ -2883,8 +2941,11 @@ IMPLEMT_COMMON_INFERFUNC(FusedMulAddNL2lossInferShape) {
   tensordesc_output1.SetDataType(input_dtype);
   tensordesc_output2.SetShape(ge::Shape(o_shape));
   tensordesc_output2.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("y1", tensordesc_output1);
-  (void)op.UpdateOutputDesc("y2", tensordesc_output2);
+  if (op.UpdateOutputDesc("y1", tensordesc_output1) != GRAPH_SUCCESS ||
+      op.UpdateOutputDesc("y2", tensordesc_output2) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
@@ -3004,10 +3065,15 @@ IMPLEMT_VERIFIER(Bias, BiasVerify) {
 
   if ((axis >= length_x) || (axis < (-length_x))) {
     OP_LOGE("[ERROR] axis out of range index");
+    string minvalue = ConcatString(-length_x);
+    string maxvalue = ConcatString(length_x - 1);
+    string excepted_value = ConcatString("in the range of [", minvalue,",", maxvalue,"]");
+    OpsAttrValueErrReport(op.GetName(), "axis", excepted_value, ConcatString(axis));
     return GRAPH_FAILED;
   }
   if (num_axes < -1) {
     OP_LOGE("[ERROR] num_axes must be non-negative or -1");
+    OpsAttrValueErrReport(op.GetName(), "num_axes", "non-negative or -1", ConcatString(num_axes));
     return GRAPH_FAILED;
   }
 
@@ -3023,32 +3089,42 @@ IMPLEMT_VERIFIER(Bias, BiasVerify) {
       int64_t bias_num = length_x - axis_;
       if (length_bias != bias_num) {
         OP_LOGE("[ERROR] length_bias and bias_num must be equal");
+        OpsInputShapeErrReport(op.GetName(), "length_bias and bias_num must be equal",
+                              "length_bias", ConcatString(length_bias));
         return GRAPH_FAILED;
       }
       for (int64_t i = 0; i < bias_num; i++) {
         if (dims_x[axis_ + i] != dims_bias[i]) {
           OP_LOGE("[ERROR] dimensions shape_x and shape_bias must be equal");
+          OpsInputShapeErrReport(op.GetName(), "The dimensions of shape_x and shape_bias must be equal",
+                              "shape_bias's dimension", ConcatString(dims_bias[i]));
           return GRAPH_FAILED;
         }
       }
     } else if (num_axes == 0) {
       if (bias_dim_num != 0) {
         OP_LOGE("[ERROR] bias must be a scalar ");
+        OpsAttrValueErrReport(op.GetName(), "bias", "scalar", ConcatString(bias_dim_num));
         return GRAPH_FAILED;
       }
     } else if (num_axes > 0) {
       int64_t num_axis = axis_ + num_axes;
       if (num_axis > length_x) {
         OP_LOGE("[ERROR] bias shape extends x shape when applied");
+        OpsOneInputShapeErrReport(op.GetName(), "bias", "Bias shape extends x_shape when applied.");
         return GRAPH_FAILED;
       }
       if (length_bias != num_axes) {
         OP_LOGE("[ERROR] length_bias and num_axes must be equal");
+        OpsInputShapeErrReport(op.GetName(), "length_bias and bias_num must be equal",
+                              "length_bias", ConcatString(length_bias));
         return GRAPH_FAILED;
       }
       for (int64_t i = 0; i < num_axes; i++) {
         if (dims_x[axis_ + i] != dims_bias[i]) {
           OP_LOGE("[ERROR] dimensions shape_x and shape_bias must be equal");
+          OpsInputShapeErrReport(op.GetName(), "The dimensions of shape_x and shape_bias must be equal",
+                              "shape_bias's dimension", ConcatString(dims_bias[i]));
           return GRAPH_FAILED;
         }
       }
@@ -3058,11 +3134,14 @@ IMPLEMT_VERIFIER(Bias, BiasVerify) {
       int64_t bias_num = axis_ + length_bias;
       if (bias_num > length_x) {
         OP_LOGE("[ERROR] bias shape extends x shape when applied");
+        OpsOneInputShapeErrReport(op.GetName(), "bias", "Bias shape extends x_shape when applied");
         return GRAPH_FAILED;
       }
       for (int64_t i = 0; i < length_bias; i++) {
         if (dims_x[axis_ + i] != dims_bias[i]) {
           OP_LOGE("[ERROR] dimensions shape_x and shape_bias must be equal");
+          OpsInputShapeErrReport(op.GetName(), "The dimensions of shape_x and shape_bias must be equal",
+                              "shape_bias's dimension", ConcatString(dims_bias[i]));
           return GRAPH_FAILED;
         }
       }
@@ -3524,8 +3603,10 @@ IMPLEMT_COMMON_INFERFUNC(KLDivInferShape) {
 
   tensordesc_output.SetShape(ge::Shape(o_shape));
   tensordesc_output.SetDataType(dtype_x);
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
-
+  if (op.UpdateOutputDesc("y", tensordesc_output) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 

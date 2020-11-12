@@ -28,6 +28,7 @@
 #include <algorithm>
 #include "op_log.h"
 #include "graph/debug/ge_attr_define.h"
+#include "graph/utils/tensor_utils.h"
 #include "graph/utils/attr_utils.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/node_utils.h"
@@ -63,6 +64,17 @@ bool BatchMultiClassNonMaxSuppressionFusionPass::CheckTransposeBeforeSlice(ge::N
   return true;
 }
 
+bool BatchMultiClassNonMaxSuppressionFusionPass::CheckfindSoftmax(ge::NodePtr checkNode) {
+  auto ExpandDims_OpType = checkNode->GetType();
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "checkNode, is %s", ExpandDims_OpType.c_str());
+  if ((ExpandDims_OpType != "ExpandDims")) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "Op name is not ExpandDims, is %s", ExpandDims_OpType.c_str());
+    return false;
+  }
+  return true;
+}
+
+
 Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
                                                           vector<ge::NodePtr>& newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define BatchMultiClassNonMaxSuppressionFusionPass fusion begin.");
@@ -90,7 +102,10 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
   auto peerNode = fusedNode->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode();
   auto peerOpType = peerNode->GetType();
   bool isNeedTransposeBeforeSlice = false;
+  bool isfindSoftmax = false;
   isNeedTransposeBeforeSlice = CheckTransposeBeforeSlice(peerNode);
+  isfindSoftmax = CheckfindSoftmax(peerNode);
+
 
   if (isNeedTranposeBeforeScore && isNeedTransposeBeforeSlice) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "will insert transpose before Slice + BatchMultiClassNonMaxSuppression");
@@ -101,8 +116,8 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
       DataType dtype = op.GetInputDesc("offsets").GetDataType();
 
       vector<ge::GeTensorPtr> sliceTensorPtr = ge::OpDescUtils::MutableWeights(peerNode);
-      FUSION_PASS_CHECK(sliceTensorPtr.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "slice const is nullptr!"),
-                        return PARAM_INVALID);
+      FUSION_PASS_CHECK(sliceTensorPtr.empty(), OP_LOGW(FUSED_OP_TYPE.c_str(), "slice const is nullptr!"),
+                        return NOT_CHANGED);
 
       if (dtype == ge::DT_INT32) {
         // modify Slice offset const node value
@@ -149,12 +164,12 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
     } else {
       vector<int64_t> offsets;
       ge::AttrUtils::GetListInt(peerNode->GetOpDesc(), "offsets", offsets);
-      FUSION_PASS_CHECK(offsets.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "sliceD attr offsets is nullptr!"),
-                        return PARAM_INVALID);
+      FUSION_PASS_CHECK(offsets.empty(), OP_LOGW(FUSED_OP_TYPE.c_str(), "sliceD attr offsets is nullptr!"),
+                        return NOT_CHANGED);
       vector<int64_t> size;
       ge::AttrUtils::GetListInt(peerNode->GetOpDesc(), "size", size);
-      FUSION_PASS_CHECK(size.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "sliceD attr size is nullptr!"),
-                        return PARAM_INVALID);
+      FUSION_PASS_CHECK(size.empty(), OP_LOGW(FUSED_OP_TYPE.c_str(), "sliceD attr size is nullptr!"),
+                        return NOT_CHANGED);
       vector<int64_t> offsetsNew = {offsets[0], offsets[2], offsets[1]};
       vector<int64_t> sizeNew = {size[0], size[2], size[1]};
       ge::AttrUtils::SetListInt(peerNode->GetOpDesc(), "offsets", offsetsNew);
@@ -162,8 +177,8 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
     }
     // update Slice out desc
     vector<int64_t> oriSliceOutputShape = peerNode->GetOpDesc()->GetOutputDesc(0).GetShape().GetDims();
-    FUSION_PASS_CHECK(oriSliceOutputShape.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "Slice output shape is nullptr!"),
-                      return PARAM_INVALID);
+    FUSION_PASS_CHECK(oriSliceOutputShape.empty(), OP_LOGW(FUSED_OP_TYPE.c_str(), "Slice output shape is nullptr!"),
+                      return NOT_CHANGED);
     vector<int64_t> outputSliceShapeVec;
     outputSliceShapeVec.push_back(oriSliceOutputShape[0]);
     outputSliceShapeVec.push_back(oriSliceOutputShape[2]);
@@ -179,10 +194,271 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
     inputDesc.SetOriginShape(outputSliceShape);
     fusedNode->GetOpDesc()->UpdateInputDesc(1, inputDesc);
   } else if (isNeedTranposeBeforeScore) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "will insert transpose before BatchMultiClassNonMaxSuppression");
-    // insert directly before the input 1
+    if (fusedNode->GetOutDataAnchor(1)->GetPeerInDataAnchors().size() == 0) {
+      // insert directly before the input 1
+      ge::GeTensorDesc nmsScorceDesc = fusedNode->GetOpDesc()->GetInputDesc(1);
+      ge::OpDescPtr score_thresholdnode = fusedNode->GetOpDesc();
+      float score_threshold_value = 0.0;
+      float score_threshold_new = 0.0;
+
+      ge::AttrUtils::GetFloat(score_thresholdnode, "score_threshold", score_threshold_value);
+      score_threshold_new = (1 + score_threshold_value) / ((65536/65535) - score_threshold_value);
+      ge::AttrUtils::SetFloat(score_thresholdnode, "score_threshold", score_threshold_new);
+      vector<int64_t> oriNmsScorceShape = nmsScorceDesc.GetShape().GetDims();
+      if (oriNmsScorceShape.empty()) {
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "can not get input nms scorce shape. shape is empty!");
+        return PARAM_INVALID;
+      }
+
+      // Add the description (input, output, name, attribute) of the add1 node
+      ge::OpDescPtr Adds;
+      std::string add1DescName = fusedNode->GetOpDesc()->GetName();
+
+      // Define node name----->BatchMultiClassNonMaxSuppression_Add1
+      Adds = std::make_shared<ge::OpDesc>(add1DescName + "_Add1", "Adds");
+
+      // Define out auxiliary matrix shape of Add1 node
+      vector<int64_t> newnodeShapeVec;
+      newnodeShapeVec.push_back(oriNmsScorceShape[0]);
+      newnodeShapeVec.push_back(oriNmsScorceShape[1]);
+      newnodeShapeVec.push_back(oriNmsScorceShape[2]);
+      ge::GeShape add1newShape(newnodeShapeVec);
+
+      // Set node properties
+      ge::GeTensorDesc tensorDescadd1(GeShape(), ge::FORMAT_ND, ge::DT_FLOAT);
+      tensorDescadd1.SetShape(add1newShape);
+
+      int32_t realDimCnt0 = add1newShape.GetDimNum();
+      ge::TensorUtils::SetRealDimCnt(tensorDescadd1, realDimCnt0);
+      FUSION_PASS_CHECK(Adds->AddInputDesc("x", tensorDescadd1) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add input x for Adds after valid num is null, fusion failed."),
+                      return FAILED);
+      Adds->AddOutputDesc("y", tensorDescadd1);
+      ge::AttrUtils::SetFloat(Adds, "value", 1);
+      // add node add1 to graph
+      ge::NodePtr add1Node = graph.AddNode(Adds);
+
+      newNodes.push_back(add1Node);
+
+      FUSION_PASS_CHECK(
+          add1Node == nullptr,
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "AddsNode fusionNode:%s is null, fusion failed.", add1Node->GetName().c_str()),
+          return PARAM_INVALID);
+
+      if (isfindSoftmax) {
+        auto ExpandDims_5_node = fusedNode->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode();
+        auto strided_slice_10_node = ExpandDims_5_node->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode();
+        auto Reshape_4_node = strided_slice_10_node->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode();
+        auto Softmax_node = Reshape_4_node->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode();
+        ge::GeTensorDesc softmaxDesc = Softmax_node->GetOpDesc()->GetInputDesc(0);
+        vector<int64_t> softmax_shape = softmaxDesc.GetShape().GetDims();
+        if (softmax_shape.empty()) {
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "can not get input nms scorce shape. shape is empty!");
+          return PARAM_INVALID;
+        }
+        // Add the description (input, output, name, attribute) of the cast1 node
+        ge::OpDescPtr Cast;
+        std::string cast1DescName = fusedNode->GetOpDesc()->GetName();
+
+        // Define node name----->BatchMultiClassNonMaxSuppression_Cast1
+        Cast = std::make_shared<ge::OpDesc>(cast1DescName + "_Cast1", "Cast");
+
+        // Define out auxiliary matrix shape of Cast1 node
+        vector<int64_t> castnodeShapeVec;
+        castnodeShapeVec.push_back(softmax_shape[0]);
+        castnodeShapeVec.push_back(softmax_shape[1]);
+        ge::GeShape cast1newShape(castnodeShapeVec);
+
+        // Set node properties
+        ge::GeTensorDesc tensorDesccast1(GeShape(), ge::FORMAT_ND, ge::DT_FLOAT);
+        tensorDesccast1.SetShape(cast1newShape);
+        tensorDesccast1.SetOriginFormat(ge::FORMAT_ND);
+        tensorDesccast1.SetOriginShape(cast1newShape);
+        tensorDesccast1.SetOriginDataType(ge::DT_FLOAT);
+
+        int32_t realDimCnt0 = cast1newShape.GetDimNum();
+        ge::TensorUtils::SetRealDimCnt(tensorDesccast1, realDimCnt0);
+        FUSION_PASS_CHECK(Cast->AddInputDesc("x", tensorDesccast1) != SUCCESS,
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "add input x for Cast after valid num is null, fusion failed."),
+                        return FAILED);
+        Cast->AddOutputDesc("y", tensorDesccast1);
+        ge::AttrUtils::SetFloat(Cast, "dst_type", 0);
+        // add node cast1 to graph
+        ge::NodePtr cast1Node = graph.AddNode(Cast);
+
+        newNodes.push_back(cast1Node);
+
+        FUSION_PASS_CHECK(
+            cast1Node == nullptr,
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "CastNode fusionNode:%s is null, fusion failed.", cast1Node->GetName().c_str()),
+            return PARAM_INVALID);
+
+        // Add the original input side 0 to cast1Node
+        FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(Softmax_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
+                                                    cast1Node->GetInDataAnchor(0)),
+                  OP_LOGE("Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+                          Softmax_node->GetName().c_str(), 0,
+                          cast1Node->GetName().c_str(), 0),
+                          return FAILED);
+        FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(Softmax_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
+                                                    Softmax_node->GetInDataAnchor(0)) != SUCCESS,
+                          OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove edge failed."), return FAILED);
+        // Add the output edge of cast1Node to Softmax_node
+        FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(cast1Node->GetOutDataAnchor(0),
+                                                    Softmax_node->GetInDataAnchor(0)),
+                OP_LOGE("Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+                        cast1Node->GetName().c_str(), 0,
+                        Softmax_node->GetName().c_str(), 0),
+                        return FAILED);
+      }
+
+      // Add the description (input, output, name, attribute) of the mul node
+      ge::OpDescPtr Muls;
+      std::string mulDescName = fusedNode->GetOpDesc()->GetName();
+
+      // Define node name----->BatchMultiClassNonMaxSuppression_Muls
+      Muls = std::make_shared<ge::OpDesc>(mulDescName + "_Muls", "Muls");
+
+      // Define out auxiliary matrix shape of Muls node
+      ge::GeShape mulnewShape(newnodeShapeVec);
+
+      // Set node properties
+      ge::GeTensorDesc tensorDescmul(GeShape(), ge::FORMAT_ND, ge::DT_FLOAT);
+      tensorDescmul.SetShape(mulnewShape);
+      int32_t realDimCnt1 = mulnewShape.GetDimNum();
+      ge::TensorUtils::SetRealDimCnt(tensorDescmul, realDimCnt1);
+      FUSION_PASS_CHECK(Muls->AddInputDesc("x", tensorDescmul) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add input x for Muls after valid num is null, fusion failed."),
+                      return FAILED);
+      Muls->AddOutputDesc("y", tensorDescmul);
+      ge::AttrUtils::SetFloat(Muls, "value", -1);
+
+      // add node mul to graph
+      ge::NodePtr mulNode = graph.AddNode(Muls);
+      newNodes.push_back(mulNode);
+      FUSION_PASS_CHECK(
+          mulNode == nullptr,
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "MulsNode fusionNode:%s is null, fusion failed.", mulNode->GetName().c_str()),
+          return PARAM_INVALID);
+
+      // Add the description (input, output, name, attribute) of the add_mul node
+      ge::OpDescPtr Adds_mul;
+      std::string add_mulDescName = fusedNode->GetOpDesc()->GetName();
+
+      // Define node name----->BatchMultiClassNonMaxSuppression_Add_mul
+      Adds_mul = std::make_shared<ge::OpDesc>(add_mulDescName + "_Add_mul", "Adds");
+
+      // Define out auxiliary matrix shape of Add1 node
+      ge::GeShape add_mulnewShape(newnodeShapeVec);
+
+      // Set node properties
+      ge::GeTensorDesc tensorDescadd_mul(GeShape(), ge::FORMAT_ND, ge::DT_FLOAT);
+      tensorDescadd_mul.SetShape(add_mulnewShape);
+      int32_t realDimCnt2 = add_mulnewShape.GetDimNum();
+      ge::TensorUtils::SetRealDimCnt(tensorDescadd_mul, realDimCnt2);
+      FUSION_PASS_CHECK(Adds_mul->AddInputDesc("x", tensorDescadd_mul) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add input x for Adds_mul after valid num is null, fusion failed."),
+                      return FAILED);
+      Adds_mul->AddOutputDesc("y", tensorDescadd_mul);
+      ge::AttrUtils::SetFloat(Adds_mul, "value", 65535/65534);
+
+      // add node add_mul to graph
+      ge::NodePtr add_mulNode = graph.AddNode(Adds_mul);
+      newNodes.push_back(add_mulNode);
+      FUSION_PASS_CHECK(
+          add_mulNode == nullptr,
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "Adds_mul Node fusionNode:%s is null, fusion failed.", add_mulNode->GetName().c_str()),
+          return PARAM_INVALID);
+
+
+      // Add the description (input, output, name, attribute) of the div node
+      ge::OpDescPtr Div;
+      std::string divDescName = fusedNode->GetOpDesc()->GetName();
+
+      // Define node name----->BatchMultiClassNonMaxSuppression_Div
+      Div = std::make_shared<ge::OpDesc>(divDescName + "_Div", "Div");
+
+      // Define out auxiliary matrix shape of Div node
+      ge::GeShape divnewShape(newnodeShapeVec);
+
+      // Set node properties
+      ge::GeTensorDesc tensorDescdiv(GeShape(), ge::FORMAT_ND, ge::DT_FLOAT);
+      tensorDescdiv.SetShape(divnewShape);
+      int32_t realDimCnt3 = divnewShape.GetDimNum();
+      ge::TensorUtils::SetRealDimCnt(tensorDescdiv, realDimCnt3);
+      FUSION_PASS_CHECK(Div->AddInputDesc("x1", tensorDescdiv) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add input x1 for Div after valid num is null, fusion failed."),
+                      return FAILED);
+      FUSION_PASS_CHECK(Div->AddInputDesc("x2", tensorDescdiv) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add input x2 for Div after valid num is null, fusion failed."),
+                      return FAILED);
+      Div->AddOutputDesc("y", tensorDescdiv);
+
+      // add node div to graph
+      ge::NodePtr divNode = graph.AddNode(Div);
+      newNodes.push_back(divNode);
+      FUSION_PASS_CHECK(
+          divNode == nullptr,
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "DivNode fusionNode:%s is null, fusion failed.", divNode->GetName().c_str()),
+          return PARAM_INVALID);
+
+      // Add the original input side 0 to add1node
+      FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(1)->GetPeerOutAnchor(),
+                                                  add1Node->GetInDataAnchor(0)),
+                OP_LOGE("Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+                        fusedNode->GetName().c_str(), 0,
+                        add1Node->GetName().c_str(), 0),
+                        return FAILED);
+
+      // Add the original input edge 0 to mulnode
+      FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(1)->GetPeerOutAnchor(),
+                                                  mulNode->GetInDataAnchor(0)),
+                OP_LOGE("Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+                        fusedNode->GetName().c_str(), 0,
+                        mulNode->GetName().c_str(), 0),
+                        return FAILED);
+
+      // Add the output edge of add1node to divnode
+      FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(add1Node->GetOutDataAnchor(0),
+                                                  divNode->GetInDataAnchor(0)),
+              OP_LOGE("Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+                      add1Node->GetName().c_str(), 0,
+                      divNode->GetName().c_str(), 0),
+                      return FAILED);
+
+      // Add the output edge of mulnode to add_ mulNode
+      FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(mulNode->GetOutDataAnchor(0),
+                                                  add_mulNode->GetInDataAnchor(0)),
+              OP_LOGE("Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+                      mulNode->GetName().c_str(), 0,
+                      add_mulNode->GetName().c_str(), 0),
+                      return FAILED);
+
+      // Add The output edge of mulnode is added to divnode
+      FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(add_mulNode->GetOutDataAnchor(0),
+                                                  divNode->GetInDataAnchor(1)),
+              OP_LOGE("Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+                      add_mulNode->GetName().c_str(), 0,
+                      divNode->GetName().c_str(), 0),
+                      return FAILED);
+
+      //Delete the original edge
+      FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fusedNode->GetInDataAnchor(1)->GetPeerOutAnchor(),
+                                                  fusedNode->GetInDataAnchor(1)) != SUCCESS,
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove edge failed."), return FAILED);
+
+      // Add the output edge of divnode to fusednode
+      FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(divNode->GetOutDataAnchor(0),
+                                                  fusedNode->GetInDataAnchor(1)),
+              OP_LOGE("Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+                      divNode->GetName().c_str(), 0,
+                      fusedNode->GetName().c_str(), 0),
+                      return FAILED);
+    }
     AddTransposeBeforeNode(fusedNode, 1, permScoreList, graph);
+
   }
+
   // do infer for fused node again, and update fused node output shape
   ge::GeTensorDesc outputDesc = fusedNode->GetOpDesc()->GetOutputDesc(0);
   vector<int64_t> oriOutputShape = outputDesc.GetShape().GetDims();

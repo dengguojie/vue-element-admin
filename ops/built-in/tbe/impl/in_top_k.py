@@ -19,6 +19,9 @@ import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 # size of useful UB buffer
 UB_SIZE_BYTES = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
@@ -30,6 +33,25 @@ V_MAX_REPEAT = 255
 BLOCK_SIZE = 32
 FP_MIN = -1
 
+
+# pylint: disable=unused-argument
+def get_op_support_info(predictions, targets, precision, k, kernel_name="in_top_k"):
+    """
+    get unpack slice info
+    """
+    format_x = predictions.get("format")
+    support_format = ["NCHW", "NHWC", "ND"]
+    if format_x in support_format:
+        axis_split_matrix = [
+            [SplitInput([0, [0], [-1], [-1]], [1, [0], [-1], [-1]]), SplitOutput([0, [0]])]
+        ]
+        axis_reduce_list = None
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+
+    return op_cal_info_in_json
 
 # pylint: disable=unused-argument
 def check_supported(predictions, targets, precision, k, kernel_name='in_top_k'):

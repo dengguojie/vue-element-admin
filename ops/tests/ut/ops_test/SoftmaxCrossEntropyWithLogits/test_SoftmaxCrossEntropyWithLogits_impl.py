@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 from op_test_frame.ut import OpUT
+
 ut_case = OpUT("SoftmaxCrossEntropyWithLogits", None, None)
 
 case1 = {"params": [{"shape": (5, 2), "dtype": "float32", "format": "NCHW", "ori_shape": (5, 2),"ori_format": "NCHW"},
@@ -50,12 +51,27 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
-if __name__ == '__main__':
-    ut_case.run()
-    # ut_case.run("Ascend910")
-    exit(0)
 
-
-
-
+def calc_expect_func(x1, x2, y1, y2):
+    src_type = x1['dtype']
+    inputArr1 = x1['value']
+    inputArr2 = x2['value']
+    if src_type == "float16":
+        inputArr1 = inputArr1.astype("float32")
+        inputArr2 = inputArr2.astype("float32")
+    
+    data_max = np.max(inputArr1, axis=-1, keepdims=True).astype("float32")
+    data_sub = np.subtract(inputArr1, data_max).astype("float32")
+    data_exp = np.exp(data_sub).astype("float32")
+    data_sum = np.sum(data_exp, axis=-1, keepdims=True).astype("float32")
+    data_softmax =  (data_exp / data_sum).astype("float32")
+    data_log_tmp = np.log(data_sum).astype("float32")
+    data_log = np.subtract(data_sub, data_log_tmp).astype("float32")
+    data_mul = -np.multiply(inputArr2, data_log).astype("float32")
+    if src_type == "float32":
+        outputArr1 = np.sum(data_mul, axis=-1, keepdims=False)
+        outputArr2 = np.subtract(data_softmax, inputArr2)
+    else:
+        outputArr1 = np.sum(data_mul, axis=-1, keepdims=False).astype("float16")
+        outputArr2 = np.subtract(data_softmax, inputArr2).astype("float16")
 

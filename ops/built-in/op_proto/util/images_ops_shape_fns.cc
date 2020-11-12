@@ -122,8 +122,7 @@ graphStatus EncodeImageShapeFn(Operator& op) {
   return op.UpdateOutputDesc("contents", output_tensor);
 }
 
-template <typename T>
-bool DimsAllEqualOrUnknown(std::initializer_list<T>&& inputs, T unknown_dim_val) {
+bool DimsAllEqualOrUnknown(std::initializer_list<int64_t>&& inputs, int64_t unknown_dim_val) {
   auto it = inputs.begin();
   for (; it != inputs.end() && (*it == unknown_dim_val); ++it) {
   }

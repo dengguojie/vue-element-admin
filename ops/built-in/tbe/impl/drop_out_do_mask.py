@@ -25,6 +25,7 @@ import te.platform as tbe_platform
 from impl.util import util_select_op_base
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 # elems one batch can process
 SIZE_SIXTEEN = 16
@@ -700,10 +701,12 @@ def drop_out_do_mask(input_tensor, input_mask, input_keep_prob, output,
     para_check.check_dtype(dtype.lower(), ["float16", "float32"], param_name="input_tensor")
 
     if len(shape_mask) != 1:
-        raise RuntimeError("The length of mask shape must be 1")
+        error_detail = "The length of mask shape must be 1"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "input_mask", error_detail)
 
     if shape_keep_prob not in [(1, ), [1, ]]:
-        raise RuntimeError("Only support shape (1, ) or [1, ]")
+        error_detail = "keep_prob Only support shape (1, ) or [1, ]"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "input_keep_prob", error_detail)
 
     # functools.reduce: product of all dimension
     # Align to tbe_platform.ELEMENTS_VECTOR_OP_FP16
@@ -712,8 +715,8 @@ def drop_out_do_mask(input_tensor, input_mask, input_keep_prob, output,
                    // tbe_platform.ELEMENTS_VECTOR_OP_FP16 * tbe_platform.ELEMENTS_VECTOR_OP_FP16 // 8
 
     if product_mask != shape_mask[0]:
-        raise RuntimeError("The mask[0] should=%d, but now=%d" %
-                           (product_mask, shape_mask[0]))
+        error_detail = "The mask[0] should=%d, but now=%d"%(product_mask, shape_mask[0])
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "input_mask", error_detail)
     data_tensor = tvm.placeholder(
         (functools.reduce(lambda x, y: x*y, shape_tensor), ),
         dtype=dtype,

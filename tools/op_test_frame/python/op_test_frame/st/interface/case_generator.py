@@ -14,8 +14,9 @@ try:
     import json
     import time
     import copy
-    from interface import utils
-    from interface.model_parser import get_model_nodes
+
+    from . import utils
+    from .model_parser import get_model_nodes
 except ImportError as import_error:
     sys.exit(
         "[case_generator] Unable to import module: %s." % str(import_error))
@@ -269,7 +270,25 @@ class CaseGenerator:
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
 
-    def _generate_base_case(self):
+    def _generate_aicpu_base_case(self):
+        base_case = {'case_name': 'Test_' + self.op_type.replace('/', '_')
+                                  + '_001',
+                     'op': self.op_type,
+                     'input_desc': [],
+                     'output_desc': []}
+        input_desc = {'format': [], 'type': [],
+                      'shape': [], 'data_distribute': ['uniform'],
+                      'value_range': [[0.1, 1.0]]}
+        base_case['input_desc'].append(input_desc)
+        output_desc = {'format': [], 'type': [],
+                       'shape': []}
+        base_case['output_desc'].append(output_desc)
+        # generate base case from model
+        if self.args.model_path != "":
+            return self._generate_base_case_from_model(base_case, True)
+        return [base_case]
+
+    def _generate_aicore_base_case(self):
         base_case = {'case_name': 'Test_' + self.op_type.replace('/', '_')
                                   + '_001',
                      'op': self.op_type, 'input_desc': [], 'output_desc': []}
@@ -297,48 +316,72 @@ class CaseGenerator:
                 base_case['attr'].append(self._make_attr(key, value))
         self._check_desc_valid(base_case, 'input_desc')
         self._check_desc_valid(base_case, 'output_desc')
+
         # generate base case from model
         if self.args.model_path != "":
             return self._generate_base_case_from_model(base_case)
         return [base_case]
 
-    def _update_input_output_from_model(self, base_case, node):
-        layer_name = node['layer'].replace('/', '_')
+    def _update_aicpu_io_from_model(self, node):
+        # The node won't be None and must has the keys like 'layer'...
+        layer_name = node.get('layer').replace('/', '_')
+        new_base_case = {'case_name': 'Test_' + layer_name,
+                         'op': self.op_type,
+                         'input_desc': [],
+                         'output_desc': []}
+        for (index, dtype) in enumerate(node.get('input_dtype')):
+            input_desc = {'format': ['ND'],
+                          'type': dtype,
+                          'shape': node.get('input_shape')[index],
+                          'data_distribute': ['uniform'],
+                          'value_range': [[0.1, 1.0]]}
+            new_base_case['input_desc'].append(input_desc)
+        for (index, dtype) in enumerate(node.get('output_dtype')):
+            output_desc = {'format': ['ND'],
+                           'type': dtype,
+                           'shape': node.get('output_shape')[index]}
+            new_base_case['output_desc'].append(output_desc)
+        return new_base_case
+
+    def _update_aicore_io_from_model(self, base_case, node):
+        # The node won't be None and must has the keys like 'layer'...
+        # The base_case won't be None and must has the keys like 'input..'
+        layer_name = node.get('layer').replace('/', '_')
         try:
             # when the length not equal, skip to next layer
-            if len(node['input_shape']) != len(
-                    base_case['input_desc']):
+            if len(node.get('input_shape')) != len(
+                    base_case.get('input_desc')):
                 utils.print_warn_log(
                     'The \"%s\" layer is skipped, because its number of '
                     'inputs(%d) is different from '
                     'that(%d) specified in the .ini file.Ignore if you have '
                     'change the "placeholder" shape.'
-                    % (layer_name, len(node['input_shape']),
-                       len(base_case['input_desc']),
+                    % (layer_name, len(node.get('input_shape')),
+                       len(base_case.get('input_desc')),
                        ))
                 return None
-            if len(node['output_shape']) != len(
-                    base_case['output_desc']):
+            if len(node.get('output_shape')) != len(
+                    base_case.get('output_desc')):
                 utils.print_warn_log(
                     'The \"%s\" layer is skipped, because its number of '
                     'outputs(%d) is different from '
                     'that(%d) specified in the .ini file. Ignore if you have '
                     'changed the "Placeholder" shape.'
-                    % (len(node['output_shape']),
+                    % (len(node.get('output_shape')),
                        layer_name,
-                       len(base_case['output_desc']),))
+                       len(base_case.get('output_desc')),))
                 return None
 
             new_base_case = {
                 'case_name': 'Test_%s' % layer_name,
-                'op': copy.deepcopy(base_case['op']),
-                'input_desc': copy.deepcopy(base_case['input_desc']),
-                'output_desc': copy.deepcopy(base_case['output_desc'])}
-            for (index, shape) in enumerate(node['input_shape']):
-                self._check_shape_valid(shape, node['layer'])
+                'op': copy.deepcopy(base_case.get('op')),
+                'input_desc': copy.deepcopy(base_case.get('input_desc')),
+                'output_desc': copy.deepcopy(base_case.get('output_desc'))}
+            for (index, shape) in enumerate(node.get('input_shape')):
+                self._check_shape_valid(shape, node.get('layer'))
                 new_base_case['input_desc'][index]['shape'].append(shape)
             for (index, shape) in enumerate(node['output_shape']):
-                self._check_shape_valid(shape, node['layer'])
+                self._check_shape_valid(shape, node.get('layer'))
                 new_base_case['output_desc'][index]['shape'].append(shape)
             for (index, dtype) in enumerate(node['input_dtype']):
                 new_base_case['input_desc'][index]['type'] = dtype
@@ -368,17 +411,30 @@ class CaseGenerator:
                 raise utils.OpTestGenException(
                     utils.OP_TEST_GEN_INVALID_DATA_ERROR)
 
-    def _update_attr_from_model(self, base_case, node, new_base_case):
+    def _update_aicpu_attr_from_model(self, node, new_base_case):
+        # The node won't be None and must has the key 'attr'.
+        # IF the node is empty, node:{'attr':[]}
+        if node.get('attr'):
+            for item in node.get('attr'):
+                if item.get('name') == "data_format":
+                    format_value = item.get('value').replace('\"', "").strip()
+                    self._update_format_from_model(format_value,
+                                                   new_base_case)
+
+    def _update_aicore_attr_from_model(self, base_case, node, new_base_case):
         if 'attr' in base_case and 'attr' in node:
             new_attr_list = []
-            for (index, attr) in enumerate(base_case['attr']):
-                for item in node['attr']:
-                    if item['name'] == attr['name']:
-                        new_attr = {'name': item['name'], 'type': attr['type'],
+            for (_, attr) in enumerate(base_case.get('attr')):
+                for item in node.get('attr'):
+                    node_attr_name = item['name']
+                    base_attr_name = attr.get('name')
+                    if node_attr_name == base_attr_name:
+                        new_attr = {'name': node_attr_name,
+                                    'type': attr['type'],
                                     'value': item['value']}
                         utils.check_attr_value_valid(new_attr)
                         new_attr_list.append(new_attr)
-                    if item['name'] == "data_format":
+                    if node_attr_name == "data_format":
                         format_value = item['value'].replace('\"', "").strip()
                         self._update_format_from_model(format_value,
                                                        new_base_case)
@@ -387,31 +443,56 @@ class CaseGenerator:
 
     @staticmethod
     def _update_format_from_model(format_value, new_base_case):
-        for input_format in new_base_case['input_desc']:
+        for input_format in new_base_case.get('input_desc'):
             if 'format' in input_format:
                 input_format['format'] = [format_value]
-        for output_format in new_base_case['output_desc']:
+        for output_format in new_base_case.get('output_desc'):
             if 'format' in output_format:
                 output_format['format'] = [format_value]
 
-    def _generate_base_case_from_model(self, base_case):
+    def _generate_base_case_from_model(self, base_case, is_aicpu=False):
         nodes = get_model_nodes(self.args, self.op_type)
         if len(nodes) == 0:
-            utils.print_error_log(
-                "There is no \"%s\" operator in the tf model. " % self.op_type)
-            raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
-
+            utils.print_warn_log(
+                "\"%s\" operator not found. Failed to get the "
+                "operator info from the model. Please check the model." %
+                self.op_type)
+            utils.print_info_log(
+                "Continue generating the case json file based on the .ini "
+                "file.")
+            return [base_case]
         base_case_list = list()
-        for i, node in enumerate(nodes):
+        for _, node in enumerate(nodes):
             # update input and output
-            new_base_case = self._update_input_output_from_model(base_case,
-                                                                 node)
-            if new_base_case:
-                # update attr
-                self._update_attr_from_model(base_case, node, new_base_case)
+            if is_aicpu:
+                new_base_case = self._update_aicpu_io_from_model(node)
+                # the new_base_case won't be None
+                self._update_aicpu_attr_from_model(node, new_base_case)
                 base_case_list.append(new_base_case)
+            else:
+                new_base_case = self._update_aicore_io_from_model(base_case,
+                                                                  node)
+                if new_base_case:
+                    self._update_aicore_attr_from_model(base_case, node,
+                                                        new_base_case)
+                    base_case_list.append(new_base_case)
+        if not base_case_list:
+            utils.print_warn_log("No match for the layer in the model. Failed "
+                                 "to get the operator info from the model. "
+                                 "Please check the model and .ini file.")
+            utils.print_info_log(
+                "Continue generating the case json file based on the .ini "
+                "file.")
+            return [base_case]
         return base_case_list
+
+    def _is_aicpu_op(self):
+        # in the aicpu ini file , "opInfo.kernelSo=libaicpu_kernels.so"
+        # in the aicore ini file, "input0.name=x1"
+        if self.op_info.get('opInfo'):
+            if self.op_info.get('opInfo').get('kernelSo'):
+                return True
+        return False
 
     def generate(self):
         """
@@ -422,10 +503,12 @@ class CaseGenerator:
 
         # parse ini to json
         self._parse_ini_to_json()
-
-        # check json valid
-        self._check_op_info()
-        base_case = self._generate_base_case()
+        if self._is_aicpu_op():
+            base_case = self._generate_aicpu_base_case()
+        else:
+            # check json valid
+            self._check_op_info()
+            base_case = self._generate_aicore_base_case()
         file_name = '%s_case_%s.json' \
                     % (self.op_type.replace('/', '_'),
                        time.strftime("%Y%m%d%H%M%S",

@@ -22,6 +22,7 @@ from functools import reduce as functools_reduce
 
 import te.platform.cce_params as cce
 import te.platform.cce_conf as conf
+from te.utils.error_manager import error_manager_util
 
 # pylint: disable=import-error, ungrouped-imports
 import topi
@@ -710,6 +711,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
     compress_index: index for compressed wights, None means not compress wights
     Returns None
     """
+
     nz_a = False
     if format_a == "FRACTAL_NZ":
         nz_a = True
@@ -3362,3 +3364,405 @@ def get_matmul_performance_format(tensor_a,  # pylint: disable=W0108, R1702, R09
         return "FRACTAL_NZ"
 
     return "NC1HWC0"
+
+
+@util.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, bool, bool, str,
+                       str, str, (type(None), tvm.tensor.Tensor), (type(None), str),
+                       (type(None), str))
+def matmul_cv_split(tensor_a,
+    tensor_b, trans_a=False, trans_b=False, format_a="ND", format_b="ND",
+    dst_dtype="float32", tensor_bias=None, format_out=None, kernel_name="MatMul"):
+    """
+    algorithm: mmad
+    calculating matrix multiplication, C=A*B+bias
+
+    Parameters:
+    tensor_a : the first tensor a
+
+    tensor_b : second tensor b with the same type and shape with a
+
+              If tensor_a/tensor_b is int8/uint8,then L0A must be 16*32,L0B
+              must be 32*16.
+              If A is transpose , then AShape classification matrix must be
+              32*16 in gm/L1,then it is 16*32 in L0A.
+              If B is transpose , then BShape classification matrix must be
+              16*32 in gm/L1,then it is 32*16 in L0B.
+
+    trans_a : if True, a needs to be transposed
+
+    trans_b : if True, b needs to be transposed
+
+    format_a: the format of tensor a, support FRACTAL_NZ, ND
+              default is "ND"
+
+    format_b: the format of tensor b, support FRACTAL_NZ, ND
+              default is "ND"
+
+    dst_dtype: output data type, support "float32", default is "float32"
+
+    tensor_bias :the bias with used to add
+
+    format_out: output format, now support ND,Nz
+
+    kernel_name: kernel name, default is "MatMul"
+
+    Returns None
+    """
+    matmul_object = MatMulCompute(
+        tensor_a,
+        tensor_b,
+        trans_a,
+        trans_b,
+        format_a,
+        format_b,
+        dst_dtype,
+        tensor_bias,
+        format_out,
+        kernel_name
+    )
+
+    matmul_object._compute_matmul()
+
+    res = matmul_object.c_matrix
+
+    return res
+
+
+class MatMulCompute:
+    """
+    algorithm: mmad
+    calculating matrix multiplication, C=A*B+bias
+
+    Parameters:
+    tensor_a : the first tensor a
+
+    tensor_b : second tensor b with the same type and shape with a
+
+              If tensor_a/tensor_b is int8/uint8,then L0A must be 16*32,L0B
+              must be 32*16.
+              If A is transpose , then AShape classification matrix must be
+              32*16 in gm/L1,then it is 16*32 in L0A.
+              If B is transpose , then BShape classification matrix must be
+              16*32 in gm/L1,then it is 32*16 in L0B.
+
+    trans_a : if True, a needs to be transposed
+
+    trans_b : if True, b needs to be transposed
+
+    format_a: the format of tensor a, support FRACTAL_NZ, ND
+              default is "ND"
+
+    format_b: the format of tensor b, support FRACTAL_NZ, ND
+              default is "ND"
+
+    dst_dtype: output data type, support "float32", default is "float32"
+
+    tensor_bias :the bias with used to add
+
+    format_out: output format, now support ND,Nz
+
+    kernel_name: kernel name, default is "MatMul"
+
+    Returns None
+    """
+    def __init__(self, tensor_a,
+        tensor_b, trans_a=False, trans_b=False, format_a="ND", format_b="ND",
+        dst_dtype="float32", tensor_bias=None, format_out=None, kernel_name="MatMul"):
+        self.tensor_a = tensor_a
+        self.tensor_b = tensor_b
+        self.trans_a = trans_a
+        self.trans_b = trans_b
+        self.format_a = format_a
+        self.format_b = format_b
+        self.tensor_bias = tensor_bias
+        self.src_dtype = tensor_a.dtype
+        self.dst_dtype = dst_dtype
+        self.kernel_name = kernel_name
+        self.block_in = cce.BLOCK_IN
+        self.block_out = cce.BLOCK_OUT
+        self.block_reduce = cce.BLOCK_REDUCE
+        self.matrix_type = "float32"
+        self.format_out = format_out
+
+    @staticmethod
+    def _ceil_div(dividend, divisor):
+        """
+        do division and round up to an integer
+
+        """
+        if divisor == 0:
+            dict_args = {}
+            dict_args["errCode"] = "E60108"
+            dict_args["reason"] = "Division by zero"
+            error_manager_util.raise_runtime_error(dict_args)
+        return (dividend + divisor - 1) // divisor
+
+    def _compute_matmul(self):
+        """MatMul enter
+        Input None
+        return result in self.c_matrix
+        ---------------------------------
+        Return None
+        """
+        # set data type and format, get data shape
+        self._set_info()
+        self._get_l1_shape()
+        self._check_km_kn()
+        # C = A * B
+        a_matrix = self._get_a_matrix()
+        b_matrix = self._get_b_matrix()
+        self.c_matrix = self._compute_c_matrix(a_matrix, b_matrix)
+
+    def _get_a_matrix(self):
+        """ compute matrix for mad
+        Input : None
+        support func:
+            fp16 input:
+                Nz->Zz
+                ND->Nz->Zz
+        ---------------------------------
+        Return : tensor, Zz matrix for mad
+        """
+
+        batch_shape = self.batch_shape
+        km_shape = self.km_shape
+        m_shape = self.m_shape
+        block_reduce = self.block_reduce
+        block_in = self.block_in
+        temp_tensor_a = self.tensor_a
+
+        # to Nz
+        if self.format_a == "ND":
+            temp_tensor_a = tvm.compute(
+            (km_shape, m_shape * batch_shape, block_in, block_reduce),
+            lambda i, j, k, l: temp_tensor_a[j * block_in + k, i * block_reduce + l],
+            name="tensor_a_fract")
+
+        # to Zz
+        if self.trans_a:
+            a_matrix_shape = (km_shape, m_shape * batch_shape, block_reduce, block_in)
+            a_matrix = tvm.compute(
+                a_matrix_shape,
+                lambda i, j, k, l: temp_tensor_a[i, j, l, k],
+                name="tensor_a_matrix",
+                attrs={"trans": "1"})
+        else:
+            a_matrix_shape = (m_shape * batch_shape, km_shape, block_in, block_reduce)
+            a_matrix = tvm.compute(
+                a_matrix_shape,
+                lambda i, j, k, l: temp_tensor_a[j, i, k, l],
+                name="tensor_a_matrix",
+                attrs={"trans": "0"})
+        return a_matrix
+
+    def _get_b_matrix(self):
+        """ compute matrix for mad
+        Input : None
+        support func:
+            fp16 input:
+                Nz->Zn
+                ND->Nz->Zn
+        ---------------------------------
+        Return : tensor, Zn matrix for mad
+        """
+
+        batch_shape = self.batch_shape
+        n_shape = self.n_shape
+        kn_shape = self.kn_shape
+        block_out = self.block_out
+        block_reduce = self.block_reduce
+        temp_tensor_b = self.tensor_b
+
+        # to Nz
+        if self.format_b == "ND":
+            temp_tensor_b = tvm.compute(
+                (n_shape * batch_shape, kn_shape, block_reduce, block_out),
+                lambda i, j, k, l: temp_tensor_b[j * block_reduce + k, i * block_out + l],
+                name="tensor_b_fract")
+
+        # to Zn
+        if self.trans_b:
+            b_matrix_shape = (n_shape * batch_shape, kn_shape, block_reduce, block_out)
+            b_matrix = tvm.compute(
+                b_matrix_shape,
+                lambda i, j, k, l: temp_tensor_b[i, j, k, l],
+                name="tensor_b_matrix",
+                attrs={"trans": "1"})
+        else:
+            b_matrix_shape = (kn_shape, n_shape * batch_shape, block_out, block_reduce)
+            b_matrix = tvm.compute(
+                b_matrix_shape,
+                lambda i, j, k, l: temp_tensor_b[j, i, l, k],
+                name="tensor_b_matrix",
+                attrs={"trans": "0"})
+
+        return b_matrix
+
+    def _compute_c_matrix(self, a_matrix_in, b_matrix_in):
+        """ MatMul calculation
+        Input:
+            a_matrix_in: tensor, a_matrix in l0a
+            b_matrix_in: tensor, b_matrix in l0b
+        support func:
+            MatMul, Nz->ND
+        ---------------------------------
+        Return:
+            tensor, MatMul result
+        """
+        m_shape_l0 = a_matrix_in.shape[0]
+        k_shape_l0 = a_matrix_in.shape[1]
+        n_shape_l0 = b_matrix_in.shape[1]
+
+        nz2nd_flag = False
+        if self.format_out == "ND":
+            nz2nd_flag = True
+        reduce_kp, reduce_kb = self._get_reduce(k_shape_l0)
+        if self.tensor_bias is None:
+            tensor_c_matrix = tvm.compute(
+                (n_shape_l0 * self.batch_shape, m_shape_l0,
+                 self.block_in, self.block_out),
+                lambda nb, mb, mp, np: tvm.sum(
+                    (a_matrix_in[mb, reduce_kb,
+                                 mp, reduce_kp] * b_matrix_in[
+                        reduce_kb, nb, np, reduce_kp]).astype(
+                        self.matrix_type),
+                    axis=[reduce_kb, reduce_kp]),
+                name="tensor_c_matrix",
+                tag="gemm" if not nz2nd_flag else "",
+                attrs={"kernel_name": self.kernel_name})
+        else:
+            tensor_c_matrix = tvm.compute(
+                (self.n_shape * self.batch_shape,
+                 self.m_shape, self.block_in, self.block_out),
+                lambda nb, mb, mp, np: tvm.sum(tvm.select(
+                    tvm.all(reduce_kb.var == 0, reduce_kp.var == 0),
+                    (a_matrix_in[mb, reduce_kb, mp, reduce_kp] * b_matrix_in[
+                        reduce_kb, nb, np, reduce_kp]).astype(
+                        self.matrix_type) +
+                    self.tensor_bias[nb * self.block_out + np],
+                    (a_matrix_in[mb, reduce_kb, mp, reduce_kp] * b_matrix_in[
+                        reduce_kb, nb, np, reduce_kp]).astype(
+                        self.matrix_type)),
+                    axis=[reduce_kb, reduce_kp]),
+                name='tensor_c_matrix', tag="gemm" if not nz2nd_flag else "",
+                attrs={"kernel_name": self.kernel_name})
+
+        if nz2nd_flag:
+            tensor_c_gm = tvm.compute(
+                (m_shape_l0 * self.block_in, n_shape_l0 * self.block_out),
+                lambda i, j: tensor_c_matrix[j // self.block_out,
+                                             i // self.block_in,
+                                             i % self.block_in,
+                                             j % self.block_out],
+                tag="gemm",
+                name="tensor_c_gm",
+                attrs={"kernel_name": self.kernel_name})
+        else:
+            tensor_c_gm = tensor_c_matrix
+
+        return tensor_c_gm
+
+    def _get_reduce(self, k_shape):
+        """get reduce axis for MatMul
+        Input:
+            k_shape: A martix's k
+        ---------------------------------
+        Return:
+            axis, two reduce axis
+        """
+        # kBurstAxis and kPointAxis
+        if self.src_dtype == "int8" and self.dst_dtype == "float32":
+            reduce_kp = tvm.reduce_axis((0, self.block_reduce // 2), name="kp")
+            reduce_kb = tvm.reduce_axis((0, k_shape * 2), name="kb")
+        else:
+            reduce_kp = tvm.reduce_axis((0, self.block_reduce), name="kp")
+            reduce_kb = tvm.reduce_axis((0, k_shape), name="kb")
+
+        return reduce_kp, reduce_kb
+
+    def _set_info(self):
+        """set info about format
+        Input: None
+        ---------------------------------
+        Return: None
+        """
+        format_a = self.format_a
+
+        if self.src_dtype == "int8":
+            self.block_reduce = cce.BLOCK_REDUCE_INT8
+
+        if self.format_out is None:
+            if format_a == "ND":
+                self.format_out = "ND"
+            else:
+                self.format_out = "FRACTAL_NZ"
+
+        if self.src_dtype == "int8" and self.dst_dtype == "int32":
+            self.matrix_type = "int32"
+
+
+    def _get_l1_shape(self):
+        """ get shape about m,k,n
+        Input: None
+        ---------------------------------
+        Return: None
+        """
+
+        # matrix A (M x K)
+        self.batch_shape = 1
+        if len(self.tensor_a.shape) in (3, 5):
+            self.batch_shape = self.tensor_a.shape[0].value
+
+        if self.format_a == "FRACTAL_NZ":
+            # [batch, K, M, 16, 16]
+            m_shape = self.tensor_a.shape[-3].value
+            km_shape = self.tensor_a.shape[-4].value
+
+        else:
+            # [batch, M, K]
+            m_shape = self._ceil_div(
+                self.tensor_a.shape[-2].value, self.block_in)
+            km_shape = self._ceil_div(
+                self.tensor_a.shape[-1].value, self.block_reduce)
+
+        self.m_shape = m_shape
+        self.km_shape = km_shape
+
+
+        # matrix B (K x N)
+        if self.format_b == "FRACTAL_NZ":
+            # [batch, N, K, 16, 16]
+            kn_shape = self.tensor_b.shape[-3].value
+            n_shape = self.tensor_b.shape[-4].value
+        else:
+            # [batch, K, N]
+            kn_shape = self.tensor_b.shape[-2].value // self.block_reduce
+            n_shape = self.tensor_b.shape[-1].value // self.block_out
+
+        self.kn_shape = kn_shape
+        self.n_shape = n_shape
+
+
+    # -----------check func ----------- #
+    def _check_km_kn(self):
+        """
+        check shape km and kn, should be equal
+        Input: None
+        ---------------------------------
+        Return: None
+        """
+        km_shape = self.m_shape if self.trans_a else self.km_shape
+        kn_shape = self.n_shape if self.trans_b else self.kn_shape
+
+        if km_shape != kn_shape:
+            args_dict = {
+                "errCode": "E60002",
+                "attr_name": "shape",
+                "param1_name": "km_shape",
+                "param1_value": "{}".format(km_shape),
+                "param2_name": "kn_shape",
+                "param2_value": "{}".format(kn_shape)
+            }
+            raise RuntimeError(
+                args_dict, error_manager_util.get_error_message(args_dict)
+            )

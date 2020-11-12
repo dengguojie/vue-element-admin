@@ -70,8 +70,7 @@ graphStatus EncodeImageShapeFn(Operator& op);
  * @param unknown_dim_val, the definithion of UNKNOWN_DIM
  * @return status whether infer shape success
  */
-template <typename T = int64_t>
-bool DimsAllEqualOrUnknown(std::initializer_list<T>&& inputs, T unknown_dim_val = UNKNOWN_DIM);
+bool DimsAllEqualOrUnknown(std::initializer_list<int64_t>&& inputs, int64_t unknown_dim_val = UNKNOWN_DIM);
 
 }  // namespace ge
 

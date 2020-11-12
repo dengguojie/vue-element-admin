@@ -14,6 +14,9 @@ http://www.apache.org/licenses/LICENSE-2.0
 SpaceToDepth ut case
 """
 from op_test_frame.ut import OpUT
+from op_test_frame.common import precision_info
+import numpy as np
+import tensorflow as tf
 ut_case = OpUT("SpaceToDepth", None, None)
 
 case1 = {"params": [{"shape": (100, 87, 870, 11), "dtype": "float16", "format": "NHWC", "ori_shape": (100, 87, 870, 11),"ori_format": "NHWC"}, #x
@@ -62,12 +65,38 @@ case5 = {"params": [{"shape": (2, 2, 2, 3200), "dtype": "float32", "format": "NH
          "support_expect": True}
 
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
+ut_case.add_case(["Ascend910"], case1)
+ut_case.add_case(["Ascend910"], case2)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
 
+def calc_expect_func(x1, x2, y, block_size, data_format):
+    input_data = x1['value']
+    to_batch = tf.space_to_depth(input_data, block_size, data_format=data_format)
+    with tf.Session() as sess:
+        out_data = sess.run(to_batch)
+    return out_data
+
+precision_case1 = {"params": [{"shape": (1, 87, 870, 11), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 87, 870, 11),"ori_format": "NHWC","param_type":"input"}, #x
+                    None,
+                    {"shape": (1,1,10,83259), "dtype": "float16", "format": "NHWC", "ori_shape": (1,1,10,83259),"ori_format": "NHWC","param_type":"output"},
+                    87, "NHWC",
+                    ],
+         "expect": "success",
+         "calc_expect_func": calc_expect_func,
+         "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)}
+precision_case2 = {"params": [{"shape": (1, 20, 20, 1), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 20, 20, 1),"ori_format": "NHWC","param_type":"input"}, #x
+                    None,
+                    {"shape": (1, 10, 10, 4), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 10, 10, 4),"ori_format": "NHWC","param_type":"output"},
+                    2, "NHWC",
+                    ],
+         "expect": "success",
+         "calc_expect_func": calc_expect_func,
+         "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)}
+
+ut_case.add_precision_case("Ascend910", precision_case1)
+ut_case.add_precision_case("Ascend910", precision_case2)
+
 if __name__ == '__main__':
     ut_case.run(["Ascend910","Ascend310","Ascend710"])
-    exit(0)

@@ -279,6 +279,54 @@ IMPLEMT_INFERFUNC(SparseCross, SparseCrossInfer) {
     return GRAPH_PARAM_INVALID;
   }
 
+  int indices_num = op.GetDynamicInputNum("indices");
+  int start_num = 0;
+  int end_num = indices_num;
+  for (int i = start_num; i < end_num; i++) {
+    Shape input_indices_shape;
+    auto indice_desc = op.GetInputDesc(i);
+    if (WithRank(indice_desc, 2, input_indices_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+      OP_LOGE(op.GetName().c_str(), "input indices must be 2-D");
+      return GRAPH_FAILED;
+    }
+  }
+
+  int values_num = op.GetDynamicInputNum("values");
+  start_num = end_num;
+  end_num = start_num + values_num;
+  for (int i = start_num; i < end_num; i++) {
+    Shape input_values_shape;
+    auto value_desc = op.GetInputDesc(i);
+    if (WithRank(value_desc, 1, input_values_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+      OP_LOGE(op.GetName().c_str(), "input values must be 1-D");
+      return GRAPH_FAILED;
+    }
+  }
+
+  int shapes_num = op.GetDynamicInputNum("shapes");
+  start_num = end_num;
+  end_num = start_num + shapes_num;
+  for (int i = start_num; i < end_num; i++) {
+    Shape input_shapes_shape;
+    auto shape_desc = op.GetInputDesc(i);
+    if (WithRank(shape_desc, 1, input_shapes_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+      OP_LOGE(op.GetName().c_str(), "input shapes must be 1-D");
+      return GRAPH_FAILED;
+    }
+  }
+
+  int denses_num = op.GetDynamicInputNum("dense_inputs");
+  start_num = end_num;
+  end_num = start_num + denses_num;
+  for (int i = start_num; i < end_num; i++) {
+    Shape input_denses_shape;
+    auto dense_desc = op.GetInputDesc(i);
+    if (WithRank(dense_desc, 2, input_denses_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+      OP_LOGE(op.GetName().c_str(), "input dense inputs must be 2-D");
+      return GRAPH_FAILED;
+    }
+  }
+
   (void)Matrix(ge::UNKNOWN_DIM, 2, indices_shape);
   TensorDesc indices_desc = op.GetOutputDesc("output_indices");
   indices_desc.SetShape(indices_shape);
@@ -291,7 +339,6 @@ IMPLEMT_INFERFUNC(SparseCross, SparseCrossInfer) {
   (void)Vector(ge::UNKNOWN_DIM, values_shape);
   TensorDesc values_desc = op.GetOutputDesc("output_values");
   values_desc.SetShape(values_shape);
-
   values_desc.SetDataType(out_type);
 
   if (op.UpdateOutputDesc("output_values", values_desc) != GRAPH_SUCCESS) {
@@ -379,30 +426,34 @@ IMPLEMT_INFERFUNC(SparseAdd, SparseAddInfer) {
 INFER_FUNC_REG(SparseAdd, SparseAddInfer);
 
 IMPLEMT_INFERFUNC(SparseFillEmptyRows, SparseFillEmptyRowsInfer) {
-  vector<string> input_infer_depends = {"dense_shape"};
+  std::vector<std::string> input_infer_depends = {"dense_shape"};
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   op_desc->SetOpInferDepends(input_infer_depends);
 
-  Shape indices_shape;
-  if (WithRank(op.GetInputDesc(0), 2, indices_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  GeShape indices_shape;
+  auto indices_desc = op_desc->MutableInputDesc(0);
+  if (WithRank(indices_desc, 2, indices_shape) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input indices must be 2-D");
     return GRAPH_FAILED;
   }
 
-  Shape values_shape;
-  if (WithRank(op.GetInputDesc(1), 1, values_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  GeShape values_shape;
+  auto values_desc = op_desc->MutableInputDesc(1);
+  if (WithRank(values_desc, 1, values_shape) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input values must be 1-D");
     return GRAPH_FAILED;
   }
 
-  Shape dense_shape;
-  if (WithRank(op.GetInputDesc(2), 1, dense_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  GeShape dense_shape;
+  auto dense_desc = op_desc->MutableInputDesc(2);
+  if (WithRank(dense_desc, 1, dense_shape) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input dense_shape must be 1-D");
     return GRAPH_FAILED;
   }
 
-  Shape default_value_shape;
-  if (WithRank(op.GetInputDesc(3), 0, default_value_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  GeShape default_value_shape;
+  auto default_value_desc = op_desc->MutableInputDesc(3);
+  if (WithRank(default_value_desc, 0, default_value_shape) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input default_value must be 0-D");
     return GRAPH_FAILED;
   }
@@ -424,28 +475,37 @@ IMPLEMT_INFERFUNC(SparseFillEmptyRows, SparseFillEmptyRowsInfer) {
   DataType empty_row_indicator_type = DT_BOOL;
   DataType reverse_index_map_type = DT_INT64;
 
-  TensorDesc y_indices_desc = op.GetOutputDesc("y_indices");
+  auto y_indices_desc = op_desc->MutableOutputDesc(0);
   std::vector<int64_t> new_dims;
   new_dims.push_back(ge::UNKNOWN_DIM);
   new_dims.push_back(dense_shape.GetDim(0));
-  y_indices_desc.SetShape(Shape(new_dims));
-  y_indices_desc.SetDataType(indices_type);
-  if (op.UpdateOutputDesc("y_indices", y_indices_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "output y_indices error");
-    return GRAPH_FAILED;
+  GeShape y_indices_shape(new_dims);
+  if (!ShapeFullyDefined(y_indices_shape)) {
+    std::vector<std::pair<int64_t, int64_t>> indices_range;
+    for (const int64_t& indices_dim : y_indices_shape.GetDims()) {
+      indices_range.push_back(indices_dim == UNKNOWN_DIM ? std::pair<int64_t, int64_t>{1, -1} :
+                                                           std::pair<int64_t, int64_t>{indices_dim, indices_dim});
+    }
+    y_indices_desc->SetShapeRange(indices_range);
   }
+  y_indices_desc->SetShape(y_indices_shape);
+  y_indices_desc->SetDataType(indices_type);
 
-  TensorDesc y_value_desc = op.GetOutputDesc("y_values");
   new_dims.clear();
   new_dims.push_back(ge::UNKNOWN_DIM);
-  y_value_desc.SetShape(Shape(new_dims));
-  y_value_desc.SetDataType(values_type);
-  if (op.UpdateOutputDesc("y_values", y_value_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "output y_values error");
-    return GRAPH_FAILED;
+  GeShape y_value_shape(new_dims);
+  if (!ShapeFullyDefined(y_value_shape)) {
+    std::vector<std::pair<int64_t, int64_t>> value_range;
+    for (const int64_t& value_dim : y_value_shape.GetDims()) {
+      value_range.push_back(value_dim == UNKNOWN_DIM ? std::pair<int64_t, int64_t>{1, -1} :
+                                                       std::pair<int64_t, int64_t>{value_dim, value_dim});
+    }
+    y_indices_desc->SetShapeRange(value_range);
   }
+  auto y_value_desc = op_desc->MutableOutputDesc(1);
+  y_value_desc->SetShape(y_value_shape);
+  y_value_desc->SetDataType(values_type);
 
-  TensorDesc empty_row_indicator_desc = op.GetOutputDesc("empty_row_indicator");
   Shape const_dense_shape;
   Tensor dense_shape_tensor;
   if (op.GetInputConstData("dense_shape", dense_shape_tensor) == GRAPH_SUCCESS) {
@@ -455,27 +515,30 @@ IMPLEMT_INFERFUNC(SparseFillEmptyRows, SparseFillEmptyRowsInfer) {
     }
   } else {
     OP_LOGI(op.GetName().c_str(), "get dense_shape from const data failed, using unknown shape");
-    const_dense_shape = Shape(ge::UNKNOWN_RANK);
+    std::vector<int64_t> const_dense_dims{ge::UNKNOWN_DIM};
+    const_dense_shape = Shape(const_dense_dims);
   }
 
   new_dims.clear();
   new_dims.push_back(const_dense_shape.GetDim(0));
-  empty_row_indicator_desc.SetShape(Shape(new_dims));
-  empty_row_indicator_desc.SetDataType(empty_row_indicator_type);
-  if (op.UpdateOutputDesc("empty_row_indicator", empty_row_indicator_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "output empty_row_indicator error");
-    return GRAPH_FAILED;
+  GeShape indicator_shape(new_dims);
+  if (!ShapeFullyDefined(indicator_shape)) {
+    std::vector<std::pair<int64_t, int64_t>> indicator_range;
+    for (const int64_t& indicator_dim : indicator_shape.GetDims()) {
+      indicator_range.push_back(indicator_dim == UNKNOWN_DIM ? std::pair<int64_t, int64_t>{1, -1} :
+                                std::pair<int64_t, int64_t>{indicator_dim, indicator_dim});
+    }
+    y_indices_desc->SetShapeRange(indicator_range);
   }
+  auto empty_row_indicator_desc = op_desc->MutableOutputDesc(2);
+  empty_row_indicator_desc->SetShape(indicator_shape);
+  empty_row_indicator_desc->SetDataType(empty_row_indicator_type);
 
-  TensorDesc reverse_index_map_desc = op.GetOutputDesc("reverse_index_map");
   new_dims.clear();
   new_dims.push_back(num_dim);
-  reverse_index_map_desc.SetShape(Shape(new_dims));
-  reverse_index_map_desc.SetDataType(reverse_index_map_type);
-  if (op.UpdateOutputDesc("reverse_index_map", reverse_index_map_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "output reverse_index_map error");
-    return GRAPH_FAILED;
-  }
+  auto reverse_index_map_desc = op_desc->MutableOutputDesc(3);
+  reverse_index_map_desc->SetShape(GeShape(new_dims));
+  reverse_index_map_desc->SetDataType(reverse_index_map_type);
 
   return GRAPH_SUCCESS;
 }
@@ -874,57 +937,47 @@ IMPLEMT_INFERFUNC(SparseReorder, SparseReorderInfer) {
 INFER_FUNC_REG(SparseReorder, SparseReorderInfer);
 
 IMPLEMT_INFERFUNC(SparseReshape, SparseReshapeInfer) {
-  DataType indices_type = op.GetInputDesc("indices").GetDataType();
-  DataType shape_type = op.GetInputDesc("shape").GetDataType();
-  DataType new_shape_type = op.GetInputDesc("new_shape").GetDataType();
-  if ((indices_type != DT_INT64) || (shape_type != DT_INT64) || (new_shape_type != DT_INT64)) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+
+  auto indices_desc = op_desc->MutableInputDesc(0);
+  auto shape_desc = op_desc->MutableInputDesc(1);
+  auto new_shape_desc = op_desc->MutableInputDesc(2);
+  if ((indices_desc->GetDataType() != DT_INT64) || (shape_desc->GetDataType() != DT_INT64) ||
+                                                   (new_shape_desc->GetDataType() != DT_INT64)) {
     OP_LOGE(op.GetName().c_str(), " illegal when input type is not DT_INT64");
     return GRAPH_PARAM_INVALID;
   }
-  auto tensor_indices = op.get_input_desc_indices();
-  auto tensor_shape = op.get_input_desc_shape();
-  auto tensor_new_shape = op.get_input_desc_new_shape();
 
-  Shape indices;
-  Shape unused;
-  Shape new_shape;
-  if (WithRank(tensor_indices, 2, indices, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  GeShape indices;
+  GeShape unused;
+  GeShape new_shape;
+  if (WithRank(indices_desc, 2, indices) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input indices must be 2-D");
     return GRAPH_FAILED;
   }
-  if (WithRank(tensor_shape, 1, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(shape_desc, 1, unused) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input shape must be 1-D");
     return GRAPH_FAILED;
   }
-  if (WithRank(tensor_new_shape, 1, new_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(new_shape_desc, 1, new_shape) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input new_shape must be 1-D");
     return GRAPH_FAILED;
   }
 
   Shape result;
-  auto indices_shape_dims = tensor_indices.GetShape().GetDims();
-  auto new_shape_dims = tensor_new_shape.GetShape().GetDims();
+  auto indices_shape_dims = indices_desc->GetShape().GetDims();
+  auto new_shape_dims = new_shape_desc->GetShape().GetDims();
 
   Matrix(indices_shape_dims[0], new_shape_dims[0], result);
+  GeShape y_indices_shape(result.GetDims());
 
-  DataType y_indices_type = op.GetInputDesc("indices").GetDataType();
-  DataType y_shape_type = op.GetInputDesc("shape").GetDataType();
+  auto y_indices_desc = op_desc->MutableOutputDesc(0);
+  y_indices_desc->SetShape(y_indices_shape);
+  y_indices_desc->SetDataType(indices_desc->GetDataType());
 
-  TensorDesc indices_desc = op.GetOutputDesc("y_indices");
-  indices_desc.SetShape(Shape(result));
-  indices_desc.SetDataType(y_indices_type);
-  if (op.UpdateOutputDesc("y_indices", indices_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update y_indices desc failed.");
-    return GRAPH_FAILED;
-  }
-
-  TensorDesc shape_desc = op.GetOutputDesc("y_shape");
-  shape_desc.SetShape(Shape(new_shape));
-  shape_desc.SetDataType(y_shape_type);
-  if (op.UpdateOutputDesc("y_shape", shape_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update y_shape desc failed.");
-    return GRAPH_FAILED;
-  }
+  auto y_shape_desc = op_desc->MutableOutputDesc(1);
+  y_shape_desc->SetShape(new_shape);
+  y_shape_desc->SetDataType(shape_desc->GetDataType());
 
   return GRAPH_SUCCESS;
 }

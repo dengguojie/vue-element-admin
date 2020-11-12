@@ -524,7 +524,10 @@ class ArgMax():
                 self.argmax_last_axis()
 
         inputs = [self.data_gm]
-        outputs = [self.result_gm, self.result_gm_value]
+        if self.out_max_val and (not self.out_max_index):
+            outputs = [self.result_gm_value, self.result_gm]
+        else:
+            outputs = [self.result_gm, self.result_gm_value]
 
         self.tik_instance.BuildCCE(
             kernel_name=self.kernel_name,

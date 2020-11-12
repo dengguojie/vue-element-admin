@@ -22,6 +22,7 @@
 #include "common/util/error_manager/error_manager.h"
 #include "error_util.h"
 #include "error_code.h"
+#include "op_log.h"
 
 using namespace std;
 using namespace ge;
@@ -270,11 +271,48 @@ void OpsAippErrReport(const std::string& aipp_output_H, const std::string& aipp_
   ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
 }
 
+void OpsConvAttrValueErrReport(const std::string& op_name, const std::string& param_name, const std::string& expected_value,
+                           const std::string& input_value) {
+  map<string, string> err_map;
+  err_map["op_name"] = op_name;
+  err_map["param_name"] = param_name;
+  err_map["expected_value"] = expected_value;
+  err_map["input_value"] = input_value;
+  std::string report_error_code = GetViewErrorCodeStr(ViewErrorCode::INVALID_CONV_ATTR_VALUE);
+  ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+}
+
+void OpsConvSetAttrErrReport(const std::string& op_name, const std::string& param1_name,
+                           const std::string& param2_name) {
+  map<string, string> err_map;
+  err_map["op_name"] = op_name;
+  err_map["param1_name"] = param1_name;
+  err_map["param2_name"] = param2_name;
+  std::string report_error_code = GetViewErrorCodeStr(ViewErrorCode::INVALID_CONV_SET_ATTR);
+  ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+}
+
+void OpsConvShapeErrReport(const std::string& op_name, const std::string& description) {
+  map<string, string> err_map;
+  err_map["op_name"] = op_name;
+  err_map["description"] = description;
+  std::string report_error_code = GetViewErrorCodeStr(ViewErrorCode::INVALID_CONV_SHAPE);
+  ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+}
+
 void GeInfershapeErrReport(const std::string& op_name, const std::string& op_type, const std::string& value,
                            const std::string& reason) {
   std::string report_error_code = GetViewErrorCodeStr(ViewErrorCode::INVALID_INFER_SHAPE);
   ErrorManager::GetInstance().ATCReportErrMessage(report_error_code, {"opname", "optype", "value", "reason"},
                                                   {op_name, op_type, value, reason});
+}
+
+void CommonRuntimeErrLog(const std::string& opname, const std::string& description){
+  map<string, string> err_map;
+  err_map["op_name"] = opname;
+  err_map["description"] = description;
+  OP_LOGE(opname.c_str(), description);
+  (void)ErrorManager::GetInstance().ReportErrMessage("E50058", err_map);
 }
 
 }  // namespace ge

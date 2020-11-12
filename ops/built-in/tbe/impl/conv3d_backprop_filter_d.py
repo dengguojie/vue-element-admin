@@ -399,6 +399,8 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop, filter_sizes,
                          DILATION_MAX)
     _check_attr_range_dw("dilations's W", dilation_w, DILATION_MIN,
                          DILATION_MAX)
+    _check_attr_range_dw("dilations's D", dilation_d, DILATION_MIN,
+                         DILATION_MAX)
 
     if dilation_n != 1 or dilation_c != 1:
         args_dict = {
@@ -409,13 +411,13 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop, filter_sizes,
         raise RuntimeError(args_dict,
                            error_manager_util.get_error_message(args_dict))
 
-    # detype check
+    # dtype check
     x_dtype = x_dtype.lower()
     out_backprop_dtype = out_backprop_dtype.lower()
     res_dtype = res_dtype.lower()
-    para_check.check_dtype_rule(x_dtype, ['float16'])
-    para_check.check_dtype_rule(out_backprop_dtype, ['float16'])
-    para_check.check_dtype_rule(res_dtype, ['float32', 'float16'])
+    para_check.check_dtype_rule(x_dtype, ['float16'], "x")
+    para_check.check_dtype_rule(out_backprop_dtype, ['float16'], "out_backprop")
+    para_check.check_dtype_rule(res_dtype, ['float32', 'float16'], "output")
 
     # Second : Furture Check, Mainly required by SRS
     # ===========================================================
@@ -452,6 +454,8 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop, filter_sizes,
         pads = PADDING_VAILD
     pads = list(pads)
     pad_front, pad_back, pad_up, pad_down, pad_left, pad_right = pads
+    util_common.check_pads_value_3d(pads)
+
     if pad_front >= filter_d_dilation or pad_back >= filter_d_dilation:
         args_dict = {
             'errCode': 'E60013',
@@ -497,14 +501,17 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop, filter_sizes,
     # filter value limit
     _check_attr_range_dw("filter's H", filter_h, FILTER_HW_MIN, FILTER_HW_MAX)
     _check_attr_range_dw("filter's W", filter_w, FILTER_HW_MIN, FILTER_HW_MAX)
+    _check_attr_range_dw("filter's D", filter_d, FILTER_HW_MIN, FILTER_HW_MAX)
 
     # Fmap value limit
     _check_attr_range_dw("Fmap's H", fmap_h, fmap_hw_min, FMAP_HW_MAX)
     _check_attr_range_dw("Fmap's W", fmap_w, fmap_hw_min, FMAP_HW_MAX)
+    _check_attr_range_dw("Fmap's D", fmap_d, fmap_hw_min, FMAP_HW_MAX)
 
     # stride value limit
     _check_attr_range_dw("stride's H", stride_h, STRIDE_HW_MIN, STRIDE_HW_MAX)
     _check_attr_range_dw("stride's W", stride_w, STRIDE_HW_MIN, STRIDE_HW_MAX)
+    _check_attr_range_dw("stride's D", stride_d, STRIDE_HW_MIN, STRIDE_HW_MAX)
 
     def _check_axis_hw():
         if fmap_batch != dedy_batch:

@@ -28,6 +28,8 @@ from te.platform import cce_util
 from te.platform.cce_build import build_config
 from topi.cce import util
 import te.lang.cce
+from impl.util.util_common import write_code
+
 
 # parameter naming allocated UB
 OUTPUT_NAME_SUFFIX = [0]
@@ -239,22 +241,6 @@ def _tilling_axis(shape, dtype):
         split_factor = shape[0]
 
     return split_axis, split_factor
-
-
-def _write_code(wkspace_dict, fname):
-    """
-    write workspaces to json file
-
-    """
-    fname = os.path.realpath(fname)
-    if fname.startswith(os.getcwd()):
-        if os.path.exists(fname):
-            with open(fname, "r") as f_var:
-                load_dict = json.load(f_var)
-            load_dict.update(wkspace_dict)
-            with open(fname, "w") as f_var:
-                json.dump(load_dict, f_var, sort_keys=True,
-                          indent=4, separators=(',', ':'))
 
 
 def _allocate_ub(ib_, dtype, size, name):
@@ -2954,7 +2940,7 @@ def four_2_five(src, dst, src_format, dst_format, kernel_name="four_2_five"):
             tvm.build(sch, tensor_list, "cce", name=kernel_name)
 
         workspace_dict = {"workspace": {"num": num, "size": total_size}}
-        _write_code(workspace_dict, "kernel_meta/" + kernel_name + ".json")
+        write_code(workspace_dict, kernel_name)
 
     else:
         tensor_list = [data_input, res]

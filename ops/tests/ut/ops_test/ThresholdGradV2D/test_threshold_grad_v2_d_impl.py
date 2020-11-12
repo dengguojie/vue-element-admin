@@ -8,7 +8,7 @@ import tensorflow as tf
 ut_case = OpUT("ThresholdGradV2D", "impl.threshold_grad_v2_d", "threshold_grad_v2_d")
 
 def calc_expect_func(gradients, features, output, threshold):
-
+    src_type = gradients['dtype']
     greater = tf.greater(features["value"], threshold)
     data = tf.where(greater, gradients["value"], tf.constant(0, src_type, gradients["shape"]))
     session = tf.Session()
@@ -43,21 +43,9 @@ ut_case.add_precision_case("all",
                                               "success"))
 ut_case.add_precision_case("all",
                  gen_threshold_grad_v2_d_case((1, 1, 2, 2), (1, 1, 2, 2),
-                                              "int8", "int8",
+                                              "float32", "float32",
                                               "ND", 1.2,
-                                              "test_int8_case",
-                                              "success"))
-ut_case.add_precision_case("all",
-                 gen_threshold_grad_v2_d_case((2, 2), (2, 2),
-                                              "int32", "int32",
-                                              "ND", 1.3,
-                                              "test_int32_case",
-                                              "success"))
-ut_case.add_precision_case("all",
-                 gen_threshold_grad_v2_d_case((1, 1, 2, 2), (1, 1, 2, 2),
-                                              "uint8", "uint8",
-                                              "ND", 1.0,
-                                              "test_uint8_case",
+                                              "test_float32_case",
                                               "success"))
 ut_case.add_case("all",
                  gen_threshold_grad_v2_d_case((1,), (1,),
@@ -89,6 +77,7 @@ ut_case.add_case("all",
                                               "ND", 1.0,
                                               "test_9dim_case",
                                               RuntimeError))
+
 
 if __name__ == '__main__':
     ut_case.run("Ascend910")

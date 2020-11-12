@@ -132,9 +132,9 @@ Status YoloV3DetectionOutputV2Pass::Fusion(ge::ComputeGraph& graph, Mapping& map
                       return PARAM_INVALID);
 
     Status ret = GenerateWIndexFP16V2(dimInfo[2], dimInfo[3], inputAssitW.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateWIndex%d failed.", i), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "GenerateWIndex%d failed.", i), return NOT_CHANGED);
     ret = GenerateHIndexFP16V2(dimInfo[2], dimInfo[3], inputAssitH.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateHIndex%d failed.", i), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "GenerateHIndex%d failed.", i), return NOT_CHANGED);
 
     // define the shape of auxiliary matrix
     vector<int64_t> assitDimInfo;

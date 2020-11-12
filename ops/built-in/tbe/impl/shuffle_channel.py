@@ -20,12 +20,13 @@ from te.utils import para_check
 from te import tik
 from impl import constant_util as constant
 from impl import common_util
+from impl.util import util_select_op_base
 
 # reserve size for ub
 RESERVE_SIZE = 16 * 1024
 
 
-# pylint: disable=invalid-name,too-many-locals,too-many-statements,too-many-arguments
+# pylint: disable=invalid-name,too-many-locals,too-many-statements,too-many-arguments,unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def shuffle_channel(x, y, group=1, kernel_name="shuffle_channel"):
@@ -60,6 +61,28 @@ def shuffle_channel(x, y, group=1, kernel_name="shuffle_channel"):
                                       enable_l2=False)
 
     return shuffle_process.instance
+
+
+def get_op_support_info(x, y, group=1, kernel_name="shuffle_channel"):
+    """
+    get split info
+    """
+    dim_x = len(x.get("shape"))
+    format_x = x.get("format").upper()
+    not_cut_dim = [1]
+    if format_x == "NCHW":
+        axis_split_list = []
+        for i in range(dim_x):
+            if i not in not_cut_dim:
+                split = [util_select_op_base.SplitInput([0, [i], [-1], [-1]]),
+                         util_select_op_base.SplitOutput([0, [i]])]
+                axis_split_list.append(split)
+    else:
+        axis_split_list = None
+
+    axis_reduce_list = None
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_list, axis_reduce_list)
+    return op_cal_info_in_json
 
 
 class ShuffleChannel:
@@ -155,8 +178,10 @@ class ShuffleChannel:
         """
         check can use v200 instruction or feature
         """
-        dtype_flag = self.dtype in ["int16", "uint16", "float16", "int32", "uint32", "float32"]
+        dtype_flag = self.dtype in ["int16", "float16", "int32", "float32"]
+        dtype_cs_flag = self.dtype in ["int16", "float16", "int32"]
         v200_flag = tbe_platform.get_soc_spec("SOC_VERSION") in ("Ascend710", "Ascend610", "Ascend615")
+        cs_flag = tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300CS",)
         block_num, ub_size = self.get_ub_block_size(self.dsize * 2)
         shape = self.input_dict.get("x").get("shape")
         num = shape[1] * shape[2] * shape[3]
@@ -170,8 +195,8 @@ class ShuffleChannel:
                 break
 
         size_flag = num <= ub_size and block_index < 1
-
-        if dtype_flag and v200_flag and size_flag:
+        flag = (dtype_flag and v200_flag) or (dtype_cs_flag and cs_flag)
+        if flag and size_flag:
             return True
 
         return False

@@ -51,7 +51,12 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 
 
-if __name__ == '__main__':
-    ut_case.run()
-    # ut_case.run("Ascend910")
-    exit(0)
+def calc_expect_func(x1, x2, x3, y):
+    input_matrix = x1['value']
+    input_diagonal = x2['value']
+    input_help = x3['value']
+
+    help_tmp = input_help - 1
+    help_y = np.abs(help_tmp)
+    res = input_matrix * help_y + input_diagonal * input_help
+    return res.astype(y['dtype'])

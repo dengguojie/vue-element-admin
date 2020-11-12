@@ -58,37 +58,34 @@ ut_case.add_precision_case("all",
                                          "ND", 6.6, 7.4,
                                          "test_float16_case1",
                                          "success"))
-ut_case.add_precision_case("all",
-                 gen_threshold_v2_d_case((6, 7), "int32",
-                                         "ND", 5.5, 3.1,
-                                         "test_int32_case0",
-                                         "success"))
-ut_case.add_precision_case("all",
-                 gen_threshold_v2_d_case((5, 6, 7, 8, 9, 10), "int32",
-                                         "ND", 7.5, 9.6,
-                                         "test_int32_case1",
-                                         "success"))
-ut_case.add_precision_case("all",
-                 gen_threshold_v2_d_case((5, 6, 9), "int8",
-                                         "ND", 20.0, 50.6,
-                                         "test_int8_case0",
-                                         "success"))
-ut_case.add_precision_case("all",
-                 gen_threshold_v2_d_case((5, 6, 9, 15, 11), "int8",
-                                         "ND", 7.0, 40.8,
-                                         "test_int8_case1",
-                                         "success"))
-ut_case.add_precision_case("all",
-                 gen_threshold_v2_d_case((5, 6, 7, 8, 9), "uint8",
-                                         "ND", 4.5, 3.6,
-                                         "test_uint8_case0",
-                                         "success"))
-ut_case.add_precision_case("all",
-                 gen_threshold_v2_d_case((5, 8, 9), "uint8",
-                                         "ND", 10.6, 7.1,
-                                         "test_uint8_case1",
-                                         "success"))
+# ut_case.add_precision_case("all",
+#                  gen_threshold_v2_d_case((6, 7), "int32",
+#                                          "ND", 5.5, 3.1,
+#                                          "test_int32_case0",
+#                                          "success"))
+# ut_case.add_precision_case("all",
+#                  gen_threshold_v2_d_case((5, 6, 7, 8, 9, 10), "int32",
+#                                          "ND", 7.5, 9.6,
+#                                          "test_int32_case1",
+#                                          "success"))
+# ut_case.add_precision_case("all",
+#                  gen_threshold_v2_d_case((5, 6, 9), "int8",
+#                                          "ND", 20.0, 50.6,
+#                                          "test_int8_case0",
+#                                          "success"))
+# ut_case.add_precision_case("all",
+#                  gen_threshold_v2_d_case((5, 6, 9, 15, 11), "int8",
+#                                          "ND", 7.0, 40.8,
+#                                          "test_int8_case1",
+#                                          "success"))
+# ut_case.add_precision_case("all",
+#                  gen_threshold_v2_d_case((5, 6, 7, 8, 9), "uint8",
+#                                          "ND", 4.5, 3.6,
+#                                          "test_uint8_case0",
+#                                          "success"))
+# ut_case.add_precision_case("all",
+#                  gen_threshold_v2_d_case((5, 8, 9), "uint8",
+#                                          "ND", 10.6, 7.1,
+#                                          "test_uint8_case1",
+#                                          "success"))
 
-if __name__ == '__main__':
-    ut_case.run(["Ascend910"], simulator_mode="pv",
-                simulator_lib_path="/disk1/ty_mindstudio/.mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")

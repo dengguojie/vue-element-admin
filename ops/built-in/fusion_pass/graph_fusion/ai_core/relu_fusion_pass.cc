@@ -84,7 +84,7 @@ Status ReluFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
 
   int64_t mode = 0;
   FUSION_PASS_CHECK(!ge::AttrUtils::GetInt(relu_node->GetOpDesc(), ge::ACTIVATION_ATTR_MODE, mode),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "get mode fail."), return FAILED);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "get mode fail."), return NOT_CHANGED);
 
   FUSION_PASS_CHECK(src_node->GetOutDataNodes().size() > 1 || mode != ge::DOMI_ACTIVATION_RELU ||
                         graph.GetGraphOutNodes().find(relu_node->GetName()) != graph.GetGraphOutNodes().end() ||

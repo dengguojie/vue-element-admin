@@ -69,6 +69,20 @@ def _test_conv2d_bp_input_fusion(
                 "ori_format": "NCHW",
             },
         )
+        dx_5hd = util.shape_4d_to_5hd(dx_shape, dx_dtype, "NCHW")
+        dedy_5hd = util.shape_4d_to_5hd(dedy_shape, dedy_dtype, "NCHW")
+        group_dict = {
+            "groups": 1,
+            "g_extend": 1,
+            "multiple_extend": 1,
+            "dx_c1_extend": dx_5hd[1],
+            "dy_c1_extend": dedy_5hd[1],
+            "dx_shape": dx_shape[1],
+            "dedy_shape": dedy_shape[1],
+            "filter_batch_ori": w_shape[0],
+            "filter_c_ori": w_shape[1],
+            "filter_ori_format": "NCHW"
+        }
         dedx = tbe.conv2d_backprop_input_compute(
             filters=w_tensor,
             out_backprop=dedy_tensor,
@@ -81,6 +95,7 @@ def _test_conv2d_bp_input_fusion(
             kernel_name=_gen_kernel_name(
                 dedy_shape, w_shape, dx_shape, stride, "fusion"
             ),
+            group_dict=group_dict,
         )
         mask_shape = [i.value for i in dedx.shape]
         mask = tvm.placeholder(mask_shape, name="mask", dtype="bool")

@@ -86,18 +86,18 @@ def xlogy_compute(input_x, input_y, output_z, kernel_name="xlogy"):
 
     cloud_check = tbe_platform.api_check_support("te.lang.cce.vlog", "float32")
     mini_check = tbe_platform.api_check_support("te.lang.cce.vmul", "float32")
-    if dtype == "float16" and cloud_check:
-        input_x = tbe.cast_to(input_x, "float32")
-        input_y = tbe.cast_to(input_y, "float32")
-
     data_x_broad = tbe.broadcast(input_x, shape_list[2])
     data_y_broad = tbe.broadcast(input_y, shape_list[2])
+    if dtype == "float16" and cloud_check:
+        data_x_broad = tbe.cast_to(data_x_broad, "float32")
+        data_y_broad = tbe.cast_to(data_y_broad, "float32")
+
     data_log = tbe.vlog(data_y_broad)
     res = tbe.vmul(data_log, data_x_broad)
 
     if (not cloud_check) and mini_check:
         data_x_broad = tbe.cast_to(data_x_broad, "float32")
-        data_x_broad = tbe.cast_to(data_x_broad, "float32")
+        data_y_broad = tbe.cast_to(data_y_broad, "float32")
         res = _xlogy_mini_compute(res, data_x_broad, data_y_broad, shape)
 
     if dtype == "float16" and (cloud_check or mini_check):
@@ -126,8 +126,7 @@ def _xlogy_mini_compute(res_mini, input_x, input_y, shape):
     -------
     """
     input_z = tbe.cast_to(res_mini, "float32")
-    input_x = tbe.cast_to(input_x, "float32")
-    input_y = tbe.cast_to(input_y, "float32")
+
     input_x_rec = tbe.vrec(input_x)
     input_z_compare = tbe.vmul(input_z, input_x_rec)
 

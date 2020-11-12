@@ -14,6 +14,8 @@
 using namespace std;
 
 extern bool g_isDevice;
+const size_t DEFAULT_WHITE_COUNT = 10;
+const size_t DEFAULT_PRECISION_COUNT = 4;
 
 OpRunner::OpRunner(OpTestDesc *opDesc) : opDesc_(opDesc)
 {
@@ -24,22 +26,22 @@ OpRunner::OpRunner(OpTestDesc *opDesc) : opDesc_(opDesc)
 OpRunner::~OpRunner()
 {
     for (size_t i = 0; i < numInputs_; ++i) {
-        aclDestroyDataBuffer(inputBuffers_[i]);
-        aclrtFree(devInputs_[i]);
+        (void)aclDestroyDataBuffer(inputBuffers_[i]);
+        (void)aclrtFree(devInputs_[i]);
         if (g_isDevice) {
-            aclrtFree(hostInputs_[i]);
+            (void)aclrtFree(hostInputs_[i]);
         } else {
-            aclrtFreeHost(hostInputs_[i]);
+            (void)aclrtFreeHost(hostInputs_[i]);
         }
     }
 
     for (size_t i = 0; i < numOutputs_; ++i) {
-        aclDestroyDataBuffer(outputBuffers_[i]);
-        aclrtFree(devOutputs_[i]);
+        (void)aclDestroyDataBuffer(outputBuffers_[i]);
+        (void)aclrtFree(devOutputs_[i]);
         if (g_isDevice) {
-            aclrtFree(hostOutputs_[i]);
+            (void)aclrtFree(hostOutputs_[i]);
         } else {
-            aclrtFreeHost(hostOutputs_[i]);
+            (void)aclrtFreeHost(hostOutputs_[i]);
         }
     }
 }
@@ -58,7 +60,7 @@ bool OpRunner::Init()
 
         void *hostMem = nullptr;
         if (g_isDevice) {
-            if (aclrtMalloc(&hostMem, size, ACL_MEM_MALLOC_NORMAL_ONLY)!= ACL_ERROR_NONE) {
+            if (aclrtMalloc(&hostMem, size, ACL_MEM_MALLOC_NORMAL_ONLY) != ACL_ERROR_NONE) {
                 ERROR_LOG("Malloc device memory for input[%zu] failed", i);
                 return false;
             }
@@ -107,17 +109,17 @@ bool OpRunner::Init()
     return true;
 }
 
-size_t OpRunner::NumInputs()
+const size_t OpRunner::NumInputs()
 {
     return numInputs_;
 }
 
-size_t OpRunner::NumOutputs()
+const size_t OpRunner::NumOutputs()
 {
     return numOutputs_;
 }
 
-size_t OpRunner::GetInputSize(size_t index)
+const size_t OpRunner::GetInputSize(size_t index) const
 {
     if (index >= opDesc_->inputDesc.size()) {
         ERROR_LOG("index out of range. index = %zu, numInputs = %zu", index, numInputs_);
@@ -127,7 +129,7 @@ size_t OpRunner::GetInputSize(size_t index)
     return aclGetTensorDescSize(opDesc_->inputDesc[index]);
 }
 
-std::vector<int64_t> OpRunner::GetInputShape(size_t index)
+std::vector<int64_t> OpRunner::GetInputShape(size_t index) const
 {
     std::vector<int64_t> ret;
     if (index >= opDesc_->inputDesc.size()) {
@@ -143,7 +145,7 @@ std::vector<int64_t> OpRunner::GetInputShape(size_t index)
     return ret;
 }
 
-std::vector<int64_t> OpRunner::GetOutputShape(size_t index)
+std::vector<int64_t> OpRunner::GetOutputShape(size_t index) const
 {
     std::vector<int64_t> ret;
     if (index >= opDesc_->outputDesc.size()) {
@@ -158,7 +160,7 @@ std::vector<int64_t> OpRunner::GetOutputShape(size_t index)
     return ret;
 }
 
-size_t OpRunner::GetInputElementCount(size_t index)
+size_t OpRunner::GetInputElementCount(size_t index) const
 {
     if (index >= opDesc_->inputDesc.size()) {
         ERROR_LOG("index out of range. index = %zu, numInputs = %zu", index, numInputs_);
@@ -168,7 +170,7 @@ size_t OpRunner::GetInputElementCount(size_t index)
     return aclGetTensorDescElementCount(opDesc_->inputDesc[index]);
 }
 
-size_t OpRunner::GetOutputElementCount(size_t index)
+size_t OpRunner::GetOutputElementCount(size_t index) const
 {
     if (index >= opDesc_->outputDesc.size()) {
         ERROR_LOG("index out of range. index = %zu, numOutputs = %zu", index, numOutputs_);
@@ -178,7 +180,7 @@ size_t OpRunner::GetOutputElementCount(size_t index)
     return aclGetTensorDescElementCount(opDesc_->outputDesc[index]);
 }
 
-size_t OpRunner::GetOutputSize(size_t index)
+size_t OpRunner::GetOutputSize(size_t index) const
 {
     if (index >= opDesc_->outputDesc.size()) {
         ERROR_LOG("index out of range. index = %zu, numOutputs = %zu", index, numOutputs_);
@@ -256,22 +258,28 @@ bool OpRunner::RunOp()
 template<typename T>
 void DoPrintData(const T *data, size_t count, size_t elementsPerRow)
 {
+    ios::fmtflags f(cout.flags());
     for (size_t i = 0; i < count; ++i) {
-        std::cout << std::setw(10) << data[i];
+        std::cout << std::setw(DEFAULT_WHITE_COUNT) << data[i];
         if (i % elementsPerRow == elementsPerRow - 1) {
             std::cout << std::endl;
         }
     }
+    cout.flags(f);
 }
 
 void DoPrintFp16Data(const aclFloat16 *data, size_t count, size_t elementsPerRow)
 {
+    ios::fmtflags f(cout.flags()); // save old format
     for (size_t i = 0; i < count; ++i) {
-        std::cout << std::setw(10) << std::setprecision(4) << aclFloat16ToFloat(data[i]);
+        std::cout << std::setw(DEFAULT_WHITE_COUNT) << \
+        std::setprecision(DEFAULT_PRECISION_COUNT) << \
+        aclFloat16ToFloat(data[i]);
         if (i % elementsPerRow == elementsPerRow - 1) {
             std::cout << std::endl;
         }
     }
+    cout.flags(f);
 }
 
 void PrintData(const void *data, size_t count, aclDataType dataType, size_t elementsPerRow)

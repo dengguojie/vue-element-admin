@@ -19,9 +19,10 @@ import re
 import math
 from functools import reduce as functools_reduce
 from functools import wraps
-from te.platform.fusion_manager import fusion_manager
-from te.platform import operation
-from te import tvm
+import warnings
+
+from te.lang.base import operation
+from te.utils import shape_util
 
 SHAPE_SIZE_LIMIT = 2 ** 31 - 1
 SHAPE_SIZE_ZERO = 0
@@ -948,32 +949,18 @@ def squeeze_shape(shape):
     """
     squeeze shape
     """
-    squeezed_shape = [i for i in shape if i > 1]
-    if not squeezed_shape:
-        squeezed_shape = [1]
-
-    return squeezed_shape
+    warnings.warn("squeeze_shape in the file is deprecated, replace it with the same func in shape_util",
+                  DeprecationWarning)
+    return shape_util.squeeze_shape(shape)
 
 
 def wrap_axes_to_positive(axes, rank):
     """
     wrap axis to positive
     """
-    if isinstance(axes, (tuple, list)):
-        local_axes = axes
-    else:
-        local_axes = [axes]
-    res_axes = []
-    for axis in local_axes:
-        if rank <= axis or axis < -rank:
-            raise RuntimeError("Axis must between [-%d, %d)." % (rank, rank))
-        if axis < 0:
-            laxis = axis + rank
-        else:
-            laxis = axis
-        res_axes.append(laxis)
-
-    return res_axes
+    warnings.warn("wrap_axes_to_positive is deprecated, replace it with the same func in shape_util",
+                  DeprecationWarning)
+    return shape_util.wrap_axes_to_positive(axes, rank)
 
 
 def refine_shape_axes(shape, axes):
@@ -999,230 +986,27 @@ def refine_shape_axes(shape, axes):
         refined axes
 
     """
-    if len(shape) == 1:
-        return shape, axes
-    wrapped_axes = wrap_axes_to_positive(axes, len(shape))
-    wrapped_axes = sorted(wrapped_axes)
-    refined_axes = []
-    reduce_flag = -1
-    refined_shape = []
-    for idx, dim in enumerate(shape):
-        if dim == 1:
-            # dim is one, not need reduce skip
-            continue
-        tmp_flag = 1 if idx in wrapped_axes else 0
-        if reduce_flag == 1 and tmp_flag == 1:
-            # continues reduce
-            refined_shape[-1] *= dim
-        elif reduce_flag == 0 and tmp_flag == 0:
-            # continues no reduce
-            refined_shape[-1] *= dim
-        else:
-            refined_shape.append(dim)
-            if tmp_flag == 1:
-                refined_axes.append(idx)
-            reduce_flag = tmp_flag
-
-    if not refined_shape:
-        refined_shape.append(1)
-
-    return refined_shape, refined_axes
+    warnings.warn("refine_shape_axes is deprecated, replace it with the same func in shape_util",
+                  DeprecationWarning)
+    return shape_util.refine_shape_axes(shape, axes)
 
 
 def broadcast_shapes(shape1, shape2, op_name=OP_NAME, param_name_input1='', param_name_input2=''):
     """
     two input shapes produce three output shape
     """
-    def _generate_dynamic_output(_shape1_i, _shape2_i, out_shape, index):
-        if not _equal(_shape1_i, _shape2_i):
-            if isinstance(_shape1_i, int):
-                if _shape1_i == 1:
-                    out_shape.append(_shape2_i)
-                else:
-                    out_shape.append(_shape1_i)
-            elif isinstance(_shape2_i, int):
-                if _shape2_i == 1:
-                    out_shape.append(_shape1_i)
-                else:
-                    out_shape.append(_shape2_i)
-            else:
-                var_name = "dim_" + str(index) + "_2"
-                _var = operation.get_te_var(var_name)
-                if _var is None:
-                    bound_x = operation.get_te_var(_shape1_i.name).get_bound()
-                    bound_y = operation.get_te_var(_shape2_i.name).get_bound()
-                    bound = (min(bound_x[0], bound_y[0]),
-                             max(bound_x[1], bound_y[1]))
-                    _var = operation.var(var_name, bound)
-                else:
-                    _var = _var.tvm_var
-                out_shape.append(_var)
-        else:
-            out_shape.append(_shape1_i)
-
-    shape1 = list(shape1)
-    shape2 = list(shape2)
-    swapped = False
-    if len(shape1) < len(shape2):
-        shape1, shape2 = shape2, shape1
-        swapped = True
-
-    _dv = len(shape1) - len(shape2)
-    shape2 = [1] * _dv + shape2
-
-    out_shape = []
-    for i, (shape1_i, shape2_i) in enumerate(zip(shape1, shape2)):
-        if not _equal(shape1_i, shape2_i) and \
-                (isinstance(shape1_i, int) and shape1_i != 1) \
-                and (isinstance(shape2_i, int) and shape2_i != 1):
-            error_info = {}
-            error_info['errCode'] = OP_ERROR_CODE_013
-            error_info['op_name'] = op_name
-            error_info['input1_name'] = param_name_input1
-            error_info['input2_name'] = param_name_input2
-            error_info['input1_shape'] = ",".join(str(i) for i in shape1)
-            error_info['input2_shape'] = ",".join(str(i) for i in shape2)
-            raise RuntimeError(error_info, "In op[%s], the inputs[%s][%s] could "
-                                           "not be broadcast together with shapes[%s][%s]."
-                               % (op_name, param_name_input1, param_name_input2,
-                                  error_info['input1_shape'], error_info['input2_shape']))
-        if operation.in_dynamic():
-            _generate_dynamic_output(shape1_i, shape2_i, out_shape, i)
-        else:
-            out_shape.append(shape1_i if _equal(shape2_i, 1) else shape2_i)
-
-    if swapped:
-        shape1, shape2 = shape2, shape1
-
-    return shape1, shape2, out_shape
+    warnings.warn("refine_shape_axes is deprecated, replace it with the same func in shape_util",
+                  DeprecationWarning)
+    return shape_util.broadcast_shapes(shape1, shape2, op_name, param_name_input1, param_name_input2)
 
 
 def refine_shapes_for_broadcast(shape1, shape2):
     """
     Fusing the axes for the input shapes
     """
-    def _dynamic_refine_shapes_for_broadcast(shape1, shape2):
-        """
-        Fusing the axes for the input shapes
-        """
-        def _equals_one(_x):
-            if isinstance(_x, tvm.expr.ConstExpr):
-                return _x.value == 1
-            if isinstance(_x, int):
-                return _x == 1
-            return False
-
-        def _get_state(_a, _b):
-            if _equal(_a, _b):
-                return 1
-            if _equals_one(_a):
-                return 2
-            if _equals_one(_b):
-                return 3
-            return 4
-
-        fused_shape1 = [1]
-        fused_shape2 = [1]
-        fusion_index = []
-        current_index = []
-        state = None
-        mode = operation.get_context().get("mode")
-        if mode != ORIGINAL:
-            return shape1, shape2
-        for index, (i_a, i_b) in enumerate(zip(shape1, shape2)):
-            if _equals_one(i_a) and _equals_one(i_b):
-                pass
-            elif state is None:
-                fused_shape1[-1] *= i_a
-                fused_shape2[-1] *= i_b
-                state = _get_state(i_a, i_b)
-                current_index.append(index)
-            elif _get_state(i_a, i_b) == 4:
-                fused_shape1.append(i_a)
-                fused_shape2.append(i_b)
-                state = _get_state(i_a, i_b)
-                fusion_index.append(current_index)
-                current_index = [index]
-            elif state == _get_state(i_a, i_b):
-                fused_shape1[-1] *= i_a
-                fused_shape2[-1] *= i_b
-                current_index.append(index)
-            else:
-                fused_shape1.append(i_a)
-                fused_shape2.append(i_b)
-                state = _get_state(i_a, i_b)
-                fusion_index.append(current_index)
-                current_index = [index]
-
-        fusion_index.append(current_index)
-        operation.add_compile_info("_fusion_index", fusion_index)
-
-        return fused_shape1, fused_shape2
-
-    def _const_refine_shapes_for_broadcast(shape1, shape2):
-        def _delete_one(shape1, shape2):
-            # delete 1 when both 1
-            shape1_new = []
-            shape2_new = []
-            for i, (shape1_i, shape2_i) in enumerate(zip(shape1, shape2)):
-                if (shape1_i != shape2_i) or \
-                        (shape1_i == shape2_i and shape1_i != 1):
-                    shape1_new.append(shape1[i])
-                    shape2_new.append(shape2[i])
-            if shape1_new == [] and shape2_new == []:
-                shape1_new = [1]
-                shape2_new = [1]
-            return shape1_new, shape2_new
-
-        shape1, shape2 = _delete_one(shape1, shape2)
-
-        fused_shape1 = []
-        fused_shape2 = []
-        fused_shape1.append(shape1[0])
-        fused_shape2.append(shape2[0])
-        j = 0
-        for i, (shape1_i, shape2_i) in enumerate(zip(shape1, shape2)):
-            if i == 0:
-                pass
-            elif shape1_i == shape2_i and shape1[i - 1] == shape2[i - 1]:
-                fused_shape1[j] *= shape1[i]
-                fused_shape2[j] *= shape2[i]
-            elif shape1_i != shape2_i and shape1[i - 1] != shape2[i - 1] \
-                    and (shape1_i == shape1[i - 1] or shape2_i == shape2[i - 1]):
-                fused_shape1[j] *= shape1[i]
-                fused_shape2[j] *= shape2[i]
-            else:
-                j += 1
-                if i != 0:
-                    fused_shape1.append(shape1[i])
-                    fused_shape2.append(shape2[i])
-
-        return fused_shape1, fused_shape2
-
-    if fusion_manager.get_build_cfg() == "disable":
-        return shape1, shape2
-
-    shape1, shape2 = list(shape1), list(shape2)
-    swapped = False
-    if len(shape1) < len(shape2):
-        shape1, shape2 = shape2, shape1
-        swapped = True
-
-    _dv = len(shape1) - len(shape2)
-    shape2 = [1] * _dv + shape2
-
-    if operation.in_dynamic():
-        operation.add_compile_info("_fusion", 2)
-        fused_shape1, fused_shape2 = \
-            _dynamic_refine_shapes_for_broadcast(shape1, shape2)
-    else:
-        fused_shape1, fused_shape2 = \
-            _const_refine_shapes_for_broadcast(shape1, shape2)
-
-    if swapped:
-        fused_shape1, fused_shape2 = fused_shape2, fused_shape1
-
-    return fused_shape1, fused_shape2
+    warnings.warn("refine_shapes_for_broadcast is deprecated, replace it with the same func in shape_util",
+                  DeprecationWarning)
+    return shape_util.refine_shapes_for_broadcast(shape1, shape2)
 
 
 def _equal(expr_a, expr_b):
@@ -1231,62 +1015,21 @@ def _equal(expr_a, expr_b):
     :param expr_b:
     :return:
     """
-    elements1 = {}
-    elements2 = {}
-
-    single_types = (int, float, tvm.expr.Var)
-    const_types = (tvm.expr.IntImm,)
-    for expr, elements in zip((expr_a, expr_b), (elements1, elements2)):
-        if isinstance(expr, single_types):
-            elements[expr] = elements.get(expr, 0) + 1
-        elif isinstance(expr, const_types):
-            elements[expr.value] = elements.get(expr.value, 0) + 1
-        elif isinstance(expr, tvm.expr.Expr):
-            _parse_expr(expr, elements)
-        else:
-            error_info = {}
-            error_info['errCode'] = OP_ERROR_CODE_025
-            error_info['op_name'] = operation.get_context().get_op_type()
-            error_info['param_expr'] = expr
-            raise RuntimeError(error_info,
-                               "In op[%s], unsupported expr: [%s]" % (error_info['op_name'],
-                                                                      error_info['param_expr']))
-
-    return elements1 == elements2
+    warnings.warn("_equal is deprecated, replace it with the same func in shape_util",
+                  DeprecationWarning)
+    return shape_util._equal(expr_a, expr_b)
 
 
 def _parse_expr(expr, elements: dict):
-    if isinstance(expr, tvm.expr.Mul):
-        _parse_mul(expr, elements)
-    else:
-        error_info = {}
-        error_info['errCode'] = OP_ERROR_CODE_025
-        error_info['op_name'] = operation.get_context().get_op_type()
-        error_info['param_expr'] = expr
-        raise RuntimeError(error_info,
-                           "In op[%s], unsupported expr: [%s]" % (error_info['op_name'],
-                                                                  error_info['param_expr']))
+    warnings.warn("_parse_expr is deprecated, replace it with the same func in shape_util",
+                  DeprecationWarning)
+    return shape_util._parse_expr(expr, elements)
 
 
 def _parse_mul(expr, elements: dict):
-    if not isinstance(expr, tvm.expr.Mul):
-        error_info = {}
-        error_info['errCode'] = OP_ERROR_CODE_026
-        error_info['op_name'] = operation.get_context().get_op_type()
-        error_info['param_expr'] = expr
-        raise RuntimeError(error_info,
-                           "In op[%s], it is not mul expr: [%s]" % (error_info['op_name'],
-                                                                    error_info['param_expr']))
-
-    const_types = (tvm.expr.IntImm,)
-    var_types = (tvm.expr.Var,)
-    for _x in (expr.a, expr.b):
-        if isinstance(_x, const_types):
-            elements[_x.value] = elements.get(_x.value, 0) + 1
-        elif isinstance(_x, var_types):
-            elements[_x] = elements.get(_x, 0) + 1
-        else:
-            _parse_mul(_x, elements)
+    warnings.warn("_parse_mul is deprecated, replace it with the same func in shape_util",
+                  DeprecationWarning)
+    return shape_util._parse_mul(expr, elements)
 
 
 def variable_shape(inputs: list, support_broadcast=False):
@@ -1295,155 +1038,6 @@ def variable_shape(inputs: list, support_broadcast=False):
     :param support_broadcast: whether to support broadcast
     :return:
     """
-    def _has_intersection(range0, range1):
-        _range0 = list(range0)
-        _range1 = list(range1)
-        if _range0[1] is None:
-            _range0[1] = MAX_UNKOWN_SHAPE_NUM
-        if _range1[1] is None:
-            _range1[1] = MAX_UNKOWN_SHAPE_NUM
-        return max(_range0[0], _range1[0]) <= min(_range0[1], _range1[1])
-
-    def _select(cond, then_case, else_case):
-        if cond:
-            return then_case
-        else:
-            return else_case
-
-    def _update_range(shape0, range0, shape1, range1):
-        for index in range(len(range0)):
-            verify_shape = (shape0[index] != -1 and shape1[index] != -1) or \
-                shape0[index] == 1 or shape1[index] == 1
-            if verify_shape:
-                continue
-            range_x = list(range0[index])
-            range_y = list(range1[index])
-            for j, (_rx, _ry) in enumerate(zip(range_x, range_y)):
-                if _rx is None:
-                    range_x[j] = MAX_UNKOWN_SHAPE_NUM
-                if _ry is None:
-                    range_y[j] = MAX_UNKOWN_SHAPE_NUM
-            x_const = shape0[index] != -1 and shape1[index] == -1
-            y_const = shape0[index] == -1 and shape1[index] != -1
-            variable_intersection = _has_intersection(range_x, range_y) and \
-                range_x[0] > 1 and range_y[0] > 1
-            if x_const:
-                range_y = (_select(range_y[0] <= 1, range_y[0], shape0[index]),
-                           _select(range_y[1] >= shape0[index], shape0[index], 1))
-            elif y_const:
-                range_y = (_select(range_x[0] <= 1, range_x[0], shape1[index]),
-                           _select(range_x[1] >= shape1[index], shape1[index], 1))
-            elif variable_intersection:
-                range_x = (max(range_x[0], range_y[0]),
-                           min(range_x[1], range_y[1]))
-                range_y = range_x
-            elif not _has_intersection(range_x, range_y):
-                if range_x[0] <= 1:
-                    range_x = (1, 1)
-                if range_y[0] <= 1:
-                    range_y = (1, 1)
-            range0[index] = tuple(range_x)
-            range1[index] = tuple(range_y)
-            if range_x[0] == range_x[1]:
-                shape0[index] = range_x[0]
-            if range_y[0] == range_y[1]:
-                shape1[index] = range_y[0]
-
-    def _fill(_inputs):
-        if support_broadcast:
-            if len(inputs) != 2:
-                error_info = {}
-                error_info['errCode'] = OP_ERROR_CODE_027
-                error_info['op_name'] = operation.get_context().get_op_type()
-                error_info['param_name'] = PARAM_NAME
-                raise RuntimeError(error_info,
-                                   "In op[%s], only support two inputs for broadcast" % (error_info['op_name']))
-            x_0, x_1 = _inputs
-            shape0, range0 = list(x_0["shape"]), list(x_0["range"])
-            shape1, range1 = list(x_1["shape"]), list(x_1["range"])
-            swapped = False
-            if len(shape0) < len(shape1):
-                shape0, range0, shape1, range1 = shape1, range1, shape0, range0
-                swapped = True
-            d_v = len(shape0) - len(shape1)
-            shape1 = [1] * d_v + shape1
-            range1 = [(1, 1)] * d_v + range1
-            if swapped:
-                shape0, range0, shape1, range1 = shape1, range1, shape0, range0
-            _update_range(shape0, range0, shape1, range1)
-            return [shape0, shape1], [range0, range1]
-
-        _shapes, _ranges = [], []
-        for _input in inputs:
-            _shapes.append(_input["shape"])
-            _ranges.append(_input["range"])
-        return _shapes, _ranges
-
-    def _maybe_broadcast():
-        if support_broadcast:
-            for _r in ranges:
-                if _r[i][0] <= 1:
-                    return True
-        return False
-
-    def _mode_process():
-        if mode == CONST:
-            if support_broadcast:
-                input1 = inputs[0]["shape"]
-                input2 = inputs[1]["shape"]
-                const_shape = [a & b for a, b in zip(input1, input2)]
-            else:
-                const_shape = inputs[0]["shape"]
-            operation.get_context().get_current_compute(). \
-                add("const_shape", const_shape)
-        elif mode == SPECIAL:
-            pattern = inputs[0].get("pattern")
-            operation.get_context().\
-                get_current_compute().add("pattern", pattern)
-            if support_broadcast:
-                for i, _pattern in enumerate(pattern):
-                    if _pattern == COMMON:
-                        for j in range(len(shapes)):
-                            shapes[j][i] = -77
-        elif mode == SPECIAL_SCALAR:
-            pattern = inputs[0].get("pattern")
-            operation.get_context(). \
-                get_current_compute().add("pattern", pattern)
-
-    if len(inputs) < 1:
-        return []
-    mode = inputs[0].get("mode")
-    if mode is None:
-        mode = ORIGINAL
-    operation.get_context().add("mode", mode)
-    current_compute = operation.get_context().get_current_compute()
-    if current_compute:
-        current_compute.add("mode", mode)
-    operation.get_context().add("support_broadcast", support_broadcast)
-
-    shapes, ranges = _fill(inputs)
-    _mode_process()
-
-    d_shapes = [[] for _ in shapes]
-    for i in range(len(shapes[0])):
-        _var = None
-        need_two_vars = _maybe_broadcast()
-        _suffix = 0
-        for d_shape, shape, _range in zip(d_shapes, shapes, ranges):
-            if shape[i] == -1 and _range[i][0] == _range[i][1]:
-                d_shape.append(_range[i][0])
-            elif shape[i] == -1:
-                if _var is None or need_two_vars:
-                    _var = operation.var("dim_" + str(i) + "_" + str(_suffix),
-                                         _range[i])
-                d_shape.append(_var)
-            elif shape[i] == -77:
-                if _var is None:
-                    _var = operation.var("dim_" + str(i) + "_" + str(_suffix),
-                                         _range[i])
-                d_shape.append(_var)
-            else:
-                d_shape.append(shape[i])
-            _suffix += 1
-
-    return d_shapes
+    warnings.warn("variable_shape is deprecated, replace it with the same func in shape_util",
+                  DeprecationWarning)
+    return shape_util.variable_shape(inputs, support_broadcast)

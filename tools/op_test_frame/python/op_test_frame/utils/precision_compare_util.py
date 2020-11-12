@@ -12,36 +12,46 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
+"""
+precision compare util
+"""
 import numpy as np
 from op_test_frame.common import precision_info, op_status
 from op_test_frame.common.precision_info import PrecisionStandard, PrecisionCompareResult
 
 
 def _get_np_dtype(d_type):
+    res = np.float16
     if d_type.strip() == "float16":
-        return np.float16
+        res = np.float16
     elif d_type.strip() == "float32":
-        return np.float32
+        res = np.float32
     elif d_type.strip() == "float64" or d_type.strip() == "double":
-        return np.float64
+        res = np.float64
     elif d_type.strip() == "int8":
-        return np.int8
+        res = np.int8
     elif d_type.strip() == "int16":
-        return np.int16
+        res = np.int16
     elif d_type.strip() == "int32":
-        return np.int32
+        res = np.int32
     elif d_type.strip() == "uint8":
-        return np.uint8
+        res = np.uint8
     elif d_type.strip() == "uint16":
-        return np.uint16
+        res = np.uint16
     elif d_type.strip() == "uint32":
-        return np.uint32
-    return np.float16
+        res = np.uint32
+    return res
 
 
 def compare_precision(actual_data_file: str, expect_data_file: str,
                       precision_standard: PrecisionStandard) -> PrecisionCompareResult:
+    """
+    compare precision
+    :param actual_data_file: actual data file or numpy array
+    :param expect_data_file: expect data file or numpy array
+    :param precision_standard: precision standard
+    :return: PrecisionCompareResult
+    """
     if not isinstance(actual_data_file, str):
         actual_data = actual_data_file.reshape([-1, ])
     else:
@@ -59,29 +69,46 @@ def compare_precision(actual_data_file: str, expect_data_file: str,
         np_dtype = _get_np_dtype(expect_data_dt_str)
         expect_data = np.fromfile(expect_data_file, np_dtype)
 
-    actual_size = len(actual_data)
-    expect_size = len(expect_data)
-    compare_size = min(actual_size, expect_size)
-    atol_cnt = 0
-    max_atol_cnt = 0
+    compare_size = min(len(actual_data), len(expect_data))
     if not precision_standard:
         precision_standard = precision_info.get_default_standard(np_dtype)
-    for i in range(compare_size):
-        min_abs_actual_expect = min(abs(actual_data[i]), abs(expect_data[i]))
-        if abs(actual_data[i] - expect_data[i]) > min_abs_actual_expect * precision_standard.atol:
-            atol_cnt += 1
-            if precision_standard.max_atol and \
-                    abs(actual_data[i] - expect_data[i]) > min_abs_actual_expect * precision_standard.max_atol:
-                max_atol_cnt += 1
+
+    actual_data = actual_data[:compare_size]
+    expect_data = expect_data[:compare_size]
+
+    def _compare_tensor():
+        a_sub_b = actual_data - expect_data
+        abs_a_sub_b = np.abs(a_sub_b)
+        min_abs_a_b = np.abs(expect_data)
+        atol_value = min_abs_a_b * precision_standard.atol
+        max_cnt = 0
+        if precision_standard.max_atol:
+            max_atol_value = min_abs_a_b * precision_standard.max_atol
+            max_cmp = np.less_equal(abs_a_sub_b, max_atol_value)
+            max_cmp = max_cmp.astype(np.int8)
+            max_cmp = 1 - max_cmp
+            max_cnt = np.sum(max_cmp)
+
+        less_cmp = np.less_equal(abs_a_sub_b, atol_value)
+        less_cmp = less_cmp.astype(np.int8)
+        less_cmp = 1 - less_cmp
+        sum_cnt = np.sum(less_cmp)
+
+        return sum_cnt, max_cnt
+
+    rtol_cnt, max_atol_cnt = _compare_tensor()
+    print(rtol_cnt, max_atol_cnt, precision_standard.rtol * expect_data.size)
 
     status = op_status.SUCCESS
     err_msg = ""
-    if atol_cnt > precision_standard.rtol * compare_size:
+    if rtol_cnt > precision_standard.rtol * expect_data.size:
         status = op_status.FAILED
-        err_msg = "Error count: %s larger than (rtol: %s * data_size: %s). " % (
-            str(atol_cnt), str(precision_standard.rtol), str(compare_size))
+        err_msg = "Error count (expect - actual > atol * expect): %s, rtol is: %s, total size: %s. " % (
+            str(rtol_cnt), str(precision_standard.rtol), str(compare_size))
+
     if max_atol_cnt > 0:
         status = op_status.FAILED
-        err_msg += "Max atol larger than max_atol: %s . " % str(precision_standard.max_atol)
+        err_msg += "Max atol error count(expect - actual > max_atol * expect): %d, max_atol is: %s " % (
+            max_atol_cnt, str(precision_standard.max_atol))
 
     return PrecisionCompareResult(status, err_msg)

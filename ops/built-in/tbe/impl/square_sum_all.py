@@ -23,10 +23,35 @@ import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import ReduceInput
+from impl.util.util_select_op_base import ReduceOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 # Each core processing data num greater than the size we can get better performace from experience
 MINIMUM_DATA_NUM_EACH_CORE = 1024
 
+
+# pylint: disable=unused-argument
+def get_op_support_info(input_x, input_y, output_x, output_y, kernel_name="square_sum"):
+    """
+    get unpack slice info
+    """
+    format_x = input_x.get("format")
+    shape_x = input_x.get("shape")
+    support_format = ["FRACTAL_Z", "C1HWNCoC0", "NC1HWC0", "ND", "NCHW", "NHWC"]
+    if format_x in support_format:
+        axis_reduce_list = []
+        for idx, _ in enumerate(shape_x):
+            reduce_info = [ReduceInput([0, [idx]], [1, [idx]]),
+                           ReduceOutput([0, "REDUCE_ADD", True], [1, "REDUCE_ADD", True])]
+        axis_reduce_list.append(reduce_info)
+        axis_split_matrix = None
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+
+    return op_cal_info_in_json
 
 # pylint: disable=too-many-instance-attributes
 class SquareSumAll():

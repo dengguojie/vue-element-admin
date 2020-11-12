@@ -304,7 +304,7 @@ Status AvgPoolV2FusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNo
 }
 
 bool CheckGlobal(const string& padding, int64_t inputH, int64_t inputW, int64_t ksizeH, int64_t ksizeW,
-                 vector<int64_t>& pads, bool global_pooling) {
+                 int64_t stridesH, int64_t stridesW, vector<int64_t>& pads, bool global_pooling) {
   if (global_pooling) {
     return true;
   }
@@ -315,7 +315,11 @@ bool CheckGlobal(const string& padding, int64_t inputH, int64_t inputW, int64_t 
         return false;
       }
     }
-    return true;
+    if (padding != "SAME"){
+      return true;
+    } else if (inputH == stridesH && inputW == stridesW){
+      return true;
+    }
   }
   return false;
 }
@@ -423,7 +427,7 @@ Status AvgPoolV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   stride = {stridesH, stridesW};
   // judge global pooling
   bool is_global = false;
-  is_global = CheckGlobal(padding, inputH, inputW, ksizeH, ksizeW, pads, global_pooling);
+  is_global = CheckGlobal(padding, inputH, inputW, ksizeH, ksizeW, stridesH, stridesW, pads, global_pooling);
   if (is_global) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "avg_pool_v2 is global, graph not changed.");
     return NOT_CHANGED;

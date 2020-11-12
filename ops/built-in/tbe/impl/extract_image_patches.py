@@ -27,6 +27,11 @@ from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util.util_common import write_code
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
+
 
 BLOCK_SIZE = 16
 BLOCK_SIZE_ALIGN = 16
@@ -41,6 +46,38 @@ SIZE_L1 = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
 SIZE_UB = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 LOAD3D_REPEAT_TIME_LIMIT = 255
 DELTA = 0.000001  # aviod div zero, fp32 precision
+
+
+# pylint: disable = unused-argument,redefined-builtin
+def get_op_support_info(images, y, ksizes, strides, dilates, padding, kernel_name="extract_image_patches"):
+    """
+    get extract_image_patches slice info
+    """
+    format_x = images.get("format")
+    images_shape = images.get("shape")
+    data_format = images.get("ori_format")
+    kernel_h = ksizes[1]
+    if data_format == "NCHW":
+        kernel_h = ksizes[2]
+    if format_x == "NC1HWC0":
+        images_h = images_shape[2]
+        if images_h == kernel_h or padding == "SAME":
+            axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]]),
+                                  SplitOutput([0, [0]])]]
+        elif padding == "VALID":
+            axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]]),
+                                  SplitOutput([0, [0]])],
+                                 [SplitInput([0, [2], [0], [0]]),
+                                  SplitOutput([0, [1]])]]
+        else:
+            axis_split_matrix = None
+        axis_reduce_list = None
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+
+    return op_cal_info_in_json
 
 
 def _ub_split_c1(ub_split_c1_shape, tensor, ksize):
@@ -774,15 +811,6 @@ def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_n
     _extract_image_patches_schedule(output_res, [sch])
 
     def _write_workspace_info(workspace_list, kernel_name):
-        def _write_code(wkspace_dict, fname):
-            fname = os.path.realpath(fname)
-            if fname.startswith(os.getcwd()):
-                if os.path.exists(fname):
-                    with open(fname, "r") as f:
-                        load_dict = json.load(f)
-                    load_dict.update(wkspace_dict)
-                    with open(fname, "w") as f:
-                        json.dump(load_dict, f, sort_keys=True, indent=4, separators=(',', ':'))
 
         def _shape_to_list(shape):
             """
@@ -809,7 +837,7 @@ def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_n
                 os.mkdir("kernel_meta")
                 os.chmod("kernel_meta", stat.S_IRWXU + stat.S_IRGRP + stat.S_IXGRP)
             wkspace_dict = {"workspace": {"num": num, "size": total_size}}
-            _write_code(wkspace_dict, "kernel_meta/" + kernel_name + ".json")
+            write_code(wkspace_dict, kernel_name)
 
     with tbe_platform.build_config:
         tvm.build(sch, [data_input, output_res, workspace_res], "cce", name=kernel_name)

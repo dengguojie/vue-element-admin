@@ -16,12 +16,15 @@
 clip_boxes_d
 """
 from te import tik
-from te.utils.op_utils import *
+from te.utils import para_check
 from topi.cce import util
 from te import platform as tbe_platform
 
+from impl.util import util_select_op_base
+
 SHAPE_SIZE_LIMIT = 65500
 CONFIG_ONE = 1
+NEG_ONE = -1
 CONFIG_TWO = 2
 CONFIG_FOUR = 4
 CONFIG_EIGHT = 8
@@ -32,6 +35,38 @@ CONFIG_MASK = 128
 MATRIX = 256
 CONFIG_UB_LIMITED = 4096
 IF_USE_V200 = ("Ascend610", "Ascend615", "Ascend710")
+
+
+def get_op_support_info(boxes_input,
+                        boxes_output,
+                        img_size,
+                        kernel_name="clip_boxes"):
+    """
+    :param boxes_input: (N,4)
+    :param boxes_output:(N,4)
+    :param img_size: H,W
+    :param kernel_name: clip_boxes
+    :return:
+    """
+
+    format_boxes_input = boxes_input.get("format")
+    dims_boxes_input = boxes_input.get("shape")
+    if format_boxes_input == "ND" \
+            and len(dims_boxes_input) == CONFIG_TWO \
+            and dims_boxes_input[CONFIG_ONE] == CONFIG_FOUR:
+        axis_split_matrix = []
+        for i in range(dims_boxes_input):
+            split_0 = [util_select_op_base.SplitInput(
+                [0, [i], [NEG_ONE], [NEG_ONE]]),
+                util_select_op_base.SplitOutput([0, [i]])]
+            axis_split_matrix.append(split_0)
+        axis_reduce_list = None
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(
+        axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 class InitConst:
@@ -546,7 +581,7 @@ def check_clip_boxes_input_dict(boxes_input, boxes_output):
     output_shape = boxes_output.get("shape")
     output_dtype = boxes_output.get("dtype")
 
-    check_shape(input_shape)
+    para_check.check_shape(input_shape)
 
     # the shape and type of the output  should be the same as the input
     if input_shape != output_shape:
@@ -561,7 +596,7 @@ def check_clip_boxes_input_dict(boxes_input, boxes_output):
         raise RuntimeError("N dimension of inputs should be in [1, %d]" % SHAPE_SIZE_LIMIT)
     if n_y != CONFIG_FOUR:
         raise RuntimeError("The last dimension of xxx tensor must be 4!")
-    check_dtype(input_dtype, ["float16"], param_name="x")
+    para_check.check_dtype(input_dtype, ["float16"], param_name="x")
 
     if input_dtype != output_dtype:
         raise RuntimeError("The dtype of output should be the same as the input!")
@@ -581,7 +616,8 @@ def check_clip_boxes_input_attr(img_w, img_h):
         raise RuntimeError("img_h/img_w should be larger than zero!")
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.KERNEL_NAME)
 def clip_boxes_d(boxes_input, boxes_output, img_size, kernel_name="clip_boxes"):
     """
     the External interface function

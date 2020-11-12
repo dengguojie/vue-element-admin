@@ -17,19 +17,15 @@ log1p
 """
 from functools import reduce as functools_reduce
 
-import te.lang.dynamic
+import te.lang.cce as tbe
 from te import tvm
 from te import platform as tbe_platform
+import te.lang.base as tbe_base
 from functools import reduce as reduceIns
-from topi import generic
-from te.platform.shape_classifier import classify
-from te.platform.shape_classifier import Mode
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import variable_shape
+from te.lang.base.shape_classifier import classify
+from te.lang.base.shape_classifier import Mode
+from te.utils import shape_util
+from te.utils import para_check
 
 # define a scalar, value = -1
 SCALAR_NEG_ONE = -1.0
@@ -82,18 +78,18 @@ def log1p_compute(input_x, output_y, kernel_name="log1p"):
     """
     dtype = input_x.dtype
     shape_in = input_x.shape
-    vlog_check = tbe_platform.cce_conf.api_check_support("te.lang.dynamic.vlog",
+    vlog_check = tbe_platform.cce_conf.api_check_support("te.lang.cce.vlog",
                                                          "float32")
     if dtype == "float32" and (not vlog_check):
-        input_x = te.lang.dynamic.cast_to(input_x, "float16")
-    data_add = te.lang.dynamic.vadds(input_x,
+        input_x = tbe.cast_to(input_x, "float16")
+    data_add = tbe.vadds(input_x,
                                      tvm.const(SCALAR_ONE, input_x.dtype))
-    res = te.lang.dynamic.vlog(data_add)
+    res = tbe.vlog(data_add)
     if not vlog_check:
         res = _log1p_mini_compute(res, input_x, shape_in)
 
     if dtype != input_x.dtype:
-        res = te.lang.dynamic.cast_to(res, dtype)
+        res = tbe.cast_to(res, dtype)
 
     return res
 
@@ -118,15 +114,15 @@ def _log1p_mini_compute(mini_res, input_x, shape):
     newton_exp_res = _newton_exp_log1p(input_x, input_y)
 
     input_left_border = tvm.const(TAYLOR_NEGATIVE_THRESHOLD, input_y.dtype)
-    tensor_input_left_border = te.lang.dynamic.broadcast(input_left_border,
+    tensor_input_left_border = tbe.broadcast(input_left_border,
                                                          shape)
     input_right_border = tvm.const(TAYLOR_POSITIVE_THRESHOLD, input_y.dtype)
-    tensor_input_right_border = te.lang.dynamic.broadcast(input_right_border,
+    tensor_input_right_border = tbe.broadcast(input_right_border,
                                                           shape)
-    exp_taylor_neg = te.lang.dynamic.vcmpsel(input_y, tensor_input_left_border,
+    exp_taylor_neg = tbe.vcmpsel(input_y, tensor_input_left_border,
                                              'gt', newton_taylor_res,
                                              newton_exp_res)
-    exp_taylor_neg = te.lang.dynamic.vcmpsel(input_y, tensor_input_right_border,
+    exp_taylor_neg = tbe.vcmpsel(input_y, tensor_input_right_border,
                                              'lt', exp_taylor_neg,
                                              newton_exp_res)
     return mini_res
@@ -146,55 +142,55 @@ def _exp_taylor_compute(input_x):
     """
     # calculate second order tayloy section : x^2 / 2!
     taylor_second_order_param = tvm.const(TAYLOR_SECOND_ORDER_PARAM, "float32")
-    data_power_2 = te.lang.dynamic.vmul(input_x, input_x)
-    data_power_2_div_2 = te.lang.dynamic.vmuls(data_power_2,
+    data_power_2 = tbe.vmul(input_x, input_x)
+    data_power_2_div_2 = tbe.vmuls(data_power_2,
                                                taylor_second_order_param)
 
     # calculate third order tayloy section : x^3 / 3!
     taylor_third_order_param = tvm.const(TAYLOR_THIRD_ORDER_PARAM, "float32")
-    data_power_3 = te.lang.dynamic.vmul(data_power_2, input_x)
-    data_power_3_div_6 = te.lang.dynamic.vmuls(data_power_3,
+    data_power_3 = tbe.vmul(data_power_2, input_x)
+    data_power_3_div_6 = tbe.vmuls(data_power_3,
                                                taylor_third_order_param)
 
     # calculate fourth order tayloy section : x^4 / 4!
     taylor_fourth_order_param = tvm.const(TAYLOR_FOURTH_ORDER_PARAM, "float32")
-    data_power_4 = te.lang.dynamic.vmul(data_power_3, input_x)
-    data_power_4_div_24 = te.lang.dynamic.vmuls(data_power_4,
+    data_power_4 = tbe.vmul(data_power_3, input_x)
+    data_power_4_div_24 = tbe.vmuls(data_power_4,
                                                 taylor_fourth_order_param)
 
     # calculate fifth order tayloy section : x^5 / 5!
     taylor_fifth_order_param = tvm.const(TAYLOR_FIFTH_ORDER_PARAM, "float32")
-    data_power_5 = te.lang.dynamic.vmul(data_power_4, input_x)
-    data_power_5_div_120 = te.lang.dynamic.vmuls(data_power_5,
+    data_power_5 = tbe.vmul(data_power_4, input_x)
+    data_power_5_div_120 = tbe.vmuls(data_power_5,
                                                  taylor_fifth_order_param)
 
     # xcalculate sixth order tayloy section : ^6 / 6!
     taylor_sixth_order_param = tvm.const(TAYLOR_SIXTH_ORDER_PARAM, "float32")
-    data_power_6 = te.lang.dynamic.vmul(data_power_5, input_x)
-    data_power_6_div_720 = te.lang.dynamic.vmuls(data_power_6,
+    data_power_6 = tbe.vmul(data_power_5, input_x)
+    data_power_6_div_720 = tbe.vmuls(data_power_6,
                                                  taylor_sixth_order_param)
 
     # calculate seventh order tayloy section : x^7 / 7!
     taylor_seventh_order_param = tvm.const(TAYLOR_SEVENTH_ORDER_PARAM,
                                            "float32")
-    data_power_7 = te.lang.dynamic.vmul(data_power_6, input_x)
-    data_power_7_div_5040 = te.lang.dynamic.vmuls(data_power_7,
+    data_power_7 = tbe.vmul(data_power_6, input_x)
+    data_power_7_div_5040 = tbe.vmuls(data_power_7,
                                                   taylor_seventh_order_param)
 
     # calculate first order tayloy plus one section : 1 + x
-    res_first_taylor = te.lang.dynamic.vadds(input_x,
+    res_first_taylor = tbe.vadds(input_x,
                                              tvm.const(SCALAR_ONE, "float32"))
-    res_second_taylor = te.lang.dynamic.vadd(res_first_taylor,
+    res_second_taylor = tbe.vadd(res_first_taylor,
                                              data_power_2_div_2)
-    res_third_taylor = te.lang.dynamic.vadd(res_second_taylor,
+    res_third_taylor = tbe.vadd(res_second_taylor,
                                             data_power_3_div_6)
-    res_fourth_taylor = te.lang.dynamic.vadd(res_third_taylor,
+    res_fourth_taylor = tbe.vadd(res_third_taylor,
                                              data_power_4_div_24)
-    res_fifth_taylor = te.lang.dynamic.vadd(res_fourth_taylor,
+    res_fifth_taylor = tbe.vadd(res_fourth_taylor,
                                             data_power_5_div_120)
-    res_sixth_taylor = te.lang.dynamic.vadd(res_fifth_taylor,
+    res_sixth_taylor = tbe.vadd(res_fifth_taylor,
                                             data_power_6_div_720)
-    res = te.lang.dynamic.vadd(res_sixth_taylor, data_power_7_div_5040)
+    res = tbe.vadd(res_sixth_taylor, data_power_7_div_5040)
 
     return res
 
@@ -213,14 +209,14 @@ def _newton_exp_iter(input_x, input_y):
     -------
     """
     # Newton begin:y(n+1) = y(n) - 1 + e^-y(n) + x(n)*e^-y(n)
-    newton_exp = te.lang.dynamic.vadds(input_y, tvm.const(SCALAR_NEG_ONE,
+    newton_exp = tbe.vadds(input_y, tvm.const(SCALAR_NEG_ONE,
                                                           "float32"))
-    input_y_mul = te.lang.dynamic.vmuls(input_y, tvm.const(SCALAR_NEG_ONE,
+    input_y_mul = tbe.vmuls(input_y, tvm.const(SCALAR_NEG_ONE,
                                                            "float32"))
-    input_y_exp = te.lang.dynamic.vexp(input_y_mul)
-    newton_exp = te.lang.dynamic.vadd(newton_exp, input_y_exp)
-    input_y_res = te.lang.dynamic.vmul(input_x, input_y_exp)
-    newton_exp = te.lang.dynamic.vadd(newton_exp, input_y_res)
+    input_y_exp = tbe.vexp(input_y_mul)
+    newton_exp = tbe.vadd(newton_exp, input_y_exp)
+    input_y_res = tbe.vmul(input_x, input_y_exp)
+    newton_exp = tbe.vadd(newton_exp, input_y_res)
     # Newton end
     return newton_exp
 
@@ -239,14 +235,14 @@ def _newton_taylor_iter(input_x, input_y):
     -------
     """
     # Newton begin:y(n+1) = y(n) - 1 + e^-y(n) + x(n)*e^-y(n)
-    newton_taylor = te.lang.dynamic.vadds(input_y, tvm.const(SCALAR_NEG_ONE,
+    newton_taylor = tbe.vadds(input_y, tvm.const(SCALAR_NEG_ONE,
                                                              "float32"))
-    input_y_mul = te.lang.dynamic.vmuls(input_y, tvm.const(SCALAR_NEG_ONE,
+    input_y_mul = tbe.vmuls(input_y, tvm.const(SCALAR_NEG_ONE,
                                                            "float32"))
     input_y_taylor = _exp_taylor_compute(input_y_mul)
-    newton_taylor = te.lang.dynamic.vadd(newton_taylor, input_y_taylor)
-    input_y_res = te.lang.dynamic.vmul(input_x, input_y_taylor)
-    newton_taylor = te.lang.dynamic.vadd(newton_taylor, input_y_res)
+    newton_taylor = tbe.vadd(newton_taylor, input_y_taylor)
+    input_y_res = tbe.vmul(input_x, input_y_taylor)
+    newton_taylor = tbe.vadd(newton_taylor, input_y_res)
     # Newton end
     return newton_taylor
 
@@ -287,8 +283,8 @@ def _newton_taylor_log1p(input_x, output_y):
     return output_y
 
 
-@te.op.register_operator("Log1p")
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@tbe_base.register_operator("Log1p")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def log1p(input_x, output_y, kernel_name="log1p"):
     """
     algorithm: log1p
@@ -310,12 +306,12 @@ def log1p(input_x, output_y, kernel_name="log1p"):
     dtype = input_x.get("dtype")
     check_list = ("float16", "float32")
     input_dtype = dtype.lower()
-    check_dtype(input_dtype, check_list, param_name="input_x")
+    para_check.check_dtype(input_dtype, check_list, param_name="input_x")
     schedules, tensors = [], []
     ins = classify([input_x], Mode.ELEWISE)
     for (input_x,) in ins:
-        with te.op.compute():
-            x_shape = variable_shape([input_x])
+        with tbe_base.compute():
+            x_shape = shape_util.variable_shape([input_x])
             fuseshape = [1]
             fuseshape[0] = reduceIns(lambda x, y: x * y, x_shape[0])
             data_input = tvm.placeholder(fuseshape, dtype=input_dtype,
@@ -323,9 +319,9 @@ def log1p(input_x, output_y, kernel_name="log1p"):
             res = log1p_compute(data_input, output_y, kernel_name)
             tensors.append([data_input, res])
         with tvm.target.cce():
-            sch = generic.auto_schedule(res)
+            sch = tbe.auto_schedule(res)
         schedules.append(sch)
     config = {"name": kernel_name,
               "tensor_list": tensors,
               "bool_storage_as_1bit": False}
-    te.lang.dynamic.build(schedules, config)
+    tbe.build(schedules, config)

@@ -345,7 +345,7 @@ def _circulation(obj, blk_idx, mark, axis):
     bottom_vol[1]: 1*24;
     """
     # vol of padding.
-    max_num = obj.tik_instance.Scalar("int32", name="max_num_")
+    max_num = obj.tik_instance.Scalar("int64", name="max_num_")
     tik_max(obj, obj.top_vol[axis], obj.bottom_vol[axis], max_num)
 
     # do padding
@@ -376,8 +376,8 @@ def _recursion(obj, axis, dst_gm, src_gm, src_ub, dst_ub, max_num, mark):
     # ==================================
     # Status in different layers: Sort or MoveIn
     model = obj.recur_model[axis]
-    buf_src = obj.tik_instance.Scalar("int32", name="buf_src_"+str(axis)+"_")
-    buf_dst = obj.tik_instance.Scalar("int32", name="buf_dst_"+str(axis)+"_")
+    buf_src = obj.tik_instance.Scalar("int64", name="buf_src_"+str(axis)+"_")
+    buf_dst = obj.tik_instance.Scalar("int64", name="buf_dst_"+str(axis)+"_")
     buf_src.set_as(src_ub)
     buf_dst.set_as(dst_ub)
 
@@ -460,7 +460,7 @@ def _circulation_compute(obj, blk_idx):
     mark: status register to avoid invalid vector_dup in circulation
     """
     tik_instance = obj.tik_instance
-    mark = obj.tik_instance.Scalar("int32", name="mark", init_value=0)
+    mark = obj.tik_instance.Scalar("int64", name="mark", init_value=0)
     for axis, _ in enumerate(range(obj.axis_amount)):
         with tik_instance.if_scope(axis < obj.depth[0]):
             _circulation(obj, blk_idx, mark, axis)
@@ -479,7 +479,7 @@ def _recursion_compute(obj, blk_idx):
     tik_instance = obj.tik_instance
     cond, gap0, gap1 = obj.recur_cond[0], obj.recur_gap_0[0], obj.recur_gap_1[0]
     loop0, loop1, in_vol = obj.recur_loop_0[0], obj.recur_loop_1[0], obj.recur_in_vol[0]
-    max_num = obj.tik_instance.Scalar("int32", name="max_num_")
+    max_num = obj.tik_instance.Scalar("int64", name="max_num_")
 
     def _main(processed, loop, block_index):
         src_ub = 0

@@ -266,6 +266,18 @@ void SetInputFormat(nlohmann::json& root, ::domi::AippOpParams* aipp_op_params) 
       root["input_format"] = "RAW16";
     } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RAW24) {
       root["input_format"] = "RAW24";
+    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB16) {
+      root["input_format"] = "RGB16";
+    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB20) {
+      root["input_format"] = "RGB20";
+    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB24) {
+      root["input_format"] = "RGB24";
+    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB8_IR) {
+      root["input_format"] = "RGB8_IR";
+    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB16_IR) {
+      root["input_format"] = "RGB16_IR";
+    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB24_IR) {
+      root["input_format"] = "RGB24_IR";
     } else {
       // USER_GE_LOGE("Input format of AIPP conf is undefined!");
     }
@@ -402,7 +414,7 @@ void SetVarReciChn(nlohmann::json& root, ::domi::AippOpParams* aipp_op_params) {
   }
   // var_reci_chn_3 repeated float
   if (aipp_op_params->var_reci_chn_3_size()) {
-    root["var_reci_chn_3"] = aipp_op_params->var_reci_chn_2(0);
+    root["var_reci_chn_3"] = aipp_op_params->var_reci_chn_3(0);
   }
 }
 

@@ -28,6 +28,7 @@
 #include "op_log.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
+#include "aicore_util_attr_define.h"
 
 namespace fe {
 using std::vector;
@@ -48,6 +49,7 @@ static const char kKsize[] = "ksize";
 static const char kWindow[] = "window";
 static const char kStride[] = "stride";
 static const char kMode[] = "mode";
+static const char kNSlope[] = "negative_slope";
 static int64_t width = 0;
 
 }  // namespace
@@ -295,20 +297,42 @@ bool TbeAippConvReluMaxpoolingFusionPass::CheckMaxpoolNodeValidation(const ge::N
 void TbeAippConvReluMaxpoolingFusionPass::PoolingValidationAndFormatSet(const ge::NodePtr& aipp_node,
                                                                         const ge::NodePtr& conv_node,
                                                                         const ge::NodePtr& max_pool_node) {
-  ge::Format first_format = max_pool_node->GetOpDesc()->GetInputDesc(0).GetOriginFormat();
-  vector<int64_t> first_dims(4);
-  first_dims = max_pool_node->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDims();
+  OP_LOGD(fused_op_type_.c_str(), "checking pooling input witdh of TbeAippConvReluMaxpoolingFusionPass");
+  vector<int64_t> first_output_dims_aipp(5);
+  vector<int64_t> first_input_dims_conv(5);
+  vector<int64_t> first_input_dims_pool(5);
 
-  int64_t width_fm_max_pool = 0;
-  if (first_format == ge::FORMAT_NCHW) {
-    width_fm_max_pool = first_dims[3];
-  } else if (first_format == ge::FORMAT_NHWC) {
-    width_fm_max_pool = first_dims[2];
-  }
+  first_output_dims_aipp = aipp_node->GetOpDesc()->GetOutputDesc(0).GetShape().GetDims();
+  first_input_dims_conv = conv_node->GetOpDesc()->GetInputDesc(0).GetShape().GetDims();
+  first_input_dims_pool = max_pool_node->GetOpDesc()->GetInputDesc(0).GetShape().GetDims();
 
-  if (width_fm_max_pool % 16 != 0) {
-    conv_node->GetOpDesc()->GetInputDesc(0).SetFormat(ge::FORMAT_NC1HWC0);
-    aipp_node->GetOpDesc()->GetOutputDesc(0).SetFormat(ge::FORMAT_NC1HWC0);
+  OP_LOGD(fused_op_type_.c_str(), "pooling input witdh of TbeAippConvReluMaxpoolingFusionPass is [%d]", first_input_dims_pool[3]);
+
+  if (first_input_dims_pool[3] % 16 != 0) { // input width of pooling node
+    aipp_node->GetOpDesc()->MutableOutputDesc(0)->SetFormat(ge::FORMAT_NC1HWC0);
+    conv_node->GetOpDesc()->MutableInputDesc(0)->SetFormat(ge::FORMAT_NC1HWC0);
+
+    first_output_dims_aipp[4] = 16; // C0 = 16 for FORMAT_NC1HWC0
+    first_input_dims_conv[4] = 16;
+
+    aipp_node->GetOpDesc()->MutableOutputDesc(0)->SetShape(ge::GeShape(first_output_dims_aipp));
+    conv_node->GetOpDesc()->MutableInputDesc(0)->SetShape(ge::GeShape(first_input_dims_conv));
+
+    ge::AttrUtils::SetBool(aipp_node->GetOpDesc(), NEED_RE_PRECOMPILE, true);
+    ge::AttrUtils::SetBool(conv_node->GetOpDesc(), NEED_RE_PRECOMPILE, true);
+
+    OP_LOGI(fused_op_type_.c_str(), "Node[%s]'s output format has been changed to [%d].",
+            aipp_node->GetName().c_str(), aipp_node->GetOpDesc()->GetOutputDesc(0).GetFormat());
+    OP_LOGI(fused_op_type_.c_str(), "Node[%s]'s input format of fmap has been changed to [%d].",
+            conv_node->GetName().c_str(), conv_node->GetOpDesc()->GetInputDesc(0).GetFormat());
+
+    first_output_dims_aipp = aipp_node->GetOpDesc()->GetOutputDesc(0).GetShape().GetDims();
+    first_input_dims_conv = conv_node->GetOpDesc()->GetInputDesc(0).GetShape().GetDims();
+
+    OP_LOGI(fused_op_type_.c_str(), "Node[%s]'s output shape C0 has been changed to [%d].",
+            aipp_node->GetName().c_str(), first_output_dims_aipp[4]);
+    OP_LOGI(fused_op_type_.c_str(), "Node[%s]'s input shape C0 of fmap has been changed to [%d].",
+            conv_node->GetName().c_str(), first_input_dims_conv[4]);
   }
 }
 
@@ -332,6 +356,18 @@ Status TbeAippConvReluMaxpoolingFusionPass::GetFusionNodes(const BufferFusionMap
                         OP_LOGI(fused_op_type_.c_str(), "Node[%s]'s opType is [%s], no need to do UB-fusion.",
                                 elemwise_node->GetName().c_str(), elemwise_node->GetType().c_str()),
                         return SUCCESS);
+      float nslope;
+      if (elemwise_node->GetType() == kOpTypeLeakyRelu) {
+        FUSION_PASS_CHECK(!ge::AttrUtils::GetFloat(elemwise_node->GetOpDesc(), kNSlope, nslope),
+                        OP_LOGI(fused_op_type_.c_str(), "Get node[%s]'s negative_slope attr not success.",
+                                elemwise_node->GetName().c_str()),
+                        return SUCCESS);
+        FUSION_PASS_CHECK(fabs(nslope - 0) > 1e-6,
+                        OP_LOGI(fused_op_type_.c_str(), "node[%s]'s attr negative_slope is [%ld] not 0."
+                                " not satisfied with fusion condition.",
+                                elemwise_node->GetName().c_str(), nslope),
+                        return SUCCESS);
+      }
     }
   }
   for (const auto& max_pool_node : max_pool_nodes) {

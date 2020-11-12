@@ -40,6 +40,7 @@ OP_TEST_GEN_WRITE_FILE_ERROR = 108
 OP_TEST_GEN_READ_FILE_ERROR = 109
 OP_TEST_GEN_MAKE_DIR_ERROR = 110
 OP_TEST_GEN_GET_KEY_ERROR = 111
+OP_TEST_GEN_MAKE_DIRS_ERROR = 112
 # error code for user: un know error
 OP_TEST_GEN_UNKNOWN_ERROR = 1001
 OP_TEST_GEN_TF_LOAD_ERROR = 1002
@@ -62,6 +63,13 @@ SRC_RELATIVE_TEMPLATE_PATH = "/../template/acl_op_src"
 MAIN_CPP_RELATIVE_PATH = "/src/main.cpp"
 TESTCASE_CPP_RELATIVE_PATH = "/src/testcase.cpp"
 ACL_OP_JSON_RELATIVE_PATH = "/run/out/test_data/config/acl_op.json"
+
+
+FILE_AUTHORITY = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR
+FOLDER_MASK = 0o700
+
+WRITE_FLAGS = os.O_WRONLY | os.O_CREAT
+WRITE_MODES = stat.S_IWUSR | stat.S_IRUSR
 
 DTYPE_TO_NUMPY_MAP = {
     'float16': np.float16,
@@ -422,6 +430,21 @@ def load_json_file(json_path):
         raise OpTestGenException(OP_TEST_GEN_OPEN_FILE_ERROR)
 
 
+def read_file(op_file):
+    """
+    read new_str from op_file
+    :param op_file:the file
+    :return:
+    """
+    try:
+        with open(op_file) as file_object:
+            txt = file_object.read()
+            return txt
+    except IOError as io_error:
+        print_error_log(
+            'Failed to open file %s. %s' % (op_file, str(io_error)))
+        raise OpTestGenException(OP_TEST_GEN_OPEN_FILE_ERROR)
+
 def write_json_file(json_path, content):
     """
     write  content to json file
@@ -443,4 +466,15 @@ def write_json_file(json_path, content):
         "Generate file %s successfully." % os.path.realpath(json_path))
 
 
+def make_dirs(op_dir):
+    """
+    make dirs
+    :param op_dir:dirs
+    """
+    try:
+        if not os.path.isdir(op_dir) or not os.path.exists(op_dir):
+            os.makedirs(op_dir, FOLDER_MASK)
+    except OSError as err:
+        print_error_log("Unable to make dir: %s." % str(err))
+        raise OpTestGenException(OP_TEST_GEN_MAKE_DIRS_ERROR)
 

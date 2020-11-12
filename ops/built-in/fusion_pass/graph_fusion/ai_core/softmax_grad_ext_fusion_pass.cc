@@ -132,12 +132,12 @@ Status SoftmaxGradExtFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   // copy attr
   vector<int32_t> axis;
   FUSION_PASS_CHECK(!ge::AttrUtils::GetListInt(sumNode->GetOpDesc(), AXIS, axis),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Get attr axis failed"), return FAILED);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Get attr axis failed"), return NOT_CHANGED);
   FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(newNode->GetOpDesc(), AXIS, axis),
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Set attr axis failed"), return FAILED);
   bool keep_dims;
   FUSION_PASS_CHECK(!ge::AttrUtils::GetBool(sumNode->GetOpDesc(), KEEPDIMS, keep_dims),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Get attr keep_dims failed"), return FAILED);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Get attr keep_dims failed"), return NOT_CHANGED);
   FUSION_PASS_CHECK(!ge::AttrUtils::SetBool(newNode->GetOpDesc(), KEEPDIMS, keep_dims),
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Set attr keep_dims failed"), return FAILED);
 

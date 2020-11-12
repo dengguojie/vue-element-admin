@@ -21,6 +21,53 @@ from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 from impl.util import util_select_op_base
+from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(input_x, output_x, multiples, kernel_name="tile_d"):
+    shape_x = input_x.get("shape")
+    shape_x = list(shape_x)
+    multiples = list(multiples)
+    format_x = input_x.get("format").upper()
+    format_output = output_x.get("format").upper()
+    if format_x == "ND":
+        axis_split_matrix = []
+        if len(shape_x) < len(multiples):
+            len_error = len(multiples) - len(shape_x)
+            shape_x = [1]*len_error + shape_x
+        for i, shape_i in enumerate(shape_x):
+            multiples_i = multiples[i]
+            if multiples_i == 1 and shape_i != 1:
+                split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]])]
+                axis_split_matrix.append(split_0)
+        axis_reduce_list = None
+
+    elif format_x in ("NCHW", "NHWC") and format_output == "NC1HWC0":
+        shape_x = shape_x + [1]
+        if format_x == "NCHW":
+            multiples = [multiples[0], multiples[1] // 16, multiples[2], multiples[3], 16]
+        if format_x == "NHWC":
+            multiples = [multiples[0], multiples[3] // 16, multiples[1], multiples[2], 16]
+        if len(shape_x) < len(multiples):
+            len_error = len(multiples) - len(shape_x)
+            shape_x = [1]*len_error + shape_x
+        axis_split_matrix = []
+        for i, shape_i in enumerate(shape_x):
+            multiples_i = multiples[i]
+            if multiples_i == 1 and shape_i != 1:
+                split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]])]
+                axis_split_matrix.append(split_0)
+        axis_reduce_list = None
+
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals
@@ -177,9 +224,9 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
             multiples = [multiples[0], multiples[3] // 16, multiples[1], multiples[2], 16]
 
     if len(shape) > len(multiples):
-        raise RuntimeError(
-            "The len of multiples must be greater or equal"
-            "to length of input shape")
+        error_detail = "The lenth of multiples must be greater or equal to length of input shape"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "input_x", \
+                                                               "multiples", error_detail)
     if len(shape) < len(multiples):
         len_error = len(multiples) - len(shape)
         shape = [1]*len_error + shape
@@ -206,17 +253,17 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
 
     for shape_i, multiples_i in zip(shape, multiples):
         if not (shape_i == 1 or multiples_i == 1):
-            raise RuntimeError(
-                "In tile of TBE, any axis of either shape or multiples have "
-                "to be 1")
+            error_detail = "In tile of TBE, any axis of either shape or multiples have to be 1"
+            error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "input_x", \
+                                                               "multiples", error_detail)
 
     axis_not_multiple = 0
     for multiples_i in multiples:
         if multiples_i == 1:
             axis_not_multiple += 1
     if axis_not_multiple == len(multiples):
-        raise RuntimeError(
-            "In tile of TBE, the axis of multiples can't all be 1")
+        error_detail = "In tile of TBE, the axis of multiples can't all be 1"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "multiples", error_detail)
 
     data = tvm.placeholder(shape, name="data", dtype=dtype.lower())
 

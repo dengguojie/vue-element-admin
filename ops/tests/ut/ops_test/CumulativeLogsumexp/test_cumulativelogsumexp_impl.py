@@ -4,7 +4,7 @@ from op_test_frame.ut import OpUT
 from op_test_frame.common import precision_info
 import numpy as np
 
-ut_case = OpUT("CumulativeLogsumexp", "impl.cumulativelogsumexp_d", "cumulative_logsumexp_d")
+ut_case = OpUT("CumulativeLogsumexpD", "impl.cumulativelogsumexp_d", "cumulative_logsumexp_d")
 
 def calc_expect_func(input, output, axis, exclusive, reverse):
     value_exp = np.exp(input["value"])
@@ -229,7 +229,4 @@ ut_case.add_case("Ascend910", {
 })
 
 
-if __name__ == '__main__':
-    ut_case.run(["Ascend910"], simulator_mode="pv",
-                simulator_lib_path="/disk1/ty_mindstudio/.mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")
 

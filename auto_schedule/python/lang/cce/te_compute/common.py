@@ -17,7 +17,9 @@ common
 """
 from __future__ import absolute_import
 from te import tvm
+from te import platform as cceconf
 from te.platform import intrinsic_check_support
+from te.utils.error_manager.error_manager_util import get_error_message
 import te.platform.cce_params as cce_params
 from .depthwise_conv2d_compute import DepthwiseConv2dParam
 from .elewise_compute import vadds
@@ -27,6 +29,7 @@ from .elewise_compute import vmin
 from .elewise_compute import vabs
 from .elewise_compute import vmul
 from .elewise_compute import vrec
+from .elewise_compute import _cast_tensors_for_instr
 from .broadcast_compute import broadcast
 # pylint: disable=redefined-builtin
 from .cast_compute import _cast
@@ -58,11 +61,16 @@ def round_to(data, max_value, min_value):
     """
     if isinstance(data, tvm.tensor.Tensor):
         check_input_tensor_shape(data)
-    data_tmp = vmuls(data, 0)
-    data_min = vadds(data_tmp, min_value)
-    data_max = vadds(data_tmp, max_value)
-    data1 = vmax(data, data_min)
-    data1 = vmin(data1, data_max)
+    tensor_vmuls = _cast_tensors_for_instr("vmuls", [data, 0])
+    data_tmp = vmuls(tensor_vmuls[0], tensor_vmuls[1])
+    tensor_vadds = _cast_tensors_for_instr("vadds", [data_tmp, min_value])
+    data_min = vadds(tensor_vadds[0], tensor_vadds[1])
+    tensor_vadds_tmp = _cast_tensors_for_instr("vadds", [data_tmp, max_value])
+    data_max = vadds(tensor_vadds_tmp[0], tensor_vadds_tmp[1])
+    tensor_vmax = _cast_tensors_for_instr("vmax", [data, data_min])
+    data1 = vmax(tensor_vmax[0], tensor_vmax[1])
+    tensor_vmin = _cast_tensors_for_instr("vmin", [data1, data_max])
+    data1 = vmin(tensor_vmin[0], tensor_vmin[1])
     return data1
 
 
@@ -82,7 +90,11 @@ def cast_to_round(data, dtype):
     """
     dtype = dtype.lower()
     if dtype != "int32":
-        raise RuntimeError("The cast input type must be tvm.tensor")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "The cast output dtype must be int32," \
+                                      " while is [%s]" % dtype
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     src_dtype = data.dtype.lower()
     cast_type = DTYPE_MAP[src_dtype] + "2s32a"
@@ -117,7 +129,11 @@ def cast_to(data, dtype, f1628IntegerFlag=True):
     if isinstance(data, tvm.tensor.Tensor):
         data_dtype = getattr(data, 'dtype')
     else:
-        raise RuntimeError("The cast input type must be tvm.tensor")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "The cast input type must be " \
+                                      "tvm.tensor, while is [%s]" % type(data)
+        raise RuntimeError(dict_args, get_error_message(dict_args))
     check_input_tensor_shape(data)
 
     if (data_dtype.lower() == "float32") and (dtype == "int32") and \
@@ -129,9 +145,12 @@ def cast_to(data, dtype, f1628IntegerFlag=True):
         tmp2 = vabs(new_data)
         tmp3 = vadds(tmp2, fp32_min)
         fp32_res = vmul(new_data, vrec(tmp3))
+        if not cceconf.cce_conf.api_check_support("te.lang.cce.round", "float32"):
+            fp32_res = _cast(fp32_res, dst_dtype="float16")
         sign_res = round(fp32_res)  # get the sign data[-1,0,1]
-
         abs_data = vabs(data)
+        if not cceconf.cce_conf.api_check_support("te.lang.cce.floor", "float32"):
+            abs_data = _cast(abs_data, dst_dtype="float16")
         floor_data = floor(abs_data)  # get the floor data
         res = vmul(floor_data, sign_res)
         return res
@@ -256,14 +275,15 @@ def im2col_6d(input_img,
               filter_w,
               pad,
               stride,
-              padding_value=0.0):
+              padding_value=0.0,
+              dilation=[1, 1]):
     """
     im2col_6d
     """
 
     # pylint: disable=too-many-locals
     def _im2col_compute(input_img, indices, filter_w, pad, stride,
-                        padding_value):
+                        padding_value,dilation):
         # fmap_n, fmap_cg, fmap_c1, fmap_h, fmap_w, fmap_c0
         sixd_flag = 0
         if (len(input_img.shape)) == 6:
@@ -274,14 +294,14 @@ def im2col_6d(input_img,
         col_n, col_cg, col_howo, col_c1, col_hw, col_ww, col_c0 = indices
         stride_h, stride_w = stride
         pad_top, _, pad_left, pad_right = pad
-
-        output_w = (fmap_w.value + pad_left + pad_right - filter_w) \
-            // stride_w + 1
+        dilation_h, dilation_w = dilation
+        effective_filter_w = (filter_w - 1) * dilation_w + 1
+        output_w = (fmap_w.value + pad_left + pad_right - effective_filter_w) // stride_w + 1
 
         img_n_index = col_n
         img_c1_index = col_c1
-        img_h_index = (col_howo // output_w) * stride_h + col_hw
-        img_w_index = (col_howo % output_w) * stride_w + col_ww
+        img_h_index = (col_howo // output_w) * stride_h + col_hw*dilation_h
+        img_w_index = (col_howo % output_w) * stride_w + col_ww*dilation_w
         img_c0_index = col_c0
 
         slice_offset = DepthwiseConv2dParam.fusion_para.get("slice_offset")
@@ -315,7 +335,7 @@ def im2col_6d(input_img,
     return tvm.compute(
         col_shape,
         lambda *indices: _im2col_compute(input_img, indices, filter_w, pad,
-                                         stride, padding_value),
+                                         stride, padding_value, dilation),
         name='im2col_row_major',
         tag='im2col_row_major',
         attrs={
@@ -446,10 +466,12 @@ def tf_get_windowed_output_size(input_size, filter_size, stride, padding_type):
     padding_size: int, feature map padding size
     """
     if padding_type == 'EXPLICIT':
-        raise RuntimeError(
-            "tf_get_windowed_output_size does not handle "
-            "EXPLITCIT padding; call tf_get_windowed_output_size_verbose "
-            "instead.")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "tf_get_windowed_output_size does not" \
+                                      " handle EXPLITCIT padding; " \
+                                      "call tf_get_windowed_output_size_verbose instead."
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     # pylint: disable=invalid-name
     output_size, padding_size, _ = tf_get_windowed_output_size_verbose(
@@ -518,11 +540,17 @@ def tf_get_windowed_output_size_verbose_v2(input_size, filter_size,
     padding_after: int, feature map padding after size
     """
     if stride <= 0:
-        raise RuntimeError("Stride must be > 0, but got", stride)
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "Stride must be > 0, but stride is [%s]" % stride
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if dilation_rate < 1:
-        raise RuntimeError("Dilation rate must be >= 1, but got",
-                           dilation_rate)
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "dilation_rate must be >= 1, " \
+                                      "but dilation_rate is [%s]" % dilation_rate
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     effective_filter_size = (filter_size - 1) * dilation_rate + 1
     if padding_type == "VALID":
@@ -536,7 +564,11 @@ def tf_get_windowed_output_size_verbose_v2(input_size, filter_size,
         padding_before = padding_needed // 2
         padding_after = padding_needed - padding_before
     else:
-        raise RuntimeError("Unsupported padding type", padding_type)
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "Unsupported padding type [%s], " \
+                                      "padding_type must be VALID or SAME" % padding_type
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     return output_size, padding_before, padding_after
 

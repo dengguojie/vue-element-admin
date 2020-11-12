@@ -22,6 +22,8 @@ import math
 import te.platform as tbe_platform
 from te.utils import para_check
 from te import tvm
+from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import get_op_cal_info
 
 CCE_GLOBAL_AXIS = tvm.thread_axis("cce_global")
 CCE_MASK_AXIS = tvm.thread_axis("cce_mask")
@@ -40,6 +42,22 @@ BITS_NUMS = 8
 BYTES_PER_BLOCK = 32
 # per block has 16 float16 numbers
 FLOAT16_NUMS = 16
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(labels,
+                        predictions,
+                        weights,
+                        y,
+                        num_classes,
+                        dtype,
+                        kernel_name="cce_confusion_matrix",
+                        need_build=True,
+                        need_print=False):
+    axis_split_matrix = None
+    axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 def cast_to(ibuilder, data_amounts, src_buf, dst_buf):
@@ -207,23 +225,30 @@ def params_check(shape_labels, shape_predictions, out_type, labels_dtype,
     para_check.check_shape(shape_labels, min_rank=1, max_rank=1, param_name="labels")
     para_check.check_shape(shape_predictions, min_rank=1, max_rank=1, param_name="predictions")
     if list(shape_labels) != list(shape_predictions):
-        raise RuntimeError("The shape of labels and predictions shoud be same")
+        error_detail = "The shape of labels and predictions shoud be same"
+        error_manager_vector.raise_err_two_input_shape_invalid("confusion_matrix", "labels", \
+                                                               "predictions", error_detail)
     if shape_weights is not None:
         para_check.check_shape(shape_weights, min_rank=1, max_rank=1, param_name="weights")
         if list(shape_labels) != list(shape_weights):
-            raise RuntimeError("The shape of labels and weights shoud be same")
+            error_detail = "The shape of labels and weights shoud be same"
+            error_manager_vector.raise_err_two_input_shape_invalid("confusion_matrix", "labels", \
+                                                               "weights", error_detail)
 
     check_list = ["float32", "int32", "float16", "int8", "uint8"]
     if out_type not in check_list:
-        raise RuntimeError(
-            "Confusion_matrix only support 'float32', 'int32', 'float16, 'int8, 'uint8")
+        error_manager_vector.raise_err_input_dtype_not_supported("confusion_matrix", "dtype", \
+                                                                 check_list, out_type)
     if labels_dtype not in check_list:
-        raise RuntimeError("labels only support 'float32', 'int32', 'float16, 'int8, 'uint8")
+        error_manager_vector.raise_err_input_dtype_not_supported("confusion_matrix", "labels", \
+                                                                 check_list, labels_dtype)
     if predictions_dtype not in check_list:
-        raise RuntimeError("predictions only support 'float32', 'int32', 'float16, 'int8, 'uint8")
+        error_manager_vector.raise_err_input_dtype_not_supported("confusion_matrix", "predictions", \
+                                                                 check_list, predictions_dtype)
     if shape_weights is not None:
         if weights_dtype not in check_list:
-            raise RuntimeError("weights only support 'float32', 'int32', 'float16, 'int8, 'uint8")
+            error_manager_vector.raise_err_input_dtype_not_supported("confusion_matrix", "weights", \
+                                                                     check_list, weights_dtype)
 
     if shape_weights is not None:
         if not tbe_platform.cce_conf.intrinsic_check_support(

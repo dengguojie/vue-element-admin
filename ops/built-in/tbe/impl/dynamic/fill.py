@@ -14,17 +14,12 @@
 # ============================================================================
 
 
-import te.lang.dynamic
+import te.lang.cce as tbe
 from te import tvm
-from topi import generic
-from functools import reduce as functools_reduce
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import variable_shape
-from te.platform.shape_classifier import classify, Mode
+import te.lang.base as tbe_base
+from te.utils import shape_util
+from te.utils import para_check
+
 
 def fill_compute(dims, value, dtype, kernel_name="fill"):
     """
@@ -46,12 +41,14 @@ def fill_compute(dims, value, dtype, kernel_name="fill"):
         the calculation results
     """
 
-    res = te.lang.dynamic.broadcast(value, dims)
+    res = tbe.broadcast(value, dims)
 
     return res
 
-@te.op.register_operator("Fill")
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+
+@tbe_base.register_operator("Fill")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def fill(dims, value, y, kernel_name="fill"):
     """
     do  fill operation
@@ -76,22 +73,22 @@ def fill(dims, value, y, kernel_name="fill"):
 
     # check whether dtypes are right
     check_list = ("int32", "float16", "float32")
-    check_dtype(dtype, check_list)
+    para_check.check_dtype(dtype, check_list)
 
     schedules, tensors = [], []
 
-    with te.op.compute():
-        shape_dim = variable_shape([dims])
+    with tbe_base.compute():
+        shape_dim = shape_util.variable_shape([dims])
         x_input = tvm.placeholder(shape, name="x_input", dtype=dtype)
         dim_input = tvm.placeholder(shape_dim[0], name="dim_input", dtype=dtype_dims)
 
         res = fill_compute(shape_dim[0], x_input, y, kernel_name=kernel_name)
         tensors.append([dim_input, x_input, res])
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
     schedules.append(sch)
 
     config = {"name": kernel_name, "tensor_list": tensors}
 
-    te.lang.dynamic.build(schedules, config)
-    te.op.add_compile_info("_use_special_pattern", False)
+    tbe.build(schedules, config)
+    tbe_base.add_compile_info("_use_special_pattern", False)

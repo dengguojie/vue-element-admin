@@ -14,7 +14,7 @@
 #include <sys/stat.h>
 #include <fstream>
 #include <string>
-#include <limits.h>
+#include <climits>
 
 #include "acl/acl.h"
 #include "op_runner.h"
@@ -59,17 +59,15 @@ bool SetInputData(OpRunner &runner)
     for (size_t i = 0; i < runner.NumInputs(); ++i) {
         size_t fileSize;
         std::string filePath = runner.GetOpTestDesc().inputFilePath[i] + ".bin";
-        char *fileData = ReadFile(filePath, fileSize,
-            runner.GetInputBuffer<void>(i), runner.GetInputSize(i));
-        if (fileData == nullptr) {
+        bool result = ReadFile(filePath, fileSize, runner.GetInputBuffer<void>(i), runner.GetInputSize(i));
+        if (!result) {
             ERROR_LOG("Read input[%zu] failed", i);
             return false;
         }
         char realPath[PATH_MAX];
-        if (realpath(filePath.c_str(),realPath)) {
-             INFO_LOG("Set input[%zu] from %s success.", i, realPath);
-        }
-        else {
+        if (realpath(filePath.c_str(), realPath)) {
+            INFO_LOG("Set input[%zu] from '%s' success.", i, realPath);
+        }else {
             ERROR_LOG("The file '%s' is not exist.", filePath.c_str());
             return false;
         }
@@ -89,10 +87,9 @@ bool ProcessOutputData(OpRunner &runner)
             return false;
         }
         char realPath[PATH_MAX];
-        if (realpath(filePath.c_str(),realPath)) {
+        if (realpath(filePath.c_str(), realPath)) {
             INFO_LOG("Write output[%zu] success. output file = %s", i, realPath);
-        }
-        else {
+        }else {
             ERROR_LOG("The file '%s' is not exist.", filePath.c_str());
             return false;
         }
@@ -115,16 +112,19 @@ bool DoRunOp(OpTestDesc &opDesc)
 
     // Load inputs
     if (!SetInputData(opRunner)) {
+        ERROR_LOG("Set input data failed");
         return false;
     }
 
     // Run op
     if (!opRunner.RunOp()) {
+        ERROR_LOG("Run op failed");
         return false;
     }
 
     // process output data
     if (!ProcessOutputData(opRunner)) {
+        ERROR_LOG("Process output data failed");
         return false;
     }
 
@@ -143,8 +143,7 @@ bool OpExecuteInit()
             int ret = mkdir(output.c_str(), 0700);
             if (ret == 0) {
                 INFO_LOG("make output directory successfully");
-            }
-            else {
+            }else {
                 ERROR_LOG("make output directory fail");
                 return false;
             }

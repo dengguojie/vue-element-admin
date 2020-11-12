@@ -31,6 +31,7 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
+#include "error_util.h"
 
 using namespace ge;
 namespace fe {
@@ -45,7 +46,7 @@ vector<FusionPattern*> DeconvGroupFusionPass::DefinePatterns() {
   FusionPattern* pattern = new (std::nothrow) FusionPattern("Deconvolution");
   FUSION_PASS_CHECK(
       pattern == nullptr,
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+      CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
       return patterns);
 
   pattern->AddOpDesc(PATTERN_DECONV, {DECONV}).SetOutput(PATTERN_DECONV);
@@ -77,40 +78,44 @@ Status DeconvGroupFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   size_t in_channel_index = -1;
   FUSION_PASS_CHECK(
       SUCCESS != PatternFusionUtil::ParseChannelIdx(input_desc, in_channel_index),
-      OP_LOGE(
+      OP_LOGW(
           FUSED_OP_TYPE.c_str(),
           "The original format of the deconv node[name=%s, type=%s]'s input0 "
           "is %s, which is unsupportable.",
           deconv_desc->GetName().c_str(), deconv_desc->GetType().c_str(),
           ge::TypeUtils::FormatToSerialString(input_desc.GetFormat()).c_str()),
-      return FAILED);
+      return NOT_CHANGED);
   int64_t input_channel = input_desc.GetOriginShape().GetDim(in_channel_index);
 
   GeTensorDesc output_desc = deconv_desc->GetOutputDesc(0);
   size_t out_channel_index = -1;
   FUSION_PASS_CHECK(
       SUCCESS != PatternFusionUtil::ParseChannelIdx(output_desc, out_channel_index),
-      OP_LOGE(
+      OP_LOGW(
           FUSED_OP_TYPE.c_str(),
           "The original format of the deconv node[name=%s, type=%s]'s output0 "
           "is %s, which is unsupportable.",
           deconv_desc->GetName().c_str(), deconv_desc->GetType().c_str(),
           ge::TypeUtils::FormatToSerialString(output_desc.GetFormat()).c_str()),
-      return FAILED);
+      return NOT_CHANGED);
   int64_t output_channel = output_desc.GetOriginShape().GetDim(out_channel_index);
-
+  if (PatternFusionUtil::IsUnknownShape(output_channel) ||
+      PatternFusionUtil::IsUnknownShape(input_channel)) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "DeconvGroupFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
   // 2. if the number of input channel and output channel are both divisible by
   // groups, then process group padding, otherwise, return failed.
   if (groups != 0 && input_channel % groups == 0 && output_channel % groups == 0) {
     return PatternFusionUtil::ProcessGroupPadding(graph, deconv_node, groups);
   } else {
-    OP_LOGE(
+    OP_LOGW(
         FUSED_OP_TYPE.c_str(),
         "The number of input channel(%lld) or output channel(%lld) of "
         "the deconv node[name=%s, type=%s] is not divisible by groups(%lld)",
         input_channel, output_channel, deconv_desc->GetName().c_str(),
         deconv_desc->GetType().c_str(), groups);
-    return FAILED;
+    return NOT_CHANGED;
   }
 }
 

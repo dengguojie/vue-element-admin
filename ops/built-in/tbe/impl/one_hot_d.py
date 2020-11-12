@@ -24,6 +24,8 @@ from te.utils import shape_util
 from te import tvm
 from impl import transpose_d
 from te.utils.error_manager import error_manager_vector
+from impl.util.util_common import write_code
+
 
 # 8k UB buffer is a reserved space
 UB_SPACE_8K = 8 * 1024
@@ -60,7 +62,7 @@ def _add_workspace(indices_reshape, depth, dtype, kernel_name):
             ]
         }
     }
-    transpose_d._write_code(workspace_dict, "kernel_meta/" + kernel_name + ".json")
+    write_code(workspace_dict, kernel_name)
 
 
 def _get_perm(shape, depth, axis):
@@ -889,7 +891,7 @@ def _get_core_num_depth_large(indices_input, depth, output_dtype):
     """
     input_shape_0 = int(indices_input.shape[0])
 
-    cloud_core_num = 32
+    cloud_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     target_core_num = cloud_core_num
     for i in reversed(list(range(1, cloud_core_num + 1))):
         if int(input_shape_0 % i) == 0:
@@ -930,7 +932,7 @@ def _get_target_core_num(indices_input, depth, output_dtype, axis):
     """
     input_shape_0 = int(indices_input.shape[0])
 
-    cloud_core_num = 32
+    cloud_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     target_core_num = cloud_core_num
     for i in reversed(list(range(1, cloud_core_num + 1))):
         if int(input_shape_0 % i) == 0:
@@ -967,7 +969,7 @@ def _get_target_core_num_mini(indices_input):
         The row num that the each core will deal with.
     """
     input_shape_0 = int(indices_input.shape[0])
-    mini_core_num = 2
+    mini_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     target_core_num = mini_core_num
 
     if 1 <= input_shape_0 <= 32:
@@ -976,7 +978,7 @@ def _get_target_core_num_mini(indices_input):
         row_num_core_b = 0
         return target_core_num, row_num_core_a, row_num_core_b
 
-    row_num_core_a = input_shape_0 // 2
+    row_num_core_a = input_shape_0 // mini_core_num
     row_num_core_b = input_shape_0 - row_num_core_a
 
     return target_core_num, row_num_core_a, row_num_core_b
@@ -1809,7 +1811,7 @@ def one_hot_ir(ins, output, depth, axis):
         if _check_is_prime_case(indices_input, output.dtype, depth):
             _multi_core_ir_prime_case(tvm_ib, indices_input, output, op_args)
         else:
-            if device_core_num == cloud_core_num:
+            if device_core_num in [7, 8 ,10, 30, 32]:
                 _cloud_multi_core_ir(tvm_ib, indices_input, output, op_args, axis)
             else:
                 _mini_multi_core_ir(tvm_ib, indices_input, output, op_args)

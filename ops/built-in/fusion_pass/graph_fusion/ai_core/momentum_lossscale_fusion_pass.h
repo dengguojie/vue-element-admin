@@ -22,18 +22,18 @@
 #define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MOMENTUM_LOSSSCALE_FUSION_PASS_H_
 
 #include <vector>
+
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
 namespace fe {
 class MomentumLossscaleFusionPass : public PatternFusionBasePass {
  protected:
   vector<FusionPattern*> DefinePatterns() override;
-  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
+  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
 
  private:
-  const string FUSED_OP_TYPE = "MeanGrad";
+  const string kFusedOpType = "MeanGrad";
 };
-
 }  // namespace fe
 
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MOMENTUM_LOSSSCALE_FUSION_PASS_H_

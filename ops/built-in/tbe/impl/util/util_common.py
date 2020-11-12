@@ -15,7 +15,15 @@
 """
 util_common
 """
+import os
+import json
 from te.utils.error_manager import error_manager_util
+from te import platform as tbe_platform
+
+
+PAD_MIN = 0
+# the dim of most parameters in conv3d is 5
+CONV3D_SHAPE_COMMON_DIM = 5
 
 
 def ceil(x_1, x_2):
@@ -40,6 +48,39 @@ def ceil(x_1, x_2):
                            error_manager_util.get_error_message(dict_args))
     return (x_1 + x_2 - 1) // x_2
 
+
+def check_pads_value_3d(pads):
+    pad_head, pad_tail, pad_up, pad_down, pad_left, pad_right = pads
+    if pad_head < PAD_MIN or pad_tail < PAD_MIN:
+        dict_args = {
+            'errCode': 'E60000',
+        'param_name': 'pad D',
+        'expected_value': 'non_negative vlaue',
+        'input_value': 'pad_d[0] = {}, pad_d[1] = {}'.format(pad_head, pad_tail)
+        }
+        raise RuntimeError(dict_args,
+                           error_manager_util.get_error_message(dict_args))
+
+    if pad_up < PAD_MIN or pad_down < PAD_MIN:
+        dict_args = {
+            'errCode': 'E60000',
+            'param_name': 'pad H',
+            'expected_value': 'non_negative vlaue',
+            'input_value': 'pad_h[0] = {}, pad_h[1] = {}'.format(pad_up, pad_down)
+        }
+        raise RuntimeError(dict_args,
+                            error_manager_util.get_error_message(dict_args))
+    if pad_left < PAD_MIN or pad_right < PAD_MIN:
+        dict_args = {
+            'errCode': 'E60000',
+            'param_name': 'pad W',
+            'expected_value': 'non_negative vlaue',
+            'input_value': 'pad_w[0] = {}, pad_w[1] = {}'.format(pad_left, pad_right)
+        }
+        raise RuntimeError(dict_args,
+                            error_manager_util.get_error_message(dict_args))
+
+
 def align(x_1, x_2):
     """
     align x_1 with x_2
@@ -63,3 +104,18 @@ def align(x_1, x_2):
     return ((x_1 + x_2 - 1) // x_2) * x_2
 
 
+def write_code(wkspace_dict, kernel_name):
+    """
+    write workspaces to json file
+
+    """
+    fname = tbe_platform.cce_conf.get_kernel_meta_dir() + "/" + kernel_name + ".json"
+    fname = os.path.realpath(fname)
+    if fname.startswith(os.getcwd()):
+        if os.path.exists(fname):
+            with open(fname, "r") as f_var:
+                load_dict = json.load(f_var)
+            load_dict.update(wkspace_dict)
+            with open(fname, "w") as f_var:
+                json.dump(load_dict, f_var, sort_keys=True,
+                          indent=4, separators=(',', ':'))

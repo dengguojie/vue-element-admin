@@ -20,14 +20,34 @@ import math
 
 from te import platform as cceconf
 from te import tvm
-from te.platform import operation
-from te.platform.operation import register_tiling_case, register_schedule
+from te.lang.base import operation
+from te.lang.base.operation import register_tiling_case, register_schedule
+from te.utils.error_manager.error_manager_util import get_error_message
 
 from . import Pattern, INSN_MAPPING, DTYPE_BYTE_MAPPING
 from .vector_schedule import VectorSchedule
 from .reduce_atomic_schedule import ReduceAtomicSchedule
+from .reduce_tilingcase import _get_tiling_key
 
 BLOCK_SIZE_BYTE = 32
+CONST = "const"
+
+
+def _gen_const_dict_key(reduce_axis):
+    """
+    generate dict key from reduce_axis
+    :param reduce_axis:
+    :return:
+    """
+    if not reduce_axis:
+        return -1
+    reduce_axis_local = list(reduce_axis)[:]
+    reduce_axis_local = sorted(reduce_axis_local, reverse=True)
+    dict_key = 0
+    for i in reduce_axis_local:
+        dict_key = 10 * dict_key + i
+
+    return dict_key
 
 
 # noinspection PyUnusedLocal
@@ -40,6 +60,15 @@ def calc_tiling_case(outs, option=None):
     :return:
     """
     outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
+
+    if operation.get_context().get_current_compute().get("mode") == CONST:
+        # ConstInput has special tiling_key
+        operation.add_compile_info("reduce_shape_known", True)
+        operation.add_build_arg("dummy_placeholder", True)
+        current_compute = operation.get_context().get_current_compute()
+        ori_axis = current_compute.get("ori_axis")
+        current_compute.add("_mode", CONST)
+        return _gen_const_dict_key(ori_axis)
 
     reduce_sch = ReduceSchedule()
     is_success = reduce_sch.init(outs, [])
@@ -154,7 +183,7 @@ class ReduceSchedule(VectorSchedule):
         self._produce_atomic_sch = False
         self._atomic_tiling_case_list = []
         self._atomic_sch = None
-        self._compute_key = None
+        self._current_key_list = None
 
     def init(self, out_tensors, spec_node_list):
         """
@@ -213,8 +242,8 @@ class ReduceSchedule(VectorSchedule):
         else:
             return None
 
-        compute_key = self._get_compute_key()
-        sch.tiling_key = self._gen_tiling_key(compute_key, tiling_case)
+
+        sch.tiling_key = self._current_key_list[tiling_case]
 
         return sch
 
@@ -317,27 +346,6 @@ class ReduceSchedule(VectorSchedule):
 
         return True
 
-    def _gen_compute_key(self, shape_before_reduce, reduce_axis_index):
-
-        compute_key = 0
-        dim_len = len(shape_before_reduce)
-        for i in range(0, dim_len):
-            if i in reduce_axis_index:
-                compute_key = compute_key + 2 * math.pow(2, (dim_len - 1 - i))
-            else:
-                compute_key = compute_key + math.pow(2, (dim_len - 1 - i))
-
-        self._compute_key = int(compute_key)
-
-
-        return int(compute_key)
-
-    def _get_compute_key(self):
-        return self._compute_key
-
-    def _gen_tiling_key(self, compute_key, tiling_case_index):
-
-        return compute_key * 1000 + tiling_case_index
     def get_tiling_cases(self):
         """
         :return:
@@ -377,49 +385,50 @@ class ReduceSchedule(VectorSchedule):
         """
         :return:
         """
-
         shape_before_reduce = self._reduce_info["shape_before_reduce"]
         reduce_axis_index = self._reduce_info["reduce_axis_index"]
-        compute_key = self._gen_compute_key(shape_before_reduce,
-                                            reduce_axis_index)
+        shape_type = 0
+        keep_dims = self._reduce_info["keep_dims"]
+        type = self._reduce_info["dtype"]
+
+        # Common Messages in Different Patterns
+        tiling_key_list = []
         for i in range(0, len(self._tiling_case_list)):
-            tiling_key = self._gen_tiling_key(compute_key, i)
-            self._reduce_tiling_key_map[tiling_key] = self._tiling_case_list[i]
+            block_split_axis = self._tiling_case_list[i]["block_split_axis"]
+            ub_split_axis = self._tiling_case_list[i]["ub_split_axis"]
+            tiling_key = _get_tiling_key(False, self._need_db, shape_type,
+                                         block_split_axis, ub_split_axis,
+                                         shape_before_reduce, reduce_axis_index,
+                                         )
+            tiling_key_list.append(tiling_key)
 
+        for i in range(0, len(self._atomic_tiling_case_list)):
+            block_split_axis = self._atomic_tiling_case_list[i]["block_split_axis"]
+            ub_split_axis = self._atomic_tiling_case_list[i]["ub_split_axis"]
+            tiling_key = _get_tiling_key(True, self._need_db, shape_type,
+                                         block_split_axis, ub_split_axis,
+                                         shape_before_reduce, reduce_axis_index,
+                                         )
+            tiling_key_list.append(tiling_key)
+
+        self._current_key_list = tiling_key_list
         max_ub_count = self._get_max_ub_count()
-        reduce_info = {}
-        reduce_info["reduce_axis"] = self._reduce_info["reduce_axis_index"]
-        reduce_info["keep_dims"] = self._reduce_info["keep_dims"]
-        reduce_info["dtype"] = self._reduce_info["dtype"]
-        reduce_info["out_dtype"] = self._res_tensor.dtype
+        common_info = {}
+        common_info["max_ub_count"] = max_ub_count
+        common_info["core_num"] = cceconf.get_soc_spec("CORE_NUM")
+        common_info["keep_dims"] = keep_dims
+        common_info["reduce_dtype"] = type
 
-        compile_info = {}
-        compile_info["reduce_tiling_key_map"] = self._reduce_tiling_key_map
-        compile_info["reduce_info"] = reduce_info
-        compile_info["pattern"] = Pattern.REDUCE
-        compile_info["max_ub_count"] = max_ub_count
-        compile_info["core_num"] = cceconf.get_soc_spec("CORE_NUM")
+        if len(self._atomic_tiling_case_list) >= 1:
+            common_info["atomic"] = True
+        else:
+            common_info["atomic"] = False
 
-        compute_pattern = [compute_key]
+        # add_compile_info
         pre_compile_info = operation.get_compile_info()
         if pre_compile_info:
-            if "compute_pattern" in pre_compile_info.keys():
-                compute_pattern = pre_compile_info["compute_pattern"]
-                compute_pattern.append(compute_key)
-
-        operation.add_compile_info("compute_pattern", compute_pattern)
-
-        if self._produce_atomic_sch:
-            atomic_tiling_key_map = {}
-            for i in range(0, len(self._atomic_tiling_case_list)):
-                tiling_key = self._gen_tiling_key(compute_key, i + len(
-                    self._tiling_case_list))
-                atomic_tiling_key_map[tiling_key] = \
-                    self._atomic_tiling_case_list[i]
-            compile_info["atomic_tiling_key_map"] = atomic_tiling_key_map
-
-        operation.add_compile_info(str(compute_key), compile_info)
-
+            if "common_info" not in pre_compile_info.keys():
+                operation.add_compile_info("common_info", common_info)
 
     def _gen_tiling_case_not_last_axis(self, shape_before_reduce,
                                        reduce_axis_index):
@@ -453,13 +462,6 @@ class ReduceSchedule(VectorSchedule):
                                    "ub_split_axis": ub_split_axis,
                                    "ub_factor": None}
                     self._tiling_case_list.append(tiling_case)
-
-        dtype = self._res_tensor.dtype
-        if self._need_special_tiling_case_not_last_axis(dtype,
-                                                        shape_before_reduce,
-                                                        reduce_axis_index):
-            self._gen_special_tiling_case_not_last_axis(shape_before_reduce,
-                                                        reduce_axis_index)
 
     def _need_special_tiling_case_not_last_axis(self, dtype,
                                                 shape_before_reduce,
@@ -1431,7 +1433,11 @@ class ReduceSchedule(VectorSchedule):
         block_split_inner = block_tiling_para["factor"]
 
         if block_split_axis < 0:
-            raise RuntimeError("Should use positive number to represent axis!")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "block_split_axis must be " \
+                                          "positive number, while is [%s]" % block_split_axis
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
         if "axis_var" in block_tiling_para.keys() and \
                 block_tiling_para["axis_var"] is not None:
@@ -1468,7 +1474,11 @@ class ReduceSchedule(VectorSchedule):
         ub_split_inner = ub_tiling_para["factor"]
 
         if ub_split_axis < 0:
-            raise RuntimeError("Should use positive number to represent axis!")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "ub_split_axis must be " \
+                                          "positive number, while is [%s]" % ub_split_axis
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
         if ub_tiling_tensor is not None:
             if block_tiling_tensor is not None and block_split_axis == ub_split_axis \
@@ -1516,7 +1526,11 @@ class ReduceSchedule(VectorSchedule):
             reduce_axis_index = self._reduce_info["reduce_axis_index"]
             shape = self._reduce_info["shape_before_reduce"]
             if axis >= len(shape):
-                raise RuntimeError("Axis index out of range!")
+                dict_args = dict()
+                dict_args["errCode"] = "E90001"
+                dict_args["detailed_cause"] = "Axis index [%s] out of range " \
+                                              "[%s, %s)!" % (axis, '0', len(shape))
+                raise RuntimeError(dict_args, get_error_message(dict_args))
             if axis in reduce_axis_index:
                 reduce_axis_map = self._reduce_info["reduce_axis_map"]
                 return reduce_axis_map[axis]
@@ -1532,7 +1546,11 @@ class ReduceSchedule(VectorSchedule):
 
         else:
             if axis >= len(tensor.op.axis):
-                raise RuntimeError("Axis index out of range!")
+                dict_args = dict()
+                dict_args["errCode"] = "E90001"
+                dict_args["detailed_cause"] = "Axis index [%s] out of range " \
+                                              "[%s, %s)!" % (axis, '0', len(tensor.op.axis))
+                raise RuntimeError(dict_args, get_error_message(dict_args))
             return tensor.op.axis[axis]
 
     def _do_reorder(self):
@@ -1756,7 +1774,10 @@ class ReduceSchedule(VectorSchedule):
             reduce_axis_index)
 
         if a1_end_index is None:
-            raise RuntimeError("a1_end_index can not be none!")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "a1_end_index can not be none!"
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
         self.__reorder_reduce_not_last_axis_reduce_ub(a1_start_index,
                                                       a1_end_index)
@@ -1885,7 +1906,10 @@ class ReduceSchedule(VectorSchedule):
                 shape_before_reduce,
                 reduce_axis_index)
             if a1_end_index is None:
-                raise RuntimeError("a1_end_index can not be none!")
+                dict_args = dict()
+                dict_args["errCode"] = "E90001"
+                dict_args["detailed_cause"] = "a1_end_index can not be none!"
+                raise RuntimeError(dict_args, get_error_message(dict_args))
 
             if a1_start_index <= ub_split_axis <= a1_end_index:
                 reduce_ub_outer = reduce_ub_tiling_tensor.op.reduce_axis[-1]
@@ -1997,7 +2021,10 @@ class ReduceSchedule(VectorSchedule):
                     shape_before_reduce,
                     reduce_axis_index)
                 if a1_end_index is None:
-                    raise RuntimeError("a1_end_index can not be none!")
+                    dict_args = dict()
+                    dict_args["errCode"] = "E90001"
+                    dict_args["detailed_cause"] = "a1_end_index can not be none!"
+                    raise RuntimeError(dict_args, get_error_message(dict_args))
                 if ub_split_axis < a1_start_index and\
                         ub_split_axis not in reduce_axis_index:
                     reduce_ub_inner = reduce_ub_tiling_tensor.op.reduce_axis[0]
@@ -2159,7 +2186,11 @@ class ReduceSchedule(VectorSchedule):
 
         total_width = self._get_total_width()
         if not total_width:
-            raise RuntimeError("Can not calculate with no compute")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "Can not calculate with no compute, " \
+                                          "total_width is [%s]" % total_width
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
         max_bound = total_width * 128
         max_ub_count = int(self._total_size // max_bound * 128)
@@ -2187,7 +2218,12 @@ class ReduceSchedule(VectorSchedule):
         def _op_width(op_node):
             num_type = op_node.dtype
             if num_type.lower() not in DTYPE_BYTE_MAPPING.keys():
-                raise RuntimeError("Can not calculate with no compute")
+                dict_args = dict()
+                dict_args["errCode"] = "E90001"
+                dict_args["detailed_cause"] = "The dtype must be bool, s8, " \
+                                              "u8, f16, s16, u16, f32, s32, " \
+                                              "u32, s64, u64, [%s] is unsupported!" % num_type
+                raise RuntimeError(dict_args, get_error_message(dict_args))
             tmp_width = 0
             if op_node.op.tag is not None:
                 tag = op_node.op.tag

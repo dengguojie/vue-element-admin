@@ -39,6 +39,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 # newton eqation is x1 = x0(3-a*(x0^2))/2
 NUM_MINUS_ONE = -1
@@ -117,13 +118,11 @@ def acos_grad(y, dy, z, kernel_name="acos_grad"):
     dtype = dtype.lower()
     dtype1 = dtype1.lower()
     if not operator.eq(shape_y, shape_dy):
-        raise RuntimeError(
-            "acos_grad only support input shape while input_shape1 equals"
-            " to input_shape2")
+        error_detail = "shape of y and dy should be same"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "y", "dy", error_detail)
     if dtype != dtype1:
-        raise RuntimeError(
-            "acos_grad only support dtype while input_dtype1 equals"
-            " to input_dtype2")
+        error_detail = "dtype of y and dy should be same"
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "y", "dy", error_detail)
     shape_y, _ = shape_util.refine_shape_axes(shape_y, [])
     shape_dy, _ = shape_util.refine_shape_axes(shape_dy, [])
 

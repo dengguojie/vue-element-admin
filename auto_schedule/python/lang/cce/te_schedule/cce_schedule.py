@@ -34,11 +34,13 @@ from te.platform import log
 
 from te.platform import get_soc_spec
 from te.platform import conv_buffer_ex
+from te.platform.cce_conf import get_kernel_meta_dir
 
 from te.platform.fusion_manager import fusion_manager
 
 from te.lang.cce import ConvParam  # pylint: disable=C0412
-from te.lang.cce.rl_bank import rl_bank
+from te.domain.rl_bank import rl_bank
+from te.utils.error_manager.error_manager_util import get_error_message
 from topi.cce import util  # pylint: disable=E0401
 
 from .util import gen_dfs_tensor_map
@@ -256,7 +258,10 @@ def schedule_cce(outs, option=None):  # pylint: disable=R0912, R0914, R0915
     if isinstance(outs, (tuple, list)):
         if len(outs) > 1:
             if not check_support_muti_output(outs):
-                raise RuntimeError("Only vector op support muti output now")
+                dict_args = dict()
+                dict_args["errCode"] = "E90003"
+                dict_args["detailed_cause"] = "Only vector op support muti output now"
+                raise RuntimeError(dict_args, get_error_message(dict_args))
             out_tmp = outs
         else:
             out_tmp = [outs[0]]  # suppose input and output are the same
@@ -302,7 +307,7 @@ def schedule_cce(outs, option=None):  # pylint: disable=R0912, R0914, R0915
                 continue
             # c = vesl(condition,a,b), c is the same as a and b,
             # conditioh_map[update_tensor]n is bool
-            if in_dtype == 'bool':
+            if in_dtype in ("bool", "uint64"):
                 continue
             if not check_is_need_cast(out):
                 continue
@@ -367,7 +372,11 @@ def schedule_cce(outs, option=None):  # pylint: disable=R0912, R0914, R0915
             cce_op = CceOp(cceconf.scope_ubuf, need_tensorize=True,
                            need_pragma=True)
             if len(outs) > 1:
-                raise RuntimeError("cpu schedule not support muti-output")
+                dict_args = dict()
+                dict_args["errCode"] = "E90003"
+                dict_args["detailed_cause"] = "cpu schedule not support " \
+                                              "muti-output, outputs num is [%s]" % len(outs)
+                raise RuntimeError(dict_args, get_error_message(dict_args))
             schedule = cce_op.cpu_schedule(outs[0])
     schedule.cce_special = {}
 
@@ -429,7 +438,9 @@ def check_is_need_cast(out):
         if crawl_anti_quant_tensor(out):
             return False
         pre_op_str_list = out.op.input_tensors[0].op.tag.split("|")
-        if 'quant' in pre_op_str_list:
+        if 'quant' in pre_op_str_list or "requant_remove_pad" in pre_op_str_list:
+            return False
+        if "dequant_remove_pad" in pre_op_str_list:
             return False
     return True
 
@@ -486,7 +497,10 @@ def decl_memory(buffer_scope):
                                  max_num_bits=get_soc_spec("UB_SIZE") * 8,
                                  head_address=tvm.const(0, 'int32'))
     except tvm._ffi.base.TVMError:  # pylint: disable=W0212
-        raise RuntimeError("declare memory failed!")
+        dict_args = dict()
+        dict_args["errCode"] = "E90003"
+        dict_args["detailed_cause"] = "declare memory failed!"
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
 def check_spec_node(tensor):
@@ -1278,7 +1292,10 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
             wkspace_dict = {"workspace": {"num": num,
                                           "size": total_size,
                                           "type": addr_type_list}}
-            write_code(wkspace_dict, "kernel_meta/" + kernel_name + ".json")
+
+            kernel_meta_dir = get_kernel_meta_dir()
+            write_code(wkspace_dict,
+                       os.path.join(kernel_meta_dir, "%s.json" % kernel_name))
 
     def _update_build_config():
         """
@@ -1357,8 +1374,11 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
     config_tensor_list = local_config_map["tensor_list"]
 
     if config_tensor_list is None:
-        raise RuntimeError(
-            "Please infer cerrect parameter of tensor list throught the key of 'tensor_list'")
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "Please infer correct parameter of " \
+                                      "tensor list throught the key of 'tensor_list'"
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     real_out_tensors = sch.cce_special["real_out_tensor"]
     orign_out_tensors = sch.cce_special["orign_out_tensor"]
@@ -1400,7 +1420,10 @@ class ScheduleDispatch:
     @generic_dispatch(key=1)
     def handle_case(self, case):
         """handle case"""
-        raise RuntimeError("Unknown key %d in generic_dispatch" % (key))
+        dict_args = dict()
+        dict_args["errCode"] = "E90003"
+        dict_args["detailed_cause"] = "Unknown key %d in generic_dispatch" % (key)
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     @handle_case.register('segment')
     def _(self, case, templet_name, tensor, scope, spec_node_list, sch_list):

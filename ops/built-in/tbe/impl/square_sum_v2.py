@@ -20,6 +20,9 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 MIN_FP32 = 2**(-126)
 # min float16 value
@@ -27,6 +30,36 @@ MIN_FP16 = 2**(-24)
 VALUE_ONE = 1
 
 SHAPE_SIZE_LIMIT = 200000000
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(input_x,
+                        output1,
+                        output2,
+                        attr1,
+                        attr2=True,
+                        kernel_name="square_sum_v2"):
+    shape_x = shape_util.shape_to_list(input_x.get("shape"))
+    axis_d = []
+    for i, _ in enumerate(shape_x):
+        axis_d.append(i)
+    format_x = input_x.get("format").upper()
+    axis_split = [i for i in axis_d if i not in attr1]
+    if format_x == "ND":
+        if attr2:
+            axis_split_matrix=[]
+            for i in axis_split:
+                split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]],[1, [i]])]
+                axis_split_matrix.append(split_0)
+            axis_reduce_list = None
+        else:
+            axis_split_matrix = None
+            axis_reduce_list = None
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name

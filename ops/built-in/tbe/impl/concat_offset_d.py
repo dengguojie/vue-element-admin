@@ -17,6 +17,8 @@ concat_offset_d
 """
 from te import tik
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import get_op_cal_info
 
 # 256B can store up to 64 numbers when the data is int32 type
 NUM64 = 64
@@ -26,6 +28,14 @@ VALUE_TWO = 2
 
 # The maximum value of the mask corresponding to 8 blocks
 MAX_MASK8 = 255
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(x, y, concat_dim, kernel_name="concat_offset_d"):
+    axis_split_matrix = None
+    axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 # pylint: disable=locally-disabled,unused-argument, invalid-name
@@ -77,26 +87,23 @@ def concat_offset_d_check(x, concat_dim, input0_rank, dict_num, kernel_name):
     """
 
     if dict_num < 2:
-        raise RuntimeError("The number of elements in the list "
-                           "should be no less than two")
+        rule_desc = "The number of elements in the list should be no less than two"
+        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "x", dict_num)
     for i in range(0, dict_num):
         shape_input = x[i].get("shape")
         if shape_input[0] != input0_rank:
-            raise RuntimeError("input_%d : should contain %d elements,but "
-                               "got %d" % (i, input0_rank,
-                                           shape_input[0]))
+            error_detail = "input_%d : should contain %d elements,but got %d" % (i, input0_rank, shape_input[0])
+            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
         elif shape_input[0] > 8:
-            raise RuntimeError("the shape of input_%d should be not bigger"
-                               " than 8" % i)
+            error_detail = "the shape of input_%d should be not bigger than 8" % i
+            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
         elif concat_dim >= shape_input[0]:
-            raise RuntimeError("Concat dim is greater or equal to input0_rank,"
-                               "the concat_dim is %d, the input0_rank is %d"
-                               % (concat_dim, input0_rank))
+            rule_desc = "Concat dim should be less than input0_rank,the input0_rank is %d"% input0_rank
+            error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "concat_dim", concat_dim)
         elif concat_dim < 0:
             concat_dim = concat_dim - input0_rank
-            raise RuntimeError("Concat dim is not less than zero,"
-                               "the concat_dim is %d, the input0_rank is %d"
-                               % (concat_dim, input0_rank))
+            rule_desc = "Concat dim should be larger or equal to 0,the input0_rank is %d"% input0_rank
+            error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "concat_dim", concat_dim)
         para_check.check_shape(shape_input, max_rank=1, param_name="x")
         para_check.check_dtype(x[i].get("dtype").lower(), ("int32",), param_name="x")
 

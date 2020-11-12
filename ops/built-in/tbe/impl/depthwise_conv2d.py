@@ -17,7 +17,7 @@ depthwise_conv2d
 """
 
 import te.platform as tbe_platform
-from te.utils import check_para
+from te.utils import para_check
 from te.utils.error_manager import error_manager_conv2d
 from te.utils.error_manager import error_manager_util
 from te.utils import cce
@@ -264,28 +264,30 @@ def _check_dilations(dilations, dim_n, dim_c, dim_h, dim_w):
         }
         raise RuntimeError(
             dict_args, error_manager_util.get_error_message(dict_args))
-    if dilations[dim_h] != 1 or dilations[dim_w] != 1:
+    if dilations[dim_h] != dilations[dim_w]:
         dict_args = {
-            'errCode': 'E60023',
+            'errCode': 'E60002',
             'op_name': 'depthwise_conv2d',
-            'dilation_n': str(dilations[dim_h]),
-            'dilation_c': str(dilations[dim_w])
+            'attr_name': 'dilations value',
+            'param1_name': 'dilations[dim_h]',
+            'param2_name': 'dilations[dim_w]',
+            'param1_value': str(dilations[dim_h]),
+            'param2_value': str(dilations[dim_w])
         }
         raise RuntimeError(
-            dict_args, error_manager_util.get_error_message(
-                dict_args))
+            dict_args, error_manager_util.get_error_message(dict_args))
 
 
 # pylint: disable=locally-disabled, too-many-locals, too-many-arguments,
 # pylint: disable=unused-argument
 # pylint: disable=redefined-builtin, invalid-name
-@check_para.check_op_params(
-    check_para.REQUIRED_INPUT, check_para.REQUIRED_INPUT,
-    check_para.OPTION_INPUT, check_para.OPTION_INPUT,
-    check_para.REQUIRED_OUTPUT,
-    check_para.REQUIRED_ATTR_LIST_INT, check_para.OPTION_ATTR_LIST_INT,
-    check_para.REQUIRED_ATTR_LIST_INT, check_para.OPTION_ATTR_STR,
-    check_para.REQUIRED_ATTR_INT, check_para.KERNEL_NAME)
+@para_check.check_op_params(
+    para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+    para_check.OPTION_INPUT, para_check.OPTION_INPUT,
+    para_check.REQUIRED_OUTPUT,
+    para_check.REQUIRED_ATTR_LIST_INT, para_check.OPTION_ATTR_LIST_INT,
+    para_check.REQUIRED_ATTR_LIST_INT, para_check.OPTION_ATTR_STR,
+    para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def depthwise_conv2d(
         x,
         filter,
@@ -361,15 +363,15 @@ def depthwise_conv2d(
     w_dtype = filter.get("dtype")
     fmap_data_format = x.get("format")
 
-    check_para.check_dtype(in_dtype, ('float16', 'int8'), param_name="x")
-    check_para.check_dtype(w_dtype, ('float16', 'int8'), param_name="filter")
-    check_para.check_dtype(output_dtype, ('float16', 'int32'), param_name="y")
+    para_check.check_dtype(in_dtype, ('float16', 'int8'), param_name="x")
+    para_check.check_dtype(w_dtype, ('float16', 'int8'), param_name="filter")
+    para_check.check_dtype(output_dtype, ('float16', 'int32'), param_name="y")
 
-    check_para.check_shape(shape_in, min_rank=FEATURE_MAP_DIM,
+    para_check.check_shape(shape_in, min_rank=FEATURE_MAP_DIM,
                            max_rank=FEATURE_MAP_DIM, param_name="x")
-    check_para.check_shape(shape_w, min_rank=FILTER_DIM,
+    para_check.check_shape(shape_w, min_rank=FILTER_DIM,
                            max_rank=FILTER_DIM, param_name="filter")
-    check_para.check_shape(strides, min_rank=STRIDES_DIM,
+    para_check.check_shape(strides, min_rank=STRIDES_DIM,
                            max_rank=STRIDES_DIM, param_name="filter")
 
     _check_data_format(fmap_data_format, ["NC1HWC0"])

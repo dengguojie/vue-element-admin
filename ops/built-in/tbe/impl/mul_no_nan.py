@@ -20,7 +20,8 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils import shape_util
 
 
 @fusion_manager.register("mul_no_nan")
@@ -51,7 +52,7 @@ def mul_no_nan_compute(input_x1, input_x2, output_y, kernel_name="mul_no_nan"):
     shape_x2 = te.lang.cce.util.shape_to_list(input_x2.shape)
 
     shape_x1, shape_x2, shape_max = util.produce_shapes(shape_x1, shape_x2)
-    util.check_shape_size(shape_max, SHAPE_SIZE_LIMIT)
+    util.check_shape_size(shape_max, para_check.SHAPE_SIZE_LIMIT)
     input_x1 = te.lang.cce.broadcast(input_x1, shape_max)
     input_x2 = te.lang.cce.broadcast(input_x2, shape_max)
 
@@ -66,7 +67,8 @@ def mul_no_nan_compute(input_x1, input_x2, output_y, kernel_name="mul_no_nan"):
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, OPTION_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_OUTPUT,
+                            para_check.KERNEL_NAME)
 def mul_no_nan(x1, x2, y, kernel_name="mul_no_nan"):
     """
     calculating data
@@ -92,17 +94,18 @@ def mul_no_nan(x1, x2, y, kernel_name="mul_no_nan"):
 
     check_tuple = ("float16", "float32", "int32")
     input_data_type = x1.get("dtype").lower()
-    check_dtype(input_data_type, check_tuple)
+    para_check.check_dtype(input_data_type, check_tuple)
 
-    shape_x, shape_y, shape_max = broadcast_shapes(shape_x1, shape_x2, param_name_input1="x1", param_name_input2="x2")
+    shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x1, shape_x2, param_name_input1="x1",
+                                                              param_name_input2="x2")
     if shape_x[-1] == 1 and shape_y[-1] == 1 and shape_max[-1] == 1:
         shape_x = shape_x if len(shape_x) == 1 else shape_x[:-1]
         shape_y = shape_y if len(shape_y) == 1 else shape_y[:-1]
         shape_max = shape_max if len(shape_max) == 1 else shape_max[:-1]
 
-    check_shape(shape_max)
+    para_check.check_shape(shape_max)
 
-    reshape_x, reshape_y = refine_shapes_for_broadcast(shape_x, shape_y)
+    reshape_x, reshape_y = shape_util.refine_shapes_for_broadcast(shape_x, shape_y)
     data_x = tvm.placeholder(reshape_x, name="data_1", dtype=input_data_type)
     data_y = tvm.placeholder(reshape_y, name="data_2", dtype=input_data_type)
     res = mul_no_nan_compute(data_x, data_y, output_z, kernel_name)

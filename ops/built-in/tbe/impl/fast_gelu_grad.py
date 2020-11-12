@@ -15,20 +15,21 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 fast_gelu grad
 """
-from __future__ import absolute_import
 
 import operator
+import functools
 
-import te.lang.cce
+import te.lang.cce as tbe
 from te import tvm
-from topi import generic
-from functools import reduce as reduce_ins
-from te.utils.op_utils import *
+from te.platform.fusion_manager import fusion_manager
+from te import platform as tbe_platform
+from te.utils import para_check
+from te.utils import error_manager
 
 CONST_1 = 1
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
-@fusion_manager.register("fast_gelu_grad")
+@tbe_platform.fusion_manager.fusion_manager.register("fast_gelu_grad")
 def fast_gelu_grad_compute(input_dy, input_x, output_z,
                            kernel_name="fast_gelu_grad"):
     """
@@ -61,34 +62,34 @@ def fast_gelu_grad_compute(input_dy, input_x, output_z,
     const_3 = tvm.const(CONST_1, dtype)
 
     # e^(-1.702x)
-    abs_x = te.lang.cce.vabs(input_x)
-    mul_abs_x = te.lang.cce.vmuls(abs_x, const_1)
-    exp_x = te.lang.cce.vexp(mul_abs_x)
+    abs_x = tbe.vabs(input_x)
+    mul_abs_x = tbe.vmuls(abs_x, const_1)
+    exp_x = tbe.vexp(mul_abs_x)
 
     # 1.702xe^(-1.702x)
-    add_2 = te.lang.cce.vmul(input_x, exp_x)
-    add_2 = te.lang.cce.vmuls(add_2, const_2)
+    add_2 = tbe.vmul(input_x, exp_x)
+    add_2 = tbe.vmuls(add_2, const_2)
 
     # e^(1.702(x-|x|))
-    pn_x = te.lang.cce.vsub(input_x, abs_x)
-    mul_pn_x = te.lang.cce.vmuls(pn_x, const_2)
-    exp_pn_x = te.lang.cce.vexp(mul_pn_x)
+    pn_x = tbe.vsub(input_x, abs_x)
+    mul_pn_x = tbe.vmuls(pn_x, const_2)
+    exp_pn_x = tbe.vexp(mul_pn_x)
 
     #  e^(-1.702x) + 1.702xe^(-1.702x) + e^(1.702(x-|x|))
-    div_up = te.lang.cce.vadd(exp_x, add_2)
-    div_up = te.lang.cce.vadd(div_up, exp_pn_x)
+    div_up = tbe.vadd(exp_x, add_2)
+    div_up = tbe.vadd(div_up, exp_pn_x)
 
     # (e^(-1.702x)+1)^2
-    div_down_i = te.lang.cce.vadds(exp_x, const_3)
-    div_down = te.lang.cce.vmul(div_down_i, div_down_i)
+    div_down_i = tbe.vadds(exp_x, const_3)
+    div_down = tbe.vmul(div_down_i, div_down_i)
 
-    result_temp = te.lang.cce.vdiv(div_up, div_down)
-    result = te.lang.cce.vmul(input_dy, result_temp)
+    result_temp = tbe.vdiv(div_up, div_down)
+    result = tbe.vmul(input_dy, result_temp)
     return result
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def fast_gelu_grad(input_dy, input_x, output_z,
                    kernel_name="fast_gelu_grad"):
     """
@@ -116,26 +117,27 @@ def fast_gelu_grad(input_dy, input_x, output_z,
     shape_dy = input_dy.get("shape")
     shape_x = input_x.get("shape")
 
-    check_shape(shape_dy, param_name="input_dy")
-    check_shape(shape_x, param_name="input_x")
+    para_check.check_shape(shape_dy, param_name="input_dy")
+    para_check.check_shape(shape_x, param_name="input_x")
     input_dtype = input_dy.get("dtype").lower()
     check_list = ("float16", "float32")
-    check_dtype(input_dtype, check_list, param_name="input_dy")
+    para_check.check_dtype(input_dtype, check_list, param_name="input_dy")
     shape_dy = list(shape_dy)
     shape_x = list(shape_x)
     if not operator.eq(shape_dy, shape_x):
         raise RuntimeError("all input shape must be equal")
 
     fuseshape = [1]
-    fuseshape[0] = reduce_ins(lambda x, y: x * y, shape_dy)
+    fuseshape[0] = functools.reduce(lambda x, y: x*y, shape_dy)
     data_dy = tvm.placeholder(fuseshape, name="data_dy", dtype=input_dtype)
     data_x = tvm.placeholder(fuseshape, name="data_x", dtype=input_dtype)
     res = fast_gelu_grad_compute(data_dy, data_x, output_z, kernel_name)
+
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"print_ir": False,
               "name": kernel_name,
               "tensor_list": [data_dy, data_x, res]}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)

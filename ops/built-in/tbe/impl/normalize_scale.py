@@ -20,6 +20,31 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
+from impl.util import util_select_op_base
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(x1, x2, x3, y, across_spatial=True, channel_shared=True,
+                        eps=1e-10, kernel_name="normalize_scale"):
+    format_x = x1.get("format")
+    axis_split_list = []
+    if format_x == "NCHW" or format_x == "NHWC":
+        split_0 = [util_select_op_base.SplitInput([0, [0], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]]),
+                   util_select_op_base.SplitOutput([0, [0]])]
+        split_1 = [util_select_op_base.SplitInput([0, [1], [-1], [-1]], [1, [1], [-1], [-1]], [2, [1], [-1], [-1]]),
+                   util_select_op_base.SplitOutput([0, [1]])]
+        split_2 = [util_select_op_base.SplitInput([0, [2], [-1], [-1]], [1, [2], [-1], [-1]], [2, [2], [-1], [-1]]),
+                   util_select_op_base.SplitOutput([0, [2]])]
+        split_3 = [util_select_op_base.SplitInput([0, [3], [-1], [-1]], [1, [3], [-1], [-1]], [2, [3], [-1], [-1]]),
+                   util_select_op_base.SplitOutput([0, [3]])]
+        axis_split_list= [split_0, split_1, split_2, split_3]
+    else:
+        axis_split_list = None
+
+    axis_reduce_list = None
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_list, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
+
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals
 # pylint: disable=locally-disabled,too-many-arguments,protected-access

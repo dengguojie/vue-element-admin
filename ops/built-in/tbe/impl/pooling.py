@@ -22,6 +22,7 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 from impl import conv2d
+from impl.util import util_select_op_base
 
 # shape limit
 # int32's max value
@@ -30,6 +31,35 @@ SHAPE_SIZE_LIMIT = 2 ** 31 - 1
 C0SIZE = 16
 
 NoneType = type(None)
+
+
+def get_op_support_info(x, matrix, bias, y, window=(1, 1), stride=(1, 1),
+                        offset_x=0, mode=0, pad=(0, 0, 0, 0),
+                        global_pooling=False, ceil_mode=0, dilation=(1, 1, 1, 1),
+                        kernel_name="pooling_cce", impl_mode="high_performance"):
+    """
+    get the pooling split
+    """
+    format_x = x.get("format")
+    input_shape = x.get("shape")
+
+    input_h = input_shape[2]
+    input_w = input_shape[3]
+    if format_x == "NC1HWC0":
+        if (input_h == window[0] and input_w == window[1] and pad == [0, 0, 0, 0]) or global_pooling:
+            axis_split_matrix = [[util_select_op_base.SplitInput([0, [0], [-1], [-1]]),
+                                 util_select_op_base.SplitOutput([0, [0]])]]
+        else:
+            axis_split_matrix = [
+                [util_select_op_base.SplitInput([0, [0], [-1], [-1]]), util_select_op_base.SplitOutput([0, [0]])],
+                [util_select_op_base.SplitInput([0, [2], [0], [0]]), util_select_op_base.SplitOutput([0, [2]])]]
+        axis_reduce_list = None
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_matrix, axis_reduce_list, 2, 0)
+
+    return op_cal_info_in_json
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name

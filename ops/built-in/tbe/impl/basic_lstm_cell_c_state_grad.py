@@ -20,6 +20,7 @@ import functools
 import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=too-many-instance-attributes
@@ -126,7 +127,9 @@ class LstmCellGradInput():
         for shape in shape_list:
             para_check.check_shape(shape, min_rank=4, max_rank=4, param_name="dht_out")
             if shape != self.c_shape:
-                raise RuntimeError("the input shapes are not same")
+                error_detail = "shape of dht,dct,it,jt,ft,ot,tanhct and c should be same"
+                error_manager_vector.raise_err_two_input_shape_invalid("basic_lstm_cell_cstate_grad", \
+                                                                       "dht,dct,it,jt,ft,ot,tanhct", "c", error_detail)
 
         check_list = ("float16", "float32")
         dtype_list = (self.c_dtype, self.dht_dtype, self.dct_dtype,
@@ -139,7 +142,9 @@ class LstmCellGradInput():
         for dtype in dtype_list:
             para_check.check_dtype(dtype.lower(), check_list, param_name="dht_out")
             if dtype != self.c_dtype:
-                raise RuntimeError("the input dtypes are not same")
+                error_detail = "dtype of dht,dct,it,jt,ft,ot,tanhct and c should be same"
+                error_manager_vector.raise_err_two_input_dtype_invalid("basic_lstm_cell_cstate_grad", \
+                                                                       "dht,dct,it,jt,ft,ot,tanhct", "c", error_detail)
 
 
     def init_gm_tensor(self):

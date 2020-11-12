@@ -32,6 +32,22 @@ class Conv2DGroupFusionPass : public PatternFusionBasePass {
  private:
   Status SwapNumChn(ge::OpDescPtr opDesc, bool bInput, uint32_t index);
   Status ProcessDepthwiseConv(ge::NodePtr convNode);
+  int64_t GetGroups(ge::OpDescPtr &convDesc);
+  bool GenerateSplitNode(ge::ComputeGraph &graph, ge::OpDescPtr &convDesc, int64_t &groups, ge::NodePtr &splitNode,
+                         ge::GeTensorDesc &splitOutDesc);
+  bool GenerateNewConvNodes(ge::ComputeGraph &graph, ge::OpDescPtr &convDesc, const ge::GeTensorDesc &splitOutDesc,
+                            vector<ge::NodePtr> &newConvNodes, ge::GeTensorDesc &newConvOutDesc);
+  bool GenerateConcatNode(ge::ComputeGraph &graph, ge::OpDescPtr &convDesc, const int64_t &groups,
+                          ge::GeTensorDesc &newConvOutDesc, ge::NodePtr &concatNode);
+  bool Relink(ge::NodePtr &convNode, ge::NodePtr &splitNode, vector<ge::NodePtr> &newConvNodes,
+              ge::NodePtr &concatNode);
+  Status CloneAndLinkQuants(ge::ComputeGraph &graph, const ge::NodePtr &splitNode, const int64_t &group,
+                            vector<ge::NodePtr> &newConvNodes);
+  Status SplitDequant(ge::ComputeGraph &graph, const ge::NodePtr &concatNode, const int64_t &group,
+                      vector<ge::NodePtr> &newConvNodes);
+  Status ProcQuantIfNeed(ge::ComputeGraph &graph, const ge::NodePtr &splitNode, const ge::NodePtr &concatNode,
+                         const int64_t &groups, vector<ge::NodePtr> &newConvNodes);
+  Status ProcessGroupConv(ge::ComputeGraph &graph, ge::NodePtr &convNode);
   const string FUSED_OP_TYPE = "Conv2D";
 };
 }  // namespace fe

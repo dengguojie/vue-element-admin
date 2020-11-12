@@ -60,6 +60,9 @@ Status ConvScaleFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   ge::NodePtr destNode = GetNodeFromMapping(PATTERN_SCALE, mapping);
   FUSION_PASS_CHECK(convNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "convNode is null"), return PARAM_INVALID);
   FUSION_PASS_CHECK(destNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "destNode is null"), return PARAM_INVALID);
+  if (convNode->GetInDataNodes().at(1)->GetType() == QUANTWEIGHTROLLBACK) {
+    return NOT_CHANGED;
+  }
   if (convNode->GetOutDataNodes().size() > 1) {
     return NOT_CHANGED;
   }

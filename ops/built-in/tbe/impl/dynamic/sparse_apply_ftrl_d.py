@@ -20,14 +20,7 @@ import te.lang.dynamic
 from topi.cce import util
 from te import tik
 from te import platform as tbe_platform
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import REQUIRED_ATTR_FLOAT
-from te.utils.op_utils import REQUIRED_ATTR_INT
-from te.utils.op_utils import OPTION_ATTR_BOOL
-from te.utils.op_utils import KERNEL_NAME
+from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
@@ -101,12 +94,12 @@ class SparseApplyFtrl():
         var_out_dtype = output_dicts[0].get("dtype").lower()
         var_support_dtype_list = ("float32",)
         indices_support_dtype_list = ("int32", "int64")
-        check_dtype(var_dtype, var_support_dtype_list, param_name="var")
-        check_dtype(accum_dtype, var_support_dtype_list, param_name="accum")
-        check_dtype(linear_dtype, var_support_dtype_list, param_name="linear")
-        check_dtype(grad_dtype, var_support_dtype_list, param_name="grad")
-        check_dtype(var_out_dtype, var_support_dtype_list, param_name="var_out")
-        check_dtype(indices_dtype, indices_support_dtype_list, param_name="indices")
+        para_check.check_dtype(var_dtype, var_support_dtype_list, param_name="var")
+        para_check.check_dtype(accum_dtype, var_support_dtype_list, param_name="accum")
+        para_check.check_dtype(linear_dtype, var_support_dtype_list, param_name="linear")
+        para_check.check_dtype(grad_dtype, var_support_dtype_list, param_name="grad")
+        para_check.check_dtype(var_out_dtype, var_support_dtype_list, param_name="var_out")
+        para_check.check_dtype(indices_dtype, indices_support_dtype_list, param_name="indices")
 
         var_shape = input_dicts[0].get("shape")
         accum_shape = input_dicts[1].get("shape")
@@ -945,14 +938,14 @@ class SparseApplyFtrl():
 
 
 @te.op.register_operator("SparseApplyFtrlD")
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT,
-                 REQUIRED_INPUT,
-                 REQUIRED_OUTPUT, REQUIRED_OUTPUT, REQUIRED_OUTPUT,
-                 (REQUIRED_ATTR_FLOAT, REQUIRED_ATTR_INT),
-                 (REQUIRED_ATTR_FLOAT, REQUIRED_ATTR_INT),
-                 (REQUIRED_ATTR_FLOAT, REQUIRED_ATTR_INT),
-                 (REQUIRED_ATTR_FLOAT, REQUIRED_ATTR_INT), OPTION_ATTR_BOOL,
-                 KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            (para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_INT),
+                            (para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_INT),
+                            (para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_INT),
+                            (para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_INT),
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def sparse_apply_ftrl_d(var_dict, accum_dict, linear_dict, grad_dict, indices_dict,
                         var_out_dict, accum_out_dict, linear_out_dict,
                         lr, l1, l2, lr_power, use_locking=False,

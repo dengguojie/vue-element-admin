@@ -19,6 +19,7 @@ roi_align_grad
 import te.platform as tbe_platform
 from te.utils import para_check
 from te import tik
+from te.utils.error_manager import error_manager_vector
 
 
 # C0 size
@@ -1372,12 +1373,13 @@ def roi_align_grad(y_diff,
 
     grad_shape = y_diff.get("shape")
     if len(grad_shape) != 5:
-        raise RuntimeError("the length of grad_sharp must be 5, while it is: %d"
-                           % len(grad_shape))
+        error_detail = "the length of grad_sharp must be 5, while it is: %d"% len(grad_shape)
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "y_diff", error_detail)
 
     rois_shape = rois.get("shape")
     if rois_shape[1] != 5:
-        raise RuntimeError("the rois_shape must be n * 5")
+        error_detail = "the rois_shape must be n * 5"
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "rois", error_detail)
 
     output_grad_shape = x_diff.get("shape")
 

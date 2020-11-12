@@ -33,7 +33,7 @@ struct CalcInfo {
 };
 
 class Bcast {
-public:
+ public:
   Bcast() = default;
   ~Bcast() = default;
 
@@ -47,5 +47,5 @@ public:
   std::vector<int64_t> x_bcast_;
   std::vector<int64_t> y_bcast_;
 };
-} // namespace aicpu
-#endif   // _AICPU_AICPU_DEVICE_CPU_KERNELS_UTILS_BCAST_H_
+}  // namespace aicpu
+#endif  // _AICPU_AICPU_DEVICE_CPU_KERNELS_UTILS_BCAST_H_

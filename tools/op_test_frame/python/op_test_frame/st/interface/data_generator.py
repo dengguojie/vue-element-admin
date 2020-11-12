@@ -11,7 +11,11 @@ try:
     import sys
     import os
     import numpy as np
-    from interface import utils
+    import importlib
+    from . import utils
+    from . import st_report
+    from . import op_st_case_info
+    from op_test_frame.common import op_status
 except ImportError as import_error:
     sys.exit(
         "[data_generator] Unable to import module: %s." % str(import_error))
@@ -22,8 +26,9 @@ class DataGenerator:
     The class for data generator.
     """
 
-    def __init__(self, case_list, output_path, mi):
+    def __init__(self, case_list, output_path, mi, report):
         self.case_list = case_list
+        self.report = report
         if mi:
             self.output_path = os.path.join(output_path, 'run', 'out',
                                             'test_data', 'data')
@@ -127,6 +132,7 @@ class DataGenerator:
         utils.check_path_valid(self.output_path, True)
         for case in self.case_list:
             case_name = case['case_name']
+            calc_func_params_tmp = list()
             utils.print_info_log(
                 'Start to generate the data for %s.' % case_name)
             for index, input_desc in enumerate(case['input_desc']):
@@ -152,6 +158,8 @@ class DataGenerator:
                     raise utils.OpTestGenException(
                         utils.OP_TEST_GEN_WRITE_FILE_ERROR)
                 try:
+                    calc_func_params_tmp.append({
+                        'value': data})
                     data.tofile(file_path)
                     os.chmod(file_path, utils.WRITE_MODES)
                 except OSError as error:
@@ -160,6 +168,71 @@ class DataGenerator:
                             file_path, error))
                     raise utils.OpTestGenException(
                         utils.OP_TEST_GEN_WRITE_FILE_ERROR)
-                print(file_path)
             utils.print_info_log(
-                'Finish to generator the data for %s.' % case_name)
+                'Finish to generator the expect output data for '
+                '%s.' % case_name)
+            expect_data_paths = self._generate_expect_data(
+                case, calc_func_params_tmp)
+            # deal with report
+            case_report = self.report.get_case_report(case_name)
+            case_report.trace_detail.st_case_info.input_data_paths = \
+                self.output_path
+            if expect_data_paths:
+                case_report.trace_detail.st_case_info.expect_data_paths = \
+                    expect_data_paths
+                utils.print_info_log(
+                    'Finish to generator the expect output data for '
+                    '%s.' % case_name)
+
+    def _generate_expect_data(self, case, calc_func_params_tmp):
+        expect_data_paths = []
+        case_name = case.get('case_name')
+        expect_data_dir = os.path.join(self.output_path, 'expect')
+        utils.make_dirs(expect_data_dir)
+        utils.print_info_log(
+            'Start to generate the expect output data for %s.' %
+            case_name)
+        if case.get("calc_expect_func_file") \
+                and case.get("calc_expect_func_file_func"):
+            expect_func_file = case["calc_expect_func_file"]
+            expect_func = case.get("calc_expect_func_file_func")
+            sys.path.append(os.path.dirname(expect_func_file))
+            py_file = os.path.basename(expect_func_file)
+            module_name, _ = os.path.splitext(py_file)
+            utils.print_info_log("Start to import %s in %s." % (module_name,
+                                                                py_file))
+            module = importlib.import_module(module_name)
+            try:
+                func = getattr(module, expect_func)
+                expect_result_tensors = func(*calc_func_params_tmp)
+            except Exception as ex:
+                utils.print_error_log(
+                    'Failed to execute function "%s" in %s. %s' % (
+                        expect_func, expect_func_file, str(ex)))
+                raise utils.OpTestGenException(
+                    utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
+            if not isinstance(expect_result_tensors, (list, tuple)):
+                expect_result_tensors = [expect_result_tensors, ]
+            for idx, expect_result_tensor in enumerate(expect_result_tensors):
+                output_dtype = case['output_desc'][idx]['type']
+                if str(expect_result_tensor.dtype) != output_dtype:
+                    utils.print_warn_log("The dtype of expect date clc by "
+                                         "%s is %s , is not same as "
+                                         "the dtype(%s) in output_desc index("
+                                         "%s). "
+                                         % (expect_func,
+                                            expect_result_tensor.dtype,
+                                            output_dtype, str(idx)))
+                    continue
+                expect_data_name = "%s_expect_output_%s_%s.bin" % (
+                    case_name, str(idx), output_dtype)
+                expect_data_path = os.path.join(expect_data_dir,
+                                                expect_data_name)
+                expect_result_tensor.tofile(expect_data_path)
+                utils.print_info_log("Successfully generated expect "
+                                     "data:%s." % expect_data_path)
+                expect_data_paths.append(expect_data_path)
+        return expect_data_paths
+
+
+

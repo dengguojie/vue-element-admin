@@ -651,4 +651,72 @@ IMPLEMT_INFERFUNC(DynamicGRUV2, DynamicGRUV2InferShape) {
 
 INFER_FUNC_REG(DynamicGRUV2, DynamicGRUV2InferShape);
 VERIFY_FUNC_REG(DynamicGRUV2, DynamicGRUV2Verify);
+
+IMPLEMT_VERIFIER(DynamicGRUV2Grad, DynamicGRUV2GradVerify) {
+
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(DynamicGRUV2Grad, DynamicGRUV2GradInferShape) {
+  ge::TensorDesc inputXTensorDesc = op.GetInputDesc("x");
+  ge::TensorDesc inputHTensorDesc = op.GetInputDesc("h");
+  ge::Shape shapeX = inputXTensorDesc.GetShape();
+  ge::Shape shapeH = inputHTensorDesc.GetShape();
+  DataType dtype = inputXTensorDesc.GetDataType();
+
+  int64_t dim_num = shapeX.GetDimNum();
+  int64_t batch_size = 0;
+  int64_t input_size = 0;
+  int64_t hidden_size = 0;
+  if (dim_num == 3) {
+    batch_size = shapeX.GetDims().at(1);
+    input_size = shapeX.GetDims().at(2);
+    hidden_size = shapeH.GetDims().at(2);
+  } else {
+    OpsOneInputShapeErrReport(op.GetName(),  "The input shape of X", "not right");
+    OP_LOGE(op.GetName().c_str(),
+      "The input shape of X is not right, please check!");
+    return GRAPH_FAILED;
+  }
+
+  TensorDesc outputDxtTensorDesc = op.GetOutputDesc("dx");
+  TensorDesc outputDht_1TensorDesc = op.GetOutputDesc("dh_prev");
+  TensorDesc outputDwxTensorDesc = op.GetOutputDesc("dw_input");
+  TensorDesc outputDwhTensorDesc = op.GetOutputDesc("dw_hidden");
+  TensorDesc outputDbxTensorDesc = op.GetOutputDesc("db_input");
+  TensorDesc outputDbhTensorDesc = op.GetOutputDesc("db_hidden");
+
+  outputDxtTensorDesc.SetShape(shapeX);
+  outputDxtTensorDesc.SetDataType(dtype);
+
+  vector<int64_t> outputDht_1Dims = {batch_size, hidden_size};
+  outputDht_1TensorDesc.SetShape(ge::Shape(outputDht_1Dims));
+  outputDht_1TensorDesc.SetDataType(dtype);
+
+  vector<int64_t> outputDwxDims = {input_size, 3 * hidden_size};
+  outputDwxTensorDesc.SetShape(ge::Shape(outputDwxDims));
+  outputDwxTensorDesc.SetDataType(dtype);
+
+  vector<int64_t> outputDwhDims = {hidden_size, 3 * hidden_size};
+  outputDwhTensorDesc.SetShape(ge::Shape(outputDwhDims));
+  outputDwhTensorDesc.SetDataType(dtype);
+
+  vector<int64_t> outputDbDims = {3 * hidden_size};
+  outputDbxTensorDesc.SetShape(ge::Shape(outputDbDims));
+  outputDbxTensorDesc.SetDataType(dtype);
+
+  outputDbhTensorDesc.SetShape(ge::Shape(outputDbDims));
+  outputDbhTensorDesc.SetDataType(dtype);
+
+  (void) op.UpdateOutputDesc("dx", outputDxtTensorDesc);
+  (void) op.UpdateOutputDesc("dh_prev", outputDht_1TensorDesc);
+  (void) op.UpdateOutputDesc("dw_input", outputDwxTensorDesc);
+  (void) op.UpdateOutputDesc("dw_hidden", outputDwhTensorDesc);
+  (void) op.UpdateOutputDesc("db_input", outputDbxTensorDesc);
+  (void) op.UpdateOutputDesc("db_hidden", outputDbhTensorDesc);
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(DynamicGRUV2Grad, DynamicGRUV2GradInferShape);
+VERIFY_FUNC_REG(DynamicGRUV2Grad, DynamicGRUV2GradVerify);
 }  // namespace ge

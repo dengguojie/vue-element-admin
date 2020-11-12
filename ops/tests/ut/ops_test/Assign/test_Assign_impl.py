@@ -14,6 +14,9 @@ http://www.apache.org/licenses/LICENSE-2.0
 Assign ut case
 """
 from op_test_frame.ut import OpUT
+import tensorflow as tf
+from tensorflow.python.ops import gen_state_ops
+from op_test_frame.common import precision_info
 ut_case = OpUT("Assign", None, None)
 
 case1 = {"params": [{"shape": (15, 32), "dtype": "float16", "format": "ND", "ori_shape": (15, 32),"ori_format": "ND"}, #x
@@ -55,7 +58,36 @@ ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
  
+def calc_expect_func(ref, value, output):
+    my_dtype = ref['dtype']
+    shape = value['shape']
+    input1=tf.Variable(ref['value'], dtype=ref['dtype'])
+    out_pack = gen_state_ops.assign(input1, value['value'])
+    with tf.compat.v1.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        result = sess.run(out_pack)
+    return result
+# ut_case.add_precision_case("all", {"params": [{"shape": (15,32), "dtype": "float16", "format": "ND", "ori_shape": (15,32),"ori_format": "ND", "param_type": "input"},
+#                                               {"shape": (15,32), "dtype": "float16", "format": "ND", "ori_shape": (15,32),"ori_format": "ND", "param_type": "input"},
+#                                               {"shape": (15,32), "dtype": "float16", "format": "ND", "ori_shape": (15,32),"ori_format": "ND", "param_type": "output"},
+#                                               ],
+#                                    "calc_expect_func": calc_expect_func,
+#                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#                                    })
+# ut_case.add_precision_case("all", {"params": [{"shape": (16, 2 ,32), "dtype": "float32", "format": "ND", "ori_shape": (16, 2 ,32),"ori_format": "ND", "param_type": "input"},
+#                                               {"shape": (16, 2 ,32), "dtype": "float32", "format": "ND", "ori_shape": (16, 2 ,32),"ori_format": "ND", "param_type": "input"},
+#                                               {"shape": (16, 2 ,32), "dtype": "float32", "format": "ND", "ori_shape": (16, 2 ,32),"ori_format": "ND", "param_type": "output"},
+#                                               ],
+#                                    "calc_expect_func": calc_expect_func,
+#                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#                                    })
+# ut_case.add_precision_case("all", {"params": [{"shape": (5, 13, 64), "dtype": "float16", "format": "ND", "ori_shape": (5, 13, 64),"ori_format": "ND", "param_type": "input"},
+#                                               {"shape": (5, 13, 64), "dtype": "float16", "format": "ND", "ori_shape": (5, 13, 64),"ori_format": "ND", "param_type": "input"},
+#                                               {"shape": (5, 13, 64), "dtype": "float16", "format": "ND", "ori_shape": (5, 13, 64),"ori_format": "ND", "param_type": "output"},
+#                                               ],
+#                                    "calc_expect_func": calc_expect_func,
+#                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#                                    })
 
-if __name__ == '__main__':
-    ut_case.run(["Ascend910","Ascend310","Ascend710"])
-    exit(0)
+
+

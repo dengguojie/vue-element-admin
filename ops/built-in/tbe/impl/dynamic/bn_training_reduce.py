@@ -16,17 +16,11 @@ http://www.apache.org/licenses/LICENSE-2.0
 dynamic bn_training_reduce
 """
 import te
-import te.lang.dynamic
+import te.lang.cce as tbe
 from te import tvm
 from te.platform import log
-from topi import generic
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_format
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import variable_shape
+from te.utils import para_check
+from te.utils import shape_util
 from impl.util import fusion_util
 
 
@@ -57,15 +51,15 @@ def bn_training_reduce_compute(x, sum, square_sum,
     """
     dtype = x.dtype.lower()
     if dtype == "float16":
-        x = te.lang.dynamic.cast_to(x, "float32")
+        x = tbe.cast_to(x, "float32")
 
     # format "NCHW" or "NC1HWC0"
     axis = [0, 2, 3]
     log.debug("input shape: " + str(x.shape))
     log.debug("reduce axis: " + str(axis))
 
-    square_x = te.lang.dynamic.vmul(x, x)
-    sum_x, square_sum_x = te.lang.dynamic.tuple_sum([x, square_x], axis, True)
+    square_x = tbe.vmul(x, x)
+    sum_x, square_sum_x = tbe.tuple_sum([x, square_x], axis, True)
     res = [sum_x, square_sum_x]
 
     return res
@@ -108,8 +102,8 @@ def bn_training_reduce_fusion_compute(x, sum, square_sum,
 
 
 @te.op.register_operator("BnTrainingReduce")
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def bn_training_reduce(x, sum, square_sum,
                        kernel_name="bn_training_reduce"):
     """
@@ -139,17 +133,17 @@ def bn_training_reduce(x, sum, square_sum,
 
     # check and format
     check_list = ("NC1HWC0", "NCHW")
-    check_format(data_format, check_list, param_name="x")
+    para_check.check_format(data_format, check_list, param_name="x")
     if data_format == "NCHW" and origin_format not in ("NCHW",):
         raise RuntimeError("The origin format only supports "
                            "NCHW when format is NCHW")
 
     # check dtype
     check_list = ("float16", "float32")
-    check_dtype(dtype, check_list, param_name="x")
+    para_check.check_dtype(dtype, check_list, param_name="x")
 
     # get dynamic shape, x.get("shape"), x.get("range")
-    shape_x = variable_shape([x])[0]
+    shape_x = shape_util.variable_shape([x])[0]
 
     # compute
     with te.op.compute():
@@ -159,10 +153,10 @@ def bn_training_reduce(x, sum, square_sum,
 
     # schedule
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     # build
     tensor_list = [data_input] + list(res)
     config = {"name": kernel_name,
               "tensor_list": tensor_list}
-    te.lang.dynamic.build(sch, config)
+    tbe.build(sch, config)

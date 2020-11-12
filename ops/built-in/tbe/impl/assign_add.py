@@ -21,6 +21,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 # shape limit for int64: 1
 SHAPE_SIZE_LIMIT_INT64 = 1
@@ -376,8 +377,8 @@ def assign_add(ref, value, output, kernel_name="assign_add"):
         para_check.check_shape(shape_y, param_name="value")
 
         if shape_x != shape_y:
-            raise RuntimeError(
-                "shape_x and shape_y must be the same")
+            error_detail = "shape of ref and value should be same"
+            error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "ref", "value", error_detail)
 
         shape_x, shape_y = _update_shape(shape_x, shape_y)
 

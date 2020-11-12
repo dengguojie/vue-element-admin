@@ -37,7 +37,7 @@ def _check_parameters(src, dst, src_format, dst_format, kernel_name):
         raise RuntimeError("dst_format must be NDHWC!")
 
     para_check.check_kernel_name(kernel_name)
-    check_list = ("float16",)
+    check_list = ("float16", "float32")
     para_check.check_dtype_rule(dtype, check_list)
     if dtype != dtype_dst:
         raise RuntimeError("dtype of src and dst are different !")

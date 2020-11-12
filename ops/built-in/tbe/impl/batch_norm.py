@@ -20,8 +20,79 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 NONETYPE = type(None)
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(x, scale, offset, mean, variance, y, batch_mean,
+                        batch_variance, reserve_space_1, reserve_space_2,
+                        epsilon=0.0001, data_format="NHWC",
+                        is_training=True, kernel_name="batch_norm"):
+    format_x = x.get("format")
+    is_py = reserve_space_1 is None
+    if format_x == "NHWC":
+        if is_training:
+            if not is_py:
+                axis_split_matrix=[[SplitInput([0, [3], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]]),\
+                                    SplitOutput([0, [3]], [1, [0]], [2, [0]], [3, [0]], [4, [0]])]]
+            else:
+                axis_split_matrix=[[SplitInput([0, [3], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]]), \
+                                    SplitOutput([0, [3]], [1, [0]], [2, [0]])]]
+        else:
+            if not is_py:
+                axis_split_matrix=[[SplitInput([0, [3], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]], \
+                                               [3, [0], [-1], [-1]], [4, [0], [-1], [-1]]), \
+                                    SplitOutput([0, [3]], [1, [0]], [2, [0]], [3, [0]], [4, [0]])]]
+            else:
+                axis_split_matrix=[[SplitInput([0, [3], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]], \
+                                               [3, [0], [-1], [-1]], [4, [0], [-1], [-1]]), \
+                                    SplitOutput([0, [3]], [1, [0]], [2, [0]])]]
+
+    elif format_x == "NCHW":
+        if is_training:
+            if not is_py:
+                axis_split_matrix=[[SplitInput([0, [1], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]]), \
+                                    SplitOutput([0, [1]], [1, [0]], [2, [0]], [3, [0]], [4, [0]])]]
+            else:
+                axis_split_matrix=[[SplitInput([0, [1], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]]), \
+                                    SplitOutput([0, [1]], [1, [0]], [2, [0]])]]
+        else:
+            if not is_py:
+                axis_split_matrix=[[SplitInput([0, [1], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]], \
+                                               [3, [0], [-1], [-1]], [4, [0], [-1], [-1]]), \
+                                    SplitOutput([0, [1]], [1, [0]], [2, [0]], [3, [0]], [4, [0]])]]
+            else:
+                axis_split_matrix=[[SplitInput([0, [1], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]], \
+                                               [3, [0], [-1], [-1]], [4, [0], [-1], [-1]]), \
+                                    SplitOutput([0, [1]], [1, [0]], [2, [0]])]]
+    elif format_x == "NC1HWC0":
+        if is_training:
+            if not is_py:
+                axis_split_matrix=[[SplitInput([0, [1], [-1], [-1]], [1, [1], [-1], [-1]], [2, [1], [-1], [-1]]), \
+                                    SplitOutput([0, [1]], [1, [1]], [2, [1]], [3, [1]], [4, [1]])]]
+            else:
+                axis_split_matrix=[[SplitInput([0, [1], [-1], [-1]], [1, [1], [-1], [-1]], [2, [1], [-1], [-1]]), \
+                                    SplitOutput([0, [1]], [1, [1]], [2, [1]])]]
+        else:
+            if not is_py:
+                axis_split_matrix=[[SplitInput([0, [1], [-1], [-1]], [1, [1], [-1], [-1]], [2, [1], [-1], [-1]], \
+                                               [3, [1], [-1], [-1]], [4, [1], [-1], [-1]]), \
+                                    SplitOutput([0, [1]], [1, [1]], [2, [1]], [3, [1]], [4, [1]])]]
+            else:
+                axis_split_matrix=[[SplitInput([0, [1], [-1], [-1]], [1, [1], [-1], [-1]], [2, [1], [-1], [-1]], \
+                                               [3, [1], [-1], [-1]], [4, [1], [-1], [-1]]), \
+                                    SplitOutput([0, [1]], [1, [1]], [2, [1]])]]
+
+    else:
+        axis_split_matrix=None
+    axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 def _format_check(arg_input, data_format):
@@ -41,11 +112,11 @@ def _format_check(arg_input, data_format):
     """
     format_data = arg_input.get("format")
     if format_data not in ("NHWC", "NCHW", "NC1HWC0"):
-        raise RuntimeError(
-            "Format of input only support 4D and 5HD")
+        error_manager_vector.raise_err_input_format_invalid("batch_norm", "arg_input", \
+                                                            ["NHWC", "NCHW", "NC1HWC0"], format_data)
     if data_format not in ("NHWC", "NCHW"):
-        raise RuntimeError(
-            "The data_format only support 'NHWC' and 'NCHW'")
+        error_manager_vector.raise_err_input_format_invalid("batch_norm", "data_format", \
+                                                            ["NHWC", "NCHW"], data_format)
 
 
 def _check_dims_equal(shape_x, shape, data_format):
@@ -67,11 +138,13 @@ def _check_dims_equal(shape_x, shape, data_format):
     """
     if data_format == "NC1HWC0":
         if shape_x[1] != shape[1] or shape_x[4] != shape[4]:
-            raise RuntimeError(
-                "The dimensions C1 C0 of shape_x and shape must be equal")
+            error_detail = "The dimensions C1 C0 of shape_x and shape must be equal"
+            error_manager_vector.raise_err_input_shape_invalid("batch_norm", \
+                                                               "x", error_detail)
         if shape[0] != 1 or shape[2] != 1 or shape[3] != 1:
-            raise RuntimeError(
-                "Dimension N,H,W must be 1")
+            error_detail = "Dimension N,H,W of scale,offset,mean,variance must be 1"
+            error_manager_vector.raise_err_input_shape_invalid("batch_norm", \
+                                                               "scale,offset,mean,variance", error_detail)
     elif data_format == "NCHW":
         if shape_x[1] != shape[0]:
             raise RuntimeError(

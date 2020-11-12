@@ -32,12 +32,15 @@ CFG_INFO_TYPE_MAP = {
 
 
 class OpFileAiCore(OPFile):
-
+    """
+    CLass for generate aicore op files
+    """
     def _generate_cmake_lists(self):
         tbe_dir = os.path.join(self.output_path, 'tbe')
         utils.make_dirs(tbe_dir)
-        template_path = os.path.join(os.path.split(os.path.realpath(__file__))[
-                                         0], utils.OP_TEMPLATE_TBE_PATH)
+        template_path = os.path.join(
+            os.path.split(os.path.realpath(__file__))[0],
+            utils.OP_TEMPLATE_TBE_PATH)
         utils.copy_template(template_path, tbe_dir, True)
 
     def generate_impl(self):
@@ -195,10 +198,9 @@ class OpFileAiCore(OPFile):
         op_type = op_type.strip()
         if op_type in CFG_INFO_TYPE_MAP:
             return CFG_INFO_TYPE_MAP[op_type]
-        else:
-            utils.print_warn_log("The input/output type '%s' "
-                                 "is unsupported for .ini file. "
-                                 "Please check the input or output type. If "
-                                 "you aren't having problems, just ignore "
-                                 "the warning." % op_type)
-            return ""
+        utils.print_warn_log("The input/output type '%s' "
+                             "is unsupported for .ini file. "
+                             "Please check the input or output type. If "
+                             "you aren't having problems, just ignore "
+                             "the warning." % op_type)
+        return ""

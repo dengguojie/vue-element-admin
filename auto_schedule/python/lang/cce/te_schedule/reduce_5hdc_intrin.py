@@ -229,28 +229,12 @@ def mid_axis_reduce(ir_builder, intrin_cmd, reduce_src,  # pylint: disable=R0913
         with ir_builder.for_range(0, reduce_src - 1, name="loop_reduce_src") as loop_src:
             src_offset = (loop_src + 1) * reduce_factor * reduce_unit
             dst_offset = (loop_src + 1) * reduce_unit
-            dup_repeat = reduce_unit // vector_insn_rep_size
-            dup_remain = reduce_unit % vector_insn_rep_size
-            if dup_repeat > 0:
-                reset_mask_insn(ir_builder, output_buffer.dtype)
-                ir_builder.emit(tvm.call_extern(
-                    output_buffer.dtype,
-                    "vector_dup",
-                    output_buffer.access_ptr("rw", offset=dst_offset),
-                    0,
-                    dup_repeat, 1, 1, 8, 8))
-            if dup_remain > 0:
-                reset_mask_insn(ir_builder, output_buffer.dtype, dup_remain)
-                ir_builder.emit(tvm.call_extern(
-                    output_buffer.dtype,
-                    "vector_dup",
-                    output_buffer.access_ptr("rw", offset=dst_offset + dup_repeat * vector_insn_rep_size),
-                    0,
-                    1, 1, 1, 8, 8))
+            vector_insn_factor_clean(ir_builder, intrin_cmd, output_buffer,
+                                     repeat_times, remains, dst_offset, 16)
             with ir_builder.for_range(0, reduce_factor, name="loop_reduce_factor") as loop_factor:
                 src_offset = src_offset + loop_factor * reduce_unit
                 if need_clean and clean_factor < 16:
-                    with ir_builder.if_scope(loop_factor == reduce_factor - 2):
+                    with ir_builder.if_scope(loop_factor == reduce_factor - 1):
                         vector_insn_factor_clean(ir_builder, intrin_cmd, input_buffer,
                                                  repeat_times, remains, src_offset, clean_factor)
                 vector_insn_factory_normal(ir_builder, INTRIN_MAPPING_NORMAL[intrin_cmd],

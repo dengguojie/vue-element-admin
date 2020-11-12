@@ -21,7 +21,8 @@ from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from topi import generic
 from topi.cce import util
-from te.utils import op_utils
+from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 
@@ -224,9 +225,9 @@ def _check_dtype(input_dtype, name):
     if product_version in ("Hi3796CV300ES", "Hi3796CV300CS"):
         if input_dtype == "float32":
             raise RuntimeError("float32 is not support in ES")
-        op_utils.check_dtype(input_dtype, ["float16"], param_name=name)
+        para_check.check_dtype(input_dtype, ["float16"], param_name=name)
     else:
-        op_utils.check_dtype(input_dtype, ["float16", "float32"], param_name=name)
+        para_check.check_dtype(input_dtype, ["float16", "float32"], param_name=name)
 
 
 # pylint: disable=too-many-branches
@@ -254,6 +255,7 @@ def _check_scale_shape_axis(shape_x, shape_scale, axis, num_axes, scale_from_blo
 
     length_x = len(shape_x)
     length_scale = len(shape_scale)
+    error_info = {}
 
     if (axis >= length_x) or (axis < (-length_x)):
         error_info['errCode'] = 'E80002'
@@ -409,6 +411,10 @@ def get_fusion_params(x_tensor, scale_tensor, bias_tensor, y):
             in_select_read_flag_list.append(in_select_read_flag)
 
     l1_fusion_type = 0 if is_l1_depth_fusion is True else -1
+    if l1_fusion_type != -1 and y.get("format").upper() != 'NC1HWC0':
+        shape_rule = "the input format must be 5HD when l1 fusion"
+        error_manager_vector.raise_err_check_params_rules("scale", shape_rule, "x",
+                                                                        y.get("format").upper())
 
     out_l1_flag = False
     out_valid_shape = []
@@ -579,8 +585,9 @@ def scale_compute(x, scale, bias, y, axis, num_axes, scale_from_blob,
 
 
 # pylint: disable=too-many-locals,no-member,invalid-name,too-many-statements,line-too-long
-@op_utils.check_op_params(op_utils.REQUIRED_INPUT, op_utils.REQUIRED_INPUT, op_utils.OPTION_INPUT, op_utils.REQUIRED_OUTPUT,
-                          op_utils.OPTION_ATTR_INT, op_utils.OPTION_ATTR_INT, op_utils.OPTION_ATTR_BOOL, op_utils.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def scale(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True,
           kernel_name="scale"):
     """
@@ -616,19 +623,19 @@ def scale(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True,
 
     shape_x = x.get("shape")
     dtype_x = x.get("dtype")
-    op_utils.check_shape(shape_x, param_name="input_x")
+    para_check.check_shape(shape_x, param_name="input_x")
     _check_dtype(dtype_x.lower(), "input_x")
 
     shape_scale = scale.get("shape")
     dtype_scale = scale.get("dtype")
-    op_utils.check_shape(shape_scale, param_name="input_scale")
+    para_check.check_shape(shape_scale, param_name="input_scale")
     _check_dtype(dtype_scale.lower(), "input_scale")
 
     shape_bias = ()
     if bias is not None and bool(bias):
         shape_bias = bias.get("shape")
         dtype_bias = bias.get("dtype")
-        op_utils.check_shape(shape_bias, param_name="input_bias")
+        para_check.check_shape(shape_bias, param_name="input_bias")
         _check_dtype(dtype_bias.lower(), "input_bias")
 
     shape_x_ori = x.get("ori_shape")

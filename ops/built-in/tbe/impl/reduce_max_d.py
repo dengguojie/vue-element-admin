@@ -20,11 +20,13 @@ from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 from impl import reduce_max_d_tik
+import te.platform as tbe_platform
 
 NoneType = type(None)
 
 
 # pylint: disable=unused-argument,invalid-name,unexpected-keyword-arg
+@tbe_platform.fusion_manager.fusion_manager.register("reduce_max_d")
 def reduce_max_d_compute(x, y, axis, keepdims, kernel_name="reduce_max_d"):
     """
     calculating data

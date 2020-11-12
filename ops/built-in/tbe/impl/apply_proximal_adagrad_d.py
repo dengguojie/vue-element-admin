@@ -21,6 +21,7 @@ from te import tvm
 from te.utils import para_check
 from impl.util import util_apply_op_schedule
 from impl.util import util_compute
+from te.utils.error_manager import error_manager_vector
 
 CONST_ZERO = 0
 CONST_ONE = 1
@@ -49,7 +50,8 @@ def _check_shape_is_same(var, accum, grad):
     shape_accum = accum.get("shape")
     shape_grad = grad.get("shape")
     if shape_var != shape_accum or shape_var != shape_grad:
-        raise RuntimeError("var.shape accum.shape and grad.shape must be same")
+        error_detail = "shape of var and accum and grad should be same"
+        error_manager_vector.raise_err_input_shape_invalid("apply_proximal_adagrad_d", "var or accum or grad", error_detail)
 
 # pylint: disable=locally-disabled,too-many-arguments
 # pylint: disable=too-many-locals,unused-argument,invalid-name

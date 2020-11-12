@@ -26,7 +26,6 @@
 #include <cmath>
 
 #include "common/util/error_manager/error_manager.h"
-
 #include "util/util.h"
 #include "util/error_util.h"
 #include "op_log.h"
@@ -44,89 +43,118 @@ static void CalcSplit(const Tensor& data, const DataType& dtype, std::vector<int
 IMPLEMT_COMMON_INFERFUNC(SplitInferShape) {
   const vector<string> depend_names = {"split_dim"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
-  OP_LOGD(op.GetName().c_str(), "SplitInferShape");
-  
-  Tensor data;
-  if (op.GetInputConstData("split_dim", data) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get constValue failed of [split_dim]");
-    return GRAPH_FAILED;
-  }
-  DataType dtype = op.GetInputDesc("split_dim").GetDataType();
-  std::vector<int64_t> const_vec;
-  CalcSplit(data, dtype, const_vec);
 
-  auto tensordesc = op.GetInputDesc("x");
-  auto shape = tensordesc.GetShape();
-  DataType inputDtype = tensordesc.GetDataType();
+  OP_LOGD(op.GetName().c_str(), "SplitInferShape");
+  auto x_desc = op.GetInputDesc("x");
+  auto x_shape = x_desc.GetShape();
+  auto x_dtype = x_desc.GetDataType();
   TensorDesc td = op.GetDynamicOutputDesc("y", 0);
 
-  std::vector<std::pair<int64_t, int64_t>> shape_range_x;
-   std::vector<std::pair<int64_t, int64_t>> out_range;
-  tensordesc.GetShapeRange(shape_range_x);
-  OP_LOGD(op.GetName().c_str(), "SplitInferShape out_range is %s", to_string(shape_range_x).c_str());
+  std::vector<std::pair<int64_t, int64_t>> x_shape_range;
+  std::vector<std::pair<int64_t, int64_t>> out_range;
+  x_desc.GetShapeRange(x_shape_range);
+  OP_LOGD(op.GetName().c_str(), "SplitInferShape x_shape_range is %s", to_string(x_shape_range).c_str());
 
-
-  int64_t split_dim = -1;
-  if(const_vec.size() > 0){
-    split_dim = const_vec[0];
-  } else {
-    OP_LOGE(op.GetName().c_str(), "size of const_vec must be larger than 0");
-  }
   int64_t num_split;
   if (op.GetAttr("num_split", num_split) == GRAPH_FAILED) {
     OP_LOGE(op.GetName().c_str(), "get attr num_split failed");
-  }
-  if (split_dim < 0) {
-    split_dim += shape.GetDimNum();
+    OpsGetAttrErrReport(op.GetName(), "num_split");
+    return GRAPH_FAILED;
   }
 
- for(size_t i=0;i<shape_range_x.size();++i) {
+  // input shape is [-2]
+  if (x_shape.GetDims() == UNKNOWN_RANK) {
+    td.SetShape(ge::Shape(UNKNOWN_RANK));
+    td.SetDataType(x_dtype);
+    for (auto i = 0; i < num_split; ++i) {
+      OP_LOGD(op.GetName().c_str(), "SplitInferShape output shape is %s", to_string(td.GetShape()).c_str());
+      op.UpdateDynamicOutputDesc("y", i, td);
+    }
+    return GRAPH_SUCCESS;
+  }
+
+  Tensor split_dim_data;
+  if (op.GetInputConstData("split_dim", split_dim_data) != GRAPH_SUCCESS) {
+    // input split_dim is not const
+    OP_LOGD(op.GetName().c_str(), "Get constValue failed of [split_dim]");
+    if (x_shape_range.size() == 1) {
+      if (x_shape_range[0].second == -1) {
+        out_range.push_back(std::pair<int64_t, int64_t>(1, x_shape_range[0].second));
+      } else {
+        out_range.push_back(std::pair<int64_t, int64_t>(1, ceil((float)x_shape_range[0].second / (float)num_split)));
+      }
+    } else {
+      for(size_t i = 0; i < x_shape_range.size(); ++i) {
+        x_shape.SetDim(i, -1);
+        out_range.push_back(std::pair<int64_t, int64_t>(1, x_shape_range[i].second));
+      }
+    }
+    td.SetShape(x_shape);
+    td.SetDataType(x_dtype);
+    td.SetShapeRange(out_range);
+    for (auto i = 0; i < num_split; ++i) {
+      OP_LOGD(op.GetName().c_str(), "SplitInferShape output shape is %s", to_string(x_shape).c_str());
+      OP_LOGD(op.GetName().c_str(), "SplitInferShape out_range is %s", to_string(out_range).c_str());
+      op.UpdateDynamicOutputDesc("y", i, td);
+    }
+    return GRAPH_SUCCESS;
+  }
+  auto split_dim_dtype = op.GetInputDesc("split_dim").GetDataType();
+  std::vector<int64_t> split_dim_vec;
+  CalcSplit(split_dim_data, split_dim_dtype, split_dim_vec);
+
+  int64_t split_dim = -1;
+  if(split_dim_vec.size() > 0){
+    split_dim = split_dim_vec[0];
+  } else {
+    OP_LOGE(op.GetName().c_str(), "size of split_dim_vec must be larger than 0");
+    OpsInputShapeErrReport(op.GetName(), "size of split_dim_vec must be larger than 0",
+                          "size of split_dim_vec", ConcatString(split_dim_vec.size()));
+    return GRAPH_FAILED;
+  }
+  if (split_dim < 0) {
+    split_dim += x_shape.GetDimNum();
+  }
+
+ for(size_t i = 0; i < x_shape_range.size(); ++i) {
     if(split_dim == static_cast<int>(i)) {
       int64_t range_left = -1;
-      if(shape_range_x[i].first > 1) {
-        range_left = floor((float)shape_range_x[i].first/(float)num_split);
-      }else {
-        range_left = (float)shape_range_x[i].first;
+      if(x_shape_range[i].first == 1) {
+        range_left = x_shape_range[i].first;
+      } else {
+        range_left = floor((float)x_shape_range[i].first / (float)num_split);
       }
-      
+
       int64_t range_right = -1;
-      if(shape_range_x[i].second == -1 ){
-        range_right = ceil((float)shape_range_x[i].second/(float)num_split);
-      }else {
-        range_right = ceil((float)shape_range_x[i].second/(float)num_split);
+      if(x_shape_range[i].second == -1 ){
+        range_right = x_shape_range[i].second;
+      } else {
+        range_right = ceil((float)x_shape_range[i].second / (float)num_split);
       }
       out_range.push_back(std::pair<int64_t, int64_t>(range_left, range_right));
-    }else
-    {
-      out_range.push_back(shape_range_x[i]);
+    } else {
+      out_range.push_back(x_shape_range[i]);
     }
   }
 
-  auto length = shape.GetDim(split_dim) / num_split;
-
-  if (shape.GetDim(split_dim) == -1) {
-    // dynamic shape is -1
+  if (x_shape.GetDim(split_dim) == -1) {
     OP_LOGD(op.GetName().c_str(), "shape at split_dim is -1");
-    shape.SetDim(split_dim, -1);
-  } else if (shape.GetDims() == UNKNOWN_RANK) {
-    // dynamic shape is -2
-    OP_LOGD(op.GetName().c_str(), "shape at split_dim is -2");
-    shape.SetDim(split_dim, -2);
   } else {
-    OP_LOGD(op.GetName().c_str(), "shape at split_dim is %d", shape.GetDim(split_dim));
-    shape.SetDim(split_dim, length);
+    auto length = x_shape.GetDim(split_dim) / num_split;
+    OP_LOGD(op.GetName().c_str(), "shape at split_dim is %d", x_shape.GetDim(split_dim));
+    x_shape.SetDim(split_dim, length);
   }
 
-  td.SetShape(shape);
-  td.SetDataType(inputDtype);
+  td.SetShape(x_shape);
+  td.SetDataType(x_dtype);
   td.SetShapeRange(out_range);
 
   for (auto i = 0; i < num_split; ++i) {
-    OP_LOGD(op.GetName().c_str(), "SplitInferShape output shape is %s", to_string(shape).c_str());
+    OP_LOGD(op.GetName().c_str(), "SplitInferShape output shape is %s", to_string(x_shape).c_str());
     OP_LOGD(op.GetName().c_str(), "SplitInferShape out_range is %s", to_string(out_range).c_str());
     op.UpdateDynamicOutputDesc("y", i, td);
   }
-   return GRAPH_SUCCESS;                       \
+   return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(Split, SplitInferShape);
@@ -136,89 +164,99 @@ INFER_FUNC_REG(Split, SplitInferShape);
 IMPLEMT_COMMON_INFERFUNC(SplitDInferShape) {
   const vector<string> depends;
   PREPARE_DYNAMIC_SHAPE(depends);
-  auto tensordesc = op.GetInputDesc("x");
-  auto shape = tensordesc.GetShape();
-  std::vector<std::pair<int64_t, int64_t>> in_range;
-  std::vector<std::pair<int64_t, int64_t>> out_range;
-  DataType inputDtype = tensordesc.GetDataType();
 
   OP_LOGD(op.GetName().c_str(), "SplitDInferShape");
-
+  auto x_desc = op.GetInputDesc("x");
+  auto x_shape = x_desc.GetShape();
+  auto x_dtype = x_desc.GetDataType();
   TensorDesc td = op.GetDynamicOutputDesc("y", 0);
-  tensordesc.GetShapeRange(in_range);
-  OP_LOGD(op.GetName().c_str(), "input_range is %s", to_string(in_range).c_str());
+  std::vector<std::pair<int64_t, int64_t>> x_shape_range;
+  std::vector<std::pair<int64_t, int64_t>> out_range;
+  x_desc.GetShapeRange(x_shape_range);
+  OP_LOGD(op.GetName().c_str(), "SplitDInferShape x_shape_range is %s", to_string(x_shape_range).c_str());
 
   int64_t split_dim;
   if (op.GetAttr("split_dim", split_dim) == GRAPH_FAILED) {
-    OpsGetAttrErrReport(op.GetName(), "split_dim");
     OP_LOGE(op.GetName().c_str(), "get attr split dim failed");
+    OpsGetAttrErrReport(op.GetName(), "split_dim");
+    return GRAPH_FAILED;
   }
+
   int64_t num_split;
   if (op.GetAttr("num_split", num_split) == GRAPH_FAILED) {
-    OpsGetAttrErrReport(op.GetName(), "num_split");
     OP_LOGE(op.GetName().c_str(), "get attr num_split failed");
+    OpsGetAttrErrReport(op.GetName(), "num_split");
+    return GRAPH_FAILED;
   }
-  int64_t dim_num = shape.GetDimNum();
+
+  // input shape is [-2]
+  if (x_shape.GetDims() == UNKNOWN_RANK) {
+    td.SetShape(ge::Shape(UNKNOWN_RANK));
+    td.SetDataType(x_dtype);
+    for (auto i = 0; i < num_split; ++i) {
+      OP_LOGD(op.GetName().c_str(), "SplitDInferShape output shape is %s", to_string(td.GetShape()).c_str());
+      op.UpdateDynamicOutputDesc("y", i, td);
+    }
+    return GRAPH_SUCCESS;
+  }
+
+  // check attr
+  int64_t dim_num = x_shape.GetDimNum();
   if ((split_dim < -dim_num) || (split_dim >= dim_num)) {
+    OP_LOGE(op.GetName().c_str(), "Axis value out of range");
     OpsInputShapeDimErrReport(op.GetName(), "Axis", ConcatString(dim_num), ConcatString(-dim_num),
                               ConcatString(split_dim));
-    OP_LOGE(op.GetName().c_str(), "Axis value out of range");
     return GRAPH_FAILED;
   }
   if (num_split < 1) {
     string excepted_value = ConcatString("in range[1,]");
-    OpsAttrValueErrReport(op.GetName(), "num_split", excepted_value, ConcatString(num_split));
     OP_LOGE(op.GetName().c_str(), "num_split need greater than or equals to 1");
+    OpsAttrValueErrReport(op.GetName(), "num_split", excepted_value, ConcatString(num_split));
     return GRAPH_FAILED;
   }
   if (split_dim < 0) {
-    split_dim += shape.GetDimNum();
+    split_dim += x_shape.GetDimNum();
   }
 
-  for(size_t i=0;i<in_range.size();++i) {
+  for(size_t i = 0; i < x_shape_range.size(); ++i) {
     if(split_dim == static_cast<int>(i)) {
       int64_t range_left = -1;
-      if(in_range[i].first > 1) {
-        range_left = floor((float)in_range[i].first/(float)num_split);
-      }else {
-        range_left = in_range[i].first;
+      if(x_shape_range[i].first == 1) {
+        range_left = x_shape_range[i].first;
+      } else {
+        range_left = floor((float)x_shape_range[i].first / (float)num_split);
       }
+
       int64_t range_right = -1;
-      if(in_range[i].second == -1 ){
-        range_right = ceil((float)in_range[i].second/(float)num_split);
-      }else {
-        range_right = ceil((float)in_range[i].second/(float)num_split);
+      if(x_shape_range[i].second == -1 ){
+        range_right = x_shape_range[i].second;
+      } else {
+        range_right = ceil((float)x_shape_range[i].second / (float)num_split);
       }
       out_range.push_back(std::pair<int64_t, int64_t>(range_left, range_right));
-    }else
-    {
-      out_range.push_back(in_range[i]);
+    } else {
+      out_range.push_back(x_shape_range[i]);
     }
   }
 
-  auto length = shape.GetDim(split_dim) / num_split;
-
-  if (shape.GetDim(split_dim) == -1) {
-    // dynamic shape is -1
+  if (x_shape.GetDim(split_dim) == -1) {
     OP_LOGD(op.GetName().c_str(), "shape at split_dim is -1");
-    shape.SetDim(split_dim, -1);
-  } else if (shape.GetDims() == UNKNOWN_RANK) {
-    // dynamic shape is -2
-    OP_LOGD(op.GetName().c_str(), "shape at split_dim is -2");
-    shape.SetDim(split_dim, -2);
   } else {
-    OP_LOGD(op.GetName().c_str(), "shape at split_dim is %d", shape.GetDim(split_dim));
-    shape.SetDim(split_dim, length);
+    OP_LOGD(op.GetName().c_str(), "shape at split_dim is %d", x_shape.GetDim(split_dim));
+    auto length = x_shape.GetDim(split_dim) / num_split;
+    x_shape.SetDim(split_dim, length);
   }
 
-  td.SetShape(shape);
-  td.SetDataType(inputDtype);
+  td.SetShape(x_shape);
+  td.SetDataType(x_dtype);
   td.SetShapeRange(out_range);
 
   for (auto i = 0; i < num_split; ++i) {
+    OP_LOGD(op.GetName().c_str(), "SplitDInferShape output shape is %s", to_string(x_shape).c_str());
+    OP_LOGD(op.GetName().c_str(), "SplitDInferShape out_range is %s", to_string(out_range).c_str());
     op.UpdateDynamicOutputDesc("y", i, td);
   }
-   return GRAPH_SUCCESS;                       
+   return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(SplitD, SplitDInferShape);
@@ -250,6 +288,7 @@ IMPLEMT_INFERFUNC(SplitV, SplitVInferShape) {
   Tensor data2;
   if (op.GetInputConstData("split_dim", data2) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Get constValue failed of [input_split_dim]");
+    OpsMissInputErrReport(op.GetName(), "split_dim");
     return GRAPH_FAILED;
   }
   DataType dtype2 = op.GetInputDesc("split_dim").GetDataType();
@@ -269,6 +308,8 @@ IMPLEMT_INFERFUNC(SplitV, SplitVInferShape) {
     int64_t num_split;
     if (op.GetAttr("num_split", num_split) == GRAPH_FAILED) {
       OP_LOGE(op.GetName().c_str(), "get attr num_split failed");
+      OpsGetAttrErrReport(op.GetName(), "num_split");
+      return GRAPH_FAILED;
     }
     if (split_dim < 0) {
       split_dim += shape.GetDimNum();
@@ -292,6 +333,8 @@ IMPLEMT_INFERFUNC(SplitV, SplitVInferShape) {
     int64_t num_split;
     if (op.GetAttr("num_split", num_split) == GRAPH_FAILED) {
       OP_LOGE(op.GetName().c_str(), "get attr num_split failed");
+      OpsGetAttrErrReport(op.GetName(), "num_split");
+      return GRAPH_FAILED;
     }
     if (split_dim < 0) {
       split_dim += shape.GetDimNum();
@@ -368,6 +411,8 @@ IMPLEMT_INFERFUNC(SplitVD, SplitVDInferShape) {
     int64_t batch = dim / num_split;
     if (dim % num_split != 0) {
       OP_LOGE(op.GetName().c_str(), "dimvalue should be divisible by num_split");
+      OpsInputShapeErrReport(op.GetName(), "dim_value should be divisible by num_split",
+                             "dim % num_split", ConcatString(dim % num_split));
       return GRAPH_FAILED;
     }
     for (auto i = 0; i < num_split; ++i) {
@@ -772,6 +817,7 @@ IMPLEMT_COMMON_INFERFUNC(ConcatInferShape) {
   int64_t N;
   if (op.GetAttr("N", N) == GRAPH_FAILED) {
     OP_LOGE(op.GetName().c_str(), "get attr N failed");
+    OpsGetAttrErrReport(op.GetName(), "N");
   }
 
   for (int32_t i = 0; i < N; i++) {
@@ -844,6 +890,7 @@ IMPLEMT_COMMON_INFERFUNC(ConcatV2InferShape) {
   int64_t N;
   if (op.GetAttr("N", N) == GRAPH_FAILED) {
     OP_LOGE(op.GetName().c_str(), "get attr N failed");
+    OpsGetAttrErrReport(op.GetName(), "N");
   }
 
   for (int32_t i = 0; i < N; i++) {

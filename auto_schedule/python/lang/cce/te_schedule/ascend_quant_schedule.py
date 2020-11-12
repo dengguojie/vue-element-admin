@@ -500,6 +500,13 @@ class QuantSchedule(ElewiseSchedule):
     def __init__(self):
         ElewiseSchedule.__init__(self, True)
         self.attrs = {}
+        # The front-end instruction mapping switches the back-end in quant schedule.
+        # vector_mul_with_broadcast switches to vector_mul
+        self._special_broadcast_insn_map = {"vector_mul": "vector_mul",
+                                            "vector_div": "vector_div",
+                                            "vector_add": "vector_add",
+                                            "vector_sub": "vector_sub"
+                                            }
 
     def _get_res_attrs(self):
         """

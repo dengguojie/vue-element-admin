@@ -139,8 +139,8 @@ Status ConfusionMatrixFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   int64_t outtype;
   std::string outtype_str = "float32";
   if (confusionMatrixOp->GetInputDesc(0).GetDataType() != confusionMatrixOp->GetInputDesc(0).GetDataType()) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "labels and predictions dtype should be same.");
-    return FAILED;
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "labels and predictions dtype should be same.");
+    return NOT_CHANGED;
   }
   outtype = confusionMatrixOp->GetInputDesc(2).GetDataType();
   if (outtype == 0) {
@@ -154,8 +154,8 @@ Status ConfusionMatrixFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   } else if (outtype == 3) {
     outtype_str = "int32";
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Output_dtype can not support this dtype.");
-    return FAILED;
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Output_dtype can not support this dtype.");
+    return NOT_CHANGED;
   }
   ge::AttrUtils::SetStr(confusionMatrixDesc, "dtype", outtype_str);
 

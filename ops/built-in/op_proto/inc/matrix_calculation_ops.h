@@ -175,6 +175,41 @@ REG_OP(BatchMatMul)
     .ATTR(adj_x2, Bool, false)
     .OP_END_FACTORY_REG(BatchMatMul)
 
+
+/**
+* @brief Multiplies matrix "a" by matrix "b", producing "a * b" . \n
+
+* @par Inputs:
+* Three inputs, including:
+* @li x1: A matrix Tensor. Must be one of the following types: float16,
+* float32, int32. 2D or higher. Has format [ND, NHWC, FRACTAL_NZ].
+* @li x2: A matrix Tensor. Must be one of the following types: float16,
+* float32, int32. 2D or higher. Has format [ND, NHWC, FRACTAL_NZ] . \n
+* @li bias: A matrix Tensor. Must be one of the following types: float16,
+* float32, int32. 2D or higher. Has format [ND, NHWC, FRACTAL_NZ] . \n
+
+* @par Attributes:
+* @li adj_x: A bool. If True, changes the shape of "x1" from [B, M, K] to [B, K, M].
+* @li adj_y: A bool. If True, changes the shape of "x2" from [B, M, K] to [B, K, M] . \n
+
+* @par Outputs:
+* y: The result matrix Tensor. 2D or higher. Must be one of the following types: float16,
+* float32, int32. 2D or higher. Has format [ND, NHWC, FRACTAL_NZ]. Has the same shape length as "x1" and "x2" . \n
+
+* @par Third-party framework compatibility
+* Compatible with the TensorFlow operator BatchMatmul.
+*/
+
+REG_OP(BatchMatMulV2)
+    .INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))
+    .INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))
+    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))
+    .ATTR(adj_x1, Bool, false)
+    .ATTR(adj_x2, Bool, false)
+    .OP_END_FACTORY_REG(BatchMatMulV2)
+
+
 /**
 *@brief Computes half the L2 norm of a tensor without the sqrt . \n
 

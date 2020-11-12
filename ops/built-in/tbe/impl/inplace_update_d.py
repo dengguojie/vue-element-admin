@@ -20,6 +20,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 
@@ -94,18 +95,18 @@ def inplace_update_d(x, v, y, indices, kernel_name="inplace_update_d"):
     indices = list(indices)
 
     if len(shape_x) != len(shape_v):
-        raise RuntimeError("The number of dimension x must"
-                           " be same as dimension v")
+        error_detail = "The number of dimension x must be same as dimension v"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", "v", error_detail)
 
     if shape_v[0] != len(indices):
-        raise RuntimeError("The length of rank 0 of tensor v must"
-                           " be the same as length of indices")
+        error_detail = "The length of rank 0 of tensor v must be the same as length of indices"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "v", "indices", error_detail)
 
     for i in range(1, len(shape_v)):
         if shape_x[i] != shape_v[i]:
-            raise RuntimeError("The length of each rank of tensor x must"
-                               " be the same as length of"
-                               " each rank of tensor v")
+            error_detail = "The length of each rank of tensor x must be the same as " \
+                           "length of each rank of tensor v except the first dimension"
+            error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", "v", error_detail)
 
     for i, _ in enumerate(indices):
         indices[i] = (indices[i] % shape_x[0] + shape_x[0]) % shape_x[0]

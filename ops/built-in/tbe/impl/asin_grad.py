@@ -39,6 +39,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 
 # scalar in asin_grad and Newton's equation
 NUM_MINUS_ONE = -1
@@ -118,7 +119,8 @@ def asin_grad(y, dy, z, kernel_name="asin_grad"):
     para_check.check_shape(shape_y, param_name="y")
     para_check.check_shape(shape_dy, param_name="dy")
     if not operator.eq(shape_y, shape_dy):
-        raise RuntimeError("all input shape must be the same")
+        error_detail = "shape of y and dy should be same"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "y", "dy", error_detail)
     shape_y, _ = shape_util.refine_shape_axes(shape_y, [])
     shape_dy, _ = shape_util.refine_shape_axes(shape_dy, [])
 
@@ -128,7 +130,8 @@ def asin_grad(y, dy, z, kernel_name="asin_grad"):
     para_check.check_dtype(dtype_dy, check_list, param_name="dy")
     dtype_y = dtype_y.lower()
     if dtype_y != dtype_dy.lower():
-        raise RuntimeError("all input dtype must be same")
+        error_detail = "dtype of y and dy should be same"
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "y", "dy", error_detail)
 
     # get 2 input tensors: data_y, data_dy
     data_y = tvm.placeholder(shape_y, name="data_y", dtype=dtype_y)

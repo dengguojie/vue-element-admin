@@ -21,6 +21,7 @@ from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 from impl.util import util_select_op_base
+from te.utils.error_manager import error_manager_vector
 
 # define a VALUE, value = 1
 VALUE_ONE = 1
@@ -224,23 +225,29 @@ def select(condition, x1, x2, y, kernel_name="select"):
     para_check.check_dtype(dtype_x1, check_list, param_name="x1")
 
     if shape_x1 != shape_x2:
-        raise RuntimeError("Shape of tensor x1 and x2 must be equal!")
+        error_detail = "Shape of tensor x1 and x2 must be equal!"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x1", \
+                                                               "x2", error_detail)
 
     if dtype_x1 != dtype_x2:
-        raise RuntimeError("Dtype of tensor x1 and x2 must be equal!")
+        error_detail = "Dtype of tensor x1 and x2 must be equal!"
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "x1", \
+                                                               "x2", error_detail)
 
     x_len = len(shape_x1)
     con_shape = list(con_shape)
     if len(con_shape) == 1 and x_len != 1:
         if con_shape[0] != shape_x1[0]:
-            raise RuntimeError("Shape of tensor condition and x1 dim[0] "
-                               "must be equal!")
+            error_detail = "Shape of tensor condition and x1 dim[0] must be equal!"
+            error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "condition", \
+                                                                   "x1", error_detail)
         while x_len > len(con_shape):
             con_shape += [1]
     else:
         if list(con_shape) != list(shape_x1):
-            raise RuntimeError("Shape of tensor condition and x1 must be "
-                               "equal!")
+            error_detail = "Shape of tensor condition and x1 must be equal!"
+            error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "condition", \
+                                                                   "x1", error_detail)
 
     con_shape, shape_x1 = shape_util.refine_shapes_for_broadcast(con_shape, shape_x1)
 

@@ -23,7 +23,8 @@ from topi.cce import util
 from impl import constant_util as constant
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
-from te.utils.op_utils import *
+from te.utils import para_check
+from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -178,7 +179,7 @@ def shape_broadcast(data_1, data_2):
     shape_x = te.lang.cce.util.shape_to_list(data_1.shape)
     shape_y = te.lang.cce.util.shape_to_list(data_2.shape)
     if shape_x != shape_y:
-        shape_x, shape_y, shape_max = broadcast_shapes(shape_x, shape_y,
+        shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y,
                                                        param_name_input1="data_1",
                                                        param_name_input2="data_2")
         data_1 = _broadcast_nz(data_1, shape_max)
@@ -259,8 +260,10 @@ def softmax_grad_ext_compute(data_grad, data_x1, data_x2,
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 (REQUIRED_ATTR_INT, REQUIRED_ATTR_LIST_INT), REQUIRED_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT,
+                            (para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_LIST_INT),
+                            para_check.REQUIRED_ATTR_BOOL, para_check.KERNEL_NAME)
 def softmax_grad_ext(grad, x1, x2, y, axis, keepdims,
                      kernel_name="softmax_grad_ext"):
     """
@@ -299,10 +302,10 @@ def softmax_grad_ext(grad, x1, x2, y, axis, keepdims,
         axis = _check_nz_rule(grad, x1, x2, axis)
 
     shape_grad, shape_x1, shape_max_mul = \
-        broadcast_shapes(shape_grad, shape_grad, param_name_input1="grad",
+        shape_util.broadcast_shapes(shape_grad, shape_grad, param_name_input1="grad",
                          param_name_input2="grad")
     shape_x1, shape_x2, shape_max_mul1 = \
-        broadcast_shapes(shape_x1, shape_x2, param_name_input1="x1",
+        shape_util.broadcast_shapes(shape_x1, shape_x2, param_name_input1="x1",
                          param_name_input2="x2")
 
     data_grad = tvm.placeholder(shape_grad,

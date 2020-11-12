@@ -39,6 +39,7 @@ from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
 from impl.util import util_compute
+from te.utils.error_manager import error_manager_vector
 
 CONST_POS_ONE = 1.0
 CONST_NA_ONE = -1.0
@@ -278,7 +279,8 @@ def atan2(x1, x2, y, kernel_name="atan2"):
     para_check.check_dtype(y_dtype, check_list, param_name="x1")
     para_check.check_dtype(x_dtype, check_list, param_name="x2")
     if y_dtype.lower() != x_dtype.lower():
-        raise RuntimeError("The input tensor must have identical dtype!")
+        error_detail = "dtype of x1 and x2 should be same"
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "x1", "x2", error_detail)
     shape_y, shape_x = shape_util.refine_shapes_for_broadcast(shape_y, shape_x)
     input_y = tvm.placeholder(shape_y, dtype=y_dtype.lower(), name="input_y")
     input_x = tvm.placeholder(shape_x, dtype=x_dtype.lower(), name="input_x")
