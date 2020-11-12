@@ -1,0 +1,28 @@
+[
+  {
+    "op": "Add",
+    "case_name" : "test_add_001",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[4, 3, 4],[5, 4, 5]],
+        "type": ["float32"],
+        "value_range": [[0, 1], [1,10]],
+        "data_distribute" : "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[4, 3, 4],[5, 4, 5]],
+        "type": ["float32"],
+        "value_range": [[0, 1], [1,10]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[4, 3, 4],[5, 4, 5]],
+        "type": ["float32"]
+      }
+    ]
+  }
+]
