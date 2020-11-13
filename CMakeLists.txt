@@ -24,6 +24,7 @@ endif()
 set(INSTALL_PATH "${BUILD_PATH}/install")
 set(INSTALL_LIBRARY_DIR lib)
 set(PROTO_BINARY_DIR "${BUILD_PATH}/proto")
+set(ENABLE_TEST "")
 
 # whether building open project
 if(BUILD_OPEN_PROJECT)
@@ -35,7 +36,6 @@ if(BUILD_OPEN_PROJECT)
   endif()
 
   # tests flag
-  set(ENABLE_TEST "")
   if(UT_TEST AND ST_TEST)
     set(ENABLE_TEST ALL)
   elseif(UT_TEST)
