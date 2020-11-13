@@ -88,6 +88,7 @@ LOCAL_C_INCLUDES := $(local_context_inc_path)
 LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -O2 -ftrapv -DVISIBILITY -std=c++11 -Dgoogle=ascend_private
 
 LOCAL_LDFLAGS += -Wl,-z,relro,-z,now -s -ldl -shared
+LOCAL_UNINSTALLABLE_MODULE := false
 
 include $(BUILD_HOST_STATIC_LIBRARY)
 ###########################################
@@ -101,5 +102,6 @@ LOCAL_C_INCLUDES := $(local_context_inc_path)
 LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -O2 -ftrapv -DVISIBILITY -std=c++11
 
 LOCAL_LDFLAGS += -Wl,-z,relro,-z,now -s -ldl -shared
+LOCAL_UNINSTALLABLE_MODULE := false
 
 include $(BUILD_STATIC_LIBRARY)
