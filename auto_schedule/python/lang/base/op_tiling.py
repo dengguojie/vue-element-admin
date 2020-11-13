@@ -16,21 +16,38 @@
 op tiling interface
 """
 
+import os
 import ctypes
 import json
 import struct
+from pathlib import Path
 
 
 _MAX_RUN_INFO_SIZE = 16384
+_ASCEND_OPP_PATH_ENV = "ASCEND_OPP_PATH"
+_ASCEND_OPP_PATH_DEFAULT = "/usr/local/Ascend/opp"
+_BUILTIN_TILING_PATH = "op_impl/built-in/ai_core/tbe/op_tiling/liboptiling.so"
+_CUSTOM_TILING_PATH_DEFAULT = "op_impl/custom/ai_core/tbe/op_tiling/liboptiling.so"
 
 
 def do_op_tiling(optype, compile_info, inputs, outputs):
     """
     do op tilinng
     """
-    libregister = ctypes.CDLL("libregister.so")
-    ctypes.CDLL("liboptiling.so")
+    def _load_lib():
+        opp_path = Path(os.environ.get(_ASCEND_OPP_PATH_ENV, _ASCEND_OPP_PATH_DEFAULT))
+        builtin_optiling_lib_path = opp_path.joinpath(_BUILTIN_TILING_PATH)
+        custom_optiling_lib_path = opp_path.joinpath(_CUSTOM_TILING_PATH_DEFAULT)
+        libregister = ctypes.CDLL("libregister.so")
+        ctypes.CDLL(builtin_optiling_lib_path)
+        try:
+            ctypes.CDLL(custom_optiling_lib_path)
+        except OSError:
+            # Custom op tiling lib may not exists
+            pass
+        return libregister
 
+    libregister = _load_lib()
     optype_c = optype.encode('utf_8')
     compile_info_c = json.dumps(compile_info).encode('utf_8')
     inputs_c = json.dumps(inputs).encode('utf_8')
