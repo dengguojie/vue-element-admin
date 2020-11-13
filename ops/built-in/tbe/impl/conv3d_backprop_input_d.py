@@ -470,7 +470,6 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     # pads compute
     pads = list(pads)
     pad_head, pad_tail, pad_up, pad_down, pad_left, pad_right = pads
-    util_common.check_pads_value_3d(pads)
 
     fmap_h_padding = fmap_h + pad_up + pad_down
     fmap_w_padding = fmap_w + pad_left + pad_right
