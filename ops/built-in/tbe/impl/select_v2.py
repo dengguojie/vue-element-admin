@@ -142,6 +142,5 @@ def select_v2(condition, x1, x2, y, kernel_name="select_v2"):
         sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
-              "tensor_list": [condition, input_then, input_else, res],
-              "bool_storage_as_1bit": False}
+              "tensor_list": [condition, input_then, input_else, res]}
     tbe.cce_build_code(sch, config)

@@ -69,7 +69,7 @@ Status ScatterNdFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   std::vector<PassAttrInfo> attrInfos = {{2, "shape", "SetListInt"}};
   const std::string fusionOpType = "ScatterNdD";
   ge::OpDescPtr fusionDescPtr = PatternFusionUtil::GetFusionOpDesc(ScatterNdNode, fusionOpType, attrInfos);
-  FUSION_PASS_CHECK(fusionDescPtr == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Fusion OP Desc is nullptr."),
+  FUSION_PASS_CHECK(fusionDescPtr == nullptr, OP_LOGI(FUSED_OP_TYPE.c_str(), "Fusion OP Desc is nullptr."),
                     return NOT_CHANGED);
   FUSION_PASS_CHECK(!CheckOpSupported(fusionDescPtr), OP_LOGI(FUSED_OP_TYPE.c_str(), "Op Not Supported."),
                     return NOT_CHANGED);

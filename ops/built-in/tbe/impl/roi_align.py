@@ -3215,6 +3215,8 @@ def roi_align_tik(feature_map_dict, rois_dict, roisn_dict, \
     cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
     core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     block_num = rois_shape[0] // core_num
+    if rois_shape[0] % core_num != 0:
+        block_num = block_num + 1
     if block_num == 0:
         block_num = 1
     if dtype == "float32":

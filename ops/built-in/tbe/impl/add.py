@@ -360,7 +360,10 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
         x_format = input_x.get("ori_format")
         y_format = input_y.get("ori_format")
         if x_format == "NHWC" or y_format == "NHWC":
-            formats = ["NC1HWC0"]
+            if len(shape_x) > 4 or len(shape_y) > 4:
+                formats = ["ND"]
+            else:
+                formats = ["NC1HWC0"]
             for item in formats:
                 dtype_total = dtype_total + dtype_list
                 format_list_input0 = format_list_input0 + [item] * len(dtype_list)
