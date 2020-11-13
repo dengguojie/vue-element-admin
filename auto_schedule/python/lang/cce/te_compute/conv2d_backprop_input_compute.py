@@ -22,6 +22,7 @@ from te.lang.cce.te_compute.conv2d_backprop_input_general_compute import DeConvP
 from te.lang.cce.te_compute.conv2d_backprop_input_opti_compute import (
     DeConvKernelSize1Pattern
 )
+from te.lang.cce.te_compute.cube_util import check_pad_zero
 from te.lang.cce.te_compute.cube_util import shape_to_list
 from te.lang.cce.te_compute.cube_util import GroupDictKeys
 from te.platform import cce_conf
@@ -45,8 +46,6 @@ DILATION_DIM = 4
 # padH, padW must be in [0,255]
 PAD_MIN = 0
 PAD_MAX = 255
-PAD_UP_INDEX = 0
-PAD_LEFT_INDEX = 2
 
 # dilation must be in [1,255]
 DILATION_MIN = 1
@@ -913,8 +912,7 @@ def conv2d_backprop_input_compute(  # pylint: disable=R0913,R0914
     if (
         filter_h == 1
         and filter_w == 1
-        and padding[PAD_UP_INDEX] == 0
-        and padding[PAD_LEFT_INDEX] == 0
+        and check_pad_zero(padding)
         and not switch_to_general_scheme
     ):
         pattc = DeConvKernelSize1Pattern(

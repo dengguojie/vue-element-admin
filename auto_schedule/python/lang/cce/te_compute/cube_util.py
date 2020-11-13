@@ -59,9 +59,9 @@ def shape_to_list(shape):
 
 def check_pad_zero(pads):
     """
-    check if pad is [0, 0, 0, 0]
+    check if pad is [0, x, 0, x]
     """
-    for pad in pads:
+    for pad in pads[::2]:
         if isinstance(pad, (int, tvm.expr.IntImm)) and pad != 0:
             return False
     return True
