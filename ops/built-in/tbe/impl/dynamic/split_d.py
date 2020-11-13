@@ -572,17 +572,5 @@ def split_d(x, y, split_dim, num_split, kernel_name="split_d"):
     -------
     compile info
     """
-
-    if num_split < 1:
-        expected_value = "must be greater or equal to 1"
-        real_value = "less to 1"
-        error_manager_vector.raise_err_input_value_invalid("split", "The num_split",
-                                                           expected_value, real_value)
-    if num_split > 63:
-        expected_value = "must be less or equal to 63"
-        real_value = "greater to 63"
-        error_manager_vector.raise_err_input_value_invalid("split", "The num_split",
-                                                           expected_value, real_value)
-
     obj = SplitD(x, y, split_dim, num_split, kernel_name)
     return obj.split_d_operator()
