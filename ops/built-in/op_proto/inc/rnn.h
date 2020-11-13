@@ -692,6 +692,9 @@ REG_OP(DynamicGRUV2Hidden)
 *@li db_hidden:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 *@li dx:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 *@li dh_prev:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
+
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
 */
 REG_OP(DynamicGRUV2Grad)
     .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT}))
@@ -729,7 +732,7 @@ REG_OP(DynamicGRUV2Grad)
 *@brief: GRUV2HiddenGrad calculation.
 *@par Inputs:
 *nine inputs: \n
-*@li weight_hidden:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
+*@li dh_pre_t:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 *@li init_h:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 *@li h:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 *@li dy:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
@@ -740,6 +743,7 @@ REG_OP(DynamicGRUV2Grad)
 *@li hidden_new:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 
 *@par Attributes:
+*@li t_state:An Int identifying the current t state. Default to [0, 4].
 *@li gate_order:An string identifying the gate order in weight and bias. Default to "zrh". "rzh" is another option.
 
 *@par Outputs:
@@ -747,10 +751,12 @@ REG_OP(DynamicGRUV2Grad)
 *@li dh_prev:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 *@li dgate_h:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 *@li dnt_x:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
+
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
 */
-REG_OP(GRUV2HiddenGrad)
-    .INPUT(weight_hidden, TensorType({DT_FLOAT16, DT_FLOAT}))
-    .INPUT(init_h, TensorType({DT_FLOAT16, DT_FLOAT}))
+REG_OP(GRUV2HiddenGradCell)
+    .INPUT(dh_pre_t, TensorType({DT_FLOAT16, DT_FLOAT}))
     .INPUT(h, TensorType({DT_FLOAT16, DT_FLOAT}))
     .INPUT(dy, TensorType({DT_FLOAT16, DT_FLOAT}))
     .INPUT(dh, TensorType({DT_FLOAT16, DT_FLOAT}))
@@ -761,8 +767,9 @@ REG_OP(GRUV2HiddenGrad)
     .OUTPUT(dh_prev, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OUTPUT(dgate_h, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OUTPUT(dnt_x, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .ATTR(t_state, Int, 0)
     .ATTR(gate_order, String, "zrh")
-    .OP_END_FACTORY_REG(GRUV2HiddenGrad)
+    .OP_END_FACTORY_REG(GRUV2HiddenGradCell)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_RNN_H_
