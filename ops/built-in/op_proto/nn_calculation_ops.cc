@@ -123,6 +123,135 @@ VERIFY_FUNC_REG(LSTM, LSTMVerify);
 
 // ----------------DepthwiseConv2d Op-------------------
 // Obtains the value of the constant tensor.
+
+static void InferHWDepthwiseConv2D(int32_t input, int32_t kernel, int32_t pad, int32_t stride,
+                          int32_t dilation, vector<int64_t> output_slice, vector<int64_t>& data_slice) {
+  // calc start rule: (i_start + pad_h)/stride_h = output_start
+  int64_t i_start = output_slice[0] * stride - pad;
+  if (i_start < 0) {
+    i_start = 0;
+  }
+  // calc end rule: (iend_start + pad_h)/stride_h = output_end
+  // iend_end = iend_start + dilation*(kernel_h-1)
+  int64_t i_end = output_slice[1] * stride - pad + dilation * (kernel - 1);
+  if (i_end >= input) {
+    i_end = input - 1;
+  }
+  data_slice = {i_start, i_end};
+}
+/*!
+  * @brief provide DepthwiseConv2D operator slice data
+  * @param DepthwiseConv2D Operator type.
+  * @param DepthwiseConv2D slice data function
+  * @return Status The processing flow result.
+  */
+IMPLEMT_INFER_DATA_SLICE(DepthwiseConv2D, DepthwiseConv2DInferDataSlice) {
+  OP_LOGD(op.GetName().c_str(), "Enter DepthwiseConv2D InferDataSlice");
+  // get input h/w, filter h/w, pad_h,pad_w, stride_h, stride_w, dilation_h,dilation_w
+  auto x_tensor = op.GetInputDesc("x");
+  auto w_tensor = op.GetInputDesc("filter");
+
+  auto x_shape = x_tensor.GetShape().GetDims();
+  auto w_shape = w_tensor.GetShape().GetDims();
+
+  auto x_format = x_tensor.GetFormat();
+  auto w_format = w_tensor.GetFormat();
+
+  std::vector<int32_t> stride_list;
+  std::vector<int32_t> dilation_list;
+  std::vector<int32_t> pad_list;
+  if (GRAPH_SUCCESS != op.GetAttr("strides", stride_list) || GRAPH_SUCCESS != op.GetAttr("dilations", dilation_list)
+      || GRAPH_SUCCESS != op.GetAttr("pads", pad_list)){
+    return GRAPH_FAILED;
+  }
+
+  int32_t ih = 0;
+  int32_t iw = 0;
+  int32_t kh = 0;
+  int32_t kw = 0;
+  int32_t strh = 0;
+  int32_t strw = 0;
+  int32_t dilh = 0;
+  int32_t dilw = 0;
+  int32_t padt = pad_list[0];
+  int32_t padb = pad_list[1];
+  int32_t padl = pad_list[2];
+  int32_t padr = pad_list[3];
+
+  if (x_format == FORMAT_NCHW) {
+    ih = x_shape[2];
+    iw = x_shape[3];
+    strh = stride_list[2];
+    strw = stride_list[3];
+    dilh = dilation_list[2];
+    dilw = dilation_list[3];
+  } else if (x_format == FORMAT_NHWC) {
+    ih = x_shape[1];
+    iw = x_shape[2];
+    strh = stride_list[1];
+    strw = stride_list[2];
+    dilh = dilation_list[1];
+    dilw = dilation_list[2];
+  }
+
+  if (w_format == FORMAT_NCHW) {
+    kh = w_shape[2];
+    kw = w_shape[3];
+  } else if (w_format == FORMAT_NHWC) {
+    kh = w_shape[1];
+    kw = w_shape[2];
+  } else if (w_format == FORMAT_HWCN) {
+    kh = w_shape[0];
+    kw = w_shape[1];
+  }
+
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+  GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+  vector<vector<int64_t>> y_data_slice;
+  vector<vector<int64_t>> x_data_slice = {{}, {}, {}, {}, {}};
+  if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
+    OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+    return GRAPH_FAILED;
+  }
+  bool need_infer = false;
+  bool have_slice = false;
+  for(int i=0; i < y_data_slice.size(); i++) {
+    if (y_data_slice[i].size() > 0) {
+      have_slice = true;
+      if (i == 2) {
+        need_infer = true;
+        vector<int64_t> ih_slice;
+        InferHWDepthwiseConv2D(ih, kh, padt, strh, dilh, y_data_slice[i], ih_slice);
+        OP_LOGD(op.GetName().c_str(), "DepthwiseConv2D h axis slice ori_scope is [%d,%d], calced output scope is [%d,%d]",
+                ih_slice[0], ih_slice[1], y_data_slice[i][0], y_data_slice[i][1]);
+        x_data_slice[i] = ih_slice;
+      } else if (i == 3) {
+        need_infer = true;
+        vector<int64_t> iw_slice;
+        InferHWDepthwiseConv2D(iw, kw, padl, strw, dilw, y_data_slice[i], iw_slice);
+        OP_LOGD(op.GetName().c_str(), "DepthwiseConv2D w axis slice ori_scope is [%d,%d], calced output scope is [%d,%d]",
+                iw_slice[0], iw_slice[1], y_data_slice[i][0], y_data_slice[i][1]);
+        x_data_slice[i] = iw_slice;
+      }
+    }
+  }
+  if (have_slice == false) {
+    return GRAPH_FAILED;
+  }
+  if (need_infer == false) {
+    return NO_OVERLAP_DIM;
+  } else{
+    if(!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+      return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
+  }
+  OP_LOGD(op.GetName().c_str(), "Calc DepthwiseConv2D InferDataSlice end!");
+}
+
+INFER_DATA_SLICE_FUNC_REG(DepthwiseConv2D, DepthwiseConv2DInferDataSlice);
+
 static std::vector<int64_t> GetAttrValue(const ge::Operator& op, const std::string& key_name) {
   std::vector<int64_t> list;
   if (ge::GRAPH_SUCCESS != op.GetAttr(key_name, list)) {

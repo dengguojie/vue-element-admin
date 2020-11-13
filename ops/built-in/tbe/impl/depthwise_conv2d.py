@@ -18,6 +18,7 @@ depthwise_conv2d
 
 import te.platform as tbe_platform
 from te.utils import para_check
+import json
 from te.utils.error_manager import error_manager_conv2d
 from te.utils.error_manager import error_manager_util
 from te.utils import cce
@@ -441,3 +442,88 @@ def depthwise_conv2d(
 
     with tbe_platform.build_config:
         tvm.build_module.build(sch, tensor_list, "cce", name=kernel_name)
+
+def get_op_support_info(x, weights, bias, offset_w, outputs, strides, pads, dilations,
+           groups=1, data_format='NCHW', offset_x=0, kernel_name="depthwiseconv2d"):
+    """
+    algorithm: get_op_support_info
+
+    Notice
+    ------
+    get the depthwiseconv2d split
+
+    Parameters
+    ----------
+    x : a dict of featureMap
+        {"shape", "dtype", "format"}
+        shape of input tensor [N, C1, H, W, C0],
+        support float16.
+
+    filter : a dict of filter
+        {"shape", "dtype"}
+        shape of filter tensor [C1, H, W, K, Co, C0],
+        K is depthwise_multiplier, support int.
+
+    bias : a dict of bias
+        {"shape", "dtype"}
+        shape of bias tensor [C1*C0,]
+        support int8.
+
+    offset_w : a dict of filter offset
+        {"shape", "dtype"}
+        shape of offset tensor [C1, H, W, K, Co, C0]
+        support float16.
+
+    y : a dict of output
+        {"shape", "dtype"}
+        shape of input tensor [N, C1, H, W, C0],
+        support float16.
+
+    strides : a list/tuple of four ints
+        strides size, [1, 1, stride_height, stride_width] or
+        [1, stride_height, stride_width, 1]
+
+    dilations : a list/tuple of four ints
+        dilation size, [1, 1, dilation_height, dilation_width] or
+        [1, dilation_height, dilation_width, 1]
+    kernel_name: str
+        kernel name, default value is "depthwiseconv2d"
+
+    Returns
+    -------
+    None
+    """
+    slice_info = {"_op_slice_info":
+            {"splitMaps": [{"inputList": [{"idx": 0, "axis": [0], "headOverLap": [-1], "tailOverLap": [-1]}],"outputList": [{"idx": 0, "axis": [0]}]},
+                           {"inputList": [{"idx": 0, "axis": [2], "headOverLap": [0], "tailOverLap": [0]}],"outputList": [{"idx": 0, "axis": [2]}]},
+                           {"inputList": [{"idx": 0, "axis": [3], "headOverLap": [0], "tailOverLap": [0]}],"outputList": [{"idx": 0, "axis": [3]}]},
+                           {"inputList": [{"idx": 1, "axis": [1], "headOverLap": [-1], "tailOverLap": [-1]}],"outputList": [{"idx": 0, "axis": [1]}]}
+                          ],
+            "reduceMaps": [],
+            "l1FusionEnable": 2,
+            "minTbeL1Space": 0
+            }
+        }
+    if bias:
+        bias_input = [{"idx": 2, "axis": [0], "headOverLap": [-1], "tailOverLap": [-1]}]
+        slice_info['_op_slice_info']["splitMaps"][3]["inputList"].extend(bias_input)
+
+    # special scene: dilations is 1 and kernel is 1 and strides is 1, overlap is -1
+    shape_w = filter.get("shape")
+    weight_h = shape_w[1]
+    weight_w = shape_w[2]
+    dim_n, dim_c, dim_h, dim_w = 0, 1, 2, 3  # NCHW
+    if data_format == 'NHWC':
+        dim_n, dim_h, dim_w, dim_c = 0, 1, 2, 3
+    strideh = strides[dim_h]
+    stridew = strides[dim_w]
+    dlt_h = dilations[dim_h]
+    dlt_w = dilations[dim_w]
+    if strideh == 1 and dlt_h == 1 and weight_h ==1:
+        slice_info.get("_op_slice_info").get("splitMaps")[1].get("inputList")[0]["headOverLap"] = [-1]
+        slice_info.get("_op_slice_info").get("splitMaps")[1].get("inputList")[0]["tailOverLap"] = [-1]
+    if stridew == 1 and dlt_w == 1 and weight_w ==1:
+        slice_info.get("_op_slice_info").get("splitMaps")[2].get("inputList")[0]["headOverLap"] = [-1]
+        slice_info.get("_op_slice_info").get("splitMaps")[2].get("inputList")[0]["tailOverLap"] = [-1]
+
+    return json.dumps(slice_info)
