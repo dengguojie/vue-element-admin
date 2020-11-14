@@ -1154,10 +1154,12 @@ IMPLEMT_COMMON_INFERFUNC(ResizeBilinearV2InferShape) {
   Tensor size_tensor;
   vector<int64_t> size_out;
   if (op.GetInputConstData("size", size_tensor) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get constValue failed of [size]");
-    return GRAPH_FAILED;
+    OP_LOGW(op.GetName().c_str(), "Get constValue failed of [size]");
+    size_out.push_back(UNKNOWN_DIM);
+    size_out.push_back(UNKNOWN_DIM);
+  } else {
+    GetConstValue(op, size_tensor, input_dtype_size, size_out);
   }
-  GetConstValue(op, size_tensor, input_dtype_size, size_out);
 
   vector<int64_t> y_shape;
   if (input_format == FORMAT_NHWC) {
