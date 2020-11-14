@@ -233,7 +233,8 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
   OpDescPtr topkd_desc = fusion_node->GetOpDesc();
   int64_t dim_size = dim_info.size();
   int64_t dim_aim;
-  AttrUtils::GetInt(topkd_desc, "dim", dim_aim);
+  FUSION_PASS_CHECK(!AttrUtils::GetInt(topkd_desc, "dim", dim_aim), OP_LOGW(kFusedOpType.c_str(), "Get dim failed"),
+                    return SUCCESS;);
   if (dim_aim < 0) {
     dim_aim = dim_size + dim_aim;
   }
