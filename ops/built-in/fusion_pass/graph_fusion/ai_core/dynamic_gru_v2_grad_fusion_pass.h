@@ -46,50 +46,20 @@ private:
                                ge::NodePtr dynamicGRUGradNode, vector<ge::NodePtr> &srcNodes, ge::ComputeGraph &graph,
                                vector<ge::NodePtr> &newNodes, bool &failStatus);
 
-    // below is for new fusion pass
     // dw_h  matmul(h.T, dgate_h)
-    map<std::string, ge::NodePtr> AddGRUHiddenGradNodeCell(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph &graph,
+    map<std::string, ge::NodePtr> AddGRUHiddenGradNode(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph &graph,
         vector<ge::NodePtr> &newNodes, bool &failStatus);
-    ge::NodePtr AddHSplitNodeCell(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph &graph,
+    ge::NodePtr AddHSplitNode(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph &graph,
         vector<ge::NodePtr> &newNodes, bool &failStatus);
-    ge::NodePtr AddHConcatNodeCell(ge::NodePtr dynamicGRUGradNode, ge::NodePtr hSplitNode, ge::ComputeGraph &graph,
+    ge::NodePtr AddDwhTransData(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph &graph,
         vector<ge::NodePtr> &newNodes, bool &failStatus);
-    ge::NodePtr AddDwhMatmulNodeCell(ge::NodePtr dynamicGRUGradNode, ge::NodePtr hConcatNode,
-        ge::NodePtr gruHiddenGradNode, ge::ComputeGraph &graph, vector<ge::NodePtr> &newNodes, bool &failStatus);
-    // for time_step = 1
-    ge::NodePtr AddDwhMatmulNodeCell(ge::NodePtr dynamicGRUGradNode, ge::NodePtr gruHiddenGradNode,
-        ge::ComputeGraph &graph, vector<ge::NodePtr> &newNodes, bool &failStatus);
-    // concate dit, drt, dnt, to dgate_x
-    ge::NodePtr AddDgateHSplitNodeCell(ge::NodePtr dynamicGRUGradNode, ge::NodePtr gruHiddenGradNode,
-        ge::ComputeGraph &graph, vector<ge::NodePtr> &newNodes, bool &failStatus);
-    ge::NodePtr AddDgateXConcatNodeCell(ge::NodePtr dynamicGRUGradNode, ge::NodePtr dgateHSplitNode,
-        ge::NodePtr gruHiddenGradNode, ge::ComputeGraph &graph, vector<ge::NodePtr> &newNodes, bool &failStatus);
-    // dx_t matmul(dgate_x, w_x.T)
-    ge::NodePtr AddWxBroadcastNodeCell(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph &graph,
-        vector<ge::NodePtr> &newNodes, bool &failStatus);
-    Status AddDxtMatmulNodeCell(ge::NodePtr dynamicGRUGradNode, ge::NodePtr gateConcatNode, ge::NodePtr wxBroadcastNode,
-        ge::ComputeGraph &graph, vector<ge::NodePtr> &newNodes);
-    // dw_x matmul(x.T, dgate_x)
-    ge::NodePtr AddDwxMatmulNodeCell(ge::NodePtr dynamicGRUGradNode, ge::NodePtr gateConcatNode,
-        ge::ComputeGraph &graph, vector<ge::NodePtr> &newNodes, bool &failStatus);
-    Status AddReduceSumNodeCell(ge::NodePtr dynamicGRUGradNode, ge::NodePtr inputNode, int anchorIndex,
-        const vector<int64_t> &axis, const string &nodeName, const string &indexName, ge::ComputeGraph &graph,
-        vector<ge::NodePtr> &newNodes);
-    Status FusionCell(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &newNodes);
-
-    // below is for old fusion pass 
-    // dw_h matmul(h.T, dgate_h)
-    ge::NodePtr AddGRUHiddenGradNode(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph &graph,
-        vector<ge::NodePtr> &newNodes, bool &failStatus);
-    ge::NodePtr AddHSplitNode(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph &graph, vector<ge::NodePtr> &newNodes,
-        bool &failStatus);
     ge::NodePtr AddHConcatNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr hSplitNode, ge::ComputeGraph &graph,
         vector<ge::NodePtr> &newNodes, bool &failStatus);
-    ge::NodePtr AddDwhMatmulNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr hConcatNode, ge::NodePtr gruHiddenGradNode,
-        ge::ComputeGraph &graph, vector<ge::NodePtr> &newNodes, bool &failStatus);
+    ge::NodePtr AddDwhMatmulNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr hConcatNode,
+        ge::NodePtr gruHiddenGradNode, ge::ComputeGraph &graph, vector<ge::NodePtr> &newNodes, bool &failStatus);
     // for time_step = 1
-    ge::NodePtr AddDwhMatmulNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr gruHiddenGradNode, ge::ComputeGraph &graph,
-        vector<ge::NodePtr> &newNodes, bool &failStatus);
+    ge::NodePtr AddDwhMatmulNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr gruHiddenGradNode,
+        ge::ComputeGraph &graph, vector<ge::NodePtr> &newNodes, bool &failStatus);
     // concate dit, drt, dnt, to dgate_x
     ge::NodePtr AddDgateHSplitNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr gruHiddenGradNode,
         ge::ComputeGraph &graph, vector<ge::NodePtr> &newNodes, bool &failStatus);
@@ -101,12 +71,14 @@ private:
     Status AddDxtMatmulNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr gateConcatNode, ge::NodePtr wxBroadcastNode,
         ge::ComputeGraph &graph, vector<ge::NodePtr> &newNodes);
     // dw_x matmul(x.T, dgate_x)
-    ge::NodePtr AddDwxMatmulNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr gateConcatNode, ge::ComputeGraph &graph,
-        vector<ge::NodePtr> &newNodes, bool &failStatus);
+    ge::NodePtr AddDwxMatmulNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr gateConcatNode,
+        ge::ComputeGraph &graph, vector<ge::NodePtr> &newNodes, bool &failStatus);
     Status AddReduceSumNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr inputNode, int anchorIndex,
         const vector<int64_t> &axis, const string &nodeName, const string &indexName, ge::ComputeGraph &graph,
         vector<ge::NodePtr> &newNodes);
-    const string FUSED_OP_TYPE = "GRUV2HiddenGrad_Split_Concat_Matmul_Reduce";
+    ge::NodePtr AddNzTransDataNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr inputNode, int anchorIndex,
+        const string &nodeName, ge::ComputeGraph &graph, vector<ge::NodePtr> &newNodes, bool &failStatus);
+    const string FUSED_OP_TYPE = "GRUV2HiddenGradCell_Split_Concat_Matmul_Reduce";
     int64_t t_size = 0;
     int64_t batch = 0;
     int64_t nzBatch = 0;

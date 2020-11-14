@@ -98,10 +98,11 @@ class GRUHiddenGradCell(TikOpBase):
         self.move_data(dh, self.dh[input_offset], self.dtype, shape)
         if self.t_state > 0:
             dh_pre_t = self.tik_instance.Tensor(self.dtype, shape, tbe_platform.scope_ubuf, "dh_pre_t")
-            self.move_data(dh_pre_t, self.dh_pre_t, self.dtype, shape)
+            self.move_data(dh_pre_t, self.dh_pre_t[input_offset], self.dtype, shape)
             self.vadd_func(dh, dh, dh_pre_t, shape)
         if self.t_state == 4:
             # just cal dh + dh_pre_t in last cell
+            self.move_data(self.dh_prev[input_offset], dh, self.dtype, shape)
             return
 
         dy = self.tik_instance.Tensor(self.dtype, shape, tbe_platform.scope_ubuf, "dy")
