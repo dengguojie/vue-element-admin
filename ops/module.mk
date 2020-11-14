@@ -5,6 +5,14 @@ PLUGIN_C_INCLUDES := \
         $(LOCAL_PATH)/common/inc/ \
         $(LOCAL_PATH)/../../inc \
         $(LOCAL_PATH)/../../common/ \
+        $(LOCAL_PATH)/../../metadef \
+        $(LOCAL_PATH)/../../metadef/inc \
+        $(LOCAL_PATH)/../../metadef/inc/external \
+        $(LOCAL_PATH)/../../metadef/inc/external/graph \
+        $(LOCAL_PATH)/../../graphengine/inc \
+        $(LOCAL_PATH)/../../graphengine/inc/external \
+        $(LOCAL_PATH)/../../graphengine/inc/external/ge \
+        $(LOCAL_PATH)/../../graphengine/inc/framework \
         $(LOCAL_PATH)/../../inc/external \
         $(LOCAL_PATH)/../../inc/external/graph \
         $(LOCAL_PATH)/../../third_party/protobuf/include \
@@ -122,11 +130,16 @@ LOCAL_C_INCLUDES := \
         $(LOCAL_PATH)/../../libc_sec/include/ \
         $(LOCAL_PATH)/../../inc/ \
         $(LOCAL_PATH)/../../inc/external \
-        $(LOCAL_PATH)/../../inc/external/graph \
-        $(LOCAL_PATH)/../../inc/common/opskernel \
-        $(LOCAL_PATH)/../../inc/register \
-        $(LOCAL_PATH)/../../inc/framework \
         $(LOCAL_PATH)/../../inc/fusion_engine \
+        $(LOCAL_PATH)/../../metadef \
+        $(LOCAL_PATH)/../../metadef/inc \
+        $(LOCAL_PATH)/../../metadef/inc/external \
+        $(LOCAL_PATH)/../../metadef/inc/external/graph \
+        $(LOCAL_PATH)/../../metadef/inc/common/opskernel \
+        $(LOCAL_PATH)/../../metadef/inc/register \
+        $(LOCAL_PATH)/../../graphengine/inc \
+        $(LOCAL_PATH)/../../graphengine/inc/external \
+        $(LOCAL_PATH)/../../graphengine/inc/framework \
 
 
 LOCAL_LDFLAGS := -ldl
@@ -174,11 +187,17 @@ LOCAL_C_INCLUDES := \
         $(LOCAL_PATH)/../../libc_sec/include/ \
         $(LOCAL_PATH)/../../inc/ \
         $(LOCAL_PATH)/../../inc/external \
-        $(LOCAL_PATH)/../../inc/external/graph \
         $(LOCAL_PATH)/../../inc/common/opskernel \
-        $(LOCAL_PATH)/../../inc/register \
-        $(LOCAL_PATH)/../../inc/framework \
         $(LOCAL_PATH)/../../inc/fusion_engine \
+        $(LOCAL_PATH)/../../metadef \
+        $(LOCAL_PATH)/../../metadef/inc \
+        $(LOCAL_PATH)/../../metadef/inc/external \
+        $(LOCAL_PATH)/../../metadef/inc/external/graph \
+        $(LOCAL_PATH)/../../metadef/inc/common/opskernel \
+        $(LOCAL_PATH)/../../metadef/inc/register \
+        $(LOCAL_PATH)/../../graphengine/inc \
+        $(LOCAL_PATH)/../../graphengine/inc/external \
+        $(LOCAL_PATH)/../../graphengine/inc/framework \
 
 
 LOCAL_LDFLAGS := -ldl
@@ -286,21 +305,27 @@ LOCAL_SRC_FILES := \
 LOCAL_C_INCLUDES := \
         proto/insert_op.proto \
         $(LOCAL_PATH)/../../inc/external/graph \
-        $(LOCAL_PATH)/../../third_party/json/include \
-        $(LOCAL_PATH)/common/inc \
-        $(LOCAL_PATH)/built-in/op_proto/inc \
         $(LOCAL_PATH) \
         $(LOCAL_PATH)/../../common \
-        $(LOCAL_PATH)/built-in/op_proto/util \
-        $(LOCAL_PATH)/../../inc/external \
-        $(LOCAL_PATH)/../../inc/framework \
-        $(LOCAL_PATH)/../../framework/domi \
+        $(LOCAL_PATH)/../../metadef \
+        $(LOCAL_PATH)/../../metadef/inc \
+        $(LOCAL_PATH)/../../metadef/inc/graph \
+        $(LOCAL_PATH)/../../metadef/inc/external \
+        $(LOCAL_PATH)/../../metadef/inc/external/graph \
+        $(LOCAL_PATH)/../../graphengine/inc \
+        $(LOCAL_PATH)/../../graphengine/ge \
+        $(LOCAL_PATH)/../../graphengine/inc/external \
+        $(LOCAL_PATH)/../../graphengine/inc/framework \
         $(LOCAL_PATH)/../../inc \
         $(LOCAL_PATH)/../../inc/cce \
-        $(LOCAL_PATH)/../../inc/graph \
+        $(LOCAL_PATH)/../../inc/external \
+        $(LOCAL_PATH)/common/inc \
+        $(LOCAL_PATH)/built-in/op_proto/inc \
+        $(LOCAL_PATH)/built-in/op_proto/util \
+        $(LOCAL_PATH)/built-in/framework/tf_plugin/util \
+        $(LOCAL_PATH)/../../third_party/json/include \
         $(LOCAL_PATH)/../../third_party/protobuf/include \
         $(LOCAL_PATH)/../../libc_sec/include \
-        $(LOCAL_PATH)/built-in/framework/tf_plugin/util \
         $(PLUGIN_C_INCLUDES)
 
 LOCAL_SHARED_LIBRARIES := \
@@ -359,14 +384,20 @@ LOCAL_SRC_FILES := \
         built-in/op_tiling/top_k.cc \
 
 LOCAL_C_INCLUDES := \
-        $(LOCAL_PATH)/../../inc \
         $(LOCAL_PATH)/built-in/op_proto/util \
         $(LOCAL_PATH)/../../common \
-        $(LOCAL_PATH)/../../inc/external \
-        $(LOCAL_PATH)/../../inc/external/graph \
-        $(LOCAL_PATH)/../../third_party/protobuf/include \
-        $(LOCAL_PATH)/../../libc_sec/include \
         $(LOCAL_PATH)/common/inc \
+        $(LOCAL_PATH)/../../metadef \
+        $(LOCAL_PATH)/../../metadef/inc \
+        $(LOCAL_PATH)/../../metadef/inc/external \
+        $(LOCAL_PATH)/../../metadef/inc/external/graph \
+        $(LOCAL_PATH)/../../graphengine/inc \
+        $(LOCAL_PATH)/../../graphengine/inc/external \
+        $(LOCAL_PATH)/../../graphengine/inc/framework \
+        $(LOCAL_PATH)/../../inc \
+        $(LOCAL_PATH)/../../inc/external \
+        $(LOCAL_PATH)/../../libc_sec/include \
+        $(LOCAL_PATH)/../../third_party/protobuf/include \
         $(LOCAL_PATH)/../../third_party/json/include \
 
 LOCAL_SHARED_LIBRARIES := \

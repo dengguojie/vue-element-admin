@@ -99,9 +99,9 @@ else()
   set(OPS_DIR ${TOP_DIR}/cann/ops)
   set(OPS_INCLUDE ${TOP_DIR}/cann/ops/common/inc)
   set(FWKACLLIB_INCLUDE ${TOP_DIR}/inc)
-  set(METADEF_INCLUDE ${TOP_DIR}/inc)
+  set(METADEF_INCLUDE ${TOP_DIR}/metadef/inc)
   set(METADEF_DIR ${TOP_DIR}/metadef)
-  set(GRAPHENGINE_INCLUDE ${TOP_DIR}/inc)
+  set(GRAPHENGINE_INCLUDE ${TOP_DIR}/graphengine/inc)
 
   add_subdirectory(ops)
 

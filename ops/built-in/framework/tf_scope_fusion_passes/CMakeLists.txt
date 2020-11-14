@@ -3,8 +3,9 @@
 include_directories(
         ${REPO_ROOT}/ops/built-in
         ${REPO_ROOT}/inc/external
+        ${REPO_ROOT}/metadef/inc/external
         ${REPO_ROOT}/ops
-        ${REPO_ROOT}/inc
+        ${REPO_ROOT}/metadef/inc
         ${REPO_ROOT}/third_party/protobuf/include
 )
 
