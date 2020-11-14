@@ -24,27 +24,47 @@ from impl.tik_op_base import TikOpBase
 OP_NAME = "GRUV2HiddenGradCell"
 
 
-def _check_dtype(weight_hidden):
+def _check_dtype(dh_pre_t, h, dy, dh, update, reset, new, hidden_new):
     """
     check parameters dtype
     """
-    para_check.check_dtype(weight_hidden["dtype"], ["float16"], "weight_hidden")
+    para_check.check_dtype(dh_pre_t["dtype"], ["float16", "float32"], "dh_pre_t")
+    para_check.check_dtype(h["dtype"], ["float16", "float32"], "h")
+    para_check.check_dtype(dy["dtype"], ["float16", "float32"], "dy")
+    para_check.check_dtype(update["dtype"], ["float16", "float32"], "update")
+    para_check.check_dtype(reset["dtype"], ["float16", "float32"], "reset")
+    para_check.check_dtype(new["dtype"], ["float16", "float32"], "new")
+    para_check.check_dtype(hidden_new["dtype"], ["float16", "float32"], "hidden_new")
 
 
-def _check_param():
+def _check_param(dh_pre_t, h, dy, dh, update, reset, new, hidden_new):
     """
     check parameters
+    """  
+    para_check.check_shape_size(dh_pre_t["shape"])
+    para_check.check_shape_size(h["shape"])
+    para_check.check_shape_size(dy["shape"])
+    para_check.check_shape_size(dh["shape"])
+    para_check.check_shape_size(update["shape"])
+    para_check.check_shape_size(reset["shape"])
+    para_check.check_shape_size(new["shape"])
+    para_check.check_shape_size(hidden_new["shape"])
+
+
+def _check_attr(gate_order, t_state):
     """
-    return True
-
-
-def _check_attr(gate_order):
+    check attr
+    """
     if gate_order not in ['zrh', 'rzh']:
         rule_desc = "gate_order should be zrh or rzh, but current attr is " + gate_order
         error_manager_vector.raise_err_check_params_rules(OP_NAME, rule_desc, 'gate_order', gate_order)
+    if t_state not in [0, 1, 2, 3, 4]:
+        error_manager_vector.raise_err_input_param_range_invalid(OP_NAME, 't_state', 0, 4, t_state)
 
 
 class GRUHiddenGradCell(TikOpBase):
+    """ GRUHiddenGradCell
+    """
     def __init__(self, tik_instance, dh_pre_t, h, dy, dh, update, reset, new, hidden_new,
                  dh_prev, d_gate_h, dnt_x, t_state, gate_order, kernel_name):
         """ init GRUHiddenGradCell
@@ -79,6 +99,9 @@ class GRUHiddenGradCell(TikOpBase):
         self.dnt_x = self.tik_instance.Tensor(self.dtype, fuse_shape, tbe_platform.scope_gm, "dnt_x")
 
     def build(self):
+        """
+        build cce
+        """
         config_map = {"dump_cce_code": False}
         input_list = (self.dh_pre_t, self.h, self.dy, self.dh, self.i2,
                       self.r2, self.n2, self.n2_mid)
@@ -137,9 +160,6 @@ class GRUHiddenGradCell(TikOpBase):
 
         # cal di2
         h1 = self.tik_instance.Tensor(self.dtype, shape, tbe_platform.scope_ubuf, "h1")
-        # if self.t_state == 3 or self.t_state == 0:
-        #    self.move_data(h1, self.init_h[input_offset], self.dtype, shape)
-        # else:
         self.move_data(h1, self.h[input_offset], self.dtype, shape)
         h1_sub_n2 = h1
         self.vsub_func(h1_sub_n2, h1, n2, shape)
@@ -260,6 +280,8 @@ def gru_v2_hidden_grad_cell(dh_pre_t, h, dy, dh, update, reset, new, hidden_new,
     Calculate the gradient
     Parameters
     -----------
+    :param dh_pre_t: result of (dh2+dy)*i2 at (cur_t -1)
+        when t_state > 0, dh = dh + dh_pre_t
     :param h:
     :param dy:
     :param dh:
@@ -267,8 +289,7 @@ def gru_v2_hidden_grad_cell(dh_pre_t, h, dy, dh, update, reset, new, hidden_new,
     :param reset:
     :param new:
     :param hidden_new:
-    :param dh_pre_t: result of (dh2+dy)*i2 at (cur_t -1)
-        when t_state > 0, dh = dh + dh_pre_t
+
     :param dh_prev:
         output real dh_prev when cur_t == t
         otherwise, output dh_pre_t for next cell
@@ -284,14 +305,9 @@ def gru_v2_hidden_grad_cell(dh_pre_t, h, dy, dh, update, reset, new, hidden_new,
     :param kernel_name:
     :return:
     """
-    # _check_dtype(weight_hidden)
-    # 1. dh dh_pre_t can not be none
-    # 2. t_state only has two state(is last cell)
-    _check_param()
-    _check_attr(gate_order)
-
-    #dh1 = dh_prev
-    #dn_i = dnt_x
+    _check_dtype(dh_pre_t, h, dy, dh, update, reset, new, hidden_new)
+    _check_param(dh_pre_t, h, dy, dh, update, reset, new, hidden_new)
+    _check_attr(gate_order, t_state)
 
     tik_instance = tik.Tik(tik.Dprofile())
     cell = GRUHiddenGradCell(tik_instance, dh_pre_t, h, dy, dh, update, reset, new, hidden_new,
