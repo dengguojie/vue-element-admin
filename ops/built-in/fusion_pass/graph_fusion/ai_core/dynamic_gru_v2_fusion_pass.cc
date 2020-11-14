@@ -284,8 +284,30 @@ ge::NodePtr DynamicGRUV2FusionPass::AddMatmulNode(ge::NodePtr gru_node, ge::Comp
   matmul_desc->UpdateInputDesc("x1", x_desc);
   matmul_desc->UpdateInputDesc("x2", gru_desc->GetInputDesc(1));
   bool has_bias = gru_desc->MutableInputDesc("bias_input") != nullptr;
+  ge::NodePtr cast_node = nullptr;
   if (has_bias) {
-    matmul_desc->UpdateInputDesc("bias", *gru_desc->MutableInputDesc("bias_input"));
+    ge::GeTensorDescPtr bias_desc_ptr = gru_desc->MutableInputDesc("bias_input");
+    if (bias_desc_ptr->GetDataType() == ge::DT_FLOAT16) {
+      Operator cast_op = ge::OperatorFactory::CreateOperator(gru_node->GetName() + "/BatchMatMulV2/Cast", "Cast");
+      FUSION_PASS_CHECK(cast_op.IsEmpty(),
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "create cast operator error"),
+                        return nullptr);
+      auto cast_desc = ge::OpDescUtils::GetOpDescFromOperator(cast_op);
+      cast_op.BreakConnect();
+
+      cast_desc->UpdateInputDesc("x", bias_desc_ptr->Clone());
+      bias_desc_ptr->SetDataType(DT_FLOAT);
+      cast_desc->UpdateOutputDesc("y", *bias_desc_ptr);
+      ge::AttrUtils::SetInt(cast_desc, "dst_type", 0);
+
+      // create cast node
+      cast_node = graph.AddNode(cast_desc);
+      FUSION_PASS_CHECK(cast_node == nullptr,
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "add cast failed, %s.", cast_node->GetName().c_str()),
+                        return nullptr);
+      new_nodes.push_back(cast_node);
+    }
+    matmul_desc->UpdateInputDesc("bias", *bias_desc_ptr);
   }
 
   // output
@@ -322,7 +344,12 @@ ge::NodePtr DynamicGRUV2FusionPass::AddMatmulNode(ge::NodePtr gru_node, ge::Comp
   ge::GraphUtils::AddEdge(gru_node->GetInDataAnchor(0)->GetPeerOutAnchor(), matmul_node->GetInDataAnchor(0));
   ge::GraphUtils::AddEdge(gru_node->GetInDataAnchor(1)->GetPeerOutAnchor(), matmul_node->GetInDataAnchor(1));
   if (has_bias) {
-    ge::GraphUtils::AddEdge(gru_node->GetInDataAnchor(3)->GetPeerOutAnchor(), matmul_node->GetInDataAnchor(2));
+    if (cast_node != nullptr) {
+      ge::GraphUtils::AddEdge(gru_node->GetInDataAnchor(3)->GetPeerOutAnchor(), cast_node->GetInDataAnchor(0));
+      ge::GraphUtils::AddEdge(cast_node->GetOutDataAnchor(0), matmul_node->GetInDataAnchor(2));
+    } else {
+      ge::GraphUtils::AddEdge(gru_node->GetInDataAnchor(3)->GetPeerOutAnchor(), matmul_node->GetInDataAnchor(2));
+    }
   }
 
   return matmul_node;
