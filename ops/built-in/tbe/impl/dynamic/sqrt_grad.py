@@ -56,9 +56,9 @@ def sqrt_grad_compute(x, dx, out, kernel_name="sqrt_grad"):
     if dtype == "float32" and not mul_support:
         error_detail = "not support dtype(float32) on this platform!"
         error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "x", 'dx', error_detail)
-    const_val_half = tvm.const(2, dtype)
-    mul_val = tbe.vmuls(x, const_val_half)
-    res = tbe.vdiv(dx, mul_val)
+    const_val_half = tvm.const(0.5, dtype)
+    div_val = tbe.vdiv(dx, x)
+    res = tbe.vmuls(div_val, const_val_half)
     return res
 
 

@@ -2601,7 +2601,7 @@ def unsorted_segment_sum_d(x,
     if len(shape_y) == 1:
         if shape_x[0] != shape_y[0]:
             error_detail = "shape_x and shape_y are not the same length at axis 0."
-            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", \
+            error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", \
                                                                "segment_ids", error_detail)
 
         if len(shape_x) == 1:

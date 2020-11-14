@@ -48,9 +48,9 @@ def sqrt_grad_compute(x, dx, out, kernel_name="sqrt_grad"):
     mul_support = tbe_platform.api_check_support("te.lang.cce.vmuls", "float32")
     if not mul_support:
         para_check.check_dtype(dtype, ("float16", ), param_name="x")
-    const_val_2 = tvm.const(2.0, dtype)
-    mul_val = tbe.vmuls(x, const_val_2)
-    res = tbe.vdiv(dx, mul_val)
+    const_val_half = tvm.const(0.5, dtype)
+    div_val = tbe.vdiv(dx, x)
+    res = tbe.vmuls(div_val, const_val_half)
     return res
 
 
