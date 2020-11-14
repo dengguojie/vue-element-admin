@@ -109,4 +109,8 @@ set(LIBRARY_OUTPUT_PATH ${AICPU_OP_IMPL_OUT_DIR})
 set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 add_library(${AICPU_KERNEL_TARGET} SHARED ${KERNELS_SRCS})
 
-target_link_libraries(${AICPU_KERNEL_TARGET} ${ASCEND_OPP_PATH}/op_impl/built-in/aicpu/aicpu_kernel/lib/device/libcpu_kernels_context.so)
+target_link_libraries(${AICPU_KERNEL_TARGET} PRIVATE
+    -Wl,--whole-archive
+    ${ASCEND_OPP_PATH}/op_impl/built-in/aicpu/aicpu_kernel/lib/libcpu_kernels_context.a
+    -Wl,--no-whole-archive
+)
