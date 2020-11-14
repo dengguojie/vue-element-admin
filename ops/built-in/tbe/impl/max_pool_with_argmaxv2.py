@@ -20,6 +20,9 @@ max_pool_with_argmaxv2
 from te import tik
 from te.utils import para_check
 from te import platform as tbe_platform
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 # min value of fp16
 MIN_VALUE_FP16 = -65504.0
@@ -44,6 +47,28 @@ UB_SIZE = tbe_platform.cce_conf.CceProductParams().getParams("Unified_Buffer")
 UB_SIZE = MAX_ALLOW_UB if UB_SIZE > MAX_ALLOW_UB else UB_SIZE
 # get available l1 size
 L1_SIZE = tbe_platform.cce_conf.CceProductParams().getParams("L1_Buffer")
+
+
+# pylint: disable=unused-argument
+def get_op_support_info(x, y, argmax, ksize, strides, pads, dtype=DT_INT32,
+                         dilation=(1, 1, 1, 1), ceil_mode=False,
+                         kernel_name="max_pool_with_argmaxv2"):
+    """
+    return: split info of max_pool_with_argmaxv2
+    """
+    format_x = x.get("format").upper()
+    if format_x == "NC1HWC0":
+        axis_split_matrix=[
+            [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]], [1, [0]])],
+            [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]], [1, [1]])]
+        ]
+        axis_reduce_list = None
+
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 def _ceil_div(value, factor):

@@ -29,6 +29,9 @@ from te.utils import para_check
 from topi import generic
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 # shape limit
 # int32's max value
@@ -39,6 +42,25 @@ C0SIZE = 16
 NoneType = type(None)
 CAFFE_DATA_MODE = 0
 TENSORFLOW_DATA_MODE = 1
+
+
+# pylint: disable=unused-argument
+def get_op_support_info(x, y, ksize, strides, padding="SAME", pads=(0, 0, 0, 0, 0, 0),
+               dilation=(1, 1, 1), ceil_mode=0, data_format="NDHWC",
+               kernel_name="max_pool3d"):
+    """
+    return: spilt info of max_pool3d
+    """
+    format_x = x.get("format").upper()
+    if format_x == "NDHWC" or format_x == "NDC1HWC0":
+        axis_split_matrix=[[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
+        axis_reduce_list = None
+
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 def check_window_rule(ksize, strides):

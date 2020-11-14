@@ -22,6 +22,9 @@ from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from impl import max_pool_with_argmax_resnet50 as resnet50
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 # min value of fp16
 MIN_VALUE_FP16 = -65504.0
@@ -44,6 +47,27 @@ SRC1STRIDEM1 = 8
 UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
 # get available l1 size
 L1_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.L1_SIZE)
+
+
+# pylint: disable=unused-argument
+def get_op_support_info(input_x, output_y, output_argmax, ksize, strides,
+                         padding, kernel_name="max_pool_with_argmax"):
+    """
+    return: split info of max_pool_with_argmax
+    """
+    format_x = input_x.get("format").upper()
+    if format_x == "NC1HWC0":
+        axis_split_matrix=[
+            [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]], [1, [0]])],
+            [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]], [1, [1]])]
+        ]
+        axis_reduce_list = None
+
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 def _ceil_div(value, factor):
