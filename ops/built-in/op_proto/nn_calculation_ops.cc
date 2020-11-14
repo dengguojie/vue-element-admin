@@ -2677,6 +2677,16 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(Conv2DInfer)
     OP_LOGD(op.GetName().c_str(), "dynamic shape set range");
     std::vector<std::pair<int64_t, int64_t>> fm_range;
     x_tensor.GetShapeRange(fm_range);
+    if (fm_range.empty()) {
+      OP_LOGE(op.GetName().c_str(), "fm_range is empty.");
+      map<string, string> err_map;
+      err_map["op_name"] = op.GetName().c_str();
+      err_map["description"] = "fm_range is empty.";
+      std::string report_error_code = "E50058";
+      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+      return GRAPH_FAILED;
+    }
+
     for (size_t i = 0; i < fm_range.size(); i++) {
       OP_LOGD(op.GetName().c_str(), "fmap Range[%u] is (%lld, %lld)", i, fm_range[i].first, fm_range[i].second);
     }
