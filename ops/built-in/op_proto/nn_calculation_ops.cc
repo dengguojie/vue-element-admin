@@ -2681,6 +2681,16 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(Conv2DInfer)
       OP_LOGD(op.GetName().c_str(), "fmap Range[%u] is (%lld, %lld)", i, fm_range[i].first, fm_range[i].second);
     }
 
+    if (fm_range.empty()) {
+      OP_LOGE(op.GetName().c_str(), "fm_range is empty.");
+      map<string, string> err_map;
+      err_map["op_name"] = op.GetName().c_str();
+      err_map["description"] = "fm_range is empty.";
+      std::string report_error_code = "E50058";
+      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+      return GRAPH_FAILED;
+    }
+
     std::vector<std::pair<int64_t, int64_t>> out_range(fm_range);
     out_range[idx_c] = std::make_pair((int64_t)kn, (int64_t)kn);
     if (x_shape[idx_h] == -1) {
