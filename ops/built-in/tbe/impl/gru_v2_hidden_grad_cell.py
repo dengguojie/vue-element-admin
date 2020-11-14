@@ -253,22 +253,24 @@ class GRUHiddenGradCell(TikOpBase):
         """
         tiling = self._get_tiling()
         core_num = tiling["core_num"]
-        if tiling["loop_num"] > 0:
-            with self.tik_instance.for_range(0, core_num, block_num=core_num) as block_idx:
-                with self.tik_instance.for_range(0, tiling["loop_num"]) as loop_idx:
-                    ele_num = tiling["loop_ele"]
-                    base_offset = tiling["block_size"] * block_idx + ele_num * loop_idx
-                    self._do_compute(base_offset, ele_num)
+        tail_core_num = tiling["tail_core_num"]
+        ele_num = tiling["loop_ele"]
+        tail_ele_num = tiling["tail_loop_ele"]
         offset = tiling["block_size"] * core_num
-        if tiling["tail_num"] > 0:
-            core_num = tiling["tail_core_num"]
-            with self.tik_instance.for_range(0, core_num, block_num=core_num) as block_idx:
-                ele_num = tiling["tail_loop_ele"]
-                base_offset = offset + block_idx * ele_num
-                with self.tik_instance.if_scope(block_idx < core_num - 1):
-                    self._do_compute(base_offset, ele_num)
-                with self.tik_instance.else_scope():
-                    self._do_compute(base_offset, tiling["tail_last_ele"])
+        max_core_num = max(core_num, tail_core_num)
+        with self.tik_instance.for_range(0, max_core_num, block_num=max_core_num) as block_idx:
+            if tiling["loop_num"] > 0:
+                with self.tik_instance.if_scope(block_idx < core_num):
+                    with self.tik_instance.for_range(0, tiling["loop_num"]) as loop_idx:
+                        base_offset = tiling["block_size"] * block_idx + ele_num * loop_idx
+                        self._do_compute(base_offset, ele_num)
+            if tiling["tail_num"] > 0:
+                with self.tik_instance.if_scope(block_idx < tail_core_num):
+                    base_offset = offset + block_idx * tail_ele_num
+                    with self.tik_instance.if_scope(block_idx < tail_core_num - 1):
+                        self._do_compute(base_offset, tail_ele_num)
+                    with self.tik_instance.else_scope():
+                        self._do_compute(base_offset, tiling["tail_last_ele"])
 
 
 # pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
