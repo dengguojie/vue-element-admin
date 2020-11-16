@@ -254,7 +254,7 @@ class ScopeManager:
         self._axis_unit[inner] = [unit, factor]
         self._axis_unit[outer] = [factor * unit, nparts]
         if parent in self._active_scopes:  # not else
-            self._add_g_active_scope(parent, outer)
+            self._add_g_active_scope(parent, outer, inner)
         self._axis_split_list[1] = [inner]
         self._axis_split_list.insert(0, [outer])
 
@@ -390,7 +390,7 @@ class ScopeManager:
         index = active_scopess.index(ax_before)
         active_scopess[index] = ax_after
 
-    def _add_g_active_scope(self, ax_before, after_outer, after_inner)：
+    def _add_g_active_scope(self, ax_before, after_outer, after_inner):
         """
         add g to active_scopes
         """
@@ -713,7 +713,7 @@ class ScheduleAgent:
         self._attach_map.apply()
     
     def apply_var(self, stage):
-        attach_path = self._attach_map.attach_path
+        attach_path = self._attach_map.attached_path
         for scope,array_stages in attach_path.items():
             if stage in array_stages:
                 return scope

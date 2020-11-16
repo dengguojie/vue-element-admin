@@ -450,6 +450,8 @@ def deconvolution_compute(  # pylint: disable=invalid-name,R0913,R0914,W0613
         fusion_para["slice_offset"] = ()
 
     group_dict = util_deconv_comm.calculate_group(
+        shape_x,
+        shape_res,
         shape_weight,
         groups,
         weight_dtype,
@@ -608,6 +610,8 @@ def _deconvolution_cce(  # pylint: disable=R0913, R0914
             shape_filter[3],
         ]
     group_dict = util_deconv_comm.calculate_group(
+        shape_x,
+        input_sizes,
         shape_filter,
         groups,
         filter_dtype,

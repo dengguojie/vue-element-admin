@@ -1344,7 +1344,7 @@ def general_schedule(
         elif status == Compare.LESS_EQ:
             sch_agent.attach_at(c_col, c_ub, affine_shape=affine_l0c)
         elif status == Compare.GREATE_EQ:
-            sch_agent.attach_at(c_col, c_ddr, affine_shape=affine_l0c[1:])
+            sch_agent.attach_at(c_col, c_ddr, affine_shape=affine_l0c)
         else:
             _raise_dx_general_err("c_col attach error.")
 
@@ -2062,11 +2062,11 @@ def general_schedule(
                     axis = axis_split_list[0:c1_idx + 1]
                     unit = axis_unit[0:c1_idx+1]
                     offset = axis_offset[0:c1_idx+1]
-                    c_ofset = 0
+                    c_offset = 0
                     for idx in range(c1_idx+1):
                         factor_len = ( 0 if unit[idx] == 1 else offset[idx])
                         c_offset = c_offset + axis[idx] * factor_len
-                    sch[col].buffer_tile(
+                    sch[c_col].buffer_tile(
                     (None, None),
                     (None, None),
                     (c_offset, tiling["CL0_matrix"][0]),

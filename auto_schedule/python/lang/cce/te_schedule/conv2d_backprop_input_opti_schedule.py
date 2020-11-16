@@ -1662,7 +1662,7 @@ def _get_l0c_and_l1_axis(  # pylint: disable=R0914,R0913,W0613
     g_dim, c_gm_inner = sch[c_gm].split(c_gm.op.axis[1], nparts=g_extend)
     l0c_n_outer, l0c_n_inner = sch[c_gm].split(c_gm_inner, l0c_factor[0])
     l0c_m_outer, l0c_m_inner = sch[c_gm].split(c_gm.op.axis[2], l0c_factor[1])
-    sch[c_gm].reorder(g_dim c_gm.op.axis[0], l0c_n_outer, l0c_m_outer, l0c_n_inner, l0c_m_inner)
+    sch[c_gm].reorder(g_dim, c_gm.op.axis[0], l0c_n_outer, l0c_m_outer, l0c_n_inner, l0c_m_inner)
 
     # split c_gm according to factor of a_l1 and b_l1
     l1_m_outer_outer, l1_m_outer_inner = sch[c_gm].split(
@@ -1674,7 +1674,6 @@ def _get_l0c_and_l1_axis(  # pylint: disable=R0914,R0913,W0613
         sch,
         c_gm,
         g_dim,
-        g_outer,
         l1_n_outer_outer,
         l1_n_out_inner,
         l1_m_outer_outer,
@@ -2539,7 +2538,7 @@ def opti_schedule(
         param.pragma(overload_axis, "json_info_cache_read_mode", cache_read_mode)
 
     def _buffer_tile_loc_c1():
-        no_coefficient = l0c_factor
+        no_coefficient = l0c_factor[0]
         noo_coefficient_unzero = int_ceil_div(
                 int_ceil_div(DIM_MAP["dx_6GD_shape"][2], l0c_factor[0]), bl1_parts[1]
             )
@@ -2565,7 +2564,7 @@ def opti_schedule(
             (None, None),
             (None, None),
             (None, None),
-            (None, None)
+            (None, None),
         )
 
     TILING.clear()
