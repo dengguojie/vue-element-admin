@@ -99,7 +99,7 @@ def op_select_format(x, w, compress_index, b, offset_w, y, num_output, transpose
     length_y_ori = len(shape_y_ori)
 
     if axis == 1:
-        if length_y_ori == 4:
+        if shape_x_ori[0] == 1:
             input0 = gen_param(classify="input0", name="x",
                                datatype="float16, int8",
                                format="NC1HWC0, NC1HWC0")
@@ -108,16 +108,35 @@ def op_select_format(x, w, compress_index, b, offset_w, y, num_output, transpose
                                format="FRACTAL_Z, FRACTAL_Z")
             input2 = gen_param(classify="input2", name="compress_index",
                                datatype="int8, int8",
-                               format="ND,ND")
+                               format="ND, ND")
             input3 = gen_param(classify="input3", name="b",
-                               datatype="float16,int32",
-                               format="NC1HWC0,NC1HWC0")
+                               datatype="float16, int32",
+                               format="NC1HWC0, NC1HWC0")
             input4 = gen_param(classify="input4", name="offset_w",
-                               datatype="int8,int8",
-                               format="ND,ND")
+                               datatype="int8, int8",
+                               format="ND, ND")
             output0 = gen_param(classify="output0", name="y",
                                 datatype="float16,int32",
-                                format="NC1HWC0,NC1HWC0")
+                                format="NC1HWC0, NC1HWC0")
+        elif length_y_ori == 4:
+            input0 = gen_param(classify="input0", name="x",
+                               datatype="float16, int8",
+                               format="NC1HWC0, NC1HWC0")
+            input1 = gen_param(classify="input1", name="w",
+                               datatype="float16, int8",
+                               format="FRACTAL_Z, FRACTAL_Z")
+            input2 = gen_param(classify="input2", name="compress_index",
+                               datatype="int8, int8",
+                               format="ND, ND")
+            input3 = gen_param(classify="input3", name="b",
+                               datatype="float16,int32",
+                               format="NC1HWC0, NC1HWC0")
+            input4 = gen_param(classify="input4", name="offset_w",
+                               datatype="int8, int8",
+                               format="ND, ND")
+            output0 = gen_param(classify="output0", name="y",
+                                datatype="float16, int32",
+                                format="NC1HWC0, NC1HWC0")
         elif length_x_ori == 2:
             input0 = gen_param(classify="input0", name="x",
                                datatype="float16, int8",
@@ -127,34 +146,15 @@ def op_select_format(x, w, compress_index, b, offset_w, y, num_output, transpose
                                format="FRACTAL_Z, FRACTAL_Z")
             input2 = gen_param(classify="input2", name="compress_index",
                                datatype="int8, int8",
-                               format="ND,ND")
+                               format="ND, ND")
             input3 = gen_param(classify="input3", name="b",
-                               datatype="float16,int32",
-                               format="NC1HWC0,NC1HWC0")
-            input4 = gen_param(classify="input4", name="offset_w",
-                               datatype="int8,int8",
-                               format="ND,ND")
-            output0 = gen_param(classify="output0", name="y",
-                                datatype="float16,int32",
-                                format="FRACTAL_NZ, FRACTAL_NZ")
-        elif shape_x_ori[0] == 1:
-            input0 = gen_param(classify="input0", name="x",
-                               datatype="float16, int8",
+                               datatype="float16, int32",
                                format="NC1HWC0, NC1HWC0")
-            input1 = gen_param(classify="input1", name="w",
-                               datatype="float16, int8",
-                               format="FRACTAL_Z, FRACTAL_Z")
-            input2 = gen_param(classify="input2", name="compress_index",
-                               datatype="int8, int8",
-                               format="ND,ND")
-            input3 = gen_param(classify="input3", name="b",
-                               datatype="float16,int32",
-                               format="NC1HWC0,NC1HWC0")
             input4 = gen_param(classify="input4", name="offset_w",
-                               datatype="int8,int8",
-                               format="ND,ND")
+                               datatype="int8, int8",
+                               format="ND, ND")
             output0 = gen_param(classify="output0", name="y",
-                                datatype="float16,int32",
+                                datatype="float16, int32",
                                 format="FRACTAL_NZ, FRACTAL_NZ")
         else:
             format_x = get_format(x, w, b, offset_w, y, num_output, transpose, axis, offset_x, format_x_ori)
@@ -309,6 +309,7 @@ def compress_fully_connection_compute(
     None
     """
     format_x = x.op.attrs["format"].value
+    format_out = None
     if axis == 2:
         format_a = 'FRACTAL_NZ'
         format_b = 'fractal'
@@ -318,6 +319,8 @@ def compress_fully_connection_compute(
             format_a = 'ND'
             format_b = 'fractal'
             trans_a = False
+            if x.shape[0].value == 1:
+                format_out = 'FRACTAL_NZ'
         else:
             format_a = 'FRACTAL_NZ'
             format_b = 'fractal'
@@ -326,13 +329,19 @@ def compress_fully_connection_compute(
     out_type = y.get('dtype')
     out_format = y.get('format')
     quantize_params = None
+    attrs = {
+        "offset_w": offset_w,
+        "offset_x": offset_x
+    }
+    if format_out is not None:
+        out_format = format_out
     if offset_w is not None:
         raise RuntimeError("For CompressFullyConnection, tensor offset_w must be None!")
 
     result = te.lang.cce.matmul(tensor_a=x, tensor_b=w, trans_a=trans_a, trans_b=transpose,
                                 format_a=format_a, format_b=format_b, alpha_num=1.0, beta_num=0.0,
                                 dst_dtype=out_type, tensor_bias=b, quantize_params=quantize_params,
-                                format_out=out_format, compress_index=compress_index)
+                                format_out=out_format, compress_index=compress_index, attrs=attrs)
     return result
 
 
