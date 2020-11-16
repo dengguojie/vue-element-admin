@@ -629,6 +629,7 @@ IMPLEMT_INFERFUNC(Aipp, AippInfer) {
 
     images_desc.SetDataType(DT_UINT8);
     images_desc.SetFormat(FORMAT_NHWC);
+    images_desc.SetOriginFormat(FORMAT_NHWC);
 
     (void)op.UpdateInputDesc("images", images_desc);
     op.SetAttr("has_infered_verified", 1);
@@ -699,12 +700,14 @@ IMPLEMT_INFERFUNC(Aipp, AippInfer) {
     shape.push_back(src_image_size_w);
     shape.push_back(real_channel);
     images_desc.SetFormat(FORMAT_NHWC);
+    images_desc.SetOriginFormat(FORMAT_NHWC);
   } else if (images_desc.GetFormat() == FORMAT_NHWC) {
     shape.push_back(batch);
     shape.push_back(src_image_size_h);
     shape.push_back(src_image_size_w);
     shape.push_back(real_channel);
     images_desc.SetFormat(FORMAT_NHWC);
+    images_desc.SetOriginFormat(FORMAT_NHWC);
   } else if (images_desc.GetFormat() == FORMAT_NC1HWC0_C04) {
     shape.push_back(batch);
     shape.push_back(c1);

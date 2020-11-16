@@ -1637,24 +1637,6 @@ IMPLEMT_COMMON_INFERFUNC(BiasAddInferShape) {
             "support 'NHWC', 'NCHW', 'NDHWC' and 'NCDHW'.");
     return GRAPH_FAILED;
   }
-  auto dim_num = tensordesc_x.GetShape().GetDimNum();
-  auto x_format = op.GetInputDesc("x").GetFormat();
-  if (dim_num > 4) {
-    tensordesc_bias.SetFormat(FORMAT_ND);
-    (void)op.UpdateInputDesc("bias", tensordesc_bias);
-    if (x_format == FORMAT_NCHW) {
-      tensordesc_x.SetFormat(FORMAT_NCDHW);
-      tensordesc_x.SetOriginFormat(FORMAT_NCDHW);
-      tensordesc_y.SetFormat(FORMAT_NCDHW);
-      tensordesc_y.SetOriginFormat(FORMAT_NCDHW);
-    } else if (x_format == FORMAT_NHWC) {
-      tensordesc_x.SetFormat(FORMAT_NDHWC);
-      tensordesc_x.SetOriginFormat(FORMAT_NDHWC);
-      tensordesc_y.SetFormat(FORMAT_NDHWC);
-      tensordesc_y.SetOriginFormat(FORMAT_NDHWC);
-    }
-    (void)op.UpdateInputDesc("x", tensordesc_x);
-  }
   (void)op.UpdateOutputDesc("y", tensordesc_y);
   return GRAPH_SUCCESS;
 }
