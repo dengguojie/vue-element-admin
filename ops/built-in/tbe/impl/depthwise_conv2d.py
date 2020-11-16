@@ -509,7 +509,7 @@ def get_op_support_info(x, weights, bias, offset_w, outputs, strides, pads, dila
         slice_info['_op_slice_info']["splitMaps"][3]["inputList"].extend(bias_input)
 
     # special scene: dilations is 1 and kernel is 1 and strides is 1, overlap is -1
-    shape_w = filter.get("shape")
+    shape_w = weights.get("shape")
     weight_h = shape_w[1]
     weight_w = shape_w[2]
     dim_n, dim_c, dim_h, dim_w = 0, 1, 2, 3  # NCHW
