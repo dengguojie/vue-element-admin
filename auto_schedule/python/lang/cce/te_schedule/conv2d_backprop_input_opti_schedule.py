@@ -184,12 +184,12 @@ def _get_data_amount_l1(l1_shape, isdouble):
         if l1_shape == "AL1_shape":
             data_amount_l1 = (
                 reduce(lambda x, y: x * y, DIM_MAP["A_matrix_dim"][1:])
-                // TILING["block_dim"][2]
+                // (TILING["block_dim"][2] * TILING["block_dim"][3])
             )
         if l1_shape == "BL1_shape":
             data_amount_l1 = (
                 reduce(lambda x, y: x * y, DIM_MAP["B_matrix_dim"])
-                // TILING["block_dim"][1]
+                // (TILING["block_dim"][1] * TILING["block_dim"][3])
             )
     else:
         block_m, block_k, block_n = cce_params.CUBE_MKN[TENSOR_MAP.get("b_l1").dtype][
@@ -1479,7 +1479,7 @@ def _get_aicore_tiling_factor(
     # From LOC to GM [NumOfparts for N axis, NumOfparts for M axis ]
     l0c_parts = [
         int_ceil_div(
-            DIM_MAP.get("out_img_shape")[1] // TILING["block_dim"][1],
+            DIM_MAP.get("dx_6GD_shape")[2] // TILING["block_dim"][1],
             l0c_tiling_factor[0]
         ),
         int_ceil_div(
@@ -1511,7 +1511,7 @@ def _get_aicore_tiling_factor(
         # parts of k-axis from DDR to L1---need div by H*W
         al1_parts = [
             int_ceil_div(
-                DIM_MAP["A_matrix_dim"][1],
+                DIM_MAP[GroupDictKeys.dy_c1_extend],
                 int_ceil_div(TILING["AL1_shape"][0], block_k)
             ),
             int_ceil_div(l0c_parts[1], TILING["AL1_shape"][1])
@@ -1525,7 +1525,7 @@ def _get_aicore_tiling_factor(
             )
         bl1_parts = [
             int_ceil_div(
-                DIM_MAP["B_matrix_dim"][0],
+                DIM_MAP["B_matrix_dim"][1],
                 int_ceil_div(TILING["BL1_shape"][0], block_k)
             ),
             int_ceil_div(l0c_parts[0], TILING["BL1_shape"][1])
@@ -1558,6 +1558,7 @@ def _get_mmad_factor():
 def _bind_multi_core(  # pylint: disable=R0913,R0914
     sch,
     c_gm,
+    g_dim,
     g_outer,
     l1_n_outer_outer,
     l1_n_out_inner,
@@ -1577,7 +1578,7 @@ def _bind_multi_core(  # pylint: disable=R0913,R0914
         batch_out, batch_in = sch[c_gm].split(c_gm.op.axis[0], batch_dim_factor)
     else:
         batch_out, batch_in = sch[c_gm].split(c_gm.op.axis[0], nparts=block_dim[0])
-    g_outer, g_inner = sch[c_gm].split(g_outer, nparts=block_dim[3])
+    g_outer, g_inner = sch[c_gm].split(g_dim, nparts=block_dim[3])
     l1_n_out_inner_out, l1_n_out_inner_in = sch[c_gm].split(
         l1_n_out_inner, nparts=block_dim[1]
     )
@@ -1610,7 +1611,7 @@ def _bind_multi_core(  # pylint: disable=R0913,R0914
             sch[c_gm].pragma(bind_in, "json_info_batchBindOnly")
     else:
         blockidx = [g_outer, batch_out, l1_n_out_inner_out, l1_m_outer_inner_out]
-    return batch_in, g_inner, l1_m_outer_inner_in, l1_n_out_inner_in, blockidx
+    return batch_in, g_inner, l1_m_outer_inner_in, l1_n_out_inner_out, l1_n_out_inner_in, blockidx
 
 
 def _get_l0c_and_l1_axis(  # pylint: disable=R0914,R0913,W0613
@@ -1658,10 +1659,10 @@ def _get_l0c_and_l1_axis(  # pylint: disable=R0914,R0913,W0613
         return reorder_flag
 
     # split c_gm according to factor of loc and out_shape
-    g_outer, c_gm_inner = sch[c_gm].split(c_gm.op.axis[1], nparts=g_extend)
+    g_dim, c_gm_inner = sch[c_gm].split(c_gm.op.axis[1], nparts=g_extend)
     l0c_n_outer, l0c_n_inner = sch[c_gm].split(c_gm_inner, l0c_factor[0])
     l0c_m_outer, l0c_m_inner = sch[c_gm].split(c_gm.op.axis[2], l0c_factor[1])
-    sch[c_gm].reorder(g_outer, c_gm.op.axis[0], l0c_n_outer, l0c_m_outer, l0c_n_inner, l0c_m_inner)
+    sch[c_gm].reorder(g_dim c_gm.op.axis[0], l0c_n_outer, l0c_m_outer, l0c_n_inner, l0c_m_inner)
 
     # split c_gm according to factor of a_l1 and b_l1
     l1_m_outer_outer, l1_m_outer_inner = sch[c_gm].split(
@@ -1669,9 +1670,10 @@ def _get_l0c_and_l1_axis(  # pylint: disable=R0914,R0913,W0613
     )
     l1_n_outer_outer, l1_n_out_inner = sch[c_gm].split(l0c_n_outer, nparts=bl1_parts[1])
     _print_ir_conv("split gm by loc_factor and l1_parts", sch)
-    batch_in, g_inner, l1_m_outer_inner_in, l1_n_out_inner_in, blockidx = _bind_multi_core(
+    batch_in, g_inner, l1_m_outer_inner_in, l1_n_out_inner_out, l1_n_out_inner_in, blockidx = _bind_multi_core(
         sch,
         c_gm,
+        g_dim,
         g_outer,
         l1_n_outer_outer,
         l1_n_out_inner,
@@ -1702,6 +1704,7 @@ def _get_l0c_and_l1_axis(  # pylint: disable=R0914,R0913,W0613
         batch_in_out_axis,
         l1_n_outer_outer,
         batch_in_inner_axis,
+        l1_n_out_inner_out,
         l1_m_outer_inner_in,
         l0c_n_inner,
         l0c_m_inner,
@@ -2535,6 +2538,36 @@ def opti_schedule(
         cache_read_mode = 0 if overload_flag else 1
         param.pragma(overload_axis, "json_info_cache_read_mode", cache_read_mode)
 
+    def _buffer_tile_loc_c1():
+        no_coefficient = l0c_factor
+        noo_coefficient_unzero = int_ceil_div(
+                int_ceil_div(DIM_MAP["dx_6GD_shape"][2], l0c_factor[0]), bl1_parts[1]
+            )
+        noo_coefficient = 0 if bl1_parts[1] == 1 else noo_coefficient_unzero
+        noio_coefficient = (
+            0
+            if TILING["block_dim"][1] == 1
+            else int_ceil_div(noo_coefficient_unzero, TILING["block_dim"][1])
+        )
+        noii_coefficient = (
+            0 if int_ceil_div(noo_coefficient_unzero, TILING["block_dim"][1]) == 1
+            else 1
+        )
+        cub_buffertile_n_min = (
+            bl1_at_c_axis.var * noo_coefficient
+            + noio_coefficient * l1_n_out_inner_out
+            + noii_coefficient * noii_axis.var
+        ) * no_coefficient
+        sch[c_l0c].buffer_tile(
+            (None, None),
+            (None, None),
+            (cub_buffertile_n_min, no_coefficient),
+            (None, None),
+            (None, None),
+            (None, None),
+            (None, None)
+        )
+
     TILING.clear()
     dx_res = tensor
     sch = sch_list[0]
@@ -2606,6 +2639,7 @@ def opti_schedule(
         batch_in_out_axis,
         l1_n_outer_outer,
         batch_in_inner_axis,
+        l1_n_out_inner_out,
         l1_m_outer_inner_in,
         l0c_n_inner,
         l0c_m_inner,
@@ -2697,7 +2731,7 @@ def opti_schedule(
                 (1, cce_params.CUBE_MKN["float16"]["mac"][0]),
                 (1, cce_params.CUBE_MKN["float16"]["mac"][0])
             )
-
+    _buffer_tile_loc_c1()
     # double buffer
     _do_double_buffer(fusion_type)
     _print_ir_conv("enable double buffer", sch)

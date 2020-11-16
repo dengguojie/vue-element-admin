@@ -497,86 +497,59 @@ class CubeDslPattern:
         a_group, a_batch, a_m1, a_k1, a_m0, a_k0 = shape_to_list(tensor_a.shape)
         axis_k0 = tvm.reduce_axis([0, a_k0], name='axis_k0')
         axis_k1 = tvm.reduce_axis([0, a_k1], name='axis_k1')
-        if len(tensor_b.shape) == 5:
-            is_conv3d_backprop_input = True
-        if is_conv3d_backprop_input:
-            _, _, b_n1, b_n0, _ = shape_to_list(tensor_b.shape)
-            shape_c = (a_batch * 2, b_n1, a_m1 * a_m0, b_n0)
-            type_c = (
-                c_type
-                if c_type is not None
-                else CubeDslPattern.get_type_c(tensor_a.dtype, tensor_b.dtype)
-            )
-            tensor_c = tvm.compute(
-                shape_c,
-                lambda n_index, co1_index, m_index, co0_index: tvm.sum(
-                    (
-                        tensor_a(
-                            n_index // 2,
-                            m_index // a_m0,
-                            axis_k1,
-                            m_index % a_m0,
-                            axis_k0
-                        )
-                        * tensor_b(n_index % 2, axis_k1, co1_index, co0_index, axis_k0)
-                    ).astype(type_c),
-                    axis=[axis_k1, axis_k0]
-                ),
-                name="C",
-                tag="mad"
-            )
-        else:
-            _, b_n1, b_n0, _ = shape_to_list(tensor_b.shape)
 
-            shape_c = (a_group, a_batch, b_n1, a_m1*a_m0, b_n0)
-            type_c = (
-                c_type
-                if c_type is not None
-                else CubeDslPattern.get_type_c(tensor_a.dtype, tensor_b.dtype)
-            )
+        _, _, b_n1, b_n0, _ = shape_to_list(tensor_b.shape)
 
-            offset_x = offset_x if is_support_v200() else 0
-            tensor_c = tvm.compute(
-                shape_c,
-                lambda g_index, n_index, co1_index, m_index, co0_index:
-                tvm.sum(((tensor_a(g_index,
-                                   n_index,
-                                   m_index // a_m0,
-                                   axis_k1,
-                                   m_index % a_m0,
-                                   axis_k0) - offset_x) *
-                          tensor_b(g_index * a_k1 + axis_k1,
-                                   co1_index,
-                                   co0_index,
-                                   axis_k0)).astype(type_c),
-                        axis=[axis_k1, axis_k0]),
-                name="C",
-                tag="mad"
-            )
-            if tensor_bias is not None:
-                bias_ub_brc_shape = list(shape_c)
-                bias_ub_brc_shape[3] = bias_ub_brc_shape[3] // BRC_STANDARD_BLOCK_SIZE
-                co_k = CUBE_MKN[tensor_bias.dtype]["mac"][2]
-                bias_ub_brc = tvm.compute(
-                    bias_ub_brc_shape,
-                    lambda *indices:
-                    tensor_bias(
-                            indices[2] * co_k + indices[4]
-                        ),
-                    name="bias_ub_brc"
-                )
-                bias_l0c = tvm.compute(
-                    shape_c,
-                    lambda g, i, j, k, l: bias_ub_brc(
-                       g, i, j, k // BRC_STANDARD_BLOCK_SIZE, l
+        shape_c = (a_group, a_batch, b_n1, a_m1*a_m0, b_n0)
+        type_c = (
+            c_type
+            if c_type is not None
+            else CubeDslPattern.get_type_c(tensor_a.dtype, tensor_b.dtype)
+        )
+
+        offset_x = offset_x if is_support_v200() else 0
+        tensor_c = tvm.compute(
+            shape_c,
+            lambda g_index, n_index, co1_index, m_index, co0_index:
+            tvm.sum(((tensor_a(g_index,
+                               n_index,
+                               m_index // a_m0,
+                               axis_k1,
+                               m_index % a_m0,
+                               axis_k0) - offset_x) *
+                      tensor_b(g_index,
+                               axis_k1,
+                               co1_index,
+                               co0_index,
+                               axis_k0)).astype(type_c),
+                    axis=[axis_k1, axis_k0]),
+            name="C",
+            tag="mad"
+        )
+        if tensor_bias is not None:
+            bias_ub_brc_shape = list(shape_c)
+            bias_ub_brc_shape[3] = bias_ub_brc_shape[3] // BRC_STANDARD_BLOCK_SIZE
+            co_k = CUBE_MKN[tensor_bias.dtype]["mac"][2]
+            bias_ub_brc = tvm.compute(
+                bias_ub_brc_shape,
+                lambda *indices:
+                tensor_bias(
+                        indices[2] * co_k + indices[4]
                     ),
-                    name="bias_l0c"
-                )
-                tensor_c = tvm.compute(
-                    shape_c,
-                    lambda *indices: bias_l0c(*indices) + tensor_c(*indices),
-                    name="c_add_bias"
-                )
+                name="bias_ub_brc"
+            )
+            bias_l0c = tvm.compute(
+                shape_c,
+                lambda g, i, j, k, l: bias_ub_brc(
+                   g, i, j, k // BRC_STANDARD_BLOCK_SIZE, l
+                ),
+                name="bias_l0c"
+            )
+            tensor_c = tvm.compute(
+                shape_c,
+                lambda *indices: bias_l0c(*indices) + tensor_c(*indices),
+                name="c_add_bias"
+            )
         self._tensor_c = tensor_c
         return tensor_c
 

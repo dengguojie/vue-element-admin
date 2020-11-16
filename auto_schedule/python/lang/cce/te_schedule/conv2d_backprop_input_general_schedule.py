@@ -1000,6 +1000,7 @@ def general_schedule(
             ) = tiling.get("BL0_matrix")
         else:
             (
+                _,
                 bl0_tiling_kb,
                 bl0_tiling_nb,
                 bl0_tiling_n0,
@@ -1017,7 +1018,7 @@ def general_schedule(
             ):
                 tiling["AL1_shape"] = []
         else:
-            # batch = 1 other axes full load
+            # batch and group is 1, other axes full load
             al1_tilling_k = kernel_h*kernel_w*cou1_g*al1_co0
             al1_tilling_m = _ceil(c_l0c_hw,
                                   cce_params.CUBE_MKN[c_col.dtype]["mac"][0] * cl0_tiling_mc)
@@ -1026,9 +1027,11 @@ def general_schedule(
             bl1_tilling_k, bl1_tilling_n, _, _ = tiling.get("BL1_shape")
         else:
             if w_trans_flag:
+                # [G*Cout1*Hk*Wk, cin1, cin0, cout0]: bl1_co1, bl1_k1, _, bl1_co0
                 bl1_tilling_k = bl1_co0*bl1_co1//g_after
                 bl1_tilling_n = bl1_k1 // cl0_tiling_nc
             else:
+                # [G*Cin1*Hk*Wk, cou1, cou0, cin0]: bl1_k1, bl1_co1,bl1_co0,_
                 bl1_tilling_k = kernel_h*kernel_w*bl1_co0*bl1_co1
                 bl1_tilling_n = bl1_k1//(kernel_h*kernel_w*cl0_tiling_nc*g_after)
         return al1_tilling_k, al1_tilling_m, bl1_tilling_k, bl1_tilling_n
@@ -1210,7 +1213,7 @@ def general_schedule(
         def _attach_cub():
             # c_ub will attach on deconv_res in dynamic shape by default
             if not dynamic_mode:
-                status = Compare.compare(affine_cub, op_shape)
+                status = Compare.compare(affine_cub[1:], op_shape)
             else:
                 status = Compare.LESS_EQ
 
@@ -1278,6 +1281,7 @@ def general_schedule(
         if n0_32_flag is not None:
             affine_cub = (
                 1,
+                1,
                 int(c_ub_nc_factor / 2),
                 cub_tiling_mc_factor * cub_tiling_m0,
                 cub_tiling_n0 * 2
@@ -1287,6 +1291,7 @@ def general_schedule(
                 op_shape[3] = op_shape[3] * 2
         else:
             affine_cub = (
+                1,
                 1,
                 c_ub_nc_factor,
                 cub_tiling_mc_factor * cub_tiling_m0,
@@ -1330,14 +1335,14 @@ def general_schedule(
             status_ori = Compare.compare(affine_l0c, c_col_shape)
         else:
             status_ori = Compare.LESS_EQ
-        status = Compare.compare(affine_l0c[1:], affine_cub)
+        status = Compare.compare(affine_l0c, affine_cub)
 
         if status_ori == Compare.EQUAL:
             pass
         elif status == Compare.EQUAL:
             sch_agent.same_attach(c_col, c_ub)
         elif status == Compare.LESS_EQ:
-            sch_agent.attach_at(c_col, c_ub, affine_shape=affine_l0c[1:])
+            sch_agent.attach_at(c_col, c_ub, affine_shape=affine_l0c)
         elif status == Compare.GREATE_EQ:
             sch_agent.attach_at(c_col, c_ddr, affine_shape=affine_l0c[1:])
         else:
@@ -1391,6 +1396,7 @@ def general_schedule(
         elif status == Compare.GREATE_EQ:
             l0a2out_affine_shape = [
                 1,
+                1,
                 None,
                 al0_tiling_ma * al0_tiling_m0,
                 cl0_tiling_n0
@@ -1412,6 +1418,7 @@ def general_schedule(
                 bl0_tiling_k0
             )
             tiling_ori_l0b = (
+                1,
                 bl0_tiling_kb,
                 bl0_tiling_nb,
                 bl0_tiling_n0,
@@ -1431,7 +1438,7 @@ def general_schedule(
             elif status == Compare.LESS_EQ:
                 sch_agent.attach_at(b_col, c_col, affine_shape=l0b2l0c_affine_shape)
             elif status == Compare.GREATE_EQ:
-                l0b2out_affine_shape = [1, bl0_tiling_nb, cl0_tiling_m0, bl0_tiling_n0]
+                l0b2out_affine_shape = [1, 1, bl0_tiling_nb, cl0_tiling_m0, bl0_tiling_n0]
                 sch_agent.attach_at(b_col, c_ddr, affine_shape=l0b2out_affine_shape)
             else:
                 _raise_dx_general_err("l0b attach error.")
@@ -1465,7 +1472,7 @@ def general_schedule(
         elif status == Compare.LESS_EQ:
             sch_agent.attach_at(a_l1, c_col, affine_shape=l1a2l0c_affine_shape)
         elif status == Compare.GREATE_EQ:
-            l1a2out_affine_shape = [1, None, l1_ma * al0_tiling_m0, cl0_tiling_n0]
+            l1a2out_affine_shape = [1, 1, None, l1_ma * al0_tiling_m0, cl0_tiling_n0]
             sch_agent.attach_at(a_l1, c_ddr, affine_shape=l1a2out_affine_shape)
         else:
             _raise_dx_general_err("a_l1 atach error.")
@@ -1535,7 +1542,7 @@ def general_schedule(
             elif status == Compare.LESS_EQ:
                 sch_agent.attach_at(b_l1, c_col, affine_shape=l1b2l0c_affine_shape)
             elif status == Compare.GREATE_EQ:
-                l1b2out_affine_shape = [None, l1_nb, cl0_tiling_m0, bl0_tiling_n0]
+                l1b2out_affine_shape = [1, None, l1_nb, cl0_tiling_m0, bl0_tiling_n0]
                 sch_agent.attach_at(b_l1, c_ddr, affine_shape=l1b2out_affine_shape)
             else:
                 _raise_dx_general_err("b_l1 attach error.")
@@ -1859,11 +1866,11 @@ def general_schedule(
             or cce_conf.CceProductParams().is_lhisi_version()
         ):
             _, b_col_inner = sch_agent[b_col].split(
-                sch_agent[b_col].op.axis[0], factor=kernel_h * kernel_w
+                sch_agent[b_col].op.axis[1], factor=kernel_h * kernel_w
             )
             sch_agent[b_col].emit_insn(b_col_inner, "dma_copy")
         else:
-            sch_agent[b_col].emit_insn(sch_agent[b_col].op.axis[1], "dma_copy")
+            sch_agent[b_col].emit_insn(sch_agent[b_col].op.axis[2], "dma_copy")
 
         setfmatrix_dict = {
             "conv_kernel_h": kernel_h,
@@ -1992,6 +1999,8 @@ def general_schedule(
         L1CommonParam.l1_fusion_tensors_map = l1_tensor_map
 
     sch_agent = ScheduleAgent(sch)
+    sch_agent[c_ddr].split_group(c_ddr.op.axis[1], nparts=g_after)
+
     affine_cub = _cub_process()
     _cl0_process(affine_cub)
     _l0a_process()
@@ -2001,10 +2010,9 @@ def general_schedule(
 
     def _bind_core():
         axs = sch_agent[c_ddr].get_active_scopes()
-        ax_ni, ax_ci, ax_hw, _ = axs
-        ax_g, ax_ci = sch_agent[c_ddr].split(ax_ci, nparts=g_after)
+        ax_g, ax_ni, ax_ci, ax_hw, _ = axs
         ax_core = sch_agent[c_ddr].bind_core(
-            [ax_ni, ax_g, ax_ci, ax_hw], [batch_dim, group_dim, n_dim, m_dim])
+            [ax_g, ax_ni, ax_ci, ax_hw], [group_dim, batch_dim, n_dim, m_dim])
         ax_core_in = sch_agent[c_ddr].get_superkernel_axis_pragma()
         sch_agent.root_stage_at(c_ddr, ax_core)
         blocks = batch_dim * group_dim * n_dim * m_dim
@@ -2042,12 +2050,40 @@ def general_schedule(
             (None, None), (None, None), (None, None), (w_offset, w_extend), (None, None)
         )
 
+    def _c_col_buffer_tile():
+        axis_split_list, axis_unit, axis_offset = sch_agent[c_ddr].get_axis_split_list_and_extend(2)
+        l0c_attach = sch_agent.apply_var(sch[c_col])
+        if l0c_attach != None:
+            ddr_idx = list(sch[c_ddr].leaf_iter_vars).index(l0c_attach)
+            ddr_var_list = sch[c_ddr].leaf_iter_vars[0:ddr_idx]
+            for var in ddr_var_list[::-1]:
+                if var in axis_split_list:
+                    c1_idx = axis_split_list.index(var)
+                    axis = axis_split_list[0:c1_idx + 1]
+                    unit = axis_unit[0:c1_idx+1]
+                    offset = axis_offset[0:c1_idx+1]
+                    c_ofset = 0
+                    for idx in range(c1_idx+1):
+                        factor_len = ( 0 if unit[idx] == 1 else offset[idx])
+                        c_offset = c_offset + axis[idx] * factor_len
+                    sch[col].buffer_tile(
+                    (None, None),
+                    (None, None),
+                    (c_offset, tiling["CL0_matrix"][0]),
+                    (None, None),
+                    (None, None),
+                    (None, None),
+                    (None, None),
+                    )
+                    break
+
     ax_core = _bind_core()
     if is_conv1d_situation:
         _conv1d_split_tile()
     _double_buffer()
     _emit_insn()
     sch_agent.apply()
+    _c_col_buffer_tile()
     if dynamic_mode is not None:
         _handle_dynamic_workspace(stride_w)
     else:
