@@ -1772,7 +1772,111 @@ IMPLEMT_INFERFUNC(MaxPool, MaxPoolInferShape) {
   return GRAPH_SUCCESS;
 }
 
+
+static void InferHWMaxPool(int64_t kernel,int64_t stride, vector<int64_t>& output, vector<int64_t>& input,
+                           int64_t& ori_input) {
+    int64_t first_start = 0;
+    int64_t second_start = 0;
+    int64_t first_end = 0;
+    int64_t second_end = 0;
+    int64_t start = 0;
+    int64_t end = 0;
+    first_start = output[0] * stride;
+    second_start = output[1] * stride;
+    first_end = std::min(first_start + kernel, ori_input);
+    second_end = std::min(second_start + kernel, ori_input);
+    start = std::max(first_start, int64_t(0));
+    end = second_end - 1;
+    input = {start, end};
+}
+
+IMPLEMT_INFER_DATA_SLICE(MaxPool, MaxPoolInferDataSlice){
+  auto inputTensorDesc = op.GetInputDesc("x");
+  auto shape = inputTensorDesc.GetShape();
+  std::vector<int64_t> dims_input = shape.GetDims();
+
+  std::vector<int64_t> ksizeList;
+  std::vector<int64_t> stridesList;
+  std::string dataFormat;
+  std::string paddingMode;
+  op.GetAttr("ksize", ksizeList);
+  op.GetAttr("strides", stridesList);
+  op.GetAttr("data_format", dataFormat);
+  op.GetAttr("padding", paddingMode);
+
+  int64_t inputH = 0;
+  int64_t inputW = 0;
+  int64_t windowH = 0;
+  int64_t windowW = 0;
+  int64_t strideH = 0;
+  int64_t strideW = 0;
+  int64_t dilationH = 0;
+
+  if (dataFormat == "NHWC") {
+    inputH = dims_input[1];
+    inputW = dims_input[2];
+    windowH = ksizeList[1];
+    windowW = ksizeList[2];
+    strideH = stridesList[1];
+    strideW = stridesList[2];
+  } else if(dataFormat == "NCHW") {
+    inputH = dims_input[2];
+    inputW = dims_input[3];
+    windowH = ksizeList[2];
+    windowW = ksizeList[3];
+    strideH = stridesList[2];
+    strideW = stridesList[3];
+  }
+
+  if (dataFormat == "NHWC" && ksizeList[0] == inputH && ksizeList[1] == inputW) {
+    return NO_OVERLAP_DIM;
+  }
+  if (dataFormat == "NCHW" && ksizeList[0] == inputH && ksizeList[1] == inputW) {
+    return NO_OVERLAP_DIM;
+  }
+  if (paddingMode == "SAME") {
+    return NO_OVERLAP_DIM;
+  }
+
+  vector<vector<int64_t>> y_data_slice = {{}, {}, {}, {}, {}};
+  vector<vector<int64_t>> x_data_slice = {{}, {}, {}, {}, {}};
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensor_desc_out = op_desc->MutableOutputDesc("y");
+  GeTensorDescPtr tensor_desc_in = op_desc->MutableInputDesc("x");
+  if (!ge::AttrUtils::GetListListInt(tensor_desc_out, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
+    OP_LOGI(op.GetName().c_str(), "no data slice, use default as {{}, {}, {}, {}, {}}");
+    return GRAPH_FAILED;
+  }
+
+  for(unsigned i = 0; i < y_data_slice.size(); i++) {
+    if (y_data_slice[i].size() > 0) {
+      if (i == 0) {
+        return NO_OVERLAP_DIM;
+      } else if (i == 1 or i == 3 or i == 4){
+        return NOT_SUPPORT_SLICE;
+      } else if (i == 2) {
+        vector<int64_t> input_h;
+        InferHWMaxPool(windowH, strideH, y_data_slice[i], input_h, inputH);
+        x_data_slice[i] = input_h;
+      }
+    }
+  }
+
+  for(unsigned i = 0; i < x_data_slice.size(); i++) {
+    if (x_data_slice[i].size() > 0) {
+      if(!AttrUtils::SetListListInt(tensor_desc_in, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+        return GRAPH_FAILED;
+      }
+      return GRAPH_SUCCESS;
+    }
+    return NO_OVERLAP_DIM;
+  }
+
+  return NO_OVERLAP_DIM;
+}
+
 INFER_FUNC_REG(MaxPool, MaxPoolInferShape);
+INFER_DATA_SLICE_FUNC_REG(MaxPool, MaxPoolInferDataSlice);
 // ----------------MaxPool-------------------
 
 // ----------------MaxPool3D-------------------
@@ -2360,7 +2464,110 @@ IMPLEMT_INFERFUNC(MaxPoolExt2, MaxPoolExt2InferShape) {
   return GRAPH_SUCCESS;
 }
 
+static void InferHWMaxPoolExt2(int64_t kernel,int64_t stride, vector<int64_t>& output, vector<int64_t>& input,
+                           int64_t& ori_input) {
+    int64_t first_start = 0;
+    int64_t second_start = 0;
+    int64_t first_end = 0;
+    int64_t second_end = 0;
+    int64_t start = 0;
+    int64_t end = 0;
+    first_start = output[0] * stride;
+    second_start = output[1] * stride;
+    first_end = std::min(first_start + kernel, ori_input);
+    second_end = std::min(second_start + kernel, ori_input);
+    start = std::max(first_start, int64_t(0));
+    end = second_end - 1;
+    input = {start, end};
+}
+
+IMPLEMT_INFER_DATA_SLICE(MaxPoolExt2, MaxPoolExt2InferDataSlice){
+  auto inputTensorDesc = op.GetInputDesc("x");
+  auto shape = inputTensorDesc.GetShape();
+  std::vector<int64_t> dims_input = shape.GetDims();
+
+  std::vector<int64_t> ksizeList;
+  std::vector<int64_t> stridesList;
+  std::string dataFormat;
+  std::string paddingMode;
+  op.GetAttr("ksize", ksizeList);
+  op.GetAttr("strides", stridesList);
+  op.GetAttr("data_format", dataFormat);
+  op.GetAttr("padding", paddingMode);
+
+  int64_t inputH = 0;
+  int64_t inputW = 0;
+  int64_t windowH = 0;
+  int64_t windowW = 0;
+  int64_t strideH = 0;
+  int64_t strideW = 0;
+  int64_t dilationH = 0;
+
+  if (dataFormat == "NHWC") {
+    inputH = dims_input[1];
+    inputW = dims_input[2];
+    windowH = ksizeList[1];
+    windowW = ksizeList[2];
+    strideH = stridesList[1];
+    strideW = stridesList[2];
+  } else if(dataFormat == "NCHW") {
+    inputH = dims_input[2];
+    inputW = dims_input[3];
+    windowH = ksizeList[2];
+    windowW = ksizeList[3];
+    strideH = stridesList[2];
+    strideW = stridesList[3];
+  }
+
+  if (dataFormat == "NHWC" && ksizeList[0] == inputH && ksizeList[1] == inputW) {
+    return NO_OVERLAP_DIM;
+  }
+  if (dataFormat == "NCHW" && ksizeList[0] == inputH && ksizeList[1] == inputW) {
+    return NO_OVERLAP_DIM;
+  }
+  if (paddingMode == "SAME") {
+    return NO_OVERLAP_DIM;
+  }
+
+  vector<vector<int64_t>> y_data_slice = {{}, {}, {}, {}, {}};
+  vector<vector<int64_t>> x_data_slice = {{}, {}, {}, {}, {}};
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensor_desc_out = op_desc->MutableOutputDesc("y");
+  GeTensorDescPtr tensor_desc_in = op_desc->MutableInputDesc("x");
+  if (!ge::AttrUtils::GetListListInt(tensor_desc_out, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
+    OP_LOGI(op.GetName().c_str(), "no data slice, use default as {{}, {}, {}, {}, {}}");
+    return GRAPH_FAILED;
+  }
+
+  for(unsigned i = 0; i < y_data_slice.size(); i++) {
+    if (y_data_slice[i].size() > 0) {
+      if (i == 0) {
+        return NO_OVERLAP_DIM;
+      } else if (i == 1 or i == 3 or i == 4){
+        return NOT_SUPPORT_SLICE;
+      } else if (i == 2) {
+        vector<int64_t> input_h;
+        InferHWMaxPoolExt2(windowH, strideH, y_data_slice[i], input_h, inputH);
+        x_data_slice[i] = input_h;
+      }
+    }
+  }
+
+  for(unsigned i = 0; i < x_data_slice.size(); i++) {
+    if (x_data_slice[i].size() > 0) {
+      if(!AttrUtils::SetListListInt(tensor_desc_in, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+        return GRAPH_FAILED;
+      }
+      return GRAPH_SUCCESS;
+    }
+    return NO_OVERLAP_DIM;
+  }
+
+  return NO_OVERLAP_DIM;
+}
+
 INFER_FUNC_REG(MaxPoolExt2, MaxPoolExt2InferShape);
+INFER_DATA_SLICE_FUNC_REG(MaxPoolExt2, MaxPoolExt2InferDataSlice);
 // ---------------------MaxPoolExt2---------------------
 
 // ---------------------MaxPoolGradWithArgmax---------------------

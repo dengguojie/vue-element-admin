@@ -23,6 +23,43 @@ from te.platform.fusion_manager import fusion_manager
 import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util import util_select_op_base
+
+
+def get_op_support_info(input_data, output_data, ksize, strides, padding,
+             data_format="NC1HWC0", kernel_name="max_pool_ext2"):
+    """
+    get the max_pool_ext2 split
+    """
+    format_x = input_data.get("format")
+    input_shape = input_data.get("shape")
+
+    if data_format in ("NHWC",):
+        ksize_h = ksize[1]
+        ksize_w = ksize[2]
+        window = [ksize[1], ksize[2]]
+    else:
+        ksize_h = ksize[2]
+        ksize_w = ksize[3]
+        window = [ksize[2], ksize[3]]
+
+    if format_x == "NC1HWC0":
+        if (ksize_h == window[0] and ksize_w == window[1]) or padding == "SAME":
+            axis_split_matrix = [[util_select_op_base.SplitInput([0, [0], [-1], [-1]]),
+                                 util_select_op_base.SplitOutput([0, [0]])]]
+        elif padding == "VALID":
+            axis_split_matrix = [
+                [util_select_op_base.SplitInput([0, [0], [-1], [-1]]), util_select_op_base.SplitOutput([0, [0]])],
+                [util_select_op_base.SplitInput([0, [2], [0], [0]]), util_select_op_base.SplitOutput([0, [2]])]]
+        else:
+            axis_split_matrix = None
+        axis_reduce_list = None
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_matrix, axis_reduce_list, 2, 0)
+
+    return op_cal_info_in_json
 
 
 # pylint: disable=locally-disabled,unused-argument
