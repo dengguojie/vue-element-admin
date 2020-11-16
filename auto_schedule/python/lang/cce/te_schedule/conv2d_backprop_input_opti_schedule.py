@@ -1559,7 +1559,6 @@ def _bind_multi_core(  # pylint: disable=R0913,R0914
     sch,
     c_gm,
     g_dim,
-    g_outer,
     l1_n_outer_outer,
     l1_n_out_inner,
     l1_m_outer_outer,

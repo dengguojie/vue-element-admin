@@ -315,7 +315,7 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
     groups = group_dict.get(GroupDictKeys.groups)
     filter_ori_format = group_dict.get(GroupDictKeys.filter_ori_format)
     # temp limitation : group must be 1
-    if groups != 1 or groups != input_sizes[1]:
+    if groups != 1 and groups != input_sizes[1]:
         dict_args = {"errCode": "E60108", "reason": "group must be 1 or cin now"}
         raise RuntimeError(
             dict_args, error_manager_util.get_error_message(dict_args)
