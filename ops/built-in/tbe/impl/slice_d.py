@@ -7331,12 +7331,19 @@ def op_select_format(x, y, begin, size, kernel_name="slice_d"):
     """
     input_ori_shape = x.get("ori_shape")
     input_ori_format = x.get("ori_format")
+    shape = x.get("shape")
     hd_format_c0 = 16
     fz_format_n0 = 16
     nz_format_align = 16
     # update size the size = -1
     size = list(size)
     begin = list(begin)
+    if not (len(shape) == len(begin) and len(shape) == len(size)):
+        expected_value = "must be equal to shape!"
+        real_value = "not equal to shape!"
+        error_manager_vector.raise_err_input_value_invalid("slice_d", "length of begin and size",
+                                                           expected_value, real_value)
+
     for i, item in enumerate(size):
         if item == -1:
             size[i] = input_ori_shape[i] - begin[i]

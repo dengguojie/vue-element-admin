@@ -315,6 +315,16 @@ def concat_v2_d(input_values, output_data, axis, kernel_name="concat_v2_d"):
     -------
     None
     """
+    new_input_values = []
+    for _, tensor_dict in enumerate(input_values):
+        zero_num = 0
+        input_shape = tensor_dict.get("ori_shape")
+        for i, _ in enumerate(input_shape):
+            if input_shape[i] == 0:
+                zero_num += 1
+        if zero_num == 0:
+            new_input_values.append(tensor_dict)
+    input_values = new_input_values
     shape_value = []
     for _, tensor_dict in enumerate(input_values):
         shape_input = tensor_dict.get("ori_shape")

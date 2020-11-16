@@ -30,6 +30,7 @@ from te.utils.op_utils import REQUIRED_INPUT
 from te.utils.op_utils import REQUIRED_OUTPUT
 from te.utils.op_utils import check_op_params
 from te.utils.op_utils import broadcast_shapes
+from te.utils.op_utils import check_elewise_shape_range
 from topi import generic
 
 # define a scalar, value = 1
@@ -79,6 +80,9 @@ def sigmoid_cross_entropy_with_logits_compute(predict, target, loss, kernel_name
     -------
     output tensor
     """
+    y_shape = get_broadcast_shapes(predict, target, 'predict', 'target')
+    predict = tbe.broadcast(predict, y_shape)
+    target = tbe.broadcast(target, y_shape)
     predict_dtype = predict.dtype
     target_dtype = target.dtype
     if predict_dtype == "float16" and tbe_platform.api_check_support(
@@ -102,20 +106,9 @@ def sigmoid_cross_entropy_with_logits_compute(predict, target, loss, kernel_name
     vadds_res = tbe.vadds(vexp_predict, const_one)
     vlog_res = tbe.vlog(vadds_res, priority_flag=1)
 
-    y_shape = get_broadcast_shapes(predict, target, 'predict', 'target')
-    input1 = tbe.broadcast(predict, y_shape)
-    input2 = tbe.broadcast(target, y_shape)
-    vmul_res = tbe.vmul(input1, input2)
-
-    y_shape = get_broadcast_shapes(vlog_res, vmul_res, 'vlog_res', 'vmul_res')
-    input1 = tbe.broadcast(vlog_res, y_shape)
-    input2 = tbe.broadcast(vmul_res, y_shape)
-    res = tbe.vsub(input1, input2)
-
-    y_shape = get_broadcast_shapes(res, max_predict_zero, 'res', 'max_predict_zero')
-    input1 = tbe.broadcast(res, y_shape)
-    input2 = tbe.broadcast(max_predict_zero, y_shape)
-    loss = tbe.vadd(input1, input2)
+    vmul_res = tbe.vmul(predict, target)
+    res = tbe.vsub(vlog_res, vmul_res)
+    loss = tbe.vadd(res, max_predict_zero)
 
     if predict_dtype == "float16":
         loss = tbe.cast_to(loss, "float16")
@@ -123,7 +116,7 @@ def sigmoid_cross_entropy_with_logits_compute(predict, target, loss, kernel_name
     return loss
 
 
-@tbe_base.register_operator("softmax_cross_entropy_with_logits")
+@tbe_base.register_operator("sigmoid_cross_entropy_with_logits")
 @check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def sigmoid_cross_entropy_with_logits(predict, target, loss, kernel_name="sigmoid_cross_entropy_with_logits"):
     """
@@ -156,13 +149,13 @@ def sigmoid_cross_entropy_with_logits(predict, target, loss, kernel_name="sigmoi
     check_list = ("float16", "float32")
     para_check.check_dtype(input_dtype_predict, check_list, param_name="predict")
     para_check.check_dtype(input_dtype_target, check_list, param_name="target")
-
-    ins = classify([predict, target], Mode.ELEWISE_WITH_BROADCAST)
+    check_elewise_shape_range([predict, target], support_broadcast=False)
+    ins = classify([predict, target], Mode.ELEWISE)
 
     schedules, tensors = [], []
     for (x1, x2) in ins:
         with tbe_base.compute():
-            x_shape, y_shape = variable_shape([x1, x2], support_broadcast=True)
+            x_shape, y_shape = variable_shape([x1, x2], support_broadcast=False)
             shape_predict, shape_target = refine_shapes_for_broadcast(x_shape, y_shape)
             data_predict = tvm.placeholder(shape_predict,
                                            name="data_predict",
