@@ -73,25 +73,25 @@ Status TbeConv3dElemwisePass::GetFusionNodes(const BufferFusionMapping& mapping,
 
   vector<ge::NodePtr> elemNode = GetMatchedNodesByDescName(PATTERN_ELEM, mapping);
   FUSION_PASS_CHECK(elemNode.empty(),
-		    OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWise node not match!"),
-		    return SUCCESS);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWise node not match!"),
+                    return SUCCESS);
 
   auto inputs = elemNode[0]->GetOpDesc()->GetAllInputsDesc();
   FUSION_PASS_CHECK(inputs.size() != 2,
-		    OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWise node not match!"),
-		    return SUCCESS);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWise node not match!"),
+                    return SUCCESS);
 
   auto dims0 = elemNode[0]->GetOpDesc()->GetInputDesc(0).GetShape().GetDims();
   auto dims1 = elemNode[0]->GetOpDesc()->GetInputDesc(1).GetShape().GetDims();
 
   FUSION_PASS_CHECK(dims0.size() != dims1.size(),
-		    OP_LOGW(FUSED_OP_TYPE.c_str(),
-			    "the dim sizes of two inputs not equal!"),
-		    return SUCCESS);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(),
+                            "the dim sizes of two inputs not equal!"),
+                    return SUCCESS);
   FUSION_PASS_CHECK(dims0.size() != DIMS_SIZE,
-		    OP_LOGW(FUSED_OP_TYPE.c_str(),
-			    "the dim sizes is not 6!"),
-		    return SUCCESS);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(),
+                            "the dim sizes is not 6!"),
+                    return SUCCESS);
 
   auto fusionShape0 = std::vector<int64_t>{dims0[0] * dims0[1], dims0[2], dims0[3] * dims0[4], dims0[5]};
   auto fusionShape1 = std::vector<int64_t>{dims1[0] * dims1[1], dims1[2], dims1[3] * dims1[4], dims1[5]};
