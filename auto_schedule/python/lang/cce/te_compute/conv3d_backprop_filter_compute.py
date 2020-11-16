@@ -807,7 +807,7 @@ class Conv3dBackpropFilter:
                                       w_index > fmap_width + pad_left - 1),
                               tvm.const(0.0, fmap_dtype),
                               fmap(n_index, c1_index, h_index - pad_top,
-                                   w_index-pad_left, c0_index))
+                                   w_index - pad_left, c0_index))
 
         _, _, pad_top, _, pad_left, pad_right = self.pad
         _, strideh, stridew = self.stride
