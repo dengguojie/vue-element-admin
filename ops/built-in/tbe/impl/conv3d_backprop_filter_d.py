@@ -292,16 +292,16 @@ def conv3d_backprop_filter_d(x_dict,
                                        'y')
 
     conv3d_backprop_filter_cce(shape_x, shape_out_backprop, shape_res,
-                               strides, pads, dilations, x_dtype,
+                               strides, pads, groups, dilations, x_dtype,
                                out_backprop_dtype, res_dtype, kernel_name)
 
 
 @para_check.check_input_type((list, tuple), (list, tuple), (list, tuple),
-                             (list, tuple), (str, list, tuple), (list, tuple),
-                             str, str, str, str)
-def check_conv3dbp_filter_params(shape_x, shape_out_backprop, filter_sizes,
-                                 strides, pads, dilations, x_dtype,
-                                 out_backprop_dtype, res_dtype, kernel_name):
+                             (list, tuple), (str, list, tuple), int,
+                             (list, tuple), str, str, str, str)
+def check_conv3dbp_filter_params(shape_x, shape_out_backprop,
+    filter_sizes, strides, pads, groups, dilations, x_dtype,
+    out_backprop_dtype, res_dtype, kernel_name):
     """
     The params check function of conv3d_backprop_filter
 
@@ -388,7 +388,30 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop, filter_sizes,
             raise RuntimeError(args_dict,
                                error_manager_util.get_error_message(args_dict))
 
+    def _check_attr_groups():
+        fmap_channel = shape_x[2]
+        dedy_channel = shape_out_backprop[2]
+        if groups < 1 or groups > fmap_channel or groups > dedy_channel:
+            dict_args = {
+                'errCode': 'E50060',
+                'description': "Group must not be larger than feature map's"
+                               " and filter's channel"
+            }
+            raise RuntimeError(dict_args,
+                               error_manager_util.get_error_message(dict_args))
+
+        if fmap_channel % groups != 0 or dedy_channel % groups != 0:
+            dict_args = {
+                'errCode': 'E50060',
+                'description': "Feature map's or filter's channel"
+                               " must be divisible by group"
+            }
+            raise RuntimeError(dict_args,
+                               error_manager_util.get_error_message(dict_args))
+
+
     _check_attr_pads()
+    _check_attr_groups()
 
     # dilations check
     para_check.check_shape_rule(dilations, CONV3D_BACKPROP_SHAPE_DIM,
@@ -431,6 +454,8 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop, filter_sizes,
     filter_batch, filter_d, filter_channel, filter_h, filter_w = filter_sizes
     stride_d, stride_h, stride_w = strides
 
+    group_dict = util_common.calculate_group(fmap_channel, dedy_channel,
+                                             groups, C0, C0)
     filter_d_dilation = (filter_d - 1) * dilation_d + 1
     filter_h_dilation = (filter_h - 1) * dilation_h + 1
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
@@ -530,7 +555,7 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop, filter_sizes,
             }
             raise RuntimeError(args_dict,
                                error_manager_util.get_error_message(args_dict))
-        if fmap_channel != filter_channel:
+        if fmap_channel != filter_channel * groups:
             args_dict = {
                 'errCode': 'E60010',
                 'channel_of_x': str(fmap_channel),
@@ -598,19 +623,21 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop, filter_sizes,
     _check_64bits_limitation("filter_size", filter_size, dtype=res_dtype)
 
     result = (shape_x, shape_out_backprop, filter_sizes, strides, pads,
-              dilations, x_dtype, out_backprop_dtype, res_dtype, kernel_name)
+              dilations, x_dtype, out_backprop_dtype, res_dtype,
+              kernel_name, group_dict)
     return result
 
 
 @para_check.check_input_type((list, tuple), (list, tuple), (list, tuple),
-                             (list, tuple), (str, list, tuple), (list, tuple),
-                             str, str, str, str)
+                             (list, tuple), (str, list, tuple), int,
+                             (list, tuple), str, str, str, str)
 def conv3d_backprop_filter_cce(shape_x,
                                shape_out_backprop,
                                filter_sizes,
                                strides,
                                pads,
-                               dilations=[1, 1, 1, 1, 1],
+                               groups=1,
+                               dilations=(1, 1, 1, 1, 1),
                                x_dtype='float16',
                                out_backprop_dtype='float16',
                                res_dtype='float32',
@@ -634,6 +661,9 @@ def conv3d_backprop_filter_cce(shape_x,
 
     pads : A list/tuple of 6 integers or str
 
+    groups : Int
+        Param for group covolution, default value is 1
+
     dilations : An optional list/tuple of 5 integers. Default value is [1, 1, 1, 1, 1]
 
     x_dtype : The dtype of feature map data. Default value is float16
@@ -655,17 +685,23 @@ def conv3d_backprop_filter_cce(shape_x,
         res_dtype = "float16"
 
     res = check_conv3dbp_filter_params(shape_x, shape_out_backprop,
-                                       filter_sizes, strides, pads, dilations,
-                                       x_dtype, out_backprop_dtype, res_dtype,
+                                       filter_sizes, strides, pads,
+                                       groups, dilations, x_dtype,
+                                       out_backprop_dtype, res_dtype,
                                        kernel_name)
-    (shape_x, shape_out_backprop, filter_sizes, strides, pads, dilations, x_dtype,
-     out_backprop_dtype, res_dtype, kernel_name) = res
+    shape_x, shape_out_backprop, filter_sizes, strides, \
+        pads, dilations, x_dtype, \
+        out_backprop_dtype, res_dtype, kernel_name, group_dict = res
     fmap_batch, fmap_depth, fmap_channel, fmap_h, fmap_w = shape_x
     dedy_batch, dedy_d, dedy_channel, dedy_h, dedy_w = shape_out_backprop
 
     c0_size = tbe_platform.C0_SIZE  # Channel axis should be align with 16
-    shape_dedy = (dedy_batch, dedy_d, util_common.ceil(dedy_channel, c0_size), dedy_h, dedy_w, c0_size)
-    shape_fmap = (fmap_batch, fmap_depth, util_common.ceil(fmap_channel, c0_size), fmap_h, fmap_w, c0_size)
+    shape_dedy = (dedy_batch, dedy_d,
+                  util_common.ceil(dedy_channel, c0_size),
+                  dedy_h, dedy_w, c0_size)
+    shape_fmap = (fmap_batch, fmap_depth,
+                  util_common.ceil(fmap_channel, c0_size),
+                  fmap_h, fmap_w, c0_size)
     dedy = tvm.placeholder(shape_dedy, name="dedy", dtype=out_backprop_dtype)
     fmap = tvm.placeholder(shape_fmap, name="fmap", dtype=x_dtype)
 
@@ -675,6 +711,7 @@ def conv3d_backprop_filter_cce(shape_x,
         filter_sizes=filter_sizes,
         strides=strides,
         padding=pads,
+        group_dict=group_dict,
         dilations=dilations,
         res_dtype=res_dtype,
         kernel_name=kernel_name)

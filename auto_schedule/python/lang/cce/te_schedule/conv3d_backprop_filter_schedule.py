@@ -496,16 +496,16 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                 # if axis K needs split, then attach to dw_cc
                 if fmap_l1_tiling_nparts[0] != 1 or batch_num_sc != 1:
                     sch[fmap_matrix].compute_at(sch[dw_cc], bl1_at_axis)
-                    if not flag_all_one_case:
+                    if not load2d_flag:
                         sch[fmap_l1].compute_at(sch[dw_cc], bl1_at_axis)
                 else:  # if axis K fully load in L1, attach to dw_ddr
                     sch[fmap_matrix].compute_at(sch[dw_ddr], c_fmap_l1_at)
-                    if not flag_all_one_case:
+                    if not load2d_flag:
                         sch[fmap_l1].compute_at(sch[dw_ddr], c_fmap_l1_at)
 
             else:  # else: fully load, attach to thread_axis
                 sch[fmap_matrix].compute_at(sch[dw_ddr], fused_multi_core)
-                if not flag_all_one_case:
+                if not load2d_flag:
                     sch[fmap_l1].compute_at(sch[dw_ddr], fused_multi_core)
 
         def _double_buffer():
@@ -517,7 +517,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                 sch[grads_matrix].double_buffer()
 
             if tiling.get("manual_pingpong_buffer").get("BL1_pbuffer") == OPEN_DOUBLE_BUFFER:
-                if not flag_all_one_case:
+                if not load2d_flag:
                     sch[fmap_l1].double_buffer()
                 else:
                     sch[fmap_matrix].double_buffer()
@@ -568,6 +568,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                  c_fmap_mad_at) * dw_tiling_factor[0]) // (kernel_height *
                                                            kernel_width)
 
+            c1_fmap_info = group_dict['cin1_g']
             mad_dict = {
                 "mad_pattern":
                 2,
@@ -577,13 +578,13 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                 ],
                 "k_coeff":
                 tvm.all((batch_do_axis % depth_grads) * stride_depth +
-                        dk_c1_axis // c1_fmap >= pad_front,
+                        dk_c1_axis // c1_fmap_info >= pad_front,
                         (batch_do_axis % depth_grads) * stride_depth +
-                        dk_c1_axis // c1_fmap < pad_front + depth_fmap),
+                        dk_c1_axis // c1_fmap_info < pad_front + depth_fmap),
                 "k_cond":
                 tvm.any(
                     tvm.all((batch_do_axis % depth_grads - 1) * stride_depth +
-                            dk_c1_axis // c1_fmap < pad_front,
+                            dk_c1_axis // c1_fmap_info < pad_front,
                             axis_k_reduce_for_mad <= 0, batch_do_axis %
                             (batch_fmap * depth_grads // block_dim_batch) <
                             depth_grads),
@@ -595,11 +596,11 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             sch[grads_fractal].emit_insn(grads_fractal.op.axis[0], 'dma_copy')
 
             # move fmap from ddr to L1
-            if not flag_all_one_case:
+            if not load2d_flag:
                 sch[fmap_l1].emit_insn(fmap_l1.op.axis[0], 'dma_copy')
                 sch[fmap_matrix].emit_insn(fmap_matrix.op.axis[0],
                                            'set_fmatrix', setfmatrix_dict)
-                sch[fmap_fractal].emit_insn(fmap_fractal.op.axis[0], 'im2col')
+                sch[fmap_fractal].emit_insn(fmap_fractal.op.axis[1], 'im2col')
             else:
                 sch[fmap_matrix].emit_insn(fmap_matrix.op.axis[0], 'dma_copy')
                 sch[fmap_fractal].emit_insn(fmap_fractal.op.axis[0],
@@ -643,6 +644,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
         fmap_matrix = fmap_fractal.op.input_tensors[0]
         grads = grads_matrix.op.input_tensors[0]
         load2d_flag = fmap_matrix.op.attrs['load2d_flag'].value
+        group_dict = fmap_matrix.op.attrs['group_dict']
         kernel_name = dw_cc.op.attrs['kernel_name'].value
         if load2d_flag:
             fmap = fmap_matrix.op.input_tensors[0]
@@ -676,18 +678,25 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                 'UBG_pbuffer': 1
             }
         }
-        batch_grads, depth_grads, c1_grads, height_grads, width_grads, c0_grads = list(x.value for x in grads.shape)
+        cin1_g = group_dict['cin1_g'].value
+        cout_g = group_dict['cout_g'].value
+        real_g = group_dict['real_g'].value
+
+        batch_grads, depth_grads, c1_grads, height_grads, \
+            width_grads, c0_grads = list(x.value for x in grads.shape)
         grads_shape = [
-            batch_grads, depth_grads, c1_grads, height_grads, width_grads,
+            batch_grads, depth_grads,
+            cout_g // c0_grads, height_grads, width_grads,
             c0_grads
         ]
 
-        batch_fmap, depth_fmap, c1_fmap, height_fmap, width_fmap, c0_fmap = list(x.value for x in fmap.shape)
-        fkk, _, _ = list(x.value for x in dw_cc.shape)
-        _, hw_pad_1, _, _, _ = list(x.value for x in fmap_fractal.shape)
+        batch_fmap, depth_fmap, c1_fmap, height_fmap, width_fmap, c0_fmap \
+            = list(x.value for x in fmap.shape)
+        _, fkk, _, _ = list(x.value for x in dw_cc.shape)
+        _, _, hw_pad_1, _, _, _ = list(x.value for x in fmap_fractal.shape)
 
         fmap_shape = [
-            batch_fmap, depth_fmap, c1_fmap, height_fmap, width_fmap, c0_fmap
+            batch_fmap, depth_fmap, cin1_g, height_fmap, width_fmap, c0_fmap
         ]
 
         # load_3d parameters
@@ -710,29 +719,11 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
         featuremap_width = width_fmap
 
         weight_shape = [
-            c1_grads * c0_grads, kernel_depth, kernel_height, kernel_width,
-            c1_fmap * c0_fmap
+            cout_g, kernel_depth, kernel_height, kernel_width,
+            cin1_g * c0_fmap
         ]
 
         sch = sch_list[0]
-
-        def _flag_all_one():
-            # special supporting for a unique case, there are 2 conditions:
-            # (1) height & weight of x/output_backprop/filter are all 1
-            # (2) strides is [1,1]
-            flag_all_one_case = False
-            height_all_one = False
-            width_all_one = False
-            if stride_height == 1 and height_grads == 1 and height_fmap == 1 and kernel_height == 1:
-                height_all_one = True
-            if stride_width == 1 and width_grads == 1 and width_fmap == 1 and kernel_width == 1:
-                width_all_one = True
-            if height_all_one and width_all_one:
-                flag_all_one_case = True
-
-            return flag_all_one_case
-
-        flag_all_one_case = _flag_all_one()
 
         tiling = tiling_query.tiling_query(grads_shape,
                                            fmap_shape,
@@ -781,8 +772,8 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                                         CUBE_MUL_SHAPE, 0)
 
         sch[grads_fractal].set_scope(tbe_platform.scope_ca)
-        sch[grads_fractal].buffer_align((1, 1), (1, 1), (1, 1), (1, CUBE_DIM),
-                                        (1, CUBE_DIM))
+        sch[grads_fractal].buffer_align((1, 1), (1, 1), (1, 1), (1, 1),
+                                        (1, CUBE_DIM), (1, CUBE_DIM))
 
         # fmap_shape_original_matrix is (batch_size*grads_depth,
         #                               grads_height*grads_width,
@@ -790,7 +781,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
         #                               kernel_height,
         #                               kernel_width,
         #                               C0_fmap)
-        if not flag_all_one_case:
+        if not load2d_flag:
             sch[fmap_l1].set_scope(tbe_platform.scope_cbuf)
             sch[fmap_matrix].buffer_align(
                 (1, 1), (width_grads, width_grads), (1, 1),
@@ -803,10 +794,11 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
         sch[fmap_matrix].set_scope(tbe_platform.scope_cbuf)
 
         sch[fmap_fractal].set_scope(tbe_platform.scope_cb)
-        sch[fmap_fractal].buffer_align((1, 1), (1, 1), (1, 1), (1, CUBE_DIM),
-                                       (1, CUBE_DIM))
+        sch[fmap_fractal].buffer_align((1, 1), (1, 1), (1, 1), (1, 1),
+                                       (1, CUBE_DIM), (1, CUBE_DIM))
 
-        dw_cc, dw_ub, dw_ddr, dw_ub_reduce, dw_ddr_reduce = _atomic_add(sch, dw_cc, dw_ub, dw_ddr)
+        dw_cc, dw_ub, dw_ddr, dw_ub_reduce, dw_ddr_reduce \
+            = _atomic_add(sch, dw_cc, dw_ub, dw_ddr)
 
         # #######################tiling parameters analyze####################
         batch_num_sc = batch_num // block_dim_batch
@@ -823,7 +815,10 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
         dw_k = tiling_patrs_dict["dw_k"]
 
         # #############################split axis N##########################
-        c_fmap_multicore, c_fmap_mad_at = sch[dw_ddr].split(sch[dw_ddr].op.axis[0], nparts=block_dim_cin)
+        g_multicore, g_axis = sch[dw_ddr].split(
+            sch[dw_ddr].op.axis[0], nparts=1)
+        c_fmap_multicore, c_fmap_mad_at \
+            = sch[dw_ddr].split(sch[dw_ddr].op.axis[1], nparts=block_dim_cin)
 
         c_fmap_mad_at, c_fmap_mad_insn = sch[dw_ddr].split(
             c_fmap_mad_at, nparts=dw_tiling_nparts[0])
@@ -834,7 +829,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
 
         def _ddr_n_split():
             # for N axis, if Hk and Wk needs split, do explict split
-            if not flag_all_one_case:
+            if not load2d_flag:
                 if tiling.get("BL1_shape"):
                     nc_cc = tiling.get("CL0_matrix")[0] * tiling.get("BL1_shape")[1]
                 else:
@@ -857,16 +852,19 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
         c_fmap_l1_c1, c_fmap_l1_kh, c_fmap_l1_at, factor_kw, factor_kh = _ddr_n_split()
 
         # split axis M
-        c_grads_mad_at, c_grads_mad_insn = sch[dw_ddr].split(sch[dw_ddr].op.axis[1],
-                                               dw_tiling_factor[1]*CUBE_DIM)
+        c_grads_mad_at, c_grads_mad_insn = sch[dw_ddr].split(
+            sch[dw_ddr].op.axis[2], dw_tiling_factor[1]*CUBE_DIM)
 
-        c_grads_multicore, c_grads_mad_at = sch[dw_ddr].split(c_grads_mad_at, nparts=block_dim_cout)
+        c_grads_multicore, c_grads_mad_at = sch[dw_ddr].split(
+            c_grads_mad_at, nparts=block_dim_cout)
 
-        c_grads_l1_at, c_grads_mad_at = sch[dw_ddr].split(c_grads_mad_at, nparts=grads_l1_tiling_nparts[1])
+        c_grads_l1_at, c_grads_mad_at = sch[dw_ddr].split(
+            c_grads_mad_at, nparts=grads_l1_tiling_nparts[1])
 
         # reorder according to requirments of mmad EmitInsn
-        sch[dw_ddr].reorder(sch[dw_ddr].op.reduce_axis[0], c_grads_multicore,
-                            c_fmap_multicore, c_fmap_l1_c1, c_fmap_l1_kh,
+        sch[dw_ddr].reorder(sch[dw_ddr].op.reduce_axis[0], g_multicore,
+                            c_grads_multicore, c_fmap_multicore,
+                            g_axis, c_fmap_l1_c1, c_fmap_l1_kh,
                             c_fmap_l1_at, c_grads_l1_at, c_fmap_mad_at,
                             c_grads_mad_at, c_fmap_mad_insn, c_grads_mad_insn)
 
@@ -940,22 +938,25 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                     fmap_l1_tiling_nparts[0]) + hw_mad_1_mad_at
 
         # split dw_cc.op.axis[0](N1), factor is one MMAD
-        fkk_mad_at, fkk_mad_insn  = sch[dw_cc].split(sch[dw_cc].op.axis[1], dw_tiling_factor[0])
+        fkk_mad_at, fkk_mad_insn \
+            = sch[dw_cc].split(sch[dw_cc].op.axis[2], dw_tiling_factor[0])
 
         # split dw_cc.op.axis[1](M1*M0), factor is one MMAD
-        lc_mad_at, lc_mad_insn = sch[dw_cc].split(sch[dw_cc].op.axis[2],
+        lc_mad_at, lc_mad_insn = sch[dw_cc].split(sch[dw_cc].op.axis[3],
                                                   dw_tiling_factor[1] * CUBE_DIM)
 
         sch[dw_cc].reorder(fkk_mad_at, lc_mad_at, sch[dw_cc].op.axis[0],
                            batch_insn_o, hw_mad_1_l1_out_at, hw_mad_1_l1_in_at,
                            hw_mad_1_mad_at, batch_insn, fkk_mad_insn,
-                           lc_mad_insn, sch[dw_cc].op.axis[3],
+                           lc_mad_insn, sch[dw_cc].op.axis[4],
                            hw_mad_1_mad_insn, k_0)
 
         # #############################multi core#############################
         def _bind_core():
             fused_multi_core = sch[dw_ddr].fuse(sch[dw_ddr].op.reduce_axis[0],
-                                                c_grads_multicore, c_fmap_multicore)
+                                                g_multicore,
+                                                c_grads_multicore,
+                                                c_fmap_multicore)
             fused_multi_core, pragma_at = sch[dw_ddr].split(fused_multi_core, 1)
             block = tvm.thread_axis("blockIdx.x")
 
@@ -967,6 +968,26 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             return fused_multi_core, block
 
         fused_multi_core, block = _bind_core()
+
+        def _set_buffer_tile():
+            if tiling['BL1_shape'] and not load2d_flag:
+                c_fmap_l1_c1_size = fmap_l1_tiling_nparts[1] \
+                    // factor_kw // factor_kh
+                dc_extent = kernel_depth * c1_fmap \
+                    // block_dim_cin // c_fmap_l1_c1_size
+                dc_start = block % block_dim_cin \
+                    * (kernel_depth * c1_fmap
+                       // block_dim_cin) + c_fmap_l1_c1 * dc_extent
+
+                sch[fmap_matrix].buffer_tile(
+                    (None, None),
+                    (None, None),
+                    (dc_start, dc_extent),
+                    (None, None),
+                    (None, None),
+                    (None, None))
+
+        _set_buffer_tile()
         _l0_attach()
         _al1_attach()
         _bl1_attach()

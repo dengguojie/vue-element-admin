@@ -119,3 +119,34 @@ def write_code(wkspace_dict, kernel_name):
             with open(fname, "w") as f_var:
                 json.dump(load_dict, f_var, sort_keys=True,
                           indent=4, separators=(',', ':'))
+
+def lcm(param1, param2):
+    """
+    calculate least common multiple
+    """
+    temp = param1 * param2
+    while param1 % param2 != 0:
+        param1, param2 = param2, param1 % param2
+
+    return temp // param2
+
+
+def calculate_group(fmap_c, cout, groups, cout0, cin0):
+    """
+    calculate groups parameter
+    """
+    mag_factor0 = lcm(fmap_c //groups, cin0) // (fmap_c //groups)
+    mag_factor1 = lcm(cout //groups, cout0) // (cout //groups)
+    mag_factor = min(lcm(mag_factor0, mag_factor1), groups)
+
+    cin1_g = (mag_factor * fmap_c // groups + cin0 - 1) //cin0
+    cout_g = (mag_factor * cout // groups + cout0 - 1) // cout0 * cout0
+
+    group_dict = {"real_g": (groups + mag_factor - 1) // mag_factor,
+                  "mag_factor": mag_factor,
+                  "cin1_g": cin1_g,
+                  "cout_g": cout_g,
+                  "cin_ori": fmap_c,
+                  "cout_ori": cout}
+
+    return group_dict
