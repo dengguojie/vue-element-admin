@@ -69,7 +69,6 @@ CONV1D_W_MAX = 2147483647
 STRIDE_MIN = 1
 STRIDE_MAX = 63
 STRIDE_MUL_MIN = 1
-STRIDE_MUL_MAX = 256
 
 # the bytes length of several dtype
 BIT_RATIO_DICT = {
@@ -527,10 +526,6 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
         _check_variable_range(stride_h, STRIDE_MIN, STRIDE_MAX, "stride_h")
 
         _check_variable_range(stride_w, STRIDE_MIN, STRIDE_MAX, "stride_w")
-
-        _check_variable_range(
-            stride_h * stride_w, STRIDE_MUL_MIN, STRIDE_MUL_MAX, "stride_h*stride_w"
-        )
 
     # padding
     def _check_padding():

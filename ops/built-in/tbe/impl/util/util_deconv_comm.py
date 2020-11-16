@@ -51,7 +51,6 @@ CONV1D_W_MAX = 2147483647
 # stride must be in [1,63] and h*w not lagger than 256
 STRIDE_HW_MIN = 1
 STRIDE_HW_MAX = 63
-STRIDE_SIZE_MAX = 256
 
 # pad must be in [0,255]
 PAD_MIN = 0
@@ -831,8 +830,6 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
     # stride value limit
     _check_attr_range("stride's H", stride_h, STRIDE_HW_MIN, STRIDE_HW_MAX)
     _check_attr_range("stride's W", stride_w, STRIDE_HW_MIN, STRIDE_HW_MAX)
-    _check_attr_range("stride size", stride_h * stride_w,
-                      attr_max=STRIDE_SIZE_MAX)
 
     # dilation value limit
     _check_attr_range("dilations's H", dilation_h, DILATION_MIN, DILATION_MAX)
