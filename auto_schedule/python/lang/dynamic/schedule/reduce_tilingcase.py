@@ -69,7 +69,7 @@ def _get_tiling_key(atomic, db, shape_type, block_split_axis,
     """
 
     def _check(idx, value):
-        rule = [range(2), range(100), range(8), range(8),
+        rule = [range(2), range(100), range(9), range(9),
                 range(1000)]
         name = ["db", "shape_type", "block_split_axis", "ub_split_axis",
                 "pattern"]

@@ -665,6 +665,13 @@ bool Reduce::Init() {
         reduce_axis_ori.push_back(*data_addr);
         data_addr++;
       }
+    } else if (axis_type == "int64") {
+      int count = size / sizeof(int64_t);
+      const int64_t* data_addr = reinterpret_cast<const int64_t*>(std::get<0>(reduce_axis_info));
+      for (int i = 0; i < count; i++) {
+        reduce_axis_ori.push_back((int32_t)*data_addr);
+        data_addr++;
+      }
     } else {
       GE_LOGE("op [%s] : axis type is not int32.", op_type.c_str());
       return false;
