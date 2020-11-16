@@ -27,6 +27,7 @@ from te import platform as cceconf
 from te import tvm
 from te.platform import cce_emitinsn_params
 import te.platform.cce_params as cce_params
+from te.utils.error_manager.error_manager_util import get_error_message
 from . import util
 
 # pylint: disable=too-many-return-statements,too-few-public-methods,too-many-arguments
@@ -207,7 +208,10 @@ class CceOp:
             self._total_size = \
                 cceconf.get_soc_spec("UB_SIZE") // 2
         else:
-            raise RuntimeError("only support UB buffer now")
+            dict_args = dict()
+            dict_args["errCode"] = "E90003"
+            dict_args["detailed_cause"] = "only support UB buffer now, while scope is [%s]" % self._scope
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
         self._emit_insn_map = {"elewise_single_cast": "vector_conv",
                                "elewise_single_floor": "vector_conv_floor",
@@ -611,8 +615,11 @@ class CceOp:
             shape_input = self._shape_to_list(self._origin_tensor[-1].shape)
 
             if len(shape_res) != len(shape_input):
-                raise RuntimeError("shape length for res[%d] and input[%d] are diff."
-                                   % (len(shape_res), len(shape_input)))
+                dict_args = dict()
+                dict_args["errCode"] = "E90001"
+                dict_args["detailed_cause"] = "shape length for res[%s] and input[%s] are diff." \
+                                               % (len(shape_res), len(shape_input))
+                raise RuntimeError(dict_args, get_error_message(dict_args))
             broadcast_axis = len(shape_res) - 1
             for i in range(len(shape_res) - 1, 0, -1):
                 if shape_res[i] != shape_input[i]:
@@ -754,7 +761,12 @@ class CceOp:
         def _op_width(tensor_op):
             num_type = tensor_op.dtype
             if num_type.lower() not in DTYPE_WIDTH_MAP.keys():
-                raise RuntimeError("Can not calculate with no compute")
+                dict_args = dict()
+                dict_args["errCode"] = "E90001"
+                dict_args["detailed_cause"] = "The dtype must be bool, s8, " \
+                                               "u8, f16, s16, u16, f32, s32, " \
+                                               "u32, s64, u64, [%s] is unsupported!" % num_type
+                raise RuntimeError(dict_args, get_error_message(dict_args))
 
             tmp_width = 0
             if tensor_op.op.tag is not None:
@@ -813,7 +825,10 @@ class CceOp:
             total_width = total_width + 2
 
         if not total_width:
-            raise RuntimeError("Can not calculate with no compute")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "Can not calculate with no compute, total_width is [%s]" % total_width
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
         max_bound = total_width*128
         max_ub_count = int(self._total_size // max_bound*128)
@@ -1669,8 +1684,11 @@ class CceOp:
         shape_input = self._shape_to_list(self._origin_tensor[-1].shape)
 
         if len(shape_res) != len(shape_input):
-            raise RuntimeError("shape length for res[%d] and input[%d] are diff."
-                               % (len(shape_res), len(shape_input)))
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "shape length for res[%s] and input[%s] are diff." \
+                                           % (len(shape_res), len(shape_input))
+            raise RuntimeError(dict_args, get_error_message(dict_args))
         broadcast_axis = len(shape_res) - 1
         for i in range(len(shape_res) - 1, 0, -1):
             if shape_res[i] != shape_input[i]:
@@ -4035,7 +4053,10 @@ class CceOp:
 
             reduce_tensorize_for_op()
         else:
-            raise RuntimeError("%s not support" % lop["op"])
+            dict_args = dict()
+            dict_args["errCode"] = "E90003"
+            dict_args["detailed_cause"] = "%s not support" % lop["op"]
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
         # by emit_insn phony_insn to rm the redundant copy_gm_ub op for muti-out
         if 'cache_read_for_res' in lop.keys():
@@ -4130,7 +4151,10 @@ class CceOp:
                 tmp_op["args"] = [tensor_op.body[0]]
         elif tmp_op["op"].find("reduce") != -1:
             if self._have_reduce:
-                raise RuntimeError("Only support one time reduce")
+                dict_args = dict()
+                dict_args["errCode"] = "E90003"
+                dict_args["detailed_cause"] = "Only support one time reduce"
+                raise RuntimeError(dict_args, get_error_message(dict_args))
             self._have_reduce = True
             tmp_op["reduce_axis"] = list(tensor_op.reduce_axis)
 

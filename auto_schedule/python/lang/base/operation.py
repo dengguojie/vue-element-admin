@@ -251,7 +251,10 @@ class ComputeContext:
         :return:
         """
         if self.current_schedule is not None:
-            raise RuntimeError("Exist not finished schedule context.")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "Exist not finished compute context."
+            raise RuntimeError(dict_args, get_error_message(dict_args))
         self.schedules.append(_schedule)
         self.current_schedule = _schedule
 
@@ -261,7 +264,10 @@ class ComputeContext:
         :return:
         """
         if self.current_schedule != _schedule:
-            raise RuntimeError("Schedule context not match.")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "Schedule context not match."
+            raise RuntimeError(dict_args, get_error_message(dict_args))
         self.current_schedule = None
 
     def get_schedules(self):

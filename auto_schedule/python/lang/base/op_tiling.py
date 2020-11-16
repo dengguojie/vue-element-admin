@@ -22,6 +22,8 @@ import json
 import struct
 from pathlib import Path
 
+from te.utils.error_manager.error_manager_util import get_error_message
+
 
 _MAX_RUN_INFO_SIZE = 16384
 _ASCEND_OPP_PATH_ENV = "ASCEND_OPP_PATH"
@@ -61,7 +63,10 @@ def do_op_tiling(optype, compile_info, inputs, outputs):
     res = tiling_func(optype_c, compile_info_c, inputs_c, outputs_c,
                       run_info_c, run_info_size_c)
     if not res:
-        raise RuntimeError("Tiling func failed")
+        dict_args = dict()
+        dict_args["errCode"] = "E90003"
+        dict_args["detailed_cause"] = "Tiling func failed."
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     run_info = json.loads(run_info_c.value)
     run_info['tiling_data'] = bytes.fromhex(run_info['tiling_data'])

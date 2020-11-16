@@ -22,6 +22,8 @@ from te.lang.base.operation import register_build_pointcut
 from . import CompileInfo
 from . import Pattern
 
+from te.utils.error_manager.error_manager_util import get_error_message
+
 
 @register_build_pointcut(pattern=Pattern.REDUCE)
 def build_pointcut(func, *args, **kwargs):
@@ -72,8 +74,11 @@ def _get_tiling_key(atomic, db, shape_type, block_split_axis,
         name = ["db", "shape_type", "block_split_axis", "ub_split_axis",
                 "pattern"]
         if value not in rule[idx]:
-            raise RuntimeError("%s should in %s, but is %d" % (
-            name[idx], str(rule[idx]), value))
+            dict_args = dict()
+            dict_args["errCode"] = "E90003"
+            dict_args["detailed_cause"] = "%s should in %s, but is %d" % (
+                                          name[idx], str(rule[idx]), value)
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
     def _get_pattern_key(shape, reduce_idx_list):
         pattern_key = 0

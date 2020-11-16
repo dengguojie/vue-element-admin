@@ -16,6 +16,7 @@
 elewise speel schedule
 """
 from te import tvm
+from te.utils.error_manager.error_manager_util import get_error_message
 
 from . import util
 from .elewise_schedule import CceOp
@@ -431,7 +432,10 @@ class CceSpeelOp(CceOp):
                 self._schedule[cache_buffer].emit_insn(
                     tensorize_axis, "reduce_nlst_axis_" + lop["op"])
         else:
-            raise RuntimeError("%s not support" % lop["op"])
+            dict_args = dict()
+            dict_args["errCode"] = "E90003"
+            dict_args["detailed_cause"] = "%s not support" % lop["op"]
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
         if 'cache_read_for_res' in lop.keys():
             cache_buffer_for_res = lop['cache_read_for_res']
