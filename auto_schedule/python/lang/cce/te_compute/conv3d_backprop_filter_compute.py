@@ -236,7 +236,7 @@ class Conv3dBackpropFilter:
         if ((1 <= kernel_height <= 11) and (1 <= kernel_width <= 11)
             and (fmap_height + pad_top + pad_bottom == kernel_height
             or fmap_width + pad_left + pad_right == kernel_width or
-            fmap_depth + pad_front+pad_back == kernel_depth)):
+            fmap_depth + pad_front + pad_back == kernel_depth)):
             self.flag_load3d_special_case = True
 
     def _deconv_dw_input_check_1(self):
@@ -806,7 +806,7 @@ class Conv3dBackpropFilter:
                                       w_index < pad_left,
                                       w_index > fmap_width + pad_left - 1),
                               tvm.const(0.0, fmap_dtype),
-                              fmap(n_index, c1_index, h_index-pad_top,
+                              fmap(n_index, c1_index, h_index - pad_top,
                                    w_index-pad_left, c0_index))
 
         _, _, pad_top, _, pad_left, pad_right = self.pad
@@ -938,7 +938,7 @@ class Conv3dBackpropFilter:
                 kernel_width) % kernel_height
             kw_vm_index = ((fkk_indices * BLOCK_SIZE + fmap_c0_indices) //
                            BLOCK_SIZE) % kernel_width
-            c0_vm_index = (fkk_indices*BLOCK_SIZE + fmap_c0_indices) % BLOCK_SIZE
+            c0_vm_index = (fkk_indices * BLOCK_SIZE + fmap_c0_indices) % BLOCK_SIZE
 
             # select padding and 16 align
             return tvm.select(
