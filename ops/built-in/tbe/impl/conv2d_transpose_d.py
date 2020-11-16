@@ -302,6 +302,8 @@ def conv2d_transpose_d_compute(  # pylint: disable=R0913,R0914,W0613,C0103,W0622
     dilations = util_deconv_comm.get_shape_dilation(ori_format_x, dilations)
 
     group_dict = util_deconv_comm.calculate_group(
+        shape_x,
+        shape_res,
         shape_filter,
         groups,
         filter_dtype,
@@ -448,6 +450,8 @@ def _conv2d_transpose_cce(
         ]
 
     group_dict = util_deconv_comm.calculate_group(
+        shape_x,
+        input_size,
         shape_filter,
         groups,
         filter_dtype,

@@ -332,7 +332,7 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
                           ci0_dim,
                           k0_dim)
             b_l0 = tvm.compute(
-                shape_b_l0, lambda *indices,
+                shape_b_l0, lambda *indices:
                 _bl0_elem_func(indices, kernels),
                 name=kernels.name + "_B_l0b",
                 attrs={"kernel_hw": (self._kernel_h, self._kernel_w)}
@@ -368,12 +368,6 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
                 lambda *indices: __kernel_l0_compute(indices, b_l1),
                 name=kernels.name + "_B_l0b"
             )
-            else:
-                b_l0 = tvm.compute(
-                    shape_b_l0,
-                    lambda co1, k1, k0, co0: b_l1[k1, co1, co0, k0],
-                    name=kernels.name + "_B_l0b"
-                )
         return b_l0
 
     def generate_c(
