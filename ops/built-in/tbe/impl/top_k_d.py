@@ -1489,8 +1489,6 @@ def check_supported(input_tensor,
     """
     check whether ai_core is supported
     """
-    if sorted is not True:
-        return False
     shape = input_tensor.get("shape")
     sorted_axis = dim
     if (sorted_axis < 0):
@@ -1512,6 +1510,9 @@ def check_supported(input_tensor,
     # Due to the UB memory limitation, the value of k must be less than or equal to 5120.
     if shape[sorted_axis] > 1458176 or k > 5120:
         return False
+    # Special adaptation to pytorch ("sorted" is false indicates the pytorch operator)
+    if sorted is not True:
+        return True
     # When input_size > 32768 and k < 16, the AICPU performance is better than the AICore performance.
     if input_size > 32768 and k < 16:
         return False

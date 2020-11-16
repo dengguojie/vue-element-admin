@@ -96,6 +96,16 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
   FUSION_PASS_CHECK(topk_desc == nullptr, OP_LOGE(kFusedOpType.c_str(), "The topk_desc is null, fusion failed."),
                     return PARAM_INVALID);
 
+  // The value of sorted cannot be false in aicore
+  bool sorted = true;
+  FUSION_PASS_CHECK(!ge::AttrUtils::GetBool(topk_desc, "sorted", sorted),
+                    OP_LOGE(kFusedOpType.c_str(), "Get TopK's attr sorted failed."),
+                    return PARAM_INVALID);
+  if (!sorted) {
+    OP_LOGW(kFusedOpType.c_str(), "The value of sorted must be true in aicore, fusion failed.");
+    return NOT_CHANGED;
+  }
+
   // first input of topkv2 is non-constant, second is constant
   InDataAnchorPtr topk_anchor_ptr0 = topk_node->GetInDataAnchor(0);
   OutDataAnchorPtr data_anchor_ptr = topk_anchor_ptr0->GetPeerOutAnchor();
