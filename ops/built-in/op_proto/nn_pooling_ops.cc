@@ -1467,8 +1467,140 @@ IMPLEMT_INFERFUNC(AvgPool3DD, AvgPool3DDInferShape) {
   return GRAPH_SUCCESS;
 }
 
+static void InferHDAvgPool3DD(int32_t kernel, int32_t pad, int32_t stride, int32_t origin_input,
+                              const vector<int64_t>& output_slice, vector<int64_t>& input_slice) {
+  int64_t slice_start = output_slice[0] * stride - pad;
+  if (slice_start < 0) {
+    slice_start = 0;
+  }
+
+  int64_t slice_end = output_slice[1] * stride - pad + (kernel - 1);
+  if (slice_end >= origin_input) {
+    slice_end = origin_input - 1;
+  }
+  input_slice = {slice_start, slice_end};
+}
+/*!
+ * @brief provide AvgPool3DD operator slice data
+ * @param AvgPool3DD Operator type.
+ * @param AvgPool3DDInferDataSlice slice data function
+ * @return Status The processing flow result.
+ */
+IMPLEMT_INFER_DATA_SLICE(AvgPool3DD, AvgPool3DDInferDataSlice) {
+  OP_LOGI(op.GetName().c_str(), "Enter AvgPool3DD InferDataSlice");
+
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensor_in_ptr = op_desc->MutableInputDesc("x");
+  GeTensorDescPtr tensor_out_ptr = op_desc->MutableOutputDesc("y");
+  auto shape_in = tensor_in_ptr->GetShape();
+
+  // get input data_format
+  std::string data_format;
+  if (GRAPH_SUCCESS != op.GetAttr("data_format", data_format)) {
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr data_format failed!");
+    return GRAPH_FAILED;
+  }
+
+  auto x_format = tensor_in_ptr->GetOriginFormat();
+  const std::map<std::string, Format> format_map{{"NDHWC", FORMAT_NDHWC}, {"NCDHW", FORMAT_NCDHW}};
+
+  // Set ori_format as data_format if input ori_format is the default value ND.
+  if (x_format == FORMAT_ND) {
+    tensor_in_ptr->SetOriginFormat(format_map.at(data_format));
+    tensor_in_ptr->SetFormat(format_map.at(data_format));
+  }
+
+  x_format = tensor_in_ptr->GetOriginFormat();
+  if (x_format != FORMAT_NDHWC && x_format != FORMAT_NCDHW) {
+    OP_LOGE(op.GetName().c_str(), "Input x format only support NDHWC or NCDHW");
+    return GRAPH_FAILED;
+  }
+
+  std::map<char, int> idx_map{{'N', 0}, {'D', 1}, {'H', 2}, {'W', 3}, {'C', 4}};
+  if (x_format == FORMAT_NCDHW) {
+    idx_map = {{'N', 0}, {'C', 1}, {'D', 2}, {'H', 3}, {'W', 4}};
+  }
+
+  int32_t input_d = shape_in.GetDim(idx_map['D']);
+  int32_t input_h = shape_in.GetDim(idx_map['H']);
+  int32_t input_w = shape_in.GetDim(idx_map['W']);
+  int32_t filter_d = 0;
+  int32_t filter_h = 0;
+  int32_t filter_w = 0;
+  int32_t stride_d = 0;
+  int32_t stride_h = 0;
+  int32_t stride_w = 0;
+
+  if (GetStridesAndKSize(op, x_format, stride_d, stride_h, stride_w, filter_d, filter_h, filter_w)) {
+    OP_LOGE(op.GetName().c_str(), "Failed to get attr strides or ksize in AvgPool3D.");
+    return GRAPH_FAILED;
+  }
+
+  // construct pads attr
+  if (!Construct3DPadsByPadding("AvgPool3DD", op, input_d, input_h, input_w, filter_d,
+                                filter_h, filter_w, stride_d, stride_h, stride_w)) {
+    OP_LOGE(op.GetName().c_str(), "Failed to construct pads in AvgPool3D.");
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int32_t> pad_list;
+  if (op.GetAttr("pads", pad_list) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Failed to get pads!");
+    return GRAPH_FAILED;
+  }
+
+  int32_t pad_d = pad_list[0];
+  int32_t pad_h = pad_list[2];
+
+  vector<vector<int64_t>> y_data_slice = {{}, {}, {}, {}, {}, {}};
+  vector<vector<int64_t>> x_data_slice = {{}, {}, {}, {}, {}, {}};
+  if (!AttrUtils::GetListListInt(tensor_out_ptr, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
+    OP_LOGI(op.GetName().c_str(), "No data slice, not need infer input");
+    return GRAPH_FAILED;
+  }
+
+  bool need_infer = false;
+  bool have_slice = false;
+  for (unsigned idx = 0; idx < y_data_slice.size(); idx++) {
+    if (y_data_slice[idx].size() > 0) {
+      have_slice = true;
+      if (idx == 1) {
+        need_infer = true;
+        vector<int64_t> slice_data_d;
+        InferHDAvgPool3DD(filter_d, pad_d, stride_d, input_d, y_data_slice[idx], slice_data_d);
+        OP_LOGD(op.GetName().c_str(),
+                "AvgPool3DD d axis slice ori_scope is [%d, %d], calced output scope is [%d, %d]",
+                slice_data_d[0], slice_data_d[1], y_data_slice[idx][0], y_data_slice[idx][1]);
+        x_data_slice[idx] = slice_data_d;
+      } else if(idx == 3) {
+        need_infer = true;
+        vector<int64_t> slice_data_h;
+        InferHDAvgPool3DD(filter_h, pad_h, stride_h, input_h, y_data_slice[idx], slice_data_h);
+        OP_LOGD(op.GetName().c_str(),
+                "AvgPool3DD h axis slice ori_scope is [%d, %d], calced output scope is [%d, %d]",
+                slice_data_h[0], slice_data_h[1], y_data_slice[idx][0], y_data_slice[idx][1]);
+        x_data_slice[idx] = slice_data_h;
+      }
+    }
+  }
+
+  if (!have_slice) {
+    return GRAPH_FAILED;
+  }
+  if (!need_infer) {
+    return NO_OVERLAP_DIM;
+  } else {
+    if (!AttrUtils::SetListListInt(tensor_in_ptr, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+      return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
+  }
+  OP_LOGI(op.GetName().c_str(), "Calc AvgPool3DD InferDataSlice end!");
+}
+
 INFER_FUNC_REG(AvgPool3DD, AvgPool3DDInferShape);
 VERIFY_FUNC_REG(AvgPool3DD, AvgPool3DDVerify);
+INFER_DATA_SLICE_FUNC_REG(AvgPool3DD, AvgPool3DDInferDataSlice);
 // ----------------AvgPool3D-------------------
 
 

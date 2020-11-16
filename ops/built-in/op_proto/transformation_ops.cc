@@ -37,6 +37,9 @@
 #include "common_shape_fns.h"
 #include "op_log.h"
 #include "util/error_util.h"
+#include "register/infer_data_slice_registry.h"
+#include "graph/common_error_codes.h"
+#include "graph/debug/ge_attr_define.h"
 
 namespace ge {
 // ----------------Bitcast Op Start-------------------
@@ -1644,8 +1647,112 @@ IMPLEMT_COMMON_INFERFUNC(ExtractImagePatchesInferShape) {
   return GRAPH_SUCCESS;
 }
 
+static void InferHExtractImagePatches(int64_t kernel, int64_t dilation, int64_t stride, int64_t origin_input,
+                                      const vector<int64_t>& output_slice, vector<int64_t>& input_slice) {
+  int64_t slice_start = output_slice[0] * stride;
+  if (slice_start < 0) {
+    slice_start = 0;
+  }
+  int64_t slice_end = output_slice[1] * stride + dilation * (kernel - 1);
+  if (slice_end >= origin_input) {
+    slice_end = origin_input - 1;
+  }
+  input_slice = {slice_start, slice_end};
+}
+/*!
+ * @brief provide ExtractImagePatches operator slice data
+ * @param ExtractImagePatches Operator type.
+ * @param ExtractImagePatchesInferDataSlice slice data function
+ * @return Status The processing flow result.
+ */
+IMPLEMT_INFER_DATA_SLICE(ExtractImagePatches, ExtractImagePatchesInferDataSlice) {
+  OP_LOGI(op.GetName().c_str(), "Enter ExtractImagePatches InferDataSlice");
+
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensor_in_ptr = op_desc->MutableInputDesc("x");
+  GeTensorDescPtr tensor_out_ptr = op_desc->MutableOutputDesc("y");
+  auto shape_in = tensor_in_ptr->GetShape();
+
+  std::string data_format;
+  if (op.GetAttr("data_format", data_format) == GRAPH_FAILED || (data_format != "NHWC" && data_format != "NCHW")) {
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr data_format failed, data_format must be NHWC or NCHW!");
+    return GRAPH_FAILED;
+  }
+
+  auto images_format = tensor_in_ptr->GetOriginFormat();
+  const std::map<std::string, Format> format_map{{"NHWC", FORMAT_NHWC}, {"NCHW", FORMAT_NCHW}};
+
+  // Set ori_format as data_format if input ori_format is the default value ND.
+  if (images_format == FORMAT_ND) {
+    tensor_in_ptr->SetOriginFormat(format_map.at(data_format));
+    tensor_in_ptr->SetFormat(format_map.at(data_format));
+  }
+
+  images_format = tensor_in_ptr->GetOriginFormat();
+  if (images_format != FORMAT_NHWC && images_format != FORMAT_NCHW) {
+    OP_LOGE(op.GetName().c_str(), "Attr x_format only support NHWC or NCHW");
+    return GRAPH_FAILED;
+  }
+
+  std::map<char, int> idx_map{{'N', 0}, {'H', 1}, {'W', 2}, {'C', 3}};
+  if (images_format == FORMAT_NCHW) {
+    idx_map = {{'N', 0}, {'C', 1}, {'H', 2}, {'W', 3}};
+  }
+
+  std::vector<int64_t> kernel_size;
+  kernel_size = GetAttrValue(op, "ksizes");
+
+  std::vector<int64_t> strides;
+  strides = GetAttrValue(op, "strides");
+
+  std::vector<int64_t> dilations;
+  dilations = GetAttrValue(op, "rates");
+
+  int64_t images_h = shape_in.GetDim(idx_map['H']);
+  int64_t ksize_h = kernel_size.at(idx_map['H']);
+  int64_t stride_h = strides.at(idx_map['H']);
+  int64_t dilation_h = dilations.at(idx_map['h']);
+
+  vector<vector<int64_t>> y_data_slice = {{}, {}, {}, {}, {}};
+  vector<vector<int64_t>> x_data_slice = {{}, {}, {}, {}, {}};
+  if (!AttrUtils::GetListListInt(tensor_out_ptr, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
+    OP_LOGI(op.GetName().c_str(), "No data slice, not need infer input");
+    return GRAPH_FAILED;
+  }
+
+  bool need_infer = false;
+  bool have_slice = false;
+  for (unsigned idx = 0; idx < y_data_slice.size(); idx++) {
+    if (y_data_slice[idx].size() > 0) {
+      have_slice = true;
+      if (idx == 2) {
+        need_infer = true;
+        vector<int64_t> slice_data_h;
+        InferHExtractImagePatches(ksize_h, dilation_h, stride_h, images_h, y_data_slice[idx], slice_data_h);
+        OP_LOGD(op.GetName().c_str(),
+                "ExtractImagePatches h axis slice ori_scope is [%d, %d], calced output scope is [%d, %d]",
+                slice_data_h[0], slice_data_h[1], y_data_slice[idx][0], y_data_slice[idx][1]);
+        x_data_slice[idx] = slice_data_h;
+      }
+    }
+  }
+  if (!have_slice) {
+    return GRAPH_FAILED;
+  }
+  if (!need_infer) {
+    return NO_OVERLAP_DIM;
+  } else {
+    if (!AttrUtils::SetListListInt(tensor_in_ptr, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+      return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
+  }
+  OP_LOGI(op.GetName().c_str(), "Calc ExtractImagePatches InferDataSlice end!");
+}
+
 COMMON_INFER_FUNC_REG(ExtractImagePatches, ExtractImagePatchesInferShape);
 VERIFY_FUNC_REG(ExtractImagePatches, ExtractImagePatchesVerify);
+INFER_DATA_SLICE_FUNC_REG(ExtractImagePatches, ExtractImagePatchesInferDataSlice);
 // ----------------ExtractImagePatches END-------------------
 
 // ----------------ExtractVolumePatches-------------------
@@ -1782,8 +1889,122 @@ IMPLEMT_COMMON_INFERFUNC(ExtractVolumePatchesInferShape) {
   return GRAPH_SUCCESS;
 }
 
+static void InferHDExtractVolumePatches(int64_t kernel, int64_t stride, int64_t origin_input,
+                                        const vector<int64_t>& output_slice, vector<int64_t>& input_slice) {
+  int64_t slice_start = output_slice[0] * stride;
+  if (slice_start < 0) {
+    slice_start = 0;
+  }
+
+  int64_t slice_end = output_slice[1] * stride + (kernel - 1);
+  if (slice_end >= origin_input) {
+    slice_end = origin_input - 1;
+  }
+  input_slice = {slice_start, slice_end};
+}
+/*!
+ * @brief provide ExtractVolumePatches operator slice data
+ * @param ExtractVolumePatches Operator type.
+ * @param ExtractVolumePatchesInferDataSlice slice data function
+ * @return Status The processing flow result.
+ */
+IMPLEMT_INFER_DATA_SLICE(ExtractVolumePatches, ExtractVolumePatchesInferDataSlice) {
+  OP_LOGI(op.GetName().c_str(), "Enter ExtractVolumePatches InferDataSlice");
+
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensor_in_ptr = op_desc->MutableInputDesc("x");
+  GeTensorDescPtr tensor_out_ptr = op_desc->MutableOutputDesc("y");
+  auto shape_in = tensor_in_ptr->GetShape();
+
+  std::string data_format;
+  if (op.GetAttr("data_format", data_format) == GRAPH_FAILED || (data_format != "NDHWC" && data_format != "NCDHW")) {
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr data_format failed, data_format must be NDHWC or NCDHW!");
+    return GRAPH_FAILED;
+  }
+
+  auto x_format = tensor_in_ptr->GetOriginFormat();
+  const std::map<std::string, Format> format_map{{"NDHWC", FORMAT_NDHWC}, {"NCDHW", FORMAT_NCDHW}};
+
+  // Set ori_format as data_format if input ori_format is the default value ND.
+  if (x_format == FORMAT_ND) {
+    tensor_in_ptr->SetOriginFormat(format_map.at(data_format));
+    tensor_in_ptr->SetFormat(format_map.at(data_format));
+  }
+
+  x_format = tensor_in_ptr->GetOriginFormat();
+  if (x_format != FORMAT_NDHWC && x_format != FORMAT_NCDHW) {
+    OP_LOGE(op.GetName().c_str(), "Input x format only support NDHWC or NCDHW");
+    return GRAPH_FAILED;
+  }
+
+  std::map<char, int> idx_map{{'N', 0}, {'D', 1}, {'H', 2}, {'W', 3}, {'C', 4}};
+  if (x_format == FORMAT_NCDHW) {
+    idx_map = {{'N', 0}, {'C', 1}, {'D', 2}, {'H', 3}, {'W', 4}};
+  }
+
+
+  std::vector<int64_t> kernel_size;
+  kernel_size = GetAttrValue(op, "ksizes");
+
+  std::vector<int64_t> strides;
+  strides = GetAttrValue(op, "strides");
+
+  int64_t input_d = shape_in.GetDim(idx_map['D']);
+  int64_t input_h = shape_in.GetDim(idx_map['H']);
+  int64_t filter_d = kernel_size.at(idx_map['D']);
+  int64_t filter_h = kernel_size.at(idx_map['H']);
+  int64_t stride_d = strides.at(idx_map['D']);
+  int64_t stride_h = strides.at(idx_map['H']);
+
+  vector<vector<int64_t>> y_data_slice = {{}, {}, {}, {}, {}, {}};
+  vector<vector<int64_t>> x_data_slice = {{}, {}, {}, {}, {}, {}};
+  if (!AttrUtils::GetListListInt(tensor_out_ptr, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
+    OP_LOGI(op.GetName().c_str(), "No data slice, not need infer input");
+    return GRAPH_FAILED;
+  }
+
+  bool need_infer = false;
+  bool have_slice = false;
+  for (unsigned idx = 0; idx < y_data_slice.size(); idx++) {
+    if (y_data_slice[idx].size() > 0) {
+      have_slice = true;
+      if (idx == 1) {
+        need_infer = true;
+        vector<int64_t> slice_data_d;
+        InferHDExtractVolumePatches(filter_d, stride_d, input_d, y_data_slice[idx], slice_data_d);
+        OP_LOGD(op.GetName().c_str(),
+                "ExtractVolumePatches d axis slice ori_scope is [%d, %d], calced output scope is [%d, %d]",
+                slice_data_d[0], slice_data_d[1], y_data_slice[idx][0], y_data_slice[idx][1]);
+        x_data_slice[idx] = slice_data_d;
+      } else if(idx == 3) {
+        need_infer = true;
+        vector<int64_t> slice_data_h;
+        InferHDExtractVolumePatches(filter_h, stride_h, input_h, y_data_slice[idx], slice_data_h);
+        OP_LOGD(op.GetName().c_str(),
+                "ExtractVolumePatches h axis slice ori_scope is [%d, %d], calced output scope is [%d, %d]",
+                slice_data_h[0], slice_data_h[1], y_data_slice[idx][0], y_data_slice[idx][1]);
+        x_data_slice[idx] = slice_data_h;
+      }
+    }
+  }
+
+  if (!have_slice) {
+    return GRAPH_FAILED;
+  }
+  if (!need_infer) {
+    return NO_OVERLAP_DIM;
+  } else {
+    if (!AttrUtils::SetListListInt(tensor_in_ptr, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+      return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
+  }
+  OP_LOGI(op.GetName().c_str(), "Calc ExtractVolumePatches InferDataSlice end!");
+}
+
 COMMON_INFER_FUNC_REG(ExtractVolumePatches, ExtractVolumePatchesInferShape);
 VERIFY_FUNC_REG(ExtractVolumePatches, ExtractVolumePatchesVerify);
+INFER_DATA_SLICE_FUNC_REG(ExtractVolumePatches, ExtractVolumePatchesInferDataSlice);
 // ----------------ExtractVolumePatches END-------------------
 
 // -----------------------ConfusionTranspose---------------------
