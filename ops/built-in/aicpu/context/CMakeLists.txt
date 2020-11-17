@@ -71,10 +71,6 @@ target_link_libraries(cpu_kernels_context PRIVATE
     PUBLIC c_sec
     ascend_protobuf
     -ldl
-    -shared
-    -Wl,-Bsymbolic -Wl,--exclude-libs,ALL
-    -Wl,-z,relro,-z,now
-    -s
 )
 else()
 target_link_libraries(cpu_kernels_context PRIVATE
@@ -84,9 +80,6 @@ target_link_libraries(cpu_kernels_context PRIVATE
     ascend_protobuf
     $<$<NOT:$<STREQUAL:${PRODUCT},npuf10>>:aicpu_sharder>
     -ldl
-    -shared
-    -Wl,-z,relro,-z,now
-    -s
 )
 
 endif()
@@ -108,6 +101,12 @@ target_compile_options(cpu_kernels_context PRIVATE
     -ftrapv
     $<$<STREQUAL:${PRODUCT_SIDE},host>:-fvisibility-inlines-hidden>
     $<$<STREQUAL:${PRODUCT_SIDE},host>:-fvisibility=hidden>
+)
+
+target_link_options(cpu_kernels_context PRIVATE
+    -Wl,-z,relro,-z,now
+    -s
+    $<$<STREQUAL:${PRODUCT_SIDE},host>:-Wl,-Bsymbolic -Wl, --exclude-libs,ALL>
 )
 
 target_include_directories(cpu_kernels_context_static PRIVATE

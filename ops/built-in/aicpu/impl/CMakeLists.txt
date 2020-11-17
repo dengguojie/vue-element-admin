@@ -1,3 +1,5 @@
+set(SUB_SO_WITH_VERSION libcpu_kernels_v1.0.1.so)
+
 if(BUILD_OPEN_PROJECT)
 #[[set(local_kernels_src_files
     kernels/normalized/drop_out_gen_mask_kernels.cc
@@ -183,38 +185,46 @@ target_include_directories(cpu_kernels_static PRIVATE
 
 target_link_libraries(cpu_kernels_host PRIVATE
     $<BUILD_INTERFACE:intf_pub>
-	-Wl,-z,relro,-z,now
-    -Wl,-Bsymbolic -Wl,--exclude-libs,ALL
     -ldl
-	-s
-    -shared
     slog
     c_sec
     cpu_kernels_context
 )
+
 target_link_libraries(cpu_kernels PRIVATE
     $<BUILD_INTERFACE:intf_pub>
-	-Wl,-z,relro,-z,now
-	-s
+    -Wl,--whole-archive
+    cpu_kernels_context_static
+    -Wl,--no-whole-archive
+    ascend_protobuf_static
+    -Wl,--no-as-needed
     slog
     c_sec
-    cpu_kernels_context
+    $<$<NOT:$<STREQUAL:${PRODUCT}, npuf10>>:aicpu_sharder>
     -ldl
-    -shared
+    -Wl,--as-needed
 )
 
 target_compile_definitions(cpu_kernels PRIVATE
     _FORTIFY_SOURCE=2
+    google=ascend_private
 )
 
 target_compile_options(cpu_kernels PRIVATE
     -O2
     -std=c++14
     -ftrapv
-	-fstack-protector-all
+    -fstack-protector-all
+    -fvisibility-inline-hidden
+    -fvisibility=hidden
 )
 
-##
+target_link_options(cpu_kernels PRIVATE
+    -Wl,--exclude-libs=libascend_protobuf.a
+    -Wl,-z,relro,-z,now
+    -s
+)
+
 target_compile_definitions(cpu_kernels_static PRIVATE
     _FORTIFY_SOURCE=2
 )
@@ -233,6 +243,12 @@ target_compile_options(cpu_kernels_static PRIVATE
 
 target_compile_definitions(cpu_kernels_host PRIVATE
     _FORTIFY_SOURCE=2
+)
+
+target_link_options(cpu_kerenels_host PRIVATE
+    -Wl,-z,relro,-z,now
+    -Wl,-Bsymbolic -Wl,--exclude-libs,ALL
+    -s
 )
 
 target_compile_options(cpu_kernels_host PRIVATE
@@ -259,6 +275,12 @@ install(TARGETS cpu_kernels_host OPTIONAL
 install(TARGETS cpu_kernels_static OPTIONAL
     EXPORT cpu_kernels_static-targets
     LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
+)
+
+set(COPY_TO_PATH ${CMAKE_INSTALL_PREFIX}/${INSTALL_LIBRARY_DIR}/${SUB_SO_WITH_VERSION})
+add_custom_command(TARGET cpu_kernels POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:cpu_kernels> ${COPY_TO_PATH}
+    COMMENT "[AICPU] copying cpu_kernels library to '${COPY_TO_PATH}'"
 )
 
 set(cpu_kernels_static ${CMAKE_CURRENT_BINARY_DIR}/libcpu_kernels_static.a)
