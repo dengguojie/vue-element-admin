@@ -108,6 +108,16 @@ def get_tensor_size(tensor: tvm.tensor.Tensor):
     return -1
 
 
+def is_vtranspose_broadcast(tensor: tvm.tensor.Tensor):
+    """
+    :param tensor:
+    :return:
+    """
+    if not is_broadcast(tensor) or len(tensor.op.input_tensors) != 1:
+        return False
+    return tensor.dtype == "float16" and tensor.shape[-1] != tensor.op.input_tensors[0].shape[-1]
+
+
 def is_broadcast(tensor: tvm.tensor.Tensor):
     """
     :param tensor:

@@ -34,6 +34,9 @@ MULTI_CORE_THRESHOLD = 1024
 
 N_LAST_BROADCAST_THRESHOLD = 512
 
+#temp space for last axis broadcast use vtranspose
+VTRANSPOSE_TEMP_SPACE = 8192
+
 CONST = "const"
 VECTOR = "vector"
 
@@ -302,9 +305,11 @@ class ElewiseSchedule:
         inputs = []
         for _input in self._input_tensors:
             inputs.append({"shape": util.shape_to_list(_input.shape), "dtype": _input.dtype})
-        output = {"shape": shape, "dtype": res.dtype}
+        outputs = [{"shape": shape, "dtype": res.dtype}]
+        if len(inputs) == 0:
+            inputs = outputs.copy
         op_type = operation.get_context().get_op_type()
-        run_info = op_tiling.do_op_tiling(op_type, const_compile_info, inputs, [output])
+        run_info = op_tiling.do_op_tiling(op_type, const_compile_info, inputs, outputs)
         tiling_format = {
             "need_multi_core": "int",
             "block_axis": "int",
@@ -601,19 +606,19 @@ class ElewiseSchedule:
                 src_tensor = src_tensors[reuse_index]
                 src_tensor, dst_tensor = __get_ub_tensor(src_tensor, tensor_i)
                 util.merge_value(self._mem_reuse_map,
-                                 dst_tensor,
-                                 src_tensor)
+                                 src_tensor,
+                                 dst_tensor)
         for tensor_i, write_buffer in \
                 self._middle_out_cache_write_buffer_map.items():
             util.merge_value(self._mem_reuse_map,
-                             write_buffer,
-                             self._middle_out_cache_read_buffer_map[tensor_i])
+                             self._middle_out_cache_read_buffer_map[tensor_i],
+                             write_buffer)
         for tensor_i in self._compute_inline_broadcast:
             input_tensor = tensor_i.op.input_tensors[0]
             input_tensor, broadcast_tensor = __get_ub_tensor(input_tensor, tensor_i)
             util.merge_value(self._data_reuse_map,
-                             broadcast_tensor,
-                             input_tensor)
+                            input_tensor,
+                            broadcast_tensor)
 
     def _do_mem_reuse(self):
         sch = self._schedule
@@ -629,6 +634,8 @@ class ElewiseSchedule:
         def _r_coexisting(_tensor):
             if _tensor in dependent_map:
                 return len(dependent_map)
+            if util.is_vtranspose_broadcast(_tensor):
+                self._ub_size = self._ub_size - VTRANSPOSE_TEMP_SPACE
             _need_space = []
             for _tensor_i in _tensor.op.input_tensors:
                 _need_space.append(_r_coexisting(_tensor_i))
