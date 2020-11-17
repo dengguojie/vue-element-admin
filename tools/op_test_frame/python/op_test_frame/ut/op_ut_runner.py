@@ -233,24 +233,30 @@ def run_ut(case_dir, soc_version, case_name=None,  # pylint: disable=too-many-ar
     def _build_multiprocess_run_args():
         total_run_arg_list = []
         ps_count = 1
+        if not isinstance(soc_version, (tuple, list)):
+            soc_version_list = str(soc_version).split(",")
+        else:
+            soc_version_list = soc_version
         for case_file_info in case_file_info_list:
             case_file_tmp = os.path.basename(case_file_info.case_file)[:-3]
-            single_cov_data_path = os.path.join(cov_combine_dir, ".coverage_" + str(ps_count) + "_" + case_file_tmp)
-            single_rpt_data_path = os.path.join(rpt_combine_dir, "rpt_" + case_file_tmp + ".data")
-            run_arg = RunUTCaseFileArgs(case_file=case_file_info.case_file,
-                                        op_module_name=case_file_info.op_module_name,
-                                        soc_version=soc_version,
-                                        case_name=case_name,
-                                        test_report=test_report,
-                                        test_report_data_path=single_rpt_data_path,
-                                        cov_report=cov_report,
-                                        cov_data_path=single_cov_data_path,
-                                        simulator_mode=simulator_mode,
-                                        simulator_lib_path=simulator_lib_path,
-                                        data_dir=test_data_path,
-                                        dump_model_dir=simulator_data_path)
-            total_run_arg_list.append(run_arg)
-            ps_count += 1
+            for one_soc_version in soc_version_list:
+                single_cov_data_path = os.path.join(cov_combine_dir, ".coverage_" + str(ps_count) + "_" + case_file_tmp)
+                single_rpt_data_path = os.path.join(rpt_combine_dir,
+                                                    "rpt_" + str(ps_count) + "_" + case_file_tmp + ".data")
+                run_arg = RunUTCaseFileArgs(case_file=case_file_info.case_file,
+                                            op_module_name=case_file_info.op_module_name,
+                                            soc_version=one_soc_version,
+                                            case_name=case_name,
+                                            test_report=test_report,
+                                            test_report_data_path=single_rpt_data_path,
+                                            cov_report=cov_report,
+                                            cov_data_path=single_cov_data_path,
+                                            simulator_mode=simulator_mode,
+                                            simulator_lib_path=simulator_lib_path,
+                                            data_dir=test_data_path,
+                                            dump_model_dir=simulator_data_path)
+                total_run_arg_list.append(run_arg)
+                ps_count += 1
         return total_run_arg_list
 
     multiprocess_run_args = _build_multiprocess_run_args()
