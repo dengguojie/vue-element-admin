@@ -316,5 +316,4 @@ Status softmaxTransFusionPass::INFuison(ge::ComputeGraph& graph, ge::NodePtr& in
 }
 
 REGISTER_PASS("softmaxTransFusionPass", BUILT_IN_BEFORE_TRANSNODE_INSERTION_GRAPH_PASS, softmaxTransFusionPass);
-REGISTER_PASS("softmaxTransFusionPass", BUILT_IN_GRAPH_PASS, softmaxTransFusionPass);
 }  // namespace fe
