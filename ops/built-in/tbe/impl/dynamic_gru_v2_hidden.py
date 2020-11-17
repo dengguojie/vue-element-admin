@@ -432,16 +432,28 @@ def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
     shape_i_t = (t_size, hidden_size, m_size, 16, 16)
     k0_size = 16
 
+    exceed_ub = False
+    if not fp16_input_output and hidden_size > 160 or fp16_input_output and hidden_size > 470:
+        exceed_ub = True
+    if not is_global_init and hidden_size > 160:
+        exceed_ub = True
+
     # compute
     if is_first_round and not is_global_init:
         s_state_h = tvm.compute(shape_i,
                                 lambda *indices: tvm.const(0.0, dtype="float32"),
                                 name="s_state_h_ign",
                                 tag="broadcast")
-        s_state_h_fp16 = tvm.compute(shape_i,
-                                     lambda *indices: s_state_h(*indices).astype("float16"),
-                                     name="s_state_h_fp16_ign",
-                                     tag="elewise_single_cast")
+        if not exceed_ub:
+            s_state_h_fp16 = tvm.compute(shape_i,
+                                         lambda *indices: s_state_h(*indices).astype("float16"),
+                                         name="s_state_h_fp16_ign",
+                                         tag="elewise_single_cast")
+        else:
+            s_state_h_fp16 = tvm.compute(shape_i,
+                                         lambda *indices: tvm.const(0.0, dtype="float16"),
+                                         name="s_state_h_fp16_ign",
+                                         tag="broadcast")
     else:
         last_h = s_init_h_gm if is_first_round else s_state_h_gm_last
         if fp16_input_output:
@@ -449,19 +461,39 @@ def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
                                          lambda *indices: last_h(*indices),
                                          name="s_state_h_fp16",
                                          tag="out_to_ub")
-            s_state_h = tvm.compute(shape_i,
-                                    lambda *indices: s_state_h_fp16(*indices).astype("float32"),
-                                    name="s_state_h_ign",
-                                    tag="elewise_single_cast")
+            if not exceed_ub:
+                s_state_h = tvm.compute(shape_i,
+                                        lambda *indices: s_state_h_fp16(*indices).astype("float32"),
+                                        name="s_state_h_ign",
+                                        tag="elewise_single_cast")
+            else:
+                s_state_h_tmp = tvm.compute(shape_i,
+                                            lambda *indices: last_h(*indices),
+                                            name="s_state_h_tmp",
+                                            tag="out_to_ub")
+                s_state_h = tvm.compute(shape_i,
+                                        lambda *indices: s_state_h_tmp(*indices).astype("float32"),
+                                        name="s_state_h_ign",
+                                        tag="elewise_single_cast")
         else:
             s_state_h = tvm.compute(shape_i,
                                     lambda *indices: last_h(*indices),
                                     name="s_state_h",
                                     tag="out_to_ub")
-            s_state_h_fp16 = tvm.compute(shape_i,
-                                         lambda *indices: s_state_h(*indices).astype("float16"),
-                                         name="s_state_h_fp16_ign",
-                                         tag="elewise_single_cast")
+            if not exceed_ub:
+                s_state_h_fp16 = tvm.compute(shape_i,
+                                             lambda *indices: s_state_h(*indices).astype("float16"),
+                                             name="s_state_h_fp16_ign",
+                                             tag="elewise_single_cast")
+            else:
+                s_state_h_tmp = tvm.compute(shape_i,
+                                            lambda *indices: last_h(*indices),
+                                            name="s_state_h_tmp",
+                                            tag="out_to_ub")
+                s_state_h_fp16 = tvm.compute(shape_i,
+                                             lambda *indices: s_state_h_tmp(*indices).astype("float16"),
+                                             name="s_state_h_fp16_ign",
+                                             tag="elewise_single_cast")
 
     # second matmul
     # input and s_start_h is Nz, need trans to zZ, so change axis 1 and 2
@@ -864,8 +896,14 @@ def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
     sch[r_t_1].compute_at(sch[update_h_gm], update_h_gm_outer)
     sch[i_t_1].compute_at(sch[update_h_gm], update_h_gm_outer)
     sch[n_t_1].compute_at(sch[update_h_gm], update_h_gm_outer)
-    sch[s_state_h].compute_at(sch[update_h_gm], update_h_gm_m_inner)
-    sch[s_state_h_fp16].compute_at(sch[update_h_gm], update_h_gm_m_inner)
+    
+    if exceed_ub:
+        sch[s_state_h].compute_at(sch[update_h_gm], update_h_gm_outer)
+        sch[s_state_h_fp16].compute_at(sch[c_l0c_2], l1_k_outer_2)
+    else:
+        sch[s_state_h].compute_at(sch[update_h_gm], update_h_gm_m_inner)
+        sch[s_state_h_fp16].compute_at(sch[update_h_gm], update_h_gm_m_inner)
+
     if reuse_type == ReuseType.REUSE_ALL:
         sch[update_h_gm].bind(update_h_gm_m_outer, tvm.thread_axis("blockIdx.x"))
     else:
@@ -889,14 +927,25 @@ def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
     # emit insn
     if is_first_round and not is_global_init:
         sch[s_state_h].emit_insn(s_state_h.op.axis[0], "broadcast")
-        sch[s_state_h_fp16].emit_insn(s_state_h_fp16.op.axis[0], "vector_conv")
+        if not exceed_ub:
+            sch[s_state_h_fp16].emit_insn(s_state_h_fp16.op.axis[0], "vector_conv")
+        else:
+            sch[s_state_h_fp16].emit_insn(s_state_h_fp16.op.axis[0], "broadcast")
     else:
         if fp16_input_output:
             sch[s_state_h_fp16].emit_insn(s_state_h_fp16.op.axis[0], "dma_copy")
             sch[s_state_h].emit_insn(s_state_h.op.axis[0], "vector_conv")
+            if exceed_ub:
+                sch[s_state_h_tmp].set_scope(tbe_platform.scope_ubuf)
+                sch[s_state_h_tmp].compute_at(sch[update_h_gm], update_h_gm_outer)
+                sch[s_state_h_tmp].emit_insn(s_state_h_tmp.op.axis[0], "dma_copy")
         else:
             sch[s_state_h].emit_insn(s_state_h.op.axis[0], "dma_copy")
             sch[s_state_h_fp16].emit_insn(s_state_h_fp16.op.axis[0], "vector_conv")
+            if exceed_ub:
+                sch[s_state_h_tmp].set_scope(tbe_platform.scope_ubuf)
+                sch[s_state_h_tmp].compute_at(sch[c_l0c_2], l1_k_outer_2)
+                sch[s_state_h_tmp].emit_insn(s_state_h_tmp.op.axis[0], "dma_copy")
 
     sch[a_l1_2].emit_insn(a_l1_2.op.axis[0], "dma_copy")
     sch[b_l1_2].emit_insn(b_l1_2.op.axis[0], "dma_copy")
