@@ -37,6 +37,7 @@ class TbeConv3dElemwisePass : public BufferFusionPassBase {
 
  protected:
   vector<BufferFusionPattern*> DefinePatterns() override;
+  Status GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
 
  private:
   const std::string FUSED_OP_TYPE = "FusedOp";
