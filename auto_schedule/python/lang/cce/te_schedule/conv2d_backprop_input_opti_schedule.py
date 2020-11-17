@@ -2565,6 +2565,14 @@ def opti_schedule(
             (None, None),
             (None, None),
         )
+        if c_add_bias is not None:
+            sch[c_add_bias].buffer_tile(
+            (None, None),
+            (None, None),
+            (cub_buffertile_n_min, no_coefficient),
+            (None, None),
+            (None, None),
+            )
 
     TILING.clear()
     dx_res = tensor

@@ -2075,6 +2075,13 @@ def general_schedule(
                     (None, None),
                     (None, None),
                     )
+                    if c_add_bias is not None:
+                        sch[c_add_bias].buffer_tile(
+                        (None, None),
+                        (None, None),
+                        (c_offset, tiling["CL0_matrix"][0]),
+                        (None, None),
+                        (None, None),)
                     break
 
     ax_core = _bind_core()
