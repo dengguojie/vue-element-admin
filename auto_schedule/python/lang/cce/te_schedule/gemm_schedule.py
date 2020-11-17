@@ -18,7 +18,7 @@ gemm schedule
 from functools import reduce  # pylint: disable=C0302
 
 from te import tvm
-from te.domain.tiling.tiling_query import tiling_query
+from te.domain.tiling.get_tiling import get_tiling
 from te.lang.cce.boost_schedule_kit import Compare
 from te.lang.cce.boost_schedule_kit import ScheduleAgent
 from te.platform import cce_conf
@@ -345,30 +345,31 @@ def _get_tiling_result_nd(kernel_name):  # pylint: disable=R0914
         divide_factor = 16
         stridew = _check_align(b_n, stridew, divide_factor)
 
-    tiling = tiling_query(
-        a_shape,
-        b_shape,
-        c_shape=None,
-        a_dtype=a_type,
-        b_dtype=b_type,
-        c_dtype=c_type,
-        mad_dtype=mad_type,
-        padl=pad_l,
-        padr=pad_r,
-        padu=0,
-        padd=0,
-        strideh=0,
-        stridew=stridew,
-        strideh_expand=1,
-        stridew_expand=1,
-        dilationh=trans_flag,
-        dilationw=1,
-        group=1,
-        fused_double_operand_num=fused_num,
-        bias_flag=0,
-        op_tag="matmul",
-        kernel_name=kernel_name
-    )
+    info_dict = {
+        "op_type": "matmul",
+        "A_shape": a_shape,
+        "B_shape": b_shape,
+        "C_shape": None,
+        "A_dtype": a_type,
+        "B_dtype": b_type,
+        "C_dtype": c_type,
+        "mad_dtype": mad_type,
+        "padl": pad_l,
+        "padr": pad_r,
+        "padu": 0,
+        "padd": 0,
+        "strideH": 0,
+        "strideW": stridew,
+        "strideH_expand": 1,
+        "strideW_expand": 1,
+        "dilationH": trans_flag,
+        "dilationW": 1,
+        "group": 1,
+        "bias_flag": 0,
+        "fused_double_operand_num": fused_num,
+        "kernel_name": kernel_name.value
+    }
+    tiling = get_tiling(info_dict)
 
     if not tiling:
         args_dict = {"errCode": "E60114", "reason": "tiling is None", "value": "None"}
@@ -922,30 +923,33 @@ def _get_tiling(kernel_name):  # pylint: disable=too-many-statements
         c_type = Params.TENSOR_MAP["c_gm"].dtype
         a_shape, b_shape, pad_l, pad_r, fused_num = get_tiling_param_nz()
         mad_type = Params.MAD_TYPE.get(Params.ops_mode)
-        tiling = tiling_query(
-            a_shape,
-            b_shape,
-            c_shape=None,
-            a_dtype=a_type,
-            b_dtype=b_type,
-            c_dtype=c_type,
-            mad_dtype=mad_type,
-            padl=pad_l,
-            padr=pad_r,
-            padu=0,
-            padd=0,
-            strideh=1,
-            stridew=1,
-            strideh_expand=1,
-            stridew_expand=1,
-            dilationh=1,
-            dilationw=1,
-            group=1,
-            fused_double_operand_num=fused_num,
-            bias_flag=0,
-            op_tag="matmul",
-            kernel_name=kernel_name
-        )
+
+        info_dict = {
+            "op_type": "matmul",
+            "A_shape": a_shape,
+            "B_shape": b_shape,
+            "C_shape": None,
+            "A_dtype": a_type,
+            "B_dtype": b_type,
+            "C_dtype": c_type,
+            "mad_dtype": mad_type,
+            "padl": pad_l,
+            "padr": pad_r,
+            "padu": 0,
+            "padd": 0,
+            "strideH": 1,
+            "strideW": 1,
+            "strideH_expand": 1,
+            "strideW_expand": 1,
+            "dilationH": 1,
+            "dilationW": 1,
+            "group": 1,
+            "bias_flag": 0,
+            "fused_double_operand_num": fused_num,
+            "kernel_name": kernel_name.value
+        }
+        tiling = get_tiling(info_dict)
+
         if not tiling:
             args_dict = {
                 "errCode": "E60114",
