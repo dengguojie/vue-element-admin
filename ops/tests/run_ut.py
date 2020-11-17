@@ -336,7 +336,9 @@ def get_change_relate_ut_dir_list(changed_file_info_from_ci):
                         raise RuntimeError(
                             "Can only add test case file like: built-in/tests/ut/ops_test/Add/test_*_impl.py.")
                     op_ut_test_dir = os.path.join(repo_root, test_case_dir, test_changed_file.split(os.path.sep)[-2])
-                    relate_ut_dir_list.append(op_ut_test_dir)
+                    if op_ut_test_dir not in relate_ut_dir_list:
+                        relate_ut_dir_list.append(os.path.join(op_ut_test_dir, test_changed_file_name))
+                        # not need test all test in dir, relate_ut_dir_list.append(op_ut_test_dir)
 
         _deal_test_file_change()
 
