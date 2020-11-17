@@ -2,7 +2,7 @@ LOCAL_PATH := $(call my-dir)
 
 local_normalized_kernels := kernels/normalized/drop_out_gen_mask_kernels.cc \
                             kernels/normalized/meshgrid_kernels.cc \
-                            kernels/normalized/expanddims_kernel.cc \
+                            kernels/normalized/expanddims.cc \
                             kernels/normalized/reshape_kernels.cc \
                             kernels/normalized/less_kernels.cc \
                             kernels/normalized/top_k_kernels.cc \
@@ -21,7 +21,7 @@ local_normalized_kernels := kernels/normalized/drop_out_gen_mask_kernels.cc \
                             kernels/normalized/deformable_offsets_kernels.cc \
                             kernels/normalized/cast_kernels.cc \
                             kernels/normalized/concatv2_kernels.cc \
-                            kernels/normalized/round_kernels.cc \
+                            kernels/normalized/round.cc \
                             utils/sparse_group.cc \
                             utils/eigen_tensor.cc \
                             utils/sparse_tensor.cc \

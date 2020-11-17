@@ -3,7 +3,7 @@ set(SUB_SO_WITH_VERSION libcpu_kernels_v1.0.1.so)
 if(BUILD_OPEN_PROJECT)
 #[[set(local_kernels_src_files
     kernels/normalized/drop_out_gen_mask_kernels.cc
-    kernels/normalized/expanddims_kernel.cc
+    kernels/normalized/expanddims.cc
     kernels/normalized/reshape_kernels.cc
     kernels/normalized/less_kernels.cc
     kernels/normalized/top_k_kernels.cc
@@ -118,7 +118,7 @@ set(BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(local_kernels_src_files
     kernels/normalized/drop_out_gen_mask_kernels.cc
-    kernels/normalized/expanddims_kernel.cc
+    kernels/normalized/expanddims.cc
     kernels/normalized/reshape_kernels.cc
     kernels/normalized/less_kernels.cc
     kernels/normalized/top_k_kernels.cc
@@ -133,7 +133,7 @@ set(local_kernels_src_files
     kernels/normalized/cast_kernels.cc
     kernels/normalized/logging_kernels.cc
     kernels/normalized/concatv2_kernels.cc
-    kernels/normalized/round_kernels.cc
+    kernels/normalized/round.cc
     utils/sparse_group.cc
     utils/eigen_tensor.cc
     utils/sparse_tensor.cc
