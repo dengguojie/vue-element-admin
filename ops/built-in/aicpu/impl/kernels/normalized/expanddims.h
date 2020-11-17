@@ -13,20 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#ifndef _AICPU_ROUND_KERNELS_H_
-#define _AICPU_ROUND_KERNELS_H_
+#ifndef AICPU_KERNELS_NORMALIZED_EXPANDDIMS_H_
+#define AICPU_KERNELS_NORMALIZED_EXPANDDIMS_H_
 
 #include "cpu_kernel.h"
 
 namespace aicpu {
-class RoundCpuKernel : public CpuKernel {
+class ExpandDimsCpuKernel : public CpuKernel {
  public:
-  ~RoundCpuKernel() = default;
+  ~ExpandDimsCpuKernel() = default;
   uint32_t Compute(CpuKernelContext &ctx) override;
-
- private:
-  bool CheckSupported(DataType input_type);
 };
 }  // namespace aicpu
 #endif
