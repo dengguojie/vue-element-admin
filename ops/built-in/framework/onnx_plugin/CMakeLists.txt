@@ -71,6 +71,7 @@ target_include_directories(ops_all_onnx_plugin PRIVATE
 target_compile_options(ops_all_onnx_plugin PRIVATE
   -O2
   -Werror
+  -Wno-deprecated-declarations
   -Dgoogle=ascend_private
 )
 

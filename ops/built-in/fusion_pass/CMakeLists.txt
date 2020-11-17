@@ -298,6 +298,7 @@ target_compile_options(ops_fusion_pass_vectorcore PRIVATE
   "-fno-strict-aliasing"
   -O2
   -Werror
+  -Wno-deprecated-declarations
   -Dgoogle=ascend_private
 )
 

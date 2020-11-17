@@ -80,7 +80,7 @@ LOCAL_SRC_FILES := $(LOCAL_PLUGIN_SRC_TARGET_FILES)
 LOCAL_C_INCLUDES := \
         $(PLUGIN_C_INCLUDES)
 
-LOCAL_CFLAGS += -Werror
+LOCAL_CFLAGS += -Werror -Wno-deprecated-declarations
 
 LOCAL_SHARED_LIBRARIES := \
         $(PLUGIN_SHARED_LIBS) \
@@ -441,7 +441,7 @@ LOCAL_SRC_FILES := \
 LOCAL_C_INCLUDES := \
         $(PLUGIN_C_INCLUDES)
 
-LOCAL_CFLAGS += -Werror
+LOCAL_CFLAGS += -Werror -Wno-deprecated-declarations
 
 LOCAL_SHARED_LIBRARIES := \
         libslog  \
@@ -475,7 +475,7 @@ LOCAL_SRC_FILES := $(LOCAL_PLUGIN_SRC_TARGET_FILES)
 LOCAL_C_INCLUDES := \
         $(PLUGIN_C_INCLUDES)
 
-LOCAL_CFLAGS += -Werror
+LOCAL_CFLAGS += -Werror -Wno-deprecated-declarations
 
 LOCAL_SHARED_LIBRARIES := \
         libslog  \
