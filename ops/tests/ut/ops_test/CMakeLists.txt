@@ -21,6 +21,7 @@ add_executable(ops_cpp_proto_utest
 )
 
 target_include_directories(ops_cpp_proto_utest PRIVATE
+  ${GTEST_INCLUDE}
   ${OP_TEST_COMMON_INCLUDE}
   ${METADEF_INCLUDE}/graph
 )

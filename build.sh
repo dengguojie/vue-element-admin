@@ -21,6 +21,8 @@ export BUILD_PATH="${BASE_PATH}/build"
 INSTALL_PATH="${BUILD_PATH}/install"
 CMAKE_PATH="${BUILD_PATH}/cann"
 
+source scripts/util.sh
+
 # print usage message
 usage() {
   echo "Usage:"
@@ -34,10 +36,6 @@ usage() {
   echo "    -v Verbose"
   echo "    -g GCC compiler prefix, used to specify the compiler toolchain"
   echo "to be continued ..."
-}
-
-logging() {
-  echo "[INFO] $@"
 }
 
 # parse and set optionss
@@ -63,13 +61,6 @@ checkopts() {
          exit 1 ;;
     esac
   done
-}
-
-# mkdir directory
-mk_dir() {
-  local create_dir="$1"
-  mkdir -pv "${create_dir}"
-  logging "Created ${create_dir}"
 }
 
 # create build path

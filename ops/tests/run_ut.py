@@ -377,8 +377,8 @@ def main(argv):
         if not case_dir:
             # has no relate ut, not need run ut.
             exit(0)
-    cov_report_path = FLAGS.cov_path if FLAGS.cov_path else "./cov_report"
-    report_path = FLAGS.report_path if FLAGS.report_path else "./report"
+    cov_report_path = FLAGS.cov_path if FLAGS.cov_path else "./cov_report/ops/python_utest"
+    report_path = FLAGS.report_path if FLAGS.report_path else "./report/ops/python_report"
     simulator_lib_path = FLAGS.simulator_lib_path if FLAGS.simulator_lib_path else "/usr/local/Ascend/toolkit/tools/simulator"
     res = op_ut_runner.run_ut(case_dir,
                               soc_version=soc_version,

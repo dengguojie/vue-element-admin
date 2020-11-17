@@ -15,6 +15,7 @@ dist/
 # python cache
 *.pyc
 __pycache__
+MANIFEST.in
 
 # python ut/st
 cov_report/

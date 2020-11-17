@@ -23,4 +23,24 @@ set(OP_TEST_COMMON_INCLUDE
 
 if(ENABLE_TEST STREQUAL UT)
   add_subdirectory(ut)
+
+  # /path/to/canndev/build/cann/ops
+  get_filename_component(_ops_bin_path ${CMAKE_CURRENT_BINARY_DIR} DIRECTORY)
+  # /path/to/canndev/ops/tests
+  set(_tests_source_path ${CMAKE_CURRENT_SOURCE_DIR})
+
+  set(_ops_cov_report cov_report/ops)
+  set(_ops_cov_html ${_tests_source_path}/${_ops_cov_report}/cpp_utest)
+  set(_ops_cov_data ${_tests_source_path}/${_ops_cov_report}/cpp_utest/ops.info)
+
+  # generate coverage
+  add_custom_target(generate_ops_cpp_cov ALL
+    DEPENDS ops_cpp_proto_utest
+            ops_cpp_op_tiling_utest
+    COMMENT "Generate cpp coverage for ops utest"
+  )
+  add_custom_command(
+    TARGET generate_ops_cpp_cov
+    COMMAND ${GENERATE_CPP_COV} ${_ops_bin_path}/built-in ${_ops_cov_data} ${_ops_cov_html}
+  )
 endif()

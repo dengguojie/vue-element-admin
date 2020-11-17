@@ -70,6 +70,7 @@ if(BUILD_OPEN_PROJECT)
   include(cmake/external/protobuf.cmake)
   include(cmake/external/gtest.cmake)
   include(cmake/external/eigen.cmake)
+  include(scripts/script.cmake)
 
   # find necessary packages
   find_package(Python3 3.7 COMPONENTS Interpreter)
