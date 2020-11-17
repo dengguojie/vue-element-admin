@@ -89,6 +89,7 @@ class PatternFusionUtil {
                                   const vector<NodePtr>& newConvNodes, int64_t group, size_t sliceDimIdx);
   static Status AddInputToOutput(ge::NodePtr node, std::vector<PassInputInfo>& inputInfoVec);
   static Status ParseChannelIdx(ge::GeTensorDesc& tensorDesc, size_t& channelIdx);
+  static Status ParseNChannelIdx(ge::GeTensorDesc& tensorDesc, size_t& channelIdx);
   static Status ProcessGroupPadding(ComputeGraph& graph, const NodePtr& groupConvNode, int64_t groups);
 
   static Status RemoveInputEdge(ge::NodePtr node);
