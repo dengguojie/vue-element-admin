@@ -163,6 +163,7 @@ class TilingSelection:
         batch_range = tuple(tgt_area[0])
         tiling_cases = []
         tiling_seeds = self.op.get_repo_tiling()
+        repo_seeds = {}
 
         # call cost model
         if not tiling_seeds:
@@ -171,6 +172,7 @@ class TilingSelection:
             tiling_cases.append(
                 self.op.assembly_case(cost_seed['tiling'], batch_range, cur_seed))
             add_compile_info("tiling_range", {cur_seed: batch_range})
+            add_compile_info("repo_seeds", repo_seeds)
             return tiling_cases
 
         # using repo seeds
@@ -182,19 +184,24 @@ class TilingSelection:
             if cur_batch == tiling_seeds[i + 1]['A_shape'][0] or \
                     cur_batch < lower_bound:
                 continue
+            seed_cnt = next(self.seed_cnt)
             repo_selections[next(self.seed_cnt)] = \
                 [seed['tiling'], (lower_bound, min(cur_batch, batch_range[1]))]
             lower_bound = cur_batch + 1
+            repo_seeds[seed_cnt] = cur_batch
             if cur_batch >= batch_range[1]:
                 break
         else:
-            repo_selections[next(self.seed_cnt)] = [
+            seed_cnt = next(self.seed_cnt)
+            cur_batch = tiling_seeds[-1]['A_shape'][0]
+            repo_seeds[seed_cnt] = cur_batch
+            repo_selections[seed_cnt] = [
                 tiling_seeds[-1]['tiling'], (lower_bound, batch_range[1])
             ]
 
         tiling_range = {k: v[1] for k, v in repo_selections.items()}
         add_compile_info("tiling_range", tiling_range)
-
+        add_compile_info("repo_seeds", repo_seeds)
         tiling_cases = [self.op.assembly_case(v[0], v[1], k)
                         for k, v in repo_selections.items()]
         return tiling_cases
@@ -205,6 +212,7 @@ class TilingSelection:
         """
         batch_range = tuple(tgt_area[0])
         tiling_seeds = self.op.get_repo_tiling()
+        repo_seeds = {}
 
         # get tiling range
         candidates = []
@@ -233,8 +241,10 @@ class TilingSelection:
                 cost_cases.append((lower_bound, lower_covered - 1))
                 lower_bound = lower_covered
             upper_covered = min(upper_covered, candidates[i + 1][2] - 1)
-            tiling_selections[next(self.seed_cnt)] = \
+            seed_cnt = next(self.seed_cnt)
+            tiling_selections[seed_cnt] = \
                 [seed[1], (lower_bound, upper_covered)]
+            repo_seeds[seed_cnt] = seed[2]
             lower_bound = upper_covered + 1
             if lower_bound > batch_range[1]:
                 break
@@ -259,6 +269,7 @@ class TilingSelection:
 
         tiling_range = {k: v[1] for k, v in tiling_selections.items()}
         add_compile_info("tiling_range", tiling_range)
+        add_compile_info("repo_seeds", repo_seeds)
 
         tiling_cases = [self.op.assembly_case(v[0], v[1], k)
                         for k, v in tiling_selections.items()]
