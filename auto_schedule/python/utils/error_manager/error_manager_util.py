@@ -40,9 +40,14 @@ def get_error_message(args):
     arg_list = error_stmt.get("argList").split(",")
     arg_value = []
     for arg_name in arg_list:
-        arg_value.append(args.get(arg_name.strip()))
+        if arg_name not in args:
+            arg_value.append("")
+        else:
+            arg_value.append(args.get(arg_name.strip()))
     msg = error_json.get(error_code).get("errMessage") % tuple(arg_value)
+    msg = msg.replace("[]", "")
     return msg
+
 
 def raise_runtime_error(dict_args):
     """
