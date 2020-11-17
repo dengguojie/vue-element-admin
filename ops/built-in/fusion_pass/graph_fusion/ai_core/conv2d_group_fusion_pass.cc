@@ -438,16 +438,26 @@ Status Conv2DGroupFusionPass::ProcessGroupConv(ge::ComputeGraph &graph, ge::Node
   OP_LOGD(FUSED_OP_TYPE.c_str(), "conv[%s]'s weight size is [%zu]",
           convNode->GetName().c_str(), OpDescUtils::GetWeights(convNode).size());
   // find sliceD of conv's 2nd or 3rd, 4th input
-  for (unsigned int i = 1; i < convNode->GetInAllNodes().size(); i++) {
+  size_t inNChannelIdx = -1;
+  for (unsigned int i = 1; i < convNode->GetInDataNodes().size(); i++) {
+    GeTensorDesc inputDesc = convDesc->GetInputDesc(i);
+    FUSION_PASS_CHECK(SUCCESS != PatternFusionUtil::ParseNChannelIdx(inputDesc, inNChannelIdx),
+              OP_LOGE(FUSED_OP_TYPE.c_str(),
+                      "The original format of the conv node[name=%s, type=%s]'s input0 is %s, which is unsupportable.",
+                      convDesc->GetName().c_str(), convDesc->GetType().c_str(),
+                      ge::TypeUtils::FormatToSerialString(inputDesc.GetFormat()).c_str()),
+              return FAILED);
+    if (inputDesc.GetShape().GetDimNum() == 1) {
+      inNChannelIdx = 0;
+    }
     FUSION_PASS_CHECK(PatternFusionUtil::InsertSliceDNodes(graph, convNode, i,
-                                                  newConvNodes, groups, 0) != SUCCESS,
+                                                  newConvNodes, groups, inNChannelIdx) != SUCCESS,
              OP_LOGE(FUSED_OP_TYPE.c_str(), "Insert SliceD node between node[%s] and weight node falied.",
                      convNode->GetName().c_str()),
              return FAILED);
   }
 
-  FUSION_PASS_CHECK(SUCCESS != ProcQuantIfNeed(graph, splitNode, concatNode, groups,
-                                      newConvNodes),
+  FUSION_PASS_CHECK(SUCCESS != ProcQuantIfNeed(graph, splitNode, concatNode, groups, newConvNodes),
            OP_LOGE(FUSED_OP_TYPE.c_str(), "CloneAndLinkQuants fail, conv name %s",
                    convNode->GetName().c_str()), return FAILED);
 
@@ -506,7 +516,8 @@ Status Conv2DGroupFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   if (groups == inChn && groups == outChn) {
     return ProcessDepthwiseConv(convNode);
   } else if (inChn % groups == 0 && outChn % groups == 0) {
-    if (convNode->GetInAllNodes().at(1)->GetType() == "Variable") {
+    if (convNode->GetInAllNodes().at(1)->GetType() == "Variable" ||
+        convNode->GetInAllNodes().at(1)->GetType() == "Data") {
       return ProcessGroupConv(graph, convNode);
     } else {
       return PatternFusionUtil::ProcessGroupPadding(graph, convNode, groups);

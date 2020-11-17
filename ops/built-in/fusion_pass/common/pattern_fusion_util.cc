@@ -582,12 +582,12 @@ Status PatternFusionUtil::InsertSliceDNodes(ComputeGraph& graph, NodePtr srcNode
       // set sliceD's attr: offsets & size
       vector<int64_t> vectorOffsets;
       vector<int64_t> vectorSize;
-      vectorOffsets.push_back(newSrcNodeIdx * inputShape.GetDim(sliceDimIdx) / group);
-      vectorSize.push_back(inputShape.GetDim(sliceDimIdx) / group);
-      for (unsigned int l = 0; l < inputShape.GetDims().size() - 1; l++) {
+      for (unsigned int l = 0; l < inputShape.GetDims().size(); l++) {
         vectorOffsets.push_back(0);
-        vectorSize.push_back(inputShape.GetDim(l + 1));
       }
+      vectorOffsets[sliceDimIdx] = newSrcNodeIdx * inputShape.GetDim(sliceDimIdx) / group;
+      vectorSize = inputShape.GetDims();
+      vectorSize[sliceDimIdx] /= group;
       FUSION_PASS_CHECK(!AttrUtils::SetListInt(sliceDesc, "offsets", vectorOffsets),
                         OP_LOGE(curOpType.c_str(), "Set SliceD's attr offsets failed."), return FAILED);
       FUSION_PASS_CHECK(!AttrUtils::SetListInt(sliceDesc, "size", vectorSize),
@@ -653,6 +653,23 @@ Status PatternFusionUtil::ParseChannelIdx(ge::GeTensorDesc& tensorDesc, size_t& 
   }
   if (tensorGeFormat == FORMAT_HWCN) {
     channelIdx = 2;
+    return SUCCESS;
+  }
+  return FAILED;
+}
+
+Status PatternFusionUtil::ParseNChannelIdx(ge::GeTensorDesc& tensorDesc, size_t& channelIdx) {
+  ge::Format tensorGeFormat = tensorDesc.GetOriginFormat();
+  if (tensorGeFormat == FORMAT_NCHW) {
+    channelIdx = 0;
+    return SUCCESS;
+  }
+  if (tensorGeFormat == FORMAT_NHWC) {
+    channelIdx = 0;
+    return SUCCESS;
+  }
+  if (tensorGeFormat == FORMAT_HWCN) {
+    channelIdx = 3;
     return SUCCESS;
   }
   return FAILED;
