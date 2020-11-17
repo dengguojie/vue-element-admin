@@ -986,14 +986,7 @@ static graphStatus CaffeReshapeInferShape(const vector<int64_t>& dims, const int
       y_desc->SetShapeRange(x_range);
     }
     return GRAPH_SUCCESS;
-  } else if(dims == UNKNOWN_SHAPE) {
-    y_desc->SetShape(GeShape(UNKNOWN_SHAPE));
-    y_desc->SetOriginShape(GeShape(UNKNOWN_SHAPE));
-    y_desc->SetDataType(data_type);
-    y_desc->SetShapeRange(x_range);
-    return GRAPH_SUCCESS;
   }
-
 
   int64_t inferred_axis = -1;
   int64_t constant_count = 1;
