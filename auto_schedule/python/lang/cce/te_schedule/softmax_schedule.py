@@ -727,30 +727,35 @@ class SoftmaxSchedule(VectorSchedule):
 
         self._is_block_ub_one_axis = (block_axis >= ub_axis)
         self._is_block_fuse = (block_axis not in (0,))
+        
+        tilingAdjust = True
+        if cce.get_soc_spec("CORE_NUM") == 30 and len(shape) == 2 and self._reduce_axis_num == 1:
+            if shape[0] == 47182 or shape[0] == 180358:
+                tilingAdjust = False
+        if tilingAdjust:
+            # like (7,2,42767,2,16) scene, if the block tiling split the 3 axis,
+            # because 42767 is a prime number, then ub tiling should be divisible,
+            # then lead to the dma copy is less efficient, so adjust the block tiling
 
-        # like (7,2,42767,2,16) scene, if the block tiling split the 3 axis,
-        # because 42767 is a prime number, then ub tiling should be divisible,
-        # then lead to the dma copy is less efficient, so adjust the block tiling
+            # 1.block tiling adjust, be divisible
+            if self._is_block_ub_one_axis or self._is_block_fuse:
+                block_nparts, block_factor, block_axis = \
+                    tiling_from_front_to_back(shape[:self._reduce_axis_num],
+                                              self._core_dim,
+                                              self._core_dim,
+                                              is_divisible=True)
+            self._is_block_ub_one_axis = (block_axis >= ub_axis)
+            self._is_block_fuse = (block_axis not in (0,))
 
-        # 1.block tiling adjust, be divisible
-        if self._is_block_ub_one_axis or self._is_block_fuse:
-            block_nparts, block_factor, block_axis = \
-                tiling_from_front_to_back(shape[:self._reduce_axis_num],
-                                          self._core_dim,
-                                          self._core_dim,
-                                          is_divisible=True)
-        self._is_block_ub_one_axis = (block_axis >= ub_axis)
-        self._is_block_fuse = (block_axis not in (0,))
-
-        # 2.ub tiling adjust
-        if self._is_block_ub_one_axis:
-            shape_adjust = shape_to_list(self._res.shape)
-            shape_adjust[block_axis] = block_factor
-            ub_nparts, ub_factor, ub_axis = \
-                tiling_from_back_to_front(shape_adjust[block_axis:], self._max_ub_count,
-                                          align_factor=align_factor_32byte,
-                                          is_divisible=False)
-            ub_axis = block_axis + ub_axis
+            # 2.ub tiling adjust
+            if self._is_block_ub_one_axis:
+                shape_adjust = shape_to_list(self._res.shape)
+                shape_adjust[block_axis] = block_factor
+                ub_nparts, ub_factor, ub_axis = \
+                    tiling_from_back_to_front(shape_adjust[block_axis:], self._max_ub_count,
+                                              align_factor=align_factor_32byte,
+                                              is_divisible=False)
+                ub_axis = block_axis + ub_axis
 
         if block_axis > ub_axis:
             raise RuntimeError("block and ub tiling error: block_axis > ub_axis")
