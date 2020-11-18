@@ -507,6 +507,13 @@ bool GatherV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
     runParams.params_pre_remaining = runParams.paramsPre % runParams.need_core_num;
     runParams.indices_num_each_core = runParams.indicesNum;
 
+    if (runParams.indices_num_each_core * runParams.paramsRow * paramsDSize <= BLOCK_SIZE) {
+      runParams.need_core_num = 1;
+      runParams.tail_process_core = 0;
+      runParams.params_pre_each_core = runParams.paramsPre;
+      runParams.params_pre_remaining = 0;
+    }
+
     if (runParams.paramsRow * paramsDSize < BLOCK_SIZE) {
       if (paramsTotalCeil <= PARAMS_CACHED_UB / paramsDSize) {
         runParams.tilingMode = TILING_MODE_8;
