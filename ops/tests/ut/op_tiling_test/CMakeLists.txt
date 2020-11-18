@@ -17,12 +17,12 @@ file(GLOB OP_TILING_TC_FILES *.cpp)
 
 add_executable(ops_cpp_op_tiling_utest
   ${OP_TILING_TC_FILES}
-  ${OP_TEST_COMMON_SOURCE}
+  ${OP_TEST_PLUFIN_AND_PROTO_SOURCE}
 )
 
 target_include_directories(ops_cpp_op_tiling_utest PRIVATE
   ${GTEST_INCLUDE}
-  ${OP_TEST_COMMON_INCLUDE}
+  ${OP_TEST_PLUFIN_AND_PROTO_INCLUDE}
 )
 
 target_compile_definitions(ops_cpp_op_tiling_utest PRIVATE

@@ -18,3 +18,6 @@ add_subdirectory(ops_test)
 
 # testcases for op_tiling
 add_subdirectory(op_tiling_test)
+
+# testcases for aicore fusion pass
+add_subdirectory(graph_fusion/ai_core)

@@ -13,12 +13,20 @@
 # limitations under the License.
 # ============================================================================
 
-set(OP_TEST_COMMON_SOURCE
+set(OP_TEST_PLUFIN_AND_PROTO_SOURCE
   ${OPS_DIR}/tests/common/utils_plugin_and_op_proto/op_proto_test_util.cpp
 )
 
-set(OP_TEST_COMMON_INCLUDE
+set(OP_TEST_PLUFIN_AND_PROTO_INCLUDE
   ${OPS_DIR}/tests/common/utils_plugin_and_op_proto
+)
+
+set(OP_TEST_FUSION_PASS_SOURCE
+  ${OPS_DIR}/tests/common/src/fusion_pass_utils/fusion_pass_test_utils.cpp
+)
+
+set(OP_TEST_FUSION_PASS_INCLUDE
+  ${OPS_DIR}/tests/common/src/inc
 )
 
 if(ENABLE_TEST STREQUAL UT)
@@ -37,6 +45,7 @@ if(ENABLE_TEST STREQUAL UT)
   add_custom_target(generate_ops_cpp_cov ALL
     DEPENDS ops_cpp_proto_utest
             ops_cpp_op_tiling_utest
+            ops_cpp_fusion_pass_aicore_utest
     COMMENT "Generate cpp coverage for ops utest"
   )
   add_custom_command(

@@ -17,12 +17,12 @@ file(GLOB PLUGIN_PROTO_TC_FILES **/*proto.cpp)
 
 add_executable(ops_cpp_proto_utest
   ${PLUGIN_PROTO_TC_FILES}
-  ${OP_TEST_COMMON_SOURCE}
+  ${OP_TEST_PLUFIN_AND_PROTO_SOURCE}
 )
 
 target_include_directories(ops_cpp_proto_utest PRIVATE
   ${GTEST_INCLUDE}
-  ${OP_TEST_COMMON_INCLUDE}
+  ${OP_TEST_PLUFIN_AND_PROTO_INCLUDE}
   ${METADEF_INCLUDE}/graph
 )
 
