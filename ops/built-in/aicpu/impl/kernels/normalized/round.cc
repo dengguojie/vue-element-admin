@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "round_kernels.h"
+#include "round.h"
 
 #include "cpu_kernel_utils.h"
 #include "cpu_types.h"
