@@ -1548,23 +1548,6 @@ IMPLEMT_VERIFIER(ExtractImagePatches, ExtractImagePatchesVerify) {
 IMPLEMT_COMMON_INFERFUNC(ExtractImagePatchesInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter op_proto inferfunction!");
 
-  Tensor input_size_tensor;
-  int64_t in_n{0};
-  int64_t in_h{0};
-  int64_t in_w{0};
-  int64_t in_c{0};
-  int64_t out_h{0};
-  int64_t out_w{0};
-  int64_t out_c{0};
-  int64_t filter_h{0};
-  int64_t filter_w{0};
-  int64_t dilation_h{0};
-  int64_t dilation_w{0};
-  int64_t stride_h{0};
-  int64_t stride_w{0};
-  int64_t effective_filter_h{0};
-  int64_t effective_filter_w{0};
-
   std::vector<int64_t> ksize;
   ksize = GetAttrValue(op, "ksizes");
 
@@ -1580,49 +1563,57 @@ IMPLEMT_COMMON_INFERFUNC(ExtractImagePatchesInferShape) {
     return GRAPH_FAILED;
   }
 
-  auto tensor_desc_in = op.GetInputDesc("x");
-  auto dtype = tensor_desc_in.GetDataType();
-  auto shape_in = tensor_desc_in.GetShape();
-  auto shape_out = shape_in;
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr desc_in_ptr = op_desc->MutableInputDesc("x");
+  GeTensorDescPtr desc_out_ptr = op_desc->MutableOutputDesc("y");
+  auto dtype = desc_in_ptr->GetDataType();
+  auto shape_in = desc_in_ptr->GetShape();
 
-  // Set data_format for input if input is the default value of ND
-  if (tensor_desc_in.GetOriginFormat() == Format::FORMAT_ND) {
-    std::string data_format;
-    if (op.GetAttr("data_format", data_format) == GRAPH_FAILED) {
-      OP_LOGE(op.GetName().c_str(), "GetOpAttr data_format failed, input format"
-              "must be NHWC or data_format is NHWC!");
-      return GRAPH_FAILED;
-    }
-    if (data_format == "NHWC") {
-      tensor_desc_in.SetOriginFormat(Format::FORMAT_NHWC);
-      tensor_desc_in.SetFormat(Format::FORMAT_NHWC);
-      if (op.UpdateInputDesc("x", tensor_desc_in) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "Update x failed!");
-        return GRAPH_FAILED;
-      }
-    } else {
-      OP_LOGE(op.GetName().c_str(), "Attr data_format(%s) only support NHWC",
-              data_format.c_str());
-       return GRAPH_FAILED;
-    }
+  std::string data_format;
+  if (op.GetAttr("data_format", data_format) == GRAPH_FAILED || (data_format != "NHWC" && data_format != "NCHW")) {
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr data_format failed, data_format must be NHWC or NCHW!");
+    return GRAPH_FAILED;
   }
 
-  // NHWC
-  in_n = shape_in.GetDim(0);
-  in_h = shape_in.GetDim(1);
-  in_w = shape_in.GetDim(2);
-  in_c = shape_in.GetDim(3);
+  auto x_format = desc_in_ptr->GetOriginFormat();
+  const std::map<std::string, Format> format_map{{"NHWC", FORMAT_NHWC}, {"NCHW", FORMAT_NCHW}};
 
-  // NHWC
-  filter_h = ksize.at(1);
-  filter_w = ksize.at(2);
-  dilation_h = dilation.at(1);
-  dilation_w = dilation.at(2);
-  stride_h = stride.at(1);
-  stride_w = stride.at(2);
+  // Set ori_format as data_format if input ori_format is the default value ND.
+  if (x_format == FORMAT_ND) {
+    desc_in_ptr->SetOriginFormat(format_map.at(data_format));
+    desc_in_ptr->SetFormat(format_map.at(data_format));
+    desc_out_ptr->SetOriginFormat(format_map.at(data_format));
+    desc_out_ptr->SetFormat(format_map.at(data_format));
+  }
 
-  effective_filter_h = (filter_h - 1) * dilation_h + 1;
-  effective_filter_w = (filter_w - 1) * dilation_w + 1;
+  x_format = desc_in_ptr->GetOriginFormat();
+  if (x_format != FORMAT_NHWC && x_format != FORMAT_NCHW) {
+    OP_LOGE(op.GetName().c_str(), "Attr x_format only support NHWC or NCHW");
+    return GRAPH_FAILED;
+  }
+
+  std::map<char, int> idx_map{{'N', 0}, {'H', 1}, {'W', 2}, {'C', 3}};
+  if (x_format == FORMAT_NCHW) {
+    idx_map = {{'N', 0}, {'C', 1}, {'H', 2}, {'W', 3}};
+  }
+
+  int64_t in_n = shape_in.GetDim(idx_map['N']);
+  int64_t in_h = shape_in.GetDim(idx_map['H']);
+  int64_t in_w = shape_in.GetDim(idx_map['W']);
+  int64_t in_c = shape_in.GetDim(idx_map['C']);
+
+  int64_t filter_h = ksize.at(idx_map['H']);
+  int64_t filter_w = ksize.at(idx_map['W']);
+  int64_t stride_h = stride.at(idx_map['H']);
+  int64_t stride_w = stride.at(idx_map['W']);
+  int64_t dilation_h = dilation.at(idx_map['H']);
+  int64_t dilation_w = dilation.at(idx_map['W']);
+
+  int64_t effective_filter_h = (filter_h - 1) * dilation_h + 1;
+  int64_t effective_filter_w = (filter_w - 1) * dilation_w + 1;
+  int64_t out_h{0};
+  int64_t out_w{0};
+  int64_t out_c{0};
   if (padding == "VALID") {
     out_h = (in_h - effective_filter_h + stride_h) / stride_h;
     out_w = (in_w - effective_filter_w + stride_w) / stride_w;
@@ -1631,19 +1622,13 @@ IMPLEMT_COMMON_INFERFUNC(ExtractImagePatchesInferShape) {
     out_w = (in_w + stride_w - 1) / stride_w;
   }
   out_c = in_c * filter_h * filter_w;
-  // NHWC
-  shape_out.SetDim(0, in_n);
-  shape_out.SetDim(1, out_h);
-  shape_out.SetDim(2, out_w);
-  shape_out.SetDim(3, out_c);
-
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(Shape(shape_out));
-  tensordesc_output.SetDataType(dtype);
-  if (op.UpdateOutputDesc("y", tensordesc_output) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
-    return GRAPH_FAILED;
+  std::vector<int64_t> out_dim{in_n, out_h, out_w, out_c};
+  if(x_format == FORMAT_NCHW) {
+    out_dim = {in_n, out_c, out_h, out_w};
   }
+
+  desc_out_ptr->SetShape(ge::GeShape(out_dim));
+  desc_out_ptr->SetDataType(dtype);
   return GRAPH_SUCCESS;
 }
 
@@ -1807,7 +1792,6 @@ IMPLEMT_VERIFIER(ExtractVolumePatches, ExtractVolumePatchesVerify) {
 IMPLEMT_COMMON_INFERFUNC(ExtractVolumePatchesInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter op_proto inferfunction!");
 
-  Tensor input_size_tensor;
   std::vector<int64_t> ksize;
   ksize = GetAttrValueVolume(op, "ksizes");
   std::vector<int64_t> stride;

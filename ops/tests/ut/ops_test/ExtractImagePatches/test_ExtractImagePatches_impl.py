@@ -18,22 +18,53 @@ from op_test_frame.common import precision_info
 from op_test_frame.ut import OpUT
 ut_case = OpUT("ExtractImagePatches", None, None)
 
-case1 = {"params": [{"shape": (1,2,4,1), "dtype": "float16", "format":"NCHW","ori_shape": (1,2,4,1), "ori_format": "ND"},
-                    {"shape": (1,2,4,1), "dtype": "float16", "format":"NHWC","ori_shape": (1,2,4,1), "ori_format": "ND"},
-                    (1,2,2,1), (1,3,3,1), (1,3,3,1), "SAME"],
-         "case_name": "extract_image_patches_1",
-         "expect": RuntimeError,
-         "format_expect": [],
-         "support_expect": True}
-case2 = {"params": [{"shape": (1,2,10,1), "dtype": "float16", "format":"NCHW","ori_shape": (1,2,10,1), "ori_format": "ND"},
-                    {"shape": (1,2,10,1), "dtype": "float16", "format":"NHWC","ori_shape": (1,2,10,1), "ori_format": "ND"},
-                    (1,4,4,1), (1,3,3,1), (1,3,3,1), "SAME"],
-         "case_name": "extract_image_patches_2",
-         "expect": RuntimeError,
-         "format_expect": [],
-         "support_expect": True}
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
+case1 = {
+    "params": [{
+        "shape": (1, 2, 4, 1),
+        "dtype": "float16",
+        "format": "NHWC",
+        "ori_shape": (1, 2, 4, 1),
+        "ori_format": "NHWC"
+    }, {
+        "shape": (1, 2, 4, 1),
+        "dtype": "float16",
+        "format": "NHWC",
+        "ori_shape": (1, 2, 4, 1),
+        "ori_format": "NHWC"
+    }, (1, 2, 2, 1), (1, 3, 3, 1), (1, 3, 3, 1), "SAME"],
+    "case_name":
+    "extract_image_patches_1",
+    "expect":
+    RuntimeError,
+    "format_expect": [],
+    "support_expect":
+    True
+}
+case2 = {
+    "params": [{
+        "shape": (1, 2, 10, 1),
+        "dtype": "float16",
+        "format": "NHWC",
+        "ori_shape": (1, 2, 10, 1),
+        "ori_format": "NHWC"
+    }, {
+        "shape": (1, 2, 10, 1),
+        "dtype": "float16",
+        "format": "NHWC",
+        "ori_shape": (1, 2, 10, 1),
+        "ori_format": "NHWC"
+    }, (1, 4, 4, 1), (1, 3, 3, 1), (1, 3, 3, 1), "SAME"],
+    "case_name":
+    "extract_image_patches_2",
+    "expect":
+    RuntimeError,
+    "format_expect": [],
+    "support_expect":
+    True
+}
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
+
 
 def extract_image_patches_produce(in_x, conv_param, src_type):
     N, C, H, W = in_x.shape
@@ -57,7 +88,7 @@ def extract_image_patches_produce(in_x, conv_param, src_type):
         s_type = np.uint8
         C0 = 32
     else:
-        raise RuntimeError("unsupported dtype:%s "%src_type)
+        raise RuntimeError("unsupported dtype:%s " % src_type)
 
     Co = HH * WW * C
 
@@ -89,13 +120,14 @@ def extract_image_patches_produce(in_x, conv_param, src_type):
                 ci1 = ci // C0
                 ci0 = ci % C0
                 khkw = co - ci * WW * HH
-                out_5HD[:,co1,:,co0] = out[:, :, ci1, khkw, ci0]
+                out_5HD[:, co1, :, co0] = out[:, :, ci1, khkw, ci0]
     out_5HD = out_5HD.reshape(N, Co1, Ho, Wo, C0)
-    out = out_5HD.transpose(0,1,4,2,3).reshape(N,-1,Ho,Wo)[:,:Co,:,:]
-    c_out = out.reshape(N, C, Co//C, Ho, Wo).transpose(0, 2, 1, 3, 4).reshape(N, Co, Ho, Wo)
+    out = out_5HD.transpose(0, 1, 4, 2, 3).reshape(N, -1, Ho, Wo)[:, :Co, :, :]
+    c_out = out.reshape(N, C, Co // C, Ho, Wo).transpose(0, 2, 1, 3, 4).reshape(N, Co, Ho, Wo)
 
     tr_out = c_out.transpose(0, 2, 3, 1)
     return out, tr_out
+
 
 def get_images(fm_shape, src_type):
     if src_type == "fp16" or src_type == "float16":
@@ -108,60 +140,127 @@ def get_images(fm_shape, src_type):
         s_type = np.uint8
         C0 = 32
     else:
-        raise RuntimeError("unsupported dtype:%s "%src_type)
+        raise RuntimeError("unsupported dtype:%s " % src_type)
 
     IN, IH, IW, IC = fm_shape
     IC1 = (IC + C0 - 1) // C0
 
-    x = np.array([[[[0 * IC * IH * IW + 0 * IW * IH + h * IW + w + 1 for w in range(IW)] for h in range(IH)] for c in range(IC)] for n in range(IN)])
+    x = np.array([[[[0 * IC * IH * IW + 0 * IW * IH + h * IW + w + 1 for w in range(IW)] for h in range(IH)]
+                   for c in range(IC)] for n in range(IN)])
     ''' transpose to 5D - NC1HWC0 '''
-    x_pad = np.zeros((IN, IC1*C0, IH, IW))
-    x_pad[:,:IC,:,:] = x
+    x_pad = np.zeros((IN, IC1 * C0, IH, IW))
+    x_pad[:, :IC, :, :] = x
     feature = x_pad.reshape(IN, IC1, C0, IH, IW).transpose(0, 1, 3, 4, 2).copy()
     return feature.astype(s_type)
+
 
 def calc_expect_func(images, y, ksizes, strides, dilates, padding):
     feature = images["value"]
     IN, IC1, IH, IW, C0 = feature.shape
-    x_pad = feature.transpose(0, 1, 4, 2, 3).reshape(IN, IC1*C0, IH, IW)
+    x_pad = feature.transpose(0, 1, 4, 2, 3).reshape(IN, IC1 * C0, IH, IW)
     IN, IH, IW, IC = images["ori_shape"]
-    x = x_pad[:,:IC,:,:]
-    conv_param = {'ksizes':ksizes[1:3], 'pads': (0, 0), 'strides': strides[1:3], 'rates': dilates[1:3]}
-    out, tr_out= extract_image_patches_produce(x, conv_param, images["dtype"])
+    x = x_pad[:, :IC, :, :]
+    conv_param = {'ksizes': ksizes[1:3], 'pads': (0, 0), 'strides': strides[1:3], 'rates': dilates[1:3]}
+    out, tr_out = extract_image_patches_produce(x, conv_param, images["dtype"])
     return [tr_out]
 
-ut_case.add_precision_case("all", {
-    "params": [{"shape": (2,7,7,32), "dtype": "int8", "format":"NCHW","ori_shape": (2,7,7,32), "ori_format": "ND", "param_type": "input", "value":get_images((2,7,7,32), "int8")},
-               {"shape": (2,3,3,288), "dtype": "int8", "format":"NHWC","ori_shape": (2,3,3,288), "ori_format": "ND", "param_type": "output"},
-               (1,3,3,1), (1,1,1,1), (1,2,2,1), "VALID"],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
 
-ut_case.add_precision_case("all", {
-    "params": [{"shape": (1,17,17,16), "dtype": "float16", "format":"NCHW","ori_shape": (1,17,17,16), "ori_format": "ND", "param_type": "input", "value":get_images((1,17,17,16), "float16")},
-               {"shape": (1,13,13,144), "dtype": "float16", "format":"NHWC","ori_shape": (1,13,13,144), "ori_format": "ND", "param_type": "output"},
-               (1,3,3,1), (1,1,1,1), (1,2,2,1), "VALID"],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
+ut_case.add_precision_case(
+    "all", {
+        "params": [{
+            "shape": (2, 7, 7, 32),
+            "dtype": "int8",
+            "format": "NHWC",
+            "ori_shape": (2, 7, 7, 32),
+            "ori_format": "NHWC",
+            "param_type": "input",
+            "value": get_images((2, 7, 7, 32), "int8")
+        }, {
+            "shape": (2, 3, 3, 288),
+            "dtype": "int8",
+            "format": "NHWC",
+            "ori_shape": (2, 3, 3, 288),
+            "ori_format": "NHWC",
+            "param_type": "output"
+        }, (1, 3, 3, 1), (1, 1, 1, 1), (1, 2, 2, 1), "VALID"],
+        "calc_expect_func":
+        calc_expect_func,
+        "precision_standard":
+        precision_info.PrecisionStandard(0.001, 0.001)
+    })
 
-ut_case.add_precision_case("all", {
-    "params": [{"shape": (1,9,9,48), "dtype": "float16", "format":"NCHW","ori_shape": (1,9,9,48), "ori_format": "ND", "param_type": "input", "value":get_images((1,9,9,48), "float16")},
-               {"shape": (1,3,3,768), "dtype": "float16", "format":"NHWC","ori_shape": (1,3,3,768), "ori_format": "ND", "param_type": "output"},
-               (1,4,4,1), (1,1,1,1), (1,2,2,1), "VALID"],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
+ut_case.add_precision_case(
+    "all", {
+        "params": [{
+            "shape": (1, 17, 17, 16),
+            "dtype": "float16",
+            "format": "NHWC",
+            "ori_shape": (1, 17, 17, 16),
+            "ori_format": "NHWC",
+            "param_type": "input",
+            "value": get_images((1, 17, 17, 16), "float16")
+        }, {
+            "shape": (1, 13, 13, 144),
+            "dtype": "float16",
+            "format": "NHWC",
+            "ori_shape": (1, 13, 13, 144),
+            "ori_format": "NHWC",
+            "param_type": "output"
+        }, (1, 3, 3, 1), (1, 1, 1, 1), (1, 2, 2, 1), "VALID"],
+        "calc_expect_func":
+        calc_expect_func,
+        "precision_standard":
+        precision_info.PrecisionStandard(0.001, 0.001)
+    })
 
-ut_case.add_precision_case("all", {
-    "params": [{"shape": (1,9,9,48), "dtype": "float16", "format":"NCHW","ori_shape": (1,9,9,48), "ori_format": "ND", "param_type": "input", "value":get_images((1,9,9,48), "float16")},
-               {"shape": (1,7,7,192), "dtype": "float16", "format":"NHWC","ori_shape": (1,7,7,192), "ori_format": "ND", "param_type": "output"},
-               (1,2,2,1), (1,1,1,1), (1,2,2,1), "VALID"],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
+ut_case.add_precision_case(
+    "all", {
+        "params": [{
+            "shape": (1, 9, 9, 48),
+            "dtype": "float16",
+            "format": "NHWC",
+            "ori_shape": (1, 9, 9, 48),
+            "ori_format": "NHWC",
+            "param_type": "input",
+            "value": get_images((1, 9, 9, 48), "float16")
+        }, {
+            "shape": (1, 3, 3, 768),
+            "dtype": "float16",
+            "format": "NHWC",
+            "ori_shape": (1, 3, 3, 768),
+            "ori_format": "NHWC",
+            "param_type": "output"
+        }, (1, 4, 4, 1), (1, 1, 1, 1), (1, 2, 2, 1), "VALID"],
+        "calc_expect_func":
+        calc_expect_func,
+        "precision_standard":
+        precision_info.PrecisionStandard(0.001, 0.001)
+    })
+
+ut_case.add_precision_case(
+    "all", {
+        "params": [{
+            "shape": (1, 9, 9, 48),
+            "dtype": "float16",
+            "format": "NHWC",
+            "ori_shape": (1, 9, 9, 48),
+            "ori_format": "NHWC",
+            "param_type": "input",
+            "value": get_images((1, 9, 9, 48), "float16")
+        }, {
+            "shape": (1, 7, 7, 192),
+            "dtype": "float16",
+            "format": "NHWC",
+            "ori_shape": (1, 7, 7, 192),
+            "ori_format": "NHWC",
+            "param_type": "output"
+        }, (1, 2, 2, 1), (1, 1, 1, 1), (1, 2, 2, 1), "VALID"],
+        "calc_expect_func":
+        calc_expect_func,
+        "precision_standard":
+        precision_info.PrecisionStandard(0.001, 0.001)
+    })
 
 if __name__ == '__main__':
-    ut_case.run("Ascend910")
+    ut_case.run("Ascend910A")
     exit(0)

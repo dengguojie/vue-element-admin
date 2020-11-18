@@ -771,6 +771,20 @@ def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_n
     else:
         align_block_size = BLOCK_SIZE
         type_size = FP16_SIZE
+
+    data_format = images.get('ori_format')
+    format_list = ('NHWC', 'NCHW')
+    if data_format not in format_list:
+        error_manager_vector.raise_err_input_format_invalid(kernel_name, "x", format_list, data_format)
+    if len(ksizes) != 4 or len(strides) != 4 or len(dilates) != 4:
+        error_manager_vector.raise_err_check_params_rules(kernel_name, 'input params invalide',
+                                                          ['ksizes', 'strides', 'dilates'], [ksizes, strides, dilates])
+    # NCHW -> NHWC
+    if data_format == 'NCHW':
+        shape_input_4d = (shape_input_4d[0], shape_input_4d[2], shape_input_4d[3], shape_input_4d[1])
+        ksizes = (ksizes[0], ksizes[2], ksizes[3], ksizes[1])
+        strides = (strides[0], strides[2], strides[3], strides[1])
+        dilates = (dilates[0], dilates[2], dilates[3], dilates[1])
     fmap_n, fmap_h, fmap_w, fmap_c = shape_input_4d
     fmap_c1 = (fmap_c + align_block_size - 1) // align_block_size
     fmap_c0 = align_block_size
@@ -789,12 +803,6 @@ def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_n
     # min cut_h
     dilated_kernel_h = (kernel_h - 1) * dilate_h + 1
     dilated_kernel_w = (kernel_w - 1) * dilate_w + 1
-    if (fmap_w + padding_w_before + padding_w_after) <= dilated_kernel_w + stride_w:
-        error_manager_vector.raise_err_specific_reson(
-            kernel_name, "The size of fmap_w(after pad) <= kernel_w(after dilation) + stride_w is forbidden!")
-
-    if (kernel_h % 2 == 0 and dilate_h > fmap_h):
-        error_manager_vector.raise_err_specific_reson(kernel_name, "Get all data from padding is forbidden!")
     cut_h_col = (BLOCK_SIZE // math.gcd(out_w, BLOCK_SIZE) - 1) * stride_h + 1 + dilated_kernel_h // 2
     if cut_h_col > fmap_h:
         cut_h_col = fmap_h
