@@ -356,13 +356,8 @@ class VectorSchedule(object):
                     self._schedule[i].set_scope(self._l1_fusion_scope)
 
         if self._out_tensors:
-            visited, input_tensors, mid_tensors, tensor_map = dfs_tensor_graph(
-                self._out_tensors[0])
-            for tensor in self._out_tensors[1:]:
-                dfs_tensor_graph(tensor, True, visited, input_tensors,
-                                 mid_tensors, tensor_map)
-            if input_tensors:
-                kernel_name = input_tensors[0].name.split("__")[-1]
+            if self._input_tensors:
+                kernel_name = self._input_tensors[0].name.split("__")[-1]
                 reuse_dict = cce_emitinsn_params.cceEmitParamsIns.get_param(
                     "InputReuseDict_" +
                     kernel_name)
