@@ -38,6 +38,9 @@ OUTPUT_DIM = 5
 # shape's dim of strides must be 2
 STRIDES_DIM = 2
 
+# get device core number
+DEVICE_CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+
 
 # pylint: disable=invalid-name
 def _ceil(x):
@@ -45,6 +48,27 @@ def _ceil(x):
     Return the least multiple of 16 integer number
     """
     return ((x + BLOCK_SIZE - 1) // BLOCK_SIZE) * BLOCK_SIZE
+
+
+def _cal_multi_core_factor(m, n):
+    """
+    Return the cut factors for multicore axis.
+    """
+    def _ceiling(x, y):
+        """
+        Compute the floor of x / y
+        """
+        return (x + y - 1) // y
+
+    min_cycle_num = _ceiling(m * n, DEVICE_CORE_NUM)
+    core_m, core_n = m, n
+    for j in range(1, n + 1):
+        for i in range(1, m + 1):
+            if _ceiling(m, i) * _ceiling(n, j) * _ceiling(i * j, DEVICE_CORE_NUM) <= min_cycle_num:
+                core_m, core_n = i, j
+                return core_m, core_n
+
+    return core_m, core_n
 
 
 def _parameter_check(shape_in, shape_k, shape_out, dtype, strides, padding):
@@ -440,18 +464,13 @@ def _avg_pool_grad_schedule(res):
     s[weight_cb].double_buffer()
     s[mad_cc].double_buffer()
     # for multi cores
-    if res_block_n < 16:
-        res_n_n_cut_o, res_n_n_cut_i = s[res].split(conv_n_cut_o, nparts=res_block_n)
-        res_cc_cut_o, res_cc_cut_i = s[res].split(res.op.axis[1], nparts=res_block_cgroup)
-        s[res].reorder(res_n_n_cut_o, res_cc_cut_o, res_n_n_cut_i, res_cc_cut_i)
-        out_fused = s[res].fuse(res_n_n_cut_o, res_cc_cut_o)
-        out_fused_out, _ = s[res].split(out_fused, nparts=res_block_n * res_block_cgroup)
-        bind_out, _ = s[res].split(out_fused_out, 1)
-        blockidx = tvm.thread_axis("blockIdx.x")
-        s[res].bind(bind_out, blockidx)
-    else:
-        block = tvm.thread_axis("blockIdx.x")
-        s[res].bind(conv_n_cut_o, block)
+    res_n_factor, res_cgroup_factor = _cal_multi_core_factor(res_block_n, res_block_cgroup)
+    res_n_n_cut_o, res_n_n_cut_i = s[res].split(conv_n_cut_o, nparts=res_n_factor)
+    res_cc_cut_o, res_cc_cut_i = s[res].split(res.op.axis[1], nparts=res_cgroup_factor)
+    s[res].reorder(res_n_n_cut_o, res_cc_cut_o, res_n_n_cut_i, res_cc_cut_i)
+    out_fused = s[res].fuse(res_n_n_cut_o, res_cc_cut_o)
+    blockidx = tvm.thread_axis("blockIdx.x")
+    s[res].bind(out_fused, blockidx)
 
     return s
 
@@ -527,6 +546,16 @@ def avg_pool_grad_d(input_grad,
         stride_w = strides[3]
         # transfer 4D to 5D orig_input_shape
         ON, OC, OHH, OWW = orig_input_shape
+    else:
+        dict_args = {
+            'errCode': 'E80014',
+            'op_name': 'avg_pool_grad_d',
+            'param_name': 'input_grad',
+            'excepted_format_list': {"NCHW", "NHWC"},
+            'format': input_grad_ori_format
+        }
+        raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+
     OC1 = _ceil(OC) // BLOCK_SIZE
     OC0 = BLOCK_SIZE
     orig_input_shape = ON, OC1, OHH, OWW, OC0
