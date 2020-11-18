@@ -39,7 +39,7 @@ const string CONV2D_DX_TYPE = "Conv2DBackpropInputD";
 
 vector<FusionPattern*> DwGroupFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
-  FusionPattern* pattern = new (std::nothrow) FusionPattern("Conv2DGroupFusionPass");
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("DwGroupFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_CONV2D_ID, {CONV2D_DW_TYPE, CONV2D_DX_TYPE}).SetOutput(PATTERN_CONV2D_ID);
@@ -72,7 +72,7 @@ bool DwGroupFusionPass::GenerateSplitNode(ge::ComputeGraph &graph, ge::OpDescPtr
   GeShape splitOutShape = inputShape;
   splitOutShape.SetDim(inChannelIdx, newInputChn / groups);
 
-  FUSION_PASS_MAKE_SHARED((sliceDesc = std::make_shared<ge::OpDesc>(convOpName+"_split", "SplitD")), return FAILED);
+  FUSION_PASS_MAKE_SHARED((sliceDesc = std::make_shared<ge::OpDesc>(convOpName + "_split", "SplitD")), return FAILED);
   AttrUtils::SetInt(sliceDesc, "split_dim", inChannelIdx);
   AttrUtils::SetInt(sliceDesc, "num_split", groups);
   splitOutDesc = inputDesc;
@@ -161,7 +161,7 @@ bool DwGroupFusionPass::GenerateConcatNode(ge::ComputeGraph &graph, ge::OpDescPt
     concatDesc->AddInputDesc(newConvOutDesc);
   }
   concatDesc->AddOutputDesc(convDesc->GetOutputDesc(0));
-  GeTensorDesc inputDesc = convDesc->GetOutputDesc(0);
+  GeTensorDesc outputDesc = convDesc->GetOutputDesc(0);
   size_t outChannelIdx = -1;
   if (convDesc->GetType() == CONV2D_DX_TYPE) {
     FUSION_PASS_CHECK(SUCCESS != PatternFusionUtil::ParseChannelIdx(outputDesc, outChannelIdx),
@@ -193,9 +193,9 @@ bool DwGroupFusionPass::Relink(ge::NodePtr &convNode, ge::NodePtr &splitNode, ve
            OP_LOGE(FUSED_OP_TYPE.c_str(), "conv input nodes num(%d) < 2", inNodes.size()), return false);
 
   Node::Vistor<NodePtr> outNodes = convNode->GetOutDataNodes();
-  auto peer_out_anchor = convNode->GetInDataAnchor(0)->GetPeerOutAnchor();
+  auto peer_out_anchor = convNode->GetInDataAnchor(1)->GetPeerOutAnchor();
   if (peer_out_anchor == nullptr) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "conv node[%s]'s peer out anchor is empty.", convNode->GetName().c_str());
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "conv node[%s]'s second peer out anchor is empty.", convNode->GetName().c_str());
     return false;
   }
   vector<int> outAnchorIndexes;
@@ -292,7 +292,7 @@ Status DwGroupFusionPass::ProcessGroupConv(ge::ComputeGraph &graph, ge::NodePtr 
 }
 
 Status DwGroupFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter Conv2DGroupPass::Fusion.");
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter Dw and Dx Fusion Pass.");
   NodePtr convNode = GetNodeFromMapping(PATTERN_CONV2D_ID, mapping);
   OpDescPtr convDesc = convNode->GetOpDesc();
 
@@ -308,8 +308,7 @@ Status DwGroupFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
 
   GeTensorDesc inputDesc = convDesc->GetInputDesc(1);
   size_t inChannelIdx = -1;
-  FUSION_PASS_CHECK(
-      SUCCESS != PatternFusionUtil::ParseChannelIdx(inputDesc, inChannelIdx),
+  FUSION_PASS_CHECK(SUCCESS != PatternFusionUtil::ParseChannelIdx(inputDesc, inChannelIdx),
       OP_LOGW(FUSED_OP_TYPE.c_str(),
               "The original format of the conv node[name=%s, type=%s]'s input0 is %s, which is unsupportable.",
               convDesc->GetName().c_str(), convDesc->GetType().c_str(),
@@ -336,7 +335,7 @@ Status DwGroupFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   }
   int64_t outChn = outputDesc.GetOriginShape().GetDim(outChannelIdx);
   if (PatternFusionUtil::IsUnknownShape(outChn) || PatternFusionUtil::IsUnknownShape(inChn)) {
-    OP_LOGW(FUSED_OP_TYPE.c_str(), "Conv2DGroupFusionPass cannot be applied for unknown shape.");
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "DwGroupFusionPass cannot be applied for unknown shape.");
     return NOT_CHANGED;
   }
   if (inChn % groups == 0 && outChn % groups == 0) {
