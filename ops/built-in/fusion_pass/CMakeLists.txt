@@ -124,6 +124,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/derelu_fusion_pass.cc
   graph_fusion/ai_core/diag_fusion_pass.cc
   graph_fusion/ai_core/diag_part_fusion_pass.cc
+  graph_fusion/ai_core/dynamic_lstm_fusion_pass.cc
   graph_fusion/ai_core/dynamic_gru_v2_fusion_pass.cc
   graph_fusion/ai_core/dynamic_gru_v2_grad_fusion_pass.cc
   graph_fusion/ai_core/dynamic_rnn_grad_fusion_pass.cc

@@ -364,6 +364,7 @@ from .lrn_grad import lrn_grad
 from .basic_lstm_cell import basic_lstm_cell
 from .dynamic_lstm import dynamic_lstm
 from .dynamic_rnn import dynamic_rnn
+from .dynamic_lstm_v2 import dynamic_lstm_v2
 from .dynamic_gru import dynamic_gru
 from .dynamic_gru_v2 import dynamic_gru_v2
 from .square_sum_v1 import square_sum_v1
