@@ -249,8 +249,12 @@ bool Reduce::GetCompileInfo() {
   is_last_axis_reduce = IsInVector(reduce_axis, input_shape.size() - 1);
 
   // special process(reduce_mean_d)
-  reduce_mean_cof = 1.0;
   set_reduce_mean_cof_flag = 0;
+  // reduce_mean_cof is not required when handling pure dma_copy case
+  if (input_shape[0] == 1 && reduce_axis[0] == 0) {
+    return true;
+  }
+  reduce_mean_cof = 1.0;
   if (op_info.count("reduce_mean_cof_dtype") > 0) {
     const std::string& reduce_mean_cof_dtype = op_info["reduce_mean_cof_dtype"].get<std::string>();
     if (reduce_mean_cof_dtype == "float32") {
