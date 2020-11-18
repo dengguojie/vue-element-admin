@@ -215,7 +215,7 @@ target_compile_options(cpu_kernels PRIVATE
     -std=c++14
     -ftrapv
     -fstack-protector-all
-    -fvisibility-inline-hidden
+    -fvisibility-inlines-hidden
     -fvisibility=hidden
 )
 
@@ -245,7 +245,7 @@ target_compile_definitions(cpu_kernels_host PRIVATE
     _FORTIFY_SOURCE=2
 )
 
-target_link_options(cpu_kerenels_host PRIVATE
+target_link_options(cpu_kernels_host PRIVATE
     -Wl,-z,relro,-z,now
     -Wl,-Bsymbolic -Wl,--exclude-libs,ALL
     -s

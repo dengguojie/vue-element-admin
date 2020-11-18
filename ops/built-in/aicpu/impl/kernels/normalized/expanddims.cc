@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "expanddims_kernel.h"
+#include "expanddims.h"
 
 #include <securec.h>
 #include "log.h"

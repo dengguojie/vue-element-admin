@@ -106,7 +106,7 @@ target_compile_options(cpu_kernels_context PRIVATE
 target_link_options(cpu_kernels_context PRIVATE
     -Wl,-z,relro,-z,now
     -s
-    $<$<STREQUAL:${PRODUCT_SIDE},host>:-Wl,-Bsymbolic -Wl, --exclude-libs,ALL>
+    $<$<STREQUAL:${PRODUCT_SIDE},host>:-Wl,-Bsymbolic -Wl,--exclude-libs,ALL>
 )
 
 target_include_directories(cpu_kernels_context_static PRIVATE
