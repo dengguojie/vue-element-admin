@@ -156,7 +156,10 @@ def calc_input_size(shape, dtype):
     :param dtype: dtype
     :return: input size
     """
-    bit_cnt = int(re.findall(r"\d+", dtype)[0])
+    if str(dtype).lower() == "bool":
+        bit_cnt = 8
+    else:
+        bit_cnt = int(re.findall(r"\d+", dtype)[0])
     byte_cnt = bit_cnt / 8
     shape_size = func_reduce(lambda x, y: x * y, shape)
     return int(shape_size * byte_cnt)
