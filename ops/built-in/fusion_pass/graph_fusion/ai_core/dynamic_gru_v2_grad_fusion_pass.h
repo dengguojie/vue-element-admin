@@ -48,6 +48,8 @@ class DynamicGRUV2GradFusionPass : public PatternFusionBasePass {
   // dw_h  matmul(h.T, dgate_h)
   map<std::string, ge::NodePtr> AddGRUHiddenGradNode(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph& graph,
                                                      vector<ge::NodePtr>& newNodes, bool& failStatus);
+  ge::NodePtr AddHTransData(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph& graph,
+                            vector<ge::NodePtr>& newNodes, bool& failStatus);
   ge::NodePtr AddHSplitNode(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes,
                             bool& failStatus);
   ge::NodePtr AddDwhTransData(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes,

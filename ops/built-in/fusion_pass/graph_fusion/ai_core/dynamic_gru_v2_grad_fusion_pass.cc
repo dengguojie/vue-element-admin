@@ -241,7 +241,7 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddOneHiddenGradNode(const string& gateO
     hiddenGradDesc->AddInputDesc("dh", dhDesc);
   } else {
     AddInputNodeDesc(hiddenGradDesc, "dh", {1, nzHiddenDim, nzBatch, 16, 16}, ge::FORMAT_FRACTAL_NZ,
-                     {1, hidden_dim, batch}, ge::FORMAT_ND, inputHType);
+                     {1, batch, hidden_dim}, ge::FORMAT_ND, inputHType);
   }
 
   AddSplitTInputNodeDesc(hiddenGradDesc, dynamicGRUGradDesc, "update");
@@ -505,28 +505,49 @@ map<std::string, ge::NodePtr> DynamicGRUV2GradFusionPass::AddGRUHiddenGradNode(g
   return result;
 }
 
+ge::NodePtr DynamicGRUV2GradFusionPass::AddHTransData(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph& graph,
+                                                        vector<ge::NodePtr>& newNodes, bool& failStatus) {
+  ge::OpDescPtr transDataDesc =
+      std::make_shared<ge::OpDesc>(dynamicGRUGradNode->GetName() + "GRUweightGrad/Dwh/HTransData", "TransData");
+  // input
+  ge::GeTensorDesc inputTensorDescH = dynamicGRUGradNode->GetOpDesc()->GetInputDesc(INPUT_INDEX["h"]).Clone();
+  transDataDesc->AddInputDesc("trans_src", inputTensorDescH);
+
+  // output
+  vector<int64_t> dstDims = {t_size, nzHiddenDim, nzBatch, 16, 16};
+  AddOutputNodeDesc(transDataDesc, "trans_dst", dstDims, inputHType, ge::FORMAT_FRACTAL_NZ);
+
+  // attr
+  ge::AttrUtils::SetStr(transDataDesc, "src_format", "ND");
+  ge::AttrUtils::SetStr(transDataDesc, "dst_format", "FRACTAL_NZ");
+
+  // create node
+  ge::NodePtr transNode = AddNewNode(graph, transDataDesc, newNodes, failStatus);
+
+  // Edge
+  ge::GraphUtils::AddEdge(dynamicGRUGradNode->GetInDataAnchor(INPUT_INDEX["h"])->GetPeerOutAnchor(),
+                          transNode->GetInDataAnchor(0));
+  return transNode;
+}
+
 ge::NodePtr DynamicGRUV2GradFusionPass::AddHSplitNode(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph& graph,
                                                       vector<ge::NodePtr>& newNodes, bool& failStatus) {
   // create split desc
   ge::OpDescPtr splitDesc =
       std::make_shared<ge::OpDesc>(dynamicGRUGradNode->GetName() + "GRUWeightGrad/Dwh/SplitVD", "SplitVD");
 
+  // add transData
+  ge::NodePtr transNode = AddHTransData(dynamicGRUGradNode, graph, newNodes, failStatus);
   // add input
-  ge::GeTensorDesc inputTensorDescH = dynamicGRUGradNode->GetOpDesc()->GetInputDesc(INPUT_INDEX["h"]);
-  inputTensorDescH.SetFormat(ge::FORMAT_FRACTAL_NZ);
-  inputTensorDescH.SetOriginFormat(ge::FORMAT_FRACTAL_NZ);
-  inputTensorDescH.SetShape(GeShape({t_size, nzHiddenDim, nzBatch, 16, 16}));
-  inputTensorDescH.SetOriginShape(GeShape({t_size, nzHiddenDim, nzBatch, 16, 16}));
+  ge::GeTensorDesc inputTensorDescH = transNode->GetOpDesc()->GetOutputDesc(0).Clone();
   splitDesc->AddInputDesc("input_h", inputTensorDescH);
 
   // add output1 split_t_1, shape:{t-1,batch_size,hidden_size}
-  vector<int64_t> output1Dim{t_size - 1, batch, hidden_dim};
   vector<int64_t> output1NzDim{t_size - 1, nzHiddenDim, nzBatch, 16, 16};
   AddOutputNodeDesc(splitDesc, "split_t_1", output1NzDim, ge::FORMAT_FRACTAL_NZ, output1NzDim, ge::FORMAT_FRACTAL_NZ,
                     inputHType);  // split_t_1
 
   // add output2 split_1, shape:{1,batch_size,hidden_size}
-  vector<int64_t> output2Dim{1, batch, hidden_dim};
   vector<int64_t> output2NzDim{1, nzHiddenDim, nzBatch, 16, 16};
   AddOutputNodeDesc(splitDesc, "split_1", output2NzDim, ge::FORMAT_FRACTAL_NZ, output2NzDim, ge::FORMAT_FRACTAL_NZ,
                     inputHType);  // split_1
@@ -541,8 +562,7 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddHSplitNode(ge::NodePtr dynamicGRUGrad
   ge::NodePtr splitNode = AddNewNode(graph, splitDesc, newNodes, failStatus);
 
   // Edge
-  ge::GraphUtils::AddEdge(dynamicGRUGradNode->GetInDataAnchor(INPUT_INDEX["h"])->GetPeerOutAnchor(),
-                          splitNode->GetInDataAnchor(0));
+  ge::GraphUtils::AddEdge(transNode->GetOutDataAnchor(0), splitNode->GetInDataAnchor(0));
   return splitNode;
 }
 
