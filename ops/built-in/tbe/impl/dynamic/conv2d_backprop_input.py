@@ -108,6 +108,8 @@ def _check_and_config_para(filter, out_backprop, y, input_size, strides,
         )
 
     group_dict = comm.calculate_group(
+        shape_out_backprop,
+        input_sizes,
         shape_filters,
         groups,
         filter_dtype,
