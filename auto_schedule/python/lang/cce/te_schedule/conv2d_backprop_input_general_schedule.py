@@ -1247,8 +1247,8 @@ def general_schedule(
                     sch_agent.same_attach(input_tensor_mem[1], c_ub)
             elif "elewise" in deconv_res.op.tag:
                 scope, unit = sch_agent[c_ddr].get_active_scope_and_unit()
-                _, _, ax_hw, _ = scope
-                _, _, len_axis, _ = unit
+                _, _, _, ax_hw, _ = scope
+                _, _, _, len_axis, _ = unit
                 len_align = tvm.min(len_axis, c_ub.shape[2] - ax_hw * len_axis) * 16
                 for ub_tensor in tensor_map["ub_list"]:
                     sch_agent.same_attach(ub_tensor, c_ub)
