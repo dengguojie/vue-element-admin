@@ -37,7 +37,7 @@ class Test_OpConfig(unittest.TestCase):
                        "float", "bool", "double"]
         allow_input_info_keys = ["name", "dtype", "format", "shape", "reshapeType", "needCompile", "shapesType",
                                  "unknownshape_format"]
-        allow_reshape_types = ["N", "C", "H", "W", "NC", "CN", "NH", "NW", "CH", "NCH", "NHW"]
+        allow_reshape_types = ["N", "C", "H", "W", "NC", "CN", "NH", "NW", "CH", "NCH", "NHW", "NWC"]
         allow_output_info_keys = ["name", "dtype", "format", "shape", "reshapeType", "needCompile", "shapesType", "unknownshape_format"]
         allow_param_types = ["required", "optional", "dynamic"]
         allow_op_pattern = ["reduce", "broadcast", "formatAgnostic"]

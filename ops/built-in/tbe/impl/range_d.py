@@ -17,9 +17,8 @@ range_d
 """
 import te.lang.cce as tbe
 import te.platform as tbe_platform
-from te.utils import para_check
-from te.utils import shape_util
 from te import tvm
+from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
@@ -53,8 +52,7 @@ def range_d_compute(x, y, start, limit, delta, kernel_name="range_d"):
     res: TVM tensor
         the result of range_d compute
     """
-    if isinstance(start, int) and isinstance(delta, int) \
-       and isinstance(limit, int):
+    if isinstance(start, int) and isinstance(delta, int) and isinstance(limit, int):
         res_start = tbe.broadcast(tvm.const(start, dtype="int32"), x.shape)
         res_delta = tbe.broadcast(tvm.const(delta, dtype="int32"), x.shape)
         mid_res = tbe.vmul(res_delta, x)
@@ -108,30 +106,30 @@ def range_d(x, y, start, limit, delta, kernel_name="range_d"):
     para_check.check_shape(shape_assist, param_name="x")
     para_check.check_dtype(dtype_assist.lower(), ("int32", "float32"), param_name="x")
 
+    if dtype_assist == "int32":
+        start = int(start)
+        limit = int(limit)
+        delta = int(delta)
+
     if limit == start:
         rule_desc = "start can not equal to limit"
-        param_value = "%d,%d"%(limit, start)
-        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, \
-                                                          "limit,start", param_value)
+        param_value = "%d,%d" % (limit, start)
+        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "limit,start", param_value)
     if delta == 0:
         rule_desc = "the input of delta can not equal to zero"
-        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, \
-                                                          "delta", delta)
+        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "delta", delta)
     if (start > limit) and (delta > 0):
         rule_desc = "requires limit should more than start when delta is more than zero"
-        param_value = "%d,%d"%(limit, start)
-        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, \
-                                                          "limit,start", param_value)
+        param_value = "%d,%d" % (limit, start)
+        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "limit,start", param_value)
     if (start < limit) and (delta < 0):
         rule_desc = "requires start should more than limit when delta is less than zero"
-        param_value = "%d,%d"%(start, limit)
-        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, \
-                                                          "start,limit", param_value)
+        param_value = "%d,%d" % (start, limit)
+        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "start,limit", param_value)
 
     # check shape of assist,only support 1dim
     if len(shape_assist) != 1:
-        error_detail = "range_d only support rank=1 while length of x shape is %d" \
-                       % (len(shape_assist))
+        error_detail = "range_d only support rank=1 while length of x shape is %d" % (len(shape_assist))
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
 
     data = tvm.placeholder(shape_assist, name="data", dtype=dtype_assist)
@@ -140,6 +138,5 @@ def range_d(x, y, start, limit, delta, kernel_name="range_d"):
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
 
-    config = {"name": kernel_name,
-              "tensor_list": [data, res]}
+    config = {"name": kernel_name, "tensor_list": [data, res]}
     tbe.cce_build_code(sch, config)

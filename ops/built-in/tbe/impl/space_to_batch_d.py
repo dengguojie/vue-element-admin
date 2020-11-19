@@ -18,15 +18,14 @@ space_to_batch_d
 import te.platform as tbe_platform
 from te.utils import para_check
 from te import tvm
-from impl import space_to_batch_nd_d
 from te.utils.error_manager import error_manager_vector
-from impl.util import util_select_op_base
+from impl.space_to_batch_nd_d import SpaceToBatchNdFive
+from impl.util.util_select_op_base import get_op_cal_info
 
 
 # pylint: disable=invalid-name,unused-argument
 def _check_param(x, y, paddings, block_size, kernel_name):
-    """check the parameters including shape, dtype, block_shape, paddings
-    and kernel_name.
+    """check the parameters including shape, dtype, block_shape, paddings and kernel_name.
     """
     shape = x.get("shape")
     dtype = x.get("dtype").lower()
@@ -38,13 +37,11 @@ def _check_param(x, y, paddings, block_size, kernel_name):
         error_detail = "the shape of image_input should be 5, but got: %d" % len(shape)
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
     if block_size < 2:
-        error_manager_vector.raise_err_input_value_invalid(kernel_name, "block_size", \
-                                                           "greater than one", block_size)
+        error_manager_vector.raise_err_input_value_invalid(kernel_name, "block_size", "greater than one", block_size)
 
     _check_padding(paddings)
 
-    padding_shape = (shape[0], shape[1],
-                     shape[2] + paddings[0][0] + paddings[0][1],
+    padding_shape = (shape[0], shape[1], shape[2] + paddings[0][0] + paddings[0][1],
                      shape[3] + paddings[1][0] + paddings[1][1], shape[4])
     para_check.check_shape(padding_shape, param_name="paddings")
 
@@ -53,29 +50,24 @@ def _check_param(x, y, paddings, block_size, kernel_name):
         error_detail = "both height_pad and width_pad must be divisible by block_size"
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "paddings", error_detail)
 
-    output_shape = (padding_shape[0] * block_size * block_size,
-                    padding_shape[1], padding_shape[2] // block_size,
+    output_shape = (padding_shape[0] * block_size * block_size, padding_shape[1], padding_shape[2] // block_size,
                     padding_shape[3] // block_size, padding_shape[4])
     para_check.check_shape(output_shape, param_name="y")
 
 
 def _check_padding(paddings):
-    """
-    check the paddings
+    """check the paddings
     """
     if len(paddings) != 2 or len(paddings[0]) != 2 or len(paddings[1]) != 2:
         error_detail = "the shape of paddings should be 2x2"
-        error_manager_vector.raise_err_input_shape_invalid("space_to_batch_d", "paddings", \
-                                                           error_detail)
+        error_manager_vector.raise_err_input_shape_invalid("space_to_batch_d", "paddings", error_detail)
 
     def _check_padding_val(val):
-        """
-        check the padding value
+        """check the padding value
         """
         if not (isinstance(val, int) and val >= 0):
             error_detail = "paddings should be integer and must be >= 0"
-            error_manager_vector.raise_err_input_shape_invalid("space_to_batch_d", "paddings", \
-                                                           error_detail)
+            error_manager_vector.raise_err_input_shape_invalid("space_to_batch_d", "paddings", error_detail)
 
     _check_padding_val(paddings[0][0])
     _check_padding_val(paddings[0][1])
@@ -84,25 +76,19 @@ def _check_padding(paddings):
 
 
 def get_op_support_info(x, y, block_size, paddings, kernel_name="space_to_batch_d"):
-    """
-    get split info
+    """get op support info
     """
     axis_split_list = None
     axis_reduce_list = None
-    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_list, axis_reduce_list)
+    op_cal_info_in_json = get_op_cal_info(axis_split_list, axis_reduce_list)
     return op_cal_info_in_json
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
                             (para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_LIST_INT),
                             para_check.KERNEL_NAME)
-def space_to_batch_d(x,
-                     y,
-                     block_size,
-                     paddings,
-                     kernel_name="space_to_batch_d"):
-    """
-    the main function of space_to_batch_d
+def space_to_batch_d(x, y, block_size, paddings, kernel_name="space_to_batch_d"):
+    """SpaceToBatch for tensors
 
     Parameters
     ----------
@@ -127,7 +113,11 @@ def space_to_batch_d(x,
     block_shape = [block_size, block_size]
 
     data = tvm.placeholder(input_shape, name="data", dtype=input_dtype)
-    res = space_to_batch_nd_d.space_to_batch_nd_d_compute(data, y, block_shape, paddings, kernel_name)
+    space = SpaceToBatchNdFive(input_shape, input_dtype, block_shape, paddings)
+    res = tvm.extern([space.output_shape], [data],
+                     lambda ins, outs: space.kernel_ir(outs, ins),
+                     dtype=input_dtype,
+                     name="res")
     sch = tvm.create_schedule(res.op)
     with tbe_platform.build_config:
         tvm.build(sch, [data, res], "cce", name=kernel_name)

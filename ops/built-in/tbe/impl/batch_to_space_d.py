@@ -18,8 +18,8 @@ batch_to_space_d
 import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
-from impl.batch_to_space_nd_d import batch_to_space_nd_d_compute
 from te.utils.error_manager import error_manager_vector
+from impl.batch_to_space_nd_d import BatchToSpaceNdFive
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
@@ -28,14 +28,14 @@ DIM_CNT = 5
 CROPS_LEN = 2
 
 
-# pylint: disable = unused-argument
+# pylint: disable = unused-argument,too-many-locals,invalid-name
 def get_op_support_info(x, y, block_size, crops, kernel_name="batch_to_space_d"):
+    """get op support info
+    """
     format_x = x.get("format").upper()
     if format_x == "NC1HWC0":
-        axis_split_matrix=[
-            [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]])],
-            [SplitInput([0, [4], [-1], [-1]]), SplitOutput([0, [4]])]
-        ]
+        axis_split_matrix = [[SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]])],
+                             [SplitInput([0, [4], [-1], [-1]]), SplitOutput([0, [4]])]]
         axis_reduce_list = None
 
     else:
@@ -45,13 +45,11 @@ def get_op_support_info(x, y, block_size, crops, kernel_name="batch_to_space_d")
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
                             (para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_LIST_INT),
                             para_check.KERNEL_NAME)
 def batch_to_space_d(x, y, block_size, crops, kernel_name="batch_to_space_d"):
-    """
-    batch_to_space for tensor.
+    """BatchToSpace for tensor.
 
     Parameters
     ----------
@@ -78,25 +76,20 @@ def batch_to_space_d(x, y, block_size, crops, kernel_name="batch_to_space_d"):
     check_list = {"float16", "float32"}
     para_check.check_dtype(input_dtype, check_list, param_name="x")
 
-    if len([x for x in input_shape if isinstance(x, int) and x > 0])\
-            != len(input_shape):
+    if len([x for x in input_shape if isinstance(x, int) and x > 0]) != len(input_shape):
         error_detail = "input_shape of x should be positive integer"
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
 
     if len(input_shape) != DIM_CNT:
-        error_detail = "the length of input_shape must be 5,while it is: %d" \
-                       %len(input_shape)
+        error_detail = "the length of input_shape must be 5,while it is: %d" % len(input_shape)
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
 
-    if not (len(crops) == CROPS_LEN and len(crops[0]) == CROPS_LEN
-            and len(crops[1]) == CROPS_LEN):
+    if not (len(crops) == CROPS_LEN and len(crops[0]) == CROPS_LEN and len(crops[1]) == CROPS_LEN):
         error_detail = "shape of crops should be 2*2"
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "crops", error_detail)
 
-    if not (isinstance(crops[0][0], int) and crops[0][0] >= 0
-            and isinstance(crops[0][1], int) and crops[0][1] >= 0
-            and isinstance(crops[1][0], int) and crops[1][0] >= 0
-            and isinstance(crops[1][1], int) and crops[1][1] >= 0):
+    if not (isinstance(crops[0][0], int) and crops[0][0] >= 0 and isinstance(crops[0][1], int) and crops[0][1] >= 0 and
+            isinstance(crops[1][0], int) and crops[1][0] >= 0 and isinstance(crops[1][1], int) and crops[1][1] >= 0):
         error_detail = "crops  must be >= 0"
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "crops", error_detail)
 
@@ -106,16 +99,16 @@ def batch_to_space_d(x, y, block_size, crops, kernel_name="batch_to_space_d"):
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
     output_shape = (input_shape[0] // block_size // block_size, input_shape[1],
                     input_shape[2] * block_size - crops[0][0] - crops[0][1],
-                    input_shape[3] * block_size - crops[1][0] - crops[1][1],
-                    input_shape[4])
+                    input_shape[3] * block_size - crops[1][0] - crops[1][1], input_shape[4])
     para_check.check_shape(output_shape, param_name="y")
 
     block_shape = [block_size, block_size]
     data = tvm.placeholder(input_shape, name="data", dtype=input_dtype)
-
-    res = batch_to_space_nd_d_compute(data, y, block_shape, crops, kernel_name)
-
+    batch = BatchToSpaceNdFive(input_shape, input_dtype, block_shape, crops)
+    res = tvm.extern([batch.output_shape], [data],
+                     lambda ins, outs: batch.kernel_ir(outs, ins),
+                     dtype=input_dtype,
+                     name="res")
     sch = tvm.create_schedule(res.op)
-
     with tbe_platform.cce_build.build_config:
         tvm.build(sch, [data, res], "cce", name=kernel_name)
