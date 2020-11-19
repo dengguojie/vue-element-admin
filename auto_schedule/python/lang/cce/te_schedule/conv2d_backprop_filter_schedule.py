@@ -554,7 +554,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
             if tiling["AL0_matrix"]:
                 if l0a_attach_mode:
-                    # L0A data is more than that L0C needed，attach to dw_ddr
+                    # L0A data is more than that L0C needed, attach to dw_ddr
                     sch[grads_fractal].compute_at(sch[dw_ddr], c_grads_mad_at)
                 else:
                     sch[grads_fractal].compute_at(sch[dw_cc], hw_mad_1_mad_at)
@@ -790,7 +790,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                                 strideh_expand=1, stridew_expand=1,
                                 dilationh=dilation_height,
                                 dilationw=dilation_width,
-                                group=1,
+                                group=real_g,
                                 fused_double_operand_num=0,
                                 bias_flag=0, op_tag='conv2d_backprop_filter',
                                 kernel_name=kernel_name)
@@ -1011,11 +1011,12 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 block_dim_batch = tvm.min(block_dim_batch, batch_fmap)
             block_dim_cout = tiling.get("block_dim")[2]
             block_dim_cin = tiling.get("block_dim")[1]
+            block_dim_group = tiling.get("block_dim")[3]
             return block_dim_hw, block_dim_batch, \
-                   block_dim_cout, block_dim_cin
+                   block_dim_cout, block_dim_cin, block_dim_group
 
         block_dim_hw, block_dim_batch, \
-        block_dim_cout, block_dim_cin \
+        block_dim_cout, block_dim_cin, block_dim_group \
             = _get_block_dim()
 
         sch[grads_matrix].set_scope(scope_cbuf)
@@ -1090,13 +1091,14 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             print("axis K: block_dim_hw", block_dim_hw)
             print("axis N: block_dim_cin", block_dim_cin)
             print("axis M: block_dim_cout", block_dim_cout)
+            print("axis G: block_dim_group", block_dim_group)
             print("batch_num_sc", batch_num_sc)
 
         # #############################split axis N##########################
         # dw_shape is (fmap_channel_1*kernel_height*kernel_width,
         #             grads_channel_1, C0_grads, C0_fmap)
         g_multicore, g_axis = sch[dw_ddr].split(sch[dw_ddr].op.axis[0],
-                                                nparts=1)
+                                                nparts=block_dim_group)
         c_fmap_multicore, c_fmap_mad_at \
             = sch[dw_ddr].split(sch[dw_ddr].op.axis[1], nparts=block_dim_cin)
 
@@ -1308,8 +1310,8 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             block = tvm.thread_axis("blockIdx.x")
             sch[dw_ddr].bind(fused_multi_core, block)
 
-            blocks =\
-                block_dim_batch * block_dim_cin * block_dim_cout * block_dim_hw
+            blocks = (block_dim_batch * block_dim_cin *
+                        block_dim_cout * block_dim_hw * block_dim_group)
             if blocks == block_dim_batch:
                 sch[dw_ddr].pragma(pragma_at,
                                 'json_info_batchBindOnly')
@@ -1319,7 +1321,8 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         def _split_w_for_conv1d():
             if flag_conv1d_case:
                 # the offset according to multicore
-                block_div = block_dim_batch * block_dim_cout * block_dim_cin
+                block_div = (block_dim_batch * block_dim_cout *
+                                block_dim_cin * block_dim_group)
                 hw_block_offset = fused_multi_core // block_div * \
                     _ceil_div(hw_pad_1, block_dim_hw) * CUBE_DIM
                 if self.dynamic_mode:
@@ -1513,7 +1516,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 # hw bind multi-core and need block offset
                 if tile_mode == "tile_h_multicore":
                     block_div = (block_dim_batch * block_dim_cout *
-                                 block_dim_cin)
+                                 block_dim_cin * block_dim_group)
 
                     hw_align = _align(width_grads * height_grads, CUBE_DIM)
                     h_k = tiling.get("BL0_matrix")[0] * CUBE_DIM
