@@ -159,7 +159,7 @@ INFER_FUNC_REG(Bincount, BincountInfer);
 
 IMPLEMT_INFERFUNC(Betainc, BetaincInfer) {
   const int num_inputs = 3;
-  Shape output(UNKNOWN_SHAPE);
+  Shape output(UNKNOWN_RANK);
   int num_scalars = 0;
   Shape some_non_scalar;
   for (int i = 0; i < num_inputs; ++i) {
