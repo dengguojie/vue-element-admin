@@ -33,6 +33,7 @@ import te.platform.cce_params as cce_params
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from impl.util import util_select_op_base
+from impl.util import util_common
 from impl.util.util_select_op_base import get_op_cal_info
 
 
@@ -7455,7 +7456,9 @@ def slice_d(x, y, begin, size, kernel_name="slice_d"):
     shape = x.get("shape")
     dtype = x.get("dtype").lower()
 
-    if input_format in ["NDC1HWC0", "NC1HWC0", "FRACTAL_NZ", "FRACTAL_Z", "FRACTAL_Z_3D"]:
+    if input_format in ("NDC1HWC0", "NC1HWC0", "FRACTAL_NZ", "FRACTAL_Z", "FRACTAL_Z_3D"):
+        x = util_common.update_shape_base_other_format(x)
+        shape = x.get("shape")
         begin, size = _update_params_for_other_format(ori_shape, begin, size, input_format, ori_format)
         _check_parameters(shape, dtype, begin, size, kernel_name)
         shape_new, begin_new, size_new = _update_params(shape, begin, size)

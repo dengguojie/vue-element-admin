@@ -23,6 +23,8 @@ from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
+from impl.util import util_common
+from impl.util import util_select_op_base
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
@@ -36,8 +38,11 @@ TOTAL_PARAMS = 255000
 INDICES_LINE = 64
 
 
-# pylint: disable = unused-argument
+# pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-branches
 def get_op_support_info(x, indices, y, axis=0, kernel_name="gather_v2_d"):
+    """
+    get_op_support_info
+    """
     format_x = x.get("format").upper()
     format_indices = indices.get("format").upper()
     shape_indices_len = len(indices.get("shape"))
@@ -1143,7 +1148,85 @@ def gather_v2_compute(tensor_params,
     return res
 
 
-# pylint: disable=locally-disabled,invalid-name
+def op_select_format(x, indices, y, axis=0, kernel_name="gather_v2_d"):
+    """
+    op_select_format
+    """
+    input_ori_format = x.get("ori_format")
+    input_ori_shape = x.get("ori_shape")
+    input_ori_shape = shape_util.scalar2tensor_one(input_ori_shape)
+    axis = axis % len(input_ori_shape)
+    # charge whether support 5HD 6HD
+    hd_support_format = \
+        util_common.get_fused_format_str(["N", "D", "H", "W", "C"]) \
+        + util_common.get_fused_format_str(["N", "H", "W", "C"])
+    is_support_hd = False
+    if input_ori_format in hd_support_format and len(input_ori_format) == len(input_ori_shape):
+        is_gather_with_c = input_ori_format[axis] == "C"
+        # condition:
+        # 1. do not concat the tensor with c dim
+        if not is_gather_with_c:
+            is_support_hd = True
+
+    # charge whether support FRACTAL_NZ
+    is_support_nz = False
+    if len(input_ori_shape) >= 2:
+        is_gather_last_one_dim = axis == len(input_ori_shape) - 1
+        is_gather_last_second_dim = axis == len(input_ori_shape) - 2
+        # condition
+        # 1. do not gather the tensor with the -1 or -2 dim
+        if not (is_gather_last_one_dim or is_gather_last_second_dim):
+            is_support_nz = True
+
+    base_data_type = \
+        ["float", "float16", "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "bool"]
+    other_data_type = ["float", "float16", "int16", "int32", "uint16", "uint32"]
+    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
+        base_data_type.remove("float")
+        other_data_type.remove("float")
+
+    dtype_base_out = base_data_type.copy()
+    format_base_out = ["ND"] * len(dtype_base_out)
+    if is_support_hd and not util_common.is_dynamic_input([x, indices]):
+        other_format = "NC1HWC0" if len(input_ori_shape) == 4 else "NDC1HWC0"
+        dtype_base_out = dtype_base_out + other_data_type
+        format_base_out = format_base_out + [other_format] * len(other_data_type)
+    if is_support_nz and not util_common.is_dynamic_input([x, indices]):
+        other_format = "FRACTAL_NZ"
+        dtype_base_out = dtype_base_out + other_data_type
+        format_base_out = format_base_out + [other_format] * len(other_data_type)
+
+    # process index format
+    index_dtype = ["int32", "int64"]
+    dtype_base_out_index = []
+    format_base_out_index = []
+    for _, _dtype in enumerate(index_dtype):
+        dtype_base_out_index = dtype_base_out_index + [_dtype]*len(dtype_base_out)
+        format_base_out_index = format_base_out_index + ["ND"]*len(dtype_base_out)
+
+    dtype_base_out = dtype_base_out * len(index_dtype)
+    format_base_out = format_base_out * len(index_dtype)
+
+    dtype_str = ",".join(dtype_base_out)
+    format_str = ",".join(format_base_out)
+    dtype_str_idx = ",".join(dtype_base_out_index)
+    format_str_idx = ",".join(format_base_out_index)
+
+    input0 = util_select_op_base.gen_param(
+        classify="input0", name="x", datatype=dtype_str, format=format_str, unknownshape_format=format_str)
+    input1 = util_select_op_base.gen_param(
+        classify="input1", name="indices", datatype=dtype_str_idx,
+        format=format_str_idx, unknownshape_format=format_str_idx)
+    output0 = util_select_op_base.gen_param(
+        classify="output0", name="y", datatype=dtype_str, format=format_str, unknownshape_format=format_str)
+
+    param_list = [input0, input1, output0]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+
+    return param_dynamic_in_json
+
+
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
                             para_check.KERNEL_NAME)
@@ -1169,6 +1252,11 @@ def gather_v2_d(x, indices, y, axis=0, kernel_name="gather_v2_d"):
     -------
     None.
     """
+    input_format = x.get("format")
+    input_ori_format = x.get("ori_format")
+    input_ori_shape = x.get("ori_shape")
+    axis = util_common.update_axis_for_other_format(input_ori_shape, axis, input_format, input_ori_format)
+
     params_shape = x.get("shape")
     indices_shape = indices.get("shape")
     params_dtype = x.get("dtype").lower()

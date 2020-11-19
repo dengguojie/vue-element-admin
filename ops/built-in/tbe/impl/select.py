@@ -38,6 +38,7 @@ def op_select_format(condition, x1, x2, y, kernel_name="select"):
     shape_x2 = x2.get("ori_shape")
 
     format_4d_list = ["NCHW", "NHWC", "HWCN"]
+    format_5d_list = ["NDHWC", "DHWCN", "NCDHW"]
 
     format_condition = condition.get("ori_format")
     format_x1 = x1.get("ori_format")
@@ -63,10 +64,15 @@ def op_select_format(condition, x1, x2, y, kernel_name="select"):
             format_list.append("FRACTAL_Z")
             format_list.append("FRACTAL_NZ")
             format_list.append("NC1HWC0")
+        if format_condition == format_x1 == format_x2 and \
+                format_x1 in format_5d_list and \
+                list(shape_condition) == list(shape_x1) == list(shape_x2):
+            format_list.append("FRACTAL_Z_3D")
+            format_list.append("NDC1HWC0")
 
         for dtype in dtype_list:
-            dtype_total = dtype_total + [dtype]*len(format_list)
-        dtype_total0 = dtype_total0*len(dtype_total)
+            dtype_total = dtype_total + [dtype] * len(format_list)
+        dtype_total0 = dtype_total0 * len(dtype_total)
         format_list = format_list * len(dtype_list)
         input0 = util_select_op_base.gen_param(classify="input0", name="condition",
                            datatype=",".join(dtype_total0),
@@ -82,27 +88,26 @@ def op_select_format(condition, x1, x2, y, kernel_name="select"):
                             format=",".join(format_list))
     else:
         format_list.append("ND")
+        format_list1.append("ND")
         if format_x1 == format_x2:
             if len(shape_x1) == 4 and len(shape_x2) == 4 and \
                     format_x1 in format_4d_list and format_x2 in format_4d_list:
                 format_list1.append("FRACTAL_NZ")
-                format_list1.append("ND")
                 if format_x1 in ("NHWC", "NCHW"):
                     format_list1.append("NC1HWC0")
             elif len(shape_x1) > 2 and len(shape_x2) > 2 and \
                     format_x1 in format_4d_list and format_x2 in format_4d_list:
                 format_list1.append("FRACTAL_NZ")
-                format_list1.append("ND")
-            else:
-                format_list1.append("ND")
-        else:
-            format_list1.append("ND")
+            elif len(shape_x1) == 5 and len(shape_x2) == 5 and \
+                    format_x1 in format_5d_list and format_x2 in format_5d_list:
+                format_list1.append("FRACTAL_Z_3D")
+                format_list1.append("NDC1HWC0")
 
         for dtype in dtype_list:
-            dtype_total = dtype_total + [dtype]*len(format_list1)
-        dtype_total0 = dtype_total0*len(dtype_total)
-        format_list1 = format_list1*len(dtype_list)
-        format_list = format_list*len(dtype_total)
+            dtype_total = dtype_total + [dtype] * len(format_list1)
+        dtype_total0 = dtype_total0 * len(dtype_total)
+        format_list1 = format_list1 * len(dtype_list)
+        format_list = format_list * len(dtype_total)
         input0 = util_select_op_base.gen_param(classify="input0", name="condition",
                            datatype=",".join(dtype_total0),
                            format=",".join(format_list))

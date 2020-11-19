@@ -101,10 +101,29 @@ def sigmoid_cross_entropy_with_logits_compute(predict, target, loss, kernel_name
     abs_predict = tbe.vabs(predict)
     const_zero_broadcast = tbe.broadcast(const_zero, shape_predict)
     reverse_abs_predict = tbe.vsub(const_zero_broadcast, abs_predict)
+
+    if dtype_predict == "float32" and \
+            not tbe_platform.api_check_support("te.lang.cce.vexp", "float32"):
+        reverse_abs_predict = tbe.cast_to(reverse_abs_predict, "float16")
+
     vexp_predict = tbe.vexp(reverse_abs_predict)
+
+    if dtype_predict == "float32" and \
+            not tbe_platform.api_check_support("te.lang.cce.vexp", "float32"):
+        vexp_predict = tbe.cast_to(vexp_predict, "float32")
+
     const_one = tvm.const(SCALAR_ONE, dtype=dtype_predict)
     vadds_res = tbe.vadds(vexp_predict, const_one)
+
+    if dtype_predict == "float32" and \
+            not tbe_platform.api_check_support("te.lang.cce.vlog", "float32"):
+        vadds_res = tbe.cast_to(vadds_res, "float16")
+
     vlog_res = tbe.vlog(vadds_res, priority_flag=1)
+
+    if dtype_predict == "float32" and \
+            not tbe_platform.api_check_support("te.lang.cce.vlog", "float32"):
+        vlog_res = tbe.cast_to(vlog_res, "float32")
 
     vmul_res = tbe.vmul(predict, target)
     res = tbe.vsub(vlog_res, vmul_res)
@@ -116,7 +135,7 @@ def sigmoid_cross_entropy_with_logits_compute(predict, target, loss, kernel_name
     return loss
 
 
-@tbe_base.register_operator("sigmoid_cross_entropy_with_logits")
+@tbe_base.register_operator("SigmoidCrossEntropyWithLogits")
 @check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def sigmoid_cross_entropy_with_logits(predict, target, loss, kernel_name="sigmoid_cross_entropy_with_logits"):
     """

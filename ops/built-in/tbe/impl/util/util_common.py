@@ -17,6 +17,7 @@ util_common
 """
 import os
 import json
+import itertools
 from te.utils.error_manager import error_manager_util
 from te import platform as tbe_platform
 
@@ -151,3 +152,127 @@ def calculate_group(fmap_c, cout, groups, cout0, cin0):
                   "cout_ori": cout}
 
     return group_dict
+
+
+def update_axis_for_other_format(ori_shape, axis, input_format, ori_format, reduce_mode=False):
+    """
+    update_axis_for_other_format: when format is changed, the axis will be updated
+    """
+    if input_format in ("NDC1HWC0", "NC1HWC0"):
+        axis = axis % len(ori_shape)
+        # ex: ori axis with N, axis = 0
+        # ex: ori axis with D, axis = 1
+        # ex: ori axis with C, axis = 1 (NC1HWC0) 2(NDC1HWC0)
+        # ex: ori axis with H, axis = 2 (NC1HWC0) 3(NDC1HWC0)
+        # ex: ori axis with W, axis = 3 (NC1HWC0) 4(NDC1HWC0)
+        offset_6hd = 1 if input_format == "NDC1HWC0" else 0
+        format_c_axis = 1 + offset_6hd if not reduce_mode else [1 + offset_6hd, 4 + offset_6hd]
+        format_axis_map = {
+            "N": 0,
+            "C": format_c_axis,
+            "H": 2 + offset_6hd,
+            "W": 3 + offset_6hd,
+            "D": 1
+        }
+        concat_dim_name = ori_format[axis]
+        axis = format_axis_map[concat_dim_name]
+
+    if input_format in ("FRACTAL_NZ",):
+        axis = axis % len(ori_shape)
+        # when FRACTAL_NZ, mean: [A, B, C, D] -> [A, B, ceil(D//16), ceil(C//16), 16, 16]
+        # update axis as follow:
+        # ex: ori axis with last one dim, axis = the dim of ceil(D//16)
+        # ex: ori axis with last second dim, axis = the dim of ceil(C//16)
+        if axis == len(ori_shape) - 1:
+            axis = len(ori_shape) - 2 if not reduce_mode else [len(ori_shape) - 2, len(ori_shape) + 1]
+        elif axis == len(ori_shape) - 2:
+            axis = len(ori_shape) - 1 if not reduce_mode else [len(ori_shape) - 1, len(ori_shape) + 0]
+
+    if input_format in ("FRACTAL_Z", "FRACTAL_Z_3D"):
+        axis = axis % len(ori_shape)
+        # when FRACTAL_Z, mean: C1HWNiNoC0
+        # when FRACTAL_Z_3D, mean: DC1HWNiNoC0
+        offset_3d = 1 if input_format == "FRACTAL_Z_3D" else 0
+        format_c_axis = 0 + offset_3d if not reduce_mode else [0 + offset_3d, 5 + offset_3d]
+        format_n_axis = 3 + offset_3d if not reduce_mode else [3 + offset_3d, 4 + offset_3d]
+        format_axis_map = {
+            "N": format_n_axis,
+            "C": format_c_axis,
+            "H": 1 + offset_3d,
+            "W": 2 + offset_3d,
+            "D": 0
+        }
+        concat_dim_name = ori_format[axis]
+        axis = format_axis_map[concat_dim_name]
+
+    return axis
+
+
+def update_shape_base_other_format(input_dict):
+    """
+    update_axis_for_other_format: when format is changed, the axis will be updated
+    """
+    ori_shape = input_dict.get("ori_shape")
+    ori_format = input_dict.get("ori_format")
+    input_shape = input_dict.get("shape")
+    input_format = input_dict.get("format")
+
+    if input_format in ("FRACTAL_Z", "FRACTAL_Z_3D"):
+        # when FRACTAL_Z, mean: C1HWNiNoC0
+        # when FRACTAL_Z_3D, mean: DC1HWNiNoC0
+        if len(input_shape) == 4:
+            # fe will reshape the C1HWNiNoC0/DC1HWNiNoC0 to 4s = (C1HW)NiNoC0/(DC1HW)NiNoC0
+            # now will reshape to 6d/7d = C1HWNiNoC0/DC1HWNiNoC0
+            dict_zip_shape = dict(zip(list(ori_format), ori_shape))
+            shape_h_dim = dict_zip_shape["H"]
+            shape_w_dim = dict_zip_shape["W"]
+
+            shape_c1_dim = input_shape[0] // (shape_h_dim * shape_w_dim)
+            new_shape = [shape_c1_dim, shape_h_dim, shape_w_dim] + list(input_shape[1:])
+            if input_format == "FRACTAL_Z_3D":
+                shape_d_dim = dict_zip_shape["D"]
+                shape_c1_dim = new_shape[0] // shape_d_dim
+                new_shape = [shape_d_dim] + [shape_c1_dim, shape_h_dim, shape_w_dim] + list(input_shape[1:])
+
+            input_dict["shape"] = new_shape
+
+    return input_dict
+
+
+def get_fused_format_str(format_char_list):
+    """
+    get_fused_format from char
+    ex:
+        input  ["N", "C", "H"]
+        putput ["NCH", "NHC", "CNH", "CHN", "HNC", "HCN"]
+    """
+    format_iter = itertools.permutations(format_char_list, len(format_char_list))
+    format_char_list = list(format_iter)
+    format_str_list = []
+    for i, char_list in enumerate(format_char_list):
+        format_str_list.append(''.join(list(char_list)))
+
+    return format_str_list
+
+
+def is_dynamic_input(_inputs):
+    """
+    is_dynamic_input: check whether the shape contain -1
+        contain -1 return True else False
+
+    Parameters
+    ----------
+    _inputs: list of dict/tuple of dict/dict
+
+    Returns
+    -------
+    bool
+    """
+    if not isinstance(_inputs, list) and not isinstance(_inputs, tuple):
+        _inputs = [_inputs]
+
+    for _, _input in enumerate(_inputs):
+        if -1 in _input.get("shape"):
+            return True
+
+    return False

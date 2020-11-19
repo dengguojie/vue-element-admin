@@ -129,6 +129,16 @@ ut_case.add_case("Ascend910", case10)
 ut_case.add_case("Ascend910", case11)
 ut_case.add_case("Ascend910", case12)
 
+case_fz = {"params": [{"shape": (1*16*16, 1, 16, 16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (16, 16, 16, 16),"ori_format": "NCHW"},
+                    {"shape": (1*16*16, 1, 16, 16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (16, 16, 16, 16),"ori_format": "NCHW"},
+                    (0, 0, 0 ,0), (16, 16, 16, 16),
+                    ],
+         "case_name": "SliceD_FRACTAL_Z",
+         "expect": "success",
+         "support_expect": True}
+
+ut_case.add_case("Ascend910", case_fz)
+
 def calc_expect_func(x, y, begin, size):
     expect = tf.slice(x['value'], begin, size)
     with tf.Session() as sess:

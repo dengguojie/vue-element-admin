@@ -24,12 +24,12 @@ from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 from te.platform.cce_build import build_config
-from impl.copy_only import copy_only
 from impl.split_last_dim import check_use_last_dim_branch
 from impl.split_last_dim import split_last_dim
 from impl.split_last_dim import SplitWith5HD
 from impl.split_d import SplitMov
 from impl.split_d import SplitLastDimVnv
+from impl.util import util_common
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.copy_only import copy_only
@@ -49,6 +49,9 @@ def get_op_support_info(input_value,
                         split_dim,
                         num_split,
                         kernel_name="split_v_d"):
+    """
+    get_op_support_info
+    """
     shape_value_len = len(input_value.get("shape"))
     if split_dim < 0:
         split_dim += shape_value_len
@@ -72,7 +75,8 @@ def get_op_support_info(input_value,
 
 
 def ceil(int_x, int_y):
-    """get cel for int_x and int_y
+    """
+    get cel for int_x and int_y
     """
     if int_x == 0:
         return 1
@@ -404,38 +408,38 @@ def op_select_format(input_value,
         c0_len = 16
     output_org_shape_list = []
     output_org_format_list = []
-    is_support_5hd = True
-    support_ori_format = ["NCHW", "NHWC"]
+    is_support_hd = True
+    support_ori_format = \
+        util_common.get_fused_format_str(["N", "D", "H", "W", "C"]) \
+        + util_common.get_fused_format_str(["N", "H", "W", "C"])
     input_ori_shape = input_value.get("ori_shape")
+    input_ori_shape = shape_util.scalar2tensor_one(input_ori_shape)
     input_ori_format = input_value.get("ori_format")
     split_dim = split_dim % len(input_ori_shape)
 
     for _, output_dict in enumerate(output_data):
         ori_format = output_dict.get("ori_format").upper()
         ori_shape = output_dict.get("ori_shape")
+        ori_shape = shape_util.scalar2tensor_one(ori_shape)
         output_org_shape_list.append(ori_shape)
         output_org_format_list.append(ori_format)
 
-        if ori_format not in support_ori_format or len(ori_shape) != 4:
-            is_support_5hd = False
+        if ori_format not in support_ori_format or len(input_ori_shape) != len(input_ori_format) \
+                or len(ori_format) != len(ori_shape):
+            is_support_hd = False
             break
 
-        # when split_d by N,H,W, support NC1HWC0
-        if split_dim < len(ori_format) and ori_format[split_dim] != "C":
+        # when split_d by N, H, W, support NDC1HWC0
+        if ori_format[split_dim] != "C":
             break
 
         # when split_d by C, but output size not C0 align donot support NC1HWC0
-        if ori_format == "NCHW" and ori_shape[1] % c0_len != 0:
-            is_support_5hd = False
-            break
-
-        if ori_format == "NHWC" and ori_shape[3] % c0_len != 0:
-            is_support_5hd = False
+        if ori_shape[split_dim] % c0_len != 0:
+            is_support_hd = False
             break
 
     is_support_nz = False
-    if input_ori_format[0] == "N" and split_dim == 0 and len(
-            input_ori_shape) > 2:
+    if input_ori_format[0] == "N" and split_dim == 0 and len(input_ori_shape) > 2:
         is_support_nz = True
 
     split_with_5hd_not_align = SplitWith5HD(input_value, output_data, split_dim,
@@ -455,9 +459,10 @@ def op_select_format(input_value,
     dtype_base_out = dtype_base.copy()
     format_base_out = ["ND"] * len(dtype_base)
 
-    if is_support_5hd:
+    if is_support_hd:
+        other_format = "NC1HWC0" if len(input_ori_shape) == 4 else "NDC1HWC0"
         dtype_base_out = dtype_base_out + dtype_5hd
-        format_base_out = format_base_out + ["NC1HWC0"] * len(dtype_5hd)
+        format_base_out = format_base_out + [other_format] * len(dtype_5hd)
 
     if is_support_nz:
         dtype_base_out = dtype_base_out + dtype_base
@@ -519,20 +524,21 @@ def split_v_d(input_value,
     None.
     """
     input_format = input_value.get("format")
+    shape = input_value.get("shape")
     ori_format = input_value.get("ori_format")
+    ori_shape = input_value.get("ori_shape")
+    split_dim = util_common.update_axis_for_other_format(ori_shape, split_dim, input_format, ori_format)
     if input_format == "NC1HWC0":
-        split_dim = shape_util.axis_transform_5d(split_dim, ori_format)
         split_with_5hd_not_align = SplitWith5HD(input_value, output_data,
                                                 split_dim, num_split,
                                                 kernel_name)
         if split_with_5hd_not_align.check_5hd_vnchw():
             split_with_5hd_not_align.do_5hd_split_cut_by_batch()
             return
-        if split_dim == 1:
-            size_splits = list(size_splits)
-            size_splits = [size // 16 for size in size_splits]
+    if (split_dim == 1 and input_format == "NC1HWC0") or (split_dim == 2 and input_format == "NDC1HWC0"):
+        size_splits = list(size_splits)
+        size_splits = [size // 16 for size in size_splits]
 
-    shape = input_value.get("shape")
     dtype = input_value.get("dtype")
     dtype_lower = dtype.lower()
     check_list = ("int8", "int16", "int32", "int64", "uint8", "uint16",

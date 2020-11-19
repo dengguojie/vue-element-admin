@@ -16,14 +16,13 @@
 confusion_softmax_grad
 """
 import te.lang.cce as tbe
-import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
-from impl.util import util_frac_z as fz
+from impl.util import util_common
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
+# pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals
 def _broadcast_nz(tensor, shape):
     broadcast_axes = []
     src_shape = shape_util.shape_to_list(tensor.shape)
@@ -39,7 +38,6 @@ def _broadcast_nz(tensor, shape):
     return tensor
 
 
-@tbe_platform.fusion_manager.fusion_manager.register("confusion_softmax_grad")
 def confusion_softmax_grad_compute(grad_dict, grad, x, y,
                                    kernel_name="confusion_softmax_grad"):
     """
@@ -68,6 +66,7 @@ def confusion_softmax_grad_compute(grad_dict, grad, x, y,
     dtype = grad.dtype
     shape_input1 = shape_util.shape_to_list(grad.shape)
     shape_input2 = shape_util.shape_to_list(x.shape)
+    shape = shape_input2
     if list(shape_input1) != list(shape_input2):
         shape_input1, shape_input2, shape = shape_util.broadcast_shapes(shape_input1, shape_input2,
                                                                         param_name_input1="grad",
@@ -79,18 +78,18 @@ def confusion_softmax_grad_compute(grad_dict, grad, x, y,
     if dtype == "float16":
         data_vmul = tbe.cast_to(data_vmul, "float32")
 
-    if fz.is_frac_z(grad_dict):
-        data_sum = tbe.sum(data_vmul, axis=[-1, -4], keepdims=True)
-    else:
-        data_sum = tbe.sum(data_vmul, axis=-1, keepdims=True)
+    ori_shape = grad_dict.get("ori_shape")
+    ori_axis = -1
+    ori_format = grad_dict.get("ori_format").upper()
+    input_format = grad_dict.get("format").upper()
+    axis = util_common.update_axis_for_other_format(ori_shape, ori_axis, input_format, ori_format, reduce_mode=True)
+
+    data_sum = tbe.sum(data_vmul, axis=axis, keepdims=True)
 
     if dtype == "float16":
         data_sum = tbe.cast_to(data_sum, "float16")
 
-    if list(shape_input1) != list(shape_input2):
-        data_sum_tmp = _broadcast_nz(data_sum, shape)
-    else:
-        data_sum_tmp = _broadcast_nz(data_sum, shape_input2)
+    data_sum_tmp = _broadcast_nz(data_sum, shape)
 
     res = tbe.vsub(grad, data_sum_tmp)
 
@@ -120,6 +119,8 @@ def confusion_softmax_grad(grad, x, y, kernel_name="confusion_softmax_grad"):
     -------
     None
     """
+    grad = util_common.update_shape_base_other_format(grad)
+    x = util_common.update_shape_base_other_format(x)
     shape_grad = grad.get("shape")
     shape_x = x.get("shape")
     dtype_grad = grad.get("dtype")
@@ -133,7 +134,7 @@ def confusion_softmax_grad(grad, x, y, kernel_name="confusion_softmax_grad"):
 
     para_check.check_dtype(input_dtype, check_list, param_name="grad")
     if list(shape_grad) != list(shape_x):
-        shape_grad, shape_x, shape_max = \
+        shape_grad, shape_x, _ = \
             shape_util.broadcast_shapes(shape_grad, shape_x, param_name_input1="grad", param_name_input2="x")
 
     data_grad = tvm.placeholder(shape_grad, name="data_grad", dtype=input_dtype)

@@ -31,17 +31,10 @@ from impl.concat_last_dim import ConcatWith5HD
 from impl.concat_tik import ConcatSchedule
 from impl.concat_l1fusion import ConcatL1Fusion
 from impl.util import util_select_op_base
+from impl.util import util_common
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
-
-
-def is_dynamic_shape(input_values):
-    for input_value in input_values:
-        if -1 in input_value.get("shape"):
-            return True
-
-    return False
 
 
 # pylint: disable = unused-argument
@@ -49,12 +42,15 @@ def get_op_support_info(input_values,
                         output_data,
                         axis,
                         kernel_name="concat_v2_d"):
+    """
+    get_op_support_info
+    """
     value_len = len(input_values)
     shape_value_len = len(input_values[0].get("shape"))
     format_value = input_values[0].get("format").upper()
     if axis < 0:
         axis += shape_value_len
-    if format_value == "ND" or format_value == "NC1HWC0":
+    if format_value in ("ND", "NC1HWC0"):
         axis_split_matrix=[]
         for i in range(0, shape_value_len):
             if i != axis:
@@ -83,194 +79,97 @@ def op_select_format(input_values,
     select format dynamically
     """
     data_list = []
-    datatype_5d_xhs = "float16,int32,int8,int16,int64,uint8,uint16,uint32," \
-                      "uint64,bool,float16,int32,int8,int16,int64," \
-                      "uint8,uint16,uint32,uint64,bool"
-    format_5d_xhs = "NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0," \
-                    "NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,ND,ND,ND,ND,ND," \
-                    "ND,ND,ND,ND,ND"
-    datatype_4d_xhs = "float16,int32,int8,int16,int64,uint8,uint16,uint32," \
-                      "uint64,bool"
-    format_4d_xhs = "ND,ND,ND,ND,ND,ND,ND,ND,ND,ND"
-    datatype_5d = "float16,float,int32,int8,int16,int64,uint8,uint16,uint32," \
-                  "uint64,bool,float16,float,int32,int8,int16,int64,uint8," \
-                  "uint16,uint32,uint64,bool"
-    format_5d = "NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0," \
-                "NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,ND,ND,ND,ND,ND,ND,ND,ND," \
-                "ND,ND,ND"
-    datatype_4d = "float16,float,int32,int8,int16,int64,uint8,uint16," \
-                  "uint32,uint64,bool"
-    format_4d = "ND,ND,ND,ND,ND,ND,ND,ND,ND,ND,ND"
     ori_format = input_values[0].get("ori_format").upper()
     for i, input_dict in enumerate(input_values):
         shape_input = input_dict.get("ori_shape")
+        shape_input = shape_util.scalar2tensor_one(shape_input)
         data_list.append(shape_input)
-    divisible = 16
-    nchw_len_axis = 0
-    nhwc_len_axis = 0
-    if len(data_list[0]) == 4:
-        for list_element in data_list:
-            if list_element[3] % divisible == 0:
-                nhwc_len_axis += 1
-            if list_element[1] % divisible == 0:
-                nchw_len_axis += 1
+    concat_dim = axis % len(data_list[0])
 
     # add op_select_format for not align input with 5HD start
+    # like: m.2 + m,2 + m,2 = m,6
     concat_with_5hd_not_align = \
         ConcatWith5HD(input_values, output_data, axis, kernel_name)
     is_support_other_5hd = concat_with_5hd_not_align.check_op_select()
-    if is_support_other_5hd:
-        datatype_4d = datatype_4d + ",float16,int16,uint16"
-        format_4d = format_4d + ",NC1HWC0,NC1HWC0,NC1HWC0"
-        datatype_4d_xhs = datatype_4d_xhs + ",float16,int16,uint16"
-        format_4d_xhs = format_4d_xhs + ",NC1HWC0,NC1HWC0,NC1HWC0"
     # add op_select_format for not align input with 5HD end
 
+    # charge the concat_dim whether align
+    align_len = 16
+    is_concat_dim_align = True
+    for i, input_shape in enumerate(data_list[0:len(data_list) - 1]):
+        if input_shape[concat_dim] % align_len != 0:
+            is_concat_dim_align = False
+            break
+
+    # charge whether support 5HD 6HD
+    hd_support_format = \
+        util_common.get_fused_format_str(["N", "D", "H", "W", "C"]) \
+        + util_common.get_fused_format_str(["N", "H", "W", "C"])
+    is_support_hd = False
+    is_support_fz = False
+    if ori_format in hd_support_format and len(ori_format) == len(data_list[0]):
+        is_concat_with_c = ori_format[concat_dim] == "C"
+        is_concat_with_n = ori_format[concat_dim] == "N"
+        # hd condition:
+        # 1. do not concat the tensor with c dim
+        # 2. concat the tensor with c, and the C dim size align C0 for all input
+        if not is_concat_with_c or (is_concat_with_c and is_concat_dim_align):
+            is_support_hd = True
+        # fz condition:
+        # 1. do not concat the tensor with nc dim
+        # 2. concat the tensor with nc, and the NC dim size align C0 for all input
+        if (not is_concat_with_c and not is_concat_with_n) or is_concat_dim_align:
+            is_support_fz = True
+
+    # charge whether support FRACTAL_NZ
+    is_support_nz = False
+    if len(data_list[0]) >= 2:
+        is_concat_last_one_dim = concat_dim == len(data_list[0]) - 1
+        is_concat_last_second_dim = concat_dim == len(data_list[0]) - 2
+        # condition
+        # 1. do not concat the tensor with the -1 or -2 dim
+        # 2. concat the tensor with the -1 or -2 dim, and the concat dim size align C0 for all input
+        if is_concat_dim_align or not (is_concat_last_one_dim or is_concat_last_second_dim):
+            is_support_nz = True
+
+    base_data_type = \
+        ["float", "float16", "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "bool"]
+    other_data_type = ["float", "float16", "int16", "int32", "uint16", "uint32"]
     cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
     if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
-        if ori_format == "NHWC" and len(data_list[0]) == 4:
-            if _can_process_by_5hd(ori_format, axis, len(data_list), nhwc_len_axis):
-                # NC1HWC0+ND
-                input0 = util_select_op_base.gen_param(
-                    classify="input0",
-                    name="input_values",
-                    datatype=datatype_5d_xhs,
-                    format=format_5d_xhs)
-                output0 = util_select_op_base.gen_param(
-                    classify="output0",
-                    name="output_data",
-                    datatype=datatype_5d_xhs,
-                    format=format_5d_xhs)
-            else:
-                # ND+
-                input0 = util_select_op_base.gen_param(
-                    classify="input0",
-                    name="input_values",
-                    datatype=datatype_4d_xhs,
-                    format=format_4d_xhs)
-                output0 = util_select_op_base.gen_param(
-                    classify="output0",
-                    name="output_data",
-                    datatype=datatype_4d_xhs,
-                    format=format_4d_xhs)
-        elif ori_format == "NCHW" and len(data_list[0]) == 4:
-            if _can_process_by_5hd(ori_format, axis, len(data_list), nchw_len_axis):
-                # NC1HWC0+ND
-                input0 = util_select_op_base.gen_param(
-                    classify="input0",
-                    name="input_values",
-                    datatype=datatype_5d_xhs,
-                    format=format_5d_xhs)
-                output0 = util_select_op_base.gen_param(
-                    classify="output0",
-                    name="output_data",
-                    datatype=datatype_5d_xhs,
-                    format=format_5d_xhs)
-            else:
-                # ND+
-                input0 = util_select_op_base.gen_param(
-                    classify="input0",
-                    name="input_values",
-                    datatype=datatype_4d_xhs,
-                    format=format_4d_xhs)
-                output0 = util_select_op_base.gen_param(
-                    classify="output0",
-                    name="output_data",
-                    datatype=datatype_4d_xhs,
-                    format=format_4d_xhs)
-        else:
-            # ND
-            input0 = util_select_op_base.gen_param(
-                classify="input0",
-                name="input_values",
-                datatype=datatype_4d_xhs,
-                format=format_4d_xhs)
-            output0 = util_select_op_base.gen_param(
-                classify="output0",
-                name="output_data",
-                datatype=datatype_4d_xhs,
-                format=format_4d_xhs)
-    else:
-        if ori_format == "NHWC" and len(data_list[0]) == 4:
-            if _can_process_by_5hd(ori_format, axis, len(data_list), nhwc_len_axis):
-                # NC1HWC0+ND
-                input0 = util_select_op_base.gen_param(
-                    classify="input0",
-                    name="input_values",
-                    datatype=datatype_5d,
-                    format=format_5d)
-                output0 = util_select_op_base.gen_param(
-                    classify="output0",
-                    name="output_data",
-                    datatype=datatype_5d,
-                    format=format_5d)
-            else:
-                # ND+
-                input0 = util_select_op_base.gen_param(
-                    classify="input0",
-                    name="input_values",
-                    datatype=datatype_4d,
-                    format=format_4d)
-                output0 = util_select_op_base.gen_param(
-                    classify="output0",
-                    name="output_data",
-                    datatype=datatype_4d,
-                    format=format_4d)
-        elif ori_format == "NCHW" and len(data_list[0]) == 4:
-            if _can_process_by_5hd(ori_format, axis, len(data_list), nchw_len_axis):
-                # NC1HWC0+ND
-                input0 = util_select_op_base.gen_param(
-                    classify="input0",
-                    name="input_values",
-                    datatype=datatype_5d,
-                    format=format_5d)
-                output0 = util_select_op_base.gen_param(
-                    classify="output0",
-                    name="output_data",
-                    datatype=datatype_5d,
-                    format=format_5d)
-            else:
-                # ND+
-                input0 = util_select_op_base.gen_param(
-                    classify="input0",
-                    name="input_values",
-                    datatype=datatype_4d,
-                    format=format_4d)
-                output0 = util_select_op_base.gen_param(
-                    classify="output0",
-                    name="output_data",
-                    datatype=datatype_4d,
-                    format=format_4d)
-        else:
-            # ND
-            input0 = util_select_op_base.gen_param(
-                classify="input0",
-                name="input_values",
-                datatype=datatype_4d,
-                format=format_4d)
-            output0 = util_select_op_base.gen_param(
-                classify="output0",
-                name="output_data",
-                datatype=datatype_4d,
-                format=format_4d)
+        base_data_type.remove("float")
+        other_data_type.remove("float")
 
-    if is_dynamic_shape(input_values):
-        input0 = util_select_op_base.gen_param(classify="input0", name="input_values",
-                                               datatype=datatype_4d, format=format_4d,
-                                               unknownshape_format=format_4d)
-        output0 = util_select_op_base.gen_param(classify="output0", name="output_data",
-                                                datatype=datatype_4d, format=format_4d,
-                                                unknownshape_format=format_4d)
+    dtype_base_out = base_data_type.copy()
+    format_base_out = ["ND"] * len(dtype_base_out)
+    if is_support_hd and not util_common.is_dynamic_input(input_values):
+        other_format = "NC1HWC0" if len(data_list[0]) == 4 else "NDC1HWC0"
+        dtype_base_out = dtype_base_out + other_data_type
+        format_base_out = format_base_out + [other_format] * len(other_data_type)
+    if is_support_fz and not util_common.is_dynamic_input(input_values):
+        other_format = "FRACTAL_Z" if len(data_list[0]) == 4 else "FRACTAL_Z_3D"
+        dtype_base_out = dtype_base_out + other_data_type
+        format_base_out = format_base_out + [other_format] * len(other_data_type)
+    if is_support_nz and not util_common.is_dynamic_input(input_values):
+        other_format = "FRACTAL_NZ"
+        dtype_base_out = dtype_base_out + other_data_type
+        format_base_out = format_base_out + [other_format] * len(other_data_type)
+    if is_support_other_5hd and not util_common.is_dynamic_input(input_values):
+        other_data_type = ["float16", "int16", "uint16"]
+        other_format = "NC1HWC0"
+        dtype_base_out = dtype_base_out + other_data_type
+        format_base_out = format_base_out + [other_format] * len(other_data_type)
 
+    dtype_str = ",".join(dtype_base_out)
+    format_str = ",".join(format_base_out)
+    input0 = util_select_op_base.gen_param(
+        classify="input0", name="input_values", datatype=dtype_str, format=format_str, unknownshape_format=format_str)
+    output0 = util_select_op_base.gen_param(
+        classify="output0", name="output_data", datatype=dtype_str, format=format_str, unknownshape_format=format_str)
     param_list = [input0, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+
     return param_dynamic_in_json
-
-
-def _can_process_by_5hd(origin_format, axis, data_len, len_axis):
-    if len_axis == data_len and origin_format[axis].upper() == 'C':
-        return True
-    return origin_format[axis].upper() in ('H', 'W')
 
 
 def concat_v2_d_compute(input_values,
@@ -317,14 +216,12 @@ def concat_v2_d(input_values, output_data, axis, kernel_name="concat_v2_d"):
     """
     new_input_values = []
     for _, tensor_dict in enumerate(input_values):
-        zero_num = 0
-        input_shape = tensor_dict.get("ori_shape")
-        for i, _ in enumerate(input_shape):
-            if input_shape[i] == 0:
-                zero_num += 1
-        if zero_num == 0:
+        shape_input = tensor_dict.get("ori_shape")
+        if 0 not in shape_input:
+            tensor_dict = util_common.update_shape_base_other_format(tensor_dict)
             new_input_values.append(tensor_dict)
     input_values = new_input_values
+
     shape_value = []
     for _, tensor_dict in enumerate(input_values):
         shape_input = tensor_dict.get("ori_shape")
@@ -338,7 +235,7 @@ def concat_v2_d(input_values, output_data, axis, kernel_name="concat_v2_d"):
         for j, _ in enumerate(first_input_shape):
             if element_shape[j] != first_input_shape[j] and j != axis_new:
                 raise RuntimeError("Axes must equal except merge axis")
-    
+
     # when format is 5HD check whether concat by C and redefine the axis
     input_format = input_values[0].get("format")
     ori_format = input_values[0].get("ori_format")
@@ -349,8 +246,11 @@ def concat_v2_d(input_values, output_data, axis, kernel_name="concat_v2_d"):
         if_l1_support = _concat_l1fusion.check_support_l1_fusion()
         if if_l1_support:
             _concat_l1fusion.do_concat_l1fusion()
+
+    # update axis base on input format
+    axis = util_common.update_axis_for_other_format(shape_value[0], axis, input_format, ori_format)
+
     if input_format == "NC1HWC0":
-        axis = shape_util.axis_transform_5d(axis, ori_format)
         # check whether use 5HD when input is not align
         concat_with_5hd_not_align = \
             ConcatWith5HD(input_values, output_data, axis, kernel_name)
@@ -407,4 +307,3 @@ def concat_v2_d(input_values, output_data, axis, kernel_name="concat_v2_d"):
     config = {"name": kernel_name, "tensor_list": data}
 
     tbe.cce_build_code(sch, config)
-

@@ -49,6 +49,42 @@ ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
 # ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 
+case_5hd = {"params": [{"shape": (10, 1, 10, 10, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (10, 10, 10, 10),"ori_format": "NCHW"}, #x
+                    {"shape": (10, 1, 10, 10, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (10, 10, 10, 10),"ori_format": "NCHW"},
+                    "NCHW"
+                    ],
+         "case_name": "BiasAddGrad_5hd",
+         "expect": "success",
+         "support_expect": True}
+case_6hd = {"params": [{"shape": (10, 10, 1, 10, 10, 16), "dtype": "float32", "format": "NDC1HWC0", "ori_shape": (10, 10, 10, 10, 10),"ori_format": "NCDHW"}, #x
+                    {"shape": (10, 10, 1, 10, 10, 16), "dtype": "float32", "format": "NDC1HWC0", "ori_shape": (10, 10, 10, 10, 10),"ori_format": "NCDHW"},
+                    "NCHW"
+                    ],
+         "case_name": "BiasAddGrad_6hd",
+         "expect": "success",
+         "support_expect": True}
+
+case_fz_3d = {"params": [{"shape": (10, 1, 10, 10, 1, 16, 16), "dtype": "float32", "format": "FRACTAL_Z_3D", "ori_shape": (10, 10, 10, 10, 10),"ori_format": "NCDHW"}, #x
+                    {"shape": (10, 1, 10, 10, 1, 16, 16), "dtype": "float32", "format": "FRACTAL_Z_3D", "ori_shape": (10, 10, 10, 10, 10),"ori_format": "NCDHW"},
+                    "NCHW"
+                    ],
+         "case_name": "BiasAddGrad_fz_3d",
+         "expect": "success",
+         "support_expect": True}
+
+case_fz = {"params": [{"shape": (1, 10, 10, 1, 16, 16), "dtype": "float32", "format": "FRACTAL_Z", "ori_shape": (10, 10, 10, 10, 10),"ori_format": "NCHW"}, #x
+                    {"shape": (1, 10, 10, 1, 16, 16), "dtype": "float32", "format": "FRACTAL_Z", "ori_shape": (10, 10, 10, 10, 10),"ori_format": "NCHW"},
+                    "NCHW"
+                    ],
+         "case_name": "BiasAddGrad_fz",
+         "expect": "success",
+         "support_expect": True}
+ut_case.add_case(["Ascend910"], case_5hd)
+ut_case.add_case(["Ascend910"], case_6hd)
+ut_case.add_case(["Ascend910"], case_fz_3d)
+ut_case.add_case(["Ascend910"], case_fz)
+
+
 def calc_expect_func(input, output, data_format):
     inputArr = input['value'].astype('float32')
     input_shape = input['shape']

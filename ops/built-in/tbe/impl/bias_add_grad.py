@@ -20,9 +20,10 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
+from impl.util import util_common
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-branches
 def bias_add_grad_compute_nz(x, y, data_format, kernel_name="bias_add_grad"):
     """
     Reduce a tensor on last dimension in axis based on sum.
@@ -68,6 +69,50 @@ def bias_add_grad_compute_nz(x, y, data_format, kernel_name="bias_add_grad"):
         for i in range(-1 * len(shape), 0):
             if i not in (-1, -4):
                 shape_list += [i + len(shape)]
+
+    result = tbe.sum(x, shape_list)
+    result = tbe.cast_to(result, y_dtype)
+
+    return result
+
+
+def bias_add_grad_compute_special_format(x, y, data_format, kernel_name="bias_add_grad"):
+    """
+    Reduce a tensor based on sum for format is [FRACTAL_Z, FRACTAL_Z_3D, 5HD, 6HD]
+
+    Parameters:
+    ----------
+    x: TVM tensor
+        the placeholder of y input data
+    y: dict
+        shape and dtype of output, should be same shape and type as input
+    data_format: str
+        'NCHW' or 'NHWC'
+    kernel_name : str
+        cce kernel name, default value is bias_add_grad
+
+    Returns
+    -------
+    TVM tensor by bias add grad
+    """
+    dtype = x.dtype
+    y_dtype = y.get("dtype").lower()
+    shape_list = []
+    if dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.sum", "float32"):
+        x = tbe.cast_to(x, "float32")
+
+    if data_format == "FRACTAL_Z":
+        # mean format is FRACTAL_Z, shape is C1HWNiNoC0
+        shape_list = [1, 2, 3, 4]
+    elif data_format == "FRACTAL_Z_3D":
+        # mean format is FRACTAL_Z_3D, shape is DC1HWNiNoC0
+        shape_list = [0, 2, 3, 4, 5]
+    elif data_format == "NC1HWC0":
+        # mean format is NC1HWC0, shape is NC1HWC0
+        shape_list = [0, 2, 3]
+    elif data_format == "NDC1HWC0":
+        # mean format is NDC1HWC0, shape is NDC1HWC0
+        shape_list = [0, 1, 3, 4]
 
     result = tbe.sum(x, shape_list)
     result = tbe.cast_to(result, y_dtype)
@@ -138,22 +183,26 @@ def bias_add_grad(x, y, data_format, kernel_name="bias_add_grad"):
     -------
     None
     """
+    x = util_common.update_shape_base_other_format(x)
+    y = util_common.update_shape_base_other_format(y)
     shape = x.get("shape")
     para_check.check_shape(shape, param_name="x")
     dtype = x.get("dtype").lower()
     data_format = data_format.upper()
     check_list = ("float16", "float32")
     para_check.check_dtype(dtype, check_list, param_name="x")
-    data_format_tuple = ("NCHW", "NHWC")
+    data_format_tuple = ("NCHW", "NHWC", "NDHWC", "NCDHW")
     input_data_format = x.get("format").upper()
 
     if data_format not in data_format_tuple:
-        raise RuntimeError("The data_format only support NCHW, NHWC")
+        raise RuntimeError("The data_format only support NCHW, NHWC, NDHWC, NCDHW")
 
     data = tvm.placeholder(shape, dtype, name="data")
 
     if input_data_format == "FRACTAL_NZ":
         result = bias_add_grad_compute_nz(data, y, data_format, kernel_name)
+    elif input_data_format in ("FRACTAL_Z", "FRACTAL_Z_3D", "NC1HWC0", "NDC1HWC0"):
+        result = bias_add_grad_compute_special_format(data, y, input_data_format, kernel_name)
     else:
         result = bias_add_grad_compute(data, y, data_format, kernel_name)
 

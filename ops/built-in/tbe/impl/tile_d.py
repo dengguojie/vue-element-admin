@@ -17,11 +17,12 @@ tile_d
 """
 import te.lang.cce as tbe
 import te.platform as tbe_platform
+from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
-from te import tvm
-from impl.util import util_select_op_base
 from te.utils.error_manager import error_manager_vector
+from impl.util import util_select_op_base
+from impl.util import util_common
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
@@ -29,6 +30,9 @@ from impl.util.util_select_op_base import get_op_cal_info
 
 # pylint: disable = unused-argument
 def get_op_support_info(input_x, output_x, multiples, kernel_name="tile_d"):
+    """
+    get_op_support_info
+    """
     shape_x = input_x.get("shape")
     shape_x = list(shape_x)
     multiples = list(multiples)
@@ -71,7 +75,7 @@ def get_op_support_info(input_x, output_x, multiples, kernel_name="tile_d"):
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals
-# pylint: disable=locally-disabled,too-many-branches
+# pylint: disable=locally-disabled,too-many-branches,too-many-statements
 def op_select_format(input_x, output_x, multiples, kernel_name="tile_d"):
     """TileD: to do boradcast with multiples
 
@@ -90,49 +94,119 @@ def op_select_format(input_x, output_x, multiples, kernel_name="tile_d"):
     -------
     param_dynamic_in_json
     """
-    input_shape = list(input_x.get("shape"))
-    input_format = input_x.get("format")
-    inputdtype = input_x.get("dtype")
+    input_shape = list(input_x.get("ori_shape"))
+    input_shape = shape_util.scalar2tensor_one(input_shape)
+    input_format = input_x.get("ori_format")
+
+    # check whether support 4D to 5HD
+    align_len = 16
+    is_support_4d_to_5hd = False
+    is_support_hd = False
+    is_support_fz = False
+
+    hd_support_format = \
+        util_common.get_fused_format_str(["N", "D", "H", "W", "C"]) \
+        + util_common.get_fused_format_str(["N", "H", "W", "C"])
+
+    if input_format in hd_support_format and len(input_shape) == len(input_format) \
+            and len(input_shape) == len(multiples):
+        is_muti_c_align = multiples[input_format.index("C")] % align_len == 0
+        is_shape_c_align = input_shape[input_format.index("C")] % align_len == 0
+        is_shape_n_align = input_shape[input_format.index("C")] % align_len == 0
+        # special 4d to 5hd
+        if input_format in ("NCHW", "NHWC") and input_shape[1] == 1 \
+                and input_shape[2] == 1 and input_shape[3] == 1 and is_muti_c_align:
+            is_support_4d_to_5hd = True
+
+        if is_shape_c_align or multiples[input_format.index("C")] == 1:
+            is_support_hd = True
+
+        if is_support_hd and (is_shape_n_align or multiples[input_format.index("N")] == 1):
+            is_support_fz = True
+
+    is_support_nz = False
+    if len(input_shape) >= 2:
+        # whether the -1 dim size align
+        is_neg_one_dim_align = input_shape[-1] % align_len == 0
+        # whether the -2 dim size align
+        is_neg_two_dim_align = input_shape[-2] % align_len == 0
+
+        if (is_neg_one_dim_align or multiples[-1] == 1) and (is_neg_two_dim_align or multiples[-2] == 1):
+            is_support_nz = True
+
     # ND dtype
     dtype_base = ["float16", "float", "int32"]
     dtype_list = ["float16", "float", "int32", "bool"]
-    # default support ND for dtype_base
-    dtype_base_out = dtype_base.copy()
-    format_base_out = ["ND"] * len(dtype_base)
-    format_base_in = ["ND"] * len(dtype_base)
-
-    # check whether support 4D to 5HD
-    is_support_5hd = True
-    if inputdtype == "bool":
-        is_support_5hd = False
-        dtype_base_out = dtype_list.copy()
-        format_base_out = ["ND"] * len(dtype_list)
-        format_base_in = ["ND"] * len(dtype_list)
-    elif input_format not in ("NCHW", "NHWC") or len(input_shape) != 4 or len(multiples) != 4:
-        is_support_5hd = False
-    elif input_shape[1] != 1 or input_shape[2] != 1 or input_shape[3] != 1:
-        is_support_5hd = False
-    elif input_format in ("NCHW",) and multiples[1] % 16 != 0:
-        is_support_5hd = False
-    elif input_format in ("NHWC",) and multiples[3] % 16 != 0:
-        is_support_5hd = False
-    if is_support_5hd:
+    # default supprt ND for dtype_base
+    dtype_base_out = dtype_list.copy()
+    format_base_out = ["ND"] * len(dtype_list)
+    format_base_in = ["ND"] * len(dtype_list)
+    if is_support_4d_to_5hd:
         dtype_base_out = dtype_base_out + dtype_base + dtype_base
-        format_base_in = format_base_in + ["NCHW"] * len(dtype_base) + ["NHWC"] * len(dtype_base)
-        format_base_out = format_base_out + ["NC1HWC0"] * len(dtype_base) + ["NC1HWC0"] * len(dtype_base)
+        format_base_in = format_base_in + ["NCHW"]*len(dtype_base) + ["NHWC"]*len(dtype_base)
+        format_base_out = format_base_out + ["NC1HWC0"]*len(dtype_base) + ["NC1HWC0"]*len(dtype_base)
+    if is_support_hd:
+        other_format = "NC1HWC0" if len(input_shape) == 4 else "NDC1HWC0"
+        dtype_base_out = dtype_base_out + dtype_base
+        format_base_in = format_base_in + [other_format] * len(dtype_base)
+        format_base_out = format_base_out + [other_format] * len(dtype_base)
+    if is_support_fz:
+        other_format = "FRACTAL_Z" if len(input_shape) == 4 else "FRACTAL_Z_3D"
+        dtype_base_out = dtype_base_out + dtype_base
+        format_base_in = format_base_in + [other_format] * len(dtype_base)
+        format_base_out = format_base_out + [other_format] * len(dtype_base)
+    if is_support_nz:
+        other_format = "FRACTAL_NZ"
+        dtype_base_out = dtype_base_out + dtype_base
+        format_base_in = format_base_in + [other_format] * len(dtype_base)
+        format_base_out = format_base_out + [other_format] * len(dtype_base)
 
-    dtype_str = ','.join(dtype_base_out)
-    format_input_str = ','.join(format_base_in)
-    format_output_str = ','.join(format_base_out)
+    dtype_str = ",".join(dtype_base_out)
+    format_input_str = ",".join(format_base_in)
+    format_output_str = ",".join(format_base_out)
 
     input0 = util_select_op_base.gen_param(
-        classify="input0", name="x", datatype=dtype_str, format=format_input_str)
+        classify="input0", name="x", datatype=dtype_str,
+        format=format_input_str, unknownshape_format=format_input_str)
     output0 = util_select_op_base.gen_param(
-        classify="output0", name="y", datatype=dtype_str, format=format_output_str)
+        classify="output0", name="y", datatype=dtype_str,
+        format=format_output_str, unknownshape_format=format_output_str)
     param_list = [input0, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json
+
+
+def _update_mutiples_with_format(input_foramt, input_ori_format, mutiples):
+    """
+    _update_mutiples_with_format
+    """
+    if input_foramt in ("FRACTAL_Z", "FRACTAL_Z_3D", "NDC1HWC0", "NC1HWC0"):
+        # when NDC1HWC0 or NC1HWC0 will update C0 C1 for mutiples
+        # ex: mutiples [NDCHW] ->  [NDCHW1]
+        # when FRACTAL_Z or FRACTAL_Z_3D will update C0 C1 N0 N1for mutiples
+        # ex: mutiples [NDCHW] ->  [DCHWN11]
+        _multiples_dict = dict(zip(list(input_ori_format), mutiples))
+        _multiples_dict["one"] = 1
+        format_idx = []
+
+        if input_foramt == "NDC1HWC0":
+            format_idx = ("N", "D", "C", "H", "W", "one")
+        elif input_foramt == "NC1HWC0":
+            format_idx = ("N", "C", "H", "W", "one")
+        elif input_foramt == "FRACTAL_Z":
+            format_idx = ("C", "H", "W", "N", "one", "one")
+        elif input_foramt == "NDC1HWC0":
+            format_idx = ("D", "C", "H", "W", "N", "one", "one")
+
+        mutiples = [_multiples_dict[key] for key in format_idx]
+
+    if input_foramt in ("FRACTAL_NZ",):
+        # when FRACTAL_NZ will update -1 -2 for mutiples
+        # ex: mutiples [ABCD] ->  [ABDC11]
+        mutiples = mutiples[:-2] + [mutiples[-1], mutiples[-2], 1, 1]
+
+    return mutiples
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("tile_d")
@@ -203,6 +277,7 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
     -------
     None
     """
+    input_x = util_common.update_shape_base_other_format(input_x)
     shape = input_x.get("shape")
     dtype = input_x.get("dtype").lower()
     para_check.check_shape(shape, param_name="input_x")
@@ -222,6 +297,9 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
         else:
             # change multiples from (1, H, W, C) to (1, C1, H, W, C0)
             multiples = [multiples[0], multiples[3] // 16, multiples[1], multiples[2], 16]
+    elif input_format in ("FRACTAL_Z", "FRACTAL_Z_3D", "NDC1HWC0", "NC1HWC0", "FRACTAL_NZ"):
+        input_ori_format = input_x.get("ori_format")
+        multiples = _update_mutiples_with_format(input_format, input_ori_format, multiples)
 
     if len(shape) > len(multiples):
         error_detail = "The lenth of multiples must be greater or equal to length of input shape"
