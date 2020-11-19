@@ -124,6 +124,7 @@ set(local_kernels_src_files
     kernels/normalized/top_k_kernels.cc
     kernels/normalized/edit_distance_kernels.cc
     kernels/normalized/gather_kernels.cc
+    kernels/normalized/get_dynamic_dims.cc
     kernels/normalized/identity_kernels.cc
     kernels/normalized/unique_with_pad_kernels.cc
     kernels/normalized/ceil_kernels.cc
@@ -162,12 +163,12 @@ add_library(cpu_kernels SHARED
 
 add_library(cpu_kernels_host SHARED
     ${local_kernels_src_files}
-	${local_host_kernels_src_files}
+    ${local_host_kernels_src_files}
 )
 
 add_library(cpu_kernels_static STATIC
     ${local_kernels_src_files}
-	${local_host_kernels_src_files}
+    ${local_host_kernels_src_files}
 )
 
 ###cpu_kernels
@@ -238,7 +239,7 @@ target_compile_options(cpu_kernels_static PRIVATE
     -O2
     -std=c++11
     -ftrapv
-	-fstack-protector-all
+    -fstack-protector-all
 )
 
 target_compile_definitions(cpu_kernels_host PRIVATE
@@ -257,7 +258,7 @@ target_compile_options(cpu_kernels_host PRIVATE
     -ftrapv
     -fvisibility-inlines-hidden
     -fvisibility=hidden
-	-fstack-protector-all
+    -fstack-protector-all
 )
 
 set(INSTALL_LIBRARY_DIR lib)
@@ -295,5 +296,3 @@ set_target_properties(cpu_kernels_host
     OUTPUT_NAME cpu_kernels
 )
 endif()
-
-

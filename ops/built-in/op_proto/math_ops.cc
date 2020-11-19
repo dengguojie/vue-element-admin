@@ -361,6 +361,12 @@ IMPLEMT_INFERFUNC(GetDynamicDims, GetDynamicDimsInfer) {
   }
   int64_t unknow_dims_num = std::count(shape_info.begin(),
                                        shape_info.end(), -1);
+  if (unknow_dims_num == 0) {
+    OP_LOGE(op.GetName().c_str(),
+            "no need to perform GetDynamicDims in a known shape");
+    return GRAPH_FAILED;
+  }
+
   Shape vector_shape;
   if (Vector(unknow_dims_num, vector_shape) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "create output shape failed");
