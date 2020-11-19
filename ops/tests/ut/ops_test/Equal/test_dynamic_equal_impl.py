@@ -20,7 +20,7 @@ def gen_dynamic_equal_case(shape_x, shape_y, range_x, range_y, dtype_val,
 
 
 ut_case.add_case("all",
-                 gen_dynamic_equal_case((16,), (1,), ((16, 16),), ((1, 1),),
+                 gen_dynamic_equal_case((-1,), (1,), ((2, 16),), ((1, 1),),
                                         "float16", "dynamic_equal_fp16_ND",
                                         "success"))
 

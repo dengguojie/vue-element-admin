@@ -24,10 +24,10 @@ def gen_dynamic_div_case(shape_x, shape_y, range_x, range_y,
 
 # (3,7,1,399), (1,9,1)
 ut_case.add_case("all",
-                 gen_dynamic_div_case((7,), (7,),
-                                      [(7,7),],
-                                      [(7,7),],
-                                      "float32", "ND", (7,), (7,),
+                 gen_dynamic_div_case((-1,), (-1,),
+                                      [(2,7),],
+                                      [(2,7),],
+                                      "float32", "ND", (-1,), (-1,),
                                       "dynamic_div_fp32_ND", "success"))
 
 if __name__ == '__main__':

@@ -19,7 +19,7 @@ def gen_dynamic_floor_div_case(shape_x, shape_y, range_x, range_y, dtype_val,
         "support_expect": True}
 
 
-ut_case.add_case("all", gen_dynamic_floor_div_case((16,), (1,), ((16, 16),),
+ut_case.add_case("all", gen_dynamic_floor_div_case((-1,), (1,), ((2, 16),),
                                                    ((1, 1),), "float16",
                                                    "dynamic_floor_div_fp16_ND",
                                                    "success"))
