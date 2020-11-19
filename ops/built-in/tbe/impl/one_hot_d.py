@@ -979,7 +979,7 @@ def _get_target_core_num_mini(indices_input):
         return target_core_num, row_num_core_a, row_num_core_b
 
     row_num_core_a = input_shape_0 // mini_core_num
-    row_num_core_b = input_shape_0 - row_num_core_a
+    row_num_core_b = input_shape_0 - row_num_core_a * (mini_core_num - 1)
 
     return target_core_num, row_num_core_a, row_num_core_b
 
@@ -1710,7 +1710,7 @@ def _mini_multi_core_ir(tvm_ib, indices_input, output, args_dict):
         op_args['row_num_current_core'] = row_num_core_a
         _one_core_in_multi_ir(tvm_ib, indices_input, output, op_args)
     else:
-        with tvm_ib.if_scope(block_index.var == 0):
+        with tvm_ib.if_scope(block_index.var < (target_core_num - 1)):
             op_args['row_num_current_core'] = row_num_core_a
             _one_core_in_multi_ir(tvm_ib, indices_input, output, op_args)
         with tvm_ib.else_scope():
@@ -1762,8 +1762,7 @@ def one_hot_ir(ins, output, depth, axis):
     off_value_input = ins[2]
 
     tvm_ib = tvm.ir_builder.create()
-    device_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-    cloud_core_num = 32
+
     # reg[0]:on_value   reg[1]:off_value
     reg = tvm_ib.allocate(output.dtype, (2, ),
                           name="reg_buf",
@@ -1811,7 +1810,8 @@ def one_hot_ir(ins, output, depth, axis):
         if _check_is_prime_case(indices_input, output.dtype, depth):
             _multi_core_ir_prime_case(tvm_ib, indices_input, output, op_args)
         else:
-            if device_core_num in [7, 8 ,10, 30, 32]:
+            cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+            if cce_product in ("Ascend910",):
                 _cloud_multi_core_ir(tvm_ib, indices_input, output, op_args, axis)
             else:
                 _mini_multi_core_ir(tvm_ib, indices_input, output, op_args)
