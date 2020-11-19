@@ -38,6 +38,7 @@ struct OpTestAttr {
     std::vector<float> listFloatAttr;
     std::vector<const char*> listStringAttr;
     std::vector<int64_t*> listIntPtrAttr;
+    std::vector<int32_t> listIntNumValues;
 };
 
 /**

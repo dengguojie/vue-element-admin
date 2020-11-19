@@ -149,6 +149,17 @@ def _create_exact_testcase_content(testcase_struct):
                              + " = " \
                              + utils.create_attr_value_str(attr_dic['value']) \
                              + ';\n'
+            # deal with the list_list_int attr
+            if attr_dic['type'] == "list_list_int":
+                if isinstance(attr_dic['value'], list):
+                    if isinstance(attr_dic['value'][0], list):
+                        number_list = list()
+                        for num_list in attr_dic['value']:
+                            number_list.append(len(num_list))
+                        num_str = str(number_list).replace('[', '{').replace(']', '}')
+                        attr_code_str += "    attr" + str(attr_index) + \
+                                ".listIntNumValues" +\
+                                " = " + num_str + ";\n"
             attr_code_str += "    opTestDesc.opAttrVec.push_back(attr" + \
                              str(attr_index) + ");\n"
             all_attr_code_snippet += attr_code_str

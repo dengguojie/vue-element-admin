@@ -58,7 +58,6 @@ bool OpTestDesc::AddTensorAttr(const OpTestAttr &attr)
     if (opAttr == nullptr) {
         return false;
     }
-    int nums = 0;
     switch (attr.type) {
         case OP_BOOL:
             aclopSetAttrBool(opAttr, attr.name.c_str(), attr.boolAttr);
@@ -89,7 +88,7 @@ bool OpTestDesc::AddTensorAttr(const OpTestAttr &attr)
                 const_cast<const char **>(attr.listStringAttr.data()));
             break;
         case OP_LIST_INT_PTR:
-            aclopSetAttrListListInt(opAttr, attr.name.c_str(), attr.listIntPtrAttr.size(), &nums,
+            aclopSetAttrListListInt(opAttr, attr.name.c_str(), attr.listIntPtrAttr.size(), const_cast<const int *>(attr.listIntNumValues.data()),
                 attr.listIntPtrAttr.data());
             break;
         default:
