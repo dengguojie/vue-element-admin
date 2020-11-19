@@ -1898,7 +1898,7 @@ class CceOp:
         if isinstance(self._reduce_index, (list)):
             self._reduce_index = self._reduce_index[0]
         reduce_op = [self._op[self._reduce_index]]
-        if reduce_op[0]['op'] != "reduce_sum":
+        if reduce_op[0]['op'].find("reduce") < 0:
             return False
         if not self._need_enable_muticore:
             return False
