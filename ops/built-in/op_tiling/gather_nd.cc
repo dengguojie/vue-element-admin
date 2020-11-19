@@ -245,8 +245,8 @@ bool GatherNdTiling(const std::string& opType, const TeOpParas& opParas, const n
   std::vector<int64_t> yShape = opParas.outputs[0].tensor[0].shape;
   int32_t paramsDims = paramsShape.size();
   int32_t indicesDims = indicesShape.size();
-  if (indicesDims <= 1) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "indices", "the dim of indices is less than 1 or equal to 1");
+  if (indicesDims < 1) {
+    ge::OpsOneInputShapeErrReport(opType.c_str(), "indices", "the dim of indices is less than 1.");
     OP_LOGE(opType.c_str(), "op GatherNdTiling: indices dim is invalid.");
     return false;
   }
