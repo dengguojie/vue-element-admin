@@ -62,6 +62,8 @@ BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
                   "uint8": 1, "int8": 1, "uint4": 0.5, "int4": 0.5}
 DATA_SIZE_MAX = 9223372036854775807
 PADDING_VAILD = [0, 0, 0, 0, 0, 0]
+# align with 16 for chips
+c0_size = tbe_platform.C0_SIZE
 
 
 @para_check.check_op_params(
@@ -202,6 +204,7 @@ def conv3d_backprop_input_d(filters, # pylint: disable=R0913,R0914
                               shape_res,
                               shape_strides,
                               pads,
+                              groups,
                               shape_dilations,
                               filters_dtype,
                               out_backprop_dtype,
@@ -210,11 +213,11 @@ def conv3d_backprop_input_d(filters, # pylint: disable=R0913,R0914
 
 
 @para_check.check_input_type((list, tuple), (list, tuple), (list, tuple),
-                             (list, tuple), (str, list, tuple), (list, tuple),
-                             str, str, str, str)
+                             (list, tuple), (str, list, tuple), int,
+                             (list, tuple), str, str, str, str)
 def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
                                 shape_out_backprop,
-                                input_sizes, strides, pads, dilations,
+                                input_sizes, strides, pads, groups, dilations,
                                 filter_dtype, out_backprop_dtype,
                                 res_dtype, kernel_name):
     """
@@ -234,6 +237,8 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     strides : A list/tuple of ints. The stride of the sliding window
 
     pads : A list/tuple of ints or str
+
+    groups : Int of blocked connections from input channels to output channels
 
     dilations : An optional list/tuple of ints
 
@@ -314,7 +319,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
         fmap_w_padding = fmap_w + pad_left + pad_right
         fmap_d_padding = fmap_deep + pad_head + pad_tail
 
-        if fmap_channel != filter_channel:
+        if fmap_channel != filter_channel * groups:
             dict_args = {
                 'errCode': 'E60108',
                 'reason': "Shape error: Fmap's C must be equal to Filter'C."
@@ -384,6 +389,26 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
             }
             raise RuntimeError(dict_args,
                                error_manager_util.get_error_message(dict_args))
+
+    def _check_attr_groups():
+        if groups < 1 or groups > fmap_channel or groups > dedy_channel:
+            dict_args = {
+                'errCode': 'E50060',
+                'description': "Group must not be larger than feature map's"
+                               " and filter's channel"
+            }
+            raise RuntimeError(dict_args,
+                               error_manager_util.get_error_message(dict_args))
+
+        if fmap_channel % groups != 0 or dedy_channel % groups != 0:
+            dict_args = {
+                'errCode': 'E50060',
+                'description': "Feature map's or filter's channel"
+                               " must be divisible by group"
+            }
+            raise RuntimeError(dict_args,
+                               error_manager_util.get_error_message(dict_args))
+
     # Base check, Mainly required by interface appearance
     # ===========================================================
     # para_check check
@@ -428,7 +453,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
 
-    # detype chek
+    # dtype check
     filter_dtype = filter_dtype.lower()
     out_backprop_dtype = out_backprop_dtype.lower()
     res_dtype = res_dtype.lower()
@@ -445,6 +470,9 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     dedy_batch, dedy_deep, dedy_h, dedy_w, dedy_channel = shape_out_backprop
     filter_depth, filter_h, filter_w, filter_channel, filter_batch = shape_filter
     _, stride_d, stride_h, stride_w, _ = strides
+    _check_attr_groups()
+    group_dict = util_common.calculate_group(fmap_channel,
+                                             dedy_channel, groups, c0_size, c0_size)
 
     filter_h_dilation = (filter_h - 1) * dilation_h + 1
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
@@ -521,7 +549,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
 
     # check shape size, 64 bits limitation
     # ===========================================================
-    c0_size = tbe_platform.C0_SIZE
+
     fmap_size = fmap_batch * util_common.align(fmap_channel, c0_size) * fmap_deep * fmap_h * fmap_w
     dedy_size = dedy_batch * util_common.align(dedy_channel, c0_size) * dedy_deep * dedy_h * dedy_w
     filter_size = util_common.align(filter_batch, c0_size) * util_common.align(
@@ -533,16 +561,16 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
 
     result = (shape_filter, shape_out_backprop, input_sizes, strides,
               pads, dilations, filter_dtype, out_backprop_dtype,
-              res_dtype, kernel_name)
+              res_dtype, kernel_name， group_dict)
     return result
 
 
 @para_check.check_input_type((list, tuple), (list, tuple), (list, tuple),
-                             (list, tuple), (str, list, tuple), (list, tuple),
+                             (list, tuple), (str, list, tuple), int, (list, tuple),
                              str, str, str, str)
 def conv3d_backprop_input_cce(shape_filter, # pylint: disable=R0913,R0914
                               shape_out_backprop, input_sizes,
-                              strides, pads, dilations=(1, 1, 1, 1, 1),
+                              strides, pads, groups, dilations=(1, 1, 1, 1, 1),
                               filter_dtype='float16',
                               out_backprop_dtype='float16',
                               res_dtype='float16',
@@ -564,6 +592,8 @@ def conv3d_backprop_input_cce(shape_filter, # pylint: disable=R0913,R0914
     strides : A list/tuple of ints. The stride of the sliding window
 
     pads : A list/tuple of ints or str
+
+    groups: Int of blocked connections from input channels to output channels
 
     dilations : An optional list/tuple of ints. Only support (1, 1, 1, 1, 1) now
 
@@ -597,7 +627,8 @@ def conv3d_backprop_input_cce(shape_filter, # pylint: disable=R0913,R0914
             padding=pads,
             dilations=dilations,
             res_dtype=res_dtype,
-            kernel_name=kernel_name
+            kernel_name=kernel_name,
+            group_dict=group_dict
         )
         tensor_list = [filters, dedy, dedx]
 
@@ -612,11 +643,12 @@ def conv3d_backprop_input_cce(shape_filter, # pylint: disable=R0913,R0914
 
 
     res = check_conv3dbp_input_params(shape_filter, shape_out_backprop,
-                                      input_sizes, strides, pads, dilations,
-                                      filter_dtype, out_backprop_dtype,
+                                      input_sizes, strides, pads, groups,
+                                      dilations, filter_dtype,
+                                      out_backprop_dtype,
                                       res_dtype, kernel_name)
     (shape_filter, shape_out_backprop, input_sizes, strides, pads, dilations,
-     filter_dtype, out_backprop_dtype, res_dtype, kernel_name) = res
+     filter_dtype, out_backprop_dtype, res_dtype, kernel_name, group_dict) = res
 
     dedy_batch, dedy_deep, dedy_h, dedy_w, dedy_channel = shape_out_backprop
     filter_depth, filter_h, filter_w, filter_channel, filter_batch = shape_filter
@@ -628,7 +660,10 @@ def conv3d_backprop_input_cce(shape_filter, # pylint: disable=R0913,R0914
                   dedy_deep,
                   util_common.ceil(dedy_channel, c0_size), dedy_h, dedy_w, c0_size)
 
-    shape_filter_frac = (filter_depth,
-                         util_common.ceil(filter_channel, c0_size) * filter_h * filter_w,
-                         util_common.ceil(filter_batch, c0_size), c0_size, c0_size)
+    real_g = group_dict["real_g"]
+    cin1_g = group_dict["cin1_g"]
+    cout_g = group_dict["cout_g"]
+
+    shape_filter_frac = (real_g * filter_depth * cin1_g * filter_h * filter_w,
+                         cout_g // c0_size, c0_size, c0_size)
     _conv3dbp_input_achieve_with_tvm()

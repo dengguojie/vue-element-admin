@@ -30,7 +30,8 @@ def conv3d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
                                   out_backprop, filter_sizes,
                                   input_sizes, strides, padding,
                                   dilations, res_dtype="float16",
-                                  kernel_name="conv3d_backprop_input_cce"):
+                                  kernel_name="conv3d_backprop_input_cce",
+                                  group_dict=None):
     """
     DSL interface of conv3d backprop input
 
@@ -54,6 +55,10 @@ def conv3d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
 
     res_dtype : dE/dX data type, "float16" by default
 
+    kernel_name : name of kernel, "conv3d_backprop_input_cce" by default
+
+    group_dict: the information needed for group convolution, None by default
+
     Returns
     ----------
     dx_ddr: dE/dX tensor
@@ -64,7 +69,8 @@ def conv3d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
     pattc = conv3d_dx.DeConvPattern(filter_sizes, strides=strides,
                                     pad=padding, output_shape=shape_dx,
                                     dilations=dilations,
-                                    kernel_name=kernel_name)
+                                    kernel_name=kernel_name,
+                                    group_dict=group_dict)
     dy_col = pattc.generate_a(out_backprop)
     w_col = pattc.generate_b(filters)
     dx_ddr = pattc.generate_c(dy_col, w_col)
