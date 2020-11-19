@@ -50,7 +50,7 @@ vector<FusionPattern*> ConcatDFusionPass::DefinePatterns() {
 }
 
 // vector<ge::NodePtr> &fusionNodes: Store fusion nodes,
-//       including newly added nodes and fused but not deleted nodes
+// including newly added nodes and fused but not deleted nodes
 Status ConcatDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   NodePtr fused_node = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
   ge::OpDescPtr fusedDesc = fused_node->GetOpDesc();
@@ -72,7 +72,7 @@ Status ConcatDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
       nodes_num = inputs_num / NeedTangent + 1;
     }
     int64_t last_node_inputs_num = inputs_num - (NeedTangent * (nodes_num - 1));
-
+    ge::OpDescPtr ConcatdDesc_orig = AttrUtils::CopyOpDesc(fusedDesc);
     ge::OpDescPtr ConcatdBaseDesc = AttrUtils::CopyOpDesc(fusedDesc);
     ConcatdBaseDesc->SetName(ConcatdBaseDesc->GetName() + "/ConcatD" + "Base_node");
     ConcatdBaseDesc->SetType("ConcatD");
@@ -135,10 +135,8 @@ Status ConcatDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
           axis += (dimnum);
         }
         for (int64_t n = 0; n < num_concat; n++) {
-          //            ge::GeTensorDesc ConcatDInputTensor_1 = ConcatdDesc->GetDynamicInputDesc("x",i);
-          Operator op1 = ge::OpDescUtils::CreateOperatorFromNode(fused_node);
-          ge::TensorDesc ConcatDInputTensor_1 = op1.GetDynamicInputDesc("x", 63 * i + n);
-          ge::Shape ConcatDInputShape_1 = ConcatDInputTensor_1.GetShape();
+          ge::GeTensorDesc ConcatDInputTensor_1 = ConcatdDesc_orig->GetInputDesc(63 * i + n);
+          ge::GeShape ConcatDInputShape_1 = ConcatDInputTensor_1.GetShape();
           int64_t dim_axis_value = ConcatDInputShape_1.GetDim(axis);
           size += dim_axis_value;
         }
@@ -146,7 +144,9 @@ Status ConcatDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
         ge::GeShape ConcatDOutputShape_1 = ConcatDOutputTensor_1.GetShape();
         ConcatDOutputShape_1.SetDim(axis, size);
         ConcatDOutputTensor_1.SetShape(ConcatDOutputShape_1);
-        ConcatDOutputTensor_1.SetOriginShape(ConcatDOutputShape_1);
+        ge::GeShape ConcatDOriginOutputShape_1 = ConcatDOutputTensor_1.GetOriginShape();
+        ConcatDOriginOutputShape_1.SetDim(axis, size);
+        ConcatDOutputTensor_1.SetOriginShape(ConcatDOriginOutputShape_1);
         ConcatdDesc->UpdateOutputDesc(0, ConcatDOutputTensor_1);
         ConcatdBaseDesc->UpdateInputDesc(i, ConcatDOutputTensor_1);
         // infershape end
@@ -200,10 +200,8 @@ Status ConcatDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
           axis += (dimnum);
         }
         for (int32_t n = 0; n < num_concat; n++) {
-          //            ge::GeTensorDesc ConcatDInputTensor_2 = LastConcatDDesc->GetDynamicInputDesc("x",i);
-          Operator op2 = ge::OpDescUtils::CreateOperatorFromNode(fused_node);
-          ge::TensorDesc ConcatDInputTensor_2 = op2.GetDynamicInputDesc("x", n + 63 * i);
-          ge::Shape ConcatDInputShape_2 = ConcatDInputTensor_2.GetShape();
+          ge::GeTensorDesc ConcatDInputTensor_2 = ConcatdDesc_orig->GetInputDesc(n + 63 * i);
+          ge::GeShape ConcatDInputShape_2 = ConcatDInputTensor_2.GetShape();
           int64_t dim_axis_value = ConcatDInputShape_2.GetDim(axis);
           size += dim_axis_value;
         }
@@ -211,7 +209,9 @@ Status ConcatDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
         ge::GeShape ConcatDOutputShape_2 = ConcatDOutputTensor_2.GetShape();
         ConcatDOutputShape_2.SetDim(axis, size);
         ConcatDOutputTensor_2.SetShape(ConcatDOutputShape_2);
-        ConcatDOutputTensor_2.SetOriginShape(ConcatDOutputShape_2);
+        ge::GeShape ConcatDOriginOutputShape_2 = ConcatDOutputTensor_2.GetOriginShape();
+        ConcatDOriginOutputShape_2.SetDim(axis, size);
+        ConcatDOutputTensor_2.SetOriginShape(ConcatDOriginOutputShape_2);
         LastConcatDDesc->UpdateOutputDesc(0, ConcatDOutputTensor_2);
         ConcatdBaseDesc->UpdateInputDesc(i, ConcatDOutputTensor_2);
         // the last_node infershape end
