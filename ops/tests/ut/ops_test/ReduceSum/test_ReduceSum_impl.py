@@ -36,4 +36,3 @@ if __name__ == '__main__':
     import te
     with te.op.dynamic():
         ut_case.run("Ascend910")
-    exit(0)

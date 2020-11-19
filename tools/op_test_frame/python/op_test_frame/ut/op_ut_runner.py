@@ -231,12 +231,15 @@ def run_ut(case_dir, soc_version, case_name=None,  # pylint: disable=too-many-ar
     rpt_combine_dir = _build_report_data_path(test_report_path)
 
     def _build_multiprocess_run_args():
-        total_run_arg_list = []
+
         ps_count = 1
         if not isinstance(soc_version, (tuple, list)):
             soc_version_list = str(soc_version).split(",")
         else:
             soc_version_list = soc_version
+        total_run_arg_list = {}
+        for one_soc in soc_version_list:
+            total_run_arg_list[one_soc] = []
         for case_file_info in case_file_info_list:
             case_file_tmp = os.path.basename(case_file_info.case_file)[:-3]
             for one_soc_version in soc_version_list:
@@ -255,21 +258,31 @@ def run_ut(case_dir, soc_version, case_name=None,  # pylint: disable=too-many-ar
                                             simulator_lib_path=simulator_lib_path,
                                             data_dir=test_data_path,
                                             dump_model_dir=simulator_data_path)
-                total_run_arg_list.append(run_arg)
+                total_run_arg_list[one_soc_version].append(run_arg)
                 ps_count += 1
-        return total_run_arg_list
+        return total_run_arg_list, ps_count
 
-    multiprocess_run_args = _build_multiprocess_run_args()
+    multiprocess_run_args, total_count = _build_multiprocess_run_args()
 
     cpu_count = multiprocessing.cpu_count() - 1
     logger.log_info("multiprocessing cpu count: %d" % cpu_count)
-    logger.log_info("multiprocess_run_args count: %d" % len(multiprocess_run_args))
+    logger.log_info("multiprocess_run_args count: %d" % total_count)
 
-    if len(multiprocess_run_args) == 1:
-        run_success = _run_ut_case_file(multiprocess_run_args[0])
-    else:
+    if total_count < cpu_count:
+        total_args = []
+        for one_soc, soc_args in multiprocess_run_args.items():
+            for soc_arg in soc_args:
+                total_args.append(soc_arg)
         with Pool(processes=cpu_count) as pool:
             results = pool.map(_run_ut_case_file, multiprocess_run_args)
+        run_success = reduce(lambda x, y: x and y, results)
+    else:
+        results = []
+        for one_soc, soc_args in multiprocess_run_args.items():
+            with Pool(processes=cpu_count) as pool:
+                one_soc_results = pool.map(_run_ut_case_file, soc_args)
+            for result in one_soc_results:
+                results.append(result)
         run_success = reduce(lambda x, y: x and y, results)
 
     test_report = ut_report.OpUTReport()

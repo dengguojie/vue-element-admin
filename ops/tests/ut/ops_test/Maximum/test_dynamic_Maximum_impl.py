@@ -27,4 +27,3 @@ ut_case.add_case("all",
 if __name__ == '__main__':
     with te.op.dynamic():
         ut_case.run("Ascend910")
-    exit(0)
