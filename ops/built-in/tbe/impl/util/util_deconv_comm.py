@@ -199,6 +199,7 @@ def _lcm(param1, param2):
 
     return temp // param2
 
+
 def _check_equal_rule(param1, param2, param1_name, param2_name):
     if param1 != param2:
         args_dict = {
@@ -210,6 +211,7 @@ def _check_equal_rule(param1, param2, param1_name, param2_name):
                 "param2_value": param2
             }
         raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+
 
 def calculate_group(out_backprop, input_size, w_shape_nchw, groups, filter_dtype, filter_ori_format):
     """

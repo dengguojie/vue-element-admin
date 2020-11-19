@@ -340,6 +340,7 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
                            kernel_cin0,
                            w_k0
                           )
+
             def _kernel_elem_func(indices, kernels):
                 g_idx, w_k1_idx, kernel_cin1_idx, w_k0_idx, kernel_cout0_idx = indices
                 fkk_idx = g_idx * shape_w_l0b[1] + w_k1_idx

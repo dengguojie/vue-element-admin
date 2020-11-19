@@ -237,6 +237,7 @@ class ScopeManager:
         stage's original reused_by function
         """
         self._stage.reused_by(*args)
+
     def split_group(self, parent, nparts=None):
         """
         only use in group convlution, split group axis and
@@ -714,7 +715,7 @@ class ScheduleAgent:
     
     def apply_var(self, stage):
         attach_path = self._attach_map.attached_path
-        for scope,array_stages in attach_path.items():
+        for scope, array_stages in attach_path.items():
             if stage in array_stages:
                 return scope
         return None

@@ -350,6 +350,7 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
                           self._dx_c1_extend,
                           k0_dim,
                           co0_dim)
+
             def __kernel_l0_compute(indices, b_l1):
                 """
 

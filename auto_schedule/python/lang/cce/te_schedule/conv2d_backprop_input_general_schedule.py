@@ -2053,7 +2053,7 @@ def general_schedule(
     def _c_col_buffer_tile():
         axis_split_list, axis_unit, axis_offset = sch_agent[c_ddr].get_axis_split_list_and_extend(2)
         l0c_attach = sch_agent.apply_var(sch[c_col])
-        if l0c_attach != None:
+        if l0c_attach is not None:
             ddr_idx = list(sch[c_ddr].leaf_iter_vars).index(l0c_attach)
             ddr_var_list = sch[c_ddr].leaf_iter_vars[0:ddr_idx]
             for var in ddr_var_list[::-1]:
