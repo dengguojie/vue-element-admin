@@ -154,9 +154,9 @@ bool DwGroupFusionPass::GenerateConcatNode(ge::ComputeGraph &graph, ge::OpDescPt
                                            ge::GeTensorDesc &newConvOutDesc, ge::NodePtr &concatNode) {
   string convOpName = convDesc->GetName();
   OpDescPtr concatDesc;
-  newConvOutDesc.SetOriginDataType(DT_FLOAT16);
-  newConvOutDesc.SetDataType(DT_FLOAT16);
-  FUSION_PASS_MAKE_SHARED((concatDesc = std::make_shared<ge::OpDesc>(convOpName+"_concat", "ConcatD")), return false);
+  newConvOutDesc.SetOriginDataType(convDesc->GetOutputDesc(0).GetDataType());
+  newConvOutDesc.SetDataType(convDesc->GetOutputDesc(0).GetDataType());
+  FUSION_PASS_MAKE_SHARED((concatDesc = std::make_shared<ge::OpDesc>(convOpName + "_concat", "ConcatD")), return false);
   for (int i = 0; i < groups; i++) {
     concatDesc->AddInputDesc(newConvOutDesc);
   }
