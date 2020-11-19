@@ -99,7 +99,7 @@ fi
 
 # set aicpu kernel implement compiler target, default to be custom_cpu_kernels
 if [[ -z "${aicpu_target_name}" ]] && [[ -z "${AICPU_KERNEL_TARGET}" ]]; then
-    log "[INFO] no so_name is specified, use default compile target: libcust_cpu_kernels.so!"
+    log "[INFO] no so_name is specified, use default compile target: libcust_aicpu_kernels.so!"
     aicpu_target_name="cust_aicpu_kernels"
     export AICPU_KERNEL_TARGET=$aicpu_target_name
     #exit 1
