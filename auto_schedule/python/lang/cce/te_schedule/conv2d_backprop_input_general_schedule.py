@@ -1006,20 +1006,20 @@ def general_schedule(
                 bl0_tiling_n0,
                 bl0_tiling_k0
             ) = list(i.value for i in b_col.shape)
-            bl0_tiling_kb = bl0_tiling_kb//g_after
+            bl0_tiling_kb = bl0_tiling_kb // g_after
         return bl0_tiling_kb, bl0_tiling_nb, bl0_tiling_n0, bl0_tiling_k0
 
     def _tiling_l1_process():
         if tiling.get("AL1_shape") != []:
             al1_tilling_k, al1_tilling_m, _, _ = tiling.get("AL1_shape")
-            if (al1_tilling_k == kernel_h*kernel_w*cou1_g*al1_co0 and \
+            if (al1_tilling_k == kernel_h * kernel_w * cou1_g * al1_co0 and \
                al1_tilling_m == _ceil(c_l0c_hw,
                                       cce_params.CUBE_MKN[c_col.dtype]["mac"][0] * cl0_tiling_mc)
             ):
                 tiling["AL1_shape"] = []
         else:
             # batch and group is 1, other axes full load
-            al1_tilling_k = kernel_h*kernel_w*cou1_g*al1_co0
+            al1_tilling_k = kernel_h * kernel_w * cou1_g * al1_co0
             al1_tilling_m = _ceil(c_l0c_hw,
                                   cce_params.CUBE_MKN[c_col.dtype]["mac"][0] * cl0_tiling_mc)
 
@@ -1028,12 +1028,12 @@ def general_schedule(
         else:
             if w_trans_flag:
                 # [G*Cout1*Hk*Wk, cin1, cin0, cout0]: bl1_co1, bl1_k1, _, bl1_co0
-                bl1_tilling_k = bl1_co0*bl1_co1//g_after
+                bl1_tilling_k = bl1_co0 * bl1_co1 // g_after
                 bl1_tilling_n = bl1_k1 // cl0_tiling_nc
             else:
                 # [G*Cin1*Hk*Wk, cou1, cou0, cin0]: bl1_k1, bl1_co1,bl1_co0,_
-                bl1_tilling_k = kernel_h*kernel_w*bl1_co0*bl1_co1
-                bl1_tilling_n = bl1_k1//(kernel_h*kernel_w*cl0_tiling_nc*g_after)
+                bl1_tilling_k = kernel_h * kernel_w * bl1_co0 * bl1_co1
+                bl1_tilling_n = bl1_k1 // (kernel_h * kernel_w * cl0_tiling_nc * g_after)
         return al1_tilling_k, al1_tilling_m, bl1_tilling_k, bl1_tilling_n
 
     # check tiling
@@ -2063,7 +2063,7 @@ def general_schedule(
                     unit = axis_unit[0:c1_idx + 1]
                     offset = axis_offset[0:c1_idx + 1]
                     c_offset = 0
-                    for idx in range(c1_idx+1):
+                    for idx in range(c1_idx + 1):
                         offset_idx = (offset[idx] * 2 if c_ddr.dtype == "int8" else offset[idx])
                         factor_len = (0 if unit[idx] == 1 else offset_idx)
                         c_offset = c_offset + axis[idx] * factor_len
