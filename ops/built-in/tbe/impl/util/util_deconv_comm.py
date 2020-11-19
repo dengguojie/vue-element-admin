@@ -237,34 +237,19 @@ def calculate_group(out_backprop, input_size, w_shape_nchw, groups, filter_dtype
         raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
     c0_size = cce_params.C0_SIZE
     c0_size_k = cce_params.CUBE_MKN[filter_dtype]['mac'][1]
-    # if w's famat is HWCN, groups in w's C and dx's C, so dx_c_ori is dx_C/groups, dy_c_ori is filter_N;
-    # if NCHW of NHWC, groups in w's N and dx's C, so dx_c_ori is filter_c, dy_c_ori is filter_N/groups.
-    if filter_ori_format == "HWCN":
-        _check_equal_rule(out_backprop[1], 
-                          w_shape_nchw[0] * groups,
-                          "channel of out_backprop",
-                          "batch of filter * groups")
-        _check_equal_rule(input_size[1], 
-                          w_shape_nchw[1],
-                          "channel of y",
-                          "channel of filter")
-        dx_c_ori = w_shape_nchw[1] // groups
-        dy_c_ori = w_shape_nchw[0]
-        filter_batch_ori = w_shape_nchw[0]
-        filter_c_ori = w_shape_nchw[1] // groups
-    else:
-        _check_equal_rule(out_backprop[1], 
-                          w_shape_nchw[0],
-                          "channel of out_backprop",
-                          "batch of filter")
-        _check_equal_rule(input_size[1], 
-                          w_shape_nchw[1] * groups,
-                          "channel of y",
-                          "channel of filter * groups")
-        dx_c_ori = w_shape_nchw[1]
-        dy_c_ori = w_shape_nchw[0] // groups
-        filter_batch_ori = w_shape_nchw[0] // groups
-        filter_c_ori = w_shape_nchw[1]
+    #groups in w's N and dx's C, so dx_c_ori is filter_c, dy_c_ori is filter_N/groups.
+    _check_equal_rule(out_backprop[1],
+                      w_shape_nchw[0],
+                      "channel of out_backprop",
+                      "batch of filter")
+    _check_equal_rule(input_size[1],
+                      w_shape_nchw[1] * groups,
+                      "channel of y",
+                      "channel of filter * groups")
+    dx_c_ori = w_shape_nchw[1]
+    dy_c_ori = w_shape_nchw[0] // groups
+    filter_batch_ori = w_shape_nchw[0] // groups
+    filter_c_ori = w_shape_nchw[1]
 
     dx_c_extend = _lcm(dx_c_ori, c0_size) // dx_c_ori
     dy_c_extend = _lcm(dy_c_ori, c0_size_k) // dy_c_ori

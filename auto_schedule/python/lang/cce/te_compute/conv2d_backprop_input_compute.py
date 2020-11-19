@@ -518,9 +518,6 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
                     // stride_w + 1",
                 "dy_h"
             )
-        filter_cin_groups = filter_cin if filter_ori_format == "HWCN" else \
-            filter_cin * groups
-        _check_equal_rule(dx_c, filter_cin_groups, "dx_cin", "filter_cin_groups")
 
     # strides
     def _check_strides():
