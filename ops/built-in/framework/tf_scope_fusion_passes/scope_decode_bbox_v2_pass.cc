@@ -88,6 +88,8 @@ void ScopeDecodeBboxV2Pass::GenScopePatterns(ScopeFusionPatterns& patterns) {
   std::vector<ScopePattern*> batch;
   ScopePattern* decodeBboxV2Pattern = new (std::nothrow) ScopePattern();
   if (decodeBboxV2Pattern == nullptr) {
+    ScopeUtil::FreeScopePatterns(patterns);
+    ScopeUtil::FreeOneBatchPattern(batch);
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
@@ -107,6 +109,8 @@ void ScopeDecodeBboxV2Pass::GenScopePatterns(ScopeFusionPatterns& patterns) {
 
   ScopePattern* decodeBboxV2SSDPattern = new (std::nothrow) ScopePattern();
   if (decodeBboxV2SSDPattern == nullptr) {
+    ScopeUtil::FreeScopePatterns(patterns);
+    ScopeUtil::FreeOneBatchPattern(batch);
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
