@@ -63,7 +63,7 @@ BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
 DATA_SIZE_MAX = 9223372036854775807
 PADDING_VAILD = [0, 0, 0, 0, 0, 0]
 # align with 16 for chips
-c0_size = tbe_platform.C0_SIZE
+C0_SIZE = tbe_platform.C0_SIZE
 
 
 @para_check.check_op_params(
@@ -472,7 +472,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     _, stride_d, stride_h, stride_w, _ = strides
     _check_attr_groups()
     group_dict = util_common.calculate_group(fmap_channel,
-                                             dedy_channel, groups, c0_size, c0_size)
+                                             dedy_channel, groups, C0_SIZE, C0_SIZE)
 
     filter_h_dilation = (filter_h - 1) * dilation_h + 1
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
@@ -550,10 +550,10 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     # check shape size, 64 bits limitation
     # ===========================================================
 
-    fmap_size = fmap_batch * util_common.align(fmap_channel, c0_size) * fmap_deep * fmap_h * fmap_w
-    dedy_size = dedy_batch * util_common.align(dedy_channel, c0_size) * dedy_deep * dedy_h * dedy_w
-    filter_size = util_common.align(filter_batch, c0_size) * util_common.align(
-        filter_channel, c0_size) * filter_depth * filter_h * filter_w
+    fmap_size = fmap_batch * util_common.align(fmap_channel, C0_SIZE) * fmap_deep * fmap_h * fmap_w
+    dedy_size = dedy_batch * util_common.align(dedy_channel, C0_SIZE) * dedy_deep * dedy_h * dedy_w
+    filter_size = util_common.align(filter_batch, C0_SIZE) * util_common.align(
+        filter_channel, C0_SIZE) * filter_depth * filter_h * filter_w
     _check_64bits_limitation("input", fmap_size, dtype=res_dtype)
     _check_64bits_limitation("out_backprop", dedy_size,
                              dtype=out_backprop_dtype)
@@ -561,7 +561,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
 
     result = (shape_filter, shape_out_backprop, input_sizes, strides,
               pads, dilations, filter_dtype, out_backprop_dtype,
-              res_dtype, kernel_name， group_dict)
+              res_dtype, kernel_name, group_dict)
     return result
 
 
@@ -654,16 +654,14 @@ def conv3d_backprop_input_cce(shape_filter, # pylint: disable=R0913,R0914
     filter_depth, filter_h, filter_w, filter_channel, filter_batch = shape_filter
     pads = list(pads)
 
-    # ===========================================================
-    c0_size = tbe_platform.C0_SIZE  # Channel axis should be align with 16
     shape_dedy = (dedy_batch,
                   dedy_deep,
-                  util_common.ceil(dedy_channel, c0_size), dedy_h, dedy_w, c0_size)
+                  util_common.ceil(dedy_channel, C0_SIZE), dedy_h, dedy_w, C0_SIZE)
 
     real_g = group_dict["real_g"]
     cin1_g = group_dict["cin1_g"]
     cout_g = group_dict["cout_g"]
 
     shape_filter_frac = (real_g * filter_depth * cin1_g * filter_h * filter_w,
-                         cout_g // c0_size, c0_size, c0_size)
+                         cout_g // C0_SIZE, C0_SIZE, C0_SIZE)
     _conv3dbp_input_achieve_with_tvm()

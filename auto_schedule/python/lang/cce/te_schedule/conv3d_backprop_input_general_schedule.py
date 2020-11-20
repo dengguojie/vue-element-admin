@@ -167,7 +167,8 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
             # split g axis
             multicore_group, g_axis = sch[c_ddr].split(g_axis, nparts=group_dim)
             # reorder
-            sch[c_ddr].reorder(multicore_group,
+            sch[c_ddr].reorder(
+                multicore_group,
                 multicore_batch, multicore_d,
                 multicore_n, multicore_m, g_axis,
                 batch_outer_inner,
@@ -367,9 +368,9 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         c_col = c_ub.op.input_tensors[0]
         a_col = c_col.op.input_tensors[0]  # im2col_fractal in L0A
         b_col = c_col.op.input_tensors[1]  # weight_transform in L0B
-        bl1 = b_col.op.input_tensors[0]
-        sch[bl1].set_scope(tbe_platform.scope_cbuf)
-        b_ddr = b_col.op.input_tensors[0]  # weight in ddr
+        b_l1 = b_col.op.input_tensors[0]
+        sch[b_l1].set_scope(tbe_platform.scope_cbuf)
+        b_ddr = b_l1.op.input_tensors[0]  # weight in ddr
         a_col_before = a_col.op.input_tensors[0]  # im2col_row_major in L1
 
         tensor_map['c_ub'] = c_ub
@@ -435,21 +436,21 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         if tiling.get("BL0_matrix"):
             bl0_tiling_kb, bl0_tiling_nb, _, _, _, bl0_tiling_kd = tiling.get("BL0_matrix")
         else:
-            bl0_tiling_group, bl0_tiling_kd, bl0_tiling_kb, bl0_tiling_nb, _, _, = list(i.value for i in b_col.shape)
+            bl0_tiling_group, bl0_tiling_kd, bl0_tiling_kb, bl0_tiling_nb, _, _ = list(i.value for i in b_col.shape)
             bl0_tiling_nb = bl0_tiling_nb // n_dim
         return bl0_tiling_kb, bl0_tiling_nb, bl0_tiling_kd
 
     def _tiling_l1_process():
         if tiling.get("AL1_shape"):
             al1_tiling_k, al1_tiling_m, _, _ = tiling.get("AL1_shape")
-            if al1_tiling_k == kernel_h*kernel_w*cout1_g*al1_co0 and al1_tiling_m == te_util.int_ceil_div(
-                c_l0c_hw, (tbe_platform.CUBE_MKN[c_col.dtype]["mac"][0]*cl0_tiling_mc)):
+            if (al1_tiling_k == kernel_h * kernel_w * cout1_g * al1_co0 and al1_tiling_m == te_util.int_ceil_div(
+                c_l0c_hw, (tbe_platform.CUBE_MKN[c_col.dtype]["mac"][0]*cl0_tiling_mc))):
                 tiling["AL1_shape"] = []
         else:
             # batch = 1 other axes full load
             al1_tiling_k = kernel_h * kernel_w * cout1_g * al1_co0
             al1_tiling_m = c_l0c_hw // (tbe_platform.CUBE_MKN[c_col.dtype]["mac"][0] *
-                                         cl0_tiling_mc) // m_dim
+                                        cl0_tiling_mc) // m_dim
         if tiling.get("BL1_shape"):
             bl1_tiling_k, bl1_tiling_n, _, bl1_tiling_kdparts = tiling.get("BL1_shape")
         else:
@@ -474,6 +475,25 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
             sch[c_ddr].reorder(bl1_at_ddr_n_outer,
                                al1_at_ddr_m_outer, batch_inner)
 
+    def _get_h_l1(howo_size):
+        left = 0
+        right = 0
+        max_dis = 0
+
+        for x in range(1, te_util.int_ceil_div(cddr_h * cddr_w, howo_size)):
+            m_length = x * howo_size
+            right = m_length // wo_l1
+            distance = right - left + 1 if (m_length % wo_l1 != 0) else right - left
+            if max_dis < distance:
+                max_dis = distance
+            left = right
+
+            h_l1 = min(kernel_h - 1 + max_dis, ho_l1)
+            if cddr_h * cddr_w <= howo_size:
+                h_l1 = ho_l1
+
+            return h_l1
+
     def _check_exceed_l1_buffer(howo_size):
         c0_size = 16
         n_dim = tiling['block_dim'][1]
@@ -481,7 +501,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
             b_l1_size = b_ddr_n1 * b_ddr_k1 * b_ddr_k0 * b_ddr_n0 // n_dim // real_g * 2
         elif (bl1_tiling_k == kernel_h * kernel_w * bl1_co1 * bl1_co0 and
               kd_factor * kd_tiling_l1_factor == b_ddr_kd):
-            b_l1_size = b_ddr_kd * bl1_tiling_k * bl1_tiling_n * cl0_tiling_nc * c0_size *2
+            b_l1_size = b_ddr_kd * bl1_tiling_k * bl1_tiling_n * cl0_tiling_nc * c0_size * 2
         else:
             b_l1_k = bl1_tiling_n * cl0_tiling_nc * kernel_h * kernel_w
             b_l1_n = bl1_tiling_k // (kernel_h * kernel_w) // c0_size
@@ -506,8 +526,8 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         if b_ddr_kd == stride_d:
             d_factor = max(d_factor - 1, 1)
 
-        dedy_ub_size = d_factor * aub_tiling_k_factor * dy_w * c0_size * 2 *
-                       te_util.int_ceil_div(aub_tiling_m_factor, stride_h)
+        dedy_ub_size = (d_factor * aub_tiling_k_factor * dy_w * c0_size * 2 *
+                        te_util.int_ceil_div(aub_tiling_m_factor, stride_h))
         dy_filing_size = d_factor * aub_tiling_k_factor * aub_tiling_m_factor * (dy_w * stride_w) * c0_size * 2
         c_ub_size = cub_tiling_nc_factor * cub_tiling_mc_factor * c0_size**2 * cub_pbuffer * 2
 
@@ -533,12 +553,12 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         howo_deep_outer = te_util.int_ceil_div(howo_out, m_dim)
         howo_m_outer = al1_tiling_m * al0_tiling_ma * al0_tiling_m0
 
-        if not tiling['AL1_shape'] and not
-            _check_exceed_buffer(howo_deep_outer):
+        if (not tiling['AL1_shape'] and not
+            _check_exceed_buffer(howo_deep_outer)):
             sch[a_l1].compute_at(sch[c_ddr], c_ddr_deep_outer)
             sch[a_col_before].compute_at(sch[c_ddr], c_ddr_deep_outer)
-        elif al1_tiling_k == kernel_h * kernel_w * cout1_g * al1_co0 and
-            not _check_exceed_buffer(howo_m_outer):
+        elif (al1_tiling_k == kernel_h * kernel_w * cout1_g * al1_co0 and
+              not _check_exceed_buffer(howo_m_outer)):
             sch[a_l1].compute_at(sch[c_ddr], al1_at_ddr_m_outer)
             sch[a_col_before].compute_at(sch[c_ddr], al1_at_ddr_m_outer)
         else:
@@ -767,30 +787,30 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
     real_g = group_dict["real_g"].value
     cout_g = group_dict["cout_g"].value
     cin1_g = group_dict["cin1_g"].value
-    cout1_g = cout_g // tbe_platform.CUBE_MKN[b_ddr.type]["mac"][2]
+    cout1_g = cout_g // tbe_platform.CUBE_MKN[b_ddr.dtype]["mac"][2]
 
     padu, padd, padl, padr = padding
     pad_head, pad_tail = list(i.value for i in c_ddr.op.attrs["depth_pad"])
     tensor_attr['pad_head'] = pad_head
     tensor_attr['pad_tail'] = pad_tail
     _, _, _, _, _, kernel_h, kernel_w, _ = list(i.value for i in a_col_before.shape)
+    _, _, _, ho_l1, wo_l1, _ = list(i.value for i in a_l1.shape)
     img_shape = list(i.value for i in a_ddr.shape)
-    _, dy_depth, dy_cout1, _, _, _ = img_shape
-    b_ddr_kd, b_ddr_n1, b_ddr_k1, b_ddr_k0, b_ddr_n0 = list(i.value for i in b_ddr.shape)
+    _, dy_depth, dy_cout1, _, dy_w, _ = img_shape
+    b_ddr_n1, b_ddr_k1, b_ddr_k0, b_ddr_n0 = list(i.value for i in b_ddr.shape)
 
     b_group = real_g
-
 
     filter_shape = [b_ddr_k1 * b_ddr_k0,
                     b_ddr_kd, b_ddr_n1 // (kernel_h * kernel_w * real_g * b_ddr_kd),
                     kernel_h, kernel_w, b_ddr_n0]
 
-    cddr_batch, cddr_depth, cdder_c1, cddr_h, cddr_w, cdder_c0 = output_shape
+    cddr_batch, cddr_depth, cddr_c1, cddr_h, cddr_w, cdder_c0 = output_shape
     tiling_output = [cddr_batch,
-                     cddr_depth, cddr_h, cddr_w, cdder_c1 * cdder_c0]
+                     cddr_depth, cddr_h, cddr_w, cddr_c1 * cdder_c0]
     kd_reduce_flag = bool(len(c_col.op.reduce_axis) == NUM_3)
 
-    # tiling_auery
+    # tiling_query
     tiling = tiling_query(a_shape=img_shape,
                           b_shape=filter_shape,
                           c_shape=tiling_output,
@@ -843,8 +863,8 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
 
     # axis management
     g_axis, n_after_multicore = sch[c_ddr].split(c_ddr.op.axis[2], nparts=real_g)
-    batch_after_multicore, d_after_multicore, n_after_multicore, m_after_multicore = (
-        c_ddr.op.axis[0], c_ddr.op.axis[1], c_ddr.op.axis[2], c_ddr.op.axis[3])
+    batch_after_multicore, d_after_multicore, m_after_multicore = (
+        c_ddr.op.axis[0], c_ddr.op.axis[1], c_ddr.op.axis[3])
     sch[c_ddr].reorder(g_axis,
                        batch_after_multicore,
                        d_after_multicore,
@@ -863,8 +883,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
     # l0a_l0b
     al0_m_factor = al0_tiling_ma * al0_tiling_m0
     if kd_reduce_flag is False:
-        c_col_deep_outer, c_col_deep_inner, c_col_k_outer, c_col_m_outer, c_col_n_outer = \
-                                                                        _l0a_and_l0b_process()
+        c_col_deep_outer, c_col_deep_inner, c_col_k_outer, c_col_m_outer, c_col_n_outer = _l0a_and_l0b_process()
     else:
         (c_col_deep_outer, c_col_deep_inner, c_col_k_outer, c_col_m_outer,
          c_col_n_outer, reduce_axis_kd, reduce_axis_kd_outer,
@@ -928,7 +947,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
 
     _do_compute_at()
 
-    # to crrect n_axis inaccurate inference
+    # to correct n_axis inaccurate inference
     def _n_buffer_tile():
         batch_dim, n_dim, m_dim, d_dim = tiling["block_dim"]
         group_dim = tiling["g_dim"]

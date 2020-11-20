@@ -71,13 +71,13 @@ def _im2col_row_major(a_im2col_vm_shape,  # pylint: disable=R0913, E1101
         -------
         Returns : im2col_row_major tensor
         """
-        _, _, _, a_height, a_width, c0 = tensor_a.shape
+        _, _, _, a_height, a_width, c_0 = tensor_a.shape
         g_index, n_index, deep_index, hw_index, c1_index, kh_index, kw_index, c0_index = indices
         stride_h, stride_w = stride
         padding_up, _, padding_left, padding_right = padding
         width_out = (a_width.value + padding_left + padding_right - kernel_w) // stride_w + 1
 
-        c1_index = g_index * (cout_g // c0) + c1_index
+        c1_index = g_index * (cout_g // c_0) + c1_index
         h_index = (hw_index // width_out) * stride_h + kh_index
         w_index = (hw_index % width_out) * stride_w + kw_index
 

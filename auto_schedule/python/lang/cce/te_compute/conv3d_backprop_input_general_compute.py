@@ -85,7 +85,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
             dy_zero = tvm.compute(
                 shape_dy_filling,
                 lambda *indice: tvm.convert(0).astype(dy_ddr.dtype),
-                name="dy_zreo",
+                name="dy_zero",
                 tag="init_zero")
             dy_filling = tvm.compute(
                 shape_dy_filling,
@@ -269,8 +269,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
         # float32->float16
         dx_ub = tvm.compute(
             (dx_batch, dx_deep, dx_cin1, dx_hw, dx_c0),
-            lambda dx_batch_idx, dx_deep_idx,
-            dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
+            lambda dx_batch_idx, dx_deep_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
             dx_col[dx_cin1_idx // self.cin1_g, dx_batch_idx, dx_deep_idx,
                    dx_cin1_idx - dx_cin1_idx // self.cin1_g * self.cin1_g,
                    dx_hw_idx, dx_cin0_idx].astype("float16"),

@@ -25,7 +25,7 @@ from te import tvm
 
 @para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, (list, tuple),
                              (list, tuple), (list, tuple), (list, tuple),
-                             (list, tuple), str, str)
+                             (list, tuple), str, str, dict)
 def conv3d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
                                   out_backprop, filter_sizes,
                                   input_sizes, strides, padding,
