@@ -1606,6 +1606,10 @@ IMPLEMT_COMMON_INFERFUNC(ExtractImagePatchesInferShape) {
   int64_t filter_w = ksize.at(idx_map['W']);
   int64_t stride_h = stride.at(idx_map['H']);
   int64_t stride_w = stride.at(idx_map['W']);
+  if (stride_h == 0 || stride_w == 0) {
+    OP_LOGE(op.GetName().c_str(), "The stride_h or stride_w should not 0");
+    return GRAPH_FAILED;
+  }
   int64_t dilation_h = dilation.at(idx_map['H']);
   int64_t dilation_w = dilation.at(idx_map['W']);
 
@@ -1634,6 +1638,7 @@ IMPLEMT_COMMON_INFERFUNC(ExtractImagePatchesInferShape) {
 
 static void InferHExtractImagePatches(int64_t kernel, int64_t dilation, int64_t stride, int64_t origin_input,
                                       const vector<int64_t>& output_slice, vector<int64_t>& input_slice) {
+  // output_slice has at least 2 elements
   int64_t slice_start = output_slice[0] * stride;
   if (slice_start < 0) {
     slice_start = 0;
@@ -1708,7 +1713,7 @@ IMPLEMT_INFER_DATA_SLICE(ExtractImagePatches, ExtractImagePatchesInferDataSlice)
   bool need_infer = false;
   bool have_slice = false;
   for (unsigned idx = 0; idx < y_data_slice.size(); idx++) {
-    if (y_data_slice[idx].size() > 0) {
+    if (y_data_slice[idx].size() > 1) {
       have_slice = true;
       if (idx == 2) {
         need_infer = true;
@@ -1804,7 +1809,15 @@ IMPLEMT_COMMON_INFERFUNC(ExtractVolumePatchesInferShape) {
   }
 
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  if (op_desc == nullptr) {
+    OP_LOGE(op.GetName().c_str(), "GetOpDescFromOperator return nullptr!");
+    return GRAPH_FAILED;
+  }
   auto desc_in_ptr = op_desc->MutableInputDesc("x");
+  if (desc_in_ptr == nullptr) {
+    OP_LOGE(op.GetName().c_str(), "MutableInputDesc return nullptr!");
+    return GRAPH_FAILED;
+  }
   auto shape_in = desc_in_ptr->GetShape();
   auto dtype = desc_in_ptr->GetDataType();
 
@@ -1847,6 +1860,10 @@ IMPLEMT_COMMON_INFERFUNC(ExtractVolumePatchesInferShape) {
   int64_t stride_d = stride.at(idx_map['D']);
   int64_t stride_h = stride.at(idx_map['H']);
   int64_t stride_w = stride.at(idx_map['W']);
+  if (stride_d == 0 || stride_h == 0 || stride_w == 0) {
+    OP_LOGE(op.GetName().c_str(), "The stride_d or stride_h or stride_w should not 0");
+    return GRAPH_FAILED;
+  }
 
   int64_t out_d{0};
   int64_t out_h{0};
@@ -1867,6 +1884,10 @@ IMPLEMT_COMMON_INFERFUNC(ExtractVolumePatchesInferShape) {
     out_dim = {in_n, out_c, out_d, out_h, out_w};
   }
   auto des_out_ptr = op_desc->MutableOutputDesc("y");
+  if (des_out_ptr == nullptr) {
+    OP_LOGE(op.GetName().c_str(), "MutableOutputDesc return nullptr!");
+    return GRAPH_FAILED;
+  }
   des_out_ptr->SetShape(ge::GeShape(out_dim));
   des_out_ptr->SetDataType(dtype);
 
@@ -1896,7 +1917,15 @@ IMPLEMT_INFER_DATA_SLICE(ExtractVolumePatches, ExtractVolumePatchesInferDataSlic
   OP_LOGI(op.GetName().c_str(), "Enter ExtractVolumePatches InferDataSlice");
 
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  if (op_desc == nullptr) {
+    OP_LOGE(op.GetName().c_str(), "GetOpDescFromOperator return nullptr!");
+    return GRAPH_FAILED;
+  }
   GeTensorDescPtr tensor_in_ptr = op_desc->MutableInputDesc("x");
+  if (tensor_in_ptr == nullptr) {
+    OP_LOGE(op.GetName().c_str(), "MutableInputDesc return nullptr!");
+    return GRAPH_FAILED;
+  }
   GeTensorDescPtr tensor_out_ptr = op_desc->MutableOutputDesc("y");
   auto shape_in = tensor_in_ptr->GetShape();
 
@@ -1950,7 +1979,7 @@ IMPLEMT_INFER_DATA_SLICE(ExtractVolumePatches, ExtractVolumePatchesInferDataSlic
   bool need_infer = false;
   bool have_slice = false;
   for (unsigned idx = 0; idx < y_data_slice.size(); idx++) {
-    if (y_data_slice[idx].size() > 0) {
+    if (y_data_slice[idx].size() > 1) {
       have_slice = true;
       if (idx == 1) {
         need_infer = true;
