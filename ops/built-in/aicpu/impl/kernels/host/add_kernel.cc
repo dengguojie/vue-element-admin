@@ -41,7 +41,7 @@ const char *ADD = "Add";
 namespace aicpu {
 uint32_t AddKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_LOG_INFO("Add folding kernel in.");
-  if (NormalCheck(ctx) != KERNEL_STATUS_OK) {
+  if (NormalMathCheck(ctx) != KERNEL_STATUS_OK) {
     KERNEL_LOG_ERROR("Check add %s failed.", ctx.GetOpType().c_str());
     return KERNEL_STATUS_PARAM_INVALID;
   }

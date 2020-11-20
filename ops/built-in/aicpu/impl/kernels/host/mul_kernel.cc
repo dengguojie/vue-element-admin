@@ -41,7 +41,7 @@ const char *MUL = "Mul";
 namespace aicpu {
 uint32_t MulKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_LOG_INFO("Mul folding kernel in.");
-  if (NormalCheck(ctx) != KERNEL_STATUS_OK) {
+  if (NormalMathCheck(ctx) != KERNEL_STATUS_OK) {
     KERNEL_LOG_ERROR("Check mul %s failed.", ctx.GetOpType().c_str());
     return KERNEL_STATUS_PARAM_INVALID;
   }

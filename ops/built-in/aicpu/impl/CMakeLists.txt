@@ -21,6 +21,7 @@ if(BUILD_OPEN_PROJECT)
     kernels/normalized/concatv2_kernels.cc
     utils/sparse_group.cc
     utils/eigen_tensor.cc
+    utils/kernel_util.cc
     utils/sparse_tensor.cc
     utils/bcast.cc
 )
@@ -137,6 +138,7 @@ set(local_kernels_src_files
     kernels/normalized/round.cc
     utils/sparse_group.cc
     utils/eigen_tensor.cc
+    utils/kernel_util.cc
     utils/sparse_tensor.cc
     utils/bcast.cc
 )

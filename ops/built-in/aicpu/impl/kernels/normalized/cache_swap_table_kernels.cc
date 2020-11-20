@@ -152,14 +152,19 @@ uint32_t CacheSwapTableKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   std::shared_ptr<TensorShape> indices_shape = ctx.Input(1)->GetTensorShape();
 
   for (int i = 1; i < cache_table_shape->GetDims(); ++i) {
-    KERNEL_CHECK_ASSIGN_64S_MULTI(one_line_col_,
-                                  cache_table_shape->GetDimSize(i),
-                                  one_line_col_, KERNEL_STATUS_PARAM_INVALID);
+    KERNEL_CHECK_FALSE(
+        MulWithoutOverflow(one_line_col_, cache_table_shape->GetDimSize(i),
+                           one_line_col_),
+        KERNEL_STATUS_PARAM_INVALID,
+        "%s one_line_col_ overflow!", CACHE_SWAP_TABLE);
   }
 
   for (int i = 0; i < indices_shape->GetDims(); ++i) {
-    KERNEL_CHECK_ASSIGN_64S_MULTI(batch_size_, indices_shape->GetDimSize(i),
-                                  batch_size_, KERNEL_STATUS_PARAM_INVALID);
+    KERNEL_CHECK_FALSE(
+        MulWithoutOverflow(batch_size_, indices_shape->GetDimSize(i),
+                           batch_size_),
+        KERNEL_STATUS_PARAM_INVALID,
+        "%s batch_size_ overflow!", CACHE_SWAP_TABLE);
   }
 
   output_size_ = batch_size_ * one_line_col_;
