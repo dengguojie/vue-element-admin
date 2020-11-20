@@ -543,7 +543,8 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   FUSION_PASS_CHECK(avgPoolDesc == nullptr,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "avgPoolNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
-
+  FUSION_PASS_CHECK(!CheckOpSupported(avgPoolDesc), OP_LOGI(FUSED_OP_TYPE.c_str(), "Op Not Supported."),
+                      return NOT_CHANGED);
   ge::GeTensorDesc avgPoolInputTensor = avgPoolNode->GetOpDesc()->GetInputDesc(0);
   ge::GeTensorDesc avg_pool_output_tensor = avgPoolNode->GetOpDesc()->GetOutputDesc(0);
   // get shape
@@ -760,8 +761,6 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
                                                    matrixSize * sizeof(int8_t))),
         assitPtr = nullptr;
         return PARAM_INVALID);
-    FUSION_PASS_CHECK(!CheckOpSupported(avgPoolDesc), OP_LOGI(FUSED_OP_TYPE.c_str(), "Op Not Supported."),
-                      return NOT_CHANGED);
     vector<ge::GeTensorPtr> weights = {assitPtr};
     ge::OpDescUtils::SetWeights(avgPoolNode, weights);
     auto constInputNodes = OpDescUtils::GetConstInputs(avgPoolNode);
