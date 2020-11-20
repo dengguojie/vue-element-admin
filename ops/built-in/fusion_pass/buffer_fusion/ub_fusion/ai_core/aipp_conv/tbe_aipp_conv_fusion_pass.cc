@@ -28,6 +28,8 @@
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
 #include "tbe_aipp_fusion_rule.h"
+#include "common/lxfusion_json_util.h"
+#include "graph/utils/attr_utils.h"
 
 namespace fe {
 static const char kPatternAipp[] = "aipp";
@@ -86,6 +88,54 @@ vector<BufferFusionPattern*> TbeAippConvFusionPass::DefinePatterns() {
   return patterns;
 }
 
+void TbeAippConvFusionPass::DelSplitInfoByAxis(std::vector<AxisSplitMap> &split_maps, int axis) {
+  std::vector<AxisSplitMap> temp_maps;
+  for(auto it = split_maps.begin(); it != split_maps.end(); ++it) {
+    bool del_axis = false;
+    auto input_split_infos = (*it).GetInputSplitInfoVec();
+    for (auto input_split_info : input_split_infos) {
+      if (input_split_info.GetAxis()[0] == axis) {
+        del_axis = true;
+      }
+    }
+    if (!del_axis) {
+      temp_maps.push_back(*it);
+    }
+  }
+  split_maps = temp_maps;
+}
+
+/*  [images] <-
+ *     |
+ *    aipp
+ *     |
+ *   conv2d  [x]-> delete h/w
+ *     |
+ *  [output] ->
+ */
+void TbeAippConvFusionPass::SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes) {
+  vector<ge::NodePtr> conv_nodes = GetMatchedNodesByDescName(kPatternConv, mapping);
+  string op_slice_info_str = "";
+  for (auto conv_node: conv_nodes) {
+    ge::AttrUtils::GetStr(conv_node->GetOpDesc(), "_op_slice_info", op_slice_info_str);
+  }
+  OP_LOGD(fused_op_type_.c_str(), "ori _op_slice_info is %s", op_slice_info_str.c_str());
+  OpCalcInfo op_calc_info;
+  GetOpSliceInfoFromJson(op_calc_info, op_slice_info_str);
+  auto split_maps = op_calc_info.GetAxisSplitMapVec();
+  int h_axis = 2;
+  int w_axis = 3;
+  DelSplitInfoByAxis(split_maps, h_axis);
+  DelSplitInfoByAxis(split_maps, w_axis);
+
+  op_calc_info.SetL1FusionEnable(L1FUSION_DISABLE);
+  op_calc_info.SetAxisSplitMaps(split_maps);
+  SetOpSliceInfoToJson(op_calc_info, op_slice_info_str);
+  for (auto fusion_node : fusion_nodes) {
+    ge::AttrUtils::SetStr(fusion_node->GetOpDesc(), "_op_slice_info", op_slice_info_str);
+  }
+  OP_LOGD(fused_op_type_.c_str(), "set _op_slice_info is %s", op_slice_info_str.c_str());
+}
 /*
  * @brief: parse nodes matched in mapping and call DoFusion
  * @param [in] graph: original graph
@@ -137,6 +187,7 @@ Status TbeAippConvFusionPass::GetFusionNodes(const BufferFusionMapping& mapping,
   }
 
   fusion_nodes = GetMatchedNodes(mapping);
+  SetSplitInfo(mapping, fusion_nodes);
   OP_LOGD(fused_op_type_.c_str(), "End to do TbeAippConvFusionPass!");
   return SUCCESS;
 }

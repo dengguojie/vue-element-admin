@@ -23,6 +23,7 @@
 
 #include <vector>
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_base.h"
+#include "common/lxfusion_json_util.h"
 
 namespace fe {
 
@@ -36,9 +37,12 @@ class TbeConv2dWrtselStridewrtPass : public BufferFusionPassBase {
 
  protected:
   vector<BufferFusionPattern*> DefinePatterns() override;
+  Status GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
 
  private:
   const string fused_op_type_ = "FusedOp";
+  void DelSplitInfoByAxis(std::vector<AxisSplitMap> &split_maps, int axis);
+  void SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes);
 };
 }  // namespace fe
 
