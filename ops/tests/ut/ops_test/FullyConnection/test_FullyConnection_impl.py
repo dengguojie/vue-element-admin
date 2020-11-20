@@ -23,9 +23,21 @@ case2 = {"params": [{'shape': (8, 1, 2, 2, 16), 'dtype': 'float16', 'format': 'N
          "format_expect": [],
          "support_expect": True}
 
+case3 = {"params": [{'shape': (256, 19, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_NZ',"ori_format":"NCHW","ori_shape":(304, 4096)},
+                    {'shape': (256, 256, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_Z',"ori_format":"NCHW","ori_shape":(4096, 4096, 1, 1)},
+                    {'shape': (1, 256, 1, 1, 16), 'dtype': 'float16', 'format': 'NC1HWC0',"ori_format":"NCHW","ori_shape":(4096, )},
+                    None,
+                    {'shape': (256, 19, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_NZ',"ori_format":"NCHW","ori_shape":(304, 4096)},
+                    4096, False, 1, 0],
+         "case_name": "fully_connection_3",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910")

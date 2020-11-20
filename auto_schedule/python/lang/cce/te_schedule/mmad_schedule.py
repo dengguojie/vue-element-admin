@@ -44,6 +44,8 @@ DEQ_SCALE_CHILD_LIST = [
     "dequant_sqrt",
 ]
 
+DOUBLE_VALUE = 2
+
 def gemm_para_check(gm_shape, l1_tiling_shape, l0_tiling_shape):
     """
     algorithm: gemm_para_check
@@ -242,7 +244,9 @@ def get_mini_frac_shape_map():
     """
     the knowledge of matmul schedule tiling
     """
-    shape_map = {(304, -1, 4096, -1, 2): "304_80_192_304_80_192_2_2"
+    shape_map = {(304, -1, 4096, -1, 2): "304_80_192_304_80_192_2_2",
+                 (304, -1, 4096, -1, 4): "304_80_192_304_80_192_2_2",
+                 (304, -1, 4096, -1, 6): "304_80_192_304_80_192_2_2"
                  }
 
     return shape_map
@@ -1413,6 +1417,11 @@ def mmad_schedule(res, sch_list):
     m_l0_shape, k_l0_shape, n_l0_shape = get_special_l0_factor(
         src_shape, m_l0_shape, k_l0_shape, n_l0_shape)
 
+    l0c_enable_db = True
+    l0c_size = get_soc_spec("L0C_SIZE")
+    if m_l0_shape * n_l0_shape * l0c_byte * DOUBLE_VALUE > l0c_size:
+        l0c_enable_db = False
+
     m_l1_shape = m_l0_shape
     k_l1_shape = k_l0_shape
     n_l1_shape = n_l0_shape
@@ -2123,8 +2132,9 @@ def mmad_schedule(res, sch_list):
                         sch[tensor_bias_l0c].compute_at(sch[res], c_at_axis)
                         sch[tensor_c_add_bias].compute_at(sch[res], c_at_axis)
                         if not dequant_fusion:
-                            sch[tensor_bias_l0c].preload()
-                            sch[tensor_bias_l0c].double_buffer()
+                            if l0c_enable_db:
+                                sch[tensor_bias_l0c].preload()
+                                sch[tensor_bias_l0c].double_buffer()
                             sch[tensor_bias_ub].preload()
                             sch[tensor_bias_ub].double_buffer()
                 _do_frac_bias_compurt_at()
@@ -2261,8 +2271,9 @@ def mmad_schedule(res, sch_list):
                     sch[tensor_bias_l0c].compute_at(sch[res], c_at_axis)
                     sch[tensor_c_add_bias].compute_at(sch[res], c_at_axis)
                     if not dequant_fusion:
-                        sch[tensor_bias_l0c].preload()
-                        sch[tensor_bias_l0c].double_buffer()
+                        if l0c_enable_db:
+                            sch[tensor_bias_l0c].preload()
+                            sch[tensor_bias_l0c].double_buffer()
                         sch[tensor_bias_ub].preload()
                         sch[tensor_bias_ub].double_buffer()
             _do_nd_bias_compurt_at()
@@ -2491,7 +2502,8 @@ def mmad_schedule(res, sch_list):
             sch[tensor_a_l0a].double_buffer()
             sch[tensor_b_l0b].double_buffer()
             if tensor_b_reuse == 0 and tensor_a_reuse == 0:
-                sch[tensor_c].double_buffer()
+                if l0c_enable_db:
+                    sch[tensor_c].double_buffer()
 
                 if not quantify_fusion:
                     if tensor_c_ub.op.tag != 'matmul' and \
