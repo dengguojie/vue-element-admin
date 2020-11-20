@@ -488,11 +488,11 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
                 max_dis = distance
             left = right
 
-            h_l1 = min(kernel_h - 1 + max_dis, ho_l1)
-            if cddr_h * cddr_w <= howo_size:
-                h_l1 = ho_l1
+        h_l1 = min(kernel_h - 1 + max_dis, ho_l1)
+        if cddr_h * cddr_w <= howo_size:
+            h_l1 = ho_l1
 
-            return h_l1
+        return h_l1
 
     def _check_exceed_l1_buffer(howo_size):
         c0_size = 16
