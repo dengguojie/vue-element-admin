@@ -80,6 +80,10 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
   FUSION_PASS_CHECK(fusedDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
+
+  FUSION_PASS_CHECK(!CheckOpSupported(fusedDesc), OP_LOGI(FUSED_OP_TYPE.c_str(), "Op Not Supported."),
+                    return NOT_CHANGED);
+
   ge::GeTensorDesc outputMaskDesc = fusedDesc->GetOutputDesc(1);
 
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(fusedNode);
