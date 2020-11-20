@@ -821,7 +821,7 @@ Defaults to "0.00001" . \n
 *batch_ variance: A Tensor of type float32 for the result variance . \n
 
 *@attention Constraints:
-*For Ascend 310, the result accuracy fails to reach 1‰ due to the square root instruction.
+*For Ascend 310, the result accuracy fails to reach 0.001 due to the square root instruction.
 */
 REG_OP(INInferV2)
     .INPUT(x, TensorType({DT_FLOAT16,DT_FLOAT}))
