@@ -253,7 +253,6 @@ bool TbeAippConvReluMaxpoolingFusionPass::CheckMaxpoolNodeValidation(const ge::N
                       OP_LOGI(fused_op_type_.c_str(), "node[%s]'s Attr strides is [%zu] not 4, can not fusion.",
                               max_pool_node->GetName().c_str(), ksizes.size()),
                       return false);
-
     ge::Format format = max_pool_node->GetOpDesc()->GetInputDesc(0).GetOriginFormat();
     if (format == ge::FORMAT_NCHW) {
       FUSION_PASS_CHECK(strides[2] != 2 || strides[3] != 2,
@@ -397,6 +396,7 @@ Status TbeAippConvReluMaxpoolingFusionPass::GetFusionNodes(const BufferFusionMap
   }
 
   fusion_nodes = GetMatchedNodes(mapping);
+  SetSplitInfo(mapping, fusion_nodes);
   OP_LOGD(fused_op_type_.c_str(), "End to do TbeAippConvReluMaxpoolingFusionPass!");
   return SUCCESS;
 }

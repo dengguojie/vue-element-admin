@@ -23,9 +23,10 @@
 
 #include <vector>
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_base.h"
+#include "tbe_aipp_conv_fusion_pass.h"
 
 namespace fe {
-class TbeAippConvReluMaxpoolingFusionPass : public BufferFusionPassBase {
+class TbeAippConvReluMaxpoolingFusionPass : public TbeAippConvFusionPass {
  public:
   explicit TbeAippConvReluMaxpoolingFusionPass() {
   }
