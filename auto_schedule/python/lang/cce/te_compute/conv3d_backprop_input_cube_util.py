@@ -131,17 +131,17 @@ def _im2col_fractal(a_im2col_shape, tensor_a_row_major, tag=''):
         _, _, _, a_row_major_hw, _, kernel_h, kernel_w, _ = tensor_a_row_major.shape
         g_index, n_index, deep_index, m1_index, k1_index, m0_index, k0_index = indices
 
-        hw_index = m1_index*a_col_m0 + m0_index
+        hw_index = m1_index * a_col_m0 + m0_index
 
-        c1_index = (((k1_index*a_col_k0 + k0_index) // a_col_k0) //
+        c1_index = (((k1_index * a_col_k0 + k0_index) // a_col_k0) //
                     kernel_w.value) // kernel_h.value
 
-        kh_index = (((k1_index*a_col_k0 + k0_index) // a_col_k0) //
+        kh_index = (((k1_index * a_col_k0 + k0_index) // a_col_k0) //
                     kernel_w.value) % kernel_h.value
 
-        kw_index = ((k1_index*a_col_k0 + k0_index) // a_col_k0) % kernel_w.value
+        kw_index = ((k1_index * a_col_k0 + k0_index) // a_col_k0) % kernel_w.value
 
-        c0_index = (k1_index*a_col_k0 + k0_index) % a_col_k0
+        c0_index = (k1_index * a_col_k0 + k0_index) % a_col_k0
 
         return tvm.select(tvm.any(hw_index < 0, hw_index >
                                   a_row_major_hw.value - 1),
@@ -159,7 +159,7 @@ def _im2col_fractal(a_im2col_shape, tensor_a_row_major, tag=''):
                        lambda *indices:
                        __im2col_fractal_indices(indices, tensor_a_row_major),
                        name='im2col_fractal',
-                       tag=tag+'im2col_fractal')
+                       tag=tag + 'im2col_fractal')
 
 
 class CubeDslPattern:
@@ -271,8 +271,8 @@ class CubeDslPattern:
             g_index, n_index, deep_index, co1_index, m_index, co0_index = indices
             tensor_c = tvm.select(
                 tvm.all((deep_index + pad_head) % stride_d < kernel_d,
-                        (deep_index + pad_head)//stride_d < tensor_a.shape[2]),
-                tensor_a(g_index, n_index, (deep_index + pad_head)//stride_d,
+                        (deep_index + pad_head) // stride_d < tensor_a.shape[2]),
+                tensor_a(g_index, n_index, (deep_index + pad_head) // stride_d,
                          m_index // a_m0, axis_k1, m_index % a_m0,
                          axis_k0).astype(type_c) *
                 tensor_b(g_index, (deep_index + pad_head) % stride_d, axis_k1,
@@ -311,18 +311,18 @@ class CubeDslPattern:
         stride_d = self._stride_d  # pylint: disable=E1101
         output_depth = self.output_shape[1]  # pylint: disable=E1101
         kernel_d = self._kernel_d  # pylint: disable=E1101
-        shape_c = (a_group, a_batch, output_depth, b_n1, a_m1*a_m0, b_n0)
+        shape_c = (a_group, a_batch, output_depth, b_n1, a_m1 * a_m0, b_n0)
         type_c = c_type if c_type is not None else CubeDslPattern.get_type_c(
             tensor_a.dtype, tensor_b.dtype)
 
         if stride_d == kernel_d and (output_depth + pad_head
-                                     + pad_tail) == a_deep*stride_d:
+                                     + pad_tail) == a_deep * stride_d:
             tensor_c = tvm.compute(
                 shape_c,
                 lambda g_index, n_index, deep_index, co1_index, m_index, co0_index:
                 tvm.sum(
-                    (tensor_a(g_index, n_index, (deep_index + pad_head)//stride_d,
-                              m_index//a_m0, axis_k1,
+                    (tensor_a(g_index, n_index, (deep_index + pad_head) // stride_d,
+                              m_index // a_m0, axis_k1,
                               m_index % a_m0, axis_k0) *
                      tensor_b(g_index, (deep_index + pad_head) % stride_d, axis_k1,
                               co1_index, co0_index,
@@ -458,7 +458,7 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         a_im2col_fractal_shape = (a_group,
                                   a_batch,
                                   a_deep,
-                                  (height_out*width_out + self._m0 - 1) // self._m0,
+                                  (height_out * width_out + self._m0 - 1) // self._m0,
                                   a_c1 * kernel_h * kernel_w,
                                   self._m0,
                                   a_c0)

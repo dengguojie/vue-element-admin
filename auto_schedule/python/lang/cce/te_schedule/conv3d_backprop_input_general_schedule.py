@@ -101,7 +101,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         if kd_reduce_flag:
             reduce_axis_kd_outer_outer, _ = sch[c_col].split(reduce_axis_kd_outer, kd_tiling_l1_factor)
         if k_al1_factor > k_bl1_factor:
-            factor_outer, factor_inner = k_al1_factor//k_bl1_factor, k_bl1_factor
+            factor_outer, factor_inner = k_al1_factor // k_bl1_factor, k_bl1_factor
             c_col_k_outer_outer, c_col_k_outer_inner = sch[c_col].split(c_col_k_outer, factor=factor_inner)
             c_col_k_outer_outer_outer, c_col_k_outer_outer_inner = sch[c_col].split(c_col_k_outer_outer,
                                                                                     factor=factor_outer)
@@ -118,7 +118,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
                     c_col_k_outer_inner, c_col_m_outer)
 
         else:
-            factor_outer, factor_inner = k_bl1_factor//k_al1_factor, k_al1_factor
+            factor_outer, factor_inner = k_bl1_factor // k_al1_factor, k_al1_factor
             c_col_k_outer_outer, c_col_k_outer_inner = sch[c_col].split(c_col_k_outer, factor=factor_inner)
             c_col_k_outer_outer_outer, c_col_k_outer_outer_inner = sch[c_col].split(c_col_k_outer_outer, 
                                                                                     factor=factor_outer)
