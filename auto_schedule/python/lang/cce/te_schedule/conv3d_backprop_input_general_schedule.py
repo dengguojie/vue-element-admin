@@ -359,7 +359,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         tensor_map = {}
         tensor_attr = {}
         stride_d = c_ddr.op.attrs["stride_d"].value
-        group_dict =c_ddr.op.attrs["group_dict"]
+        group_dict = c_ddr.op.attrs["group_dict"]
         kernel_d, _, _ = list(i.value for i in c_ddr.op.attrs["kernels"])
         c_fill_zero = c_ddr.op.input_tensors[0]
         c_ub = c_fill_zero.op.input_tensors[0]
@@ -943,7 +943,8 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         (1, 1),
         (1, tbe_platform.CUBE_MKN[c_ub.dtype]["mac"][0]),
         (1, tbe_platform.CUBE_MKN[c_ub.dtype]["mac"][2]))
-    batch_outer, c_ddr_deep_outer, bl1_at_ddr_n_outer, al1_at_ddr_m_outer, g_axis, bind_in, blockidx, blocks = _multi_core()
+    (batch_outer, c_ddr_deep_outer, bl1_at_ddr_n_outer, al1_at_ddr_m_outer,
+     g_axis, bind_in, blockidx, blocks) = _multi_core()
 
     _do_compute_at()
 
