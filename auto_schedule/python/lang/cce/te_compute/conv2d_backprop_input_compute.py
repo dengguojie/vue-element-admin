@@ -312,6 +312,8 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
     g_extend = group_dict.get(GroupDictKeys.g_extend)
     dx_c1_extend = group_dict.get(GroupDictKeys.dx_c1_extend)
     dy_c1_extend = group_dict.get(GroupDictKeys.dy_c1_extend)
+    dx_c_ori = group_dict.get(GroupDictKeys.dx_c_ori)
+    filter_c_ori = group_dict.get(GroupDictKeys.filter_c_ori)
     groups = group_dict.get(GroupDictKeys.groups)
     filter_ori_format = group_dict.get(GroupDictKeys.filter_ori_format)
     # temp limitation : group must be 1
