@@ -609,7 +609,7 @@ def get_op_support_info(x, y, perm, shape, transpose_first,
                 ]
         elif perm == [1, 0, 2]:
             if shape_x[0] == 1 or shape_x[1] == 1:
-                axis_split_matrix=[[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
+                axis_split_matrix=[[SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])]]
             else:
                 axis_split_matrix=[
                     [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [1]])],
