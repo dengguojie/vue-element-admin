@@ -22,8 +22,8 @@ from impl.util import util_select_op_base
 from te.utils import shape_util
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
-from impl.util.util_select_op_base import ReduceInput
-from impl.util.util_select_op_base import ReduceOutput
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 # General limitation of the size for input shape: 2**31
@@ -38,22 +38,36 @@ def get_op_support_info(input_x, input_gamma, input_beta,
                         begin_norm_axis, begin_params_axis,
                         epsilon=1e-12, kernel_name="layer_norm",
                         impl_mode="high_performance"):
+    """
+    get_op_support_info
+    """
     format_x = input_x.get("format").upper()
-    ori_shape_x = list(input_x.get("ori_shape"))
-    index_list = tuple(index for index, _ in enumerate(ori_shape_x))
-    reduce_axis = index_list[begin_norm_axis:]
-    reduce_axis = to_frac_z_axis(ori_shape_x, reduce_axis)
-    if format_x in ("FRACTAL_NZ", "ND", "NCHW", "NHWC", "NC1HWC0"):
-        axis_reduce_matrix=[]
-        for i in reduce_axis:
-            split_0 = [ReduceInput([0, [i]]), ReduceOutput([1, 0, False])]
-            axis_reduce_matrix.append(split_0)
-        axis_split_list = None
+    shape_x = input_x.get("shape")
+    begin_norm_axis = shape_util.axis_check(len(shape_x), begin_norm_axis)
+    begin_params_axis = shape_util.axis_check(len(shape_x), begin_params_axis)
+    if format_x in ("ND", "NCHW", "NHWC", "NC1HWC0"):
+        axis_split_matrix=[]
+        if begin_params_axis == 0:
+            for i in range(begin_norm_axis):
+                split_0 = [SplitInput([0, [i], [-1], [-1]], [1, [i], [-1], [-1]], [2, [i], [-1], [-1]]),\
+                           SplitOutput([0, [i]], [1, [i]], [2, [i]])]
+                axis_split_matrix.append(split_0)
+        else:
+            if begin_norm_axis <= begin_params_axis:
+                for i in range(begin_norm_axis):
+                    split_0 = [SplitInput([0, [i], [-1], [-1]]),\
+                               SplitOutput([0, [i]], [1, [i]], [2, [i]])]
+                    axis_split_matrix.append(split_0)
+            else:
+                for i in range(begin_params_axis):
+                    split_0 = [SplitInput([0, [i], [-1], [-1]]),\
+                               SplitOutput([0, [i]], [1, [i]], [2, [i]])]
+                    axis_split_matrix.append(split_0)
 
     else:
-        axis_split_list = None
-        axis_reduce_matrix = None
-    op_cal_info_in_json = get_op_cal_info(axis_split_list, axis_reduce_matrix, 0, 0)
+        axis_split_matrix = None
+    axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
     return op_cal_info_in_json
 
 
