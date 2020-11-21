@@ -71,6 +71,7 @@ def is_v100():
     """
     return product_params().is_mini_version() or product_params().is_cloud_version()
 
+
 def need_temp_space(tensor: tvm.tensor.Tensor):
     """
     :param tensor:
@@ -115,7 +116,7 @@ def is_vtranspose_broadcast(tensor: tvm.tensor.Tensor):
     """
     if not is_broadcast(tensor) or len(tensor.op.input_tensors) != 1:
         return False
-    return tensor.dtype == "float16" and tensor.shape[-1] != tensor.op.input_tensors[0].shape[-1]
+    return tensor.dtype == "float16" and not expr_equal(tensor.shape[-1], tensor.op.input_tensors[0].shape[-1])
 
 
 def is_broadcast(tensor: tvm.tensor.Tensor):
@@ -282,3 +283,54 @@ def get_sch_additional_entry(sch, k):
     if not hasattr(sch, "addition"):
         return None
     return sch.addition.get(k)
+
+
+def expr_equal(expr_a, expr_b):
+    """
+    :param expr_a: The first expr
+    :param expr_b: The second expr
+    :return: bool, compare result
+    """
+    def _parse_expr(_expr, _elements: dict):
+        if isinstance(_expr, tvm.expr.Mul):
+            _parse_mul(_expr, _elements)
+        else:
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "Expr parse: unsupported expr: [%s]" % _expr
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+
+    def _parse_mul(_expr, _elements: dict):
+        if not isinstance(_expr, tvm.expr.Mul):
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "Expr parse: it is not mul expr: [%s]" % _expr
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+
+        var_types = (tvm.expr.Var,)
+        for _x in (_expr.a, _expr.b):
+            if isinstance(_x, const_types):
+                _elements[_x.value] = _elements.get(_x.value, 0) + 1
+            elif isinstance(_x, var_types):
+                _elements[_x] = _elements.get(_x, 0) + 1
+            else:
+                _parse_mul(_x, _elements)
+
+    elements1 = {}
+    elements2 = {}
+    single_types = (int, float, tvm.expr.Var)
+    const_types = (tvm.expr.IntImm,)
+    for expr, elements in zip((expr_a, expr_b), (elements1, elements2)):
+        if isinstance(expr, single_types):
+            elements[expr] = elements.get(expr, 0) + 1
+        elif isinstance(expr, const_types):
+            elements[expr.value] = elements.get(expr.value, 0) + 1
+        elif isinstance(expr, tvm.expr.Expr):
+            _parse_expr(expr, elements)
+        else:
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "Expr compare: unsupported expr: [%s]" % expr
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+
+    return elements1 == elements2
