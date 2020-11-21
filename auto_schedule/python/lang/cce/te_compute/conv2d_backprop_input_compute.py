@@ -519,6 +519,7 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
                 "dy_h"
             )
 
+        _check_equal_rule(dx_c_ori, filter_c_ori, "dx_cin", "filter_cin")
     # strides
     def _check_strides():
         _check_variable_range(stride_h, STRIDE_MIN, STRIDE_MAX, "stride_h")

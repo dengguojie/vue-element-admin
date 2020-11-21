@@ -125,7 +125,6 @@ def _test_conv2d_bp_input_fusion(
                 error_flag = True
 
             if not error_flag:
-                _test_conv2d_bp_input_ubfusion_function()
                 raise RuntimeError(
                     "error_case.: {}".format(
                         _gen_kernel_name(
