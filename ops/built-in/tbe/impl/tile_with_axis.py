@@ -125,13 +125,16 @@ def op_select_format(input_x, output_y, tiles, axis=1, kernel_name="tile_with_ax
 
 # pylint: disable = unused-argument
 def get_op_support_info(input_x, output_y, tiles, axis, kernel_name="tile_with_axis"):
+    """
+    get_op_support_info
+    """
     shape_x_len = len(input_x.get("shape"))
     format_x = input_x.get("format").upper()
     if axis < 0:
         axis += shape_x_len
     if format_x == "NC1HWC0" or format_x == "ND":
         axis_split_matrix=[]
-        for i in range(0, shape_x_len):
+        for i in range(0, shape_x_len-1):
             if i != axis:
                 split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]])]
                 axis_split_matrix.append(split_0)
