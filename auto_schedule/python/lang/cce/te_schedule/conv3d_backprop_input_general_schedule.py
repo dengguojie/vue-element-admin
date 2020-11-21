@@ -99,7 +99,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
 
     def _al1_and_bl1_process():
         if kd_reduce_flag:
-            reduce_axis_kd_outer_outer, _ = sch[c_col].split(reduce_axis_kd_outer, kd_tiling_l1_factor)
+            reduce_axis_kd_outer_outer, reduce_axis_kd_outer_inner = sch[c_col].split(reduce_axis_kd_outer, kd_tiling_l1_factor)
         if k_al1_factor > k_bl1_factor:
             factor_outer, factor_inner = k_al1_factor // k_bl1_factor, k_bl1_factor
             c_col_k_outer_outer, c_col_k_outer_inner = sch[c_col].split(c_col_k_outer, factor=factor_inner)
@@ -108,10 +108,12 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
             bl1_at_l0c_axis, al1_at_l0c_axis = c_col_k_outer_outer_inner, c_col_k_outer_outer_outer
             if kd_reduce_flag:
                 sch[c_col].reorder(
-                    c_col_k_outer_outer_outer,
                     reduce_axis_kd_outer_outer,
+                    c_col_k_outer_outer_outer,
                     c_col_k_outer_outer_inner,
-                    c_col_k_outer_inner, c_col_m_outer)
+                    c_col_k_outer_inner,
+                    reduce_axis_kd_outer_inner,
+                    c_col_m_outer)
             else:
                 sch[c_col].reorder(
                     c_col_k_outer_outer_outer, c_col_k_outer_outer_inner,
