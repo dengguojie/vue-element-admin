@@ -814,7 +814,7 @@ Status DynamicGRUV2GradFusionPass::AddDxtMatmulNode(ge::NodePtr dynamicGRUGradNo
   ge::OpDescPtr matmulOpDesc =
       std::make_shared<ge::OpDesc>(dynamicGRUGradNode->GetName() + "GRUWeightGrad/Dx/BatchMatmulV2", "BatchMatMulV2");
 
-  // input  
+  // input
   ge::GeTensorDesc dgateXDesc = dgateXConcatNode->GetOpDesc()->GetOutputDesc(0).Clone();  // dgate_x
   ge::GeTensorDesc weightXDesc =
       dynamicGRUGradNode->GetOpDesc()->GetInputDesc(INPUT_INDEX["weight_input"]).Clone();  // weight_x
@@ -844,7 +844,7 @@ Status DynamicGRUV2GradFusionPass::AddDxtMatmulNode(ge::NodePtr dynamicGRUGradNo
   // input Edge
   ge::GraphUtils::AddEdge(dgateXConcatNode->GetOutDataAnchor(0), matmulNode->GetInDataAnchor(0));  // dgate_x
   ge::GraphUtils::AddEdge(dynamicGRUGradNode->GetInDataAnchor(INPUT_INDEX["weight_input"])->GetPeerOutAnchor(),
-                          matmulNode->GetInDataAnchor(1)); 
+                          matmulNode->GetInDataAnchor(1));
 
   // output Edge
   for (InDataAnchorPtr inAnchorPtr : dynamicGRUGradNode->GetOutDataAnchor(OUTPUT_INDEX["dx"])->GetPeerInDataAnchors()) {
@@ -904,12 +904,25 @@ Status DynamicGRUV2GradFusionPass::AddReduceSumNode(ge::NodePtr dynamicGRUGradNo
 
   // input
   ge::GeTensorDesc inputTensorDesc = inputNode->GetOpDesc()->GetOutputDesc(anchorIndex).Clone();
-  inputTensorDesc.SetFormat(ge::FORMAT_ND);
-  inputTensorDesc.SetShape(inputTensorDesc.GetOriginShape());
+  if (axis.size() == 2) {
+    inputTensorDesc.SetFormat(ge::FORMAT_ND);
+    inputTensorDesc.SetShape(inputTensorDesc.GetOriginShape());
+  }
   reduceSumDesc->AddInputDesc("input_" + nodeName, inputTensorDesc);
+  
+  // gen output dims
+  vector<int64_t> outputDim = inputTensorDesc.GetShape().GetDims();
+  for (int64_t i: axis) {
+    outputDim[i] = 1;
+  }
 
   // output
   ge::GeTensorDesc outputTensorDesc = dynamicGRUGradNode->GetOpDesc()->GetOutputDesc(OUTPUT_INDEX[indexName]).Clone();
+  // no need to trans data while reduce 3 axis 
+  if (axis.size() != 2) {
+    outputTensorDesc.SetFormat(inputTensorDesc.GetFormat());
+    outputTensorDesc.SetShape(GeShape(outputDim));
+  }
   reduceSumDesc->AddOutputDesc("output_" + nodeName, outputTensorDesc);
 
   // attr
