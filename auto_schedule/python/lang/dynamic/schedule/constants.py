@@ -16,10 +16,11 @@
 auto_schedule template, if user call auto_schedule, this file will choose a
 corresponding schedule template for user's compute
 """
-# 'pylint: disable=R0903
+
+
 class Pattern:
     """
-    Pattern
+    Built-in Patterns
     """
     ELEMWISE = "ElemWise"
     REDUCE = "CommReduce"
@@ -30,6 +31,9 @@ class Pattern:
 
 
 class CompileInfo:
+    """
+    Built-in Compilation Info Keys
+    """
     BASE_INFO = "_base_info"
     FLAG_INFO = "_flag_info"
     MAX_DTYPE = "_max_dtype_bytes"
@@ -101,6 +105,7 @@ INSN_MAPPING = {
     "elewise_multiple_madd": "vector_madd",
     "elewise_multiple_maddrelu": "vector_maddrelu",
     "elewise_binary_scalar_axpy": "vector_axpy",
+    "dma_copy": "dma_copy"
 }
 
 TERNARY_INSNS = [

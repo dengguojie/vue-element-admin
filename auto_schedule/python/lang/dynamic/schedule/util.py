@@ -15,12 +15,17 @@
 """
 schedule util
 """
+from typing import List
 from functools import reduce
 from operator import mul
 
 from te.platform.cce_conf import CceProductParams as product_params
 from te import platform as cce
 from te import tvm
+from te.tvm.expr import Var
+from te.tvm.expr import Reduce
+from te.tvm.tensor import Tensor
+from te.tvm.tensor import PlaceholderOp
 from te.lang.base import operation
 from te.utils.error_manager.error_manager_util import get_error_message
 
@@ -283,6 +288,42 @@ def get_sch_additional_entry(sch, k):
     if not hasattr(sch, "addition"):
         return None
     return sch.addition.get(k)
+
+
+def is_reduce_tensor(tensor: Tensor) -> bool:
+    """Check if tensor contains reduce body"""
+    if isinstance(tensor.op, PlaceholderOp):
+        return False
+    if isinstance(tensor.op.body[0], Reduce):
+        return True
+    return False
+
+
+def get_reduce_axes(reduce_tensor: Tensor) -> List[Var]:
+    """Get reduce axes var of reduce tensor"""
+    if not is_reduce_tensor(reduce_tensor):
+        raise RuntimeError("Cannot get reduce axes of non-reduce tensor!")
+    reduce_tensor_body = reduce_tensor.op.body
+    reduce_tensor_axes = list(reduce_tensor_body[0].axis)
+    for idx, axis in enumerate(reduce_tensor_axes):
+        reduce_tensor_axes[idx] = axis.var
+    return reduce_tensor_axes
+
+
+def get_reduce_all_axes(reduce_tensor: Tensor) -> List[Var]:
+    """Get all axes var for reduce tensor"""
+    reduce_tensor_body = reduce_tensor.op.body
+    return list(reduce_tensor_body[0].source[0].args)
+
+
+def get_reduce_axis_indices(reduce_tensor: Tensor) -> List[int]:
+    """Get all reduce axis index"""
+    return [get_reduce_all_axes(reduce_tensor).index(axis) for axis in get_reduce_axes(reduce_tensor)]
+
+
+def is_keepdims(reduce_tensor: Tensor) -> bool:
+    """Check if reduce tensor is keepdims"""
+    return len(reduce_tensor.shape) == len(get_reduce_all_axes(reduce_tensor))
 
 
 def expr_equal(expr_a, expr_b):
