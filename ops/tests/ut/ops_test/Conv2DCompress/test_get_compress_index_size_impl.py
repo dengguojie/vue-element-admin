@@ -79,8 +79,8 @@ def test_get_compress_index_size(test_arg):
     test_get_compress_index_size_case3()
     test_get_compress_index_size_case4()
 
-ut_case.add_cust_test_func(test_func=test_get_compress_index_size)
+# ut_case.add_cust_test_func(test_func=test_get_compress_index_size)
 
 if __name__ == "__main__":
-    ut_case.add_cust_test_func(test_func=test_get_compress_index_size)
+    # ut_case.add_cust_test_func(test_func=test_get_compress_index_size)
     exit(0)

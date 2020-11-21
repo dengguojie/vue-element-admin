@@ -246,28 +246,28 @@ def _conv_layer_compress_cce(shape_in, shape_w, shape_index, in_dtype,
     shape_in = list(shape_in)
     shape_w = list(shape_w)
     weight_ori_shape_nchw = shape_w
+    cin_ori = shape_in[1]//groups
+    cout_ori = shape_w[0]//groups
 
     shape_in, shape_w = util_conv2d.conv_layer_cce_para_check(
         shape_in, shape_w, padh, padw, strideh, stridew, in_dtype, w_dtype, res_dtype,
-        offset_w_dtype, bias, kernel_name, dilateh, dilatew, optim_dict, fusion_para)
+        offset_w_dtype, bias, kernel_name, dilateh, dilatew, optim_dict, fusion_para, groups)
 
     c0_val = 16
     if w_dtype == "int8":
         c0_val = 32
-    cin_ori = shape_in[1]//groups
-    cout_ori = 16*(math.ceil(shape_w[0]/16))//groups
     enlarge = min(util_conv2d.lcm(util_conv2d.lcm(cin_ori, c0_val)//cin_ori, util_conv2d.lcm(cout_ori, 16)//cout_ori),
                   groups)
     c1_opt = math.ceil(cin_ori*enlarge/c0_val)
     cout1_opt = math.ceil(cout_ori*enlarge/16)
     group_opt = math.ceil(groups/enlarge)
     out_channel, _, filter_h, filter_w = shape_w
-
+    c1in_ori_align = math.ceil(cin_ori*groups/c0_val)
     fmap_shape_nc1hwc0, filter_shape_frac_z = util_conv2d.conv_layer_cce_shape_calc(
-        shape_in, shape_w, in_dtype, w_dtype, optim_dict)
+        shape_in, shape_w, in_dtype, w_dtype, optim_dict, cout1_opt, c1_opt, group_opt, c1in_ori_align)
 
     if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES") and filter_h * filter_w > MAX_FITLER_HW:
-        err_man.raise_err_specific("conv2dcompress","conv2d Min tiling still exceed ub buffer, when open weight unzip")
+        err_man.raise_err_specific("conv2dcompress", "conv2d Min tiling still exceed ub buffer, when open weight unzip")
 
     tensor_list = []
     with tvm.target.cce():

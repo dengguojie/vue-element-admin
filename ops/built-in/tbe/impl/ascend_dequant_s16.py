@@ -53,12 +53,16 @@ def ascend_dequant_s16_compute(x0, deq_scale, x1, y, relu_flag=False, kernel_nam
         conv_flag = 1
 
     if conv_flag:
-        align_shape = shape_util.shape_to_list(x0.op.input_tensors[0].shape)
-        c1_index = 2
+        x0_input_shape = shape_util.shape_to_list(x0.op.input_tensors[0].shape)
+        align_shape = [x0_input_shape[1],
+                       x0_input_shape[0] * x0_input_shape[2],
+                       x0_input_shape[3],
+                       x0_input_shape[4]]
     else:
         x0_shape_list = shape_util.shape_to_list(x0_shape)
         align_shape = x0_shape_list.copy()
-        c1_index = 1
+
+    c1_index = 1
 
     ori_shape_deq = deq_scale.op.attrs["ori_shape"]
     ori_shape_deq_list = shape_util.shape_to_list(ori_shape_deq)
@@ -81,18 +85,12 @@ def ascend_dequant_s16_compute(x0, deq_scale, x1, y, relu_flag=False, kernel_nam
     res_shape[-2] = x0.shape[-2]
 
     if conv_flag:
-        group = align_shape[0]
-        cout1_opt = align_shape[2]
-        if group == 1:
-            res = tvm.compute(
-                x0_shape,
-                lambda batch, cout1, howo, cout0: res_ub(0, batch, cout1, howo, cout0), name="dequant_s16_remove_pad",
-                tag="dequant_s16_remove_pad")
-        else:
-            res = tvm.compute(x0_shape,
-                lambda batch, cout1, howo, cout0:
-                    res_ub(cout1 // cout1_opt, batch, cout1 % cout1_opt, howo, cout0), name="dequant_s16_remove_pad",
-                tag="dequant_s16_remove_pad")
+        res_shape_nchw_after_removepad = x0.op.attrs["conv_shape"]
+        res = tvm.compute(res_shape_nchw_after_removepad,
+                          lambda batch, cout1, howo, cout0:
+                              res_ub(batch, cout1, howo, cout0),
+                          name="dequant_s16_remove_pad",
+                          tag="dequant_s16_remove_pad")
     else:
         res = tvm.compute(res_shape, lambda *indice: res_ub(*indice), name="dequant_s16_remove_pad",
                           tag="dequant_s16_remove_pad")
@@ -120,35 +118,44 @@ def _deq_cast_compute(x0, deq_scale, x1, align_shape, c1_index, tensor_flag, rel
     generate lambda func
     """
     if conv_flag:
-        group = align_shape[0]
-        x0_shape = x0.shape
+        group = x0.op.input_tensors[0].shape[0].value
+        cout1_opt = x0.op.input_tensors[0].shape[2].value
 
-        def lambda_func(g, i, j, k, l):
+        def lambda_func(batch, cout1, howo, cout0):
             deq_indice = [0] * 5
             if tensor_flag:
-                deq_indice[4] = l
-                deq_indice[1] = j
+                deq_indice[4] = cout0
+                deq_indice[1] = cout1
 
             if x1 is not None:
                 x1_indice = [0] * len(x1.shape)
                 if len(x1.shape) == 5:
-                    x1_indice[4] = l
-                    x1_indice[1] = j
+                    x1_indice[4] = cout0
+                    x1_indice[1] = cout1
                 else:
-                    x1_indice[0] = j * 16 + l
+                    x1_indice[0] = cout1 * 16 + cout0
 
                 if tensor_flag:
-                    func = tvm.vdeq_cast(x0(g*(x0_shape[0]//group)+i, j, k, l),
-                                         deq_scale(*deq_indice), "int16", do_relu=relu_flag) + x1(*x1_indice)
+                    func = tvm.vdeq_cast(
+                        x0.op.input_tensors[0](0 if group == 1 else cout1 // cout1_opt, batch,
+                                               cout1 if group == 1 else cout1 % cout1_opt, howo, cout0),
+                        deq_scale(*deq_indice), "int16", do_relu=relu_flag) + x1(*x1_indice)
                 else:
-                    func = tvm.deq_cast(x0(g*(x0_shape[0]//group)+i, j, k, l),
-                                        deq_scale(*deq_indice), "int16") + x1(*x1_indice)
+                    func = tvm.deq_cast(
+                        x0.op.input_tensors[0](0 if group == 1 else cout1 // cout1_opt, batch,
+                                               cout1 if group == 1 else cout1 % cout1_opt, howo, cout0),
+                        deq_scale(*deq_indice), "int16") + x1(*x1_indice)
             else:
                 if tensor_flag:
-                    func = tvm.vdeq_cast(x0(g*(x0_shape[0]//group)+i, j, k, l),
-                                         deq_scale(*deq_indice), "int16", do_relu=relu_flag)
+                    func = tvm.vdeq_cast(
+                        x0.op.input_tensors[0](0 if group == 1 else cout1 // cout1_opt, batch,
+                                               cout1 if group == 1 else cout1 % cout1_opt, howo, cout0),
+                        deq_scale(*deq_indice), "int16", do_relu=relu_flag)
                 else:
-                    func = tvm.deq_cast(x0(g*(x0_shape[0]//group)+i, j, k, l), deq_scale(*deq_indice), "int16")
+                    func = tvm.deq_cast(
+                        x0.op.input_tensors[0](0 if group == 1 else cout1 // cout1_opt, batch,
+                                               cout1 if group == 1 else cout1 % cout1_opt, howo, cout0),
+                        deq_scale(*deq_indice), "int16")
             return func
     else:
         n_dim = len(align_shape)

@@ -106,7 +106,7 @@ def calc_para_from_tensor(inputs, weights, bias, offset_w, strides, pads,
     if weights.dtype == "int8":
         c0_val = 32
     cin_ori = shape_c//groups
-    cout_ori = 16*(math.ceil(cout_all/16))//groups
+    cout_ori = cout_all//groups
     enlarge = min(lcm(lcm(cin_ori, c0_val)//cin_ori, lcm(cout_ori, 16)//cout_ori), groups)
     c1_opt = math.ceil(cin_ori*enlarge/c0_val)
     cout1_opt = math.ceil(cout_ori*enlarge/16)
@@ -243,11 +243,11 @@ def calc_para_from_dict(inputs, weights, strides, pads,
 
 @para_check.check_input_type((list, tuple), (list, tuple), (list, int), (list, int),
                        int, int, str, str, str, str,
-                       bool, str, int, int, dict, dict)
+                       bool, str, int, int, dict, dict, int)
 def conv_layer_cce_para_check(shape_in, shape_w, padh, padw, strideh, stridew,
                               in_dtype, w_dtype, res_dtype, offset_w_dtype,
                               bias, kernel_name, dilateh=1, dilatew=1,
-                              optim_dict=None, fusion_para=None):
+                              optim_dict=None, fusion_para=None, groups=1):
     """
 
     Parameters
@@ -336,13 +336,13 @@ def conv_layer_cce_para_check(shape_in, shape_w, padh, padw, strideh, stridew,
                                          pad_top, pad_bottom,
                                          pad_left, pad_right, strideh, stridew,
                                          in_dtype, w_dtype, fusion_para,
-                                         optim_dict, dilateh, dilatew)
+                                         optim_dict, dilateh, dilatew, groups=groups)
 
     return shape_in, shape_w
 
 
 def conv_layer_cce_shape_calc(shape_in, shape_w, in_dtype, \
-    w_dtype, optim_dict):
+    w_dtype, optim_dict, cout1_opt=1, c1_opt=1, group_opt=1, c1in_ori_align=1):
     """
 
     Parameters
@@ -367,11 +367,10 @@ def conv_layer_cce_shape_calc(shape_in, shape_w, in_dtype, \
             and tbe_platform.get_soc_spec("SOC_VERSION") in \
             ("Ascend710", "Ascend615", "Ascend610", "Hi3796CV300CS"):
         block_size_k = 4
-    fmap_shape_nc1hwc0 = (shape_in[0], (shape_in[1] + block_size_k - 1) \
-                          // block_size_k,
+    fmap_shape_nc1hwc0 = (shape_in[0], c1in_ori_align,
                           shape_in[2], shape_in[3], block_size_k)
 
-    out_channel, in_channel_weight, filter_h, filter_w = shape_w
+    out_channel, _, filter_h, filter_w = shape_w
     block_size_k = tbe_platform.CUBE_MKN[w_dtype]['mac'][1]
     block_size_n = tbe_platform.CUBE_MKN[w_dtype]['mac'][2]
     if optim_dict["c0_optim_flg"]:
@@ -380,9 +379,8 @@ def conv_layer_cce_shape_calc(shape_in, shape_w, in_dtype, \
                                out_channel // block_size_n, block_size_n,
                                block_size_k)
     else:
-        filter_shape_frac_z = (in_channel_weight * filter_h * filter_w \
-                               // block_size_k,
-                               out_channel // block_size_n, block_size_n,
+        filter_shape_frac_z = (group_opt * c1_opt * filter_h * filter_w,
+                               cout1_opt, block_size_n,
                                block_size_k)
     return fmap_shape_nc1hwc0, filter_shape_frac_z
 
