@@ -34,14 +34,21 @@ SCALER_NEGATIVE_TWO = -2
 # pylint: disable = unused-argument
 def get_op_support_info(input_diagonal, input_help,
                         output_diagonal, kernel_name="matrix_diag_part_d"):
+    """
+    get_op_support_info
+    """
     format_diagonal = input_diagonal.get("format").upper()
+    shape_input_diagonal = input_diagonal.get("shape")
     if format_diagonal == "ND":
-        axis_split_matrix=[[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
-        axis_reduce_list = None
+        if len(shape_input_diagonal) > 2:
+            axis_split_matrix=[[SplitInput([0, [0], [-1], [-1]], [1, [0], [-1], [-1]]), \
+                                SplitOutput([0, [0]])]]
+        else:
+            axis_split_matrix = None
 
     else:
         axis_split_matrix = None
-        axis_reduce_list = None
+    axis_reduce_list = None
     op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
     return op_cal_info_in_json
 

@@ -47,6 +47,9 @@ AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
 
 # pylint: disable = unused-argument
 def get_op_support_info(input_x, output_y, perm, kernel_name="transpose_d"):
+    """
+    get_op_support_info
+    """
     format_x = input_x.get("format").upper()
     shape = list(input_x.get("shape"))
     perm = list(perm)
@@ -59,35 +62,35 @@ def get_op_support_info(input_x, output_y, perm, kernel_name="transpose_d"):
                 axis_split_matrix=[[SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])]]
             elif shape[0] == 1 and shape[2] == 1:
                 axis_split_matrix=[
-                    [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [2]])],
-                    [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [1]])]
+                    [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [3]])],
+                    [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [0]])]
                 ]
             else:
                 axis_split_matrix=[
-                    [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [3]])],
-                    [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [2]])],
-                    [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [0]])],
-                    [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [1]])]
+                    [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [2]])],
+                    [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [3]])],
+                    [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])],
+                    [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [0]])]
                 ]
             axis_reduce_list = None
         elif perm == [0, 3, 1, 2, 4]:
             axis_split_matrix=[
                 [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
                 [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [1]])],
-                [SplitInput([0, [4], [-1], [-1]]), SplitOutput([0, [3]])]
+                [SplitInput([0, [4], [-1], [-1]]), SplitOutput([0, [4]])]
             ]
             axis_reduce_list = None
         elif (list(perm) == [1, 2, 3, 0] and shape[1] == 1 and shape[3] == 1) or \
                 (list(perm) == [3, 2, 1, 0] and shape[1] == 1 and shape[3] == 1):
             axis_split_matrix=[
-                [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [2]])],
+                [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [3]])],
                 [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])]
             ]
             axis_reduce_list = None
         elif (list(perm) == [3, 0, 2, 1] and shape[0] == 1 and shape[2] == 1):
             axis_split_matrix=[
-                [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [2]])],
-                [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [1]])]
+                [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [3]])],
+                [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [0]])]
             ]
             axis_reduce_list = None
         elif perm == [0, 2, 1]:
@@ -102,37 +105,37 @@ def get_op_support_info(input_x, output_y, perm, kernel_name="transpose_d"):
             axis_reduce_list = None
         elif perm == [1, 0, 2]:
             if shape[0] == 1 or shape[1] == 1:
-                axis_split_matrix=[[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
+                axis_split_matrix=[[SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])]]
             else:
                 axis_split_matrix=[
-                    [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [2]])],
-                    [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]])],
-                    [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [3]])]
+                    [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [1]])],
+                    [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [0]])],
+                    [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])]
                 ]
             axis_reduce_list = None
         elif perm == [0, 3, 1, 2]:
             axis_split_matrix=[
-                [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [2]])],
+                [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
                 [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [1]])]
             ]
             axis_reduce_list = None
         elif perm == [0, 1, 3, 2]:
             axis_split_matrix=[
-                [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])],
-                [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [1]])]
+                [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [3]])],
+                [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [2]])]
             ]
             axis_reduce_list = None
         elif perm == [0, 1, 2, 4, 3]:
             axis_split_matrix=[
-                [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [2]])],
-                [SplitInput([0, [4], [-1], [-1]]), SplitOutput([0, [1]])]
+                [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [4]])],
+                [SplitInput([0, [4], [-1], [-1]]), SplitOutput([0, [3]])]
             ]
             axis_reduce_list = None
         elif perm == [2, 0, 1]:
-            axis_split_matrix=[[SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])]]
+            axis_split_matrix=[[SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [0]])]]
             axis_reduce_list = None
         elif perm == [0, 2, 3, 4, 1]:
-            axis_split_matrix=[[SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [2]])]]
+            axis_split_matrix=[[SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [4]])]]
             axis_reduce_list = None
         elif perm == [0, 4, 1, 2, 3]:
             axis_split_matrix=[[SplitInput([0, [4], [-1], [-1]]), SplitOutput([0, [1]])]]

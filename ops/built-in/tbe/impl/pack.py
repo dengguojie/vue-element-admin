@@ -44,6 +44,9 @@ def check_supported(x, y, axis, kernel_name="pack"):
 
 # pylint: disable = unused-argument
 def get_op_support_info(x, y, axis, kernel_name="pack"):
+    """
+    get_op_support_info
+    """
     x_len = len(x)
     shape_x_len = len(x[0].get("shape"))
     format_x = x[0].get("format").upper()
@@ -53,7 +56,7 @@ def get_op_support_info(x, y, axis, kernel_name="pack"):
         axis += shape_x_len
     if format_x == "ND" or format_x == "NC1HWC0":
         axis_split_matrix=[]
-        for i in range(0, shape_x_len):
+        for i in range(0, shape_x_len-1):
             if i != axis:
                 input_list = []
                 for j in range(0, x_len):

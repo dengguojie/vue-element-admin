@@ -58,7 +58,7 @@ def get_op_support_info(input_value,
     format_value = input_value.get("format").upper()
     if format_value == "ND" or format_value == "NC1HWC0" or format_value == "FRACTAL_NZ":
         axis_split_matrix=[]
-        for i in range(0, shape_value_len):
+        for i in range(0, shape_value_len-1):
             if i != split_dim:
                 output_list = []
                 for j in range(0, num_split):

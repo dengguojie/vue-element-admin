@@ -49,10 +49,13 @@ def get_op_support_info(input_x,
                         new_axis_mask=0,
                         shrink_axis_mask=0,
                         kernel_name="strided_slice_d"):
+    """
+    get_op_support_info
+    """
     format_x = input_x.get("format").upper()
     shape_x_len = len(input_x.get("shape"))
     slice_len = len(begin)
-    if format_x == "ND":
+    if format_x == "ND" and new_axis_mask == 0 and shrink_axis_mask == 0:
         axis_split_matrix=[]
         for i in range(slice_len, shape_x_len):
             split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]])]
