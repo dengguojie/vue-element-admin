@@ -13,6 +13,9 @@
 # limitations under the License.
 # ============================================================================
 
+# testcases for aicpu
+add_subdirectory(aicpu_test) 
+
 # testcases for op_proto
 add_subdirectory(ops_test)
 

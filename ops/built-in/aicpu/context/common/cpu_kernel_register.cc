@@ -5,7 +5,7 @@
 
 #include "cpu_kernel_register.h"
 
-#include "aicpu_schedule/aicpu_sharder/aicpu_context.h"
+#include "aicpu_context.h"
 #include "cpu_kernel.h"
 #include "log.h"
 #include "status.h"
