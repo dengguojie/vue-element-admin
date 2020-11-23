@@ -44,7 +44,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
 
     def __init__(self,  # pylint: disable=R0913
                  kernel_sizes, strides, pad, output_shape, dilations,
-                 kernel_name):
+                 kernel_name, group_dict):
         super(DeConvPattern, self).__init__()
         _, _, kernel_d, kernel_h, kernel_w = kernel_sizes
         self._kernel_d = kernel_d
@@ -54,6 +54,10 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
         self._pad_head, self._pad_tail, self._pad_up, self._pad_down, self._pad_left, self._pad_right = pad
         self.output_shape = output_shape
         self._kernel_name = kernel_name
+        self.group_dict = group_dict
+        self.real_g = group_dict["real_g"]
+        self.cin1_g = group_dict["cin1_g"]
+        self.cout_g = group_dict["cout_g"]
         self.m_0, _, _ = tbe_platform.CUBE_MKN["float16"]['mac']
         self.dy_d = 0
         _, _, self._dilate_h, self._dilate_w, _ = dilations
@@ -81,16 +85,11 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
             dy_zero = tvm.compute(
                 shape_dy_filling,
                 lambda *indice: tvm.convert(0).astype(dy_ddr.dtype),
-                name="dy_filling_i",
+                name="dy_zero",
                 tag="init_zero")
             dy_filling = tvm.compute(
                 shape_dy_filling,
-                lambda batch_idx,
-                dy_deep_idx,
-                kernel_cout1_idx,
-                ho_idx,
-                wo_idx,
-                kernel_cout0_idx:
+                lambda batch_idx, dy_deep_idx, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx:
                 tvm.select(tvm.all(ho_idx % stride_h == 0,
                                    wo_idx % stride_w == 0),
                            dy_ddr(batch_idx,
@@ -158,12 +157,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
             else:
                 dy_filling_l1 = tvm.compute(
                     shape_dy_filling,
-                    lambda batch_idx,
-                    dy_deep,
-                    kernel_cout1_idx,
-                    ho_idx,
-                    wo_idx,
-                    kernel_cout0_idx:
+                    lambda batch_idx, dy_deep, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx:
                     dy_filling[batch_idx,
                                dy_deep,
                                kernel_cout1_idx,
@@ -182,9 +176,9 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
         pat_conv = conv3d_dx_utils.ConvDslPattern(kernel_h, kernel_w, new_stride, new_pad)
 
         if stride_h > 1 or stride_w > 1:
-            dy_col = pat_conv.generate_a(dy_filling_l1)
+            dy_col = pat_conv.generate_a(dy_filling_l1, self.group_dict)
         else:
-            dy_col = pat_conv.generate_a(dy_filling)
+            dy_col = pat_conv.generate_a(dy_filling, self.group_dict)
 
         return dy_col
 
@@ -200,7 +194,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
         ----------
         w_col: w tensor of fractal shape after transformation in L0B
         """
-        _, w_k1, kernel_cout1, kernel_cout0, w_k0 = list(i.value for i in kernels.shape)
+        w_k1, kernel_cout1, kernel_cout0, w_k0 = list(i.value for i in kernels.shape)
         kernel_h, kernel_w, kernel_d = self._kernel_h, self._kernel_w, self._kernel_d
         if w_k1 % (kernel_h * kernel_w) != 0:
             dict_args = {
@@ -210,22 +204,36 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
             }
             raise RuntimeError(dict_args,
                                error_manager_util.get_error_message(dict_args))
+        real_g = self.real_g
+        kernel_cin1 = w_k1 // (kernel_w * kernel_h * real_g * kernel_d)
+        shape_w_l1 = (real_g,
+                      kernel_d,
+                      kernel_cin1 * kernel_h * kernel_w,
+                      kernel_cout1,
+                      kernel_cout0,
+                      w_k0)
+        ckk = kernel_cin1 * kernel_h * kernel_w
+        w_l1 = tvm.compute(shape_w_l1,
+                           lambda g, d, k1, n1, n0, k0:
+                           kernels(g * kernel_d * ckk + d * ckk + k1, n1, n0, k0),
+                           name="w_l1",
+                           tag="split_g")
 
-        kernel_cin1 = w_k1 // (kernel_w * kernel_h)
-        shape_w_l0b = (kernel_d,
+        shape_w_l0b = (real_g,
+                       kernel_d,
                        kernel_cout1 * kernel_h * kernel_w,
                        kernel_cin1,
                        w_k0,
                        kernel_cout0)
         w_col = tvm.compute(
             shape_w_l0b,
-            lambda w_d, w_k1_idx, kernel_cin1_idx, w_k0_idx, kernel_cout0_idx:
-            kernels[w_d,
-                    kernel_cin1_idx * kernel_h * kernel_w +
-                    (kernel_h * kernel_w - 1 -
+            lambda g_idx, w_d, w_k1_idx, kernel_cin1_idx, w_k0_idx, kernel_cout0_idx:
+            w_l1[g_idx, w_d,
+                 kernel_cin1_idx * kernel_h * kernel_w +
+                 (kernel_h * kernel_w - 1 -
                      w_k1_idx % (kernel_h * kernel_w)),
-                    w_k1_idx // (kernel_h * kernel_w),
-                    kernel_cout0_idx, w_k0_idx],
+                 w_k1_idx // (kernel_h * kernel_w),
+                 kernel_cout0_idx, w_k0_idx],
             name="w_col",
             tag="inverse_trans_dma")
         return w_col
@@ -253,31 +261,29 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                                                        c_type=c_dtype)
 
         # mad dx shape
-        dx_batch, dx_deep, dx_c1, dx_hw, dx_c0 = list(i.value for i in dx_col.shape)
+        dx_group, dx_batch, dx_deep, dx_c1, dx_hw, dx_c0 = list(i.value for i in dx_col.shape)
         # real dx shape
         _, _, dx_cin1, dx_h, dx_w, dx_cin0 = self.output_shape
         out_shape = (dx_batch, dx_deep, dx_cin1, dx_h * dx_w, dx_cin0)
 
         # float32->float16
         dx_ub = tvm.compute(
-            (dx_batch, dx_deep, dx_c1, dx_hw, dx_c0),
-            lambda dx_batch_idx, dx_deep_idx,
-            dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
-            dx_col[dx_batch_idx, dx_deep_idx, dx_cin1_idx,
+            (dx_batch, dx_deep, dx_cin1, dx_hw, dx_c0),
+            lambda dx_batch_idx, dx_deep_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
+            dx_col[dx_cin1_idx // self.cin1_g, dx_batch_idx, dx_deep_idx,
+                   dx_cin1_idx - dx_cin1_idx // self.cin1_g * self.cin1_g,
                    dx_hw_idx, dx_cin0_idx].astype("float16"),
             name="c_ub")
 
         # sd>kd,add0
         if self._stride_d >= self._kernel_d:
             dx_ub = tvm.compute(
-                (dx_batch, dx_deep, dx_c1, dx_hw, dx_c0),
-                lambda dx_batch_idx, dx_deep_idx,
-                dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
+                (dx_batch, dx_deep, dx_cin1, dx_hw, dx_c0),
+                lambda dx_batch_idx, dx_deep_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
                 tvm.select(
-                    tvm.any(dx_deep_idx + self._pad_head -
-                            (dx_deep_idx + self._pad_head) //
-                            self._stride_d * self._stride_d -
-                            self._kernel_d >= 0,
+                    tvm.any((dx_deep_idx + self._pad_head -
+                            (dx_deep_idx + self._pad_head) // self._stride_d * self._stride_d -
+                            self._kernel_d) >= 0,
                             dx_deep_idx +
                             self._pad_head >= self._stride_d * self.dy_d),
                     tvm.const(0, dtype="float16"),
@@ -287,9 +293,8 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
             )
         else:
             dx_ub = tvm.compute(
-                (dx_batch, dx_deep, dx_c1, dx_hw, dx_c0),
-                lambda dx_batch_idx, dx_deep_idx,
-                dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
+                (dx_batch, dx_deep, dx_cin1, dx_hw, dx_c0),
+                lambda dx_batch_idx, dx_deep_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
                 tvm.select(
                     dx_deep_idx + self._pad_head >=
                     self._stride_d * (self.dy_d - 1) + self._kernel_d,
@@ -301,8 +306,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
 
         dx_ddr = tvm.compute(
             out_shape,
-            lambda dx_batch_idx, dx_deep_idx,
-            dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
+            lambda dx_batch_idx, dx_deep_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
             dx_ub[dx_batch_idx, dx_deep_idx,
                   dx_cin1_idx, dx_hw_idx, dx_cin0_idx],
             name="c_ddr",
@@ -312,5 +316,6 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                    'depth_pad': (self._pad_head, self._pad_tail),
                    'kernels': (self._kernel_d,
                                self._kernel_h, self._kernel_w),
-                   "kernel_name": self._kernel_name})
+                   "kernel_name": self._kernel_name,
+                   "group_dict": self.group_dict})
         return dx_ddr

@@ -1442,7 +1442,15 @@ class CceConvOp:
             # when padding, then only 2 block tile in m
             c_out = dim_map["filter_matrix_dim"][1]
             if pooling_padding[0] > 0 and tiling["block_dim"][2] > 2:
-                block_dim[2] = 2
+                tiling["block_dim"][2] = 2
+
+            # block in AL1 cannot more that al1 parts
+            al1_nparts = int_ceil_div(pooling_out[0], al1_facter_pooling)
+            if self.conv_pool_fused_flag:
+                tiling["block_dim"][2] = min(tiling["block_dim"][2], al1_nparts)
+                if conv_w % 16 != 0 and al1_nparts % tiling["block_dim"][2] != 0:
+                    tiling["block_dim"][2] = min(tiling["block_dim"][2], 2)
+
             if tiling["CL0_matrix"][0]*tiling["block_dim"][1] < c_out:
                 tiling["block_dim"][1] = c_out // tiling["CL0_matrix"][0]
             return cube_m, al1_facter_pooling

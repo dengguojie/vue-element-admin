@@ -67,13 +67,22 @@ Status MulAddNL2LossFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(mul_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "The mul_node is null, fusion failed."),
                     return PARAM_INVALID);
-
-  NodePtr variable_node = mul_node->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode();
+  auto in_data_anchor0 = mul_node->GetInDataAnchor(0);
+  FUSION_PASS_CHECK(in_data_anchor0 == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The in_data_anchor0 is null, fusion failed."), return PARAM_INVALID);
+  auto peer_out_anchor0 = in_data_anchor0->GetPeerOutAnchor();
+  FUSION_PASS_CHECK(peer_out_anchor0 == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The peer_out_anchor0 is null, fusion failed."),
+                    return PARAM_INVALID);
+  NodePtr variable_node = peer_out_anchor0->GetOwnerNode();
   FUSION_PASS_CHECK(variable_node->GetType() != "Variable" && variable_node->GetType() != "TransData",
                     OP_LOGI(kFusedOpType.c_str(), "Mul node[%s]'s 1st input must be a variable, actuall is [%s].",
                             mul_node->GetName().c_str(), variable_node->GetType().c_str()),
                     return NOT_CHANGED);
   if (variable_node->GetType() == "TransData") {
+    FUSION_PASS_CHECK(variable_node->GetInDataNodes().empty(),
+                      OP_LOGE(kFusedOpType.c_str(), "The size of in_data_node is 0, fusion failed."),
+                      return PARAM_INVALID);
     FUSION_PASS_CHECK(
         variable_node->GetInDataNodes().at(0)->GetType() != "Variable",
         OP_LOGI(kFusedOpType.c_str(), "TransData node[%s]'s 1st input must be a variable, actuall is [%s].",
@@ -100,8 +109,15 @@ Status MulAddNL2LossFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
       OP_LOGI(kFusedOpType.c_str(), "L2Loss node[%s] should only have one output node, but actually is [%u].",
               l2loss_node->GetName().c_str(), l2loss_node->GetOutAllNodes().size()),
       return NOT_CHANGED);
-
-  NodePtr l2loss_out_node = l2loss_node->GetOutDataAnchor(0)->GetFirstPeerAnchor()->GetOwnerNode();
+  auto out_data_anchor0 = l2loss_node->GetOutDataAnchor(0);
+  FUSION_PASS_CHECK(out_data_anchor0 == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The out_data_anchor0 is null, fusion failed."),
+                    return PARAM_INVALID);
+  auto first_peer_anchor = out_data_anchor0->GetFirstPeerAnchor();
+  FUSION_PASS_CHECK(first_peer_anchor == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The first_peer_anchor is null, fusion failed."),
+                    return PARAM_INVALID);
+  NodePtr l2loss_out_node = first_peer_anchor->GetOwnerNode();
   FUSION_PASS_CHECK(
       l2loss_out_node->GetType() != "AddN",
       OP_LOGI(kFusedOpType.c_str(), "L2Loss node[%s]'s output node must be AddN.", l2loss_out_node->GetName().c_str()),
@@ -281,8 +297,8 @@ Status MulAddNL2LossFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
   OP_LOGI(kFusedOpType.c_str(), "Node[%s] has [%u] output desc.", fusion_node->GetName().c_str(),
           fusion_node->GetOpDesc()->GetAllOutputsDesc().size());
   // l2loss output link to fusion_node output
-  if (l2loss_node->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() > 0) {
-    for (InDataAnchorPtr in_anchor_ptr : l2loss_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
+  if (out_data_anchor0->GetPeerInDataAnchors().size() > 0) {
+    for (InDataAnchorPtr in_anchor_ptr : out_data_anchor0->GetPeerInDataAnchors()) {
       in_anchor_ptr->UnlinkAll();
       FUSION_PASS_CHECK(
           GraphUtils::AddEdge(fusion_node->GetOutDataAnchor(1), in_anchor_ptr) != SUCCESS,
@@ -304,6 +320,9 @@ Status MulAddNL2LossFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
     OP_LOGI(kFusedOpType.c_str(), "Add edge from fused node:%s's index[%u] to fusion node:%s's index[%u].",
             addn_node->GetName().c_str(), i, fusion_node->GetName().c_str(), i);
   }
+  FUSION_PASS_CHECK(addn_node->GetInControlAnchor() == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The GetInControlAnchor of addn_node is null, fusion failed."),
+                    return PARAM_INVALID);
   for (unsigned int i = 0; i < addn_node->GetInControlAnchor()->GetPeerOutControlAnchors().size(); i++) {
     FUSION_PASS_CHECK(
         GraphUtils::AddEdge(addn_node->GetInControlAnchor()->GetPeerOutControlAnchors().at(i),

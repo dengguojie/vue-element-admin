@@ -273,8 +273,8 @@ def _backprop_filter_matmul(mad_shape, left_tensor, right_tensor, dout_hw, dout_
     #  BLOCK_SIZE)
     k_n = tvm.reduce_axis((0, dout_n), name='k_n')
     k_hw = tvm.reduce_axis((0, dout_hw), name='k_hw')
-    k1 = k_hw.var // BLOCK_SIZE
-    k0 = k_hw.var % BLOCK_SIZE
+    k1_val = k_hw.var // BLOCK_SIZE
+    k0_val = k_hw.var % BLOCK_SIZE
     # left_tensor.shape is (fmap_cgroup, dout_n, dout_c1,
     #                       dout_hw_pad // BLOCK_SIZE,
     #                       BLOCK_SIZE, BLOCK_SIZE)
@@ -282,8 +282,8 @@ def _backprop_filter_matmul(mad_shape, left_tensor, right_tensor, dout_hw, dout_
     #                        fmap_c1*kernel_h*kernel_w, BLOCK_SIZE,
     #                        BLOCK_SIZE)
     return tvm.compute(mad_shape,
-                       lambda cg, j1, i, j0: tvm.sum((left_tensor[cg, k_n, i // BLOCK_SIZE, k1, i % BLOCK_SIZE, k0] *
-                                                      right_tensor[cg, k_n, k1, j1, j0, k0]).astype(res_type),
+                       lambda cg, j1, i, j0: tvm.sum((left_tensor[cg, k_n, i // BLOCK_SIZE, k1_val, i % BLOCK_SIZE, k0_val] *
+                                                      right_tensor[cg, k_n, k1_val, j1, j0, k0_val]).astype(res_type),
                                                      axis=[k_n, k_hw]),
                        name='mad')
 
@@ -496,7 +496,7 @@ def depthwise_conv2d_compute(fmap,
                                       name='bias_ub_brc')
             # bias l0c broadcast ho*wo
             bias_l0c = tvm.compute(mad_shape,
-                                   lambda i1, j1, a1, k1, l1: bias_ub_brc(i1, j1, a1, k1 // 16, l1),
+                                   lambda i1, j1, a1, k1_val, l1: bias_ub_brc(i1, j1, a1, k1_val // 16, l1),
                                    name='bias_l0c')
             # l0c add
             mad_res = tvm.compute(mad_shape, lambda *index: bias_l0c(*index) + mad_res(*index), name='c_col_bias')
@@ -591,12 +591,12 @@ def depthwise_conv2d_backprop_filter_d_compute(fmap,
     depthwise_dfilter_res: tvm tensor
         the tensor of output.
     """
-    def _ceil(x):
+    def _ceil(x_val):
         """
         Return the least multiple of 16 integer number
         which is greater than or equal to x.
         """
-        return ((x + BLOCK_SIZE - 1) // BLOCK_SIZE) * BLOCK_SIZE
+        return ((x_val + BLOCK_SIZE - 1) // BLOCK_SIZE) * BLOCK_SIZE
 
     fmap_dtype = fmap.dtype
     dout_dtype = dout.dtype
@@ -653,22 +653,22 @@ def depthwise_conv2d_backprop_filter_d_compute(fmap,
                                  name='fmap_transpose')
 
     # set_fmatrix CgC1NHiWiC0 --> Cg,NHoWo,C1,Hw,Ww,C0
-    A_im2col_row_major_shape = (fmap_cgroup, dout_n, dout_h * dout_w, fmap_c1, kernel_h, kernel_w, BLOCK_SIZE)
-    feature_col = _img2col(fmap_transpose, A_im2col_row_major_shape, kernel_h, kernel_w, pad, (stride_h, stride_w),
+    a_im2col_row_major_shape = (fmap_cgroup, dout_n, dout_h * dout_w, fmap_c1, kernel_h, kernel_w, BLOCK_SIZE)
+    feature_col = _img2col(fmap_transpose, a_im2col_row_major_shape, kernel_h, kernel_w, pad, (stride_h, stride_w),
                            (dilation_h, dilation_w))
 
     dout_hw_pad = _ceil(dout_h * dout_w)
 
     # Cg,NHoWo,C1,Hw,Ww,C0 (axis K in cube is NHoWo,axis N in cube is C1HwWwC0)
     # --> Cg,NHoWo // 16,C1HwWw,16,16 (nZ in L0B)
-    A_im2col_fractal_shape = (fmap_cgroup, dout_n, dout_hw_pad // BLOCK_SIZE, fmap_c1 * kernel_h * kernel_w, BLOCK_SIZE,
+    a_im2col_fractal_shape = (fmap_cgroup, dout_n, dout_hw_pad // BLOCK_SIZE, fmap_c1 * kernel_h * kernel_w, BLOCK_SIZE,
                               BLOCK_SIZE)
 
     # dw_in_L0C (from backward filter view) is transposed dw_in_L0B
     #  (from forward view).
     # dw.T = dout.T <matmul> im2col(fmap)
     # (Co, Ci1.Hk.Wk.Ci0) = (Co, Ho.Wo.N) <matmul> (Ho.Wo.N, Ci1.Hk.Wk.Ci0)
-    feature_col_pad = _im2col_fractal(A_im2col_fractal_shape, feature_col, dout_h, dout_w)
+    feature_col_pad = _im2col_fractal(a_im2col_fractal_shape, feature_col, dout_h, dout_w)
 
     # NCgC1HoWoC0 --> CgC1NHoWoC0
     dout_trans_shape = (fmap_cgroup, dout_n, dout_c1, dout_h * dout_w, dout_c0)
@@ -678,9 +678,9 @@ def depthwise_conv2d_backprop_filter_d_compute(fmap,
 
     def _dout_fractal_compute(index, dout_ph):
         """Transform shape in zZ with block pad."""
-        cg, n, c1, hw1, c0, hw0 = index
-        hw = hw1 * BLOCK_SIZE + hw0
-        return dout_ph(cg, n, c1, hw, c0)
+        cg_val, n_val, c1_val, hw1_val, c0_val, hw0_val = index
+        hw_val = hw1_val * BLOCK_SIZE + hw0_val
+        return dout_ph(cg_val, n_val, c1_val, hw_val, c0_val)
 
     # CgC1NHoWoC0 (axis M in cube is C1C0, axis K in cube is NHoWo)
     # --> Cg,C1,NHoWo // 16,C0,16 (zZ in L0A)

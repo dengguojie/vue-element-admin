@@ -78,12 +78,12 @@ Status AvgPool1DFusionPass::AvgValueTableGen(const vector<int64_t>& dim_info, co
     OP_LOGE(kFusedOpType.c_str(), "The output pointer is null!");
     return FAILED;
   }
-  if (dim_info.size() == 0) {
-    OP_LOGE(kFusedOpType.c_str(), "The dim_info is empty!");
+  if (dim_info.size() < 4) {
+    OP_LOGE(kFusedOpType.c_str(), "The dim_info at least has 4 elements!");
     return FAILED;
   }
-  if (padding.size() == 0) {
-    OP_LOGE(kFusedOpType.c_str(), "The padding is empty!");
+  if (padding.size() < 2) {
+    OP_LOGE(kFusedOpType.c_str(), "The padding at least has 2 elements!");
     return FAILED;
   }
   int64_t n_input{1};
@@ -102,6 +102,8 @@ Status AvgPool1DFusionPass::AvgValueTableGen(const vector<int64_t>& dim_info, co
   int64_t w_output = 0;
   int64_t c0_output = c0_input;
 
+  FUSION_PASS_CHECK(stride == 0, OP_LOGE(kFusedOpType.c_str(), "The stride should not be 0, fusion failed."),
+                    return FAILED);
   w_output = CalWoutput(w_in_input, padl, padr, k_size, stride, ceil_mode);
   SetAssitInfo(n_output, c1_output, h_output, w_output, c0_output, assit_dim_info);
 
@@ -195,9 +197,12 @@ Status AvgPool1DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
                     OP_LOGW(kFusedOpType.c_str(), "matrix only support float16 and float32"), return NOT_CHANGED);
   GeShape avgpool1d_shape = avgpool1d_input_shape_tensor.GetShape();
   vector<int64_t> avgpool1d_dim_info = avgpool1d_shape.GetDims();
+  FUSION_PASS_CHECK(avgpool1d_dim_info.size() < 4,
+                    OP_LOGE(kFusedOpType.c_str(), "The size of avgpool1d_dim_info should great than 3, fusion failed."),
+                    return FAILED);
   Format input_format = avgpool1d_input_shape_tensor.GetFormat();
   if (pads.size() != 2) {
-    OP_LOGW(kFusedOpType.c_str(), "Pads must list of 2 element.");
+    OP_LOGW(kFusedOpType.c_str(), "Pads must list of 2 elements.");
     return NOT_CHANGED;
   }
   if (input_format == FORMAT_NCHW) {
@@ -218,6 +223,8 @@ Status AvgPool1DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
   orig_input_shape_v.push_back(avgpool1d_dim_info[3]);
   // orig_input_shape_v must NCHW
   GeTensorPtr avg_table_assit_ptr{nullptr};
+  FUSION_PASS_CHECK(strides == 0, OP_LOGE(kFusedOpType.c_str(), "The stride should not be 0, fusion failed."),
+                    return PARAM_INVALID);
   int64_t w_output = CalWoutput(avgpool1d_dim_info[3], pads[0], pads[1], k_size, strides, ceil_mode);
   if (w_output <= 0) {
     OP_LOGE(kFusedOpType.c_str(), "Should keep w_output > 0!");

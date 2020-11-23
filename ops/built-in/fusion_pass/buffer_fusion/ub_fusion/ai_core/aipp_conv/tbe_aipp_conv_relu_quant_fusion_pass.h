@@ -23,6 +23,7 @@
 
 #include <vector>
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_base.h"
+#include "common/lxfusion_json_util.h"
 
 namespace fe {
 
@@ -58,8 +59,10 @@ class TbeAippConvReluQuantFusionPass : public BufferFusionPassBase {
    * @return bool: fusion status ok or not.
    */
   Status GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
+  void SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes);
 
  private:
+  void DelSplitInfoByAxis(std::vector<AxisSplitMap> &split_maps, int axis);
   const string fused_op_type_ = "FusedOp";
 };
 

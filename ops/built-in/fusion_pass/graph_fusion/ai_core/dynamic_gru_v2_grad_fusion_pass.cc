@@ -808,59 +808,29 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddDgateXConcatNode(ge::NodePtr dynamicG
   return concatNode;
 }
 
-ge::NodePtr DynamicGRUV2GradFusionPass::AddWxBroadcastNode(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph& graph,
-                                                           vector<ge::NodePtr>& newNodes, bool& failStatus) {
-  // create broadcast desc
-  ge::OpDescPtr broadcastDesc =
-      std::make_shared<ge::OpDesc>(dynamicGRUGradNode->GetName() + "GRUWeightGrad/Dx/Broadcast", "BroadcastToD");
-
-  // input
-  ge::GeTensorDesc inputWxDesc =
-      dynamicGRUGradNode->GetOpDesc()->GetInputDesc(INPUT_INDEX["weight_input"]).Clone();  // weight_x
-  vector<int64_t> inputWx{1, input_dim, 3 * hidden_dim};
-  ge::GeShape inputWxShape(inputWx);
-  inputWxDesc.SetShape(inputWxShape);
-  inputWxDesc.SetOriginShape(inputWxShape);
-  broadcastDesc->AddInputDesc("wx_2d", inputWxDesc);
-
-  // output shape:{t, input_size, 3*hidden_size}
-  vector<int64_t> outputDim{t_size, input_dim, 3 * hidden_dim};
-  AddOutputNodeDesc(broadcastDesc, "wx_3d", outputDim, inputWxDesc.GetDataType(), ge::FORMAT_ND);
-
-  // attr
-  ge::AttrUtils::SetListInt(broadcastDesc, "shape", outputDim);
-
-  // create broadcast node
-  ge::NodePtr broadcastNode = AddNewNode(graph, broadcastDesc, newNodes, failStatus);
-
-  // input Edge
-  ge::GraphUtils::AddEdge(dynamicGRUGradNode->GetInDataAnchor(INPUT_INDEX["weight_input"])->GetPeerOutAnchor(),
-                          broadcastNode->GetInDataAnchor(0));  // dgate_x
-  return broadcastNode;
-}
-
 Status DynamicGRUV2GradFusionPass::AddDxtMatmulNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr dgateXConcatNode,
-                                                    ge::NodePtr wxBoadcastNode, ge::ComputeGraph& graph,
-                                                    vector<ge::NodePtr>& newNodes) {
+                                                    ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes) {
   // create matmul desc
   ge::OpDescPtr matmulOpDesc =
-      std::make_shared<ge::OpDesc>(dynamicGRUGradNode->GetName() + "GRUWeightGrad/Dx/BatchMatmul", "BatchMatMul");
+      std::make_shared<ge::OpDesc>(dynamicGRUGradNode->GetName() + "GRUWeightGrad/Dx/BatchMatmulV2", "BatchMatMulV2");
 
   // input
   ge::GeTensorDesc dgateXDesc = dgateXConcatNode->GetOpDesc()->GetOutputDesc(0).Clone();  // dgate_x
-  ge::GeTensorDesc weightXDesc = wxBoadcastNode->GetOpDesc()->GetOutputDesc(0).Clone();   // weight_x
+  ge::GeTensorDesc weightXDesc =
+      dynamicGRUGradNode->GetOpDesc()->GetInputDesc(INPUT_INDEX["weight_input"]).Clone();  // weight_x
+
   dgateXDesc.SetDataType(ge::DT_FLOAT16);
   dgateXDesc.SetOriginFormat(ge::FORMAT_ND);
   dgateXDesc.SetOriginShape(GeShape({t_size, batch, 3 * hidden_dim}));
   weightXDesc.SetDataType(ge::DT_FLOAT16);
   weightXDesc.SetOriginFormat(ge::FORMAT_ND);
   weightXDesc.SetFormat(ge::FORMAT_FRACTAL_NZ);
-  weightXDesc.SetShape(GeShape({t_size, 3 * nzHiddenDim, nzInputDim, 16, 16}));
+  weightXDesc.SetShape(GeShape({3 * nzHiddenDim, nzInputDim, 16, 16}));
   matmulOpDesc->AddInputDesc("dgate_x", dgateXDesc);
   matmulOpDesc->AddInputDesc("weight_x", weightXDesc);
 
   // add output dxt, shape:{t, batch, input_size}
-  ge::GeTensorDesc outputTensorDesc = dynamicGRUGradNode->GetOpDesc()->GetOutputDesc(OUTPUT_INDEX["dx"]).Clone();  // dw
+  ge::GeTensorDesc outputTensorDesc = dynamicGRUGradNode->GetOpDesc()->GetOutputDesc(OUTPUT_INDEX["dx"]).Clone();
   matmulOpDesc->AddOutputDesc("dxt", outputTensorDesc);
 
   // attr
@@ -873,7 +843,8 @@ Status DynamicGRUV2GradFusionPass::AddDxtMatmulNode(ge::NodePtr dynamicGRUGradNo
 
   // input Edge
   ge::GraphUtils::AddEdge(dgateXConcatNode->GetOutDataAnchor(0), matmulNode->GetInDataAnchor(0));  // dgate_x
-  ge::GraphUtils::AddEdge(wxBoadcastNode->GetOutDataAnchor(0), matmulNode->GetInDataAnchor(1));    // w_x_3d
+  ge::GraphUtils::AddEdge(dynamicGRUGradNode->GetInDataAnchor(INPUT_INDEX["weight_input"])->GetPeerOutAnchor(),
+                          matmulNode->GetInDataAnchor(1));
 
   // output Edge
   for (InDataAnchorPtr inAnchorPtr : dynamicGRUGradNode->GetOutDataAnchor(OUTPUT_INDEX["dx"])->GetPeerInDataAnchors()) {
@@ -933,12 +904,25 @@ Status DynamicGRUV2GradFusionPass::AddReduceSumNode(ge::NodePtr dynamicGRUGradNo
 
   // input
   ge::GeTensorDesc inputTensorDesc = inputNode->GetOpDesc()->GetOutputDesc(anchorIndex).Clone();
-  inputTensorDesc.SetFormat(ge::FORMAT_ND);
-  inputTensorDesc.SetShape(inputTensorDesc.GetOriginShape());
+  if (axis.size() == 2) {
+    inputTensorDesc.SetFormat(ge::FORMAT_ND);
+    inputTensorDesc.SetShape(inputTensorDesc.GetOriginShape());
+  }
   reduceSumDesc->AddInputDesc("input_" + nodeName, inputTensorDesc);
+  
+  // gen output dims
+  vector<int64_t> outputDim = inputTensorDesc.GetShape().GetDims();
+  for (int64_t i: axis) {
+    outputDim[i] = 1;
+  }
 
   // output
   ge::GeTensorDesc outputTensorDesc = dynamicGRUGradNode->GetOpDesc()->GetOutputDesc(OUTPUT_INDEX[indexName]).Clone();
+  // no need to trans data while reduce 3 axis 
+  if (axis.size() != 2) {
+    outputTensorDesc.SetFormat(inputTensorDesc.GetFormat());
+    outputTensorDesc.SetShape(GeShape(outputDim));
+  }
   reduceSumDesc->AddOutputDesc("output_" + nodeName, outputTensorDesc);
 
   // attr
@@ -1037,13 +1021,8 @@ Status DynamicGRUV2GradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   FUSION_PASS_CHECK(isFailure, OP_LOGE(FUSED_OP_TYPE.c_str(), "AddDgateXConcatNode:check failed, fusion failed."),
                     return FAILED);
 
-  // broadcast wx from [input_dim, 3*hidden_dim] to  [input_dim, 3*hidden_dim]
-  ge::NodePtr wxBroadcastNode = AddWxBroadcastNode(gruV2GradNode, graph, newNodes, isFailure);
-  FUSION_PASS_CHECK(isFailure, OP_LOGE(FUSED_OP_TYPE.c_str(), "AddWxBroadcastNode:check failed, fusion failed."),
-                    return FAILED);
-
   // add dxt matmul(dgate_x, w_x.T)
-  isFailure = AddDxtMatmulNode(gruV2GradNode, gateConcatNode, wxBroadcastNode, graph, newNodes);
+  isFailure = AddDxtMatmulNode(gruV2GradNode, gateConcatNode, graph, newNodes);
   FUSION_PASS_CHECK(isFailure, OP_LOGE(FUSED_OP_TYPE.c_str(), "AddDxtMatmulNode:check failed, fusion failed."),
                     return FAILED);
 

@@ -239,10 +239,10 @@ vector<vector<ge::NodePtr>> DynamicRNNGradFusionPass::AddTLoopNode(ge::NodePtr d
      lstmSplitDesc->AddOutputDesc("dh_prev", dh_tensor_desc);
 
      vector<int64_t> size_splits;
-     size_splits.push_back((dynamicRNNGradDesc->GetOutputDesc(2).GetShape().GetDim(2) + 15) / 16);
-     size_splits.push_back((dynamicRNNGradDesc->GetOutputDesc(3).GetShape().GetDim(1) + 15) / 16);
+     size_splits.push_back(dynamicRNNGradDesc->GetOutputDesc(2).GetShape().GetDim(2));
+     size_splits.push_back(dynamicRNNGradDesc->GetOutputDesc(3).GetShape().GetDim(1));
      ge::AttrUtils::SetListInt(lstmSplitDesc, "size_splits", size_splits);
-     ge::AttrUtils::SetInt(lstmSplitDesc, "split_dim", 1);
+     ge::AttrUtils::SetInt(lstmSplitDesc, "split_dim", 2);
      ge::AttrUtils::SetInt(lstmSplitDesc, "num_split", 2);
 
      ge::NodePtr basicLstmCellStateGradNode= graph.AddNode(basicLstmCellStateGradDesc);

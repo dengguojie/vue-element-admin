@@ -34,6 +34,7 @@ set(_common_fusion_pass_inc
   ${PROTO_BINARY_DIR}/opp
   ${JSON_INCLUDE}
   ${Protobuf_INCLUDE}
+  ${FUSION_ENGINE_INCLUDE}
 )
 
 set(_common_fusion_pass_dep
@@ -244,6 +245,14 @@ set(_aic_srcs
   ${_aicore_fusion_srcs}
 )
 
+set(fe_lxfusion_srcs
+  ${FUSION_ENGINE_INCLUDE}/common/lxfusion_json_util.cc
+  ${FUSION_ENGINE_INCLUDE}/common/op_slice_info.cc
+)
+set(_llt_aic_srcs
+  ${_aic_srcs}
+  ${fe_lxfusion_srcs}
+)
 if(ENABLE_TEST STREQUAL "")
   add_library(ops_fusion_pass_aicore SHARED ${_aic_srcs})
   target_include_directories(ops_fusion_pass_aicore PRIVATE
@@ -276,9 +285,10 @@ if(ENABLE_TEST STREQUAL "")
     )
   endif()
 else()
-  add_library(ops_fusion_pass_aicore_llt STATIC ${_aic_srcs})
+  add_library(ops_fusion_pass_aicore_llt STATIC ${_llt_aic_srcs})
   target_include_directories(ops_fusion_pass_aicore_llt PUBLIC
     ${_common_fusion_pass_inc}
+    ${FUSION_ENGINE_INCLUDE}/utils
   )
   target_compile_options(ops_fusion_pass_aicore_llt PUBLIC
     -O0

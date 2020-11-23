@@ -15,21 +15,301 @@
 """
 reduce atomic schedule
 """
+import abc
 import copy
+
 from te import platform as cceconf
 from te import tvm
-from te.lang.base import operation
+from ...base import operation
 import te.platform.cce_params as cce
-from te.platform.cce_conf import CceProductParams as pver
+from te.platform.cce_conf import CceProductParams as Pver
+from .reduce_tilingcase import ReduceTilingCase
 from te.utils.error_manager.error_manager_util import get_error_message
-from . import INSN_MAPPING, DTYPE_BYTE_MAPPING
-from .vector_schedule import VectorSchedule
+from .constants import INSN_MAPPING
+from .constants import DTYPE_BYTE_MAPPING
 
 
 BLOCK_SIZE_BYTE = 32
 
-# 'pylint: disable=too-many-locals, too-many-return-statements,too-few-public-methods,too-many-arguments,too-many-statements,no-self-use,too-many-lines,too-many-instance-attributes,too-many-branches,
-class ReduceAtomicSchedule(VectorSchedule):
+
+class _VectorSchedule(object):
+    def __init__(self):
+        self._schedule = None
+        self._schedule_valid = True
+        self._need_db = False
+        self._need_multi_core = True
+        self._spec_node_list = []
+        self._multi_core_bind_tensor = None
+        self._multi_core_fused_axis = None
+        self._out_tensors = []
+
+        # cache read para map
+        self._cache_read_tensors_and_readers_map = {}
+
+        # cache read result map
+        self._cache_read_tensors_and_buffer_map = {}
+
+        # cache write para list
+        self._cache_write_tensors = []
+
+        # cache write result map
+        self._cache_write_tensors_and_buffer_map = {}
+
+        # compute inline para list
+        self._compute_inline_tensors = []
+
+        # double buffer para list
+        self._double_buffer_tensors = []
+
+        # record double buffer map[read] = write
+        self._double_buffer_map = {}
+
+        self._tiling_tensor = None
+
+        self._insn_map = {}
+
+        self._reg_insn_map = {}
+
+        self._tiling_para = {"block_tiling": {"axis": 0, "factor": 1},
+                             "ub_tiling": {"axis": 0, "factor": 1}}
+
+        self._tiling_result = {}
+        self._compute_at_map = {}
+
+        self._emit_insn_map = {}
+
+        self._scope = "local.UB"
+
+    def _do_cache_read(self):
+        """
+        cache read operations
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        list : read buffers
+        """
+        self._double_buffer_tensors.clear()
+
+        for i in self._cache_read_tensors_and_readers_map:
+            readers = self._cache_read_tensors_and_readers_map[i]
+            read_buffer = self._schedule.cache_read(i, self._scope, readers)
+
+            self._cache_read_tensors_and_buffer_map[i] = read_buffer
+
+            self._double_buffer_tensors.append(read_buffer)
+
+    def _do_cache_write(self):
+        """
+        cache write operations
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+        for i in self._cache_write_tensors:
+            write_buffer = self._schedule.cache_write(i, self._scope)
+            self._cache_write_tensors_and_buffer_map[i] = write_buffer
+
+    def _do_tiling(self):
+        res = self._tiling_tensor
+        block_tiling_para = self._tiling_para["block_tiling"]
+        block_split_axis = block_tiling_para["axis"]
+        block_split_inner_size = block_tiling_para["factor"]
+
+        ub_tiling_para = self._tiling_para["ub_tiling"]
+        ub_split_axis = ub_tiling_para["axis"]
+        ub_split_inner = ub_tiling_para["factor"]
+
+        res_block_outer, res_block_inner = self._schedule[res].split(
+            res.op.axis[block_split_axis], factor=block_split_inner_size)
+
+        block_tiling_result = {"axis": block_split_axis,
+                               "parent_itervar": res.op.axis[block_split_axis],
+                               "outer_itervar": res_block_outer,
+                               "inner_itervar": res_block_inner}
+
+        if block_split_axis == ub_split_axis:
+            res_ub_outer, res_ub_inner = self._schedule[res].split(
+                res_block_inner, factor=ub_split_inner)
+            ub_tiling_result = {"axis": ub_split_axis,
+                                "parent_itervar": res_block_inner,
+                                "outer_itervar": res_ub_outer,
+                                "inner_itervar": res_ub_inner}
+
+        else:
+            res_ub_outer, res_ub_inner = self._schedule[res].split(
+                res.op.axis[ub_split_axis], factor=ub_split_inner)
+            ub_tiling_result = {"axis": ub_split_axis,
+                                "parent_itervar": res.op.axis[ub_split_axis],
+                                "outer_itervar": res_ub_outer,
+                                "inner_itervar": res_ub_inner}
+
+        self._tiling_result = {"block_tiling": block_tiling_result,
+                               "ub_tiling": ub_tiling_result}
+
+    def _do_compute_inline(self):
+        """
+        compute inline operations
+        """
+        for i in self._compute_inline_tensors:
+            self._schedule[i].compute_inline()
+
+    def _do_multi_core(self):
+        if self._need_multi_core:
+            res = self._multi_core_bind_tensor
+            block = tvm.thread_axis("blockIdx.x")
+            self._schedule[res].bind(self._multi_core_fused_axis, block)
+
+    def _do_compute_at(self):
+        for stage in self._compute_at_map:
+            parent_stage = self._compute_at_map[stage]["parent"]
+            scope_iter_var = self._compute_at_map[stage]["scope"]
+            self._schedule[stage].compute_at(parent_stage, scope_iter_var)
+
+    def _do_double_buffer(self):
+        """
+        double buffer operations
+        read_buffer : the all read_cache for input in ub, type is list
+        """
+        temp_write_buffer = []
+        if self._need_db:
+            for i in self._double_buffer_tensors:
+                self._schedule[i].double_buffer()
+                # just for ternary instruction
+                if i in self._double_buffer_map:
+                    buffers = list(set(self._double_buffer_map[i]))
+                    for buffer in buffers:
+                        temp_write_buffer.append(buffer)
+                        self._schedule[buffer].double_buffer()
+            if temp_write_buffer:
+                self._recursive_double_buffer(temp_write_buffer)
+
+    def _recursive_double_buffer(self, write_buffer):
+        """
+        open cache write double buffer for ternary instruction by recursive
+        """
+        if not write_buffer:
+            return
+
+        temp_write_buffer = []
+        for i in write_buffer:
+            if i in self._double_buffer_map:
+                buffers = list(set(self._double_buffer_map[i]))
+                for buffer in buffers:
+                    temp_write_buffer.append(buffer)
+                    self._schedule[buffer].double_buffer()
+        self._recursive_double_buffer(temp_write_buffer)
+
+    def _do_emit_insn(self):
+        for stage in self._emit_insn_map:
+            scope_iter_var = self._emit_insn_map[stage]["scope"]
+            instruction = self._emit_insn_map[stage]["instruction"]
+            self._schedule[stage].emit_insn(scope_iter_var, instruction)
+
+    @abc.abstractmethod
+    def _construct_compute_graph(self, out_tensors, spec_node_list):
+        return
+
+    @abc.abstractmethod
+    def _calculate_cache_read(self):
+        return
+
+    @abc.abstractmethod
+    def _calculate_cache_write(self):
+        return
+
+    @abc.abstractmethod
+    def _calculate_compute_inline(self):
+        return
+
+    @abc.abstractmethod
+    def _calculate_multi_core(self):
+        return
+
+    @abc.abstractmethod
+    def _calculate_compute_at(self):
+        return
+
+    @abc.abstractmethod
+    def _calculate_double_buffer(self):
+        return
+
+    @abc.abstractmethod
+    def _calculate_emit_insn(self):
+        return
+
+    def _get_block_num(self):
+        return cceconf.get_soc_spec("CORE_NUM")
+
+    def _map_apend(self, input_map, key, value):
+        if input_map.get(key):
+            if isinstance(value, list):
+                for tmp_value in value:
+                    if tmp_value not in input_map[key]:
+                        input_map[key].append(tmp_value)
+            else:
+                if value not in input_map[key]:
+                    input_map[key].append(value)
+        else:
+            if isinstance(value, list):
+                input_map[key] = value
+            else:
+                input_map[key] = [value]
+
+    def _shape_to_list(self, shape):
+        """
+        translate tvm.shape to list type in python
+        """
+        tmp = []
+        for i in shape:
+            if isinstance(i, tvm.expr.Var):
+                tmp.append(i)
+            else:
+                tmp.append(i.value)
+        return tmp
+
+    def get_dst_tensor_map(self, reslist, tensor_map):
+        """
+        get the dst_tensor list of the tensor with more than one dst_tensor
+        tensor_map = {input: outputlist}
+        """
+        for out_tensor in reslist:
+            for in_tensor in list(out_tensor.op.input_tensors):
+                if in_tensor in tensor_map:
+                    if out_tensor not in tensor_map[in_tensor]:
+                        tensor_map[in_tensor].append(out_tensor)
+                else:
+                    tensor_map[in_tensor] = [out_tensor]
+                    self.get_dst_tensor_map([in_tensor], tensor_map)
+
+    def get_align_factor(self, dtype):
+        """
+        get_align_factor
+        """
+        # base on the diff data type, get the align_factor
+        align_factor = 16
+        dtype_bytes = 2
+        if dtype in ('int8', 'uint8'):
+            align_factor = 32
+            dtype_bytes = 1
+        elif dtype in ('float16', 'int16', 'uint16'):
+            align_factor = 16
+            dtype_bytes = 2
+        else:
+            align_factor = 8
+            dtype_bytes = 4
+        return align_factor, dtype_bytes
+
+
+class ReduceAtomicSchedule(_VectorSchedule):
     """
     class of cce elewise schedule
 
@@ -43,7 +323,7 @@ class ReduceAtomicSchedule(VectorSchedule):
     """
 
     def __init__(self):
-        VectorSchedule.__init__(self)
+        _VectorSchedule.__init__(self)
         # record ops
         self._op = []
         # record origin op
@@ -112,37 +392,17 @@ class ReduceAtomicSchedule(VectorSchedule):
         self._reduce_tiling_result = {"block_tiling": {}, "ub_tiling": [{}]}
 
         self._storage_align_para = {}
-        self._tiling_case_index = 0
-        self._tiling_case_list = [{}]
         self._axis_offset = 0
 
-    def do_schedule(self, outs, tiling_case, sch_list=None):
-        """
-        auto_schedule for cce AI-CORE
-
-        Parameters
-        ----------
-        outTensors : the out tvm.tensor
-
-        sch_list : schedule, the computation schedule for the op
-
-        spec_node_list : special node list
-
-        Returns
-        -------
-        Bool, now is true
-
-        """
-
-        if sch_list is not None and sch_list[0] is not None:
-            self._schedule = sch_list[0]
-        else:
-            self._schedule = tvm.create_schedule([self._res_tensor.op])
+    def do_schedule(self, outs, tiling_case, graph_info, reduce_info):
+        self._res_tensor = outs[0]
+        self._schedule = tvm.create_schedule([self._res_tensor.op])
 
         self._out_tensors = copy.copy(outs)
 
-        self._select_tiling_case(tiling_case)
-        self._schedule.tiling_key = tiling_case
+        self._tiling_case = tiling_case
+        self.graph_info = graph_info
+        self.reduce_info = reduce_info
 
         self._do_cache_read()
         self._do_cache_write()
@@ -171,9 +431,6 @@ class ReduceAtomicSchedule(VectorSchedule):
         self._calculate_double_buffer()
         self._do_double_buffer()
 
-        if sch_list is not None and sch_list[0] is not None:
-            self._schedule = sch_list[0]
-
         for i in range(0, len(outs)):
             outs.pop()
         for i in self._out_tensors:
@@ -194,7 +451,6 @@ class ReduceAtomicSchedule(VectorSchedule):
         if not is_success:
             return False
 
-        self._calculate_tiling_cases()
         self._calculate_cache_read()
         self._calculate_cache_write()
         self._calculate_compute_inline()
@@ -299,28 +555,6 @@ class ReduceAtomicSchedule(VectorSchedule):
             self._reduce_case = 3
             self._gen_tiling_case_last_axis(shape_before_reduce,
                                             reduce_axis_index)
-
-    def _select_tiling_case(self, index):
-        """
-        :param index:
-        :return:
-        """
-
-        self._tiling_case_index = index
-
-    def get_tiling_cases(self):
-        """
-        :return:
-        """
-
-        return range(0, len(self._tiling_case_list))
-
-    def get_tiling_case_list(self):
-        """
-        :return:
-        """
-
-        return self._tiling_case_list
 
     def _gen_tiling_case_not_last_axis(self, shape_before_reduce,
                                        reduce_axis_index):
@@ -503,7 +737,7 @@ class ReduceAtomicSchedule(VectorSchedule):
         :return: Bool
         """
         # platform: cloud, ng1
-        if not pver().is_cloud_version() and not pver().is_ng1_version():
+        if not Pver().is_cloud_version() and not Pver().is_ng1_version():
             return False
         # type: fp32
         reduce_tensor = self._reduce_info["reduce_tensor"]
@@ -1014,12 +1248,12 @@ class ReduceAtomicSchedule(VectorSchedule):
         """
         self._tiling_factor_vars.clear()
 
-        tiling_case = self._tiling_case_list[self._tiling_case_index]
+        tiling_case: ReduceTilingCase = self._tiling_case
 
-        block_split_axis = tiling_case["block_split_axis"]
-        block_factor = tiling_case["block_factor"]
-        ub_split_axis = tiling_case["ub_split_axis"]
-        ub_factor = tiling_case["ub_factor"]
+        block_split_axis = tiling_case.block_split_axis_index
+        block_factor = tiling_case.block_factor
+        ub_split_axis = tiling_case.ub_split_axis_index
+        ub_factor = tiling_case.ub_factor
 
         if block_factor is None:
 

@@ -34,8 +34,7 @@ def get_op_support_info(x, y, block_size, crops, kernel_name="batch_to_space_d")
     """
     format_x = x.get("format").upper()
     if format_x == "NC1HWC0":
-        axis_split_matrix = [[SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]])],
-                             [SplitInput([0, [4], [-1], [-1]]), SplitOutput([0, [4]])]]
+        axis_split_matrix = [[SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]])]]
         axis_reduce_list = None
 
     else:

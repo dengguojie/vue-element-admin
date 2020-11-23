@@ -23,6 +23,8 @@
 #include "op_log.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
+#include "common/lxfusion_json_util.h"
+#include "graph/utils/attr_utils.h"
 
 namespace fe {
 
@@ -88,6 +90,112 @@ vector<BufferFusionPattern*> TbeConv2dWrtselStridewrtPass::DefinePatterns() {
 
   return patterns;
 }
+
+void TbeConv2dWrtselStridewrtPass::DelSplitInfoByAxis(std::vector<AxisSplitMap> &split_maps, int axis) {
+  std::vector<AxisSplitMap> temp_maps;
+  for(auto it = split_maps.begin(); it != split_maps.end(); ++it) {
+    bool del_axis = false;
+    auto input_split_infos = (*it).GetInputSplitInfoVec();
+    for (auto input_split_info : input_split_infos) {
+      if (input_split_info.GetAxis()[0] == axis) {
+        del_axis = true;
+      }
+    }
+    if (!del_axis) {
+      temp_maps.push_back(*it);
+    }
+  }
+  split_maps = temp_maps;
+}
+
+void TbeConv2dWrtselStridewrtPass::SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes){
+  bool existed_quant = false;
+  vector<ge::NodePtr> quant_nodes = GetMatchedNodesByDescName(kPatternQuant, mapping);
+  if (!quant_nodes.empty()){
+    existed_quant = true;
+  }
+
+  bool is_add_deq_scale_splitinfo = false;
+  vector<int64_t> deq_scale_shape;
+  if (!existed_quant) {
+    vector<ge::NodePtr> dequant_nodes = GetMatchedNodesByDescName(kPatternDequant, mapping);
+    for (auto dequant_node : dequant_nodes) {
+      deq_scale_shape = dequant_node->GetOpDesc()->GetInputDesc("deq_scale").GetOriginShape().GetDims();
+      if(!(deq_scale_shape.size() == 1 && deq_scale_shape[0] == 1)) {
+        is_add_deq_scale_splitinfo = true;
+      }
+    }
+  }
+
+  int32_t axis;
+  vector<ge::NodePtr> stride_write_nodes = GetMatchedNodesByDescName(kPatternStridedWrite, mapping);
+  for (auto stride_write_node : stride_write_nodes) {
+    AttrUtils::GetInt(stride_write_node->GetOpDesc(), "axis", axis);
+  }
+  vector<ge::NodePtr> conv_nodes = GetMatchedNodesByDescName(kPatternConv, mapping);
+  int inpos = 0;
+  string op_slice_info_str = "";
+  for (auto conv_node : conv_nodes) {
+    ge::AttrUtils::GetStr(conv_node->GetOpDesc(), "_op_slice_info", op_slice_info_str);
+    inpos = conv_node->GetInDataNodes().size() - 1;
+  }
+  OP_LOGD(fused_op_type_.c_str(), "ori _op_slice_info is %s", op_slice_info_str.c_str());
+  OpCalcInfo op_calc_info;
+  GetOpSliceInfoFromJson(op_calc_info, op_slice_info_str);
+  auto split_maps = op_calc_info.GetAxisSplitMapVec();
+  int h_axis = 2;
+  int w_axis = 3;
+  DelSplitInfoByAxis(split_maps, axis);  
+  DelSplitInfoByAxis(split_maps, h_axis);
+  DelSplitInfoByAxis(split_maps, w_axis);
+  if (existed_quant) {
+    int c_axis = 1;
+    DelSplitInfoByAxis(split_maps, c_axis);
+  }
+
+  if (is_add_deq_scale_splitinfo) {
+    inpos += 1;
+    for(auto it = split_maps.begin(); it != split_maps.end(); ++it) {
+      auto input_split_infos = it->GetInputSplitInfos();
+      for (auto input_split_info : input_split_infos) {
+        if (input_split_info->GetAxis()[0] == 1) {
+          InputSplitInfo deq_scale_splitinfo;
+          vector<int64_t> minus_one_vec = {-1};
+          vector<int64_t> one_vec = {1};
+          deq_scale_splitinfo.SetIndex(inpos);
+          deq_scale_splitinfo.SetAxis(one_vec);
+          deq_scale_splitinfo.SetHeadOverLap(minus_one_vec);
+          deq_scale_splitinfo.SetTailOverLap(minus_one_vec);
+          it->AddInputSplitInfo(deq_scale_splitinfo);
+        }
+      }
+    }
+  }
+
+  op_calc_info.SetL1FusionEnable(L1FUSION_DISABLE);
+  op_calc_info.SetAxisSplitMaps(split_maps);
+  SetOpSliceInfoToJson(op_calc_info, op_slice_info_str);
+  for (auto fusion_node : fusion_nodes) {
+    ge::AttrUtils::SetStr(fusion_node->GetOpDesc(), "_op_slice_info", op_slice_info_str);
+  }
+  OP_LOGD(fused_op_type_.c_str(), "set _op_slice_info is %s", op_slice_info_str.c_str());
+}
+
+/*
+ * @brief: parse nodes matched in mapping and call DoFusion
+ * @param [in] graph: original graph
+ * @param [out] mapping: nodes matched by pattern
+ * @return bool: fusion status ok or not.
+ */
+Status TbeConv2dWrtselStridewrtPass::GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
+  OP_LOGD(fused_op_type_.c_str(), "Begin to do Conv2dWrtselStridewrt!");
+  fusion_nodes = GetMatchedNodes(mapping);
+  SetSplitInfo(mapping, fusion_nodes);
+  OP_LOGD(fused_op_type_.c_str(), "End to do Conv2dWrtselStridewrt!");
+
+  return SUCCESS;
+}
+
 REGISTER_BUFFER_FUSION_PASS("TbeConv2dWrtselStridewrtPass", BUILT_IN_AI_CORE_BUFFER_FUSION_PASS,
                             TbeConv2dWrtselStridewrtPass);
 }  // namespace fe

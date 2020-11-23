@@ -30,6 +30,7 @@ from .util import get_nearest_factor
 from .util import gen_reversed_subgraph_list
 from .util import DTYPE_WIDTH_MAP
 
+softmax_cross_logits_nhw = [11842605]
 
 def get_mask_fp16_skip_one(length):
     """
@@ -439,6 +440,11 @@ def get_npart_factor(n_h_w, dtype_bytes, block_dim):
     if block_dim == 30 and npart_factor != 0:
         while n_h_w % npart_factor != 0:
             npart_factor -= 1
+
+    if block_dim == 32 and npart_factor != 0:
+        if n_h_w in softmax_cross_logits_nhw:
+            while n_h_w % npart_factor != 0:
+                npart_factor -= 1
 
     return npart_factor
 

@@ -102,8 +102,21 @@ COMMON_INFER_FUNC_REG(SigmoidCrossEntropyWithLogitsGrad, SigmoidCrossEntropyWith
 IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(SigmoidCrossEntropyWithLogitsInferShape)
   auto input_type = op.GetInputDesc("predict").GetDataType();
   auto input_shape = op.GetInputDesc("predict").GetShape();
+  auto target_shape = op.GetInputDesc("target").GetShape();
+  std::vector<int64_t> predict_dims = input_shape.GetDims();
+  std::vector<int64_t> target_dims = target_shape.GetDims();
+  std::vector<int64_t> output_dims;
+
+  for (auto i = 0; i < predict_dims.size(); i++) {
+    if (predict_dims[i] == UNKNOWN_DIM) {
+      output_dims.push_back(target_dims[i]);
+    } else {
+      output_dims.push_back(predict_dims[i]);
+    }
+  }
+
   TensorDesc td = op.GetOutputDesc("loss");
-  td.SetShape(input_shape);
+  td.SetShape(ge::Shape(output_dims));
   td.SetDataType(input_type);
 
   std::vector<std::pair<int64_t, int64_t>> shape_range_x;

@@ -119,7 +119,7 @@ def _parse_pattern(outs):
         return Pattern.CONV2D_BACKPROP_FILTER
     if _is_elewise(compute_type_size_map):
         return Pattern.ELEMWISE
-    if _is_reduce(outs, compute_type_size_map):
+    if _is_reduce(compute_type_size_map):
         return Pattern.REDUCE
 
     return Pattern.OPAQUE
@@ -134,16 +134,13 @@ def _is_elewise(compute_type_size_map: dict):
     return ph_size + elewise_size + broadcast_size + cast_size == total
 
 
-def _is_reduce(outs, compute_type_size_map):
+def _is_reduce(compute_type_size_map):
     placeholder_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
     elewise_size = compute_type_size_map.get(ComputeType.ELEWISE, 0)
     cast_size = compute_type_size_map.get(ComputeType.CAST, 0)
     reduce_size = compute_type_size_map.get(ComputeType.REDUCE, 0)
     total = compute_type_size_map.get(ComputeType.ANY, 0)
-    if placeholder_size + elewise_size + reduce_size + cast_size != total:
-        return False
-    reduce = ReduceSchedule()
-    return reduce.check_support(outs, [])
+    return placeholder_size + elewise_size + reduce_size + cast_size == total
 
 
 def _dfs_compute(outs) -> dict:

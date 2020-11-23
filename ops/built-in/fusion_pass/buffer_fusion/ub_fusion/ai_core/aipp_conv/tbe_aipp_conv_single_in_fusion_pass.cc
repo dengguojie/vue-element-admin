@@ -142,6 +142,7 @@ Status TbeAippConvSingleInFusionPass::GetFusionNodes(const BufferFusionMapping& 
   }
 
   fusion_nodes = GetMatchedNodes(mapping);
+  SetSplitInfo(mapping, fusion_nodes);
   OP_LOGD(fused_op_type_.c_str(), "End to do TbeAippConvReluFusionPass!");
   return SUCCESS;
 }

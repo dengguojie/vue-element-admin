@@ -68,10 +68,8 @@ class DynamicGRUV2GradFusionPass : public PatternFusionBasePass {
                                   ge::NodePtr gruHiddenGradNode, ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes,
                                   bool& failStatus);
   // dx_t matmul(dgate_x, w_x.T)
-  ge::NodePtr AddWxBroadcastNode(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes,
-                                 bool& failStatus);
-  Status AddDxtMatmulNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr gateConcatNode, ge::NodePtr wxBroadcastNode,
-                          ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes);
+  Status AddDxtMatmulNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr gateConcatNode, ge::ComputeGraph& graph,
+                          vector<ge::NodePtr>& newNodes);
   // dw_x matmul(x.T, dgate_x)
   ge::NodePtr AddDwxMatmulNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr gateConcatNode, ge::ComputeGraph& graph,
                                vector<ge::NodePtr>& newNodes, bool& failStatus);
