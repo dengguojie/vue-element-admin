@@ -35,8 +35,6 @@ from .vector_info import ComputeGraphInfo
 from .vector_schedule import VectorSchedule
 from .reduce_tilingcase import ReduceTilingCase
 from .reduce_tilingcase import SingleReduceInfo
-from .reduce_tilingcase import calc_tiling_key
-from .reduce_tilingcase import apply_compile_info
 from .reduce_atomic_schedule import ReduceAtomicSchedule
 from ...base.operation import var
 from ...base.operation import get_context
@@ -61,17 +59,11 @@ def schedule(outs, tiling_case: ReduceTilingCase):
         else:
             reduce_sch._reduce_case = 3
         real_schedule = reduce_sch.do_schedule(outs, tiling_case, graph_info, single_reduce_info)
-        if get_context().get("mode") != CONST:
-            apply_compile_info(single_reduce_info, graph_info, tiling_case)
-        current_tiling_key = calc_tiling_key(single_reduce_info, tiling_case)
-        real_schedule.tiling_key = current_tiling_key
+        real_schedule.tiling_key = tiling_case.tiling_key
     else:
         reduce_sch: ReduceSchedule = ReduceSchedule(graph_info, single_reduce_info)
         real_schedule = reduce_sch.do_schedule(tiling_case)
-        if get_context().get("mode") != CONST:
-            apply_compile_info(single_reduce_info, graph_info, tiling_case)
-        current_tiling_key = calc_tiling_key(single_reduce_info, tiling_case)
-        real_schedule.tiling_key = current_tiling_key
+        real_schedule.tiling_key = tiling_case.tiling_key
     return real_schedule
 
 

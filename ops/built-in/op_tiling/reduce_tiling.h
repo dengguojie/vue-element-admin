@@ -19,8 +19,8 @@
  * \brief
  */
 
-#ifndef NEWREDUCETILING_REDUCE_TILING_H
-#define NEWREDUCETILING_REDUCE_TILING_H
+#ifndef REDUCE_TILING_H
+#define REDUCE_TILING_H
 
 #include <cmath>
 #include <vector>
@@ -36,7 +36,6 @@ const int32_t REDUCE_MEAN_COF_FP16 = 2;
 const int32_t SMALL_SHAPE_THRESHOLD = 1024;
 const int32_t FUSED_NON_REDUCE_AXIS = 0;
 const int32_t FUSED_REDUCE_AXIS = 1;
-const int32_t CONST_CRADINALITY = 10;
 
 struct TilingInfo {
   int32_t block_dim;
@@ -47,20 +46,21 @@ struct TilingInfo {
 };
 
 struct ReorderInfo {
-  std::vector<int64_t> reorder_input_shape;
-  std::map<int32_t, int32_t> reorder_pos_ref_input;
+  std::vector<int64_t> reorder_input_shape{std::vector<int64_t>(10, 0)};
   std::vector<int32_t> fused_block_tiling_axis;
+  // pos after reorder : pos before reorder
+  //    vector.idx     :      vector[idx]
+  std::vector<int32_t> reorderPos_oriPos{std::vector<int32_t>(10, 0)};
 };
 
 struct CompileInfo {
-  bool is_const;
-  bool atomic;
-  bool is_keep_dims;
+  bool is_const = false;
+  bool is_const_post = false;
+  bool atomic = false;
+  bool is_keep_dims = false;
   int64_t max_ub_count;
   int32_t core_num;
-  std::string dtypeUB;
-  // the flag of invoking op_tiling interface during compilation(false) or running(true)
-  bool is_const_post;
+  int32_t reduce_block_size;
 };
 
 class Reduce {
@@ -101,6 +101,7 @@ class Reduce {
   int32_t GetRealBlockTilingAxis(std::vector<int64_t>& shape, int32_t idx);
   int32_t CalcConstPattern(std::vector<int32_t>& reduce_axis);
   bool IsInVector(std::vector<int32_t>& input, int32_t value);
+  void EliminateOne();
 
  private:
   const std::string& op_type;
@@ -112,10 +113,15 @@ class Reduce {
   ReorderInfo reorderInfo;
 
   std::vector<int64_t> input_shape_ori;
-  std::vector<int32_t> reduce_axis_ori;
-  std::vector<int64_t> input_shape;
-  std::vector<int32_t> reduce_axis;
-  std::vector<int64_t> output_shape;
+  std::vector<int32_t> reduce_axis_ori{std::vector<int32_t>(10, 0)};
+  std::vector<int64_t> input_shape{std::vector<int64_t>(10, 0)};
+  std::vector<int32_t> reduce_axis{std::vector<int32_t>(10, 0)};
+  std::vector<int64_t> output_shape{std::vector<int64_t>(10, 0)};
+
+  // assistant
+  std::vector<int64_t> normalize_shape{std::vector<int64_t>(10, 0)};
+  std::vector<int32_t> normalize_axis{std::vector<int32_t>(10, 0)};
+  std::vector<int32_t> reduce_flag{std::vector<int32_t>(10, 0)};
 
   bool is_last_axis_reduce;
   std::string output_dtypeUB;
@@ -126,6 +132,6 @@ class Reduce {
   int32_t block_size;
   float reduce_mean_cof;
 };
-}
+}  // namespace optiling
 
-#endif  // NEWREDUCETILING_REDUCE_TILING_H
+#endif  // REDUCE_TILING_H

@@ -36,26 +36,28 @@ int32_t Reduce::CalcPattern(std::vector<int64_t>& input, std::vector<int32_t>& a
   int32_t pattern = 0;
   for (size_t i = 0; i < input.size(); i++) {
     if (IsInVector(axis, i)) {
-      pattern += 2 * pow(2, input.size() - 1 - i);
+      pattern += 2 << (input.size() - i - 1);
     } else {
-      pattern += pow(2, input.size() - 1 - i);
+      pattern += ((int)input.size() - 2 - (int)i) >= 0 ? 2 << (input.size() - 2 - i) : 1;
     }
   }
   return pattern;
 }
 
 int32_t Reduce::CalcConstPattern(std::vector<int32_t>& reduce_axis) {
-  // generate pattern according to reduce_axis
+  // generate dict key according to reduce_axis
+  // Init() make reduce axis sorted
   if (reduce_axis.size() == 0) {
     return -1;
   }
-  std::sort(reduce_axis.rbegin(), reduce_axis.rend());
-  int32_t tiling_key = 0;
+
+  int32_t dict_key = 0;
   for (auto& i : reduce_axis) {
-    tiling_key = CONST_CRADINALITY * tiling_key + i;
+    // dict_key: 1234 -> reduce [0,1,2,3]
+    dict_key = 10 * dict_key + i + 1;
   }
 
-  return tiling_key;
+  return dict_key;
 }
 
 int32_t Reduce::GetBlockSize(std::string dtypeUB) {
@@ -156,16 +158,44 @@ int32_t Reduce::CalcTilingKey() {
   return key;
 }
 
+void Reduce::EliminateOne() {
+  for (auto item : reduce_axis_ori) {
+    reduce_flag[item] = 1;
+  }
+
+  size_t skip_count = 0;
+  size_t pos_a = 0;
+  size_t pos_r = 0;
+  for (size_t i = 0; i < input_shape_ori.size(); i++) {
+    if (input_shape_ori[i] == 1) {
+      skip_count++;
+      continue;
+    }
+
+    normalize_shape[pos_a] = input_shape_ori[i];
+    pos_a++;
+    if (reduce_flag[i] == 1) {
+      normalize_axis[pos_r] = i - skip_count;
+      pos_r++;
+    }
+  }
+
+  if (pos_a < input_shape_ori.size()) {
+    normalize_shape.resize(pos_a);
+    input_shape_ori = normalize_shape;
+  }
+  // reset flag
+  for (auto item : reduce_axis_ori) {
+    reduce_flag[item] = 0;
+  }
+  // sort axis
+  normalize_axis.resize(pos_r);
+  reduce_axis_ori = normalize_axis;
+}
+
 bool Reduce::ConstInputProcPost() {
+  // runtime
   std::string pattern_str = std::to_string(pattern);
-  if (op_info.count("_block_dims") == 0 || op_info["_block_dims"].count(pattern_str) == 0) {
-    GE_LOGE("op [%s] : can't find block dim or pattern str in compile info.", op_type.c_str());
-    return false;
-  }
-  if (op_info.count("_atomic_flags") == 0 || op_info["_atomic_flags"].count(pattern_str) == 0) {
-    GE_LOGE("op [%s] : can't find atomic flags or pattern str in compile info.", op_type.c_str());
-    return false;
-  }
   run_info.block_dim = op_info["_block_dims"][pattern_str].get<std::int32_t>();
   run_info.clear_atomic = op_info["_atomic_flags"][pattern_str].get<bool>();
   ByteBufferPut(run_info.tiling_data, pattern);
@@ -174,15 +204,15 @@ bool Reduce::ConstInputProcPost() {
 
 bool Reduce::FusedReduceAxis() {
   /* model: reduce_axis_unknown (eg: reduce_sum)
-  * if input_shape_ori is [-1], model is R
-  * if input_shape_ori is [-1, -1], model is AR, RA
-  * if input_shape_ori is [-1, -1, -1], model is AR, ARA, RAR
-  * if input_shape_ori is [-1, -1, -1, -1], model is AR, ARA, ARAR, RARA
-  * Special Regulation:
-  * if after fused, model is RA while len(input_shape_ori) is 3, model will be ARA by padding "1".
-  * if after fused, model is R while len(input_shape_ori) isn't 1, model will be AR by padding "1".
-  * if after fused, model is A, model will be RA by padding "1".
-  * */
+   * if input_shape_ori is [-1], model is R
+   * if input_shape_ori is [-1, -1], model is AR, RA
+   * if input_shape_ori is [-1, -1, -1], model is AR, ARA, RAR
+   * if input_shape_ori is [-1, -1, -1, -1], model is AR, ARA, ARAR, RARA
+   * Special Regulation:
+   * if after fused, model is RA while len(input_shape_ori) is 3, model will be ARA by padding "1".
+   * if after fused, model is R while len(input_shape_ori) isn't 1, model will be AR by padding "1".
+   * if after fused, model is A, model will be RA by padding "1".
+   * */
   vector<int32_t> pos(input_shape_ori.size());
   for (auto item : reduce_axis_ori) {
     pos[item] = 1;
@@ -196,6 +226,23 @@ bool Reduce::FusedReduceAxis() {
   size_t length = input_shape_ori.size();
   bool cond_0 = false;
   bool cond_1 = false;
+
+  size_t capacity_shape = 0;
+  size_t capacity_axis = 0;
+
+  // Deal Model
+  if (reduce_axis_ori.size() == 0) {
+    // model is A, A -> RA (only one RA)
+    input_shape[0] = 1;
+    reduce_axis[0] = 0;
+    capacity_shape++;
+    capacity_axis++;
+  } else if (reduce_axis_ori[0] == 0) {
+    // model is Rx, Rx -> ARx
+    input_shape[0] = 1;
+    capacity_shape++;
+  }
+
   while (second <= length) {
     if (second <= length - 1 and pos[first] == pos[second]) {
       // look for unequal idx
@@ -205,15 +252,17 @@ bool Reduce::FusedReduceAxis() {
       // fused serial axises
       value_input = std::accumulate(input_shape_ori.begin() + first, input_shape_ori.begin() + second, 1,
                                     std::multiplies<int64_t>());
-      input_shape.push_back(value_input);
+      input_shape[capacity_shape] = value_input;
+      capacity_shape++;
 
       // cond_0: [first, second) is serial reduce_axises
       // cond_1: [first: ] is serial reduce_axises.
       cond_0 = second <= length - 1 and pos[second] == 0;
       cond_1 = second == length and pos[second - 1] == 1;
       if (cond_0 or cond_1) {
-        value_axis = input_shape.size() - 1;
-        reduce_axis.push_back(value_axis);
+        value_axis = capacity_shape - 1;
+        reduce_axis[capacity_axis] = value_axis;
+        capacity_axis++;
       }
       first = second;
       second += 1;
@@ -221,28 +270,18 @@ bool Reduce::FusedReduceAxis() {
     }
   }
 
-  // Deal Model
-  if (reduce_axis.size() == 0){
-    // model is A, A -> RA (only one RA)
-    input_shape.insert(input_shape.begin(), 1);
-    reduce_axis.push_back(0);
-  } else if(reduce_axis[0] == 0){
-    // model is Rx, Rx -> ARx
-    input_shape.insert(input_shape.begin(), 1);
-    for (size_t i = 0; i < reduce_axis.size(); i++){
-      reduce_axis[i] += 1;
-    }
-  }
-
+  input_shape.resize(capacity_shape);
+  reduce_axis.resize(capacity_axis);
   return true;
 }
 
 bool Reduce::GetCompileInfo() {
-  compileInfo.max_ub_count = op_info["common_info"]["max_ub_count"].get<std::int64_t>();
-  compileInfo.core_num = op_info["common_info"]["core_num"].get<std::int32_t>();
-  compileInfo.is_keep_dims = (op_info["common_info"]["keep_dims"].get<std::int32_t>() == 1);
-  compileInfo.dtypeUB = op_info["common_info"]["reduce_dtype"].get<std::string>();
-  compileInfo.atomic = op_info["common_info"].count("atomic") > 0 && op_info["common_info"]["atomic"].get<bool>();
+  std::vector<int32_t> info = op_info["common_info"];
+  compileInfo.max_ub_count = info[0];
+  compileInfo.core_num = info[1];
+  compileInfo.is_keep_dims = (bool)info[2];
+  compileInfo.reduce_block_size = info[3];
+  compileInfo.atomic = (bool)info[4];
   output_dtypeUB = op_paras.inputs[0].tensor[0].dtype;
   is_last_axis_reduce = IsInVector(reduce_axis, input_shape.size() - 1);
 
@@ -278,21 +317,23 @@ bool Reduce::GetCompileInfo() {
 bool Reduce::ChooseAtomic() {
   total_output_count = 1;
   total_reduce_count = 1;
+  output_shape.resize(input_shape.size());
+
   for (uint32_t i = 0; i < input_shape.size(); i++) {
     if (IsInVector(reduce_axis, i)) {
       if (compileInfo.is_keep_dims) {
-        output_shape.push_back(1);
+        output_shape[i] = 1;
       } else {
-        output_shape.push_back(0);
+        output_shape[i] = 0;
       }
       total_reduce_count *= input_shape[i];
     } else {
-      output_shape.push_back(input_shape[i]);
+      output_shape[i] = input_shape[i];
       total_output_count *= input_shape[i];
     }
   }
 
-  int32_t calc_block_size = GetBlockSize(compileInfo.dtypeUB);
+  int32_t calc_block_size = compileInfo.reduce_block_size;
   int32_t output_block_size = GetBlockSize(output_dtypeUB);
   block_size = calc_block_size > output_block_size ? calc_block_size : output_block_size;
 
@@ -306,8 +347,8 @@ bool Reduce::ChooseAtomic() {
 bool Reduce::GetUbTilingInfo() {
   // rewrite ub_tiling_factor, ub_tiling_axis
   int32_t block_tiling_axis_in_reorder = -1;
-  for (uint32_t i = 0; i < reorderInfo.reorder_pos_ref_input.size(); i++) {
-    if (reorderInfo.reorder_pos_ref_input[i] == tilingInfo.block_tiling_axis) {
+  for (uint32_t i = 0; i < reorderInfo.reorderPos_oriPos.size(); i++) {
+    if (reorderInfo.reorderPos_oriPos[i] == tilingInfo.block_tiling_axis) {
       block_tiling_axis_in_reorder = i;
       break;
     }
@@ -321,7 +362,7 @@ bool Reduce::GetUbTilingInfo() {
 
     load_mul = GetReorderInputShapeMul(i, block_tiling_axis_in_reorder);
     if (load_mul <= compileInfo.max_ub_count) {
-      tilingInfo.ub_tiling_axis = reorderInfo.reorder_pos_ref_input[i];
+      tilingInfo.ub_tiling_axis = reorderInfo.reorderPos_oriPos[i];
       tilingInfo.ub_tiling_factor = (compileInfo.max_ub_count / load_mul);
 
       int64_t max_ub_tiling_factor = input_shape[tilingInfo.ub_tiling_axis];
@@ -339,79 +380,55 @@ bool Reduce::GetUbTilingInfo() {
 }
 
 void Reduce::ProcessReorderAxis(int32_t fused_type) {
-  /* According fused_type rewrite reorder_input_shape,
-   * reorder_pos_ref_input, fused_block_tiling_axis
+  /* InputShape: a0,r0,a1,r1,a2,r2,r3,a3
+   *                    |---> block_tiling_axis(NormalReduce)
+   *                    |---> core = a0*a1
+   *                                   |--->fused_block_tiling_axis
+   * ReorderShape: |a0,a1,a2|r0,r1,r2,r3|a3
+   *                                   |---> last_reduce_axis_idx
    * */
   int32_t reorder_pos = 0;
   int32_t block_tiling_axis = tilingInfo.block_tiling_axis;
+  int32_t last_reduce_axis_idx = reduce_axis.back();
+  reorderInfo.reorder_input_shape.resize(input_shape.size());
+  reorderInfo.reorderPos_oriPos.resize(input_shape.size());
 
-  if (is_last_axis_reduce) {
-    for (int32_t i = 0; i < (int32_t)input_shape.size(); i++) {
-      if (!IsInVector(reduce_axis, i)) {
-        if (fused_type == FUSED_NON_REDUCE_AXIS && i < block_tiling_axis) {
-          reorderInfo.fused_block_tiling_axis.push_back(reorder_pos);
-        }
+  int num_r = reduce_axis.size();
+  int num_a = input_shape.size() - num_r;
+  for (auto item : reduce_axis) {
+    reduce_flag[item] = 1;
+  }
 
-        reorderInfo.reorder_input_shape.push_back(input_shape[i]);
-        reorderInfo.reorder_pos_ref_input[reorder_pos] = i;
-        reorder_pos += 1;
+  int pos_r = num_a - ((int)input_shape.size() - (last_reduce_axis_idx + 1));
+  int pos_a = 0;
+
+  // [0: last_reduce_axis_idx]
+  for (size_t i = 0; i <= last_reduce_axis_idx; i++) {
+    if (reduce_flag[i] == 1) {
+      if (fused_type == FUSED_REDUCE_AXIS && i < block_tiling_axis) {
+        reorderInfo.fused_block_tiling_axis.emplace_back(pos_r);
       }
-    }
-
-    for (int32_t i = 0; i < (int32_t)input_shape.size(); i++) {
-      if (IsInVector(reduce_axis, i)) {
-        if (fused_type == FUSED_REDUCE_AXIS && i < block_tiling_axis) {
-          reorderInfo.fused_block_tiling_axis.push_back(reorder_pos);
-        }
-
-        reorderInfo.reorder_input_shape.push_back(input_shape[i]);
-        reorderInfo.reorder_pos_ref_input[reorder_pos] = i;
-        reorder_pos += 1;
-      }
-    }
-  } else {
-    int32_t last_reduce_axis_idx = 0;
-    for (uint32_t i = 0; i < reduce_axis.size(); i++) {
-      if (reduce_axis[i] > last_reduce_axis_idx) {
-        last_reduce_axis_idx = reduce_axis[i];
-      }
-    }
-
-    // order non reduce axis
-    for (int32_t i = 0; i < last_reduce_axis_idx + 1; i++) {
-      if (!IsInVector(reduce_axis, i)) {
-        if (fused_type == FUSED_NON_REDUCE_AXIS && i < block_tiling_axis) {
-          reorderInfo.fused_block_tiling_axis.push_back(reorder_pos);
-        }
-
-        reorderInfo.reorder_input_shape.push_back(input_shape[i]);
-        reorderInfo.reorder_pos_ref_input[reorder_pos] = i;
-        reorder_pos += 1;
-      }
-    }
-
-    // order reduce axis
-    for (int32_t i = 0; i < last_reduce_axis_idx + 1; i++) {
-      if (IsInVector(reduce_axis, i)) {
-        if (fused_type == FUSED_REDUCE_AXIS && i < block_tiling_axis) {
-          reorderInfo.fused_block_tiling_axis.push_back(reorder_pos);
-        }
-
-        reorderInfo.reorder_input_shape.push_back(input_shape[i]);
-        reorderInfo.reorder_pos_ref_input[reorder_pos] = i;
-        reorder_pos += 1;
-      }
-    }
-    // order last non axis, maybe several axis
-    for (int32_t i = last_reduce_axis_idx + 1; i < (int32_t)input_shape.size(); i++) {
+      reorderInfo.reorder_input_shape[pos_r] = input_shape[i];
+      reorderInfo.reorderPos_oriPos[pos_r] = i;
+      pos_r++;
+    } else {
       if (fused_type == FUSED_NON_REDUCE_AXIS && i < block_tiling_axis) {
-        reorderInfo.fused_block_tiling_axis.push_back(reorder_pos);
+        reorderInfo.fused_block_tiling_axis.emplace_back(pos_a);
       }
-
-      reorderInfo.reorder_input_shape.push_back(input_shape[i]);
-      reorderInfo.reorder_pos_ref_input[reorder_pos] = i;
-      reorder_pos += 1;
+      reorderInfo.reorder_input_shape[pos_a] = input_shape[i];
+      reorderInfo.reorderPos_oriPos[pos_a] = i;
+      pos_a++;
     }
+  }
+
+  // order last non axis, maybe several axis
+  for (size_t i = last_reduce_axis_idx + 1; i < input_shape.size(); i++) {
+    if (fused_type == FUSED_NON_REDUCE_AXIS && i < block_tiling_axis) {
+      reorderInfo.fused_block_tiling_axis.emplace_back(pos_r);
+    }
+    reorderInfo.reorder_input_shape[pos_r] = input_shape[i];
+    reorderInfo.reorderPos_oriPos[pos_r] = i;
+    pos_r++;
   }
 
   return;
@@ -480,20 +497,28 @@ bool Reduce::GetBlockTilingInfo() {
   int32_t left_block_dim = 1;
   int64_t max_ub_count = compileInfo.max_ub_count;
   int32_t core_num = compileInfo.core_num;
+
   for (uint32_t i = 0; i < output_shape.size(); i++) {
     if (output_shape[i] == 0 || output_shape[i] == 1) {
+      // block_split not in reduce_axis
       continue;
     }
 
+    // right_inner_ub_count: prod(output[i+1:])
     int64_t right_inner_ub_count = GetAlignShapeMul(i);
     if (right_inner_ub_count > max_ub_count) {
       left_block_dim = (int32_t)left_block_dim * output_shape[i];
       continue;
     }
 
+    // max_block_tiling_factor: UB can store m * inner_ub_count
     int64_t max_block_tilling_factor = max_ub_count / right_inner_ub_count;
     int64_t right_total_num = GetShapeMul(output_shape, i);
 
+    // case0: prod(output[i+1:]) <= block_size && core < core_num
+    // case1: prod(output[i+1:]) <= block_size && core > block_size
+    // case2: prod(output[i+1:]) > block_size && core > block_size
+    // case3: prod(output[i+1:]) > block_size && core < core_num
     if (right_total_num <= block_size && left_block_dim * output_shape[i] < core_num) {
       if (left_block_dim > 1) {
         int64_t cur_block_factor = (block_size + right_total_num - 1) / right_total_num;
@@ -569,7 +594,6 @@ bool Reduce::GetBlockTilingInfo() {
     left_block_dim = (int32_t)left_block_dim * output_shape[i];
   }
 
-  GE_LOGE("GetBlockTillingInfo error.");
   return false;
 }
 
@@ -614,6 +638,7 @@ bool Reduce::ProcessNormalTiling() {
   // rewrite TilingInfo(block)
   if (!GetBlockTilingInfo()) {
     if (total_output_count > compileInfo.max_ub_count) {
+      GE_LOGE("GetBlockTilingInfo error.");
       return false;
     }
     tilingInfo.block_dim = 1;
@@ -663,26 +688,31 @@ bool Reduce::Init() {
     if (axis_type == "int32") {
       int count = size / sizeof(int32_t);
       const int32_t* data_addr = reinterpret_cast<const int32_t*>(std::get<0>(reduce_axis_info));
+      reduce_axis_ori.resize(count);
       for (int i = 0; i < count; i++) {
-        reduce_axis_ori.push_back(*data_addr);
+        reduce_axis_ori[i] = *data_addr;
         data_addr++;
       }
     } else if (axis_type == "int64") {
       int count = size / sizeof(int64_t);
       const int64_t* data_addr = reinterpret_cast<const int64_t*>(std::get<0>(reduce_axis_info));
+      reduce_axis_ori.resize(count);
       for (int i = 0; i < count; i++) {
-        reduce_axis_ori.push_back((int32_t)*data_addr);
+        reduce_axis_ori[i] = (int32_t)*data_addr;
         data_addr++;
       }
     } else {
-      GE_LOGE("op [%s] : axis type is not int32.", op_type.c_str());
+      GE_LOGE("op [%s] : axis type is not int32 or int64.", op_type.c_str());
       return false;
     }
   } else {
     // axis_known
     const auto& reduce_axis_tmp = op_info["_ori_axis"];
+    reduce_axis_ori.resize(reduce_axis_tmp.size());
+    size_t i = 0;
     for (const auto& axis : reduce_axis_tmp) {
-      reduce_axis_ori.push_back(axis);
+      reduce_axis_ori[i] = axis;
+      i++;
     }
   }
 
@@ -693,37 +723,22 @@ bool Reduce::Init() {
     }
   }
 
-  // normalize shape(discard "1")
-  std::vector<int64_t> normalize_shape;
-  std::vector<int32_t> normalize_axis;
-  size_t skip_count = 0;
-  for (size_t i = 0; i < input_shape_ori.size(); i++) {
-    if (input_shape_ori[i] == 1) {
-      skip_count++;
-      continue;
-    }
-    normalize_shape.emplace_back(input_shape_ori[i]);
-    if (IsInVector(reduce_axis_ori, i)) {
-      normalize_axis.emplace_back(i - skip_count);
-    }
-  }
-
-  input_shape_ori = normalize_shape;
-  reduce_axis_ori = normalize_axis;
+  // discard "1" and default sorted
+  EliminateOne();
   compileInfo.is_const = op_info.count("reduce_shape_known") > 0 && op_info["reduce_shape_known"].get<bool>();
-  compileInfo.is_const_post = op_info.count("const_shape_post") > 0 && op_info["const_shape_post"].get<bool>();
 
   return true;
 }
 
 bool Reduce::WriteTilingData() {
   if (compileInfo.is_const_post) {
-    // other process do not need during const shape running
+    // runtime
     ConstInputProcPost();
     return true;
   }
+
   if (compileInfo.is_const) {
-    // other process do not need during const shape compilation
+    // compile
     ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.block_tiling_axis);
     ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.block_tiling_factor);
     ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.ub_tiling_axis);
@@ -731,6 +746,7 @@ bool Reduce::WriteTilingData() {
     run_info.block_dim = tilingInfo.block_dim;
     return true;
   }
+
   // tiling_key
   run_info.block_dim = tilingInfo.block_dim;
   int32_t tiling_key = CalcTilingKey();
@@ -768,13 +784,23 @@ bool Reduce::WriteTilingData() {
 }
 
 bool Reduce::DoTiling() {
-  GELOGI("op [%s]: tiling running", op_type.c_str());
+  /* Situations of DoTiling include:
+     1. input(known):
+        status of compile: do others except FusedReduceAxis
+        status of runtime: do WriteTilingData
+     2. input(unknown):
+        do all process
+  */
+  GELOGD("op [%s]: tiling running", op_type.c_str());
   bool ret = true;
   ret = ret && Init();
-  // ConstInput: regulation of sch's tiling_key: using ori_axis that not after fused, but discard "1"
+
   if (compileInfo.is_const) {
+    // input(known)
+    // invoking the tiling interface during runtime
+    // is_const_post: "true"->runtime, "false"->compile
     pattern = CalcConstPattern(reduce_axis_ori);
-    // invoking the tiling interface during running
+    compileInfo.is_const_post = op_info.count("const_shape_post") > 0 && op_info["const_shape_post"].get<bool>();
     if (compileInfo.is_const_post) {
       return ret;
     } else {
@@ -782,10 +808,12 @@ bool Reduce::DoTiling() {
       input_shape = input_shape_ori;
     }
   } else {
+    // input(unknown)
     ret = ret && FusedReduceAxis();
     pattern = CalcPattern(input_shape, reduce_axis);
   }
 
+  // common process
   ret = ret && GetCompileInfo();
   ret = ret && ChooseAtomic();
 
@@ -807,4 +835,4 @@ bool ReduceTiling(const std::string& op_type, const TeOpParas& op_paras, const n
   ret = ret && reduce.WriteTilingData();
   return ret;
 }
-}
+}  // namespace optiling

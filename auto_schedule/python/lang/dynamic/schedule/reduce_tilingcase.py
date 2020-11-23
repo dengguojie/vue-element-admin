@@ -50,26 +50,40 @@ from .vector_tilingcase import TilingCaseBase
 CONST = "const"
 
 
-def apply_compile_info(reduce_info, graph_info, tiling):
-    atomic = tiling.is_atomic
+def _get_block_size(dtype):
+    if dtype in ["float32", "fp32", "int32"]:
+        block_size = 8
+    elif dtype in ["bool", "int8", "uint8"]:
+        block_size = 32
+    elif dtype in ["float16", "fp16"]:
+        block_size = 16
+    elif dtype in ["int64"]:
+        block_size = 4
+    else:
+        raise RuntimeError("[%s] is not support type" % dtype)
+    return block_size
+
+
+def apply_compile_info(reduce_info, graph_info, tiling_list):
+    atomic = 0
     # Common_Info
-    common_info = {"max_ub_count": graph_info.max_single_tensor_ub_size,
-                   "core_num": get_soc_spec("CORE_NUM"), "keep_dims": reduce_info.keepdims,
-                   "reduce_dtype": reduce_info.reduce_tensor.dtype,
-                   "atomic": atomic}
+    for item in tiling_list:
+        if item.is_atomic:
+            atomic = 1
+            break
+    max_ub_count = graph_info.max_single_tensor_ub_size
+    core_num = get_soc_spec("CORE_NUM")
+    keep_dims = int(reduce_info.keepdims)
+    reduce_block_size = _get_block_size(reduce_info.reduce_tensor.dtype)
+    common_info = [max_ub_count, core_num, keep_dims, reduce_block_size, atomic]
 
     pre_compile_info = get_compile_info()
     if pre_compile_info:
         if "common_info" not in pre_compile_info.keys():
             add_compile_info("common_info", common_info)
-        else:
-            existed_atomic_status = pre_compile_info["common_info"]["atomic"]
-            current_atomic_status = atomic
-            if not existed_atomic_status and current_atomic_status:
-                add_compile_info("common_info", common_info)
 
 
-def calc_tiling_key(reduce_info, tiling):
+def _calc_tiling_key(reduce_info, tiling):
     # tiling: single_case
     shape = reduce_info.shape_before_reduce
     reduce_axis_idx = reduce_info.reduce_axis_indices
@@ -82,11 +96,11 @@ def calc_tiling_key(reduce_info, tiling):
         ori_axis = get_context().get_current_compute().get("ori_axis")
         tiling_key = _gen_const_tiling_key(ori_axis)
     else:
-        tiling_key = get_tiling_key(atomic, db, shape_type,
-                                    block_split_axis, ub_split_axis,
-                                    shape, reduce_axis_idx)
+        tiling_key = _get_tiling_key(atomic, db, shape_type,
+                                     block_split_axis, ub_split_axis,
+                                     shape, reduce_axis_idx)
 
-    return tiling_key
+    tiling.tiling_key = tiling_key
 
 
 def _gen_const_tiling_case(single_reduce_info, compute_graph_info):
@@ -123,6 +137,7 @@ def _gen_const_tiling_case(single_reduce_info, compute_graph_info):
     const_tiling_case.ub_factor = tiling_data["ub_factor"]
     const_tiling_case.is_atomic = run_info["clear_atomic"]
     const_tiling_case.multi_core = True if run_info["block_dim"] > 1 else False
+    _calc_tiling_key(single_reduce_info, const_tiling_case)
     # the flag of invoking op_tiling interface during running
     add_compile_info("const_shape_post", True)
     # invoking op_tiling interface during running need axis info in ops
@@ -149,9 +164,11 @@ def calc_tiling_case(outs, options=None):
     tiling_case_list += _calculate_tiling_cases(single_reduce_info)
     # Atomic reduce tiling cases
     tiling_case_list += _calculate_atomic_tiling_cases(single_reduce_info)
+    apply_compile_info(single_reduce_info, compute_graph_info, tiling_case_list)
+    # calc_tiling_key
+    for tiling_case in tiling_case_list:
+        _calc_tiling_key(single_reduce_info, tiling_case)
     if get_context().get("mode") == CONST:
-        for tiling_case in tiling_case_list:
-            apply_compile_info(single_reduce_info, compute_graph_info, tiling_case)
         return _gen_const_tiling_case(single_reduce_info, compute_graph_info)
 
     return tiling_case_list
@@ -277,6 +294,7 @@ class ReduceTilingCase(TilingCaseBase):
         self.ub_split_axis_index = None
         self.ub_factor = None
         self.multi_core: Optional[bool] = None
+        self.tiling_key = None
 
     def __repr__(self):
         segment0 = "ATOMIC" if self.is_atomic else "NORMAL"
@@ -566,8 +584,8 @@ def _reorder_reduce_last_shape(shape_before_reduce: list,
     return reordered_shape, reorder_to_orignal_axis_map, orignal_to_reorder_axis_map
 
 
-def get_tiling_key(atomic, db, shape_type, block_split_axis,
-                   ub_split_axis, shape, reduce_idx_list):
+def _get_tiling_key(atomic, db, shape_type, block_split_axis,
+                    ub_split_axis, shape, reduce_idx_list):
     """
     :param atomic: "True": atomic_reduce, "False": normal_reduce.
     :param db: int number in [0,1]. "0": enable db, "1": close db.
@@ -626,9 +644,9 @@ def _gen_const_tiling_key(reduce_axis):
     if not reduce_axis:
         return -1
     reduce_axis_local = list(reduce_axis)[:]
-    reduce_axis_local = sorted(reduce_axis_local, reverse=True)
+    reduce_axis_local = sorted(reduce_axis_local)
     dict_key = 0
     for i in reduce_axis_local:
-        dict_key = 10 * dict_key + i
+        dict_key = 10 * dict_key + i + 1
 
     return dict_key
