@@ -539,6 +539,10 @@ def split_v_d(input_value,
         size_splits = list(size_splits)
         size_splits = [size // 16 for size in size_splits]
 
+    if input_format == "FRACTAL_NZ" and split_dim >= len(shape) - 4:
+        size_splits = list(size_splits)
+        size_splits = [size // 16 for size in size_splits]
+
     dtype = input_value.get("dtype")
     dtype_lower = dtype.lower()
     check_list = ("int8", "int16", "int32", "int64", "uint8", "uint16",
