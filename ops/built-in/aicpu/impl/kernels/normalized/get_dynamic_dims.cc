@@ -16,6 +16,7 @@
 
 #include "get_dynamic_dims.h"
 
+#include "utils/kernel_util.h"
 #include "cpu_types.h"
 #include "log.h"
 #include "securec.h"

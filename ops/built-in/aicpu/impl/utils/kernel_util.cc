@@ -31,10 +31,10 @@ uint32_t NormalMathCheck(CpuKernelContext &ctx) {
 
   Tensor *input_0 = ctx.Input(kFirstInputIndex);
   KERNEL_CHECK_NULLPTR(input_0, KERNEL_STATUS_PARAM_INVALID,
-                       "Get input 0 failed")
+                       "Get input 0 failed");
   Tensor *input_1 = ctx.Input(kSecondInputIndex);
   KERNEL_CHECK_NULLPTR(input_1, KERNEL_STATUS_PARAM_INVALID,
-                       "Get input 1 failed")
+                       "Get input 1 failed");
 
   if (input_0->GetDataType() != input_1->GetDataType()) {
     KERNEL_LOG_ERROR(
@@ -52,7 +52,8 @@ uint32_t NormalMathCheck(CpuKernelContext &ctx) {
   }
 
   Tensor *output = ctx.Output(kFirstOutputIndex);
-  KERNEL_CHECK_NULLPTR(output, KERNEL_STATUS_PARAM_INVALID, "Get output failed")
+  KERNEL_CHECK_NULLPTR(output, KERNEL_STATUS_PARAM_INVALID,
+                       "Get output failed");
 
   return KERNEL_STATUS_OK;
 }
