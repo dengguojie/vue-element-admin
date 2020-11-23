@@ -2,7 +2,7 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
  * Description:
  */
-#include "aicpu_schedule/aicpu_sharder/aicpu_sharder.h"
+#include "aicpu_sharder.h"
 
 namespace aicpu {
 SharderNonBlock::SharderNonBlock() : schedule_(NULL), doTask_(NULL), cpuCoreNum_(0) {}

@@ -1,346 +1,98 @@
+#include "gtest/gtest.h"
 #ifndef private
 #define private public
 #define protected public
 #endif
-#include "gtest/gtest.h"
-#include "mockcpp/mockcpp.hpp"
-#include <mockcpp/ChainingMockHelper.h>
-
-#include "node_def_builder.h"
+#include "aicpu_test_utils.h"
 #include "cpu_kernel_utils.h"
+#include "node_def_builder.h"
+#undef private
+#undef protected
 #include "Eigen/Core"
 
 using namespace std;
 using namespace aicpu;
 
+class TEST_CONCATV2_UT : public testing::Test {};
+
 template <typename T>
-bool CompareResult(T output[], T expectOutput[], int num) {
-    bool result = true;
-    for (int i = 0; i < num; ++i) {
-        if (output[i] != expectOutput[i]) {
-            cout << "output[" << i << "] = ";
-            cout << output[i];
-            cout << "expectOutput[" << i << "] =";
-            cout << expectOutput[i];
-            result = false;
-        }
+void CalcExpectFunc(const NodeDef &node_def, T expect_out[]) {
+  auto input0 = node_def.MutableInputs(0);
+  T *input0_data = (T *)input0->GetData();
+  int32_t inputs_size = node_def.InputsSize() - 1;
+  int64_t input0_num = input0->NumElements();
+  for (int32_t i = 0; i < inputs_size; ++i) {
+    for (int64_t j = 0; j < input0_num; ++j) {
+      int64_t index = input0_num * i + j;
+      expect_out[index] = input0_data[j];
     }
-    return result;
+  }
 }
 
-class TEST_CONCATV2_UT : public testing::Test {
-protected:
-    virtual void SetUp() {}
+#define CREATE_NODEDEF(shapes, data_types, datas)                  \
+  auto node_def = CpuKernelUtils::CpuKernelUtils::CreateNodeDef(); \
+  NodeDefBuilder(node_def.get(), "ConcatV2", "ConcatV2")           \
+      .Input({"x0", data_types[0], shapes[0], datas[0]})           \
+      .Input({"x1", data_types[1], shapes[1], datas[1]})           \
+      .Input({"concat_dim", data_types[2], shapes[2], datas[2]})   \
+      .Output({"y", data_types[3], shapes[3], datas[3]})           \
+      .Attr("N", 2);
 
-    virtual void TearDown()
-    {
-        GlobalMockObject::verify();
-    }
+#define ADD_CASE(base_type, aicpu_type)                                        \
+  TEST_F(TEST_CONCATV2_UT, TestConcatV2_##aicpu_type) {                        \
+    vector<DataType> data_types = {aicpu_type, aicpu_type, DT_INT32,           \
+                                   aicpu_type};                                \
+    vector<vector<int64_t>> shapes = {{2, 11}, {2, 11}, {}, {4, 11}};          \
+    base_type input[22];                                                       \
+    SetRandomValue<base_type>(input, 22);                                      \
+    base_type output[44] = {(base_type)0};                                     \
+    int32_t concat_dim = 0;                                                    \
+    vector<void *> datas = {(void *)input, (void *)input, (void *)&concat_dim, \
+                            (void *)output};                                   \
+    CREATE_NODEDEF(shapes, data_types, datas);                                 \
+    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);                              \
+    base_type expect_out[44] = {(base_type)0};                                 \
+    CalcExpectFunc(*node_def.get(), expect_out);                               \
+    CompareResult<base_type>(output, expect_out, 44);                          \
+  }
 
-private:
-};
+#define ADD_CASE_WITH_SHAPE(case_name, base_type, aicpu_type, shapes,          \
+                            data_num)                                          \
+  TEST_F(TEST_CONCATV2_UT, TestConcatV2_##aicpu_type##_##case_name) {          \
+    vector<DataType> data_types = {aicpu_type, aicpu_type, DT_INT32,           \
+                                   aicpu_type};                                \
+    base_type input[data_num];                                                 \
+    SetRandomValue<base_type>(input, data_num);                                \
+    base_type output[data_num * 2] = {(base_type)0};                           \
+    int32_t concat_dim = 0;                                                    \
+    vector<void *> datas = {(void *)input, (void *)input, (void *)&concat_dim, \
+                            (void *)output};                                   \
+    CREATE_NODEDEF(shapes, data_types, datas);                                 \
+    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);                              \
+    base_type expect_out[data_num * 2] = {(base_type)0};                       \
+    CalcExpectFunc(*node_def.get(), expect_out);                               \
+    CompareResult<base_type>(output, expect_out, data_num * 2);                \
+  }
 
-TEST_F(TEST_CONCATV2_UT, TestConcatV2_host_01)
-{
-    auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-    float input[22] = {22, 32.3, -78.0, -28.5, 77, 99, 77, 89, 22, 32.3, -78.0,
-        -28.5, 77, 99, 77, 45.7, 89.5, 90, 2, 1, 22, 32.3};
-    int output[44] = {0};
-    int32_t concat_dim = 0;
-    NodeDefBuilder(nodeDef.get(), "ConcatV2", "ConcatV2")
-        .Input({ "x0", DT_FLOAT, { 2, 11 }, (void *)input })
-        .Input({ "x1", DT_FLOAT, { 2, 11 }, (void *)input })
-        .Input({ "concat_dim", DT_INT32, {}, (void *)&concat_dim })
-        .Output({ "y", DT_FLOAT, { 4, 11 }, (void *)output });
-    string nodeDefStr;
-    nodeDef->SerializeToString(nodeDefStr);
-    cout << "ConcatV2 nodeDef: " << nodeDefStr << endl;
-    CpuKernelContext ctx(HOST);
-    EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-    uint32_t ret = CpuKernelRegister::Instance().RunCpuKernel(ctx);
-    EXPECT_EQ(ret, KERNEL_STATUS_PARAM_INVALID);
-}
+ADD_CASE(Eigen::half, DT_FLOAT16)
 
-TEST_F(TEST_CONCATV2_UT, TestConcatV2_host_02)
-{
-    auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-    float input[22] = {22, 32.3, -78.0, -28.5, 77, 99, 77, 89, 22, 32.3, -78.0,
-        -28.5, 77, 99, 77, 45.7, 89.5, 90, 2, 1, 22, 32.3};
-    int output[44] = {0};
-    int32_t concat_dim = 0;
-    int n=1;
-    NodeDefBuilder(nodeDef.get(), "ConcatV2", "ConcatV2")
-        .Input({ "x0", DT_FLOAT, { 2, 11 }, (void *)input })
-        .Input({ "x1", DT_FLOAT, { 2, 11 }, (void *)input })
-        .Input({ "concat_dim", DT_INT32, {}, (void *)&concat_dim })
-        .Output({ "y", DT_FLOAT, { 4, 11 }, (void *)output })
-        .Attr("N", n);
-    string nodeDefStr;
-    nodeDef->SerializeToString(nodeDefStr);
-    cout << "ConcatV2 nodeDef: " << nodeDefStr << endl;
-    CpuKernelContext ctx(HOST);
-    EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-    uint32_t ret = CpuKernelRegister::Instance().RunCpuKernel(ctx);
-    EXPECT_EQ(ret, KERNEL_STATUS_PARAM_INVALID);
-}
+ADD_CASE(float, DT_FLOAT)
 
-TEST_F(TEST_CONCATV2_UT, TestConcatV2_host_03)
-{
-    auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-    float input[22] = {22, 32.3, -78.0, -28.5, 77, 99, 77, 89, 22, 32.3, -78.0,
-        -28.5, 77, 99, 77, 45.7, 89.5, 90, 2, 1, 22, 32.3};
-    int output[44] = {0};
-    int32_t concat_dim = 0;
-    int n=3;
-    NodeDefBuilder(nodeDef.get(), "ConcatV2", "ConcatV2")
-        .Input({ "x0", DT_FLOAT, { 2, 11 }, (void *)input })
-        .Input({ "x1", DT_FLOAT, { 2, 11 }, (void *)input })
-        .Input({ "concat_dim", DT_INT32, {}, (void *)&concat_dim })
-        .Output({ "y", DT_FLOAT, { 4, 11 }, (void *)output })
-        .Attr("N", n);
-    string nodeDefStr;
-    nodeDef->SerializeToString(nodeDefStr);
-    cout << "ConcatV2 nodeDef: " << nodeDefStr << endl;
-    CpuKernelContext ctx(HOST);
-    EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-    uint32_t ret = CpuKernelRegister::Instance().RunCpuKernel(ctx);
-    EXPECT_EQ(ret, KERNEL_STATUS_PARAM_INVALID);
-}
+vector<vector<int64_t>> shapes = {{2, 4}, {2, 4}, {}, {4, 4}};
+ADD_CASE_WITH_SHAPE(2_4__2_4__0__4_4, float, DT_FLOAT, shapes, 8)
 
-TEST_F(TEST_CONCATV2_UT, TestConcatV2_host_04)
-{
-    auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-    float input[22] = {22, 32.3, -78.0, -28.5, 77, 99, 77, 89, 22, 32.3, -78.0,
-        -28.5, 77, 99, 77, 45.7, 89.5, 90, 2, 1, 22, 32.3};
-    int output[44] = {0};
-    int16_t concat_dim = 0;
-    int n=2;
-    NodeDefBuilder(nodeDef.get(), "ConcatV2", "ConcatV2")
-        .Input({ "x0", DT_FLOAT, { 2, 11 }, (void *)input })
-        .Input({ "x1", DT_FLOAT, { 2, 11 }, (void *)input })
-        .Input({ "concat_dim", DT_INT16, {}, (void *)&concat_dim})
-        .Output({ "y", DT_FLOAT, { 4, 11 }, (void *)output })
-        .Attr("N", n);
-    string nodeDefStr;
-    nodeDef->SerializeToString(nodeDefStr);
-    cout << "ConcatV2 nodeDef: " << nodeDefStr << endl;
-    CpuKernelContext ctx(HOST);
-    EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-    uint32_t ret = CpuKernelRegister::Instance().RunCpuKernel(ctx);
-    EXPECT_EQ(ret, KERNEL_STATUS_PARAM_INVALID);
+ADD_CASE(int8_t, DT_INT8)
 
-}
+ADD_CASE(int16_t, DT_INT16)
 
-TEST_F(TEST_CONCATV2_UT, TestConcatV2_host_05)
-{
-    auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-    float input[22] = {22, 32.3, -78.0, -28.5, 77, 99, 77, 89, 22, 32.3, -78.0,
-        -28.5, 77, 99, 77, 45.7, 89.5, 90, 2, 1, 22, 32.3};
-    float output[44] = {0};
-    int32_t concat_dim = 0;
-    int n=2;
-    NodeDefBuilder(nodeDef.get(), "ConcatV2", "ConcatV2")
-        .Input({ "x0", DT_FLOAT, { 2, 11 }, (void *)input })
-        .Input({ "x1", DT_FLOAT, { 2, 11 }, (void *)input })
-        .Input({ "concat_dim", DT_INT32, {}, (void *)&concat_dim })
-        .Output({ "y", DT_FLOAT, { 4, 11 }, (void *)output })
-        .Attr("N", n);
-    string nodeDefStr;
-    nodeDef->SerializeToString(nodeDefStr);
-    cout << "ConcatV2 nodeDef: " << nodeDefStr << endl;
-    CpuKernelContext ctx(DEVICE);
-    EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-    uint32_t ret = CpuKernelRegister::Instance().RunCpuKernel(ctx);
-    EXPECT_EQ(ret, KERNEL_STATUS_OK);
-    float expectOut[44] = {22.0, 32.3, -78.0, -28.5, 77.0, 99.0, 77.0, 89.0, 22.0,
-        32.3, -78.0, -28.5, 77.0, 99.0, 77.0, 45.7, 89.5, 90.0, 2.0, 1.0, 22.0,
-        32.3, 22.0, 32.3, -78.0, -28.5, 77.0, 99.0, 77.0, 89.0, 22.0, 32.3,
-        -78.0, -28.5, 77.0, 99.0, 77.0, 45.7, 89.5, 90.0, 2.0, 1.0, 22.0, 32.3};
-    EXPECT_EQ(CompareResult<float>(output, expectOut, 44), true);
-    for (int i = 0; i < 10; ++i) {
-        cout << output[i] << ",";
-    }
-    cout << endl;
-}
+ADD_CASE(int32_t, DT_INT32)
 
-TEST_F(TEST_CONCATV2_UT, TestConcatV2_host_06)
-{
-    auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-    int64_t input[4] = {1,2,3,4};
-    int64_t output[8] = {0};
-    int32_t concat_dim = 0;
-    int n=2;
-    NodeDefBuilder(nodeDef.get(), "ConcatV2", "ConcatV2")
-        .Input({ "x0", DT_INT64, { 2, 2 }, (void *)input })
-        .Input({ "x1", DT_INT64, { 2, 2 }, (void *)input })
-        .Input({ "concat_dim", DT_INT32, {}, (void *)&concat_dim })
-        .Output({ "y", DT_INT64, { 4, 2 }, (void *)output })
-        .Attr("N", n);
-    string nodeDefStr;
-    nodeDef->SerializeToString(nodeDefStr);
-    cout << "ConcatV2 nodeDef: " << nodeDefStr << endl;
-    CpuKernelContext ctx(DEVICE);
-    EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-    uint32_t ret = CpuKernelRegister::Instance().RunCpuKernel(ctx);
-    EXPECT_EQ(ret, KERNEL_STATUS_OK);
-    int64_t expectOut[8] = {1, 2, 3, 4, 1, 2, 3, 4};
-    EXPECT_EQ(CompareResult<int64_t>(output, expectOut, 8), true);
-    for (int i = 0; i < 8; ++i) {
-        cout << output[i] << ",";
-    }
-    cout << endl;
-}
+ADD_CASE(int64_t, DT_INT64)
 
-TEST_F(TEST_CONCATV2_UT, TestConcatV2_host_07)
-{
-    auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-    int32_t input[4] = {1,2,3,4};
-    int32_t output[8] = {0};
-    int32_t concat_dim = 0;
-    int n=2;
-    NodeDefBuilder(nodeDef.get(), "ConcatV2", "ConcatV2")
-        .Input({ "x0", DT_INT32, { 2, 2 }, (void *)input })
-        .Input({ "x1", DT_INT32, { 2, 2 }, (void *)input })
-        .Input({ "concat_dim", DT_INT32, {}, (void *)&concat_dim })
-        .Output({ "y", DT_INT32, { 4, 2 }, (void *)output })
-        .Attr("N", n);
-    string nodeDefStr;
-    nodeDef->SerializeToString(nodeDefStr);
-    cout << "ConcatV2 nodeDef: " << nodeDefStr << endl;
-    CpuKernelContext ctx(DEVICE);
-    EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-    uint32_t ret = CpuKernelRegister::Instance().RunCpuKernel(ctx);
-    EXPECT_EQ(ret, KERNEL_STATUS_OK);
-    int32_t expectOut[8] = {1, 2, 3, 4, 1, 2, 3, 4};
-    EXPECT_EQ(CompareResult<int32_t>(output, expectOut, 8), true);
-    for (int i = 0; i < 8; ++i) {
-        cout << output[i] << ",";
-    }
-    cout << endl;
-}
+ADD_CASE(uint8_t, DT_UINT8)
 
-TEST_F(TEST_CONCATV2_UT, TestConcatV2_host_08)
-{
-    auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-    int8_t input[4] = {1,2,3,4};
-    int8_t output[8] = {0};
-    int32_t concat_dim = 0;
-    int n=2;
-    NodeDefBuilder(nodeDef.get(), "ConcatV2", "ConcatV2")
-        .Input({ "x0", DT_INT8, { 2, 2 }, (void *)input })
-        .Input({ "x1", DT_INT8, { 2, 2 }, (void *)input })
-        .Input({ "concat_dim", DT_INT32, {}, (void *)&concat_dim })
-        .Output({ "y", DT_INT8, { 4, 2 }, (void *)output })
-        .Attr("N", n);
-    string nodeDefStr;
-    nodeDef->SerializeToString(nodeDefStr);
-    cout << "ConcatV2 nodeDef: " << nodeDefStr << endl;
-    CpuKernelContext ctx(DEVICE);
-    EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-    uint32_t ret = CpuKernelRegister::Instance().RunCpuKernel(ctx);
-    EXPECT_EQ(ret, KERNEL_STATUS_OK);
-    int8_t expectOut[8] = {1, 2, 3, 4, 1, 2, 3, 4};
-    EXPECT_EQ(CompareResult<int8_t>(output, expectOut, 8), true);
-    for (int i = 0; i < 8; ++i) {
-        cout << output[i] << ",";
-    }
-    cout << endl;
-}
+ADD_CASE(uint16_t, DT_UINT16)
 
-TEST_F(TEST_CONCATV2_UT, TestConcatV2_host_09)
-{
-    auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-    Eigen::half input[4];
-    for (int i = 1; i < 5; ++i) {
-        input[i-1] = (Eigen::half)i;
-    }
-    Eigen::half output[8];
-    for (int i = 1; i < 9; ++i) {
-        output[i-1] = (Eigen::half)i;
-    }
-    int32_t concat_dim = 0;
-    int n=2;
-    NodeDefBuilder(nodeDef.get(), "ConcatV2", "ConcatV2")
-        .Input({ "x0", DT_FLOAT16, { 2, 2 }, (void *)input })
-        .Input({ "x1", DT_FLOAT16, { 2, 2 }, (void *)input })
-        .Input({ "concat_dim", DT_INT32, {}, (void *)&concat_dim })
-        .Output({ "y", DT_FLOAT16, { 4, 2 }, (void *)output })
-        .Attr("N", n);
-    string nodeDefStr;
-    nodeDef->SerializeToString(nodeDefStr);
-    cout << "ConcatV2 nodeDef: " << nodeDefStr << endl;
-    CpuKernelContext ctx(DEVICE);
-    EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-    uint32_t ret = CpuKernelRegister::Instance().RunCpuKernel(ctx);
-    EXPECT_EQ(ret, KERNEL_STATUS_OK);
-    Eigen::half expectOut[8];
-    for (int i = 1; i < 5; ++i) {
-        expectOut[i-1] = (Eigen::half)i;
-    }
-    for (int i = 5; i < 9; ++i) {
-        expectOut[i-1] = (Eigen::half)(i - 4);
-    }
-    EXPECT_EQ(CompareResult<Eigen::half>(output, expectOut, 8), true);
-    for (int i = 0; i < 8; ++i) {
-        cout << output[i] << ",";
-    }
-    cout << endl;
-}
+ADD_CASE(uint32_t, DT_UINT32)
 
-TEST_F(TEST_CONCATV2_UT, TestConcatV2_host_10)
-{
-    auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-    int8_t input[8] = {1,2,3,4,5,6,7,8};
-    int8_t input1[0];
-    int8_t output[8] = {0};
-    int32_t concat_dim = 0;
-    int n=2;
-    NodeDefBuilder(nodeDef.get(), "ConcatV2", "ConcatV2")
-        .Input({ "x0", DT_INT8, { 8 }, (void *)input })
-        .Input({ "x1", DT_INT8, { 0 }, (void *)input1 })
-        .Input({ "concat_dim", DT_INT32, {}, (void *)&concat_dim })
-        .Output({ "y", DT_INT8, { 8 }, (void *)output })
-        .Attr("N", n);
-    string nodeDefStr;
-    nodeDef->SerializeToString(nodeDefStr);
-    cout << "ConcatV2 nodeDef: " << nodeDefStr << endl;
-    CpuKernelContext ctx(DEVICE);
-    EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-    uint32_t ret = CpuKernelRegister::Instance().RunCpuKernel(ctx);
-    EXPECT_EQ(ret, KERNEL_STATUS_OK);
-    int8_t expectOut[8] = {1,2,3,4,5,6,7,8};
-    EXPECT_EQ(CompareResult<int8_t>(output, expectOut, 8), true);
-    for (int i = 0; i < 8; ++i) {
-        cout << output[i] << ",";
-    }
-    cout << endl;
-}
-
-TEST_F(TEST_CONCATV2_UT, TestConcatV2_device)
-{
-    auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-    float input[22] = {22, 32.3, -78.0, -28.5, 77, 99, 77, 89, 22, 32.3, -78.0,
-        -28.5, 77, 99, 77, 45.7, 89.5, 90, 2, 1, 22, 32.3};
-    float output[44] = {0};
-    int32_t concat_dim = 0;
-    int n=2;
-    NodeDefBuilder(nodeDef.get(), "ConcatV2", "ConcatV2")
-        .Input({ "x0", DT_FLOAT, { 2, 11 }, (void *)input })
-        .Input({ "x1", DT_FLOAT, { 2, 11 }, (void *)input })
-        .Input({ "concat_dim", DT_INT32, {}, (void *)&concat_dim })
-        .Output({ "y", DT_FLOAT, { 4, 11 }, (void *)output })
-        .Attr("N", n);
-    string nodeDefStr;
-    nodeDef->SerializeToString(nodeDefStr);
-    cout << "ConcatV2 nodeDef: " << nodeDefStr << endl;
-    CpuKernelContext ctx(DEVICE);
-    EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-    uint32_t ret = CpuKernelRegister::Instance().RunCpuKernel(ctx);
-    EXPECT_EQ(ret, KERNEL_STATUS_OK);
-    float expectOut[44] = {22.0, 32.3, -78.0, -28.5, 77.0, 99.0, 77.0, 89.0, 22.0,
-        32.3, -78.0, -28.5, 77.0, 99.0, 77.0, 45.7, 89.5, 90.0, 2.0, 1.0, 22.0,
-        32.3, 22.0, 32.3, -78.0, -28.5, 77.0, 99.0, 77.0, 89.0, 22.0, 32.3,
-        -78.0, -28.5, 77.0, 99.0, 77.0, 45.7, 89.5, 90.0, 2.0, 1.0, 22.0, 32.3};
-    EXPECT_EQ(CompareResult<float>(output, expectOut, 44), true);
-}
-
+ADD_CASE(uint64_t, DT_UINT64)

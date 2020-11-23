@@ -44,6 +44,7 @@ set(local_context_inc_path
     ${TOP_DIR}/inc/aicpu
     ${TOP_DIR}/inc/aicpu/common
     ${TOP_DIR}/inc/aicpu/cpu_kernels
+    ${TOP_DIR}/inc/aicpu/aicpu_schedule/aicpu_sharder
     ${TOP_DIR}/inc/external/aicpu
     ${TOP_DIR}/libc_sec/include
     ${TOP_DIR}/third_party/protobuf/include

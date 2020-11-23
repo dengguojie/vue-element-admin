@@ -68,8 +68,10 @@ filter_coverage() {
     logging "lcov is required to generate coverage data, please install"
     exit 1
   fi
-  lcov --remove "${_coverage_file}" '/usr/include/*'       \
+  lcov --remove "${_coverage_file}" '/usr/include/*'          \
                                     '*/canndev/third_party/*' \
+                                    '*/aicpu_kernel/inc/*'    \
+                                    '*/aicpu/context/stub/*'  \
                                     '*/canndev/ops/tests/*'   \
                                     '*/canndev/build/*' -o "${_filtered_file}"
 }

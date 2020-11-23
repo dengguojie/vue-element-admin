@@ -29,6 +29,7 @@ local_context_inc_path := $(LOCAL_PATH) \
                           $(LOCAL_PATH)/cpu_proto \
                           $(TOPDIR)inc \
                           $(TOPDIR)inc/aicpu \
+                          $(TOPDIR)inc/aicpu/aicpu_schedule/aicpu_sharder \
                           $(TOPDIR)inc/aicpu/common \
                           $(TOPDIR)inc/aicpu/cpu_kernels \
                           $(TOPDIR)inc/external/aicpu \
