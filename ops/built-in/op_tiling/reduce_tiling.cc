@@ -44,18 +44,18 @@ int32_t Reduce::CalcPattern(std::vector<int64_t>& input, std::vector<int32_t>& a
   return pattern;
 }
 
-int32_t Reduce::GenConstKey(std::vector<int32_t>& reduce_axis) {
-  // generate dict key according to reduce_axis
+int32_t Reduce::CalcConstPattern(std::vector<int32_t>& reduce_axis) {
+  // generate pattern according to reduce_axis
   if (reduce_axis.size() == 0) {
     return -1;
   }
   std::sort(reduce_axis.rbegin(), reduce_axis.rend());
-  int32_t dict_key = 0;
+  int32_t tiling_key = 0;
   for (auto& i : reduce_axis) {
-    dict_key = 10 * dict_key + i;
+    tiling_key = CONST_CRADINALITY * tiling_key + i;
   }
 
-  return dict_key;
+  return tiling_key;
 }
 
 int32_t Reduce::GetBlockSize(std::string dtypeUB) {
@@ -156,18 +156,16 @@ int32_t Reduce::CalcTilingKey() {
   return key;
 }
 
-bool Reduce::ConstInputBranch() {
-  /* ConstInput:
-   * regulation of sch's tiling_key: using ori_axis that
-   * not after fused, but discard "1"
-   * */
-  pattern = GenConstKey(reduce_axis_ori);
+bool Reduce::ConstInputProcPost() {
   std::string pattern_str = std::to_string(pattern);
   if (op_info.count("_block_dims") == 0 || op_info["_block_dims"].count(pattern_str) == 0) {
     GE_LOGE("op [%s] : can't find block dim or pattern str in compile info.", op_type.c_str());
     return false;
   }
-
+  if (op_info.count("_atomic_flags") == 0 || op_info["_atomic_flags"].count(pattern_str) == 0) {
+    GE_LOGE("op [%s] : can't find atomic flags or pattern str in compile info.", op_type.c_str());
+    return false;
+  }
   run_info.block_dim = op_info["_block_dims"][pattern_str].get<std::int32_t>();
   run_info.clear_atomic = op_info["_atomic_flags"][pattern_str].get<bool>();
   ByteBufferPut(run_info.tiling_data, pattern);
@@ -713,12 +711,24 @@ bool Reduce::Init() {
   input_shape_ori = normalize_shape;
   reduce_axis_ori = normalize_axis;
   compileInfo.is_const = op_info.count("reduce_shape_known") > 0 && op_info["reduce_shape_known"].get<bool>();
+  compileInfo.is_const_post = op_info.count("const_shape_post") > 0 && op_info["const_shape_post"].get<bool>();
 
   return true;
 }
 
 bool Reduce::WriteTilingData() {
+  if (compileInfo.is_const_post) {
+    // other process do not need during const shape running
+    ConstInputProcPost();
+    return true;
+  }
   if (compileInfo.is_const) {
+    // other process do not need during const shape compilation
+    ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.block_tiling_axis);
+    ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.block_tiling_factor);
+    ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.ub_tiling_axis);
+    ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.ub_tiling_factor);
+    run_info.block_dim = tilingInfo.block_dim;
     return true;
   }
   // tiling_key
@@ -761,16 +771,23 @@ bool Reduce::DoTiling() {
   GELOGI("op [%s]: tiling running", op_type.c_str());
   bool ret = true;
   ret = ret && Init();
-
+  // ConstInput: regulation of sch's tiling_key: using ori_axis that not after fused, but discard "1"
   if (compileInfo.is_const) {
-    ret = ret && ConstInputBranch();
-    return ret;
+    pattern = CalcConstPattern(reduce_axis_ori);
+    // invoking the tiling interface during running
+    if (compileInfo.is_const_post) {
+      return ret;
+    } else {
+      reduce_axis = reduce_axis_ori;
+      input_shape = input_shape_ori;
+    }
+  } else {
+    ret = ret && FusedReduceAxis();
+    pattern = CalcPattern(input_shape, reduce_axis);
   }
 
-  ret = ret && FusedReduceAxis();
   ret = ret && GetCompileInfo();
   ret = ret && ChooseAtomic();
-  pattern = CalcPattern(input_shape, reduce_axis);
 
   if (compileInfo.atomic) {
     run_info.clear_atomic = true;

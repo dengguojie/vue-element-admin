@@ -48,7 +48,9 @@ from .util import get_reduce_all_axes
 from .util import get_reduce_axis_indices
 from .vector_info import ComputeGraphInfo
 from .vector_schedule_base import VectorScheduleBase
+from ...base import operation
 
+CONST = "const"
 
 class VectorSchedule(VectorScheduleBase, ABC):
     class TilingInfo:
@@ -340,6 +342,8 @@ class VectorSchedule(VectorScheduleBase, ABC):
             real_stage.reorder(*real_reorder_target)
 
     def _do_constraint(self):
+        if operation.get_context().get("mode") == CONST:
+            return
         for constraint_func_pair in self.constraint_func_pair_list:
             params = [self.solve_placeholder(param) for param in constraint_func_pair[0]]
             func = constraint_func_pair[1]

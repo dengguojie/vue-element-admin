@@ -36,6 +36,7 @@ const int32_t REDUCE_MEAN_COF_FP16 = 2;
 const int32_t SMALL_SHAPE_THRESHOLD = 1024;
 const int32_t FUSED_NON_REDUCE_AXIS = 0;
 const int32_t FUSED_REDUCE_AXIS = 1;
+const int32_t CONST_CRADINALITY = 10;
 
 struct TilingInfo {
   int32_t block_dim;
@@ -58,6 +59,8 @@ struct CompileInfo {
   int64_t max_ub_count;
   int32_t core_num;
   std::string dtypeUB;
+  // the flag of invoking op_tiling interface during compilation(false) or running(true)
+  bool is_const_post;
 };
 
 class Reduce {
@@ -71,7 +74,7 @@ class Reduce {
   bool Init();
   bool DoTiling();
   bool WriteTilingData();
-  bool ConstInputBranch();
+  bool ConstInputProcPost();
   bool FusedReduceAxis();
   bool GetCompileInfo();
   bool ChooseAtomic();
@@ -96,7 +99,7 @@ class Reduce {
   int64_t GetShapeMul(std::vector<int64_t>& shape, int32_t axis_index);
   int32_t GetBlockDim(std::vector<int64_t>& out, int32_t tiling_axis, int64_t tiling_factor);
   int32_t GetRealBlockTilingAxis(std::vector<int64_t>& shape, int32_t idx);
-  int32_t GenConstKey(std::vector<int32_t>& reduce_axis);
+  int32_t CalcConstPattern(std::vector<int32_t>& reduce_axis);
   bool IsInVector(std::vector<int32_t>& input, int32_t value);
 
  private:

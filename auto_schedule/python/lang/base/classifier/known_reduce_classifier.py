@@ -66,7 +66,7 @@ class KnownReduceClassifier:
             "shape": self.f_shape,
             "range": self.f_ranges,
             "mode": CONST,
-            "ori_axis": self.f_reduce_axes
+            "ori_axis": self.n_reduce_axes
         }
         ins = [[input_x, self.f_reduce_axes]]
 

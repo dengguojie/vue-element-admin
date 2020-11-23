@@ -515,6 +515,9 @@ def variable_shape(inputs: list, support_broadcast=False):
         ori_axis = inputs[0].get("ori_axis")
         if ori_axis is not None:
             current_compute.add("ori_axis", ori_axis)
+        axis_dtype = inputs[0].get("axis_dtype")
+        if axis_dtype is not None:
+            current_compute.add("axis_dtype", axis_dtype)
     operation.get_context().add("support_broadcast", support_broadcast)
 
     shapes, ranges = _fill(inputs)
