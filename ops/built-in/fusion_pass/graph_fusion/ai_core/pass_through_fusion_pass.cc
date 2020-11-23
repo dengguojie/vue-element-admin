@@ -148,6 +148,11 @@ Status PassThroughFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s]: The original format of node's input0 is %s.", passThroughName.c_str(),
           ge::TypeUtils::FormatToSerialString(assitMatrixFormat).c_str());
 
+  if (PatternFusionUtil::IsUnknownShape(passThroughInputDimInfo[inChannelIdx])) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "PassThroughFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
+
   FUSION_PASS_CHECK(
       passThroughInputDimInfo[inChannelIdx] > CIN_THESHOLD,
       OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s]: Cin[%d] > 64, keep PassThrough for performance, not fusion.",

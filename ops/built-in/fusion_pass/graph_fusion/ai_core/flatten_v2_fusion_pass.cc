@@ -96,6 +96,10 @@ Status FlattenV2Pass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   }
   int64_t dimVal = 1;
   for (int64_t i = flattenV2Axis; i < flattenV2EndAxis + 1; i++) {
+    if (PatternFusionUtil::IsUnknownShape(inputShape[i])) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "FlattenV2Pass cannot be applied for unknown shape.");
+      return NOT_CHANGED;
+    }
     dimVal = dimVal * inputShape[i];
   }
   outputShape.push_back(dimVal);

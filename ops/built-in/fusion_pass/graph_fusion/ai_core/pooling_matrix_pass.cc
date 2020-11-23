@@ -642,6 +642,12 @@ Status PoolingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     return NOT_CHANGED;
   }
 
+  if (PatternFusionUtil::IsUnknownShape(inputH) ||
+      PatternFusionUtil::IsUnknownShape(inputC)) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "PoolingFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
+
   // get windowsize
   vector<int64_t> window;
   ge::AttrUtils::GetListInt(poolingDesc, "window", window);
@@ -765,9 +771,28 @@ Status PoolingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
           recode = pooling_name.substr(0, position);
         }
 
+        // judge for unknownshape
+        ge::GeTensorDesc input_desc = poolingNode->GetOpDesc()->GetOutputDesc(0);
+        ge::GeShape mulShape = input_desc.GetShape();
+        vector<int64_t> dimMul = mulShape.GetDims();
+        if (dimMul.size() >= 2 && PatternFusionUtil::IsUnknownShape(dimMul[1])) {
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "PoolingFusionPass cannot be applied for unknown shape.");
+          return NOT_CHANGED;
+        }
         ge::NodePtr mulNode = AddMul(graph, poolingNode);
         FUSION_PASS_CHECK(mulNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mulNode is null, AddMul failed."),
                           return PARAM_INVALID);
+        ge::GeTensorDesc inputDesc0 = mulNode->GetOpDesc()->GetInputDesc(0);
+        vector<int64_t> dimOut = inputDesc0.GetOriginShape().GetDims();
+        if (dimOut.size() != 0) {
+          for (size_t i = 1; i <= 3; i++) {
+            auto dim = dimOut[i];
+            if (PatternFusionUtil::IsUnknownShape(dim)) {
+              OP_LOGE(FUSED_OP_TYPE.c_str(), "PoolingFusionPass cannot be applied for unknown shape.");
+              return NOT_CHANGED;
+            }
+          }
+        }
         FUSION_PASS_CHECK(AddCoffe(graph, mulNode, pad, dimInfo, window, stride, recode) != SUCCESS,
                           OP_LOGE(FUSED_OP_TYPE.c_str(), "AddCoffe failed."), return ret);
 

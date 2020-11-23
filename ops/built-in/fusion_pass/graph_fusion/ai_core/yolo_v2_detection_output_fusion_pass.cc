@@ -108,6 +108,12 @@ Status YoloV2DetectionOutputPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   OP_LOGI(FUSED_OP_TYPE.c_str(), "YoloV2DetectionOutputPass dimInfo1:%d,%d,%d,%d", dimInfo1[0], dimInfo1[1],
           dimInfo1[2], dimInfo1[3]);
 
+  if (PatternFusionUtil::IsUnknownShape(dimInfo1[2]) ||
+      PatternFusionUtil::IsUnknownShape(dimInfo1[3])) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "YoloV2DetectionOutputPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
+
   ge::GeTensorPtr assitPtrW1 = nullptr;
   ge::GeTensorPtr assitPtrH1 = nullptr;
 

@@ -221,6 +221,10 @@ Status LayerNormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   }
   std::vector<int64_t> add0_dims = add0_desc.GetShape().GetDims();
   if (add0_dims.size() != 0) {
+    if (PatternFusionUtil::IsUnknownShape(add0_dims[0])) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "LayerNormFusionPass cannot be applied for unknown shape.");
+      return NOT_CHANGED;
+    }
     if (!((add0_dims.size() == 1) && (add0_dims[0] == 1))) {
       OP_LOGI(FUSED_OP_TYPE.c_str(), "the const input of add0_node must be scalar, not change");
       return NOT_CHANGED;
@@ -260,6 +264,11 @@ Status LayerNormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     OP_LOGI(FUSED_OP_TYPE.c_str(), "the const input of mul0_node must be 1D, not change");
     return NOT_CHANGED;
   }
+  if (PatternFusionUtil::IsUnknownShape(input_dims[dims_size - 1]) ||
+      PatternFusionUtil::IsUnknownShape(mul0_dims[0])) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "LayerNormFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
   if (mul0_dims[0] != input_dims[dims_size - 1]) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "the size of mul0 const input must be equal to the last dim of input, not change");
     return NOT_CHANGED;
@@ -279,6 +288,10 @@ Status LayerNormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   std::vector<int64_t> add1_dims = add1_desc.GetShape().GetDims();
   if (add1_dims.size() != 1) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "the const input of add1_node must be 1D, not change");
+    return NOT_CHANGED;
+  }
+  if (PatternFusionUtil::IsUnknownShape(add1_dims[0])) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "LayerNormFusionPass cannot be applied for unknown shape.");
     return NOT_CHANGED;
   }
   if (add1_dims[0] != input_dims[dims_size - 1]) {

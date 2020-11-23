@@ -51,6 +51,13 @@ Status SPPPass::MakePoolingLayer(ge::OpDescPtr& poolingOpDesc, const ge::GeTenso
     OP_LOGI(FUSED_OP_TYPE.c_str(), "SPP input shape is NULL");
     return FAILED;
   }
+  for (size_t i = 1; i <= 3; i++) {
+    auto dim = shapeDims[i];
+    if (PatternFusionUtil::IsUnknownShape(dim)) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "SPPPass cannot be applied for unknown shape.");
+      return NOT_CHANGED;
+    }
+  }
   int64_t num_bins = pow(2, hyramidLevel);
   bool globalPooling = (hyramidLevel == 0) ? true : false;
   int64_t bottomH = shapeDims[2];
@@ -150,6 +157,13 @@ Status SPPPass::MakeConcatLayer(ge::OpDescPtr& concatOpDesc, vector<ge::OpDescPt
   for (uint64_t i = 0; i < bottomSize; i++) {
     ge::GeTensorDesc bottomOutputDesc = fatherOp[i]->GetOutputDesc(0);
     vector<int64_t> shapeDims = bottomOutputDesc.GetOriginShape().GetDims();
+    for (size_t i = 1; i <= 3; i++) {
+      auto dim = shapeDims[i];
+      if (PatternFusionUtil::IsUnknownShape(dim)) {
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "SPPPass cannot be applied for unknown shape.");
+        return NOT_CHANGED;
+      }
+    }
     batchNum = shapeDims[0];
     totalDimNum += shapeDims[1] * shapeDims[2] * shapeDims[3];
     ge::GeTensorDesc inputDesc;

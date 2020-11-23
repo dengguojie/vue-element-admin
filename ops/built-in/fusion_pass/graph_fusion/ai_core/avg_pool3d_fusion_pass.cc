@@ -199,6 +199,19 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
     fmap_c = dims_in[3];
     fmap_n = dims_in[4];
   }
+
+  if (PatternFusionUtil::IsUnknownShape(dout) ||
+      PatternFusionUtil::IsUnknownShape(ho) ||
+      PatternFusionUtil::IsUnknownShape(wo) ||
+      PatternFusionUtil::IsUnknownShape(fmap_d) ||
+      PatternFusionUtil::IsUnknownShape(fmap_h) ||
+      PatternFusionUtil::IsUnknownShape(fmap_w) ||
+      PatternFusionUtil::IsUnknownShape(fmap_n) ||
+      PatternFusionUtil::IsUnknownShape(fmap_c)) {
+    OP_LOGE(kFusedOpType.c_str(), "AvgPool3DFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
+
   int64_t fmap_c1 = (fmap_c + kC0 - 1) / kC0;
 
   vector<int32_t> ksize;

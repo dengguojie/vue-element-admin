@@ -95,6 +95,17 @@ Status TransposeReshapeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   }
   vector<int64_t> reshapeDimInfo = reshapeDesc->GetOutputDesc(0).GetOriginShape().GetDims();
   vector<int64_t> transposeDimInfo = transDesc->GetInputDesc(0).GetOriginShape().GetDims();
+
+  if (PatternFusionUtil::IsUnknownShape(reshapeDimInfo[0]) ||
+      PatternFusionUtil::IsUnknownShape(reshapeDimInfo[reshapeDimInfo.size() - 1]) ||
+      PatternFusionUtil::IsUnknownShape(reshapeDimInfo[reshapeDimInfo.size() - 2]) ||
+      PatternFusionUtil::IsUnknownShape(transposeDimInfo[0]) ||
+      PatternFusionUtil::IsUnknownShape(transposeDimInfo[transposeDimInfo.size() - 1]) ||
+      PatternFusionUtil::IsUnknownShape(transposeDimInfo[transposeDimInfo.size() - 2])) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "TransposeReshapeFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
+
   if (reshapeDimInfo.size() == 1) {
     if (reshapeDimInfo[0] % 16 != 0) {
       OP_LOGI(FUSED_OP_TYPE.c_str(),

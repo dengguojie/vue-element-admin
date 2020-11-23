@@ -342,6 +342,21 @@ Status RNNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   }
 
   if (has_static) {
+    ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
+    bool expose_hidden = false;
+    ge::AttrUtils::GetBool(fusedDesc, "expose_hidden", expose_hidden);
+    ge::GeTensorDesc inputWTensorDesc;
+    if (expose_hidden) {
+      inputWTensorDesc = fusedDesc->GetInputDesc("w_sh");
+    } else {
+      inputWTensorDesc = fusedDesc->GetInputDesc(5);
+    }
+    if (PatternFusionUtil::IsUnknownShape(inputWTensorDesc.GetShape().GetDim(1)) ||
+        PatternFusionUtil::IsUnknownShape(inputWTensorDesc.GetShape().GetDim(0))) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "RNNFusionPass cannot be applied for unknown shape.");
+      return NOT_CHANGED;
+    }
+
     // x_static->innerproduct
     outInnerProductTensorDesc = ProcessStatic(fusedNode, num_output, innerproductNode, graph, newNodes, failStatus);
     FUSION_PASS_CHECK(failStatus, OP_LOGE(FUSED_OP_TYPE.c_str(), "ProcessStatic:check failed, fusion failed."),
@@ -410,6 +425,22 @@ Status RNNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   newNodes.push_back(splitContNode);
 
   // add rnnCellNode
+  ge::GeTensorDesc biashTensorDesc = fusedDesc->GetInputDesc("bias_h");
+  ge::GeTensorDesc wxhTensorDesc = fusedDesc->GetInputDesc("w_xh");
+  ge::GeTensorDesc whohhTensorDesc = fusedDesc->GetInputDesc("w_hh");
+
+  if (PatternFusionUtil::IsUnknownShape(inputTensorDesc0.GetShape().GetDim(1)) ||
+      PatternFusionUtil::IsUnknownShape(inputTensorDesc0.GetShape().GetDim(2)) ||
+      PatternFusionUtil::IsUnknownShape(inputContTensorDesc.GetShape().GetDim(1)) ||
+      PatternFusionUtil::IsUnknownShape(biashTensorDesc.GetShape().GetDim(0)) ||
+      PatternFusionUtil::IsUnknownShape(wxhTensorDesc.GetShape().GetDim(0)) ||
+      PatternFusionUtil::IsUnknownShape(wxhTensorDesc.GetShape().GetDim(1)) ||
+      PatternFusionUtil::IsUnknownShape(whohhTensorDesc.GetShape().GetDim(0)) ||
+      PatternFusionUtil::IsUnknownShape(whohhTensorDesc.GetShape().GetDim(1))) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "RNNFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
+
   vector<ge::NodePtr> rnnCellNode =
       ProcessRnnCell(fusedNode, graph, outInnerProductTensorDesc, newNodes, failStatus, has_static);
   FUSION_PASS_CHECK(failStatus, OP_LOGE(FUSED_OP_TYPE.c_str(), "ProcessRnnCell:check failed, fusion failed."),
