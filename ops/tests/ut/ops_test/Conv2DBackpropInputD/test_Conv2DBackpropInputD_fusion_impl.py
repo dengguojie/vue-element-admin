@@ -77,8 +77,8 @@ def _test_conv2d_bp_input_fusion(
             "multiple_extend": 1,
             "dx_c1_extend": dx_5hd[1],
             "dy_c1_extend": dedy_5hd[1],
-            "dx_shape": dx_shape[1],
-            "dedy_shape": dedy_shape[1],
+            "dx_c_ori": dx_shape[1],
+            "dedy_c_ori": dedy_shape[1],
             "filter_batch_ori": w_shape[0],
             "filter_c_ori": w_shape[1],
             "filter_ori_format": "NCHW"
