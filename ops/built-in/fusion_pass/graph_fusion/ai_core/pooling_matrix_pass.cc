@@ -724,6 +724,16 @@ Status PoolingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
       return NOT_CHANGED;
   }
 
+  //get next node of pooling
+  auto poolingOutDataAnchor = poolingNode->GetOutDataAnchor(0);
+  for(auto nextInDataAnchor : poolingOutDataAnchor->GetPeerInDataAnchors()) {
+    ge::NodePtr nextNode = nextInDataAnchor->GetOwnerNode();
+    if(nextNode->GetOpDesc()->GetType() == "Eltwise") {
+      OP_LOGI(FUSED_OP_TYPE.c_str(), "pooling node is eltwise's input , not support to call conv2d!");
+      return NOT_CHANGED;
+    }
+  }
+
   // if pooling's window areas not same, call depthwise_conv2d not conv2d
   if (!IsMeanValueAllEqual(dimInfo, window, stride, pad, ceil_mode)) {
         if (preNode->GetOpDesc()->GetType() == "AscendQuant" ||
