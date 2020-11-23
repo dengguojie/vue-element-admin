@@ -184,12 +184,12 @@ def _get_data_amount_l1(l1_shape, isdouble):
         if l1_shape == "AL1_shape":
             data_amount_l1 = (
                 reduce(lambda x, y: x * y, DIM_MAP["A_matrix_dim"][1:])
-                // (TILING["block_dim"][2] * TILING["block_dim"][3])
+                // (TILING["block_dim"][2] * DIM_MAP[GroupDictKeys.g_extend])
             )
         if l1_shape == "BL1_shape":
             data_amount_l1 = (
                 reduce(lambda x, y: x * y, DIM_MAP["B_matrix_dim"])
-                // (TILING["block_dim"][1] * TILING["block_dim"][3])
+                // (TILING["block_dim"][1] * DIM_MAP[GroupDictKeys.g_extend])
             )
     else:
         block_m, block_k, block_n = cce_params.CUBE_MKN[TENSOR_MAP.get("b_l1").dtype][
