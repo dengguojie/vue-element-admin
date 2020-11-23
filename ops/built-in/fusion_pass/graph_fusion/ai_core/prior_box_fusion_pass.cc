@@ -310,6 +310,10 @@ Status PriorBoxPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge
   // set layer width and height
   int64_t layer_width = dimInfo[3];
   int64_t layer_height = dimInfo[2];
+  if (PatternFusionUtil::IsUnknownShape(layer_width) || PatternFusionUtil::IsUnknownShape(layer_height)) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "PriorBoxPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
   float step_w_size, step_h_size;
   // set image width and height
   int64_t img_width, img_height;
@@ -318,6 +322,10 @@ Status PriorBoxPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge
     // The width and height of input
     img_width = imgDimInfo[3];
     img_height = imgDimInfo[2];
+    if (PatternFusionUtil::IsUnknownShape(img_width) || PatternFusionUtil::IsUnknownShape(img_height)) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "PriorBoxPass cannot be applied for unknown shape.");
+      return NOT_CHANGED;
+    }
   } else {
     img_width = img_w;
     img_height = img_h;
@@ -351,6 +359,13 @@ Status PriorBoxPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge
   if (outputDims.size() == 4) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "PriorBoxPass output dimInfo:%d,%d,%d,%d", outputDims[0], outputDims[1],
             outputDims[2], outputDims[3]);
+  }
+  for (size_t i = 0; i <= 3; i++) {
+    auto dim = outputDims[i];
+    if (PatternFusionUtil::IsUnknownShape(dim)) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "PriorBoxPass cannot be applied for unknown shape.");
+      return NOT_CHANGED;
+    }
   }
   int64_t dimNums = outputDims[0] * outputDims[1] * outputDims[2] * outputDims[3];
 

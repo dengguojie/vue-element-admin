@@ -493,15 +493,18 @@ Status GatherNdPreCheck(NodePtr node) {
     OP_LOGW(curOpType.c_str(), "The shape_indice did not support []");
     return NOT_CHANGED;
   }
-  if (dim_info[dim_info.size() - 1] != 0) {
+  if (PatternFusionUtil::IsUnknownShape(dim_info[dim_info.size() - 1]) ||
+      dim_info[dim_info.size() - 1] != 0) {
     // case [3,2]; [0,0,3,2]; ...
-    OP_LOGI(curOpType.c_str(), "Indice of GatherNd gets a normal tensor");
+    OP_LOGI(curOpType.c_str(), "Indice of GatherNd gets a normal tensor or "
+                               "ARemoveNodeFusionPass cannot be applied for unknown shape");
     return NOT_CHANGED;
   }
   for (int i = (int)dim_info.size() - 2; i >= 0; i--) {
     // case [2,0], [1,1,0,0]
-    if (dim_info[i] != 1) {
-      OP_LOGI(curOpType.c_str(), "Indice of GatherNd gets a normal tensor");
+    if (PatternFusionUtil::IsUnknownShape(dim_info[i]) || dim_info[i] != 1) {
+      OP_LOGI(curOpType.c_str(), "Indice of GatherNd gets a normal tensor or "
+                                 "ARemoveNodeFusionPass cannot be applied for unknown shape");
       return NOT_CHANGED;
     }
   }

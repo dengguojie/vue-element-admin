@@ -83,6 +83,10 @@ Status MapIndexFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   FUSION_PASS_CHECK(dataSeqShape.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "dataSeqShape is empty!"),
                     return PARAM_INVALID);
   int64_t dataSeqLength = dataSeqShape[0];
+  if (PatternFusionUtil::IsUnknownShape(xLength) || PatternFusionUtil::IsUnknownShape(dataSeqLength)) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "MapIndexFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
   int64_t number = ((dataSeqLength / xLength + 7) / 8) * 8;
   int64_t dataSeqNewLength = number * xLength;
   OP_LOGI(FUSED_OP_TYPE.c_str(), "dataSeqLength = %ld, number = %ld, dataSeqNewLength = %ld", dataSeqLength, number,

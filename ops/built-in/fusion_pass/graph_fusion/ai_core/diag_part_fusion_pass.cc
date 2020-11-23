@@ -117,6 +117,10 @@ Status DiagPartFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   // multipies of half dims
   int64_t dimNums = 1;
   for (size_t j = 0; j < diagpartInputShape.GetDimNum() / 2; ++j) {
+    if (PatternFusionUtil::IsUnknownShape(diagpartInputShape.GetDim(j))) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "DiagPartFusionPass cannot be applied for unknown shape.");
+      return NOT_CHANGED;
+    }
     dimNums = diagpartInputShape.GetDim(j) * dimNums;
   }
 

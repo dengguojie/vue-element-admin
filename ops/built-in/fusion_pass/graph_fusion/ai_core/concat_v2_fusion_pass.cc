@@ -160,6 +160,10 @@ Status ConcatExt2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
         }
         int64_t dim_axis_value = ConcatExt2InputShape_1.GetDim(axis);
         int32_t size = 0;
+        if (PatternFusionUtil::IsUnknownShape(dim_axis_value)) {
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "ZConcatExt2FusionPass cannot be applied for unknown shape.");
+          return NOT_CHANGED;
+        }
         for (int32_t i = 0; i < num_concatext2; i++) {
           size += dim_axis_value;
         }
@@ -218,6 +222,10 @@ Status ConcatExt2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
         }
         int64_t dim_axis_value = ConcatExt2InputShape_2.GetDim(axis);
         int32_t size = 0;
+        if (PatternFusionUtil::IsUnknownShape(dim_axis_value)) {
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "ZConcatExt2FusionPass cannot be applied for unknown shape.");
+          return NOT_CHANGED;
+        }
         for (int32_t i = 0; i < num_concatext2; i++) {
           size += dim_axis_value;
         }

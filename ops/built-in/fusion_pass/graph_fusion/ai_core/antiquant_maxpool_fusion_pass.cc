@@ -91,6 +91,10 @@ Status AntiQuantMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
       int dimNum = input_shape.GetDimNum();
       if (dimNum > 0) {
         int dimC = input_shape.GetDim(dimNum - 1);
+        if (PatternFusionUtil::IsUnknownShape(dimC)) {
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "AntiQuantMaxPoolFusionPass cannot be applied for unknown shape.");
+          return NOT_CHANGED;
+        }
         if (dimC % 32 != 0) {
           flag_back = 1;
           break;

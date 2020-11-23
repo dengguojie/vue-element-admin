@@ -157,6 +157,10 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
           ge::TensorDesc ConcatDInputTensor_1 = op1.GetDynamicInputDesc("x", 63 * i + n);
           ge::Shape ConcatDInputShape_1 = ConcatDInputTensor_1.GetShape();
           int64_t dim_axis_value = ConcatDInputShape_1.GetDim(axis);
+          if (PatternFusionUtil::IsUnknownShape(dim_axis_value)) {
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "ZConcatFusionPass cannot be applied for unknown shape.");
+            return NOT_CHANGED;
+          }
           size += dim_axis_value;
         }
         ge::GeTensorDesc ConcatDOutputTensor_1 = ConcatdDesc->GetOutputDesc(0);
@@ -222,6 +226,10 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
           ge::TensorDesc ConcatDInputTensor_2 = op2.GetDynamicInputDesc("x", n + 63 * i);
           ge::Shape ConcatDInputShape_2 = ConcatDInputTensor_2.GetShape();
           int64_t dim_axis_value = ConcatDInputShape_2.GetDim(axis);
+          if (PatternFusionUtil::IsUnknownShape(dim_axis_value)) {
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "ZConcatFusionPass cannot be applied for unknown shape.");
+            return NOT_CHANGED;
+          }
           size += dim_axis_value;
         }
         ge::GeTensorDesc ConcatDOutputTensor_2 = LastConcatDDesc->GetOutputDesc(0);

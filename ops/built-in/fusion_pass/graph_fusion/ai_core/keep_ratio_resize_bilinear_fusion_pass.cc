@@ -97,6 +97,11 @@ Status KeepRatioResizeBilinearFusionPass::Fusion(ge::ComputeGraph& graph, Mappin
     widthDims = oriinputShape[3];
   }
 
+  if (PatternFusionUtil::IsUnknownShape(heightDIms) || PatternFusionUtil::IsUnknownShape(widthDims)) {
+    OP_LOGE(fuseNodeType.c_str(), "KeepRatioResizeBilinearFusion cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
+
   // calcu size
   float minDimsFloat = static_cast<float>(minDims);
   float maxDimsFloat = static_cast<float>(maxDims);

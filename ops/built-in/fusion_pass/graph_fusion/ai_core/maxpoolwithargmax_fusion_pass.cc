@@ -172,6 +172,12 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
     return NOT_CHANGED;
   }
   std::vector<int64_t> dims_input = shape.GetDims();
+  for (auto dim : dims_input) {
+    if (PatternFusionUtil::IsUnknownShape(dim)) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "MaxPoolWithArgmaxFusionPass cannot be applied for unknown shape.");
+      return NOT_CHANGED;
+    }
+  }
   // set output max shape
   std::vector<int64_t> dimVector;
   if (input_format == ge::FORMAT_NHWC) {

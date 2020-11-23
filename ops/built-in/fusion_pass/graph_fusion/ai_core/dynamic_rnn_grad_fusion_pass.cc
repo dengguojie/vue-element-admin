@@ -990,6 +990,20 @@ Status DynamicRNNGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   // get dynamicRNNGradNode
   ge::NodePtr dynamicRNNGradNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
 
+  if (PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetInputDesc(8).GetShape().GetDim(0)) ||
+      PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetInputDesc(7).GetShape().GetDim(0)) ||
+      PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetInputDesc(1).GetShape().GetDim(0)) ||
+      PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetInputDesc(7).GetShape().GetDim(2)) ||
+      PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetInputDesc(6).GetShape().GetDim(0)) ||
+      PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetInputDesc(0).GetShape().GetDim(2)) ||
+      PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetOutputDesc(3).GetShape().GetDim(0)) ||
+      PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetOutputDesc(3).GetShape().GetDim(1)) ||
+      PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetOutputDesc(2).GetShape().GetDim(2)) ||
+      PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetOutputDesc(2).GetShape().GetDim(1))) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "DynamicRNNGradFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
+
   // add lstmInputGrad
   ge::NodePtr lstmInputGradNode = AddLSTMInputGradNode(dynamicRNNGradNode, graph, newNodes, failStatus);
   FUSION_PASS_CHECK(failStatus, OP_LOGE(FUSED_OP_TYPE.c_str(), "AddLSTMInputGradNode:check failed, fusion failed."),

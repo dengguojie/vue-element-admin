@@ -977,6 +977,19 @@ Status DynamicGRUV2GradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   // get dynamicGRUGradNode
   ge::NodePtr gruV2GradNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
 
+  ge::OpDescPtr dynamicGRUGradDesc = gruV2GradNode->GetOpDesc();
+  ge::GeTensorDesc inputTensorDescH = dynamicGRUGradDesc->GetInputDesc(INPUT_INDEX["h"]);
+  ge::GeTensorDesc inputTensorDescX = dynamicGRUGradDesc->GetInputDesc(INPUT_INDEX["x"]);
+  batch = inputTensorDescH.GetShape().GetDim(1);
+  hidden_dim = inputTensorDescH.GetShape().GetDim(2);
+  input_dim = inputTensorDescX.GetShape().GetDim(2);
+  if (PatternFusionUtil::IsUnknownShape(batch) ||
+      PatternFusionUtil::IsUnknownShape(hidden_dim) ||
+      PatternFusionUtil::IsUnknownShape(input_dim)) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "DynamicGRUV2GradFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
+
   // init shape
   this->GetNodeInfo(gruV2GradNode);
 

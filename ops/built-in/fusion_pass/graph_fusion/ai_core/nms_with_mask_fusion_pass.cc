@@ -83,6 +83,10 @@ Status NMSWithMaskFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
 
   // update pad node info
   auto nms_input_dims = pad_output_tensor_desc.GetShape().GetDims();
+  if (nms_input_dims.size() >= 2 && PatternFusionUtil::IsUnknownShape(nms_input_dims[1])) {
+    OP_LOGE(kFusedOpType.c_str(), "NMSWithMaskFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
   if (nms_input_dims.size() != 2 || nms_input_dims[1] != 5) {
     OP_LOGW(kFusedOpType.c_str(), "The input dim of %s is not 2 dims or the second dimension of input is not 5",
             nms_node_ptr->GetName().c_str());
