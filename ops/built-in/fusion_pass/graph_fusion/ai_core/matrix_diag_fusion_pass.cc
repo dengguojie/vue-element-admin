@@ -271,6 +271,8 @@ Status MatrixDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
                                                    dimNums * dimNums1 * dimNums1 * sizeof(uint8_t))),
         assitPtr = nullptr;
         return PARAM_INVALID);
+  } else {
+    return NOT_CHANGED;
   }
   // check op support
   vector<ge::GeTensorPtr> weights = {assitPtr};

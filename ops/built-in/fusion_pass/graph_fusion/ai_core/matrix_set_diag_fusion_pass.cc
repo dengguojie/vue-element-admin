@@ -295,6 +295,8 @@ Status MatrixSetDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
                                  tensorDesc, reinterpret_cast<uint8_t*>(inputAssit.get()), dimNums * sizeof(uint8_t))),
                             assitPtr = nullptr;
                             return PARAM_INVALID);
+  } else {
+    return NOT_CHANGED;
   }
   // check op support
   vector<ge::GeTensorPtr> weights = {assitPtr};
