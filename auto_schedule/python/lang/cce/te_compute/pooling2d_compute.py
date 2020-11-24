@@ -306,6 +306,7 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
                        "conv_fm_h": in_size_h,
                        "conv_fm_w": in_size_w,
                        }
+
     def check_avg_is_spe(in_size_h, in_size_w, window_h, window_w, data_mode, padding_mode, stride_h, stride_w):
         if in_size_h != window_h and in_size_w == window_w and data_mode == 0:
             return True

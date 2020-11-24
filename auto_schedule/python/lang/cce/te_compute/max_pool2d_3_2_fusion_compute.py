@@ -539,13 +539,13 @@ def _compute_3_window(data, data_shape, is_row, stride, window):
                             name=NAME + "row_max",
                             tag=OP_TAG + "row_max")
         else:
-          out_max = \
-              tvm.compute(data_shape,
-                          lambda i, j, h, w, c:
-                          tvm.max(data(i, j, h * stride[0], w, c),
-                                  data(i, j, h * stride[0] + 1, w, c)),
-                          name=NAME + "row_max",
-                          tag=OP_TAG + "row_max")
+            out_max = \
+                tvm.compute(data_shape,
+                            lambda i, j, h, w, c:
+                            tvm.max(data(i, j, h * stride[0], w, c),
+                                    data(i, j, h * stride[0] + 1, w, c)),
+                            name=NAME + "row_max",
+                            tag=OP_TAG + "row_max")
         max_tensors.append(out_max)
     else:
         if window[0] == 3:
