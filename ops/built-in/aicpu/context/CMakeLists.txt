@@ -29,6 +29,7 @@ set (local_context_src_files
     ${CMAKE_CURRENT_SOURCE_DIR}/common/host_sharder.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/common/device_sharder.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/common/eigen_threadpool.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/cpu_kernel_cache.cc
     ${PROTO_SRCS}
 )
 
