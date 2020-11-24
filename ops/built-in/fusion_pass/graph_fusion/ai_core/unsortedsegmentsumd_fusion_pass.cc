@@ -82,7 +82,7 @@ Status UnsortedSegmentSumdFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
   std::vector<int64_t> secondDims = UnsortedSegmentSumdNodetransDesc->GetInputDesc(0).GetOriginShape().GetDims();
   int64_t secondDimsSize = secondDims.size();
   if (PatternFusionUtil::IsUnknownShape(secondDims[secondDimsSize - 1])) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "UnsortedSegmentSumdFusionPass cannot be applied for unknown shape.");
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "UnsortedSegmentSumdFusionPass cannot be applied for unknown shape.");
     return NOT_CHANGED;
   }
   FUSION_PASS_CHECK(
