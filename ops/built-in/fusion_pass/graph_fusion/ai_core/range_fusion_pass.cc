@@ -164,7 +164,6 @@ Status RangeFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Nod
   OutDataAnchorPtr limit_anchor_out = limit_anchor_in->GetPeerOutAnchor();
   OutDataAnchorPtr delta_anchor_out = delta_anchor_in->GetPeerOutAnchor();
   Format const_format = range_op.GetInputDesc("start").GetFormat();
-  string const_optype = start_anchor_out->GetOwnerNode()->GetOpDesc()->GetType();
   int dim_num = int(ceil(abs(limit_fp - start_fp) / abs(delta_fp)));
 
   // generate assist
@@ -214,7 +213,7 @@ Status RangeFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Nod
   OpDescUtils::SetWeights(range_node, weights);
   auto const_nodes = OpDescUtils::GetConstInputs(range_node);
   NodePtr const_node = const_nodes[0];
-  const_node->GetOpDesc()->SetType(const_optype);
+  const_node->GetOpDesc()->SetType("Constant");
   vector<bool> is_input_const = {true};
   range_desc->SetIsInputConst(is_input_const);
   range_desc->SetType("RangeD");

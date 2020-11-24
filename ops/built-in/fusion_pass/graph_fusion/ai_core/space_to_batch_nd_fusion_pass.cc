@@ -83,6 +83,14 @@ Status ConstToAttrSpaceToBatchNdPass::Fusion(ComputeGraph& graph, Mapping& mappi
   FUSION_PASS_CHECK(space_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "space_node is null, fusion failed."),
                     return PARAM_INVALID);
 
+  // build a fusion node op desc
+  OpDescPtr fusion_desc = PatternFusionUtil::GetFusionOpDesc(space_node, fusion_optype, attr_infos);
+  FUSION_PASS_CHECK(fusion_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusion op desc is nullptr."),
+                    return PARAM_INVALID);
+  // check op support
+  FUSION_PASS_CHECK(!CheckOpSupported(fusion_desc), OP_LOGI(FUSED_OP_TYPE.c_str(), "SpaceToBatchND npt supported."),
+                    return NOT_CHANGED);
+
   // get op
   Operator sapce_op = OpDescUtils::CreateOperatorFromNode(space_node);
 

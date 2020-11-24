@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 
-import numpy as np
 from op_test_frame.ut import OpUT
 from op_test_frame.common import precision_info
 
@@ -76,14 +75,18 @@ ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
+ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case6)
+ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case7)
+ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case8)
 
 def calc_expect_func(x, y, start, limit, delta):
-    x_shape = x.get("shape")
     x_value = x.get("value")
-
+    x_dtype = x.get("dtype")
+    if x_dtype == "int32":
+        start = int(start)
+        delta = int(delta)
     y = x_value*delta+start
-    res = y.astype(np.float32)
-    return res
+    return y
 
 ut_case.add_precision_case("all", {"params": [{"shape": (6,), "dtype": "float32", "format": "ND", "ori_shape": (6,),"ori_format": "ND", "param_type": "input"},
                                               {"shape": (6,), "dtype": "float32", "format": "ND", "ori_shape": (6,),"ori_format": "ND", "param_type": "output"},
@@ -93,20 +96,10 @@ ut_case.add_precision_case("all", {"params": [{"shape": (6,), "dtype": "float32"
                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
                                    })
 
-ut_case.add_precision_case("all", {"params": [{"shape": (3,), "dtype": "float32", "format": "ND", "ori_shape": (3,),"ori_format": "ND", "param_type": "input"},
-                                              {"shape": (3,), "dtype": "float32", "format": "ND", "ori_shape": (3,),"ori_format": "ND", "param_type": "output"},
-                                              2.0, -1.0, -1.0,
+ut_case.add_precision_case("all", {"params": [{"shape": (6,), "dtype": "int32", "format": "ND", "ori_shape": (6,),"ori_format": "ND", "param_type": "input"},
+                                              {"shape": (6,), "dtype": "int32", "format": "ND", "ori_shape": (6,),"ori_format": "ND", "param_type": "output"},
+                                              5.0, -1.0, -1.0
                                               ],
                                    "calc_expect_func": calc_expect_func,
                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
                                    })
-
-"""
-ut_case.add_precision_case("all", {"params": [{"shape": (8192,), "dtype": "float32", "format": "ND", "ori_shape": (8192,),"ori_format": "ND", "param_type": "input"},
-                                              {"shape": (8192,), "dtype": "float32", "format": "ND", "ori_shape": (8192,),"ori_format": "ND", "param_type": "output"},
-                                              2.2, 8194.2, 1.0,
-                                              ],
-                                   "calc_expect_func": calc_expect_func,
-                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-                                   })
-"""
