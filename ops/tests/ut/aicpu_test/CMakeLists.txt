@@ -77,6 +77,8 @@ add_library(cpu_kernels_llt STATIC
   ${cpu_kernels_llt_src}
 )
 
+add_dependencies(cpu_kernels_llt eigen_headers)
+
 set(cpu_kernels_llt_include
   ${CPU_KERNELS_DIR}
   ${CPU_KERNELS_DIR}/utils

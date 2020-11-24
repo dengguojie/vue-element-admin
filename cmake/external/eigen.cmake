@@ -15,7 +15,7 @@
 
 set(_eigen_url "")
 if(CANN_PKG_SERVER)
-  set(_eigen_url "${CANN_PKG_SERVER}/libs/eigen/eigen-3.3.7.tar.gz")
+  set(_eigen_url "${CANN_PKG_SERVER}/libs/eigen3/eigen-3.3.7.tar.gz")
 endif()
 
 ExternalProject_Add(eigen
