@@ -320,7 +320,7 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
 
             def _bl0_elem_func(indices, b_l1):
                 l0b_g_index, l0b_co1_index, l0b_ci1_index, l0b_ci0_index, l0b_co0_index = indices
-                l1b_k1_index = l0b_g_index * self._g_extend + l0b_co1_index
+                l1b_k1_index = l0b_g_index * self._dy_c1_extend + l0b_co1_index
                 return b_l1[l1b_k1_index, l0b_ci1_index, l0b_ci0_index, l0b_co0_index]
 
             b_l1 = tvm.compute(

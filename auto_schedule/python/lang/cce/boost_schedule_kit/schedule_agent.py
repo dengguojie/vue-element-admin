@@ -400,14 +400,14 @@ class ScopeManager:
         active_scopess[index] = after_inner
         active_scopess.insert(0, after_outer)
 
-    def get_axis_split_list_and_extend(self, idex):
+    def get_axis_split_list_and_extend(self, index):
         unit_list = list()
         offset_list = list()
-        for axis in self._axis_split_list[idex]:
+        for axis in self._axis_split_list[index]:
             offset, unit = self._axis_unit[axis]
             unit_list.append(unit)
             offset_list.append(offset)
-        return self._axis_split_list[idex], unit_list, offset_list
+        return self._axis_split_list[index], unit_list, offset_list
 
     def _updata_axis_split_list(self, axis_list, ax_before, after_outer, after_inner):
         index = axis_list.index(ax_before)
