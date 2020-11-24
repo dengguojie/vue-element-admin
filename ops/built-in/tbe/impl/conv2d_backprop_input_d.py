@@ -237,6 +237,8 @@ def conv2d_backprop_input_d(  # pylint: disable=W0622,C0103,R0913,R0914
     shape_filters, shape_out_backprop, shape_res, strides, dilations = res
 
     group_dict = util_deconv_comm.calculate_group(
+        shape_out_backprop,
+        shape_res,
         shape_filters,
         groups,
         filters_dtype,
@@ -328,6 +330,8 @@ def conv2d_backprop_input_d_compute(  # pylint: disable=C0103,W0622,R0913,R0914
     shape_filters, shape_out_backprop, shape_res, strides, dilations = res
 
     group_dict = util_deconv_comm.calculate_group(
+        shape_out_backprop,
+        shape_res,
         shape_filters,
         groups,
         filters_dtype,

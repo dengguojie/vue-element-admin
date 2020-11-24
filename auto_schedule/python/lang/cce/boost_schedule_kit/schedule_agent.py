@@ -189,6 +189,7 @@ class ScopeManager:
         self._stage = stage
         self._axis_unit = dict()
         self._active_scopes = list()
+        self._axis_split_list = list()
         self._origin_axis = list()
         self._last_attached = None
         self._scope_intrinsic = None
@@ -201,6 +202,7 @@ class ScopeManager:
                 self._axis_unit[axis] = [1, axis.dom.extent]
             self._active_scopes.append(axis)
             self._origin_axis.append(axis)
+            self._axis_split_list.append([axis])
 
     @property
     def op(self):
@@ -235,6 +237,27 @@ class ScopeManager:
         stage's original reused_by function
         """
         self._stage.reused_by(*args)
+
+    def split_group(self, parent, nparts=None):
+        """
+        only use in group convlution, split group axis and
+        set both g and c in self._active_scopes
+        """
+        if nparts is None:
+            raise_schedule_agent_err("factor nparts can not be None")
+        if self._axis_unit.get(parent) is None:
+            raise_schedule_agent_err("parent scope can not be None")
+        unit, extent = self._axis_unit[parent]
+        outer, inner = self._stage.split(parent, nparts=nparts)
+        # move g_axis out
+        self._stage.reorder(outer, self._stage.op.axis[0], inner)
+        factor = ceil_div(extent, nparts)
+        self._axis_unit[inner] = [unit, factor]
+        self._axis_unit[outer] = [factor * unit, nparts]
+        if parent in self._active_scopes:  # not else
+            self._add_g_active_scope(parent, outer, inner)
+        self._axis_split_list[1] = [inner]
+        self._axis_split_list.insert(0, [outer])
 
     def split(self, parent, factor=None, nparts=None):
         """
@@ -273,6 +296,9 @@ class ScopeManager:
             self._axis_unit[outer] = [unit * factor, ceil_div(extent, factor)]
             if parent in self._active_scopes:  # not else
                 self._update_active_scope(parent, outer)
+        for axis_list in self._axis_split_list:
+            if parent in axis_list:
+                self._updata_axis_split_list(axis_list, parent, outer, inner)
         return outer, inner
 
     def reorder(self, *args):
@@ -364,6 +390,29 @@ class ScopeManager:
         active_scopess = self._active_scopes
         index = active_scopess.index(ax_before)
         active_scopess[index] = ax_after
+
+    def _add_g_active_scope(self, ax_before, after_outer, after_inner):
+        """
+        add g to active_scopes
+        """
+        active_scopess = self._active_scopes
+        index = active_scopess.index(ax_before)
+        active_scopess[index] = after_inner
+        active_scopess.insert(0, after_outer)
+
+    def get_axis_split_list_and_extend(self, index):
+        unit_list = list()
+        offset_list = list()
+        for axis in self._axis_split_list[index]:
+            offset, unit = self._axis_unit[axis]
+            unit_list.append(unit)
+            offset_list.append(offset)
+        return self._axis_split_list[index], unit_list, offset_list
+
+    def _updata_axis_split_list(self, axis_list, ax_before, after_outer, after_inner):
+        index = axis_list.index(ax_before)
+        axis_list[index] = after_inner
+        axis_list.insert(index, after_outer)
 
     def nlast_scopes(self, n_scope):
         """
@@ -663,6 +712,13 @@ class ScheduleAgent:
                     attach_map.update_scope(scope, scope_intrinsic)
                     remain_scopes.remove(scope)
         self._attach_map.apply()
+    
+    def apply_var(self, stage):
+        attach_path = self._attach_map.attached_path
+        for scope, array_stages in attach_path.items():
+            if stage in array_stages:
+                return scope
+        return None
 
     def pattern_abc(self,
                     status,

@@ -57,10 +57,10 @@ def _shape_nchw_to_fz(shape, dtype):
     block_k = _get_block("k", dtype)
     block_n = _get_block("n", dtype)
 
-    channel1 = _ceil(channel, block_k)
-    channel0 = block_k
-    batch1 = _ceil(batch, block_n)
-    batch0 = block_n
+    channel1 = _ceil(channel, block_n)
+    channel0 = block_n
+    batch1 = _ceil(batch, block_k)
+    batch0 = block_k
     if dtype == "int8":
         return batch1 * height * weight, channel1, channel0, batch0
     return channel1 * height * weight, batch1, batch0, channel0

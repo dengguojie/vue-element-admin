@@ -311,11 +311,13 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
     g_extend = group_dict.get(GroupDictKeys.g_extend)
     dx_c1_extend = group_dict.get(GroupDictKeys.dx_c1_extend)
     dy_c1_extend = group_dict.get(GroupDictKeys.dy_c1_extend)
+    dx_c_ori = group_dict.get(GroupDictKeys.dx_c_ori)
+    filter_c_ori = group_dict.get(GroupDictKeys.filter_c_ori)
     groups = group_dict.get(GroupDictKeys.groups)
     filter_ori_format = group_dict.get(GroupDictKeys.filter_ori_format)
     # temp limitation : group must be 1
-    if groups != 1:
-        dict_args = {"errCode": "E60108", "reason": "group must be 1 now"}
+    if groups != 1 and groups != input_sizes[1]:
+        dict_args = {"errCode": "E60108", "reason": "group must be 1 or cin now"}
         raise RuntimeError(
             dict_args, error_manager_util.get_error_message(dict_args)
         )
@@ -517,10 +519,8 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
                     // stride_w + 1",
                 "dy_h"
             )
-        filter_cin_groups = filter_cin if filter_ori_format == "HWCN" else \
-            filter_cin * groups
-        _check_equal_rule(dx_c, filter_cin_groups, "dx_cin", "filter_cin_groups")
 
+        _check_equal_rule(dx_c_ori, filter_c_ori, "dx_cin", "filter_cin")
     # strides
     def _check_strides():
         _check_variable_range(stride_h, STRIDE_MIN, STRIDE_MAX, "stride_h")

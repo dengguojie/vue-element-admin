@@ -333,12 +333,22 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
         """
 
         if kernels.dtype == "int8":
+            w_k1, kernel_cin1, kernel_cin0, w_k0 = shape_to_list(kernels.shape)
+            shape_w_l0b = (self._real_g,
+                           w_k1//self._real_g,
+                           kernel_cin1,
+                           kernel_cin0,
+                           w_k0
+                          )
 
-            def _kernel_elem_func(*index):
-                return kernels(*index)
+            def _kernel_elem_func(indices, kernels):
+                g_idx, w_k1_idx, kernel_cin1_idx, w_k0_idx, kernel_cout0_idx = indices
+                fkk_idx = g_idx * shape_w_l0b[1] + w_k1_idx
+                return kernels[fkk_idx, kernel_cin1_idx, w_k0_idx, kernel_cout0_idx]
 
             w_col = tvm.compute(
-                kernels.shape, _kernel_elem_func, name="w_col", tag="inverse_trans_dma"
+                shape_w_l0b, lambda *indices:
+                _kernel_elem_func(indices, kernels), name="w_col", tag="inverse_trans_dma"
             )
         else:
             w_k1, kernel_cout1, kernel_cout0, w_k0 = shape_to_list(kernels.shape)
@@ -349,26 +359,20 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
                 dict_args["reason"] = "w_k1 could not be divided by kernel_h*kernel_w"
                 raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
-            shape_w_l0b = (self._real_g * self._cou1_g*kernel_h*kernel_w,
+            shape_w_l0b = (self._real_g,
+                           self._cou1_g*kernel_h*kernel_w,
                            self._cin1_g,
                            w_k0,
                            kernel_cout0)
 
             def __kernel_2_l0_compute(indices, kernels):
-                w_k1_idx, kernel_cin1_idx, w_k0_idx, kernel_cout0_idx = indices
+                g_idx, w_k1_idx, kernel_cin1_idx, w_k0_idx, kernel_cout0_idx = indices
 
-                if self._real_g == 1:
-                    fkk_index = kernel_cin1_idx * kernel_h * kernel_w + (
-                                kernel_h * kernel_w - 1 - w_k1_idx
-                                % (kernel_h * kernel_w))
-                    cout1_index = w_k1_idx // (kernel_h * kernel_w)
-                else:
-                    g_index = w_k1_idx // (kernel_h * kernel_w * self._cou1_g)
-                    fkk_index = g_index * self._cin1_g * kernel_h * kernel_w + (
-                                kernel_cin1_idx * kernel_h * kernel_w) + (
-                                kernel_h * kernel_w - 1 - w_k1_idx
-                                % (kernel_h * kernel_w))
-                    cout1_index = w_k1_idx // (kernel_h * kernel_w) % self._cou1_g
+                fkk_index = g_idx * self._cin1_g * kernel_h * kernel_w + (
+                            kernel_cin1_idx * kernel_h * kernel_w) + (
+                            kernel_h * kernel_w - 1 - w_k1_idx
+                            % (kernel_h * kernel_w))
+                cout1_index = w_k1_idx // (kernel_h * kernel_w)
                 return kernels[fkk_index, cout1_index, kernel_cout0_idx, w_k0_idx]
             w_col = tvm.compute(shape_w_l0b, lambda *indices:
                 __kernel_2_l0_compute(indices, kernels),
@@ -440,20 +444,12 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
         if w_col.dtype == "int8" and dy_col.dtype == "int8":
             dx_ub_type = "int32"
 
-        if self._real_g == 1:
-            dx_ub = tvm.compute(
-                (dx_batch, dx_cin1, dx_hw, dx_c0),
-                lambda dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
-                dx_col[0, dx_batch_idx,
-                    dx_cin1_idx, dx_hw_idx, dx_cin0_idx]
-                .astype(dx_ub_type), name="c_ub")
-        else:
-            dx_ub = tvm.compute(
-                (dx_batch, dx_cin1, dx_hw, dx_c0),
-                lambda dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
-                dx_col[dx_cin1_idx // self._cin1_g, dx_batch_idx,
-                    dx_cin1_idx % self._cin1_g, dx_hw_idx, dx_cin0_idx]
-                .astype(dx_ub_type), name="c_ub")
+        dx_ub = tvm.compute(
+            (dx_batch, dx_cin1, dx_hw, dx_c0),
+            lambda dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
+            dx_col[dx_cin1_idx // self._cin1_g, dx_batch_idx,
+                dx_cin1_idx % self._cin1_g, dx_hw_idx, dx_cin0_idx]
+            .astype(dx_ub_type), name="c_ub")
 
         if tensor_bias is not None and tensor_bias.dtype == "float16":
             dx_ub = _add_bias_in_ub(dx_ub, tensor_bias)
