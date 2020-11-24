@@ -52,10 +52,17 @@ def maximum_compute(x1, x2, y, kernel_name="maximum"):
     shape1, shape2, shape_max = shape_util.broadcast_shapes(shape_x, shape_y,
                                                             param_name_input1="x1",
                                                             param_name_input2="x2")
+    src_dtype = x1.dtype
+    if src_dtype == "int8":
+        x1 = tbe.cast_to(x1, "float16")
+        x2 = tbe.cast_to(x2, "float16")
 
     data1 = tbe.broadcast(x1, shape_max)
     data2 = tbe.broadcast(x2, shape_max)
     res = tbe.vmax(data1, data2)
+
+    if src_dtype == "int8":
+        res = tbe.cast_to(res, src_dtype)
 
     return res
 
