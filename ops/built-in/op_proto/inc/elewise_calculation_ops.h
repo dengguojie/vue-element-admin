@@ -122,7 +122,8 @@ REG_OP(MinimumGrad)
 *@par Inputs:
 *One input:
 *x:A Tensor. Must be one of the following types: bool, float16, float, int8, int32, uint32, uint8,
-   int64, uint64, int16, uint16, double, complex64, complex128, qint8, quint8, qint16, quint16, qint32. \n
+   int64, uint64, int16, uint16, double, complex64, complex128, qint8, quint8, qint16, quint16, qint32.
+   For float32 type, the actual calculation on the chip is based on float16.  \n
 
 *@par Attributes:
 *dst_type: An required attribute of type int32, specifying the dst data type. \n
