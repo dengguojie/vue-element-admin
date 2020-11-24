@@ -307,26 +307,17 @@ def im2col_fractal_3d(  # pylint: disable=R0913
         Returns : im2col_fractal tvm lambda function
         """
         _, _, _, _, a_col_m0, a_col_k0 = a_im2col_shape
-        g_index, n_index, m1_index, k1_index, m0_index, k0_index = indices
-
         _, a_row_major_hw, _, kernel_h, kernel_w, _ = tensor_a_row_major.shape
 
+        g_index, n_index, m1_index, k1_index, m0_index, k0_index = indices
         hw_index = m1_index * a_col_m0 + m0_index
-        if (cin1_g != -1):
-            cyclebuffer_var = 1 if cyclebuffer_flag else 0
-            kdc1_index = k1_index // (kernel_h.value * kernel_w.value)
-            kd_index = (kdc1_index // cin1_g + (n_index % d_out * stride_d) * cyclebuffer_var) % filter_d
-            cin_index = kdc1_index % cin1_g
-            c1_index = kd_index * fmap_c1 + g_index * cin1_g + cin_index
-        else:
-            if cyclebuffer_flag:
-                c1_index = (((k1_index * a_col_k0 + k0_index) // a_col_k0) // kernel_w.value
-                            ) // kernel_h.value
-                c1_index = ((c1_index // fmap_c1 + (n_index % d_out) * stride_d) % filter_d
-                            ) * fmap_c1 + c1_index % fmap_c1
-            else:
-                c1_index = (((k1_index * a_col_k0 + k0_index) // a_col_k0) // kernel_w.value
-                            ) // kernel_h.value
+
+        # ====================== new ====================
+        kdc1_index = k1_index // (kernel_h.value * kernel_w.value)
+        kd_index = (kdc1_index // cin1_g + (n_index % d_out * stride_d) * cyclebuffer_flag) % filter_d
+        cin_index = kdc1_index % cin1_g
+        c1_index = kd_index * fmap_c1 + g_index * cin1_g + cin_index
+
 
         kh_index = (((k1_index * a_col_k0 + k0_index) // a_col_k0) // kernel_w.value
                    ) % kernel_h.value
