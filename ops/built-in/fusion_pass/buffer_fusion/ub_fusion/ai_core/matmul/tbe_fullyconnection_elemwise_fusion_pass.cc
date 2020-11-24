@@ -93,25 +93,35 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
   }
 
   // check whether the relu/leakyrelu op
-  if (elemWiseNodes.empty()) {
-    for (const auto &reluNode : reluNodes) {
+  for (const auto& reluNode : reluNodes) {
+    if (elemWiseNodes.empty()) {
       if (reluNode->GetType() != "Relu" && reluNode->GetType() != "LeakyRelu" &&
-        find(elemWiseWhiteList.begin(), elemWiseWhiteList.end(), reluNode->GetType()) == elemWiseWhiteList.end()) {
+          find(elemWiseWhiteList.begin(), elemWiseWhiteList.end(), reluNode->GetType()) == elemWiseWhiteList.end()) {
         fusionNodes.clear();
-        OP_LOGD(FUSED_OP_TYPE.c_str(),
-                "Eltwise op[%s] type[%s] is not supported for this ub fusion pass, skip fusion.",
+        OP_LOGD(FUSED_OP_TYPE.c_str(), "Eltwise op[%s] type[%s] is not supported for this ub fusion pass, skip fusion.",
                 reluNode->GetName().c_str(), reluNode->GetType().c_str());
         return SUCCESS;
       }
-    }
-  } else {
-    for (const auto &reluNode : reluNodes) {
+    } else {
       if (reluNode->GetType() != "Relu" && reluNode->GetType() != "LeakyRelu") {
         fusionNodes.clear();
-        OP_LOGD(FUSED_OP_TYPE.c_str(),
-                "Eltwise op[%s] type[%s] is not supported for this ub fusion pass, skip fusion.",
+        OP_LOGD(FUSED_OP_TYPE.c_str(), "Eltwise op[%s] type[%s] is not supported for this ub fusion pass, skip fusion.",
                 reluNode->GetName().c_str(), reluNode->GetType().c_str());
         return SUCCESS;
+      }
+      float negative_slope = 0;
+      if (reluNode->GetType() == "LeakyRelu") {
+        if (!ge::AttrUtils::GetFloat(reluNode->GetOpDesc(), "negative_slope", negative_slope)) {
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "LeakyRelu op[%s] type[%s] node does not have negative slope attr!",
+                  reluNode->GetName().c_str(), reluNode->GetType().c_str());
+          return FAILED;
+        }
+        if (negative_slope != 0) {
+          fusionNodes.clear();
+          OP_LOGD(FUSED_OP_TYPE.c_str(), "LeakyRelu op[%s] type[%s] node has negative slope.",
+                  reluNode->GetName().c_str(), reluNode->GetType().c_str());
+          return SUCCESS;
+        }
       }
     }
   }
