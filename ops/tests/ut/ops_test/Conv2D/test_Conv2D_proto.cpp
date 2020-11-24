@@ -329,4 +329,9 @@ TEST_F(Conv2DProtoTest, conv2dSplicDataTest) {
 
     std::vector<std::vector<int64_t>> expect_x_data_slice = {{}, {}, {0,63}, {2,13}, {}};
     EXPECT_EQ(expect_x_data_slice, x_data_slice);
+
+    std::vector<int> pads;
+    conv2d.GetAttr("pads",pads);
+    std::vector<int> expect_pads = {1, 1, 0, 0};
+    EXPECT_EQ(expect_pads, pads);
 }
