@@ -55,6 +55,7 @@ set(_cpu_context
   ${CPU_CONTEXT_DIR}/common/host_sharder.cc
   ${CPU_CONTEXT_DIR}/common/device_sharder.cc
   ${CPU_CONTEXT_DIR}/common/eigen_threadpool.cc
+  ${CPU_CONTEXT_DIR}/common/cpu_kernel_cache.cc
   ${CPU_CONTEXT_DIR}/stub/aicpu_sharder.cc
 )
 
