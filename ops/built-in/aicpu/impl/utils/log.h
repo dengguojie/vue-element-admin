@@ -21,6 +21,7 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 #include "toolchain/slog.h"
+#include <iostream>
 
 inline long GetTid() {
   thread_local static long tid = syscall(__NR_gettid);

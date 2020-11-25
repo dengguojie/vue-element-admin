@@ -9,7 +9,6 @@
 #include "cpu_kernel.h"
 #include "log.h"
 #include "status.h"
-#include <iostream>
 
 namespace {
 #define TYPE_REGISTAR(type, fun) type##Registerar(type, fun)
