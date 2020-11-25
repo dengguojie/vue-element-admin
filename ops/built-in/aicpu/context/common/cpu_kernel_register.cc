@@ -66,11 +66,9 @@ std::vector<std::string> CpuKernelRegister::GetAllRegisteredOpTypes() const {
  * @return uint32_t: 0->success other->failed
  */
 uint32_t CpuKernelRegister::RunCpuKernel(CpuKernelContext &ctx) {
-  std::cout << "RunCpuKernel begin." << std::endl;
   std::string type = ctx.GetOpType();
   KERNEL_LOG_INFO("RunCpuKernel:%s begin.", type.c_str());
   auto kernel = GetCpuKernel(type);
-  std::cout << "GetCpuKernel" << std::endl;
   if (kernel == nullptr) {
     return KERNEL_STATUS_INNER_ERROR;
   }
