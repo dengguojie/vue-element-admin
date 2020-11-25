@@ -28,7 +28,7 @@ TEST_F(GET_DYNAMIC_DIMS_KERNEL_UT, INT32_Success)
     .Input({"x1", DT_INT32, {4}, x1.data()})
     .Input({"x2", DT_INT32, {3}, x2.data()})
     .Input({"x3", DT_INT32, {5}, x3.data()})
-    .Output({"dims", DT_INT64, {3}, datas[3]})
+    .Output({"dims", DT_INT64, {3}, dims.data()})
     .Attr("N", 3)
     .Attr("shape_info", { 4, 3, 2, -1, 1, 3, 1, 2, 1, 5, 16, -1, -1, 3, 4 });
 
