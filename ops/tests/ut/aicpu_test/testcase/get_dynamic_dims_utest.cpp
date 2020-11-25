@@ -9,6 +9,7 @@
 #undef private
 #undef protected
 #include "securec.h"
+#include <iostream>
 
 using namespace std;
 using namespace aicpu;
