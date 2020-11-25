@@ -66,12 +66,14 @@ uint32_t NormalCheck(CpuKernelContext &ctx,
     KERNEL_CHECK_FALSE((ctx.GetInputsSize() == inputs_num),
                        KERNEL_STATUS_PARAM_INVALID,
                        "%s need %u inputs, but got %u.",
+                       ctx.GetOpType().c_str(),
                        inputs_num, ctx.GetInputsSize());
     std::cout << "KERNEL_CHECK_FALSE" << std::endl;
     for (uint32_t i = 0; i < inputs_num; ++i) {
       Tensor *input = ctx.Input(i);
       KERNEL_CHECK_NULLPTR(input, KERNEL_STATUS_INNER_ERROR,
-                           "%s get input:%u failed.", i);
+                           "%s get input:%u failed.",
+                           ctx.GetOpType().c_str(), i);
     }
     std::cout << "KERNEL_CHECK_NULLPTR" << std::endl;
   }
@@ -82,12 +84,14 @@ uint32_t NormalCheck(CpuKernelContext &ctx,
     KERNEL_CHECK_FALSE((ctx.GetOutputsSize() == outputs_num),
                        KERNEL_STATUS_PARAM_INVALID,
                        "%s need %u outputs, but got %u.",
+                       ctx.GetOpType().c_str(),
                        outputs_num, ctx.GetOutputsSize());
     std::cout << "KERNEL_CHECK_FALSE" << std::endl;
     for (uint32_t i = 0; i < outputs_num; ++i) {
       Tensor *output = ctx.Output(i);
       KERNEL_CHECK_NULLPTR(output, KERNEL_STATUS_INNER_ERROR,
-                           "%s get output:%u failed.", i);
+                           "%s get output:%u failed.",
+                           ctx.GetOpType().c_str(), i);
     }
     std::cout << "KERNEL_CHECK_NULLPTR" << std::endl;
   }

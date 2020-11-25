@@ -31,11 +31,9 @@ CpuKernelContext::CpuKernelContext(DeviceType type) {
 }
 
 uint32_t CpuKernelContext::Init(NodeDef *nodeDef) {
-  KERNEL_LOG_INFO("CpuKernelContext::Init.");
   KERNEL_CHECK_NULLPTR(nodeDef, KERNEL_STATUS_PARAM_INVALID,
                        "Node def is null.")
   op_ = nodeDef->GetOpType();
-  KERNEL_LOG_INFO("nodeDef->GetOpType().");
   KERNEL_LOG_INFO("Construct the ctx of the op:%s begin.", op_.c_str());
   for (int32_t i = 0; i < nodeDef->InputsSize(); i++) {
     auto input = nodeDef->MutableInputs(i);
