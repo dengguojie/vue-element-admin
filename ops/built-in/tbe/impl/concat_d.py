@@ -37,7 +37,7 @@ def get_op_support_info(input_values, output_data, concat_dim, kernel_name="conc
         concat_dim += shape_value_len
     if format_value == "ND" or format_value == "NC1HWC0":
         axis_split_matrix=[]
-        for i in range(0, shape_value_len):
+        for i in range(0, shape_value_len-1):
             if i != concat_dim:
                 input_list = []
                 for j in range(0, value_len):

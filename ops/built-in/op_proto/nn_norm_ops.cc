@@ -24,6 +24,7 @@
 #include "util/util.h"
 #include "op_log.h"
 #include "./util/error_util.h"
+#include "graph/utils/node_utils.h"
 
 namespace ge {
 // --------------------------LogSoftmaxGrad-------------------------
@@ -102,8 +103,21 @@ COMMON_INFER_FUNC_REG(SigmoidCrossEntropyWithLogitsGrad, SigmoidCrossEntropyWith
 IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(SigmoidCrossEntropyWithLogitsInferShape)
   auto input_type = op.GetInputDesc("predict").GetDataType();
   auto input_shape = op.GetInputDesc("predict").GetShape();
+  auto target_shape = op.GetInputDesc("target").GetShape();
+  std::vector<int64_t> predict_dims = input_shape.GetDims();
+  std::vector<int64_t> target_dims = target_shape.GetDims();
+  std::vector<int64_t> output_dims;
+
+  for (auto i = 0; i < predict_dims.size(); i++) {
+    if (predict_dims[i] == UNKNOWN_DIM) {
+      output_dims.push_back(target_dims[i]);
+    } else {
+      output_dims.push_back(predict_dims[i]);
+    }
+  }
+
   TensorDesc td = op.GetOutputDesc("loss");
-  td.SetShape(input_shape);
+  td.SetShape(ge::Shape(output_dims));
   td.SetDataType(input_type);
 
   std::vector<std::pair<int64_t, int64_t>> shape_range_x;
@@ -512,12 +526,21 @@ IMPLEMT_VERIFIER(DropOutDoMask, DropOutDoMaskVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(DropOutDoMaskInferShape) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  PREPARE_DYNAMIC_SHAPE_WITH_NO_DEPENDS();
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto x_desc = op_info->MutableInputDesc("x");
+  vector<int64_t> x_shape = x_desc->MutableShape().GetDims();
+  DataType input_dtype = x_desc->GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> input_range;
+  x_desc->GetShapeRange(input_range);
+  MakeUpShapeRange(x_shape, input_range);
 
-  tensordesc_output.SetShape(op.GetInputDesc("x").GetShape());
-  tensordesc_output.SetDataType(op.GetInputDesc("x").GetDataType());
+  auto output_desc_y = op_info->MutableOutputDesc("y");
+  output_desc_y->SetShape(GeShape(x_shape));
+  output_desc_y->SetOriginShape(GeShape(x_shape));
+  output_desc_y->SetShapeRange(input_range);
+  output_desc_y->SetDataType(input_dtype);
 
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
   return GRAPH_SUCCESS;
 }
 

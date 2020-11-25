@@ -1470,33 +1470,20 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             def _set_batch_mode():
                 # set buffer tile mode for batch
 
-                block_dim_n = tiling.get("block_dim")[0]
-                block_dim_all = (block_dim_hw * block_dim_n *
-                                 block_dim_cout * block_dim_cin)
-                full_batch_flag = tiling.get('batch_num_sc')
+                if dynamic_bl1_attach == "dw_cc":
+                    # hw need both multi-core offset and k_axis offset
+                    return "tile_h_dw_cc"
 
-                if block_dim_hw == 1:
-                    # hw does not bind multi-core
-                    return "tile_h"
-
-                if additional_rows == 1:
-                    # special cases cannt set perfectly
-                    return "fmap"
-
-                if (dynamic_bl1_attach == "dw_cc"
-                    and (additional_rows == -1 or full_batch_flag)):
-                    # hw bind multi-core and need block offset
-                    return "tile_h_multicore"
-
-                if (not full_batch_flag and block_dim_n > 1
-                    and block_dim_all > self._corenum):
-                    # more than self._corenum kernels then need batch offset
-                    return "tile_h_batch"
+                elif dynamic_bl1_attach == "dw_ddr":
+                    # hw only need multi_core offset
+                    return "tile_h_dw_ddr"
 
                 return "None"
 
             def _set_tile_params(ho_len, tile_mode):
-                # hw bind multi-core
+                ho_min = 0
+
+                # axis_k offset
                 wi_min = -pad_left
                 wi_extent = width_fmap + pad_left + pad_right
 
@@ -1510,36 +1497,32 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                                   hw_mad_1_l1_in_at.var * bl1_k)
                 else:
                     axis_k_var = hw_mad_1_l1_out_at.var * bl1_k
-                hw_block_offset = 0
-                batch_block_offset = 0
 
-                # hw bind multi-core and need block offset
-                if tile_mode == "tile_h_multicore":
-                    block_div = (block_dim_batch * block_dim_cout *
-                                 block_dim_cin * block_dim_group)
+                # multi_core offset
+                hw_single_core_factor = _ceil_div(hw_pad_1, block_dim_hw) * \
+                                        CUBE_DIM
+                multi_core_offset = tvm.floordiv(
+                                        tvm.floordiv(fused_multi_core,
+                                                     block_dim_cout *
+                                                     block_dim_cin),
+                                        tvm.floordiv(batch_fmap - 1,
+                                                     _ceil_div(batch_fmap,
+                                                           block_dim_batch)) +
+                                        1) * \
+                                    hw_single_core_factor
 
-                    hw_align = _align(width_grads * height_grads, CUBE_DIM)
-                    h_k = tiling.get("BL0_matrix")[0] * CUBE_DIM
-                    hw_block_offset = (fused_multi_core // block_div
-                                       * _ceil_div(hw_align,
-                                                  block_dim_hw * h_k)
-                                       * h_k)
+                # dynamic_hw
+                if tile_mode == "tile_h":
+                    ho_min = tvm.floordiv(axis_k_var, width_grads)
 
-                if tile_mode == "tile_h_batch":
-                    batch_dim_factor = _ceil_div(batch_fmap, block_dim_batch)
-                    batch_dim_factor = tvm.max(1, batch_dim_factor)
+                # dynamic_batch
+                if tile_mode == "tile_h_dw_cc":
+                    ho_min = tvm.floordiv(multi_core_offset + axis_k_var,
+                                          width_grads)
 
-                    hw_single_core_factor = \
-                        _ceil_div(hw_pad_1 * CUBE_DIM, block_dim_hw)
-                    batch_block_offset = (fused_multi_core
-                                          // _ceil_div(batch_fmap,
-                                                      batch_dim_factor)
-                                          * hw_single_core_factor)
+                if tile_mode == "tile_h_dw_ddr":
+                    ho_min = tvm.floordiv(multi_core_offset, width_grads)
 
-                ho_min = tvm.floordiv(axis_k_var +
-                                      hw_block_offset +
-                                      batch_block_offset,
-                                      width_grads)
                 hi_min = ho_min * stride_height - pad_up
 
                 # Calculate the min and extent of the h dimension bound

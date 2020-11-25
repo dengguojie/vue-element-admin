@@ -140,11 +140,12 @@ LOCAL_C_INCLUDES := \
         $(LOCAL_PATH)/../../graphengine/inc \
         $(LOCAL_PATH)/../../graphengine/inc/external \
         $(LOCAL_PATH)/../../graphengine/inc/framework \
+        $(LOCAL_PATH)/../../fusion_engine/inc \
 
 
 LOCAL_LDFLAGS := -ldl
 
-LOCAL_SHARED_LIBRARIES := libslog libc_sec libgraph libregister libplatform liberror_manager
+LOCAL_SHARED_LIBRARIES := libslog libc_sec libgraph libregister libplatform liberror_manager libaicore_utils
 
 include $(BUILD_HOST_SHARED_LIBRARY)
 

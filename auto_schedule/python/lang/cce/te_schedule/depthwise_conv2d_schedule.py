@@ -1714,7 +1714,7 @@ def _set_sch_int32_phase1_dequant_sigmoid_mul(tensor_dict, attrs_dict, out, buf,
     return deq_reg_ubuf, bias_ub, dequant_ubuf, sch
 
 
-def _set_sch_int32_phase1_deqaunt_power_eltwise(tensor_dict, attrs_dict, out, buf, sch):
+def _set_sch_int32_phase1_deqaunt_power_eltwise(tensor_dict, buf, sch):
     dequant_ubuf, deq_reg_ubuf, _, _, bias_ub = buf
     sch[tensor_dict["cast_i8_ub"]].set_scope(cce_params.scope_ubuf)
     sch[tensor_dict["reform_by_vadds"]].set_scope(cce_params.scope_ubuf)
@@ -1814,7 +1814,7 @@ def _set_sch_int32_phase1(tensor_dict, attrs_dict, out, sch):
             tensor_dict, attrs_dict, out, buf, sch)
     elif tensor_dict["flag_is_eltwisce_case"]:
         deq_reg_ubuf, bias_ub, dequant_ubuf, sch = _set_sch_int32_phase1_deqaunt_power_eltwise(
-            tensor_dict, attrs_dict, out, buf, sch)
+            tensor_dict, buf, sch)
     return deq_reg_ubuf, req_reg_ubuf, bias_ub, dequant_ubuf, requant_ubuf, sch
 
 

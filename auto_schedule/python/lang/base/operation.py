@@ -24,6 +24,7 @@ from typing import Optional
 from te.tvm import api as tvm
 from te.utils.error_manager.error_manager_util import get_error_message
 
+
 # 'pylint: disable=C0103
 _contexts = {}
 
@@ -151,7 +152,7 @@ class OperatorContext:
         """
         return self.computes
 
-    def get_current_compute(self):
+    def get_current_compute(self) -> Optional['ComputeContext']:
         """
         :return:
         """

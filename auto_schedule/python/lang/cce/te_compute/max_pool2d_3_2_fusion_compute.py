@@ -46,7 +46,7 @@ class MaxPoolParam:
         return MaxPoolParam.tensor_map
 
 
-def shape_to_list(shape):
+def _shape_to_list(shape):
     """
     translate tvm.shape to list type in python
     """
@@ -56,7 +56,7 @@ def shape_to_list(shape):
     return tmp
 
 
-def is_support_v200():
+def _is_support_v200():
     """
     check if Ascend610/Ascend710/Hi3796CV300CS version
     ----------
@@ -113,12 +113,12 @@ def max_pool_compute(input_data,  # pylint: disable=too-many-arguments
 
     def _compute_max_pooling(input_data, padding, window):
         # compute max_pooling
-        input_shape = shape_to_list(input_data.shape)
+        input_shape = _shape_to_list(input_data.shape)
 
         data_pad, row_max_shape, max_pool_res_shape, input_5d_data = \
-            max_pooling_input(input_shape, width_in, padding)
+            _max_pooling_input(input_shape, width_in, padding)
         out_col_max, ret_out_list = \
-            max_pooling(data_pad, row_max_shape, max_pool_res_shape)
+            _max_pooling(data_pad, row_max_shape, max_pool_res_shape)
         if window[0] == 3:
             trans_line_data = tvm.compute(input_5d_data.shape,
                                           lambda *i: input_5d_data[i],
@@ -182,7 +182,7 @@ def max_pool_compute(input_data,  # pylint: disable=too-many-arguments
 
         return res
 
-    def max_pooling_input(input_shape, width_in, padding):
+    def _max_pooling_input(input_shape, width_in, padding):
         # get the 5HD input
         input_shape[3] = input_shape[3] * input_shape[1]
         input_shape[1] = 1
@@ -203,14 +203,14 @@ def max_pool_compute(input_data,  # pylint: disable=too-many-arguments
 
         if data_mode == 0:
             h_out, w_out, padding = \
-                get_caffe_out_size_and_pad(ceil_mode,
+                _get_caffe_out_size_and_pad(ceil_mode,
                                            input_5d_shape,
                                            ksize,
                                            strides,
                                            padding)
         else:
             h_out, w_out, padding = \
-                get_tensorflow_out_size_and_pad(pad_mode,
+                _get_tensorflow_out_size_and_pad(pad_mode,
                                                 input_5d_shape,
                                                 ksize,
                                                 strides,
@@ -221,7 +221,7 @@ def max_pool_compute(input_data,  # pylint: disable=too-many-arguments
             pad_shape = input_5d_shape
         else:
             data_pad, pad_shape = \
-                max_pooling_padding(input_5d_data, padding, dtype)
+                _max_pooling_padding(input_5d_data, padding, dtype)
 
         row_max_shape = [input_shape[0],
                          input_shape[1],
@@ -236,14 +236,14 @@ def max_pool_compute(input_data,  # pylint: disable=too-many-arguments
 
         return data_pad, row_max_shape, max_pool_res_shape, input_5d_data
 
-    def max_pooling(data_pad, row_max_shape, max_pool_res_shape):
+    def _max_pooling(data_pad, row_max_shape, max_pool_res_shape):
         # compute row max
         row_max_res, ret_row_max_pool_tensors = \
-            compute_row_optimization(data_pad, row_max_shape, strides, ksize)
+            _compute_row_optimization(data_pad, row_max_shape, strides, ksize)
 
         # compute col max and get final res
         col_max_res, ret_col_max_pool_tensors = \
-            compute_col_optimization(row_max_res,
+            _compute_col_optimization(row_max_res,
                                      max_pool_res_shape,
                                      strides,
                                      ksize)
@@ -279,13 +279,13 @@ def _check_para(window, strides):
         raise RuntimeError("pooling stride size must be [2, 2].")
 
 
-def compute_col_optimization(data, max_pool_res_shape, stride, window):
+def _compute_col_optimization(data, max_pool_res_shape, stride, window):
     """
     cal the max in cols
     """
     if window[1] < 4:
         col_max_tensors, out_col_max = \
-            compute_3_window(data,
+            _compute_3_window(data,
                              max_pool_res_shape,
                              False,
                              stride,
@@ -294,12 +294,12 @@ def compute_col_optimization(data, max_pool_res_shape, stride, window):
     return out_col_max, col_max_tensors
 
 
-def compute_row_optimization(data, row_max_shape, stride, window):
+def _compute_row_optimization(data, row_max_shape, stride, window):
     """
     cal the max in cols
     """
     row_max_tensors, out_row_max = \
-        compute_3_window(data,
+        _compute_3_window(data,
                          row_max_shape,
                          True,
                          stride,
@@ -308,11 +308,11 @@ def compute_row_optimization(data, row_max_shape, stride, window):
     return out_row_max, row_max_tensors
 
 
-def max_pooling_padding(input_data, padding, dtype):
+def _max_pooling_padding(input_data, padding, dtype):
     """
     padding 0 at left, right, up, down
     """
-    data_shape = shape_to_list(input_data.shape)
+    data_shape = _shape_to_list(input_data.shape)
 
     pad_shape = [data_shape[0],
                  data_shape[1],
@@ -324,7 +324,7 @@ def max_pooling_padding(input_data, padding, dtype):
     pad_align = pad_shape
     pad_align[3] = (pad_shape[3] + C0_SIZE - 1) // C0_SIZE * C0_SIZE
 
-    def padding_v100():
+    def _padding_v100():
         zero_padding = tvm.compute(pad_shape,
                                    lambda *indice:
                                    tvm.convert(0).astype(input_data.dtype),
@@ -362,7 +362,7 @@ def max_pooling_padding(input_data, padding, dtype):
 
         return pad_data
 
-    def padding_v200():
+    def _padding_v200():
         zero_value = tvm.const(0, dtype)
         pad_data = \
             tvm.compute(
@@ -418,15 +418,15 @@ def max_pooling_padding(input_data, padding, dtype):
 
         return pad_vn
 
-    if is_support_v200():
-        pad_res = padding_v200()
+    if _is_support_v200():
+        pad_res = _padding_v200()
     else:
-        pad_res = padding_v100()
+        pad_res = _padding_v100()
 
     return pad_res, pad_shape
 
 
-def get_caffe_out_size_and_pad(ceil_mode, input_5d_shape,
+def _get_caffe_out_size_and_pad(ceil_mode, input_5d_shape,
                                ksize, strides, padding):
     """
     get the Hout, Wout and padding of caffe
@@ -477,7 +477,7 @@ def get_caffe_out_size_and_pad(ceil_mode, input_5d_shape,
     return out_size_h, out_size_w, padding
 
 
-def get_tensorflow_out_size_and_pad(pad_mode, input_5d_shape,
+def _get_tensorflow_out_size_and_pad(pad_mode, input_5d_shape,
                                     ksize, strides, padding):
     """
     get the Hout, Wout and padding of TF
@@ -519,14 +519,14 @@ def get_tensorflow_out_size_and_pad(pad_mode, input_5d_shape,
     return h_out, w_out, padding
 
 
-def compute_3_window(data, data_shape, is_row, stride, window):
+def _compute_3_window(data, data_shape, is_row, stride, window):
     """
     cal the max whne window is less 4
     """
     max_tensors = []
     if is_row:
         if window[0] == 3:
-            out_max = compute_tmp_max(stride[0], data_shape,
+            out_max = _compute_tmp_max(stride[0], data_shape,
                                       data, True, "row_temp_max")
             max_tensors.append(out_max)
             out_max = \
@@ -539,17 +539,17 @@ def compute_3_window(data, data_shape, is_row, stride, window):
                             name=NAME + "row_max",
                             tag=OP_TAG + "row_max")
         else:
-          out_max = \
-              tvm.compute(data_shape,
-                          lambda i, j, h, w, c:
-                          tvm.max(data(i, j, h * stride[0], w, c),
-                                  data(i, j, h * stride[0] + 1, w, c)),
-                          name=NAME + "row_max",
-                          tag=OP_TAG + "row_max")
+            out_max = \
+                tvm.compute(data_shape,
+                            lambda i, j, h, w, c:
+                            tvm.max(data(i, j, h * stride[0], w, c),
+                                    data(i, j, h * stride[0] + 1, w, c)),
+                            name=NAME + "row_max",
+                            tag=OP_TAG + "row_max")
         max_tensors.append(out_max)
     else:
         if window[0] == 3:
-            out_max = compute_tmp_max(stride[1], data_shape,
+            out_max = _compute_tmp_max(stride[1], data_shape,
                                       data, False, "col_temp_max")
             max_tensors.append(out_max)
             out_max = \
@@ -573,7 +573,7 @@ def compute_3_window(data, data_shape, is_row, stride, window):
     return max_tensors, out_max
 
 
-def compute_tmp_max(stride_tmp, cal_shape, data, is_row, tmp_max_name):
+def _compute_tmp_max(stride_tmp, cal_shape, data, is_row, tmp_max_name):
     """
     compute tmp data
     """

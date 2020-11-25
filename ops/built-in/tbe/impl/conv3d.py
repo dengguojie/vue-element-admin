@@ -238,17 +238,12 @@ def _calculate_group(fmap_c, cout, groups):
     cin1_g = (mag_factor * fmap_c // groups + C0 - 1) // C0
     cout_g = (mag_factor * cout // groups + C0 - 1) // C0 * C0
 
-    use_group_flag = True
-    if (groups == 1):
-        use_group_flag = False
-
     group_dict = {"real_g": (groups + mag_factor - 1) // mag_factor,
                   "mag_factor": mag_factor,
                   "cin1_g": cin1_g,
                   "cout_g": cout_g,
                   "cin_ori": fmap_c,
-                  "cout_ori": cout,
-                  "use_group_flag": use_group_flag}
+                  "cout_ori": cout}
 
     return group_dict
 
@@ -297,6 +292,11 @@ def _conv3d_compute(shape_fm,
     -------
     list of tensor
     """
+    real_g = group_dict["real_g"]
+    cin1_g = group_dict["cin1_g"]
+    cout_g = group_dict["cout_g"]
+    cout_ori = group_dict["cout_ori"]
+    
     batch, cin, fmp_d, fmp_h, fmp_w = shape_fm
     fmp_block_k = tbe_platform.CUBE_MKN[fmp_dtype]['mac'][1]
     shape_fmp_ndc1hwc0 = (batch, fmp_d, (cin + fmp_block_k - 1) // fmp_block_k, fmp_h, fmp_w,
@@ -306,19 +306,9 @@ def _conv3d_compute(shape_fm,
     w_block_k = tbe_platform.CUBE_MKN[w_dtype]['mac'][1]
     w_block_n = tbe_platform.CUBE_MKN[w_dtype]['mac'][2]
 
-    if (group_dict['use_group_flag']):
-        real_g = group_dict["real_g"]
-        cin1_g = group_dict["cin1_g"]
-        cout_g = group_dict["cout_g"]
-        cout_ori = group_dict["cout_ori"]
-        _, _, w_d, w_h, w_w = shape_filter
-        shape_w_frac_z = (real_g, w_d * cin1_g * w_h * w_w, cout_g // w_block_n,
-                          w_block_n, w_block_k)
-    else:
-        cout, cin, w_d, w_h, w_w = shape_filter
-        cout_ori = cout
-        shape_w_frac_z = (1, w_d * cin * w_h * w_w // w_block_k, cout // w_block_n,
-                          w_block_n, w_block_k)
+
+    shape_w_frac_z = (real_g * w_d * cin1_g * w_h * w_w, cout_g // w_block_n,
+                      w_block_n, w_block_k)
 
     mad_dtype = _get_mad_dtype(w_dtype)
 

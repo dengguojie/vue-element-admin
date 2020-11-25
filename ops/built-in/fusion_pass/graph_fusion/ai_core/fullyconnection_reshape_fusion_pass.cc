@@ -103,6 +103,11 @@ Status FullyConnectionReshapePass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   ge::GeShape reshapeOutputShape = reshapeOutput0Desc.GetShape();
   int64_t reshapeInputDim0Value = reshapeInputShape.GetDim(0);
   int64_t reshapeOutputDim0Value = reshapeOutputShape.GetDim(0);
+  if (PatternFusionUtil::IsUnknownShape(reshapeInputDim0Value) ||
+      PatternFusionUtil::IsUnknownShape(reshapeOutputDim0Value)) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "FullyConnectionReshapePass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
   if ((reshapeInputDim0Value != reshapeOutputDim0Value) && (reshapeInputDim0Value != 0)) {
     OP_LOGI(
         FUSED_OP_TYPE.c_str(),

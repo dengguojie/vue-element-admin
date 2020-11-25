@@ -30,3 +30,12 @@ data/
 # cann tmp
 lib/
 kernel_meta/
+
+# Jetbrain
+.idea
+
+# Visual Studio
+.vs
+
+# Visual Studio Code
+.vscode

@@ -131,7 +131,7 @@ def _check_global_rule(input_shape, ksize, pads):
 
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name
-def _avg_pool3d_check_rule(input_shape, input_dtype, ksize, strides, pads, data_format, kernel_name):
+def _avg_pool3d_check_rule(input_shape, input_dtype, ksize, strides, pads, kernel_name):
     """
     _avg_pool3d_check_rule
 
@@ -152,7 +152,6 @@ def _avg_pool3d_check_rule(input_shape, input_dtype, ksize, strides, pads, data_
     para_check.check_shape(input_shape)
     para_check.check_dtype(input_dtype, ("float16", ))
     para_check.check_kernel_name(kernel_name)
-    para_check.check_format(data_format, ("NDHWC", ))
     _check_window_rule(ksize, strides, pads)
 
 
@@ -190,9 +189,9 @@ def avg_pool3d_compute(x,
     """
     shape = x.shape
 
-    ksize_d = ksize[1]
-    stride_d = strides[1]
-    size_kernel = (ksize[1] * ksize[2] * ksize[3])
+    ksize_d = ksize[0]
+    stride_d = strides[0]
+    size_kernel = (ksize[0] * ksize[1] * ksize[2])
     if divisor_override != 0:
         size_kernel = divisor_override
 
@@ -230,8 +229,8 @@ def _tiling_param(shape, ksize, strides, core_num):
     d = shape[1]
     hw = shape[3]
     c0 = shape[4]
-    ksize_d = ksize[1]
-    stride_d = strides[1]
+    ksize_d = ksize[0]
+    stride_d = strides[0]
     d_out = 1 + (d - ksize_d) // stride_d
 
     total_ub_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
@@ -331,8 +330,8 @@ def check_vector_impl(input_shape, ksize, pads):
             return False
     input_h = input_shape[3]
     input_w = input_shape[4]
-    ksize_h = ksize[2]
-    ksize_w = ksize[3]
+    ksize_h = ksize[1]
+    ksize_w = ksize[2]
 
     if ksize_h != input_h:
         return False
@@ -345,21 +344,52 @@ def correct_pads(input_shape, ksize, strides, pads):
     input_d = input_shape[1]
     input_h = input_shape[3]
     input_w = input_shape[4]
-    ksize_d = ksize[1]
-    ksize_h = ksize[2]
-    ksize_w = ksize[3]
-    stride_d = strides[1]
-    stride_h = strides[2]
-    stride_w = strides[3]
+    ksize_d = ksize[0]
+    ksize_h = ksize[1]
+    ksize_w = ksize[2]
+    stride_d = strides[0]
+    stride_h = strides[1]
+    stride_w = strides[2]
     pad_before, pad_after, pad_top, pad_bottom, pad_left, pad_right = pads
     do = (input_d - ksize_d + pad_before + pad_after + stride_d - 1) // stride_d + 1
     ho = (input_h - ksize_h + pad_top + pad_bottom + stride_h - 1) // stride_h + 1
     wo = (input_w - ksize_w + pad_left + pad_right + stride_w - 1) // stride_w + 1
-    pad_after = (do - 1) * stride_d + ksize_d - input_d - pad_before
-    pad_bottom = (ho - 1) * stride_h + ksize_h - input_h - pad_top
-    pad_right = (wo - 1) * stride_w + ksize_w - input_w - pad_left
+
+    if (do - 1) * stride_d >= input_d + pads[0]:
+        do = do - 1
+    if (ho - 1) * stride_h >= input_h + pads[2]:
+        ho = ho - 1
+    if (wo - 1) * stride_w >= input_w + pads[4]:
+        wo = wo - 1
+    if do > 1:
+        pad_after = (do - 1) * stride_d + ksize_d - input_d - pad_before
+    if ho > 1:
+        pad_bottom = (ho - 1) * stride_h + ksize_h - input_h - pad_top
+    if wo > 1:
+        pad_right = (wo - 1) * stride_w + ksize_w - input_w - pad_left
+
     return [pad_before, pad_after, pad_top, pad_bottom, pad_left, pad_right]
 
+
+def _transform_shape_with_format(ori_format, shape):
+    idx_d = ori_format.find('D')
+    idx_h = ori_format.find('H')
+    idx_w = ori_format.find('W')
+    shape_all = [1, 1, 1, 1, 1]
+    if len(shape) == 1:
+        shape_dhw = (shape[0], shape[0], shape[0])
+        shape_all[idx_d] = shape[0]
+        shape_all[idx_h] = shape[0]
+        shape_all[idx_w] = shape[0]
+    elif len(shape) == 3:
+        shape_dhw = shape
+        shape_all[idx_d] = shape[0]
+        shape_all[idx_h] = shape[1]
+        shape_all[idx_w] = shape[2]
+    elif len(shape) == 5:
+        shape_dhw = (shape[idx_d], shape[idx_h], shape[idx_w])
+        shape_all = shape
+    return tuple(shape_all), shape_dhw
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT,
@@ -420,38 +450,31 @@ def avg_pool3d_d(x,
     -------
     Only support global model currently.
     """
-    # get shape&dtype
+    input_ori_format = x.get("ori_format")
     input_shape = x.get("shape")
     input_dtype = x.get("dtype")
     input_dtype = input_dtype.lower()
 
-    if len(ksize) == 1:
-        ksize = (1, ksize[0], ksize[0], ksize[0], 1)
-    elif len(ksize) == 3:
-        ksize = (1, ksize[0], ksize[1], ksize[2], 1)
+    ksize, ksize_dhw = _transform_shape_with_format(input_ori_format, ksize)
+    strides, strides_dhw = _transform_shape_with_format(input_ori_format, strides)
 
-    if len(strides) == 1:
-        strides = (1, strides[0], strides[0], strides[0], 1)
-    elif len(strides) == 3:
-        strides = (1, strides[0], strides[1], strides[2], 1)
-
-    _avg_pool3d_check_rule(input_shape, input_dtype, ksize, strides, pads, data_format, kernel_name)
+    _avg_pool3d_check_rule(input_shape, input_dtype, ksize, strides, pads, kernel_name)
 
     if ceil_mode:
-        pads = correct_pads(input_shape, ksize, strides, pads)
+        pads = correct_pads(input_shape, ksize_dhw, strides_dhw, pads)
 
-    if check_vector_impl(input_shape, ksize, pads):
+    if check_vector_impl(input_shape, ksize_dhw, pads):
         # create tensor_in
         input_shape = (input_shape[0], input_shape[1], input_shape[2], input_shape[3] * input_shape[4], input_shape[5])
         tensor_in = tvm.placeholder(input_shape, name="tensor_in", dtype=input_dtype)
 
-        res = avg_pool3d_compute(tensor_in, filter, multiplier, y, ksize, strides, pads, ceil_mode, count_include_pad,
-                                 divisor_override, data_format, kernel_name)
+        res = avg_pool3d_compute(tensor_in, filter, multiplier, y, ksize_dhw, strides_dhw, pads, ceil_mode,
+                                 count_include_pad, divisor_override, data_format, kernel_name)
 
         # schedule
         sch = tvm.create_schedule(res.op)
 
-        _avg_pool3d_schedule(res, sch, ksize, strides)
+        _avg_pool3d_schedule(res, sch, ksize_dhw, strides_dhw)
 
         with tbe_platform.build_config:
             tvm.build(sch, [tensor_in, res], "cce", name=kernel_name)
@@ -459,23 +482,24 @@ def avg_pool3d_d(x,
         dilations = (1, 1, 1, 1, 1)
         offset_w = None
         bias = None
-        data_format = "NDHWC"
+        data_format = input_ori_format
         fmap = tvm.placeholder(input_shape, name="fmap", dtype=input_dtype, attrs={"ori_shape": x.get("ori_shape")})
-        fmap_c = x.get('ori_shape')[4]
+        fmap_c = x.get('ori_shape')[data_format.find('C')]
         groups = fmap_c
-        kd = ksize[1]
-        kh = ksize[2]
-        kw = ksize[3]
+        kd = ksize_dhw[0]
+        kh = ksize_dhw[1]
+        kw = ksize_dhw[2]
         w_ori_shape = (kd, kh, kw, 1, fmap_c)
         c1 = x.get('shape')[2]
-        filter_frac_z = (c1, kd*kh*kw, 1, 16, 16)
+        filter_frac_z = (c1, kd * kh * kw, 1, 16, 16)
         filter = tvm.placeholder(filter_frac_z, name="filter", dtype="float16",
                                  attrs={"ori_shape": w_ori_shape, 'ori_format': 'DHWCN'})
         conv_res = conv3d_fusion_compute(fmap, filter, bias, offset_w, y, strides, pads, dilations, groups=groups,
                                          data_format=data_format, kernel_name=kernel_name)
         tensor_list = [fmap, filter, conv_res]
         if multiplier:
-            mul_shape = multiplier.get('shape')
+            mul_n, mul_d, mul_c1, mul_h, mul_w, mul_c0 = multiplier.get('shape')
+            mul_shape = (mul_n * mul_d, mul_c1, mul_h * mul_w, mul_c0)
             multiplier = tvm.placeholder(mul_shape, name="multiplier", dtype="float16")
             res = te.lang.cce.vmul(conv_res, multiplier)
             tensor_list = [fmap, filter, multiplier, res]

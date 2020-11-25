@@ -81,7 +81,13 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   FUSION_PASS_CHECK(fusedDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
-  FUSION_PASS_CHECK(!CheckOpSupported(fusedDesc), OP_LOGI(FUSED_OP_TYPE.c_str(), "Op Not Supported."),
+  ge::OpDescPtr fusionDesc = AttrUtils::CopyOpDesc(fusedDesc);
+  ge::GeTensorDesc tmpMaskDesc = fusionDesc->GetOutputDesc(1);
+  tmpMaskDesc.SetDataType(ge::DT_UINT16);
+  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != fusionDesc->UpdateOutputDesc("argmax", tmpMaskDesc),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "UpdateOutputDesc node %s failed", fusionDesc->GetName().c_str()),
+                    return FAILED);
+  FUSION_PASS_CHECK(!CheckOpSupported(fusionDesc), OP_LOGI(FUSED_OP_TYPE.c_str(), "Op Not Supported."),
                     return NOT_CHANGED);
 
   ge::GeTensorDesc outputMaskDesc = fusedDesc->GetOutputDesc(1);
@@ -166,6 +172,12 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
     return NOT_CHANGED;
   }
   std::vector<int64_t> dims_input = shape.GetDims();
+  for (auto dim : dims_input) {
+    if (PatternFusionUtil::IsUnknownShape(dim)) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "MaxPoolWithArgmaxFusionPass cannot be applied for unknown shape.");
+      return NOT_CHANGED;
+    }
+  }
   // set output max shape
   std::vector<int64_t> dimVector;
   if (input_format == ge::FORMAT_NHWC) {

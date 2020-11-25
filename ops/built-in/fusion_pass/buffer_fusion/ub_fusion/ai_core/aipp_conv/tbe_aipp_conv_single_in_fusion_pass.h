@@ -23,10 +23,11 @@
 
 #include <vector>
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_base.h"
+#include "tbe_aipp_conv_fusion_pass.h"
 
 namespace fe {
 
-class TbeAippConvSingleInFusionPass : public BufferFusionPassBase {
+class TbeAippConvSingleInFusionPass : public TbeAippConvFusionPass {
  public:
   explicit TbeAippConvSingleInFusionPass() {
   }
@@ -44,7 +45,7 @@ class TbeAippConvSingleInFusionPass : public BufferFusionPassBase {
    * 3. output desc can not be itself.
    *
    *    1) Convolution-->ElemWise_1-->ElemWise_2
-   *
+   * 
    * fusion node: ElemWise_1, ElemWise_2, Convolution
    *
    * @return BufferFusionPattern: return all valid patterns.

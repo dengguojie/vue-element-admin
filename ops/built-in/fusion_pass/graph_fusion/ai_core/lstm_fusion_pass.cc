@@ -528,11 +528,16 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   OP_LOGI(FUSED_OP_TYPE.c_str(),"Op[%s]: input x shape is [ %I64d],[ %I64d],[ %I64d].", fusedDesc->GetName().c_str(),
   shapeInput0.GetDim(0),shapeInput0.GetDim(1),shapeInput0.GetDim(2));
   bool damoShape = false;
-  if (shapeInput0.GetDim(0) == 75 && shapeInput0.GetDim(1) == 1 && shapeInput0.GetDim(2) == 512){
+  if (shapeInput0.GetDim(0) == 75 && (shapeInput0.GetDim(1) == 1 || shapeInput0.GetDim(1) == 32) && shapeInput0.GetDim(2) == 512){
       damoShape = true;
   }
   int64_t last_dim_value = shapeInput0.GetDim(2);
   if (shapeInput0.GetDims().size() == 4) {
+    if (PatternFusionUtil::IsUnknownShape(shapeInput0.GetDim(2)) ||
+        PatternFusionUtil::IsUnknownShape(shapeInput0.GetDim(3))) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "ALSTMFusionPass cannot be applied for unknown shape.");
+      return NOT_CHANGED;
+    }
     last_dim_value = shapeInput0.GetDim(2) * shapeInput0.GetDim(3);
   }
   std::vector<int64_t> input0ShapeDim0;
@@ -633,7 +638,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
       ge::GeTensorDesc contDesc = fusedDesc->GetInputDesc(1);
       ge::GeShape contShape = contDesc.GetShape();
       OP_LOGD(FUSED_OP_TYPE.c_str(),"Op[%s]: cont shape is [ %I64d],[ %I64d].",fusedDesc->GetName().c_str(),contShape.GetDim(0),contShape.GetDim(1));
-      if (contShape.GetDim(0) != 75 || contShape.GetDim(1) != 1){
+      if (contShape.GetDim(0) != 75 || (contShape.GetDim(1) != 1 && contShape.GetDim(1) != 32)){
           damoShape = false;
       }
   }

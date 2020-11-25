@@ -27,6 +27,7 @@
 #include "util/common_shape_fns.h"
 #include "util/error_util.h"
 #include "op_log.h"
+#include "graph/utils/node_utils.h"
 
 namespace ge {
 IMPLEMT_INFERFUNC(AdjustHue, AdjustHueInfer) {
@@ -1037,77 +1038,102 @@ IMPLEMT_INFERFUNC(EncodePng, EncodePngInfer) {
 
 INFER_FUNC_REG(EncodePng, EncodePngInfer);
 
-IMPLEMT_COMMON_INFERFUNC(ResizeConstInferShape) {
-  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-
-  // unknown shape support
-  op_desc->SetOpInferDepends({"size"});
-
-  auto x_desc = op_desc->MutableInputDesc("x");
-  GeShape x_shape;
-  if (WithRank(x_desc, 4, x_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input tensor x must be 4-D, real rank is %lld", x_desc->GetShape().GetDimNum());
-    return GRAPH_FAILED;
+static void GetResizeConstValue(const Operator& op, const GeTensorPtr& const_tensor,
+                                const DataType& dtype, std::vector<int64_t>& const_data) {
+  size_t size = const_tensor->GetData().GetSize();
+  void* data_ptr = (void*)const_tensor->GetData().GetData();
+  if (data_ptr == nullptr) {
+    return;
   }
 
-  auto size_desc = op_desc->MutableInputDesc("size");
-  GeShape size_shape;
-  if (WithRank(size_desc, 1, size_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input tensor size must be 1-D, real rank is %lld",
-            size_desc->GetShape().GetDimNum());
-    return GRAPH_FAILED;
-  }
-
-  int64_t unused_dim;
-  if (WithValue(size_shape.GetDim(0), 2, unused_dim, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input tensor size dim 0 must be 2, real dim is %lld", size_shape.GetDim(0));
-    return GRAPH_FAILED;
-  }
-
-  int64_t size_height = UNKNOWN_DIM;
-  int64_t size_width = UNKNOWN_DIM;
-  Tensor size_tensor;
-  if (op.GetInputConstData("size", size_tensor) == GRAPH_SUCCESS) {
-    auto size_data = reinterpret_cast<int32_t*>(size_tensor.GetData());
-    size_height = static_cast<int64_t>(size_data[0]);
-    size_width = static_cast<int64_t>(size_data[1]);
+  if (dtype == ge::DT_INT32){
+    int32_t* const_data_ptr = reinterpret_cast<int32_t*>(data_ptr);
+    size = size / sizeof(int32_t);
+    for (size_t i=0; i < size; i++) {
+      const_data.push_back((int64_t)((int32_t) ((*(const_data_ptr + i)))));
+    }
+  } else if (dtype == ge::DT_INT64) {
+    int64_t* const_data_ptr = reinterpret_cast<int64_t*>(data_ptr);
+    size = size / sizeof(int64_t);
+    for (size_t i=0; i < size; i++) {
+      const_data.push_back((int64_t)((int64_t) ((*(const_data_ptr + i)))));
+    }
   } else {
-    OP_LOGW(op.GetName().c_str(), "Get input size tensor const data failed");
+    OP_LOGE(op.GetName().c_str(), "resize const not support the type");
+  }
+}
+
+bool ResizeConstInferShape(const Operator& op, const string& image_name,
+                           const string& size_name, const string& output_name) {
+  auto node = NodeUtils::GetNodeFromOperator(op);
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc_x = op_desc->MutableInputDesc(image_name);
+  auto input_desc_size = op_desc->MutableInputDesc(size_name);
+  auto output_desc_y = op_desc->MutableOutputDesc(output_name);
+  auto image_shape = input_desc_x->MutableShape().GetDims();
+  auto input_format = input_desc_x->GetFormat();
+  auto input_size_dtype = input_desc_size->GetDataType();
+
+  std::vector<std::pair<int64_t, int64_t>> x_range;
+  // check whether is -2 case
+  bool is_unkown_rank = image_shape == UNKNOWN_RANK ? true : false;
+  if (is_unkown_rank) {
+    OP_LOGW(op.GetName().c_str(), "the input os unkown rank, will set the input -1, -1, -1 , -1");
+    image_shape = {-1, -1, -1, -1};
+  } else {
+    input_desc_x->GetShapeRange(x_range);
+  }
+  MakeUpShapeRange(image_shape, x_range);
+
+  GeTensorPtr size_tensor = nullptr;
+  vector<int64_t> size_out;
+  std::vector<std::pair<int64_t, int64_t>> output_range;
+  if (NodeUtils::GetInputConstData(node, size_name, size_tensor) != GRAPH_SUCCESS) {
+    OP_LOGW(op.GetName().c_str(), "get sise const value failed, will set output h w = [-1, -1]");
+    size_out.push_back(-1);
+    size_out.push_back(-1);
+    output_range.push_back(std::pair<int64_t, int64_t>{1, -1});
+    output_range.push_back(std::pair<int64_t, int64_t>{1, -1});
+  } else {
+    GetResizeConstValue(op, size_tensor, input_size_dtype, size_out);
+    output_range.push_back(std::pair<int64_t, int64_t>{size_out[0], size_out[0]});
+    output_range.push_back(std::pair<int64_t, int64_t>{size_out[1], size_out[1]});
   }
 
-  auto x_dims = x_shape.GetDims();
-  std::vector<int64_t> y_dims;
-  auto input_format = x_desc->GetFormat();
+  // get input shape range
+  std::vector<std::pair<int64_t, int64_t>> result_range;
+
+  vector<int64_t> y_shape;
   if (input_format == FORMAT_NHWC) {
-    y_dims.push_back(x_dims[0]);
-    y_dims.push_back(size_height);
-    y_dims.push_back(size_width);
-    y_dims.push_back(x_dims[3]);
+    y_shape.push_back(image_shape[0]);
+    y_shape.push_back(size_out[0]);
+    y_shape.push_back(size_out[1]);
+    y_shape.push_back(image_shape[3]);
+    result_range.push_back(x_range[0]);
+    result_range.push_back(output_range[0]);
+    result_range.push_back(output_range[1]);
+    result_range.push_back(x_range[3]);
   } else if (input_format == FORMAT_NCHW) {
-    y_dims.push_back(x_dims[0]);
-    y_dims.push_back(x_dims[1]);
-    y_dims.push_back(size_height);
-    y_dims.push_back(size_width);
+    y_shape.push_back(image_shape[0]);
+    y_shape.push_back(image_shape[1]);
+    y_shape.push_back(size_out[0]);
+    y_shape.push_back(size_out[1]);
+    result_range.push_back(x_range[0]);
+    result_range.push_back(x_range[1]);
+    result_range.push_back(output_range[0]);
+    result_range.push_back(output_range[1]);
   } else {
     OP_LOGE(op.GetName().c_str(), "Not supported this format %d", input_format);
-    return GRAPH_FAILED;
+    return false;
   }
 
-  auto y_desc = op_desc->MutableOutputDesc("y");
-  y_desc->SetDataType(x_desc->GetDataType());
+  output_desc_y->SetShape(GeShape(y_shape));
+  output_desc_y->SetOriginShape(GeShape(y_shape));
+  auto input_dtype = input_desc_x->GetDataType();
+  output_desc_y->SetDataType(input_dtype);
+  output_desc_y->SetShapeRange(result_range);
 
-  GeShape y_shape(y_dims);
-  if (!ShapeFullyDefined(y_shape)) {
-    std::vector<std::pair<int64_t, int64_t>> y_shape_range;
-    for (const int64_t& y_dim : y_dims) {
-      y_shape_range.push_back((y_dim == UNKNOWN_DIM) ? std::pair<int64_t, int64_t>(1, -1)
-                                                     : std::pair<int64_t, int64_t>(y_dim, y_dim));
-    }
-    y_desc->SetShapeRange(y_shape_range);
-  }
-  y_desc->SetShape(y_shape);
-
-  return GRAPH_SUCCESS;
+  return true;
 }
 
 IMPLEMT_COMMON_INFERFUNC(ResizeInferShape) {
@@ -1147,37 +1173,16 @@ IMPLEMT_COMMON_INFERFUNC(ResizeInferShape) {
 
 // ---------------ResizeBilinearV2 Op Start-------------------
 IMPLEMT_COMMON_INFERFUNC(ResizeBilinearV2InferShape) {
-  vector<int64_t> images_shape = op.GetInputDesc("x").GetShape().GetDims();
-  Format input_format = op.GetInputDesc("x").GetFormat();
-  DataType input_dtype_size = op.GetInputDesc("size").GetDataType();
-  TensorDesc td = op.GetOutputDesc("y");
-  Tensor size_tensor;
-  vector<int64_t> size_out;
-  if (op.GetInputConstData("size", size_tensor) != GRAPH_SUCCESS) {
-    OP_LOGW(op.GetName().c_str(), "Get constValue failed of [size]");
-    size_out.push_back(UNKNOWN_DIM);
-    size_out.push_back(UNKNOWN_DIM);
-  } else {
-    GetConstValue(op, size_tensor, input_dtype_size, size_out);
+  const vector<string> depend_names = {"size"};
+  PREPARE_DYNAMIC_SHAPE(depend_names);
+  if (!ResizeConstInferShape(op, "x", "size", "y")) {
+    return GRAPH_FAILED;
   }
 
-  vector<int64_t> y_shape;
-  if (input_format == FORMAT_NHWC) {
-    y_shape.push_back(images_shape[0]);
-    y_shape.push_back(size_out[0]);
-    y_shape.push_back(size_out[1]);
-    y_shape.push_back(images_shape[3]);
-  } else if (input_format == FORMAT_NCHW) {
-    y_shape.push_back(images_shape[0]);
-    y_shape.push_back(images_shape[1]);
-    y_shape.push_back(size_out[0]);
-    y_shape.push_back(size_out[1]);
-  } else {
-    OP_LOGE(op.GetName().c_str(), "Not supported this format%d", input_format);
-  }
-  td.SetShape(ge::Shape(y_shape));
-  td.SetDataType(DT_FLOAT);
-  (void)op.UpdateOutputDesc("y", td);
+  auto op_desc_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto output_desc_y = op_desc_info->MutableOutputDesc("y");
+  output_desc_y->SetDataType(DT_FLOAT);
+
   return GRAPH_SUCCESS;
 }
 
@@ -1186,6 +1191,7 @@ COMMON_INFER_FUNC_REG(ResizeBilinearV2, ResizeBilinearV2InferShape);
 
 // ---------------ResizeBilinearV2D Op Start-------------------
 IMPLEMT_COMMON_INFERFUNC(ResizeBilinearV2DInferShape) {
+
   vector<int64_t> images_shape = op.GetInputDesc("x").GetShape().GetDims();
   vector<int64_t> size_out;
   if (op.GetAttr("size", size_out) == ge::GRAPH_FAILED) {
@@ -1327,36 +1333,82 @@ COMMON_INFER_FUNC_REG(ResizeNearestNeighborV2D, ResizeInferShape);
 // ---------------ResizeNearestNeighborV2D Op End-------------------
 
 // ---------------ResizeNearestNeighborV2 Op Start-------------------
-COMMON_INFER_FUNC_REG(ResizeNearestNeighborV2, ResizeConstInferShape);
+// ---------------ResizeBilinearV2 Op Start-------------------
+IMPLEMT_COMMON_INFERFUNC(ResizeNearestNeighborV2InferShape) {
+  const vector<string> depend_names = {"size"};
+  PREPARE_DYNAMIC_SHAPE(depend_names);
+  if (!ResizeConstInferShape(op, "x", "size", "y")) {
+    return GRAPH_FAILED;
+  }
+
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(ResizeNearestNeighborV2, ResizeNearestNeighborV2InferShape);
 // ---------------ResizeNearestNeighborV2 Op End-------------------
 
 // ---------------ResizeBilinearV2Grad Op Start-------------------
 IMPLEMT_INFERFUNC(ResizeBilinearV2Grad, ResizeBilinearV2GradInfer) {
-  vector<int64_t> grads_shape = op.GetInputDesc("grads").GetShape().GetDims();
-  vector<int64_t> images_shape = op.GetInputDesc("original_image").GetShape().GetDims();
-  DataType input_dtype = op.GetInputDesc("original_image").GetDataType();
-  Format input_format = op.GetInputDesc("grads").GetFormat();
+  PREPARE_DYNAMIC_SHAPE_WITH_NO_DEPENDS();
+  auto op_desc_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc_grad = op_desc_info->MutableInputDesc("grads");
+  auto input_desc_image = op_desc_info->MutableInputDesc("original_image");
+  vector<int64_t> grads_shape = input_desc_grad->MutableShape().GetDims();
+  vector<int64_t> images_shape = input_desc_image->MutableShape().GetDims();
+  DataType input_dtype = input_desc_image->GetDataType();
+  Format input_format = input_desc_grad->GetFormat();
+  auto output_desc_y = op_desc_info->MutableOutputDesc("y");
+  std::vector<std::pair<int64_t, int64_t>> grads_range;
+  std::vector<std::pair<int64_t, int64_t>> image_range;
 
-  TensorDesc td = op.GetOutputDesc("y");
+  bool is_unkown_rank_grads = grads_shape == UNKNOWN_RANK ? true : false;
+  bool is_unkown_rank_images = images_shape == UNKNOWN_RANK ? true : false;
+
+  if (is_unkown_rank_grads) {
+    OP_LOGW(op.GetName().c_str(), "the input os unkown rank, will set the input -1, -1, -1 , -1");
+    grads_shape = {-1, -1, -1, -1};
+  } else {
+    input_desc_grad->GetShapeRange(grads_range);
+  }
+  if (is_unkown_rank_images) {
+    OP_LOGW(op.GetName().c_str(), "the input os unkown rank, will set the input -1, -1, -1 , -1");
+    images_shape = {-1, -1, -1, -1};
+  } else {
+    input_desc_image->GetShapeRange(image_range);
+  }
+
+  MakeUpShapeRange(grads_shape, grads_range);
+  MakeUpShapeRange(images_shape, image_range);
+
+  std::vector<std::pair<int64_t, int64_t>> y_range;
   vector<int64_t> y_shape;
   if (input_format == FORMAT_NHWC) {
     y_shape.push_back(grads_shape[0]);
     y_shape.push_back(images_shape[1]);
     y_shape.push_back(images_shape[2]);
     y_shape.push_back(grads_shape[3]);
+    y_range.push_back(grads_range[0]);
+    y_range.push_back(image_range[1]);
+    y_range.push_back(image_range[2]);
+    y_range.push_back(grads_range[3]);
   } else if (input_format == FORMAT_NCHW) {
     y_shape.push_back(grads_shape[0]);
     y_shape.push_back(grads_shape[1]);
     y_shape.push_back(images_shape[2]);
     y_shape.push_back(images_shape[3]);
+    y_range.push_back(grads_range[0]);
+    y_range.push_back(grads_range[1]);
+    y_range.push_back(image_range[2]);
+    y_range.push_back(image_range[3]);
   } else {
     string expected_format_list = ConcatString("FORMAT_NHWC, FORMAT_NCHW");
     OpsInputFormatErrReport(op.GetName(), "grads", expected_format_list, ConcatString(input_format));
     OP_LOGE(op.GetName().c_str(), "Not supported this format%d", input_format);
   }
-  td.SetShape(Shape(y_shape));
-  td.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("y", td);
+  output_desc_y->SetShape(GeShape(y_shape));
+  output_desc_y->SetOriginShape(GeShape(y_shape));
+  output_desc_y->SetShapeRange(y_range);
+  output_desc_y->SetDataType(input_dtype);
+
   return GRAPH_SUCCESS;
 }
 

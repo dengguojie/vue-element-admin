@@ -83,11 +83,15 @@ Status NMSWithMaskFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
 
   // update pad node info
   auto nms_input_dims = pad_output_tensor_desc.GetShape().GetDims();
+  if (nms_input_dims.size() >= 2 && PatternFusionUtil::IsUnknownShape(nms_input_dims[1])) {
+    OP_LOGE(kFusedOpType.c_str(), "NMSWithMaskFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
   if (nms_input_dims.size() != 2 || nms_input_dims[1] != 5) {
-      OP_LOGW(kFusedOpType.c_str(), "The input dim of %s is not 2 dims or the second dimension of input is not 5",
-              nms_node_ptr->GetName().c_str());
-      return NOT_CHANGED;
-    }
+    OP_LOGW(kFusedOpType.c_str(), "The input dim of %s is not 2 dims or the second dimension of input is not 5",
+            nms_node_ptr->GetName().c_str());
+    return NOT_CHANGED;
+  }
   // set pad output shape
   nms_input_dims[1] = 8;
   pad_output_tensor_desc.SetShape(GeShape(nms_input_dims));
@@ -115,21 +119,25 @@ Status NMSWithMaskFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
                     return FAILED);
 
   // add the original edge of nms to pad
-  FUSION_PASS_CHECK(GraphUtils::AddEdge(nms_node_ptr->GetInDataAnchor(0)->GetPeerOutAnchor(),
-                                        pad_node_ptr->GetInDataAnchor(0)) != SUCCESS,
-                    OP_LOGE(kFusedOpType.c_str(), "Add edge from fused node:%s to fusion node:%s failed.",
-                            nms_node_ptr->GetName().c_str(), nms_node_ptr->GetName().c_str()),
-                    return FAILED);
+  auto nms_node_in_data_anchor = nms_node_ptr->GetInDataAnchor(0);
+  FUSION_PASS_CHECK(nms_node_in_data_anchor == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The fusionNode: nms_node_in_data_anchor is null, fusion failed."),
+                    return PARAM_INVALID);
+
+  FUSION_PASS_CHECK(
+      GraphUtils::AddEdge(nms_node_in_data_anchor->GetPeerOutAnchor(), pad_node_ptr->GetInDataAnchor(0)) != SUCCESS,
+      OP_LOGE(kFusedOpType.c_str(), "Add edge from fused node:%s to fusion node:%s failed.",
+              nms_node_ptr->GetName().c_str(), nms_node_ptr->GetName().c_str()),
+      return FAILED);
 
   // delete the first edge of nms
   FUSION_PASS_CHECK(
-      GraphUtils::RemoveEdge(nms_node_ptr->GetInDataAnchor(0)->GetPeerOutAnchor(), nms_node_ptr->GetInDataAnchor(0)) !=
-          SUCCESS,
+      GraphUtils::RemoveEdge(nms_node_in_data_anchor->GetPeerOutAnchor(), nms_node_in_data_anchor) != SUCCESS,
       OP_LOGE(kFusedOpType.c_str(), "Remove input edge from fused node:%s.", nms_node_ptr->GetName().c_str()),
       return FAILED);
 
   // add the output of pad edge to nms
-  FUSION_PASS_CHECK(GraphUtils::AddEdge(pad_node_ptr->GetOutDataAnchor(0), nms_node_ptr->GetInDataAnchor(0)) != SUCCESS,
+  FUSION_PASS_CHECK(GraphUtils::AddEdge(pad_node_ptr->GetOutDataAnchor(0), nms_node_in_data_anchor) != SUCCESS,
                     OP_LOGE(kFusedOpType.c_str(), "Add edge from node:%s to node:%s failed.",
                             pad_node_ptr->GetName().c_str(), nms_node_ptr->GetName().c_str()),
                     return FAILED);

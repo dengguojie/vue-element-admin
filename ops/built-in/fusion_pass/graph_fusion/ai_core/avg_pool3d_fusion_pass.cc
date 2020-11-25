@@ -95,26 +95,37 @@ int GetIntersection(int pos1_start, int pos1_end, int pos2_start, int pos2_end) 
   return pos1_end - pos1_start;
 }
 
-void GenMultiplier(int fmap_n, int fmap_c1, int fmap_d, int fmap_h, int fmap_w, int kd, int kh, int kw,
-                   int stride_d, int stride_h, int stride_w, vector<int> pads, uint16_t *data, int max_size) {
+void GenMultiplier(int fmap_n, int fmap_c1, int fmap_d, int fmap_h, int fmap_w, int dout, int ho, int wo, int kd,
+                   int kh, int kw, int stride_d, int stride_h, int stride_w, vector<int> pads, uint16_t *data,
+                   int max_size, bool ceil_mode, bool count_include_pad) {
   int pad_d = pads[0] + pads[1];
   int pad_h = pads[2] + pads[3];
   int pad_w = pads[4] + pads[5];
   int cnt = 0;
-  for (int nn=0; nn < fmap_n; nn++) {
-    for (int i=0; i + kd <= fmap_d + pad_d; i += stride_d) {
+  int len_d = fmap_d + pad_d;
+  int len_h = fmap_h + pad_h;
+  int len_w = fmap_w + pad_w;
+  for (int nn = 0; nn < fmap_n; nn++) {
+    int start_d = 0;
+    for (int di = 0; di < dout; di++) {
+      int v_kd = start_d + kd <= len_d ? kd : len_d - start_d;
       for (int cc = 0; cc < fmap_c1; cc++) {
-        for (int j=0;j + kh <= fmap_h + pad_h; j += stride_h) {
-          for (int k = 0; k + kw <= fmap_w + pad_w; k += stride_w) {
-            int valid_d = GetIntersection(i, i + kd, pads[0], pads[0] + fmap_d);
-            int valid_h = GetIntersection(j, j + kh, pads[2], pads[2] + fmap_h);
-            int valid_w = GetIntersection(k, k + kw, pads[4], pads[4] + fmap_w);
-            int valid_size = valid_d * valid_h * valid_w;
+        int start_h = 0;
+        for (int hi = 0; hi < ho; hi++) {
+          int v_kh = start_h + kh <= len_h ? kh : len_h - start_h;
+          int start_w = 0;
+          for (int wi = 0; wi < wo; wi++) {
+            int v_kw = start_w + kw <= len_w ? kw : len_w - start_w;
+            int valid_d = GetIntersection(start_d, start_d + kd, pads[0], pads[0] + fmap_d);
+            int valid_h = GetIntersection(start_h, start_h + kh, pads[2], pads[2] + fmap_h);
+            int valid_w = GetIntersection(start_w, start_w + kw, pads[4], pads[4] + fmap_w);
+            int valid_data = valid_d * valid_h * valid_w;
+            int valid_kernel = v_kd * v_kh * v_kw;
             fp16_t t;
             t.val = 0;
-            float val = 1.0 / valid_size;
+            float val = count_include_pad ? 1.0 / valid_kernel : 1.0 / valid_data;
             t = val;
-            for (int c = 0; c <kC0; c++) {
+            for (int c = 0; c < kC0; c++) {
               if (cnt >= max_size){
                 OP_LOGE("Multiplier size error, max size is %d.",max_size);
                 return;
@@ -122,13 +133,71 @@ void GenMultiplier(int fmap_n, int fmap_c1, int fmap_d, int fmap_h, int fmap_w, 
               data[cnt] = t.val;
               cnt++;
             }
+            start_w += stride_w;
           }
+          start_h += stride_h;
         }
       }
+      start_d += stride_d;
     }
   }
 }
 
+void GetStridesAndKSize(Operator& op, Format refer, int32_t& strd, int32_t& strh, int32_t& strw,
+                        int32_t& kd, int32_t& kh, int32_t& kw) {
+  std::vector<int32_t> stride_list;
+  std::vector<int32_t> ksize_list;
+  op.GetAttr("strides", stride_list);
+  op.GetAttr("ksize", ksize_list);
+  if (ksize_list.size() == 1) {
+    kd = ksize_list[0];
+    kh = ksize_list[0];
+    kw = ksize_list[0];
+  } else if (ksize_list.size() == 3) {
+    kd = ksize_list[0];
+    kh = ksize_list[1];
+    kw = ksize_list[2];
+  } else if (ksize_list.size() == 5) {
+    if (refer == FORMAT_NCDHW) {
+      kd = ksize_list[2];
+      kh = ksize_list[3];
+      kw = ksize_list[4];
+    } else if(refer == FORMAT_NDHWC) {
+      kd = ksize_list[1];
+      kh = ksize_list[2];
+      kw = ksize_list[3];
+    } else {
+      // DHWCN
+      kd = ksize_list[0];
+      kh = ksize_list[1];
+      kw = ksize_list[2];
+    }
+  }
+  if (stride_list.size() == 1) {
+    strd = stride_list[0];
+    strh = stride_list[0];
+    strw = stride_list[0];
+  } else if (stride_list.size() == 3) {
+    strd = stride_list[0];
+    strh = stride_list[1];
+    strw = stride_list[2];
+  } else if (stride_list.size() == 5) {
+    if (refer == FORMAT_NCDHW) {
+      strd = stride_list[2];
+      strh = stride_list[3];
+      strw = stride_list[4];
+    } else if (refer == FORMAT_NDHWC) {
+      strd = stride_list[1];
+      strh = stride_list[2];
+      strw = stride_list[3];
+    } else {
+      // DHWCN
+      strd = stride_list[0];
+      strh = stride_list[1];
+      strw = stride_list[2];
+    }
+  }
+}
 
 vector<FusionPattern*> AvgPool3DFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -151,6 +220,7 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
   int64_t dout;
   int64_t ho;
   int64_t wo;
+  int64_t fmap_n;
   int64_t fmap_c;
   int64_t fmap_d;
   int64_t fmap_h;
@@ -159,39 +229,62 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
     dout = dims_out[1];
     ho = dims_out[2];
     wo = dims_out[3];
-    fmap_c = dims_in[4];
+    fmap_n = dims_in[0];
     fmap_d = dims_in[1];
     fmap_h = dims_in[2];
     fmap_w = dims_in[3];
+    fmap_c = dims_in[4];
   } else if (data_format == FORMAT_NCDHW) {
     dout = dims_out[2];
     ho = dims_out[3];
     wo = dims_out[4];
+    fmap_n = dims_in[0];
     fmap_c = dims_in[1];
     fmap_d = dims_in[2];
     fmap_h = dims_in[3];
     fmap_w = dims_in[4];
+  } else {
+    // DHWCN
+    dout = dims_out[0];
+    ho = dims_out[1];
+    wo = dims_out[2];
+    fmap_d = dims_in[0];
+    fmap_h = dims_in[1];
+    fmap_w = dims_in[2];
+    fmap_c = dims_in[3];
+    fmap_n = dims_in[4];
   }
-  int64_t fmap_n = dims_in[0];
+
+  if (PatternFusionUtil::IsUnknownShape(dout) ||
+      PatternFusionUtil::IsUnknownShape(ho) ||
+      PatternFusionUtil::IsUnknownShape(wo) ||
+      PatternFusionUtil::IsUnknownShape(fmap_d) ||
+      PatternFusionUtil::IsUnknownShape(fmap_h) ||
+      PatternFusionUtil::IsUnknownShape(fmap_w) ||
+      PatternFusionUtil::IsUnknownShape(fmap_n) ||
+      PatternFusionUtil::IsUnknownShape(fmap_c)) {
+    OP_LOGE(kFusedOpType.c_str(), "AvgPool3DFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
+
   int64_t fmap_c1 = (fmap_c + kC0 - 1) / kC0;
 
-  vector<int32_t> ksize;
-  op.GetAttr("ksize",ksize);
-  int kd=ksize[1];
-  int kh=ksize[2];
-  int kw=ksize[3];
-
-  vector<int32_t> strides;
-  op.GetAttr("strides",strides);
-  int stride_d = strides[1];
-  int stride_h = strides[2];
-  int stride_w = strides[3];
+  int kd;
+  int kh;
+  int kw;
+  int stride_d;
+  int stride_h;
+  int stride_w;
+  GetStridesAndKSize(op, data_format, stride_d, stride_h, stride_w, kd, kh, kw);
 
   vector<int32_t> pads;
   op.GetAttr("pads",pads);
 
   bool count_include_pad = true;
   op.GetAttr("count_include_pad",count_include_pad);
+
+  bool ceil_mode = false;
+  op.GetAttr("ceil_mode", ceil_mode);
 
   int divisor_override{0};
   op.GetAttr("divisor_override",divisor_override);
@@ -207,14 +300,15 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
   FUSION_PASS_CHECK(filter_mem.get() == nullptr, OP_LOGE(kFusedOpType.c_str(), "Filter is NULL"),
                     return PARAM_INVALID);
 
-  float val = 1.0/(kd*kh*kw);
+  float val = 1.0 / (kd * kh * kw);
 
-  if (!IsZeroPads(pads) && !count_include_pad && !divisor_override) {
-    // need multiplier
+  if (divisor_override) {
+    val = 1.0 / divisor_override;
+  } else if (!IsZeroPads(pads)) {
+    // need multiplier and filter is all one in diagnoal
     val = 1.0;
-  }else if (divisor_override) {
-    val = 1.0/divisor_override;
   }
+
   GenFilter(filter_size, filter_mem.get(), val);
 
   // define shape
@@ -235,19 +329,21 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
 
   vector<GeTensorPtr> weights = {filter_ptr};
 
-  if (!IsZeroPads(pads) && !count_include_pad && !divisor_override) {
+  if (!IsZeroPads(pads) && !divisor_override) {
     GeTensorPtr multiplier_ptr{nullptr};
     int64_t multiplier_size = fmap_n * fmap_c1 * kC0 * dout * ho * wo;
     unique_ptr<uint16_t> multiplier_mem(new (nothrow) uint16_t[multiplier_size]());
     FUSION_PASS_CHECK(multiplier_mem.get() == nullptr, OP_LOGE(kFusedOpType.c_str(), "Multiplier is NULL"),
                       return PARAM_INVALID);
 
-    GenMultiplier(fmap_n, fmap_c1, fmap_d, fmap_h, fmap_w, kd, kh, kw, stride_d, stride_h, stride_w, pads,
-                  multiplier_mem.get(), multiplier_size);
+    GenMultiplier(fmap_n, fmap_c1, fmap_d, fmap_h, fmap_w, dout, ho, wo, kd, kh, kw, stride_d, stride_h, stride_w, pads,
+                  multiplier_mem.get(), multiplier_size, ceil_mode, count_include_pad);
 
-    vector<int64_t> mul_dim_info{fmap_n * dout, fmap_c1, ho * wo, kC0};
+    vector<int64_t> mul_dim_info{fmap_n,  dout, fmap_c1, ho, wo, kC0};
     GeShape mul_shape(mul_dim_info);
     GeTensorDesc mul_tensor_desc(mul_shape, FORMAT_NDC1HWC0, DT_FLOAT16);
+    mul_tensor_desc.SetOriginShape(mul_shape);
+    mul_tensor_desc.SetOriginFormat(FORMAT_NDC1HWC0);
     FUSION_PASS_MAKE_SHARED((multiplier_ptr = make_shared<GeTensor>(mul_tensor_desc,
                                                                     reinterpret_cast<uint8_t*>(multiplier_mem.get()),
                                                                     multiplier_size * sizeof(uint16_t))),

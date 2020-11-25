@@ -85,17 +85,21 @@ Status UnpackFusionPass::AddUnpackOps(OpDescPtr fused_desc, ComputeGraph& graph,
       OP_LOGE(kFusedOpType.c_str(), "The unpack_node:%s is null, fusion failed.", unpack_node->GetName().c_str()),
       return PARAM_INVALID);
   FUSION_PASS_CHECK(
-      SUCCESS != GraphUtils::AddEdge(splitvd_base_node->GetOutDataAnchor(i), unpack_node->GetInDataAnchor(0)),
+      GraphUtils::AddEdge(splitvd_base_node->GetOutDataAnchor(i), unpack_node->GetInDataAnchor(0)) != SUCCESS,
       OP_LOGE(kFusedOpType.c_str(), "Add edge from fused node:%s's index[%lld] to fusion node:%s's index[%lld] failed.",
               splitvd_base_node->GetName().c_str(), i, unpack_node->GetName().c_str(), i),
       return FAILED);
 
   for (int64_t m = 0; m < mini_out; m++) {
+    FUSION_PASS_CHECK(
+        fused_node->GetOutDataAnchor(kMiniOut * i + m) == nullptr,
+        OP_LOGE(kFusedOpType.c_str(), "The OutDataAnchor(kMiniOut * i + m) of fused_node is null, fusion failed."),
+        return PARAM_INVALID);
     for (InDataAnchorPtr in_anchor_ptr : fused_node->GetOutDataAnchor(kMiniOut * i + m)->GetPeerInDataAnchors()) {
       FUSION_PASS_CHECK(
-          SUCCESS != GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(kMiniOut * i + m), in_anchor_ptr),
+          GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(kMiniOut * i + m), in_anchor_ptr) != SUCCESS,
           OP_LOGE(kFusedOpType.c_str(), "Remove out data edge failed."), return FAILED);
-      FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(unpack_node->GetOutDataAnchor(m), in_anchor_ptr),
+      FUSION_PASS_CHECK(GraphUtils::AddEdge(unpack_node->GetOutDataAnchor(m), in_anchor_ptr) != SUCCESS,
                         OP_LOGE(kFusedOpType.c_str(), "Add out data edge failed."), return FAILED);
     }
   }
@@ -163,10 +167,12 @@ Status UnpackFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<No
                       OP_LOGE(kFusedOpType.c_str(), "The splitvd_base_node:%s is null, fusion failed.",
                               splitvd_base_node->GetName().c_str()),
                       return PARAM_INVALID);
-
+    FUSION_PASS_CHECK(fused_node->GetInDataAnchor(0) == nullptr,
+                      OP_LOGE(kFusedOpType.c_str(), "The InDataAnchor(0) of fused_node is null, fusion failed."),
+                      return PARAM_INVALID);
     FUSION_PASS_CHECK(
-        SUCCESS != GraphUtils::AddEdge(fused_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
-                                       splitvd_base_node->GetInDataAnchor(0)),
+        GraphUtils::AddEdge(fused_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
+                            splitvd_base_node->GetInDataAnchor(0)) != SUCCESS,
         OP_LOGE(kFusedOpType.c_str(), "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
                 fused_node->GetName().c_str(), 0, splitvd_base_node->GetName().c_str(), 0),
         return FAILED);
@@ -179,11 +185,15 @@ Status UnpackFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<No
         AddUnpackOps(fused_desc, graph, new_nodes, output_desc, fused_node, splitvd_base_node, num, axis, i,
                      nodes_num - 1, last_node_num_unpack);
       } else {
+        FUSION_PASS_CHECK(
+            fused_node->GetOutDataAnchor(kMiniOut * i) == nullptr,
+            OP_LOGE(kFusedOpType.c_str(), "The OutDataAnchor(kMiniOut * i) of fused_node is null, fusion failed."),
+            return PARAM_INVALID);
         for (InDataAnchorPtr in_anchor_ptr : fused_node->GetOutDataAnchor(kMiniOut * i)->GetPeerInDataAnchors()) {
           FUSION_PASS_CHECK(
-              SUCCESS != GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(kMiniOut * i), in_anchor_ptr),
+              GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(kMiniOut * i), in_anchor_ptr) != SUCCESS,
               OP_LOGE(kFusedOpType.c_str(), "Remove out data edge failed."), return FAILED);
-          FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(splitvd_base_node->GetOutDataAnchor(i), in_anchor_ptr),
+          FUSION_PASS_CHECK(GraphUtils::AddEdge(splitvd_base_node->GetOutDataAnchor(i), in_anchor_ptr) != SUCCESS,
                             OP_LOGE(kFusedOpType.c_str(), "Add out data edge failed."), return FAILED);
         }
       }

@@ -52,7 +52,7 @@ Status PermVecGen(int64_t dim_size, int64_t dim_aim, vector<int64_t>& perm) {
   for (int64_t i = 0; i < dim_size; i++) {
     perm.push_back(i);
   }
-  std::swap(perm[dim_aim], perm[dim_size - 1]);
+  swap(perm[dim_aim], perm[dim_size - 1]);
   return SUCCESS;
 }
 
@@ -98,9 +98,8 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
 
   // The value of sorted cannot be false in aicore
   bool sorted = true;
-  FUSION_PASS_CHECK(!ge::AttrUtils::GetBool(topk_desc, "sorted", sorted),
-                    OP_LOGE(kFusedOpType.c_str(), "Get TopK's attr sorted failed."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(!AttrUtils::GetBool(topk_desc, "sorted", sorted),
+                    OP_LOGE(kFusedOpType.c_str(), "Get TopK's attr sorted failed."), return PARAM_INVALID);
   if (!sorted) {
     OP_LOGW(kFusedOpType.c_str(), "The value of sorted must be true in aicore, fusion failed.");
     return NOT_CHANGED;
@@ -108,7 +107,12 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
 
   // first input of topkv2 is non-constant, second is constant
   InDataAnchorPtr topk_anchor_ptr0 = topk_node->GetInDataAnchor(0);
+  FUSION_PASS_CHECK(topk_anchor_ptr0 == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The topk_anchor_ptr0 is null, fusion failed."),
+                    return PARAM_INVALID);
   OutDataAnchorPtr data_anchor_ptr = topk_anchor_ptr0->GetPeerOutAnchor();
+  FUSION_PASS_CHECK(data_anchor_ptr == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The data_anchor_ptr is null, fusion failed."), return PARAM_INVALID);
   NodePtr data_node = data_anchor_ptr->GetOwnerNode();
   GeTensorDesc topk_data_tensor = data_node->GetOpDesc()->GetOutputDesc(0);
   GeShape topk_data_shape = topk_data_tensor.GetShape();
@@ -255,6 +259,9 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
   NodePtr trans_input_node =
       PatternFusionUtil::InsertSingleNode(graph, fusion_node, kPatternTranspose, true, 0, fusion_nodes);
   OpDescPtr trans_input_desc = trans_input_node->GetOpDesc();
+  FUSION_PASS_CHECK(trans_input_desc == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The trans_input_desc is null, fusion failed."),
+                    return PARAM_INVALID);
   GeTensorDesc trans_data_tensor = trans_input_desc->GetInputDesc(0);
   GeShape trans_data_shape = trans_data_tensor.GetShape();
   vector<int64_t> trans_dim_info = trans_data_shape.GetDims();
@@ -263,10 +270,10 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
     OP_LOGE(kFusedOpType.c_str(), "Dim index is out of shape range.");
   }
 
-  std::swap(trans_dim_info[dim_aim], trans_dim_info[dim_size - 1]);
+  swap(trans_dim_info[dim_aim], trans_dim_info[dim_size - 1]);
 
   // get input_transpose perm
-  std::vector<int64_t> perm;
+  vector<int64_t> perm;
   ret = PermVecGen(dim_size, dim_aim, perm);
   FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(kFusedOpType.c_str(), "PermVecGen failed."), return ret);
 
@@ -274,7 +281,7 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
   FUSION_PASS_CHECK(!AttrUtils::SetListInt(trans_input_desc, "perm", perm),
                     OP_LOGE(kFusedOpType.c_str(), "Input transporse set perm failed"), return FAILED);
   // set input_transpose output shape range
-  std::vector<std::pair<int64_t, int64_t>> shape_range_after_sorted;
+  vector<pair<int64_t, int64_t>> shape_range_after_sorted;
   trans_data_tensor.GetShapeRange(shape_range_after_sorted);
 
   if (shape_range_after_sorted.size() > 0) {
@@ -287,16 +294,25 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
 
   // set input_transpose output shape
   GeShape transpose_assit_shape(trans_dim_info);
-  trans_input_desc->MutableOutputDesc(0)->SetShape(ge::GeShape(transpose_assit_shape));
-  trans_input_desc->MutableOutputDesc(0)->SetOriginShape(ge::GeShape(transpose_assit_shape));
+  auto transin_mutable_output0 = trans_input_desc->MutableOutputDesc(0);
+  FUSION_PASS_CHECK(transin_mutable_output0 == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The transin_mutable_output0 is null, fusion failed."),
+                    return PARAM_INVALID);
+  transin_mutable_output0->SetShape(GeShape(transpose_assit_shape));
+  transin_mutable_output0->SetOriginShape(GeShape(transpose_assit_shape));
 
   // set topk dim and input desc
   AttrUtils::SetInt(topkd_desc, "dim", -1);
-  fusion_node->GetOpDesc()->MutableInputDesc(0)->SetShape(ge::GeShape(transpose_assit_shape));
-  fusion_node->GetOpDesc()->MutableInputDesc(0)->SetOriginShape(ge::GeShape(transpose_assit_shape));
+  auto fusion_mutable_input0 = topkd_desc->MutableInputDesc(0);
+  FUSION_PASS_CHECK(fusion_mutable_input0 == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The fusion_mutable_input0 is null, fusion failed."),
+                    return PARAM_INVALID);
+
+  fusion_mutable_input0->SetShape(GeShape(transpose_assit_shape));
+  fusion_mutable_input0->SetOriginShape(GeShape(transpose_assit_shape));
   // set topkd input shape range
-  OpDescPtr topkd_input_desc = fusion_node->GetOpDesc();
-  GeTensorDesc topkd_input_data_tensor = topkd_input_desc->GetInputDesc(0);
+
+  GeTensorDesc topkd_input_data_tensor = topkd_desc->GetInputDesc(0);
   topkd_input_data_tensor.SetShapeRange(shape_range_after_sorted);
 
   // set topkd output desc according to transpose
@@ -305,26 +321,34 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
   GeShape topkd_data_shape = topkd_data_tensor.GetShape();
   topk_out_shape = topkd_data_shape.GetDims();
   vector<int64_t> topkd_dim_info = topk_out_shape;
-  std::swap(topkd_dim_info[dim_aim], topkd_dim_info[dim_size - 1]);
+  swap(topkd_dim_info[dim_aim], topkd_dim_info[dim_size - 1]);
 
   // set topkd val output shape
   GeShape topk_out_ge_shape(topkd_dim_info);
-  fusion_node->GetOpDesc()->MutableOutputDesc(0)->SetShape(ge::GeShape(topk_out_ge_shape));
-  fusion_node->GetOpDesc()->MutableOutputDesc(0)->SetOriginShape(ge::GeShape(topk_out_ge_shape));
+  auto fusion_mutable_output0 = topkd_desc->MutableOutputDesc(0);
+  FUSION_PASS_CHECK(fusion_mutable_output0 == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The fusion_mutable_output0 is null, fusion failed."),
+                    return PARAM_INVALID);
+  fusion_mutable_output0->SetShape(GeShape(topk_out_ge_shape));
+  fusion_mutable_output0->SetOriginShape(GeShape(topk_out_ge_shape));
   // set topkd val output shape range
-  std::vector<std::pair<int64_t, int64_t>> shape_range_val_k;
+  vector<pair<int64_t, int64_t>> shape_range_val_k;
   shape_range_val_k = shape_range_after_sorted;
   if (shape_range_val_k.size() > 0) {
     shape_range_val_k[shape_range_val_k.size() - 1].second = const_data_val;
   }
-  GeTensorDesc topkd_data_out_tensor = topkd_input_desc->GetOutputDesc(0);
+  GeTensorDesc topkd_data_out_tensor = topkd_desc->GetOutputDesc(0);
   topkd_data_out_tensor.SetShapeRange(shape_range_val_k);
 
   // set topkd index output shape
-  fusion_node->GetOpDesc()->MutableOutputDesc(1)->SetShape(ge::GeShape(topk_out_ge_shape));
-  fusion_node->GetOpDesc()->MutableOutputDesc(1)->SetOriginShape(ge::GeShape(topk_out_ge_shape));
+  auto fusion_mutable_output1 = topkd_desc->MutableOutputDesc(1);
+  FUSION_PASS_CHECK(fusion_mutable_output1 == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The fusion_mutable_output1 is null, fusion failed."),
+                    return PARAM_INVALID);
+  fusion_mutable_output1->SetShape(GeShape(topk_out_ge_shape));
+  fusion_mutable_output1->SetOriginShape(GeShape(topk_out_ge_shape));
   // set topkd index output shape range
-  GeTensorDesc topkd_data_out_index_tensor = topkd_input_desc->GetOutputDesc(1);
+  GeTensorDesc topkd_data_out_index_tensor = topkd_desc->GetOutputDesc(1);
   topkd_data_out_index_tensor.SetShapeRange(shape_range_val_k);
 
   NodePtr trans_output_node =
@@ -336,14 +360,18 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
                     OP_LOGE(kFusedOpType.c_str(), "Output val transporse set perm failed"), return FAILED);
 
   // set val transepose output shape
-  GeShape out_transpose_ouput_assit_shape(topk_out_shape);
-  trans_output_desc->MutableOutputDesc(0)->SetShape(ge::GeShape(out_transpose_ouput_assit_shape));
-  trans_output_desc->MutableOutputDesc(0)->SetOriginShape(ge::GeShape(out_transpose_ouput_assit_shape));
+  GeShape out_transpose_output_assit_shape(topk_out_shape);
+  auto transout_mutable_output0 = trans_output_desc->MutableOutputDesc(0);
+  FUSION_PASS_CHECK(transout_mutable_output0 == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The transout_mutable_output0 is null, fusion failed."),
+                    return PARAM_INVALID);
+  transout_mutable_output0->SetShape(GeShape(out_transpose_output_assit_shape));
+  transout_mutable_output0->SetOriginShape(GeShape(out_transpose_output_assit_shape));
   // set val transepose output shape input_shape_range
   GeTensorDesc trans_output_tensor_input = trans_output_desc->GetInputDesc(0);
   trans_output_tensor_input.SetShapeRange(shape_range_val_k);
   // set val transepose output shape output_shape_range
-  std::vector<std::pair<int64_t, int64_t>> shape_range_val_k_sorted;
+  vector<pair<int64_t, int64_t>> shape_range_val_k_sorted;
   shape_range_val_k_sorted = shape_range_val_k;
 
   if (shape_range_val_k_sorted.size() > 0) {
@@ -363,8 +391,12 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
                     OP_LOGE(kFusedOpType.c_str(), "Output index transporse set perm failed"), return FAILED);
   // set index transepose output shape
   GeShape out_index_transpose_output_assit_shape(topk_out_shape);
-  trans_output_index_desc->MutableOutputDesc(0)->SetShape(ge::GeShape(out_index_transpose_output_assit_shape));
-  trans_output_index_desc->MutableOutputDesc(0)->SetOriginShape(ge::GeShape(out_index_transpose_output_assit_shape));
+  auto trans_index_mutable_output0 = trans_output_index_desc->MutableOutputDesc(0);
+  FUSION_PASS_CHECK(trans_index_mutable_output0 == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The trans_index_mutable_output0 is null, fusion failed."),
+                    return PARAM_INVALID);
+  trans_index_mutable_output0->SetShape(GeShape(out_index_transpose_output_assit_shape));
+  trans_index_mutable_output0->SetOriginShape(GeShape(out_index_transpose_output_assit_shape));
   // set index transepose output shape input_shape_range
   GeTensorDesc trans_output_index_tensor_input = trans_output_index_desc->GetInputDesc(0);
   trans_output_index_tensor_input.SetShapeRange(shape_range_val_k);

@@ -77,7 +77,8 @@ Status ParseParamsMaxPool(const Message* op_src, ge::Operator& op_dest) {
       }
     } else if (attr.name() == "pads" && attr.type() == ge::onnx::AttributeProto::INTS) {
       if (attr.ints_size() == 4) {
-        for (int i = 0; i < attr.ints_size(); i++) {
+        std::vector<int> rank = {0, 2, 1, 3};
+        for (auto i : rank){
           v_pads.push_back(attr.ints(i));
         }
       } else if (attr.ints_size() == 1) {

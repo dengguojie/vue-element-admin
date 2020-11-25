@@ -153,12 +153,22 @@ Status MatrixSetDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   int64_t dimsInput = matrixsetdiagInputShape.GetDimNum() - 1;
   int64_t dimsInput1 = matrixsetdiagInputShape.GetDimNum() - 2;
   for (size_t j = 0; j < matrixsetdiagInputShape.GetDimNum(); ++j) {
+    if (PatternFusionUtil::IsUnknownShape(matrixsetdiagInputShape.GetDim(j))) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "MatrixSetDiagFusionPass cannot be applied for unknown shape.");
+      return NOT_CHANGED;
+    }
     dimNums = matrixsetdiagInputShape.GetDim(j) * dimNums;
   }
 
   // get the last dims of input shape
   int64_t dimNums1 = matrixsetdiagInputShape.GetDim(dimsInput);
   int64_t dimNums2 = matrixsetdiagInputShape.GetDim(dimsInput1);
+
+  if (PatternFusionUtil::IsUnknownShape(dimNums1) ||
+      PatternFusionUtil::IsUnknownShape(dimNums2)) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "MatrixSetDiagFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
 
   // GESHAPE->vector
   vector<int64_t> dimInfo = matrixsetdiagInputShape.GetDims();
@@ -285,6 +295,8 @@ Status MatrixSetDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
                                  tensorDesc, reinterpret_cast<uint8_t*>(inputAssit.get()), dimNums * sizeof(uint8_t))),
                             assitPtr = nullptr;
                             return PARAM_INVALID);
+  } else {
+    return NOT_CHANGED;
   }
   // check op support
   vector<ge::GeTensorPtr> weights = {assitPtr};

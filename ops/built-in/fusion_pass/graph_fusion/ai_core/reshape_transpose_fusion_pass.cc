@@ -93,6 +93,10 @@ Status ReshapeTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   vector<int64_t> reshapeDimInfo = reshapeDesc->GetInputDesc(0).GetOriginShape().GetDims();
   vector<int64_t> transposeDimInfo = transDesc->GetOutputDesc(0).GetOriginShape().GetDims();
   if (reshapeDimInfo.size() == 1) {
+    if (PatternFusionUtil::IsUnknownShape(reshapeDimInfo[0])) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "ReshapeTransposeFusionPass cannot be applied for unknown shape.");
+      return NOT_CHANGED;
+    }
     if (reshapeDimInfo[0] % 16 != 0) {
       OP_LOGI(FUSED_OP_TYPE.c_str(),
               "Node[%s]'s dimsize is [%zu], last one dimension should be divisible by 16, but actually is [%ld].",
@@ -100,6 +104,11 @@ Status ReshapeTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
       return NOT_CHANGED;
     }
   } else if (reshapeDimInfo.size() >= 2) {
+    if (PatternFusionUtil::IsUnknownShape(reshapeDimInfo[reshapeDimInfo.size() - 1]) ||
+        PatternFusionUtil::IsUnknownShape(reshapeDimInfo[reshapeDimInfo.size() - 2])) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "ReshapeTransposeFusionPass cannot be applied for unknown shape.");
+      return NOT_CHANGED;
+    }
     if (reshapeDimInfo[reshapeDimInfo.size() - 1] % 16 != 0 || reshapeDimInfo[reshapeDimInfo.size() - 2] % 16 != 0) {
       OP_LOGI(
           FUSED_OP_TYPE.c_str(),
@@ -114,6 +123,10 @@ Status ReshapeTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
     return NOT_CHANGED;
   }
   if (transposeDimInfo.size() == 1) {
+    if (PatternFusionUtil::IsUnknownShape(transposeDimInfo[0])) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "ReshapeTransposeFusionPass cannot be applied for unknown shape.");
+      return NOT_CHANGED;
+    }
     if (transposeDimInfo[0] % 16 != 0) {
       OP_LOGI(FUSED_OP_TYPE.c_str(),
               "Node[%s]'s dimsize is [%zu], last one dimension should be divisible by 16, but actually is [%ld].",
@@ -121,6 +134,11 @@ Status ReshapeTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
       return NOT_CHANGED;
     }
   } else if (transposeDimInfo.size() >= 2) {
+    if (PatternFusionUtil::IsUnknownShape(transposeDimInfo[transposeDimInfo.size() - 1]) ||
+        PatternFusionUtil::IsUnknownShape(transposeDimInfo[transposeDimInfo.size() - 2])) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "ReshapeTransposeFusionPass cannot be applied for unknown shape.");
+      return NOT_CHANGED;
+    }
     if (transposeDimInfo[transposeDimInfo.size() - 1] % 16 != 0 ||
         transposeDimInfo[transposeDimInfo.size() - 2] % 16 != 0) {
       OP_LOGI(

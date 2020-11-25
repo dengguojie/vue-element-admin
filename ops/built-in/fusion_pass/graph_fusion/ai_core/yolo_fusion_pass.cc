@@ -69,6 +69,14 @@ Status YoloPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::No
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Node[%s] input shape is NULL.", yoloNode->GetName().c_str()),
                     return FAILED);
 
+  for (size_t i = 2; i <= 3; i++) {
+    auto dim = inputShape[i];
+    if (PatternFusionUtil::IsUnknownShape(dim)) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "YoloPass cannot be applied for unknown shape.");
+      return NOT_CHANGED;
+    }
+  }
+
   int64_t boxesNum = 3;
   int64_t coordsNum = 4;
   int64_t classesNum = 80;

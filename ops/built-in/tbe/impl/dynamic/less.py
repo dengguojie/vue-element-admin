@@ -20,6 +20,7 @@ import te.lang.base as tbe_base
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
+from te import platform as tbe_platform
 
 # define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
 SCALAR_MIN_FP32 = 2 ** (-126)
@@ -102,24 +103,27 @@ def less_compute(input_x, input_y, output_z, kernel_name="less"):
     shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y, param_name_input1="input_x",
                                                    param_name_input2="input_y")
 
+    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
     dtype_x = input_x.dtype
     if dtype_x in ("uint8", "int8"):
         input_x = tbe.cast_to(input_x, "float16")
         input_y = tbe.cast_to(input_y, "float16")
         dtype_x = "float16"
 
+    if dtype_x == "float32":
+        data_min = tvm.const(SCALAR_MIN_FP32, dtype=dtype_x)
+    elif dtype_x == "float16" and cce_product not in ("Ascend710", "Ascend910"):
+        data_min = tvm.const(SCALAR_MIN_FP16, dtype=dtype_x)
+    elif dtype_x == "int32" and cce_product not in ("Ascend710", "Ascend910"):
+        data_min = tvm.const(SCALAR_ONE, dtype=dtype_x)
+    else:
+        input_x = tbe.cast_to(input_x, "float32")
+        input_y = tbe.cast_to(input_y, "float32")
+        dtype_x = "float32"
+        data_min = tvm.const(SCALAR_MIN_FP32, dtype=dtype_x)
+
     input_x = tbe.broadcast(input_x, shape_max)
     input_y = tbe.broadcast(input_y, shape_max)
-
-    if dtype_x == "float32":
-        # minimun num of float32 2**(-126)
-        data_min = tvm.const(SCALAR_MIN_FP32, dtype=dtype_x)
-    elif dtype_x == "float16":
-        # minimun num of float16 2**(-24)
-        data_min = tvm.const(SCALAR_MIN_FP16, dtype=dtype_x)
-    else:
-        # minimun num of int32 1
-        data_min = tvm.const(SCALAR_ONE, dtype=dtype_x)
 
     return _less_compare((input_x, input_y), shape_max, dtype_x, data_min)
 

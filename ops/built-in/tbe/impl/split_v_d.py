@@ -58,7 +58,7 @@ def get_op_support_info(input_value,
     format_value = input_value.get("format").upper()
     if format_value == "ND" or format_value == "NC1HWC0" or format_value == "FRACTAL_NZ":
         axis_split_matrix=[]
-        for i in range(0, shape_value_len):
+        for i in range(0, shape_value_len-1):
             if i != split_dim:
                 output_list = []
                 for j in range(0, num_split):
@@ -536,6 +536,10 @@ def split_v_d(input_value,
             split_with_5hd_not_align.do_5hd_split_cut_by_batch()
             return
     if (split_dim == 1 and input_format == "NC1HWC0") or (split_dim == 2 and input_format == "NDC1HWC0"):
+        size_splits = list(size_splits)
+        size_splits = [size // 16 for size in size_splits]
+
+    if input_format == "FRACTAL_NZ" and split_dim >= len(shape) - 4:
         size_splits = list(size_splits)
         size_splits = [size // 16 for size in size_splits]
 

@@ -100,9 +100,26 @@ Status LarsV2FusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<No
                     return PARAM_INVALID);
 
   // add square_sum_all op input edge
+  auto fused_in_data_anchor0 = fused_node->GetInDataAnchor(0);
+  FUSION_PASS_CHECK(fused_in_data_anchor0 == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The fused_in_data_anchor0 is null, fusion failed."),
+                    return PARAM_INVALID);
+  auto fused_in_data_anchor1 = fused_node->GetInDataAnchor(1);
+  FUSION_PASS_CHECK(fused_in_data_anchor1 == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The fused_in_data_anchor1 is null, fusion failed."),
+                    return PARAM_INVALID);
+  auto fused_in_data_anchor2 = fused_node->GetInDataAnchor(2);
+  FUSION_PASS_CHECK(fused_in_data_anchor2 == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The fused_in_data_anchor2 is null, fusion failed."),
+                    return PARAM_INVALID);
+  auto fused_in_data_anchor3 = fused_node->GetInDataAnchor(3);
+  FUSION_PASS_CHECK(fused_in_data_anchor3 == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The fused_in_data_anchor3 is null, fusion failed."),
+                    return PARAM_INVALID);
+
   FUSION_PASS_CHECK(
-      GraphUtils::AddEdge(fused_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
-                          square_sum_all_node->GetInDataAnchor(0)) != SUCCESS,
+      GraphUtils::AddEdge(fused_in_data_anchor0->GetPeerOutAnchor(), square_sum_all_node->GetInDataAnchor(0)) !=
+          SUCCESS,
       OP_LOGE(kFusedOpType.c_str(), "Add edge from fused node:%s's index 0 to fusion node:%s's index 0 failed.",
               fused_node->GetName().c_str(), square_sum_all_node->GetName().c_str()),
       return FAILED);
@@ -110,8 +127,8 @@ Status LarsV2FusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<No
           fused_node->GetName().c_str(), square_sum_all_node->GetName().c_str());
 
   FUSION_PASS_CHECK(
-      GraphUtils::AddEdge(fused_node->GetInDataAnchor(1)->GetPeerOutAnchor(),
-                          square_sum_all_node->GetInDataAnchor(1)) != SUCCESS,
+      GraphUtils::AddEdge(fused_in_data_anchor1->GetPeerOutAnchor(), square_sum_all_node->GetInDataAnchor(1)) !=
+          SUCCESS,
       OP_LOGE(kFusedOpType.c_str(), "Add edge from fused node:%s's index 1 to fusion node:%s's index 1 failed.",
               fused_node->GetName().c_str(), square_sum_all_node->GetName().c_str()),
       return FAILED);
@@ -133,8 +150,8 @@ Status LarsV2FusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<No
 
   // add edge for lars_v2_update op input 0
   FUSION_PASS_CHECK(
-      GraphUtils::AddEdge(fused_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
-                          lars_v2_update_node->GetInDataAnchor(0)) != SUCCESS,
+      GraphUtils::AddEdge(fused_in_data_anchor0->GetPeerOutAnchor(), lars_v2_update_node->GetInDataAnchor(0)) !=
+          SUCCESS,
       OP_LOGE(kFusedOpType.c_str(), "Add edge from fused node:%s's index 0 to fusion node:%s's index 0 failed.",
               fused_node->GetName().c_str(), lars_v2_update_node->GetName().c_str()),
       return FAILED);
@@ -143,8 +160,8 @@ Status LarsV2FusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<No
 
   // add edge for lars_v2_update op input 1
   FUSION_PASS_CHECK(
-      GraphUtils::AddEdge(fused_node->GetInDataAnchor(1)->GetPeerOutAnchor(),
-                          lars_v2_update_node->GetInDataAnchor(1)) != SUCCESS,
+      GraphUtils::AddEdge(fused_in_data_anchor1->GetPeerOutAnchor(), lars_v2_update_node->GetInDataAnchor(1)) !=
+          SUCCESS,
       OP_LOGE(kFusedOpType.c_str(), "Add edge from fused node:%s's index 1 to fusion node:%s's index 1 failed.",
               fused_node->GetName().c_str(), lars_v2_update_node->GetName().c_str()),
       return FAILED);
@@ -171,8 +188,8 @@ Status LarsV2FusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<No
 
   // add edge for lars_v2_update op input 4
   FUSION_PASS_CHECK(
-      GraphUtils::AddEdge(fused_node->GetInDataAnchor(2)->GetPeerOutAnchor(),
-                          lars_v2_update_node->GetInDataAnchor(4)) != SUCCESS,
+      GraphUtils::AddEdge(fused_in_data_anchor2->GetPeerOutAnchor(), lars_v2_update_node->GetInDataAnchor(4)) !=
+          SUCCESS,
       OP_LOGE(kFusedOpType.c_str(), "Add edge from fused node:%s's index 2 to fusion node:%s's index 4 failed.",
               fused_node->GetName().c_str(), lars_v2_update_node->GetName().c_str()),
       return FAILED);
@@ -181,8 +198,8 @@ Status LarsV2FusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<No
 
   // add edge for lars_v2_update op input 5
   FUSION_PASS_CHECK(
-      GraphUtils::AddEdge(fused_node->GetInDataAnchor(3)->GetPeerOutAnchor(),
-                          lars_v2_update_node->GetInDataAnchor(5)) != SUCCESS,
+      GraphUtils::AddEdge(fused_in_data_anchor3->GetPeerOutAnchor(), lars_v2_update_node->GetInDataAnchor(5)) !=
+          SUCCESS,
       OP_LOGE(kFusedOpType.c_str(), "Add edge from fused node:%s's index 3 to fusion node:%s's index 5 failed.",
               fused_node->GetName().c_str(), lars_v2_update_node->GetName().c_str()),
       return FAILED);
@@ -190,10 +207,14 @@ Status LarsV2FusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<No
           fused_node->GetName().c_str(), lars_v2_update_node->GetName().c_str());
 
   // add lars_v2_update out edge
-  if (fused_node->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() > 0) {
+  auto fused_out_data_anchor0 = fused_node->GetOutDataAnchor(0);
+  FUSION_PASS_CHECK(fused_out_data_anchor0 == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The fused_out_data_anchor0 is null, fusion failed."),
+                    return PARAM_INVALID);
+  if (fused_out_data_anchor0->GetPeerInDataAnchors().size() > 0) {
     OP_LOGI(kFusedOpType.c_str(), "The size of LARS out_data_anchor peer in_data_anchors is [%u].",
-            fused_node->GetOutDataAnchor(0)->GetPeerInDataAnchors().size());
-    for (InDataAnchorPtr in_anchor_ptr : fused_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
+            fused_out_data_anchor0->GetPeerInDataAnchors().size());
+    for (InDataAnchorPtr in_anchor_ptr : fused_out_data_anchor0->GetPeerInDataAnchors()) {
       in_anchor_ptr->UnlinkAll();
       FUSION_PASS_CHECK(
           SUCCESS != GraphUtils::AddEdge(lars_v2_update_node->GetOutDataAnchor(0), in_anchor_ptr),

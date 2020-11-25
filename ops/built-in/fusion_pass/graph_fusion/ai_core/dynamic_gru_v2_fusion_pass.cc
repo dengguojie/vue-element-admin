@@ -404,6 +404,17 @@ Status DynamicGRUV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   // get gru_node
   ge::NodePtr gru_node = GetNodeFromMapping(PATTERN_GRUV2_NODE, mapping);
 
+  int t_size = gru_node->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDim(0);
+  float m_size = static_cast<float>(gru_node->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDim(1));
+  float x_size = static_cast<float>(gru_node->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDim(2));
+  float h_size = static_cast<float>(gru_node->GetOpDesc()->GetInputDesc(2).GetOriginShape().GetDim(0));
+  if (PatternFusionUtil::IsUnknownShape(m_size) ||
+      PatternFusionUtil::IsUnknownShape(x_size) ||
+      PatternFusionUtil::IsUnknownShape(h_size)) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "DynamicGRUV2FusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
+
   bool split = false;
   if (!JudgeSplit(gru_node, split)) {
     return FAILED;

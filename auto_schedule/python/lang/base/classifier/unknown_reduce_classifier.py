@@ -32,6 +32,7 @@ class UnknownReduceClassifier:
 
         size0 = ins[1]["shape"][0]
         size1 = (len(self.n_shape) + 1) // 2
+        self.axis_type = ins[1]["dtype"]
         self.reduce_axis_size = size1 if size0 < 0 else min(size0, size1)
         self.const_reduce_axis_size = self.dim_len if size0 < 0 else min(size0, self.dim_len)
 
@@ -74,7 +75,8 @@ class UnknownReduceClassifier:
                     "shape": f_shape,
                     "range": f_ranges,
                     "mode": CONST,
-                    "ori_axis": reduce_axes
+                    "ori_axis": reduce_axes,
+                    "axis_dtype": self.axis_type
                 }
                 ret.append([input_x, f_reduce_axes])
         # if reduce dim has 1, should append pure move case
@@ -83,7 +85,8 @@ class UnknownReduceClassifier:
                 "shape": [1] + [util.combine_dim(self.n_shape)],
                 "range": [(1, 1)] + [util.combine_range(self.n_ranges)],
                 "mode": CONST,
-                "ori_axis": []
+                "ori_axis": [],
+                "axis_dtype": self.axis_type
             }
             ret.append([input_x, [0, ]])
 

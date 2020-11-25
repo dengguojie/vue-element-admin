@@ -29,6 +29,7 @@ set (local_context_src_files
     ${CMAKE_CURRENT_SOURCE_DIR}/common/host_sharder.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/common/device_sharder.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/common/eigen_threadpool.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/cpu_kernel_cache.cc
     ${PROTO_SRCS}
 )
 
@@ -44,6 +45,7 @@ set(local_context_inc_path
     ${TOP_DIR}/inc/aicpu
     ${TOP_DIR}/inc/aicpu/common
     ${TOP_DIR}/inc/aicpu/cpu_kernels
+    ${TOP_DIR}/inc/aicpu/aicpu_schedule/aicpu_sharder
     ${TOP_DIR}/inc/external/aicpu
     ${TOP_DIR}/libc_sec/include
     ${TOP_DIR}/third_party/protobuf/include

@@ -735,10 +735,10 @@ def check_parms_6hd(shape, dtype, block_shape, paddings, kernel_name):
     if (shape[1] + paddings[0][0] + paddings[0][1]) % block_shape[0] != 0:
         error_detail = "paddings depth should be exactly divisible by block depth"
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "paddings", error_detail)
-    if (shape[3] + paddings[1][0] + paddings[1][1]) % block_shape[0] != 0:
+    if (shape[3] + paddings[1][0] + paddings[1][1]) % block_shape[1] != 0:
         error_detail = "paddings height should be exactly divisible by block height"
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "paddings", error_detail)
-    if (shape[4] + paddings[2][0] + paddings[2][1]) % block_shape[1] != 0:
+    if (shape[4] + paddings[2][0] + paddings[2][1]) % block_shape[2] != 0:
         error_detail = "paddings width should be exactly divisible by block width"
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "paddings", error_detail)
 

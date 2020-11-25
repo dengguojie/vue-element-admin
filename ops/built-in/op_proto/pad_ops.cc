@@ -519,12 +519,7 @@ static void CaclDims(const GeTensorPtr& data, std::vector<int64_t>& vec_dim) {
       return;
     }
     T dim = *((T*)data_ptr + i);
-    if (dim != 0) {
-      vec_dim.push_back(dim);
-    } else {
-      vec_dim.clear();
-      break;
-    }
+    vec_dim.push_back(dim);
   }
 }
 
@@ -533,12 +528,7 @@ static void CaclDims(const Tensor& data, std::vector<int64_t>& vec_dim) {
   int32_t size = data.GetSize() / sizeof(T);
   for (int32_t i = 0; i < size; i++) {
     T dim = *((T*)data.GetData() + i);
-    if (dim != 0) {
-      vec_dim.push_back(dim);
-    } else {
-      vec_dim.clear();
-      break;
-    }
+    vec_dim.push_back(dim);
   }
 }
 

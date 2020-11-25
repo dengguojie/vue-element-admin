@@ -215,7 +215,10 @@ class GRUHiddenGradCell(TikOpBase):
                 "loop_num": 1,
                 "loop_ele": align,
                 "block_size": align,
-                "tail_num": 0
+                "tail_num": 0,
+                "tail_core_num": 0,
+                "tail_loop_ele": 0,
+                "tail_last_ele": 0
             }
 
         core_num = self.device_aicore_num
@@ -232,7 +235,10 @@ class GRUHiddenGradCell(TikOpBase):
                 "loop_num": loop_num,
                 "loop_ele": loop_ele,
                 "block_size": block_size,
-                "tail_num": tail_num
+                "tail_num": tail_num,
+                "tail_core_num": 0,
+                "tail_loop_ele": 0,
+                "tail_last_ele": 0
             }
         tail_loop_ele = (tail_num // core_num + align - 1) // align * align
         tail_core_num = (tail_num + tail_loop_ele - 1) // tail_loop_ele

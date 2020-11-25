@@ -155,6 +155,13 @@ bool DeformableConv2dPass::AddOffsetDesc(ge::NodePtr& dfm_conv_node, ge::OpDescP
   if (out_pos_h == std::string::npos || out_pos_w == std::string::npos) {
     return false;
   }
+  if (PatternFusionUtil::IsUnknownShape(out_shape[out_pos_h]) ||
+      PatternFusionUtil::IsUnknownShape(out_shape[out_pos_w]) ||
+      PatternFusionUtil::IsUnknownShape(ksize[0]) ||
+      PatternFusionUtil::IsUnknownShape(ksize[1])) {
+    OP_LOGE(fused_op_type_.c_str(), "AvgPool1DFusionPass cannot be applied for unknown shape.");
+    return false;
+  }
   y_shape[pos_h] = out_shape[out_pos_h] * ksize[0];
   y_shape[pos_w] = out_shape[out_pos_w] * ksize[1];
   x_tensor.SetShape(ge::GeShape(y_shape));

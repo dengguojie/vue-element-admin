@@ -67,23 +67,39 @@ class Conv2dBpInputTiling(CubeTilingOp):
         self.key = 'C_shape'
         self.op_type = "conv2d_bp_input"
 
+    def _modify_repo_tiling(self, tiling_mess):
+        tiling = tiling_mess.get("tiling")
+        n_size = tiling_mess.get("B_shape")[1]
+        block_dim = tiling.get("block_dim")
+        nc = tiling.get("CL0_matrix")[0]
+        n_factor = utils.icd(n_size // block_dim[1], nc)
+        block_dim[1] = n_size // nc // n_factor
+
     def get_repo_tiling(self):
+        """
+        get tiling from repository
+
+        Returns
+        -------
+        tiling: shape and tiling retrieved from repository
+        """
         tiling_list = get_tiling(self.tiling_info)
         res_list = []
-        for m in tiling_list:
+        for tiling_mess in tiling_list:
+            self._modify_repo_tiling(tiling_mess)
             # in dx_opti, tiling's C_shape returned from repository is 0,
             # we calculate C_shape according to A_shape and stride
-            if m["C_shape"][2] == 0:
-                m["C_shape"][2] = m["A_shape"][2] * self.stride_h
-            if m["C_shape"][3] == 0:
-                m["C_shape"][3] = m["A_shape"][3] * self.stride_w
+            if tiling_mess["C_shape"][2] == 0:
+                tiling_mess["C_shape"][2] = tiling_mess["A_shape"][2] * self.stride_h
+            if tiling_mess["C_shape"][3] == 0:
+                tiling_mess["C_shape"][3] = tiling_mess["A_shape"][3] * self.stride_w
             # pad set -1 to get tilings from repository, so we need to
             # check A_shape&C_shape to filter tilings not matched with
             # current kernel_info out
-            t_h, t_w = self._get_input_h(m["C_shape"][2]), \
-                self._get_input_w(m["C_shape"][3])
-            if t_h == m["A_shape"][2] and t_w == m["A_shape"][3]:
-                res_list.append(m)
+            t_h, t_w = self._get_input_h(tiling_mess["C_shape"][2]), \
+                self._get_input_w(tiling_mess["C_shape"][3])
+            if t_h == tiling_mess["A_shape"][2] and t_w == tiling_mess["A_shape"][3]:
+                res_list.append(tiling_mess)
         return res_list
 
     def get_costmodel_tiling(self, shape):

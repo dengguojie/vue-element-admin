@@ -413,6 +413,13 @@ Status AvgPoolV2GradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
       OP_LOGW(FUSED_OP_TYPE.c_str(), "avgPoolDimInfo must list of 4 element.");
       return NOT_CHANGED;
     }
+    for (size_t i = 0; i <= 3; i++) {
+      auto dim = avgPoolDimInfo[i];
+      if (PatternFusionUtil::IsUnknownShape(dim)) {
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "AvgPoolV2GradFusionPass cannot be applied for unknown shape.");
+        return NOT_CHANGED;
+      }
+    }
     int64_t valueTableSize = avgPoolDimInfo[0] * avgPoolDimInfo[1] * avgPoolDimInfo[2] * avgPoolDimInfo[3];
 
     FUSION_PASS_CHECK((((avgPoolDimInfo[1] * avgPoolDimInfo[2] * avgPoolDimInfo[3]) == 0) || (valueTableSize <= 0)),

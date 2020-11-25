@@ -83,6 +83,7 @@ if(BUILD_OPEN_PROJECT)
   set(METADEF_INCLUDE ${CANN_ROOT}/third_party/metadef/inc)
   set(METADEF_DIR ${CANN_ROOT}/third_party/metadef)
   set(GRAPHENGINE_INCLUDE ${CANN_ROOT}/third_party/metadef/third_party/graphengine/inc)
+  set(FUSION_ENGINE_INCLUDE ${CANN_ROOT}/third_party/fusion_engine/inc)
 
   add_subdirectory(ops)
   add_subdirectory(auto_schedule)
@@ -103,7 +104,7 @@ else()
   set(METADEF_INCLUDE ${TOP_DIR}/metadef/inc)
   set(METADEF_DIR ${TOP_DIR}/metadef)
   set(GRAPHENGINE_INCLUDE ${TOP_DIR}/graphengine/inc)
-
+  set(FUSION_ENGINE_INCLUDE ${TOP_DIR}/fusion_engine/inc)
   add_subdirectory(ops)
 
 endif()

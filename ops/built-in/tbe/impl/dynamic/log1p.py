@@ -78,14 +78,17 @@ def log1p_compute(input_x, output_y, kernel_name="log1p"):
     """
     dtype = input_x.dtype
     shape_in = input_x.shape
-    vlog_check = tbe_platform.cce_conf.api_check_support("te.lang.cce.vlog",
-                                                         "float32")
-    if dtype == "float32" and (not vlog_check):
+    cloud_check = tbe_platform.cce_conf.api_check_support("te.lang.cce.vlog", "float32")
+    mini_check = tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32")
+    if dtype == "float16" and cloud_check:
+        input_x = tbe.cast_to(input_x, "float32")
+    if dtype == "float32" and (not cloud_check):
         input_x = tbe.cast_to(input_x, "float16")
-    data_add = tbe.vadds(input_x,
-                                     tvm.const(SCALAR_ONE, input_x.dtype))
+
+    data_add = tbe.vadds(input_x, tvm.const(SCALAR_ONE, input_x.dtype))
     res = tbe.vlog(data_add)
-    if not vlog_check:
+
+    if (not cloud_check) and mini_check:
         res = _log1p_mini_compute(res, input_x, shape_in)
 
     if dtype != input_x.dtype:
@@ -114,15 +117,13 @@ def _log1p_mini_compute(mini_res, input_x, shape):
     newton_exp_res = _newton_exp_log1p(input_x, input_y)
 
     input_left_border = tvm.const(TAYLOR_NEGATIVE_THRESHOLD, input_y.dtype)
-    tensor_input_left_border = tbe.broadcast(input_left_border,
-                                                         shape)
+    tensor_input_left_border = tbe.broadcast(input_left_border, shape)
     input_right_border = tvm.const(TAYLOR_POSITIVE_THRESHOLD, input_y.dtype)
-    tensor_input_right_border = tbe.broadcast(input_right_border,
-                                                          shape)
+    tensor_input_right_border = tbe.broadcast(input_right_border, shape)
     exp_taylor_neg = tbe.vcmpsel(input_y, tensor_input_left_border,
                                              'gt', newton_taylor_res,
                                              newton_exp_res)
-    exp_taylor_neg = tbe.vcmpsel(input_y, tensor_input_right_border,
+    mini_res = tbe.vcmpsel(input_y, tensor_input_right_border,
                                              'lt', exp_taylor_neg,
                                              newton_exp_res)
     return mini_res

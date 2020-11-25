@@ -51,6 +51,7 @@ void ScopeDynamicRNNPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
   ScopePattern* basic_lstm_cell_tanh = new (std::nothrow) ScopePattern();
   if (basic_lstm_cell_tanh == nullptr) {
     ScopeUtil::FreeScopePatterns(patterns);
+    ScopeUtil::FreeOneBatchPattern(batch1);
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
