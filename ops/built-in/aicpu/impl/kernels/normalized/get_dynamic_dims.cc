@@ -36,7 +36,7 @@ uint32_t GetDynamicDimsCpuKernel::Compute(CpuKernelContext &ctx) {
   // check params
   KERNEL_HANDLE_ERROR(NormalCheck(ctx, kDynamicInput, kGetDynamicDimsOutputNum),
                       "%s check params failed.", GET_DYNAMIC_DIMS);
-  std::cout << NormalCheck << std::endl;
+  std::cout << "NormalCheck" << std::endl;
 
   // parse attr
   AttrValue *n_attr = ctx.GetAttr("N");
@@ -52,6 +52,7 @@ uint32_t GetDynamicDimsCpuKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_LOG_INFO("%s get attr:shape_info: %s.", GET_DYNAMIC_DIMS,
                    VectorToString(shape_info).c_str());
   std::vector<std::vector<int64_t>> shape_infos = GetShapeInfos(shape_info);
+  std::cout << "parse attr" << std::endl;
 
   // check inputs size
   uint32_t inputs_size = ctx.GetInputsSize();
@@ -63,11 +64,13 @@ uint32_t GetDynamicDimsCpuKernel::Compute(CpuKernelContext &ctx) {
       (inputs_size == shape_infos.size()), KERNEL_STATUS_PARAM_INVALID,
       "%s inputs size [%u] is not match shape_infos size [%zu].",
       GET_DYNAMIC_DIMS, inputs_size, shape_infos.size());
+  std::cout << "check inputs size" << std::endl;
 
   // get input shapes
   std::vector<std::vector<int64_t>> input_shapes;
   KERNEL_HANDLE_ERROR(GetInputShapes(ctx, input_shapes),
                       "%s get input shapes failed.", GET_DYNAMIC_DIMS);
+  std::cout << "get input shapes" << std::endl;
 
   // find -1 in shape_infos, and record corresponding input_dim into dims
   std::vector<int64_t> dims;
@@ -90,6 +93,7 @@ uint32_t GetDynamicDimsCpuKernel::Compute(CpuKernelContext &ctx) {
   }
   KERNEL_LOG_INFO("%s unknown dims: %s.", GET_DYNAMIC_DIMS,
                   VectorToString(dims).c_str());
+  std::cout << "unknown dims" << std::endl;
 
   // fill output data
   Tensor *output_tensor = ctx.Output(0);
@@ -104,6 +108,7 @@ uint32_t GetDynamicDimsCpuKernel::Compute(CpuKernelContext &ctx) {
       (cpret == EOK), KERNEL_STATUS_INNER_ERROR,
       "%s memcpy_s to output failed, destMax=%ld, count=%zu.",
       GET_DYNAMIC_DIMS, output_size, dims.size() * sizeof(int64_t));
+  std::cout << "fill output data" << std::endl;
   return KERNEL_STATUS_OK;
 }
 
