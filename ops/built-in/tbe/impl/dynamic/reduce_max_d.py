@@ -48,8 +48,8 @@ def reduce_max_d_compute(x, y, axes=None, keepdims=None,
          output tensor, has the same shape and type as input tensor.
     """
     dtype = x.dtype
-    if dtype == "int8" or "uint8":
-        x = tbe.cast_to(x, "float32")
+    if dtype in ("int8", "uint8"):
+        x = tbe.cast_to(x, "float16")
     res_max = tbe.reduce_max(x, axis=axes, keepdims=keepdims)
     res = tbe.cast_to(res_max, dtype)
 

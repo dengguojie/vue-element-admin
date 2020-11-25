@@ -194,8 +194,8 @@ DSL_CHECK_SUPPORT_MAP = {
     },
     "reduce_max": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16", "float32"),  # fp32:last need priority_flag
-        VERSION_CLOUD: ("float16", "float32"),
+        VERSION_MINI: ("float16", "float32", "int32"),  # fp32:last need priority_flag
+        VERSION_CLOUD: ("float16", "float32", "int32"),
         VERSION_MINI_NG1: ("float16", "float32"),
         VERSION_MINI_NG1M: ("float16", "float32"), # v200 int32: nlst support, last not
         VERSION_MINI_NG1PG2: ("float16", "float32"),
