@@ -35,7 +35,7 @@ from impl.util.util_select_op_base import get_op_cal_info
 
 SHRINK_AXIS = -1
 NEW_AXIS = -2
-
+CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
 # pylint: disable = unused-argument
 def get_op_support_info(input_x,
@@ -552,7 +552,7 @@ def _get_align_axis(out_shape):
 
 
 def _get_target_core_num(first_axis_size):
-    cloud_core_num = 32
+    cloud_core_num = CORE_NUM
     target_core_num = cloud_core_num
     for i in reversed(list(range(1, cloud_core_num + 1))):
         if first_axis_size % i == 0:

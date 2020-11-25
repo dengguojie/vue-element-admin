@@ -26,7 +26,7 @@ import impl.constant_util as constant
 from impl import common_util
 
 DEPTH_RADIUS_SIZE_LIMIT = 48
-MAX_CORE_NUMBER = 32
+MAX_CORE_NUMBER = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 MAX_REPEAT_NUM = 255
 PAR_COUNT_FP16 = 128
 PAR_COUNT_FP32 = 64
