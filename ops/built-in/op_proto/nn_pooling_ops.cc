@@ -133,13 +133,13 @@ static bool Construct3DPadsByPadding(std::string opName, ge::Operator& op, int32
   return true;
 }
 
-static bool GetPadsByPadding(ge::Operator& op, int32_t id, int32_t ih, int32_t iw, int32_t kd, int32_t kh, int32_t kw,
+static bool GetPadsByPadding(Operator& op, int32_t id, int32_t ih, int32_t iw, int32_t kd, int32_t kh, int32_t kw,
                              int32_t strd, int32_t strh, int32_t strw, vector<int32_t> &pads) {
-  std::string padStr;
-  std::vector<int32_t> padVec;
-  int32_t padInt;
-  if (op.GetAttr("padding", padStr) == GRAPH_SUCCESS) {
-    if (padStr.compare("SAME") == 0) {
+  std::string pad_str;
+  std::vector<int32_t> pad_vec;
+  int32_t pad_int;
+  if (op.GetAttr("padding", pad_str) == GRAPH_SUCCESS) {
+    if (pad_str.compare("SAME") == 0) {
       int32_t tails_d = id % strd;
       int32_t tails_h = ih % strh;
       int32_t tails_w = iw % strw;
@@ -153,7 +153,7 @@ static bool GetPadsByPadding(ge::Operator& op, int32_t id, int32_t ih, int32_t i
       pads.push_back(pad_w / 2);
       pads.push_back(pad_w / 2 + pad_w % 2);
       return true;
-    } else if (padStr.compare("VALID") == 0) {
+    } else if (pad_str.compare("VALID") == 0) {
       for (int32_t i = 0; i < 6; i++) {
         pads.push_back(0);
       }
@@ -161,65 +161,72 @@ static bool GetPadsByPadding(ge::Operator& op, int32_t id, int32_t ih, int32_t i
     }
   }
 
-  if (op.GetAttr("padding", padVec) == GRAPH_SUCCESS) {
-    if (padVec.size() == 3) {
-      pads.push_back(padVec[0]);
-      pads.push_back(padVec[0]);
-      pads.push_back(padVec[1]);
-      pads.push_back(padVec[1]);
-      pads.push_back(padVec[2]);
-      pads.push_back(padVec[2]);
+  if (op.GetAttr("padding", pad_vec) == GRAPH_SUCCESS) {
+    if (pad_vec.size() == 3) {
+      pads.push_back(pad_vec[0]);
+      pads.push_back(pad_vec[0]);
+      pads.push_back(pad_vec[1]);
+      pads.push_back(pad_vec[1]);
+      pads.push_back(pad_vec[2]);
+      pads.push_back(pad_vec[2]);
       return true;
     }
   }
-  if (op.GetAttr("padding", padInt) == GRAPH_SUCCESS) {
-    pads.push_back(padInt);
-    pads.push_back(padInt);
-    pads.push_back(padInt);
-    pads.push_back(padInt);
-    pads.push_back(padInt);
-    pads.push_back(padInt);
+  if (op.GetAttr("padding", pad_int) == GRAPH_SUCCESS) {
+    pads.push_back(pad_int);
+    pads.push_back(pad_int);
+    pads.push_back(pad_int);
+    pads.push_back(pad_int);
+    pads.push_back(pad_int);
+    pads.push_back(pad_int);
     return true;
   }
   return false;
 }
 
-static bool GetStridesAndKSize(ge::Operator& op, Format refer, int32_t& strd, int32_t& strh, int32_t& strw,
+static bool GetStridesAndKSize(Operator& op, Format refer, int32_t& strd, int32_t& strh, int32_t& strw,
                                int32_t& kd, int32_t& kh, int32_t& kw) {
   std::vector<int32_t> stride_list;
-  if (GRAPH_SUCCESS != op.GetAttr("strides", stride_list)) {
+  if (op.GetAttr("strides", stride_list) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Failed to get strides!");
     return false;
   }
 
-  std::vector<int32_t> ksizeList;
-  if (GRAPH_SUCCESS != op.GetAttr("ksize", ksizeList)) {
+  std::vector<int32_t> ksize_list;
+  if (op.GetAttr("ksize", ksize_list) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Failed to get ksize!");
     return false;
   }
 
-  if (ksizeList.size() == 1) {
-    kd = ksizeList[0];
-    kh = ksizeList[0];
-    kw = ksizeList[0];
-  } else if (ksizeList.size() == 3) {
-    kd = ksizeList[0];
-    kh = ksizeList[1];
-    kw = ksizeList[2];
-  } else if (ksizeList.size() == 5) {
+  if (ksize_list.size() == 1) {
+    kd = ksize_list[0];
+    kh = ksize_list[0];
+    kw = ksize_list[0];
+  } else if (ksize_list.size() == 3) {
+    kd = ksize_list[0];
+    kh = ksize_list[1];
+    kw = ksize_list[2];
+  } else if (ksize_list.size() == 5) {
     if (refer == FORMAT_NCDHW) {
-      kd = ksizeList[2];
-      kh = ksizeList[3];
-      kw = ksizeList[4];
+      kd = ksize_list[2];
+      kh = ksize_list[3];
+      kw = ksize_list[4];
+    } else if(refer == FORMAT_NDHWC) {
+      kd = ksize_list[1];
+      kh = ksize_list[2];
+      kw = ksize_list[3];
     } else {
-      kd = ksizeList[1];
-      kh = ksizeList[2];
-      kw = ksizeList[3];
+      // DHWCN
+      kd = ksize_list[0];
+      kh = ksize_list[1];
+      kw = ksize_list[2];
     }
   }
 
   if (stride_list.size() == 1) {
-    strd = strh = strw = stride_list[0];
+    strd = stride_list[0];
+    strh = stride_list[0];
+    strw = stride_list[0];
   } else if (stride_list.size() == 3) {
     strd = stride_list[0];
     strh = stride_list[1];
@@ -229,10 +236,15 @@ static bool GetStridesAndKSize(ge::Operator& op, Format refer, int32_t& strd, in
       strd = stride_list[2];
       strh = stride_list[3];
       strw = stride_list[4];
-    } else {
+    } else if (refer == FORMAT_NDHWC) {
       strd = stride_list[1];
       strh = stride_list[2];
       strw = stride_list[3];
+    } else {
+      // DHWCN
+      strd = stride_list[0];
+      strh = stride_list[1];
+      strw = stride_list[2];
     }
   }
 
@@ -1306,6 +1318,10 @@ IMPLEMT_INFERFUNC(AvgPool3D, AvgPool3DInferShape) {
     OP_LOGE(op.GetName().c_str(), "get padding or pads failed.");
     return GRAPH_FAILED;
   }
+  if (pad_vec.size() != 6) {
+    OP_LOGE(op.GetName().c_str(), "pads size must be 6.");
+    return GRAPH_FAILED;
+  }
 
   std::string pad_str;
   if (op.GetAttr("padding", pad_str) == GRAPH_SUCCESS) {
@@ -1452,6 +1468,10 @@ IMPLEMT_INFERFUNC(AvgPool3DD, AvgPool3DDInferShape) {
     op.SetAttr("pads",pad_vec);
   } else if (op.GetAttr("pads", pad_vec) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "get padding or pads failed.");
+    return GRAPH_FAILED;
+  }
+  if (pad_vec.size() != 6) {
+    OP_LOGE(op.GetName().c_str(), "pads size must be 6.");
     return GRAPH_FAILED;
   }
 

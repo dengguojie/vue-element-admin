@@ -143,6 +143,61 @@ void GenMultiplier(int fmap_n, int fmap_c1, int fmap_d, int fmap_h, int fmap_w, 
   }
 }
 
+void GetStridesAndKSize(Operator& op, Format refer, int32_t& strd, int32_t& strh, int32_t& strw,
+                        int32_t& kd, int32_t& kh, int32_t& kw) {
+  std::vector<int32_t> stride_list;
+  std::vector<int32_t> ksize_list;
+  op.GetAttr("strides", stride_list);
+  op.GetAttr("ksize", ksize_list);
+  if (ksize_list.size() == 1) {
+    kd = ksize_list[0];
+    kh = ksize_list[0];
+    kw = ksize_list[0];
+  } else if (ksize_list.size() == 3) {
+    kd = ksize_list[0];
+    kh = ksize_list[1];
+    kw = ksize_list[2];
+  } else if (ksize_list.size() == 5) {
+    if (refer == FORMAT_NCDHW) {
+      kd = ksize_list[2];
+      kh = ksize_list[3];
+      kw = ksize_list[4];
+    } else if(refer == FORMAT_NDHWC) {
+      kd = ksize_list[1];
+      kh = ksize_list[2];
+      kw = ksize_list[3];
+    } else {
+      // DHWCN
+      kd = ksize_list[0];
+      kh = ksize_list[1];
+      kw = ksize_list[2];
+    }
+  }
+  if (stride_list.size() == 1) {
+    strd = stride_list[0];
+    strh = stride_list[0];
+    strw = stride_list[0];
+  } else if (stride_list.size() == 3) {
+    strd = stride_list[0];
+    strh = stride_list[1];
+    strw = stride_list[2];
+  } else if (stride_list.size() == 5) {
+    if (refer == FORMAT_NCDHW) {
+      strd = stride_list[2];
+      strh = stride_list[3];
+      strw = stride_list[4];
+    } else if (refer == FORMAT_NDHWC) {
+      strd = stride_list[1];
+      strh = stride_list[2];
+      strw = stride_list[3];
+    } else {
+      // DHWCN
+      strd = stride_list[0];
+      strh = stride_list[1];
+      strw = stride_list[2];
+    }
+  }
+}
 
 vector<FusionPattern*> AvgPool3DFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -214,17 +269,13 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
 
   int64_t fmap_c1 = (fmap_c + kC0 - 1) / kC0;
 
-  vector<int32_t> ksize;
-  op.GetAttr("ksize",ksize);
-  int kd=ksize[1];
-  int kh=ksize[2];
-  int kw=ksize[3];
-
-  vector<int32_t> strides;
-  op.GetAttr("strides",strides);
-  int stride_d = strides[1];
-  int stride_h = strides[2];
-  int stride_w = strides[3];
+  int kd;
+  int kh;
+  int kw;
+  int stride_d;
+  int stride_h;
+  int stride_w;
+  GetStridesAndKSize(op, data_format, stride_d, stride_h, stride_w, kd, kh, kw);
 
   vector<int32_t> pads;
   op.GetAttr("pads",pads);
