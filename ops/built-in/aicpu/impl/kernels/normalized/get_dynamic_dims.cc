@@ -21,6 +21,7 @@
 #include "log.h"
 #include "securec.h"
 #include "status.h"
+#include <iostream>
 
 namespace {
 constexpr uint32_t kGetDynamicDimsOutputNum = 1;
@@ -29,11 +30,13 @@ constexpr const char *GET_DYNAMIC_DIMS = "GetDynamicDims";
 
 namespace aicpu {
 uint32_t GetDynamicDimsCpuKernel::Compute(CpuKernelContext &ctx) {
+  std::cout << GET_DYNAMIC_DIMS << std::endl;
   KERNEL_LOG_INFO("GetDynamicDimsCpuKernel::Compute(), OpType:%s.",
                   GET_DYNAMIC_DIMS);
   // check params
   KERNEL_HANDLE_ERROR(NormalCheck(ctx, kDynamicInput, kGetDynamicDimsOutputNum),
                       "%s check params failed.", GET_DYNAMIC_DIMS);
+  std::cout << NormalCheck << std::endl;
 
   // parse attr
   AttrValue *n_attr = ctx.GetAttr("N");

@@ -18,7 +18,7 @@ class GET_DYNAMIC_DIMS_KERNEL_UT : public testing::Test {};
 
 TEST_F(GET_DYNAMIC_DIMS_KERNEL_UT, INT32_Success)
 {
-  auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
+  auto nodeDef = CpuKernelUtils::CreateNodeDef();
   std::cout << "CreateNodeDef" << std::endl;
   nodeDef->SetOpType("GetDynamicDims");
   std::cout << "SetOpType" << std::endl;
