@@ -1735,7 +1735,7 @@ class CceConv3dOp:
         elif lop["op"] == 'conv_vector_bias_add':
             self._schedule[cache_buffer].emit_insn(tensorize_axis,
                                                    "vector_add")
-        elif lop["op"] == 'broadcast_for_tensor' :
+        elif lop["op"] == 'broadcast_for_tensor':
             self._schedule[cache_buffer].emit_insn(tensorize_axis,
                                                    "vector_auto")
         else:
