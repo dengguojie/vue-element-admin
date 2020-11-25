@@ -656,7 +656,7 @@ def conv3d(x, filter, filter_size, para_dict):
     -------
     tensor : res
     """
-    x = data.dtype
+    in_dtype = x.dtype
     w_dtype = filter.dtype
     bias_tensor = para_dict["bias_tensor"]
     bias_flag = (bias_tensor is not None)

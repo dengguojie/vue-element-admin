@@ -486,7 +486,7 @@ def conv3d_transpose_cce(shape_filter, # pylint: disable=R0913,R0914
 
         para_dict = {
             "strides": strides,
-            "pads": pads,
+            "pads": padding,
             "dilations": dilations,
             "res_dtype": res_dtype,
             "kernel_name": kernel_name,
