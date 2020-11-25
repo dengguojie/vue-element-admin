@@ -23,14 +23,17 @@ TEST_F(GET_DYNAMIC_DIMS_KERNEL_UT, INT32_Success)
   std::vector<int32_t> x2{ 1, 2, 1 };
   std::vector<int32_t> x3{ 16, 112, 112, 3, 4 };
   std::vector<int64_t> dims(3);
+  constexpr int64_t n_attr = 3;
+  std::vector<int64_t> shape_info_attr(
+      { 4, 3, 2, -1, 1, 3, 1, 2, 1, 5, 16, -1, -1, 3, 4 });
 
   NodeDefBuilder(node_def.get(), "GetDynamicDims", "GetDynamicDims")
     .Input({"x1", DT_INT32, {4}, x1.data()})
     .Input({"x2", DT_INT32, {3}, x2.data()})
     .Input({"x3", DT_INT32, {5}, x3.data()})
     .Output({"dims", DT_INT64, {3}, dims.data()})
-    .Attr("N", 3)
-    .Attr("shape_info", { 4, 3, 2, -1, 1, 3, 1, 2, 1, 5, 16, -1, -1, 3, 4 });
+    .Attr("N", n_attr)
+    .Attr("shape_info", shape_info_attr);
 
     CpuKernelContext ctx(HOST);
     EXPECT_EQ(ctx.Init(node_def.get()), KERNEL_STATUS_OK);
