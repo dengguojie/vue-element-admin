@@ -76,7 +76,12 @@ TEST_F(GET_DYNAMIC_DIMS_KERNEL_UT, INT32_Success)
   dimsTensor->SetDataSize(3 * sizeof(int64_t));
   std::cout << "set output" << std::endl;
 
-  RUN_KERNEL(nodeDef, HOST, KERNEL_STATUS_OK);
+  CpuKernelContext ctx(HOST);
+  std::cout << "ctx" << std::endl;
+  EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
+  std::cout << "ctx.Init" << std::endl;
+  uint32_t ret = CpuKernelRegister::Instance().RunCpuKernel(ctx);
+  EXPECT_EQ(ret, KERNEL_STATUS_OK);
   std::cout << "RunCpuKernel" << std::endl;
 
   std::vector<int64_t> expectDims{4, 112, 112};
