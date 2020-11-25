@@ -62,40 +62,32 @@ uint32_t NormalCheck(CpuKernelContext &ctx,
                      const uint32_t inputs_num,
                      const uint32_t outputs_num) {
   if (inputs_num != kDynamicInput) {
-    std::cout << "!= kDynamicInput" << std::endl;
     KERNEL_CHECK_FALSE((ctx.GetInputsSize() == inputs_num),
                        KERNEL_STATUS_PARAM_INVALID,
                        "%s need %u inputs, but got %u.",
                        ctx.GetOpType().c_str(),
                        inputs_num, ctx.GetInputsSize());
-    std::cout << "KERNEL_CHECK_FALSE" << std::endl;
     for (uint32_t i = 0; i < inputs_num; ++i) {
       Tensor *input = ctx.Input(i);
       KERNEL_CHECK_NULLPTR(input, KERNEL_STATUS_INNER_ERROR,
                            "%s get input:%u failed.",
                            ctx.GetOpType().c_str(), i);
     }
-    std::cout << "KERNEL_CHECK_NULLPTR" << std::endl;
   }
-  std::cout << "inputs_num" << std::endl;
 
   if (outputs_num != kDynamicOutput) {
-    std::cout << "!= kDynamicOutput" << std::endl;
     KERNEL_CHECK_FALSE((ctx.GetOutputsSize() == outputs_num),
                        KERNEL_STATUS_PARAM_INVALID,
                        "%s need %u outputs, but got %u.",
                        ctx.GetOpType().c_str(),
                        outputs_num, ctx.GetOutputsSize());
-    std::cout << "KERNEL_CHECK_FALSE" << std::endl;
     for (uint32_t i = 0; i < outputs_num; ++i) {
       Tensor *output = ctx.Output(i);
       KERNEL_CHECK_NULLPTR(output, KERNEL_STATUS_INNER_ERROR,
                            "%s get output:%u failed.",
                            ctx.GetOpType().c_str(), i);
     }
-    std::cout << "KERNEL_CHECK_NULLPTR" << std::endl;
   }
-  std::cout << "outputs_num" << std::endl;
   return KERNEL_STATUS_OK;
 }
 }  // namespace aicpu
