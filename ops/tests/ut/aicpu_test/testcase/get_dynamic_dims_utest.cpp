@@ -9,14 +9,13 @@
 #undef private
 #undef protected
 #include "securec.h"
-#include <iostream>
 
 using namespace std;
 using namespace aicpu;
 
-class GET_DYNAMIC_DIMS_KERNEL_UT : public testing::Test {};
+class GET_DYNAMIC_DIMS_UT : public testing::Test {};
 
-TEST_F(GET_DYNAMIC_DIMS_KERNEL_UT, INT32_Success)
+TEST_F(GET_DYNAMIC_DIMS_UT, INT32_Success)
 {
   auto node_def = CpuKernelUtils::CreateNodeDef();
 
@@ -41,7 +40,7 @@ TEST_F(GET_DYNAMIC_DIMS_KERNEL_UT, INT32_Success)
   EXPECT_EQ(dims, expectDims);
 }
 
-TEST_F(GET_DYNAMIC_DIMS_KERNEL_UT, INT64_Success)
+TEST_F(GET_DYNAMIC_DIMS_UT, INT64_Success)
 {
   auto node_def = CpuKernelUtils::CreateNodeDef();
 
@@ -66,13 +65,13 @@ TEST_F(GET_DYNAMIC_DIMS_KERNEL_UT, INT64_Success)
   EXPECT_EQ(dims, expectDims);
 }
 
-TEST_F(GET_DYNAMIC_DIMS_KERNEL_UT, OutputNum_Fail)
+TEST_F(GET_DYNAMIC_DIMS_UT, OutputNum_Fail)
 {
   auto node_def = CpuKernelUtils::CreateNodeDef();
 
-  vector<int64_t> x1{ 3, 2, 4, 1 };
-  vector<int64_t> x2{ 1, 2, 1 };
-  vector<int64_t> x3{ 16, 112, 112, 3, 4 };
+  vector<int32_t> x1{ 3, 2, 4, 1 };
+  vector<int32_t> x2{ 1, 2, 1 };
+  vector<int32_t> x3{ 16, 112, 112, 3, 4 };
   vector<int64_t> dims(3);
   vector<int64_t> shape_info_attr{
       4, 3, 2, -1, 1, 3, 1, 2, 1, 5, 16, -1, -1, 3, 4 };

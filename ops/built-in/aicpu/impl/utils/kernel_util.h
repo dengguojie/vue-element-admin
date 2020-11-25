@@ -21,7 +21,6 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
-#include <iostream>
 #include <sstream>
 
 #include "cpu_context.h"
