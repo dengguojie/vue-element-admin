@@ -21,6 +21,7 @@
 #include "cpu_types.h"
 #include "log.h"
 #include "status.h"
+#include "utils/kernel_util.h"
 #include "utils/sparse_tensor.h"
 
 namespace {
