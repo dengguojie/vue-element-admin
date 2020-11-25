@@ -59,9 +59,9 @@ uint32_t NormalMathCheck(CpuKernelContext &ctx) {
 }
 
 uint32_t NormalCheck(CpuKernelContext &ctx,
-                            const uint32_t inputs_nums,
-                            const uint32_t outputs_nums) {
-  if (inputs_nums != kDynamicInput) {
+                     const uint32_t inputs_num,
+                     const uint32_t outputs_num) {
+  if (inputs_num != kDynamicInput) {
     KERNEL_CHECK_FALSE((ctx.GetInputsSize() != inputs_num),
                        KERNEL_STATUS_PARAM_INVALID,
                        "%s need %u inputs, but got %u.",
@@ -73,7 +73,7 @@ uint32_t NormalCheck(CpuKernelContext &ctx,
     }
   }
 
-  if (outputs_nums != kDynamicOutput) {
+  if (outputs_num != kDynamicOutput) {
     KERNEL_CHECK_FALSE((ctx.GetOutputsSize() != outputs_num),
                        KERNEL_STATUS_PARAM_INVALID,
                        "%s need %u outputs, but got %u.",

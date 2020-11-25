@@ -75,6 +75,14 @@ const char KERNEL_MODULE[] = "AICPU";
     return errorCode;                                      \
   }
 
+#define KERNEL_CHECK_ASSIGN_64S_MULTI(A, B, result, errorCode)            \
+  if ((A) != 0 && (B) != 0 && ((INT64_MAX) / (A)) <= (B)) {               \
+    KERNEL_LOG_ERROR("Integer reversed multiA: %llu * multiB: %llu", (A), \
+                     (B));                                                \
+    return errorCode;                                                     \
+  }                                                                       \
+  (result) = ((A) * (B));
+
 #define KERNEL_CHECK_FALSE(condition, errorCode, logText...)  \
   if (!(condition)) {                                         \
     KERNEL_LOG_ERROR(logText);                                \
@@ -87,11 +95,12 @@ const char KERNEL_MODULE[] = "AICPU";
     return;                                                   \
   }
 
-#define KERNEL_HANDLE_ERROR(expression, logText...)           \
-  uint32_t ret = expression;                                  \
-  if (ret != KERNEL_STATUS_OK) {                              \
-    KERNEL_LOG_ERROR(logText);                                \
-    return ret;                                               \
+#define KERNEL_HANDLE_ERROR(expression, logText...) {         \
+    uint32_t ret = expression;                                \
+    if (ret != KERNEL_STATUS_OK) {                            \
+      KERNEL_LOG_ERROR(logText);                              \
+      return ret;                                             \
+    }                                                         \
   }
 
 #define KERNEL_CHECK_FALSE_EXEC(condition, execExpr...) if (!(condition)) {                                \

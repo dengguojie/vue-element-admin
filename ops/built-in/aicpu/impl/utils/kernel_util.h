@@ -21,6 +21,8 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
+#include <iostream>
+#include <sstream>
 
 #include "cpu_context.h"
 #include "log.h"
@@ -110,7 +112,8 @@ inline bool AddWithoutOverflow(const int64_t x, const int64_t y, int64_t &sum) {
 /// @brief normal check for calculation
 /// @param [in] ctx  context
 /// @return uint32_t
-uint32_t NormalMathCheck(CpuKernelContext &ctx);
+uint32_t NormalMathCheck(Cpu
+KernelContext &ctx);
 
 /// @ingroup kernel_util
 /// @brief normal check for kernel
@@ -120,7 +123,7 @@ uint32_t NormalMathCheck(CpuKernelContext &ctx);
 ///  @li [in] outputs_num   num of outputs
 /// @return uint32_t
 uint32_t NormalCheck(CpuKernelContext &ctx,
-                            const uint32_t inputs_nums,
-                            const uint32_t outputs_nums);
+                     const uint32_t inputs_num,
+                     const uint32_t outputs_num);
 }  // namespace aicpu
 #endif  // _AICPU_AICPU_DEVICE_CPU_KERNELS_UTILS_MATH_UTIL_H_

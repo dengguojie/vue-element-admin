@@ -21,8 +21,6 @@
 #include "log.h"
 #include "securec.h"
 #include "status.h"
-#include <iostream>
-#include <sstream>
 
 namespace {
 constexpr uint32_t kGetDynamicDimsOutputNum = 1;
