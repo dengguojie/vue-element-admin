@@ -596,7 +596,7 @@ def _check_range(shape, shape_range, min_dim=0, max_dim=RANK_LIMIT,
                 "In op[%s],the length of each element in the range must be two"
                 % (error_info['op_name']))
         valid_range = \
-            len(range_i) == 2 and 0 < range_i[0] <= range_i[1] <= max_shape_num
+            len(range_i) == 2 and 0 <= range_i[0] <= range_i[1] <= max_shape_num
         if valid_type and valid_range:
             continue
         else:
