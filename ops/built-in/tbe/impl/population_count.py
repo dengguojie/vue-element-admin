@@ -19,6 +19,7 @@ import functools
 
 from te.utils import para_check
 from te import tik
+from te import platform as tbe_platform
 from impl import common_util
 from impl import constant_util
 from impl.util.util_select_op_base import SplitInput
@@ -27,7 +28,7 @@ from impl.util.util_select_op_base import get_op_cal_info
 
 # Considering the efficiency of data parallel processing,
 # set the number of multicores to 32
-MAX_CORE_NUM = 32
+MAX_CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
 # The maximum number of float16 type data that can be
 # stored in Unified Buffer with pingpang

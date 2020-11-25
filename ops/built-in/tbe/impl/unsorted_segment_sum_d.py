@@ -38,7 +38,7 @@ from impl.util.util_common import write_code
 MAX_REPEAT_NUM = 255
 BLOCK_BYTE = 32
 BIT_NUM_ONE_BYTE = 8
-MAX_CORE_NUM = 32
+MAX_CORE_NUM = cce.get_soc_spec(cce.CORE_NUM)
 REPEAT_BLOCK_NUM = 8
 
 
@@ -1837,7 +1837,7 @@ def _get_copy_block_num(input_shape, input_dtype, output_shape, output_dtype):
 
 
 def _get_target_core_num(ele_num_segments_ids):
-    cloud_core_num = 32
+    cloud_core_num = MAX_CORE_NUM
     target_core_num = cloud_core_num
     for i in reversed(list(range(1, cloud_core_num + 1))):
         if int(ele_num_segments_ids % i) == 0:
