@@ -112,8 +112,7 @@ inline bool AddWithoutOverflow(const int64_t x, const int64_t y, int64_t &sum) {
 /// @brief normal check for calculation
 /// @param [in] ctx  context
 /// @return uint32_t
-uint32_t NormalMathCheck(Cpu
-KernelContext &ctx);
+uint32_t NormalMathCheck(CpuKernelContext &ctx);
 
 /// @ingroup kernel_util
 /// @brief normal check for kernel
