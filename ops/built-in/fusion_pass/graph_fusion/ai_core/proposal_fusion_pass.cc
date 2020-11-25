@@ -160,6 +160,13 @@ Status ProposalFusionPass::GenerateAnchorsFp16(uint16_t* output1, ge::NodePtr pr
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "ProposalFusionPass GenerateAnchorsFp16");
 
+  if (PatternFusionUtil::IsUnknownShape(channel) ||
+      PatternFusionUtil::IsUnknownShape(height) ||
+      PatternFusionUtil::IsUnknownShape(width)) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "ProposalFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
+
   // get anchor_base_size and feat_stride
   float anchor_base_size = 0;
   ge::AttrUtils::GetFloat(proposalVNode->GetOpDesc(), "base_size", anchor_base_size);

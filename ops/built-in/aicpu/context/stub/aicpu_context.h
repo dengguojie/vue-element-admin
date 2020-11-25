@@ -1,0 +1,59 @@
+/**
+ * Copyright 2020 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef OPS_BUILT_IN_AICPU_CONTEXT_STUB_AICPU_CONTEXT_H_
+#define OPS_BUILT_IN_AICPU_CONTEXT_STUB_AICPU_CONTEXT_H_
+
+#include <sys/types.h>
+
+#include <cstdint>
+#include <string>
+
+namespace aicpu {
+typedef struct {
+  uint32_t deviceId;
+  uint32_t tsId;
+  pid_t hostPid;
+} aicpuContext_t;
+
+typedef enum {
+  AICPU_ERROR_NONE = 0,
+  AICPU_ERROR_FAILED = 1,
+} status_t;
+
+const std::string CONTEXT_KEY_OP_NAME = "opname";
+
+status_t aicpuSetContext(aicpuContext_t *ctx);
+
+status_t aicpuGetContext(aicpuContext_t *ctx);
+
+status_t InitTaskMonitorContext(uint32_t aicpuCoreCnt);
+
+status_t SetAicpuThreadIndex(uint32_t threadIndex);
+
+status_t __attribute__((weak)) SetOpname(const std::string &opname);
+
+status_t GetOpname(uint32_t threadIndex, std::string &opname);
+
+status_t __attribute__((weak))
+SetThreadLocalCtx(const std::string &key, const std::string &value);
+
+status_t GetThreadLocalCtx(const std::string &key, std::string &value);
+
+status_t RemoveThreadLocalCtx(const std::string &key);
+
+}  // namespace aicpu
+#endif

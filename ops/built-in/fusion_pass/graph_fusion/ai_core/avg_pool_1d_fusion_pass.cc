@@ -225,6 +225,13 @@ Status AvgPool1DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
   GeTensorPtr avg_table_assit_ptr{nullptr};
   FUSION_PASS_CHECK(strides == 0, OP_LOGE(kFusedOpType.c_str(), "The stride should not be 0, fusion failed."),
                     return PARAM_INVALID);
+  for (size_t i = 1; i <= 3; i++) {
+    auto dim = avgpool1d_dim_info[i];
+    if (PatternFusionUtil::IsUnknownShape(dim)) {
+      OP_LOGE(kFusedOpType.c_str(), "AvgPool1DFusionPass cannot be applied for unknown shape.");
+      return NOT_CHANGED;
+    }
+  }
   int64_t w_output = CalWoutput(avgpool1d_dim_info[3], pads[0], pads[1], k_size, strides, ceil_mode);
   if (w_output <= 0) {
     OP_LOGE(kFusedOpType.c_str(), "Should keep w_output > 0!");

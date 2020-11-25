@@ -21,6 +21,7 @@ local_context_src_files := cpu_proto/proto/me_attr.proto \
                            common/host_sharder.cc \
                            common/device_sharder.cc \
                            common/eigen_threadpool.cc \
+                           common/cpu_kernel_cache.cc \
 
 local_context_stub_files := stub/aicpu_sharder.cc \
 
@@ -29,6 +30,7 @@ local_context_inc_path := $(LOCAL_PATH) \
                           $(LOCAL_PATH)/cpu_proto \
                           $(TOPDIR)inc \
                           $(TOPDIR)inc/aicpu \
+                          $(TOPDIR)inc/aicpu/aicpu_schedule/aicpu_sharder \
                           $(TOPDIR)inc/aicpu/common \
                           $(TOPDIR)inc/aicpu/cpu_kernels \
                           $(TOPDIR)inc/external/aicpu \

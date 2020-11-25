@@ -239,8 +239,8 @@ vector<vector<ge::NodePtr>> DynamicRNNGradFusionPass::AddTLoopNode(ge::NodePtr d
      lstmSplitDesc->AddOutputDesc("dh_prev", dh_tensor_desc);
 
      vector<int64_t> size_splits;
-     size_splits.push_back(dynamicRNNGradDesc->GetOutputDesc(2).GetShape().GetDim(2));
-     size_splits.push_back(dynamicRNNGradDesc->GetOutputDesc(3).GetShape().GetDim(1));
+     size_splits.push_back((dynamicRNNGradDesc->GetOutputDesc(2).GetShape().GetDim(2) + 15) / 16 * 16);
+     size_splits.push_back((dynamicRNNGradDesc->GetOutputDesc(3).GetShape().GetDim(1) + 15) / 16 * 16);
      ge::AttrUtils::SetListInt(lstmSplitDesc, "size_splits", size_splits);
      ge::AttrUtils::SetInt(lstmSplitDesc, "split_dim", 2);
      ge::AttrUtils::SetInt(lstmSplitDesc, "num_split", 2);
@@ -989,6 +989,20 @@ Status DynamicRNNGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   bool failStatus = false;
   // get dynamicRNNGradNode
   ge::NodePtr dynamicRNNGradNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
+
+  if (PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetInputDesc(8).GetShape().GetDim(0)) ||
+      PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetInputDesc(7).GetShape().GetDim(0)) ||
+      PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetInputDesc(1).GetShape().GetDim(0)) ||
+      PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetInputDesc(7).GetShape().GetDim(2)) ||
+      PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetInputDesc(6).GetShape().GetDim(0)) ||
+      PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetInputDesc(0).GetShape().GetDim(2)) ||
+      PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetOutputDesc(3).GetShape().GetDim(0)) ||
+      PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetOutputDesc(3).GetShape().GetDim(1)) ||
+      PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetOutputDesc(2).GetShape().GetDim(2)) ||
+      PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetOutputDesc(2).GetShape().GetDim(1))) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "DynamicRNNGradFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
 
   // add lstmInputGrad
   ge::NodePtr lstmInputGradNode = AddLSTMInputGradNode(dynamicRNNGradNode, graph, newNodes, failStatus);

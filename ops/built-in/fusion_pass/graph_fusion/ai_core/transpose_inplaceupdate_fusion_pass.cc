@@ -94,6 +94,20 @@ Status TransposeInplaceUpdateFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
   std::vector<int64_t> inplace_dims1 = inplace0_desc->GetInputDesc(1).GetShape().GetDims();
   std::vector<int64_t> inplace_dims2 = inplace0_desc->GetInputDesc(2).GetShape().GetDims();
 
+  for (size_t i = 1; i <= 3; i++) {
+    auto dim = inplace_dims0[i];
+    if (PatternFusionUtil::IsUnknownShape(dim)) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "ZTransposeInplaceUpdateFusionPass cannot be applied for unknown shape.");
+      return NOT_CHANGED;
+    }
+  }
+
+  if (PatternFusionUtil::IsUnknownShape(inplace_dims1[0]) ||
+      PatternFusionUtil::IsUnknownShape(inplace_dims2[0])) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "ZTransposeInplaceUpdateFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
+
   // get attr
   Operator op_trans0 = ge::OpDescUtils::CreateOperatorFromNode(trans0_node);
   Operator op_trans1 = ge::OpDescUtils::CreateOperatorFromNode(trans1_node);

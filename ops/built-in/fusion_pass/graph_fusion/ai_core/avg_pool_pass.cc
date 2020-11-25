@@ -571,6 +571,13 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
       inputW = dimInfo[3];
       output_w = out_dimInfo[3];
     }
+    if (PatternFusionUtil::IsUnknownShape(inputC) ||
+        PatternFusionUtil::IsUnknownShape(inputH) ||
+        PatternFusionUtil::IsUnknownShape(inputW) ||
+        PatternFusionUtil::IsUnknownShape(output_w)) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "AvgPoolFusionPass cannot be applied for unknown shape.");
+      return NOT_CHANGED;
+    }
   } else {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "dimInfo is not right, please check!");
     return NOT_CHANGED;
@@ -722,9 +729,36 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
       FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "UpdateInputDesc1 failed."), return FAILED);
     }
     if (padding == "SAME") {
+      // judge input dims for unknown shape
+      ge::GeTensorDesc input_desc = dequantNode->GetOpDesc()->GetOutputDesc(0);
+      vector<int64_t> dimMul = input_desc.GetShape().GetDims();
+      int64_t mulC = 0;
+      if (dimMul.size() != 0) {
+        if (inputOriginFormat == FORMAT_NHWC) {
+          mulC = dimMul[3];
+        }
+        else if (inputOriginFormat == FORMAT_NCHW) {
+          mulC = dimMul[1];
+        }
+        if (PatternFusionUtil::IsUnknownShape(mulC)) {
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "AvgPoolFusionPass cannot be applied for unknown shape.");
+          return NOT_CHANGED;
+        }
+      }
       ge::NodePtr mulNode = AddMul(graph, dequantNode, inputOriginFormat);
       FUSION_PASS_CHECK(mulNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mulNode is null, AddMul failed."),
                         return PARAM_INVALID);
+      // judge input dims for unknown shape
+      ge::GeTensorDesc inputDesc0 = mulNode->GetOpDesc()->GetInputDesc(0);
+      ge::GeShape outputShape = inputDesc0.GetOriginShape();
+      vector<int64_t> dimOut = outputShape.GetDims();
+      for (size_t i = 1; i <= 3; i++) {
+        auto dim = dimOut[i];
+        if (PatternFusionUtil::IsUnknownShape(dim)) {
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "AvgPoolFusionPass cannot be applied for unknown shape.");
+          return NOT_CHANGED;
+        }
+      }
       FUSION_PASS_CHECK(AddCoffe(graph, mulNode, padding, dimInfo, window, stride) != SUCCESS,
                         OP_LOGE(FUSED_OP_TYPE.c_str(), "AddCoffe failed."), return ret);
     } else if (padding == "VALID") {
@@ -796,9 +830,37 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
       float areaFactor = 1.0;
       // generate one matrix
       ret = GenerateFilterFP16(assitDimInfoOrigin, areaFactor, *inputAssit.get());
+      // judge input dims for unknown shape
+      ge::GeTensorDesc input_desc = avgPoolNode->GetOpDesc()->GetOutputDesc(0);
+      ge::GeShape mulShape = input_desc.GetShape();
+      vector<int64_t> dimMul = mulShape.GetDims();
+      int64_t mulC = 0;
+      if (dimMul.size() != 0) {
+        if (inputOriginFormat == FORMAT_NHWC) {
+          mulC = dimMul[3];
+        }
+        else if (inputOriginFormat == FORMAT_NCHW) {
+          mulC = dimMul[1];
+        }
+        if (PatternFusionUtil::IsUnknownShape(mulC)) {
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "AvgPoolFusionPass cannot be applied for unknown shape.");
+          return NOT_CHANGED;
+        }
+      }
       ge::NodePtr mulNode = AddMul(graph, avgPoolNode, inputOriginFormat);
       FUSION_PASS_CHECK(mulNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mulNode is null, AddMul failed."),
                         return PARAM_INVALID);
+      // judge input dims for unknown shape
+      ge::GeTensorDesc inputDesc0 = mulNode->GetOpDesc()->GetInputDesc(0);
+      ge::GeShape outputShape = inputDesc0.GetOriginShape();
+      vector<int64_t> dimOut = outputShape.GetDims();
+      for (size_t i = 1; i <= 3; i++) {
+        auto dim = dimOut[i];
+        if (PatternFusionUtil::IsUnknownShape(dim)) {
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "AvgPoolFusionPass cannot be applied for unknown shape.");
+          return NOT_CHANGED;
+        }
+      }
       FUSION_PASS_CHECK(AddCoffe(graph, mulNode, padding, dimInfo, window, stride) != SUCCESS,
                         OP_LOGE(FUSED_OP_TYPE.c_str(), "AddCoffe failed."), return ret);
     } else {

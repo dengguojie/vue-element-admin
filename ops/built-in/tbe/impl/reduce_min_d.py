@@ -99,7 +99,7 @@ def reduce_min_d(input_min, output_min, axis,
     dtype_input = input_min.get("dtype")
     para_check.check_shape(shape_input, param_name="input_min")
 
-    check_list = ("float16", "float32", "int8", "uint8")
+    check_list = ("float16", "float32", "int8", "uint8", "int32")
     para_check.check_dtype(dtype_input.lower(), check_list, param_name="input_min")
 
     shape_len = len(shape_input)

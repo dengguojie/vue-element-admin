@@ -28,7 +28,7 @@ from te.utils.error_manager.error_manager_util import get_error_message
 from .constants import INSN_MAPPING
 from .constants import DTYPE_BYTE_MAPPING
 
-
+CONST = "const"
 BLOCK_SIZE_BYTE = 32
 
 
@@ -1455,6 +1455,8 @@ class ReduceAtomicSchedule(_VectorSchedule):
         """
         :return:
         """
+        if operation.get_context().get("mode") == CONST:
+            return
         ub_tiling_para_list = self._reduce_tiling_para["ub_tiling"]
         ub_tiling_para = ub_tiling_para_list[0]
         ub_split_axis = ub_tiling_para["axis"]

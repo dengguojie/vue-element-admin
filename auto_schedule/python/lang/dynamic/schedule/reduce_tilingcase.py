@@ -29,14 +29,19 @@ from typing import Optional
 from te.tvm.tensor import Tensor
 from te.tvm.expr import Var
 from te.tvm.expr import IntImm
+from te.platform.cce_conf import get_soc_spec
 from te.platform.cce_conf import CceProductParams as Version
+from ...base import op_tiling
 from ...base import operation
 from ...base.operation import get_context
 from ...base.operation import register_tiling_case
 from ...base.operation import register_build_pointcut
+from ...base.operation import add_compile_info
+from ...base.operation import get_compile_info
 from .util import get_reduce_all_axes
 from .util import get_reduce_axes
 from .util import get_reduce_axis_indices
+from .util import shape_to_list
 from .constants import Pattern
 from .constants import CompileInfo
 from .vector_info import ComputeGraphInfo
@@ -45,19 +50,107 @@ from .vector_tilingcase import TilingCaseBase
 CONST = "const"
 
 
+def _get_block_size(dtype):
+    if dtype in ["float32", "fp32", "int32"]:
+        block_size = 8
+    elif dtype in ["bool", "int8", "uint8"]:
+        block_size = 32
+    elif dtype in ["float16", "fp16"]:
+        block_size = 16
+    elif dtype in ["int64"]:
+        block_size = 4
+    else:
+        raise RuntimeError("[%s] is not support type" % dtype)
+    return block_size
+
+
+def apply_compile_info(reduce_info, graph_info, tiling_list):
+    atomic = 0
+    # Common_Info
+    for item in tiling_list:
+        if item.is_atomic:
+            atomic = 1
+            break
+    max_ub_count = graph_info.max_single_tensor_ub_size
+    core_num = get_soc_spec("CORE_NUM")
+    keep_dims = int(reduce_info.keepdims)
+    reduce_block_size = _get_block_size(reduce_info.reduce_tensor.dtype)
+    common_info = [max_ub_count, core_num, keep_dims, reduce_block_size, atomic]
+
+    pre_compile_info = get_compile_info()
+    if pre_compile_info:
+        if "common_info" not in pre_compile_info.keys():
+            add_compile_info("common_info", common_info)
+
+
+def _calc_tiling_key(reduce_info, tiling):
+    # tiling: single_case
+    shape = reduce_info.shape_before_reduce
+    reduce_axis_idx = reduce_info.reduce_axis_indices
+    block_split_axis = tiling.block_split_axis_index
+    ub_split_axis = tiling.ub_split_axis_index
+    atomic = tiling.is_atomic
+    shape_type, db = 0, 0
+
+    if get_context().get("mode") == CONST:
+        ori_axis = get_context().get_current_compute().get("ori_axis")
+        tiling_key = _gen_const_tiling_key(ori_axis)
+    else:
+        tiling_key = _get_tiling_key(atomic, db, shape_type,
+                                     block_split_axis, ub_split_axis,
+                                     shape, reduce_axis_idx)
+
+    tiling.tiling_key = tiling_key
+
+
+def _gen_const_tiling_case(single_reduce_info, compute_graph_info):
+    add_compile_info("reduce_shape_known", True)
+    const_tiling_case = ReduceTilingCase()
+    shape_before_reduce = shape_to_list(single_reduce_info.shape_before_reduce)
+    shape_after_reduce = shape_to_list(single_reduce_info.shape_after_reduce)
+    reduce_axis_index = single_reduce_info.reduce_axis_indices
+    input_dtype = tuple(compute_graph_info.input_tensor_set)[0].dtype
+    output_dtype = tuple(compute_graph_info.output_tensor_set)[0].dtype
+    axes_dtype = get_context().get_current_compute().get("axis_dtype")
+    # staging axis info in ops
+    ori_reduce_axis = get_compile_info().get("_ori_axis")
+    if axes_dtype is None:
+        # invoking op_tiling interface during compilation need axis info in sch
+        add_compile_info("_ori_axis", reduce_axis_index)
+        inputs = [{"shape": shape_before_reduce, "dtype": input_dtype}]
+    else:
+        inputs = [{"shape": shape_before_reduce, "dtype": input_dtype},
+                  {"shape": (len(reduce_axis_index),), "dtype": axes_dtype, "name": "axes",
+                   "const_value": reduce_axis_index}]
+    outputs = [{"shape": shape_after_reduce, "dtype": output_dtype}]
+    # the flag of invoking op_tiling interface during compilation
+    add_compile_info("const_shape_post", False)
+    run_info = op_tiling.do_op_tiling(get_context().get_op_type(), get_compile_info(), inputs, outputs)
+    tiling_format = {"block_axis": "int",
+                     "block_factor": "int",
+                     "ub_axis": "int",
+                     "ub_factor": "int"}
+    tiling_data = op_tiling.decode(run_info["tiling_data"], tiling_format)
+    const_tiling_case.block_split_axis_index = tiling_data["block_axis"]
+    const_tiling_case.block_factor = tiling_data["block_factor"]
+    const_tiling_case.ub_split_axis_index = tiling_data["ub_axis"]
+    const_tiling_case.ub_factor = tiling_data["ub_factor"]
+    const_tiling_case.is_atomic = run_info["clear_atomic"]
+    const_tiling_case.multi_core = True if run_info["block_dim"] > 1 else False
+    _calc_tiling_key(single_reduce_info, const_tiling_case)
+    # the flag of invoking op_tiling interface during running
+    add_compile_info("const_shape_post", True)
+    # invoking op_tiling interface during running need axis info in ops
+    if ori_reduce_axis is not None:
+        add_compile_info("_ori_axis", ori_reduce_axis)
+
+    return [const_tiling_case]
+
+
 @register_tiling_case(pattern=Pattern.REDUCE)
 def calc_tiling_case(outs, options=None):
     [options].clear()
     outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
-
-    if get_context().get_current_compute().get("mode") == CONST:
-        # ConstInput has special tiling_key
-        operation.add_compile_info("reduce_shape_known", True)
-        operation.add_build_arg("dummy_placeholder", True)
-        current_compute = operation.get_context().get_current_compute()
-        ori_axis = current_compute.get("ori_axis")
-        current_compute.add("_mode", CONST)
-        return _gen_const_dict_key(ori_axis)
 
     # construct information of graph
     compute_graph_info = ComputeGraphInfo(outs)
@@ -71,6 +164,13 @@ def calc_tiling_case(outs, options=None):
     tiling_case_list += _calculate_tiling_cases(single_reduce_info)
     # Atomic reduce tiling cases
     tiling_case_list += _calculate_atomic_tiling_cases(single_reduce_info)
+    apply_compile_info(single_reduce_info, compute_graph_info, tiling_case_list)
+    # calc_tiling_key
+    for tiling_case in tiling_case_list:
+        _calc_tiling_key(single_reduce_info, tiling_case)
+    if get_context().get("mode") == CONST:
+        return _gen_const_tiling_case(single_reduce_info, compute_graph_info)
+
     return tiling_case_list
 
 
@@ -194,6 +294,7 @@ class ReduceTilingCase(TilingCaseBase):
         self.ub_split_axis_index = None
         self.ub_factor = None
         self.multi_core: Optional[bool] = None
+        self.tiling_key = None
 
     def __repr__(self):
         segment0 = "ATOMIC" if self.is_atomic else "NORMAL"
@@ -483,8 +584,8 @@ def _reorder_reduce_last_shape(shape_before_reduce: list,
     return reordered_shape, reorder_to_orignal_axis_map, orignal_to_reorder_axis_map
 
 
-def get_tiling_key(atomic, db, shape_type, block_split_axis,
-                   ub_split_axis, shape, reduce_idx_list):
+def _get_tiling_key(atomic, db, shape_type, block_split_axis,
+                    ub_split_axis, shape, reduce_idx_list):
     """
     :param atomic: "True": atomic_reduce, "False": normal_reduce.
     :param db: int number in [0,1]. "0": enable db, "1": close db.
@@ -534,7 +635,7 @@ def get_tiling_key(atomic, db, shape_type, block_split_axis,
     return key
 
 
-def _gen_const_dict_key(reduce_axis):
+def _gen_const_tiling_key(reduce_axis):
     """
     generate dict key from reduce_axis
     :param reduce_axis:
@@ -543,9 +644,9 @@ def _gen_const_dict_key(reduce_axis):
     if not reduce_axis:
         return -1
     reduce_axis_local = list(reduce_axis)[:]
-    reduce_axis_local = sorted(reduce_axis_local, reverse=True)
+    reduce_axis_local = sorted(reduce_axis_local)
     dict_key = 0
     for i in reduce_axis_local:
-        dict_key = 10 * dict_key + i
+        dict_key = 10 * dict_key + i + 1
 
     return dict_key

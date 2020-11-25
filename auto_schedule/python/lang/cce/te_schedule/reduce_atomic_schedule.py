@@ -100,7 +100,7 @@ class ReduceAtomicSchedule(VectorSchedule):
         self._last_axis_size = None
         self._final_out_tensor_ub_rf = None
 
-        self._spec_shape_list = [[8,1666980],[8,1428840],[8,1190700]]
+        self._spec_shape_list = [[8, 1666980], [8, 1428840], [8, 1190700]]
 
         # reduce_axis_map: key:reduce_axis_index, value:reduce_axis_var
         # reduce_index_map: key:reduce_axis_index in original index,

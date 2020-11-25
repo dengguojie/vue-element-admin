@@ -5,7 +5,7 @@
 
 #include "device_sharder.h"
 
-#include "aicpu_schedule/aicpu_sharder/aicpu_sharder.h"
+#include "aicpu_sharder.h"
 
 namespace aicpu {
 /*

@@ -65,7 +65,7 @@ set_st_env() {
   local install_path="$1"
   # atc
   export PATH=$install_path/atc/ccec_compiler/bin:$install_path/atc/bin:$PATH
-  export PYTHONPATH=$install_path/atc/python/site-packages/te:$install_path/atc/python/site-packages/topi:$PYTHONPATH
+  export PYTHONPATH=$install_path/atc/python/site-packages:$install_path/toolkit/python/site-packages:$PYTHONPATH
   export LD_LIBRARY_PATH=$install_path/atc/lib64:$LD_LIBRARY_PATH
   export ASCEND_OPP_PATH=$install_path/opp
   # acl

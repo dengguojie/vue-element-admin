@@ -46,10 +46,11 @@ if(ENABLE_TEST STREQUAL UT)
     DEPENDS ops_cpp_proto_utest
             ops_cpp_op_tiling_utest
             ops_cpp_fusion_pass_aicore_utest
+            cpu_kernels_ut
     COMMENT "Generate cpp coverage for ops utest"
   )
   add_custom_command(
     TARGET generate_ops_cpp_cov
-    COMMAND ${GENERATE_CPP_COV} ${_ops_bin_path}/built-in ${_ops_cov_data} ${_ops_cov_html}
+    COMMAND ${GENERATE_CPP_COV} ${_ops_bin_path}/ ${_ops_cov_data} ${_ops_cov_html}
   )
 endif()

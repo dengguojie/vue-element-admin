@@ -22,7 +22,7 @@ gemm_op_testcase = [
 
  # int8int8->float32 ND
  ((32, 256), (256, 96), 'int8', 'float32', True, (32, 96),'ND', False, False),
- ((15, 31), (31, 15), 'int8', 'float32', True, (15, 15),'ND', False, False),
+ ((15, 31), (31, 16), 'int8', 'float32', True, (15, 16),'ND', False, False),
 
  # nt8int8->int32
  ((32, 256), (256, 96), 'int8', 'float32', False, (32, 96),'FRACTAL_NZ', False, False),

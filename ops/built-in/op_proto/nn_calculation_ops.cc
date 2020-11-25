@@ -2844,16 +2844,19 @@ IMPLEMT_VERIFIER(Conv2D, Conv2DVerify) {
 }
 
 static void InferHWConv2D(int32_t input, int32_t kernel, int32_t pad, int32_t stride,
-                          int32_t dilation, vector<int64_t> output_slice, vector<int64_t>& data_slice) {
+                          int32_t dilation, vector<int64_t> output_slice, vector<int64_t>& data_slice,
+                          bool& start_add_pad, bool& end_add_pad) {
   // calc start rule: (i_start + pad_h)/stride_h = output_start
   int64_t i_start = output_slice[0] * stride - pad;
   if (i_start < 0) {
+    start_add_pad = true;
     i_start = 0;
   }
   // calc end rule: (iend_start + pad_h)/stride_h = output_end
   // iend_end = iend_start + dilation*(kernel_h-1)
   int64_t i_end = output_slice[1] * stride - pad + dilation * (kernel - 1);
   if (i_end >= input) {
+    end_add_pad = true;
     i_end = input - 1;
   }
   data_slice = {i_start, i_end};
@@ -2935,26 +2938,47 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
   }
   bool need_infer = false;
   bool have_slice = false;
+  vector<int> new_pad_lists(4, 0);
   for(int i=0; i < y_data_slice.size(); i++) {
     if (y_data_slice[i].size() > 0) {
       have_slice = true;
       if (i == 2) {
         need_infer = true;
         vector<int64_t> ih_slice;
-        InferHWConv2D(ih, kh, padt, strh, dilh, y_data_slice[i], ih_slice);
-        OP_LOGD(op.GetName().c_str(), "conv2d h axis slice ori_scope is [%d,%d], calced output scope is [%d,%d]",
+        bool top_add_pad = false;
+        bool bom_add_pad = false;
+        InferHWConv2D(ih, kh, padt, strh, dilh, y_data_slice[i], ih_slice, top_add_pad, bom_add_pad);
+        OP_LOGD(op.GetName().c_str(), "conv2d h axis slice ori_scope is [%d,%d], output scope is [%d,%d]",
                 ih_slice[0], ih_slice[1], y_data_slice[i][0], y_data_slice[i][1]);
+        if (top_add_pad) {
+          new_pad_lists[0] = padt;
+        }
+        if (bom_add_pad) {
+          new_pad_lists[1] = padb;
+        }
         x_data_slice[i] = ih_slice;
       } else if (i == 3) {
         need_infer = true;
         vector<int64_t> iw_slice;
-        InferHWConv2D(iw, kw, padl, strw, dilw, y_data_slice[i], iw_slice);
-        OP_LOGD(op.GetName().c_str(), "conv2d w axis slice ori_scope is [%d,%d], calced output scope is [%d,%d]",
+        bool left_add_pad = false;
+        bool right_add_pad = false;
+        InferHWConv2D(iw, kw, padl, strw, dilw, y_data_slice[i], iw_slice, left_add_pad, right_add_pad);
+        OP_LOGD(op.GetName().c_str(), "conv2d w axis slice ori_scope is [%d,%d], output scope is [%d,%d]",
                 iw_slice[0], iw_slice[1], y_data_slice[i][0], y_data_slice[i][1]);
+        if (left_add_pad) {
+          new_pad_lists[2] = padl;
+        }
+        if (right_add_pad) {
+          new_pad_lists[3] = padr;
+        }
         x_data_slice[i] = iw_slice;
       }
     }
   }
+  op.SetAttr("pads", new_pad_lists);
+  OP_LOGD(op.GetName().c_str(), "conv2d new pad lists is [%d,%d,%d,%d]", new_pad_lists[0],
+          new_pad_lists[1], new_pad_lists[2], new_pad_lists[3]);
+
   if (have_slice == false) {
     return GRAPH_FAILED;
   }

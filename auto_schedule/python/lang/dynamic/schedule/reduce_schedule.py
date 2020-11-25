@@ -24,7 +24,6 @@ from typing import NoReturn
 
 # Third-party Packages
 from te.tvm.tensor import Tensor
-from te.platform.cce_conf import get_soc_spec
 from te.lang.dynamic.schedule import Pattern
 from .util import get_dsl_insn
 from .util import is_reduce_tensor
@@ -34,48 +33,14 @@ from .constants import INSN_MAPPING
 from .constants import DTYPE_BYTE_MAPPING
 from .vector_info import ComputeGraphInfo
 from .vector_schedule import VectorSchedule
-from .vector_tilingcase import TilingCaseBase
 from .reduce_tilingcase import ReduceTilingCase
 from .reduce_tilingcase import SingleReduceInfo
-from .reduce_tilingcase import get_tiling_key
 from .reduce_atomic_schedule import ReduceAtomicSchedule
 from ...base.operation import var
 from ...base.operation import get_context
-from ...base.operation import add_compile_info
-from ...base.operation import get_compile_info
 from ...base.operation import register_schedule
 
-
-def apply_compile_info(sch, tiling):
-    # tiling: single case
-    shape = sch.reduce_info.shape_before_reduce
-    reduce_axis_idx = sch.reduce_info.reduce_axis_indices
-    block_split_axis = tiling.block_split_axis_index
-    ub_split_axis = tiling.ub_split_axis_index
-    atomic = tiling.is_atomic
-    shape_type, db = 0, 0
-
-    tiling_key = get_tiling_key(atomic, db, shape_type,
-                                block_split_axis, ub_split_axis,
-                                shape, reduce_axis_idx)
-
-    # Common_Info
-    common_info = {"max_ub_count": sch.graph_info.max_single_tensor_ub_size,
-                   "core_num": get_soc_spec("CORE_NUM"), "keep_dims": sch.reduce_info.keepdims,
-                   "reduce_dtype": sch.reduce_info.reduce_tensor.dtype,
-                   "atomic": atomic}
-
-    pre_compile_info = get_compile_info()
-    if pre_compile_info:
-        if "common_info" not in pre_compile_info.keys():
-            add_compile_info("common_info", common_info)
-        else:
-            existed_atomic_status = pre_compile_info["common_info"]["atomic"]
-            current_atomic_status = atomic
-            if not existed_atomic_status and current_atomic_status:
-                add_compile_info("common_info", common_info)
-
-    return tiling_key
+CONST = "const"
 
 
 @register_schedule(pattern=Pattern.REDUCE)
@@ -94,13 +59,11 @@ def schedule(outs, tiling_case: ReduceTilingCase):
         else:
             reduce_sch._reduce_case = 3
         real_schedule = reduce_sch.do_schedule(outs, tiling_case, graph_info, single_reduce_info)
-        current_tiling_key = apply_compile_info(reduce_sch, tiling_case)
-        real_schedule.tiling_key = current_tiling_key
+        real_schedule.tiling_key = tiling_case.tiling_key
     else:
         reduce_sch: ReduceSchedule = ReduceSchedule(graph_info, single_reduce_info)
-        current_tiling_key = apply_compile_info(reduce_sch, tiling_case)
         real_schedule = reduce_sch.do_schedule(tiling_case)
-        real_schedule.tiling_key = current_tiling_key
+        real_schedule.tiling_key = tiling_case.tiling_key
     return real_schedule
 
 

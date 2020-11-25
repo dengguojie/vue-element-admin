@@ -117,6 +117,10 @@ Status SplitFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     if (split_dim < 0) {
       split_dim += dimnum;
     }
+    if (PatternFusionUtil::IsUnknownShape(SplitDInputShape.GetDim(split_dim))) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "ZSplitFusionPass cannot be applied for unknown shape.");
+      return NOT_CHANGED;
+    }
     small_split_size = SplitDInputShape.GetDim(split_dim) / num_split;
     for (int64_t x = 0; x < num_split; x++) {
       size_splits.push_back(small_split_size);

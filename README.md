@@ -64,8 +64,8 @@ bash build.sh
 
 1.  `Fork` 本仓库
 2.  新建 `Feat_xxx` 分支
-3.  提交代码
-4.  新建 `Pull Request`
+3.  参考[wiki](https://gitee.com/ascend/canndev/wikis)中的**算子开发公共基础**章节，开始贡献
+4.  完成代码后，新建 `Pull Request`提交
 
 #### 码云特技
 
