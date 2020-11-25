@@ -62,9 +62,11 @@ set(_cpu_context
 set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/utils/bcast.cc
   ${CPU_KERNELS_DIR}/utils/eigen_tensor.cc
+  ${CPU_KERNELS_DIR}/utils/kernel_util.cc
   ${CPU_KERNELS_DIR}/utils/sparse_group.cc
   ${CPU_KERNELS_DIR}/utils/sparse_tensor.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/concatv2_kernels.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/get_dynamic_dims.cc
 )
 
 set(cpu_kernels_llt_src
@@ -117,6 +119,7 @@ target_link_libraries(cpu_kernels_llt
 set(_cpu_kernels_ut_files
   ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/node_def_builder.cpp
   testcase/concatv2_utest.cpp
+  testcase/get_dynamic_dims_utest.cpp
 )
 
 add_executable(cpu_kernels_ut

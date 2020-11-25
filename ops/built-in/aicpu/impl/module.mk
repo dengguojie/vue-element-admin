@@ -24,6 +24,7 @@ local_normalized_kernels := kernels/normalized/drop_out_gen_mask_kernels.cc \
                             kernels/normalized/round.cc \
                             utils/sparse_group.cc \
                             utils/eigen_tensor.cc \
+                            utils/kernel_util.cc \
                             utils/sparse_tensor.cc \
                             utils/bcast.cc \
 

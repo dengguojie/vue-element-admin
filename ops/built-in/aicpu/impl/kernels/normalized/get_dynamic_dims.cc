@@ -16,42 +16,24 @@
 
 #include "get_dynamic_dims.h"
 
+#include "utils/kernel_util.h"
 #include "cpu_types.h"
 #include "log.h"
 #include "securec.h"
 #include "status.h"
-#include <iostream>
-#include <sstream>
 
 namespace {
-constexpr uint32_t GET_DYNAMIC_DIMS_OUTPUT_NUM = 1;
+constexpr uint32_t kGetDynamicDimsOutputNum = 1;
 constexpr const char *GET_DYNAMIC_DIMS = "GetDynamicDims";
-
-template <typename T>
-std::string VectorToString(const std::vector<T> &values) {
-  std::stringstream ss;
-  ss << '[';
-  for (auto iter = values.begin(); iter != values.end(); ++iter) {
-    ss << *iter;
-    if (iter != values.end() - 1) {
-      ss << ", ";
-    }
-  }
-  ss << ']';
-  return ss.str();
-}
 } // namespace
 
 namespace aicpu {
 uint32_t GetDynamicDimsCpuKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_LOG_INFO("GetDynamicDimsCpuKernel::Compute(), OpType:%s.",
-                   GET_DYNAMIC_DIMS);
+                  GET_DYNAMIC_DIMS);
   // check params
-  if (ctx.GetOutputsSize() != GET_DYNAMIC_DIMS_OUTPUT_NUM) {
-    KERNEL_LOG_ERROR("%s need %u outputs but got %u.", GET_DYNAMIC_DIMS,
-                     GET_DYNAMIC_DIMS_OUTPUT_NUM, ctx.GetOutputsSize());
-    return KERNEL_STATUS_PARAM_INVALID;
-  }
+  KERNEL_HANDLE_ERROR(NormalCheck(ctx, kDynamicInput, kGetDynamicDimsOutputNum),
+                      "%s check params failed.", GET_DYNAMIC_DIMS);
 
   // parse attr
   AttrValue *n_attr = ctx.GetAttr("N");
@@ -65,44 +47,37 @@ uint32_t GetDynamicDimsCpuKernel::Compute(CpuKernelContext &ctx) {
                        "%s get attr:shape_info failed.", GET_DYNAMIC_DIMS);
   std::vector<int64_t> shape_info = shape_info_attr->GetListInt();
   KERNEL_LOG_INFO("%s get attr:shape_info: %s.", GET_DYNAMIC_DIMS,
-                   VectorToString(shape_info).c_str());
+                  VectorToString(shape_info).c_str());
   std::vector<std::vector<int64_t>> shape_infos = GetShapeInfos(shape_info);
 
   // check inputs size
   uint32_t inputs_size = ctx.GetInputsSize();
-  if (inputs_size != count) {
-    KERNEL_LOG_ERROR("%s inputs size [%zu] is not match attr N [%ld].",
-                     GET_DYNAMIC_DIMS, shape_infos.size(), count);
-    return KERNEL_STATUS_PARAM_INVALID;
-  }
-  if (inputs_size != shape_infos.size()) {
-    KERNEL_LOG_ERROR("%s inputs size [%u] is not match shape_infos size [%zu].",
-                     GET_DYNAMIC_DIMS, inputs_size, shape_infos.size());
-    return KERNEL_STATUS_PARAM_INVALID;
-  }
+  KERNEL_CHECK_FALSE(
+      (inputs_size == count), KERNEL_STATUS_PARAM_INVALID,
+      "%s inputs size [%zu] is not match attr N [%ld].",
+      GET_DYNAMIC_DIMS, inputs_size, count);
+  KERNEL_CHECK_FALSE(
+      (inputs_size == shape_infos.size()), KERNEL_STATUS_PARAM_INVALID,
+      "%s inputs size [%u] is not match shape_infos size [%zu].",
+      GET_DYNAMIC_DIMS, inputs_size, shape_infos.size());
 
   // get input shapes
   std::vector<std::vector<int64_t>> input_shapes;
-  uint32_t ret = GetInputShapes(ctx, input_shapes);
-  if (ret != KERNEL_STATUS_OK) {
-    KERNEL_LOG_ERROR("%s get input shapes failed.");
-    return ret;
-  }
+  KERNEL_HANDLE_ERROR(GetInputShapes(ctx, input_shapes),
+                      "%s get input shapes failed.", GET_DYNAMIC_DIMS);
 
   // find -1 in shape_infos, and record corresponding input_dim into dims
   std::vector<int64_t> dims;
   for (uint32_t i = 0; i < inputs_size; ++i) {
     KERNEL_LOG_INFO("%s shape_infos[%u]: %s.", GET_DYNAMIC_DIMS, i,
-                     VectorToString(shape_infos[i]).c_str());
+                    VectorToString(shape_infos[i]).c_str());
     KERNEL_LOG_INFO("%s get input[%u]'s shape: %s.", GET_DYNAMIC_DIMS, i,
-                     VectorToString(input_shapes[i]).c_str());
-    if (input_shapes[i].size() != shape_infos[i].size()) {
-      KERNEL_LOG_ERROR(
-          "%s input[%u] rank [%zu] is not match shape_infos[%u] rank [%zu].",
-          GET_DYNAMIC_DIMS, i, input_shapes[i].size(), i,
-          shape_infos[i].size());
-      return KERNEL_STATUS_PARAM_INVALID;
-    }
+                    VectorToString(input_shapes[i]).c_str());
+    KERNEL_CHECK_FALSE(
+        (input_shapes[i].size() == shape_infos[i].size()),
+        KERNEL_STATUS_PARAM_INVALID,
+        "%s input[%u] rank [%zu] is not match shape_infos[%u] rank [%zu].",
+        GET_DYNAMIC_DIMS, i, input_shapes[i].size(), i, shape_infos[i].size());
 
     for (size_t j = 0; j < input_shapes[i].size(); ++j) {
       if (shape_infos[i][j] == -1) {
@@ -111,7 +86,7 @@ uint32_t GetDynamicDimsCpuKernel::Compute(CpuKernelContext &ctx) {
     }
   }
   KERNEL_LOG_INFO("%s unknown dims: %s.", GET_DYNAMIC_DIMS,
-                   VectorToString(dims).c_str());
+                  VectorToString(dims).c_str());
 
   // fill output data
   Tensor *output_tensor = ctx.Output(0);
@@ -122,12 +97,10 @@ uint32_t GetDynamicDimsCpuKernel::Compute(CpuKernelContext &ctx) {
 
   errno_t cpret = memcpy_s(output_data, output_size, dims.data(),
                             dims.size() * sizeof(int64_t));
-  if (cpret != EOK) {
-    KERNEL_LOG_ERROR("%s memcpy_s to output failed, destMax=%ld, count=%zu.",
-                     GET_DYNAMIC_DIMS, output_size,
-                     dims.size() * sizeof(int64_t));
-    return KERNEL_STATUS_INNER_ERROR;
-  }
+  KERNEL_CHECK_FALSE(
+      (cpret == EOK), KERNEL_STATUS_INNER_ERROR,
+      "%s memcpy_s to output failed, destMax=%ld, count=%zu.",
+      GET_DYNAMIC_DIMS, output_size, dims.size() * sizeof(int64_t));
   return KERNEL_STATUS_OK;
 }
 
