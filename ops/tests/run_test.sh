@@ -77,6 +77,10 @@ set_st_env() {
 run_st() {
   local msopst="$DDK_PATH/toolkit/python/site-packages/bin/msopst"
   local supported_soc="Ascend310"
+  \which msopst >/dev/null 2>&1
+  if [[ $? -eq 0 ]]; then
+    msopst="$(which msopst)"
+  fi
   if [[ -d "$CANN_ST_OUT" ]]; then
     rm -rf "$CANN_ST_OUT" >/dev/null 2>&1
   fi
