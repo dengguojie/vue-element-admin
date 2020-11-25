@@ -2116,7 +2116,6 @@ def mmad_schedule(res, sch_list):
 
                 if not a_l1_inline_flag:
                     sch[tensor_a_l1].compute_at(sch[tensor_c], l1_k_outer)
-
                 allocate_axis(sch, batch_double, double_once,
                               tensor_a_reuse_local,
                               tensor_b_reuse_local,
@@ -2191,6 +2190,25 @@ def mmad_schedule(res, sch_list):
         else:
             if not a_l1_inline_flag:
                 sch[tensor_a_l1].compute_at(sch[tensor_c], l1_k_outer)
+
+                def _set_tensor_buffer_tile(tensor_a_l1):
+                    """
+                    set tensor buffer tile for m in gevm
+                    """
+                    a_l1_shape = tensor_a_l1.shape
+                    if tensor_a_l1.op.input_tensors:
+                        tensor_in = tensor_a_l1.op.input_tensors[0]
+                        in_shape = tensor_in.shape
+                        if a_l1_shape[-2].value != 1 and in_shape[-2].value == 1 \
+                                and k_l0_shape == block_reduce:
+                            # k_l0_shape == block_reduce for resolve L1 align 256B
+                            # only single loop for i1 can be optimized
+                            tile = [(None, None,) for i, _ in enumerate(a_l1_shape)]
+                            tile[-2] = (None, 1)
+                            sch[tensor_a_l1].buffer_tile(*tile)
+
+                _set_tensor_buffer_tile(tensor_a_l1)
+
             if not b_l1_inline_flag:
                 sch[tensor_b_l1].compute_at(sch[tensor_c], l1_k_outer)
 
