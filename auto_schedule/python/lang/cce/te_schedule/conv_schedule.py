@@ -1156,7 +1156,7 @@ class CceConvOp:
                 tiling_m = fmap2_read_select(m_target)
                 tiling_k = 1
                 tiling_n = 2
-                tiling["AL1_shape"] = [1]
+                tiling["AL1_shape"] = [1, 1]
                 if self.unzip_parameters.get("weight_zip_flag") and \
                         cce_conf.get_soc_spec("SOC_VERSION") == "Hi3796CV300ES":
                     tiling["BL1_shape"] = [1]
@@ -5000,7 +5000,6 @@ class CceConvOp:
         if self._dynamic_mode:
             return True
 
-        _conv_pooling_optm()
         tensor_map.clear()
         dim_map.clear()
         tiling.clear()
