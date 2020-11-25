@@ -16,6 +16,7 @@
 conv2d tiling case
 """
 import copy
+import math
 from collections import OrderedDict
 
 from te.tvm.expr import Expr
@@ -187,10 +188,14 @@ class Conv2dTiling(CubeTilingOp):
             if perf_ho * perf_wo <= range_max:
                 perf_range = [perf_hi_min, perf_hi_max, perf_wi_min, perf_wi_max]
             else:
-                perf_ho_max = range_max // w_o
+                range_inc = int((math.sqrt((h_o + w_o)**2 - 4*(h_o*w_o - range_max)) - (h_o + w_o))/2)
+                perf_ho_max = h_o + range_inc
+                perf_wo_max = w_o + range_inc
                 perf_hi_max_rev = self._get_input_h(perf_ho_max)
+                perf_wi_max_rev = self._get_input_w(perf_wo_max)
                 perf_hi_max = min(perf_hi_max, perf_hi_max_rev)
-                perf_range = [perf_hi_min, perf_hi_max, perf_wi_min, fmap_w]
+                perf_wi_max = min(perf_wi_max, perf_wi_max_rev)
+                perf_range = [perf_hi_min, perf_hi_max, perf_wi_min, perf_wi_max]
 
         perf_range = [int(v) for v in perf_range]
         return perf_range
