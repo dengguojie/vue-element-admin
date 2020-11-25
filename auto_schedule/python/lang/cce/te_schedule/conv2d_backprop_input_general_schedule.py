@@ -1407,7 +1407,7 @@ def general_schedule(
 
     def _l0b_process():
         neg_src_stride = True
-        if tiling.get("BL0_matrix") != [] or g_after != 1:
+        if tiling.get("BL0_matrix") != []:
             l0b2l0c_affine_shape = (
                 1,
                 None,
@@ -1494,7 +1494,7 @@ def general_schedule(
             )
 
     def _bl1_process():
-        if tiling.get("BL1_shape") != [] or g_after != 1:
+        if tiling.get("BL1_shape") != []:
             l1_nb = bl1_tilling_n * bl0_tiling_nb
             _, _k0, _n0 = cce_params.CUBE_MKN[b_l1.dtype]["mac"]
             bl1_shape = shape_to_list(b_l1.shape)
@@ -2090,6 +2090,15 @@ def general_schedule(
         _conv1d_split_tile()
     _double_buffer()
     _emit_insn()
+    def _full_load_bl1_bl0():
+        if not tiling.get("BL1_shape") and g_after != 1:
+            axs = sch_agent[c_ddr].get_active_scopes()
+            ax_g, _, _, _, _ = axs
+            _, bl1_at_inner = sch_agent[c_ddr].split(ax_g, factor=1)
+            sch[b_l1].compute_at(sch[c_ddr], bl1_at_inner)
+            if not tiling.get("BL0_matrix"):
+                sch[b_col].compute_at(sch[c_ddr], bl1_at_inner)
+    _full_load_bl1_bl0()
     sch_agent.apply()
     _c_col_buffer_tile()
     if dynamic_mode is not None:
