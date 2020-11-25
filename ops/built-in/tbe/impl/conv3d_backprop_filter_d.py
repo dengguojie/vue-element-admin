@@ -705,16 +705,21 @@ def conv3d_backprop_filter_cce(shape_x,
     dedy = tvm.placeholder(shape_dedy, name="dedy", dtype=out_backprop_dtype)
     fmap = tvm.placeholder(shape_fmap, name="fmap", dtype=x_dtype)
 
-    dedw = conv3d_bp_dw.conv3d_backprop_filter_compute(
-        input_x=fmap,
+    para_dict = {
+        "strides": strides,
+        "pads": pads,
+        "dilations": dilations,
+        "res_dtype": res_dtype,
+        "kernel_name": kernel_name,
+        "group_dict": group_dict
+    }
+
+    dedw = conv3d_bp_dw.conv3d_dw(
+        x=fmap,
         out_backprop=dedy,
-        filter_sizes=filter_sizes,
-        strides=strides,
-        padding=pads,
-        group_dict=group_dict,
-        dilations=dilations,
-        res_dtype=res_dtype,
-        kernel_name=kernel_name)
+        filter_size=filter_sizes,
+        para_dict=para_dict
+    )
 
     tensor_list_input = [fmap, dedy]
     with tvm.target.cce():

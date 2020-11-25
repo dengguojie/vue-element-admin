@@ -1065,3 +1065,52 @@ def conv3d_backprop_filter_compute(input_x,
     deconv_dw_object._deconv_dw_access()
 
     return deconv_dw_object.res_tensor
+
+
+@para_check.check_input_type(tvm.tensor.Tensor,
+                             tvm.tensor.Tensor,
+                             (list, tuple),
+                             dict)
+def conv3d_dw(x,
+              out_backprop,
+              filter_size,
+              para_dict):
+    """
+    DSL interface of conv3d bp dx
+
+    Parameters
+    ----------
+    x : the featuremap data, tvm.placeholder, 6hd shape
+
+    out_backprop : the grads data, tvm.placeholder, 6hd shape
+
+    filter_size : 5-D shape, specifies the filter sizes
+
+    para_dict : dict of parameters
+        strides : 3-D shape, specifies in depth, height and width dimension
+        pads : 6-D shape, specifies in up/down/left/right dimension
+        dilations : 5-D shape, specifies in batch/channel/depth/height/width dimension
+        res_dtype : the output data type
+        kernel_name : conv3d_backprop_filter_cce by default
+        group_dict : group of parameters
+
+    Returns
+    -------
+    result tensor of conv3d_backprop_filter compute
+    """
+    strides = para_dict.get("strides", [1, 1, 1])
+    pads = para_dict.get("pads", [0, 0, 0, 0, 0, 0])
+    group_dict = para_dict.get("group_dict", None)
+    dilations = para_dict.get("dilations", [1, 1, 1, 1, 1])
+    res_dtype = para_dict.get("res_dtype", "float32")
+    kernel_name = para_dict.get("kernel_name", "conv3d_backprop_filter_cce")
+
+    return conv3d_backprop_filter_compute(x,
+                                          out_backprop,
+                                          filter_size,
+                                          strides,
+                                          pads,
+                                          group_dict,
+                                          dilations,
+                                          res_dtype,
+                                          kernel_name)

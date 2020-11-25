@@ -45,6 +45,4 @@ from .gemm_compute import gemm
 from .depthwise_conv2d_compute import depthwise_conv2d_compute, \
     DepthwiseConv2dParam
 from .inplace_compute import inplace_add, inplace_sub, inplace_update
-from .conv3d_compute import conv3d
 from .conv3d_compute import Conv3DParam
-from .conv3d_compute import check_conv3d_shape

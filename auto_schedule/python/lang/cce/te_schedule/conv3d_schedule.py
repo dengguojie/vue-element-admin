@@ -66,7 +66,7 @@ class CceConv3dOp:
         self.output_ops = []
         self._has_vector_flag = False
         self._in_quant_sqrt_flag = False
-        self.fusion_flag = self._tensor_map["fusion_flag"]
+        self.dsl_flag = self._tensor_map["dsl_flag"]
 
     def _weight_to_bl1(self, tiling, filter_matrix, weight, c_col):
         """
@@ -404,7 +404,7 @@ class CceConv3dOp:
         """
         for lop in self.body_ops:
             if (("conv3d" not in lop["op"] or
-                 (self.fusion_flag and (lop["op"] == "conv3d_C"))) and
+                 (self.dsl_flag and (lop["op"] == "conv3d_C"))) and
                 lop['dst_buffer'] not in spec_node_list):
                 self._schedule[lop["dst_buffer"]].set_scope(tbe_platform.scope_ubuf)
         for lop in self.input_ops:  # not for A, B, DeqScale, ReqScale,
@@ -911,7 +911,7 @@ class CceConv3dOp:
         """
         for lop in bodyops:
             if "conv3d" not in lop["op"] or "convolution_A" in lop["op"] or \
-                (self.fusion_flag and (lop["op"] == "conv3d_C")):
+                (self.dsl_flag and (lop["op"] == "conv3d_C")):
                 if lop["op"] == "conv_vector_remove_pad":
                     continue
                 if "Before" in lop["op"]:
@@ -962,7 +962,7 @@ class CceConv3dOp:
         """
         for lop in bodyops:
             if "conv3d" not in lop["op"] or "conv3d_A" in lop["op"] or \
-                (self.fusion_flag and (lop["op"] == "conv3d_C")):
+                (self.dsl_flag and (lop["op"] == "conv3d_C")):
                 lop["tensorize_axis"] = self._schedule[
                     lop["dst_buffer"]].op.axis[0]
                 if "Before" in lop["op"]:
@@ -1247,7 +1247,7 @@ class CceConv3dOp:
                                (1, tbe_platform.CUBE_MKN[c_ub.dtype]["mac"][0]),
                                (1, tbe_platform.CUBE_MKN[c_ub.dtype]["mac"][2]))
         # for fusion vector
-        if self.fusion_flag:
+        if self.dsl_flag:
             res_ub = sch.cache_write(res, tbe_platform.scope_ubuf)
             self.output_ops[0]["tensorize_axis"] = \
                 self._schedule[res_ub].op.axis[0]
@@ -1669,7 +1669,7 @@ class CceConv3dOp:
         self._intrin_mapping(fmap, mad_dict, buffer_dict, new_fmap_col_axis,
                              tiling, cn_axis, l0a_load2d_flag)
 
-        if self.fusion_flag:
+        if self.dsl_flag:
             sch[res_c].emit_insn(c_pragma_axis, 'dma_copy')
 
         ########################### cube schedule end #########################
