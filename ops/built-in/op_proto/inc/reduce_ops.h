@@ -635,8 +635,8 @@ REG_OP(ReduceMin)
 * Warning: THIS FUNCTION IS DEPRECATED. Please use ReduceMin instead.
 */
 REG_OP(ReduceMinD)
-    .INPUT(x, TensorType({DT_FLOAT16,DT_FLOAT,DT_INT8,DT_UINT8}))
-    .OUTPUT(y, TensorType({DT_FLOAT16,DT_FLOAT,DT_INT8,DT_UINT8}))
+    .INPUT(x, TensorType({DT_FLOAT16,DT_FLOAT,DT_INT8,DT_UINT8,DT_INT32}))
+    .OUTPUT(y, TensorType({DT_FLOAT16,DT_FLOAT,DT_INT8,DT_UINT8,DT_INT32}))
     .REQUIRED_ATTR(axes, ListInt)
     .ATTR(keep_dims, Bool, false)
     .OP_END_FACTORY_REG(ReduceMinD)
