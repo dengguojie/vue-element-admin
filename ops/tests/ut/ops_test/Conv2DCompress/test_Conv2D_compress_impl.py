@@ -344,8 +344,8 @@ def test_conv2d_compress(test_arg):
         print("end")
     test_cce_conv200()
 
-ut_case.add_cust_test_func(test_func=test_conv2d_compress)
+# ut_case.add_cust_test_func(test_func=test_conv2d_compress)
 
 if __name__ == "__main__":
-    ut_case.add_cust_test_func(test_func=test_conv2d_compress)
+    # ut_case.add_cust_test_func(test_func=test_conv2d_compress)
     exit(0)

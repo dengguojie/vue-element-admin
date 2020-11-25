@@ -44,7 +44,6 @@ def ascend_requant_compute(x, req_scale, y, relu_flag=False, kernel_name="ascend
     -------
     res : the result of ascend_requant
     """
-
     x_shape = x.shape
     x_shape_list = shape_util.shape_to_list(x_shape)
 
@@ -53,8 +52,13 @@ def ascend_requant_compute(x, req_scale, y, relu_flag=False, kernel_name="ascend
         conv_flag = 1
 
     if conv_flag:
-        align_shape = shape_util.shape_to_list(x.op.input_tensors[0].shape)
-        c1_index = 2
+        x_input_shape_list = shape_util.shape_to_list(x.op.input_tensors[0].shape)
+        align_shape = [x_input_shape_list[1],
+                       x_input_shape_list[0] * x_input_shape_list[2],
+                       x_input_shape_list[3],
+                       x_input_shape_list[4]]
+        c1_index = 1
+
     else:
         align_shape = x_shape_list.copy()
         c1_index = 1
@@ -117,7 +121,6 @@ def ascend_requant_compute(x, req_scale, y, relu_flag=False, kernel_name="ascend
                                  tvm.select(j < valid_c1,
                                             tvm.deq_cast(x(i, j // 2, j % 2, k, l), req_scale(0, 0, 0, 0, 0), "int8"),
                                             tvm.const(0, dtype="int8")), name="s32_to_s8", tag="requant_scale")
-
     else:
         align_shape[c1_index] = (align_shape[c1_index] + 1) // 2 * 2
         if util.is_nz_format(x) and len(align_shape) == 4 and align_shape[1] == 1 and align_shape[2] == 1:
@@ -135,18 +138,10 @@ def ascend_requant_compute(x, req_scale, y, relu_flag=False, kernel_name="ascend
 
     res_shape[-2] = x.shape[-2]
     if conv_flag:
-        res_shape[1] = res_shape[0] * res_shape[1]
-        del (res_shape[0])
-        group = align_shape[0]
-        cout1_opt = align_shape[2]
-        if group == 1:
-            res = tvm.compute(res_shape, lambda batch, cout1, howo, cout0: res_ub_reform(0, batch, cout1, howo, cout0),
-                              name="requant_remove_pad", tag="requant_remove_pad")
-        else:
-            res = tvm.compute(res_shape,
-                              lambda batch, cout1, howo, cout0:
-                              res_ub_reform(cout1 // cout1_opt, batch, cout1 % cout1_opt, howo, cout0),
-                              name="requant_remove_pad", tag="requant_remove_pad")
+        res = tvm.compute(res_shape,
+                          lambda batch, cout1, howo, cout0:
+                              res_ub_reform(batch, cout1, howo, cout0),
+                          name="requant_remove_pad", tag="requant_remove_pad")
     else:
         res = tvm.compute(res_shape, lambda *indice: res_ub_reform(*indice),
                           name="requant_remove_pad", tag="requant_remove_pad")
@@ -174,24 +169,31 @@ def _deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, relu_fla
     generate lambda func
     """
     if conv_flag:
-        group = align_shape[0]
-        x_shape = x.shape
+        group = x.op.input_tensors[0].shape[0].value
         x_shape_list = shape_util.shape_to_list(x.op.input_tensors[0].shape)
+        cout1_opt = x_shape_list[2]
 
-        def lambda_func(g, i, j, k, l):
+        def lambda_func(batch, cout1, howo, cout0):
             new_indice = [0] * 5
             if tensor_flag:
-                new_indice[4] = l
-                new_indice[1] = j
+                new_indice[4] = cout0
+                new_indice[1] = cout1
 
             if tensor_flag:
                 return tvm.select(
-                    j < x_shape_list[c1_index],
-                    tvm.vdeq_cast(x(g * (x_shape[0] // group) + i, j, k, l),
-                                  req_scale(*new_indice), "int8", do_relu=relu_flag),
+                    cout1 < x_shape_list[0] * x_shape_list[2],
+                    tvm.vdeq_cast(
+                        x.op.input_tensors[0](0 if group == 1 else cout1 // cout1_opt,
+                                              batch,
+                                              cout1 if group == 1 else cout1 % cout1_opt, howo, cout0),
+                        req_scale(*new_indice), "int8", do_relu=relu_flag),
                     tvm.const(0, dtype="int8"))
-            return tvm.select(j < x_shape_list[c1_index],
-                              tvm.deq_cast(x(g * (x_shape[0] // group) + i, j, k, l), req_scale(*new_indice), "int8"),
+            return tvm.select(cout1 < x_shape_list[0] * x_shape_list[2],
+                              tvm.deq_cast(
+                                  x.op.input_tensors[0](0 if group == 1 else cout1 // cout1_opt,
+                                                        batch,
+                                                        cout1 if group == 1 else cout1 % cout1_opt, howo, cout0),
+                                  req_scale(*new_indice), "int8"),
                               tvm.const(0, dtype="int8"))
     else:
         n_dim = len(align_shape)

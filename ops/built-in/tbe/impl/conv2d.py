@@ -186,8 +186,6 @@ def conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads,
     -------
     tvm compute
     """
-    if groups != 1:
-        raise RuntimeError("conv2d_compute only supports groups=1")
     para_dict, optim_dict = util_conv2d.calc_para_from_tensor(
         inputs, weights, bias, offset_w, strides, \
         pads, dilations, offset_x, groups, kernel_name, data_format)
@@ -240,8 +238,6 @@ def conv2d(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
     -------
     None
     """
-    if groups != 1:
-        raise RuntimeError("conv2d only supports groups=1")
     in_dtype = inputs.get("dtype")
     w_dtype = weights.get("dtype")
     res_dtype = outputs.get("dtype")
@@ -354,32 +350,30 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
     shape_in = list(shape_in)
     shape_w = list(shape_w)
     weight_ori_shape_nchw = shape_w
-
+    cin_ori = shape_in[1]//groups
+    cout_ori = shape_w[0]//groups
     shape_in, shape_w = \
             util_conv2d.conv_layer_cce_para_check(shape_in, shape_w, padh, padw,
                                       strideh, stridew, in_dtype, w_dtype,
                                       res_dtype, offset_w_dtype, bias,
                                       kernel_name, dilateh, dilatew,
-                                      optim_dict, fusion_para)
+                                      optim_dict, fusion_para, groups)
 
     c0_val = 16
     if in_dtype == "int8":
         c0_val = 32
-    cin_ori = shape_in[1]//groups
-    cout_ori = 16*(math.ceil(shape_w[0]/16))//groups
 
     enlarge = min(
         util_conv2d.lcm(util_conv2d.lcm(cin_ori, c0_val)//cin_ori, util_conv2d.lcm(cout_ori, 16)//cout_ori), groups)
     c1_opt = math.ceil(cin_ori*enlarge/c0_val)
     cout1_opt = math.ceil(cout_ori*enlarge/16)
     group_opt = math.ceil(groups/enlarge)
+    c1in_ori_align = math.ceil(cin_ori*groups/c0_val)
 
-
-    out_channel, in_channel_weight, filter_h, filter_w = shape_w
+    _, _, filter_h, filter_w = shape_w
 
     fmap_shape_nc1hwc0, filter_shape_frac_z = util_conv2d.conv_layer_cce_shape_calc(
-        shape_in, shape_w, in_dtype, w_dtype, optim_dict)
-
+        shape_in, shape_w, in_dtype, w_dtype, optim_dict, cout1_opt, c1_opt, group_opt, c1in_ori_align)
     tensor_list = []
     with tvm.target.cce():
         data = tvm.placeholder(
@@ -392,7 +386,7 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
         offset_w_tensor = None
 
         if bias:
-            bias_tensor = tvm.placeholder((out_channel,), name='bias_tensor',
+            bias_tensor = tvm.placeholder((cout_ori * groups,), name='bias_tensor',
                                           dtype=res_dtype)
             tensor_list.append(bias_tensor)
         conv_res = tbe.conv(
