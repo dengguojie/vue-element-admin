@@ -1661,8 +1661,22 @@ INFER_DATA_SLICE_FUNC_REG(AvgPool3DD, AvgPool3DDInferDataSlice);
 // ----------------AvgPool3D-------------------
 
 
+static void UpdateDimAndRange(const int64_t& ksize, const int64_t& strides,
+                              int64_t& dim_size, std::pair<int64_t, int64_t>& dim_range) {
+  if (dim_size != -1) {
+    int64_t output_dim_size = (dim_size - ksize + strides) / strides;
+    dim_range = std::pair<int64_t, int64_t>{output_dim_size, output_dim_size};
+    dim_size = output_dim_size;
+  } else {
+    int64_t first_range = dim_range.first == -1 ? -1 : (dim_range.first - ksize + strides) / strides;
+    int64_t second_range = dim_range.second == -1 ? -1 : (dim_range.second - ksize + strides) / strides;
+    dim_range = std::pair<int64_t, int64_t>{first_range, second_range};
+  }
+}
+
 // ----------------MaxPool-------------------
 IMPLEMT_INFERFUNC(MaxPool, MaxPoolInferShape) {
+  PREPARE_DYNAMIC_SHAPE_WITH_NO_DEPENDS();
   const size_t DIM_SIZE1 = 1;
   const size_t DIM_SIZE2 = 2;
   const size_t DIM_SIZE3 = 3;
@@ -1753,82 +1767,54 @@ IMPLEMT_INFERFUNC(MaxPool, MaxPoolInferShape) {
   }
 
   std::vector<int64_t> dims_input = shape.GetDims();
+  std::vector<std::pair<int64_t, int64_t>> input_range;
+  bool is_unkown_rank = dims_input == UNKNOWN_RANK ? true : false;
+  if (is_unkown_rank) {
+    OP_LOGW(op.GetName().c_str(), "the input os unkown rank, will set the input -1, -1, -1 , -1");
+    dims_input = {-1, -1, -1, -1};
+  } else {
+    inputTensorDesc.GetShapeRange(input_range);
+  }
+  MakeUpShapeRange(dims_input, input_range);
+
   // set output shape
   std::vector<int64_t> dimVector;
-  if (input_format == FORMAT_NHWC) {
-    if (paddingMode == "SAME") {
-      for (size_t i = 0; i < dims_input.size(); i++) {
-        if ((i == DIM_SIZE1) || (i == DIM_SIZE2)) {
-          if (dataFormat == "NHWC") {
-            int64_t dims = (dims_input[i] + stridesList[i] - 1) / stridesList[i];
-            dimVector.push_back(dims);
-          } else {
-            int64_t dims = (dims_input[i] + stridesList[i + 1] - 1) / stridesList[i + 1];
-            dimVector.push_back(dims);
-          }
-        } else {
-          int64_t dims = dims_input[i];
-          dimVector.push_back(dims);
-        }
-      }
-    } else {
-      for (size_t i = 0; i < dims_input.size(); i++) {
-        if ((i == DIM_SIZE1) || (i == DIM_SIZE2)) {
-          if (dataFormat == "NHWC") {
-            int64_t dims = (dims_input[i] - ksizeList[i] + 1 + (stridesList[i] - 1)) / stridesList[i];
-            dimVector.push_back(dims);
-          } else {
-            int64_t dims = (dims_input[i] - ksizeList[i + 1] + 1 + (stridesList[i + 1] - 1)) / stridesList[i + 1];
-            dimVector.push_back(dims);
-          }
-        } else {
-          int64_t dims = dims_input[i];
-          dimVector.push_back(dims);
-        }
-      }
-    }
-  } else {
-    if (paddingMode == "SAME") {
-      for (size_t i = 0; i < dims_input.size(); i++) {
-        if ((i == DIM_SIZE2) || (i == DIM_SIZE3)) {
-          if (dataFormat == "NHWC") {
-            int64_t dims = (dims_input[i] + stridesList[i - 1] - 1) / stridesList[i - 1];
-            dimVector.push_back(dims);
-          } else {
-            int64_t dims = (dims_input[i] + stridesList[i] - 1) / stridesList[i];
-            dimVector.push_back(dims);
-          }
-        } else {
-          int64_t dims = dims_input[i];
-          dimVector.push_back(dims);
-        }
-      }
-    } else {
-      for (size_t i = 0; i < dims_input.size(); i++) {
-        if ((i == DIM_SIZE2) || (i == DIM_SIZE3)) {
-          if (dataFormat == "NHWC") {
-            int64_t dims = (dims_input[i] - ksizeList[i - 1] + 1 + (stridesList[i - 1] - 1)) / stridesList[i - 1];
-            dimVector.push_back(dims);
-          } else {
-            int64_t dims = (dims_input[i] - ksizeList[i] + 1 + (stridesList[i] - 1)) / stridesList[i];
-            dimVector.push_back(dims);
-          }
-        } else {
-          int64_t dims = dims_input[i];
-          dimVector.push_back(dims);
-        }
-      }
-    }
+  std::vector<std::pair<int64_t, int64_t>> output_range;
+
+  auto shape_h_dim = input_format == FORMAT_NCHW ? DIM_SIZE2 : DIM_SIZE1;
+  auto shape_w_dim = input_format == FORMAT_NCHW ? DIM_SIZE3 : DIM_SIZE2;
+  auto stride_h_dim = dataFormat == "NCHW" ? DIM_SIZE2 : DIM_SIZE1;
+  auto stride_w_dim = dataFormat == "NCHW" ? DIM_SIZE3 : DIM_SIZE2;
+
+  if (paddingMode != "VALID") {
+    ksizeList[stride_h_dim] = 1;
+    ksizeList[stride_w_dim] = 1;
   }
+
+  for (size_t i = 0; i < dims_input.size(); i++) {
+    int64_t dim_num = dims_input[i];
+    int64_t dims = dims_input[i];
+    auto dim_range = input_range[i];
+    if (i == shape_h_dim) {
+      UpdateDimAndRange(ksizeList[stride_h_dim], stridesList[stride_h_dim], dims, dim_range);
+    } else if (i == shape_w_dim) {
+      UpdateDimAndRange(ksizeList[stride_w_dim], stridesList[stride_w_dim], dims, dim_range);
+    }
+    dimVector.push_back(dims);
+    output_range.push_back(dim_range);
+  }
+
   TensorDesc td = op.GetOutputDesc("y");
   DataType inputDtype = inputTensorDesc.GetDataType();
   Shape outputShape(dimVector);
   td.SetShape(outputShape);
+  td.SetOriginShape(outputShape);
+  td.SetShapeRange(output_range);
   td.SetDataType(inputDtype);
   (void)op.UpdateOutputDesc("y", td);
+
   return GRAPH_SUCCESS;
 }
-
 
 static void InferHWMaxPool(int64_t kernel,int64_t stride, vector<int64_t>& output, vector<int64_t>& input,
                            int64_t& ori_input) {

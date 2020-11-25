@@ -24,6 +24,7 @@
 #include "util/util.h"
 #include "op_log.h"
 #include "./util/error_util.h"
+#include "graph/utils/node_utils.h"
 
 namespace ge {
 // --------------------------LogSoftmaxGrad-------------------------
@@ -525,12 +526,21 @@ IMPLEMT_VERIFIER(DropOutDoMask, DropOutDoMaskVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(DropOutDoMaskInferShape) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  PREPARE_DYNAMIC_SHAPE_WITH_NO_DEPENDS();
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto x_desc = op_info->MutableInputDesc("x");
+  vector<int64_t> x_shape = x_desc->MutableShape().GetDims();
+  DataType input_dtype = x_desc->GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> input_range;
+  x_desc->GetShapeRange(input_range);
+  MakeUpShapeRange(x_shape, input_range);
 
-  tensordesc_output.SetShape(op.GetInputDesc("x").GetShape());
-  tensordesc_output.SetDataType(op.GetInputDesc("x").GetDataType());
+  auto output_desc_y = op_info->MutableOutputDesc("y");
+  output_desc_y->SetShape(GeShape(x_shape));
+  output_desc_y->SetOriginShape(GeShape(x_shape));
+  output_desc_y->SetShapeRange(input_range);
+  output_desc_y->SetDataType(input_dtype);
 
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
   return GRAPH_SUCCESS;
 }
 

@@ -29,6 +29,7 @@
 #include "util/util.h"
 #include "util/error_util.h"
 #include "op_log.h"
+#include "graph/utils/node_utils.h"
 
 namespace ge {
 // ----------------Split OP Begin-------------------
@@ -947,8 +948,12 @@ COMMON_INFER_FUNC_REG(ConcatV2, ConcatV2InferShape);
 
 // ----------------Pack OP Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(PackInferShape) {
+  PREPARE_DYNAMIC_SHAPE_WITH_NO_DEPENDS();
   auto ge_tensor_desc = op.GetDynamicInputDesc("x", 0);
   auto shape = ge_tensor_desc.GetShape();
+  DataType input_dtype = ge_tensor_desc.GetDataType();
+  TensorDesc y_desc = op.GetOutputDesc("y");
+
   int64_t dimnum;
   dimnum = shape.GetDimNum();
   int64_t axis;
@@ -974,21 +979,40 @@ IMPLEMT_COMMON_INFERFUNC(PackInferShape) {
   if (axis < 0) {
     axis += (dimnum + 1);
   }
+
+  // check unkown_rank and set unkown_rank
+  auto shape_dims = ge_tensor_desc.GetShape().GetDims();
+  bool is_unkown_rank = shape_dims == UNKNOWN_RANK ? true : false;
+  if (is_unkown_rank) {
+    y_desc.SetShape(ge::Shape(UNKNOWN_RANK));
+    y_desc.SetDataType(input_dtype);
+    (void)op.UpdateOutputDesc("y", y_desc);
+    return GRAPH_SUCCESS;
+  }
+
+  std::vector<std::pair<int64_t, int64_t>> x_range;
+  ge_tensor_desc.GetShapeRange(x_range);
+  MakeUpShapeRange(shape_dims, x_range);
+  std::vector<std::pair<int64_t, int64_t>> y_range;
   vector<int64_t> dimVector;
   for (int64_t i = 0; i < dimnum + 1; i++) {
     if (i < axis) {
       dimVector.push_back(shape.GetDim(i));
+      y_range.push_back(x_range[i]);
     } else if (i == axis) {
       dimVector.push_back(pack_num);
+      y_range.push_back(std::pair<int64_t, int64_t>{pack_num, pack_num});
     } else {
       dimVector.push_back(shape.GetDim(i - 1));
+      y_range.push_back(x_range[i - 1]);
     }
   }
   Shape x_shape(dimVector);
-  TensorDesc y_desc = op.GetOutputDesc("y");
+
   y_desc.SetShape(ge::Shape(x_shape));
-  DataType input_dtype = ge_tensor_desc.GetDataType();
+  y_desc.SetOriginShape(ge::Shape(x_shape));
   y_desc.SetDataType(input_dtype);
+  y_desc.SetShapeRange(y_range);
   (void)op.UpdateOutputDesc("y", y_desc);
   return GRAPH_SUCCESS;
 }
@@ -998,23 +1022,81 @@ COMMON_INFER_FUNC_REG(Pack, PackInferShape);
 
 // --------------------ConcatOffset------------------------
 IMPLEMT_COMMON_INFERFUNC(ConcatOffsetInferShape) {
-  DataType input_dtype = op.GetDynamicInputDesc("x", 0).GetDataType();
-  Shape shape = op.GetDynamicInputDesc("x", 0).GetShape();
-  auto tensordesc = op.GetDynamicInputDesc("x", 0);
+  PREPARE_DYNAMIC_SHAPE_WITH_NO_DEPENDS();
+  auto x_0_tensordesc = op.GetDynamicInputDesc("x",0);
   int num_concat;
   op.GetAttr("N", num_concat);
   if (num_concat < 2) {
     OP_LOGE(op.GetName().c_str(), "The num_concat should be no less than two");
     return GRAPH_FAILED;
   }
-  tensordesc.SetShape(shape);
-  tensordesc.SetDataType(input_dtype);
+
+  std::vector<std::pair<int64_t, int64_t>> x_shape_range;
+  std::vector<std::pair<int64_t, int64_t>> y_shape_range;
+  vector<vector<std::pair<int64_t, int64_t>>> all_input_shape_ranges;
+  bool has_shape_ranges = false;
+
+  //unknown_rank
+  bool is_unknown_rank = x_0_tensordesc.GetShape().GetDims() == UNKNOWN_RANK ? true : false;
+  if(is_unknown_rank){
+    y_shape_range.push_back(std::pair<int64_t,int64_t>{1,-1});
+    for(auto i = 0; i < num_concat; i++){
+      auto y_desc = op.GetDynamicOutputDesc("y",i);
+      std::vector<int64_t> oShapeVector;
+      oShapeVector.push_back(-1);
+      Shape oShape(oShapeVector);
+      y_desc.SetShape(oShape);
+      y_desc.SetDataType(x_0_tensordesc.GetDataType());
+      y_desc.SetShapeRange(y_shape_range);
+      op.UpdateDynamicOutputDesc("y", i, y_desc);
+    }
+    return GRAPH_SUCCESS;
+  }
+
+  for (int32_t i = 0; i < num_concat; i++) {
+    auto x_desc = op.GetDynamicInputDesc("x",i);
+    x_desc.GetShapeRange(x_shape_range);
+    if(x_shape_range.empty()){
+      auto shape_dims = x_desc.GetShape().GetDims();
+      MakeUpShapeRange(shape_dims,x_shape_range);
+    }else{
+      has_shape_ranges = true;
+    }
+    all_input_shape_ranges.push_back(x_shape_range);
+  }
+
+  if (has_shape_ranges){
+    y_shape_range = all_input_shape_ranges[0];
+    for(size_t i = 1; i < all_input_shape_ranges.size(); i++){
+      for(size_t j = 0; j < y_shape_range.size(); j++){
+        y_shape_range[j].first = std::max(y_shape_range[j].first, all_input_shape_ranges[i][j].first);
+        if(all_input_shape_ranges[i][j].second == -1){
+          continue;
+        }else if (y_shape_range[j].second == -1){
+          y_shape_range[j].second = all_input_shape_ranges[i][j].second;
+        }else{
+          y_shape_range[j].second = std::min(y_shape_range[j].second, all_input_shape_ranges[i][j].second);
+        }
+      }
+    }
+  }
   for (auto i = 0; i < num_concat; i++) {
-    op.UpdateDynamicOutputDesc("y", i, tensordesc);
+    auto y_desc = op.GetDynamicOutputDesc("y",i);
+    auto x_desc = op.GetDynamicInputDesc("x",i);
+    y_desc.SetShapeRange(y_shape_range);
+    y_desc.SetDataType(x_desc.GetDataType());
+    if(y_shape_range[0].first == y_shape_range[0].second){
+      vector<int64_t> dimVector;
+      dimVector.push_back(y_shape_range[0].first);
+      ge::Shape y_shape(dimVector);
+      y_desc.SetShape(y_shape);
+    }else{
+      y_desc.SetShape(x_desc.GetShape());
+    }
+    op.UpdateDynamicOutputDesc("y", i, y_desc);
   }
   return GRAPH_SUCCESS;
 }
-
 COMMON_INFER_FUNC_REG(ConcatOffset, ConcatOffsetInferShape);
 // --------------------ConcatOffset------------------------
 

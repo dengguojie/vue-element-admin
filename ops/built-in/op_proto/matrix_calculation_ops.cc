@@ -27,6 +27,7 @@
 #include "util/common_shape_fns.h"
 #include "util/array_ops_shape_fns.h"
 #include "util/error_util.h"
+#include "graph/utils/node_utils.h"
 
 namespace ge {
 // ----------------FullyConnection-------------------
@@ -327,12 +328,35 @@ IMPLEMT_VERIFIER(MatMul, MatMulVerify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(MatMulInferShape) {
+  PREPARE_DYNAMIC_SHAPE_WITH_NO_DEPENDS();
   TensorDesc tensordesc_output = op.GetOutputDesc("y");
   ge::TensorDesc inputTensorDescX = op.GetInputDesc("x1");
   ge::TensorDesc inputTensorDescY = op.GetInputDesc("x2");
+  std::vector<std::pair<int64_t, int64_t>> shape_x_range;
+  std::vector<std::pair<int64_t, int64_t>> shape_y_range;
 
   ge::Shape shapeX = inputTensorDescX.GetShape();
   ge::Shape shapeY = inputTensorDescY.GetShape();
+  auto shape_x_vec = inputTensorDescX.GetShape().GetDims();
+  auto shape_y_vec = inputTensorDescY.GetShape().GetDims();
+
+  // whether have unkown dims
+  bool is_unkown_rank_x = shape_x_vec == UNKNOWN_RANK ? true : false;
+  bool is_unkown_rank_y = shape_y_vec == UNKNOWN_RANK ? true : false;
+
+  if (is_unkown_rank_x) {
+    shape_x_vec = {-1, -1};
+    shapeX = ge::Shape(shape_x_vec);
+  } else {
+    inputTensorDescX.GetShapeRange(shape_x_range);
+  }
+
+  if (is_unkown_rank_y) {
+    shape_y_vec = {-1, -1};
+    shapeY = ge::Shape(shape_y_vec);
+  } else {
+    inputTensorDescY.GetShapeRange(shape_y_range);
+  }
 
   DataType dtype = inputTensorDescX.GetDataType();
   if (dtype == DT_FLOAT) {
@@ -353,42 +377,55 @@ IMPLEMT_COMMON_INFERFUNC(MatMulInferShape) {
     return GRAPH_FAILED;
   }
 
+  std::vector<std::pair<int64_t, int64_t>> shape_out_range;
+  MakeUpShapeRange(shape_x_vec, shape_x_range);
+  MakeUpShapeRange(shape_y_vec, shape_y_range);
   std::vector<int64_t> dimVector;
   int64_t tensor_ak = 0;
   int64_t tensor_bk = 0;
   if (transposeA) {
     if (transposeB) {
       dimVector.push_back(shapeX.GetDim(1));
+      shape_out_range.push_back(shape_x_range[1]);
       dimVector.push_back(shapeY.GetDim(0));
+      shape_out_range.push_back(shape_y_range[0]);
       tensor_ak = shapeX.GetDim(0);
       tensor_bk = shapeY.GetDim(1);
     } else {
       dimVector.push_back(shapeX.GetDim(1));
+      shape_out_range.push_back(shape_x_range[1]);
       dimVector.push_back(shapeY.GetDim(1));
+      shape_out_range.push_back(shape_y_range[1]);
       tensor_ak = shapeX.GetDim(0);
       tensor_bk = shapeY.GetDim(0);
     }
   } else {
     if (transposeB) {
       dimVector.push_back(shapeX.GetDim(0));
+      shape_out_range.push_back(shape_x_range[0]);
       dimVector.push_back(shapeY.GetDim(0));
+      shape_out_range.push_back(shape_y_range[0]);
       tensor_ak = shapeX.GetDim(1);
       tensor_bk = shapeY.GetDim(1);
     } else {
       dimVector.push_back(shapeX.GetDim(0));
+      shape_out_range.push_back(shape_x_range[0]);
       dimVector.push_back(shapeY.GetDim(1));
+      shape_out_range.push_back(shape_y_range[1]);
       tensor_ak = shapeX.GetDim(1);
       tensor_bk = shapeY.GetDim(0);
     }
   }
-  if (tensor_ak != tensor_bk) {
+  if (tensor_ak != tensor_bk && tensor_ak != -1 && tensor_bk != -1) {
     OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]The input shape is not right!");
     return GRAPH_FAILED;
   }
   ge::Shape outputShape(dimVector);
 
   tensordesc_output.SetShape(outputShape);
+  tensordesc_output.SetOriginShape(outputShape);
   tensordesc_output.SetDataType(op.GetInputDesc("x1").GetDataType());
+  tensordesc_output.SetShapeRange(shape_out_range);
   (void)op.UpdateOutputDesc("y", tensordesc_output);
   return GRAPH_SUCCESS;
 }
