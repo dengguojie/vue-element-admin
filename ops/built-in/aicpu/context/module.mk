@@ -39,6 +39,7 @@ local_context_inc_path := $(LOCAL_PATH) \
                           ${TOPDIR}third_party/eigen/src/eigen-3.3.7 \
                           ${TOPDIR}out/${product}
 
+# built shared libs for device
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := libcpu_kernels_context
@@ -58,7 +59,7 @@ endif
 
 include $(BUILD_SHARED_LIBRARY)
 
-
+# built shared lib for host
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := libcpu_kernels_context
@@ -78,7 +79,7 @@ LOCAL_SHARED_LIBRARIES := libslog libc_sec libascend_protobuf
 
 include $(BUILD_HOST_SHARED_LIBRARY)
 
-
+# built static lib for host
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := libcpu_kernels_context
@@ -93,7 +94,8 @@ LOCAL_LDFLAGS += -Wl,-z,relro,-z,now -s -ldl -shared
 LOCAL_UNINSTALLABLE_MODULE := false
 
 include $(BUILD_HOST_STATIC_LIBRARY)
-###########################################
+
+#built static lib for device
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := libcpu_kernels_context
@@ -105,5 +107,9 @@ LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -O2 -ftrapv -DVISIBILI
 
 LOCAL_LDFLAGS += -Wl,-z,relro,-z,now -s -ldl -shared
 LOCAL_UNINSTALLABLE_MODULE := false
+
+ifeq ($(product)$(chip_id), lhisinpuf10)
+    LOCAL_SRC_FILES += $(local_context_stub_files)
+endif
 
 include $(BUILD_STATIC_LIBRARY)

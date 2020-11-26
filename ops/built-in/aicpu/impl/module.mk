@@ -40,20 +40,47 @@ local_kernels_inc_path := $(LOCAL_PATH) \
                           $(TOPDIR)inc \
                           $(TOPDIR)libc_sec/include \
 
-#built libcpu_kernels.so for device
+# built libcpu_kernels.so for device
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := libcpu_kernels
 LOCAL_SRC_FILES := $(local_normalized_kernels)
 LOCAL_C_INCLUDES := $(local_kernels_inc_path)
-LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -O2 -ftrapv -std=c++14
-LOCAL_LDFLAGS += -Wl,-z,relro,-z,now -s -ldl -shared
-LOCAL_SHARED_LIBRARIES := libslog libc_sec libcpu_kernels_context
-
+LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -Dgoogle=ascend_private -O2 -ftrapv -std=c++14 -fvisibility-inlines-hidden -fvisibility=hidden
+LOCAL_LDFLAGS += -Wl,-z,relro,-z,now -s -ldl
+LOCAL_LDFLAGS += -Wl,-Bsymbolic -Wl,--exclude-libs=libascend_protobuf.a
+LOCAL_WHOLE_STATIC_LIBRARIES := libcpu_kernels_context
+LOCAL_STATIC_LIBRARIES += libascend_protobuf
+LOCAL_SHARED_LIBRARIES := libslog libc_sec
+ifneq ($(product)$(chip_id), lhisinpuf10)
+    LOCAL_SHARED_LIBRARIES += libaicpu_sharder
+endif
+ifeq ($(device_os), android)
+    LOCAL_LDLIBS += -llog
+endif
 include $(BUILD_SHARED_LIBRARY)
 
+# built libcpu_kernels_v1.0.1.so for device
+include $(CLEAR_VARS)
 
-#built libcpu_kernels.so for host
+LOCAL_MODULE := libcpu_kernels_v1.0.1
+LOCAL_SRC_FILES := $(local_normalized_kernels)
+LOCAL_C_INCLUDES := $(local_kernels_inc_path)
+LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -Dgoogle=ascend_private -O2 -ftrapv -std=c++14 -fvisibility-inlines-hidden -fvisibility=hidden
+LOCAL_LDFLAGS += -Wl,-z,relro,-z,now -s -ldl
+LOCAL_LDFLAGS += -Wl,-Bsymbolic -Wl,--exclude-libs=libascend_protobuf.a
+LOCAL_WHOLE_STATIC_LIBRARIES := libcpu_kernels_context
+LOCAL_STATIC_LIBRARIES += libascend_protobuf
+LOCAL_SHARED_LIBRARIES := libslog libc_sec
+ifneq ($(product)$(chip_id), lhisinpuf10)
+    LOCAL_SHARED_LIBRARIES += libaicpu_sharder
+endif
+ifeq ($(device_os), android)
+    LOCAL_LDLIBS += -llog
+endif
+include $(BUILD_SHARED_LIBRARY)
+
+# built libcpu_kernels.so for host
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := libcpu_kernels
@@ -69,8 +96,7 @@ LOCAL_SHARED_LIBRARIES := libslog libc_sec libcpu_kernels_context
 
 include $(BUILD_HOST_SHARED_LIBRARY)
 
-
-#built libcpu_kernels.a for host
+# built libcpu_kernels.a for host
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := libcpu_kernels
