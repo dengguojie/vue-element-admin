@@ -104,6 +104,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         self.need_tensorize = need_tensorize
         self.need_pragma = need_pragma
         self.spec_node_list = []
+        self.cube_vector_split = get_soc_spec("CUBE_VECTOR_SPLIT")
         self.l1_size = get_soc_spec("L1_SIZE")  # L1 size
         self._corenum = get_soc_spec("CORE_NUM")
         self._loc_size = get_soc_spec("L0C_SIZE")
@@ -237,8 +238,8 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             cub_pbuff = tiling.get("manual_pingpong_buffer").get("CUB_pbuffer")
             cl0_matrix = tiling.get("CL0_matrix")
             cub_matrix = tiling.get("CUB_matrix")
-            if cl0_matrix[0] % cub_matrix[0] != 0 \
-               or cl0_matrix[1] != cub_matrix[1]:
+            if (not self.cube_vector_split
+                and (cl0_matrix[0] % cub_matrix[0] != 0 or cl0_matrix[1] != cub_matrix[1])):
                 dict_args = dict()
                 dict_args['errCode'] = "E64009"
                 error_manager_util.raise_runtime_error(dict_args)
@@ -364,7 +365,10 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             res_ddr = res_cc
             res_cc = sch.rfactor(res_ddr, fused_atomic_write)
             sch[res_cc].set_scope(scope_cc)
-            res_ub = sch.cache_read(res_cc, scope_ubuf, [res_ddr])
+            if self.cube_vector_split:
+                res_ub = None
+            else:
+                res_ub = sch.cache_read(res_cc, scope_ubuf, [res_ddr])
             return res_cc, res_ub, res_ddr, ub_reduce, ddr_reduce
 
         def _full_k_check():
@@ -708,7 +712,9 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                                             'dma_copy')
 
             # move dw from L0C to UB
-            sch[dw_ub].emit_insn(dw_ub.op.axis[0], 'dma_copy')
+            if not self.cube_vector_split:
+                sch[dw_ub].emit_insn(dw_ub.op.axis[0], 'dma_copy')
+
             sch[dw_cc].emit_insn(batch_insn, 'mad', mad_dict)
 
             # move dw form UB to ddr
@@ -1175,12 +1181,15 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 sch[dw_ddr].reorder(c_grads_l1_at,
                                     c_fmap_l1_c1, c_fmap_l1_kh, c_fmap_l1_at)
 
-            # dw_ub attach
-            # dw_ub split
-            c_fmap_2_ub_at, c_fmap_2_ub_insn \
-                = sch[dw_ddr].split(c_fmap_mad_insn, dw_ub_tiling_factor[0])
-            # dw_ub attach
-            sch[dw_ub].compute_at(sch[dw_ddr], c_fmap_2_ub_at)
+            if not self.cube_vector_split:
+                # dw_ub attach
+                # dw_ub split
+                c_fmap_2_ub_at, c_fmap_2_ub_insn \
+                    = sch[dw_ddr].split(c_fmap_mad_insn, dw_ub_tiling_factor[0])
+                # dw_ub attach
+                sch[dw_ub].compute_at(sch[dw_ddr], c_fmap_2_ub_at)
+            else:
+                c_fmap_2_ub_insn = c_fmap_mad_insn
 
             # dw attach
             if reorder_flag:
@@ -1561,7 +1570,8 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             sch.disable_allocate(scope_ca)
             sch.disable_allocate(scope_cb)
             sch.disable_allocate(scope_cc)
-            sch.disable_allocate(scope_ubuf)
+            if not self.cube_vector_split:
+                sch.disable_allocate(scope_ubuf)
 
             # mem_unique
             sch[grads_matrix].mem_unique()
@@ -1569,7 +1579,8 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             sch[grads_fractal].mem_unique()
             sch[fmap_fractal].mem_unique()
             sch[dw_cc].mem_unique()
-            sch[dw_ub].mem_unique()
+            if not self.cube_vector_split:
+                sch[dw_ub].mem_unique()
 
         _split_w_for_conv1d()
         _l0_attach()
