@@ -240,7 +240,7 @@ class ScopeManager:
 
     def split_group(self, parent, nparts=None):
         """
-        only use in group convlution, split group axis and
+        only use in group convolution, split group axis and
         set both g and c in self._active_scopes
         """
         if nparts is None:
@@ -257,6 +257,7 @@ class ScopeManager:
         if parent in self._active_scopes:  # not else
             self._add_g_active_scope(parent, outer, inner)
         self._axis_split_list[1] = [inner]
+        # add g_axis split list
         self._axis_split_list.insert(0, [outer])
 
     def split(self, parent, factor=None, nparts=None):
@@ -393,7 +394,7 @@ class ScopeManager:
 
     def _add_g_active_scope(self, ax_before, after_outer, after_inner):
         """
-        add g to active_scopes
+        only use in group convolution, add g to active_scopes
         """
         active_scopess = self._active_scopes
         index = active_scopess.index(ax_before)
@@ -401,9 +402,13 @@ class ScopeManager:
         active_scopess.insert(0, after_outer)
 
     def get_axis_split_list_and_extend(self, index):
+        """
+        according to the index get the axis list(after splited) in the index's dimension.
+        """
         unit_list = list()
         offset_list = list()
         for axis in self._axis_split_list[index]:
+            # length and offset of the axis
             offset, unit = self._axis_unit[axis]
             unit_list.append(unit)
             offset_list.append(offset)

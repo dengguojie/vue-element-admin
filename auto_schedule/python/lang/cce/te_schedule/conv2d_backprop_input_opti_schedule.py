@@ -347,7 +347,7 @@ def _check_tilling_cub(strideh, stridew, cub_space, isdouble, is_conv1d_bool):
                         > CUB_BUFFER_LIMIT
                     )
                 if cl0_m_extent % DIM_MAP["img_shape"][3] != 0 or check_ifmc_falg_s:
-                    n_is_hfactor = (cl0_m_extent - block_m) // DIM_MAP["img_shape"][3]
+                    n_is_hfactor = max((cl0_m_extent - block_m), block_m) // DIM_MAP["img_shape"][3]
                     while DIM_MAP["img_shape"][2] % n_is_hfactor != 0:
                         n_is_hfactor = n_is_hfactor - 1
             real_m = n_is_hfactor * DIM_MAP["img_shape"][3]
@@ -1403,7 +1403,7 @@ def _get_aicore_tiling_factor(
                     > CUB_BUFFER_LIMIT
                 )
             if mc_from_tiling % DIM_MAP["img_shape"][3] != 0 or check_ifmc_falg_s:
-                n_is_hfactor = (mc_from_tiling - block_m) // DIM_MAP["img_shape"][3]
+                n_is_hfactor = max((mc_from_tiling - block_m), block_m) // DIM_MAP["img_shape"][3]
                 while DIM_MAP["img_shape"][2] % n_is_hfactor != 0:
                     n_is_hfactor = n_is_hfactor - 1
 
@@ -2537,7 +2537,7 @@ def opti_schedule(
         param.pragma(overload_axis, "json_info_cache_read_mode", cache_read_mode)
 
     def _buffer_tile_loc_c1():
-        no_coefficient = l0c_factor[0]
+        no_coefficient = (l0c_factor[0] * 2 if c_gm.dtype == "int8" else l0c_factor[0])
         noo_coefficient_unzero = int_ceil_div(
                 int_ceil_div(DIM_MAP["dx_6GD_shape"][2], l0c_factor[0]), bl1_parts[1]
             )
@@ -2604,6 +2604,10 @@ def opti_schedule(
         TENSOR_MAP.get("c_l0c"),
         TENSOR_MAP.get("c_gm")
     )
+    if c_gm.dtype == "int8":
+        # In quant or requant scenes, co of ddr is 32, c1_ddr is c1_loc//2
+        DIM_MAP["dx_6GD_shape"][2] = (DIM_MAP["dx_6GD_shape"][2] + 1) // 2
+        DIM_MAP["dx_6GD_shape"][5] = DIM_MAP["dx_6GD_shape"][5] * 2
 
     if DeconvParam.get_para_map("load3d_flag"):
         a_l0a_before = TENSOR_MAP.get("a_l0a_before")
