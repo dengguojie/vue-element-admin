@@ -30,13 +30,13 @@ const char *ASSERT = "Assert";
 }
 
 namespace aicpu {
-uint32_t AssertKernel::Compute(aicpu::CpuKernelContext &ctx) {
+uint32_t AssertCpuKernel::Compute(aicpu::CpuKernelContext &ctx) {
   Tensor *cond = ctx.Input(0);
   if (cond == nullptr) {
-    KERNEL_LOG_ERROR("AssertKernel: Input condition is empty.");
+    KERNEL_LOG_ERROR("AssertCpuKernel: Input condition is empty.");
     return KERNEL_STATUS_PARAM_INVALID;
   }
-  KERNEL_LOG_INFO("AssertKernel compute begin.");
+  KERNEL_LOG_INFO("AssertCpuKernel compute begin.");
   if ((cond->GetTensorShape() != nullptr) &&
       (cond->GetTensorShape()->GetDims() != 0)) {
     KERNEL_LOG_ERROR("In[0] should be a scalar: %u",
@@ -48,7 +48,7 @@ uint32_t AssertKernel::Compute(aicpu::CpuKernelContext &ctx) {
     return KERNEL_STATUS_OK;
   }
   if (ctx.GetAttr("summarize") == nullptr) {
-    KERNEL_LOG_ERROR("AssertKernel: summarize attr is empty.");
+    KERNEL_LOG_ERROR("AssertCpuKernel: summarize attr is empty.");
     return KERNEL_STATUS_PARAM_INVALID;
   }
   summarize_ = ctx.GetAttr("summarize")->GetInt();
@@ -62,10 +62,10 @@ uint32_t AssertKernel::Compute(aicpu::CpuKernelContext &ctx) {
     }
   }
   KERNEL_LOG_ERROR("%s", msg.c_str());
-  KERNEL_LOG_INFO("AssertKernel compute end.");
+  KERNEL_LOG_INFO("AssertCpuKernel compute end.");
   return KERNEL_STATUS_OK;
 }
-REGISTER_CPU_KERNEL(ASSERT, AssertKernel);
+REGISTER_CPU_KERNEL(ASSERT, AssertCpuKernel);
 
 static string SummarizeValue(Tensor &t, int64_t max_entries, bool print_v2) {
   const int64_t num_elts = t.NumElements();

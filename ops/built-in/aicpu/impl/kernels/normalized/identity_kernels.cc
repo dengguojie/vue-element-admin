@@ -28,16 +28,16 @@ const char *IDENTITY = "Identity";
 
 namespace aicpu {
 
-uint32_t IdentityKernel::DoCompute() {
+uint32_t IdentityCpuKernel::DoCompute() {
   if (inputs_.size() == 0 || outputs_.size() == 0) {
-    KERNEL_LOG_ERROR("IdentityKernel::IdentityTask: input or output is empty.");
+    KERNEL_LOG_ERROR("IdentityCpuKernel::IdentityTask: input or output is empty.");
     return KERNEL_STATUS_PARAM_INVALID;
   }
   // init
   void *input = (void *)inputs_[0]->GetData();
   void *output = (void *)outputs_[0]->GetData();
   if (input == NULL || output == NULL) {
-    KERNEL_LOG_ERROR("IdentityKernel::IdentityTask: input or output is NULL.");
+    KERNEL_LOG_ERROR("IdentityCpuKernel::IdentityTask: input or output is NULL.");
     return KERNEL_STATUS_PARAM_INVALID;
   }
   int64_t data_size = outputs_[0]->GetDataSize();
@@ -48,15 +48,15 @@ uint32_t IdentityKernel::DoCompute() {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t IdentityKernel::GetInputAndCheck(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("IdentityKernel::GetInputAndCheck start!");
+uint32_t IdentityCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
+  KERNEL_LOG_INFO("IdentityCpuKernel::GetInputAndCheck start!");
   // get input Tensors
   const int num_input = 1;
   for (int i = 0; i < num_input; ++i) {
     Tensor *tensor = ctx.Input(i);
     if (tensor == nullptr) {
       KERNEL_LOG_ERROR(
-          "IdentityKernel::GetInputAndCheck: get input tensor[%d] failed", i);
+          "IdentityCpuKernel::GetInputAndCheck: get input tensor[%d] failed", i);
       return KERNEL_STATUS_PARAM_INVALID;
     }
     inputs_.push_back(tensor);
@@ -67,17 +67,17 @@ uint32_t IdentityKernel::GetInputAndCheck(CpuKernelContext &ctx) {
     Tensor *tensor = ctx.Output(i);
     if (tensor == nullptr) {
       KERNEL_LOG_ERROR(
-          "IdentityKernel::GetInputAndCheck: get output tensor[%d] failed", i);
+          "IdentityCpuKernel::GetInputAndCheck: get output tensor[%d] failed", i);
       return KERNEL_STATUS_PARAM_INVALID;
     }
     outputs_.push_back(tensor);
   }
-  KERNEL_LOG_INFO("IdentityKernel::GetInputAndCheck success!");
+  KERNEL_LOG_INFO("IdentityCpuKernel::GetInputAndCheck success!");
   return KERNEL_STATUS_OK;
 }
 
-uint32_t IdentityKernel::Compute(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("IdentityKernel::Compute start!!");
+uint32_t IdentityCpuKernel::Compute(CpuKernelContext &ctx) {
+  KERNEL_LOG_INFO("IdentityCpuKernel::Compute start!!");
 
   uint32_t res = GetInputAndCheck(ctx);
   if (res != KERNEL_STATUS_OK) {
@@ -86,12 +86,12 @@ uint32_t IdentityKernel::Compute(CpuKernelContext &ctx) {
 
   res = DoCompute();
   if (res != KERNEL_STATUS_OK) {
-    KERNEL_LOG_ERROR("IdentityKernel::Compute failed");
+    KERNEL_LOG_ERROR("IdentityCpuKernel::Compute failed");
     return res;
   }
 
-  KERNEL_LOG_INFO("IdentityKernel::Compute success!!");
+  KERNEL_LOG_INFO("IdentityCpuKernel::Compute success!!");
   return KERNEL_STATUS_OK;
 }
-REGISTER_CPU_KERNEL(IDENTITY, IdentityKernel);
+REGISTER_CPU_KERNEL(IDENTITY, IdentityCpuKernel);
 }  // namespace aicpu

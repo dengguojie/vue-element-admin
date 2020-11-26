@@ -20,9 +20,9 @@
 #include "cpu_kernel.h"
 
 namespace aicpu {
-class UniqueWithPadKernel : public CpuKernel {
+class UniqueWithPadCpuKernel : public CpuKernel {
  public:
-  ~UniqueWithPadKernel() = default;
+  ~UniqueWithPadCpuKernel() = default;
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:

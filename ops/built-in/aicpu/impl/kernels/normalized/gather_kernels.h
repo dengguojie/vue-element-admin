@@ -21,9 +21,9 @@
 #include "cpu_kernel.h"
 
 namespace aicpu {
-class GatherKernel : public CpuKernel {
+class GatherCpuKernel : public CpuKernel {
  public:
-  ~GatherKernel() = default;
+  ~GatherCpuKernel() = default;
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:

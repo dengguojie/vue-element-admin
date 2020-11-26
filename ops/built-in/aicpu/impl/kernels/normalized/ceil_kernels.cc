@@ -32,8 +32,8 @@ const size_t K_CEIL_INPUT_NUM = 1;        // input dims
 }  // namespace
 
 namespace aicpu {
-uint32_t CeilKernel::Compute(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("CeilKernel::Compute begin.");
+uint32_t CeilCpuKernel::Compute(CpuKernelContext &ctx) {
+  KERNEL_LOG_INFO("CeilCpuKernel::Compute begin.");
 
   if ((ctx.GetInputsSize() != K_CEIL_INPUT_NUM) ||
       (ctx.GetOutputsSize() != K_CEIL_OUTPUT_DESC_NUM)) {
@@ -73,12 +73,12 @@ uint32_t CeilKernel::Compute(CpuKernelContext &ctx) {
       break;
   }
 
-  KERNEL_LOG_INFO("CeilKernel::Compute end.");
+  KERNEL_LOG_INFO("CeilCpuKernel::Compute end.");
   return KERNEL_STATUS_OK;
 }
 
 template <typename T>
-void CeilKernel::ComputeCeil(Tensor *x, Tensor *y, uint64_t dataSize, CpuKernelContext &ctx) {
+void CeilCpuKernel::ComputeCeil(Tensor *x, Tensor *y, uint64_t dataSize, CpuKernelContext &ctx) {
   auto xAddr = x->GetData();
   auto yAddr = y->GetData();
   // 1 represents row vector
@@ -90,8 +90,8 @@ void CeilKernel::ComputeCeil(Tensor *x, Tensor *y, uint64_t dataSize, CpuKernelC
     mapY = mapX.array().ceil().matrix();
   };
   CpuKernelUtils::ParallelFor(ctx, dataSize / sizeof(T), 1, shard_ceil);
-  KERNEL_LOG_INFO("CeilKernel::Compute success.");
+  KERNEL_LOG_INFO("CeilCpuKernel::Compute success.");
 }
 
-REGISTER_CPU_KERNEL(CEIL, CeilKernel);
+REGISTER_CPU_KERNEL(CEIL, CeilCpuKernel);
 }  // namespace aicpu

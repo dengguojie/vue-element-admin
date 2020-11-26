@@ -38,7 +38,7 @@ uint32_t CacheSwapTableTask(std::vector<Tensor *> &inputs_,
 
   if (inputs_.size() == 0 || outputs_.size() == 0) {
     KERNEL_LOG_ERROR(
-        "CacheSwapTableKernel::CacheSwapTableTask: input or output is empty.");
+        "CacheSwapTableCpuKernel::CacheSwapTableTask: input or output is empty.");
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -94,7 +94,7 @@ uint32_t CacheSwapTableTask(std::vector<Tensor *> &inputs_,
   return KERNEL_STATUS_OK;
 }
 
-uint32_t CacheSwapTableKernel::DoCompute() {
+uint32_t CacheSwapTableCpuKernel::DoCompute() {
   std::map<int, std::function<uint32_t(std::vector<Tensor *> &,
                                        std::vector<Tensor *> &, int64_t &,
                                        int64_t &, int64_t &, int &)>>
@@ -104,7 +104,7 @@ uint32_t CacheSwapTableKernel::DoCompute() {
 
   if (calls.find(indices_type_) == calls.end()) {
     KERNEL_LOG_ERROR(
-        "CacheSwapTableKernel op don't support indices tensor types: %s",
+        "CacheSwapTableCpuKernel op don't support indices tensor types: %s",
         typeid(indices_type_).name());
     return KERNEL_STATUS_PARAM_INVALID;
   }
@@ -114,8 +114,8 @@ uint32_t CacheSwapTableKernel::DoCompute() {
                               one_line_col_, type_size);
 }
 
-uint32_t CacheSwapTableKernel::GetInputAndCheck(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("CacheSwapTableKernel::GetInputAndCheck start!");
+uint32_t CacheSwapTableCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
+  KERNEL_LOG_INFO("CacheSwapTableCpuKernel::GetInputAndCheck start!");
 
   // get input Tensors
   const int num_input = 3;
@@ -123,7 +123,7 @@ uint32_t CacheSwapTableKernel::GetInputAndCheck(CpuKernelContext &ctx) {
     Tensor *tensor = ctx.Input(i);
     if (tensor == nullptr) {
       KERNEL_LOG_ERROR(
-          "CacheSwapTableKernel::GetInputAndCheck: get input tensor[%d] failed",
+          "CacheSwapTableCpuKernel::GetInputAndCheck: get input tensor[%d] failed",
           i);
       return KERNEL_STATUS_PARAM_INVALID;
     }
@@ -135,7 +135,7 @@ uint32_t CacheSwapTableKernel::GetInputAndCheck(CpuKernelContext &ctx) {
     Tensor *tensor = ctx.Output(i);
     if (tensor == nullptr) {
       KERNEL_LOG_ERROR(
-          "CacheSwapTableKernel::GetInputAndCheck: get output tensor[%d] "
+          "CacheSwapTableCpuKernel::GetInputAndCheck: get output tensor[%d] "
           "failed",
           i);
       return KERNEL_STATUS_PARAM_INVALID;
@@ -145,7 +145,7 @@ uint32_t CacheSwapTableKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   // get param type
   param_type_ = static_cast<DataType>(inputs_[0]->GetDataType());
   indices_type_ = static_cast<DataType>(inputs_[1]->GetDataType());
-  KERNEL_LOG_INFO("CacheSwapTableKernel::GetInputAndCheck success!");
+  KERNEL_LOG_INFO("CacheSwapTableCpuKernel::GetInputAndCheck success!");
 
   std::shared_ptr<TensorShape> cache_table_shape =
       ctx.Input(0)->GetTensorShape();
@@ -166,8 +166,8 @@ uint32_t CacheSwapTableKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t CacheSwapTableKernel::Compute(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("CacheSwapTableKernel::Compute start!!");
+uint32_t CacheSwapTableCpuKernel::Compute(CpuKernelContext &ctx) {
+  KERNEL_LOG_INFO("CacheSwapTableCpuKernel::Compute start!!");
 
   uint32_t res = GetInputAndCheck(ctx);
   if (res != KERNEL_STATUS_OK) {
@@ -176,12 +176,12 @@ uint32_t CacheSwapTableKernel::Compute(CpuKernelContext &ctx) {
 
   res = DoCompute();
   if (res != KERNEL_STATUS_OK) {
-    KERNEL_LOG_ERROR("CacheSwapTableKernel::Compute failed");
+    KERNEL_LOG_ERROR("CacheSwapTableCpuKernel::Compute failed");
     return res;
   }
 
-  KERNEL_LOG_INFO("CacheSwapTableKernel::Compute success!!");
+  KERNEL_LOG_INFO("CacheSwapTableCpuKernel::Compute success!!");
   return KERNEL_STATUS_OK;
 }
-REGISTER_CPU_KERNEL(CACHE_SWAP_TABLE, CacheSwapTableKernel);
+REGISTER_CPU_KERNEL(CACHE_SWAP_TABLE, CacheSwapTableCpuKernel);
 }  // namespace aicpu

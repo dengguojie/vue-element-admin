@@ -106,7 +106,7 @@ uint32_t EditDistanceTask(std::vector<Tensor *> &inputs_,
                           std::vector<Tensor *> &outputs_, bool &normalize_) {
   if (inputs_.size() == 0 || outputs_.size() == 0) {
     KERNEL_LOG_ERROR(
-        "EditDistanceKernel::EditDistanceTask: input or output is empty.");
+        "EditDistanceCpuKernel::EditDistanceTask: input or output is empty.");
     return KERNEL_STATUS_PARAM_INVALID;
   }
   Tensor *hypothesis_indices = inputs_[0];
@@ -143,7 +143,7 @@ uint32_t EditDistanceTask(std::vector<Tensor *> &inputs_,
   float *outptr = (float *)outputs_[0]->GetData();
   if (outptr == NULL) {
     KERNEL_LOG_ERROR(
-        "EditDistanceKernel::EditDistanceTask: output[0]->GetData is null.");
+        "EditDistanceCpuKernel::EditDistanceTask: output[0]->GetData is null.");
     return KERNEL_STATUS_PARAM_INVALID;
   }
   std::vector<int64_t> output_shape =
@@ -168,7 +168,7 @@ uint32_t EditDistanceTask(std::vector<Tensor *> &inputs_,
   return KERNEL_STATUS_OK;
 }
 
-uint32_t EditDistanceKernel::DoCompute() {
+uint32_t EditDistanceCpuKernel::DoCompute() {
   std::map<int, std::function<uint32_t(std::vector<Tensor *> &,
                                        std::vector<Tensor *> &, bool &)>>
       calls;
@@ -185,15 +185,15 @@ uint32_t EditDistanceKernel::DoCompute() {
   calls[DT_UINT64] = EditDistanceTask<uint64_t>;
   if (calls.find(param_type_) == calls.end()) {
     KERNEL_LOG_ERROR(
-        "EditDistanceKernel op don't support input tensor types: %s",
+        "EditDistanceCpuKernel op don't support input tensor types: %s",
         typeid(param_type_).name());
     return KERNEL_STATUS_PARAM_INVALID;
   }
   return calls[param_type_](inputs_, outputs_, normalize_);
 }
 
-uint32_t EditDistanceKernel::GetInputAndCheck(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("EditDistanceKernel::GetInputAndCheck start!");
+uint32_t EditDistanceCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
+  KERNEL_LOG_INFO("EditDistanceCpuKernel::GetInputAndCheck start!");
   // get attr: normalize
   AttrValue *normalize = ctx.GetAttr("normalize");
   KERNEL_CHECK_NULLPTR(normalize, KERNEL_STATUS_PARAM_INVALID,
@@ -205,13 +205,13 @@ uint32_t EditDistanceKernel::GetInputAndCheck(CpuKernelContext &ctx) {
     Tensor *tensor = ctx.Input(i);
     if (tensor == nullptr) {
       KERNEL_LOG_ERROR(
-          "EditDistanceKernel::GetInputAndCheck: get input tensor[%d] failed",
+          "EditDistanceCpuKernel::GetInputAndCheck: get input tensor[%d] failed",
           i);
       return KERNEL_STATUS_PARAM_INVALID;
     }
 
     if (tensor->NumElements() < 1) {
-      KERNEL_LOG_ERROR("EditDistanceKernel::GetInputAndCheck: illegal input tensor[%d]", i);
+      KERNEL_LOG_ERROR("EditDistanceCpuKernel::GetInputAndCheck: illegal input tensor[%d]", i);
       return KERNEL_STATUS_PARAM_INVALID;
     }
     inputs_.push_back(tensor);
@@ -222,25 +222,25 @@ uint32_t EditDistanceKernel::GetInputAndCheck(CpuKernelContext &ctx) {
     Tensor *tensor = ctx.Output(i);
     if (tensor == nullptr) {
       KERNEL_LOG_ERROR(
-          "EditDistanceKernel::GetInputAndCheck: get output tensor[%d] failed",
+          "EditDistanceCpuKernel::GetInputAndCheck: get output tensor[%d] failed",
           i);
       return KERNEL_STATUS_PARAM_INVALID;
     }
 
     if (tensor->NumElements() < 1) {
-      KERNEL_LOG_ERROR("EditDistanceKernel::GetInputAndCheck: illegal output tensor[%d]", i);
+      KERNEL_LOG_ERROR("EditDistanceCpuKernel::GetInputAndCheck: illegal output tensor[%d]", i);
       return KERNEL_STATUS_PARAM_INVALID;
     }
     outputs_.push_back(tensor);
   }
   // get param type
   param_type_ = static_cast<DataType>(inputs_[1]->GetDataType());
-  KERNEL_LOG_INFO("EditDistanceKernel::GetInputAndCheck success!");
+  KERNEL_LOG_INFO("EditDistanceCpuKernel::GetInputAndCheck success!");
   return KERNEL_STATUS_OK;
 }
 
-uint32_t EditDistanceKernel::Compute(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("EditDistanceKernel::Compute start!!");
+uint32_t EditDistanceCpuKernel::Compute(CpuKernelContext &ctx) {
+  KERNEL_LOG_INFO("EditDistanceCpuKernel::Compute start!!");
 
   uint32_t res = GetInputAndCheck(ctx);
   if (res != KERNEL_STATUS_OK) {
@@ -249,12 +249,12 @@ uint32_t EditDistanceKernel::Compute(CpuKernelContext &ctx) {
 
   res = DoCompute();
   if (res != KERNEL_STATUS_OK) {
-    KERNEL_LOG_ERROR("EditDistanceKernel::Compute failed");
+    KERNEL_LOG_ERROR("EditDistanceCpuKernel::Compute failed");
     return res;
   }
 
-  KERNEL_LOG_INFO("EditDistanceKernel::Compute success!!");
+  KERNEL_LOG_INFO("EditDistanceCpuKernel::Compute success!!");
   return KERNEL_STATUS_OK;
 }
-REGISTER_CPU_KERNEL(EDIT_DISTANCE, EditDistanceKernel);
+REGISTER_CPU_KERNEL(EDIT_DISTANCE, EditDistanceCpuKernel);
 }  // namespace aicpu

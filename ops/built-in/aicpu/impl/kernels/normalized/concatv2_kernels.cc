@@ -12,7 +12,7 @@ const char *ConcatV2 = "ConcatV2";
 }
 
 namespace aicpu {
-uint32_t ConcatV2Kernel::CheckAndInitParams(CpuKernelContext &ctx) {
+uint32_t ConcatV2CpuKernel::CheckAndInitParams(CpuKernelContext &ctx) {
   AttrValue *n_ptr = ctx.GetAttr("N");
   KERNEL_CHECK_NULLPTR(n_ptr, KERNEL_STATUS_PARAM_INVALID,
                        "Get attr[N] failed.");
@@ -81,8 +81,8 @@ uint32_t ConcatV2Kernel::CheckAndInitParams(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t ConcatV2Kernel::Compute(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("ConcatV2Kernel start.");
+uint32_t ConcatV2CpuKernel::Compute(CpuKernelContext &ctx) {
+  KERNEL_LOG_INFO("ConcatV2CpuKernel start.");
   KERNEL_CHECK_FALSE((CheckAndInitParams(ctx) == KERNEL_STATUS_OK),
                      KERNEL_STATUS_PARAM_INVALID, "CheckAndInitParams failed.");
   switch (data_type_) {
@@ -112,5 +112,5 @@ uint32_t ConcatV2Kernel::Compute(CpuKernelContext &ctx) {
   }
 }
 
-REGISTER_CPU_KERNEL(ConcatV2, ConcatV2Kernel);
+REGISTER_CPU_KERNEL(ConcatV2, ConcatV2CpuKernel);
 }  // namespace aicpu
