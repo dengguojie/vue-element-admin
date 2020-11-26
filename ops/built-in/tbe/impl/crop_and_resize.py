@@ -21,6 +21,7 @@ from te.utils import para_check
 
 from impl import common_util
 from impl.util import util_tik_comm_func
+from impl.util import util_select_op_base
 
 
 # pylint: disable=locally-disabled,invalid-name,too-many-arguments,too-many-locals
@@ -44,7 +45,7 @@ def check_supported(x, boxes, box_index, y, crop_size, extrapolation_value,
         # shape must be [N, H, W, C] or [N, C, H, W]
         # method only support bilinear
         # c0 // num in one block
-        copy_block = 2
+        copy_block = 1
     else:
         return False
 
@@ -62,13 +63,60 @@ def check_supported(x, boxes, box_index, y, crop_size, extrapolation_value,
         return False
 
     if input_c > 2048 or input_c < 256 or max(output_h, output_w) > 16:
-        # tmp limit for fasterrcnn
         return False
 
-    if input_h * input_w * copy_block > 30000 or output_h * output_w * copy_block > 30000:
+    if input_h * input_w * copy_block > 65530 or output_h * output_w * copy_block > 65530 // 2:
+        # will use stride when copy data
         return False
 
     return True
+
+
+def op_select_format(x, boxes, box_index, y, crop_size, extrapolation_value,
+                     method, kernel_name="crop_and_resize"):
+    """
+    op_select_format
+    """
+    input_shape = x.get("ori_shape")
+    input_format = x.get("ori_format")
+
+    input_h, input_w = [0, 0]
+    # format must be ("NHWC", "NCHW")
+    if input_format in ("NHWC",):
+        input_h = input_shape[1]
+        input_w = input_shape[2]
+    elif input_format in ("NCHW",):
+        input_h = input_shape[2]
+        input_w = input_shape[3]
+
+    support_dtype = []
+    if input_h * input_w <= 65530:
+        support_dtype.append("float16")
+    if input_h * input_w <= 65530 // 2:
+        support_dtype.append("float32")
+
+    dtype_base_in = support_dtype.copy()
+    dtype_base_out = ["float32"] * len(support_dtype)
+    dtype_base_index = ["int32"] * len(support_dtype)
+    format_base_5hd = ["NC1HWC0"] * len(support_dtype)
+    format_base_nd = ["ND"] * len(support_dtype)
+    dtype_str_in = ','.join(dtype_base_in)
+    dtype_str_out = ','.join(dtype_base_out)
+    dtype_str_index = ','.join(dtype_base_index)
+    format_str_5hd = ','.join(format_base_5hd)
+    format_str_nd = ','.join(format_base_nd)
+    input0 = util_select_op_base.gen_param(
+        classify="input0", name="x", datatype=dtype_str_in, format=format_str_5hd)
+    input1 = util_select_op_base.gen_param(
+        classify="input1", name="boxes", datatype=dtype_str_out, format=format_str_nd)
+    input2 = util_select_op_base.gen_param(
+        classify="input2", name="box_index", datatype=dtype_str_index, format=format_str_nd)
+    output0 = util_select_op_base.gen_param(
+        classify="output0", name="y", datatype=dtype_str_out, format=format_str_5hd)
+    param_list = [input0, input1, input2, output0]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+
+    return param_dynamic_in_json
 
 
 # pylint: disable=too-many-instance-attributes
@@ -687,4 +735,3 @@ def crop_and_resize(x, boxes, box_index, y, crop_size, extrapolation_value,
     crop_and_resize_obj.build_tik_instance(kernel_name)
 
     return tik_instance
-

@@ -1022,81 +1022,23 @@ COMMON_INFER_FUNC_REG(Pack, PackInferShape);
 
 // --------------------ConcatOffset------------------------
 IMPLEMT_COMMON_INFERFUNC(ConcatOffsetInferShape) {
-  PREPARE_DYNAMIC_SHAPE_WITH_NO_DEPENDS();
-  auto x_0_tensordesc = op.GetDynamicInputDesc("x",0);
+  DataType input_dtype = op.GetDynamicInputDesc("x", 0).GetDataType();
+  Shape shape = op.GetDynamicInputDesc("x", 0).GetShape();
+  auto tensordesc = op.GetDynamicInputDesc("x", 0);
   int num_concat;
   op.GetAttr("N", num_concat);
   if (num_concat < 2) {
     OP_LOGE(op.GetName().c_str(), "The num_concat should be no less than two");
     return GRAPH_FAILED;
   }
-
-  std::vector<std::pair<int64_t, int64_t>> x_shape_range;
-  std::vector<std::pair<int64_t, int64_t>> y_shape_range;
-  vector<vector<std::pair<int64_t, int64_t>>> all_input_shape_ranges;
-  bool has_shape_ranges = false;
-
-  //unknown_rank
-  bool is_unknown_rank = x_0_tensordesc.GetShape().GetDims() == UNKNOWN_RANK ? true : false;
-  if(is_unknown_rank){
-    y_shape_range.push_back(std::pair<int64_t,int64_t>{1,-1});
-    for(auto i = 0; i < num_concat; i++){
-      auto y_desc = op.GetDynamicOutputDesc("y",i);
-      std::vector<int64_t> oShapeVector;
-      oShapeVector.push_back(-1);
-      Shape oShape(oShapeVector);
-      y_desc.SetShape(oShape);
-      y_desc.SetDataType(x_0_tensordesc.GetDataType());
-      y_desc.SetShapeRange(y_shape_range);
-      op.UpdateDynamicOutputDesc("y", i, y_desc);
-    }
-    return GRAPH_SUCCESS;
-  }
-
-  for (int32_t i = 0; i < num_concat; i++) {
-    auto x_desc = op.GetDynamicInputDesc("x",i);
-    x_desc.GetShapeRange(x_shape_range);
-    if(x_shape_range.empty()){
-      auto shape_dims = x_desc.GetShape().GetDims();
-      MakeUpShapeRange(shape_dims,x_shape_range);
-    }else{
-      has_shape_ranges = true;
-    }
-    all_input_shape_ranges.push_back(x_shape_range);
-  }
-
-  if (has_shape_ranges){
-    y_shape_range = all_input_shape_ranges[0];
-    for(size_t i = 1; i < all_input_shape_ranges.size(); i++){
-      for(size_t j = 0; j < y_shape_range.size(); j++){
-        y_shape_range[j].first = std::max(y_shape_range[j].first, all_input_shape_ranges[i][j].first);
-        if(all_input_shape_ranges[i][j].second == -1){
-          continue;
-        }else if (y_shape_range[j].second == -1){
-          y_shape_range[j].second = all_input_shape_ranges[i][j].second;
-        }else{
-          y_shape_range[j].second = std::min(y_shape_range[j].second, all_input_shape_ranges[i][j].second);
-        }
-      }
-    }
-  }
+  tensordesc.SetShape(shape);
+  tensordesc.SetDataType(input_dtype);
   for (auto i = 0; i < num_concat; i++) {
-    auto y_desc = op.GetDynamicOutputDesc("y",i);
-    auto x_desc = op.GetDynamicInputDesc("x",i);
-    y_desc.SetShapeRange(y_shape_range);
-    y_desc.SetDataType(x_desc.GetDataType());
-    if(y_shape_range[0].first == y_shape_range[0].second){
-      vector<int64_t> dimVector;
-      dimVector.push_back(y_shape_range[0].first);
-      ge::Shape y_shape(dimVector);
-      y_desc.SetShape(y_shape);
-    }else{
-      y_desc.SetShape(x_desc.GetShape());
-    }
-    op.UpdateDynamicOutputDesc("y", i, y_desc);
+    op.UpdateDynamicOutputDesc("y", i, tensordesc);
   }
   return GRAPH_SUCCESS;
 }
+
 COMMON_INFER_FUNC_REG(ConcatOffset, ConcatOffsetInferShape);
 // --------------------ConcatOffset------------------------
 
