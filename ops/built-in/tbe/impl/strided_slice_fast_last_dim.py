@@ -124,6 +124,8 @@ def strided_slice_last_dim_only(input_shape, dtype, output_shape, begin, kernel_
         tail_loop_index = tail_input_stride_two // max_ub_stride
         tail_data_index = tail_input_stride_two % max_ub_stride
         tail_last_move_one = tail_data_index // type_block_number
+        if tail_last_move_one == 0:
+            return False
 
         tail_last_output_data = tail_last_move_one * expect_cycle * consecutive
         tail_last_output_stride_length = tail_last_output_data // type_block_number
