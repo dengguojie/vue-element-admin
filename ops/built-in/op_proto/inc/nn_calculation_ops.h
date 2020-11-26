@@ -1435,5 +1435,28 @@ REG_OP(DeformableOffsets)
     .ATTR(deformable_groups, Int, 1)
     .OP_END_FACTORY_REG(DeformableOffsets)
 
+
+/**
+*@brief Computes the deformed dilation output with the expected input
+*@par Inputs:
+ * One inputs:
+ * @li x: A Tensor of type int8, float16, float32
+*@par Required Attributes:
+ * @li dilations: A tuple/list of integers.
+*@par Attributes:
+ * Two attributes:
+ * @li padding_value: default value filling in blank
+ * @li pads: A tuple/list of integers.
+*@par Outputs:
+ * y: A Tensor. A Tensor of type int8, float16, float32.
+*/
+REG_OP(Dilation)
+    .INPUT(x, TensorType({DT_INT8, DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(y, TensorType({DT_INT8, DT_FLOAT16, DT_FLOAT}))
+    .REQUIRED_ATTR(dilations, ListInt)
+    .ATTR(pads, ListInt, {})
+    .ATTR(padding_value, Float, 0.0)
+    .OP_END_FACTORY_REG(Dilation)
+
 }  // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_NN_CALCULATION_OPS_H_

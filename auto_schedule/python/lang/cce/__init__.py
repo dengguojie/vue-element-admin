@@ -73,3 +73,5 @@ from .te_schedule.conv2d_backprop_input_schedule import CceConv2dBackpropInputOp
 
 from .te_schedule.cce_schedule import schedule_cce
 from te.utils.cce import auto_schedule, build
+from .te_compute.dilation_compute import dilation_compute
+from .te_schedule.dilation_schedule import dilation_schedule

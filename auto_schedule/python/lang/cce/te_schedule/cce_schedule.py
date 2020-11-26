@@ -107,6 +107,7 @@ from .ascend_requant_s16_schedule import ascend_requant_s16_schedule
 from . import util as te_util  # pylint: disable=E0401
 from .cosine_embedding_loss_schedule import \
     cosine_embedding_loss_schedule
+from .dilation_schedule import dilation_schedule
 
 
 def get_op_info(outs):  # pylint: disable=R0912, R0914, R0915
@@ -779,7 +780,8 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
             'conv2d_backprop_input': [tensor, spec_node_list, sch_list],
             'conv2d_backprop_filter': [tensor, spec_node_list, sch_list],
             'pooling2d': [tensor, sch_list],
-            'pooling3d': [tensor, sch_list]
+            'pooling3d': [tensor, sch_list],
+            'dilation': [tensor, sch_list]
         }
 
         schedule_dispatch = ScheduleDispatch()
@@ -1464,3 +1466,7 @@ class ScheduleDispatch:
     @handle_case.register('pooling3d')
     def _(self, case, tensor, sch_list):
         return pooling3d_schedule(tensor, sch_list)
+        
+    @handle_case.register('dilation')
+    def _(self, case, tensor, sch_list):
+        return dilation_schedule(tensor, sch_list)
