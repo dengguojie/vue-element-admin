@@ -49,13 +49,13 @@ protected:
     filter_0.set_attr_value(filter);
     filter_0.update_output_desc_y(filter_desc);
 
-    TensorDesc offset_desc(ge::Shape({1,7,7,27}), FORMAT_NHWC, DT_FLOAT16);
+    TensorDesc offset_desc(ge::Shape({1,4,4,27}), FORMAT_NHWC, DT_FLOAT16);
     offset_desc.SetOriginFormat(FORMAT_NHWC);
     auto offset_0 = op::Const("offset_0");
     Tensor offset;
-    fp16_t * offset_value = new fp16_t[7*7*27*1];
+    fp16_t * offset_value = new fp16_t[4*4*27*1];
     offset.SetTensorDesc(offset_desc);
-    offset.SetData((uint8_t*)offset_value, 7*7*27*1*sizeof(fp16_t));
+    offset.SetData((uint8_t*)offset_value, 4*4*27*1*sizeof(fp16_t));
     offset_0.set_attr_value(offset);
     offset_0.update_output_desc_y(offset_desc);
 
@@ -116,13 +116,13 @@ protected:
     filter_0.set_attr_value(filter);
     filter_0.update_output_desc_y(filter_desc);
 
-    TensorDesc offset_desc(ge::Shape({1,27,7,7}), FORMAT_NCHW, DT_FLOAT16);
+    TensorDesc offset_desc(ge::Shape({1,27,4,4}), FORMAT_NCHW, DT_FLOAT16);
     offset_desc.SetOriginFormat(FORMAT_NCHW);
     auto offset_0 = op::Const("offset_0");
     Tensor offset;
-    fp16_t * offset_value = new fp16_t[7*7*27*1];
+    fp16_t * offset_value = new fp16_t[4*4*27*1];
     offset.SetTensorDesc(offset_desc);
-    offset.SetData((uint8_t*)offset_value, 7*7*27*1*sizeof(fp16_t));
+    offset.SetData((uint8_t*)offset_value, 4*4*27*1*sizeof(fp16_t));
     offset_0.set_attr_value(offset);
     offset_0.update_output_desc_y(offset_desc);
 

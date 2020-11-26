@@ -778,7 +778,7 @@ REG_OP(Conv2DCompress)
 * With the format "HWCN" , the data is stored in the order of: [filter_height,
 * filter_width, in_channels / groups, out_channels].
 *@li offsets: A 4D tensor of x-y coordinates offset and mask. With the format
-* "NHWC", the data is stored in the order of: [batch, in_height, in_width,
+* "NHWC", the data is stored in the order of: [batch, out_height, out_width,
 * deformable_groups * filter_height * filter_width * 3].
 *@li bias: An optional 1D tensor of additive biases to the filter outputs.
 * The data is stored in the order of: [out_channels].
