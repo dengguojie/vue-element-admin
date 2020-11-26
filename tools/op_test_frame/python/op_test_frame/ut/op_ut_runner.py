@@ -273,8 +273,12 @@ def run_ut(case_dir, soc_version, case_name=None,  # pylint: disable=too-many-ar
         for one_soc, soc_args in multiprocess_run_args.items():
             for soc_arg in soc_args:
                 total_args.append(soc_arg)
-        with Pool(processes=cpu_count) as pool:
-            results = pool.map(_run_ut_case_file, total_args)
+        if len(total_args) == 1:
+            res = _run_ut_case_file(total_args[0])
+            results = [res,]
+        else:
+            with Pool(processes=cpu_count) as pool:
+                results = pool.map(_run_ut_case_file, total_args)
         run_success = reduce(lambda x, y: x and y, results)
     else:
         results = []
