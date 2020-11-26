@@ -1673,10 +1673,10 @@ class CceConvOp:
                                          'vector_dup', {"split_select": 1})
                 sch[pad_vn].emit_insn(pad_vn.op.axis[0], 'phony_insn')
 
-                sch[pad_top].reused_by(pad_data)
-                sch[pad_bottom].reused_by(pad_data)
-                sch[pad_left].reused_by(pad_data)
-                sch[pad_right].reused_by(pad_data)
+                sch[pad_vn].reused_by(pad_top)
+                sch[pad_vn].reused_by(pad_bottom)
+                sch[pad_vn].reused_by(pad_left)
+                sch[pad_vn].reused_by(pad_right)
                 sch[pad_vn].reused_by(pad_data)
 
             if "max_pooling_pad_data" in self._max_pool_tensor_map.keys():
