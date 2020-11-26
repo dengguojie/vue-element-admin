@@ -394,7 +394,7 @@ class CaseDesign:
                     prefix += 'sub_case_'
                 else:
                     prefix += 'case_'
-                self._check_expect_output_param(json_obj)
+                pyfile, function = self._check_expect_output_param(json_obj)
                 for index in range(count):
                     case = {OP: json_obj[OP], INPUT_DESC: [], OUTPUT_DESC: [],
                             'case_name': prefix + '%03d' % case_idx}
@@ -407,7 +407,7 @@ class CaseDesign:
                         output_index = index % len(output_case_list)
                     for output_case in output_case_list:
                         case[OUTPUT_DESC].append(output_case[output_index])
-                    self._parse_expect_output_param(json_obj, case)
+                    self._parse_expect_output_param(case, pyfile, function)
                     case_idx += 1
                     total_case_in_file.append(case)
                     # deal with report
@@ -423,27 +423,40 @@ class CaseDesign:
     @staticmethod
     def _check_expect_output_param(json_obj):
         expect_str = json_obj.get("calc_expect_func_file")
-        if not expect_str:
+        pyfile = None
+        function = None
+        if expect_str:
+            length = len(expect_str.split(":"))
+            if length == 2:
+                pyfile, function = expect_str.split(":")
+                utils.print_info_log("The expect data generate python file:%s." % pyfile)
+                utils.check_path_valid(pyfile)
+            elif length == 1:
+                pyfile = expect_str
+                function = json_obj.get(OP)
+                utils.print_info_log("The expect data generate python file:%s." % pyfile)
+                utils.check_path_valid(pyfile)
+            else:
+                utils.print_warn_log("The value of calc_expect_func_file is '%s', is invalid! If no need to compare"
+                                     "output data,ignore." % expect_str)
+        else:
             expect_str = json_obj.get("calc_expect_func")
-        if not expect_str:
-            utils.print_warn_log("There is no expect output function in "
-                                 "the case json, if no need to compare "
-                                 "output data, ignore.")
+            if not expect_str:
+                utils.print_warn_log("There is no expect output function in "
+                                     "the case json, if no need to compare "
+                                     "output data, ignore.")
+        return pyfile, function
 
     @staticmethod
-    def _parse_expect_output_param(json_obj, case):
-        expect_str = json_obj.get("calc_expect_func_file")
-        if expect_str:
-            if ":" in expect_str:
-                pyfile, function = expect_str.split(":")
-            else:
-                pyfile = expect_str
-                function = json_obj[OP]
-            utils.check_path_valid(pyfile)
+    def _parse_expect_output_param(case, pyfile, function):
+        if not pyfile or not function:
+            return
+        if not pyfile and function:
+            case.update({"calc_expect_func": function})
+        if pyfile and function:
             case.update({"calc_expect_func_file": pyfile})
             case.update({"calc_expect_func_file_func": function})
-        elif json_obj.get("calc_expect_func"):
-            case.update({"calc_expect_func": json_obj.get("calc_expect_func")})
+        return
 
     def design(self):
         """
