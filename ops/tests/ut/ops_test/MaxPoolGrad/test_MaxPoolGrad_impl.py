@@ -392,6 +392,49 @@ paddings = "SAME"
 data_format = "NHWC"
 do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_27")
 
+# ============================================
+# GLOBAL:split n c1 as core
+# ============================================
+ori_shape0 = [16, 3, 3, 16]
+ori_shape1 = [16, 1, 1, 16]
+ksize = [1, 3, 3, 1]
+strides = [1, 2, 2, 1]
+paddings = "VALID"
+data_format = "NHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_28")
+
+ori_shape0 = [1, 23, 41, 16]
+ori_shape1 = [1, 1, 1, 16]
+ksize = [1, 23, 41, 1]
+strides = [1, 5, 7, 1]
+paddings = "VALID"
+data_format = "NHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_29")
+
+ori_shape0 = [16, 90, 90, 16]
+ori_shape1 = [16, 1, 1, 16]
+ksize = [1, 90, 90, 1]
+strides = [1, 10, 10, 1]
+paddings = "VALID"
+data_format = "NHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_30")
+
+ori_shape0 = [1, 111, 91, 16]
+ori_shape1 = [1, 1, 1, 16]
+ksize = [1, 111, 91, 1]
+strides = [1, 21, 17, 1]
+paddings = "VALID"
+data_format = "NHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_31")
+
+ori_shape0 = [1, 63, 8000, 16]
+ori_shape1 = [1, 1, 1, 16]
+ksize = [1, 63, 8000, 1]
+strides = [1, 21, 47, 1]
+paddings = "VALID"
+data_format = "NHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_32")
+
 
 if __name__ == '__main__':
     ut_case.run("Ascend910")

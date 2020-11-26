@@ -292,6 +292,7 @@ class MaxpoolGrad(object):
         self.ho_block = None
         self.hi_block = None
         self.tile_h_to_block = False
+        self.is_global = False
 
         self.tik_instance = tik.Tik()
         self.ori_input_gm = self.tik_instance.Tensor(dtype,
@@ -606,7 +607,7 @@ class MaxpoolGrad(object):
 
     def _data_move_ub(self, ori_input_shape, ori_output_shape, input_data_num, output_data_nums, src_input_offset,
                       src_output_offset):
-        if ori_input_shape:
+        if ori_input_shape and not self.is_global:
             ori_input_l1 = self.tik_instance.Tensor(self.dtype,
                                                     ori_input_shape,
                                                     name='ori_input_l1',
@@ -782,7 +783,7 @@ class MaxpoolGrad(object):
         else:
             each_process_hi = self.stride_h
 
-        # define eaxtra_size for some case
+        # define extra_size for some case
         # if each_process_wo is not 32B alined and 256B alined
         extra_size = (VECTOR_FP16_SIZE * c0_local + c0_local) * fp16_data_size
         if self.kw > self.stride_w:
@@ -949,6 +950,122 @@ class MaxpoolGrad(object):
                 self.tik_instance.data_move(self.res_gm[offset_gm_block],
                                             col2img_fp16_ub[pad_top * wi * C0 + pad_left * C0], 0,
                                             each_process_hi_block, self.wi * C0 // 16, pad_left + pad_right, 0)
+
+    def _global_tiling(self, output_ub_shape, ori_output_shape):
+        # each type of buffer's bit size
+        fp16_data_size = tbe_platform.get_bit_len("float16") // 8
+        uint16_data_size = tbe_platform.get_bit_len("uint16") // 8
+
+        # calculate mask ub size
+        # There are four mask buffer on ub to store intermediate calculation results of mask
+        # mask_not, mask_or, mask_ori and mask_ub
+        mask_size = MASK128_VALUE * uint16_data_size * 4
+
+        # calculate complete output size on ub
+        output_size = _cal_shape_ele(output_ub_shape) * fp16_data_size
+        # calculate the full width of the output after tiling on ub
+        output_cut_h_size = _cal_shape_ele(output_ub_shape[-2:]) * fp16_data_size
+
+        # There are three input tensor from gm to ub, ori_input, ori_output and grad
+        # each is (_ceil_div(ho * wo, 16), 16, C0)
+        input_tensor_size = _cal_shape_ele(ori_output_shape) * fp16_data_size * 3
+
+        # calculate the updated grad according to mask
+        grad_sel_size = _cal_shape_ele(ori_output_shape) * fp16_data_size
+
+        # temp tensor to store zero, shape is (128,), dtype is float16
+        temp_zero_size = MASK128_VALUE * fp16_data_size
+
+        compute_size = mask_size + input_tensor_size + grad_sel_size + temp_zero_size
+        if output_size + compute_size <= SIZE_UB:
+            need_cut_hi = False
+            need_cut_wi = False
+            cut_factor = None
+        elif output_cut_h_size + compute_size <= SIZE_UB:
+            need_cut_hi = True
+            need_cut_wi = False
+            cut_factor = (SIZE_UB - compute_size) // (self.kw * C0 * fp16_data_size)
+        else:
+            need_cut_hi = True
+            need_cut_wi = True
+            cut_factor = (SIZE_UB - compute_size) // (C0 * fp16_data_size)
+
+        return need_cut_hi, need_cut_wi, cut_factor
+
+    def _global_mode(self, n_index, c1_index, mov_len_ho, mov_len_hi, start_ho_index, start_hi_index, shape):
+        shape_ho, shape_wo, shape_hi, _ = shape
+
+        howo_ceil16 = _ceil_div(shape_ho * shape_wo, 16)
+
+        wi = self.wi + self.pad_left + self.pad_right
+        hi = shape_hi + self.pad_top + self.pad_bottom
+
+        # define col res
+        grad_ub_shape = (hi, wi, C0)
+        ori_input_shape = (hi, self.wi, C0)
+        ori_output_shape = (howo_ceil16, 16, C0)
+        input_data_nums = mov_len_hi * self.wi * C0
+        output_data_nums = mov_len_ho * self.wo * C0
+
+        need_cut_hi, need_cut_wi, cut_factor = self._global_tiling(grad_ub_shape, ori_output_shape)
+
+        src_input_offset = ((n_index * self.c1 + c1_index) * self.hi + start_hi_index) * self.wi * C0
+        src_output_offset = ((n_index * self.c1 + c1_index) * self.ho + start_ho_index) * self.wo * C0
+
+        _, ori_output_ub, grad_ub = self._data_move_ub(ori_input_shape, ori_output_shape, input_data_nums,
+                                                       output_data_nums, src_input_offset, src_output_offset)
+        ori_input_col_ub = self.tik_instance.Tensor(self.dtype,
+                                                    ori_output_shape,
+                                                    name='ori_input_col_ub',
+                                                    scope=tik.scope_ubuf)
+        mask_shape = (_ceil_div(_cal_shape_ele(ori_output_ub.shape[:2]), MASK128_VALUE) * MASK128_VALUE, )
+        mask_not = self.tik_instance.Tensor("uint16", mask_shape, name='mask_not', scope=tik.scope_ubuf)
+        mask_or = self.tik_instance.Tensor("uint16", mask_shape, name='mask_or', scope=tik.scope_ubuf)
+
+        def _cal_global_main():
+            loop_input_offset = src_input_offset + (index_h * wi + index_w) * C0
+            self.tik_instance.data_move(ori_input_col_ub[0], self.ori_input_gm[loop_input_offset], 0, 1,
+                                        _cal_shape_ele(ori_output_ub.shape[:2]) // 16, 0, 0)
+            # calculate mask here
+            mask_shape = (_ceil_div(_cal_shape_ele(ori_output_ub.shape[:2]), MASK128_VALUE) * MASK128_VALUE, )
+            mask_ub = self._calc_mask(index_h, index_w, mask_shape, ori_output_ub, ori_input_col_ub, mask_or, mask_not)
+            # update grad according to mask
+            grad_sel_ub = self._vsel_grad_col(mask_ub, grad_ub)
+            self.tik_instance.data_move(grad_fp16_ub[(index_h * wi + index_w) * C0], grad_sel_ub, 0, 1, 1, 8, 8)
+
+        if need_cut_hi and need_cut_wi:
+            grad_fp16_ub = self.tik_instance.Tensor("float16", (cut_factor, C0),
+                                                    name="grad_fp16_ub",
+                                                    scope=tik.scope_ubuf)
+            with self.tik_instance.for_range(0, _ceil_div(self.kh * self.kw, cut_factor), thread_num=1) as tiling_index:
+                with self.tik_instance.for_range(0, cut_factor, thread_num=1) as factor_index:
+                    index_h = (tiling_index * cut_factor + factor_index) // self.kw
+                    index_w = (tiling_index * cut_factor + factor_index) % self.kw
+                    with self.tik_instance.if_scope(index_h < self.kh):
+                        _cal_global_main()
+                loop_gm_offset = tiling_index * cut_factor * C0
+                self.tik_instance.data_move(self.res_gm[self.offset_gm + loop_gm_offset], grad_fp16_ub[0], 0, 1,
+                                            cut_factor, 0, 0)
+        elif need_cut_hi:
+            grad_fp16_ub = self.tik_instance.Tensor("float16", (cut_factor, wi, C0),
+                                                    name="grad_fp16_ub",
+                                                    scope=tik.scope_ubuf)
+            with self.tik_instance.for_range(0, _ceil_div(self.kh, cut_factor), thread_num=1) as tiling_index:
+                with self.tik_instance.for_range(0, cut_factor * self.kw, thread_num=1) as factor_index:
+                    index_h = tiling_index * cut_factor + factor_index // self.kw
+                    index_w = factor_index % self.kw
+                    with self.tik_instance.if_scope(index_h < self.kh):
+                        _cal_global_main()
+                loop_gm_offset = tiling_index * cut_factor * self.wi * C0
+                self.tik_instance.data_move(self.res_gm[self.offset_gm + loop_gm_offset], grad_fp16_ub[0], 0, 1,
+                                            cut_factor * self.wi, 0, 0)
+        else:
+            grad_fp16_ub = self.tik_instance.Tensor("float16", grad_ub_shape, name="grad_fp16_ub", scope=tik.scope_ubuf)
+            with self.tik_instance.for_range(0, self.kh, thread_num=1) as index_h:
+                with self.tik_instance.for_range(0, self.kw, thread_num=1) as index_w:
+                    _cal_global_main()
+            self.tik_instance.data_move(self.res_gm[self.offset_gm], grad_fp16_ub[0], 0, self.hi, self.wi * C0 // 16, 0,
+                                        0)
 
     def _tilling_ho_only(self, each_process_ho, n_index, c1_index, each_process_ho_block, each_process_hi_block,
                          mov_len_ho, mov_len_hi, start_ho_index, start_hi_index, start_threshold, offset_gm_block,
@@ -1926,6 +2043,9 @@ class MaxpoolGrad(object):
                                                               'width in ori_output must be %d' % pad_calc_wo, 'ho',
                                                               self.wo)
 
+        if self.hi == self.kh and self.wi == self.kw and self.ho == 1 and self.wo == 1 and self.padding == 'VALID':
+            self.is_global = True
+
         # nc do block is not enough, but ncho is enough
         # real_block == 32 or block_num * self.ho < 32
         if real_block == CORE_NUM:
@@ -1942,7 +2062,9 @@ class MaxpoolGrad(object):
                         c1_index.set_as(index_sum % self.c1)
                         shape = (self.ho, self.wo, self.hi, self.wi)
                         self.offset_gm.set_as((n_index * self.c1 + c1_index) * self.hi * self.wi * C0)
-                        if need_cut_l1 and need_cut_ho and need_cut_wo:
+                        if self.is_global:
+                            self._global_mode(n_index, c1_index, self.ho, self.hi, 0, 0, shape)
+                        elif need_cut_l1 and need_cut_ho and need_cut_wo:
                             self._tilling_l1_ho_wo(each_process_wo, n_index, c1_index, self.ho, self.hi, self.ho,
                                                    self.hi, 0, 0, 0, None, shape, self.pad)
                         elif need_cut_l1 and need_cut_ho:
@@ -2137,7 +2259,9 @@ class MaxpoolGrad(object):
                         c1_index = (block_index * nc1 + nc1_index) % self.c1
 
                         shape = (self.ho, self.wo, self.hi, self.wi)
-                        if need_cut_l1 and need_cut_ho and need_cut_wo:
+                        if self.is_global:
+                            self._global_mode(n_index, c1_index, self.ho, self.hi, 0, 0, shape)
+                        elif need_cut_l1 and need_cut_ho and need_cut_wo:
                             self._tilling_l1_ho_wo(each_process_wo, n_index, c1_index, self.ho, self.hi, self.ho,
                                                    self.hi, 0, 0, 0, None, shape, self.pad)
                         elif need_cut_l1 and need_cut_ho:
