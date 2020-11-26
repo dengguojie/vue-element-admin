@@ -15,6 +15,10 @@
 
 add_subdirectory(built-in)
 
+if(ENABLE_TEST)
+  add_subdirectory(built-in/tests)
+endif()
+
 if(BUILD_OPEN_PROJECT)
   add_subdirectory(sample)
 endif()

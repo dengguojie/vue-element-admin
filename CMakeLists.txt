@@ -88,9 +88,6 @@ if(BUILD_OPEN_PROJECT)
   add_subdirectory(ops)
   add_subdirectory(auto_schedule)
   add_subdirectory(tools)
-  if(ENABLE_TEST)
-    add_subdirectory(ops/tests)
-  endif()
 
 else()
   # includes path
