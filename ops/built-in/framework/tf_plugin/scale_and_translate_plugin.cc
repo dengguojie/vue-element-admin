@@ -1,0 +1,89 @@
+/**
+ * Copyright 2019 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*!
+ * \file scale_and_translate_plugin.cpp
+ * \brief
+ */
+#include "register/register.h"
+#include "tensor.h"
+
+#include "op_log.h"
+namespace domi {
+Status ParseScaleAndTranslate(const Message* op_src, ge::Operator& op) {
+  AutoMappingFn(op_src, op);
+
+  ge::TensorDesc input_tensor = op.GetInputDesc("images");
+  input_tensor.SetOriginFormat(ge::FORMAT_NHWC);
+  input_tensor.SetFormat(ge::FORMAT_NHWC);
+  auto ret = op.UpdateInputDesc("images", input_tensor);
+  if (ret != ge::GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "update input format failed.");
+    return FAILED;
+  }
+  ge::TensorDesc output_tensor = op.GetOutputDesc("y");
+  output_tensor.SetOriginFormat(ge::FORMAT_NHWC);
+  output_tensor.SetFormat(ge::FORMAT_NHWC);
+  auto ret_output = op.UpdateOutputDesc("y", output_tensor);
+  if (ret_output != ge::GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "update output format failed.");
+    return FAILED;
+  }
+  return SUCCESS;
+}
+Status ParseScaleAndTranslateGrad(const Message* op_src, ge::Operator& op) {
+  AutoMappingFn(op_src, op);
+
+  ge::TensorDesc input_tensor0 = op.GetInputDesc("grads");
+  input_tensor0.SetOriginFormat(ge::FORMAT_NHWC);
+  input_tensor0.SetFormat(ge::FORMAT_NHWC);
+  auto ret = op.UpdateInputDesc("grads", input_tensor0);
+  if (ret != ge::GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "update grads format failed.");
+    return FAILED;
+  }
+  ge::TensorDesc input_tensor1 = op.GetInputDesc("original_image");
+  input_tensor1.SetOriginFormat(ge::FORMAT_NHWC);
+  input_tensor1.SetFormat(ge::FORMAT_NHWC);
+  ret = op.UpdateInputDesc("original_image", input_tensor1);
+  if (ret != ge::GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "update original_image format failed.");
+    return FAILED;
+  }
+  ge::TensorDesc output_tensor = op.GetOutputDesc("y");
+  output_tensor.SetOriginFormat(ge::FORMAT_NHWC);
+  output_tensor.SetFormat(ge::FORMAT_NHWC);
+  auto ret_output = op.UpdateOutputDesc("y", output_tensor);
+  if (ret_output != ge::GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "update output format failed.");
+    return FAILED;
+  }
+  return SUCCESS;
+}
+// register ScaleAndTranslate op to GE
+REGISTER_CUSTOM_OP("ScaleAndTranslate")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("ScaleAndTranslate")
+    .ParseParamsFn(ParseScaleAndTranslate)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register ScaleAndTranslateGrad op to GE
+REGISTER_CUSTOM_OP("ScaleAndTranslateGrad")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("ScaleAndTranslateGrad")
+    .ParseParamsFn(ParseScaleAndTranslateGrad)
+    .ImplyType(ImplyType::AI_CPU);
+}  // namespace domi

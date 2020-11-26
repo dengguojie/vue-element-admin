@@ -1051,20 +1051,6 @@ REGISTER_CUSTOM_OP("StatelessRandomUniformInt")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
-// register ScaleAndTranslate op to GE
-REGISTER_CUSTOM_OP("ScaleAndTranslate")
-    .FrameworkType(TENSORFLOW)
-    .OriginOpType("ScaleAndTranslate")
-    .ParseParamsFn(AutoMappingFn)
-    .ImplyType(ImplyType::AI_CPU);
-
-// register ScaleAndTranslateGrad op to GE
-REGISTER_CUSTOM_OP("ScaleAndTranslateGrad")
-    .FrameworkType(TENSORFLOW)
-    .OriginOpType("ScaleAndTranslateGrad")
-    .ParseParamsFn(AutoMappingFn)
-    .ImplyType(ImplyType::AI_CPU);
-
 // register CombinedNonMaxSuppression op to GE
 REGISTER_CUSTOM_OP("CombinedNonMaxSuppression")
     .FrameworkType(TENSORFLOW)
