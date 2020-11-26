@@ -39,7 +39,7 @@ const char *ADD = "Add";
 }
 
 namespace aicpu {
-uint32_t AddKernel::Compute(CpuKernelContext &ctx) {
+uint32_t AddCpuKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_LOG_INFO("Add folding kernel in.");
   if (NormalMathCheck(ctx) != KERNEL_STATUS_OK) {
     KERNEL_LOG_ERROR("Check add %s failed.", ctx.GetOpType().c_str());
@@ -70,7 +70,7 @@ uint32_t AddKernel::Compute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t AddKernel::AddCompute(CpuKernelContext &ctx) {
+uint32_t AddCpuKernel::AddCompute(CpuKernelContext &ctx) {
   CalcInfo calc_info;
   calc_info.input_0 = ctx.Input(kFirstInputIndex);
   calc_info.input_1 = ctx.Input(kSecondInputIndex);
@@ -120,7 +120,7 @@ uint32_t AddKernel::AddCompute(CpuKernelContext &ctx) {
 }
 
 template <int32_t RANK, typename T>
-void AddKernel::AddCalculate(CalcInfo &calc_info) {
+void AddCpuKernel::AddCalculate(CalcInfo &calc_info) {
   Eigen::TensorMap<Eigen::Tensor<T, 1>> eigen_input_0(
       static_cast<T *>(calc_info.input_0->GetData()),
       calc_info.input_0->GetTensorShape()->NumElements());
@@ -151,5 +151,5 @@ void AddKernel::AddCalculate(CalcInfo &calc_info) {
       eigen_input_1.reshape(reshape_1).broadcast(bcast_1);
 }
 
-REGISTER_CPU_KERNEL(ADD, AddKernel);
+REGISTER_CPU_KERNEL(ADD, AddCpuKernel);
 }  // namespace aicpu

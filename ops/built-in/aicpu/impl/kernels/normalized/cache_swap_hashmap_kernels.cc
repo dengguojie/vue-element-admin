@@ -54,7 +54,7 @@ uint32_t CacheSwapHashmapTask(std::vector<Tensor *> &inputs_,
 
   if (inputs_.size() == 0 || outputs_.size() == 0) {
     KERNEL_LOG_ERROR(
-        "CacheSwapHashmapKernel::CacheSwapHashmapTask: input or output is "
+        "CacheSwapHashmapCpuKernel::CacheSwapHashmapTask: input or output is "
         "empty.");
     return KERNEL_STATUS_PARAM_INVALID;
   }
@@ -126,7 +126,7 @@ uint32_t CacheSwapHashmapTask(std::vector<Tensor *> &inputs_,
   return KERNEL_STATUS_OK;
 }
 
-uint32_t CacheSwapHashmapKernel::DoCompute() {
+uint32_t CacheSwapHashmapCpuKernel::DoCompute() {
   std::map<int, std::function<uint32_t(std::vector<Tensor *> &,
                                        std::vector<Tensor *> &, int64_t &,
                                        int64_t &)>>
@@ -138,15 +138,15 @@ uint32_t CacheSwapHashmapKernel::DoCompute() {
 
   if (iter == calls.end()) {
     KERNEL_LOG_ERROR(
-        "CacheSwapHashmapKernel op don't support input tensor types: %s",
+        "CacheSwapHashmapCpuKernel op don't support input tensor types: %s",
         typeid(param_type_).name());
     return KERNEL_STATUS_PARAM_INVALID;
   }
   return iter->second(inputs_, outputs_, batch_size_, hashmap_length_);
 }
 
-uint32_t CacheSwapHashmapKernel::GetInputAndCheck(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("CacheSwapHashmapKernel::GetInputAndCheck start!");
+uint32_t CacheSwapHashmapCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
+  KERNEL_LOG_INFO("CacheSwapHashmapCpuKernel::GetInputAndCheck start!");
 
   // get input Tensors
   const int num_input = 3;
@@ -154,7 +154,7 @@ uint32_t CacheSwapHashmapKernel::GetInputAndCheck(CpuKernelContext &ctx) {
     Tensor *tensor = ctx.Input(i);
     if (tensor == nullptr) {
       KERNEL_LOG_ERROR(
-          "CacheSwapHashmapKernel::GetInputAndCheck: get input tensor[%d] "
+          "CacheSwapHashmapCpuKernel::GetInputAndCheck: get input tensor[%d] "
           "failed",
           i);
       return KERNEL_STATUS_PARAM_INVALID;
@@ -167,7 +167,7 @@ uint32_t CacheSwapHashmapKernel::GetInputAndCheck(CpuKernelContext &ctx) {
     Tensor *tensor = ctx.Output(i);
     if (tensor == nullptr) {
       KERNEL_LOG_ERROR(
-          "CacheSwapHashmapKernel::GetInputAndCheck: get output tensor[%d] "
+          "CacheSwapHashmapCpuKernel::GetInputAndCheck: get output tensor[%d] "
           "failed",
           i);
       return KERNEL_STATUS_PARAM_INVALID;
@@ -176,14 +176,14 @@ uint32_t CacheSwapHashmapKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   }
   // get param type
   param_type_ = static_cast<DataType>(inputs_[0]->GetDataType());
-  KERNEL_LOG_INFO("CacheSwapHashmapKernel::GetInputAndCheck success!");
+  KERNEL_LOG_INFO("CacheSwapHashmapCpuKernel::GetInputAndCheck success!");
 
   std::shared_ptr<TensorShape> hashmap_shape = ctx.Input(0)->GetTensorShape();
   std::shared_ptr<TensorShape> emb_idx_shape = ctx.Input(1)->GetTensorShape();
 
   if (hashmap_shape->GetDims() != 2) {
     KERNEL_LOG_ERROR(
-        "CacheSwapHashmapKernel::GetInputAndCheck: only support hashmap rank "
+        "CacheSwapHashmapCpuKernel::GetInputAndCheck: only support hashmap rank "
         "2, but got %d",
         hashmap_shape->GetDims());
     return KERNEL_STATUS_PARAM_INVALID;
@@ -192,7 +192,7 @@ uint32_t CacheSwapHashmapKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   hashmap_length_ = hashmap_shape->GetDimSize(0);
   if (hashmap_shape->GetDimSize(1) != 4) {
     KERNEL_LOG_ERROR(
-        "CacheSwapHashmapKernel::GetInputAndCheck: only support hashmap shape "
+        "CacheSwapHashmapCpuKernel::GetInputAndCheck: only support hashmap shape "
         "(n, 4), but got (%d, %d)",
         hashmap_length_, hashmap_shape->GetDimSize(1));
     return KERNEL_STATUS_PARAM_INVALID;
@@ -205,8 +205,8 @@ uint32_t CacheSwapHashmapKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t CacheSwapHashmapKernel::Compute(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("CacheSwapHashmapKernel::Compute start!!");
+uint32_t CacheSwapHashmapCpuKernel::Compute(CpuKernelContext &ctx) {
+  KERNEL_LOG_INFO("CacheSwapHashmapCpuKernel::Compute start!!");
 
   uint32_t res = GetInputAndCheck(ctx);
   if (res != KERNEL_STATUS_OK) {
@@ -215,12 +215,12 @@ uint32_t CacheSwapHashmapKernel::Compute(CpuKernelContext &ctx) {
 
   res = DoCompute();
   if (res != KERNEL_STATUS_OK) {
-    KERNEL_LOG_ERROR("CacheSwapHashmapKernel::Compute failed");
+    KERNEL_LOG_ERROR("CacheSwapHashmapCpuKernel::Compute failed");
     return res;
   }
 
-  KERNEL_LOG_INFO("CacheSwapHashmapKernel::Compute success!!");
+  KERNEL_LOG_INFO("CacheSwapHashmapCpuKernel::Compute success!!");
   return KERNEL_STATUS_OK;
 }
-REGISTER_CPU_KERNEL(CACHE_SWAP_HASHMAP, CacheSwapHashmapKernel);
+REGISTER_CPU_KERNEL(CACHE_SWAP_HASHMAP, CacheSwapHashmapCpuKernel);
 }  // namespace aicpu

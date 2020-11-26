@@ -30,12 +30,12 @@ const char *LESS = "Less";
 }
 
 namespace aicpu {
-uint32_t LessKernel::Compute(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("LessKernel::Compute start!! ");
+uint32_t LessCpuKernel::Compute(CpuKernelContext &ctx) {
+  KERNEL_LOG_INFO("LessCpuKernel::Compute start!! ");
 
   uint32_t res = GetInputAndCheck(ctx);
   if (res != KERNEL_STATUS_OK) {
-    KERNEL_LOG_ERROR("LessKernel::Compute fail!! ");
+    KERNEL_LOG_ERROR("LessCpuKernel::Compute fail!! ");
     return res;
   }
 
@@ -81,16 +81,16 @@ uint32_t LessKernel::Compute(CpuKernelContext &ctx) {
   }
 
   if (res != KERNEL_STATUS_OK) {
-    KERNEL_LOG_ERROR("LessKernel::Compute fail!! ");
+    KERNEL_LOG_ERROR("LessCpuKernel::Compute fail!! ");
     return res;
   }
-  KERNEL_LOG_INFO("LessKernel::Compute end!! ");
+  KERNEL_LOG_INFO("LessCpuKernel::Compute end!! ");
   return KERNEL_STATUS_OK;
 }
 
 template <typename T>
-uint32_t LessKernel::DoCompute() {
-  KERNEL_LOG_INFO("LessKernel::DoCompute start!! ");
+uint32_t LessCpuKernel::DoCompute() {
+  KERNEL_LOG_INFO("LessCpuKernel::DoCompute start!! ");
 
   std::shared_ptr<TensorShape> y_shape = y_->GetTensorShape();
   const int64_t y_rank = y_shape->GetDims();
@@ -128,8 +128,8 @@ uint32_t LessKernel::DoCompute() {
 }
 
 template <typename T, const int32_t rank>
-uint32_t LessKernel::DoRealCompute() {
-  KERNEL_LOG_INFO("LessKernel::DoRealCompute begin!! ");
+uint32_t LessCpuKernel::DoRealCompute() {
+  KERNEL_LOG_INFO("LessCpuKernel::DoRealCompute begin!! ");
   auto input_x1 = reinterpret_cast<T *>(x1_->GetData());
   auto input_x2 = reinterpret_cast<T *>(x2_->GetData());
   auto input_y = reinterpret_cast<bool *>(y_->GetData());
@@ -186,14 +186,14 @@ uint32_t LessKernel::DoRealCompute() {
     } else {
       y(r) = false;
     }
-    KERNEL_LOG_INFO("LessKernel::DoCompute y[%d] = %d . ", r, y(r));
+    KERNEL_LOG_INFO("LessCpuKernel::DoCompute y[%d] = %d . ", r, y(r));
   }
 
-  KERNEL_LOG_INFO("LessKernel::DoRealCompute end!! ");
+  KERNEL_LOG_INFO("LessCpuKernel::DoRealCompute end!! ");
   return KERNEL_STATUS_OK;
 }
 
-std::vector<int64_t> LessKernel::GetDimSize(
+std::vector<int64_t> LessCpuKernel::GetDimSize(
     std::shared_ptr<TensorShape> input_shape) {
   std::vector<int64_t> dimsize;
   for (int j = 0; j < input_shape->GetDims(); j++) {
@@ -202,7 +202,7 @@ std::vector<int64_t> LessKernel::GetDimSize(
   return dimsize;
 }
 
-size_t LessKernel::GetSize(std::vector<int64_t> dim_size) {
+size_t LessCpuKernel::GetSize(std::vector<int64_t> dim_size) {
   size_t size = 1;
   for (size_t i = 0; i < dim_size.size(); ++i) {
     size *= dim_size[i];
@@ -210,8 +210,8 @@ size_t LessKernel::GetSize(std::vector<int64_t> dim_size) {
   return size;
 }
 
-uint32_t LessKernel::GetInputAndCheck(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("LessKernel::GetInputAndCheck start!! ");
+uint32_t LessCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
+  KERNEL_LOG_INFO("LessCpuKernel::GetInputAndCheck start!! ");
   uint32_t res = KERNEL_STATUS_OK;
   // get x1
   x1_ = ctx.Input(0);
@@ -243,9 +243,9 @@ uint32_t LessKernel::GetInputAndCheck(CpuKernelContext &ctx) {
     res = KERNEL_STATUS_PARAM_INVALID;
   }
 
-  KERNEL_LOG_INFO("LessKernel::GetInputAndCheck end!! ");
+  KERNEL_LOG_INFO("LessCpuKernel::GetInputAndCheck end!! ");
   return res;
 }
 
-REGISTER_CPU_KERNEL(LESS, LessKernel);
+REGISTER_CPU_KERNEL(LESS, LessCpuKernel);
 }  // namespace aicpu

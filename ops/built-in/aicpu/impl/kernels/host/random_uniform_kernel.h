@@ -22,10 +22,10 @@
 #include "cpu_kernel.h"
 
 namespace aicpu {
-class RandomUniformKernel : public CpuKernel {
+class RandomUniformCpuKernel : public CpuKernel {
  public:
-  RandomUniformKernel() = default;
-  ~RandomUniformKernel() override = default;
+  RandomUniformCpuKernel() = default;
+  ~RandomUniformCpuKernel() override = default;
 
  protected:
   uint32_t Compute(CpuKernelContext &ctx) override;

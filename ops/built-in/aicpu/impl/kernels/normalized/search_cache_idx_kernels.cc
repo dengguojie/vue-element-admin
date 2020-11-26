@@ -35,7 +35,7 @@ uint32_t SearchCacheIdxTask(std::vector<Tensor *> &inputs_,
 
   if (inputs_.size() == 0 || outputs_.size() == 0) {
     KERNEL_LOG_ERROR(
-        "SearchCacheIdxKernel::SearchCacheIdxTask: input or output is empty.");
+        "SearchCacheIdxCpuKernel::SearchCacheIdxTask: input or output is empty.");
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -99,7 +99,7 @@ uint32_t SearchCacheIdxTask(std::vector<Tensor *> &inputs_,
   return KERNEL_STATUS_OK;
 }
 
-uint32_t SearchCacheIdxKernel::DoCompute() {
+uint32_t SearchCacheIdxCpuKernel::DoCompute() {
   std::map<int, std::function<uint32_t(std::vector<Tensor *> &,
                                        std::vector<Tensor *> &, int64_t &,
                                        int64_t &)>>
@@ -109,15 +109,15 @@ uint32_t SearchCacheIdxKernel::DoCompute() {
 
   if (calls.find(param_type_) == calls.end()) {
     KERNEL_LOG_ERROR(
-        "SearchCacheIdxKernel op don't support input tensor types: %s",
+        "SearchCacheIdxCpuKernel op don't support input tensor types: %s",
         typeid(param_type_).name());
     return KERNEL_STATUS_PARAM_INVALID;
   }
   return calls[param_type_](inputs_, outputs_, batch_size_, hashmap_length_);
 }
 
-uint32_t SearchCacheIdxKernel::GetInputAndCheck(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("SearchCacheIdxKernel::GetInputAndCheck start!");
+uint32_t SearchCacheIdxCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
+  KERNEL_LOG_INFO("SearchCacheIdxCpuKernel::GetInputAndCheck start!");
 
   // get input Tensors
   const int num_input = 5;
@@ -125,7 +125,7 @@ uint32_t SearchCacheIdxKernel::GetInputAndCheck(CpuKernelContext &ctx) {
     Tensor *tensor = ctx.Input(i);
     if (tensor == nullptr) {
       KERNEL_LOG_ERROR(
-          "SearchCacheIdxKernel::GetInputAndCheck: get input tensor[%d] failed",
+          "SearchCacheIdxCpuKernel::GetInputAndCheck: get input tensor[%d] failed",
           i);
       return KERNEL_STATUS_PARAM_INVALID;
     }
@@ -137,7 +137,7 @@ uint32_t SearchCacheIdxKernel::GetInputAndCheck(CpuKernelContext &ctx) {
     Tensor *tensor = ctx.Output(i);
     if (tensor == nullptr) {
       KERNEL_LOG_ERROR(
-          "SearchCacheIdxKernel::GetInputAndCheck: get output tensor[%d] "
+          "SearchCacheIdxCpuKernel::GetInputAndCheck: get output tensor[%d] "
           "failed",
           i);
       return KERNEL_STATUS_PARAM_INVALID;
@@ -146,13 +146,13 @@ uint32_t SearchCacheIdxKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   }
   // get param type
   param_type_ = static_cast<DataType>(inputs_[0]->GetDataType());
-  KERNEL_LOG_INFO("SearchCacheIdxKernel::GetInputAndCheck success!");
+  KERNEL_LOG_INFO("SearchCacheIdxCpuKernel::GetInputAndCheck success!");
 
   std::shared_ptr<TensorShape> hashmap_shape = ctx.Input(0)->GetTensorShape();
   std::shared_ptr<TensorShape> emb_idx_shape = ctx.Input(1)->GetTensorShape();
   if (hashmap_shape->GetDims() != 2) {
     KERNEL_LOG_ERROR(
-        "SearchCacheIdxKernel::GetInputAndCheck: only support hashmap rank 2, "
+        "SearchCacheIdxCpuKernel::GetInputAndCheck: only support hashmap rank 2, "
         "but got %d",
         hashmap_shape->GetDims());
     return KERNEL_STATUS_PARAM_INVALID;
@@ -161,7 +161,7 @@ uint32_t SearchCacheIdxKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   hashmap_length_ = hashmap_shape->GetDimSize(0);
   if (hashmap_shape->GetDimSize(1) != 4) {
     KERNEL_LOG_ERROR(
-        "SearchCacheIdxKernel::GetInputAndCheck: only support hashmap shape "
+        "SearchCacheIdxCpuKernel::GetInputAndCheck: only support hashmap shape "
         "(n, 4), but got (%d, %d)",
         hashmap_length_, hashmap_shape->GetDimSize(1));
     return KERNEL_STATUS_PARAM_INVALID;
@@ -173,8 +173,8 @@ uint32_t SearchCacheIdxKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t SearchCacheIdxKernel::Compute(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("SearchCacheIdxKernel::Compute start!!");
+uint32_t SearchCacheIdxCpuKernel::Compute(CpuKernelContext &ctx) {
+  KERNEL_LOG_INFO("SearchCacheIdxCpuKernel::Compute start!!");
 
   uint32_t res = GetInputAndCheck(ctx);
   if (res != KERNEL_STATUS_OK) {
@@ -182,11 +182,11 @@ uint32_t SearchCacheIdxKernel::Compute(CpuKernelContext &ctx) {
   }
   res = DoCompute();
   if (res != KERNEL_STATUS_OK) {
-    KERNEL_LOG_ERROR("SearchCacheIdxKernel::Compute failed");
+    KERNEL_LOG_ERROR("SearchCacheIdxCpuKernel::Compute failed");
     return res;
   }
-  KERNEL_LOG_INFO("SearchCacheIdxKernel::Compute success!!");
+  KERNEL_LOG_INFO("SearchCacheIdxCpuKernel::Compute success!!");
   return KERNEL_STATUS_OK;
 }
-REGISTER_CPU_KERNEL(SEARCH_CACHE_IDX, SearchCacheIdxKernel);
+REGISTER_CPU_KERNEL(SEARCH_CACHE_IDX, SearchCacheIdxCpuKernel);
 }  // namespace aicpu

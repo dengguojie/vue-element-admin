@@ -21,9 +21,9 @@
 
 namespace aicpu {
 
-class LessKernel : public CpuKernel {
+class LessCpuKernel : public CpuKernel {
  public:
-  ~LessKernel() = default;
+  ~LessCpuKernel() = default;
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:

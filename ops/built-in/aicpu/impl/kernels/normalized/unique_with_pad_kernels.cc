@@ -30,8 +30,8 @@ const char *UNIQUE = "UniqueWithPad";
 }
 
 namespace aicpu {
-uint32_t UniqueWithPadKernel::Compute(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("UniqueWithPadKernel::Compute start!!");
+uint32_t UniqueWithPadCpuKernel::Compute(CpuKernelContext &ctx) {
+  KERNEL_LOG_INFO("UniqueWithPadCpuKernel::Compute start!!");
 
   uint32_t res = GetInputAndCheck(ctx);
   if (res != KERNEL_STATUS_OK) {
@@ -40,15 +40,15 @@ uint32_t UniqueWithPadKernel::Compute(CpuKernelContext &ctx) {
 
   res = DoCompute();
   if (res != KERNEL_STATUS_OK) {
-    KERNEL_LOG_ERROR("UniqueWithPadKernel::Compute failed");
+    KERNEL_LOG_ERROR("UniqueWithPadCpuKernel::Compute failed");
     return res;
   }
 
-  KERNEL_LOG_INFO("UniqueWithPadKernel::Compute success!!");
+  KERNEL_LOG_INFO("UniqueWithPadCpuKernel::Compute success!!");
   return KERNEL_STATUS_OK;
 }
 
-uint32_t UniqueWithPadKernel::DoCompute() {
+uint32_t UniqueWithPadCpuKernel::DoCompute() {
   uint32_t res;
   switch (matrix_type_) {
     case DT_INT32: {
@@ -70,7 +70,7 @@ uint32_t UniqueWithPadKernel::DoCompute() {
 }
 
 template <typename T>
-uint32_t UniqueWithPadKernel::UniqueWithPadTask() {
+uint32_t UniqueWithPadCpuKernel::UniqueWithPadTask() {
   clock_t start, end;
   start = clock();
   T *a = reinterpret_cast<T *>(input_tensor_->GetData());
@@ -98,14 +98,14 @@ uint32_t UniqueWithPadKernel::UniqueWithPadTask() {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t UniqueWithPadKernel::GetInputAndCheck(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("UniqueWithPadKernel::GetInputAndCheck start!! ");
+uint32_t UniqueWithPadCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
+  KERNEL_LOG_INFO("UniqueWithPadCpuKernel::GetInputAndCheck start!! ");
 
   // get input_tensor
   input_tensor_ = ctx.Input(0);
   if (input_tensor_ == nullptr) {
     KERNEL_LOG_ERROR("get input:0 failed");
-    KERNEL_LOG_INFO("UniqueWithPadKernel::GetInputAndCheck failed!! ");
+    KERNEL_LOG_INFO("UniqueWithPadCpuKernel::GetInputAndCheck failed!! ");
     return KERNEL_STATUS_PARAM_INVALID;
   }
   std::shared_ptr<TensorShape> input_shape = input_tensor_->GetTensorShape();
@@ -119,7 +119,7 @@ uint32_t UniqueWithPadKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   input_padding_ = ctx.Input(1);
   if (input_padding_ == nullptr) {
     KERNEL_LOG_ERROR("get input:1 failed");
-    KERNEL_LOG_INFO("UniqueWithPadKernel::GetInputAndCheck failed!! ");
+    KERNEL_LOG_INFO("UniqueWithPadCpuKernel::GetInputAndCheck failed!! ");
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -127,20 +127,20 @@ uint32_t UniqueWithPadKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   output_values_ = ctx.Output(0);
   if (output_values_ == nullptr) {
     KERNEL_LOG_ERROR("get output:0 failed");
-    KERNEL_LOG_INFO("UniqueWithPadKernel::GetInputAndCheck failed!! ");
+    KERNEL_LOG_INFO("UniqueWithPadCpuKernel::GetInputAndCheck failed!! ");
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
   output_indices_ = ctx.Output(1);
   if (output_indices_ == nullptr) {
     KERNEL_LOG_ERROR("get output:1 failed");
-    KERNEL_LOG_INFO("UniqueWithPadKernel::GetInputAndCheck failed!! ");
+    KERNEL_LOG_INFO("UniqueWithPadCpuKernel::GetInputAndCheck failed!! ");
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
-  KERNEL_LOG_INFO("UniqueWithPadKernel::GetInputAndCheck success!! ");
+  KERNEL_LOG_INFO("UniqueWithPadCpuKernel::GetInputAndCheck success!! ");
 
   return KERNEL_STATUS_OK;
 }
-REGISTER_CPU_KERNEL(UNIQUE, UniqueWithPadKernel);
+REGISTER_CPU_KERNEL(UNIQUE, UniqueWithPadCpuKernel);
 }  // namespace aicpu

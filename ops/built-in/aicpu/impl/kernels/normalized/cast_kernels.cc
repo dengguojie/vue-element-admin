@@ -49,7 +49,7 @@ uint32_t CastTask(Tensor *&xTensor, Tensor *&yTensor, int64_t &start,
   return KERNEL_STATUS_OK;
 }
 
-void CastKernel::SetMap() {
+void CastCpuKernel::SetMap() {
   calls_[DT_INT8][DT_INT8] = CastTask<int8_t, int8_t>;
   calls_[DT_INT8][DT_INT16] = CastTask<int8_t, int16_t>;
   calls_[DT_INT8][DT_INT32] = CastTask<int8_t, int32_t>;
@@ -196,53 +196,53 @@ void CastKernel::SetMap() {
   calls_[DT_BOOL][DT_BOOL] = CastTask<bool, bool>;
 }
 
-uint32_t CastKernel::TransferType(int64_t start, int64_t end) {
+uint32_t CastCpuKernel::TransferType(int64_t start, int64_t end) {
   if (calls_.find(xDataType_) == calls_.end()) {
     KERNEL_LOG_ERROR(
-        "CastKernel::CastKernel op don't support input tensor types: %s",
+        "CastCpuKernel::CastCpuKernel op don't support input tensor types: %s",
         typeid(xDataType_).name());
     return KERNEL_STATUS_PARAM_INVALID;
   } else if (calls_[xDataType_].find(yDataType_) == calls_[xDataType_].end()) {
     KERNEL_LOG_ERROR(
-        "CastKernel::CaseKernel op don't support output tensor types: %s",
+        "CastCpuKernel::CaseKernel op don't support output tensor types: %s",
         typeid(yDataType_).name());
     return KERNEL_STATUS_PARAM_INVALID;
   }
   return calls_[xDataType_][yDataType_](xTensor_, yTensor_, start, end);
 }
 
-uint32_t CastKernel::Compute(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("CastKernel::Compute begin.");
+uint32_t CastCpuKernel::Compute(CpuKernelContext &ctx) {
+  KERNEL_LOG_INFO("CastCpuKernel::Compute begin.");
   xTensor_ = ctx.Input(0);
   if (xTensor_ == nullptr) {
-    KERNEL_LOG_ERROR("CastKernel::GetInputAndCheck: get input tensor failed");
+    KERNEL_LOG_ERROR("CastCpuKernel::GetInputAndCheck: get input tensor failed");
     return KERNEL_STATUS_PARAM_INVALID;
   }
   yTensor_ = ctx.Output(0);
   if (yTensor_ == nullptr) {
-    KERNEL_LOG_ERROR("CastKernel::GetInputAndCheck: get output tensor failed");
+    KERNEL_LOG_ERROR("CastCpuKernel::GetInputAndCheck: get output tensor failed");
     return KERNEL_STATUS_PARAM_INVALID;
   }
   xDataSize_ = xTensor_->GetDataSize();
   yDataSize_ = yTensor_->GetDataSize();
   if (xDataSize_ < 1 || yDataSize_ < 1) {
-    KERNEL_LOG_ERROR("CastKernel::inpudata size:%lld or output size:%lld < 1",
+    KERNEL_LOG_ERROR("CastCpuKernel::inpudata size:%lld or output size:%lld < 1",
                      xDataSize_, yDataSize_);
     return KERNEL_STATUS_PARAM_INVALID;
   }
-  KERNEL_LOG_INFO("CastKernel:: input size:%lld, output size:%lld", xDataSize_,
+  KERNEL_LOG_INFO("CastCpuKernel:: input size:%lld, output size:%lld", xDataSize_,
                   yDataSize_);
   xDataType_ = DataType(xTensor_->GetDataType());
   yDataType_ = DataType(yTensor_->GetDataType());
-  KERNEL_LOG_INFO("CastKernel::Cast input type:%d, out type:%d", xDataType_,
+  KERNEL_LOG_INFO("CastCpuKernel::Cast input type:%d, out type:%d", xDataType_,
                   yDataType_);
   int xTypeSize = GetSizeByDataType(static_cast<DataType>(xDataType_));
   int yTypeSize = GetSizeByDataType(static_cast<DataType>(yDataType_));
-  KERNEL_LOG_INFO("CastKernel::Cast input type size:%d, out type size:%d",
+  KERNEL_LOG_INFO("CastCpuKernel::Cast input type size:%d, out type size:%d",
                   xTypeSize, yTypeSize);
   xDataSize_ = xDataSize_ / xTypeSize;
   yDataSize_ = yDataSize_ / yTypeSize;
-  KERNEL_LOG_INFO("CastKernel::inputdata length:%lld, output length:%lld",
+  KERNEL_LOG_INFO("CastCpuKernel::inputdata length:%lld, output length:%lld",
                   xDataSize_, yDataSize_);
   if (xDataSize_ > yDataSize_) {
     xDataSize_ = yDataSize_;
@@ -259,15 +259,15 @@ uint32_t CastKernel::Compute(CpuKernelContext &ctx) {
       [&](int64_t start, int64_t end) {
         uint32_t result = TransferType(start, end);
         if (result == KERNEL_STATUS_PARAM_INVALID) {
-          KERNEL_LOG_ERROR("CastKernel::TransferType failed");
+          KERNEL_LOG_ERROR("CastCpuKernel::TransferType failed");
           return KERNEL_STATUS_PARAM_INVALID;
         }
         return KERNEL_STATUS_OK;
       });
   calls_.clear();
   yDataSize_ = yTensor_->GetDataSize();
-  KERNEL_LOG_INFO("CastKernel::Cast output size:%lld.", yDataSize_);
+  KERNEL_LOG_INFO("CastCpuKernel::Cast output size:%lld.", yDataSize_);
   return KERNEL_STATUS_OK;
 }
-REGISTER_CPU_KERNEL(CAST, CastKernel);
+REGISTER_CPU_KERNEL(CAST, CastCpuKernel);
 }  // namespace aicpu

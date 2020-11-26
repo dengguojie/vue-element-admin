@@ -61,7 +61,7 @@ template <typename I, typename T>
 uint32_t GatherTask(std::vector<Tensor *> &inputs_,
                     std::vector<Tensor *> &outputs_) {
   if (inputs_.size() == 0 || outputs_.size() == 0) {
-    KERNEL_LOG_ERROR("GatherKernel::GatherTask: input or output is empty.");
+    KERNEL_LOG_ERROR("GatherCpuKernel::GatherTask: input or output is empty.");
     return KERNEL_STATUS_PARAM_INVALID;
   }
   // init
@@ -99,7 +99,7 @@ uint32_t GatherTask(std::vector<Tensor *> &inputs_,
   return KERNEL_STATUS_OK;
 }
 
-uint32_t GatherKernel::DoCompute() {
+uint32_t GatherCpuKernel::DoCompute() {
   std::map<int, std::map<int, std::function<uint32_t(std::vector<Tensor *> &,
                                                      std::vector<Tensor *> &)>>>
       calls;
@@ -128,22 +128,22 @@ uint32_t GatherKernel::DoCompute() {
   calls[DT_INT64][DT_UINT64] = GatherTask<int64_t, uint64_t>;
 
   if (calls.find(index_type_) == calls.end()) {
-    KERNEL_LOG_ERROR("GatherKernel op don't support index tensor types: %s",
+    KERNEL_LOG_ERROR("GatherCpuKernel op don't support index tensor types: %s",
                      typeid(index_type_).name());
     return KERNEL_STATUS_PARAM_INVALID;
   }
   return calls[index_type_][param_type_](inputs_, outputs_);
 }
 
-uint32_t GatherKernel::GetInputAndCheck(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("GatherKernel::GetInputAndCheck start!");
+uint32_t GatherCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
+  KERNEL_LOG_INFO("GatherCpuKernel::GetInputAndCheck start!");
   // get input Tensors
   const int num_input = 3;
   for (int i = 0; i < num_input; ++i) {
     Tensor *tensor = ctx.Input(i);
     if (tensor == nullptr) {
       KERNEL_LOG_ERROR(
-          "GatherKernel::GetInputAndCheck: get input tensor[%d] failed", i);
+          "GatherCpuKernel::GetInputAndCheck: get input tensor[%d] failed", i);
       return KERNEL_STATUS_PARAM_INVALID;
     }
     inputs_.push_back(tensor);
@@ -154,7 +154,7 @@ uint32_t GatherKernel::GetInputAndCheck(CpuKernelContext &ctx) {
     Tensor *tensor = ctx.Output(i);
     if (tensor == nullptr) {
       KERNEL_LOG_ERROR(
-          "GatherKernel::GetInputAndCheck: get output tensor[%d] failed", i);
+          "GatherCpuKernel::GetInputAndCheck: get output tensor[%d] failed", i);
       return KERNEL_STATUS_PARAM_INVALID;
     }
     outputs_.push_back(tensor);
@@ -162,12 +162,12 @@ uint32_t GatherKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   // get param type
   param_type_ = static_cast<DataType>(inputs_[0]->GetDataType());
   index_type_ = static_cast<DataType>(inputs_[2]->GetDataType());
-  KERNEL_LOG_INFO("GatherKernel::GetInputAndCheck success!");
+  KERNEL_LOG_INFO("GatherCpuKernel::GetInputAndCheck success!");
   return KERNEL_STATUS_OK;
 }
 
-uint32_t GatherKernel::Compute(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("GatherKernel::Compute start!!");
+uint32_t GatherCpuKernel::Compute(CpuKernelContext &ctx) {
+  KERNEL_LOG_INFO("GatherCpuKernel::Compute start!!");
 
   uint32_t res = GetInputAndCheck(ctx);
   if (res != KERNEL_STATUS_OK) {
@@ -176,12 +176,12 @@ uint32_t GatherKernel::Compute(CpuKernelContext &ctx) {
 
   res = DoCompute();
   if (res != KERNEL_STATUS_OK) {
-    KERNEL_LOG_ERROR("GatherKernel::Compute failed");
+    KERNEL_LOG_ERROR("GatherCpuKernel::Compute failed");
     return res;
   }
 
-  KERNEL_LOG_INFO("GatherKernel::Compute success!!");
+  KERNEL_LOG_INFO("GatherCpuKernel::Compute success!!");
   return KERNEL_STATUS_OK;
 }
-REGISTER_CPU_KERNEL(GATHER, GatherKernel);
+REGISTER_CPU_KERNEL(GATHER, GatherCpuKernel);
 }  // namespace aicpu

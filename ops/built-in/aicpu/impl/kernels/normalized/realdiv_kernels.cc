@@ -33,8 +33,8 @@ const size_t REALDIV_INPUT_NUM = 2;        // input dims
 }  // namespace
 
 namespace aicpu {
-uint32_t RealDivKernel::Compute(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("RealDivKernel::Compute begin.");
+uint32_t RealDivCpuKernel::Compute(CpuKernelContext &ctx) {
+  KERNEL_LOG_INFO("RealDivCpuKernel::Compute begin.");
 
   if ((ctx.GetInputsSize() != REALDIV_INPUT_NUM) ||
       (ctx.GetOutputsSize() != REALDIV_OUTPUT_DESC_NUM)) {
@@ -66,11 +66,11 @@ uint32_t RealDivKernel::Compute(CpuKernelContext &ctx) {
     return ret;
   }
 
-  KERNEL_LOG_INFO("RealDivKernel::Compute end.");
+  KERNEL_LOG_INFO("RealDivCpuKernel::Compute end.");
   return KERNEL_STATUS_OK;
 }
 
-uint32_t RealDivKernel::ComputeDiffType(Tensor *x, Tensor *y, Tensor *z,
+uint32_t RealDivCpuKernel::ComputeDiffType(Tensor *x, Tensor *y, Tensor *z,
                                         DataType dataType) {
   switch (dataType) {
     case DT_FLOAT16:
@@ -109,7 +109,7 @@ uint32_t RealDivKernel::ComputeDiffType(Tensor *x, Tensor *y, Tensor *z,
 }
 
 template <typename T>
-uint32_t RealDivKernel::ComputeRealdiv(Tensor *x, Tensor *y, Tensor *z) {
+uint32_t RealDivCpuKernel::ComputeRealdiv(Tensor *x, Tensor *y, Tensor *z) {
   auto xAddr = x->GetData();
   auto yAddr = y->GetData();
   auto zAddr = z->GetData();
@@ -149,12 +149,12 @@ uint32_t RealDivKernel::ComputeRealdiv(Tensor *x, Tensor *y, Tensor *z) {
     return ret;
   }
 
-  KERNEL_LOG_INFO("RealDivKernel::Compute success.");
+  KERNEL_LOG_INFO("RealDivCpuKernel::Compute success.");
   return KERNEL_STATUS_OK;
 }
 
 template <typename T>
-uint32_t RealDivKernel::ComputeDiffShape(int64_t dim, T *xAddr, T *yAddr,
+uint32_t RealDivCpuKernel::ComputeDiffShape(int64_t dim, T *xAddr, T *yAddr,
                                          T *zAddr,
                                          std::vector<int64_t> &xDimSize,
                                          std::vector<int64_t> &yDimSize,
@@ -193,7 +193,7 @@ uint32_t RealDivKernel::ComputeDiffShape(int64_t dim, T *xAddr, T *yAddr,
 }
 
 template <typename T, int32_t dim>
-void RealDivKernel::DoCompute(T *xAddr, T *yAddr, T *zAddr,
+void RealDivCpuKernel::DoCompute(T *xAddr, T *yAddr, T *zAddr,
                               std::vector<int64_t> &xDimSize,
                               std::vector<int64_t> &yDimSize,
                               std::vector<int64_t> &zDimSize) {
@@ -228,5 +228,5 @@ void RealDivKernel::DoCompute(T *xAddr, T *yAddr, T *zAddr,
                        mapY.reshape(yPad).broadcast(yBcast);
 }
 
-REGISTER_CPU_KERNEL(REALDIV, RealDivKernel);
+REGISTER_CPU_KERNEL(REALDIV, RealDivCpuKernel);
 }  // namespace aicpu

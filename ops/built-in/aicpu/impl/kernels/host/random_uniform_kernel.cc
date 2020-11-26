@@ -34,7 +34,7 @@ const char *RANDOM_UNIFORM = "RandomUniform";
 }
 
 namespace aicpu {
-uint32_t RandomUniformKernel::Compute(CpuKernelContext &ctx) {
+uint32_t RandomUniformCpuKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_LOG_INFO("RandomUniform folding kernel in.");
   auto attr_value = ctx.GetAttr(ATTR_NAME_DTYPE);
   KERNEL_CHECK_NULLPTR(attr_value, KERNEL_STATUS_PARAM_INVALID,
@@ -66,7 +66,7 @@ uint32_t RandomUniformKernel::Compute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t RandomUniformKernel::Generate(CpuKernelContext &ctx, Tensor *output) {
+uint32_t RandomUniformCpuKernel::Generate(CpuKernelContext &ctx, Tensor *output) {
   int64_t final_seed = 0;
   auto attr_seed = ctx.GetAttr(ATTR_NAME_RANDOM_UNIFORM_SEED);
   if (attr_seed != nullptr) {
@@ -90,5 +90,5 @@ uint32_t RandomUniformKernel::Generate(CpuKernelContext &ctx, Tensor *output) {
   return KERNEL_STATUS_OK;
 }
 
-REGISTER_CPU_KERNEL(RANDOM_UNIFORM, RandomUniformKernel);
+REGISTER_CPU_KERNEL(RANDOM_UNIFORM, RandomUniformCpuKernel);
 }  // namespace aicpu

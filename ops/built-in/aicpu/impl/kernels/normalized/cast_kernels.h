@@ -21,9 +21,9 @@
 #include "cpu_types.h"
 
 namespace aicpu {
-class CastKernel : public CpuKernel {
+class CastCpuKernel : public CpuKernel {
  public:
-  ~CastKernel() = default;
+  ~CastCpuKernel() = default;
   uint32_t TransferType(int64_t start, int64_t end);
   uint32_t Compute(CpuKernelContext &ctx) override;
   void SetMap();

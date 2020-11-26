@@ -20,9 +20,9 @@
 #include "cpu_kernel.h"
 
 namespace aicpu {
-class RealDivKernel : public CpuKernel {
+class RealDivCpuKernel : public CpuKernel {
  public:
-  ~RealDivKernel() = default;
+  ~RealDivCpuKernel() = default;
 
   uint32_t Compute(CpuKernelContext &ctx) override;
 
