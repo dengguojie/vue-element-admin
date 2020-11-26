@@ -731,6 +731,9 @@ REG_OP(IFMR)
 
 *@par Third-party framework compatibility
 *Compatible with mindspore
+
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
 */
 
 REG_OP(WtsARQ)
@@ -762,6 +765,9 @@ REG_OP(WtsARQ)
 
 *@par Third-party framework compatibility
 *Compatible with mindspore
+
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
 */
 
 REG_OP(ActsULQ)
@@ -789,6 +795,9 @@ REG_OP(ActsULQ)
 
 *@par Third-party framework compatibility
 *Compatible with mindspore
+
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
 */
 
 REG_OP(ActsULQInputGrad)
@@ -811,6 +820,9 @@ REG_OP(ActsULQInputGrad)
 
 *@par Third-party framework compatibility
 *Compatible with mindspore
+
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
 */
 
 REG_OP(ActULQClampMaxGrad)
@@ -833,6 +845,9 @@ REG_OP(ActULQClampMaxGrad)
 
 *@par Third-party framework compatibility
 *Compatible with mindspore
+
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
 */
 
 REG_OP(ActULQClampMinGrad)
