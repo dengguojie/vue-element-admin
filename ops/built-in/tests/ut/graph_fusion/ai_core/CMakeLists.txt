@@ -39,7 +39,9 @@ target_compile_options(ops_cpp_fusion_pass_aicore_utest PUBLIC
 target_link_libraries(ops_cpp_fusion_pass_aicore_utest PRIVATE
   -Wl,--whole-archive
     ops_fusion_pass_aicore_llt
+    opsproto_llt
   -Wl,--no-whole-archive
+  -Wl,--allow-multiple-definition
 )
 
 add_custom_command(
