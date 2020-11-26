@@ -28,6 +28,7 @@ from te.utils.error_manager import error_manager_vector
 SHAPE_SIZE_LIMIT = 2147483648
 # available ub size
 UB_SIZE_B = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
 
 def _get_factor(ele_zero, ele_cnt, total_ele, no_remainder):
@@ -172,7 +173,7 @@ def _check_params(ref_shape, value_shape, dtype, kernel_name):
 
 def _get_target_core_num(first_axis_size):
     max_core_num = 65535
-    cloud_core_num = 32
+    cloud_core_num = CORE_NUM
 
     if first_axis_size % cloud_core_num == 0:
         return cloud_core_num
@@ -190,7 +191,7 @@ def _get_target_core_num(first_axis_size):
 
 
 def _core_bind_axis(input_shape):
-    cloud_core_num = 32
+    cloud_core_num = CORE_NUM
 
     def __suite_factor(pre_size, axis_size):
         for index in reversed(range(2, axis_size + 1)):
@@ -199,7 +200,7 @@ def _core_bind_axis(input_shape):
         return 1
 
     shape_len = len(input_shape)
-    cloud_core_num = 32
+    cloud_core_num = CORE_NUM
     shape_size = 1
     for i in range(shape_len):
         if shape_size * input_shape[i] <= cloud_core_num:
