@@ -484,17 +484,21 @@ def conv3d_transpose_cce(shape_filter, # pylint: disable=R0913,R0914
         filters = tvm.placeholder(shape_filter_frac,
                                   name="filter", dtype=filter_dtype)
 
-        dedx = conv3d_bp_dx.conv3d_backprop_input_compute(
-            filters=filters,
+        para_dict = {
+            "strides": strides,
+            "pads": padding,
+            "dilations": dilations,
+            "res_dtype": res_dtype,
+            "kernel_name": kernel_name,
+            "group_dict": group_dict
+        }
+
+        dedx = conv3d_bp_dx.conv3d_dx(
+            filter=filters,
             out_backprop=dedy,
-            filter_sizes=shape_filter_ncdhw,
-            input_sizes=input_sizes,
-            strides=strides,
-            padding=padding,
-            dilations=dilations,
-            res_dtype=res_dtype,
-            kernel_name=kernel_name,
-            group_dict=group_dict
+            filter_size=shape_filter_ncdhw,
+            input_size=input_sizes,
+            para_dict=para_dict
         )
         tensor_list = [dedy, filters, dedx]
 

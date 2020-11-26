@@ -62,6 +62,9 @@ from .te_schedule.split_schedule import split_schedule_com
 from .te_compute.inplace_compute import inplace_add, inplace_sub, inplace_update
 from .te_compute.conv3d_backprop_filter_compute import \
     conv3d_backprop_filter_compute
+from .te_compute.conv3d_compute import conv3d
+from .te_compute.conv3d_backprop_input_compute import conv3d_dx
+from .te_compute.conv3d_backprop_filter_compute import conv3d_dw
 from .te_compute.util import dsl_check_support
 
 from .te_schedule.conv_schedule import CceConvOp, AutoScheduleOp
