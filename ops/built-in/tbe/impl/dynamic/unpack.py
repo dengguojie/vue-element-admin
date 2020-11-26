@@ -15,13 +15,26 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 dynamic unpack
 """
-
+from enum import Enum
+from enum import unique
 
 from te import tvm
 import te.platform as tbe_platform
 import te.lang.base as tbe_base
 from te.platform import cce_build
 from te.utils import para_check
+
+
+@unique
+class TilingStrategy(Enum):
+    """
+    Enum tiling cases
+    """
+    SINGLE_OUTPUT = 0
+    SMALL_SHAPE = 1
+    BIG_SHAPE = 2
+    LESS_32B = 3
+    LAST_DIM_SMALL = 4
 
 
 class CompileVar:
@@ -52,10 +65,12 @@ class Unpack:
         self.output_num = num
         self.kernel_name = kernel_name
         self.dtype = input_x.get("dtype").lower()
+        self.axis = axis
 
         self.dim_info_vars = []
         self.ub_tensor_list = []
         self.res_tensor_list = []
+        self.gm2ub_tensor = None
         self.virtual_node = None
         self.single_out = None
         self.sch_list = []
@@ -76,11 +91,24 @@ class Unpack:
         self.dtype_size = None
         self.ele_per_block = None
         self.bound_upper = None
+        self.axis_at_last_dim = False
+        self.special_tiling = False
+        self.new_axis = 1
 
         self._check_params(axis)
         self._init_params()
         self._trans_input_shape(axis)
-        self.new_axis = 1
+        self._init_flag()
+
+    def _check_params(self, axis):
+        x_shape = list(self.input_x["shape"])
+        if self.output_num is not None and x_shape[axis] != -1:
+            if self.output_num != x_shape[axis]:
+                raise RuntimeError("The num must be equal to input_x[axis]")
+        if self.output_num is None:
+            self.output_num = x_shape[axis]
+        if self.output_num == -1:
+            raise RuntimeError("The number of outputs is unknown, Dynamic unpack CAN NOT support")
 
     def _init_params(self):
         """
@@ -90,44 +118,83 @@ class Unpack:
         self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
         self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         self.dtype_size = tbe_platform.get_bit_len(self.dtype) // 8
-        one_block_bytes_size = tbe_platform.VECTOR_INST_BLOCK_WIDTH // \
-                               tbe_platform.VECTOR_INST_BLOCK_NUM
+        one_block_bytes_size = tbe_platform.VECTOR_INST_BLOCK_WIDTH // tbe_platform.VECTOR_INST_BLOCK_NUM
         self.ele_per_block = one_block_bytes_size // self.dtype_size
         #each output requires 192B for reg buf
-        self.bound_upper = (self.ub_size - self.output_num * 192) // \
-                            self.dtype_size
+        self.bound_upper = (self.ub_size - self.output_num * 192) // self.dtype_size
 
-    def _check_params(self, axis):
+    def _trans_input_shape(self, axis):
         """
-        Check whether the number of outputs is vaild
+        trans the input shape into three dimensions (left, mid, right) and
+        get the range of left and right.
         """
         x_shape = list(self.input_x["shape"])
-        if self.output_num is not None and x_shape[axis] != -1:
-            if self.output_num != x_shape[axis]:
-                raise RuntimeError("The num must be equal to input_x[axis].")
-        if self.output_num is None:
-            self.output_num = x_shape[axis]
-        if self.output_num == -1:
-            raise RuntimeError("The number of outputs is unknown, "
-                               "Dynamic unpack can't support")
+        x_range = list(self.input_x["range"])
 
-    def _multi_output_compute(self):
+        if len(x_shape) != len(x_range):
+            raise RuntimeError("Unpack:input_x shape is invalid")
+
+        real_axis = axis + len(x_shape) if axis < 0 else axis
+        left_upper = 1
+        right_upper = 1
+        self.left_range = (1, self.core_num)
+        self.axis_at_last_dim = bool(real_axis == len(x_shape) - 1)
+
+        for idx in range(real_axis):
+            left_upper *= x_range[idx][1]
+
+        for idx in range(real_axis + 1, len(x_shape)):
+            right_upper *= x_range[idx][1]
+
+        left_dim_upper = (1, left_upper)
+        right_dim_upper = (1, right_upper)
+
+        self._set_dim_var("left_dim", left_dim_upper)
+        self._set_dim_var("right_dim", right_dim_upper)
+
+        if self.output_num == 1:
+            self.x_reshape = (self.dim_vars[0] * self.dim_vars[1], )
+            self.right_range = (1, left_upper * right_upper)
+        else:
+            self.x_reshape = (self.dim_vars[0], self.output_num, self.dim_vars[1])
+            self.right_range = (1, right_upper)
+
+    def _init_flag(self):
+        self.special_tiling = (self.axis_at_last_dim
+                               or self.right_range[1] < self.ele_per_block) and self.output_num > 1
+
+    def _set_dim_var(self, dim_name, dim_range):
         """
-        Multi output compute function
+        Let dimension be represented by tvm.var.
+        """
+        dim_info_var = CompileVar(dim_name, dim_range)
+        self.dim_info_vars.append(dim_info_var)
+        self.dim_vars.append(dim_info_var.get_tvm_var())
+
+    def _index_offset(self, offset, *index):
+        """
+        Compute the output offset in input_tensor
+        """
+        input_index = list(index)
+        output_index = ()
+        for idx, _ in enumerate(self.output_shape):
+            if idx == self.new_axis:
+                input_index[idx] = input_index[idx] + offset
+            output_index += (input_index[idx], )
+        return output_index
+
+    def _multi_output_common_compute(self):
+        """
+        Multi output compute function for common cases
         """
         offset = 0
         for i in range(self.output_num):
             tensor_ub = tvm.compute(self.output_shape,
-                                    lambda *index:
-                                    self._input_placeholder(
-                                        *self._index_offset(offset,
-                                                            *index)),
+                                    lambda *index: self._input_placeholder(*self._index_offset(offset, *index)),
                                     name="tensor" + str(i))
             self.ub_tensor_list.append(tensor_ub)
 
-            res_tensor = tvm.compute(self.output_shape,
-                                     lambda *index: tensor_ub(*index),
-                                     name="res" + str(i))
+            res_tensor = tvm.compute(self.output_shape, lambda *index: tensor_ub(*index), name="res" + str(i))
             self.res_tensor_list.append(res_tensor)
             offset = offset + self.output_shape[self.new_axis]
 
@@ -138,48 +205,60 @@ class Unpack:
                 virtual_tensor += res_tensor(*index)
             return virtual_tensor
 
-        self.virtual_node = tvm.compute(self.output_shape,
-                                        lambda *index: _add_compute(*index),
-                                        name="virtual_node")
+        self.virtual_node = tvm.compute(self.output_shape, lambda *index: _add_compute(*index), name="virtual_node")
+
+    def _multi_output_special_compute(self):
+        """
+        Multi output compute function for special cases
+        """
+        self.gm2ub_tensor = tvm.compute(self.x_reshape,
+                                        lambda *index: self._input_placeholder(*index),
+                                        name="gm2ub_tensor")
+        offset = 0
+        self.res_tensor_list = []
+        for i in range(self.output_num):
+            ub2ub_tensor = tvm.compute(self.output_shape,
+                                       lambda *index: self.gm2ub_tensor(*self._index_offset(offset, *index)),
+                                       name="tensor" + str(i))
+            self.ub_tensor_list.append(ub2ub_tensor)
+            res_tensor = tvm.compute(self.output_shape,
+                                     lambda *index, tensor_in=ub2ub_tensor: tensor_in(*index),
+                                     name="res" + str(i))
+            self.res_tensor_list.append(res_tensor)
+            offset = offset + self.output_shape[self.new_axis]
+        # create virtual node
+        def _add_compute(*index):
+            virtual_tensor = self.res_tensor_list[0](*index)
+            for ub2gm_tensor in self.res_tensor_list[1:]:
+                virtual_tensor += ub2gm_tensor(*index)
+            return virtual_tensor
+
+        self.virtual_node = tvm.compute(self.output_shape, lambda *index: _add_compute(*index), name="virtual_node")
 
     def _single_output_compute(self):
         """
         Single output compute function
         """
-        tensor_ub = tvm.compute(self.output_shape,
-                                lambda *index:
-                                self._input_placeholder(*index),
-                                name="tensor_ub")
+        tensor_ub = tvm.compute(self.output_shape, lambda *index: self._input_placeholder(*index), name="tensor_ub")
         self.ub_tensor_list.append(tensor_ub)
 
-        self.single_out = tvm.compute(self.output_shape,
-                                      lambda *index: tensor_ub(*index),
-                                      name="res_tensor")
+        self.single_out = tvm.compute(self.output_shape, lambda *index: tensor_ub(*index), name="res_tensor")
         self.res_tensor_list.append(self.single_out)
 
     def _compute(self):
         """
         Unpack compute function
         """
-        self._input_placeholder = tvm.placeholder(self.x_reshape,
-                                                  dtype=self.dtype,
-                                                  name="input_x")
+        self._input_placeholder = tvm.placeholder(self.x_reshape, dtype=self.dtype, name="input_x")
 
         if self.output_num == 1:
             self.output_shape = [self._input_placeholder.shape[0]]
             self._single_output_compute()
         else:
-            self.output_shape = [self._input_placeholder.shape[0],
-                                 1,
-                                 self._input_placeholder.shape[2]]
-            self._multi_output_compute()
+            self.output_shape = [self._input_placeholder.shape[0], 1, self._input_placeholder.shape[2]]
+            self._multi_output_special_compute() if self.special_tiling else self._multi_output_common_compute()
 
-
-    def _multi_output_schedule(self,
-                               left_dim_out,
-                               right_dim_in,
-                               ub_tiling_axis,
-                               split_factor):
+    def _multi_output_schedule(self, left_dim_out, right_dim_in, ub_tiling_axis, split_factor):
         """
         unpack schedule function for multi_output
         Parameters
@@ -206,65 +285,61 @@ class Unpack:
         sch = tvm.create_schedule(self.virtual_node.op)
         sch.disable_allocate(tbe_platform.scope_ubuf)
 
+        if self.special_tiling:
+            sch[self.gm2ub_tensor].set_scope(tbe_platform.scope_ubuf)
+
         for tensor in self.ub_tensor_list:
             sch[tensor].set_scope(tbe_platform.scope_ubuf)
 
         tensor_ub = self.ub_tensor_list[0]
-        for idx, tensor in enumerate(self.ub_tensor_list[1:]):
+        for _, tensor in enumerate(self.ub_tensor_list[1:]):
             sch[tensor_ub].reused_by(tensor)
         if ub_tiling_axis == -1:
-            left_dim_outer, left_dim_inner = sch[self.virtual_node].split(
-                self.virtual_node.op.axis[0], nparts=1)
-            axis_outer, axis_inner = sch[self.virtual_node].split(
-                left_dim_inner, factor=1)
+            left_dim_outer, left_dim_inner = sch[self.virtual_node].split(self.virtual_node.op.axis[0], nparts=1)
+            axis_outer, axis_inner = sch[self.virtual_node].split(left_dim_inner, factor=1)
             for i in range(self.output_num):
-                sch[self.ub_tensor_list[i]].compute_at(
-                    sch[self.virtual_node], axis_outer)
-                sch[self.res_tensor_list[i]].compute_at(
-                    sch[self.virtual_node], axis_outer)
-                sch[self.ub_tensor_list[i]].emit_insn(
-                    self.ub_tensor_list[i].op.axis[0],
-                    tbe_platform.DMA_COPY)
-                sch[self.res_tensor_list[i]].emit_insn(
-                    self.res_tensor_list[i].op.axis[0],
-                    tbe_platform.DMA_COPY)
-            sch[self.virtual_node].emit_insn(axis_inner,
-                                             tbe_platform.PHONY_INSN)
+                sch[self.ub_tensor_list[i]].compute_at(sch[self.virtual_node], axis_outer)
+                sch[self.res_tensor_list[i]].compute_at(sch[self.virtual_node], axis_outer)
+                sch[self.ub_tensor_list[i]].emit_insn(self.ub_tensor_list[i].op.axis[0], tbe_platform.DMA_COPY)
+                sch[self.res_tensor_list[i]].emit_insn(self.res_tensor_list[i].op.axis[0], tbe_platform.DMA_COPY)
+            sch[self.virtual_node].emit_insn(axis_inner, tbe_platform.PHONY_INSN)
             return sch, build_list
-
-        left_dim_outer, left_dim_inner = sch[self.virtual_node].split(
-            self.virtual_node.op.axis[0], nparts=left_dim_out)
-        right_dim_outer, right_dim_inner = sch[self.virtual_node].split(
-            self.virtual_node.op.axis[2], factor=right_dim_in)
-
-        sch[self.virtual_node].reorder(left_dim_outer, right_dim_outer,
-                                       left_dim_inner, right_dim_inner)
-        fused_axis = sch[self.virtual_node].fuse(left_dim_outer,
-                                                 right_dim_outer)
-        sch[self.virtual_node].bind(fused_axis, self.block_idx)
-
-        if ub_tiling_axis == 0:
-            axis_outer, axis_inner = sch[self.virtual_node].split(
-                left_dim_inner, factor=split_factor)
+        if self.special_tiling:
+            left_dim_outer, left_dim_inner = sch[self.virtual_node].split(self.virtual_node.op.axis[0],
+                                                                          nparts=left_dim_out)
+            sch[self.virtual_node].bind(left_dim_outer, self.block_idx)
+            axis_outer, axis_inner = sch[self.virtual_node].split(left_dim_inner, factor=split_factor)
         else:
-            axis_outer, axis_inner = sch[self.virtual_node].split(
-                right_dim_inner, factor=split_factor)
+            left_dim_outer, left_dim_inner = sch[self.virtual_node].split(self.virtual_node.op.axis[0],
+                                                                          nparts=left_dim_out)
+            right_dim_outer, right_dim_inner = sch[self.virtual_node].split(self.virtual_node.op.axis[2],
+                                                                            factor=right_dim_in)
+            sch[self.virtual_node].reorder(left_dim_outer, right_dim_outer, left_dim_inner, right_dim_inner)
+            fused_axis = sch[self.virtual_node].fuse(left_dim_outer, right_dim_outer)
+            sch[self.virtual_node].bind(fused_axis, self.block_idx)
+
+            if ub_tiling_axis == 0:
+                axis_outer, axis_inner = sch[self.virtual_node].split(left_dim_inner, factor=split_factor)
+            else:
+                axis_outer, axis_inner = sch[self.virtual_node].split(right_dim_inner, factor=split_factor)
+
+        ub_tensor_emit = tbe_platform.DMA_COPY
+        is_need_align = True
+        if self.special_tiling:
+            sch[self.gm2ub_tensor].compute_at(sch[self.virtual_node], axis_outer)
+            sch[self.gm2ub_tensor].emit_insn(self.gm2ub_tensor.op.axis[ub_tiling_axis], tbe_platform.DMA_COPY)
+            ub_tensor_emit = tbe_platform.DATA_MOV
+            is_need_align = False
 
         for i in range(self.output_num):
-            sch[self.ub_tensor_list[i]].set_storage_bound(self.bound_upper)
-            sch[self.ub_tensor_list[i]].storage_align(
-                self.ub_tensor_list[i].op.axis[0],
-                self.ele_per_block, 0)
-            sch[self.ub_tensor_list[i]].compute_at(
-                sch[self.virtual_node], axis_outer)
-            sch[self.res_tensor_list[i]].compute_at(
-                sch[self.virtual_node], axis_outer)
-            sch[self.ub_tensor_list[i]].emit_insn(
-                self.ub_tensor_list[i].op.axis[ub_tiling_axis],
-                tbe_platform.DMA_COPY)
-            sch[self.res_tensor_list[i]].emit_insn(
-                self.res_tensor_list[i].op.axis[ub_tiling_axis],
-                tbe_platform.DMA_COPY)
+            if is_need_align:
+                sch[self.ub_tensor_list[i]].set_storage_bound(self.bound_upper)
+                sch[self.ub_tensor_list[i]].storage_align(self.ub_tensor_list[i].op.axis[0], self.ele_per_block, 0)
+            sch[self.ub_tensor_list[i]].compute_at(sch[self.virtual_node], axis_outer)
+            sch[self.res_tensor_list[i]].compute_at(sch[self.virtual_node], axis_outer)
+            sch[self.ub_tensor_list[i]].emit_insn(self.ub_tensor_list[i].op.axis[ub_tiling_axis], ub_tensor_emit)
+            sch[self.res_tensor_list[i]].emit_insn(self.res_tensor_list[i].op.axis[ub_tiling_axis],
+                                                   tbe_platform.DMA_COPY)
 
         sch[self.virtual_node].emit_insn(axis_inner, tbe_platform.PHONY_INSN)
 
@@ -296,29 +371,18 @@ class Unpack:
         for tensor in self.ub_tensor_list:
             sch[tensor].set_scope(tbe_platform.scope_ubuf)
 
-        right_dim_outer, right_dim_inner = sch[self.single_out].split(
-            self.single_out.op.axis[0], factor=right_dim_in)
+        right_dim_outer, right_dim_inner = sch[self.single_out].split(self.single_out.op.axis[0], factor=right_dim_in)
         sch[self.single_out].bind(right_dim_outer, self.block_idx)
 
-        axis_outer, axis_inner = sch[self.single_out].split(
-            right_dim_inner, factor=split_factor)
+        axis_outer, axis_inner = sch[self.single_out].split(right_dim_inner, factor=split_factor)
 
-        sch[self.ub_tensor_list[0]].compute_at(
-            sch[self.single_out], axis_outer)
-        sch[self.ub_tensor_list[0]].emit_insn(
-            self.ub_tensor_list[0].op.axis[0],
-            tbe_platform.DMA_COPY)
-        sch[self.res_tensor_list[0]].emit_insn(
-            axis_inner,
-            tbe_platform.DMA_COPY)
+        sch[self.ub_tensor_list[0]].compute_at(sch[self.single_out], axis_outer)
+        sch[self.ub_tensor_list[0]].emit_insn(self.ub_tensor_list[0].op.axis[0], tbe_platform.DMA_COPY)
+        sch[self.res_tensor_list[0]].emit_insn(axis_inner, tbe_platform.DMA_COPY)
 
         return sch, build_list
 
-    def _unpack_schedule(self,
-                         right_dim_in,
-                         ub_tiling_axis,
-                         split_factor,
-                         left_dim_out):
+    def _unpack_schedule(self, right_dim_in, ub_tiling_axis, split_factor, left_dim_out):
         """
         unpack schedule function
         Parameters
@@ -337,36 +401,57 @@ class Unpack:
             include tvm.tensor of input and tvm.tensor of res
         """
         if self.output_num == 1:
-            sch, build_list = self._single_output_schedule(right_dim_in,
-                                                           split_factor)
+            sch, build_list = self._single_output_schedule(right_dim_in, split_factor)
         else:
-            sch, build_list = self._multi_output_schedule(left_dim_out,
-                                                          right_dim_in,
-                                                          ub_tiling_axis,
-                                                          split_factor)
+            sch, build_list = self._multi_output_schedule(left_dim_out, right_dim_in, ub_tiling_axis, split_factor)
 
         return sch, build_list
 
-    def build_cce(self):
+    def _calc_tiling_case(self):
+        """
+        calc different tiling strategy
+        """
+        tiling_cases = []
+        ub_ele_num = self.ub_size // self.dtype_size
+        tiling_strategy = [
+            TilingStrategy.SINGLE_OUTPUT, TilingStrategy.SMALL_SHAPE, TilingStrategy.BIG_SHAPE, TilingStrategy.LESS_32B,
+            TilingStrategy.LAST_DIM_SMALL
+        ]
+        ub_factor_bound = (1, ub_ele_num)
+        for _, key in enumerate(tiling_strategy):
+            if self.output_num == 1 and key != TilingStrategy.SINGLE_OUTPUT:
+                continue
+            if key == TilingStrategy.BIG_SHAPE:
+                ub_tiling_axis = 2
+            elif key == TilingStrategy.LESS_32B:
+                ub_tiling_axis = -1
+            else:
+                ub_tiling_axis = 0
+            tiling_cases.append({"key": key, "ub_tiling_axis": ub_tiling_axis, "ub_factor_bound": ub_factor_bound})
+        return tiling_cases
+
+    def _build_unpack_cce(self):
         """
         Build cce
         """
         self._compute()
         tiling_cases = self._calc_tiling_case()
         for case in tiling_cases:
+            if (case.get("key") == TilingStrategy.SINGLE_OUTPUT) and self.output_num != 1:
+                continue
+            if self.special_tiling != (case.get("key") == TilingStrategy.LAST_DIM_SMALL):
+                continue
             tvm_vars = self.dim_info_vars.copy()
             left_dim_out = CompileVar("left_dim_out", self.left_range)
             tvm_vars.append(left_dim_out)
             right_dim_in = CompileVar("right_dim_in", self.right_range)
             tvm_vars.append(right_dim_in)
-            split_factor = CompileVar("split_factor",
-                                      case.get("ub_factor_bound"))
+            split_factor = CompileVar("split_factor", case.get("ub_factor_bound"))
             tvm_vars.append(split_factor)
 
             var_list = [var.get_tvm_var() for var in tvm_vars]
-            sch, tensor_list = self._unpack_schedule(
-                right_dim_in.get_tvm_var(), case.get("ub_tiling_axis"),
-                split_factor.get_tvm_var(), left_dim_out.get_tvm_var())
+            sch, tensor_list = self._unpack_schedule(right_dim_in.get_tvm_var(), case.get("ub_tiling_axis"),
+                                                     split_factor.get_tvm_var(), left_dim_out.get_tvm_var())
 
             # set var bound
             for var in tvm_vars:
@@ -375,99 +460,28 @@ class Unpack:
             self.sch_list.append(sch)
             self.arg_list.append(var_list + tensor_list)
 
-            self.rules.append(case.get("key"))
-            self.compile_vars[case.get("key")] = \
-                [var.get_name() for var in tvm_vars]
+            self.rules.append(case.get("key").value)
+            self.compile_vars[case.get("key").value] = [var.get_name() for var in tvm_vars]
 
-        build_config_items = {"parse_ddr_args": True,
-                              "build_fatbin": True}
-        build_config = cce_build.build_config_update_list(
-            cce_build.dynamic_build_config,
-            build_config_items)
+        build_config_items = {"parse_ddr_args": True, "build_fatbin": True}
+        build_config = cce_build.build_config_update_list(cce_build.dynamic_build_config, build_config_items)
 
         with build_config:
-            tvm.build(self.sch_list, self.arg_list, rules=self.rules,
-                      target="cce", name=self.kernel_name)
+            tvm.build(self.sch_list, self.arg_list, rules=self.rules, target="cce", name=self.kernel_name)
 
-    def _set_dim_var(self, dim_name, dim_range):
-        """
-        Let dimension be represented by tvm.var.
-        """
-        dim_info_var = CompileVar(dim_name, dim_range)
-        self.dim_info_vars.append(dim_info_var)
-        self.dim_vars.append(dim_info_var.get_tvm_var())
+        # Add compile info
+        tbe_base.add_compile_info(
+            "compile_vars", {
+                "core_num": self.core_num,
+                "ub_size": self.ub_size,
+                "output_num": self.output_num,
+                "axis": self.axis,
+                "is_special_tiling": self.special_tiling
+            })
+        tbe_base.add_compile_info("vars", self.compile_vars)
 
-    def _trans_input_shape(self, axis):
-        """
-        trans the input shape into three dimensions (left, mid, right) and
-        get the range of left and right.
-        """
-        x_shape = list(self.input_x["shape"])
-        x_range = list(self.input_x["range"])
-
-        if len(x_shape) != len(x_range):
-            raise RuntimeError("Unpack:input_x shape is invalid")
-
-        real_axis = axis + len(x_shape) if axis < 0 else axis
-        left_upper = 1
-        right_upper = 1
-        self.left_range = (1, self.core_num)
-
-        for idx in range(real_axis):
-            left_upper *= x_range[idx][1]
-
-        for idx in range(real_axis + 1, len(x_shape)):
-            right_upper *= x_range[idx][1]
-
-        right_upper = 2 if (right_upper == 1) else right_upper
-        left_dim_upper = (1, left_upper)
-        right_dim_upper = (1, right_upper)
-
-        self._set_dim_var("left_dim", left_dim_upper)
-        self._set_dim_var("right_dim", right_dim_upper)
-
-        if self.output_num == 1:
-            self.x_reshape = (self.dim_vars[0] * self.dim_vars[1], )
-            self.right_range = (1, left_upper * right_upper)
-        else:
-            self.x_reshape = (self.dim_vars[0],
-                              self.output_num,
-                              self.dim_vars[1])
-            self.right_range = (1, right_upper)
-
-    def _index_offset(self, offset, *index):
-        """
-        Compute the output offset in input_tensor
-        """
-        input_index = list(index)
-        output_index = ()
-        for idx, _ in enumerate(self.output_shape):
-            if idx == self.new_axis:
-                input_index[idx] = input_index[idx] + offset
-            output_index += (input_index[idx], )
-        return output_index
-
-    def _calc_tiling_case(self):
-        """
-        calc different tiling strategy
-        """
-        tiling_cases = []
-        ub_ele_num = self.ub_size // self.dtype_size
-        tiling_strategy = [0, 1, 2]
-        ub_factor_bound = (1, ub_ele_num)
-        for _, key in enumerate(tiling_strategy):
-            if self.output_num == 1 and key == 2:
-                continue
-            if key == 0:
-                ub_tiling_axis = 0
-            elif key == 1:
-                ub_tiling_axis = 2
-            else:
-                ub_tiling_axis = -1
-            tiling_cases.append({"key": key,
-                                 "ub_tiling_axis": ub_tiling_axis,
-                                 "ub_factor_bound": ub_factor_bound})
-        return tiling_cases
+    def build_cce(self):
+        self._build_unpack_cce()
 
 
 @tbe_base.register_operator("Unpack")
@@ -496,11 +510,3 @@ def unpack(input_x, output_y, num=None, axis=0, kernel_name="unpack"):
     """
     unpack_obj = Unpack(input_x, output_y, num, axis, kernel_name)
     unpack_obj.build_cce()
-
-    # Add compile info
-    tbe_base.add_compile_info("axis", axis)
-    tbe_base.add_compile_info("ub_size", unpack_obj.ub_size)
-    tbe_base.add_compile_info("output_num", unpack_obj.output_num)
-    tbe_base.add_compile_info("core_num", unpack_obj.core_num)
-    tbe_base.add_compile_info("dtype", unpack_obj.dtype)
-    tbe_base.add_compile_info("vars", unpack_obj.compile_vars)

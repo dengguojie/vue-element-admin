@@ -26,19 +26,20 @@
 #include "op_log.h"
 
 namespace optiling {
+constexpr int32_t kBlockSize{32};
+enum TilingStrategy { SINGLE_OUTPUT = 0, SMALL_SHAPE, BIG_SHAPE, LESS_32B, LAST_DIM_SMALL };
 
-constexpr int32_t BLOCK_SIZE = 32;
-
-//compile info
+// compile info
 struct CompileInfo {
   int32_t axis;
   int32_t output_num;
   int32_t ub_size;
   int32_t core_num;
   int32_t dtype_size;
+  bool is_special_tiling;
 };
 
-static std::unordered_map<std::string, int32_t> dtype_size_map{
+const std::unordered_map<std::string, int32_t> kDtypeSizeMap{
     {"int8", 1},  {"uint8", 1},  {"bool", 1},    {"int64", 8}, {"uint64", 8}, {"float16", 2},
     {"int16", 2}, {"uint16", 2}, {"float32", 4}, {"int32", 4}, {"uint32", 4}};
 
@@ -61,12 +62,12 @@ void SetActualDimsInVars(const std::vector<int64_t>& input_shape, int32_t axis,
 }
 
 bool CheckOpParams(const TeOpParas& op_paras, int32_t input_dims, int32_t& axis) {
-  if (op_paras.inputs.size() <= 0 || op_paras.inputs[0].tensor.size() <= 0) {
+  if (op_paras.inputs.size() == 0 || op_paras.inputs[0].tensor.size() == 0) {
     OP_LOGE("Dynamic UnpackTiling: Check input shape's info is invaild");
     return false;
   }
 
-  if (op_paras.outputs.size() <= 0 || op_paras.outputs[0].tensor.size() <= 0) {
+  if (op_paras.outputs.size() == 0 || op_paras.outputs[0].tensor.size() == 0) {
     OP_LOGE("Dynamic UnpackTiling: Check output shape's info is invaild");
     return false;
   }
@@ -81,71 +82,52 @@ bool CheckOpParams(const TeOpParas& op_paras, int32_t input_dims, int32_t& axis)
   return true;
 }
 
-bool GetCompileParams(const nlohmann::json& op_info, CompileInfo &compile_info) {
+bool GetCompileParams(const nlohmann::json& op_info, CompileInfo& compile_info) {
   using namespace nlohmann;
-  if (op_info.count("axis") == 0) {
+  auto compile_vars = op_info["compile_vars"];
+
+  if (compile_vars.count("axis") == 0) {
     GE_LOGE("Dynamic UnpackTiling: GetCompileParams axis failed");
     return false;
   }
-  compile_info.axis = op_info["axis"].get<std::int32_t>();
+  compile_info.axis = compile_vars["axis"].get<std::int32_t>();
 
-  if (op_info.count("ub_size") == 0) {
+  if (compile_vars.count("ub_size") == 0) {
     OP_LOGE("Dynamic UnpackTiling: GetCompileParams ub_size failed");
     return false;
   }
-  compile_info.ub_size = op_info["ub_size"].get<std::int32_t>();
+  compile_info.ub_size = compile_vars["ub_size"].get<std::int32_t>();
 
-  if (op_info.count("output_num") == 0) {
+  if (compile_vars.count("output_num") == 0) {
     GE_LOGE("Dynamic UnpackTiling: GetCompileParams output_num failed");
     return false;
   }
-  compile_info.output_num = op_info["output_num"].get<std::int32_t>();
+  compile_info.output_num = compile_vars["output_num"].get<std::int32_t>();
 
-  if (op_info.count("core_num") == 0) {
+  if (compile_vars.count("core_num") == 0) {
     OP_LOGE("Dynamic UnpackTiling: GetCompileParams core_num failed");
     return false;
   }
-  compile_info.core_num = op_info["core_num"].get<std::int32_t>();
+  compile_info.core_num = compile_vars["core_num"].get<std::int32_t>();
 
-  if (op_info.count("dtype") == 0) {
-    OP_LOGE("Dynamic UnpackTiling: GetCompileParams dtype failed");
+  if (compile_vars.count("is_special_tiling") == 0) {
+    OP_LOGE("Dynamic UnpackTiling: GetCompileParams is_special_tiling failed");
     return false;
   }
-  std::string dtype = op_info["dtype"].get<std::string>();
-  compile_info.dtype_size = dtype_size_map[dtype];
+  compile_info.is_special_tiling = compile_vars["is_special_tiling"].get<bool>();
 
   return true;
 }
 
-bool EnableMultiCore(const std::vector<int64_t>& output_reshape, const CompileInfo &compile_info) {
-  //Minimum memory size processed by each core
-  constexpr int32_t kCalcMemSize = 1024;
-  int32_t ele_per_block = BLOCK_SIZE / compile_info.dtype_size;
-
-  if (compile_info.output_num > 1) {
-    int32_t left_dim = static_cast<int32_t>(output_reshape[0]);
-    int32_t right_dim = static_cast<int32_t>(output_reshape[2]);
-    if (left_dim > 1 || right_dim >= ele_per_block * compile_info.core_num) {
-      return true;
-    }
-  } else {
-    int64_t calc_size = std::accumulate(output_reshape.begin(), output_reshape.end(), 1, std::multiplies<int64_t>());
-    if (calc_size * compile_info.dtype_size >= kCalcMemSize) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-void GetSingleOutputTilingParams(const std::vector<int64_t>& output_reshape, const CompileInfo &compile_info,
-                                 std::unordered_map<std::string, int32_t>& var_names, int32_t &actual_block_num) {
+void GetSingleOutputTilingParams(const std::vector<int64_t>& output_reshape, const CompileInfo& compile_info,
+                                 std::unordered_map<std::string, int32_t>& var_names, TilingStrategy& key,
+                                 int32_t& actual_block_num) {
   int64_t calc_size = std::accumulate(output_reshape.begin(), output_reshape.end(), 1, std::multiplies<int64_t>());
-  //Minimum memory size processed by each core
-  constexpr int32_t kCalcMemSize = 1024;
+  // Minimum memory size processed by each core
+  constexpr int32_t kCalcMemSize{1024};
   int32_t split_factor = 1;
   int32_t right_dim_in = 1;
-  int32_t ub_limit = ((compile_info.ub_size / BLOCK_SIZE) * BLOCK_SIZE) / compile_info.dtype_size;
+  int32_t ub_limit = ((compile_info.ub_size / kBlockSize) * kBlockSize) / compile_info.dtype_size;
 
   actual_block_num = std::ceil(calc_size * compile_info.dtype_size * 1.0 / kCalcMemSize);
 
@@ -159,20 +141,15 @@ void GetSingleOutputTilingParams(const std::vector<int64_t>& output_reshape, con
   } else {
     split_factor = ub_limit;
   }
-
+  key = SINGLE_OUTPUT;
   var_names["right_dim_in"] = right_dim_in;
   var_names["split_factor"] = split_factor;
-  var_names["left_dim_out"] = 1;
-}
-
-int32_t GetSingleOutputKey(const int32_t& ub_limit, std::vector<int64_t>& output_reshape) {
-  int64_t ele_cnt = std::accumulate(output_reshape.begin(), output_reshape.end(), 1, std::multiplies<int64_t>());
-  return (ele_cnt < ub_limit) ? 0 : 1;
+  var_names["left_dim_out"] = actual_block_num;
 }
 
 void GetUbTiling(std::vector<int64_t>& output_reshape, const int32_t ub_limit, const int32_t dtype_size,
                  int32_t& split_axis, int32_t& split_factor) {
-  int32_t ele_per_block = BLOCK_SIZE / dtype_size;
+  int32_t ele_per_block = kBlockSize / dtype_size;
 
   if (output_reshape[2] % ele_per_block != 0) {
     output_reshape[2] = std::ceil(output_reshape[2] * 1.0 / ele_per_block) * ele_per_block;
@@ -196,8 +173,8 @@ void GetUbTiling(std::vector<int64_t>& output_reshape, const int32_t ub_limit, c
   }
 }
 
-void GetLeftDimOutForRightDimLess32B(int32_t left_dim, int32_t right_dim, int32_t dtype_size,
-                                     int32_t &new_left_dim, int32_t &left_dim_out) {
+void GetLeftDimOutForRightDimLess32B(int32_t left_dim, int32_t right_dim, int32_t dtype_size, int32_t& new_left_dim,
+                                     int32_t& left_dim_out) {
   if (left_dim * right_dim * dtype_size >= 32) {
     while (right_dim * new_left_dim * dtype_size < 32) {
       left_dim_out--;
@@ -206,12 +183,15 @@ void GetLeftDimOutForRightDimLess32B(int32_t left_dim, int32_t right_dim, int32_
         break;
       }
     }
+  } else {
+    left_dim_out = 1;
+    new_left_dim = left_dim;
   }
   return;
 }
 
-void GetMultiOutputTilingParams(const std::vector<int64_t>& output_reshape, const CompileInfo &compile_info,
-                                int32_t &actual_block_num, int32_t &key,
+void GetMultiOutputTilingParams(const std::vector<int64_t>& output_reshape, const CompileInfo& compile_info,
+                                int32_t& actual_block_num, TilingStrategy& key,
                                 std::unordered_map<std::string, int32_t>& var_names) {
   int32_t left_dim = static_cast<int32_t>(output_reshape[0]);
   int32_t right_dim = static_cast<int32_t>(output_reshape[2]);
@@ -221,22 +201,22 @@ void GetMultiOutputTilingParams(const std::vector<int64_t>& output_reshape, cons
   int32_t split_factor = 1;
   int32_t split_axis = 1;
   vector<int64_t> new_shape(output_reshape);
-  int32_t ele_per_block = BLOCK_SIZE / compile_info.dtype_size;
-  //Minimum memory size processed by each core
-  constexpr int32_t kCalcMemSize = 1024;
-  int32_t ub_limit = ((compile_info.ub_size / BLOCK_SIZE) * BLOCK_SIZE) / compile_info.dtype_size;
+  int32_t ele_per_block = kBlockSize / compile_info.dtype_size;
+  // Minimum memory size processed by each core
+  constexpr int32_t kCalcMemSize{1024};
+  int32_t ub_limit = ((compile_info.ub_size / kBlockSize) * kBlockSize) / compile_info.dtype_size;
 
   if (left_dim <= core_num && right_dim * left_dim > kCalcMemSize / compile_info.dtype_size * core_num) {
     int32_t right_dim_out = core_num / left_dim;
     right_dim_in = std::ceil(right_dim * 1.0 / right_dim_out);
     left_dim_out = left_dim;
-    if (right_dim % ele_per_block == 0 ) {
+    if (right_dim % ele_per_block == 0) {
       while (right_dim_in % ele_per_block > 0) {
-         right_dim_out--;
-         right_dim_in = std::ceil(right_dim * 1.0 / right_dim_out);
-         if (right_dim_out == 1) {
-           break;
-         }
+        right_dim_out--;
+        right_dim_in = std::ceil(right_dim * 1.0 / right_dim_out);
+        if (right_dim_out == 1) {
+          break;
+        }
       }
     }
     actual_block_num = left_dim_out * right_dim_out;
@@ -250,21 +230,26 @@ void GetMultiOutputTilingParams(const std::vector<int64_t>& output_reshape, cons
     actual_block_num = left_dim_out;
     new_shape[0] = new_left_dim;
   }
+  if (compile_info.is_special_tiling) {
+    new_shape[1] = compile_info.output_num;
+  }
 
   GetUbTiling(new_shape, ub_limit, compile_info.dtype_size, split_axis, split_factor);
   if (split_axis == 0 && right_dim_in * split_factor * compile_info.dtype_size < 32) {
     var_names["left_dim_out"] = 1;
-    var_names["right_dim_in"] = 1;
-    var_names["split_factor"] = 1;
-    key = 2;
+    var_names["right_dim_in"] = right_dim_in;
+    var_names["split_factor"] = split_factor;
+    key = compile_info.is_special_tiling ? LAST_DIM_SMALL : LESS_32B;
     return;
   }
-  key = (split_axis == 0) ? 0 : 1;
+  key = (split_axis == 0) ? SMALL_SHAPE : BIG_SHAPE;
+  if (compile_info.is_special_tiling) {
+    key = LAST_DIM_SMALL;
+  }
   var_names["right_dim_in"] = right_dim_in;
   var_names["left_dim_out"] = left_dim_out;
   var_names["split_factor"] = split_factor;
 }
-
 
 /*
  * @brief: tiling function of op
@@ -281,17 +266,17 @@ bool UnpackTiling(const std::string& op_type, const TeOpParas& op_paras, const n
   std::vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
   int32_t input_dims = input_shape.size();
   std::unordered_map<std::string, int32_t> var_names;
-  bool is_need_multicore = false;
-
-  CompileInfo compile_info = {0, 0, 0, 0, 0};
+  CompileInfo compile_info;
+  if (kDtypeSizeMap.count(op_paras.inputs[0].tensor[0].dtype) == 0) {
+    OP_LOGE("UnpackTiling: Invalid input dtype");
+    return false;
+  }
+  compile_info.dtype_size = kDtypeSizeMap.at(op_paras.inputs[0].tensor[0].dtype);
   bool ret = GetCompileParams(op_info, compile_info);
   if (!ret) {
     OP_LOGE("UnpackTiling: Get Compile info failed.");
     return ret;
   }
-
-  //each output requires 192B for reg buf
-  compile_info.ub_size = compile_info.ub_size - 192 * compile_info.output_num;
 
   // check op input and output params
   ret = CheckOpParams(op_paras, input_dims, compile_info.axis);
@@ -313,33 +298,27 @@ bool UnpackTiling(const std::string& op_type, const TeOpParas& op_paras, const n
   }
   std::vector<int64_t> output_reshape = {left_dim, 1, right_dim};
 
-  is_need_multicore = EnableMultiCore(output_reshape, compile_info);
-  int32_t ub_limit = ((compile_info.ub_size / BLOCK_SIZE) * BLOCK_SIZE) / compile_info.dtype_size;
+  bool is_special_tiling = compile_info.is_special_tiling;
+  if (is_special_tiling) {
+    int32_t out_num = compile_info.output_num;
+    // each output requires 64B for reg buf
+    compile_info.ub_size = compile_info.ub_size - 64 * out_num;
+    compile_info.ub_size = compile_info.ub_size / (out_num + 1) * out_num;
+  } else {
+    compile_info.ub_size = compile_info.ub_size - 192 * compile_info.output_num;
+  }
 
   // calc tiling para
-  int32_t right_dim_in = 0;
-  int32_t split_factor = 0;
   int32_t actual_block_num = 1;
-  int32_t key = GetSingleOutputKey(ub_limit, output_reshape);
-  if (is_need_multicore) {
-    if (compile_info.output_num > 1) {
-      GetMultiOutputTilingParams(output_reshape, compile_info, actual_block_num, key, var_names);
-    } else {
-      GetSingleOutputTilingParams(output_reshape, compile_info, var_names, actual_block_num);
-    }
+  TilingStrategy key = SINGLE_OUTPUT;
+  if (compile_info.output_num > 1) {
+    GetMultiOutputTilingParams(output_reshape, compile_info, actual_block_num, key, var_names);
   } else {
-    right_dim_in = compile_info.output_num > 1 ? right_dim : left_dim * right_dim;
-    split_factor = compile_info.output_num > 1 ? left_dim : left_dim * right_dim;
-    var_names["right_dim_in"] = right_dim_in;
-    var_names["split_factor"] = split_factor;
-    var_names["left_dim_out"] = 1;
-    actual_block_num = 1;
+    GetSingleOutputTilingParams(output_reshape, compile_info, var_names, key, actual_block_num);
   }
 
   run_info.block_dim = actual_block_num;
-
-  std::vector<int64_t> workspace;
-  run_info.workspaces = workspace;
+  run_info.workspaces = {};
 
   ByteBufferPut(run_info.tiling_data, key);
   const auto& all_vars = op_info["vars"][std::to_string(key)];
