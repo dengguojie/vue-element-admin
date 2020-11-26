@@ -2090,7 +2090,11 @@ def general_schedule(
         _conv1d_split_tile()
     _double_buffer()
     _emit_insn()
+
     def _full_load_bl1_bl0():
+        """
+        g dimension only loads 1 each time
+        """
         if not tiling.get("BL1_shape") and g_after != 1:
             axs = sch_agent[c_ddr].get_active_scopes()
             ax_g, _, _, _, _ = axs
