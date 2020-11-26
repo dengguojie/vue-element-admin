@@ -29,9 +29,9 @@ struct TTypes {
       ConstMatrix;
 };
 
-class ConcatV2Kernel : public CpuKernel {
+class ConcatV2CpuKernel : public CpuKernel {
  public:
-  ConcatV2Kernel()
+  ConcatV2CpuKernel()
       : data_type_(DT_DOUBLE),
         input_dims_(0),
         n_(0),
@@ -39,7 +39,7 @@ class ConcatV2Kernel : public CpuKernel {
         axis_(0),
         inputs_flat_dim0_(0) {}
 
-  ~ConcatV2Kernel() = default;
+  ~ConcatV2CpuKernel() = default;
 
   uint32_t Compute(CpuKernelContext &ctx) override;
 
@@ -130,7 +130,7 @@ class ConcatV2Kernel : public CpuKernel {
     if (inputs.size() > 0) {
       return ConcatV2Compute<T>(ctx, inputs, output);
     }
-    KERNEL_LOG_INFO("ConcatV2Kernel success.");
+    KERNEL_LOG_INFO("ConcatV2CpuKernel success.");
     return KERNEL_STATUS_OK;
   }
 
@@ -221,8 +221,8 @@ class ConcatV2Kernel : public CpuKernel {
     };
     CpuKernelUtils::ParallelFor(ctx, output->size(), sizeof(T), work);
     KERNEL_CHECK_FALSE((ret == KERNEL_STATUS_OK), KERNEL_STATUS_INNER_ERROR,
-                       "ConcatV2Kernel failed.");
-    KERNEL_LOG_INFO("ConcatV2Kernel success.");
+                       "ConcatV2CpuKernel failed.");
+    KERNEL_LOG_INFO("ConcatV2CpuKernel success.");
     return KERNEL_STATUS_OK;
   }
 

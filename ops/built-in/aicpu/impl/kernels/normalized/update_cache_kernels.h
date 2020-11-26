@@ -23,9 +23,9 @@
 
 namespace aicpu {
 
-class UpdateCacheKernel : public CpuKernel {
+class UpdateCacheCpuKernel : public CpuKernel {
  public:
-  ~UpdateCacheKernel() = default;
+  ~UpdateCacheCpuKernel() = default;
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:

@@ -20,9 +20,9 @@
 #include "cpu_kernel.h"
 
 namespace aicpu {
-class CeilKernel : public CpuKernel {
+class CeilCpuKernel : public CpuKernel {
  public:
-  ~CeilKernel() = default;
+  ~CeilCpuKernel() = default;
 
   uint32_t Compute(CpuKernelContext &ctx) override;
 

@@ -21,9 +21,9 @@
 #include "cpu_kernel.h"
 
 namespace aicpu {
-class IdentityKernel : public CpuKernel {
+class IdentityCpuKernel : public CpuKernel {
  public:
-  ~IdentityKernel() = default;
+  ~IdentityCpuKernel() = default;
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:

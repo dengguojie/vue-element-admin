@@ -56,9 +56,9 @@ T HashFunc(const T &key, const int64_t &length) {
   return (T)(((0.6180339 * key) - floor(0.6180339 * key)) * length);
 }
 
-class SearchCacheIdxKernel : public CpuKernel {
+class SearchCacheIdxCpuKernel : public CpuKernel {
  public:
-  ~SearchCacheIdxKernel() = default;
+  ~SearchCacheIdxCpuKernel() = default;
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:

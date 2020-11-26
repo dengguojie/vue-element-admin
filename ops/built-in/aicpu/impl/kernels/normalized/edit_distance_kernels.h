@@ -21,9 +21,9 @@
 #include "cpu_kernel.h"
 
 namespace aicpu {
-class EditDistanceKernel : public CpuKernel {
+class EditDistanceCpuKernel : public CpuKernel {
  public:
-  ~EditDistanceKernel() = default;
+  ~EditDistanceCpuKernel() = default;
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:

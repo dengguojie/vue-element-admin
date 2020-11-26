@@ -20,9 +20,9 @@
 #include <string>
 #include "cpu_kernel.h"
 namespace aicpu {
-class AssertKernel : public CpuKernel {
+class AssertCpuKernel : public CpuKernel {
  public:
-  ~AssertKernel() = default;
+  ~AssertCpuKernel() = default;
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
