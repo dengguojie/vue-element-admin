@@ -39,7 +39,7 @@ const char *MUL = "Mul";
 }
 
 namespace aicpu {
-uint32_t MulKernel::Compute(CpuKernelContext &ctx) {
+uint32_t MulCpuKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_LOG_INFO("Mul folding kernel in.");
   if (NormalMathCheck(ctx) != KERNEL_STATUS_OK) {
     KERNEL_LOG_ERROR("Check mul %s failed.", ctx.GetOpType().c_str());
@@ -70,7 +70,7 @@ uint32_t MulKernel::Compute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t MulKernel::MulCompute(CpuKernelContext &ctx) {
+uint32_t MulCpuKernel::MulCompute(CpuKernelContext &ctx) {
   CalcInfo calc_info;
   calc_info.input_0 = ctx.Input(kFirstInputIndex);
   calc_info.input_1 = ctx.Input(kSecondInputIndex);
@@ -120,7 +120,7 @@ uint32_t MulKernel::MulCompute(CpuKernelContext &ctx) {
 }
 
 template <int32_t RANK, typename T>
-void MulKernel::MulCalculate(CalcInfo &calc_info) {
+void MulCpuKernel::MulCalculate(CalcInfo &calc_info) {
   Eigen::TensorMap<Eigen::Tensor<T, 1>> eigen_input_0(
       static_cast<T *>(calc_info.input_0->GetData()),
       calc_info.input_0->GetTensorShape()->NumElements());
@@ -151,5 +151,5 @@ void MulKernel::MulCalculate(CalcInfo &calc_info) {
       eigen_input_1.reshape(reshape_1).broadcast(bcast_1);
 }
 
-REGISTER_CPU_KERNEL(MUL, MulKernel);
+REGISTER_CPU_KERNEL(MUL, MulCpuKernel);
 }  // namespace aicpu

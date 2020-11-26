@@ -24,10 +24,10 @@
 #include "utils/bcast.h"
 
 namespace aicpu {
-class MulKernel : public CpuKernel {
+class MulCpuKernel : public CpuKernel {
  public:
-  MulKernel() = default;
-  ~MulKernel() override = default;
+  MulCpuKernel() = default;
+  ~MulCpuKernel() override = default;
 
  protected:
   uint32_t Compute(CpuKernelContext &ctx) override;
