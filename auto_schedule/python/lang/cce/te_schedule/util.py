@@ -470,19 +470,12 @@ def fake_node_fuse_fun(tensors):
     shape = shape_to_list(tensors[0].shape)
     dim = len(shape)
 
-    temp_tensors = tensors[:]
-    visited = []
-    while temp_tensors:
-        tensor = temp_tensors[0]
-        temp_tensors.remove(tensor)
-        if tensor not in visited:
-            visited.append(tensor)
-            temp_tensors = temp_tensors + list(tensor.op.input_tensors)
-            if len(tensor.shape) != dim:
+    for tensor in tensors:
+        if len(tensor.shape) != dim:
                 return FAKE_NODE_FUSE_FAILED
-            for i in range(dim):
-                if shape[i] < tensor.shape[i].value:
-                    shape[i] = tensor.shape[i].value
+        for i in range(dim):
+            if shape[i] < tensor.shape[i].value:
+                shape[i] = tensor.shape[i].value
 
     def phony_insn_fuse(*indice):
         res = tvm.const(1, dtype)

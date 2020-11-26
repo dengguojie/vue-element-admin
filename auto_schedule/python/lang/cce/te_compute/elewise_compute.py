@@ -2029,7 +2029,7 @@ def _check_elewise_binary_shape(lhs, rhs):
     if len(lhs.shape) != len(rhs.shape):
         dict_args = dict()
         dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "The lhs shape ndim [%s] must be equal" \
+        dict_args["detailed_cause"] = "The lhs ndim [%s] must be equal" \
                                       " to the rhs [%s]" % (len(lhs.shape), len(rhs.shape))
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
@@ -2037,7 +2037,7 @@ def _check_elewise_binary_shape(lhs, rhs):
         if not equal(_l, _r):
             dict_args = dict()
             dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "The lhs shape shape [%s] must be equal" \
+            dict_args["detailed_cause"] = "The lhs shape [%s] must be equal" \
                                     " to the rhs [%s]" % (lhs.shape, rhs.shape)
             raise RuntimeError(dict_args, get_error_message(dict_args))
 

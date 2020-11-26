@@ -73,7 +73,7 @@ def check_fmap_shape(batch_size, c1_value, in_size_h, in_size_w, c_block_size):
         dict_args = dict()
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "invalid featur map shape params," \
-                                      " batch [%s] and c1 [%s] must must be " \
+                                      " batch [%s] and c1 [%s] must be " \
                                       "uint format and >= 1" % (batch_size, c1_value)
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
@@ -244,13 +244,6 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
                                               "or GMP mode, window size [%s, %s] " \
                                               "should be equal to input size [%s, %s]" \
                                               % (window_h, window_w, in_size_h, in_size_w)
-                raise RuntimeError(dict_args, get_error_message(dict_args))
-
-            if padding_mode == "SAME":
-                dict_args = dict()
-                dict_args["errCode"] = "E90001"
-                dict_args["detailed_cause"] = "invalid padding_mode params " \
-                                              "in GAP or GMP mode, adding_mode can only be VALID"
                 raise RuntimeError(dict_args, get_error_message(dict_args))
 
         stride_h = 1
@@ -444,7 +437,7 @@ def check_attr_rule(tensor_in, window, stride, pooling_mode, padding_mode, pad=(
         dict_args = dict()
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "invalid window params, window_w [%s]" \
-                                      " size must be [1, 32768]" % window[0]
+                                      " size must be [1, 32768]" % window[1]
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     check_stride_rule(tensor_in, data_mode, padding_mode, pooling_mode, window,
@@ -470,7 +463,15 @@ def check_attr_rule(tensor_in, window, stride, pooling_mode, padding_mode, pad=(
         dict_args = dict()
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "invalid pad params, pad size must be" \
-                                      " 4 with uint format, each dim >= 0, while pad is [%s]" % pad
+                                      " 4 with uint format, each dim >= 0, while pad dim is [%s]" % len(pad)
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+
+    if pad[0] < 0 or pad[1] < 0 or pad[2] < 0 or pad[3] < 0:
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "invalid pad params, pad size must be" \
+                                      " 4 with uint format, each dim >= 0," \
+                                      " while pad is [%s, %s, %s, %s]" % (pad[0], pad[1], pad[2], pad[3])
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if len(dilation) != 2:

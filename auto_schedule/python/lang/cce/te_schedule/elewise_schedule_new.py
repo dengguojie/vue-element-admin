@@ -3185,7 +3185,12 @@ class ElewiseSchedule(VectorSchedule):
         def _op_width(op_node):
             num_type = op_node.dtype
             if num_type.lower() not in DTYPE_WIDTH_MAP.keys():
-                raise RuntimeError("Can not calculate with no compute")
+                dict_args = dict()
+                dict_args["errCode"] = "E90001"
+                dict_args["detailed_cause"] = "The dtype must be bool, s8, " \
+                                               "u8, f16, s16, u16, f32, s32, " \
+                                               "u32, s64, u64, [%s] is unsupported!" % num_type
+                raise RuntimeError(dict_args, get_error_message(dict_args))
 
             tmp_width = 0
             if op_node.op.tag is not None:
@@ -3262,7 +3267,10 @@ class ElewiseSchedule(VectorSchedule):
             total_width = __update_total_width(total_width)
 
         if not total_width:
-            raise RuntimeError("Can not calculate with no compute")
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "Can not calculate with no compute, total_width is [%s]" % total_width
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
         max_bound = total_width * 128
         max_ub_count = int(self._total_size // max_bound * 128)
@@ -3321,7 +3329,10 @@ class ElewiseSchedule(VectorSchedule):
         elif tmp_op["op"].find("reduce") != -1:
             if self._have_reduce and not hasattr(self,
                                                  util.REDUCE_MULTI_PRIME_KEY):
-                raise RuntimeError("Only support one time reduce")
+                dict_args = dict()
+                dict_args["errCode"] = "E90003"
+                dict_args["detailed_cause"] = "Only support one time reduce"
+                raise RuntimeError(dict_args, get_error_message(dict_args))
             self._have_reduce = True
             tmp_op["reduce_axis"] = list(op_node.reduce_axis)
 
