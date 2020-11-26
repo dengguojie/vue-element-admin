@@ -1699,7 +1699,7 @@ class CceConvOp:
                     if self.conv_pool_fused_flag or self.conv_pool_2_2_fused_flag:
                         sch[al1].preload()
                 # aub
-                if double_buffer_flag["AUB_pbuffer"] == 2:
+                if self._pre_relu_fused_flag and double_buffer_flag["AUB_pbuffer"] == 2:
                     sch[tensor_map["fmap_ub"]].double_buffer()
                     sch[fmap].double_buffer()
 
