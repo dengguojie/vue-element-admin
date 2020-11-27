@@ -65,7 +65,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/utils/kernel_util.cc
   ${CPU_KERNELS_DIR}/utils/sparse_group.cc
   ${CPU_KERNELS_DIR}/utils/sparse_tensor.cc
-  ${CPU_KERNELS_DIR}/kernels/normalized/concatv2_kernels.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/concatv2.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/get_dynamic_dims.cc
 )
 
