@@ -59,7 +59,7 @@ bool TileDTiling(const std::string& op_type, const TeOpParas& op_paras, const nl
       broadcast_multiples.push_back(runtime_shape[i]);
     } else {
       broadcast_input.push_back(runtime_shape[i]);
-      broadcast_multiples.push_back(origin_multiples[i]);
+      broadcast_multiples.push_back(origin_multiples[i] * runtime_shape[i]);
     }
   }
 

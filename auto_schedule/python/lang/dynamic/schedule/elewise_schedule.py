@@ -208,8 +208,9 @@ class ElewiseSchedule:
             self._out_tensors)
 
         pure_out_tensors = list(self._out_tensors - self._middle_out_tensors)
-        if len(pure_out_tensors) > 1:
+        if len(self._out_tensors) > 1:
             self._out = _fake_node(pure_out_tensors)
+            self.__dfs_sub_graph(self._out, visited_tensors)
         else:
             self._out = pure_out_tensors[0]
 
@@ -531,8 +532,13 @@ class ElewiseSchedule:
             if target in self._compute_inline_broadcast:
                 self._emit_insn_map[source].append("phony_insn")
 
-        for tensor_i in self._out_tensors:
-            self._emit_insn_map[tensor_i] = [self._emit_insn_axis, "dma_copy"]
+        if len(self._out_tensors) > 1:
+            for tensor_i in self._out_tensors:
+                self._emit_insn_map[tensor_i] = [tensor_i.op.axis[0], "dma_copy"]
+            self._emit_insn_map[self._out] = [self._emit_insn_axis, "phony_insn"]
+        else:
+            for tensor_i in self._out_tensors:
+                self._emit_insn_map[tensor_i] = [self._emit_insn_axis, "dma_copy"]
 
     def _do_emit_insn(self):
         sch = self._schedule
@@ -772,12 +778,22 @@ class ElewiseSchedule:
 
 
 def _fake_node(tensors):
+    def _shape_equal(shape_x, shape_y):
+        if len(shape_x) != len(shape_y):
+            return False
+        for _shape_x, _shape_y in zip(shape_x, shape_y):
+            if not util.expr_equal(_shape_x, _shape_y):
+                return False
+        return True
+
     dtype = tensors[0].dtype
     shape = util.shape_to_list(tensors[0].shape)
     for tensor_i in tensors:
-        for i, (_a, _b) in enumerate(zip(shape, tensor_i.shape)):
-            if util.equals_one(_a):
-                shape[i] = _b
+        if DTYPE_BYTE_MAPPING[tensor_i.dtype] > DTYPE_BYTE_MAPPING[dtype]:
+            dtype = tensor_i.type
+        shape_i = util.shape_to_list(tensor_i.shape)
+        if not _shape_equal(shape, shape_i):
+            raise RuntimeError("only support same shape by multi output")
 
     def _fake_compute(*indices):
         res_ = tvm.const(1, dtype)
