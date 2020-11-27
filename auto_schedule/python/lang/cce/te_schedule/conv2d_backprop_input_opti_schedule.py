@@ -131,7 +131,7 @@ def _print_ir_conv(process, sch):
     :return: IR process
     ---------------------------------------------------------------
     """
-    if DEBUG_MODE and process:
+    if DEBUG_MODE and "debug" in process:
         start = process + " IR start"
         end = process + " IR end\n"
         sch = sch.normalize()
@@ -1569,7 +1569,7 @@ def _bind_multi_core(  # pylint: disable=R0913,R0914
         block_dim = TILING["block_dim"]
     else:
         block_dim = [1, 1, 1, 1]
-    blockidx = []
+    blockidx_list = []
     # split batch axis
     if dynamic_para == "dynamic_batch":
         batch_dim_factor = int_ceil_div(DIM_MAP["out_img_shape"][0], block_dim[0])
@@ -1608,9 +1608,8 @@ def _bind_multi_core(  # pylint: disable=R0913,R0914
         sch[c_gm].bind(bind_out, blockidx)
         if blocks == block_dim[0]:
             sch[c_gm].pragma(bind_in, "json_info_batchBindOnly")
-    else:
-        blockidx = [g_outer, batch_out, l1_n_out_inner_out, l1_m_outer_inner_out]
-    return batch_in, g_inner, l1_m_outer_inner_in, l1_n_out_inner_out, l1_n_out_inner_in, blockidx
+    blockidx_list = [g_outer, batch_out, l1_n_out_inner_out, l1_m_outer_inner_out]
+    return batch_in, g_inner, l1_m_outer_inner_in, l1_n_out_inner_out, l1_n_out_inner_in, blockidx_list
 
 
 def _get_l0c_and_l1_axis(  # pylint: disable=R0914,R0913,W0613
@@ -1669,7 +1668,7 @@ def _get_l0c_and_l1_axis(  # pylint: disable=R0914,R0913,W0613
     )
     l1_n_outer_outer, l1_n_out_inner = sch[c_gm].split(l0c_n_outer, nparts=bl1_parts[1])
     _print_ir_conv("split gm by loc_factor and l1_parts", sch)
-    batch_in, g_inner, l1_m_outer_inner_in, l1_n_out_inner_out, l1_n_out_inner_in, blockidx = _bind_multi_core(
+    batch_in, g_inner, l1_m_outer_inner_in, l1_n_out_inner_out, l1_n_out_inner_in, blockidx_list = _bind_multi_core(
         sch,
         c_gm,
         g_dim,
@@ -1708,7 +1707,7 @@ def _get_l0c_and_l1_axis(  # pylint: disable=R0914,R0913,W0613
         l0c_m_inner,
         l1_m_outer_outer,
         l1_n_out_inner_in,
-        blockidx,
+        blockidx_list,
         g_inner,
         overload_axis,
         overload_flag_gm,
@@ -1918,20 +1917,11 @@ def opti_schedule(
         l0c_factor_tile = TILING["CL0_matrix"][1] * TILING["CL0_matrix"][2]
 
         # multi core and one core
-        if isinstance(blockidx, list):
-            group_axis = blockidx[0]
-            batcho_axis = blockidx[1]
-            noio_axis = blockidx[2]
-            moio_axis = blockidx[3]
-        else:
-            group_axis = blockidx.var // (
-                    TILING["block_dim"][1] * TILING["block_dim"][2] * TILING["block_dim"][0]
-            )
-            batcho_axis = blockidx.var // (
-                TILING["block_dim"][1] * TILING["block_dim"][2]
-            ) %  TILING["block_dim"][0]
-            noio_axis = blockidx.var // TILING["block_dim"][2] % TILING["block_dim"][1]
-            moio_axis = blockidx.var % TILING["block_dim"][2]
+        group_axis = blockidx_list[0]
+        batcho_axis = blockidx_list[1]
+        noio_axis = blockidx_list[2]
+        moio_axis = blockidx_list[3]
+
         # cub buffertile batch axis
         batch_factor = int_ceil_div(DIM_MAP["img_shape"][0], TILING["block_dim"][0])
         batcho_coefficient = 0 if TILING["block_dim"][0] == 1 else batch_factor
@@ -2655,7 +2645,7 @@ def opti_schedule(
         l0c_m_inner,
         tile_axis,
         noii_axis,
-        blockidx,
+        blockidx_list,
         g_inner,
         overload_axis,
         overload_flag_gm,
