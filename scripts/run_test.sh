@@ -19,11 +19,13 @@ CANN_ROOT=$(cd ${CURR_PATH}/..; pwd)
 STATUS_SUCCESS=0
 STATUS_FAILED=1
 
+# the binrary path for tests
 CANN_TEST_OUT="$CANN_ROOT/build/test"
 test ! -d "${CANN_TEST_OUT}" && mkdir -p "${CANN_TEST_OUT}"
-
 CANN_UT_OUT="$CANN_TEST_OUT/ut"
 CANN_ST_OUT="$CANN_TEST_OUT/st"
+
+OPS_ST_IDR="$CANN_ROOT/ops/built-in/tests/st"
 OPS_UT_COV_REPORT="${CANN_UT_OUT}/cov_report/ops"
 
 
@@ -91,7 +93,7 @@ run_st() {
     rm -rf "$CANN_ST_OUT" >/dev/null 2>&1
   fi
   mkdir -p "$CANN_ST_OUT"
-  for file in $(find st -name *.json); do
+  for file in $(find "${OPS_ST_DIR}" -name *.json); do
     python3.7 "$msopst" run -i "$file" -soc "$supported_soc" -out "$CANN_ST_OUT"
     if [[ $? -ne 0 ]]; then
       echo "run ops python stest failed."

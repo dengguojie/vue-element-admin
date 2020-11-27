@@ -106,22 +106,22 @@ protected:
   }
 };
 
-// TEST_F(split_conv2d_concat_test, split_conv2d_concat_test_1) {
-//   ge::ComputeGraphPtr compute_graph;
-//   BuildGraph(compute_graph);
-//   FusionPassTestUtils::InferShapeAndType(compute_graph);
-//   FusionPassTestUtils::RunGraphFusionPass("ASplitConv2dConcatPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph);
-//   bool findSplit = false;
-//   bool findConcat = false;
-//   for (auto node: compute_graph->GetAllNodes()) {
-//     if (node->GetType() == "Split") {
-//         findSplit = true;
-//     }
-//     if (node->GetType() == "Concat") {
-//         findConcat = true;
-//     }
-//   }
-//   EXPECT_EQ(findSplit, false);
-//   EXPECT_EQ(findConcat, false);
-// }
+TEST_F(split_conv2d_concat_test, split_conv2d_concat_test_1) {
+  ge::ComputeGraphPtr compute_graph;
+  BuildGraph(compute_graph);
+  FusionPassTestUtils::InferShapeAndType(compute_graph);
+  FusionPassTestUtils::RunGraphFusionPass("ASplitConv2dConcatPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph);
+  bool findSplit = false;
+  bool findConcat = false;
+  for (auto node: compute_graph->GetAllNodes()) {
+    if (node->GetType() == "Split") {
+        findSplit = true;
+    }
+    if (node->GetType() == "Concat") {
+        findConcat = true;
+    }
+  }
+  EXPECT_EQ(findSplit, false);
+  EXPECT_EQ(findConcat, false);
+}
 } // namespace fe
