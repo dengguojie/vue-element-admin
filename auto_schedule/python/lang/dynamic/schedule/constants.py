@@ -28,6 +28,7 @@ class Pattern:
     CONV2D = "Convolution"
     CONV2D_BACKPROP_INPUT = "Conv2d_backprop_input"
     CONV2D_BACKPROP_FILTER = "Conv2d_backprop_filter"
+    CONV3D = "conv3d"
 
 
 class CompileInfo:

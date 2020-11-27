@@ -1,0 +1,168 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+# Description : UT test for Conv3D
+from op_test_frame.ut import OpUT
+
+
+ut_case = OpUT("Conv3D", "impl.dynamic.conv3d", "conv3d")
+case_list = []
+
+
+# Define Utility function
+def _gen_data_case(case, expect, case_name_val, support_expect=True):
+    return {"params": case,
+            "case_name": case_name_val,
+            "expect": expect,
+            "format_expect": [],
+            "support_expect": support_expect}
+
+
+def _run_api_end_with_d(
+    fmap={'ori_shape': (1, -1, -1, -1, 32), 'shape': (1, -1, -1, -1, 32),
+          'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16', "range": [(1, 1), (4, 18), (50, 70), (78, 98), (32,32)]},
+    weight={'ori_shape': (2, 2, 2, 32, 64), 'shape': (2, 2, 2, 32, 64),
+            'ori_format': 'DHWCN', 'format': 'DHWCN', 'dtype': 'float16',"range": [(2, 2), (2, 2), (2, 2), (32, 32), (64,64)]},
+    bias=None, offset_w=None,
+    output={'ori_shape': (1, 4, 30, 44, 64), 'shape': (1, 4, 30, 44, 64),
+            'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16', "range": [(1, 1), (4, 18), (50, 70), (78, 98), (32,32)]},
+    strides=(1, 2, 2, 2, 1),
+    pads=[0, 0, 0, 0, 0, 0],
+    dilations=(1, 1, 1, 1, 1),
+    groups=1, data_format="NDHWC", offset_x=0):
+    return [fmap, weight, bias, offset_w, output, strides,
+            pads, dilations, groups, data_format, offset_x]
+
+
+# test_conv3dbp_succ_d
+case1 = _run_api_end_with_d()
+
+# test_conv3dbp_stride_one
+fmap = {'ori_shape': (-1, 32, 8, 60, 88), 'shape': (-1, 32, 8, 60, 88),
+        'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16', "range": [(1, 10), (32, 32), (8, 8), (60, 60), (88,88)]}
+weight = {'ori_shape': (64, 32, 2, 2, 2), 'shape': (64, 32, 2, 2, 2),
+          'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16',"range": [(64, 64), (32, 32), (2, 2), (2, 2), (2,2)]}
+output = {'ori_shape': (1, 7, 59, 87, 64), 'shape': (1, 7, 59, 87, 64),
+          'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16', "range": [(1, 10), (32, 32), (8, 8), (60, 60), (88,88)]}
+strides = (1, 1, 1, 1, 1)
+data_format="NCDHW"
+case2 = _run_api_end_with_d(fmap=fmap, weight=weight, output=output, strides=strides, data_format=data_format)
+
+# test_bias_length_fail
+bias = {'ori_shape': (64, 64), 'shape': (64, 64),
+        'ori_format': 'ND', 'format': 'ND', 'dtype': 'float16'}
+case3 = _run_api_end_with_d(bias=bias)
+
+# test_conv3d_invalid_fmap_shape
+fmap = {'ori_shape': (-1, 32, 15, 4098, 18), 'shape': (-1, 32, 15, 4098, 18),
+        'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16', "range": [(1, 10), (32, 32), (15, 15), (4098, 4098), (18,18)]}
+case4 = _run_api_end_with_d(fmap=fmap)
+
+# test_conv3d_invalid_output
+output = {'dtype': 'float32'}
+case5 = _run_api_end_with_d(output=output)
+
+# test_conv3d_invalid_dilations
+dilations = (1, 2, 1, 1, 1)
+case6 = _run_api_end_with_d(dilations=dilations)
+
+# test_conv3d_invalid_fmap_shape
+fmap = {'ori_shape': (-1, 8, 60, 88), 'shape': (-1, 8, 60, 88),
+      'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16', "range": [(1, 10), (8, 8), (60, 60), (88, 88)]}
+case7 = _run_api_end_with_d(fmap=fmap)
+
+# test_conv3d_invalid_pad_length
+pads = (0, 0, 0, 0, 0)
+case8 = _run_api_end_with_d(pads=pads)
+
+# test_conv3d_invalid_weight
+weight = {'ori_shape': (2, 2, 2, 32), 'shape': (2, 2, 2, 32),
+        'ori_format': 'DHWCN', 'format': 'DHWCN', 'dtype': 'float16'}
+case9 = _run_api_end_with_d(weight=weight)
+
+# test_conv3d_invalid_weight_D
+weight = {'ori_shape': (2, 2, 354, 32, 64), 'shape': (2, 2, 354, 32, 64),
+        'ori_format': 'DHWCN', 'format': 'DHWCN', 'dtype': 'float16'}
+case10 = _run_api_end_with_d(weight=weight)
+
+# test_conv3d_invalid_big_fmap
+fmap = {'ori_shape': (-1, 3000, 4000, 4000, 3000),
+      'shape': (-1, 3000, 4000, 4000, 3000),
+      'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16', "range": [(1, 200), (3000, 3000), (4000, 4000), (4000, 4000), (3000,3000)]}
+case11 = _run_api_end_with_d(fmap=fmap)
+
+# test_conv3d_invalid_bias_dtype
+bias = {'ori_shape': (1,), "dtype": "float32"}
+case12 = _run_api_end_with_d(bias=bias)
+
+# test_conv3d_invalid_pads
+pads = (1, 1, 1, 1, 3, 1)
+case13 = _run_api_end_with_d(pads=pads)
+
+# test_conv3d_invalid_stride_shape
+strides = (1, 1, 0, 1, 1)
+case14 = _run_api_end_with_d(strides=strides)
+
+# test_conv3d_invalid_fmap_format
+fmap = {'ori_shape': (-1, 32, 8, 60, 88), 'shape': (1, 32, 8, 60, 88),
+      'ori_format': 'NDCHW', 'format': 'NDCHW', 'dtype': 'float16', "range": [(1, 10), (32, 32), (8, 8), (60, 60), (88,88)]}
+case15 = _run_api_end_with_d(fmap=fmap)
+
+# test_conv3d_invalid_weight
+weight = {'ori_shape': (2, 2, 2, 32, 64), 'shape': (2, 2, 2, 32, 64),
+        'ori_format': 'NDCHW', 'format': 'NDCHW', 'dtype': 'float16'}
+case16 = _run_api_end_with_d(weight=weight)
+
+# Add test Cases
+# Params is the input params of the operator.
+ut_case.add_case(["Ascend910"],
+                 _gen_data_case(case1, "success", "dynamic_case1", True))
+
+ut_case.add_case(["Ascend910"],
+                 _gen_data_case(case2, "success", "dynamic_case2", True))
+
+ut_case.add_case(["Ascend910"],
+                 _gen_data_case(case3, RuntimeError, "dynamic_case3", True))
+
+ut_case.add_case(["Ascend910"],
+                 _gen_data_case(case4, RuntimeError, "dynamic_case4", True))
+
+ut_case.add_case(["Ascend910"],
+                 _gen_data_case(case5, RuntimeError, "dynamic_case5", True))
+
+ut_case.add_case(["Ascend910"],
+                 _gen_data_case(case6, RuntimeError, "dynamic_case6", True))
+
+ut_case.add_case(["Ascend910"],
+                 _gen_data_case(case7, RuntimeError, "dynamic_case7", True))
+
+ut_case.add_case(["Ascend910"],
+                 _gen_data_case(case8, RuntimeError, "dynamic_case8", True))
+
+ut_case.add_case(["Ascend910"],
+                 _gen_data_case(case9, RuntimeError, "dynamic_case9", True))
+
+ut_case.add_case(["Ascend910"],
+                 _gen_data_case(case10, RuntimeError, "dynamic_case10", True))
+
+ut_case.add_case(["Ascend910"],
+                 _gen_data_case(case11, RuntimeError, "dynamic_case11", True))
+
+ut_case.add_case(["Ascend910"],
+                 _gen_data_case(case12, RuntimeError, "dynamic_case12", True))
+
+ut_case.add_case(["Ascend910"],
+                 _gen_data_case(case13, RuntimeError, "dynamic_case13", True))
+
+ut_case.add_case(["Ascend910"],
+                 _gen_data_case(case14, RuntimeError, "dynamic_case14", True))
+
+ut_case.add_case(["Ascend910"],
+                 _gen_data_case(case15, RuntimeError, "dynamic_case15", True))
+
+ut_case.add_case(["Ascend910"],
+                 _gen_data_case(case16, RuntimeError, "dynamic_case16", True))
+
+if __name__ == '__main__':
+    with te.op.dynamic:
+        ut_case.run()
+    exit(0)

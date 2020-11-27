@@ -75,6 +75,10 @@ CONV2D_BP_FILTER_COMPUTE = {
     "conv2d_backprop_filterdw_ddr"
 }
 
+CONV3D_COMPUTE = {
+    "conv3d_fuse_fmap_tensor",
+    "conv3d_c_col"
+}
 
 class ComputeType(Enum):
     """
@@ -90,6 +94,7 @@ class ComputeType(Enum):
     CONV2D = auto()
     CONV2D_BP_INPUT = auto()
     CONV2D_BP_FILTER = auto()
+    CONV3D = auto()
 
 
 def get_pattern(outs):
@@ -111,6 +116,8 @@ def _parse_pattern(outs):
     # the "any" key means total of compute
     compute_type_size_map = _dfs_compute(outs)
 
+    if ComputeType.CONV3D in compute_type_size_map:
+        return Pattern.CONV3D
     if ComputeType.CONV2D in compute_type_size_map:
         return Pattern.CONV2D
     if ComputeType.CONV2D_BP_INPUT in compute_type_size_map:
@@ -182,6 +189,7 @@ def _get_compute_type(tensor: tvm.tensor.Tensor) -> ComputeType:
         (BROADCAST_COMPUTE, ComputeType.BROADCAST),
         (CAST_COMPUTE, ComputeType.CAST),
         (REDUCE_COMPUTE, ComputeType.REDUCE),
+        (CONV3D_COMPUTE, ComputeType.CONV3D),
         (CONV2D_COMPUTE, ComputeType.CONV2D),
         (CONV2D_BP_INPUT_COMPUTE, ComputeType.CONV2D_BP_INPUT),
         (CONV2D_BP_FILTER_COMPUTE, ComputeType.CONV2D_BP_FILTER)

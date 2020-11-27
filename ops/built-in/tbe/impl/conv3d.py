@@ -913,7 +913,7 @@ def cal_input_param(fmap, weight, bias_tensor, strides, pads, dilations, groups,
         "group_dict": group_dict
     }
 
-    return conv3d_dict, shape_filter
+    return para_dict, shape_filter
 
 
 @para_check.check_op_params(

@@ -15,7 +15,9 @@
 """
 cube ops tiling case base class
 """
+
 import itertools
+import copy
 from functools import reduce
 from collections import defaultdict
 from collections import deque
@@ -88,8 +90,11 @@ class TilingSelection:
             batch_func_map = {"conv2d_bp_filter": self._calc_batch_v2}
             batch_func = batch_func_map.get(self.op.op_type, self._calc_batch)
             tiling_cases = batch_func(tgt_area)
+        elif self.op.dynamic_mode == "dynamic_dhw":
+            tiling_cases = self._calc_dhw(tgt_area)
         else:
-            raise RuntimeError("Only dynamic_hw/dynamic_batch is supported")
+            raise RuntimeError("Only dynamic_dhw/dynamic_hw/dynamic_batch "
+                               "is supported")
 
         tiling_blockdim = {}
         for case in tiling_cases:
@@ -134,6 +139,57 @@ class TilingSelection:
         tiling_cases = [
             self.op.assembly_case(v[1], v[0], k) for k, v in candidates.items()]
 
+        add_compile_info("repo_seeds", {k: v[-1] for k, v in candidates.items()})
+        repo_range = {k: v[0] for k, v in candidates.items()}
+
+        # call cost model
+        cost_tilings, cost_range = self._calc_costmodel(cost_cases)
+        tiling_cases += cost_tilings
+        if not tiling_cases:
+            raise RuntimeError("No tiling generated for this shape and range")
+
+        add_compile_info("repo_range", repo_range)
+        add_compile_info("cost_range", cost_range)
+        return tiling_cases
+
+    def _calc_dhw(self, tgt_area):
+        """
+        calculate tilings for dynamic dhw mode
+
+        Parameters
+        ----------
+        tgt_area: tuple, dhw range to be covered (d_min, d_max, h_min, h_max,
+                                                  w_min, w_max)
+
+        Returns
+        -------
+        tilings_cases: list, calculated tilings
+        """
+        def _correct_seed_range(seed_area):
+            funcs = (max, min, max, min, max, min)
+            return [func(ta, sa) for func, ta, sa in zip(funcs, tgt_area,
+                                                         seed_area)]
+        tgt_area = tuple(tgt_area[0] + tgt_area[1] + tgt_area[2])
+        candidates = {}
+        repo_seeds = self.op.get_repo_tiling()
+        seed_points = set()
+
+        for seed in repo_seeds:
+            seed_dhw = (seed[self.op.key][1], seed[self.op.key][3],
+                        seed[self.op.key][4])
+            seed_range = self.op.get_tiling_range(seed['tiling'], seed[self.op.key])
+            if seed_range[1] == -1:
+                seed_range[1] = tgt_area[1]
+            if seed_dhw in seed_points or _cal_overlap(seed_range, tgt_area)[0] == 0:
+                continue
+            seed_points.add(seed_dhw)
+            seed_range = _correct_seed_range(seed_range)
+            candidates[next(self.seed_cnt)] = [seed_range, seed['tiling'],
+                                               seed_dhw]
+
+        cost_cases = self._select_tiling(tgt_area, candidates)
+        tiling_cases = [
+            self.op.assembly_case(v[1], v[0], k) for k, v in candidates.items()]
         add_compile_info("repo_seeds", {k: v[-1] for k, v in candidates.items()})
         repo_range = {k: v[0] for k, v in candidates.items()}
 
@@ -315,7 +371,8 @@ class TilingSelection:
 
         Parameters
         ----------
-        cost_cases: deque, uncovered area in (t, b, l, r) rectangle format
+        cost_cases: deque, uncovered area in (t, b, l, r) rectangle or
+            cube format
 
         tiling_range: list, each item means covered areas of a tiling cases
 
@@ -330,9 +387,11 @@ class TilingSelection:
             cost_len = len(cost_cases)
             for _ in range(cost_len):
                 cut_range = cost_cases.popleft()
-                cost_seed = self.op.get_costmodel_tiling((cut_range[1], cut_range[3]))
+                cost_seed = self.op.get_costmodel_tiling(tuple(cut_range[1::2]))
                 seed_range = self.op.get_tiling_range(cost_seed['tiling'],
                                                       cost_seed[self.op.key])
+                if self.op.dynamic_mode == "dynamic_dhw" and seed_range[1] == -1:
+                    seed_range[1] = cut_range[1]
                 is_overlap, covered_area = _cal_overlap(cut_range, seed_range)
                 if is_overlap:
                     gen_rects = _cut_rectangle(cut_range, seed_range)
@@ -351,19 +410,15 @@ class TilingSelection:
 
 def _cal_overlap(rect1, rect2):
     """
-    rect1, rect2: rectangle in (top, bottom, left, right) format
+    rect1, rect2: rectangle in (top, bottom, left, right) or
+        (front, back, top, bottom, left, right) format
     """
-
-    top = max(rect1[0], rect2[0])
-    bottom = min(rect1[1], rect2[1])
-    left = max(rect1[2], rect2[2])
-    right = min(rect1[3], rect2[3])
-    intersection = [top, bottom, left, right]
-
-    if left > right or top > bottom:
-        overlap = 0
-    else:
-        overlap = (right - left + 1) * (bottom - top + 1)
+    funcs = [max if i % 2 == 0 else min for i in range(len(rect1))]
+    intersection = [func(pos1, pos2) for func, pos1, pos2 in zip(funcs, rect1,
+                                                                 rect2)]
+    overlaps = [0 if start > end else end - start + 1 for start, end in
+                zip(intersection[0::2], intersection[1::2])]
+    overlap = reduce(lambda x, y: x * y, overlaps)
 
     return (overlap, intersection)
 
@@ -380,16 +435,30 @@ def _cut_rectangle(base, cut):
     """
 
     gen_rects = []
-    if cut[0] > base[0]:
-        gen_rects.append((base[0], cut[0] - 1, base[2], base[3]))
-    if cut[1] < base[1]:
-        gen_rects.append((cut[1] + 1, base[1], base[2], base[3]))
-    top = max(base[0], cut[0])
-    bottom = min(base[1], cut[1])
-    if cut[2] > base[2]:
-        gen_rects.append((top, bottom, base[2], cut[2] - 1))
-    if cut[3] < base[3]:
-        gen_rects.append((top, bottom, cut[3] + 1, base[3]))
+    rect = list(base)
+    i = 0
+    while i < len(base):
+        if i % 2 != 0:
+            i = i + 2
+            continue
+
+        if cut[i] > base[i]:
+            rect_tmp = copy.deepcopy(rect)
+            rect_tmp[i] = base[i]
+            rect_tmp[i + 1] = cut[i] - 1
+            gen_rects.append(tuple(rect_tmp))
+
+        if cut[i + 1] < base[i + 1]:
+            rect_tmp = copy.deepcopy(rect)
+            rect_tmp[i] = cut[i + 1] + 1
+            rect_tmp[i + 1] = base[i + 1]
+            gen_rects.append(tuple(rect_tmp))
+
+        rect[i] = max(base[i], cut[i])
+        rect[i + 1] = min(base[i + 1], cut[i + 1])
+
+        i = i + 2
+
     return gen_rects
 
 

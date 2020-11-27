@@ -15,10 +15,13 @@
 """
 conv3d compute
 """
+import copy
 import te.platform as tbe_platform
+from te.domain.tiling.get_tiling import get_tiling
 from te.utils.error_manager import error_manager_util
 from te.lang.cce.te_compute import cube_util
 from te.lang.cce.te_compute import util as te_util
+from te.lang.base.operation import get_te_var
 from te import tvm
 
 OP_TAG = "conv3d_"
@@ -45,6 +48,9 @@ class Conv3DParam(object):
     dim_map = {}
     tiling = None
     tiling_query_param = {}
+    var_map = {}
+    dynamic_mode = None
+    tiling_info_dict = {}
 
 
 def _cube_3d_compute(fmap,
@@ -108,10 +114,14 @@ def _cube_3d_compute(fmap,
     stride_d, stride_h, stride_w = stride_dhw
 
     TENSOR_MAP["filter_d"] = filter_d
-
-    height_out = (fmap_h + pad_top + pad_bottom - filter_h) // stride_h + 1
-    width_out = (fmap_w + pad_left + pad_right - filter_w) // stride_w + 1
-    d_out = (fmap_d + pad_head + pad_tail - filter_d) // stride_d + 1
+    if Conv3DParam.dynamic_mode == "dynamic_dhw":
+        height_out = Conv3DParam.var_map.get("h_out")
+        width_out = Conv3DParam.var_map.get("w_out")
+        d_out = Conv3DParam.var_map.get("d_out")
+    else:
+        height_out = (fmap_h + pad_top + pad_bottom - filter_h) // stride_h + 1
+        width_out = (fmap_w + pad_left + pad_right - filter_w) // stride_w + 1
+        d_out = (fmap_d + pad_head + pad_tail - filter_d) // stride_d + 1
 
     config = tbe_platform.CUBE_MKN[in_dtype]
     block_size_k = config['mac'][1]
@@ -119,6 +129,7 @@ def _cube_3d_compute(fmap,
     opti_h_flag = filter_h == 1 and stride_h > 1
     TENSOR_MAP["opti_h_flag"] = opti_h_flag
     TENSOR_MAP["d_out"] = d_out
+
     TENSOR_MAP["group_dict"] = group_dict
     real_g = group_dict["real_g"]
     cin1_g = group_dict["cin1_g"]
@@ -140,45 +151,62 @@ def _cube_3d_compute(fmap,
 
     TENSOR_MAP["fmap_do_tensor"] = fuse_fmap_tensor
 
-    # set_fmatrix
-    # new data layout (N,C1,H,W,C0) -> (N,HoWo,C1,Hk,Wk,C0)
-    fmap_im2col_row_major_shape = (fmap_fuse_shape[0], height_out * width_out,
-                                   fmap_fuse_shape[1], filter_h, filter_w,
-                                   fmap_c0)
-    pad_hw = pads[2:]
-    stride_hw = [stride_h, stride_w]
-    fmap_im2col_row_major_res = cube_util.im2col_row_major(fmap_im2col_row_major_shape,
-                                                           fuse_fmap_tensor,
-                                                           filter_w,
-                                                           pad_hw,
-                                                           stride_hw,
-                                                           fmap.dtype,
-                                                           opti_h_flag,
-                                                           tag=OP_TAG)
-    TENSOR_MAP["fmap_im2col_row_major_res"] = fmap_im2col_row_major_res
-
     # im2col
     # small-z-big-Z
     howo_mad = (height_out * width_out + block_size_m -
                 1) // block_size_m * block_size_m
+    pad_hw = pads[2:]
 
-    # new data layout (N,HoWo,C1,Hk,Wk,C0) -> (N,loop_m,loop_k,cube_m,cube_k)
-    fmap_im2col_fractal_shape = (real_g, fmap_fuse_shape[0], 
-                                 howo_mad // block_size_m,
-                                 filter_d * cin1_g * filter_h * filter_w,
-                                 block_size_m, block_size_k)
+    if Conv3DParam.dynamic_mode:
+        # new data layout (N, C1, H, W, C0) -> (N, loop_m, loop_k, cube_m, cube_k)
+        howo_mad_1 = (height_out * width_out + block_size_m -
+                    1) // block_size_m
+        fmap_im2col_fractal_shape = (real_g, fmap_fuse_shape[0],
+                    howo_mad_1, filter_d * cin1_g * filter_h * filter_w,
+                    block_size_m, block_size_k)
+        stride_hw = stride_dhw[1:]
+        im2col_para = (fuse_fmap_tensor, filter_h, filter_w, pad_hw, stride_hw,
+                       width_out, 1, cin_ori)
+        fmap_im2col_fractal_res = cube_util.im2col_fractal_v2(
+                    fmap_im2col_fractal_shape, im2col_para)
+        TENSOR_MAP["fmap_im2col_fractal_res"] = fmap_im2col_fractal_res
+    else:
+        # set_fmatrix
+        # new data layout (N,C1,H,W,C0) -> (N,HoWo,C1,Hk,Wk,C0)
+        fmap_im2col_row_major_shape = (fmap_fuse_shape[0], height_out * width_out,
+                                    fmap_fuse_shape[1], filter_h, filter_w,
+                                    fmap_c0)
+        stride_hw = [stride_h, stride_w]
+        fmap_im2col_row_major_res = cube_util.im2col_row_major(fmap_im2col_row_major_shape,
+                                                            fuse_fmap_tensor,
+                                                            filter_w,
+                                                            pad_hw,
+                                                            stride_hw,
+                                                            fmap.dtype,
+                                                            opti_h_flag,
+                                                            tag=OP_TAG)
+        TENSOR_MAP["fmap_im2col_row_major_res"] = fmap_im2col_row_major_res
 
-    fmap_im2col_fractal_res = cube_util.im2col_fractal_3d(
-        fmap_im2col_fractal_shape,
-        fmap_im2col_row_major_res,
-        fmap_c1,
-        d_out,
-        filter_d,
-        stride_d,
-        cin1_g,
-        cyclebuffer_flag,
-        tag=OP_TAG)
-    TENSOR_MAP["fmap_im2col_fractal_res"] = fmap_im2col_fractal_res
+        # im2col
+        # small-z-big-Z
+        # new data layout (N,HoWo,C1,Hk,Wk,C0) -> (N,loop_m,loop_k,cube_m,cube_k)
+        fmap_im2col_fractal_shape = (real_g, fmap_fuse_shape[0],
+                                    howo_mad // block_size_m,
+                                    filter_d * cin1_g * filter_h * filter_w,
+                                    block_size_m, block_size_k)
+
+        fmap_im2col_fractal_res = cube_util.im2col_fractal_3d(
+            fmap_im2col_fractal_shape,
+            fmap_im2col_row_major_res,
+            fmap_c1,
+            d_out,
+            filter_d,
+            stride_d,
+            cin1_g,
+            cyclebuffer_flag,
+            tag=OP_TAG)
+        TENSOR_MAP["fmap_im2col_fractal_res"] = fmap_im2col_fractal_res
+
     config = tbe_platform.CUBE_MKN[res_dtype]
 
     l0a_load2d_flag = TENSOR_MAP["l0a_load2d_flag"]
@@ -201,7 +229,7 @@ def _cube_3d_compute(fmap,
     conv_shape = (fmap_fuse_shape[0],
                   (cout_ori + config['mac'][2] - 1) // (config['mac'][2]),
                   height_out * width_out, config['mac'][2])
-    
+
     DIM_MAP["out_img_shape"] = conv_shape
     cout1_g = cout_g // config['mac'][2]
 
@@ -284,7 +312,7 @@ def _get_fuse_fmap_tensor(fmap_fuse_shape, fmap, d_out, kernel_d, stride_d,
         fmap_fuse_shape = list(fmap_fuse_shape)
         fmap_fuse_shape[2] = (fmap_fuse_shape[2] - 1) // stride_h + 1
         opti_h_factor = stride_h
-    
+
     def __get_fuse_tensor_indices(indices):
         """
         return the indices of the fuse_fmap
@@ -637,6 +665,50 @@ def _handle_res_c(res, conv_shape):
     return res_c
 
 
+def _get_dynamic_para():
+    """
+    Get dynamic para.
+    """
+    if Conv3DParam.dynamic_mode == "dynamic_batch":
+        fmap_range = [get_te_var("batch_n").get_bound()]
+    elif Conv3DParam.dynamic_mode == "dynamic_dhw":
+        fmap_range = [get_te_var("fmap_d").get_bound(),
+                      get_te_var("fmap_h").get_bound(),
+                      get_te_var("fmap_w").get_bound()]
+    else:
+        return None
+    dynamic_para = {
+        "dynamic_mode": Conv3DParam.dynamic_mode,
+        "fmap_range": fmap_range
+    }
+    return dynamic_para
+
+
+def _get_dynamic_mode(data):
+    """
+    Return dynamic mode.
+    """
+    if isinstance(data.shape[0], tvm.expr.Var):
+        return "dynamic_batch"
+    if isinstance(data.shape[1], tvm.expr.Var) and \
+            isinstance(data.shape[3], tvm.expr.Var) \
+            and isinstance(data.shape[4], tvm.expr.Var):
+        return "dynamic_dhw"
+    return None
+
+
+def _get_var_map():
+    """
+    Get dynamic mode for Conv3DParam.
+    """
+    if Conv3DParam.dynamic_mode == "dynamic_batch":
+        return {"batch_n" : get_te_var("batch_n").get_tvm_var()}
+    if Conv3DParam.dynamic_mode == "dynamic_dhw":
+        return {v : get_te_var(v).get_tvm_var()
+                for v in ("fmap_h", "fmap_w", "fmap_d", "h_out", "w_out", "d_out")}
+    return None
+
+
 @tvm.target.generic_func
 def conv3d(x, filter, filter_size, para_dict):
     """
@@ -658,6 +730,9 @@ def conv3d(x, filter, filter_size, para_dict):
     """
     in_dtype = x.dtype
     w_dtype = filter.dtype
+    Conv3DParam.dynamic_mode = _get_dynamic_mode(x)
+    Conv3DParam.var_map = _get_var_map()
+
     bias_tensor = para_dict["bias_tensor"]
     bias_flag = (bias_tensor is not None)
 
@@ -670,6 +745,8 @@ def conv3d(x, filter, filter_size, para_dict):
 
     stride_dhw = para_dict["strides"]
     stride_d, stride_h, stride_w = stride_dhw
+    if Conv3DParam.dynamic_mode:
+        dilation_dhw = para_dict["dilation_dhw"]
 
     shape_filter_ncdhw = filter_size
     filter_n, filter_c, filter_d, filter_h, filter_w = shape_filter_ncdhw
@@ -709,8 +786,27 @@ def conv3d(x, filter, filter_size, para_dict):
 
     TENSOR_MAP["kernel_name"] = para_dict["kernel_name"]
     l0a_load2d_flag = _get_load2d_flag(stride_dhw, pads, shape_filter_ncdhw)
+    if not Conv3DParam.dynamic_mode:
+        cyclebuffer_flag = tvm.var(name='cyclebuffer_flag', dtype='int')
+    else:
+        cyclebuffer_flag = 0
+        Conv3DParam.tiling_info_dict = {
+            "op_type": "convolution_3d",
+            "a_shape": fmap_shape_ndc1hwc0,
+            "b_shape": shape_w_ndc1hwc0,
+            "a_dtype": in_dtype,
+            "b_dtype": w_dtype,
+            "c_dtype": res_dtype,
+            "mad_dtype": mad_dtype,
+            "pad": [pad_d[0], pad_d[1], pad_h[0], pad_h[1], pad_w[0], pad_w[1]],
+            "stride": [stride_d, stride_h, stride_w],
+            "bias_flag": bias_flag,
+            "fused_double_operand_num": 0,
+            "kernel_name": para_dict["kernel_name"],
+            "dynamic_shape_flag": True,
+            "dilation": dilation_dhw
+        }
     TENSOR_MAP["l0a_load2d_flag"] = l0a_load2d_flag
-    cyclebuffer_flag = tvm.var(name='cyclebuffer_flag', dtype='int')
     TENSOR_MAP["cycle_flag_info"] = cyclebuffer_flag
     dsl_flag = para_dict.get("dsl_flag")
     TENSOR_MAP["dsl_flag"] = dsl_flag
@@ -728,8 +824,11 @@ def conv3d(x, filter, filter_size, para_dict):
                                 tiling=None)
     res = conv_res
     res_remove_pad_shape = list(res.shape)
-    res_remove_pad_shape[2] = conv_res.op.attrs['true_shape'][2].value
     # UB fusion
+    if Conv3DParam.dynamic_mode == "dynamic_dhw":
+        res_remove_pad_shape[2] = conv_res.op.attrs['true_shape'][2]
+    else:
+        res_remove_pad_shape[2] = conv_res.op.attrs['true_shape'][2].value
     if dsl_flag:
         c_ub_remove_pad = _handle_res_c(res, res_remove_pad_shape)
         return c_ub_remove_pad

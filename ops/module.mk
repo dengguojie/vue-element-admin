@@ -369,6 +369,7 @@ LOCAL_SRC_FILES := \
         built-in/op_tiling/sparse_apply_proximal_adagrad_d.cc \
         built-in/op_tiling/conv_tiling.cc \
         built-in/op_tiling/conv2d.cc \
+        built-in/op_tiling/conv3d.cc \
         built-in/op_tiling/conv2d_backprop_input.cc \
         built-in/op_tiling/conv2d_backprop_filter.cc \
         built-in/op_tiling/concat.cc \
