@@ -3553,7 +3553,7 @@ class CceConvOp:
                 a4_o, a4_i = sch[fmap_col].split(a4_axis, factor=K_SPLIT_FACTOR)
                 sch[fmap_col].reorder(
                     fmap_col_no, a1_axis, a2_axis, a3_o, a4_o, fmap_col_ni,
-                    a3_i, a4_i, sch[fmap_col].op.axis[3], sch[fmap_col].op.axis[4]) # 5 axis for emit insn
+                    a3_i, a4_i, sch[fmap_col].op.axis[4], sch[fmap_col].op.axis[5]) # 5 axis for emit insn
 
         def self_init():
             """
