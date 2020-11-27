@@ -370,20 +370,3 @@ TEST_F(DeformableConv2DProtoTest, deformableconv2dOutputBaseTest) {
     auto ret = conv2d.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
-
-// input offsets shape H/W size
-TEST_F(DeformableConv2DProtoTest, deformableconv2dInputOffsetsTest) {
-    ge::op::DeformableConv2D conv2d;
-    conv2d.UpdateInputDesc("x", create_desc_with_ori({4, 64, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 16},ge::FORMAT_NHWC));
-    conv2d.UpdateInputDesc("filter", create_desc_with_ori({3, 3, 16, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN,{3, 3, 16, 1},ge::FORMAT_HWCN));
-    conv2d.UpdateInputDesc("offsets", create_desc_with_ori({4, 31, 31, 27}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 31, 31, 27},ge::FORMAT_NHWC));
-    conv2d.UpdateOutputDesc("y", create_desc_with_ori({4,31,31,1}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4,31,31,1},ge::FORMAT_NHWC));
-    conv2d.SetAttr("strides", {1, 2, 2, 1});
-    conv2d.SetAttr("pads", {0, 0, 0, 0});
-    conv2d.SetAttr("dilations", {1, 1, 1, 1});
-    auto status = conv2d.VerifyAllAttr(true);
-    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
-
-    auto ret = conv2d.InferShapeAndType();
-    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-}
