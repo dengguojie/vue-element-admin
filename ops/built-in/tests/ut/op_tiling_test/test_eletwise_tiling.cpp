@@ -111,3 +111,39 @@ TEST_F(EletwiseTiling, Eletwise_tiling2) {
   EXPECT_EQ(runInfo.block_dim, 32);
   EXPECT_EQ(to_string(runInfo.tiling_data), "210000000 35937 1128 1128 ");
 }
+
+TEST_F(EletwiseTiling, Eletwise_tiling3) {
+  using namespace optiling;
+  std::string op_name = "AutoTiling";
+  auto iter = optiling::OpTilingInterf::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingInterf::RegisteredOpInterf().end());
+
+  // dynamic_op_cast_30.static_op_cast_30
+  std::string compileInfo = R"({ "_pattern": "ElemWise", "_only_const_tiling": false, "_flag_info": [ false, true, false, false, 1 ], "_base_info": { "100": [ 262144, 4, 4, 32 ] }, "_elewise_vars": { "210000000": [ 100, 200, 300 ], "210010000": [ 100, 200, 300 ] }, "_vars": { "210000000": [ "dim_0_0", "block_factor_0", "ub_factor_0" ], "210000000": [ "dim_0_0", "block_factor_0", "ub_factor_0" ] } })";
+
+  std::vector<int64_t> inputA{128, 128, 128, 128};
+  std::vector<int64_t> output{128, 128, 128, 128};
+  std::string dtype = "uint32";
+
+  TeOpTensor tensor_inputA;
+  tensor_inputA.shape = inputA;
+  tensor_inputA.dtype = dtype;
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = dtype;
+  TeOpTensorArg tensor_argA;
+  tensor_argA.tensor.push_back(tensor_inputA);
+  tensor_argA.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_output);
+  tensor_arg.arg_type = TA_SINGLE;
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_argA);
+  opParas.outputs.push_back(tensor_arg);
+
+  nlohmann::json op_info = nlohmann::json::parse(compileInfo);
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(op_name, opParas, op_info, runInfo));
+  EXPECT_EQ(runInfo.block_dim, 32);
+  EXPECT_EQ(to_string(runInfo.tiling_data), "210010000 268435456 8388608 8192 ");
+}

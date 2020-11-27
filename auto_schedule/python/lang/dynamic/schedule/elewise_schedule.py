@@ -66,6 +66,7 @@ class ElewiseSchedule:
         self._schedule = None
         self._tiling_case = tiling_case
         self._tiling_strategy = self._tiling_case.get("tiling_strategy")
+        self._is_db = self._tiling_case.get("is_need_db", False)
         self._mode = operation.get_context().get("mode")
 
         self._scope = "local.UB"
@@ -102,8 +103,6 @@ class ElewiseSchedule:
         self._compute_inline_tensors = set()
 
         self._compute_at_map = {}
-
-        self._db_tensors = set()
 
         # just for const tiling
         self._need_do_block = False
@@ -229,9 +228,7 @@ class ElewiseSchedule:
             self._cache_read_buffer_tensor_map[buffer_tensor] = tensor_i
             self._placeholder_tensor_map[tensor_i] = buffer_tensor
 
-            if tensor_i in self._input_tensors:
-                self._db_tensors.add(buffer_tensor)
-            elif tensor_i in self._middle_out_tensors:
+            if tensor_i in self._middle_out_tensors:
                 self._middle_out_cache_read_buffer_map[tensor_i] = \
                     buffer_tensor
 
@@ -558,14 +555,24 @@ class ElewiseSchedule:
                     tensor_bound = self._tensor_space // DTYPE_BYTE_MAPPING[tensor_i.dtype]
                     sch[tensor_i].emit_insn(param[0], param[1], attrs=dict(storage_bound=[tensor_bound]))
                 else:
-                    sch[tensor_i].emit_insn(param[0], param[1])
+                    if self._is_db and tensor_i in self._out_tensors:
+                        sch[tensor_i].emit_insn(param[0], param[1], attrs=dict(no_overlap=0))
+                    else:
+                        sch[tensor_i].emit_insn(param[0], param[1])
 
     def _calc_double_buffer(self):
-        if self._tiling_strategy == TilingStrategy.NONE_CUT:
-            self._db_tensors.clear()
+        pass
 
     def _do_double_buffer(self):
-        pass
+        if self._is_db:
+            sch = self._schedule
+            
+            tensors = self._pure_middle_tensors \
+            .union(self._cache_read_buffer_tensor_map.keys()) \
+            .union(self._cache_write_buffer_tensor_map.keys())
+
+            for tensor_i in tensors:
+                sch[tensor_i].double_buffer()
 
     def _calc_mem_reuse(self):
         ternary_reuse_map = {
@@ -702,9 +709,13 @@ class ElewiseSchedule:
 
         self._coexisting_quantity = max(coexisting_quantities)
         if self._coexisting_quantity == 1:
-            self._ub_size = self._ub_size - BLOCK_SIZE_BYTE
+            self._ub_size -= BLOCK_SIZE_BYTE
+            if self._is_db:
+                self._ub_size -= BLOCK_SIZE_BYTE
 
         tensor_space = self._ub_size // self._coexisting_quantity
+        if self._is_db:
+            tensor_space = tensor_space // 2
         self._tensor_space = tensor_space // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE
 
     def _do_storage_bound(self):
@@ -712,6 +723,7 @@ class ElewiseSchedule:
         tensors = self._pure_middle_tensors \
             .union(self._cache_read_buffer_tensor_map.keys()) \
             .union(self._cache_write_buffer_tensor_map.keys())
+
         for tensor_i in tensors:
             storage_bound = self._tensor_space // DTYPE_BYTE_MAPPING[tensor_i.dtype]
             sch[tensor_i].set_storage_bound(storage_bound)

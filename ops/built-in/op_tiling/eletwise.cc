@@ -354,8 +354,12 @@ bool Eletwise::DoUbTiling() {
 
 void Eletwise::CalcKey() {
   int32_t base_key = 0;
+  int32_t doubleBufferKey = 10000;
   if (s_pattern != Pattern::ORIGINAL) {
     base_key = 200000000 + s_pattern * 100000;
+  }
+  if (need_double_buffer) {
+    base_key += doubleBufferKey;
   }
   if (output_shape.size() == 1) {
     key = base_key;
@@ -494,6 +498,13 @@ bool Eletwise::DoTiling() {
     if (need_multi_core) {
       // cut block
       ret = ret && DoBlockTiling();
+      if (s_pattern == Pattern::COMMON &&
+          block_factor > std::min(max_available_ub, split_factors[compileInfo.max_dtype])) {
+        need_double_buffer = true;
+        max_available_ub =
+                (((compileInfo.ub_size / DOUBLE_BUFFER_SIZE / compileInfo.coexisting_quantity) / BLOCK_SIZE)
+                 * BLOCK_SIZE) / compileInfo.max_dtype;
+      }
       ret = ret && DoUbTiling();
       output_shape[block_axis] = block_axis_output;
     } else {

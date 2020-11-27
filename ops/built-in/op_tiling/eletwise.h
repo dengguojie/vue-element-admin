@@ -32,7 +32,7 @@ namespace optiling {
 
 // a block size in D
 const int32_t BLOCK_SIZE = 32;
-
+const int32_t DOUBLE_BUFFER_SIZE = 2;
 const int32_t N_LAST_BROADCAST_THRESHOLD = 512;
 
 struct CompileInfo {
@@ -83,11 +83,12 @@ private:
   const nlohmann::json& op_info;
   bool is_const{false};
   bool only_const_tiling{false};
+  bool need_multi_core{true};
+  bool need_double_buffer{false};
   CompileInfo compileInfo;
   int32_t max_available_ub{0};
   std::string in_type;
   std::string out_type;
-  bool need_multi_core{true};
   int32_t key{0};
   int32_t block_axis{-1};
   int32_t ub_axis{-1};

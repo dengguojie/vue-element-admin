@@ -34,6 +34,7 @@ SPECIAL = "special"
 SPECIAL_SCALAR = "special_scalar"
 CONST = "const"
 ORIGINAL = "original"
+DB_KEY = 10000
 
 
 class TilingStrategy(Enum):
@@ -62,6 +63,12 @@ def calc(outs, option=None):
     # 0~1: dim len
 
     mode = operation.get_context().get("mode")
+
+    def is_pure_eletwise(pattern):
+        if pattern and len(pattern) == 1 and pattern[0] == COMMON:
+            return True
+ 
+        return False
 
     def calc_base_key():
         if mode == SPECIAL:
@@ -99,13 +106,21 @@ def calc(outs, option=None):
     if mode == CONST:
         return _const_tiling(base_key)
 
+    # db handle
+    is_db = False
+    if mode == SPECIAL:
+        pattern = operation.get_context().get_current_compute().get("pattern")
+        # db_key
+        if is_pure_eletwise(pattern):
+            is_db = True
+
     outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
     out = outs[0]
     shape = util.shape_to_list(out.shape)
     dim_len = len(shape)
 
     if dim_len == 1:
-        return _calc_one_dim(outs, base_key)
+        return _calc_one_dim(outs, base_key, is_db)
 
     return _calc_general(outs, base_key)
 
@@ -115,7 +130,7 @@ def _const_tiling(base_key):
     return cases
 
 
-def _calc_one_dim(outs, base_key):
+def _calc_one_dim(outs, base_key, is_db=False):
     outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
     out = outs[0]
     dtype = out.dtype
@@ -133,7 +148,17 @@ def _calc_one_dim(outs, base_key):
               "ub_tiling_axis": 0,
               "ub_factor_bound": c_bounds[DTYPE_BYTE_MAPPING[dtype]],
               "tiling_strategy": TilingStrategy.ONE_CUT,
+              "is_need_db": False
               }]
+
+    if is_db:
+        cases.append({"key": base_key + DB_KEY,
+              "block_tiling_axis": 0,
+              "ub_tiling_axis": 0,
+              "ub_factor_bound": c_bounds[DTYPE_BYTE_MAPPING[dtype]],
+              "tiling_strategy": TilingStrategy.ONE_CUT,
+              "is_need_db": True
+              })
 
     return cases
 
@@ -260,6 +285,9 @@ def _pre_build(schedules_list):
         var_names = [x.get_name() for x in te_vars]
         compile_vars[sch.tiling_key] = _name_to_int(var_names)
     operation.add_compile_info(CompileInfo.ELEWISE_VARS, compile_vars)
+
+    # add build config
+    operation.add_build_arg("double_buffer_non_reuse", True)
 
 
 @register_build_pointcut(pattern=Pattern.ELEMWISE)
