@@ -54,14 +54,34 @@ case5 = {"params": [{"shape": (32,4,112,112,16), "dtype": "float16", "format": "
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-
+case6 = {"params": [{"shape": (2,2,31,20,16), "dtype": "float16", "format": "NHWC", "ori_shape": (2,17,52,32),"ori_format": "NHWC"},
+                    {"shape": (2,2,7,3,16), "dtype": "float16", "format": "NHWC", "ori_shape": (2,7,3,32),"ori_format": "NHWC"},
+                    {"shape": (2,2,7,3,16), "dtype": "uint16", "format": "NHWC", "ori_shape": (2,2,7,3,16),"ori_format": "NHWC"},
+                    [1, 26, 8, 1],
+                    [1, 5, 9, 1],
+                    "SAME"],
+         "case_name": "max_pool_with_arxmax_6",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+case7 = {"params": [{"shape": (2,2,17,52,16), "dtype": "float16", "format": "NHWC", "ori_shape": (2,17,52,32),"ori_format": "NHWC"},
+                    {"shape": (2,2,9,26,16), "dtype": "float16", "format": "NHWC", "ori_shape": (2,9,26,32),"ori_format": "NHWC"},
+                    {"shape": (2,2,9,26,16), "dtype": "uint16", "format": "NHWC", "ori_shape": (2,2,9,26,16),"ori_format": "NHWC"},
+                    [1, 8, 23, 1],
+                    [1, 2, 2, 1],
+                    "SAME"],
+         "case_name": "max_pool_with_arxmax_7",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
-
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
 
 if __name__ == '__main__':
     ut_case.run()
