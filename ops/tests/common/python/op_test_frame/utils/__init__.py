@@ -1,1 +1,0 @@
-from .shape_utils import calc_shape_size
