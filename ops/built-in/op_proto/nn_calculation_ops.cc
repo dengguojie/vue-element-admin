@@ -3549,12 +3549,12 @@ IMPLEMT_INFERFUNC(DeformableConv2D, DeformableConv2DInfer){
   if (offset_format == FORMAT_NCHW) {
     exp_shape.push_back(in);
     exp_shape.push_back(dfm_group * kh * kw * 3);
-    exp_shape.push_back(ih);
-    exp_shape.push_back(iw);
+    exp_shape.push_back(oh);
+    exp_shape.push_back(ow);
   } else if (offset_format == FORMAT_NHWC) {
     exp_shape.push_back(in);
-    exp_shape.push_back(ih);
-    exp_shape.push_back(iw);
+    exp_shape.push_back(oh);
+    exp_shape.push_back(ow);
     exp_shape.push_back(dfm_group * kh * kw * 3);
   } else {
     OP_LOGE(op.GetName().c_str(), "input offsets format should be NCHW or NHWC. actual is: %s",
