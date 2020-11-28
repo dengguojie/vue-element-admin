@@ -90,6 +90,8 @@ class TilingSelection:
             batch_func_map = {"conv2d_bp_filter": self._calc_batch_v2}
             batch_func = batch_func_map.get(self.op.op_type, self._calc_batch)
             tiling_cases = batch_func(tgt_area)
+        elif self.op.dynamic_mode == "dynamic_mkn":
+            tiling_cases = self._calc_mkn(tgt_area)
         elif self.op.dynamic_mode == "dynamic_dhw":
             tiling_cases = self._calc_dhw(tgt_area)
         else:
@@ -150,6 +152,55 @@ class TilingSelection:
 
         add_compile_info("repo_range", repo_range)
         add_compile_info("cost_range", cost_range)
+        return tiling_cases
+
+    def _calc_mkn(self, tgt_area):
+        """
+        calculate tilings for dynamic mkn mode
+
+        Parameters
+        ----------
+        tgt_area: tuple, mkn range to be covered (m_min, m_amx, k_min, k_max, n_min, n_max)
+
+        Returns
+        -------
+        tilings_cases: list, calculated tilings
+        """
+
+        def _correct_seed_range(seed_area):
+            funcs = (max, min, max, min, max, min)
+            return [func(ta, sa) for func, ta, sa in zip(funcs, tgt_area, seed_area)]
+
+        tgt_area = tuple(tgt_area[0] + tgt_area[1] + tgt_area[2])
+        candidates = {}
+        repo_seeds = self.op.get_repo_tiling()
+
+        for seed in repo_seeds:
+            seed_k_value, seed_m_value = cost_seed[self.op.key[0][1:3]]
+            seed_n_value = cost_seed[self.op.key[1][1]]
+            m_k_n_shape = (seed_m_value, seed_k_value, seed_n_value)
+            seed_range = self.op.get_tiling_range(seed["tiling"], m_k_n_shape)
+            seed_range = _correct_seed_range(seed_range)
+            candidates[next(self.seed_cnt)] = [seed_range, seed["tiling"], m_k_n_shape]
+
+        cost_cases = self._select_tiling_mkn(tgt_area, candidates)
+        tiling_cases = [
+            self.op.assembly_case(v[1], v[0], k) for k, v in candidates.items()]
+        add_compile_info("repo_seeds", {k: v[-1] for k, v in candidates.items()})
+        repo_range = {k: v[0] for k, v in candidates.items()}
+
+        # call cost model
+        cost_tilings, cost_range = self._calc_costmodel_mkn(cost_cases)
+        tiling_cases += cost_tilings
+        if not tiling_cases:
+            raise RuntimeError("No tiling generated for this shape and range")
+
+        add_compile_info("repo_range", repo_range)
+        add_compile_info("cost_range", cost_range)
+        if "trans_a" in self.op.tiling_info and "trans_b" in self.op.tiling_info:
+            add_compile_info("attr", {"transpose_a": self.op.tiling_info["trans_a"],
+            "transpose_b": self.op.tiling_info["trans_b"]})
+
         return tiling_cases
 
     def _calc_dhw(self, tgt_area):
@@ -365,6 +416,40 @@ class TilingSelection:
 
         return deque(rest_area)
 
+    def _select_tiling_mkn(self, tgt_area, repo_tilings):
+        """
+        select repo seeds tiling to cover target area
+
+        Parameters
+        ----------
+        tgt_area: tuple, m k n range to be covered
+        repo_tilings: dict, repo seeds tilings with id
+
+        Returns
+        -------
+        res: default_dict, tilings with covered area
+        rest_area: deque, uncovered areas
+        """
+
+        sort_tiling_list = sorted(repo_tilings.items(),
+                                  key=lambda x: _cal_overlap_three_dimesional(tgt_area, x[1][0])[0],
+                                  reverse=True)
+        rest_area = set([tgt_area])
+
+        for t_id, t_info in sort_tiling_list:
+            generate_area = set()
+            delete_area = set()
+            for ra in rest_area:
+                overlap, _ = _cal_overlap_three_dimesional(ra, t_info[0])
+                if overlap == 0:
+                    continue
+                generate_area |= set(_cut_cuboid(ra, t_info[0]))
+                delete_area.add(ra)
+
+            rest_area = (rest_area - delete_area) | generate_area
+
+        return deque(rest_area)
+
     def _calc_costmodel(self, cost_cases):
         """
         calculate cost model to cover rest area after repo seeds
@@ -407,6 +492,47 @@ class TilingSelection:
 
         return cost_tilings, tiling_range
 
+    def _calc_costmodel_mkn(self, cost_cases):
+        """
+        calculate cost model to cover rest area after repo seeds
+
+        Parameters
+        ----------
+        cost_cases: deque, uncovered area in (t, b, l, r, up, down) rectangle format
+
+        tiling_range: list, each item means covered areas of a tiling cases
+
+        Returns
+        -------
+        cost tilings: list, tilings calculated by cost model
+        """
+
+        cost_tilings = []
+        tiling_range = {}
+        while cost_cases:
+            cost_len = len(cost_cases)
+            for _ in range(cost_len):
+                cut_range = cost_cases.popleft()
+                cost_seed = self.op.get_costmodel_tiling((cut_range[0], cut_range[2], cut_range[4]))
+                seed_k_value, seed_m_value = cost_seed[self.op.key[0][1:3]]
+                seed_n_value = cost_seed[self.op.key[1][1]]
+                m_k_n_shape = (seed_m_value, seed_k_value, seed_n_value)
+                seed_range = self.op.get_tiling_range(cost_seed['tiling'],
+                                                      m_k_n_shape)
+                is_overlap, covered_area = _cal_overlap_three_dimesional(cut_range, seed_range)
+                if is_overlap:
+                    gen_rects = _cut_cuboid(cut_range, seed_range)
+                    cost_cases.extend(gen_rects)
+                else:
+                    raise RuntimeError("totally uncovered!!!")
+
+                cur_seed_cnt = next(self.seed_cnt)
+                cost_tilings.append(
+                    self.op.assembly_case(cost_seed['tiling'], covered_area,
+                                          cur_seed_cnt))
+                tiling_range[cur_seed_cnt] = covered_area
+
+        return cost_tilings, tiling_range
 
 def _cal_overlap(rect1, rect2):
     """
@@ -422,6 +548,26 @@ def _cal_overlap(rect1, rect2):
 
     return (overlap, intersection)
 
+def _cal_overlap_three_dimesional(rect1, rect2):
+    """
+    rect1, rect2: rectangle in (top, bottom, left, right, depth_down, depth_up) format
+    """
+
+    top = max(rect1[0], rect2[0])
+    bottom = min(rect1[1], rect2[1])
+    left = max(rect1[2], rect2[2])
+    right = min(rect1[3], rect2[3])
+    depth_down = max(rect1[4], rect2[4])
+    depth_up = min(rect1[5], rect2[5])
+
+    intersection = [top, bottom, left, right, depth_down, depth_up]
+
+    if left > right or top > bottom or depth_down > depth_up:
+        overlap = 0
+    else:
+        overlap = (right - left + 1) * (bottom - top + 1) * (depth_up - depth_down + 1)
+
+    return (overlap, intersection)
 
 def _cal_overlap_line(line1, line2):
     if line1[0] > line2[1] or line1[1] < line2[0]:
@@ -461,6 +607,31 @@ def _cut_rectangle(base, cut):
 
     return gen_rects
 
+def _cut_cuboid(base, cut):
+    """
+    base, cut: rectangle in (top, bottom, left, right, depth_down, depth_up) format
+    """
+
+    gen_rects = []
+    if cut[0] > base[0]:
+        gen_rects.append((base[0], cut[0] - 1, base[2], base[3], base[4], base[5]))
+    if cut[1] < base[1]:
+        gen_rects.append((cut[1] + 1, base[1], base[2], base[3], base[4], base[5]))
+    top = max(base[0], cut[0])
+    bottom = min(base[1], cut[1])
+    if cut[2] > base[2]:
+        gen_rects.append((top, bottom, base[2], cut[2] - 1, base[4], base[5]))
+    if cut[3] < base[3]:
+        gen_rects.append((top, bottom, cut[3] + 1, base[3], base[4], base[5]))
+    left = max(base[2], cut[2])
+    right = min(base[3], cut[3])
+
+    if cut[4] > base[4]:
+        gen_rects.append((top, bottom, left, right, base[4], cut[4] -1))
+    if cut[5] < base[5]:
+        gen_rects.append((top, bottom, left, right, cut[5] + 1, base[5]))
+
+    return gen_rects
 
 def _cut_line(base_line, cut_line):
     segments = []
