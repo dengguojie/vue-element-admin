@@ -4043,6 +4043,9 @@ class CceOp:
                         if lop["op"] == "reduce_max" and cache_buffer.dtype == "float32":
                             self._schedule[cache_buffer].emit_insn(
                                 tensorize_axis, "reduce_last_axis_" + lop["op"])
+                        elif lop["op"] == "reduce_max" and cache_buffer.dtype == "int32":
+                            self._schedule[cache_buffer].emit_insn(
+                                tensorize_axis, "vector_" + lop["op"])
                         else:
                             reduce_func = vec_intrin("reduce_last_axis")(
                                 tensorize_shape, lop["op"], cache_buffer.dtype)
