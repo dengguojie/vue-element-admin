@@ -18,7 +18,7 @@ if(BUILD_OPEN_PROJECT)
     kernels/normalized/deformable_offsets_kernels.cc
     kernels/normalized/cast_kernels.cc
     kernels/normalized/logging_kernels.cc
-    kernels/normalized/concatv2_kernels.cc
+    kernels/normalized/concatv2.cc
     utils/sparse_group.cc
     utils/eigen_tensor.cc
     utils/kernel_util.cc
@@ -134,7 +134,7 @@ set(local_kernels_src_files
     kernels/normalized/deformable_offsets_kernels.cc
     kernels/normalized/cast_kernels.cc
     kernels/normalized/logging_kernels.cc
-    kernels/normalized/concatv2_kernels.cc
+    kernels/normalized/concatv2.cc
     kernels/normalized/round.cc
     utils/sparse_group.cc
     utils/eigen_tensor.cc

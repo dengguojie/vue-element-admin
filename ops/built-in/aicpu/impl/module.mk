@@ -20,7 +20,7 @@ local_normalized_kernels := kernels/normalized/drop_out_gen_mask_kernels.cc \
                             kernels/normalized/sparse_to_dense_kernels.cc \
                             kernels/normalized/deformable_offsets_kernels.cc \
                             kernels/normalized/cast_kernels.cc \
-                            kernels/normalized/concatv2_kernels.cc \
+                            kernels/normalized/concatv2.cc \
                             kernels/normalized/round.cc \
                             utils/sparse_group.cc \
                             utils/eigen_tensor.cc \
