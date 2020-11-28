@@ -125,7 +125,14 @@ uint32_t TransDataCpuKernel::DealData(T* input_data, T* output_data, Tensor* inp
     h_dim = dims[2];
     w_dim = dims[3];
     d_dim = 1;
-  } else {
+  } else if (input_format == FORMAT_HWCN) {
+    h_dim = dims[0];
+    w_dim = dims[1];
+    c_dim = dims[2];
+    n_dim = dims[3];
+    d_dim = 1;
+  } 
+  else {
     KERNEL_LOG_ERROR(
         "format is not FORMAT_DHWCN or FORMAT_NDHWC or FORMAT_NCDHW or "
         "FORMAT_NHWC or FORMAT_NCHW, current input format is ：%d",
@@ -169,11 +176,11 @@ uint32_t TransDataCpuKernel::DealData(T* input_data, T* output_data, Tensor* inp
               int64_t src_co = g * cout_ori + n;
               int64_t tempory = dst_ci % cube_k;
               int64_t srx_inx = 0;
-              int64_t dst_inx = (g / e_mult) * d_dim * c1_dim * h_dim * cout_opt * cube_k +
+              int64_t dst_inx = (g / e_mult) * d_dim * c1_dim * h_dim * w_dim * cout_opt * cube_k +
                                 d * c1_dim * h_dim * w_dim * cout_opt * cube_k +
                                 (dst_ci / cube_k) * h_dim * w_dim * cout_opt * cube_k + h * w_dim * cout_opt * cube_k +
                                 w * cout_opt * cube_k + dst_co * cube_k + tempory;
-              if (input_format == FORMAT_DHWCN) {
+              if ((input_format == FORMAT_DHWCN)|| (input_format == FORMAT_HWCN)) {
                 srx_inx = d * h_dim * w_dim * c_dim * n_dim + h * w_dim * c_dim * n_dim + w * c_dim * n_dim +
                           c * n_dim + src_co;
               } else if (input_format == FORMAT_NCDHW) {
