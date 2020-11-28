@@ -15,7 +15,7 @@
  */
 
 #include "mul_kernel.h"
-
+#include <algorithm>
 #include "utils/eigen_tensor.h"
 #include "utils/kernel_util.h"
 
@@ -130,6 +130,12 @@ void MulCpuKernel::MulCalculate(CalcInfo &calc_info) {
   Eigen::TensorMap<Eigen::Tensor<T, 1>> eigen_output(
       static_cast<T *>(calc_info.output->GetData()),
       calc_info.output->GetTensorShape()->NumElements());
+  
+  std::reverse(calc_info.reshape_0.begin(), calc_info.reshape_0.end());
+  std::reverse(calc_info.reshape_1.begin(), calc_info.reshape_1.end());
+  std::reverse(calc_info.shape_out.begin(), calc_info.shape_out.end());
+  std::reverse(calc_info.bcast_0.begin(), calc_info.bcast_0.end());
+  std::reverse(calc_info.bcast_1.begin(), calc_info.bcast_1.end());
 
   Eigen::DSizes<Eigen::DenseIndex, RANK> reshape_0;
   Eigen::DSizes<Eigen::DenseIndex, RANK> reshape_1;
