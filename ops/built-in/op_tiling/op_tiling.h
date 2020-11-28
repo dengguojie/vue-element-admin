@@ -59,7 +59,7 @@ bool g_##optype##_TilingEntry(const TeOpParas& para, const OpCompileInfo& cinfo,
 	if (prof_switch) {                                                                                            \
             after_tiling = std::chrono::steady_clock::now();                                                          \
 	    uint64_t t = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - before_tiling).count(); \
-	    GE_OP_LOGEVT("OPTILING_PROF: op_name: %s, time_cost: %d", cinfo.str.c_str(), t);                          \
+	    GE_D_OP_LOGEVT("OPTILING_PROF: op_name: %s, time_cost: %d", cinfo.str.c_str(), t);                        \
 	}                                                                                                             \
         return result;                                                                                                \
     }                                                                                                                 \
@@ -72,7 +72,7 @@ bool g_##optype##_TilingEntry(const TeOpParas& para, const OpCompileInfo& cinfo,
     if (prof_switch) {                                                                                                \
         after_tiling = std::chrono::steady_clock::now();                                                              \
         uint64_t t = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - before_tiling).count();     \
-	GE_OP_LOGEVT("OPTILING_PROF: op_name: %s, time_cost: %d", cinfo.str.c_str(), t);                              \
+	GE_D_OP_LOGEVT("OPTILING_PROF: op_name: %s, time_cost: %d", cinfo.str.c_str(), t);                            \
     }                                                                                                                 \
     return result;                                                                                                    \
 }                                                                                                                     \
