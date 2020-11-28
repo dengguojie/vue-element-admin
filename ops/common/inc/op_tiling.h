@@ -40,8 +40,8 @@ struct ParsedOpCompileInfo {
 #define REGISTER_OP_TILING_FUNC_BUFFERED(optype, opfunc)                                                          \
 bool g_##optype##_TilingEntry(const TeOpParas& para, const OpCompileInfo& cinfo, OpRunInfo& rinfo) {              \
     static std::map<std::string, std::shared_ptr<ParsedOpCompileInfo>> parsed_compile_info_storage;               \
-    std::string& hash_key = cinfo.key;                                                                            \
-    std::string& cinfo_str = cinfo.str;                                                                           \
+    const std::string& hash_key = cinfo.key;                                                                      \
+    const std::string& cinfo_str = cinfo.str;                                                                     \
     if (!hash_key.empty() && parsed_compile_info_storage.find(hash_key) != parsed_compile_info_storage.end()) {   \
         std::shared_ptr<ParsedOpCompileInfo> parsed_compile_info = parsed_compile_info_storage.at(hash_key);      \
         std::shared_ptr<void> parsed_object_ptr = parsed_compile_info->parsed_object;                             \
