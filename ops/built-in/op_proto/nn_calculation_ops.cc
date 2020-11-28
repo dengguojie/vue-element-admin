@@ -4753,11 +4753,11 @@ IMPLEMT_VERIFIER(Conv3D, Conv3DVerify) {
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return GRAPH_FAILED;
   }
-  std::vector<int32_t> dilation_list;
-  if (op.GetAttr("dilations", dilation_list) != GRAPH_SUCCESS) {
-    dilation_list.clear();
+  std::vector<int32_t> dilations_list;
+  if (op.GetAttr("dilations", dilations_list) != GRAPH_SUCCESS) {
+    dilations_list.clear();
     for (int32_t i = 0; i < kConv3dDimSizeLimit; i++)
-      dilation_list.push_back(1);
+      dilations_list.push_back(1);
     OP_LOGI(op.GetName().c_str(), "no dilations setting, use dilations as [1,1,1,1,1]");
   }
   OP_LOGD(op.GetName().c_str(), "Leave Conv3DVerify.");
