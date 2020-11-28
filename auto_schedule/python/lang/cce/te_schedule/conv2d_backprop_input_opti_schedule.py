@@ -1918,11 +1918,7 @@ def opti_schedule(
         l0c_factor_tile = TILING["CL0_matrix"][1] * TILING["CL0_matrix"][2]
 
         # multi core and one core
-        group_axis = blockidx_list[0]
-        batcho_axis = blockidx_list[1]
-        noio_axis = blockidx_list[2]
-        moio_axis = blockidx_list[3]
-
+        group_axis, batcho_axis, noio_axis, moio_axis = blockidx_list
         # cub buffertile batch axis
         batch_factor = int_ceil_div(DIM_MAP["img_shape"][0], TILING["block_dim"][0])
         batcho_coefficient = 0 if TILING["block_dim"][0] == 1 else batch_factor
