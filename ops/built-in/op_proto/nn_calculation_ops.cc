@@ -4754,7 +4754,7 @@ IMPLEMT_VERIFIER(Conv3D, Conv3DVerify) {
     return GRAPH_FAILED;
   }
   std::vector<int32_t> dilation_list;
-  if (GRAPH_SUCCESS != op.GetAttr("dilations", dilation_list)) {
+  if (op.GetAttr("dilations", dilation_list) != GRAPH_SUCCESS) {
     dilation_list.clear();
     for (int32_t i = 0; i < kConv3dDimSizeLimit; i++)
       dilation_list.push_back(1);
@@ -5278,7 +5278,7 @@ static graphStatus VerifyConv3dbpFilterCommon(const ge::Operator& op) {
     OP_LOGE(op.GetName().c_str(), "dilations_list should be 5d.");
     map<std::string, std::string> err_map;
     err_map["param_name"] = "dilations";
-    err_map["op_name"] = "Conv3dbpInput";
+    err_map["op_name"] = "Conv3dbpFilter";
     err_map["excepted_value"] = std::to_string(5);
     err_map["input_value"] = std::to_string(dilations_list.size());
     std::string report_error_code = "E50029";
@@ -5756,7 +5756,7 @@ static bool GetAttrsConv3DTranspose(ge::Operator& op, Format refer,  int32_t& st
   }
 
   std::vector<int32_t> dilation_list;
-  if (op.GetAttr("dilations", dilation_list) != GRAPH_SUCCES) {
+  if (op.GetAttr("dilations", dilation_list) != GRAPH_SUCCESS) {
     dilation_list.clear();
     for (int32_t i = 0; i < kConv3dDimSizeLimit; i++)
       dilation_list.push_back(1);
