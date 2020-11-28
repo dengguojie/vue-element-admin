@@ -389,7 +389,7 @@ def check_whether_2d(format, input_dict):
 # pylint: disable=locally-disabled,too-many-branches
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_STR,
                             para_check.REQUIRED_ATTR_STR, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
-def trans_data(src, dst, src_format, dst_format, group=1,
+def trans_data(src, dst, src_format, dst_format, groups=1,
                kernel_name='trans_data'):
     """
     algorithm: format_transfer
@@ -408,7 +408,7 @@ def trans_data(src, dst, src_format, dst_format, group=1,
         source data format, can be NHWC, NCHW, FRACTAL_Zn etc.
     dst_format: str
         target data format, can be NC1HWC0, NCHW, FRACTAL_Zn etc.
-    group: int
+    groups: int
         default 1
     kernel_name: str
         kernel name, default value is "format_transfer"
