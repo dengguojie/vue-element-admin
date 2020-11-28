@@ -276,6 +276,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                 kernel_name_params = {"kernel_name": case_info.case_name}
             else:
                 case_info.addition_params["kernel_name"] = case_info.case_name
+                kernel_name_params = case_info.addition_params
             if self.imply_type == OpImplyType.DYNAMIC_SHAPE:
                 import te  # pylint: disable=import-outside-toplevel
                 with te.op.dynamic():
