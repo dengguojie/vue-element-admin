@@ -58,12 +58,12 @@ set(local_context_inc_path
 
 add_library(cpu_kernels_context SHARED
     ${local_context_src_files}
-    $<$<STREQUAL:${PRODUCT},npuf10>:${local_context_stub_files}>
+    $<$<OR:$<STREQUAL:${PRODUCT_SIDE},host>,$<STREQUAL:${PRODUCT},npuf10>>:${local_context_stub_files}>
 )
 
 add_library(cpu_kernels_context_static STATIC
     ${local_context_src_files}
-    ${local_context_stub_files}
+    $<$<OR:$<STREQUAL:${PRODUCT_SIDE},host>,$<STREQUAL:${PRODUCT},npuf10>>:${local_context_stub_files}>
 )
 
 if(${PRODUCT_SIDE} STREQUAL "host")
