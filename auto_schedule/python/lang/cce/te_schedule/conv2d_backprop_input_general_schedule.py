@@ -953,7 +953,8 @@ def general_schedule(
             "in_fm_memory_type": input_mem,
             "out_fm_memory_type": out_mem,
             "l1_fusion_type": l1_fusion_type,
-            "fusion_type": fusion_type
+            "fusion_type": fusion_type,
+            "general_flag": True,
         }
         tiling = get_tiling(info_dict)
     else:

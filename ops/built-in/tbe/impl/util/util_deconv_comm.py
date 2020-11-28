@@ -538,22 +538,6 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
             }
             raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
 
-    def _check_pad_relation():
-        if pad_up >= filter_h_dilation or pad_down >= filter_h_dilation:
-            args_dict = {
-                "errCode": "E60016",
-                "h_of_filter": filter_h_dilation,
-                "h_of_pad": pad_up if pad_up > pad_down else pad_down
-            }
-            raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
-        if pad_left >= filter_w_dilation or pad_right >= filter_w_dilation:
-            args_dict = {
-                "errCode": "E60017",
-                "w_of_filter": filter_w_dilation,
-                "w_of_pad": pad_left if pad_left > pad_right else pad_right
-            }
-            raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
-
     def _check_l1_size_limit():
         def _l1fusion_size_limit(l1_size):
             l1fusion_l1_size = 0
@@ -621,14 +605,7 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
             and fmap_h_padding != filter_h \
             and fmap_w_padding == filter_w:
             return False
-        # limitation by chip:
-        # if kernel h,w in [1,11]
-        # and fmap h/w after padding equals to filter h/w
-        # load3d support h,w is 1
-        if (1 <= filter_h <= 11) and (1 <= filter_w <= 11) \
-            and (fmap_h_padding == filter_h or fmap_w_padding == filter_w):
-            return True
-        return False
+        return True
 
     def fusion_para_check(fusion_para, shape_out_backprop):
         c0_k = cce_params.CUBE_MKN[filter_dtype]["mac"][1]
@@ -837,7 +814,6 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
 
     if dynamic_mode is None:
         _check_shape_relation()
-        _check_pad_relation()
 
         # Dedy value limit
         _check_attr_range("out_backprop's H after expands", dedy_h * stride_h,
