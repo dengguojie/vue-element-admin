@@ -21,7 +21,7 @@
 #include <vector>
 #include <string>
 #include <nlohmann/json.hpp>
-#include "register/op_tiling.h"
+#include "op_tiling.h"
 #include "graph/debug/ge_log.h"
 #include "conv_tiling.h"
 
@@ -82,5 +82,5 @@ bool Conv2DBpFilterTiling(const std::string& opType, const TeOpParas& opParas, c
 }
 
 // register tiling interface of the conv2d_backprop_filter
-REGISTER_OP_TILING_FUNC(Conv2DBackpropFilter, Conv2DBpFilterTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(Conv2DBackpropFilter, Conv2DBpFilterTiling);
 }  // namespace optiling

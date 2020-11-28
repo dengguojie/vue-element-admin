@@ -20,7 +20,7 @@
  */
 #include <string>
 #include <nlohmann/json.hpp>
-#include "register/op_tiling.h"
+#include "op_tiling.h"
 #include "graph/debug/ge_log.h"
 #include "conv_tiling.h"
 #include "op_log.h"
@@ -82,5 +82,5 @@ bool Conv2DTiling(const std::string& opType, const TeOpParas& opParas, const nlo
 }
 
 // register tiling interface of the conv2d
-REGISTER_OP_TILING_FUNC(Conv2D, Conv2DTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(Conv2D, Conv2DTiling);
 }  // namespace optiling

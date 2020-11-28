@@ -23,7 +23,7 @@
 #include <cmath>
 
 #include <nlohmann/json.hpp>
-#include "register/op_tiling.h"
+#include "op_tiling.h"
 #include "graph/debug/ge_log.h"
 
 #include "op_log.h"
@@ -396,5 +396,5 @@ bool StridedSliceTiling(const std::string& opType, const TeOpParas& opParas, con
   return true;
 }
 
-REGISTER_OP_TILING_FUNC(StridedSlice, StridedSliceTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(StridedSlice, StridedSliceTiling);
 }  // namespace optiling

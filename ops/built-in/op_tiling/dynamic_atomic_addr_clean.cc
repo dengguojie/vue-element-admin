@@ -19,7 +19,7 @@
  * \brief
  */
 #include <nlohmann/json.hpp>
-#include "register/op_tiling.h"
+#include "op_tiling.h"
 #include "graph/debug/ge_log.h"
 
 #include "op_log.h"
@@ -257,5 +257,5 @@ bool DynamicAtomicAddrCleanTiling(const std::string& op_type, const TeOpParas& o
   GELOGI("op[%s] op tiling success", op_type.c_str());
   return true;
 }
-REGISTER_OP_TILING_FUNC(DynamicAtomicAddrClean, DynamicAtomicAddrCleanTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(DynamicAtomicAddrClean, DynamicAtomicAddrCleanTiling);
 }  // namespace optiling

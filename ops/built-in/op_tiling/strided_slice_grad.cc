@@ -572,5 +572,5 @@ bool StridedSliceGradTiling(const std::string& opType, const TeOpParas& opParas,
 }
 
 // register tiling interface of the StridedSliceGrad op.
-REGISTER_OP_TILING_FUNC(StridedSliceGrad, StridedSliceGradTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(StridedSliceGrad, StridedSliceGradTiling);
 }  // namespace optiling

@@ -21,7 +21,7 @@
 #include <vector>
 #include <string>
 #include <nlohmann/json.hpp>
-#include "register/op_tiling.h"
+#include "op_tiling.h"
 #include "graph/debug/ge_log.h"
 #include "conv_tiling.h"
 #include "op_log.h"
@@ -83,5 +83,5 @@ bool Conv2DBpInputTiling(const std::string& opType, const TeOpParas& opParas, co
 }
 
 // register tiling interface of the conv2d_backprop_input
-REGISTER_OP_TILING_FUNC(Conv2DBackpropInput, Conv2DBpInputTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(Conv2DBackpropInput, Conv2DBpInputTiling);
 }  // namespace optiling

@@ -21,7 +21,7 @@
 #include <nlohmann/json.hpp>
 #include <sstream>
 #include <cctype>
-#include "register/op_tiling.h"
+#include "op_tiling.h"
 #include "error_log.h"
 #include "graph/debug/ge_log.h"
 #include "eletwise.h"
@@ -86,5 +86,5 @@ bool TileDTiling(const std::string& op_type, const TeOpParas& op_paras, const nl
 }
 
 // register tiling interface of the TileD op.
-REGISTER_OP_TILING_FUNC(TileD, TileDTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(TileD, TileDTiling);
 }  // namespace optiling

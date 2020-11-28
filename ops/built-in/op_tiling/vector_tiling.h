@@ -25,7 +25,7 @@
 
 #include <nlohmann/json.hpp>
 #include "graph/debug/ge_log.h"
-#include "register/op_tiling.h"
+#include "op_tiling.h"
 
 namespace optiling {
 /*
@@ -49,6 +49,26 @@ bool ReduceTiling(const std::string& op_type, const TeOpParas& op_paras, const n
  */
 bool EletwiseTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                     OpRunInfo& run_info);
+
+#define REGISTER_OP_TILING_FUNC_BUFFERED_CUSTOM(optype, opfunc, parserfunc)                                       \
+bool g_##optype##_TilingEntry(const TeOpParas& para, const OpCompileInfo& cinfo, OpRunInfo& rinfo) {              \
+    static std::map<std::string, ParsedOpCompileInfo> parsed_compile_info_storage;                                \
+    std::string hash_key = cinfo.key;                                                                             \
+    std::string cinfo_str = cinfo.str;                                                                            \
+    if (!hash_key.empty() && parsed_compile_info_storage.find(hash_key) != parsed_compile_info_storage.end()) {   \
+        ParsedOpCompileInfo& parsed_compile_info = parsed_compile_info_storage.at(hash_key);                      \
+        void* parsed_object_ptr = parsed_compile_info.parsed_object;                                              \
+        return opfunc(para.op_type, para, parsed_object_ptr, rinfo);                                              \
+    }                                                                                                             \
+    void* parsed_object_ptr = parserfunc(cinfo_str);                                                              \
+    ParsedOpCompileInfo* parsed_compile_info = new ParsedOpCompileInfo();                                         \
+    parsed_compile_info->value = cinfo_str;                                                                       \
+    parsed_compile_info->parsed_object = parsed_object_ptr;                                                       \
+    parsed_compile_info_storage.emplace(hash_key, *parsed_compile_info);                                          \
+    return opfunc(para.op_type, para, parsed_object_ptr, rinfo);                                                  \
+}                                                                                                                 \
+REGISTER_OP_TILING_FUNC_NEW(optype, g_##optype##_TilingEntry)
+
 }  // namespace optiling
 
 #endif  // OPS_BUILT_IN_OP_TILING_VECTOR_TILING_H_

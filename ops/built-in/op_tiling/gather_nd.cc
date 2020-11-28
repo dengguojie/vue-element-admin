@@ -21,7 +21,7 @@
 #include <string>
 
 #include <nlohmann/json.hpp>
-#include "register/op_tiling.h"
+#include "op_tiling.h"
 #include "graph/debug/ge_log.h"
 
 #include "../op_proto/util/error_util.h"
@@ -483,6 +483,6 @@ bool GatherNdTiling(const std::string& opType, const TeOpParas& opParas, const n
 }
 
 // register tiling interface of the GatherNd op
-REGISTER_OP_TILING_FUNC(GatherNd, GatherNdTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(GatherNd, GatherNdTiling);
 
 }  // namespace optiling

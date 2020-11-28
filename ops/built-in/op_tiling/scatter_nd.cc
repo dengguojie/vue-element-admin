@@ -22,7 +22,7 @@
 #include <math.h>
 
 #include <nlohmann/json.hpp>
-#include "register/op_tiling.h"
+#include "op_tiling.h"
 
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
@@ -353,5 +353,5 @@ bool ScatterNdTiling(const std::string& opType, const TeOpParas& opParas, const 
   return true;
 }
 
-REGISTER_OP_TILING_FUNC(ScatterNd, ScatterNdTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(ScatterNd, ScatterNdTiling);
 }  // namespace optiling

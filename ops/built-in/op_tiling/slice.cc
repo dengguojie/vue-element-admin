@@ -23,7 +23,7 @@
 #include <cmath>
 
 #include <nlohmann/json.hpp>
-#include "register/op_tiling.h"
+#include "op_tiling.h"
 #include "graph/debug/ge_log.h"
 
 #include "../op_proto/util/error_util.h"
@@ -279,5 +279,5 @@ bool SliceTiling(const std::string& opType, const TeOpParas& opParas, const nloh
   return true;
 }
 
-REGISTER_OP_TILING_FUNC(Slice, SliceTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(Slice, SliceTiling);
 }  // namespace optiling

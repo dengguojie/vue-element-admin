@@ -22,7 +22,7 @@
 #include <math.h>
 
 #include <nlohmann/json.hpp>
-#include "register/op_tiling.h"
+#include "op_tiling.h"
 #include "graph/debug/ge_log.h"
 
 #include "../op_proto/util/error_util.h"
@@ -213,5 +213,5 @@ bool ScatterUpdateTiling(const std::string& opType, const TeOpParas& opParas, co
 }
 
 // register tiling interface of the ScatterUpdate op.
-REGISTER_OP_TILING_FUNC(ScatterUpdate, ScatterUpdateTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(ScatterUpdate, ScatterUpdateTiling);
 }  // namespace optiling

@@ -63,5 +63,5 @@ bool FillTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
   return ret;
 }
 
-REGISTER_OP_TILING_FUNC(Fill, FillTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(Fill, FillTiling);
 }  // namespace optiling

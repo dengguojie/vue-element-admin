@@ -21,7 +21,7 @@
 #include <map>
 
 #include <nlohmann/json.hpp>
-#include "register/op_tiling.h"
+#include "op_tiling.h"
 
 #include "op_log.h"
 #include "../op_proto/util/error_util.h"
@@ -273,6 +273,6 @@ bool ConcatV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
 }
 
 // register tiling interface of the Concat, ConcatV2 op.
-REGISTER_OP_TILING_FUNC(ConcatV2D, ConcatV2Tiling);
-REGISTER_OP_TILING_FUNC(ConcatD, ConcatV2Tiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(ConcatV2D, ConcatV2Tiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(ConcatD, ConcatV2Tiling);
 }  // namespace optiling

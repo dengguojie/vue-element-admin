@@ -21,7 +21,7 @@
 #include <iostream>
 #include <math.h>
 
-#include "register/op_tiling.h"
+#include "op_tiling.h"
 #include "op_log.h"
 //#include "error_util.h"
 #include "securec.h"
@@ -2020,7 +2020,7 @@ bool TransposeTiling(const std::string &opType,
     return true;
 }
 
-REGISTER_OP_TILING_FUNC(Transpose, TransposeTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(Transpose, TransposeTiling);
 
 }
 

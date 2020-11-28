@@ -22,7 +22,7 @@
 
 #include <nlohmann/json.hpp>
 #include "graph/debug/ge_log.h"
-#include "register/op_tiling.h"
+#include "op_tiling.h"
 
 #include "vector_tiling.h"
 #include "op_log.h"
@@ -59,6 +59,6 @@ bool AutoTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
 }
 
 // register autoTiling
-REGISTER_OP_TILING_FUNC(AutoTiling, AutoTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(AutoTiling, AutoTiling);
 
 }  // namespace optiling

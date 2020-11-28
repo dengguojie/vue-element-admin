@@ -19,7 +19,7 @@
  * \brief
  */
 #include <nlohmann/json.hpp>
-#include "register/op_tiling.h"
+#include "op_tiling.h"
 #include "graph/debug/ge_log.h"
 
 #include "../op_proto/util/error_util.h"
@@ -288,5 +288,5 @@ bool SparseApplyProximalAdagradTiling(const std::string& op_type, const TeOpPara
   return true;
 }
 
-REGISTER_OP_TILING_FUNC(SparseApplyProximalAdagradD, SparseApplyProximalAdagradTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(SparseApplyProximalAdagradD, SparseApplyProximalAdagradTiling);
 }  // namespace optiling

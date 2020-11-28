@@ -21,7 +21,7 @@
 #include <string>
 #include <algorithm>
 #include <nlohmann/json.hpp>
-#include "register/op_tiling.h"
+#include "op_tiling.h"
 #include "graph/debug/ge_log.h"
 #include "op_log.h"
 
@@ -335,5 +335,5 @@ bool UnpackTiling(const std::string& op_type, const TeOpParas& op_paras, const n
   return true;
 }
 // register tiling interface of the Unpack op.
-REGISTER_OP_TILING_FUNC(Unpack, UnpackTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(Unpack, UnpackTiling);
 }  // namespace optiling

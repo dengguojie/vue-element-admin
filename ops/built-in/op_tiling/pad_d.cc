@@ -115,5 +115,5 @@ bool PadDTiling(const std::string& opType, const TeOpParas& opParas, const nlohm
 }
 
 // register tiling interface of the PadD op.
-REGISTER_OP_TILING_FUNC(PadD, PadDTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(PadD, PadDTiling);
 }  // namespace optiling

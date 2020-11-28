@@ -26,7 +26,7 @@
 
 #include <nlohmann/json.hpp>
 #include "graph/debug/ge_log.h"
-#include "register/op_tiling.h"
+#include "op_tiling.h"
 
 namespace optiling {
 /*

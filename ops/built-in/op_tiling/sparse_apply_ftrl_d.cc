@@ -21,7 +21,7 @@
 #include <string>
 
 #include <nlohmann/json.hpp>
-#include "register/op_tiling.h"
+#include "op_tiling.h"
 #include "graph/debug/ge_log.h"
 
 #include "../op_proto/util/error_util.h"
@@ -284,6 +284,6 @@ bool SparseApplyFtrlDTiling(const std::string& opType, const TeOpParas& opParas,
 }
 
 // register tiling interface of the SparseApplyFtrlD op
-REGISTER_OP_TILING_FUNC(SparseApplyFtrlD, SparseApplyFtrlDTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(SparseApplyFtrlD, SparseApplyFtrlDTiling);
 
 }  // namespace optiling

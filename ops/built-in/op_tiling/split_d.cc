@@ -22,7 +22,7 @@
 #include <math.h>
 
 #include <nlohmann/json.hpp>
-#include "register/op_tiling.h"
+#include "op_tiling.h"
 #include "graph/debug/ge_log.h"
 
 #include "op_log.h"
@@ -403,5 +403,5 @@ bool SplitDTiling(const std::string& opType, const TeOpParas& opParas, const nlo
 }
 
 // register tiling interface of the SplitD op.
-REGISTER_OP_TILING_FUNC(SplitD, SplitDTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(SplitD, SplitDTiling);
 }  // namespace optiling

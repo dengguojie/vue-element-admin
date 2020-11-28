@@ -22,7 +22,7 @@
 #include <math.h>
 
 #include <nlohmann/json.hpp>
-#include "register/op_tiling.h"
+#include "op_tiling.h"
 #include "graph/debug/ge_log.h"
 
 #include "op_log.h"
@@ -279,5 +279,5 @@ bool ScatterSubTiling(const std::string& opType, const TeOpParas& opParas, const
   return true;
 }
 
-REGISTER_OP_TILING_FUNC(ScatterSub, ScatterSubTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(ScatterSub, ScatterSubTiling);
 }  // namespace optiling

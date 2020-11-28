@@ -17,7 +17,7 @@
 #include "../op_proto/util/error_util.h"
 #include "graph/debug/ge_log.h"
 #include "op_log.h"
-#include "register/op_tiling.h"
+#include "op_tiling.h"
 
 namespace optiling {
 const std::string TOPK_OP_TYPE = "Topk";
@@ -183,5 +183,5 @@ bool TopkTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
   GELOGI("Topk_tiling end.");
   return true;
 }
-REGISTER_OP_TILING_FUNC(TopKD, TopkTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(TopKD, TopkTiling);
 }  // namespace optiling
