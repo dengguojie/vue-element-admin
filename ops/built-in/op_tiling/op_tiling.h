@@ -69,6 +69,7 @@ bool g_##optype##_TilingEntry(const TeOpParas& para, const OpCompileInfo& cinfo,
     parsed_compile_info->value = cinfo_str;                                                                           \
     parsed_compile_info->parsed_object = std::static_pointer_cast<void>(parsed_object);                               \
     parsed_compile_info_storage.emplace(hash_key, parsed_compile_info);                                               \
+    bool result = opfunc(para.op_type, para, *parsed_object, rinfo);                                                  \
     if (prof_switch) {                                                                                                \
         after_tiling = std::chrono::steady_clock::now();                                                              \
         uint64_t t = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - before_tiling).count();     \
