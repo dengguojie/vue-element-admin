@@ -1083,7 +1083,7 @@ if ((format_dst == FORMAT_FRACTAL_Z) || (format_dst == FORMAT_FRACTAL_Z_3D)) {
   OP_LOGE("current input format is :%d", format);
   auto input_shape = op.GetInputDesc("src").GetShape().GetDims();
   int64_t group = 1;
-  if (op.GetAttr("group", group) != GRAPH_SUCCESS) {
+  if (op.GetAttr("groups", group) != GRAPH_SUCCESS) {
     OP_LOGE("GetOpAttr group failed :%d", group);
     return GRAPH_FAILED;
   }

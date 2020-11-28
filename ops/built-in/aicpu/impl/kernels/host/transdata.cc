@@ -212,7 +212,7 @@ uint32_t TransDataCpuKernel::Compute(CpuKernelContext& ctx) {
                       KERNEL_STATUS_PARAM_INVALID,
                       "%s unsupport out format: %d.", output_format);
 
-  AttrValue* groups = ctx.GetAttr("group");
+  AttrValue* groups = ctx.GetAttr("groups");
   int64_t group = kGroupNum;
   if (groups != nullptr) {
     group = groups->GetInt();
