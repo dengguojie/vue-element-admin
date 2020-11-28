@@ -108,6 +108,7 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
         self._dx_c1_extend = self._group_dict.get(GroupDictKeys.dx_c1_extend)
         self._dy_c1_extend = self._group_dict.get(GroupDictKeys.dy_c1_extend)
         self._groups_ori = self._group_dict.get(GroupDictKeys.groups)
+        self._cube_vector_split_flag = cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT")
 
     def _get_dilate_tensor(  # pylint:disable=R0913,R0914
         self,
@@ -509,7 +510,7 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
             name='CUB'
         )
 
-        if self._stride_h > 1 or self._stride_w > 1:
+        if (self._stride_h > 1 or self._stride_w > 1) and (not self._cube_vector_split_flag):
             res_cub = self._get_dilate_tensor(
                 res_cub, h_dx_img, w_dx_img, self._stride_h, self._stride_w
             )

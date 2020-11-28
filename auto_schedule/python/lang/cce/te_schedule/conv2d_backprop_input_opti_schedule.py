@@ -698,7 +698,8 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
     )
 
     # check tilling in CUB  attention:light when stride get  #########
-    if dynamic_para != "dynamic_hw":
+    cube_vector_split_flag = cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT")
+    if (dynamic_para != "dynamic_hw") and (not cube_vector_split_flag):
         _check_tilling_cub(
             strideh,
             stridew,
@@ -1840,6 +1841,7 @@ def opti_schedule(
     :return: schedule
     -------------------------------------------------------------------
     """
+    cube_vector_split_flag = cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT")
 
     def _do_buffer_tile():
         def _get_cub_buffertile_m_min():
@@ -2041,8 +2043,10 @@ def opti_schedule(
                 sch[filling_one_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
                 tensor_vn = TENSOR_MAP["tensor_vn"]
                 sch[tensor_vn].compute_at(sch[c_gm], l0c_m_inner_outer)
-
-        sch[c_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
+        if cube_vector_split_flag:
+            sch[c_ub].compute_at(sch[c_gm], c_slice_axis)
+        else:
+            sch[c_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
         if "data_transfer" in TENSOR_MAP:
             sch[c_ub].compute_inline()
             sch[TENSOR_MAP["data_transfer"]].buffer_align(
@@ -2767,6 +2771,9 @@ def opti_schedule(
         _print_ir_conv("preload", sch)
     # intrin mapping
     _intrin_mapping(fusion_type)
+
+    if cube_vector_split_flag:
+        sch[c_ub].compute_inline()
 
     overload_flag = _check_overload_dy(overload_flag_gm, overload_flag_l0c)
     _set_overload_flag(sch[c_gm], overload_flag, overload_axis)
