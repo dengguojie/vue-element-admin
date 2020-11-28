@@ -1765,6 +1765,7 @@ def vaddrelu(lhs, rhs):
         dict_args["detailed_cause"] = "The lhs input type must be [%s], " \
                                       "while type is [%s]" \
                                       % ('tvm.tensor', type(lhs))
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if not isinstance(rhs, tvm.tensor.Tensor):
         dict_args = dict()
@@ -1772,6 +1773,7 @@ def vaddrelu(lhs, rhs):
         dict_args["detailed_cause"] = "The rhs input type must be [%s], " \
                                       "while type is [%s]" \
                                       % ('tvm.tensor', type(rhs))
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if lhs.dtype != rhs.dtype:
         dict_args = dict()

@@ -447,7 +447,7 @@ def check_attr_rule(tensor_in, window, stride, pooling_mode, padding_mode, pad=(
         dict_args = dict()
         dict_args["errCode"] = "E90003"
         dict_args["detailed_cause"] = "can only support float16 dtype of " \
-                                      "tensor_in, while dtype is " % str(tensor_in.dtype)
+                                      "tensor_in, while dtype is [%s]" % str(tensor_in.dtype)
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     # GAP is short for global avg pooling
