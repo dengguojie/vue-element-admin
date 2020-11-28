@@ -1609,7 +1609,7 @@ def _bind_multi_core(  # pylint: disable=R0913,R0914
         if blocks == block_dim[0]:
             sch[c_gm].pragma(bind_in, "json_info_batchBindOnly")
     blockidx_list = [g_outer, batch_out, l1_n_out_inner_out, l1_m_outer_inner_out]
-    return batch_in, g_inner, l1_m_outer_inner_in, l1_n_out_inner_out, l1_n_out_inner_in, blockidx_list
+    return (batch_in, g_inner, l1_m_outer_inner_in, l1_n_out_inner_out, l1_n_out_inner_in, blockidx_list)
 
 
 def _get_l0c_and_l1_axis(  # pylint: disable=R0914,R0913,W0613
@@ -1668,7 +1668,8 @@ def _get_l0c_and_l1_axis(  # pylint: disable=R0914,R0913,W0613
     )
     l1_n_outer_outer, l1_n_out_inner = sch[c_gm].split(l0c_n_outer, nparts=bl1_parts[1])
     _print_ir_conv("split gm by loc_factor and l1_parts", sch)
-    batch_in, g_inner, l1_m_outer_inner_in, l1_n_out_inner_out, l1_n_out_inner_in, blockidx_list = _bind_multi_core(
+    (batch_in, g_inner, l1_m_outer_inner_in, l1_n_out_inner_out,
+     l1_n_out_inner_in, blockidx_list) = _bind_multi_core(
         sch,
         c_gm,
         g_dim,
