@@ -29,6 +29,7 @@ void NodeDefBuilder::BuildNodeFromInputOutputNode(const InputOutputNode& node, b
 	tensor->SetDataType(node.dType);
 	auto shape = tensor->GetTensorShape();
 	shape->SetDimSizes(node.dims);
+	shape->SetFormat(node.format);
 	int64_t dataSize = 1;
 	for (int i = 0; i < node.dims.size(); i++) {
 		dataSize = dataSize * node.dims[i];

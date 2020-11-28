@@ -26,6 +26,7 @@ class NodeDefBuilder {
   		aicpu::DataType dType;
   		std::vector<int64_t> dims;
   		void *data;
+		aicpu::Format format;
   	};
 
 	NodeDefBuilder(NodeDef *nodeDef, std::string name, std::string opName);
