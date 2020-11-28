@@ -3,7 +3,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
-#include "op_tiling.h"
+#include "register/op_tiling_registry.h"
 
 using namespace std;
 

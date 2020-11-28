@@ -45,9 +45,9 @@ struct ParsedOpCompileInfo {
 
 #define REGISTER_OP_TILING_FUNC_BUFFERED(optype, opfunc)                                                              \
 bool g_##optype##_TilingEntry(const TeOpParas& para, const OpCompileInfo& cinfo, OpRunInfo& rinfo) {                  \
-    std::chrono::time_point<std::chrono::steady_clock> before_tiling, after_tiling;                                   \
+    std::chrono::time_point<std::chrono::steady_clock> start_tiling, before_tiling, after_tiling;                     \
     if (prof_switch) {                                                                                                \
-        before_tiling = std::chrono::steady_clock::now();                                                             \
+        start_tiling = std::chrono::steady_clock::now();                                                              \
     }                                                                                                                 \
     static std::map<std::string, std::shared_ptr<ParsedOpCompileInfo>> parsed_compile_info_storage;                   \
     const std::string& hash_key = cinfo.key;                                                                          \
@@ -55,11 +55,15 @@ bool g_##optype##_TilingEntry(const TeOpParas& para, const OpCompileInfo& cinfo,
         std::shared_ptr<ParsedOpCompileInfo> parsed_compile_info = parsed_compile_info_storage.at(hash_key);          \
         std::shared_ptr<void> parsed_object_ptr = parsed_compile_info->parsed_object;                                 \
         nlohmann::json* parsed_object = static_cast<nlohmann::json*>(parsed_object_ptr.get());                        \
+	if (prof_switch) {                                                                                            \
+	    before_tiling = std::chrono::steady_clock::now();                                                         \
+	}                                                                                                             \
 	bool result = opfunc(para.op_type, para, *parsed_object, rinfo);                                              \
 	if (prof_switch) {                                                                                            \
             after_tiling = std::chrono::steady_clock::now();                                                          \
-	    uint64_t t = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - before_tiling).count(); \
-	    GE_D_OP_LOGEVT("OPTILING_PROF: op_name: %s, time_cost: %d", cinfo.str.c_str(), t);                        \
+	    uint64_t t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - start_tiling).count(); \
+	    uint64_t t1 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - before_tiling).count();\
+	    GE_D_OP_LOGEVT("[OPTILING_PROF] op_name: %s, total_us: %d, tiling_us: %d", para.op_type.c_str(), t0, t1); \
 	}                                                                                                             \
         return result;                                                                                                \
     }                                                                                                                 \
@@ -69,11 +73,15 @@ bool g_##optype##_TilingEntry(const TeOpParas& para, const OpCompileInfo& cinfo,
     parsed_compile_info->value = cinfo_str;                                                                           \
     parsed_compile_info->parsed_object = std::static_pointer_cast<void>(parsed_object);                               \
     parsed_compile_info_storage.emplace(hash_key, parsed_compile_info);                                               \
+    if (prof_switch) {                                                                                                \
+        before_tiling = std::chrono::steady_clock::now();                                                             \
+    }                                                                                                                 \
     bool result = opfunc(para.op_type, para, *parsed_object, rinfo);                                                  \
     if (prof_switch) {                                                                                                \
         after_tiling = std::chrono::steady_clock::now();                                                              \
-        uint64_t t = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - before_tiling).count();     \
-	GE_D_OP_LOGEVT("OPTILING_PROF: op_name: %s, time_cost: %d", cinfo.str.c_str(), t);                            \
+	uint64_t t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - start_tiling).count();     \
+	uint64_t t1 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - before_tiling).count();    \
+	GE_D_OP_LOGEVT("[OPTILING_PROF] op_name: %s, total_us: %d, tiling_us: %d", para.op_type.c_str(), t0, t1);     \
     }                                                                                                                 \
     return result;                                                                                                    \
 }                                                                                                                     \
