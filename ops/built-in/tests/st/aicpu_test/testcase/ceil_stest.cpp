@@ -14,7 +14,6 @@
 #include "cpu_kernel_register.h"
 #include "aicpu_task_struct.h"
 #include "device_cpu_kernel.h"
-#include "proto/me_types.pb.h"
 #include "cpu_types.h"
 #include "cpu_kernel_utils.h"
 

@@ -1,7 +1,7 @@
 syntax = "proto3";
-package aicpuop;
-import "me_attr.proto";
-import "me_tensor.proto";
+package aicpuops;
+import "cpu_attr.proto";
+import "cpu_tensor.proto";
 
 message DynamicIdx {
   int32 idx = 1;

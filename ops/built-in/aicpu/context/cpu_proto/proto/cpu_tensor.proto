@@ -1,9 +1,8 @@
 syntax = "proto3";
 
 option cc_enable_arenas = true;
-import "me_types.proto";
-import "me_tensor_shape.proto";
-package aicpuop;
+import "cpu_tensor_shape.proto";
+package aicpuops;
 
 message Tensor {
 
