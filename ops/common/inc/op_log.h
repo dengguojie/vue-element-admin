@@ -73,7 +73,6 @@
 #define D_OP_LOGW(opname, fmt, ...)
 #define D_OP_LOGE(opname, fmt, ...)
 #define D_OP_LOGD(opname, fmt, ...)
-#define D_OP_LOGEVT(opname, fmt, ...)
 #define D_FUSION_PASS_LOGI(fmt, ...)
 #define D_FUSION_PASS_LOGW(fmt, ...)
 #define D_FUSION_PASS_LOGE(fmt, ...)
