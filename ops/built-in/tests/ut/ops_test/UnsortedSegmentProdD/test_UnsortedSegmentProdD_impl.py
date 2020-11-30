@@ -235,8 +235,8 @@ precision_case4 = {
 ut_case.add_case(["Ascend910", "Ascend310"], case_small_shape_scalar_fp32)
 ut_case.add_case(["Ascend910", "Ascend310"], case_small_shape_fp32)
 
-ut_case.add_precision_case(["Ascend910", "Ascend310"], precision_case1)
-ut_case.add_precision_case(["Ascend910", "Ascend310"], precision_case2)
-ut_case.add_precision_case(["Ascend910", "Ascend310"], precision_case3)
-ut_case.add_precision_case(["Ascend910", "Ascend310"], precision_case4)
+#ut_case.add_precision_case(["Ascend910", "Ascend310"], precision_case1)
+#ut_case.add_precision_case(["Ascend910", "Ascend310"], precision_case2)
+#ut_case.add_precision_case(["Ascend910", "Ascend310"], precision_case3)
+#ut_case.add_precision_case(["Ascend910", "Ascend310"], precision_case4)
 

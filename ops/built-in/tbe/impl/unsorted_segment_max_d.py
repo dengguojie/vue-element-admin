@@ -135,5 +135,5 @@ def unsorted_segment_max_d(x, segment_ids, y, num_segments, kernel_name="unsorte
         res = unsorted_segment_max_d_compute(data_inputs, data_segments_id, y, num_segments, kernel_name)
         sch = tbe.auto_schedule(res)
 
-    config = {"name": kernel_name, "tensor_list": [data_inputs, data_segments_id, res]}
+    config = {"name": kernel_name, "tensor_list": [data_inputs, data_segments_id, res], "out_of_bound_sync_check": True}
     tbe.cce_build_code(sch, config)
