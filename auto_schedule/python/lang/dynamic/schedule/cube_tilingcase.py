@@ -28,7 +28,8 @@ from te.tvm.expr import Expr
 
 from te.lang.base.operation import add_compile_info
 
-
+CORE_NUM = 32
+C0_SIZE = 16
 class CubeTilingOp:
     def __init__(self, tiling_info, dynamic_mode):
         self.tiling_info = tiling_info
@@ -176,6 +177,29 @@ class TilingSelection:
         repo_seeds = self.op.get_repo_tiling()
 
         for seed in repo_seeds:
+            if self.op.op_type == "conv2d":
+                tiling = seed["tiling"]
+                block_dims = tiling["block_dim"]
+                block_nums = block_dims[0]*block_dims[1]*block_dims[2]
+                if block_nums < CORE_NUM:
+                    if seed["A_shape"][0] > 1 and block_dims[0] < seed["A_shape"][0] and \
+                        seed["A_shape"][0]*block_dims[1]*block_dims[2] <= CORE_NUM:
+                        tiling["block_dim"][0] = seed["A_shape"][0]
+                if tiling["BL0_matrix"] and tiling["BL1_shape"]:
+                    Co1 = (seed["B_shape"][0] + C0_SIZE - 1) // C0_SIZE
+                    if block_dims[1]*tiling["BL1_shape"][1]*tiling["BL0_matrix"][1]*2 < Co1 and \
+                        Co1 // (tiling["BL1_shape"][1]*tiling["BL0_matrix"][1]*2)*block_dims[0]* \
+                            block_dims[2] <= CORE_NUM:
+                        tiling["block_dim"][1] = Co1 // (tiling["BL1_shape"][1]*tiling["BL0_matrix"][1]*2)
+                block_nums = block_dims[0]*block_dims[1]*block_dims[2]
+                if block_nums < CORE_NUM and tiling["AL1_shape"]:
+                    hout = self.op._get_output_h(seed["A_shape"][2])
+                    wout = self.op._get_output_w(seed["A_shape"][3])
+                    tmp = hout*wout // (tiling["AL0_matrix"][0]*C0_SIZE*tiling["AL1_shape"][1]*block_dims[2])
+                    if tmp >= 1 and block_dims[0]*block_dims[1]*tmp <= CORE_NUM:
+                        tiling["block_dim"][2] = (hout*wout + (tiling["AL0_matrix"][0]*C0_SIZE*tiling["AL1_shape"][1] -
+                            1)) // (tiling["AL0_matrix"][0]*C0_SIZE*tiling["AL1_shape"][1])
+                seed["tiling"] = tiling
             seed_k_value, seed_m_value = cost_seed[self.op.key[0][1:3]]
             seed_n_value = cost_seed[self.op.key[1][1]]
             m_k_n_shape = (seed_m_value, seed_k_value, seed_n_value)
