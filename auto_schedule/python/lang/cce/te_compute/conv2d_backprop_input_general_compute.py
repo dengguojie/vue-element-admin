@@ -302,7 +302,6 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
                     tag="dy_l1"
                 )
         elif _check_pad_zero(pad_list):
-            # kernel is 1,1 while pad is not 0,0,0,0
             shape_up_modify = (pad_up_before - tvm_abs(pad_up_before)) // 2
             shape_left_modify = (pad_left_before - tvm_abs(pad_left_before)) // 2
             shape_down_modify = (pad_down_after - tvm_abs(pad_down_after)) // 2
