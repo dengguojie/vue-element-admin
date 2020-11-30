@@ -161,7 +161,7 @@ uint32_t TransDataCpuKernel::DealData(T* input_data, T* output_data, Tensor* inp
   // The supported input format is NCDHW, DHWCN, NDHWC converted to
   // FORMAT_FRACTAL_Z_3D (GDC1HWN1N0C0), NHWC, NCHW converted to FORMAT_FRACTAL_Z
   // (GC1HWN1N0C0). For example: When the input filter format is NCDHW, calculate
-  // the index between NCDHW_FORM_3DRAC_FRAC and the formula Correspondence.
+  // the index between NCDHW From FORMAT_FRACTAL_Z_3D and the formula Correspondence.
   // Convert the old filter to the new filter, and finally add 0 to the position
   // where there is no data
   for (int64_t g = 0; g < group; g++) {
@@ -210,10 +210,8 @@ uint32_t TransDataCpuKernel::Compute(CpuKernelContext& ctx) {
   KERNEL_CHECK_NULLPTR(output_tensor, KERNEL_STATUS_PARAM_INVALID,
                        "%s get Tensor:output_tensor failed.", TRANS_DATA);
   auto output_format = output_tensor->GetTensorShape()->GetFormat();
-  KERNEL_LOG_INFO("output_format is %d.", output_format);
-  KERNEL_LOG_INFO("output_format is %d.", FORMAT_FRACTAL_Z);
-  KERNEL_LOG_INFO("output_format is %d.", FORMAT_FRACTAL_Z_3D);
-  if((output_format != FORMAT_FRACTAL_Z) || (output_format != FORMAT_FRACTAL_Z_3D)) {
+
+  if((output_format != FORMAT_FRACTAL_Z) && (output_format != FORMAT_FRACTAL_Z_3D)) {
     KERNEL_LOG_EVENT("%s unsupport output_format:%d.", 
                     TRANS_DATA , output_format);
     return KERNEL_STATUS_PARAM_INVALID;
