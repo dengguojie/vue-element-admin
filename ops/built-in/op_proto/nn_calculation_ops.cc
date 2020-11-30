@@ -4767,8 +4767,8 @@ IMPLEMT_VERIFIER(Conv3D, Conv3DVerify) {
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return GRAPH_FAILED;
   }
-  std::vector<int32_t> dilations_list;
-  if (!VerifyConv3dDilations(op, dilations_list)) {
+  std::vector<int32_t> dilation_list;
+  if (!VerifyConv3dDilations(op, dilation_list)) {
     OP_LOGE(op.GetName().c_str(), "get dilation attrs failed.");
     return GRAPH_FAILED;
   }
