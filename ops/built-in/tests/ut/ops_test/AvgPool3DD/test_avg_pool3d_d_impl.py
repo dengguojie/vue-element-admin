@@ -34,6 +34,21 @@ ut_case.add_case(["Ascend910"], {"params":[
     "expect": "success",
     "case_name":"test_avg_pool3d_d_001"})
 
+ut_case.add_case(["Ascend910"], {"params":[
+    {"shape": (1,1,1,3,3,16), "format": "NDC1HWC0", "dtype": "float16", "ori_shape": (1,1,3,3,1), "ori_format":"NDHWC"},
+    {"shape": (4,1,16,16), "format":"FRACTAL_Z_3D","dtype": "float16","ori_shape":(1,2,2,1,1),"ori_format":"DHWCN"},
+    None,
+    {"shape": (1,1,1,2,2,16), "format": "NDC1HWC0", "dtype": "float16", "ori_shape": (1,1,2,2,1), "ori_format":"NDHWC"},
+    (1,1,2,2,1),
+    (1,1,1,1,1),
+    (0,0,0,0,0,0),
+    False,
+    True,
+    0,
+    "NDHWC"],
+    "expect": "success",
+    "case_name":"test_avg_pool3d_d_002"})
+
 
 def calc_expect_func(x, filter, multiplier, y, ksize, strides, pads):
     data = x["value"].transpose((0, 1, 3, 4, 2, 5)).reshape(x["ori_shape"])
