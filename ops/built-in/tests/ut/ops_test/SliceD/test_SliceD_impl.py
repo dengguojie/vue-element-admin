@@ -115,6 +115,14 @@ case12 = {"params": [{"shape": (160000, 16), "dtype": "int64", "format": "NCHW",
          "expect": "success",
          "support_expect": True}
 
+case13 = {"params": [{"shape": (15, 64, 568, 568), "dtype": "float16", "format": "NCHW", "ori_shape": (15, 64, 568, 568),"ori_format": "NCHW"}, #x
+                    {"shape": (15, 64, 392, 392), "dtype": "int64", "format": "NCHW", "ori_shape": (15, 64, 392, 392),"ori_format": "NCHW"},
+                    (0, 0, 0, 0), (15, 64, 392, 392), 
+                    ],
+         "case_name": "SliceD_13",
+         "expect": "success",
+         "support_expect": True}
+
 # TODO fix me, this comment, run failed
 ut_case.add_case("Ascend910", case1)
 ut_case.add_case("Ascend910", case2)
@@ -128,6 +136,7 @@ ut_case.add_case("Ascend910", case9)
 ut_case.add_case("Ascend910", case10)
 ut_case.add_case("Ascend910", case11)
 ut_case.add_case("Ascend910", case12)
+ut_case.add_case("Ascend910", case13)
 
 case_fz = {"params": [{"shape": (1*16*16, 1, 16, 16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (16, 16, 16, 16),"ori_format": "NCHW"},
                     {"shape": (1*16*16, 1, 16, 16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (16, 16, 16, 16),"ori_format": "NCHW"},
@@ -167,3 +176,5 @@ ut_case.add_precision_case("Ascend910", {"params": [{"shape": (65, 75), "dtype":
 
 
 
+if __name__ == "__main__":
+    ut_case.run("Ascend910")
