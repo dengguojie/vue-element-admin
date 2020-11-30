@@ -416,6 +416,12 @@ def general_schedule(
                         stride_h = 1
                         stride_w = 1
                         sch[a_l1].set_scope(cce_params.scope_cbuf_fusion)
+                    elif a_col_before.op.input_tensors[0].op.tag == "dy_l1_modify":
+                        a_l1 = a_col_before.op.input_tensors[0]
+                        a_ddr = a_l1.op.input_tensors[0]
+                        stride_h = 1
+                        stride_w = 1
+                        sch[a_l1].set_scope(cce_params.scope_cbuf)
                     else:
                         a_ddr = a_col_before.op.input_tensors[0]
                         stride_h = 1
@@ -954,7 +960,8 @@ def general_schedule(
             "in_fm_memory_type": input_mem,
             "out_fm_memory_type": out_mem,
             "l1_fusion_type": l1_fusion_type,
-            "fusion_type": fusion_type
+            "fusion_type": fusion_type,
+            "general_flag": True,
         }
         tiling = get_tiling(info_dict)
     else:

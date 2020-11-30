@@ -379,10 +379,6 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             DynamicConv2dBpFilterParams.flag_all_one_case = \
                                                     self.flag_all_one_case
 
-        # special supporting for another unique case, there are 2 conditions:
-        # (1) weight_height, weight_width in range[1,11]
-        # (2) fmap_height/width + pad_top/left + pad_bottom/right is
-        # weight_height/width
         def _is_load3d_special_case():
             # limitation by chip:
             # Ascend910 load3d not support
@@ -391,9 +387,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                     and fmap_height_after_pad != kernel_height \
                     and fmap_width_after_pad == kernel_width:
                 self.flag_load3d_special_case = False
-            if (1 <= kernel_height <= 11) and (1 <= kernel_width <= 11) \
-                and (fmap_height_after_pad == kernel_height
-                     or fmap_width_after_pad == kernel_width):
+            else:
                 self.flag_load3d_special_case = True
 
         # conv1d situation, all params in h is 1
@@ -507,16 +501,6 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                 dict_args["errCode"] = "E60015"
                 dict_args["w_of_x"] = str(fmap_width_after_pad)
                 dict_args["w_of_filter"] = str(dilation_kernel_width)
-                error_manager_util.raise_runtime_error(dict_args)
-            if pad_top >= dilation_kernel_height \
-                or pad_bottom >= dilation_kernel_height:
-                dict_args = dict()
-                dict_args["errCode"] = "E64005"
-                dict_args["direction"] = 'H'
-                dict_args["pads_dir"] = "pad_top and pad_down"
-                dict_args["pads_value"] = \
-                                        "[{}, {}]".format(pad_top, pad_bottom)
-                dict_args["filter_value"] = str(dilation_kernel_height)
                 error_manager_util.raise_runtime_error(dict_args)
 
             _check_addressing_rule(self.shape_grads_5hd, 2,

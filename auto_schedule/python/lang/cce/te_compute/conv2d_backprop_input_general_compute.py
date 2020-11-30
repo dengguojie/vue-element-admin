@@ -101,6 +101,15 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
         dy_col: dE/dY tensor of fractal shape in L0A
         """
 
+        def _check_pad_zero(pad_list):
+            """
+            if pad less than 0, return True
+            """
+            for pad in pad_list:
+                if pad < 0:
+                    return True
+            return False
+
         def _fill_zero(shape_dy_filling):
             dy_zero = tvm.compute(
                 shape_dy_filling,
@@ -237,6 +246,7 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
             (kernel_h - 1) * dilate_h - self._pad_up,
             (kernel_w - 1) * dilate_w - self._pad_left
         )
+        pad_up_before, pad_left_before = new_pad_before
 
         _, _, dx_h, dx_w, _ = self._output_shape
         new_pad_after = tuple(
@@ -251,16 +261,21 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
         )
         pad_down_after, pad_right_after = new_pad_after
 
+        pad_list = (pad_up_before, pad_down_after,
+                    pad_left_before, pad_right_after)
         # stride > 1 ub->l1 may cut
         if stride_h > 1 or stride_w > 1:
-            if self._dynamic_para or pad_down_after < 0 or pad_right_after < 0:
+            if self._dynamic_para or _check_pad_zero(pad_list):
+                shape_up_modify = (pad_up_before - tvm_abs(pad_up_before)) // 2
+                shape_left_modify = (pad_left_before - tvm_abs(pad_left_before)) // 2
                 shape_down_modify = (pad_down_after - tvm_abs(pad_down_after)) // 2
                 shape_right_modify = (pad_right_after - tvm_abs(pad_right_after)) // 2
+
                 shape_dy_filling_cut = (
                     dy_batch,
                     kernel_cout1,
-                    dy_h * stride_h + shape_down_modify,
-                    dy_w * stride_w + shape_right_modify,
+                    dy_h * stride_h + shape_up_modify + shape_down_modify,
+                    dy_w * stride_w + shape_left_modify + shape_right_modify,
                     kernel_cout0
                 )
 
@@ -268,14 +283,15 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
                 dy_filling_l1 = tvm.compute(
                     shape_dy_filling_cut,
                     lambda batch_idx, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx: dy_filling[
-                        batch_idx, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx
+                        batch_idx,
+                        kernel_cout1_idx,
+                        ho_idx - shape_up_modify,
+                        wo_idx - shape_left_modify,
+                        kernel_cout0_idx
                     ],
                     name="dy_l1_cut",
                     tag="dy_l1_cut"
                 )
-
-                pad_down_after = (pad_down_after + tvm_abs(pad_down_after)) // 2
-                pad_right_after = (pad_right_after + tvm_abs(pad_right_after)) // 2
             else:
                 dy_filling_l1 = tvm.compute(
                     shape_dy_filling,
@@ -285,13 +301,41 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
                     name="dy_l1",
                     tag="dy_l1"
                 )
+        elif _check_pad_zero(pad_list):
+            shape_up_modify = (pad_up_before - tvm_abs(pad_up_before)) // 2
+            shape_left_modify = (pad_left_before - tvm_abs(pad_left_before)) // 2
+            shape_down_modify = (pad_down_after - tvm_abs(pad_down_after)) // 2
+            shape_right_modify = (pad_right_after - tvm_abs(pad_right_after)) // 2
 
-        new_pad = (
-            (kernel_h - 1) * dilate_h - self._pad_up,
-            pad_down_after,
-            (kernel_w - 1) * dilate_w - self._pad_left,
-            pad_right_after
-        )
+            shape_dy_filling_cut = (
+                dy_batch,
+                kernel_cout1,
+                dy_h * stride_h + shape_up_modify + shape_down_modify,
+                dy_w * stride_w + shape_left_modify + shape_right_modify,
+                kernel_cout0
+            )
+
+            # cut dy_filling
+            dy_filling = tvm.compute(
+                shape_dy_filling_cut,
+                lambda batch_idx, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx: dy_filling[
+                    batch_idx,
+                    kernel_cout1_idx,
+                    ho_idx - shape_up_modify,
+                    wo_idx - shape_left_modify,
+                    kernel_cout0_idx
+                ],
+                name="dy_l1_modify",
+                tag="dy_l1_modify"
+            )
+
+        pad_up_before = (pad_up_before + tvm_abs(pad_up_before)) // 2
+        pad_left_before = (pad_left_before + tvm_abs(pad_left_before)) // 2
+        pad_down_after = (pad_down_after + tvm_abs(pad_down_after)) // 2
+        pad_right_after = (pad_right_after + tvm_abs(pad_right_after)) // 2
+
+        new_pad = (pad_up_before, pad_down_after,
+                   pad_left_before, pad_right_after)
 
         pat_conv = ConvDslPattern(
             kernel_h,

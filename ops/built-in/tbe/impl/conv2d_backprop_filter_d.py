@@ -423,17 +423,7 @@ def check_conv2dbp_filter_params(
             and fmap_w_padding == filter_w
         ):
             return False
-        # limitation by chip:
-        # if kernel h,w in [1,11]
-        # and fmap h/w after padding equals to filter h/w
-        # load3d support h,w is 1
-        if (
-            (1 <= filter_h <= 11)
-            and (1 <= filter_w <= 11)
-            and (fmap_h_padding == filter_h or fmap_w_padding == filter_w)
-        ):
-            return True
-        return False
+        return True
 
     def _need_change_hw():
         return fmap_w == 1 and filter_w == 1 and dedy_w == 1 and pad_left == 0 and pad_right == 0
@@ -544,22 +534,6 @@ def check_conv2dbp_filter_params(
         pads = PADDING_VAILD
     pads = list(pads)
     pad_up, pad_down, pad_left, pad_right = pads
-    if pad_up >= filter_h_dilation or pad_down >= filter_h_dilation:
-        dict_args = dict()
-        dict_args["errCode"] = "E64005"
-        dict_args["direction"] = "H"
-        dict_args["pads_dir"] = "pad_up and pad_down"
-        dict_args["pads_value"] = "[{}, {}]".format(pad_up, pad_down)
-        dict_args["filter_value"] = str(filter_h_dilation)
-        raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
-    if pad_left >= filter_w_dilation or pad_right >= filter_w_dilation:
-        dict_args = dict()
-        dict_args["errCode"] = "E64005"
-        dict_args["direction"] = "W"
-        dict_args["pads_dir"] = "pad_left and pad_right"
-        dict_args["pads_value"] = "[{}, {}]".format(pad_left, pad_right)
-        dict_args["filter_value"] = str(filter_w_dilation)
-        raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
 
     fmap_w_padding = fmap_w + pad_left + pad_right
     fmap_h_padding = fmap_h + pad_up + pad_down
