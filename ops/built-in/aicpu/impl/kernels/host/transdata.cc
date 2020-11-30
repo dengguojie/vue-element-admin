@@ -86,7 +86,7 @@ uint32_t TransDataCpuKernel::DealData(T* input_data, T* output_data, Tensor* inp
 
   auto input_shape = input_tensor->GetTensorShape();
   auto input_format = input_shape->GetFormat();
-  std::vector<int64_t> dims; 
+  std::vector<int64_t> dims;
   dims = input_shape->GetDimSizes();
   KERNEL_CHECK_FALSE((dims.size() >= 4), KERNEL_STATUS_PARAM_INVALID,
       "%s dims size [%zu] must >= 4.", TRANS_DATA, dims.size());
@@ -180,19 +180,15 @@ uint32_t TransDataCpuKernel::DealData(T* input_data, T* output_data, Tensor* inp
                                 d * c1_dim * h_dim * w_dim * cout_opt * cube_k +
                                 (dst_ci / cube_k) * h_dim * w_dim * cout_opt * cube_k + h * w_dim * cout_opt * cube_k +
                                 w * cout_opt * cube_k + dst_co * cube_k + tempory;
-              if ((input_format == FORMAT_DHWCN)|| (input_format == FORMAT_HWCN)) {
+              if ((input_format == FORMAT_DHWCN) || (input_format == FORMAT_HWCN)) {
                 srx_inx = d * h_dim * w_dim * c_dim * n_dim + h * w_dim * c_dim * n_dim + w * c_dim * n_dim +
                           c * n_dim + src_co;
-              } else if (input_format == FORMAT_NCDHW) {
+              } else if ((input_format == FORMAT_NCDHW) || (input_format == FORMAT_NCHW)) {
                 srx_inx = src_co * c_dim * d_dim * h_dim * w_dim + c * d_dim * h_dim * w_dim + d * h_dim * w_dim +
                           h * w_dim + w;
-              } else if (input_format == FORMAT_NDHWC) {
+              } else if ((input_format == FORMAT_NDHWC) || (input_format == FORMAT_NHWC)) {
                 srx_inx = src_co * d_dim * h_dim * w_dim * c_dim + d * h_dim * w_dim * c_dim + h * w_dim * c_dim +
                           w * c_dim + c;
-              } else if (input_format == FORMAT_NHWC) {
-                srx_inx = src_co * h_dim * w_dim * c_dim + h * w_dim * c_dim + w * c_dim + c;
-              } else if (input_format == FORMAT_NCHW) {
-                srx_inx = src_co * c_dim * h_dim * w_dim + c * h_dim * w_dim + h * w_dim + w;
               }
               output_data[dst_inx] = input_data[srx_inx];
             }
@@ -214,11 +210,13 @@ uint32_t TransDataCpuKernel::Compute(CpuKernelContext& ctx) {
   KERNEL_CHECK_NULLPTR(output_tensor, KERNEL_STATUS_PARAM_INVALID,
                        "%s get Tensor:output_tensor failed.", TRANS_DATA);
   auto output_format = output_tensor->GetTensorShape()->GetFormat();
-  KERNEL_CHECK_FALSE(((output_format == FORMAT_FRACTAL_Z)
-                          || (output_format == FORMAT_FRACTAL_Z_3D)),
-                      KERNEL_STATUS_PARAM_INVALID,
-                      "%s unsupport out format: %d.", output_format);
-
+  if((output_format !=FORMAT_FRACTAL_Z) || 
+      (output_format == FORMAT_FRACTAL_Z_3D)) {
+    KERNEL_LOG_EVENT("%s unsupport output_format:%d.", 
+                    TRANS_DATA , output_format);
+    return KERNEL_STATUS_PARAM_INVALID;
+  }
+  
   AttrValue* groups = ctx.GetAttr("groups");
   int64_t group = kGroupNum;
   if (groups != nullptr) {
