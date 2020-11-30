@@ -1891,6 +1891,10 @@ COMMON_INFER_FUNC_REG(SliceD, SliceDInferShape);
 VERIFY_FUNC_REG(SliceD, SliceDVerify);
 // ----------------SliceD Op End ----------------------
 
+// ---------------SliceDV2 Op Begin ------------------
+COMMON_INFER_FUNC_REG(SliceDV2, SliceDInferShape);
+// ---------------SliceDV2 Op End --------------------
+
 // ----------------Slice Op Begin ----------------------
 static void GetSliceConstValue(const Tensor& const_tensor, const DataType& dtype, std::vector<int64_t>& const_data) {
   size_t size = 0;
