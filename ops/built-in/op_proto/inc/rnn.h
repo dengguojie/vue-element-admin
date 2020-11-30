@@ -739,7 +739,6 @@ REG_OP(DynamicGRUV2Hidden)
 *@li cell_clip:An float identifying the cell clip in the op. Default to -1.
 *@li num_proj:An integer identifying the num projection in the op. Default to 0.
 *@li time_major:An bool identifying the time major in the op. Default to true.
-*@li bias_type:An string identifying the type of bias_type function in the op. Default to "double_bias".
 *@li gate_order:An string identifying the gate order in weight and bias. Default to "zrh". "rzh" is another option.
 *@li reset_after:An bool identifying whether to apply reset gate after matrix multiplication. Default to true.
 
@@ -782,7 +781,6 @@ REG_OP(DynamicGRUV2Grad)
     .ATTR(cell_clip, Float, -1.0)
     .ATTR(num_proj, Int, 0)
     .ATTR(time_major, Bool, true)
-    .ATTR(bias_type, String, "double_bias")
     .ATTR(gate_order, String, "zrh")
     .ATTR(reset_after, Bool, true)
     .OP_END_FACTORY_REG(DynamicGRUV2Grad)

@@ -539,7 +539,7 @@ def split_v_d(input_value,
         size_splits = list(size_splits)
         size_splits = [size // 16 for size in size_splits]
 
-    if input_format == "FRACTAL_NZ" and split_dim >= len(shape) - 4:
+    if input_format == "FRACTAL_NZ" and ori_format != "FRACTAL_NZ" and split_dim >= len(shape) - 4:
         size_splits = list(size_splits)
         size_splits = [size // 16 for size in size_splits]
 
