@@ -50,6 +50,8 @@ from .less import less
 from .less_equal import less_equal
 from .floor_div import floor_div
 from .tile_d import tile_d
+from .tile import tile
+from .apply_adam_d import apply_adam_d
 from .logical_or import logical_or
 from .real_div import real_div
 from .reciprocal import reciprocal

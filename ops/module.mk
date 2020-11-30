@@ -383,6 +383,7 @@ LOCAL_SRC_FILES := \
         built-in/op_tiling/strided_slice_grad.cc \
         built-in/op_tiling/fill.cc \
         built-in/op_tiling/tile_d.cc \
+        built-in/op_tiling/tile.cc \
         built-in/op_tiling/top_k.cc \
 
 LOCAL_C_INCLUDES := \
