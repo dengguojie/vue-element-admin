@@ -211,12 +211,12 @@ uint32_t TransDataCpuKernel::Compute(CpuKernelContext& ctx) {
                        "%s get Tensor:output_tensor failed.", TRANS_DATA);
   auto output_format = output_tensor->GetTensorShape()->GetFormat();
   if((output_format !=FORMAT_FRACTAL_Z) || 
-      (output_format == FORMAT_FRACTAL_Z_3D)) {
+      (output_format != FORMAT_FRACTAL_Z_3D)) {
     KERNEL_LOG_EVENT("%s unsupport output_format:%d.", 
                     TRANS_DATA , output_format);
     return KERNEL_STATUS_PARAM_INVALID;
   }
-  
+
   AttrValue* groups = ctx.GetAttr("groups");
   int64_t group = kGroupNum;
   if (groups != nullptr) {
