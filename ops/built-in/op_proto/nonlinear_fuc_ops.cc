@@ -282,14 +282,7 @@ IMPLEMT_VERIFIER(Relu6Grad, Relu6GradVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(Relu6GradInferShape) {
-  Shape shape_x = op.GetInputDesc("features").GetShape();
-  DataType input_dtype = op.GetInputDesc("features").GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("backprops");
-  tensordesc_output.SetShape(shape_x);
-  tensordesc_output.SetDataType(input_dtype);
-  if (op.UpdateOutputDesc("backprops", tensordesc_output) != GRAPH_SUCCESS) {
-    OpsOPUpdateErrReport(op.GetName(), "backprops");
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+  if (!TwoInOneOutDynamicInferNoBroadcast(op, "gradients", "features", {"backprops"})) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -301,17 +294,10 @@ VERIFY_FUNC_REG(Relu6Grad, Relu6GradVerify);
 
 // ----------------Relu6-------------------
 IMPLEMT_COMMON_INFERFUNC(Relu6InferShape) {
-  Shape input_shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(input_shape);
-  tensordesc_output.SetDataType(input_dtype);
-  if (op.UpdateOutputDesc("y", tensordesc_output) != GRAPH_SUCCESS) {
-    OpsOPUpdateErrReport(op.GetName(), "y");
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
-    return GRAPH_FAILED;
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
   }
-  return GRAPH_SUCCESS;
+  return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(Relu6, Relu6InferShape);
@@ -465,10 +451,13 @@ IMPLEMT_VERIFIER(ReluGrad, ReluGradVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(ReluGradInferShape) {
-  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "gradients", "features", "backprops")) {
-    return GRAPH_SUCCESS;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "gradients", "features", "backprops")) {
+    return GRAPH_FAILED;
   }
-  return GRAPH_FAILED;
+  if (!InferShapeRangeTwoInOneOutBroadcase(op, "gradients", "features", "backprops")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(ReluGrad, ReluGradInferShape);

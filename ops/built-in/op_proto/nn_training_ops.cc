@@ -612,7 +612,9 @@ IMPLEMT_VERIFIER(ApplyMomentum, ApplyMomentumVerify) {
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ApplyMomentumInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter ApplyMomentum op_proto inferfunction!");
-  ApplyInferShapeAndDtype(op, "var", "var");
+  if (!TwoInOneOutDynamicInferNoBroadcast(op, "var", "accum", {"var"})) {
+    return GRAPH_FAILED;
+  }
   SetRefInput(op, "accum");
   return GRAPH_SUCCESS;
 }
@@ -642,8 +644,9 @@ IMPLEMT_VERIFIER(ApplyMomentumD, ApplyMomentumDVerify) {
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ApplyMomentumDInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter ApplyMomentumD op_proto inferfunction!");
-  ApplyInferShapeAndDtype(op, "var", "var");
-  ApplyInferShapeAndDtype(op, "accum", "accum");
+  if (!TwoInOneOutDynamicInferNoBroadcast(op, "var", "accum", {"var", "accum"})) {
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 

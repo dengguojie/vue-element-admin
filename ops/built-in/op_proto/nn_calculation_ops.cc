@@ -1226,11 +1226,23 @@ VERIFY_FUNC_REG(DepthwiseConv2DBackpropFilter, DepthwiseConv2DBackpropFilterVeri
 
 // --------------------------------BiasAddGrad---------------------------------
 IMPLEMT_COMMON_INFERFUNC(BiasAddGradInferShape) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  ge::TensorDesc tensor_desc_x = op.GetInputDesc("x");
-  ge::Shape shape = tensor_desc_x.GetShape();
-  size_t dim_num = shape.GetDimNum();
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto output_desc = op_info->MutableOutputDesc("y");
+  vector<int64_t> input_shape = input_desc->MutableShape().GetDims();
+  DataType input_dtype = input_desc->GetDataType();
+  size_t dim_num = input_shape.size();
 
+  if (IsUnknownRankShape(input_shape)) {
+    std::vector<int64_t> dim_vec = {-1};
+    output_desc->SetShape(GeShape(dim_vec));
+    // output_desc->SetRealDimCnt(1);
+    output_desc->SetDataType(input_dtype);
+    std::vector<std::pair<int64_t, int64_t>> output_range;
+    output_range.push_back(std::pair<int64_t, int64_t>{-1 , 1});
+    output_desc->SetShapeRange(output_range);
+    return GRAPH_SUCCESS;
+  }
   std::string data_format;
   if (ge::GRAPH_SUCCESS != op.GetAttr("data_format", data_format)) {
     OpsGetAttrErrReport(op.GetName(), "data_format");
@@ -1251,7 +1263,7 @@ IMPLEMT_COMMON_INFERFUNC(BiasAddGradInferShape) {
           dim_num);
       return GRAPH_FAILED;
     }
-    dim_vec.push_back(shape.GetDim(dim_num - 1));
+    dim_vec.push_back(input_shape[dim_num - 1]);
   } else if (data_format == "NCHW") {
     if (dim_num < DIM_SIZE2) {
       OP_LOGE(
@@ -1260,7 +1272,7 @@ IMPLEMT_COMMON_INFERFUNC(BiasAddGradInferShape) {
           dim_num);
       return GRAPH_FAILED;
     }
-    dim_vec.push_back(shape.GetDim(1));
+    dim_vec.push_back(input_shape[1]);
   } else {
     string expected_format_list = ConcatString("NHWC, NCHW");
     OpsInputFormatErrReport(op.GetName(), "x", expected_format_list, data_format);
@@ -1271,10 +1283,24 @@ IMPLEMT_COMMON_INFERFUNC(BiasAddGradInferShape) {
     return GRAPH_FAILED;
   }
 
-  tensordesc_output.SetShape(ge::Shape(dim_vec));
-  tensordesc_output.SetRealDimCnt(1);
+  output_desc->SetShape(GeShape(dim_vec));
+  // output_desc->SetRealDimCnt(1);
+  output_desc->SetDataType(input_dtype);
 
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
+  if (IsUnknown(input_shape)) {
+    // update range
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    std::vector<std::pair<int64_t, int64_t>> output_range;
+    input_desc->GetShapeRange(input_range);
+    MakeUpShapeRange(input_shape, input_range);
+    if (data_format == "NHWC") {
+      output_range.push_back(input_range[dim_num - 1]);
+    } else if (data_format == "NCHW") {
+      output_range.push_back(input_range[1]);
+    }
+
+    output_desc->SetShapeRange(output_range);
+  }
   return GRAPH_SUCCESS;
 }
 

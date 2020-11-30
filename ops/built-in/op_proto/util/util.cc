@@ -647,6 +647,10 @@ bool IsUnKnownShape(const std::vector<int64_t>& shape_vec) {
   return found != shape_vec.end();
 }
 
+bool IsUnknown(const std::vector<int64_t>& shape_vec) {
+  return (IsUnKnownShape(shape_vec) || IsUnknownRankShape(shape_vec));
+}
+
 bool IsUnknownShape(const Operator& op, const std::string& tensor_name, const std::string& types) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   GeTensorDescPtr tensor_desc;
@@ -701,6 +705,123 @@ std::string DataTypeToStringDesc(const ge::DataType& dataType) {
     return "UNDEFINED";
   }
   return totalIter->second;
+}
+
+bool OneInOneOutDynamicInfer(const Operator& op,
+                             const std::string& input_name,
+                             const std::vector<std::string>& output_name_list) {
+  // get input desc
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc(input_name);
+  vector<int64_t> input_shape = input_desc->MutableShape().GetDims();
+  DataType input_dtype = input_desc->GetDataType();
+
+  if (IsUnknown(input_shape)) {
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    input_desc->GetShapeRange(input_range);
+    MakeUpShapeRange(input_shape, input_range);
+
+    auto output_desc = op_info->MutableOutputDesc(0);
+    for (const string& output_name : output_name_list) {
+      output_desc = op_info->MutableOutputDesc(output_name);
+      output_desc->SetShape(GeShape(input_shape));
+      output_desc->SetOriginShape(GeShape(input_shape));
+      output_desc->SetShapeRange(input_range);
+      output_desc->SetDataType(input_dtype);
+    }
+  } else {
+    auto output_desc = op_info->MutableOutputDesc(0);
+    for (const string& output_name : output_name_list) {
+      output_desc = op_info->MutableOutputDesc(output_name);
+      output_desc->SetShape(GeShape(input_shape));
+      output_desc->SetDataType(input_dtype);
+    }
+  }
+  return true;
+}
+
+void FixShapeRangeWithDims(const std::vector<int64_t>& dims,
+                           std::vector<int64_t>& shape_1,
+                           std::vector<int64_t>& shape_2,
+                           std::vector<std::pair<int64_t, int64_t>>& range_1,
+                           std::vector<std::pair<int64_t, int64_t>>& range_2) {
+  MakeUpShapeRange(shape_1, range_1);
+  MakeUpShapeRange(shape_2, range_2);
+  bool is_all_fix = dims.empty();
+
+  if ((shape_1.size() != shape_2.size()) || (range_1.size() != range_2.size())) {
+    return;
+  }
+  auto loop_size = is_all_fix ? shape_1.size() : dims.size();
+  for (size_t i = 0; i < loop_size; i ++) {
+    auto dim_num = is_all_fix ? i : dims[i];
+    if (shape_1[dim_num] != -1) {
+      shape_2[dim_num] = shape_1[dim_num];
+      range_1[dim_num] = std::pair<int64_t, int64_t>(shape_1[dim_num], shape_1[dim_num]);
+      range_2[dim_num] = std::pair<int64_t, int64_t>(shape_1[dim_num], shape_1[dim_num]);
+      continue;
+    }
+    if (shape_2[dim_num] != -1) {
+      shape_1[dim_num] = shape_2[dim_num];
+      range_1[dim_num] = std::pair<int64_t, int64_t>(shape_2[dim_num], shape_2[dim_num]);
+      range_2[dim_num] = std::pair<int64_t, int64_t>(shape_2[dim_num], shape_2[dim_num]);
+      continue;
+    }
+    // both the dim in shape1 and shape2 are -1
+    auto range_1_min = range_1[dim_num].first;
+    auto range_2_min = range_2[dim_num].first;
+    auto range_1_max = range_1[dim_num].second;
+    auto range_2_max = range_2[dim_num].second;
+    auto range_fisrt = range_1_min > range_2_min ? range_1_min : range_2_min;
+    auto range_second_min = range_1_max > range_2_max ? range_2_max : range_1_max;
+    auto range_second_max = range_1_max > range_2_max ? range_1_max : range_2_max;
+    range_second_min = range_second_min == -1 ? range_second_max : range_second_min;
+    range_1[dim_num] = std::pair<int64_t, int64_t>(range_fisrt, range_second_min);
+    range_2[dim_num] = std::pair<int64_t, int64_t>(range_fisrt, range_second_min);
+  }
+}
+
+bool TwoInOneOutDynamicInferNoBroadcast(Operator& op,
+                                        const string& input1_name,
+                                        const string& input2_name,
+                                        const std::vector<string>& output_name_list) {
+  // get input1 desc
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input1_desc = op_info->MutableInputDesc(input1_name);
+  vector<int64_t> input1_shape = input1_desc->MutableShape().GetDims();
+  DataType input_dtype = input1_desc->GetDataType();
+
+  // get input2 desc
+  auto input2_desc = op_info->MutableInputDesc(input2_name);
+  vector<int64_t> input2_shape = input2_desc->MutableShape().GetDims();
+
+  if (IsUnknown(input1_shape) || IsUnknown(input2_shape)) {
+    std::vector<std::pair<int64_t, int64_t>> input1_range;
+    input1_desc->GetShapeRange(input1_range);
+    std::vector<std::pair<int64_t, int64_t>> input2_range;
+    input2_desc->GetShapeRange(input2_range);
+
+    vector<int64_t> dim_size = {};
+    FixShapeRangeWithDims(dim_size, input1_shape, input2_shape, input1_range, input2_range);
+
+    // update output desc
+    auto output_desc = op_info->MutableOutputDesc(0);
+    for (const string& output_name : output_name_list) {
+      output_desc = op_info->MutableOutputDesc(output_name);
+      output_desc->SetShape(GeShape(input1_shape));
+      output_desc->SetOriginShape(GeShape(input1_shape));
+      output_desc->SetShapeRange(input1_range);
+      output_desc->SetDataType(input_dtype);
+    }
+  } else {
+    auto output_desc = op_info->MutableOutputDesc(0);
+    for (const string& output_name : output_name_list) {
+      output_desc = op_info->MutableOutputDesc(output_name);
+      output_desc->SetShape(GeShape(input1_shape));
+      output_desc->SetDataType(input_dtype);
+    }
+  }
+  return true;
 }
 
 }  // namespace ge

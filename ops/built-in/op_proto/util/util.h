@@ -34,6 +34,7 @@
 #include "transfer_shape_according_to_format.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/tensor_utils.h"
+#include "graph/utils/node_utils.h"
 #include "graph/tensor.h"
 
 #include "op_log.h"
@@ -329,9 +330,20 @@ bool IsUnknownShape(const Operator& op, const std::string& tensor_name, const st
 
 bool IsUnknownVec(std::vector<int64_t>& shape_vec);
 
+bool IsUnknown(const std::vector<int64_t>& shape_vec);
+
 void MakeUpShapeRange(const std::vector<int64_t>& shape, std::vector<std::pair<int64_t, int64_t>>& range);
 
 std::string DataTypeToStringDesc(const ge::DataType& dataType);
+
+bool OneInOneOutDynamicInfer(const Operator& op,
+                             const std::string& input_name,
+                             const std::vector<std::string>& output_name_list);
+
+bool TwoInOneOutDynamicInferNoBroadcast(Operator& op,
+                                        const string& input1_name,
+                                        const string& input2_name,
+                                        const std::vector<string>& output_name_list);
 
 }  // namespace ge
 
