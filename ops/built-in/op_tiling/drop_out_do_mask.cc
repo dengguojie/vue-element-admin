@@ -59,12 +59,8 @@ bool DropOutDoMaskTiling(const std::string& op_type,
   using namespace ge;
   const std::vector<int64_t>& var_shape = op_paras.inputs[0].tensor[0].shape;
   std::string input_dtype = op_paras.inputs[0].tensor[0].dtype;
-  if (var_shape.size() == 0) {
-    // input var is scalar will change to tensor {1}
-    var_shape.push_back(1);
-  }
 
-  int64_t var_num = std::accumulate(var_shape.begin(), var_shape.end(), 1, std::multiples<int64_t>())
+  int64_t var_num = var_shape.size() == 0 ? 1 : std::accumulate(var_shape.begin(), var_shape.end(), 1, std::multiplies<int64_t>());
 
   int64_t core_num = 0;
   if (!GetDropOutDoMaskCompileParams(op_info, core_num)) {
