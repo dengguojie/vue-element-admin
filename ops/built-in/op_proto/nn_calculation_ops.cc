@@ -4191,6 +4191,28 @@ INFER_FUNC_REG(Deconvolution, DeconvolutionInfer);
 VERIFY_FUNC_REG(Deconvolution, DeconvolutionVerify);
 
 // ---------------------------Conv3D---------------------------
+static bool VerifyConv3dDilations(const ge::Operator& op, std::vector<int32_t>& dilation_list) {
+  //check dilations shape
+  if (op.GetAttr("dilations", dilation_list) != GRAPH_SUCCESS) {
+    dilation_list.clear();
+    for (int32_t i = 0; i < kConv3dDimSizeLimit; i++)
+      dilation_list.push_back(1);
+    OP_LOGI(op.GetName().c_str(), "no dilations setting, use dilations as [1,1,1,1,1]");
+  }
+  auto d_size = dilation_list.size();
+  if (d_size != kConv3dDimSizeLimit) {
+    OP_LOGE(op.GetName().c_str(), "dilations list should be 5d.");
+    map<std::string, std::string> err_map;
+    err_map["param_name"] = "dilation_list";
+    err_map["op_name"] = "Conv3d or Conv3dbp or Conv3dTranspose";
+    err_map["excepted_value"] = std::to_string(kConv3dDimSizeLimit);
+    err_map["input_value"] = std::to_string(d_size);
+    std::string report_error_code = "E50029";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return false;
+  }
+  return true;
+}
 static bool GetPadConv3D(ge::Operator& op, int32_t id, int32_t ih, int32_t iw,
                          int32_t kd, int32_t kh, int32_t kw, int32_t strd,
                          int32_t strh, int32_t strw, int32_t dild, const int32_t dilh,
@@ -4277,35 +4299,15 @@ static bool GetAttrsConv3D(ge::Operator& op, Format refer,  int32_t& strd,
     return false;
   }
 
-  // get data_format, not used for now temporarily
   std::string data_format;
   if (op.GetAttr("data_format", data_format) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The Conv3D op GetOpAttr data_format failed!");
-    map<std::string, std::string> err_map;
-    err_map["param_name"] = "data_format";
-    err_map["op_name"] = "Conv3d";
-    err_map["excepted_value"] = "NDHWC";
-    err_map["input_value"] = data_format;
-    std::string report_error_code = "E50029";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return false;
+    OP_LOGI(op.GetName().c_str(), "no data format setting, using NDHWC");
+    data_format = FORMAT_NDHWC;
   }
 
   std::vector<int32_t> dilation_list;
-  if (op.GetAttr("dilations", dilation_list) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get dilations list failed.");
-    return false;
-  }
-  auto d_size = dilation_list.size();
-  if (d_size != kConv3dDimSizeLimit) {
-    OP_LOGE(op.GetName().c_str(), "dilations list should be 5d.");
-    map<std::string, std::string> err_map;
-    err_map["param_name"] = "dilation_list";
-    err_map["op_name"] = "Conv3d";
-    err_map["excepted_value"] = "5d";
-    err_map["input_value"] = std::to_string(d_size);
-    std::string report_error_code = "E50029";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+  if (!VerifyConv3dDilations(op, dilation_list)) {
+    OP_LOGE(op.GetName().c_str(), "get dilation attrs failed.");
     return false;
   }
 
@@ -4889,16 +4891,23 @@ IMPLEMT_VERIFIER(Conv3D, Conv3DVerify) {
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return GRAPH_FAILED;
   }
-  std::vector<int32_t> dilation_list;
-  if (GRAPH_SUCCESS != op.GetAttr("dilations", dilation_list)) {
-    OP_LOGE(op.GetName().c_str(), "get dilations list failed.");
+  if (stride_list.size() != kConv3dInputSizeLimit) {
+    OP_LOGE(op.GetName().c_str(), "strides list should be 5d.");
     map<std::string, std::string> err_map;
+    err_map["param_name"] = "strides";
     err_map["op_name"] = "Conv3d";
-    err_map["op_name"] = "dilations";
-    std::string report_error_code = "E50030";
+    err_map["excepted_value"] = std::to_string(5);
+    err_map["input_value"] = std::to_string(stride_list.size());
+    std::string report_error_code = "E50029";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return GRAPH_FAILED;
   }
+  std::vector<int32_t> dilation_list;
+  if (!VerifyConv3dDilations(op, dilation_list)) {
+    OP_LOGE(op.GetName().c_str(), "get dilation attrs failed.");
+    return GRAPH_FAILED;
+  }
+
   OP_LOGD(op.GetName().c_str(), "Leave Conv3DVerify.");
   return GRAPH_SUCCESS;
 }
@@ -4936,12 +4945,12 @@ static bool SetPadListByPaddingConv3dbp(ge::Operator& op, const std::vector<T1>&
     return false;
   }
 
-  if (stride_list.size() < kConv3dInputSizeLimit) {
-    OP_LOGE(op.GetName().c_str(), "op get strides failed.");
+  if (stride_list.size() != kConv3dInputSizeLimit) {
+    OP_LOGE(op.GetName().c_str(), "strides list should be 5d.");
     map<std::string, std::string> err_map;
     err_map["param_name"] = "strides";
     err_map["op_name"] = "Conv3dbp";
-    err_map["excepted_value"] = std::to_string(3);
+    err_map["excepted_value"] = std::to_string(5);
     err_map["input_value"] = std::to_string(stride_list.size());
     std::string report_error_code = "E50029";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
@@ -5120,25 +5129,8 @@ static graphStatus VerifyConv3dbpInputCommon(const ge::Operator& op) {
 
   // check dilations shape
   std::vector<int32_t> dilations_list;
-  if (GRAPH_SUCCESS == op.GetAttr("dilations", dilations_list)) {
-    if (dilations_list.size() != kConv3dDimSizeLimit) {
-      OP_LOGE(op.GetName().c_str(), "dilations_list should be 5d.");
-      map<std::string, std::string> err_map;
-      err_map["param_name"] = "dilations";
-      err_map["op_name"] = "Conv3dbpInput";
-      err_map["excepted_value"] = std::to_string(5);
-      err_map["input_value"] = std::to_string(dilations_list.size());
-      std::string report_error_code = "E50029";
-      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-      return GRAPH_FAILED;
-    }
-  } else {
-    OP_LOGE(op.GetName().c_str(), "get dilations list failed.");
-    map<std::string, std::string> err_map;
-    err_map["op_name"] = "Conv3dbpInput";
-    err_map["param_name"] = "dilations";
-    std::string report_error_code = "E50030";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+  if (!VerifyConv3dDilations(op, dilations_list)) {
+    OP_LOGE(op.GetName().c_str(), "get dilation attrs failed.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -5411,25 +5403,8 @@ static graphStatus VerifyConv3dbpFilterCommon(const ge::Operator& op) {
 
   // check dilations shape
   std::vector<int32_t> dilations_list;
-  if (GRAPH_SUCCESS == op.GetAttr("dilations", dilations_list)) {
-    if (dilations_list.size() != kConv3dDimSizeLimit) {
-      OP_LOGE(op.GetName().c_str(), "dilations_list should be 5d.");
-      map<std::string, std::string> err_map;
-      err_map["param_name"] = "dilations";
-      err_map["op_name"] = "Conv3dbpFilter";
-      err_map["excepted_value"] = std::to_string(5);
-      err_map["input_value"] = std::to_string(dilations_list.size());
-      std::string report_error_code = "E50029";
-      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-      return GRAPH_FAILED;
-    }
-  } else {
-    OP_LOGE(op.GetName().c_str(), "get dilations list failed.");
-    map<std::string, std::string> err_map;
-    err_map["op_name"] = "Conv3dbpFilter";
-    err_map["param_name"] = "dilations";
-    std::string report_error_code = "E50030";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+  if (!VerifyConv3dDilations(op, dilations_list)) {
+    OP_LOGE(op.GetName().c_str(), "get dilation attrs failed.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -5715,25 +5690,8 @@ static bool SetInputsizeListConv3dtranspose(ge::Operator& op, const std::vector<
   }
 
   std::vector<int32_t> dilations_list;
-  if (op.GetAttr("dilations", dilations_list) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "op get dilation failed.");
-    map<std::string, std::string> err_map;
-    err_map["op_name"] = "Conv3dTranspose";
-    err_map["param_name"] = "dilations";
-    std::string report_error_code = "E50030";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return false;
-  }
-
-  if (dilations_list.size() != kConv3dInputSizeLimit) {
-    OP_LOGE(op.GetName().c_str(), "op get dilation failed.");
-    map<std::string, std::string> err_map;
-    err_map["param_name"] = "dilations";
-    err_map["op_name"] = "Conv3dTranspose";
-    err_map["excepted_value"] = std::to_string(5);
-    err_map["input_value"] = std::to_string(stride_list.size());
-    std::string report_error_code = "E50029";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    if (!VerifyConv3dDilations(op, dilations_list)) {
+    OP_LOGE(op.GetName().c_str(), "get dilation attrs failed.");
     return false;
   }
 
@@ -5905,35 +5863,15 @@ static bool GetAttrsConv3DTranspose(ge::Operator& op, Format refer,  int32_t& st
     return false;
   }
 
-  // get data_format, not used for now temporarily
   std::string data_format;
-  if (GRAPH_SUCCESS != op.GetAttr("data_format", data_format)) {
-    OP_LOGE(op.GetName().c_str(), "The Conv3D op GetOpAttr data_format failed!");
-    map<std::string, std::string> err_map;
-    err_map["param_name"] = "data_format";
-    err_map["op_name"] = "Conv3dTranspose";
-    err_map["excepted_value"] = "NDHWC";
-    err_map["input_value"] = data_format;
-    std::string report_error_code = "E50029";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return false;
+  if (op.GetAttr("data_format", data_format) != GRAPH_SUCCESS) {
+    OP_LOGI(op.GetName().c_str(), "no data format setting, using NDHWC");
+    data_format = FORMAT_NDHWC;
   }
 
   std::vector<int32_t> dilation_list;
-  if (GRAPH_SUCCESS != op.GetAttr("dilations", dilation_list)) {
-    OP_LOGE(op.GetName().c_str(), "get dilations list failed.");
-    return false;
-  }
-  auto d_size = dilation_list.size();
-  if (d_size != kConv3dDimSizeLimit) {
-    OP_LOGE(op.GetName().c_str(), "dilations list should be 5d.");
-    map<std::string, std::string> err_map;
-    err_map["param_name"] = "dilation_list";
-    err_map["op_name"] = "Conv3dTranspose";
-    err_map["excepted_value"] = "5d";
-    err_map["input_value"] = std::to_string(d_size);
-    std::string report_error_code = "E50029";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    if (!VerifyConv3dDilations(op, dilation_list)) {
+    OP_LOGE(op.GetName().c_str(), "get dilation attrs failed.");
     return false;
   }
 
@@ -6041,25 +5979,8 @@ static graphStatus VerifyConv3dTransposeInput(const ge::Operator& op) {
 
   // check dilations shape
   std::vector<int32_t> dilations_list;
-  if (op.GetAttr("dilations", dilations_list) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get dilations list failed.");
-    map<std::string, std::string> err_map;
-    err_map["op_name"] = "Conv3dTranspose";
-    err_map["param_name"] = "dilations";
-    std::string report_error_code = "E50030";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  }
-
-  if (dilations_list.size() != kConv3dDimSizeLimit) {
-    OP_LOGE(op.GetName().c_str(), "dilationsList list should be 5d.");
-    map<std::string, std::string> err_map;
-    err_map["param_name"] = "dilations";
-    err_map["op_name"] = "Conv3dTranspose";
-    err_map["excepted_value"] = std::to_string(5);
-    err_map["input_value"] = std::to_string(dilations_list.size());
-    std::string report_error_code = "E50029";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+  if (!VerifyConv3dDilations(op, dilations_list)) {
+    OP_LOGE(op.GetName().c_str(), "get dilation attrs failed.");
     return GRAPH_FAILED;
   }
 
