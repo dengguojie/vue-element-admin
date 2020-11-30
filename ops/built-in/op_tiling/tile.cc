@@ -18,10 +18,8 @@
  * \file tile.cc
  * \brief
  */
-#include <nlohmann/json.hpp>
 #include <sstream>
 #include <cctype>
-#include "register/op_tiling.h"
 #include "error_log.h"
 #include "graph/debug/ge_log.h"
 #include "eletwise.h"
@@ -141,5 +139,5 @@ bool TileTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
 }
 
 // register tiling interface of the Tile op.
-REGISTER_OP_TILING_FUNC(Tile, TileTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(Tile, TileTiling);
 }  // namespace optiling
