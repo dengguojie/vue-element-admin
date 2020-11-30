@@ -211,8 +211,9 @@ uint32_t TransDataCpuKernel::Compute(CpuKernelContext& ctx) {
                        "%s get Tensor:output_tensor failed.", TRANS_DATA);
   auto output_format = output_tensor->GetTensorShape()->GetFormat();
   KERNEL_LOG_INFO("output_format is %d.", output_format);
-  if((output_format != FORMAT_FRACTAL_Z) || 
-      (output_format != FORMAT_FRACTAL_Z_3D)) {
+  KERNEL_LOG_INFO("output_format is %d.", FORMAT_FRACTAL_Z);
+  KERNEL_LOG_INFO("output_format is %d.", FORMAT_FRACTAL_Z_3D);
+  if((output_format != FORMAT_FRACTAL_Z) || (output_format != FORMAT_FRACTAL_Z_3D)) {
     KERNEL_LOG_EVENT("%s unsupport output_format:%d.", 
                     TRANS_DATA , output_format);
     return KERNEL_STATUS_PARAM_INVALID;
