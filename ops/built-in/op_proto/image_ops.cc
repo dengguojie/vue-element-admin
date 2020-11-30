@@ -1348,7 +1348,6 @@ COMMON_INFER_FUNC_REG(ResizeNearestNeighborV2, ResizeNearestNeighborV2InferShape
 
 // ---------------ResizeBilinearV2Grad Op Start-------------------
 IMPLEMT_INFERFUNC(ResizeBilinearV2Grad, ResizeBilinearV2GradInfer) {
-  PREPARE_DYNAMIC_SHAPE_WITH_NO_DEPENDS();
   auto op_desc_info = OpDescUtils::GetOpDescFromOperator(op);
   auto input_desc_grad = op_desc_info->MutableInputDesc("grads");
   auto input_desc_image = op_desc_info->MutableInputDesc("original_image");

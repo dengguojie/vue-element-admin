@@ -523,7 +523,6 @@ IMPLEMT_VERIFIER(DropOutDoMask, DropOutDoMaskVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(DropOutDoMaskInferShape) {
-  PREPARE_DYNAMIC_SHAPE_WITH_NO_DEPENDS();
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto x_desc = op_info->MutableInputDesc("x");
   vector<int64_t> x_shape = x_desc->MutableShape().GetDims();

@@ -948,7 +948,6 @@ COMMON_INFER_FUNC_REG(ConcatV2, ConcatV2InferShape);
 
 // ----------------Pack OP Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(PackInferShape) {
-  PREPARE_DYNAMIC_SHAPE_WITH_NO_DEPENDS();
   auto ge_tensor_desc = op.GetDynamicInputDesc("x", 0);
   auto shape = ge_tensor_desc.GetShape();
   DataType input_dtype = ge_tensor_desc.GetDataType();

@@ -328,7 +328,6 @@ IMPLEMT_VERIFIER(MatMul, MatMulVerify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(MatMulInferShape) {
-  PREPARE_DYNAMIC_SHAPE_WITH_NO_DEPENDS();
   TensorDesc tensordesc_output = op.GetOutputDesc("y");
   ge::TensorDesc inputTensorDescX = op.GetInputDesc("x1");
   ge::TensorDesc inputTensorDescY = op.GetInputDesc("x2");

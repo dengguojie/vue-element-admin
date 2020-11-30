@@ -394,7 +394,6 @@ COMMON_INFER_FUNC_REG(Sub, SubInferShape);
 
 // ----------------Abs-------------------
 IMPLEMT_COMMON_INFERFUNC(AbsInferShape) {
-  PREPARE_DYNAMIC_SHAPE_WITH_NO_DEPENDS();
   if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
     return GRAPH_SUCCESS;
   }
@@ -405,7 +404,6 @@ COMMON_INFER_FUNC_REG(Abs, AbsInferShape);
 
 // ----------------Sign-------------------
 IMPLEMT_COMMON_INFERFUNC(SignInferShape) {
-  PREPARE_DYNAMIC_SHAPE_WITH_NO_DEPENDS();
   if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
     return GRAPH_SUCCESS;
   }
