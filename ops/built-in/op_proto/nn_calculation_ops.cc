@@ -4292,7 +4292,7 @@ static bool GetAttrsConv3D(ge::Operator& op, Format refer,  int32_t& strd,
   std::vector<int32_t> dilation_list;
   if (!VerifyConv3dDilations(op, dilation_list)) {
     OP_LOGE(op.GetName().c_str(), "get dilation attrs failed.");
-    return GRAPH_FAILED;
+    return false;
   }
 
   if (refer == FORMAT_NCDHW) {
