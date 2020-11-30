@@ -87,6 +87,7 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
         self._real_g = self._group_dict.get(GroupDictKeys.g_extend)
         self._cou1_g = self._group_dict.get(GroupDictKeys.dy_c1_extend)
         self._cin1_g = self._group_dict.get(GroupDictKeys.dx_c1_extend)
+        self._cube_vector_split_flag = cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT")
 
     def generate_a(self, dy_ddr):  # pylint: disable=R0914,R0915
         """
@@ -484,29 +485,43 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
         out_shape = (dx_batch, dx_cin1, dx_h * dx_w, dx_cin0)
 
         # float32->float16
-        dx_ub_type = "float16"
+        output_type = "float16"
         if w_col.dtype == "int8" and dy_col.dtype == "int8":
-            dx_ub_type = "int32"
+            output_type = "int32"
 
-        dx_ub = tvm.compute(
-            (dx_batch, dx_cin1, dx_hw, dx_c0),
-            lambda dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
-            dx_col[dx_cin1_idx // self._cin1_g, dx_batch_idx,
-                dx_cin1_idx % self._cin1_g, dx_hw_idx, dx_cin0_idx]
-            .astype(dx_ub_type), name="c_ub")
 
-        if tensor_bias is not None and tensor_bias.dtype == "float16":
-            dx_ub = _add_bias_in_ub(dx_ub, tensor_bias)
+        if self._cube_vector_split_flag:
+            dx_ddr = tvm.compute(
+                out_shape,
+                lambda dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx: dx_col[dx_cin1_idx // self._cin1_g,
+                    dx_batch_idx, dx_cin1_idx % self._cin1_g, dx_hw_idx, dx_cin0_idx
+                ].astype(output_type),
+                name="c_ddr",
+                tag="conv2d_backprop_input",
+                attrs={"output_shape": (dx_batch, dx_cin1, dx_h, dx_w, dx_cin0),
+                       "group_dict": self._group_dict,
+                       "l0c_shape": (dx_g, dx_batch, dx_c1, dx_hw, dx_c0),
+                       "kernel_name": self._kernel_name})
+        else:
+            dx_ub = tvm.compute(
+                (dx_batch, dx_cin1, dx_hw, dx_c0),
+                lambda dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
+                dx_col[dx_cin1_idx // self._cin1_g, dx_batch_idx,
+                    dx_cin1_idx % self._cin1_g, dx_hw_idx, dx_cin0_idx]
+                .astype(output_type), name="c_ub")
 
-        dx_ddr = tvm.compute(
-            out_shape,
-            lambda dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx: dx_ub[
-                dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx
-            ],
-            name="c_ddr",
-            tag="conv2d_backprop_input",
-            attrs={"output_shape": (dx_batch, dx_cin1, dx_h, dx_w, dx_cin0),
-                   "group_dict": self._group_dict,
-                   "l0c_shape": (dx_g, dx_batch, dx_c1, dx_hw, dx_c0),
-                   "kernel_name": self._kernel_name})
+            if tensor_bias is not None and tensor_bias.dtype == "float16":
+                dx_ub = _add_bias_in_ub(dx_ub, tensor_bias)
+
+            dx_ddr = tvm.compute(
+                out_shape,
+                lambda dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx: dx_ub[
+                    dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx
+                ],
+                name="c_ddr",
+                tag="conv2d_backprop_input",
+                attrs={"output_shape": (dx_batch, dx_cin1, dx_h, dx_w, dx_cin0),
+                       "group_dict": self._group_dict,
+                       "l0c_shape": (dx_g, dx_batch, dx_c1, dx_hw, dx_c0),
+                       "kernel_name": self._kernel_name})
         return dx_ddr

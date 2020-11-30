@@ -469,7 +469,8 @@ def general_schedule(
             sch[a_col_before].set_scope(cce_params.scope_cbuf)
             sch[a_col].set_scope(cce_params.scope_ca)
             sch[c_col].set_scope(cce_params.scope_cc)
-            sch[c_ub].set_scope(cce_params.scope_ubuf)
+            if not cube_vector_split:
+                sch[c_ub].set_scope(cce_params.scope_ubuf)
 
             return tensor_map
 
@@ -509,7 +510,10 @@ def general_schedule(
                 tensor_map["tensor_bias"] = tensor_bias
                 tensor_map["bias_ub"] = bias_ub
             else:
-                c_col = c_ub.op.input_tensors[0]
+                if cube_vector_split:
+                    c_col = c_ddr.op.input_tensors[0]
+                else:
+                    c_col = c_ub.op.input_tensors[0]
             return c_col
 
         def _ubtensor_setscope(ub_tensor_list, input_tensor_list, fusion_num, deq_list):
@@ -1065,7 +1069,7 @@ def general_schedule(
             if bl1_tilling_k % bl0_tiling_kb != 0:
                 _raise_dx_general_err("k_BL1 % kb != 0.")
 
-        if cl0_tiling_nc % cub_tiling_nc_factor != 0 and (not cube_vector_split):
+        if (cl0_tiling_nc % cub_tiling_nc_factor != 0) and (not cube_vector_split):
             _raise_dx_general_err("nc % nc_factor != 0.")
 
         if tiling.get("BL1_shape") != []:
@@ -1218,12 +1222,10 @@ def general_schedule(
     _tiling_check_pbuffer()
 
     def _cub_process():  # pylint: disable=R0912,R0915
+        if cube_vector_split:
+            return
         def _attach_cub():
             # c_ub will attach on deconv_res in dynamic shape by default
-            if cube_vector_split:
-                sch_agent.same_attach(c_ub, c_col)
-                return
-
             if not dynamic_mode:
                 status = Compare.compare(affine_cub[1:], op_shape)
             else:
@@ -1743,7 +1745,8 @@ def general_schedule(
         elif tensor_attr.get("quant_fuse"):
             _emit_quant_fusion_insn()
         else:
-            sch_agent[c_ub].emit_insn(sch_agent[c_ub].op.axis[0], "dma_copy")
+            if not cube_vector_split:
+                sch_agent[c_ub].emit_insn(sch_agent[c_ub].op.axis[0], "dma_copy")
 
         if deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool":
             sch[mask_ub].emit_insn(mask_ub.op.axis[0], "dma_copy")
@@ -2120,9 +2123,6 @@ def general_schedule(
                 sch[b_col].compute_at(sch[c_ddr], bl1_at_inner)
     _full_load_bl1_bl0()
     
-    if cube_vector_split:
-        sch[c_ub].compute_inline()
-   
     sch_agent.apply()
     _c_col_buffer_tile()
     if dynamic_mode is not None:

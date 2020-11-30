@@ -1228,11 +1228,17 @@ def _set_data_layout(
 
     _print_debug("dx fusion tag:", res.op.tag)
     tensor_dx_gm, TENSOR_MAP = _check_dx_fusion_type(res, TENSOR_MAP)
+    cube_vector_split_flag = cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT")
+    DeconvParam.update_para_map("cube_vector_split_flag", cube_vector_split_flag)
     _get_l1_fusion_para()
     fusion_type = DeconvParam.get_para_map("FUSION_TYPE")
 
     # get tensor of ub by fusion_type
-    tensor_cub = _get_ub_tensor(fusion_type)
+    if DeconvParam.get_para_map("cube_vector_split_flag"):
+        tensor_cub = None
+    else:
+        tensor_cub = _get_ub_tensor(fusion_type)
+
     if fusion_type in (FUSION_DX_DEQUANT, FUSION_DX_DEQUANT_QUANT, FUSION_DX_REQUANT):
         c_ub_img = tensor_cub.op.input_tensors[0]
         sch[c_ub_img].buffer_align((1, 1), (1, 1), (1, 16), (1, 16))
@@ -1240,20 +1246,25 @@ def _set_data_layout(
         c_ub = c_ub_img.op.input_tensors[0]
         sch[c_ub].compute_inline()
         tensor_cub = c_ub
-    if tensor_cub.op.input_tensors[0].name == "c_add_bias":
-        c_add_bias = tensor_cub.op.input_tensors[0]
-        bias_l0c = c_add_bias.op.input_tensors[0]
-        tensor_mmad = c_add_bias.op.input_tensors[1]
-        bias_ub_brc = bias_l0c.op.input_tensors[0]
-        tensor_bias = bias_ub_brc.op.input_tensors[0]
-        bias_ub = sch.cache_read(tensor_bias, cce_params.scope_ubuf, [bias_ub_brc])
-        TENSOR_MAP["c_add_bias"] = c_add_bias
-        TENSOR_MAP["bias_l0c"] = bias_l0c
-        TENSOR_MAP["bias_ub_brc"] = bias_ub_brc
-        TENSOR_MAP["bias_ub"] = bias_ub
-        TENSOR_MAP["tensor_bias"] = tensor_bias
+
+    if tensor_cub is not None:
+        if tensor_cub.op.input_tensors[0].name == "c_add_bias":
+            c_add_bias = tensor_cub.op.input_tensors[0]
+            bias_l0c = c_add_bias.op.input_tensors[0]
+            tensor_mmad = c_add_bias.op.input_tensors[1]
+            bias_ub_brc = bias_l0c.op.input_tensors[0]
+            tensor_bias = bias_ub_brc.op.input_tensors[0]
+            bias_ub = sch.cache_read(tensor_bias, cce_params.scope_ubuf, [bias_ub_brc])
+            TENSOR_MAP["c_add_bias"] = c_add_bias
+            TENSOR_MAP["bias_l0c"] = bias_l0c
+            TENSOR_MAP["bias_ub_brc"] = bias_ub_brc
+            TENSOR_MAP["bias_ub"] = bias_ub
+            TENSOR_MAP["tensor_bias"] = tensor_bias
+        else:
+            tensor_mmad = tensor_cub.op.input_tensors[0]
     else:
-        tensor_mmad = tensor_cub.op.input_tensors[0]
+        if DeconvParam.get_para_map("cube_vector_split_flag"):
+            tensor_mmad = tensor_dx_gm.op.input_tensors[0]
 
     a_l0a = tensor_mmad.op.input_tensors[0]
     dedy_col, dedy, a_l0a_before = _al1_fusion_handle()
@@ -1263,8 +1274,9 @@ def _set_data_layout(
     # set scope
     if fusion_type in (FUSION_DX_DEQUANT, FUSION_DX_DEQUANT_QUANT, FUSION_DX_REQUANT):
         tensor_cub = TENSOR_MAP["c_ub"]
-    sch[tensor_cub].set_scope(cce_params.scope_ubuf)
-    TENSOR_MAP["c_ub"] = tensor_cub
+    if tensor_cub is not None:
+        sch[tensor_cub].set_scope(cce_params.scope_ubuf)
+        TENSOR_MAP["c_ub"] = tensor_cub
 
     # TO DO
     TENSOR_MAP["img_placehold"] = dedy
@@ -1841,7 +1853,6 @@ def opti_schedule(
     :return: schedule
     -------------------------------------------------------------------
     """
-    cube_vector_split_flag = cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT")
 
     def _do_buffer_tile():
         def _get_cub_buffertile_m_min():
@@ -2043,10 +2054,9 @@ def opti_schedule(
                 sch[filling_one_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
                 tensor_vn = TENSOR_MAP["tensor_vn"]
                 sch[tensor_vn].compute_at(sch[c_gm], l0c_m_inner_outer)
-        if cube_vector_split_flag:
-            sch[c_ub].compute_at(sch[c_gm], c_slice_axis)
-        else:
+        if not DeconvParam.get_para_map("cube_vector_split_flag"):
             sch[c_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
+
         if "data_transfer" in TENSOR_MAP:
             sch[c_ub].compute_inline()
             sch[TENSOR_MAP["data_transfer"]].buffer_align(
@@ -2338,7 +2348,8 @@ def opti_schedule(
             FUSION_DX_DEQUANT_QUANT,
             FUSION_DX_REQUANT
         ):
-            sch[c_ub].emit_insn(c_ub.op.axis[0], "dma_copy")
+            if c_ub is not None:
+                sch[c_ub].emit_insn(c_ub.op.axis[0], "dma_copy")
 
         sch[c_gm].emit_insn(l0c_n_inner_inner, "dma_copy")
 
@@ -2732,12 +2743,13 @@ def opti_schedule(
         _do_buffer_tile()
         _print_ir_conv("after_tile", sch)
     else:
-        sch[c_ub].buffer_align(
-            (1, 1),
-            (1, 1),
-            (1, cce_params.CUBE_MKN["float16"]["mac"][0]),
-            (1, cce_params.CUBE_MKN["float16"]["mac"][0])
-        )
+        if c_ub is not None:
+            sch[c_ub].buffer_align(
+                (1, 1),
+                (1, 1),
+                (1, cce_params.CUBE_MKN["float16"]["mac"][0]),
+                (1, cce_params.CUBE_MKN["float16"]["mac"][0])
+            )
         if bias_add_vector_ub is not None and dilate_ub is None:
             sch[bias_add_vector_ub].buffer_align(
                 (1, 1),
@@ -2771,9 +2783,6 @@ def opti_schedule(
         _print_ir_conv("preload", sch)
     # intrin mapping
     _intrin_mapping(fusion_type)
-
-    if cube_vector_split_flag:
-        sch[c_ub].compute_inline()
 
     overload_flag = _check_overload_dy(overload_flag_gm, overload_flag_l0c)
     _set_overload_flag(sch[c_gm], overload_flag, overload_axis)
