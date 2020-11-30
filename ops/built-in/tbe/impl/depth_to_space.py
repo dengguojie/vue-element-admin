@@ -16,6 +16,7 @@
 depth_to_space
 """
 # pylint: disable=too-many-lines,import-error
+import math
 import functools
 
 from te import platform as tbe_platform
@@ -170,8 +171,6 @@ class DepthToSpaceNHWCCompute:
         self.output_shape = (self.output_batch, self.output_height,
                              self.output_width, self.output_depth)
         para_check.check_shape(self.output_shape, param_name="y")
-        # the number of data that UB can put in
-        self.ub_memory = min(TOTAL_UB_MEMORY, 252 * 1024) // num_bit - self.num_data
         # minimum granularity of data_move
         self.min_size = self.block_size * self.output_depth
         # minimum granularity of data_move actually
@@ -183,6 +182,23 @@ class DepthToSpaceNHWCCompute:
                              self.num_data_one_move)
         # 32B align
         self.is_align = ((self.min_size % self.num_data) == 0)
+        # if minimum granularity of data_move < 32B
+        self.ub_rearrange = (self.min_size < self.num_data or self.is_align)
+        # the number of data that UB can put in
+        self.ub_memory = min(TOTAL_UB_MEMORY, 252 * 1024) // num_bit - self.num_data
+        # rearrange case need double divide UB
+        if self.ub_rearrange:
+            self.ub_memory = self.ub_memory //2
+        # rearrange case parameter init
+        self.loop_times = 0
+        self.cal_nums_per_loop = 0
+        self.cal_nums_last_loop = 0
+        self.each_core_process_nums = 0
+        self.last_core_process_nums = 0
+        # Minimum number of data processed by a single core
+        self.one_core_min_size = self.input_width*self.block_size*self.min_size
+        self.ub_max_process_groups = 0
+
 
     def set_tik_instance(self):
         """
@@ -1086,6 +1102,79 @@ class DepthToSpaceNHWCCompute:
 
         return tik_instance
 
+    def ub_rearrange_case_multi_core(self, tik_instance):
+        div_groups = self.input_batch*self.input_height
+        each_core_process_groups = math.ceil(div_groups / MAX_CORE_NUM)
+        use_cores = math.ceil(div_groups / each_core_process_groups)
+        last_core_process_groups = div_groups - (use_cores - 1)*each_core_process_groups
+        self.each_core_process_nums = each_core_process_groups*self.one_core_min_size
+        self.last_core_process_nums = last_core_process_groups*self.one_core_min_size
+        self.ub_max_process_groups = self.ub_memory // self.one_core_min_size
+        with tik_instance.for_range(0, use_cores, block_num=use_cores) as index:
+            core_offset = index*self.each_core_process_nums
+            with tik_instance.if_scope(index < (use_cores - 1)):
+                self.loop_times = math.ceil(each_core_process_groups / self.ub_max_process_groups)
+                self.ub_rearrange_case_compute_each_core(tik_instance, self.each_core_process_nums, core_offset)
+            with tik_instance.else_scope():
+                self.loop_times = math.ceil(last_core_process_groups / self.ub_max_process_groups)
+                self.ub_rearrange_case_compute_each_core(tik_instance, self.last_core_process_nums, core_offset)
+    
+    def ub_rearrange_case_compute_each_core(self, tik_instance, cal_nums, core_offset):
+        self.cal_nums_per_loop = self.ub_max_process_groups*self.one_core_min_size
+        self.cal_nums_last_loop = cal_nums - (self.loop_times - 1)*self.cal_nums_per_loop
+        if self.loop_times == 1:
+            loop_offset = core_offset
+            self.data_move_in_each_loop(tik_instance, self.cal_nums_last_loop, loop_offset, True)
+        else:
+            with tik_instance.for_range(0, self.loop_times) as i:
+                loop_offset = i*self.cal_nums_per_loop + core_offset
+                with tik_instance.if_scope(i < (self.loop_times - 1)):
+                    self.data_move_in_each_loop(tik_instance, self.cal_nums_per_loop, loop_offset, False)
+                with tik_instance.else_scope():
+                    self.data_move_in_each_loop(tik_instance, self.cal_nums_last_loop, loop_offset, True)
+    
+    def data_move_in_each_loop(self, tik_instance, cal_nums, loop_offset, address_rollback):
+        cal_blocks = math.ceil(cal_nums / self.num_data)
+        input_ub = tik_instance.Tensor(self.dtype, (cal_blocks*self.num_data,), name="input_ub", scope=tik.scope_ubuf)
+        rearrange_ub = tik_instance.Tensor(self.dtype, (cal_blocks*self.num_data,),
+                                           name="rearrange_ub", scope=tik.scope_ubuf)
+        tik_instance.data_move(input_ub, self.input_x_gm[loop_offset], 0, 1, cal_blocks, 0, 0)
+        rearrange_loops = cal_nums // self.one_core_min_size
+        with tik_instance.for_range(0, rearrange_loops) as m:
+            if self.is_align:
+                with tik_instance.for_range(0, self.block_size) as n:
+                    input_ub_index = m*self.one_core_min_size + n*self.min_size
+                    rearrange_ub_index = m*self.one_core_min_size + n*self.min_size*self.input_width
+                    min_blocks = self.min_size // self.num_data
+                    tik_instance.data_move(rearrange_ub[rearrange_ub_index], input_ub[input_ub_index],
+                                            0, self.input_width, min_blocks, (self.block_size-1)*min_blocks, 0)
+            else:
+                with tik_instance.for_range(0, self.input_width*self.block_size) as n:
+                    with tik_instance.for_range(0, self.min_size) as o:
+                        i_index = n // self.input_width
+                        j_index = n - i_index*self.input_width
+                        new_index = j_index*self.block_size + i_index                        
+                        input_ub_index = m*self.one_core_min_size + new_index*self.min_size + o
+                        rearrange_ub_index = m*self.one_core_min_size + n*self.min_size + o
+                        rearrange_ub[rearrange_ub_index].set_as(input_ub[input_ub_index])
+        if address_rollback:
+            if cal_nums % self.num_data != 0:
+                for p in range(self.num_data-1, -1, -1):
+                    rearrange_ub[(cal_blocks-1)*self.num_data + p].set_as(rearrange_ub[cal_nums - self.num_data + p])
+                tik_instance.data_move(self.output_y_gm[loop_offset], rearrange_ub, 0, 1, cal_blocks - 1, 0, 0)
+                tik_instance.data_move(self.output_y_gm[loop_offset + cal_nums - self.num_data],
+                                       rearrange_ub[(cal_blocks - 1)*self.num_data], 0, 1, 1, 0, 0)
+        tik_instance.data_move(self.output_y_gm[loop_offset], rearrange_ub, 0, 1, cal_blocks, 0, 0)
+
+    def depth_to_space_ub_rearrange_case(self,tik_instance):
+        """
+        UB rearrange (num_data_one_move)
+        and move in & out one time
+        """
+        self.ub_rearrange_case_multi_core(tik_instance)
+
+        return tik_instance
+
     # num_b, num_h, num_block_h, num_w is corresponding to
     # input_batch, input_height, block_size, input_width
     def depth_to_space_compute(self):
@@ -1095,18 +1184,21 @@ class DepthToSpaceNHWCCompute:
         self.tiling_axis = self.set_tiling_axis()
         tik_instance = self.set_tik_instance()
 
-        if self.tiling_axis == 0:
-            tik_instance = self.depth_to_space_axis_zero(tik_instance)
-        elif self.tiling_axis == 1:
-            tik_instance = self.depth_to_space_axis_one(tik_instance)
-        elif self.tiling_axis == 2:
-            tik_instance = self.depth_to_space_axis_two(tik_instance)
-        elif self.tiling_axis == 3:
-            tik_instance = self.depth_to_space_axis_three(tik_instance)
-        elif self.tiling_axis == 4:
-            tik_instance = self.depth_to_space_axis_four(tik_instance)
-        elif self.tiling_axis == 5:
-            tik_instance = self.depth_to_space_axis_five(tik_instance)
+        if self.ub_rearrange and (self.ub_memory >= self.one_core_min_size >= self.num_data):
+            tik_instance = self.depth_to_space_ub_rearrange_case(tik_instance)
+        else:
+            if self.tiling_axis == 0:
+                tik_instance = self.depth_to_space_axis_zero(tik_instance)
+            elif self.tiling_axis == 1:
+                tik_instance = self.depth_to_space_axis_one(tik_instance)
+            elif self.tiling_axis == 2:
+                tik_instance = self.depth_to_space_axis_two(tik_instance)
+            elif self.tiling_axis == 3:
+                tik_instance = self.depth_to_space_axis_three(tik_instance)
+            elif self.tiling_axis == 4:
+                tik_instance = self.depth_to_space_axis_four(tik_instance)
+            elif self.tiling_axis == 5:
+                tik_instance = self.depth_to_space_axis_five(tik_instance)
 
         return tik_instance
 
