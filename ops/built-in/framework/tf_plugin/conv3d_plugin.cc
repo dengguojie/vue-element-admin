@@ -54,9 +54,18 @@ Status ParseParamsConv3D(const Message* op_src, ge::Operator& op) {
   }
   OP_LOGI(op.GetName().c_str(), "update filter format success, now is %d", op.GetInputDesc(kPos1).GetFormat());
 
+  ge::Format data_format = ge::FORMAT_NDHWC;
+  std::string data_format_attr;
+  if (op.GetAttr("data_format", data_format_attr) == ge::GRAPH_SUCCESS) {
+    OP_LOGI(op.GetName().c_str(), "data_format attribute is %s", data_format_attr.c_str());
+    if (data_format_attr == "NCDHW") {
+      data_format = ge::FORMAT_NCDHW;
+    }
+  }
+
   ge::GeTensorDesc org_tensor_x = op_dsc->GetInputDesc(kPos0);
-  org_tensor_x.SetOriginFormat(ge::FORMAT_NDHWC);
-  org_tensor_x.SetFormat(ge::FORMAT_NDHWC);
+  org_tensor_x.SetOriginFormat(data_format);
+  org_tensor_x.SetFormat(data_format);
   ret = op_dsc->UpdateInputDesc(kPos0, org_tensor_x);
   if (ret != ge::GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "update input x format failed.");
@@ -72,8 +81,8 @@ Status ParseParamsConv3D(const Message* op_src, ge::Operator& op) {
   OP_LOGI(op.GetName().c_str(), "update input x format success, now is %d", op.GetInputDesc(kPos0).GetFormat());
 
   ge::GeTensorDesc org_tensor_y = op_dsc->GetOutputDesc(kPos0);
-  org_tensor_y.SetOriginFormat(ge::FORMAT_NDHWC);
-  org_tensor_y.SetFormat(ge::FORMAT_NDHWC);
+  org_tensor_y.SetOriginFormat(data_format);
+  org_tensor_y.SetFormat(data_format);
   ret = op_dsc->UpdateOutputDesc(kPos0, org_tensor_y);
   if (ret != ge::GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "update output y format failed.");
