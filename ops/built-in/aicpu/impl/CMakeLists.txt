@@ -2,20 +2,16 @@ set(SUB_SO_WITH_VERSION libcpu_kernels_v1.0.1.so)
 
 if(BUILD_OPEN_PROJECT)
 #[[set(local_kernels_src_files
-    kernels/normalized/drop_out_gen_mask_kernels.cc
     kernels/normalized/expanddims.cc
     kernels/normalized/reshape_kernels.cc
     kernels/normalized/less_kernels.cc
     kernels/normalized/top_k_kernels.cc
-    kernels/normalized/edit_distance_kernels.cc
     kernels/normalized/gather_kernels.cc
     kernels/normalized/get_dynamic_dims.cc
     kernels/normalized/identity_kernels.cc
-    kernels/normalized/unique_with_pad_kernels.cc
     kernels/normalized/ceil_kernels.cc
     kernels/normalized/realdiv_kernels.cc
     kernels/normalized/sparse_to_dense_kernels.cc
-    kernels/normalized/deformable_offsets_kernels.cc
     kernels/normalized/cast_kernels.cc
     kernels/normalized/logging_kernels.cc
     kernels/normalized/concatv2.cc
@@ -118,20 +114,16 @@ get_filename_component(TOP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../.." ABSO
 set(BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(local_kernels_src_files
-    kernels/normalized/drop_out_gen_mask_kernels.cc
     kernels/normalized/expanddims.cc
     kernels/normalized/reshape_kernels.cc
     kernels/normalized/less_kernels.cc
     kernels/normalized/top_k_kernels.cc
-    kernels/normalized/edit_distance_kernels.cc
     kernels/normalized/gather_kernels.cc
     kernels/normalized/get_dynamic_dims.cc
     kernels/normalized/identity_kernels.cc
-    kernels/normalized/unique_with_pad_kernels.cc
     kernels/normalized/ceil_kernels.cc
     kernels/normalized/realdiv_kernels.cc
     kernels/normalized/sparse_to_dense_kernels.cc
-    kernels/normalized/deformable_offsets_kernels.cc
     kernels/normalized/cast_kernels.cc
     kernels/normalized/logging_kernels.cc
     kernels/normalized/concatv2.cc
