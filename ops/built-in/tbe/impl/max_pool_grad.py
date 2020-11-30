@@ -1994,14 +1994,18 @@ class MaxpoolGrad(object):
     def _if_block(self, ho_outer, ho_inner):
         if ho_inner <= 1:
             return False
+
+        if self.kh > self.stride_h:
+            overlap_num = math.ceil((self.kh - self.stride_h) * 1.0 / self.stride_h)
+            shape_hi = (ho_inner + overlap_num - 1) * self.stride_h + self.kh
+        else:
+            shape_hi = ho_inner * self.stride_h
+        if shape_hi > self.hi:
+            return False
+
         if self.stride_h >= self.kh:
             return True
         else:
-            overlap_num = math.ceil((self.kh - self.stride_h) * 1.0 / self.stride_h)
-            if self.kh > self.stride_h:
-                shape_hi = (ho_inner + overlap_num - 1) * self.stride_h + self.kh
-            else:
-                shape_hi = ho_inner * self.stride_h
             _, _, _, each_process_ho, _ = self._tilling_factor((shape_hi, self.wi, C0), self.pad)
 
             times = math.ceil(ho_inner * 1.0 / each_process_ho)
