@@ -749,6 +749,19 @@ void FixShapeRangeWithDims(const std::vector<int64_t>& dims,
   MakeUpShapeRange(shape_2, range_2);
   bool is_all_fix = dims.empty();
 
+  if (shape_1 == UNKNOWN_RANK && shape_2 == UNKNOWN_RANK) {
+    return;
+  }
+  if (shape_1 == UNKNOWN_RANK) {
+    shape_1 = shape_2;
+    range_1 = range_2;
+    return;
+  }
+  if (shape_2 == UNKNOWN_RANK) {
+    shape_2 = shape_1;
+    range_2 = range_1;
+    return;
+  }
   if ((shape_1.size() != shape_2.size()) || (range_1.size() != range_2.size())) {
     return;
   }
