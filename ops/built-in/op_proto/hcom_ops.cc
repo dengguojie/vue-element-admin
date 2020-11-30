@@ -75,6 +75,43 @@ IMPLEMT_VERIFIER(HcomAllGather, HcomAllGatherVerify) {
 INFER_FUNC_REG(HcomAllGather, HcomAllGatherInferShape);
 VERIFY_FUNC_REG(HcomAllGather, HcomAllGatherVerify);
 
+// HcomReduce op
+IMPLEMT_VERIFIER(HcomAllReduce, HcomAllReduceVerify) {
+  constexpr int64_t fusionAttrNoFuse = 0;
+  constexpr int64_t fusionAttrFuseById = 2;
+  constexpr int64_t fusionIdMinVal = -1;
+  constexpr int64_t fusionIdMaxVal = 0x7fffffff;
+  std::string reduction = op.get_attr_reduction();
+  const std::vector<std::string> SUPPORTED_REDUCTION = {"min", "max", "prod", "sum"};
+  auto it = std::find(SUPPORTED_REDUCTION.begin(), SUPPORTED_REDUCTION.end(), reduction);
+  if (it == SUPPORTED_REDUCTION.end()) {
+    OP_LOGE(op.GetName().c_str(), "Attr reduction [%s] is not supported. expecttd: min, max, prod, sum",
+            reduction.c_str());
+    return GRAPH_FAILED;
+  }
+  int64_t fusionAttr;
+  if (op.GetAttr("fusion", fusionAttr) == GRAPH_SUCCESS) {
+    if ((fusionAttr != fusionAttrNoFuse) && (fusionAttr != fusionAttrFuseById)) {
+      OP_LOGE(op.GetName().c_str(), "Attr fusion [%lld] is not supported. expecttd: [%lld or %lld]", fusionAttr,
+              fusionAttrNoFuse, fusionAttrFuseById);
+      return GRAPH_FAILED;
+    }
+  }
+  int64_t fusionIdAttr;
+  if (op.GetAttr("fusion_id", fusionIdAttr) == GRAPH_SUCCESS) {
+    if ((fusionIdAttr < fusionIdMinVal) || (fusionIdAttr > fusionIdMaxVal)) {
+      OP_LOGE(op.GetName().c_str(), "Attr fusion_id [%lld] is not supported. expecttd: [%lld ~ %lld]", fusionIdAttr,
+              fusionIdMinVal, fusionIdMaxVal);
+      return GRAPH_FAILED;
+    }
+  }
+  OP_LOGI(op.GetName().c_str(), "the op verify end");
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(HcomReduce, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
+VERIFY_FUNC_REG(HcomReduce, HcomReduceVerify);
+
 // HcomAllReduce op
 IMPLEMT_VERIFIER(HcomAllReduce, HcomAllReduceVerify) {
   constexpr int64_t fusionAttrMinVal = 0;
@@ -282,13 +319,13 @@ IMPLEMT_INFERFUNC(HcomRemoteRead, HcomRemoteReadInferShape) {
     graphStatus state = op.GetInputConstData("remote", tensor);
     if (outDims.size() == 2) {
         if (state != GRAPH_SUCCESS) {
-            outDims[1] = -1; // -1: 表示这一维是unknown
+            outDims[1] = -1; // -1: 琛ㄧず杩欎竴缁存槸unknown
         } else {
             uint64_t* data = const_cast<uint64_t *>(reinterpret_cast<const uint64_t *>(tensor.GetData()));
             if (dataLength != -1) {
                 outDims[1] = data[2] / dataLength; //  length/size_of(datatype)
             } else {
-                outDims[1] = -1; // -1: 表示这一维是unknown
+                outDims[1] = -1; // -1: 琛ㄧず杩欎竴缁存槸unknown
                 std::pair<int64_t, int64_t> rangeN(10,10);
                 std::pair<int64_t, int64_t> rangeX(10,40);
                 std::vector<std::pair<int64_t, int64_t>> range = {rangeN, rangeX};
