@@ -65,6 +65,35 @@ bool ApplyVerifyFunc(const ge::Operator& op, const std::vector<std::string>& inp
     OP_LOGE(op.GetName().c_str(), "var only support 0 ~ 8 dims!");
     return GRAPH_FAILED;
   }
+  if (IsUnknown(var_dims)) {
+    OP_LOGW(op.GetName().c_str(), "this is dynamic shape, will exit ApplyVerifyFunc");
+    return true;
+  }
+  for (std::size_t i = 1; i < inputTensorList.size(); i++) {
+    auto tmp_dims = op.GetInputDesc(inputTensorList[i]).GetShape().GetDims();
+    if (IsUnknown(tmp_dims)) {
+      OP_LOGW(op.GetName().c_str(), "this is dynamic shape, will continue ApplyVerifyFunc");
+      continue;
+    }
+    if (tmp_dims != var_dims) {
+      OpsInputShapeErrReport(op.GetName(), "the shape must be equal", inputTensorList[i].c_str(),
+                             DebugString(tmp_dims));
+      OP_LOGE(op.GetName().c_str(), "the shape of %s must equal with %s", inputTensorList[i].c_str(),
+              inputTensorList[0].c_str());
+      return false;
+    }
+  }
+
+  // check shape of Scalar
+  for (std::size_t j = 0; j < inputScalarList.size(); j++) {
+    auto scalar_dims = op.GetInputDesc(inputScalarList[j]).GetShape().GetDims();
+    if (scalar_dims.size() > 1) {
+      OpsInputShapeErrReport(op.GetName(), "The input must be scalar!", DebugString(scalar_dims),
+                             ConcatString(scalar_dims.size()));
+      OP_LOGE(op.GetName().c_str(), "The input %s must be scalar!", inputScalarList[j].c_str());
+      return false;
+    }
+  }
   return true;
 }
 
