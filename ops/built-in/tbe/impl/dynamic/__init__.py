@@ -77,5 +77,6 @@ from .pad_d import pad_d
 from .split_d import split_d
 from .strided_slice_grad import strided_slice_grad
 from .fill import fill
+from .drop_out_do_mask import drop_out_do_mask
 from .tanh import tanh
 from .sigmoid_cross_entropy_with_logits import sigmoid_cross_entropy_with_logits

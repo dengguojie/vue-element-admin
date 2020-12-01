@@ -12,7 +12,7 @@ TILING_ARG_NUM = 16
 # reserved ub size
 RESERVED_UB_SIZE = 8 * 1024
 # ub size
-TENSOR_MAX_UB_NUM = 255*64
+TENSOR_MAX_UB_NUM = 254*64
 
 
 class DropOutDoMask:
@@ -213,4 +213,3 @@ def drop_out_do_mask(input_tensor, input_mask, input_keep_prob, output,
                         kernel_name)
 
     return obj._drop_do_mask_operator()
-
