@@ -44,6 +44,7 @@ set(_optiling_files
   strided_slice_grad.cc
   tile_d.cc
   tile.cc
+  drop_out_do_mask.cc
   tiling_dispatch.cc
   top_k.cc
   transpose_d.cc

@@ -65,8 +65,16 @@ bool ApplyVerifyFunc(const ge::Operator& op, const std::vector<std::string>& inp
     OP_LOGE(op.GetName().c_str(), "var only support 0 ~ 8 dims!");
     return GRAPH_FAILED;
   }
+  if (IsUnknown(var_dims)) {
+    OP_LOGW(op.GetName().c_str(), "this is dynamic shape, will exit ApplyVerifyFunc");
+    return true;
+  }
   for (std::size_t i = 1; i < inputTensorList.size(); i++) {
     auto tmp_dims = op.GetInputDesc(inputTensorList[i]).GetShape().GetDims();
+    if (IsUnknown(tmp_dims)) {
+      OP_LOGW(op.GetName().c_str(), "this is dynamic shape, will continue ApplyVerifyFunc");
+      continue;
+    }
     if (tmp_dims != var_dims) {
       OpsInputShapeErrReport(op.GetName(), "the shape must be equal", inputTensorList[i].c_str(),
                              DebugString(tmp_dims));
@@ -1168,8 +1176,10 @@ IMPLEMT_VERIFIER(ApplyAdam, ApplyAdamVerify) {
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ApplyAdamInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter ApplyAdam op_proto inferfunction!");
-  ApplyInferShapeAndDtype(op, "var", "var");
-  return GRAPH_SUCCESS;
+  if (OneInOneOutDynamicInfer(op, "var", {"var"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(ApplyAdam, ApplyAdamInferShape);
@@ -1202,9 +1212,15 @@ IMPLEMT_VERIFIER(ApplyAdamD, ApplyAdamDVerify) {
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ApplyAdamDInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter ApplyAdamD op_proto inferfunction!");
-  ApplyInferShapeAndDtype(op, "var", "var");
-  ApplyInferShapeAndDtype(op, "m", "m");
-  ApplyInferShapeAndDtype(op, "v", "v");
+  if (!OneInOneOutDynamicInfer(op, "var", {"var"})) {
+    return GRAPH_FAILED;
+  }
+  if (!OneInOneOutDynamicInfer(op, "m", {"m"})) {
+    return GRAPH_FAILED;
+  }
+  if (!OneInOneOutDynamicInfer(op, "v", {"v"})) {
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 

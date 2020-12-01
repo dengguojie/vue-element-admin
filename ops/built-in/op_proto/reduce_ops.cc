@@ -342,6 +342,8 @@ static bool InferReduceDShape(const ge::Operator& op, const string& input_name, 
 // ----------------ReduceAll Op-------------------
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ReduceAllInferShape) {
+  const vector<string> depend_names = {"axes"};
+  PREPARE_DYNAMIC_SHAPE(depend_names);
   OP_LOGI(op.GetName().c_str(), "Enter ReduceAll proto inferfunction!");
   ge::TensorDesc result_desc;
   if (!InferReduceShape(op, "x", "axes", "keep_dims", result_desc)) {
@@ -349,11 +351,16 @@ IMPLEMT_COMMON_INFERFUNC(ReduceAllInferShape) {
   }
   auto shape = result_desc.GetShape();
   auto dtype = result_desc.GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> range;
+  result_desc.GetShapeRange(range);
 
   // update output desc
   TensorDesc output_desc = op.GetOutputDesc("y");
   output_desc.SetShape(shape);
   output_desc.SetDataType(dtype);
+  if (range.size() > 0) {
+    output_desc.SetShapeRange(range);
+  }
   (void)op.UpdateOutputDesc("y", output_desc);
   return GRAPH_SUCCESS;
 }
@@ -387,6 +394,8 @@ COMMON_INFER_FUNC_REG(ReduceAllD, ReduceAllDInferShape);
 
 // ----------------ReduceProd Op-------------------
 IMPLEMT_COMMON_INFERFUNC(ReduceProdInferShape) {
+  const vector<string> depend_names = {"axes"};
+  PREPARE_DYNAMIC_SHAPE(depend_names);
   OP_LOGI(op.GetName().c_str(), "Enter ReduceProd proto inferfunction!");
   ge::TensorDesc result_desc;
   if (!InferReduceShape(op, "x", "axes", "keep_dims", result_desc)) {
@@ -394,11 +403,16 @@ IMPLEMT_COMMON_INFERFUNC(ReduceProdInferShape) {
   }
   auto shape = result_desc.GetShape();
   auto dtype = result_desc.GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> range;
+  result_desc.GetShapeRange(range);
 
   // update output desc
   TensorDesc output_desc = op.GetOutputDesc("y");
   output_desc.SetShape(shape);
   output_desc.SetDataType(dtype);
+  if (range.size() > 0) {
+    output_desc.SetShapeRange(range);
+  }
   (void)op.UpdateOutputDesc("y", output_desc);
   return GRAPH_SUCCESS;
 }
@@ -747,6 +761,8 @@ COMMON_INFER_FUNC_REG(ReduceSumD, ReduceSumDInferShape);
 
 // ----------------ReduceAny Op-------------------
 IMPLEMT_COMMON_INFERFUNC(ReduceAnyInferShape) {
+  const vector<string> depend_names = {"axes"};
+  PREPARE_DYNAMIC_SHAPE(depend_names);
   OP_LOGI(op.GetName().c_str(), "Enter ReduceAny proto inferfunction!");
   ge::TensorDesc result_desc;
   if (!InferReduceShape(op, "x", "axes", "keep_dims", result_desc)) {
@@ -754,11 +770,16 @@ IMPLEMT_COMMON_INFERFUNC(ReduceAnyInferShape) {
   }
   auto shape = result_desc.GetShape();
   auto dtype = result_desc.GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> range;
+  result_desc.GetShapeRange(range);
 
   // update output desc
   TensorDesc output_desc = op.GetOutputDesc("y");
   output_desc.SetShape(shape);
   output_desc.SetDataType(dtype);
+  if (range.size() > 0) {
+    output_desc.SetShapeRange(range);
+  }
   (void)op.UpdateOutputDesc("y", output_desc);
   return GRAPH_SUCCESS;
 }
