@@ -36,6 +36,7 @@
 #include "graph/utils/node_utils.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "pattern_fusion_util.h"
+#include "fp16_t.hpp"
 #include "graph_optimizer/fusion_common/fusion_statistic_recorder.h"
 
 namespace fe {
