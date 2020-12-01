@@ -22,8 +22,8 @@ from op_test_frame.ut import OpUT
 ut_case = OpUT("TopkD", "impl.dynamic.top_k_d", "top_k_d")
 
 case1 = {"params": [{"shape": (-1, -1), "dtype": "float16", "ori_shape": (880, 48), "format": "ND", "ori_format": "ND", "range": ((1, 880), (1, 48))},
-                    {"shape": (4096*2,), "dtype": "int32", "format": "ND", "ori_shape": (4096*2,),"ori_format": "ND", "range": (4096*2,)},
-                    {"shape": (880,16), "dtype": "float32", "format": "ND", "ori_shape": (880,16),"ori_format": "ND", "range": ((1, 880), (1, 16))},
+                    {"shape": (4096*2,), "dtype": "float16", "format": "ND", "ori_shape": (4096*2,),"ori_format": "ND", "range": (4096*2,)},
+                    {"shape": (880,16), "dtype": "float16", "format": "ND", "ori_shape": (880,16),"ori_format": "ND", "range": ((1, 880), (1, 16))},
                     {"shape": (880,16), "dtype": "int32", "format": "ND", "ori_shape": (880,16),"ori_format": "ND", "range": ((1, 880), (1, 16))},
                     16,True,-1,True],
          "case_name": "TopkD_1",
