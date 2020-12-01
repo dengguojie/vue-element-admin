@@ -24,9 +24,10 @@ protected:
 
 TEST_F(argmaxv2_fusion_pass_test, argmaxv2_fusion_pass_test_1) {
   ge::Graph graph("argmaxv2_fusion_pass_test_1");
-  auto shape_data = vector<int64_t>({2, 2, 2, 2});
+  auto shape_data = vector<int64_t>({-1, -1, -1, 5});
   TensorDesc desc_data(ge::Shape(shape_data), FORMAT_NCHW, DT_FLOAT16);
-  
+  std::vector<std::pair<int64_t,int64_t>> range_x1 = {{1, -1}, {2, 3}, {2, 3}, {5, 5}};
+  desc_data.SetShapeRange(range_x1);
   auto data = op::Data("data");
   data.update_input_desc_x(desc_data);
   data.update_output_desc_y(desc_data);
@@ -58,11 +59,20 @@ TEST_F(argmaxv2_fusion_pass_test, argmaxv2_fusion_pass_test_1) {
   
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-  
+
+  std::vector<int64_t> expected_shape = {-1, -1, 5};
+  std::vector<std::pair<int64_t,int64_t>> expected_range = {{1, -1}, {2, 3}, {5, 5}};
+
   bool findD = false;
   for (auto node: compute_graph_ptr->GetAllNodes()) {
     if (node->GetType() == "ArgMaxV2") {
       findD = true;
+      auto output_desc = node->GetOpDesc()->GetOutputDesc(0);
+      std::vector<int64_t> dims = output_desc.GetShape().GetDims();
+      std::vector<std::pair<int64_t,int64_t>> output_range;
+      output_desc.GetShapeRange(output_range);
+      EXPECT_EQ(output_range, expected_range);
+      EXPECT_EQ(dims, expected_shape);
     }
   }
   EXPECT_EQ(findD, true);
