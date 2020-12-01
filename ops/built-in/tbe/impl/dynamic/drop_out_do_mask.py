@@ -1,3 +1,20 @@
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+"""
+drop_out_do_mask.py
+"""
 from te import tik
 from te import platform as tbe_platform
 import te.lang.dynamic
@@ -150,7 +167,7 @@ class DropOutDoMask:
             copy_gm_offset = \
                 _core_idx * process_num + \
                 copy_loop * self.max_process_num + (copy_tail // self.vcetor_num) * self.vcetor_num
-            self._run_one_loop(copy_gm_offset, _process_num_one_loop, vector_mask, prob_rec,True)
+            self._run_one_loop(copy_gm_offset, _process_num_one_loop, vector_mask, prob_rec, True)
 
     def _keep_prob_the_var(self):
         """
