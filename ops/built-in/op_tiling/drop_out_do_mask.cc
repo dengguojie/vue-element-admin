@@ -21,7 +21,7 @@
 #include <string>
 #include <math.h>
 #include <nlohmann/json.hpp>
-#include "register/op_tiling.h"
+#include "op_tiling.h"
 #include "graph/debug/ge_log.h"
 #include "op_log.h"
 
@@ -87,6 +87,6 @@ bool DropOutDoMaskTiling(const std::string& op_type,
 }
 
 // register tiling interface of the DropOutDoMask op.
-REGISTER_OP_TILING_FUNC(DropOutDoMask, DropOutDoMaskTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(DropOutDoMask, DropOutDoMaskTiling);
 }  // namespace optiling
 
