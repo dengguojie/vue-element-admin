@@ -17,6 +17,7 @@ dynamic mat_mul
 """
 import math
 
+import te
 import te.lang.cce as tbe
 import te.lang.base as tbe_base
 import te.platform as tbe_platform
@@ -24,7 +25,6 @@ from te.utils import para_check
 from te import tvm
 from te.utils.error_manager import error_manager_vector
 from te.utils.error_manager import error_manager_util
-import te
 from impl.util import fusion_util
 
 # General limitation of the size for input shape: 2**32 - 1
@@ -82,8 +82,8 @@ def _get_input_range(range_x1, range_x2, trans_a, trans_b, format_a, format_b):
 
     if len(range_x2) == NZ_LENGTH and format_b == "FRACTAL_NZ":
         if trans_b:
-            n_range = [range_x2[1][0] * range_x2[2]
-                       [0], range_x2[1][1] * range_x2[2][1]]
+            n_range = [range_x2[1][0] * range_x2[2][0],
+                       range_x2[1][1] * range_x2[2][1]]
         else:
             n_range = [range_x2[0][0] * range_x2[3][0],
                        range_x2[0][1] * range_x2[3][1]]
@@ -166,6 +166,8 @@ def _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y, trans_a, tran
         If true, shape_a == transposed before multiplication
     trans_b: bool
         If true, shape_a == transposed before multiplication
+    offset_x: 
+        offset of x
     kernel_name: str
         cce kernel_name
     Returns
