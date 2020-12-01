@@ -1038,7 +1038,7 @@ IMPLEMT_VERIFIER(Assign, AssignVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(AssignInferShape) {
-  if (!TwoInOneOutDynamicInferNoBroadcast(op, "ref", "value", {"ref"})) {
+  if (OneInOneOutDynamicInfer(op, "value", {"ref"})) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
