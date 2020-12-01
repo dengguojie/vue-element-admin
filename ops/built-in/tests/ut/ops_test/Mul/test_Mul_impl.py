@@ -83,7 +83,7 @@ def test_op_select_format(test_arg):
                      {"shape": (96, 256), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (96, 256),"ori_format": "NHWC"})
     op_select_format({"shape": (25, 1, 16, 16), "dtype": "float32", "format": "FRACTAL_Z", "ori_shape": (6, 1, 5, 5),"ori_format": "NCHW"},
                      {"shape": (), "dtype": "float32", "format": "NCHW", "ori_shape": (),"ori_format": "NCHW"},
-                     {"shape": (25, 1, 16, 16), "dtype": "float32", "format": "FRACTAL_Z", "ori_shape": (6, 1, 5, 5,"ori_format": "NCHW"})
+                     {"shape": (25, 1, 16, 16), "dtype": "float32", "format": "FRACTAL_Z", "ori_shape": (6, 1, 5, 5), "ori_format": "NCHW"})
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
