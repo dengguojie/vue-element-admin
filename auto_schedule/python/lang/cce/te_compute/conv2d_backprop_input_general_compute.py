@@ -302,7 +302,7 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
                     name="dy_l1",
                     tag="dy_l1"
                 )
-        elif _check_pad_zero(pad_list):
+        elif not self._dynamic_para and _check_pad_zero(pad_list):
             shape_up_modify = (pad_up_before - tvm_abs(pad_up_before)) // 2
             shape_left_modify = (pad_left_before - tvm_abs(pad_left_before)) // 2
             shape_down_modify = (pad_down_after - tvm_abs(pad_down_after)) // 2
