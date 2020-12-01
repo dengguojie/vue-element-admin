@@ -25,6 +25,7 @@ if(BUILD_OPEN_PROJECT)
 set(local_host_kernels_src_files
     kernels/host/add_kernel.cc
     kernels/host/mul_kernel.cc
+    kernels/host/transdata.cc
     kernels/host/random_uniform_kernel.cc
 )
 
@@ -138,6 +139,7 @@ set(local_kernels_src_files
 set(local_host_kernels_src_files
     kernels/host/add_kernel.cc
     kernels/host/mul_kernel.cc
+    kernels/host/transdata.cc
     kernels/host/random_uniform_kernel.cc
 )
 
