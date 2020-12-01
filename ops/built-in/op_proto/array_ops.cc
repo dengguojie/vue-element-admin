@@ -1842,8 +1842,13 @@ static void CaclDims(const Tensor& data, std::vector<int64_t>& vec_dim) {
 IMPLEMT_INFERFUNC(Empty, EmptyInfer) {
   OP_LOGI(op.GetName().c_str(), "Empty infershape start");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  std::vector<string> dep_inputs = {"shape"};
+  op_desc->SetOpInferDepends(dep_inputs);
   auto input_desc_shape = op_desc->MutableInputDesc("shape");
   auto output_desc_y = op_desc->MutableOutputDesc("y");
+
+  uint32_t dtype = DT_INT32;
+  (void)op.GetAttr("dtype", dtype);
 
   std::vector<std::pair<int64_t, int64_t>> shape_range;
   std::vector<std::pair<int64_t, int64_t>> y_range;
@@ -1873,17 +1878,51 @@ IMPLEMT_INFERFUNC(Empty, EmptyInfer) {
     y_range.emplace_back(pair);
     output_desc_y->SetShape(GeShape(UNKNOWN_SHAPE));
     output_desc_y->SetOriginShape(GeShape(UNKNOWN_SHAPE));
-    output_desc_y->SetDataType(data_type);
+    output_desc_y->SetDataType((DataType)dtype);
+    output_desc_y->SetShapeRange(y_range);
+    return GRAPH_SUCCESS;
+  }
+
+  auto node = NodeUtils::GetNodeFromOperator(op);
+  if (node == nullptr) {
+    OP_LOGE(op.GetName().c_str(), "Get null node ptr.");
+    return GRAPH_PARAM_INVALID;
+  }
+
+  GeTensorPtr shape_data;
+  std::vector<int64_t> shape_dims;
+  auto result = NodeUtils::GetInputConstData(node, "shape", shape_data);
+  if(result == GRAPH_SUCCESS) {
+    DataType data_type = shape_data->GetTensorDesc().GetDataType();
+    if (data_type == DT_INT32) {
+      CaclDims<int32_t>(shape_data,shape_dims);
+    } else if (data_type == DT_INT64) {
+      CaclDims<int64_t>(shape_data, shape_dims);
+    }
+
+    OP_LOGD(op.GetName().c_str(), "Get input const data success.");
+    std::pair<int64_t, int64_t> pair({1,shape_range.size()});
+    y_range.emplace_back(pair);
+    output_desc_y->SetShape(GeShape(shape_dims));
+    output_desc_y->SetOriginShape(GeShape(shape_dims));
+    output_desc_y->SetDataType((DataType)dtype);
+    output_desc_y->SetShapeRange(y_range);
+    return GRAPH_SUCCESS;
+  } else {
+    OP_LOGD(op.GetName().c_str(), "Get input const data failed!");
+    std::pair<int64_t, int64_t> pair({1,shape_range.size()});
+    y_range.emplace_back(pair);
+    output_desc_y->SetShape(GeShape(UNKNOWN_SHAPE));
+    output_desc_y->SetOriginShape(GeShape(UNKNOWN_SHAPE));
+    output_desc_y->SetDataType((DataType)dtype);
     output_desc_y->SetShapeRange(y_range);
     return GRAPH_SUCCESS;
   }
 
   output_desc_y->SetShape(GeShape(vec_dim));
   output_desc_y->SetOriginShape(GeShape(vec_dim));
-  uint32_t dtype = DT_INT32;
-  (void)op.GetAttr("dtype", dtype);
   output_desc_y->SetDataType((DataType)dtype);
-  OP_LOGI(op.GetName().c_str(), "Empty infershape end");
+  OP_LOGD(op.GetName().c_str(), "Empty infershape end");
   return GRAPH_SUCCESS;
 }
 
