@@ -145,7 +145,7 @@ class GatherV2():
         indices_support_dtype_list = ("int32", "int64")
         para_check.check_dtype(self.params_dtype, dtype_list, param_name="x")
         para_check.check_dtype(self.indices_dtype, indices_support_dtype_list, param_name="indices")
-        para_check.check_dtype(self.axis_dtype, (INT32,), param_name="axis")
+        para_check.check_dtype(self.axis_dtype, (INT32, INT64), param_name="axis")
         if self.y_dtype != self.params_dtype:
             error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "y", "x",
                                                                   self.y_dtype, self.params_dtype)

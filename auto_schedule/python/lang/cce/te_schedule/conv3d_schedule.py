@@ -1239,7 +1239,6 @@ class CceConv3dOp:
             self.var_range = dynamic_para.get("var_range")
 
         fmap = tensor_map["fmap"]
-        _, fmap_d_dim, fmap_c1, fmap_hi, fmap_wi, fmap_c0 = fmap.shape
         weight = tensor_map["filter"]
         c_col = tensor_map["c_col"]
         stage_dict = {"res_c": res_c, "c_col": c_col}
@@ -1741,6 +1740,7 @@ class CceConv3dOp:
         self._to_pragma(self.body_ops, self.input_ops, c_outer_inner_inner)
 
         def _get_al1_bound():
+            _, fmap_d_dim, fmap_c1, fmap_hi, fmap_wi, fmap_c0 = fmap.shape
             stride_h = conv3d_compute.Conv3DParam.tiling_query_param["strideh"]
             l0c_mc, l0c_m0 = tiling['CL0_matrix'][1:3]
             stride_update = 1 if self._tensor_map["opti_h_flag"] else stride_h
@@ -1771,6 +1771,8 @@ class CceConv3dOp:
                     al1_m = hi_max*fmap_wi
                 return al1_m * tiling["AL1_shape"][0]*fmap_c0
             else:
+                if self._tensor_map["opti_h_flag"]:
+                    fmap_hi = (fmap_hi - 1) // stride_h + 1
                 al1_m = fmap_hi * fmap_wi
                 return al1_m * fmap_c1 * fmap_c0 * kernel_d
 

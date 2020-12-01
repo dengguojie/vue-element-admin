@@ -19,7 +19,8 @@ from typing import Optional
 
 from te import tvm
 
-from . import Pattern, INSN_MAPPING, DTYPE_BYTE_MAPPING, FAKE_NODE_TAG, SUPPORT_SCALAR_INSNS, TERNARY_INSNS
+from . import Pattern, INSN_MAPPING, DTYPE_BYTE_MAPPING, FAKE_NODE_TAG, \
+    SUPPORT_SCALAR_INSNS, TERNARY_INSNS, NEED_EXTENT_NODE_INSNS
 from . import CompileInfo
 from . import util
 from .elewise_tilingcase import TilingStrategy
@@ -557,14 +558,10 @@ class ElewiseSchedule:
                 sch[tensor_i].emit_insn(param[0], param[1],
                                         attrs=dict(src_shape=src_shape, storage_bound=[tensor_bound]))
             else:
-                if param[1][0:6] == VECTOR:
-                    tensor_bound = self._tensor_space // DTYPE_BYTE_MAPPING[tensor_i.dtype]
-                    sch[tensor_i].emit_insn(param[0], param[1], attrs=dict(storage_bound=[tensor_bound]))
+                if self._is_db and tensor_i in self._out_tensors:
+                    sch[tensor_i].emit_insn(param[0], param[1], attrs=dict(no_overlap=0))
                 else:
-                    if self._is_db and tensor_i in self._out_tensors:
-                        sch[tensor_i].emit_insn(param[0], param[1], attrs=dict(no_overlap=0))
-                    else:
-                        sch[tensor_i].emit_insn(param[0], param[1])
+                    sch[tensor_i].emit_insn(param[0], param[1])
 
     def _calc_double_buffer(self):
         pass
@@ -572,7 +569,7 @@ class ElewiseSchedule:
     def _do_double_buffer(self):
         if self._is_db:
             sch = self._schedule
-            
+
             tensors = self._pure_middle_tensors \
             .union(self._cache_read_buffer_tensor_map.keys()) \
             .union(self._cache_write_buffer_tensor_map.keys())
@@ -657,13 +654,14 @@ class ElewiseSchedule:
                 _current_space = len(dependent_map)
             else:
                 _current_space = len(dependent_map) + 1
-            if (util.need_temp_space(_tensor) and _tensor not in self._compute_inline_broadcast) \
-                    or _need_external_space(_tensor):
+            if util.need_extent_node(_tensor) and _tensor not in self._compute_inline_broadcast:
                 _current_space += 1
+            if util.need_temp_space(_tensor) or _need_external_space(_tensor):
+                self._ub_size -= BLOCK_SIZE_BYTE
             if util.is_vsel_insn(_tensor):
-                _current_space += VSEL_INPUT_NUMBER - len(_tensor.op.input_tensors)
+                self._ub_size -= (BLOCK_SIZE_BYTE * (VSEL_INPUT_NUMBER - len(_tensor.op.input_tensors)))
             if util.is_vcmpsel_insn(_tensor):
-                _current_space += VCMPSEL_INPUT_NUMBER - len(_tensor.op.input_tensors)
+                self._ub_size -= (BLOCK_SIZE_BYTE * (VCMPSEL_INPUT_NUMBER - len(_tensor.op.input_tensors)))
             _need_space.append(_current_space)
             _refresh_dependent(_tensor)
             if _tensor not in dependent_map:
@@ -705,11 +703,12 @@ class ElewiseSchedule:
                 current_space = len(dependent_map) + 1
 
             if util.is_vsel_insn(self._out):
-                current_space += VSEL_INPUT_NUMBER - len(self._out.op.input_tensors)
+                self._ub_size -= (BLOCK_SIZE_BYTE * (VSEL_INPUT_NUMBER - len(self._out.op.input_tensors)))
             if util.is_vcmpsel_insn(self._out):
-                current_space += VCMPSEL_INPUT_NUMBER - len(self._out.op.input_tensors)
-
+                self._ub_size -= (BLOCK_SIZE_BYTE * (VCMPSEL_INPUT_NUMBER - len(self._out.op.input_tensors)))
             if util.need_temp_space(self._out) or _need_external_space(self._out):
+                self._ub_size -= BLOCK_SIZE_BYTE
+            if util.need_extent_node(self._out):
                 current_space += 1
             coexisting_quantities.append(current_space)
 

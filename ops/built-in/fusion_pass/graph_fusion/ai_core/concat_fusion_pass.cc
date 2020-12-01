@@ -73,6 +73,40 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
   ge::OpDescPtr fusedDesc = fused_node->GetOpDesc();
   FUSION_PASS_CHECK(fusedDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fused_node's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
+
+  int64_t num_N;
+  int64_t num_N_del = 0;
+  int64_t num_N_new;
+  vector<int64_t> whereI;
+  ge::AttrUtils::GetInt(fusedDesc, "N", num_N);
+  for (int i=0;i<num_N;i++) {
+     int64_t Repeatnum = 0;
+     ge::GeTensorDesc selectInputDesc = fused_node->GetOpDesc()->GetInputDesc(i);
+     vector<int64_t> selectInputShape = selectInputDesc.GetShape().GetDims();
+     for (int j=0; j<selectInputShape.size(); j++){
+         if (selectInputShape[j] == 0){
+             Repeatnum +=1;
+         }
+     }
+     if (Repeatnum > 0){
+        num_N_del += 1;
+        whereI.push_back(i);
+     }
+  }
+  int64_t zero_num = whereI.size();
+  if (zero_num > 0){
+      for (int i=0; i<whereI.size(); i++){
+          FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fused_node->GetInDataAnchor(whereI[i] - i)->GetPeerOutAnchor(),
+                                                       fused_node->GetInDataAnchor(whereI[i] - i)) != SUCCESS,
+
+                           OP_LOGE(FUSED_OP_TYPE.c_str(),"Remove edge failed."), return FAILED);
+          OpDescUtils::ClearInputDesc(fusedDesc, whereI[i] - i);
+          ge::NodeUtils::ClearInDataAnchor(fused_node,fused_node->GetInDataAnchor(whereI[i] - i));
+      }
+  }
+  num_N_new = num_N - num_N_del;
+  ge::AttrUtils::SetInt(fusedDesc, "N", num_N_new);
+
   // A maximum of 63 tensors are supported in mini mode.
   int64_t inputs_num = fusedDesc->GetInputsSize();
   int64_t NeedTangent = 63;

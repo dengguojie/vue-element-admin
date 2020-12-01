@@ -65,11 +65,10 @@ VERIFY_FUNC_REG(SparseSoftmaxCrossEntropyWithLogits, SparseSoftmaxCrossEntropyWi
 
 // ---------------------------SoftmaxV2-----------------------------
 IMPLEMT_COMMON_INFERFUNC(SoftmaxV2InferShape) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(op.GetInputDesc("x").GetShape());
-  tensordesc_output.SetDataType(op.GetInputDesc("x").GetDataType());
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
-  return GRAPH_SUCCESS;
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(SoftmaxV2, SoftmaxV2InferShape);
@@ -77,12 +76,10 @@ COMMON_INFER_FUNC_REG(SoftmaxV2, SoftmaxV2InferShape);
 
 // ---------------------------LogSoftmaxV2------------------------------
 IMPLEMT_COMMON_INFERFUNC(LogSoftmaxV2InferShape) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("logsoftmax");
-  tensordesc_output.SetShape(op.GetInputDesc("logits").GetShape());
-  tensordesc_output.SetDataType(op.GetInputDesc("logits").GetDataType());
-
-  (void)op.UpdateOutputDesc("logsoftmax", tensordesc_output);
-  return GRAPH_SUCCESS;
+  if (OneInOneOutDynamicInfer(op, "logits", {"logsoftmax"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(LogSoftmaxV2, LogSoftmaxV2InferShape);
@@ -526,7 +523,6 @@ IMPLEMT_VERIFIER(DropOutDoMask, DropOutDoMaskVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(DropOutDoMaskInferShape) {
-  PREPARE_DYNAMIC_SHAPE_WITH_NO_DEPENDS();
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto x_desc = op_info->MutableInputDesc("x");
   vector<int64_t> x_shape = x_desc->MutableShape().GetDims();

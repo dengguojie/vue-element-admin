@@ -5,7 +5,7 @@
 
 #include "tensor_impl.h"
 
-#include "proto/me_tensor_shape.pb.h"
+#include "proto/cpu_tensor_shape.pb.h"
 #include "cpu_kernel_utils.h"
 #include "tensor_shape_impl.h"
 #include "cpu_types.h"
@@ -17,7 +17,7 @@ namespace aicpu {
  */
 std::shared_ptr<TensorShape> TensorImpl::GetTensorShape() const
 {
-    aicpuop::TensorShape *tensorShape = tensor_->mutable_tensor_shape();
+    aicpuops::TensorShape *tensorShape = tensor_->mutable_tensor_shape();
     if (tensorShape == nullptr) {
         KERNEL_LOG_ERROR("Protobuf mutable tensor shape is null.");
         return std::shared_ptr<TensorShape>(nullptr);
@@ -43,7 +43,7 @@ bool TensorImpl::SetTensorShape(const TensorShape *shape)
 {
     KERNEL_CHECK_NULLPTR(shape, false, "tensor shape is null")
 
-    aicpuop::TensorShape *tensorShape = tensor_->mutable_tensor_shape();
+    aicpuops::TensorShape *tensorShape = tensor_->mutable_tensor_shape();
     KERNEL_CHECK_NULLPTR(tensorShape, false, "Protobuf mutable tensor shape is null")
     auto impl = CpuKernelUtils::GetImpl(shape);
     KERNEL_CHECK_NULLPTR(impl, false, "get impl is null")
@@ -133,7 +133,7 @@ int64_t TensorImpl::NumElements() const
     return shape->NumElements();
 }
 
-aicpuop::Tensor *TensorImpl::GetProto() const
+aicpuops::Tensor *TensorImpl::GetProto() const
 {
     return tensor_.get();
 }

@@ -23,4 +23,6 @@ add_subdirectory(op_tiling_test)
 add_subdirectory(graph_fusion/ai_core)
 
 # testcases for aicpu
-add_subdirectory(aicpu_test)
+if(BUILD_OPEN_PROJECT)
+  add_subdirectory(aicpu_test)
+endif()

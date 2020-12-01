@@ -108,6 +108,7 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
         self._dx_c1_extend = self._group_dict.get(GroupDictKeys.dx_c1_extend)
         self._dy_c1_extend = self._group_dict.get(GroupDictKeys.dy_c1_extend)
         self._groups_ori = self._group_dict.get(GroupDictKeys.groups)
+        self._cube_vector_split_flag = cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT")
 
     def _get_dilate_tensor(  # pylint:disable=R0913,R0914
         self,
@@ -499,37 +500,51 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
             res_c_dtype = "int32"
 
         # from l0c(GNC1MC0) to ub(N[GC1]MC0)
-
-        res_cub = tvm.compute(
-            ub_dx_shape,
-            lambda batch_ub_index, c1_ub_index, m_ub_index, c0_ub_index:
-            res_c[c1_ub_index // self._dx_c1_extend, batch_ub_index,
-                  c1_ub_index % self._dx_c1_extend, m_ub_index, c0_ub_index]
-                .astype(res_c_dtype),
-            name='CUB'
-        )
-
-        if self._stride_h > 1 or self._stride_w > 1:
-            res_cub = self._get_dilate_tensor(
-                res_cub, h_dx_img, w_dx_img, self._stride_h, self._stride_w
+        output_shape = [batch_dx_img, c1_dx_img, h_dx_img * w_dx_img, c0_dx_img]
+        if self._cube_vector_split_flag:
+            img_c = tvm.compute(
+                output_shape,
+                lambda n, c1, hw, c0: res_c(c1 // self._dx_c1_extend, n,
+                    c1 % self._dx_c1_extend, hw, c0).astype(res_c_dtype),  # pylint: disable=W0108
+                tag="conv2d_backprop_input_opti",
+                name=res_c.name + "_img",
+                attrs={
+                    "hw_dim": h_dx_img * w_dx_img,
+                    "dx_5D_shape": self._output_shape,
+                    "group_dict": self._group_dict,
+                    "kernel_name": self._kernel_name
+                }
+            )
+        else:
+            res_cub = tvm.compute(
+                ub_dx_shape,
+                lambda batch_ub_index, c1_ub_index, m_ub_index, c0_ub_index:
+                res_c[c1_ub_index // self._dx_c1_extend, batch_ub_index,
+                      c1_ub_index % self._dx_c1_extend, m_ub_index, c0_ub_index]
+                    .astype(res_c_dtype),
+                name='CUB'
             )
 
-        if (tensor_bias is not None
-                and (tensor_bias.dtype == "float16" or (self._stride_h > 1 or self._stride_w > 1))
-        ):
-            res_cub = _add_bias_in_ub(res_cub, tensor_bias)
+            if self._stride_h > 1 or self._stride_w > 1:
+                res_cub = self._get_dilate_tensor(
+                    res_cub, h_dx_img, w_dx_img, self._stride_h, self._stride_w
+                )
 
-        output_shape = [batch_dx_img, c1_dx_img, h_dx_img * w_dx_img, c0_dx_img]
-        img_c = tvm.compute(
-            output_shape,
-            lambda n, c1, hw, c0: res_cub(n, c1, hw, c0),  # pylint: disable=W0108
-            tag="conv2d_backprop_input_opti",
-            name=res_cub.name + "_img",
-            attrs={
-                "hw_dim": h_dx_img * w_dx_img,
-                "dx_5D_shape": self._output_shape,
-                "group_dict": self._group_dict,
-                "kernel_name": self._kernel_name
-            }
-        )
+            if (tensor_bias is not None
+                    and (tensor_bias.dtype == "float16" or (self._stride_h > 1 or self._stride_w > 1))
+            ):
+                res_cub = _add_bias_in_ub(res_cub, tensor_bias)
+
+            img_c = tvm.compute(
+                output_shape,
+                lambda n, c1, hw, c0: res_cub(n, c1, hw, c0),  # pylint: disable=W0108
+                tag="conv2d_backprop_input_opti",
+                name=res_cub.name + "_img",
+                attrs={
+                    "hw_dim": h_dx_img * w_dx_img,
+                    "dx_5D_shape": self._output_shape,
+                    "group_dict": self._group_dict,
+                    "kernel_name": self._kernel_name
+                }
+            )
         return img_c

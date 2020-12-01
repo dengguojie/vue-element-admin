@@ -115,7 +115,7 @@ bool NodeDefImpl::AddAttrs(const std::string &name, const AttrValue *attr)
     KERNEL_CHECK_NULLPTR(attrs, false, "Protobuf mutable attrs is null")
     auto impl = CpuKernelUtils::GetImpl(attr);
     auto pair =
-        attrs->insert(google::protobuf::Map<std::string, aicpuop::AttrValue>::value_type(name, *(impl->GetProto())));
+        attrs->insert(google::protobuf::Map<std::string, aicpuops::AttrValue>::value_type(name, *(impl->GetProto())));
     if (!pair.second) {
         KERNEL_LOG_ERROR("Nodedef insert attr %s to nodeDef failed.", name.c_str());
         return false;
@@ -209,7 +209,7 @@ std::unordered_map<std::string, std::shared_ptr<AttrValue>> NodeDefImpl::Attrs()
     KERNEL_CHECK_NULLPTR(attrsMap, ret, "Protobuf mutable attrs is null")
 
     for (auto it = attrsMap->begin(); it != attrsMap->end(); ++it) {
-        aicpuop::AttrValue *attr = &(it->second);
+        aicpuops::AttrValue *attr = &(it->second);
         AttrValueImpl *impl = new (std::nothrow) AttrValueImpl(attr);
         if (impl == nullptr) {
             KERNEL_LOG_WARN("create AttrValueImpl failed.");

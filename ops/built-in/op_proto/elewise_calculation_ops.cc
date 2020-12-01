@@ -122,7 +122,7 @@ IMPLEMT_VERIFIER(Add, AddVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(AddInferShape)
+IMPLEMT_COMMON_INFERFUNC(AddInferShape) {
   if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
     return GRAPH_FAILED;
   }
@@ -130,7 +130,8 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(AddInferShape)
   if (!InferShapeRangeTwoInOneOutBroadcase(op, "x1", "x2", "y")) {
     return GRAPH_FAILED;
   }
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 COMMON_INFER_FUNC_REG(Add, AddInferShape);
 VERIFY_FUNC_REG(Add, AddVerify);
@@ -392,11 +393,23 @@ COMMON_INFER_FUNC_REG(Sub, SubInferShape);
 // -----------------Sub END-----------------
 
 // ----------------Abs-------------------
-COMMON_INFER_FUNC_REG(Abs, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
+IMPLEMT_COMMON_INFERFUNC(AbsInferShape) {
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(Abs, AbsInferShape);
 // --------------Abs END-----------------
 
 // ----------------Sign-------------------
-COMMON_INFER_FUNC_REG(Sign, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
+IMPLEMT_COMMON_INFERFUNC(SignInferShape) {
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(Sign, SignInferShape);
 // ---------------Sign END-----------------
 
 // ----------------SquaredDifference-------------------
@@ -1006,16 +1019,10 @@ VERIFY_FUNC_REG(SqrtGrad, SqrtGradVerify);
 
 // ----------------Log-------------------
 IMPLEMT_COMMON_INFERFUNC(LogInferShape) {
-  Shape x_shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(x_shape);
-  tensordesc_output.SetDataType(input_dtype);
-  if (op.UpdateOutputDesc("y", tensordesc_output) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
-    return GRAPH_FAILED;
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
   }
-  return GRAPH_SUCCESS;
+  return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(Log, LogInferShape);
@@ -1030,13 +1037,11 @@ IMPLEMT_VERIFIER(Assign, AssignVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(AssignInferShape) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("ref");
+  if (OneInOneOutDynamicInfer(op, "ref", {"ref"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 
-  tensordesc_output.SetShape(op.GetInputDesc("ref").GetShape());
-  tensordesc_output.SetDataType(op.GetInputDesc("ref").GetDataType());
-
-  (void)op.UpdateOutputDesc("ref", tensordesc_output);
-  return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(Assign, AssignInferShape);
@@ -1200,13 +1205,10 @@ IMPLEMT_VERIFIER(AssignAdd, AssignAddVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(AssignAddInferShape) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("ref");
-
-  tensordesc_output.SetShape(op.GetInputDesc("ref").GetShape());
-  tensordesc_output.SetDataType(op.GetInputDesc("ref").GetDataType());
-
-  (void)op.UpdateOutputDesc("ref", tensordesc_output);
-  return GRAPH_SUCCESS;
+  if (OneInOneOutDynamicInfer(op, "ref", {"ref"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(AssignAdd, AssignAddInferShape);
@@ -1528,12 +1530,22 @@ COMMON_INFER_FUNC_REG(ZerosLike, ZerosLikeInferShape);
 // ----------------ZerosLike END-----------------
 
 // ----------------LogicalNot-------------------
-COMMON_INFER_FUNC_REG(LogicalNot, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
+IMPLEMT_COMMON_INFERFUNC(LogicalNotInferShape) {
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+
+  return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(LogicalNot, LogicalNotInferShape);
 // --------------LogicalNot END-----------------
 
 // ----------------------LogicalAnd--------------------------
 IMPLEMT_COMMON_INFERFUNC(LogicalAndInferShape) {
   if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
+    return GRAPH_FAILED;
+  }
+  if (!InferShapeRangeTwoInOneOutBroadcase(op, "x1", "x2", "y")) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1619,11 +1631,9 @@ IMPLEMT_VERIFIER(BiasAdd, BiasAddVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(BiasAddInferShape) {
-  TensorDesc tensordesc_x = op.GetInputDesc("x");
-  TensorDesc tensordesc_bias = op.GetInputDesc("bias");
-  TensorDesc tensordesc_y = op.GetOutputDesc("y");
-  tensordesc_y.SetShape(tensordesc_x.GetShape());
-  tensordesc_y.SetDataType(tensordesc_x.GetDataType());
+  if (!OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_FAILED;
+  }
   std::string data_format;
   if (op.GetAttr("data_format", data_format) == GRAPH_FAILED) {
     OpsGetAttrErrReport(op.GetName(), "data_format");
@@ -1637,7 +1647,6 @@ IMPLEMT_COMMON_INFERFUNC(BiasAddInferShape) {
             "support 'NHWC', 'NCHW', 'NDHWC' and 'NCDHW'.");
     return GRAPH_FAILED;
   }
-  (void)op.UpdateOutputDesc("y", tensordesc_y);
   return GRAPH_SUCCESS;
 }
 

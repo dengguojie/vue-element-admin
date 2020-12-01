@@ -559,12 +559,13 @@ def _get_out_range(fmap_range, w_shape, pads, strides, dilations):
     #  Chip Design demand only h_dimesion constraint
     only_fhkh_pass_flag = ((1 <= w_h <= 11) and
                            (strides[1] == 1) and
-                           (y_h_lower == 1))
+                           (y_h_lower == 1) and (y_h_upper == 1))
 
     #  Chip Design demand both h_dimesion and w_dimension constraint
     fhkh_fwkw_pass_flag = ((1 <= w_w <= 11) and (1 <= w_h <= 11) and
                            (strides[1] == 1) and (strides[2] == 1) and
-                           (y_h_lower == 1) and (y_w_lower == 1))
+                           (y_h_lower == 1) and (y_w_lower == 1) and
+                           (y_h_upper == 1) and (y_w_upper == 1))
 
     if load2d_pass_flag or only_fhkh_pass_flag or fhkh_fwkw_pass_flag :
         pass
@@ -591,6 +592,33 @@ def _get_out_range(fmap_range, w_shape, pads, strides, dilations):
             (y_h_lower, y_h_upper), (y_w_lower, y_w_upper)]
 
 
+def _check_const_dim(dim_value):
+    if type(dim_value) != int:
+        args_dict = {
+            "errCode": "E60037",
+            "param_name": "shape axis",
+            "type_list": "[int]",
+            "type": "{}".format(type(dim_value))
+        }
+        raise RuntimeError(
+            args_dict,
+            error_manager.get_error_message(args_dict)
+        )
+    if dim_value <= 0:
+        args_dict = {
+            "errCode": "E60039",
+            "attr_name": "axis",
+            "param_name": "shape",
+            "comparator": "more",
+            "expected_value": "0",
+            "input_value": "{}".format(dim_value)
+        }
+        raise RuntimeError(
+            args_dict,
+            error_manager.get_error_message(args_dict)
+        )
+
+
 def _check_dynamic_mode(in_shape, w_shape):
     """
     config dynamic mode
@@ -598,17 +626,24 @@ def _check_dynamic_mode(in_shape, w_shape):
 
     # in_shape format is NCDHW
     n_dim = 0
+    c_dim = 1
     d_dim = 2
     h_dim = 3
     w_dim = 4
     dynamic_mode = None
     if in_shape[h_dim] == -1 and in_shape[w_dim] == -1 \
             and in_shape[d_dim] == -1 and in_shape[n_dim] != -1 \
-            and in_shape[1] != -1 and -1 not in w_shape:
+            and in_shape[c_dim] != -1 and -1 not in w_shape:
         dynamic_mode = "dynamic_dhw"
-    elif in_shape[n_dim] == -1 and in_shape[1] != -1 and in_shape[h_dim] != -1 \
+        _check_const_dim(in_shape[n_dim])
+        _check_const_dim(in_shape[c_dim])
+    elif in_shape[n_dim] == -1 and in_shape[c_dim] != -1 and in_shape[h_dim] != -1 \
             and in_shape[w_dim] != -1 and in_shape[d_dim] != -1 and -1 not in w_shape:
         dynamic_mode = "dynamic_batch"
+        _check_const_dim(in_shape[c_dim])
+        _check_const_dim(in_shape[h_dim])
+        _check_const_dim(in_shape[w_dim])
+        _check_const_dim(in_shape[d_dim])
     else:
         dict_args = {
             'errCode': 'E50060',
@@ -760,19 +795,17 @@ def _check_and_config_para(fmap,
 
     cin0 = tbe_platform.CUBE_MKN[w_dtype]['mac'][1]
     cout0 = tbe_platform.CUBE_MKN[w_dtype]['mac'][2]
-    group_dict = util_common.calculate_group(shape_fm[1], shape_filter[0],
-                                             groups, cout0, cin0)
-
     _check_conv3d_dtype(in_dtype, w_dtype, res_dtype)
     dynamic_mode = _check_dynamic_mode(shape_fm, shape_filter)
-
     # calculate fmap_range
     fmap_range = _get_fmap_range(in_range, shape_fm, in_format)
 
     _common_check(shape_filter, stride_dhw)
     # calculate out_range
     out_range = _get_out_range(fmap_range, shape_filter, pads, stride_dhw, dilation_dhw)
-
+    # calculate group parameter
+    group_dict = util_common.calculate_group(shape_fm[1], shape_filter[0],
+                                             groups, cout0, cin0)
     # C dimension 16 aligned
     _check_conv3d_shape(shape_fm, shape_filter, pads,
                         stride_dhw, dilation_dhw, in_dtype,

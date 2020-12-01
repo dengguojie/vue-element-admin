@@ -483,6 +483,12 @@ static void GetRangeConstValue(const Operator& op, const Tensor& const_tensor, c
     for (size_t i = 0; i < size; ++i) {
       const_data.push_back((int64_t)((*(const_data_ptr + i))));
     }
+  } else if (dtype == ge::DT_DOUBLE) {
+    double* const_data_ptr = (double*)const_tensor.GetData();
+    size = const_tensor.GetSize() / sizeof(double);
+    for (size_t i = 0; i < size; ++i) {
+      const_data.push_back((double)((*(const_data_ptr + i))));
+    }
   } else {
     OP_LOGE(op.GetName().c_str(), "not support this type");
   }
@@ -519,6 +525,8 @@ IMPLEMT_COMMON_INFERFUNC(RangeInferShape) {
       y_output->SetDataType(ge::DT_INT32);
     } else if (start_dtype == ge::DT_INT64 && limit_dtype == ge::DT_INT64 && delta_dtype == ge::DT_INT64) {
       y_output->SetDataType(ge::DT_INT64);
+    } else if (start_dtype == ge::DT_DOUBLE && limit_dtype == ge::DT_DOUBLE && delta_dtype == ge::DT_DOUBLE) {
+      y_output->SetDataType(ge::DT_DOUBLE);
     } else {
       y_output->SetDataType(ge::DT_FLOAT);
     }
@@ -552,6 +560,8 @@ IMPLEMT_COMMON_INFERFUNC(RangeInferShape) {
       res = static_cast<int>(ceil(float(assist_num) / assist_num_one));
     } else if (start_dtype == ge::DT_INT64 && limit_dtype == ge::DT_INT64 && delta_dtype == ge::DT_INT64) {
       res = static_cast<int>(ceil(float(assist_num) / assist_num_one));
+    } else if (start_dtype == ge::DT_DOUBLE && limit_dtype == ge::DT_DOUBLE && delta_dtype == ge::DT_DOUBLE) {
+      res = static_cast<int>(ceil(double(assist_num) / assist_num_one));
     } else {
       res = static_cast<int>(ceil(assist_num / assist_num_one));
     }
@@ -560,6 +570,8 @@ IMPLEMT_COMMON_INFERFUNC(RangeInferShape) {
       input_dtype = ge::DT_INT32;
     } else if (start_dtype == ge::DT_INT64 && limit_dtype == ge::DT_INT64 && delta_dtype == ge::DT_INT64) {
       input_dtype = ge::DT_INT64;
+    } else if (start_dtype == ge::DT_DOUBLE && limit_dtype == ge::DT_DOUBLE && delta_dtype == ge::DT_DOUBLE) {
+      input_dtype = ge::DT_DOUBLE;
     } else {
       input_dtype = ge::DT_FLOAT;
     }
@@ -735,7 +747,7 @@ VERIFY_FUNC_REG(GatherNd, GatherNdVerify);
 // ----------------GatherNd END----------------
 
 // ----------------GatherV2-------------------
-static graphStatus GatherV2InferOptimize(ge::Operator& op, int32_t& axis, GeTensorDescPtr& x_desc,
+static graphStatus GatherV2InferOptimize(ge::Operator& op, int64_t& axis, GeTensorDescPtr& x_desc,
                                          GeTensorDescPtr& indices_desc, GeTensorDescPtr& y_desc,
                                          std::vector<int64_t>& x_shape, std::vector<int64_t>& indices_shape,
                                          std::vector<int64_t>& y_shape,
@@ -824,7 +836,7 @@ static graphStatus GatherV2InferOptimize(ge::Operator& op, int32_t& axis, GeTens
   return GRAPH_SUCCESS;
 }
 
-void InferRangeOfUnknownRank(graphStatus result, int32_t& axis, std::vector<std::pair<int64_t, int64_t>>& out_range,
+void InferRangeOfUnknownRank(graphStatus result, int64_t& axis, std::vector<std::pair<int64_t, int64_t>>& out_range,
                              std::vector<std::pair<int64_t, int64_t>>& shape_range_x,
                              std::vector<std::pair<int64_t, int64_t>>& shape_range_indices) {
   if (result == GRAPH_SUCCESS) {
@@ -875,10 +887,15 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(GatherV2InferShape)
   MakeUpShapeRange(indices_shape, shape_range_indices);
 
   Tensor axis_tensor;
-  int32_t axis = -1;
+  int64_t axis = -1;
+  DataType axis_dtype = op_desc->MutableInputDesc("axis")->GetDataType();
   graphStatus result = op.GetInputConstData("axis", axis_tensor);
   if (result == GRAPH_SUCCESS) {
-    axis = (int32_t)(*((int32_t*)axis_tensor.GetData()));
+    if (axis_dtype == ge::DT_INT64) {
+      axis = (int64_t)(*((int64_t*)axis_tensor.GetData()));
+    } else {
+      axis = (int32_t)(*((int32_t*)axis_tensor.GetData()));
+    }
   }
 
   // unknown rank
@@ -1077,7 +1094,7 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(GatherInferShape)
   std::vector<int64_t> y_shape;
   std::vector<std::pair<int64_t, int64_t>> y_shape_range;
 
-  int32_t axis = 0;
+  int64_t axis = 0;
 
   // unknown rank
   if (IsUnknownRankShape(indices_shape) || IsUnknownRankShape(x_shape)) {
@@ -1890,6 +1907,10 @@ IMPLEMT_COMMON_INFERFUNC(SliceDInferShape) {
 COMMON_INFER_FUNC_REG(SliceD, SliceDInferShape);
 VERIFY_FUNC_REG(SliceD, SliceDVerify);
 // ----------------SliceD Op End ----------------------
+
+// ---------------SliceDV2 Op Begin ------------------
+COMMON_INFER_FUNC_REG(SliceDV2, SliceDInferShape);
+// ---------------SliceDV2 Op End --------------------
 
 // ----------------Slice Op Begin ----------------------
 static void GetSliceConstValue(const Tensor& const_tensor, const DataType& dtype, std::vector<int64_t>& const_data) {

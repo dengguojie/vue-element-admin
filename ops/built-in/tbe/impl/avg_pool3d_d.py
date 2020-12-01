@@ -491,7 +491,7 @@ def avg_pool3d_d(x,
         kw = ksize_dhw[2]
         w_ori_shape = (kd, kh, kw, 1, fmap_c)
         c1 = x.get('shape')[2]
-        filter_frac_z = (c1, kd * kh * kw, 1, 16, 16)
+        filter_frac_z = (c1 * kd * kh * kw, 1, 16, 16)
         filter = tvm.placeholder(filter_frac_z, name="filter", dtype="float16",
                                  attrs={"ori_shape": w_ori_shape, 'ori_format': 'DHWCN'})
         conv_res = conv3d_fusion_compute(fmap, filter, bias, offset_w, y, strides, pads, dilations, groups=groups,

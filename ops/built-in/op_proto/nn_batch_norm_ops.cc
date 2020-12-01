@@ -24,6 +24,7 @@
 #include "util/util.h"
 #include "op_log.h"
 #include "./util/error_util.h"
+#include "graph/utils/node_utils.h"
 
 namespace ge {
 // -----------------------------BatchNorm------------------------------
@@ -46,37 +47,12 @@ IMPLEMT_INFERFUNC(BatchNorm, BatchNormInferShape) {
       return GRAPH_FAILED;
     }
   }
-  auto x_shape = op.GetInputDesc("x").GetShape().GetDims();
-  DataType x_dtype = op.GetInputDesc("x").GetDataType();
-
-  TensorDesc y_desc = op.GetOutputDesc("y");
-  y_desc.SetShape(ge::Shape(x_shape));
-  y_desc.SetDataType(x_dtype);
-  (void)op.UpdateOutputDesc("y", y_desc);
-
-  auto scale_shape = op.GetInputDesc("scale").GetShape().GetDims();
-  DataType scale_dtype = op.GetInputDesc("scale").GetDataType();
-
-  TensorDesc batch_mean_desc = op.GetOutputDesc("batch_mean");
-  batch_mean_desc.SetShape(ge::Shape(scale_shape));
-  batch_mean_desc.SetDataType(scale_dtype);
-  (void)op.UpdateOutputDesc("batch_mean", batch_mean_desc);
-
-  TensorDesc batch_variance_desc = op.GetOutputDesc("batch_variance");
-  batch_variance_desc.SetShape(ge::Shape(scale_shape));
-  batch_variance_desc.SetDataType(scale_dtype);
-  (void)op.UpdateOutputDesc("batch_variance", batch_variance_desc);
-
-  TensorDesc reserve_space_1_desc = op.GetOutputDesc("reserve_space_1");
-  reserve_space_1_desc.SetShape(ge::Shape(scale_shape));
-  reserve_space_1_desc.SetDataType(scale_dtype);
-  (void)op.UpdateOutputDesc("reserve_space_1", reserve_space_1_desc);
-
-  TensorDesc reserve_space_2_desc = op.GetOutputDesc("reserve_space_2");
-  reserve_space_2_desc.SetShape(ge::Shape(scale_shape));
-  reserve_space_2_desc.SetDataType(scale_dtype);
-  (void)op.UpdateOutputDesc("reserve_space_2", reserve_space_2_desc);
-
+  if (!OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_FAILED;
+  }
+  if (!OneInOneOutDynamicInfer(op, "scale", {"batch_mean", "batch_variance", "reserve_space_1", "reserve_space_2"})) {
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
@@ -166,39 +142,25 @@ IMPLEMT_INFERFUNC(BatchNormGrad, BatchNormGradInferShape) {
       return GRAPH_FAILED;
     }
   }
-  auto x_shape = op.GetInputDesc("x").GetShape().GetDims();
-  DataType x_dtype = op.GetInputDesc("x").GetDataType();
 
-  TensorDesc x_backprop_desc = op.GetOutputDesc("x_backprop");
-  x_backprop_desc.SetShape(ge::Shape(x_shape));
-  x_backprop_desc.SetDataType(x_dtype);
-  (void)op.UpdateOutputDesc("x_backprop", x_backprop_desc);
-
-  auto scale_shape = op.GetInputDesc("scale").GetShape().GetDims();
-  DataType scale_dtype = op.GetInputDesc("scale").GetDataType();
-
-  TensorDesc scale_backprop_desc = op.GetOutputDesc("scale_backprop");
-  scale_backprop_desc.SetShape(ge::Shape(scale_shape));
-  scale_backprop_desc.SetDataType(scale_dtype);
-  (void)op.UpdateOutputDesc("scale_backprop", scale_backprop_desc);
-
-  TensorDesc offset_backprop_desc = op.GetOutputDesc("offset_backprop");
-  offset_backprop_desc.SetShape(ge::Shape(scale_shape));
-  offset_backprop_desc.SetDataType(scale_dtype);
-  (void)op.UpdateOutputDesc("offset_backprop", offset_backprop_desc);
+  if (!TwoInOneOutDynamicInferNoBroadcast(op, "x", "y_backprop", {"x_backprop"})) {
+    return GRAPH_FAILED;
+  }
+  if (!OneInOneOutDynamicInfer(op, "scale", {"scale_backprop", "offset_backprop"})) {
+    return GRAPH_FAILED;
+  }
 
   std::vector<int64_t> oShapeVector;
-  Shape oShape(oShapeVector);
+  // update reserve_space_4
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto output_desc = op_info->MutableOutputDesc("reserve_space_4");
+  output_desc->SetShape(GeShape(oShapeVector));
+  output_desc->SetDataType(DT_FLOAT);
 
-  TensorDesc reserve_space_4_desc = op.GetOutputDesc("reserve_space_4");
-  reserve_space_4_desc.SetShape(ge::Shape(oShape));
-  reserve_space_4_desc.SetDataType(scale_dtype);
-  (void)op.UpdateOutputDesc("reserve_space_4", reserve_space_4_desc);
-
-  TensorDesc reserve_space_5_desc = op.GetOutputDesc("reserve_space_5");
-  reserve_space_5_desc.SetShape(ge::Shape(oShape));
-  reserve_space_5_desc.SetDataType(scale_dtype);
-  (void)op.UpdateOutputDesc("reserve_space_5", reserve_space_5_desc);
+  // update reserve_space_5
+  output_desc = op_info->MutableOutputDesc("reserve_space_5");
+  output_desc->SetShape(GeShape(oShapeVector));
+  output_desc->SetDataType(DT_FLOAT);
 
   return GRAPH_SUCCESS;
 }

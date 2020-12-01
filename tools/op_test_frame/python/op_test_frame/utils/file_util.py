@@ -18,6 +18,15 @@ file util module
 import os
 
 
+def _mkdir_without_file_exist_err(dir_path, mode):
+    try:
+        os.mkdir(dir_path, mode)
+    except FileExistsError as err:
+        pass
+    except:
+        raise
+
+
 def makedirs(path, mode):
     """
     like sheel makedir
@@ -33,9 +42,9 @@ def makedirs(path, mode):
             return
         if not os.path.exists(parent_dir):
             _rec_makedir(parent_dir)
-            os.mkdir(dir_path, mode)
+            _mkdir_without_file_exist_err(dir_path, mode)
         else:
-            os.mkdir(dir_path, mode)
+            _mkdir_without_file_exist_err(dir_path, mode)
 
     path = os.path.realpath(path)
     _rec_makedir(path)

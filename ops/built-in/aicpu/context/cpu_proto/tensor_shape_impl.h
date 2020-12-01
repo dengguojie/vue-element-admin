@@ -9,7 +9,7 @@
 #include <memory>
 #include <functional>
 #include "cpu_types.h"
-#include "proto/me_tensor_shape.pb.h"
+#include "proto/cpu_tensor_shape.pb.h"
 
 namespace aicpu {
 class TensorShapeImpl {
@@ -17,8 +17,8 @@ class TensorShapeImpl {
 
 public:
     TensorShapeImpl(
-        aicpuop::TensorShape *shape,
-        std::function<void(aicpuop::TensorShape *)> delFunc = [](aicpuop::TensorShape *p) {})
+        aicpuops::TensorShape *shape,
+        std::function<void(aicpuops::TensorShape *)> delFunc = [](aicpuops::TensorShape *p) {})
         : tensorShape_(shape, delFunc)
     {}
 
@@ -86,10 +86,10 @@ public:
     /*
      * get tensor shape proto.
      */
-    aicpuop::TensorShape *GetProto() const;
+    aicpuops::TensorShape *GetProto() const;
 
 private:
-    std::shared_ptr<aicpuop::TensorShape> tensorShape_ { nullptr };
+    std::shared_ptr<aicpuops::TensorShape> tensorShape_ { nullptr };
 };
 } // namespace aicpu
 #endif // CPU_KERNEL_TENSOR_SHAPE_IMPL_H

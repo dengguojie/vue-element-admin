@@ -26,7 +26,7 @@ void TensorShapeImpl::SetDimSizes(const std::vector<int64_t> &dims)
 {
     tensorShape_->clear_dim();
     for (const auto &dim : dims) {
-        aicpuop::TensorShape_Dim *aicpuDims = tensorShape_->add_dim();
+        aicpuops::TensorShape_Dim *aicpuDims = tensorShape_->add_dim();
         KERNEL_CHECK_NULLPTR_VOID(aicpuDims, "Protobuf add dim is null")
         aicpuDims->set_size(dim);
     }
@@ -107,7 +107,7 @@ int64_t TensorShapeImpl::NumElements() const
  * @return shared_ptr<TensorShapeProto>:tensor shape proto ptr
  */
 
-aicpuop::TensorShape *TensorShapeImpl::GetProto() const
+aicpuops::TensorShape *TensorShapeImpl::GetProto() const
 {
     return tensorShape_.get();
 }

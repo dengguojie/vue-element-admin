@@ -148,6 +148,10 @@ SUPPORT_SCALAR_INSNS = [
 NEED_TEMP_SPACE_INSNS = [
     "elewise_single_VS_max",
     "elewise_single_VS_min",
+]
+
+# need a node as temp space
+NEED_EXTENT_NODE_INSNS = [
     "unknown_broadcast",
 ]
 

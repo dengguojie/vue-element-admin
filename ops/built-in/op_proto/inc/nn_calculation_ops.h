@@ -822,8 +822,8 @@ REG_OP(Conv2DCompress)
 *@verbatim
     | Name              | Field  | Scope
     --------------------|--------|----------------------------
-    | Input Image Size  | H      | [1, 100000]
-    |                   | W      | [1, 4096]
+    | Input Image Size  | H      | [1, 100000 / H(filter)]
+    |                   | W      | [1, 4096 / W(filter)]
     --------------------|--------|----------------------------
     | Filter Size       | H      | [1, 255]
     |                   | W      | [1, 255]
@@ -839,8 +839,8 @@ REG_OP(Conv2DCompress)
     | Dilation          | H      | [1, 255]
     |                   | W      | [1, 255]
 @endverbatim
-* "W(input)" indicate the image width after padding and W(filter) indicates the
-* filter width after dilation.
+* H(filter) indicates the filter height after dilation and W(filter) indicates
+* the filter height after dilation.
 *\n
 *
 *@par Outputs:

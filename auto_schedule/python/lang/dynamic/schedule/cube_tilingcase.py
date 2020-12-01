@@ -28,7 +28,8 @@ from te.tvm.expr import Expr
 
 from te.lang.base.operation import add_compile_info
 
-
+CORE_NUM = 32
+C0_SIZE = 16
 class CubeTilingOp:
     def __init__(self, tiling_info, dynamic_mode):
         self.tiling_info = tiling_info
@@ -130,6 +131,29 @@ class TilingSelection:
 
         for seed in repo_seeds:
             seed_hw = tuple(seed[self.op.key][2:4])
+            if self.op.op_type == "conv2d":
+                tiling = seed["tiling"]
+                block_dims = tiling["block_dim"]
+                block_nums = block_dims[0]*block_dims[1]*block_dims[2]
+                if block_nums < CORE_NUM:
+                    if seed["A_shape"][0] > 1 and block_dims[0] < seed["A_shape"][0] and \
+                            seed["A_shape"][0]*block_dims[1]*block_dims[2] <= CORE_NUM:
+                        tiling["block_dim"][0] = seed["A_shape"][0]
+                if tiling["BL0_matrix"] and tiling["BL1_shape"]:
+                    co1 = (seed["B_shape"][0] + C0_SIZE - 1) // C0_SIZE
+                    if block_dims[1]*tiling["BL1_shape"][1]*tiling["BL0_matrix"][1]*2 < co1 and \
+                            co1 // (tiling["BL1_shape"][1]*tiling["BL0_matrix"][1]*2)*block_dims[0]* \
+                            block_dims[2] <= CORE_NUM:
+                        tiling["block_dim"][1] = co1 // (tiling["BL1_shape"][1]*tiling["BL0_matrix"][1]*2)
+                block_nums = block_dims[0]*block_dims[1]*block_dims[2]
+                if block_nums < CORE_NUM and tiling["AL1_shape"]:
+                    hout = self.op._get_output_h(seed["A_shape"][2])
+                    wout = self.op._get_output_w(seed["A_shape"][3])
+                    tmp = hout*wout // (tiling["AL0_matrix"][0]*C0_SIZE*tiling["AL1_shape"][1]*block_dims[2])
+                    if tmp >= 1 and block_dims[0]*block_dims[1]*tmp <= CORE_NUM:
+                        tiling["block_dim"][2] = (hout*wout + (tiling["AL0_matrix"][0]*C0_SIZE*tiling["AL1_shape"][1] -
+                            1)) // (tiling["AL0_matrix"][0]*C0_SIZE*tiling["AL1_shape"][1])
+                seed["tiling"] = tiling
             seed_range = self.op.get_tiling_range(seed['tiling'], seed[self.op.key])
             if seed_hw in seed_points or _cal_overlap(seed_range, tgt_area)[0] == 0:
                 continue

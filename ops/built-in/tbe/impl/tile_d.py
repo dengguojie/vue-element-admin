@@ -141,21 +141,21 @@ def op_select_format(input_x, output_x, multiples, kernel_name="tile_d"):
     dtype_base_out = dtype_list.copy()
     format_base_out = ["ND"] * len(dtype_list)
     format_base_in = ["ND"] * len(dtype_list)
-    if is_support_4d_to_5hd:
+    if is_support_4d_to_5hd and not util_common.is_dynamic_input([input_x]):
         dtype_base_out = dtype_base_out + dtype_base + dtype_base
         format_base_in = format_base_in + ["NCHW"]*len(dtype_base) + ["NHWC"]*len(dtype_base)
         format_base_out = format_base_out + ["NC1HWC0"]*len(dtype_base) + ["NC1HWC0"]*len(dtype_base)
-    if is_support_hd:
+    if is_support_hd and not util_common.is_dynamic_input([input_x]):
         other_format = "NC1HWC0" if len(input_shape) == 4 else "NDC1HWC0"
         dtype_base_out = dtype_base_out + dtype_base
         format_base_in = format_base_in + [other_format] * len(dtype_base)
         format_base_out = format_base_out + [other_format] * len(dtype_base)
-    if is_support_fz:
+    if is_support_fz and not util_common.is_dynamic_input([input_x]):
         other_format = "FRACTAL_Z" if len(input_shape) == 4 else "FRACTAL_Z_3D"
         dtype_base_out = dtype_base_out + dtype_base
         format_base_in = format_base_in + [other_format] * len(dtype_base)
         format_base_out = format_base_out + [other_format] * len(dtype_base)
-    if is_support_nz:
+    if is_support_nz and not util_common.is_dynamic_input([input_x]):
         other_format = "FRACTAL_NZ"
         dtype_base_out = dtype_base_out + dtype_base
         format_base_in = format_base_in + [other_format] * len(dtype_base)

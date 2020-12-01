@@ -328,7 +328,6 @@ IMPLEMT_VERIFIER(MatMul, MatMulVerify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(MatMulInferShape) {
-  PREPARE_DYNAMIC_SHAPE_WITH_NO_DEPENDS();
   TensorDesc tensordesc_output = op.GetOutputDesc("y");
   ge::TensorDesc inputTensorDescX = op.GetInputDesc("x1");
   ge::TensorDesc inputTensorDescY = op.GetInputDesc("x2");
@@ -782,13 +781,18 @@ VERIFY_FUNC_REG(BatchMatMulV2, BatchMatMulV2Verify);
 
 // - ---------------L2Loss-------------------
 IMPLEMT_COMMON_INFERFUNC(L2LossInferShape) {
-  std::vector<int64_t> oShapeVector;
-  Shape oShape(oShapeVector);
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(ge::Shape(oShape));
-  tensordesc_output.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  DataType input_dtype = input_desc->GetDataType();
+  auto output_desc = op_info->MutableOutputDesc("y");
+
+  std::vector<std::pair<int64_t, int64_t>> input_range;
+  std::vector<int64_t> shape_vector;
+  output_desc->SetShape(GeShape(shape_vector));
+  output_desc->SetOriginShape(GeShape(shape_vector));
+  output_desc->SetShapeRange(input_range);
+  output_desc->SetDataType(input_dtype);
+
   return GRAPH_SUCCESS;
 }
 

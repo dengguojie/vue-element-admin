@@ -246,6 +246,7 @@ from .strided_slice_d import strided_slice_d
 from .tanh_grad import tanh_grad
 from .tanh import tanh
 from .tile_d import tile_d
+from .tile import tile
 from .transpose_d import transpose_d
 from .unsorted_segment_sum_d import unsorted_segment_sum_d
 from .maximum import maximum

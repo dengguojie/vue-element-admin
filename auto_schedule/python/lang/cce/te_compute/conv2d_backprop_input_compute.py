@@ -288,19 +288,16 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
 
     # limitation by chip
     def _is_load3d_special_case():
+        # limitation by chip:
+        # Ascend910 load3d not support
+        # when only fmap w after padding equals to filter w
         if (
             cce_conf.CceProductParams().is_cloud_version()
             and dx_h_after_pad != filter_h
             and dx_w_after_pad == filter_w
         ):
             return False
-        if (
-            (1 <= filter_h <= 11)
-            and (1 <= filter_w <= 11)
-            and (dx_h_after_pad == filter_h or dx_w_after_pad == filter_w)
-        ):
-            return True
-        return False
+        return True
 
     # limitation under conv1d
     def _is_conv1d_situation():
@@ -540,26 +537,12 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
                     dict_args, error_manager_util.get_error_message(dict_args)
                 )
 
-        def _check_max(x_1, x_2, name_1, name_2):
-            if x_1 > x_2:
-                dict_args = {}
-                dict_args["errCode"] = "E65005"
-                dict_args["param_1"] = name_1
-                dict_args["param_2"] = name_2
-                raise RuntimeError(
-                    dict_args, error_manager_util.get_error_message(dict_args)
-                )
-
         if fusion_para.get("l1_fusion_type") == -1:
             _check_border("pad_up", pad_up)
             _check_border("pad_down", pad_down)
-            _check_max(pad_up, filter_h_dilation, "pad_up", "filter_h_dilation")
-            _check_max(pad_down, filter_h_dilation, "pad_down", "filter_h_dilation")
 
             _check_border("pad_left", pad_left)
             _check_border("pad_right", pad_right)
-            _check_max(pad_left, filter_w_dilation, "pad_left", "filter_w_dilation")
-            _check_max(pad_right, filter_w_dilation, "pad_right", "filter_w_dilation")
 
     # dilation
     def _check_dilation():

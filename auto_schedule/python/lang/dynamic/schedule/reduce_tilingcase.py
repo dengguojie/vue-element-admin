@@ -73,7 +73,7 @@ def apply_compile_info(reduce_info, graph_info, tiling_list):
             break
     max_ub_count = graph_info.max_single_tensor_ub_size
     core_num = get_soc_spec("CORE_NUM")
-    keep_dims = int(reduce_info.keepdims)
+    keep_dims = 1
     reduce_block_size = _get_block_size(reduce_info.reduce_tensor.dtype)
     common_info = [max_ub_count, core_num, keep_dims, reduce_block_size, atomic]
 
@@ -379,7 +379,6 @@ def check_atomic_add_support(reduce_info: SingleReduceInfo):
 def _gen_tiling_case_not_last_axis(info:SingleReduceInfo, tiling_case_list: List[ReduceTilingCase]) -> NoReturn:
     shape_before_reduce = info.shape_before_reduce
     reduce_axis_index = info.reduce_axis_indices
-    is_keep_dims = info.keepdims
 
     reordered_shape, reorder_to_orignal_axis_map, _ = \
         _reorder_reduce_nlast_shape(shape_before_reduce, reduce_axis_index)
@@ -387,12 +386,7 @@ def _gen_tiling_case_not_last_axis(info:SingleReduceInfo, tiling_case_list: List
     for i in range(0, len(reordered_shape)):
         orignal_axis = reorder_to_orignal_axis_map[i]
         if orignal_axis not in reduce_axis_index:
-            if is_keep_dims:
-                block_split_axis = orignal_axis
-            else:
-                none_reduce_index_map = SingleReduceInfo.find_none_reduce_axis_map(shape_before_reduce,
-                                                                                   reduce_axis_index)
-                block_split_axis = none_reduce_index_map[orignal_axis]
+            block_split_axis = orignal_axis
 
             for j in range(0, len(reordered_shape)):
                 orignal_axis = reorder_to_orignal_axis_map[j]
@@ -410,7 +404,6 @@ def _gen_tiling_case_last_axis(info: SingleReduceInfo, tiling_case_list: List[Re
 
     shape_before_reduce = info.shape_before_reduce
     reduce_axis_index = info.reduce_axis_indices
-    is_keep_dims = info.keepdims
 
     reordered_shape, reorder_to_orignal_axis_map, _ = \
         _reorder_reduce_last_shape(shape_before_reduce, reduce_axis_index)
@@ -418,11 +411,7 @@ def _gen_tiling_case_last_axis(info: SingleReduceInfo, tiling_case_list: List[Re
     for i in range(0, len(reordered_shape)):
         orignal_axis = reorder_to_orignal_axis_map[i]
         if orignal_axis not in reduce_axis_index:
-            if is_keep_dims:
-                block_split_axis = orignal_axis
-            else:
-                target_map = SingleReduceInfo.find_none_reduce_axis_map(shape_before_reduce, reduce_axis_index)
-                block_split_axis = target_map[orignal_axis]
+            block_split_axis = orignal_axis
 
             for j in range(i, len(reordered_shape)):
                 ub_split_axis = reorder_to_orignal_axis_map[j]

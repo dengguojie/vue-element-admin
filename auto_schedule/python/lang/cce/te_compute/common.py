@@ -283,7 +283,7 @@ def im2col_6d(input_img,
 
     # pylint: disable=too-many-locals
     def _im2col_compute(input_img, indices, filter_w, pad, stride,
-                        padding_value,dilation):
+                        padding_value, dilation):
         # fmap_n, fmap_cg, fmap_c1, fmap_h, fmap_w, fmap_c0
         sixd_flag = 0
         if (len(input_img.shape)) == 6:

@@ -1696,7 +1696,6 @@ static void UpdateDimAndRange(const int64_t& ksize, const int64_t& strides,
 
 // ----------------MaxPool-------------------
 IMPLEMT_INFERFUNC(MaxPool, MaxPoolInferShape) {
-  PREPARE_DYNAMIC_SHAPE_WITH_NO_DEPENDS();
   const size_t DIM_SIZE1 = 1;
   const size_t DIM_SIZE2 = 2;
   const size_t DIM_SIZE3 = 3;

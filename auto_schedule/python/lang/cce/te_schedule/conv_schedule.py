@@ -4766,6 +4766,9 @@ class CceConvOp:
             else:
                 nbuffer_flag_al1 = False
 
+        if self._dynamic_mode is "dynamic_hw":
+            tiling["A_overhead_opt_flag"] = False
+
         if l0a_load2d_flag:
             if tiling["A_overhead_opt_flag"] and not_convbn1_and_bef_flag:
                 if tiling["AL1_shape"]:

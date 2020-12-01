@@ -57,7 +57,7 @@ IMPLEMT_COMMON_INFERFUNC(NMSWithMaskShapeAndType) {
     return GRAPH_FAILED;
   }
   out_mask_desc.SetShape(Shape(std::vector<int64_t>{dims_in.front()}));
-  out_mask_desc.SetDataType(DT_UINT8);
+  out_mask_desc.SetDataType(DT_BOOL);
   if (op.UpdateOutputDesc("selected_mask", out_mask_desc) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
     return GRAPH_FAILED;

@@ -17,6 +17,7 @@
 #include "top_k_kernels.h"
 
 #include <securec.h>
+
 #include <Eigen/Core>
 #include <algorithm>
 #include <cmath>
@@ -36,6 +37,9 @@ struct ValueIndex {
   T value;
   int32_t index;
   bool operator<(const ValueIndex<T> &other) const {
+    if (value == other.value) {
+      return index < other.index;
+    }
     return value > other.value;
   }
 };
@@ -49,9 +53,17 @@ class TopK {
       value[i] = input[i];
       indices[i] = i;
       int node_son = i;
-      while ((node_son != 0) && (value[node_son] < value[(node_son - 1) / 2])) {
-        TopK::Exchange(value, indices, node_son, (node_son - 1) / 2);
-        node_son = (node_son - 1) / 2;
+      while (node_son != 0) {
+        if (value[node_son] < value[(node_son - 1) / 2]) {
+          TopK::Exchange(value, indices, node_son, (node_son - 1) / 2);
+          node_son = (node_son - 1) / 2;
+        } else if ((value[node_son] == value[(node_son - 1) / 2]) &&
+                   ((indices[node_son] > indices[(node_son - 1) / 2]))) {
+          TopK::Exchange(value, indices, node_son, (node_son - 1) / 2);
+          node_son = (node_son - 1) / 2;
+        } else {
+          break;
+        }
       }
     }
   }
@@ -68,29 +80,72 @@ class TopK {
           if (node_father * 2 + 2 >= k) {
             if (value[node_father] > value[node_father * 2 + 1]) {
               TopK::Exchange(value, indices, node_father, node_father * 2 + 1);
+            } else if ((value[node_father] == value[node_father * 2 + 1]) &&
+                       (indices[node_father] < indices[node_father * 2 + 1])) {
+              TopK::Exchange(value, indices, node_father, node_father * 2 + 1);
             }
             break;
-          } else if (value[node_father] <= value[node_father * 2 + 1]) {
-            if (value[node_father] <= value[node_father * 2 + 2]) {
+          } else if (value[node_father] < value[node_father * 2 + 1]) {
+            if (value[node_father] < value[node_father * 2 + 2]) {
               break;
-            } else {
+            } else if (value[node_father] > value[node_father * 2 + 2]) {
               TopK::Exchange(value, indices, node_father, node_father * 2 + 2);
               node_father = node_father * 2 + 2;
+            } else if (indices[node_father] < indices[node_father * 2 + 2]) {
+              TopK::Exchange(value, indices, node_father, node_father * 2 + 2);
+              node_father = node_father * 2 + 2;
+            } else {
+              break;
             }
-          } else {
+          } else if (value[node_father] > value[node_father * 2 + 1]) {
             if (value[node_father] <= value[node_father * 2 + 2]) {
               TopK::Exchange(value, indices, node_father, node_father * 2 + 1);
               node_father = node_father * 2 + 1;
             } else {
-              if (value[node_father * 2 + 1] <= value[node_father * 2 + 2]) {
+              if (value[node_father * 2 + 1] < value[node_father * 2 + 2]) {
+                TopK::Exchange(value, indices, node_father,
+                               node_father * 2 + 1);
+                node_father = node_father * 2 + 1;
+              } else if (value[node_father * 2 + 1] >
+                         value[node_father * 2 + 2]) {
+                TopK::Exchange(value, indices, node_father,
+                               node_father * 2 + 2);
+                node_father = node_father * 2 + 2;
+              } else if (indices[node_father * 2 + 1] <
+                         indices[node_father * 2 + 2]) {
+                TopK::Exchange(value, indices, node_father,
+                               node_father * 2 + 2);
+                node_father = node_father * 2 + 2;
+              } else {
+                TopK::Exchange(value, indices, node_father,
+                               node_father * 2 + 1);
+                node_father = node_father * 2 + 1;
+              }
+            }
+          } else {
+            if (value[node_father] > value[node_father * 2 + 2]) {
+              TopK::Exchange(value, indices, node_father, node_father * 2 + 2);
+              node_father = node_father * 2 + 2;
+            } else if (value[node_father] < value[node_father * 2 + 2]) {
+              if (indices[node_father] < indices[node_father * 2 + 1]) {
                 TopK::Exchange(value, indices, node_father,
                                node_father * 2 + 1);
                 node_father = node_father * 2 + 1;
               } else {
-                TopK::Exchange(value, indices, node_father,
-                               node_father * 2 + 2);
-                node_father = node_father * 2 + 2;
+                break;
               }
+            } else if ((indices[node_father] < indices[node_father * 2 + 1]) &&
+                       (indices[node_father * 2 + 1] >
+                        indices[node_father * 2 + 2])) {
+              TopK::Exchange(value, indices, node_father, node_father * 2 + 1);
+              node_father = node_father * 2 + 1;
+            } else if ((indices[node_father] < indices[node_father * 2 + 2]) &&
+                       (indices[node_father * 2 + 1] <
+                        indices[node_father * 2 + 2])) {
+              TopK::Exchange(value, indices, node_father, node_father * 2 + 2);
+              node_father = node_father * 2 + 2;
+            } else {
+              break;
             }
           }
         }
@@ -115,7 +170,7 @@ class TopK {
 
 namespace aicpu {
 uint32_t TopKCpuKernel::Compute(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("TopKCpuKernel::Compute start!! ");
+  KERNEL_LOG_INFO("TopKCpuKernel::Compute start! ");
   uint32_t res = GetInputAndCheck(ctx);
   if (res != KERNEL_STATUS_OK) {
     KERNEL_LOG_ERROR("TopKCpuKernel::GetInputAndCheck failed! ");

@@ -23,6 +23,7 @@ from te import platform as cceconf
 from te import tvm
 from te.platform import cce_emitinsn_params
 from te.platform.cce_conf import CceProductParams as pver
+from te.utils.error_manager.error_manager_util import get_error_message
 from . import util
 from .vector_schedule import VectorSchedule
 from .cce_schedule_mappings import OpSubPatterns

@@ -147,6 +147,7 @@ def general_schedule(
     out_mem = set_output_mem()
     fmap_l1_addr_flag = fusion_para.get("fmap_l1_addr_flag")
     fmap_l1_valid_size = fusion_para.get("fmap_l1_valid_size")
+    cube_vector_split = cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT")
 
     def _config_dynamic_mode(var_range):
         if not var_range:
@@ -415,6 +416,12 @@ def general_schedule(
                         stride_h = 1
                         stride_w = 1
                         sch[a_l1].set_scope(cce_params.scope_cbuf_fusion)
+                    elif a_col_before.op.input_tensors[0].op.tag == "dy_l1_modify":
+                        a_l1 = a_col_before.op.input_tensors[0]
+                        a_ddr = a_l1.op.input_tensors[0]
+                        stride_h = 1
+                        stride_w = 1
+                        sch[a_l1].set_scope(cce_params.scope_cbuf)
                     else:
                         a_ddr = a_col_before.op.input_tensors[0]
                         stride_h = 1
@@ -462,7 +469,8 @@ def general_schedule(
             sch[a_col_before].set_scope(cce_params.scope_cbuf)
             sch[a_col].set_scope(cce_params.scope_ca)
             sch[c_col].set_scope(cce_params.scope_cc)
-            sch[c_ub].set_scope(cce_params.scope_ubuf)
+            if not cube_vector_split:
+                sch[c_ub].set_scope(cce_params.scope_ubuf)
 
             return tensor_map
 
@@ -502,7 +510,10 @@ def general_schedule(
                 tensor_map["tensor_bias"] = tensor_bias
                 tensor_map["bias_ub"] = bias_ub
             else:
-                c_col = c_ub.op.input_tensors[0]
+                if cube_vector_split:
+                    c_col = c_ddr.op.input_tensors[0]
+                else:
+                    c_col = c_ub.op.input_tensors[0]
             return c_col
 
         def _ubtensor_setscope(ub_tensor_list, input_tensor_list, fusion_num, deq_list):
@@ -953,7 +964,8 @@ def general_schedule(
             "in_fm_memory_type": input_mem,
             "out_fm_memory_type": out_mem,
             "l1_fusion_type": l1_fusion_type,
-            "fusion_type": fusion_type
+            "fusion_type": fusion_type,
+            "general_flag": True,
         }
         tiling = get_tiling(info_dict)
     else:
@@ -1057,7 +1069,7 @@ def general_schedule(
             if bl1_tilling_k % bl0_tiling_kb != 0:
                 _raise_dx_general_err("k_BL1 % kb != 0.")
 
-        if cl0_tiling_nc % cub_tiling_nc_factor != 0:
+        if (cl0_tiling_nc % cub_tiling_nc_factor != 0) and (not cube_vector_split):
             _raise_dx_general_err("nc % nc_factor != 0.")
 
         if tiling.get("BL1_shape") != []:
@@ -1210,6 +1222,8 @@ def general_schedule(
     _tiling_check_pbuffer()
 
     def _cub_process():  # pylint: disable=R0912,R0915
+        if cube_vector_split:
+            return
         def _attach_cub():
             # c_ub will attach on deconv_res in dynamic shape by default
             if not dynamic_mode:
@@ -1328,25 +1342,29 @@ def general_schedule(
                           cl0_tiling_n0 * 2)
         else:
             affine_l0c = 1, 1, cl0_tiling_nc, cl0_tiling_mc * cl0_tiling_m0, cl0_tiling_n0
-        c_col_shape = shape_to_list(c_col.shape)
 
-        # c_col will attach on c_ub or c_ddr in dynamic shape by default
-        if not dynamic_mode:
-            status_ori = Compare.compare(affine_l0c, c_col_shape)
-        else:
-            status_ori = Compare.LESS_EQ
-        status = Compare.compare(affine_l0c, affine_cub)
-
-        if status_ori == Compare.EQUAL:
-            pass
-        elif status == Compare.EQUAL:
-            sch_agent.same_attach(c_col, c_ub)
-        elif status == Compare.LESS_EQ:
-            sch_agent.attach_at(c_col, c_ub, affine_shape=affine_l0c)
-        elif status == Compare.GREATE_EQ:
+        if cube_vector_split:
             sch_agent.attach_at(c_col, c_ddr, affine_shape=affine_l0c)
         else:
-            _raise_dx_general_err("c_col attach error.")
+            c_col_shape = shape_to_list(c_col.shape)
+
+            # c_col will attach on c_ub or c_ddr in dynamic shape by default
+            if not dynamic_mode:
+                status_ori = Compare.compare(affine_l0c, c_col_shape)
+            else:
+                status_ori = Compare.LESS_EQ
+            status = Compare.compare(affine_l0c, affine_cub)
+
+            if status_ori == Compare.EQUAL:
+                pass
+            elif status == Compare.EQUAL:
+                sch_agent.same_attach(c_col, c_ub)
+            elif status == Compare.LESS_EQ:
+                sch_agent.attach_at(c_col, c_ub, affine_shape=affine_l0c)
+            elif status == Compare.GREATE_EQ:
+                sch_agent.attach_at(c_col, c_ddr, affine_shape=affine_l0c)
+            else:
+                _raise_dx_general_err("c_col attach error.")
 
         sch[c_col].buffer_align(
             (1, 1),
@@ -1727,7 +1745,8 @@ def general_schedule(
         elif tensor_attr.get("quant_fuse"):
             _emit_quant_fusion_insn()
         else:
-            sch_agent[c_ub].emit_insn(sch_agent[c_ub].op.axis[0], "dma_copy")
+            if not cube_vector_split:
+                sch_agent[c_ub].emit_insn(sch_agent[c_ub].op.axis[0], "dma_copy")
 
         if deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool":
             sch[mask_ub].emit_insn(mask_ub.op.axis[0], "dma_copy")
@@ -2103,6 +2122,7 @@ def general_schedule(
             if not tiling.get("BL0_matrix"):
                 sch[b_col].compute_at(sch[c_ddr], bl1_at_inner)
     _full_load_bl1_bl0()
+    
     sch_agent.apply()
     _c_col_buffer_tile()
     if dynamic_mode is not None:

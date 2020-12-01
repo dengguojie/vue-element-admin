@@ -797,6 +797,34 @@ REG_OP(SliceD)
     .OP_END_FACTORY_REG(SliceD)
 
 /**
+*@brief Extracts a slice from a tensor.
+*       This operation extracts a slice of size "size" from a tensor "x"
+*		starting at the location specified by "begin" . \n
+
+*@par Inputs:
+*@li x: A Tensor. Must be one of the following types:
+* float16, float32, double, int64, int32, uint8, uint16, uint32, uint64, int8,
+* int16, complex64, complex128, qint8, quint8, qint16, quint16, qint32 . \n
+
+*@par Inputs:
+*@li offsets: The starting location for the slice.
+
+*@par Attributes:
+*@li size: The tensor shape . \n
+
+*@par Outputs:
+*y: A Tensor. Has the same type as "x". The slice extracted from the tensor.
+*@par Restrictions:
+*Warning: THIS FUNCTION IS DEPRECATED. Please use Slice instead.
+*/
+REG_OP(SliceDV2)
+    .INPUT(x, TensorType::BasicType())
+    .INPUT(offsets, TensorType::IndexNumberType())
+    .OUTPUT(y, TensorType::BasicType())
+    .REQUIRED_ATTR(size, ListInt)
+    .OP_END_FACTORY_REG(SliceDV2)
+    
+/**
 * @brief Finds values and indices of the "k" largest elements for the last
 * dimension . \n
 

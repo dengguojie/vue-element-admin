@@ -151,7 +151,7 @@ REG_OP(TransData)
     .OUTPUT(dst, TensorType::BasicType())
     .REQUIRED_ATTR(src_format, String)
     .REQUIRED_ATTR(dst_format, String)
-    .ATTR(group, Int, 1)
+    .ATTR(groups, Int, 1)
     .OP_END_FACTORY_REG(TransData)
 
 /**

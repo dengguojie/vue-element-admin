@@ -3,11 +3,15 @@ project(cpu_kernels_context)
 get_filename_component(TOP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../.." ABSOLUTE)
 set(BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(proto_src_files
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/cpu_attr.proto
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/cpu_node_def.proto
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/cpu_tensor.proto
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/cpu_tensor_shape.proto
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/me_types.proto
     ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/me_attr.proto
     ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/me_node_def.proto
     ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/me_tensor.proto
     ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/me_tensor_shape.proto
-    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/me_types.proto
 )
 
 protobuf_generate(aicpu PROTO_SRCS PROTO_HDRS ${proto_src_files})
@@ -58,12 +62,12 @@ set(local_context_inc_path
 
 add_library(cpu_kernels_context SHARED
     ${local_context_src_files}
-    $<$<STREQUAL:${PRODUCT},npuf10>:${local_context_stub_files}>
+    $<$<OR:$<STREQUAL:${PRODUCT_SIDE},host>,$<STREQUAL:${PRODUCT},npuf10>>:${local_context_stub_files}>
 )
 
 add_library(cpu_kernels_context_static STATIC
     ${local_context_src_files}
-    ${local_context_stub_files}
+    $<$<OR:$<STREQUAL:${PRODUCT_SIDE},host>,$<STREQUAL:${PRODUCT},npuf10>>:${local_context_stub_files}>
 )
 
 if(${PRODUCT_SIDE} STREQUAL "host")

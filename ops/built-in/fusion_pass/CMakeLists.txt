@@ -110,7 +110,6 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/confusion_matrix_fusion_pass.cc
   graph_fusion/ai_core/confusion_mul_grad_fusion_pass.cc
   graph_fusion/ai_core/const2attr/const2attr_fusion_pass.cc
-  graph_fusion/ai_core/conv2dbackprop_group_fusion_pass.cc
   graph_fusion/ai_core/conv2dbackprop_dilation_fusion_pass.cc
   graph_fusion/ai_core/conv2d_group_fusion_pass.cc
   graph_fusion/ai_core/conv_add_fusion_pass.cc
@@ -236,6 +235,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/yolo_v2_detection_output_fusion_pass.cc
   graph_fusion/ai_core/yolo_v3_detection_output_fusion_pass.cc
   graph_fusion/ai_core/yolo_v3_detection_output_v2_fusion_pass.cc
+  graph_fusion/ai_core/slice_fusion_pass.cc
 )
 
 set(ops_fusion_pass_path "${INSTALL_PATH}/opp/fusion_pass/built_in")

@@ -28,6 +28,7 @@ from te import tik
 from impl import copy_only
 from impl import split_last_dim
 from impl.util import util_select_op_base
+from impl.util import util_common
 from te.utils.error_manager import error_manager_vector
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
@@ -782,15 +783,15 @@ def op_select_format(input_value,
     dtype_base_out = dtype_base.copy()
     format_base_out = ["ND"] * len(dtype_base)
 
-    if is_support_5hd:
+    if is_support_5hd and not util_common.is_dynamic_input([input_value]):
         dtype_base_out = dtype_base_out + dtype_5hd
         format_base_out = format_base_out + ["NC1HWC0"] * len(dtype_5hd)
 
-    if is_support_nz:
+    if is_support_nz and not util_common.is_dynamic_input([input_value]):
         dtype_base_out = dtype_base_out + dtype_base
         format_base_out = format_base_out + ["FRACTAL_NZ"] * len(dtype_base)
 
-    if is_support_other_5hd:
+    if is_support_other_5hd and not util_common.is_dynamic_input([input_value]):
         dtype_base_out = dtype_base_out + ["float16", "int16", "uint16"]
         format_base_out = format_base_out + ["NC1HWC0"]*3
 

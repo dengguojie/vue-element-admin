@@ -33,6 +33,7 @@
 #include "inc/transformation_ops.h"
 #include <string>
 #include <vector>
+#include <algorithm>
 #include "util/util.h"
 #include "common_shape_fns.h"
 #include "op_log.h"
@@ -41,6 +42,107 @@
 #include "graph/common_error_codes.h"
 #include "graph/debug/ge_attr_define.h"
 
+const int64_t kDimN0=16;
+const int64_t kCubeN=16;
+
+static int64_t Measure(int64_t x, int64_t y) {
+  int64_t z = y;
+  while (x % y != 0) {
+    z = x % y;
+    x = y;
+    y = z;
+  }
+  return z;
+}
+
+// least common multiple
+static int64_t Lcm(int64_t a, int64_t b) {
+  if (b == 0) {
+    return -1;
+  }
+  int64_t temp = (a * b) / (Measure(a, b));
+  return temp;
+}
+
+// get the result of two number divisor and let result round up
+static int64_t Ceil(int64_t a, int64_t b) {
+  if (b == 0) {
+    return -1;
+  } else {
+    int64_t ret = a / b;
+    if ((a % b) != 0) {
+      ret++;
+    }
+    return ret;
+  }
+}
+
+namespace ge {
+static std::vector<int64_t> InfershapeCompute(int64_t cube_k,
+                                              std::vector<int64_t> input_shape,
+                                              Format format, int64_t group) {
+  int64_t d_dim;
+  int64_t h_dim;
+  int64_t w_dim;
+  int64_t c_dim;
+  int64_t n_dim;
+  if (format == FORMAT_NCDHW) {
+    n_dim = input_shape[0];
+    c_dim = input_shape[1];
+    d_dim = input_shape[2];
+    h_dim = input_shape[3];
+    w_dim = input_shape[4];
+  } else if (format == FORMAT_DHWCN) {
+    d_dim = input_shape[0];
+    h_dim = input_shape[1];
+    w_dim = input_shape[2];
+    c_dim = input_shape[3];
+    n_dim = input_shape[4];
+  } else if (format == FORMAT_NDHWC) {
+    n_dim = input_shape[0];
+    d_dim = input_shape[1];
+    h_dim = input_shape[2];
+    w_dim = input_shape[3];
+    c_dim = input_shape[4];
+  } else if (format == FORMAT_NHWC) {
+    n_dim = input_shape[0];
+    h_dim = input_shape[1];
+    d_dim = 1;
+    w_dim = input_shape[2];
+    c_dim = input_shape[3];
+  } else if (format == FORMAT_NCHW) {
+    n_dim = input_shape[0];
+    c_dim = input_shape[1];
+    h_dim = input_shape[2];
+    w_dim = input_shape[3];
+    d_dim = 1;
+  } else {
+    OP_LOGE(
+        "format is not FORMAT_DHWCN or FORMAT_NDHWC or FORMAT_NCDHW or "
+        "FORMAT_NHWC or FORMAT_NCHW, current input format is ：%d",
+        input_format);
+  }
+  int64_t cin_ori = c_dim;
+  int64_t cout_ori = n_dim / group;
+  int64_t e_mult = std::min(
+      Lcm(Lcm(cin_ori, cube_k) / (cin_ori), Lcm(cout_ori, kCubeN) / (cout_ori)),
+      group);
+  int64_t cin_opt = Ceil(e_mult * cin_ori, cube_k) * cube_k;
+  int64_t cout_opt = Ceil(e_mult * cout_ori, kCubeN) * kCubeN;
+  int64_t c0_dim = cube_k;
+  int64_t c1_dim = cin_ori / c0_dim;
+  int64_t g_dim = Ceil(group, e_mult);
+  int64_t cin_dim = cin_opt / cube_k;
+  int64_t n1_dim = Ceil(n_dim, 16);
+  std::vector<int64_t> temp_shape;
+  temp_shape.emplace_back(g_dim * d_dim * c1_dim * h_dim * w_dim);
+  temp_shape.emplace_back(n1_dim);
+  temp_shape.emplace_back(kDimN0);
+  temp_shape.emplace_back(c0_dim);
+  return temp_shape;
+}
+}
+  // namespace ge
 namespace ge {
 // ----------------Bitcast Op Start-------------------
 graphStatus CalcAndUpdateShape(const Operator& op, vector<int64_t>& dim_vec, ge::DataType ori_data_type,
@@ -961,8 +1063,38 @@ INFER_FORMAT_FUNC_REG(TransposeD, TransposeDInferFormat);
 
 // ----------------TranData Op Begin---------------------
 IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(TransDataInferShape)
-  // main part of shape infer
-  TensorDesc src_tensor = op.GetInputDesc("src");
+// main part of shape infer
+TensorDesc src_tensor = op.GetInputDesc("src");
+Format format_dst = op.GetOutputDesc(0).GetFormat();
+OP_LOGE("current format_dst is :%d", format_dst);
+if ((format_dst == FORMAT_FRACTAL_Z) || (format_dst == FORMAT_FRACTAL_Z_3D)) {
+  int64_t cube_k = 16;
+  DataType input_dtype = op.GetInputDesc("src").GetDataType();
+  if (input_dtype == DT_INT8) {
+    cube_k = 32;
+  }
+  if ((input_dtype != DT_INT8) && (input_dtype != DT_FLOAT16) &&
+      (input_dtype != DT_FLOAT)) {
+    OP_LOGE("input type not is DT_INT8 or DT_FLOAT16 or DT_FLOAT :%d",
+            format_dst);
+    return GRAPH_FAILED;
+  }
+  Format format = op.GetInputDesc(0).GetFormat();
+  OP_LOGE("current input format is :%d", format);
+  auto input_shape = op.GetInputDesc("src").GetShape().GetDims();
+  int64_t group = 1;
+  if (op.GetAttr("groups", group) != GRAPH_SUCCESS) {
+    OP_LOGE("GetOpAttr group failed :%d", group);
+    return GRAPH_FAILED;
+  }
+  std::vector<int64_t> y_shape =
+      ge::InfershapeCompute(cube_k, input_shape, format, group);
+  TensorDesc out_put = op.GetOutputDesc("dst");
+  Shape out_put_shape(y_shape);
+  out_put.SetShape(ge::Shape(out_put_shape));
+  out_put.SetDataType(input_dtype);
+  (void)op.UpdateOutputDesc("dst", out_put);
+} else {
   Shape src_shape = src_tensor.GetShape();
   DataType input_dtype = src_tensor.GetDataType();
   TensorDesc td = op.GetOutputDesc("dst");
@@ -971,6 +1103,7 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(TransDataInferShape)
     td.SetDataType(input_dtype);
     (void)op.UpdateOutputDesc("dst", td);
   }
+}
 IMPLEMT_COMMON_INFERFUNC_HELPER_END()
 
 COMMON_INFER_FUNC_REG(TransData, TransDataInferShape);

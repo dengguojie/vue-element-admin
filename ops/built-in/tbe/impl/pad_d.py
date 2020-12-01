@@ -25,6 +25,7 @@ from te import tvm
 from impl import pad_align_reorder_ub
 from impl.util import util_select_op_base
 from te.utils.error_manager import error_manager_vector
+from impl.util import util_common
 from impl.util.util_common import write_code
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
@@ -2124,7 +2125,7 @@ def op_select_format(input_x,
     dtype_base_out = dtype_base.copy()
     format_base_out = ["ND"] * len(dtype_base)
 
-    if is_support_5hd:
+    if is_support_5hd and not util_common.is_dynamic_input([input_x]):
         dtype_base_out = dtype_base_out + dtype_5hd
         format_base_out = format_base_out + ["NC1HWC0"] * len(dtype_5hd)
 

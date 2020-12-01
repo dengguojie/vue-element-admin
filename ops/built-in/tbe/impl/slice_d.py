@@ -7194,14 +7194,20 @@ def _check_last_two_diff_fp16(shape, size, dtype):
     if dtype != "float16":
         return False
 
-    if (shape, size) not in (([16, 64, 568, 568], [16, 64, 392, 392]),
-                             ([16, 128, 280, 280], [16, 128, 200, 200]),
-                             ([16, 256, 136, 136], [16, 256, 104, 104]),
-                             ([16, 512, 64, 64], [16, 512, 56, 56])):
+    if len(shape) != 4 or shape[0] != size[0] or (shape[0] * shape[1] % AICORE_NUM) != 0:
         return False
 
-    _, _, col_in, row_in = shape
-    _, _, col_out, row_out = size
+    shape = shape[1:]
+    size = size[1:]
+        
+    if (shape, size) not in (([64, 568, 568], [64, 392, 392]),
+                             ([128, 280, 280], [128, 200, 200]),
+                             ([256, 136, 136], [256, 104, 104]),
+                             ([512, 64, 64], [512, 56, 56])):
+        return False
+
+    _, col_in, row_in = shape
+    _, col_out, row_out = size
     if col_in != row_in or col_out != row_out:
         return False
 

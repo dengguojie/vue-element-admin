@@ -202,7 +202,7 @@ TEST_F(Conv3DProtoTest, conv3d_Strides_Length_Failed){
     op.SetAttr("pads", {0, 0, 0, 0, 0, 0});
 
     auto status = op.VerifyAllAttr(true);
-    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
@@ -223,7 +223,7 @@ TEST_F(Conv3DProtoTest, conv3d_Dilation_Length_Failed){
     op.SetAttr("pads", {0, 0, 0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
     auto status = op.VerifyAllAttr(true);
-    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
