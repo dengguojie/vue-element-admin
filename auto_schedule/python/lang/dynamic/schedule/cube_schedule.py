@@ -102,5 +102,5 @@ class ConvSchedule:
     def do_mat_mul_schedule(self):
         gemm_schedule(self._outs[0], [self._schedule],
                       {"tiling_strategy":self._tiling_strategy})
-        
+
         return self._schedule

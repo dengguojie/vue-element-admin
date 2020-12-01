@@ -47,7 +47,7 @@ def _check_format(real_format, expect_format, param_name):
 
 def _check_variable_range(variable, mini, maxi, name):
     """
-    check variable range 
+    check variable range
     """
     if (not isinstance(variable, int)) or variable < mini or variable > maxi:
         dict_args = dict()
@@ -73,7 +73,7 @@ def _get_input_range(range_x1, range_x2, trans_a, trans_b, format_a, format_b):
     else:
         m_range = range_x1[1] if trans_a else range_x1[0]
         k_range = range_x1[0] if trans_a else range_x1[1]
-    
+
     if len(range_x2) == NZ_LENGTH and format_b == "FRACTAL_NZ":
         if trans_b:
             n_range = [range_x2[1][0] * range_x2[2][0], range_x2[1][1] * range_x2[2][1]]
@@ -134,7 +134,7 @@ def _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y, trans_a, tran
 
     """
     matmul computer
-    
+
     Parameters:
     input_x1: dict
         A dict object, dict with keys(shape, dtype and range)
@@ -174,7 +174,7 @@ def _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y, trans_a, tran
         error_manager_vector.raise_err_specific_reson(
             "mat_mul", "Hi3796CV300ES and Hi3796CV300CS don't support dynamic shape"
         )
-    
+
     dtype_a, dtype_b, dtype_out, input_range = check_and_config_para(
         input_x1, input_x2, bias, output_y, trans_a, trans_b, kernel_name
     )
@@ -208,7 +208,7 @@ def _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y, trans_a, tran
     else:
         shape_x1_nz[0] = k_var
         shape_x1_nz[1] = m_var
-    
+
     if not trans_b:
         shape_x2_nz[0] = k_var
         shape_x2_nz[1] = n_var
@@ -239,10 +239,10 @@ def _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y, trans_a, tran
 def mat_mul_fuse_compute(input_x1, input_x2, bias, offset_w, output_y,
                          trans_a=False, trans_b=False, offset_x=0,
                          kernel_name="matmul"):
-    
+
     """
     matmul computer for fusion
-    
+
     Parameters:
     input_x1: tensor
     input_x2: tensor
@@ -267,7 +267,7 @@ def mat_mul_fuse_compute(input_x1, input_x2, bias, offset_w, output_y,
     fusion_util.check_fusion_input([input_x2])
     if bias:
         fusion_util.check_fusion_input([bias])
-    
+
     # set fusion build config
     build_cfg = tbe_platform.get_fusion_build_cfg()
     build_cfg['constant_realize_extent_in_infer_bound'] = False
@@ -289,7 +289,7 @@ def mat_mul(input_x1, input_x2, bias, offset_w={}, output_y={},
     """
     caculating matrix multiplication with bias, C = A * B + bias
     only support input with nz format and fp16 in dynamic mode
-    
+
     Parameters:
     input_x1: dict
         A dict object, dict with keys(shape, dtype, and range)
@@ -323,7 +323,7 @@ def mat_mul(input_x1, input_x2, bias, offset_w={}, output_y={},
     with tbe_base.compute():
         res = _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y,
                                trans_a, trans_b, offset_x, kernel_name)
-    
+
     with tvm.target.cce():
         sch = tbe.auto_schedule(res.get("op_res"))
 
