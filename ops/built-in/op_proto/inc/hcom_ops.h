@@ -45,8 +45,6 @@ REG_OP(HcomAllGather)
     .OUTPUT(y, TensorType({DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_INT64, DT_UINT64}))
     .REQUIRED_ATTR(rank_size, Int)
     .REQUIRED_ATTR(group, String)
-    .ATTR(alpha, Float, 1.0)
-    .ATTR(beta, Float, 0.0)
     .OP_END_FACTORY_REG(HcomAllGather)
 
 /**
@@ -77,8 +75,6 @@ REG_OP(HcomAllReduce)
     .REQUIRED_ATTR(group, String)
     .ATTR(fusion, Int, 1)
     .ATTR(fusion_id, Int, -1)
-    .ATTR(alpha, Float, 1.0)
-    .ATTR(beta, Float, 0.0)
     .OP_END_FACTORY_REG(HcomAllReduce)
 
 /**
@@ -109,8 +105,6 @@ REG_OP(HcomBroadcast)
     .REQUIRED_ATTR(group, String)
     .ATTR(fusion, Int, 0)
     .ATTR(fusion_id, Int, -1)
-    .ATTR(alpha, Float, 1.0)
-    .ATTR(beta, Float, 0.0)
     .OP_END_FACTORY_REG(HcomBroadcast)
 
 /**
@@ -143,8 +137,6 @@ REG_OP(HcomReduce)
     .REQUIRED_ATTR(group, String)
     .ATTR(fusion, Int, 0)
     .ATTR(fusion_id, Int, -1)
-    .ATTR(alpha, Float, 1.0)
-    .ATTR(beta, Float, 0.0)
     .OP_END_FACTORY_REG(HcomReduce)
 /**
  * @brief Performs reduction across all input tensors, scattering in equal
@@ -172,8 +164,6 @@ REG_OP(HcomReduceScatter)
     .REQUIRED_ATTR(reduction, String)
     .REQUIRED_ATTR(group, String)
     .REQUIRED_ATTR(rank_size, Int)
-    .ATTR(alpha, Float, 1.0)
-    .ATTR(beta, Float, 0.0)
     .OP_END_FACTORY_REG(HcomReduceScatter)
 
 /**
@@ -200,8 +190,6 @@ REG_OP(HcomSend)
     .REQUIRED_ATTR(group, String)
     .REQUIRED_ATTR(sr_tag, Int)
     .REQUIRED_ATTR(dest_rank, Int)
-    .ATTR(alpha, Float, 1.0)
-    .ATTR(beta, Float, 0.0)
     .OP_END_FACTORY_REG(HcomSend)
 
 /**
@@ -235,8 +223,6 @@ REG_OP(HcomReceive)
     .REQUIRED_ATTR(src_rank, Int)
     .REQUIRED_ATTR(shape, ListInt)
     .REQUIRED_ATTR(dtype, Type)
-    .ATTR(alpha, Float, 1.0)
-    .ATTR(beta, Float, 0.0)
     .OP_END_FACTORY_REG(HcomReceive)
 
 /**
