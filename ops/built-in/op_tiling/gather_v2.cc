@@ -179,26 +179,26 @@ void PrintGatherV2Params(const GatherV2TilingParams& params) {
 }
 
 bool checkTensorShape(const std::string& opType, std::vector<int64_t> paramsShape, std::vector<int64_t> indicesShape,
-                      std::vector<int64_t> yShape, int32_t axis) {
-  int32_t paramsDims = paramsShape.size();
-  int32_t indicesDims = indicesShape.size();
-  int32_t yDims = yShape.size();
+                      std::vector<int64_t> yShape, int64_t axis) {
+  int64_t paramsDims = paramsShape.size();
+  int64_t indicesDims = indicesShape.size();
+  int64_t yDims = yShape.size();
 
   std::vector<int64_t> outputShape;
   if (axis > 0) {
-    for (int32_t i = 0; i < axis; i++) {
+    for (int64_t i = 0; i < axis; i++) {
       outputShape.push_back(paramsShape[i]);
     }
   }
-  for (int32_t i = 0; i < indicesDims; i++) {
+  for (int64_t i = 0; i < indicesDims; i++) {
     outputShape.push_back(indicesShape[i]);
   }
   if (axis + 1 < paramsDims) {
-    for (int32_t i = axis + 1; i < paramsDims; i++) {
+    for (int64_t i = axis + 1; i < paramsDims; i++) {
       outputShape.push_back(paramsShape[i]);
     }
   }
-  int32_t outputDims = outputShape.size();
+  int64_t outputDims = outputShape.size();
 
   if (yDims != outputDims) {
     ge::OpsOneInputShapeErrReport(opType.c_str(), "y", "the dim of y must be equal to the dim of output");
@@ -206,7 +206,7 @@ bool checkTensorShape(const std::string& opType, std::vector<int64_t> paramsShap
     return false;
   }
 
-  for (int32_t i = 0; i < yDims; i++) {
+  for (int64_t i = 0; i < yDims; i++) {
     if (yShape[i] != outputShape[i]) {
       ge::OpsOneInputShapeErrReport(opType.c_str(), "y", "the shape of y must be equal to the shape of output");
       OP_LOGE(opType.c_str(), "op [GatherV2Tiling] : CheckTensorShape, y Shpae dim is invalid.");
@@ -415,13 +415,24 @@ bool GatherV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
     OP_LOGE(opType.c_str(), "op GatherV2Tiling: axis not exists.");
     return false;
   }
-  const int32_t* axis_ptr = reinterpret_cast<const int32_t*>(std::get<0>(opParas.const_inputs.at("axis")));
-  int32_t axis = *axis_ptr;
-  GELOGD("op [GatherV2Tiling] : axis=%d.", axis);
+
+  std::string axis_type = opParas.inputs[2].tensor[0].dtype;
+  int64_t axis;
+  if (axis_type == "int64") {
+    const int64_t* axis_ptr = reinterpret_cast<const int64_t*>(std::get<0>(opParas.const_inputs.at("axis")));
+    axis = *axis_ptr;
+  } else if (axis_type == "int32") {
+    const int32_t* axis_ptr = reinterpret_cast<const int32_t*>(std::get<0>(opParas.const_inputs.at("axis")));
+    axis = *axis_ptr;
+  } else {
+    OP_LOGE(opType.c_str(), "op GatherV2Tiling: axis can only suppport int32 and int64.");
+    return false;
+  }
+  GELOGD("op [GatherV2Tiling] : axis=%ld.", axis);
 
   // check inputs shape
-  int32_t paramsDims = paramsShape.size();
-  int32_t indicesDims = indicesShape.size();
+  int64_t paramsDims = paramsShape.size();
+  int64_t indicesDims = indicesShape.size();
   if (paramsDims <= 0 || indicesDims <= 0) {
     ge::OpsOneInputShapeErrReport(opType.c_str(), "x or indices", "the dim of x or indices is less than 1");
     OP_LOGE("op[%s] GatherV2Tiling: paramsDims or indicesDims is 0.", opType.c_str());
