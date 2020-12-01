@@ -1197,7 +1197,7 @@ def postprocessing(tik_instance, gm_tensor, shape, middle_tensor):
         mask_num = tik_instance.Scalar('uint16', name='mask_num',
                                        init_value=15)   # mask of vreduce
         tik_instance.vector_dup(48, mask_final, mask_num, 1, 1, 8)
-        tik_instance.vreduce(128, final_tensor.sorted_rois_ub_str1,
+        tik_instance.vreduce(MASK, final_tensor.sorted_rois_ub_str1,
                               final_tensor.sorted_rois_ub_str,
                               mask_final, topk_k // SIXTEEN, 1, 4, 0, 0, None, 'normal')
     else:
