@@ -1013,7 +1013,7 @@ class GlobalVarFunction:
             burstlen = (k * 4 + 31) // 32
             blocklen = 8
 
-        K_32B_align = self.k % blocklen
+        k_32B_align = self.k % blocklen
         cols_32B_align = self.cols % blocklen
         dst_offset = tik_instance.Scalar(dtype="int32", init_value=gm_offset)
         src_offset = tik_instance.Scalar(dtype="int32", init_value=0)
@@ -1170,3 +1170,4 @@ def top_k_d(input_tensor,
     obj_tiling = GlobalVarTilingScalar(tik_instance, obj_tiling_gm)
     return top_k_compute(tik_instance, obj_gm, obj_tiling, obj_ub, profile, dtype, indices_dtype, largest, k,
                          kernel_name)
+
