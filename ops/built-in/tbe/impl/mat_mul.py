@@ -59,15 +59,17 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
     check_list = ("float16")
 
     if src_dtype not in check_list:
-        error_manager_vector.raise_err_input_dtype_not_supported("mat_mul", "x1", "float16", src_dtype)
+        error_manager_vector.raise_err_input_dtype_not_supported(
+            "mat_mul", "x1", "float16", src_dtype)
     if shape_len != len(shape_b):
         error_detail = "length of x1 and x2 should be same"
-        error_manager_vector.raise_err_two_input_shape_invalid("mat_mul", "x1", \
+        error_manager_vector.raise_err_two_input_shape_invalid("mat_mul", "x1",
                                                                "x2", error_detail)
 
     if shape_len != 2:
         error_detail = "length of shape must be 2, more than 2 dimensions should use batch_matmul now!"
-        error_manager_vector.raise_err_input_shape_invalid("mat_mul", "x1", error_detail)
+        error_manager_vector.raise_err_input_shape_invalid(
+            "mat_mul", "x1", error_detail)
 
     is_gevm = bool((shape_a[-2] == 1) or (shape_a[-1] == 1))
     is_gemv = bool((shape_b[-2] == 1) or (shape_b[-1] == 1))
@@ -89,44 +91,51 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
     if m_shape == 1:
         if n_shape == 1:
             error_detail = "input shape x1 and x2 can't both be 1"
-            error_manager_vector.raise_err_two_input_shape_invalid("mat_mul", "x1", \
+            error_manager_vector.raise_err_two_input_shape_invalid("mat_mul", "x1",
                                                                    "x2", error_detail)
 
     if km_shape != kn_shape:
         error_detail = "reduce axis of x1 and x2 should be same"
-        error_manager_vector.raise_err_two_input_shape_invalid("mat_mul", "x1", \
+        error_manager_vector.raise_err_two_input_shape_invalid("mat_mul", "x1",
                                                                "x2", error_detail)
 
     if m_shape % tbe_platform.cce_params.BLOCK_IN != 0 and m_shape != 1:
         error_detail = "input shape x1 should be 1 or multiple of %d" % tbe_platform.cce_params.BLOCK_IN
-        error_manager_vector.raise_err_input_shape_invalid("mat_mul", "x1", error_detail)
+        error_manager_vector.raise_err_input_shape_invalid(
+            "mat_mul", "x1", error_detail)
 
     if m_shape != 1:
         if km_shape % k_block_size != 0:
             error_detail = "input shape x1 should be multiple of %d" % tbe_platform.cce_params.BLOCK_IN
-            error_manager_vector.raise_err_input_shape_invalid("mat_mul", "x1", error_detail)
+            error_manager_vector.raise_err_input_shape_invalid(
+                "mat_mul", "x1", error_detail)
 
     if n_shape % tbe_platform.cce_params.BLOCK_IN != 0 and n_shape != 1:
         error_detail = "input shape x2 should be 1 or multiple of %d" % tbe_platform.cce_params.BLOCK_IN
-        error_manager_vector.raise_err_input_shape_invalid("mat_mul", "x2", error_detail)
+        error_manager_vector.raise_err_input_shape_invalid(
+            "mat_mul", "x2", error_detail)
     shape_bias_length = len(shape_bias)
     if shape_bias_length > 0:
         if shape_bias_length == 1:
             if is_gevm or is_gemv:
                 if shape_bias[0] != m_shape * n_shape:
                     error_detail = "broadcast case shape bias for gemv must be equal m*n"
-                    error_manager_vector.raise_err_input_shape_invalid("mat_mul", "bias", error_detail)
+                    error_manager_vector.raise_err_input_shape_invalid(
+                        "mat_mul", "bias", error_detail)
             else:
                 if shape_bias[0] != n_shape:
                     error_detail = "broadcast bias shape must be equal to shape n"
-                    error_manager_vector.raise_err_input_shape_invalid("mat_mul", "bias", error_detail)
+                    error_manager_vector.raise_err_input_shape_invalid(
+                        "mat_mul", "bias", error_detail)
         elif shape_bias_length == shape_len:
             if [i for i in shape_bias[-2:]] != [m_shape, n_shape]:
                 error_detail = "non broadcast bias shape must be same as output shape"
-                error_manager_vector.raise_err_input_shape_invalid("mat_mul", "bias", error_detail)
+                error_manager_vector.raise_err_input_shape_invalid(
+                    "mat_mul", "bias", error_detail)
         else:
             error_detail = "unsupport input shape now for batch bias case"
-            error_manager_vector.raise_err_input_shape_invalid("mat_mul", "bias", error_detail)
+            error_manager_vector.raise_err_input_shape_invalid(
+                "mat_mul", "bias", error_detail)
 
 
 def _shape_check_quantification(shape_a, shape_b, trans_a, trans_b, format_a):
@@ -144,16 +153,19 @@ def _shape_check_quantification(shape_a, shape_b, trans_a, trans_b, format_a):
 
     if k_shape % 32 != 0:
         error_detail = "the K value must be multiple of 32!"
-        error_manager_vector.raise_err_input_shape_invalid("mat_mul", "x1", error_detail)
+        error_manager_vector.raise_err_input_shape_invalid(
+            "mat_mul", "x1", error_detail)
 
     if format_a == "FORMAT_FRACTAL_Z":
         if m_shape % 16 != 0 and m_shape != 1:
             error_detail = "the M value must be 1 or multiple of 16 when the format is FORMAT_FRACTAL_Z!"
-            error_manager_vector.raise_err_input_shape_invalid("mat_mul", "x1", error_detail)
+            error_manager_vector.raise_err_input_shape_invalid(
+                "mat_mul", "x1", error_detail)
 
     if n_shape % 16 != 0:
         error_detail = "the K value must be multiple of 16!"
-        error_manager_vector.raise_err_input_shape_invalid("mat_mul", "x2", error_detail)
+        error_manager_vector.raise_err_input_shape_invalid(
+            "mat_mul", "x2", error_detail)
 
 
 def _get_bias(shape_bias):
@@ -390,7 +402,6 @@ def mat_mul_compute_self(input_x1, input_x2, bias, offset_w={}, output_y={},
     else:
         trans_a_local = trans_a
 
-
     if format_b == 'FRACTAL_NZ' and not cube_vector_split:
         trans_b_local = False if trans_b else True
     else:
@@ -406,13 +417,12 @@ def mat_mul_compute_self(input_x1, input_x2, bias, offset_w={}, output_y={},
         error_manager_vector.raise_err_specific_reson("mat_mul",
                                                       "For MatMul, tensor offset_w must be None!")
 
-
     if cube_vector_split:
         result = tbe.matmul_cv_split(tensor_a=input_x1, tensor_b=input_x2,
-                            trans_a=trans_a_local, trans_b=trans_b_local,
-                            format_a=format_a, format_b=format_b,
-                            dst_dtype=dst_dtype, tensor_bias=bias,
-                            kernel_name=kernel_name)
+                                     trans_a=trans_a_local, trans_b=trans_b_local,
+                                     format_a=format_a, format_b=format_b,
+                                     dst_dtype=dst_dtype, tensor_bias=bias,
+                                     kernel_name=kernel_name)
     else:
         result = tbe.matmul(tensor_a=input_x1, tensor_b=input_x2,
                             trans_a=trans_a_local, trans_b=trans_b_local,
@@ -511,7 +521,8 @@ def _matmul_vector_one(shape_a, shape_b, src_type, trans_a, trans_b, bias, kerne
     shape_bias_length = len(shape_bias)
     tensor_bias = None
     if shape_bias_length > 0:
-        tensor_bias = tvm.placeholder(shape_bias, name='tensor_bias', dtype=src_type)
+        tensor_bias = tvm.placeholder(
+            shape_bias, name='tensor_bias', dtype=src_type)
 
     result = _matmul_vector_one_compute(tensor_a, tensor_b, tensor_bias, axis)
 
@@ -609,7 +620,7 @@ def mat_mul(input_x1, input_x2, bias, offset_w={}, output_y={},
     if src_dtype in target_type:
         if (trans_b and shape_b[0] == 1) or (not trans_b and shape_b[1] == 1):
             _matmul_vector_one(shape_a, shape_b, src_dtype, trans_a, trans_b,
-                              bias, kernel_name)
+                               bias, kernel_name)
         else:
             matmul_vector_cce(shape_a, shape_b, src_dtype, trans_a, trans_b,
                               shape_bias, kernel_name)
@@ -645,7 +656,8 @@ def mat_mul(input_x1, input_x2, bias, offset_w={}, output_y={},
     if offset_w is None:
         tensor_offset_w = None
     else:
-        error_manager_vector.raise_err_specific_reson("mat_mul", "offset_w must be None!")
+        error_manager_vector.raise_err_specific_reson(
+            "mat_mul", "offset_w must be None!")
 
     result = mat_mul_compute_self(tensor_a, tensor_b, tensor_bias, tensor_offset_w,
                                   output_y,
@@ -663,4 +675,3 @@ def mat_mul(input_x1, input_x2, bias, offset_w={}, output_y={},
               "tensor_list": tensor_list}
 
     tbe.cce_build_code(schedule, config)
-

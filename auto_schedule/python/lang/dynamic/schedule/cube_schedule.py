@@ -37,6 +37,7 @@ def schedule(outs, tiling_case):
 
     return ConvSchedule(outs, tiling_case).do_conv2dbp_filter_schedule()
 
+
 @register_schedule(pattern=Pattern.MAT_MUL)
 def schedule(outs, tiling_case):
     """
@@ -44,6 +45,7 @@ def schedule(outs, tiling_case):
     """
 
     return ConvSchedule(outs, tiling_case).do_mat_mul_schedule()
+
 
 class ConvSchedule:
     """
@@ -101,6 +103,6 @@ class ConvSchedule:
 
     def do_mat_mul_schedule(self):
         gemm_schedule(self._outs[0], [self._schedule],
-                      {"tiling_strategy":self._tiling_strategy})
+                      {"tiling_strategy": self._tiling_strategy})
 
         return self._schedule

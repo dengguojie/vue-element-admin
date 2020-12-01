@@ -36,6 +36,7 @@ BLOCK_CUBE = 16
 DYNAMIC_FLAG = -1
 NZ_LENGTH = 4
 
+
 def _check_format(real_format, expect_format, param_name):
     """
     check format
@@ -56,7 +57,8 @@ def _check_variable_range(variable, mini, maxi, name):
         dict_args["min_value"] = str(mini)
         dict_args["max_value"] = str(maxi)
         dict_args["value"] = str(variable)
-        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(
+            dict_args, error_manager_util.get_error_message(dict_args))
 
 
 def _get_input_range(range_x1, range_x2, trans_a, trans_b, format_a, format_b):
@@ -65,20 +67,26 @@ def _get_input_range(range_x1, range_x2, trans_a, trans_b, format_a, format_b):
     """
     if len(range_x1) == NZ_LENGTH and format_a == "FRACTAL_NZ":
         if trans_a:
-            m_range = [range_x1[0][0] * range_x1[3][0], range_x1[0][1] * range_x1[3][1]]
-            k_range = [range_x1[1][0] * range_x1[2][0], range_x1[1][1] * range_x1[2][1]]
+            m_range = [range_x1[0][0] * range_x1[3][0],
+                       range_x1[0][1] * range_x1[3][1]]
+            k_range = [range_x1[1][0] * range_x1[2][0],
+                       range_x1[1][1] * range_x1[2][1]]
         else:
-            k_range = [range_x1[0][0] * range_x1[3][0], range_x1[0][1] * range_x1[3][1]]
-            m_range = [range_x1[1][0] * range_x1[2][0], range_x1[1][1] * range_x1[2][1]]
+            k_range = [range_x1[0][0] * range_x1[3][0],
+                       range_x1[0][1] * range_x1[3][1]]
+            m_range = [range_x1[1][0] * range_x1[2][0],
+                       range_x1[1][1] * range_x1[2][1]]
     else:
         m_range = range_x1[1] if trans_a else range_x1[0]
         k_range = range_x1[0] if trans_a else range_x1[1]
 
     if len(range_x2) == NZ_LENGTH and format_b == "FRACTAL_NZ":
         if trans_b:
-            n_range = [range_x2[1][0] * range_x2[2][0], range_x2[1][1] * range_x2[2][1]]
+            n_range = [range_x2[1][0] * range_x2[2]
+                       [0], range_x2[1][1] * range_x2[2][1]]
         else:
-            n_range = [range_x2[0][0] * range_x2[3][0], range_x2[0][1] * range_x2[3][1]]
+            n_range = [range_x2[0][0] * range_x2[3][0],
+                       range_x2[0][1] * range_x2[3][1]]
     else:
         n_range = range_x2[0] if trans_b else range_x2[1]
 
@@ -120,7 +128,8 @@ def check_and_config_para(input_x1, input_x2, bias, output_y,
     shape_x1 = input_x1.get("ori_shape")
     shape_x2 = input_x2.get("ori_shape")
 
-    input_range = _get_input_range(range_x1, range_x2, trans_a, trans_b, format_a, format_b)
+    input_range = _get_input_range(
+        range_x1, range_x2, trans_a, trans_b, format_a, format_b)
     _check_dynamic_mode(shape_x1, shape_x2)
 
     if bias:
@@ -131,7 +140,6 @@ def check_and_config_para(input_x1, input_x2, bias, output_y,
 
 
 def _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y, trans_a, trans_b, offset_x, kernel_name):
-
     """
     matmul computer
 
@@ -167,7 +175,8 @@ def _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y, trans_a, tran
     """
 
     if offset_w:
-        error_manager_vector.raise_err_specific_reson("mat_mul", 'offset_w must be None!')
+        error_manager_vector.raise_err_specific_reson(
+            "mat_mul", 'offset_w must be None!')
 
     soc_version = tbe_platform.get_soc_spec("SOC_VERSION")
     if soc_version in ("Hi3796CV300ES", "Hi3796CV300CS"):
@@ -221,12 +230,13 @@ def _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y, trans_a, tran
     if bias:
         bias_dtype = bias.get("dtype")
         bias_shape = list(bias.get("shape"))
-        tensor_bias = tvm.placeholder(bias_shape, name="bias", dtype=bias_dtype)
+        tensor_bias = tvm.placeholder(
+            bias_shape, name="bias", dtype=bias_dtype)
     else:
         tensor_bias = None
 
     op_res = tbe.gemm(tensor_x1, tensor_x2, None, None, trans_a, trans_b,
-                      format_a="FRACTAL_NZ", format_b="FRACTAL_NZ", 
+                      format_a="FRACTAL_NZ", format_b="FRACTAL_NZ",
                       dst_dtype=dtype_out, tensor_bias=tensor_bias,
                       kernel_name=kernel_name)
     tensor_list = [tensor_x1, tensor_x2]
@@ -239,7 +249,6 @@ def _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y, trans_a, tran
 def mat_mul_fuse_compute(input_x1, input_x2, bias, offset_w, output_y,
                          trans_a=False, trans_b=False, offset_x=0,
                          kernel_name="matmul"):
-
     """
     matmul computer for fusion
 
