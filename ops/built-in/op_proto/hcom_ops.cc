@@ -76,7 +76,7 @@ INFER_FUNC_REG(HcomAllGather, HcomAllGatherInferShape);
 VERIFY_FUNC_REG(HcomAllGather, HcomAllGatherVerify);
 
 // HcomReduce op
-IMPLEMT_VERIFIER(HcomAllReduce, HcomAllReduceVerify) {
+IMPLEMT_VERIFIER(HcomReduce, HcomReduceVerify) {
   constexpr int64_t fusionAttrNoFuse = 0;
   constexpr int64_t fusionAttrFuseById = 2;
   constexpr int64_t fusionIdMinVal = -1;
