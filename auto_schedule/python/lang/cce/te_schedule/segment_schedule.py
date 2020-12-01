@@ -593,6 +593,8 @@ class CceSegmentOp(object):
             elif not is_num_segments_to_many:
                 ele_factor = vector_inst_block_width // self._ele_size
                 segments_factor = num_segments
+                ids_factor = (ub_size - ele_factor * self._ele_size * segments_factor) // \
+                             (ele_factor * self._ele_size + self._ids_size)
             else:
                 raise RuntimeError("num_segments Exceeds the capacity of the UB!")
 
