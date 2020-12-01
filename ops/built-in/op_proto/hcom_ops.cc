@@ -319,13 +319,13 @@ IMPLEMT_INFERFUNC(HcomRemoteRead, HcomRemoteReadInferShape) {
     graphStatus state = op.GetInputConstData("remote", tensor);
     if (outDims.size() == 2) {
         if (state != GRAPH_SUCCESS) {
-            outDims[1] = -1; // -1: 表示这一维是unknown
+            outDims[1] = -1; // -1: indicate unknown
         } else {
             uint64_t* data = const_cast<uint64_t *>(reinterpret_cast<const uint64_t *>(tensor.GetData()));
             if (dataLength != -1) {
                 outDims[1] = data[2] / dataLength; //  length/size_of(datatype)
             } else {
-                outDims[1] = -1; // -1: 表示这一维是unknown
+                outDims[1] = -1; // -1: indicate unknown
                 std::pair<int64_t, int64_t> rangeN(10,10);
                 std::pair<int64_t, int64_t> rangeX(10,40);
                 std::vector<std::pair<int64_t, int64_t>> range = {rangeN, rangeX};
