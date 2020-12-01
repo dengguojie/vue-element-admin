@@ -28,14 +28,13 @@
 // the minest num for one core
 const int64_t CORE_MINEST_NUM = 128;
 
-
 namespace optiling {
 
 bool GetDropOutDoMaskCompileParams(const nlohmann::json& opCompileInfo, int64_t& coreNum) {
   using namespace nlohmann;
   auto allVars = opCompileInfo["vars"];
   if (allVars.count("core_num") == 0) {
-    OP_LOGE("op [SplitDTiling] : GetCompileParams, get core_num error");
+    OP_LOGE("op [DropOutDoMaskTiling] : GetCompileParams, get core_num error");
     return false;
   }
   coreNum = allVars["core_num"].get<std::int64_t>();
