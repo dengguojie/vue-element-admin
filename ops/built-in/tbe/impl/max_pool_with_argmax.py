@@ -309,9 +309,6 @@ class MaxPoolWithargmax():
         need_cut_h, need_cut_h_w, need_cut = self._check_if_need_cut_h_w()
         cut_h_size, cut_stride, cut_h_num = self._calc_cut_h_size_fun(need_cut)
         # cut_h_size must be smaller than in_size_h
-        if cut_h_size >= self.in_size_h:
-            need_cut_h = False
-
         if need_cut_h or need_cut:
             flag_cut_h = False
             out_size_cut_h = (cut_h_size - self.window_h + self.stride_h) // self.stride_h
