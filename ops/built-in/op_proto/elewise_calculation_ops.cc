@@ -1206,7 +1206,7 @@ IMPLEMT_VERIFIER(AssignAdd, AssignAddVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(AssignAddInferShape) {
-  if (!TwoInOneOutDynamicInferNoBroadcast(op, "ref", "value", {"ref"})) {
+  if (TwoInOneOutDynamicInferNoBroadcast(op, "ref", "value", {"ref"})) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
