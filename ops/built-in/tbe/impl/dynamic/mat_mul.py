@@ -42,7 +42,7 @@ def _check_format(real_format, expect_format, param_name):
     check format
     """
     if real_format != expect_format:
-        error_manager_vector.raise.err_input_format_invalid(
+        error_manager_vector.raise_err_input_format_invalid(
             "mat_mul", param_name, expect_format, real_format)
 
 
