@@ -85,12 +85,15 @@ def _depthwise_conv2d_fusion_para(inputs, outputs):
         l1_fusion_type = -1
 
     if int(input_memory_type) not in (0, 1, 2):
-        error_manager_conv2d.raise_err_input_mem_type("depthwise_conv2d", input_memory_type)
+        error_manager_conv2d.raise_err_input_mem_type(
+            "depthwise_conv2d", input_memory_type)
     if int(output_memory_type) not in (0, 1, 2):
-        error_manager_conv2d.raise_err_output_mem_type("depthwise_conv2d", output_memory_type)
+        error_manager_conv2d.raise_err_output_mem_type(
+            "depthwise_conv2d", output_memory_type)
     if valid_shape and not slice_offset:
-        error_manager_conv2d.raise_err_specific_user("depthwise_conv2d",
-                                                     "if valid_shape exists slice_offset can not be []")
+        error_manager_conv2d.raise_err_specific_user(
+            "depthwise_conv2d",
+            "if valid_shape exists slice_offset can not be []")
 
     fusion_para = {
         "input_memory_type": input_memory_type,
@@ -157,11 +160,12 @@ def depthwise_compute(fmap,
     strides_2d = strides[dim_h], strides[dim_w]
     dilations_2d = dilations[dim_h], dilations[dim_w]
 
-    out = depthwise_conv2d_compute(fmap, filter, out_dtype.lower(), strides_2d, pads, dilations_2d, {
-        "bias_tensor": bias,
-        "dsl_flag": dsl_flag,
-        "offset_x": offset_x
-    }, l1_fusion_para, kernel_name)
+    out = depthwise_conv2d_compute(
+        fmap, filter, out_dtype.lower(), strides_2d, pads, dilations_2d, {
+            "bias_tensor": bias,
+            "dsl_flag": dsl_flag,
+            "offset_x": offset_x
+        }, l1_fusion_para, kernel_name)
     return out
 
 
@@ -180,7 +184,8 @@ def _check_shape(fmap_shape, filter_shape, fmap_data_format):
             'expected_format_list': '[{}]'.format('NC1HWC0'),
             'format': fmap_data_format
         }
-        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(
+            dict_args, error_manager_util.get_error_message(dict_args))
 
     # check feature map shape of c, equal filter of c
     if in_c1 != filter_c1:
@@ -193,7 +198,8 @@ def _check_shape(fmap_shape, filter_shape, fmap_data_format):
             'param1_value': str(in_c1),
             'param2_value': str(filter_c1)
         }
-        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(
+            dict_args, error_manager_util.get_error_message(dict_args))
 
     # check multiplier equal 1
     if filter_k != 1:
@@ -204,7 +210,8 @@ def _check_shape(fmap_shape, filter_shape, fmap_data_format):
             'expected_value': '1',
             'input_value': str(filter_k)
         }
-        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(
+            dict_args, error_manager_util.get_error_message(dict_args))
 
 
 def _check_data_format(data_format, expect_format_list):
@@ -219,7 +226,8 @@ def _check_data_format(data_format, expect_format_list):
             'expected_format_list': str(expect_format_list),
             'format': data_format
         }
-        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(
+            dict_args, error_manager_util.get_error_message(dict_args))
 
 
 def _check_stride(strides, dim_n, dim_c, dim_h, dim_w):
@@ -227,11 +235,17 @@ def _check_stride(strides, dim_n, dim_c, dim_h, dim_w):
     check stride type and dim
     """
     if not isinstance(strides, (list, tuple)) and len(strides) == 4:
-        dict_args = {'errCode': 'E60107', 'op_name': 'depthwise_conv2d', 'param_name': 'strides'}
-        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+        dict_args = {
+            'errCode': 'E60107',
+            'op_name': 'depthwise_conv2d',
+            'param_name': 'strides'
+        }
+        raise RuntimeError(
+            dict_args, error_manager_util.get_error_message(dict_args))
 
     if strides[dim_n] != 1 or strides[dim_c] != 1:
-        error_manager_conv2d.raise_err_specific_user("depthwise_conv2d", "stride only support 1 in N axis and C axis.")
+        error_manager_conv2d.raise_err_specific_user(
+            "depthwise_conv2d", "stride only support 1 in N axis and C axis.")
     if strides[dim_h] != strides[dim_w]:
         dict_args = {
             'errCode': 'E60002',
@@ -242,7 +256,8 @@ def _check_stride(strides, dim_n, dim_c, dim_h, dim_w):
             'param1_value': str(strides[dim_h]),
             'param2_value': str(strides[dim_w])
         }
-        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(
+            dict_args, error_manager_util.get_error_message(dict_args))
 
 
 def _check_dilations(dilations, dim_n, dim_c, dim_h, dim_w):
@@ -256,7 +271,8 @@ def _check_dilations(dilations, dim_n, dim_c, dim_h, dim_w):
             'dilation_n': str(dilations[dim_n]),
             'dilation_c': str(dilations[dim_c])
         }
-        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(
+            dict_args, error_manager_util.get_error_message(dict_args))
     if dilations[dim_h] != dilations[dim_w]:
         dict_args = {
             'errCode': 'E60002',
@@ -267,7 +283,8 @@ def _check_dilations(dilations, dim_n, dim_c, dim_h, dim_w):
             'param1_value': str(dilations[dim_h]),
             'param2_value': str(dilations[dim_w])
         }
-        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(
+            dict_args, error_manager_util.get_error_message(dict_args))
 
 
 # pylint: disable=locally-disabled, too-many-locals, too-many-arguments,
@@ -392,7 +409,9 @@ def depthwise_conv2d(
             'expected_length': "4",
             'length': str(len(pads))
         }
-        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(
+            dict_args, error_manager_util.get_error_message(
+                dict_args))
 
     strides_2d = strides[dim_h], strides[dim_w]
     dilations_2d = dilations[dim_h], dilations[dim_w]
@@ -485,60 +504,17 @@ def get_op_support_info(x,
     -------
     None
     """
-    slice_info = {
-        "_op_slice_info": {
-            "splitMaps": [{
-                "inputList": [{
-                    "idx": 0,
-                    "axis": [0],
-                    "headOverLap": [-1],
-                    "tailOverLap": [-1]
-                }],
-                "outputList": [{
-                    "idx": 0,
-                    "axis": [0]
-                }]
-            }, {
-                "inputList": [{
-                    "idx": 0,
-                    "axis": [2],
-                    "headOverLap": [0],
-                    "tailOverLap": [0]
-                }],
-                "outputList": [{
-                    "idx": 0,
-                    "axis": [2]
-                }]
-            }, {
-                "inputList": [{
-                    "idx": 0,
-                    "axis": [3],
-                    "headOverLap": [0],
-                    "tailOverLap": [0]
-                }],
-                "outputList": [{
-                    "idx": 0,
-                    "axis": [3]
-                }]
-            }, {
-                "inputList": [{
-                    "idx": 1,
-                    "axis": [1],
-                    "headOverLap": [-1],
-                    "tailOverLap": [-1]
-                }],
-                "outputList": [{
-                    "idx": 0,
-                    "axis": [1]
-                }]
-            }],
+    slice_info = {"_op_slice_info":
+            {"splitMaps": [{"inputList": [{"idx": 0, "axis": [0], "headOverLap": [-1], "tailOverLap": [-1]}],"outputList": [{"idx": 0, "axis": [0]}]},
+                           {"inputList": [{"idx": 0, "axis": [2], "headOverLap": [0], "tailOverLap": [0]}],"outputList": [{"idx": 0, "axis": [2]}]},
+                           {"inputList": [{"idx": 0, "axis": [3], "headOverLap": [0], "tailOverLap": [0]}],"outputList": [{"idx": 0, "axis": [3]}]},
+                           {"inputList": [{"idx": 1, "axis": [1], "headOverLap": [-1], "tailOverLap": [-1]}],"outputList": [{"idx": 0, "axis": [1]}]}
+                          ],
             "reduceMaps": [],
-            "l1FusionEnable":
-            2,
-            "minTbeL1Space":
-            0
+            "l1FusionEnable": 2,
+            "minTbeL1Space": 0
+            }
         }
-    }
     if bias:
         bias_input = [{"idx": 2, "axis": [0], "headOverLap": [-1], "tailOverLap": [-1]}]
         slice_info['_op_slice_info']["splitMaps"][3]["inputList"].extend(bias_input)
@@ -554,10 +530,10 @@ def get_op_support_info(x,
     stridew = strides[dim_w]
     dlt_h = dilations[dim_h]
     dlt_w = dilations[dim_w]
-    if strideh == 1 and dlt_h == 1 and weight_h == 1:
+    if strideh == 1 and dlt_h == 1 and weight_h ==1:
         slice_info.get("_op_slice_info").get("splitMaps")[1].get("inputList")[0]["headOverLap"] = [-1]
         slice_info.get("_op_slice_info").get("splitMaps")[1].get("inputList")[0]["tailOverLap"] = [-1]
-    if stridew == 1 and dlt_w == 1 and weight_w == 1:
+    if stridew == 1 and dlt_w == 1 and weight_w ==1:
         slice_info.get("_op_slice_info").get("splitMaps")[2].get("inputList")[0]["headOverLap"] = [-1]
         slice_info.get("_op_slice_info").get("splitMaps")[2].get("inputList")[0]["tailOverLap"] = [-1]
 
