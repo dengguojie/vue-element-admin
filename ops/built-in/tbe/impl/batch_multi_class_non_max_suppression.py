@@ -875,7 +875,7 @@ def do_nms_compute(tik_instance, nms_var_dict, thresh):
         selected_ceil.set_as(ceil_div(selected_proposals_cnt, 16))
         # clear temp_sup_vec_ub
         tik_instance.vector_dup(128, temp_sup_vec_ub[0], 1, temp_sup_vec_ub.shape[0] // BURST_PROPOSAL_NUM, 1, 8)
-        temp_proposals_ub = ub_max_topk[burst_index*BURST_PROPOSAL_NUM*8]
+        temp_proposals_ub = ub_max_topk[burst_index * BURST_PROPOSAL_NUM * 8:]
         # calculate the area of reduced-proposal
         tik_instance.vrpac(temp_area_ub[0], temp_proposals_ub[0], handling_ceil)
         # start to update iou and or area from the first 16 proposal
