@@ -16,8 +16,10 @@
 precision compare util
 """
 import numpy as np
-from op_test_frame.common import precision_info, op_status
-from op_test_frame.common.precision_info import PrecisionStandard, PrecisionCompareResult
+from op_test_frame.common import precision_info
+from op_test_frame.common import op_status
+from op_test_frame.common.precision_info import PrecisionStandard
+from op_test_frame.common.precision_info import PrecisionCompareResult
 
 
 def _get_np_dtype(d_type):
@@ -40,6 +42,8 @@ def _get_np_dtype(d_type):
         res = np.uint16
     elif d_type.strip() == "uint32":
         res = np.uint32
+    elif d_type.strip() == "bool":
+        res = np.bool
     return res
 
 
@@ -96,7 +100,16 @@ def compare_precision(actual_data_file: str, expect_data_file: str,
 
         return sum_cnt, max_cnt
 
-    rtol_cnt, max_atol_cnt = _compare_tensor()
+    def _compare_bool_tensor():
+        xor_ab = np.logical_xor(actual_data, expect_data)
+        xor_ab_int = xor_ab.astype(np.int8)
+        sum_cnt = np.sum(xor_ab_int)
+        return sum_cnt, 0
+
+    if np_dtype == np.bool:
+        rtol_cnt, max_atol_cnt = _compare_bool_tensor()
+    else:
+        rtol_cnt, max_atol_cnt = _compare_tensor()
     print(rtol_cnt, max_atol_cnt, precision_standard.rtol * expect_data.size)
 
     status = op_status.SUCCESS
