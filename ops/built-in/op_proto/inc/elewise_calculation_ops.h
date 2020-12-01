@@ -612,6 +612,15 @@ REG_OP(Log1p)
 
 *@par Outputs:
 *y: A Tensor. Has the same type as "x1".
+
+*@attention Constraints:
+*@li x2: The input data does not support 0
+*@li When NUM exceeds 2048 , the accuracy of operator cannot guarantee the 
+*requirement of double thousandths in the mini form
+*@li Due to different architectures, the calculation results of this operator 
+*on NPU and CPU may be inconsistent
+*@li If shape is expressed as (D1,D2... ,Dn), then D1*D2... *DN<=1000000,n<=8
+
 *@par Third-party framework compatibility
 *Compatible with the TensorFlow operator Mod.
 */
@@ -2043,6 +2052,15 @@ REG_OP(FloorDiv)
 *
 *@par Outputs:
 *y: Result remainder.
+
+*@attention Constraints:
+*@li x2: The input data does not support 0
+*@li When NUM exceeds 2048 , the accuracy of operator cannot guarantee the 
+*requirement of double thousandths in the mini form
+*@li Due to different architectures, the calculation results of this operator 
+*on NPU and CPU may be inconsistent
+*@li If shape is expressed as (D1,D2... ,Dn), then D1*D2... *DN<=1000000,n<=8
+
 *@par Third-party framework compatibility
 * Compatible with the TensorFlow operator FloorMod.
 */
@@ -2168,6 +2186,14 @@ REG_OP(Tan)
 
 *@par Outputs:
 *y: A Tensor. Has the same type as "x1". \n
+
+*@attention Constraints:
+*@li x2: The input data does not support 0
+*@li When NUM exceeds 2048 , the accuracy of operator cannot guarantee the 
+*requirement of double thousandths in the mini form
+*@li Due to different architectures, the calculation results of this operator 
+*on NPU and CPU may be inconsistent
+*@li If shape is expressed as (D1,D2... ,Dn), then D1*D2... *DN<=1000000,n<=8
 
 *@par Third-party framework compatibility
 *@li Compatible with the TensorFlow operator TruncateMod.

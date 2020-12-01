@@ -489,7 +489,7 @@ TEST_F(strided_slice_fusion_test, strided_slice_fusion_test_5) {
             findOp = true;
         }
     }
-  EXPECT_EQ(findOp, true);
+  EXPECT_EQ(findOp, false);
 }
 
 TEST_F(strided_slice_fusion_test, strided_slice_fusion_test_6) {
