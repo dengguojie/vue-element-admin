@@ -87,9 +87,7 @@ def test_op_select_format(test_arg):
 
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], ca    op_select_format({"shape": (), "dtype": "float32", "format": "NHWC", "ori_shape": (),"ori_format": "NHWC"},
-                     {"shape": (96, 256), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (96, 256),"ori_format": "NHWC"},
-                     {"shape": (96, 256), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (96, 256),"ori_format": "NHWC"})se2)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_cust_test_func(test_func=test_op_select_format)
