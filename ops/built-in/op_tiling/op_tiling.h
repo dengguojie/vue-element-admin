@@ -85,7 +85,7 @@ bool g_##optype##_TilingEntry(const TeOpParas& para, const OpCompileInfo& cinfo,
     }                                                                                                                 \
     return result;                                                                                                    \
 }                                                                                                                     \
-REGISTER_OP_TILING_FUNC_NEW(optype, g_##optype##_TilingEntry)
+REGISTER_OP_TILING(optype, g_##optype##_TilingEntry)
 
 }  // namespace optiling
 #endif // CANN_OPS_COMMON_OP_TILING_H_
