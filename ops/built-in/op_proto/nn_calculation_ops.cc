@@ -4195,8 +4195,9 @@ static bool VerifyConv3dDilations(const ge::Operator& op, std::vector<int32_t>& 
   //check dilations shape
   if (op.GetAttr("dilations", dilation_list) != GRAPH_SUCCESS) {
     dilation_list.clear();
-    for (int32_t i = 0; i < kConv3dDimSizeLimit; i++)
+    for (int32_t i = 0; i < kConv3dDimSizeLimit; i++) {
       dilation_list.push_back(1);
+    }
     OP_LOGI(op.GetName().c_str(), "no dilations setting, use dilations as [1,1,1,1,1]");
   }
   auto d_size = dilation_list.size();

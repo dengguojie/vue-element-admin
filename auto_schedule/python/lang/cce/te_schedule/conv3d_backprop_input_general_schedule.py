@@ -131,6 +131,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
                     c_col_k_outer_outer_outer,
                     c_col_k_outer_outer_inner,
                     c_col_k_outer_inner,
+                    reduce_axis_kd_outer_inner,
                     c_col_m_outer)
             else:
                 sch[c_col].reorder(
