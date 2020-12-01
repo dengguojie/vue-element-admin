@@ -291,6 +291,7 @@ def mat_mul_fuse_compute(input_x1, input_x2, bias, offset_w, output_y,
 
 
 @tbe_base.register_operator("MatMul")
+@tbe_base.register_operator("MatMulV2")
 @para_check.check_op_params(dict, dict, (dict, NoneType), (dict, NoneType), dict,
                             bool, bool, int, str)
 def mat_mul(input_x1, input_x2, bias, offset_w={}, output_y={},
