@@ -159,8 +159,9 @@ def op_select_format(x, y, output, kernel_name="mul"):
 
     if (len(shape_x) == 4 and size_y == 1) or (len(shape_y) == 4 and size_x == 1):
         temp_shape = shape_x if len(shape_x) == 4 and size_y == 1 else shape_y
-        dim_c = temp_shape[format_x.index("C")]
-        dim_n = temp_shape[format_x.index("N")]
+        temp_format = format_x if len(shape_x) == 4 and size_y == 1 else format_y
+        dim_c = temp_shape[temp_format.index("C")]
+        dim_n = temp_shape[temp_format.index("N")]
         second_last_dim = temp_shape[-2]
         last_dim = temp_shape[-1]
         format_list.append("NC1HWC0")
