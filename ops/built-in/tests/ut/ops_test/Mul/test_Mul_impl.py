@@ -75,10 +75,21 @@ def test_op_select_format(test_arg):
     op_select_format({"shape": (20, 28, 16), "dtype": "float16", "format": "ND", "ori_shape": (20, 28, 16),"ori_format": "ND"},
                      {"shape": (1, ), "dtype": "float16", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
                      {"shape": (20, 28, 16), "dtype": "float16", "format": "ND", "ori_shape": (20, 28, 16),"ori_format": "ND"})
+    op_select_format({"shape": (1, 1, 1), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 1, 1),"ori_format": "NHWC"},
+                     {"shape": (96, 1, 56, 56, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (96, 56, 56, 8),"ori_format": "NHWC"},
+                     {"shape": (96, 1, 56, 56, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (96, 56, 56, 8),"ori_format": "NHWC"})
+    op_select_format({"shape": (), "dtype": "float32", "format": "NHWC", "ori_shape": (),"ori_format": "NHWC"},
+                     {"shape": (96, 256), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (96, 256),"ori_format": "NHWC"},
+                     {"shape": (96, 256), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (96, 256),"ori_format": "NHWC"}
+    op_select_format({"shape": (25, 1, 16, 16), "dtype": "float32", "format": "FRACTAL_Z", "ori_shape": (6, 1, 5, 5),"ori_format": "NCHW"},
+                     {"shape": (), "dtype": "float32", "format": "NCHW", "ori_shape": (),"ori_format": "NCHW"},
+                     {"shape": (25, 1, 16, 16), "dtype": "float32", "format": "FRACTAL_Z", "ori_shape": (6, 1, 5, 5),"ori_format": "NCHW"})
 
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], ca    op_select_format({"shape": (), "dtype": "float32", "format": "NHWC", "ori_shape": (),"ori_format": "NHWC"},
+                     {"shape": (96, 256), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (96, 256),"ori_format": "NHWC"},
+                     {"shape": (96, 256), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (96, 256),"ori_format": "NHWC"})se2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_cust_test_func(test_func=test_op_select_format)
