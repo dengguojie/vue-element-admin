@@ -52,10 +52,36 @@ case4 = {"params": [{"shape": (10241,), "dtype": "int8", "format": "NHWC", "ori_
          "expect": RuntimeError,
          "format_expect": [],
          "support_expect": True}
+def test_op_select_format(test_arg):
+    from impl.mul import op_select_format
+    op_select_format({"shape": (20, 28, 16, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (20, 28, 16, 16),"ori_format": "NHWC"},
+                     {"shape": (1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND"},
+                     {"shape": (20, 28, 16, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (20, 28, 16, 16),"ori_format": "NHWC"})
+    op_select_format({"shape": (1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND"},
+                     {"shape": (20, 28, 16, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (20, 28, 16, 16),"ori_format": "NHWC"},
+                     {"shape": (20, 28, 16, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (20, 28, 16, 16),"ori_format": "NHWC"})
+    op_select_format({"shape": (20, 28, 16, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (20, 28, 16, 16),"ori_format": "NHWC"},
+                     {"shape": (20, 28, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (20, 28, 16, 16),"ori_format": "NCHW"},
+                     {"shape": (20, 28, 16, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (20, 28, 16, 16),"ori_format": "NHWC"})
+    op_select_format({"shape": (20, 28, 3, 3, 16), "dtype": "float32", "format": "NDHWC", "ori_shape": (20, 28, 16, 16),"ori_format": "NDHWC"},
+                     {"shape": (20, 28, 3, 3, 16), "dtype": "float32", "format": "NDHWC", "ori_shape": (20, 28, 16, 16),"ori_format": "NDHWC"},
+                     {"shape": (20, 28, 3, 3, 16), "dtype": "float32", "format": "NDHWC", "ori_shape": (20, 28, 16, 16),"ori_format": "NDHWC"})
+    op_select_format({"shape": (20, 28, 16, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (20, 28, 16, 16),"ori_format": "NHWC"},
+                     {"shape": (1, ), "dtype": "float16", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
+                     {"shape": (20, 28, 16, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (20, 28, 16, 16),"ori_format": "NHWC"})
+    op_select_format({"shape": (20, 28, 16, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (20, 28, 16, 16),"ori_format": "NHWC"},
+                     {"shape": (1, ), "dtype": "float16", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
+                     {"shape": (20, 28, 16, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (20, 28, 16, 16),"ori_format": "NHWC"})
+    op_select_format({"shape": (20, 28, 16), "dtype": "float16", "format": "ND", "ori_shape": (20, 28, 16),"ori_format": "ND"},
+                     {"shape": (1, ), "dtype": "float16", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
+                     {"shape": (20, 28, 16), "dtype": "float16", "format": "ND", "ori_shape": (20, 28, 16),"ori_format": "ND"})
+
+
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
+ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 """
 The ca_model of CI is faulty.Related cases are commented out temporaily.
