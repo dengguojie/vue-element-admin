@@ -1168,8 +1168,10 @@ IMPLEMT_VERIFIER(ApplyAdam, ApplyAdamVerify) {
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ApplyAdamInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter ApplyAdam op_proto inferfunction!");
-  ApplyInferShapeAndDtype(op, "var", "var");
-  return GRAPH_SUCCESS;
+  if (OneInOneOutDynamicInfer(op, "var", {"var"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(ApplyAdam, ApplyAdamInferShape);
@@ -1202,9 +1204,15 @@ IMPLEMT_VERIFIER(ApplyAdamD, ApplyAdamDVerify) {
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ApplyAdamDInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter ApplyAdamD op_proto inferfunction!");
-  ApplyInferShapeAndDtype(op, "var", "var");
-  ApplyInferShapeAndDtype(op, "m", "m");
-  ApplyInferShapeAndDtype(op, "v", "v");
+  if (!OneInOneOutDynamicInfer(op, "var", {"var"})) {
+    return GRAPH_FAILED;
+  }
+  if (!OneInOneOutDynamicInfer(op, "m", {"m"})) {
+    return GRAPH_FAILED;
+  }
+  if (!OneInOneOutDynamicInfer(op, "v", {"v"})) {
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
