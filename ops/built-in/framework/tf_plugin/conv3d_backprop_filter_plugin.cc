@@ -41,7 +41,6 @@ Status ParseParamsConv3DBackpropFilter(const Message* op_src, ge::Operator& op) 
   ge::Format data_format = ge::FORMAT_NDHWC;
   std::string data_format_attr;
   if (op.GetAttr("data_format", data_format_attr) == ge::GRAPH_SUCCESS) {
-    OP_LOGI(op.GetName().c_str(), "data_format attribute is %s", data_format_attr.c_str());
     if (data_format_attr == "NCDHW") {
       data_format = ge::FORMAT_NCDHW;
     }
