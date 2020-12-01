@@ -24,11 +24,10 @@ else()
 endif()
 
 set(_proto_srcs
-  "${CMAKE_CURRENT_SOURCE_DIR}/proto/me_tensor.proto"
-  "${CMAKE_CURRENT_SOURCE_DIR}/proto/me_attr.proto"
-  "${CMAKE_CURRENT_SOURCE_DIR}/proto/me_tensor_shape.proto"
-  "${CMAKE_CURRENT_SOURCE_DIR}/proto/me_node_def.proto"
-  "${CMAKE_CURRENT_SOURCE_DIR}/proto/me_types.proto"
+  "${CMAKE_CURRENT_SOURCE_DIR}/proto/cpu_tensor.proto"
+  "${CMAKE_CURRENT_SOURCE_DIR}/proto/cpu_attr.proto"
+  "${CMAKE_CURRENT_SOURCE_DIR}/proto/cpu_tensor_shape.proto"
+  "${CMAKE_CURRENT_SOURCE_DIR}/proto/cpu_node_def.proto"
 )
 
 # the output path of generated files

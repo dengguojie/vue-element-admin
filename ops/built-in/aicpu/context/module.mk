@@ -1,6 +1,10 @@
 LOCAL_PATH := $(call my-dir)
 
-local_context_src_files := cpu_proto/proto/me_attr.proto \
+local_context_src_files := cpu_proto/proto/cpu_attr.proto \
+                           cpu_proto/proto/cpu_node_def.proto \
+                           cpu_proto/proto/cpu_tensor.proto \
+                           cpu_proto/proto/cpu_tensor_shape.proto \
+                           cpu_proto/proto/me_attr.proto \
                            cpu_proto/proto/me_node_def.proto \
                            cpu_proto/proto/me_tensor.proto \
                            cpu_proto/proto/me_tensor_shape.proto \

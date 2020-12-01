@@ -1,8 +1,7 @@
 syntax = "proto3";
-package aicpuop;
-import "me_tensor.proto";
-import "me_tensor_shape.proto";
-import "me_types.proto";
+package aicpuops;
+import "cpu_tensor.proto";
+import "cpu_tensor_shape.proto";
 
 message AttrValue {
 

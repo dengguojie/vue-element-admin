@@ -3,11 +3,15 @@ project(cpu_kernels_context)
 get_filename_component(TOP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../.." ABSOLUTE)
 set(BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(proto_src_files
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/cpu_attr.proto
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/cpu_node_def.proto
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/cpu_tensor.proto
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/cpu_tensor_shape.proto
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/me_types.proto
     ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/me_attr.proto
     ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/me_node_def.proto
     ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/me_tensor.proto
     ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/me_tensor_shape.proto
-    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/me_types.proto
 )
 
 protobuf_generate(aicpu PROTO_SRCS PROTO_HDRS ${proto_src_files})

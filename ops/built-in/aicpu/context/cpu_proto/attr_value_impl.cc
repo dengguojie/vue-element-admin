@@ -587,7 +587,7 @@ int32_t AttrValueImpl::ListTensorSize() const
 /*
  * get attr proto.
  */
-aicpuop::AttrValue *AttrValueImpl::GetProto() const
+aicpuops::AttrValue *AttrValueImpl::GetProto() const
 {
     return attrValue_.get();
 }
