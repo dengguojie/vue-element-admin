@@ -569,7 +569,7 @@ class ElewiseSchedule:
     def _do_double_buffer(self):
         if self._is_db:
             sch = self._schedule
-            
+
             tensors = self._pure_middle_tensors \
             .union(self._cache_read_buffer_tensor_map.keys()) \
             .union(self._cache_write_buffer_tensor_map.keys())
