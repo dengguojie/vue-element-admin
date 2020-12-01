@@ -69,6 +69,7 @@ TEST_F(arg_max_v2_infer_test, arg_max_v2_infer_test_1) {
   EXPECT_EQ(output_range, expected_range);
 }
 
+/*
 TEST_F(arg_max_v2_infer_test, arg_max_v2_infer_test_2) {
   // input x shape {-1, -1, -1, 5}
   // input x range {{1, -1}, {2, 3}, {2, 3}, {5, 5}}
@@ -119,3 +120,4 @@ TEST_F(arg_max_v2_infer_test, arg_max_v2_infer_test_2) {
   EXPECT_EQ(output_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
   EXPECT_EQ(output_range, expected_range);
 }
+*/
