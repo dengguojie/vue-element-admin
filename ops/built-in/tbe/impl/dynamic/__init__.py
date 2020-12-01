@@ -69,6 +69,7 @@ from .sqrt_grad import sqrt_grad
 from .zeros_like import zeros_like
 from .conv2d_backprop_input import conv2d_backprop_input
 from .conv2d_backprop_filter import conv2d_backprop_filter
+from .mat_mul import mat_mul
 from .sub import sub
 from .transpose_d import transpose_d
 from .unpack import unpack
