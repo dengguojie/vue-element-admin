@@ -21,8 +21,7 @@
 #include "register/register.h"
 
 using namespace ge;
-namespace domi
-{
+namespace domi{
 // register HcomReduce op to GE
 REGISTER_CUSTOM_OP("HcomReduce")
     .FrameworkType(TENSORFLOW)
