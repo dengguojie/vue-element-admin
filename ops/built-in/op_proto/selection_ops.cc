@@ -483,6 +483,12 @@ static void GetRangeConstValue(const Operator& op, const Tensor& const_tensor, c
     for (size_t i = 0; i < size; ++i) {
       const_data.push_back((int64_t)((*(const_data_ptr + i))));
     }
+  } else if (dtype == ge::DT_DOUBLE) {
+    double* const_data_ptr = (double*)const_tensor.GetData();
+    size = const_tensor.GetSize() / sizeof(double);
+    for (size_t i = 0; i < size; ++i) {
+      const_data.push_back((double)((*(const_data_ptr + i))));
+    }
   } else {
     OP_LOGE(op.GetName().c_str(), "not support this type");
   }
@@ -519,6 +525,8 @@ IMPLEMT_COMMON_INFERFUNC(RangeInferShape) {
       y_output->SetDataType(ge::DT_INT32);
     } else if (start_dtype == ge::DT_INT64 && limit_dtype == ge::DT_INT64 && delta_dtype == ge::DT_INT64) {
       y_output->SetDataType(ge::DT_INT64);
+    } else if (start_dtype == ge::DT_DOUBLE && limit_dtype == ge::DT_DOUBLE && delta_dtype == ge::DT_DOUBLE) {
+      y_output->SetDataType(ge::DT_DOUBLE);
     } else {
       y_output->SetDataType(ge::DT_FLOAT);
     }
@@ -552,6 +560,8 @@ IMPLEMT_COMMON_INFERFUNC(RangeInferShape) {
       res = static_cast<int>(ceil(float(assist_num) / assist_num_one));
     } else if (start_dtype == ge::DT_INT64 && limit_dtype == ge::DT_INT64 && delta_dtype == ge::DT_INT64) {
       res = static_cast<int>(ceil(float(assist_num) / assist_num_one));
+    } else if (start_dtype == ge::DT_DOUBLE && limit_dtype == ge::DT_DOUBLE && delta_dtype == ge::DT_DOUBLE) {
+      res = static_cast<int>(ceil(double(assist_num) / assist_num_one));
     } else {
       res = static_cast<int>(ceil(assist_num / assist_num_one));
     }
@@ -560,6 +570,8 @@ IMPLEMT_COMMON_INFERFUNC(RangeInferShape) {
       input_dtype = ge::DT_INT32;
     } else if (start_dtype == ge::DT_INT64 && limit_dtype == ge::DT_INT64 && delta_dtype == ge::DT_INT64) {
       input_dtype = ge::DT_INT64;
+    } else if (start_dtype == ge::DT_DOUBLE && limit_dtype == ge::DT_DOUBLE && delta_dtype == ge::DT_DOUBLE) {
+      input_dtype = ge::DT_DOUBLE;
     } else {
       input_dtype = ge::DT_FLOAT;
     }
