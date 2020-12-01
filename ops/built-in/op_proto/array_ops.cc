@@ -1839,6 +1839,24 @@ static void CaclDims(const Tensor& data, std::vector<int64_t>& vec_dim) {
   }
 }
 
+template <typename T>
+static void CaclDims(const GeTensorPtr& data, std::vector<int64_t>& vec_dim) {
+  int32_t size = data->GetData().GetSize() / sizeof(T);
+  for (int32_t i = 0; i < size; i++) {
+    void* data_ptr = (void*)data->GetData().GetData();
+    if (data_ptr == nullptr) {
+      return;
+    }
+    T dim = *((T*)data_ptr + i);
+    if (dim != 0) {
+      vec_dim.push_back(dim);
+    } else {
+      vec_dim.clear();
+      break;
+    }
+  }
+}
+
 IMPLEMT_INFERFUNC(Empty, EmptyInfer) {
   OP_LOGI(op.GetName().c_str(), "Empty infershape start");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
