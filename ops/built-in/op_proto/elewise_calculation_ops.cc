@@ -24,6 +24,7 @@
 #include "util/util.h"
 #include "op_log.h"
 #include "./util/error_util.h"
+#include "graph/utils/node_utils.h"
 
 namespace ge {
 bool BroadCastTwoShape(const Operator& op, const ge::Shape& shape_x, const ge::Shape& shape_y,
@@ -2281,8 +2282,8 @@ static void GetConstValue(const Operator& op, const GeTensorPtr& const_tensor,
   }
 }
 IMPLEMT_COMMON_INFERFUNC(ArgMaxInferShape) {
-  // 
   // get all input desc
+  auto node = NodeUtils::GetNodeFromOperator(op);
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto input_desc = op_info->MutableInputDesc("x");
   auto const_desc = op_info->MutableInputDesc("dimension");
