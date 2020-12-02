@@ -1219,24 +1219,9 @@ def _elewise_deq_mul(out, tensor_dict):
         tensor_dict["flag_is_broadcast"] = True
     else:
         tensor_dict["float16_mul_input_tensor"] = out.op.input_tensors[1]
-    tensor_dict["dequant1"] = tensor_dict["dequant_remove_pad"].op.input_tensors[0]
-    tensor_dict["depthwise_res"] = tensor_dict["dequant1"].op.input_tensors[0]
-    tensor_dict["deq_reg"] = tensor_dict["dequant1"].op.input_tensors[1]
-    tensor_dict["mad_ubuf"] = tensor_dict["depthwise_res"].op.input_tensors[0]
-    if tensor_dict["depthwise_res"].op.attrs['bias_flag'].value == 1:
-        tensor_dict["flag_is_dequant_bias"] = True
-        tensor_dict["mad_after_bias"] = tensor_dict["mad_ubuf"].op.input_tensors[0]
-        tensor_dict["mad_bias"] = tensor_dict["mad_after_bias"].op.input_tensors[0]
-        tensor_dict["mad"] = tensor_dict["mad_after_bias"].op.input_tensors[1]
-        tensor_dict["mad_bias_ub_brc"] = tensor_dict["mad_bias"].op.input_tensors[0]
-        tensor_dict["bias_gm"] = tensor_dict["mad_bias_ub_brc"].op.input_tensors[0]
-    else:
-        tensor_dict["mad"] = tensor_dict["mad_ubuf"].op.input_tensors[0]
-    tensor_dict["im2col_fractal"] = tensor_dict["mad"].op.input_tensors[0]
-    tensor_dict["filter_reshape"] = tensor_dict["mad"].op.input_tensors[1]
-    tensor_dict["filter_buf"] = tensor_dict["filter_reshape"].op.input_tensors[0]
-    tensor_dict["im2col_row_major"] = tensor_dict["im2col_fractal"].op.input_tensors[0]
-    tensor_dict["fmap"] = tensor_dict["im2col_row_major"].op.input_tensors[0]
+    
+    tensor_dict = _dequant_remove_pad(tensor_dict["dequant_remove_pad"], tensor_dict)
+    tensor_dict["flag_is_dequant"] = False
     tensor_dict["flag_is_dequant_mul"] = True
     tensor_dict["fusion_type_new"] = 10
 
@@ -1255,25 +1240,9 @@ def _elewise_deq2_mul(out, tensor_dict):
         tensor_dict["flag_is_broadcast"] = True
     else:
         tensor_dict["float16_mul_input_tensor"] = out.op.input_tensors[1]
-    tensor_dict["dequant2"] = tensor_dict["dequant2_remove_pad"].op.input_tensors[0]
-    tensor_dict["dequant1"] = tensor_dict["dequant2"].op.input_tensors[0]
-    tensor_dict["depthwise_res"] = tensor_dict["dequant1"].op.input_tensors[0]
-    tensor_dict["deq_reg"] = tensor_dict["dequant1"].op.input_tensors[1]
-    tensor_dict["mad_ubuf"] = tensor_dict["depthwise_res"].op.input_tensors[0]
-    if tensor_dict["depthwise_res"].op.attrs['bias_flag'].value == 1:
-        tensor_dict["flag_is_dequant_bias"] = True
-        tensor_dict["mad_after_bias"] = tensor_dict["mad_ubuf"].op.input_tensors[0]
-        tensor_dict["mad_bias"] = tensor_dict["mad_after_bias"].op.input_tensors[0]
-        tensor_dict["mad"] = tensor_dict["mad_after_bias"].op.input_tensors[1]
-        tensor_dict["mad_bias_ub_brc"] = tensor_dict["mad_bias"].op.input_tensors[0]
-        tensor_dict["bias_gm"] = tensor_dict["mad_bias_ub_brc"].op.input_tensors[0]
-    else:
-        tensor_dict["mad"] = tensor_dict["mad_ubuf"].op.input_tensors[0]
-    tensor_dict["im2col_fractal"] = tensor_dict["mad"].op.input_tensors[0]
-    tensor_dict["filter_reshape"] = tensor_dict["mad"].op.input_tensors[1]
-    tensor_dict["filter_buf"] = tensor_dict["filter_reshape"].op.input_tensors[0]
-    tensor_dict["im2col_row_major"] = tensor_dict["im2col_fractal"].op.input_tensors[0]
-    tensor_dict["fmap"] = tensor_dict["im2col_row_major"].op.input_tensors[0]
+    
+    tensor_dict = _dequant2_remove_pad(tensor_dict["dequant2_remove_pad"], tensor_dict)
+    tensor_dict["flag_is_dequant2"] = False
     tensor_dict["flag_is_dequant2_mul"] = True
     tensor_dict["fusion_type_new"] = 11
     return tensor_dict

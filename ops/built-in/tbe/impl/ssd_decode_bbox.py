@@ -1052,8 +1052,8 @@ class SSDDecodeBBox(SSDDectionParamInit):
             get_y2_scalar = self.instance.Scalar("int64", "get_y2_scalar", 6)
 
             with self.instance.for_range(0, handle_loops) as loc_handle_index:
-                loc_gm_offset = loc_handle_index * 4 * handle_num
-                self.instance.data_move(loc_ub, self.mbox_loc_gm[batch * self.loc_num + loc_gm_offset],
+                loc_gm_offset = loc_handle_index * handle_num
+                self.instance.data_move(loc_ub, self.mbox_loc_gm[batch * self.loc_num + loc_gm_offset * 4],
                                         0, 1, 4 * handle_num // 16, 0, 0)
 
                 self.instance.vreduce(handle_num, loc_dst_ub, loc_ub,
@@ -1085,12 +1085,12 @@ class SSDDecodeBBox(SSDDectionParamInit):
                     loc_dst_ub, 0, 1, handle_num // 16, 0, 0)
 
             if handle_tails > 0:
-                loc_gm_offset = handle_loops * 4 * handle_num
+                loc_gm_offset = handle_loops * handle_num
                 loc_data_tail_num = self.loc_num - handle_loops * handle_num * 4
                 burst_val = math.ceil(loc_data_tail_num // 4 / self.burnest_len)
 
                 self.instance.data_move(loc_ub,
-                                        self.mbox_loc_gm[batch * self.loc_num + loc_gm_offset], 0, 1,
+                                        self.mbox_loc_gm[batch * self.loc_num + loc_gm_offset * 4], 0, 1,
                                         loc_data_tail_num // 16, 0, 0)
 
                 self.instance.vreduce(handle_num, loc_dst_ub, loc_ub,
@@ -1515,8 +1515,8 @@ class SSDDecodeBBox(SSDDectionParamInit):
             get_y2_scalar = self.instance.Scalar("int64", "get_y2_scalar", 6)
 
             with self.instance.for_range(0, handle_loops) as loc_handle_index:
-                prior_bbox_gm_offset = loc_handle_index * 4 * handle_num
-                src_prior_bbox_gm_offset = prior_bbox_gm_offset
+                prior_bbox_gm_offset = loc_handle_index * handle_num
+                src_prior_bbox_gm_offset = prior_bbox_gm_offset * 4
                 if self.priorbox_batch != 1:
                     src_prior_bbox_gm_offset += batch * self.loc_num * self.priorbox_shape_1
                 self.instance.data_move(prior_bbox_ub,
@@ -1552,8 +1552,8 @@ class SSDDecodeBBox(SSDDectionParamInit):
                     prior_bbox_dst_ub, 0, 1, handle_num // 16, 0, 0)
 
             if handle_tails > 0:
-                prior_bbox_gm_offset = handle_loops * 4 * handle_num
-                src_prior_bbox_gm_offset = prior_bbox_gm_offset
+                prior_bbox_gm_offset = handle_loops * handle_num
+                src_prior_bbox_gm_offset = prior_bbox_gm_offset * 4
                 if self.priorbox_batch != 1:
                     src_prior_bbox_gm_offset += batch * self.loc_num * self.priorbox_shape_1
                 loc_data_tail_num = self.loc_num - handle_loops * handle_num * 4
@@ -1619,8 +1619,8 @@ class SSDDecodeBBox(SSDDectionParamInit):
             get_y2_scalar = self.instance.Scalar("int64", "get_y2_scalar", 6)
 
             with self.instance.for_range(0, handle_loops) as loc_handle_index:
-                prior_var_gm_offset = loc_handle_index * 4 * handle_num
-                src_prior_var_gm_offset = prior_var_gm_offset
+                prior_var_gm_offset = loc_handle_index * handle_num
+                src_prior_var_gm_offset = prior_var_gm_offset * 4
                 if self.priorbox_batch != 1:
                     src_prior_var_gm_offset += batch * self.loc_num * self.priorbox_shape_1
                 self.instance.data_move(prior_var_ub,
@@ -1652,8 +1652,8 @@ class SSDDecodeBBox(SSDDectionParamInit):
                     prior_var_dst_ub, 0, 1, handle_num // 16, 0, 0)
 
             if handle_tails > 0:
-                prior_var_gm_offset = handle_loops * 4 * handle_num
-                src_prior_var_gm_offset = prior_var_gm_offset
+                prior_var_gm_offset = handle_loops * handle_num
+                src_prior_var_gm_offset = prior_var_gm_offset * 4
                 if self.priorbox_batch != 1:
                     src_prior_var_gm_offset += batch * self.loc_num * self.priorbox_shape_1
                 loc_data_tail_num = self.loc_num - handle_loops * handle_num * 4
