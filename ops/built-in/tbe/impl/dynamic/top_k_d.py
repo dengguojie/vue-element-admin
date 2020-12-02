@@ -564,12 +564,12 @@ class GlobalVarFunction:
         with tik_instance.if_scope(block_idx < turn):
             mid_var = rows_per_core1_scalar // batch
             loops.set_as(mid_var)
-            remain.set_as(rows_per_core1_scalar - mid_var * batch)
+            remain.set_as(rows_per_core1_scalar - loops * batch)
             core_rows_start_scalar.set_as(rows_per_core1_scalar * block_idx)
         with tik_instance.else_scope():
             mid_var = (rows_per_core1_scalar - 1) // batch
             loops.set_as(mid_var)
-            remain.set_as((rows_per_core1_scalar - 1) - mid_var * batch)
+            remain.set_as((rows_per_core1_scalar - 1) - loops * batch)
             core_rows_start_scalar.set_as(rows_per_core1_scalar * block_idx - (block_idx - turn))
 
         if by_part:
@@ -877,7 +877,7 @@ class GlobalVarFunction:
         """
         mid_var = total_region_list // 4
         loops = tik_instance.Scalar(init_value=(mid_var), dtype="int32", name="loops")
-        remain = tik_instance.Scalar(init_value=(total_region_list - mid_var * 4), dtype="int32", name="remain")
+        remain = tik_instance.Scalar(init_value=(total_region_list - loops * 4), dtype="int32", name="remain")
 
         level_reg = tik_instance.Scalar(init_value=level, dtype="int32", name="level_reg")
 
@@ -990,7 +990,7 @@ class GlobalVarFunction:
         """
         mid_var = cnt // 128
         repeat_255_scalar = tik_instance.Scalar(init_value=(mid_var))
-        repeat_remain_scalar = tik_instance.Scalar(init_value=(cnt - mid_var * 128))
+        repeat_remain_scalar = tik_instance.Scalar(init_value=(cnt - repeat_255_scalar * 128))
 
         times_scalar = tik_instance.Scalar(init_value=((repeat_255_scalar + 254) // 255))
 
