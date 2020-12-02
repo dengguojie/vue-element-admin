@@ -79,7 +79,8 @@ uint32_t TransDataCpuKernel::DealData(T *input_data, T *output_data,
       KERNEL_STATUS_PARAM_INVALID,
       "Input type is not DT_INT8 or DT_FLOAT16 or DT_FLOAT [%d]", dt);
   const int64_t cube_k = dt == DT_INT8  ? 32 : 16;
-  auto input_format = input_tensor->GetTensorShape()->GetFormat();
+  auto input_shape = input_tensor->GetTensorShape();
+  auto input_format = input_shape->GetFormat();
   std::vector<int64_t> dims;
   dims = input_shape->GetDimSizes();
   KERNEL_CHECK_FALSE((dims.size() >= 4), KERNEL_STATUS_PARAM_INVALID,
