@@ -29,12 +29,12 @@
 using namespace std;
 
 namespace {
-const char* TRANS_DATA = "TransData";
+const char *TRANS_DATA = "TransData";
 constexpr int64_t kDimN0 = 16;
 constexpr int64_t kCubeN = 16;
 constexpr int64_t kGroupNum = 1;
 
-static int64_t Measure(int64_t x, int64_t y) {
+inline int64_t Measure(int64_t x, int64_t y) {
   int64_t z = y;
   while (x % y != 0) {
     z = x % y;
@@ -44,8 +44,8 @@ static int64_t Measure(int64_t x, int64_t y) {
   return z;
 }
 
-// least common multiple
-static int64_t Lcm(int64_t a, int64_t b) {
+// least common multiple 
+inline int64_t Lcm(int64_t a, int64_t b) {
   if (b == 0) {
     return -1;
   }
@@ -54,7 +54,7 @@ static int64_t Lcm(int64_t a, int64_t b) {
 }
 
 // get the result of two number divisor and let result round up
-static int64_t Ceil(int64_t a, int64_t b) {
+inline int64_t Ceil(int64_t a, int64_t b) {
   if (b == 0) {
     return -1;
   } else {
@@ -69,27 +69,22 @@ static int64_t Ceil(int64_t a, int64_t b) {
 
 namespace aicpu {
 template <typename T>
-uint32_t TransDataCpuKernel::DealData(T* input_data, T* output_data, Tensor* input_tensor, Tensor* output_tensor,
-                                      int64_t group) {
+uint32_t TransDataCpuKernel::DealData(T *input_data, T *output_data, 
+      Tensor *input_tensor, Tensor *output_tensor, int64_t group) {
   DataType dt = static_cast<DataType>(input_tensor->GetDataType());
   // if cube_k equals to DT_INT8, and let its values 32 else if equals to
-  // DT_FLOAT16 or DT_FLOAT ,need to let its values 16.
-  int64_t cube_k = 16;
-  if (dt == DT_INT8) {
-    cube_k = 32;
-  }
-
+  // DT_FLOAT16 or DT_FLOAT ,need to let its values 16. other dateType not 
+  // support compute
   KERNEL_CHECK_FALSE(
       ((dt == DT_FLOAT16) || (dt == DT_INT8) || (dt == DT_FLOAT)),
       KERNEL_STATUS_PARAM_INVALID,
-      "input type is not DT_INT8 or DT_FLOAT16 or DT_FLOAT :%d", dt);
-
-  auto input_shape = input_tensor->GetTensorShape();
-  auto input_format = input_shape->GetFormat();
+      "Input type is not DT_INT8 or DT_FLOAT16 or DT_FLOAT :%d", dt);
+  const int64_t cube_k = dt == DT_INT8  ? 32 : 16;
+  auto input_format = input_tensor->GetTensorShape()->GetFormat();
   std::vector<int64_t> dims;
   dims = input_shape->GetDimSizes();
   KERNEL_CHECK_FALSE((dims.size() >= 4), KERNEL_STATUS_PARAM_INVALID,
-      "%s dims size [%zu] must >= 4.", TRANS_DATA, dims.size());
+      "%s Dims size [%zu] must >= 4.", TRANS_DATA, dims.size());
   int64_t d_dim;
   int64_t h_dim;
   int64_t w_dim;
@@ -134,15 +129,16 @@ uint32_t TransDataCpuKernel::DealData(T* input_data, T* output_data, Tensor* inp
   } 
   else {
     KERNEL_LOG_ERROR(
-        "format is not FORMAT_DHWCN or FORMAT_NDHWC or FORMAT_NCDHW or "
+        "Format is not FORMAT_DHWCN or FORMAT_NDHWC or FORMAT_NCDHW or "
         "FORMAT_NHWC or FORMAT_NCHW, current input format is ：%d",
         input_format);
     return KERNEL_STATUS_PARAM_INVALID;
   }
+
   int64_t cin_ori = c_dim;
   int64_t cout_ori = n_dim / group;
   if (cin_ori == 0 || cout_ori == 0) {
-    KERNEL_LOG_ERROR("cin_ori or cout_ori must be not equal 0");
+    KERNEL_LOG_ERROR("Cin_ori or cout_ori must be not equal 0");
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -176,19 +172,24 @@ uint32_t TransDataCpuKernel::DealData(T* input_data, T* output_data, Tensor* inp
               int64_t src_co = g * cout_ori + n;
               int64_t tempory = dst_ci % cube_k;
               int64_t srx_inx = 0;
-              int64_t dst_inx = (g / e_mult) * d_dim * c1_dim * h_dim * w_dim * cout_opt * cube_k +
-                                d * c1_dim * h_dim * w_dim * cout_opt * cube_k +
-                                (dst_ci / cube_k) * h_dim * w_dim * cout_opt * cube_k + h * w_dim * cout_opt * cube_k +
-                                w * cout_opt * cube_k + dst_co * cube_k + tempory;
-              if ((input_format == FORMAT_DHWCN) || (input_format == FORMAT_HWCN)) {
-                srx_inx = d * h_dim * w_dim * c_dim * n_dim + h * w_dim * c_dim * n_dim + w * c_dim * n_dim +
-                          c * n_dim + src_co;
-              } else if ((input_format == FORMAT_NCDHW) || (input_format == FORMAT_NCHW)) {
-                srx_inx = src_co * c_dim * d_dim * h_dim * w_dim + c * d_dim * h_dim * w_dim + d * h_dim * w_dim +
-                          h * w_dim + w;
-              } else if ((input_format == FORMAT_NDHWC) || (input_format == FORMAT_NHWC)) {
-                srx_inx = src_co * d_dim * h_dim * w_dim * c_dim + d * h_dim * w_dim * c_dim + h * w_dim * c_dim +
-                          w * c_dim + c;
+              int64_t dst_inx = (g / e_mult) * d_dim * c1_dim * h_dim * w_dim * 
+                                cout_opt * cube_k + d * c1_dim * h_dim * w_dim *
+                                cout_opt * cube_k + (dst_ci / cube_k) * h_dim *
+                                w_dim * cout_opt * cube_k + h * w_dim * cout_opt
+                                * cube_k + w * cout_opt * cube_k + dst_co *
+                                * cube_k + tempory;
+              if ((input_format == FORMAT_DHWCN) ||
+                    (input_format == FORMAT_HWCN)) {
+                srx_inx = d * h_dim * w_dim * c_dim * n_dim + h * w_dim * c_dim 
+                          * n_dim + w * c_dim * n_dim + c * n_dim + src_co;
+              } else if ((input_format == FORMAT_NCDHW) ||
+                            (input_format == FORMAT_NCHW)) {
+                srx_inx = src_co * c_dim * d_dim * h_dim * w_dim + c * d_dim * 
+                          h_dim * w_dim + d * h_dim * w_dim + h * w_dim + w;
+              } else if ((input_format == FORMAT_NDHWC) ||
+                            (input_format == FORMAT_NHWC)) {
+                srx_inx = src_co * d_dim * h_dim * w_dim * c_dim + d * h_dim * 
+                          w_dim * c_dim + h * w_dim * c_dim + w * c_dim + c;
               }
               output_data[dst_inx] = input_data[srx_inx];
             }
@@ -202,17 +203,17 @@ uint32_t TransDataCpuKernel::DealData(T* input_data, T* output_data, Tensor* inp
 }
 
 uint32_t TransDataCpuKernel::Compute(CpuKernelContext& ctx) {
-  KERNEL_LOG_INFO("start to Compute TransData.");
+  KERNEL_LOG_INFO("Start to Compute TransData.");
   Tensor* input_tensor = ctx.Input(0);
   KERNEL_CHECK_NULLPTR(input_tensor, KERNEL_STATUS_PARAM_INVALID,
-                       "%s get Tensor:input_tensor failed.", TRANS_DATA);
+                       "%s Get Tensor:input_tensor failed.", TRANS_DATA);
   Tensor* output_tensor = ctx.Output(0);
   KERNEL_CHECK_NULLPTR(output_tensor, KERNEL_STATUS_PARAM_INVALID,
-                       "%s get Tensor:output_tensor failed.", TRANS_DATA);
+                       "%s Get Tensor:output_tensor failed.", TRANS_DATA);
   auto output_format = output_tensor->GetTensorShape()->GetFormat();
 
   if((output_format != FORMAT_FRACTAL_Z) && (output_format != FORMAT_FRACTAL_Z_3D)) {
-    KERNEL_LOG_EVENT("%s unsupport output_format:%d.", 
+    KERNEL_LOG_EVENT("%s Unsupport output_format:%d.", 
                     TRANS_DATA , output_format);
     return KERNEL_STATUS_PARAM_INVALID;
   }
