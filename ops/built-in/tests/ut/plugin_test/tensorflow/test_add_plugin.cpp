@@ -25,7 +25,7 @@ TEST_F(add_plugin_test, add_plugin_test_case_1) {
   std::string caseDir = __FILE__;
   std::size_t idx = caseDir.find_last_of("/");
   caseDir = caseDir.substr(0, idx);
-  std::string modelFile = caseDir + "/add_case_1.txt";
+  std::string modelFile = caseDir + "/add_case_1.pb";
 
   auto status = aclgrphParseTensorFlow(modelFile.c_str(), graph);
 
