@@ -26,6 +26,8 @@
 #include <vector>
 #include <map>
 #include <algorithm>
+#include <chrono>
+#include <cstdlib>
 
 #include "framework/omg/omg_inner_types.h"
 #include "operator.h"
@@ -42,6 +44,7 @@
 #define LOG_ERROR(format, args...) printf(format, ##args)
 namespace ge {
 
+const static bool prof_switch = std::getenv("OPTILING_PROF") != nullptr;
 // enum type and string type mapping
 static const std::map<ge::DataType, std::string> DTYPE_STR_MAP{
     {ge::DT_FLOAT16, "float16"}, {ge::DT_FLOAT, "float32"}, {ge::DT_INT8, "int8"},   {ge::DT_INT16, "int16"},

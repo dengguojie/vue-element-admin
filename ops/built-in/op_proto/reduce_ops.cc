@@ -342,10 +342,15 @@ static bool InferReduceDShape(const ge::Operator& op, const string& input_name, 
 // ----------------ReduceAll Op-------------------
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ReduceAllInferShape) {
+  std::chrono::time_point<std::chrono::steady_clock> start_tiling, before_tiling, after_tiling;
+
   const vector<string> depend_names = {"axes"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
   OP_LOGI(op.GetName().c_str(), "Enter ReduceAll proto inferfunction!");
   ge::TensorDesc result_desc;
+  if (prof_switch) {
+        start_tiling = std::chrono::steady_clock::now();
+  }
   if (!InferReduceShape(op, "x", "axes", "keep_dims", result_desc)) {
     return GRAPH_FAILED;
   }
@@ -354,7 +359,11 @@ IMPLEMT_COMMON_INFERFUNC(ReduceAllInferShape) {
   std::vector<std::pair<int64_t, int64_t>> range;
   result_desc.GetShapeRange(range);
 
+  if (prof_switch) {
+    before_tiling = std::chrono::steady_clock::now();
+  }
   // update output desc
+
   TensorDesc output_desc = op.GetOutputDesc("y");
   output_desc.SetShape(shape);
   output_desc.SetDataType(dtype);
@@ -362,6 +371,13 @@ IMPLEMT_COMMON_INFERFUNC(ReduceAllInferShape) {
     output_desc.SetShapeRange(range);
   }
   (void)op.UpdateOutputDesc("y", output_desc);
+  if (prof_switch) {
+    after_tiling = std::chrono::steady_clock::now();
+    uint64_t t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - start_tiling).count();
+    uint64_t t1 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - before_tiling).count();
+    // GE_D_OP_LOGEVT("[OPTILING_PROF] op_name: %s, total_us: %d, tiling_us: %d", para.op_type.c_str(), t0, t1);
+    OP_LOGE(op.GetName().c_str(), "[INFERSHAPE_PROF] op_name: %s, total_us: %d, tiling_us: %d", op.GetName().c_str(), t0, t1);
+  }
   return GRAPH_SUCCESS;
 }
 
