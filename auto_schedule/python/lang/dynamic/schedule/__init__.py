@@ -25,3 +25,4 @@ from . import conv2d_schedule, conv2d_tilingcase
 from . import conv2d_bp_input_tilingcase, conv2d_bp_input_schedule
 from . import conv2d_bp_filter_tilingcase, cube_schedule
 from . import conv3d_schedule, conv3d_tilingcase
+from . import gemm_tilingcase

@@ -103,7 +103,7 @@ TEST_F(matmul_infer_test, matmul_infer_test_2) {
   // input x1 shape {-1, 5}
   // input x1 range {{1, 60}, {5, 5}}
   // input x2 shape {6, -1}
-  // input x2 range {{6, 6}, {5, 90}}
+  // input x2 range {{6, 6}, {1, 60}}
   // attr  true  true
   // output shape  {5, 6}
   // output shape {{5, 5}, {6, 6}}
@@ -111,7 +111,7 @@ TEST_F(matmul_infer_test, matmul_infer_test_2) {
   auto shape_x1 = vector<int64_t>({-1, 5});
   std::vector<std::pair<int64_t,int64_t>> range_x1 = {{1, 60}, {5, 5}};
   auto shape_x2 = vector<int64_t>({6, -1});
-  std::vector<std::pair<int64_t,int64_t>> range_x2 = {{6, 6}, {5, 90}};
+  std::vector<std::pair<int64_t,int64_t>> range_x2 = {{6, 6}, {1, 60}};
   bool transpose_x1 = true;
   bool transpose_x2 = true;
 
