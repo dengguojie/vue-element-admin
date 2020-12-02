@@ -385,6 +385,7 @@ LOCAL_SRC_FILES := \
         built-in/op_tiling/tile_d.cc \
         built-in/op_tiling/tile.cc \
         built-in/op_tiling/top_k.cc \
+        built-in/op_tiling/gemm.cc \
 
 LOCAL_C_INCLUDES := \
         $(LOCAL_PATH)/built-in/op_proto/util \
