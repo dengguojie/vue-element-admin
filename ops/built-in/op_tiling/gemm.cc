@@ -51,39 +51,6 @@ const int64_t kBlockOut = 16;
 
 namespace optiling {
 
-bool CheckCompileInfo(const std::string &op_type, const json &compile_info, const vector<string> &keys) {
-  for (auto& key : keys) {
-    if (compile_info.find(key) == compile_info.end()) {
-      OP_LOGE(op_type.c_str(), "compile info does not contain %s", key.c_str());
-      return false;
-    }
-  }
-  return true;
-}
-
-bool CheckGEMMCompileInfo(const std::string &op_type, const json &compile_info) {
-  const vector<string> keys = {"dynamic_mode", "repo_seeds", "repo_range", "cost_range", "block_dim", "attrs"};
-  if (!CheckCompileInfo(op_type, compile_info, keys)) {
-    return false;
-  }
-  return CheckCompileInfo(op_type, compile_info["attrs"], {"transpose_a", "transpose_b"});
-}
-
-bool CheckGEMMOpPara(const std::string &op_type, const TeOpParas &op_paras) {
-  // input: a, b, [bias]
-  if (op_paras.inputs.empty() || op_paras.inputs.size() < 2) {
-    OP_LOGE(op_type.c_str(), "MatMul/MatMulV2 requires at least 2 inputs, actually is %d",
-            op_paras.inputs.size());
-    return false;
-  }
-  if (op_paras.inputs[0].tensor.empty() || op_paras.inputs[0].tensor.empty()) {
-    OP_LOGE(op_type.c_str(), "Input tensor is empty");
-    return false;
-  }
-
-  return true;
-}
-
 bool CalcGEMMMkn(const string &op_type, const json &compile_info,
                  const TeOpTensor &tensor_a, const TeOpTensor &tensor_b,
                  int64_t *m, int64_t *k, int64_t *n) {
@@ -131,13 +98,6 @@ bool CalcGEMMMkn(const string &op_type, const json &compile_info,
  */
 bool GEMMTiling(const std::string &op_type, const TeOpParas &op_paras, const json &compile_info,
                 OpRunInfo& run_info) {
-  if (!CheckGEMMOpPara(op_type, op_paras)) {
-    return false;
-  }
-  if (!CheckGEMMCompileInfo(op_type, compile_info)) {
-    return false;
-  }
-
   auto tensor_a = op_paras.inputs[0].tensor[0];
   auto tensor_b = op_paras.inputs[1].tensor[0];
   int64_t m, k, n;
