@@ -122,7 +122,6 @@ def depthwise_compute(fmap,
                       pads,
                       data_format='NHWC',
                       offset_x=0,
-                      dsl_flag=True,
                       kernel_name="depthwise_conv2d"):
     """
     algorithm: depthwise conv2d compute
@@ -163,7 +162,7 @@ def depthwise_compute(fmap,
     out = depthwise_conv2d_compute(
         fmap, filter, out_dtype.lower(), strides_2d, pads, dilations_2d, {
             "bias_tensor": bias,
-            "dsl_flag": dsl_flag,
+            "dsl_flag": True,
             "offset_x": offset_x
         }, l1_fusion_para, kernel_name)
     return out
@@ -425,11 +424,10 @@ def depthwise_conv2d(
         bias_tensor = tvm.placeholder((filter_c1 * c0_val, ), name='bias_tensor', dtype=output_dtype.lower())
     fmap_placeholder = tvm.placeholder(fmap_shape_5d, dtype=in_dtype.lower(), name='fmap')
     filter_placeholder = tvm.placeholder(shape_w_5d, dtype=w_dtype.lower(), name='filter')
-    dsl_flag = False
     out = depthwise_conv2d_compute(fmap_placeholder, filter_placeholder, output_dtype.lower(), strides_2d, pads,
                                    dilations_2d, {
                                        "bias_tensor": bias_tensor,
-                                       "dsl_flag": dsl_flag,
+                                       "dsl_flag": False,
                                        "offset_x": offset_x
                                    }, None, kernel_name)
 
