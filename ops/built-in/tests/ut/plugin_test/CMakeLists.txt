@@ -44,6 +44,7 @@ if(BUILD_OPEN_PROJECT)
 
   add_custom_command(
     TARGET  ops_cpp_plugin_utest POST_BUILD
+    COMMAND export LD_LIBRARY_PATH=ENV{LD_LIBRARY_PATH}:${ASCEND_ATC_DIR}
     COMMAND ops_cpp_plugin_utest
     COMMENT "Run ops plugin utest"
   )
