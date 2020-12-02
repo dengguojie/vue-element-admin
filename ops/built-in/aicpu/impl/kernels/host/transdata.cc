@@ -138,7 +138,7 @@ uint32_t TransDataCpuKernel::DealData(T *input_data, T *output_data,
   int64_t cin_ori = c_dim;
   int64_t cout_ori = n_dim / group;
   if (cin_ori == 0 || cout_ori == 0) {
-    KERNEL_LOG_ERROR("Cin_ori or cout_ori must be not equal 0");
+    KERNEL_LOG_EVENT("Cin_ori or cout_ori euqals to 0");
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -171,7 +171,7 @@ uint32_t TransDataCpuKernel::DealData(T *input_data, T *output_data,
                                 cout_opt * cube_k + (dst_ci / cube_k) * h_dim *
                                 w_dim * cout_opt * cube_k + h * w_dim * cout_opt
                                 * cube_k + w * cout_opt * cube_k + dst_co *
-                                * cube_k + tempory;
+                                cube_k + tempory;
               if ((input_format == FORMAT_DHWCN) ||
                     (input_format == FORMAT_HWCN)) {
                 srx_inx = d * h_dim * w_dim * c_dim * n_dim + h * w_dim * c_dim 
