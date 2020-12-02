@@ -50,7 +50,6 @@ set(_optiling_files
   transpose_d.cc
   unpack.cc
   unsorted_segment_sum.cc
-  gemm.cc
 )
 
 set(_op_tiling_include
