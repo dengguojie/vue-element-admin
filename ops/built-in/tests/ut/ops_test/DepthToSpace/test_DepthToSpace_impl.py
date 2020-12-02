@@ -78,7 +78,7 @@ ut_case.add_precision_case("all", {"params": [{"shape": (1,1,1,4), "dtype": "flo
                                    "calc_expect_func": calc_expect_func,
                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
                                    })
-ut_case.add_precision_case("all", {"params": [{"shape": (2,64,80,64), "dtype": "float16", "format": "ND", "ori_shape": (2,64,80,64),"ori_format": "ND", "param_type": "input"},
+ut_case.add_precision_case("Ascend910", {"params": [{"shape": (2,64,80,64), "dtype": "float16", "format": "ND", "ori_shape": (2,64,80,64),"ori_format": "ND", "param_type": "input"},
                                               {"shape": (2,128,160,16), "dtype": "float16", "format": "ND", "ori_shape": (2,128,160,16),"ori_format": "ND", "param_type": "output"},
                                               2, "NHWC"],
                                    "calc_expect_func": calc_expect_func,
