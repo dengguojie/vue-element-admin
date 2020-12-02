@@ -185,10 +185,10 @@ class DepthToSpaceNHWCCompute:
         # if minimum granularity of data_move < 32B
         self.ub_rearrange = (self.min_size < self.num_data or self.is_align)
         # the number of data that UB can put in
-        self.ub_memory = min(TOTAL_UB_MEMORY, 252 * 1024) // num_bit - self.num_data
+        self.ub_memory = min(TOTAL_UB_MEMORY, 252*1024) // num_bit - self.num_data
         # rearrange case need double divide UB
         if self.ub_rearrange:
-            self.ub_memory = self.ub_memory //2
+            self.ub_memory = self.ub_memory // 2
         # rearrange case parameter init
         self.loop_times = 0
         self.cal_nums_per_loop = 0
@@ -1150,21 +1150,21 @@ class DepthToSpaceNHWCCompute:
                                             0, self.input_width, min_blocks, (self.block_size-1)*min_blocks, 0)
             else:
                 with tik_instance.for_range(0, self.input_width*self.block_size) as n:
+                    i_index = n // self.input_width
+                    j_index = n - i_index*self.input_width
+                    new_index = j_index*self.block_size + i_index
                     with tik_instance.for_range(0, self.min_size) as o:
-                        i_index = n // self.input_width
-                        j_index = n - i_index*self.input_width
-                        new_index = j_index*self.block_size + i_index                        
                         input_ub_index = m*self.one_core_min_size + new_index*self.min_size + o
                         rearrange_ub_index = m*self.one_core_min_size + n*self.min_size + o
                         rearrange_ub[rearrange_ub_index].set_as(input_ub[input_ub_index])
-        if address_rollback:
-            if cal_nums % self.num_data != 0:
-                for p in range(self.num_data-1, -1, -1):
-                    rearrange_ub[(cal_blocks-1)*self.num_data + p].set_as(rearrange_ub[cal_nums - self.num_data + p])
-                tik_instance.data_move(self.output_y_gm[loop_offset], rearrange_ub, 0, 1, cal_blocks - 1, 0, 0)
-                tik_instance.data_move(self.output_y_gm[loop_offset + cal_nums - self.num_data],
+        if address_rollback and cal_nums % self.num_data != 0:
+            for p in range(self.num_data-1, -1, -1):
+                rearrange_ub[(cal_blocks-1)*self.num_data + p].set_as(rearrange_ub[cal_nums - self.num_data + p])
+            tik_instance.data_move(self.output_y_gm[loop_offset], rearrange_ub, 0, 1, cal_blocks - 1, 0, 0)
+            tik_instance.data_move(self.output_y_gm[loop_offset + cal_nums - self.num_data],
                                        rearrange_ub[(cal_blocks - 1)*self.num_data], 0, 1, 1, 0, 0)
-        tik_instance.data_move(self.output_y_gm[loop_offset], rearrange_ub, 0, 1, cal_blocks, 0, 0)
+        else:
+            tik_instance.data_move(self.output_y_gm[loop_offset], rearrange_ub, 0, 1, cal_blocks, 0, 0)
 
     def depth_to_space_ub_rearrange_case(self,tik_instance):
         """
