@@ -36,10 +36,21 @@ case3 = {"params": [{"shape": (6, 2,16,16), "dtype": "float16", "format": "FRACT
          "format_expect": [],
          "support_expect": True}
 
+case4 = {"params": [{"shape": (64, 1280, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (20480, 1024),"ori_format": "ND"},
+                    {"shape": (64, 1280,16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (20480, 1024),"ori_format": "ND"},
+                    None,
+                    None,
+                    {"shape": (64, 64, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1024, 1024),"ori_format": "ND"},
+                    True, False],
+         "case_name": "MatMul_4",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
-
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910B"], case4)
 #precision cases
 
 def maxtrix_zN_reverse(matrix, shape, dtype):
