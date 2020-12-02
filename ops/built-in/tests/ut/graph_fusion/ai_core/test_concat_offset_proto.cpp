@@ -96,20 +96,12 @@ TEST_F(concat_offset_test, concat_offset_test_1){
           std::vector<int64_t> output_shape1 = outputDesc1.GetShape().GetDims();
           std::vector<int64_t> output_shape2 = outputDesc2.GetShape().GetDims();
           std::vector<int64_t> output_shape3 = outputDesc3.GetShape().GetDims();
-          if(output_shape1 == expect_shape1){
-              shapeMatch1 = true;
-          }
-          if(output_shape2 == expect_shape2){
-              shapeMatch1 = true;
-          }
-          if(output_shape3 == expect_shape3){
-              shapeMatch1 = true;
+          EXPECT_EQ(output_shape1, expect_shape1)
+          EXPECT_EQ(output_shape2, expect_shape2)
+          EXPECT_EQ(output_shape3, expect_shape3)
           }
       }
   }
   EXPECT_EQ(findOp, true);
-  EXPECT_EQ(ShapeMatch1, true);
-  EXPECT_EQ(ShapeMatch2, true);
-  EXPECT_EQ(ShapeMatch3, true);
 }
 
