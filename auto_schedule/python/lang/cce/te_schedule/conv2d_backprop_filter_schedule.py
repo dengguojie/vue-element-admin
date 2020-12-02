@@ -1466,18 +1466,8 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         def _dynamic_bl1_buffer_tile(ho_len):
             # buffer_tile for dynamic mode
 
-            def _set_hw_mode():
-                # set buffer tile mode for hw
-
-                if dynamic_para.get('bl1_hw_allin_flag') \
-                        and block_dim_hw == 1:
-                    # hw is fully loaded on L1 without multi-core
-                    return "fmap"
-
-                return "tile_h" if block_dim_hw == 1 else "None"
-
-            def _set_batch_mode():
-                # set buffer tile mode for batch
+            def _set_tile_mode():
+                # set buffer tile mode for dynamic
 
                 if dynamic_bl1_attach == "dw_cc":
                     # hw need both multi-core offset and k_axis offset
@@ -1507,30 +1497,41 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 else:
                     axis_k_var = hw_mad_1_l1_out_at.var * bl1_k
 
-                # multi_core offset
                 hw_single_core_factor = _ceil_div(hw_pad_1, block_dim_hw) * \
                                         CUBE_DIM
-                multi_core_offset = tvm.floordiv(
-                                        tvm.floordiv(fused_multi_core,
-                                                     block_dim_cout *
-                                                     block_dim_cin),
-                                        tvm.floordiv(batch_fmap - 1,
-                                                     _ceil_div(batch_fmap,
-                                                           block_dim_batch)) +
-                                        1) * \
-                                    hw_single_core_factor
+                hw_single_core_factor = _align(hw_single_core_factor,
+                                               dw_k * CUBE_DIM)
 
-                # dynamic_hw
-                if tile_mode == "tile_h":
-                    ho_min = tvm.floordiv(axis_k_var, width_grads)
+                if self.dynamic_mode == "dynamic_batch":
+                    # multi_core offset
+                    multi_core_offset = tvm.floordiv(
+                                            tvm.floordiv(fused_multi_core,
+                                                         block_dim_cout *
+                                                         block_dim_cin),
+                                            tvm.floordiv(batch_fmap - 1,
+                                                         _ceil_div(batch_fmap,
+                                                                   block_dim_batch)) +
+                                            1) * hw_single_core_factor
 
-                # dynamic_batch
-                if tile_mode == "tile_h_dw_cc":
-                    ho_min = tvm.floordiv(multi_core_offset + axis_k_var,
-                                          width_grads)
+                    if tile_mode == "tile_h_dw_cc":
+                        ho_min = tvm.floordiv(multi_core_offset + axis_k_var,
+                                              width_grads)
 
-                if tile_mode == "tile_h_dw_ddr":
-                    ho_min = tvm.floordiv(multi_core_offset, width_grads)
+                    elif tile_mode == "tile_h_dw_ddr":
+                        ho_min = tvm.floordiv(multi_core_offset, width_grads)
+
+                elif self.dynamic_mode == "dynamic_hw":
+                    # hw_block offset
+                    block_div = (block_dim_batch * block_dim_cout * block_dim_cin)
+                    hw_block_offset = fused_multi_core // block_div * \
+                                      hw_single_core_factor
+
+                    if tile_mode == "tile_h_dw_cc":
+                        ho_min = tvm.floordiv(hw_block_offset + axis_k_var,
+                                              width_grads)
+
+                    elif tile_mode == "tile_h_dw_ddr":
+                        ho_min = tvm.floordiv(hw_block_offset, width_grads)
 
                 hi_min = ho_min * stride_height - pad_up
 
@@ -1540,17 +1541,12 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 return hi_min, hi_extent, wi_min, wi_extent
 
             if not flag_all_one_case:
-                tile_mode = (_set_hw_mode()
-                             if self.dynamic_mode == "dynamic_hw"
-                             else _set_batch_mode())
+                tile_mode = _set_tile_mode()
 
                 hi_min, hi_extent, wi_min, wi_extent = \
                     _set_tile_params(ho_len, tile_mode)
 
-                if tile_mode == "fmap":
-                    hi_min = -pad_up
-                    hi_extent = height_fmap + pad_up + pad_down
-                elif "tile_h" in tile_mode:
+                if "tile_h" in tile_mode:
                     hi_min, hi_extent = hi_min, hi_extent
                 else:
                     hi_min, hi_extent = None, None
