@@ -2195,7 +2195,7 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
                 Params.TENSOR_MAP["c_add_bias"],
                 Params.TENSOR_MAP["bias_l0c"]
             )
-        
+
     if not Params.MAT_MUL:
         alpha_temp_ub = Params.TENSOR_MAP.get("alpha_temp_ub")
         beta_temp_ub = Params.TENSOR_MAP.get("beta_temp_ub")
@@ -4077,24 +4077,34 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
     def _mem_process():
         def _get_al1_bound():
             if Params.TILING["AL1_shape"]:
-                m_bound = Params.TILING["AL1_shape"][1] * Params.TILING["CL0_matrix"][1] * 16
-                k_bound = _int_ceil_div(Params.TILING["AL1_shape"][0], Params.block_reduce) \
-                          // Params.TILING["AL0_matrix"][1] * Params.TILING["AL0_matrix"][1] * 16
+                m_bound = Params.TILING["AL1_shape"][1] * Params.TILING["CL0_matrix"][1] * Params.block_in
+                k_bound = Params.TILING["AL1_shape"][0]
                 al1_bound = m_bound * k_bound
             else:
-                al1_bound = Params.DIM_MAP["A_matrix_dim"][0] * Params.DIM_MAP["A_matrix_dim"][1] \
-                            * 16 * 16 // Params.TILING["block_dim"][2]
+                k_bound = Params.DIM_MAP["A_matrix_dim"][1] * Params.block_reduce
+                if Params.TILING["block_dim"][2] == 1:
+                    m_bound = Params.DIM_MAP["A_matrix_dim"][0] * Params.block_in
+                else:
+                    m_parts = _int_ceil_div(Params.DIM_MAP["A_matrix_dim"][0], Params.TILING["CL0_matrix"][1])
+                    m_factors = _int_ceil_div(m_parts, Params.TILING["block_dim"][2])
+                    m_bound = m_factors * Params.TILING["CL0_matrix"][1] * Params.block_in
+                al1_bound = m_bound * k_bound
             return al1_bound
         
         def _get_bl1_bound():
             if Params.TILING["BL1_shape"]:
-                n_bound = Params.TILING["BL1_shape"][1] * Params.TILING["CL0_matrix"][0] * 16
-                k_bound = _int_ceil_div(Params.TILING["BL1_shape"][0], Params.block_reduce) \
-                          // Params.TILING["BL0_matrix"][0] * Params.TILING["BL0_matrix"][0] * 16
-                bl1_bound = n_bound * k_bound
+                m_bound = Params.TILING["BL1_shape"][1] * Params.TILING["CL0_matrix"][0] * Params.block_out
+                k_bound = Params.TILING["BL1_shape"][0]
+                al1_bound = m_bound * k_bound
             else:
-                bl1_bound = Params.DIM_MAP["B_matrix_dim"][0] * Params.DIM_MAP["B_matrix_dim"][1] \
-                            * 16 * 16 // Params.TILING["block_dim"][1]
+                k_bound = Params.DIM_MAP["B_matrix_dim"][0] * Params.block_reduce
+                if Params.TILING["block_dim"][1] == 1:
+                    n_bound = Params.DIM_MAP["B_matrix_dim"][1] * Params.block_out
+                else:
+                    n_parts = _int_ceil_div(Params.DIM_MAP["B_matrix_dim"][1], Params.TILING["CL0_matrix"][0])
+                    n_factors = _int_ceil_div(n_parts, Params.TILING["block_dim"][1])
+                    n_bound = n_factors * Params.TILING["CL0_matrix"][1] * Params.block_in
+                bl1_bound = n_bound * k_bound
             return bl1_bound
         
         if Params.is_dynamic:
@@ -4105,8 +4115,8 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
             sch.disable_allocate(cce_params.scope_ubuf)
 
             # get l1 bound
-            # sch[a_l1].set_storage_bound(_get_al1_bound())
-            # sch[b_l1].set_storage_bound(_get_bl1_bound())
+            sch[a_l1].set_storage_bound(_get_al1_bound())
+            sch[b_l1].set_storage_bound(_get_bl1_bound())
 
             # mem_unique
             sch[a_l1].mem_unique()
