@@ -1031,7 +1031,7 @@ IMPLEMT_COMMON_INFERFUNC(ConcatOffsetInferShape) {
   // get the fisrt DynamicInput shape
   const uint32_t start_idx = 1;
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto input1_desc = op_info->MutableInputDesc(start_idx);
+  auto input1_desc = op_info->MutableInputDesc(1);
   DataType input_dtype = input1_desc->GetDataType();
   auto input1_shape = input1_desc->MutableShape().GetDims();
   if (!IsUnknown(input1_shape)) {
@@ -1044,12 +1044,13 @@ IMPLEMT_COMMON_INFERFUNC(ConcatOffsetInferShape) {
   }
 
   // dynamic shape, will get all inputs and calcu range
+  vector<int64_t> dim_size = {};
   std::vector<std::pair<int64_t, int64_t>> input1_range;
-  std::vector<std::pair<int64_t, int64_t>> input2_range;
   input1_desc->GetShapeRange(input1_range);
   for (auto i = 1; i < num_concat; i++) {
     auto input2_desc = op_info->MutableInputDesc(i + start_idx);
     auto input2_shape = input2_desc->MutableShape().GetDims();
+    std::vector<std::pair<int64_t, int64_t>> input2_range;
     if (!IsUnknown(input2_shape)) {
       input1_shape = input2_shape;
       input1_range.clear();
@@ -1057,9 +1058,9 @@ IMPLEMT_COMMON_INFERFUNC(ConcatOffsetInferShape) {
       break;
     }
     input2_desc->GetShapeRange(input2_range);
-    vector<int64_t> dim_size = {};
     FixShapeRangeWithDims(dim_size, input1_shape, input2_shape, input1_range, input2_range);
   }
+
   for (auto i = 0; i < num_concat; i++) {
     auto output_desc = op_info->MutableOutputDesc(i);
     output_desc->SetShape(GeShape(input1_shape));
