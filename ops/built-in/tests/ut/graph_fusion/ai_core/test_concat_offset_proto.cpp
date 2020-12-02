@@ -20,6 +20,8 @@ protected:
         std::cout << "concat_offset_test TearDown" << std::endl;
     }
 };
+
+
 TEST_F(concat_offset_test, concat_offset_test_1){
   ge::Graph graph("concat_offset_1");
   auto shape_x1 = vector<int64_t>({-1,});
@@ -85,6 +87,8 @@ TEST_F(concat_offset_test, concat_offset_test_1){
   auto expect_shape1 = vector<int64_t>({-1,});
   auto expect_shape2 = vector<int64_t>({-1,});
   auto expect_shape3 = vector<int64_t>({-1,});
+  std::vector<std::pair<int64_t, int64_t>>expect_range1;
+  expect_range1.push_back(std::pair<int64_t,int64_t>{3,9});
 
   for(auto node: compute_graph_ptr->GetAllNodes()){
       if(node->GetType() == "ConcatOffset"){
@@ -96,12 +100,22 @@ TEST_F(concat_offset_test, concat_offset_test_1){
           std::vector<int64_t> output_shape1 = outputDesc1.GetShape().GetDims();
           std::vector<int64_t> output_shape2 = outputDesc2.GetShape().GetDims();
           std::vector<int64_t> output_shape3 = outputDesc3.GetShape().GetDims();
-          EXPECT_EQ(output_shape1, expect_shape1)
-          EXPECT_EQ(output_shape2, expect_shape2)
-          EXPECT_EQ(output_shape3, expect_shape3)
+          EXPECT_EQ(output_shape1, expect_shape1);
+          EXPECT_EQ(output_shape2, expect_shape2);
+          EXPECT_EQ(output_shape3, expect_shape3);
+          std::vector<std::pair<int64_t,int64_t>> output_range1;
+          std::vector<std::pair<int64_t,int64_t>> output_range2;
+          std::vector<std::pair<int64_t,int64_t>> output_range3;
+          outputDesc1.GetShapeRange(output_range1);
+          outputDesc2.GetShapeRange(output_range2);
+          outputDesc3.GetShapeRange(output_range3);
+          EXPECT_EQ(output_range1, expect_shape1);
+          EXPECT_EQ(output_range2, expect_shape1);
+          EXPECT_EQ(output_range3, expect_shape1);
           }
       }
   }
   EXPECT_EQ(findOp, true);
 }
+
 
