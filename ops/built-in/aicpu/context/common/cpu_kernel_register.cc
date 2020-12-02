@@ -43,7 +43,7 @@ std::shared_ptr<CpuKernel> CpuKernelRegister::GetCpuKernel(
   if (iter != creatorMap_.end()) {
     return iter->second();
   }
-  KERNEL_LOG_WARN("The kernel:%s is not registered.", opType.c_str());
+  KERNEL_LOG_WARN("The kernel[%s] is not registered.", opType.c_str());
   return std::shared_ptr<CpuKernel>(nullptr);
 }
 
@@ -67,7 +67,7 @@ std::vector<std::string> CpuKernelRegister::GetAllRegisteredOpTypes() const {
  */
 uint32_t CpuKernelRegister::RunCpuKernel(CpuKernelContext &ctx) {
   std::string type = ctx.GetOpType();
-  KERNEL_LOG_INFO("RunCpuKernel:%s begin.", type.c_str());
+  KERNEL_LOG_INFO("RunCpuKernel[%s] begin.", type.c_str());
   auto kernel = GetCpuKernel(type);
   if (kernel == nullptr) {
     return KERNEL_STATUS_INNER_ERROR;
@@ -79,7 +79,13 @@ uint32_t CpuKernelRegister::RunCpuKernel(CpuKernelContext &ctx) {
       return KERNEL_STATUS_INNER_ERROR;
     }
   }
-  return kernel->Compute(ctx);
+
+  uint32_t ret = kernel->Compute(ctx);
+  if (ret != KERNEL_STATUS_OK) {
+    return ret;
+  }
+  KERNEL_LOG_INFO("RunCpuKernel[%s] success.", type.c_str());
+  return KERNEL_STATUS_OK;
 }
 
 CpuKernelRegister::Registerar::Registerar(const std::string &type,
@@ -99,6 +105,6 @@ void CpuKernelRegister::Register(const std::string &type,
   }
 
   creatorMap_[type] = fun;
-  KERNEL_LOG_DEBUG("kernel:%s register successfully", type.c_str());
+  KERNEL_LOG_DEBUG("Kernel[%s] register successfully", type.c_str());
 }
 }  // namespace aicpu

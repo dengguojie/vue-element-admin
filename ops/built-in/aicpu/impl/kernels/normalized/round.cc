@@ -15,11 +15,11 @@
  */
 #include "round.h"
 
+#include "unsupported/Eigen/CXX11/Tensor"
 #include "cpu_kernel_utils.h"
 #include "cpu_types.h"
 #include "log.h"
 #include "status.h"
-#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace {
 const char *ROUND = "Round";
@@ -64,25 +64,24 @@ bool RoundCpuKernel::CheckSupported(DataType input_type) {
     case DT_INT64:
       return true;
     default:
-      KERNEL_LOG_ERROR("unsupported input data type:%d", input_type);
+      KERNEL_LOG_ERROR("Unsupported input data type[%d]", input_type);
       return false;
   }
 }
 
 uint32_t RoundCpuKernel::Compute(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("RoundCpuKernel begin");
   Tensor *input_tensor = ctx.Input(0);
   KERNEL_CHECK_NULLPTR(input_tensor, KERNEL_STATUS_PARAM_INVALID,
-                       "get input:0 failed")
+                       "Get input[0] failed")
   Tensor *output_tensor = ctx.Output(0);
   KERNEL_CHECK_NULLPTR(output_tensor, KERNEL_STATUS_PARAM_INVALID,
-                       "get output:0 failed")
+                       "Get output[0] failed")
   auto input_data = input_tensor->GetData();
   KERNEL_CHECK_NULLPTR(input_data, KERNEL_STATUS_PARAM_INVALID,
-                       "get input:0 data failed")
+                       "Get input[0] data failed")
   auto output_data = output_tensor->GetData();
   KERNEL_CHECK_NULLPTR(output_data, KERNEL_STATUS_PARAM_INVALID,
-                       "get output:0 data failed")
+                       "Get output[0] data failed")
 
   DataType input_type = input_tensor->GetDataType();
   if (!CheckSupported(input_type)) {
@@ -112,7 +111,7 @@ uint32_t RoundCpuKernel::Compute(CpuKernelContext &ctx) {
                    static_cast<int64_t *>(output_data));
         break;
       default:
-        KERNEL_LOG_ERROR("unsupported input data type:%d", input_type);
+        KERNEL_LOG_ERROR("Unsupported input data type[%d]", input_type);
         return;
     }
   };
@@ -122,8 +121,6 @@ uint32_t RoundCpuKernel::Compute(CpuKernelContext &ctx) {
   if (ret != KERNEL_STATUS_OK) {
     return ret;
   }
-
-  KERNEL_LOG_INFO("RoundCpuKernel success");
   return KERNEL_STATUS_OK;
 }
 
