@@ -341,7 +341,11 @@ bool TwoInOneOutDynamicInferNoBroadcast(Operator& op,
                                         const string& input1_name,
                                         const string& input2_name,
                                         const std::vector<string>& output_name_list);
-
+void FixShapeRangeWithDims(const std::vector<int64_t>& dims,
+                           std::vector<int64_t>& shape_1,
+                           std::vector<int64_t>& shape_2,
+                           std::vector<std::pair<int64_t, int64_t>>& range_1,
+                           std::vector<std::pair<int64_t, int64_t>>& range_2);
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_UTIL_UTIL_H_
