@@ -142,7 +142,6 @@ Status ConstToAttrStridedSlicePass::Fusion(ge::ComputeGraph& graph, Mapping& map
 
   if (dim_num + new_axis_flag - delete_flag == 1) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "The output of strided slice is 1D, need go to aicpu");
-    return NOT_CHANGED;
   }
 
   if ((shrink_last_dim_flag) && (dim_num != 1)) {
