@@ -76,8 +76,6 @@ bool CalcGEMMMkn(const string &op_type, const json &compile_info,
     }
 
     if (tensor_a.ori_shape[idx_k_of_a] != tensor_b.ori_shape[idx_k_of_b]) {
-      OP_LOGE(op_type.c_str(), "axis k must be equal, in facta k of a is %d, k of b is %d",
-              tensor_a.ori_shape[idx_k_of_a], tensor_b.ori_shape[idx_k_of_b]);
       return false;
     }
 
@@ -108,7 +106,6 @@ bool GEMMTiling(const std::string &op_type, const TeOpParas &op_paras, const jso
   auto dynamic_mode = compile_info["dynamic_mode"].get<std::string>();
 
   if (dynamic_mode != "dynamic_mkn") {
-    OP_LOGE(op_type.c_str(), "dynamic_mode: %s is not supported", dynamic_mode.c_str());
     return false;
   }
 
@@ -146,14 +143,9 @@ bool GEMMTiling(const std::string &op_type, const TeOpParas &op_paras, const jso
         break;
       }
     }
-  } else {
-    OP_LOGD(op_type.c_str(), "MatMul/MatMulV2 match tiling in repository");
   }
 
   if (tiling_id == "-1") {
-    OP_LOGE(op_type.c_str(),
-            "This shape is not covered by any tiling, "
-            "please modify range and recompile");
     return false;
   }
 
@@ -163,8 +155,6 @@ bool GEMMTiling(const std::string &op_type, const TeOpParas &op_paras, const jso
   ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(k));
   ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(n));
 
-  OP_LOGD(op_type.c_str(), "MatMul/MatMulV2 match repo/cost_model tiling_id %s m %lld k %lld n %lld",
-          tiling_id.c_str(), m, k, n);
   return true;
 }
 
