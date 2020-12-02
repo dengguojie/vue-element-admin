@@ -257,7 +257,7 @@ def get_cloud_shape_map():
     """
     the knowledge of matmul schedule tiling
     """
-    shape_map = {(1024, 2048, 1024, 1, 2): "256_512_160_256_64_160_2_2",
+    shape_map = {(1024, 20480, 1024, 1, 2): "256_512_160_256_64_160_2_2"
                  }
 
     return shape_map
