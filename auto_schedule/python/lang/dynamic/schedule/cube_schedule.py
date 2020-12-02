@@ -17,14 +17,13 @@ cube schedule
 """
 
 from te import tvm
-
+from te.lang.base.operation import register_schedule
 from te.lang.cce.te_schedule.conv_schedule import CceConvOp
 from te.lang.cce.te_schedule.conv2d_backprop_input_schedule import \
     CceConv2dBackpropInputOp
 from te.lang.cce.te_schedule.conv2d_backprop_filter_schedule import \
     CceConv2dBackpropFilterOp
-
-from te.lang.base.operation import register_schedule
+from te.lang.cce.te_schedule.gemm_schedule import gemm_schedule
 
 from . import Pattern
 
@@ -36,6 +35,15 @@ def schedule(outs, tiling_case):
     """
 
     return ConvSchedule(outs, tiling_case).do_conv2dbp_filter_schedule()
+
+
+@register_schedule(pattern=Pattern.MAT_MUL)
+def schedule(outs, tiling_case):
+    """
+    schedule for matmul op
+    """
+
+    return ConvSchedule(outs, tiling_case).do_mat_mul_schedule()
 
 
 class ConvSchedule:
@@ -89,5 +97,11 @@ class ConvSchedule:
         self._schedule_op.schedule(
             self._outs[0], self._outs, [self._schedule],
             dynamic_para=dynamic_para)
+
+        return self._schedule
+
+    def do_mat_mul_schedule(self):
+        gemm_schedule(self._outs[0], [self._schedule],
+                      {"tiling_strategy": self._tiling_strategy})
 
         return self._schedule

@@ -1021,19 +1021,52 @@ COMMON_INFER_FUNC_REG(Pack, PackInferShape);
 
 // --------------------ConcatOffset------------------------
 IMPLEMT_COMMON_INFERFUNC(ConcatOffsetInferShape) {
-  DataType input_dtype = op.GetDynamicInputDesc("x", 0).GetDataType();
-  Shape shape = op.GetDynamicInputDesc("x", 0).GetShape();
-  auto tensordesc = op.GetDynamicInputDesc("x", 0);
+  // get attr N
   int num_concat;
   op.GetAttr("N", num_concat);
   if (num_concat < 2) {
     OP_LOGE(op.GetName().c_str(), "The num_concat should be no less than two");
     return GRAPH_FAILED;
   }
-  tensordesc.SetShape(shape);
-  tensordesc.SetDataType(input_dtype);
+  // get the fisrt DynamicInput shape
+  const uint32_t start_idx = 1;
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input1_desc = op_info->MutableInputDesc(1);
+  DataType input_dtype = input1_desc->GetDataType();
+  auto input1_shape = input1_desc->MutableShape().GetDims();
+  if (!IsUnknown(input1_shape)) {
+    for (auto i = 0; i < num_concat; i++) {
+      auto output_desc = op_info->MutableOutputDesc(i);
+      output_desc->SetShape(GeShape(input1_shape));
+      output_desc->SetDataType(input_dtype);
+    }
+    return GRAPH_SUCCESS;
+  }
+
+  // dynamic shape, will get all inputs and calcu range
+  vector<int64_t> dim_size = {};
+  std::vector<std::pair<int64_t, int64_t>> input1_range;
+  input1_desc->GetShapeRange(input1_range);
+  for (auto i = 1; i < num_concat; i++) {
+    auto input2_desc = op_info->MutableInputDesc(i + start_idx);
+    auto input2_shape = input2_desc->MutableShape().GetDims();
+    std::vector<std::pair<int64_t, int64_t>> input2_range;
+    if (!IsUnknown(input2_shape)) {
+      input1_shape = input2_shape;
+      input1_range.clear();
+      MakeUpShapeRange(input1_shape, input1_range);
+      break;
+    }
+    input2_desc->GetShapeRange(input2_range);
+    FixShapeRangeWithDims(dim_size, input1_shape, input2_shape, input1_range, input2_range);
+  }
+
   for (auto i = 0; i < num_concat; i++) {
-    op.UpdateDynamicOutputDesc("y", i, tensordesc);
+    auto output_desc = op_info->MutableOutputDesc(i);
+    output_desc->SetShape(GeShape(input1_shape));
+    output_desc->SetOriginShape(GeShape(input1_shape));
+    output_desc->SetShapeRange(input1_range);
+    output_desc->SetDataType(input_dtype);
   }
   return GRAPH_SUCCESS;
 }

@@ -67,7 +67,7 @@ bool g_##optype##_TilingEntry(const TeOpParas& para, const OpCompileInfo& cinfo,
     parsed_compile_info_storage.emplace(hash_key, *parsed_compile_info);                                          \
     return opfunc(para.op_type, para, parsed_object_ptr, rinfo);                                                  \
 }                                                                                                                 \
-REGISTER_OP_TILING_FUNC_NEW(optype, g_##optype##_TilingEntry)
+REGISTER_OP_TILING(optype, g_##optype##_TilingEntry)
 
 }  // namespace optiling
 

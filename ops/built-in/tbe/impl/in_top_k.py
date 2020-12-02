@@ -40,8 +40,7 @@ def get_op_support_info(predictions, targets, precision, k, kernel_name="in_top_
     get unpack slice info
     """
     format_x = predictions.get("format")
-    support_format = ["NCHW", "NHWC", "ND"]
-    if format_x in support_format:
+    if format_x == "ND":
         axis_split_matrix = [
             [SplitInput([0, [0], [-1], [-1]], [1, [0], [-1], [-1]]), SplitOutput([0, [0]])]
         ]

@@ -69,6 +69,7 @@ from .sqrt_grad import sqrt_grad
 from .zeros_like import zeros_like
 from .conv2d_backprop_input import conv2d_backprop_input
 from .conv2d_backprop_filter import conv2d_backprop_filter
+from .mat_mul import mat_mul
 from .sub import sub
 from .transpose_d import transpose_d
 from .unpack import unpack
@@ -77,5 +78,6 @@ from .pad_d import pad_d
 from .split_d import split_d
 from .strided_slice_grad import strided_slice_grad
 from .fill import fill
+from .drop_out_do_mask import drop_out_do_mask
 from .tanh import tanh
 from .sigmoid_cross_entropy_with_logits import sigmoid_cross_entropy_with_logits

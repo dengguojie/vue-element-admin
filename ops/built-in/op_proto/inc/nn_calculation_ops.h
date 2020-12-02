@@ -825,19 +825,8 @@ REG_OP(Conv2DCompress)
     | Input Image Size  | H      | [1, 100000 / H(filter)]
     |                   | W      | [1, 4096 / W(filter)]
     --------------------|--------|----------------------------
-    | Filter Size       | H      | [1, 255]
-    |                   | W      | [1, 255]
-    --------------------|--------|----------------------------
-    | Stride            | H      | [1, 63]
+    | Filter Size       | H      | [1, 63]
     |                   | W      | [1, 63]
-    --------------------|--------|----------------------------
-    | Padding           | Top    | [0, 255]
-    |                   | Bottom | [0, 255]
-    |                   | Left   | [0, 255]
-    |                   | Right  | [0, 255]
-    ------------ -------|--------|----------------------------
-    | Dilation          | H      | [1, 255]
-    |                   | W      | [1, 255]
 @endverbatim
 * H(filter) indicates the filter height after dilation and W(filter) indicates
 * the filter height after dilation.

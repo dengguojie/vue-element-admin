@@ -19,13 +19,13 @@ namespace aicpu {
  */
 std::shared_ptr<Tensor> CpuKernelUtils::CreateTensor()
 {
-    auto protoPtr = new (std::nothrow) aicpuop::Tensor();
+    auto protoPtr = new (std::nothrow) aicpuops::Tensor();
     if (protoPtr == nullptr) {
         KERNEL_LOG_ERROR("new Tensor proto failed");
         return std::shared_ptr<Tensor>(nullptr);
     }
 
-    auto wrapperPtr = new (std::nothrow) TensorImpl(protoPtr, [](aicpuop::Tensor *p) { delete p; });
+    auto wrapperPtr = new (std::nothrow) TensorImpl(protoPtr, [](aicpuops::Tensor *p) { delete p; });
     if (wrapperPtr == nullptr) {
         KERNEL_LOG_ERROR("new TensorProto failed");
         delete protoPtr;
@@ -68,13 +68,13 @@ std::shared_ptr<TensorImpl> CpuKernelUtils::GetImpl(const Tensor *tensor)
 
 std::shared_ptr<TensorShape> CpuKernelUtils::CreateTensorShape()
 {
-    auto protoPtr = new (std::nothrow) aicpuop::TensorShape();
+    auto protoPtr = new (std::nothrow) aicpuops::TensorShape();
     if (protoPtr == nullptr) {
         KERNEL_LOG_ERROR("new TensorShape proto failed");
         return std::shared_ptr<TensorShape>(nullptr);
     }
 
-    auto wrapperPtr = new (std::nothrow) TensorShapeImpl(protoPtr, [](aicpuop::TensorShape *p) { delete p; });
+    auto wrapperPtr = new (std::nothrow) TensorShapeImpl(protoPtr, [](aicpuops::TensorShape *p) { delete p; });
     if (wrapperPtr == nullptr) {
         KERNEL_LOG_ERROR("new TensorShapeImpl failed");
         delete protoPtr;
@@ -120,13 +120,13 @@ std::shared_ptr<TensorShapeImpl> CpuKernelUtils::GetImpl(const TensorShape *tens
  */
 std::shared_ptr<AttrValue> CpuKernelUtils::CreateAttrValue()
 {
-    auto protoPtr = new (std::nothrow) aicpuop::AttrValue();
+    auto protoPtr = new (std::nothrow) aicpuops::AttrValue();
     if (protoPtr == nullptr) {
         KERNEL_LOG_ERROR("new AttrValue proto failed");
         return std::shared_ptr<AttrValue>(nullptr);
     }
 
-    auto wrapperPtr = new (std::nothrow) AttrValueImpl(protoPtr, [](aicpuop::AttrValue *p) { delete p; });
+    auto wrapperPtr = new (std::nothrow) AttrValueImpl(protoPtr, [](aicpuops::AttrValue *p) { delete p; });
     if (wrapperPtr == nullptr) {
         KERNEL_LOG_ERROR("new AttrValueImpl failed");
         delete protoPtr;
@@ -172,13 +172,13 @@ std::shared_ptr<AttrValueImpl> CpuKernelUtils::GetImpl(const AttrValue *attrValu
  */
 std::shared_ptr<NodeDef> CpuKernelUtils::CreateNodeDef()
 {
-    auto protoPtr = new (std::nothrow) aicpuop::NodeDef();
+    auto protoPtr = new (std::nothrow) aicpuops::NodeDef();
     if (protoPtr == nullptr) {
         KERNEL_LOG_ERROR("new NodeDef proto failed");
         return std::shared_ptr<NodeDef>(nullptr);
     }
 
-    auto wrapperPtr = new (std::nothrow) NodeDefImpl(protoPtr, [](aicpuop::NodeDef *p) { delete p; });
+    auto wrapperPtr = new (std::nothrow) NodeDefImpl(protoPtr, [](aicpuops::NodeDef *p) { delete p; });
     if (wrapperPtr == nullptr) {
         KERNEL_LOG_ERROR("new NodeDefImpl failed");
         delete protoPtr;

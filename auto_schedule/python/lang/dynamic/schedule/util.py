@@ -30,7 +30,7 @@ from te.lang.base import operation
 from te.utils.error_manager.error_manager_util import get_error_message
 
 from . import BROADCAST_INSNS, SUPPORT_SCALAR_INSNS, \
-    NEED_TEMP_SPACE_INSNS, VSEL_INSNS, VCMPSEL_INSNS, NEED_SPACE_WITH_DIFF_TYPE
+    NEED_TEMP_SPACE_INSNS, VSEL_INSNS, VCMPSEL_INSNS, NEED_SPACE_WITH_DIFF_TYPE, NEED_EXTENT_NODE_INSNS
 
 VAR_BOUND_LIMIT = 2147483647
 
@@ -85,6 +85,14 @@ def need_temp_space(tensor: tvm.tensor.Tensor):
     op_tag = get_dsl_insn(tensor)
     return op_tag in NEED_TEMP_SPACE_INSNS or \
            (is_v100() and op_tag in NEED_SPACE_WITH_DIFF_TYPE and tensor.dtype == "int32")
+
+
+def need_extent_node(tensor: tvm.tensor.Tensor):
+    """
+    :param tensor:
+    :return:
+    """
+    return get_dsl_insn(tensor) in NEED_EXTENT_NODE_INSNS
 
 
 def is_vsel_insn(tensor: tvm.tensor.Tensor):

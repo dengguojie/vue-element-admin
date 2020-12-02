@@ -17,7 +17,7 @@ cce schedule
 """
 from .constants import Pattern, INSN_MAPPING, SUPPORT_SCALAR_INSNS, BROADCAST_INSNS, \
     DTYPE_BYTE_MAPPING, FAKE_NODE_TAG, NEED_TEMP_SPACE_INSNS, CompileInfo, VSEL_INSNS, \
-    VCMPSEL_INSNS, NEED_SPACE_WITH_DIFF_TYPE, TERNARY_INSNS
+    VCMPSEL_INSNS, NEED_SPACE_WITH_DIFF_TYPE, TERNARY_INSNS, NEED_EXTENT_NODE_INSNS
 from . import elewise_schedule, elewise_tilingcase
 from . import reduce_schedule
 from . import reduce_tilingcase
@@ -25,3 +25,4 @@ from . import conv2d_schedule, conv2d_tilingcase
 from . import conv2d_bp_input_tilingcase, conv2d_bp_input_schedule
 from . import conv2d_bp_filter_tilingcase, cube_schedule
 from . import conv3d_schedule, conv3d_tilingcase
+from . import gemm_tilingcase

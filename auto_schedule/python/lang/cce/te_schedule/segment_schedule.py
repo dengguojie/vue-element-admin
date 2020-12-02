@@ -22,29 +22,8 @@ from te import platform as cceconf
 from te import tvm
 from te.platform import log
 
-def _ceil_align(value):
-    """
-    ceil align to BLOCK_REDUCE_INT8
-    """
-    return (value + cceconf.cce_params.BLOCK_REDUCE_INT8 - 1) // \
-        cceconf.cce_params.BLOCK_REDUCE_INT8 * cceconf.cce_params.BLOCK_REDUCE_INT8
 
-
-def _floor_align(value):
-    """
-    floor align to BLOCK_REDUCE_INT8
-    """
-    return value // cceconf.cce_params.BLOCK_REDUCE_INT8 * cceconf.cce_params.BLOCK_REDUCE_INT8
-
-
-def _ceil_div(value_a, value_b):
-    """
-    ceil div
-    """
-    return (value_a + value_b - 1) // value_b
-
-
-class CceSegmentOp(object):
+class CceSegmentOp:
     # pylint: disable=too-many-instance-attributes
     """class of cce index op
 
@@ -72,15 +51,6 @@ class CceSegmentOp(object):
         self._ub_split_xi = None
         self._block_split_xo = None
         self._block_split_xi = None
-        self._split_ids_o = None
-        self._split_ids_i = None
-        self._split_ele_o = None
-        self._split_ele_i = None
-        self._split_segments_o = None
-        self._split_segments_i = None
-        self._compute_at_axis = None
-        self._ids_size = 0
-        self._ele_size = 0
         self._block_split_axis = None
         self._block_split_factor = None
         self._check_ids_tensor = False
@@ -127,7 +97,7 @@ class CceSegmentOp(object):
                 dtype_byte = 8
             elif dtype == "int32":
                 dtype_byte = 8
-        return self._total_size // (len(self._write_buffer) * dtype_byte)
+        return self._total_size // (len(self._write_buffer)*dtype_byte)
 
     def get_align_factor(self, dtype):
         # pylint: disable=no-self-use
@@ -159,8 +129,8 @@ class CceSegmentOp(object):
         self._decode_buffer()
         self._locate_segment_op_pos()
         # =============================== data flow =========================================
-        write_cache_list = [self._schedule.cache_write(out, self._scope)
-                            for out in self._write_buffer]
+        write_cache_list = [self._schedule.cache_write(out, self._scope) for out in
+                            self._write_buffer]
         for out in self._write_buffer[1:]:
             self._schedule[out].compute_inline()
 
@@ -179,16 +149,13 @@ class CceSegmentOp(object):
         res = self._write_buffer[0]
         res_ub = write_cache_list[0]
         if self._check_ids_tensor:
-            ele_factor, ids_factor, segments_factor = self.segment_op_tensor_tiling()
-            self.split_ids_tensor(res, res_ub, [ele_factor, ids_factor, segments_factor])
+            self.segment_op_tensor_tiling()
+            self._ub_split_xo, self._ub_split_xi, splited = self.split(res)
             self.tensor_reorder_compute_at(res, write_cache_list, read_cache_list)
         else:
             in_shape = [i.value for i in self._op_list[self._segment_op_pos]["src_buffer"][0].shape]
 
             def refine_dime(in_shape):
-                """
-                refine dime
-                """
                 length = len(in_shape)
                 for i in range(len(in_shape)):
                     if in_shape[len(in_shape) - 1 - i] == 1:
@@ -217,9 +184,6 @@ class CceSegmentOp(object):
             self._schedule[res].reorder(*reorder_axis_list)
 
             def do_cache_read_write():
-                """
-                for each cached tensor do compute_at
-                """
                 for cache_tensor in \
                         write_cache_list[0:self._segment_op_pos + 1]:
                     self._schedule[cache_tensor].compute_at(
@@ -246,9 +210,6 @@ class CceSegmentOp(object):
         # =============================== intrinsic =========================================
         if self._check_ids_tensor:
             self._local_emit_insn(res, res_ub, read_cache_list)
-            if self._need_double_buffer:
-                self.local_double_buffer(read_cache_list)
-                self.local_double_buffer(write_cache_list)
         else:
             if self._need_tensorize:
                 self.local_tensorize(write_cache_list)
@@ -268,25 +229,27 @@ class CceSegmentOp(object):
         """
         in_shape = [i.value for i in self._op_list[self._segment_op_pos]["src_buffer"][1].shape]
         if len(in_shape) != 1:
-            reorder_axis_list = [self._ub_split_xo, self._compute_at_axis] + \
-                [self._split_segments_o, self._split_segments_i] + \
-                [self._ub_split_xi, ]
+            reorder_axis_list = self._schedule[res].op.axis[1: self._split_axis] + \
+                [self._ub_split_xo, ] + \
+                [self._schedule[res].op.axis[0], ] + \
+                [self._ub_split_xi, ] + \
+                self._schedule[res].op.axis[self._split_axis + 1:]
 
             self._schedule[res].reorder(*reorder_axis_list)
         res_ub = write_cache_list[0]
-        recoder_axis_list_reduce = [self._split_ids_o, self._split_ids_i]\
+        recoder_axis_list_reduce = [self._schedule[res_ub].op.reduce_axis[0], ]\
             + self._schedule[res_ub].op.axis[:]
         self._schedule[write_cache_list[0]].reorder(*recoder_axis_list_reduce)
 
-        if self._need_block_tiling:
+        if self._need_block_tiling and not self._need_font_emit:
             self._segment_block_tiling(res)
 
         for cache_tensor in write_cache_list[0:self._segment_op_pos + 1]:
-            self._schedule[cache_tensor].compute_at(self._schedule[res], self._compute_at_axis)
+            self._schedule[cache_tensor].compute_at(self._schedule[res], self._ub_split_xo)
         for cache_tensor in write_cache_list[self._segment_op_pos + 1:]:
-            self._schedule[cache_tensor].compute_at(self._schedule[res], self._compute_at_axis)
+            self._schedule[cache_tensor].compute_at(self._schedule[res], self._ub_split_xo)
         for cache_tensor in read_cache_list:
-            self._schedule[cache_tensor].compute_at(self._schedule[res_ub], self._split_ids_o)
+            self._schedule[cache_tensor].compute_at(self._schedule[res], self._ub_split_xo)
         for cache_tensor in write_cache_list:
             self._schedule[cache_tensor].storage_align(self._schedule[cache_tensor].op.axis[0],
                                                        self.get_align_factor(cache_tensor.dtype), 0)
@@ -407,20 +370,14 @@ class CceSegmentOp(object):
             op_name_emit = "vector_max"
         elif op_name == "segmentensor_prod":
             op_name_emit = "vector_mul"
-        elif op_name == "segmentensor_sum":
-            op_name_emit = "vector_add"
         else:
             raise RuntimeError("operation %s not support yet" % op_name)
 
         if len(in_shape) == 1:
-            if self._need_block_tiling:
-                self._schedule[res].emit_insn(self._ub_split_xi, cceconf.dma_copy,
-                                              {"no_overlap": 1})
-            else:
-                self._schedule[res].emit_insn(self._ub_split_xi, cceconf.dma_copy)
+            self._schedule[res].emit_insn(self._ub_split_xi, cceconf.dma_copy, {"no_overlap": 1})
             ub_outer_axis, ub_inner_axis = self._schedule[res_ub].split(
                 self._schedule[res_ub].op.axis[0], factor=1)
-            self._schedule[res_ub].pragma(ub_inner_axis, "sparse_access", ub_outer_axis)
+            self._schedule[res_ub].pragma(ub_outer_axis, "sparse_access", ub_outer_axis)
             self._schedule[res_ub].emit_insn(ub_inner_axis, op_name_emit)
         else:
             if self._need_font_emit:
@@ -428,34 +385,19 @@ class CceSegmentOp(object):
             else:
                 self._schedule[res].emit_insn(self._ub_split_xi, cceconf.dma_copy,
                                               {"no_overlap": 1})
-            self._schedule[res_ub].pragma(self._schedule[res_ub].op.axis[1], "sparse_access",
+            self._schedule[res_ub].pragma(self._schedule[res_ub].op.axis[0], "sparse_access",
                                           self._schedule[res_ub].op.axis[0])
             self._schedule[res_ub].emit_insn(self._schedule[res_ub].op.axis[1], op_name_emit)
-
-    def split_ids_tensor(self, res, res_ub, factors):
-        """
-        do segment ub tiing, and return split axis
-        """
-        ele_factor, ids_factor, segments_factor = factors
-        self._split_segments_o, self._split_segments_i = self._schedule[res].split(res.op.axis[0],\
-            segments_factor)
-        self._split_ids_o, self._split_ids_i = self._schedule[res_ub].split(res.op.reduce_axis[0],\
-            ids_factor)
-        if ele_factor != -1:
-            self._split_ele_o, self._split_ele_i = self._schedule[res].split(res.op.axis[1],\
-                ele_factor)
-            self._ub_split_xo, self._ub_split_xi = [self._split_ele_o, self._split_ele_i]
-        else:
-            self._ub_split_xo, self._ub_split_xi = [self._split_segments_o, self._split_segments_i]
-
-        self._ub_split_xo, self._compute_at_axis = self._schedule[res].split(
-            self._ub_split_xo, nparts=self._core_dim if self._need_block_tiling else 1)
-        return True
 
     def split(self, res):
         """
         do segment ub tiing, and return split axis
         """
+        if self._check_ids_tensor:
+            split_xo, split_xi = self._schedule[res].split(
+                res.op.axis[self._split_axis], self._factor_)
+            return split_xo, split_xi, True
+
         (self._split_axis, self._factor_, tiling_result) = self.segment_op_tiling()
         if (not tiling_result) and self._factor_ == 0:
             return None, None, False
@@ -469,152 +411,180 @@ class CceSegmentOp(object):
             res.op.axis[self._split_axis], self._factor_)
         return split_xo, split_xi, True
 
+    def _segment_need_block_tiling(self, shape, datatype):
+        """
+        segment need block tiling or not
+        """
+        align_factor = self.get_align_factor(datatype)
+        mul_shape = 1
+        for i in range(1, len(shape)):
+            mul_shape = mul_shape * shape[i]
+        if mul_shape < align_factor:
+            need_block_tiling = False
+        else:
+            need_block_tiling = True
+        return need_block_tiling
+
+    # pylint: disable=too-many-locals
+    def _get_tensor_block_axis_factor(self, shape):
+        """
+        when segment_ids is a tensor,
+        get block axis and block factor.
+        """
+        bound_size = 1
+        block_split_axis = 0
+        for i, _ in enumerate(shape):
+            bound_size = int(shape[i] * bound_size)
+            block_split_axis = i
+            if bound_size >= self._core_dim:
+                break
+
+        tmp_size = int(bound_size // shape[block_split_axis])
+
+        if bound_size <= self._core_dim:
+            outer = shape[block_split_axis]
+            block_factor = 1
+        else:
+            outer = int(self._core_dim // tmp_size)
+            block_factor = int((shape[block_split_axis] + outer - 1) // outer)
+
+        if block_split_axis != -1:
+            tmp_outer = 1
+            for i in range(outer, shape[block_split_axis]+1):
+                if shape[block_split_axis] % i == 0:
+                    tmp_outer = i
+                    break
+            outer = tmp_outer
+            block_factor = int(shape[block_split_axis] // outer)
+        block_split_axis = block_split_axis + 1
+        return block_split_axis, block_factor
+
     # pylint: disable=too-many-branches
     def _segment_block_tiling(self, res):
         """
         when segment_ids is a tensor,
         do block tiling.
         """
+        if self._split_axis == 1:
+            thread_block = tvm.thread_axis("blockIdx.x")
+            self._schedule[res].bind(self._ub_split_xo, thread_block)
+            return
+
+        block_xo, _ = self._schedule[res].split(
+            res.op.axis[self._block_split_axis], factor=self._block_split_factor)
+
+        if self._block_split_axis == 1:
+            bind_axis = block_xo
+        else:
+            fuse_axis_list = []
+            for i in range(1, self._block_split_axis):
+                fuse_axis_list.append(res.op.axis[i])
+            fuse_axis_list.append(block_xo)
+            bind_axis = self._schedule[res].fuse(*fuse_axis_list)
 
         thread_block = tvm.thread_axis("blockIdx.x")
-        self._schedule[res].bind(self._ub_split_xo, thread_block)
+        self._schedule[res].bind(bind_axis, thread_block)
         return
 
-    def get_ele_factor(self, max_ub, num_ids, num_ele, segments_factor):
+    def get_max_ub_size(self, in_shape, max_ptr, align_factor):
         """
         when segment_ids is a tensor,
-        get the ele_factor
+        get the max_ub_size
         """
-        vector_block_ele = cceconf.cce_params.VECTOR_INST_BLOCK_WIDTH // self._ele_size
+        datatype = self._op_list[self._segment_op_pos]["src_buffer"][0].dtype
+        align_factor_ids = self.get_align_factor(datatype)
+        transform_dtype = align_factor // align_factor_ids
+        segment_id_size = (in_shape[0] + align_factor_ids - 1) // \
+            align_factor_ids * align_factor_ids
+        max_ub_size = int((max_ptr - transform_dtype * segment_id_size) //
+                          (in_shape[0] + self._segment_nums))
+        max_ub_size = int(max_ub_size // align_factor * align_factor)
+        if max_ub_size < align_factor:
+            raise RuntimeError("Too large, causing the max_ub_count to be less than 32B")
+        return max_ub_size
 
-        ele_factor = num_ele // self._core_dim
-        if ele_factor <= vector_block_ele:
-            ids_factor = (max_ub - vector_block_ele * self._ele_size * segments_factor) //\
-                (vector_block_ele * self._ele_size + self._ids_size)
-            if ids_factor < 1:
-                ele_factor = max(ele_factor, cceconf.cce_params.BLOCK_REDUCE_INT8 // self._ele_size)
-                ids_factor = (max_ub - ele_factor * self._ele_size * segments_factor) //\
-                    (ele_factor * self._ele_size + self._ids_size)
-            else:
-                ele_factor = vector_block_ele
-            if ids_factor < 1:
-                return False
-
-            return ele_factor, min(num_ids, ids_factor)
-
-        factor_res = 0
-        for ele_factor_tmp in range(vector_block_ele, max_ub // self._ele_size, vector_block_ele):
-            ids_factor_tmp = (max_ub - ele_factor_tmp * self._ele_size * segments_factor) //\
-                (ele_factor_tmp * self._ele_size + self._ids_size)
-            if ids_factor_tmp < 1:
-                break
-            ids_factor_tmp = min(ids_factor_tmp, num_ids)
-
-            core_cycle_num = _ceil_div(_ceil_div(num_ele, ele_factor_tmp), self._core_dim)
-            read_times = _ceil_div(num_ids, ids_factor_tmp) * core_cycle_num
-            read_ids_times = _ceil_div(num_ids, ids_factor_tmp)
-            write_times = segments_factor * core_cycle_num
-            read_k = (vector_block_ele * 0.5 + ele_factor_tmp) * 10
-            read_ids_k = (vector_block_ele * 0.5 + ids_factor_tmp) * 10
-            write_k = (vector_block_ele * 0.5 + ele_factor_tmp) * 20
-            factor_cost = read_times * read_k + read_ids_times * read_ids_k + write_times * write_k
-
-            factor_tmp = {"ele_factor":ele_factor_tmp, "ids_factor":ids_factor_tmp,
-                          "cost":factor_cost}
-
-            if (core_cycle_num == 1 and ele_factor_tmp <= vector_block_ele * 8) or factor_res == 0:
-                factor_res = factor_tmp.copy()
-            else:
-                if factor_res["cost"] >= factor_tmp["cost"]:
-                    factor_res = factor_tmp.copy()
-
-        if factor_res == 0:
-            return False
-
-        ele_factor = factor_res["ele_factor"]
-        ids_factor = factor_res["ids_factor"]
-
-        self._need_font_emit = num_ele > ele_factor and (num_ele % ele_factor) * self._ele_size < \
-            cceconf.cce_params.BLOCK_REDUCE_INT8
-        if num_ele > ele_factor:
-            self._need_block_tiling = True
-
-        return ele_factor, ids_factor
-
-    def get_tensor_split_axis_factor(self, in_shape, out_shape):
+    def get_tensor_split_axis_factor(self, in_shape, out_shape, max_ptr, align_factor):
         """
         when segment_ids is a tensor,
         get ub_split_axis and ub_split_factor.
         """
+        split_axis = len(out_shape) - 1
+        bound_size = 1
+        factor = 1
         self._need_font_emit = False
-        vector_inst_block_width = cceconf.cce_params.VECTOR_INST_BLOCK_WIDTH
-        ub_size = cceconf.get_soc_spec("UB_SIZE")
-        num_ids = in_shape[0]
-        num_segments = out_shape[0]
-        self._need_block_tiling = False
-
-        if len(in_shape) == 1:
-            ele_factor = -1
-            is_num_segments_to_many = _ceil_align(self._ele_size) + _ceil_align(self._ids_size) + \
-                _ceil_align(self._ele_size * num_segments) > ub_size
-            if _ceil_align(self._ele_size * num_ids) + _ceil_align(self._ids_size * num_ids) + \
-                _ceil_align(self._ele_size * num_segments) <= ub_size:
-                segments_factor = num_segments
-                ids_factor = (ub_size - self._ele_size * segments_factor) / \
-                    (self._ele_size + self._ids_size)
-            elif not is_num_segments_to_many:
-                segments_factor = num_segments
-                ids_factor = (ub_size - self._ele_size * segments_factor) / \
-                    (self._ele_size + self._ids_size)
-            else:
-                raise RuntimeError("num_segments Exceeds the capacity of the UB!")
-            return ele_factor, ids_factor, segments_factor
+        max_ub_size = self.get_max_ub_size(in_shape, max_ptr, align_factor)
+        try:
+            self.get_max_ub_size(in_shape, max_ptr // 2, align_factor)
+        except RuntimeError:
+            self._need_double_buffer = False
         else:
-            is_num_segments_to_many = vector_inst_block_width + _ceil_align(self._ids_size) + \
-                _ceil_align(vector_inst_block_width * num_segments) > ub_size
-            if _ceil_align(vector_inst_block_width * num_ids) + \
-                _ceil_align(self._ids_size * num_ids) + \
-                _ceil_align(vector_inst_block_width * num_segments) <= ub_size:
-                segments_factor = num_segments
-                factor_res = self.get_ele_factor(ub_size // 2, num_ids, in_shape[1], \
-                    segments_factor)
-                if factor_res is not False:
-                    ele_factor, ids_factor = factor_res
-                    self._need_double_buffer = True
+            self._need_double_buffer = True
+            max_ptr = max_ptr // 2
+            max_ub_size = self.get_max_ub_size(in_shape, max_ptr, align_factor)
+        for i in reversed(range(1, len(out_shape))):
+            bound_size = int(out_shape[i] * bound_size)
+            split_axis = i
+            if bound_size >= max_ub_size:
+                break
+        tmp_size = int(bound_size // out_shape[split_axis])
 
-                if (factor_res is False) or (in_shape[1]//ele_factor <= self._core_dim):
-                    factor_res = self.get_ele_factor(ub_size, num_ids, in_shape[1], segments_factor)
-                    if factor_res is not False:
-                        ele_factor, ids_factor = factor_res
-                        self._need_double_buffer = False
-                    else:
-                        raise RuntimeError("Exceeds the capacity of the UB!")
+        if bound_size <= max_ub_size:
+            self._need_font_emit = False
+            factor = out_shape[split_axis]
+            return split_axis, factor
+        factor = int(max_ub_size // tmp_size)
 
-            elif not is_num_segments_to_many:
-                ele_factor = vector_inst_block_width // self._ele_size
-                segments_factor = num_segments
+        if len(out_shape) == 1:
+            return split_axis, factor
+        mod2count = 0
+        while tmp_size % 2 == 0 and tmp_size != 0:
+            tmp_size = tmp_size // 2
+            mod2count = mod2count + 1
+
+        align_list = [1, 2, 4, 8, 16, 32, 64, 128, 256]
+        mod2need = align_list.index(align_factor) - mod2count
+        if mod2need <= 0:
+            tail = (out_shape[split_axis] % factor)*tmp_size
+            if tail < align_factor:
+                self._need_font_emit = True
             else:
-                raise RuntimeError("num_segments Exceeds the capacity of the UB!")
+                self._need_font_emit = False
+            return split_axis, factor
 
-            return ele_factor, ids_factor, segments_factor
+        align_list_factor = align_list[mod2count]
+        if factor >= align_list_factor:
+            factor = int(factor // align_list_factor*align_list_factor)
+
+        tail = (out_shape[split_axis] % factor)*tmp_size
+        if tail < align_factor:
+            self._need_font_emit = True
+        else:
+            self._need_font_emit = False
+
+        return split_axis, factor
 
     def segment_op_tensor_tiling(self):
         """
         when segment_ids is a tensor,
         do ub_tiling and block tiling.
         """
+        max_ptr = self.get_max_ptr()
         out_shape = [i.value for i in self._op_list[self._segment_op_pos]["dst_buffer"][0].shape]
         in_shape = [i.value for i in self._op_list[self._segment_op_pos]["src_buffer"][1].shape]
-
-        datatype = self._op_list[self._segment_op_pos]["src_buffer"][0].dtype
-        self._ids_size = cceconf.cce_intrin.get_bit_len(datatype) // 8
         datatype = self._op_list[self._segment_op_pos]["dst_buffer"][0].dtype
-        self._ele_size = cceconf.cce_intrin.get_bit_len(datatype) // 8
-
-
-        if len(in_shape) > 2 or len(out_shape) > 2:
-            raise RuntimeError("fuse axis before tiling!")
-        return self.get_tensor_split_axis_factor(in_shape, out_shape)
+        align_factor = self.get_align_factor(datatype)
+        self._split_axis, self._factor_ = self.get_tensor_split_axis_factor(in_shape, out_shape,
+                                                                            max_ptr, align_factor)
+        if len(in_shape) == 1:
+            self._need_block_tiling = False
+            return
+        # Multi-core processing cannot be done with data less than 32B
+        self._need_block_tiling = self._segment_need_block_tiling(in_shape, datatype)
+        if self._split_axis == 1:
+            return
+        self._block_split_axis, self._block_split_factor = \
+            self._get_tensor_block_axis_factor(in_shape[1:self._split_axis])
+        return
 
     def local_tensorize(self, write_cache_list):
         """
@@ -749,7 +719,7 @@ class CceSegmentOp(object):
         """
         if len(data_shape) == 1:
             return True
-        mul_axis = functools_reduce(lambda i, j: i * j, data_shape[1:])
+        mul_axis = functools_reduce(lambda i, j: i*j, data_shape[1:])
         if mul_axis == 1:
             return True
 
@@ -765,15 +735,15 @@ class CceSegmentOp(object):
         for idx in range(axis + 1, len(out_shape)):
             tensorize_shape += [out_shape[idx], ]
 
-        tensorize_size = functools_reduce(lambda i, j: i * j, tensorize_shape)
+        tensorize_size = functools_reduce(lambda i, j: i*j, tensorize_shape)
 
         if self._check_ids_tensor:
             max_ub_use = (in_shape[0] + self._segment_nums) *\
-                         ((tensorize_size + align_factor - 1) // align_factor * align_factor) + \
-                         ((in_shape[0] + align_factor - 1) // align_factor * align_factor)
+                         ((tensorize_size + align_factor - 1) // align_factor*align_factor) + \
+                         ((in_shape[0] + align_factor - 1) // align_factor*align_factor)
         else:
-            max_ub_use = (in_shape[0] + 1) * (
-                (tensorize_size + align_factor - 1) // align_factor * align_factor)
+            max_ub_use = (in_shape[0] + 1)*(
+                (tensorize_size + align_factor - 1) // align_factor*align_factor)
             if tensorize_size % align_factor != 0:
                 max_ub_use += align_factor
         if max_ub_use <= max_ub_size:

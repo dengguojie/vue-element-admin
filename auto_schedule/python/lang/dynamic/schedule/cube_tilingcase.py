@@ -131,6 +131,29 @@ class TilingSelection:
 
         for seed in repo_seeds:
             seed_hw = tuple(seed[self.op.key][2:4])
+            if self.op.op_type == "conv2d":
+                tiling = seed["tiling"]
+                block_dims = tiling["block_dim"]
+                block_nums = block_dims[0]*block_dims[1]*block_dims[2]
+                if block_nums < CORE_NUM:
+                    if seed["A_shape"][0] > 1 and block_dims[0] < seed["A_shape"][0] and \
+                            seed["A_shape"][0]*block_dims[1]*block_dims[2] <= CORE_NUM:
+                        tiling["block_dim"][0] = seed["A_shape"][0]
+                if tiling["BL0_matrix"] and tiling["BL1_shape"]:
+                    co1 = (seed["B_shape"][0] + C0_SIZE - 1) // C0_SIZE
+                    if block_dims[1]*tiling["BL1_shape"][1]*tiling["BL0_matrix"][1]*2 < co1 and \
+                            co1 // (tiling["BL1_shape"][1]*tiling["BL0_matrix"][1]*2)*block_dims[0]* \
+                            block_dims[2] <= CORE_NUM:
+                        tiling["block_dim"][1] = co1 // (tiling["BL1_shape"][1]*tiling["BL0_matrix"][1]*2)
+                block_nums = block_dims[0]*block_dims[1]*block_dims[2]
+                if block_nums < CORE_NUM and tiling["AL1_shape"]:
+                    hout = self.op._get_output_h(seed["A_shape"][2])
+                    wout = self.op._get_output_w(seed["A_shape"][3])
+                    tmp = hout*wout // (tiling["AL0_matrix"][0]*C0_SIZE*tiling["AL1_shape"][1]*block_dims[2])
+                    if tmp >= 1 and block_dims[0]*block_dims[1]*tmp <= CORE_NUM:
+                        tiling["block_dim"][2] = (hout*wout + (tiling["AL0_matrix"][0]*C0_SIZE*tiling["AL1_shape"][1] -
+                            1)) // (tiling["AL0_matrix"][0]*C0_SIZE*tiling["AL1_shape"][1])
+                seed["tiling"] = tiling
             seed_range = self.op.get_tiling_range(seed['tiling'], seed[self.op.key])
             if seed_hw in seed_points or _cal_overlap(seed_range, tgt_area)[0] == 0:
                 continue
@@ -177,31 +200,8 @@ class TilingSelection:
         repo_seeds = self.op.get_repo_tiling()
 
         for seed in repo_seeds:
-            if self.op.op_type == "conv2d":
-                tiling = seed["tiling"]
-                block_dims = tiling["block_dim"]
-                block_nums = block_dims[0]*block_dims[1]*block_dims[2]
-                if block_nums < CORE_NUM:
-                    if seed["A_shape"][0] > 1 and block_dims[0] < seed["A_shape"][0] and \
-                        seed["A_shape"][0]*block_dims[1]*block_dims[2] <= CORE_NUM:
-                        tiling["block_dim"][0] = seed["A_shape"][0]
-                if tiling["BL0_matrix"] and tiling["BL1_shape"]:
-                    Co1 = (seed["B_shape"][0] + C0_SIZE - 1) // C0_SIZE
-                    if block_dims[1]*tiling["BL1_shape"][1]*tiling["BL0_matrix"][1]*2 < Co1 and \
-                        Co1 // (tiling["BL1_shape"][1]*tiling["BL0_matrix"][1]*2)*block_dims[0]* \
-                            block_dims[2] <= CORE_NUM:
-                        tiling["block_dim"][1] = Co1 // (tiling["BL1_shape"][1]*tiling["BL0_matrix"][1]*2)
-                block_nums = block_dims[0]*block_dims[1]*block_dims[2]
-                if block_nums < CORE_NUM and tiling["AL1_shape"]:
-                    hout = self.op._get_output_h(seed["A_shape"][2])
-                    wout = self.op._get_output_w(seed["A_shape"][3])
-                    tmp = hout*wout // (tiling["AL0_matrix"][0]*C0_SIZE*tiling["AL1_shape"][1]*block_dims[2])
-                    if tmp >= 1 and block_dims[0]*block_dims[1]*tmp <= CORE_NUM:
-                        tiling["block_dim"][2] = (hout*wout + (tiling["AL0_matrix"][0]*C0_SIZE*tiling["AL1_shape"][1] -
-                            1)) // (tiling["AL0_matrix"][0]*C0_SIZE*tiling["AL1_shape"][1])
-                seed["tiling"] = tiling
-            seed_k_value, seed_m_value = cost_seed[self.op.key[0][1:3]]
-            seed_n_value = cost_seed[self.op.key[1][1]]
+            seed_k_value, seed_m_value = seed[self.op.key[0]][1:3]
+            seed_n_value = seed[self.op.key[1]][1]
             m_k_n_shape = (seed_m_value, seed_k_value, seed_n_value)
             seed_range = self.op.get_tiling_range(seed["tiling"], m_k_n_shape)
             seed_range = _correct_seed_range(seed_range)
@@ -222,7 +222,7 @@ class TilingSelection:
         add_compile_info("repo_range", repo_range)
         add_compile_info("cost_range", cost_range)
         if "trans_a" in self.op.tiling_info and "trans_b" in self.op.tiling_info:
-            add_compile_info("attr", {"transpose_a": self.op.tiling_info["trans_a"],
+            add_compile_info("attrs", {"transpose_a": self.op.tiling_info["trans_a"],
             "transpose_b": self.op.tiling_info["trans_b"]})
 
         return tiling_cases
@@ -538,10 +538,10 @@ class TilingSelection:
             for _ in range(cost_len):
                 cut_range = cost_cases.popleft()
                 cost_seed = self.op.get_costmodel_tiling((cut_range[0], cut_range[2], cut_range[4]))
-                seed_k_value, seed_m_value = cost_seed[self.op.key[0][1:3]]
-                seed_n_value = cost_seed[self.op.key[1][1]]
+                seed_k_value, seed_m_value = cost_seed[self.op.key[0]][1:3]
+                seed_n_value = cost_seed[self.op.key[1]][1]
                 m_k_n_shape = (seed_m_value, seed_k_value, seed_n_value)
-                seed_range = self.op.get_tiling_range(cost_seed['tiling'],
+                seed_range = self.op.get_tiling_range(cost_seed["tiling"],
                                                       m_k_n_shape)
                 is_overlap, covered_area = _cal_overlap_three_dimesional(cut_range, seed_range)
                 if is_overlap:
@@ -552,7 +552,7 @@ class TilingSelection:
 
                 cur_seed_cnt = next(self.seed_cnt)
                 cost_tilings.append(
-                    self.op.assembly_case(cost_seed['tiling'], covered_area,
+                    self.op.assembly_case(cost_seed["tiling"], covered_area,
                                           cur_seed_cnt))
                 tiling_range[cur_seed_cnt] = covered_area
 
@@ -651,7 +651,7 @@ def _cut_cuboid(base, cut):
     right = min(base[3], cut[3])
 
     if cut[4] > base[4]:
-        gen_rects.append((top, bottom, left, right, base[4], cut[4] -1))
+        gen_rects.append((top, bottom, left, right, base[4], cut[4] - 1))
     if cut[5] < base[5]:
         gen_rects.append((top, bottom, left, right, cut[5] + 1, base[5]))
 

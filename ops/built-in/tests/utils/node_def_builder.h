@@ -15,7 +15,6 @@
 #include "cpu_kernel_register.h"
 #include "aicpu_task_struct.h"
 #include "device_cpu_kernel.h"
-#include "proto/me_types.pb.h"
 
 namespace aicpu {
 class NodeDefBuilder {
@@ -26,6 +25,7 @@ class NodeDefBuilder {
   		aicpu::DataType dType;
   		std::vector<int64_t> dims;
   		void *data;
+		aicpu::Format format;
   	};
 
 	NodeDefBuilder(NodeDef *nodeDef, std::string name, std::string opName);

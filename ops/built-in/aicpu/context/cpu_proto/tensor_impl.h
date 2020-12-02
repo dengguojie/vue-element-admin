@@ -9,7 +9,7 @@
 #include <functional>
 
 #include "cpu_tensor_shape.h"
-#include "proto/me_tensor.pb.h"
+#include "proto/cpu_tensor.pb.h"
 
 namespace aicpu {
 class TensorImpl {
@@ -17,7 +17,7 @@ class TensorImpl {
 
 public:
     TensorImpl(
-        aicpuop::Tensor *tensor, std::function<void(aicpuop::Tensor *)> delFunc = [](aicpuop::Tensor *p) {})
+        aicpuops::Tensor *tensor, std::function<void(aicpuops::Tensor *)> delFunc = [](aicpuops::Tensor *p) {})
         : tensor_(tensor, delFunc)
     {}
 
@@ -91,10 +91,10 @@ public:
     /*
      * get tensor proto.
      */
-    aicpuop::Tensor *GetProto() const;
+    aicpuops::Tensor *GetProto() const;
 
 private:
-    std::shared_ptr<aicpuop::Tensor> tensor_ { nullptr };
+    std::shared_ptr<aicpuops::Tensor> tensor_ { nullptr };
 };
 }
 #endif // CPU_KERNEL_TENSOR_IMPL_H

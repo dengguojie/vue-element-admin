@@ -1561,6 +1561,7 @@ def vcmp(lhs, rhs, operation='lt', mode='bool'):
             dict_args["detailed_cause"] = "The input type must be [%s], " \
                                           "while type is [%s]" \
                                           % ('tvm.tensor', type(lhs))
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
         if operation not in ['eq', 'ne', 'lt', 'gt', 'ge', 'le']:
             dict_args = dict()
@@ -1659,6 +1660,7 @@ def vcmp(lhs, rhs, operation='lt', mode='bool'):
             dict_args["detailed_cause"] = "in bit mode the last dim must be " \
                                           "mutiply of 8, while last dim is [%s]" % \
                                           shape[-1]
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
         k = tvm.reduce_axis((0, 8), name='k')
         res_shape = shape
@@ -1727,6 +1729,7 @@ def vlogic(lhs, rhs=None, operation='logic_and'):
         dict_args["detailed_cause"] = "The lhs input type must be [%s], " \
                                       "while type is [%s]" \
                                       % ('tvm.tensor', type(lhs))
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if operation != "logic_not" and not isinstance(rhs, tvm.tensor.Tensor):
         dict_args = dict()
@@ -1825,6 +1828,7 @@ def vsubrelu(lhs, rhs):
         dict_args["detailed_cause"] = "The lhs input type must be [%s], " \
                                       "while type is [%s]" \
                                       % ('tvm.tensor', type(lhs))
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if not isinstance(rhs, tvm.tensor.Tensor):
         dict_args = dict()
@@ -1832,6 +1836,7 @@ def vsubrelu(lhs, rhs):
         dict_args["detailed_cause"] = "The rhs input type must be [%s], " \
                                       "while type is [%s]" \
                                       % ('tvm.tensor', type(rhs))
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if lhs.dtype != rhs.dtype:
         dict_args = dict()
@@ -2271,7 +2276,7 @@ def _vsel_bit_shape_check(condition, input_tensor):
     if len(condition.shape) != len(input_tensor.shape):
         dict_args = dict()
         dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "The condition shape ndim [%s] must " \
+        dict_args["detailed_cause"] = "The condition ndim [%s] must " \
                                       "be equal to the input_tensor [%s]" \
                                       % (len(condition.shape), len(input_tensor.shape))
         raise RuntimeError(dict_args, get_error_message(dict_args))

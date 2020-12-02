@@ -59,12 +59,59 @@ case5 = {"params": [{"shape": (13, 138), "dtype": "float32", "ori_shape":(13,138
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+case6 = {"params": [{"shape": (87, 18), "dtype": "float32", "ori_shape":(87, 18), "ori_format":"ND", "format":"ND"},
+                    {"shape": (87, ), "dtype": "int32", "ori_shape":(87,), "ori_format":"ND", "format":"ND"},
+                    {"shape": (87, 18), "dtype": "float32", "ori_shape":(87, 18), "ori_format":"ND", "format":"ND"},
+                    1],
+         "case_name": "in_top_k_6",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+case7 = {"params": [{"shape": (16, 180), "dtype": "float32", "ori_shape":(16, 180), "ori_format":"ND", "format":"ND"},
+                    {"shape": (16, ), "dtype": "int32", "ori_shape":(16,), "ori_format":"ND", "format":"ND"},
+                    {"shape": (16, 180), "dtype": "float32", "ori_shape":(16, 180), "ori_format":"ND", "format":"ND"},
+                    1],
+         "case_name": "in_top_k_7",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+case8 = {"params": [{"shape": (57, 180), "dtype": "float32", "ori_shape":(57, 180), "ori_format":"ND", "format":"ND"},
+                    {"shape": (57, ), "dtype": "int32", "ori_shape":(57,), "ori_format":"ND", "format":"ND"},
+                    {"shape": (57, 180), "dtype": "float32", "ori_shape":(57, 180), "ori_format":"ND", "format":"ND"},
+                    1],
+         "case_name": "in_top_k_8",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+case9 = {"params": [{"shape": (57, 1800), "dtype": "float32", "ori_shape":(57, 1800), "ori_format":"ND", "format":"ND"},
+                    {"shape": (57, ), "dtype": "int32", "ori_shape":(57,), "ori_format":"ND", "format":"ND"},
+                    {"shape": (57, 1800), "dtype": "float32", "ori_shape":(57, 1800), "ori_format":"ND", "format":"ND"},
+                    1],
+         "case_name": "in_top_k_9",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+case10 = {"params": [{"shape": (57, 18000), "dtype": "float32", "ori_shape":(57, 18000), "ori_format":"ND", "format":"ND"},
+                    {"shape": (57, ), "dtype": "int32", "ori_shape":(57,), "ori_format":"ND", "format":"ND"},
+                    {"shape": (57, 18000), "dtype": "float32", "ori_shape":(57, 18000), "ori_format":"ND", "format":"ND"},
+                    1],
+          "case_name": "in_top_k_10",
+          "expect": "success",
+          "format_expect": [],
+          "support_expect": True}
+
+    
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case8)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case9)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case10)
 
 def calc_expect_func(predictions, targets, precision, k):
     x = predictions["value"]
@@ -83,7 +130,7 @@ def calc_expect_func(predictions, targets, precision, k):
         else:
             res = (np.zeros((shape[0], )) == 0)
     return res
-
+"""
 ut_case.add_precision_case("all", {
     "params": [{"shape": (13, 138), "dtype": "float32", "ori_shape":(13,138), "ori_format":"ND", "format":"ND", "param_type": "input"},
                {"shape": (13, ), "dtype": "int32", "ori_shape":(13,), "ori_format":"ND", "format":"ND", "param_type": "input"},
@@ -119,7 +166,7 @@ ut_case.add_precision_case("all", {
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
-
+"""
 if __name__ == '__main__':
     ut_case.run()
     exit(0)

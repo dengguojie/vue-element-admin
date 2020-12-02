@@ -24,6 +24,8 @@ import te.lang.base as tbe_base
 from te.platform import cce_build
 from te.utils import para_check
 
+# When right_dim < MIN_RIGHT_DIM,Multi output go special tiling.
+MIN_RIGHT_DIM = 8
 
 @unique
 class TilingStrategy(Enum):
@@ -161,7 +163,7 @@ class Unpack:
 
     def _init_flag(self):
         self.special_tiling = (self.axis_at_last_dim
-                               or self.right_range[1] < self.ele_per_block) and self.output_num > 1
+                               or self.right_range[1] < MIN_RIGHT_DIM) and self.output_num > 1
 
     def _set_dim_var(self, dim_name, dim_range):
         """

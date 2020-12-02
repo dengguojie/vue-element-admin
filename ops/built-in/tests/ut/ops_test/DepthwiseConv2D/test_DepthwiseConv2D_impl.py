@@ -6,12 +6,11 @@ ut_case = OpUT("DepthwiseConv2d", "impl.depthwise_conv2d", "depthwise_conv2d")
 
 dp_conv2d_op_testcase = [
     # fp16 without bias
-    ((32, 960, 7, 7), (3, 3, 960, 1), None, (32, 960, 7, 7), 1, 1, (1, 1, 1, 1),
-     "NCHW", 0, "float16", "success"),
-    ((16, 192, 28, 28), (5, 5, 192, 2), None, (16, 192, 14, 14), 2, 2,
-     (2, 2, 2, 2), "NCHW", 0, "float16", RuntimeError),
-    ((16, 192, 28, 28), (5, 5, 192, 1), None, (16, 192, 14, 14), 2, 2,
-     (2, 2, 2, 2), "NCHW", 0, "float16", RuntimeError),
+    ((32, 960, 7, 7), (3, 3, 960, 1), None, (32, 960, 7, 7), 1, 1, (1, 1, 1, 1), "NCHW", 0, "float16", "success"),
+    ((16, 192, 28, 28), (5, 5, 192, 2), None, (16, 192, 14, 14), 2, 2, (2, 2, 2, 2), "NCHW", 0, "float16",
+     RuntimeError),
+    ((16, 192, 28, 28), (5, 5, 192, 1), None, (16, 192, 14, 14), 2, 2, (2, 2, 2, 2), "NCHW", 0, "float16",
+     RuntimeError),
     # ((8, 96, 56, 56), (3, 3, 96, 1), None, (8, 96, 56, 56), 1, 1, (1, 1, 1, 1),
     #  "NCHW", 0, "float16", "success"),
     # ((1, 32, 112, 112), (3, 3, 32, 1), None, (1, 32, 56, 56), 2, 1,
@@ -25,8 +24,8 @@ dp_conv2d_op_testcase = [
     #  (2, 2, 2, 2), "NHWC", 0, "float16", "success"),
 
     # fp16 with bias
-    ((32, 960, 7, 7), (3, 3, 960, 1), (1, 960, 1, 1), (32, 960, 7, 7), 1, 1,
-     (1, 1, 1, 1), "NCHW", 0, "float16", "success"),
+    ((32, 960, 7, 7), (3, 3, 960, 1), (1, 960, 1, 1), (32, 960, 7, 7), 1, 1, (1, 1, 1, 1), "NCHW", 0, "float16",
+     "success"),
     # ((16, 192, 28, 28), (5, 5, 192, 1), (1, 192, 1, 1), (16, 192, 14, 14), 2, 1,
     #  (2, 2, 2, 2), "NCHW", 0, "float16", "success"),
     # ((8, 96, 56, 56), (3, 3, 96, 1), (1, 96, 1, 1), (8, 96, 56, 56), 1, 1,
@@ -42,8 +41,7 @@ dp_conv2d_op_testcase = [
     #  (2, 2, 2, 2), "NHWC", 0, "float16", "success"),
 
     # int8 without bias
-    ((32, 960, 7, 7), (3, 3, 960, 1), None, (32, 960, 7, 7), 1, 1, (1, 1, 1, 1),
-     "NCHW", 0, "int8", "success"),
+    ((32, 960, 7, 7), (3, 3, 960, 1), None, (32, 960, 7, 7), 1, 1, (1, 1, 1, 1), "NCHW", 0, "int8", "success"),
     # ((16, 192, 28, 28), (5, 5, 192, 1), None, (16, 192, 14, 14), 2, 1,
     #  (2, 2, 2, 2), "NCHW", 0, "int8", "success"),
     # ((8, 96, 56, 56), (3, 3, 96, 1), None, (8, 96, 56, 56), 1, 1, (1, 1, 1, 1),
@@ -60,8 +58,7 @@ dp_conv2d_op_testcase = [
 ]
 
 
-def _get_kernel_name(x_shape, filter_shape, bias_shape, stride, dilation, pads,
-                     dtype, offset_x):
+def _get_kernel_name(x_shape, filter_shape, bias_shape, stride, dilation, pads, dtype, offset_x):
     bias_shape = bias_shape if bias_shape else []
     kernel_name = 'dp_conv2d_' + '_'.join(map(str, x_shape)) + '_' + \
                   '_'.join(map(str, filter_shape)) + '_' + \
@@ -99,36 +96,46 @@ def _gen_trans_data_case(param):
     bias_dtype = "float32" if dtype == "float16" else "int32"
     y_dtype = "float16" if dtype == "float16" else "int32"
 
-    x = {"shape": _shape_to_NC1HWC0(x_shape, data_format, dtype),
-         "format": "NC1HWC0", "ori_shape": x_shape, "ori_format": data_format,
-         "dtype": dtype}
-    filter = {"shape": _shape_to_C1HWNCoC0(filter_shape, "HWCN", dtype),
-              "ori_shape": filter_shape, "ori_format": "HWCN",
-              "format": "C1HWNCoC0",
-              "dtype": dtype}
-    bias = {"shape": _shape_to_NC1HWC0(bias_shape, data_format, bias_dtype),
-            "format": "NC1HWC0", "ori_shape": bias_shape,
-            "ori_format": data_format,
-            "dtype": bias_dtype} if bias_shape else None
+    x = {
+        "shape": _shape_to_NC1HWC0(x_shape, data_format, dtype),
+        "format": "NC1HWC0",
+        "ori_shape": x_shape,
+        "ori_format": data_format,
+        "dtype": dtype
+    }
+    filter = {
+        "shape": _shape_to_C1HWNCoC0(filter_shape, "HWCN", dtype),
+        "ori_shape": filter_shape,
+        "ori_format": "HWCN",
+        "format": "C1HWNCoC0",
+        "dtype": dtype
+    }
+    bias = {
+        "shape": _shape_to_NC1HWC0(bias_shape, data_format, bias_dtype),
+        "format": "NC1HWC0",
+        "ori_shape": bias_shape,
+        "ori_format": data_format,
+        "dtype": bias_dtype
+    } if bias_shape else None
     offset_w = None
-    y = {"shape": _shape_to_NC1HWC0(y_shape, data_format, y_dtype),
-         "format": "NC1HWC0", "ori_shape": y_shape, "ori_format": data_format,
-         "dtype": y_dtype}
-    strides = [1, stride, stride, 1] if data_format == "NHWC" else [1, 1,
-                                                                    stride,
-                                                                    stride]
-    dilations = [1, dilation, dilation, 1] if data_format == "NHWC" else [1, 1,
-                                                                          dilation,
-                                                                          dilation]
+    y = {
+        "shape": _shape_to_NC1HWC0(y_shape, data_format, y_dtype),
+        "format": "NC1HWC0",
+        "ori_shape": y_shape,
+        "ori_format": data_format,
+        "dtype": y_dtype
+    }
+    strides = [1, stride, stride, 1] if data_format == "NHWC" else [1, 1, stride, stride]
+    dilations = [1, dilation, dilation, 1] if data_format == "NHWC" else [1, 1, dilation, dilation]
 
-    kernel_name = _get_kernel_name(x_shape, filter_shape, bias_shape, stride,
-                                   dilation, pads, dtype, offset_x)
-    return {"params": [x, filter, bias, offset_w, y, strides, dilations, pads,
-                       data_format, offset_x],
-            "case_name": kernel_name,
-            "expect": expect_result,
-            "format_expect": [],
-            "support_expect": True}
+    kernel_name = _get_kernel_name(x_shape, filter_shape, bias_shape, stride, dilation, pads, dtype, offset_x)
+    return {
+        "params": [x, filter, bias, offset_w, y, strides, dilations, pads, data_format, offset_x],
+        "case_name": kernel_name,
+        "expect": expect_result,
+        "format_expect": [],
+        "support_expect": True
+    }
 
 
 # ============ auto gen ["Ascend310"] test cases start ===============

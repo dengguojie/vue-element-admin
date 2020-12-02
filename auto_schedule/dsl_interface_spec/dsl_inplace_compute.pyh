@@ -1,0 +1,9 @@
+# source file:python/te/lang/cce/te_compute/inplace_compute.py
+
+def inplace_add(lhs, inplace_ids, rhs):
+
+def inplace_sub(lhs, inplace_ids, rhs):
+
+def inplace_update(lhs, inplace_ids, rhs):
+
+def inplace_compute(lhs, rhs, ops):

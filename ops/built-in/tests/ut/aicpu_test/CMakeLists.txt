@@ -24,11 +24,10 @@ else()
 endif()
 
 set(_proto_srcs
-  "${CMAKE_CURRENT_SOURCE_DIR}/proto/me_tensor.proto"
-  "${CMAKE_CURRENT_SOURCE_DIR}/proto/me_attr.proto"
-  "${CMAKE_CURRENT_SOURCE_DIR}/proto/me_tensor_shape.proto"
-  "${CMAKE_CURRENT_SOURCE_DIR}/proto/me_node_def.proto"
-  "${CMAKE_CURRENT_SOURCE_DIR}/proto/me_types.proto"
+  "${CMAKE_CURRENT_SOURCE_DIR}/proto/cpu_tensor.proto"
+  "${CMAKE_CURRENT_SOURCE_DIR}/proto/cpu_attr.proto"
+  "${CMAKE_CURRENT_SOURCE_DIR}/proto/cpu_tensor_shape.proto"
+  "${CMAKE_CURRENT_SOURCE_DIR}/proto/cpu_node_def.proto"
 )
 
 # the output path of generated files
@@ -66,6 +65,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/utils/sparse_group.cc
   ${CPU_KERNELS_DIR}/utils/sparse_tensor.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/concatv2.cc
+  ${CPU_KERNELS_DIR}/kernels/host/transdata.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/get_dynamic_dims.cc
 )
 
@@ -119,6 +119,7 @@ target_link_libraries(cpu_kernels_llt
 set(_cpu_kernels_ut_files
   ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/node_def_builder.cpp
   testcase/concatv2_utest.cpp
+  testcase/trans_data_utest.cpp
   testcase/get_dynamic_dims_utest.cpp
 )
 

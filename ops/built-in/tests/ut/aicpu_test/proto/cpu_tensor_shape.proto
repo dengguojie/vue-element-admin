@@ -1,5 +1,5 @@
 syntax = "proto3";
-package aicpuop;
+package aicpuops;
 
 message TensorShape {
   // One dimension of the tensor.

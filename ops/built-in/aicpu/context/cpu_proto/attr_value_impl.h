@@ -10,7 +10,7 @@
 #include <memory>
 #include <functional>
 
-#include "proto/me_attr.pb.h"
+#include "proto/cpu_attr.pb.h"
 #include "cpu_tensor.h"
 #include "cpu_tensor_shape.h"
 
@@ -20,7 +20,7 @@ class AttrValueImpl {
 
 public:
     AttrValueImpl(
-        aicpuop::AttrValue *attr, std::function<void(aicpuop::AttrValue *)> delFunc = [](aicpuop::AttrValue *p) {})
+        aicpuops::AttrValue *attr, std::function<void(aicpuops::AttrValue *)> delFunc = [](aicpuops::AttrValue *p) {})
         : attrValue_(attr, delFunc)
     {}
 
@@ -289,10 +289,10 @@ public:
     /*
      * get attr proto.
      */
-    aicpuop::AttrValue *GetProto() const;
+    aicpuops::AttrValue *GetProto() const;
 
 private:
-    std::shared_ptr<aicpuop::AttrValue> attrValue_ { nullptr };
+    std::shared_ptr<aicpuops::AttrValue> attrValue_ { nullptr };
 };
 } // namespace aicpu
 #endif // CPU_KERNEL_ATTR_VALUE_IMPL_H

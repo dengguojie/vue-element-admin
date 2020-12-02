@@ -17,8 +17,8 @@
 #include "cpu_node_def.h"
 #include "device.h"
 #include "log.h"
-#include "proto/me_attr.pb.h"
-#include "proto/me_node_def.pb.h"
+#include "proto/cpu_attr.pb.h"
+#include "proto/cpu_node_def.pb.h"
 #include "sharder.h"
 #include "status.h"
 

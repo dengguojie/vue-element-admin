@@ -19,6 +19,8 @@ from functools import reduce  # pylint: disable=C0302
 
 from te import tvm
 from te.domain.tiling.get_tiling import get_tiling
+from te.lang.base.operation import in_dynamic
+from te.lang.base.operation import get_te_var
 from te.lang.cce.boost_schedule_kit import Compare
 from te.lang.cce.boost_schedule_kit import ScheduleAgent
 from te.platform import cce_conf
@@ -40,6 +42,7 @@ class Params:
     INPUT_SIZE = {"fp16fp16": 2, "fp16fp32": 2, "int8int32": 1, "int8fp32": 1}
     L1_L0_SIZE = {"fp16fp16": 2, "fp16fp32": 2, "int8int32": 1, "int8fp32": 2}
     OUTPUT_SIZE = {"fp16fp16": 2, "fp16fp32": 4, "int8int32": 4, "int8fp32": 4}
+    MATMUL = True
     MAD_TYPE = {
         "fp16fp16": "float32",
         "fp16fp32": "float32",
@@ -48,8 +51,6 @@ class Params:
     }
     ops_mode = "fp16fp16"
     ops_format_mode = "ND"
-    init_a_zero_matrix = False
-    init_b_zero_matrix = False
     block_in = cce_params.BLOCK_IN
     block_reduce = cce_params.BLOCK_REDUCE
     block_out = cce_params.BLOCK_OUT
@@ -68,6 +69,8 @@ class Params:
     trans_a = False
     trans_b = False
     cv_split_nd_in_flag = False
+    is_dynamic = False
+    MAT_MUL = False
 
     def __init__(self):
         self.ops_mode = "fp16fp16"
@@ -101,6 +104,10 @@ class Params:
 
 def _is_int82fp32_nd():
     return Params.TENSOR_MAP.get("tensor_a_float16_normalize_ub") is not None
+
+
+def _get_value(object):
+    return object.value if hasattr(object, "value") else object
 
 
 def _get_ops_mode():
@@ -402,32 +409,23 @@ def _set_data_layout(res, sch):  # pylint: disable=too-many-statements
 
     all_tensor = _get_all_tensors(res)
 
-    def _check_zero_matrix():
-        """
-        check zero matrix
-        """
-        Params.init_a_zero_matrix = False
-        if all_tensor.get('tensor_a_zero') is not None:
-            Params.init_a_zero_matrix = True
-        Params.init_b_zero_matrix = False
-        if all_tensor.get('tensor_b_zero') is not None:
-            Params.init_b_zero_matrix = True
-
     def _init_common_tensor():
         Params.TENSOR_MAP["c_gm"] = all_tensor.get("res")
         Params.TENSOR_MAP["a_placehold"] = all_tensor.get("tensor_a")
         Params.TENSOR_MAP["b_placehold"] = all_tensor.get("tensor_b")
         Params.TENSOR_MAP["bias"] = all_tensor.get("tensor_bias")
-        Params.TENSOR_MAP["alpha"] = all_tensor.get("tensor_alpha")
-        Params.TENSOR_MAP["beta"] = all_tensor.get("tensor_beta")
-
-        Params.TENSOR_MAP["tensor_a_float16_normalize_ub"] = all_tensor.get(
-            "tensor_a_float16_normalize_ub"
-        )
-        Params.TENSOR_MAP["tensor_b_float16_normalize_ub"] = all_tensor.get(
-            "tensor_b_float16_normalize_ub"
-        )
-        if _is_int82fp32_nd():
+        if all_tensor.get("tensor_alpha") is not None and all_tensor.get("tensor_beta") is not None:
+            Params.TENSOR_MAP["alpha"] = all_tensor.get("tensor_alpha")
+            Params.TENSOR_MAP["beta"] = all_tensor.get("tensor_beta")
+        else:
+            Params.MAT_MUL = True
+        if _is_int82fp32_nd() and not Params.MAT_MUL:
+            Params.TENSOR_MAP["tensor_a_float16_normalize_ub"] = all_tensor.get(
+                "tensor_a_float16_normalize_ub"
+            )
+            Params.TENSOR_MAP["tensor_b_float16_normalize_ub"] = all_tensor.get(
+                "tensor_b_float16_normalize_ub"
+            )
             sch[Params.TENSOR_MAP["tensor_a_float16_normalize_ub"]].set_scope(
                 cce_params.scope_ubuf
             )
@@ -450,22 +448,30 @@ def _set_data_layout(res, sch):  # pylint: disable=too-many-statements
         Params.TENSOR_MAP["c_l0c"] = all_tensor.get("tensor_c")
         sch[Params.TENSOR_MAP["c_l0c"]].set_scope(cce_params.scope_cc)
         Params.TENSOR_MAP["bias_ub"] = all_tensor.get("tensor_bias_ub")
-        sch[Params.TENSOR_MAP["bias_ub"]].set_scope(cce_params.scope_ubuf)
-        Params.TENSOR_MAP["beta_bias_ub"] = all_tensor.get("tensor_beta_bias_ub")
-        sch[Params.TENSOR_MAP["beta_bias_ub"]].set_scope(cce_params.scope_ubuf)
-        Params.TENSOR_MAP["beta_ub"] = all_tensor.get("tensor_beta_ub")
-        sch[Params.TENSOR_MAP["beta_ub"]].set_scope(cce_params.scope_ubuf)
-        Params.TENSOR_MAP["alpha_ub"] = all_tensor.get("tensor_alpha_ub")
-        sch[Params.TENSOR_MAP["alpha_ub"]].set_scope(cce_params.scope_ubuf)
-        Params.TENSOR_MAP["alpha_c_ub"] = all_tensor.get("tensor_alpha_c_ub")
-        sch[Params.TENSOR_MAP["alpha_c_ub"]].set_scope(cce_params.scope_ubuf)
-        Params.TENSOR_MAP["c_before_mul_ub"] = all_tensor.get("tensor_c_before_mul_ub")
-        sch[Params.TENSOR_MAP["c_before_mul_ub"]].set_scope(cce_params.scope_ubuf)
-        Params.TENSOR_MAP["c_ub_temp"] = all_tensor.get("tensor_c_ub_temp")
-        sch[Params.TENSOR_MAP["c_ub_temp"]].set_scope(cce_params.scope_ubuf)
+        if Params.MAT_MUL:
+            if Params.TENSOR_MAP["bias_ub"] is not None:
+                sch[Params.TENSOR_MAP["bias_ub"]].set_scope(cce_params.scope_ubuf)
+                Params.TENSOR_MAP["bias_l0c"] = all_tensor.get("tensor_bias_l0c")
+                sch[Params.TENSOR_MAP["bias_l0c"]].set_scope(cce_params.scope_cc)
+                Params.TENSOR_MAP["c_add_bias"] = all_tensor.get("tensor_c_add_bias")
+                sch[Params.TENSOR_MAP["c_add_bias"]].set_scope(cce_params.scope_cc)
+        else:
+            sch[Params.TENSOR_MAP["bias_ub"]].set_scope(cce_params.scope_ubuf)
+            Params.TENSOR_MAP["beta_bias_ub"] = all_tensor.get("tensor_beta_bias_ub")
+            sch[Params.TENSOR_MAP["beta_bias_ub"]].set_scope(cce_params.scope_ubuf)
+            Params.TENSOR_MAP["beta_ub"] = all_tensor.get("tensor_beta_ub")
+            sch[Params.TENSOR_MAP["beta_ub"]].set_scope(cce_params.scope_ubuf)
+            Params.TENSOR_MAP["alpha_ub"] = all_tensor.get("tensor_alpha_ub")
+            sch[Params.TENSOR_MAP["alpha_ub"]].set_scope(cce_params.scope_ubuf)
+            Params.TENSOR_MAP["alpha_c_ub"] = all_tensor.get("tensor_alpha_c_ub")
+            sch[Params.TENSOR_MAP["alpha_c_ub"]].set_scope(cce_params.scope_ubuf)
+            Params.TENSOR_MAP["c_before_mul_ub"] = all_tensor.get("tensor_c_before_mul_ub")
+            sch[Params.TENSOR_MAP["c_before_mul_ub"]].set_scope(cce_params.scope_ubuf)
+            Params.TENSOR_MAP["c_ub_temp"] = all_tensor.get("tensor_c_ub_temp")
+            sch[Params.TENSOR_MAP["c_ub_temp"]].set_scope(cce_params.scope_ubuf)
 
     def _init_fp16_fp16_tensor():
-        if Params.ops_mode == "fp16fp16":
+        if Params.ops_mode == "fp16fp16" and not Params.MAT_MUL:
             Params.TENSOR_MAP["float32_bias_ub"] = all_tensor.get(
                 "tensor_float32_bias_ub"
             )
@@ -516,7 +522,7 @@ def _set_data_layout(res, sch):  # pylint: disable=too-many-statements
                     )
 
     def _init_int8_fp32_tensor():
-        if Params.ops_mode == "int8fp32":
+        if Params.ops_mode == "int8fp32" and not Params.MAT_MUL:
             Params.TENSOR_MAP["a_ub"] = all_tensor.get("tensor_a_ub")
             sch[Params.TENSOR_MAP["a_ub"]].set_scope(cce_params.scope_ubuf)
             Params.TENSOR_MAP["float16_a_ub"] = all_tensor.get("tensor_float16_a_ub")
@@ -532,39 +538,28 @@ def _set_data_layout(res, sch):  # pylint: disable=too-many-statements
             sch[Params.TENSOR_MAP["zn_b_ub"]].set_scope(cce_params.scope_ubuf)
 
     def _init_fract_tensor():
-        if "tensor_bias_ub_fract" in all_tensor:
+        if "tensor_bias_ub_fract" in all_tensor and not Params.MAT_MUL:
             Params.TENSOR_MAP["bias_ub_fract"] = all_tensor.get("tensor_bias_ub_fract")
             sch[Params.TENSOR_MAP["bias_ub_fract"]].set_scope(cce_params.scope_ubuf)
 
     def _init_map():
         # fill in dimmap
-        Params.DIM_MAP["out_shape"] = [int(i) for i in res.shape]
+        Params.DIM_MAP["out_shape"] = [_get_value(i) for i in res.shape]
         Params.DIM_MAP["a_shape"] = [
-            int(i) for i in Params.TENSOR_MAP["a_placehold"].shape
+            _get_value(i) for i in Params.TENSOR_MAP["a_placehold"].shape
         ]
         Params.DIM_MAP["A_matrix_dim"] = [
-            int(i) for i in Params.TENSOR_MAP["a_l0a"].shape
+            _get_value(i) for i in Params.TENSOR_MAP["a_l0a"].shape
         ]
         Params.DIM_MAP["B_matrix_dim"] = [
-            int(i) for i in Params.TENSOR_MAP["b_l0b"].shape
+            _get_value(i) for i in Params.TENSOR_MAP["b_l0b"].shape
         ]
         Params.DIM_MAP["b_shape"] = [
-            int(i) for i in Params.TENSOR_MAP["b_placehold"].shape
+            _get_value(i) for i in Params.TENSOR_MAP["b_placehold"].shape
         ]
-
-    def _init_padding_tensor():
-        if Params.init_a_zero_matrix:
-            Params.TENSOR_MAP["a_zero"] = all_tensor.get("tensor_a_zero")
-            sch[Params.TENSOR_MAP["a_zero"]].set_scope(cce_params.scope_ubuf)
-
-        if Params.init_b_zero_matrix:
-            Params.TENSOR_MAP["b_zero"] = all_tensor.get("tensor_b_zero")
-            sch[Params.TENSOR_MAP["b_zero"]].set_scope(cce_params.scope_ubuf)
 
     _init_common_tensor()
     _get_ops_mode()
-    _check_zero_matrix()
-    _init_padding_tensor()
     _init_fp16_fp16_tensor()
     _init_int8_fp32_tensor()
     _init_fract_tensor()
@@ -1289,6 +1284,47 @@ def _get_aicore_tiling_factor():
     return l0c_tiling_factor, l0c_ub_parts, al1_parts, bl1_parts, aub_parts, bub_parts
 
 
+def _get_aicore_tiling_factor_dynamic():
+    """
+    using tiling parameter calculate factor
+
+    return: tiling factor from ub to ddr
+            tiling factor from l0c to ub
+            tiling factor from ddr to AL1
+            tiling factor from ddr to BL1
+    """
+    l0c_tiling_factor = [Params.TILING["CL0_matrix"][0], Params.TILING["CL0_matrix"][1]]
+
+    l0c_ub_tiling_factor = Params.TILING["CUB_matrix"]
+    # which part from l0c -> ub
+    l0c_ub_parts = [
+        _int_ceil_div(l0c_tiling_factor[0], l0c_ub_tiling_factor[0]),
+        _int_ceil_div(l0c_tiling_factor[1], l0c_ub_tiling_factor[1])
+    ]
+
+    if Params.TILING["AL1_shape"]: # AL1_shape = [K/block_reduce, m/16, 16, 16]
+        al1_factors = [
+            Params.TILING["AL1_shape"][0] // Params.block_reduce,
+            Params.TILING["AL1_shape"][1],
+        ]
+    else:
+        m_parts = _int_ceil_div(Params.DIM_MAP["A_matrix_dim"][0], l0c_tiling_factor[1])
+        al1_factors_m = _int_ceil_div(m_parts, Params.TILING["block_dim"][2])
+        al1_factors = [Params.DIM_MAP["A_matrix_dim"][1], al1_factors_m]
+
+    if Params.TILING["BL1_shape"]:
+        bl1_factors = [
+            Params.TILING["BL1_shape"][0] // Params.block_reduce,
+            Params.TILING["BL1_shape"][1],
+        ]
+    else:
+        n_parts = _int_ceil_div(Params.DIM_MAP["B_matrix_dim"][1], l0c_tiling_factor[0])
+        bl1_factors_n = _int_ceil_div(n_parts, Params.TILING["block_dim"][1])
+        bl1_factors = [Params.DIM_MAP["B_matrix_dim"][0], bl1_factors_n]
+
+    return l0c_tiling_factor, l0c_ub_parts, al1_factors, bl1_factors
+
+
 def _get_mmad_factor():
     """
     get tilling factor in mmad
@@ -1297,15 +1333,31 @@ def _get_mmad_factor():
             tilling factor for bl0
             tilling factor for reduce axis
     """
-    al0_factor = [
-        Params.TILING.get("AL0_matrix")[0],
-        Params.TILING.get("AL0_matrix")[1]
-    ]
-    bl0_factor = [
-        Params.TILING.get("BL0_matrix")[0],
-        Params.TILING.get("BL0_matrix")[1]
-    ]
-    reduce_factor = Params.TILING.get("BL0_matrix")[0]
+    if Params.TILING.get("AL0_matrix"):
+        al0_factor = [
+            Params.TILING.get("AL0_matrix")[0],
+            Params.TILING.get("AL0_matrix")[1]
+        ]
+    else:
+        if Params.TILING.get("BL0_matrix"):
+            kl0_factor = Params.TILING.get("BL0_matrix")[0]
+        else:
+            kl0_factor = Params.DIM_MAP.get("A_matrix_dim")[1]
+        al0_factor = [Params.TILING.get("CL0_matrix")[1], kl0_factor]
+
+    if Params.TILING.get("BL0_matrix"):
+        bl0_factor = [
+            Params.TILING.get("BL0_matrix")[0],
+            Params.TILING.get("BL0_matrix")[1]
+        ]
+    else:
+        if Params.TILING.get("AL0_matrix"):
+            kl0_factor = Params.TILING.get("AL0_matrix")[1]
+        else:
+            kl0_factor = Params.DIM_MAP.get("B_matrix_dim")[0]
+        bl0_factor = [kl0_factor, Params.TILING.get("CL0_matrix")[0]]
+    reduce_factor = bl0_factor[0]
+
     return al0_factor, bl0_factor, reduce_factor
 
 
@@ -1599,6 +1651,106 @@ def _get_l0c_and_l1_axis(  # pylint: disable=too-many-locals, too-many-arguments
     )
 
 
+def _get_l0c_and_l1_axis_dynamic(   # pylint: disable=too-many-locals, too-many-arguments
+    sch,
+    c_gm,
+    l0c_factor,
+    al1_factor,
+    bl1_factor
+):
+    """
+    get l0c and l1 axis
+
+    Parameter:
+    ------------------------------------------------------------------
+    :param sch: schedule
+    :param c_gm: op
+    :param l0c_factor: tilling factor for l0c
+    :param al1_parts: tilling factor for al1
+    :param bl1_parts: tilling factor for bl1
+    -------------------------------------------------------------------
+    """
+
+    def _get_reorder_flag():
+        reorder_flag = False
+        if Params.TILING["AL1_shape"] and Params.TILING["BL1_shape"]:
+            if al1_factor[1] > bl1_factor[1]:
+                reorder_flag = True
+        elif Params.TILING["BL1_shape"] and Params.TILING["AL1_shape"] == []:
+            reorder_flag = True
+
+        return reorder_flag
+
+    def _bind_multi_core_dynamic():
+        if Params.TILING.get("block_dim"):
+            block_dim = Params.TILING["block_dim"]
+        else:
+            block_dim = [1, 1, 1, 1]
+        
+        # split batch axis
+        batch_out = sch[c_gm].split(batch, nparts=block_dim[0])
+        n_out = sch[c_gm].split(l1_n_outer_outer, nparts=block_dim[1])
+        m_out = sch[c_gm].split(l1_m_outer_outer, nparts=block_dim[2])
+
+        # reorder
+        sch[c_gm].reorder(
+            batch_out[0],
+            n_out[0],
+            m_out[0],
+            batch_out[1],
+            n_out[1],
+            l1_n_outer_inner,
+            m_out[1],
+            l1_m_outer_inner
+        )
+        blocks = block_dim[0] * block_dim[1] * block_dim[2]
+        if blocks != 1:
+            out_fused = sch[c_gm].fuse(batch_out[0], n_out[0], m_out[0])
+            out_fused_out, _ = sch[c_gm].split(out_fused, nparts=blocks)
+            bind_out, _ = sch[c_gm].split(out_fused_out, 1)
+            blockidx = tvm.thread_axis("blockIdx.x")
+            sch[c_gm].bind(bind_out, blockidx)
+        else:
+            blockidx = [batch_out[0], n_out[0], m_out[0]]
+
+        return batch_out[1], n_out[1], m_out[1], blockidx
+
+    # split c_gm according to factor of l0c and out_shape
+    l0c_n_outer, l0c_n_inner = sch[c_gm].split(c_gm.op.axis[0], l0c_factor[0])
+    l0c_m_outer, l0c_m_inner = sch[c_gm].split(c_gm.op.axis[1], l0c_factor[1])
+    sch[c_gm].reorder(l0c_n_outer, l0c_m_outer, l0c_n_inner, l0c_m_inner)
+
+    # split c_gm according to factor of a_l1 and b_l1
+    l1_m_outer_outer, l1_m_outer_inner = sch[c_gm].split(l0c_m_outer, al1_factor[1])
+    l1_n_outer_outer, l1_n_outer_inner = sch[c_gm].split(l0c_n_outer, bl1_factor[1])
+
+    batch, l1_n_outer_outer = sch[c_gm].split(l1_n_outer_outer, nparts=1)
+
+    batch_in, m_block_in, n_block_in, _ = _bind_multi_core_dynamic()
+    bl1_at_c_axis = n_block_in
+    al1_at_c_axis = m_block_in
+    c_slice_axis = l1_m_outer_inner
+
+    # reorder al1 and bl1 axis according to double buffer
+    batch_in_out_axis, batch_in_inner_axis = sch[c_gm].split(batch_in, factor=1)
+    reorder_flag = _get_reorder_flag()
+
+    if reorder_flag:
+        sch[c_gm].reorder(m_block_in, batch_in_inner_axis, n_block_in)
+    else:
+        sch[c_gm].reorder(n_block_in, m_block_in, batch_in_inner_axis)
+
+
+    return (
+        batch_in_out_axis,
+        bl1_at_c_axis,
+        al1_at_c_axis,
+        c_slice_axis,
+        l0c_n_inner,
+        l0c_m_inner
+    )
+
+
 def _get_l0a_and_l0b_axis(  # pylint: disable=too-many-arguments
     sch,
     c_l0c,
@@ -1641,6 +1793,79 @@ def _get_l0a_and_l0b_axis(  # pylint: disable=too-many-arguments
 
     return al0_m_outer, bl0_n_outer, k_outer_outer, bl0_n_inner
 
+
+def _get_al1_and_bl1_axis_dynamic(sch, c_l0c, al1_factor, bl1_factor, k_outer_outer, reduce_axis_factor):
+    """
+    get al1 and bli axis for dynamic mode
+    Parameter:
+    ---------------------------------------------------------------
+    :param sch: schedule
+    :param c_l0c: op
+    :param al1_parts:
+    :param bl1_parts:
+    :param k_outer_outer:
+    :return:
+    ---------------------------------------------------------------
+    """
+    # a_l1 and b_l1 slice can be different with CUB & CL0
+    factor_al1 = al1_factor[0] // reduce_axis_factor
+    factor_bl1 = bl1_factor[0] // reduce_axis_factor
+
+    if Params.TILING.get("AL1_shape") and Params.TILING.get("BL1_shape"):
+        if factor_bl1 > factor_bl1:
+            k_outer_outer_outer, k_outer_outer_inner = sch[c_l0c].split(
+                k_outer_outer, factor=factor_al1
+            )
+            k_outer_outer_outer_outer, k_outer_outer_outer_inner = sch[c_l0c].split(
+                k_outer_outer_outer, factor_bl1 // factor_al1
+            )
+            al1_at_l0c_axis = k_outer_outer_outer_inner
+            bl1_at_l0c_axis = k_outer_outer_outer_outer
+        else:
+            k_outer_outer_outer, k_outer_outer_inner = sch[c_l0c].split(
+                k_outer_outer, factor=factor_bl1
+            )
+            k_outer_outer_outer_outer, k_outer_outer_outer_inner = sch[c_l0c].split(
+                k_outer_outer_outer, factor_al1 // factor_bl1
+            )
+            al1_at_l0c_axis = k_outer_outer_outer_outer
+            bl1_at_l0c_axis = k_outer_outer_outer_inner
+    else:
+        if Params.TILING.get("AL1_shape"):
+            k_outer_outer_outer, k_outer_outer_inner = sch[c_l0c].split(
+                k_outer_outer, factor=factor_al1
+            )
+            k_outer_outer_outer_outer, k_outer_outer_outer_inner = sch[c_l0c].split(
+                k_outer_outer_outer, nparts=1
+            )
+            al1_at_l0c_axis = k_outer_outer_outer_inner
+            bl1_at_l0c_axis = k_outer_outer_outer_outer
+        elif Params.TILING.get("BL1_shape"):
+            k_outer_outer_outer, k_outer_outer_inner = sch[c_l0c].split(
+                k_outer_outer, factor=factor_bl1
+            )
+            k_outer_outer_outer_outer, k_outer_outer_outer_inner = sch[c_l0c].split(
+                k_outer_outer_outer, nparts=1
+            )
+            al1_at_l0c_axis = k_outer_outer_outer_inner
+            bl1_at_l0c_axis = k_outer_outer_outer_outer
+        else:
+            k_outer_outer_outer, k_outer_outer_inner = sch[c_l0c].split(
+                k_outer_outer, nparts=1
+            )
+            k_outer_outer_outer_outer, k_outer_outer_outer_inner = sch[c_l0c].split(
+                k_outer_outer_outer, nparts=1
+            )
+            al1_at_l0c_axis = k_outer_outer_outer_inner
+            bl1_at_l0c_axis = k_outer_outer_outer_outer
+
+    reduce_axis_serial = [
+        k_outer_outer_outer_outer,
+        k_outer_outer_outer_inner,
+        k_outer_outer_inner
+    ]
+
+    return al1_at_l0c_axis, bl1_at_l0c_axis, reduce_axis_serial
 
 def _get_al1_and_bl1_axis(sch, c_l0c, al1_parts, bl1_parts, k_outer_outer):
     """
@@ -1845,6 +2070,7 @@ def get_tiling_param_nz():
 
     return a_shape, b_shape, pad_l, pad_r, fused_num
 
+
 def _set_data_layout_enter(res, sch):
     """
     if cube and vector split ,
@@ -1915,7 +2141,7 @@ def _no_solution_tiling(tiling):
     return tiling
 
 
-def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
+def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r0915, r0912
     """schedule enter
     param:
     res: tensor
@@ -1929,13 +2155,17 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
     Params.cube_vector_split = cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT")
 
     sch = sch_list[0]
+    if in_dynamic():
+        Params.is_dynamic = True
 
     _set_data_layout_enter(res, sch)
 
     Params().print_ir_matmul("orgin", sch)
     kernel_name = Params.TENSOR_MAP["c_gm"].op.attrs["kernel_name"]
     _get_trans_flag_cv_split()
-    if Params.ops_format_mode != "ND":
+    if Params.is_dynamic:
+        Params.TILING = dynamic_para["tiling_strategy"]
+    elif Params.ops_format_mode != "ND":
         _get_tiling(kernel_name)
 
     # get tensor
@@ -1950,19 +2180,28 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
 
     c_ub = Params.TENSOR_MAP.get("c_ub")
 
-    alpha_ub, alpha_c_ub, beta_ub, bias_ub, c_ub_temp, beta_bias_ub, c_before_mul_ub = (
-        Params.TENSOR_MAP.get("alpha_ub"),
-        Params.TENSOR_MAP.get("alpha_c_ub"),
-        Params.TENSOR_MAP.get("beta_ub"),
-        Params.TENSOR_MAP.get("bias_ub"),
-        Params.TENSOR_MAP.get("c_ub_temp"),
-        Params.TENSOR_MAP.get("beta_bias_ub"),
-        Params.TENSOR_MAP.get("c_before_mul_ub")
-    )
+    if not Params.MAT_MUL:
+        alpha_ub, alpha_c_ub, beta_ub, bias_ub, c_ub_temp, beta_bias_ub, c_before_mul_ub = (
+            Params.TENSOR_MAP.get("alpha_ub"),
+            Params.TENSOR_MAP.get("alpha_c_ub"),
+            Params.TENSOR_MAP.get("beta_ub"),
+            Params.TENSOR_MAP.get("bias_ub"),
+            Params.TENSOR_MAP.get("c_ub_temp"),
+            Params.TENSOR_MAP.get("beta_bias_ub"),
+            Params.TENSOR_MAP.get("c_before_mul_ub")
+        )
+    else:
+        bias_ub = Params.TENSOR_MAP["bias_ub"]
+        if bias_ub is not None:
+            c_add_bias, bias_l0c = (
+                Params.TENSOR_MAP["c_add_bias"],
+                Params.TENSOR_MAP["bias_l0c"]
+            )
 
-    alpha_temp_ub = Params.TENSOR_MAP.get("alpha_temp_ub")
-    beta_temp_ub = Params.TENSOR_MAP.get("beta_temp_ub")
-    float32_bias_ub = Params.TENSOR_MAP.get("float32_bias_ub")
+    if not Params.MAT_MUL:
+        alpha_temp_ub = Params.TENSOR_MAP.get("alpha_temp_ub")
+        beta_temp_ub = Params.TENSOR_MAP.get("beta_temp_ub")
+        float32_bias_ub = Params.TENSOR_MAP.get("float32_bias_ub")
 
     if Params.ops_format_mode == "ND":
         a_normalize_ub = Params.TENSOR_MAP.get("a_normalize_ub")
@@ -1982,7 +2221,7 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
             b_float16 = Params.TENSOR_MAP.get("tensor_b_float16_normalize_ub")
 
     # only Nz int8fp32 will in
-    if Params.ops_mode == "int8fp32":
+    if Params.ops_mode == "int8fp32" and not Params.MAT_MUL:
         a_ub, float16_a_ub, zz_a_ub, b_ub, float16_b_ub, zn_b_ub = (
             Params.TENSOR_MAP.get("a_ub"),
             Params.TENSOR_MAP.get("float16_a_ub"),
@@ -1992,7 +2231,7 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
             Params.TENSOR_MAP.get("zn_b_ub")
         )
 
-    if Params.ops_mode == "int8int32" and Params.ops_format_mode != "ND":
+    if Params.ops_mode == "int8int32" and Params.ops_format_mode != "ND" and not Params.MAT_MUL:
         bias_ub_fract = Params.TENSOR_MAP.get("bias_ub_fract")
 
     def _nd_process():  # pylint: disable=R0914,R0915
@@ -3238,14 +3477,22 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
         nz schedule process enter
         """
         # --------------get factor and parts from tiling----------------
-        (
-            l0c_factor,
-            l0c_ub_parts,
-            al1_parts,
-            bl1_parts,
-            aub_parts,
-            bub_parts
-        ) = _get_aicore_tiling_factor()
+        if not Params.is_dynamic:
+            (
+                l0c_factor,
+                l0c_ub_parts,
+                al1_parts,
+                bl1_parts,
+                aub_parts,
+                bub_parts
+            ) = _get_aicore_tiling_factor()
+        else:
+            (
+                l0c_factor,
+                l0c_ub_parts,
+                al1_factor,
+                bl1_factor
+            ) = _get_aicore_tiling_factor_dynamic()
         al0_axis_factor, bl0_axis_factor, reduce_axis_factor = _get_mmad_factor()
         # -----------split and get axis of l0c, al1, bl1 or may aub , bub----------------
         small_ub_flag = _get_ub_pos()
@@ -3275,17 +3522,27 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
                 c_slice_axis
             )
         else:
-            (
-                batch_in_out_axis,
-                bl1_at_c_axis,
-                al1_at_c_axis,
-                c_slice_axis,
-                l0c_n_inner,
-                l0c_m_inner,
-                _,
-                _,
-                _
-            ) = _get_l0c_and_l1_axis(sch, c_gm, l0c_factor, al1_parts, bl1_parts)
+            if Params.is_dynamic:
+                (
+                    batch_in_out_axis,
+                    bl1_at_c_axis,
+                    al1_at_c_axis,
+                    c_slice_axis,
+                    l0c_n_inner,
+                    l0c_m_inner,
+                ) = _get_l0c_and_l1_axis_dynamic(sch, c_gm, l0c_factor, al1_factor, bl1_factor)
+            else:
+                (
+                    batch_in_out_axis,
+                    bl1_at_c_axis,
+                    al1_at_c_axis,
+                    c_slice_axis,
+                    l0c_n_inner,
+                    l0c_m_inner,
+                    _,
+                    _,
+                    _
+                ) = _get_l0c_and_l1_axis(sch, c_gm, l0c_factor, al1_parts, bl1_parts)
 
         # -----------attach tensor of CUB----------------
         def _get_cub_at_axis(sch, c_gm, l0c_n_inner, l0c_m_inner, l0c_ub_parts):
@@ -3334,18 +3591,21 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
             """
             tensor cub
             """
-            tensor_cub_list = [
-                c_ub,
-                c_before_mul_ub,
-                alpha_c_ub,
-                bias_ub,
-                c_ub_temp,
-                beta_bias_ub
-            ]
-            if Params.ops_mode == "fp16fp16":
-                tensor_cub_list += [float32_bias_ub]
-            elif Params.ops_mode == "int8int32":
-                tensor_cub_list += [bias_ub_fract]
+            if not Params.MAT_MUL:
+                tensor_cub_list = [
+                    c_ub,
+                    c_before_mul_ub,
+                    alpha_c_ub,
+                    bias_ub,
+                    c_ub_temp,
+                    beta_bias_ub
+                ]
+                if Params.ops_mode == "fp16fp16":
+                    tensor_cub_list += [float32_bias_ub]
+                elif Params.ops_mode == "int8int32":
+                    tensor_cub_list += [bias_ub_fract]
+            else:
+                tensor_cub_list = [c_ub]
             for tensor in tensor_cub_list:
                 sch[tensor].compute_at(sch[c_gm], at_axis)
 
@@ -3353,7 +3613,10 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
             _attach_ub(sch, c_gm, c_gm_at_axis)
 
         # -----------attach tensor of l0c----------------
-
+        if bias_ub is not None and Params.MAT_MUL:
+            sch[bias_ub].compute_at(sch[c_gm], c_slice_axis)
+            sch[bias_l0c].compute_at(sch[c_gm], c_slice_axis)
+            sch[c_add_bias].compute_at(sch[c_gm], c_slice_axis)
         sch[c_l0c].compute_at(sch[c_gm], c_slice_axis)
 
         new_c_col_axis = [
@@ -3460,11 +3723,18 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
             l0b_at_axis = bl0_n_outer_inner
 
         else:
-            (
-                al1_at_l0c_axis,
-                bl1_at_l0c_axis,
-                reduce_axis_serial
-            ) = _get_al1_and_bl1_axis(sch, c_l0c, al1_parts, bl1_parts, k_outer_outer)
+            if Params.is_dynamic:
+                (
+                    al1_at_l0c_axis,
+                    bl1_at_l0c_axis,
+                    reduce_axis_serial
+                ) = _get_al1_and_bl1_axis_dynamic(sch, c_l0c, al1_factor, bl1_factor, k_outer_outer, reduce_axis_factor)
+            else:
+                (
+                    al1_at_l0c_axis,
+                    bl1_at_l0c_axis,
+                    reduce_axis_serial
+                ) = _get_al1_and_bl1_axis(sch, c_l0c, al1_parts, bl1_parts, k_outer_outer)
 
         # -----------attach tensor of a_l0a----------------
         sch[a_l0a].compute_at(sch[c_l0c], l0a_at_axis)
@@ -3550,52 +3820,77 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
             return al1_axis, bl1_axis, zn_b_ub_k_out
 
         def _attach_al1_bl1():
-            if Params.TILING["AL1_shape"]:
-                if al1_parts[0] != 1:
+            if not Params.is_dynamic:
+                if Params.TILING["AL1_shape"]:
+                    if al1_parts[0] != 1:
+                        Params().print_debug("a_l1 at c_l0c")
+                        sch[a_l1].compute_at(sch[c_l0c], al1_at_l0c_axis)
+                        al1_at_tensor = "c_l0c"
+                    else:
+                        Params().print_debug("a_l1 at c_gm")
+                        sch[a_l1].compute_at(sch[c_gm], al1_at_c_axis)
+                        al1_at_tensor = "c_gm"
+                else:
+                    Params().print_debug("a_l1 at c_gm 2")
+                    sch[a_l1].compute_at(sch[c_gm], batch_in_out_axis)
+                    al1_at_tensor = "c_gm"
+
+                if Params.TILING["BL1_shape"]:
+                    if bl1_parts[0] != 1:
+                        Params().print_debug("b_l1 at c_l0c")
+                        sch[b_l1].compute_at(sch[c_l0c], bl1_at_l0c_axis)
+                        bl1_at_tensor = "c_l0c"
+                    else:
+                        Params().print_debug("b_l1 at c_gm")
+                        sch[b_l1].compute_at(sch[c_gm], bl1_at_c_axis)
+                        bl1_at_tensor = "c_gm"
+                else:
+                    Params().print_debug("b_l1 at c_gm 2")
+                    sch[b_l1].compute_at(sch[c_gm], batch_in_out_axis)
+                    bl1_at_tensor = "c_gm"
+            else:
+                if Params.TILING["AL1_shape"]:
                     Params().print_debug("a_l1 at c_l0c")
                     sch[a_l1].compute_at(sch[c_l0c], al1_at_l0c_axis)
                     al1_at_tensor = "c_l0c"
                 else:
-                    Params().print_debug("a_l1 at c_gm")
-                    sch[a_l1].compute_at(sch[c_gm], al1_at_c_axis)
+                    Params().print_debug("a_l1 at c_gm2")
+                    sch[a_l1].compute_at(sch[c_gm], batch_in_out_axis)
                     al1_at_tensor = "c_gm"
-            else:
-                Params().print_debug("a_l1 at c_gm 2")
-                sch[a_l1].compute_at(sch[c_gm], batch_in_out_axis)
-                al1_at_tensor = "c_gm"
-
-            if Params.TILING["BL1_shape"]:
-                if bl1_parts[0] != 1:
+                if Params.TILING["BL1_shape"]:
                     Params().print_debug("b_l1 at c_l0c")
                     sch[b_l1].compute_at(sch[c_l0c], bl1_at_l0c_axis)
                     bl1_at_tensor = "c_l0c"
                 else:
-                    Params().print_debug("b_l1 at c_gm")
-                    sch[b_l1].compute_at(sch[c_gm], bl1_at_c_axis)
+                    Params().print_debug("b_l1 at c_gm 2")
+                    sch[b_l1].compute_at(sch[c_gm], batch_in_out_axis)
                     bl1_at_tensor = "c_gm"
-            else:
-                Params().print_debug("b_l1 at c_gm2")
-                sch[b_l1].compute_at(sch[c_gm], batch_in_out_axis)
-                bl1_at_tensor = "c_gm"
 
             return al1_at_tensor, bl1_at_tensor
 
         def _do_reused_by():
             # reused_by
-            if Params.ops_mode == "fp16fp16":
-                sch[c_before_mul_ub].reused_by(alpha_c_ub, c_ub_temp, c_ub)
+            if not Params.MAT_MUL:
+                if Params.ops_mode == "fp16fp16":
+                    sch[c_before_mul_ub].reused_by(alpha_c_ub, c_ub_temp, c_ub)
 
-                sch[float32_bias_ub].reused_by(beta_bias_ub)
+                    sch[float32_bias_ub].reused_by(beta_bias_ub)
 
-            elif Params.ops_mode == "fp16fp32":
-                sch[c_before_mul_ub].reused_by(alpha_c_ub, c_ub_temp, c_ub)
-                sch[bias_ub].reused_by(beta_bias_ub)
-            elif Params.ops_mode == "int8int32":
-                sch[c_before_mul_ub].reused_by(alpha_c_ub, c_ub_temp, c_ub)
-                sch[bias_ub].reused_by(beta_bias_ub)
-            elif Params.ops_mode == "int8fp32":
-                sch[c_before_mul_ub].reused_by(alpha_c_ub, c_ub_temp, c_ub)
-                sch[bias_ub].reused_by(beta_bias_ub)
+                elif Params.ops_mode == "fp16fp32":
+                    sch[c_before_mul_ub].reused_by(alpha_c_ub, c_ub_temp, c_ub)
+                    sch[bias_ub].reused_by(beta_bias_ub)
+                elif Params.ops_mode == "int8int32":
+                    sch[c_before_mul_ub].reused_by(alpha_c_ub, c_ub_temp, c_ub)
+                    sch[bias_ub].reused_by(beta_bias_ub)
+                elif Params.ops_mode == "int8fp32":
+                    sch[c_before_mul_ub].reused_by(alpha_c_ub, c_ub_temp, c_ub)
+                    sch[bias_ub].reused_by(beta_bias_ub)
+            else:
+                if bias_ub is not None:
+                    sch[bias_l0c].reused_by(c_add_bias, c_l0c)
+                    sch[c_add_bias].emit_insn(c_add_bias.op.axis[0], "phony_insn")
+                    sch[bias_l0c].emit_insn(bias_l0c.op.axis[0], "dma_copy")
+                    sch[bias_ub].emit_insn(bias_ub.op.axis[0], "dma_copy")
 
 
         def _do_double_buffer_common():
@@ -3620,6 +3915,9 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
             # c_l0c C_UB
             if Params.TILING.get("manual_pingpong_buffer")["CL0_pbuffer"] == 2:
                 temp_tensor_list += [c_l0c]
+                if bias_ub is not None and Params.MAT_MUL:
+                    temp_tensor_list += [bias_l0c, c_add_bias]
+                    sch[bias_l0c].preload()
 
             for temp_tensor in temp_tensor_list:
                 sch[temp_tensor].double_buffer()
@@ -3636,21 +3934,28 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
 
             temp_tensor_list = list()
             if Params.TILING.get("manual_pingpong_buffer")["CUB_pbuffer"] == 2:
-                temp_tensor_list += [
-                    alpha_ub,
-                    alpha_c_ub,
-                    beta_ub,
-                    bias_ub,
-                    c_ub_temp,
-                    beta_bias_ub,
-                    c_ub,
-                    c_before_mul_ub
-                ]
-
-                if Params.ops_mode == "fp16fp16":
-                    temp_tensor_list += [alpha_temp_ub, beta_temp_ub, float32_bias_ub]
-                elif Params.ops_mode == "int8int32":
-                    temp_tensor_list += [bias_ub_fract]
+                if not Params.MAT_MUL:
+                    temp_tensor_list += [
+                        alpha_ub,
+                        alpha_c_ub,
+                        beta_ub,
+                        bias_ub,
+                        c_ub_temp,
+                        beta_bias_ub,
+                        c_ub,
+                        c_before_mul_ub
+                    ]
+                else:
+                    if bias_ub is not None:
+                        temp_tensor_list += [c_ub, bias_ub]
+                        sch[bias_ub].preload()
+                    else:
+                        temp_tensor_list += [c_ub]
+                if not Params.MAT_MUL:
+                    if Params.ops_mode == "fp16fp16":
+                        temp_tensor_list += [alpha_temp_ub, beta_temp_ub, float32_bias_ub]
+                    elif Params.ops_mode == "int8int32":
+                        temp_tensor_list += [bias_ub_fract]
 
             if Params.TILING.get("manual_pingpong_buffer")["AUB_pbuffer"] == 2:
                 temp_tensor_list += [float16_a_ub, a_ub, zz_a_ub]
@@ -3705,6 +4010,8 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
                         reduce_axis_serial[2]
                     ]
                 }
+            if bias_ub is not None and Params.MAT_MUL:
+                mad_dict["init_bias"] = 1
             sch[c_l0c].emit_insn(bl0_n_inner, "mad", mad_dict)
 
 
@@ -3717,33 +4024,36 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
             """
             if Params.cube_vector_split:
                 return None
-
-            temp_tensor_list = [
-                c_ub,
-                c_before_mul_ub,
-                alpha_ub,
-                beta_ub,
-                bias_ub
-            ]
-            if Params.ops_mode == "fp16fp16":
-                temp_tensor_list += [alpha_temp_ub, beta_temp_ub, float32_bias_ub]
-            elif Params.ops_mode == "int8int32":
-                sch[bias_ub_fract].emit_insn(bias_ub_fract.op.axis[0], "vector_adds")
-            elif Params.ops_mode == "int8fp32":
-                sch[zz_a_ub].emit_insn(zz_a_ub.op.axis[0], "vector_auto")
-                sch[zn_b_ub].emit_insn(zn_b_ub_k_out, "vector_auto")
-                temp_tensor_list += [float16_a_ub, float16_b_ub, a_ub, b_ub]
+            if not Params.MAT_MUL:
+                temp_tensor_list = [
+                    c_ub,
+                    c_before_mul_ub,
+                    alpha_ub,
+                    beta_ub,
+                    bias_ub
+                ]
+            else:
+                temp_tensor_list = [c_ub]
+            if not Params.MAT_MUL:
+                if Params.ops_mode == "fp16fp16":
+                    temp_tensor_list += [alpha_temp_ub, beta_temp_ub, float32_bias_ub]
+                elif Params.ops_mode == "int8int32":
+                    sch[bias_ub_fract].emit_insn(bias_ub_fract.op.axis[0], "vector_adds")
+                elif Params.ops_mode == "int8fp32":
+                    sch[zz_a_ub].emit_insn(zz_a_ub.op.axis[0], "vector_auto")
+                    sch[zn_b_ub].emit_insn(zn_b_ub_k_out, "vector_auto")
+                    temp_tensor_list += [float16_a_ub, float16_b_ub, a_ub, b_ub]
             for temp_tensor in temp_tensor_list:
                 sch[temp_tensor].emit_insn(temp_tensor.op.axis[0], "dma_copy")
 
-            sch[alpha_c_ub].emit_insn(alpha_c_ub.op.axis[0], "vector_muls")
+            if not Params.MAT_MUL:
+                sch[alpha_c_ub].emit_insn(alpha_c_ub.op.axis[0], "vector_muls")
+                if alpha_c_ub is not None:
+                    sch[c_ub_temp].emit_insn(c_ub_temp.op.axis[0], "vector_add")
+                else:
+                    sch[c_ub_temp].emit_insn(c_ub_temp.op.axis[0], "vector_muls")
 
-            if alpha_c_ub is not None:
-                sch[c_ub_temp].emit_insn(c_ub_temp.op.axis[0], "vector_add")
-            else:
-                sch[c_ub_temp].emit_insn(c_ub_temp.op.axis[0], "vector_muls")
-
-            sch[beta_bias_ub].emit_insn(beta_bias_ub.op.axis[0], "vector_muls")
+                sch[beta_bias_ub].emit_insn(beta_bias_ub.op.axis[0], "vector_muls")
 
 
         al1_at_tensor, bl1_at_tensor = _attach_al1_bl1()
@@ -3766,10 +4076,66 @@ def gemm_schedule(res, sch_list):  # pylint: disable=r0914, r0915, r0912
     else:
         _nz_process()
 
+    def _mem_process():
+        def _get_al1_bound():
+            if Params.TILING["AL1_shape"]:
+                m_bound = Params.TILING["AL1_shape"][1] * Params.TILING["CL0_matrix"][1] * Params.block_in
+                k_bound = Params.TILING["AL1_shape"][0]
+                al1_bound = m_bound * k_bound
+            else:
+                k_bound = Params.DIM_MAP["A_matrix_dim"][1] * Params.block_reduce
+                if Params.TILING["block_dim"][2] == 1:
+                    m_bound = Params.DIM_MAP["A_matrix_dim"][0] * Params.block_in
+                else:
+                    m_parts = _int_ceil_div(Params.DIM_MAP["A_matrix_dim"][0], Params.TILING["CL0_matrix"][1])
+                    m_factors = _int_ceil_div(m_parts, Params.TILING["block_dim"][2])
+                    m_bound = m_factors * Params.TILING["CL0_matrix"][1] * Params.block_in
+                al1_bound = m_bound * k_bound
+            return al1_bound
+        
+        def _get_bl1_bound():
+            if Params.TILING["BL1_shape"]:
+                m_bound = Params.TILING["BL1_shape"][1] * Params.TILING["CL0_matrix"][0] * Params.block_out
+                k_bound = Params.TILING["BL1_shape"][0]
+                al1_bound = m_bound * k_bound
+            else:
+                k_bound = Params.DIM_MAP["B_matrix_dim"][0] * Params.block_reduce
+                if Params.TILING["block_dim"][1] == 1:
+                    n_bound = Params.DIM_MAP["B_matrix_dim"][1] * Params.block_out
+                else:
+                    n_parts = _int_ceil_div(Params.DIM_MAP["B_matrix_dim"][1], Params.TILING["CL0_matrix"][0])
+                    n_factors = _int_ceil_div(n_parts, Params.TILING["block_dim"][1])
+                    n_bound = n_factors * Params.TILING["CL0_matrix"][1] * Params.block_in
+                bl1_bound = n_bound * k_bound
+            return bl1_bound
+        
+        if Params.is_dynamic:
+            sch.disable_allocate(cce_params.scope_cbuf)
+            sch.disable_allocate(cce_params.scope_ca)
+            sch.disable_allocate(cce_params.scope_cb)
+            sch.disable_allocate(cce_params.scope_cc)
+            sch.disable_allocate(cce_params.scope_ubuf)
+
+            # get l1 bound
+            sch[a_l1].set_storage_bound(_get_al1_bound())
+            sch[b_l1].set_storage_bound(_get_bl1_bound())
+
+            # mem_unique
+            sch[a_l1].mem_unique()
+            sch[b_l1].mem_unique()
+            sch[a_l0a].mem_unique()
+            sch[b_l0b].mem_unique()
+            sch[c_ub].mem_unique()
+            if bias_ub is not None:
+                sch[bias_ub].mem_unique()
+            else:
+                sch[c_l0c].mem_unique()
+
+    _mem_process()
+    Params.DEBUG_IR = False
+    Params().print_ir_matmul("test", sch)
     # clear global cache
     Params.TILING.clear()
     Params.DIM_MAP.clear()
     Params.TENSOR_MAP.clear()
-    Params.init_b_zero_matrix = False
-    Params.init_a_zero_matrix = False
     return True

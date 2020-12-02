@@ -1,0 +1,67 @@
+# source file:python/te/lang/cce/te_compute/elewise_compute.py
+
+NAME_INDEX = [0]
+
+def vmuls(raw_tensor, scalar):
+
+def vadds(raw_tensor, scalar):
+
+def vmaxs(raw_tensor, scalar):
+
+def vmins(raw_tensor, scalar):
+
+def vlog(raw_tensor, priority_flag=0):
+
+def vexp(raw_tensor):
+
+def vabs(raw_tensor):
+
+def vrec(raw_tensor):
+
+def vrelu(raw_tensor):
+
+def vlrelu(raw_tensor, alpha=0):
+
+def vnot(raw_tensor):
+
+def vsqrt(raw_tensor, priority_flag=0):
+
+def vrsqrt(raw_tensor, priority_flag=0):
+
+def vmul(lhs, rhs):
+
+def vdiv(lhs, rhs):
+
+def vmod(lhs, rhs):
+
+def vadd(lhs, rhs):
+
+def vsub(lhs, rhs):
+
+def vmin(lhs, rhs):
+
+def vmax(lhs, rhs):
+
+def vor(lhs, rhs):
+
+def vand(lhs, rhs):
+
+def vaxpy(lhs, rhs, scalar):
+
+def vcmp(lhs, rhs, operation='lt', mode='bool'):
+
+def vlogic(lhs, rhs=None, operation='logic_and'):
+
+def vaddrelu(lhs, rhs):
+
+def vsubrelu(lhs, rhs):
+
+def vmla(tensor_0, tensor_1, tensor_2):
+
+def vmadd(tensor_0, tensor_1, tensor_2):
+
+def vmaddrelu(tensor_0, tensor_1, tensor_2):
+
+def vsel(condition, lhs, rhs):
+
+def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):

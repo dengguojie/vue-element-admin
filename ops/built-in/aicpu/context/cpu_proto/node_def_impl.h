@@ -9,7 +9,7 @@
 #include <memory>
 #include <unordered_map>
 #include <functional>
-#include "proto/me_node_def.pb.h"
+#include "proto/cpu_node_def.pb.h"
 
 #include "cpu_tensor.h"
 #include "cpu_attr_value.h"
@@ -20,7 +20,7 @@ class NodeDefImpl {
 
 public:
     NodeDefImpl(
-        aicpuop::NodeDef *nodeDef, std::function<void(aicpuop::NodeDef *)> delFunc = [](aicpuop::NodeDef *p) {})
+        aicpuops::NodeDef *nodeDef, std::function<void(aicpuops::NodeDef *)> delFunc = [](aicpuops::NodeDef *p) {})
         : nodeDef_(nodeDef, delFunc)
     {}
 
@@ -107,7 +107,7 @@ public:
     std::unordered_map<std::string, std::shared_ptr<AttrValue> > Attrs() const;
 
 private:
-    std::shared_ptr<aicpuop::NodeDef> nodeDef_ { nullptr };
+    std::shared_ptr<aicpuops::NodeDef> nodeDef_ { nullptr };
 };
 } // namespace aicpu
 #endif // CPU_KERNEL_NODE_DEF_IMPL_H
