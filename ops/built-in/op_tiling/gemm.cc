@@ -91,14 +91,14 @@ bool CheckGEMMOpPara(const std::string &op_type, const TeOpParas &op_paras) {
   if (utils::SerialStringToFormat(tensor_a.format) != ge::FORMAT_FRACTAL_NZ ||
       utils::SerialStringToFormat(tensor_a.ori_format) != ge::FORMAT_ND) {
     OP_LOGE(op_type.c_str(), "tensor_a only support format Nz ori_format ND, but in fact format %s ori_format %s",
-            tensor_a.format, tensor_a.ori_format);
+            tensor_a.format.c_str(), tensor_a.ori_format.c_str());
     return false;
   }
   auto tensor_b = op_paras.inputs[1].tensor[0];
   if (utils::SerialStringToFormat(tensor_b.format) != ge::FORMAT_FRACTAL_NZ ||
       utils::SerialStringToFormat(tensor_b.ori_format) != ge::FORMAT_ND) {
     OP_LOGE(op_type.c_str(), "tensor_b only support format Nz ori_format ND, but in fact format %s ori_format %s",
-            tensor_b.format, tensor_b.ori_format);
+            tensor_b.format.c_str(), tensor_b.ori_format.c_str());
     return false;
   }
 
