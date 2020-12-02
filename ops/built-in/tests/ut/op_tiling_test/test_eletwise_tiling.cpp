@@ -31,7 +31,6 @@ static string to_string(const std::stringstream &tiling_data) {
   return result;
 }
 
-/*
 TEST_F(EletwiseTiling, Eletwise_tiling1) {
   using namespace optiling;
   std::string op_name = "AutoTiling";
@@ -154,4 +153,3 @@ TEST_F(EletwiseTiling, Eletwise_tiling3) {
   EXPECT_EQ(runInfo.block_dim, 32);
   EXPECT_EQ(to_string(runInfo.tiling_data), "210010000 268435456 8388608 8192 ");
 }
-*/

@@ -30,7 +30,6 @@ static string to_string(const std::stringstream &tiling_data) {
   return result;
 }
 
-/*
 TEST_F(ConcatTiling, Concat_tiling1) {
   using namespace optiling;
   optiling::OpRunInfo op_run_info;
@@ -156,4 +155,3 @@ TEST_F(ConcatTiling, Concat_tiling3) {
   EXPECT_EQ(to_string(runInfo.tiling_data),
             "1 4 6 4 15 3 0 0 4 0 5 4 6 9 ");
 }
-*/
