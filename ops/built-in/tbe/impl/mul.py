@@ -107,7 +107,7 @@ def op_select_format(x, y, output, kernel_name="mul"):
 
     size_x = functools.reduce(lambda x, y: x * y, shape_x)
     size_y = functools.reduce(lambda x, y: x * y, shape_y)
-
+    temp_format = None
     format_4d_list = ["NCHW", "NHWC", "HWCN"]
     format_5d_list = ["NDHWC", "DHWCN", "NCDHW"]
     dtype_list = ["float16", "float", "int32", "int16"]
@@ -158,8 +158,9 @@ def op_select_format(x, y, output, kernel_name="mul"):
             format_list.append("FRACTAL_Z_3D")
 
     if (len(shape_x) == 4 and size_y == 1) or (len(shape_y) == 4 and size_x == 1):
-        temp_shape = shape_x if len(shape_x) == 4 and size_y == 1 else shape_y
         temp_format = format_x if len(shape_x) == 4 and size_y == 1 else format_y
+    if ((len(shape_x) == 4 and size_y == 1) or (len(shape_y) == 4 and size_x == 1)) and temp_format in format_4d_list:
+        temp_shape = shape_x if len(shape_x) == 4 and size_y == 1 else shape_y
         dim_c = temp_shape[temp_format.index("C")]
         dim_n = temp_shape[temp_format.index("N")]
         second_last_dim = temp_shape[-2]
