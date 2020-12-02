@@ -109,9 +109,9 @@ TEST_F(concat_offset_test, concat_offset_test_1){
           outputDesc1.GetShapeRange(output_range1);
           outputDesc2.GetShapeRange(output_range2);
           outputDesc3.GetShapeRange(output_range3);
-          EXPECT_EQ(output_range1, expect_shape1);
-          EXPECT_EQ(output_range2, expect_shape1);
-          EXPECT_EQ(output_range3, expect_shape1);
+          EXPECT_EQ(output_range1, expect_range1);
+          EXPECT_EQ(output_range2, expect_range1);
+          EXPECT_EQ(output_range3, expect_range1);
       }
   }
   EXPECT_EQ(findOp, true);
