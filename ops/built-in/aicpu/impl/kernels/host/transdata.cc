@@ -73,7 +73,7 @@ uint32_t TransDataCpuKernel::DealData(T *input_data, T *output_data,
   DataType dt = static_cast<DataType>(input_tensor->GetDataType());
   // if cube_k equals to DT_INT8, and let its values 32 else if equals to
   // DT_FLOAT16 or DT_FLOAT ,need to let its values 16. other dateType not 
-  // support compute
+  // support compute.
   KERNEL_CHECK_FALSE(
       ((dt == DT_FLOAT16) || (dt == DT_INT8) || (dt == DT_FLOAT)),
       KERNEL_STATUS_PARAM_INVALID,
@@ -194,6 +194,13 @@ uint32_t TransDataCpuKernel::DealData(T *input_data, T *output_data,
   return KERNEL_STATUS_OK;
 }
 
+  // TransData supports input formats (NCDHW, DHWCN, NDHWC) convert to
+  // FORMAT_FRACTAL_Z_3D (GDC1HWN1N0C0), and also supports NHWC, NCHW, HWCN 
+  //converte to FORMAT_FRACTAL_Z (GC1HWN1N0C0). The final effect achieved is 
+  //for the data to be distributed diagonally. For example: When the input 
+  //filter format is NCDHW, calculated the Correspondence of index between NCDHW
+  //and FORMAT_FRACTAL_Z_3D , then Convert the old filter to the new filter, and 
+  //finally added 0 to the position where there is no data.
 uint32_t TransDataCpuKernel::Compute(CpuKernelContext& ctx) {
   Tensor* input_tensor = ctx.Input(0);
   KERNEL_CHECK_NULLPTR(input_tensor, KERNEL_STATUS_PARAM_INVALID,
@@ -202,7 +209,8 @@ uint32_t TransDataCpuKernel::Compute(CpuKernelContext& ctx) {
   KERNEL_CHECK_NULLPTR(output_tensor, KERNEL_STATUS_PARAM_INVALID,
                        "%s Get Tensor:output_tensor failed", TRANS_DATA);
   auto output_format = output_tensor->GetTensorShape()->GetFormat();
-  if((output_format != FORMAT_FRACTAL_Z) && (output_format != FORMAT_FRACTAL_Z_3D)) {
+  if((output_format != FORMAT_FRACTAL_Z) && 
+    (output_format != FORMAT_FRACTAL_Z_3D)) {
     KERNEL_LOG_EVENT("%s Unsupport output_format [%d]", 
                     TRANS_DATA , output_format);
     return KERNEL_STATUS_PARAM_INVALID;
