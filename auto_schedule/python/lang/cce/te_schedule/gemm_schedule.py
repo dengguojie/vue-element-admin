@@ -1553,6 +1553,8 @@ def _get_l0c_and_l1_axis(  # pylint: disable=too-many-locals, too-many-arguments
             reorder_flag = True
         return reorder_flag
 
+
+
     # split c_gm according to factor of loc and out_shape
     l0c_n_outer, l0c_n_inner = sch[c_gm].split(c_gm.op.axis[0], l0c_factor[0])
     l0c_m_outer, l0c_m_inner = sch[c_gm].split(c_gm.op.axis[1], l0c_factor[1])
