@@ -408,6 +408,9 @@ class GlobalVarTilingScalar:
 
 
 def set_tensor_more_4096(tik_instance, obj_gm, obj_ub, ins, outs):
+    """
+    Set UB when tensor bigger than 4096
+    """
     input_a = ins[0]
     indices = ins[1]
     output = outs[0]
@@ -451,6 +454,9 @@ def set_tensor_more_4096(tik_instance, obj_gm, obj_ub, ins, outs):
 
 
 def set_tensor_less_4096(tik_instance, profile, obj_gm, obj_ub, ins, outs):
+    """
+    Set UB when tensor less than 4096
+    """
     input_a = ins[0]
     indices = ins[1]
     output = outs[0]
