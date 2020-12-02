@@ -311,154 +311,6 @@ INFER_FUNC_REG(FullyConnectionCompress, FullyConnectionCompressInfer);
 VERIFY_FUNC_REG(FullyConnectionCompress, FullyConnectionCompressVerify);
 
 // ----------------Matmul-------------------
-string GetMatMulInfo(const Operator &op) {
-  auto desc_a = op.GetInputDesc("x1");
-  auto desc_b = op.GetInputDesc("x2");
-  ge::Shape shape_a = desc_a.GetShape();
-  ge::Shape shape_b = desc_b.GetShape();
-  ge::Shape ori_shape_a = desc_a.GetOriginShape();
-  ge::Shape ori_shape_b = desc_b.GetOriginShape();
-  std::vector<std::pair<int64_t, int64_t>> range_a;
-  std::vector<std::pair<int64_t, int64_t>> range_b;
-  desc_a.GetShapeRange(range_a);
-  desc_b.GetShapeRange(range_b);
-
-  bool trans_a = false, trans_b = false;
-  op.GetAttr("transpose_x1", trans_a);
-  op.GetAttr("transpose_x2", trans_b);
-
-  std::ostringstream oss;
-  oss << "shape of a: ";
-  for (int i = 0; i < shape_a.GetDimNum(); i++) {
-      oss << shape_a.GetDim(i) << ", ";
-  }
-  oss << "ori shape of a: ";
-  for (int i = 0; i < ori_shape_a.GetDimNum(); i++) {
-      oss << ori_shape_a.GetDim(i) << ", ";
-  }
-  oss << std::endl;
-  oss << "shape of b: ";
-  for (int i = 0; i < shape_b.GetDimNum(); i++) {
-      oss << shape_b.GetDim(i) << ", ";
-  }
-  oss << "ori shape of b: ";
-  for (int i = 0; i < ori_shape_b.GetDimNum(); i++) {
-      oss << ori_shape_b.GetDim(i) << ", ";
-  }
-  oss << std::endl;
-  oss << "trans_a " << trans_a << " trans_b " << trans_b << std::endl;
-  oss << "range of a: (";
-  for (int i = 0; i < range_a.size(); i++) {
-      oss << "(" << range_a[i].first << ", " << range_a[i].second << ") ";
-  }
-  oss << ")" << std::endl;
-  oss << "range of b: (";
-  for (int i = 0; i < range_b.size(); i++) {
-      oss << "(" << range_b[i].first << ", " << range_b[i].second << "), ";
-  }
-  oss << ")" << std::endl;
-  return oss.str();
-}
-
-graphStatus GetMatMulOutputShape(const Operator &op,
-                                 std::vector<int64_t> *shape_out,
-                                 std::vector<std::pair<int64_t, int64_t>> *shape_range_out) {
-  ge::TensorDesc desc_a = op.GetInputDesc("x1");
-  ge::TensorDesc desc_b = op.GetInputDesc("x2");
-  ge::Shape shape_a = desc_a.GetShape();
-  ge::Shape shape_b = desc_b.GetShape();
-
-  if (shape_a.GetDims() == UNKNOWN_RANK || shape_b.GetDims() == UNKNOWN_RANK) {
-    shape_out->push_back(-2);
-    return GRAPH_SUCCESS;
-  }
-
-  bool trans_a = false;
-  if (ge::GRAPH_SUCCESS != op.GetAttr("transpose_x1", trans_a)) {
-    OpsGetAttrErrReport(op.GetName(), "transpose_x1");
-    OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]%s GetOpAttr transpose_x1 failed!", op.GetName().c_str());
-    return GRAPH_FAILED;
-  }
-  bool trans_b = false;
-  if (ge::GRAPH_SUCCESS != op.GetAttr("transpose_x2", trans_b)) {
-    OpsGetAttrErrReport(op.GetName(), "transpose_x2");
-    OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]%s GetOpAttr transpose_x2 failed!", op.GetName().c_str());
-    return GRAPH_FAILED;
-  }
-
-  std::vector<std::pair<int64_t, int64_t>> shape_range_a;
-  std::vector<std::pair<int64_t, int64_t>> shape_range_b;
-  desc_a.GetShapeRange(shape_range_a);
-  desc_b.GetShapeRange(shape_range_b);
-
-  int64_t tensor_ak = 0;
-  int64_t tensor_bk = 0;
-  std::pair<int64_t, int64_t> range_ak;
-  std::pair<int64_t, int64_t> range_bk;
-  if (trans_a) {
-    if (trans_b) {
-      shape_out->push_back(shape_a.GetDim(1));
-      shape_out->push_back(shape_b.GetDim(0));
-      tensor_ak = shape_a.GetDim(0);
-      tensor_bk = shape_b.GetDim(1);
-
-      if (!shape_range_a.empty() && !shape_range_b.empty()) {
-        shape_range_out->push_back(shape_range_a[1]);
-        shape_range_out->push_back(shape_range_b[0]);
-        range_ak = shape_range_a[0];
-        range_bk = shape_range_b[1];
-      }
-    } else {
-      shape_out->push_back(shape_a.GetDim(1));
-      shape_out->push_back(shape_b.GetDim(1));
-      tensor_ak = shape_a.GetDim(0);
-      tensor_bk = shape_b.GetDim(0);
-
-      if (!shape_range_a.empty() && !shape_range_b.empty()) {
-        shape_range_out->push_back(shape_range_a[1]);
-        shape_range_out->push_back(shape_range_b[1]);
-        range_ak = shape_range_a[0];
-        range_bk = shape_range_b[0];
-      }
-    }
-  } else {
-    if (trans_b) {
-      shape_out->push_back(shape_a.GetDim(0));
-      shape_out->push_back(shape_b.GetDim(0));
-      tensor_ak = shape_a.GetDim(1);
-      tensor_bk = shape_b.GetDim(1);
-
-      if (!shape_range_a.empty() && !shape_range_b.empty()) {
-        shape_range_out->push_back(shape_range_a[0]);
-        shape_range_out->push_back(shape_range_b[0]);
-        range_ak = shape_range_a[1];
-        range_bk = shape_range_b[1];
-      }
-    } else {
-      shape_out->push_back(shape_a.GetDim(0));
-      shape_out->push_back(shape_b.GetDim(1));
-      tensor_ak = shape_a.GetDim(1);
-      tensor_bk = shape_b.GetDim(0);
-
-      if (!shape_range_a.empty() && !shape_range_b.empty()) {
-        shape_range_out->push_back(shape_range_a[0]);
-        shape_range_out->push_back(shape_range_b[1]);
-        range_ak = shape_range_a[1];
-        range_bk = shape_range_b[0];
-      }
-    }
-  }
-  if (tensor_ak != tensor_bk && tensor_ak != -1 && tensor_bk != -1) {
-    OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]The input shape is not right!");
-    return GRAPH_FAILED;
-  }
-  if (!shape_range_a.empty() && !shape_range_b.empty() && range_ak != range_bk) {
-    OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]The input shape range of x is not same!");
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
 // Check the dtype and attr of the input tensor description.
 IMPLEMT_VERIFIER(MatMul, MatMulVerify) {
   std::vector<DataType> support_list;
@@ -479,27 +331,100 @@ IMPLEMT_COMMON_INFERFUNC(MatMulInferShape) {
   TensorDesc tensordesc_output = op.GetOutputDesc("y");
   ge::TensorDesc inputTensorDescX = op.GetInputDesc("x1");
   ge::TensorDesc inputTensorDescY = op.GetInputDesc("x2");
+  std::vector<std::pair<int64_t, int64_t>> shape_x_range;
+  std::vector<std::pair<int64_t, int64_t>> shape_y_range;
+
+  ge::Shape shapeX = inputTensorDescX.GetShape();
+  ge::Shape shapeY = inputTensorDescY.GetShape();
+  auto shape_x_vec = inputTensorDescX.GetShape().GetDims();
+  auto shape_y_vec = inputTensorDescY.GetShape().GetDims();
+
+  // whether have unkown dims
+  bool is_unkown_rank_x = shape_x_vec == UNKNOWN_RANK ? true : false;
+  bool is_unkown_rank_y = shape_y_vec == UNKNOWN_RANK ? true : false;
+
+  if (is_unkown_rank_x) {
+    shape_x_vec = {-1, -1};
+    shapeX = ge::Shape(shape_x_vec);
+  } else {
+    inputTensorDescX.GetShapeRange(shape_x_range);
+  }
+
+  if (is_unkown_rank_y) {
+    shape_y_vec = {-1, -1};
+    shapeY = ge::Shape(shape_y_vec);
+  } else {
+    inputTensorDescY.GetShapeRange(shape_y_range);
+  }
 
   DataType dtype = inputTensorDescX.GetDataType();
   if (dtype == DT_FLOAT) {
     OP_LOGW(op.GetName().c_str(), "[Plugin][WARNING]MatMul fp32 op has poor performance!");
   }
   OP_LOGW(op.GetName().c_str(), "[Plugin][WARNING]MatMul fp32 op has poor performance!");
-
-  OP_LOGD(op.GetName().c_str(), "%s", GetMatMulInfo(op).c_str());
-
-  std::vector<int64_t> shape_out;
-  std::vector<std::pair<int64_t, int64_t>> shape_range_out;
-  if (GRAPH_SUCCESS != GetMatMulOutputShape(op, &shape_out, &shape_range_out)) {
+  bool transposeA = false;
+  if (ge::GRAPH_SUCCESS != op.GetAttr("transpose_x1", transposeA)) {
+    OpsGetAttrErrReport(op.GetName(), "transpose_x1");
+    OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]Matmul GetOpAttr transpose_x1 failed!");
     return GRAPH_FAILED;
   }
-  
-  ge::Shape outputShape(shape_out);
+
+  bool transposeB = false;
+  if (ge::GRAPH_SUCCESS != op.GetAttr("transpose_x2", transposeB)) {
+    OpsGetAttrErrReport(op.GetName(), "transpose_x2");
+    OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]Matmul GetOpAttr transpose_x2 failed!");
+    return GRAPH_FAILED;
+  }
+
+  std::vector<std::pair<int64_t, int64_t>> shape_out_range;
+  MakeUpShapeRange(shape_x_vec, shape_x_range);
+  MakeUpShapeRange(shape_y_vec, shape_y_range);
+  std::vector<int64_t> dimVector;
+  int64_t tensor_ak = 0;
+  int64_t tensor_bk = 0;
+  if (transposeA) {
+    if (transposeB) {
+      dimVector.push_back(shapeX.GetDim(1));
+      shape_out_range.push_back(shape_x_range[1]);
+      dimVector.push_back(shapeY.GetDim(0));
+      shape_out_range.push_back(shape_y_range[0]);
+      tensor_ak = shapeX.GetDim(0);
+      tensor_bk = shapeY.GetDim(1);
+    } else {
+      dimVector.push_back(shapeX.GetDim(1));
+      shape_out_range.push_back(shape_x_range[1]);
+      dimVector.push_back(shapeY.GetDim(1));
+      shape_out_range.push_back(shape_y_range[1]);
+      tensor_ak = shapeX.GetDim(0);
+      tensor_bk = shapeY.GetDim(0);
+    }
+  } else {
+    if (transposeB) {
+      dimVector.push_back(shapeX.GetDim(0));
+      shape_out_range.push_back(shape_x_range[0]);
+      dimVector.push_back(shapeY.GetDim(0));
+      shape_out_range.push_back(shape_y_range[0]);
+      tensor_ak = shapeX.GetDim(1);
+      tensor_bk = shapeY.GetDim(1);
+    } else {
+      dimVector.push_back(shapeX.GetDim(0));
+      shape_out_range.push_back(shape_x_range[0]);
+      dimVector.push_back(shapeY.GetDim(1));
+      shape_out_range.push_back(shape_y_range[1]);
+      tensor_ak = shapeX.GetDim(1);
+      tensor_bk = shapeY.GetDim(0);
+    }
+  }
+  if (tensor_ak != tensor_bk && tensor_ak != -1 && tensor_bk != -1) {
+    OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]The input shape is not right!");
+    return GRAPH_FAILED;
+  }
+  ge::Shape outputShape(dimVector);
 
   tensordesc_output.SetShape(outputShape);
-  tensordesc_output.SetShapeRange(shape_range_out);
   tensordesc_output.SetOriginShape(outputShape);
   tensordesc_output.SetDataType(op.GetInputDesc("x1").GetDataType());
+  tensordesc_output.SetShapeRange(shape_out_range);
   (void)op.UpdateOutputDesc("y", tensordesc_output);
   return GRAPH_SUCCESS;
 }
@@ -541,7 +466,17 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
     OP_LOGW(op.GetName().c_str(), "[Plugin][WARNING]MatMul fp32 op has poor performance!");
   }
   OP_LOGW(op.GetName().c_str(), "[Plugin][WARNING]MatMul fp32 op has poor performance!");
+  bool transposeA = false;
+  if (ge::GRAPH_SUCCESS != op.GetAttr("transpose_x1", transposeA)) {
+    OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]Matmul GetOpAttr transpose_x1 failed!");
+    return GRAPH_FAILED;
+  }
 
+  bool transposeB = false;
+  if (ge::GRAPH_SUCCESS != op.GetAttr("transpose_x2", transposeB)) {
+    OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]Matmul GetOpAttr transpose_x2 failed!");
+    return GRAPH_FAILED;
+  }
   if (shapeX.GetDims().size() != 2 && shapeX.GetDims().size() != 4){
     OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]Matmul the first input dims is not 2!");
     return GRAPH_FAILED;
@@ -550,16 +485,26 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
     OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]Matmul the second input dims is not 2!");
     return GRAPH_FAILED;
   }
-
-  OP_LOGD(op.GetName().c_str(), "%s", GetMatMulInfo(op).c_str());
-
-  std::vector<int64_t> shape_out;
-  std::vector<std::pair<int64_t, int64_t>> shape_range_out;
-  if (GRAPH_SUCCESS != GetMatMulOutputShape(op, &shape_out, &shape_range_out)) {
-    return GRAPH_FAILED;
+  std::vector<int64_t> dimVector;
+  if (transposeA) {
+    if (transposeB) {
+      dimVector.push_back(shapeX.GetDim(1));
+      dimVector.push_back(shapeY.GetDim(0));
+    } else {
+      dimVector.push_back(shapeX.GetDim(1));
+      dimVector.push_back(shapeY.GetDim(1));
+    }
+  } else {
+    if (transposeB) {
+      dimVector.push_back(shapeX.GetDim(0));
+      dimVector.push_back(shapeY.GetDim(0));
+    } else {
+      dimVector.push_back(shapeX.GetDim(0));
+      dimVector.push_back(shapeY.GetDim(1));
+    }
   }
 
-  ge::Shape outputShape(shape_out);
+  ge::Shape outputShape(dimVector);
   auto input_format = FORMAT_ND;
   auto input_format_1 = FORMAT_ND;
   inputTensorDescX.SetFormat(input_format_1);
@@ -567,7 +512,6 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
   inputTensorDescY.SetOriginFormat(input_format);
   inputTensorDescY.SetFormat(input_format);
   tensordesc_output.SetShape(outputShape);
-  tensordesc_output.SetShapeRange(shape_range_out);
   tensordesc_output.SetFormat(input_format_1);
   tensordesc_output.SetOriginFormat(input_format_1);
   if (op.GetInputDesc("x1").GetDataType() == ge::DT_INT8) {
