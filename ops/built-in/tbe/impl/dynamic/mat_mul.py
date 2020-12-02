@@ -35,6 +35,7 @@ MKN_MAX = 2147483648
 BLOCK_CUBE = 16
 DYNAMIC_FLAG = -1
 NZ_LENGTH = 4
+ND_LENGTH = 4
 
 
 def _check_format(real_format, expect_format, param_name):
@@ -48,9 +49,9 @@ def _check_format(real_format, expect_format, param_name):
 
 def _check_variable_range(variable, mini, maxi, name):
     """
-    check variable range
+    check variable range, mini <= range[0] <= range[1] <= maxi
     """
-    if (not isinstance(variable, int)) or variable < mini or variable > maxi:
+    if (not isinstance(variable[0], int)) or variable[0] < mini or variable[0] > maxi:
         dict_args = dict()
         dict_args["errCode"] = "E80002"
         dict_args["param_name"] = name
@@ -59,44 +60,86 @@ def _check_variable_range(variable, mini, maxi, name):
         dict_args["value"] = str(variable)
         raise RuntimeError(
             dict_args, error_manager_util.get_error_message(dict_args))
+    if (not isinstance(variable[1], int)) or variable[1] < mini or variable[1] > maxi:
+        dict_args = dict()
+        dict_args["errCode"] = "E80002"
+        dict_args["param_name"] = name
+        dict_args["min_value"] = str(mini)
+        dict_args["max_value"] = str(maxi)
+        dict_args["value"] = str(variable)
+        raise RuntimeError(
+            dict_args, error_manager_util.get_error_message(dict_args))
+    if variable[0] > variable[1]:
+        error_reson = name + " is not valid"
+        error_manager_vector.raise_err_specific_reson("mat_mul", error_reson)
 
 
-def _get_input_range(range_x1, range_x2, trans_a, trans_b, format_a, format_b):
+def _check_relation_range(range1, range2, name):
+    """
+    check range is unite from different variable
+    """
+    if list(range1) != list(range2):
+        error_reson = "the range of " + name + " is not unit"
+        error_manager_vector.raise_err_specific_reson("mat_mul", error_reson)
+
+
+def _get_input_range(range_x1, range_x2, range_y, trans_a, trans_b):
     """
     get range in m, k, n
     """
-    if len(range_x1) == NZ_LENGTH and format_a == "FRACTAL_NZ":
+    if range_x1 and len(range_x1) == NZ_LENGTH:
         if trans_a:
-            m_range = [range_x1[0][0] * range_x1[3][0],
-                       range_x1[0][1] * range_x1[3][1]]
-            k_range = [range_x1[1][0] * range_x1[2][0],
-                       range_x1[1][1] * range_x1[2][1]]
+            m_range_x1 = list(range_x1[0])
+            k_range_x1 = list(range_x1[1])
         else:
-            k_range = [range_x1[0][0] * range_x1[3][0],
-                       range_x1[0][1] * range_x1[3][1]]
-            m_range = [range_x1[1][0] * range_x1[2][0],
-                       range_x1[1][1] * range_x1[2][1]]
+            k_range_x1 = list(range_x1[0])
+            m_range_x1 = list(range_x1[1])
     else:
-        m_range = range_x1[1] if trans_a else range_x1[0]
-        k_range = range_x1[0] if trans_a else range_x1[1]
+        error_manager_vector.raise_err_specific_reson(
+            "mat_mul", "length of x1_range must be 4"
+        )
 
-    if len(range_x2) == NZ_LENGTH and format_b == "FRACTAL_NZ":
+    if range_x2 and len(range_x2):
         if trans_b:
-            n_range = [range_x2[1][0] * range_x2[2][0],
-                       range_x2[1][1] * range_x2[2][1]]
+            k_range_x2 = list(range_x2[0])
+            n_range_x2 = list(range_x2[1])
         else:
-            n_range = [range_x2[0][0] * range_x2[3][0],
-                       range_x2[0][1] * range_x2[3][1]]
+            n_range_x2 = list(range_x2[0])
+            k_range_x2 = list(range_x2[1])
     else:
-        n_range = range_x2[0] if trans_b else range_x2[1]
+        error_manager_vector.raise_err_specific_reson(
+            "mat_mul", "length of x2_range must be 4"
+        )
+    
+    if range_y and len(range_y) == NZ_LENGTH:
+        n_range_y = list(range_y[0])
+        m_range_y = list(range_y[1])
+    else:
+        error_manager_vector.raise_err_specific_reson(
+            "mat_mul", "length of y_range must be 4"
+        )
+    # check range unite in different var
+    _check_relation_range(m_range_x1, m_range_y, "m")
+    _check_relation_range(n_range_x2, n_range_y, "n")
+    _check_relation_range(k_range_x1, k_range_x2, "k")
 
-    return [m_range, k_range, n_range]
+    return [m_range_x1, k_range_x1, n_range_x2]
 
 
 def _check_dynamic_mode(shape_x1, shape_x2):
     """
     check dynamic mode
     """
+    if len(shape_x1) != ND_LENGTH:
+        error_manager_vector.raise_err_input_shape_invalid(
+            "mat_mul", "x1", "ori_shape dim must be 2"
+        )
+
+    if len(shape_x2) != ND_LENGTH:
+        error_manager_vector.raise_err_input_shape_invalid(
+            "mat_mul", "x2", "ori_shape dim must be 2"
+        )
+
     if list(shape_x1) != [DYNAMIC_FLAG, DYNAMIC_FLAG] or list(shape_x2) != [DYNAMIC_FLAG, DYNAMIC_FLAG]:
         error_manager_vector.raise_err_specific_reson(
             "mat_mul", "dynamic must be in m,k,n at the same time"
@@ -108,6 +151,8 @@ def check_and_config_para(input_x1, input_x2, bias, output_y,
     """
     check and config dynamic mode
     """
+
+    # get format and dtype
     format_a = input_x1.get("format")
     format_b = input_x2.get("format")
     format_out = output_y.get("format")
@@ -115,6 +160,7 @@ def check_and_config_para(input_x1, input_x2, bias, output_y,
     dtype_b = input_x2.get("dtype").lower()
     dtype_out = output_y.get("dtype").lower()
 
+    # check kernel_name dtype and format
     para_check.check_kernel_name(kernel_name)
     para_check.check_dtype_rule(dtype_a, ["float16"], "x1")
     para_check.check_dtype_rule(dtype_b, ["float16"], "x2")
@@ -123,15 +169,19 @@ def check_and_config_para(input_x1, input_x2, bias, output_y,
     _check_format(format_b, "FRACTAL_NZ", "x2")
     _check_format(format_out, "FRACTAL_NZ", "output")
 
+    # get range and ori_shape
     range_x1 = input_x1.get("range")
     range_x2 = input_x2.get("range")
+    range_y = output_y.get("range")
     shape_x1 = input_x1.get("ori_shape")
     shape_x2 = input_x2.get("ori_shape")
 
-    input_range = _get_input_range(
-        range_x1, range_x2, trans_a, trans_b, format_a, format_b)
+    # check dynamic mode
     _check_dynamic_mode(shape_x1, shape_x2)
+    # get range in m,k,n
+    input_range = _get_input_range(range_x1, range_x2, range_y, trans_a, trans_b)
 
+    # check bias if bias in not None
     if bias:
         dtype_bias = bias.get("dtype")
         para_check.check_dtype_rule(dtype_bias, "float16", "bias")
@@ -176,10 +226,17 @@ def _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y, trans_a, tran
         A dict object, dict with input tensor and output tensor
     """
 
+    # check offset
     if offset_w:
         error_manager_vector.raise_err_specific_reson(
-            "mat_mul", 'offset_w must be None!')
+            "mat_mul", 'offset_w must be None!'
+        )
+    if offset_x != 0:
+        error_manager_vector.raise_err_specific_reson(
+            "mat_mul", 'offset_x must be 0!'
+        )
 
+    # check soc_version
     soc_version = tbe_platform.get_soc_spec("SOC_VERSION")
     if soc_version in ("Hi3796CV300ES", "Hi3796CV300CS"):
         error_manager_vector.raise_err_specific_reson(
@@ -191,19 +248,12 @@ def _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y, trans_a, tran
     )
 
     m_range, k_range, n_range = input_range
-    _check_variable_range(m_range[0], MKN_MIN, MKN_MAX, "m_range")
-    _check_variable_range(m_range[1], MKN_MIN, MKN_MAX, "m_range")
-    _check_variable_range(k_range[0], MKN_MIN, MKN_MAX, "k_range")
-    _check_variable_range(k_range[1], MKN_MIN, MKN_MAX, "k_range")
-    _check_variable_range(n_range[0], MKN_MIN, MKN_MAX, "n_range")
-    _check_variable_range(n_range[1], MKN_MIN, MKN_MAX, "n_range")
+    _check_variable_range(m_range, MKN_MIN, MKN_MAX, "m_range")
+    _check_variable_range(k_range, MKN_MIN, MKN_MAX, "k_range")
+    _check_variable_range(n_range, MKN_MIN, MKN_MAX, "n_range")
 
     shape_x1_nz = [DYNAMIC_FLAG, DYNAMIC_FLAG, BLOCK_CUBE, BLOCK_CUBE]
     shape_x2_nz = [DYNAMIC_FLAG, DYNAMIC_FLAG, BLOCK_CUBE, BLOCK_CUBE]
-
-    m_range = [math.ceil(i / BLOCK_CUBE) for i in m_range]
-    k_range = [math.ceil(i / BLOCK_CUBE) for i in k_range]
-    n_range = [math.ceil(i / BLOCK_CUBE) for i in n_range]
 
     m_var = tbe_base.var("m", m_range)
     k_var = tbe_base.var("k", k_range)
@@ -212,7 +262,6 @@ def _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y, trans_a, tran
     # only support NZ for dynamic mode
     trans_a = not trans_a
     trans_b = not trans_b
-
     if not trans_a:
         shape_x1_nz[0] = m_var
         shape_x1_nz[1] = k_var
@@ -294,8 +343,12 @@ def mat_mul_fuse_compute(input_x1, input_x2, bias, offset_w, output_y,
 
 @tbe_base.register_operator("MatMul")
 @tbe_base.register_operator("MatMulV2")
-@para_check.check_op_params(dict, dict, (dict, NoneType), (dict, NoneType), dict,
-                            bool, bool, int, str)
+@para_check.check_op_params(
+    para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+    para_check.OPTION_INPUT, para_check.OPTION_INPUT,
+    para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_BOOL,
+    para_check.REQUIRED_ATTR_BOOL,
+    para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def mat_mul(input_x1, input_x2, bias, offset_w={}, output_y={},
             trans_a=False, trans_b=False, offset_x=0, kernel_name="matmul"):
     """
