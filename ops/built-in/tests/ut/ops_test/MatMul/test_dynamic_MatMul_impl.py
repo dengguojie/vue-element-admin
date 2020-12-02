@@ -42,11 +42,12 @@ def gen_matmul_dynamic_succecase(m_range, k_range, n_range, src_dtype, dst_dtype
     """
     if format == "NZ":
         format = "FRACTAL_NZ"
+    block_range = [[CUBE_BLOCK, CUBE_BLOCK], [CUBE_BLOCK, CUBE_BLOCK]]
     x1_range = [m_range, k_range] if trans_a else [k_range, m_range]
-    x1_range += [CUBE_BLOCK, CUBE_BLOCK]
+    x1_range += block_range
     x2_range = [k_range, n_range] if trans_b else [n_range, k_range]
-    x2_range += [CUBE_BLOCK, CUBE_BLOCK]
-    y_range = [n_range, m_range, CUBE_BLOCK, CUBE_BLOCK]
+    x2_range += block_range
+    y_range = [n_range, m_range] + block_range
 
     x1 = {"ori_shape": (-1, -1), "dtype": src_dtype, "shape": (-1, -1, CUBE_BLOCK, CUBE_BLOCK), 
           "format": format , "ori_format": "ND", "range": x1_range
@@ -77,11 +78,12 @@ def gen_matmul_dynamic_errorcase(m_range, k_range, n_range, src_dtype, dst_dtype
     gen the error case for ut test
     """
 
+    block_range = [[CUBE_BLOCK, CUBE_BLOCK], [CUBE_BLOCK, CUBE_BLOCK]]
     x1_range = [m_range, k_range] if trans_a else [k_range, m_range]
-    x1_range += [CUBE_BLOCK, CUBE_BLOCK]
+    x1_range += block_range
     x2_range = [k_range, m_range] if trans_b else [n_range, k_range]
-    x2_range += [CUBE_BLOCK, CUBE_BLOCK]
-    y_range = [n_range, m_range, CUBE_BLOCK, CUBE_BLOCK]
+    x2_range += block_range
+    y_range = [n_range, m_range] +  block_range
     x1 = {"ori_shape": (-1, -1), "dtype": src_dtype, "shape": (-1, -1, CUBE_BLOCK, CUBE_BLOCK), 
           "format": format , "ori_format": "ND", "range": x1_range
     }
@@ -110,11 +112,11 @@ def gen_matmul_dynamic_errorcase(m_range, k_range, n_range, src_dtype, dst_dtype
     elif error_mode == "range_relation":
         x1["range"][0], x1["range"][1] = x1["range"][1], x1["range"][0]
     elif error_mode == "x1_range_length":
-        x1["range"] = x1["range"] + [CUBE_BLOCK]
+        x1["range"] = x1["range"] + [[CUBE_BLOCK, CUBE_BLOCK]]
     elif error_mode == "x2_range_length":
-        x2["range"] = x2["range"] + [CUBE_BLOCK]
+        x2["range"] = x2["range"] + [[CUBE_BLOCK, CUBE_BLOCK]]
     elif error_mode == "y_range_length":
-        y["range"] = y["range"] + [CUBE_BLOCK]
+        y["range"] = y["range"] + [[CUBE_BLOCK, CUBE_BLOCK]]
     
     return {
         "params": [x1, x2, bias, offset_w, y, trans_a, trans_b, offset_x],
