@@ -139,7 +139,7 @@ class MatmulTiling(CubeTilingOp):
         ----------
         tiling_in : dict, result of tiling fetch
 
-        shape_info : list, size of m, k, n
+        shape_info : list, size of m, k, n, align to 16 or 32
 
         Returns
         -------
@@ -147,9 +147,7 @@ class MatmulTiling(CubeTilingOp):
         """
 
         tiling = self._preprocess_tiling(tiling_in)
-        # get shape info (align to 16 or 32)
         m_value, k_value, n_value = shape_info
-        # get block_dim value
         block_n, block_m = tiling["block_dim"][1:3]
         # get double buffer value
         is_al1_double = tiling.get("manual_pingpong_buffer").get("AL1_pbuffer")
