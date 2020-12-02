@@ -141,15 +141,6 @@ ut_case.add_precision_case("all", {
 })
 
 ut_case.add_precision_case("all", {
-    "params": [{"shape": (132, 138), "dtype": "float32", "ori_shape":(13, 138), "ori_format":"ND", "format":"ND", "param_type": "input"},
-               {"shape": (132, ), "dtype": "int32", "ori_shape":(13, ), "ori_format":"ND", "format":"ND", "param_type": "input"},
-               {"shape": (132, ), "dtype": "uint8", "ori_shape":(13, ), "ori_format":"ND", "format":"ND", "param_type": "output"},
-               1],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
-
-ut_case.add_precision_case("all", {
     "params": [{"shape": (33, 1024), "dtype": "float32", "ori_shape":(33, 1024), "ori_format":"ND", "format":"ND", "param_type": "input"},
                {"shape": (33, ), "dtype": "int32", "ori_shape":(33, ), "ori_format":"ND", "format":"ND", "param_type": "input"},
                {"shape": (33, ), "dtype": "uint8", "ori_shape":(33, ), "ori_format":"ND", "format":"ND", "param_type": "output"},
