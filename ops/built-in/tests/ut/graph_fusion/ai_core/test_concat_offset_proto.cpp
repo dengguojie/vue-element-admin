@@ -55,7 +55,7 @@ TEST_F(concat_offset_test, concat_offset_test_1){
   //init concat_dim
   Tensor input_concat_dim_tensor;
   input_concat_dim_tensor.SetTensorDesc(TensorDesc(ge::Shape({1}), ge::FORMAT_ND, ge::DT_INT32));
-  unit32_t* input_concat_dim_value = new uint32_t[1]{1};
+  uint32_t* input_concat_dim_value = new uint32_t[1]{1};
   input_concat_dim_tensor.SetData((uint8_t*)input_concat_dim_value, 1*sizeof(uint32_t));
   auto input_concat_dim_data = op::Const("concat_dim").set_attr_value(input_concat_dim_tensor);
   delete []input_concat_dim_value;
@@ -77,9 +77,9 @@ TEST_F(concat_offset_test, concat_offset_test_1){
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
 
   bool findOp = false;
-  bool ShapeMatch1 = false;
-  bool ShapeMatch2 = false;
-  bool ShapeMatch3 = false;
+  bool shapeMatch1 = false;
+  bool shapeMatch2 = false;
+  bool shapeMatch3 = false;
 
   //except_shape
   auto expect_shape1 = vector<int64_t>({-1,});

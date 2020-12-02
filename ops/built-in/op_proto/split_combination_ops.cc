@@ -1060,7 +1060,6 @@ IMPLEMT_COMMON_INFERFUNC(ConcatOffsetInferShape) {
     vector<int64_t> dim_size = {};
     FixShapeRangeWithDims(dim_size, input1_shape, input2_shape, input1_range, input2_range);
   }
-
   for (auto i = 0; i < num_concat; i++) {
     auto output_desc = op_info->MutableOutputDesc(i);
     output_desc->SetShape(GeShape(input1_shape));
