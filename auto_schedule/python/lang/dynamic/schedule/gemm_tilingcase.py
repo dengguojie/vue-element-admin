@@ -139,7 +139,7 @@ class MatmulTiling(CubeTilingOp):
         ----------
         tiling_in : dict, result of tiling fetch
 
-        shape_info : list, size of m, k, n
+        shape_info : list, size of m, k, n, align to 16 or 32
 
         Returns
         -------
@@ -147,9 +147,7 @@ class MatmulTiling(CubeTilingOp):
         """
 
         tiling = self._preprocess_tiling(tiling_in)
-        # get shape info (align to 16 or 32)
         m_value, k_value, n_value = shape_info
-        # get block_dim value
         block_n, block_m = tiling["block_dim"][1:3]
         # get double buffer value
         is_al1_double = tiling.get("manual_pingpong_buffer").get("AL1_pbuffer")
@@ -199,11 +197,10 @@ class MatmulTiling(CubeTilingOp):
             n_split_value = math.ceil(math.ceil(n_value / n_l0c_value) / block_n) * n_l0c_value
             k_range = [max(1, k_value - K_LEN), min(k_value + K_LEN, (l1_size - al1_size) //
                                                     (is_bl1_double * n_split_value * BIT_RATIO_DICT[self.b_type] *
-                                                     BIT_DIR[
-                                                         self.b_type] * UNIT_LEN))]
+                                                     BIT_DIR[self.b_type] * UNIT_LEN))]
             n_range = [max(1, n_value - N_LEN), (l1_size - al1_size) //
-                       (is_bl1_double * k_range[1] * BIT_RATIO_DICT[self.b_type] * BIT_DIR[
-                           self.b_type] * UNIT_LEN * n_l0c_value) * block_n * n_l0c_value]
+                       (is_bl1_double * k_range[1] * BIT_RATIO_DICT[self.b_type] *
+                       BIT_DIR[self.b_type] * UNIT_LEN * n_l0c_value) * block_n * n_l0c_value]
         elif not tiling["AL1_shape"] and tiling["BL1_shape"]:
             bl1_size = kbl1 * nbl1 * is_bl1_double * BIT_RATIO_DICT[self.b_type]
             n_range = [max(1, n_value - N_LEN), n_value + N_LEN]
@@ -211,11 +208,10 @@ class MatmulTiling(CubeTilingOp):
             m_split_value = math.ceil(math.ceil(m_value / m_l0c_value) / block_m) * m_l0c_value
             k_range = [max(1, k_value - K_LEN), min(k_value + K_LEN, (l1_size - bl1_size) //
                                                     (is_al1_double * m_split_value * BIT_RATIO_DICT[self.a_type] *
-                                                     BIT_DIR[
-                                                         self.a_type] * UNIT_LEN))]
+                                                     BIT_DIR[self.a_type] * UNIT_LEN))]
             m_range = [max(1, m_value - M_LEN), (l1_size - bl1_size) //
-                       (is_al1_double * k_range[1] * BIT_RATIO_DICT[self.a_type] * BIT_DIR[
-                           self.a_type] * UNIT_LEN * m_l0c_value) * m_l0c_value * block_m]
+                       (is_al1_double * k_range[1] * BIT_RATIO_DICT[self.a_type] *
+                       BIT_DIR[self.a_type] * UNIT_LEN * m_l0c_value) * m_l0c_value * block_m]
         else:
             actual_m_value = math.ceil(math.ceil(m_value / tiling["CL0_matrix"][1]) / block_m) * tiling["CL0_matrix"][1]
             actual_n_value = math.ceil(math.ceil(n_value / tiling["CL0_matrix"][0]) / block_n) * tiling["CL0_matrix"][0]
