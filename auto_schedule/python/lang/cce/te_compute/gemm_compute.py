@@ -818,14 +818,14 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
                 gm_a_shape_normalize = tensor_a.shape
             else:
                 if is_nd_int82fp32:
-                    m_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 1]), 32) * 32 // 16
-                    km_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 2]), 32) * 32 // 16
+                    m_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 1]) / 32) * 32 // 16
+                    km_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 2]) / 32) * 32 // 16
                 else:
                     if in_a_dtype == "int8":
-                        m_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 1]), 32) * 32 // 16
+                        m_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 1]) / 32) * 32 // 16
                     else:
-                        m_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 1]), block_in)
-                    km_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 2]), block_reduce)
+                        m_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 1]) / block_in)
+                    km_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 2]) / block_reduce)
                 m_shape_ori = _get_value(tensor_a.shape[tensor_a_length - 1])
                 gm_a_shape_normalize.append(km_shape * block_reduce)
                 gm_a_shape_normalize.append(m_shape * block_in)
@@ -837,14 +837,14 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
                 gm_a_shape_normalize = tensor_a.shape
             else:
                 if is_nd_int82fp32:
-                    m_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 2]), 32) * 32 // 16
-                    km_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 1]), 32) * 32 // 16
+                    m_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 2]) / 32) * 32 // 16
+                    km_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 1]) / 32) * 32 // 16
                 else:
                     if in_a_dtype == "int8":
-                        m_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 2]), 32) * 32 // 16
+                        m_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 2]) / 32) * 32 // 16
                     else:
-                        m_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 2]), block_in)
-                    km_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 1]), block_reduce)
+                        m_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 2]) / block_in)
+                    km_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 1]) / block_reduce)
                 m_shape_ori = _get_value(tensor_a.shape[tensor_a_length - 2])
                 gm_a_shape_normalize.append(m_shape * block_in)
                 gm_a_shape_normalize.append(km_shape * block_reduce)
@@ -870,14 +870,14 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
                 gm_b_shape_normalize = tensor_b.shape
             else:
                 if is_nd_int82fp32:
-                    kn_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 1]), 32) * 32 // 16
-                    n_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 2]), 32) * 32 // 16
+                    kn_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 1]) / 32) * 32 // 16
+                    n_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 2]) / 32) * 32 // 16
                 else:
-                    kn_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 1]), block_reduce)
+                    kn_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 1]) / block_reduce)
                     if in_b_dtype == "int8":
-                        n_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 2]), 32) * 32 // 16
+                        n_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 2]) / 32) * 32 // 16
                     else:
-                        n_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 2]), block_out)
+                        n_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 2]) / block_out)
                 kn_shape_ori = _get_value(tensor_b.shape[tensor_b_length - 1])
                 n_shape_ori = _get_value(tensor_b.shape[tensor_b_length - 2])
                 gm_b_shape_normalize.append(n_shape * block_out)
@@ -891,14 +891,14 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
                 gm_b_shape_normalize = tensor_b.shape
             else:
                 if is_nd_int82fp32:
-                    kn_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 2]), 32) * 32 // 16
-                    n_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 1]), 32) * 32 // 16
+                    kn_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 2]) / 32) * 32 // 16
+                    n_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 1]) / 32) * 32 // 16
                 else:
-                    kn_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 2]), block_reduce)
+                    kn_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 2]) / block_reduce)
                     if in_b_dtype == "int8":
-                        n_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 1]), 32) * 32 // 16
+                        n_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 1]) / 32) * 32 // 16
                     else:
-                        n_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 1]), block_out)
+                        n_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 1]) / block_out)
                 kn_shape_ori = _get_value(tensor_b.shape[tensor_b_length - 2])
                 n_shape_ori = _get_value(tensor_b.shape[tensor_b_length - 1])
                 gm_b_shape_normalize.append(kn_shape * block_reduce)
