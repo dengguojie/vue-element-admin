@@ -112,9 +112,16 @@ def _depthwise_conv2d_fusion_para(inputs, outputs):
 # pylint: disable=unused-argument
 # pylint: disable=redefined-builtin
 @tbe_platform.fusion_manager.fusion_manager.register("depthwise_conv2d")
-def depthwise_compute(fmap, filter, bias, offset_w, out,
-                      strides, dilations, pads,
-                      data_format='NHWC', offset_x=0, dsl_flag=True,
+def depthwise_compute(fmap,
+                      filter,
+                      bias,
+                      offset_w,
+                      out,
+                      strides,
+                      dilations,
+                      pads,
+                      data_format='NHWC',
+                      offset_x=0,
                       kernel_name="depthwise_conv2d"):
     """
     algorithm: depthwise conv2d compute
@@ -155,7 +162,7 @@ def depthwise_compute(fmap, filter, bias, offset_w, out,
     out = depthwise_conv2d_compute(
         fmap, filter, out_dtype.lower(), strides_2d, pads, dilations_2d, {
             "bias_tensor": bias,
-            "dsl_flag": dsl_flag,
+            "dsl_flag": True,
             "offset_x": offset_x
         }, l1_fusion_para, kernel_name)
     return out
@@ -176,8 +183,8 @@ def _check_shape(fmap_shape, filter_shape, fmap_data_format):
             'expected_format_list': '[{}]'.format('NC1HWC0'),
             'format': fmap_data_format
         }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(
+            dict_args, error_manager_util.get_error_message(dict_args))
 
     # check feature map shape of c, equal filter of c
     if in_c1 != filter_c1:
@@ -190,8 +197,8 @@ def _check_shape(fmap_shape, filter_shape, fmap_data_format):
             'param1_value': str(in_c1),
             'param2_value': str(filter_c1)
         }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(
+            dict_args, error_manager_util.get_error_message(dict_args))
 
     # check multiplier equal 1
     if filter_k != 1:
@@ -202,8 +209,8 @@ def _check_shape(fmap_shape, filter_shape, fmap_data_format):
             'expected_value': '1',
             'input_value': str(filter_k)
         }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(
+            dict_args, error_manager_util.get_error_message(dict_args))
 
 
 def _check_data_format(data_format, expect_format_list):
@@ -282,13 +289,10 @@ def _check_dilations(dilations, dim_n, dim_c, dim_h, dim_w):
 # pylint: disable=locally-disabled, too-many-locals, too-many-arguments,
 # pylint: disable=unused-argument
 # pylint: disable=redefined-builtin, invalid-name
-@para_check.check_op_params(
-    para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-    para_check.OPTION_INPUT, para_check.OPTION_INPUT,
-    para_check.REQUIRED_OUTPUT,
-    para_check.REQUIRED_ATTR_LIST_INT, para_check.OPTION_ATTR_LIST_INT,
-    para_check.REQUIRED_ATTR_LIST_INT, para_check.OPTION_ATTR_STR,
-    para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
+                            para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.OPTION_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.OPTION_ATTR_STR, para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def depthwise_conv2d(
         x,
         filter,
@@ -368,12 +372,9 @@ def depthwise_conv2d(
     para_check.check_dtype(w_dtype, ('float16', 'int8'), param_name="filter")
     para_check.check_dtype(output_dtype, ('float16', 'int32'), param_name="y")
 
-    para_check.check_shape(shape_in, min_rank=FEATURE_MAP_DIM,
-                           max_rank=FEATURE_MAP_DIM, param_name="x")
-    para_check.check_shape(shape_w, min_rank=FILTER_DIM,
-                           max_rank=FILTER_DIM, param_name="filter")
-    para_check.check_shape(strides, min_rank=STRIDES_DIM,
-                           max_rank=STRIDES_DIM, param_name="filter")
+    para_check.check_shape(shape_in, min_rank=FEATURE_MAP_DIM, max_rank=FEATURE_MAP_DIM, param_name="x")
+    para_check.check_shape(shape_w, min_rank=FILTER_DIM, max_rank=FILTER_DIM, param_name="filter")
+    para_check.check_shape(strides, min_rank=STRIDES_DIM, max_rank=STRIDES_DIM, param_name="filter")
 
     _check_data_format(fmap_data_format, ["NC1HWC0"])
 
@@ -413,25 +414,22 @@ def depthwise_conv2d(
 
     strides_2d = strides[dim_h], strides[dim_w]
     dilations_2d = dilations[dim_h], dilations[dim_w]
+
+    c0_val = 16
+    if in_dtype == "int8":
+        c0_val = 32
+
     bias_tensor = None
     if bias:
-        bias_tensor = tvm.placeholder((filter_c1 * 16,),
-                                      name='bias_tensor',
-                                      dtype=output_dtype.lower())
-    fmap_placeholder = tvm.placeholder(fmap_shape_5d,
-                                       dtype=in_dtype.lower(),
-                                       name='fmap')
-    filter_placeholder = tvm.placeholder(shape_w_5d,
-                                         dtype=w_dtype.lower(),
-                                         name='filter')
-    dsl_flag = False
-    out = depthwise_conv2d_compute(
-        fmap_placeholder, filter_placeholder, output_dtype.lower(), strides_2d,
-        pads, dilations_2d, {
-            "bias_tensor": bias_tensor,
-            "dsl_flag": dsl_flag,
-            "offset_x": offset_x
-        }, None, kernel_name)
+        bias_tensor = tvm.placeholder((filter_c1 * c0_val, ), name='bias_tensor', dtype=output_dtype.lower())
+    fmap_placeholder = tvm.placeholder(fmap_shape_5d, dtype=in_dtype.lower(), name='fmap')
+    filter_placeholder = tvm.placeholder(shape_w_5d, dtype=w_dtype.lower(), name='filter')
+    out = depthwise_conv2d_compute(fmap_placeholder, filter_placeholder, output_dtype.lower(), strides_2d, pads,
+                                   dilations_2d, {
+                                       "bias_tensor": bias_tensor,
+                                       "dsl_flag": False,
+                                       "offset_x": offset_x
+                                   }, None, kernel_name)
 
     tensor_list = [fmap_placeholder, filter_placeholder, out]
     if bias_tensor is not None:
@@ -443,8 +441,19 @@ def depthwise_conv2d(
     with tbe_platform.build_config:
         tvm.build_module.build(sch, tensor_list, "cce", name=kernel_name)
 
-def get_op_support_info(x, weights, bias, offset_w, outputs, strides, pads, dilations,
-           groups=1, data_format='NCHW', offset_x=0, kernel_name="depthwiseconv2d"):
+
+def get_op_support_info(x,
+                        weights,
+                        bias,
+                        offset_w,
+                        outputs,
+                        strides,
+                        pads,
+                        dilations,
+                        groups=1,
+                        data_format='NCHW',
+                        offset_x=0,
+                        kernel_name="depthwiseconv2d"):
     """
     algorithm: get_op_support_info
 
