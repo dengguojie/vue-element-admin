@@ -1333,5 +1333,36 @@ REG_OP(MaxPoolV3Grad)
     .ATTR(global_pooling, Bool, false)
     .ATTR(ceil_mode, Bool, false)
     .OP_END_FACTORY_REG(MaxPoolV3Grad)
+
+/**
+*@brief Performs dilation2d on the input . \n
+
+*@par Inputs:
+*x: A tensor of shape is 4d, format is support NHWC.
+*filter: A tensor of shape is 3d, the type is same with x,
+and the c dimension is same with x. \n
+
+*@par Attributes:
+*@li strides: A required list of 4 ints, specifying the stride of the sliding window. The strides of the N and C dimensions are 1.
+*@li rates: A required list of 4 ints. The rates of the N and C dimensions are 1.
+*@li padding_mode: A optional string. Defaults to "SAME", it support SAME and VALID.
+*@li pads: A optional list of 4 ints. \n
+
+*@par Outputs:
+*y: The output tensor. Has the same type and format as input "x" . \n
+
+*@par Third-party framework compatibility
+* Compatible with the TensorFlow operator Dilation2D.
+*/
+REG_OP(Dilation2D)
+    .INPUT(x,TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_INT32, DT_INT64, DT_UINT8, DT_INT16, DT_INT8, DT_UINT16}))
+    .INPUT(filter,TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_INT32, DT_INT64, DT_UINT8, DT_INT16, DT_INT8, DT_UINT16}))
+    .OUTPUT(y,TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_INT32, DT_INT64, DT_UINT8, DT_INT16, DT_INT8, DT_UINT16}))
+    .REQUIRED_ATTR(strides, ListInt)
+    .REQUIRED_ATTR(rates, ListInt)
+    .ATTR(padding_mode, String, "SAME")
+    .ATTR(pads, ListInt, {0,0,0,0})
+    .OP_END_FACTORY_REG(Dilation2D)
+
 }  // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_NN_POOLING_OPS_H

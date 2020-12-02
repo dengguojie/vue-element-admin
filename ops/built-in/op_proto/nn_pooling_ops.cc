@@ -251,7 +251,154 @@ static bool GetStridesAndKSize(Operator& op, Format refer, int32_t& strd, int32_
   return true;
 }
 
+static graphStatus GetWindowedOutputSizeVerboseV2(int64_t input_size, int64_t filter_size,
+                                                  int64_t dilation_rate, int64_t stride,
+                                                  const std::string padding_type, int64_t* output_size,
+                                                  int64_t* padding_before,
+                                                  int64_t* padding_after) {
+  if (stride <= 0) {
+    OP_LOGE("Stride must be > 0, but got [%lld]", stride);
+    return GRAPH_FAILED;
+  }
+  if (dilation_rate < 1) {
+    OP_LOGE("Dilation rate must be >= 1, but got [%lld]", dilation_rate);
+    return GRAPH_FAILED;
+  }
+  int64_t effective_filter_size = (filter_size - 1) * dilation_rate + 1;
+  if (padding_type == "VALID") {
+    *output_size = (input_size - effective_filter_size + stride) / stride;
+    *padding_before = 0;
+    *padding_after = 0;
+  } else if (padding_type == "EXPLICIT") {
+     *output_size = (input_size + *padding_before + *padding_after -
+                    effective_filter_size + stride) /
+                    stride;
+  } else if (padding_type == "SAME") {
+    *output_size = (input_size + stride - 1) / stride;
+    const int64_t padding_needed =
+        std::max(int64_t{0}, (*output_size - 1) * stride +
+                 effective_filter_size - input_size);
+    // For odd values of total padding, add more padding at the 'right'
+    // side of the given dimension.
+    *padding_before = padding_needed / 2;
+    *padding_after = padding_needed - *padding_before;
+  } else {
+    OP_LOGE("Padding [%s] is invaild.", padding_type.c_str());
+    return GRAPH_FAILED;
+  }
+  if (*output_size < 0) {
+    OP_LOGE("Computed output size would be negative, but got [%lld].",
+            *output_size);
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
 
+IMPLEMT_INFERFUNC(Dilation2D, Dilation2DInfer) {
+  Shape x_shape;
+  Shape filter_shape;
+  if (WithRank(op.GetInputDesc(0), 4, x_shape, op.GetName().c_str())
+      != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "The rank of x must be 4.");
+    return GRAPH_FAILED;
+  }
+  if (WithRank(op.GetInputDesc(1), 3, filter_shape, op.GetName().c_str())
+      != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "The rank of filter must be 3.");
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int32_t> strides;
+  if (op.GetAttr("strides", strides) == GRAPH_SUCCESS) {
+    if (strides.size() != 4) {
+      OP_LOGE(op.GetName().c_str(), "Strides size is [%zu], it must be 4.",
+              strides.size());
+      return GRAPH_FAILED;
+    }
+  } else {
+    OP_LOGE(op.GetName().c_str(), "Get attr strides failed.");
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int32_t> rates;
+  if (op.GetAttr("rates", rates) == GRAPH_SUCCESS) {
+    if (rates.size() != 4) {
+      OP_LOGE(op.GetName().c_str(), "Rates size is [%zu], it must be 4.",
+              rates.size());
+      return GRAPH_FAILED;
+    }
+  } else {
+    OP_LOGE(op.GetName().c_str(), "Get attr rates failed.");
+    return GRAPH_FAILED;
+  }
+
+  auto data_type = op.GetInputDesc("x").GetDataType();
+  TensorDesc output_desc = op.GetOutputDesc("y");
+
+  int32_t stride_rows = strides[1];
+  int32_t stride_cols = strides[2];
+
+  int32_t rate_rows = rates[1];
+  int32_t rate_cols = rates[2];
+
+  int64_t batch_size_dim = x_shape.GetDim(0);
+  int64_t in_rows_dim = x_shape.GetDim(1);
+  int64_t in_cols_dim = x_shape.GetDim(2);
+  int64_t filter_rows_dim = filter_shape.GetDim(0);
+  int64_t filter_cols_dim = filter_shape.GetDim(1);
+  int64_t output_depth_dim = filter_shape.GetDim(2);
+
+  if (!ValueKnown(x_shape, 1) || !ValueKnown(x_shape, 2) ||
+      !ValueKnown(filter_shape, 0) || !ValueKnown(filter_shape, 1)) {
+    Shape output_shape({batch_size_dim, -1, -1, output_depth_dim});
+    output_desc.SetShape(output_shape);
+    output_desc.SetDataType(data_type);
+    return op.UpdateOutputDesc("y", output_desc);
+  }
+
+  int64_t unused = x_shape.GetDim(3);
+  if (Merge(unused, output_depth_dim, unused) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Merge unused and output_depth_dim failed.");
+    return GRAPH_FAILED;
+  }
+
+  auto filter_rows_eff = filter_rows_dim +
+                         (filter_rows_dim - 1) * (rate_rows - 1);
+  auto filter_cols_eff = filter_cols_dim +
+                         (filter_cols_dim - 1) * (rate_cols - 1);
+
+  std::string padding;
+  if (op.GetAttr("padding", padding) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Get attr padding failed.");
+    return GRAPH_FAILED;
+  }
+  if(padding != "SAME" && padding != "VALID") {
+    OP_LOGE(op.GetName().c_str(), "Padding is only support SAME and VALID.");
+    return GRAPH_FAILED;
+  }
+
+  int64_t output_rows = 0;
+  int64_t output_cols = 0;
+  int64_t padding_before = 0;
+  int64_t padding_after = 0;
+
+  if(GetWindowedOutputSizeVerboseV2(
+      in_rows_dim, filter_rows_eff, 1, stride_rows, padding, &output_rows,
+      &padding_before, &padding_after) != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
+  if(GetWindowedOutputSizeVerboseV2(
+      in_cols_dim, filter_cols_eff, 1, stride_cols, padding, &output_cols,
+      &padding_before, &padding_after) != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
+  Shape y_shape({batch_size_dim, output_rows, output_cols, output_depth_dim});
+  output_desc.SetShape(y_shape);
+  output_desc.SetDataType(data_type);
+  return op.UpdateOutputDesc("y", output_desc);
+}
+
+INFER_FUNC_REG(Dilation2D, Dilation2DInfer);
 // ----------------Pooling-------------------
 IMPLEMT_INFERFUNC(Pooling, PoolingInferShape) {
   auto globalPooling = op.get_attr_global_pooling();
