@@ -2294,16 +2294,10 @@ IMPLEMT_VERIFIER(MaxPoolGrad, MaxPoolGradVerify) {
 }
 
 IMPLEMT_INFERFUNC(MaxPoolGrad, MaxPoolGradInferShape) {
-  auto shape_x1 = op.GetInputDesc("x1").GetShape();
-  auto input_type = op.GetInputDesc("x1").GetDataType();
-
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(shape_x1);
-  tensordesc_output.SetDataType(input_type);
-  if (op.UpdateOutputDesc("y", tensordesc_output) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+  if (OneInOneOutDynamicInfer(op, "x1", {"y"})) {
+    return GRAPH_SUCCESS;
   }
-  return GRAPH_SUCCESS;
+  return GRAPH_FAILED;
 }
 
 INFER_FUNC_REG(MaxPoolGrad, MaxPoolGradInferShape);
