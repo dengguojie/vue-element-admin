@@ -130,11 +130,20 @@ def calc_expect_func(predictions, targets, precision, k):
         else:
             res = (np.zeros((shape[0], )) == 0)
     return res
-
+"""
 ut_case.add_precision_case("all", {
     "params": [{"shape": (13, 138), "dtype": "float32", "ori_shape":(13,138), "ori_format":"ND", "format":"ND", "param_type": "input"},
                {"shape": (13, ), "dtype": "int32", "ori_shape":(13,), "ori_format":"ND", "format":"ND", "param_type": "input"},
                {"shape": (13, ), "dtype": "uint8", "ori_shape":(13,), "ori_format":"ND", "format":"ND", "param_type": "output"},
+               1],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
+
+ut_case.add_precision_case("all", {
+    "params": [{"shape": (132, 138), "dtype": "float32", "ori_shape":(13, 138), "ori_format":"ND", "format":"ND", "param_type": "input"},
+               {"shape": (132, ), "dtype": "int32", "ori_shape":(13, ), "ori_format":"ND", "format":"ND", "param_type": "input"},
+               {"shape": (132, ), "dtype": "uint8", "ori_shape":(13, ), "ori_format":"ND", "format":"ND", "param_type": "output"},
                1],
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
@@ -157,7 +166,7 @@ ut_case.add_precision_case("all", {
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
-
+"""
 if __name__ == '__main__':
     ut_case.run()
     exit(0)
