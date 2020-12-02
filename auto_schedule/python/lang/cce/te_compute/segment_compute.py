@@ -141,7 +141,7 @@ def unsorted_segment_max(tensor, segment_ids, num_segments, init_value=0):
     -------
     tensor : segment_max(tensor , segment_ids)
     """
-   warnings.warn("unsorted_segment_max is expired, please do not use it", DeprecationWarning)
+    warnings.warn("unsorted_segment_max is expired, please do not use it", DeprecationWarning)
     if isinstance(segment_ids, tvm.tensor.Tensor):
         return __segment_tensor_op(tensor, segment_ids, num_segments,
                                    init_value, tensor.dtype, "segmentensor_max")

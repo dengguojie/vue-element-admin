@@ -28,7 +28,7 @@ _DATA_MODE_PADDING = 1
 _C0_DIMENSION_DATA_SIZE = 32
 _MAX_KERNEL_SIZE = 10 * 10 * 10
 _MIN_VAL_MAP = {"float16": -65504.0, "float32": 3.4e-38, "double": 1.7e-308}
-_SIZEOF__DTYPE_MAP = {"float16": 2, "float32": 4, "double": 8}
+_SIZEOF_DTYPE_MAP = {"float16": 2, "float32": 4, "double": 8}
 _DTYPE_MAP = {"float16": "uint16", "float32": "uint32", "double": "uint64"}
 
 
@@ -394,7 +394,7 @@ def max_pooling3d_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
         pooling_params["stride_d"] = s_d
         pooling_params["stride_h"] = s_h
         pooling_params["stride_w"] = s_w
-        pooling_params["size_of_data"] = _SIZEOF__DTYPE_MAP[orig_input.dtype]
+        pooling_params["size_of_data"] = _SIZEOF_DTYPE_MAP[orig_input.dtype]
         pooling_params["align_axis"] = "axis_w"
         if _is_fast_path():
             pooling_params["fast_path"] = "True"
@@ -448,7 +448,7 @@ def max_pooling3d_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
     n, d, c1, h, w, c0 = _get_dim_param()
     k_d, k_h, k_w = _get_kernel_param()
     s_d, s_h, s_w = _get_stride_param()
-    o_d, o_h, o_w, p_ft, p_bk, p_t, p_b, p_l, p_r = 
+    o_d, o_h, o_w, p_ft, p_bk, p_t, p_b, p_l, p_r = \
         _get_out_and_pad_with_padding_mode(padding, d, h, w, ksize, strides)
     d_p = o_d * k_d
     h_p = o_h * k_h
