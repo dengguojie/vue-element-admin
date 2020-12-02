@@ -423,13 +423,7 @@ set(_tf_scope_fusion_passes
   ../tf_scope_fusion_passes/scope_to_absolute_bbox_pass.cc
 )
 
-add_library(ops_all_plugin SHARED
-  ${_tf_plugins}
-  ${_tf_scope_fusion_passes}
-  ${_proto_h}
-)
-
-target_include_directories(ops_all_plugin PRIVATE
+set(_ops_plugin_include
   ${OPS_INCLUDE}
   ${FWKACLLIB_INCLUDE}
   ${METADEF_DIR}
@@ -442,38 +436,73 @@ target_include_directories(ops_all_plugin PRIVATE
   ${Protobuf_INCLUDE}
 )
 
-target_compile_options(ops_all_plugin PRIVATE
-  -O2
-  -Werror
-  -Wno-deprecated-declarations
-  -Dgoogle=ascend_private
-)
-
-target_link_libraries(ops_all_plugin PRIVATE
-  $<BUILD_INTERFACE:intf_pub>
+set(_ops_plugin_link_libs
   -Wl,--no-as-needed
-    graph
-    register
-    slog
-    error_manager
-    te_fusion
-    _caffe_parser
-    ascend_protobuf
+  graph
+  register
+  slog
+  error_manager
+  te_fusion
+  _caffe_parser
+  ascend_protobuf
   -Wl,--as-needed
-    c_sec
+  c_sec
 )
 
-if(BUILD_OPEN_PROJECT)
-  set(TF_PLUGIN_PATH "${INSTALL_PATH}/opp/framework/built-in/tensorflow")
-  cann_install(
-    TARGET      ops_all_plugin
-    FILES       $<TARGET_FILE:ops_all_plugin>
-    DESTINATION "${TF_PLUGIN_PATH}"
+if(ENABLE_TEST STREQUAL "")
+  add_library(ops_all_plugin SHARED
+    ${_tf_plugins}
+    ${_tf_scope_fusion_passes}
+    ${_proto_h}
   )
+
+  target_include_directories(ops_all_plugin PRIVATE
+    ${_ops_plugin_include}
+  )
+
+  target_compile_options(ops_all_plugin PRIVATE
+    -O2
+    -Werror
+    -Wno-deprecated-declarations
+    -Dgoogle=ascend_private
+  )
+
+  target_link_libraries(ops_all_plugin PRIVATE
+    $<BUILD_INTERFACE:intf_pub>
+    ${_ops_plugin_link_libs}
+  )
+
+  if(BUILD_OPEN_PROJECT)
+    set(TF_PLUGIN_PATH "${INSTALL_PATH}/opp/framework/built-in/tensorflow")
+    cann_install(
+      TARGET      ops_all_plugin
+      FILES       $<TARGET_FILE:ops_all_plugin>
+      DESTINATION "${TF_PLUGIN_PATH}"
+    )
+  else()
+    install(
+      TARGETS ops_all_plugin OPTIONAL
+      EXPORT  ops_all_plugin-targets
+      LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
+    )
+  endif()
 else()
-  install(
-    TARGETS ops_all_plugin OPTIONAL
-    EXPORT  ops_all_plugin-targets
-    LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
-  )
+  add_library(opsplugin_llt STATIC
+    ${_tf_plugins}
+    ${_tf_scope_fusion_passes}
+    ${_proto_h}
+    )
+  target_include_directories(opsplugin_llt PUBLIC
+    ${_ops_plugin_include}
+    )
+  target_compile_options(opsplugin_llt PUBLIC
+    -O0
+    -Dgoogle=ascend_private
+    )
+  target_link_libraries(opsplugin_llt
+    PRIVATE
+    $<BUILD_INTERFACE:intf_llt_pub>
+    PUBLIC
+    ${_ops_plugin_link_libs}
+    )
 endif()
