@@ -30,8 +30,7 @@ matmul_case_error = [
     ((3, 2), (1, 2), (2, 4), "float16", "float16", "NZ", False, False, False, "dynamic_matmul_errorcase0", "range_error"),
     ((1, 4), (1, 2), (2, 4), "float16", "float16", "NZ", False, False, False, "dynamic_matmul_errorcase0", "range_relation"),
     ((1, 4), (1, 2), (2, 4), "float16", "float16", "NZ", False, False, False, "dynamic_matmul_errorcase0", "x1_range_length"),
-    ((1, 4), (1, 2), (2, 4), "float16", "float16", "NZ", False, False, False, "dynamic_matmul_errorcase0", "x2_range_length"),
-    ((1, 4), (1, 2), (2, 4), "float16", "float16", "NZ", False, False, False, "dynamic_matmul_errorcase0", "y_range_length"),
+    ((1, 4), (1, 2), (2, 4), "float16", "float16", "NZ", False, False, False, "dynamic_matmul_errorcase0", "x2_range_length")
 
 ]
 
@@ -45,7 +44,7 @@ def gen_matmul_dynamic_succecase(m_range, k_range, n_range, src_dtype, dst_dtype
         format = "FRACTAL_NZ"
     x1_range = [m_range, k_range] if trans_a else [k_range, m_range]
     x1_range += [CUBE_BLOCK, CUBE_BLOCK]
-    x2_range = [k_range, m_range] if trans_b else [n_range, k_range]
+    x2_range = [k_range, n_range] if trans_b else [n_range, k_range]
     x2_range += [CUBE_BLOCK, CUBE_BLOCK]
     y_range = [n_range, m_range, CUBE_BLOCK, CUBE_BLOCK]
 
@@ -127,7 +126,7 @@ for case in matmul_case_succ:
     ut_case.add_case("Ascend910", gen_matmul_dynamic_succecase(*case))
 
 for error_case in matmul_case_error:
-    ut_case.add_case("Ascend910", gen_matmul_dynamic_succecase(*error_case))
+    ut_case.add_case("Ascend910", gen_matmul_dynamic_errorcase(*error_case))
 
 if __name__ == "__main__":
     with te.op.dynamic():

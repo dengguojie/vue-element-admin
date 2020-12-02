@@ -83,17 +83,17 @@ def _check_relation_range(range1, range2, name):
         error_manager_vector.raise_err_specific_reson("mat_mul", error_reson)
 
 
-def _get_input_range(range_x1, range_x2, range_y, trans_a, trans_b):
+def _get_input_range(range_x1, range_x2, trans_a, trans_b):
     """
     get range in m, k, n
     """
     if range_x1 and len(range_x1) == NZ_LENGTH:
         if trans_a:
-            m_range_x1 = list(range_x1[0])
+            m_range = list(range_x1[0])
             k_range_x1 = list(range_x1[1])
         else:
             k_range_x1 = list(range_x1[0])
-            m_range_x1 = list(range_x1[1])
+            m_range = list(range_x1[1])
     else:
         error_manager_vector.raise_err_specific_reson(
             "mat_mul", "length of x1_range must be 4"
@@ -102,28 +102,19 @@ def _get_input_range(range_x1, range_x2, range_y, trans_a, trans_b):
     if range_x2 and len(range_x2):
         if trans_b:
             k_range_x2 = list(range_x2[0])
-            n_range_x2 = list(range_x2[1])
+            n_range = list(range_x2[1])
         else:
-            n_range_x2 = list(range_x2[0])
+            n_range = list(range_x2[0])
             k_range_x2 = list(range_x2[1])
     else:
         error_manager_vector.raise_err_specific_reson(
             "mat_mul", "length of x2_range must be 4"
         )
     
-    if range_y and len(range_y) == NZ_LENGTH:
-        n_range_y = list(range_y[0])
-        m_range_y = list(range_y[1])
-    else:
-        error_manager_vector.raise_err_specific_reson(
-            "mat_mul", "length of y_range must be 4"
-        )
     # check range unite in different var
-    _check_relation_range(m_range_x1, m_range_y, "m")
-    _check_relation_range(n_range_x2, n_range_y, "n")
     _check_relation_range(k_range_x1, k_range_x2, "k")
 
-    return [m_range_x1, k_range_x1, n_range_x2]
+    return [m_range, k_range_x1, n_range]
 
 
 def _check_dynamic_mode(shape_x1, shape_x2):
@@ -172,14 +163,13 @@ def check_and_config_para(input_x1, input_x2, bias, output_y,
     # get range and ori_shape
     range_x1 = input_x1.get("range")
     range_x2 = input_x2.get("range")
-    range_y = output_y.get("range")
     shape_x1 = input_x1.get("ori_shape")
     shape_x2 = input_x2.get("ori_shape")
 
     # check dynamic mode
     _check_dynamic_mode(shape_x1, shape_x2)
     # get range in m,k,n
-    input_range = _get_input_range(range_x1, range_x2, range_y, trans_a, trans_b)
+    input_range = _get_input_range(range_x1, range_x2, trans_a, trans_b)
 
     # check bias if bias in not None
     if bias:
