@@ -1074,7 +1074,7 @@ if ((format_dst == FORMAT_FRACTAL_Z) || (format_dst == FORMAT_FRACTAL_Z_3D)) {
   }
   if ((input_dtype != DT_INT8) && (input_dtype != DT_FLOAT16) &&
       (input_dtype != DT_FLOAT)) {
-    OP_LOGE(op.GetName().c_str(), "input type not is DT_INT8 or DT_FLOAT16 or DT_FLOAT :%d",
+    OP_LOGE(op.GetName().c_str(), "Input type not is DT_INT8 or DT_FLOAT16 or DT_FLOAT :%d",
             format_dst);
     return GRAPH_FAILED;
   }
