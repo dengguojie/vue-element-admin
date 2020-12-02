@@ -24,10 +24,14 @@
 
 #include <nlohmann/json.hpp>
 
+#include "graph/types.h"
+#include "graph/utils/type_utils.h"
+#include "op_log.h"
 #include "op_tiling.h"
 
 using namespace std;
 using json = nlohmann::json;
+using utils = ge::TypeUtils;
 
 const int64_t kIdxMLow = 0;
 const int64_t kIdxMHigh = 1;
@@ -46,6 +50,44 @@ const int64_t kBlockReduceS8 = 32;
 const int64_t kBlockOut = 16;
 
 namespace optiling {
+
+bool CheckCompileInfo(const std::string &op_type, const json &compile_info, const vector<string> &keys) {
+  for (auto& key : keys) {
+    if (compile_info.find(key) == compile_info.end()) {
+      OP_LOGE(op_type.c_str(), "compile info does not contain %s", key.c_str());
+      return false;
+    }
+  }
+  return true;
+}
+
+bool CheckGEMMCompileInfo(const std::string &op_type, const json &compile_info) {
+  const vector<string> keys = {"dynamic_mode", "repo_seeds", "repo_range", "cost_range", "block_dim", "attrs"};
+  if (!CheckCompileInfo(op_type, compile_info, keys)) {
+    return false;
+  }
+  return CheckCompileInfo(op_type, compile_info["attrs"], {"transpose_a", "transpose_b"});
+}
+
+bool CheckGEMMOpPara(const std::string &op_type, const TeOpParas &op_paras) {
+  if (op_type != "MatMul" && op_type != "MatMulV2") {
+    OP_LOGE(op_type.c_str(), "cannot support opType %s", op_type.c_str());
+    return false;
+  }
+
+  // input: a, b, [bias]
+  if (op_paras.inputs.empty() || op_paras.inputs.size() < 2) {
+    OP_LOGE(op_type.c_str(), "MatMul/MatMulV2 requires at least 2 inputs, actually is %d",
+            op_paras.inputs.size());
+    return false;
+  }
+  if (op_paras.inputs[0].tensor.empty() || op_paras.inputs[0].tensor.empty()) {
+    OP_LOGE(op_type.c_str(), "Input tensor is empty");
+    return false;
+  }
+
+  return true;
+}
 
 bool CalcGEMMMkn(const string &op_type, const json &compile_info,
                  const TeOpTensor &tensor_a, const TeOpTensor &tensor_b,
@@ -72,6 +114,8 @@ bool CalcGEMMMkn(const string &op_type, const json &compile_info,
     }
 
     if (tensor_a.ori_shape[idx_k_of_a] != tensor_b.ori_shape[idx_k_of_b]) {
+      OP_LOGE(op_type.c_str(), "axis k must be equal, in facta k of a is %d, k of b is %d",
+              tensor_a.ori_shape[idx_k_of_a], tensor_b.ori_shape[idx_k_of_b]);
       return false;
     }
 
@@ -92,6 +136,12 @@ bool CalcGEMMMkn(const string &op_type, const json &compile_info,
  */
 bool GEMMTiling(const std::string &op_type, const TeOpParas &op_paras, const json &compile_info,
                 OpRunInfo& run_info) {
+  if (!CheckGEMMOpPara(op_type, op_paras)) {
+    return false;
+  }
+  if (!CheckGEMMCompileInfo(op_type, compile_info)) {
+    return false;
+  }
 
   auto tensor_a = op_paras.inputs[0].tensor[0];
   auto tensor_b = op_paras.inputs[1].tensor[0];
@@ -103,6 +153,7 @@ bool GEMMTiling(const std::string &op_type, const TeOpParas &op_paras, const jso
   auto dynamic_mode = compile_info["dynamic_mode"].get<std::string>();
 
   if (dynamic_mode != "dynamic_mkn") {
+    OP_LOGE(op_type.c_str(), "dynamic_mode: %s is not supported", dynamic_mode.c_str());
     return false;
   }
 
@@ -140,9 +191,14 @@ bool GEMMTiling(const std::string &op_type, const TeOpParas &op_paras, const jso
         break;
       }
     }
+  } else {
+    OP_LOGD(op_type.c_str(), "MatMul/MatMulV2 match tiling in repository");
   }
 
   if (tiling_id == "-1") {
+    OP_LOGE(op_type.c_str(),
+            "This shape is not covered by any tiling, "
+            "please modify range and recompile");
     return false;
   }
 
@@ -152,6 +208,8 @@ bool GEMMTiling(const std::string &op_type, const TeOpParas &op_paras, const jso
   ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(k));
   ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(n));
 
+  OP_LOGD(op_type.c_str(), "MatMul/MatMulV2 match repo/cost_model tiling_id %s m %lld k %lld n %lld",
+          tiling_id.c_str(), m, k, n);
   return true;
 }
 
