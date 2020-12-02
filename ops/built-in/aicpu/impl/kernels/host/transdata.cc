@@ -17,13 +17,14 @@
 
 #include <algorithm>
 
-#include "utils/kernel_util.h"
+#include "securec.h"
 #include "Eigen/Core"
+#include "unsupported/Eigen/CXX11/Tensor"
+
+#include "utils/kernel_util.h"
 #include "cpu_types.h"
 #include "log.h"
-#include "securec.h"
 #include "status.h"
-#include "unsupported/Eigen/CXX11/Tensor"
 
 using namespace std;
 
@@ -33,7 +34,7 @@ constexpr int64_t kDimN0 = 16;
 constexpr int64_t kCubeN = 16;
 constexpr int64_t kGroupNum = 1;
 
-inline int64_t Measure(int64_t x, int64_t y) {
+static int64_t Measure(int64_t x, int64_t y) {
   int64_t z = y;
   while (x % y != 0) {
     z = x % y;
@@ -44,7 +45,7 @@ inline int64_t Measure(int64_t x, int64_t y) {
 }
 
 // least common multiple 
-inline int64_t Lcm(int64_t a, int64_t b) {
+static int64_t Lcm(int64_t a, int64_t b) {
   if (b == 0) {
     return -1;
   }
@@ -53,7 +54,7 @@ inline int64_t Lcm(int64_t a, int64_t b) {
 }
 
 // get the result of two number divisor and let result round up
-inline int64_t Ceil(int64_t a, int64_t b) {
+static int64_t Ceil(int64_t a, int64_t b) {
   if (b == 0) {
     return -1;
   } else {
@@ -84,7 +85,7 @@ uint32_t TransDataCpuKernel::DealData(T *input_data, T *output_data,
   std::vector<int64_t> dims;
   dims = input_shape->GetDimSizes();
   KERNEL_CHECK_FALSE((dims.size() >= 4), KERNEL_STATUS_PARAM_INVALID,
-      "%s Dims size [%zu] must >= 4", TRANS_DATA, dims.size());
+      "%s dims size [%zu] must >= 4", TRANS_DATA, dims.size());
   int64_t d_dim;
   int64_t h_dim;
   int64_t w_dim;
@@ -138,7 +139,8 @@ uint32_t TransDataCpuKernel::DealData(T *input_data, T *output_data,
   int64_t cin_ori = c_dim;
   int64_t cout_ori = n_dim / group;
   if (cin_ori == 0 || cout_ori == 0) {
-    KERNEL_LOG_EVENT("Cin_ori or cout_ori euqals to 0");
+    KERNEL_LOG_ERROR("Cin_ori, cout_ori, group are [%d][%d][%d]", cin_ori,
+                      cout_ori, group);
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -205,14 +207,14 @@ uint32_t TransDataCpuKernel::DealData(T *input_data, T *output_data,
 uint32_t TransDataCpuKernel::Compute(CpuKernelContext& ctx) {
   Tensor* input_tensor = ctx.Input(0);
   KERNEL_CHECK_NULLPTR(input_tensor, KERNEL_STATUS_PARAM_INVALID,
-                       "%s Get Tensor:input_tensor failed", TRANS_DATA);
+                       "%s get Tensor:input_tensor failed", TRANS_DATA);
   Tensor* output_tensor = ctx.Output(0);
   KERNEL_CHECK_NULLPTR(output_tensor, KERNEL_STATUS_PARAM_INVALID,
-                       "%s Get Tensor:output_tensor failed", TRANS_DATA);
+                       "%s get Tensor:output_tensor failed", TRANS_DATA);
   auto output_format = output_tensor->GetTensorShape()->GetFormat();
   if((output_format != FORMAT_FRACTAL_Z) && 
     (output_format != FORMAT_FRACTAL_Z_3D)) {
-    KERNEL_LOG_EVENT("%s Unsupport output_format [%d]", 
+    KERNEL_LOG_EVENT("%s unsupport output_format [%d]", 
                     TRANS_DATA , output_format);
     return KERNEL_STATUS_PARAM_INVALID;
   }
@@ -225,23 +227,24 @@ uint32_t TransDataCpuKernel::Compute(CpuKernelContext& ctx) {
   DataType dt = static_cast<DataType>(input_tensor->GetDataType());
   auto input_data_temp = input_tensor->GetData();
   KERNEL_CHECK_NULLPTR(input_data_temp, KERNEL_STATUS_PARAM_INVALID,
-                       "%s Get Tensor:input_data_temp failed", TRANS_DATA);
+                       "%s get Tensor:input_data_temp failed", TRANS_DATA);
   auto output_data_temp = output_tensor->GetData();
   KERNEL_CHECK_NULLPTR(output_data_temp, KERNEL_STATUS_PARAM_INVALID,
-                       "%s Get Tensor:input_data_temp failed", TRANS_DATA);
+                       "%s get Tensor:input_data_temp failed", TRANS_DATA);
+  uint32_t ret = 0;
   switch (dt) {
     case DT_INT8:
-      return DealData(reinterpret_cast<int8_t*>(input_data_temp), 
+      return ret= DealData(reinterpret_cast<int8_t*>(input_data_temp), 
                       reinterpret_cast<int8_t*>(output_data_temp),
                       input_tensor, output_tensor, group);
       break;
     case DT_FLOAT:
-      return DealData(reinterpret_cast<float*>(input_data_temp), 
+      return ret= DealData(reinterpret_cast<float*>(input_data_temp), 
                       reinterpret_cast<float*>(output_data_temp),
                       input_tensor, output_tensor, group);
       break;
     case DT_FLOAT16:
-      return DealData(reinterpret_cast<Eigen::half*>(input_data_temp), 
+      return ret= DealData(reinterpret_cast<Eigen::half*>(input_data_temp), 
                       reinterpret_cast<Eigen::half*>(output_data_temp),
                       input_tensor, output_tensor, group);
       break;
@@ -253,6 +256,7 @@ uint32_t TransDataCpuKernel::Compute(CpuKernelContext& ctx) {
           dt);
       return KERNEL_STATUS_PARAM_INVALID;
   }
+  return ret;
 }
 REGISTER_CPU_KERNEL(TRANS_DATA, TransDataCpuKernel);
 }  // namespace aicpu
