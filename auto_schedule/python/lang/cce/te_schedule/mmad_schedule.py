@@ -45,6 +45,7 @@ DEQ_SCALE_CHILD_LIST = [
 ]
 
 DOUBLE_VALUE = 2
+CORE_NUM_THRITY = 30
 
 def gemm_para_check(gm_shape, l1_tiling_shape, l0_tiling_shape):
     """
@@ -252,6 +253,28 @@ def get_mini_frac_shape_map():
     return shape_map
 
 
+def get_cloud_shape_map():
+    """
+    the knowledge of matmul schedule tiling
+    """
+    shape_map = {(1024, 20480, 1024, 1, 2): "256_512_160_256_64_160_2_2"
+                 }
+
+    return shape_map
+
+
+def get_core_map():
+    """
+    the knowledge of matmul schedule core tiling
+    """
+    shape_map = {(1024, 20480, 1024): (4, 7),
+                 (4096, 20480, 1024): (7, 4),
+                 (20480, 4096, 1024): (15, 2),
+                 (1024, 20480, 4096): (4, 7)
+                 }
+    return shape_map
+
+
 def get_l1fusion_device_core_num(is_l1fusion):
     """
     get the device core num
@@ -305,7 +328,7 @@ def get_perfect_core_num(m_shape,  # pylint: disable=too-many-locals
     m_factor = 1
     n_factor = 1
 
-    for i in range(1, core_num+1):
+    for i in range(1, core_num + 1):
         # judge cur_factor
         if core_num % i != 0:
             continue
@@ -339,16 +362,6 @@ def get_perfect_core_num(m_shape,  # pylint: disable=too-many-locals
     return m_factor, n_factor
 
 
-def check_mini_core_num():
-    """
-    check mini device or cloud device
-    """
-    target_core_num = get_soc_spec("CORE_NUM")
-    if target_core_num == 2:
-        return True
-    return False
-
-
 def is_lhisi_cs_version():
     """
     check if 3796CS version
@@ -376,12 +389,14 @@ def get_knowledge_tiling(shape_tiling_args, is_b_nz, tiling_shape):
     shape_args = (m_shape, k_shape, n_shape, b_trans_val, ub_res_byte)
 
     shape_map = {}
-    mini_core = check_mini_core_num()
-    if mini_core:
+    core_num = get_soc_spec("CORE_NUM")
+    if core_num == DOUBLE_VALUE:
         if is_b_nz:
             shape_map = get_shape_map()
         else:
             shape_map = get_mini_frac_shape_map()
+    elif core_num == CORE_NUM_THRITY:
+        shape_map = get_cloud_shape_map()
     if shape_map.get(shape_args) is not None:
         tiling_shape = shape_map[shape_args]
     else:
@@ -398,6 +413,33 @@ def get_knowledge_tiling(shape_tiling_args, is_b_nz, tiling_shape):
                     tiling_shape = shape_map[shape_args]
 
     return tiling_shape
+
+
+def get_knowledge_core(shape_mkn_args, m_factors, n_factors):
+    """
+    get knowledge of core set
+
+    Parameters
+    ----------
+    shape_mkn_args : list, shape info
+
+    m_factors: core split in m_factor
+
+    n_factors: core split in n_factors
+
+    Returns
+    -------
+    m_factors, n_factors, value of m, n core split
+    """
+    shape_map = {}
+    core_num = get_soc_spec("CORE_NUM")
+    if core_num == CORE_NUM_THRITY:
+        shape_map = get_core_map()
+
+    if shape_map.get(shape_mkn_args) is not None:
+        m_factors, n_factors = shape_map[shape_mkn_args]
+
+    return m_factors, n_factors
 
 
 def update_op_pattern(fractal_a, fractal_b):
@@ -1212,6 +1254,9 @@ def mmad_schedule(res, sch_list):
     core_inner_n = n_shape
     n_nparts_mode = True
     m_factors, n_factors = get_perfect_core_num(m_shape, n_shape, k_shape, l1_fusion_type)
+
+    shape_mkn_args = (m_shape, k_shape, n_shape)
+    m_factors, n_factors = get_knowledge_core(shape_mkn_args, m_factors, n_factors)
 
     date_transfer_fusion = quant_fusion or requant_fusion
     # matmul + quant ub fusion, it need to ensure that the number of
