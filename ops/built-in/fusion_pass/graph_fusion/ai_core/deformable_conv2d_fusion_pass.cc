@@ -182,7 +182,7 @@ bool DeformableConv2dPass::AddOffsetDesc(ge::NodePtr& dfm_conv_node, ge::OpDescP
   *      bias:           use deformable_conv2d
   *      y:              use deformable_conv2d
   *   attrs:
-  *      [strides]:      strides(H/W)*kernel_size(H/W)
+  *      [strides]:      kernel_size(H/W)
   *      [pads]:         keep defualt
   *      [dilations]:    keep defualt
   *      [data_format]:  use deformable_conv2d
