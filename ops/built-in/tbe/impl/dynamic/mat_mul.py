@@ -35,7 +35,7 @@ MKN_MAX = 2147483648
 BLOCK_CUBE = 16
 DYNAMIC_FLAG = -1
 NZ_LENGTH = 4
-ND_LENGTH = 4
+ND_LENGTH = 2
 
 
 def _check_format(real_format, expect_format, param_name):
