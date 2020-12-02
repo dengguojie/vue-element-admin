@@ -136,12 +136,6 @@ bool CalcGEMMMkn(const string &op_type, const json &compile_info,
  */
 bool GEMMTiling(const std::string &op_type, const TeOpParas &op_paras, const json &compile_info,
                 OpRunInfo& run_info) {
-  if (!CheckGEMMOpPara(op_type, op_paras)) {
-    return false;
-  }
-  if (!CheckGEMMCompileInfo(op_type, compile_info)) {
-    return false;
-  }
 
   auto tensor_a = op_paras.inputs[0].tensor[0];
   auto tensor_b = op_paras.inputs[1].tensor[0];
