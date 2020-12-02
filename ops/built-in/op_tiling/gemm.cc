@@ -70,11 +70,6 @@ bool CheckGEMMCompileInfo(const std::string &op_type, const json &compile_info) 
 }
 
 bool CheckGEMMOpPara(const std::string &op_type, const TeOpParas &op_paras) {
-  if (op_type != "MatMul" && op_type != "MatMulV2") {
-    OP_LOGE(op_type.c_str(), "cannot support opType %s", op_type.c_str());
-    return false;
-  }
-
   // input: a, b, [bias]
   if (op_paras.inputs.empty() || op_paras.inputs.size() < 2) {
     OP_LOGE(op_type.c_str(), "MatMul/MatMulV2 requires at least 2 inputs, actually is %d",
@@ -214,5 +209,6 @@ bool GEMMTiling(const std::string &op_type, const TeOpParas &op_paras, const jso
 }
 
 // register tiling interface of the gemm
+REGISTER_OP_TILING_FUNC_BUFFERED(MatMul, GEMMTiling);
 REGISTER_OP_TILING_FUNC_BUFFERED(MatMulV2, GEMMTiling);
 }  // namespace optiling
