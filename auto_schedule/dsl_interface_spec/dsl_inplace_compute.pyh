@@ -5,5 +5,3 @@ def inplace_add(lhs, inplace_ids, rhs):
 def inplace_sub(lhs, inplace_ids, rhs):
 
 def inplace_update(lhs, inplace_ids, rhs):
-
-def inplace_compute(lhs, rhs, ops):

@@ -34,7 +34,7 @@ def concat(raw_tensors, axis):
     """
     if axis < 0:
         axis = axis + len(raw_tensors[0].shape)
-    concat_para_check(raw_tensors, axis)
+    _concat_para_check(raw_tensors, axis)
 
     def _get_input_tensors():
         shapes = []
@@ -88,7 +88,7 @@ def concat(raw_tensors, axis):
     return res
 
 
-def concat_para_check(raw_tensors, axis):
+def _concat_para_check(raw_tensors, axis):
     """
     concat parameter check
 

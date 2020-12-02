@@ -53,10 +53,12 @@ from .te_compute.gemm_compute import gemm
 from .te_compute.pooling2d_compute import pooling2d
 from .te_compute.pooling2d_compute import get_caffe_out_size_and_pad
 from .te_compute.pooling3d_compute import pooling3d
+from .te_compute.pooling3d_max_grad_grad_compute import max_pooling3d_grad_grad
 from .te_compute.pooling3d_max_grad_grad_compute import pooling3d_max_grad_grad
 from .te_compute.conv2d_backprop_filter_compute import conv2d_backprop_filter_compute
 from .te_compute.conv2d_backprop_input_compute import conv2d_backprop_input_compute
 from .te_compute.conv2d_backprop_input_compute import DynamicConv2dBpInputParams
+from .te_compute.split_compute import split
 from .te_compute.split_compute import split_compute_com
 from .te_schedule.split_schedule import split_schedule_com
 from .te_compute.inplace_compute import inplace_add, inplace_sub, inplace_update

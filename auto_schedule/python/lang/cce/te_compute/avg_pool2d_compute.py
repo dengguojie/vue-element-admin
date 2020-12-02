@@ -16,7 +16,7 @@
 pooling2d compute
 """
 from te import tvm
-POOL2D_TAG = "pooling2d_"
+_POOL2D_TAG = "pooling2d_"
 
 
 def avg_pool2d(t_x, pooling_params, fusion_params):
@@ -147,7 +147,7 @@ def avg_pool2d(t_x, pooling_params, fusion_params):
         shape,
         lambda *i: t_avg[i],
         name="pooling2d_res",
-        tag=POOL2D_TAG + "avg",
+        tag=_POOL2D_TAG + "avg",
         attrs={"pooling_params": pooling_params,
                "template": "avg_pool2d_generic",
                "fusion_params": fusion_params,

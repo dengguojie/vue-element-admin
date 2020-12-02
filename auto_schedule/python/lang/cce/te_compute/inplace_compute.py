@@ -90,7 +90,7 @@ def inplace_update(lhs, inplace_ids, rhs):
     return _inplace_op(lhs, inplace_ids, rhs, ops="inplace_update")
 
 
-def inplace_compute(lhs, rhs, ops):
+def _inplace_compute(lhs, rhs, ops):
     """
     compute of inplace
     """
@@ -139,11 +139,11 @@ def _inplace_op(lhs, inplace_ids, rhs, ops):
             if i in unique_id:
                 idx = inplace_ids_copy.index(i)
                 inplace_ids_copy[idx] = -1
-                ret = inplace_compute(lhs(*indices), rhs[(idx,) + indices[1:]], ops)
+                ret = _inplace_compute(lhs(*indices), rhs[(idx,) + indices[1:]], ops)
                 for _ in range(inplace_ids_list.count(i) - 1):
                     idx = inplace_ids_copy.index(i)
                     inplace_ids_copy[idx] = -1
-                    ret = inplace_compute(ret, rhs[(idx,) + indices[1:]], ops)
+                    ret = _inplace_compute(ret, rhs[(idx,) + indices[1:]], ops)
                 return ret
             return None
 

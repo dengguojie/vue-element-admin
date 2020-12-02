@@ -16,6 +16,7 @@
 cast compute
 """
 # pylint: disable=import-error
+import warnings
 from decorator import decorator
 from te import tvm
 from te.platform import intrinsic_check_support
@@ -198,7 +199,7 @@ def trunc(raw_tensor):
     return _cast_op(raw_tensor, dst_dtype, "elewise_single_trunc")
 
 
-def round_d(raw_tensor):
+def round_half_up(raw_tensor):
     """
     cast tensor from src_type to dst_dtype with rounding method
 
@@ -222,6 +223,15 @@ def round_d(raw_tensor):
 
     dst_dtype = "int32"
     return _cast_op(raw_tensor, dst_dtype, "elewise_single_round_d")
+
+
+def round_d(raw_tensor):
+    """
+    cast tensor from src_type to dst_dtype with rounding method
+    """
+    warnings.warn("round_d is expired, please replace it with the func round_half_up",
+                  DeprecationWarning)
+    return round_half_up(raw_tensor)
 
 
 def _cast_op(input_tensor, output_dtype, op_type, is_auto_cast=True):

@@ -16,6 +16,7 @@
 common
 """
 from __future__ import absolute_import
+import warnings
 from te import tvm
 from te import platform as cceconf
 from te.platform import intrinsic_check_support
@@ -35,12 +36,12 @@ from .broadcast_compute import broadcast
 from .cast_compute import _cast
 from .cast_compute import floor
 from .cast_compute import round
-from .cast_compute import round_d
+from .cast_compute import round_half_up
 from .util import check_input_tensor_shape
 from .util import DTYPE_MAP
 
-BLOCK_SIZE = cce_params.BLOCK_REDUCE
-BLOCK_INT8_SIZE = cce_params.BLOCK_REDUCE_INT8
+_BLOCK_SIZE = cce_params.BLOCK_REDUCE
+_BLOCK_INT8_SIZE = cce_params.BLOCK_REDUCE_INT8
 
 
 def round_to(data, max_value, min_value):
@@ -88,6 +89,8 @@ def cast_to_round(data, dtype):
     -------
     tensor : tvm.tensor
     """
+    warnings.warn("cast_to_round is expired, please replace it with the func round_half_up and cast_to",
+                  DeprecationWarning)
     dtype = dtype.lower()
     if dtype != "int32":
         dict_args = dict()
@@ -102,7 +105,7 @@ def cast_to_round(data, dtype):
     if not is_support_round_d:
         return cast_to(data, dtype)
 
-    return round_d(data)
+    return round_half_up(data)
 
 
 # pylint: disable=too-many-locals, invalid-name
@@ -240,8 +243,8 @@ def img2col(input_img,
 
 
 # pylint: disable=too-many-arguments
-def img2col_with_block_pad(img_tensor, filter_h, filter_w, output_h, output_w,
-                           pad, stride):
+def _img2col_with_block_pad(img_tensor, filter_h, filter_w, output_h, output_w,
+                            pad, stride):
     """
     img2col_with_block_pad
     """
@@ -253,8 +256,8 @@ def img2col_with_block_pad(img_tensor, filter_h, filter_w, output_h, output_w,
                  img_shape[4])
     col = img2col(img_tensor, col_shape, filter_h, filter_w, pad, stride)
 
-    output_hw_pad = (output_hw + BLOCK_SIZE - 1) \
-        // BLOCK_SIZE * BLOCK_SIZE
+    output_hw_pad = (output_hw + _BLOCK_SIZE - 1) \
+        // _BLOCK_SIZE * _BLOCK_SIZE
     col_pad_shape = (img_shape[0], output_hw_pad, img_shape[1], filter_h,
                      filter_w, img_shape[4])
     col_pad = tvm.compute(
@@ -361,7 +364,7 @@ def im2col_fractal(a_im2col_shape, in_a, dst='ca', tag=None):
             batch_size, i_1, j_1, j_0, i_0 = indices
 
         n_index = batch_size
-        hw_index = i_1 * BLOCK_SIZE + i_0
+        hw_index = i_1 * _BLOCK_SIZE + i_0
         c1_index = (((j_1 * last_dim + j_0) // last_dim) //
                     kernel_w.value) // kernel_h.value
         kh_index = (((j_1 * last_dim + j_0) // last_dim) //
@@ -395,7 +398,7 @@ def im2col_fractal_6d(a_im2col_shape, in_a):
         batch_size, c_g, i_1, j_1, i_0, j_0 = indices
 
         n_index = batch_size
-        hw_index = i_1 * BLOCK_SIZE + i_0
+        hw_index = i_1 * _BLOCK_SIZE + i_0
         c1_index = (((j_1 * last_dim + j_0) // last_dim) //
                     kernel_w.value) // kernel_h.value
         kh_index = (((j_1 * last_dim + j_0) // last_dim) //
@@ -421,9 +424,9 @@ def mad(mad_shape, in_a, in_b, res_type, offset_x=0, v200_flag=False):
     mad
     """
     if res_type in ('int32', 'uint32'):
-        r_k0 = tvm.reduce_axis((0, BLOCK_INT8_SIZE), name='k0')
+        r_k0 = tvm.reduce_axis((0, _BLOCK_INT8_SIZE), name='k0')
     else:
-        r_k0 = tvm.reduce_axis((0, BLOCK_SIZE), name='k0')
+        r_k0 = tvm.reduce_axis((0, _BLOCK_SIZE), name='k0')
     r_k1 = tvm.reduce_axis((0, in_b.shape[1]), name='k1')
     # If tag set to 'gemv', computeOp return tensor of specific layout.
     # e.g. gemv of 1x32, tensor C is 1x32 but occupy 16x32 fractal matrix size.
@@ -436,7 +439,7 @@ def mad(mad_shape, in_a, in_b, res_type, offset_x=0, v200_flag=False):
     return tvm.compute(
         mad_shape,
         lambda n, cg, j1, i, j0: tvm.sum((in_a[
-            n, cg, i // BLOCK_SIZE, r_k1, i % BLOCK_SIZE, r_k0] - offset_x).astype(
+            n, cg, i // _BLOCK_SIZE, r_k1, i % _BLOCK_SIZE, r_k0] - offset_x).astype(
                 res_type) * in_b[cg, r_k1, j1, j0, r_k0].astype(res_type),
                                          axis=[r_k1, r_k0]),
         name='mad',

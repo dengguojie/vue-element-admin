@@ -15,6 +15,8 @@
 """
 div compute
 """
+import warnings
+
 from te import tvm
 from te.platform import cce_intrin as intrin
 from te.platform import cce_params as param
@@ -37,6 +39,8 @@ def compute_four2five(input_tensor, raw_shape_4D):
     :return:
         type: Tensor
     '''
+    warnings.warn("compute_four2five is expired, please replace it with the same func in ops",
+                  DeprecationWarning)
     if not isinstance(input_tensor, tvm.tensor.Tensor):
         raise RuntimeError("The input type must be tvm.tensor")
 
@@ -72,7 +76,8 @@ def compute_five2four(input_tensor, raw_shape_4D):
     :return:
         type: Tensor
     '''
-
+    warnings.warn("compute_five2four is expired, please replace it with the same func in ops",
+                  DeprecationWarning)
     if not isinstance(input_tensor, tvm.tensor.Tensor):
         raise RuntimeError("The input type must be tvm.tensor")
 
