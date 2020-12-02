@@ -19,7 +19,8 @@ topk
 import te.lang.base as tbe_base
 from te.utils import para_check
 from te import tik
-from enum import Enum, unique
+from enum import Enum
+from enum import unique
 
 FP16_MINIMUM = -65504
 MAX_INT32 = 2 ** 31 - 1
@@ -1123,7 +1124,7 @@ def top_k_compute(tik_instance, obj_gm, obj_tiling, obj_ub, profile, dtype, indi
     batch_cols_padding = (ub_size - 1024) // 54
     tbe_base.add_compile_info("vars", {"core_num": soc_core_num, "k_num": k, "ub_size": ub_size,
                                            "batch_cols_padding": batch_cols_padding})
-    build_config = {"out_of_bound_sync_check" : True}
+    build_config = {"out_of_bound_sync_check": True}
     tik_instance.BuildCCE(kernel_name=kernel_name,
                           inputs=(data_input, indices),
                           outputs=(res, indices_out),
