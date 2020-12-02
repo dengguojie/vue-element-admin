@@ -42,7 +42,6 @@ class Params:
     INPUT_SIZE = {"fp16fp16": 2, "fp16fp32": 2, "int8int32": 1, "int8fp32": 1}
     L1_L0_SIZE = {"fp16fp16": 2, "fp16fp32": 2, "int8int32": 1, "int8fp32": 2}
     OUTPUT_SIZE = {"fp16fp16": 2, "fp16fp32": 4, "int8int32": 4, "int8fp32": 4}
-    MATMUL = True
     MAD_TYPE = {
         "fp16fp16": "float32",
         "fp16fp32": "float32",
