@@ -112,7 +112,6 @@ TEST_F(concat_offset_test, concat_offset_test_1){
           EXPECT_EQ(output_range1, expect_shape1);
           EXPECT_EQ(output_range2, expect_shape1);
           EXPECT_EQ(output_range3, expect_shape1);
-          }
       }
   }
   EXPECT_EQ(findOp, true);
