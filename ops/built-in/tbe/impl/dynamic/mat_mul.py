@@ -186,7 +186,7 @@ def check_and_config_para(input_x1, input_x2, bias, output_y,
         dtype_bias = bias.get("dtype")
         para_check.check_dtype_rule(dtype_bias, "float16", "bias")
 
-    return dtype_a, dtype_b, dtype_out, input_range
+    return dtype_a, dtype_out, input_range
 
 
 def _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y, trans_a, trans_b, offset_x, kernel_name):
@@ -243,7 +243,7 @@ def _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y, trans_a, tran
             "mat_mul", "Hi3796CV300ES and Hi3796CV300CS don't support dynamic shape"
         )
 
-    dtype_a, dtype_b, dtype_out, input_range = check_and_config_para(
+    dtype_in, dtype_out, input_range = check_and_config_para(
         input_x1, input_x2, bias, output_y, trans_a, trans_b, kernel_name
     )
 
@@ -276,8 +276,8 @@ def _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y, trans_a, tran
         shape_x2_nz[0] = n_var
         shape_x2_nz[1] = k_var
 
-    tensor_x1 = tvm.placeholder(shape_x1_nz, name="tensor_a", dtype=dtype_a)
-    tensor_x2 = tvm.placeholder(shape_x2_nz, name="tensor_b", dtype=dtype_b)
+    tensor_x1 = tvm.placeholder(shape_x1_nz, name="tensor_a", dtype=dtype_in)
+    tensor_x2 = tvm.placeholder(shape_x2_nz, name="tensor_b", dtype=dtype_in)
     if bias:
         bias_dtype = bias.get("dtype")
         bias_shape = list(bias.get("shape"))
