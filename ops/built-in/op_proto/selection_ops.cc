@@ -2146,7 +2146,7 @@ IMPLEMT_COMMON_INFERFUNC(OneHotInferShape) {
     return GRAPH_SUCCESS;
   }
   // update axis to positive number
-  axis = input_shape.size() == 0 ? 0 : axis % (input_shape.size() + 1);
+  // axis = input_shape.size() == 0 ? 0 : axis % (input_shape.size() + 1);
 
   // get depth const value
   GeTensorPtr depth_tensor = nullptr;
@@ -2167,7 +2167,11 @@ IMPLEMT_COMMON_INFERFUNC(OneHotInferShape) {
 
   // update output shape
   vector<int64_t> output_shape(input_shape);
-  output_shape.insert(output_shape.begin() + axis, (int64_t)depth_value[0]);
+  if (-1 == axis) {
+    output_shape.insert(output_shape.end(), (int64_t)depth_value[0]);
+  } else {
+    output_shape.insert(output_shape.begin() + axis, (int64_t)depth_value[0]);
+  }
   output_desc->SetShape(GeShape(output_shape));
 
   // if output shape is dynamic update output range
