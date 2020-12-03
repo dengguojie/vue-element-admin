@@ -800,6 +800,7 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
         shape_filter = (filter_batch, filter_channel, filter_w, filter_h)
         strides = stride_w, stride_h
         dilations = dilation_n, dilation_c, dilation_w, dilation_h
+        stride_h, stride_w = stride_w, stride_h
         fmap_h_padding, fmap_w_padding = fmap_w_padding, fmap_h_padding
         dedy_h, dedy_w = dedy_w, dedy_h
         fmap_h, fmap_w = fmap_w, fmap_h
