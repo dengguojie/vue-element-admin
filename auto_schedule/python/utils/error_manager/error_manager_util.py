@@ -40,7 +40,7 @@ def get_error_message(args):
     arg_list = error_stmt.get("argList").split(",")
     arg_value = []
     for arg_name in arg_list:
-        if arg_name not in args:
+        if arg_name.strip() not in args:
             arg_value.append("")
         else:
             arg_value.append(args.get(arg_name.strip()))

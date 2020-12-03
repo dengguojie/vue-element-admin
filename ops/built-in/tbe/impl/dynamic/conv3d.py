@@ -62,6 +62,7 @@ STRIDE_MAX = 63
 # fmap H and W must be in [1, 4096]
 FMAP_HW_MIN = 1
 FMAP_HW_MAX = 4096
+MAX_SHAPE_NUM = 2 ** 31 - 1
 
 
 def _common_check(shape_filter, stride_dhw):
@@ -567,7 +568,7 @@ def _get_out_range(fmap_range, w_shape, pads, strides, dilations):
                            (y_h_lower == 1) and (y_w_lower == 1) and
                            (y_h_upper == 1) and (y_w_upper == 1))
 
-    if load2d_pass_flag or only_fhkh_pass_flag or fhkh_fwkw_pass_flag :
+    if load2d_pass_flag or only_fhkh_pass_flag or fhkh_fwkw_pass_flag:
         pass
     else:
         if y_w_lower < 2:
@@ -602,7 +603,7 @@ def _check_const_dim(dim_value):
         }
         raise RuntimeError(
             args_dict,
-            error_manager.get_error_message(args_dict)
+            error_manager_util.get_error_message(args_dict)
         )
     if dim_value <= 0:
         args_dict = {
@@ -615,7 +616,7 @@ def _check_const_dim(dim_value):
         }
         raise RuntimeError(
             args_dict,
-            error_manager.get_error_message(args_dict)
+            error_manager_util.get_error_message(args_dict)
         )
 
 
@@ -656,7 +657,7 @@ def _check_dynamic_mode(in_shape, w_shape):
     return dynamic_mode
 
 
-def _check_variable_range(variable, mini, maxi, name):
+def _check_variable_range(variable, mini, maxi=MAX_SHAPE_NUM, name=None):
     """
     check variable range
 
@@ -664,6 +665,7 @@ def _check_variable_range(variable, mini, maxi, name):
     if (not isinstance(variable, int)) or variable < mini or variable > maxi:
         dict_args = dict()
         dict_args["errCode"] = "E65006"
+        dict_args["op_name"] = 'dynamic conv3d'
         dict_args["range"] = "[{},{}]".format(mini, maxi)
         dict_args["attr_name"] = name
         dict_args["value"] = str(variable)
@@ -817,9 +819,24 @@ def _check_and_config_para(fmap,
     _check_variable_range(h_range[1], HW_MIN, HW_MAX, "fmap_h")
     _check_variable_range(w_range[0], HW_MIN, HW_MAX, "fmap_w")
     _check_variable_range(w_range[1], HW_MIN, HW_MAX, "fmap_w")
+    name_lis = ['fmap_batch', 'fmap_d', 'fmap_c']
+    for index, dim_range in enumerate(fmap_range[:3]):
+        _check_variable_range(dim_range[0], 1, name=name_lis[index])
+        _check_variable_range(dim_range[1], 1, name=name_lis[index])
 
-    return shape_fm, shape_filter, stride_dhw, dilation_dhw, group_dict, \
-           in_dtype, w_dtype, res_dtype, fmap_range, out_range
+    config_dict = {
+        "shape_fm": shape_fm,
+        "shape_filter": shape_filter,
+        "stride_dhw": stride_dhw,
+        "dilation_dhw": dilation_dhw,
+        "group_dict": group_dict,
+        "in_dtype": in_dtype,
+        "w_dtype": w_dtype,
+        "res_dtype": res_dtype,
+        "fmap_range": fmap_range,
+        "out_range": out_range,
+    }
+    return config_dict
 
 def _calc_pads(fmap_shape_ndc1hwc0, shape_filter, stride_dhw, dilation_dhw, pads):
     """
@@ -977,10 +994,19 @@ def _conv3d_compute(fmap,
     """
 
     # shape_fm/shape_filter format is NCDHW, fmap_range/out_range format is NDCHW
-    shape_fm, shape_filter, stride_dhw, dilation_dhw, group_dict, \
-            fmp_dtype, w_dtype, res_dtype, fmap_range, out_range = \
+    config_dict= \
             _check_and_config_para(fmap, weight, bias, offset_w, output, \
             strides, pads, dilations, groups, data_format, offset_x, kernel_name)
+    shape_fm = config_dict.get('shape_fm')
+    shape_filter = config_dict.get('shape_filter')
+    stride_dhw = config_dict.get('stride_dhw')
+    dilation_dhw = config_dict.get('dilation_dhw')
+    group_dict = config_dict.get('group_dict')
+    in_dtype = config_dict.get('in_dtype')
+    w_dtype = config_dict.get('w_dtype')
+    res_dtype = config_dict.get('res_dtype')
+    fmap_range = config_dict.get('fmap_range')
+    out_range = config_dict.get('out_range')
     bias = None
     offset_w = None
     pads = list(pads)
