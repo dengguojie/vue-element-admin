@@ -1082,7 +1082,7 @@ if ((format_dst == FORMAT_FRACTAL_Z) || (format_dst == FORMAT_FRACTAL_Z_3D)) {
   auto input_shape = op.GetInputDesc("src").GetShape().GetDims();
   int64_t group = 1;
   if (op.GetAttr("groups", group) != GRAPH_SUCCESS) {
-    OP_LOGW(op.GetName().c_str(), "Get op attr groups failed");
+    OP_LOGW(op.GetName().c_str(), "Get op attr groups failed, using default groups");
   }
   std::vector<int64_t> y_shape =
       ge::InfershapeCompute(cube_k, input_shape, format, group);
