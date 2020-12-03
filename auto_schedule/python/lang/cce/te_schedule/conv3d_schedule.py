@@ -1645,7 +1645,7 @@ class CceConv3dOp:
                     k_outer_axis = k_outer_outer_outer_outer
                     if k_al1_mod.value == 0:
                         extent = (k_al1_value - 1) * fmap_cin1_ori + group_dict["cin1_g"]
-                        k_axis = g_block_axis * group_dict["cin1_g"] + k_outer_axis * 
+                        k_axis = g_block_axis * group_dict["cin1_g"] + k_outer_axis * \
                                  (k_al1_value * fmap_cin1_ori)
                     else:
                         extent = (k_al1_value - 1) * fmap_cin1_ori + k_al1_mod
