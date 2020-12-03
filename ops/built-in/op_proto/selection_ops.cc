@@ -2116,35 +2116,71 @@ COMMON_INFER_FUNC_REG(OneHotD, OneHotDInferShape);
 // ----------------OneHotD END----------------------
 
 // ----------------OneHot---------------------------
-
 IMPLEMT_COMMON_INFERFUNC(OneHotInferShape) {
-  Tensor depth_tensor;
-  std::int64_t depth = 0;
-  DataType dtype = op.GetInputDesc("depth").GetDataType();
-  if (ge::GRAPH_SUCCESS != op.GetInputConstData("depth", depth_tensor)) {
-    OP_LOGI("Get constdata failed from op of 'OneHot'!\n");
-    depth = -1;
-  } else {
-    if (!GetScalerValue(op, depth_tensor, dtype, depth)) {
-      OP_LOGE(op.GetName().c_str(), "Get Const Value failed ");
-      return GRAPH_FAILED;
-    }
-  }
-  ge::Shape indices_shape = op.GetInputDesc(0).GetShape();
-  int32_t dim_num = 0;
+  const vector<string> depend_names = {"depth"};
+  PREPARE_DYNAMIC_SHAPE(depend_names);
+  // get attr axis
   int32_t axis = -1;
-  dim_num = indices_shape.GetDimNum();
   if (ge::GRAPH_SUCCESS != op.GetAttr("axis", axis)) {
     OP_LOGE(op.GetName().c_str(), "Get const axis failed from op of 'OneHot'!\n");
     return GRAPH_FAILED;
   }
-  if (axis < -dim_num || axis > dim_num) {
-    OP_LOGE(op.GetName().c_str(), "attr axis is not in range");
-    return GRAPH_FAILED;
-  }
-  DataType input_type = op.GetInputDesc("on_value").GetDataType();
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  vector<int64_t> input_shape = input_desc->MutableShape().GetDims();
+  
+  auto value_desc = op_info->MutableInputDesc("on_value");
+  DataType value_dtype = value_desc->GetDataType();
+  
+  // output desc and set dtype
+  auto output_desc = op_info->MutableOutputDesc("y");
+  output_desc->SetDataType(value_dtype);
 
-  return OneHotInferShapeAndType(op, input_type, depth, axis);
+  if (IsUnknownRankShape(input_shape)) {
+    // input is UnknownRank, set output UnknownRank
+    OP_LOGW(op.GetName().c_str(), "input shape is UnknownRank, set output UnknownRank");
+    output_desc->SetShape(GeShape(input_shape));
+    return GRAPH_SUCCESS;
+  }
+  // update axis to positive number
+  axis = input_shape.size() == 0 ? 0 : axis % input_shape.size();
+
+  // get depth const value
+  GeTensorPtr depth_tensor = nullptr;
+  vector<int64_t> depth_value;
+  if (GRAPH_SUCCESS == NodeUtils::GetInputConstData(node, "depth", depth_tensor)) {
+    auto const_desc = op_info->MutableInputDesc("depth");
+    auto const_dtype = const_desc->GetDataType();
+    if (!GetConstValue(op, depth_tensor, const_dtype, depth_value)) {
+      OP_LOGW(op.GetName().c_str(), "Get depth const from const tensor failed, set depth -1");
+      depth_value.clear();
+      depth_value.push_back(-1);
+    }
+  } else {
+    OP_LOGW(op.GetName().c_str(), "Get depth const tensor failed, set depth -1");
+    depth_value.clear();
+    depth_value.push_back(-1);
+  }
+
+  // update output shape
+  vector<int64_t> output_shape(input_shape);
+  output_shape.insert(output_shape.begin() + axis, (int64_t)depth_value[0]);
+  output_desc->SetShape(GeShape(output_shape));
+
+  // if output shape is dynamic update output range
+  if (IsUnknown(output_shape)) {
+    output_desc->SetOriginShape(GeShape(output_shape));
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    input_desc->GetShapeRange(input_range);
+    MakeUpShapeRange(input_shape, input_range);
+    std::pair<int64_t, int64_t> depth_range = depth_value == -1 ?
+                                              std::pair<int64_t, int64_t>(1, -1):
+                                              std::pair<int64_t, int64_t>(depth_value, depth_value);
+    input_range.insert(input_range.begin() + axis, depth_range);
+    output_desc->SetShapeRange(input_range);
+  }
+
+  return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(OneHot, OneHotInferShape);

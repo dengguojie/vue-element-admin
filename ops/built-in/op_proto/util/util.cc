@@ -442,6 +442,33 @@ bool GetConstValue(const Operator& op, const Tensor& const_tensor, const DataTyp
   return true;
 }
 
+bool GetConstValue(const Operator& op, const GeTensorPtr& const_tensor,
+                          const DataType& dtype, std::vector<int64_t>& const_data) {
+  size_t size = const_tensor->GetData().GetSize();
+  void* data_ptr = (void*)const_tensor->GetData().GetData();
+  if (data_ptr == nullptr) {
+    return;
+  }
+
+  if (dtype == ge::DT_INT32){
+    int32_t* const_data_ptr = reinterpret_cast<int32_t*>(data_ptr);
+    size = size / sizeof(int32_t);
+    for (size_t i=0; i < size; i++) {
+      const_data.push_back((int64_t)((int32_t) ((*(const_data_ptr + i)))));
+    }
+  } else if (dtype == ge::DT_INT64) {
+    int64_t* const_data_ptr = reinterpret_cast<int64_t*>(data_ptr);
+    size = size / sizeof(int64_t);
+    for (size_t i=0; i < size; i++) {
+      const_data.push_back((int64_t)((int64_t) ((*(const_data_ptr + i)))));
+    }
+  } else {
+    OP_LOGW(op.GetName().c_str(), "const not support the type");
+    return false;
+  }
+  return true;
+}
+
 bool GetScalerValue(const Operator& op, const Tensor& const_tensor, const DataType& dtype, std::int64_t& const_data) {
   if (dtype == ge::DT_INT32) {
     int32_t* const_data_ptr = (int32_t*)const_tensor.GetData();
