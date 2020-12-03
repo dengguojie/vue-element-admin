@@ -2735,7 +2735,7 @@ def _dichotomy_reduce_using_vcmd(ib_expr,
                 dtype, intrin_cmd,
                 dst_buffer.access_ptr("rw", offset=0),
                 src_buffer.access_ptr("rw", offset=(outer_size-1) * vector_row_size),
-                src_buffer.access_ptr("rw", offset=0),
+                dst_buffer.access_ptr("rw", offset=0),
                 repeat_time,
                 1, 1, 1, 8, 8, 8))
         if remain_size > 0:
@@ -2745,7 +2745,7 @@ def _dichotomy_reduce_using_vcmd(ib_expr,
                 dtype, intrin_cmd,
                 dst_buffer.access_ptr("rw", offset=dst_offset),
                 src_buffer.access_ptr("rw", offset=dst_offset + (outer_size-1) * vector_row_size),
-                src_buffer.access_ptr("rw", offset=dst_offset),
+                dst_buffer.access_ptr("rw", offset=dst_offset),
                 1,
                 1, 1, 1, 8, 8, 8))
 
