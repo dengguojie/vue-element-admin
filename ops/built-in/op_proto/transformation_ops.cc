@@ -117,7 +117,7 @@ static std::vector<int64_t> InfershapeCompute(int64_t cube_k,
     w_dim = input_shape[3];
     d_dim = 1;
   } else {
-    OP_LOGW(
+    OP_LOGE(
         "format is not FORMAT_DHWCN or FORMAT_NDHWC or FORMAT_NCDHW or "
         "FORMAT_NHWC or FORMAT_NCHW, current input format is ：%d",
         input_format);
