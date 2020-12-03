@@ -254,12 +254,6 @@ TEST_F(one_hot_infershapeone_hot_infershape_pass_test, one_hot_infershapeone_hot
   // depth scaler const
   vector<int64_t> depth_dims;
   TensorDesc desc_input_size_1(ge::Shape(depth_dims), FORMAT_ND, DT_INT32);
-  Tensor depth_tensor(desc_input_size_1);
-  uint32_t *depth_tensor_value = new uint32_t[1]{depth};
-  depth_tensor.SetData((uint8_t *) depth_tensor_value, sizeof(uint32_t));
-  auto depth_const_op = op::Const("depth")
-                       .set_attr_value(depth_tensor);
-
   auto depth_op = op::Data("depth");
   depth_op.update_input_desc_x(desc_input_size_1);
   depth_op.update_output_desc_y(desc_input_size_1);
@@ -279,7 +273,7 @@ TEST_F(one_hot_infershapeone_hot_infershape_pass_test, one_hot_infershapeone_hot
   test_op.set_input_on_value(value_op);
   test_op.set_input_off_value(value_op);
   test_op.SetAttr("axis", axis);
-  std::vector<Operator> inputs{data, depth_const_op, value_op};
+  std::vector<Operator> inputs{data, depth_op, value_op};
   std::vector<Operator> outputs{test_op};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
@@ -301,7 +295,6 @@ TEST_F(one_hot_infershapeone_hot_infershape_pass_test, one_hot_infershapeone_hot
     }
   }
   EXPECT_EQ(findOp, true);
-  delete[] depth_tensor_value;
 }
 
 
