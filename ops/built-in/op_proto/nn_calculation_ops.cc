@@ -4404,6 +4404,26 @@ static void SetConv3dOutShapeRange(const std::string& padding,
 static bool SetConv3dOutShapeRange(op::Conv3D& op, const vector<int32_t>& attr_params, TensorDesc& y_tensor) {
   auto x_tensor = op.get_input_desc_x();
   auto x_shape = x_tensor.GetShape().GetDims();
+  if (std::find(x_shape.begin(), x_shape.end(), -2) != x_shape.end()) {
+    OP_LOGE(op.GetName().c_str(), "not support -2 in fmap");
+    map<std::string, std::string> err_map;
+    err_map["param_name"] = "x_shape";
+    err_map["op_name"] = "Conv3d";
+    err_map["excepted_value"] = "positive or -1";
+    err_map["input_value"] = std::to_string(x_shape[0]) + " " + \
+                             std::to_string(x_shape[1]) + " " + \
+                             std::to_string(x_shape[2]) + " " + \
+                             std::to_string(x_shape[3]) + " " + \
+                             std::to_string(x_shape[4]);
+    std::string report_error_code = "E50029";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return false;
+  }
+
+  bool is_dynamic = std::find(x_shape.begin(), x_shape.end(), -1) != x_shape.end();
+  if (!is_dynamic) {
+    return true;
+  }
 
   size_t idx = 0;
   int32_t strd = attr_params[idx++];
@@ -4629,22 +4649,6 @@ IMPLEMT_INFERFUNC(Conv3D, Conv3DInfer) {
     return GRAPH_FAILED;
   }
 
-  if (std::find(x_shape.begin(), x_shape.end(), -2) != x_shape.end()) {
-    OP_LOGE(op.GetName().c_str(), "not support -2 in fmap");
-    map<std::string, std::string> err_map;
-    err_map["param_name"] = "x_shape";
-    err_map["op_name"] = "Conv3d";
-    err_map["excepted_value"] = "positive or -1";
-    err_map["input_value"] = std::to_string(x_shape[0]) + " " + \
-                             std::to_string(x_shape[1]) + " " + \
-                             std::to_string(x_shape[2]) + " " + \
-                             std::to_string(x_shape[3]) + " " + \
-                             std::to_string(x_shape[4]);
-    std::string report_error_code = "E50029";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  }
-
   int64_t od = (id + padf + padba - dild * (kd - 1) - 1) / strd + 1;
   int64_t oh = (ih + padt + padb - dilh * (kh - 1) - 1) / strh + 1;
   int64_t ow = (iw + padl + padr - dilw * (kw - 1) - 1) / strw + 1;
@@ -4680,15 +4684,12 @@ IMPLEMT_INFERFUNC(Conv3D, Conv3DInfer) {
   auto x_dtype = x_tensor.GetDataType();
   y_tensor.SetDataType(x_dtype);
 
-  // set range
-  bool is_dynamic = std::find(x_shape.begin(), x_shape.end(), -1) != x_shape.end();
-  if (is_dynamic) {
-    vector<int32_t> attr_params = {strd, strh, strw, dild, dilh, dilw,
-                                   padf, padba, padt, padb, padl, padr,
-                                   kn, kd, kh, kw};
-    if (!SetConv3dOutShapeRange(op, attr_params, y_tensor)) {
-      return GRAPH_FAILED;
-    }
+  // set dynamic out range
+  vector<int32_t> attr_params = {strd, strh, strw, dild, dilh, dilw,
+                                 padf, padba, padt, padb, padl, padr,
+                                 kn, kd, kh, kw};
+  if (!SetConv3dOutShapeRange(op, attr_params, y_tensor)) {
+    return GRAPH_FAILED;
   }
 
   if (GRAPH_SUCCESS != op.update_output_desc_y(y_tensor)) {
