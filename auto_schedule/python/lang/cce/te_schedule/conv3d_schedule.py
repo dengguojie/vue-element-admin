@@ -1507,7 +1507,7 @@ class CceConv3dOp:
             c_oooo = (block // block_dim[2]) % block_dim[1]
             factor_oooo = res_c.shape[1].value // group_dict["real_g"] // block_dim[1]
             # factor of c_outer_outer_inner is the size of loop c_outer_outer_outer_inner and Nc
-            factor_oooi = res_c.shape[1].value // group_dict["real_g"] // c_tiling_factor[0] //
+            factor_oooi = res_c.shape[1].value // group_dict["real_g"] // c_tiling_factor[0] // \
                           bl1_factor[1] * tiling["CL0_matrix"][0]
             n_axis = c_oooo * factor_oooo + c_outer_outer_outer_inner * factor_oooi + c_outer_outer_inner * \
                      tiling["CL0_matrix"][0]
@@ -1613,16 +1613,16 @@ class CceConv3dOp:
                               index_al1_dict, buffer_dict, stage)
 
         def _k_buffer_tile_group_up_1():
-            g_block_axis = (block // (block_dim[1] * block_dim[2]) % tiling["g_dim"]) * 
+            g_block_axis = (block // (block_dim[1] * block_dim[2]) % tiling["g_dim"]) * \
                            (group_dict["real_g"] // tiling["g_dim"]) + c_outer_g_inner
             if group_dict["cin1_g"] % tiling["AL1_shape"][0] == 0:
                 k_al1_value = group_dict["cin1_g"] // tiling["AL1_shape"][0]
                 if al1_factor[0] > bl1_factor[0]:
-                    k_outer_axis = k_outer_outer_outer_outer * (al1_factor[0] // bl1_factor[0]) +
+                    k_outer_axis = k_outer_outer_outer_outer * (al1_factor[0] // bl1_factor[0]) + \
                                    k_outer_outer_outer_inner
                 else:
                     k_outer_axis = k_outer_outer_outer_outer
-                k_axis = (g_block_axis * group_dict["cin1_g"] + (k_outer_axis // k_al1_value) * fmap_cin1_ori +
+                k_axis = (g_block_axis * group_dict["cin1_g"] + (k_outer_axis // k_al1_value) * fmap_cin1_ori + \
                           k_outer_axis % k_al1_value * tiling["AL1_shape"][0])
                 extent = tiling["AL1_shape"][0]
             else:
@@ -1630,16 +1630,16 @@ class CceConv3dOp:
                                                    group_dict["cin1_g"])
                 k_al1_mod =kernel_d * group_dict["cin1_g"] // al1_factor[0] % group_dict["cin1_g"]
                 if al1_factor[0] > bl1_factor[0]:
-                    k_outer_axis = k_outer_outer_outer_outer * (al1_factor[0] // bl1_factor[0]) +
+                    k_outer_axis = k_outer_outer_outer_outer * (al1_factor[0] // bl1_factor[0]) + \
                                    k_outer_outer_outer_inner
                     if k_al1_mod.value == 0:
                         extent = (k_al1_value - 1) * fmap_cin1_ori + group_dict["cin1_g"]
-                        k_axis = g_block_axis * group_dict["cin1_g"] + k_outer_axis * 
+                        k_axis = g_block_axis * group_dict["cin1_g"] + k_outer_axis * \
                                  (k_al1_value * fmap_cin1_ori)
                     else:
                         extent = (k_al1_value - 1) * fmap_cin1_ori + k_al1_mod
                         cin1_ori_num = te_util.int_ceil_div(extent * k_al1_value, fmap_cin1_ori)
-                        k_axis = g_block_axis * group_dict["cin1_g"] + k_outer_axis % k_al1_value * extent + 
+                        k_axis = g_block_axis * group_dict["cin1_g"] + k_outer_axis % k_al1_value * extent + \
                                  (k_outer_axis // k_al1_value) * cin1_ori_num * fmap_cin1_ori
                 else:
                     k_outer_axis = k_outer_outer_outer_outer
@@ -1650,7 +1650,7 @@ class CceConv3dOp:
                     else:
                         extent = (k_al1_value - 1) * fmap_cin1_ori + k_al1_mod
                         cin1_ori_num = te_util.int_ceil_div(extent * k_al1_value, fmap_cin1_ori)
-                        k_axis = g_block_axis * group_dict["cin1_g"] + k_outer_axis % k_al1_value * extent + 
+                        k_axis = g_block_axis * group_dict["cin1_g"] + k_outer_axis % k_al1_value * extent + \
                                  (k_outer_axis // k_al1_value) * cin1_ori_num * fmap_cin1_ori
             return k_axis, extent
 
