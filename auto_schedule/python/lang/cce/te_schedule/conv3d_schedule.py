@@ -1241,7 +1241,7 @@ class CceConv3dOp:
         kernel_d = c_ub.op.attrs['kernel_d']
 
         fmap_w = fmap.shape[-2] if fmap.op.input_tensors else fmap.op.shape[-2]
-        fmap_cin1_ori = fmap.shape[22] if fmap.op.input_tensors else fmap.op.shape[2]
+        fmap_cin1_ori = fmap.shape[2] if fmap.op.input_tensors else fmap.op.shape[2]
         stride_w = c_ub.op.attrs['stride'][1]
         if self.dynamic_mode == "dynamic_dhw":
             w_out = self.var_map.get("w_out")
@@ -1618,40 +1618,40 @@ class CceConv3dOp:
             if group_dict["cin1_g"] % tiling["AL1_shape"][0] == 0:
                 k_al1_value = group_dict["cin1_g"] // tiling["AL1_shape"][0]
                 if al1_factor[0] > bl1_factor[0]:
-                    k_outer_aixs = k_outer_outer_outer_outer * (al1_factor[0] // bl1_factor[0]) +
+                    k_outer_axis = k_outer_outer_outer_outer * (al1_factor[0] // bl1_factor[0]) +
                                    k_outer_outer_outer_inner
                 else:
-                    k_outer_aixs = k_outer_outer_outer_outer
+                    k_outer_axis = k_outer_outer_outer_outer
                 k_aixs = (g_block_axis * group_dict["cin1_g"] + (k_outer_axis // k_al1_value) * fmap_cin1_ori +
-                          k_outer_aixs % k_al1_value * tiling["AL1_shape"][0])
+                          k_outer_axis % k_al1_value * tiling["AL1_shape"][0])
                 extent = tiling["AL1_shape"][0]
             else:
                 k_al1_value = te_util.int_ceil_div(kernel_d * group_dict["cin1_g"] // al1_factor[0],
                                                    group_dict["cin1_g"])
-                k_al1_mod = (kernel_d * group_dict["cin1_g"] // al1_factor[0]) % group_dict["cin1_g"]
+                k_al1_mod =(kernel_d * group_dict["cin1_g"] // al1_factor[0] % group_dict["cin1_g"]
                 if al1_factor[0] > bl1_factor[0]:
-                    k_outer_aixs = k_outer_outer_outer_outer * (al1_factor[0] // bl1_factor[0]) +
+                    k_outer_axis = k_outer_outer_outer_outer * (al1_factor[0] // bl1_factor[0]) +
                                    k_outer_outer_outer_inner
                     if k_al1_value == 0:
                         extent = (k_al1_value - 1) * fmap_cin1_ori + group_dict["cin1_g"]
-                        k_aixs = g_block_axis * group_dict["cin1_g"] + k_outer_aixs * 
+                        k_aixs = g_block_axis * group_dict["cin1_g"] + k_outer_axis * 
                                  (k_al1_value * fmap_cin1_ori)
                     else:
                         extent = (k_al1_value - 1) * fmap_cin1_ori + k_al1_mod
                         cin1_ori_num = te_util.int_ceil_div(extent * k_al1_value, fmap_cin1_ori)
                         k_aixs = g_block_axis * group_dict["cin1_g"] + k_outer_axis % k_al1_value * extent + 
-                                 (k_outer_aixs // k_al1_value) * cin1_ori_num * fmap_cin1_ori
+                                 (k_outer_axis // k_al1_value) * cin1_ori_num * fmap_cin1_ori
                 else:
-                    k_outer_aixs = k_outer_outer_outer_outer
+                    k_outer_axis = k_outer_outer_outer_outer
                     if k_al1_mod.value == 0:
-                        extent = (k_al1_value - 1) * fmap_cin_1_ori + group_dict["cin1_g"]
+                        extent = (k_al1_value - 1) * fmap_cin1_ori + group_dict["cin1_g"]
                         k_axis = g_block_axis * group_dict["cin1_g"] + k_outer_axis * 
                                  (k_al1_value * fmap_cin1_ori)
                     else:
                         extent = (k_al1_value - 1) * fmap_cin1_ori + k_al1_mod
                         cin1_ori_num = te_util.int_ceil_div(extent * k_al1_value, fmap_cin1_ori)
                         k_aixs = g_block_axis * group_dict["cin1_g"] + k_outer_axis % k_al1_value * extent + 
-                                 (k_outer_aixs // k_al1_value) * cin1_ori_num * fmap_cin1_ori
+                                 (k_outer_axis // k_al1_value) * cin1_ori_num * fmap_cin1_ori
             return k_aixs, extent
 
 
@@ -1662,7 +1662,7 @@ class CceConv3dOp:
                 factor_oooi = group_dict["cin1_g"] * kernel_d // max(al1_factor[0],
                                                                     bl1_factor[0])
                 if group_dict["real_g"] > 1:
-                    k_aixs, extent = _k_buffer_tile_group_up_1()
+                    k_axis, extent = _k_buffer_tile_group_up_1()
                 else:
                     if al1_factor[0] > bl1_factor[0]:
                         k_axis = k_outer_outer_outer_outer * factor_oooo + k_outer_outer_outer_inner * factor_oooi
