@@ -4458,7 +4458,7 @@ static bool SetConv3dOutShapeRange(op::Conv3D& op, const vector<int32_t>& attr_p
 
   // update pads if padding is SAME
   std::string padding;
-  if (GRAPH_SUCCESS == op.GetAttr("padding", padding) && padding == "SAME" && x_shape[idx_n] != -1) {
+  if ((op.GetAttr("padding", padding) == GRAPH_SUCCESS) && (padding == "SAME") && (x_shape[idx_n] != -1)) {
     op.SetAttr("pads", {-1, -1, -1, -1, -1, -1});
     OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1, -1, -1} when padding is SAME in dynamic_shape");
   }
@@ -4466,6 +4466,12 @@ static bool SetConv3dOutShapeRange(op::Conv3D& op, const vector<int32_t>& attr_p
   OP_LOGD(op.GetName().c_str(), "dynamic shape set range");
   std::vector<std::pair<int64_t, int64_t>> fm_range;
   x_tensor.GetShapeRange(fm_range);
+  if (fm_range.empty()) {
+    OP_LOGW(op.GetName().c_str(), "fm_range's shape is empty.");
+    // op will check this invalid range
+    return true;
+  }
+
   if (fm_range.size() != kConv3dInputSizeLimit) {
     OP_LOGE(op.GetName().c_str(), "fm_range's shape should be 5d.");
     map<std::string, std::string> err_map;
