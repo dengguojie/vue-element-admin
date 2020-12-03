@@ -1671,10 +1671,11 @@ class CceConv3dOp:
                     extent = tiling["AL1_shape"][0]
 
                 if nbuffer_flag_al1:
-                    extent = group_dict["cin1_g"] * kernel_d // k_outer_outer_inner_outer_size // max(al1_factor[0], bl1_factor[0])
+                    extent = group_dict["cin1_g"] * kernel_d // k_outer_outer_inner_outer_size // \
+                             max(al1_factor[0], bl1_factor[0])
                     factor1 = max(al1_factor[0], bl1_factor[0]) // min(al1_factor[0], bl1_factor[0])
-                    k_axis = (k_outer_outer_outer_outer * factor1 + k_outer_outer_outer_inner) * k_outer_outer_inner_outer_size + \
-                                compute_al1_axis["k_outer_outer_inner_outer"]
+                    k_axis = (k_outer_outer_outer_outer * factor1 + k_outer_outer_outer_inner) * \
+                             k_outer_outer_inner_outer_size + compute_al1_axis["k_outer_outer_inner_outer"]
                     k_axis = k_axis * extent
                         
                 sch[fmap_col_before].buffer_tile((None, None), (None, None),
@@ -1809,7 +1810,7 @@ class CceConv3dOp:
                         additional_rows = 2
                     ho_len = tvm.floordiv(al1_m_tiling, w_out) + additional_rows
                     hi_max = c_ub.op.attrs['kernel_h'] + (ho_len - 1)*stride_update
-                    al1_m = hi_max*fmap_wi
+                    al1_m = hi_max * fmap_wi
                 return al1_m * tiling["AL1_shape"][0]*fmap_c0
             else:
                 if self._tensor_map["opti_h_flag"]:
