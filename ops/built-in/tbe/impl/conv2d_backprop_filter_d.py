@@ -547,7 +547,6 @@ def check_conv2dbp_filter_params(
         shape_out_backprop = (dedy_batch, dedy_channel, dedy_w, dedy_h)
         filter_sizes = (filter_batch, filter_channel, filter_w, filter_h)
         strides = stride_w, stride_h
-        stride_h, stride_w = stride_w, stride_h
         dilations = dilation_n, dilation_c, dilation_w, dilation_h
         fmap_h_padding, fmap_w_padding = fmap_w_padding, fmap_h_padding
         dedy_h, dedy_w = dedy_w, dedy_h
