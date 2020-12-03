@@ -67,6 +67,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/concatv2.cc
   ${CPU_KERNELS_DIR}/kernels/host/transdata.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/get_dynamic_dims.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/round.cc
 )
 
 set(cpu_kernels_llt_src
@@ -121,6 +122,7 @@ set(_cpu_kernels_ut_files
   testcase/concatv2_utest.cpp
   testcase/trans_data_utest.cpp
   testcase/get_dynamic_dims_utest.cpp
+  testcase/round_utest.cpp
 )
 
 add_executable(cpu_kernels_ut
