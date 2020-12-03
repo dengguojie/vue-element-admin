@@ -32,7 +32,7 @@ _BUILTIN_TILING_PATH = "op_impl/built-in/ai_core/tbe/op_tiling/liboptiling.so"
 _CUSTOM_TILING_PATH_DEFAULT = "op_impl/custom/ai_core/tbe/op_tiling/liboptiling.so"
 
 
-def do_op_tiling(optype, compile_info, inputs, outputs):
+def do_op_tiling(optype, compile_info, inputs, outputs, timer=None):
     """
     do op tilinng
     """
@@ -57,11 +57,17 @@ def do_op_tiling(optype, compile_info, inputs, outputs):
 
     run_info_c = ctypes.create_string_buffer(_MAX_RUN_INFO_SIZE)
     run_info_size_c = ctypes.c_size_t(_MAX_RUN_INFO_SIZE)
-
-    tiling_func = libregister.TbeOpTilingPyInterface
-
-    res = tiling_func(optype_c, compile_info_c, inputs_c, outputs_c,
-                      run_info_c, run_info_size_c)
+    tiling_func = libregister.TbeOpTilingPyInterfaceEx
+    if isinstance(timer, list):
+        array_c = ctypes.c_uint64 * 3
+        elapse_c = array_c(0, 0, 0)
+        res = tiling_func(optype_c, compile_info_c, inputs_c, outputs_c,
+                          run_info_c, run_info_size_c, elapse_c)
+        for i in range(0, 3):
+            timer.append(elapse_c[i])
+    else:
+        res = tiling_func(optype_c, compile_info_c, inputs_c, outputs_c,
+                          run_info_c, run_info_size_c, ctypes.c_void_p())
     if not res:
         dict_args = dict()
         dict_args["errCode"] = "E90003"
