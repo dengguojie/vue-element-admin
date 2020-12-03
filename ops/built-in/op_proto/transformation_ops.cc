@@ -1074,7 +1074,8 @@ if ((format_dst == FORMAT_FRACTAL_Z) || (format_dst == FORMAT_FRACTAL_Z_3D)) {
   }
   if ((input_dtype != DT_INT8) && (input_dtype != DT_FLOAT16) &&
       (input_dtype != DT_FLOAT)) {
-    OP_LOGE(op.GetName().c_str(), "Input type not is DT_INT8 or DT_FLOAT16 or DT_FLOAT [%d]",
+    OP_LOGE(op.GetName().c_str(),
+            "Input type not is DT_INT8 or DT_FLOAT16 or DT_FLOAT [%d]",
             format_dst);
     return GRAPH_FAILED;
   }
@@ -1082,7 +1083,8 @@ if ((format_dst == FORMAT_FRACTAL_Z) || (format_dst == FORMAT_FRACTAL_Z_3D)) {
   auto input_shape = op.GetInputDesc("src").GetShape().GetDims();
   int64_t group = 1;
   if (op.GetAttr("groups", group) != GRAPH_SUCCESS) {
-    OP_LOGW(op.GetName().c_str(), "Get op attr groups failed, using default groups");
+    OP_LOGW(op.GetName().c_str(),
+            "Get attr groups failed, use default groups [%ld]", group);
   }
   std::vector<int64_t> y_shape =
       ge::InfershapeCompute(cube_k, input_shape, format, group);
