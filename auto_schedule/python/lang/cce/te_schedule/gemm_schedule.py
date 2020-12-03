@@ -1844,8 +1844,8 @@ def _get_al1_and_bl1_axis_dynamic(sch, c_l0c, al1_factor, bl1_factor, k_outer_ou
             k_outer_outer_outer_outer, k_outer_outer_outer_inner = sch[c_l0c].split(
                 k_outer_outer_outer, nparts=1
             )
-            al1_at_l0c_axis = k_outer_outer_outer_inner
-            bl1_at_l0c_axis = k_outer_outer_outer_outer
+            al1_at_l0c_axis = k_outer_outer_outer_outer
+            bl1_at_l0c_axis = k_outer_outer_outer_inner
         else:
             k_outer_outer_outer, k_outer_outer_inner = sch[c_l0c].split(
                 k_outer_outer, nparts=1
@@ -4129,8 +4129,6 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
                 sch[c_l0c].mem_unique()
 
     _mem_process()
-    Params.DEBUG_IR = False
-    Params().print_ir_matmul("test", sch)
     # clear global cache
     Params.TILING.clear()
     Params.DIM_MAP.clear()
