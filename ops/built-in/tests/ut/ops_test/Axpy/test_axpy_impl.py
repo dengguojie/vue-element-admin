@@ -606,4 +606,4 @@ ut_case.add_precision_case("all", {
 })
 
 if __name__ == '__main__':
-    ut_case.run("Ascend910", simulator_mode="ca", simulator_lib_path="/usr/local/Ascend/toolkit/tools/simulator")
+    ut_case.run("Ascend910", simulator_mode="pv", simulator_lib_path="/usr/local/Ascend/toolkit/tools/simulator")
