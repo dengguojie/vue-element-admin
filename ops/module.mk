@@ -646,7 +646,7 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE := tf_kernel.json
 
-include $(LOCAL_PATH)/compile_aicpu_info_release.mk
+include $(LOCAL_PATH)/compile_tf_info_release.mk
 
 #########################################
 
