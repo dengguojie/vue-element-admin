@@ -133,13 +133,9 @@ Status MatrixDiagPartFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
                             "null, fusion failed."),
                     return PARAM_INVALID);
   ge::OpDescPtr fusionDesc = AttrUtils::CopyOpDesc(matrixdiagpartDesc);
-  // find the parent node of matrix_diag_part
-  ge::InDataAnchorPtr matrixdiagpartAnchorPtr0 = matrixdiagpartVNode->GetInDataAnchor(0);
-  ge::OutDataAnchorPtr constAnchorPtr0 = matrixdiagpartAnchorPtr0->GetPeerOutAnchor();
-  ge::NodePtr constNode0 = constAnchorPtr0->GetOwnerNode();
 
   // get the input desc of the entrance of matrix_diag_part node to differentiate between const and var
-  ge::GeTensorDesc matrixdiagpartInputTensor = constNode0->GetOpDesc()->GetOutputDesc(0);
+  ge::GeTensorDesc matrixdiagpartInputTensor = matrixdiagpartVNode->GetOpDesc()->GetInputDesc(0);
 
   // get the shape info
   ge::GeShape matrixdiagpartInputShape = matrixdiagpartInputTensor.GetShape();
