@@ -78,7 +78,7 @@ TEST_F(one_hot_infershapeone_hot_infershape_pass_test, one_hot_infershapeone_hot
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
 
-  bool findOp = fals;
+  bool findOp = false;
   for (auto node: compute_graph_ptr->GetAllNodes()) {
     if (node->GetType() == "OneHot") {
       findOp = true;
