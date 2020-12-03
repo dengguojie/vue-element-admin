@@ -51,6 +51,17 @@ IMPLEMT_VERIFIER(IFMR, IFMRVerify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(IFMRInferShape) {
+  Shape ret_shape({1,});
+
+  TensorDesc scale = op.GetOutputDesc("scale");
+  scale.SetShape(ret_shape);
+  scale.SetDataType(DT_FLOAT);
+  (void)op.UpdateOutputDesc("scale", scale);
+
+  TensorDesc offset = op.GetOutputDesc("offset");
+  offset.SetShape(ret_shape);
+  offset.SetDataType(DT_FLOAT);
+  (void)op.UpdateOutputDesc("offset", offset);
   return GRAPH_SUCCESS;
 }
 

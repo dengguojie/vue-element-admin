@@ -37,9 +37,9 @@ TEST_F(IFMR, test_ifmr_infershape_float16)
     auto offset_desc = op.GetOutputDesc("offset");
     EXPECT_EQ(offset_desc.GetDataType(), ge::DT_FLOAT);
 
-    std::vector<int64_t> expected_scale_shape = {};
+    std::vector<int64_t> expected_scale_shape = {1,};
     EXPECT_EQ(scale_desc.GetShape().GetDims(), expected_scale_shape);
-    std::vector<int64_t> expected_offset_shape = {};
+    std::vector<int64_t> expected_offset_shape = {1,};
     EXPECT_EQ(offset_desc.GetShape().GetDims(), expected_offset_shape);
 }
 
@@ -66,9 +66,9 @@ TEST_F(IFMR, test_ifmr_infershape_float32)
     auto offset_desc = op.GetOutputDesc("offset");
     EXPECT_EQ(offset_desc.GetDataType(), ge::DT_FLOAT);
 
-    std::vector<int64_t> expected_scale_shape = {};
+    std::vector<int64_t> expected_scale_shape = {1,};
     EXPECT_EQ(scale_desc.GetShape().GetDims(), expected_scale_shape);
-    std::vector<int64_t> expected_offset_shape = {};
+    std::vector<int64_t> expected_offset_shape = {1,};
     EXPECT_EQ(offset_desc.GetShape().GetDims(), expected_offset_shape);
 }
 
@@ -95,9 +95,9 @@ TEST_F(IFMR, test_ifmr_infershape_data_min_float16)
     auto offset_desc = op.GetOutputDesc("offset");
     EXPECT_EQ(offset_desc.GetDataType(), ge::DT_FLOAT);
 
-    std::vector<int64_t> expected_scale_shape = {};
+    std::vector<int64_t> expected_scale_shape = {1,};
     EXPECT_EQ(scale_desc.GetShape().GetDims(), expected_scale_shape);
-    std::vector<int64_t> expected_offset_shape = {};
+    std::vector<int64_t> expected_offset_shape = {1,};
     EXPECT_EQ(offset_desc.GetShape().GetDims(), expected_offset_shape);
 }
 
@@ -124,9 +124,9 @@ TEST_F(IFMR, test_ifmr_infershape_data_max_float16)
     auto offset_desc = op.GetOutputDesc("offset");
     EXPECT_EQ(offset_desc.GetDataType(), ge::DT_FLOAT);
 
-    std::vector<int64_t> expected_scale_shape = {};
+    std::vector<int64_t> expected_scale_shape = {1,};
     EXPECT_EQ(scale_desc.GetShape().GetDims(), expected_scale_shape);
-    std::vector<int64_t> expected_offset_shape = {};
+    std::vector<int64_t> expected_offset_shape = {1,};
     EXPECT_EQ(offset_desc.GetShape().GetDims(), expected_offset_shape);
 }
 
@@ -153,8 +153,8 @@ TEST_F(IFMR, test_ifmr_infershape_cumsum_int16)
     auto offset_desc = op.GetOutputDesc("offset");
     EXPECT_EQ(offset_desc.GetDataType(), ge::DT_FLOAT);
 
-    std::vector<int64_t> expected_scale_shape = {};
+    std::vector<int64_t> expected_scale_shape = {1,};
     EXPECT_EQ(scale_desc.GetShape().GetDims(), expected_scale_shape);
-    std::vector<int64_t> expected_offset_shape = {};
+    std::vector<int64_t> expected_offset_shape = {1,};
     EXPECT_EQ(offset_desc.GetShape().GetDims(), expected_offset_shape);
 }
