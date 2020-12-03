@@ -2183,7 +2183,11 @@ IMPLEMT_COMMON_INFERFUNC(OneHotInferShape) {
     std::pair<int64_t, int64_t> depth_range = depth_value[0] == -1 ?
                                               std::pair<int64_t, int64_t>(1, -1):
                                               std::pair<int64_t, int64_t>(depth_value[0], depth_value[0]);
-    input_range.insert(input_range.begin() + axis, depth_range);
+    if (-1 == axis) {
+      input_range.insert(input_range.end(), depth_range);
+    } else {
+      input_range.insert(input_range.begin() + axis, depth_range);
+    }
     output_desc->SetShapeRange(input_range);
   }
 
