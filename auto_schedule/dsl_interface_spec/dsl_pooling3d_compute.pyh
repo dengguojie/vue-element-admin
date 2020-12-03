@@ -1,0 +1,3 @@
+# source file:python/te/lang/cce/te_compute/pooling3d_compute.py
+
+def pooling3d(tensor_in, window, stride, padding_mode="SAME", pads=(0, 0, 0, 0, 0, 0), pooling_mode="MAX", dilation=(1, 1, 1), ceil_mode=0):

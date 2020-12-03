@@ -18,9 +18,9 @@ pooling2d compute
 from te import tvm
 from te.utils.error_manager.error_manager_util import get_error_message
 
-POOL2D_TAG = "pooling2d_"
-MAX_KERNEL_SIZE_H_MUL_W = 255  # kernel_h * kernel_w
-MAX_KERNEL_SIZE = 20
+_POOL2D_TAG = "pooling2d_"
+_MAX_KERNEL_SIZE_H_MUL_W = 255  # kernel_h * kernel_w
+_MAX_KERNEL_SIZE = 20
 
 
 def max_pool2d(t_x, pooling_params, fusion_params):
@@ -38,15 +38,15 @@ def max_pool2d(t_x, pooling_params, fusion_params):
     else:
         k_h, k_w = pooling_params["window_h"], pooling_params["window_w"]
     # if window_h or window_w
-    is_support_kernel = (k_h * k_w <= MAX_KERNEL_SIZE_H_MUL_W) or \
-                        (k_h <= MAX_KERNEL_SIZE and k_w <= MAX_KERNEL_SIZE)
+    is_support_kernel = (k_h * k_w <= _MAX_KERNEL_SIZE_H_MUL_W) or \
+                        (k_h <= _MAX_KERNEL_SIZE and k_w <= _MAX_KERNEL_SIZE)
     if not is_support_kernel:
         dict_args = dict()
         dict_args["errCode"] = "E90003"
         dict_args["detailed_cause"] = "kw [%s] and kh [%s] is too big! " \
                                       "maxpool schedule only support " \
-                                      "(k_h * k_w <= MAX_KERNEL_SIZE_H_MUL_W) " \
-                                      "or (k_h <= MAX_KERNEL_SIZE and k_w <= MAX_KERNEL_SIZE)" % (k_w, k_h)
+                                      "(k_h * k_w <= _MAX_KERNEL_SIZE_H_MUL_W) " \
+                                      "or (k_h <= _MAX_KERNEL_SIZE and k_w <= _MAX_KERNEL_SIZE)" % (k_w, k_h)
         raise RuntimeError(dict_args, get_error_message(dict_args))
     s_h, s_w = pooling_params["stride_h"], pooling_params["stride_w"]
     dtype = t_x.dtype
@@ -153,7 +153,7 @@ def max_pool2d(t_x, pooling_params, fusion_params):
         shape,
         lambda *i: tx_rh[i],
         name="pooling2d_res",
-        tag=POOL2D_TAG + "max",
+        tag=_POOL2D_TAG + "max",
         attrs={"pooling_params": pooling_params,
                "template": "max_pool2d_generic",
                "fusion_params": fusion_params,

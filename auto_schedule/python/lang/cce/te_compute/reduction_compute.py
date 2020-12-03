@@ -17,6 +17,7 @@ reduction compute
 """
 # pylint: disable=import-error
 from decorator import decorator
+import warnings
 from te import tvm
 from te.lang.base import operation
 from te.platform import intrinsic_check_support
@@ -398,6 +399,8 @@ def tuple_sum(input_tensor_list, axis, keepdims=False):
     -------
     res : wrapped_tensor
     """
+    warnings.warn("tuple_sum is expired, please replace it with the func sum",
+                  DeprecationWarning)
     return _tuple_reduce_op(input_tensor_list, axis, "tuple_reduce_sum",
                             keepdims)
 

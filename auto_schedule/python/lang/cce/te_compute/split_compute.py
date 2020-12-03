@@ -18,6 +18,7 @@ split compute
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
+import warnings
 
 import te.lang.cce
 from te import tvm
@@ -53,6 +54,15 @@ def _index_offset(shape, axis, offset, *index):
 
 
 def split_compute_com(data, split_dim, size_splits):
+    """
+    Split a tensor into len(size_splits) tensors along one dimension
+    """
+    warnings.warn("split_compute_com is expired, please replace it with the func split",
+                  DeprecationWarning)
+    return split(data, split_dim, size_splits)
+
+
+def split(data, split_dim, size_splits):
     """Split a tensor into len(size_splits) tensors along one dimension.
 
     Parameters

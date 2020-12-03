@@ -10,4 +10,6 @@ def round(raw_tensor):
 
 def trunc(raw_tensor):
 
+def round_half_up(raw_tensor):
+
 def round_d(raw_tensor):

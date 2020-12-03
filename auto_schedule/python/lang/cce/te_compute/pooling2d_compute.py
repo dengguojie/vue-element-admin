@@ -31,16 +31,16 @@ from .max_pool2d_compute import max_pool2d
 from .avg_pool2d_compute import avg_pool2d
 
 
-SIZE_OF_FP16 = 2
-BLOCK_SIZE = 16
+_SIZE_OF_FP16 = 2
+_BLOCK_SIZE = 16
 
 # define the type of L1 fusion
-DEFAULT_VALUE = -1
-L1_DEPTH_FUSION = 0
-L1_BREADTH_FUSION = 1
+_DEFAULT_VALUE = -1
+_L1_DEPTH_FUSION = 0
+_L1_BREADTH_FUSION = 1
 
 # pylint: disable=invalid-name
-op_tag = "pooling2d_"
+_OP_TAG = "pooling2d_"
 
 
 def reshape(tensor_in, new_shape):
@@ -110,8 +110,8 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
     :ceil_mode : caffe round_mode params, 0:CEIL(default), 1:FLOOR
     :return: pooling result
     """
-    l1_fusion_type = fusion_params.get("l1_fusion_type", DEFAULT_VALUE)
-    is_l1fusion = l1_fusion_type in (L1_DEPTH_FUSION, L1_BREADTH_FUSION)
+    l1_fusion_type = fusion_params.get("l1_fusion_type", _DEFAULT_VALUE)
+    is_l1fusion = l1_fusion_type in (_L1_DEPTH_FUSION, _L1_BREADTH_FUSION)
     is_l2fusion = get_L1_info("L2_fusion_enabled")
     if not is_l1fusion and not is_l2fusion:
         fusion_params = {}
@@ -204,7 +204,7 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
         input_fmap_l1 = tvm.compute(tensor_in.shape,
                                     lambda *i: tensor_in[i],
                                     name="input_fmap_l1",
-                                    tag=op_tag + "poolinginput")
+                                    tag=_OP_TAG + "poolinginput")
 
         fmap_img2col_h = out_size_h*out_size_w
         pad = (pad_top, pad_bottom, pad_left, pad_right)
@@ -220,18 +220,18 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
                                   stride, tag='', padding_value=padding_value)
 
         fmap_img2col_m = out_size_h*out_size_w
-        ho_wo = ((fmap_img2col_m + BLOCK_SIZE - 1)//BLOCK_SIZE)*BLOCK_SIZE
+        ho_wo = ((fmap_img2col_m + _BLOCK_SIZE - 1)//_BLOCK_SIZE)*_BLOCK_SIZE
 
-        fractal_shape = (batch_size, ho_wo//BLOCK_SIZE, window_h*window_w*c1_value, BLOCK_SIZE,
-                         BLOCK_SIZE)
+        fractal_shape = (batch_size, ho_wo//_BLOCK_SIZE, window_h*window_w*c1_value, _BLOCK_SIZE,
+                         _BLOCK_SIZE)
         fmap_fractal = im2col_fractal(fractal_shape, fmap_img2col_ub, tag='')
 
-        fractal_shape_tmp_1 = (batch_size, ho_wo//BLOCK_SIZE, c1_value, window_h*window_w,
-                               BLOCK_SIZE, BLOCK_SIZE)
+        fractal_shape_tmp_1 = (batch_size, ho_wo//_BLOCK_SIZE, c1_value, window_h*window_w,
+                               _BLOCK_SIZE, _BLOCK_SIZE)
         fmap_fractal_tmp_1 = reshape(fmap_fractal, fractal_shape_tmp_1)
 
         # output shape
-        res_output_shape = (batch_size, ho_wo//BLOCK_SIZE, c1_value, BLOCK_SIZE, BLOCK_SIZE)
+        res_output_shape = (batch_size, ho_wo//_BLOCK_SIZE, c1_value, _BLOCK_SIZE, _BLOCK_SIZE)
 
     # global avg or max pooling
     elif pooling_mode in ["GAP", "GMP"]:
@@ -255,7 +255,7 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
         # copy tensor in from gm to ub
         tensor_in_ub = tvm.compute(tensor_in.shape, lambda *i: tensor_in[i],
                                    name="tensor_in_ub",
-                                   tag=op_tag + "poolinginput")
+                                   tag=_OP_TAG + "poolinginput")
 
     # record pooling params
     pooling_params["pooling_mode"] = pooling_mode
@@ -683,8 +683,8 @@ def get_ub_data_size(out_size_w, window_h, window_w, c_block_size, enable_avg_me
     :param enable_avg_mean_factor: avg calculate factor
     :return:
     """
-    fmap_img2col_size = out_size_w*window_h*window_w*c_block_size*SIZE_OF_FP16
-    res_size = out_size_w*c_block_size*SIZE_OF_FP16
+    fmap_img2col_size = out_size_w*window_h*window_w*c_block_size*_SIZE_OF_FP16
+    res_size = out_size_w*c_block_size*_SIZE_OF_FP16
     avg_mean_factor_size = get_avg_mean_factor_size(enable_avg_mean_factor, out_size_w,
                                                     c_block_size)
     data_size = fmap_img2col_size + avg_mean_factor_size + res_size
@@ -701,7 +701,7 @@ def get_avg_mean_factor_size(enable_avg_mean_factor, out_size_w, c_block_size):
     :return:
     """
     if enable_avg_mean_factor:
-        return out_size_w * c_block_size * SIZE_OF_FP16
+        return out_size_w * c_block_size * _SIZE_OF_FP16
     return 0
 
 
@@ -917,7 +917,7 @@ def pooling2d_max(fmap_img2col_ub, res_output_shape, window_h, window_w, pooling
         pooling_ub_5hd_shape,
         lambda *indices: pooling_ub_5hd[indices],
         name="pooling2d_res",
-        tag=op_tag + 'max',
+        tag=_OP_TAG + 'max',
         attrs={'pooling_params': pooling_params,
                'setfmatrix_dict': setfmatrix_dict,
                'fusion_params': fusion_params}
@@ -977,7 +977,7 @@ def pooling2d_avg(fmap_img2col_ub, res_output_shape, window_h, window_w, pooling
         pooling_ub_5hd_shape,
         lambda *indices: pooling_ub_5hd[indices],
         name="pooling2d_res",
-        tag=op_tag + 'avg',
+        tag=_OP_TAG + 'avg',
         attrs={'pooling_params': pooling_params,
                'setfmatrix_dict': setfmatrix_dict,
                'fusion_params': fusion_params}
@@ -1022,7 +1022,7 @@ def pooling2d_gmp(tensor_in_ub, res_output_shape, window_h, window_w, pooling_pa
         res_output_shape_new,
         lambda i, j, k, l: pooling_out_ub[i, j, k // 1, k % 1, l],
         name="pooling2d_res",
-        tag=op_tag + 'gmp',
+        tag=_OP_TAG + 'gmp',
         attrs={'pooling_params': pooling_params,
                'setfmatrix_dict': setfmatrix_dict,
                'fusion_params': fusion_params,
@@ -1106,7 +1106,7 @@ def pooling2d_gap(tensor_in_ub, res_output_shape, window_h, window_w, pooling_pa
             lambda i, j, k, l:
             pooling_out_ub_mul_factor_f16[i, j, k // 1, k % 1, l],
             name="res",
-            tag=op_tag + 'gap',
+            tag=_OP_TAG + 'gap',
             attrs={'pooling_params': pooling_params,
                    'setfmatrix_dict': setfmatrix_dict,
                    'fusion_params': fusion_params,
@@ -1118,7 +1118,7 @@ def pooling2d_gap(tensor_in_ub, res_output_shape, window_h, window_w, pooling_pa
             lambda i, j, k, l:
             pooling_out_ub_mul_factor[i, j, k // 1, k % 1, l],
             name="pooling2d_res",
-            tag=op_tag + 'gap',
+            tag=_OP_TAG + 'gap',
             attrs={'pooling_params': pooling_params,
                    'setfmatrix_dict': setfmatrix_dict,
                    'fusion_params': fusion_params,
