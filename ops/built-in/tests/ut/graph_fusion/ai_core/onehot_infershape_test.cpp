@@ -34,7 +34,7 @@ TEST_F(one_hot_infershapeone_hot_infershape_pass_test, one_hot_infershapeone_hot
   // input x info
   auto input_x_shape = vector<int64_t>({-1, -1, -1, 5});
   std::vector<std::pair<int64_t,int64_t>> range_x1 = {{1, -1}, {2, 3}, {2, 3}, {5, 5}};
-  uint32_t depth = 101；
+  uint32_t depth = 101;
   int64_t axis = -1;
   auto dtype = DT_FLOAT;
   // expect info
