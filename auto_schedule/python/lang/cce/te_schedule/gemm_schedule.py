@@ -1809,7 +1809,7 @@ def _get_al1_and_bl1_axis_dynamic(sch, c_l0c, al1_factor, bl1_factor, k_outer_ou
     factor_bl1 = bl1_factor[0] // reduce_axis_factor
 
     if Params.TILING.get("AL1_shape") and Params.TILING.get("BL1_shape"):
-        if factor_bl1 > factor_bl1:
+        if factor_bl1 > factor_al1:
             k_outer_outer_outer, k_outer_outer_inner = sch[c_l0c].split(
                 k_outer_outer, factor=factor_al1
             )
@@ -4092,9 +4092,9 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
         
         def _get_bl1_bound():
             if Params.TILING["BL1_shape"]:
-                m_bound = Params.TILING["BL1_shape"][1] * Params.TILING["CL0_matrix"][0] * Params.block_out
+                n_bound = Params.TILING["BL1_shape"][1] * Params.TILING["CL0_matrix"][0] * Params.block_out
                 k_bound = Params.TILING["BL1_shape"][0]
-                al1_bound = m_bound * k_bound
+                bl1_bound = n_bound * k_bound
             else:
                 k_bound = Params.DIM_MAP["B_matrix_dim"][0] * Params.block_reduce
                 if Params.TILING["block_dim"][1] == 1:
@@ -4102,7 +4102,7 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
                 else:
                     n_parts = _int_ceil_div(Params.DIM_MAP["B_matrix_dim"][1], Params.TILING["CL0_matrix"][0])
                     n_factors = _int_ceil_div(n_parts, Params.TILING["block_dim"][1])
-                    n_bound = n_factors * Params.TILING["CL0_matrix"][1] * Params.block_in
+                    n_bound = n_factors * Params.TILING["CL0_matrix"][0] * Params.block_out
                 bl1_bound = n_bound * k_bound
             return bl1_bound
         
