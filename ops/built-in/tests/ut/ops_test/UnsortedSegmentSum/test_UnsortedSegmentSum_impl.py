@@ -15,11 +15,23 @@ def gen_dynamic_floormod_case(shape_x, shape_y, range_x, range_y, dtype_val, ker
             "format_expect": [],
             "support_expect": True}
 
+def gen_dynamic_floormod_case_int32(shape_x, shape_y, range_x, range_y, dtype_val, kernel_name_val, expect):
+    return {"params": [{"shape": shape_x, "dtype": "int32", "ori_shape":shape_x,"ori_format":"ND", "format":"ND","range": range_x},
+                       {"shape": shape_y, "dtype": "int32", "ori_shape":shape_y,"ori_format":"ND", "format":"ND","range": range_y},
+                       {"shape": shape_x, "dtype": "int32", "ori_shape":shape_x,"ori_format":"ND", "format":"ND","range": range_x},
+                       {"shape": shape_y, "dtype": "int32", "ori_shape":shape_y,"ori_format":"ND", "format":"ND","range": range_y}],
+            "case_name": kernel_name_val,
+            "expect": expect,
+            "format_expect": [],
+            "support_expect": True}
 ut_case.add_case("Ascend910",
                  gen_dynamic_floormod_case((-1,), (1,),
                                            ((1, None),), ((1, 1),),
                                            "float32", "dynamic_unsorted_segment_sum_case", "success"))
-
+ut_case.add_case("Ascend910",
+                 gen_dynamic_floormod_case_int32((-1,), (1,),
+                                           ((1, None),), ((1, 1),),
+                                           "int32", "dynamic_unsorted_segment_sum_case", "success"))
 
 if __name__ == '__main__':
     import te
