@@ -39,7 +39,7 @@ TEST_F(one_hot_infershapeone_hot_infershape_pass_test, one_hot_infershapeone_hot
   auto dtype = DT_FLOAT;
   // expect info
   std::vector<int64_t> expected_shape = {-1, -1, -1, 5, int64_t(depth)};
-  std::vector<std::pair<int64_t,int64_t>> expected_range = {{1, -1}, {2, 3}, {2, 3}, {5, 5}, {1, int64_t(depth)}};
+  std::vector<std::pair<int64_t,int64_t>> expected_range = {{1, -1}, {2, 3}, {2, 3}, {5, 5}, {int64_t(depth), int64_t(depth)}};
 
 
   // input x desc
