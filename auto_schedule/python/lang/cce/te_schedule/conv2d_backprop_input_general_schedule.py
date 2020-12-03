@@ -1953,6 +1953,9 @@ def general_schedule(
                 k_al1, multi_m_al1 = tiling["AL1_shape"][:2]
                 al1_m = multi_m_al1 * cl0_tiling_mc * cl0_tiling_m0
                 al1_c = k_al1 // kernel_h // kernel_w
+            elif dynamic_mode == "dynamic_batch":
+                al1_m = c_l0c_hw
+                al1_c = al1_co1 * al1_co0
             else:
                 al1_m = (
                     _ceil(
@@ -1972,8 +1975,8 @@ def general_schedule(
 
             return al1_bound
 
+        sch[a_l1].set_storage_bound(get_al1_bound())
         if dynamic_mode == "dynamic_hw":
-            sch[a_l1].set_storage_bound(get_al1_bound())
             sch.set_var_range(a_ddr.shape[2], *var_range.get("dedy_h"))
             sch.set_var_range(a_ddr.shape[3], *var_range.get("dedy_w"))
             sch.set_var_range(output_shape[2], *var_range.get("dx_h"))
