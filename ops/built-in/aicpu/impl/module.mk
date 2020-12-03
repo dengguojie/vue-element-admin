@@ -2,7 +2,8 @@ LOCAL_PATH := $(call my-dir)
 
 local_normalized_kernels := kernels/normalized/expanddims.cc \
                             kernels/normalized/reshape_kernels.cc \
-                            kernels/normalized/less_kernels.cc \
+                            kernels/normalized/less.cc \
+                            kernels/normalized/logging.cc \
                             kernels/normalized/top_k_kernels.cc \
                             kernels/normalized/gather_kernels.cc \
                             kernels/normalized/get_dynamic_dims.cc \
