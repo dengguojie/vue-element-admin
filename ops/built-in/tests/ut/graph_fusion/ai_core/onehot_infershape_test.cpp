@@ -30,7 +30,7 @@ protected:
 //     .ATTR(axis, Int, -1)
 //     .OP_END_FACTORY_REG(OneHot)
 TEST_F(one_hot_infershapeone_hot_infershape_pass_test, one_hot_infershapeone_hot_infershape_pass_test_1) {
-  ge::Graph graph(input_x_shape"one_hot_infershapeone_hot_infershape_pass_test_1");
+  ge::Graph graph("one_hot_infershapeone_hot_infershape_pass_test_1");
   // input x info
   auto input_x_shape = vector<int64_t>({-1, -1, -1, 5});
   std::vector<std::pair<int64_t,int64_t>> range_x1 = {{1, -1}, {2, 3}, {2, 3}, {5, 5}};
@@ -50,8 +50,8 @@ TEST_F(one_hot_infershapeone_hot_infershape_pass_test, one_hot_infershapeone_hot
   data.update_output_desc_y(desc_data);
 
   // depth scaler const
-  auto depth_shape = ge::Shape({});
-  TensorDesc desc_input_size_1(depth_shape, FORMAT_ND, DT_INT32);
+  vector<int64_t> depth_dims;
+  TensorDesc desc_input_size_1(ge::Shape(depth_dims), FORMAT_ND, DT_INT32);
   Tensor depth_tensor(desc_input_size_1);
   uint32_t *depth_tensor_value = new uint32_t[1]{depth};
   depth_tensor.SetData((uint8_t *) depth_tensor_value, sizeof(uint32_t));
