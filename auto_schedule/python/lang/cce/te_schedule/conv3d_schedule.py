@@ -1628,11 +1628,11 @@ class CceConv3dOp:
             else:
                 k_al1_value = te_util.int_ceil_div(kernel_d * group_dict["cin1_g"] // al1_factor[0],
                                                    group_dict["cin1_g"])
-                k_al1_mod =(kernel_d * group_dict["cin1_g"] // al1_factor[0] % group_dict["cin1_g"]
+                k_al1_mod =kernel_d * group_dict["cin1_g"] // al1_factor[0] % group_dict["cin1_g"]
                 if al1_factor[0] > bl1_factor[0]:
                     k_outer_axis = k_outer_outer_outer_outer * (al1_factor[0] // bl1_factor[0]) +
                                    k_outer_outer_outer_inner
-                    if k_al1_value == 0:
+                    if k_al1_mod.value == 0:
                         extent = (k_al1_value - 1) * fmap_cin1_ori + group_dict["cin1_g"]
                         k_axis = g_block_axis * group_dict["cin1_g"] + k_outer_axis * 
                                  (k_al1_value * fmap_cin1_ori)
@@ -1670,12 +1670,12 @@ class CceConv3dOp:
                         k_axis = k_outer_outer_outer_outer * factor_oooo
                     extent = tiling["AL1_shape"][0]
 
-                    if nbuffer_flag_al1:
-                        extent = group_dict["cin1_g"] * kernel_d // k_outer_outer_inner_outer_size // max(al1_factor[0], bl1_factor[0])
-                        factor1 = max(al1_factor[0], bl1_factor[0]) // min(al1_factor[0], bl1_factor[0])
-                        k_axis = (k_outer_outer_outer_outer * factor1 + k_outer_outer_outer_inner) * k_outer_outer_inner_outer_size + \
-                                    compute_al1_axis["k_outer_outer_inner_outer"]
-                        k_axis = k_axis * extent
+                if nbuffer_flag_al1:
+                    extent = group_dict["cin1_g"] * kernel_d // k_outer_outer_inner_outer_size // max(al1_factor[0], bl1_factor[0])
+                    factor1 = max(al1_factor[0], bl1_factor[0]) // min(al1_factor[0], bl1_factor[0])
+                    k_axis = (k_outer_outer_outer_outer * factor1 + k_outer_outer_outer_inner) * k_outer_outer_inner_outer_size + \
+                                compute_al1_axis["k_outer_outer_inner_outer"]
+                    k_axis = k_axis * extent
                         
                 sch[fmap_col_before].buffer_tile((None, None), (None, None),
                                                  (k_axis, extent),
