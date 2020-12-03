@@ -447,7 +447,7 @@ bool GetConstValue(const Operator& op, const GeTensorPtr& const_tensor,
   size_t size = const_tensor->GetData().GetSize();
   void* data_ptr = (void*)const_tensor->GetData().GetData();
   if (data_ptr == nullptr) {
-    return;
+    return false;
   }
 
   if (dtype == ge::DT_INT32){

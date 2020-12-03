@@ -2125,6 +2125,9 @@ IMPLEMT_COMMON_INFERFUNC(OneHotInferShape) {
     OP_LOGE(op.GetName().c_str(), "Get const axis failed from op of 'OneHot'!\n");
     return GRAPH_FAILED;
   }
+
+  auto node = NodeUtils::GetNodeFromOperator(op); 
+  // get all Desc info
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto input_desc = op_info->MutableInputDesc("x");
   vector<int64_t> input_shape = input_desc->MutableShape().GetDims();
@@ -2173,9 +2176,9 @@ IMPLEMT_COMMON_INFERFUNC(OneHotInferShape) {
     std::vector<std::pair<int64_t, int64_t>> input_range;
     input_desc->GetShapeRange(input_range);
     MakeUpShapeRange(input_shape, input_range);
-    std::pair<int64_t, int64_t> depth_range = depth_value == -1 ?
+    std::pair<int64_t, int64_t> depth_range = depth_value[0] == -1 ?
                                               std::pair<int64_t, int64_t>(1, -1):
-                                              std::pair<int64_t, int64_t>(depth_value, depth_value);
+                                              std::pair<int64_t, int64_t>(depth_value[0], depth_value[0]);
     input_range.insert(input_range.begin() + axis, depth_range);
     output_desc->SetShapeRange(input_range);
   }

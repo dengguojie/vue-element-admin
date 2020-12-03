@@ -2257,32 +2257,10 @@ COMMON_INFER_FUNC_REG(ArgMinD, ArgMinDInferShape);
 // ------------------------------ArgMinD----------------------------------------
 
 // -----------------------------ArgMax------------------------------------------
-static void GetConstValue(const Operator& op, const GeTensorPtr& const_tensor,
-                          const DataType& dtype, std::vector<int64_t>& const_data) {
-  size_t size = const_tensor->GetData().GetSize();
-  void* data_ptr = (void*)const_tensor->GetData().GetData();
-  if (data_ptr == nullptr) {
-    return;
-  }
-
-  if (dtype == ge::DT_INT32){
-    int32_t* const_data_ptr = reinterpret_cast<int32_t*>(data_ptr);
-    size = size / sizeof(int32_t);
-    for (size_t i=0; i < size; i++) {
-      const_data.push_back((int64_t)((int32_t) ((*(const_data_ptr + i)))));
-    }
-  } else if (dtype == ge::DT_INT64) {
-    int64_t* const_data_ptr = reinterpret_cast<int64_t*>(data_ptr);
-    size = size / sizeof(int64_t);
-    for (size_t i=0; i < size; i++) {
-      const_data.push_back((int64_t)((int64_t) ((*(const_data_ptr + i)))));
-    }
-  } else {
-    OP_LOGE(op.GetName().c_str(), "resize const not support the type");
-  }
-}
 IMPLEMT_COMMON_INFERFUNC(ArgMaxInferShape) {
   // get all input desc
+  const vector<string> depend_names = {"dimension"};
+  PREPARE_DYNAMIC_SHAPE(depend_names);
   auto node = NodeUtils::GetNodeFromOperator(op);
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto input_desc = op_info->MutableInputDesc("x");
