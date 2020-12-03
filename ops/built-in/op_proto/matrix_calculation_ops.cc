@@ -686,6 +686,7 @@ IMPLEMT_COMMON_INFERFUNC(BatchMatMulInferShape) {
   ge::Shape shapeY = inputTensorDescY.GetShape();
 
   size_t dimNumX = shapeX.GetDimNum();
+  size_t dimNumY = shapeY.GetDimNum();
 
   ge::TensorDesc outputTensorDesc = inputTensorDescX;
 
@@ -702,31 +703,43 @@ IMPLEMT_COMMON_INFERFUNC(BatchMatMulInferShape) {
     printf("GetOpAttr transpose_a or transpose_b failed!");
     return GRAPH_FAILED;
   }
-  if (dimNumX < 3 || dimNumX > 8) {
-    return GRAPH_FAILED;
-  }
   std::vector<int64_t> dimVector;
   int dimM = 0;
   int dimN = 0;
   int dimNum = dimNumX;
+  if (dimNumX < dimNumY){
+    dimNum = dimNumY;
+  }
+  if (dimNum < 3 || dimNum > 8) {
+    return GRAPH_FAILED;
+  }
+
   if (transposeA == true) {
     if (transposeB == true) {
-      dimM = dimNum - 1;
-      dimN = dimNum - 2;
+      dimM = dimNumX - 1;
+      dimN = dimNumY - 2;
     } else {
-      dimM = dimNum - 1;
-      dimN = dimNum - 1;
+      dimM = dimNumX - 1;
+      dimN = dimNumY - 1;
     }
   } else if (transposeB == true) {
-    dimM = dimNum - 2;
-    dimN = dimNum - 2;
+    dimM = dimNumX - 2;
+    dimN = dimNumY - 2;
   } else {
-    dimM = dimNum - 2;
-    dimN = dimNum - 1;
+    dimM = dimNumX - 2;
+    dimN = dimNumY - 1;
   }
-  for (int i = 0; i < dimNum - 2; i++) {
-    dimVector.push_back(shapeX.GetDim(i));
+
+  if (dimNumX < dimNumY){
+    for (int i = 0; i < dimNum - 2; i++) {
+      dimVector.push_back(shapeY.GetDim(i));
+    }
+  } else {
+    for (int i = 0; i < dimNum - 2; i++) {
+      dimVector.push_back(shapeX.GetDim(i));
+    }
   }
+
   dimVector.push_back(shapeX.GetDim(dimM));
   dimVector.push_back(shapeY.GetDim(dimN));
 

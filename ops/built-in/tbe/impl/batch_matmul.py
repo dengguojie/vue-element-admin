@@ -56,17 +56,19 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
     -------
     None
     """
-    shape_len = len(shape_a)
+    shape_len_a = len(shape_a)
+    shape_len_b = len(shape_b)
+
+    if shape_len_a >= shape_len_b:
+        shape_len = shape_len_a
+    else:
+        shape_len = shape_len_b
     inp_src_dtype = src_dtype.lower()
     k_block_size = tbe_platform.BLOCK_REDUCE
     check_list = ("float16")
 
     if inp_src_dtype not in check_list:
         error_manager_vector.raise_err_dtype_invalid('batch_matmul', 'input_x', check_list, inp_src_dtype)
-
-    if shape_len != len(shape_b):
-        error_manager_vector.raise_err_two_input_shape_invalid('batch_matmul', 'input_x', 'input_y',
-                                                               "length of a and b are not equal")
 
     if shape_len < 2:
         error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
@@ -76,26 +78,27 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
         error_manager_vector.raise_err_input_shape_invalid(
             'batch_matmul', 'input', "batch matmul not support shape length 2, if shape length equal 2, use matmul!")
 
-    if shape_a[:shape_len - 2] != shape_b[:shape_len - 2]:
-        error_manager_vector.raise_err_two_input_shape_invalid('batch_matmul', 'input_x', 'input_y',
-                                                               "batch size of a and b are not equal")
+    if len(shape_a) == len(shape_b):
+        if shape_a[:shape_len_a - 2] != shape_b[:shape_len_b - 2]:
+            error_manager_vector.raise_err_two_input_shape_invalid('batch_matmul', 'input_x', 'input_y',
+                                                                   "batch size of a and b are not equal")
 
     is_gevm = (shape_a[-2] == 1) or (shape_a[-1] == 1)
     is_gemv = (shape_b[-2] == 1) or (shape_b[-1] == 1)
 
     if trans_a:
-        m_shape = shape_a[shape_len - 1]
-        km_shape = shape_a[shape_len - 2]
+        m_shape = shape_a[shape_len_a - 1]
+        km_shape = shape_a[shape_len_a - 2]
     else:
-        m_shape = shape_a[shape_len - 2]
-        km_shape = shape_a[shape_len - 1]
+        m_shape = shape_a[shape_len_a - 2]
+        km_shape = shape_a[shape_len_a - 1]
 
     if trans_b:
-        kn_shape = shape_b[shape_len - 1]
-        n_shape = shape_b[shape_len - 2]
+        kn_shape = shape_b[shape_len_b - 1]
+        n_shape = shape_b[shape_len_b - 2]
     else:
-        kn_shape = shape_b[shape_len - 2]
-        n_shape = shape_b[shape_len - 1]
+        kn_shape = shape_b[shape_len_b - 2]
+        n_shape = shape_b[shape_len_b - 1]
 
     if m_shape == 1:
         if n_shape == 1:
@@ -272,10 +275,11 @@ def check_supported(input_x, input_y, bias=None, output_z={}, trans_a=False,
         else:
             k_shape = shape_a[shape_length - 1]
 
+        shape_length_b = len(shape_b)
         if trans_b:
-            k_b_shape = shape_b[shape_length - 1]
+            k_b_shape = shape_b[shape_length_b - 1]
         else:
-            k_b_shape = shape_b[shape_length - 2]
+            k_b_shape = shape_b[shape_length_b - 2]
 
         if k_shape != k_b_shape:
             return False
@@ -490,7 +494,7 @@ def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
         trans_a_local = bool(1 - trans_a)
 
     if input_y.get("format") == "FRACTAL_NZ":
-        batch_axis = shape_a[:(len(shape_a) - 2)]
+        batch_axis = shape_b[:(len(shape_b) - 2)]
         shape_b = batch_axis + [shape_b[len(shape_b) - 1], shape_b[len(shape_b) - 2]]
         trans_b_local = bool(1 - trans_b)
 
@@ -503,8 +507,8 @@ def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
 
     m_shape = shape_a[len(shape_a) - 2]
     km_shape = shape_a[len(shape_a) - 1]
-    kn_shape = shape_b[len(shape_a) - 2]
-    n_shape = shape_b[len(shape_a) - 1]
+    kn_shape = shape_b[len(shape_b) - 2]
+    n_shape = shape_b[len(shape_b) - 1]
 
     if inp_src_dtype == "float16":
         block_reduce = tbe_platform.BLOCK_REDUCE
@@ -554,16 +558,30 @@ def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
         shape_b_dup = (shape_b[len(shape_b) - 2], shape_b[len(shape_b) - 1])
         format_b = "ND"
 
-    batch_shape_a = functools.reduce(lambda x, y: x * y, shape_a[:-2])
-    batch_shape = batch_shape_a
+    batch_shape_a = None
+    if len(shape_a) > 2:
+        batch_shape_a = functools.reduce(lambda x, y: x * y, shape_a[:-2])
+
+    batch_shape_b = None
+    if len(shape_b) > 2:
+        batch_shape_b = functools.reduce(lambda x, y: x * y, shape_b[:-2])
+
+    if len(shape_a) >= len(shape_b):
+        batch_shape = batch_shape_a
+    else:
+        batch_shape = batch_shape_b
 
     if batch_shape >= 1:
         if is_fractal:
-            shape_a_dup = (batch_shape,) + shape_a_dup
-            shape_b_dup = (batch_shape,) + shape_b_dup
+            if batch_shape_a is not None:
+                shape_a_dup = (batch_shape_a,) + shape_a_dup
+            if batch_shape_b is not None:
+                shape_b_dup = (batch_shape_b,) + shape_b_dup
         else:
-            shape_a_dup = (batch_shape,) + shape_a_dup
-            shape_b_dup = (batch_shape,) + shape_b_dup
+            if batch_shape_a is not None:
+                shape_a_dup = (batch_shape_a,) + shape_a_dup
+            if batch_shape_b is not None:
+                shape_b_dup = (batch_shape_b,) + shape_b_dup
 
     tensor_bias = None
     shape_bias_length = len(shape_bias)
