@@ -15,7 +15,7 @@ def gen_dynamic_floormod_case(shape_x, shape_y, range_x, range_y, dtype_val, ker
             "format_expect": [],
             "support_expect": True}
 
-ut_case.add_case("all",
+ut_case.add_case("Ascend910",
                  gen_dynamic_floormod_case((-1,), (1,),
                                            ((1, None),), ((1, 1),),
                                            "float32", "dynamic_unsorted_segment_sum_case", "success"))
