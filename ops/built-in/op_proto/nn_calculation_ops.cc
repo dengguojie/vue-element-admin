@@ -6907,22 +6907,33 @@ VERIFY_FUNC_REG(Conv2DTransposeD, Conv2DTransposeDVerify);
 //----------------DeformableOffsets-------------------
 static graphStatus VerifyDeformableOffsetsInput(const ge::Operator& op) {
   auto x_desc = op.GetInputDesc("x");
-  auto offsets_desc = op.GetInputDesc("offsets");
   auto x_shape = x_desc.GetShape().GetDims();
-  auto offsets_shape = offsets_desc.GetShape().GetDims();
+  if (x_shape.size() != kDeformDimSizeLimit) {
+    OP_LOGE(op.GetName().c_str(), "Input x should be 4d.");
+    map<string, string> err_map;
+    err_map["op_name"] = "DeformableOffsets";
+    err_map["param_name"] = "x_shape";
+    err_map["expected_value"] = std::to_string(kDeformDimSizeLimit);
+    err_map["input_value"] = std::to_string(x_shape.size());
+    std::string report_error_code = "E50029";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return GRAPH_FAILED;
+  }
 
+  auto offsets_desc = op.GetInputDesc("offsets");
+  auto offsets_shape = offsets_desc.GetShape().GetDims();
   Format offset_format = offsets_desc.GetFormat();
   CHECK_FORMAT(offset_format);
-  if (offset_format != FORMAT_NCHW || offset_format != FORMAT_NHWC) {
+  if (offset_format != FORMAT_NCHW && offset_format != FORMAT_NHWC) {
     OP_LOGE(op.GetName().c_str(),
-            "input offset's format should be NCHW or NHWC, actual is %s",
+            "Input offset's format should be NCHW or NHWC, actual is [%s]",
             TypeUtils::FormatToSerialString(offset_format).c_str());
     return GRAPH_FAILED;
   }
   if (offsets_shape.size() != kDeformDimSizeLimit) {
-    OP_LOGE(op.GetName().c_str(), "offset's shape should be 4d, actual is %d.",
+    OP_LOGE(op.GetName().c_str(), "Offsets shape should be 4d, actual is [%d].",
             offsets_shape.size());
-    map<std::string, std::string> err_map;
+    map<string, string> err_map;
     err_map["op_name"] = "DeformableOffsets";
     err_map["param_name"] = "offsets_shape";
     err_map["expected_value"] = std::to_string(kDeformDimSizeLimit);
@@ -6949,6 +6960,12 @@ static graphStatus VerifyDeformableOffsetsInput(const ge::Operator& op) {
   Format x_format = x_desc.GetFormat();
   CHECK_FORMAT(x_format);
   std::string x_format_str = format2str[x_format];
+  if (offset_format_str != x_format_str) {
+    OP_LOGE(op.GetName().c_str(),
+            "Offset_format should be same as x_format, x [%s], offset [%s].",
+            x_format_str.c_str(), offset_format_str.c_str());
+    return GRAPH_FAILED;
+  }
   int32_t x_pos_h = x_format_str.find("H");
   CHECK_POSITION(x_pos_h);
   int32_t x_pos_w = x_format_str.find("W");
@@ -6962,16 +6979,15 @@ static graphStatus VerifyDeformableOffsetsInput(const ge::Operator& op) {
   int32_t x_c = x_shape[x_pos_c];
   int32_t x_n = x_shape[x_pos_n];
 
-  if (x_n != offset_n || x_h != offset_h || x_w != offset_w) {
+  if ((x_n != offset_n) || (x_h != offset_h) || (x_w != offset_w)) {
     OP_LOGE(op.GetName().c_str(),
-            "input x's or offset's shape errorr, x's shape is[%d %d %d %d], "
-            "offset's shape is[%d %d %d %d].",
+            "Offset shape error, x: [%d %d %d %d], offset: [%d %d %d %d].",
             x_n, x_c, x_h, x_w, offset_n, offset_c, offset_h, offset_w);
     return GRAPH_FAILED;
   }
 
-  int32_t deformable_groups;
-  if (op.GetAttr("deformable_groups", deformable_groups) != GRAPH_SUCCESS) {
+  int32_t dg;
+  if (op.GetAttr("deformable_groups", dg) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "op get deformable_groups failed.");
     map<string, string> err_map;
     err_map["op_name"] = "DeformableOffsets";
@@ -6980,21 +6996,21 @@ static graphStatus VerifyDeformableOffsetsInput(const ge::Operator& op) {
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return GRAPH_FAILED;
   }
-  if (deformable_groups <= 0) {
-    OP_LOGE(op.GetName().c_str(), "deformable_groups should not be less than 0,"
-            "deformable_groups: %d.", deformable_groups);
+  if (dg <= 0) {
+    OP_LOGE(op.GetName().c_str(),
+            "deformable_groups less than 0, deformable_groups [%d].", dg);
     return GRAPH_FAILED;
   }
 
-  if (x_c % deformable_groups != 0) {
+  if (x_c % dg != 0) {
     OP_LOGE(op.GetName().c_str(),
-            "input x's channle can not divide deformable_groups");
+            "Input x's channle can not divide deformable_groups");
     return GRAPH_FAILED;
   }
 
   std::vector<int32_t> ksize_list;
   if (op.GetAttr("ksize", ksize_list) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "op get ksize failed.");
+    OP_LOGE(op.GetName().c_str(), "Op get ksize failed.");
     map<string, string> err_map;
     err_map["op_name"] = "DeformableOffsets";
     err_map["param_name"] = "ksize";
@@ -7003,11 +7019,11 @@ static graphStatus VerifyDeformableOffsetsInput(const ge::Operator& op) {
     return GRAPH_FAILED;
   }
   if (ksize_list.size() != kDeformKsizeLimit) {
-    OP_LOGE(op.GetName().c_str(), "input ksize should be 2d.");
+    OP_LOGE(op.GetName().c_str(), "Input ksize should be 2d.");
     map<string, string> err_map;
     err_map["op_name"] = "DeformableOffsets";
     err_map["param_name"] = "ksize";
-    err_map["excepted_value"] = std::to_string(kDeformKsizeLimit);
+    err_map["expected_value"] = std::to_string(kDeformKsizeLimit);
     err_map["input_value"] = std::to_string(ksize_list.size());
     std::string report_error_code = "E50029";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
@@ -7018,17 +7034,15 @@ static graphStatus VerifyDeformableOffsetsInput(const ge::Operator& op) {
   int32_t ksize_y = ksize_list[1];
   if ((ksize_x % 2 == 0) || (ksize_y % 2 == 0)) {
     OP_LOGE(op.GetName().c_str(),
-            "ksize dose not support enev numbers temporarily, ksize_x:%d, "
-            "ksize_y: %d.",
+            "Ksize only supports odd numbers, ksize_x [%d], ksize_y [%d].",
             ksize_x, ksize_y);
     return GRAPH_FAILED;
   }
 
-  if (offset_c != deformable_groups * ksize_x * ksize_y * 3) {
+  if (offset_c != dg * ksize_x * ksize_y * 3) {
     OP_LOGE(op.GetName().c_str(),
-            "offset_channles shoule be deformable_groups*ksize_x*ksize_y*3, "
-            "offset_channles is %d.",
-            offset_c);
+        "Check offset_c failed, offsets_c [%d], should be [%d].",
+        offset_c, dg * ksize_x * ksize_y * 3);
     return GRAPH_FAILED;
   }
 
@@ -7041,11 +7055,11 @@ IMPLEMT_INFERFUNC(DeformableOffsets, DeformableOffsetsInfer) {
 
   auto x_shape = x_desc.GetShape().GetDims();
   if (x_shape.size() != kDeformDimSizeLimit) {
-    OP_LOGE(op.GetName().c_str(), "input x should be 4d.");
+    OP_LOGE(op.GetName().c_str(), "Input x should be 4d.");
     map<string, string> err_map;
     err_map["op_name"] = "DeformableOffsets";
-    err_map["param_name"] = "x";
-    err_map["excepted_value"] = std::to_string(kDeformDimSizeLimit);
+    err_map["param_name"] = "x_shape";
+    err_map["expected_value"] = std::to_string(kDeformDimSizeLimit);
     err_map["input_value"] = std::to_string(x_shape.size());
     std::string report_error_code = "E50029";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
@@ -7054,9 +7068,9 @@ IMPLEMT_INFERFUNC(DeformableOffsets, DeformableOffsetsInfer) {
 
   Format x_format = x_desc.GetFormat();
   CHECK_FORMAT(x_format);
-  if (x_format != FORMAT_NCHW && x_format != FORMAT_NHWC) {
+  if ((x_format != FORMAT_NCHW) && (x_format != FORMAT_NHWC)) {
     OP_LOGE(op.GetName().c_str(),
-            "input x's fortmat should be NCHW or NHWC actual is: %s.",
+            "Input x's format should be NCHW or NHWC actual is [%s].",
             TypeUtils::FormatToSerialString(x_format).c_str());
     return GRAPH_FAILED;
   }
@@ -7064,7 +7078,7 @@ IMPLEMT_INFERFUNC(DeformableOffsets, DeformableOffsetsInfer) {
   // check ksize size
   std::vector<int32_t> ksize_list;
   if (op.GetAttr("ksize", ksize_list) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "op get ksize failed.");
+    OP_LOGE(op.GetName().c_str(), "Op get ksize failed.");
     map<string, string> err_map;
     err_map["op_name"] = "DeformableOffsets";
     err_map["param_name"] = "ksize";
@@ -7073,11 +7087,11 @@ IMPLEMT_INFERFUNC(DeformableOffsets, DeformableOffsetsInfer) {
     return GRAPH_FAILED;
   }
   if (ksize_list.size() != kDeformKsizeLimit) {
-    OP_LOGE(op.GetName().c_str(), "input ksize should be 2d.");
+    OP_LOGE(op.GetName().c_str(), "Input ksize should be 2d.");
     map<string, string> err_map;
     err_map["op_name"] = "DeformableOffsets";
     err_map["param_name"] = "ksize";
-    err_map["excepted_value"] = std::to_string(kDeformKsizeLimit);
+    err_map["expected_value"] = std::to_string(kDeformKsizeLimit);
     err_map["input_value"] = std::to_string(ksize_list.size());
     std::string report_error_code = "E50029";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
@@ -7087,8 +7101,8 @@ IMPLEMT_INFERFUNC(DeformableOffsets, DeformableOffsetsInfer) {
   // check strides size
   std::vector<int32_t> stride_list;
   if (op.GetAttr("strides", stride_list) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get strides list failed.");
-    map<std::string, std::string> err_map;
+    OP_LOGE(op.GetName().c_str(), "Get strides list failed.");
+    map<string, string> err_map;
     err_map["op_name"] = "DeformableOffsets";
     err_map["param_name"] = "strides";
     std::string report_error_code = "E50030";
@@ -7096,11 +7110,11 @@ IMPLEMT_INFERFUNC(DeformableOffsets, DeformableOffsetsInfer) {
     return GRAPH_FAILED;
   }
   if (stride_list.size() != kDeformDimSizeLimit) {
-    OP_LOGE(op.GetName().c_str(), "strides size should be 4d.");
-    map<std::string, std::string> err_map;
+    OP_LOGE(op.GetName().c_str(), "Strides size should be 4d.");
+    map<string, string> err_map;
     err_map["op_name"] = "DeformableOffsets";
     err_map["param_name"] = "strides";
-    err_map["excepted_value"] = std::to_string(kDeformDimSizeLimit);
+    err_map["expected_value"] = std::to_string(kDeformDimSizeLimit);
     err_map["input_value"] = std::to_string(stride_list.size());
     std::string report_error_code = "E50029";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
@@ -7110,8 +7124,8 @@ IMPLEMT_INFERFUNC(DeformableOffsets, DeformableOffsetsInfer) {
   // check pads size
   std::vector<int32_t> pads_list;
   if (op.GetAttr("pads", pads_list) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get pads list failed.");
-    map<std::string, std::string> err_map;
+    OP_LOGE(op.GetName().c_str(), "Get pads list failed.");
+    map<string, string> err_map;
     err_map["op_name"] = "DeformableOffsets";
     err_map["param_name"] = "pads";
     std::string report_error_code = "E50030";
@@ -7119,11 +7133,11 @@ IMPLEMT_INFERFUNC(DeformableOffsets, DeformableOffsetsInfer) {
     return GRAPH_FAILED;
   }
   if (pads_list.size() != kDeformDimSizeLimit) {
-    OP_LOGE(op.GetName().c_str(), "pads size should be 4d.");
-    map<std::string, std::string> err_map;
+    OP_LOGE(op.GetName().c_str(), "Pads size should be 4d.");
+    map<string, string> err_map;
     err_map["op_name"] = "DeformableOffsets";
     err_map["param_name"] = "pads";
-    err_map["excepted_value"] = std::to_string(kDeformDimSizeLimit);
+    err_map["expected_value"] = std::to_string(kDeformDimSizeLimit);
     err_map["input_value"] = std::to_string(pads_list.size());
     std::string report_error_code = "E50029";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
@@ -7133,8 +7147,8 @@ IMPLEMT_INFERFUNC(DeformableOffsets, DeformableOffsetsInfer) {
   // check dilations size
   std::vector<int32_t> dilations_list;
   if (op.GetAttr("dilations", dilations_list) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get dilations list failed.");
-    map<std::string, std::string> err_map;
+    OP_LOGE(op.GetName().c_str(), "Get dilations list failed.");
+    map<string, string> err_map;
     err_map["op_name"] = "DeformableOffsets";
     err_map["param_name"] = "dilations";
     std::string report_error_code = "E50030";
@@ -7142,11 +7156,11 @@ IMPLEMT_INFERFUNC(DeformableOffsets, DeformableOffsetsInfer) {
     return GRAPH_FAILED;
   }
   if (dilations_list.size() != kDeformDimSizeLimit) {
-    OP_LOGE(op.GetName().c_str(), "dilations size should be 4d.");
-    map<std::string, std::string> err_map;
+    OP_LOGE(op.GetName().c_str(), "Dilations_list size should be 4d.");
+    map<string, string> err_map;
     err_map["op_name"] = "DeformableOffsets";
     err_map["param_name"] = "dilations";
-    err_map["excepted_value"] = std::to_string(kDeformDimSizeLimit);
+    err_map["expected_value"] = std::to_string(kDeformDimSizeLimit);
     err_map["input_value"] = std::to_string(dilations_list.size());
     std::string report_error_code = "E50029";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
@@ -7172,26 +7186,34 @@ IMPLEMT_INFERFUNC(DeformableOffsets, DeformableOffsetsInfer) {
       stride_w = stride_list[2];
     } else {
        OP_LOGE(op.GetName().c_str(),
-              "data_format should be 'NCHW' or 'NHWC', actual is %s.",
+              "Data_format should be 'NCHW' or 'NHWC', actual is [%s].",
               data_format.c_str());
         return GRAPH_FAILED;
     }
   }
-  if (stride_h == 0 || stride_w == 0) {
+  if ((stride_h == 0) || (stride_w == 0)) {
     OP_LOGE(op.GetName().c_str(),
-            "stride_h or stride_w should not be 0, stride_h: %d, "
-            "stride_w: %d.",
+           "Stride should not be 0, stride_h [%d], stride_w [%d].",
             stride_h, stride_w);
     return GRAPH_FAILED;
   }
 
+  auto y_format = y_desc.GetFormat();
+  CHECK_FORMAT(y_format)
+  std::string x_format_str = format2str[x_format];
+  std::string y_format_str = format2str[y_format];
+  if (x_format_str != data_format || y_format_str != data_format) {
+    OP_LOGE(op.GetName().c_str(),
+          "Check x, y format failed, x [%s], y [%s], data_format [%s].",
+          x_format_str.c_str(), y_format_str.c_str(), data_format.c_str());
+    return GRAPH_FAILED;
+  }
   int32_t ksize_x = ksize_list[0];
   int32_t ksize_y = ksize_list[1];
   // formual : (ksize_x - 1) * dilations_w + 1
   const int32_t dil_ksize_x = (ksize_x - 1) * dilations_w + 1;
   const int32_t dil_ksize_y = (ksize_y - 1) * dilations_h + 1;
 
-  std::string x_format_str = format2str[x_format];
   int32_t x_pos_h = x_format_str.find("H");
   CHECK_POSITION(x_pos_h);
   int32_t x_pos_w = x_format_str.find("W");
@@ -7207,13 +7229,20 @@ IMPLEMT_INFERFUNC(DeformableOffsets, DeformableOffsetsInfer) {
 
   int32_t pad_u = pads_list[0];
   int32_t pad_d = pads_list[1];
-  int32_t pad_r = pads_list[2];
-  int32_t pad_l = pads_list[3];
+  int32_t pad_l = pads_list[2];
+  int32_t pad_r = pads_list[3];
+
+  const int32_t padding_w = x_w + pad_l + pad_r;
+  const int32_t padding_h = x_h + pad_u + pad_d;
+  if ((padding_w < dil_ksize_x) || (padding_h < dil_ksize_y)) {
+    OP_LOGE(op.GetName().c_str(),
+        "Padding less than dil_ksize, p_w [%d], d_x [%d], p_h [%d], d_y [%d].",
+        padding_w, dil_ksize_x, padding_h, dil_ksize_y);
+    return GRAPH_FAILED;
+  }
   // formual : (width + pad_l + pad_r - ksize_dilx) / stride_w + 1
-  const int32_t effect_points_x =
-      (x_w + pad_l + pad_r - dil_ksize_x) / stride_w + 1;
-  const int32_t effect_points_y =
-      (x_h + pad_u + pad_d - dil_ksize_y) / stride_h + 1;
+  const int32_t effect_points_x = (padding_w - dil_ksize_x) / stride_w + 1;
+  const int32_t effect_points_y = (padding_h - dil_ksize_y) / stride_h + 1;
 
   int64_t out_h = static_cast<int64_t>(ksize_y * effect_points_y);
   int64_t out_w = static_cast<int64_t>(ksize_x * effect_points_x);
@@ -7221,8 +7250,6 @@ IMPLEMT_INFERFUNC(DeformableOffsets, DeformableOffsetsInfer) {
   int64_t out_n = static_cast<int64_t>(x_n);
 
   std::vector<int64_t> y_shape;
-  auto y_format = y_desc.GetFormat();
-  CHECK_FORMAT(y_format)
   if (y_format == FORMAT_NCHW) {
     y_shape.push_back(out_n);
     y_shape.push_back(out_c);
@@ -7235,7 +7262,7 @@ IMPLEMT_INFERFUNC(DeformableOffsets, DeformableOffsetsInfer) {
     y_shape.push_back(out_c);
   } else {
     OP_LOGE(op.GetName().c_str(),
-            "output y's fortmat should be NCHW or NHWC, actual is: %s.",
+            "Output y's format should be NCHW or NHWC, actual is [%s].",
             TypeUtils::FormatToSerialString(y_format).c_str());
     return GRAPH_FAILED;
   }
@@ -7246,7 +7273,7 @@ IMPLEMT_INFERFUNC(DeformableOffsets, DeformableOffsetsInfer) {
 
   // update output desc
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update output desc failed.");
+    OP_LOGE(op.GetName().c_str(), "Update output desc failed.");
     map<string, string> err_map;
     err_map["op_name"] = "DeformableOffsets";
     err_map["param_name"] = "y";
