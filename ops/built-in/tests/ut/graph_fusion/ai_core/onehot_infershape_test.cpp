@@ -241,7 +241,7 @@ TEST_F(one_hot_infershapeone_hot_infershape_pass_test, one_hot_infershapeone_hot
   auto dtype = DT_FLOAT;
   // expect info
   std::vector<int64_t> expected_shape = {-1, 3, 32, 32};
-  std::vector<std::pair<int64_t,int64_t>> expected_range = {{1, -1}, {32, 32}, {32, 32}, {32, 32}}};
+  std::vector<std::pair<int64_t,int64_t>> expected_range = {{1, -1}, {32, 32}, {32, 32}, {32, 32}};
 
 
   // input x desc
