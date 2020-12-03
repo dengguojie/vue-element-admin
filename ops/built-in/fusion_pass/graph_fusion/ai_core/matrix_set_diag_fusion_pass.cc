@@ -134,13 +134,8 @@ Status MatrixSetDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
                     return PARAM_INVALID);
   ge::OpDescPtr fusionDesc = AttrUtils::CopyOpDesc(matrixsetdiagDesc);
 
-  // find the parent node of matrix_set_diag
-  ge::InDataAnchorPtr matrixsetdiagAnchorPtr0 = matrixsetdiagVNode->GetInDataAnchor(0);
-  ge::OutDataAnchorPtr constAnchorPtr0 = matrixsetdiagAnchorPtr0->GetPeerOutAnchor();
-  ge::NodePtr constNode0 = constAnchorPtr0->GetOwnerNode();
-
   // get the input desc of entrance node to differentiate const and varj
-  ge::GeTensorDesc matrixsetdiagInputTensor = constNode0->GetOpDesc()->GetOutputDesc(0);
+  ge::GeTensorDesc matrixsetdiagInputTensor = matrixsetdiagVNode->GetOpDesc()->GetInputDesc(0);
 
   // get the shape info
   ge::GeShape matrixsetdiagInputShape = matrixsetdiagInputTensor.GetShape();
