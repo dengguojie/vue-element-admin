@@ -26,3 +26,5 @@ add_subdirectory(graph_fusion/ai_core)
 if(BUILD_OPEN_PROJECT)
   add_subdirectory(aicpu_test)
 endif()
+
+add_subdirectory(plugin_test)
