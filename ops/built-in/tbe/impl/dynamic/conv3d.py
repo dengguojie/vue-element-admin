@@ -838,6 +838,7 @@ def _check_and_config_para(fmap,
     }
     return config_dict
 
+
 def _calc_pads(fmap_shape_ndc1hwc0, shape_filter, stride_dhw, dilation_dhw, pads):
     """
     calculate pads
@@ -1002,7 +1003,7 @@ def _conv3d_compute(fmap,
     stride_dhw = config_dict.get('stride_dhw')
     dilation_dhw = config_dict.get('dilation_dhw')
     group_dict = config_dict.get('group_dict')
-    in_dtype = config_dict.get('in_dtype')
+    fmp_dtype = config_dict.get('in_dtype')
     w_dtype = config_dict.get('w_dtype')
     res_dtype = config_dict.get('res_dtype')
     fmap_range = config_dict.get('fmap_range')
