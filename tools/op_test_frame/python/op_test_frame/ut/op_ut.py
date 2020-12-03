@@ -32,6 +32,7 @@ from op_test_frame.config import llt_config
 from op_test_frame.common import logger
 from op_test_frame.common import op_status
 from op_test_frame.common import precision_info
+from op_test_frame.common import data_generator
 from op_test_frame.utils import shape_utils
 from op_test_frame.utils import precision_compare_util
 from op_test_frame.utils import op_param_util
@@ -39,6 +40,8 @@ from op_test_frame.utils import file_util
 from op_test_frame.ut import op_ut_case_info
 from op_test_frame.model_run_utils import model_run_utils
 from op_test_frame.ut import op_ut_runner
+from op_test_frame.common.ascend_tbe_op import AscendOpKernel
+from op_test_frame.common.ascend_tbe_op import AscendOpKernelRunner
 
 
 class OpFuncType(Enum):
@@ -166,6 +169,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         self.test_data_dir_hook = [os.path.realpath("./data")]
         self.test_model_data_dir_hook = [os.path.realpath("./model")]
         self._simulator_mode_hook = ["pv"]
+        self._simulator_lib_path_hook = ["/usr/local/Ascend"]
 
         caller = inspect.stack()[1]
         self.case_file = caller.filename
@@ -429,6 +433,159 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         case_info = self._build_op_ut_case_info(support_soc, case, case_line_num=case_line_num)
         self._case_info_map[case_info.case_name] = case_info
         self._add_test_op_intf_method(case_info)
+
+    @staticmethod
+    def _gen_input_data(param_info):
+        def _deal_data_path():
+            input_data_path = param_info.get("data_path")
+            if not isinstance(input_data_path, str):
+                raise TypeError("data_path is not a str, please check your case param.")
+            input_data_path = os.path.realpath(input_data_path)
+            if not os.path.exists(input_data_path):
+                raise IOError("data_path is not exist, please check your case param, data_path: %s" % input_data_path)
+            data_type = str(param_info.get("dtype")).strip()
+            data_from_file = np.fromfile(input_data_path, data_type)
+            data_from_file_size = len(data_from_file)
+            param_shape = param_info.get("shape")
+            param_shape_size = shape_utils.calc_shape_size(param_shape)
+            if data_from_file_size < param_shape_size:
+                raise RuntimeError("Input data file size(%s) is len than shape size(%s), dtype is %s. " % (
+                    data_from_file_size, param_shape_size, data_type))
+            param_info["value"] = data_from_file[:param_shape_size].reshape(param_shape)
+
+        def _deal_no_param_data_path():
+            if "value" in param_info.keys():
+                return
+            distribution = param_info.get("distribution", "uniform")
+            value_range = param_info.get("value_range", [0.1, 1])
+            shape = param_info.get("shape")
+            dtype = param_info.get("dtype")
+            data = data_generator.gen_data(data_shape=shape,
+                                           min_value=value_range[0],
+                                           max_value=value_range[1],
+                                           dtype=dtype,
+                                           distribution=distribution)
+            param_info["value"] = data
+
+        if "data_path" in param_info.keys():
+            param_info()
+        else:
+            _deal_no_param_data_path()
+
+    @staticmethod
+    def _get_param_type(one_param):
+        if not one_param:
+            return None
+        if isinstance(one_param, (tuple, list)):
+            if not one_param or not isinstance(one_param[0], dict):
+                return None
+            return one_param[0].get("param_type", None)
+        if isinstance(one_param, dict):
+            return one_param.get("param_type")
+        return None
+
+    @staticmethod
+    def _get_input_outputs(param_list: List):
+        def _add_to_params(params: List, one_param):
+            if isinstance(one_param, list):
+                for sub_param in one_param:
+                    params.append(sub_param)
+            else:
+                params.append(one_param)
+
+        input_list = []
+        output_list = []
+        for arg in param_list:
+            param_type = OpUT._get_param_type(arg)
+            if param_type == "input":
+                _add_to_params(input_list, arg)
+            if param_type == "output":
+                _add_to_params(output_list, arg)
+        return input_list, output_list
+
+    def _build_case_simulator_dir(self, case_name):
+        model_data_path = os.path.join(os.path.realpath(self.test_model_data_dir_hook[0]),
+                                       self._simulator_mode_hook[0], self.op_type, case_name)
+        if not os.path.exists(model_data_path):
+            file_util.makedirs(model_data_path, DATA_DIR_MODES)
+        return model_data_path
+
+    def _run_op(self, case_info: op_ut_case_info.OpUTCase):
+        bin_path = os.path.join(OpUT.KERNEL_DIR, case_info.case_name + ".o")
+        json_path = os.path.join(OpUT.KERNEL_DIR, case_info.case_name + ".json")
+        input_info_list, output_info_list = self._get_input_outputs(case_info.op_params)
+        input_data_list = []
+        for input_info in input_info_list:
+            self._gen_input_data(input_info)
+            input_data_list.append(input_info.get("value"))
+        op_kernel = AscendOpKernel(bin_path, json_path)
+        op_kernel.set_input_info(input_info_list)
+        op_kernel.set_output_info(output_info_list)
+        cur_soc_version, _ = self._get_cur_run_soc_version()
+        with AscendOpKernelRunner(simulator_mode=self._simulator_mode_hook[0],
+                                  soc_version=cur_soc_version,
+                                  simulator_lib_path=self._simulator_lib_path_hook[0],
+                                  simulator_dump_path=self._build_case_simulator_dir(case_info.case_name)) as runner:
+            output_data_list = runner.run(op_kernel, inputs=input_data_list)
+            if not isinstance(output_data_list, (tuple, list)):
+                output_data_list = [output_data_list, ]
+            for output_data in output_data_list:
+                if output_data:
+                    output_data.sync_from_device()
+
+        for idx, output_info in enumerate(output_info_list):
+            output_info["value"] = output_data_list[idx].get_data()
+
+    def _build_data_file(self, file_name):
+        data_dir = os.path.join(self.test_data_dir_hook[0], self.op_type)
+        data_dir = os.path.realpath(data_dir)
+        if not os.path.exists(data_dir):
+            file_util.makedirs(data_dir, mode=DATA_DIR_MODES)
+        data_path = os.path.join(data_dir, file_name)
+        if not os.path.exists(data_path):
+            # create output data file with mode
+            with os.fdopen(os.open(data_path, DATA_FILE_FLAGS, DATA_FILE_MODES), 'w') as fout:
+                fout.write("")
+        return data_path
+
+    def _save_data(self, case_info: op_ut_case_info.OpUTCase):
+
+        def _save_input_data(one_param, idx):
+            input_data_file_name = "%s_input%s.bin" % (case_info.case_name, str(idx))
+            input_data_path = self._build_data_file(input_data_file_name)
+            one_param["data_path"] = input_data_path
+            one_param["value"].tofile(input_data_path)
+
+        def _save_output_data(one_param, idx):
+            output_data_file_name = "%s_output%s.bin" % (case_info.case_name, str(idx))
+            expect_output_data_file_name = "%s_expect_output%s.bin" % (case_info.case_name, str(idx))
+            output_data_path = self._build_data_file(output_data_file_name)
+            expect_output_data_path = self._build_data_file(expect_output_data_file_name)
+            one_param["data_path"] = output_data_path
+            one_param["expect_data_path"] = expect_output_data_path
+            one_param["value"].tofile(output_data_path)
+            one_param["expect_value"].tofile(expect_output_data_path)
+
+        input_idx = 0
+        output_idx = 0
+        for arg in case_info.op_params:
+            param_type = OpUT._get_param_type(arg)
+            if param_type == "input":
+                if isinstance(arg, list):
+                    for sub_param in arg:
+                        _save_input_data(sub_param, input_idx)
+                        input_idx += 1
+                else:
+                    _save_input_data(arg, input_idx)
+                    input_idx += 1
+            if param_type == "output":
+                if isinstance(arg, list):
+                    for sub_param in arg:
+                        _save_output_data(sub_param, output_idx)
+                        output_idx += 1
+                else:
+                    _save_output_data(arg, output_idx)
+                    output_idx += 1
 
     def _run_op_kernel(self, case_info: op_ut_case_info.OpUTCase):
         def _gen_input_data_path(param_info_inner, param_idx_str):
@@ -700,18 +857,6 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
 
         return True, None, None
 
-    @staticmethod
-    def _get_param_type(one_param):
-        if not one_param:
-            return None
-        if isinstance(one_param, (list, tuple)):
-            if not isinstance(one_param[0], dict):
-                return None
-            return one_param[0].get("param_type")
-        if isinstance(one_param, dict):
-            return one_param.get("param_type")
-        return None
-
     def _add_precision_test_method(self, case_info: op_ut_case_info.OpUTCase):
 
         def _get_output_dict():
@@ -790,6 +935,18 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                         ut_case_trace.add_stage_result(
                             op_ut_case_info.OpUTStageResult(op_status.SUCCESS, result=None, err_msg=None))
 
+                    def _run_op_kernel():
+                        try:
+                            self._run_op(case_info)
+                        except BaseException as run_err:
+                            err_trace_str = get_trace_info()
+                            ut_case_trace.add_stage_result(
+                                op_ut_case_info.OpUTStageResult(status=op_status.FAILED, err_msg="run op failed",
+                                                                err_trace=err_trace_str))
+                            raise AssertionError("Run op on model failed.") from run_err
+                        ut_case_trace.add_stage_result(
+                            op_ut_case_info.OpUTStageResult(op_status.SUCCESS, result=None, err_msg=None))
+
                     def _run_expect_out_fn():
                         run_status, err_msg, err_trace_str = self._run_expect_fn(case_info)
                         if not run_status:
@@ -815,7 +972,8 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
 
                     _compile_op()
                     logger.log_debug("Compile op success")
-                    _run_op()
+                    # _run_op()
+                    _run_op_kernel()
                     logger.log_debug("Run op success")
                     if self._simulator_mode_hook[0] == "tm":
                         return
@@ -823,6 +981,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                     logger.log_debug("Calc expect out success")
                     _cmp_result()
                     logger.log_debug("Compare expect out success")
+                    self._save_data(case_info)
 
                 try:
                     _run_test()
@@ -995,7 +1154,8 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
             suit.addTests(_get_test_method(one_soc_inner))
             op_ut = op_ut_case_info.OpUTSuite(one_soc_inner, suit, self.test_trace_hook, self.test_data_dir_hook,
                                               self.test_model_data_dir_hook, self._simulator_mode_hook,
-                                              op_type=self.op_type)
+                                              op_type=self.op_type,
+                                              simulator_lib_path_hook=self._simulator_lib_path_hook)
             return op_ut
 
         test_case_list = []
@@ -1063,6 +1223,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
             if soc == "all":
                 raise RuntimeError("Not support run multi soc in one time when run simulator.")
             self._simulator_mode_hook = [simulator_mode, ]
+            self._simulator_lib_path_hook = [simulator_lib_path, ]
 
         op_uts = self.get_test_case(soc, case_name)
         runner = op_ut_runner.OpUTTestRunner(print_summary=True, simulator_mode=simulator_mode,
