@@ -418,19 +418,20 @@ def _set_data_layout(res, sch):  # pylint: disable=too-many-statements
             Params.TENSOR_MAP["beta"] = all_tensor.get("tensor_beta")
         else:
             Params.MAT_MUL = True
-        if _is_int82fp32_nd() and not Params.MAT_MUL:
+        if not Params.MAT_MUL:
             Params.TENSOR_MAP["tensor_a_float16_normalize_ub"] = all_tensor.get(
                 "tensor_a_float16_normalize_ub"
             )
             Params.TENSOR_MAP["tensor_b_float16_normalize_ub"] = all_tensor.get(
                 "tensor_b_float16_normalize_ub"
             )
-            sch[Params.TENSOR_MAP["tensor_a_float16_normalize_ub"]].set_scope(
-                cce_params.scope_ubuf
-            )
-            sch[Params.TENSOR_MAP["tensor_b_float16_normalize_ub"]].set_scope(
-                cce_params.scope_ubuf
-            )
+            if  _is_int82fp32_nd():
+                sch[Params.TENSOR_MAP["tensor_a_float16_normalize_ub"]].set_scope(
+                    cce_params.scope_ubuf
+                )
+                sch[Params.TENSOR_MAP["tensor_b_float16_normalize_ub"]].set_scope(
+                    cce_params.scope_ubuf
+                )
 
         # tensor in aicore
         Params.TENSOR_MAP["c_ub"] = all_tensor.get("tensor_c_ub")
