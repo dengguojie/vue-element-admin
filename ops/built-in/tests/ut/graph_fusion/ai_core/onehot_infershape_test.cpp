@@ -234,14 +234,14 @@ TEST_F(one_hot_infershapeone_hot_infershape_pass_test, one_hot_infershapeone_hot
 TEST_F(one_hot_infershapeone_hot_infershape_pass_test, one_hot_infershapeone_hot_infershape_pass_test_4) {
   ge::Graph graph("one_hot_infershapeone_hot_infershape_pass_test_4");
   // input x info
-  auto input_x_shape = vector<int64_t>({32， 32， 32});
+  auto input_x_shape = vector<int64_t>({32, 32, 32});
   std::vector<std::pair<int64_t,int64_t>> range_x1 = {{2, 3}, {2, 4}, {5, 5}};
   uint32_t depth = 1001;
   int64_t axis = 0;
   auto dtype = DT_FLOAT;
   // expect info
-  std::vector<int64_t> expected_shape = {-1， 32， 32， 32};
-  std::vector<std::pair<int64_t,int64_t>> expected_range = {{1, -1}， {32, 32}, {32, 32}, {32, 32}}};
+  std::vector<int64_t> expected_shape = {-1, 3, 32, 32};
+  std::vector<std::pair<int64_t,int64_t>> expected_range = {{1, -1}, {32, 32}, {32, 32}, {32, 32}}};
 
 
   // input x desc
