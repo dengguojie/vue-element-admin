@@ -36,6 +36,7 @@
 #include "graph/utils/node_utils.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "pattern_fusion_util.h"
+#include "fp16_t.hpp"
 #include "graph_optimizer/fusion_common/fusion_statistic_recorder.h"
 
 namespace fe {
@@ -542,13 +543,26 @@ Status FusedBatchnormFusionPass::FusionGraphWithPass(ge::ComputeGraph& graph, Pa
   OP_LOGI(FUSED_OP_TYPE.c_str(), "The index of mul node's const input node is %d", constInputIndex);
   Tensor constTensor;
   mulOp.GetInputConstData(matchResult.mulNodeVec[0]->GetOpDesc()->GetInputNameByIndex(constInputIndex), constTensor);
+  DataType constDataType = matchResult.mulNodeVec[0]->GetOpDesc()->GetInputDesc(constInputIndex).GetDataType();
   if (constTensor.GetData() != nullptr) {
-    float* constDataPtr = (float*)constTensor.GetData();
-    float constData = (float)(*constDataPtr);
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "factor is %f", constData);
-    if (!AttrUtils::SetFloat(bnUpdateNode->GetOpDesc(), "factor", constData)) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to set attr factor for bn update node.");
-      return FAILED;
+    if (constDataType == ge::DT_FLOAT16) {
+      uint16_t* constDataPtr = (uint16_t*)constTensor.GetData();
+      uint16_t constData = (uint16_t)(*constDataPtr);
+      fp16_t constDataFp16(constData);
+      float constDataFp32 = constDataFp16.toFloat();
+      OP_LOGI(FUSED_OP_TYPE.c_str(), "factor is %f", constDataFp32);
+      if (!AttrUtils::SetFloat(bnUpdateNode->GetOpDesc(), "factor", constDataFp32)) {
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to set attr factor for bn update node.");
+	return FAILED;
+      }
+    } else {
+      float* constDataPtr = (float*)constTensor.GetData();
+      float constData = (float)(*constDataPtr);
+      OP_LOGI(FUSED_OP_TYPE.c_str(), "factor is %f", constData);
+      if (!AttrUtils::SetFloat(bnUpdateNode->GetOpDesc(), "factor", constData)) {
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to set attr factor for bn update node.");
+	return FAILED;
+      }
     }
   } else {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "The const value is nullptr.");
