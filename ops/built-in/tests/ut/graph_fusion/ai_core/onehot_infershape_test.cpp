@@ -240,7 +240,7 @@ TEST_F(one_hot_infershapeone_hot_infershape_pass_test, one_hot_infershapeone_hot
   int64_t axis = 0;
   auto dtype = DT_FLOAT;
   // expect info
-  std::vector<int64_t> expected_shape = {-1, 3, 32, 32};
+  std::vector<int64_t> expected_shape = {-1, 32, 32, 32};
   std::vector<std::pair<int64_t,int64_t>> expected_range = {{1, -1}, {32, 32}, {32, 32}, {32, 32}};
 
 
@@ -263,8 +263,6 @@ TEST_F(one_hot_infershapeone_hot_infershape_pass_test, one_hot_infershapeone_hot
   auto value_op = op::Data("value_data");
   value_op.update_input_desc_x(value_desc);
   value_op.update_output_desc_y(value_desc);
-
-
 
   // new op
   auto test_op = op::OneHot("OneHot");
