@@ -1233,16 +1233,22 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
             write code
             """
             fname = os.path.realpath(fname)
-            if fname.startswith(os.getcwd()):
-                if os.path.exists(fname):
-                    with open(fname, "r") as file_name:
-                        load_dict = json.load(file_name)
+            if os.path.exists(fname):
+                with open(fname, "r") as file_name:
+                    load_dict = json.load(file_name)
 
-                    load_dict.update(wkspace_dict)
-                    with open(fname, "w") as file_name:
-                        json.dump(load_dict, file_name,
-                                  sort_keys=True, indent=4,
-                                  separators=(',', ':'))
+                load_dict.update(wkspace_dict)
+                with open(fname, "w") as file_name:
+                    json.dump(load_dict, file_name,
+                                sort_keys=True, indent=4,
+                                separators=(',', ':'))
+            else:
+                dict_args = dict()
+                dict_args["errCode"] = "E90001"
+                dict_args["detailed_cause"] = "The file [%s] does not exist, " \
+                                              "please check the path." \
+                                              % (fname)
+                raise RuntimeError(dict_args, get_error_message(dict_args))
 
         def shape_to_list(shape):
             """
