@@ -16,6 +16,7 @@
 pooling2d compute
 """
 import math
+import warnings
 
 from te import tvm
 from te.platform import intrinsic_check_support
@@ -43,7 +44,7 @@ _L1_BREADTH_FUSION = 1
 _OP_TAG = "pooling2d_"
 
 
-def reshape(tensor_in, new_shape):
+def _reshape(tensor_in, new_shape):
     """
     :params:
     :input: tensor to be reshaped
@@ -65,7 +66,7 @@ def reshape(tensor_in, new_shape):
         name='reshape')
 
 
-def check_fmap_shape(batch_size, c1_value, in_size_h, in_size_w, c_block_size):
+def _check_fmap_shape(batch_size, c1_value, in_size_h, in_size_w, c_block_size):
     """
     check feature shape whether valid
     """
@@ -116,8 +117,8 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
     if not is_l1fusion and not is_l2fusion:
         fusion_params = {}
 
-    check_attr_rule(tensor_in, window, stride, pooling_mode, padding_mode, pad,
-                    dilation, data_mode, ceil_mode)
+    _check_attr_rule(tensor_in, window, stride, pooling_mode, padding_mode, pad,
+                     dilation, data_mode, ceil_mode)
 
     # define dict to transfer pooling params
     pooling_params = {}
@@ -129,7 +130,7 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
     in_size_w = tensor_in.shape[3].value
     c_block_size = tensor_in.shape[4].value
 
-    check_fmap_shape(batch_size, c1_value, in_size_h, in_size_w, c_block_size)
+    _check_fmap_shape(batch_size, c1_value, in_size_h, in_size_w, c_block_size)
 
     # get window size
     window_h = window[0]
@@ -151,10 +152,10 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
     pad_right = pad[3]
 
     if data_mode == 1:
-        pooling_mode = get_tensorflow_pooling_mode(padding_mode, pooling_mode, in_size_h, in_size_w,
-                                                   window_h, window_w)
+        pooling_mode = _get_pooling_mode_with_padding_mode(padding_mode, pooling_mode, in_size_h, in_size_w,
+                                                           window_h, window_w)
 
-    def check_stride_window_rule(pooling_mode, stride, window):
+    def _check_stride_window_rule(pooling_mode, stride, window):
         if pooling_mode in ["AVG"]:
             is_stride_invalid = stride[0] > 2 * window[0] or \
                 stride[1] > 2 * window[1]
@@ -165,7 +166,7 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
                                               "stride_w [%s] should be <= 2*window_w [%s]." \
                                               % (stride[0], window[0], stride[1], window[1])
                 raise RuntimeError(dict_args, get_error_message(dict_args))
-    check_stride_window_rule(pooling_mode, stride, window)
+    _check_stride_window_rule(pooling_mode, stride, window)
 
     # avg or max pooling
     if pooling_mode in ["AVG", "MAX"]:
@@ -181,24 +182,24 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
 
         if data_mode == 0:
             out_size_h, out_size_w, pad_top, pad_bottom, pad_left, pad_right \
-                = get_caffe_out_size_and_pad(ceil_mode, in_size_h, in_size_w,
-                                             window_h, window_w, stride_h,
-                                             stride_w, dilation_h, dilation_w,
-                                             pad_top, pad_bottom, pad_left,
-                                             pad_right)
+                = get_out_size_and_pad_with_ceil_mode(ceil_mode, in_size_h, in_size_w,
+                                                      window_h, window_w, stride_h,
+                                                      stride_w, dilation_h, dilation_w,
+                                                      pad_top, pad_bottom, pad_left,
+                                                      pad_right)
         elif data_mode == 1:
             out_size_h, out_size_w, pad_top, pad_bottom, pad_left, pad_right = \
-                get_tensorflow_out_size_and_pad(padding_mode, in_size_h, in_size_w,
-                                                window_h, window_w, stride_h,
-                                                stride_w, dilation_h, dilation_w,
-                                                pad_top, pad_bottom, pad_left,
-                                                pad_right, fusion_params)
+                _get_out_size_and_pad_with_padding_mode(padding_mode, in_size_h, in_size_w,
+                                                        window_h, window_w, stride_h,
+                                                        stride_w, dilation_h, dilation_w,
+                                                        pad_top, pad_bottom, pad_left,
+                                                        pad_right, fusion_params)
 
         # get the min ub occupy size when out_size_h = 1 and c1 = 1
         ub_size = get_soc_spec("UB_SIZE")
 
-        check_ub_tiling(data_mode, pooling_mode, padding_mode, out_size_w, window_h, window_w,
-                        c_block_size, ub_size)
+        _check_ub_tiling(data_mode, pooling_mode, padding_mode, out_size_w, window_h, window_w,
+                         c_block_size, ub_size)
 
         # copy input fmap from gm to l1
         input_fmap_l1 = tvm.compute(tensor_in.shape,
@@ -228,7 +229,7 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
 
         fractal_shape_tmp_1 = (batch_size, ho_wo//_BLOCK_SIZE, c1_value, window_h*window_w,
                                _BLOCK_SIZE, _BLOCK_SIZE)
-        fmap_fractal_tmp_1 = reshape(fmap_fractal, fractal_shape_tmp_1)
+        fmap_fractal_tmp_1 = _reshape(fmap_fractal, fractal_shape_tmp_1)
 
         # output shape
         res_output_shape = (batch_size, ho_wo//_BLOCK_SIZE, c1_value, _BLOCK_SIZE, _BLOCK_SIZE)
@@ -260,7 +261,7 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
     # record pooling params
     pooling_params["pooling_mode"] = pooling_mode
 
-    pooling_params["padding_mode"] = get_schedule_padding_mode(data_mode, padding_mode)
+    pooling_params["padding_mode"] = _get_schedule_padding_mode(data_mode, padding_mode)
 
     pooling_params["data_mode"] = data_mode
     pooling_params["ceil_mode"] = ceil_mode
@@ -300,7 +301,7 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
                        "conv_fm_w": in_size_w,
                        }
 
-    def check_avg_is_spe(in_size_h, in_size_w, window_h, window_w, data_mode, padding_mode, stride_h, stride_w):
+    def _check_avg_is_spe(in_size_h, in_size_w, window_h, window_w, data_mode, padding_mode, stride_h, stride_w):
         if in_size_h != window_h and in_size_w == window_w and data_mode == 0:
             return True
         if data_mode == 1:
@@ -314,18 +315,18 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
                 return True
 
         return False
-    is_spe_avg = check_avg_is_spe(in_size_h, in_size_w,
-                                  window_h, window_w, data_mode, padding_mode, stride_h, stride_w)
+    is_spe_avg = _check_avg_is_spe(in_size_h, in_size_w,
+                                   window_h, window_w, data_mode, padding_mode, stride_h, stride_w)
 
-    def chose_avg_pooling_model(is_spe_avg, tensor_in, fusion_params,
-                                fmap_fractal_tmp_1, res_output_shape, window_h,
-                                window_w, pooling_params, setfmatrix_dict):
+    def _chose_avg_pooling_model(is_spe_avg, tensor_in, fusion_params,
+                                 fmap_fractal_tmp_1, res_output_shape, window_h,
+                                 window_w, pooling_params, setfmatrix_dict):
         if is_spe_avg:
             res = avg_pool2d(tensor_in, pooling_params, fusion_params)
         else:
-            res = pooling2d_avg(fmap_fractal_tmp_1, res_output_shape, window_h,
-                                window_w, pooling_params, setfmatrix_dict,
-                                fusion_params)
+            res = _pooling2d_avg(fmap_fractal_tmp_1, res_output_shape, window_h,
+                                 window_w, pooling_params, setfmatrix_dict,
+                                 fusion_params)
         return res
 
     is_max_pool2d_generic = pooling_mode == "MAX" or (
@@ -333,22 +334,22 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
     if is_max_pool2d_generic:
         res = max_pool2d(tensor_in, pooling_params, fusion_params)
     elif pooling_mode == "AVG":
-        res = chose_avg_pooling_model(is_spe_avg, tensor_in, fusion_params,
-                                      fmap_fractal_tmp_1, res_output_shape, window_h,
-                                      window_w, pooling_params, setfmatrix_dict)
+        res = _chose_avg_pooling_model(is_spe_avg, tensor_in, fusion_params,
+                                       fmap_fractal_tmp_1, res_output_shape, window_h,
+                                       window_w, pooling_params, setfmatrix_dict)
     elif pooling_mode == "GMP":
-        res = pooling2d_gmp(tensor_in_ub, res_output_shape, window_h, window_w,
-                            pooling_params, setfmatrix_dict, fusion_params, impl_mode)
+        res = _pooling2d_gmp(tensor_in_ub, res_output_shape, window_h, window_w,
+                             pooling_params, setfmatrix_dict, fusion_params, impl_mode)
     elif pooling_mode == "GAP":
-        res = pooling2d_gap(tensor_in_ub, res_output_shape, window_h, window_w,
-                            pooling_params, setfmatrix_dict, fusion_params, impl_mode)
+        res = _pooling2d_gap(tensor_in_ub, res_output_shape, window_h, window_w,
+                             pooling_params, setfmatrix_dict, fusion_params, impl_mode)
 
     return res
 
 
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-arguments
-def check_attr_rule(tensor_in, window, stride, pooling_mode, padding_mode, pad=(0, 0, 0, 0),
-                    dilation=(1, 1), data_mode=0, ceil_mode=0):
+def _check_attr_rule(tensor_in, window, stride, pooling_mode, padding_mode, pad=(0, 0, 0, 0),
+                     dilation=(1, 1), data_mode=0, ceil_mode=0):
     """
     :params:
     :tensor_in: input tensor
@@ -440,8 +441,8 @@ def check_attr_rule(tensor_in, window, stride, pooling_mode, padding_mode, pad=(
                                       " size must be [1, 32768]" % window[1]
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
-    check_stride_rule(tensor_in, data_mode, padding_mode, pooling_mode, window,
-                      stride)
+    _check_stride_rule(tensor_in, data_mode, padding_mode, pooling_mode, window,
+                       stride)
 
     if str(tensor_in.dtype) not in ["float16"]:
         dict_args = dict()
@@ -504,13 +505,13 @@ def check_attr_rule(tensor_in, window, stride, pooling_mode, padding_mode, pad=(
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if data_mode == 0:
-        check_caffe_attr_rule(ceil_mode)
+        _check_attr_rule_with_ceil_mode(ceil_mode)
 
     if data_mode == 1:
-        check_tensorflow_attr_rule(padding_mode)
+        _check_attr_rule_with_padding_mode(padding_mode)
 
 
-def check_caffe_attr_rule(ceil_mode):
+def _check_attr_rule_with_ceil_mode(ceil_mode):
     """
     :param ceil_mode: 0:PoolingParameter_RoundMode_CEIL or 1:PoolingParameter_RoundMode_FLOOR
     :param pad padT, padB, padL, padR
@@ -525,7 +526,7 @@ def check_caffe_attr_rule(ceil_mode):
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
-def check_tensorflow_attr_rule(padding_mode):
+def _check_attr_rule_with_padding_mode(padding_mode):
     """
     :param padding_mode: "SAME", "VALID"
     :return:
@@ -545,8 +546,8 @@ def check_tensorflow_attr_rule(padding_mode):
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
-def check_stride_rule(tensor_in, data_mode, padding_mode, pooling_mode, window,
-                      stride):
+def _check_stride_rule(tensor_in, data_mode, padding_mode, pooling_mode, window,
+                       stride):
     """
     :tensor_in: input tensor
     :data_mode: can be 0: CAFFE_DATA_MODE, 1: TENSORFLOW_DATA_MODE
@@ -567,9 +568,9 @@ def check_stride_rule(tensor_in, data_mode, padding_mode, pooling_mode, window,
     window_h = window[0]
     window_w = window[1]
     if data_mode == 1:
-        pooling_mode = get_tensorflow_pooling_mode(padding_mode, pooling_mode,
-                                                   in_size_h, in_size_w,
-                                                   window_h, window_w)
+        pooling_mode = _get_pooling_mode_with_padding_mode(padding_mode, pooling_mode,
+                                                           in_size_h, in_size_w,
+                                                           window_h, window_w)
     # global
     if pooling_mode not in ["GAP", "GMP"]:
         if stride[0] > 63 or stride[0] < 1:
@@ -589,8 +590,8 @@ def check_stride_rule(tensor_in, data_mode, padding_mode, pooling_mode, window,
 
 
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-arguments
-def get_tensorflow_pooling_mode(padding_mode, pooling_mode, in_size_h, in_size_w,
-                                window_h, window_w):
+def _get_pooling_mode_with_padding_mode(padding_mode, pooling_mode, in_size_h, in_size_w,
+                                        window_h, window_w):
     """
     :param padding_mode: can be SAME, VALID
     :param pooling_mode: can be MAX, AVG, GAP, GMP
@@ -634,8 +635,8 @@ def get_tensorflow_pooling_mode(padding_mode, pooling_mode, in_size_h, in_size_w
 
 
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-arguments
-def check_ub_tiling(data_mode, pooling_mode, padding_mode, out_size_w, window_h, window_w,
-                    c_block_size, ub_size):
+def _check_ub_tiling(data_mode, pooling_mode, padding_mode, out_size_w, window_h, window_w,
+                     c_block_size, ub_size):
     """
     :param data_mode: can be 0: CAFFE_DATA_MODE, 1: TENSORFLOW_DATA_MODE
     :param pooling_mode: can be MAX, AVG, GAP, GMP
@@ -651,19 +652,19 @@ def check_ub_tiling(data_mode, pooling_mode, padding_mode, out_size_w, window_h,
         if pooling_mode == "MAX":
             return
         if pooling_mode == "AVG":
-            data_size = get_ub_data_size(out_size_w, window_h, window_w,
-                                         c_block_size, True)
+            data_size = _get_ub_data_size(out_size_w, window_h, window_w,
+                                          c_block_size, True)
 
     elif data_mode == 1:
         if pooling_mode == "MAX":
             return
         if pooling_mode == "AVG" and padding_mode == "VALID":
-            data_size = get_ub_data_size(out_size_w, window_h, window_w,
-                                         c_block_size, False)
+            data_size = _get_ub_data_size(out_size_w, window_h, window_w,
+                                          c_block_size, False)
 
         if pooling_mode == "AVG" and padding_mode == "SAME":
-            data_size = get_ub_data_size(out_size_w, window_h, window_w,
-                                         c_block_size, True)
+            data_size = _get_ub_data_size(out_size_w, window_h, window_w,
+                                          c_block_size, True)
 
     if data_size >= ub_size:
         dict_args = dict()
@@ -674,7 +675,7 @@ def check_ub_tiling(data_mode, pooling_mode, padding_mode, out_size_w, window_h,
 
 
 # pylint: disable=too-many-locals, too-many-arguments
-def get_ub_data_size(out_size_w, window_h, window_w, c_block_size, enable_avg_mean_factor):
+def _get_ub_data_size(out_size_w, window_h, window_w, c_block_size, enable_avg_mean_factor):
     """
     :param out_size_w: output tensor
     :param window_h: input window
@@ -685,15 +686,15 @@ def get_ub_data_size(out_size_w, window_h, window_w, c_block_size, enable_avg_me
     """
     fmap_img2col_size = out_size_w*window_h*window_w*c_block_size*_SIZE_OF_FP16
     res_size = out_size_w*c_block_size*_SIZE_OF_FP16
-    avg_mean_factor_size = get_avg_mean_factor_size(enable_avg_mean_factor, out_size_w,
-                                                    c_block_size)
+    avg_mean_factor_size = _get_avg_mean_factor_size(enable_avg_mean_factor, out_size_w,
+                                                     c_block_size)
     data_size = fmap_img2col_size + avg_mean_factor_size + res_size
 
     return data_size
 
 
 # pylint: disable=too-many-locals, too-many-arguments
-def get_avg_mean_factor_size(enable_avg_mean_factor, out_size_w, c_block_size):
+def _get_avg_mean_factor_size(enable_avg_mean_factor, out_size_w, c_block_size):
     """
     :param enable_avg_mean_factor: avg calculate factor
     :param out_size_w: output tensor
@@ -706,9 +707,9 @@ def get_avg_mean_factor_size(enable_avg_mean_factor, out_size_w, c_block_size):
 
 
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-arguments
-def get_caffe_out_size_and_pad(ceil_mode, in_size_h, in_size_w, window_h, window_w,
-                               stride_h, stride_w, dilation_h, dilation_w, pad_top,
-                               pad_bottom, pad_left, pad_right):
+def _get_out_size_and_pad_with_ceil_mode(ceil_mode, in_size_h, in_size_w, window_h, window_w,
+                                         stride_h, stride_w, dilation_h, dilation_w, pad_top,
+                                         pad_bottom, pad_left, pad_right):
     """
     :param ceil_mode: caffe round_mode params, 0:CEIL(default), 1:FLOOR
     :param in_size_h: input h
@@ -777,12 +778,38 @@ def get_caffe_out_size_and_pad(ceil_mode, in_size_h, in_size_w, window_h, window
 
     return out_size_h, out_size_w, pad_top, pad_bottom, pad_left, pad_right
 
+# pylint: disable=too-many-arguments
+def get_caffe_out_size_and_pad(ceil_mode, in_size_h, in_size_w, window_h, window_w,
+                               stride_h, stride_w, dilation_h, dilation_w, pad_top,
+                               pad_bottom, pad_left, pad_right):
+    """
+    :param ceil_mode: caffe round_mode params, 0:CEIL(default), 1:FLOOR
+    :param in_size_h: input h
+    :param in_size_w: input w
+    :param window_h: window h
+    :param window_w: window w
+    :param stride_h: stride h
+    :param stride_w: stride w
+    :param dilation_h: dilation h
+    :param dilation_w: dilation w
+    :param pad_top: pad top
+    :param pad_bottom: pad bottom
+    :param pad_left: pad left
+    :param pad_right: pad right
+    :return:
+    """
+    warnings.warn("get_caffe_out_size_and_pad is expired, please do not use it",
+                  DeprecationWarning)
+    return _get_out_size_and_pad_with_ceil_mode(ceil_mode, in_size_h, in_size_w, window_h, window_w,
+                                                stride_h, stride_w, dilation_h, dilation_w, pad_top,
+                                                pad_bottom, pad_left, pad_right)
+
 
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-arguments
-def get_tensorflow_out_size_and_pad(padding_mode, in_size_h, in_size_w, window_h, window_w,
-                                    stride_h, stride_w, dilation_h, dilation_w, pad_top,
-                                    pad_bottom, pad_left, pad_right,
-                                    fusion_params={}):
+def _get_out_size_and_pad_with_padding_mode(padding_mode, in_size_h, in_size_w, window_h, window_w,
+                                            stride_h, stride_w, dilation_h, dilation_w, pad_top,
+                                            pad_bottom, pad_left, pad_right,
+                                            fusion_params={}):
     """
     :param padding_mode: can be SAME, VALID
     :param in_size_h: input tensor
@@ -841,17 +868,17 @@ def get_tensorflow_out_size_and_pad(padding_mode, in_size_h, in_size_w, window_h
         pad_left = pad_cols//2
         pad_right = pad_cols - pad_left
 
-        def get_corrected_pad(input_pad):
+        def _get_corrected_pad(input_pad):
             if input_pad < 0:
                 output_pad = 0
             else:
                 output_pad = input_pad
             return output_pad
 
-        pad_top = get_corrected_pad(pad_top)
-        pad_bottom = get_corrected_pad(pad_bottom)
-        pad_left = get_corrected_pad(pad_left)
-        pad_right = get_corrected_pad(pad_right)
+        pad_top = _get_corrected_pad(pad_top)
+        pad_bottom = _get_corrected_pad(pad_bottom)
+        pad_left = _get_corrected_pad(pad_left)
+        pad_right = _get_corrected_pad(pad_right)
 
     # caculate output size in VALID mode
     elif padding_mode == "VALID":
@@ -862,7 +889,7 @@ def get_tensorflow_out_size_and_pad(padding_mode, in_size_h, in_size_w, window_h
     return out_size_h, out_size_w, pad_top, pad_bottom, pad_left, pad_right
 
 
-def get_schedule_padding_mode(data_mode, padding_mode):
+def _get_schedule_padding_mode(data_mode, padding_mode):
     """
     :param data_mode: can be 0: CAFFE_DATA_MODE, 1: TENSORFLOW_DATA_MODE
     :param padding_mode: can be SAME, VALID
@@ -876,8 +903,8 @@ def get_schedule_padding_mode(data_mode, padding_mode):
 
 
 # pylint: disable=too-many-locals, too-many-arguments
-def pooling2d_max(fmap_img2col_ub, res_output_shape, window_h, window_w, pooling_params,
-                  setfmatrix_dict, fusion_params):
+def _pooling2d_max(fmap_img2col_ub, res_output_shape, window_h, window_w, pooling_params,
+                   setfmatrix_dict, fusion_params):
     """
     :params:
     :fmap_img2col_ub: feature map after img2col in ub
@@ -927,8 +954,8 @@ def pooling2d_max(fmap_img2col_ub, res_output_shape, window_h, window_w, pooling
 
 
 # pylint: disable=too-many-locals, too-many-arguments
-def pooling2d_avg(fmap_img2col_ub, res_output_shape, window_h, window_w, pooling_params,
-                  setfmatrix_dict, fusion_params):
+def _pooling2d_avg(fmap_img2col_ub, res_output_shape, window_h, window_w, pooling_params,
+                   setfmatrix_dict, fusion_params):
     """
     :params:
     :fmap_img2col_ub: feature map after img2col in ub
@@ -987,8 +1014,8 @@ def pooling2d_avg(fmap_img2col_ub, res_output_shape, window_h, window_w, pooling
 
 
 # pylint: disable=too-many-locals, too-many-arguments
-def pooling2d_gmp(tensor_in_ub, res_output_shape, window_h, window_w, pooling_params,
-                  setfmatrix_dict, fusion_params, impl_mode="high_performance"):
+def _pooling2d_gmp(tensor_in_ub, res_output_shape, window_h, window_w, pooling_params,
+                   setfmatrix_dict, fusion_params, impl_mode="high_performance"):
     """
     :params:
     :tensor_in_ub: feature map in ub
@@ -1033,8 +1060,8 @@ def pooling2d_gmp(tensor_in_ub, res_output_shape, window_h, window_w, pooling_pa
 
 
 # pylint: disable=too-many-locals
-def pooling2d_gap(tensor_in_ub, res_output_shape, window_h, window_w, pooling_params,
-                  setfmatrix_dict, fusion_params, impl_mode="high_performance"):
+def _pooling2d_gap(tensor_in_ub, res_output_shape, window_h, window_w, pooling_params,
+                   setfmatrix_dict, fusion_params, impl_mode="high_performance"):
     """
     :params:
     :tensor_in_ub: feature map in ub

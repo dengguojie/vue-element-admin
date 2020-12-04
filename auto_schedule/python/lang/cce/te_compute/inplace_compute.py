@@ -16,8 +16,8 @@
 inplace compute
 """
 from te import tvm
+from te.utils.shape_util import shape_to_list
 from .util import dtype_check_decorator
-from .util import shape_to_list
 from .util import get_tvm_scalar
 
 
