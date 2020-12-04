@@ -36,6 +36,12 @@ class OPFile(metaclass=ABCMeta):
             generate project or only generator an operator according to mode
         """
         if self.mode == utils.GenModeType.GEN_OPERATOR:
+            if os.path.isdir(os.path.join(
+                    self.output_path, utils.PROJ_MS_NAME)):
+                utils.print_error_log("Mindspore operator cannot be added to "
+                                      "a non-mindspore operator project!")
+                raise utils.MsOpGenException(
+                    utils.MS_OP_GEN_INVALID_PARAM_ERROR)
             utils.print_info_log("Start to add a new operator.")
             self._new_operator()
         else:

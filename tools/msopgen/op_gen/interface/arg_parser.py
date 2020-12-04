@@ -48,6 +48,9 @@ class ArgParser:
             self._check_output_path(args.output)
             self._check_mode_valid(args.mode)
             self._check_op_type_valid(args.operator)
+            self.is_mindspore = False
+            if self.framework in utils.FMK_MS:
+                self.is_mindspore = True
             return
         if sys.argv[1] == utils.INPUT_ARGUMENT_CMD_MI:
             self.gen_flag = False
@@ -91,7 +94,8 @@ class ArgParser:
                                 dest="framework",
                                 default="TF",
                                 help="<Required> op framework type(case "
-                                     "insensitive) tf, tensorflow, caffe.",
+                                     "insensitive) tf, tensorflow, caffe, "
+                                     "mindspore.",
                                 required=True)
         gen_parser.add_argument("-c", "--compute_unit",
                                 dest="compute_unit",
@@ -198,7 +202,7 @@ class ArgParser:
                         utils.AICPU_CORE_TYPE_LIST:
                     utils.print_error_log(
                         "Unsupported compute unit {compute_unit} for Pytorch"
-                        .format(compute_unit=unit_parse_list[0]))
+                            .format(compute_unit=unit_parse_list[0]))
                     sys.exit(utils.MS_OP_GEN_CONFIG_INVALID_COMPUTE_UNIT_ERROR)
                 self._init_core_type(unit_parse_list,
                                      utils.AICPU_CORE_TYPE_LIST,

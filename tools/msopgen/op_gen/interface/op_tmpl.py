@@ -40,7 +40,8 @@ IR_H_HEAD = """/**
  * Copyright (C)  2020. Huawei Technologies Co., Ltd. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
+ * it under the terms of the Apache License Version 2.0.You may not use this 
+   file except in compliance with the License.
 
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -146,7 +147,8 @@ namespace domi
 // Caffe ParseParams
 Status ParseParam{name}(const Operator& op_src, ge::Operator& op_dest)
 {left_braces}
-    // To do: Implement the operator plug-in by referring to the TBE Operator Development Guide.
+    // To do: Implement the operator plug-in by referring to the TBE Operator 
+    Development Guide.
     return SUCCESS;
 {right_braces}
 
@@ -263,7 +265,8 @@ def {name}({input_name}, {output}, {attr}, kernel_name="{name}"):
            TBE Operator Development Guide.
     \"""
 """
-PY_PLACEHOLDER = """    data_{name} = tvm.placeholder({name}.get(\"shape\"), dtype={name}.get(\"dtype\"), name=\"data_{name}\")
+PY_PLACEHOLDER = """    data_{name} = tvm.placeholder({name}.get(\"shape\"),\\
+                            dtype={name}.get(\"dtype\"), name=\"data_{name}\")
 """
 
 PY_RES_WITHOUT_ATTR = """
@@ -283,6 +286,86 @@ PY_BUILD = """
               "tensor_list": [{input_data}, res]{right_braces}
     te.lang.cce.cce_build_code(schedule, config)
     """
+# ==================4.2 MindSpore python file================
+PY_MS_HEAD = """from __future__ import absolute_import
+from te import tvm
+from topi import generic
+import te.lang.cce
+from topi.cce import util
+from mindspore.ops.op_info_register import op_info_register, TBERegOp, DataType
+
+"""
+PY_MS_COMPUTE = """def {name}_compute({input_name}, {output}):
+    \"""
+    The compute function of the {up_name} implementation.
+    \"""
+    res = te.lang.cce.XXX({input_name})
+    return res
+    
+"""
+PY_MS_INPUT_INFO = """.input(0, "{input_name}", False, "required", "all")\\"""
+PY_MS_OUTPUT_INFO = """.output(0, "{output_name}", False, "required", "all")\\"""
+PY_MS_DATA_TYPE = """DataType.{data_type}"""
+PY_MS_DTYPE_FORMAT = """.dtype_format({data_types_join})\\"""
+PY_MS_OP_INFO = """
+# Define the kernel info of {up_name}.
+{name}_op_info = TBERegOp("{up_name}") \\
+    .fusion_type("OPAQUE") \\
+    .partial_flag(True) \\
+    .async_flag(False) \\
+    .binfile_name("{name}.so") \\
+    .compute_cost(10) \\
+    .kernel_name("{name}_impl") \\
+    {inputs}
+    {outputs}
+    {data_types}
+    .get_op_info()
+    
+"""
+PY_MS_OP_INFO_REGISTER = """
+# Binding kernel info with the kernel implementation.
+@op_info_register({name}_op_info)
+def {name}_impl({input_name}, {output}, kernel_name="{name}_impl"):
+    \"""
+    The entry function of the {up_name} implementation.
+    \"""
+    shape = {input_x}.get("shape")
+    dtype = {input_x}.get("dtype").lower()
+
+    shape = util.shape_refine(shape)
+    data = tvm.placeholder(shape, name="data", dtype=dtype.lower())
+
+    with tvm.target.cce():
+        res = {name}_compute(data, {output})
+        sch = generic.auto_schedule(res)
+"""
+PY_MS_OP_INFO_REGISTER_CONFIG = """
+    config = {"print_ir": False,
+              "name": kernel_name,
+              "tensor_list": [data, res]}
+
+    te.lang.cce.cce_build_code(sch, config)
+"""
+PY_MS_PROTO_HEAD = """from mindspore.ops import prim_attr_register, \
+PrimitiveWithInfer
+import mindspore.ops as ops
+# description
+class {up_name}(PrimitiveWithInfer):
+    \"""
+    The definition of the {up_name} primitive.
+    \"""
+    @prim_attr_register
+    def __init__(self):
+        self.init_prim_io_names(inputs=['{input_name}'], outputs=['{output}'])
+        # Import the entry function of the kernel implementation from relative 
+        #  path or PYTHONPATH.
+        from {name}_impl import {name}_impl
+
+    def infer_shape(self, data_shape):
+        return data_shape
+
+    def infer_dtype(self, data_dtype):
+        return data_dtype"""
 # ==================5.AICPU ini file==================
 AICPU_INI_STRING = """[{op_type}]
 opInfo.engine=DNN_VM_AICPU

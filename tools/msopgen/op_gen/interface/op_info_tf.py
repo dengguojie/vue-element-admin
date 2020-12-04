@@ -68,13 +68,37 @@ TF_INPUT_OUTPUT_DTYPE_MAP = {
     "quantizedtype": "DT_QINT8, DT_QUINT8, DT_QINT16, DT_QUINT16, DT_QINT32"
 }
 
+MS_TF_INPUT_OUTPUT_DTYPE_MAP = {
+    "bool": "BOOL_Default",
+    "DT_BOOL": "BOOL_Default",
+    "float16": "F16_Default",
+    "float32": "F32_Default",
+    "float64": "F64_Default",
+    "int8": "I8_Default",
+    "DT_INT8": "F8_Default",
+    "int16": "F16_Default",
+    "DT_INT16": "F16_Default",
+    "int32": "F32_Default",
+    "DT_INT32": "F32_Default",
+    "int64": "F64_Default",
+    "DT_INT64": "F64_Default",
+    "unint8": "U8_Default",
+    "DT_UINT8": "U8_Default",
+    "unint16": "F16_Default",
+    "DT_UINT16": "F16_Default",
+    "unint32": "F32_Default",
+    "DT_UINT32": "F32_Default",
+    "unint64": "F64_Default",
+    "DT_UINT64": "F64_Default",
+}
+
 
 class TFOpInfo(OpInfo):
     """
     CLass representing operator info.
     """
 
-    def __init__(self, op_path):
+    def __init__(self, op_path, is_mindspore):
         super().__init__()
         self.op_path = op_path
         self.attr_info = []
@@ -82,6 +106,7 @@ class TFOpInfo(OpInfo):
         self.output_info = []
         self.type_attr = {}
         self.op_type = None
+        self.is_mindspore = is_mindspore
 
     @staticmethod
     def _parse_name_info(line):
@@ -214,14 +239,16 @@ class TFOpInfo(OpInfo):
             type_info = types[1:types.index("}")]
             types = type_info.split(",")
             attr_info["types"] = [
-                self._mapping_input_output_type(t.strip(), name) for t in
-                types]
+                self._mapping_input_output_type(
+                    t.strip(), name, self.is_mindspore)
+                for t in types]
             if "=" in types:
                 default_type = types[types.index("="):]
                 attr_info["default_type"] = default_type
             attr_info["types"] = [x for x in attr_info.get("types") if x != ""]
             return ",".join(attr_info.get("types"))
-        return self._mapping_input_output_type(types.strip(), name)
+        return self._mapping_input_output_type(
+            types.strip(), name, self.is_mindspore)
 
     @staticmethod
     def _get_dynamic_input_output_type(value):
@@ -242,10 +269,10 @@ class TFOpInfo(OpInfo):
             # mapping ir type list
             if self.type_attr.get(ir_type) != 0:
                 ir_types = self._generate_type_info(
-                    self.type_attr.get(ir_type),
-                    name)
+                    self.type_attr.get(ir_type), name)
             else:
-                ir_types = self._mapping_input_output_type(ir_type, name)
+                ir_types = self._mapping_input_output_type(
+                    ir_type, name, self.is_mindspore)
             ir_type_list = ir_types.split(',')
             # update op_info.parsed_input_info
             self.parsed_input_info.update({name: {
@@ -265,10 +292,10 @@ class TFOpInfo(OpInfo):
             # mapping ir type list
             if self.type_attr.get(ir_type) != 0:
                 ir_types = self._generate_type_info(
-                    self.type_attr.get(ir_type),
-                    name)
+                    self.type_attr.get(ir_type), name)
             else:
-                ir_types = self._mapping_input_output_type(ir_type, name)
+                ir_types = self._mapping_input_output_type(
+                    ir_type, name, self.is_mindspore)
             ir_type_list = ir_types.split(',')
             # update op_info.parsed_input_info
             self.parsed_output_info.update({name: {
@@ -312,8 +339,19 @@ class TFOpInfo(OpInfo):
         return ""
 
     @staticmethod
-    def _mapping_input_output_type(tf_type, name):
+    def _mapping_input_output_type(tf_type, name, is_mindspore):
         # mapping from tf type to D enum
+        if is_mindspore:
+            if tf_type in MS_TF_INPUT_OUTPUT_DTYPE_MAP:
+                return MS_TF_INPUT_OUTPUT_DTYPE_MAP.get(tf_type)
+            else:
+                utils.print_warn_log("The '%s' type '%s' in "
+                                     "the .txt file is unsupported. Please "
+                                     "check. If you aren't having problems, "
+                                     "just ignore the warning."
+                                     % (name, tf_type))
+            return ""
+
         if tf_type in TF_INPUT_OUTPUT_DTYPE_MAP:
             return TF_INPUT_OUTPUT_DTYPE_MAP.get(tf_type)
         utils.print_warn_log("The '%s' type '%s' in "

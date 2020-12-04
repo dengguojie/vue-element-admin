@@ -12,6 +12,7 @@ try:
     from .arg_parser import ArgParser
     from .op_info_ir import IROpInfo
     from .op_info_tf import TFOpInfo
+    from . import utils
 except (ImportError,) as import_error:
     sys.exit("[ERROR][op_info_parser]Unable to import module: %s." % str(
         import_error))
@@ -31,4 +32,4 @@ class OpInfoParser:
         if argument.input_path.endswith(".xlsx") \
                 or argument.input_path.endswith(".xls"):
             return IROpInfo(argument)
-        return TFOpInfo(argument.input_path)
+        return TFOpInfo(argument.input_path, argument.is_mindspore)
