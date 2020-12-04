@@ -1,0 +1,9 @@
+# source file:python/te/lang/base/shape_classifier.py
+
+class Mode(Enum):
+    NONE = auto()
+    ELEWISE = auto()
+    ELEWISE_WITH_BROADCAST = auto()
+    REDUCE = auto()
+
+def classify(ins: list, mode: Mode = Mode.NONE):
