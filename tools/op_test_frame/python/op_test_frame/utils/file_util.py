@@ -48,3 +48,32 @@ def makedirs(path, mode):
 
     path = os.path.realpath(path)
     _rec_makedir(path)
+
+
+def read_file(file_path: str, size_limit: int = 134217728) -> bytes:
+    """
+    read file
+
+    Parameters
+    ----------
+    file_path : str
+        Path to the file
+    size_limit : int, option
+        Raise an Exception if the file is too large
+
+    Returns
+    -------
+    data_content : bytes
+        The data content
+    """
+    if not isinstance(size_limit, int):
+        raise TypeError("size_limit needs to be an integer, not %s" % str(type(size_limit)))
+    file_path = os.path.realpath(file_path)
+    if not os.path.exists(file_path):
+        raise IOError("file_path is not exist.")
+    file_size = os.stat(file_path, follow_symlinks=True).st_size
+    if file_size > size_limit:
+        raise IOError("File is too large! Size of % exceeds the limit: %d") % (file_path, size_limit)
+    with open(file_path, "rb") as ff:
+        file_content = ff.read(-1)
+    return file_content
