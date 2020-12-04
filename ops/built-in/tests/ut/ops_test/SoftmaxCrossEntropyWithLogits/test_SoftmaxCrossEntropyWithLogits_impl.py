@@ -45,12 +45,36 @@ case5 = {"params": [{"shape": (5, 2, 3), "dtype": "float32", "format": "NCHW", "
          "expect": RuntimeError,
          "format_expect": [],
          "support_expect": True}
+        
+def test_get_op_support_info(test_arg):
+    from impl.softmax_cross_entropy_with_logits import get_op_support_info
+    get_op_support_info({"shape": (16, 16, 256, 16), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 16, 256, 16), "ori_format": "NCHW"},
+                        {"shape": (16, 16, 256, 16), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 16, 256, 16), "ori_format": "NCHW"},
+                        {"shape": (16, 1, 256, 16), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 1, 256, 16), "ori_format": "NCHW"},
+                        {"shape": (16, 16, 256, 16), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 16, 256, 16), "ori_format": "NCHW"})
+    get_op_support_info({"shape": (16, 16), "dtype": "float32", "format": "ND", "ori_shape": (16, 16), "ori_format": "ND"},
+                        {"shape": (16, 16), "dtype": "float32", "format": "ND", "ori_shape": (16, 16), "ori_format": "ND"},
+                        {"shape": (16, 1), "dtype": "float32", "format": "ND", "ori_shape": (16, 1) "ori_format": "ND"},
+                        {"shape": (16, 16), "dtype": "float32", "format": "ND", "ori_shape": (16, 16), "ori_format": "ND"})
+    get_op_support_info({"shape": (16, 16), "dtype": "float32", "format": "ND", "ori_shape": (16, 16), "ori_format": "ND"},
+                        {"shape": (1, ), "dtype": "float32", "format": "ND", "ori_shape": (1, ), "ori_format": "ND"},
+                        {"shape": (16, 1), "dtype": "float32", "format": "ND", "ori_shape": (16, 1) "ori_format": "ND"},
+                        {"shape": (16, 16), "dtype": "float32", "format": "ND", "ori_shape": (16, 16), "ori_format": "ND"})
+    get_op_support_info({"shape": (1, ), "dtype": "float32", "format": "ND", "ori_shape": (1, ), "ori_format": "ND"},
+                        {"shape": (16, 16), "dtype": "float32", "format": "ND", "ori_shape": (16, 16), "ori_format": "ND"},
+                        {"shape": (16, 1), "dtype": "float32", "format": "ND", "ori_shape": (16, 1) "ori_format": "ND"},
+                        {"shape": (16, 16), "dtype": "float32", "format": "ND", "ori_shape": (16, 16), "ori_format": "ND"})
+    get_op_support_info({"shape": (1, 1), "dtype": "float32", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        {"shape": (16, 16), "dtype": "float32", "format": "ND", "ori_shape": (16, 16), "ori_format": "ND"},
+                        {"shape": (16, 1), "dtype": "float32", "format": "ND", "ori_shape": (16, 1) "ori_format": "ND"},
+                        {"shape": (16, 16), "dtype": "float32", "format": "ND", "ori_shape": (16, 16), "ori_format": "ND"})
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 
 def calc_expect_func(x1, x2, y1, y2):
     src_type = x1['dtype']
