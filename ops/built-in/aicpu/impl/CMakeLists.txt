@@ -4,7 +4,7 @@ if(BUILD_OPEN_PROJECT)
 #[[set(local_kernels_src_files
     kernels/normalized/expanddims.cc
     kernels/normalized/reshape_kernels.cc
-    kernels/normalized/less_kernels.cc
+    kernels/normalized/less.cc
     kernels/normalized/top_k_kernels.cc
     kernels/normalized/gather_kernels.cc
     kernels/normalized/get_dynamic_dims.cc
@@ -13,7 +13,7 @@ if(BUILD_OPEN_PROJECT)
     kernels/normalized/realdiv_kernels.cc
     kernels/normalized/sparse_to_dense_kernels.cc
     kernels/normalized/cast_kernels.cc
-    kernels/normalized/logging_kernels.cc
+    kernels/normalized/logging.cc
     kernels/normalized/concatv2.cc
     utils/sparse_group.cc
     utils/eigen_tensor.cc
@@ -117,7 +117,7 @@ set(BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(local_kernels_src_files
     kernels/normalized/expanddims.cc
     kernels/normalized/reshape_kernels.cc
-    kernels/normalized/less_kernels.cc
+    kernels/normalized/less.cc
     kernels/normalized/top_k_kernels.cc
     kernels/normalized/gather_kernels.cc
     kernels/normalized/get_dynamic_dims.cc
@@ -126,7 +126,7 @@ set(local_kernels_src_files
     kernels/normalized/realdiv_kernels.cc
     kernels/normalized/sparse_to_dense_kernels.cc
     kernels/normalized/cast_kernels.cc
-    kernels/normalized/logging_kernels.cc
+    kernels/normalized/logging.cc
     kernels/normalized/concatv2.cc
     kernels/normalized/round.cc
     utils/sparse_group.cc
