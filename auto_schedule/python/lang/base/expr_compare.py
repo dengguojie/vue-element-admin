@@ -15,6 +15,35 @@
 """
 compare expr
 """
+import sympy
+from te.tvm import expr
+from te.utils.error_manager.error_manager_util import get_error_message
 
-def expr_equal(expr_a, expr_b):
-    pass
+
+def _te_expr2sympy_expr(te_expr):
+    if isinstance(te_expr, (int, float)):
+        return te_expr
+    if isinstance(te_expr, expr.ConstExpr):
+        return te_expr.value
+    if isinstance(te_expr, expr.Var):
+        return sympy.symbols(te_expr.name)
+    if isinstance(te_expr, expr.Max):
+        return sympy.Max(_te_expr2sympy_expr(te_expr.a), _te_expr2sympy_expr(te_expr.b))
+    if isinstance(te_expr, expr.Mul):
+        return sympy.Mul(_te_expr2sympy_expr(te_expr.a), _te_expr2sympy_expr(te_expr.b))
+    dict_args = dict()
+    dict_args["errCode"] = "E90001"
+    dict_args["detailed_cause"] = "Only accecpt (int, float, ConstExpr, Var, Mul, Max), " \
+                                  "but now is [%s]" % type(te_expr)
+    raise RuntimeError(dict_args, get_error_message(dict_args))
+
+
+def expr_equal(expr_a, expr_b, condition=None):
+    if condition is not None:
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "Now, not support condition"
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+    sympy_a = _te_expr2sympy_expr(expr_a)
+    sympy_b = _te_expr2sympy_expr(expr_b)
+    return sympy_a == sympy_b
