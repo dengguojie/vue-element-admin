@@ -8,7 +8,6 @@ set(proto_src_files
     ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/cpu_tensor.proto
     ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/cpu_tensor_shape.proto
 )
-
 protobuf_generate(aicpu PROTO_SRCS PROTO_HDRS ${proto_src_files})
 
 set (local_context_src_files
@@ -36,6 +35,66 @@ set(local_context_stub_files
    ${CMAKE_CURRENT_SOURCE_DIR}/stub/aicpu_sharder.cc
 )
 
+if(BUILD_OPEN_PROJECT)
+  set(_proto_include "${PROTO_BINARY_DIR}/aicpu")
+
+  set(local_context_inc_path
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/common
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto
+    ${CMAKE_CURRENT_SOURCE_DIR}/inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/stub
+    ${AICPU_OPP_ENV}/inc
+    ${_proto_include}
+    ${Protobuf_INCLUDE}
+    ${FWKACLLIB_INCLUDE}
+    ${FWKACLLIB_INCLUDE}/aicpu/common
+    ${EIGEN_INCLUDE}
+  )
+
+  add_library(cpu_kernels_context_static STATIC
+    ${local_context_src_files}
+  )
+
+  target_include_directories(cpu_kernels_context_static PRIVATE
+    ${local_context_inc_path}
+  )
+
+  target_compile_definitions(cpu_kernels_context_static PRIVATE
+    _FORTIFY_SOURCE=2
+    VISIBILITY
+    google=ascend_private
+  )
+
+  target_compile_options(cpu_kernels_context_static PRIVATE
+    -O2
+    -std=c++11
+    -ftrapv
+    -fstack-protector-all
+    -fPIC
+  )
+
+  set(cpu_kernels_context_static ${CMAKE_CURRENT_BINARY_DIR}/libcpu_kernels_context_static.a)
+
+  set_target_properties(cpu_kernels_context_static
+      PROPERTIES
+      OUTPUT_NAME cpu_kernels_context
+  )
+  if("x${PRODUCT_SIDE}" STREQUAL "xdevice")
+    set(CMAKE_CXX_COMPILER ${TOOLCHAIN_DIR}/bin/aarch64-target-linux-gnu-g++)
+    set(CMAKE_C_COMPILER ${TOOLCHAIN_DIR}/bin/aarch64-target-linux-gnu-gcc)
+
+    add_subdirectory(stub)
+
+    set(OPS_AICPU_PATH "${INSTALL_PATH}/opp/op_impl/built-in/aicpu/aicpu_kernel/lib")
+    cann_install(
+      TARGET      cpu_kernels_context_static
+      FILES       $<TARGET_FILE:cpu_kernels_context_static>
+      DESTINATION "${OPS_AICPU_PATH}"
+    )
+  endif()
+
+else()
 set(local_context_inc_path
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/common
@@ -153,6 +212,7 @@ set_target_properties(cpu_kernels_context_static
     PROPERTIES
     OUTPUT_NAME cpu_kernels_context
 )
+endif()
 
 
 

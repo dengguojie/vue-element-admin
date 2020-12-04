@@ -94,6 +94,8 @@ target_include_directories(c_sec
   "${SOURCE_DIR}/include"
 )
 
+set(C_SEC_INCLUDE ${SOURCE_DIR}/include)
+
 target_compile_options(c_sec
   PRIVATE
   -fstack-protector-strong -fPIC -Wall -D_FORTIFY_SOURCE=2 -O2
