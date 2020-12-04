@@ -95,8 +95,15 @@ Status Conv2DGroupFusionPass::ProcessDepthwiseConv(NodePtr convNode) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "Conv2DGroupFusionPass cannot be applied for unknown shape.");
     return NOT_CHANGED;
   }
-  FUSION_PASS_CHECK(convDesc->GetInputDesc(1).GetShape().GetDim(1) != 1,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Filter channel must be 1 in depthwise conv"), return PARAM_INVALID);
+  if (convDesc->GetInputDesc(1).GetShape().GetDim(1) != 1) {
+    std::map<string, string> error_key_map;
+    error_key_map["pass_name"] = "GroupConv2DFusionPass";
+    error_key_map["errmsg"] = "Conv2D node:[" + convDesc->GetName() +
+                              "], filter cin channel must be 1 in depthwise convolution";
+    ErrorManager::GetInstance.ReportErrMessage("E20008", error_key_map);
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "Filter channel must be 1 in depthwise conv");
+    return PARAM_INVALID;
+  }
   FUSION_PASS_CHECK(SwapNumChn(filterDesc, false, 0) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
 
