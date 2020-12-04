@@ -101,7 +101,7 @@ Status Conv2DGroupFusionPass::ProcessDepthwiseConv(NodePtr convNode) {
     error_key_map["pass_name"] = "GroupConv2DFusionPass";
     error_key_map["errmsg"] = "Conv2D node:[" + convDesc->GetName() +
                               "], filter cin channel must be 1 in depthwise convolution";
-    ErrorManager::GetInstance.ReportErrMessage("E20008", error_key_map);
+    ErrorManager::GetInstance().ReportErrMessage("E20008", error_key_map);
     OP_LOGE(FUSED_OP_TYPE.c_str(), "Filter channel must be 1 in depthwise conv");
     return PARAM_INVALID;
   }
