@@ -1737,6 +1737,7 @@ def vlogic(lhs, rhs=None, operation='logic_and'):
         dict_args["detailed_cause"] = "The rhs input type must be [%s], " \
                                       "while type is [%s]" \
                                       % ('tvm.tensor', type(rhs))
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if operation == "logic_not":
         rhs = tvm.placeholder(lhs.shape, name="rhs", dtype=lhs.dtype)
