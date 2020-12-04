@@ -970,7 +970,7 @@ class CceConv3dOp:
                     self._schedule[compute_at_buffer[2]], compute_at_axis[2])
             else:
                 self._schedule[lop["cache_buffer"]].compute_at(
-                    self._schedule[compute_at_buffer[0]], compute_at_axis[0])
+                    self._schedule[compute_at_buffer[0]], compute_at_axis[1])
 
     def _to_pragma(self, bodyops, inputops, c_outer_inner_inner):
         """
