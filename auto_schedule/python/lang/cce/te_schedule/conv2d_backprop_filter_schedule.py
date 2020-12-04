@@ -812,6 +812,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     "fusion_type": 0,
                     "kernel_name": str(kernel_name),
                 }
+                tiling = get_tiling(info_dict)
             else:
                 tiling = dynamic_para.get('tiling')
             return tiling
