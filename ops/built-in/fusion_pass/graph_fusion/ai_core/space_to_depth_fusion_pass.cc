@@ -164,7 +164,7 @@ Status SpaceToDepthFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s]: Get first input size %d", spaceToDepthName.c_str(), spaceToDepthDChannel);
   int64_t destSize = spaceToDepthInputDimInfo[inChannelIdx] * spaceToDepthDChannel * blockSize * blockSize;
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s]: Get assit input size %d", spaceToDepthName.c_str(), destSize);
-  int64_t inputSize = std::accumulate(spaceToDepthInputDimInfo.begin(), spaceToDepthInputDimInfo.end(), 1, std::multiplies<int64_t>());
+  int64_t inputSize = accumulate(spaceToDepthInputDimInfo.begin(), spaceToDepthInputDimInfo.end(), 1, std::multiplies<int64_t>());
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s]: inputSize is %d", spaceToDepthName.c_str(), inputSize);
   int64_t weightC = 109; // small weightC
   if((destSize > (inputSize * 0.3)) && spaceToDepthDChannel > weightC){
