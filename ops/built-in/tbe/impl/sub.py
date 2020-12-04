@@ -42,7 +42,7 @@ def sub_compute(input_x, input_y, output_z, kernel_name="sub"):
 
     Returns
     -------
-    res : output of the data's sub
+    res : output of the data's sub 
     """
     shape_x = shape_util.shape_to_list(input_x.shape)
     shape_y = shape_util.shape_to_list(input_y.shape)

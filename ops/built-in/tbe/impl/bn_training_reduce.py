@@ -24,6 +24,26 @@ from te.utils import para_check
 from te.utils import shape_util
 from impl.util import util_select_op_base
 from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(x, sum, square_sum,
+                       kernel_name="bn_training_reduce"):
+    """
+    get_op_support_info
+    """
+    format_x = x.get("format").upper()
+    if format_x == "NC1HWC0":
+        axis_split_matrix = [[SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]], [1, [1]])]]
+
+    else:
+        axis_split_matrix = None
+    axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name

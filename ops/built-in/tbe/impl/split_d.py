@@ -50,12 +50,15 @@ def get_op_support_info(input_value,
     get_op_support_info
     """
     shape_value_len = len(input_value.get("shape"))
+    format_value = input_value.get("format").upper()
+    ori_format = input_value.get("ori_format").upper()
+    if format_value == "NC1HWC0":
+        split_dim = shape_util.axis_transform_5d(split_dim, ori_format)
     if split_dim < 0:
         split_dim += shape_value_len
-    format_value = input_value.get("format").upper()
     if format_value == "ND" or format_value == "NC1HWC0" or format_value == "FRACTAL_NZ":
         axis_split_matrix=[]
-        for i in range(0, shape_value_len-1):
+        for i in range(0, shape_value_len - 1):
             if i != split_dim:
                 output_list = []
                 for j in range(0, num_split):

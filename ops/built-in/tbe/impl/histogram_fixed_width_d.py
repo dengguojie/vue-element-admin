@@ -56,10 +56,7 @@ def get_op_support_info(x,
     format_x = x.get("format").upper()
     shape_x_len = len(x.get("shape"))
     if format_x == "ND":
-        axis_reduce_matrix=[]
-        for i in range(shape_x_len):
-            split_0 = [ReduceInput([0, [i]]), ReduceOutput([0, 1, False])]
-            axis_reduce_matrix.append(split_0)
+        axis_reduce_matrix = [[ReduceInput([0, [0]]), ReduceOutput([0, 1, False])]]
         axis_split_list = None
     else:
         axis_split_list = None
