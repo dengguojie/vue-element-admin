@@ -1948,14 +1948,24 @@ def general_schedule(
         _emit_fusion_insn()
 
     def _handle_dynamic_workspace(stride_w):
-        def get_al1_bound():
+        def _get_al1_m_extent(al1_m):
+            al1_h = tvm.select(
+                        (tvm.floormod(al1_m, output_shape[3]) == 0).asnode(),
+                        kernel_h + (al1_m // output_shape[3]) - 1,
+                        kernel_h + (al1_m // output_shape[3]) + 1)
+            al1_w = a_ddr.shape[3] * stride_w
+            return al1_h * al1_w
+
+        def _get_al1_bound():
             if len(tiling["AL1_shape"]) != 0:
                 k_al1, multi_m_al1 = tiling["AL1_shape"][:2]
                 al1_m = multi_m_al1 * cl0_tiling_mc * cl0_tiling_m0
                 al1_c = k_al1 // kernel_h // kernel_w
+                al1_bound = al1_c * _get_al1_m_extent(al1_m)
             elif dynamic_mode == "dynamic_batch":
-                al1_m = c_l0c_hw
+                al1_m = _ceil(a_l1.shape[2] * a_l1.shape[3], cl0_tiling_m0) * cl0_tiling_m0
                 al1_c = al1_co1 * al1_co0
+                al1_bound = al1_c * al1_m
             else:
                 al1_m = (
                     _ceil(
@@ -1966,16 +1976,11 @@ def general_schedule(
                     * al0_tiling_m0
                 )
                 al1_c = al1_co1 * al1_co0
-            al1_h = tvm.select(
-                        (tvm.floormod(al1_m, output_shape[3]) == 0).asnode(),\
-                        kernel_h + (al1_m // output_shape[3]) - 1,\
-                        kernel_h + (al1_m // output_shape[3]) + 1)
-            al1_w = a_ddr.shape[3] * stride_w
-            al1_bound = al1_c * al1_h * al1_w
+                al1_bound = al1_c * _get_al1_m_extent(al1_m)
 
             return al1_bound
 
-        sch[a_l1].set_storage_bound(get_al1_bound())
+        sch[a_l1].set_storage_bound(_get_al1_bound())
         if dynamic_mode == "dynamic_hw":
             sch.set_var_range(a_ddr.shape[2], *var_range.get("dedy_h"))
             sch.set_var_range(a_ddr.shape[3], *var_range.get("dedy_w"))
