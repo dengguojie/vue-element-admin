@@ -37,31 +37,28 @@ using namespace ge;
 namespace fe {
 
 // node type
-static const string NODE_SOFTMAXGRAD = "ConfusionSoftmaxGrad";
-static const string NODE_MUL = "Mul";
-static const string NODE_SUB = "Sub";
-static const string NODE_REDUCESUMD = "ReduceSumD";
+static const string TYPE_SOFTMAXGRAD = "ConfusionSoftmaxGrad";
+static const string TYPE_MUL = "Mul";
+static const string TYPE_SUB = "Sub";
+static const string TYPE_REDUCESUMD = "ReduceSumD";
 
 // node name id
-static const string PATTERN_MUL = "mul";
-static const string PATTERN_SUB = "sub";
-static const string PATTERN_REDUCESUMD = "reducesumD";
+static const string PATTERN_MUL = "Mul";
+static const string PATTERN_SUB = "Sub";
+static const string PATTERN_SUM = "Sum";
 
 // attr name
 static const string ATTR_AXIS = "axes";
 
 /*
 before:
-             input0
-                   \
-                    \
-      input1 ————> Mul
-         \        /
-           \     /
-             Sub
-              |
-              |
-          reducesumD
+  input0    input1
+    |  \      |
+    |   \———>Mul
+    |         |
+    |      reducesumD (attr axis=-1)
+    |         |
+    |——————> Sub
               |
            output
 
@@ -77,19 +74,20 @@ after:
 
 vector<FusionPattern*> ConfusionSoftmaxGradFusionPass::DefinePatterns() {
 
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define ConfusionMulGrad pattern begin");
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define ConfusionSoftmaxGrad pattern begin");
 
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("ConfusionSoftmaxGradFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
-  
-  pattern->AddOpDesc(PATTERN_REDUCESUMD, {NODE_REDUCESUMD})
-      .AddOpDesc(PATTERN_MUL, {NODE_MUL})
-      .AddOpDesc(PATTERN_SUB, {NODE_SUB}) // mul->sub
-      .SetInputs(PATTERN_REDUCESUMD, {PATTERN_SUB})// sub->reducesumD
-      .SetOutput(PATTERN_REDUCESUMD);
+
+  pattern->AddOpDesc(PATTERN_MUL, {TYPE_MUL})
+      .AddOpDesc(PATTERN_SUM, {TYPE_REDUCESUMD})
+      .AddOpDesc(PATTERN_SUB, {TYPE_SUB})
+      .SetInputs(PATTERN_SUM, {PATTERN_MUL})// mul->reducesumD
+      .SetInputs(PATTERN_SUB, {PATTERN_SUM})// reducesumD->sub
+      .SetOutput(PATTERN_SUB);
 
   patterns.push_back(pattern);
 
@@ -98,17 +96,16 @@ vector<FusionPattern*> ConfusionSoftmaxGradFusionPass::DefinePatterns() {
   return patterns;
 }
 
-
 Status ConfusionSoftmaxGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define ConfusionSoftmaxGradFusionPass fusion begin");
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter ConfusionSoftmaxGradFusionPass");
 
   ge::NodePtr mulNode = GetNodeFromMapping(PATTERN_MUL, mapping);
+  ge::NodePtr reduceSumNode = GetNodeFromMapping(PATTERN_SUM, mapping);
   ge::NodePtr subNode = GetNodeFromMapping(PATTERN_SUB, mapping);
-  ge::NodePtr reduceSumNode = GetNodeFromMapping(PATTERN_REDUCESUMD, mapping);
 
   FUSION_PASS_CHECK(mulNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mul node is null, fusion failed."), return PARAM_INVALID);
-  FUSION_PASS_CHECK(subNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "sub node is null, fusion failed."), return PARAM_INVALID);
   FUSION_PASS_CHECK(reduceSumNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "reduce sum node is null, fusion failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(subNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "sub node is null, fusion failed."), return PARAM_INVALID);
 
   // check all nodes input size
   int inputSize = 0;
@@ -117,14 +114,14 @@ Status ConfusionSoftmaxGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
     OP_LOGI(FUSED_OP_TYPE.c_str(), "mul node size is [%lu], which not equal to 2.", inputSize),
     return NOT_CHANGED);
 
-  inputSize = subNode->GetInDataNodes().size();
-  FUSION_PASS_CHECK(inputSize != 2,
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "sub node size is [%lu], which not equal to 2.", inputSize),
-    return NOT_CHANGED);
-
   inputSize = reduceSumNode->GetInDataNodes().size();
   FUSION_PASS_CHECK(inputSize != 1,
     OP_LOGI(FUSED_OP_TYPE.c_str(), "reduce sum node size is [%lu], which not equal to 1.", inputSize),
+    return NOT_CHANGED);
+
+  inputSize = subNode->GetInDataNodes().size();
+  FUSION_PASS_CHECK(inputSize != 2,
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "sub node size is [%lu], which not equal to 2.", inputSize),
     return NOT_CHANGED);
 
   // check all nodes output size
@@ -134,53 +131,28 @@ Status ConfusionSoftmaxGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
     OP_LOGI(FUSED_OP_TYPE.c_str(), "mul node output size is [%d], which not equal to 1.", outputSize),
     return NOT_CHANGED);
 
-  outputSize = subNode->GetOutDataNodes().size();
-  FUSION_PASS_CHECK(outputSize != 1,
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "sub node output size is [%d], which not equal to 1.", outputSize),
-    return NOT_CHANGED);
-
   outputSize = reduceSumNode->GetOutDataNodes().size();
   FUSION_PASS_CHECK(outputSize != 1,
     OP_LOGI(FUSED_OP_TYPE.c_str(), "reduce sum node output size is [%d], which not equal to 1.", outputSize),
     return NOT_CHANGED);
 
-  if (mulNode->GetName().find("bert/encoder") == string::npos &&
-      mulNode->GetName().find("loss/gradMul") == string::npos &&
-      mulNode->GetName().find("loss-BertPretrainingLoss/gradMul") == string::npos) {
-    return NOT_CHANGED;
-  }
+  outputSize = subNode->GetOutDataNodes().size();
+  FUSION_PASS_CHECK(outputSize != 1,
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "sub node output size is [%d], which not equal to 1.", outputSize),
+    return NOT_CHANGED);
 
-  // create softmax grad node op description
-  std::string softmaxGradName = mulNode->GetName() + "/" + NODE_SOFTMAXGRAD;
-  ge::OpDescPtr softmaxGradOpdesc = std::make_shared<ge::OpDesc>(softmaxGradName, NODE_SOFTMAXGRAD);
-  FUSION_PASS_CHECK(softmaxGradOpdesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "softmaxGradOpdesc is null, fusion failed."), return PARAM_INVALID);
+  // check mul and sub node input0 are the same
+  OutDataAnchorPtr mulInput0Anchor = mulNode->GetInDataAnchor(0)->GetPeerOutAnchor();
+  FUSION_PASS_CHECK(mulInput0Anchor == nullptr, OP_LOGI(FUSED_OP_TYPE.c_str(), "mul node input anchor is null"),  return NOT_CHANGED);
+  string mulInput0Name = mulInput0Anchor->GetOwnerNode()->GetName();
 
-  // define attrs of input edge based on orignal info
-  ge::GeTensorDesc input0Ddesc = mulNode->GetOpDesc()->GetInputDesc(0);
-  ge::GeTensorDesc input1Ddesc = subNode->GetOpDesc()->GetInputDesc(0);
-  ge::GeTensorDesc outputDesc = reduceSumNode->GetOpDesc()->GetOutputDesc(0);
-  softmaxGradOpdesc->AddInputDesc(0, input0Ddesc);
-  softmaxGradOpdesc->AddInputDesc(1, input1Ddesc);
-  softmaxGradOpdesc->AddOutputDesc(0, outputDesc);
+  OutDataAnchorPtr subInput0Anchor = subNode->GetInDataAnchor(0)->GetPeerOutAnchor();
+  FUSION_PASS_CHECK(subInput0Anchor == nullptr, OP_LOGI(FUSED_OP_TYPE.c_str(), "sub node input anchor is null"), return NOT_CHANGED);
+  string subInput0Name = subInput0Anchor->GetOwnerNode()->GetName();
 
-  // add prelu node into graph
-  ge::NodePtr softmaxGradNode = graph.AddNode(softmaxGradOpdesc);
-  softmaxGradNode->GetOpDesc()->SetType(NODE_SOFTMAXGRAD);
-  newNodes.push_back(softmaxGradNode);
-
-  // add input edge
-  ge::OutDataAnchorPtr input0Anchor = mulNode->GetInDataAnchor(0)->GetPeerOutAnchor();
-  ge::OutDataAnchorPtr input1Anchor = subNode->GetInDataAnchor(0)->GetPeerOutAnchor();
-  ge::GraphUtils::AddEdge(input0Anchor, softmaxGradNode->GetInDataAnchor(0));
-  ge::GraphUtils::AddEdge(input1Anchor, softmaxGradNode->GetInDataAnchor(1));
-
-  // add output edge
-  for (auto &inDataAnchor : reduceSumNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
-    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(reduceSumNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
-    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(softmaxGradNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
-  }
+  FUSION_PASS_CHECK(mulInput0Name != subInput0Name,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "mul node input name %s must equal to sub node input name %s.",
+                            mulInput0Name.c_str(), subInput0Name.c_str()), return NOT_CHANGED);
 
   // check axis -1
   std::vector<int64_t> axis;
@@ -189,22 +161,74 @@ Status ConfusionSoftmaxGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
   FUSION_PASS_CHECK(axis.size() != 1,
     OP_LOGI(FUSED_OP_TYPE.c_str(), "reduce sum attr axis size is [%d], which not equal to 1.", axis.size()),
     return NOT_CHANGED);
-  
-  FUSION_PASS_CHECK(axis[0] != -1,
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "reduce sum attr axis 0 is [%d], which not equal to -1.", axis[0]),
+  int64_t axisValue0 = axis[0];
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "reduce sum axisValue0=%d", axisValue0);
+
+  ge::GeTensorDesc reduceSumInputDesc = reduceSumNode->GetOpDesc()->GetInputDesc(0);
+  ge::GeShape reduceSumInputShape = reduceSumInputDesc.GetShape();
+  auto reduceSumInputDimNum = reduceSumInputShape.GetDims().size();
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "reduce sum reduceSumInputDimNum=%d", reduceSumInputDimNum);
+
+  // axis must less than reduceSumInputDimNum
+  FUSION_PASS_CHECK(axisValue0 >= reduceSumInputDimNum,
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "reduce sum axisValue0 is [%d] must less than reduceSumInputDimNum %d, fusion failed.",
+    axisValue0, reduceSumInputDimNum), return PARAM_INVALID);
+
+  // input is scalar
+  FUSION_PASS_CHECK(reduceSumInputDimNum == 0,
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "reduce sum reduceSumInputDimNum is %d.", reduceSumInputDimNum),
     return NOT_CHANGED);
-  
+
+  // axis is not the last -1
+  FUSION_PASS_CHECK((axisValue0 % reduceSumInputDimNum) != (reduceSumInputDimNum - 1),
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "reduce sum axisValue0 % reduceSumInputDimNum is [%d], which not equal to reduceSumInputDimNum - 1 [%d].",
+    (axisValue0 % reduceSumInputDimNum), (reduceSumInputDimNum - 1)), return NOT_CHANGED);
+
+  // create softmax grad node op description
+  std::string softmaxGradName = mulNode->GetName() + "/" + TYPE_SOFTMAXGRAD;
+  ge::OpDescPtr softmaxGradOpdesc = std::make_shared<ge::OpDesc>(softmaxGradName, TYPE_SOFTMAXGRAD);
+  FUSION_PASS_CHECK(softmaxGradOpdesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "softmaxGradOpdesc is null, fusion failed."), return PARAM_INVALID);
+
+  // define attrs of input edge based on orignal info
+  ge::GeTensorDesc input0Ddesc = mulNode->GetOpDesc()->GetInputDesc(0);
+  softmaxGradOpdesc->AddInputDesc(0, input0Ddesc);
+
+  ge::GeTensorDesc input1Ddesc = mulNode->GetOpDesc()->GetInputDesc(1);
+  softmaxGradOpdesc->AddInputDesc(1, input1Ddesc);
+
+  ge::GeTensorDesc outputDesc = subNode->GetOpDesc()->GetOutputDesc(0);
+  FUSION_PASS_CHECK(softmaxGradOpdesc->AddOutputDesc((outputDesc)) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add softmaxGrad output desc failed."), return FAILED);
+
+  // add prelu node into graph
+  ge::NodePtr softmaxGradNode = graph.AddNode(softmaxGradOpdesc);
+  softmaxGradNode->GetOpDesc()->SetType(TYPE_SOFTMAXGRAD);
+  newNodes.push_back(softmaxGradNode);
+
+  // add input edge
+  ge::OutDataAnchorPtr input0Anchor = mulNode->GetInDataAnchor(0)->GetPeerOutAnchor();
+  ge::OutDataAnchorPtr input1Anchor = mulNode->GetInDataAnchor(1)->GetPeerOutAnchor();
+  ge::GraphUtils::AddEdge(input0Anchor, softmaxGradNode->GetInDataAnchor(0));
+  ge::GraphUtils::AddEdge(input1Anchor, softmaxGradNode->GetInDataAnchor(1));
+
+  // add output edge
+  for (auto inDataAnchor : subNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
+    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(subNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(softmaxGradNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
+  }
+
   // remove useless node in subgraph
-  FUSION_PASS_CHECK(graph.RemoveNode(mulNode) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove mul node failed."),
-                    return FAILED);
-  FUSION_PASS_CHECK(graph.RemoveNode(subNode) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove sub node failed."),
-                    return FAILED);
-  FUSION_PASS_CHECK(graph.RemoveNode(reduceSumNode) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove reduce sum node failed."),
-                    return FAILED);
+  FUSION_PASS_CHECK(graph.RemoveNode(mulNode) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove mul node failed."), return FAILED);
+  FUSION_PASS_CHECK(graph.RemoveNode(subNode) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove sub node failed."), return FAILED);
+  FUSION_PASS_CHECK(graph.RemoveNode(reduceSumNode) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove reduce sum node failed."), return FAILED);
+
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Leave ConfusionSoftmaxGradFusionPass");
 
   return SUCCESS;
 }
 
-REGISTER_PASS("ConfusionSoftmaxGradFusionPass", BUILT_IN_GRAPH_PASS, ConfusionSoftmaxGradFusionPass);
+REGISTER_PASS("ZConfusionSoftmaxGradFusionPass", BUILT_IN_GRAPH_PASS, ConfusionSoftmaxGradFusionPass);
 
 }  // namespace fe
