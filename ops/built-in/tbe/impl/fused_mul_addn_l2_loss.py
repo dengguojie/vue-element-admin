@@ -20,6 +20,43 @@ from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import ReduceInput
+from impl.util.util_select_op_base import ReduceOutput
+from impl.util.util_select_op_base import get_op_cal_info
+
+
+# pylint: disable=unused-argument
+def get_op_support_info(input_x,
+                        input_y,
+                        input_z,
+                        output_x,
+                        output_y,
+                        kernel_name="fused_mul_addn_l2loss"):
+    """
+    get fusedMulAddnL2loss slice info
+    """
+    format_x = input_x.get("format")
+    shape_x = input_x.get("shape")
+    support_format = ["FRACTAL_Z", "C1HWNCoC0", "NC1HWC0", "ND", "NCHW", "NHWC"]
+
+    if format_x in support_format:
+        axis_reduce_list = []
+        axis_split_list = []
+        for idx, _ in enumerate(shape_x):
+            split_info = [SplitInput([0, [idx], [-1], [-1]], [1, [idx], [-1], [-1]]),
+                          SplitOutput([0, [idx]])]
+            reduce_info = [ReduceInput([0, [idx]]),
+                           ReduceOutput([1, "REDUCE_ADD", True])]
+            axis_split_list.append(split_info)
+            axis_reduce_list.append(reduce_info)
+    else:
+        axis_split_list = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_list, axis_reduce_list, 0, 0)
+
+    return op_cal_info_in_json
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("fused_mul_addn_l2loss")
