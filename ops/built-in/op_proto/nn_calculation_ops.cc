@@ -4375,11 +4375,11 @@ static bool GetAttrsConv3D(ge::Operator& op, Format refer,  int32_t& strd,
   return true;
 }
 
-static void SetConv3dOutShapeRange(const std::string& padding,
-                                   size_t idx,
-                                   const vector<int32_t>& attr_params,
-                                   const std::vector<std::pair<int64_t, int64_t>>& fm_range,
-                                   std::vector<std::pair<int64_t, int64_t>>& out_range) {
+static void SetConv3dOutShapeDimRange(const std::string& padding,
+                                      size_t idx,
+                                      const vector<int32_t>& attr_params,
+                                      const std::vector<std::pair<int64_t, int64_t>>& fm_range,
+                                      std::vector<std::pair<int64_t, int64_t>>& out_range) {
   size_t attr_idx = 0;
   int32_t stride = attr_params[attr_idx++];
   int32_t dilation = attr_params[attr_idx++];
@@ -4466,8 +4466,20 @@ static bool SetConv3dOutShapeRange(op::Conv3D& op, const vector<int32_t>& attr_p
   OP_LOGD(op.GetName().c_str(), "dynamic shape set range");
   std::vector<std::pair<int64_t, int64_t>> fm_range;
   x_tensor.GetShapeRange(fm_range);
+  vector<int64_t> y_shape = y_tensor.GetShape().GetDims();
   if (fm_range.empty()) {
     OP_LOGW(op.GetName().c_str(), "fm_range's shape is empty.");
+    if (x_shape[idx_d] == -1) {
+      y_shape[idx_d] = -1;
+    }
+
+    if (x_shape[idx_h] == -1) {
+      y_shape[idx_h] = -1;
+    }
+
+    if (x_shape[idx_w] == -1) {
+      y_shape[idx_w] = -1;
+    }
     // op will check this invalid range
     return true;
   }
@@ -4484,37 +4496,31 @@ static bool SetConv3dOutShapeRange(op::Conv3D& op, const vector<int32_t>& attr_p
     return false;
   }
 
-  for (size_t i = 0; i < fm_range.size(); ++i) {
-    OP_LOGD(op.GetName().c_str(), "fmap Range[%zu] is (%lld, %lld)", i, fm_range[i].first, fm_range[i].second);
-  }
-
-  vector<int64_t> y_shape = y_tensor.GetShape().GetDims();
   std::vector<std::pair<int64_t, int64_t>> out_range(fm_range);
   out_range[idx_c] = std::make_pair(static_cast<int64_t>(kn), static_cast<int64_t>(kn));
   if (x_shape[idx_d] == -1) {
     y_shape[idx_d] = -1;
     vector<int32_t> attr_params_d = {strd, dild, padf + padba, kd};
-    SetConv3dOutShapeRange(padding, idx_d, attr_params_d, fm_range, out_range);
+    // attr_params_d data structure should keep same as SetConv3dOutShapeDimRange
+    SetConv3dOutShapeDimRange(padding, idx_d, attr_params_d, fm_range, out_range);
   }
 
   if (x_shape[idx_h] == -1) {
     y_shape[idx_h] = -1;
     vector<int32_t> attr_params_h = {strh, dilh, padt + padb, kh};
-    SetConv3dOutShapeRange(padding, idx_h, attr_params_h, fm_range, out_range);
+    // attr_params_h data structure should keep same as SetConv3dOutShapeDimRange
+    SetConv3dOutShapeDimRange(padding, idx_h, attr_params_h, fm_range, out_range);
   }
 
   if (x_shape[idx_w] == -1) {
     y_shape[idx_w] = -1;
     vector<int32_t> attr_params_w = {strw, dilw, padl + padr, kw};
-    SetConv3dOutShapeRange(padding, idx_w, attr_params_w, fm_range, out_range);
+    // attr_params_w data structure should keep same as SetConv3dOutShapeDimRange
+    SetConv3dOutShapeDimRange(padding, idx_w, attr_params_w, fm_range, out_range);
   }
 
   y_tensor.SetShape(Shape(y_shape));
   y_tensor.SetShapeRange(out_range);
-
-  for (size_t i = 0; i < out_range.size(); ++i) {
-    OP_LOGD(op.GetName().c_str(), "out Range[%zu] is (%lld, %lld)", i, out_range[i].first, out_range[i].second);
-  }
 
   return true;
 }
@@ -4694,6 +4700,7 @@ IMPLEMT_INFERFUNC(Conv3D, Conv3DInfer) {
   vector<int32_t> attr_params = {strd, strh, strw, dild, dilh, dilw,
                                  padf, padba, padt, padb, padl, padr,
                                  kn, kd, kh, kw};
+  // attr_params data structure should keep same as SetConv3dOutShapeRange
   if (!SetConv3dOutShapeRange(op, attr_params, y_tensor)) {
     return GRAPH_FAILED;
   }
