@@ -25,7 +25,7 @@ from te.platform.cce_params import scope_cb
 from te.platform.cce_params import scope_cc
 from te.platform.cce_params import scope_cbuf
 from te.platform.cce_conf import get_soc_spec
-from te.domain.tiling.tiling_query import tiling_query
+from te.domain.tiling.get_tiling import get_tiling
 from te.lang.cce.te_compute.cube_util import shape_to_list
 
 from te.utils.error_manager import error_manager_util
@@ -787,19 +787,32 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         def _get_tiling():
             if not self.dynamic_mode:
                 _l1_limit_check()
-                tiling = tiling_query(grads_shape, fmap_shape, weight_shape,
-                                a_dtype=grads.dtype, b_dtype=fmap.dtype,
-                                c_dtype=dw_cc.dtype, mad_dtype=dw_cc.dtype,
-                                padl=pad_left, padr=pad_right,
-                                padu=pad_up, padd=pad_down,
-                                strideh=stride_height, stridew=stride_width,
-                                strideh_expand=1, stridew_expand=1,
-                                dilationh=dilation_height,
-                                dilationw=dilation_width,
-                                group=real_g,
-                                fused_double_operand_num=0,
-                                bias_flag=0, op_tag='conv2d_backprop_filter',
-                                kernel_name=kernel_name)
+                info_dict = {
+                    "op_type": "conv2d_backprop_filter",
+                    "A_shape": list(grads_shape),
+                    "B_shape": list(fmap_shape),
+                    "C_shape": list(weight_shape),
+                    "A_dtype": str(grads.dtype),
+                    "B_dtype": str(fmap.dtype),
+                    "C_dtype": str(dw_cc.dtype),
+                    "mad_dtype": str(dw_cc.dtype),
+                    "padl": pad_left,
+                    "padr": pad_right,
+                    "padu": pad_up,
+                    "padd": pad_down,
+                    "strideH": stride_height,
+                    "strideW": stride_width,
+                    "strideH_expand": 1,
+                    "strideW_expand": 1,
+                    "dilationH": dilation_height,
+                    "dilationW": dilation_width,
+                    "group": real_g,
+                    "bias_flag": 0,
+                    "fused_double_operand_num": 0,
+                    "fusion_type": 0,
+                    "kernel_name": str(kernel_name),
+                }
+                tiling = get_tiling(info_dict)
             else:
                 tiling = dynamic_para.get('tiling')
             return tiling
