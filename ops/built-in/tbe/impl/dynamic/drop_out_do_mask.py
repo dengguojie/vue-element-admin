@@ -119,12 +119,12 @@ class DropOutDoMask:
             keep_prob_ub = self.tik_instance.Tensor(self.keep_prob_dtype, (self.vcetor_num,),
                                                     name="keep_prob_ub", scope=tik.scope_ubuf)
             self.tik_instance.data_move(keep_prob_ub, self.keep_prob_gm, 0, 1, 1, 0, 0)
-            print("self.is_suport_vdiv 1111111" ,self.is_suport_vdiv)
+
             if self.is_suport_vdiv:
-                one_ub_fp32 = self.tik_instance.Tensor(self.keep_prob_dtype, (self.vcetor_num,),
-                                                       name="one_ub_fp32", scope=tik.scope_ubuf)
-                self.tik_instance.vector_dup(1, one_ub_fp32, 1.0, 1, 1, 8)
-                self.tik_instance.vdiv(1, keep_prob_ub, one_ub_fp32, keep_prob_ub, 1, 1, 1, 1, 8, 8, 8)
+                one_ub_vdiv = self.tik_instance.Tensor(self.keep_prob_dtype, (self.vcetor_num,),
+                                                       name="one_ub_vdiv", scope=tik.scope_ubuf)
+                self.tik_instance.vector_dup(1, one_ub_vdiv, 1.0, 1, 1, 8)
+                self.tik_instance.vdiv(1, keep_prob_ub, one_ub_vdiv, keep_prob_ub, 1, 1, 1, 1, 8, 8, 8)
                 self.prob_rec.set_as(keep_prob_ub[0])
             else:
                 # when donot support vdiv, will use vrec
