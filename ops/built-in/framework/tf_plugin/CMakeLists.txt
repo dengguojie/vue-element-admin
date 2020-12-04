@@ -186,6 +186,7 @@ set(_tf_plugins
   hash_table_plugin.cc
   hcom_all_gather_plugin.cc
   hcom_all_reduce_plugin.cc
+  hcom_reduce_plugin.cc
   hcom_broadcast_plugin.cc
   hcom_receive_plugin.cc
   hcom_reduce_scatter_plugin.cc
