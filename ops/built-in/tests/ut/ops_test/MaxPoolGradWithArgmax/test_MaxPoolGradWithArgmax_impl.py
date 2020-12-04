@@ -61,11 +61,11 @@ case5 = {"params": [{"shape": (2,32,96,144,16), "dtype": "float16", "format": "N
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
+ut_case.add_case(["Ascend710", "Ascend910"], case1)
+ut_case.add_case(["Ascend710", "Ascend910"], case2)
+ut_case.add_case(["Ascend710", "Ascend910"], case3)
+ut_case.add_case(["Ascend710", "Ascend910"], case4)
+ut_case.add_case(["Ascend710", "Ascend910"], case5)
 
 
 if __name__ == '__main__':

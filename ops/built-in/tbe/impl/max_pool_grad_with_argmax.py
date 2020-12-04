@@ -24,6 +24,9 @@ from impl import max_pool_grad_with_argmax_cut_one_h as argmax_cut_one_h
 from impl import max_pool_grad_with_argmax_resnet50 as resnet50
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 
 # size of 5HD format
@@ -46,6 +49,26 @@ FP16_MAX = 128
 FP32_MAX = 64
 # max num of fp16 mask handle one time
 MASK_MAX = 8
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(x, grad, argmax, y, ksize, strides, padding,
+                              kernel_name="max_pool_grad_with_argmax"):
+    """
+    get_op_support_info
+    """
+    format_x = x.get("format").upper()
+    if format_x == "NC1HWC0":
+        axis_split_matrix = [
+            [SplitInput([0, [0], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+            [SplitInput([0, [1], [-1], [-1]], [1, [1], [-1], [-1]], [2, [1], [-1], [-1]]), SplitOutput([0, [1]])]
+        ]
+
+    else:
+        axis_split_matrix=None
+    axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 # pylint: disable=locally-disabled,too-many-arguments,invalid-name

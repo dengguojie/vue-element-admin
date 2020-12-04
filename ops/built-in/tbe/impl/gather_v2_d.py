@@ -49,7 +49,7 @@ def get_op_support_info(x, indices, y, axis=0, kernel_name="gather_v2_d"):
     if format_x == "ND" and format_indices == "ND":
         axis_split_matrix=[]
         for j in range(shape_indices_len):
-            split_0 = [SplitInput([1, [j], [-1], [-1]]), SplitOutput([0, [1]])]
+            split_0 = [SplitInput([1, [j], [-1], [-1]]), SplitOutput([0, [j]])]
             axis_split_matrix.append(split_0)
         axis_reduce_list = None
 
