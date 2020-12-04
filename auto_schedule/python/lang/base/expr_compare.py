@@ -13,19 +13,8 @@
 # limitations under the License.
 # ============================================================================
 """
-base init
+compare expr
 """
-from __future__ import absolute_import as _abs
 
-from .shape_classifier import classify
-from .shape_classifier import Mode
-from .operation import register_fusion_compute
-from .operation import register_operator
-from .operation import compute
-from .operation import add_compile_info
-from .operation import var
-from .operation import add_exclude_bound_var
-from .operation import register_tiling_case
-from .operation import register_schedule
-from .operation import get_te_var
-from .expr_compare import expr_equal
+def expr_equal(expr_a, expr_b):
+    pass

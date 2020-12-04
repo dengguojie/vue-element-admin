@@ -16,6 +16,7 @@
 common function for check ops parameter
 """
 from te.lang.base import operation
+from te.lang.base import expr_equal
 from te.platform.fusion_manager import fusion_manager
 from te.tvm import expr as _expr
 from te.tvm import make as _make
@@ -117,7 +118,7 @@ def broadcast_shapes(shape1, shape2, op_name=para_check.OP_NAME,
     two input shapes produce three output shape
     """
     def _generate_dynamic_output(_shape1_i, _shape2_i, out_shape, index):
-        if not _equal(_shape1_i, _shape2_i):
+        if not expr_equal(_shape1_i, _shape2_i):
             if isinstance(_shape1_i, int):
                 if _shape1_i == 1:
                     out_shape.append(_shape2_i)
@@ -129,17 +130,7 @@ def broadcast_shapes(shape1, shape2, op_name=para_check.OP_NAME,
                 else:
                     out_shape.append(_shape2_i)
             else:
-                var_name = "dim_" + str(index) + "_2"
-                _var = operation.get_te_var(var_name)
-                if _var is None:
-                    bound_x = operation.get_te_var(_shape1_i.name).get_bound()
-                    bound_y = operation.get_te_var(_shape2_i.name).get_bound()
-                    bound = (min(bound_x[0], bound_y[0]),
-                             max(bound_x[1], bound_y[1]))
-                    _var = operation.var(var_name, bound)
-                else:
-                    _var = _var.tvm_var
-                out_shape.append(_var)
+                out_shape.append(tvm.max(_shape1_i, _shape2_i))
         else:
             out_shape.append(_shape1_i)
 
@@ -155,7 +146,7 @@ def broadcast_shapes(shape1, shape2, op_name=para_check.OP_NAME,
 
     out_shape = []
     for i, (shape1_i, shape2_i) in enumerate(zip(shape1, shape2)):
-        if not _equal(shape1_i, shape2_i) and \
+        if not expr_equal(shape1_i, shape2_i) and \
                 (isinstance(shape1_i, int) and shape1_i != 1) \
                 and (isinstance(shape2_i, int) and shape2_i != 1):
             error_info = {
@@ -173,7 +164,7 @@ def broadcast_shapes(shape1, shape2, op_name=para_check.OP_NAME,
         if operation.in_dynamic():
             _generate_dynamic_output(shape1_i, shape2_i, out_shape, i)
         else:
-            out_shape.append(shape1_i if _equal(shape2_i, 1) else shape2_i)
+            out_shape.append(shape1_i if expr_equal(shape2_i, 1) else shape2_i)
 
     if swapped:
         shape1, shape2 = shape2, shape1
@@ -197,7 +188,7 @@ def refine_shapes_for_broadcast(shape1, shape2):
             return False
 
         def _get_state(_a, _b):
-            if _equal(_a, _b):
+            if expr_equal(_a, _b):
                 return 1
             if _equals_one(_a):
                 return 2
@@ -308,71 +299,6 @@ def refine_shapes_for_broadcast(shape1, shape2):
         fused_shape1, fused_shape2 = fused_shape2, fused_shape1
 
     return fused_shape1, fused_shape2
-
-
-def _equal(expr_a, expr_b):
-    """
-    :param expr_a:
-    :param expr_b:
-    :return:
-    """
-    elements1 = {}
-    elements2 = {}
-
-    single_types = (int, float, _expr.Var)
-    const_types = (_expr.IntImm,)
-    for expr, elements in zip((expr_a, expr_b), (elements1, elements2)):
-        if isinstance(expr, single_types):
-            elements[expr] = elements.get(expr, 0) + 1
-        elif isinstance(expr, const_types):
-            elements[expr.value] = elements.get(expr.value, 0) + 1
-        elif isinstance(expr, _expr.Expr):
-            _parse_expr(expr, elements)
-        else:
-            error_info = {
-                'errCode': para_check.OP_ERROR_CODE_025,
-                'op_name': operation.get_context().get_op_type(),
-                'param_expr': expr}
-            raise RuntimeError(
-                error_info,
-                "In op[%s], unsupported expr: [%s]"
-                % (error_info['op_name'], error_info['param_expr']))
-
-    return elements1 == elements2
-
-
-def _parse_expr(expr, elements: dict):
-    if isinstance(expr, _expr.Mul):
-        _parse_mul(expr, elements)
-    else:
-        error_info = {
-            'errCode': para_check.OP_ERROR_CODE_025,
-            'op_name': operation.get_context().get_op_type(),
-            'param_expr': expr}
-        raise RuntimeError(error_info,
-                           "In op[%s], unsupported expr: [%s]"
-                           % (error_info['op_name'], error_info['param_expr']))
-
-
-def _parse_mul(expr, elements: dict):
-    if not isinstance(expr, _expr.Mul):
-        error_info = {
-            'errCode': para_check.OP_ERROR_CODE_026,
-            'op_name': operation.get_context().get_op_type(),
-            'param_expr': expr}
-        raise RuntimeError(error_info,
-                           "In op[%s], it is not mul expr: [%s]"
-                           % (error_info['op_name'], error_info['param_expr']))
-
-    const_types = (_expr.IntImm,)
-    var_types = (_expr.Var,)
-    for _x in (expr.a, expr.b):
-        if isinstance(_x, const_types):
-            elements[_x.value] = elements.get(_x.value, 0) + 1
-        elif isinstance(_x, var_types):
-            elements[_x] = elements.get(_x, 0) + 1
-        else:
-            _parse_mul(_x, elements)
 
 
 def variable_shape(inputs: list, support_broadcast=False):

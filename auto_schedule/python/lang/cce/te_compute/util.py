@@ -1007,61 +1007,6 @@ def util_astype(scalar, dtype):
     raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
-def equal(_a, _b):
-    """
-    :param _a:
-    :param _b:
-    :return:
-    """
-    elements1 = {}
-    elements2 = {}
-
-    single_types = (int, tvm.expr.Var)
-    const_types = (tvm.expr.IntImm,)
-    for expr, elements in zip((_a, _b), (elements1, elements2)):
-        if isinstance(expr, single_types):
-            elements[expr] = elements.get(expr, 0) + 1
-        elif isinstance(expr, const_types):
-            elements[expr.value] = elements.get(expr.value, 0) + 1
-        elif isinstance(expr, tvm.expr.Expr):
-            _parse_expr(expr, elements)
-        else:
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "Unsupported expr: [%s]" % expr
-            raise RuntimeError(dict_args, get_error_message(dict_args))
-
-    return elements1 == elements2
-
-
-def _parse_expr(expr, elements: dict):
-    if isinstance(expr, tvm.expr.Mul):
-        _parse_mul(expr, elements)
-    else:
-        dict_args = dict()
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "Unsupported expr: [%s]" % expr
-        raise RuntimeError(dict_args, get_error_message(dict_args))
-
-
-def _parse_mul(expr, elements: dict):
-    if not isinstance(expr, tvm.expr.Mul):
-        dict_args = dict()
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "It is not mul expr: [%s]" % expr
-        raise RuntimeError(dict_args, get_error_message(dict_args))
-
-    const_types = (tvm.expr.IntImm,)
-    var_types = (tvm.expr.Var,)
-    for _x in (expr.a, expr.b):
-        if isinstance(_x, const_types):
-            elements[_x.value] = elements.get(_x.value, 0) + 1
-        elif isinstance(_x, var_types):
-            elements[_x] = elements.get(_x, 0) + 1
-        else:
-            _parse_mul(_x, elements)
-
-
 def _get_priority_flag_value(priority_flag):
     if isinstance(priority_flag, (int, float)):
         return priority_flag
