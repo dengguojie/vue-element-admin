@@ -32,7 +32,7 @@ RESERVED_UB_SIZE = 8 * 1024
 MAX_REPEAT_NUM = 254
 
 
-class DropOutDoMask:
+class DropOutDoMask(object):
     """
     Function: use to store dropoutdomask base parameters
     Modify: 2020-11-16
