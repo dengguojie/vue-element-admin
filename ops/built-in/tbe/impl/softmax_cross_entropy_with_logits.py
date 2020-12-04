@@ -80,8 +80,6 @@ def get_op_support_info(input_features,
                 axis_split_list.append(split_info)
     else:
         axis_split_list = None
-    if not axis_split_list:
-        axis_split_list = None
     op_cal_info_in_json = get_op_cal_info(axis_split_list, None, 0, 0)
 
     return op_cal_info_in_json
