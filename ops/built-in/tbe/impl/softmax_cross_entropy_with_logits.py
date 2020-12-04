@@ -85,8 +85,6 @@ def get_op_support_info(input_features,
     return op_cal_info_in_json
 
 
-
-
 # pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("softmax_cross_entropy_with_logits")
 def softmax_cross_entropy_with_logits_nchw_compute(
