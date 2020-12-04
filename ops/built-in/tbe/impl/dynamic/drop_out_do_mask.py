@@ -53,6 +53,7 @@ class DropOutDoMask:
         self.kernel_name = kernel_name
         self.ai_core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
         self.ub_size_bytes = (tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) - RESERVED_UB_SIZE)
+        self.elememts_vector_fp16 = tbe_platform.ELEMENTS_VECTOR_OP_FP16
 
         self.mask_pre_core = 16 if self.var_dtype == "float16" else 8
         self.mask_value = 128 if self.var_dtype == "float16" else 64
@@ -66,12 +67,12 @@ class DropOutDoMask:
         self.mask_gm = self.tik_instance.Tensor(self.mask_dtype, (MAX_INT32,), name="mask_gm", scope=tik.scope_gm)
         self.out_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT32,), name="out_gm", scope=tik.scope_gm)
 
-        self.is_vsel_float = tbe_platform.cce_conf.api_check_support("te.lang.cce.vsel", "float32")
+        self.is_suport_vdiv = tbe_platform.cce_conf.api_check_support("te.lang.cce.vdiv", self.keep_prob_dtype)
         # init ub
         self.var_ub = None
         self.keep_prob_ub = None
-        self._core_idx = None
         self.tiling_ub = None
+        self.prob_rec = None
 
     def _tiling_args(self):
         """
@@ -90,29 +91,65 @@ class DropOutDoMask:
         """
         self.var_ub = self.tik_instance.Tensor(self.var_dtype, (self.max_process_num,),
                                                name="var_ub", scope=tik.scope_ubuf)
-        self.keep_prob_ub = self.tik_instance.Tensor(self.var_dtype, (self.vcetor_num,),
-                                                     name="keep_prob_ub", scope=tik.scope_ubuf)
-        self.mask_ub = self.tik_instance.Tensor(self.mask_dtype, (self.max_process_num,),
+        self.mask_ub = self.tik_instance.Tensor(self.mask_dtype, (self.max_process_num + 7 // 8,),
                                                 name="mask_ub", scope=tik.scope_ubuf)
         self.out_ub = self.tik_instance.Tensor(self.var_dtype, (self.max_process_num,),
                                                name="out_ub", scope=tik.scope_ubuf)
-        self.zero_ub = self.tik_instance.Tensor(self.var_dtype, (self.vcetor_num,),
+        self.zero_ub = self.tik_instance.Tensor("float16", (self.elememts_vector_fp16,),
                                                 name="zero_ub", scope=tik.scope_ubuf)
-        self.tik_instance.vector_dup(self.vcetor_num, self.zero_ub,
+        self.tik_instance.vector_dup(self.elememts_vector_fp16, self.zero_ub,
                                      0.0, 1, 1, 8)
 
-    def _var_update(self, vsel_loop):
+        if self.var_dtype == "float32":
+            self.one_ub = self.tik_instance.Tensor("float16", (self.elememts_vector_fp16,),
+                                                   name="one_ub", scope=tik.scope_ubuf)
+            self.sel_fp16_ub = self.tik_instance.Tensor("float16", (self.elememts_vector_fp16,),
+                                                        name="sel_fp16_ub", scope=tik.scope_ubuf)
+            self.sel_fp32_ub = self.tik_instance.Tensor(self.var_dtype, (self.elememts_vector_fp16,),
+                                                        name="sel_fp32_ub", scope=tik.scope_ubuf)
+            self.tik_instance.vector_dup(self.elememts_vector_fp16, self.one_ub,
+                                         1.0, 1, 1, 8)
+
+    def _init_prob_scalar(self):
+        """
+        _init_prob_scalar
+        """
+        self.prob_rec = self.tik_instance.Scalar(self.keep_prob_dtype, name="keep_prob_scaler")
+        with self.tik_instance.new_stmt_scope():
+            keep_prob_ub = self.tik_instance.Tensor(self.keep_prob_dtype, (self.vcetor_num,),
+                                                    name="keep_prob_ub", scope=tik.scope_ubuf)
+            self.tik_instance.data_move(keep_prob_ub, self.keep_prob_gm, 0, 1, 1, 0, 0)
+            if self.is_suport_vdiv:
+                one_ub_fp32 = self.tik_instance.Tensor("float32", (self.vcetor_num,),
+                                                       name="one_ub_fp32", scope=tik.scope_ubuf)
+                self.tik_instance.vector_dup(1, one_ub_fp32, 1.0, 1, 1, 8)
+                self.tik_instance.vdiv(1, keep_prob_ub, one_ub_fp32, keep_prob_ub, 1, 1, 1, 1, 8, 8, 8)
+                self.prob_rec.set_as(keep_prob_ub[0])
+            else:
+                # when donot support vdiv, will use vrec
+                keep_prob_ub_out = self.tik_instance.Tensor(self.keep_prob_dtype, (self.vcetor_num,),
+                                                            name="keep_prob_ub_out", scope=tik.scope_ubuf)
+                self.tik_instance.vrec(1, keep_prob_ub_out, keep_prob_ub, 1, 1, 1, 8, 8)
+                _tik_fuc_vrec_newton(self.tik_instance, keep_prob_ub_out, keep_prob_ub, 1)
+                self.prob_rec.set_as(keep_prob_ub_out[0])
+
+    def _var_update(self, process_num):
         """
         _var_update
         """
-        if not self.is_vsel_float and self.var_dtype == "float32":
-            pass
-        else:
-            with self.tik_instance.for_range(0, vsel_loop) as vsel_loop_idx:
-                output_offset = vsel_loop_idx * self.vcetor_num
-                mask_offset = vsel_loop_idx * (self.vcetor_num // 8)
-                cmpmask = self.tik_instance.mov_tensor_to_cmpmask(self.mask_ub[mask_offset])
-                self.tik_instance.vsel(self.mask_value, 0, self.out_ub[output_offset],
+        sel_loop = (process_num + self.elememts_vector_fp16 - 1) // self.elememts_vector_fp16
+        with self.tik_instance.for_range(0, sel_loop) as vsel_loop_idx:
+            output_offset = vsel_loop_idx * self.elememts_vector_fp16
+            mask_offset = vsel_loop_idx * (self.elememts_vector_fp16 // 8)
+            cmpmask = self.tik_instance.mov_tensor_to_cmpmask(self.mask_ub[mask_offset])
+            if self.var_dtype == "float32":
+                self.tik_instance.vsel(self.elememts_vector_fp16, 0, self.sel_fp16_ub,
+                                       cmpmask, self.one_ub, self.zero_ub, 1, 1, 1, 1, 8, 8, 8)
+                self.tik_instance.vconv(64, "", self.sel_fp32_ub, self.sel_fp16_ub, 2, 1, 1, 8, 4)
+                self.tik_instance.vmul(64, self.var_ub[output_offset], self.sel_fp32_ub, self.var_ub[output_offset],
+                                       2, 1, 1, 1, 8, 8, 8)
+            else:
+                self.tik_instance.vsel(self.elememts_vector_fp16, 0, self.var_ub[output_offset],
                                        cmpmask, self.var_ub[output_offset], self.zero_ub, 1, 1, 1, 1, 8, 8, 8)
 
     def _run_one_loop(self, gm_offset, process_num, vector_mask, prob_rec, is_last_tail_data=False):
@@ -131,9 +168,9 @@ class DropOutDoMask:
         copy_burst_len = (_process_num_one_loop + 255) // 256
         self.tik_instance.data_move(self.mask_ub, self.mask_gm[gm_offset // 8], 0, 1, copy_burst_len, 0, 0)
         self.tik_instance.vmuls(vector_mask, self.var_ub, self.var_ub, prob_rec, repeats, 1, 1, 8, 8)
-        self._var_update(repeats)
+        self._var_update(_process_num_one_loop)
         copy_burst_len = (_process_num_one_loop + self.block_num - 1) // self.block_num
-        self.tik_instance.data_move(self.out_gm[gm_offset], self.out_ub, 0, 1, copy_burst_len, 0, 0)
+        self.tik_instance.data_move(self.out_gm[gm_offset], self.var_ub, 0, 1, copy_burst_len, 0, 0)
 
     def _run_one_core(self, _core_idx, process_num, prob_rec, is_tail_core=False):
         """
@@ -141,33 +178,30 @@ class DropOutDoMask:
         """
         copy_loop = process_num // self.max_process_num
         copy_tail = process_num % self.max_process_num
-        tail_repeats = self.tik_instance.Scalar("int64", name="tail_repeats")
-        tail_repeats.set_as(copy_tail // self.vcetor_num)
-
-        tail_last_num = self.tik_instance.Scalar("int64", name="tail_last_num")
-        tail_last_num.set_as(copy_tail % self.vcetor_num)
 
         # process algin data
         with self.tik_instance.for_range(0, copy_loop) as _copy_idx:
             _process_num_one_loop = self.max_process_num
             vector_mask = self.mask_value
-            copy_gm_offset = _core_idx * process_num + _copy_idx * self.max_process_num
+            copy_gm_offset = _core_idx * self.do_num_per_core + _copy_idx * self.max_process_num
+            self._run_one_loop(copy_gm_offset, _process_num_one_loop, vector_mask, prob_rec)
+
+        _process_num_one_loop = (copy_tail // self.vcetor_num) * self.vcetor_num
+        with self.tik_instance.if_scope(_process_num_one_loop > 0):
+            # process tail vcetor data
+            vector_mask = self.mask_value
+            copy_gm_offset = _core_idx * self.do_num_per_core + copy_loop * self.max_process_num
             self._run_one_loop(copy_gm_offset, _process_num_one_loop, vector_mask, prob_rec)
 
         if is_tail_core:
-            # process tail vcetor data
-            _process_num_one_loop = (copy_tail // self.vcetor_num) * self.vcetor_num
-            vector_mask = self.mask_value
-            copy_gm_offset = _core_idx * process_num + copy_loop * self.max_process_num
-            self._run_one_loop(copy_gm_offset, _process_num_one_loop, vector_mask, prob_rec)
-
             # process tail last vcetor data
             _process_num_one_loop = copy_tail % self.vcetor_num
-            vector_mask = _process_num_one_loop
-            copy_gm_offset = \
-                _core_idx * process_num + \
-                copy_loop * self.max_process_num + (copy_tail // self.vcetor_num) * self.vcetor_num
-            self._run_one_loop(copy_gm_offset, _process_num_one_loop, vector_mask, prob_rec, True)
+            with self.tik_instance.if_scope(_process_num_one_loop > 0):
+                vector_mask = _process_num_one_loop
+                copy_gm_offset = \
+                    _core_idx * self.do_num_per_core + \
+                    copy_loop * self.max_process_num + (copy_tail // self.vcetor_num) * self.vcetor_num
+                self._run_one_loop(copy_gm_offset, _process_num_one_loop, vector_mask, prob_rec, True)
 
     def _keep_prob_the_var(self):
         """
@@ -179,17 +213,14 @@ class DropOutDoMask:
             self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 2, 0, 0)
             self._tiling_args()
             self._init_ub_tensor()
+            self._init_prob_scalar()
 
-            self.tik_instance.data_move(self.keep_prob_ub, self.keep_prob_gm, 0, 1, 1, 0, 0)
-            self.tik_instance.vrec(1, self.keep_prob_ub, self.keep_prob_ub, 1, 1, 1, 8, 8)
-            prob_rec = self.tik_instance.Scalar(self.var_dtype)
-            prob_rec.set_as(self.keep_prob_ub[0])
             with self.tik_instance.if_scope(_core_idx < self.core_used_num - 1):
-                self._run_one_core(_core_idx, self.do_num_per_core, prob_rec)
+                self._run_one_core(_core_idx, self.do_num_per_core, self.prob_rec)
             with self.tik_instance.if_scope(_core_idx == self.core_used_num - 1):
-                self._run_one_core(_core_idx, self.do_num_tail_core, prob_rec, True)
+                self._run_one_core(_core_idx, self.do_num_tail_core, self.prob_rec, True)
 
-    def _drop_do_mask_operator(self):
+    def drop_do_mask_operator(self):
         """_drop_do_mask_operator"""
         self._keep_prob_the_var()
         opt_config = {"out_of_bound_sync_check": True}
@@ -200,8 +231,28 @@ class DropOutDoMask:
         te.op.add_compile_info("vars", {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num})
 
 
-@te.op.register_operator("DropOutDoMask")
+def _tik_fuc_vrec_newton(tik_instance, vrec_ub, origin_ub, do_len, newton_iteration=2, block_num=16):
+    """tik_fuc_vrec_newton
+    """
+    with tik_instance.new_stmt_scope():
+        vrec_newton_1 = tik_instance.Tensor(
+            vrec_ub.dtype, (((do_len + block_num - 1) // block_num) * block_num,),
+            name="vrec_newton_1", scope=tik.scope_ubuf)
+        vrec_newton_2 = tik_instance.Tensor(
+            vrec_ub.dtype, (((do_len + block_num - 1) // block_num) * block_num,),
+            name="vrec_newton_2", scope=tik.scope_ubuf)
 
+        def _one_newton():
+            tik_instance.vmul(1, vrec_newton_1, vrec_ub, origin_ub, 1, 1, 1, 1, 8, 8, 8)
+            tik_instance.vmuls(1, vrec_newton_2, vrec_newton_1, -1, 1, 1, 1, 8, 8)
+            tik_instance.vadds(1, vrec_newton_1, vrec_newton_2, 2, 1, 1, 1, 8, 8)
+            tik_instance.vmul(1, vrec_ub, vrec_newton_1, vrec_ub, 1, 1, 1, 1, 8, 8, 8)
+
+        for _ in range(newton_iteration):
+            _one_newton()
+
+
+@te.op.register_operator("DropOutDoMask")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def drop_out_do_mask(input_tensor, input_mask, input_keep_prob, output,
@@ -234,5 +285,5 @@ def drop_out_do_mask(input_tensor, input_mask, input_keep_prob, output,
     obj = DropOutDoMask(input_tensor, input_mask, input_keep_prob, output,
                         kernel_name)
 
-    obj._drop_do_mask_operator()
+    obj.drop_do_mask_operator()
 
