@@ -795,7 +795,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     "A_dtype": str(grads.dtype),
                     "B_dtype": str(fmap.dtype),
                     "C_dtype": str(dw_cc.dtype),
-                    "mad_dtype": list(dw_cc.dtype),
+                    "mad_dtype": str(dw_cc.dtype),
                     "padl": pad_left,
                     "padr": pad_right,
                     "padu": pad_up,
