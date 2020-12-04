@@ -182,11 +182,11 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
 
         if data_mode == 0:
             out_size_h, out_size_w, pad_top, pad_bottom, pad_left, pad_right \
-                = get_out_size_and_pad_with_ceil_mode(ceil_mode, in_size_h, in_size_w,
-                                                      window_h, window_w, stride_h,
-                                                      stride_w, dilation_h, dilation_w,
-                                                      pad_top, pad_bottom, pad_left,
-                                                      pad_right)
+                = _get_out_size_and_pad_with_ceil_mode(ceil_mode, in_size_h, in_size_w,
+                                                       window_h, window_w, stride_h,
+                                                       stride_w, dilation_h, dilation_w,
+                                                       pad_top, pad_bottom, pad_left,
+                                                       pad_right)
         elif data_mode == 1:
             out_size_h, out_size_w, pad_top, pad_bottom, pad_left, pad_right = \
                 _get_out_size_and_pad_with_padding_mode(padding_mode, in_size_h, in_size_w,
@@ -798,7 +798,7 @@ def get_caffe_out_size_and_pad(ceil_mode, in_size_h, in_size_w, window_h, window
     :param pad_right: pad right
     :return:
     """
-    warnings.warn("get_caffe_out_size_and_pad is expired, please do not use it",
+    warnings.warn("get_caffe_out_size_and_pad will be hidden, please do not use it",
                   DeprecationWarning)
     return _get_out_size_and_pad_with_ceil_mode(ceil_mode, in_size_h, in_size_w, window_h, window_w,
                                                 stride_h, stride_w, dilation_h, dilation_w, pad_top,
