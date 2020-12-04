@@ -21,66 +21,101 @@ import te.lang.dynamic
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
-# max int32
-MAX_INT32 = 2**31 - 1
+# max int64 value
+MAX_INT64_VALUE = 2**64 - 1
 # tiling param num
-TILING_ARG_NUM = 16
+TILING_ARG_NUM = 12
 # reserved ub size
 RESERVED_UB_SIZE = 8 * 1024
-# apply ub for indices
-INDICES_MAX_UB_NUM = 57064
-# apply ub for updates
-UPDATES_MAX_UB_NUM = 80
+# 8 bit
+EIGHT_BIT = 8
+# bytes of one block
+BLOCK_BYTES = 32
 
-
-# pylint: disable=too-many-arguments,too-many-instance-attributes
+# pylint: disable=too-many-arguments,too-many-instance-attributes,unused-argument
 class ScatterUpdate():
     """
        Function: use to store scatter_update base parameters
-       Modify : 2020-07-26
+       Modify : 2020-10-29
     """
     def __init__(self, var, indices, updates, var_out, use_locking, kernel_name):
+        """
+        Init ScatterUpdate parameters
+
+        Parameters
+        ----------
+        var: dict
+            the dict of input tensor.
+        indices: dict
+            the dict of input tensor.
+        updates: dict
+            the dict of input tensor.
+        var_out: dict
+            the dict of output tensor.
+        use_locking: bool
+            not used in this compute, default value is "False".
+        kernel_name: str
+            cce kernel name, default value is "scatter_update".
+
+        Returns
+        -------
+        None
+        """
         self.tik_instance = tik.Tik(tik.Dprofile())
+        self.kernel_name = kernel_name
         self.var_dtype = var.get("dtype").lower()
         self.indices_dtype = indices.get("dtype").lower()
         self.updates_dtype = updates.get("dtype").lower()
         self.out_dtype = var_out.get("dtype").lower()
-        indices_support_dtype_list = ("int32", )
-        var_support_dtype_list = ("float32", )
-        para_check.check_dtype(self.indices_dtype, indices_support_dtype_list, param_name="indices")
-        para_check.check_dtype(self.var_dtype, var_support_dtype_list, param_name="var")
-        if self.var_dtype != self.updates_dtype:
-            error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "updates", "var",
-                                                                  self.updates_dtype, self.var_dtype)
-        if self.var_dtype != self.out_dtype:
-            error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "out", "var",
-                                                                  self.out_dtype, self.var_dtype)
-        self.kernel_name = kernel_name
+
+        self.check_input_params()
 
         self.ai_core_num = tbe_platform.cce_conf.get_soc_spec(
             tbe_platform.cce_conf.CORE_NUM)
         self.ub_size_bytes = (tbe_platform.cce_conf.get_soc_spec(
             tbe_platform.cce_conf.UB_SIZE) - RESERVED_UB_SIZE)
         self.var_dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(
-            self.var_dtype) // 8
+            self.var_dtype) // EIGHT_BIT
         self.indices_dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(
-            self.indices_dtype) // 8
-        self.var_data_each_block = 32 // self.var_dtype_bytes_size
-        self.indices_data_each_block = 32 // self.indices_dtype_bytes_size
+            self.indices_dtype) // EIGHT_BIT
+        self.var_data_each_block = BLOCK_BYTES // self.var_dtype_bytes_size
+        self.indices_data_each_block = BLOCK_BYTES // self.indices_dtype_bytes_size
 
-        self.tiling_gm = self.tik_instance.Tensor("int32", (TILING_ARG_NUM, ), name="tiling_gm", scope=tik.scope_gm)
-        self.var_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT32, ), name="var_gm", scope=tik.scope_gm)
-        self.indices_gm = self.tik_instance.Tensor(self.indices_dtype, (MAX_INT32, ),
-                                                   name="indices_gm", scope=tik.scope_gm)
-        self.updates_gm = self.tik_instance.Tensor(self.updates_dtype, (MAX_INT32, ),
+        self.updates_ub_num = self.ub_size_bytes // 2 // self.var_dtype_bytes_size
+        self.indices_ub_num = self.ub_size_bytes // 2 // self.indices_dtype_bytes_size
+        self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM, ), name="tiling_gm", scope=tik.scope_gm)
+        self.var_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE, ), name="var_gm", scope=tik.scope_gm)
+        self.indices_gm = self.tik_instance.Tensor("int32", (MAX_INT64_VALUE, ), name="indices_gm", scope=tik.scope_gm)
+        self.updates_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE, ),
                                                    name="updates_gm", scope=tik.scope_gm)
-        self.out_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT32, ), name="out_gm", scope=tik.scope_gm)
+        self.out_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE, ), name="out_gm", scope=tik.scope_gm)
 
         self.updates_ub = None
         self.indices_ub = None
+        self.var_tile_ub = None
+        self.updates_tile_ub = None
+        self.var_vconv_ub = None
+        self.updates_vconv_ub = None
         self.var_read_index = None
-        self.updates_read_index = None
-        self.indices_loop_index = None
+        self.core_loop_index = None
+        self.update_value = None
+        self.indices_burst_len = None
+        self.updates_burst_len = None
+
+    def check_input_params(self):
+        """
+        Check whether the input parameters is valid or not
+        """
+        indices_support_dtype_list = ("int32", )
+        var_support_dtype_list = ("float32", "float16", "int8", "uint8")
+        para_check.check_dtype(self.indices_dtype, indices_support_dtype_list, param_name="indices")
+        para_check.check_dtype(self.var_dtype, var_support_dtype_list, param_name="var")
+        if self.var_dtype != self.updates_dtype:
+            error_manager_vector.raise_err_inputs_dtype_not_equal(self.kernel_name, "updates", "var",
+                                                                  self.updates_dtype, self.var_dtype)
+        if self.var_dtype != self.out_dtype:
+            error_manager_vector.raise_err_inputs_dtype_not_equal(self.kernel_name, "out", "var",
+                                                                  self.out_dtype, self.var_dtype)
 
     def tiling_args(self):
         """
@@ -94,25 +129,25 @@ class ScatterUpdate():
         -------
         None
         """
-        self.tiling_mode = self.tik_instance.Scalar("int32", name="tiling_mode")
-        self.indices_ub_number = self.tik_instance.Scalar("int32", name="indices_ub_number")
-        self.updates_ub_number = self.tik_instance.Scalar("int32", name="updates_ub_number")
-        self.indice_step = self.tik_instance.Scalar("int32", name="indice_step")
-        self.core_num = self.tik_instance.Scalar("int32", name="core_num")
-        self.updates_data_num = self.tik_instance.Scalar("int32", name="updates_data_num")
-        self.indices_loop_num = self.tik_instance.Scalar("int32", name="indices_loop_num")
-        self.indices_last_num = self.tik_instance.Scalar("int32", name="indices_last_num")
-        self.indices_num = self.tik_instance.Scalar("int32", name="indices_num")
+        self.tiling_mode = self.tik_instance.Scalar("int64", name="tiling_mode")
+        self.indice_step = self.tik_instance.Scalar("int64", name="indice_step")
+        self.core_num = self.tik_instance.Scalar("int64", name="core_num")
+        self.update_data_num = self.tik_instance.Scalar("int64", name="update_data_num")
+        self.indices_loop_num = self.tik_instance.Scalar("int64", name="indices_loop_num")
+        self.indices_last_num = self.tik_instance.Scalar("int64", name="indices_last_num")
+        self.updates_num = self.tik_instance.Scalar("int64", name="updates_num")
+        self.updates_loop_num = self.tik_instance.Scalar("int64", name="updates_loop_num")
+        self.updates_last_num = self.tik_instance.Scalar("int64", name="updates_last_num")
 
         self.tiling_mode.set_as(self.tiling_ub[0])
-        self.indices_ub_number.set_as(self.tiling_ub[1])
-        self.updates_ub_number.set_as(self.tiling_ub[2])
-        self.indice_step.set_as(self.tiling_ub[3])
-        self.core_num.set_as(self.tiling_ub[4])
-        self.updates_data_num.set_as(self.tiling_ub[5])
-        self.indices_loop_num.set_as(self.tiling_ub[6])
-        self.indices_last_num.set_as(self.tiling_ub[7])
-        self.indices_num.set_as(self.tiling_ub[8])
+        self.indice_step.set_as(self.tiling_ub[1])
+        self.core_num.set_as(self.tiling_ub[2])
+        self.update_data_num.set_as(self.tiling_ub[3])
+        self.indices_loop_num.set_as(self.tiling_ub[4])
+        self.indices_last_num.set_as(self.tiling_ub[5])
+        self.updates_num.set_as(self.tiling_ub[6])
+        self.updates_loop_num.set_as(self.tiling_ub[7])
+        self.updates_last_num.set_as(self.tiling_ub[8])
 
     def init_ub_tensor(self):
         """
@@ -126,21 +161,32 @@ class ScatterUpdate():
         -------
         None
         """
-        self.updates_ub = self.tik_instance.Tensor(self.updates_dtype, (UPDATES_MAX_UB_NUM,),
+        self.updates_ub = self.tik_instance.Tensor(self.var_dtype, (self.updates_ub_num,),
                                                    name="updates_ub", scope=tik.scope_ubuf)
-        self.indices_ub = self.tik_instance.Tensor(self.indices_dtype, (INDICES_MAX_UB_NUM,),
+        self.indices_ub = self.tik_instance.Tensor("int32", (self.indices_ub_num,),
                                                    name="indices_ub", scope=tik.scope_ubuf)
+        self.var_tile_ub = self.tik_instance.Tensor(self.var_dtype, (self.var_data_each_block,),
+                                                    name="var_tile_ub", scope=tik.scope_ubuf)
+        self.updates_tile_ub = self.tik_instance.Tensor(self.var_dtype, (self.var_data_each_block,),
+                                                        name="updates_tile_ub", scope=tik.scope_ubuf)
+        self.var_vconv_ub = self.tik_instance.Tensor("float16", (32,), name="var_vconv_ub", scope=tik.scope_ubuf)
+        self.updates_vconv_ub = self.tik_instance.Tensor("float16", (32,), name="updates_vconv_ub",
+                                                         scope=tik.scope_ubuf)
 
         self.var_read_index = self.tik_instance.Scalar("int32", name="var_read_index")
         self.var_read_index.set_as(0)
-        self.updates_read_index = self.tik_instance.Scalar("int32", name="updates_read_index")
-        self.updates_read_index.set_as(0)
-        self.indices_loop_index = self.tik_instance.Scalar("int32", name="indices_loop_index")
-        self.indices_loop_index.set_as(0)
+        self.core_loop_index = self.tik_instance.Scalar("int32", name="core_loop_index")
+        self.core_loop_index.set_as(0)
+        self.update_value = self.tik_instance.Scalar(self.var_dtype, name="update_value")
+        self.update_value.set_as(0)
+        self.indices_burst_len = self.tik_instance.Scalar("int32", name="indices_burst_len")
+        self.indices_burst_len.set_as(0)
+        self.updates_burst_len = self.tik_instance.Scalar("int32", name="updates_burst_len")
+        self.updates_burst_len.set_as(0)
 
-    def updates_the_var(self, indices_in_index, indice_num):
+    def move_indices(self, indices_in_index, indice_num):
         """
-        Update the update fragment corresponding to the index
+        Move indices, choose branch
 
         Parameters
         ----------
@@ -153,33 +199,200 @@ class ScatterUpdate():
         None
         """
         with self.tik_instance.if_scope(indice_num % self.indices_data_each_block == 0):
-            indices_burst_len = indice_num // self.indices_data_each_block
+            self.indices_burst_len.set_as(indice_num // self.indices_data_each_block)
         with self.tik_instance.else_scope():
-            indices_burst_len = (indice_num // self.indices_data_each_block) + 1
-        updates_burst_len = self.updates_data_num // self.indices_data_each_block
-        with self.tik_instance.if_scope(self.indices_num == 1):
-            self.tik_instance.data_move(self.indices_ub, self.indices_gm, 0, 1,
-                                        indices_burst_len, 0, 0)
+            self.indices_burst_len.set_as((indice_num // self.indices_data_each_block) + 1)
+        self.tik_instance.data_move(self.indices_ub, self.indices_gm[indices_in_index], 0, 1,
+                                    self.indices_burst_len, 0, 0)
+
+        with self.tik_instance.if_scope(self.tiling_mode == 1):
+            self.traversing_updates_32b_aligned_and_ub_enough(indices_in_index, indice_num)
+        with self.tik_instance.if_scope(tik.any(self.tiling_mode == 2, self.tiling_mode == 5)):
+            self.circulate_indices(indices_in_index, indice_num)
+        with self.tik_instance.if_scope(self.tiling_mode == 3):
+            self.traversing_updates_single_core_and_ub_enough(indices_in_index, indice_num)
+        with self.tik_instance.if_scope(self.tiling_mode == 4):
+            self.traversing_updates_single_core_and_ub_not_enough(indices_in_index, indice_num)
+
+    def circulate_indices(self, indices_in_index, indice_num):
+        """
+        Circulate the index in the indices
+
+        Parameters
+        ----------
+        indices_in_index: int32
+            Indices index on GM
+        indice_num: int32
+            the number of indexes in the indices on UB
+        Returns
+        -------
+        None
+        """
+        with self.tik_instance.for_range(0, indice_num) as indices_ub_index:
+            self.var_read_index.set_as(self.indices_ub[indices_ub_index])
+            with self.tik_instance.if_scope(self.core_loop_index * self.indice_step <= self.var_read_index):
+                with self.tik_instance.if_scope((self.core_loop_index + 1) * self.indice_step > self.var_read_index):
+                    self.traversing_updates(indices_ub_index, indices_in_index)
+
+    def traversing_updates(self, indices_ub_index, indices_in_index):
+        """
+        Traversing the index in the updates
+
+        Parameters
+        ----------
+        indices_ub_index: int32
+            Indices index on UB
+        indices_in_index: int32
+            Indices index on GM
+        Returns
+        -------
+        None
+        """
+        with self.tik_instance.if_scope(self.updates_loop_num > 0):
+            with self.tik_instance.for_range(
+                    0, self.updates_loop_num) as updates_loop_index:
+                self.update_var((indices_in_index + indices_ub_index) * self.update_data_num + updates_loop_index *
+                                self.updates_ub_num, self.updates_ub_num, self.var_read_index * self.update_data_num +
+                                updates_loop_index * self.updates_ub_num)
+
+        with self.tik_instance.if_scope(self.updates_last_num > 0):
+            self.update_var((indices_in_index + indices_ub_index) * self.update_data_num + self.updates_loop_num *
+                            self.updates_ub_num, self.updates_last_num, self.var_read_index * self.update_data_num +
+                            self.updates_loop_num * self.updates_ub_num)
+
+    def update_var(self, updates_loop_index, update_num, var_loop_index):
+        """
+        Update the update fragment corresponding to the index
+
+        Parameters
+        ----------
+        updates_loop_index: int32
+            Updates index on GM
+        update_num: int32
+            the number of indexes in the updates on UB
+        var_loop_index: int32
+            Var index on GM
+        Returns
+        -------
+        None
+        """
+        with self.tik_instance.if_scope(update_num % self.var_data_each_block == 0):
+            self.updates_burst_len.set_as(update_num // self.var_data_each_block)
         with self.tik_instance.else_scope():
-            self.tik_instance.data_move(self.indices_ub,
-                                        self.indices_gm[indices_in_index], 0, 1,
-                                        indices_burst_len, 0, 0)
+            self.updates_burst_len.set_as(update_num // self.var_data_each_block + 1)
+        self.tik_instance.data_move(self.updates_ub, self.updates_gm[updates_loop_index],
+                                    0, 1, self.updates_burst_len, 0, 0)
+
+        with self.tik_instance.if_scope(update_num % self.var_data_each_block == 0):
+            self.tik_instance.data_move(self.var_gm[var_loop_index], self.updates_ub, 0, 1,
+                                        self.updates_burst_len, 0, 0)
+        with self.tik_instance.else_scope():
+            self.tik_instance.data_move(self.var_gm[var_loop_index], self.updates_ub, 0, 1,
+                                        self.updates_burst_len-1, 0, 0)
+            with self.tik_instance.for_range(0, self.var_data_each_block) as updates_ub_index:
+                self.update_value.set_as(self.updates_ub[update_num - self.var_data_each_block + updates_ub_index])
+                self.updates_tile_ub[updates_ub_index].set_as(self.update_value)
+            self.tik_instance.data_move(self.var_gm[var_loop_index + update_num - self.var_data_each_block],
+                                        self.updates_tile_ub, 0, 1, 1, 0, 0)
+
+    def traversing_updates_32b_aligned_and_ub_enough(self, indices_in_index, indice_num):
+        """
+        updateDataNum is 32B aligned, ub can store all updatesNum
+
+        Parameters
+        ----------
+        indice_num: int32
+            the number of indexes in the indices on UB
+        Returns
+        -------
+        None
+        """
+        update_burst_len = self.updates_num // self.var_data_each_block
+        self.tik_instance.data_move(self.updates_ub, self.updates_gm, 0, 1, update_burst_len, 0, 0)
+        updates_burst_len = self.update_data_num // self.var_data_each_block
 
         with self.tik_instance.for_range(0, indice_num) as indices_ub_index:
             self.var_read_index.set_as(self.indices_ub[indices_ub_index])
-            with self.tik_instance.if_scope(self.core_num > 1):
-                with self.tik_instance.if_scope(self.indices_loop_index * self.indice_step <= self.var_read_index):
-                    with self.tik_instance.if_scope(
-                            (self.indices_loop_index + 1) * self.indice_step > self.var_read_index):
-                        self.tik_instance.data_move(self.updates_ub,
-                                                    self.updates_gm[
-                                                        (indices_ub_index + indices_in_index) * self.updates_data_num],
-                                                    0, 1, updates_burst_len, 0, 0)
-                        self.var_read_index.set_as(self.var_read_index * self.updates_data_num)
-                        self.tik_instance.data_move(self.var_gm[self.var_read_index],
-                                                    self.updates_ub, 0, 1, updates_burst_len, 0, 0)
-            with self.tik_instance.else_scope():
-                self.var_read_index.set_as(self.var_read_index * self.updates_data_num)
+            with self.tik_instance.if_scope(self.core_loop_index * self.indice_step <= self.var_read_index):
+                with self.tik_instance.if_scope((self.core_loop_index + 1) * self.indice_step > self.var_read_index):
+                    self.tik_instance.data_move(self.var_gm[self.var_read_index * self.update_data_num],
+                                                self.updates_ub[(indices_in_index + indices_ub_index) *
+                                                                self.update_data_num],
+                                                0, 1, updates_burst_len, 0, 0)
+
+    def traversing_updates_single_core_and_ub_enough(self, indices_in_index, indice_num):
+        """
+        updateDataNum isn't 32B aligned and less than 1 block, ub can store all updatesNum
+
+        Parameters
+        ----------
+        indice_num: int32
+            the number of indexes in the indices on UB
+        Returns
+        -------
+        None
+        """
+        with self.tik_instance.if_scope(self.updates_num % self.var_data_each_block == 0):
+            self.updates_burst_len.set_as(self.updates_num // self.var_data_each_block)
+        with self.tik_instance.else_scope():
+            self.updates_burst_len.set_as(self.updates_num // self.var_data_each_block + 1)
+        self.tik_instance.data_move(self.updates_ub, self.updates_gm, 0, 1, self.updates_burst_len, 0, 0)
+
+        with self.tik_instance.for_range(0, indice_num) as indices_ub_index:
+            self.var_read_index.set_as(self.indices_ub[indices_ub_index])
+            self.tik_instance.data_move(self.var_tile_ub, self.var_gm[self.var_read_index * self.update_data_num],
+                                        0, 1, 1, 0, 0)
+            with self.tik_instance.for_range(0, self.var_data_each_block) as updates_ub_index:
+                self.update_value.set_as(self.updates_ub[(indices_ub_index + indices_in_index) * self.update_data_num
+                                                         + updates_ub_index])
+                self.updates_tile_ub[updates_ub_index].set_as(self.update_value)
+            if self.var_dtype in ("int8", "uint8"):
+                self.tik_instance.vec_conv(32, "", self.var_vconv_ub, self.var_tile_ub, 1, 8, 4)
+                self.tik_instance.vec_conv(32, "", self.updates_vconv_ub, self.updates_tile_ub, 1, 8, 4)
+                self.tik_instance.vec_muls(self.update_data_num, self.var_vconv_ub, self.var_vconv_ub, 0, 1, 8, 8)
+                self.tik_instance.vec_add(self.update_data_num, self.var_vconv_ub, self.var_vconv_ub,
+                                          self.updates_vconv_ub, 1, 8, 8, 8)
+                self.tik_instance.vec_conv(32, "", self.var_tile_ub, self.var_vconv_ub, 1, 8, 4)
+            else:
+                self.tik_instance.vec_muls(self.update_data_num, self.var_tile_ub, self.var_tile_ub, 0, 1, 8, 8)
+                self.tik_instance.vec_add(self.update_data_num, self.var_tile_ub, self.var_tile_ub,
+                                          self.updates_tile_ub, 1, 8, 8, 8)
+            self.tik_instance.data_move(self.var_gm[self.var_read_index * self.update_data_num], self.var_tile_ub,
+                                        0, 1, 1, 0, 0)
+
+    def traversing_updates_single_core_and_ub_not_enough(self, indices_in_index, indice_num):
+        """
+        updateDataNum isn't 32B aligned and less than 1 block, ub can't store all updatesNum
+
+        Parameters
+        ----------
+        indices_in_index: int32
+            Indices index on GM
+        indice_num: int32
+            the number of indexes in the indices on UB
+        Returns
+        -------
+        None
+        """
+        with self.tik_instance.for_range(0, indice_num) as indices_ub_index:
+            self.var_read_index.set_as(self.indices_ub[indices_ub_index])
+            self.tik_instance.data_move(self.var_tile_ub, self.var_gm[self.var_read_index * self.update_data_num],
+                                        0, 1, 1, 0, 0)
+            self.tik_instance.data_move(self.updates_tile_ub, self.updates_gm[(indices_in_index + indices_ub_index) *
+                                                                              self.update_data_num], 0, 1, 1, 0, 0)
+            if self.var_dtype in ("int8", "uint8"):
+                self.tik_instance.vec_conv(32, "", self.var_vconv_ub, self.var_tile_ub, 1, 8, 4)
+                self.tik_instance.vec_conv(32, "", self.updates_vconv_ub, self.updates_tile_ub, 1, 8, 4)
+                self.tik_instance.vec_muls(self.update_data_num, self.var_vconv_ub, self.var_vconv_ub, 0, 1, 8, 8)
+                self.tik_instance.vec_add(self.update_data_num, self.var_vconv_ub, self.var_vconv_ub,
+                                          self.updates_vconv_ub, 1, 8, 8, 8)
+                self.tik_instance.vec_conv(32, "", self.var_tile_ub, self.var_vconv_ub, 1, 8, 4)
+            else:
+                self.tik_instance.vec_muls(self.update_data_num, self.var_tile_ub, self.var_tile_ub, 0, 1, 8, 8)
+                self.tik_instance.vec_add(self.update_data_num, self.var_tile_ub, self.var_tile_ub,
+                                          self.updates_tile_ub, 1, 8, 8, 8)
+            self.tik_instance.data_move(self.var_gm[self.var_read_index * self.update_data_num], self.var_tile_ub,
+                                        0, 1, 1, 0, 0)
 
     def traversing_indices(self):
         """
@@ -196,10 +409,10 @@ class ScatterUpdate():
         with self.tik_instance.if_scope(self.indices_loop_num > 0):
             with self.tik_instance.for_range(
                     0, self.indices_loop_num) as indices_loop_index:
-                self.updates_the_var(indices_loop_index * self.indices_ub_number, self.indices_ub_number)
+                self.move_indices(indices_loop_index * self.indices_ub_num, self.indices_ub_num)
 
         with self.tik_instance.if_scope(self.indices_last_num > 0):
-            self.updates_the_var(self.indices_loop_num * self.indices_ub_number, self.indices_last_num)
+            self.move_indices(self.indices_loop_num * self.indices_ub_num, self.indices_last_num)
 
     def scatter_update_compute_tiling(self):
         """
@@ -213,15 +426,15 @@ class ScatterUpdate():
         -------
         None
         """
-        with self.tik_instance.for_range(0, self.ai_core_num, block_num=self.ai_core_num) as indices_loop_index:
-            self.tiling_ub = self.tik_instance.Tensor("int32", (TILING_ARG_NUM,), name="tiling_ub",
+        with self.tik_instance.for_range(0, self.ai_core_num, block_num=self.ai_core_num) as core_index:
+            self.tiling_ub = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_ub",
                                                       scope=tik.scope_ubuf)
-            self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 2, 0, 0)
+            self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 3, 0, 0)
             self.tiling_args()
             with self.tik_instance.if_scope(self.core_num > 1):
-                with self.tik_instance.if_scope(indices_loop_index < self.core_num):
+                with self.tik_instance.if_scope(core_index < self.core_num):
                     self.init_ub_tensor()
-                    self.indices_loop_index.set_as(indices_loop_index)
+                    self.core_loop_index.set_as(core_index)
                     self.traversing_indices()
             with self.tik_instance.else_scope():
                 self.init_ub_tensor()
@@ -246,7 +459,9 @@ class ScatterUpdate():
             inputs=(self.var_gm, self.indices_gm, self.updates_gm),
             outputs=(self.out_gm), flowtable=[self.tiling_gm], config=opt_config)
 
-        te.op.add_compile_info("vars", {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num})
+        te.op.add_compile_info("vars", {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num,
+                                        "var_size": self.var_dtype_bytes_size,
+                                        "indices_size": self.indices_dtype_bytes_size})
 
 # pylint: disable=unused-argument
 @te.op.register_operator("ScatterUpdate")
