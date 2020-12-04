@@ -67,7 +67,7 @@ class DropOutDoMask:
         self.mask_gm = self.tik_instance.Tensor(self.mask_dtype, (MAX_INT32,), name="mask_gm", scope=tik.scope_gm)
         self.out_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT32,), name="out_gm", scope=tik.scope_gm)
 
-        self.is_suport_vdiv = tbe_platform.cce_conf.api_check_support("te.lang.cce.vdiv", self.keep_prob_dtype)
+        self.is_suport_vdiv = tbe_platform.cce_conf.api_check_support("tik.vdiv", self.keep_prob_dtype)
         # init ub
         self.var_ub = None
         self.keep_prob_ub = None
@@ -119,8 +119,9 @@ class DropOutDoMask:
             keep_prob_ub = self.tik_instance.Tensor(self.keep_prob_dtype, (self.vcetor_num,),
                                                     name="keep_prob_ub", scope=tik.scope_ubuf)
             self.tik_instance.data_move(keep_prob_ub, self.keep_prob_gm, 0, 1, 1, 0, 0)
+            print("self.is_suport_vdiv 1111111" ,self.is_suport_vdiv)
             if self.is_suport_vdiv:
-                one_ub_fp32 = self.tik_instance.Tensor("float32", (self.vcetor_num,),
+                one_ub_fp32 = self.tik_instance.Tensor(self.keep_prob_dtype, (self.vcetor_num,),
                                                        name="one_ub_fp32", scope=tik.scope_ubuf)
                 self.tik_instance.vector_dup(1, one_ub_fp32, 1.0, 1, 1, 8)
                 self.tik_instance.vdiv(1, keep_prob_ub, one_ub_fp32, keep_prob_ub, 1, 1, 1, 1, 8, 8, 8)
