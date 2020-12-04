@@ -1,0 +1,146 @@
+# source file:python/te/utils/para_check.py
+
+SHAPE_SIZE_LIMIT = 2 ** 31 - 1
+SHAPE_SIZE_ZERO = 0
+DIM_LIMIT = SHAPE_SIZE_LIMIT
+MIN_UNKNOWN_SHAPE_RANK = 0
+MAX_UNKNOWN_SHAPE_NUM = 2 ** 31 - 1
+DEFAULT_MIN_SHAPE_DIM = 1
+DEFAULT_MAX_SHAPE_DIM = 8
+DEFAULT_MAX_SHAPE_NUM = 200000000
+
+RANK_ZERO = 0
+RANK_LIMIT = 8
+ZERO_DIM = 0
+NONE_TYPE = type(None)
+
+MAX_KERNEL_NAME_LEN = 200
+KERNEL_NAME = "kernel_name"
+
+CONST = "const"
+SPECIAL = "special"
+ORIGINAL = "original"
+SPECIAL_SCALAR = "special_scalar"
+COMMON = "common"
+BROADCAST = "broadcast"
+
+REQUIRED_INPUT = "required_input"
+OPTION_INPUT = "option_input"
+DYNAMIC_INPUT = "dynamic_input"
+
+REQUIRED_OUTPUT = "required_output"
+OPTION_OUTPUT = "option_output"
+DYNAMIC_OUTPUT = "dynamic_output"
+
+REQUIRED_ATTR_INT = "REQUIRED_ATTR_INT"
+REQUIRED_ATTR_FLOAT = "REQUIRED_ATTR_FLOAT"
+REQUIRED_ATTR_STR = "REQUIRED_ATTR_STR"
+REQUIRED_ATTR_BOOL = "REQUIRED_ATTR_BOOL"
+REQUIRED_ATTR_TYPE = "REQUIRED_ATTR_TYPE"
+REQUIRED_ATTR_LIST_INT = "REQUIRED_ATTR_LIST_INT"
+REQUIRED_ATTR_LIST_FLOAT = "REQUIRED_ATTR_LIST_FLOAT"
+REQUIRED_ATTR_LIST_BOOL = "REQUIRED_ATTR_LIST_BOOL"
+REQUIRED_ATTR_LIST_LIST_INT = "REQUIRED_ATTR_LIST_LIST_INT"
+
+OPTION_ATTR_INT = "OPTION_ATTR_INT"
+OPTION_ATTR_FLOAT = "OPTION_ATTR_FLOAT"
+OPTION_ATTR_STR = "OPTION_ATTR_STR"
+OPTION_ATTR_BOOL = "OPTION_ATTR_BOOL"
+OPTION_ATTR_TYPE = "OPTION_ATTR_TYPE"
+OPTION_ATTR_LIST_INT = "OPTION_ATTR_LIST_INT"
+OPTION_ATTR_LIST_FLOAT = "OPTION_ATTR_LIST_FLOAT"
+OPTION_ATTR_LIST_BOOL = "OPTION_ATTR_LIST_BOOL"
+OPTION_ATTR_LIST_LIST_INT = "OPTION_ATTR_LIST_LIST_INT"
+
+OP_ERROR_CODE_000 = 'E80000'
+OP_ERROR_CODE_001 = 'E80001'
+OP_ERROR_CODE_002 = 'E80002'
+OP_ERROR_CODE_003 = 'E80003'
+OP_ERROR_CODE_004 = 'E80004'
+OP_ERROR_CODE_005 = 'E80005'
+OP_ERROR_CODE_006 = 'E80006'
+OP_ERROR_CODE_007 = 'E80007'
+OP_ERROR_CODE_008 = 'E80008'
+OP_ERROR_CODE_009 = 'E80009'
+OP_ERROR_CODE_010 = 'E80010'
+OP_ERROR_CODE_011 = 'E80011'
+OP_ERROR_CODE_012 = 'E80012'
+OP_ERROR_CODE_013 = 'E80013'
+OP_ERROR_CODE_014 = 'E80014'
+OP_ERROR_CODE_015 = 'E80015'
+OP_ERROR_CODE_016 = 'E80016'
+OP_ERROR_CODE_017 = 'E80017'
+OP_ERROR_CODE_018 = 'E80018'
+OP_ERROR_CODE_019 = 'E80019'
+OP_ERROR_CODE_020 = 'E80020'
+OP_ERROR_CODE_021 = 'E80021'
+OP_ERROR_CODE_022 = 'E80022'
+OP_ERROR_CODE_023 = 'E80023'
+OP_ERROR_CODE_024 = 'E80024'
+OP_ERROR_CODE_025 = 'E80025'
+OP_ERROR_CODE_026 = 'E80026'
+OP_ERROR_CODE_027 = 'E80027'
+
+
+class OpParamInfoKey(Enum):
+    SHAPE = "shape"
+    FORMAT = "format"
+    ORI_SHAPE = "ori_shape"
+    ORI_FORMAT = "ori_format"
+    D_TYPE = "dtype"
+    RANGE = "range"
+
+
+class TensorFormat(Enum):
+    ND = "ND"
+    NCHW = "NCHW"
+    NHWC = "NHWC"
+    NDHWC = "NDHWC"
+    NCDHW = "NCDHW"
+    CHWN = "CHWN"
+    NC1HWC0 = "NC1HWC0"
+    NC1HWC0_C04 = "NC1HWC0_C04"
+    NDC1HWC0 = "NDC1HWC0"
+    FRACTAL_NZ = "FRACTAL_NZ"
+    HWCN = "HWCN"
+    DHWCN = "DHWCN"
+    FRACTAL_Z = "FRACTAL_Z"
+    FRACTAL_Z_C04 = "FRACTAL_Z_C04"
+    C1HWNCoC0 = "C1HWNCoC0"
+    FRACTAL_Z_3D = "FRACTAL_Z_3D"
+    FRACTAL_ZN_LSTM = "FRACTAL_ZN_LSTM"
+
+
+ALL_FORMAT_LIST = [entry.value for entry in TensorFormat]
+ALL_DTYPE_LIST = ("int8", "uint8", "int16", "uint16", "int32", "uint32",
+                  "int64", "uint64", "float16", "float32", "float64", "bool")
+OP_NAME = ""
+PARAM_NAME = ""
+
+def check_op_params(*type_args, **type_kwargs):
+
+def check_shape(shape, min_dim=0, max_dim=DIM_LIMIT, min_rank=0, max_rank=RANK_LIMIT, min_size=0, max_size=SHAPE_SIZE_LIMIT, param_name=PARAM_NAME):
+
+def check_dtype(dtype, check_list=ALL_DTYPE_LIST, param_name=PARAM_NAME):
+
+def check_format(data_format, check_list=None, param_name=PARAM_NAME):
+
+def check_elewise_shape_range(inputs: list, support_broadcast=False):
+
+def check_input_type(*type_args, **type_kwargs):
+
+def check_dtype_rule(dtype, check_list, param_name="default"):
+
+def check_shape_rule(shape, min_dim=None, max_dim=None, max_shape_num=None):
+
+def check_kernel_name(kernel_name):
+
+def check_and_init_5hdc_reduce_support(input_tensor, axis):
+
+def is_scalar(shape):
+
+def check_shape_size(shape, limit=SHAPE_SIZE_LIMIT+1):
+
+def check_tensor_shape_size(shape):
+
+def check_reduce_shape_rule(shape):

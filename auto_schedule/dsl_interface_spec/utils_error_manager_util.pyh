@@ -1,0 +1,5 @@
+# source file:python/te/utils/error_manager/error_manager_util.py
+
+def get_error_message(args):
+
+def raise_runtime_error(dict_args):

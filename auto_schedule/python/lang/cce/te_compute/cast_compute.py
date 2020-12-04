@@ -22,10 +22,10 @@ from te import tvm
 from te.platform import intrinsic_check_support
 from te.lang.base import operation
 from te.utils.error_manager.error_manager_util import get_error_message
+from te.utils.shape_util import shape_to_list
 from .util import auto_cast_tensor
 from .util import is_cast_support
 from .util import get_cast_type
-from .util import shape_to_list
 from .util import check_input_tensor_shape
 from .util import dsl_support_dtype
 from .util import DTYPE_MAP

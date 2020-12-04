@@ -17,6 +17,7 @@ util
 """
 # pylint: disable=import-error
 from decorator import decorator
+import warnings
 from te import tvm
 from te.lang.base import operation
 from te.platform import intrinsic_check_support
@@ -28,6 +29,7 @@ from te.platform.cce_conf import VERSION_MINI_NG1M
 from te.platform.cce_conf import VERSION_MINI_NG1PG2
 from te.platform.cce_conf import CceProductParams as pver
 from te.utils.error_manager.error_manager_util import get_error_message
+from te.utils import shape_util
 
 # Save op's output dtype, when first call the template api,we will save the dtype.
 # Before auto scheduling,get the dtype and convert the res tensor to this dtype,
@@ -626,52 +628,6 @@ def dsl_check_support(dsl_api, dtype=None):
     return True
 
 
-def check_input_type(*type_args, **type_kwargs):
-    """
-    check input parameter type
-    """
-    # for pylint, reserved argument, otherwise "Unused argument"
-    _ = type_kwargs
-
-    def out_wrapper(func):
-        """
-        out_wrapper
-        """
-        formal_parameter = func.__code__.co_varnames
-        formal_parameter_list = list(zip(formal_parameter, type_args))
-
-        def in_wrapper(*args, **kwargs):
-            """
-            in_wrapper
-            """
-            # pylint: disable=consider-using-enumerate
-            for i in range(len(args)):
-                if not isinstance(args[i], formal_parameter_list[i][1]):
-                    dict_args = dict()
-                    dict_args["errCode"] = "E90001"
-                    dict_args["detailed_cause"] = "the input parameter %s must" \
-                                                  " be %s, while type of input is %s"\
-                                                  % (formal_parameter_list[i][0],
-                                                     formal_parameter_list[i][1], type(args[i]))
-                    raise RuntimeError(dict_args, get_error_message(dict_args))
-            for i in kwargs:
-                for j in formal_parameter_list:
-                    if i in j:
-                        if not isinstance(kwargs[i], j[1]):
-                            dict_args = dict()
-                            dict_args["errCode"] = "E90001"
-                            dict_args["detailed_cause"] = "the input parameter %s " \
-                                                          "must be %s, while type " \
-                                                          "of input is %s" % (i, j[1], type(kwargs[i]))
-                            raise RuntimeError(dict_args, get_error_message(dict_args))
-                        break
-            return func(*args, **kwargs)
-
-        return in_wrapper
-
-    return out_wrapper
-
-
 # pylint: disable=too-many-branches
 @decorator
 def dtype_check_decorator(func, *args, **kwargs):
@@ -795,13 +751,9 @@ def shape_to_list(shape):
     """
     translate tvm.shape to list type in python
     """
-    tmp = []
-    for i in shape:
-        if isinstance(i, tvm.expr.ConstExpr):
-            tmp.append(i.value)
-        else:
-            tmp.append(i)
-    return tmp
+    warnings.warn("shape_to_list in te.lang.cce.util is expired,"
+                  "please replace it with the same func in shape_util", DeprecationWarning)
+    return shape_util.shape_to_list(shape)
 
 
 def int_ceil_div(num_a, num_b):
@@ -924,7 +876,7 @@ def check_input_tensor_shape(tensor_shape):
     """
     shape = tensor_shape
     if isinstance(tensor_shape, tvm.tensor.Tensor):
-        shape = shape_to_list(tensor_shape.shape)
+        shape = shape_util.shape_to_list(tensor_shape.shape)
 
     in_dynamic = operation.in_dynamic()
     for val in shape:

@@ -23,13 +23,12 @@ from functools import reduce as functools_reduce
 import te.platform.cce_params as cce
 import te.platform.cce_conf as conf
 from te.utils.error_manager import error_manager_util
+from te.utils.shape_util import shape_to_list
+from te.utils import para_check
 
 # pylint: disable=import-error, ungrouped-imports
 import topi
 from te import tvm
-from te.lang.cce.te_compute.util import shape_to_list
-
-from . import util
 from .util import check_input_tensor_shape
 
 
@@ -637,10 +636,10 @@ def _update_gevm_out_block_value(block):
     return cce.BLOCK_IN
 
 
-@util.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, bool, bool, str,
-                       str, float, float, str, (type(None), tvm.tensor.Tensor),
-                       (type(None), dict), (type(None), str),
-                       (type(None), tvm.tensor.Tensor), (type(None), dict))
+@para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, bool, bool, str,
+                             str, float, float, str, (type(None), tvm.tensor.Tensor),
+                             (type(None), dict), (type(None), str),
+                             (type(None), tvm.tensor.Tensor), (type(None), dict))
 def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
            tensor_b, trans_a=False, trans_b=False, format_a="ND", format_b="ND",
            alpha_num=1.0, beta_num=0.0, dst_dtype="float16", tensor_bias=None,
@@ -3249,9 +3248,9 @@ def get_core_num_tiling(m_shape,  # pylint: disable=too-many-locals
     return m_factor, n_factor
 
 
-@util.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, bool, bool, str,
-                       str, float, float, str, (type(None), tvm.tensor.Tensor),
-                       (type(None), dict), (type(None), str))
+@para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, bool, bool, str,
+                             str, float, float, str, (type(None), tvm.tensor.Tensor),
+                             (type(None), dict), (type(None), str))
 def get_matmul_performance_format(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                                   tensor_b, trans_a=False, trans_b=False,
                                   format_a="ND", format_b="ND", alpha_num=1.0,
@@ -3366,9 +3365,9 @@ def get_matmul_performance_format(tensor_a,  # pylint: disable=W0108, R1702, R09
     return "NC1HWC0"
 
 
-@util.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, bool, bool, str,
-                       str, str, (type(None), tvm.tensor.Tensor), (type(None), str),
-                       (type(None), str))
+@para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, bool, bool, str,
+                             str, str, (type(None), tvm.tensor.Tensor), (type(None), str),
+                             (type(None), str))
 def matmul_cv_split(tensor_a,
     tensor_b, trans_a=False, trans_b=False, format_a="ND", format_b="ND",
     dst_dtype="float32", tensor_bias=None, format_out=None, kernel_name="MatMul"):
