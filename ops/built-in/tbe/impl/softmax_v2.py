@@ -2425,7 +2425,7 @@ def softmax_param_check(in_tensor, output_tensor, axis, kernel_name):
     # calc padding parameters
     padding = 0
     if "C" in ori_format:
-        padding = in_shape_c1 * in_shape_c1 - ori_shape[ori_format.index("C")]
+        padding = in_shape_c1 * in_shape_c0 - ori_shape[ori_format.index("C")]
     else:
         para_check.check_format(in_tensor.get("ori_format"), ("NCHW", "NHWC", "NDHWC"), param_name="x")
 
@@ -2446,6 +2446,7 @@ def softmax_param_check(in_tensor, output_tensor, axis, kernel_name):
         pad_param = [pad_c1, pad_c0]
 
     if input_format in ("NDC1HWC0",):
+        in_shape = list(in_shape)
         in_shape = [in_shape[0] * in_shape[1]] + in_shape[2:]
 
     return in_shape, in_dtype, pad_flag, pad_param
@@ -2488,7 +2489,7 @@ def softmax_nz_param_check(in_tensor, output_tensor, axis, kernel_name):
     pad_param = []
     if padding < 0:
         error_manager_vector.raise_err_specific_reson("softmax_v2",
-                                                      "the shapes of input tensor and original tensor don't match")
+                                                     "the shapes of input tensor and original tensor don't match")
     elif padding == 0:
         pad_flag = False
         pad_c1 = 0
