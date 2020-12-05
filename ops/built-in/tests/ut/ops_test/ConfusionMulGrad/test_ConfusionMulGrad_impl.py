@@ -64,7 +64,7 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 def calc_expect_func(input0, input1, input2, output0, output1,
                      axis, keep_dims):
     result0 = input0['value'] * input1['value']
-    mul_1_result = input1['value'] * input2['value']
+    mul_1_result = input0['value'] * input2['value']
     zero_tmp = result0 * 0
     mul_1_result = mul_1_result + zero_tmp
     result1 = np.sum(mul_1_result, axis=tuple(axis), keepdims=keep_dims)
