@@ -145,8 +145,6 @@ def select_nd_to_5d(dtype, shape_x_ori, axis):
             nd_to_5d = 1
         else:
             nd_to_5d = 0
-    else:
-        nd_to_5d = 0
 
     return nd_to_5d
 
@@ -222,29 +220,28 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                 output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                         datatype="float16,float16,float,float",
                                                         format="NC1HWC0,ND,ND,NC1HWC0")
-    elif length_x_ori > 2 and (shape_x_ori[-1] % 16 != 0 or \
-                               shape_x_ori[-2] % 16 != 0):
+    elif length_x_ori > 2 and (shape_x_ori[-1] % 16 != 0 or shape_x_ori[-2] % 16 != 0):
         if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                   datatype="float16,float16",
-                                                   format="NC1HWC0,ND")
+                                                   datatype="float16,float16,float16",
+                                                   format="NC1HWC0,NDC1HWC0,ND")
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                    datatype="float16,float16",
-                                                    format="NC1HWC0,ND")
+                                                    datatype="float16,float16,float16",
+                                                    format="NC1HWC0,NDC1HWC0,ND")
         if tbe_product in ("Ascend610", "Ascend615", "Ascend710",):
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                   datatype="float16,float16,float",
-                                                   format="NC1HWC0,ND,ND")
+                                                   datatype="float16,float16,float16,float",
+                                                   format="NC1HWC0,NDC1HWC0,ND,ND")
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                    datatype="float16,float16,float",
-                                                    format="NC1HWC0,ND,ND")
+                                                    datatype="float16,float16,float16,float",
+                                                    format="NC1HWC0,NDC1HWC0,ND,ND")
         if tbe_product in ("Ascend910",):
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                   datatype="float16,float16,float,float",
-                                                   format="NC1HWC0,ND,ND,NC1HWC0")
+                                                   datatype="float16,float16,float,float,float16,float",
+                                                   format="NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                    datatype="float16,float16,float,float",
-                                                    format="NC1HWC0,ND,ND,NC1HWC0")
+                                                    datatype="float16,float16,float,float,float16,float",
+                                                    format="NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
         if tbe_product in ("Ascend310",):
             if select_nd_to_5d(dtype, shape_x_ori, axis):
                 # Supplement dimensions to find the C-axis
@@ -266,33 +263,36 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                                                             format="NC1HWC0,NC1HWC0")
             else:
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                       datatype="float16,float16,float,float",
-                                                       format="NC1HWC0,ND,ND,NC1HWC0")
+                                                       datatype="float16,float16,float,float,float16,float",
+                                                       format="NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
                 output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                        datatype="float16,float16,float,float",
-                                                        format="NC1HWC0,ND,ND,NC1HWC0")
+                                                        datatype="float16,float16,float,float,float16,float",
+                                                        format="NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
     else:
         if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                   datatype="float16,float16,float16",
-                                                   format="FRACTAL_NZ,NC1HWC0,ND")
+                                                   datatype="float16,float16,float16,float16",
+                                                   format="FRACTAL_NZ,NC1HWC0,ND,NDC1HWC0")
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                    datatype="float16,float16,float16",
-                                                    format="FRACTAL_NZ,NC1HWC0,ND")
+                                                    datatype="float16,float16,float16,float16",
+                                                    format="FRACTAL_NZ,NC1HWC0,ND,NDC1HWC0")
         if tbe_product in ("Ascend610", "Ascend615", "Ascend710",):
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                   datatype="float16,float,float16,float16,float",
-                                                   format="FRACTAL_NZ,FRACTAL_NZ,NC1HWC0,ND,ND")
+                                                   datatype="float16,float,float16,float16,float,float16",
+                                                   format="FRACTAL_NZ,FRACTAL_NZ,NC1HWC0,ND,ND,NDC1HWC0")
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                    datatype="float16,float,float16,float16,float",
-                                                    format="FRACTAL_NZ,FRACTAL_NZ,NC1HWC0,ND,ND")
+                                                    datatype="float16,float,float16,float16,float,float16",
+                                                    format="FRACTAL_NZ,FRACTAL_NZ,NC1HWC0,ND,ND,NDC1HWC0")
         if tbe_product in ("Ascend910", "Ascend310",):
-            input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                   datatype="float16,float,float16,float16,float,float",
-                                                   format="FRACTAL_NZ,FRACTAL_NZ,NC1HWC0,ND,ND,NC1HWC0")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                    datatype="float16,float,float16,float16,float,float",
-                                                    format="FRACTAL_NZ,FRACTAL_NZ,NC1HWC0,ND,ND,NC1HWC0")
+            input0 = \
+                util_select_op_base.gen_param(classify="input0", name="x",
+                                              datatype="float16,float,float16,float16,float,float,float16,float",
+                                              format="FRACTAL_NZ,FRACTAL_NZ,NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
+            output0 = \
+                util_select_op_base.gen_param(classify="output0", name="y",
+                                              datatype="float16,float,float16,float16,float,float,float16,float",
+                                              format="FRACTAL_NZ,FRACTAL_NZ,NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
+
     param_list = [input0, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
@@ -1456,7 +1456,6 @@ def compute_padding_fp32(tensor_in, shape, pad_param, impl_mode):
     op_list += [res_exp_fp32]
     instruction_list += ['vector_conv']
 
-
     if shape[1] == pad_c1:
         if pad_c0 != 15:
             # reduce sum
@@ -1566,7 +1565,6 @@ def compute_padding_fp32(tensor_in, shape, pad_param, impl_mode):
                             name="res_mul")
         op_list += [res_mul]
         instruction_list += ['vector_mul']
-
 
     if tensor_in.dtype == "float16":
         res_mul_fp16 = te.lang.cce.cast_to(res_mul, "float16")
@@ -2312,7 +2310,6 @@ def softmax_nz_channel_calculate(shape, dtype, pad_flag, pad_param, kernel_name)
     xn1o, xn1i = sch[res].split(res.op.axis[1], nparts=npart_n1)
     xn0o, xn0i = sch[res].split(res.op.axis[2], nparts=npart_n0)
 
-
     sch[res].reorder(xn1o, xn0o, xn1i, xn0i, res.op.axis[0], res.op.axis[3])
     block_axis = sch[res].fuse(xn1o, xn0o)
     sch[res].bind(block_axis, tvm.thread_axis("blockIdx.x"))
@@ -2387,34 +2384,28 @@ def softmax_param_check(in_tensor, output_tensor, axis, kernel_name):
        the data's axis using for softmax,
     kernel_name : str
         cce kernel name, default value is "softmax_cce"
-    need_build : bool
-        if need to build cce kernel, default value is False
-    need_print : bool
-        if need to print the ir, default value is False
+
     Returns
     -------
     shape and stype of input tensor
     parameters of padding on dimension C0
     """
 
-    #param calculate
+    # param calculate
     in_shape = in_tensor['shape']
     in_dtype = in_tensor['dtype']
     ori_shape = in_tensor['ori_shape']
+    input_format = in_tensor['format']
+    ori_format = in_tensor['ori_format']
     out_dtype = output_tensor['dtype']
 
     # shape check, check length,min,max,size
-    para_check.check_shape(in_shape, min_rank=5, max_rank=5, param_name="x")
-
-    if len(ori_shape) == 3:
-        ori_shape = list(ori_shape)
-        ori_shape.insert(0, 1)
-    para_check.check_shape(ori_shape, min_rank=4, max_rank=4, param_name="x")
-
-    # shape_matching check
-    delta0 = in_shape[0] - ori_shape[0]
-    delta2 = in_shape[2] - ori_shape[2]
-    delta3 = in_shape[3] - ori_shape[3]
+    if input_format in ("NC1HWC0",):
+        para_check.check_shape(in_shape, min_rank=5, max_rank=5, param_name="x")
+        if len(ori_shape) == 3:
+            ori_shape = list(ori_shape)
+            ori_shape.insert(0, 1)
+        para_check.check_shape(ori_shape, min_rank=4, max_rank=4, param_name="x")
 
     # type check
     in_dtype = in_dtype.lower()
@@ -2423,21 +2414,23 @@ def softmax_param_check(in_tensor, output_tensor, axis, kernel_name):
     para_check.check_dtype(out_dtype, ("float16", "float32"), param_name="y")
 
     # shape check
-    if in_dtype == "float16" and in_shape[1] * in_shape[4] * 2 > UB_SIZE_LIMIT:
+    in_shape_c1 = in_shape[1] if input_format in ("NC1HWC0",) else in_shape[2]
+    in_shape_c0 = in_shape[4] if input_format in ("NC1HWC0",) else in_shape[5]
+    if in_dtype == "float16" and in_shape_c1 * in_shape_c0 * 2 > UB_SIZE_LIMIT:
         error_manager_vector.raise_err_input_param_range_invalid("softmax_v2", "C", 0, UB_SIZE_LIMIT,
-                                                                 in_shape[1] * in_shape[4] * 2)
-    if in_dtype == "float32" and in_shape[1] * in_shape[4] * 4 > UB_SIZE_LIMIT:
+                                                                 in_shape_c1 * in_shape_c0 * 2)
+    if in_dtype == "float32" and in_shape_c1 * in_shape_c0 * 4 > UB_SIZE_LIMIT:
         error_manager_vector.raise_err_input_param_range_invalid("softmax_v2", "C", 0, UB_SIZE_LIMIT,
-                                                                 in_shape[1] * in_shape[4] * 4)
+                                                                 in_shape_c1 * in_shape_c0 * 4)
     # calc padding parameters
-    if in_tensor.get("ori_format") == "NCHW":
-        padding = in_shape[1] * in_shape[4] - ori_shape[1]
-    elif in_tensor.get("ori_format") == "NHWC":
-        padding = in_shape[1] * in_shape[4] - ori_shape[3]
+    padding = 0
+    if "C" in ori_format:
+        padding = in_shape_c1 * in_shape_c0 - ori_shape[ori_format.index("C")]
     else:
-        para_check.check_format(in_tensor.get("ori_format"), ("NCHW", "NHWC"), param_name="x")
+        para_check.check_format(in_tensor.get("ori_format"), ("NCHW", "NHWC", "NDHWC"), param_name="x")
 
     pad_param = []
+    pad_flag = True
     if padding < 0:
         error_manager_vector.raise_err_specific_reson("softmax_v2",
                                                       "the shapes of input tensor and original tensor don't match")
@@ -2451,6 +2444,10 @@ def softmax_param_check(in_tensor, output_tensor, axis, kernel_name):
         pad_c1 = (padding + 15) // 16
         pad_c0 = padding % 16
         pad_param = [pad_c1, pad_c0]
+
+    if input_format in ("NDC1HWC0",):
+        in_shape = list(in_shape)
+        in_shape = [in_shape[0] * in_shape[1]] + in_shape[2:]
 
     return in_shape, in_dtype, pad_flag, pad_param
 
@@ -2514,58 +2511,41 @@ def softmax_axis_check(origin_format, value):
 
     Parameters
     ----------
-    axis : listint
-       the data's axis using for softmax
+    origin_format: string
+        origin_format
+    value : listint
+        the data's axis using for softmax
 
     Returns
     -------
     axic_is_c : bool
-    if the data's axis is c default value is False
+        if the data's axis is c default value is False
     """
+    axic_is_c = origin_format[value] == "C"
 
-    axic_is_c = False
-    if origin_format == "NCHW":
-        axic_range = [1, -3]
-    elif origin_format == "NHWC":
-        axic_range = [3, -1]
-
-    if value in axic_range:
-        axic_is_c = True
     return axic_is_c
 
 
-def update_5hd_axis(origin_format, axis):
+def update_5hd_axis(origin_format, axis, input_format):
     """
     update the axis of 5hd format
     data using for compute and schedule
-
-    Parameters
-    ----------
-    axis : listint
-       the data's axis using for softmax
-
-    Returns
-    -------
-    axis : listint
-    update the axis of 5hd format
     """
-    if not hasattr(axis, 'index'):
-        if  origin_format == "NCHW" and axis < 0:
-            axis = axis - 1
-        elif origin_format == "NHWC":
-            if axis > 0:
-                axis = axis + 1
-            if axis == -4:
-                axis = -5
-    else:
-        if origin_format == "NCHW" and axis[0] < 0:
-            axis[0] = axis[0] - 1
-        elif origin_format == "NHWC":
-            if axis[0] > 0:
-                axis[0] = axis[0] + 1
-            if axis[0] == -4:
-                axis[0] = -5
-    return axis
+    if hasattr(axis, 'index'):
+        axis = axis[0]
+
+    axis_str = origin_format[axis]
+    offset_6hd = 1 if input_format == "NDC1HWC0" else 0
+
+    dict_format_axis = {
+        "N": 0,
+        "C": 1 + offset_6hd,
+        "H": 2 + offset_6hd,
+        "W": 3 + offset_6hd,
+        "D": 1
+    }
+
+    return [dict_format_axis[axis_str]]
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
@@ -2620,6 +2600,8 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
                     axis[0] = axis[0] + 1
                 else:
                     axis[0] = axis[0] - 1
+
+    if input_format in ("NC1HWC0", "NDC1HWC0"):
         if not hasattr(axis, 'index'):
             axic_is_c = softmax_axis_check(input_x.get("ori_format"), axis)
         else:
@@ -2632,7 +2614,7 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
         # compute & schedule & build
         softmax_nz_channel_calculate(in_shape, in_dtype, pad_flag,
                                      pad_param, kernel_name)
-    elif input_format == "NC1HWC0" and axic_is_c:
+    elif input_format in ("NC1HWC0", "NDC1HWC0") and axic_is_c:
         # 5D format, using TVM primitive, UB fusion is not supported.
         # parameters check
         in_shape, in_dtype, pad_flag, pad_param = \
@@ -2650,9 +2632,8 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
         if not isinstance(axis, int):
             axis = list(axis)
 
-        if input_format == "NC1HWC0":
-            axis = update_5hd_axis(input_x.get("ori_format"), axis)
-
+        if input_format in ("NC1HWC0", "NDC1HWC0"):
+            axis = update_5hd_axis(input_x.get("ori_format"), axis, input_format)
 
         para_check.check_shape(shape, param_name="x")
         para_check.check_dtype(dtype, ("float16", "float32"), param_name="x")
