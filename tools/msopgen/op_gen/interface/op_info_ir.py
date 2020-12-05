@@ -70,9 +70,10 @@ class IROpInfo(OpInfo):
         self.output_path = argument.output_path
         if self.gen_flag:
             self.choose_op = argument.op_type
+            self.is_mindspore = argument.is_mindspore
         else:
             self.mi_cmd = argument.mi_cmd
-
+       
     def parse(self):
         """
         Parse the IR excel, store the parse result in OpInfo attribute
@@ -106,6 +107,12 @@ class IROpInfo(OpInfo):
             if classify == INPUT_NAME:
                 param_type = self._mapping_ini_param_type(ir_row.required)
                 input_map = self._add_input_output('input', ir_row, param_type)
+                if input_map is None:
+                    utils.print_error_log("The attr types in the .xlsx file "
+                                          "are unsupported. Please check the "
+                                          "input or output types.")
+                    raise utils.MsOpGenException(
+                        utils.MS_OP_GEN_INVALID_PARAM_ERROR)
                 self.parsed_input_info.update(input_map)
             elif classify == DYNAMIC_INPUT_NAME:
                 param_type = utils.PARAM_TYPE_DYNAMIC
@@ -290,7 +297,8 @@ class IROpInfo(OpInfo):
         ir_type_list = []
         for t in types:
             converted_type = self._mapping_input_output_type(t.strip(),
-                                                             ir_name)
+                                                             ir_name,
+                                                             self.is_mindspore)
             if converted_type:
                 ir_type_list += converted_type.split(",")
         if not ir_type_list:
@@ -380,14 +388,26 @@ class IROpInfo(OpInfo):
         sys.exit(utils.MS_OP_GEN_PARSER_EXCEL_FILE_ERROR)
 
     @staticmethod
-    def _mapping_input_output_type(ir_type, ir_name):
+    def _mapping_input_output_type(ir_type, ir_name, is_mindspore):
+        if is_mindspore:
+            if ir_type in utils.MS_INPUT_OUTPUT_DTYPE_LIST:
+                return ir_type
+            else:
+                utils.print_warn_log("The %s 'TypeRange' '%s' in the .xlsx file "
+                                     "is unsupported. Please check. If you "
+                                     "aren't having problems, "
+                                     "just ignore the warning."
+                                     % (ir_name, ir_type))
+            return ""
+
         if ir_type in utils.INPUT_OUTPUT_DTYPE_MAP:
             return utils.INPUT_OUTPUT_DTYPE_MAP.get(ir_type)
-        utils.print_warn_log("The %s 'TypeRange' '%s' in the .xlsx file "
-                             "is unsupported. Please check. If you "
-                             "aren't having problems, "
-                             "just ignore the warning."
-                             % (ir_name, ir_type))
+        else:
+            utils.print_warn_log("The %s 'TypeRange' '%s' in the .xlsx file "
+                                 "is unsupported. Please check. If you "
+                                 "aren't having problems, "
+                                 "just ignore the warning."
+                                 % (ir_name, ir_type))
         return ""
 
     @staticmethod

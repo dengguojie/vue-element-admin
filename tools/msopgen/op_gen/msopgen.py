@@ -21,6 +21,10 @@ except (ImportError,) as import_error:
 def _do_gen_cmd(argument):
     try:
         op_file_generator = OpFileGenerator(argument)
+        if op_file_generator.op_file is None:
+            utils.print_error_log(
+                "Aicpu is unsupported for mindspore operator.")
+            raise utils.MsOpGenException(utils.MS_OP_GEN_NONE_ERROR)
         op_file_generator.generate()
     except utils.MsOpGenException as ex:
         sys.exit(ex.error_info)
