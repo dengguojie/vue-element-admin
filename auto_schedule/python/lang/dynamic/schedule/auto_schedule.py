@@ -19,7 +19,7 @@ corresponding schedule template for user's compute
 import te.lang.cce as static
 from te import platform as cce
 from te import tvm
-from te.lang.base import operation
+from te.lang.base import operation_impl as operation
 from te.tvm.build_module import BuildConfigs
 from te.utils.error_manager.error_manager_util import get_error_message
 

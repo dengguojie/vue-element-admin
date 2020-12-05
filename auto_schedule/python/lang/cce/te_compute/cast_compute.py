@@ -20,7 +20,7 @@ import warnings
 from decorator import decorator
 from te import tvm
 from te.platform import intrinsic_check_support
-from te.lang.base import operation
+from te.lang.base import operation_impl as operation
 from te.utils.error_manager.error_manager_util import get_error_message
 from te.utils.shape_util import shape_to_list
 from .util import auto_cast_tensor

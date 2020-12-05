@@ -23,7 +23,7 @@ from functools import reduce
 from te.platform import cce_params
 from te.platform.cce_conf import intrinsic_check_support
 from te.platform.cce_conf import CceProductParams
-from te.lang.base.operation import get_te_var
+from te.lang.base.operation_impl import get_te_var
 from te.lang.cce.te_compute.cube_util import shape_to_list
 from te.utils import para_check
 from te.utils.error_manager import error_manager_util

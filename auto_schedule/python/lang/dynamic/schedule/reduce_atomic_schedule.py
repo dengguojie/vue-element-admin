@@ -20,7 +20,7 @@ import copy
 
 from te import platform as cceconf
 from te import tvm
-from ...base import operation
+from ...base import operation_impl as operation
 import te.platform.cce_params as cce
 from te.platform.cce_conf import CceProductParams as Pver
 from .reduce_tilingcase import ReduceTilingCase

@@ -22,7 +22,7 @@ import warnings
 from enum import Enum
 from functools import reduce as _reduce
 from functools import wraps
-from te.lang.base import operation
+from te.lang.base import operation_impl as operation
 from te.utils import error_manager
 
 SHAPE_SIZE_LIMIT = 2 ** 31 - 1

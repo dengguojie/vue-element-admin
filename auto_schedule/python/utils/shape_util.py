@@ -15,7 +15,7 @@
 """
 common function for check ops parameter
 """
-from te.lang.base import operation
+from te.lang.base import operation_impl as operation
 from te.lang.base.expr_compare import expr_equal
 from te.platform.fusion_manager import fusion_manager
 from te.tvm import expr as _expr

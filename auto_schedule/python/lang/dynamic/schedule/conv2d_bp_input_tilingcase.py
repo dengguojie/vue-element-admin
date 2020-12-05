@@ -22,8 +22,8 @@ from functools import reduce
 from te.tvm.expr import Expr
 from te.domain.tiling.get_tiling import get_tiling
 
-from te.lang.base.operation import register_tiling_case
-from te.lang.base.operation import get_te_var
+from te.lang.base.operation_impl import register_tiling_case
+from te.lang.base.operation_impl import get_te_var
 from te.platform import get_soc_spec
 
 from te.lang.cce.te_compute.conv2d_backprop_input_compute import DynamicConv2dBpInputParams

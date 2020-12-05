@@ -24,9 +24,9 @@ from . import Pattern, INSN_MAPPING, DTYPE_BYTE_MAPPING, FAKE_NODE_TAG, \
 from . import CompileInfo
 from . import util
 from .elewise_tilingcase import TilingStrategy
-from te.lang.base.operation import register_schedule
-from te.lang.base.operation import get_compile_info
-from te.lang.base import operation
+from te.lang.base.operation_impl import register_schedule
+from te.lang.base.operation_impl import get_compile_info
+from te.lang.base import operation_impl as operation
 from te.lang.base import op_tiling
 from te.lang.base.expr_compare import expr_equal
 

@@ -3,7 +3,7 @@
 from te import tvm
 import te.lang.cce as tbe
 import te.lang.dynamic as dynamic
-import te.platform as tbe_platform
+import te.lang.base.operation_impl as operation
 from impl.dynamic import relu
 from op_test_frame.ut import OpUT
 
@@ -28,11 +28,11 @@ def test_conv2d_relu_dynamic(test_arg):
     offset_x = 0
     kernel_name_val="conv_relu_dynamic"
     relu_outputs={"dtype": "float16"}
-    with tbe_platform.operation.OperatorContext(tbe_platform.operation.OpMode.DYNAMIC) as opc:
+    with operation.OperatorContext(operation.OpMode.DYNAMIC) as opc:
         opc.set_op_type("conv_relu")
-        with tbe_platform.operation.ComputeContext():
-            conv = tbe_platform.operation.get_fusion_compute('Conv2D')
-            relu = tbe_platform.operation.get_fusion_compute('Relu')
+        with operation.ComputeContext():
+            conv = operation.get_fusion_compute('Conv2D')
+            relu = operation.get_fusion_compute('Relu')
             conv_res = conv(inputs,
                             weights,
                             bias,

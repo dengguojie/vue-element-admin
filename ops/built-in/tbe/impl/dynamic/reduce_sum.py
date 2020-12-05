@@ -28,7 +28,6 @@ from te.utils.op_utils import REQUIRED_INPUT
 from te.utils.op_utils import REQUIRED_OUTPUT
 from te.utils.op_utils import OPTION_ATTR_BOOL
 from te.utils.op_utils import KERNEL_NAME
-from te.lang.base.operation import add_compile_info
 
 NONETYPE = type(None)
 

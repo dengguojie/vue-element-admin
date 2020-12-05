@@ -19,7 +19,7 @@ util
 from decorator import decorator
 import warnings
 from te import tvm
-from te.lang.base import operation
+from te.lang.base import operation_impl as operation
 from te.platform import intrinsic_check_support
 from te.platform.cce_conf import VERSION_CLOUD
 from te.platform.cce_conf import VERSION_MINI
