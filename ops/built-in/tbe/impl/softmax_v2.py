@@ -178,25 +178,25 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
         if check_axis_is_last(shape_x_ori, axis) and shape_x_ori[0] != 1:
             if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                       datatype="float16,float16,float16,float16",
-                                                       format="FRACTAL_NZ,NC1HWC0,ND,NDC1HWC0")
+                                                       datatype="float16,float16,float16",
+                                                       format="FRACTAL_NZ,NC1HWC0,ND")
                 output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                        datatype="float16,float16,float16,float16",
-                                                        format="FRACTAL_NZ,NC1HWC0,ND,NDC1HWC0")
+                                                        datatype="float16,float16,float16",
+                                                        format="FRACTAL_NZ,NC1HWC0,ND")
             if tbe_product in ("Ascend610", "Ascend615", "Ascend710",):
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                       datatype="float16,float16,float16,float,float16,float",
-                                                       format="FRACTAL_NZ,NC1HWC0,ND,ND,NDC1HWC0,NDC1HWC0")
+                                                       datatype="float16,float16,float16,float",
+                                                       format="FRACTAL_NZ,NC1HWC0,ND,ND")
                 output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                        datatype="float16,float16,float16,float,float16,float",
-                                                        format="FRACTAL_NZ,NC1HWC0,ND,ND,NDC1HWC0,NDC1HWC0")
+                                                        datatype="float16,float16,float16,float",
+                                                        format="FRACTAL_NZ,NC1HWC0,ND,ND")
             if tbe_product in ("Ascend910", "Ascend310",):
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                       datatype="float16,float16,float16,float,float,float16,float",
-                                                       format="FRACTAL_NZ,NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                                                       datatype="float16,float16,float16,float,float",
+                                                       format="FRACTAL_NZ,NC1HWC0,ND,ND,NC1HWC0")
                 output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                        datatype="float16,float16,float16,float,float,float16,float",
-                                                        format="FRACTAL_NZ,NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                                                        datatype="float16,float16,float16,float,float",
+                                                        format="FRACTAL_NZ,NC1HWC0,ND,ND,NC1HWC0")
         else:
             if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
