@@ -76,11 +76,18 @@ build_cann() {
   if [[ "$ST_TEST" == "TRUE" ]]; then
     CMAKE_ARGS="$CMAKE_ARGS -DST_TEST=TRUE"
   fi
-  logging "CMake Args: ${CMAKE_ARGS}"
+  logging "Start build host target. CMake Args: ${CMAKE_ARGS}"
 
   mk_dir "${CMAKE_PATH}"
   cd "${CMAKE_PATH}" && cmake ${CMAKE_ARGS} ../..
   make ${VERBOSE} -j${THREAD_NUM}
+
+  CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device"
+  
+  logging "Start build device target. CMake Args: ${CMAKE_ARGS}"
+  cmake ${CMAKE_ARGS} ../..
+  make ${VERBOSE} -j${THREAD_NUM}
+
   logging "CANN build success!"
 }
 

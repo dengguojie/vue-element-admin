@@ -1,119 +1,5 @@
 set(SUB_SO_WITH_VERSION libcpu_kernels_v1.0.1.so)
 
-if(BUILD_OPEN_PROJECT)
-#[[set(local_kernels_src_files
-    kernels/normalized/expanddims.cc
-    kernels/normalized/reshape_kernels.cc
-    kernels/normalized/less.cc
-    kernels/normalized/top_k_kernels.cc
-    kernels/normalized/gather_kernels.cc
-    kernels/normalized/get_dynamic_dims.cc
-    kernels/normalized/identity_kernels.cc
-    kernels/normalized/ceil_kernels.cc
-    kernels/normalized/realdiv_kernels.cc
-    kernels/normalized/sparse_to_dense_kernels.cc
-    kernels/normalized/cast_kernels.cc
-    kernels/normalized/logging.cc
-    kernels/normalized/concatv2.cc
-    utils/sparse_group.cc
-    utils/eigen_tensor.cc
-    utils/kernel_util.cc
-    utils/sparse_tensor.cc
-    utils/bcast.cc
-)
-
-set(local_host_kernels_src_files
-    kernels/host/add_kernel.cc
-    kernels/host/mul_kernel.cc
-    kernels/host/transdata.cc
-    kernels/host/random_uniform_kernel.cc
-)
-
-set(AICPU_INCLUDE /usr/local/Ascend/opp/op_impl/built-in/aicpu/aicpu_kernel/inc)
-
-set(local_kernels_inc_path
-    ./
-    utils
-    ${AICPU_INCLUDE}
-    ${EIGEN_INCLUDE}
-    ${CANN_ROOT}/third_party/fwkacllib/inc
-    ${CANN_ROOT}/third_party/fwkacllib/inc/aicpu/cpu_kernels
-)
-
-add_library(cpu_kernels SHARED
-    ${local_kernels_src_files}
-)
-
-add_library(cpu_kernels_host SHARED
-    ${local_kernels_src_files}
-    ${local_host_kernels_src_files}
-)
-
-add_library(cpu_kernels_static STATIC
-    ${local_kernels_src_files}
-    ${local_host_kernels_src_files}
-)
-
-add_dependencies(cpu_kernels eigen_headers)
-add_dependencies(cpu_kernels_host eigen_headers)
-add_dependencies(cpu_kernels_static eigen_headers)
-
-###cpu_kernels
-target_include_directories(cpu_kernels PRIVATE
-    ${local_kernels_inc_path}
-)
-
-target_include_directories(cpu_kernels_host PRIVATE
-    ${local_kernels_inc_path}
-)
-
-target_include_directories(cpu_kernels_static PRIVATE
-    ${local_kernels_inc_path}
-)
-
-set(AICPU_CONTEXT /usr/local/Ascend/opp/op_impl/built-in/aicpu/aicpu_kernel/lib/device/)
-
-find_library(cpu_kernels_context libcpu_kernels_context.so ${AICPU_CONTEXT})
-
-target_link_libraries(cpu_kernels_host PRIVATE
-    ${slog}
-    c_sec
-    ${cpu_kernels_context}
-)
-
-target_link_libraries(cpu_kernels PRIVATE
-    ${slog}
-    c_sec
-    ${cpu_kernels_context}
-)
-
-target_link_libraries(cpu_kernels_static PRIVATE
-    c_sec
-)
-
-set(OPS_AICPU_PATH "${INSTALL_PATH}/opp/op_impl/built-in/aicpu/aicpu_kernel/lib")
-
-cann_install(
-  TARGET      cpu_kernels
-  FILES       $<TARGET_FILE:cpu_kernels>
-  DESTINATION "${OPS_AICPU_PATH}/device"
-)
-
-cann_install(
-  TARGET      cpu_kernels_host
-  FILES       $<TARGET_FILE:cpu_kernels_host>
-  DESTINATION "${OPS_AICPU_PATH}/host"
-)
-
-cann_install(
-  TARGET      cpu_kernels_static
-  FILES       $<TARGET_FILE:cpu_kernels_static>
-  DESTINATION "${OPS_AICPU_PATH}/host"
-)]]
-else()
-get_filename_component(TOP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../.." ABSOLUTE)
-set(BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-
 set(local_kernels_src_files
     kernels/normalized/expanddims.cc
     kernels/normalized/reshape_kernels.cc
@@ -142,6 +28,127 @@ set(local_host_kernels_src_files
     kernels/host/transdata.cc
     kernels/host/random_uniform_kernel.cc
 )
+
+if(BUILD_OPEN_PROJECT)
+  
+  set(AICPU_INCLUDE ${AICPU_OPP_ENV}/inc)
+
+  set(local_kernels_inc_path
+    ./
+    utils
+    ../context/inc
+    ${AICPU_INCLUDE}
+    ${EIGEN_INCLUDE}
+    ${CANN_ROOT}/third_party/fwkacllib/inc
+    ${CANN_ROOT}/third_party/fwkacllib/inc/aicpu/cpu_kernels
+    ${C_SEC_INCLUDE}
+  )
+#[[
+  add_library(cpu_kernels_host SHARED
+    ${local_kernels_src_files}
+    ${local_host_kernels_src_files}
+  )
+
+  add_library(cpu_kernels_static STATIC
+    ${local_kernels_src_files}
+    ${local_host_kernels_src_files}
+  )
+
+  add_dependencies(cpu_kernels_host eigen_headers)
+  add_dependencies(cpu_kernels_static eigen_headers)
+
+  target_include_directories(cpu_kernels_host PRIVATE
+    ${local_kernels_inc_path}
+  )
+
+  target_include_directories(cpu_kernels_static PRIVATE
+    ${local_kernels_inc_path}
+  )
+
+  target_link_libraries(cpu_kernels_host PRIVATE
+    ${slog}
+    c_sec
+    cpu_kernels_context
+  )
+
+  target_link_libraries(cpu_kernels_static PRIVATE
+      c_sec
+  )
+
+  cann_install(
+    TARGET      cpu_kernels_host
+    FILES       $<TARGET_FILE:cpu_kernels_host>
+    DESTINATION "${OPS_AICPU_PATH}/host"
+  )
+
+  cann_install(
+    TARGET      cpu_kernels_static
+    FILES       $<TARGET_FILE:cpu_kernels_static>
+    DESTINATION "${OPS_AICPU_PATH}/host"
+  )
+]]
+  if("x${PRODUCT_SIDE}" STREQUAL "xdevice")
+    set(CMAKE_CXX_COMPILER ${TOOLCHAIN_DIR}/bin/aarch64-target-linux-gnu-g++)
+    set(CMAKE_C_COMPILER ${TOOLCHAIN_DIR}/bin/aarch64-target-linux-gnu-gcc)
+
+    add_library(cpu_kernels SHARED
+      ${local_kernels_src_files}
+    )
+
+    target_include_directories(cpu_kernels PRIVATE
+      ${local_kernels_inc_path}
+    )
+
+    target_link_libraries(cpu_kernels PRIVATE
+      -Wl,--whole-archive
+      cpu_kernels_context_static
+      -Wl,--no-whole-archive
+      ascend_protobuf_static
+      -Wl,--no-as-needed
+      aicpu_sharder
+      -ldl
+      -Wl,--as-needed
+    )
+
+    target_compile_definitions(cpu_kernels PRIVATE
+      _FORTIFY_SOURCE=2
+      google=ascend_private
+    )
+
+    target_compile_options(cpu_kernels PRIVATE
+      -O2
+      -std=c++14
+      -ftrapv
+      -fstack-protector-all
+      -fvisibility-inlines-hidden
+      -fvisibility=hidden
+    )
+
+    target_link_options(cpu_kernels PRIVATE
+      -Wl,--exclude-libs=libascend_protobuf.a
+      -Wl,-z,relro,-z,now
+      -s
+    )
+
+    add_dependencies(cpu_kernels eigen_headers)
+
+    set(OPS_AICPU_PATH "${INSTALL_PATH}/opp/op_impl/built-in/aicpu/aicpu_kernel/lib")
+
+    cann_install(
+      TARGET      cpu_kernels
+      FILES       $<TARGET_FILE:cpu_kernels>
+      DESTINATION "${INSTALL_PATH}/opp/aicpu"
+    )
+    
+    set(COPY_TO_PATH ${OPS_AICPU_PATH}/${SUB_SO_WITH_VERSION})
+    add_custom_command(TARGET cpu_kernels POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:cpu_kernels> ${COPY_TO_PATH}
+      COMMENT "[AICPU] copying cpu_kernels library to '${COPY_TO_PATH}'"
+    )
+  endif()
+else()
+get_filename_component(TOP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../.." ABSOLUTE)
+set(BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(local_kernels_inc_path
     ${CMAKE_CURRENT_SOURCE_DIR}
