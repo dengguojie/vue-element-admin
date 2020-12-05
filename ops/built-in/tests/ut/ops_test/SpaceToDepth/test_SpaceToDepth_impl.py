@@ -67,13 +67,12 @@ case5 = {"params": [{"shape": (2, 2, 2, 3200), "dtype": "float32", "format": "NH
 
 def test_op_select_format(test_arg):
     from impl.space_to_depth import op_select_format
-    op_select_format({"shape": (20, 28, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (20, 28, 16, 16),"ori_format": "NCHW"},
+    op_select_format({"shape": (60,60,60,60), "dtype": "float16", "format": "NHWC", "ori_shape": (60,60,60,60),"ori_format": "NHWC"},
                      {"shape": (), "dtype": "", "format": "", "ori_shape": (),"ori_format": ""},
-                     {"shape": (20, 28, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (20, 28, 16, 16),"ori_format": "NCHW"})
-    op_select_format({"shape": (20, 28, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (20, 28, 16, 16),"ori_format": "NCHW"},
-                     {"shape": (), "dtype": "", "format": "", "ori_shape": (20,28,16,16),"ori_format": ""},
-                     {"shape": (20, 28, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (20, 28, 16, 16),"ori_format": "NCHW"})
-
+                     {"shape": (60,10,10,2160), "dtype": "float16", "format": "NHWC", "ori_shape": (60,10,10,2160),"ori_format": "NHWC"},6,"NHWC")
+    op_select_format({"shape": (60,60,60,60), "dtype": "float16", "format": "NHWC", "ori_shape": (60,60,60,60),"ori_format": "NHWC"},
+                     {"shape": (2160,60,6,6), "dtype": "", "format": "", "ori_shape": (2160,60,6,6),"ori_format": "NCHW"},
+                     {"shape": (60,10,10,2160), "dtype": "float16", "format": "NHWC", "ori_shape": (60,10,10,2160),"ori_format": "NHWC"},6,"NHWC")
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910"], case1)
 ut_case.add_case(["Ascend910"], case2)
