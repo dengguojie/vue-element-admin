@@ -62,8 +62,7 @@ def _cube_3d_compute(fmap,
                      shape_filter_ncdhw,
                      cyclebuffer_flag,
                      group_dict,
-                     bias=None,
-                     tiling=None):
+                     bias=None):
     """
     conv
 
@@ -219,7 +218,7 @@ def _cube_3d_compute(fmap,
 
     if l0a_load2d_flag:
         c_col = _mad_by_load2d(mad_shape, fmap, weight, config, mad_dtype,
-                               pads, stride_d, d_out, filter_d, group_dict)
+                               pads, stride_d, d_out, group_dict)
     else:
         c_col = _mad(mad_shape, fmap_im2col_fractal_res, weight, config,
                      mad_dtype, pads, stride_d, d_out, fmap_d, real_g)
@@ -342,7 +341,7 @@ def _get_fuse_fmap_tensor(fmap_fuse_shape, fmap, d_out, kernel_d, stride_d,
                        tag=tag + "fuse_fmap_tensor")
 
 def _mad_by_load2d(mad_shape, fmap, weight, config, mad_dtype, pads, stride_d,
-                   d_out, filter_d, group_dict):
+                   d_out, group_dict):
     """
     calculate mad
     Parameters
@@ -820,8 +819,7 @@ def conv3d(x, filter, filter_size, para_dict):
                                 shape_filter_ncdhw,
                                 cyclebuffer_flag,
                                 group_dict,
-                                bias=bias_tensor,
-                                tiling=None)
+                                bias=bias_tensor)
     res = conv_res
     res_remove_pad_shape = list(res.shape)
     # UB fusion
