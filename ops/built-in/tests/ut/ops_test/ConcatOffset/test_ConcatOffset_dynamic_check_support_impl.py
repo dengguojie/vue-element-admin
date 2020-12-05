@@ -3,7 +3,7 @@
 import te
 from op_test_frame.ut import OpUT
 
-ut_case = OpUT("ConcatOffset", "impl.concat_offset", "op_select_format")
+ut_case = OpUT("ConcatOffset", "impl.concat_offset", "check_supported")
 
 
 def gen_dynamic_dict_list(_shape, _range, _dtype, _list_num, _format="ND"):
