@@ -104,14 +104,14 @@ def get_op_support_info(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
             for i in range(dims_x):
                 if not (i == dims_x - 1 or i == dims_x - 4):
                     split_0 = [util_select_op_base.SplitInput([0, [i], [-1], [-1]]),
-                               util_select_op_base.SplitOutput([0, [i]])]
+                                                              util_select_op_base.SplitOutput([0, [i]])]
                     axis_split_matrix.append(split_0)
         else:
             axis_split_matrix = []
             for i in range(dims_x):
                 if i == dims_x - 1 or i == dims_x - 4:
                     split_0 = [util_select_op_base.SplitInput([0, [i], [-1], [-1]]),
-                               util_select_op_base.SplitOutput([0, [i]])]
+                                                             util_select_op_base.SplitOutput([0, [i]])]
                     axis_split_matrix.append(split_0)
         axis_reduce_list = None
     elif format_x == "ND":
@@ -121,7 +121,7 @@ def get_op_support_info(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
         for i in range(dims_x):
             if i != new_axis:
                 split_0 = [util_select_op_base.SplitInput([0, [i], [-1], [-1]]),
-                           util_select_op_base.SplitOutput([0, [i]])]
+                                                          util_select_op_base.SplitOutput([0, [i]])]
                 axis_split_matrix.append(split_0)
         axis_reduce_list = None
     else:
@@ -138,9 +138,10 @@ def select_nd_to_5d(dtype, shape_x_ori, axis):
     else:
         axis = [axis]
     nd_to_5d = 0
-    if ((dtype == "float16" and shape_x_ori[-1] % 16 != 0) or (dtype == "float32" and shape_x_ori[-1] % 8 !=0)) \
-            and (length_x_ori == 3 or length_x_ori == 4):
-        if axis[0] == -1 and len(axis) == 1:
+    if ((dtype == "float16" and shape_x_ori[-1] % 16 != 0)
+        or (dtype == "float32" and shape_x_ori[-1] % 8
+            !=0)) and (length_x_ori == 3 or length_x_ori == 4):
+        if (axis[0] == -1 and len(axis)) == 1:
             nd_to_5d = 1
         else:
             nd_to_5d = 0
@@ -2598,6 +2599,8 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
                     axis[0] = axis[0] + 1
                 else:
                     axis[0] = axis[0] - 1
+
+    if input_format in ("NC1HWC0", "NDC1HWC0"):
         if not hasattr(axis, 'index'):
             axic_is_c = softmax_axis_check(input_x.get("ori_format"), axis)
         else:
