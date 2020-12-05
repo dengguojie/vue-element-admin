@@ -27,6 +27,7 @@ from te.tvm.expr import Reduce
 from te.tvm.tensor import Tensor
 from te.tvm.tensor import PlaceholderOp
 from te.lang.base import operation
+from te.lang.base.expr_compare import expr_equal
 from te.utils.error_manager.error_manager_util import get_error_message
 
 from . import BROADCAST_INSNS, SUPPORT_SCALAR_INSNS, \
@@ -183,44 +184,45 @@ def get_bound(expr):
     if isinstance(expr, tvm.expr.Var):
         return operation.get_te_var(expr.name).get_bound()
 
-    def _parse(expr_, elements_: list):
-        if not isinstance(expr_, tvm.expr.Mul):
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "Only accept (int, expr), but now " \
-                                          "is [%s]." % type(expr_)
-            raise RuntimeError(dict_args, get_error_message(dict_args))
-
-        single_types = (tvm.expr.IntImm, tvm.expr.Var)
-        for _x in (expr_.a, expr_.b):
-            if isinstance(_x, single_types):
-                elements_.append(_x)
-            else:
-                _parse(_x, elements_)
-
     def _mul(_a, _b):
         if _a is None or _b is None:
             return None
         _bound = _a * _b
         return None if _bound > VAR_BOUND_LIMIT else _bound
 
-    lower, upper = 1, 1
-    elements = []
-    _parse(expr, elements)
-    for _e in elements:
-        if isinstance(_e, tvm.expr.IntImm):
-            lower, upper = _mul(lower, _e.value), _mul(upper, _e.value)
-        elif isinstance(_e, tvm.expr.Var):
-            bound = operation.get_te_var(_e.name).get_bound()
-            lower, upper = _mul(lower, bound[0]), _mul(upper, bound[1])
+    def _max(_a, _b):
+        if _a is None or _b is None:
+            return None
+        return max(_a, _b)
+
+    def _min(_a, _b):
+        if _a is None or _b is None:
+            return None
+        return min(_a, _b)
+
+    def _parse(_expr):
+        if isinstance(_expr, tvm.expr.ConstExpr):
+            return _expr.value, _expr.value
+        elif isinstance(_expr, tvm.expr.Var):
+            bound = operation.get_te_var(_expr.name).get_bound()
+            return bound[0], bound[1]
+        elif isinstance(_expr, tvm.expr.Mul):
+            left_lower, left_upper = _parse(_expr.a)
+            right_lower, right_upper = _parse(_expr.b)
+            _lower, _upper = _mul(left_lower, right_lower), _mul(left_upper, right_upper)
+        elif isinstance(_expr, tvm.expr.Max):
+            left_lower, left_upper = _parse(_expr.a)
+            right_lower, right_upper = _parse(_expr.b)
+            _lower, _upper = _min(left_lower, right_lower), _max(left_upper, right_upper)
         else:
             dict_args = dict()
             dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "Only accept (int, expr), but now " \
-                                          "is [%s]." % type(_e)
+            dict_args["detailed_cause"] = "Only accept (ConstExpr, Var, Mul, Max), but now " \
+                                          "is [%s]" % type(_expr)
             raise RuntimeError(dict_args, get_error_message(dict_args))
+        return _lower, _upper
 
-    return lower, upper
+    return _parse(expr)
 
 
 def get_ub_size():
@@ -332,54 +334,3 @@ def get_reduce_axis_indices(reduce_tensor: Tensor) -> List[int]:
 def is_keepdims(reduce_tensor: Tensor) -> bool:
     """Check if reduce tensor is keepdims"""
     return len(reduce_tensor.shape) == len(get_reduce_all_axes(reduce_tensor))
-
-
-def expr_equal(expr_a, expr_b):
-    """
-    :param expr_a: The first expr
-    :param expr_b: The second expr
-    :return: bool, compare result
-    """
-    def _parse_expr(_expr, _elements: dict):
-        if isinstance(_expr, tvm.expr.Mul):
-            _parse_mul(_expr, _elements)
-        else:
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "Expr parse: unsupported expr: [%s]" % _expr
-            raise RuntimeError(dict_args, get_error_message(dict_args))
-
-    def _parse_mul(_expr, _elements: dict):
-        if not isinstance(_expr, tvm.expr.Mul):
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "Expr parse: it is not mul expr: [%s]" % _expr
-            raise RuntimeError(dict_args, get_error_message(dict_args))
-
-        var_types = (tvm.expr.Var,)
-        for _x in (_expr.a, _expr.b):
-            if isinstance(_x, const_types):
-                _elements[_x.value] = _elements.get(_x.value, 0) + 1
-            elif isinstance(_x, var_types):
-                _elements[_x] = _elements.get(_x, 0) + 1
-            else:
-                _parse_mul(_x, _elements)
-
-    elements1 = {}
-    elements2 = {}
-    single_types = (int, float, tvm.expr.Var)
-    const_types = (tvm.expr.IntImm,)
-    for expr, elements in zip((expr_a, expr_b), (elements1, elements2)):
-        if isinstance(expr, single_types):
-            elements[expr] = elements.get(expr, 0) + 1
-        elif isinstance(expr, const_types):
-            elements[expr.value] = elements.get(expr.value, 0) + 1
-        elif isinstance(expr, tvm.expr.Expr):
-            _parse_expr(expr, elements)
-        else:
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "Expr compare: unsupported expr: [%s]" % expr
-            raise RuntimeError(dict_args, get_error_message(dict_args))
-
-    return elements1 == elements2

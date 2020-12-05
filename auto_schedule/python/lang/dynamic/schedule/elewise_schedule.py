@@ -28,6 +28,7 @@ from te.lang.base.operation import register_schedule
 from te.lang.base.operation import get_compile_info
 from te.lang.base import operation
 from te.lang.base import op_tiling
+from te.lang.base.expr_compare import expr_equal
 
 # block size in D architecture
 BLOCK_SIZE_BYTE = 32
@@ -781,7 +782,7 @@ def _fake_node(tensors):
         if len(shape_x) != len(shape_y):
             return False
         for _shape_x, _shape_y in zip(shape_x, shape_y):
-            if not util.expr_equal(_shape_x, _shape_y):
+            if not expr_equal(_shape_x, _shape_y):
                 return False
         return True
 
