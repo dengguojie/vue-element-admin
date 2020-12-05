@@ -16,6 +16,7 @@
 concat_offset.py
 """
 import te.lang.dynamic
+import te.lang.base as tbe_base
 from te import tik
 from te.utils import para_check
 
