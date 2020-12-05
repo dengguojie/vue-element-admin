@@ -96,7 +96,7 @@ class ConcatOffsetCompute(object):
         axis_num.set_as(axis_ub[0])
         vcetor_mask.set_as(1)
         with self.tik_instance.for_range(0, axis_num):
-            vcetor_mask.set_as(vcetor_mask*2)
+            vcetor_mask.set_as(vcetor_mask * 2)
 
         data_row1_ub = \
             self.tik_instance.Tensor(self.input_dtype, [MAX_INPUT_RANK], name="data_row1_ub", scope=tik.scope_ubuf)
