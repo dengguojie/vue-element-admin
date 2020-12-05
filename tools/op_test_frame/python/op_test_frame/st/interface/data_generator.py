@@ -137,7 +137,10 @@ class DataGenerator:
                 'Start to generate the data for %s.' % case_name)
             for index, input_desc in enumerate(case['input_desc']):
                 range_min, range_max = input_desc['value_range']
-                dtype = utils.DTYPE_TO_NUMPY_MAP[input_desc['type']]
+                if 'st_mode' in case:
+                    dtype = utils.DTYPE_TO_MINDSPORE_MAP[input_desc['type']]
+                else:
+                    dtype = utils.DTYPE_TO_NUMPY_MAP[input_desc['type']]
                 file_path = os.path.join(
                     self.output_path,
                     case_name + '_input_' + str(index) + '.bin')
@@ -149,8 +152,8 @@ class DataGenerator:
                         utils.OP_TEST_GEN_WRITE_FILE_ERROR)
                 try:
                     data = self.gen_data(
-                        input_desc['shape'], range_min, range_max, dtype,
-                        input_desc['data_distribute'])
+                            input_desc['shape'], range_min, range_max, dtype,
+                            input_desc['data_distribute'])
                 except MemoryError as error:
                     utils.print_warn_log(
                         'Failed to generate data for %s. The shape is too '

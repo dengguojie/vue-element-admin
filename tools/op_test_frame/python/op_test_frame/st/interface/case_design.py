@@ -23,13 +23,15 @@ INPUT_DESC = 'input_desc'
 OUTPUT_DESC = 'output_desc'
 ATTR = 'attr'
 CASE_NAME = 'case_name'
-
+ST_MODE = 'st_mode'
 REQUIRED_KEYS = [OP, INPUT_DESC, OUTPUT_DESC, CASE_NAME]
 ATTR_REQUIRED_KEYS = ["name", "type", "value"]
 SUPPORT_TYPE_LIST = list(utils.ATTR_TYPE_MAP.values())
 
 INPUT_CROSS_LIST = ['format', 'type', 'shape', 'data_distribute', 'value_range']
 OUTPUT_CROSS_LIST = ['format', 'type', 'shape']
+MS_INPUT_CROSS_LIST = ['type', 'shape', 'data_distribute', 'value_range']
+MS_OUTPUT_CROSS_LIST = ['type', 'shape']
 
 
 class CaseDesign:
@@ -272,6 +274,45 @@ class CaseDesign:
                     self.multi = True
         return input_desc_list
 
+    def _make_input_desc_list_ms(self, json_obj):
+        input_desc_list = []
+        if len(json_obj[INPUT_DESC]) == 0:
+            utils.print_error_log(
+                'The value of "input_desc" is empty. Please modify it in '
+                'file %s.' % self.current_json_path)
+            raise utils.OpTestGenException(
+                utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+        for input_desc in json_obj[INPUT_DESC]:
+            type_list = self._check_list_str_valid(
+                input_desc, 'type', list(utils.DTYPE_TO_MINDSPORE_MAP.keys()),
+                INPUT_DESC)
+            shape_list = self._check_list_list_valid(
+                input_desc, 'shape', INPUT_DESC)
+            for item in shape_list:
+                self._check_shape_valid(item)
+            if 'data_distribute' in input_desc:
+                data_distribute_list = self._check_list_str_valid(
+                    input_desc, 'data_distribute',
+                    utils.DATA_DISTRIBUTION_LIST, INPUT_DESC)
+            else:
+                data_distribute_list = ['uniform']
+            if 'value_range' in input_desc:
+                value_range_list = self._check_list_list_valid(
+                    input_desc, 'value_range', INPUT_DESC)
+                for item in value_range_list:
+                    self._check_range_value_valid(item)
+            else:
+                value_range_list = [[0.1, 1.0]]
+            one_input_desc = {'type': type_list,
+                              'shape': shape_list,
+                              'value_range': value_range_list,
+                              'data_distribute': data_distribute_list}
+            input_desc_list.append(one_input_desc)
+            for item in one_input_desc.values():
+                if len(item) > 1:
+                    self.multi = True
+        return input_desc_list
+
     def _make_output_desc_list(self, json_obj):
         output_desc_list = []
         if len(json_obj[OUTPUT_DESC]) == 0:
@@ -297,11 +338,45 @@ class CaseDesign:
                     self.multi = True
         return output_desc_list
 
+    def _make_output_desc_list_ms(self, json_obj):
+        output_desc_list = []
+        if len(json_obj[OUTPUT_DESC]) == 0:
+            utils.print_error_log(
+                'The value of "output_desc" is empty. Please modify it in '
+                'file %s.' % self.current_json_path)
+            raise utils.OpTestGenException(
+                utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+        for output_desc in json_obj[OUTPUT_DESC]:
+            type_list = self._check_list_str_valid(
+                output_desc, 'type', list(utils.DTYPE_TO_MINDSPORE_MAP.keys()),
+                OUTPUT_DESC)
+            shape_list = self._check_list_list_valid(
+                output_desc, 'shape', OUTPUT_DESC)
+            for item in shape_list:
+                self._check_shape_valid(item)
+            one_output_desc = {'type': type_list,
+                               'shape': shape_list}
+            output_desc_list.append(one_output_desc)
+            for item in one_output_desc.values():
+                if len(item) > 1:
+                    self.multi = True
+        return output_desc_list
+
     def _check_value_number_valid(self, input_desc_list, output_desc_list):
         key = 'format'
         count = len(input_desc_list[0][key])
         self._check_number_match(key, count, input_desc_list)
         self._check_number_match(key, count, output_desc_list)
+        key = 'type'
+        count = len(input_desc_list[0][key])
+        self._check_number_match(key, count, input_desc_list)
+        self._check_number_match(key, count, output_desc_list)
+        key = 'shape'
+        count = len(input_desc_list[0][key])
+        self._check_number_match(key, count, input_desc_list)
+        self._check_number_match(key, count, output_desc_list)
+
+    def _check_value_number_valid_ms(self, input_desc_list, output_desc_list):
         key = 'type'
         count = len(input_desc_list[0][key])
         self._check_number_match(key, count, input_desc_list)
@@ -338,6 +413,8 @@ class CaseDesign:
         return total_case_list
 
     def _check_required_key_valid(self, json_obj, required_key_list, tensor):
+        if ST_MODE in json_obj:
+            required_key_list.append(ST_MODE)
         missing_keys = []
         for key in required_key_list:
             if key not in json_obj:
@@ -379,25 +456,45 @@ class CaseDesign:
                         utils.OP_TEST_GEN_INVALID_DATA_ERROR)
                 self.case_name_to_json_file_map[json_obj[CASE_NAME]] = json_path
 
-                input_desc_list = self._make_input_desc_list(json_obj)
-                output_desc_list = self._make_output_desc_list(json_obj)
-                attr_list = self._check_attr_valid(json_obj)
-                self._check_value_number_valid(
-                    input_desc_list, output_desc_list)
-                input_case_list = self._cross_tensor(
-                    input_desc_list, INPUT_CROSS_LIST)
-                output_case_list = self._cross_tensor(
-                    output_desc_list, OUTPUT_CROSS_LIST)
+                if ST_MODE in json_obj:
+                    input_desc_list = self._make_input_desc_list_ms(json_obj)
+                    output_desc_list = self._make_output_desc_list_ms(json_obj)
+                    attr_list = self._check_attr_valid(json_obj)
+                    self._check_value_number_valid_ms(input_desc_list,
+                                                      output_desc_list)
+                    input_case_list = self._cross_tensor(
+                        input_desc_list, MS_INPUT_CROSS_LIST)
+                    output_case_list = self._cross_tensor(
+                        output_desc_list, MS_OUTPUT_CROSS_LIST)
+                else:
+                    input_desc_list = self._make_input_desc_list(json_obj)
+                    output_desc_list = self._make_output_desc_list(json_obj)
+                    attr_list = self._check_attr_valid(json_obj)
+                    self._check_value_number_valid(
+                        input_desc_list, output_desc_list)
+                    input_case_list = self._cross_tensor(
+                        input_desc_list, INPUT_CROSS_LIST)
+                    output_case_list = self._cross_tensor(
+                        output_desc_list, OUTPUT_CROSS_LIST)
                 count = len(input_case_list[0])
                 prefix = json_obj[CASE_NAME].replace('/', '_') + '_'
                 if self.multi:
-                    prefix += 'sub_case_'
+                    if ST_MODE in json_obj:
+                        prefix += 'sub_'
+                    else:
+                        prefix += 'sub_case_'
                 else:
                     prefix += 'case_'
                 pyfile, function = self._check_expect_output_param(json_obj)
                 for index in range(count):
-                    case = {OP: json_obj[OP], INPUT_DESC: [], OUTPUT_DESC: [],
-                            'case_name': prefix + '%03d' % case_idx}
+                    if ST_MODE in json_obj:
+                        case = {OP: json_obj[OP], ST_MODE: json_obj[ST_MODE],
+                                INPUT_DESC: [], OUTPUT_DESC: [],
+                                'case_name': prefix + '%d' % case_idx}
+                    else:
+                        case = {OP: json_obj[OP],
+                                INPUT_DESC: [], OUTPUT_DESC: [],
+                                'case_name': prefix + '%03d' % case_idx}
                     if len(attr_list) > 0:
                         case[ATTR] = attr_list
                     for input_case in input_case_list:
