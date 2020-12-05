@@ -56,8 +56,21 @@ case2 = {"params": [{"shape": (144, 16, 16, 16), "dtype": "float16","format":"ND
          "format_expect": [],
          "support_expect": True}
 
+
+def test_get_op_support_info(test_arg):
+    from impl.fused_mul_apply_momentum import get_op_support_info
+    get_op_support_info({"shape": (144, 16, 16, 16), "dtype": "float16","format":"ND", "ori_format":"ND", "ori_shape":(144, 16, 16, 16)},
+                        {"shape": (144, 16, 16, 16), "dtype": "float16","format":"ND", "ori_format":"ND", "ori_shape":(144, 16, 16, 16)},
+                        {"shape": (1,), "dtype": "float16", "format":"ND", "ori_format":"ND", "ori_shape":(1,)},
+                        {"shape": (144, 16, 16, 16), "dtype": "float16","format":"ND", "ori_format":"ND", "ori_shape":(144, 16, 16, 16)},
+                        {"shape": (1,), "dtype": "float16", "format":"ND", "ori_format":"ND", "ori_shape":(1,)},
+                        {"shape": (1,), "dtype": "float16", "format":"ND", "ori_format":"ND", "ori_shape":(1,)},
+                        {"shape": (144, 16, 16, 16), "dtype": "float16","format":"ND", "ori_format":"ND", "ori_shape":(144, 16, 16, 16)},
+                        {"shape": (144, 16, 16, 16), "dtype": "float16","format":"ND", "ori_format":"ND", "ori_shape":(144, 16, 16, 16)}, True)
+
 ut_case.add_case(["Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend710", "Ascend910"], case2)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 
 ut_case.add_precision_case("Ascend910", {
     "params": [{"shape": (3,16,16,16), "dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (3,16,16,16), "param_type":"input"},

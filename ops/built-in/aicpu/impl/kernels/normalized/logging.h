@@ -14,32 +14,28 @@
  * limitations under the License.
  */
 
-#ifndef _AICPU_LESS_KERNELS_H_
-#define _AICPU_LESS_KERNELS_H_
+#ifndef AICPU_KERNELS_NORMALIZED_LOGGING_H_
+#define AICPU_KERNELS_NORMALIZED_LOGGING_H_
 
+#include <string>
 #include "cpu_kernel.h"
-
 namespace aicpu {
-
-class LessCpuKernel : public CpuKernel {
+class AssertCpuKernel : public CpuKernel {
  public:
-  ~LessCpuKernel() = default;
+  ~AssertCpuKernel() = default;
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t GetInputAndCheck(CpuKernelContext &ctx);
+  std::string SummarizeValue(Tensor &t, int64_t max_entries,
+                             const bool print_v2 = false);
   template <typename T>
-  uint32_t DoCompute();
-  template <typename T, const int32_t rank>
-  uint32_t DoRealCompute();
-  std::vector<int64_t> GetDimSize(std::shared_ptr<TensorShape> input_shape);
-  size_t GetSize(std::vector<int64_t> dim_size);
-
- private:
-  Tensor *x1_ = nullptr;
-  Tensor *x2_ = nullptr;
-  Tensor *y_ = nullptr;
-  int32_t x_dtype_;
+  std::string SummarizeArray(const int64_t limit, const int64_t num_elts,
+                             Tensor &t, const bool print_v2);
+  template <typename T>
+  void PrintOneDim(int dim_index, std::shared_ptr<TensorShape> shape,
+                   int64_t limit, int shape_size, const T *data,
+                   int64_t *data_index, std::string &result);
 };
-}  // namespace aicpu
-#endif
+}
+
+#endif  //AICPU_KERNELS_NORMALIZED_LOGGING_H_

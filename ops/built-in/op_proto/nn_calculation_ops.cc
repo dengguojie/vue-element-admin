@@ -1683,12 +1683,27 @@ static graphStatus VerifyConv2dbpInputCommon(const ge::Operator& op) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(Conv2DBackpropInputInfer)
+IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
   OP_LOGI(op.GetName().c_str(), "Enter Conv2DBackpropInput inferfunction!");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   std::vector<std::string> input_infer_depends = {"input_size"};
   op_desc->SetOpInferDepends(input_infer_depends);
   std::vector<int64_t> dy_sizes = op.GetInputDesc("out_backprop").GetShape().GetDims();
   bool is_dynamic = false;
+  if (std::find(dy_sizes.begin(), dy_sizes.end(), -2) != dy_sizes.end()) {
+    OP_LOGE(op.GetName().c_str(), "not support -2 in out_backprop.");
+    map<string, string> err_map;
+    err_map["param"] = "dy_sizes";
+    err_map["op_name"] = op.GetName().c_str();
+    err_map["expected_value"] = "positive or -1";
+    err_map["input_value"] = std::to_string(dy_sizes[0]) + " " + \
+                             std::to_string(dy_sizes[1]) + " " + \
+                             std::to_string(dy_sizes[2]) + " " + \
+                             std::to_string(dy_sizes[3]);
+    std::string report_error_code = "E50029";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return GRAPH_FAILED;
+  }
   // when static op or dynamic op phase_running, is_dynamic == False
   if (std::find(dy_sizes.begin(), dy_sizes.end(), -1) != dy_sizes.end()) {
     is_dynamic = true;
@@ -1791,7 +1806,8 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(Conv2DBackpropInputInfer)
   }
 
   OP_LOGI(op.GetName().c_str(), "Leaving Conv2DBackpropInput inferfunction!");
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 IMPLEMT_VERIFIER(Conv2DBackpropInput, Conv2DBackpropInputVerify) {
   OP_LOGI(op.GetName().c_str(), "Enter Conv2DBackpropInput verifyfunction!");
@@ -2018,8 +2034,9 @@ static graphStatus VerifyConv2dbpFilterCommon(const ge::Operator& op) {
   }
   return GRAPH_SUCCESS;
 }
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(Conv2DBackpropFilterInfer)
+IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
   OP_LOGI(op.GetName().c_str(), "Enter Conv2DBackpropFilter inferfunction!");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   std::vector<std::string> input_infer_depends = {"filter_size"};
   op_desc->SetOpInferDepends(input_infer_depends);
 
@@ -2066,11 +2083,40 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(Conv2DBackpropFilterInfer)
 
   std::vector<int64_t> x_sizes = op.GetInputDesc("x").GetShape().GetDims();
   Format x_format = op.GetInputDesc("x").GetFormat();
+  std::vector<int64_t> out_backprop_sizes = op.GetInputDesc("out_backprop").GetShape().GetDims();
   Format filter_format = y_desc.GetFormat();
   CHECK_FORMAT(x_format);
   CHECK_FORMAT(filter_format);
 
   bool is_dynamic = false;
+  if (std::find(x_sizes.begin(), x_sizes.end(), -2) != x_sizes.end()) {
+    OP_LOGE(op.GetName().c_str(), "not support -2 in fmap.");
+    map<string, string> err_map;
+    err_map["param"] = "x_sizes";
+    err_map["op_name"] = op.GetName().c_str();
+    err_map["expected_value"] = "positive or -1";
+    err_map["input_value"] = std::to_string(x_sizes[0]) + " " + \
+                             std::to_string(x_sizes[1]) + " " + \
+                             std::to_string(x_sizes[2]) + " " + \
+                             std::to_string(x_sizes[3]);
+    std::string report_error_code = "E50029";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return GRAPH_FAILED;
+  }
+  if (std::find(out_backprop_sizes.begin(), out_backprop_sizes.end(), -2) != out_backprop_sizes.end()) {
+    OP_LOGE(op.GetName().c_str(), "not support -2 in out_backprop.");
+    map<string, string> err_map;
+    err_map["param"] = "out_backprop_sizes";
+    err_map["op_name"] = op.GetName().c_str();
+    err_map["expected_value"] = "positive or -1";
+    err_map["input_value"] = std::to_string(out_backprop_sizes[0]) + " " + \
+                             std::to_string(out_backprop_sizes[1]) + " " + \
+                             std::to_string(out_backprop_sizes[2]) + " " + \
+                             std::to_string(out_backprop_sizes[3]);
+    std::string report_error_code = "E50029";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return GRAPH_FAILED;
+  }
   if (std::find(x_sizes.begin(), x_sizes.end(), -1) != x_sizes.end()) {
     is_dynamic = true;
   }
@@ -2092,7 +2138,8 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(Conv2DBackpropFilterInfer)
     OP_LOGD(op.GetName().c_str(), "Do not update pads in dynamic_shape");
   }
   OP_LOGI(op.GetName().c_str(), "Leaving Conv2DBackpropFilter inferfunction!");
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 IMPLEMT_VERIFIER(Conv2DBackpropFilter, Conv2DBackpropFilterVerify) {
   OP_LOGI(op.GetName().c_str(), "Enter Conv2DBackpropFilter verifyfunction!");
@@ -2453,13 +2500,115 @@ static bool GetAttrsConv2D(ge::Operator& op, Format refer, int32_t& strh, int32_
   return true;
 }
 
+static void SetConv2dOutShapeRange(const std::string& pad_str,
+                                   size_t idx,
+                                   const vector<int32_t>& attr_params,
+                                   const std::vector<std::pair<int64_t, int64_t>>& fm_range,
+                                   std::vector<std::pair<int64_t, int64_t>>& out_range) {
+  size_t attr_idx = 0;
+  int32_t stride = attr_params[attr_idx++];
+  int32_t dilation = attr_params[attr_idx++];
+  int32_t pad = attr_params[attr_idx++];
+  int32_t kernel = attr_params[attr_idx++];
+  int32_t low = fm_range[idx].first;
+  int32_t high = fm_range[idx].second;
+
+  if (low == 1 && high == -1) {
+    out_range[idx].first = low;
+    out_range[idx].second = high;
+  } else {
+    if (pad_str == "SAME") {
+      out_range[idx].first = (low + stride -1) / stride;
+      out_range[idx].second = (high + stride -1) / stride;
+    } else {
+      out_range[idx].first = (low + pad - dilation * (kernel - 1) - 1) / stride + 1;
+      out_range[idx].second = (high + pad - dilation * (kernel - 1) - 1) / stride + 1;
+    }
+  }
+}
+
+static bool SetConv2dOutShapeRange(op::Conv2D& op,
+                                   const vector<int32_t>& attr_params,
+                                   TensorDesc& y_tensor) {
+  auto x_tensor = op.GetInputDesc("x");
+  auto x_shape = x_tensor.GetShape().GetDims();
+  auto x_format = x_tensor.GetFormat();
+
+  size_t idx = 0;
+  int32_t strh = attr_params[idx++];
+  int32_t strw = attr_params[idx++];
+  int32_t dilh = attr_params[idx++];
+  int32_t dilw = attr_params[idx++];
+  int32_t padt = attr_params[idx++];
+  int32_t padb = attr_params[idx++];
+  int32_t padl = attr_params[idx++];
+  int32_t padr = attr_params[idx++];
+  int32_t kn = attr_params[idx++];
+  int32_t kh = attr_params[idx++];
+  int32_t kw = attr_params[idx++];
+
+  size_t idx_n = 0;
+  size_t idx_h = 0;
+  size_t idx_w = 0;
+  size_t idx_c = 0;
+  if (x_format == FORMAT_NHWC) {
+    idx_h = 1;
+    idx_w = 2;
+    idx_c = 3;
+  } else if (x_format == FORMAT_NCHW) {
+    idx_c = 1;
+    idx_h = 2;
+    idx_w = 3;
+  }
+
+  // update pads if padding is SAME
+  std::string pad_str;
+  if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME" && x_shape[idx_n] != -1) {
+    op.SetAttr("pads", {-1, -1, -1, -1});
+    OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in dynamic_shape");
+  }
+
+  OP_LOGD(op.GetName().c_str(), "dynamic shape set range");
+  std::vector<std::pair<int64_t, int64_t>> fm_range;
+  x_tensor.GetShapeRange(fm_range);
+  vector<int64_t> y_shape = y_tensor.GetShape().GetDims();
+  if (x_shape[idx_h] == -1) {
+    y_shape[idx_h] = -1;
+  }
+  if (x_shape[idx_w] == -1) {
+    y_shape[idx_w] = -1;
+  }
+  if (!fm_range.empty()) {
+    for (size_t i = 0; i < fm_range.size(); i++) {
+      OP_LOGD(op.GetName().c_str(), "fmap Range[%u] is (%lld, %lld)", i, fm_range[i].first, fm_range[i].second);
+    }
+
+    std::vector<std::pair<int64_t, int64_t>> out_range(fm_range);
+    out_range[idx_c] = std::make_pair((int64_t)kn, (int64_t)kn);
+    if (x_shape[idx_h] == -1) {
+      vector<int32_t> attr_params_h = {strh, dilh, padt + padb, kh};
+      SetConv2dOutShapeRange(pad_str, idx_h, attr_params_h, fm_range, out_range);
+    }
+    if (x_shape[idx_w] == -1) {
+      vector<int32_t> attr_params_w = {strw, dilw, padl + padr, kw};
+      SetConv2dOutShapeRange(pad_str, idx_w, attr_params_w, fm_range, out_range);
+    }
+    y_tensor.SetShapeRange(out_range);
+    for (size_t i = 0; i < out_range.size(); i++) {
+      OP_LOGD(op.GetName().c_str(), "output Range[%u] is (%lld, %lld)", i, out_range[i].first, out_range[i].second);
+    }
+  }
+  y_tensor.SetShape(Shape(y_shape));
+  return true;
+}
+
 /*!
   * @brief Infer output shape and dtype, dtype is same to first input tensor, Output
   *        format is set by ge parser process already.
   * @param Conv2DInfer Conv2D infershape function.
   * @return Status The processing flow result.
   */
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(Conv2DInfer)
+IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
   OP_LOGD(op.GetName().c_str(), "Enter Conv2DInfer.");
   auto x_tensor = op.GetInputDesc("x");
   auto w_tensor = op.GetInputDesc("filter");
@@ -2676,79 +2825,30 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(Conv2DInfer)
 
   // set Range
   bool is_dynamic = false;
+  if (std::find(x_shape.begin(), x_shape.end(), -2) != x_shape.end()) {
+    OP_LOGE(op.GetName().c_str(), "not support -2 in fmap.");
+    map<string, string> err_map;
+    err_map["param"] = "x_shape";
+    err_map["op_name"] = op.GetName().c_str();
+    err_map["expected_value"] = "positive or -1";
+    err_map["input_value"] = std::to_string(x_shape[0]) + " " + \
+                             std::to_string(x_shape[1]) + " " + \
+                             std::to_string(x_shape[2]) + " " + \
+                             std::to_string(x_shape[3]);
+    std::string report_error_code = "E50029";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return GRAPH_FAILED;
+  }
   // when static op or dynamic op phase_running, is_dynamic == False
   if (std::find(x_shape.begin(), x_shape.end(), -1) != x_shape.end()) {
     is_dynamic = true;
   }
   if (is_dynamic) {
-    size_t idx_n = 0;
-    size_t idx_h = 0;
-    size_t idx_w = 0;
-    size_t idx_c = 0;
-    if (x_format == FORMAT_NHWC) {
-      idx_h = 1;
-      idx_w = 2;
-      idx_c = 3;
-    } else if (x_format == FORMAT_NCHW) {
-      idx_c = 1;
-      idx_h = 2;
-      idx_w = 3;
-    }
-
-    // update pads if padding is SAME
-    std::string pad_str;
-    if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME" && x_shape[idx_n] != -1) {
-      op.SetAttr("pads", {-1, -1, -1, -1});
-      OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in dynamic_shape");
-    }
-
-    OP_LOGD(op.GetName().c_str(), "dynamic shape set range");
-    std::vector<std::pair<int64_t, int64_t>> fm_range;
-    x_tensor.GetShapeRange(fm_range);
-    if (fm_range.empty()) {
-      OP_LOGE(op.GetName().c_str(), "fm_range is empty.");
-      map<string, string> err_map;
-      err_map["op_name"] = op.GetName().c_str();
-      err_map["description"] = "fm_range is empty.";
-      std::string report_error_code = "E50058";
-      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    vector<int32_t> attr_params = {strh, strw,dilh, dilw,
+                                   padt, padb, padl, padr,
+                                   kn, kh, kw};
+    if (!SetConv2dOutShapeRange(op, attr_params, y_tensor)) {
       return GRAPH_FAILED;
-    }
-
-    for (size_t i = 0; i < fm_range.size(); i++) {
-      OP_LOGD(op.GetName().c_str(), "fmap Range[%u] is (%lld, %lld)", i, fm_range[i].first, fm_range[i].second);
-    }
-
-    std::vector<std::pair<int64_t, int64_t>> out_range(fm_range);
-    out_range[idx_c] = std::make_pair((int64_t)kn, (int64_t)kn);
-    if (x_shape[idx_h] == -1) {
-      y_shape[idx_h] = -1;
-      int64_t low_h = fm_range[idx_h].first;
-      int64_t high_h = fm_range[idx_h].second;
-      if (pad_str == "SAME") {
-        out_range[idx_h].first = (low_h + strh -1) / strh;
-        out_range[idx_h].second = (high_h + strh -1) / strh;
-      } else {
-        out_range[idx_h].first = (low_h + padt + padb - dilh * (kh - 1) - 1) / strh + 1;
-        out_range[idx_h].second = (high_h + padt + padb - dilh * (kh - 1) - 1) / strh + 1;
-      }
-    }
-    if (x_shape[idx_w] == -1) {
-      y_shape[idx_w] = -1;
-      int64_t low_w = fm_range[idx_w].first;
-      int64_t high_w = fm_range[idx_w].second;
-      if (pad_str == "SAME") {
-        out_range[idx_w].first = (low_w + strw -1) / strw;
-        out_range[idx_w].second = (high_w + strw -1) / strw;
-      } else {
-        out_range[idx_w].first = (low_w + padl + padr - dilw * (kw - 1) - 1) / strw + 1;
-        out_range[idx_w].second = (high_w + padl + padr - dilw * (kw - 1) - 1) / strw + 1;
-      }
-    }
-    y_tensor.SetShape(Shape(y_shape));
-    y_tensor.SetShapeRange(out_range);
-    for (size_t i = 0; i < out_range.size(); i++) {
-      OP_LOGD(op.GetName().c_str(), "output Range[%u] is (%lld, %lld)", i, out_range[i].first, out_range[i].second);
     }
   }
 
@@ -2763,7 +2863,8 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(Conv2DInfer)
   }
 
   OP_LOGD(op.GetName().c_str(), "Leave Conv2DInfer.");
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 /*!
   * @brief Verify the required 2 input tensor, optional bias ignored, verify
@@ -4276,6 +4377,28 @@ static bool GetPadConv3D(ge::Operator& op, int32_t id, int32_t ih, int32_t iw,
   padb = pad_vec[3];
   padl = pad_vec[4];
   padr = pad_vec[5];
+
+  auto x_shape = op.GetInputDesc("x").GetShape().GetDims();
+  bool is_dynamic = std::find(x_shape.begin(), x_shape.end(), -1) != x_shape.end();
+  bool negative_pad = (padf < 0 || padba < 0 || padt < 0 || padb < 0 || padl < 0 || padr < 0);
+  // dynamic shape pad maybe negative
+  if ((!is_dynamic) && negative_pad) {
+    OP_LOGE(op.GetName().c_str(), "pads should be positive");
+    map<std::string, std::string> err_map;
+    err_map["param_name"] = "pads_list";
+    err_map["op_name"] = "Conv3d";
+    err_map["excepted_value"] = "positive";
+    err_map["input_value"] = std::to_string(padf) + " " + \
+                             std::to_string(padba) + " " + \
+                             std::to_string(padt) + " " + \
+                             std::to_string(padb) + " " + \
+                             std::to_string(padl) + " " + \
+                             std::to_string(padr);
+    std::string report_error_code = "E50029";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return false;
+  }
+
   return true;
 }
 
@@ -4352,7 +4475,167 @@ static bool GetAttrsConv3D(ge::Operator& op, Format refer,  int32_t& strd,
 
   return true;
 }
-IMPLEMT_INFERFUNC_HELPER_BEGIN(Conv3D, Conv3DInfer)
+
+static void SetConv3dOutShapeDimRange(const std::string& padding,
+                                      size_t idx,
+                                      map<std::string, int32_t>& attr_params,
+                                      const std::vector<std::pair<int64_t, int64_t>>& fm_range,
+                                      std::vector<std::pair<int64_t, int64_t>>& out_range) {
+  int32_t stride = attr_params["stride"];
+  int32_t dilation = attr_params["dilation"];
+  int32_t pad = attr_params["pad"];
+  int32_t kernel = attr_params["kernel"];
+  int64_t low = fm_range[idx].first;
+  int64_t high = fm_range[idx].second;
+  if (low == 1 && high == -1) {
+    out_range[idx].first = low;
+    out_range[idx].second = high;
+  } else {
+    if (padding == "SAME") {
+      out_range[idx].first = (low + stride - 1) / stride;
+      out_range[idx].second = (high + stride - 1) / stride;
+    } else {
+      out_range[idx].first = (low + pad - dilation * (kernel - 1) - 1) / stride + 1;
+      out_range[idx].second = (high + pad - dilation * (kernel - 1) - 1) / stride + 1;
+    }
+  }
+}
+
+static bool SetConv3dOutShapeRange(op::Conv3D& op,
+                                   map<std::string, int32_t>& attr_params,
+                                   TensorDesc& y_tensor) {
+  auto x_tensor = op.get_input_desc_x();
+  auto x_shape = x_tensor.GetShape().GetDims();
+  if (std::find(x_shape.begin(), x_shape.end(), -2) != x_shape.end()) {
+    OP_LOGE(op.GetName().c_str(), "not support -2 in fmap");
+    map<std::string, std::string> err_map;
+    err_map["param_name"] = "x_shape";
+    err_map["op_name"] = "Conv3d";
+    err_map["excepted_value"] = "positive or -1";
+    err_map["input_value"] = std::to_string(x_shape[0]) + " " + \
+                             std::to_string(x_shape[1]) + " " + \
+                             std::to_string(x_shape[2]) + " " + \
+                             std::to_string(x_shape[3]) + " " + \
+                             std::to_string(x_shape[4]);
+    std::string report_error_code = "E50029";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return false;
+  }
+
+  bool is_dynamic = std::find(x_shape.begin(), x_shape.end(), -1) != x_shape.end();
+  if (!is_dynamic) {
+    return true;
+  }
+
+  int32_t strd = attr_params["strd"];
+  int32_t strh = attr_params["strh"];
+  int32_t strw = attr_params["strw"];
+  int32_t dild = attr_params["dild"];
+  int32_t dilh = attr_params["dilh"];
+  int32_t dilw = attr_params["dilw"];
+  int32_t padf = attr_params["padf"];
+  int32_t padba = attr_params["padba"];
+  int32_t padt = attr_params["padt"];
+  int32_t padb = attr_params["padb"];
+  int32_t padl = attr_params["padl"];
+  int32_t padr = attr_params["padr"];
+  int32_t kn = attr_params["kn"];
+  int32_t kd = attr_params["kd"];
+  int32_t kh = attr_params["kh"];
+  int32_t kw = attr_params["kw"];
+
+  // default format: NDHWC
+  size_t idx_n = 0;
+  size_t idx_d = 1;
+  size_t idx_h = 2;
+  size_t idx_w = 3;
+  size_t idx_c = 4;
+  if (op.get_input_desc_x().GetFormat() == FORMAT_NCDHW) {
+    idx_c = 1;
+    idx_d = 2;
+    idx_h = 3;
+    idx_w = 4;
+  }
+
+  // update pads if padding is SAME
+  std::string padding;
+  if ((op.GetAttr("padding", padding) == GRAPH_SUCCESS) && (padding == "SAME") && (x_shape[idx_n] != -1)) {
+    op.SetAttr("pads", {-1, -1, -1, -1, -1, -1});
+    OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1, -1, -1} when padding is SAME in dynamic_shape");
+  }
+
+  OP_LOGD(op.GetName().c_str(), "dynamic shape set range");
+  std::vector<std::pair<int64_t, int64_t>> fm_range;
+  x_tensor.GetShapeRange(fm_range);
+  vector<int64_t> y_shape = y_tensor.GetShape().GetDims();
+  if (fm_range.empty()) {
+    OP_LOGW(op.GetName().c_str(), "fm_range's shape is empty.");
+    if (x_shape[idx_d] == -1) {
+      y_shape[idx_d] = -1;
+    }
+
+    if (x_shape[idx_h] == -1) {
+      y_shape[idx_h] = -1;
+    }
+
+    if (x_shape[idx_w] == -1) {
+      y_shape[idx_w] = -1;
+    }
+    // op will check this invalid range
+    return true;
+  }
+
+  if (fm_range.size() != kConv3dInputSizeLimit) {
+    OP_LOGE(op.GetName().c_str(), "fm_range's shape should be 5d.");
+    map<std::string, std::string> err_map;
+    err_map["param_name"] = "fm_range";
+    err_map["op_name"] = "Conv3DInfer";
+    err_map["excepted_value"] = std::to_string(kConv3dInputSizeLimit);
+    err_map["input_value"] = std::to_string(fm_range.size());
+    std::string report_error_code = "E50029";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return false;
+  }
+
+  std::vector<std::pair<int64_t, int64_t>> out_range(fm_range);
+  out_range[idx_c] = std::make_pair(static_cast<int64_t>(kn), static_cast<int64_t>(kn));
+  if (x_shape[idx_d] == -1) {
+    y_shape[idx_d] = -1;
+    map<std::string, int32_t> attr_params_d = {
+      {"stride", strd}, {"dilation", dild},
+      {"pad", padf + padba}, {"kernel", kd}
+    };
+    // attr_params_d data structure should keep same as SetConv3dOutShapeDimRange
+    SetConv3dOutShapeDimRange(padding, idx_d, attr_params_d, fm_range, out_range);
+  }
+
+  if (x_shape[idx_h] == -1) {
+    y_shape[idx_h] = -1;
+    map<std::string, int32_t> attr_params_h = {
+      {"stride", strh}, {"dilation", dilh},
+      {"pad", padt + padb}, {"kernel", kh}
+    };
+    // attr_params_h data structure should keep same as SetConv3dOutShapeDimRange
+    SetConv3dOutShapeDimRange(padding, idx_h, attr_params_h, fm_range, out_range);
+  }
+
+  if (x_shape[idx_w] == -1) {
+    y_shape[idx_w] = -1;
+    map<std::string, int32_t> attr_params_w = {
+      {"stride", strw}, {"dilation", dilw},
+      {"pad", padl + padr}, {"kernel", kw}
+    };
+    // attr_params_w data structure should keep same as SetConv3dOutShapeDimRange
+    SetConv3dOutShapeDimRange(padding, idx_w, attr_params_w, fm_range, out_range);
+  }
+
+  y_tensor.SetShape(Shape(y_shape));
+  y_tensor.SetShapeRange(out_range);
+
+  return true;
+}
+
+IMPLEMT_INFERFUNC(Conv3D, Conv3DInfer) {
   OP_LOGD(op.GetName().c_str(), "Enter Conv3DInfer.");
 
   auto x_tensor = op.get_input_desc_x();
@@ -4488,31 +4771,6 @@ IMPLEMT_INFERFUNC_HELPER_BEGIN(Conv3D, Conv3DInfer)
     return GRAPH_FAILED;
   }
 
-  bool is_dynamic = false;
-  if (std::find(x_shape.begin(), x_shape.end(), -1) != x_shape.end()) {
-    is_dynamic = true;
-  }
-
-  // dynamic shape pad maybe negative
-  if (!is_dynamic) {
-    if (padf < 0 || padba < 0 || padt < 0 || padb < 0 || padl < 0 || padr < 0) {
-        OP_LOGE(op.GetName().c_str(), "pads should be positive");
-        map<std::string, std::string> err_map;
-        err_map["param_name"] = "pads_list";
-        err_map["op_name"] = "Conv3d";
-        err_map["excepted_value"] = "positive";
-        err_map["input_value"] = std::to_string(padf) + " " + \
-                                  std::to_string(padba) + " " + \
-                                  std::to_string(padt) + " " + \
-                                  std::to_string(padb) + " " + \
-                                  std::to_string(padl) + " " + \
-                                  std::to_string(padr);
-        std::string report_error_code = "E50029";
-        ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-        return GRAPH_FAILED;
-    }
-  }
-
   int64_t od = (id + padf + padba - dild * (kd - 1) - 1) / strd + 1;
   int64_t oh = (ih + padt + padb - dilh * (kh - 1) - 1) / strh + 1;
   int64_t ow = (iw + padl + padr - dilw * (kw - 1) - 1) / strw + 1;
@@ -4548,98 +4806,17 @@ IMPLEMT_INFERFUNC_HELPER_BEGIN(Conv3D, Conv3DInfer)
   auto x_dtype = x_tensor.GetDataType();
   y_tensor.SetDataType(x_dtype);
 
-  // set range
-  if (is_dynamic) {
-    size_t idx_n = 0;
-    size_t idx_d = 0;
-    size_t idx_h = 0;
-    size_t idx_w = 0;
-    size_t idx_c = 0;
-    if (x_format == FORMAT_NDHWC) {
-      idx_d = 1;
-      idx_h = 2;
-      idx_w = 3;
-      idx_c = 4;
-    } else if (x_format == FORMAT_NCDHW) {
-      idx_c = 1;
-      idx_d = 2;
-      idx_h = 3;
-      idx_w = 4;
-    }
-
-    // update pads if padding is SAME
-    std::string padding;
-    if (GRAPH_SUCCESS == op.GetAttr("padding", padding) && padding == "SAME" && x_shape[idx_n] != -1) {
-      op.SetAttr("pads", {-1, -1, -1, -1, -1, -1});
-      OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1, -1, -1} when padding is SAME in dynamic_shape");
-    }
-
-    OP_LOGD(op.GetName().c_str(), "dynamic shape set range");
-    std::vector<std::pair<int64_t, int64_t>> fm_range;
-    x_tensor.GetShapeRange(fm_range);
-    if (fm_range.size() != kConv3dInputSizeLimit) {
-      OP_LOGE(op.GetName().c_str(), "fm_range's shape should be 5d.");
-      map<std::string, std::string> err_map;
-      err_map["param_name"] = "fm_range";
-      err_map["op_name"] = "Conv3DInfer";
-      err_map["excepted_value"] = std::to_string(kConv3dInputSizeLimit);
-      err_map["input_value"] = std::to_string(fm_range.size());
-      std::string report_error_code = "E50029";
-      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-      return GRAPH_FAILED;
-    }
-
-    for (size_t i = 0; i < fm_range.size(); ++i) {
-      OP_LOGD(op.GetName().c_str(), "fmap Range[%zu] is (%lld, %lld)", i, fm_range[i].first, fm_range[i].second);
-    }
-
-    std::vector<std::pair<int64_t, int64_t>> out_range(fm_range);
-    out_range[idx_c] = std::make_pair(static_cast<int64_t>(kn), static_cast<int64_t>(kn));
-    if (x_shape[idx_d] == -1) {
-      y_shape[idx_d] = -1;
-      int64_t low_d = fm_range[idx_d].first;
-      int64_t high_d = fm_range[idx_d].second;
-      if (padding == "SAME") {
-        out_range[idx_d].first = (low_d + strd - 1) / strd;
-        out_range[idx_d].second = (high_d + strd - 1) / strd;
-      } else {
-        out_range[idx_d].first = (low_d + padf + padba - dild * (kd - 1) - 1) / strd + 1;
-        out_range[idx_d].second = (high_d + padf + padba - dild * (kd - 1) - 1) / strd + 1;
-      }
-    }
-
-    if (x_shape[idx_h] == -1) {
-      y_shape[idx_h] = -1;
-      int64_t low_h = fm_range[idx_h].first;
-      int64_t high_h = fm_range[idx_h].second;
-      if (padding == "SAME") {
-        out_range[idx_h].first = (low_h + strh - 1) / strh;
-        out_range[idx_h].second = (high_h + strh - 1) / strh;
-      } else {
-        out_range[idx_h].first = (low_h + padt + padb - dilh * (kh - 1) - 1) / strh + 1;
-        out_range[idx_h].second = (high_h + padt + padb - dilh * (kh - 1) - 1) / strh + 1;
-      }
-    }
-
-    if (x_shape[idx_w] == -1) {
-      y_shape[idx_w] = -1;
-      int64_t low_w = fm_range[idx_w].first;
-      int64_t high_w = fm_range[idx_w].second;
-      if (padding == "SAME") {
-        out_range[idx_w].first = (low_w + strw - 1) / strw;
-        out_range[idx_w].second = (high_w + strw - 1) / strw;
-      } else {
-        out_range[idx_w].first = (low_w + padl + padr - dilw * (kw - 1) - 1) / strw + 1;
-        out_range[idx_w].second = (high_w + padl + padr - dilw * (kw - 1) - 1) / strw + 1;
-      }
-    }
-
-    y_tensor.SetShape(Shape(y_shape));
-    y_tensor.SetShapeRange(out_range);
-
-    for (size_t i = 0; i < out_range.size(); ++i) {
-      OP_LOGD(op.GetName().c_str(), "out Range[%zu] is (%lld, %lld)", i, out_range[i].first, out_range[i].second);
-    }
+  // set dynamic out range
+  map<std::string, int32_t> attr_params = {
+    {"strd", strd}, {"strh", strh}, {"strw", strw},
+    {"dild", dild}, {"dilh", dilh}, {"dilw", dilw},
+    {"padf", padf}, {"padba", padba}, {"padt", padt},
+    {"padb", padb}, {"padl", padl}, {"padr", padr},
+    {"kn", kn}, {"kd", kd}, {"kh", kh}, {"kw", kw}
+  };
+  // attr_params data structure should keep same as SetConv3dOutShapeRange
+  if (!SetConv3dOutShapeRange(op, attr_params, y_tensor)) {
+    return GRAPH_FAILED;
   }
 
   if (GRAPH_SUCCESS != op.update_output_desc_y(y_tensor)) {
@@ -4654,7 +4831,8 @@ IMPLEMT_INFERFUNC_HELPER_BEGIN(Conv3D, Conv3DInfer)
     return GRAPH_FAILED;
   }
   OP_LOGD(op.GetName().c_str(), "Leave Conv3DInfer.");
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 static void InferHWConv3d(int32_t kernel,
                           int32_t dilation,

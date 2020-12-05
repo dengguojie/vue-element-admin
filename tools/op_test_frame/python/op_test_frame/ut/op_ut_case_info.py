@@ -39,7 +39,8 @@ class OpUTSuite:
     """
 
     def __init__(self, soc, soc_suite: TestSuite, test_res_trace_hook,  # pylint: disable=too-many-arguments
-                 test_data_dir_hook, dump_model_dir_hook, simulator_mode_hook, op_type=None):
+                 test_data_dir_hook, dump_model_dir_hook, simulator_mode_hook,
+                 op_type=None, simulator_lib_path_hook=None):
         self.soc = soc
         self.op_type = op_type
         self.soc_suite = soc_suite
@@ -47,6 +48,7 @@ class OpUTSuite:
         self._test_data_dir_hook = test_data_dir_hook
         self._dump_model_dir_hook = dump_model_dir_hook
         self._simulator_mode_hook = simulator_mode_hook
+        self._simulator_lib_path_hook = simulator_lib_path_hook
 
     def clear_test_trace(self):
         """
@@ -86,6 +88,8 @@ class OpUTSuite:
         """
         self._simulator_mode_hook.insert(0, simulator_mode)
 
+    def set_simulator_lib_path(self, simulator_lib_path):
+        self._simulator_lib_path_hook.insert(0, simulator_lib_path)
 
 class CaseUsage(Enum):
     """

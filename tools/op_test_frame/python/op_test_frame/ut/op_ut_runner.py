@@ -145,6 +145,7 @@ def _run_ut_case_file(run_arg: RunUTCaseFileArgs):
             soc_case.clear_test_trace()
             soc_case.set_test_data_dir(run_arg.data_dir)
             soc_case.set_dump_model_dir(run_arg.dump_model_dir)
+            soc_case.set_simulator_lib_path(run_arg.simulator_lib_path)
             if run_arg.simulator_mode:
                 soc_case.set_simulator_mode(run_arg.simulator_mode)
         case_runner = OpUTTestRunner(print_summary=False, simulator_mode=run_arg.simulator_mode,

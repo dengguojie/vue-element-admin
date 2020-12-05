@@ -21,12 +21,68 @@ from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 # compute needed,scalar -1
 SCALAR_MINUS_ONE = -1
 
 # limit of input dimvalue
 MAX_SHAPE_NUM = 10000000
+
+
+# pylint: disable=unused-argument
+def get_op_support_info(input_features,
+                        input_labels,
+                        output_loss,
+                        output_backprop,
+                        kernel_name="softmax_cross_entropy_with_logits"):
+    """
+    get softmax_cross_entropy_with_logits slice info
+    """
+    shape_features = input_features.get("shape")
+    shape_labels = input_labels.get("shape")
+
+    def _get_split_info(idx):
+        """
+        get split_info
+        """
+        if shape_features[idx] == shape_labels[idx]:
+            split_info = [SplitInput([0, [idx], [-1], [-1]], [1, [idx], [-1], [-1]]),
+                          SplitOutput([0, [idx]], [1, [idx]])]
+        elif shape_features[idx] != shape_labels[idx]:
+            if shape_features[idx] == 1:
+                split_info = [SplitInput([1, [idx], [-1], [-1]]),
+                              SplitOutput([0, [idx]], [1, [idx]])]
+            elif shape_labels[idx] == 1:
+                split_info = [SplitInput([0, [idx], [-1], [-1]]),
+                              SplitOutput([0, [idx]], [1, [idx]])]
+            else:
+                split_info = None
+        return split_info
+
+    if len(shape_features) == 4 and len(shape_labels) == 4:
+        axis_split_list = []
+        for idx, _ in enumerate(shape_features):
+            if idx == 1:
+                continue
+            split_info = _get_split_info(idx)
+            if split_info is not None:
+                axis_split_list.append(split_info)
+    elif len(shape_features) <= 2 and len(shape_labels) <= 2:
+        if len(shape_features) == 1 and len(shape_labels) == 1:
+            axis_split_list = None
+        else:
+            axis_split_list = []
+            split_info = _get_split_info(0)
+            if split_info is not None:
+                axis_split_list.append(split_info)
+    else:
+        axis_split_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_list, None, 0, 0)
+
+    return op_cal_info_in_json
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name

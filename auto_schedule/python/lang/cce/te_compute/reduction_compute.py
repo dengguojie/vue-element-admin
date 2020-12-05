@@ -23,9 +23,9 @@ from te.lang.base import operation
 from te.platform import intrinsic_check_support
 from te.platform import get_soc_spec
 from te.utils.error_manager.error_manager_util import get_error_message
+from te.utils.shape_util import shape_to_list
 from .cast_compute import _cast
 from .elewise_compute import vmuls
-from .util import shape_to_list
 from .util import refine_axis
 from .util import is_cast_support
 from .util import check_input_tensor_shape

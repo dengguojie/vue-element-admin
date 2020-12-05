@@ -18,11 +18,11 @@ segment compute
 import warnings
 
 from te import tvm
+from te.utils.shape_util import shape_to_list
 
 from .broadcast_compute import broadcast
 from .elewise_compute import __binary_elewise_op
 from .util import dtype_check_decorator
-from .util import shape_to_list
 from .util import check_input_tensor_shape
 
 

@@ -98,4 +98,52 @@ void Bcast::GetBcastVec(CalcInfo &calc_info) {
   calc_info.bcast_0 = std::move(x_bcast_);
   calc_info.bcast_1 = std::move(y_bcast_);
 }
+
+void Bcast::BCastIndexes(std::vector<int64_t> &x_indexes,
+                         std::vector<int64_t> &y_indexes) {
+  std::reverse(x_reshape_.begin(), x_reshape_.end());
+  std::reverse(y_reshape_.begin(), y_reshape_.end());
+  std::reverse(shape_out_.begin(), shape_out_.end());
+
+  // Process 0-th dimension
+  int64_t x_dim = 1;
+  int64_t y_dim = 1;
+  int64_t out_dim = 1;
+
+  // If x and y are both scalar, then shape_out_ is empty
+  if (!shape_out_.empty()) {
+    x_dim = x_reshape_.at(0);
+    y_dim = y_reshape_.at(0);
+    out_dim = shape_out_.at(0);
+  }
+
+  int64_t x_bias = x_dim;
+  int64_t y_bias = y_dim;
+
+  for (int64_t i = 0; i < out_dim; i++) {
+    x_indexes.push_back(x_dim == 1 ? 0 : i);
+    y_indexes.push_back(y_dim == 1 ? 0 : i);
+  }
+
+  // Process the remaining dimensions
+  for (size_t i = 1; i < shape_out_.size(); i++) {
+    x_dim = x_reshape_.at(i);    // i-th dimension of x.
+    y_dim = y_reshape_.at(i);    // i-th dimension of y.
+    out_dim = shape_out_.at(i);  // i-th dimension of shape_out_.
+
+    int64_t stride = x_indexes.size();
+    for (int64_t j = 1; j < out_dim; j++) {
+      for (int64_t k = 0; k < stride; k++) {
+        x_indexes.push_back(x_indexes.at(k) + (x_dim == 1 ? 0 : (j * x_bias)));
+        y_indexes.push_back(y_indexes.at(k) + (y_dim == 1 ? 0 : (j * y_bias)));
+      }
+    }
+    x_bias *= x_dim;
+    y_bias *= y_dim;
+  }
+
+  std::reverse(x_reshape_.begin(), x_reshape_.end());
+  std::reverse(y_reshape_.begin(), y_reshape_.end());
+  std::reverse(shape_out_.begin(), shape_out_.end());
+}
 }  // namespace aicpu

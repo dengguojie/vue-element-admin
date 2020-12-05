@@ -196,7 +196,7 @@ def _update_mutiples_with_format(input_foramt, input_ori_format, mutiples):
             format_idx = ("N", "C", "H", "W", "one")
         elif input_foramt == "FRACTAL_Z":
             format_idx = ("C", "H", "W", "N", "one", "one")
-        elif input_foramt == "NDC1HWC0":
+        elif input_foramt == "FRACTAL_Z_3D":
             format_idx = ("D", "C", "H", "W", "N", "one", "one")
 
         mutiples = [_multiples_dict[key] for key in format_idx]

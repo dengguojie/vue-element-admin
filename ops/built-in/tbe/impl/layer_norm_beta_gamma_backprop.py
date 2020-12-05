@@ -24,12 +24,57 @@ from impl.util import util_select_op_base
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 # General limitation of the size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
 
 # Minimum positive number greater than 0
 EPSLON = 1e-12
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(input_dy, input_x, input_variance,
+                                   input_mean, output_pd_gamma,
+                                   output_pd_beta, shape_gamma,
+                                   kernel_name="layer_norm_beta_"
+                                               "gamma_backprop"):
+    """
+    get_op_support_info
+    """
+    shape_x = input_x.get("shape")
+    shape_mean = input_mean.get("shape")
+    format_dy = input_dy.get("format").upper()
+    if format_dy in ("ND", "NCHW", "NHWC", "NC1HWC0"):
+        if len(shape_x) == len(shape_gamma):
+            axis_split_matrix = []
+            flag = -1
+            for i, (xtem, mean) in enumerate(zip(shape_x, shape_mean)):
+                if xtem != mean:
+                    flag = i
+                    break
+            if flag == -1:
+                for i in range(len(shape_x)-1):
+                    split_0 = [SplitInput([0, [i], [-1], [-1]], [1, [i], [-1], [-1]], [2, [i], [-1], [-1]], \
+                                          [3, [i], [-1], [-1]]),\
+                               SplitOutput([0, [i]], [1, [i]])]
+                    axis_split_matrix.append(split_0)
+            else:
+                for i in range(flag):
+                    split_0 = [SplitInput([0, [i], [-1], [-1]], [1, [i], [-1], [-1]], [2, [i], [-1], [-1]], \
+                                          [3, [i], [-1], [-1]]),\
+                               SplitOutput([0, [i]], [1, [i]])]
+                    axis_split_matrix.append(split_0)
+        else:
+            axis_split_matrix = None
+
+    else:
+        axis_split_matrix = None
+    axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-arguments

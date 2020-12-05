@@ -1,301 +1,108 @@
+#include "gtest/gtest.h"
 #ifndef private
 #define private public
 #define protected public
 #endif
-#include "gtest/gtest.h"
-#include "mockcpp/mockcpp.hpp"
-#include <mockcpp/ChainingMockHelper.h>
-#include "cpu_kernel.h"
-#include "status.h"
-#include "cpu_types.h"
-#include "node_def_builder.h"
+#include "aicpu_test_utils.h"
 #include "cpu_kernel_utils.h"
+#include "node_def_builder.h"
+#undef private
+#undef protected
 #include "Eigen/Core"
-#include "unsupported/Eigen/CXX11/Tensor"
 
 using namespace std;
 using namespace aicpu;
 
-class TEST_LOGGING_KERNEL_UTest : public testing::Test {
- protected:
-  virtual void SetUp() {}
+class TEST_LOGGING_UT : public testing::Test {};
 
-  virtual void TearDown() {
-    GlobalMockObject::verify();
+#define CREATE_NODEDEF(shapes, data_types, datas, sum)                  \
+  auto node_def = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();      \
+  NodeDefBuilder(node_def.get(), "Assert", "Assert")                    \
+      .Input({"input_condition", data_types[0], shapes[0], datas[0]})   \
+      .Input({"input_data", data_types[1], shapes[1], datas[1]})        \
+      .Attr("summarize", sum);
+
+#define ADD_CASE(base_type, aicpu_type, condition, shapes, num, sum_attr)    \
+  TEST_F(TEST_LOGGING_UT, Test_##aicpu_type##condition##num##sum_attr) {     \
+    size_t input0 = shapes[0].size();                                        \
+    size_t dims = shapes[1].size();                                          \
+    vector<DataType> data_types = {DT_BOOL, aicpu_type};                     \
+    base_type input[num];                                                    \
+    SetRandomValue<base_type>(input, num);                                   \
+    vector<void *> datas = {(void *)&condition, (void *)input};              \
+    CREATE_NODEDEF(shapes, data_types, datas, sum_attr);                     \
+    uint32_t re = KERNEL_STATUS_OK;                                          \
+    if (!condition) { re = KERNEL_STATUS_PARAM_INVALID; }                    \
+    if (input0 != 0) { re = KERNEL_STATUS_PARAM_INVALID; }                   \
+    RUN_KERNEL(node_def, HOST, re);                                          \
   }
-};
 
-TEST_F(TEST_LOGGING_KERNEL_UTest, AssertInt8) {
-  cout<<"Test int8 assert kernel begin."<<endl;
-  bool input_condition = false;
-  int8_t input_data[4] = {1, 2, 3, 4};
-
-  auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-  NodeDefBuilder(nodeDef.get(), "Assert", "Assert")
-      .Input({"input_condition", DT_BOOL, {}, (void *)&input_condition})
-      .Input({"input_data", DT_INT8, {4}, (void *)input_data})
-      .Attr("summarize", 3);
-
-  CpuKernelContext ctx(HOST);
-  EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-  EXPECT_EQ(CpuKernelRegister::Instance().RunCpuKernel(ctx), KERNEL_STATUS_OK);
-
-  cout<<"Test assert kernel "<<nodeDef->GetOpType()<<" Finish. "<<endl;
+TEST_F(TEST_LOGGING_UT, ExpInputNull) {
+  vector<DataType> data_types = {DT_BOOL, DT_INT32};
+  bool input0 = false;
+  vector<vector<int64_t>> shapes = {{}, {2, 11}};
+  vector<void *> datas = {(void *)&input0, (void *)nullptr};
+  CREATE_NODEDEF(shapes, data_types, datas, 3);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
 }
 
-TEST_F(TEST_LOGGING_KERNEL_UTest, AssertInt8Dim2) {
-  cout<<"Test Int8Dim2 assert kernel begin."<<endl;
-  bool input_condition = false;
-  int8_t input_data[4] = {1, 2, 3, 4};
-
-  auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-  NodeDefBuilder(nodeDef.get(), "Assert", "Assert")
-      .Input({"input_condition", DT_BOOL, {}, (void *)&input_condition})
-      .Input({"input_data", DT_INT8, {2, 2}, (void *)input_data})
-      .Attr("summarize", 4);
-
-  CpuKernelContext ctx(HOST);
-  EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-  EXPECT_EQ(CpuKernelRegister::Instance().RunCpuKernel(ctx), KERNEL_STATUS_OK);
-
-  cout<<"Test assert kernel "<<nodeDef->GetOpType()<<" Finish. "<<endl;
+TEST_F(TEST_LOGGING_UT, InputString) {
+  vector<DataType> data_types = {DT_BOOL, DT_STRING};
+  bool input0 = false;
+  string input1[4] = {"input","is","string","type"};
+  vector<vector<int64_t>> shapes = {{}, {2, 2}};
+  vector<void *> datas = {(void *)&input0, (void *)input1};
+  CREATE_NODEDEF(shapes, data_types, datas, 3);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
 }
 
-TEST_F(TEST_LOGGING_KERNEL_UTest, AssertInt8Dim3) {
-  cout<<"Test Int8Dim3 assert kernel begin."<<endl;
-  bool input_condition = false;
-  int8_t input_data[12] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+bool input_condition_true = true;
+bool input_condition_false = false;
+vector<vector<int64_t>> input_shapes1 = {{}, {4}};
+ADD_CASE(int8_t, DT_INT8, input_condition_true, input_shapes1, 4, 3)
+ADD_CASE(int8_t, DT_INT8, input_condition_false, input_shapes1, 4, 3)
 
-  auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-  NodeDefBuilder(nodeDef.get(), "Assert", "Assert")
-      .Input({"input_condition", DT_BOOL, {}, (void *)&input_condition})
-      .Input({"input_data", DT_INT8, {1, 3, 4}, (void *)input_data})
-      .Attr("summarize", 20);
+ADD_CASE(bool, DT_BOOL, input_condition_true, input_shapes1, 4, 3)
+ADD_CASE(bool, DT_BOOL, input_condition_false, input_shapes1, 4, 3)
 
-  CpuKernelContext ctx(HOST);
-  EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-  EXPECT_EQ(CpuKernelRegister::Instance().RunCpuKernel(ctx), KERNEL_STATUS_OK);
+vector<vector<int64_t>> input_shapes2 = {{}, {2, 2}};
+ADD_CASE(uint8_t, DT_UINT8, input_condition_true, input_shapes2, 4, 4)
+ADD_CASE(uint8_t, DT_UINT8, input_condition_false, input_shapes2, 4, 4)
 
-  cout<<"Test assert kernel "<<nodeDef->GetOpType()<<" Finish. "<<endl;
-}
+vector<vector<int64_t>> input_shapes3 = {{}, {1, 3, 4}};
+ADD_CASE(int32_t, DT_INT32, input_condition_true, input_shapes3, 12, 20)
+ADD_CASE(int32_t, DT_INT32, input_condition_false, input_shapes3, 12, 20)
 
-TEST_F(TEST_LOGGING_KERNEL_UTest, AssertInt8Dim4) {
-  cout<<"Test Int8Dim4 assert kernel begin."<<endl;
-  bool input_condition = false;
-  int8_t input_data[12] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+vector<vector<int64_t>> input_shapes4 = {{}, {2, 2, 2, 3}};
+ADD_CASE(int64_t, DT_INT64, input_condition_true, input_shapes4, 24, 20)
+ADD_CASE(int64_t, DT_INT64, input_condition_false, input_shapes4, 24, 20)
 
-  auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-  NodeDefBuilder(nodeDef.get(), "Assert", "Assert")
-      .Input({"input_condition", DT_BOOL, {}, (void *)&input_condition})
-      .Input({"input_data", DT_INT8, {2, 2, 3}, (void *)input_data})
-      .Attr("summarize", 20);
+vector<vector<int64_t>> input_shapes5 = {{}, {4}};
+ADD_CASE(float, DT_FLOAT, input_condition_true, input_shapes5, 4, 4)
+ADD_CASE(float, DT_FLOAT, input_condition_false, input_shapes5, 4, 4)
 
-  CpuKernelContext ctx(HOST);
-  EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-  EXPECT_EQ(CpuKernelRegister::Instance().RunCpuKernel(ctx), KERNEL_STATUS_OK);
+ADD_CASE(Eigen::half, DT_FLOAT16, input_condition_true, input_shapes5, 4, 2)
+ADD_CASE(Eigen::half, DT_FLOAT16, input_condition_false, input_shapes5, 4, 2)
 
-  cout<<"Test assert kernel "<<nodeDef->GetOpType()<<" Finish. "<<endl;
-}
+vector<vector<int64_t>> input_shapes6 = {{}, {4, 1}};
+ADD_CASE(double, DT_DOUBLE, input_condition_true, input_shapes6, 4, 4)
+ADD_CASE(double, DT_DOUBLE, input_condition_false, input_shapes6, 4, 4)
 
-TEST_F(TEST_LOGGING_KERNEL_UTest, Assertfloat) {
-  cout<<"Test float assert kernel begin."<<endl;
-  bool input_condition = false;
-  float input_data[4] = {1.0, 2.1, 3.0, 4.7};
+vector<vector<int64_t>> input_shapes7 = {{}, {2, 2, 2}};
+ADD_CASE(uint32_t, DT_UINT32, input_condition_true, input_shapes7, 8, 10)
+ADD_CASE(uint32_t, DT_UINT32, input_condition_false, input_shapes7, 8, 10)
 
-  auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-  NodeDefBuilder(nodeDef.get(), "Assert", "Assert")
-      .Input({"input_condition", DT_BOOL, {}, (void *)&input_condition})
-      .Input({"input_data", DT_FLOAT, {4}, (void *)input_data})
-      .Attr("summarize", 4);
+vector<vector<int64_t>> input_shapes8 = {{}, {2, 2, 1, 4}};
+ADD_CASE(uint64_t, DT_UINT64, input_condition_true, input_shapes8, 16, 20)
+ADD_CASE(uint64_t, DT_UINT64, input_condition_false, input_shapes8, 16, 20)
 
-  CpuKernelContext ctx(HOST);
-  EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-  EXPECT_EQ(CpuKernelRegister::Instance().RunCpuKernel(ctx), KERNEL_STATUS_OK);
+ADD_CASE(int16_t, DT_INT16, input_condition_true, input_shapes8, 16, 16)
+ADD_CASE(int16_t, DT_INT16, input_condition_false, input_shapes8, 16, 16)
 
-  cout<<"Test assert kernel "<<nodeDef->GetOpType()<<" Finish. "<<endl;
-}
+vector<vector<int64_t>> input_shapes9 = {{}, {2, 2, 1, 4}};
+ADD_CASE(uint16_t, DT_UINT16, input_condition_true, input_shapes9, 16, 10)
+ADD_CASE(uint16_t, DT_UINT16, input_condition_false, input_shapes9, 16, 10)
 
-TEST_F(TEST_LOGGING_KERNEL_UTest, Assertfloat16) {
-  cout<<"Test float assert kernel begin."<<endl;
-  bool input_condition = false;
-  std::vector<Eigen::half> input_data;
-  for(int i = 0; i < 4; i++){
-    input_data.push_back(static_cast<Eigen::half>(i));
-  }
-  auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-  NodeDefBuilder(nodeDef.get(), "Assert", "Assert")
-      .Input({"input_condition", DT_BOOL, {}, (void *)&input_condition})
-      .Input({"input_data", DT_FLOAT16, {4}, (void *)input_data.data()})
-      .Attr("summarize", 4);
-
-  CpuKernelContext ctx(HOST);
-  EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-  EXPECT_EQ(CpuKernelRegister::Instance().RunCpuKernel(ctx), KERNEL_STATUS_OK);
-
-  cout<<"Test assert kernel "<<nodeDef->GetOpType()<<" Finish. "<<endl;
-}
-
-TEST_F(TEST_LOGGING_KERNEL_UTest, Assertfloat16Dim2) {
-  cout<<"Test float assert kernel begin."<<endl;
-  bool input_condition = false;
-  std::vector<Eigen::half> input_data;
-  for(int i = 0; i < 4; i++){
-    input_data.push_back(static_cast<Eigen::half>(i));
-  }
-  auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-  NodeDefBuilder(nodeDef.get(), "Assert", "Assert")
-      .Input({"input_condition", DT_BOOL, {}, (void *)&input_condition})
-      .Input({"input_data", DT_FLOAT16, {4, 1}, (void *)input_data.data()})
-      .Attr("summarize", 4);
-
-  CpuKernelContext ctx(HOST);
-  EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-  EXPECT_EQ(CpuKernelRegister::Instance().RunCpuKernel(ctx), KERNEL_STATUS_OK);
-
-  cout<<"Test assert kernel "<<nodeDef->GetOpType()<<" Finish. "<<endl;
-}
-
-TEST_F(TEST_LOGGING_KERNEL_UTest, Assertfloat16Dim3) {
-  cout<<"Test float assert kernel begin."<<endl;
-  bool input_condition = false;
-  std::vector<Eigen::half> input_data;
-  for(int i = 0; i < 8; i++){
-    input_data.push_back(static_cast<Eigen::half>(i));
-  }
-  auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-  NodeDefBuilder(nodeDef.get(), "Assert", "Assert")
-      .Input({"input_condition", DT_BOOL, {}, (void *)&input_condition})
-      .Input({"input_data", DT_FLOAT16, {2, 2, 2}, (void *)input_data.data()})
-      .Attr("summarize", 10);
-
-  CpuKernelContext ctx(HOST);
-  EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-  EXPECT_EQ(CpuKernelRegister::Instance().RunCpuKernel(ctx), KERNEL_STATUS_OK);
-
-  cout<<"Test assert kernel "<<nodeDef->GetOpType()<<" Finish. "<<endl;
-}
-
-TEST_F(TEST_LOGGING_KERNEL_UTest, Assertfloat16Dim4) {
-  cout<<"Test float assert kernel begin."<<endl;
-  bool input_condition = false;
-  std::vector<Eigen::half> input_data;
-  for(int i = 0; i < 16; i++){
-    input_data.push_back(static_cast<Eigen::half>(i));
-  }
-  auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-  NodeDefBuilder(nodeDef.get(), "Assert", "Assert")
-      .Input({"input_condition", DT_BOOL, {}, (void *)&input_condition})
-      .Input({"input_data", DT_FLOAT16, {2, 2, 1, 4}, (void *)input_data.data()})
-      .Attr("summarize", 20);
-
-  CpuKernelContext ctx(HOST);
-  EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-  EXPECT_EQ(CpuKernelRegister::Instance().RunCpuKernel(ctx), KERNEL_STATUS_OK);
-
-  cout<<"Test assert kernel "<<nodeDef->GetOpType()<<" Finish. "<<endl;
-}
-
-TEST_F(TEST_LOGGING_KERNEL_UTest, AssertInputConditionTrue) {
-  cout<<"Test float assert kernel begin."<<endl;
-  bool input_condition = true;
-  std::vector<Eigen::half> input_data;
-  for(int i = 0; i < 16; i++){
-    input_data.push_back(static_cast<Eigen::half>(i));
-  }
-  auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-  NodeDefBuilder(nodeDef.get(), "Assert", "Assert")
-      .Input({"input_condition", DT_BOOL, {}, (void *)&input_condition})
-      .Input({"input_data", DT_FLOAT16, {2, 2, 1, 4}, (void *)input_data.data()})
-      .Attr("summarize", 20);
-
-  CpuKernelContext ctx(HOST);
-  EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-  EXPECT_EQ(CpuKernelRegister::Instance().RunCpuKernel(ctx), KERNEL_STATUS_OK);
-
-  cout<<"Test assert kernel "<<nodeDef->GetOpType()<<" Finish. "<<endl;
-}
-
-TEST_F(TEST_LOGGING_KERNEL_UTest, AssertInputConditionNoScalar) {
-  cout<<"Test float assert kernel begin."<<endl;
-  bool input_condition = true;
-  std::vector<Eigen::half> input_data;
-  for(int i = 0; i < 16; i++){
-    input_data.push_back(static_cast<Eigen::half>(i));
-  }
-  auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-  NodeDefBuilder(nodeDef.get(), "Assert", "Assert")
-      .Input({"input_condition", DT_BOOL, {1}, (void *)&input_condition})
-      .Input({"input_data", DT_FLOAT16, {2, 2, 1, 4}, (void *)input_data.data()})
-      .Attr("summarize", 20);
-
-  CpuKernelContext ctx(HOST);
-  EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-  EXPECT_EQ(CpuKernelRegister::Instance().RunCpuKernel(ctx), KERNEL_STATUS_PARAM_INVALID);
-
-  cout<<"Test assert kernel "<<nodeDef->GetOpType()<<" Finish. "<<endl;
-}
-
-TEST_F(TEST_LOGGING_KERNEL_UTest, AssertInputData2) {
-  cout<<"Test float assert kernel begin."<<endl;
-  bool input_condition = false;
-  int32_t input_data1[8] = {10, 20, 30, 40, 50, 60, 70, 80};
-  int8_t input_data2[8] = {1, 2, 3, 4, 5, 6, 7, 8};
-  double input_data3[8] = {1.1, 2.1, 3.1, 4.1, 5.1, 6.1, 7.1, 8.1};
-  int16_t input_data4[8] = {100, 200, 300, 400, 500, 600, 700, 800};
-  uint64_t input_data5[8] = {1, 2, 3, 4, 5, 6, 7, 8};
-  bool input_data6[8] = {true, false, true, false, false, true, false, true};
-  auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-  NodeDefBuilder(nodeDef.get(), "Assert", "Assert")
-      .Input({"input_condition", DT_BOOL, {}, (void *)&input_condition})
-      .Input({"input_data", DT_INT32, {2, 4}, (void *)input_data1})
-      .Input({"input_data", DT_INT8, {2, 2, 2}, (void *)input_data2})
-      .Input({"input_data", DT_DOUBLE, {8, 1}, (void *)input_data3})
-      .Input({"input_data", DT_UINT32, {8, 1}, (void *)input_data1})
-      .Input({"input_data", DT_UINT8, {8, 1}, (void *)input_data2})
-      .Input({"input_data", DT_INT16, {4, 2}, (void *)input_data4})
-      .Input({"input_data", DT_UINT16, {4, 2}, (void *)input_data4})
-      .Input({"input_data", DT_UINT64, {4, 2}, (void *)input_data5})
-      .Input({"input_data", DT_INT64, {1, 8}, (void *)input_data5})
-      .Input({"input_data", DT_BOOL, {1, 8}, (void *)input_data6})
-      .Attr("summarize", 20);
-
-  CpuKernelContext ctx(HOST);
-  EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-  EXPECT_EQ(CpuKernelRegister::Instance().RunCpuKernel(ctx), KERNEL_STATUS_OK);
-
-  cout<<"Test assert kernel "<<nodeDef->GetOpType()<<" Finish. "<<endl;
-}
-
-TEST_F(TEST_LOGGING_KERNEL_UTest, AssertInputString) {
-  cout<<"Test float assert kernel begin."<<endl;
-  bool input_condition = false;
-  std::string input_data[8] = {"Test", "logging", "kernel", "utest", "assert", "input", "string"};
-  auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-  NodeDefBuilder(nodeDef.get(), "Assert", "Assert")
-      .Input({"input_condition", DT_BOOL, {}, (void *)&input_condition})
-      .Input({"input_data", DT_STRING, {8}, (void *)input_data})
-      .Attr("summarize", 6);
-
-  CpuKernelContext ctx(HOST);
-  EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-  EXPECT_EQ(CpuKernelRegister::Instance().RunCpuKernel(ctx), KERNEL_STATUS_OK);
-
-  cout<<"Test assert kernel "<<nodeDef->GetOpType()<<" Finish. "<<endl;
-}
-
-TEST_F(TEST_LOGGING_KERNEL_UTest, AssertInputNotSupport) {
-  cout<<"Test float assert kernel begin."<<endl;
-  bool input_condition = false;
-  std::string input_data[8] = {"Assert", "Input", "Not", "Support"};
-  auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-  NodeDefBuilder(nodeDef.get(), "Assert", "Assert")
-      .Input({"input_condition", DT_BOOL, {}, (void *)&input_condition})
-      .Input({"input_data", DT_DUAL, {2, 4}, (void *)input_data})
-      .Attr("summarize", 6);
-
-  CpuKernelContext ctx(HOST);
-  EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-  EXPECT_EQ(CpuKernelRegister::Instance().RunCpuKernel(ctx), KERNEL_STATUS_OK);
-
-  cout<<"Test assert kernel "<<nodeDef->GetOpType()<<" Finish. "<<endl;
-}
+vector<vector<int64_t>> input_shapes10 = {{1}, {2, 3}};
+ADD_CASE(uint16_t, DT_UINT16, input_condition_true, input_shapes10, 6, 6)
+ADD_CASE(uint16_t, DT_UINT16, input_condition_false, input_shapes10, 6, 6)

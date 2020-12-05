@@ -3527,7 +3527,8 @@ class CceConvOp:
                 al1_m = int_ceil_div_tvm(al1_m_raw, l0c_m0)*l0c_m0
 
             if not l0a_load2d_flag:
-                if al1_m % w_out == 0:
+                if al1_m % w_out == 0 or \
+                        (tiling.get("block_dim")[2] == 1 and not tiling['AL1_shape']):
                     extend_h = 0
                 elif al1_m*2 % w_out == 0:
                     extend_h = 1

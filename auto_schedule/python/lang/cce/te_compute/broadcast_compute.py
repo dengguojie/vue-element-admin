@@ -19,9 +19,9 @@ from te import tvm
 from te.lang.base import operation
 from te.lang.base.expr_compare import expr_equal as equal
 from te.utils.error_manager.error_manager_util import get_error_message
+from te.utils.shape_util import shape_to_list
 from .util import dtype_check_decorator
 from .util import judge_var
-from .util import shape_to_list
 from .util import check_input_tensor_shape
 
 NAME_INDEX = [0]

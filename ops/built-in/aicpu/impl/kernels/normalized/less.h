@@ -14,30 +14,28 @@
  * limitations under the License.
  */
 
-#ifndef _AICPU_LOGGING_KERNELS_H_
-#define _AICPU_LOGGING_KERNELS_H_
+#ifndef AICPU_KERNELS_NORMALIZED_LESS_H_
+#define AICPU_KERNELS_NORMALIZED_LESS_H_
 
-#include <string>
 #include "cpu_kernel.h"
+#include "utils/bcast.h"
+
 namespace aicpu {
-class AssertCpuKernel : public CpuKernel {
+
+class LessCpuKernel : public CpuKernel {
  public:
-  ~AssertCpuKernel() = default;
+  LessCpuKernel() = default;
+  ~LessCpuKernel() override = default;
+
+ protected:
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t summarize_ = 0;
+  template <typename T>
+  static uint32_t LessCompute(CpuKernelContext &ctx);
+
+  template <typename T>
+  static uint32_t LessCalculate(CpuKernelContext &ctx, CalcInfo &calc_info);
 };
-
-static std::string SummarizeValue(Tensor &t, int64_t max_entries,
-                                  bool print_v2 = false);
-template <typename T>
-static std::string SummarizeArray(int64_t limit, int64_t num_elts, Tensor &t,
-                                  bool print_v2);
-template <typename T>
-void PrintOneDim(int dim_index, std::shared_ptr<TensorShape> shape,
-                 int64_t limit, int shape_size, const T *data,
-                 int64_t *data_index, std::string &result);
-}
-
-#endif  //_AICPU_LOGGING_KERNELS_H_
+}  // namespace aicpu
+#endif

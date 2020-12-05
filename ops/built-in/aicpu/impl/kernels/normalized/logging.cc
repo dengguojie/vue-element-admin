@@ -14,60 +14,69 @@
  * limitations under the License.
  */
 
-#include "logging_kernels.h"
+#include "logging.h"
 #include <stdint.h>
 #include "Eigen/Core"
+#include "unsupported/Eigen/CXX11/Tensor"
 #include "cpu_tensor_shape.h"
 #include "cpu_types.h"
 #include "log.h"
 #include "status.h"
-#include "unsupported/Eigen/CXX11/Tensor"
 
 using namespace std;
 
 namespace {
-const char *ASSERT = "Assert";
+const char *kAssert = "Assert";
+
+template <typename T>
+string PrintOneElement(const T &elt) {
+  return to_string(elt);
+}
+
+string PrintOneElement(const Eigen::half &elt) {
+  return to_string(static_cast<float>(elt));
+}
+
+string PrintOneElement(const string &elt) {
+  return elt;
+}
+
 }
 
 namespace aicpu {
 uint32_t AssertCpuKernel::Compute(aicpu::CpuKernelContext &ctx) {
   Tensor *cond = ctx.Input(0);
-  if (cond == nullptr) {
-    KERNEL_LOG_ERROR("AssertCpuKernel: Input condition is empty.");
-    return KERNEL_STATUS_PARAM_INVALID;
-  }
-  KERNEL_LOG_INFO("AssertCpuKernel compute begin.");
-  if ((cond->GetTensorShape() != nullptr) &&
-      (cond->GetTensorShape()->GetDims() != 0)) {
-    KERNEL_LOG_ERROR("In[0] should be a scalar: %u",
-                     cond->GetTensorShape()->GetFormat());
-    return KERNEL_STATUS_PARAM_INVALID;
-  }
+  KERNEL_CHECK_NULLPTR(cond, KERNEL_STATUS_PARAM_INVALID,
+                       "Get input 0 failed.")
+  KERNEL_CHECK_FALSE((cond->GetTensorShape()->GetDims() == 0),
+                     KERNEL_STATUS_PARAM_INVALID,
+                     "Input 0 should be a scalar.")
   bool *cond_val = reinterpret_cast<bool *>(cond->GetData());
   if ((cond_val != nullptr) && (*cond_val)) {
+    KERNEL_LOG_INFO("AssertCpuKernel compute end, op_name=Assert");
     return KERNEL_STATUS_OK;
   }
-  if (ctx.GetAttr("summarize") == nullptr) {
-    KERNEL_LOG_ERROR("AssertCpuKernel: summarize attr is empty.");
-    return KERNEL_STATUS_PARAM_INVALID;
-  }
-  summarize_ = ctx.GetAttr("summarize")->GetInt();
+
+  auto sum_attr = ctx.GetAttr("summarize");
+  KERNEL_CHECK_NULLPTR(sum_attr, KERNEL_STATUS_PARAM_INVALID,
+                       "Get summarize attr failed.")
+  uint32_t sum= sum_attr->GetInt();
+  // assert fail info, the value printed depends on the attribute summarize
   string msg = "assertion failed: ";
   for (uint32_t i = 1; i < ctx.GetInputsSize(); ++i) {
     msg.append("[");
-    msg.append(SummarizeValue(*(ctx.Input(i)), summarize_));
+    msg.append(SummarizeValue(*(ctx.Input(i)), sum));
     msg.append("]");
     if (i < ctx.GetInputsSize() - 1) {
       msg.append(" ");
     }
   }
-  KERNEL_LOG_ERROR("%s", msg.c_str());
-  KERNEL_LOG_INFO("AssertCpuKernel compute end.");
-  return KERNEL_STATUS_OK;
+  KERNEL_LOG_ERROR("op_name=Assert, [%s]", msg.c_str());
+  return KERNEL_STATUS_PARAM_INVALID;
 }
-REGISTER_CPU_KERNEL(ASSERT, AssertCpuKernel);
 
-static string SummarizeValue(Tensor &t, int64_t max_entries, bool print_v2) {
+string AssertCpuKernel::SummarizeValue(Tensor &t, int64_t max_entries,
+                             const bool print_v2) {
   const int64_t num_elts = t.NumElements();
   if (max_entries < 0) {
     max_entries = num_elts;
@@ -116,29 +125,22 @@ static string SummarizeValue(Tensor &t, int64_t max_entries, bool print_v2) {
       for (size_t i = 0; i < limit; ++i) {
         ret.append(" ?");
       }
-      if (max_entries < num_elts) ret.append("...");
+      if (max_entries < num_elts) {
+        ret.append("...");
+      }
       return ret;
     }
   }
 }
 
-template <typename T>
-string PrintOneElement(const T &elt) {
-  return to_string(elt);
-}
-
-string PrintOneElement(const Eigen::half &elt) {
-  return to_string(static_cast<float>(elt));
-}
-
-string PrintOneElement(const string &elt) { return elt; }
-
 // Print from left dim to right dim recursively.
 template <typename T>
-void PrintOneDim(int dim_index, std::shared_ptr<TensorShape> shape,
+void AssertCpuKernel::PrintOneDim(int dim_index, std::shared_ptr<TensorShape> shape,
                  int64_t limit, int shape_size, const T *data,
                  int64_t *data_index, string &result) {
-  if (*data_index >= limit) return;
+  if (*data_index >= limit) {
+    return;
+  }
   int64_t element_count = shape->GetDimSize(dim_index);
   // We have reached the right-most dimension of the tensor.
   if (dim_index == shape_size - 1) {
@@ -150,7 +152,9 @@ void PrintOneDim(int dim_index, std::shared_ptr<TensorShape> shape,
         }
         return;
       }
-      if (i > 0) result.append(" ");
+      if (i > 0) {
+        result.append(" ");
+      }
       result.append(PrintOneElement(data[(*data_index)++]));
     }
     return;
@@ -173,8 +177,8 @@ void PrintOneDim(int dim_index, std::shared_ptr<TensorShape> shape,
 }
 
 template <typename T>
-static string SummarizeArray(int64_t limit, int64_t num_elts, Tensor &t,
-                             const bool print_v2) {
+string AssertCpuKernel::SummarizeArray(const int64_t limit, const int64_t num_elts,
+                             Tensor &t, const bool print_v2) {
   string ret;
   const T *array = reinterpret_cast<const T *>(t.GetData());
   std::shared_ptr<TensorShape> shape = t.GetTensorShape();
@@ -183,12 +187,17 @@ static string SummarizeArray(int64_t limit, int64_t num_elts, Tensor &t,
       if (i > 0) ret.append(" ");
       ret.append(PrintOneElement(array[i]));
     }
-    if (num_elts > limit) ret.append("...");
+    if (num_elts > limit) {
+      ret.append("...");
+    }
     return ret;
   }
   int64_t data_index = 0;
   PrintOneDim(0, shape, limit, shape->GetDims(), array, &data_index, ret);
-  if (num_elts > limit) ret.append("...");
+  if (num_elts > limit) {
+    ret.append("...");
+  }
   return ret;
 }
+REGISTER_CPU_KERNEL(kAssert, AssertCpuKernel);
 }

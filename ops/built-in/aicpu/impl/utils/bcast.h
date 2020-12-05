@@ -30,6 +30,8 @@ struct CalcInfo {
   std::vector<int64_t> shape_out;
   std::vector<int64_t> bcast_0;
   std::vector<int64_t> bcast_1;
+  std::vector<int64_t> x_indexes;
+  std::vector<int64_t> y_indexes;
 };
 
 class Bcast {
@@ -39,6 +41,8 @@ class Bcast {
 
   uint32_t GenerateBcastInfo(const CalcInfo &calc_info);
   void GetBcastVec(CalcInfo &calc_info);
+  void BCastIndexes(std::vector<int64_t> &x_indexes,
+                    std::vector<int64_t> &y_indexes);
 
  private:
   std::vector<int64_t> x_reshape_;

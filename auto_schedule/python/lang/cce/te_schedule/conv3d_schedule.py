@@ -669,13 +669,6 @@ class CceConv3dOp:
             tiling["BL0_matrix"] = tiling_new["BL0_matrix"][0:4]
             tiling["BL0_matrix"][
                 1] = tiling["BL0_matrix"][1] * tiling_new["BL0_matrix"][-1]
-        # Fixed L0B exceed buffer Problem
-        elif tiling_new["BL0_matrix"] == [] and real_g != 1:
-            k_b = cin1_g * kernel_h * kernel_w * TILING_FLOAT16_MKN
-            k_0 = tbe_platform.CUBE_MKN[w_dtype]['mac'][1]
-            n_0 = tbe_platform.CUBE_MKN[w_dtype]['mac'][2]
-            n_block_dim = tiling_new["block_dim"][1]
-            tiling["BL0_matrix"] = [k_b, cout_g // n_block_dim, k_0, n_0]
 
         tiling["manual_pingpong_buffer"] = tiling_new["manual_pingpong_buffer"]
         tiling["n_bef_batch_flag"] = tiling_new["n_bef_batch_flag"]
@@ -776,8 +769,8 @@ class CceConv3dOp:
 
         def _g_dim_tiling():
             # g_dim
-            if (tiling_new["BUB_shape"] == None
-                    or tiling_new["BUB_shape"][0] == None
+            if (tiling_new["BUB_shape"] is None
+                    or tiling_new["BUB_shape"][0] is None
                     or tiling_new["BUB_shape"][0] == 0):
                 tiling["g_dim"] = 1
             else:
@@ -921,12 +914,8 @@ class CceConv3dOp:
 
         real_g = self._tensor_map["group_dict"]["real_g"]
         if tiling["BL1_shape"] is not None:
-            # Split BL1
-            _, bl1_axis1 = sch[bl1].split(sch[bl1].op.axis[0], nparts=real_g)
-            sch[bl1].emit_insn(bl1_axis1, 'dma_copy')
-        # Split BL0
-        _, bl0_axis1 = sch[bl0].split(bl0.op.axis[0], nparts=real_g)
-        sch[bl0].emit_insn(bl0_axis1, 'dma_copy')
+            sch[bl1].emit_insn(sch[bl1].op.axis[0], 'dma_copy')
+        sch[bl0].emit_insn(bl0.op.axis[0], 'dma_copy')
 
         sch[c_ub].emit_insn(c_ub.op.axis[0], 'dma_copy')
         sch[c_col].emit_insn(cn_axis, 'mad', mad_dict)
@@ -981,7 +970,7 @@ class CceConv3dOp:
                     self._schedule[compute_at_buffer[2]], compute_at_axis[2])
             else:
                 self._schedule[lop["cache_buffer"]].compute_at(
-                    self._schedule[compute_at_buffer[0]], compute_at_axis[0])
+                    self._schedule[compute_at_buffer[0]], compute_at_axis[1])
 
     def _to_pragma(self, bodyops, inputops, c_outer_inner_inner):
         """
@@ -1252,6 +1241,7 @@ class CceConv3dOp:
         kernel_d = c_ub.op.attrs['kernel_d']
 
         fmap_w = fmap.shape[-2] if fmap.op.input_tensors else fmap.op.shape[-2]
+        fmap_cin1_ori = fmap.shape[2] if fmap.op.input_tensors else fmap.op.shape[2]
         stride_w = c_ub.op.attrs['stride'][1]
         if self.dynamic_mode == "dynamic_dhw":
             w_out = self.var_map.get("w_out")
@@ -1444,22 +1434,24 @@ class CceConv3dOp:
             al1_at_c_axis = batch_inner_inner
             sch[res_c].reorder(batch_outer, c_outer_g_outer,
                                c_outer_outer_outer_outer,
-                               m_outer_outer_outer_outer, batch_inner_outer,
+                               m_outer_outer_outer_outer,
                                c_outer_g_inner,
+                               batch_inner_outer,
                                c_outer_outer_outer_inner,
                                m_outer_outer_outer_inner, batch_inner_inner)
             cycbuf_axis = batch_inner_outer
         else:
             sch[res_c].reorder(batch_outer, c_outer_g_outer,
                                c_outer_outer_outer_outer,
-                               m_outer_outer_outer_outer, batch_inner,
+                               m_outer_outer_outer_outer,
                                c_outer_g_inner,
+                               batch_inner,
                                c_outer_outer_outer_inner,
                                m_outer_outer_outer_inner)
             cycbuf_axis = batch_inner
 
         mc_flag = False
-        blocks = block_dim[0] * block_dim[1] * block_dim[2]
+        blocks = block_dim[0] * block_dim[1] * block_dim[2] * tiling["g_dim"]
         if blocks != 1:
             batch_cout_fused = sch[res_c].fuse(batch_outer,
                                                c_outer_g_outer,
@@ -1513,10 +1505,11 @@ class CceConv3dOp:
         def _n_buffer_tile():
             # get C index from fused axis
             c_oooo = (block // block_dim[2]) % block_dim[1]
-            factor_oooo = res_c.shape[1].value // block_dim[1]
+            factor_oooo = res_c.shape[1].value // group_dict["real_g"] // block_dim[1]
             # factor of c_outer_outer_inner is the size of loop c_outer_outer_outer_inner and Nc
-            factor_ooi = bl1_factor[1] // block_dim[1] * tiling["CL0_matrix"][0]
-            n_axis = c_oooo * factor_oooo + c_outer_outer_inner * factor_ooi + c_outer_outer_outer_inner * \
+            factor_oooi = res_c.shape[1].value // group_dict["real_g"] // c_tiling_factor[0] // \
+                          bl1_factor[1] * tiling["CL0_matrix"][0]
+            n_axis = c_oooo * factor_oooo + c_outer_outer_outer_inner * factor_oooi + c_outer_outer_inner * \
                      tiling["CL0_matrix"][0]
             n_extent = tiling["CL0_matrix"][0]
             # The last two axis seems to be reduce K axis
@@ -1524,7 +1517,7 @@ class CceConv3dOp:
                                    (n_axis, n_extent), (None, None),
                                    (None, None), (None, None), (None, None))
 
-        _n_buffer_tile()
+        # This is not used for now : _n_buffer_tile()
 
         def _bias_compute_at():
             if 'bias' in tensor_map.keys() and opti_flag:
@@ -1619,23 +1612,72 @@ class CceConv3dOp:
                               run_once_al1_axis, allocate_al1_axis,
                               index_al1_dict, buffer_dict, stage)
 
-        def _k_buffer_tile():
-            factor_oooo = group_dict["cin1_g"] * kernel_d // min(al1_factor[0],
-                                                                 bl1_factor[0])
-            factor_oooi = group_dict["cin1_g"] * kernel_d // max(al1_factor[0],
-                                                                 bl1_factor[0])
-            if al1_factor[0] > bl1_factor[0]:
-                k_axis = k_outer_outer_outer_outer * factor_oooo + k_outer_outer_outer_inner * factor_oooi
-            else:
-                k_axis = k_outer_outer_outer_outer * factor_oooo
-
-            if al1_factor[0] != 1 and not l0a_load2d_flag and not self.dynamic_mode:
+        def _k_buffer_tile_group_up_1():
+            g_block_axis = (block // (block_dim[1] * block_dim[2]) % tiling["g_dim"]) * \
+                           (group_dict["real_g"] // tiling["g_dim"]) + c_outer_g_inner
+            if group_dict["cin1_g"] % tiling["AL1_shape"][0] == 0:
+                k_al1_value = group_dict["cin1_g"] // tiling["AL1_shape"][0]
+                if al1_factor[0] > bl1_factor[0]:
+                    k_outer_axis = k_outer_outer_outer_outer * (al1_factor[0] // bl1_factor[0]) + \
+                                   k_outer_outer_outer_inner
+                else:
+                    k_outer_axis = k_outer_outer_outer_outer
+                k_axis = (g_block_axis * group_dict["cin1_g"] + (k_outer_axis // k_al1_value) * fmap_cin1_ori + \
+                          k_outer_axis % k_al1_value * tiling["AL1_shape"][0])
                 extent = tiling["AL1_shape"][0]
+            else:
+                k_al1_value = te_util.int_ceil_div(kernel_d * group_dict["cin1_g"] // al1_factor[0],
+                                                   group_dict["cin1_g"])
+                k_al1_mod =kernel_d * group_dict["cin1_g"] // al1_factor[0] % group_dict["cin1_g"]
+                if al1_factor[0] > bl1_factor[0]:
+                    k_outer_axis = k_outer_outer_outer_outer * (al1_factor[0] // bl1_factor[0]) + \
+                                   k_outer_outer_outer_inner
+                    if k_al1_mod.value == 0:
+                        extent = (k_al1_value - 1) * fmap_cin1_ori + group_dict["cin1_g"]
+                        k_axis = g_block_axis * group_dict["cin1_g"] + k_outer_axis * \
+                                 (k_al1_value * fmap_cin1_ori)
+                    else:
+                        extent = (k_al1_value - 1) * fmap_cin1_ori + k_al1_mod
+                        cin1_ori_num = te_util.int_ceil_div(extent * k_al1_value, fmap_cin1_ori)
+                        k_axis = g_block_axis * group_dict["cin1_g"] + k_outer_axis % k_al1_value * extent + \
+                                 (k_outer_axis // k_al1_value) * cin1_ori_num * fmap_cin1_ori
+                else:
+                    k_outer_axis = k_outer_outer_outer_outer
+                    if k_al1_mod.value == 0:
+                        extent = (k_al1_value - 1) * fmap_cin1_ori + group_dict["cin1_g"]
+                        k_axis = g_block_axis * group_dict["cin1_g"] + k_outer_axis * \
+                                 (k_al1_value * fmap_cin1_ori)
+                    else:
+                        extent = (k_al1_value - 1) * fmap_cin1_ori + k_al1_mod
+                        cin1_ori_num = te_util.int_ceil_div(extent * k_al1_value, fmap_cin1_ori)
+                        k_axis = g_block_axis * group_dict["cin1_g"] + k_outer_axis % k_al1_value * extent + \
+                                 (k_outer_axis // k_al1_value) * cin1_ori_num * fmap_cin1_ori
+            return k_axis, extent
+
+
+        def _k_buffer_tile():
+            if al1_factor[0] != 1 and not l0a_load2d_flag and not self.dynamic_mode:
+                factor_oooo = group_dict["cin1_g"] * kernel_d // min(al1_factor[0],
+                                                                 bl1_factor[0])
+                factor_oooi = group_dict["cin1_g"] * kernel_d // max(al1_factor[0],
+                                                                    bl1_factor[0])
+                if group_dict["real_g"] > 1:
+                    k_axis, extent = _k_buffer_tile_group_up_1()
+                else:
+                    if al1_factor[0] > bl1_factor[0]:
+                        k_axis = k_outer_outer_outer_outer * factor_oooo + k_outer_outer_outer_inner * factor_oooi
+                    else:
+                        k_axis = k_outer_outer_outer_outer * factor_oooo
+                    extent = tiling["AL1_shape"][0]
+
                 if nbuffer_flag_al1:
-                    k_axis = k_outer_outer_outer_outer * factor_oooo + k_outer_outer_outer_inner * factor_oooi + \
-                             compute_al1_axis["k_outer_outer_inner_outer"] * (
-                                     factor_oooi // k_outer_outer_inner_outer_size)
-                    extent = tiling["AL1_shape"][0] // k_outer_outer_inner_outer_size
+                    extent = group_dict["cin1_g"] * kernel_d // k_outer_outer_inner_outer_size // \
+                             max(al1_factor[0], bl1_factor[0])
+                    factor1 = max(al1_factor[0], bl1_factor[0]) // min(al1_factor[0], bl1_factor[0])
+                    k_axis = (k_outer_outer_outer_outer * factor1 + k_outer_outer_outer_inner) * \
+                             k_outer_outer_inner_outer_size + compute_al1_axis["k_outer_outer_inner_outer"]
+                    k_axis = k_axis * extent
+                        
                 sch[fmap_col_before].buffer_tile((None, None), (None, None),
                                                  (k_axis, extent),
                                                  (None, None), (None, None),
@@ -1673,11 +1715,11 @@ class CceConv3dOp:
         w_w = shape_w[-2]
 
         def _get_batch_axis():
-            batch_axis = tvm.floordiv(block, block_dim[1] * block_dim[2]) * (
+            batch_axis = tvm.floordiv(block, block_dim[1] * block_dim[2] * tiling["g_dim"]) * (
                     (self._get_value(fmap_col.shape[1]) + block_dim[0] - 1) //
                     block_dim[0]) + noo
             if tensor_map["cyclebuffer_flag"]:
-                batch_axis = tvm.floordiv(block, block_dim[1] * block_dim[2]) * \
+                batch_axis = tvm.floordiv(block, block_dim[1] * block_dim[2] * tiling["g_dim"]) * \
                              ((self._get_value(fmap_col.shape[1]) + block_dim[0] - 1) //
                               block_dim[0]) + noo + batch_inner_inner
             return batch_axis
@@ -1768,7 +1810,7 @@ class CceConv3dOp:
                         additional_rows = 2
                     ho_len = tvm.floordiv(al1_m_tiling, w_out) + additional_rows
                     hi_max = c_ub.op.attrs['kernel_h'] + (ho_len - 1)*stride_update
-                    al1_m = hi_max*fmap_wi
+                    al1_m = hi_max * fmap_wi
                 return al1_m * tiling["AL1_shape"][0]*fmap_c0
             else:
                 if self._tensor_map["opti_h_flag"]:

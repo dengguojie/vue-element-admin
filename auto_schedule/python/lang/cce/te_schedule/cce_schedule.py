@@ -23,6 +23,7 @@ import os
 import re
 import stat
 import itertools
+import warnings
 
 from functools import reduce as functools_reduce
 
@@ -41,6 +42,7 @@ from te.platform.fusion_manager import fusion_manager
 from te.lang.cce import ConvParam  # pylint: disable=C0412
 from te.domain.rl_bank import rl_bank
 from te.utils.error_manager.error_manager_util import get_error_message
+from te.utils.shape_util import shape_to_list
 from topi.cce import util  # pylint: disable=E0401
 
 from .util import gen_dfs_tensor_map
@@ -910,7 +912,7 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
     elif pattern == OpPatterns.BN_UPDATE_GRAD_PATTERN:
         spec_mid_list = []
         input_tensors = op_info["input_tensors"]
-        shape_x = te.lang.cce.util.shape_to_list(input_tensors[-1].shape)
+        shape_x = shape_to_list(input_tensors[-1].shape)
         if len(shape_x) == 4:
             schedule = bn_update_grad_schedule_nd(outs, input_tensors)
         else:
@@ -1220,6 +1222,8 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
     -------
     None
     """
+    warnings.warn("cce_build_code is expired, please replace it with the func build in cce",
+                  DeprecationWarning)
     if fusion_manager.get_build_cfg() == "disable":
         te_util.L1CommonParam.l1_fusion_tensors_map = None
         return
@@ -1250,7 +1254,7 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
                                               % (fname)
                 raise RuntimeError(dict_args, get_error_message(dict_args))
 
-        def shape_to_list(shape):
+        def _shape_to_list(shape):
             """
             translate tvm.shape to list type in python
             """
@@ -1270,7 +1274,7 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
 
         num = len(workspace_list)
         if num:
-            shape_list = [shape_to_list(i.shape) for i in workspace_list]
+            shape_list = [_shape_to_list(i.shape) for i in workspace_list]
             total_size = [functools_reduce(lambda x, y: x * y, list_i) for
                           list_i in shape_list]
 

@@ -21,6 +21,25 @@ from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
 from impl.util import util_common
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
+
+
+# pylint: disable = unused-argument
+def get_op_support_info(x, y, data_format, kernel_name="bias_add_grad"):
+    """
+    get_op_support_info
+    """
+    format_x = x.get("format").upper()
+    if format_x == "FRACTAL_NZ":
+        axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
+
+    else:
+        axis_split_matrix = None
+    axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-branches
