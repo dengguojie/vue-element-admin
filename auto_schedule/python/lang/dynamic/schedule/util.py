@@ -194,21 +194,26 @@ def get_bound(expr):
         if _a is None or _b is None:
             return None
         return max(_a, _b)
+    
+    def _min(_a, _b):
+        if _a is None or _b is None:
+            return None
+        return min(_a, _b)
 
-    def _parse(_expr, _lower, _upper):
+    def _parse(_expr):
         if isinstance(_expr, tvm.expr.ConstExpr):
-            _lower, _upper = _mul(_lower, _expr.value), _mul(_upper, _expr.value)
+            return _expr.value, _expr.value
         elif isinstance(_expr, tvm.expr.Var):
             bound = operation.get_te_var(_expr.name).get_bound()
-            _lower, _upper = _mul(_lower, bound[0]), _mul(_upper, bound[1])
+            return bound[0], bound[1]
         elif isinstance(_expr, tvm.expr.Mul):
-            left_lower, left_upper = _parse(_expr.a, _lower, _upper)
-            right_lower, right_upper = _parse(_expr.b, _lower, _upper)
+            left_lower, left_upper = _parse(_expr.a)
+            right_lower, right_upper = _parse(_expr.b)
             _lower, _upper = _mul(left_lower, right_lower), _mul(left_upper, right_upper)
         elif isinstance(_expr, tvm.expr.Max):
-            left_lower, left_upper = _parse(_expr.a, _lower, _upper)
-            right_lower, right_upper = _parse(_expr.b, _lower, _upper)
-            _lower, _upper = _max(left_lower, right_lower), _max(left_upper, right_upper)
+            left_lower, left_upper = _parse(_expr.a)
+            right_lower, right_upper = _parse(_expr.b)
+            _lower, _upper = _min(left_lower, right_lower), _max(left_upper, right_upper)
         else:
             dict_args = dict()
             dict_args["errCode"] = "E90001"
@@ -217,7 +222,7 @@ def get_bound(expr):
             raise RuntimeError(dict_args, get_error_message(dict_args))
         return _lower, _upper
 
-    lower, upper = _parse(expr, 1, 1)
+    lower, upper = _parse(expr)
     return lower, upper
 
 
