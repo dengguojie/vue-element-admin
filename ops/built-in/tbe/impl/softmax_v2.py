@@ -111,7 +111,7 @@ def get_op_support_info(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
             for i in range(dims_x):
                 if i == dims_x - 1 or i == dims_x - 4:
                     split_0 = [util_select_op_base.SplitInput([0, [i], [-1], [-1]]),
-                                                             util_select_op_base.SplitOutput([0, [i]])]
+                                                              util_select_op_base.SplitOutput([0, [i]])]
                     axis_split_matrix.append(split_0)
         axis_reduce_list = None
     elif format_x == "ND":
@@ -139,9 +139,9 @@ def select_nd_to_5d(dtype, shape_x_ori, axis):
         axis = [axis]
     nd_to_5d = 0
     if ((dtype == "float16" and shape_x_ori[-1] % 16 != 0)
-        or (dtype == "float32" and shape_x_ori[-1] % 8
-            !=0)) and (length_x_ori == 3 or length_x_ori == 4):
-        if (axis[0] == -1 and len(axis)) == 1:
+        or (dtype == "float32" and shape_x_ori[-1] % 8 !=
+            0)) and (length_x_ori == 3 or length_x_ori == 4):
+        if (axis[0] == -1 and len(axis) == 1):
             nd_to_5d = 1
         else:
             nd_to_5d = 0
@@ -201,25 +201,25 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
         else:
             if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                       datatype="float16,float16,float16",
-                                                       format="NC1HWC0,ND,NDC1HWC0")
+                                                       datatype="float16,float16",
+                                                       format="NC1HWC0,ND")
                 output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                        datatype="float16,float16,float16",
-                                                        format="NC1HWC0,ND,NDC1HWC0")
+                                                        datatype="float16,float16",
+                                                        format="NC1HWC0,ND")
             if tbe_product in ("Ascend610", "Ascend615", "Ascend710",):
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                       datatype="float16,float16,float,float16",
-                                                       format="NC1HWC0,ND,ND,NDC1HWC0")
+                                                       datatype="float16,float16,float",
+                                                       format="NC1HWC0,ND,ND")
                 output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                        datatype="float16,float16,float,float16",
-                                                        format="NC1HWC0,ND,ND,NDC1HWC0")
+                                                        datatype="float16,float16,float",
+                                                        format="NC1HWC0,ND,ND")
             if tbe_product in ("Ascend910", "Ascend310",):
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                       datatype="float16,float16,float,float,float16,float",
-                                                       format="NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                                                       datatype="float16,float16,float,float",
+                                                       format="NC1HWC0,ND,ND,NC1HWC0")
                 output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                        datatype="float16,float16,float,float,float16,float",
-                                                        format="NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                                                        datatype="float16,float16,float,float",
+                                                        format="NC1HWC0,ND,ND,NC1HWC0")
     elif length_x_ori > 2 and (shape_x_ori[-1] % 16 != 0 or shape_x_ori[-2] % 16 != 0):
         if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
@@ -245,7 +245,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
         if tbe_product in ("Ascend310",):
             if select_nd_to_5d(dtype, shape_x_ori, axis):
                 # Supplement dimensions to find the C-axis
-                if len(shape_x_ori) < 4:
+                if(len(shape_x_ori) < 4):
                     shape_x_ori = (1,) + shape_x_ori
                 if ori_input_format == "NCHW" and shape_x_ori[1] <= 16:
                     input0 = util_select_op_base.gen_param(classify="input0", name="x",
@@ -668,7 +668,7 @@ def emit_axis_collect(ops, pad_param, instructions, last_axis):
         error_manager_vector.raise_err_specific_reson("softmax_v2", "operation list is empty")
     if len(ops) != len(instructions):
         error_manager_vector.raise_err_specific_reson("softmax_v2",
-                                                      "length of operations and instructions does not match")
+                                                     "length of operations and instructions does not match")
 
     axis_list = []
     length = len(ops)
@@ -696,7 +696,7 @@ def emit_nz_axis_collect(ops, pad_param, instructions, last_axis):
         error_manager_vector.raise_err_specific_reson("softmax_v2", "operation list is empty")
     if len(ops) != len(instructions):
         error_manager_vector.raise_err_specific_reson("softmax_v2",
-                                                      "length of operations and instructions does not match")
+                                                     "length of operations and instructions does not match")
     axis_list = []
     length = len(ops)
     for i in range(0, length-1):
@@ -713,7 +713,7 @@ def axis_reorder(schedule, ops, instructions):
         error_manager_vector.raise_err_specific_reson("softmax_v2", "operation list is empty")
     if len(ops) != len(instructions):
         error_manager_vector.raise_err_specific_reson("softmax_v2",
-                                                      "length of operations and instructions does not match")
+                                                     "length of operations and instructions does not match")
     length = len(ops)
     for i in range(0, length):
         if instructions[i] == 'vector_adds' or instructions[i] == 'vector_muls':
@@ -730,7 +730,7 @@ def axis_reorder_nz(schedule, ops, instructions):
         error_manager_vector.raise_err_specific_reson("softmax_v2", "operation list is empty")
     if len(ops) != len(instructions):
         error_manager_vector.raise_err_specific_reson("softmax_v2",
-                                                      "length of operations and instructions does not match")
+                                                     "length of operations and instructions does not match")
     length = len(ops)
     for i in range(0, length):
         if instructions[i] == 'vector_adds' or instructions[i] == 'vector_muls':
@@ -746,7 +746,7 @@ def instructions_replace(schedule, ops, axes, instructions):
         error_manager_vector.raise_err_specific_reson("softmax_v2", "operation list is empty")
     if len(ops) != len(instructions):
         error_manager_vector.raise_err_specific_reson("softmax_v2",
-                                                      "length of operations and instructions does not match")
+                                                     "length of operations and instructions does not match")
     length = len(ops)
     for i in range(0, length):
         schedule[ops[i]].emit_insn(axes[i], instructions[i])
@@ -1462,15 +1462,15 @@ def compute_padding_fp32(tensor_in, shape, pad_param, impl_mode):
             ii = tvm.reduce_axis((0, shape[1]), "c1_sum_pad")
             jj = tvm.reduce_axis((0, shape[4] - pad_c0), "c0_sum_pad")
             res_sum = tvm.compute(reduce_shape,
-                                  lambda n, c1, h, w, c0:
-                                  tvm.sum(res_exp_fp32[n, ii, h, w, jj], axis=[ii, jj]),
-                                  name="res_sum")
+                                    lambda n, c1, h, w, c0:
+                                    tvm.sum(res_exp_fp32[n, ii, h, w, jj], axis=[ii, jj]),
+                                    name="res_sum")
             op_list += [res_sum]
             instruction_list += ['vector_reduce_sum']
         else:
             res_sum = tvm.compute(reduce_shape,
-                                  lambda n, c1, h, w, c0:
-                                  res_exp_fp32[n, shape[1] - 1, h, w, 0], name="res_sum")
+                            lambda n, c1, h, w, c0:
+                            res_exp_fp32[n, shape[1] - 1, h, w, 0], name="res_sum")
             op_list += [res_sum]
             instruction_list += ['vector_auto']
     else:
@@ -1488,15 +1488,15 @@ def compute_padding_fp32(tensor_in, shape, pad_param, impl_mode):
             ii = tvm.reduce_axis((shape[1] - pad_c1, shape[1]), "c1_sum_pad")
             jj = tvm.reduce_axis((0, shape[4] - pad_c0), "c0_sum_pad")
             sum2 = tvm.compute(reduce_shape,
-                               lambda n, c1, h, w, c0:
-                               tvm.sum(res_exp_fp32[n, ii, h, w, jj],
-                                       axis=[ii, jj]), name="sum2")
+                            lambda n, c1, h, w, c0:
+                            tvm.sum(res_exp_fp32[n, ii, h, w, jj],
+                                    axis=[ii, jj]), name="sum2")
             op_list += [sum2]
             instruction_list += ['vector_reduce_sum']
         else:
             sum2 = tvm.compute(reduce_shape,
-                               lambda n, c1, h, w, c0:
-                               res_exp_fp32[n, shape[1] - 1, h, w, 0], name="sum2")
+                            lambda n, c1, h, w, c0:
+                            res_exp_fp32[n, shape[1] - 1, h, w, 0], name="sum2")
             op_list += [sum2]
             instruction_list += ['vector_auto']
 
@@ -1531,13 +1531,13 @@ def compute_padding_fp32(tensor_in, shape, pad_param, impl_mode):
             #loop 1
             # vmlu
             res_mul_newton = tvm.compute(reduce_shape,
-                                         lambda *i: res_rec(*i) * res_sum(*i), name="res_mul_newton")
+                                     lambda *i: res_rec(*i) * res_sum(*i), name="res_mul_newton")
             op_list += [res_mul_newton]
             instruction_list += ['vector_mul']
 
             res_const2 = tvm.compute(reduce_shape,
-                                     lambda *i: 2.0,
-                                     name="res_const2")
+                                    lambda *i: 2.0,
+                                    name="res_const2")
             op_list += [res_const2]
             instruction_list += ['vector_auto']
 
@@ -1560,27 +1560,27 @@ def compute_padding_fp32(tensor_in, shape, pad_param, impl_mode):
             instruction_list += ['vector_broadcast']
         # mul
         res_mul = tvm.compute(shape,
-                              lambda *i:
-                              res_exp_fp32(*i) * res_mul_newton_broadcast(*i),
-                              name="res_mul")
+                            lambda *i:
+                            res_exp_fp32(*i) * res_mul_newton_broadcast(*i),
+                            name="res_mul")
         op_list += [res_mul]
         instruction_list += ['vector_mul']
 
     if tensor_in.dtype == "float16":
         res_mul_fp16 = te.lang.cce.cast_to(res_mul, "float16")
         res_mul_fp16 = tvm.compute(shape,
-                                   lambda * i: topi.cast(res_mul(*i), "float16"),
+                                   lambda *i: topi.cast(res_mul(*i), "float16"),
                                    name='res_vonv_fp16')
         op_list += [res_mul_fp16]
         instruction_list += ['vector_conv']
 
         # move data from ub to gm
-        res = tvm.compute(shape, lambda * i: res_mul_fp16(*i), name="result_out")
+        res = tvm.compute(shape, lambda *i: res_mul_fp16(*i), name="result_out")
         op_list += [res]
         instruction_list += ['dma_copy']
     else:
         # move data from ub to gm
-        res = tvm.compute(shape, lambda * i: res_mul(*i), name="result_out")
+        res = tvm.compute(shape, lambda *i: res_mul(*i), name="result_out")
         op_list += [res]
         instruction_list += ['dma_copy']
 
@@ -1925,15 +1925,15 @@ def compute_padding(tensor_in, shape, pad_param):
             ii = tvm.reduce_axis((0, shape[1]), "c1_sum_pad")
             jj = tvm.reduce_axis((0, shape[4] - pad_c0), "c0_sum_pad")
             res_sum = tvm.compute(reduce_shape,
-                                  lambda n, c1, h, w, c0:
-                                  tvm.sum(res_exp[n, ii, h, w, jj],
-                                          axis=[ii, jj]), name="res_sum")
+                                lambda n, c1, h, w, c0:
+                                tvm.sum(res_exp[n, ii, h, w, jj],
+                                        axis=[ii, jj]), name="res_sum")
             op_list += [res_sum]
             instruction_list += ['vector_reduce_sum']
         else:
             res_sum = tvm.compute(reduce_shape,
-                                  lambda n, c1, h, w, c0:
-                                  res_exp[n, shape[1] - 1, h, w, 0], name="res_sum")
+                            lambda n, c1, h, w, c0:
+                            res_exp[n, shape[1] - 1, h, w, 0], name="res_sum")
             op_list += [res_sum]
             instruction_list += ['vector_auto']
     else:
@@ -1951,27 +1951,27 @@ def compute_padding(tensor_in, shape, pad_param):
             ii = tvm.reduce_axis((shape[1] - pad_c1, shape[1]), "c1_sum_pad")
             jj = tvm.reduce_axis((0, shape[4] - pad_c0), "c0_sum_pad")
             sum2 = tvm.compute(reduce_shape,
-                               lambda n, c1, h, w, c0:
-                               tvm.sum(res_exp[n, ii, h, w, jj],
-                                       axis=[ii, jj]), name="sum2")
+                            lambda n, c1, h, w, c0:
+                            tvm.sum(res_exp[n, ii, h, w, jj],
+                                    axis=[ii, jj]), name="sum2")
             op_list += [sum2]
             instruction_list += ['vector_reduce_sum']
         else:
             sum2 = tvm.compute(reduce_shape,
-                               lambda n, c1, h, w, c0:
-                               res_exp[n, shape[1] - 1, h, w, 0], name="sum2")
+                            lambda n, c1, h, w, c0:
+                            res_exp[n, shape[1] - 1, h, w, 0], name="sum2")
             op_list += [sum2]
             instruction_list += ['vector_auto']
 
         res_sum = tvm.compute(reduce_shape,
-                              lambda * i: tvm.sum(sum1(*i), sum2(*i)),
+                              lambda *i: tvm.sum(sum1(*i), sum2(*i)),
                               name="res_sum")
         op_list += [res_sum]
         instruction_list += ['vector_add']
 
     # rec
     res_rec = tvm.compute(reduce_shape,
-                          lambda * i: 1/(res_sum(*i)), name="res_rec")
+                          lambda *i: 1/(res_sum(*i)), name="res_rec")
     op_list += [res_rec]
     instruction_list += ['vector_rec']
 
@@ -1984,7 +1984,7 @@ def compute_padding(tensor_in, shape, pad_param):
     instruction_list += ['vector_muls']
 
     # move data from ub to gm
-    res = tvm.compute(shape, lambda * i: res_mul(*i), name="result_out")
+    res = tvm.compute(shape, lambda *i: res_mul(*i), name="result_out")
     op_list += [res]
     instruction_list += ['dma_copy']
 
