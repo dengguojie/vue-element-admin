@@ -222,8 +222,7 @@ def get_bound(expr):
             raise RuntimeError(dict_args, get_error_message(dict_args))
         return _lower, _upper
 
-    lower, upper = _parse(expr)
-    return lower, upper
+    return _parse(expr)
 
 
 def get_ub_size():
