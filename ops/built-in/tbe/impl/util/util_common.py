@@ -272,7 +272,7 @@ def is_dynamic_input(_inputs):
         _inputs = [_inputs]
 
     for _, _input in enumerate(_inputs):
-        if -1 in _input.get("shape"):
+        if -1 in _input.get("shape") or -2 in _input.get("shape"):
             return True
 
     return False
