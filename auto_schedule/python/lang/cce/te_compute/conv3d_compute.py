@@ -399,7 +399,7 @@ def _mad_by_load2d(mad_shape, fmap, weight, config, mad_dtype, pads, stride_d,
     al0_load2d = tvm.compute(
         shape_al0_load2d,
         lambda g, n, m1, c1, m0, c0:
-        al1_load2d(n, c1,
+        al1_load2d(n, g * cin1_g + c1,
                    m0 + tbe_platform.CUBE_MKN[fmap.dtype]["mac"][0] * m1,
                    c0),
         name=OP_TAG + "al0_load2d")
