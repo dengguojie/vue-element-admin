@@ -194,7 +194,7 @@ def get_bound(expr):
         if _a is None or _b is None:
             return None
         return max(_a, _b)
-    
+
     def _min(_a, _b):
         if _a is None or _b is None:
             return None
