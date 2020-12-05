@@ -64,13 +64,23 @@ case5 = {"params": [{"shape": (2, 2, 2, 3200), "dtype": "float32", "format": "NH
          "expect": RuntimeError,
          "support_expect": True}
 
+
+def test_op_select_format(test_arg):
+    from impl.space_to_depth import op_select_format
+    op_select_format({"shape": (20, 28, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (20, 28, 16, 16),"ori_format": "NCHW"},
+                     {"shape": (), "dtype": "", "format": "", "ori_shape": (),"ori_format": ""},
+                     {"shape": (20, 28, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (20, 28, 16, 16),"ori_format": "NCHW"})
+    op_select_format({"shape": (20, 28, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (20, 28, 16, 16),"ori_format": "NCHW"},
+                     {"shape": (), "dtype": "", "format": "", "ori_shape": (20,28,16,16),"ori_format": ""},
+                     {"shape": (20, 28, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (20, 28, 16, 16),"ori_format": "NCHW"})
+
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910"], case1)
 ut_case.add_case(["Ascend910"], case2)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
-
+ut_case.add_cust_test_func(test_func=test_op_select_format)
 def calc_expect_func(x1, x2, y, block_size, data_format):
     input_data = x1['value']
     to_batch = tf.space_to_depth(input_data, block_size, data_format=data_format)
