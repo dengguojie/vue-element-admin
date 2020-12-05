@@ -55,6 +55,7 @@ from .apply_adam_d import apply_adam_d
 from .logical_or import logical_or
 from .real_div import real_div
 from .reciprocal import reciprocal
+from .concat_offset import concat_offset
 from .neg import neg
 from .concat_d import concat_d
 from .concat_v2_d import concat_v2_d

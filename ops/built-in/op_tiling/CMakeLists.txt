@@ -18,6 +18,7 @@ set(_optiling_files
   ../op_proto/util/error_util.cc
   ../fusion_pass/common/fp16_t.cc
   concat.cc
+  concat_offset.cc
   conv2d_backprop_filter.cc
   conv2d_backprop_input.cc
   conv2d.cc
