@@ -25,9 +25,9 @@ def check_supported(concat_dim, x, y, kernel_name="concat_offset"):
     verify the types of cast supported by tbe
     """
     if util_common.is_dynamic_input(x) or util_common.is_dynamic_input([concat_dim]):
-        return False
+        return True
 
-    return True
+    return False
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.DYNAMIC_INPUT,
