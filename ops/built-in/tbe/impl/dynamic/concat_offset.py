@@ -13,7 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """
-drop_out_do_mask.py
+concat_offset.py
 """
 import te.lang.dynamic
 from te import tik
