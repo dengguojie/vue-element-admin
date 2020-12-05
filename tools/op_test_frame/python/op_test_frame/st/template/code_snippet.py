@@ -66,3 +66,73 @@ TESTCASE_CONTENT = """
     {all_attr_code_snippet}
     EXPECT_EQ_AND_RECORD(true, OpExecute(opTestDesc), opTestDesc, "{testcase_name}");
 """
+
+# -----mindspore test .py file--------------------------
+PYTEST_INI_CONTEN = """
+[pytest]
+log_cli = 1
+log_cli_level = INFO
+log_cli_format = %(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)
+log_cli_date_format=%Y-%m-%d %H:%M:%S
+"""
+TESTCASE_IMPORT_CONTENT = """import numpy as np
+import pytest
+import time
+import logging
+import mindspore.nn as nn
+import mindspore.context as context
+from mindspore import Tensor
+
+# Import the definition of the {op_name} primtive.
+from {import_op} import {op_name}
+context.set_context(mode=context.GRAPH_MODE, device_target="Ascend")
+logger = logging.getLogger(__name__)
+
+"""
+
+TESTCASE_CLASS_CONTENT_NO_ATTR = """
+class Net(nn.Cell):
+    \"""Net definition\"""
+
+    def __init__(self):
+        super(Net, self).__init__()
+        self.{op_lower} = {op_name}()
+    
+    def construct(self,data):
+        return self.{op_lower}(data)
+"""
+
+TESTCASE_CLASS_CONTENT_WITH_ATTR_CONSTRUCT = """
+    def construct(self, {inputs}):
+        return self.{op_lower}({inputs})
+"""
+
+TESTCASE_CLASS_CONTENT_WITH_ATTR = """
+class Net(nn.Cell):
+    \"""Net definition\"""
+
+    def __init__(self):
+        super(Net, self).__init__()
+        self.{op_lower} = {op_name}({attr_value})
+    {attr_constrct}
+"""
+TESTCASE_TEST_NET_INPUT = """
+    {input_name} = np.fromfile('{file}', np.{np_type})
+"""
+
+TESTCASE_TEST_TENSOR = """Tensor({input_name})"""
+TESTCASE_TEST_NET_OUTPUT = """{output_name} = {op_lower}_test({tensor})
+"""
+
+TESTCASE_TEST_NET = """
+def {subcase}():
+    {inputs}
+    {op_lower}_test = Net()
+    
+    start = time.time()
+    
+    {outputs}
+    end = time.time()
+    
+    print("running time: %.2f s" %(end-start))
+"""

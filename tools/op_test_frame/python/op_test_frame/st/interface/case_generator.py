@@ -14,7 +14,7 @@ try:
     import json
     import time
     import copy
-
+    import importlib
     from . import utils
     from .model_parser import get_model_nodes
 except ImportError as import_error:
@@ -23,7 +23,8 @@ except ImportError as import_error:
 
 INI_INPUT = 'input'
 INI_OUTPUT = 'output'
-
+PY_INPUT_OUTPUT = ['inputs', 'outputs']
+OP_NAME = 'op_name'
 REQUIRED_OP_INFO_KEYS = ["paramType", "name"]
 PARAM_TYPE_VALID_VALUE = ["dynamic", "optional", "required"]
 
@@ -34,7 +35,7 @@ class CaseGenerator:
     """
 
     def __init__(self, args):
-        self.ini_path = os.path.realpath(args.input_file)
+        self.input_file_path = os.path.realpath(args.input_file)
         self.output_path = os.path.realpath(args.output_path)
         self.op_info = {}
         self.op_type = ""
@@ -44,12 +45,13 @@ class CaseGenerator:
         """
         check input argument valid
         """
-        if not self.ini_path.endswith(".ini"):
+        if os.path.splitext(self.input_file_path)[-1] \
+                not in utils.INPUT_SUFFIX_LIST:
             utils.print_error_log(
-                'The file "%s" is invalid, only supports .ini file. '
-                'Please modify it.' % self.ini_path)
+                'The file "%s" is invalid, only supports .ini or .py file. '
+                'Please modify it.' % self.input_file_path)
             raise utils.OpTestGenException(utils.OP_TEST_GEN_INVALID_PATH_ERROR)
-        utils.check_path_valid(self.ini_path)
+        utils.check_path_valid(self.input_file_path)
         utils.check_path_valid(self.output_path, True)
 
     @staticmethod
@@ -113,7 +115,7 @@ class CaseGenerator:
 
     def _parse_ini_to_json(self):
         tbe_ops_info = {}
-        with open(self.ini_path) as ini_file:
+        with open(self.input_file_path) as ini_file:
             lines = ini_file.readlines()
             for index, line in enumerate(lines):
                 line = line.strip()
@@ -129,7 +131,7 @@ class CaseGenerator:
                         utils.print_error_log(
                             'At line %d, "%s" is invalid in file %s, only '
                             'supports "[xx]". Please modify it.' % (
-                                index, line, self.ini_path))
+                                index, line, self.input_file_path))
                         raise utils.OpTestGenException(
                             utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
                 else:
@@ -138,7 +140,7 @@ class CaseGenerator:
                         utils.print_error_log(
                             'At line %d, "%s" is invalid in file %s, only '
                             'supports "xx.yy=zz". Please modify it.' % (
-                                index, line, self.ini_path))
+                                index, line, self.input_file_path))
                         raise utils.OpTestGenException(
                             utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
                     keys = key_value[0].split('.')
@@ -146,7 +148,7 @@ class CaseGenerator:
                         utils.print_error_log(
                             'At line %d, "%s" is invalid in file %s, only '
                             'supports "xx.yy=zz". Please modify it.' % (
-                                index, line, self.ini_path))
+                                index, line, self.input_file_path))
                         raise utils.OpTestGenException(
                             utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
                     key0 = keys[0].strip()
@@ -157,9 +159,68 @@ class CaseGenerator:
             utils.print_error_log(
                 'There are %d operator in file %s, only supports one operator '
                 'in .ini file. Please modify it.' % (
-                    len(tbe_ops_info), self.ini_path))
+                    len(tbe_ops_info), self.input_file_path))
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+
+    def _parse_py_to_json(self):
+        expect_func_file = self.input_file_path
+        sys.path.append(os.path.dirname(expect_func_file))
+        py_file = os.path.basename(expect_func_file)
+        module_name, _ = os.path.splitext(py_file)
+        utils.print_info_log("Start to import {} in {}.".format(
+            module_name, py_file))
+        class_name = "{}_op_info".format(module_name.rstrip("_impl"))
+        try:
+            params = importlib.import_module(module_name)
+            mindspore_ops_info = getattr(params, class_name)
+        except NameError as name_error:
+            utils.print_error_log(
+                '%s in %s, please modify it.' % (
+                    name_error, self.input_file_path))
+            raise utils.OpTestGenException(
+                utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+        except ValueError as value_error:
+            utils.print_error_log(
+                '%s in %s, please modify it.' % (
+                    value_error, self.input_file_path))
+            raise utils.OpTestGenException(
+                utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+
+        self.op_type = mindspore_ops_info[OP_NAME]
+        if mindspore_ops_info.get('attr'):
+            attr_name = 'attr_{}'.format(mindspore_ops_info['attr'][0]['name'])
+            self.op_info[attr_name] = mindspore_ops_info['attr'][0]
+        count_input = 0
+        for key in PY_INPUT_OUTPUT:
+            op_info = mindspore_ops_info[key]
+            for index in op_info:
+                if not index.get('name'):
+                    utils.print_error_log(
+                        'This %s of this operator is null, '
+                        'please modify it.' % key)
+                    raise utils.OpTestGenException(
+                        utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+                key0 = index.get('name')
+                info = "{}{}".format(key[:-1], count_input)
+                if info not in self.op_info:
+                    self.op_info[info] = {}
+                self.op_info[info]['name'] = key0
+                self.op_info[info]['paramType'] = index.get('param_type')
+                self.op_info[info]['shape'] = index.get('shape')
+
+                dtype = []
+                for value in mindspore_ops_info.get('dtype_format'):
+                    if not value[count_input]:
+                        utils.print_error_log(
+                            'The dtype_format of this opeartor is null, '
+                            'please modify it')
+                        raise utils.OpTestGenException(
+                            utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+                    dtype.append(value[count_input][0])
+                dtypes = ','.join(dtype)
+                self.op_info[info]['dtype'] = dtypes
+                count_input += 1
 
     @staticmethod
     def _check_op_info_list_valid(value_list, support_list, op_info_key):
@@ -211,9 +272,15 @@ class CaseGenerator:
                 current_dtype_count = 0
                 if 'dtype' in op_info:
                     dtype_list = op_info["dtype"].split(",")
-                    self._check_op_info_list_valid(
-                        dtype_list, list(utils.DTYPE_TO_NUMPY_MAP.keys()),
-                        op_info_key + '.dtype')
+                    if self.input_file_path.endswith(".py"):
+                        self._check_op_info_list_valid(
+                            dtype_list,
+                            list(utils.DTYPE_TO_MINDSPORE_MAP.keys()),
+                            op_info_key + '.dtype')
+                    else:
+                        self._check_op_info_list_valid(
+                            dtype_list, list(utils.DTYPE_TO_NUMPY_MAP.keys()),
+                            op_info_key + '.dtype')
                     current_dtype_count = len(dtype_list)
                     if dtype_count == 0:
                         dtype_count = current_dtype_count
@@ -231,7 +298,8 @@ class CaseGenerator:
                 if 'format' in op_info:
                     format_list = op_info["format"].split(",")
                     self._check_op_info_list_valid(
-                        format_list, utils.FORMAT_LIST, op_info_key + '.format')
+                        format_list, utils.FORMAT_LIST,
+                        op_info_key + '.format')
 
                     if current_dtype_count != len(format_list):
                         utils.print_error_log(
@@ -266,7 +334,7 @@ class CaseGenerator:
         if len(base_case[key]) == 0:
             utils.print_error_log(
                 'The number of %s is zero in file %s. Please modify it.'
-                % (key[:-5], self.ini_path))
+                % (key[:-5], self.input_file_path))
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
 
@@ -289,26 +357,45 @@ class CaseGenerator:
         return [base_case]
 
     def _generate_aicore_base_case(self):
-        base_case = {'case_name': 'Test_' + self.op_type.replace('/', '_')
-                                  + '_001',
-                     'op': self.op_type, 'input_desc': [], 'output_desc': []}
+        if self.input_file_path.endswith(".py"):
+            base_case = {'case_name': 'Test_' + self.op_type.replace('/', '_')
+                                      + '_001',
+                         'st_mode': 'ms_python_train',
+                         'op': self.op_type,
+                         'input_desc': [], 'output_desc': []}
+        else:
+            base_case = {'case_name': 'Test_' + self.op_type.replace('/', '_')
+                                      + '_001',
+                         'op': self.op_type,
+                         'input_desc': [], 'output_desc': []}
+
         for (key, value) in list(self.op_info.items()):
             if key.startswith(INI_INPUT):
                 input_format = [] if len(value['format']) == 0 else \
                     list(set(value['format'].split(',')))
                 input_dtype = [] if len(value['dtype']) == 0 else \
                     list(set(value['dtype'].split(',')))
-                input_desc = {'format': input_format, 'type': input_dtype,
-                              'shape': [], 'data_distribute': ['uniform'],
-                              'value_range': [[0.1, 1.0]]}
+                if self.input_file_path.endswith(".py"):
+                    input_desc = {'type': input_dtype,
+                                  'shape': [], 'data_distribute': ['uniform'],
+                                  'value_range': [[0.1, 1.0]]}
+                else:
+                    input_desc = {'format': input_format, 'type': input_dtype,
+                                  'shape': [], 'data_distribute': ['uniform'],
+                                  'value_range': [[0.1, 1.0]]}
                 base_case['input_desc'].append(input_desc)
             elif key.startswith(INI_OUTPUT):
                 output_format = [] if len(value['format']) == 0 else \
                     list(set(value['format'].split(',')))
                 output_dtype = [] if len(value['dtype']) == 0 else \
                     list(set(value['dtype'].split(',')))
-                output_desc = {'format': output_format, 'type': output_dtype,
-                               'shape': []}
+                if self.input_file_path.endswith(".py"):
+                    output_desc = {'type': output_dtype,
+                                   'shape': []}
+                else:
+                    output_desc = {'format': output_format,
+                                   'type': output_dtype,
+                                   'shape': []}
                 base_case['output_desc'].append(output_desc)
             elif key.startswith("attr_"):
                 if 'attr' not in base_case:
@@ -496,13 +583,17 @@ class CaseGenerator:
 
     def generate(self):
         """
-        generate case.json from .ini file
+        generate case.json from .ini or .py file
         """
         # check path valid
         self.check_argument_valid()
+        if self.input_file_path.endswith(".ini"):
+            # parse ini to json
+            self._parse_ini_to_json()
+        elif self.input_file_path.endswith(".py"):
+		    # parse .py to json
+            self._parse_py_to_json()
 
-        # parse ini to json
-        self._parse_ini_to_json()
         if self._is_aicpu_op():
             base_case = self._generate_aicpu_base_case()
         else:

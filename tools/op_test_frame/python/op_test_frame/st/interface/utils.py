@@ -59,12 +59,13 @@ FMK_LIST = "tf tensorflow caffe"
 SUPPORT_PATH_PATTERN = r"^[A-Za-z0-9_\./:()=\\-]+$"
 EMPTY = ""
 SRC_RELATIVE_TEMPLATE_PATH = "/../template/acl_op_src"
-
+MS_SRC_RELATIVE_TEMPLATE_PATH = "/../template/ms_op_src"
 MAIN_CPP_RELATIVE_PATH = "/src/main.cpp"
 TESTCASE_CPP_RELATIVE_PATH = "/src/testcase.cpp"
 ACL_OP_JSON_RELATIVE_PATH = "/run/out/test_data/config/acl_op.json"
-
-
+TESTCASE_PY_RELATIVE_PATH = "/src/test_{op_name}.py"
+PYTEST_INI_RELATIVE_PATH = "/src/pytest.ini"
+INPUT_SUFFIX_LIST = ['.ini', '.py']
 FILE_AUTHORITY = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR
 FOLDER_MASK = 0o700
 
@@ -74,6 +75,21 @@ WRITE_MODES = stat.S_IWUSR | stat.S_IRUSR
 DTYPE_TO_NUMPY_MAP = {
     'float16': np.float16,
     'float': np.float32,
+    'int8': np.int8,
+    'int16': np.int16,
+    'int32': np.int32,
+    'int64': np.int64,
+    'uint8': np.uint8,
+    'uint16': np.uint16,
+    'uint32': np.uint32,
+    'uint64': np.uint64,
+    'bool': np.bool
+}
+
+DTYPE_TO_MINDSPORE_MAP = {
+    'float16': np.float16,
+    'float32': np.float32,
+    'float64': np.float32,
     'int8': np.int8,
     'int16': np.int16,
     'int32': np.int32,
