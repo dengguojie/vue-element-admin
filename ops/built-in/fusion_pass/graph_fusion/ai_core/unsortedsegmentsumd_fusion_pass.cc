@@ -86,7 +86,7 @@ Status UnsortedSegmentSumdFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
     return NOT_CHANGED;
   }
   FUSION_PASS_CHECK(
-      secondDims[secondDimsSize - 1] != 1,
+      secondDimsSize == 1 || secondDims[secondDimsSize - 1] != 1,
       OP_LOGI(FUSED_OP_TYPE.c_str(), "UnsortedSegmentSumdNode is not need fusion.secondDims[secondDimsSize-1]=[%d]",
               secondDims[secondDimsSize - 1]),
       return NOT_CHANGED);

@@ -106,7 +106,8 @@ def op_select_format(x, filter, y, block_size, data_format, kernel_name="space_t
     select format dynamically
     """
     ori_shape_x = x.get("ori_shape")
-    if ori_shape_x[3] <= 64:
+    filter_shape = filter.get("ori_shape")
+    if filter_shape:
         datatype = "float16, float, int8, uint8, int16, uint16, int32," \
                    "uint32, uint64, int64"
         input_format = "NC1HWC0, NHWC, NHWC, NHWC, NHWC, NHWC, NHWC, NHWC, NHWC, NHWC"
