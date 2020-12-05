@@ -25,6 +25,7 @@
 #include "op_log.h"
 #include "pattern_fusion_util.h"
 #include <string>
+#include <numeric>
 #include <vector>
 
 using namespace ge;
