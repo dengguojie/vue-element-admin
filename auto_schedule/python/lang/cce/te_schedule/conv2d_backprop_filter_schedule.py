@@ -810,7 +810,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     "bias_flag": 0,
                     "fused_double_operand_num": 0,
                     "fusion_type": 0,
-                    "kernel_name": str(kernel_name),
+                    "kernel_name": kernel_name.value,
                 }
                 tiling = get_tiling(info_dict)
             else:
