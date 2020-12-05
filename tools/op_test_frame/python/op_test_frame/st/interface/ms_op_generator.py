@@ -162,19 +162,6 @@ class MsOpGenerator:
 
         copy_template(template_path, self.output_path)
 
-    def _get_ms_dtype(type_str):
-        type_dict = {
-            'fp64': np.float64, 'fp32': np.float32, 'float32': np.float32,
-            'fp16': np.float16, 'float16': np.float16,
-            'int64': np.int64, 'int32': np.int32, 'int16': np.int16,
-            'int8': np.int8,
-            'uint64': np.uint64, 'uint32': np.uint32, 'uint16': np.uint16,
-            'uint8': np.uint8,
-            'bool': np.bool, 'complex64': np.complex64,
-            'complex128': np.complex128,
-        }
-        return type_dict.get(type_str)
-
     def _rewrite_files_for_output_dir(self):
         testcase_test_net_content = ''
         op_name = self.testcase_list[0]['op']
