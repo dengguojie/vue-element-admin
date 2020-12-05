@@ -36,9 +36,9 @@ from .vector_schedule import VectorSchedule
 from .reduce_tilingcase import ReduceTilingCase
 from .reduce_tilingcase import SingleReduceInfo
 from .reduce_atomic_schedule import ReduceAtomicSchedule
-from ...base.operation import var
-from ...base.operation import get_context
-from ...base.operation import register_schedule
+from ...base.operation_impl import var
+from ...base.operation_impl import get_context
+from ...base.operation_impl import register_schedule
 
 CONST = "const"
 

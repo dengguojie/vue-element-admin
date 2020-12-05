@@ -21,7 +21,7 @@ from functools import reduce as functools_reduce
 from functools import wraps
 import warnings
 
-from te.lang.base import operation
+from te.lang.base import operation_impl as operation
 from te.utils import shape_util
 
 SHAPE_SIZE_LIMIT = 2 ** 31 - 1

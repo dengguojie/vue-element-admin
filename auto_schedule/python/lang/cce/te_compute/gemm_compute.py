@@ -20,7 +20,7 @@ import math
 from te.lang.cce.te_compute.util import (
     check_input_tensor_shape  # pylint: disable=too-many-lines
 )
-from te.lang.base.operation import in_dynamic
+from te.lang.base.operation_impl import in_dynamic
 from te.platform import cce_conf
 from te.platform import cce_params
 from te.tvm import api as tvm

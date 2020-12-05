@@ -20,7 +20,7 @@ from te.lang.cce.te_schedule.cce_schedule import get_op_info
 from te.lang.dynamic.schedule.constants import Pattern
 
 from te.tvm import schedule as tvm
-from te.lang.base.operation import register_schedule
+from te.lang.base.operation_impl import register_schedule
 
 
 @register_schedule(pattern=Pattern.CONV2D)

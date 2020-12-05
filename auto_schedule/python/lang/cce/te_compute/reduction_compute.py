@@ -19,7 +19,7 @@ reduction compute
 from decorator import decorator
 import warnings
 from te import tvm
-from te.lang.base import operation
+from te.lang.base import operation_impl as operation
 from te.platform import intrinsic_check_support
 from te.platform import get_soc_spec
 from te.utils.error_manager.error_manager_util import get_error_message

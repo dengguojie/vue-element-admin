@@ -17,7 +17,7 @@ cube schedule
 """
 
 from te import tvm
-from te.lang.base.operation import register_schedule
+from te.lang.base.operation_impl import register_schedule
 from te.lang.cce.te_schedule.conv_schedule import CceConvOp
 from te.lang.cce.te_schedule.conv2d_backprop_input_schedule import \
     CceConv2dBackpropInputOp

@@ -32,12 +32,12 @@ from te.tvm.expr import IntImm
 from te.platform.cce_conf import get_soc_spec
 from te.platform.cce_conf import CceProductParams as Version
 from ...base import op_tiling
-from ...base import operation
-from ...base.operation import get_context
-from ...base.operation import register_tiling_case
-from ...base.operation import register_build_pointcut
-from ...base.operation import add_compile_info
-from ...base.operation import get_compile_info
+from ...base import operation_impl as operation
+from ...base.operation_impl import get_context
+from ...base.operation_impl import register_tiling_case
+from ...base.operation_impl import register_build_pointcut
+from ...base.operation_impl import add_compile_info
+from ...base.operation_impl import get_compile_info
 from .util import get_reduce_all_axes
 from .util import get_reduce_axes
 from .util import get_reduce_axis_indices

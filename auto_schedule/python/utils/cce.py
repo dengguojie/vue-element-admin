@@ -20,7 +20,7 @@ from __future__ import absolute_import as _abs
 import te.lang.cce as static
 import te.lang.dynamic as dynamic
 from te import tvm
-from te.lang.base import operation
+from te.lang.base import operation_impl as operation
 from topi import generic
 
 

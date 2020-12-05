@@ -21,7 +21,7 @@ from te.domain.tiling.get_tiling import get_tiling
 from te.utils.error_manager import error_manager_util
 from te.lang.cce.te_compute import cube_util
 from te.lang.cce.te_compute import util as te_util
-from te.lang.base.operation import get_te_var
+from te.lang.base.operation_impl import get_te_var
 from te import tvm
 
 OP_TAG = "conv3d_"

@@ -26,7 +26,7 @@ from abc import abstractmethod
 from te.tvm.expr import IntImm
 from te.tvm.expr import Expr
 
-from te.lang.base.operation import add_compile_info
+from te.lang.base.operation_impl import add_compile_info
 
 CORE_NUM = 32
 C0_SIZE = 16

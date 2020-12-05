@@ -48,7 +48,7 @@ from .util import get_reduce_all_axes
 from .util import get_reduce_axis_indices
 from .vector_info import ComputeGraphInfo
 from .vector_schedule_base import VectorScheduleBase
-from ...base import operation
+from ...base import operation_impl as operation
 
 CONST = "const"
 
