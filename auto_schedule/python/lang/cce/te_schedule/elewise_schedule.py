@@ -64,6 +64,9 @@ ENABLE_MULTI_CORE_THRESHOLD = 1 * 1024  # Bytes
 # For non-divisible multi-core splitting, block dim is at most a multiple of core num
 BLOCK_DIM_MULTIPLE = 4  # Bytes
 
+# vcmpv set_cmp_mask need 128 bits align
+VCMPV_ALIGN_NUM_BIT = 128 # bit
+
 
 # pylint: disable=too-many-instance-attributes, too-many-public-methods
 class CceOp:
@@ -1958,6 +1961,15 @@ class CceOp:
             align_type = 'int8'
         align_factor, _ = util.get_align_factor(align_type)
 
+        # for DSL vcmpsel+reduce, reduce need align 32B,
+        # vcmpsel set_cmp_mask need 128 bits align
+        def __do_128_bits_align_for_vcmpv(align_factor_origin, dtype, tensor):
+            if (dtype == 'bool') and tensor['op'].find('elewise_binary_vcmpv') != -1:
+                factor = VCMPV_ALIGN_NUM_BIT
+            else:
+                factor = align_factor_origin
+            return factor
+
         def __do_storage_align_for_last_reduce():
             _, a1_end_index = self._find_last_none_reduce_axis(
                 shape_before_reduce,
@@ -1970,6 +1982,7 @@ class CceOp:
                 cache_read_buffer = self._cache_buffer_map[i]
                 align_factor, _ = util.get_align_factor(
                     cache_read_buffer.dtype)
+                align_factor = __do_128_bits_align_for_vcmpv(align_factor, cache_read_buffer.dtype, i)
                 self._schedule[cache_read_buffer].storage_align(
                     cache_read_buffer.op.axis[align_axis], align_factor, 0)
             for i in self._op[:self._reduce_index]:
@@ -1977,6 +1990,7 @@ class CceOp:
                     cache_write_buffer = i["cache_buffer"]
                     align_factor, _ = util.get_align_factor(
                         cache_write_buffer.dtype)
+                    align_factor = __do_128_bits_align_for_vcmpv(align_factor, cache_write_buffer.dtype, i)
                     self._schedule[cache_write_buffer].storage_align(
                         cache_write_buffer.op.axis[align_axis], align_factor, 0)
 
@@ -1984,6 +1998,7 @@ class CceOp:
                     before_reduce_mid_out_tensor = i['dst_buffer']
                     align_factor, _ = util.get_align_factor(
                         before_reduce_mid_out_tensor.dtype)
+                    align_factor = __do_128_bits_align_for_vcmpv(align_factor, before_reduce_mid_out_tensor.dtype, i)
                     self._schedule[before_reduce_mid_out_tensor].storage_align(
                         before_reduce_mid_out_tensor.op.axis[align_axis],
                         align_factor, 0)
@@ -1993,6 +2008,7 @@ class CceOp:
                     out_read_buffer = self._read_cache_muti_out[i['dst_buffer']]
                     align_factor, _ = util.get_align_factor(
                         out_read_buffer.dtype)
+                    align_factor = __do_128_bits_align_for_vcmpv(align_factor, out_read_buffer.dtype, i)
                     self._schedule[out_read_buffer].storage_align(
                         out_read_buffer.op.axis[align_axis],
                         align_factor, 0)
@@ -2003,6 +2019,7 @@ class CceOp:
                 cache_read_buffer = self._cache_buffer_map[i]
                 align_factor, _ = util.get_align_factor(
                     cache_read_buffer.dtype)
+                align_factor = __do_128_bits_align_for_vcmpv(align_factor, cache_read_buffer.dtype, i)
                 self._schedule[cache_read_buffer].storage_align(
                     cache_read_buffer.op.axis[align_axis_before], align_factor, 0)
             for i in self._op[:self._reduce_index]:
@@ -2010,6 +2027,7 @@ class CceOp:
                     cache_write_buffer = i["cache_buffer"]
                     align_factor, _ = util.get_align_factor(
                         cache_write_buffer.dtype)
+                    align_factor = __do_128_bits_align_for_vcmpv(align_factor, cache_write_buffer.dtype, i)
                     self._schedule[cache_write_buffer].storage_align(
                         cache_write_buffer.op.axis[align_axis_before], align_factor, 0)
             if self._is_keepdims:
@@ -2021,6 +2039,7 @@ class CceOp:
                     cache_write_buffer = i["cache_buffer"]
                     align_factor, _ = util.get_align_factor(
                         cache_write_buffer.dtype)
+                    align_factor = __do_128_bits_align_for_vcmpv(align_factor, cache_write_buffer.dtype, i)
                     self._schedule[cache_write_buffer].storage_align(
                         cache_write_buffer.op.axis[align_axis_after], align_factor, 0)
 
