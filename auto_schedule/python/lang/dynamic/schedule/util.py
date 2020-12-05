@@ -27,7 +27,7 @@ from te.tvm.expr import Reduce
 from te.tvm.tensor import Tensor
 from te.tvm.tensor import PlaceholderOp
 from te.lang.base import operation
-from te.lang.base import expr_equal
+from te.lang.base.expr_compare import expr_equal
 from te.utils.error_manager.error_manager_util import get_error_message
 
 from . import BROADCAST_INSNS, SUPPORT_SCALAR_INSNS, \
@@ -217,8 +217,7 @@ def get_bound(expr):
             raise RuntimeError(dict_args, get_error_message(dict_args))
         return _lower, _upper
 
-    lower, upper = 1, 1
-    lower, upper = _parse(expr, lower, upper)
+    lower, upper = _parse(expr, 1, 1)
     return lower, upper
 
 

@@ -19,7 +19,7 @@ from decorator import decorator
 from te import tvm
 from te.platform import intrinsic_check_support
 from te.lang.base import operation as operation_context
-from te.lang.base import expr_equal as equal
+from te.lang.base.expr_compare import expr_equal as equal
 from te.platform.cce_conf import CceProductParams as pver
 from te.utils.error_manager.error_manager_util import get_error_message
 

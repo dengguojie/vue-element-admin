@@ -17,7 +17,7 @@ broadcat compute
 """
 from te import tvm
 from te.lang.base import operation
-from te.lang.base import expr_equal as equal
+from te.lang.base.expr_compare import expr_equal as equal
 from te.utils.error_manager.error_manager_util import get_error_message
 from .util import dtype_check_decorator
 from .util import judge_var

@@ -28,4 +28,3 @@ from .operation import add_exclude_bound_var
 from .operation import register_tiling_case
 from .operation import register_schedule
 from .operation import get_te_var
-from .expr_compare import expr_equal
