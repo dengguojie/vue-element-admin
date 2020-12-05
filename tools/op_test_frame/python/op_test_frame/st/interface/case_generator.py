@@ -591,7 +591,7 @@ class CaseGenerator:
             # parse ini to json
             self._parse_ini_to_json()
         elif self.input_file_path.endswith(".py"):
-		    # parse .py to json
+            # parse .py to json
             self._parse_py_to_json()
 
         if self._is_aicpu_op():
