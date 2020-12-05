@@ -40,8 +40,7 @@ IR_H_HEAD = """/**
  * Copyright (C)  2020. Huawei Technologies Co., Ltd. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.You may not use this 
-   file except in compliance with the License.
+ * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
 
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -147,8 +146,7 @@ namespace domi
 // Caffe ParseParams
 Status ParseParam{name}(const Operator& op_src, ge::Operator& op_dest)
 {left_braces}
-    // To do: Implement the operator plug-in by referring to the TBE Operator 
-    Development Guide.
+    // To do: Implement the operator plug-in by referring to the TBE Operator Development Guide.
     return SUCCESS;
 {right_braces}
 
@@ -265,8 +263,7 @@ def {name}({input_name}, {output}, {attr}, kernel_name="{name}"):
            TBE Operator Development Guide.
     \"""
 """
-PY_PLACEHOLDER = """    data_{name} = tvm.placeholder({name}.get(\"shape\"),\\
-                            dtype={name}.get(\"dtype\"), name=\"data_{name}\")
+PY_PLACEHOLDER = """    data_{name} = tvm.placeholder({name}.get(\"shape\"), dtype={name}.get(\"dtype\"), name=\"data_{name}\")
 """
 
 PY_RES_WITHOUT_ATTR = """
