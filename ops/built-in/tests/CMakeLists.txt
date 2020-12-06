@@ -37,7 +37,10 @@ if(BUILD_OPEN_PROJECT)
     # generate coverage
     add_custom_target(generate_ops_cpp_cov ALL
       DEPENDS ops_cpp_proto_utest
+              ops_cpp_op_tiling_utest
               ops_cpp_fusion_pass_aicore_utest
+	      cpu_kernels_ut
+	      ops_cpp_plugin_utest
       COMMENT "Generate cpp coverage for ops utest"
     )
     add_custom_command(
