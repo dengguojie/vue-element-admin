@@ -191,7 +191,6 @@ IMPLEMT_COMMON_INFERFUNC(PadInferShape) {
   auto node = NodeUtils::GetNodeFromOperator(op);
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   GeTensorPtr paddings_tensor = nullptr;
-  vector<int64_t> depth_value;
   if (GRAPH_SUCCESS != NodeUtils::GetInputConstData(node, "paddings", paddings_tensor)) {
     OP_LOGW("OP[Pad]", "the node paddings is not const node, will set the output dynamic");
     auto input_desc = op_info->MutableInputDesc("x");
