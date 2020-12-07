@@ -70,6 +70,13 @@ def calc(outs, option=None):
  
         return False
 
+    def is_special_last_broadcast(pattern):
+        if pattern and tuple(pattern) == (COMMON, BROADCAST):
+            return True
+
+        return False
+
+
     def calc_base_key():
         if mode == SPECIAL:
             pattern = operation.get_context().get_current_compute().get("pattern")
@@ -111,7 +118,7 @@ def calc(outs, option=None):
     if mode == SPECIAL:
         pattern = operation.get_context().get_current_compute().get("pattern")
         # db_key
-        if is_pure_eletwise(pattern):
+        if is_pure_eletwise(pattern) or is_special_last_broadcast(pattern):
             is_db = True
 
     outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
@@ -122,7 +129,7 @@ def calc(outs, option=None):
     if dim_len == 1:
         return _calc_one_dim(outs, base_key, is_db)
 
-    return _calc_general(outs, base_key)
+    return _calc_general(outs, base_key, is_db)
 
 
 def _const_tiling(base_key):
@@ -157,13 +164,14 @@ def _calc_one_dim(outs, base_key, is_db=False):
               "ub_tiling_axis": 0,
               "ub_factor_bound": c_bounds[DTYPE_BYTE_MAPPING[dtype]],
               "tiling_strategy": TilingStrategy.ONE_CUT,
-              "is_need_db": True
+              "is_need_db": True,
+              "is_pure_eletwise": True
               })
 
     return cases
 
 
-def _calc_general(outs, base_key):
+def _calc_general(outs, base_key, is_db=False):
     outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
     cases = []
     out = outs[0]
@@ -187,6 +195,16 @@ def _calc_general(outs, base_key):
                 "block_tiling_axis": i,
                 "ub_tiling_axis": j,
                 "tiling_strategy": TilingStrategy.ONE_CUT,
+            })
+
+    if is_db:
+        cases.append({
+                "key": base + 1 + DB_KEY,
+                "block_tiling_axis": 0,
+                "ub_tiling_axis": 1,
+                "tiling_strategy": TilingStrategy.ONE_CUT,
+                "is_need_db": True,
+                "is_pure_eletwise": False
             })
 
     return cases

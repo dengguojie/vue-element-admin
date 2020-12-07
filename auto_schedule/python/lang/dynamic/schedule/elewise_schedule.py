@@ -69,6 +69,7 @@ class ElewiseSchedule:
         self._tiling_case = tiling_case
         self._tiling_strategy = self._tiling_case.get("tiling_strategy")
         self._is_db = self._tiling_case.get("is_need_db", False)
+        self._is_pure_eletwise = self._tiling_case.get("is_pure_eletwise", False)
         self._mode = operation.get_context().get("mode")
 
         self._scope = "local.UB"
@@ -559,7 +560,7 @@ class ElewiseSchedule:
                 sch[tensor_i].emit_insn(param[0], param[1],
                                         attrs=dict(src_shape=src_shape, storage_bound=[tensor_bound]))
             else:
-                if self._is_db and tensor_i in self._out_tensors:
+                if self._is_db and tensor_i in self._out_tensors and self._is_pure_eletwise:
                     sch[tensor_i].emit_insn(param[0], param[1], attrs=dict(no_overlap=0))
                 else:
                     sch[tensor_i].emit_insn(param[0], param[1])

@@ -76,6 +76,7 @@ public:
   bool CalcConstKey();
   bool WriteTilingData(OpRunInfo& run_info);
   bool DoTiling();
+  bool IsNeedDoubleBuffer();
 
 private:
   const std::string& op_type;

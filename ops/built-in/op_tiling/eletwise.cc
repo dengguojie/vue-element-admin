@@ -486,6 +486,12 @@ bool Eletwise::WriteTilingData(OpRunInfo& run_info) {
   return true;
 }
 
+bool Eletwise::IsNeedDoubleBuffer() {
+  return ((s_pattern == Pattern::COMMON) &&
+   (block_factor > std::min(max_available_ub, split_factors[compileInfo.max_dtype]))) ||
+   ((s_pattern == Pattern::COMMON_BROADCAST) && (output_shape[1] >= max_available_ub));
+}
+
 bool Eletwise::DoTiling() {
   GELOGI("op [%s]: tiling running", op_type.c_str());
   bool ret = true;
@@ -498,8 +504,7 @@ bool Eletwise::DoTiling() {
     if (need_multi_core) {
       // cut block
       ret = ret && DoBlockTiling();
-      if (s_pattern == Pattern::COMMON &&
-          block_factor > std::min(max_available_ub, split_factors[compileInfo.max_dtype])) {
+      if (IsNeedDoubleBuffer()) {
         need_double_buffer = true;
         max_available_ub =
                 (((compileInfo.ub_size / DOUBLE_BUFFER_SIZE / compileInfo.coexisting_quantity) / BLOCK_SIZE)
