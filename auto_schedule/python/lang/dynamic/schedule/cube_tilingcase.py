@@ -150,9 +150,9 @@ class TilingSelection:
                     hout = self.op._get_output_h(seed["A_shape"][2])
                     wout = self.op._get_output_w(seed["A_shape"][3])
                     tmp = hout*wout // (tiling["AL0_matrix"][0]*C0_SIZE*tiling["AL1_shape"][1]*block_dims[2])
-                    if tmp >= 1 and block_dims[0]*block_dims[1]*tmp <= CORE_NUM:
-                        tiling["block_dim"][2] = (hout*wout + (tiling["AL0_matrix"][0]*C0_SIZE*tiling["AL1_shape"][1] -
-                            1)) // (tiling["AL0_matrix"][0]*C0_SIZE*tiling["AL1_shape"][1])
+                    if tmp >= 1:
+                        tmp = tiling["AL0_matrix"][0]*C0_SIZE*tiling["AL1_shape"][1]
+                        tiling["block_dim"][2] = min((hout*wout + tmp - 1) // tmp, CORE_NUM)
                 seed["tiling"] = tiling
             seed_range = self.op.get_tiling_range(seed['tiling'], seed[self.op.key])
             if seed_hw in seed_points or _cal_overlap(seed_range, tgt_area)[0] == 0:
