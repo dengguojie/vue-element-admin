@@ -640,17 +640,6 @@ LOCAL_MODULE_CLASS := FOLDER
 LOCAL_INSTALLED_PATH :=  $(HOST_OUT_ROOT)/ops/fusion_rules/built-in
 include $(BUILD_HOST_PREBUILT)
 
-
-########################################
-
-include $(CLEAR_VARS)
-
-LOCAL_MODULE := tf_kernel.json
-
-include $(LOCAL_PATH)/compile_tf_info_release.mk
-
-#########################################
-
 ########################################
 
 include $(CLEAR_VARS)
