@@ -4046,7 +4046,7 @@ class CceOp:
                         def __is_need_vector_emit_insn():
                             backend_reduce_insn = self._get_backend_reduce_last_insn()
                             if lop["op"] in backend_reduce_insn or \
-                                    (cache_buffer.dtype in ["float16", "int32"] and
+                                    (cache_buffer.dtype in ["float16", "float32", "int32"] and
                                      lop["op"] in ["reduce_min", "reduce_max"]):
                                 return True
                             return False

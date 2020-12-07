@@ -1188,6 +1188,30 @@ class ReduceAtomicSchedule(VectorSchedule):
         :param max_ub_count:
         :return:
         """
+        def _shape_mul(shape):
+            if not shape:
+                return 1
+            return reduceIns(lambda x, y: x*y, shape)
+
+        def _update_ub_max_by_align(max_ub_count):
+            a1_start_index, _ = self._find_last_none_reduce_axis(
+                shape_before_reduce,
+                reduce_axis_index)
+
+            align_type = self._res_tensor.dtype
+            # bool is represented by int8
+            if align_type == 'bool':
+                align_type = 'int8'
+            align_factor, _ = util.get_align_factor(align_type)
+
+            total_size_of_reduce = _shape_mul(shape_before_reduce[a1_start_index:])
+
+            max_ub_count = int(total_size_of_reduce /
+                               (total_size_of_reduce + align_factor -
+                                total_size_of_reduce % align_factor) * max_ub_count)
+
+            return max_ub_count
+
         reduce_tensor = self._reduce_info["reduce_tensor"]
         dtype = reduce_tensor.dtype
         shape_before_reduce = self._reduce_info["shape_before_reduce"]
@@ -1196,6 +1220,11 @@ class ReduceAtomicSchedule(VectorSchedule):
         for i, _ in enumerate(reduce_axis_index):
             # pylint: disable=unsubscriptable-object
             to_do_tiling_shape.append(shape_before_reduce[reduce_axis_index[i]])
+
+        last_axis_size = shape_before_reduce[-1]
+        is_32b_align = self._is_last_axis_32b_align(last_axis_size, dtype)
+        if not is_32b_align:
+            max_ub_count = _update_ub_max_by_align(max_ub_count)
 
         if self._is_supported_atomic_add():
             block_split_axis, block_split_inner, ub_split_axis, ub_split_inner = \
@@ -1211,6 +1240,9 @@ class ReduceAtomicSchedule(VectorSchedule):
             ub_split_axis, ub_split_inner = self._get_ub_tiling(
                 shape_before_reduce, block_split_axis, block_split_inner,
                 max_ub_count)
+
+        if not is_32b_align:
+            self._do_storage_align(shape_before_reduce, reduce_axis_index)
 
         self._need_db = self._is_need_double_buffer(shape_before_reduce,
                                                     0,
