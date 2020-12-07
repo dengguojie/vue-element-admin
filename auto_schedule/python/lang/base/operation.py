@@ -31,6 +31,14 @@ def register_operator(op_type, pattern=None):
     return operation_impl.register_operator(op_type, pattern)
 
 
+def register_fusion_compute(op_type):
+    """
+    :param op_type:
+    :return:
+    """
+    return operation_impl.register_fusion_compute(op_type)
+
+
 def var(name, bound=None, dtype="int32", addition=None):
     """
     :param name:
