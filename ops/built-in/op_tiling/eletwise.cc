@@ -453,17 +453,17 @@ bool Eletwise::WriteTilingData(OpRunInfo& run_info) {
       input_shape_x = std::move(output_shape);
     }
     for (const auto& var : all_vars) {
-      if (var >= 300) {
+      if (var >= 3000) {
         CHECK((ub_axis >= 0), "op [%s] : Not cut ub", op_type.c_str())
         ByteBufferPut(run_info.tiling_data, ub_factor);
-      } else if (var >= 200) {
+      } else if (var >= 2000) {
         CHECK((ub_axis >= 0), "op [%s] : Not cut block", op_type.c_str())
         ByteBufferPut(run_info.tiling_data, block_factor);
       } else {
         int32_t var_value = var;
         int32_t operator_index = var_value % 10;
         var_value /= 10;
-        size_t dim_index = var_value % 10;
+        size_t dim_index = var_value % 100;
         switch (operator_index) {
           case 0:
             CHECK((input_shape_x.size() > dim_index), "op [%s] : Compile info error", op_type.c_str())
