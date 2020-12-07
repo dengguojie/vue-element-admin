@@ -187,13 +187,15 @@ class CaseGenerator:
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_INVALID_DATA_ERROR)
 
-        self.op_type = mindspore_ops_info[OP_NAME]
+        if mindspore_ops_info.get(OP_NAME) is None:
+            utils.print_warn_log("The op_name is null, please modify it.")
+        self.op_type = mindspore_ops_info.get(OP_NAME)
         if mindspore_ops_info.get('attr'):
             attr_name = 'attr_{}'.format(mindspore_ops_info['attr'][0]['name'])
             self.op_info[attr_name] = mindspore_ops_info['attr'][0]
         count_input = 0
         for key in PY_INPUT_OUTPUT:
-            op_info = mindspore_ops_info[key]
+            op_info = mindspore_ops_info.get(key)
             for index in op_info:
                 if not index.get('name'):
                     utils.print_error_log(
