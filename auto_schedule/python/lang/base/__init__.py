@@ -24,7 +24,7 @@ from .operation import compute
 from .operation import add_compile_info
 from .operation import var
 from .operation import add_exclude_bound_var
-from .operation_impl import register_fusion_compute
+from .operation import register_fusion_compute
 from .operation_impl import register_tiling_case
 from .operation_impl import register_schedule
 from .operation_impl import get_te_var
