@@ -2,7 +2,7 @@
 # coding=utf-8
 """
 Function:
-AclOpGenerator class. This class mainly implements acl op src code generation.
+MsOpGenerator class. This class mainly implements mindspore op src code generation.
 Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved Â© 2020
 Change History: 2020-07-11 file Created
@@ -11,7 +11,6 @@ try:
     import os
     import sys
     import numpy as np
-    import mindspore as ms
     import json
     from shutil import copytree
     from shutil import copy2
@@ -23,7 +22,7 @@ try:
     from op_test_frame.common import op_status
 except (ImportError,) as import_error:
     sys.exit(
-        "[acl_op_generator]Unable to import module: %s." % str(import_error))
+        "[ms_op_generator]Unable to import module: %s." % str(import_error))
 
 
 def _create_ms_op_json_content(testcase_list):

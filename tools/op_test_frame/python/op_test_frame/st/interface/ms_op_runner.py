@@ -2,7 +2,7 @@
 # coding=utf-8
 """
 Function:
-This class mainly involves compile and run acl op.
+This class mainly involves compile and run mindspore op.
 Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved Â© 2020
 """
@@ -14,7 +14,7 @@ try:
     from op_test_frame.common import op_status
     from . import op_st_case_info
 except ImportError as import_error:
-    sys.exit("[acl_op_runner] Unable to import module: %s." % str(
+    sys.exit("[ms_op_runner] Unable to import module: %s." % str(
         import_error))
 
 CMAKE_LIST_FILE_NAME = 'CMakeLists.txt'
@@ -25,7 +25,7 @@ TEST_PY = 'test_{op_name}.py'
 
 class MsOpRunner:
     """
-    Class for compile and run acl op test code.
+    Class for compile and run mindspore op test code.
     """
 
     def __init__(self, path, op_name, soc_version, report):
@@ -52,7 +52,7 @@ class MsOpRunner:
 
     def run(self):
         """
-        Run acl op
+        Run mindspore op
         """
         # test_data
         test_file = TEST_PY.format(op_name=self.op_name)
