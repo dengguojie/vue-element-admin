@@ -47,10 +47,11 @@ def get_op_support_info(x, y, num, axis, kernel_name="unpack"):
         axis_reduce_list = None
         for idx, _ in enumerate(shape_x):
             output_split = []
+            output_axis = idx - 1 if idx > real_axis else idx
             if idx == real_axis:
                 continue
             for output_idx in range(num):
-                output_split.append([output_idx, [idx]])
+                output_split.append([output_idx, [output_axis]])
             split_info = [SplitInput([0, [idx], [-1], [-1]]), SplitOutput(*output_split)]
             axis_split_matrix.append(split_info)
     else:
