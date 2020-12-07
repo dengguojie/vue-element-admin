@@ -195,9 +195,21 @@ class DepthToSpaceNHWCCompute:
         self.cal_nums_last_loop = 0
         self.each_core_process_nums = 0
         self.last_core_process_nums = 0
+        if self.is_align:
+            self.align_min_size = self.min_size
+        else:
+            self.align_min_size = (self.min_size // self.num_data + 1)*self.num_data
         # Minimum number of data processed by a single core
         self.one_core_min_size = self.input_width*self.block_size*self.min_size
-        self.ub_max_process_groups = 0
+        self.one_core_align_min_size = self.input_width*self.block_size*self.align_min_size
+        self.ub_max_process_groups = self.ub_memory // self.one_core_min_size
+        # multi times in and out case
+        if not self.ub_rearrange:
+            self.multi_times_in_out = True
+            self.ub_max_process_groups = self.ub_memory // self.one_core_align_min_size
+        else:
+            self.multi_times_in_out = False
+
 
 
     def set_tik_instance(self):
@@ -1109,7 +1121,6 @@ class DepthToSpaceNHWCCompute:
         last_core_process_groups = div_groups - (use_cores - 1)*each_core_process_groups
         self.each_core_process_nums = each_core_process_groups*self.one_core_min_size
         self.last_core_process_nums = last_core_process_groups*self.one_core_min_size
-        self.ub_max_process_groups = self.ub_memory // self.one_core_min_size
         with tik_instance.for_range(0, use_cores, block_num=use_cores) as index:
             core_offset = index*self.each_core_process_nums
             with tik_instance.if_scope(index < (use_cores - 1)):
@@ -1124,47 +1135,98 @@ class DepthToSpaceNHWCCompute:
         self.cal_nums_last_loop = cal_nums - (self.loop_times - 1)*self.cal_nums_per_loop
         if self.loop_times == 1:
             loop_offset = core_offset
-            self.data_move_in_each_loop(tik_instance, self.cal_nums_last_loop, loop_offset, True)
+            self.ub_rearrange_data_move_in_each_loop(tik_instance, self.cal_nums_last_loop, loop_offset, True)
         else:
             with tik_instance.for_range(0, self.loop_times) as i:
                 loop_offset = i*self.cal_nums_per_loop + core_offset
                 with tik_instance.if_scope(i < (self.loop_times - 1)):
-                    self.data_move_in_each_loop(tik_instance, self.cal_nums_per_loop, loop_offset, False)
+                    self.ub_rearrange_data_move_in_each_loop(tik_instance, self.cal_nums_per_loop, loop_offset, False)
                 with tik_instance.else_scope():
-                    self.data_move_in_each_loop(tik_instance, self.cal_nums_last_loop, loop_offset, True)
+                    self.ub_rearrange_data_move_in_each_loop(tik_instance, self.cal_nums_last_loop, loop_offset, True)
     
-    def data_move_in_each_loop(self, tik_instance, cal_nums, loop_offset, address_rollback):
-        cal_blocks = math.ceil(cal_nums / self.num_data)
-        input_ub = tik_instance.Tensor(self.dtype, (cal_blocks*self.num_data,), name="input_ub", scope=tik.scope_ubuf)
-        rearrange_ub = tik_instance.Tensor(self.dtype, (cal_blocks*self.num_data,),
-                                           name="rearrange_ub", scope=tik.scope_ubuf)
-        tik_instance.data_move(input_ub, self.input_x_gm[loop_offset], 0, 1, cal_blocks, 0, 0)
+    def ub_rearrange_data_move_in_each_loop(self, tik_instance, cal_nums, loop_offset, address_rollback):
         rearrange_loops = cal_nums // self.one_core_min_size
-        with tik_instance.for_range(0, rearrange_loops) as m:
+        if self.multi_times_in_out:
+            input_ub = tik_instance.Tensor(self.dtype,
+                                           (rearrange_loops*self.input_width*self.block_size*self.align_min_size,),
+                                           name="input_ub", scope=tik.scope_ubuf)
+            self.ub_rearrange_min_size_more_32B(tik_instance, rearrange_loops, input_ub, loop_offset)
+        else:
+            cal_blocks = math.ceil(cal_nums / self.num_data)
+            input_ub = tik_instance.Tensor(self.dtype, (cal_blocks*self.num_data,), name="input_ub",
+                                           scope=tik.scope_ubuf)
+            rearrange_ub = tik_instance.Tensor(self.dtype, (cal_blocks*self.num_data,),
+                                               name="rearrange_ub", scope=tik.scope_ubuf)
+            tik_instance.data_move(input_ub, self.input_x_gm[loop_offset], 0, 1, cal_blocks, 0, 0)
             if self.is_align:
-                with tik_instance.for_range(0, self.block_size) as n:
-                    input_ub_index = m*self.one_core_min_size + n*self.min_size
-                    rearrange_ub_index = m*self.one_core_min_size + n*self.min_size*self.input_width
-                    min_blocks = self.min_size // self.num_data
-                    tik_instance.data_move(rearrange_ub[rearrange_ub_index], input_ub[input_ub_index],
-                                            0, self.input_width, min_blocks, (self.block_size-1)*min_blocks, 0)
+                self.ub_rearrange_min_size_equal_32B(tik_instance, rearrange_loops, input_ub, rearrange_ub, cal_blocks,
+                                                     loop_offset)
             else:
-                with tik_instance.for_range(0, self.input_width*self.block_size) as n:
-                    i_index = n // self.input_width
-                    j_index = n - i_index*self.input_width
-                    new_index = j_index*self.block_size + i_index
-                    with tik_instance.for_range(0, self.min_size) as o:
-                        input_ub_index = m*self.one_core_min_size + new_index*self.min_size + o
-                        rearrange_ub_index = m*self.one_core_min_size + n*self.min_size + o
-                        rearrange_ub[rearrange_ub_index].set_as(input_ub[input_ub_index])
+                self.ub_rearrange_min_size_less_32B(tik_instance, rearrange_loops, input_ub, rearrange_ub, cal_blocks,
+                                                    cal_nums, loop_offset, address_rollback)
+
+    def ub_rearrange_min_size_less_32B(self, tik_instance, rearrange_loops, input_ub, rearrange_ub, cal_blocks,
+                                       cal_nums, loop_offset, address_rollback):
+        """
+        UB rearrange (num_data_one_move)
+        ub scalar rearrange
+        """
+        with tik_instance.for_range(0, rearrange_loops) as m:
+            with tik_instance.for_range(0, self.input_width*self.block_size) as n:
+                i_index = n // self.input_width
+                j_index = n - i_index*self.input_width
+                new_index = j_index*self.block_size + i_index
+                with tik_instance.for_range(0, self.min_size) as o:
+                    input_ub_index = m*self.one_core_min_size + new_index*self.min_size + o
+                    rearrange_ub_index = m*self.one_core_min_size + n*self.min_size + o
+                    rearrange_ub[rearrange_ub_index].set_as(input_ub[input_ub_index])
         if address_rollback and cal_nums % self.num_data != 0:
             for p in range(self.num_data-1, -1, -1):
                 rearrange_ub[(cal_blocks-1)*self.num_data + p].set_as(rearrange_ub[cal_nums - self.num_data + p])
             tik_instance.data_move(self.output_y_gm[loop_offset], rearrange_ub, 0, 1, cal_blocks - 1, 0, 0)
             tik_instance.data_move(self.output_y_gm[loop_offset + cal_nums - self.num_data],
-                                       rearrange_ub[(cal_blocks - 1)*self.num_data], 0, 1, 1, 0, 0)
+                                   rearrange_ub[(cal_blocks - 1)*self.num_data], 0, 1, 1, 0, 0)
         else:
             tik_instance.data_move(self.output_y_gm[loop_offset], rearrange_ub, 0, 1, cal_blocks, 0, 0)
+
+    def ub_rearrange_min_size_equal_32B(self, tik_instance, rearrange_loops, input_ub, rearrange_ub, cal_blocks,
+                                        loop_offset):
+        """
+        UB rearrange (num_data_one_move)
+        ub data_move stride
+        """
+        with tik_instance.for_range(0, rearrange_loops) as m:
+            with tik_instance.for_range(0, self.block_size) as n:
+                input_ub_index = m*self.one_core_min_size + n*self.min_size
+                rearrange_ub_index = m*self.one_core_min_size + n*self.min_size*self.input_width
+                min_blocks = self.min_size // self.num_data
+                tik_instance.data_move(rearrange_ub[rearrange_ub_index], input_ub[input_ub_index],
+                                       0, self.input_width, min_blocks, (self.block_size-1)*min_blocks, 0)
+        tik_instance.data_move(self.output_y_gm[loop_offset], rearrange_ub, 0, 1, cal_blocks, 0, 0)
+
+
+    def ub_rearrange_min_size_more_32B(self, tik_instance, rearrange_loops, input_ub, loop_offset):
+        """
+        multi_times in multi_times out
+        Enable the maximum number of cores.
+        """
+        with tik_instance.for_range(0, rearrange_loops) as m:
+            with tik_instance.for_range(0, self.input_width*self.block_size) as n:
+                input_x_gm_offset = m*self.one_core_min_size + n*self.min_size + loop_offset
+                input_ub_offset = m*self.input_width*self.block_size*self.align_min_size + n*self.align_min_size
+                tik_instance.data_move(input_ub[input_ub_offset], self.input_x_gm[input_x_gm_offset], 0, 1,
+                                       self.align_min_size // self.num_data, 0, 0)
+            with tik_instance.for_range(0, self.input_width*self.block_size) as o:
+                align_min_blocks = self.align_min_size // self.num_data
+                i_index = o // self.input_width
+                j_index = o - i_index*self.input_width
+                new_index = j_index*self.block_size + i_index
+                # No multi-core stampede scenario
+                tik_instance.data_move(self.output_y_gm[loop_offset + m*self.one_core_min_size + o*self.min_size],
+                                       input_ub[m*self.input_width*self.block_size*self.align_min_size +
+                                                new_index*self.align_min_size],
+                                       0, 1, align_min_blocks, 0, 0)
+
 
     def depth_to_space_ub_rearrange_case(self,tik_instance):
         """
@@ -1185,6 +1247,8 @@ class DepthToSpaceNHWCCompute:
         tik_instance = self.set_tik_instance()
 
         if self.ub_rearrange and (self.ub_memory >= self.one_core_min_size >= self.num_data):
+            tik_instance = self.depth_to_space_ub_rearrange_case(tik_instance)
+        elif self.multi_times_in_out and (self.ub_memory >= self.one_core_align_min_size):
             tik_instance = self.depth_to_space_ub_rearrange_case(tik_instance)
         else:
             if self.tiling_axis == 0:
