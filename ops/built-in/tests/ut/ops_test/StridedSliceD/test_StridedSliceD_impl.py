@@ -91,6 +91,14 @@ case9 = {"params": [{"shape": (15, 38, 38, 3, 85), "dtype": "float32", "format":
          "expect":"success",
          "support_expect": True}
 
+case10 = {"params": [{"shape": (1, 120), "dtype": "float32", "format": "NCHW", "ori_shape": (1, 120),"ori_format": "ND"}, #x
+                    {"shape": (1, 80), "dtype": "float32", "format": "NCHW", "ori_shape": (1, 80),"ori_format": "ND"},
+                    [0, 40], [1, 120], [1, 1], 0, 0, 0, 0, 0
+                    ],
+         "case_name": "StridedSliceD_10",
+         "expect":"success",
+         "support_expect": True}
+
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
@@ -101,6 +109,7 @@ ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case6)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case7)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case8)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case9)
+ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case10)
 
 def calc_expect_func(x, y, begin, end, strides):
     inputArr = x['value']

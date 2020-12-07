@@ -85,6 +85,7 @@ def strided_slice_last_dim_only(input_shape, dtype, output_shape, begin, kernel_
 
     tail_len_burst = input_size // len_burst
 
+    input_len_stride = -1
     for i in range(1, tail_len_burst):
         tail_len_burst_one = len_burst * i
         if input_size % tail_len_burst_one == 0:
@@ -94,7 +95,9 @@ def strided_slice_last_dim_only(input_shape, dtype, output_shape, begin, kernel_
         if core_num <= aicore_num:
             input_len_stride = i
             break
-
+    if input_len_stride == -1:
+        return False
+        
     for j in range(0, tail_len_burst):
         input_len_stride_one = input_len_stride - j
         can_bound_input_size = input_len_stride_one * (core_num - 1) * len_burst

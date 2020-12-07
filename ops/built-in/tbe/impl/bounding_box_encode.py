@@ -304,9 +304,10 @@ class BoundingBoxEncode():
 
         if self.loop_cycle > 1:
             if block_number % self.loop_cycle != 0:
+                start_block_addr = self.ub_max_size // self.data_num_in_each_block
                 block_number_loop = block_number - start_block_addr * (
                     self.loop_cycle - 1)
-                if block_number_loop*16 > MAX_UB_ELEMENT_NUMBER_FP16:
+                if block_number_loop * 16 > MAX_UB_ELEMENT_NUMBER_FP16:
                     self.loop_cycle += 1
                     start_block_addr = block_number // self.loop_cycle
                     block_number_loop = block_number - start_block_addr * (
