@@ -15,13 +15,11 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 reciprocal
 """
-
-import json
-from te import tvm
+from functools import reduce as reduce_ins
 import te.lang.cce as tbe
 from te import platform as tbe_platform
 import te.lang.base as tbe_base
-from functools import reduce as reduceIns
+from te import tvm
 from te.utils import shape_util
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
@@ -30,53 +28,25 @@ from te.utils import para_check
 SHAPE_SIZE_LIMIT = 2147483648  # shape limit
 
 
-# pylint: disable=redefined-builtin,unused-argument
-def op_select_format(input_x, output_y, kernel_name="reciprocal"):
-    """
-    Get support format according to input_x
-    """
-    shape = input_x.get("shape")
-    shape_len = len(shape)
-    format = input_x.get("ori_format")
-    format_4d_list = ["NCHW", "NHWC", "HWCN"]
-    support_format = "ND,ND,NCHW,NCHW,NHWC,NHWC,HWCN,HWCN"
-    ini_dict = {"input0": {"name": "x", "format": "ND",
-                           "dtype": "float,float16"},
-                "output0": {"name": "y", "format": "ND",
-                            "dtype": "float,float16"}}
-
-    # whether support format NC1HWC0、FRACTAL_Z、C1HWNCoC0
-    if shape_len == 4 and format in format_4d_list:
-        if format == "NCHW":
-            n_dim = shape[0]
-            c_dim = shape[1]
-        if format == "NHWC":
-            n_dim = shape[0]
-            c_dim = shape[3]
-        if format == "HWCN":
-            n_dim = shape[3]
-            c_dim = shape[2]
-        # whether support format NC1HWC0
-        if c_dim % 16 == 0:
-            support_format += ("," + "NC1HWC0") * 2
-        # whether support format FRACTAL_Z and C1HWNCoC0
-        if n_dim % 16 == 0 and c_dim % 16 == 0:
-            support_format += ("," + "FRACTAL_Z") * 2
-            support_format += ("," + "C1HWNCoC0") * 2
-
-    ini_dict["input0"]["format"] = support_format
-    ini_dict["input0"]["dtype"] = "float,float16," * \
-                                  (len(support_format.split(
-                                      ",")) // 2 - 1) + "float,float16"
-    ini_dict["output0"]["format"] = support_format
-    ini_dict["output0"]["dtype"] = "float,float16," * \
-                                   (len(support_format.split(
-                                       ",")) // 2 - 1) + "float,float16"
-
-    return json.dumps(ini_dict, indent=4)
-
-
+# pylint: disable=redefined-builtin,unused-argument,too-many-locals
 def reciprocal_compute(input_x, output_y, kernel_name="reciprocal"):
+    """
+    reciprocal_compute
+    calculating data's reciprocal,y= 1 / x
+
+    Parameters
+    ----------
+    input_x : TVM tensor
+        the placeholder of input data
+    output_y: dict
+        shape and dtype of output, should be same shape and type as input
+    kernel_name : str
+        cce kernel name, default value is reciprocal
+
+    Returns
+    -------
+    res: TVM tensor
+    """
     if tbe_platform.cce_conf.api_check_support("te.lang.cce.vdiv",
                                                "float32"):
         dtype = input_x.dtype
@@ -114,18 +84,17 @@ def reciprocal(input_x, output_y, kernel_name="reciprocal"):
     -------
     None
     """
-
     dtype = input_x.get("dtype")
     check_list = ("float16", "float32")
     input_dtype = dtype.lower()
     para_check.check_dtype(input_dtype, check_list, param_name="input_x")
     schedules, tensors = [], []
     ins = classify([input_x], Mode.ELEWISE)
-    for (input_x,) in ins:
+    for (_input_x,) in ins:
         with tbe_base.compute():
-            x_shape = shape_util.variable_shape([input_x])
+            x_shape = shape_util.variable_shape([_input_x])
             fuse_shape = [1]
-            fuse_shape[0] = reduceIns(lambda x, y: x * y, x_shape[0])
+            fuse_shape[0] = reduce_ins(lambda x, y: x * y, x_shape[0])
             data_input = tvm.placeholder(fuse_shape, dtype=input_dtype,
                                          name="data_input")
             res = reciprocal_compute(data_input, output_y, kernel_name)

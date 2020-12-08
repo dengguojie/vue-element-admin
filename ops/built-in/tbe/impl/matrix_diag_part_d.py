@@ -87,7 +87,11 @@ def matrix_diag_part_d_compute(input_diagonal, input_help, output_diagonal,
         if dtype_input_diagonal == "int32":
             res = tbe.cast_to(res, "int32")
     else:
+        if dtype_input_diagonal == "int32":
+            res_vmul = tbe.cast_to(res_vmul, "float32")
         res = tbe.sum(res_vmul, SCALER_NEGATIVE_TWO)
+        if dtype_input_diagonal == "int32":
+            res = tbe.cast_to(res, "int32")
 
     if dtype_input_diagonal in ("int8", "uint8"):
         res = tbe.cast_to(res, dtype_input_diagonal,

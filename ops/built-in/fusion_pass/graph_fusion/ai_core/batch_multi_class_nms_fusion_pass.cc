@@ -227,7 +227,7 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
       // Set node properties
       ge::GeTensorDesc tensorDescadd1(GeShape(), ge::FORMAT_ND, ge::DT_FLOAT);
       tensorDescadd1.SetShape(add1newShape);
-
+      tensorDescadd1.SetOriginShape(add1newShape);
       int32_t realDimCnt0 = add1newShape.GetDimNum();
       ge::TensorUtils::SetRealDimCnt(tensorDescadd1, realDimCnt0);
       FUSION_PASS_CHECK(Adds->AddInputDesc("x", tensorDescadd1) != SUCCESS,
@@ -325,6 +325,7 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
       // Set node properties
       ge::GeTensorDesc tensorDescmul(GeShape(), ge::FORMAT_ND, ge::DT_FLOAT);
       tensorDescmul.SetShape(mulnewShape);
+      tensorDescmul.SetOriginShape(mulnewShape);
       int32_t realDimCnt1 = mulnewShape.GetDimNum();
       ge::TensorUtils::SetRealDimCnt(tensorDescmul, realDimCnt1);
       FUSION_PASS_CHECK(Muls->AddInputDesc("x", tensorDescmul) != SUCCESS,
@@ -354,6 +355,7 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
       // Set node properties
       ge::GeTensorDesc tensorDescadd_mul(GeShape(), ge::FORMAT_ND, ge::DT_FLOAT);
       tensorDescadd_mul.SetShape(add_mulnewShape);
+      tensorDescadd_mul.SetOriginShape(add_mulnewShape);
       int32_t realDimCnt2 = add_mulnewShape.GetDimNum();
       ge::TensorUtils::SetRealDimCnt(tensorDescadd_mul, realDimCnt2);
       FUSION_PASS_CHECK(Adds_mul->AddInputDesc("x", tensorDescadd_mul) != SUCCESS,
@@ -384,6 +386,7 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
       // Set node properties
       ge::GeTensorDesc tensorDescdiv(GeShape(), ge::FORMAT_ND, ge::DT_FLOAT);
       tensorDescdiv.SetShape(divnewShape);
+      tensorDescdiv.SetOriginShape(divnewShape);
       int32_t realDimCnt3 = divnewShape.GetDimNum();
       ge::TensorUtils::SetRealDimCnt(tensorDescdiv, realDimCnt3);
       FUSION_PASS_CHECK(Div->AddInputDesc("x1", tensorDescdiv) != SUCCESS,
