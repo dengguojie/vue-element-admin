@@ -79,6 +79,9 @@ uint32_t CpuKernelRegister::RunCpuKernel(CpuKernelContext &ctx) {
       return KERNEL_STATUS_INNER_ERROR;
     }
   }
+  if (aicpu::SetOpname != nullptr) {
+    (void)aicpu::SetOpname(type);
+  }
 
   uint32_t ret = kernel->Compute(ctx);
   if (ret != KERNEL_STATUS_OK) {
