@@ -68,14 +68,14 @@ class ConcatV2CpuKernel : public CpuKernel {
     for (uint32_t i = 0; i < n_; ++i) {
       Tensor *input_i_ptr = ctx.Input(i);
       KERNEL_CHECK_NULLPTR(input_i_ptr, KERNEL_STATUS_PARAM_INVALID,
-                           "Get input[x%u] failed.", i);
+                           "Get input x%u failed.", i);
       int64_t input_i_num = input_i_ptr->NumElements();
       if (input_i_num == 0) {
         continue;
       }
       auto input_i_shape_ptr = input_i_ptr->GetTensorShape();
       KERNEL_CHECK_NULLPTR(input_i_shape_ptr, KERNEL_STATUS_PARAM_INVALID,
-                           "Get input[x%u] shape failed.", i);
+                           "Get input x%u shape failed.", i);
       int32_t input_i_dims = input_i_shape_ptr->GetDims();
       KERNEL_CHECK_FALSE(
           (input_i_dims == input_dims_), KERNEL_STATUS_PARAM_INVALID,
@@ -98,12 +98,12 @@ class ConcatV2CpuKernel : public CpuKernel {
       int64_t inputs_flat_dim1 = input_i_num / inputs_flat_dim0_;
       auto input_i_data_ptr = input_i_ptr->GetData();
       KERNEL_CHECK_NULLPTR(input_i_data_ptr, KERNEL_STATUS_PARAM_INVALID,
-                           "Get input[x%u] data failed.", i);
+                           "Get input x%u data failed.", i);
       auto input_i = std::make_shared<typename TTypes<T>::ConstMatrix>(
           reinterpret_cast<T *>(input_i_data_ptr), inputs_flat_dim0_,
           inputs_flat_dim1);
       KERNEL_CHECK_NULLPTR(input_i, KERNEL_STATUS_PARAM_INVALID,
-                           "Create input[x%u] failed!", i);
+                           "Create input x%u failed!", i);
       inputs.emplace_back(std::move(input_i));
     }
 

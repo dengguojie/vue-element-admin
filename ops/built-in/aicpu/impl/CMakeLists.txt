@@ -5,7 +5,6 @@ set(local_kernels_src_files
     kernels/normalized/reshape_kernels.cc
     kernels/normalized/less.cc
     kernels/normalized/top_k_kernels.cc
-    kernels/normalized/gather_kernels.cc
     kernels/normalized/get_dynamic_dims.cc
     kernels/normalized/identity_kernels.cc
     kernels/normalized/ceil_kernels.cc
