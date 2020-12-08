@@ -507,7 +507,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
             return True
         return False
 
-    def _call_op_func(self, run_soc_version: str, op_func, case_info: op_ut_case_info.OpUTCase):
+    def _call_op_func(self, run_soc_version: str, op_func, case_info: op_ut_case_info.OpUTCase, check_exist=False):
         kernel_name = case_info.case_name + "_" + run_soc_version.lower()
         if not case_info.addition_params:
             addition_params = {"kernel_name": kernel_name}
@@ -536,24 +536,29 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                 err_trace = get_trace_info()
                 err_msg = "Call op func failed, err_trace: %s" % err_trace
 
-        if case_info.expect == op_status.SUCCESS and not self._check_kernel_so_exist(self.KERNEL_DIR, kernel_name):
-            call_op_success = False
-            err_msg = "Call op func success, but no .o and .json generated."
+        if case_info.expect == op_status.SUCCESS:
+            if check_exist and not self._check_kernel_so_exist(self.KERNEL_DIR, kernel_name):
+                call_op_success = False
+                err_msg = "Call op func success, but no .o and .json generated."
 
         return call_op_success, err_msg
 
-    def _compile_op_kernel(self, run_soc_version, case_info: op_ut_case_info.OpUTCase):
+    def _compile_op_kernel(self, run_soc_version, case_info: op_ut_case_info.OpUTCase, check_exist=False):
         op_func, load_err_msg = self._load_op_func()
         if not op_func:
             return False, load_err_msg
         call_success, err_msg = self._call_op_func(run_soc_version=run_soc_version,
                                                    op_func=op_func,
-                                                   case_info=case_info)
+                                                   case_info=case_info,
+                                                   check_exist=check_exist)
         return call_success, err_msg
 
     def _run_compile_stage(self, run_soc_version,
-                           case_info: op_ut_case_info.OpUTCase) -> op_ut_case_info.OpUTStageResult:
-        compile_success, compile_err_msg = self._compile_op_kernel(run_soc_version, case_info=case_info)
+                           case_info: op_ut_case_info.OpUTCase,
+                           check_exist=False) -> op_ut_case_info.OpUTStageResult:
+        compile_success, compile_err_msg = self._compile_op_kernel(run_soc_version,
+                                                                   case_info=case_info,
+                                                                   check_exist=check_exist)
         if not compile_success:
             stage_status = op_ut_case_info.OpUTStageResult(status=op_status.FAILED,
                                                            stage_name=op_ut_case_info.STAGE_COMPILE,
@@ -711,7 +716,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
     def _run_precision_case(self, run_soc_version, case_info: op_ut_case_info.OpUTCase,
                             run_cfg: Dict[str, Any] = None) -> ut_report.OpUTCaseReport:
         case_trace = op_ut_case_info.OpUTCaseTrace(run_soc_version, case_info)
-        compile_stage_status = self._run_compile_stage(run_soc_version, case_info)
+        compile_stage_status = self._run_compile_stage(run_soc_version, case_info, check_exist=True)
         case_trace.add_stage_result(compile_stage_status)
         if compile_stage_status.status != op_status.SUCCESS:
             return ut_report.OpUTCaseReport(case_trace)
