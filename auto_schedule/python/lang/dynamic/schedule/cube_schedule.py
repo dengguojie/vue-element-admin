@@ -38,6 +38,7 @@ def schedule(outs, tiling_case):
 
 
 @register_schedule(pattern=Pattern.MAT_MUL)
+@register_schedule(pattern=Pattern.BATCH_MATMUL)
 def schedule(outs, tiling_case):
     """
     schedule for matmul op

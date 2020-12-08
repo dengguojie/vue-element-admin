@@ -270,7 +270,7 @@ def _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y, trans_a, tran
     tensor_x2 = tvm.placeholder(shape_x2_nz, name="tensor_b", dtype=dtype_in)
     if bias:
         bias_dtype = bias.get("dtype")
-        bias_shape = list(bias.get("shape"))
+        bias_shape = [BLOCK_CUBE * n_var]
         tensor_bias = tvm.placeholder(
             bias_shape, name="bias", dtype=bias_dtype)
     else:

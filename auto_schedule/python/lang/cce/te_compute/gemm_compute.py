@@ -247,14 +247,14 @@ def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
                 )
 
         if shape_len_a in (3, 5):
-            if tensor_a.shape[0].value != tensor_b.shape[0].value:
+            if _get_value(tensor_a.shape[0]) != _get_value(tensor_b.shape[0]):
                 args_dict = {
                     "errCode": "E60002",
                     "attr_name": "shape",
                     "param1_name": "tensor a",
-                    "param1_value": "{}".format(tensor_a.shape[0].value),
+                    "param1_value": "{}".format(_get_value(tensor_a.shape[0])),
                     "param2_name": "tensor b",
-                    "param2_value": "{}".format(tensor_b.shape[0].value)
+                    "param2_value": "{}".format(_get_value(tensor_b.shape[0]))
                 }
                 raise RuntimeError(
                     args_dict, error_manager_util.get_error_message(args_dict)
@@ -448,8 +448,7 @@ def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
                     args_dict, error_manager_util.get_error_message(args_dict)
                 )
 
-    if not in_dynamic():
-        _check_a_between_b()
+    _check_a_between_b()
 
     def renew_is_gemv(is_gemv):
         if not is_fractal_a and not is_fractal_b:
@@ -471,11 +470,11 @@ def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
                     args_dict, error_manager_util.get_error_message(args_dict)
                 )
         if shape_bias and matmul_flag:
-            if len(shape_bias) not in (1, 2):
+            if len(shape_bias) != 1:
                 args_dict = {
                     "errCode": "E60006",
                     "param_name": "c",
-                    "expected_length": "1 or 2",
+                    "expected_length": "1",
                     "length": "{}".format(len(shape_bias))
                 }
                 raise RuntimeError(
@@ -508,8 +507,11 @@ def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
     _check_n_align()
 
 
-def _get_value(object):
-    return object.value if hasattr(object, "value") else object
+def _get_value(shape_object):
+    """
+    get the value of shape_object when having attr "value"
+    """
+    return shape_object.value if hasattr(shape_object, "value") else shape_object
 
 
 @para_check.check_input_type(
@@ -658,7 +660,18 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
         return tensor_alpha_ub, tensor_beta_ub
 
     matmul_flag = tensor_alpha is None or tensor_beta is None
-    GEMMParam.dynamic_mode = "dynamic_mkn" if in_dynamic() else None
+    tensor_a_length = len(tensor_a.shape)
+    tensor_b_length = len(tensor_b.shape)
+
+    GEMMParam.batch_a = (tensor_a_length == 5)
+    GEMMParam.batch_b = (tensor_b_length == 5)
+
+    if in_dynamic():
+        if GEMMParam.batch_a:
+            GEMMParam.dynamic_mode = "dynamic_bmkn"
+        else:
+            GEMMParam.dynamic_mode = "dynamic_mkn"
+
     tensor_alpha_ub, tensor_beta_ub = None, None
     if not matmul_flag:
         tensor_alpha_ub, tensor_beta_ub = _compute_alpha_beta()
@@ -765,9 +778,6 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
         return l0c_support_fp32, out_dtype
 
     l0c_support_fp32, out_dtype = _get_output_type()
-
-    tensor_a_length = len(tensor_a.shape)
-    tensor_b_length = len(tensor_b.shape)
 
     def _get_bias_shape():
         if tensor_bias.dtype != dst_dtype:
@@ -997,16 +1007,13 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
 
     reduce_kp, reduce_kb = _get_reduce()
 
-    def _get_optmt_flag():
-        optmt_c = 0
-        if dst_dtype in ("float16", "float32", "int32"):
-            optmt_c = 1
-        return optmt_c
-
-    optmt_c = _get_optmt_flag()
-
     out_shape = (_get_value(n_shape), _get_value(m_shape), _get_value(block_in), _get_value(block_out))
     out_shape_ori = [_get_value(m_shape_ori), _get_value(n_shape_ori)]
+    if GEMMParam.batch_a:
+        out_shape = list(out_shape)
+        matmul_batch =  _get_value(tensor_a.shape[0])
+        out_shape.insert(0, matmul_batch)
+        out_shape_ori.insert(0, matmul_batch)
 
     def _do_align(tensor_need_align, shape_aligned, name, in_dtype):
         """
@@ -1035,7 +1042,6 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
             name="tensor_{}_normalize_ub".format(name)
         )
         return tensor_normalize_ub
-
 
     def check_shape_align(shape, factor):
         is_align = True
@@ -1119,17 +1125,11 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
                 )
         else:
             if tensor_bias is not None:
-                if len(bias_shape) == 1:
-                    tensor_beta_bias_ub = tvm.compute(
-                        bias_shape, lambda i:
-                        tensor_bias[i], name="tensor_bias_ub"
-                    )
-                else:
-                    tensor_beta_bias_ub = tvm.compute(
-                        bias_shape, lambda i, j: tensor_bias[0, j],
-                        name="tensor_bias_ub"
-                    )
-            
+                tensor_beta_bias_ub = tvm.compute(
+                    bias_shape, lambda i:
+                    tensor_bias[i], name="tensor_bias_ub"
+                )
+
         return tensor_beta_bias_ub
 
     tensor_beta_bias_ub = _compute_bias()
@@ -1223,11 +1223,18 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
                 lambda *indices: tensor_a(*indices),  # pylint: disable=W0108
                 name="tensor_a_l1"
             )
-            tensor_a_l0a = tvm.compute(
-                (m_shape, km_shape, block_in, block_reduce),
-                lambda i, j, k, l: tensor_a_l1[i, j, l, k],
-                name="tensor_a_l0a"
-            )
+            if GEMMParam.batch_a:
+                tensor_a_l0a = tvm.compute(
+                    (matmul_batch, m_shape, km_shape, block_in, block_reduce),
+                    lambda b, i, j, k, l: tensor_a_l1[b, i, j, l, k],
+                    name="tensor_a_l0a"
+                )
+            else:
+                tensor_a_l0a = tvm.compute(
+                    (m_shape, km_shape, block_in, block_reduce),
+                    lambda i, j, k, l: tensor_a_l1[i, j, l, k],
+                    name="tensor_a_l0a"
+                )
         else:
             tensor_a_l0a = _a_nd_part_not_trans()
         return tensor_a_l0a
@@ -1288,11 +1295,18 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
                             ),
                             name="tensor_a_l1"
                         )
-                        tensor_a_l0a = tvm.compute(
-                            (m_shape, km_shape, block_in, block_reduce),
-                            lambda i, j, k, l: tensor_a_l1[j, i, k, l],
-                            name="tensor_a_l0a"
-                        )
+                        if GEMMParam.batch_a:
+                            tensor_a_l0a = tvm.compute(
+                                (matmul_batch, m_shape, km_shape, block_in, block_reduce),
+                                lambda b, i, j, k, l: tensor_a_l1[b, j, i, k, l],
+                                name="tensor_a_l0a"
+                            )
+                        else:
+                            tensor_a_l0a = tvm.compute(
+                                (m_shape, km_shape, block_in, block_reduce),
+                                lambda i, j, k, l: tensor_a_l1[j, i, k, l],
+                                name="tensor_a_l0a"
+                            )
                 else:
                     if in_a_dtype == "float16":
                         tensor_a_l1_shape = (m_shape, km_shape, block_in, block_reduce)
@@ -1709,11 +1723,18 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
                             ),
                             name="tensor_b_l1"
                         )
-                        tensor_b_l0b = tvm.compute(
-                            (kn_shape, n_shape, block_out, block_reduce),
-                            lambda i, j, k, l: tensor_b_l1[j, i, l, k],
-                            name="tensor_b_l0b"
-                        )
+                        if GEMMParam.batch_b:
+                            tensor_b_l0b = tvm.compute(
+                                (matmul_batch, kn_shape, n_shape, block_out, block_reduce),
+                                lambda b, i, j, k, l: tensor_b_l1[b, j, i, l, k],
+                                name="tensor_b_l0b"
+                            )
+                        else:
+                            tensor_b_l0b = tvm.compute(
+                                (kn_shape, n_shape, block_out, block_reduce),
+                                lambda i, j, k, l: tensor_b_l1[j, i, l, k],
+                                name="tensor_b_l0b"
+                            )
                     else:
                         tensor_b_l1 = tvm.compute(
                             tensor_b.shape,
@@ -1740,31 +1761,59 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
     def _compute_c_martix():
         if block_in != cce_params.BLOCK_VECTOR:  # gemm
             # define mad compute
-            tensor_c = tvm.compute(
+            if GEMMParam.batch_a:
+                tensor_c = tvm.compute(
                 out_shape,
-                lambda nb, mb, mp, np: tvm.sum(
+                lambda batch, nb, mb, mp, np: tvm.sum(
                     (
-                        tensor_a_l0a[mb, reduce_kb, mp, reduce_kp]
-                        * tensor_b_l0b[reduce_kb, nb, np, reduce_kp]
+                        tensor_a_l0a[batch, mb, reduce_kb, mp, reduce_kp]
+                        * tensor_b_l0b[batch, reduce_kb, nb, np, reduce_kp]
                     ).astype(out_dtype),
                     axis=[reduce_kb, reduce_kp]
                 ),
                 name="tensor_c",
                 attrs={"input_order": "positive"}
-            )
+                )
+            else:
+                tensor_c = tvm.compute(
+                    out_shape,
+                    lambda nb, mb, mp, np: tvm.sum(
+                        (
+                            tensor_a_l0a[mb, reduce_kb, mp, reduce_kp]
+                            * tensor_b_l0b[reduce_kb, nb, np, reduce_kp]
+                        ).astype(out_dtype),
+                        axis=[reduce_kb, reduce_kp]
+                    ),
+                    name="tensor_c",
+                    attrs={"input_order": "positive"}
+                )
             if matmul_flag and tensor_bias is not None:
                 if tensor_bias.dtype == "float16" and l0c_support_fp32 == 1:
-                    tensor_bias_l0c = tvm.compute(
-                        out_shape, lambda i, j, k, l: shape_util.cast(
-                            tensor_beta_bias_ub[i * block_out + l], dtype="float32"),
-                            name="tensor_bias_l0c"
-                    )
+                    if GEMMParam.batch_a:
+                        tensor_bias_l0c = tvm.compute(
+                            out_shape, lambda b, i, j, k, l: shape_util.cast(
+                                tensor_beta_bias_ub[i * block_out + l], dtype="float32"),
+                                name="tensor_bias_l0c"
+                        )
+                    else:
+                        tensor_bias_l0c = tvm.compute(
+                            out_shape, lambda i, j, k, l: shape_util.cast(
+                                tensor_beta_bias_ub[i * block_out + l], dtype="float32"),
+                                name="tensor_bias_l0c"
+                        )
                 else:
-                    tensor_bias_l0c = tvm.compute(
-                        out_shape, 
-                        lambda i, j, k, l: tensor_beta_bias_ub[i * block_out + l],
-                        name="tensor_bias_l0c"
-                    )
+                    if GEMMParam.batch_a:
+                        tensor_bias_l0c = tvm.compute(
+                            out_shape,
+                            lambda b, i, j, k, l: tensor_beta_bias_ub[i * block_out + l],
+                            name="tensor_bias_l0c"
+                        )
+                    else:
+                        tensor_bias_l0c = tvm.compute(
+                            out_shape,
+                            lambda i, j, k, l: tensor_beta_bias_ub[i * block_out + l],
+                            name="tensor_bias_l0c"
+                        )
                 tensor_c = tvm.compute(
                     out_shape,
                     lambda *indices: tensor_bias_l0c[indices] + tensor_c[indices],
@@ -1792,25 +1841,16 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
                 )
             else:
                 # ND out shape is dim 2, shape m is original value
-                if tensor_bias is not None and not matmul_flag:
-                    tensor_c_gm = tvm.compute(
-                        out_shape_ori,
-                        lambda i, j: tvm.select(
-                            i < m_shape_ori,
-                            tvm.select(j < n_shape_ori, tensor_c_ub[i, j])
-                        ),
-                        name="tensor_c_gm",
-                        tag="gemm",
-                        attrs={"kernel_name": kernel_name}
-                    )
-                else:
-                    tensor_c_gm = tvm.compute(
-                        out_shape_ori,
-                        lambda i, j: tensor_c_ub[j // 16, i // 16, i % 16, j % 16],
-                        name="tensor_c_gm",
-                        tag="gemm",
-                        attrs={"kernel_name": kernel_name}
-                    )
+                tensor_c_gm = tvm.compute(
+                    out_shape_ori,
+                    lambda i, j: tvm.select(
+                        i < m_shape_ori,
+                        tvm.select(j < n_shape_ori, tensor_c_ub[i, j])
+                    ),
+                    name="tensor_c_gm",
+                    tag="gemm",
+                    attrs={"kernel_name": kernel_name}
+                )
         return tensor_c_gm
 
     tensor_c_gm = _compute_c_martix()
@@ -1828,10 +1868,16 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
             return trans_flag
 
         def _get_a_shape_in_nc1hwc0():
-            return [1, tensor_a_l0a.shape[1], tensor_a_l0a.shape[0], 16, 16]
+            if GEMMParam.batch_a:
+                return [tensor_a_l0a.shape[0], tensor_a_l0a.shape[2], tensor_a_l0a.shape[1], 16, 16]
+            else:
+                return [1, tensor_a_l0a.shape[1], tensor_a_l0a.shape[0], 16, 16]
 
         def _get_b_shape_in_nc1hwc0():
-            return [tensor_b_l0b.shape[0] * 16, tensor_b_l0b.shape[1], 1, 1, 16]
+            if GEMMParam.batch_b:
+                return [tensor_b_l0b.shape[1] * 16, tensor_b_l0b.shape[2], 1, 1, 16]
+            else:
+                return [tensor_b_l0b.shape[0] * 16, tensor_b_l0b.shape[1], 1, 1, 16]
 
         GEMMParam.tiling_info_dict = {
             "A_shape": _get_a_shape_in_nc1hwc0(),
@@ -1937,5 +1983,7 @@ def _get_tensor_c_ub(  # pylint: disable=too-many-arguments
 class GEMMParam:
     tiling_info_dict = {}
     dynamic_mode = None
+    batch_a = False
+    batch_b = False
     def __init__(self) -> None:
         pass
