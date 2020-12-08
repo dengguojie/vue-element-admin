@@ -350,10 +350,6 @@ def reget_tensor_list(outs):
         conv_out, _, _ = outs
         conv_res_shape = tuple(conv_out.shape)
         # add for group pattern
-        conv_shape = (
-            ConvParam.para_dict["a_shape"][0],
-            (ConvParam.para_dict["weight_ori_shape_nchw"][0] + 16 - 1) // 16,
-            ConvParam.h_out*ConvParam.w_out, 16)
         cout1_opt = ConvParam.para_dict["cout1_opt"]
         # end for group pattern
         reduce_shape = (conv_res_shape[1], conv_res_shape[3])
@@ -2024,12 +2020,16 @@ class CceConvOp:
                     weight_shape[1] *
                     weight_shape[2] *
                     weight_shape[3])
-                if weight_dtype == "int8":
-                    return weight_compress_tiling_size, weight_shape_size
-                if weight_dtype == "float16":
-                    return weight_compress_tiling_size*2, weight_shape_size*2
 
-                err_man.raise_err_value_or_format_invalid("conv2d_compress", "weight", "float16 or int8", "")
+                byte_size = 1
+                if weight_dtype == "int8":
+                    pass
+                elif weight_dtype == "float16":
+                    byte_size = 2
+                else:
+                    err_man.raise_err_value_or_format_invalid("conv2d_compress", "weight", "float16 or int8", "")
+
+                return weight_compress_tiling_size*byte_size, weight_shape_size*byte_size
 
             def get_all_factor(k_or_n_number):
                 """
@@ -2955,7 +2955,7 @@ class CceConvOp:
                     if conv_w % 16 != 0 and pooling_relu is not None:
                         sch[pooling_relu].reused_by(ConvParam.tensor_map["C"])
 
-            def _compute_at_handle_continue_flag():
+            def _compute_at_handle_continue_flag(lop):
                 """
                 Return the continue flag in body ops compute at handle process.
                 True means go on comput at process.
@@ -2997,8 +2997,10 @@ class CceConvOp:
                     """
                     for conv + 3*3pooling fusion, tile UB for data reuse
                     """
-                    offset_bound_first = int_ceil_div(al1_nparts, block_dim[2])*al1_facter_pooling*POOLING_STRIDE*block_tile
-                    offset_bound = (m_outer_outer_outer_inner*al1_facter_pooling + m_outer_outer_inner)*POOLING_STRIDE + 1
+                    offset_bound_first = \
+                        int_ceil_div(al1_nparts, block_dim[2])*al1_facter_pooling*POOLING_STRIDE*block_tile
+                    offset_bound = \
+                        (m_outer_outer_outer_inner*al1_facter_pooling + m_outer_outer_inner)*POOLING_STRIDE + 1
                     offset_bound += (offset_bound_first - pooling_padding[0])
                     offset_bound_first -= (pooling_padding[0]*block_tile)
 
@@ -3068,13 +3070,13 @@ class CceConvOp:
 
                 if not self._fused_flag:
                     if _body_ops_compute_at_flag(lop):
-                        if 5 == len(lop["dst_buffer"].shape):
+                        if len(lop["dst_buffer"].shape) == 5:
                             self._schedule[lop["dst_buffer"]].buffer_align(
                                 (1, 1),
                                 (1, 1), (1, 1),
                                 (1, tiling["CL0_matrix"][1]*tiling["CL0_matrix"][2]),
                                 (1, 1))
-                        elif 4 == len(lop["dst_buffer"].shape):
+                        elif len(lop["dst_buffer"].shape) == 4:
                             self._schedule[lop["dst_buffer"]].buffer_align(
                                 (1, 1), (1, 1),
                                 (1, tiling["CL0_matrix"][1]*tiling["CL0_matrix"][2]),
@@ -3087,10 +3089,11 @@ class CceConvOp:
                 if (("convolution" not in lop["op"]) or ("convolution_A" in lop["op"])) or \
                         (self._fused_flag and (lop["op"] == "convolution_C")):
 
-                    if _compute_at_handle_continue_flag():
+                    if _compute_at_handle_continue_flag(lop):
                         continue
 
-                    pooling_bias_add, pooling_relu = _body_ops_major_compute_at_handle(lop, pooling_bias_add, pooling_relu)
+                    pooling_bias_add, pooling_relu = \
+                        _body_ops_major_compute_at_handle(lop, pooling_bias_add, pooling_relu)
 
                 _fuse_body_ops_compute_at()
             if not set_biasrelu_optim_flag():
@@ -4348,7 +4351,7 @@ class CceConvOp:
                 sum_x_global.op.axis[1])
 
             batch_fuse_channel = sch[sum_x_global].fuse(g_cout1_group_outer,
-                sum_x_global.op.reduce_axis[0], c_rf_outer_outer_outer_outer)
+                                                        sum_x_global.op.reduce_axis[0], c_rf_outer_outer_outer_outer)
             c_slice_axis = sum_x_ub_rf.op.reduce_axis[2]
             al1_at_c_axis = sum_x_ub_rf.op.reduce_axis[1]
             sch[sum_x_ub_rf].compute_at(sch[sum_x_global], batch_fuse_channel)
@@ -4767,7 +4770,7 @@ class CceConvOp:
             else:
                 nbuffer_flag_al1 = False
 
-        if self._dynamic_mode is "dynamic_hw":
+        if self._dynamic_mode == "dynamic_hw":
             tiling["A_overhead_opt_flag"] = False
 
         if l0a_load2d_flag:
@@ -4914,7 +4917,7 @@ class CceConvOp:
                             and dim_map["out_img_shape"][0] > 1:
                         out_extract_axis = noo
 
-        if self._dynamic_mode is "dynamic_hw":
+        if self._dynamic_mode == "dynamic_hw":
             sch[res].pragma(c_pragma_axis, "gm_no_sync", 1)
             if tiling["AL0_matrix"][0]*tiling["AL0_matrix"][2] > 64:
                 mo_block = tiling["block_dim"][2]*16
@@ -4922,10 +4925,10 @@ class CceConvOp:
                 m_out = var_map["ho"]*var_map["wo"]
                 tiling_mal0 = tiling["AL0_matrix"][0]
                 if blocks > 1:
-                    constraint_extent = tvm.expr.LT(64, tvm.max(tvm.min((tvm.floordiv(((m_out) + 15), 16) -
-                                    (tvm.floormod(block.var, (tvm.floordiv(((m_out) - 1), (tvm.floordiv(((m_out) +
-                                     mo_block_miner), mo_block)*16)) + 1))*tvm.floordiv(((m_out) + mo_block_miner),
-                                     mo_block))), tiling_mal0), 0)*16)
+                    constraint_extent = tvm.expr.LT(64, tvm.max(tvm.min((tvm.floordiv(
+                        ((m_out) + 15), 16) - (tvm.floormod(block.var, (tvm.floordiv(((m_out) - 1), (tvm.floordiv(
+                            ((m_out) + mo_block_miner), mo_block)*16)) + 1))*tvm.floordiv(
+                                ((m_out) + mo_block_miner), mo_block))), tiling_mal0), 0)*16)
                     sch[res].pragma(noo, "constraint", constraint_extent)
 
         yuv_align, yuv_pad_align = aipp_conv_fuse_yuv_align()
@@ -6041,7 +6044,7 @@ class AutoScheduleOp:
             "fusion_type_8_7_4_5_6_1_9": 61,
             "fusion_type_5_7_4_6_1_9_3": 62,
             "fusion_type_5_4_1_2": 63,
-            #relu + conv2d(bias)
+            # relu + conv2d(bias)
             "fusion_type_1_15": 64,
             "fusion_type_1_2_15": 65
         }
