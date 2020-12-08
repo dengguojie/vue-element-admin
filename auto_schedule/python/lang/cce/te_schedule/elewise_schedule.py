@@ -853,16 +853,9 @@ class CceOp:
         """
         def _get_elewise_flag():
             is_elewise = False
-            shape_list = [[1, 4, 1, 5, 3, 64, 2, 2],
-                          [2, 3, 655, 6, 2, 2],
-                          [4, 4, 546, 7, 2, 2],
-                          [3, 4, 4, 71, 12, 1, 2, 2],
-                          [1, 4, 93, 110, 2, 2],
-                          [96, 94, 2, 2],
-                          [2, 4, 1017, 3, 2, 2],
-                          [3, 5, 5, 3, 1, 41, 2, 2]]
-            if shape in shape_list:
-                is_elewise = True
+            if len(shape) > 2:
+                if shape[-1] == 2 and shape[-2] == 2:
+                    is_elewise = True
             return is_elewise
         max_ub_count = self.get_max_ub_count(_get_elewise_flag())
 
