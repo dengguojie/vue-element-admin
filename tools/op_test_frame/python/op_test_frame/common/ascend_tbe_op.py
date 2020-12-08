@@ -28,53 +28,8 @@ from typing import Union
 import numpy as np
 
 from op_test_frame.runtime import AscendRTSApi
-from op_test_frame.common import logger
+from op_test_frame.common import dtype_trans
 from op_test_frame.utils import shape_utils
-
-NP_DTYPE_ASCEND_TYPE_MAP = {
-    np.float16.__name__: "float16",
-    np.float32.__name__: "float32",
-    np.float64.__name__: "float64",
-    np.bool.__name__: "bool",
-    np.int8.__name__: "int8",
-    np.uint8.__name__: "uint8",
-    np.int16.__name__: "int16",
-    np.uint16.__name__: "uint16",
-    np.int32.__name__: "int32",
-    np.uint32.__name__: "uint32",
-    np.int64.__name__: "int64",
-    np.uint64.__name__: "uint64"
-}
-
-ASCEND_DTYPE_NP_DTYPE_MAP = {
-    "float16": np.float16,
-    "float32": np.float32,
-    "float64": np.float64,
-    "bool": np.bool,
-    "int8": np.int8,
-    "uint8": np.uint8,
-    "int16": np.int16,
-    "uint16": np.uint16,
-    "int32": np.int32,
-    "uint32": np.uint32,
-    "int64": np.int64,
-    "uint64": np.uint64
-}
-
-DTYPE_SIZE_MAP = {
-    "bool": 1,
-    "int8": 1,
-    "uint8": 1,
-    "int16": 2,
-    "uint16": 2,
-    "int32": 4,
-    "uint32": 4,
-    "int64": 8,
-    "uint64": 8,
-    "float16": 2,
-    "float32": 4,
-    "float64": 8
-}
 
 
 class AscendOpKernel:
@@ -127,9 +82,9 @@ class AscendOpKernel:
 
 
 def calc_op_param_size(shape_size, dtype):
-    if not isinstance(dtype, str) and dtype not in DTYPE_SIZE_MAP.keys():
-        raise TypeError("dtype must be str and in [%s]" % ",".join(DTYPE_SIZE_MAP.keys()))
-    dtype_size = DTYPE_SIZE_MAP.get(dtype)
+    if not isinstance(dtype, str) and dtype not in dtype_trans.get_all_str_dtypes():
+        raise TypeError("dtype must be str and in [%s]" % ",".join(dtype_trans.get_all_str_dtypes()))
+    dtype_size = dtype_trans.get_dtype_byte(dtype)
     return shape_size * dtype_size
 
 
@@ -150,7 +105,8 @@ class AscendOp:
             __import__(self.op_module_name)
         except ImportError as import_err:
             raise RuntimeError(
-                "can't import op module, op module name: %s, please check you python path and " % self.op_module_name)
+                "can't import op module, op module name: %s, please check you python path and "
+                % self.op_module_name) from import_err
 
         op_module = sys.modules[self.op_module_name]
         op_func = getattr(op_module, self.op_intf_name)
@@ -251,7 +207,7 @@ class AscendOpKernelParam:
             self._np_data = np_data
             self._is_const = True
             self.shape = np_data.shape
-            self.dtype = NP_DTYPE_ASCEND_TYPE_MAP.get(np_data.dtype.type.__name__)
+            self.dtype = dtype_trans.np_dtype_to_str(np_data.dtype)
         else:
             self._np_data = None
             self._is_const = False
@@ -273,9 +229,9 @@ class AscendOpKernelParam:
     def build_op_param_by_data_file(data_file_path: str, dtype: str, shape: List[int]):
         if not os.path.exists(data_file_path):
             raise IOError("data_file_path is not exist, path: %s" % data_file_path)
-        np_dtype = ASCEND_DTYPE_NP_DTYPE_MAP.get(dtype)
+        np_dtype = dtype_trans.str_to_np_dtype(dtype)
         if not np_dtype:
-            raise RuntimeError("dtype must in [%s]" % ",".join(ASCEND_DTYPE_NP_DTYPE_MAP.keys()))
+            raise RuntimeError("dtype must in [%s]" % ",".join(dtype_trans.get_all_str_dtypes()))
         np_data = np.fromfile(data_file_path, dtype=np_dtype)
         shape_size = shape_utils.calc_shape_size(shape)
         if shape_size < 0:
@@ -288,7 +244,7 @@ class AscendOpKernelParam:
     def sync_from_device(self):
         if self._ascend_device and self._hbm_pointer:
             byte_data, _ = self._ascend_device.get_data_from_hbm(self._hbm_pointer, self.size)
-            np_data = np.frombuffer(byte_data, dtype=ASCEND_DTYPE_NP_DTYPE_MAP.get(self.dtype))
+            np_data = np.frombuffer(byte_data, dtype=dtype_trans.str_to_np_dtype(self.dtype))
             np_data = np_data[:self.shape_size]
             self._np_data = np.reshape(np_data, self.shape)
 
@@ -344,6 +300,7 @@ class AscendOpKernelRunner:
     def __exit__(self, exc_type, exc_value, exc_traceback):
         for kernel_param in self._kernel_params:
             kernel_param.release_device()
+        self.ascend_device.destroy_stream(self._stream)
         self.ascend_device.reset(self.device_id)
 
     def build_kernel_param(self, data, shape=None, dtype=None) -> AscendOpKernelParam:
@@ -401,6 +358,7 @@ class AscendOpKernelRunner:
                         dtype = output_info.get("dtype")
                         out_size = -1 if shape_size < 0 else calc_op_param_size(shape_size, dtype)
                     out_hbm_pointer = self.ascend_device.malloc(out_size)
+                    self.ascend_device.memset(out_hbm_pointer, out_size, 0, out_size)
                     output_param = AscendOpKernelParam(shape=output_info.get("shape"),
                                                        dtype=output_info.get("dtype"),
                                                        ascend_device=self.ascend_device,
@@ -427,7 +385,7 @@ class AscendOpKernelRunner:
             self.ascend_device.synchronize_with_stream(self._stream)
 
         if self.profiling:
-            for i in range(self.profiling_times):
+            for _ in range(self.profiling_times):
                 _execute_kernel()
         else:
             _execute_kernel()
@@ -436,7 +394,7 @@ class AscendOpKernelRunner:
             profiling_data = self.ascend_device.get_online_profiling_data(self._stream, self.profiling_times)
             cost_time = [float(profiling_data[i].totalcycle) for i in range(self.profiling_times)]
             print(cost_time)
-            self.ascend_device.start_online_profiling(self._stream)
+            self.ascend_device.stop_online_profiling(self._stream)
 
     def run(self, kernel: AscendOpKernel, inputs, output_input_ref: List[List[int]] = None,
             tiling=None, actual_output_info=None) -> Union[AscendOpKernelParam, List[AscendOpKernelParam], None]:

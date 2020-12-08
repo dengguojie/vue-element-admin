@@ -18,13 +18,14 @@ the op ut test main class: OpUT, BroadcaseOpUT, ElementwiseOpUT, ReduceOpUT
 """
 import os
 import sys
-import json
 import stat
 import inspect
-import unittest
 import traceback
 from enum import Enum
 from typing import List
+from typing import Dict
+from typing import Any
+from typing import Union
 
 import numpy as np
 
@@ -38,8 +39,7 @@ from op_test_frame.utils import precision_compare_util
 from op_test_frame.utils import op_param_util
 from op_test_frame.utils import file_util
 from op_test_frame.ut import op_ut_case_info
-from op_test_frame.model_run_utils import model_run_utils
-from op_test_frame.ut import op_ut_runner
+from op_test_frame.ut import ut_report
 from op_test_frame.common.ascend_tbe_op import AscendOpKernel
 from op_test_frame.common.ascend_tbe_op import AscendOpKernelRunner
 
@@ -125,6 +125,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         if __name__ == "__main__":
             ut_case.run("Ascend910", simulator_mode="pv", simulator_lib_path="xxx")
     """
+    _case_info_map: Dict[str, Union[op_ut_case_info.OpUTCase, op_ut_case_info.OpUTCustomCase]]
     KERNEL_DIR = os.path.realpath("./kernel_meta")
     SOC_VERSION_STR = "SOC_VERSION"
 
@@ -159,208 +160,11 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
 
         self._select_format_func_name = llt_config.LLTConf.op_select_format_name
         self._check_support_func_name = llt_config.LLTConf.check_support_func_name
-        self.func_cache = {}
-        self.test_trace_hook = []
-        self._test_class = self._build_test_class()
         self._auto_gen_case_name_count = 0
-        self._case_name_list = []
         # key: case_name, value: case_info: OpUTCase
         self._case_info_map = {}
-        self.test_data_dir_hook = [os.path.realpath("./data")]
-        self.test_model_data_dir_hook = [os.path.realpath("./model")]
-        self._simulator_mode_hook = ["pv"]
-        self._simulator_lib_path_hook = ["/usr/local/Ascend"]
-
         caller = inspect.stack()[1]
         self.case_file = caller.filename
-
-    def _get_op_func_from_cache(self, soc_version: str, func_type: OpFuncType) -> FuncCache:
-        def _load_op_module():
-            try:
-                __import__(self.op_module_name)
-            except ImportError as _:
-                load_op_err_trace = get_trace_info()
-                load_op_err_msg = "load op failed, can't import op module, op module name: %s, " % self.op_module_name
-                load_op_err_msg += "import error trace:%s" % load_op_err_trace
-                logger.log_err(load_op_err_msg)
-                return None, load_op_err_msg
-
-            op_module_inner = sys.modules[self.op_module_name]
-            return op_module_inner, None
-
-        def _get_func_from_op_module(op_module_inner, func_type_inner, func_name_inner):
-            op_func = getattr(op_module_inner, func_name_inner, None)
-            if op_func:
-                func_cache_inner = FuncCache(status=op_status.SUCCESS,
-                                             func_type=func_type_inner,
-                                             func=op_func,
-                                             err_msg=None)
-            else:
-                ge_op_func_err_msg = "can't find op func: %s in module: %s" % (func_name_inner, self.op_module_name)
-                func_cache_inner = FuncCache(status=op_status.FAILED,
-                                             func_type=func_type_inner,
-                                             func=None,
-                                             err_msg=ge_op_func_err_msg)
-            return func_cache_inner
-
-        def _build_op_func_cache():
-            op_module_inner, load_op_err_msg = _load_op_module()
-            if not op_module_inner:
-                op_intf_cache_inner = FuncCache(status=op_status.FAILED,
-                                                func_type=OpFuncType.INTF_FUNC,
-                                                func=None,
-                                                err_msg=load_op_err_msg)
-                op_select_cache_inner = FuncCache(status=op_status.FAILED,
-                                                  func_type=OpFuncType.SELECT_FORMAT_FUNC,
-                                                  func=None,
-                                                  err_msg=load_op_err_msg)
-                op_check_support_cache_inner = FuncCache(status=op_status.FAILED,
-                                                         func_type=OpFuncType.CHECK_SUPPORT_TYPE,
-                                                         func=None,
-                                                         err_msg=load_op_err_msg)
-            else:
-                op_intf_cache_inner = _get_func_from_op_module(op_module_inner,
-                                                               OpFuncType.INTF_FUNC,
-                                                               self.op_func_name)
-                op_select_cache_inner = _get_func_from_op_module(op_module_inner,
-                                                                 OpFuncType.SELECT_FORMAT_FUNC,
-                                                                 llt_config.LLTConf.op_select_format_name)
-                op_check_support_cache_inner = _get_func_from_op_module(op_module_inner,
-                                                                        OpFuncType.CHECK_SUPPORT_TYPE,
-                                                                        llt_config.LLTConf.check_support_func_name)
-
-            return op_intf_cache_inner, op_select_cache_inner, op_check_support_cache_inner
-
-        if soc_version not in self.func_cache:
-            self.func_cache[soc_version] = {}
-            op_intf_cache, op_select_cache, op_check_support_cache = _build_op_func_cache()
-            self.func_cache[soc_version][OpFuncType.INTF_FUNC.value] = op_intf_cache
-            self.func_cache[soc_version][OpFuncType.SELECT_FORMAT_FUNC.value] = op_select_cache
-            self.func_cache[soc_version][OpFuncType.CHECK_SUPPORT_TYPE.value] = op_check_support_cache
-
-        return self.func_cache.get(soc_version, {}).get(func_type.value)
-
-    def _build_test_class(self):
-        def _get_test_case_set_up_class(op_name):
-            @classmethod
-            def set_up_class(arg):
-                if arg is not None:
-                    print("--------------------test %s start-------------------------------" % op_name)
-
-            return set_up_class
-
-        def _get_test_case_tear_down_class(op_name):
-            @classmethod
-            def tear_down_class(arg):
-                if arg is not None:
-                    print()
-                    print("--------------------test %s end-------------------------------" % op_name)
-
-            return tear_down_class
-
-        op_test_class = type("Test" + self.op_type, (unittest.TestCase,), {})
-        setattr(op_test_class, "setUpClass", _get_test_case_set_up_class(self.op_type))
-        setattr(op_test_class, "tearDownClass", _get_test_case_tear_down_class(self.op_type))
-        return op_test_class
-
-    def _get_cur_run_soc_version(self):
-        try:
-            import te.platform.cce_conf as tbe_platform  # pylint: disable=import-outside-toplevel
-        except ImportError as _:
-            err_trace = get_trace_info()
-            return None, err_trace
-        return tbe_platform.get_soc_spec(self.SOC_VERSION_STR), None
-
-    def _run_op_compile(self, func_info: FuncCache, case_info: op_ut_case_info.OpUTCase):
-        err_msg = None
-        run_op_compile_success = True
-        err_trace_str = None
-        try:
-            if not case_info.addition_params:
-                kernel_name_params = {"kernel_name": case_info.case_name}
-            else:
-                case_info.addition_params["kernel_name"] = case_info.case_name
-                kernel_name_params = case_info.addition_params
-            if self.imply_type == OpImplyType.DYNAMIC_SHAPE:
-                import te  # pylint: disable=import-outside-toplevel
-                with te.op.dynamic():
-                    func_info.func(*case_info.op_params, **kernel_name_params)
-            else:
-                func_info.func(*case_info.op_params, **kernel_name_params)
-        except BaseException as run_err:  # pylint: disable=broad-except
-            if case_info.expect != op_status.SUCCESS:
-                if case_info.expect != op_status.FAILED and not isinstance(run_err, case_info.expect):
-                    run_op_compile_success = False
-                    err_msg = "Exception class not match actual is: %s, Expect is:%s" % (
-                        run_err.__class__.__name__, case_info.expect.__name__)
-            else:
-                run_op_compile_success = False
-                if len(run_err.args) == 1:
-                    err_msg = run_err.args[0]
-                else:
-                    err_msg = json.dumps(run_err.args)
-            if not run_op_compile_success:
-                err_trace_str = get_trace_info()
-        return run_op_compile_success, err_msg, err_trace_str
-
-    def _add_test_op_intf_method(self, case_info: op_ut_case_info.OpUTCase):
-
-        def _get_test_method():
-            def op_test_func(sub_self):  # pylint: disable=unused-argument
-                # add ut trace to trace hook, op runner will get trace info from this hook
-                soc_version, get_soc_err_msg = self._get_cur_run_soc_version()
-                ut_case_trace = op_ut_case_info.OpUTCaseTrace(soc_version, case_info)
-                self.test_trace_hook.append(ut_case_trace)
-
-                if soc_version is None:
-                    get_soc_failed_stage = op_ut_case_info.OpUTStageResult(status=op_status.FAILED,
-                                                                           err_msg="Can not get run soc",
-                                                                           err_trace=get_soc_err_msg)
-                    ut_case_trace.add_stage_result(get_soc_failed_stage)
-                    raise AssertionError("Not found run soc version.")
-
-                def _run_test():
-                    # get op interface function
-                    func_info = self._get_op_func_from_cache(soc_version, OpFuncType.INTF_FUNC)
-                    if not func_info.status == op_status.SUCCESS:
-                        ut_case_trace.add_stage_result(
-                            op_ut_case_info.OpUTStageResult(status=op_status.FAILED,
-                                                            err_msg=func_info.err_msg))
-                        raise AssertionError(func_info.err_msg)
-                    # call op intf, compile op
-                    run_op_compile_success, err_msg, err_trace_str = self._run_op_compile(func_info, case_info)
-                    # add trace stage info
-                    if not run_op_compile_success:
-                        assert_msg = "Run op not as expect, expect: %s, but: %s" % (
-                            case_info.expect if case_info.expect else case_info.expect.__name__,
-                            op_status.SUCCESS if not run_op_compile_success else op_status.FAILED)
-                        if err_msg:
-                            assert_msg += ", error msg: %s" % err_msg
-                        ut_case_trace.add_stage_result(
-                            op_ut_case_info.OpUTStageResult(status=op_status.FAILED,
-                                                            err_msg=assert_msg,
-                                                            err_trace=err_trace_str))
-                        raise AssertionError(assert_msg)
-
-                    ut_case_trace.add_stage_result(
-                        op_ut_case_info.OpUTStageResult(status=op_status.SUCCESS))
-
-                try:
-                    _run_test()
-                except AssertionError as run_err:
-                    raise run_err
-                except BaseException as run_err:
-                    err_trace = get_trace_info()
-                    err_msg = "run op compile test failed."
-                    ut_case_trace.add_stage_result(
-                        op_ut_case_info.OpUTStageResult(status=op_status.FAILED,
-                                                        err_msg=err_msg,
-                                                        err_trace=err_trace))
-                    raise AssertionError(err_msg) from run_err
-
-            return op_test_func
-
-        setattr(self._test_class, case_info.case_name, _get_test_method())
 
     def add_test_cfg_cov_case(self, cfg_path_root=None):
         """
@@ -432,7 +236,6 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
 
         case_info = self._build_op_ut_case_info(support_soc, case, case_line_num=case_line_num)
         self._case_info_map[case_info.case_name] = case_info
-        self._add_test_op_intf_method(case_info)
 
     @staticmethod
     def _gen_input_data(param_info):
@@ -503,41 +306,28 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                 _add_to_params(output_list, arg)
         return input_list, output_list
 
-    def _build_case_simulator_dir(self, case_name):
-        model_data_path = os.path.join(os.path.realpath(self.test_model_data_dir_hook[0]),
-                                       self._simulator_mode_hook[0], self.op_type, case_name)
-        if not os.path.exists(model_data_path):
-            file_util.makedirs(model_data_path, DATA_DIR_MODES)
-        return model_data_path
+    @staticmethod
+    def _get_outputs(param_list: List):
+        def _add_to_params(params: List, one_param):
+            if isinstance(one_param, list):
+                for sub_param in one_param:
+                    params.append(sub_param)
+            else:
+                params.append(one_param)
 
-    def _run_op(self, case_info: op_ut_case_info.OpUTCase):
-        bin_path = os.path.join(OpUT.KERNEL_DIR, case_info.case_name + ".o")
-        json_path = os.path.join(OpUT.KERNEL_DIR, case_info.case_name + ".json")
-        input_info_list, output_info_list = self._get_input_outputs(case_info.op_params)
-        input_data_list = []
-        for input_info in input_info_list:
-            self._gen_input_data(input_info)
-            input_data_list.append(input_info.get("value"))
-        op_kernel = AscendOpKernel(bin_path, json_path)
-        op_kernel.set_input_info(input_info_list)
-        op_kernel.set_output_info(output_info_list)
-        cur_soc_version, _ = self._get_cur_run_soc_version()
-        with AscendOpKernelRunner(simulator_mode=self._simulator_mode_hook[0],
-                                  soc_version=cur_soc_version,
-                                  simulator_lib_path=self._simulator_lib_path_hook[0],
-                                  simulator_dump_path=self._build_case_simulator_dir(case_info.case_name)) as runner:
-            output_data_list = runner.run(op_kernel, inputs=input_data_list)
-            if not isinstance(output_data_list, (tuple, list)):
-                output_data_list = [output_data_list, ]
-            for output_data in output_data_list:
-                if output_data:
-                    output_data.sync_from_device()
+        output_list = []
+        for arg in param_list:
+            param_type = OpUT._get_param_type(arg)
+            if param_type == "output":
+                _add_to_params(output_list, arg)
+        return output_list
 
-        for idx, output_info in enumerate(output_info_list):
-            output_info["value"] = output_data_list[idx].get_data()
-
-    def _build_data_file(self, file_name):
-        data_dir = os.path.join(self.test_data_dir_hook[0], self.op_type)
+    def _build_data_file(self, file_name, run_soc_version, run_cfg: Dict = None):
+        if run_cfg:
+            data_root_dir = run_cfg.get("data_dump_path", "./data")
+        else:
+            data_root_dir = "./data"
+        data_dir = os.path.join(data_root_dir, self.op_type, run_soc_version)
         data_dir = os.path.realpath(data_dir)
         if not os.path.exists(data_dir):
             file_util.makedirs(data_dir, mode=DATA_DIR_MODES)
@@ -548,19 +338,19 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                 fout.write("")
         return data_path
 
-    def _save_data(self, case_info: op_ut_case_info.OpUTCase):
+    def _save_data(self, run_soc_version, case_info: op_ut_case_info.OpUTCase, run_cfg: Dict = None):
 
         def _save_input_data(one_param, idx):
             input_data_file_name = "%s_input%s.bin" % (case_info.case_name, str(idx))
-            input_data_path = self._build_data_file(input_data_file_name)
+            input_data_path = self._build_data_file(input_data_file_name, run_soc_version, run_cfg)
             one_param["data_path"] = input_data_path
             one_param["value"].tofile(input_data_path)
 
         def _save_output_data(one_param, idx):
             output_data_file_name = "%s_output%s.bin" % (case_info.case_name, str(idx))
             expect_output_data_file_name = "%s_expect_output%s.bin" % (case_info.case_name, str(idx))
-            output_data_path = self._build_data_file(output_data_file_name)
-            expect_output_data_path = self._build_data_file(expect_output_data_file_name)
+            output_data_path = self._build_data_file(output_data_file_name, run_soc_version, run_cfg)
+            expect_output_data_path = self._build_data_file(expect_output_data_file_name, run_soc_version, run_cfg)
             one_param["data_path"] = output_data_path
             one_param["expect_data_path"] = expect_output_data_path
             one_param["value"].tofile(output_data_path)
@@ -587,419 +377,6 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                     _save_output_data(arg, output_idx)
                     output_idx += 1
 
-    def _run_op_kernel(self, case_info: op_ut_case_info.OpUTCase):
-        def _gen_input_data_path(param_info_inner, param_idx_str):
-            def _deal_param_data_path():
-                input_data_path = param_info_inner.get("data_path")
-                if not os.path.exists(input_data_path):
-                    raise RuntimeError("Input data path is not exist, path: %s." % input_data_path)
-                param_info_inner["data_path"] = os.path.realpath(input_data_path)
-                data_type = str(param_info_inner.get("dtype")).strip()
-                data_from_file = np.fromfile(param_info_inner.get("data_path"), data_type)
-                data_from_file_size = len(data_from_file)
-                param_shape = param_info_inner.get("shape")
-                param_shape_size = shape_utils.calc_shape_size(param_shape)
-                if data_from_file_size < param_shape_size:
-                    raise RuntimeError("Input data file size(%s) is len than shape size(%s), dtype is %s. " % (
-                        data_from_file_size, param_shape_size, data_type))
-                param_info_inner["value"] = data_from_file[:param_shape_size].reshape(param_shape)
-
-            def _deal_no_param_data_path():
-                input_data_dir = os.path.join(self.test_data_dir_hook[0], self.op_type)
-                if not os.path.exists(input_data_dir):
-                    file_util.makedirs(input_data_dir, mode=DATA_DIR_MODES)
-                input_data_file_name = "%s_input%s.bin" % (case_info.case_name, param_idx_str)
-                input_data_path = os.path.join(input_data_dir, input_data_file_name)
-                param_info_inner["data_path"] = input_data_path
-                if not os.path.exists(input_data_path):
-                    # just for create file
-                    with os.fdopen(os.open(input_data_path, DATA_FILE_FLAGS, DATA_FILE_MODES), 'w') as fout:
-                        fout.write("")
-                if "value" in param_info_inner.keys():
-                    param_info_inner["value"].tofile(input_data_path)
-                elif "value_range" in param_info_inner.keys():
-                    param_value_range_tmp = param_info_inner["value_range"]
-                    param_np_buffer = np.random.uniform(param_value_range_tmp[0],
-                                                        param_value_range_tmp[1],
-                                                        size=param_info_inner["shape"])
-                    param_np_buffer = param_np_buffer.astype(param_info_inner["dtype"])
-                    param_np_buffer.tofile(input_data_path)
-                    param_info_inner["value"] = param_np_buffer
-                else:
-                    print("no value range, use default [0.1, 1.0]")
-                    param_np_buffer = np.random.uniform(0.1, 1.0, size=param_info_inner["shape"])
-                    param_np_buffer = param_np_buffer.astype(param_info_inner["dtype"])
-                    param_np_buffer.tofile(input_data_path)
-                    param_info_inner["value"] = param_np_buffer
-
-            if "data_path" in param_info_inner.keys():
-                _deal_param_data_path()
-            else:
-                _deal_no_param_data_path()
-
-        def _gen_output_data_path(param_info_inner, param_idx_str):
-            output_data_path = param_info_inner.get("data_path")
-            if not output_data_path:
-                output_data_file_name = "%s_output%s.bin" % (case_info.case_name, param_idx_str)
-                output_data_dir = os.path.join(self.test_data_dir_hook[0], self.op_type)
-                output_data_dir = os.path.realpath(output_data_dir)
-                output_data_path = os.path.join(output_data_dir, output_data_file_name)
-                if not os.path.exists(output_data_dir):
-                    file_util.makedirs(output_data_dir, mode=DATA_DIR_MODES)
-                if not os.path.exists(output_data_path):
-                    # create output data file with mode
-                    with os.fdopen(os.open(output_data_path, DATA_FILE_FLAGS, DATA_FILE_MODES), 'w') as fout:
-                        fout.write("")
-                param_info_inner["data_path"] = output_data_path
-            else:
-                output_data_path = os.path.realpath(output_data_path)
-                if not os.path.exists(output_data_path):
-                    raise RuntimeError("Output data path is not exist, path: %s." % output_data_path)
-                param_info_inner["data_path"] = output_data_path
-
-        def _build_model_run_input(one_param, run_input_info_list, input_idx):
-            if isinstance(one_param, (tuple, list)):
-                sub_idx = 0
-                for sub_param in one_param:
-                    input_idx_str = "%d_%d" % (input_idx, sub_idx)
-                    _gen_input_data_path(sub_param, input_idx_str)
-                    sub_idx += 1
-                    run_input_info_list.append({
-                        "dtype": sub_param.get("dtype"),
-                        "shape": sub_param.get("shape"),
-                        "dataPath": sub_param.get("data_path")
-                    })
-            else:
-                _gen_input_data_path(one_param, str(input_idx))
-                run_input_info_list.append({
-                    "dtype": one_param.get("dtype"),
-                    "shape": one_param.get("shape"),
-                    "dataPath": one_param.get("data_path")
-                })
-
-        def _build_model_run_output(one_param, run_output_info_list, output_idx):
-            if isinstance(one_param, (tuple, list)):
-                sub_idx = 0
-                for sub_param in one_param:
-                    input_idx_str = "%d_%d" % (output_idx, sub_idx)
-                    _gen_output_data_path(sub_param, input_idx_str)
-                    sub_idx += 1
-                    run_output_info_list.append({
-                        "dtype": sub_param.get("dtype"),
-                        "shape": sub_param.get("shape"),
-                        "dataPath": sub_param.get("data_path")
-                    })
-            else:
-                _gen_output_data_path(one_param, str(output_idx))
-                run_output_info_list.append({
-                    "dtype": one_param.get("dtype"),
-                    "shape": one_param.get("shape"),
-                    "dataPath": one_param.get("data_path")
-                })
-
-        def _build_model_run_param():
-            input_idx = 0
-            output_idx = 0
-            input_run_infos = []
-            output_run_infos = []
-            for op_param in case_info.op_params:
-                param_type = self._get_param_type(op_param)
-                if param_type == "input":
-                    _build_model_run_input(op_param, input_run_infos, input_idx)
-                    input_idx += 1
-                if param_type == "output":
-                    _build_model_run_output(op_param, output_run_infos, output_idx)
-                    output_idx += 1
-            op_kernel_bin_path = os.path.join(OpUT.KERNEL_DIR, case_info.case_name + ".o")
-            if not os.path.exists(op_kernel_bin_path):
-                raise RuntimeError("Op kernel(.o) is not exist.")
-            op_kernel_func_name = case_info.case_name + "__kernel0"
-            op_json_file_path = os.path.join(OpUT.KERNEL_DIR, case_info.case_name + ".json")
-            if not os.path.exists(op_json_file_path):
-                raise RuntimeError("Op kernel(.o) is not exist.")
-
-            return {
-                "inputInfos": input_run_infos,
-                "outputInfos": output_run_infos,
-                "binFilePath": op_kernel_bin_path,
-                "kernelFuncName": op_kernel_func_name,
-                "jsonFilePath": op_json_file_path
-            }
-
-        def _read_output_value(one_param):
-            output_data_path = one_param.get("data_path")
-            if not os.path.exists(output_data_path):
-                raise RuntimeError("Output data path is not exist, path: %s" % output_data_path)
-            data_type = one_param.get("dtype")
-            if not data_type:
-                raise RuntimeError("Output data type in not defined.")
-            data_type = data_type.strip()
-            data_from_file = np.fromfile(output_data_path, data_type)
-            data_from_file_size = len(data_from_file)
-            param_shape = one_param.get("shape")
-            param_shape_size = shape_utils.calc_shape_size(param_shape)
-            if data_from_file_size < param_shape_size:
-                raise RuntimeError("Output data file size(%s) is len than shape size(%s), dtype is %s. " % (
-                    data_from_file_size, param_shape_size, data_type))
-            one_param["value"] = data_from_file[:param_shape_size].reshape(param_shape)
-
-        def _handle_model_run_out():
-            for op_param in case_info.op_params:
-                param_type = self._get_param_type(op_param)
-                if param_type == "output":
-                    if isinstance(op_param, (tuple, list)):
-                        for sub_param in op_param:
-                            _read_output_value(sub_param)
-                    else:
-                        _read_output_value(op_param)
-
-        # don't support multi case, self.test_model_data_dir_hook[0], self.op_type, case_info.case_name
-        model_data_path = os.path.join(os.path.realpath(self.test_model_data_dir_hook[0]),
-                                       self._simulator_mode_hook[0], self.op_type, case_info.case_name)
-        if not os.path.exists(model_data_path):
-            file_util.makedirs(model_data_path, mode=DATA_DIR_MODES)
-
-        try:
-            op_run_params = _build_model_run_param()
-        except BaseException as _:  # pylint: disable=broad-except
-            err_trace = get_trace_info()
-            return False, "Build model run param failed", err_trace
-
-        try:
-            model_run_utils.run_op(op_run_params, model_data_path)
-        except BaseException as _:  # pylint: disable=broad-except
-            err_trace = get_trace_info()
-            return False, "Run op on model failed", err_trace
-
-        try:
-            _handle_model_run_out()
-        except BaseException as _:  # pylint: disable=broad-except
-            err_trace = get_trace_info()
-            return False, "Get model run out data failed.", err_trace
-
-        return True, None, None
-
-    def _run_expect_fn(self, case_info: op_ut_case_info.OpUTCase):
-
-        def _dump_expect_data(one_param, data_tensor):
-            if data_tensor is None:
-                raise RuntimeError("Expect out tensor is None.")
-            one_param["expect_value"] = data_tensor
-            output_data_dir = os.path.join(self.test_data_dir_hook[0], self.op_type)
-            output_data_dir = os.path.realpath(output_data_dir)
-            if not os.path.exists(output_data_dir):
-                file_util.makedirs(output_data_dir, mode=DATA_DIR_MODES)
-            output_data_file_name = "%s_expect_output%s.bin" % (case_info.case_name, one_param.get("idx_str"))
-            output_data_path = os.path.join(output_data_dir, output_data_file_name)
-            one_param["expect_data_path"] = output_data_path
-            if not os.path.exists(output_data_path):
-                # create output data file with mode
-                with os.fdopen(os.open(output_data_path, DATA_FILE_FLAGS, DATA_FILE_MODES), 'w') as fout:
-                    fout.write("")
-            if not getattr(data_tensor, "tofile", None):
-                raise RuntimeError("Expect out data is not numpy data, can't use tofile to save data.")
-
-            shape = one_param.get("shape")
-            shape_str = ",".join([str(dim) for dim in shape])
-            tensor_shape_str = ",".join([str(dim) for dim in data_tensor.shape])
-            if shape_str != tensor_shape_str:
-                raise RuntimeError("Expect out tensor's shape([%s]) is not match shape([%s]) in op_params." % (
-                    tensor_shape_str, shape_str))
-
-            data_tensor.tofile(output_data_path)
-
-        def _get_output_dict():
-            output_dict_list = []
-            output_idx = 0
-            for op_param in case_info.op_params:
-                param_type = self._get_param_type(op_param)
-                if param_type == "output":
-                    if isinstance(op_param, (tuple, list)):
-                        sub_idx = 0
-                        for sub_param in op_param:
-                            output_idx_str = "%d_%d" % (output_idx, sub_idx)
-                            sub_param["idx_str"] = output_idx_str
-                            output_dict_list.append(sub_param)
-                            sub_idx += 1
-                    else:
-                        output_dict_list.append(op_param)
-                        op_param["idx_str"] = str(output_idx)
-
-                    output_idx += 1
-
-            return output_dict_list
-
-        if not case_info.expect_out_fn:
-            return False, "Calc expect function is not, please set calc_expect_func when add precision case", None
-        addition_params = {}
-        if case_info.addition_params:
-            addition_params = case_info.addition_params
-        try:
-            output_tensors = case_info.expect_out_fn(*case_info.op_params, **addition_params)
-        except BaseException as _:  # pylint: disable=broad-except
-            err_trace = get_trace_info()
-            return False, "Run calc_expect_func function failed.", err_trace
-
-        if not isinstance(output_tensors, (list, tuple)):
-            output_tensors = [output_tensors, ]
-        outputs_dict = _get_output_dict()
-        if len(output_tensors) != len(outputs_dict):
-            err_msg = "Expect output tensor count(%d), is not match output dict count(%d) in op_params." % (
-                len(output_tensors), len(outputs_dict))
-            return False, err_msg, None
-
-        try:
-            for out_dict, out_tensor in zip(outputs_dict, output_tensors):
-                _dump_expect_data(out_dict, out_tensor)
-        except BaseException as _:  # pylint: disable=broad-except
-            err_trace = get_trace_info()
-            return False, "Run dump expect data failed.", err_trace
-
-        return True, None, None
-
-    def _add_precision_test_method(self, case_info: op_ut_case_info.OpUTCase):
-
-        def _get_output_dict():
-            output_dict_list = []
-            output_idx = 0
-            for op_param in case_info.op_params:
-                param_type = self._get_param_type(op_param)
-                if param_type == "output":
-                    if isinstance(op_param, (tuple, list)):
-                        sub_idx = 0
-                        for sub_param in op_param:
-                            output_idx_str = "%d_%d" % (output_idx, sub_idx)
-                            sub_param["idx_str"] = output_idx_str
-                            output_dict_list.append(sub_param)
-                            sub_idx += 1
-                    else:
-                        output_dict_list.append(op_param)
-                        op_param["idx_str"] = str(output_idx)
-
-                    output_idx += 1
-
-            return output_dict_list
-
-        def _compare_result():
-            output_dicts = _get_output_dict()
-            success = True
-            err_msg = ""
-            for output_dict in output_dicts:
-                cmp_res = precision_compare_util.compare_precision(output_dict.get("value"),
-                                                                   output_dict.get("expect_value"),
-                                                                   precision_standard=case_info.precision_standard)
-                if cmp_res.status != op_status.SUCCESS:
-                    success = False
-                    err_msg += cmp_res.err_msg
-            return success, err_msg
-
-        def _get_test_method():
-            def _op_test_func(func_class_self):  # pylint: disable=unused-argument
-                soc_version, get_soc_err_msg = self._get_cur_run_soc_version()
-                ut_case_trace = op_ut_case_info.OpUTCaseTrace(soc_version, case_info)
-                self.test_trace_hook.append(ut_case_trace)
-                if soc_version is None:
-                    get_soc_failed_stage = op_ut_case_info.OpUTStageResult(status=op_status.FAILED,
-                                                                           err_msg="Can not get run soc",
-                                                                           err_trace=get_soc_err_msg)
-                    ut_case_trace.add_stage_result(get_soc_failed_stage)
-                    raise AssertionError("Not found run soc version.")
-
-                def _run_test():
-                    def _compile_op():
-                        func_info = self._get_op_func_from_cache(soc_version, OpFuncType.INTF_FUNC)
-                        if not func_info or func_info.status != op_status.SUCCESS:
-                            ut_case_trace.add_stage_result(
-                                op_ut_case_info.OpUTStageResult(status=op_status.FAILED, err_msg=func_info.err_msg))
-                            raise AssertionError("Not found op interface function.")
-
-                        run_op_compile_success, compile_err_msg, err_trace_str = self._run_op_compile(func_info,
-                                                                                                      case_info)
-                        if not run_op_compile_success:
-                            ut_case_trace.add_stage_result(
-                                op_ut_case_info.OpUTStageResult(status=op_status.FAILED, err_msg=compile_err_msg,
-                                                                err_trace=err_trace_str))
-                            raise AssertionError("Not found op interface function.")
-
-                        ut_case_trace.add_stage_result(
-                            op_ut_case_info.OpUTStageResult(op_status.SUCCESS, result=None, err_msg=None))
-
-                    def _run_op():
-                        run_status, err_msg, err_trace_str = self._run_op_kernel(case_info)
-                        if not run_status:
-                            ut_case_trace.add_stage_result(
-                                op_ut_case_info.OpUTStageResult(status=op_status.FAILED, err_msg=err_msg,
-                                                                err_trace=err_trace_str))
-                            raise AssertionError("Run op on model failed.")
-
-                        ut_case_trace.add_stage_result(
-                            op_ut_case_info.OpUTStageResult(op_status.SUCCESS, result=None, err_msg=None))
-
-                    def _run_op_kernel():
-                        try:
-                            self._run_op(case_info)
-                        except BaseException as run_err:
-                            err_trace_str = get_trace_info()
-                            ut_case_trace.add_stage_result(
-                                op_ut_case_info.OpUTStageResult(status=op_status.FAILED, err_msg="run op failed",
-                                                                err_trace=err_trace_str))
-                            raise AssertionError("Run op on model failed.") from run_err
-                        ut_case_trace.add_stage_result(
-                            op_ut_case_info.OpUTStageResult(op_status.SUCCESS, result=None, err_msg=None))
-
-                    def _run_expect_out_fn():
-                        run_status, err_msg, err_trace_str = self._run_expect_fn(case_info)
-                        if not run_status:
-                            ut_case_trace.add_stage_result(
-                                op_ut_case_info.OpUTStageResult(status=op_status.FAILED, err_msg=err_msg,
-                                                                err_trace=err_trace_str))
-                            raise AssertionError("Run calc_expect_func function failed.")
-
-                        ut_case_trace.add_stage_result(
-                            op_ut_case_info.OpUTStageResult(op_status.SUCCESS, result=None, err_msg=None))
-
-                    def _cmp_result():
-                        cmp_status, err_msg = _compare_result()
-                        if not cmp_status:
-                            assert_msg_str = "run op test failed(compare precision failed) not as except success."
-                            assert_msg_str += " Detail message:" + err_msg
-                            ut_case_trace.add_stage_result(
-                                op_ut_case_info.OpUTStageResult(op_status.FAILED, result=None, err_msg=assert_msg_str))
-                            raise AssertionError(assert_msg_str)
-
-                        ut_case_trace.add_stage_result(
-                            op_ut_case_info.OpUTStageResult(op_status.SUCCESS, result=None, err_msg=None))
-
-                    _compile_op()
-                    logger.log_debug("Compile op success")
-                    # _run_op()
-                    _run_op_kernel()
-                    logger.log_debug("Run op success")
-                    if self._simulator_mode_hook[0] == "tm":
-                        return
-                    _run_expect_out_fn()
-                    logger.log_debug("Calc expect out success")
-                    _cmp_result()
-                    logger.log_debug("Compare expect out success")
-                    self._save_data(case_info)
-
-                try:
-                    _run_test()
-                except AssertionError as run_err:
-                    raise run_err
-                except BaseException as run_err:  # pylint: disable=broad-except
-                    err_trace = get_trace_info()
-                    assert_msg = "run precision test failed."
-                    assert_msg += " Detail message:" + err_trace
-                    ut_case_trace.add_stage_result(
-                        op_ut_case_info.OpUTStageResult(op_status.FAILED, err_msg=assert_msg))
-                    raise AssertionError(assert_msg) from run_err
-
-            return _op_test_func
-
-        op_test_class = self._test_class
-        setattr(op_test_class, case_info.case_name, _get_test_method())
-
     def add_precision_case(self, support_soc=None, case=None):
         """
         add a test op compile and precision case
@@ -1021,7 +398,6 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                                                 op_ut_case_info.CaseUsage.PRECISION,
                                                 case_line_num=case_line_num)
         self._case_info_map[case_info.case_name] = case_info
-        self._add_precision_test_method(case_info)
 
     def _build_custom_test_case(self, support_soc, test_func, case_line_no):
         case_name = test_func.__name__
@@ -1041,40 +417,6 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                                               case_line_num=case_line_no,
                                               test_func_name=test_func.__name__,
                                               test_func=test_func)
-
-    def _add_custom_test_method(self, case_info):
-        op_test_class = self._test_class
-
-        def _test_func_inner(test_arg):
-            is_call_success = True
-            err_trace_str = ""
-            err_msg = ""
-            soc_version, get_soc_err_msg = self._get_cur_run_soc_version()
-            ut_case_trace = op_ut_case_info.OpUTCaseTrace(soc_version, case_info)
-            self.test_trace_hook.append(ut_case_trace)
-
-            if soc_version is None:
-                get_soc_failed_stage = op_ut_case_info.OpUTStageResult(status=op_status.FAILED,
-                                                                       err_msg="Can not get run soc",
-                                                                       err_trace=get_soc_err_msg)
-                ut_case_trace.add_stage_result(get_soc_failed_stage)
-                raise AssertionError("Not found run soc version.")
-
-            try:
-                case_info.test_func(test_arg)
-            except BaseException as _:  # pylint: disable=broad-except
-                err_msg = "run test case failed"
-                is_call_success = False
-                err_trace_str = get_trace_info()
-            if is_call_success:
-                ut_case_trace.add_stage_result(
-                    op_ut_case_info.OpUTStageResult(status=op_status.SUCCESS, result=None, err_msg=None))
-            else:
-                ut_case_trace.add_stage_result(
-                    op_ut_case_info.OpUTStageResult(status=op_status.FAILED, result=None, err_msg=err_msg,
-                                                    err_trace=err_trace_str))
-
-        setattr(op_test_class, case_info.case_name, _test_func_inner)
 
     def add_cust_test_func(self, support_soc=None, test_func=None):
         """
@@ -1099,69 +441,6 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                 case_line_num = stack.lineno
         case_info = self._build_custom_test_case(support_soc, test_func, case_line_num)
         self._case_info_map[case_info.case_name] = case_info
-        self._add_custom_test_method(case_info)
-
-    def get_test_case(self, run_soc, case_name=None,
-                      case_usage_list: List[op_ut_case_info.CaseUsage] = None) -> List[op_ut_case_info.OpUTSuite]:
-        """
-        get test case list
-        :param run_soc: soc version
-        :param case_name: case name, default is none, get all test case
-        :param case_usage_list: a CaseUsage list
-        :return: return a test suite
-        """
-        if case_name and not isinstance(case_name, (tuple, list)):
-            case_name = [case_name, ]
-        if not run_soc:
-            logger.log_err("Not set 'run_soc' arg.")
-            return []
-        if not isinstance(run_soc, (list, tuple)):
-            run_soc = (run_soc,)
-
-        def _get_test_method(one_soc_inner):
-            one_soc_test_method = []
-            found_case = False
-            for case_name_tmp, case_info in self._case_info_map.items():
-                if case_name:
-                    if case_name_tmp not in case_name:
-                        continue
-                    if case_usage_list and case_info.case_usage not in case_usage_list:
-                        logger.log_err(
-                            "This case(case_name: %s) case usage not match, need: %s, actual is: %s." % (
-                                case_name,
-                                ",".join([case_usage_ele.value for case_usage_ele in case_usage_list]),
-                                case_info.case_usage.value)
-                        )
-                    if "all" in case_info.support_soc or one_soc_inner in case_info.support_soc:
-                        one_soc_test_method.append(self._test_class(case_name_tmp))
-                        found_case = True
-                    else:
-                        logger.log_err(
-                            "This case(case_name: %s) not support this soc(%s)." % (case_name, one_soc_inner))
-                else:
-                    if ("all" in case_info.support_soc or one_soc_inner in case_info.support_soc) and (
-                            not case_usage_list or case_info.case_usage in case_usage_list):
-                        one_soc_test_method.append(self._test_class(case_name_tmp))
-                        found_case = True
-
-            if not found_case:
-                logger.log_warn("Not found any case, op type: %s, run_soc: [%s]" % (self.op_type, one_soc_inner))
-
-            return one_soc_test_method
-
-        def _get_one_soc_suit(one_soc_inner):
-            suit = unittest.TestSuite()
-            suit.addTests(_get_test_method(one_soc_inner))
-            op_ut = op_ut_case_info.OpUTSuite(one_soc_inner, suit, self.test_trace_hook, self.test_data_dir_hook,
-                                              self.test_model_data_dir_hook, self._simulator_mode_hook,
-                                              op_type=self.op_type,
-                                              simulator_lib_path_hook=self._simulator_lib_path_hook)
-            return op_ut
-
-        test_case_list = []
-        for one_soc in run_soc:
-            test_case_list.append(_get_one_soc_suit(one_soc))
-        return test_case_list
 
     def get_all_test_case_name(self, soc=None) -> List:
         """
@@ -1201,6 +480,361 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
             case_info_list.append(case_obj)
         return case_info_list
 
+    def _load_op_func(self):
+        try:
+            __import__(self.op_module_name)
+        except ImportError as _:
+            err_msg = "Can't import op module, please check you python path"
+            err_msg += ", op module name: %s" % self.op_module_name
+            err_trace = get_trace_info()
+            err_msg += ", err_trace: %s" % err_trace
+            return None, err_msg
+
+        op_module = sys.modules[self.op_module_name]
+        op_func = getattr(op_module, self.op_func_name)
+        if not op_func:
+            err_msg = "can't get op function in op module,"
+            err_msg += " op module name: %s, op function name: %s" % (self.op_module_name, self.op_func_name)
+            return None, err_msg
+
+        return op_func, None
+
+    @staticmethod
+    def _check_kernel_so_exist(kernel_meta_dir, kernel_name):
+        bin_path = os.path.join(kernel_meta_dir, kernel_name + ".o")
+        json_path = os.path.join(kernel_meta_dir, kernel_name + ".json")
+        if os.path.exists(bin_path) and os.path.exists(json_path):
+            return True
+        return False
+
+    def _call_op_func(self, run_soc_version: str, op_func, case_info: op_ut_case_info.OpUTCase):
+        kernel_name = case_info.case_name + "_" + run_soc_version.lower()
+        if not case_info.addition_params:
+            addition_params = {"kernel_name": kernel_name}
+        else:
+            addition_params = case_info.addition_params
+            addition_params["kernel_name"] = kernel_name
+
+        call_op_success = True
+        err_msg = None
+        try:
+            if self.imply_type == OpImplyType.DYNAMIC_SHAPE:
+                # there is a bug in te, we can't import te before tensorflow, so can't import te outside
+                import te  # pylint: disable=import-outside-toplevel
+                with te.op.dynamic():
+                    op_func(*case_info.op_params, **addition_params)
+            else:
+                op_func(*case_info.op_params, **addition_params)
+        except BaseException as run_err:  # pylint: disable=broad-except
+            if case_info.expect != op_status.SUCCESS:
+                if case_info.expect != op_status.FAILED and not isinstance(run_err, case_info.expect):
+                    call_op_success = False
+                    err_msg = "Call op func failed, exception class not match, expect: %s, actual: %s" % (
+                        case_info.expect.__name__, run_err.__class__.__name__)
+            else:
+                call_op_success = False
+                err_trace = get_trace_info()
+                err_msg = "Call op func failed, err_trace: %s" % err_trace
+
+        if case_info.expect == op_status.SUCCESS and not self._check_kernel_so_exist(self.KERNEL_DIR, kernel_name):
+            call_op_success = False
+            err_msg = "Call op func success, but no .o and .json generated."
+
+        return call_op_success, err_msg
+
+    def _compile_op_kernel(self, run_soc_version, case_info: op_ut_case_info.OpUTCase):
+        op_func, load_err_msg = self._load_op_func()
+        if not op_func:
+            return False, load_err_msg
+        call_success, err_msg = self._call_op_func(run_soc_version=run_soc_version,
+                                                   op_func=op_func,
+                                                   case_info=case_info)
+        return call_success, err_msg
+
+    def _run_compile_stage(self, run_soc_version,
+                           case_info: op_ut_case_info.OpUTCase) -> op_ut_case_info.OpUTStageResult:
+        compile_success, compile_err_msg = self._compile_op_kernel(run_soc_version, case_info=case_info)
+        if not compile_success:
+            stage_status = op_ut_case_info.OpUTStageResult(status=op_status.FAILED,
+                                                           stage_name=op_ut_case_info.STAGE_COMPILE,
+                                                           err_msg="Failed",
+                                                           err_trace=compile_err_msg)
+        else:
+            stage_status = op_ut_case_info.OpUTStageResult(status=op_status.SUCCESS,
+                                                           stage_name=op_ut_case_info.STAGE_COMPILE)
+        return stage_status
+
+    def _run_compile_case(self, run_soc_version,
+                          case_info: op_ut_case_info.OpUTCase) -> ut_report.OpUTCaseReport:
+        case_trace = op_ut_case_info.OpUTCaseTrace(run_soc_version, case_info)
+        stage_status = self._run_compile_stage(run_soc_version, case_info)
+        case_trace.add_stage_result(stage_status)
+        return ut_report.OpUTCaseReport(case_trace)
+
+    @staticmethod
+    def _get_simulator_mode(run_cfg):
+        if not run_cfg or not isinstance(run_cfg, dict):
+            return "pv"
+        return run_cfg.get("simulator_mode", "pv")
+
+    @staticmethod
+    def _get_simulator_lib_path(run_cfg):
+        if not run_cfg or not isinstance(run_cfg, dict):
+            return None
+        return run_cfg.get("simulator_lib_path", None)
+
+    def _get_simulator_dump_path(self, simulator_mode, case_name, run_cfg):
+        base_dir = "./model"
+        if isinstance(run_cfg, dict):
+            base_dir = run_cfg.get("simulator_dump_path", "./model")
+
+        model_data_path = os.path.join(os.path.realpath(base_dir), simulator_mode, self.op_type, case_name)
+        if not os.path.exists(model_data_path):
+            file_util.makedirs(model_data_path, DATA_DIR_MODES)
+        return model_data_path
+
+    def _run_kernel(self, run_soc_version: str, case_info: op_ut_case_info.OpUTCase, run_cfg: Dict[str, Any] = None):
+        bin_path = os.path.join(OpUT.KERNEL_DIR, case_info.case_name + "_" + run_soc_version.lower() + ".o")
+        json_path = os.path.join(OpUT.KERNEL_DIR, case_info.case_name + "_" + run_soc_version.lower() + ".json")
+        input_info_list, output_info_list = self._get_input_outputs(case_info.op_params)
+        input_data_list = []
+        for input_info in input_info_list:
+            self._gen_input_data(input_info)
+            input_data_list.append(input_info.get("value"))
+        op_kernel = AscendOpKernel(bin_path, json_path)
+        op_kernel.set_input_info(input_info_list)
+        op_kernel.set_output_info(output_info_list)
+        simulator_mode = self._get_simulator_mode(run_cfg)
+        simulator_dump_path = self._get_simulator_dump_path(simulator_mode, case_info.case_name, run_cfg)
+        with AscendOpKernelRunner(simulator_mode=simulator_mode,
+                                  soc_version=run_soc_version,
+                                  simulator_lib_path=self._get_simulator_lib_path(run_cfg),
+                                  simulator_dump_path=simulator_dump_path) as runner:
+            output_data_list = runner.run(op_kernel, inputs=input_data_list)
+            if not isinstance(output_data_list, (tuple, list)):
+                output_data_list = [output_data_list, ]
+            for output_data in output_data_list:
+                if output_data:
+                    output_data.sync_from_device()
+
+        for idx, output_info in enumerate(output_info_list):
+            output_info["value"] = output_data_list[idx].get_data()
+
+    def _run_model_run_stage(self, run_soc_version, case_info: op_ut_case_info.OpUTCase,
+                             run_cfg: Dict[str, Any] = None) -> op_ut_case_info.OpUTStageResult:
+        run_success = True
+        err_msg = None
+        try:
+            self._run_kernel(run_soc_version, case_info, run_cfg)
+        except BaseException as _:  # pylint: disable=broad-except
+            run_success = False
+            err_msg = get_trace_info()
+        stage_status = op_ut_case_info.OpUTStageResult(status=op_status.SUCCESS if run_success else op_status.FAILED,
+                                                       stage_name=op_ut_case_info.STAGE_RUN,
+                                                       err_msg="Failed" if not run_success else None,
+                                                       err_trace=err_msg)
+        return stage_status
+
+    def _gen_expect_data(self, case_info: op_ut_case_info.OpUTCase):
+
+        addition_params = {}
+        if case_info.addition_params:
+            addition_params = case_info.addition_params
+        try:
+            output_tensors = case_info.expect_out_fn(*case_info.op_params, **addition_params)
+        except BaseException as _:  # pylint: disable=broad-except
+            err_trace = get_trace_info()
+            return False, err_trace
+
+        if not isinstance(output_tensors, (list, tuple)):
+            output_tensors = [output_tensors, ]
+
+        output_list = self._get_outputs(case_info.op_params)
+        if len(output_list) != len(output_tensors):
+            err_msg = "calc_expect_func's return tensor count(%d) not equal output dict count(%d)." % (
+                len(output_tensors), len(output_list))
+            return False, err_msg
+
+        for idx, out_param in enumerate(output_list):
+            out_param["expect_value"] = output_tensors[idx]
+
+        return True, None
+
+    def _run_gen_expect_stage(self, case_info: op_ut_case_info.OpUTCase) -> op_ut_case_info.OpUTStageResult:
+        try:
+            gen_success, err_msg = self._gen_expect_data(case_info)
+        except BaseException as _:  # pylint: disable=broad-except
+            gen_success = False
+            err_msg = get_trace_info()
+        stage_status = op_ut_case_info.OpUTStageResult(status=op_status.SUCCESS if gen_success else op_status.FAILED,
+                                                       stage_name=op_ut_case_info.STAGE_RUN,
+                                                       err_msg="Failed" if not gen_success else None,
+                                                       err_trace=err_msg)
+        return stage_status
+
+    def _compare_output(self, case_info: op_ut_case_info.OpUTCase):
+        output_list = self._get_outputs(case_info.op_params)
+        err_msg = ""
+        compare_success = True
+        for idx, output in enumerate(output_list):
+            expect_tensor = output.get("expect_value")
+            actual_tensor = output.get("value")
+            if expect_tensor.shape != actual_tensor.shape:
+                compare_success = False
+                err_msg += "output %d 's shape is not same, expect: [%s], actual: [%s]\n" % (
+                    idx, ",".join(expect_tensor.shape), ",".join(actual_tensor.shape))
+                continue
+            cmp_res = precision_compare_util.compare_precision(output.get("value"),
+                                                               output.get("expect_value"),
+                                                               precision_standard=case_info.precision_standard)
+            if cmp_res.status != op_status.SUCCESS:
+                compare_success = False
+                err_msg += "output %d precision compare failed, detail msg: %s" % (idx, cmp_res.err_msg)
+        return compare_success, err_msg
+
+    def _run_data_compare_stage(self, case_info: op_ut_case_info.OpUTCase):
+        compare_success, err_msg = self._compare_output(case_info)
+        stage_status = op_ut_case_info.OpUTStageResult(
+            status=op_status.SUCCESS if compare_success else op_status.FAILED,
+            stage_name=op_ut_case_info.STAGE_COMPARE_PRECISION,
+            err_msg=err_msg)
+        return stage_status
+
+    @staticmethod
+    def _check_need_run_expect(run_args):
+        if not run_args:
+            return True
+
+        simulator_mode = run_args.get("simulator_mode")
+        return simulator_mode != "tm"
+
+    def _run_precision_case(self, run_soc_version, case_info: op_ut_case_info.OpUTCase,
+                            run_cfg: Dict[str, Any] = None) -> ut_report.OpUTCaseReport:
+        case_trace = op_ut_case_info.OpUTCaseTrace(run_soc_version, case_info)
+        compile_stage_status = self._run_compile_stage(run_soc_version, case_info)
+        case_trace.add_stage_result(compile_stage_status)
+        if compile_stage_status.status != op_status.SUCCESS:
+            return ut_report.OpUTCaseReport(case_trace)
+
+        run_stage_status = self._run_model_run_stage(run_soc_version, case_info, run_cfg)
+        case_trace.add_stage_result(run_stage_status)
+        if run_stage_status.status != op_status.SUCCESS or not self._check_need_run_expect(run_cfg):
+            return ut_report.OpUTCaseReport(case_trace)
+
+        gen_expect_stage_status = self._run_gen_expect_stage(case_info)
+        case_trace.add_stage_result(gen_expect_stage_status)
+        if gen_expect_stage_status.status != op_status.SUCCESS:
+            return ut_report.OpUTCaseReport(case_trace)
+
+        compare_stage_status = self._run_data_compare_stage(case_info)
+        case_trace.add_stage_result(compare_stage_status)
+        self._save_data(run_soc_version, case_info, run_cfg)
+        return ut_report.OpUTCaseReport(case_trace)
+
+    @staticmethod
+    def _run_custom_case(run_soc_version: str,
+                         case_info: op_ut_case_info.OpUTCustomCase) -> ut_report.OpUTCaseReport:
+        run_success = True
+        err_trace = None
+        try:
+            case_info.test_func(run_soc_version)
+        except BaseException as _:  # pylint: disable=broad-except
+            run_success = False
+            err_trace = get_trace_info()
+        stage_status = op_ut_case_info.OpUTStageResult(
+            status=op_status.SUCCESS if run_success else op_status.FAILED,
+            stage_name=op_ut_case_info.STAGE_CUST_FUNC,
+            err_msg=None if run_success else "Failed",
+            err_trace=err_trace)
+        case_trace = op_ut_case_info.OpUTCaseTrace(run_soc_version, case_info)
+        case_trace.add_stage_result(stage_status)
+        return ut_report.OpUTCaseReport(case_trace)
+
+    def _run_one_case(self, run_soc_version, case_info: op_ut_case_info.OpUTCase,
+                      run_cfg: Dict[str, Any] = None) -> ut_report.OpUTCaseReport:
+        try:
+            case_rpt = None
+            if case_info.case_usage == op_ut_case_info.CaseUsage.IMPL:
+                case_rpt = self._run_compile_case(run_soc_version, case_info)
+            elif case_info.case_usage == op_ut_case_info.CaseUsage.PRECISION:
+                case_rpt = self._run_precision_case(run_soc_version, case_info, run_cfg)
+            elif case_info.case_usage == op_ut_case_info.CaseUsage.CUSTOM:
+                case_rpt = self._run_custom_case(run_soc_version, case_info)
+        except BaseException as _:  # pylint: disable=broad-except
+            err_trace = get_trace_info()
+            stage_status = op_ut_case_info.OpUTStageResult(
+                status=op_status.ERROR,
+                stage_name=op_ut_case_info.STAGE_CUST_FUNC,
+                err_msg="Error",
+                err_trace=err_trace)
+            case_trace = op_ut_case_info.OpUTCaseTrace(run_soc_version, case_info)
+            case_trace.add_stage_result(stage_status)
+            case_rpt = ut_report.OpUTCaseReport(case_trace)
+        return case_rpt
+
+    @staticmethod
+    def _set_run_soc(run_soc_version):
+        # there is a bug in te, we can't import te before tensorflow, so can't import te outside
+        from te.platform import te_set_version  # pylint: disable=import-outside-toplevel
+        te_set_version(run_soc_version)
+
+    def run_case(self, one_soc_version: str, case_name_list: List[str] = None,
+                 case_usage_list: List = None, run_cfg: Dict[str, Any] = None) -> ut_report.OpUTReport:
+        """
+        run case
+
+        Parameters
+        ----------
+        one_soc_version: str
+            the soc need to run
+        case_name_list: List[str], default is None
+            only run the cases which's case name in this list, default None means run all.
+        case_usage_list: List, default is None
+            only run the cases which's caseusage in this list, default None means run all.
+        run_cfg: Dict[str, Any]
+            run configuration, like: simulator_mode, simulator_lib_path, simulator_dump_path, data_dump_path
+
+        Returns
+        -------
+        run_report: ut_report.OpUTReport
+            run report
+        """
+        self._set_run_soc(one_soc_version)
+        print("%s test start running..." % self.op_type)
+        case_cnt = 0
+        success_cnt = 0
+        fail_cnt = 0
+        err_cnt = 0
+        total_rpt = ut_report.OpUTReport()
+        for case_name, case_info in self._case_info_map.items():
+            if not case_info.check_support_soc(one_soc_version):
+                continue
+            if case_name_list and not case_name in case_name_list:
+                continue
+            if case_usage_list and not case_info.case_usage in case_usage_list:
+                continue
+            print("%s (%s) (%s) ... " % (case_name, self.op_type, case_info.case_usage.value), end="")
+            case_cnt += 1
+            case_rpt = self._run_one_case(one_soc_version, case_info, run_cfg=run_cfg)
+            total_rpt.add_case_report(case_rpt)
+            if case_rpt.status == op_status.SUCCESS:
+                success_cnt += 1
+                print("ok")
+            elif case_rpt.status == op_status.FAILED:
+                fail_cnt += 1
+                print("fail")
+            else:
+                err_cnt += 1
+                print("error")
+        print("\n\n----------------------------------")
+        summary_msg = "run %d tests, success: %d" % (case_cnt, success_cnt)
+        if fail_cnt > 0:
+            summary_msg += ", fail: %d" % fail_cnt
+        if err_cnt > 0:
+            summary_msg += ", error: %d" % err_cnt
+        print(summary_msg)
+        return total_rpt
+
     def run(self, soc, case_name=None, simulator_mode=None, simulator_lib_path=None):
         """
         run ut
@@ -1214,22 +848,21 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
             if not simulator_lib_path:
                 simulator_lib_path = os.environ.get("SIMULATOR_PATH")
             if not simulator_lib_path:
-                raise RuntimeError(
-                    "Not configured simulator path, when run simulator. "
-                    "Please set simulator_lib_path arg, or set ENV SIMULATOR_PATH")
-            if simulator_mode not in model_run_utils.SUPPORT_MODEL_LIST:
-                raise RuntimeError("Not support this simulator_mode: %s, not suppot [%s]" % (
-                    simulator_mode, ",".join(model_run_utils.SUPPORT_MODEL_LIST)))
-            if soc == "all":
-                raise RuntimeError("Not support run multi soc in one time when run simulator.")
-            self._simulator_mode_hook = [simulator_mode, ]
-            self._simulator_lib_path_hook = [simulator_lib_path, ]
+                raise RuntimeError("Not configured simulator path, when run simulator. "
+                                   "Please set simulator_lib_path arg, or set ENV SIMULATOR_PATH")
 
-        op_uts = self.get_test_case(soc, case_name)
-        runner = op_ut_runner.OpUTTestRunner(print_summary=True, simulator_mode=simulator_mode,
-                                             simulator_lib_path=simulator_lib_path)
-        run_rpt = runner.run(op_uts)
+        run_cfg = {"simulator_mode": simulator_mode,
+                   "simulator_lib_path": simulator_lib_path}
+        if isinstance(soc, str):
+            soc_list = [x.strip() for x in soc.split(",")]
+        if isinstance(soc, (tuple, list)):
+            soc_list = soc
+        run_rpt = ut_report.OpUTReport()
+        for one_soc in soc_list:
+            one_rpt = self.run_case(one_soc, case_name, run_cfg=run_cfg)
+            run_rpt.merge_rpt(one_rpt)
         run_rpt.save("ut_report.txt")
+        run_rpt.console_print()
 
 
 class BroadcastOpUT(OpUT):

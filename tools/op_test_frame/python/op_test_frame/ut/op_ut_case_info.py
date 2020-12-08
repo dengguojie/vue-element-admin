@@ -18,7 +18,6 @@ op ut case info,
 apply info classes: UTCaseFileInfo, OpUTSuite, CaseUsage, OpUTCase, OpUTStageResult, OpUTCaseTrace
 """
 from enum import Enum
-from unittest import TestSuite
 from op_test_frame.common import op_status
 from op_test_frame.common import precision_info
 
@@ -32,64 +31,6 @@ class UTCaseFileInfo:  # pylint: disable=too-few-public-methods
         self.case_file = case_file
         self.op_module_name = op_module_name
 
-
-class OpUTSuite:
-    """
-    Op ut suite
-    """
-
-    def __init__(self, soc, soc_suite: TestSuite, test_res_trace_hook,  # pylint: disable=too-many-arguments
-                 test_data_dir_hook, dump_model_dir_hook, simulator_mode_hook,
-                 op_type=None, simulator_lib_path_hook=None):
-        self.soc = soc
-        self.op_type = op_type
-        self.soc_suite = soc_suite
-        self._test_res_trace = test_res_trace_hook
-        self._test_data_dir_hook = test_data_dir_hook
-        self._dump_model_dir_hook = dump_model_dir_hook
-        self._simulator_mode_hook = simulator_mode_hook
-        self._simulator_lib_path_hook = simulator_lib_path_hook
-
-    def clear_test_trace(self):
-        """
-        clear test trace
-        :return: None
-        """
-        self._test_res_trace[:] = []
-
-    def get_test_trace(self):
-        """
-        get test trace
-        :return: test trace
-        """
-        return self._test_res_trace
-
-    def set_test_data_dir(self, data_dir):
-        """
-        set test data save dir
-        :param data_dir: data directory
-        :return: None
-        """
-        self._test_data_dir_hook.insert(0, data_dir)
-
-    def set_dump_model_dir(self, model_dir):
-        """
-        set dump model dump data save directory
-        :param model_dir: model dump data save directory
-        :return: None
-        """
-        self._dump_model_dir_hook.insert(0, model_dir)
-
-    def set_simulator_mode(self, simulator_mode):
-        """
-        set simulator mode
-        :param simulator_mode: simulator mode, can be "pv", "tm"
-        :return: None
-        """
-        self._simulator_mode_hook.insert(0, simulator_mode)
-
-    def set_simulator_lib_path(self, simulator_lib_path):
-        self._simulator_lib_path_hook.insert(0, simulator_lib_path)
 
 class CaseUsage(Enum):
     """
@@ -143,6 +84,31 @@ class OpUTBaseCase:
         self.case_usage = case_usage
         self.case_file = case_file
         self.case_line_num = case_line_num
+
+    def check_support_soc(self, soc_version: str):
+        """
+        check this case if support the soc
+
+        Parameters
+        ----------
+        soc_version: str
+            soc_version which need to check if support
+
+        Returns
+        -------
+        True or False
+        """
+        if isinstance(self.support_soc, str):
+            if self.support_soc.lower() == "all":
+                return True
+            if self.support_soc == soc_version:
+                return True
+        if isinstance(self.support_soc, (tuple, list)):
+            if soc_version in self.support_soc:
+                return True
+            if "all" in self.support_soc:
+                return True
+        return False
 
     def to_json_obj(self):
         """
@@ -314,6 +280,13 @@ class OpUTCustomCase(OpUTBaseCase):
                               case_file=json_obj.get("case_file"),
                               case_line_num=json_obj.get("case_line_num"),
                               test_func_name=json_obj.get("test_func_name"))
+
+
+STAGE_COMPILE = "ut_compile"
+STAGE_RUN = "ut_run_on_model"
+STAGE_GEN_EXPECT = "ut_gen_expect"
+STAGE_COMPARE_PRECISION = "ut_compare_precision"
+STAGE_CUST_FUNC = "ut_cust_func"
 
 
 class OpUTStageResult:

@@ -28,8 +28,7 @@ class BinaryDistribution(Distribution):
 
 
 with open("MANIFEST.in", "w") as fo:
-    fo.write("include libs/libmodel_run_tool.so\n"
-             "recursive-include op_test_frame/st/template *\n"
+    fo.write("recursive-include op_test_frame/st/template *\n"
              "include op_test_frame/st/interface/framework/framework.json\n")
 
 setup_kwargs = {
@@ -52,7 +51,6 @@ setup(
     distclass=BinaryDistribution,
     license=read_txt("LICENSE"),
     ** {
-        "include_package_data": True,
-        "data_files": [('lib', ['op_test_frame/libs/libmodel_run_tool.so'])]
+        "include_package_data": True
     }
 )

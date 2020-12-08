@@ -22,46 +22,17 @@ option(LLT_GXX_PATH "llt g++ path" "")
 set(CMAKE_CXX_FLAGS "-std=c++11 -Wl,-z,relro,-z,now,-z,noexecstack -s -fPIC -fPIE -D_FORTIFY_SOURCE=2 -O2 -fstack-protector-all")
 add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
 
-if('x${FOR_LLT}' STREQUAL 'xtrue')
-  set(CMAKE_C_COMPILER "${LLT_GCC_PATH}")
-  set(CMAKE_CXX_COMPILER "${LLT_GXX_PATH}")
-endif()
-
-aux_source_directory(src/model_run_tool ST_TOOL_SRC)
-
-add_library(model_run_tool SHARED ${ST_TOOL_SRC})
-
-target_compile_options(model_run_tool PRIVATE
-  -O2
-  -Werror
-  -D_FORTIFY_SOURCE=2
-)
-
-# target_link_libraries(model_run_tool PRIVATE
-#   $<BUILD_INTERFACE:intf_pub>
-# )
-
-target_include_directories(model_run_tool
-  PUBLIC
-  src/model_run_tool
-  ${FWKACLLIB_INCLUDE}
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../../inc
-)
-
 if("${HI_PYTHON}" STREQUAL "")
     set(HI_PYTHON python3.7)
 endif()
 
 set(op_test_frame_root ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_custom_target(OpTestFrameFiles ALL DEPENDS model_run_tool)
+add_custom_target(OpTestFrameFiles ALL)
 
 add_custom_command(TARGET OpTestFrameFiles
   PRE_BUILD
   COMMAND echo ${op_test_frame_root}
-  COMMAND rm -rf ${op_test_frame_root}/python/op_test_frame/libs
-  COMMAND ${CMAKE_COMMAND} -E make_directory ${op_test_frame_root}/python/op_test_frame/libs
-  COMMAND cp libmodel_run_tool.so ${op_test_frame_root}/python/op_test_frame/libs
   COMMAND ${op_test_frame_root}/python/build_whl.sh ${HI_PYTHON} ${op_test_frame_root}/python
   COMMAND cp ${op_test_frame_root}/python/dist/* ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND rm -rf ${op_test_frame_root}/python/build

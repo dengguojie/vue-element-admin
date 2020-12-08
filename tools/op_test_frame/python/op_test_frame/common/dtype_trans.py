@@ -64,6 +64,10 @@ DTYPE_SIZE_MAP = {
 }
 
 
+def get_all_str_dtypes():
+    return ASCEND_DTYPE_NP_DTYPE_MAP.keys()
+
+
 def str_to_np_dtype(dtype: str):
     if not isinstance(dtype, str):
         return dtype
@@ -74,10 +78,8 @@ def str_to_np_dtype(dtype: str):
 def np_dtype_to_str(dtype):
     if isinstance(dtype, str):
         return dtype
-    return NP_DTYPE_ASCEND_TYPE_MAP.get(dtype.__name__)
+    return NP_DTYPE_ASCEND_TYPE_MAP.get(dtype.type.__name__)
 
 
 def get_dtype_byte(dtype):
     return DTYPE_SIZE_MAP.get(dtype)
-
-print(np.ones((1,2)).astype("float32"))

@@ -63,6 +63,10 @@ class rtDeviceInfo_t(ctypes.Structure):
                 ('ts_num', ctypes.c_uint32), ]
 
 
+# to avoid release kernel name pointer
+kernel_name_cache = []
+
+
 class AscendRTSApi:
     def __init__(self, simulator_mode: str = None, soc_version: str = None, simulator_lib_path: str = None,
                  simulator_dump_path: str = "./model"):
@@ -393,12 +397,13 @@ class AscendRTSApi:
         c_kernel_name_p = ctypes.c_char_p(kernel_name_bytes)
         c_func_mode = ctypes.c_uint32(func_mode)
         self.rtsdll.rtFunctionRegister.restype = ctypes.c_uint64
+        kernel_name_cache.append(c_kernel_name_p)
         rt_error = self.rtsdll.rtFunctionRegister(rts_binary_handle,
                                                   c_kernel_name_p,
                                                   c_kernel_name_p,
                                                   c_kernel_name_p,
                                                   c_func_mode)
-        self.parse_error(rt_error, "rtFunctionRegister")
+        self.parse_error(rt_error, "rtFunctionRegister", ", kernel_name is: %s" % kernel_name)
         self.kernel_name_storage[rts_binary_handle.value].append(kernel_name_bytes)
         return c_kernel_name_p
 

@@ -33,7 +33,7 @@ def gen_data(data_shape, min_value, max_value, dtype, distribution='uniform'):
     if distribution not in supported_distribution:
         raise ValueError("distribution should in [%s]" % ",".join(supported_distribution))
     real_dtype = dtype
-    if dtype == np.bool or dtype == "bool":
+    if dtype in (np.bool, "bool",):
         min_value = 0
         max_value = 2  # [0, 2) in uniform
         dtype = np.int8

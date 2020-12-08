@@ -15,7 +15,9 @@
 """
 logger
 """
+import sys
 import inspect
+import traceback
 from datetime import datetime
 
 DEBUG = "DEBUG"
@@ -86,7 +88,7 @@ def log_info(msg):
     log(INFO, caller.filename, caller.lineno, msg)
 
 
-def log_err(msg):
+def log_err(msg, print_trace=False):
     """
     log err
     :param msg: log msg
@@ -94,3 +96,8 @@ def log_err(msg):
     """
     caller = inspect.stack()[1]
     log(ERROR, caller.filename, caller.lineno, msg)
+    if print_trace:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        trace_info = traceback.format_exception(exc_type, exc_value, exc_traceback)
+        if trace_info:
+            print("".join(trace_info))

@@ -14,26 +14,26 @@
 # ============================================================================
 
 """op ut runner, apply run ut function"""
-import unittest
 import time
 import os
 import sys
 import stat
 import shutil
 import multiprocessing
+from typing import List
+from typing import Union
 from datetime import datetime
 from multiprocessing import Pool
-from typing import List
 from functools import reduce
 
 import coverage
 from op_test_frame.common import logger
 from op_test_frame.ut import ut_loader
 from op_test_frame.ut import ut_report
+from op_test_frame.ut import op_ut
 from op_test_frame.utils import file_util
-from op_test_frame.ut.op_ut_case_info import OpUTSuite
+
 from op_test_frame.ut.op_ut_case_info import CaseUsage
-from op_test_frame.model_run_utils import model_run_utils
 
 DATA_DIR_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
 
@@ -43,7 +43,8 @@ class OpUTTestRunner:  # pylint: disable=too-few-public-methods
     Op ut runner
     """
 
-    def __init__(self, print_summary=True, verbosity=2, simulator_mode=None, simulator_lib_path=None):
+    def __init__(self, print_summary=True, verbosity=2, simulator_mode=None, simulator_lib_path=None,
+                 simulator_dump_path=None, data_dump_level=None, data_dump_dir=None):
         self.print_summary = print_summary
         self.verbosity = verbosity
 
@@ -54,42 +55,61 @@ class OpUTTestRunner:  # pylint: disable=too-few-public-methods
                 raise RuntimeError(
                     "Not configured simulator path, when run simulator. "
                     "Please set simulator_lib_path arg, or set ENV SIMULATOR_PATH")
-            if simulator_mode not in model_run_utils.SUPPORT_MODEL_LIST:
-                raise RuntimeError("Not support this simulator_mode: %s, not suppot [%s]" % (
-                    simulator_mode, ",".join(model_run_utils.SUPPORT_MODEL_LIST)))
 
         self.simulator_mode = simulator_mode
         self.simulator_lib_path = simulator_lib_path
+        self.simulator_dump_path = simulator_dump_path
+        self.data_dumnp_level = data_dump_level
+        self.data_dumnp_dir = data_dump_dir
 
-    def _excute_one_soc(self, op_ut: OpUTSuite):
-        # to avoid import te before tensorflow, can't import te outside function
-        from te.platform import te_set_version  # pylint: disable=import-outside-toplevel
-        te_set_version(op_ut.soc)
-        suite = op_ut.soc_suite
-        op_ut.clear_test_trace()
+    def _execute_one_soc(self, op_ut_case: op_ut.OpUT, run_soc_vsersion: str,
+                         case_name_list: List[str], case_usage_list: List = None) -> ut_report.OpUTReport:
         if self.simulator_mode:
-            model_run_utils.set_run_mode(self.simulator_mode, op_ut.soc, self.simulator_lib_path)
-        unittest.TextTestRunner(verbosity=self.verbosity).run(suite)
-        return op_ut.get_test_trace()
+            run_cfg = {"simulator_mode": self.simulator_mode,
+                       "simulator_lib_path": self.simulator_lib_path,
+                       "simulator_dump_path": self.simulator_dump_path,
+                       "data_dump_path": self.data_dumnp_dir}
+        ut_run_report = op_ut_case.run_case(run_soc_vsersion, case_name_list=case_name_list,
+                                            case_usage_list=case_usage_list, run_cfg=run_cfg)
+        return ut_run_report
 
-    def run(self, op_uts: List[OpUTSuite]):
+    def run(self, run_soc_versions: Union[str, List[str]], op_ut_case: op_ut.OpUT,
+            case_name_list: List[str] = None, case_usage_list: List = None) -> ut_report.OpUTReport:
         """
-        run ut suites
-        :param op_uts: op ut suite list
-        :return: run report
+        run op_ut
+
+        Parameters
+        ----------
+        run_soc_versions: Union[str, List[str]]
+            run soc versions, like: 1) Ascend910 2) Ascend910,Ascend310 3) [Ascend910, Ascend310]
+        op_ut_case: op_ut.OpUT
+            the op_ut_case you need to run
+        case_name_list: List[str], can be None
+            can only run the cases which in case_name_list, if None means run all test cases in op_ut
+        case_usage_list: List, default is None
+            can only run the cases which caseusage in case_usage_list, if None means run all test cases in op_ut
+
+        Returns
+        -------
+        report: ut_report.OpUTReport
+            the case run report
         """
+        if isinstance(run_soc_versions, str):
+            if "," in run_soc_versions:
+                run_soc_versions = [x.strip() for x in run_soc_versions.split(",")]
+        if not isinstance(run_soc_versions, (tuple, list)):
+            run_soc_versions = [run_soc_versions, ]
+
         report = ut_report.OpUTReport()
         start_time = time.time()
         print(">>>> start run test case")
-        for op_ut in op_uts:
-            trace_list = self._excute_one_soc(op_ut)
-            for case_trace in trace_list:
-                case_rpt = ut_report.OpUTCaseReport(case_trace)
-                report.add_case_report(case_rpt)
+        for run_soc_version in run_soc_versions:
+            one_soc_rpt = self._execute_one_soc(op_ut_case, run_soc_version,
+                                                case_name_list=case_name_list, case_usage_list=case_usage_list)
+            report.merge_rpt(one_soc_rpt)
         end_time = time.time()
         time_taken = end_time - start_time
-        print(">>>> end run test case, op_type:%s cost time: %d " % (
-            "None" if not op_uts else op_uts[0].op_type, time_taken))
+        print(">>>> end run test case, op_type:%s cost time: %d " % (op_ut_case.op_type, time_taken))
         if self.print_summary:
             report.console_print()
 
@@ -139,22 +159,21 @@ def _run_ut_case_file(run_arg: RunUTCaseFileArgs):
         if not run_arg.simulator_mode:
             case_usage_list.remove(CaseUsage.PRECISION)
 
-        soc_case_list = ut_case.get_test_case(run_arg.soc_version, case_name=run_arg.case_name,
-                                              case_usage_list=case_usage_list)
-        for soc_case in soc_case_list:
-            soc_case.clear_test_trace()
-            soc_case.set_test_data_dir(run_arg.data_dir)
-            soc_case.set_dump_model_dir(run_arg.dump_model_dir)
-            soc_case.set_simulator_lib_path(run_arg.simulator_lib_path)
-            if run_arg.simulator_mode:
-                soc_case.set_simulator_mode(run_arg.simulator_mode)
-        case_runner = OpUTTestRunner(print_summary=False, simulator_mode=run_arg.simulator_mode,
-                                     simulator_lib_path=run_arg.simulator_lib_path)
-        ut_rpt = case_runner.run(soc_case_list)
+        case_runner = OpUTTestRunner(print_summary=False,
+                                     simulator_mode=run_arg.simulator_mode,
+                                     simulator_lib_path=run_arg.simulator_lib_path,
+                                     simulator_dump_path=run_arg.dump_model_dir,
+                                     data_dump_dir=run_arg.data_dir)
+        if isinstance(run_arg.case_name, str):
+            case_name_list = run_arg.case_name.split(",")
+        else:
+            case_name_list = run_arg.case_name
+        ut_rpt = case_runner.run(run_arg.soc_version, ut_case, case_name_list, case_usage_list)
         ut_rpt.save(run_arg.test_report_data_path)
         del sys.modules[case_module_name]
     except BaseException as run_err:  # pylint: disable=broad-except
-        logger.log_err("Test Failed! case_file: %s, error_msg: %s" % (run_arg.case_file, run_err.args[0]))
+        logger.log_err("Test Failed! case_file: %s, error_msg: %s" % (run_arg.case_file, run_err.args[0]),
+                       print_trace=True)
         res = False
 
     if run_arg.cov_report:
@@ -271,19 +290,19 @@ def run_ut(case_dir, soc_version, case_name=None,  # pylint: disable=too-many-ar
 
     if total_count < cpu_count:
         total_args = []
-        for one_soc, soc_args in multiprocess_run_args.items():
+        for _, soc_args in multiprocess_run_args.items():
             for soc_arg in soc_args:
                 total_args.append(soc_arg)
         if len(total_args) == 1:
             res = _run_ut_case_file(total_args[0])
-            results = [res,]
+            results = [res, ]
         else:
             with Pool(processes=cpu_count) as pool:
                 results = pool.map(_run_ut_case_file, total_args)
         run_success = reduce(lambda x, y: x and y, results)
     else:
         results = []
-        for one_soc, soc_args in multiprocess_run_args.items():
+        for _, soc_args in multiprocess_run_args.items():
             with Pool(processes=cpu_count) as pool:
                 one_soc_results = pool.map(_run_ut_case_file, soc_args)
             for result in one_soc_results:

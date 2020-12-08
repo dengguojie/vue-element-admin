@@ -89,8 +89,9 @@ class OpUTCaseReport:
         """
         if self.status != op_status.SUCCESS:
             if not self.err_trace:
-                return "%s: [%s]  %s (%s), error msg: %s" % (
-                    self.status, self.op_type, self.case_name, self.run_soc, self.err_msg)
+                return "%s: [%s]  %s (%s), error msg: %s\n      Case File \"%s\", line %s\n" % (
+                    self.status, self.op_type, self.case_name, self.run_soc, self.err_msg,
+                    self.trace_detail.ut_case_info.case_file, str(self.trace_detail.ut_case_info.case_line_num))
 
             summary_with_trace_str = "{status}: [{op_type}]  {case_name} ({run_soc}), error msg: {err_msg}, \n"
             summary_with_trace_str += "      Case File \"{case_file}\", line {line_no}\n"
@@ -102,7 +103,7 @@ class OpUTCaseReport:
                 "run_soc": self.run_soc,
                 "err_msg": self.err_msg,
                 "case_file": self.trace_detail.ut_case_info.case_file,
-                "line_no": self.trace_detail.ut_case_info.case_line_num,
+                "line_no": str(self.trace_detail.ut_case_info.case_line_num),
                 "trace_info": self.err_trace.replace("\n", "\n      ")
             })
 
