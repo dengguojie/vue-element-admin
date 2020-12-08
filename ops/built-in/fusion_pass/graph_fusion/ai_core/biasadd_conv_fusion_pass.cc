@@ -77,6 +77,7 @@ Status BiasaddConvFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
     return NOT_CHANGED;
   }
   vector<ge::ConstGeTensorPtr> weights = ge::OpDescUtils::GetWeights(biasadd_node);
+  vector<ge::NodePtr> const_input_nodes = ge::OpDescUtils::GetConstInputs(biasadd_node);
   auto biasAddWeightSize = weights.size();
   if (biasAddWeightSize == 0 && biasadd_node->GetType() == ADD_3D && src_node->GetType() == CONVOLUTION_3D) {
     bool checkNull = biasadd_node->GetInDataAnchor(1) == nullptr ||
@@ -92,6 +93,7 @@ Status BiasaddConvFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
       /* This case, the BiasAdd is Add and the input of Add is Reshape,
        * we just get the first weight of reshape as the bias. */
       weights = ge::OpDescUtils::GetWeights(nodeInfrontOfAdd);
+      const_input_nodes = ge::OpDescUtils::GetConstInputs(nodeInfrontOfAdd);
       FUSION_PASS_CHECK(weights.empty(), OP_LOGI(FUSED_OP_TYPE.c_str(), "Node Add:[%s]'s weight size %u is invalid.",
                                                  nodeInfrontOfAdd->GetName().c_str(), weights.size()),
                         return NOT_CHANGED);
@@ -106,12 +108,7 @@ Status BiasaddConvFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
                       return NOT_CHANGED);
     /* The weights will be the weight of BiasAdd node */
   }
-  Status result = PatternFusionUtil::CopyMultiReferenceConstNode(graph, src_node);
-  FUSION_PASS_CHECK(result != SUCCESS,
-                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Src_node[%s]: can not copy multiReference const node.",
-                            src_node->GetName().c_str()),
-                    return NOT_CHANGED);
-
+ 
   ge::OpDescPtr src_op = src_node->GetOpDesc();
   FUSION_PASS_CHECK(src_op == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.",
                                                src_node->GetName().c_str()),
@@ -161,33 +158,25 @@ Status BiasaddConvFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Link control edge from [%s] to [%s] failed",
                             biasadd_node->GetName().c_str(), src_node->GetName().c_str()),
                     return FAILED);
-  ge::GeTensorPtr src_bias_ptr = nullptr;
-  src_bias_ptr = std::make_shared<ge::GeTensor>(biases->Clone());
-
-  FUSION_PASS_CHECK(src_bias_ptr == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Clone Biasadd node's weight is null, fusion failed."),
-                    return PARAM_INVALID);
 
   std::vector<int64_t> newDimVec;
   newDimVec.push_back(newShape);
   ge::GeShape biasShape(newDimVec);
-  src_bias_ptr->MutableTensorDesc().SetShape(biasShape);
-  src_bias_ptr->MutableTensorDesc().SetOriginShape(biasShape);
+  if (const_input_nodes.empty()) {
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "Fail to get const node.");
+    return FAILED;
+  }
+  ge::NodePtr const_node = const_input_nodes[0];
+  GeTensorDesc constTensor = const_node->GetOpDesc()->GetOutputDesc(0);
+  constTensor.SetShape(biasShape);
+  constTensor.SetOriginShape(biasShape);
   ge::Format inputFormat = biasadd_op->GetInputDesc(0).GetFormat();
-  src_bias_ptr->MutableTensorDesc().SetFormat(inputFormat);
+  constTensor.SetFormat(inputFormat);
   inputFormat = biasadd_op->GetInputDesc(0).GetOriginFormat();
-  src_bias_ptr->MutableTensorDesc().SetOriginFormat(inputFormat);
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "bias's format is %d, origin format is %d.",
-          src_bias_ptr->MutableTensorDesc().GetFormat(), src_bias_ptr->MutableTensorDesc().GetOriginFormat());
+  constTensor.SetOriginFormat(inputFormat);
 
-  ge::OpDescPtr const_opdesc = ge::OpDescUtils::CreateConstOp(src_bias_ptr);
-  FUSION_PASS_CHECK(const_opdesc == nullptr,
-                    OP_LOGE(src_node->GetName().c_str(), "Fail to create const op desc."),
-                    return FAILED);
-  ge::NodePtr const_node = graph.AddNode(const_opdesc);
-  FUSION_PASS_CHECK(const_node == nullptr,
-                    OP_LOGE(const_opdesc->GetName().c_str(), "Fail to add const node."),
-                    return FAILED);
+  const_node->GetOpDesc()->UpdateOutputDesc(0, constTensor);
+
   FUSION_PASS_CHECK(src_node->AddLinkFrom(2, const_node) != ge::GRAPH_SUCCESS,
                     OP_LOGE(src_node->GetName().c_str(), "Fail to link const node with conv node."),
                     return FAILED);
