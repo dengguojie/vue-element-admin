@@ -48,7 +48,7 @@ def _do_mi_cmd(args, cmd, report):
                     utils.print_error_log("please modify it to 'st_mode':"
                                           "'ms_python_train'.")
                     raise utils.OpTestGenException(
-		    utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+                        utils.OP_TEST_GEN_INVALID_DATA_ERROR)
             else:
                 acl_op_generator_instance = AclOpGenerator(case_list, output_path,
                                                            True, report)
@@ -266,8 +266,6 @@ def main():
         parse.print_usage()
         sys.exit(utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
     args = parse.parse_args(sys.argv[1:])
-    report = st_report.OpSTReport(" ".join(sys.argv))
-    register(save_report, report=report, output_path=args.output_path)
     if sys.argv[1] == 'create':
         # generate test_case.json
         try:
@@ -275,7 +273,10 @@ def main():
             generator.generate()
         except utils.OpTestGenException as ex:
             sys.exit(ex.error_info)
-    elif sys.argv[1] == 'run':
+    # run/mi gen command generator report.
+    report = st_report.OpSTReport(" ".join(sys.argv))
+    register(save_report, report=report, output_path=args.output_path)
+    if sys.argv[1] == 'run':
         _do_run_cmd(args, report)
     else:
         _do_mi_cmd(args, sys.argv[2], report)
