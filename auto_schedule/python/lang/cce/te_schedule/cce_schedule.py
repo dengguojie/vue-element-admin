@@ -260,6 +260,11 @@ def schedule_cce(outs, option=None):  # pylint: disable=R0912, R0914, R0915
     cceconf.cce_emitinsn_params.cceEmitParamsIns.clear_param()
     if isinstance(outs, (tuple, list)):
         if len(outs) > 1:
+            if not check_support_muti_output(outs):
+                dict_args = dict()
+                dict_args["errCode"] = "E90003"
+                dict_args["detailed_cause"] = "Only vector op support muti output now"
+                raise RuntimeError(dict_args, get_error_message(dict_args))
             out_tmp = outs
         else:
             out_tmp = [outs[0]]  # suppose input and output are the same
@@ -291,13 +296,6 @@ def schedule_cce(outs, option=None):  # pylint: disable=R0912, R0914, R0915
     compute_tensors = mid_tensors + output_tensors
 
     tensor_map = op_info["tensor_map"]
-
-    # check support muti outputs or not
-    if not check_is_support_muti_output(mid_tensors, output_tensors):
-        dict_args = dict()
-        dict_args["errCode"] = "E90003"
-        dict_args["detailed_cause"] = "Only vector op, matmul, or conv support muti output now"
-        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     for index, out in enumerate(outs):
         # check whether needs to cast back data type into original type
@@ -450,26 +448,37 @@ def check_is_need_cast(out):
     return True
 
 
-def check_is_support_muti_output(mid_tensors, output_tensors):
+def check_support_muti_output(outs):
     """
-    check wether support muti_output, only support all 
-    elewise/reduce/broadcast or matmul or conv compute now
+    check wether support muti_output, only support all elewise/reduce/broadcast compute now
     :param outs:output list
     :return: True or Flase
     """
-    if len(output_tensors) == 1:
-        return True
-    
-    compute_tensors = mid_tensors + output_tensors
-    for tensor in compute_tensors:
-        tag = tensor.op.tag
-        if 'matmul' in tag:
-            return True
-        if "elewise" not in tag and "broadcast" not in tag and \
-                "reduce" not in tag and not ConvParam.convbn1_flag and \
-                not ConvParam.conv_deq_req_double_out and \
-                "requant_s16" not in tag:
-            return False
+    operation_list = []
+    for tensor in outs:
+        operation_list.append(tensor)
+
+    # dfs all compute node to check wheather has non-elewise/reduce/broadcast operation
+    while operation_list:
+        tmp_operation_list = []
+
+        for sub_opt in operation_list:
+            tag = sub_opt.op.tag
+            if 'matmul' in tag:
+                return True
+            if "elewise" not in tag and "broadcast" not in tag and \
+                    "reduce" not in tag and not ConvParam.convbn1_flag and \
+                    not ConvParam.conv_deq_req_double_out and \
+                    "requant_s16" not in tag:
+                return False
+
+            for sub_input in sub_opt.op.input_tensors:
+                if not isinstance(sub_input.op, tvm.tensor.PlaceholderOp) and \
+                        sub_input not in tmp_operation_list:
+                    tmp_operation_list.append(sub_input)
+
+        operation_list = tmp_operation_list
+
     return True
 
 
