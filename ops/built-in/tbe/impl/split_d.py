@@ -16,36 +16,28 @@
 split_d
 """
 import functools
-
 import numpy as np
-
 import te.lang.cce as tbe
 import te.platform as tbe_platform
-from te.utils import para_check
-from te.utils import shape_util
 from te import tvm
 from te import tik
+from te.utils import para_check
+from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 from impl import copy_only
 from impl import split_last_dim
 from impl.util import util_select_op_base
 from impl.util import util_common
-from te.utils.error_manager import error_manager_vector
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
-# one block size
-BLOCK_SIZE = 32
 # vtranspose can deal 16*16
 TRANSPOSE_SIZE = 256
 
 
 # pylint: disable = unused-argument
-def get_op_support_info(input_value,
-                        output_data,
-                        split_dim,
-                        num_split,
-                        kernel_name="split_d"):
+def get_op_support_info(input_value, output_data, split_dim, num_split, kernel_name="split_d"):
     """
     get_op_support_info
     """
@@ -56,8 +48,8 @@ def get_op_support_info(input_value,
         split_dim = shape_util.axis_transform_5d(split_dim, ori_format)
     if split_dim < 0:
         split_dim += shape_value_len
-    if format_value == "ND" or format_value == "NC1HWC0" or format_value == "FRACTAL_NZ":
-        axis_split_matrix=[]
+    if format_value in ("ND", "NC1HWC0", "FRACTAL_NZ"):
+        axis_split_matrix = []
         for i in range(0, shape_value_len - 1):
             if i != split_dim:
                 output_list = []
@@ -74,31 +66,22 @@ def get_op_support_info(input_value,
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
-# pylint: disable=too-many-instance-attributes,too-many-arguments
-# pylint: disable=too-many-statements
+# pylint: disable=locally-disabled,too-many-locals,too-many-statements,too-many-instance-attributes,too-many-arguments
 class SplitMov:
     """Function: use to finish SplitMov main functions
     """
-    def __init__(self,
-                 shape,
-                 dtype,
-                 split_dim,
-                 num_split,
-                 size_splits=None,
-                 kernel_name="split_d"):
-        """init split_d base parameters
+
+    def __init__(self, shape, dtype, split_dim, num_split, size_splits=None, kernel_name="split_d"):
+        """init base parameters
         """
         self.tik_instance = tik.Tik()
-        self.aicore_num = tbe_platform.get_soc_spec(
-            tbe_platform.CORE_NUM)
+        self.aicore_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         self.kernel_name = kernel_name
         self.dtype = dtype
         self.dtype_size = tbe_platform.cce_intrin.get_bit_len(self.dtype) // 8
         self.one_block_ele = 32 // self.dtype_size
-        self.half_ub_ele = (
-            tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) //
-            self.dtype_size // 2 - self.one_block_ele)
+        self.half_ub_ele = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) // self.dtype_size // 2 -
+                            self.one_block_ele)
 
         if not size_splits:
             size_splits = [shape[split_dim] // num_split] * num_split
@@ -107,33 +90,22 @@ class SplitMov:
         if split_dim == 0:
             self.input_shape = [int(np.prod(shape))]
             for size in size_splits:
-                self.size_splits.append(self.input_shape[0] //
-                                        shape[split_dim] * size)
-                self.output_shapes.append(
-                    [self.input_shape[0] // shape[split_dim] * size])
+                self.size_splits.append(self.input_shape[0] // shape[split_dim] * size)
+                self.output_shapes.append([self.input_shape[0] // shape[split_dim] * size])
             self.split_dim = 0
         else:
             out_dim = int(np.prod(shape[:split_dim]))
             if out_dim == 1:
                 self.input_shape = [int(np.prod(shape))]
                 for size in size_splits:
-                    self.size_splits.append(self.input_shape[0] //
-                                            shape[split_dim] * size)
-                    self.output_shapes.append(
-                        [self.input_shape[0] // shape[split_dim] * size])
+                    self.size_splits.append(self.input_shape[0] // shape[split_dim] * size)
+                    self.output_shapes.append([self.input_shape[0] // shape[split_dim] * size])
                 self.split_dim = 0
             else:
-                self.input_shape = [
-                    int(np.prod(shape[:split_dim])),
-                    int(np.prod(shape[split_dim:len(shape)]))
-                ]
+                self.input_shape = [int(np.prod(shape[:split_dim])), int(np.prod(shape[split_dim:len(shape)]))]
                 for size in size_splits:
-                    self.size_splits.append(self.input_shape[1] //
-                                            shape[split_dim] * size)
-                    self.output_shapes.append([
-                        self.input_shape[0],
-                        self.input_shape[1] // shape[split_dim] * size
-                    ])
+                    self.size_splits.append(self.input_shape[1] // shape[split_dim] * size)
+                    self.output_shapes.append([self.input_shape[0], self.input_shape[1] // shape[split_dim] * size])
                 self.split_dim = 1
 
         self.input_tensor, self.output_tensors = self.init_gm_tensor()
@@ -141,14 +113,12 @@ class SplitMov:
     def init_gm_tensor(self):
         """init gm tensor
         """
-        input_tensor = self.tik_instance.Tensor(
-            self.dtype, self.input_shape, name="gm_input", scope=tik.scope_gm)
+        input_tensor = self.tik_instance.Tensor(self.dtype, self.input_shape, name="gm_input", scope=tik.scope_gm)
 
         output_tensors = []
         for index, tensor_shape in enumerate(self.output_shapes):
             tensor_name = "gm_output_" + str(index)
-            gm_tensor = self.tik_instance.Tensor(
-                self.dtype, tensor_shape, name=tensor_name, scope=tik.scope_gm)
+            gm_tensor = self.tik_instance.Tensor(self.dtype, tensor_shape, name=tensor_name, scope=tik.scope_gm)
             output_tensors.append(gm_tensor)
 
         return input_tensor, output_tensors
@@ -162,15 +132,12 @@ class SplitMov:
         if last_ele == 0:
             one_core_ele = total_ele // self.aicore_num
         else:
-            one_core_ele = (
-                total_ele // self.aicore_num // self.one_block_ele *
-                self.one_block_ele)
+            one_core_ele = (total_ele // self.aicore_num // self.one_block_ele * self.one_block_ele)
             last_ele = total_ele - (self.aicore_num - 1) * one_core_ele
 
         return one_core_ele, last_ele
 
-    def split_compute_for_tensor(self, move_in_index, output_tensor,
-                                 one_core_ele):
+    def split_compute_for_tensor(self, move_in_index, output_tensor, one_core_ele):
         """split_compute_for_tensor
         """
         loop_burst_len = 0
@@ -193,41 +160,29 @@ class SplitMov:
                 multi_thread = 2
             else:
                 multi_thread = 1
-            with self.tik_instance.for_range(
-                    0, loop_num, thread_num=multi_thread) as inner_loop:
-                ub_tensor = self.tik_instance.Tensor(
-                    self.dtype, (ub_size,), name="ub_tmp", scope=tik.scope_ubuf)
+            with self.tik_instance.for_range(0, loop_num, thread_num=multi_thread) as inner_loop:
+                ub_tensor = self.tik_instance.Tensor(self.dtype, (ub_size,), name="ub_tmp", scope=tik.scope_ubuf)
                 offset = inner_loop * one_loop_ele
-                self.tik_instance.data_move(
-                    ub_tensor, self.input_tensor[move_in_index][offset], 0, 1,
-                    loop_burst_len, 0, 0)
-                self.tik_instance.data_move(output_tensor[offset], ub_tensor, 0,
-                                            1, loop_burst_len, 0, 0)
+                self.tik_instance.data_move(ub_tensor, self.input_tensor[move_in_index][offset], 0, 1, loop_burst_len,
+                                            0, 0)
+                self.tik_instance.data_move(output_tensor[offset], ub_tensor, 0, 1, loop_burst_len, 0, 0)
         if last_ele > 0:
             with self.tik_instance.for_range(0, 1) as _:
-                ub_tensor = self.tik_instance.Tensor(
-                    self.dtype, (ub_size,), name="ub_tmp", scope=tik.scope_ubuf)
+                ub_tensor = self.tik_instance.Tensor(self.dtype, (ub_size,), name="ub_tmp", scope=tik.scope_ubuf)
                 offset = loop_num * one_loop_ele
                 if last_ele // self.one_block_ele != 0:
                     last_burst_len = last_ele // self.one_block_ele
-                    self.tik_instance.data_move(
-                        ub_tensor, self.input_tensor[move_in_index][offset], 0,
-                        1, last_burst_len, 0, 0)
-                    self.tik_instance.data_move(output_tensor[offset],
-                                                ub_tensor, 0, 1, last_burst_len,
-                                                0, 0)
+                    self.tik_instance.data_move(ub_tensor, self.input_tensor[move_in_index][offset], 0, 1,
+                                                last_burst_len, 0, 0)
+                    self.tik_instance.data_move(output_tensor[offset], ub_tensor, 0, 1, last_burst_len, 0, 0)
 
                 if last_ele % self.one_block_ele != 0:
-                    ub_last = self.tik_instance.Tensor(
-                        self.dtype, (self.one_block_ele,),
-                        name="ub_last",
-                        scope=tik.scope_ubuf)
+                    ub_last = self.tik_instance.Tensor(self.dtype, (self.one_block_ele,),
+                                                       name="ub_last",
+                                                       scope=tik.scope_ubuf)
                     offset = one_core_ele - self.one_block_ele
-                    self.tik_instance.data_move(
-                        ub_last, self.input_tensor[move_in_index][offset], 0, 1,
-                        1, 0, 0)
-                    self.tik_instance.data_move(output_tensor[offset], ub_last,
-                                                0, 1, 1, 0, 0)
+                    self.tik_instance.data_move(ub_last, self.input_tensor[move_in_index][offset], 0, 1, 1, 0, 0)
+                    self.tik_instance.data_move(output_tensor[offset], ub_last, 0, 1, 1, 0, 0)
 
     def split_compute_first_dim_for_core(self, core_index):
         """split_compute_first_dim_for_core
@@ -238,26 +193,19 @@ class SplitMov:
             if last_ele == 0:
                 move_in_index = (out_offset + one_core_ele * core_index)
                 move_out_index = (one_core_ele * core_index)
-                self.split_compute_for_tensor(
-                    move_in_index,
-                    self.output_tensors[tensor_index][move_out_index],
-                    one_core_ele)
+                self.split_compute_for_tensor(move_in_index, self.output_tensors[tensor_index][move_out_index],
+                                              one_core_ele)
             else:
-                with self.tik_instance.if_scope(
-                        core_index < self.aicore_num - 1):
+                with self.tik_instance.if_scope(core_index < self.aicore_num - 1):
                     move_in_index = (out_offset + one_core_ele * core_index)
                     move_out_index = (one_core_ele * core_index)
-                    self.split_compute_for_tensor(
-                        move_in_index,
-                        self.output_tensors[tensor_index][move_out_index],
-                        one_core_ele)
+                    self.split_compute_for_tensor(move_in_index, self.output_tensors[tensor_index][move_out_index],
+                                                  one_core_ele)
                 with self.tik_instance.else_scope():
                     move_in_index = (out_offset + one_core_ele * core_index)
                     move_out_index = (one_core_ele * core_index)
-                    self.split_compute_for_tensor(
-                        move_in_index,
-                        self.output_tensors[tensor_index][move_out_index],
-                        last_ele)
+                    self.split_compute_for_tensor(move_in_index, self.output_tensors[tensor_index][move_out_index],
+                                                  last_ele)
             out_offset += output_shape[self.split_dim]
 
     def split_compute_last_dim_for_core(self, core_index):
@@ -270,44 +218,28 @@ class SplitMov:
             for tensor_index, output_shape in enumerate(self.output_shapes):
                 one_core_ele, last_ele = self.get_one_core_ele(output_shape)
                 if last_ele == 0:
-                    with self.tik_instance.for_range(
-                            0, out_loop, thread_num=2) as loop_index:
-                        move_in_index = (
-                            out_offset + one_core_ele * core_index +
-                            loop_index * self.input_shape[self.split_dim])
-                        move_out_index = (
-                            one_core_ele * core_index +
-                            loop_index * output_shape[self.split_dim])
-                        self.split_compute_for_tensor(
-                            move_in_index,
-                            self.output_tensors[tensor_index][move_out_index],
-                            one_core_ele)
+                    with self.tik_instance.for_range(0, out_loop, thread_num=2) as loop_index:
+                        move_in_index = (out_offset + one_core_ele * core_index +
+                                         loop_index * self.input_shape[self.split_dim])
+                        move_out_index = (one_core_ele * core_index + loop_index * output_shape[self.split_dim])
+                        self.split_compute_for_tensor(move_in_index, self.output_tensors[tensor_index][move_out_index],
+                                                      one_core_ele)
                 else:
-                    with self.tik_instance.if_scope(
-                            core_index < self.aicore_num - 1):
-                        with self.tik_instance.for_range(
-                                0, out_loop, thread_num=2) as loop_index:
-                            move_in_index = (
-                                out_offset + one_core_ele * core_index +
-                                loop_index * self.input_shape[self.split_dim])
-                            move_out_index = (
-                                one_core_ele * core_index +
-                                loop_index * output_shape[self.split_dim])
-                            self.split_compute_for_tensor(
-                                move_in_index, self.output_tensors[tensor_index]
-                                [move_out_index], one_core_ele)
+                    with self.tik_instance.if_scope(core_index < self.aicore_num - 1):
+                        with self.tik_instance.for_range(0, out_loop, thread_num=2) as loop_index:
+                            move_in_index = (out_offset + one_core_ele * core_index +
+                                             loop_index * self.input_shape[self.split_dim])
+                            move_out_index = (one_core_ele * core_index + loop_index * output_shape[self.split_dim])
+                            self.split_compute_for_tensor(move_in_index,
+                                                          self.output_tensors[tensor_index][move_out_index],
+                                                          one_core_ele)
                     with self.tik_instance.else_scope():
-                        with self.tik_instance.for_range(
-                                0, out_loop, thread_num=2) as loop_index:
-                            move_in_index = (
-                                out_offset + one_core_ele * core_index +
-                                loop_index * self.input_shape[self.split_dim])
-                            move_out_index = (
-                                one_core_ele * core_index +
-                                loop_index * output_shape[self.split_dim])
-                            self.split_compute_for_tensor(
-                                move_in_index, self.output_tensors[tensor_index]
-                                [move_out_index], last_ele)
+                        with self.tik_instance.for_range(0, out_loop, thread_num=2) as loop_index:
+                            move_in_index = (out_offset + one_core_ele * core_index +
+                                             loop_index * self.input_shape[self.split_dim])
+                            move_out_index = (one_core_ele * core_index + loop_index * output_shape[self.split_dim])
+                            self.split_compute_for_tensor(move_in_index,
+                                                          self.output_tensors[tensor_index][move_out_index], last_ele)
                 out_offset += output_shape[self.split_dim]
         else:
             out_offset = 0
@@ -317,38 +249,29 @@ class SplitMov:
                 thread_num = 2
             for tensor_index, output_shape in enumerate(self.output_shapes):
                 one_core_ele = output_shape[self.split_dim]
-                with self.tik_instance.for_range(
-                        0, out_loop, thread_num=thread_num) as loop_index:
-                    move_in_index = (
-                        out_offset +
-                        core_index * out_loop * self.input_shape[self.split_dim]
-                        + loop_index * self.input_shape[self.split_dim])
-                    move_out_index = (
-                        core_index * out_loop * output_shape[self.split_dim] +
-                        loop_index * output_shape[self.split_dim])
-                    self.split_compute_for_tensor(
-                        move_in_index,
-                        self.output_tensors[tensor_index][move_out_index],
-                        one_core_ele)
+                with self.tik_instance.for_range(0, out_loop, thread_num=thread_num) as loop_index:
+                    move_in_index = (out_offset + core_index * out_loop * self.input_shape[self.split_dim] +
+                                     loop_index * self.input_shape[self.split_dim])
+                    move_out_index = (core_index * out_loop * output_shape[self.split_dim] +
+                                      loop_index * output_shape[self.split_dim])
+                    self.split_compute_for_tensor(move_in_index, self.output_tensors[tensor_index][move_out_index],
+                                                  one_core_ele)
                 out_offset += output_shape[self.split_dim]
 
     def split_mov_compute(self):
         """split_mov_compute
         """
         if self.split_dim == 0:
-            with self.tik_instance.for_range(
-                    0, self.aicore_num, block_num=self.aicore_num) as index:
+            with self.tik_instance.for_range(0, self.aicore_num, block_num=self.aicore_num) as index:
                 self.split_compute_first_dim_for_core(index)
         else:
-            with self.tik_instance.for_range(
-                    0, self.aicore_num, block_num=self.aicore_num) as index:
+            with self.tik_instance.for_range(0, self.aicore_num, block_num=self.aicore_num) as index:
                 self.split_compute_last_dim_for_core(index)
 
-        self.tik_instance.BuildCCE(
-            kernel_name=self.kernel_name,
-            inputs=[self.input_tensor],
-            outputs=self.output_tensors,
-            enable_l2=False)
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                   inputs=[self.input_tensor],
+                                   outputs=self.output_tensors,
+                                   enable_l2=False)
 
     def check_whether_use_split_mov(self):
         """check if split_d schedule support this shape
@@ -378,301 +301,131 @@ class SplitLastDimVnv:
     """Function: use to finish SplitLastDimVnv main functions
     """
 
-    def __init__(self, shape, dtype, output_shapes, split_dim, num_split,
-                 kernel_name):
-        """init split_d base parameters
+    def __init__(self, shape, dtype, output_shapes, split_dim, num_split, kernel_name):
+        """init base parameters
         """
         self.tik_instance = tik.Tik()
-        self.aicore_num = tbe_platform.get_soc_spec(
-            tbe_platform.CORE_NUM)
-        self.kernel_name = kernel_name
+        self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         self.dtype = dtype
         self.dtype_size = tbe_platform.cce_intrin.get_bit_len(self.dtype) // 8
-        self.input_shape = shape
-        self.input_size = functools.reduce(lambda x, y: x * y, self.input_shape)
+        self.block_ele = 32 // self.dtype_size
+        self.half_ub_ele = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) // self.dtype_size // 2 - self.block_ele)
+        # shape length must be 2
+        self.shape = shape
+        self.output_shapes = output_shapes
+        # split_dim must be 1
         self.split_dim = split_dim
         self.num_split = num_split
-        self.output_shapes = output_shapes
-        self.output_size = functools.reduce(lambda x, y: x * y,
-                                            self.output_shapes[0])
+        self.kernel_name = kernel_name
         self.input_tensor, self.output_tensors = self.init_gm_tensor()
 
     def init_gm_tensor(self):
         """init gm tensor
         """
-        input_tensor = self.tik_instance.Tensor(
-            self.dtype, self.input_shape, name="gm_input", scope=tik.scope_gm)
+        input_tensor = self.tik_instance.Tensor(self.dtype, self.shape, name="gm_input", scope=tik.scope_gm)
 
         output_tensors = []
         for index, tensor_shape in enumerate(self.output_shapes):
             tensor_name = "gm_output_" + str(index)
-            gm_tensor = self.tik_instance.Tensor(
-                self.dtype, tensor_shape, name=tensor_name, scope=tik.scope_gm)
+            gm_tensor = self.tik_instance.Tensor(self.dtype, tensor_shape, name=tensor_name, scope=tik.scope_gm)
             output_tensors.append(gm_tensor)
 
         return input_tensor, output_tensors
 
+    def split_last_dim_vnc_compute_for_core(self, src_offset_core, dst_offset_core, core_seg, tail_ele):
+        """split_last_dim_vnc_compute_for_core
+        """
+        max_seg = self.half_ub_ele // (TRANSPOSE_SIZE * (2 * self.num_split + 2))
+        if tail_ele != 0:
+            core_seg = core_seg - 1
+        core_seg = max(core_seg, 0)
+        loop_num = core_seg // max_seg
+        last_seg = core_seg % max_seg
+
+        def _inner(src_offset, dst_offset, seg):
+            """inner function
+            """
+            ub_x = self.tik_instance.Tensor(self.dtype, (max_seg * TRANSPOSE_SIZE * self.num_split,), tik.scope_ubuf,
+                                            "ub_x")
+            ub_y = self.tik_instance.Tensor(self.dtype, (max_seg * TRANSPOSE_SIZE * self.num_split,), tik.scope_ubuf,
+                                            "ub_y")
+            ub_m = self.tik_instance.Tensor(self.dtype, (max_seg * TRANSPOSE_SIZE,), tik.scope_ubuf, "ub_m")
+            ub_n = self.tik_instance.Tensor(self.dtype, (max_seg * TRANSPOSE_SIZE,), tik.scope_ubuf, "ub_n")
+
+            # copy gm to ub
+            self.tik_instance.data_move(ub_x, self.input_tensor[src_offset], 0, 1,
+                                        seg * TRANSPOSE_SIZE * self.num_split // self.block_ele, 0, 0)
+
+            # vadds & vtranspose
+            for num_idx in range(self.num_split):
+                src_offset_ub = num_idx * self.block_ele
+                dst_offset_ub = num_idx * TRANSPOSE_SIZE
+
+                self.tik_instance.vadds(128, ub_m, ub_x[src_offset_ub], 0, 2 * seg, 1, self.num_split, 8,
+                                        self.num_split * 8)
+                for trans_idx in range(seg):
+                    src_offset_trans = trans_idx * TRANSPOSE_SIZE
+                    dst_offset_trans = dst_offset_ub + self.num_split * trans_idx * TRANSPOSE_SIZE
+                    self.tik_instance.vtranspose(ub_y[dst_offset_trans], ub_m[src_offset_trans])
+
+            for num_idx in range(self.num_split):
+                src_offset_ub = num_idx * self.block_ele
+                self.tik_instance.vadds(128, ub_m, ub_y[src_offset_ub], 0, 2 * seg, 1, self.num_split, 8,
+                                        self.num_split * 8)
+                for trans_idx in range(seg):
+                    src_offset_trans = trans_idx * TRANSPOSE_SIZE
+                    dst_offset_trans = trans_idx * TRANSPOSE_SIZE
+                    self.tik_instance.vtranspose(ub_n[dst_offset_trans], ub_m[src_offset_trans])
+                # copy ub to gm
+                self.tik_instance.data_move(self.output_tensors[num_idx][dst_offset], ub_n, 0, 1,
+                                            seg * TRANSPOSE_SIZE // self.block_ele, 0, 0)
+
+        thread = 2 if loop_num > 1 else 1
+        with self.tik_instance.for_range(0, loop_num, thread_num=thread) as loop_idx:
+            src_offset = src_offset_core + loop_idx * max_seg * TRANSPOSE_SIZE * self.shape[1]
+            dst_offset = dst_offset_core + loop_idx * max_seg * TRANSPOSE_SIZE * self.output_shapes[0][1]
+            _inner(src_offset, dst_offset, max_seg)
+        if last_seg != 0:
+            with self.tik_instance.for_range(0, 1):
+                src_offset = src_offset_core + loop_num * max_seg * TRANSPOSE_SIZE * self.shape[1]
+                dst_offset = dst_offset_core + loop_num * max_seg * TRANSPOSE_SIZE * self.output_shapes[0][1]
+                _inner(src_offset, dst_offset, last_seg)
+        if tail_ele != 0:
+            with self.tik_instance.for_range(0, 1):
+                src_offset = (self.shape[0] - TRANSPOSE_SIZE) * self.shape[1]
+                dst_offset = (self.shape[0] - TRANSPOSE_SIZE) * self.output_shapes[0][1]
+                _inner(src_offset, dst_offset, 1)
+
     def split_last_dim_vnc_compute(self):
         """split_last_dim_vnc_compute
         """
-        if self.num_split == 3 and self.input_size >= TRANSPOSE_SIZE * 8 * 3:
-            self.split_last_dim_vnc_compute_for_three()
-            return
-        mov_size = TRANSPOSE_SIZE * self.num_split
-        mov_num = (self.input_size + mov_size - 1) // mov_size
-        core_loop = mov_num // self.aicore_num
-        core_last = mov_num % self.aicore_num
-        with self.tik_instance.for_range(
-                0, self.aicore_num, block_num=self.aicore_num) as core_idx:
-            src_offset_core = core_idx * core_loop * mov_size
-            dst_offset_core = core_idx * core_loop * TRANSPOSE_SIZE
-            thread = 1
-            if core_loop > 1:
-                thread = 2
-            with self.tik_instance.for_range(
-                    0, core_loop, thread_num=thread) as loop_idx:
-                ub_x = self.tik_instance.Tensor(self.dtype, (mov_size,),
-                                                tik.scope_ubuf, "ub_x")
-                ub_y = self.tik_instance.Tensor(self.dtype, (mov_size,),
-                                                tik.scope_ubuf, "ub_y")
-                ub_m = self.tik_instance.Tensor(self.dtype, (TRANSPOSE_SIZE,),
-                                                tik.scope_ubuf, "ub_m")
-                ub_n = self.tik_instance.Tensor(self.dtype, (TRANSPOSE_SIZE,),
-                                                tik.scope_ubuf, "ub_n")
-                src_offset = src_offset_core + loop_idx * mov_size
-                dst_offset = dst_offset_core + loop_idx * TRANSPOSE_SIZE
+        align_seg = (self.shape[0] + TRANSPOSE_SIZE - 1) // TRANSPOSE_SIZE
+        tail_ele = align_seg * TRANSPOSE_SIZE - self.shape[0]
+        one_core_seg = (align_seg + self.core_num - 1) // self.core_num
+        act_core_num = align_seg // one_core_seg
+        if align_seg % one_core_seg != 0:
+            act_core_num = act_core_num + 1
+        last_core_seg = align_seg - (act_core_num - 1) * one_core_seg
 
-                # copy gm to ub
-                self.tik_instance.data_move(
-                    ub_x, self.input_tensor[src_offset], 0, 1,
-                    mov_size * self.dtype_size // BLOCK_SIZE, 0, 0)
+        with self.tik_instance.for_range(0, act_core_num, block_num=act_core_num) as core_idx:
+            src_offset_core = core_idx * one_core_seg * TRANSPOSE_SIZE * self.shape[1]
+            dst_offset_core = core_idx * one_core_seg * TRANSPOSE_SIZE * self.output_shapes[0][1]
+            if tail_ele == 0 and last_core_seg == one_core_seg:
+                self.split_last_dim_vnc_compute_for_core(src_offset_core, dst_offset_core, one_core_seg, 0)
+            else:
+                with self.tik_instance.if_scope(core_idx < act_core_num - 1):
+                    self.split_last_dim_vnc_compute_for_core(src_offset_core, dst_offset_core, one_core_seg, 0)
+                with self.tik_instance.else_scope():
+                    self.split_last_dim_vnc_compute_for_core(src_offset_core, dst_offset_core, last_core_seg, tail_ele)
 
-                # vadds & vtranspose
-                for num_idx in range(self.num_split):
-                    src_offset_ub = num_idx * BLOCK_SIZE // self.dtype_size
-                    dst_offset_ub = num_idx * TRANSPOSE_SIZE
-                    self.tik_instance.vadds(128, ub_m, ub_x[src_offset_ub], 0,
-                                            2, 1, self.num_split, 8,
-                                            self.num_split * 8)
-                    self.tik_instance.vtranspose(ub_y[dst_offset_ub], ub_m)
-
-                for num_idx in range(self.num_split):
-                    src_offset_ub = num_idx * BLOCK_SIZE // self.dtype_size
-                    self.tik_instance.vadds(128, ub_m, ub_y[src_offset_ub], 0,
-                                            2, 1, self.num_split, 8,
-                                            self.num_split * 8)
-                    self.tik_instance.vtranspose(ub_n, ub_m)
-                    # copy ub to gm
-                    self.tik_instance.data_move(
-                        self.output_tensors[num_idx][dst_offset], ub_n, 0, 1,
-                        TRANSPOSE_SIZE * self.dtype_size // BLOCK_SIZE, 0, 0)
-            if core_last != 0:
-                src_offset_core_last = (core_loop * self.aicore_num +
-                                        core_idx) * mov_size
-                dst_offset_core_last = (core_loop * self.aicore_num +
-                                        core_idx) * TRANSPOSE_SIZE
-                with self.tik_instance.for_range(0, 1):
-                    ub_x = self.tik_instance.Tensor(self.dtype, (mov_size,),
-                                                    tik.scope_ubuf, "ub_x")
-                    ub_y = self.tik_instance.Tensor(self.dtype, (mov_size,),
-                                                    tik.scope_ubuf, "ub_y")
-                    ub_m = self.tik_instance.Tensor(self.dtype,
-                                                    (TRANSPOSE_SIZE,),
-                                                    tik.scope_ubuf, "ub_m")
-                    ub_n = self.tik_instance.Tensor(self.dtype,
-                                                    (TRANSPOSE_SIZE,),
-                                                    tik.scope_ubuf, "ub_n")
-                    # copy gm to ub
-                    with self.tik_instance.if_scope(core_idx < core_last - 1):
-                        self.tik_instance.data_move(
-                            ub_x, self.input_tensor[src_offset_core_last], 0, 1,
-                            mov_size * self.dtype_size // BLOCK_SIZE, 0, 0)
-                    with self.tik_instance.if_scope(core_idx == core_last - 1):
-                        self.tik_instance.data_move(
-                            ub_x, self.input_tensor[self.input_size - mov_size],
-                            0, 1, mov_size * self.dtype_size // BLOCK_SIZE, 0,
-                            0)
-
-                    # vadds & vtranspose
-                    for num_idx in range(self.num_split):
-                        src_offset_ub = num_idx * BLOCK_SIZE // self.dtype_size
-                        dst_offset_ub = num_idx * TRANSPOSE_SIZE
-                        self.tik_instance.vadds(128, ub_m, ub_x[src_offset_ub],
-                                                0, 2, 1, self.num_split, 8,
-                                                self.num_split * 8)
-                        self.tik_instance.vtranspose(ub_y[dst_offset_ub], ub_m)
-
-                    for num_idx in range(self.num_split):
-                        src_offset_ub = num_idx * BLOCK_SIZE // self.dtype_size
-                        self.tik_instance.vadds(128, ub_m, ub_y[src_offset_ub],
-                                                0, 2, 1, self.num_split, 8,
-                                                self.num_split * 8)
-                        self.tik_instance.vtranspose(ub_n, ub_m)
-                        # copy ub to gm
-                        with self.tik_instance.if_scope(
-                                core_idx < core_last - 1):
-                            self.tik_instance.data_move(
-                                self.output_tensors[num_idx]
-                                [dst_offset_core_last], ub_n, 0, 1,
-                                TRANSPOSE_SIZE * self.dtype_size // BLOCK_SIZE,
-                                0, 0)
-                        with self.tik_instance.if_scope(core_idx == core_last -
-                                                        1):
-                            self.tik_instance.data_move(
-                                self.output_tensors[num_idx][self.output_size -
-                                                             TRANSPOSE_SIZE],
-                                ub_n, 0, 1,
-                                TRANSPOSE_SIZE * self.dtype_size // BLOCK_SIZE,
-                                0, 0)
-
-        self.tik_instance.BuildCCE(
-            kernel_name=self.kernel_name,
-            inputs=[self.input_tensor],
-            outputs=self.output_tensors,
-            enable_l2=False)
-        return self.tik_instance
-
-    def split_last_dim_vnc_compute_for_three(self):
-        """split_last_dim_vnc_compute_for_three
-        """
-        mov_size = TRANSPOSE_SIZE * 8 * 3
-        mov_num = (self.input_size + mov_size - 1) // mov_size
-        core_loop = mov_num // self.aicore_num
-        core_last = mov_num % self.aicore_num
-
-        with self.tik_instance.for_range(
-                0, self.aicore_num, block_num=self.aicore_num) as core_idx:
-            src_offset_core = core_idx * core_loop * mov_size
-            dst_offset_core = core_idx * core_loop * TRANSPOSE_SIZE * 8
-            thread = 1
-            if core_loop > 1:
-                thread = 2
-            with self.tik_instance.for_range(
-                    0, core_loop, thread_num=thread) as loop_idx:
-                ub_x = self.tik_instance.Tensor(self.dtype, (mov_size,),
-                                                tik.scope_ubuf, "ub_x")
-                ub_y = self.tik_instance.Tensor(self.dtype, (mov_size,),
-                                                tik.scope_ubuf, "ub_y")
-                ub_m = self.tik_instance.Tensor(self.dtype,
-                                                (TRANSPOSE_SIZE * 8,),
-                                                tik.scope_ubuf, "ub_m")
-                ub_n = self.tik_instance.Tensor(self.dtype,
-                                                (TRANSPOSE_SIZE * 8,),
-                                                tik.scope_ubuf, "ub_n")
-                src_offset = src_offset_core + loop_idx * mov_size
-                dst_offset = dst_offset_core + loop_idx * TRANSPOSE_SIZE * 8
-
-                # copy gm to ub
-                self.tik_instance.data_move(
-                    ub_x, self.input_tensor[src_offset], 0, 1,
-                    mov_size * self.dtype_size // BLOCK_SIZE, 0, 0)
-
-                # vadds & vtranspose
-                for num_idx in range(3):
-                    src_offset_ub = num_idx * BLOCK_SIZE // self.dtype_size
-                    dst_offset_ub = num_idx * TRANSPOSE_SIZE
-                    self.tik_instance.vadds(128, ub_m, ub_x[src_offset_ub], 0,
-                                            2 * 8, 1, 3, 8, 3 * 8)
-                    for trans_idx in range(8):
-                        src_offset_trans = trans_idx * TRANSPOSE_SIZE
-                        dst_offset_trans = dst_offset_ub + 3 * trans_idx * \
-                                           TRANSPOSE_SIZE
-                        self.tik_instance.vtranspose(ub_y[dst_offset_trans],
-                                                     ub_m[src_offset_trans])
-
-                for num_idx in range(self.num_split):
-                    src_offset_ub = num_idx * BLOCK_SIZE // self.dtype_size
-                    self.tik_instance.vadds(128, ub_m, ub_y[src_offset_ub], 0,
-                                            2 * 8, 1, 3, 8, 3 * 8)
-                    for trans_idx in range(8):
-                        src_offset_trans = trans_idx * TRANSPOSE_SIZE
-                        dst_offset_trans = trans_idx * TRANSPOSE_SIZE
-                        self.tik_instance.vtranspose(ub_n[dst_offset_trans],
-                                                     ub_m[src_offset_trans])
-                    # copy ub to gm
-                    self.tik_instance.data_move(
-                        self.output_tensors[num_idx][dst_offset], ub_n, 0, 1,
-                        TRANSPOSE_SIZE * 8 * self.dtype_size // BLOCK_SIZE, 0,
-                        0)
-            if core_last != 0:
-                src_offset_core_last = (core_loop * self.aicore_num +
-                                        core_idx) * mov_size
-                dst_offset_core_last = (core_loop * self.aicore_num +
-                                        core_idx) * TRANSPOSE_SIZE * 8
-                with self.tik_instance.for_range(0, 1):
-                    ub_x = self.tik_instance.Tensor(self.dtype, (mov_size,),
-                                                    tik.scope_ubuf, "ub_x")
-                    ub_y = self.tik_instance.Tensor(self.dtype, (mov_size,),
-                                                    tik.scope_ubuf, "ub_y")
-                    ub_m = self.tik_instance.Tensor(self.dtype,
-                                                    (TRANSPOSE_SIZE * 8,),
-                                                    tik.scope_ubuf, "ub_m")
-                    ub_n = self.tik_instance.Tensor(self.dtype,
-                                                    (TRANSPOSE_SIZE * 8,),
-                                                    tik.scope_ubuf, "ub_n")
-                    # copy gm to ub
-                    with self.tik_instance.if_scope(core_idx < core_last - 1):
-                        self.tik_instance.data_move(
-                            ub_x, self.input_tensor[src_offset_core_last], 0, 1,
-                            mov_size * self.dtype_size // BLOCK_SIZE, 0, 0)
-                    with self.tik_instance.if_scope(core_idx == core_last - 1):
-                        self.tik_instance.data_move(
-                            ub_x, self.input_tensor[self.input_size - mov_size],
-                            0, 1, mov_size * self.dtype_size // BLOCK_SIZE, 0,
-                            0)
-
-                    # vadds & vtranspose
-                    for num_idx in range(3):
-                        src_offset_ub = num_idx * BLOCK_SIZE // self.dtype_size
-                        dst_offset_ub = num_idx * TRANSPOSE_SIZE
-                        self.tik_instance.vadds(128, ub_m, ub_x[src_offset_ub],
-                                                0, 2 * 8, 1, 3, 8, 3 * 8)
-                        for trans_idx in range(8):
-                            src_offset_trans = trans_idx * TRANSPOSE_SIZE
-                            dst_offset_trans = dst_offset_ub + 3 * trans_idx * \
-                                               TRANSPOSE_SIZE
-                            self.tik_instance.vtranspose(
-                                ub_y[dst_offset_trans], ub_m[src_offset_trans])
-
-                    for num_idx in range(self.num_split):
-                        src_offset_ub = num_idx * BLOCK_SIZE // self.dtype_size
-                        self.tik_instance.vadds(128, ub_m, ub_y[src_offset_ub],
-                                                0, 2 * 8, 1, 3, 8, 3 * 8)
-                        for trans_idx in range(8):
-                            src_offset_trans = trans_idx * TRANSPOSE_SIZE
-                            dst_offset_trans = trans_idx * TRANSPOSE_SIZE
-                            self.tik_instance.vtranspose(
-                                ub_n[dst_offset_trans], ub_m[src_offset_trans])
-                        # copy ub to gm
-                        with self.tik_instance.if_scope(
-                                core_idx < core_last - 1):
-                            self.tik_instance.data_move(
-                                self.output_tensors[num_idx]
-                                [dst_offset_core_last], ub_n, 0, 1,
-                                TRANSPOSE_SIZE * 8 * self.dtype_size //
-                                BLOCK_SIZE, 0, 0)
-                        with self.tik_instance.if_scope(core_idx == core_last -
-                                                        1):
-                            self.tik_instance.data_move(
-                                self.output_tensors[num_idx][self.output_size -
-                                                             TRANSPOSE_SIZE *
-                                                             8], ub_n, 0, 1,
-                                TRANSPOSE_SIZE * 8 * self.dtype_size //
-                                BLOCK_SIZE, 0, 0)
-
-        self.tik_instance.BuildCCE(
-            kernel_name=self.kernel_name,
-            inputs=[self.input_tensor],
-            outputs=self.output_tensors,
-            enable_l2=False)
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                   inputs=[self.input_tensor],
+                                   outputs=self.output_tensors,
+                                   enable_l2=False)
         return self.tik_instance
 
 
-def split_d_compute(input_value,
-                    output_data,
-                    split_dim,
-                    num_split,
-                    kernel_name="split_d"):
+def split_d_compute(input_value, output_data, split_dim, num_split, kernel_name="split_d"):
     """Split a tensor into `num_split` tensors along one dimension.
 
     Parameters
@@ -700,17 +453,12 @@ def split_d_compute(input_value,
 
     size_splits = [size] * num_split
 
-    output_shape_list, output_tensor_list = tbe.split_compute_com(
-        input_value, split_dim, size_splits)
+    output_shape_list, output_tensor_list = tbe.split_compute_com(input_value, split_dim, size_splits)
 
     return output_shape_list, output_tensor_list
 
 
-def op_select_format(input_value,
-                     output_data,
-                     split_dim,
-                     num_split,
-                     kernel_name="split_d"):
+def op_select_format(input_value, output_data, split_dim, num_split, kernel_name="split_d"):
     """Split a tensor into `num_split` tensors along one dimension.
 
     Parameters
@@ -776,13 +524,8 @@ def op_select_format(input_value,
                      split_dim, num_split, kernel_name)
     is_support_other_5hd = split_with_5hd_not_align.check_op_select()
 
-    dtype_base = [
-        "float16", "float", "int32", "int8", "int16", "int64", "uint8",
-        "uint16", "uint32", "uint64"
-    ]
-    dtype_5hd = [
-        "float16", "float", "int32", "int8", "int16", "uint16", "uint32"
-    ]
+    dtype_base = ["float16", "float", "int32", "int8", "int16", "int64", "uint8", "uint16", "uint32", "uint64"]
+    dtype_5hd = ["float16", "float", "int32", "int8", "int16", "uint16", "uint32"]
     dtype_base_out = dtype_base.copy()
     format_base_out = ["ND"] * len(dtype_base)
 
@@ -796,15 +539,13 @@ def op_select_format(input_value,
 
     if is_support_other_5hd and not util_common.is_dynamic_input([input_value]):
         dtype_base_out = dtype_base_out + ["float16", "int16", "uint16"]
-        format_base_out = format_base_out + ["NC1HWC0"]*3
+        format_base_out = format_base_out + ["NC1HWC0"] * 3
 
     dtype_str = ','.join(dtype_base_out)
     format_str = ','.join(format_base_out)
 
-    input0 = util_select_op_base.gen_param(
-        classify="input0", name="x", datatype=dtype_str, format=format_str)
-    output0 = util_select_op_base.gen_param(
-        classify="output0", name="y", datatype=dtype_str, format=format_str)
+    input0 = util_select_op_base.gen_param(classify="input0", name="x", datatype=dtype_str, format=format_str)
+    output0 = util_select_op_base.gen_param(classify="output0", name="y", datatype=dtype_str, format=format_str)
     param_list = [input0, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
@@ -813,11 +554,7 @@ def op_select_format(input_value,
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.DYNAMIC_OUTPUT, para_check.REQUIRED_ATTR_INT,
                             para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
-def split_d(input_value,
-            output_data,
-            split_dim,
-            num_split,
-            kernel_name="split_d"):
+def split_d(input_value, output_data, split_dim, num_split, kernel_name="split_d"):
     """Split a tensor into `num_split` tensors along one dimension.
 
     Parameters
@@ -845,8 +582,7 @@ def split_d(input_value,
     shape = input_value.get("shape")
     dtype = input_value.get("dtype")
     dtype_lower = dtype.lower()
-    check_list = ("int8", "int16", "int32", "int64", "uint8", "uint16",
-                  "uint32", "uint64", "float16", "float32")
+    check_list = ("int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "float16", "float32")
 
     para_check.check_shape(shape, param_name="input_value")
     para_check.check_dtype(dtype_lower, check_list, param_name="input_value")
@@ -857,11 +593,9 @@ def split_d(input_value,
     if num_split < 1:
         expected_value = "must be greater or equal to 1"
         real_value = "less to 1"
-        error_manager_vector.raise_err_input_value_invalid("split", "The num_split",
-                                                           expected_value, real_value)
+        error_manager_vector.raise_err_input_value_invalid("split", "The num_split", expected_value, real_value)
 
-    split_with_5hd_not_align = split_last_dim.SplitWith5HD(input_value, output_data,
-                                                           split_dim, num_split, kernel_name)
+    split_with_5hd_not_align = split_last_dim.SplitWith5HD(input_value, output_data, split_dim, num_split, kernel_name)
     if split_with_5hd_not_align.check_5hd_vnchw():
         split_with_5hd_not_align.do_5hd_split_cut_by_batch()
         return
@@ -875,8 +609,7 @@ def split_d(input_value,
         copy_only.copy_only(input_value, input_value, kernel_name)
         return
 
-    split_mov = SplitMov(shape, dtype_lower, split_dim, num_split, None,
-                         kernel_name)
+    split_mov = SplitMov(shape, dtype_lower, split_dim, num_split, None, kernel_name)
     new_shape = split_mov.input_shape
     new_split_dim = split_mov.split_dim
     new_size_splits = split_mov.size_splits
@@ -886,15 +619,12 @@ def split_d(input_value,
     if dtype_lower == "float16" and new_split_dim == len(new_shape) - 1 and \
             new_size_splits[0] == 1 and num_split <= 16 \
             and input_size >= TRANSPOSE_SIZE * num_split:
-        split_vnc = SplitLastDimVnv(new_shape, dtype_lower, new_output_shapes,
-                                    new_split_dim, num_split, kernel_name)
+        split_vnc = SplitLastDimVnv(new_shape, dtype_lower, new_output_shapes, new_split_dim, num_split, kernel_name)
         split_vnc.split_last_dim_vnc_compute()
         return
 
-    if split_last_dim.check_use_last_dim_branch(new_shape, dtype_lower, new_split_dim,
-                                 num_split, new_size_splits):
-        split_last_dim.split_last_dim(new_shape, dtype_lower, new_split_dim, num_split,
-                       new_size_splits, kernel_name)
+    if split_last_dim.check_use_last_dim_branch(new_shape, dtype_lower, new_split_dim, num_split, new_size_splits):
+        split_last_dim.split_last_dim(new_shape, dtype_lower, new_split_dim, num_split, new_size_splits, kernel_name)
         return
 
     if split_mov.check_whether_use_split_mov():
@@ -902,11 +632,9 @@ def split_d(input_value,
         return
 
     data = tvm.placeholder(shape, name="data", dtype=dtype_lower)
-    output_shape_list, output_tensor_list = split_d_compute(
-        data, output_data, split_dim, num_split, kernel_name)
+    output_shape_list, output_tensor_list = split_d_compute(data, output_data, split_dim, num_split, kernel_name)
 
     sch, build_list = tbe.split_schedule_com(data, split_dim, output_shape_list, output_tensor_list)
 
     with tbe_platform.build_config:
         tvm.build(sch, build_list, "cce", name=kernel_name)
-

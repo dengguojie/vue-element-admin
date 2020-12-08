@@ -313,7 +313,7 @@ class BatchToSpaceNdSix(object):
         self.dtype_size = tbe_platform.cce_intrin.get_bit_len(self.dtype) // 8
         self.block_ele = 32 // self.dtype_size
         self.ub_ele = self.ub_size // self.dtype_size - self.block_ele
-        self.ub_half_ele = self.ub_ele // 2
+        self.half_ub_ele = self.ub_ele // 2
         self.core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
         self.tik_instance = tik.Tik()
         # input batch and output batch
@@ -334,7 +334,6 @@ class BatchToSpaceNdSix(object):
         # channel one and zero and burst_len
         self.c_1 = self.shape[2]
         self.c_0 = self.shape[5]
-        self.burst_len = self.c_0 // self.block_ele
         # output shape
         self.out_shape = [self.output_b, self.output_d, self.c_1, self.output_h, self.output_w, self.c_0]
         # input tensor and output tensor
@@ -345,7 +344,7 @@ class BatchToSpaceNdSix(object):
         """run depth function.
         """
         with self.tik_instance.for_range(0, self.output_b, block_num=self.output_b) as idx_b:
-            # define ub scope
+            # define ub
             ub_size = self.permute_d * self.c_1 * self.permute_h * self.permute_w * self.c_0
             ub_tensor_in = self.tik_instance.Tensor(self.dtype, [ub_size], name="ub_tensor_in", scope=tik.scope_ubuf)
             ub_tensor_out = self.tik_instance.Tensor(self.dtype, [ub_size], name="ub_tensor_out", scope=tik.scope_ubuf)
@@ -360,14 +359,16 @@ class BatchToSpaceNdSix(object):
                                         (idx_blk_0 * self.block_shape[1] + idx_blk_1) * self.block_shape[2] + idx_blk_2)
                                                        * self.output_b + idx_b) * self.input_d + idx_d) * self.c_1 +
                                                      idx_c1) * self.input_h + idx_h) * self.input_w * self.c_0
-                                    offset_ub_in = (
-                                        (((idx_d * self.block_shape[0] + idx_blk_0) * self.c_1 + idx_c1) * self.input_h
-                                         + idx_h) * self.block_shape[1] + idx_blk_1
-                                    ) * self.input_w * self.block_shape[2] * self.c_0 + idx_blk_2 * self.c_0
-                                    dst_stride = self.block_shape[2] * self.burst_len - self.burst_len
-                                    self.tik_instance.data_move(ub_tensor_in[offset_ub_in],
-                                                                self.input_tensor[offset_gm_in], 0, self.input_w,
-                                                                self.burst_len, 0, dst_stride)
+                                    offset_ub = (((
+                                        (idx_d * self.block_shape[0] + idx_blk_0) * self.c_1 + idx_c1) * self.input_h +
+                                                  idx_h) * self.block_shape[1] + idx_blk_1
+                                                ) * self.input_w * self.block_shape[2] * self.c_0 + idx_blk_2 * self.c_0
+                                    n_burst = self.input_w
+                                    burst_len = self.c_0 // self.block_ele
+                                    dst_stride = (self.block_shape[2] * self.c_0 - self.c_0) // self.block_ele
+                                    self.tik_instance.data_move(ub_tensor_in[offset_ub],
+                                                                self.input_tensor[offset_gm_in], 0, n_burst, burst_len,
+                                                                0, dst_stride)
             # crops permute
             offset_crops = self.crops[0][0] * self.c_1 * self.permute_h * self.permute_w * self.c_0 + self.crops[1][
                 0] * self.permute_w * self.c_0 + self.crops[2][0] * self.c_0
@@ -376,78 +377,29 @@ class BatchToSpaceNdSix(object):
                     offset_ub_out = (idx_d * self.c_1 + idx_c1) * self.output_h * self.output_w * self.c_0
                     offset_ub_in = offset_crops + (idx_d * self.c_1 +
                                                    idx_c1) * self.permute_h * self.permute_w * self.c_0
-                    src_stride = (self.crops[2][1] + self.crops[2][0]) * self.burst_len
-                    self.tik_instance.data_move(ub_tensor_out[offset_ub_out], ub_tensor_in[offset_ub_in], 0,
-                                                self.output_h, self.output_w * self.burst_len, src_stride, 0)
+                    n_burst = self.output_h
+                    burst_len = self.output_w * self.c_0 // self.block_ele
+                    src_stride = (self.crops[2][1] + self.crops[2][0]) * self.c_0 // self.block_ele
+                    self.tik_instance.data_move(ub_tensor_out[offset_ub_out], ub_tensor_in[offset_ub_in], 0, n_burst,
+                                                burst_len, src_stride, 0)
             # move out
             offset_gm_out = idx_b * self.output_d * self.c_1 * self.output_h * self.output_w * self.c_0
-            burst_len = self.output_d * self.c_1 * self.output_h * self.output_w * self.burst_len
+            burst_len = self.output_d * self.c_1 * self.output_h * self.output_w * self.c_0 // self.block_ele
             self.tik_instance.data_move(self.output_tensor[offset_gm_out], ub_tensor_out, 0, 1, burst_len, 0, 0)
-
-    def run_channel_one(self):
-        """run channel_one function.
-        """
-        with self.tik_instance.for_range(0, self.input_d, block_num=self.input_d) as idx_d:
-            with self.tik_instance.for_range(0, self.output_b) as idx_b:
-                with self.tik_instance.for_range(0, self.block_shape[0]) as idx_blk_0:
-                    # define ub scope
-                    ub_size = self.c_1 * self.permute_h * self.permute_w * self.c_0
-                    ub_tensor_in = self.tik_instance.Tensor(self.dtype, [ub_size],
-                                                            name="ub_tensor_in",
-                                                            scope=tik.scope_ubuf)
-                    ub_tensor_out = self.tik_instance.Tensor(self.dtype, [ub_size],
-                                                             name="ub_tensor_out",
-                                                             scope=tik.scope_ubuf)
-                    flag_d = idx_d * self.block_shape[0] + idx_blk_0
-                    with self.tik_instance.if_scope(
-                            tik.all(flag_d >= self.crops[0][0], flag_d < self.crops[0][0] + self.output_d)):
-                        # move in
-                        with self.tik_instance.for_range(0, self.c_1) as idx_c1:
-                            with self.tik_instance.for_range(0, self.input_h) as idx_h:
-                                with self.tik_instance.for_range(0, self.block_shape[1]) as idx_blk_1:
-                                    with self.tik_instance.for_range(0, self.block_shape[2]) as idx_blk_2:
-                                        offset_gm_in = ((((
-                                            ((idx_blk_0 * self.block_shape[1] + idx_blk_1) * self.block_shape[2] +
-                                             idx_blk_2) * self.output_b + idx_b) * self.input_d + idx_d) * self.c_1 +
-                                                         idx_c1) * self.input_h + idx_h) * self.input_w * self.c_0
-                                        offset_ub_in = (
-                                            (idx_c1 * self.input_h + idx_h) * self.block_shape[1] + idx_blk_1
-                                        ) * self.input_w * self.block_shape[2] * self.c_0 + idx_blk_2 * self.c_0
-                                        dst_stride = self.block_shape[2] * self.burst_len - self.burst_len
-                                        self.tik_instance.data_move(ub_tensor_in[offset_ub_in],
-                                                                    self.input_tensor[offset_gm_in], 0, self.input_w,
-                                                                    self.burst_len, 0, dst_stride)
-                        # crops permute
-                        offset_crops = self.crops[1][0] * self.permute_w * self.c_0 + self.crops[2][0] * self.c_0
-                        with self.tik_instance.for_range(0, self.c_1) as idx_c1:
-                            offset_ub_out = idx_c1 * self.output_h * self.output_w * self.c_0
-                            offset_ub_in = offset_crops + idx_c1 * self.permute_h * self.permute_w * self.c_0
-                            src_stride = (self.crops[2][1] + self.crops[2][0]) * self.burst_len
-                            self.tik_instance.data_move(ub_tensor_out[offset_ub_out], ub_tensor_in[offset_ub_in], 0,
-                                                        self.output_h, self.output_w * self.burst_len, src_stride, 0)
-                        # move out
-                        offset_base = idx_b * self.output_d * self.c_1 * self.output_h * self.output_w * self.c_0
-                        offset_gm_out = offset_base + (idx_d * self.block_shape[0] + idx_blk_0 - self.crops[0][0]
-                                                      ) * self.c_1 * self.output_h * self.output_w * self.c_0
-                        burst_len = self.c_1 * self.output_h * self.output_w * self.burst_len
-                        self.tik_instance.data_move(self.output_tensor[offset_gm_out], ub_tensor_out, 0, 1, burst_len,
-                                                    0, 0)
 
     def run_height(self):
         """run height function.
         """
+        thread = 2 if self.permute_h * self.permute_w * self.c_0 <= self.half_ub_ele and self.c_1 > 1 else 1
         with self.tik_instance.for_range(0, self.input_d, block_num=self.input_d) as idx_d:
             with self.tik_instance.for_range(0, self.output_b) as idx_b:
                 with self.tik_instance.for_range(0, self.block_shape[0]) as idx_blk_0:
-                    with self.tik_instance.for_range(0, self.c_1) as idx_c1:
-                        # define ub scope
+                    with self.tik_instance.for_range(0, self.c_1, thread_num=thread) as idx_c1:
+                        # define ub
                         ub_size = self.permute_h * self.permute_w * self.c_0
-                        ub_tensor_in = self.tik_instance.Tensor(self.dtype, [ub_size],
-                                                                name="ub_tensor_in",
-                                                                scope=tik.scope_ubuf)
-                        ub_tensor_out = self.tik_instance.Tensor(self.dtype, [ub_size],
-                                                                 name="ub_tensor_out",
-                                                                 scope=tik.scope_ubuf)
+                        ub_tensor = self.tik_instance.Tensor(self.dtype, [ub_size],
+                                                             name="ub_tensor",
+                                                             scope=tik.scope_ubuf)
                         flag_d = idx_d * self.block_shape[0] + idx_blk_0
                         with self.tik_instance.if_scope(
                                 tik.all(flag_d >= self.crops[0][0], flag_d < self.crops[0][0] + self.output_d)):
@@ -459,38 +411,39 @@ class BatchToSpaceNdSix(object):
                                             ((idx_blk_0 * self.block_shape[1] + idx_blk_1) * self.block_shape[2] +
                                              idx_blk_2) * self.output_b + idx_b) * self.input_d + idx_d) * self.c_1 +
                                                          idx_c1) * self.input_h + idx_h) * self.input_w * self.c_0
-                                        offset_ub_in = (
+                                        offset_ub = (
                                             idx_h * self.block_shape[1] + idx_blk_1
                                         ) * self.input_w * self.block_shape[2] * self.c_0 + idx_blk_2 * self.c_0
-                                        dst_stride = self.block_shape[2] * self.burst_len - self.burst_len
-                                        self.tik_instance.data_move(ub_tensor_in[offset_ub_in],
-                                                                    self.input_tensor[offset_gm_in], 0, self.input_w,
-                                                                    self.burst_len, 0, dst_stride)
-                            # crops permute
-                            offset_crops = self.crops[1][0] * self.permute_w * self.c_0 + self.crops[2][0] * self.c_0
-                            src_stride = (self.crops[2][1] + self.crops[2][0]) * self.burst_len
-                            self.tik_instance.data_move(ub_tensor_out, ub_tensor_in[offset_crops], 0, self.output_h,
-                                                        self.output_w * self.burst_len, src_stride, 0)
+                                        n_burst = self.input_w
+                                        burst_len = self.c_0 // self.block_ele
+                                        dst_stride = (self.block_shape[2] * self.c_0 - self.c_0) // self.block_ele
+                                        self.tik_instance.data_move(ub_tensor[offset_ub],
+                                                                    self.input_tensor[offset_gm_in], 0, n_burst,
+                                                                    burst_len, 0, dst_stride)
                             # move out
                             offset_b = idx_b * self.output_d * self.c_1 * self.output_h * self.output_w * self.c_0
                             offset_d = (idx_d * self.block_shape[0] + idx_blk_0 -
                                         self.crops[0][0]) * self.c_1 * self.output_h * self.output_w * self.c_0
                             offset_c1 = idx_c1 * self.output_h * self.output_w * self.c_0
                             offset_gm_out = offset_b + offset_d + offset_c1
-                            burst_len = self.output_h * self.output_w * self.burst_len
-                            self.tik_instance.data_move(self.output_tensor[offset_gm_out], ub_tensor_out, 0, 1,
-                                                        burst_len, 0, 0)
+                            offset_ub = self.crops[1][0] * self.permute_w * self.c_0 + self.crops[2][0] * self.c_0
+                            n_burst = self.output_h
+                            burst_len = self.output_w * self.c_0 // self.block_ele
+                            src_stride = (self.crops[2][1] + self.crops[2][0]) * self.c_0 // self.block_ele
+                            self.tik_instance.data_move(self.output_tensor[offset_gm_out], ub_tensor[offset_ub], 0,
+                                                        n_burst, burst_len, src_stride, 0)
 
     def run_width(self):
         """run width function.
         """
+        thread = 2 if self.permute_w * self.c_0 <= self.half_ub_ele and self.c_1 > 1 else 1
         with self.tik_instance.for_range(0, self.input_d, block_num=self.input_d) as idx_d:
             with self.tik_instance.for_range(0, self.output_b) as idx_b:
                 with self.tik_instance.for_range(0, self.block_shape[0]) as idx_blk_0:
-                    with self.tik_instance.for_range(0, self.c_1) as idx_c1:
+                    with self.tik_instance.for_range(0, self.c_1, thread_num=thread) as idx_c1:
                         with self.tik_instance.for_range(0, self.input_h) as idx_h:
                             with self.tik_instance.for_range(0, self.block_shape[1]) as idx_blk_1:
-                                # define ub scope
+                                # define ub
                                 ub_size = self.permute_w * self.c_0
                                 ub_tensor = self.tik_instance.Tensor(self.dtype, [ub_size],
                                                                      name="ub_tensor",
@@ -507,10 +460,12 @@ class BatchToSpaceNdSix(object):
                                              idx_blk_2) * self.output_b + idx_b) * self.input_d + idx_d) * self.c_1 +
                                                          idx_c1) * self.input_h + idx_h) * self.input_w * self.c_0
                                         offset_ub = idx_blk_2 * self.c_0
-                                        dst_stride = self.block_shape[2] * self.burst_len - self.burst_len
+                                        n_burst = self.input_w
+                                        burst_len = self.c_0 // self.block_ele
+                                        dst_stride = (self.block_shape[2] * self.c_0 - self.c_0) // self.block_ele
                                         self.tik_instance.data_move(ub_tensor[offset_ub],
-                                                                    self.input_tensor[offset_gm_in], 0, self.input_w,
-                                                                    self.burst_len, 0, dst_stride)
+                                                                    self.input_tensor[offset_gm_in], 0, n_burst,
+                                                                    burst_len, 0, dst_stride)
                                     # move out
                                     offset_b = idx_b * self.output_d * self.c_1 * self.output_h * \
                                                self.output_w * self.c_0
@@ -520,27 +475,29 @@ class BatchToSpaceNdSix(object):
                                     offset_h = (idx_h * self.block_shape[1] + idx_blk_1 -
                                                 self.crops[1][0]) * self.output_w * self.c_0
                                     offset_gm_out = offset_b + offset_d + offset_c1 + offset_h
-                                    burst_len = self.output_w * self.burst_len
-                                    self.tik_instance.data_move(self.output_tensor[offset_gm_out],
-                                                                ub_tensor[self.crops[2][0] * self.c_0], 0, 1, burst_len,
-                                                                0, 0)
+                                    offset_ub = self.crops[2][0] * self.c_0
+                                    burst_len = self.output_w * self.c_0 // self.block_ele
+                                    self.tik_instance.data_move(self.output_tensor[offset_gm_out], ub_tensor[offset_ub],
+                                                                0, 1, burst_len, 0, 0)
 
-    def run_channel_zero(self):
+    def run_last(self):
         """run channel_zero function.
         """
+        thread = 2 if self.c_0 <= self.half_ub_ele and self.c_1 > 1 else 1
         with self.tik_instance.for_range(0, self.input_d, block_num=self.input_d) as idx_d:
             with self.tik_instance.for_range(0, self.output_b) as idx_b:
                 with self.tik_instance.for_range(0, self.block_shape[0]) as idx_blk_0:
-                    with self.tik_instance.for_range(0, self.c_1) as idx_c1:
+                    with self.tik_instance.for_range(0, self.c_1, thread_num=thread) as idx_c1:
                         with self.tik_instance.for_range(0, self.input_h) as idx_h:
                             with self.tik_instance.for_range(0, self.block_shape[1]) as idx_blk_1:
                                 with self.tik_instance.for_range(0, self.input_w) as idx_w:
                                     with self.tik_instance.for_range(0, self.block_shape[2]) as idx_blk_2:
-                                        # define ub scope
+                                        # define ub
                                         ub_size = self.c_0
                                         ub_tensor = self.tik_instance.Tensor(self.dtype, [ub_size],
                                                                              name="ub_tensor",
                                                                              scope=tik.scope_ubuf)
+                                        burst_len = self.c_0 // self.block_ele
                                         flag_d = idx_d * self.block_shape[0] + idx_blk_0
                                         flag_h = idx_h * self.block_shape[1] + idx_blk_1
                                         flag_w = idx_w * self.block_shape[2] + idx_blk_2
@@ -558,7 +515,7 @@ class BatchToSpaceNdSix(object):
                                                               idx_c1) * self.input_h + idx_h) * self.input_w +
                                                             idx_w) * self.c_0
                                             self.tik_instance.data_move(ub_tensor, self.input_tensor[offset_gm_in], 0,
-                                                                        1, self.burst_len, 0, 0)
+                                                                        1, burst_len, 0, 0)
                                             # move out
                                             offset_b = idx_b * self.output_d * self.c_1 * self.output_h * \
                                                        self.output_w * self.c_0
@@ -571,22 +528,20 @@ class BatchToSpaceNdSix(object):
                                                         self.crops[2][0]) * self.c_0
                                             offset_gm_out = offset_b + offset_d + offset_c1 + offset_h + offset_w
                                             self.tik_instance.data_move(self.output_tensor[offset_gm_out], ub_tensor, 0,
-                                                                        1, self.burst_len, 0, 0)
+                                                                        1, burst_len, 0, 0)
 
     def run(self):
         """run function.
         """
         # select branch
-        if self.permute_d * self.c_1 * self.permute_h * self.permute_w * self.c_0 <= self.ub_half_ele:
+        if self.permute_d * self.c_1 * self.permute_h * self.permute_w * self.c_0 <= self.half_ub_ele:
             self.run_depth()
-        elif self.c_1 * self.permute_h * self.permute_w * self.c_0 <= self.ub_half_ele:
-            self.run_channel_one()
-        elif self.permute_h * self.permute_w * self.c_0 <= self.ub_half_ele:
+        elif self.permute_h * self.permute_w * self.c_0 <= self.ub_ele:
             self.run_height()
         elif self.permute_w * self.c_0 <= self.ub_ele:
             self.run_width()
         else:
-            self.run_channel_zero()
+            self.run_last()
         # build cce
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=[self.input_tensor],

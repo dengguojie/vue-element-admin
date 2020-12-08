@@ -32,35 +32,72 @@ from impl.util.util_select_op_base import get_dynamic_param_in_json
 REPEAT_LIMIT = 255
 
 
-def _clean_ubuf(tik_inst, src, src_offset, dup_len):
-    """clean ubuf to zero
+# pylint: disable=too-many-arguments,too-many-locals
+def _vector_dup_continuous(tik_inst, src, size):
+    """vector_dup continuous function, set ubuf to 0
     """
     mask_len = 128
     if src.dtype.lower() == "float32":
         mask_len = 64
 
-    if dup_len > 0:
-        repeat = dup_len // mask_len
-        left_elem = dup_len % mask_len
+    if size > 0:
+        size_loop = size // mask_len
+        size_left = size % mask_len
+        repeat_loop = size_loop // REPEAT_LIMIT
+        repeat_left = size_loop % REPEAT_LIMIT
+        dup_value = float(0)
+
+        if repeat_loop > 0:
+            with tik_inst.for_range(0, repeat_loop) as repeat_loop_idx:
+                repeat_offset = repeat_loop_idx * REPEAT_LIMIT * mask_len
+                tik_inst.vector_dup(mask_len, src[repeat_offset], dup_value, REPEAT_LIMIT, 1, 8)
+
+        if repeat_left > 0:
+            repeat_offset = repeat_loop * REPEAT_LIMIT * mask_len
+            tik_inst.vector_dup(mask_len, src[repeat_offset], dup_value, repeat_left, 1, 8)
+
+        if size_left > 0:
+            size_offset = size_loop * mask_len
+            tik_inst.vector_dup(size_left, src[size_offset], dup_value, 1, 1, 8)
+
+
+def _vector_dup_discrete(tik_inst, src, repeat, size, block_ele, dst_blk=1, dst_rep=8):
+    """vector_dup discrete function, set ubuf to 0
+    """
+    mask_len = 128
+    if src.dtype.lower() == "float32":
+        mask_len = 64
+
+    if size > 0:
+        size_loop = size // mask_len
+        size_left = size % mask_len
         repeat_loop = repeat // REPEAT_LIMIT
         repeat_left = repeat % REPEAT_LIMIT
         dup_value = float(0)
 
-        if repeat_loop > 0:
-            with tik_inst.for_range(0, repeat_loop) as rpt_idx:
-                tik_inst.vector_dup(mask_len, src[src_offset + rpt_idx * REPEAT_LIMIT * mask_len],
-                                    dup_value, REPEAT_LIMIT, 1, 8)
+        def _inner(src, mask_len):
+            """exec repeat
+            """
+            if repeat_loop > 0:
+                with tik_inst.for_range(0, repeat_loop) as repeat_loop_idx:
+                    repeat_offset = repeat_loop_idx * REPEAT_LIMIT * dst_rep * block_ele
+                    tik_inst.vector_dup(mask_len, src[repeat_offset], dup_value, REPEAT_LIMIT, dst_blk, dst_rep)
+            if repeat_left > 0:
+                repeat_offset = repeat_loop * REPEAT_LIMIT * dst_rep * block_ele
+                tik_inst.vector_dup(mask_len, src[repeat_offset], dup_value, repeat_left, dst_blk, dst_rep)
 
-        if repeat_left > 0:
-            tik_inst.vector_dup(mask_len, src[src_offset + repeat_loop * REPEAT_LIMIT * mask_len],
-                                dup_value, repeat_left, 1, 8)
+        # exec size
+        if size_loop > 0:
+            with tik_inst.for_range(0, size_loop) as size_loop_idx:
+                size_offset = size_loop_idx * mask_len
+                _inner(src[size_offset], mask_len)
+        if size_left > 0:
+            size_offset = size_loop * mask_len
+            _inner(src[size_offset], size_left)
 
-        if left_elem > 0:
-            tik_inst.vector_dup(left_elem, src[src_offset + repeat * mask_len], dup_value, 1, 1, 8)
 
-
-# pylint: disable=unused-argument,useless-object-inheritance,too-many-locals,too-many-branches,too-many-lines,invalid-name
-# pylint: disable=too-many-instance-attributes,too-many-statements,too-many-boolean-expressions,too-many-arguments
+# pylint: disable=unused-argument,useless-object-inheritance,too-many-branches,too-many-lines,invalid-name
+# pylint: disable=too-many-instance-attributes,too-many-statements,too-many-boolean-expressions
 class SpaceToBatchNdFive(object):
     """Function: use to finish SpaceToBatchNd main functions to reset data.
     """
@@ -392,7 +429,7 @@ class SpaceToBatchNdSix(object):
         self.dtype_size = tbe_platform.cce_intrin.get_bit_len(self.dtype) // 8
         self.block_ele = 32 // self.dtype_size
         self.ub_ele = self.ub_size // self.dtype_size - self.block_ele
-        self.ub_half_ele = self.ub_ele // 2
+        self.half_ub_ele = self.ub_ele // 2
         self.core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
         self.tik_instance = tik.Tik()
         # input batch and output batch
@@ -413,7 +450,6 @@ class SpaceToBatchNdSix(object):
         # channel one and zero and burst_len
         self.c_1 = self.shape[2]
         self.c_0 = self.shape[5]
-        self.burst_len = self.c_0 // self.block_ele
         # output shape
         self.out_shape = [self.output_b, self.output_d, self.c_1, self.output_h, self.output_w, self.c_0]
         # input tensor and output tensor
@@ -424,15 +460,16 @@ class SpaceToBatchNdSix(object):
         """run depth function.
         """
         with self.tik_instance.for_range(0, self.input_b, block_num=self.input_b) as idx_b:
-            # define ub scope
+            # define ub
             ub_size = self.pad_d * self.c_1 * self.pad_h * self.pad_w * self.c_0
             ub_tensor_in = self.tik_instance.Tensor(self.dtype, [ub_size], name="ub_tensor_in", scope=tik.scope_ubuf)
             ub_tensor_out = self.tik_instance.Tensor(self.dtype, [ub_size], name="ub_tensor_out", scope=tik.scope_ubuf)
-            _clean_ubuf(self.tik_instance, ub_tensor_out, 0, ub_size)
             # move in
             offset_gm_in = idx_b * self.input_d * self.c_1 * self.input_h * self.input_w * self.c_0
-            burst_len = self.input_d * self.c_1 * self.input_h * self.input_w * self.burst_len
+            burst_len = self.input_d * self.c_1 * self.input_h * self.input_w * self.c_0 // self.block_ele
             self.tik_instance.data_move(ub_tensor_in, self.input_tensor[offset_gm_in], 0, 1, burst_len, 0, 0)
+            # vector dup
+            _vector_dup_continuous(self.tik_instance, ub_tensor_out, ub_size)
             # pad permute
             offset_pads = self.pads[0][0] * self.c_1 * self.pad_h * self.pad_w * self.c_0 + self.pads[1][
                 0] * self.pad_w * self.c_0 + self.pads[2][0] * self.c_0
@@ -440,9 +477,11 @@ class SpaceToBatchNdSix(object):
                 with self.tik_instance.for_range(0, self.c_1) as idx_c1:
                     offset_ub_out = offset_pads + (idx_d * self.c_1 + idx_c1) * self.pad_h * self.pad_w * self.c_0
                     offset_ub_in = (idx_d * self.c_1 + idx_c1) * self.input_h * self.input_w * self.c_0
-                    dst_stride = (self.pads[2][1] + self.pads[2][0]) * self.burst_len
-                    self.tik_instance.data_move(ub_tensor_out[offset_ub_out], ub_tensor_in[offset_ub_in], 0,
-                                                self.input_h, self.input_w * self.burst_len, 0, dst_stride)
+                    n_burst = self.input_h
+                    burst_len = self.input_w * self.c_0 // self.block_ele
+                    dst_stride = (self.pads[2][1] + self.pads[2][0]) * self.c_0 // self.block_ele
+                    self.tik_instance.data_move(ub_tensor_out[offset_ub_out], ub_tensor_in[offset_ub_in], 0, n_burst,
+                                                burst_len, 0, dst_stride)
             # move out
             with self.tik_instance.for_range(0, self.output_d) as idx_d:
                 with self.tik_instance.for_range(0, self.block_shape[0]) as idx_blk_0:
@@ -454,98 +493,61 @@ class SpaceToBatchNdSix(object):
                                         (idx_blk_0 * self.block_shape[1] + idx_blk_1) * self.block_shape[2] + idx_blk_2)
                                                         * self.input_b + idx_b) * self.output_d + idx_d) * self.c_1 +
                                                       idx_c1) * self.output_h + idx_h) * self.output_w * self.c_0
-                                    offset_ub_in = (
+                                    offset_ub = (
                                         (((idx_d * self.block_shape[0] + idx_blk_0) * self.c_1 + idx_c1) * self.output_h
                                          + idx_h) * self.block_shape[1] + idx_blk_1
                                     ) * self.output_w * self.block_shape[2] * self.c_0 + idx_blk_2 * self.c_0
-                                    src_stride = self.block_shape[2] * self.burst_len - self.burst_len
+                                    n_burst = self.output_w
+                                    burst_len = self.c_0 // self.block_ele
+                                    src_stride = (self.block_shape[2] * self.c_0 - self.c_0) // self.block_ele
                                     self.tik_instance.data_move(self.output_tensor[offset_gm_out],
-                                                                ub_tensor_out[offset_ub_in], 0, self.output_w,
-                                                                self.burst_len, src_stride, 0)
-
-    def run_channel_one(self):
-        """run channel_one function.
-        """
-        with self.tik_instance.for_range(0, self.output_d, block_num=self.output_d) as idx_d:
-            with self.tik_instance.for_range(0, self.input_b) as idx_b:
-                with self.tik_instance.for_range(0, self.block_shape[0]) as idx_blk_0:
-                    # define ub scope
-                    ub_size = self.c_1 * self.pad_h * self.pad_w * self.c_0
-                    ub_tensor_in = self.tik_instance.Tensor(self.dtype, [ub_size],
-                                                            name="ub_tensor_in",
-                                                            scope=tik.scope_ubuf)
-                    ub_tensor_out = self.tik_instance.Tensor(self.dtype, [ub_size],
-                                                             name="ub_tensor_out",
-                                                             scope=tik.scope_ubuf)
-                    _clean_ubuf(self.tik_instance, ub_tensor_out, 0, ub_size)
-                    flag_d = idx_d * self.block_shape[0] + idx_blk_0
-                    with self.tik_instance.if_scope(
-                            tik.all(flag_d >= self.pads[0][0], flag_d < self.pads[0][0] + self.input_d)):
-                        # move in
-                        offset_base = idx_b * self.input_d * self.c_1 * self.input_h * self.input_w * self.c_0
-                        offset_gm_in = offset_base + (idx_d * self.block_shape[0] + idx_blk_0 - self.pads[0][0]
-                                                     ) * self.c_1 * self.input_h * self.input_w * self.c_0
-                        burst_len = self.c_1 * self.input_h * self.input_w * self.burst_len
-                        self.tik_instance.data_move(ub_tensor_in, self.input_tensor[offset_gm_in], 0, 1, burst_len, 0,
-                                                    0)
-                        # pad permute
-                        offset_pads = self.pads[1][0] * self.pad_w * self.c_0 + self.pads[2][0] * self.c_0
-                        with self.tik_instance.for_range(0, self.c_1) as idx_c1:
-                            offset_ub_out = offset_pads + idx_c1 * self.pad_h * self.pad_w * self.c_0
-                            offset_ub_in = idx_c1 * self.input_h * self.input_w * self.c_0
-                            dst_stride = (self.pads[2][1] + self.pads[2][0]) * self.burst_len
-                            self.tik_instance.data_move(ub_tensor_out[offset_ub_out], ub_tensor_in[offset_ub_in], 0,
-                                                        self.input_h, self.input_w * self.burst_len, 0, dst_stride)
-                    # move out
-                    with self.tik_instance.for_range(0, self.c_1) as idx_c1:
-                        with self.tik_instance.for_range(0, self.output_h) as idx_h:
-                            with self.tik_instance.for_range(0, self.block_shape[1]) as idx_blk_1:
-                                with self.tik_instance.for_range(0, self.block_shape[2]) as idx_blk_2:
-                                    offset_gm_out = (((((
-                                        (idx_blk_0 * self.block_shape[1] + idx_blk_1) * self.block_shape[2] + idx_blk_2)
-                                                        * self.input_b + idx_b) * self.output_d + idx_d) * self.c_1 +
-                                                      idx_c1) * self.output_h + idx_h) * self.output_w * self.c_0
-                                    offset_ub_in = (
-                                        (idx_c1 * self.output_h + idx_h) * self.block_shape[1] + idx_blk_1
-                                    ) * self.output_w * self.block_shape[2] * self.c_0 + idx_blk_2 * self.c_0
-                                    src_stride = self.block_shape[2] * self.burst_len - self.burst_len
-                                    self.tik_instance.data_move(self.output_tensor[offset_gm_out],
-                                                                ub_tensor_out[offset_ub_in], 0, self.output_w,
-                                                                self.burst_len, src_stride, 0)
+                                                                ub_tensor_out[offset_ub], 0, n_burst, burst_len,
+                                                                src_stride, 0)
 
     def run_height(self):
         """run height function.
         """
+        thread = 2 if self.pad_h * self.pad_w * self.c_0 <= self.half_ub_ele and self.c_1 > 1 else 1
         with self.tik_instance.for_range(0, self.output_d, block_num=self.output_d) as idx_d:
             with self.tik_instance.for_range(0, self.input_b) as idx_b:
                 with self.tik_instance.for_range(0, self.block_shape[0]) as idx_blk_0:
-                    with self.tik_instance.for_range(0, self.c_1) as idx_c1:
-                        # define ub scope
+                    with self.tik_instance.for_range(0, self.c_1, thread_num=thread) as idx_c1:
+                        # define ub
                         ub_size = self.pad_h * self.pad_w * self.c_0
-                        ub_tensor_in = self.tik_instance.Tensor(self.dtype, [ub_size],
-                                                                name="ub_tensor_in",
-                                                                scope=tik.scope_ubuf)
-                        ub_tensor_out = self.tik_instance.Tensor(self.dtype, [ub_size],
-                                                                 name="ub_tensor_out",
-                                                                 scope=tik.scope_ubuf)
-                        _clean_ubuf(self.tik_instance, ub_tensor_out, 0, ub_size)
+                        ub_tensor = self.tik_instance.Tensor(self.dtype, [ub_size],
+                                                             name="ub_tensor",
+                                                             scope=tik.scope_ubuf)
                         flag_d = idx_d * self.block_shape[0] + idx_blk_0
+                        # vector dup
                         with self.tik_instance.if_scope(
-                                tik.all(flag_d >= self.pads[0][0], flag_d < self.pads[0][0] + self.input_d)):
+                                tik.any(flag_d < self.pads[0][0], flag_d >= self.pads[0][0] + self.input_d)):
+                            _vector_dup_continuous(self.tik_instance, ub_tensor, ub_size)
+                        with self.tik_instance.else_scope():
                             # move in
                             offset_b = idx_b * self.input_d * self.c_1 * self.input_h * self.input_w * self.c_0
                             offset_d = (idx_d * self.block_shape[0] + idx_blk_0 -
                                         self.pads[0][0]) * self.c_1 * self.input_h * self.input_w * self.c_0
                             offset_c1 = idx_c1 * self.input_h * self.input_w * self.c_0
                             offset_gm_in = offset_b + offset_d + offset_c1
-                            burst_len = self.input_h * self.input_w * self.burst_len
-                            self.tik_instance.data_move(ub_tensor_in, self.input_tensor[offset_gm_in], 0, 1, burst_len,
-                                                        0, 0)
-                            # pad permute
-                            offset_pads = self.pads[1][0] * self.pad_w * self.c_0 + self.pads[2][0] * self.c_0
-                            dst_stride = (self.pads[2][1] + self.pads[2][0]) * self.burst_len
-                            self.tik_instance.data_move(ub_tensor_out[offset_pads], ub_tensor_in, 0, self.input_h,
-                                                        self.input_w * self.burst_len, 0, dst_stride)
+                            offset_ub = self.pads[1][0] * self.pad_w * self.c_0 + self.pads[2][0] * self.c_0
+                            n_burst = self.input_h
+                            burst_len = self.input_w * self.c_0 // self.block_ele
+                            dst_stride = (self.pads[2][1] + self.pads[2][0]) * self.c_0 // self.block_ele
+                            self.tik_instance.data_move(ub_tensor[offset_ub], self.input_tensor[offset_gm_in], 0,
+                                                        n_burst, burst_len, 0, dst_stride)
+                            # vector dup
+                            size_1 = self.pads[1][0] * self.pad_w * self.c_0 + self.pads[2][0] * self.c_0
+                            _vector_dup_continuous(self.tik_instance, ub_tensor, size_1)
+                            offset_2 = size_1 + self.input_w * self.c_0
+                            repeat = self.input_h - 1
+                            size_2 = (self.pads[2][1] + self.pads[2][0]) * self.c_0
+                            dst_rep = self.pad_w * self.c_0 // self.block_ele
+                            _vector_dup_discrete(self.tik_instance, ub_tensor[offset_2], repeat, size_2, self.block_ele,
+                                                 1, dst_rep)
+                            offset_3 = (self.pad_h -
+                                        self.pads[1][1]) * self.pad_w * self.c_0 - self.pads[2][1] * self.c_0
+                            size_3 = self.pads[1][1] * self.pad_w * self.c_0 + self.pads[2][1] * self.c_0
+                            _vector_dup_continuous(self.tik_instance, ub_tensor[offset_3], size_3)
                         # move out
                         with self.tik_instance.for_range(0, self.output_h) as idx_h:
                             with self.tik_instance.for_range(0, self.block_shape[1]) as idx_blk_1:
@@ -554,34 +556,38 @@ class SpaceToBatchNdSix(object):
                                         (idx_blk_0 * self.block_shape[1] + idx_blk_1) * self.block_shape[2] + idx_blk_2)
                                                         * self.input_b + idx_b) * self.output_d + idx_d) * self.c_1 +
                                                       idx_c1) * self.output_h + idx_h) * self.output_w * self.c_0
-                                    offset_ub_in = (
+                                    offset_ub = (
                                         idx_h * self.block_shape[1] + idx_blk_1
                                     ) * self.output_w * self.block_shape[2] * self.c_0 + idx_blk_2 * self.c_0
-                                    src_stride = self.block_shape[2] * self.burst_len - self.burst_len
-                                    self.tik_instance.data_move(self.output_tensor[offset_gm_out],
-                                                                ub_tensor_out[offset_ub_in], 0, self.output_w,
-                                                                self.burst_len, src_stride, 0)
+                                    n_burst = self.output_w
+                                    burst_len = self.c_0 // self.block_ele
+                                    src_stride = (self.block_shape[2] * self.c_0 - self.c_0) // self.block_ele
+                                    self.tik_instance.data_move(self.output_tensor[offset_gm_out], ub_tensor[offset_ub],
+                                                                0, n_burst, burst_len, src_stride, 0)
 
     def run_width(self):
         """run width function.
         """
+        thread = 2 if self.pad_w * self.c_0 <= self.half_ub_ele and self.c_1 > 1 else 1
         with self.tik_instance.for_range(0, self.output_d, block_num=self.output_d) as idx_d:
             with self.tik_instance.for_range(0, self.input_b) as idx_b:
                 with self.tik_instance.for_range(0, self.block_shape[0]) as idx_blk_0:
-                    with self.tik_instance.for_range(0, self.c_1) as idx_c1:
+                    with self.tik_instance.for_range(0, self.c_1, thread_num=thread) as idx_c1:
                         with self.tik_instance.for_range(0, self.output_h) as idx_h:
                             with self.tik_instance.for_range(0, self.block_shape[1]) as idx_blk_1:
-                                # define ub scope
+                                # define ub
                                 ub_size = self.pad_w * self.c_0
-                                ub_tensor_out = self.tik_instance.Tensor(self.dtype, [ub_size],
-                                                                         name="ub_tensor_out",
-                                                                         scope=tik.scope_ubuf)
-                                _clean_ubuf(self.tik_instance, ub_tensor_out, 0, ub_size)
+                                ub_tensor = self.tik_instance.Tensor(self.dtype, [ub_size],
+                                                                     name="ub_tensor",
+                                                                     scope=tik.scope_ubuf)
                                 flag_d = idx_d * self.block_shape[0] + idx_blk_0
                                 flag_h = idx_h * self.block_shape[1] + idx_blk_1
+                                # vector dup
                                 with self.tik_instance.if_scope(
-                                        tik.all(flag_d >= self.pads[0][0], flag_d < self.pads[0][0] + self.input_d,
-                                                flag_h >= self.pads[1][0], flag_h < self.pads[1][0] + self.input_h)):
+                                        tik.any(flag_d < self.pads[0][0], flag_d >= self.pads[0][0] + self.input_d,
+                                                flag_h < self.pads[1][0], flag_h >= self.pads[1][0] + self.input_h)):
+                                    _vector_dup_continuous(self.tik_instance, ub_tensor, ub_size)
+                                with self.tik_instance.else_scope():
                                     # move in
                                     offset_b = idx_b * self.input_d * self.c_1 * self.input_h * self.input_w * self.c_0
                                     offset_d = (idx_d * self.block_shape[0] + idx_blk_0 -
@@ -590,49 +596,62 @@ class SpaceToBatchNdSix(object):
                                     offset_h = (idx_h * self.block_shape[1] + idx_blk_1 -
                                                 self.pads[1][0]) * self.input_w * self.c_0
                                     offset_gm_in = offset_b + offset_d + offset_c1 + offset_h
-                                    burst_len = self.input_w * self.burst_len
-                                    self.tik_instance.data_move(ub_tensor_out[self.pads[2][0] * self.c_0],
-                                                                self.input_tensor[offset_gm_in], 0, 1, burst_len, 0, 0)
+                                    offset_ub = self.pads[2][0] * self.c_0
+                                    burst_len = self.input_w * self.c_0 // self.block_ele
+                                    self.tik_instance.data_move(ub_tensor[offset_ub], self.input_tensor[offset_gm_in],
+                                                                0, 1, burst_len, 0, 0)
+                                    # vector dup
+                                    size_1 = self.pads[2][0] * self.c_0
+                                    _vector_dup_continuous(self.tik_instance, ub_tensor, size_1)
+                                    offset_2 = (self.pad_w - self.pads[2][1]) * self.c_0
+                                    size_2 = self.pads[2][1] * self.c_0
+                                    _vector_dup_continuous(self.tik_instance, ub_tensor[offset_2], size_2)
+
                                 # move out
                                 with self.tik_instance.for_range(0, self.block_shape[2]) as idx_blk_2:
                                     offset_gm_out = (((((
                                         (idx_blk_0 * self.block_shape[1] + idx_blk_1) * self.block_shape[2] + idx_blk_2)
                                                         * self.input_b + idx_b) * self.output_d + idx_d) * self.c_1 +
                                                       idx_c1) * self.output_h + idx_h) * self.output_w * self.c_0
-                                    offset_ub_in = idx_blk_2 * self.c_0
-                                    src_stride = self.block_shape[2] * self.burst_len - self.burst_len
-                                    self.tik_instance.data_move(self.output_tensor[offset_gm_out],
-                                                                ub_tensor_out[offset_ub_in], 0, self.output_w,
-                                                                self.burst_len, src_stride, 0)
+                                    offset_ub = idx_blk_2 * self.c_0
+                                    n_burst = self.output_w
+                                    burst_len = self.c_0 // self.block_ele
+                                    src_stride = (self.block_shape[2] * self.c_0 - self.c_0) // self.block_ele
+                                    self.tik_instance.data_move(self.output_tensor[offset_gm_out], ub_tensor[offset_ub],
+                                                                0, n_burst, burst_len, src_stride, 0)
 
-    def run_channel_zero(self):
+    def run_last(self):
         """run channel_zero function.
         """
+        thread = 2 if self.c_0 <= self.half_ub_ele and self.c_1 > 1 else 1
         with self.tik_instance.for_range(0, self.output_d, block_num=self.output_d) as idx_d:
             with self.tik_instance.for_range(0, self.input_b) as idx_b:
                 with self.tik_instance.for_range(0, self.block_shape[0]) as idx_blk_0:
-                    with self.tik_instance.for_range(0, self.c_1) as idx_c1:
+                    with self.tik_instance.for_range(0, self.c_1, thread_num=thread) as idx_c1:
                         with self.tik_instance.for_range(0, self.output_h) as idx_h:
                             with self.tik_instance.for_range(0, self.block_shape[1]) as idx_blk_1:
                                 with self.tik_instance.for_range(0, self.output_w) as idx_w:
                                     with self.tik_instance.for_range(0, self.block_shape[2]) as idx_blk_2:
-                                        # define ub scope
+                                        # define ub
                                         ub_size = self.c_0
-                                        ub_tensor_out = self.tik_instance.Tensor(self.dtype, [ub_size],
-                                                                                 name="ub_tensor_out",
-                                                                                 scope=tik.scope_ubuf)
-                                        _clean_ubuf(self.tik_instance, ub_tensor_out, 0, ub_size)
+                                        ub_tensor = self.tik_instance.Tensor(self.dtype, [ub_size],
+                                                                             name="ub_tensor",
+                                                                             scope=tik.scope_ubuf)
+                                        burst_len = self.c_0 // self.block_ele
                                         flag_d = idx_d * self.block_shape[0] + idx_blk_0
                                         flag_h = idx_h * self.block_shape[1] + idx_blk_1
                                         flag_w = idx_w * self.block_shape[2] + idx_blk_2
+                                        # vector dup
                                         with self.tik_instance.if_scope(
-                                                tik.all(flag_d >= self.pads[0][0],
-                                                        flag_d < self.pads[0][0] + self.input_d,
-                                                        flag_h >= self.pads[1][0],
-                                                        flag_h < self.pads[1][0] + self.input_h,
-                                                        flag_w >= self.pads[2][0],
-                                                        flag_w < self.pads[2][0] + self.input_w)):
-                                            # move in
+                                                tik.any(flag_d < self.pads[0][0],
+                                                        flag_d >= self.pads[0][0] + self.input_d,
+                                                        flag_h < self.pads[1][0],
+                                                        flag_h >= self.pads[1][0] + self.input_h,
+                                                        flag_w < self.pads[2][0],
+                                                        flag_w >= self.pads[2][0] + self.input_w)):
+                                            _vector_dup_continuous(self.tik_instance, ub_tensor, ub_size)
+                                        # move in
+                                        with self.tik_instance.else_scope():
                                             offset_b = idx_b * self.input_d * self.c_1 * self.input_h * \
                                                        self.input_w * self.c_0
                                             offset_d = (idx_d * self.block_shape[0] + idx_blk_0 - self.pads[0][0]
@@ -643,30 +662,28 @@ class SpaceToBatchNdSix(object):
                                             offset_w = (idx_w * self.block_shape[2] + idx_blk_2 -
                                                         self.pads[2][0]) * self.c_0
                                             offset_gm_in = offset_b + offset_d + offset_c1 + offset_h + offset_w
-                                            self.tik_instance.data_move(ub_tensor_out, self.input_tensor[offset_gm_in],
-                                                                        0, 1, self.burst_len, 0, 0)
+                                            self.tik_instance.data_move(ub_tensor, self.input_tensor[offset_gm_in], 0,
+                                                                        1, burst_len, 0, 0)
                                         # move out
                                         offset_gm_out = ((
                                             (((((idx_blk_0 * self.block_shape[1] + idx_blk_1) * self.block_shape[2] +
                                                 idx_blk_2) * self.input_b + idx_b) * self.output_d + idx_d) * self.c_1 +
                                              idx_c1) * self.output_h + idx_h) * self.output_w + idx_w) * self.c_0
-                                        self.tik_instance.data_move(self.output_tensor[offset_gm_out], ub_tensor_out, 0,
-                                                                    1, self.burst_len, 0, 0)
+                                        self.tik_instance.data_move(self.output_tensor[offset_gm_out], ub_tensor, 0, 1,
+                                                                    burst_len, 0, 0)
 
     def run(self):
         """run function.
         """
         # select branch
-        if self.pad_d * self.c_1 * self.pad_h * self.pad_w * self.c_0 <= self.ub_half_ele:
+        if self.pad_d * self.c_1 * self.pad_h * self.pad_w * self.c_0 <= self.half_ub_ele:
             self.run_depth()
-        elif self.c_1 * self.pad_h * self.pad_w * self.c_0 <= self.ub_half_ele:
-            self.run_channel_one()
-        elif self.pad_h * self.pad_w * self.c_0 <= self.ub_half_ele:
+        elif self.pad_h * self.pad_w * self.c_0 <= self.ub_ele:
             self.run_height()
         elif self.pad_w * self.c_0 <= self.ub_ele:
             self.run_width()
         else:
-            self.run_channel_zero()
+            self.run_last()
         # build cce
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=[self.input_tensor],

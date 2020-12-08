@@ -175,21 +175,21 @@ case7 = {"params": [{"shape": (16,64,2,2,2,16), "dtype": "float16", "format": "N
          "case_name": "batch_to_space_nd_d_7",
          "expect": "success",
          "support_expect": True}
-#NDHWC-5D-brach_3
+#NDHWC-5D-brach_2
 case8 = {"params": [{"shape": (16,32,248,2,2,16), "dtype": "float16", "format": "NDC1HWC0", "ori_shape": (16,32,2,2,3968),"ori_format": "NDHWC"},
                     {"shape": (2,62,248,2,2,16), "dtype": "float16", "format": "NDC1HWC0", "ori_shape": (2,62,2,2,3968),"ori_format": "NDHWC"},
                     [2, 2, 2], [[1, 1], [1, 1], [1, 1]]],
          "case_name": "batch_to_space_nd_d_8",
          "expect": "success",
          "support_expect": True}
-#NDHWC-5D-brach_4
-case9 = {"params": [{"shape": (16,32,2,2600,2,16), "dtype": "float16", "format": "NDC1HWC0", "ori_shape": (16,32,600,2,32),"ori_format": "NDHWC"},
-                    {"shape": (2,62,2,1198,2,16), "dtype": "float16", "format": "NDC1HWC0", "ori_shape": (2,62,1198,2,32),"ori_format": "NDHWC"},
+#NDHWC-5D-brach_3
+case9 = {"params": [{"shape": (16,32,2,2000,2,16), "dtype": "float16", "format": "NDC1HWC0", "ori_shape": (16,32,2000,2,32),"ori_format": "NDHWC"},
+                    {"shape": (2,62,2,3998,2,16), "dtype": "float16", "format": "NDC1HWC0", "ori_shape": (2,62,3998,2,32),"ori_format": "NDHWC"},
                     [2, 2, 2], [[1, 1], [1, 1], [1, 1]]],
          "case_name": "batch_to_space_nd_d_9",
          "expect": "success",
          "support_expect": True}
-#NDHWC-5D-brach_5
+#NDHWC-5D-brach_4
 case10 = {"params": [{"shape": (16,32,2,2,4000,16), "dtype": "float16", "format": "NDC1HWC0", "ori_shape": (16,32,2,4000,32),"ori_format": "NDHWC"},
                     {"shape": (2,62,2,2,7998,16), "dtype": "float16", "format": "NDC1HWC0", "ori_shape": (2,62,2,7998,32),"ori_format": "NDHWC"},
                     [2, 2, 2], [[1, 1], [1, 1], [1, 1]]],
