@@ -946,18 +946,13 @@ class CceConv3dOp:
                 (self.dsl_flag and (lop["op"] == "conv3d_C")):
                 if lop["op"] == "conv_vector_remove_pad":
                     continue
-                if "Before" in lop["op"]:
-                    self._schedule[lop["dst_buffer"]].compute_at(
-                        self._schedule[compute_at_buffer[2]],
-                        compute_at_axis[2])
-                else:
-                    self._schedule[lop["dst_buffer"]].compute_at(
-                        self._schedule[compute_at_buffer[1]],
-                        compute_at_axis[1])
-                    self._schedule[lop["dst_buffer"]].buffer_align(
-                        (1, 1), (1, 1),
-                        (1, tiling["CL0_matrix"][1] * tiling["CL0_matrix"][2]),
-                        (1, 1))
+                self._schedule[lop["dst_buffer"]].compute_at(
+                    self._schedule[compute_at_buffer[1]],
+                    compute_at_axis[1])
+                self._schedule[lop["dst_buffer"]].buffer_align(
+                    (1, 1), (1, 1),
+                    (1, tiling["CL0_matrix"][1] * tiling["CL0_matrix"][2]),
+                    (1, 1))
 
         for lop in inputops:
             if "conv3d" in lop["op"]:
@@ -965,12 +960,8 @@ class CceConv3dOp:
             if ("bias_tensor" in lop["op"]) and (
                     "bias" in self._tensor_map.keys()):
                 continue
-            if "Before" in lop["op"]:
-                self._schedule[lop["cache_buffer"]].compute_at(
-                    self._schedule[compute_at_buffer[2]], compute_at_axis[2])
-            else:
-                self._schedule[lop["cache_buffer"]].compute_at(
-                    self._schedule[compute_at_buffer[0]], compute_at_axis[1])
+            self._schedule[lop["cache_buffer"]].compute_at(
+                self._schedule[compute_at_buffer[0]], compute_at_axis[1])
 
     def _to_pragma(self, bodyops, inputops, c_outer_inner_inner):
         """
@@ -1865,7 +1856,6 @@ class CceConv3dOp:
                    "elewise_binary_max": "vector_max",
                    "elewise_binary_or": "vector_or",
                    "elewise_binary_and": "vector_and",
-                   "elewise_single_relu": "vector_relu",
                    "elewise_single_lrelu": "vector_lrelu",
                    "elewise_binary_addrelu": "vector_addrelu",
                    "elewise_binary_subrelu": "vector_subrelu"}
