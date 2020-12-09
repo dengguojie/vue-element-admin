@@ -565,10 +565,9 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
 
         """
         c0_size = cce_params.C0_SIZE
-        cout, _, _, _ = self.weight_shape
-        _, fmap_c1, _, _, fmap_c0 = self.shape_x_5hd
-        fmap_c = fmap_c1 * fmap_c0
         groups = self.group
+        cout, cin, _, _ = self.weight_shape
+        fmap_c = cin * groups
 
         mag_factor0 = lcm(fmap_c // groups,
                           c0_size) // (fmap_c // groups)

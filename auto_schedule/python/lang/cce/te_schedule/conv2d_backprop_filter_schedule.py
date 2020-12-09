@@ -430,7 +430,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             # dw_tiling_nparts only describe the nparts from single core to L0
             dw_tiling_nparts = \
                 [_ceil_div(fkk // block_dim_cin, dw_tiling_factor[0]),
-                 _ceil_div(_ceil_div(c1_grads, dw_tiling_factor[1]),
+                 _ceil_div(_ceil_div(cout_g // c0_grads, dw_tiling_factor[1]),
                            block_dim_cout)]
 
             # tiling parameters of dw_ub
