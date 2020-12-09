@@ -1611,29 +1611,21 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                 raise_runtime_error(cause_desc)
 
             if aipp_config.get('input_format') in ["YUV420SP_U8"]:
-                if aipp_config.get("load_start_pos_h") % 2 != 0 or\
-                        aipp_config.get("load_start_pos_w") % 2 != 0 or \
-                        aipp_config.get("crop_size_h") % 2 != 0 or\
-                        aipp_config.get("crop_size_w") % 2 != 0:
+                if aipp_config.get("load_start_pos_h") % 2 != 0 or \
+                        aipp_config.get("load_start_pos_w") % 2 != 0:
                     cause_desc = "when input_format is YUV420SP_U8, " \
-                                 "load_start_pos_h[%d], load_start_pos_w[%d], " \
-                                 "crop_size_h[%d] and crop_size_w[%d] " \
+                                 "load_start_pos_h[%d], load_start_pos_w[%d] " \
                                  "must be even" % \
                                  (aipp_config.get("load_start_pos_h"),
-                                  aipp_config.get("load_start_pos_w"),
-                                  aipp_config.get("crop_size_h"),
-                                  aipp_config.get("crop_size_w"))
+                                  aipp_config.get("load_start_pos_w"))
                     raise_runtime_error(cause_desc)
 
             if aipp_config.get('input_format') in ["YUYV_U8", "YUV422SP_U8"]:
-                if aipp_config.get("load_start_pos_w") % 2 != 0 or \
-                        aipp_config.get("crop_size_w") % 2 != 0:
+                if aipp_config.get("load_start_pos_w") % 2 != 0:
                     cause_desc = "when input_format is %s, " \
-                                 "load_start_pos_w[%d] and crop_size_w[%d] " \
-                                 "must be even" % \
+                                 "load_start_pos_w[%d] must be even" % \
                                  (aipp_config.get('input_format'),
-                                  aipp_config.get("load_start_pos_w"),
-                                  aipp_config.get("crop_size_w"))
+                                  aipp_config.get("load_start_pos_w"))
                     raise_runtime_error(cause_desc)
 
         if ('resize' in aipp_config and aipp_config.get('resize') == 1):

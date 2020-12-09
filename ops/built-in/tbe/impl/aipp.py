@@ -465,19 +465,9 @@ def aipp_compute_single(input_tensor, input_shape, input_format,
                         tiling_h = half_l1_image_buf_max // tiling_w
 
                         if aipp_config.get('input_format') == "YUV420SP_U8":
-                            #tiling_h of YUV420SP_U8 must be even
-                            if tiling_h % 2 != 0:
-                                if tiling_h > 1:
-                                    tiling_h = tiling_h - 1
-                                if tiling_h == 1:
-                                    tiling_h = 2
-                                    tiling_w = tiling_w // 2
-                                    w_loop = w_loop * 2
-
-                        if aipp_config.get('input_format') in \
-                                ["YUV420SP_U8", "YUV422SP_U8", "YUYV_U8"]:
-                            if tiling_w % 2 != 0:
-                                tiling_w = tiling_w - 1
+                            # tiling_h of YUV420SP_U8 must be even
+                            if tiling_h % 2 != 0 and tiling_h > 1:
+                                tiling_h = tiling_h - 1
 
                         tail_w = w - w_loop * tiling_w
 

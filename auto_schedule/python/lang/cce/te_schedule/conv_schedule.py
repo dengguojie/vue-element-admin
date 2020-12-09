@@ -4123,7 +4123,7 @@ class CceConvOp:
                 (1, 1))
         elif self._aipp_fuse_flag and \
                 al1.op.attrs["input_format"] == "YUV420SP_U8":
-            sch[al1].buffer_align((1, 1), (1, 1), (2, 2), (1, 1), (1, 1))
+            sch[al1].buffer_align((1, 1), (1, 1), (2, 1), (1, 1), (1, 1))
         elif c04_v200_flag:
             sch[al1].buffer_align(
                 (1, 1),
