@@ -31,6 +31,7 @@ from te.lang.cce.te_compute.cube_util import shape_to_list
 from te.utils.error_manager import error_manager_util
 from te.lang.cce.te_compute.conv2d_backprop_filter_compute \
     import DynamicConv2dBpFilterParams
+import copy
 # for debug, delete before publish
 DEBUG_MODE = False
 # disable double buffer, set True
@@ -688,6 +689,9 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 setfmatrix_dict["conv_dilation_w"] = dilation_width
                 mad_dict["mad_pattern"] = 2
 
+            setfmatrix_dict_0 = copy.deepcopy(setfmatrix_dict)
+            setfmatrix_dict_0['set_fmatrix'] = 0
+
             # move grads from ddr to L1
             sch[grads_matrix].emit_insn(grads_matrix.op.axis[0], 'dma_copy')
             # move grads from L1 to L0A
@@ -699,7 +703,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     sch[fmap_l1].emit_insn(fmap_l1.op.axis[0],
                                                 'dma_copy', setfmatrix_dict)
                     sch[fmap_fractal].emit_insn(fmap_fractal.op.axis[1],
-                                                'im2col_v2', setfmatrix_dict)
+                                                'im2col_v2', setfmatrix_dict_0)
                 else:
                     sch[fmap_l1].emit_insn(fmap_l1.op.axis[0], 'dma_copy')
                     sch[fmap_matrix].emit_insn(fmap_matrix.op.axis[0],

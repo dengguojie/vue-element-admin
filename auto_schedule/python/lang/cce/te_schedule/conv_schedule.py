@@ -32,6 +32,7 @@ from te.platform import cce_util
 from te.platform import get_soc_spec
 from te.platform.fusion_manager import get_fusion_build_cfg
 from te.utils.error_manager import error_manager_conv2d as err_man
+import copy
 
 # tiling check
 TILING_AL1_SHAPWE_DIM = 4
@@ -1897,12 +1898,14 @@ class CceConvOp:
                         'conv_fm_w': fmap.shape[3],
                         'conv_fm_c0': fmap.shape[4],
                     }
+                    im2col_attr_0 = copy.deepcopy(im2col_attr)
+                    im2col_attr_0['set_fmatrix'] = 0
                     if l0a_load2d_flag:
                         sch[al1].emit_insn(al1.op.axis[0], 'dma_copy')
                         sch[fmap_col].emit_insn(new_fmap_col_axis[3], 'dma_copy')
                     else:
                         sch[al1].emit_insn(al1.op.axis[0], 'dma_copy', im2col_attr)
-                        sch[fmap_col].emit_insn(new_fmap_col_axis[3], 'im2col_v2', im2col_attr)
+                        sch[fmap_col].emit_insn(new_fmap_col_axis[3], 'im2col_v2', im2col_attr_0)
 
                 def add_pragma_for_aipp_fuse(setfmatrix_dict):
                     """

@@ -28,6 +28,7 @@ from te.platform import cce_params
 from te.tvm.schedule import InferBound
 from te.tvm.schedule import ScheduleOps
 from te.utils.error_manager import error_manager_util
+import copy
 
 # default false
 DEBUG_MODE = False  # pylint: disable=C0302
@@ -1833,6 +1834,8 @@ def general_schedule(
             "conv_fm_w": a_l1.shape[3],
             "conv_fm_c0": a_l1.shape[4]
         }
+        setfmatrix_dict_0 = copy.deepcopy(setfmatrix_dict)
+        setfmatrix_dict_0['set_fmatrix'] = 0
         if stride_h == 1 and stride_w == 1:
             sch[a_l1].emit_insn(a_l1.op.axis[0], "dma_copy", setfmatrix_dict)
         else:
@@ -1867,7 +1870,7 @@ def general_schedule(
             sch_agent[a_ub].emit_insn(sch_agent[a_ub].op.axis[0], "dma_copy")
             c1_inner, _, _, _ = sch_agent[a_l1].nlast_scopes(4)
             sch_agent[a_l1].emit_insn(c1_inner, "dma_copy", setfmatrix_dict)
-        sch[a_col].emit_insn(a_col.op.axis[1], 'im2col_v2', setfmatrix_dict)
+        sch[a_col].emit_insn(a_col.op.axis[1], 'im2col_v2', setfmatrix_dict_0)
 
     def _emit_insn():  # pylint: disable=R0914,R0915
         sch_agent[b_l1].emit_insn(sch_agent[b_l1].op.axis[0], "dma_copy")
