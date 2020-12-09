@@ -280,6 +280,7 @@ def main():
         _do_run_cmd(args, report)
     else:
         _do_mi_cmd(args, sys.argv[2], report)
+    utils.print_info_log("Process finished!")
     sys.exit(utils.OP_TEST_GEN_NONE_ERROR)
 
 

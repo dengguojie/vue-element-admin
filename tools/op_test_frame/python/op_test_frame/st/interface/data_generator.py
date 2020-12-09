@@ -226,7 +226,6 @@ class DataGenerator:
                                          % (expect_func,
                                             expect_result_tensor.dtype,
                                             output_dtype, str(idx)))
-                    continue
                 expect_data_name = "%s_expect_output_%s_%s.bin" % (
                     case_name, str(idx), output_dtype)
                 expect_data_path = os.path.join(expect_data_dir,

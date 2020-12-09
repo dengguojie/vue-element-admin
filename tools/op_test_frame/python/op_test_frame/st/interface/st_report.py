@@ -143,7 +143,6 @@ run command: %s
 """ % (self.run_cmd, self.total_cnt, self.success_cnt, self.failed_cnt,
             self.err_cnt)
         total_txt += "========================================================================\n"
-        total_txt += "Process finished!"
         return total_txt
 
     def console_print(self):
