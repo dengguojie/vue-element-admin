@@ -37,23 +37,21 @@ def _get_output(x_in, k_size, pads, stride, dilation):
     return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
 
 
-def _range_correction(fmap_range, kernel, padding, stride, dilation, out_shape):
-    if padding == "VALID":
-        padding = (0, 0, 0, 0)
-    if padding == "SAME":
+def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
+    if -1 in pads:
         out_h_lower = _ceil(fmap_range[2][0], stride[0])
         out_h_upper = _ceil(fmap_range[2][1], stride[0])
         out_w_lower = _ceil(fmap_range[3][0], stride[1])
         out_w_upper = _ceil(fmap_range[3][1], stride[1])
     else:
         out_h_lower = _get_output(fmap_range[2][0], kernel[2],
-                                  (padding[0], padding[1]), stride[0], dilation[2])
+                                  (pads[0], pads[1]), stride[0], dilation[2])
         out_h_upper = _get_output(fmap_range[2][1], kernel[2],
-                                  (padding[0], padding[1]), stride[0], dilation[2])
+                                  (pads[0], pads[1]), stride[0], dilation[2])
         out_w_lower = _get_output(fmap_range[3][0], kernel[3],
-                                  (padding[2], padding[3]), stride[1], dilation[3])
+                                  (pads[2], pads[3]), stride[1], dilation[3])
         out_w_upper = _get_output(fmap_range[3][1], kernel[3],
-                                  (padding[2], padding[3]), stride[1], dilation[3])
+                                  (pads[2], pads[3]), stride[1], dilation[3])
     return [(out_shape[0], out_shape[0]), (out_shape[1], out_shape[1]),
             (out_h_lower, out_h_upper), (out_w_lower, out_w_upper)]
 
@@ -259,7 +257,7 @@ def conv2d_backprop_input(input_size,  # pylint: disable=W0622,C0103,R0913,R0914
     strides: tuple/list of 4 integers
              filter move stride
 
-    pads: string or tuple or list
+    pads: tuple/list of 4 integers
           str: "SAME" or "VALID"
           tuple/list of 4 integers: [pad_top, pad_bottom, pad_left, pad_right]
 

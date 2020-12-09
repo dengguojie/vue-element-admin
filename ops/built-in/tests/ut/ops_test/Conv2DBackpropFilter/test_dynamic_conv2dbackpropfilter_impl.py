@@ -36,7 +36,7 @@ ut_case.add_case(
                                         "NCHW", "NCHW", "NCHW",
                                         [(128, 128), (64, 64), (56, 71), (56, 71)],
                                         [(128, 128), (64, 64), (112, 142), (112, 142)],
-                                        (1, 1, 2, 2), "VALID", (1, 1, 1, 1),
+                                        (1, 1, 2, 2), [0, 0, 0, 0], (1, 1, 1, 1),
                                         "dynamic_conv2d_backprop_filter_case1",
                                         "success"))
 # dynamic_hw, x shape is not list or tuple
@@ -47,7 +47,7 @@ ut_case.add_case(
                                         "NCHW", "NCHW", "NCHW",
                                         [(128, 128), (64, 64), (56, 71), (56, 71)],
                                         [(128, 128), (64, 64), (112, 142), (112, 142)],
-                                        (1, 1, 2, 2), "VALID", (1, 1, 1, 1),
+                                        (1, 1, 2, 2), [0, 0, 0, 0], (1, 1, 1, 1),
                                         "dynamic_conv2d_backprop_filter_case1_1",
                                         RuntimeError))
 
@@ -59,7 +59,7 @@ ut_case.add_case(
                                         "NCHW", "NCHW", "NCHW",
                                         [(128, 128), (64, 64), (56, 71), (56, 71)],
                                         [(128, 128), (64, 64), (112, 142), (112, 142)],
-                                        (1, 1, 2, 2), "VALID", (1, 1, 1, 1),
+                                        (1, 1, 2, 2), [0, 0, 0, 0], (1, 1, 1, 1),
                                         "dynamic_conv2d_backprop_filter_case1_2",
                                         RuntimeError))
 
@@ -71,7 +71,7 @@ ut_case.add_case(
                                         "NCHW", "HWCN", "NCHW",
                                         [(128, 128), (64, 64), (56, 71), (56, 71)],
                                         [(128, 128), (64, 64), (112, 142), (112, 142)],
-                                        (1, 1, 2, 2), "VALID", (1, 1, 1, 1),
+                                        (1, 1, 2, 2), [0, 0, 0, 0], (1, 1, 1, 1),
                                         "dynamic_conv2d_backprop_filter_case1_3",
                                         RuntimeError))
 
@@ -83,7 +83,7 @@ ut_case.add_case(
                                         "NCHW", "NCHW", "NCHW",
                                         [(128, 128), (64, 64), (56, 71), (56, 71)],
                                         [(128, 128), (64, 64), (112, 142), (112, 142)],
-                                        (1, 1, 2, 2), "VALID", (1, 1, 1, 1),
+                                        (1, 1, 2, 2), [0, 0, 0, 0], (1, 1, 1, 1),
                                         "dynamic_conv2d_backprop_filter_case1_4",
                                         RuntimeError))
 
@@ -95,7 +95,7 @@ ut_case.add_case(
                                         "NCHW", "NCHW", "NCHW",
                                         [(128, 128), (64, 64), (56, 71), (56, 71)],
                                         [(128, 128), (64, 64), (112, 142), (112, 142)],
-                                        (1, 1, 2, 2), "VALID", (1, 1, 1, 1),
+                                        (1, 1, 2, 2), [0, 0, 0, 0], (1, 1, 1, 1),
                                         "dynamic_conv2d_backprop_filter_case1_5",
                                         RuntimeError))
 
@@ -107,21 +107,9 @@ ut_case.add_case(
                                         "NCHW", "NCHW", "NCHW",
                                         [(128, 128), (64, 64), (56, 71), (56, 71)],
                                         [(128, 128), (64, 64), (112, 142), (112, 142)],
-                                        (1, 1, 2), "VALID", (1, 1, 1, 1),
+                                        (1, 1, 2), [0, 0, 0, 0], (1, 1, 1, 1),
                                         "dynamic_conv2d_backprop_filter_case1_6",
                                         RuntimeError))
-
-# dynamic_hw, padding is not in ['SAME', 'VALID']
-ut_case.add_case(
-    "all",
-    gen_dynamic_conv2d_backprop_filter_case([64, 64, 1, 1], [128, 64, -1, -1], [128, 64, -1, -1],
-                                        "float32", "float16", "float16",
-                                        "NCHW", "NCHW", "NCHW",
-                                        [(128, 128), (64, 64), (56, 71), (56, 71)],
-                                        [(128, 128), (64, 64), (112, 142), (112, 142)],
-                                        (1, 1, 2, 2), "XXXX", (1, 1, 1, 1),
-                                        "dynamic_conv2d_backprop_filter_case1_7",
-                                        NameError))
 
 # dynamic_hw, pad_up greater than filter_h_dilation
 ut_case.add_case(
@@ -155,7 +143,7 @@ ut_case.add_case(
                                         "NCHW", "NCHW", "NCHW",
                                         [(128, 128), (64, 64), (56, 71), (56, 71)],
                                         [(128, 128), (64, 64), (112, 142), (112, 142)],
-                                        (1, 1, 2, 2), "VALID", (1, 1, 256, 1),
+                                        (1, 1, 2, 2), [0, 0, 0, 0], (1, 1, 256, 1),
                                         "dynamic_conv2d_backprop_filter_case1_10",
                                         RuntimeError))
 
@@ -167,7 +155,7 @@ ut_case.add_case(
                                         "NCHW", "NCHW", "NCHW",
                                         [(128, 128), (64, 64), (56, 71), (56, 71)],
                                         [(128, 128), (64, 64), (112, 4294967296), (112, 4294967296)],
-                                        (1, 1, 256, 2), "VALID", (1, 1, 1, 1),
+                                        (1, 1, 256, 2), [0, 0, 0, 0], (1, 1, 1, 1),
                                         "dynamic_conv2d_backprop_filter_case1_11",
                                         RuntimeError))
 
@@ -179,7 +167,7 @@ ut_case.add_case(
                                         "NCHW", "NCHW", "NCHW",
                                         [(128, 128), (64, 64), (56, 71), (56, 71)],
                                         [(128, 128), (64, 64), (112, 142), (112, 142)],
-                                        (1, 1, 2, 2), "VALID", (256, 1, 1, 1),
+                                        (1, 1, 2, 2), [0, 0, 0, 0], (256, 1, 1, 1),
                                         "dynamic_conv2d_backprop_filter_case1_12",
                                         RuntimeError))
 
@@ -191,7 +179,7 @@ ut_case.add_case(
                                         "NCHW", "NCHW", "NCHW",
                                         [(128, 128), (64, 64), (56, 71), (56, 71)],
                                         [(128, 128), (64, 64), (112, 142), (112, 142)],
-                                        (1, 1, 2, 2), "VALID", (1, 1, 1, 1),
+                                        (1, 1, 2, 2), [0, 0, 0, 0], (1, 1, 1, 1),
                                         "dynamic_conv2d_backprop_filter_case1_13",
                                         RuntimeError))
 
@@ -203,7 +191,7 @@ ut_case.add_case(
                                         "NCHW", "NCHW", "NCHW",
                                         [(128, 128), (64, 64), (56, 71), (56, 71)],
                                         [(128, 128), (64, 64), (112, 142), (112, 142)],
-                                        (1, 1, 2, 2), "VALID", (1, 1, 1, 1),
+                                        (1, 1, 2, 2), [0, 0, 0, 0], (1, 1, 1, 1),
                                         "dynamic_conv2d_backprop_filter_case1_14",
                                         RuntimeError))
 
@@ -227,7 +215,7 @@ ut_case.add_case(
                                         "NCHW", "NCHW", "NCHW",
                                         [(128, 158), (64, 64), (112, 112), (112, 112)],
                                         [(128, 158), (3, 3), (112, 112), (112, 112)],
-                                        (1, 1, 1, 1), "SAME", (1, 1, 1, 1),
+                                        (1, 1, 1, 1), [-1, -1, -1, -1], (1, 1, 1, 1),
                                         "dynamic_conv2d_backprop_filter_case2_1",
                                         RuntimeError))
 

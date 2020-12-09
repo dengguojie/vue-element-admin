@@ -37,7 +37,7 @@ ut_case.add_case(
                                         "NCHW", "NCHW", "NCHW",
                                         ((1, 1), (32, 32), (6, 26), (6, 26)),
                                         ((1, 1), (16, 16), (6, 26), (6, 26)),
-                                        (1, 1, 1, 1), "SAME", (1, 1, 1, 1), 1, "NCHW",
+                                        (1, 1, 1, 1), [-1, -1, -1, -1], (1, 1, 1, 1), 1, "NCHW",
                                         "dynamic_conv2d_backprop_input_case1",
                                         "success"))
 # general, dynamic_hw
@@ -71,7 +71,7 @@ ut_case.add_case(
                                         "NCHW", "NCHW", "NCHW",
                                         ((1, 10), (32, 32), (8, 8), (16, 16)),
                                         ((1, 10), (16, 16), (8, 8), (16, 16)),
-                                        (1, 1, 2, 2), "SAME", (1, 1, 1, 1), 1, "NCHW",
+                                        (1, 1, 2, 2), [-1, -1, -1, -1], (1, 1, 1, 1), 1, "NCHW",
                                         "dynamic_conv2d_backprop_input_case4",
                                         "success"))
 

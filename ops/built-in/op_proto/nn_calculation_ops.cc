@@ -1803,7 +1803,18 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
       (void)ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
       return GRAPH_FAILED;
     }
+  } else {
+    // update pads list by padding[SAME,VALID]
+    std::string pad_str;
+    if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME") {
+      op.SetAttr("pads", {-1, -1, -1, -1});
+      OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in dynamic_shape");
+    } else if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "VALID") {
+      op.SetAttr("pads", {0, 0, 0, 0});
+      OP_LOGD(op.GetName().c_str(), "set pads to {0, 0, 0, 0} when padding is VALID in dynamic_shape");
+    }
   }
+  
 
   OP_LOGI(op.GetName().c_str(), "Leaving Conv2DBackpropInput inferfunction!");
   return GRAPH_SUCCESS;
@@ -2135,7 +2146,15 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
       return GRAPH_FAILED;
     }
   } else {
-    OP_LOGD(op.GetName().c_str(), "Do not update pads in dynamic_shape");
+    // update pads list by padding[SAME,VALID]
+    std::string pad_str;
+    if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME") {
+      op.SetAttr("pads", {-1, -1, -1, -1});
+      OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in dynamic_shape");
+    } else if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "VALID") {
+      op.SetAttr("pads", {0, 0, 0, 0});
+      OP_LOGD(op.GetName().c_str(), "set pads to {0, 0, 0, 0} when padding is VALID in dynamic_shape");
+    }
   }
   OP_LOGI(op.GetName().c_str(), "Leaving Conv2DBackpropFilter inferfunction!");
   return GRAPH_SUCCESS;

@@ -187,7 +187,7 @@ def _get_nchw_shape(fmap, out_backprop, filters):
     return x_shape, dedy_shape, dedw_shape, x_range
 
 
-def _get_attrs(strides, padding, dilations, data_format, fmap_shape, w_nchw):
+def _get_attrs(strides, pads, dilations, data_format, fmap_shape, w_nchw):
     def _convert_shape_to_list(shape):
         for i, var in enumerate(shape):
             if isinstance(var, tvm.expr.IntImm):
@@ -201,17 +201,8 @@ def _get_attrs(strides, padding, dilations, data_format, fmap_shape, w_nchw):
             raise RuntimeError(dict_args,
                                error_manager.get_error_message(dict_args))
 
-        if isinstance(padding, (tuple, list)):
-            _check_dimensions(padding, "pads", CONV_BACKPROP_SHAPE_DIM)
-
-        if isinstance(padding, str) and padding not in PADDING_SUPPORT:
-            dict_args = {}
-            dict_args['errCode'] = "E60021"
-            dict_args['expected_pad_mode'] = str(PADDING_SUPPORT)
-            dict_args['actual_pad_mode'] = str(pads)
-
-            raise RuntimeError(dict_args,
-                               error_manager.get_error_message(dict_args))
+        if isinstance(pads, (tuple, list)):
+            _check_dimensions(pads, "pads", CONV_BACKPROP_SHAPE_DIM)
 
         _check_dimensions(dilations, "dilations", CONV_BACKPROP_SHAPE_DIM)
         _check_data_format(data_format, "data_format")
@@ -232,7 +223,7 @@ def _get_attrs(strides, padding, dilations, data_format, fmap_shape, w_nchw):
     _, _, filter_h, filter_w = w_nchw
     filter_h_dilation = (filter_h - 1) * dilation_h + 1
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
-    if padding == 'SAME':
+    if -1 in pads:
         pad_w = _align(fmap_w, stride_w) - stride_w + \
             filter_w_dilation - fmap_w
         pad_w = tvm.max(pad_w, 0)
@@ -245,10 +236,8 @@ def _get_attrs(strides, padding, dilations, data_format, fmap_shape, w_nchw):
         pad_down = pad_h - pad_up
         pads = [pad_up, pad_down, pad_left, pad_right]
         _convert_shape_to_list(pads)
-    elif padding == "VALID":
-        pads = PADDING_VAILD
     else:
-        pads = list(padding)
+        pads = list(pads)
         pad_up, pad_down, pad_left, pad_right = pads
         if pad_up >= filter_h_dilation or pad_down >= filter_h_dilation:
             dict_args = dict()
@@ -317,29 +306,27 @@ def _get_output(x_in, k_size, pads, stride, dilation):
     return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
 
 
-def _range_correction(fmap_range, kernel, padding, stride, dilation, out_shape):
-    if padding == "VALID":
-        padding = (0, 0, 0, 0)
-    if padding == "SAME":
+def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
+    if -1 in pads:
         out_h_lower = _ceil(fmap_range[2][0], stride[0])
         out_h_upper = _ceil(fmap_range[2][1], stride[0])
         out_w_lower = _ceil(fmap_range[3][0], stride[1])
         out_w_upper = _ceil(fmap_range[3][1], stride[1])
     else:
         out_h_lower = _get_output(fmap_range[2][0], kernel[2],
-                                  (padding[0], padding[1]), stride[0], dilation[2])
+                                  (pads[0], pads[1]), stride[0], dilation[2])
         out_h_upper = _get_output(fmap_range[2][1], kernel[2],
-                                  (padding[0], padding[1]), stride[0], dilation[2])
+                                  (pads[0], pads[1]), stride[0], dilation[2])
         out_w_lower = _get_output(fmap_range[3][0], kernel[3],
-                                  (padding[2], padding[3]), stride[1], dilation[3])
+                                  (pads[2], pads[3]), stride[1], dilation[3])
         out_w_upper = _get_output(fmap_range[3][1], kernel[3],
-                                  (padding[2], padding[3]), stride[1], dilation[3])
+                                  (pads[2], pads[3]), stride[1], dilation[3])
     return [(out_shape[0], out_shape[0]), (out_shape[1], out_shape[1]),
             (out_h_lower, out_h_upper), (out_w_lower, out_w_upper)]
 
 
 def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
-                                  padding, dilations, groups, fmap_dtype,
+                                  pads, dilations, groups, fmap_dtype,
                                   dedy_dtype, dedw_dtype, kernel_name,
                                   dynamic_mode, fmap_range):
 
@@ -380,7 +367,7 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     # ===========================================================
     # util check
     para_check.check_kernel_name(kernel_name)
-    dedy_range = _range_correction(fmap_range, dedw_nchw, padding, strides,
+    dedy_range = _range_correction(fmap_range, dedw_nchw, pads, strides,
                                    dilations, dedy_shape)
     lower_bound, upper_bound = zip(*fmap_range)
     lower_bound_dedy, upper_bound_dedy = zip(*dedy_range)
@@ -446,17 +433,17 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     _, _, lower_dedy_h, lower_dedy_w = lower_bound_dedy
     _, _, upper_dedy_h, upper_dedy_w = upper_bound_dedy
 
-    _, pads, _ = _get_attrs(strides, padding, dilations,
+    _, pad, _ = _get_attrs(strides, pads, dilations,
                             "NCHW", fmap_shape, dedw_nchw)
-    pad_up, pad_down, pad_left, pad_right = pads
+    pad_up, pad_down, pad_left, pad_right = pad
 
-    _, upper_pad, _ = _get_attrs(strides, padding, dilations, "NCHW",
+    _, upper_pad, _ = _get_attrs(strides, pads, dilations, "NCHW",
                                  upper_bound, dedw_nchw)
     upper_pad_up, upper_pad_down, upper_pad_left, upper_pad_right = upper_pad
     upper_fmap_w_padding = upper_fmap_w + upper_pad_left + upper_pad_right
     upper_fmap_h_padding = upper_fmap_h + upper_pad_up + upper_pad_down
 
-    _, lower_pad, _ = _get_attrs(strides, padding, dilations, "NCHW",
+    _, lower_pad, _ = _get_attrs(strides, pads, dilations, "NCHW",
                                  lower_bound, dedw_nchw)
     lower_pad_up, lower_pad_down, lower_pad_left, lower_pad_right = lower_pad
     lower_fmap_w_padding = lower_fmap_w + lower_pad_left + lower_pad_right
@@ -471,9 +458,9 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     if _is_load3d_special():
         dedy_hw_min = 1
 
-    if padding != "SAME":
-        fmap_h_min = max(fmap_h_min, filter_h - pads[0] - pads[1])
-        fmap_w_min = max(fmap_w_min, filter_w - pads[2] - pads[3])
+    if -1 not in pads:
+        fmap_h_min = max(fmap_h_min, filter_h - pad[0] - pad[1])
+        fmap_w_min = max(fmap_w_min, filter_w - pad[2] - pad[3])
 
     # filter value limit
     _check_attr_range_dw("filter's H", filter_h, FILTER_HW_MIN, FILTER_HW_MAX)
@@ -502,7 +489,7 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     def _check_axis_hw():
         _check_equal(dedy_c, filter_n, "Dedy's C", "Filter's N")
         _check_equal(fmap_c, filter_c*groups, "Fmap's C", "Filter's C")
-        if padding != "SAME":
+        if -1 not in pads:
             if filter_w_dilation > upper_fmap_w_padding:
                 dict_args = dict()
                 dict_args["errCode"] = "E60015"
@@ -559,7 +546,7 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     filter_size = _align(filter_n, C0_SIZE) * _align(filter_c, C0_SIZE) * \
         filter_h * filter_w
     _check_64bits_limitation("fmap_size", upper_fmap_size, dtype=fmap_dtype)
-    if isinstance(padding, (tuple, list)):
+    if isinstance(pads, (tuple, list)):
         upper_dedy_h = (upper_fmap_h + pad_up + pad_down - dilation_h *
                         (filter_h - 1) - 1) // stride_h + 1
         upper_dedy_w = (upper_fmap_w + pad_left + pad_right - dilation_w *
@@ -578,7 +565,7 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
 
 
 def _conv2d_backprop_filter_compute(x, filter_size, out_backprop, y,
-                                    strides, padding, dilations,
+                                    strides, pads, dilations,
                                     groups, data_format, kernel_name):
     x_dtype = x.get("dtype")
     dedy_dtype = out_backprop.get("dtype")
@@ -587,11 +574,11 @@ def _conv2d_backprop_filter_compute(x, filter_size, out_backprop, y,
     x_nchw, dedy_nchw, dedw_nchw, fmap_range = _get_nchw_shape(x, out_backprop, y)
     fmap_shape, dedy_shape, dynamic_mode = \
         _get_input_shape(x_nchw, dedy_nchw, dedw_nchw, fmap_range)
-    strides, pads, dilations = _get_attrs(strides, padding, dilations,
+    strides, pad, dilations = _get_attrs(strides, pads, dilations,
                                           data_format, fmap_shape, dedw_nchw)
 
     fmap_shape, dedy_shape = _check_conv2dbp_filter_params(
-        fmap_shape, dedy_shape, dedw_nchw, strides, padding, dilations,
+        fmap_shape, dedy_shape, dedw_nchw, strides, pads, dilations,
         groups, x_dtype, dedy_dtype, dedw_dtype, kernel_name, dynamic_mode,
         fmap_range)
 
@@ -606,7 +593,7 @@ def _conv2d_backprop_filter_compute(x, filter_size, out_backprop, y,
             out_backprop=dedy,
             filter_sizes=dedw_nchw,
             strides=strides,
-            padding=pads,
+            padding=pad,
             dilations=dilations,
             res_dtype=dedw_dtype,
             kernel_name=kernel_name
@@ -617,7 +604,7 @@ def _conv2d_backprop_filter_compute(x, filter_size, out_backprop, y,
             out_backprop=dedy,
             filter_sizes=dedw_nchw,
             strides=strides,
-            padding=pads,
+            padding=pad,
             dilations=dilations,
             groups=groups,
             res_dtype=dedw_dtype,
@@ -653,7 +640,7 @@ def conv2d_backprop_filter(x, filter_size, out_backprop, y, strides, pads,
     strides: tuple/list of 4 integers
              filter move stride
 
-    pads: string of "SAME" or "VAILD"
+    pads: tuple/list of 4 integers
           [pad_top, pad_bottom, pad_left, pad_right]
 
     dilations: tuple/list of 4 integers

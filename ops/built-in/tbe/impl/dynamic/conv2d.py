@@ -275,7 +275,10 @@ def _calc_pads(fmap_shape_nc1hwc0, shape_filter, strides, dilations, pads):
         _, _, filter_h, filter_w = shape_filter
         _, _, stride_h, stride_w = strides
         _, _, dilation_h, dilation_w = dilations
-
+        # if load2d, return [0,0,0,0]
+        if filter_h * filter_w == 1 and stride_h * stride_w == 1:
+            pads = [0, 0, 0, 0]
+            return pads
         filter_h_dilation = (filter_h - 1) * dilation_h + 1
         filter_w_dilation = (filter_w - 1) * dilation_w + 1
         pad_h = \
