@@ -212,9 +212,9 @@ class BatchMultiClassNonMaxSuppression:
                                    " but actually is [{real_value}].".format(**error_info))
 
         error_code_002_check("BatchMultiClassNonMaxSuppression", "max_size_per_class",
-                             [1, 400], self.max_size_per_class)
+                             [1, 1000], self.max_size_per_class)
         error_code_002_check("BatchMultiClassNonMaxSuppression", "max_total_size",
-                             [1, 400], self.max_total_size)
+                             [1, 1000], self.max_total_size)
         error_code_002_check("BatchMultiClassNonMaxSuppression", "classes num from input scores shape",
                              [1, 200], self.classes)
 
