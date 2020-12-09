@@ -15,7 +15,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 sigmoid_grad
 """
-from functools import reduce as reduce_ins
+import operator
 from te import tvm
 from te import platform as tbe_platform
 import te.lang.base as tbe_base
@@ -104,9 +104,14 @@ def sigmoid_grad(x,
     """
     x_dtype = x.get("dtype").lower()
     dx_dtype = dx.get("dtype").lower()
+    shape_x = x.get("shape")
+    shape_dx = dx.get("shape")
     check_list = ("float16", "float32")
     para_check.check_dtype(x_dtype, check_list, param_name="input_x")
     para_check.check_dtype(dx_dtype, check_list, param_name="input_dx")
+    if not operator.eq(list(shape_x), list(shape_dx)):
+        error_manager_vector.raise_err_inputs_shape_not_equal(kernel_name, 'x', 'dx',
+                                                              shape_x, shape_dx, shape_x)
     para_check.check_elewise_shape_range([x, dx], support_broadcast=False)
     if x_dtype != dx_dtype:
         error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "x", "dx",

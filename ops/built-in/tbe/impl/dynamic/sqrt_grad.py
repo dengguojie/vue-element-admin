@@ -17,7 +17,6 @@ sqrt_grad
 """
 
 import operator
-from functools import reduce as reduce_ins
 import te.lang.cce as tbe
 from te import platform as tbe_platform
 import te.lang.base as tbe_base
@@ -86,9 +85,14 @@ def sqrt_grad(x, dx, out, kernel_name="sqrt_grad"):
     """
     x_dtype = x.get("dtype").lower()
     dx_dtype = dx.get("dtype").lower()
+    shape_x = x.get("shape")
+    shape_dx = dx.get("shape")
     check_list = ("float16", "float32")
     para_check.check_dtype(x_dtype, check_list, param_name="x")
     para_check.check_dtype(dx_dtype, check_list, param_name="dx")
+    if not operator.eq(list(shape_x), list(shape_dx)):
+        error_manager_vector.raise_err_inputs_shape_not_equal(kernel_name, 'x', 'dx',
+                                                              shape_x, shape_dx, shape_x)
     para_check.check_elewise_shape_range([x, dx], support_broadcast=False)
     if x_dtype != dx_dtype:
         error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "x", "dx",

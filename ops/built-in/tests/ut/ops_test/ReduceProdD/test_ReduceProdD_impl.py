@@ -62,6 +62,16 @@ ut_case.add_precision_case("all", {"params": [{"shape": (1, 24, 1, 256), "dtype"
                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
                                    })
 
+from impl.reduce_prod_d import check_supported
+
+def test_check_support(test_arg):
+    check_supported({"shape": (1, 24, 1, 256), "dtype": "float32", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "input"},
+                                              {"shape": (256, ), "dtype": "float32", "format": "ND", "ori_shape": (256, ),"ori_format": "ND", "param_type": "output"},
+                                              (0, -1, 2))
+
+
+ut_case.add_cust_test_func(test_func=test_check_support)
+
 
 # ============ auto gen ["Ascend910"] test cases end =================
 

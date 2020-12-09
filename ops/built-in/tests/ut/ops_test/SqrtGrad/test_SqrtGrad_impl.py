@@ -78,8 +78,38 @@ case_big_shape_prime_fp32 = {
     "expect": "success"
 }
 
+case_different_shape_prime_fp32 = {
+    "params":
+        [
+            {
+                "shape": (9973, 1),
+                "format": "ND",
+                "dtype": "float32",
+                "ori_shape": (9973, 1),
+                "ori_format": "ND"
+            },
+            {
+                "shape": (9973, 8297),
+                "format": "ND",
+                "dtype": "float32",
+                "ori_shape": (9973, 8297),
+                "ori_format": "ND"
+            },
+            {
+                "shape": (9973, 8297),
+                "format": "ND",
+                "dtype": "float32",
+                "ori_shape": (9973, 8297),
+                "ori_format": "ND"
+            }
+        ],
+    "case_name": 'test_sqrt_grad_different_shape_prime_fp32',
+    "expect": RuntimeError
+}
+
 ut_case.add_case(["Ascend910"], case_small_shape_fp32)
 ut_case.add_case(["Ascend910"], case_big_shape_prime_fp32)
+ut_case.add_case(["Ascend910"], case_different_shape_prime_fp32)
 
 # ut_case.add_case(["Ascend310"], case1)
 
@@ -121,7 +151,7 @@ ut_case.add_precision_case("all", {
                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (73, 64), "shape": (73, 64), "param_type": "input"},
                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (73, 64), "shape": (73, 64), "param_type": "output"}],
     "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+    "precision_standard": precision_info.PrecisionStandard(0.002, 0.002)
 })
 
 ut_case.add_precision_case("all", {
@@ -129,7 +159,7 @@ ut_case.add_precision_case("all", {
                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (15, 3, 7, 5, 3, 2), "shape": (15, 3, 7, 5, 3, 2), "param_type": "input"},
                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (15, 3, 7, 5, 3, 2), "shape": (15, 3, 7, 5, 3, 2), "param_type": "output"}],
     "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+    "precision_standard": precision_info.PrecisionStandard(0.002, 0.002)
 })
 if __name__ == '__main__':
     ut_case.run('Ascend910')

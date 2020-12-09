@@ -97,11 +97,6 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
   std::vector<int64_t> axis_shapeVector = axis_shape.GetDims();
   int64_t axis_dimNum = axis_shape.GetDimNum();
 
-  if (!axis_shapeVector.empty() && axis_shapeVector[0] > dim_num) {
-    OP_LOGE(op.GetName().c_str(), "The size of axisnode must be less than inputx dim_num.");
-    return false;
-  }
-
   if (axis_dimNum == 1 && axis_shapeVector[0] == 0) {
     result_desc.SetShape(shape);
     result_desc.SetShapeRange(input_shape_range);

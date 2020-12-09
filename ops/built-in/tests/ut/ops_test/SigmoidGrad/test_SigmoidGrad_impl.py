@@ -49,6 +49,8 @@ ut_case.add_broadcast_case_simple(["Ascend910"], ["float16", "float32"],
                                   (10, 12), (10, 11), expect=RuntimeError)
 ut_case.add_broadcast_case_simple(["Ascend910"], ["float16", "float32"],
                                   (10, 13), (10, 11, 12), expect=RuntimeError)
+ut_case.add_broadcast_case_simple(["Ascend910"], ["float16", "float32"],
+                                  (10, 13, 1), (10, 13, 12), expect=RuntimeError)
 
 # ============ auto gen ["Ascend910"] test cases end =================
 def calc_expect_func(input_x, output_y, output_z):
