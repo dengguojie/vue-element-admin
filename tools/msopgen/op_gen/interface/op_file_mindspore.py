@@ -101,7 +101,7 @@ class OpFileMindSpore(OPFile):
                                   "unsupported. Please check the input or "
                                   "output types.")
             raise utils.MsOpGenException(
-                    utils.MS_OP_GEN_INVALID_PARAM_ERROR)
+                utils.MS_OP_GEN_INVALID_PARAM_ERROR)
         for dtype_format in ir_type_list:
             type_list = []
             for type_count in range(len(var_list)):

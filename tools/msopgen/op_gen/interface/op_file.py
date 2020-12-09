@@ -23,6 +23,7 @@ class OPFile(metaclass=ABCMeta):
     """
     CLass for generate op files
     """
+
     def __init__(self, argument: ArgParser):
         self.mode = argument.mode
         self.output_path = argument.output_path

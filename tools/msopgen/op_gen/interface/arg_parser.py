@@ -20,6 +20,7 @@ class ArgParser:
     """
     CLass for parsing input arguments
     """
+
     def __init__(self):
         parse = argparse.ArgumentParser()
         subparsers = parse.add_subparsers(help='commands')
@@ -48,9 +49,6 @@ class ArgParser:
             self._check_output_path(args.output)
             self._check_mode_valid(args.mode)
             self._check_op_type_valid(args.operator)
-            self.is_mindspore = False
-            if self.framework in utils.FMK_MS:
-                self.is_mindspore = True
             return
         if sys.argv[1] == utils.INPUT_ARGUMENT_CMD_MI:
             self.gen_flag = False

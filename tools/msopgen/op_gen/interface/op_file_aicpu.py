@@ -21,6 +21,7 @@ class OpFileAiCpu(OPFile):
     """
     CLass for generate aicpu op files
     """
+
     def generate_impl(self):
         """
         Function Description:

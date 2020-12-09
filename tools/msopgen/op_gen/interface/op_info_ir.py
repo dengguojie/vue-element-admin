@@ -7,16 +7,14 @@ This file mainly involves class for IR operator info.
 Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
-try:
-    import os
-    import sys
-    import xlrd
-    from . import utils
-    from .op_info import OpInfo
-    from .arg_parser import ArgParser
-except (ImportError,) as import_error:
-    sys.exit("[ERROR][op_info_ir]Unable to import module: %s." % str(
-        import_error))
+
+import os
+import sys
+import xlrd
+
+from . import utils
+from .op_info import OpInfo
+from .arg_parser import ArgParser
 
 IR_DEFAULT_SHEET_NAME = 'Op'
 IR_TEMPLATE_HEADER = ['Op', 'Classify', 'Name', 'Type', 'TypeRange',
@@ -70,10 +68,9 @@ class IROpInfo(OpInfo):
         self.output_path = argument.output_path
         if self.gen_flag:
             self.choose_op = argument.op_type
-            self.is_mindspore = argument.is_mindspore
         else:
             self.mi_cmd = argument.mi_cmd
-       
+
     def parse(self):
         """
         Parse the IR excel, store the parse result in OpInfo attribute
@@ -296,9 +293,7 @@ class IROpInfo(OpInfo):
         # init ir type from TypeRange of IR excel
         ir_type_list = []
         for t in types:
-            converted_type = self._mapping_input_output_type(t.strip(),
-                                                             ir_name,
-                                                             self.is_mindspore)
+            converted_type = self._mapping_input_output_type(t.strip(), ir_name)
             if converted_type:
                 ir_type_list += converted_type.split(",")
         if not ir_type_list:
@@ -388,18 +383,7 @@ class IROpInfo(OpInfo):
         sys.exit(utils.MS_OP_GEN_PARSER_EXCEL_FILE_ERROR)
 
     @staticmethod
-    def _mapping_input_output_type(ir_type, ir_name, is_mindspore):
-        if is_mindspore:
-            if ir_type in utils.MS_INPUT_OUTPUT_DTYPE_LIST:
-                return ir_type
-            else:
-                utils.print_warn_log("The %s 'TypeRange' '%s' in the .xlsx file "
-                                     "is unsupported. Please check. If you "
-                                     "aren't having problems, "
-                                     "just ignore the warning."
-                                     % (ir_name, ir_type))
-            return ""
-
+    def _mapping_input_output_type(ir_type, ir_name):
         if ir_type in utils.INPUT_OUTPUT_DTYPE_MAP:
             return utils.INPUT_OUTPUT_DTYPE_MAP.get(ir_type)
         else:

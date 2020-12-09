@@ -22,10 +22,10 @@ class OpInfo:
         }
     }
     """
+
     def __init__(self):
         self.op_type = ""
         self.fix_op_type = ""
         self.parsed_input_info = collections.OrderedDict()
         self.parsed_output_info = collections.OrderedDict()
         self.parsed_attr_info = []
-

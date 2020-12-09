@@ -35,6 +35,7 @@ class OpFileAiCore(OPFile):
     """
     CLass for generate aicore op files
     """
+
     def _generate_cmake_lists(self):
         tbe_dir = os.path.join(self.output_path, 'tbe')
         utils.make_dirs(tbe_dir)
