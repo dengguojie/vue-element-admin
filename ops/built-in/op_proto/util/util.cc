@@ -164,16 +164,6 @@ bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_nam
     dimsX = dimsY;
     dimsY = dimsTmp;
   }
-  // infer shape of empty tensor
-  if (IsEmptyTensor(dimsX) && !IsEmptyTensor(dimsY)) {
-    OpsInputShapeErrReport(op.GetName(), "two inputs should both be empty", input_name2, "not empty");
-    OP_LOGE(op.GetName().c_str(), "One input is empty tensor and another is not.");
-    return false;
-  } else if (IsEmptyTensor(dimsY) && !IsEmptyTensor(dimsX)) {
-    OpsInputShapeErrReport(op.GetName(), "two inputs should both be empty", input_name1, "not empty");
-    OP_LOGE(op.GetName().c_str(), "One input is empty tensor and another is not.");
-    return false;
-  }
 
   std::vector<int64_t> dimVec;
 
