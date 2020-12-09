@@ -637,6 +637,7 @@ class CceConvOp:
         self._l0b_first_flag = False
         self._pre_relu_fused_flag = False
         self._fused_ahead_operand_num = 0
+        self._v200_width_out_1_flag = False
         self._flag_dict = {}
         self._lhisi_dequant_quant_para = {'deq_sqrt': False,
                                           'deq_relu': False,
@@ -1065,6 +1066,13 @@ class CceConvOp:
                     c_dtype = "int8"
                 else:
                     c_dtype = res_dtype
+
+                fused_coefficient = [self._fused_ahead_operand_num, 0, self._fused_double_operand_num]
+                if self._v200_width_out_1_flag:
+                    fused_coefficient[-1] = 1 + fused_coefficient[-1]/2
+                    nonlocal fused_ub_cl0
+                    fused_ub_cl0 = fused_ub_cl0/2
+
                 # group conv,send one group_opt a,b,c shape to tiling
                 group_opt = ConvParam.para_dict["group_opt"]
                 c_shape_opt = c_shape
@@ -1085,8 +1093,7 @@ class CceConvOp:
                                           ConvParam.dilate_w],
                              "group": group_opt,
                              "bias_flag": bias_flag,
-                             "fused_coefficient": [self._fused_ahead_operand_num, 0,
-                                                   self._fused_double_operand_num],
+                             "fused_coefficient": fused_coefficient,
                              "fused_channel_wise": fused_channel_wise,
                              "in_fm_memory_type": in_mem,
                              "out_fm_memory_type": out_mem,
@@ -1330,6 +1337,8 @@ class CceConvOp:
                 c_shape = list(c_shape)
             else:
                 c_shape = list(map(int, c_shape))
+                if self._v200_width_out_1_flag:
+                    c_shape[-2] = c_shape[-2]//2
 
             reserved_ub = get_reserved_ub()
             fused_ub_cl0 = get_fused_ub_cl0()
@@ -1381,6 +1390,12 @@ class CceConvOp:
                         special_mode_dict["convfp16_double_out"] = True
                     else:
                         special_mode_dict["convfp16_double_out"] = False
+
+                    if self._v200_width_out_1_flag:
+                        fused_coefficient[-1] = 1 + fused_coefficient[-1]/2
+                        nonlocal fused_ub_cl0
+                        fused_ub_cl0 = fused_ub_cl0/2
+
                     # group conv,send one group_opt a,b,c shape to tiling
                     group_opt = ConvParam.para_dict["group_opt"]
                     c_shape_opt = c_shape
@@ -3607,6 +3622,32 @@ class CceConvOp:
                     fmap_col_no, a1_axis, a2_axis, a3_o, a4_o, fmap_col_ni,
                     a3_i, a4_i, sch[fmap_col].op.axis[4], sch[fmap_col].op.axis[5]) # 5 axis for emit insn
 
+        def _remove_padded_column():
+            if "remove_padded_column" in ConvParam.tensor_map.keys():
+                remove_padded_column = ConvParam.tensor_map["remove_padded_column"]
+                sch[remove_padded_column].set_scope(cce.scope_ubuf)
+                sch[remove_padded_column].compute_at(sch[res_c], m_outer_inner_outer)
+                sch[remove_padded_column].emit_insn(remove_padded_column.op.axis[0], "vector_adds")
+
+            output_ops_set = set()
+            for lop in self._op_graph.output_ops:
+                output_ops_set.add(lop["op"])
+
+            for lop in self._op_graph.body_ops:
+                if lop["op"] == "dequant_remove_padded_column":
+                    sch[lop["dst_buffer"]].compute_at(sch[res_c], m_outer_inner_outer)
+                    sch[lop["dst_buffer"]].emit_insn(lop["dst_buffer"].op.axis[0], "vector_max")
+                    if "dequant_remove_pad" not in output_ops_set:
+                        sch[lop["dst_buffer"]].compute_inline()
+
+                if lop["op"] == "requant_remove_padded_column":
+                    sch[lop["dst_buffer"]].compute_at(sch[res_c], m_outer_inner_outer)
+                    sch[lop["dst_buffer"]].emit_insn(lop["dst_buffer"].op.axis[0], "dma_copy")
+
+                if lop["op"] == "dequants16_remove_padded_column":
+                    sch[lop["dst_buffer"]].compute_at(sch[res_c], m_outer_inner_outer)
+                    sch[lop["dst_buffer"]].emit_insn(lop["dst_buffer"].op.axis[0], "vector_adds")
+
         def self_init():
             """
             initilization
@@ -3625,6 +3666,7 @@ class CceConvOp:
             self.unzip_parameters["weight_zip_flag"] = self._op_graph.weight_zip_flag
             self._v200_data_flow_type = ConvParam.tensor_map.get("v200_data_flow_type")
             self._conv1d_split_w_flag = ConvParam.conv1d_split_w_flag
+            self._v200_width_out_1_flag = ConvParam.v200_width_out_1_flag
             self._res_tensor = res
             self._aipp_fuse_flag = ConvParam.aipp_fuse_flag
             self._fused_flag = ConvParam.tensor_map["conv_vector_fused_flag"]
@@ -4096,12 +4138,16 @@ class CceConvOp:
                 self._op_graph.output_ops[0]["tensorize_axis"] = self._schedule[res_ub].op.axis[0]
                 self._op_graph.output_ops[0]["dst_buffer"] = res_ub
 
-        set_tiling = ConvParam.tiling
+        tiling = ConvParam.tiling
         multiout_ub2 = get_multiout_ub2(multi_out)
         set_output_memory_type()
 
-        if set_tiling is None:
+        if tiling is None:
             tiling = tiling_fetch()
+
+        if self._v200_width_out_1_flag:
+            tiling["CL0_matrix"][1] = tiling["CL0_matrix"][1]/2
+            tiling["CUB_matrix"][1] = tiling["CUB_matrix"][1]/2
 
         # change the tiling of conv+pooling
         if self.conv_pool_fused_flag or self.conv_pool_2_2_fused_flag:
@@ -5124,6 +5170,7 @@ class CceConvOp:
         if self._dynamic_mode:
             return True
 
+        _remove_padded_column()
         tensor_map.clear()
         dim_map.clear()
         tiling.clear()
@@ -5677,13 +5724,16 @@ class AutoScheduleOp:
         """
         tag_to_type_map = {
             "data_transfer": DataFlowType.S32TOS8,
+            "requant_remove_padded_column": DataFlowType.S32TOS8,
             "dequant_s16_vector": DataFlowType.S32TOS16,
             "dequant_s16_scale": DataFlowType.S32TOS16,
+            "dequants16_remove_padded_column": DataFlowType.S32TOS16,
             "requant_s16_vector": DataFlowType.S16ELTWISES8,
             "requant_s16_scale": DataFlowType.S16ELTWISES8,
             "res_remove_pad_u8": DataFlowType.S16ELTWISES8S16,
             "dequant_vector": DataFlowType.S32TOFP16,
-            "dequant_scale": DataFlowType.S32TOFP16}
+            "dequant_scale": DataFlowType.S32TOFP16,
+            "dequant_remove_padded_column": DataFlowType.S32TOFP16}
         out_src = self.output_ops[0]['src_buffer'][0].op.tag
         if self._res_tensor.op.tag in ("write_select", "strided_write"):
             res_src = self.output_ops[0]['src_buffer'][0].op.input_tensors[0]
@@ -5694,7 +5744,8 @@ class AutoScheduleOp:
         weight = ConvParam.tensor_map["filter"]
         if out_src in tag_to_type_map.keys():
             ConvParam.tensor_map["v200_data_flow_type"] = tag_to_type_map[out_src]
-        elif is_support_v200() and weight.dtype == "int8" and out_src != 'convolution_C_UB':
+        elif is_support_v200() and weight.dtype == "int8" \
+            and out_src not in ('convolution_C_UB', 'convolution_remove_padded_column'):
             ConvParam.tensor_map["v200_data_flow_type"] = DataFlowType.V200_GENERAL_FUSION
         if "pooling2d_max" in out_src:
             MaxPoolParam.tensor_map["is_conv_pool_fused"] = True
@@ -5872,6 +5923,10 @@ class AutoScheduleOp:
             # for read select
             "strided_read_convolution_A": OpFusionype.OP_EMPTY,
             "aipp_res_convolution": OpFusionype.OP_EMPTY,
+            "convolution_remove_padded_column": OpFusionype.OP_EMPTY,
+            "dequant_remove_padded_column": OpFusionype.OP_EMPTY,
+            "dequants16_remove_padded_column": OpFusionype.OP_EMPTY,
+            "requant_remove_padded_column": OpFusionype.OP_EMPTY,
             "broadcast_for_tensor": OpFusionype.OP_EMPTY,
             "weight_unzip_convolution_Input": OpFusionype.OP_EMPTY,
             "fusion_fmap_select_convolution_A": OpFusionype.CONV,

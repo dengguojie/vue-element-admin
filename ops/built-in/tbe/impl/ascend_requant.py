@@ -138,6 +138,13 @@ def ascend_requant_compute(x, req_scale, y, relu_flag=False, kernel_name="ascend
 
     res_shape[-2] = x.shape[-2]
     if conv_flag:
+        if x.op.attrs["remove_padded_column_in_next_op"].value == 1:
+            res_shape[-2] = res_shape[-2]//2
+            res_ub_reform = tvm.compute(res_shape,
+                                        lambda batch, cout1, howo, cout0:
+                                            res_ub_reform(batch, cout1, howo*2, cout0),
+                                        name = 'requant_remove_padded_column',
+                                        tag = 'requant_remove_padded_column')
         res = tvm.compute(res_shape,
                           lambda batch, cout1, howo, cout0:
                               res_ub_reform(batch, cout1, howo, cout0),

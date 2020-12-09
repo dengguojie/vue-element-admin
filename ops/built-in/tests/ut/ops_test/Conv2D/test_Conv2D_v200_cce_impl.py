@@ -51,12 +51,14 @@ def test_conv2d_v200(test_arg):
             "conv_v200_relu_0_bias_1_vector_1_flow_1": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 1, 1, 1, 1),
             "conv_v200_relu_1_bias_0_vector_1_flow_1": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 1, 0, 0, 1),
             "conv_v200_relu_1_bias_1_vector_1_flow_1": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 1, 1, 1, 1),
+            "conv_v200_relu_1_bias_1_vector_1_flow_1_cout1": ((1, 32, 7, 1), (32, 32, 1, 1), [0, 0, 0, 0], [1, 1, 1, 1], 1, 1, 1, 1),
             "conv_v200_relu_0_bias_1_flow_2": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 2, 0, 1, 1),
             "conv_v200_relu_1_bias_0_flow_2": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 2, 1, 0, 1),
             "conv_v200_relu_0_bias_0_flow_3": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 3, 0, 0, 1),
             "conv_v200_relu_1_bias_0_flow_3": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 3, 1, 0, 1),
             "conv_v200_relu_0_vector_1_flow_4": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 4, 0, 0, 1),
             "conv_v200_relu_1_vector_1_flow_4": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 4, 1, 0, 1),
+            "conv_v200_relu_1_vector_1_flow_4_cout1": ((1, 32, 7, 1), (32, 32, 1, 1), [0, 0, 0, 0], [1, 1, 1, 1], 4, 1, 0, 1),
             "conv_v200_relu_0_bias_1_flow_5": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 5, 0, 1, 1),
             "conv_v200_relu_1_bias_0_flow_5": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 5, 1, 0, 1),
             "conv_v200_relu_0_bias_1_flow_6": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 6, 0, 0, 1),
@@ -117,6 +119,12 @@ def test_conv2d_v200(test_arg):
                 else:
                     bias_tensor = None
                 out = ascend_dequant_s16_compute(conv_res, vdeq_reg, bias_tensor, None, relu_flag=relu_flag)
+                tiling = {'AL0_matrix':[4, 9, 16, 16], 'CL0_matrix': [1, 4, 16, 16, 1], 'CUB_matrix': [1, 4, 16, 16], 
+                          'A_overhead_opt_flag': 0, 'B_overhead_opt_flag': 0, 'BL0_matrix': [9, 1, 16, 16],
+                          'manual_pingpong_buffer': {'AL0_pbuffer': 1, 'AL1_pbuffer': 1, 'AUB_pbuffer': 1, 'BL0_pbuffer': 1, 
+                          'BL1_pbuffer': 1, 'BUB_pbuffer': 1, 'CL0_pbuffer': 1, 'CUB_pbuffer': 1, 'UBG_pbuffer': 1},
+                          'n_bef_batch_flag': 0, 'AL1_shape': [], 'BL1_shape': None, 'block_dim': [1, 1, 1, 1], 'CUB_channel_wise_flag': False}
+                ConvParam.tiling = tiling
                 auto_sch_res = AutoScheduleOp(out)
                 sch = generic.auto_schedule(out)
                 if bias_flag:
@@ -182,6 +190,12 @@ def test_conv2d_v200(test_arg):
                 deq16_reg = tvm.placeholder(shape_req, name='deq_reg', dtype='uint64',
                     attrs={'ori_shape': [c_out*16 if vector_flag else 1]})
                 out = ascend_dequant_compute(conv_res, deq16_reg, None, sqrt_mode=False, relu_flag=True)
+                tiling = {'AL0_matrix':[4, 9, 16, 16], 'CL0_matrix': [1, 4, 16, 16, 1], 'CUB_matrix': [1, 4, 16, 16], 
+                          'A_overhead_opt_flag': 0, 'B_overhead_opt_flag': 0, 'BL0_matrix': [9, 1, 16, 16],
+                          'manual_pingpong_buffer': {'AL0_pbuffer': 1, 'AL1_pbuffer': 1, 'AUB_pbuffer': 1, 'BL0_pbuffer': 1, 
+                          'BL1_pbuffer': 1, 'BUB_pbuffer': 1, 'CL0_pbuffer': 1, 'CUB_pbuffer': 1, 'UBG_pbuffer': 1},
+                          'n_bef_batch_flag': 0, 'AL1_shape': [], 'BL1_shape': None, 'block_dim': [1, 1, 1, 1], 'CUB_channel_wise_flag': False}
+                ConvParam.tiling = tiling
                 auto_sch_res = AutoScheduleOp(out)
                 sch = generic.auto_schedule(out)
                 tensor_list = [fm, filter_w, deq16_reg, out]

@@ -311,13 +311,10 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
                            (pad_top == 0) and (pad_bottom == 0) and \
                            (pad_left == 0) and (pad_right == 0) and \
                            (strideh == 1) and (stridew == 1)
-        # w_out = 1 case only support load2d or (chips in [Ascend310,
-        # Hi3796CV300CS] and fmap_w with padding equals
-        # filters_w after dilation
+        # w_out = 1 case only support fmap_w with padding equals filters_w after dilation
         hout_equal_1 = h_i + pad_top + pad_bottom - hk_dilation == 0
         wout_equal_1 = w_i + pad_left + pad_right - wk_dilation == 0
-        wout_equal_1_pass_flag = wout_equal_1 \
-            if check_load3d_w_out_1_support() else load2d_pass_flag
+        wout_equal_1_pass_flag = wout_equal_1 or load2d_pass_flag
         # Ascend910 supports w_out equals 1 and h_out equals 1
         out_both_equal_1_pass_flag = hout_equal_1 and wout_equal_1
 
@@ -982,6 +979,13 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             int_ceil_div(ConvParam.para_dict["weight_ori_shape_nchw"][0], 16),
             ConvParam.h_out*ConvParam.w_out,
             16)
+
+        if ConvParam.v200_width_out_1_flag: # in special case, actual out size is only half
+            DIM_MAP["out_img_shape"] = (
+                ConvParam.para_dict["a_shape"][0],
+                int_ceil_div(ConvParam.para_dict["weight_ori_shape_nchw"][0], 16),
+                ConvParam.h_out*ConvParam.w_out//2,
+                16)
         ConvParam.conv_shape = DIM_MAP["out_img_shape"]
         filter_shape = [out_channel, filter_h, filter_w, 1]
         dim_map1 = im2col_dim(shape_to_list(fmap.shape),
@@ -1522,7 +1526,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                                      name='remove_pad' + "_cc_" + str(NAME_INDEX[0]))
         return res_tensor
 
-    def remove_pad_quant_dsl(res, conv_shape, invalid_data_rm_flag):
+    def remove_pad_quant_dsl(res, conv_shape, invalid_data_rm_flag, params_dict=None):
         """
         remove pad
         Parameters
@@ -1533,6 +1537,8 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
 
         invalid_data_rm_flag: True for conv2d without removing pad.
 
+        params_dict: a dict of relevant infos
+
         Returns
         -------
         res_remove_pad tensor
@@ -1541,6 +1547,8 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         group = ConvParam.para_dict["group"]
         cout1_opt = ConvParam.para_dict["cout1_opt"]
         conv_shape[1] = DIM_MAP["out_img_shape"][1]
+        params_dict["conv_shape"] = conv_shape
+        params_dict["invalid_data_rm_flag"] = int(invalid_data_rm_flag)
         with tvm.tag_scope('conv_vector_remove_pad'):
             res_tensor = tvm.compute(conv_shape,
                                      lambda batch, cout1, howo, cout0:
@@ -1548,9 +1556,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                                          batch,
                                          cout1 if group == 1 else cout1 % cout1_opt,
                                          howo, cout0),
-                                     name='remove_pad' + "_cc_" + str(NAME_INDEX[0]),
-                                     attrs={"conv_shape": conv_shape,
-                                            "invalid_data_rm_flag": int(invalid_data_rm_flag)})
+                                     name='remove_pad' + "_cc_" + str(NAME_INDEX[0]), attrs=params_dict)
         return res_tensor
 
     def remove_pad_fp16_dsl(res, conv_shape, invalid_data_rm_flag):
@@ -1582,6 +1588,28 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                                 attrs={"width_out": ConvParam.w_out, "conv_shape": conv_shape})
             ConvParam.tensor_map["C"] = res_c
         return res_c
+
+    def remove_padded_column(padded_tensor, res_shape):
+        """
+        remove padded column when v200_width_out_1_flag is True
+        Parameters
+        ----------
+        padded_tensor: input tensor with wout=2
+
+        res_shape: res_shape with wout=1
+
+        Returns
+        -------
+        res_tensor with wout=1
+        """
+        res_tensor = tvm.compute(res_shape,
+                                 lambda batch, cout1, howo, cout0:
+                                     padded_tensor(batch, cout1, howo*2, cout0),
+                                 name = 'remove_padded_column',
+                                 tag = OP_TAG + 'remove_padded_column',
+                                 attrs={"width_out": ConvParam.w_out})
+        ConvParam.tensor_map["remove_padded_column"] = res_tensor
+        return res_tensor
 
     def check_optim_dict(optim_dict, para_dict, data, weight):
         """
@@ -1835,6 +1863,38 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         not load2d_to_load3d_flag:
             ConvParam.conv1d_split_w_flag = True
 
+    def _v200_width_out_1_flag_set():
+        """
+        special supporting of height_out!=1 && width_out=1 case for v200 soc
+        """
+        hk_dilation = (para_dict["filter_h"] - 1)*para_dict["dilate_h"] + 1
+        wk_dilation = (para_dict["filter_w"] - 1)*para_dict["dilate_w"] + 1
+        if 'value' in dir(data.shape[2]):
+            h_out = (data.shape[2].value + (para_dict["pad_h"][0] + para_dict["pad_h"][1]) - hk_dilation) // para_dict["stride_h"] + 1
+        else:
+            h_out = (data.shape[2] + (para_dict["pad_h"][0] + para_dict["pad_h"][1]) - hk_dilation) // para_dict["stride_h"] + 1
+        if 'value' in dir(data.shape[3]):
+            w_out = (data.shape[3].value + (para_dict["pad_w"][0] + para_dict["pad_w"][1]) - wk_dilation) // para_dict["stride_w"] + 1
+        else:
+            w_out = (data.shape[3] + (para_dict["pad_w"][0] + para_dict["pad_w"][1]) - wk_dilation) // para_dict["stride_w"] + 1
+        l0a_load2d_flag = False
+        if list(para_dict["pad_h"]) == [0, 0] \
+            and list(para_dict["pad_w"]) == [0, 0] \
+            and para_dict["stride_h"] == 1 and para_dict["stride_w"] == 1 \
+            and weight.dtype == "float16" \
+            and (para_dict["filter_h"]*para_dict["filter_w"] == 1):
+            l0a_load2d_flag = True
+        l1_fusion_type = para_dict.get("fusion_para").get("l1_fusion_type")
+        input_memory_type = para_dict.get("fusion_para").get("input_memory_type")
+        if (l1_fusion_type == 0) or (l1_fusion_type == 1) or (input_memory_type == 1):
+            l0a_load2d_flag = False
+
+        if not check_load3d_w_out_1_support() and h_out != 1 and w_out == 1 and not l0a_load2d_flag:
+            para_dict["pad_w"][1] += para_dict["stride_w"] # increasing pad right, N*1 -> N*2
+            ConvParam.v200_width_out_1_flag = True
+        else:
+            ConvParam.v200_width_out_1_flag = False
+
     def _save_tiling_info_dict(shape_fmap_nc1hwc0, shape_w_nc1hwc0, c_ub_shape, in_dtype, w_dtype, res_dtype,
                                bias_flag, kernel_name):
         """
@@ -1921,6 +1981,21 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             return {v: get_te_var(v).get_tvm_var()
                     for v in ("fmap_h", "fmap_w", "ho", "wo")}
         return None
+
+    def calculate_remove_pad_params(padded_column_shape, v200_width_out_1_flag):
+        """
+        for v200 quant fusion, when hout!=1 && wout=1, info is passed to next op
+        remove padded column is done by next op
+        """
+        true_conv_shape = []
+        for i in padded_column_shape:
+            true_conv_shape.append(i)
+        if v200_width_out_1_flag:
+            true_conv_shape[-2] = true_conv_shape[-2]//2
+        true_conv_shape = tuple(true_conv_shape)
+        params_dict = {"remove_padded_column_in_next_op": ConvParam.v200_width_out_1_flag,
+                       "true_conv_shape": true_conv_shape}
+        return params_dict
 
     def _prefusion_identify():
         """
@@ -2085,6 +2160,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
     if (in_dtype, w_dtype) == ("int8", "int8"):
         res_dtype = "int32"
 
+    _v200_width_out_1_flag_set()
     load2d_to_load3d_flag = load2d_to_load3d_flag_set()
     _conv1d_split_w_flag_set()
 
@@ -2115,12 +2191,17 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         if dsl_flag:  # quant fusion
             conv_res = _cube_compute(data, weight, mad_dtype, \
                 tiling=ConvParam.tiling, optim_dict=optim_dict, bias=bias_tensor)
-            res_remove_pad = remove_pad_quant_dsl(conv_res, conv_shape, invalid_data_rm_flag)
+            remove_pad_params = calculate_remove_pad_params(conv_shape, ConvParam.v200_width_out_1_flag)
+            res_remove_pad = remove_pad_quant_dsl(conv_res, conv_shape, invalid_data_rm_flag, params_dict=remove_pad_params)
             return res_remove_pad
         # quant single op
         conv_res = _cube_compute(data, weight, mad_dtype, tiling=ConvParam.tiling,
                                  optim_dict=optim_dict, bias=bias_tensor)
         res = _v200_l0c2ub(conv_res, res_dtype)
+        if ConvParam.v200_width_out_1_flag:
+            remove_padded_column_shape = conv_shape.copy()
+            remove_padded_column_shape[-2] = remove_padded_column_shape[-2]//2
+            res = remove_padded_column(res, remove_padded_column_shape)
     else:  # float
         no_vector_flag = (not dsl_flag) and (not bias_tensor_flag) # no vec calculation in UB
         conv_res = conv_and_quant_compute(
@@ -2129,12 +2210,21 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             optim_dict=optim_dict, kernel_name=kernel_name)
         res = conv_res
 
+        if ConvParam.v200_width_out_1_flag:
+            remove_padded_column_shape = conv_shape.copy()
+            remove_padded_column_shape[-2] = remove_padded_column_shape[-2]//2
+            conv_res = remove_padded_column(conv_res, remove_padded_column_shape)
+            res = conv_res
+
         if bias_tensor_flag:
             fp16_bias_res = bias_add(conv_res, bias_tensor)
             res = fp16_bias_res
 
     _save_tiling_info_dict(shape_fmap_nc1hwc0, shape_w_nc1hwc0, list(res.shape),
                            in_dtype, w_dtype, res_dtype, bias_tensor_flag, kernel_name)
+
+    if ConvParam.v200_width_out_1_flag:
+        conv_shape[-2] = conv_shape[-2]//2
 
     if dsl_flag:
         res_c = remove_pad_fp16_dsl(res, conv_shape, invalid_data_rm_flag)

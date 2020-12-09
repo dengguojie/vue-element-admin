@@ -289,6 +289,16 @@ def _vector_dequant_v200(x, x_shape, align_shape, deq_scale, relu_flag, conv_fla
                         deq_scale(0, cout1, 0, 0, cout0), dtype="float16", do_relu=relu_flag),
             name="dequant", tag="dequant_vector")
 
+        if x.op.attrs["remove_padded_column_in_next_op"].value == 1:
+            remove_padded_column_shape = align_shape
+            remove_padded_column_shape[-2] = res_shape_nchw_after_removepad[-2].value//2 # remove padded column and pad
+            res_shape_nchw_after_removepad = x.op.attrs["true_conv_shape"]
+            res_f16 = tvm.compute(remove_padded_column_shape,
+                                  lambda batch, cout1, howo, cout0:
+                                      res_f16(batch, cout1, howo*2, cout0),
+                                  name = 'dequant_remove_padded_column',
+                                  tag = 'dequant_remove_padded_column')
+
         if invalid_data_rm_flag:
             res = tvm.compute(res_f16.shape,
                               lambda batch, cout1, howo, cout0:
@@ -429,6 +439,16 @@ def _scalar_dequant_v200(x, x_shape, align_shape, deq_scale, conv_flag):
                                                    cout1 if group == 1 else cout1 % cout1_opt, howo, cout0),
                              deq_scale(0, 0, 0, 0, 0), dtype="float16"),
             name="dequant", tag="dequant_scale")
+
+        if x.op.attrs["remove_padded_column_in_next_op"].value == 1:
+            remove_padded_column_shape = align_shape
+            remove_padded_column_shape[-2] = res_shape_nchw_after_removepad[-2].value//2 # remove padded column
+            res_shape_nchw_after_removepad = x.op.attrs["true_conv_shape"]
+            res_f16 = tvm.compute(remove_padded_column_shape,
+                                  lambda batch, cout1, howo, cout0:
+                                      res_f16(batch, cout1, howo*2, cout0),
+                                  name = 'dequant_remove_padded_column',
+                                  tag = 'dequant_remove_padded_column')
 
         if invalid_data_rm_flag:
             res = tvm.compute(res_f16.shape,

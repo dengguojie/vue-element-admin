@@ -86,6 +86,16 @@ def ascend_dequant_s16_compute(x0, deq_scale, x1, y, relu_flag=False, kernel_nam
 
     if conv_flag:
         res_shape_nchw_after_removepad = x0.op.attrs["conv_shape"]
+
+        if x0.op.attrs["remove_padded_column_in_next_op"].value == 1:
+            res_shape[-2] = res_shape[-2]//2
+            res_shape_nchw_after_removepad = x0.op.attrs["true_conv_shape"]
+            res_ub = tvm.compute(res_shape,
+                                 lambda batch, cout1, howo, cout0:
+                                     res_ub(batch, cout1, howo*2, cout0),
+                                 name = 'dequants16_remove_padded_column',
+                                 tag = 'dequants16_remove_padded_column')
+
         res = tvm.compute(res_shape_nchw_after_removepad,
                           lambda batch, cout1, howo, cout0:
                               res_ub(batch, cout1, howo, cout0),
