@@ -13,6 +13,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 gru
 """
+# pylint: disable=too-many-lines
 import operator
 
 import te.lang.cce as tbe
@@ -140,7 +141,7 @@ def _get_emit_insn_map(tensor):
     return insn
 
 
-def _get_tiling(m_size, k_size, hidden_size):
+def _get_tiling(k_size, hidden_size):
     """
     get tiling
     :return:
@@ -154,7 +155,7 @@ def _get_tiling(m_size, k_size, hidden_size):
     return (1, n_cut, k_cut, 1, n_cut, k_cut)
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals
+# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
 def _check_dtype(input_x, weight, bias, cw, cb, init_h, y, output_h, rg, ig, ng):
     """
     check parameters dtype
@@ -185,8 +186,8 @@ def _check_dtype(input_x, weight, bias, cw, cb, init_h, y, output_h, rg, ig, ng)
         _check_equal_bias_dtype(ng, "n")
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals
-def _check_param(input_x, weight, bias, cw, cb, seq_length, init_h, y, output_h, rg, ig, ng):
+# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
+def _check_param(input_x, weight, bias, cw, cb, seq_length, y, output_h, rg, ig, ng):
     """
     check parameters
     :return:
@@ -248,7 +249,11 @@ def _check_param(input_x, weight, bias, cw, cb, seq_length, init_h, y, output_h,
 
 # pylint: disable=too-many-arguments,too-many-branches,too-many-locals
 def _check_attr(direction, cell_depth, keep_prob, cell_clip, num_proj, time_major,
-                activation, is_training):
+                activation):
+    """
+    check attribute
+    :return:
+    """
     if direction not in ["UNIDIRECTIONAL", "BIDIRECTIONAL"]:
         error_manager_vector.raise_err_check_params_rules("DynamicGRU",
                                                           "direction in ['UNIDIRECTIONAL', 'BIDIRECTIONAL']",
@@ -297,14 +302,17 @@ def dynamic_gru(input_x, weight, bias, cw, cb,
                 cell_clip=-1.0, num_proj=0, time_major=True,
                 activation="tanh", is_training=True,
                 kernel_name="dynamic_gru"):
-
+    """
+    interface of op dynamic_gru
+    :return:
+    """
     _check_dtype(input_x, weight, bias, cw, cb,
-                init_h, y, output_h, rg, ig, ng)
+                 init_h, y, output_h, rg, ig, ng)
     _check_param(input_x, weight, bias, cw, cb,
-                seq_length, init_h, y, output_h, rg, ig, ng)
+                 seq_length, y, output_h, rg, ig, ng)
     _check_attr(direction, cell_depth, keep_prob,
-               cell_clip, num_proj, time_major,
-               activation, is_training)
+                cell_clip, num_proj, time_major,
+                activation)
 
     shape_x_input = input_x.get("shape")
     shape_w_input = weight.get("shape")
@@ -402,17 +410,17 @@ def dynamic_gru(input_x, weight, bias, cw, cb,
                     output_list,
                     [is_gate_output, is_first_round, is_global_init])
 
-    config_map = {
-        "dump_cce_code": False,
-    }
-
     tik_instance.BuildCCE(kernel_name,
                           build_input_list,
-                          build_output_list,
-                          config=config_map)
+                          build_output_list)
 
 
+# pylint: disable=unnecessary-lambda,too-many-statements
 def _dynamic_gru_inner(input_list, custom_list):
+    """
+    inside part of tik loop
+    :return:
+    """
     input_x = input_list[0]
     weight1 = input_list[1]
     weight2 = input_list[2]
@@ -743,8 +751,8 @@ def _dynamic_gru_inner(input_list, custom_list):
             for in_tensor in cur_tensor.op.input_tensors:
                 if in_tensor not in visited_list:
                     stack.append(in_tensor)
-                    if "elewise" in in_tensor.op.tag or "broadcast" == in_tensor.op.tag:
-                        if in_tensor.name.endswith("_ign") :
+                    if "elewise" in in_tensor.op.tag or in_tensor.op.tag == "broadcast":
+                        if in_tensor.name.endswith("_ign"):
                             continue
                         if in_tensor not in tensor_list:
                             tensor_list.append(in_tensor)
@@ -803,7 +811,7 @@ def _dynamic_gru_inner(input_list, custom_list):
 
     # matmul tiling
     factor_l1_m, factor_l1_n, factor_l1_k, factor_l0_m, factor_l0_n, factor_l0_k = \
-        _get_tiling(m_size, k_size, hidden_size)
+        _get_tiling(k_size, hidden_size)
 
     l1_n_outer_1, l1_n_inner_1 = sch[c_l0c_1].split(c_l0c_1.op.axis[2], factor=factor_l1_n)
     l1_m_outer_1, l1_m_inner_1 = sch[c_l0c_1].split(c_l0c_1.op.axis[3], factor=factor_l1_m)

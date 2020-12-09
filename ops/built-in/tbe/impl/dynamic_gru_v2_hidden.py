@@ -13,8 +13,9 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 gru v2 hidden
 """
+# pylint: disable=too-many-lines
 import operator
-from math import ceil
+import math
 
 import te.lang.cce as tbe
 import te.platform as tbe_platform
@@ -156,7 +157,7 @@ def _get_tiling(hidden_size):
     return 1, n_cut, k, 1, n_cut, k
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals
+# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
 def _check_dtype(x_weight_input, weight_hidden, bias_hidden, init_h,
                  y, output_h, update, reset, new, hidden_new):
     """
@@ -188,8 +189,8 @@ def _check_dtype(x_weight_input, weight_hidden, bias_hidden, init_h,
         _check_equal_bias_dtype(hidden_new, "hidden_new")
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals
-def _check_param(x_weight_input, weight_hidden, bias_hidden, seq_length, init_h,
+# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
+def _check_param(x_weight_input, weight_hidden, bias_hidden, seq_length,
                  y, output_h, update, reset, new, hidden_new):
     """
     check parameters
@@ -266,13 +267,16 @@ def dynamic_gru_v2_hidden(x_weight_input, weight_hidden, bias_hidden, seq_length
                           direction="UNIDIRECTIONAL", cell_depth=1, keep_prob=1.0,
                           cell_clip=-1.0, num_proj=0, time_major=True, activation="tanh",
                           gate_order="zrh", reset_after=True, is_training=True, kernel_name="dynamic_gru_v2_hidden"):
-
+    """
+    interface of op
+    :return:
+    """
     _check_dtype(x_weight_input, weight_hidden, bias_hidden, init_h,
                  y, output_h, update, reset, new, hidden_new)
-    _check_param(x_weight_input, weight_hidden, bias_hidden, seq_length, init_h,
+    _check_param(x_weight_input, weight_hidden, bias_hidden, seq_length,
                  y, output_h, update, reset, new, hidden_new)
     check_gru_v2_attr("DynamicGRUV2Hidden", direction, cell_depth, keep_prob,
-                      cell_clip, num_proj, time_major, activation, gate_order, reset_after, is_training)
+                      cell_clip, num_proj, time_major, activation, gate_order, reset_after)
 
     shape_output = y.get("shape")
     m_size = shape_output[2]
@@ -288,7 +292,7 @@ def dynamic_gru_v2_hidden(x_weight_input, weight_hidden, bias_hidden, seq_length
         reuse_type = ReuseType.REUSE_ALL
         _solution(bias_hidden, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type)
     else:
-        is_w_in_l1_cut_core = weight_size / hidden_size * ceil(hidden_size / core_num) < l1_size * 0.75
+        is_w_in_l1_cut_core = weight_size / hidden_size * math.ceil(hidden_size / core_num) < l1_size * 0.75
         if is_w_in_l1_cut_core:
             is_sync = True
             reuse_type = ReuseType.REUSE_AFTERCUT
@@ -299,7 +303,12 @@ def dynamic_gru_v2_hidden(x_weight_input, weight_hidden, bias_hidden, seq_length
             _solution(bias_hidden, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type)
 
 
+# pylint: disable=invalid-name,too-many-statements
 def _solution(bias_hidden, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type):
+    """
+    solutions of op
+    :return:
+    """
     is_gate_output = update is not None
     is_global_init = init_h is not None
     shape_output = y.get("shape")
@@ -395,17 +404,17 @@ def _solution(bias_hidden, init_h, y, update, gate_order, kernel_name, is_sync, 
                 output_list,
                 [is_gate_output, is_first_round, is_global_init, gate_order, fp16_input_output, is_sync, reuse_type])
 
-    config_map = {
-        "dump_cce_code": False,
-    }
-
     tik_instance.BuildCCE(kernel_name,
                           build_input_list,
-                          build_output_list,
-                          config=config_map)
+                          build_output_list)
 
 
+# pylint: disable=too-many-statements,unused-variable,unnecessary-lambda
 def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
+    """
+    inner part of tik loop
+    :return:
+    """
     x_weight_input = input_list[0]
     weight2 = input_list[1]
     bias2 = input_list[2]
@@ -759,7 +768,7 @@ def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
             for in_tensor in cur_tensor.op.input_tensors:
                 if in_tensor not in visited_list:
                     stack.append(in_tensor)
-                    if "elewise" in in_tensor.op.tag or "broadcast" == in_tensor.op.tag:
+                    if "elewise" in in_tensor.op.tag or in_tensor.op.tag == "broadcast":
                         if in_tensor.name.endswith("_ign"):
                             continue
                         if in_tensor not in tensor_list:
@@ -896,7 +905,7 @@ def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
     sch[r_t_1].compute_at(sch[update_h_gm], update_h_gm_outer)
     sch[i_t_1].compute_at(sch[update_h_gm], update_h_gm_outer)
     sch[n_t_1].compute_at(sch[update_h_gm], update_h_gm_outer)
-    
+
     if exceed_ub:
         sch[s_state_h].compute_at(sch[update_h_gm], update_h_gm_outer)
         sch[s_state_h_fp16].compute_at(sch[c_l0c_2], l1_k_outer_2)
