@@ -15,6 +15,7 @@
 """
 util_tik_comm_func
 """
+import math
 from te import tik
 from te import platform as tbe_platform
 from impl import common_util
@@ -278,4 +279,108 @@ def tik_func_vconv(tik_instance, dst_ub, src_ub, do_len, mode="", mini_mid_ub=No
                 tik_func_vconv(tik_instance, dst_ub, tmp_fp16_ub, do_len)
         else:
             do_vconv(8, 8)
+
+
+def ceil_div(tik_instance: tik.Tik, int1, int2):
+    """
+    ceil for (int1 / int2)
+    :param tik_instance: tik instance
+    :param int1: Scalar variable or an immediate
+    :param int2: Scalar variable or an immediate
+    :return: ceil for (int1 / int2)
+    """
+    if isinstance(int1, int) and isinstance(int2, int):
+        return math.ceil(int1 / int2)
+
+    result = tik_instance.Scalar("int64")
+    result.set_as(int1 // int2)
+    with tik_instance.if_scope(int1 % int2 != 0):
+        result.set_as(result + 1)
+
+    return result
+
+
+def ub2ub(tik_instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, count, tail_overlap=True):
+    """
+    move data from ub to ub
+    :param tik_instance: tik instance
+    :param dst: dst ub
+    :param src: src ub
+    :param count: count to move
+    :param tail_overlap: when count is not 32 bytes align, set to allow write overlap the tail count of dst from src.
+            For example, to move 5 count fof float32 data, which is not 32 bytes align,
+            the tail count is 3 (32 // sizeof(float32) - (5 % (32 // sizeof(float32)))),
+            if tail_overlap is `True`, will write more 3 count data at dst to make better performance
+    :return: None
+    """
+    if dst.scope != tik.scope_ubuf or src.scope != tik.scope_ubuf:
+        raise RuntimeError("dst and src must be UB, but dst is {} and src is {}.".format(dst.scope, src.scope))
+
+    if dst.dtype != src.dtype:
+        raise RuntimeError("dst.dtype[{}] != src.dtype[{}].".format(dst.dtype, src.dtype))
+
+    dtype_size = common_util.get_data_size(src.dtype)
+    block_element = constant_util.BLOCK_SIZE // dtype_size
+    if tail_overlap:
+        burst = ceil_div(tik_instance, count, block_element)
+        tik_instance.data_move(dst, src, 0, 1, burst, 0, 0)
+    else:
+        burst = count // block_element
+        with tik_instance.if_scope(burst != 0):
+            tik_instance.data_move(dst, src, 0, 1, burst, 0, 0)
+        new_index = block_element * burst
+        with tik_instance.for_range(new_index, count) as index:
+            dst[index] = src[index]
+
+
+def ub2gm(tik_instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, count, burst=None):
+    """
+    move data from ub to gm
+    :param tik_instance: tik instance
+    :param dst: dst gm
+    :param src: src ub
+    :param count: count to move
+    :param burst: burst to move, if is None, burst=ceil(count / block_element), by default None
+    :return: None
+    """
+    if dst.scope != tik.scope_gm:
+        raise RuntimeError("dst must be global, but dst is {}.".format(dst.scope))
+
+    if src.scope != tik.scope_ubuf:
+        raise RuntimeError("src must be UB, but src is {}.".format(src.scope))
+
+    if dst.dtype != src.dtype:
+        raise RuntimeError("dst.dtype[{}] != src.dtype[{}].".format(dst.dtype, src.dtype))
+
+    dtype_size = common_util.get_data_size(src.dtype)
+    block_element = constant_util.BLOCK_SIZE // dtype_size
+    if burst is None:
+        burst = ceil_div(tik_instance, count, block_element)
+    tik_instance.data_move(dst, src, 0, 1, burst, 0, 0)
+
+
+def gm2ub(tik_instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, count, burst=None):
+    """
+    move data from gm to ub
+    :param tik_instance: tik instance
+    :param dst: dst ub
+    :param src: src gm
+    :param count: count to move
+    :param burst: burst to move, if is None, burst=ceil(count / block_element), by default None
+    :return: None
+    """
+    if dst.scope != tik.scope_ubuf:
+        raise RuntimeError("dst must be UB, but dst is {}.".format(dst.scope))
+
+    if src.scope != tik.scope_gm:
+        raise RuntimeError("src must be global, but src is {}.".format(src.scope))
+
+    if dst.dtype != src.dtype:
+        raise RuntimeError("dst.dtype[{}] != src.dtype[{}].".format(dst.dtype, src.dtype))
+
+    dtype_size = common_util.get_data_size(src.dtype)
+    block_element = constant_util.BLOCK_SIZE // dtype_size
+    if burst is None:
+        burst = ceil_div(tik_instance, count, block_element)
+    tik_instance.data_move(dst, src, 0, 1, burst, 0, 0)
 

@@ -19,17 +19,6 @@ concat
 import te.lang.dynamic
 from te.utils import para_check
 from impl.dynamic.concat_v2_d import concat_v2_d
-from impl.dynamic.concat_v2_d import op_select_format as select_format_concat_v2
-
-
-# pylint: disable=locally-disabled,unused-argument,too-many-branches
-# pylint: disable=too-many-locals,too-many-statements,unused-variable
-# pylint: disable=too-many-boolean-expressions
-def op_select_format(input_values,
-                     output_data,
-                     axis,
-                     kernel_name="concat"):
-    return select_format_concat_v2(input_values, output_data, axis, kernel_name)
 
 
 @te.op.register_operator("ConcatD")
