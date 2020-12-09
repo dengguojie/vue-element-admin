@@ -37,7 +37,7 @@ def _shape_to_list(shape):
 
 def calc_para_from_tensor(inputs, weights, bias, offset_w, strides, pads,
                           dilations, offset_x, groups, kernel_name,
-                          data_format="NCHW"):
+                          data_format="NCHW", options=None):
 
     shape_w = []
     for i in weights.op.attrs['ori_shape']:
@@ -143,7 +143,11 @@ def calc_para_from_tensor(inputs, weights, bias, offset_w, strides, pads,
             use_v200_c04_flg = True
 
     optim_dict = {"c0_optim_flg": c0_optim_flg,
-                  "use_v200_c04_flg": use_v200_c04_flg}
+                  "use_v200_c04_flg": use_v200_c04_flg,
+                  "invalid_data_rm": False}
+
+    if options is not None:
+        optim_dict.update(options)
 
     return para_dict, optim_dict
 

@@ -467,6 +467,7 @@ class ConvParam:
         cls.tiling_query_param.clear()
         cls.convbn1_flag = False
         cls.conv_deq_req_double_out = False
+        cls.invalid_data_rm_flag = False
         cls.swrite_flag = False
         cls.swrite_dequant_flag = False
         cls.conv1d_split_w_flag = False
@@ -605,7 +606,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
 
         cout1_opt = ConvParam.para_dict["cout1_opt"]
         final_c_ub_shape = (ConvParam.para_dict["a_shape"][0],
-                            ConvParam.para_dict["group_opt"]*cout1_opt, howo_mad, config['mac'][2])
+                            DIM_MAP["out_img_shape"][1], howo_mad, config['mac'][2])
         c_ub = tvm.compute(final_c_ub_shape, lambda batch, cout1, howo, cout0: \
                            c_col(0 if group == 1 else cout1 // cout1_opt,
                                  batch,
@@ -969,6 +970,9 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         config = CUBE_MKN[w_dtype]
         ConvParam.mad_shape = mad_shape
 
+        # set height_width value for mad to use.
+        DIM_MAP["out_img_height_width"] = [height_out, width_out]
+
         c_col = _mad_res(l0a_load2d_flag, valid_shape)
 
         TENSOR_MAP["c_col"] = c_col
@@ -978,7 +982,6 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             int_ceil_div(ConvParam.para_dict["weight_ori_shape_nchw"][0], 16),
             ConvParam.h_out*ConvParam.w_out,
             16)
-        DIM_MAP["out_img_height_width"] = [height_out, width_out]
         ConvParam.conv_shape = DIM_MAP["out_img_shape"]
         filter_shape = [out_channel, filter_h, filter_w, 1]
         dim_map1 = im2col_dim(shape_to_list(fmap.shape),
@@ -1001,7 +1004,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         mad_shape = (ConvParam.para_dict["group_opt"],
                      ConvParam.para_dict["a_shape"][0],
                      ConvParam.para_dict["cout1_opt"], howo_mad, config['mac'][2])
-        conv_shape = DIM_MAP["out_img_shape"]
+
         if bias_tensor_flag:
             _, c_col = _cal_bias_res()
 
@@ -1080,7 +1083,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         howo_mad = (height_out*width_out + block_size_m - 1) // block_size_m*block_size_m
         cout1_opt = ConvParam.para_dict["cout1_opt"]
         final_c_ub_shape = (ConvParam.para_dict["a_shape"][0],
-                            cout1_opt*ConvParam.para_dict["group_opt"], howo_mad, config['mac'][2])
+                            DIM_MAP["out_img_shape"][1], howo_mad, config['mac'][2])
         config = CUBE_MKN[w_dtype]
 
         group = ConvParam.para_dict["group"]
@@ -1469,7 +1472,8 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                     axis=[axis_k1, axis_k0]),
             name='mad1',
             tag=OP_TAG + "c_col",
-            attrs={'mode': mode})
+            attrs={'mode': mode,
+                   'remove_pad_M': DIM_MAP["out_img_height_width"][0]*DIM_MAP["out_img_height_width"][1]})
         return c_col
 
     def bias_add(in_tensor0, in_tensor1):
@@ -1518,14 +1522,16 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                                      name='remove_pad' + "_cc_" + str(NAME_INDEX[0]))
         return res_tensor
 
-    def remove_pad_quant_dsl(res, conv_shape):
+    def remove_pad_quant_dsl(res, conv_shape, invalid_data_rm_flag):
         """
         remove pad
         Parameters
         ----------
-        res: input tensor
+        res: input tensor.
 
-        res_remove_pad_shape: true shape
+        conv_shape: true shape.
+
+        invalid_data_rm_flag: True for conv2d without removing pad.
 
         Returns
         -------
@@ -1534,7 +1540,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         NAME_INDEX[0] += 1
         group = ConvParam.para_dict["group"]
         cout1_opt = ConvParam.para_dict["cout1_opt"]
-
+        conv_shape[1] = DIM_MAP["out_img_shape"][1]
         with tvm.tag_scope('conv_vector_remove_pad'):
             res_tensor = tvm.compute(conv_shape,
                                      lambda batch, cout1, howo, cout0:
@@ -1542,27 +1548,39 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                                          batch,
                                          cout1 if group == 1 else cout1 % cout1_opt,
                                          howo, cout0),
-                                     name='remove_pad' + "_cc_" + str(NAME_INDEX[0]), attrs={"conv_shape": conv_shape})
+                                     name='remove_pad' + "_cc_" + str(NAME_INDEX[0]),
+                                     attrs={"conv_shape": conv_shape,
+                                            "invalid_data_rm_flag": int(invalid_data_rm_flag)})
         return res_tensor
 
-    def remove_pad_fp16_dsl(res, conv_shape):
+    def remove_pad_fp16_dsl(res, conv_shape, invalid_data_rm_flag):
         """
         res_c
         Parameters
         ----------
-        res: input tensor
+        res: input tensor.
 
         conv_shape: res_c true shape
+
+        invalid_data_rm_flag: True for conv2d without removing pad.
 
         Returns
         -------
         res_c tensor
         """
-        res_c = tvm.compute(conv_shape,
-                            lambda batch, cout1, howo, cout0:
-                            res(batch, cout1, howo, cout0),
-                            name='C', tag=OP_TAG + "C", attrs={"width_out": ConvParam.w_out, "conv_shape": conv_shape})
-        ConvParam.tensor_map["C"] = res_c
+        if invalid_data_rm_flag:
+            res_c = tvm.compute(res.shape,
+                                lambda batch, cout1, howo, cout0:
+                                res(batch, cout1, howo, cout0),
+                                name='invalid_conv2d_rmpad')
+        else:
+            res_c = tvm.compute(conv_shape,
+                                lambda batch, cout1, howo, cout0:
+                                res(batch, cout1, howo, cout0),
+                                name='C',
+                                tag=OP_TAG + "C",
+                                attrs={"width_out": ConvParam.w_out, "conv_shape": conv_shape})
+            ConvParam.tensor_map["C"] = res_c
         return res_c
 
     def check_optim_dict(optim_dict, para_dict, data, weight):
@@ -2021,7 +2039,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             para_dict["pad_w"] = [pad_w, pad_w]
 
 
-        ''' modification of input parameters only happens here '''
+        # modification of input parameters only happens here.
         if ConvParam.pre_relu_flag:
             dsl_flag = False
 
@@ -2088,12 +2106,16 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                      dynamic_para=_get_dynamic_para(), groups=para_dict['group'])
 
     conv_shape = ConvParam.dim_map["output_conv_res_shape"]
+    if "invalid_data_rm" not in optim_dict:
+        optim_dict["invalid_data_rm"] = False
+    invalid_data_rm_flag = optim_dict["invalid_data_rm"]
+    ConvParam.invalid_data_rm_flag = invalid_data_rm_flag
 
     if in_dtype == "int8":  # quant
         if dsl_flag:  # quant fusion
             conv_res = _cube_compute(data, weight, mad_dtype, \
                 tiling=ConvParam.tiling, optim_dict=optim_dict, bias=bias_tensor)
-            res_remove_pad = remove_pad_quant_dsl(conv_res, conv_shape)
+            res_remove_pad = remove_pad_quant_dsl(conv_res, conv_shape, invalid_data_rm_flag)
             return res_remove_pad
         # quant single op
         conv_res = _cube_compute(data, weight, mad_dtype, tiling=ConvParam.tiling,
@@ -2115,7 +2137,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                            in_dtype, w_dtype, res_dtype, bias_tensor_flag, kernel_name)
 
     if dsl_flag:
-        res_c = remove_pad_fp16_dsl(res, conv_shape)
+        res_c = remove_pad_fp16_dsl(res, conv_shape, invalid_data_rm_flag)
         return res_c
 
     res_remove_pad = remove_pad(res, conv_shape)

@@ -30,8 +30,9 @@ from impl.util import util_conv2d
 MAX_FITLER_HW = 1024
 
 @tbe_platform.fusion_manager.fusion_manager.register("conv2dcompress")
-def conv2dcompress_compute(inputs, weight_compress, compress_index, bias, offset_w, outputs, strides, pads,
-                           dilations, groups=1, data_format='NHWC', offset_x=0, kernel_name="conv2dcompress"):
+def conv2dcompress_compute(inputs, weight_compress, compress_index, bias, offset_w, outputs,
+                           strides, pads, dilations, groups=1, data_format='NHWC', offset_x=0,
+                           kernel_name="conv2dcompress", options=None):
     """
     conv2dcompress compute
 
@@ -75,7 +76,8 @@ def conv2dcompress_compute(inputs, weight_compress, compress_index, bias, offset
     compress_index_shape = compress_index.shape[0]
 
     para_dict, optim_dict = util_conv2d.calc_para_from_tensor(
-        inputs, weight_compress, bias, offset_w, strides, pads, dilations, offset_x, groups, kernel_name, data_format)
+        inputs, weight_compress, bias, offset_w, strides, pads, dilations,
+        offset_x, groups, kernel_name, data_format, options)
 
     if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES") and \
     para_dict["filter_h"] * para_dict["filter_w"] > MAX_FITLER_HW:

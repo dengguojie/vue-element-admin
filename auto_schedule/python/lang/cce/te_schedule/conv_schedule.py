@@ -125,6 +125,37 @@ def get_read_select_srctensor(tensor, tensor_map):
     return tensor_map
 
 
+def delete_op(del_op, body_ops, sch, dtype=None):
+    """
+    delete op from body_ops and inline the dst_buffer tensor.
+
+    Parameters
+    ----------
+    del_op: str
+        Op name.
+    body_ops: dict
+        A dict that contains all ops in the dataflow.
+    sch:
+        Schedule.
+    dtype: str
+        Optional dtype constraint.
+
+    Returns
+    -------
+    None
+    """
+    for i, j in enumerate(body_ops):
+        if dtype:
+            if j["op"] == del_op and j["dst_buffer"].dtype == dtype:
+                sch[j["dst_buffer"]].compute_inline()
+                del body_ops[i]
+                break
+        else:
+            if j["op"] == del_op:
+                sch[j["dst_buffer"]].compute_inline()
+                del body_ops[i]
+                break
+
 def check_conv_bn1(outs):
     """
     check conv + bn1
@@ -242,8 +273,15 @@ def check_doubleout_dequant_v100(outs):
 
     out_fp16, out_s8 = outs
 
-    ori_out_fp16 = out_fp16.op.input_tensors[0] if "write_select" in out_fp16.op.name else out_fp16
-    ori_out_s8 = out_s8.op.input_tensors[0] if "write_select" in out_s8.op.name else out_s8
+    if out_fp16.op.tag in ("write_select", "conv2d_data_rm"):
+        ori_out_fp16 = out_fp16.op.input_tensors[0]
+    else:
+        ori_out_fp16 = out_fp16
+
+    if out_s8.op.tag in ("write_select", "conv2d_data_rm"):
+        ori_out_s8 = out_s8.op.input_tensors[0]
+    else:
+        ori_out_s8 = out_s8
 
     if "quant" not in ori_out_s8.op.tag:
         return False
@@ -1735,7 +1773,12 @@ class CceConvOp:
                         sch[self._res_tensor.op.input_tensors[0].op.input_tensors[0]].double_buffer()
                     else:
                         sch[self._res_tensor.op.input_tensors[0]].double_buffer()
-                if has_vector_flag and not ConvParam.swrite_flag:
+
+                if "inline_res_ub" in ConvParam.tensor_map and double_buffer_flag["UBG_pbuffer"] == 2:
+                    inline_res_ub = ConvParam.tensor_map["inline_res_ub"]
+                    sch[inline_res_ub].double_buffer()
+
+                if has_vector_flag and not ConvParam.swrite_flag and not ConvParam.invalid_data_rm_flag:
                     if double_buffer_flag["UBG_pbuffer"] == 2:
                         if self._fused_flag:
                             if res.op.name != "conv_virtual_res":
@@ -2529,7 +2572,8 @@ class CceConvOp:
 
             if self._lhisi_data_flow_type == DataFlowTypeLhisi.S32TOFP16:
                 if "dequant_remove_pad" not in res.op.tag and "write_select" not in res.op.name and \
-                        not ConvParam.swrite_dequant_flag and not wselect_swrite_flag:
+                        not ConvParam.swrite_dequant_flag and not wselect_swrite_flag and \
+                        not ConvParam.invalid_data_rm_flag:
                     c_ub_res = sch.cache_write(res_c, cce.scope_ubuf)
                     tensor_map["c_ub_res"] = c_ub_res
 
@@ -2553,6 +2597,8 @@ class CceConvOp:
                         self._schedule[lop["dst_buffer"]].compute_inline()
                     else:
                         if lop["dst_buffer"].op.tag != "strided_read":
+                            if ConvParam.invalid_data_rm_flag:
+                                self._schedule[lop["dst_buffer"]].buffer_align((1, 1), (1, 1), (1, 16), (1, 1))
                             self._schedule[lop["dst_buffer"]].compute_at(self._schedule[res_c], m_outer_inner_outer)
             if "c_ub_res" in tensor_map:
                 c_ub_res = tensor_map["c_ub_res"]
@@ -2936,7 +2982,7 @@ class CceConvOp:
                 res ub tensor compute at flag
                 """
                 flag = has_vector_flag and self._fused_flag and res.op.name != "conv_virtual_res" and \
-                not ConvParam.swrite_flag
+                not ConvParam.swrite_flag and not ConvParam.invalid_data_rm_flag
                 return flag
 
             def _fuse_body_ops_compute_at():
@@ -2982,9 +3028,8 @@ class CceConvOp:
                     True means enter into this branch to do comput at.
                     False means go to the next branch to do compute at.
                     """
-                    compute_at_flag = lop["dst_buffer"].op.name != "fmap_l1" and \
-                            lop["dst_buffer"].op.tag not in ("strided_read", "strided_write") and \
-                            lop["dst_buffer"].op.tag != "aipp_res" and lop["dst_buffer"].op.name != "conv_virtual_res"
+                    compute_at_flag = lop["dst_buffer"].op.name not in ("fmap_l1", "conv_virtual_res") and \
+                        lop["dst_buffer"].op.tag not in ("strided_read", "strided_write", "aipp_res", "conv2d_data_rm")
                     return compute_at_flag
 
                 def al1_nparts_flag(lop):
@@ -3811,11 +3856,54 @@ class CceConvOp:
         if is_support_v200() or tensor_map['c_col'].dtype != "int32":
             self._lhisi_data_flow_type = None
 
+        def process_data_rm():
+            """
+            Process tensors that need to be inlined when invalid conv2d remove pad.
+            """
+            res_src = get_srctensor(res)
+            res_src_src = get_srctensor(res_src)
+
+            if ConvParam.invalid_data_rm_flag:
+                if tensor_map["fmap"].dtype == "float16":
+                    delete_op("invalid_conv2d_rmpad", self._op_graph.body_ops, sch)
+                else:
+                    delete_op("invalid_dequant_rmpad", self._op_graph.body_ops, sch)
+
+                if res_src.op.tag == "strided_write":
+                    _, _, swrite_hw, swrite_c0 = list(i.value for i in res.shape)
+                    swrite_stride = res_src.op.attrs["stride"].value
+                    sch[res].bind_buffer(res.op.axis[0],
+                                         swrite_stride*swrite_hw*swrite_c0,
+                                         0)
+                    delete_op("strided_write", self._op_graph.body_ops, sch)
+
+                    # conv_(dequant)_(single_eltwise)_quant_stridedwrite_data_rm
+                    if res_src_src.op.tag == "quant":
+                        delete_op("quant", self._op_graph.body_ops, sch)
+                    # conv_eltwise_stridedwrite_data_rm
+                    else:
+                        ConvParam.tensor_map["inline_res_ub"] = res_src_src
+
+                else: # for only data_rm fusion.
+                    # conv_(dequant)_(single_eltwise)_quant_data_rm
+                    if res_src.op.tag == "quant":
+                        delete_op("quant", self._op_graph.body_ops, sch)
+
+                    # v100 conv_dequant_single_eltwise_quant_data_rm doubleout
+                    if "dequant_doubleout_flag" in tensor_map:
+                        delete_op("quant", self._op_graph.body_ops, sch)
+                        delete_op("conv2d_data_rm", self._op_graph.body_ops, sch, "float16")
+                    # conv_eltwise_data_rm
+                    else:
+                        ConvParam.tensor_map["inline_res_ub"] = res_src
+
+        process_data_rm()
+
         # mark if sread + conv + swrite or conv + swrite
         # to set double operand num as 0
         swrite_onlyconv_flag = False
 
-        if res.op.tag == "strided_write":
+        if res.op.tag == "strided_write" and not ConvParam.invalid_data_rm_flag:
             ConvParam.swrite_flag = True
             _, _, swrite_hw, swrite_c0 = list(
                 i.value for i in res.shape)
@@ -4003,7 +4091,7 @@ class CceConvOp:
         if (has_vector_flag and self._fused_flag and res.op.name != "conv_virtual_res") or \
                 (self._v200_data_flow_type == DataFlowType.V200_GENERAL_FUSION and
                  res.op.name != "conv_virtual_res" and res.op.tag != "quant" and not self._write_select):
-            if not ConvParam.swrite_flag:
+            if not ConvParam.swrite_flag and not ConvParam.invalid_data_rm_flag:
                 res_ub = sch.cache_write(res, cce.scope_ubuf)
                 self._op_graph.output_ops[0]["tensorize_axis"] = self._schedule[res_ub].op.axis[0]
                 self._op_graph.output_ops[0]["dst_buffer"] = res_ub
@@ -4268,7 +4356,7 @@ class CceConvOp:
 
             # add for group pattern
             cout1_group, cout1_ori = sch[sum_x_global].split(
-                sum_x_global.op.axis[0], nparts=ConvParam.para_dict["group_opt"])
+                sum_x_global.op.axis[0], factor=ConvParam.para_dict["cout1_opt"])
             c_rf_outer_outer, c_rf_outer_inner = sch[sum_x_global].split(
                 cout1_ori, (sum_x_global.shape[0].value // c_factor[0]))
             # end for group pattern
@@ -4287,8 +4375,13 @@ class CceConvOp:
             # add for group pattern
             cout1_group_rf, cout1_ori_rf = sch[sum_x_ub_rf].split(
                 sum_x_ub_rf.op.axis[1], nparts=ConvParam.para_dict["group_opt"])
-            c_outer_outer, c_outer_inner = sch[sum_x_ub_rf].split(
-                cout1_ori_rf, (sum_x_ub_rf.shape[1].value // c_factor[0]))
+
+            if ConvParam.para_dict["group_opt"] == 1:
+                c_outer_outer, c_outer_inner = sch[sum_x_ub_rf].split(
+                    cout1_ori_rf, (sum_x_ub_rf.shape[1].value // c_factor[0]))
+            else:
+                c_outer_outer, c_outer_inner = sch[sum_x_ub_rf].split(
+                    cout1_ori_rf, factor=c_tiling_factor[0])
             # end for group pattern
             c_outer_outer_outer, c_outer_outer_inner = sch[sum_x_ub_rf].split(
                 c_outer_outer, factor_ac0)
@@ -4375,10 +4468,13 @@ class CceConvOp:
         else:
             if self._dynamic_mode == "dynamic_hw":
                 cout1_group, cout1_ori = sch[res_c].split(
-                    res_c.op.axis[1], nparts=ConvParam.para_dict["group_opt"])
-                c_outer_outer, c_outer_inner = sch[res_c].split(
-                    cout1_ori, (res_c.shape[1].value // c_factor[0]))
-
+                    res_c.op.axis[1], factor=ConvParam.para_dict["cout1_opt"])
+                if ConvParam.para_dict["group_opt"] == 1:
+                    c_outer_outer, c_outer_inner = sch[res_c].split(
+                        cout1_ori, (res_c.shape[1].value // c_factor[0]))
+                else:
+                    c_outer_outer, c_outer_inner = sch[res_c].split(
+                        cout1_ori, factor=c_tiling_factor[0])
                 # split for mul_core
                 m_mulcore_factor = int_ceil_div(dim_map["out_img_shape"][-2],
                                                 tiling["block_dim"][2])
@@ -4442,9 +4538,13 @@ class CceConvOp:
                     sch[res_c].split(c_outer_outer, nparts=bl1_factor[1])
             else:
                 cout1_group, cout1_ori = sch[res_c].split(
-                    res_c.op.axis[1], nparts=ConvParam.para_dict["group_opt"])
-                c_outer_outer, c_outer_inner = sch[res_c].split(
-                    cout1_ori, (res_c.shape[1].value // c_factor[0]))
+                    res_c.op.axis[1], factor=ConvParam.para_dict["cout1_opt"])
+                if ConvParam.para_dict["group_opt"] == 1:
+                    c_outer_outer, c_outer_inner = sch[res_c].split(
+                        cout1_ori, (res_c.shape[1].value // c_factor[0]))
+                else:
+                    c_outer_outer, c_outer_inner = sch[res_c].split(
+                        cout1_ori, factor=c_tiling_factor[0])
                 m_outer_outer, m_outer_inner = sch[res_c].split(
                     res_c.op.axis[2], c_tiling_factor[1])
                 sch[res_c].reorder(c_outer_outer, m_outer_outer,
@@ -5107,6 +5207,8 @@ class CceConvOp:
                     dma_move_list[0] = "write_select"
                 if "deq_fp16_ws_flag" in ConvParam.tensor_map:
                     dma_move_list[1] = "write_select"
+            if ConvParam.invalid_data_rm_flag:
+                dma_move_list = ["conv2d_data_rm", "res_out_fp16"]
             if ConvParam.swrite_dequant_flag:
                 dma_move_list = ["strided_write", "res_out_fp16"]
             return dma_move_list
@@ -5764,6 +5866,7 @@ class AutoScheduleOp:
             "convolution_C_UB": OpFusionype.CONV,
             "convolution_c_col": OpFusionype.CONV,
             "convolution_C": OpFusionype.CONV,
+            "invalid_conv2d_rmpad": OpFusionype.CONV,
             "convolution_im2col_fractal_convolution_Input": OpFusionype.CONV,
             "convolution__im2col_fractal_convolution_Input": OpFusionype.CONV,
             # for read select
@@ -5819,6 +5922,7 @@ class AutoScheduleOp:
             "output_ub_5d": OpFusionype.DMA_COMMON,
             "write_select": OpFusionype.DMA_COMMON,
             "strided_write": OpFusionype.OP_EMPTY,
+            "conv2d_data_rm": OpFusionype.OP_EMPTY,
             # quant bias
             "convolution_c_col_bias": OpFusionype.BIAS_QUANT,
             "convolution_bias_l0c": OpFusionype.BIAS_QUANT,
@@ -5830,6 +5934,7 @@ class AutoScheduleOp:
             "dequant2_vector": OpFusionype.CONV_DEQUANT,
             "dequant_relu": OpFusionype.CONV_DEQUANT,
             "dequant_remove_pad": OpFusionype.CONV_DEQUANT,
+            "invalid_dequant_rmpad": OpFusionype.CONV_DEQUANT,
             "dequant_scale": OpFusionype.CONV_DEQUANT,
             "dequant_vector": OpFusionype.CONV_DEQUANT,
             # requant
@@ -5882,7 +5987,7 @@ class AutoScheduleOp:
             "requant_s16_data_transfer": OpFusionype.REQUANTS16_OP,
             "res_remove_pad_u8": OpFusionype.DOUBLE_OUT,
             "res_remove_pad_s16": OpFusionype.DOUBLE_OUT,
-            #relu + conv2d
+            # relu + conv2d
             "elewise_single_relu_convolution_A":OpFusionype.AHEAD_ELTWISE_ONE_OP
             }
 
@@ -5892,7 +5997,7 @@ class AutoScheduleOp:
             # fp16
             "fusion_type_1": 1,
             "fusion_type_2_1": 2,
-            # Conv2d+Relu
+            # Conv2d + Relu
             "fusion_type_3_1": 3,
             "fusion_type_3_2_1": 4,
             "fusion_type_4_3_1": 7,
@@ -6066,7 +6171,7 @@ class DataFlowType(Enum):
     S32TOS16: conv + dequantS16
     S16ELTWISES8: conv + dequantS16 + addrelu + requantS16
     S16ELTWISES8S16: conv + dequantS16 + addrelu + requantS16, double output
-    S32TOFP16 : conv + dequant
+    S32TOFP16: conv + dequant
     """
     S32TOS8 = 0
     S32TOS16 = 1

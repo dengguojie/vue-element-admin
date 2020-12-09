@@ -149,7 +149,7 @@ def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
 @tbe_platform.fusion_manager.fusion_manager.register("conv2d")
 def conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads,
                    dilations, groups=1, data_format='NCHW', offset_x=0,
-                   kernel_name="conv2d"):
+                   kernel_name="conv2d", options=None):
     """
     conv2d compute
 
@@ -188,7 +188,7 @@ def conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads,
     """
     para_dict, optim_dict = util_conv2d.calc_para_from_tensor(
         inputs, weights, bias, offset_w, strides, \
-        pads, dilations, offset_x, groups, kernel_name, data_format)
+        pads, dilations, offset_x, groups, kernel_name, data_format, options)
 
     res = tbe.conv(inputs, weights, para_dict, optim_dict)
 
