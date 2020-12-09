@@ -96,11 +96,21 @@ class ScatterUpdate():
         self.updates_tile_ub = None
         self.var_vconv_ub = None
         self.updates_vconv_ub = None
+        self.tiling_ub = None
         self.var_read_index = None
         self.core_loop_index = None
         self.update_value = None
         self.indices_burst_len = None
         self.updates_burst_len = None
+        self.tiling_mode = None
+        self.indice_step = None
+        self.core_num = None
+        self.update_data_num = None
+        self.indices_loop_num = None
+        self.indices_last_num = None
+        self.updates_num = None
+        self.updates_loop_num = None
+        self.updates_last_num = None
 
     def check_input_params(self):
         """
@@ -298,7 +308,7 @@ class ScatterUpdate():
                                             self.updates_burst_len, 0, 0)
             with self.tik_instance.else_scope():
                 self.tik_instance.data_move(self.var_gm[var_loop_index], self.updates_ub, 0, 1,
-                                            self.updates_burst_len-1, 0, 0)
+                                            self.updates_burst_len - 1, 0, 0)
                 self.tik_instance.data_move(self.updates_tile_ub,
                                             self.updates_gm[updates_loop_index + update_num - self.var_data_each_block],
                                             0, 1, 1, 0, 0)
