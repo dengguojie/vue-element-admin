@@ -3808,6 +3808,19 @@ class CceOp:
                     self._schedule[self._compute_at_before_reduce_buffer],
                     self._compute_at_before_reduce_axis)
 
+        # multi_input scene: compute at non_reduce_input to after_reduce_buffer
+        # solve error for fusion scene: cannot find the producer
+        if self._need_compute_at_after and \
+                self._compute_at_after_reduce_axis is not None and \
+                len(read_buffer) > 1:
+            res_shape = self._shape_to_list(self._res_tensor.shape)
+            for i in read_buffer:
+                i_shape = self._shape_to_list(i.shape)
+                if res_shape == i_shape:
+                    self._schedule[i].compute_at(
+                        self._schedule[self._compute_at_after_reduce_buffer],
+                        self._compute_at_after_reduce_axis)
+
     def check_valid_schedule(self):
         """
         check_valid_schedule
