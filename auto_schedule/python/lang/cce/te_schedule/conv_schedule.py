@@ -4924,7 +4924,7 @@ class CceConvOp:
                 mo_block_miner = mo_block - 1
                 m_out = var_map["ho"]*var_map["wo"]
                 tiling_mal0 = tiling["AL0_matrix"][0]
-                if blocks > 1:
+                if blocks > 1 and (get_soc_spec("CORE_NUM") != 30):
                     constraint_extent = tvm.expr.LT(64, tvm.max(tvm.min((tvm.floordiv(
                         ((m_out) + 15), 16) - (tvm.floormod(block.var, (tvm.floordiv(((m_out) - 1), (tvm.floordiv(
                             ((m_out) + mo_block_miner), mo_block)*16)) + 1))*tvm.floordiv(
