@@ -108,7 +108,7 @@ Status BiasaddConvFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
                       return NOT_CHANGED);
     /* The weights will be the weight of BiasAdd node */
   }
- 
+
   ge::OpDescPtr src_op = src_node->GetOpDesc();
   FUSION_PASS_CHECK(src_op == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.",
                                                src_node->GetName().c_str()),
@@ -163,7 +163,7 @@ Status BiasaddConvFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   newDimVec.push_back(newShape);
   ge::GeShape biasShape(newDimVec);
   if (const_input_nodes.empty()) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "Fail to get const node.");
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to get const node.");
     return FAILED;
   }
   ge::NodePtr const_node = const_input_nodes[0];
