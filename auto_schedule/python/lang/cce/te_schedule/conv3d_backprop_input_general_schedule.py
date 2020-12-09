@@ -17,7 +17,7 @@ conv3d backprop input general schedule.
 """
 import te.platform as tbe_platform
 from te.lang.cce.te_compute import util as te_util
-from te.domain.tiling.tiling_query import tiling_query
+from te.domain.tiling.get_tiling import get_tiling
 from te.utils.error_manager import error_manager_util
 from te import tvm
 
@@ -813,27 +813,26 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
                      cddr_depth, cddr_h, cddr_w, cddr_c1 * cdder_c0]
     kd_reduce_flag = bool(len(c_col.op.reduce_axis) == NUM_3)
 
-    # tiling_query
-    tiling = tiling_query(a_shape=img_shape,
-                          b_shape=filter_shape,
-                          c_shape=tiling_output,
-                          a_dtype='float16',
-                          b_dtype='float16',
-                          c_dtype='float16',
-                          mad_dtype='float32',
-                          padl=padl,
-                          padr=padr,
-                          padu=padu,
-                          padd=padd,
-                          padf=pad_head,
-                          padb=pad_tail,
-                          strideh=1, stridew=1,
-                          strideh_expand=stride_h,
-                          stridew_expand=stride_w,
-                          strided=stride_d,
-                          bias_flag=False,
-                          op_tag="conv3d_backprop_input",
-                          kernel_name=c_ddr.op.attrs["kernel_name"].value)
+    info_dict = {
+        "a_shape": img_shape,
+        "b_shape": filter_shape,
+        "c_shape": tiling_output,
+        "a_dtype": 'float16',
+        "b_dtype": 'float16',
+        "c_dtype": 'float16',
+        "mad_dtype": 'float32',
+        "pad": [pad_head, pad_tail, padu, padd, padl, padr],
+        "stride": [stride_d, 1, 1],
+        "strideh_expand": stride_h,
+        "stridew_expand": stride_w,
+        "dilation": [1, 1, 1],
+        "group": 1,
+        "fused_coefficient": [0, 0, 0],
+        "bias_flag": False,
+        "op_type": "conv3d_backprop_input",
+        "kernel_name": c_ddr.op.attrs["kernel_name"].value
+    }
+    tiling = get_tiling(info_dict)
 
     if tiling["AL0_matrix"][2] == DEFAULT_TILING_FLAG:
         tiling = _default_tiling()

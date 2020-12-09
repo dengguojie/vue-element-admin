@@ -17,7 +17,7 @@ conv3d backprop filter schudule.
 """
 import te.platform as tbe_platform
 from te.lang.cce.te_compute import util as te_util
-from te.domain.tiling import tiling_query
+from te.domain.tiling import get_tiling
 from te.utils.error_manager import error_manager_util
 from te import tvm
 
@@ -43,8 +43,8 @@ def _print_ir_conv(process, sch):
     start = process + " IR start"
     end = process + " IR end\n"
     print(start)
-    bounds = InferBound(sch)
-    stmt = ScheduleOps(sch, bounds, True)
+    bounds = tvm.schedule.InferBound(sch)
+    stmt = tvm.schedule.ScheduleOps(sch, bounds, True)
     print(stmt)
     print(end)
 
@@ -458,7 +458,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
 
             if tiling["AL0_matrix"]:
                 if (batch_num_sc == 1) and (full_k_in_l0a == 1):
-                    # L0A data is more than that L0C needed，attach to dw_ddr
+                    # L0A data is more than that L0C needed, attach to dw_ddr
                     sch[grads_fractal].compute_at(sch[dw_ddr], c_grads_mad_at)
                 else:
                     sch[grads_fractal].compute_at(sch[dw_cc], hw_mad_1_mad_at)
@@ -725,31 +725,27 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
 
         sch = sch_list[0]
 
-        tiling = tiling_query.tiling_query(grads_shape,
-                                           fmap_shape,
-                                           weight_shape,
-                                           a_dtype=grads.dtype,
-                                           b_dtype=fmap.dtype,
-                                           c_dtype=dw_cc.dtype,
-                                           mad_dtype=dw_cc.dtype,
-                                           padl=pad_left,
-                                           padr=pad_right,
-                                           padu=pad_up,
-                                           padd=pad_down,
-                                           strideh=stride_height,
-                                           stridew=stride_width,
-                                           strideh_expand=1,
-                                           stridew_expand=1,
-                                           dilationh=dilation_height,
-                                           dilationw=dilation_width,
-                                           group=1,
-                                           fused_double_operand_num=0,
-                                           bias_flag=0,
-                                           op_tag='conv3d_backprop_filter',
-                                           padf=pad_front,
-                                           padb=pad_back,
-                                           strided=stride_depth,
-                                           kernel_name=kernel_name)
+        info_dict = {
+            "a_shape": grads_shape,
+            "b_shape": fmap_shape,
+            "c_shape": weight_shape,
+            "a_dtype": grads.dtype,
+            "b_dtype": fmap.dtype,
+            "c_dtype": dw_cc.dtype,
+            "mad_dtype": dw_cc.dtype,
+            "pad": [pad_front, pad_back, pad_up, pad_down, pad_left,
+                    pad_right],
+            "stride": [stride_depth, stride_height, stride_width],
+            "strideh_expand": 1,
+            "stridew_expand": 1,
+            "dilation": [1, dilation_height, dilation_width],
+            "group": 1,
+            "fused_coefficient": [0, 0, 0],
+            "bias_flag": False,
+            "op_type": "conv3d_backprop_filter",
+            "kernel_name": kernel_name
+        }
+        tiling = get_tiling.get_tiling(info_dict)
 
         _tiling_shape_check()
         _tiling_buffer_check()
