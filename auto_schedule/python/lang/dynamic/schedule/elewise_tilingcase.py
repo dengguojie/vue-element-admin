@@ -64,19 +64,6 @@ def calc(outs, option=None):
 
     mode = operation.get_context().get("mode")
 
-    def is_pure_eletwise(pattern):
-        if pattern and len(pattern) == 1 and pattern[0] == COMMON:
-            return True
- 
-        return False
-
-    def is_special_last_broadcast(pattern):
-        if pattern and tuple(pattern) == (COMMON, BROADCAST):
-            return True
-
-        return False
-
-
     def calc_base_key():
         if mode == SPECIAL:
             pattern = operation.get_context().get_current_compute().get("pattern")
@@ -114,12 +101,16 @@ def calc(outs, option=None):
         return _const_tiling(base_key)
 
     # db handle
-    is_db = False
+    enable_db_func = _default_db_func
     if mode == SPECIAL:
         pattern = operation.get_context().get_current_compute().get("pattern")
-        # db_key
-        if is_pure_eletwise(pattern) or is_special_last_broadcast(pattern):
-            is_db = True
+
+        pattern = tuple(pattern) if pattern else None
+
+        if pattern == (COMMON,):
+            enable_db_func = _pure_eletwise_db_func
+        elif pattern == (COMMON, BROADCAST):
+            enable_db_func = _special_last_broadcast_db_func
 
     outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
     out = outs[0]
@@ -127,9 +118,25 @@ def calc(outs, option=None):
     dim_len = len(shape)
 
     if dim_len == 1:
-        return _calc_one_dim(outs, base_key, is_db)
+        return _calc_one_dim(outs, base_key, enable_db_func)
 
-    return _calc_general(outs, base_key, is_db)
+    return _calc_general(outs, base_key, enable_db_func)
+
+
+def _default_db_func(db_params={}):
+    return False
+
+
+def _pure_eletwise_db_func(db_params={}):
+    return True
+
+
+def _special_last_broadcast_db_func(db_params={}):
+
+    if db_params.get("ub_tiling_axis") == (db_params.get("dim_len") - 1):
+        return True
+    
+    return False
 
 
 def _const_tiling(base_key):
@@ -137,7 +144,7 @@ def _const_tiling(base_key):
     return cases
 
 
-def _calc_one_dim(outs, base_key, is_db=False):
+def _calc_one_dim(outs, base_key, enable_db_func=_default_db_func):
     outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
     out = outs[0]
     dtype = out.dtype
@@ -158,7 +165,7 @@ def _calc_one_dim(outs, base_key, is_db=False):
               "is_need_db": False
               }]
 
-    if is_db:
+    if enable_db_func():
         cases.append({"key": base_key + DB_KEY,
               "block_tiling_axis": 0,
               "ub_tiling_axis": 0,
@@ -171,7 +178,7 @@ def _calc_one_dim(outs, base_key, is_db=False):
     return cases
 
 
-def _calc_general(outs, base_key, is_db=False):
+def _calc_general(outs, base_key, enable_db_func=_default_db_func):
     outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
     cases = []
     out = outs[0]
@@ -197,15 +204,16 @@ def _calc_general(outs, base_key, is_db=False):
                 "tiling_strategy": TilingStrategy.ONE_CUT,
             })
 
-    if is_db:
-        cases.append({
-                "key": base + 1 + DB_KEY,
-                "block_tiling_axis": 0,
-                "ub_tiling_axis": 1,
-                "tiling_strategy": TilingStrategy.ONE_CUT,
-                "is_need_db": True,
-                "is_pure_eletwise": False
-            })
+            db_params = {"ub_tiling_axis": j, "dim_len": dim_len}
+            if enable_db_func(db_params):
+                cases.append({
+                    "key": base + i * dim_len + j + DB_KEY,
+                    "block_tiling_axis": i,
+                    "ub_tiling_axis": j,
+                    "tiling_strategy": TilingStrategy.ONE_CUT,
+                    "is_need_db": True,
+                    "is_pure_eletwise": False
+                })
 
     return cases
 
