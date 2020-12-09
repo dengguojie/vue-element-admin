@@ -528,6 +528,8 @@ class CaseDesign:
                 pyfile, function = expect_str.split(":")
                 utils.print_info_log("The expect data generate python file:%s." % pyfile)
                 utils.check_path_valid(pyfile)
+                if not function:
+                    function = json_obj.get(OP)
             elif length == 1:
                 pyfile = expect_str
                 function = json_obj.get(OP)
