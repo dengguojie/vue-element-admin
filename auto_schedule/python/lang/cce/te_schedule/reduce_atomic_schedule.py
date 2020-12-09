@@ -1223,7 +1223,7 @@ class ReduceAtomicSchedule(VectorSchedule):
 
         last_axis_size = shape_before_reduce[-1]
         is_32b_align = self._is_last_axis_32b_align(last_axis_size, dtype)
-        if not is_32b_align:
+        if not is_32b_align and len(shape_before_reduce) > 1:
             max_ub_count = _update_ub_max_by_align(max_ub_count)
 
         if self._is_supported_atomic_add():
@@ -1241,7 +1241,7 @@ class ReduceAtomicSchedule(VectorSchedule):
                 shape_before_reduce, block_split_axis, block_split_inner,
                 max_ub_count)
 
-        if not is_32b_align:
+        if not is_32b_align and len(shape_before_reduce) > 1:
             self._do_storage_align(shape_before_reduce, reduce_axis_index)
 
         self._need_db = self._is_need_double_buffer(shape_before_reduce,
