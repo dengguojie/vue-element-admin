@@ -617,8 +617,7 @@ REG_OP(Conv2DBackpropFilterD)
 * (top, bottom, left, right) side of the input.
 *@li dilations: Optional. A list of 4 integers. The dilation factor for each
 * dimension of input. The dimension order is determined by the data format of
-* "x". The N and C dimensions must be set to 1. The H and W dimensions must be
-* set to 1 for int8 type. Defaults to [1, 1, 1, 1].
+* "x". The N and C dimensions must be set to 1. Defaults to [1, 1, 1, 1].
 *@li groups: Optional. An integer of type int32. The number of blocked
 * connections from input channels to output channels. In_channels and
 * out_channels must both be divisible by "groups". Defaults to 1.
@@ -822,14 +821,12 @@ REG_OP(Conv2DCompress)
 *@verbatim
     | Name              | Field  | Scope
     --------------------|--------|----------------------------
-    | Input Image Size  | H      | [1, 100000 / H(filter)]
-    |                   | W      | [1, 4096 / W(filter)]
+    | Input Image Size  | H      | [1, 100000 / filter_height]
+    |                   | W      | [1, 4096 / filter_width]
     --------------------|--------|----------------------------
     | Filter Size       | H      | [1, 63]
     |                   | W      | [1, 63]
 @endverbatim
-* H(filter) indicates the filter height after dilation and W(filter) indicates
-* the filter height after dilation.
 *\n
 *
 *@par Outputs:
