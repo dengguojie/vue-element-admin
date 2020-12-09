@@ -128,6 +128,7 @@ class TilingSelection:
         candidates = {}
         repo_seeds = self.op.get_repo_tiling()
         seed_points = set()
+        seed_points_dup = set()
 
         for seed in repo_seeds:
             seed_hw = tuple(seed[self.op.key][2:4])
@@ -139,12 +140,14 @@ class TilingSelection:
                     if seed["A_shape"][0] > 1 and block_dims[0] < seed["A_shape"][0] and \
                             seed["A_shape"][0]*block_dims[1]*block_dims[2] <= CORE_NUM:
                         tiling["block_dim"][0] = seed["A_shape"][0]
+                        block_dims = tiling["block_dim"]
                 if tiling["BL0_matrix"] and tiling["BL1_shape"]:
                     co1 = (seed["B_shape"][0] + C0_SIZE - 1) // C0_SIZE
                     if block_dims[1]*tiling["BL1_shape"][1]*tiling["BL0_matrix"][1]*2 < co1 and \
                             co1 // (tiling["BL1_shape"][1]*tiling["BL0_matrix"][1]*2)*block_dims[0]* \
                             block_dims[2] <= CORE_NUM:
                         tiling["block_dim"][1] = co1 // (tiling["BL1_shape"][1]*tiling["BL0_matrix"][1]*2)
+                        block_dims = tiling["block_dim"]
                 block_nums = block_dims[0]*block_dims[1]*block_dims[2]
                 if block_nums < CORE_NUM and tiling["AL1_shape"]:
                     hout = self.op._get_output_h(seed["A_shape"][2])
@@ -152,11 +155,14 @@ class TilingSelection:
                     tmp = hout*wout // (tiling["AL0_matrix"][0]*C0_SIZE*tiling["AL1_shape"][1]*block_dims[2])
                     if tmp >= 1:
                         tmp = tiling["AL0_matrix"][0]*C0_SIZE*tiling["AL1_shape"][1]
-                        tiling["block_dim"][2] = min((hout*wout + tmp - 1) // tmp, CORE_NUM)
+                        used_core_num = block_dims[0]*block_dims[1]
+                        tiling["block_dim"][2] = min((hout*wout + tmp - 1) // tmp, CORE_NUM // used_core_num)
                 seed["tiling"] = tiling
             seed_range = self.op.get_tiling_range(seed['tiling'], seed[self.op.key])
-            if seed_hw in seed_points or _cal_overlap(seed_range, tgt_area)[0] == 0:
+            if seed_hw in seed_points_dup or _cal_overlap(seed_range, tgt_area)[0] == 0:
+                seed_points_dup.add(seed_hw)
                 continue
+            seed_points_dup.add(seed_hw)
             seed_points.add(seed_hw)
             seed_range = _correct_seed_range(seed_range)
             candidates[next(self.seed_cnt)] = [seed_range, seed['tiling'], seed_hw]
