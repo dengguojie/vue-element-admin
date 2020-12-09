@@ -671,12 +671,12 @@
     },
     {
         "errCode": "E62511",
-        "errMessage": "In op[%s], C0 must be 16,  but actually it is [%s].",
+        "errMessage": "In op[%s], C0 must be 16, but actually it is [%s].",
         "argList": "op_name,shape_c0"
     },
     {
         "errCode": "E64001",
-        "errMessage": "In op[%s], the [%s] must be int and  in range [%s], actual is [%s]",
+        "errMessage": "In op[%s], the [%s] must be int and in range [%s], actual is [%s]",
         "argList": "op_name,attr_name, range, value"
     },
     {
@@ -696,17 +696,17 @@
     },
     {
         "errCode": "E64005",
-        "errMessage": "In op[%s], pads must less than filter In [%s], acthal input of [%s] are [%s] while filter is [%s]",
+        "errMessage": "In op[%s], pads must less than filter In [%s], actual input of [%s] are [%s] while filter is [%s]",
         "argList": "op_name, direction, pads_dir, pads_value, filter_value "
     },
     {
         "errCode": "E64006",
-        "errMessage": "In tiling of op [%s], k of [%s] must be integral multiply of [%s], acutal are [%s] and [%s]",
+        "errMessage": "In tiling of op [%s], k of [%s] must be integral multiply of [%s], actual are [%s] and [%s]",
         "argList": "op_name, param_1, param_2, value_1, value_2"
     },
     {
         "errCode": "E64007",
-        "errMessage": "In tiling of op [%s], [%s] of L1 must be integral multiply of L0,  that mean [%s] must >=1, actual it is [%s]",
+        "errMessage": "In tiling of op [%s], [%s] of L1 must be integral multiply of L0, that mean [%s] must >=1, actual it is [%s]",
         "argList": "op_name, axis_name, param_name, param_value"
     },
     {
@@ -716,7 +716,7 @@
     },
     {
         "errCode": "E64009",
-        "errMessage": "In tiling of op [%s], it has rules: CUB_matrix[1] = CL0_matrix[1],  CUB_matrix[0] is a factor of CL0_matrix[0]",
+        "errMessage": "In tiling of op [%s], it has rules: CUB_matrix[1] = CL0_matrix[1], CUB_matrix[0] is a factor of CL0_matrix[0]",
         "argList": "op_name"
     },
     {
@@ -741,12 +741,12 @@
     },
     {
         "errCode": "E65004",
-        "errMessage": "In op[%s],  deconvolution not support offset_w now.",
+        "errMessage": "In op[%s], deconvolution not support offset_w now.",
         "argList": "op_name"
     },
     {
         "errCode": "E65005",
-        "errMessage": "In op[%s],  [%s] must <= [%s]",
+        "errMessage": "In op[%s], [%s] must <= [%s]",
         "argList": "op_name, param_1, param_2"
     },
     {
