@@ -1767,7 +1767,8 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
                 lambda batch, nb, mb, mp, np: tvm.sum(
                     (
                         tensor_a_l0a[batch, mb, reduce_kb, mp, reduce_kp]
-                        * tensor_b_l0b[batch, reduce_kb, nb, np, reduce_kp]
+                        * (tensor_b_l0b[batch, reduce_kb, nb, np, reduce_kp]
+                        if GEMMParam.batch_b else tensor_b_l0b[reduce_kb, nb, np, reduce_kp])
                     ).astype(out_dtype),
                     axis=[reduce_kb, reduce_kp]
                 ),

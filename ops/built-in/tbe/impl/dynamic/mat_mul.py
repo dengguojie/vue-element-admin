@@ -47,33 +47,6 @@ def _check_format(real_format, expect_format, param_name):
             "mat_mul", param_name, expect_format, real_format)
 
 
-def _check_variable_range(variable, mini, maxi, name):
-    """
-    check variable range, mini <= range[0] <= range[1] <= maxi
-    """
-    if (not isinstance(variable[0], int)) or variable[0] < mini or variable[0] > maxi:
-        dict_args = dict()
-        dict_args["errCode"] = "E80002"
-        dict_args["param_name"] = name
-        dict_args["min_value"] = str(mini)
-        dict_args["max_value"] = str(maxi)
-        dict_args["value"] = str(variable)
-        raise RuntimeError(
-            dict_args, error_manager_util.get_error_message(dict_args))
-    if (not isinstance(variable[1], int)) or variable[1] < mini or variable[1] > maxi:
-        dict_args = dict()
-        dict_args["errCode"] = "E80002"
-        dict_args["param_name"] = name
-        dict_args["min_value"] = str(mini)
-        dict_args["max_value"] = str(maxi)
-        dict_args["value"] = str(variable)
-        raise RuntimeError(
-            dict_args, error_manager_util.get_error_message(dict_args))
-    if variable[0] > variable[1]:
-        error_reson = name + " is not valid"
-        error_manager_vector.raise_err_specific_reson("mat_mul", error_reson)
-
-
 def _check_relation_range(range1, range2, name):
     """
     check range is unite from different variable
@@ -110,11 +83,15 @@ def _get_input_range(range_x1, range_x2, trans_a, trans_b):
         error_manager_vector.raise_err_specific_reson(
             "mat_mul", "length of x2_range must be 4"
         )
-    
-    # check range unite in different var
-    _check_relation_range(k_range_x1, k_range_x2, "k")
 
-    return [m_range, k_range_x1, n_range]
+    # check range unite in different var
+    if k_range_x1[1] is not None and k_range_x2[1] is not None:
+        _check_relation_range(k_range_x1, k_range_x2, "k")
+        k_range = k_range_x1
+    else:
+        k_range = k_range_x1 if k_range_x1[1] is not None else k_range_x2
+
+    return [m_range, k_range, n_range]
 
 
 def _check_dynamic_mode(shape_x1, shape_x2):
@@ -131,9 +108,9 @@ def _check_dynamic_mode(shape_x1, shape_x2):
             "mat_mul", "x2", "ori_shape dim must be 2"
         )
 
-    if list(shape_x1) != [DYNAMIC_FLAG, DYNAMIC_FLAG] or list(shape_x2) != [DYNAMIC_FLAG, DYNAMIC_FLAG]:
+    if all([i != DYNAMIC_FLAG for i in shape_x1]) and all([i != DYNAMIC_FLAG for i in shape_x2]):
         error_manager_vector.raise_err_specific_reson(
-            "mat_mul", "dynamic must be in m,k,n at the same time"
+            "mat_mul", "dynamic must at least one in m,k,n"
         )
 
 
@@ -238,9 +215,6 @@ def _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y, trans_a, tran
     )
 
     m_range, k_range, n_range = input_range
-    _check_variable_range(m_range, MKN_MIN, MKN_MAX, "m_range")
-    _check_variable_range(k_range, MKN_MIN, MKN_MAX, "k_range")
-    _check_variable_range(n_range, MKN_MIN, MKN_MAX, "n_range")
 
     shape_x1_nz = [DYNAMIC_FLAG, DYNAMIC_FLAG, BLOCK_CUBE, BLOCK_CUBE]
     shape_x2_nz = [DYNAMIC_FLAG, DYNAMIC_FLAG, BLOCK_CUBE, BLOCK_CUBE]

@@ -94,6 +94,7 @@ class Params:
             with build_config:
                 start = process + " IR start"
                 end = process + " IR end\n"
+                sch = sch.normalize()
                 print(start)
                 bounds = tvm.schedule.InferBound(sch)
                 stmt = tvm.schedule.ScheduleOps(sch, bounds, True)
@@ -105,8 +106,11 @@ def _is_int82fp32_nd():
     return Params.TENSOR_MAP.get("tensor_a_float16_normalize_ub") is not None
 
 
-def _get_value(object):
-    return object.value if hasattr(object, "value") else object
+def _get_value(shape_object):
+    """
+    get the value of shape object when having attr value
+    """
+    return shape_object.value if hasattr(shape_object, "value") else shape_object
 
 
 def _get_ops_mode():
@@ -918,7 +922,7 @@ def _get_tiling(kernel_name):  # pylint: disable=too-many-statements
         c_type = Params.TENSOR_MAP["c_gm"].dtype
         a_shape, b_shape, pad_l, pad_r, fused_num = get_tiling_param_nz()
         mad_type = Params.MAD_TYPE.get(Params.ops_mode)
-
+        bias_flag = Params.MAT_MUL and Params.TENSOR_MAP.get("bias_ub") is not None
         info_dict = {
             "op_type": "matmul",
             "A_shape": a_shape,
@@ -939,7 +943,7 @@ def _get_tiling(kernel_name):  # pylint: disable=too-many-statements
             "dilationH": 1,
             "dilationW": 1,
             "group": 1,
-            "bias_flag": 0,
+            "bias_flag": bias_flag,
             "fused_double_operand_num": fused_num,
             "kernel_name": kernel_name.value
         }
@@ -1561,8 +1565,7 @@ def _get_l0c_and_l1_axis(  # pylint: disable=too-many-locals, too-many-arguments
     c_gm,
     l0c_factor,
     al1_parts,
-    bl1_parts,
-    batch=None
+    bl1_parts
 ):
     """
     get l0c and l1 axis
@@ -1572,9 +1575,8 @@ def _get_l0c_and_l1_axis(  # pylint: disable=too-many-locals, too-many-arguments
     :param sch: schedule
     :param c_gm: op
     :param l0c_factor: tilling factor for l0c
-    :param al1_parts: tilling factor for al1
-    :param bl1_parts: tilling factor for bl1
-    :param batch_in_axis: tilling factor for batch
+    :param al1_parts: tilling parts for al1
+    :param bl1_parts: tilling parts for bl1
     -------------------------------------------------------------------
     """
 
@@ -1606,8 +1608,8 @@ def _get_l0c_and_l1_axis(  # pylint: disable=too-many-locals, too-many-arguments
         return reorder_flag
 
     # split c_gm according to factor of loc and out_shape
-    l0c_n_outer, l0c_n_inner = sch[c_gm].split(c_gm.op.axis[0], l0c_factor[0])
-    l0c_m_outer, l0c_m_inner = sch[c_gm].split(c_gm.op.axis[1], l0c_factor[1])
+    l0c_n_outer, l0c_n_inner = sch[c_gm].split(c_gm.op.axis[-4], l0c_factor[0])
+    l0c_m_outer, l0c_m_inner = sch[c_gm].split(c_gm.op.axis[-3], l0c_factor[1])
     sch[c_gm].reorder(l0c_n_outer, l0c_m_outer, l0c_n_inner, l0c_m_inner)
     # split c_gm according to factor of a_l1 and b_l1
     l1_m_outer_outer, l1_m_outer_inner = sch[c_gm].split(
@@ -1615,9 +1617,12 @@ def _get_l0c_and_l1_axis(  # pylint: disable=too-many-locals, too-many-arguments
     )
     l1_n_outer_outer, cl1_out_inner = sch[c_gm].split(l0c_n_outer, nparts=bl1_parts[1])
 
-    # zN type not batch axis, so make one
-    if not batch:
+    # get batch axis, if batch is None, make one
+    if len(c_gm.shape) > 4:
+        batch = c_gm.op.axis[0]
+    else:
         batch, l1_n_outer_outer = sch[c_gm].split(l1_n_outer_outer, nparts=1)
+
     bl1_at_c_axis = l1_n_outer_outer
     al1_at_c_axis = l1_m_outer_outer
     c_slice_axis = l1_m_outer_inner
@@ -1664,8 +1669,8 @@ def _get_l0c_and_l1_axis_dynamic(   # pylint: disable=too-many-locals, too-many-
     :param sch: schedule
     :param c_gm: op
     :param l0c_factor: tilling factor for l0c
-    :param al1_parts: tilling factor for al1
-    :param bl1_parts: tilling factor for bl1
+    :param al1_factor: tilling factor for al1
+    :param bl1_factor: tilling factor for bl1
     -------------------------------------------------------------------
     """
 
@@ -1714,15 +1719,19 @@ def _get_l0c_and_l1_axis_dynamic(   # pylint: disable=too-many-locals, too-many-
         return batch_out[1], n_out[1], m_out[1], blockidx
 
     # split c_gm according to factor of l0c and out_shape
-    l0c_n_outer, l0c_n_inner = sch[c_gm].split(c_gm.op.axis[0], l0c_factor[0])
-    l0c_m_outer, l0c_m_inner = sch[c_gm].split(c_gm.op.axis[1], l0c_factor[1])
+    l0c_n_outer, l0c_n_inner = sch[c_gm].split(c_gm.op.axis[-4], l0c_factor[0])
+    l0c_m_outer, l0c_m_inner = sch[c_gm].split(c_gm.op.axis[-3], l0c_factor[1])
     sch[c_gm].reorder(l0c_n_outer, l0c_m_outer, l0c_n_inner, l0c_m_inner)
 
     # split c_gm according to factor of a_l1 and b_l1
     l1_m_outer_outer, l1_m_outer_inner = sch[c_gm].split(l0c_m_outer, al1_factor[1])
     l1_n_outer_outer, l1_n_outer_inner = sch[c_gm].split(l0c_n_outer, bl1_factor[1])
 
-    batch, l1_n_outer_outer = sch[c_gm].split(l1_n_outer_outer, nparts=1)
+    # get batch axis, if batch is None, make one
+    if len(c_gm.shape) > 4:
+        batch = c_gm.op.axis[0]
+    else:
+        batch, l1_n_outer_outer = sch[c_gm].split(l1_n_outer_outer, nparts=1)
 
     batch_in, m_block_in, n_block_in, _ = _bind_multi_core_dynamic()
     bl1_at_c_axis = n_block_in
@@ -1998,70 +2007,34 @@ def get_tiling_param_nz():
     b_type = Params.TENSOR_MAP["b_placehold"].dtype
     c_type = Params.TENSOR_MAP["c_gm"].dtype
 
-    ori_a_shape = Params.DIM_MAP["a_shape"]
-    ori_b_shape = Params.DIM_MAP["b_shape"]
-    block_reduce = ((2 if (a_type == "int8" and c_type == "float32") else 1)
-                    * Params.block_reduce)
-    if Params.trans_a:
-        index_m = 0
-        index_km = 1
-    else:
-        index_m = 1
-        index_km = 0
-
-    # when b_type is float16, format is Nz
-    # when b_type is int8, format is Zz
-    # so index_n and index_kn may need interchange
-    if b_type == "float16":
-        index_n = 1
-        index_kn = 0
-    else:
-        index_n = 0
-        index_kn = 1
-
-    if Params.trans_b:
-        index_n, index_kn = index_kn, index_n
-
-    if len(ori_a_shape) == 2:
-        a_shape_Nz = [
-            ori_a_shape[1] // block_reduce,
-            ori_a_shape[0] // Params.block_in,
-            Params.block_in,
-            block_reduce
-            ]
-    else:
-        a_shape_Nz = ori_a_shape
-
-
-    if len(ori_b_shape) == 2:
-        b_shape_Nz = [
-            ori_b_shape[1] // Params.block_out,
-            ori_b_shape[0] // block_reduce,
-            block_reduce,
-            Params.block_out
-            ]
-    else:
-        b_shape_Nz = ori_b_shape
+    l0a_shape = Params.DIM_MAP["A_matrix_dim"]
+    l0b_shape = Params.DIM_MAP["B_matrix_dim"]
 
     a_shape = [
         1,
-        a_shape_Nz[index_km],
-        a_shape_Nz[index_m],
+        l0a_shape[-3],
+        l0a_shape[-4],
         Params.block_in,
-        block_reduce
+        Params.block_reduce
     ]
     b_shape = [
-        b_shape_Nz[index_n] * block_reduce,
-        b_shape_Nz[index_kn],
+        l0b_shape[-4] * Params.block_reduce,
+        l0b_shape[-3],
         1,
         1,
         Params.block_out
     ]
 
+    if len(l0a_shape) == 5:
+        a_shape[0] = l0a_shape[0]
+    if (a_type == "int8" and c_type == "float32"):
+        a_shape[1] //= 2
+        a_shape[4] *= 2
+
     pad_l = 0
     pad_r = 0
     fused_num = 0
-    if not Params.cube_vector_split:
+    if not Params.cube_vector_split and not Params.MAT_MUL:
         pad_l = Params.AUB_FUSED_NUM.get(Params.ops_mode)
         pad_r = Params.BUB_FUSED_NUM.get(Params.ops_mode)
         fused_num = Params.CUB_FUSED_NUM.get(Params.ops_mode)
@@ -2155,7 +2128,6 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
     sch = sch_list[0]
     if in_dynamic():
         Params.is_dynamic = True
-
     _set_data_layout_enter(res, sch)
 
     Params().print_ir_matmul("orgin", sch)
@@ -3617,12 +3589,8 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
             sch[c_add_bias].compute_at(sch[c_gm], c_slice_axis)
         sch[c_l0c].compute_at(sch[c_gm], c_slice_axis)
 
-        new_c_col_axis = [
-            sch[c_l0c].op.axis[0],
-            sch[c_l0c].op.axis[1],
-            sch[c_l0c].op.axis[2],
-            sch[c_l0c].op.axis[3]
-        ]
+        new_c_col_axis = sch[c_l0c].op.axis[-4:]
+
         al0_m_outer, bl0_n_outer, k_outer_outer, bl0_n_inner = _get_l0a_and_l0b_axis(
             sch,
             c_l0c,
