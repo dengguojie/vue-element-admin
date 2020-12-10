@@ -30,6 +30,7 @@
 #include <nlohmann/json.hpp>
 #include "register/op_tiling_registry.h"
 #include "op_log.h"
+#include "graph/debug/ge_log.h"
 
 using namespace std;
 
@@ -55,16 +56,16 @@ bool g_##optype##_TilingEntry(const TeOpParas& para, const OpCompileInfo& cinfo,
         std::shared_ptr<ParsedOpCompileInfo> parsed_compile_info = parsed_compile_info_storage.at(hash_key);          \
         std::shared_ptr<void> parsed_object_ptr = parsed_compile_info->parsed_object;                                 \
         nlohmann::json* parsed_object = static_cast<nlohmann::json*>(parsed_object_ptr.get());                        \
-	if (prof_switch) {                                                                                            \
-	    before_tiling = std::chrono::steady_clock::now();                                                         \
-	}                                                                                                             \
-	bool result = opfunc(para.op_type, para, *parsed_object, rinfo);                                              \
-	if (prof_switch) {                                                                                            \
+        if (prof_switch) {                                                                                            \
+            before_tiling = std::chrono::steady_clock::now();                                                         \
+        }                                                                                                             \
+        bool result = opfunc(para.op_type, para, *parsed_object, rinfo);                                              \
+        if (prof_switch) {                                                                                            \
             after_tiling = std::chrono::steady_clock::now();                                                          \
-	    uint64_t t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - start_tiling).count(); \
-	    uint64_t t1 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - before_tiling).count();\
-	    GE_D_OP_LOGEVT("[OPTILING_PROF] op_name: %s, total_us: %d, tiling_us: %d", para.op_type.c_str(), t0, t1); \
-	}                                                                                                             \
+            uint64_t t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - start_tiling).count(); \
+            uint64_t t1 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - before_tiling).count();\
+            GEEVENT("[OPTILING_PROF] op_name: %s, total_us: %d, tiling_us: %d", para.op_type.c_str(), t0, t1);        \
+        }                                                                                                             \
         return result;                                                                                                \
     }                                                                                                                 \
     const std::string& cinfo_str = cinfo.str;                                                                         \
@@ -79,9 +80,9 @@ bool g_##optype##_TilingEntry(const TeOpParas& para, const OpCompileInfo& cinfo,
     bool result = opfunc(para.op_type, para, *parsed_object, rinfo);                                                  \
     if (prof_switch) {                                                                                                \
         after_tiling = std::chrono::steady_clock::now();                                                              \
-	uint64_t t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - start_tiling).count();     \
-	uint64_t t1 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - before_tiling).count();    \
-	GE_D_OP_LOGEVT("[OPTILING_PROF] op_name: %s, total_us: %d, tiling_us: %d", para.op_type.c_str(), t0, t1);     \
+        uint64_t t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - start_tiling).count();     \
+        uint64_t t1 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - before_tiling).count();    \
+        GEEVENT("[OPTILING_PROF] op_name: %s, total_us: %d, tiling_us: %d", para.op_type.c_str(), t0, t1);            \
     }                                                                                                                 \
     return result;                                                                                                    \
 }                                                                                                                     \
