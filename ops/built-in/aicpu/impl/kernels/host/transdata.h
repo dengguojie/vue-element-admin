@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef _AICPU_TRANSDATA_KERNEL_H_
-#define _AICPU_TRANSDATA_KERNEL_H_
+#ifndef AICPU_KERNELS_HOST_TRANSDATA_H_
+#define AICPU_KERNELS_HOST_TRANSDATA_H_
 
 #include "cpu_kernel.h"
 
