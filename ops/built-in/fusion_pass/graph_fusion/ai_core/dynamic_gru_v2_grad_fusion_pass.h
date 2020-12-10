@@ -31,16 +31,12 @@ class DynamicGRUV2GradFusionPass : public PatternFusionBasePass {
   void AddHiddenGradNodeEdge(map<std::string, ge::NodePtr>& inputNodes, ge::NodePtr hiddenGradNode,
                              ge::NodePtr matmulGradNode, ge::NodePtr lastHiddenGradNode, ge::NodePtr lastMatmulNode,
                              ge::NodePtr dynamicGRUGradNode, int64_t curT);
-  void AddSplitTInputNodeDesc(ge::OpDescPtr hiddenGradDesc, ge::OpDescPtr dynamicGRUGradDesc, const std::string& name);
-  int64_t GetTState(int64_t curT);
   ge::NodePtr AddOneHiddenGradNode(const string& gateOrder, int64_t curT, ge::NodePtr dynamicGRUGradNode,
                                    ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes, bool& failStatus);
   ge::NodePtr AddOneHiddenGradMatmulNode(int64_t curT, ge::NodePtr hiddenGradNode, ge::NodePtr dynamicGRUGradNode,
                                          ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes, bool& failStatus);
   vector<vector<ge::NodePtr>> AddTLoopNode(map<std::string, ge::NodePtr>& inputNodes, ge::NodePtr dynamicGRUGradNode,
                                            ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes, bool& failStatus);
-  ge::NodePtr AddTSplitNode(const string& nodeName, const string& inputName, ge::NodePtr dynamicGRUGradNode,
-                            ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes, bool& failStatus);
   ge::NodePtr AddTConcatNode(const string& nodeName, const string& inputName, vector<int64_t> fzDims,
                              ge::NodePtr dynamicGRUGradNode, vector<ge::NodePtr>& srcNodes, ge::ComputeGraph& graph,
                              vector<ge::NodePtr>& newNodes, bool& failStatus);

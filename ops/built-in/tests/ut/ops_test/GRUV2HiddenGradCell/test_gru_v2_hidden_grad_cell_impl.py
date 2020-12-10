@@ -54,7 +54,10 @@ def gen_gru_v2_hidden_grad_precision_case(shape_val, dtype, t_state=0):
     #init_h = {"shape": (output_dim, batch, 16, 16), "dtype": dtype, "param_type": "input",
     #          "value": gru_dict["init_h"]}
     # h = {"shape": (t, output_dim, batch, 16, 16), "dtype": dtype, "param_type": "input", "value": gru_dict["h"]}
-    h = {"shape": (output_dim, batch, 16, 16), "dtype": dtype, "param_type": "input", "value": gru_dict["init_h"]}
+    if t_state == t - 1:
+        h = {"shape": (output_dim, batch, 16, 16), "dtype": dtype, "param_type": "input", "value": gru_dict["init_h"]}
+    else:
+        h = {"shape": (t, output_dim, batch, 16, 16), "dtype": dtype, "param_type": "input", "value": gru_dict["h"]}
     dy = {"shape": (t, output_dim, batch, 16, 16), "dtype": dtype, "param_type": "input", "value": gru_dict["dy"]}
     dh = {"shape": (output_dim, batch, 16, 16), "dtype": dtype, "param_type": "input", "value": gru_dict["dh"]}
     update = {"shape": (t, output_dim, batch, 16, 16), "dtype": dtype, "param_type": "input",
@@ -66,6 +69,7 @@ def gen_gru_v2_hidden_grad_precision_case(shape_val, dtype, t_state=0):
                   "value": gru_dict["hidden_new"]}
     dh_pre_t = {"shape": (t, output_dim, batch, 16, 16), "dtype": dtype, "param_type": "input", "value": gru_dict["dh_pre_t"]}
 
+    # output
     dh_prev = {"shape": (output_dim, batch, 16, 16), "dtype": dtype, "param_type": "output",
                "valuey": gru_dict["dh_prev"]}
     dgate_h = {"shape": (t, 3 * output_dim, batch, 16, 16), "dtype": dtype, "param_type": "output",

@@ -24,23 +24,26 @@ from impl.tik_op_base import TikOpBase
 OP_NAME = "GRUV2HiddenGradCell"
 
 
+# pylint: disable=too-many-arguments
 def _check_dtype(dh_pre_t, h, dy, dh, update, reset, new, hidden_new):
     """
-    check parameters dtype
+    check parameters type
     """
     para_check.check_dtype(dh_pre_t["dtype"], ["float16", "float32"], "dh_pre_t")
     para_check.check_dtype(h["dtype"], ["float16", "float32"], "h")
     para_check.check_dtype(dy["dtype"], ["float16", "float32"], "dy")
+    para_check.check_dtype(dh["dtype"], ["float16", "float32"], "dh")
     para_check.check_dtype(update["dtype"], ["float16", "float32"], "update")
     para_check.check_dtype(reset["dtype"], ["float16", "float32"], "reset")
     para_check.check_dtype(new["dtype"], ["float16", "float32"], "new")
     para_check.check_dtype(hidden_new["dtype"], ["float16", "float32"], "hidden_new")
 
 
+# pylint: disable=too-many-arguments,invalid-name
 def _check_param(dh_pre_t, h, dy, dh, update, reset, new, hidden_new):
     """
     check parameters
-    """  
+    """
     para_check.check_shape_size(dh_pre_t["shape"])
     para_check.check_shape_size(h["shape"])
     para_check.check_shape_size(dy["shape"])
@@ -51,22 +54,22 @@ def _check_param(dh_pre_t, h, dy, dh, update, reset, new, hidden_new):
     para_check.check_shape_size(hidden_new["shape"])
 
 
-def _check_attr(gate_order, t_state):
+def _check_attr(gate_order):
     """
     check attr
     """
     if gate_order not in ['zrh', 'rzh']:
         rule_desc = "gate_order should be zrh or rzh, but current attr is " + gate_order
         error_manager_vector.raise_err_check_params_rules(OP_NAME, rule_desc, 'gate_order', gate_order)
-    if t_state not in [0, 1, 2, 3, 4]:
-        error_manager_vector.raise_err_input_param_range_invalid(OP_NAME, 't_state', 0, 4, t_state)
 
 
+# pylint: disable=too-many-instance-attributes
 class GRUHiddenGradCell(TikOpBase):
     """ GRUHiddenGradCell
     """
-    def __init__(self, tik_instance, dh_pre_t, h, dy, dh, update, reset, new, hidden_new,
-                 dh_prev, d_gate_h, dnt_x, t_state, gate_order, kernel_name):
+    # pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
+    # pylint: disable=too-many-locals,invalid-name,too-many-arguments
+    def __init__(self, tik_instance, h, dy, dnt_x, t_state, gate_order, kernel_name):
         """ init GRUHiddenGradCell
         """
         super(GRUHiddenGradCell, self).__init__(tik_instance)
@@ -77,20 +80,29 @@ class GRUHiddenGradCell(TikOpBase):
         self.ub_byte_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
         # [1, output_dim, batch, 16, 16]
         shape = dnt_x["shape"]
+        self.t_size = dy["shape"][0]
         self.fuse_size = self.get_shape_size(shape)
         fuse_shape = (self.fuse_size,)
+        t_fuse_shape = (self.t_size, self.fuse_size)
         self.dtype = h["dtype"]
         self.input_data_size = self.get_data_size(self.dtype)
+        # t offset for dy, update, reset, new, hidden_new
+        self.t_offset = self.t_size - self.t_state - 1
+        # ht offset for h
+        self.ht_offset = 0 if self.t_size == 1 else self.t_size - self.t_state - 2
 
         # input
         self.dh_pre_t = self.tik_instance.Tensor(self.dtype, fuse_shape, tbe_platform.scope_gm, "dh_pre_t")
-        self.h = self.tik_instance.Tensor(self.dtype, fuse_shape, tbe_platform.scope_gm, "h")
-        self.dy = self.tik_instance.Tensor(self.dtype, fuse_shape, tbe_platform.scope_gm, "dy")
-        self.dh = self.tik_instance.Tensor(self.dtype, fuse_shape, tbe_platform.scope_gm, "dh")
-        self.i2 = self.tik_instance.Tensor(self.dtype, fuse_shape, tbe_platform.scope_gm, "update")
-        self.r2 = self.tik_instance.Tensor(self.dtype, fuse_shape, tbe_platform.scope_gm, "reset")
-        self.n2 = self.tik_instance.Tensor(self.dtype, fuse_shape, tbe_platform.scope_gm, "n2")
-        self.n2_mid = self.tik_instance.Tensor(self.dtype, fuse_shape, tbe_platform.scope_gm, "hidden_new")
+        if self.t_state == self.t_size - 1:
+            self.h = self.tik_instance.Tensor(self.dtype, fuse_shape, tbe_platform.scope_gm, "h")
+        else:
+            self.h = self.tik_instance.Tensor(self.dtype, t_fuse_shape, tbe_platform.scope_gm, "h")
+        self.dy = self.tik_instance.Tensor(self.dtype, t_fuse_shape, tbe_platform.scope_gm, "dy")
+        self.dh = self.tik_instance.Tensor(self.dtype, t_fuse_shape, tbe_platform.scope_gm, "dh")
+        self.i2 = self.tik_instance.Tensor(self.dtype, t_fuse_shape, tbe_platform.scope_gm, "update")
+        self.r2 = self.tik_instance.Tensor(self.dtype, t_fuse_shape, tbe_platform.scope_gm, "reset")
+        self.n2 = self.tik_instance.Tensor(self.dtype, t_fuse_shape, tbe_platform.scope_gm, "n2")
+        self.n2_mid = self.tik_instance.Tensor(self.dtype, t_fuse_shape, tbe_platform.scope_gm, "hidden_new")
 
         # output
         self.dh_prev = self.tik_instance.Tensor(self.dtype, fuse_shape, tbe_platform.scope_gm, "dh_prev")
@@ -108,13 +120,10 @@ class GRUHiddenGradCell(TikOpBase):
         output_list = (self.dh_prev, self.d_gate_h, self.dnt_x)
         self.tik_instance.BuildCCE(self.kernel_name, input_list, output_list, config=config_map)
 
+    # pylint: disable=too-many-locals,too-many-statements,invalid-name
     def _do_compute(self, input_offset, ele_num):
         """
-        t_state: 0 means cur_t == 0 and t_sum = 1 (input )
-        t_state: 1 means cur_t == 0 and t_sum > 1
-        t_state: 2 means cur_t > 0 and cur_t < t_sum - 1
-        t_state: 3 means cur_t == t_sum - 1 and t_sum > 1
-        t_state: 4 means cur_t == t  (output dh_prev)
+        do compute
         """
         shape = (ele_num, )
         dh = self.tik_instance.Tensor(self.dtype, shape, tbe_platform.scope_ubuf, "dh")
@@ -123,17 +132,17 @@ class GRUHiddenGradCell(TikOpBase):
             dh_pre_t = self.tik_instance.Tensor(self.dtype, shape, tbe_platform.scope_ubuf, "dh_pre_t")
             self.move_data(dh_pre_t, self.dh_pre_t[input_offset], self.dtype, shape)
             self.vadd_func(dh, dh, dh_pre_t, shape)
-        if self.t_state == 4:
+        if self.t_state == self.t_size:
             # just cal dh + dh_pre_t in last cell
             self.move_data(self.dh_prev[input_offset], dh, self.dtype, shape)
             return
 
         dy = self.tik_instance.Tensor(self.dtype, shape, tbe_platform.scope_ubuf, "dy")
-        self.move_data(dy, self.dy[input_offset], self.dtype, shape)
+        self.move_data(dy, self.dy[self.t_offset, input_offset], self.dtype, shape)
         dh_add_dy = dh
         self.vadd_func(dh_add_dy, dh, dy, shape)    # free dy
         i2 = self.tik_instance.Tensor(self.dtype, shape, tbe_platform.scope_ubuf, "i2")
-        self.move_data(i2, self.i2[input_offset], self.dtype, shape)
+        self.move_data(i2, self.i2[self.t_offset, input_offset], self.dtype, shape)
 
         # cal dh_pre_t for next cell, output to dh_prev
         dh_pre_t = self.tik_instance.Tensor(self.dtype, shape, tbe_platform.scope_ubuf, "dh_pre_t")
@@ -144,7 +153,7 @@ class GRUHiddenGradCell(TikOpBase):
         one = self.tik_instance.Tensor(self.dtype, shape, tbe_platform.scope_ubuf, "one")
         self.vector_dup_func(one, 1, shape)
         n2 = self.tik_instance.Tensor(self.dtype, shape, tbe_platform.scope_ubuf, "n2")
-        self.move_data(n2, self.n2[input_offset], self.dtype, shape)
+        self.move_data(n2, self.n2[self.t_offset, input_offset], self.dtype, shape)
         power_n2 = self.tik_instance.Tensor(self.dtype, shape, tbe_platform.scope_ubuf, "power_n2")
         self.vmul_func(power_n2, n2, n2, shape)
         one_sub_power_n2 = power_n2
@@ -160,7 +169,10 @@ class GRUHiddenGradCell(TikOpBase):
 
         # cal di2
         h1 = self.tik_instance.Tensor(self.dtype, shape, tbe_platform.scope_ubuf, "h1")
-        self.move_data(h1, self.h[input_offset], self.dtype, shape)
+        if self.t_state == self.t_size - 1:
+            self.move_data(h1, self.h[input_offset], self.dtype, shape)
+        else:
+            self.move_data(h1, self.h[self.ht_offset, input_offset], self.dtype, shape)
         h1_sub_n2 = h1
         self.vsub_func(h1_sub_n2, h1, n2, shape)
         # (1-i2)*i2
@@ -180,7 +192,7 @@ class GRUHiddenGradCell(TikOpBase):
         self.move_data(self.d_gate_h[offset], di2, self.dtype, shape)
 
         r2 = self.tik_instance.Tensor(self.dtype, shape, tbe_platform.scope_ubuf, "r2")
-        self.move_data(r2, self.r2[input_offset], self.dtype, shape)
+        self.move_data(r2, self.r2[self.t_offset, input_offset], self.dtype, shape)
         dn2h = dn2i
         self.vmul_func(dn2h, dn2i, r2, shape)
         # dn2h -> out
@@ -189,7 +201,7 @@ class GRUHiddenGradCell(TikOpBase):
         one_sub_r2 = r2
         self.vsub_func(one_sub_r2, one, r2, shape)
         n2_mid = self.tik_instance.Tensor(self.dtype, shape, tbe_platform.scope_ubuf, "n2_mid")
-        self.move_data(n2_mid, self.n2_mid[input_offset], self.dtype, shape)
+        self.move_data(n2_mid, self.n2_mid[self.t_offset, input_offset], self.dtype, shape)
         mid_mul_r2 = one_sub_i2
         self.vmul_func(mid_mul_r2, one_sub_r2, n2_mid, shape)
         dr2 = mid_mul_r2
@@ -280,7 +292,7 @@ class GRUHiddenGradCell(TikOpBase):
 
 
 # pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
-# pylint: too-many-locals,invalid-name,too-many-arguments
+# pylint: disable=too-many-locals,invalid-name,too-many-arguments
 def gru_v2_hidden_grad_cell(dh_pre_t, h, dy, dh, update, reset, new, hidden_new,
                             dh_prev, dgate_h, dnt_x, t_state=0, gate_order="zrh",
                             kernel_name="gru_hidden_grad_cell"):
@@ -288,37 +300,30 @@ def gru_v2_hidden_grad_cell(dh_pre_t, h, dy, dh, update, reset, new, hidden_new,
     Calculate the gradient
     Parameters
     -----------
-    :param dh_pre_t: result of (dh2+dy)*i2 at (cur_t -1)
+    :param dh_pre_t: result of (dh2 + dy) * i2 at (cur_t -1)
         when t_state > 0, dh = dh + dh_pre_t
-    :param h:
-    :param dy:
-    :param dh:
-    :param update:
-    :param reset:
-    :param new:
-    :param hidden_new:
-
+    :param h: [t, n, out]; set init_h(t_state = t_size - 1) [n, out]
+    :param dy: [t, n, out]
+    :param dh: [n, out]
+    :param update: [t, n, out]
+    :param reset: [t, n, out]
+    :param new: [t, n, out]
+    :param hidden_new: [t, n, out]
     :param dh_prev:
         output real dh_prev when cur_t == t
         otherwise, output dh_pre_t for next cell
     :param dgate_h:
     :param dnt_x:
-    :param t_state:
-        t_state: 0 means cur_t == 0 and t_sum = 1 (input )
-        t_state: 1 means cur_t == 0 and t_sum > 1
-        t_state: 2 means cur_t > 0 and cur_t < t_sum - 1
-        t_state: 3 means cur_t == t_sum - 1 and t_sum > 1
-        t_state: 4 means cur_t == t_sum  (output dh_prev)
+    :param t_state: means cur_t
     :param gate_order:
     :param kernel_name:
     :return:
     """
     _check_dtype(dh_pre_t, h, dy, dh, update, reset, new, hidden_new)
     _check_param(dh_pre_t, h, dy, dh, update, reset, new, hidden_new)
-    _check_attr(gate_order, t_state)
+    _check_attr(gate_order)
 
     tik_instance = tik.Tik(tik.Dprofile())
-    cell = GRUHiddenGradCell(tik_instance, dh_pre_t, h, dy, dh, update, reset, new, hidden_new,
-                             dh_prev, dgate_h, dnt_x, t_state, gate_order, kernel_name)
+    cell = GRUHiddenGradCell(tik_instance, h, dy, dnt_x, t_state, gate_order, kernel_name)
     cell.compute()
     cell.build()
