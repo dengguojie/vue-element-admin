@@ -18,11 +18,8 @@ max_pool_v3_grad
 import math
 from te import platform as tbe_platform
 from te import tik
-from topi.cce import util
-from te.platform.cce_conf import CceProductParams
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
-from te import platform as cce
 
 
 def ceil_div(num, divisor):
@@ -80,10 +77,9 @@ def cal_byte_size(shape, dtype):
     """
     if dtype == "float16":
         return cal_shape_ele(shape) * 2
-    elif dtype == "float32":
+    if dtype == "float32":
         return cal_shape_ele(shape) * 4
-    else:
-        raise RuntimeError("Not support shape now")
+    raise RuntimeError("Not support shape now")
 
 
 # MIN VALUE OF FP16
@@ -127,11 +123,11 @@ C0 = 16
 CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
 
 
-# pylint: disable = too-many-arguments
+# pylint: disable=too-many-arguments,too-many-statements,too-many-branches
+# pylint: disable=invalid-name,unused-argument
 def check_param(ori_input, ori_output, grad, ksize, strides, padding, data_format, global_pooling, pads, kernel_name):
     """
     check parameters, if one is invalid, then raise error
-
     Parameters
     ----------
     ori_input: dict
@@ -215,7 +211,7 @@ def check_param(ori_input, ori_output, grad, ksize, strides, padding, data_forma
                                 errorInfo['min_value'], errorInfo['max_value'],
                                 errorInfo['real_value']))
 
-        elif ksize[0] != 1 or ksize[3] != 1:
+        if ksize[0] != 1 or ksize[3] != 1:
             errorInfo = {}
             errorInfo['errCode'] = para_check.OP_ERROR_CODE_000
             errorInfo['op_name'] = 'max_pool_v3'
@@ -240,7 +236,7 @@ def check_param(ori_input, ori_output, grad, ksize, strides, padding, data_forma
                                (errorInfo['op_name'], errorInfo['param_name'],
                                 errorInfo['min_value'], errorInfo['max_value'],
                                 errorInfo['real_value']))
-        elif strides[0] != 1 or strides[3] != 1:
+        if strides[0] != 1 or strides[3] != 1:
             errorInfo = {}
             errorInfo['errCode'] = para_check.OP_ERROR_CODE_000
             errorInfo['op_name'] = 'max_pool_v3'
@@ -263,7 +259,9 @@ def check_param(ori_input, ori_output, grad, ksize, strides, padding, data_forma
                            % (errorInfo['op_name'], errorInfo['param_name'],
                               errorInfo['excepted_format_list'], errorInfo['format']))
 
-# pylint: disable = too-many-arguments,,unused-argument,invalid-name
+
+# pylint: disable=dangerous-default-value,too-many-locals,
+# pylint: disable=too-many-arguments,,unused-argument,invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT,
@@ -333,8 +331,8 @@ def max_pool_v3_grad(ori_input,
     return maxpoolv3grad.tik_instance_function(kernel_name)
 
 
-# pylint: disable = too-many-instance-attributes
-class MaxpoolV3Grad(object):
+# pylint: disable = too-many-instance-attributes,too-few-public-methods
+class MaxpoolV3Grad():
     """
     MaxpoolV3Grad  Object include all fuction and paras
     """
@@ -694,6 +692,7 @@ class MaxpoolV3Grad(object):
 
         return grad_sel_ub
 
+    # pylint: disable=unused-variable
     def _load3d(self, index_h, index_w, start_h, end_h, ori_input_col_ub,
                 ori_input_l1, start_pos_h, each_process_hi, each_process_wi,
                 repeat_times, pad, pad_value, wo_offset, each_process_hi_block):
@@ -823,6 +822,7 @@ class MaxpoolV3Grad(object):
 
         return ori_input_l1, ori_output_ub, grad_ub
 
+    # pylint: disable=unused-variable
     def _mov_func(self, cut_ho_nums_index, cut_ho_nums, remain_ho_nums, each_process_ho,
                   each_process_hi, each_valid_ho, col2img_fp32_ub, temp_tensor_ub, pad):
         pad_left, pad_right, pad_top, pad_bottom = pad
@@ -931,6 +931,7 @@ class MaxpoolV3Grad(object):
                             cal_shape_ele(temp_tensor_ub.shape),
                             None, [0, each_process_ho * self.stride_h * wi * C0])
 
+    # pylint: disable=unused-variable
     def _move_func_block(self, cut_ho_nums_index, cut_ho_nums, start_h, end_h, each_process_ho,
                          valid_hi_block, col2img_fp32_ub, temp_tensor_ub,
                          remained_hi, remain, pad):
@@ -999,6 +1000,7 @@ class MaxpoolV3Grad(object):
                             None, [0, each_process_ho * self.stride_h * wi * C0])
         return remained_hi
 
+    # pylint: disable=redefined-outer-name,simplifiable-if-statement,self-assigning-variable
     def _tilling_factor(self, ori_input_shape, pad):
         pad_left, pad_right, _, _ = pad
         C0 = ori_input_shape[-1]
@@ -1093,6 +1095,7 @@ class MaxpoolV3Grad(object):
             tiling_result = (True, need_cut_Ho, need_cut_Wo, 1, each_process_wo)
         return tiling_result
 
+    # pylint: disable=unused-variable
     def _not_tilling(self, n_index, c1_index,
                      each_process_ho_block, each_process_hi_block,
                      mov_len_ho, mov_len_hi,
@@ -1214,6 +1217,7 @@ class MaxpoolV3Grad(object):
                                             0, each_process_hi_block, self.wi * C0 // 16,
                                             pad_left + pad_right, 0)
 
+    # pylint: disable=unused-variable
     def _tilling_ho_only(self, each_process_ho, n_index, c1_index,
                          each_process_ho_block, each_process_hi_block,
                          mov_len_ho, mov_len_hi,
@@ -1382,6 +1386,7 @@ class MaxpoolV3Grad(object):
                 output_data_nums = remain_ho_nums * self.wo * C0
                 process_ho(output_data_nums, cut_ho_nums, remain_ho_nums, remained_hi)
 
+    # pylint: disable=unused-variable
     def _tilling_l1_ho_only(self, each_process_ho, n_index, c1_index,
                             each_process_ho_block, each_process_hi_block,
                             mov_len_ho, mov_len_hi,
@@ -1389,7 +1394,7 @@ class MaxpoolV3Grad(object):
                             start_threshold,
                             offset_gm_block, shape, pad):
         pad_left, pad_right, pad_top, pad_bottom = pad
-        shape_ho, shape_wo, shape_hi, shape_wi = shape
+
         wi = self.wi + pad_left + pad_right
         # if cut self.ho, every time process each_process_ho * self.wo
         cut_ho_nums = mov_len_ho // each_process_ho
@@ -1435,6 +1440,7 @@ class MaxpoolV3Grad(object):
             remained_hi = self.tik_instance.Scalar(dtype='int64', name='remained_hi')
             remained_hi.set_as(each_process_hi_block)
 
+        # pylint: disable=unused-variable
         def process_tiling_l1_ho(n_hi_block_index, n_each_process_hi_block_index, start_h, end_h,
                                  start_pos_h, src_output_offset,
                                  output_data_nums, each_valid_ho, remained_hi, remain):
@@ -1767,6 +1773,7 @@ class MaxpoolV3Grad(object):
                                      0, src_output_offset,
                                      output_data_nums, remain_ho_nums, remained_hi, 0)
 
+    # pylint: disable=unused-variable
     def _tilling_l1_ho_wo(self, each_process_wo, n_index, c1_index,
                           each_process_ho_block, each_process_hi_block,
                           mov_len_ho, mov_len_hi,
@@ -2344,6 +2351,7 @@ class MaxpoolV3Grad(object):
                                           cal_shape_ele(
                                               temp_zero.shape))
 
+    # pylint: disable=unused-variable,no-self-use
     def _get_core_divlist(self):
         div_list = []
         for i in range(1, CORE_NUM + 1):
@@ -2352,27 +2360,28 @@ class MaxpoolV3Grad(object):
                     div_list.append(CORE_NUM // i)
         return div_list
 
+    # pylint: disable=unused-variable,
     def _if_block(self, ho_outer, ho_inner):
         if ho_inner <= 1:
             return False
         if self.stride_h >= self.kh:
             return True
+        overlap_num = math.ceil((self.kh - self.stride_h) * 1.0 / self.stride_h)
+        if self.kh > self.stride_h:
+            shape_hi = (ho_inner + overlap_num - 1) * self.stride_h + self.kh
         else:
-            overlap_num = math.ceil((self.kh - self.stride_h) * 1.0 / self.stride_h)
-            if self.kh > self.stride_h:
-                shape_hi = (ho_inner + overlap_num - 1) * self.stride_h + self.kh
-            else:
-                shape_hi = ho_inner * self.stride_h
-            need_cut_L1, need_cut_Ho, need_cut_Wo, \
-            each_process_ho, each_process_wo = \
-                self._tilling_factor((shape_hi, self.wi, C0), self.pad)
+            shape_hi = ho_inner * self.stride_h
+        need_cut_L1, need_cut_Ho, need_cut_Wo, \
+        each_process_ho, each_process_wo = \
+            self._tilling_factor((shape_hi, self.wi, C0), self.pad)
 
-            times = math.ceil(ho_inner * 1.0 / each_process_ho)
-            overlaps = overlap_num * times
-            if (overlaps + ho_inner) * 1.0 / ho_inner >= ho_outer:
-                return False
-            return True
+        times = math.ceil(ho_inner * 1.0 / each_process_ho)
+        overlaps = overlap_num * times
+        if (overlaps + ho_inner) * 1.0 / ho_inner >= ho_outer:
+            return False
+        return True
 
+    # pylint: disable=unused-variable,no-self-use
     def _get_block_num(self, block_num):
         if block_num > CORE_NUM:
             real_block = CORE_NUM
@@ -2382,6 +2391,7 @@ class MaxpoolV3Grad(object):
             block_cycle = 1
         return real_block, block_cycle
 
+    # pylint: disable=unused-variable
     def tik_instance_function(self, kernel_name):
         """
         main function of tik_instance
@@ -2695,5 +2705,5 @@ class MaxpoolV3Grad(object):
 
         self.tik_instance.BuildCCE(kernel_name=kernel_name, inputs=(
             self.ori_input_gm, self.ori_output_gm, self.grad_gm),
-                                   outputs=(self.res_gm), enable_l2=False)
+                                   outputs=(self.res_gm,), enable_l2=False)
         return self.tik_instance

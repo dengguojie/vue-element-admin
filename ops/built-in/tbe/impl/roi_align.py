@@ -26,7 +26,7 @@ from impl import roi_align_vbi
 NoneType = type(None)
 
 # 16K size
-UB_30K_SIZE = 150*1024
+UB_30K_SIZE = 150 * 1024
 
 # CCE param
 ROINUM = 128
@@ -50,7 +50,16 @@ ES_LIMIT_SAMPLE_NUM = 90
 COM_LIMIT_SAMPLE_NUM = 128
 
 
-class RoiAlign():
+# pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-locals
+# pylint: disable=too-many-statements
+# pylint: disable=unused-argument,unused-variable
+class RoiAlign:
+    """
+    RoiAlign
+    modify:2020-12-10
+    """
+    # pylint:disable=too-many-arguments,too-many-locals,too-many-statements
+    # pylint:disable=no-member,unused-argument,unused-variable
     def __init__(self, feature_map_dict,
                  rois_dict,
                  roisn_dict,
@@ -105,7 +114,7 @@ class RoiAlign():
             self.roisn = self.tik_inst.Tensor(self.roisn_dtype, self.roisn_shape,
                                               name="roisn", scope=tbe_platform.scope_gm)
         self.output_gm = self.tik_inst.Tensor(self.input_dtype,
-                                              (rois_total_num, self.input_shape[1],  output_h, output_w,
+                                              (rois_total_num, self.input_shape[1], output_h, output_w,
                                                self.input_shape[4]), name="output_gm",
                                               scope=tbe_platform.scope_gm)
 
@@ -184,6 +193,10 @@ class RoiAlign():
         self.range_end = None
 
     def update_flowtable(self):
+        """
+        update_flowtable:
+        :return:
+        """
         data = self.spatial_scale
         self.flowtable_scale[0] = data
         self.flowtable_scale_fp32[0] = data
@@ -215,6 +228,11 @@ class RoiAlign():
         self.flowtable_threshold = data
 
     def roialign_compute(self):
+        """
+        roialign_compute
+        :return:
+        """
+
         last_core_index = self.aicore_num - 1
         with self.tik_inst.for_range(0, self.aicore_num, block_num=self.aicore_num) as i:
             if self.roisn_effect:
@@ -247,8 +265,16 @@ class RoiAlign():
             self.tik_inst.BuildCCE(kernel_name=self.kernel_name, \
                                    inputs=[self.feature_map, self.rois], outputs=[self.output_gm])
         return self.tik_inst
-
+    # pylint: disable=too-many-locals,too-many-arguments,too-many-statements
+    # pylint: disable=invalid-name,no-member,unused-variable
     def roialign_compute_each_core(self, block_num, block_offset, block_left):
+        """
+        roialign_compute_each_core
+        :param block_num:
+        :param block_offset:
+        :param block_left:
+        :return:
+        """
         cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
 
         rois_index = self.tik_inst.Scalar("int32")
@@ -455,7 +481,7 @@ class RoiAlign():
             # get ROINUM
             with self.tik_inst.for_range(0, rois_process_num) as loop_n:
                 with self.tik_inst.if_scope(
-                            (self.calced_rois + loop_n) < self.range_end):
+                        (self.calced_rois + loop_n) < self.range_end):
                     cont_scalar.set_as(cont[loop_n])
                     with self.tik_inst.if_scope(cont_scalar == 0):
                         batch_index.set_as(batch_index_int32[loop_n])
@@ -528,8 +554,9 @@ class RoiAlign():
                                 # cce : for (uint64_t currC1 = 0; currC1 < C1; currC1++)
                                 with self.tik_inst.for_range(0, self.input_c1) as loop_c1:
                                     self.tik_inst.data_move(feature_map_ub[loop_c1 * s * C0SIZE], \
-                                            self.feature_map[batch_index, loop_c1, tile_start, wstart, 0], \
-                                            0, tile_height, width, src_stride, dst_stride)
+                                                            self.feature_map[batch_index, loop_c1,
+                                                                tile_start, wstart, 0], \
+                                                            0, tile_height, width, src_stride, dst_stride)
 
                                 # cce : for (gh = gridStart; gh < (gridEnd + 1); gh++)
                                 grid_len.set_as(grid_end - grid_start + 1)
@@ -595,16 +622,16 @@ class RoiAlign():
                                             left_mask = (self.input_c1 % 8) * 16
                                             with self.tik_inst.for_range(0, loop_repeat) as i:
                                                 self.tik_inst.vmuls(128, val_ub[i * ONEVECTOR], \
-                                                                    feature_map_ub[i*s*ONEVECTOR + id1], \
+                                                                    feature_map_ub[i * s * ONEVECTOR + id1], \
                                                                     hx0, 1, 1, s, 8, 8)
                                                 self.tik_inst.vmuls(128, val_ub[i * ONEVECTOR + len_c1], \
-                                                                    feature_map_ub[i*s*ONEVECTOR + id2], \
+                                                                    feature_map_ub[i * s * ONEVECTOR + id2], \
                                                                     lx0, 1, 1, s, 8, 8)
                                                 self.tik_inst.vmuls(128, val_ub[i * ONEVECTOR + len_c2], \
-                                                                    feature_map_ub[i*s*ONEVECTOR + id3], \
+                                                                    feature_map_ub[i * s * ONEVECTOR + id3], \
                                                                     hx0, 1, 1, s, 8, 8)
                                                 self.tik_inst.vmuls(128, val_ub[i * ONEVECTOR + len_c3], \
-                                                                    feature_map_ub[i*s*ONEVECTOR + id4], \
+                                                                    feature_map_ub[i * s * ONEVECTOR + id4], \
                                                                     lx0, 1, 1, s, 8, 8)
                                             if left_mask != 0:
                                                 self.tik_inst.vmuls(left_mask, val_ub[(loop_repeat - 1) * ONEVECTOR], \
@@ -688,7 +715,8 @@ class RoiAlign():
                         # end of loop_n1
                 # end of loop_n
         # end of loop_b
-
+    # pylint:disable=invalid-name,no-member,too-many-arguments,
+    # pylint:disable=too-many-branches,too-many-statements
     def roi_align_perf_scale(self, rois, xstart, roisnum, sample_ratio,
                              roi_gridw, roi_gridh, x_start_fp32_ub,
                              y_start_fp32_ub, roi_gridw_fp32,
@@ -730,7 +758,7 @@ class RoiAlign():
                 y_end_fp32_ub = self.tik_inst.Tensor("float32", (ROINUM,), \
                                                      name="y_end_fp32_ub", scope=tbe_platform.scope_ubuf)
                 gird_h_fp32_ub = self.tik_inst.Tensor("float32", (ROINUM,), \
-                                                  name="gird_h_fp32_ub", scope=tbe_platform.scope_ubuf)
+                                                      name="gird_h_fp32_ub", scope=tbe_platform.scope_ubuf)
                 gird_w_fp32_ub = self.tik_inst.Tensor("float32", (ROINUM,), \
                                                       name="gird_w_fp32_ub", scope=tbe_platform.scope_ubuf)
             else:
@@ -739,7 +767,7 @@ class RoiAlign():
                 y_end_fp32_ub = self.tik_inst.Tensor("float16", (ROINUM,), \
                                                      name="y_end_fp32_ub", scope=tbe_platform.scope_ubuf)
                 gird_h_fp32_ub = self.tik_inst.Tensor("float16", (ROINUM,), \
-                                                  name="gird_h_fp32_ub", scope=tbe_platform.scope_ubuf)
+                                                      name="gird_h_fp32_ub", scope=tbe_platform.scope_ubuf)
                 gird_w_fp32_ub = self.tik_inst.Tensor("float16", (ROINUM,), \
                                                       name="gird_w_fp32_ub", scope=tbe_platform.scope_ubuf)
             roi_w_ub = self.tik_inst.Tensor("float16", (ROINUM,), \
@@ -921,9 +949,9 @@ class RoiAlign():
 
                 if cce_product == tbe_platform.HI3796CV300CS:
                     n_grid_w_int16 = self.tik_inst.Tensor("int16", (ROINUM, ), \
-                                                       name="n_grid_w_int16", scope=tbe_platform.scope_ubuf)
+                                                          name="n_grid_w_int16", scope=tbe_platform.scope_ubuf)
                     n_grid_h_int16 = self.tik_inst.Tensor("int16", (ROINUM, ), \
-                                                       name="n_grid_h_int16", scope=tbe_platform.scope_ubuf)
+                                                          name="n_grid_h_int16", scope=tbe_platform.scope_ubuf)
                     self.tik_inst.vcbd(64, n_grid_w_int16, n_grid_w_int_ub, 2, 1, 1, 4, 8)
                     self.tik_inst.vec_conv(128, '', n_grid_h_ub, n_grid_w_int16, 1, 8, 8)
 
@@ -960,7 +988,8 @@ class RoiAlign():
                     self.tik_inst.vec_mul(128, roi_gridh_fp32, roi_bin_h_ub, \
                                           n_grid_rec_h_ub, 1, 8, 8, 8)
             return count
-
+    # pylint:disable=too-many-arguments,too-many-locals,too-many-statements
+    # pylint: disable=no-member,invalid-name,unused-argument
     def roialign_perf_gen_grid(self,
                                index_arr,
                                roi_grid_w, roi_grid_h, curr_roi,
@@ -969,6 +998,28 @@ class RoiAlign():
                                x_start_fp32, y_start_fp32,
                                roi_grid_h_fp32, roi_grid_w_fp32,
                                width, height):
+        """
+        roialign_perf_gen_grid
+        :param index_arr:
+        :param roi_grid_w:
+        :param roi_grid_h:
+        :param curr_roi:
+        :param lx:
+        :param ly:
+        :param hx:
+        :param hy:
+        :param xlow_int:
+        :param ylow_int:
+        :param xhigh_int:
+        :param yhigh_int:
+        :param x_start_fp32:
+        :param y_start_fp32:
+        :param roi_grid_h_fp32:
+        :param roi_grid_w_fp32:
+        :param width:
+        :param height:
+        :return:
+        """
         tik_instance = self.tik_inst
         cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
         dtype_num = 1
@@ -976,11 +1027,11 @@ class RoiAlign():
             index_arr_fp32 = tik_instance.Tensor("float32", (ROINUM, ), \
                                                  name="index_arr", scope=tbe_platform.scope_ubuf)
             xpos_fp32 = tik_instance.Tensor("float32", (ROINUM, ), \
-                                        name="xpos_fp32", scope=tbe_platform.scope_ubuf)
+                                            name="xpos_fp32", scope=tbe_platform.scope_ubuf)
             ypos_fp32 = tik_instance.Tensor("float32", (ROINUM, ), \
                                             name="ypos_fp32", scope=tbe_platform.scope_ubuf)
             xlow_fp32 = tik_instance.Tensor("float32", (ROINUM, ), \
-                                        name="xlow_fp32", scope=tbe_platform.scope_ubuf)
+                                            name="xlow_fp32", scope=tbe_platform.scope_ubuf)
             ylow_fp32 = tik_instance.Tensor("float32", (ROINUM, ), \
                                             name="ylow_fp32", scope=tbe_platform.scope_ubuf)
             xhigh_fp32 = tik_instance.Tensor("float32", (ROINUM, ), \
@@ -999,7 +1050,7 @@ class RoiAlign():
         else:
             dtype_num = 2
             xpos_fp32 = tik_instance.Tensor("float16", (ROINUM, ), \
-                                        name="xpos_fp32", scope=tbe_platform.scope_ubuf)
+                                            name="xpos_fp32", scope=tbe_platform.scope_ubuf)
             ypos_fp32 = tik_instance.Tensor("float16", (ROINUM, ), \
                                             name="ypos_fp32", scope=tbe_platform.scope_ubuf)
 
@@ -1119,9 +1170,9 @@ class RoiAlign():
 
         if cce_product == tbe_platform.HI3796CV300CS:
             xlow_int16 = self.tik_inst.Tensor("int16", (ROINUM, ), \
-                                               name="xlow_int16", scope=tbe_platform.scope_ubuf)
+                                              name="xlow_int16", scope=tbe_platform.scope_ubuf)
             ylow_int16 = self.tik_inst.Tensor("int16", (ROINUM, ), \
-                                               name="ylow_int16", scope=tbe_platform.scope_ubuf)
+                                              name="ylow_int16", scope=tbe_platform.scope_ubuf)
             self.tik_inst.vcbd(64, xlow_int16, xlow_int, 2, 1, 1, 4, 8)
             self.tik_inst.vec_conv(128, '', xlow, xlow_int16, 1, 8, 8)
             self.tik_inst.vcbd(64, ylow_int16, ylow_int, 2, 1, 1, 4, 8)
@@ -1427,10 +1478,25 @@ class RoiAlign():
         tik_instance.vec_sel(MASK_FP16, 0, ly, sel, cmp_const, ly, \
                              1, 8, 8, 8)
 
-
+# pylint: disable=too-many-arguments,too-many-locals,too-many-boolean-expressions
+# pylint: disable=no-member,too-many-branches
 def roi_align_cce(feature_map_dict, rois_dict, roisn_dict, output_dict, \
                   spatial_scale, output_h, output_w, sample_ratio, \
                   roi_end_mode, kernel_name_val):
+    """
+    roi_align_cce
+    :param feature_map_dict:
+    :param rois_dict:
+    :param roisn_dict:
+    :param output_dict:
+    :param spatial_scale:
+    :param output_h:
+    :param output_w:
+    :param sample_ratio:
+    :param roi_end_mode:
+    :param kernel_name_val:
+    :return:
+    """
     cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
     input_shape = feature_map_dict.get("shape")
 
@@ -1445,29 +1511,29 @@ def roi_align_cce(feature_map_dict, rois_dict, roisn_dict, output_dict, \
         max_sample_num = ES_LIMIT_SAMPLE_NUM
 
     if (input_c0 * input_c1 > 1280) or \
-       (pooled_h > input_h or pooled_w > input_w) or \
-       ((input_h * input_w > 5248) and (input_c0 * input_c1 * input_w >= 40960)) or \
-       (sample_ratio * output_h > max_sample_num) or \
-       (sample_ratio * output_w > max_sample_num):
+            (pooled_h > input_h or pooled_w > input_w) or \
+            ((input_h * input_w > 5248) and (input_c0 * input_c1 * input_w >= 40960)) or \
+            (sample_ratio * output_h > max_sample_num) or \
+            (sample_ratio * output_w > max_sample_num):
         # feature map channel should less than 1280
         return roi_align_tik(feature_map_dict, rois_dict, roisn_dict,
                              output_dict, spatial_scale, output_h,
                              output_w, sample_ratio, roi_end_mode,
                              kernel_name_val)
-    else:
-        obj = RoiAlign(feature_map_dict,
-                       rois_dict,
-                       roisn_dict,
-                       output_dict,
-                       spatial_scale,
-                       output_h,
-                       output_w,
-                       sample_ratio,
-                       roi_end_mode,
-                       kernel_name_val)
-        return obj.roialign_compute()
+    obj = RoiAlign(feature_map_dict,
+                   rois_dict,
+                   roisn_dict,
+                   output_dict,
+                   spatial_scale,
+                   output_h,
+                   output_w,
+                   sample_ratio,
+                   roi_end_mode,
+                   kernel_name_val)
+    return obj.roialign_compute()
 
-
+#pylint: disable=too-many-statements,too-many-locals,too-many-branches
+#pylint: disable=no-member
 def _get_roi_align_perf_scale_for_zero_v200(tik_instance, roi_fp32_fm_index, proposals_ub_x0,
                                             proposals_ub_y0, proposals_ub_x1,
                                             proposals_ub_y1, scale, pool_h, pool_w,
@@ -1528,7 +1594,7 @@ def _get_roi_align_perf_scale_for_zero_v200(tik_instance, roi_fp32_fm_index, pro
 
     const_mode = tik_instance.Tensor(
         dtype, [128, 1], name="const_mode", scope=tbe_platform.scope_ubuf)
-    tik_instance.vec_dup(64 * dtype_num, const_mode, 1-roi_end_mode,
+    tik_instance.vec_dup(64 * dtype_num, const_mode, 1 - roi_end_mode,
                          2 // dtype_num, 8)
 
     # compare roi_width adn roi_height to 1-mode (1 or 0)
@@ -1649,7 +1715,8 @@ def _get_roi_align_perf_scale_for_zero_v200(tik_instance, roi_fp32_fm_index, pro
            grid_w_int32, grid_h_int32, grid_w_fp32, \
            grid_h_fp32, roi_int32_fm_index
 
-
+#pylint: disable=too-many-statements,too-many-locals,too-many-branches
+#pylint: disable=no-member
 def _get_roi_align_perf_scale_for_zero(tik_instance, proposal, proposals_ub_x0,
                                        proposals_ub_y0, proposals_ub_x1,
                                        proposals_ub_y1, scale, pool_h, pool_w,
@@ -1725,7 +1792,7 @@ def _get_roi_align_perf_scale_for_zero(tik_instance, proposal, proposals_ub_x0,
 
     const_mode = tik_instance.Tensor(
         dtype, [128, 1], name="const_mode", scope=tbe_platform.scope_ubuf)
-    tik_instance.vec_dup(64 * dtype_num, const_mode, 1-roi_end_mode,
+    tik_instance.vec_dup(64 * dtype_num, const_mode, 1 - roi_end_mode,
                          2 // dtype_num, 8)
 
     # compare roi_width adn roi_height to 1-mode (1 or 0)
@@ -2089,10 +2156,10 @@ def _compute_w1234(tik_instance, h_y, l_y, h_x, l_x, w1_lt, w2_rt, w3_lb, w4_rb,
         hx_tensor = tik_instance.Scalar(dtype=dtype, init_value=h_x)
         lx_tensor = tik_instance.Scalar(dtype=dtype, init_value=l_x)
 
-        w_1 = tik_instance.Scalar(dtype=dtype, init_value=hy_tensor*hx_tensor)
-        w_2 = tik_instance.Scalar(dtype=dtype, init_value=hy_tensor*lx_tensor)
-        w_3 = tik_instance.Scalar(dtype=dtype, init_value=hx_tensor*ly_tensor)
-        w_4 = tik_instance.Scalar(dtype=dtype, init_value=ly_tensor*lx_tensor)
+        w_1 = tik_instance.Scalar(dtype=dtype, init_value=hy_tensor * hx_tensor)
+        w_2 = tik_instance.Scalar(dtype=dtype, init_value=hy_tensor * lx_tensor)
+        w_3 = tik_instance.Scalar(dtype=dtype, init_value=hx_tensor * ly_tensor)
+        w_4 = tik_instance.Scalar(dtype=dtype, init_value=ly_tensor * lx_tensor)
     else:
         hy_tensor = tik_instance.Tensor( \
             dtype, [1], name="hy_tensor", scope=tbe_platform.scope_ubuf)
@@ -2403,18 +2470,19 @@ def _prepare_vbi_xn(tik_instance, c1_block_num):
                                  c1_offset_tensor, 1, 8, 8, 8)
 
             for c1_time in range(8):
-                all_c1_time = tik_instance.Scalar(dtype="float16",\
+                all_c1_time = tik_instance.Scalar(dtype="float16", \
                                                   init_value=128 * c1_time)
                 c1_time_tensor = tik_instance.Tensor( \
                     "int32", [1], name="c1_time_tensor", scope=tbe_platform.scope_ubuf)
                 c1_time_tensor[0].set_as(all_c1_time)
 
                 tik_instance.vec_add(1, \
-                    vbi_addr[current_c1 * 32 + horizontal_repeat_time * 8 + c1_time, ], \
-                    c1_time_tensor, start_offset, 1, 8, 8, 8)
+                                     vbi_addr[current_c1 * 32 + horizontal_repeat_time * 8 + c1_time, ], \
+                                     c1_time_tensor, start_offset, 1, 8, 8, 8)
     return vbi_addr
 
-
+# pylint: disable=too-many-branches
+# pylint: disable=unused-variable
 def _prepare_vbi_xm(tik_instance, h_y, l_y, h_x, l_x, c1_block_num):
     """
     :param tik_instance:
@@ -2440,22 +2508,22 @@ def _prepare_vbi_xm(tik_instance, h_y, l_y, h_x, l_x, c1_block_num):
                                       name="vbi_weights",
                                       scope=tbe_platform.scope_ubuf)
     for current_c1 in range(c1_block_num):
-        tik_instance.vec_mul(1, vbi_weights[4*current_c1+0], \
+        tik_instance.vec_mul(1, vbi_weights[4 * current_c1 + 0], \
                              hy_tensor, hx_tensor, 1, 8, 8, \
                              8)
-        tik_instance.vec_mul(1, vbi_weights[4*current_c1+1], \
+        tik_instance.vec_mul(1, vbi_weights[4 * current_c1 + 1], \
                              hy_tensor, lx_tensor, 1, 8, 8, \
                              8)
-        tik_instance.vec_mul(1, vbi_weights[4*current_c1+2], \
+        tik_instance.vec_mul(1, vbi_weights[4 * current_c1 + 2], \
                              hx_tensor, ly_tensor, 1, 8, 8, \
                              8)
-        tik_instance.vec_mul(1, vbi_weights[4*current_c1+3], \
+        tik_instance.vec_mul(1, vbi_weights[4 * current_c1 + 3], \
                              ly_tensor, lx_tensor, 1, 8, 8, \
                              8)
 
     return vbi_weights
 
-
+#pylint: disable=no-member
 def _bilinear_interpolate(tik_instance, x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo,
                           x_hi, y_lo, y_hi, raw_x, raw_y, sample_num_w,
                           sample_num_h, grid_h_num_f,
@@ -2718,7 +2786,8 @@ def _get_grid_weight(tik_instance, grid_w, grid_h, rois_start_w, rois_start_h,
                 scope=tbe_platform.scope_ubuf)
             if cce_product == tbe_platform.HI3796CV300CS:
                 const_value_0_127_int16 = tik_instance.Tensor("int16", (ROINUM, ), \
-                                name="const_value_0_127_int16", scope=tbe_platform.scope_ubuf)
+                                                              name="const_value_0_127_int16",
+                                                              scope=tbe_platform.scope_ubuf)
                 tik_instance.vcbd(64, const_value_0_127_int16, const_value_0_127_int, \
                                   2, 1, 1, 4, 8)
                 tik_instance.vec_conv(128, '', const_value_0_127_float, \
@@ -2732,7 +2801,8 @@ def _get_grid_weight(tik_instance, grid_w, grid_h, rois_start_w, rois_start_h,
         else:
             if cce_product == tbe_platform.HI3796CV300CS:
                 const_value_0_127_int16 = tik_instance.Tensor("int16", (ROINUM, ), \
-                                name="const_value_0_127_int16", scope=tbe_platform.scope_ubuf)
+                                                              name="const_value_0_127_int16",
+                                                              scope=tbe_platform.scope_ubuf)
                 tik_instance.vcbd(64, const_value_0_127_int16, const_value_0_127_int, \
                                   2, 1, 1, 4, 8)
                 tik_instance.vec_conv(128, '', const_value_0_127, \
@@ -2838,7 +2908,7 @@ def _get_grid_weight(tik_instance, grid_w, grid_h, rois_start_w, rois_start_h,
     if vconv_f322s32f_suppot is False and dtype == "float32":
         if cce_product == tbe_platform.HI3796CV300CS:
             x_lo_int16 = tik_instance.Tensor("int16", (ROINUM, ), \
-                            name="x_lo_int16", scope=tbe_platform.scope_ubuf)
+                                             name="x_lo_int16", scope=tbe_platform.scope_ubuf)
             tik_instance.vcbd(64, x_lo_int16, x_lo, 2, 1, 1, 4, 8)
             tik_instance.vec_conv(128, '', tmp_fp16, x_lo_int16, 1, 8, 8)
         else:
@@ -2851,7 +2921,7 @@ def _get_grid_weight(tik_instance, grid_w, grid_h, rois_start_w, rois_start_h,
         else:
             if cce_product == tbe_platform.HI3796CV300CS:
                 x_lo_int16 = tik_instance.Tensor("int16", (ROINUM, ), \
-                                name="x_lo_int16", scope=tbe_platform.scope_ubuf)
+                                                 name="x_lo_int16", scope=tbe_platform.scope_ubuf)
                 tik_instance.vcbd(64, x_lo_int16, x_lo, 2, 1, 1, 4, 8)
                 tik_instance.vec_conv(128, '', tmp_fp32, x_lo_int16, 1, 8, 8)
             else:
@@ -2864,7 +2934,7 @@ def _get_grid_weight(tik_instance, grid_w, grid_h, rois_start_w, rois_start_h,
     if vconv_f322s32f_suppot is False and dtype == "float32":
         if cce_product == tbe_platform.HI3796CV300CS:
             y_lo_int16 = tik_instance.Tensor("int16", (ROINUM, ), \
-                            name="y_lo_int16", scope=tbe_platform.scope_ubuf)
+                                             name="y_lo_int16", scope=tbe_platform.scope_ubuf)
             tik_instance.vcbd(64, y_lo_int16, y_lo, 2, 1, 1, 4, 8)
             tik_instance.vec_conv(128, '', tmp_fp16, y_lo_int16, 1, 8, 8)
         else:
@@ -2878,7 +2948,7 @@ def _get_grid_weight(tik_instance, grid_w, grid_h, rois_start_w, rois_start_h,
         else:
             if cce_product == tbe_platform.HI3796CV300CS:
                 y_lo_int16 = tik_instance.Tensor("int16", (ROINUM, ), \
-                                name="y_lo_int16", scope=tbe_platform.scope_ubuf)
+                                                 name="y_lo_int16", scope=tbe_platform.scope_ubuf)
                 tik_instance.vcbd(64, y_lo_int16, y_lo, 2, 1, 1, 4, 8)
                 tik_instance.vec_conv(128, '', tmp_fp32, y_lo_int16, 1, 8, 8)
             else:
@@ -3188,6 +3258,20 @@ def roi_align_compute(tik_instance, feature_map, ret, proposals_ub_x0,
 def roi_align_tik(feature_map_dict, rois_dict, roisn_dict, \
                   output, scale, pool_h, pool_w, sample_ratio, \
                   roi_end_mode, kernel_name):
+    """
+    roi_align_tik
+    :param feature_map_dict:
+    :param rois_dict:
+    :param roisn_dict:
+    :param output:
+    :param scale:
+    :param pool_h:
+    :param pool_w:
+    :param sample_ratio:
+    :param roi_end_mode:
+    :param kernel_name:
+    :return:
+    """
 
     tik_instance = tik.Tik(tik.Dprofile(), True)
     rois_shape = rois_dict.get("shape")
@@ -3265,7 +3349,7 @@ def roi_align_tik(feature_map_dict, rois_dict, roisn_dict, \
                         rois_valid - roi_128_number * 128)
 
                 if (cce_product in (tbe_platform.ASCEND_610, tbe_platform.ASCEND_710)) and (dtype == "float16") \
-                   and (rois_shape[1] == 5):
+                        and (rois_shape[1] == 5):
                     rois_ub_n5 = tik_instance.Tensor(
                         dtype, [128 * 5], name="rois_ub_n5",
                         scope=tbe_platform.scope_ubuf)
@@ -3276,11 +3360,11 @@ def roi_align_tik(feature_map_dict, rois_dict, roisn_dict, \
                                            40 * n_bust, 0, 0)
 
                     src1_ub_fp16 = tik_instance.Tensor("float16", (128,), \
-                                       name="src1_ub_fp16", scope=tbe_platform.scope_ubuf)
+                                                       name="src1_ub_fp16", scope=tbe_platform.scope_ubuf)
                     src1_ub_uint16 = tik_instance.Tensor("uint16", (8,), \
-                                       name="src1_ub_uint16", scope=tbe_platform.scope_ubuf)
+                                                         name="src1_ub_uint16", scope=tbe_platform.scope_ubuf)
                     one_ub = tik_instance.Tensor("float16", (128,), \
-                                       name="one_ub", scope=tbe_platform.scope_ubuf)
+                                                 name="one_ub", scope=tbe_platform.scope_ubuf)
                     tik_instance.vec_dup(128, src1_ub_fp16, 0, 1, 8)
                     tik_instance.vec_dup(128, one_ub, 1, 1, 8)
                     tik_instance.vec_dup(8, src1_ub_uint16, 0, 1, 8)
@@ -3427,12 +3511,11 @@ def roi_align_tik(feature_map_dict, rois_dict, roisn_dict, \
                                                            roi_end_mode,
                                                            dtype)
                 w_number = 0
-                feature_map_to_l1_verify = 0
 
                 w_number_ub = 0
                 ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - UB_30K_SIZE
                 feature_map_to_ub_verify = ub_size_bytes // \
-                                    (fm_c1 * feature_shape[2] * feature_shape[3] * 16 * n_bust * 2)
+                                           (fm_c1 * feature_shape[2] * feature_shape[3] * 16 * n_bust * 2)
                 feature_map_to_l1_verify = \
                     l1_size // (fm_c1 * feature_shape[2] * \
                                 feature_shape[3] * 16 * n_bust * 2)
@@ -3492,20 +3575,19 @@ def roi_align(feature_map_dict,
     cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
 
     if ((cce_product in (tbe_platform.ASCEND_610, "Ascend615")) \
-        and (dtype == "float16") and \
-        (pool_h == 7) and (pool_w == 7) and (roi_end_mode == 1)):
+            and (dtype == "float16") and \
+            (pool_h == 7) and (pool_w == 7) and (roi_end_mode == 1)):
         return roi_align_vbi.roi_align_vbi(feature_map_dict, rois_dict, kernel_name)
-    elif (dtype == "float16") and (impl_mode == "high_precision"):
+    if (dtype == "float16") and (impl_mode == "high_precision"):
         return roi_align_tik(feature_map_dict, rois_dict, roisn_dict,
                              output, scale, pool_h, pool_w,
                              sample_ratio, roi_end_mode, kernel_name)
-    elif (dtype == "float16") and \
-         (cce_product in (tbe_platform.ASCEND_310, tbe_platform.ASCEND_910, tbe_platform.HI3796CV300ES,
-                          tbe_platform.ASCEND_610, tbe_platform.ASCEND_710)):
+    if (dtype == "float16") and \
+            (cce_product in (tbe_platform.ASCEND_310, tbe_platform.ASCEND_910, tbe_platform.HI3796CV300ES,
+                             tbe_platform.ASCEND_610, tbe_platform.ASCEND_710)):
         return roi_align_cce(feature_map_dict, rois_dict, roisn_dict,
                              output, scale, pool_h, pool_w,
                              sample_ratio, roi_end_mode, kernel_name)
-    else:
-        return roi_align_tik(feature_map_dict, rois_dict, roisn_dict,
-                             output, scale, pool_h, pool_w,
-                             sample_ratio, roi_end_mode, kernel_name)
+    return roi_align_tik(feature_map_dict, rois_dict, roisn_dict,
+                         output, scale, pool_h, pool_w,
+                         sample_ratio, roi_end_mode, kernel_name)

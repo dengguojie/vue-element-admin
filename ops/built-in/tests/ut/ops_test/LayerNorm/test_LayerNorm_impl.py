@@ -67,7 +67,7 @@ ut_case.add_precision_case("all", {"params": [{"shape": (768,), "dtype": "float3
                                               0, 0
                                               ],
                                    "calc_expect_func": calc_expect_func,
-                                   "precision_standard": precision_info.PrecisionStandard(0.01, 0.01)
+                                   "precision_standard": precision_info.PrecisionStandard(0.1, 0.1)
                                    })
 # ut_case.add_precision_case("all", {"params": [{"shape": (2,2,768), "dtype": "float32", "format": "NCHW", "ori_shape": (2,2,768),"ori_format": "NCHW", "param_type": "input"},
 #                                               {"shape": (768,), "dtype": "float32", "format": "NCHW", "ori_shape": (768,),"ori_format": "NCHW", "param_type": "input"},

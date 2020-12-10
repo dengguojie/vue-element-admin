@@ -18,10 +18,10 @@
 max_pool3d_grad
 """
 # pylint: disable=too-many-lines,import-error
-from te import tik
-from topi.cce import util
-from te import platform as tbe_platform
 import math
+from te import tik
+from te import platform as tbe_platform
+from topi.cce import util
 
 # available number of cores
 MAX_CORE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
@@ -41,6 +41,8 @@ MASK64_VALUE = 64
 MAX_STRIDE = 65535
 
 
+# pylint: disable=too-many-locals,too-many-arguments,invalid-name,too-many-locals,no-self-use,too-few-public-methods
+# pylint: disable=too-many-statements,unused-variable,too-many-branches,too-many-instance-attributes
 def _ceil_div(value, block):
     """
     Integrate the input value by block.
@@ -83,6 +85,9 @@ def _cal_core(tik_instance, total_core_loop_num, num_core, core_number):
 
 
 def init_coordinate(tik_instance, pad_x_top, xi_coordinate):
+    """
+    init_coordinate
+    """
     # return actual xi_coord
     if pad_x_top != 0:
         xi_coord = tik_instance.Scalar(dtype='int64', name='xi_coord')
@@ -98,6 +103,9 @@ def init_coordinate(tik_instance, pad_x_top, xi_coordinate):
 
 def calc_pad(tik_instance, pad_top, pad_bottom,
              xi_coord, xi_value, boundary):
+    """
+    calc_pad
+    """
     # return pad_value in different axis
     top = pad_top
     bottom = pad_bottom
@@ -119,6 +127,9 @@ def calc_pad(tik_instance, pad_top, pad_bottom,
 
 
 def grad_model(pad_list):
+    """
+    grad_model
+    """
     for i in pad_list:
         if i > 0:
             model = 'SAME'
@@ -139,9 +150,10 @@ def _check_config(config):
     return mark
 
 
-
 class Params:
-
+    """
+        Function: use to store concat base parameters
+    """
     def __init__(self, ub_split, col_in_size,
                  forward_ou_size, mask_size, grad_size,
                  zero_size, grad_sel_fp16_size, grad_sel_fp32_size,
@@ -158,8 +170,10 @@ class Params:
         self.f_map_fp32_size = f_map_fp32_size
 
 
-class MaxPool3DGradCompute(object):
-
+class MaxPool3DGradCompute:
+    """
+        Function: use to store concat base parameters
+    """
     def __init__(self, shape_list, params):
         # forward_in_shape, forward_ou_shape, grad_shape, ou_shape
         # list(ksize), list(strides), pads, dtype
@@ -202,12 +216,16 @@ class MaxPool3DGradCompute(object):
         self.num_bit_fp32 = 4
         self.mask_fp16 = 128
         self.mask_fp32 = 64
-        self.ub_maxsize = tbe_platform.cce_conf.\
+        self.ub_maxsize = tbe_platform.cce_conf. \
                               get_soc_spec(tbe_platform.
                                            cce_conf.UB_SIZE) // self.num_bit
-        self.L1_maxsize = tbe_platform.cce_conf.\
+        self.L1_maxsize = tbe_platform.cce_conf. \
                               get_soc_spec(tbe_platform.
                                            cce_conf.L1_SIZE) // self.num_bit
+        self.orig_x_gm = None
+        self.orig_y_gm = None
+        self.grads_gm = None
+        self.ou_y_gm = None
 
     def set_tik_instance(self):
         """
@@ -361,20 +379,7 @@ class MaxPool3DGradCompute(object):
         return overlap
 
     def _check_process_space(self, do, ho, wo):
-        # If consider padding, L1_size must be less
-        # than computation of _infer_dim_return.
-        # So,actual of data move in L1 may less than space of malloc
-        # If data of L1 col2img to UB, l1_in_data would be released.
-        # Then, L1 will be used to save overlap which may include
-        # overlap_d and overlap_h.
-        # if l1_split = True, UB also can't process do ho wo.
-
-        # due to valid, self.pads is [[0,0],[0,0],[0,0]]
-        # l1_in_shape is most
-        infer_di, infer_hi, infer_wi = self._infer_dim_return(do, ho, wo, True)
-        l1_in_shape = [infer_di, infer_hi, infer_wi, self.c0]
-        l1_in_size = _prod(l1_in_shape)
-        '''
+        """
         =====================================
         UB_space: compute virtual space in UB
         =====================================
@@ -388,7 +393,21 @@ class MaxPool3DGradCompute(object):
         grad_vsel_fp16_shape: ho wo c0(256B)
         grad_vsel_fp32_shape: ho wo c0(256B)
         f_map_fp32_shape: di hi wi c0
-        '''
+        """
+        # If consider padding, L1_size must be less
+        # than computation of _infer_dim_return.
+        # So,actual of data move in L1 may less than space of malloc
+        # If data of L1 col2img to UB, l1_in_data would be released.
+        # Then, L1 will be used to save overlap which may include
+        # overlap_d and overlap_h.
+        # if l1_split = True, UB also can't process do ho wo.
+
+        # due to valid, self.pads is [[0,0],[0,0],[0,0]]
+        # l1_in_shape is most
+        infer_di, infer_hi, infer_wi = self._infer_dim_return(do, ho, wo, True)
+        l1_in_shape = [infer_di, infer_hi, infer_wi, self.c0]
+        l1_in_size = _prod(l1_in_shape)
+
         col_in_shape = [ho, wo, self.c0]
         col_in_size = _ceil_div(_prod(col_in_shape), 256) * 256
 
@@ -418,10 +437,7 @@ class MaxPool3DGradCompute(object):
                         grad_sel_fp16_size) * self.num_bit + \
                        (grad_sel_fp32_size + f_map_fp32_size) * 4
 
-        if used_ub_byte > self.ub_maxsize * self.num_bit:
-            ub_split = True
-        else:
-            ub_split = False
+        ub_split = used_ub_byte > self.ub_maxsize * self.num_bit
 
         param = Params(ub_split, col_in_size, forward_ou_size,
                        mask_size, grad_size, zero_size, grad_sel_fp16_size,
@@ -523,6 +539,9 @@ class MaxPool3DGradCompute(object):
                                    0, 1, burst_len, 0, 0)
 
     def norm_data_move(self, tik_instance, src_buf, dst_buf, in_list):
+        """
+        norm_data_move
+        """
         src_idx, dst_idx = in_list[-2], in_list[-1]
         n_burst, burst_len = in_list[0], in_list[1]
         src_stride, dst_stride = in_list[2], in_list[3]
@@ -792,6 +811,9 @@ class MaxPool3DGradCompute(object):
                                    dst_stride)
 
     def set_vector_dup(self, tik_instance, psm, dst, idx, number, dtype):
+        """
+        set_vector_dup
+        """
         # idx is begin_index in dst,
         # must be 32B align
         if dtype == "float16":
@@ -996,11 +1018,11 @@ class MaxPool3DGradCompute(object):
             for idx_h, _ in enumerate(range(num_instr_loop_h)):
                 for idx_w, _ in enumerate(range(num_instr_loop_w)):
                     src1_offset = idx_w * num_block * config[1] * block_size + \
-                                   idx_h * MAX_REPEAT * w * c0
-                    src2_offset = idx_w * num_block * config[2] * block_size + \
-                                   idx_h * MAX_REPEAT * wo * c0
-                    dst_offset = idx_w * num_block * config[0] * block_size + \
                                   idx_h * MAX_REPEAT * w * c0
+                    src2_offset = idx_w * num_block * config[2] * block_size + \
+                                  idx_h * MAX_REPEAT * wo * c0
+                    dst_offset = idx_w * num_block * config[0] * block_size + \
+                                 idx_h * MAX_REPEAT * w * c0
 
                     if idx_w < num_instr_loop_w - 1:
                         mask = max_mask
@@ -1145,6 +1167,9 @@ class MaxPool3DGradCompute(object):
 
     def not_tiling_main(self, tik_instance, core_loop, sum_core,
                         model, param):
+        """
+        not_tiling_main
+        """
 
         do = model[0]
         ho = model[1]
@@ -1850,7 +1875,7 @@ class MaxPool3DGradCompute(object):
                             # vec_dup for next ho_idx
                             num_zero = _prod(non_overlap[1:])
                             for i in range(in_shape[0]):
-                                dst_vec_idx = src_idx + _prod(overlap[1:]) + i *\
+                                dst_vec_idx = src_idx + _prod(overlap[1:]) + i * \
                                               _prod(in_shape[1:])
                                 self.set_vector_dup(tik_instance, num_zero,
                                                     f_map_fp32_buf, dst_vec_idx,
@@ -3842,6 +3867,9 @@ class MaxPool3DGradCompute(object):
     def filled_vec_dup(self, tik_instance, mark, di_value, pad_d_top,
                        pad_d_bottom, idx_do, idx_d, d_top, d_bottom,
                        param, dst_buf):
+        """
+        filled_vec_dup
+        """
         # make filled region in l1_buf, not move to
         # col_in_buf by load3d, but vec_dup in col_in_buf.
         mark.set_as(0)
@@ -3924,6 +3952,9 @@ class MaxPool3DGradCompute(object):
 
     def grad(self, tik_instance, split_model,
              param, total_num, core_num, func):
+        """
+        grad
+        """
         # just tiling do ho
         # support valid
         core_loop = tik_instance.Scalar("int64")
