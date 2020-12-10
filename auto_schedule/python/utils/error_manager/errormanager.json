@@ -561,12 +561,12 @@
     },
     {
         "errCode": "E62001",
-        "errMessage": "In op[%s],dilation_h, dilation_w and dilation_d must be 1,actual are [%s], [%s] and  [%s]",
+        "errMessage": "In op[%s],dilation_h, dilation_w and dilation_d must be 1,actual are [%s], [%s] and  [%s].",
         "argList": "op_name,dilation_h,dilation_w,dilation_d"
     },
     {
         "errCode": "E62002",
-        "errMessage": "In op[%s], the type and dim of [%s] must be  [%s] and [%s], actual they are  [%s] and [%s] respectively",
+        "errMessage": "In op[%s], the type and dim of [%s] must be  [%s] and [%s], actual they are  [%s] and [%s] respectively.",
         "argList": "op_name,param_name,expected_type,expected_length,type,length"
     },
     {
@@ -576,12 +576,12 @@
     },
     {
         "errCode": "E62004",
-        "errMessage": "In op[%s],filter D must > Pad D, actual are [%s] and [%s]",
+        "errMessage": "In op[%s],filter D must > Pad D, actual they are [%s] and [%s].",
         "argList": "op_name,d_of_filter,d_of_pad"
     },
     {
         "errCode": "E62005",
-        "errMessage": "In op[%s], x D(after pad) must >= stride D, actual are [%s] and [%s]",
+        "errMessage": "In op[%s], x D(after pad) must >= stride D, actual they are [%s] and [%s].",
         "argList": "op_name,d_of_x,d_of_stride"
     },
     {
@@ -621,7 +621,7 @@
     },
     {
         "errCode": "E62501",
-        "errMessage": "In op[%s], [%s] should be 6d list",
+        "errMessage": "In op[%s], [%s] should be 6d list.",
         "argList": "op_name,param_name"
     },
     {
@@ -631,22 +631,22 @@
     },
     {
         "errCode": "E62503",
-        "errMessage": "In op[%s], the  Fmap's batch must be equal to the batch in backpropagation\uff0cit should be [%s], but actually it is [%s].",
+        "errMessage": "In op[%s], the  Fmap's batch must be equal to the batch in backpropagation, it should be [%s], but actually it is [%s].",
         "argList": "op_name,backprop_N,forward_shape"
     },
     {
         "errCode": "E62504",
-        "errMessage": "In op[%s], the  Dedy's channel must be equal to the Filter's batch in backpropagation\uff0cit should be [%s], but actually it is [%s].",
+        "errMessage": "In op[%s], the  Dedy's channel must be equal to the Filter's batch in backpropagation, it should be [%s], but actually it is [%s].",
         "argList": "op_name,backprop_C,forward_shape"
     },
     {
         "errCode": "E62505",
-        "errMessage": "In op[%s], the  input's channel must be equal to the Filter's batch in backpropagation\uff0cit should be [%s], but actually it is [%s].",
+        "errMessage": "In op[%s], the  input's channel must be equal to the Filter's batch in backpropagation, it should be [%s], but actually it is [%s].",
         "argList": "op_name,input_C,filter_N"
     },
     {
         "errCode": "E62506",
-        "errMessage": "In op[%s], the  Dedy's channel must be equal to the Filter's channel in backpropagation\uff0cit should be [%s], but actually it is [%s].",
+        "errMessage": "In op[%s], the  Dedy's channel must be equal to the Filter's channel in backpropagation, it should be [%s], but actually it is [%s].",
         "argList": "op_name,backprop_C,filter_C"
     },
     {
@@ -656,7 +656,7 @@
     },
     {
         "errCode": "E62508",
-        "errMessage": "In op[%s], Shape error : The compute result of D under convolution rule cannot match",
+        "errMessage": "In op[%s], Shape error : The compute result of D under convolution rule cannot match.",
         "argList": "op_name"
     },
     {
