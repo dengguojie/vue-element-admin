@@ -318,7 +318,8 @@ class Conv2dBpFilterTiling(CubeTilingOp):
             self.cur_pads = [pad_left, pad_right, pad_up, pad_down]
 
     def _get_bound_fmap(self, tiling,
-                        width_grads, width_fmap, local_tiling_flag):
+                        width_grads, width_fmap,
+                        local_tiling_flag, height_grads):
         """
         get bound info for _get_bound_fmap
 
@@ -339,7 +340,7 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         bl1_k = tiling.get("BL1_shape")[0]
         block_dim_hw = tiling.get("AUB_shape")[0] \
             if tiling.get("AUB_shape") else 1
-
+        hw_pad_1 = utils.icd(width_grads * height_grads, utils.CUBE_SIZE)
         flag_fmap_load2d = local_tiling_flag[-2]
         flag_conv1d_case = local_tiling_flag[-3]
 
@@ -353,10 +354,22 @@ class Conv2dBpFilterTiling(CubeTilingOp):
                 return tiling["BL1_shape"][0]
             else:
                 # if res_data exists then need to load 2 lines
-                ho_len = 1 if (width_fmap % bl1_k == 0) else 2
+                ho_len = 1 if (width_grads % bl1_k == 0) else 2
         else:
             # load3d instructions refer to load extra lines with pad/stride/filter
-            if bl1_k % width_grads == 0:
+            if tiling["AL0_matrix"]:  # dw_k equals to ka if L0A needs tiling
+                dw_k = tiling["AL0_matrix"][1]
+            elif tiling["BL0_matrix"]:
+                dw_k = tiling["BL0_matrix"][0]
+            else:  # both fully loaded
+                dw_k = hw_pad_1 // block_dim_hw
+
+            hw_single_core_factor = utils.icd(hw_pad_1, block_dim_hw) * \
+                                    utils.CUBE_SIZE
+            hw_single_core_factor = utils.align(hw_single_core_factor,
+                                           dw_k * utils.CUBE_SIZE)
+            if bl1_k % width_grads == 0 and \
+                    hw_single_core_factor % width_grads == 0:
                 # full line could load without extra lines
                 additional_rows = 0
             elif bl1_k * 2 % width_grads == 0 or \
@@ -368,8 +381,16 @@ class Conv2dBpFilterTiling(CubeTilingOp):
                 additional_rows = 2
             ho_len = bl1_k // width_grads + additional_rows
 
-        hi_max = self.k_h + (ho_len - 1) * self.stride_h
-        bl1_k_full = width_fmap * hi_max
+        if flag_conv1d_case:
+            bl1_hi = 1
+            kbl1_data = utils.icd(hw_pad_1 * utils.CUBE_SIZE, block_dim_hw)    
+            if tiling.get("BL1_shape"):
+                kbl1_data = tiling["BL1_shape"][0]
+            bl1_wi = (kbl1_data - 1) * self.stride_w + self.k_w
+            bl1_k_full = bl1_hi * bl1_wi
+        else:
+            hi_max = self.k_h + (ho_len - 1) * self.stride_h
+            bl1_k_full = width_fmap * hi_max
 
         return bl1_k_full
 
@@ -427,7 +448,7 @@ class Conv2dBpFilterTiling(CubeTilingOp):
 
         # get K axis length in al1
         bl1_bound = self._get_bound_fmap(tiling,
-                                         w_o, w_i, local_tiling_flag)
+                                         w_o, w_i, local_tiling_flag, h_o)
 
         # fmap size in L1 ( K * N * db * 2byte)
         fmap_l1_size = utils.FP16_SIZE * bl1_bound * \

@@ -31,7 +31,7 @@ from te.lang.cce.te_compute.cube_util import shape_to_list
 from te.utils.error_manager import error_manager_util
 from te.lang.cce.te_compute.conv2d_backprop_filter_compute \
     import DynamicConv2dBpFilterParams
-import copy
+
 # for debug, delete before publish
 DEBUG_MODE = False
 # disable double buffer, set True
@@ -689,9 +689,6 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 setfmatrix_dict["conv_dilation_w"] = dilation_width
                 mad_dict["mad_pattern"] = 2
 
-            setfmatrix_dict_0 = copy.deepcopy(setfmatrix_dict)
-            setfmatrix_dict_0['set_fmatrix'] = 0
-
             # move grads from ddr to L1
             sch[grads_matrix].emit_insn(grads_matrix.op.axis[0], 'dma_copy')
             # move grads from L1 to L0A
@@ -703,7 +700,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     sch[fmap_l1].emit_insn(fmap_l1.op.axis[0],
                                                 'dma_copy', setfmatrix_dict)
                     sch[fmap_fractal].emit_insn(fmap_fractal.op.axis[1],
-                                                'im2col_v2', setfmatrix_dict_0)
+                                                'im2col_v2', setfmatrix_dict)
                 else:
                     sch[fmap_l1].emit_insn(fmap_l1.op.axis[0], 'dma_copy')
                     sch[fmap_matrix].emit_insn(fmap_matrix.op.axis[0],
@@ -1002,7 +999,8 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             if height_all_one and not width_all_one:
                 flag_conv1d_case = True
             if self.dynamic_mode == "dynamic_hw":
-                flag_conv1d_case = dynamic_para.get("flag_conv1d_case")
+                dynamic_hw_tiling = dynamic_para.get("tiling")
+                flag_conv1d_case = dynamic_hw_tiling.get("flag_conv1d_case")
             return flag_all_one_case, flag_conv1d_case
         flag_all_one_case, flag_conv1d_case = _flag_all_one()
         tiling = _get_tiling()
@@ -1357,16 +1355,29 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     bool_dw_cc = tiling["BL1_shape"] and\
                         (fmap_l1_tiling_nparts[0] != 1 or batch_num_sc != 1)
                 if bool_dw_cc:
-                    if grads_l1_tiling_nparts[0] > fmap_l1_tiling_nparts[0]:
-                        # hw splited one time before BL1  attach
-                        hw_parts_offset = \
-                            hw_mad_1_l1_out_at * tiling["BL1_shape"][0]
+                    if self.dynamic_mode == "dynamic_hw":
+                        bl1_k = tiling.get("BL1_shape")[0]
+                        al1_k = grads_matrix_howo
+                        if tiling.get("AL1_shape"):
+                            al1_k = tiling.get("AL1_shape")[0]
+                        if bl1_at_axis == hw_mad_1_l1_in_at:
+                            # hw splited two times before BL1 attach
+                            hw_parts_offset = (hw_mad_1_l1_out_at.var * al1_k +
+                                          hw_mad_1_l1_in_at.var * bl1_k)
+                        else:
+                            # hw splited one time before BL1  attach
+                            hw_parts_offset = hw_mad_1_l1_out_at.var * bl1_k
                     else:
-                        # hw splited 2 times before BL1 attach
-                        hw_parts_offset = \
-                            (hw_mad_1_l1_out_at * fmap_l1_tiling_nparts[0] //
-                             grads_l1_tiling_nparts[0] + hw_mad_1_l1_in_at) *\
-                            tiling["BL1_shape"][0]
+                        if grads_l1_tiling_nparts[0] > fmap_l1_tiling_nparts[0]:
+                            # hw splited one time before BL1  attach
+                            hw_parts_offset = \
+                                hw_mad_1_l1_out_at * tiling["BL1_shape"][0]
+                        else:
+                            # hw splited 2 times before BL1 attach
+                            hw_parts_offset = \
+                                ((hw_mad_1_l1_out_at * fmap_l1_tiling_nparts[0] //
+                                 grads_l1_tiling_nparts[0] + hw_mad_1_l1_in_at) * 
+                                 tiling["BL1_shape"][0])
 
                     hw_offset = hw_block_offset + hw_parts_offset
                 else:
@@ -1413,11 +1424,25 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
                 if self.dynamic_mode == "dynamic_hw":
                     # dynamic_hw returns exp
+                    # 1. kbl1 < wo: ho = 1 if wo % kbl1 == 0 else ho = 2
+                    # 2. kbl1 >= wo: ho = ceilDiv(kbl1, wo) if kbl1%wo == 0 
+                    # and hw_single_core%wo == 0 else ho = ceilDiv(kbl1,wo) + 1
                     return tvm.select(
-                        tvm.floormod(bl1_k, width_grads) == 0,
-                        0,
-                        tvm.select(tvm.floormod(bl1_k * 2, width_grads) == 0,
-                                   1, 2))
+                               bl1_k < width_grads,
+                               tvm.select(
+                                   tvm.floormod(width_grads, bl1_k) == 0,
+                                   1,
+                                   LOOSE_LINE_CONDITION),
+                               tvm.select(
+                                   tvm.all(
+                                       tvm.floormod(bl1_k, width_grads) == 0,
+                                       tvm.floormod(hw_single_core_factor,
+                                                    width_grads) == 0),
+                                   0,
+                                   tvm.select(
+                                       tvm.floormod(bl1_k*2, width_grads) == 0,
+                                       1,
+                                       LOOSE_LINE_CONDITION)))
 
                 if  bl1_k % width_grads == 0:
                     # fully loaded dont extra line
@@ -1466,6 +1491,20 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 ho_len = height_fmap
                 additional_rows = -1
 
+            if flag_conv1d_case:
+                bl1_hi = 1
+                if not tiling["BL1_shape"]:
+                    kbl1_data = _ceil_div(hw_pad_1 * CUBE_DIM, block_dim_hw)
+                    nbl1_c1 = c1_fmap
+                else:
+                    kbl1_data = tiling["BL1_shape"][0]
+                    nbl1_c1 = ((tiling.get("BL1_shape")[1] * 
+                               tiling.get("BL0_matrix")[1]) // 
+                               (kernel_height * kernel_width))
+                bl1_wi = (kbl1_data - 1) * stride_width + kw_dilation
+                bl1_k_full = bl1_hi * bl1_wi
+                bl1_bound = bl1_k_full * nbl1_c1 * c0_fmap
+
             return bl1_bound, additional_rows, ho_len
 
         def _get_al1_bound():
@@ -1509,15 +1548,12 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     al1_k = tiling.get("AL1_shape")[0]
 
                 if bl1_at_axis == hw_mad_1_l1_in_at:
+                    # hw splited two times before BL1 attach
                     axis_k_var = (hw_mad_1_l1_out_at.var * al1_k +
                                   hw_mad_1_l1_in_at.var * bl1_k)
                 else:
+                    # hw splited one time before BL1 attach
                     axis_k_var = hw_mad_1_l1_out_at.var * bl1_k
-
-                hw_single_core_factor = _ceil_div(hw_pad_1, block_dim_hw) * \
-                                        CUBE_DIM
-                hw_single_core_factor = _align(hw_single_core_factor,
-                                               dw_k * CUBE_DIM)
 
                 if self.dynamic_mode == "dynamic_batch":
                     # multi_core offset
@@ -1538,17 +1574,24 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                         ho_min = tvm.floordiv(multi_core_offset, width_grads)
 
                 elif self.dynamic_mode == "dynamic_hw":
-                    # hw_block offset
+                    # multi_core offset
                     block_div = (block_dim_batch * block_dim_cout * block_dim_cin)
-                    hw_block_offset = fused_multi_core // block_div * \
+                    multi_core_offset = fused_multi_core // block_div * \
                                       hw_single_core_factor
 
                     if tile_mode == "tile_h_dw_cc":
-                        ho_min = tvm.floordiv(hw_block_offset + axis_k_var,
-                                              width_grads)
+                        hw_block_offset = multi_core_offset + axis_k_var
+                        ho_min = tvm.floordiv(hw_block_offset, width_grads)
 
                     elif tile_mode == "tile_h_dw_ddr":
+                        hw_block_offset = multi_core_offset
                         ho_min = tvm.floordiv(hw_block_offset, width_grads)
+
+                    # dynamic_hw need process multi_core tail blocks
+                    ho_len = _ceil_div(tvm.floormod(hw_block_offset,
+                                                     width_grads) +
+                                       bl1_k,
+                                       width_grads)
 
                 hi_min = ho_min * stride_height - pad_up
 
@@ -1557,7 +1600,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
                 return hi_min, hi_extent, wi_min, wi_extent
 
-            if not flag_all_one_case:
+            if not flag_all_one_case and not flag_conv1d_case:
                 tile_mode = _set_tile_mode()
 
                 hi_min, hi_extent, wi_min, wi_extent = \
@@ -1602,6 +1645,10 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         _double_buffer()
         _emit_insn()
         if self.dynamic_mode:
+            hw_single_core_factor = _ceil_div(hw_pad_1, block_dim_hw) * \
+                                    CUBE_DIM
+            hw_single_core_factor = _align(hw_single_core_factor,
+                                           dw_k * CUBE_DIM)
             al1_bound = _get_al1_bound()
             bl1_bound, additional_rows, ho_len = _get_bl1_bound()
             _dynamic_bl1_buffer_tile(ho_len)
