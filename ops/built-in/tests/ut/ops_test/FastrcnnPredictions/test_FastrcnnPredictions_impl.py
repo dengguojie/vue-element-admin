@@ -173,5 +173,6 @@ def gen_precision_case(shape_x, shape_y, dtype_x, dtype_y, nms_threshold, score_
 ut_case.add_precision_case("Ascend910", gen_precision_case((16 * 1, 4), (16, 2), "float16", "float16", 0.5, 0.01, 16))
 ut_case.add_precision_case("Ascend910", gen_precision_case((16 * 15, 4), (16, 16), "float16", "float16", 0.5, 0.01, 16))
 ut_case.add_precision_case("Ascend910", gen_precision_case((32 * 5, 4), (32, 6), "float16", "float16", 0.5, 0.01, 32))
+ut_case.add_precision_case("Ascend615", gen_precision_case((16 * 1, 4), (16, 2), "float16", "float16", 0.5, 0.01, 16))
 
 
