@@ -148,7 +148,7 @@ private:
     size_t numInputs_;
     size_t numOutputs_;
 
-    std::vector<const aclDataBuffer *> inputBuffers_;
+    std::vector<aclDataBuffer *> inputBuffers_;
     std::vector<aclDataBuffer *> outputBuffers_;
 
     std::vector<void *> devInputs_;

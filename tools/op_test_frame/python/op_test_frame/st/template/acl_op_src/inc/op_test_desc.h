@@ -82,12 +82,12 @@ struct OpTestDesc {
     std::vector<aclDataType> inputDataType;
     std::vector<aclFormat> inputFormat;
     std::vector<std::string> inputFilePath;
-    std::vector<const aclTensorDesc *> inputDesc;
+    std::vector<aclTensorDesc *> inputDesc;
     std::vector<std::vector<int64_t>> outputShape;
     std::vector<aclDataType> outputDataType;
     std::vector<aclFormat> outputFormat;
     std::vector<std::string> outputFilePath;
-    std::vector<const aclTensorDesc *> outputDesc;
+    std::vector<aclTensorDesc *> outputDesc;
     std::vector<OpTestAttr> opAttrVec;
     aclopAttr *opAttr;
 };

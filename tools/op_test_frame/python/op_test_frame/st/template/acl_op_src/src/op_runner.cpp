@@ -139,7 +139,13 @@ std::vector<int64_t> OpRunner::GetInputShape(size_t index) const
 
     auto desc = opDesc_->inputDesc[index];
     for (size_t i = 0; i < aclGetTensorDescNumDims(desc); ++i) {
-        ret.emplace_back(aclGetTensorDescDim(desc, i));
+        int64_t dimSize;
+        if (aclGetTensorDescDimV2(desc, i, &dimSize) != ACL_SUCCESS) {
+            ERROR_LOG("get dimension size from tensor desc failed, dimension index = %zu", i);
+            ret.clear();
+            return ret;
+        }
+        ret.emplace_back(dimSize);
     }
 
     return ret;
@@ -155,7 +161,13 @@ std::vector<int64_t> OpRunner::GetOutputShape(size_t index) const
 
     auto desc = opDesc_->outputDesc[index];
     for (size_t i = 0; i < aclGetTensorDescNumDims(desc); ++i) {
-        ret.emplace_back(aclGetTensorDescDim(desc, i));
+        int64_t dimSize;
+        if (aclGetTensorDescDimV2(desc, i, &dimSize) != ACL_SUCCESS) {
+            ERROR_LOG("get dimension size from tensor desc failed, dimension index = %zu", i);
+            ret.clear();
+            return ret;
+        }
+        ret.emplace_back(dimSize);
     }
     return ret;
 }
@@ -212,15 +224,15 @@ bool OpRunner::RunOp()
     }
     INFO_LOG("Create stream success");
 
-    auto ret = aclopExecute(opDesc_->opType.c_str(),
-                            numInputs_,
-                            opDesc_->inputDesc.data(),
-                            inputBuffers_.data(),
-                            numOutputs_,
-                            opDesc_->outputDesc.data(),
-                            outputBuffers_.data(),
-                            opDesc_->opAttr,
-                            stream);
+    auto ret = aclopExecuteV2(opDesc_->opType.c_str(),
+                              numInputs_,
+                              opDesc_->inputDesc.data(),
+                              inputBuffers_.data(),
+                              numOutputs_,
+                              opDesc_->outputDesc.data(),
+                              outputBuffers_.data(),
+                              opDesc_->opAttr,
+                              stream);
     if (ret == ACL_ERROR_OP_TYPE_NOT_MATCH || ret == ACL_ERROR_OP_INPUT_NOT_MATCH ||
         ret == ACL_ERROR_OP_OUTPUT_NOT_MATCH || ret == ACL_ERROR_OP_ATTR_NOT_MATCH) {
         ERROR_LOG("[%s] op with the given description is not compiled. Please run atc first", opDesc_->opType.c_str());
