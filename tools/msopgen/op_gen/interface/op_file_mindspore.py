@@ -96,17 +96,15 @@ class OpFileMindSpore(OPFile):
         input_attr_list = self.op_info.parsed_input_info.get(var_list[0])
         ir_type_list = input_attr_list.get("ir_type_list")
         data_types_list = []
-        if len(ir_type_list) == 1 and ir_type_list[0] == '':
-            utils.print_error_log("The attr types in the input file are "
-                                  "unsupported. Please check the input or "
-                                  "output types.")
-            raise utils.MsOpGenException(
-                utils.MS_OP_GEN_INVALID_PARAM_ERROR)
         for dtype_format in ir_type_list:
             type_list = []
             for type_count in range(len(var_list)):
-                type_list.append(op_tmpl.PY_MS_DATA_TYPE.format(
-                    data_type=dtype_format))
+                if dtype_format == '':
+                    type_list.append("")
+                    break
+                else:
+                    type_list.append(op_tmpl.PY_MS_DATA_TYPE.format(
+                        data_type=dtype_format))
             data_type_join = ', '.join(type_list)
             data_types_list.append(op_tmpl.PY_MS_DTYPE_FORMAT.format(
                 data_types_join=data_type_join))

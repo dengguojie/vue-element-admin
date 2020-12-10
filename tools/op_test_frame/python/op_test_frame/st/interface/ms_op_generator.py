@@ -185,8 +185,9 @@ class MsOpGenerator:
                 output_num = output_num + 1
 
             # deal with report
+            last_filedir = os.path.split(self.output_path)[1]
             output_abs_paths = [
-                os.path.join(self.output_path, 'run', 'out', x + ".bin") for x
+                os.path.join(last_filedir, 'run', 'out', x + ".bin") for x
                 in output_paths]
             case_report = self.report.get_case_report(testcase_name)
             case_report.trace_detail.st_case_info.planned_output_data_paths = \

@@ -26,13 +26,13 @@ MS_TF_INPUT_OUTPUT_DTYPE_MAP = {
     "DT_INT32": "F32_Default",
     "int64": "F64_Default",
     "DT_INT64": "F64_Default",
-    "unint8": "U8_Default",
+    "uint8": "U8_Default",
     "DT_UINT8": "U8_Default",
-    "unint16": "F16_Default",
+    "uint16": "F16_Default",
     "DT_UINT16": "F16_Default",
-    "unint32": "F32_Default",
+    "uint32": "F32_Default",
     "DT_UINT32": "F32_Default",
-    "unint64": "F64_Default",
+    "uint64": "F64_Default",
     "DT_UINT64": "F64_Default",
 }
 

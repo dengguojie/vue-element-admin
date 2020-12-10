@@ -41,7 +41,7 @@ def _parse_dtype_by_filename(file_name):
 def _get_np_dtype(type_str):
     type_dict = {
         'fp64': np.float64, 'fp32': np.float32,  'float32': np.float32,
-        'fp16': np.float16, 'float16': np.float16,
+        'float': np.float32, 'fp16': np.float16, 'float16': np.float16,
         'int64': np.int64, 'int32': np.int32, 'int16': np.int16,
         'int8': np.int8,
         'uint64': np.uint64, 'uint32': np.uint32, 'uint16': np.uint16,

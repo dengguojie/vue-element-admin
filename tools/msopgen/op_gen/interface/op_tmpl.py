@@ -298,7 +298,7 @@ PY_MS_COMPUTE = """def {name}_compute({input_name}, {output}):
     \"""
     res = te.lang.cce.XXX({input_name})
     return res
-    
+
 """
 PY_MS_INPUT_INFO = """.input(0, "{input_name}", False, "required", "all")\\"""
 PY_MS_OUTPUT_INFO = """.output(0, "{output_name}", False, "required", "all")\\"""
@@ -317,7 +317,7 @@ PY_MS_OP_INFO = """
     {outputs}
     {data_types}
     .get_op_info()
-    
+
 """
 PY_MS_OP_INFO_REGISTER = """
 # Binding kernel info with the kernel implementation.
@@ -354,7 +354,7 @@ class {up_name}(PrimitiveWithInfer):
     @prim_attr_register
     def __init__(self):
         self.init_prim_io_names(inputs=['{input_name}'], outputs=['{output}'])
-        # Import the entry function of the kernel implementation from relative 
+        # Import the entry function of the kernel implementation from relative
         #  path or PYTHONPATH.
         from {name}_impl import {name}_impl
 
