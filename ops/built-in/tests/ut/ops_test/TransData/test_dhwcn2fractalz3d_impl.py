@@ -226,4 +226,8 @@ ut_case.add_precision_case(["Ascend910"],
                                                          "float32", "dhwcn_fp32_8", "success"))
 
 if __name__ == '__main__':
-    ut_case.run()
+    ut_case.run("Ascend910",
+                simulator_mode="pv",
+                simulator_lib_path="/usr/local/Ascend/toolkit/tools/simulator",
+                case_name=["dhwcn_8__1"])
+

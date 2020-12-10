@@ -89,6 +89,7 @@ class AscendRTSApi:
 
         logger.log_info("Load RTS shared library...")
         self.rtsdll = None
+        self._simulator_mode = simulator_mode
         if simulator_mode is None:
             self._load_runtime_so()
         else:
@@ -100,6 +101,14 @@ class AscendRTSApi:
         self.kernel_binary_storage = {}
         self.kernel_name_storage = {}
         self.context_storage = []
+
+    def _clear_env(self):
+        if self._simulator_mode:
+            all_ld_path = os.environ['LD_LIBRARY_PATH']
+            all_ld_paths = all_ld_path.split(":")
+            if len(all_ld_paths) > 2:
+                all_ld_paths = all_ld_paths[:-2]
+            os.environ['LD_LIBRARY_PATH'] = ":".join(all_ld_paths)
 
     def _load_runtime_so(self):
         def _find_runtime_so():
@@ -650,6 +659,7 @@ class AscendRTSApi:
         self.rtsdll.rtDeviceReset.restype = ctypes.c_uint64
         rt_error = self.rtsdll.rtDeviceReset(ctypes.c_int32(device_id))
         self.parse_error(rt_error, "rtDeviceReset")
+        self._clear_env()
 
     def start_online_profiling(self, stream: ctypes.c_uint64, profiling_count: int):
         self.rtsdll.rtStartOnlineProf.restype = ctypes.c_uint64
