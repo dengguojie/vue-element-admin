@@ -165,7 +165,7 @@ IMPLEMT_INFERFUNC(QueueDequeue, QueueDequeueInfer) {
   } else {
     for (size_t i = 0; i < num_outputs_data; ++i) {
       TensorDesc output_desc = op.GetDynamicOutputDesc("components", i);
-      output_desc.SetShape(Shape(ge::UNKNOWN_SHAPE));
+      output_desc.SetShape(Shape(ge::UNKNOWN_RANK));
       output_desc.SetDataType(component_types[i]);
       output_status = op.UpdateDynamicOutputDesc("components", i, output_desc);
       if (output_status != GRAPH_SUCCESS) {
