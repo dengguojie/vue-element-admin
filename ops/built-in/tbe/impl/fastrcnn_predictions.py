@@ -1192,11 +1192,11 @@ def postprocessing(tik_instance, gm_tensor, shape, middle_tensor):
 
     # cut out topk * FOUR from topk * SIXTEEN
     if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") == "Ascend615":
-        mask_final = tik_instance.Tensor('uint16', (1, 48), name='mask_final',
+        mask_final = tik_instance.Tensor('uint16', (1, 16), name='mask_final',
                                          scope=tik.scope_ubuf)
         mask_num = tik_instance.Scalar('uint16', name='mask_num',
                                        init_value=15)   # mask of vreduce
-        tik_instance.vector_dup(48, mask_final, mask_num, 1, 1, 8)
+        tik_instance.vector_dup(16, mask_final, mask_num, 1, 1, 1)
         tik_instance.vreduce(128, final_tensor.sorted_rois_ub_str1,
                               final_tensor.sorted_rois_ub_str,
                               mask_final, topk_k // EIGHT, 1, EIGHT, 0, 0, None, 'normal')
