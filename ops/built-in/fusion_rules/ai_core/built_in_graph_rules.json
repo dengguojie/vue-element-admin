@@ -1239,6 +1239,144 @@
       }
     },
     {
+      "RuleName": "clip_by_norm_nodivsquaresum",
+      "OuterInputs": [
+        {
+          "name": "Input0"
+        },
+        {
+          "name": "ConstantSelect0"
+        },
+        {
+          "name": "ConstantGreater0"
+        },
+        {
+          "name": "ConstantMaximum0"
+        }
+      ],
+      "OuterOutputs": [
+        {
+          "name": "Output0"
+        }
+      ],
+      "OriginGraph": {
+        "Nodes": [
+          {
+            "name": "Select0",
+            "type": [
+              "Select"
+            ]
+          },
+          {
+            "name": "Greater0",
+            "type": [
+              "Greater"
+            ]
+          },
+          {
+            "name": "Sqrt0",
+            "type": [
+              "Sqrt"
+            ]
+          },
+          {
+            "name": "Select1",
+            "type": [
+              "Select"
+            ]
+          },
+          {
+            "name": "Maximum0",
+            "type": [
+              "Maximum"
+            ]
+          }
+        ],
+        "Edges": [
+          {
+            "src": "Input0",
+            "dst": "Select0:1"
+          },
+          {
+            "src": "Input0",
+            "dst": "Select1:2"
+          },
+          {
+            "src": "Input0",
+            "dst": "Greater0:0"
+          },
+          {
+            "src": "ConstantSelect0",
+            "dst": "Select0:2"
+          },
+          {
+            "src": "Greater0:0",
+            "dst": "Select0:0"
+          },
+          {
+            "src": "ConstantGreater0",
+            "dst": "Greater0:1"
+          },
+          {
+            "src": "Select0:0",
+            "dst": "Sqrt0:0"
+          },
+          {
+            "src": "Sqrt0:0",
+            "dst": "Select1:1"
+          },
+          {
+            "src": "Greater0:0",
+            "dst": "Select1:0"
+          },
+          {
+            "src": "Select1:0",
+            "dst": "Maximum0:0"
+          },
+          {
+            "src": "ConstantMaximum0",
+            "dst": "Maximum0:1"
+          },
+          {
+            "src": "Maximum0:0",
+            "dst": "Output0"
+          }
+        ]
+      },
+      "FusionGraph": {
+        "Nodes": [
+          {
+            "name": "clip_by_norm_nodivsquaresum",
+            "type": [
+              "ClipByNormNoDivSum"
+            ]
+          }
+        ],
+        "Edges": [
+          {
+            "src": "Input0",
+            "dst": "clip_by_norm_nodivsquaresum:0"
+          },
+          {
+            "src": "ConstantSelect0",
+            "dst": "clip_by_norm_nodivsquaresum:1"
+          },
+          {
+            "src": "ConstantGreater0",
+            "dst": "clip_by_norm_nodivsquaresum:2"
+          },
+          {
+            "src": "ConstantMaximum0",
+            "dst": "clip_by_norm_nodivsquaresum:3"
+          },
+          {
+            "src": "clip_by_norm_nodivsquaresum:0",
+            "dst": "Output0"
+          }
+        ]
+      }
+    },
+    {
       "RuleName": "SquareSumV1",
       "OuterInputs": [
         {
