@@ -15,17 +15,11 @@
 """
 unsorted_segment_sum
 """
-import sys
-import math
-import json
-
-
+# pylint: disable=too-many-lines
 import te.lang.dynamic
 from te import tvm
 from te import tik
 from te import platform
-from topi import generic
-from functools import reduce as reduceIns
 
 # int32 select key
 SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_SMALL_ID = 9
@@ -75,6 +69,8 @@ ELE_NUM_ONE_BLOCK_FP16 = BYTE_BLOCK // BYTE_FLOAT16
 ELE_NUM_ONE_BLOCK_INT32 = BYTE_BLOCK // BYTE_INT32
 
 
+# pylint: disable=invalid-name,too-many-instance-attributes,too-many-arguments,too-many-statements
+# pylint: disable=too-many-locals,too-few-public-methods,unused-argument
 def _ceil_div(val, block):
     """
     compute ceil div
@@ -127,6 +123,10 @@ def _div(val, block):
 
 
 class UnsortedSegmentSum():
+    """
+        Function: use to store concat base parameters
+        Modify : 2020-12-9
+    """
     def __init__(self, x_dict, segment_ids_dict, num_segments_dict, y_dict,
                  kernel_name):
         """
@@ -166,6 +166,10 @@ class UnsortedSegmentSum():
         self.ub_tensor_num = 3
 
         class GmTensor():
+            """
+            Function: use to store concat base parameters
+            Modify : 2020-12-9
+            """
             def __init__(self, tik_instance, input_dtype, ids_dtype,
                          num_segments_dtype):
                 """
@@ -202,6 +206,10 @@ class UnsortedSegmentSum():
                                                      scope=tik.scope_gm)
 
         class UbTensor():
+            """
+            Function: use to store concat base parameters
+            Modify : 2020-12-9
+            """
             def __init__(self):
                 """
                 constructor of class UbTensor
@@ -221,6 +229,10 @@ class UnsortedSegmentSum():
 
         # scalar of tiling params
         class CommonScalar():
+            """
+            Function: use to store concat base parameters
+            Modify : 2020-12-9
+            """
             def __init__(self, tik_instance, num_segments_dtype, ids_dtype):
                 """
                 constructor of class CommonScalar
@@ -251,6 +263,10 @@ class UnsortedSegmentSum():
                     name="num_segments_last_core")
 
         class Int32IdsScalar():
+            """
+            Function: use to store concat base parameters
+            Modify : 2020-12-9
+            """
             def __init__(self, tik_instance):
                 """
                 constructor of class Int32IdsScalar
@@ -284,6 +300,10 @@ class UnsortedSegmentSum():
                     name="last_burst_len")
 
         class Int32ENumScalar():
+            """
+            Function: use to store concat base parameters
+            Modify : 2020-12-9
+            """
             def __init__(self, tik_instance):
                 """
                 constructor of class Int32ENumScalar
@@ -490,10 +510,9 @@ class UnsortedSegmentSum():
         _enable_atomic_add(self.tik_instance, self.input_dtype)
         byte = BYTE_INT32 if self.input_dtype == DTYPE_INT32 else BYTE_FLOAT16
         mask = MASK_FP16 if self.input_dtype == DTYPE_FP16 else MASK_INT32
-
-        with self.tik_instance.new_stmt_scope():
-            with self.tik_instance.for_range(0, self.core_num, block_num=self.core_num) as block_index:
-                with self.tik_instance.if_scope(block_index < self.obj_common_scalar.need_core_num):
+        with self.tik_instance.for_range(0, self.core_num, block_num=self.core_num) as block_index:
+            with self.tik_instance.if_scope(block_index < self.obj_common_scalar.need_core_num):
+                with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
                             self.obj_common_scalar.select_key == SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_SMALL_ID):
                         self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(
@@ -513,6 +532,7 @@ class UnsortedSegmentSum():
                                                         self.obj_int32_ids_input_scalar,
                                                         self.obj_int32_e_num_input_scalar,
                                                         self.input_dtype)
+                with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
                             self.obj_common_scalar.select_key == SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_BIG_ID):
                         self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(
@@ -532,6 +552,7 @@ class UnsortedSegmentSum():
                                                       self.obj_int32_ids_input_scalar,
                                                       self.obj_int32_e_num_input_scalar,
                                                       self.input_dtype)
+                with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
                             self.obj_common_scalar.select_key == SELECT_KEY_MODE_NO_ATOMIC_BIG_E_SMALL_ID):
                         self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(
@@ -551,6 +572,7 @@ class UnsortedSegmentSum():
                                                       self.obj_int32_ids_input_scalar,
                                                       self.obj_int32_e_num_input_scalar,
                                                       self.input_dtype)
+                with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
                             self.obj_common_scalar.select_key == SELECT_KEY_MODE_NO_ATOMIC_BIG_E_BIG_ID):
                         self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(
@@ -570,15 +592,16 @@ class UnsortedSegmentSum():
                                                     self.obj_int32_ids_input_scalar,
                                                     self.obj_int32_e_num_input_scalar,
                                                     self.input_dtype)
+                with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
                             self.obj_common_scalar.select_key == SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_SMALL_ID_BLOCK):
                         self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(
                             self.input_dtype, (mask,), name="input_ub", scope=tik.scope_ubuf)
                         self.obj_ub_tensor.ids_ub = self.tik_instance.Tensor(
-                            self.ids_dtype, ((self.ub_size - mask * byte) // 2 // byte,),
+                            self.ids_dtype, ((self.ub_size - 256) // 2 // BYTE_INT32,),
                             name="ids_ub", scope=tik.scope_ubuf)
                         self.obj_ub_tensor.output_ub = self.tik_instance.Tensor(
-                            self.output_dtype, ((self.ub_size - mask * byte) // 2 // byte,),
+                            self.output_dtype, ((self.ub_size - 256) // 2 // byte,),
                             name="output_ub", scope=tik.scope_ubuf)
                         _tik_no_atomic_small_e_block_small_id(block_index,
                                                               self.tik_instance,
@@ -589,15 +612,16 @@ class UnsortedSegmentSum():
                                                               self.obj_int32_e_num_input_scalar,
                                                               self.input_dtype)
 
+                with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
                             self.obj_common_scalar.select_key == SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_BIG_ID_BLOCK):
                         self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(
                             self.input_dtype, (mask,), name="input_ub", scope=tik.scope_ubuf)
                         self.obj_ub_tensor.ids_ub = self.tik_instance.Tensor(
-                            self.ids_dtype, ((self.ub_size - mask * byte) // 2 // byte,),
+                            self.ids_dtype, ((self.ub_size - 256) // 2 // BYTE_INT32,),
                             name="ids_ub", scope=tik.scope_ubuf)
                         self.obj_ub_tensor.output_ub = self.tik_instance.Tensor(
-                            self.output_dtype, ((self.ub_size - mask * byte) // 2 // byte,),
+                            self.output_dtype, ((self.ub_size - 256) // 2 // byte,),
                             name="output_ub", scope=tik.scope_ubuf)
                         _tik_no_atomic_small_e_block_big_id(block_index,
                                                             self.tik_instance,
@@ -1141,7 +1165,8 @@ def _tik_no_atomic_small_e_big_id(block_index,
                         # visit ids
                         id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_front_part])
                         with tik_inst.if_scope(segment_index_last_core +
-                                               block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
+                                               block_index * obj_common_scalar.num_segments_front_core ==
+                                               id_val_scalar):
                             # id in segment
                             input_offset_gm = (ids_offset_gm +
                                                ids_index_front_part) * obj_int32_e_num_input_scalar.e_num
@@ -2144,7 +2169,7 @@ def _tik_no_atomic_small_e_block_small_id(block_index,
                                        obj_int32_e_num_input_scalar.e_num
                     output_offset_ub = 0
                     output_n_burst = 1
-                    output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_burst_len
+                    output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_last_burst_len
                     _tik_mov_output_ub2gm_continue(tik_inst,
                                                    obj_gm_tensor.output_gm,
                                                    obj_ub_tensor.output_ub,
@@ -2300,7 +2325,7 @@ def _tik_no_atomic_small_e_block_small_id(block_index,
 
                     output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core +
                                         index_e_max_num_time *
-                                        obj_int32_e_num_input_scalar.front_num_segment_last_lastcore) *\
+                                        obj_int32_e_num_input_scalar.front_num_segment_lastcore) *\
                                        obj_int32_e_num_input_scalar.e_num
                     output_offset_ub = 0
                     output_n_burst = 1
@@ -2314,7 +2339,7 @@ def _tik_no_atomic_small_e_block_small_id(block_index,
                                                    output_burst_len)
                     with tik_inst.if_scope(align_scalar_last_core > 0):
                         align_ub = tik_inst.Tensor(dtype, (ele_num_one_block,), name="align_ub", scope=tik.scope_ubuf)
-                        output_offset_gm_one = output_offset_gm + output_burst_len * ele_num_one_block -\
+                        output_offset_gm_one = output_offset_gm + output_burst_len * ele_num_one_block - \
                                                align_scalar_last_core
                         with tik_inst.for_range(0, ele_num_one_block) as num_i:
                             align_ub[num_i].set_as(obj_ub_tensor.output_ub[
@@ -2361,7 +2386,7 @@ def _tik_no_atomic_small_e_block_small_id(block_index,
                                obj_int32_e_num_input_scalar.e_num
             output_offset_ub = 0
             output_n_burst = 1
-            output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_burst_len
+            output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_last_burst_len_input_scalar_lastcore
             _tik_mov_output_ub2gm_continue(tik_inst,
                                            obj_gm_tensor.output_gm,
                                            obj_ub_tensor.output_ub,
@@ -2740,7 +2765,7 @@ def _tik_no_atomic_small_e_block_big_id(block_index,
             with tik_inst.for_range(0, obj_int32_e_num_input_scalar.e_max_num_time_last_core) as index_e_max_num_time:
                 with tik_inst.if_scope(
                         index_e_max_num_time < obj_int32_e_num_input_scalar.e_max_num_time_last_core - 1):
-                    with tik_inst.for_range(0,  obj_int32_e_num_input_scalar.front_num_segment_lastcore) as \
+                    with tik_inst.for_range(0, obj_int32_e_num_input_scalar.front_num_segment_lastcore) as \
                             segment_index_last_core:
                         # num_segments divide by core
                         # init output_ub
@@ -2976,7 +3001,7 @@ def _tik_no_atomic_small_e_block_big_id(block_index,
                                            ids_offset_ub,
                                            ids_n_burst,
                                            ids_burst_len)
-                        with tik_inst.for_range(0,  obj_int32_ids_input_scalar.ele_num_ub_front_part) as \
+                        with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_front_part) as \
                                 ids_index_front_part:
                             # visit ids
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_front_part])
@@ -3014,7 +3039,7 @@ def _tik_no_atomic_small_e_block_big_id(block_index,
                             # visit ids
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_last_part])
                             with tik_inst.if_scope(segment_index_last_core + block_index *
-                                    obj_common_scalar.num_segments_front_core == id_val_scalar):
+                                                   obj_common_scalar.num_segments_front_core == id_val_scalar):
                                 # id in segment
                                 input_offset_gm = (ids_offset_gm + ids_index_last_part) * \
                                                   obj_int32_e_num_input_scalar.e_num
@@ -3032,11 +3057,11 @@ def _tik_no_atomic_small_e_block_big_id(block_index,
                 with tik_inst.for_range(0, obj_int32_e_num_input_scalar.e_num) as j:
                     obj_ub_tensor.output_ub[segment_index_last_core * obj_int32_e_num_input_scalar.e_num + j].set_as(
                         mask_ub[j])
-            output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core) *\
+            output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core) * \
                                obj_int32_e_num_input_scalar.e_num
             output_offset_ub = 0
             output_n_burst = 1
-            output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_burst_len
+            output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_bust_len_small_e_last_core
             _tik_mov_output_ub2gm_continue(tik_inst,
                                            obj_gm_tensor.output_gm,
                                            obj_ub_tensor.output_ub,
