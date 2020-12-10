@@ -117,6 +117,40 @@ COMMON_INFER_FUNC_REG(StridedSliceGradD, StridedSliceGradDInferShape);
 // ----------------StridedSliceGradD Op End-------------------
 
 // ----------------StridedSliceGrad Op Begin------------------
+struct SsgMasks {
+  uint64_t begin_mask = 0;
+  uint64_t end_mask = 0;
+  uint64_t ellipsis_mask = 0;
+  uint64_t new_axis_mask = 0;
+  uint64_t shrink_axis_mask = 0;
+};
+
+static graphStatus IsMasksAllZero(const ge::Operator& op, struct SsgMasks& slice_masks, bool& no_mask) {
+  map<string, uint64_t&> mask_maps = {
+      {"begin_mask", slice_masks.begin_mask},
+      {"end_mask", slice_masks.end_mask},
+      {"ellipsis_mask", slice_masks.ellipsis_mask},
+      {"new_axis_mask", slice_masks.new_axis_mask},
+      {"shrink_axis_mask", slice_masks.shrink_axis_mask}
+  };
+
+  for (auto& item : mask_maps) {
+    int64_t mask_value = 0;
+    if (ge::GRAPH_SUCCESS != op.GetAttr(item.first, mask_value)) {
+      OpsGetAttrErrReport(op.GetName(), item.first);
+      OP_LOGE(op.GetName().c_str(), "Get attribute '%s' failed from op of StridedSlice!", item.first.c_str());
+      return GRAPH_FAILED;
+    }
+
+    item.second = static_cast<uint64_t>(mask_value);
+    if (mask_value != 0) {
+      no_mask = false;
+    }
+  }
+
+  return GRAPH_SUCCESS;
+}
+
 IMPLEMT_COMMON_INFERFUNC(StridedSliceGradInferShape) {
   OP_LOGD("OP[SSGInferShape]", "SSGInferShape BEGIN.");
   // Set depends if input_tensors are variable.
@@ -133,6 +167,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceGradInferShape) {
 
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   op_desc->SetOpInferDepends({"shape", "begin", "end", "strides"});
+  auto dim_vector = op.GetInputDesc("shape").GetShape().GetDims();
 
   if (op.GetInputConstData("shape", output_shape_tensor) != GRAPH_SUCCESS) {
     OP_LOGD("OP[SSGInferShape]", "SSGInferShape BRANCH0.");
@@ -141,7 +176,6 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceGradInferShape) {
     // shape_dy is UNKNOWN_RANK:
     if (shape_dy.GetDims() == UNKNOWN_RANK) {
       OP_LOGI("OP[SSGInferShape]", "shape_dy is UNKNOWN_RANK. Couldn't set in_range");
-      auto dim_vector = op.GetInputDesc("shape").GetShape().GetDims();
 
       // shape is not -2 and -1, outputshape should be (-1,...)
       if (dim_vector != UNKNOWN_RANK and dim_vector != UNKNOWN_SHAPE){
@@ -168,7 +202,6 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceGradInferShape) {
 
     // Get shape of tensor, shape must be [n, ]
     // shape is unknown, out_shape is -2
-    auto dim_vector = op.GetInputDesc("shape").GetShape().GetDims();
     if (dim_vector == UNKNOWN_SHAPE || dim_vector == UNKNOWN_RANK) {
       OP_LOGD(op.GetName().c_str(), "shape is UNKNOWN_SHAPE or UNKNOWN_RANK");
       vector<int64_t> shape(1, -2);
@@ -176,6 +209,39 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceGradInferShape) {
       TensorDesc tensordesc_output = op.GetOutputDesc("output");
       tensordesc_output.SetShape(out_shape);
       tensordesc_output.SetDataType(input_dtype);
+      (void)op.UpdateOutputDesc("output", tensordesc_output);
+      return GRAPH_SUCCESS;
+    }
+
+    // special branch: when shape is not const and len of begin < len of dy
+    const vector<string> list_names = {"begin", "end", "strides"};
+    int64_t begin_len = -1;
+    for (const auto& param : list_names) {
+      begin_len = std::max(op.GetInputDesc(param).GetShape().GetDim(0), begin_len);
+    }
+
+    bool no_mask = true;
+    struct SsgMasks slice_masks = {};
+    if (GRAPH_FAILED == IsMasksAllZero(op, slice_masks, no_mask)) {
+      return GRAPH_FAILED;
+    }
+
+    if (no_mask && begin_len > 0 && begin_len < dim_vector[0]) {
+      OP_LOGD("OP[SSGInferShape]", "Enter the special branch when shape is not const.");
+      vector<int64_t> shape(shape_dy.GetDims());
+      for (size_t dim = 0; dim < begin_len; dim++) {
+        shape[dim] = -1;
+      }
+
+      for (size_t dim = 0; dim < shape.size(); dim++) {
+        range_value = std::make_pair(abs(shape[dim]), shape[dim]);
+        out_range.push_back(range_value);
+      }
+      Shape out_shape(shape);
+      TensorDesc tensordesc_output = op.GetOutputDesc("output");
+      tensordesc_output.SetShape(out_shape);
+      tensordesc_output.SetDataType(input_dtype);
+      tensordesc_output.SetShapeRange(out_range);
       (void)op.UpdateOutputDesc("output", tensordesc_output);
       return GRAPH_SUCCESS;
     }
@@ -215,7 +281,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceGradInferShape) {
   // "shape" is not -2
   if (in_range.size() > 0) {
     for (size_t dim = 0; dim < outputShapeList.size(); dim++) {
-      range_value = std::make_pair(outputShapeList[dim], outputShapeList[dim]);
+      range_value = std::make_pair(abs(outputShapeList[dim]), outputShapeList[dim]);
       out_range.push_back(range_value);
     }
   }
