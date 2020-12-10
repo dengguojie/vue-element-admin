@@ -33,6 +33,7 @@
 #include "inc/transformation_ops.h"
 #include <string>
 #include <vector>
+#include <cmath>
 #include <algorithm>
 #include "util/util.h"
 #include "common_shape_fns.h"
@@ -337,52 +338,137 @@ static void CalcSpaceToBatch(const Tensor& data, const DataType& dtype, std::vec
 }
 
 IMPLEMT_COMMON_INFERFUNC(SpaceToBatchNDInferShape) {
-  Tensor data1;
-  if (op.GetInputConstData("block_shape", data1) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get constValue failed of [block_shape]");
-    return GRAPH_FAILED;
-  }
-  DataType dtype1 = op.GetInputDesc("block_shape").GetDataType();
+  const vector<string> depend_names = {"block_shape", "paddings"};
+  PREPARE_DYNAMIC_SHAPE(depend_names);
+  auto node = NodeUtils::GetNodeFromOperator(op);
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto input_shape = input_desc->MutableShape().GetDims();;
+  auto input_dtype = input_desc->GetDataType();
+
+  auto output_desc = op_info->MutableOutputDesc("y");
+  output_desc->SetDataType(input_dtype);
+
+  // get const node block_shape
+  bool block_done = false;
   std::vector<int64_t> block_shape;
-  CalcSpaceToBatch(data1, dtype1, block_shape);
-  Tensor data2;
-  if (op.GetInputConstData("paddings", data2) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get constValue failed of [paddings]");
-    return GRAPH_FAILED;
+  GeTensorPtr block_shape_tensor = nullptr;
+  if (GRAPH_SUCCESS == NodeUtils::GetInputConstData(node, "block_shape", block_shape_tensor)) {
+    auto const_desc = op_info->MutableInputDesc("block_shape");
+    auto const_dtype = const_desc->GetDataType();
+    if (GetConstValue(op, block_shape_tensor, const_dtype, block_shape)) {
+      block_done = true;
+    } else {
+      OP_LOGW(op.GetName().c_str(), "Get Const block_shape value failed ");
+    }
   }
-  DataType dtype2 = op.GetInputDesc("paddings").GetDataType();
+
+  bool padding_done = false;
   std::vector<int64_t> paddings;
-  CalcSpaceToBatch(data2, dtype2, paddings);
-
-  auto tensordesc = op.GetInputDesc("x");
-  auto shape = tensordesc.GetShape();
-  auto dtype = tensordesc.GetDataType();
-  std::vector<int64_t> shape_vector = shape.GetDims();
-  if (shape_vector.size() <= block_shape.size()) {
-    OP_LOGE(op.GetName().c_str(),
-            "DimSize of x is not greater than size \
-                                   of block_shape.");
-    return GRAPH_FAILED;
+  GeTensorPtr paddings_tensor = nullptr;
+  if (GRAPH_SUCCESS == NodeUtils::GetInputConstData(node, "paddings", paddings_tensor)) {
+    auto const_desc = op_info->MutableInputDesc("paddings");
+    auto const_dtype = const_desc->GetDataType();
+    if (GetConstValue(op, paddings_tensor, const_dtype, paddings)) {
+      padding_done = true;
+    } else {
+      OP_LOGW(op.GetName().c_str(), "Get Const paddings value failed ");
+    }
   }
 
-  TensorDesc td = op.GetOutputDesc("y");
+  if (!IsUnknown(input_shape) && padding_done && block_done) {
+    // not dynamic case, only set shape
+    std::vector<int64_t> y_shape;
+    int64_t block_shape_size = input_shape[0];
+    for (size_t i = 0; i < block_shape.size(); i++) {
+      block_shape_size = block_shape_size * block_shape[i];
+    }
+    y_shape.push_back(block_shape_size);
+    for (size_t i = 1; i <= block_shape.size(); i++) {
+      y_shape.push_back((input_shape[i] + paddings[2 * i - 2] + paddings[2 * i - 1]) / block_shape[i - 1]);
+    }
+    for (size_t i = block_shape.size() + 1; i < input_shape.size(); i++) {
+      y_shape.push_back(input_shape[i]);
+    }
+    output_desc->SetShape(GeShape(y_shape));
+
+    return GRAPH_SUCCESS;
+  }
+
+  // dynamic case
+  // input shape is -2, output is -2
+  if (IsUnknownRankShape(input_shape)) {
+    output_desc->SetShape(GeShape(input_shape));
+    OP_LOGW(op.GetName().c_str(), "input shape is UnknownRank, set output is UnknownRank");
+    return GRAPH_SUCCESS;
+  }
+
+  std::vector<std::pair<int64_t,int64_t>> input_range;
+  input_desc->GetShapeRange(input_range);
+  MakeUpShapeRange(input_shape, input_range);
+
+  auto desc_block = op_info->MutableInputDesc("block_shape");
+  std::vector<int64_t> block_shape_shape = desc_block->MutableShape().GetDims();
+  std::vector<std::pair<int64_t,int64_t>> block_range;
+  if (IsUnknownRankShape(block_shape_shape)) {
+    block_shape_shape = {-1};
+  } else {
+    desc_block->GetShapeRange(block_range);
+  }
+  MakeUpShapeRange(block_shape_shape, block_range);
+
+  auto desc_paddings = op_info->MutableInputDesc("paddings");
+  std::vector<int64_t> paddings_shape = desc_paddings->MutableShape().GetDims();
+  std::vector<std::pair<int64_t,int64_t>> paddings_range;
+  if (IsUnknownRankShape(paddings_shape)) {
+    paddings_shape = {-1, -1};
+  } else {
+    desc_paddings->GetShapeRange(paddings_range);
+  }
+  MakeUpShapeRange(paddings_shape, paddings_range);
+
+  auto block_size_max = std::min(paddings_range[0].second, block_range[0].second);
+  block_size_max = block_size_max == -1 ? std::max(paddings_range[0].second, block_range[0].second) : block_size_max;
+  block_size_max = block_size_max == -1 ?
+	           static_cast<int64_t>(input_shape.size()) - 1 :
+		   std::min(block_size_max, static_cast<int64_t>(input_shape.size()) - 1);
   std::vector<int64_t> y_shape;
-  int64_t block_shape_size = shape_vector[0];
-  for (size_t i = 0; i < block_shape.size(); i++) {
-    block_shape_size = block_shape_size * block_shape[i];
+  std::vector<std::pair<int64_t,int64_t>> y_range;
+  int64_t block_total = 1;
+  if (block_done) {
+    for (size_t i = 0; i < block_shape.size(); i++) {
+      block_total = block_total * block_shape[i];
+    }
   }
-  y_shape.push_back(block_shape_size);
-  for (size_t i = 1; i <= block_shape.size(); i++) {
-    y_shape.push_back((shape_vector[i] + paddings[2 * i - 2] + paddings[2 * i - 1]) / block_shape[i - 1]);
+  int64_t batch_dim = (input_shape[0] == -1 || !block_done) ? -1 : input_shape[0] * block_total;
+  y_shape.push_back(batch_dim);
+  int64_t batch_range_min = !block_done ? input_range[0].first : input_range[0].first * block_total;
+  int64_t batch_range_max =  (input_range[0].second == -1 || !block_done) ? -1 : input_range[0].second * block_total;
+  y_range.push_back(std::pair<int64_t, int64_t>(batch_range_min, batch_range_max));
+
+  for (auto i = 1; i <= block_size_max; i++) {
+    auto shape_dim = (input_shape[i] == -1 || !block_done || !padding_done) ?
+                     -1 :
+                     (input_shape[i] + paddings[2 * i - 2] + paddings[2 * i - 1]) / block_shape[i - 1];
+    y_shape.push_back(shape_dim);
+    auto range_min = (!padding_done) ?
+                      input_range[i].first :
+                      input_range[i].first + paddings[2 * i - 2] + paddings[2 * i - 1];
+    auto range_max = (input_range[i].second == -1 || !padding_done) ?
+                     -1 :
+                     input_range[i].second + paddings[2 * i - 2] + paddings[2 * i - 1];
+    range_min = (!block_done) ? 1 : std::ceil(static_cast<float>(range_min) / static_cast<float>(block_shape[i - 1]));
+    range_min = std::max(range_min, int64_t(1));
+    range_max = (!block_done || range_max == -1) ? range_max : range_max / block_shape[i - 1];
+    y_range.push_back(std::pair<int64_t, int64_t>(range_min, range_max));
   }
-  for (size_t i = block_shape.size() + 1; i < shape_vector.size(); i++) {
-    y_shape.push_back(shape_vector[i]);
+  for (auto i = block_size_max + 1; i < input_shape.size(); i++) {
+    y_shape.push_back(input_shape[i]);
+    y_range.push_back(input_range[i]);
   }
 
-  Shape outShape(y_shape);
-  td.SetShape(outShape);
-  td.SetDataType(dtype);
-  (void)op.UpdateOutputDesc("y", td);
+  output_desc->SetShape(GeShape(y_shape));
+  output_desc->SetShapeRange(y_range);
   return GRAPH_SUCCESS;
 }
 
@@ -489,52 +575,158 @@ static void CalcBatchToSpace(const Tensor& data, const DataType& dtype, std::vec
 }
 
 IMPLEMT_COMMON_INFERFUNC(BatchToSpaceNDInferShape) {
-  Tensor data1;
-  if (op.GetInputConstData("block_shape", data1) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get constValue failed of [block_shape]");
-    return GRAPH_FAILED;
-  }
-  DataType dtype1 = op.GetInputDesc("block_shape").GetDataType();
+  const vector<string> depend_names = {"block_shape", "crops"};
+  PREPARE_DYNAMIC_SHAPE(depend_names);
+  auto node = NodeUtils::GetNodeFromOperator(op);
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto input_shape = input_desc->MutableShape().GetDims();;
+  auto input_dtype = input_desc->GetDataType();
+  auto output_desc = op_info->MutableOutputDesc("y");
+  output_desc->SetDataType(input_dtype);
+
+  // get const node block_shape
+  bool block_done = false;
   std::vector<int64_t> block_shape;
-  CalcBatchToSpace(data1, dtype1, block_shape);
-  Tensor data2;
-  if (op.GetInputConstData("crops", data2) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get constValue failed of [crops]");
-    return GRAPH_FAILED;
+  GeTensorPtr block_shape_tensor = nullptr;
+  if (GRAPH_SUCCESS == NodeUtils::GetInputConstData(node, "block_shape", block_shape_tensor)) {
+    auto const_desc = op_info->MutableInputDesc("block_shape");
+    auto const_dtype = const_desc->GetDataType();
+    if (GetConstValue(op, block_shape_tensor, const_dtype, block_shape)) {
+      block_done = true;
+    } else {
+      OP_LOGW(op.GetName().c_str(), "Get Const block_shape value failed ");
+    }
   }
-  DataType dtype2 = op.GetInputDesc("crops").GetDataType();
+
+  bool crops_done = false;
   std::vector<int64_t> crops;
-  CalcBatchToSpace(data2, dtype2, crops);
-
-  auto tensordesc = op.GetInputDesc("x");
-  auto shape = tensordesc.GetShape();
-  auto dtype = tensordesc.GetDataType();
-  std::vector<int64_t> shape_vector = shape.GetDims();
-
-  if (shape_vector.size() <= block_shape.size()) {
-    OP_LOGE(op.GetName().c_str(),
-            "DimSize of x is not greater than size \
-                                   of block_shape.");
-    return GRAPH_FAILED;
+  GeTensorPtr crops_tensor = nullptr;
+  if (GRAPH_SUCCESS == NodeUtils::GetInputConstData(node, "crops", crops_tensor)) {
+    auto const_desc = op_info->MutableInputDesc("crops");
+    auto const_dtype = const_desc->GetDataType();
+    if (GetConstValue(op, crops_tensor, const_dtype, crops)) {
+      crops_done = true;
+    } else {
+      OP_LOGW(op.GetName().c_str(), "Get Const crops value failed ");
+    }
   }
-  TensorDesc td = op.GetOutputDesc("y");
+
+  if (!IsUnknown(input_shape) && crops_done && block_done) {
+    // not dynamic case, only set shape
+    std::vector<int64_t> y_shape;
+    int64_t block_shape_size = input_shape[0];
+    for (size_t i = 0; i < block_shape.size(); i++) {
+      block_shape_size = block_shape_size / block_shape[i];
+    }
+    y_shape.push_back(block_shape_size);
+    for (size_t i = 1; i <= block_shape.size(); i++) {
+      y_shape.push_back(input_shape[i] * block_shape[i - 1] - crops[2 * i - 2] - crops[2 * i - 1]);
+    }
+    for (size_t i = block_shape.size() + 1; i < input_shape.size(); i++) {
+      y_shape.push_back(input_shape[i]);
+    }
+    output_desc->SetShape(GeShape(y_shape));
+
+    return GRAPH_SUCCESS;
+  }
+  // dynamic case
+  // input shape is -2, output is -2
+  if (IsUnknownRankShape(input_shape)) {
+    output_desc->SetShape(GeShape(input_shape));
+    OP_LOGW(op.GetName().c_str(), "input shape is UnknownRank, set output is UnknownRank");
+    return GRAPH_SUCCESS;
+  }
+
+  std::vector<std::pair<int64_t,int64_t>> input_range;
+  input_desc->GetShapeRange(input_range);
+  MakeUpShapeRange(input_shape, input_range);
+
+  auto desc_block = op_info->MutableInputDesc("block_shape");
+  std::vector<int64_t> block_shape_shape = desc_block->MutableShape().GetDims();
+  std::vector<std::pair<int64_t,int64_t>> block_range;
+  if (IsUnknownRankShape(block_shape_shape)) {
+    block_shape_shape = {-1};
+  } else {
+    desc_block->GetShapeRange(block_range);
+  }
+  MakeUpShapeRange(block_shape_shape, block_range);
+
+  auto desc_crops = op_info->MutableInputDesc("crops");
+  std::vector<int64_t> crops_shape = desc_crops->MutableShape().GetDims();
+  std::vector<std::pair<int64_t,int64_t>> crops_range;
+  if (IsUnknownRankShape(crops_shape)) {
+    crops_shape = {-1, -1};
+  } else {
+    desc_crops->GetShapeRange(crops_range);
+  }
+  MakeUpShapeRange(crops_shape, crops_range);
+
+  auto block_size_max = std::min(crops_range[0].second, block_range[0].second);
+  block_size_max = block_size_max == -1 ? std::max(crops_range[0].second, block_range[0].second) : block_size_max;
+  block_size_max = block_size_max == -1 ?
+	           static_cast<int64_t>(input_shape.size()) - int64_t(1) :
+		   std::min(block_size_max, static_cast<int64_t>(input_shape.size()) - int64_t(1));
   std::vector<int64_t> y_shape;
-  int64_t block_shape_size = shape_vector[0];
-  for (size_t i = 0; i < block_shape.size(); i++) {
-    block_shape_size = block_shape_size / block_shape[i];
-  }
-  y_shape.push_back(block_shape_size);
-  for (size_t i = 1; i <= block_shape.size(); i++) {
-    y_shape.push_back(shape_vector[i] * block_shape[i - 1] - crops[2 * i - 2] - crops[2 * i - 1]);
-  }
-  for (size_t i = block_shape.size() + 1; i < shape_vector.size(); i++) {
-    y_shape.push_back(shape_vector[i]);
+  std::vector<std::pair<int64_t,int64_t>> y_range;
+  int64_t block_total = 1;
+  if (block_done) {
+    for (size_t i = 0; i < block_shape.size(); i++) {
+      block_total = block_total * block_shape[i];
+    }
   }
 
-  Shape outShape(y_shape);
-  td.SetShape(outShape);
-  td.SetDataType(dtype);
-  (void)op.UpdateOutputDesc("y", td);
+  int64_t batch_dim = (input_shape[0] == -1 || !block_done) ? -1 : input_shape[0] / block_total;
+  y_shape.push_back(batch_dim);
+  int64_t batch_range_min = !block_done ? 1 : input_range[0].first / block_total;
+  int64_t batch_range_max =  (input_range[0].second == -1 || !block_done) ? input_range[0].second : input_range[0].second / block_total;
+  y_range.push_back(std::pair<int64_t, int64_t>(batch_range_min, batch_range_max));
+
+  auto block_shape_min = block_shape;
+  auto block_shape_max = block_shape;
+  if (!block_done) {
+    if (input_shape[0] != -1) {
+      block_done = true;
+      block_shape_min.clear();
+      block_shape_max.clear();
+      for (auto i = 0; i < block_size_max; i++) {
+        block_shape_min.push_back(1);
+        block_shape_max.push_back(input_shape[0]);
+      }
+    } else if (input_shape[0] == -1 && input_range[0].second != -1) {
+      block_done = true;
+      block_shape_min.clear();
+      block_shape_max.clear();
+      for (auto i = 0; i < block_size_max; i++) {
+        block_shape_min.push_back(1);
+        block_shape_max.push_back(input_range[0].second);
+      }
+    }
+  }
+  for (auto i = 1; i <= block_size_max; i++) {
+    auto shape_dim = (input_shape[i] == -1 || !block_done || !crops_done) ?
+                     -1 :
+                     input_shape[i] * block_shape[i - 1] - crops[2 * i - 2] - crops[2 * i - 1];
+    y_shape.push_back(shape_dim);
+    auto range_min = (!block_done) ?
+                      input_range[i].first :
+                      input_range[i].first * block_shape_min[i - 1];
+    auto range_max = (input_range[i].second == -1 || !block_done) ?
+                     -1 :
+                     input_range[i].second * block_shape_max[i - 1];
+    range_min = crops_done ? range_min - crops[2 * i - 2] - crops[2 * i - 1] : 1;
+    range_min = std::max(range_min, int64_t(1));
+    range_max = (crops_done && range_max != -1) ? range_max - crops[2 * i - 2] - crops[2 * i - 1] : range_max;
+    y_range.push_back(std::pair<int64_t, int64_t>(range_min, range_max));
+  }
+
+  for (auto i = block_size_max + 1; i < input_shape.size(); i++) {
+    y_shape.push_back(input_shape[i]);
+    y_range.push_back(input_range[i]);
+  }
+
+  output_desc->SetShape(GeShape(y_shape));
+  output_desc->SetShapeRange(y_range);
   return GRAPH_SUCCESS;
 }
 
