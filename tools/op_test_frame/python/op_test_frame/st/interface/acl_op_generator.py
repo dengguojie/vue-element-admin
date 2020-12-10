@@ -156,7 +156,8 @@ def _create_exact_testcase_content(testcase_struct):
                         number_list = list()
                         for num_list in attr_dic['value']:
                             number_list.append(len(num_list))
-                        num_str = str(number_list).replace('[', '{').replace(']', '}')
+                        num_str = str(number_list).replace('[', '{') \
+                            .replace(']', '}')
                         attr_code_str += "    attr" + str(attr_index) + \
                                 ".listIntNumValues" +\
                                 " = " + num_str + ";\n"

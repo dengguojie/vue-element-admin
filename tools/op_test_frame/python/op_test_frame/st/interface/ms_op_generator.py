@@ -2,7 +2,8 @@
 # coding=utf-8
 """
 Function:
-MsOpGenerator class. This class mainly implements mindspore op src code generation.
+MsOpGenerator class.
+This class mainly implements mindspore op src code generation.
 Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved Â© 2020
 Change History: 2020-07-11 file Created
@@ -130,7 +131,8 @@ class MsOpGenerator:
                 os.path.isdir(formalized_path) and os.access(formalized_path,
                                                              os.W_OK)):
             utils.print_error_log("Output path error: " + formalized_path +
-                                  ", please input an existed and writable  dir path.")
+                                  ", please input an existed"
+                                  " and writable dir path.")
             sys.exit(utils.OP_TEST_GEN_CONFIG_INVALID_OUTPUT_PATH_ERROR)
 
         if self.machine_type:

@@ -461,6 +461,7 @@ def read_file(op_file):
             'Failed to open file %s. %s' % (op_file, str(io_error)))
         raise OpTestGenException(OP_TEST_GEN_OPEN_FILE_ERROR)
 
+
 def write_json_file(json_path, content):
     """
     write  content to json file

@@ -431,12 +431,12 @@ def fix_name_lower_with_under(name):
     :return: name has been fixed
     """
     fix_name = ""
-    for index, s in enumerate(name):
-        if s.isupper():
+    for index, name_str in enumerate(name):
+        if name_str.isupper():
             if index == 0:
-                fix_name += s.lower()
+                fix_name += name_str.lower()
             else:
-                fix_name += "_" + s.lower()
+                fix_name += "_" + name_str.lower()
         else:
-            fix_name += s
+            fix_name += name_str
     return fix_name

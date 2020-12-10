@@ -26,10 +26,10 @@ class DataGenerator:
     The class for data generator.
     """
 
-    def __init__(self, case_list, output_path, mi, report):
+    def __init__(self, case_list, output_path, cmd_mi, report):
         self.case_list = case_list
         self.report = report
-        if mi:
+        if cmd_mi:
             self.output_path = os.path.join(output_path, 'run', 'out',
                                             'test_data', 'data')
         else:

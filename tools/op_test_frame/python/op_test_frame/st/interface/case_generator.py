@@ -476,8 +476,8 @@ class CaseGenerator:
                 new_base_case['input_desc'][index]['type'] = dtype
             for (index, dtype) in enumerate(node['output_dtype']):
                 new_base_case['output_desc'][index]['type'] = dtype
-        except KeyError as e:
-            utils.print_error_log("Failed to create case. %s" % e)
+        except KeyError as error:
+            utils.print_error_log("Failed to create case. %s" % error)
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
         return new_base_case

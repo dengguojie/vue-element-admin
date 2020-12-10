@@ -23,11 +23,11 @@ def _cal_relative_diff(real_data, expect_data, diff_thd, type_str='fp16'):
 
 
 def _cal_relative_diff_np(real_data, expect_data, diff_thd):
-    a = np.abs(np.subtract(real_data, expect_data))
-    b1 = np.maximum(np.abs(real_data), (np.abs(expect_data)))
-    b2 = float((1.0 / (1 << 14)) / diff_thd)
-    b = np.add(np.maximum(b1, b2), 10e-10)
-    result = np.where(a < diff_thd, a, a / b)
+    uint_data = np.abs(np.subtract(real_data, expect_data))
+    max_data = np.maximum(np.abs(real_data), (np.abs(expect_data)))
+    diff_data = float((1.0 / (1 << 14)) / diff_thd)
+    data_add = np.add(np.maximum(max_data, diff_data), 10e-10)
+    result = np.where(uint_data < diff_thd, uint_data, uint_data / data_add)
     return result
 
 
