@@ -546,7 +546,7 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     filter_size = _align(filter_n, C0_SIZE) * _align(filter_c, C0_SIZE) * \
         filter_h * filter_w
     _check_64bits_limitation("fmap_size", upper_fmap_size, dtype=fmap_dtype)
-    if isinstance(pads, (tuple, list)):
+    if -1 not in pads:
         upper_dedy_h = (upper_fmap_h + pad_up + pad_down - dilation_h *
                         (filter_h - 1) - 1) // stride_h + 1
         upper_dedy_w = (upper_fmap_w + pad_left + pad_right - dilation_w *

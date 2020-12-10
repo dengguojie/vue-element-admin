@@ -31,7 +31,6 @@ from te.lang.cce.te_compute.cube_util import shape_to_list
 from te.utils.error_manager import error_manager_util
 from te.lang.cce.te_compute.conv2d_backprop_filter_compute \
     import DynamicConv2dBpFilterParams
-
 # for debug, delete before publish
 DEBUG_MODE = False
 # disable double buffer, set True
@@ -689,6 +688,27 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 setfmatrix_dict["conv_dilation_w"] = dilation_width
                 mad_dict["mad_pattern"] = 2
 
+            setfmatrix_dict_0 = dict()
+            setfmatrix_dict_0["conv_kernel_h"] = kernel_height
+            setfmatrix_dict_0["conv_kernel_w"] = kernel_width
+            setfmatrix_dict_0["conv_padding_top"] = pad_up
+            setfmatrix_dict_0["conv_padding_bottom"] = pad_down
+            setfmatrix_dict_0["conv_padding_left"] = pad_left
+            setfmatrix_dict_0["conv_padding_right"] = pad_right
+            setfmatrix_dict_0["conv_stride_h"] = stride_height
+            setfmatrix_dict_0["conv_stride_w"] = stride_width
+            setfmatrix_dict_0["conv_fm_c"] = featuremap_channel
+            setfmatrix_dict_0["conv_fm_h"] = featuremap_height
+            setfmatrix_dict_0["conv_fm_w"] = featuremap_width
+
+            if self.dynamic_mode and not flag_all_one_case:
+                setfmatrix_dict_0["set_fmatrix"] = 0
+                setfmatrix_dict_0["conv_fm_c1"] = c1_fmap
+                setfmatrix_dict_0["conv_fm_c0"] = c0_fmap
+            else:
+                setfmatrix_dict_0["conv_dilation_h"] = dilation_height
+                setfmatrix_dict_0["conv_dilation_w"] = dilation_width
+
             # move grads from ddr to L1
             sch[grads_matrix].emit_insn(grads_matrix.op.axis[0], 'dma_copy')
             # move grads from L1 to L0A
@@ -700,7 +720,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     sch[fmap_l1].emit_insn(fmap_l1.op.axis[0],
                                                 'dma_copy', setfmatrix_dict)
                     sch[fmap_fractal].emit_insn(fmap_fractal.op.axis[1],
-                                                'im2col_v2', setfmatrix_dict)
+                                                'im2col_v2', setfmatrix_dict_0)
                 else:
                     sch[fmap_l1].emit_insn(fmap_l1.op.axis[0], 'dma_copy')
                     sch[fmap_matrix].emit_insn(fmap_matrix.op.axis[0],

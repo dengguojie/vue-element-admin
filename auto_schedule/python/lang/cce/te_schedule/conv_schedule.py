@@ -32,7 +32,6 @@ from te.platform import cce_util
 from te.platform import get_soc_spec
 from te.platform.fusion_manager import get_fusion_build_cfg
 from te.utils.error_manager import error_manager_conv2d as err_man
-import copy
 
 # tiling check
 TILING_AL1_SHAPWE_DIM = 4
@@ -1956,8 +1955,22 @@ class CceConvOp:
                         'conv_fm_w': fmap.shape[3],
                         'conv_fm_c0': fmap.shape[4],
                     }
-                    im2col_attr_0 = copy.deepcopy(im2col_attr)
-                    im2col_attr_0['set_fmatrix'] = 0
+                    im2col_attr_0 = {
+                        'set_fmatrix': 0,
+                        'conv_kernel_h': c_ub.op.attrs['kernel_h'],
+                        'conv_kernel_w': c_ub.op.attrs['kernel_w'],
+                        'conv_padding_top': c_ub.op.attrs['padding'][0],
+                        'conv_padding_bottom': c_ub.op.attrs['padding'][1],
+                        'conv_padding_left': c_ub.op.attrs['padding'][2],
+                        'conv_padding_right': c_ub.op.attrs['padding'][3],
+                        'conv_stride_h': strideh_update,
+                        'conv_stride_w': c_ub.op.attrs['stride'][1],
+                        'conv_fm_c': fmap.shape[4]*fmap.shape[1],
+                        'conv_fm_c1': fmap.shape[1],
+                        'conv_fm_h': fmap.shape[2],
+                        'conv_fm_w': fmap.shape[3],
+                        'conv_fm_c0': fmap.shape[4],
+                    }
                     if l0a_load2d_flag:
                         sch[al1].emit_insn(al1.op.axis[0], 'dma_copy')
                         sch[fmap_col].emit_insn(new_fmap_col_axis[3], 'dma_copy')
