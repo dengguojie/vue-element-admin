@@ -15,12 +15,12 @@ SparseApplyProximalAdagradD ut case
 """
 from op_test_frame.ut import OpUT
 ut_case = OpUT("SparseApplyProximalAdagradD", None, None)
-case1 = {"params": [{"shape": (1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND"},
+case1 = {"params": [{"shape": (1, 1), "dtype": "float32", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND"},
                     {"shape": (1, 1), "dtype": "float32", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND"},
                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
-                    {"shape": (2,), "dtype": "float32", "format": "ND", "ori_shape": (2,),"ori_format": "ND"},
+                    {"shape": (1, 1), "dtype": "float32", "format": "ND", "ori_shape": (2,),"ori_format": "ND"},
                     {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
                     {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
@@ -35,8 +35,8 @@ case2 = {"params": [{"shape": (8,1,2), "dtype": "float32", "format": "ND", "ori_
                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
-                    {"shape": (16,), "dtype": "float32", "format": "ND", "ori_shape": (16,),"ori_format": "ND"},
-                    {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (8,1,2), "dtype": "float32", "format": "ND", "ori_shape": (16,),"ori_format": "ND"},
+                    {"shape": (8,), "dtype": "int32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
                     {"shape": (8,), "dtype": "float16", "format": "ND", "ori_shape": (8,),"ori_format": "ND"},
                     {"shape": (8,1,2), "dtype": "float32", "format": "ND", "ori_shape": (8,1,2),"ori_format": "ND"},
                     False,
@@ -50,8 +50,8 @@ case3 = {"params": [{"shape": (1555, 65535, 3776), "dtype": "float32", "format":
                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
-                    {"shape": (3110,), "dtype": "float32", "format": "ND", "ori_shape": (3110,),"ori_format": "ND"},
-                    {"shape": (1555,), "dtype": "int16", "format": "ND", "ori_shape": (1555,),"ori_format": "ND"},
+                    {"shape": (1555, 65535, 3776,), "dtype": "float32", "format": "ND", "ori_shape": (3110,),"ori_format": "ND"},
+                    {"shape": (1555,), "dtype": "int32", "format": "ND", "ori_shape": (1555,),"ori_format": "ND"},
                     {"shape": (1555, 65535, 3776), "dtype": "float16", "format": "ND", "ori_shape": (1555, 65535, 3776),"ori_format": "ND"},
                     {"shape": (1555, 65535, 3776), "dtype": "float32", "format": "ND", "ori_shape": (1555, 65535, 3776),"ori_format": "ND"},
                     False,
@@ -65,8 +65,8 @@ case4 = {"params": [{"shape": (5999, 9999), "dtype": "float32", "format": "ND", 
                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
-                    {"shape": (7554,), "dtype": "float32", "format": "ND", "ori_shape": (7554,),"ori_format": "ND"},
-                    {"shape": (1555,), "dtype": "int32", "format": "ND", "ori_shape": (1555,),"ori_format": "ND"},
+                    {"shape": (5999, 9999), "dtype": "float32", "format": "ND", "ori_shape": (7554,),"ori_format": "ND"},
+                    {"shape": (5999,), "dtype": "int32", "format": "ND", "ori_shape": (1555,),"ori_format": "ND"},
                     {"shape": (5999, 9999), "dtype": "float16", "format": "ND", "ori_shape": (5999, 9999),"ori_format": "ND"},
                     {"shape": (5999, 9999), "dtype": "float32", "format": "ND", "ori_shape": (5999, 9999),"ori_format": "ND"},
                     True,
@@ -95,8 +95,8 @@ ut_case.add_case(["Ascend910","Ascend710"], case1)
 ut_case.add_case(["Ascend910","Ascend710"], case2)
 ut_case.add_case(["Ascend910","Ascend710"], case3)
 ut_case.add_case(["Ascend910","Ascend710"], case4)
-ut_case.add_case(["Ascend910","Ascend710"], case5)
+# ut_case.add_case(["Ascend910","Ascend710"], case5)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910","Ascend310","Ascend710"])
+    ut_case.run(["Ascend910"])
     exit(0)

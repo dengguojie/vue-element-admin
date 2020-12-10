@@ -15,21 +15,12 @@
 """
 sparse_apply_proximal_adagrad_d
 """
-import sys
-import math
-import json
-
-import numpy as np
-
-import te.lang.dynamic
-from te import tvm
+# pylint: disable=unused-argument
 from te import tik
 from te import platform
-from topi import generic
-from functools import reduce as reduceIns
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
-
+import te.lang.dynamic
 
 DTYPE_FP32 = "float32"
 DTYPE_INT32 = "int32"
@@ -59,6 +50,8 @@ ZERO_FP32 = 0.0
 NEG_ONE_FP32 = -1.0
 
 
+# pylint: disable=unused-argument,too-many-locals,too-many-arguments,invalid-name,too-few-public-methods
+# pylint: disable=too-many-statements,too-many-instance-attributes,
 def ceil(num, factor):
     """
     compute ceil
@@ -81,6 +74,9 @@ def ceil(num, factor):
 
 
 class SparseApplyProximalAdagradD:
+    """
+        Function: use to store concat base parameters
+    """
     def __init__(self, var_dtype, idx_dtype, kernel_name):
         """
         constructor of class SparseApplyProximalAdagradD
@@ -105,6 +101,9 @@ class SparseApplyProximalAdagradD:
         self.ub_tensor_num = 8
 
         class GmTensor():
+            """
+            Function: use to store concat base parameters
+            """
             def __init__(self, tik_instance, var_dtype, idx_dtype):
                 """
                 constructor of class GmTensor
@@ -161,6 +160,9 @@ class SparseApplyProximalAdagradD:
                                                      scope=tik.scope_gm)
 
         class Fp32InputScalar():
+            """
+                Function: use to store concat base parameters
+            """
             def __init__(self, tik_instance):
                 """
                 constructor of class Fp32InputScalar
@@ -227,6 +229,9 @@ class SparseApplyProximalAdagradD:
             return row
 
         class UbTensor():
+            """
+                Function: use to store concat base parameters
+            """
             def __init__(self, tik_instance, var_dtype, idx_dtype, ub_size):
                 """
                 constructor of class UbTensor

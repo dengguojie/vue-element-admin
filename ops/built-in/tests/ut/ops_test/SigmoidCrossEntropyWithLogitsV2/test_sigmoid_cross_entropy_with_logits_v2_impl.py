@@ -104,9 +104,9 @@ case6 = {"params": [{"shape": (128, 128), "dtype": "float16", "format": "ND", "o
          "expect": "success",
          "support_expect": True}
 
-ut_case.add_precision_case(["Ascend910","Ascend310"], case1)
-ut_case.add_precision_case(["Ascend910","Ascend310"], case2)
-ut_case.add_precision_case(["Ascend910","Ascend310"], case3)
+ut_case.add_precision_case(["Ascend910"], case1)
+ut_case.add_precision_case(["Ascend910"], case2)
+ut_case.add_precision_case(["Ascend910"], case3)
 ut_case.add_case(["Ascend910","Ascend310"], case4)
 ut_case.add_case(["Ascend910","Ascend310"], case5)
 ut_case.add_case(["Ascend910","Ascend310"], case6)
