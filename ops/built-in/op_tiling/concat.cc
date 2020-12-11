@@ -275,4 +275,7 @@ bool ConcatV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
 // register tiling interface of the Concat, ConcatV2 op.
 REGISTER_OP_TILING_FUNC_BUFFERED(ConcatV2D, ConcatV2Tiling);
 REGISTER_OP_TILING_FUNC_BUFFERED(ConcatD, ConcatV2Tiling);
+
+// register tiling interface of the Pack op.
+REGISTER_OP_TILING_FUNC_BUFFERED(Pack, ConcatV2Tiling);
 }  // namespace optiling

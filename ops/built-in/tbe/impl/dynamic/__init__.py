@@ -59,6 +59,7 @@ from .concat_offset import concat_offset
 from .neg import neg
 from .concat_d import concat_d
 from .concat_v2_d import concat_v2_d
+from .pack import pack
 from .strided_slice import strided_slice
 from .slice import slice
 from .cast import cast
