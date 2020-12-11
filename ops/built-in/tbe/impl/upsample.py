@@ -27,7 +27,7 @@ C0 = 16
 INT8_C0_SIZE = 32
 
 
-#pylint: disable=locally-disabled,invalid-name
+#pylint: disable=locally-disabled,invalid-name,unused-argument
 def _check_shape_dtype_format(input_shape, input_dtype, input_format, stride_h, stride_w):
     """
     input_shape:input dic shape
@@ -39,7 +39,8 @@ def _check_shape_dtype_format(input_shape, input_dtype, input_format, stride_h, 
     if len(input_shape) != DIM_5HD:
         error_info = {'errCode': 'E80012', 'opname': 'upsample', 'expect_value': '5',
                       'real_value': str(len(input_shape))}
-        raise RuntimeError(error_info,
+        raise RuntimeError(
+            error_info,
             "In op[%s], the num of dimensions of input[%s] should be [%s], but actually is [%s]."
             % (error_info['opname'], 'x', error_info['expect_value'], error_info['real_value']))
     n, c1, h, w, c0 = input_shape
@@ -54,7 +55,8 @@ def _check_shape_dtype_format(input_shape, input_dtype, input_format, stride_h, 
     if input_dtype not in check_list:
         error_info = {'errCode': 'E80006', 'opname': 'upsample', 'tensor_name': 'x',
                       'excepted_dtype_list': str(check_list), 'dtype': str(input_dtype)}
-        raise RuntimeError(error_info,
+        raise RuntimeError(
+            error_info,
             "In op[%s], the input[%s]'s dtype should be one of [%s], but actually is [%s]."
             % (error_info['opname'], 'x', str(check_list), str(input_dtype)))
     shape_c0 = C0
@@ -65,7 +67,8 @@ def _check_shape_dtype_format(input_shape, input_dtype, input_format, stride_h, 
     if input_format != "NC1HWC0":
         error_info = {'errCode': 'E80015', 'opname': 'upsample', 'tensor_name': 'x', 'excepted_dtype_list': "NC1HWC0",
                       'format': str(input_format)}
-        raise RuntimeError(error_info,
+        raise RuntimeError(
+            error_info,
             "In op[%s], the input[%s]'s dtype should be [%s], but actually is [%s]."
             % (error_info['opname'], 'x', "NC1HWC0", str(input_format)))
 
@@ -96,9 +99,9 @@ def _upsample_check(dic, stride_h, stride_w, kernel_name="upsample"):
         raise RuntimeError(error_info, "In op[%s], the parameter[%s] "
                                        "should be in the range of [%s, %s),"
                                        " but actually is [%s]."
-                           % (error_info['opname'], error_info['param_name'], 
-                              error_info['min_value'], 
-                             error_info['max_value'], error_info['real_value']))
+                           % (error_info['opname'], error_info['param_name'],
+                              error_info['min_value'],
+                              error_info['max_value'], error_info['real_value']))
 
     _check_shape_dtype_format(input_shape, input_dtype, input_format, stride_h, stride_w)
 
@@ -444,9 +447,9 @@ def _bind_multcore(axis, x, schedule, res_op):
 
 
 # pylint: disable=locally-disabled,too-many-arguments,invalid-name,too-many-locals
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, 
-                          para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT, 
-                          para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT,
+                            para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def upsample(x, y, scale=1.0, stride_h=2, stride_w=2, kernel_name="upsample"):
     """
     calculating data
@@ -480,7 +483,7 @@ def upsample(x, y, scale=1.0, stride_h=2, stride_w=2, kernel_name="upsample"):
         = _tilling_spilt_axis(schedule, tensor_dic, stride_h, stride_w)
     cal_axis_dic, axis \
         = _cal_axis_spilt(x, stride_h, stride_w,
-                         tilling_spilt_axis_dic, tensor_dic, schedule)
+                          tilling_spilt_axis_dic, tensor_dic, schedule)
 
     axis_list = upsample_compute(schedule, cal_axis_dic, tensor_dic)
     res_op = tensor_dic.get("res")

@@ -15,7 +15,7 @@
 """
 aipp_dynmaic
 """
-# pylint: disable=import-error,too-many-lines,invalid-name,too-many-locals
+# pylint: disable=import-error,too-many-lines,invalid-name,too-many-locals,unused-argument
 # pylint: disable=too-many-branches,too-many-statements,too-many-arguments
 import te.platform as tbe_platform
 from te import tvm
@@ -686,8 +686,10 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
             resize_input_w = ib.allocate("uint64", [1], name="resize_input_w", scope=tbe_platform.scope_reg)
             resize_output_h = ib.allocate("uint64", [1], name="resize_output_h", scope=tbe_platform.scope_reg)
             resize_output_w = ib.allocate("uint64", [1], name="resize_output_w", scope=tbe_platform.scope_reg)
-            resize_input_h_stat_pos = ib.allocate("uint64", [1], name="resize_input_h_stat_pos", scope=tbe_platform.scope_reg)
-            resize_input_h_end_pos = ib.allocate("uint64", [1], name="resize_input_h_end_pos", scope=tbe_platform.scope_reg)
+            resize_input_h_stat_pos = ib.allocate("uint64", [1], name="resize_input_h_stat_pos",
+                                                  scope=tbe_platform.scope_reg)
+            resize_input_h_end_pos = ib.allocate("uint64", [1], name="resize_input_h_end_pos",
+                                                 scope=tbe_platform.scope_reg)
 
             with ib.for_range(zero_const,
                               tvm.const(batch_factor, dtype="uint64"),
@@ -697,9 +699,9 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                         p_ub_buf.access_ptr("w", ptr_type=dtype,
                                                             offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE),
                                         param_buf.access_ptr("rw", ptr_type=dtype,
-                                                             offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE +
+                                                             offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + \
                                                                     aipp_comm.DYNC_PARAM_BATCH_STRUCT_SIZE*batch_id),
-                                        0, 1, aipp_comm.DYNC_PARAM_BATCH_STRUCT_SIZE//32, 0, 0))
+                                        0, 1, aipp_comm.DYNC_PARAM_BATCH_STRUCT_SIZE // 32, 0, 0))
 
                 actual_col_size_reg[0] = src_image_size[0] * src_image_size[1]
 
@@ -937,7 +939,8 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                             spr[13] = spr[13] | tvm.const(1, dtype="uint64")
 
                             scfIncVscl[0] = \
-                                ((resize_input_h[0] - tvm.const(1, dtype="uint64")) * tvm.const(262144, dtype="uint64") /
+                                ((resize_input_h[0] - tvm.const(1, dtype="uint64")) *
+                                 tvm.const(262144, dtype="uint64") /
                                  (resize_output_h[0] - tvm.const(1, dtype="uint64"))) & \
                                 0xFFFFFC
                             spr[16] = spr[16] | scfIncVscl[0]
@@ -967,7 +970,8 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                             spr[13] = spr[13] | tvm.const(1, dtype="uint64") << 2
 
                             scfIncHscl[0] = \
-                                ((resize_input_w[0] - tvm.const(1, dtype="uint64")) * tvm.const(262144, dtype="uint64") /
+                                ((resize_input_w[0] - tvm.const(1, dtype="uint64")) *
+                                 tvm.const(262144, dtype="uint64") /
                                  (resize_output_w[0] - tvm.const(1, dtype="uint64"))) & \
                                 0xFFFFFC
                             spr[16] = spr[16] | scfIncHscl[0] << 32

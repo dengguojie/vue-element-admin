@@ -16,7 +16,7 @@
 aipp_resize_padding
 """
 # pylint: disable=invalid-name,too-many-locals,too-many-branches,too-many-statements
-# pylint: disable=too-many-arguments,too-many-boolean-expressions,import-error
+# pylint: disable=too-many-arguments,too-many-boolean-expressions,import-error,too-many-lines
 import math
 
 import te.platform as tbe_platform

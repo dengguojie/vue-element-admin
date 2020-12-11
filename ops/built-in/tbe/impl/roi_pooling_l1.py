@@ -19,7 +19,7 @@ import te.platform as tbe_platform
 from impl import roi_pooling_base
 
 
-# pylint: disable=too-many-instance-attributes
+# pylint: disable=too-many-instance-attributes,arguments-differ
 class RoiClassL1(roi_pooling_base.RoiClass):
     """
     Class that execute roi_pooling using L1

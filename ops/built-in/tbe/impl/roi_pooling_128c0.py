@@ -21,10 +21,10 @@ from impl import roi_pooling_base
 
 
 # pylint: disable=C0103
-# pylint: disable=unused-argument,no-member
-# pylint: disable=too-many-instance-attributes
-# pylint: disable=too-many-locals,too-many-lines
-# pylint: disable=too-many-arguments,attribute-defined-outside-init
+# pylint: disable=unused-argument,no-member,super-init-not-called
+# pylint: disable=too-many-instance-attributes,self-assigning-variable
+# pylint: disable=too-many-locals,too-many-lines,useless-super-delegation
+# pylint: disable=too-many-arguments,attribute-defined-outside-init,arguments-differ
 
 
 EIGHT_C0 = 8
@@ -270,6 +270,9 @@ class RoiClass128C0(roi_pooling_base.RoiClass):
                                        config=opt_config)
 
     def proposal_pooling_onebatch(self):
+        """
+        one batch process
+        """
         self.proposal_num_per_tiling = 128
         if self.roi_max_num % self.proposal_num_per_tiling == 0:
             self.tiling_num = self.roi_max_num // self.proposal_num_per_tiling
@@ -327,6 +330,9 @@ class RoiClass128C0(roi_pooling_base.RoiClass):
                         self.proposal_pooling_h(proposal_id, fm_c1_index)
 
     def proposal_pooling_multibatch_impl(self, batch_id):
+        """
+        multibatch process implement
+        """
         self.space_alloc(batch_id)
         with self.tik_instance.for_range(0, self.tiling_num) as tiling_index:
             self.get_proposal_height_width(tiling_index, batch_id)
@@ -381,6 +387,9 @@ class RoiClass128C0(roi_pooling_base.RoiClass):
                                     self.proposal_ub_validnum)
 
     def proposal_pooling_multibatch(self):
+        """
+        multibatch process
+        """
         with self.tik_instance.for_range(0, self.device_core_num, \
                 block_num=self.device_core_num) as block_id:
             with self.tik_instance.for_range(0, self.batch_factor)\

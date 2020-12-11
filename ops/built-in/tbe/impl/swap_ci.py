@@ -57,6 +57,9 @@ DIGIT_128 = 128
 
 # pylint: disable = unused-argument
 def get_op_support_info(x_dict, y_dict, output_dim, group_size, kernel_name="swap_ci"):
+    """
+    LxFusion interface
+    """
     format_x = x_dict.get("format")
     if format_x == "NCHW":
         axis_split_list = []

@@ -933,7 +933,7 @@ def set_spr2_spr9(ib, aipp_config, dtype, cur_cce_product, output_format="NC1HWC
         spr9 = spr9 | (aipp_config.get('single_line_mode') & 0x1) << 24
 
     n = 8
-    if ('raw_rgbir_to_f16_n') in aipp_config:
+    if 'raw_rgbir_to_f16_n' in aipp_config:
         n = aipp_config.get('raw_rgbir_to_f16_n')
     if aipp_config.get('input_format') in ["RAW10", "RAW12", "RAW16", "uint16"] \
             and dtype == "float16":
@@ -1211,7 +1211,7 @@ def get_spr2_spr9(aipp_config, dtype, cur_cce_product, output_format,
     if 'single_line_mode' in aipp_config:
         spr9 = spr9 | (aipp_config.get('single_line_mode') & 0x1) << 24
     n = 8
-    if ('raw_rgbir_to_f16_n') in aipp_config:
+    if 'raw_rgbir_to_f16_n' in aipp_config:
         n = aipp_config.get('raw_rgbir_to_f16_n')
     if aipp_config.get('input_format') in ["RAW10", "RAW12",
                                            "RAW16", "uint16"] and \
@@ -1316,6 +1316,9 @@ def set_aipp_default_params(aipp_config):
 
 
 def raise_runtime_error(cause_desc):
+    """
+    raise runtime error
+    """
     error_info = {'errCode': AIPP_OP_ERROR_CODE, 'cause_desc': cause_desc}
 
     raise RuntimeError(error_info,
@@ -1323,6 +1326,9 @@ def raise_runtime_error(cause_desc):
 
 
 def check_param_range(param_name, param_value, min_value, max_value):
+    """
+    check param range
+    """
     if param_value < min_value or param_value > max_value:
         cause_desc = "%s[%s] should be within[%d, %d]" % \
                      (param_name, param_value, min_value, max_value)
@@ -1330,6 +1336,9 @@ def check_param_range(param_name, param_value, min_value, max_value):
 
 
 def check_mean(aipp_config, mean_name, mean_value):
+    """
+    check mean
+    """
     if aipp_config.get('input_format') in ["RGB16", "RGB16_IR"]:
         check_param_range(mean_name, mean_value, 0, 65535)
     elif aipp_config.get('input_format') in ["RGB20"]:
@@ -1366,7 +1375,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
     output_shape = output_data.get('shape')
     output_ori_shape = output_data.get('ori_shape')
     output_ori_format = output_data.get('ori_format')
-    n, c1, h, w, c0 = output_shape
+    _, c1, h, w, c0 = output_shape
 
     if 'input_format' not in aipp_config:
         cause_desc = "the input_format must be setted"
@@ -1431,7 +1440,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
         (('csc_switch' in aipp_config and aipp_config.get('csc_switch') == 1) or \
         ('resize' in aipp_config and aipp_config.get('resize') == 1)):
         if 'csc_switch' not in aipp_config:
-                aipp_config['csc_switch'] = 0
+            aipp_config['csc_switch'] = 0
         if 'resize' not in aipp_config:
             aipp_config['resize'] = 0
 
@@ -1977,7 +1986,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
     if 'src_image_size_w' not in aipp_config:
         aipp_config['src_image_size_w'] = 0
 
-    if ('src_image_size_h' in aipp_config):
+    if 'src_image_size_h' in aipp_config:
         if ((aipp_config["src_image_size_h"] < 0 or
              aipp_config["src_image_size_h"] > 4096)):
             cause_desc = "src_image_size_h[%d] should " \
@@ -1994,9 +2003,8 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                              "within [1, 4096]" % h
                 raise_runtime_error(cause_desc)
 
-    if ('src_image_size_w' in aipp_config):
-        if ((aipp_config["src_image_size_w"] < 2 or
-            aipp_config["src_image_size_w"] > 4096) and
+    if 'src_image_size_w' in aipp_config:
+        if ((aipp_config["src_image_size_w"] < 2 or aipp_config["src_image_size_w"] > 4096) and
             aipp_config["src_image_size_w"] != 0):
             cause_desc = "src_image_size_w[%d] should " \
                          "be within [2, 4096] or equal to 0" % \
@@ -2099,7 +2107,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
             check_param_range('input_bias_3', aipp_config.get('input_bias_3'),
                               0, 255)
 
-    if ('raw_rgbir_to_f16_n') in aipp_config:
+    if 'raw_rgbir_to_f16_n' in aipp_config:
         if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
             check_param_range('raw_rgbir_to_f16_n',
                               aipp_config.get('raw_rgbir_to_f16_n'), 0, 15)
@@ -2336,7 +2344,5 @@ def copy_ubuf_to_gm_tail(ib, dtype, dst, src, tail_ub, count,
                 src.access_ptr('r',
                                offset=src_offset + count - block_len + i)))
     ib.emit(tvm.call_extern(dtype, 'copy_ubuf_to_gm',
-                                dst.access_ptr(
-                                    'w',
-                                    offset=dst_offset + count - block_len),
-                                tail_ub.access_ptr('r'), 0, 1, 1, 0, 0))
+                            dst.access_ptr('w', offset=dst_offset + count - block_len),
+                            tail_ub.access_ptr('r'), 0, 1, 1, 0, 0))

@@ -168,7 +168,7 @@ class PsroiClass():
                           'real_value': self.roi_shape[1]}
             raise RuntimeError(error_info, "In op[%s], the parameter [%s] must be equal 5, but actually is [%s]."
                                % (error_info['op_name'], error_info['param_name'], error_info['real_value']))
-        
+
         if self.roi_shape[0]*self.roi_shape[2] != self.y_shape[0]:
             error_info = {'errCode': 'E81009',
                           'param_value1': self.roi_shape[0] * self.roi_shape[2],

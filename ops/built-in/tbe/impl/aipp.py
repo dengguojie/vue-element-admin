@@ -21,6 +21,7 @@ import json
 
 import te.platform as tbe_platform
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 from te import tvm
 
 from impl import aipp_comm
@@ -30,12 +31,15 @@ from impl.util import util_select_op_base
 
 
 # pylint: disable=invalid-name,unused-argument,too-many-statements
-# pylint: disable=too-many-arguments,too-many-locals,
+# pylint: disable=too-many-arguments,too-many-locals,too-many-lines
 
 
 def get_op_support_info(input_data, input_dync_param, output_data, aipp_config_json, kernel_name="aipp"):
+    """
+    LxFusion interface
+    """
     format_images = input_data.get("format")
-    if format_images == "NCHW" or format_images == "NHWC" or format_images == "NC1HWC0_C04":
+    if format_images in ("NCHW", "NHWC", "NC1HWC0_C04"):
         axis_split_list = []
         split_0 = [util_select_op_base.SplitInput([0, [0], [-1], [-1]]),
                    util_select_op_base.SplitOutput([0, [0]])]
@@ -110,12 +114,12 @@ def aipp_compute(input_data, input_dync_param, output_data,
             if "load_start_pos_w" in aipp_config:
                 load_start_pos_w = aipp_config.get('load_start_pos_w')
 
-            if ("crop_size_h") in aipp_config:
+            if "crop_size_h" in aipp_config:
                 crop_size_h = aipp_config["crop_size_h"]
             else:
                 crop_size_h = output_shape[2]
 
-            if ("crop_size_w") in aipp_config:
+            if "crop_size_w" in aipp_config:
                 crop_size_w = aipp_config["crop_size_w"]
             else:
                 crop_size_w = output_shape[3]
@@ -170,8 +174,7 @@ def aipp_compute(input_data, input_dync_param, output_data,
     return aipp_res
 
 
-def aipp_compute_single(input_tensor, input_shape, input_format,
-                 output_data, aipp_config):
+def aipp_compute_single(input_tensor, input_shape, input_format, output_data, aipp_config):
     """
     aipp compute single function
     :param input_tensor:
@@ -286,7 +289,7 @@ def aipp_compute_single(input_tensor, input_shape, input_format,
                     if aipp_config.get('input_format') == "YUV420SP_U8":
                         spr0 = tbe_platform.get_const(
                             input_buf.access_ptr('r',
-                                                 offset=block_index*input_offset +
+                                                 offset=block_index*input_offset + \
                                                         n1*((c*src_image_size_h*src_image_size_w)//2)))
                     elif aipp_config.get('input_format') in ["XRGB8888_U8",
                                                              "RGB888_U8",
@@ -299,20 +302,20 @@ def aipp_compute_single(input_tensor, input_shape, input_format,
                                                              "RGB16_IR"]:
                         spr0 = tbe_platform.get_const(
                             input_buf.access_ptr('r',
-                                                 offset=block_index*input_offset +
+                                                 offset=block_index*input_offset + \
                                                         n1*((c*src_image_size_h*src_image_size_w))))
                     elif aipp_config.get('input_format') in ["YUYV_U8",
                                                              "YUV422SP_U8"]:
                         spr0 = tbe_platform.get_const(
                             input_buf.access_ptr('r',
-                                                 offset=block_index*input_offset +
+                                                 offset=block_index*input_offset + \
                                                         n1*((2*src_image_size_h*src_image_size_w))))
                     elif aipp_config.get('input_format') in ["NC1HWC0DI_S8",
                                                              "NC1HWC0DI_FP16"]:
                         spr0 = tbe_platform.get_const(
                             input_buf.access_ptr('r',
-                                                 offset=block_index*input_offset +
-                                                        n1*((c1*src_image_size_h*src_image_size_w*6)) +
+                                                 offset=block_index*input_offset + \
+                                                        n1*((c1*src_image_size_h*src_image_size_w*6)) + \
                                                         c1_index*src_image_size_h*src_image_size_w*4))
                     elif aipp_config.get('input_format') in ["RGB20", "RGB24",
                                                              "RGB24_IR"]:
@@ -324,7 +327,7 @@ def aipp_compute_single(input_tensor, input_shape, input_format,
                             mean_chn_1 = aipp_config.get('mean_chn_1')
                         spr0 = tbe_platform.get_const(
                             input_buf.access_ptr('r',
-                                                 offset=block_index*input_offset +
+                                                 offset=block_index*input_offset + \
                                                         n1*((c*src_image_size_h*src_image_size_w)))) | \
                                tvm.const(((mean_chn_0 >> 16) & 0xff) << 48,
                                          dtype="uint64") | \
@@ -346,16 +349,16 @@ def aipp_compute_single(input_tensor, input_shape, input_format,
                         spr1 = tbe_platform.get_const(
                             input_buf.access_ptr(
                                 'r',
-                                offset=block_index*input_offset +
-                                       n1*((c*src_image_size_h*src_image_size_w)//2) +
+                                offset=block_index*input_offset + \
+                                       n1*((c*src_image_size_h*src_image_size_w) // 2) + \
                                        src_image_size_h * src_image_size_w)) | \
                                spr1
                     elif aipp_config.get('input_format') == "YUV422SP_U8":
                         spr1 = tbe_platform.get_const(
                             input_buf.access_ptr(
                                 'r',
-                                offset=block_index*input_offset +
-                                       n1*((2*src_image_size_h*src_image_size_w)) +
+                                offset=block_index*input_offset + \
+                                       n1*((2*src_image_size_h*src_image_size_w)) + \
                                        src_image_size_h*src_image_size_w)) | \
                                spr1
                     elif aipp_config.get('input_format') in \
@@ -363,9 +366,9 @@ def aipp_compute_single(input_tensor, input_shape, input_format,
                         spr1 = tbe_platform.get_const(
                             input_buf.access_ptr(
                                 'r',
-                                offset=block_index*input_offset +
-                                       n1*(c1*src_image_size_h*src_image_size_w*6) +
-                                       c1*src_image_size_h*src_image_size_w*4 +
+                                offset=block_index*input_offset + \
+                                       n1*(c1*src_image_size_h*src_image_size_w*6) + \
+                                       c1*src_image_size_h*src_image_size_w*4 + \
                                        c1_index*src_image_size_h*src_image_size_w*2)) | \
                                spr1
                     elif aipp_config.get('input_format') in ["RGB8_IR",
@@ -374,8 +377,7 @@ def aipp_compute_single(input_tensor, input_shape, input_format,
                         spr1 = tbe_platform.get_const(
                             input_buf.access_ptr(
                                 'r',
-                                offset=block_index*input_offset +
-                                       n1*((c*src_image_size_h*src_image_size_w)) +
+                                offset=block_index*input_offset + n1*((c*src_image_size_h*src_image_size_w)) + \
                                        3*src_image_size_h*src_image_size_w)) | \
                                spr1
 
@@ -410,10 +412,10 @@ def aipp_compute_single(input_tensor, input_shape, input_format,
 
 
                             aipp_xs = tvm.const((load_image_w - 1) |
-                                               (load_image_h - 1) << 16 |
-                                               (load_start_pos_w) << 32 |
-                                               (load_start_pos_h) << 48,
-                                               dtype="uint64")
+                                                (load_image_h - 1) << 16 |
+                                                (load_start_pos_w) << 32 |
+                                                (load_start_pos_h) << 48,
+                                                dtype="uint64")
 
                             ib.emit(tvm.call_extern(dtype, "load_image_to_cbuf",
                                                     output_cb_buf.access_ptr(
@@ -443,7 +445,7 @@ def aipp_compute_single(input_tensor, input_shape, input_format,
 
                                 tail_ub = ib.allocate(dtype, (32 // size,), "tail_ub", scope=tbe_platform.scope_ubuf)
                                 tail_ub_buf = tvm.decl_buffer((32 // size,), dtype, "tail_ub_buf",
-                                                                scope=tbe_platform.scope_ubuf, data=tail_ub)
+                                                              scope=tbe_platform.scope_ubuf, data=tail_ub)
                                 aipp_comm.copy_ubuf_to_gm_tail(
                                     ib, dtype, output_buf, output_ub_buf,
                                     tail_ub_buf,
@@ -525,8 +527,7 @@ def aipp_compute_single(input_tensor, input_shape, input_format,
 
                                     if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
                                         spr12 = 0
-                                        spr12 = tbe_platform.get_const((tiling_h - 1) |
-                                                          (tiling_w - 1) << 16)
+                                        spr12 = tbe_platform.get_const((tiling_h - 1) | (tiling_w - 1) << 16)
                                         ib.emit(tvm.call_extern(
                                             dtype, "set_aipp_spr_12",
                                             tvm.const(spr12, dtype="uint64")))
@@ -609,7 +610,8 @@ def aipp_compute_single(input_tensor, input_shape, input_format,
                                                 tail_ub = ib.allocate(dtype, (32 // size,), "tail_ub",
                                                                       scope=tbe_platform.scope_ubuf)
                                                 tail_ub_buf = tvm.decl_buffer((32 // size,), dtype, "tail_ub_buf",
-                                                                      scope=tbe_platform.scope_ubuf, data=tail_ub)
+                                                                              scope=tbe_platform.scope_ubuf,
+                                                                              data=tail_ub)
                                                 aipp_comm.copy_ubuf_to_gm_tail(
                                                     ib, dtype, output_buf, output_ub_buf,
                                                     tail_ub_buf,
@@ -620,8 +622,7 @@ def aipp_compute_single(input_tensor, input_shape, input_format,
                                                 dtype, 'copy_ubuf_to_gm',
                                                 output_buf.access_ptr(
                                                     "w", ptr_type=dtype,
-                                                    offset=block_index*offset +
-                                                           output_offset),
+                                                    offset=block_index*offset + output_offset),
                                                 output_ub_buf.access_ptr(
                                                     "rw", ptr_type=dtype,
                                                     offset=h2*tiling_w*c0),
@@ -825,7 +826,8 @@ def aipp_compute_single(input_tensor, input_shape, input_format,
                                                 tail_ub = ib.allocate(dtype, (32 // size,), "tail_ub",
                                                                       scope=tbe_platform.scope_ubuf)
                                                 tail_ub_buf = tvm.decl_buffer((32 // size,), dtype, "tail_ub_buf",
-                                                                      scope=tbe_platform.scope_ubuf, data=tail_ub)
+                                                                               scope=tbe_platform.scope_ubuf,
+                                                                               data=tail_ub)
                                                 aipp_comm.copy_ubuf_to_gm_tail(
                                                     ib, dtype, output_buf, output_ub_buf,
                                                     tail_ub_buf,
@@ -851,8 +853,8 @@ def aipp_compute_single(input_tensor, input_shape, input_format,
                       dtype=[dtype], name="aipp")
 
 
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT, 
-    para_check.REQUIRED_ATTR_STR, para_check.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_STR, para_check.KERNEL_NAME)
 def aipp(input_data, input_dync_param, output_data, aipp_config_json, kernel_name="aipp"):
     """Operation for aipp.
     Parameters
@@ -866,8 +868,7 @@ def aipp(input_data, input_dync_param, output_data, aipp_config_json, kernel_nam
     -------
         None
     """
-
-    if aipp_config_json == "{}" or aipp_config_json == "":
+    if aipp_config_json in ("{}", ""):
         error_manager_vector.raise_err_miss_mandatory_parameter(aipp, 'aipp_config_json')
 
     aipp_config = json.loads(aipp_config_json)
@@ -1004,8 +1005,7 @@ def aipp(input_data, input_dync_param, output_data, aipp_config_json, kernel_nam
                                                       input_format, output_data,
                                                       aipp_config)
         else:
-            output = aipp_compute_single(data, input_shape, input_format,
-                                  output_data, aipp_config)
+            output = aipp_compute_single(data, input_shape, input_format, output_data, aipp_config)
 
         # Schedule
         s = tvm.create_schedule([output.op])
