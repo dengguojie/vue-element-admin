@@ -241,7 +241,7 @@ bool TbeAippFusionRule::CheckAippConvEltwiseFusionValidation(const ge::NodePtr c
   int64_t width_in = floor(16 / width_out) + 2;
   int64_t tmp = ((width_in - 1) * stride_h + hk_dilation) * width_fm;
   if (input_format == "YUV420SP_U8") {
-    tmp = tmp + width_fm;
+    tmp = tmp + 2*width_fm;
   }
   int64_t m_bit_ratio = 2;
   int64_t ci0 = 16;

@@ -50,6 +50,9 @@ DILATE_MIN = 1
 DILATE_MAX = 255
 CONV_SHAPE_DIM = 4
 
+# V200, small channel: 4*filter_h*filter_w must small than 65536.
+HK_WK_C04_V200 = 65535
+
 
 OP_TAG = "convolution_"
 TENSOR_MAP = {}
@@ -393,6 +396,10 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         if shape_w[3] < FILTER_HW_MIN or shape_w[3] > FILTER_HW_MAX:
             range_value = "".join([str(FILTER_HW_MIN), ", ", str(FILTER_HW_MAX)])
             err_man.raise_err_attr_range_invalid("conv2d", range_value, "kernel W", str(shape_w[3]))
+        temp = 4*shape_w[2]*shape_w[3]
+        if optim_dict["use_v200_c04_flg"] and is_support_v200() and (temp > HK_WK_C04_V200):
+            err_man.raise_err_specific("conv2d", "In v200, small channel case, the 4*Hk*Wk must small than or equal "
+                + "to " + str(HK_WK_C04_V200) + ". you can try to disable the small channel.")
 
     def _check_stride():
         """
