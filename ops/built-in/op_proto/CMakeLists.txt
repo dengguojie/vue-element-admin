@@ -125,7 +125,6 @@ set(_op_proto_include
   ${GRAPHENGINE_INCLUDE}
   ${GRAPHENGINE_INCLUDE}/external
   ${PROTO_BINARY_DIR}/opp
-  ${JSON_INCLUDE}
   ${Protobuf_INCLUDE}
 )
 
@@ -138,6 +137,7 @@ set(_op_proto_link_libs
     ascend_protobuf
   -Wl,--as-needed
     c_sec
+    json
 )
 
 if(ENABLE_TEST STREQUAL "")
@@ -159,7 +159,6 @@ if(ENABLE_TEST STREQUAL "")
     $<BUILD_INTERFACE:intf_pub>
     ${_op_proto_link_libs}
   )
-  add_dependencies(opsproto json_headers)
 
   if(BUILD_OPEN_PROJECT)
     set(OPS_PROTO_PATH "${INSTALL_PATH}/opp/op_proto/built-in")
@@ -201,5 +200,4 @@ else()
     PUBLIC
       ${_op_proto_link_libs}
   )
-  add_dependencies(opsproto_llt json_headers)
 endif()

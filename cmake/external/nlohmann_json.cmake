@@ -33,5 +33,6 @@ ExternalProject_Get_Property(nlohmann_json SOURCE_DIR)
 ExternalProject_Get_Property(nlohmann_json BINARY_DIR)
 
 set(JSON_INCLUDE ${SOURCE_DIR})
-
-add_custom_target(json_headers ALL DEPENDS nlohmann_json)
+add_library(json INTERFACE)
+target_include_directories(json INTERFACE ${JSON_INCLUDE})
+add_dependencies(json nlohmann_json)

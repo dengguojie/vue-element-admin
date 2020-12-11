@@ -108,8 +108,6 @@ if(BUILD_OPEN_PROJECT)
 else()
   # includes path
   set(JSON_INCLUDE "${TOP_DIR}/third_party/json/include")
-  # for compatibility in open project
-  add_custom_target(json_headers ALL)
   set(Protobuf_INCLUDE "${TOP_DIR}/third_party/protobuf/include")
   set(OPS_DIR ${TOP_DIR}/cann/ops)
   set(OPS_INCLUDE ${TOP_DIR}/cann/ops/common/inc)

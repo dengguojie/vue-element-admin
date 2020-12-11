@@ -32,7 +32,6 @@ set(_common_fusion_pass_inc
   ${GRAPHENGINE_INCLUDE}/external
   ${GRAPHENGINE_INCLUDE}/framework
   ${PROTO_BINARY_DIR}/opp
-  ${JSON_INCLUDE}
   ${Protobuf_INCLUDE}
   ${FUSION_ENGINE_INCLUDE}
 )
@@ -47,6 +46,7 @@ set(_common_fusion_pass_dep
     ascend_protobuf
   -Wl,--as-needed
     c_sec
+    json
 )
 
 set(_common_srcs
@@ -263,7 +263,6 @@ if(ENABLE_TEST STREQUAL "")
     $<BUILD_INTERFACE:intf_pub>
     ${_common_fusion_pass_dep}
   )
-  add_dependencies(ops_fusion_pass_aicore json_headers)
   # to solve the compile warnings in fp16_t.cc
   target_compile_options(ops_fusion_pass_aicore PRIVATE
     "-fno-strict-aliasing"
@@ -301,7 +300,6 @@ else()
     PUBLIC
       ${_common_fusion_pass_dep}
   )
-  add_dependencies(ops_fusion_pass_aicore_llt json_headers)
 endif()
 
 
@@ -329,7 +327,6 @@ target_compile_options(ops_fusion_pass_vectorcore PRIVATE
   -Dgoogle=ascend_private
 )
 
-add_dependencies(ops_fusion_pass_vectorcore json_headers)
 
 if(BUILD_OPEN_PROJECT)
   cann_install(

@@ -64,7 +64,6 @@ set(_op_tiling_include
   ${METADEF_INCLUDE}/external/graph
   ${GRAPHENGINE_INCLUDE}
   ${GRAPHENGINE_INCLUDE}/external
-  ${JSON_INCLUDE}
   ${Protobuf_INCLUDE}
 )
 
@@ -77,6 +76,7 @@ set(_op_tiling_link_libs
     ascend_protobuf
   -Wl,--as-needed
     c_sec
+    json
 )
 
 if(ENABLE_TEST STREQUAL "")
@@ -94,7 +94,6 @@ if(ENABLE_TEST STREQUAL "")
     $<BUILD_INTERFACE:intf_pub>
     ${_op_tiling_link_libs}
   )
-  add_dependencies(optiling json_headers)
   # to solve the compile warnings in fp16_t.cc
   target_compile_options(optiling PRIVATE
     "-fno-strict-aliasing"
@@ -129,5 +128,4 @@ else()
     PUBLIC
       ${_op_tiling_link_libs}
   )
-  add_dependencies(optiling_llt json_headers)
 endif()
