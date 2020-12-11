@@ -624,7 +624,7 @@ class ScheduleAgent:
         return self._attach_map.record_same_attach(sch[tensor_a],
                                                    sch[tensor_b])
 
-    def attach_at(self, tensor, parent, affine_shape):
+    def attach_at(self, tensor, parent, affine_shape, flag_nparts=False):
         """
         attach tensor to parent according to the affine_shape
 
@@ -632,12 +632,14 @@ class ScheduleAgent:
         ----------
         tensor : Tensor
         parent : Tenosr
-        affine_shape: shape of tensor affine to parent
+        affine_shape : shape of tensor affine to parent
+        flag_nparts : the flag of splited by nparts, default to false
 
         Returns
         -------
         the scope that tensor follow with
         """
+        parent_shape = parent.shape
         scopes = self[parent]
         ax_list, unit = scopes.get_active_scope_and_unit()
         if len(affine_shape) != len(ax_list):
@@ -654,10 +656,13 @@ class ScheduleAgent:
 
         def start_attach(factor_list, ax_list):
             origin_axis = scopes.origin_axis
-            for factor, axis in zip(factor_list, ax_list):
+            for index, (factor, axis) in enumerate(zip(factor_list, ax_list)):
                 if factor is not None and (isinstance(factor, tvm.expr.Expr)
                                            or factor > 1 or axis in origin_axis):
-                    axo, axi = scopes.split(axis, factor=factor)
+                    if flag_nparts:
+                        axo, axi = scopes.split(axis, nparts=ceil_div(parent_shape[index], factor))
+                    else:
+                        axo, axi = scopes.split(axis, factor=factor)
                     self._attach_map.update_scope(axis, axi)
                     axis_outer.append(axo)
                     axis_intrinsic.append(axi)

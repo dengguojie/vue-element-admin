@@ -1585,7 +1585,7 @@ def general_schedule(
                     aub_w,
                     al1_co0
                 ]
-                sch_agent.attach_at(a_filling, a_l1, ub_shape)
+                sch_agent.attach_at(a_filling, a_l1, ub_shape, flag_nparts=True)
             if not dynamic_mode:
                 sch_agent.same_attach(a_zero, a_filling)
             sch_agent.same_attach(a_ub, a_filling)
@@ -1788,9 +1788,13 @@ def general_schedule(
             afill_w_out, afill_w_inner = sch_agent[a_filling].split(
                 afill_w, factor=stride_w
             )
-            sch_agent[a_filling].reorder(
-                afill_w_inner, afill_n, afill_c, afill_h, afill_w_out
+            afill_h_out, afill_h_inner = sch_agent[a_filling].split(
+                afill_h, factor=stride_h
             )
+            sch_agent[a_filling].reorder(
+                afill_h_inner, afill_w_inner, afill_n, afill_c, afill_h, afill_h_out, afill_w_out
+            )
+            sch_agent[a_filling].unroll(afill_h_inner)
             sch_agent[a_filling].unroll(afill_w_inner)
             sch_agent[a_filling].reused_by(a_zero)
             sch_agent[a_zero].emit_insn(sch_agent[a_zero].op.axis[0], "vector_dup")
@@ -1798,7 +1802,7 @@ def general_schedule(
                 sch_agent[a_filling].emit_insn(afill_n, "dma_copy")
             else:
                 sch_agent[a_filling].emit_insn(afill_n, "vector_muls")
-            al1_insn, _ = sch_agent[a_l1].nlast_scopes(2)
+            al1_insn, _, _ = sch_agent[a_l1].nlast_scopes(3)
             sch_agent[a_l1].emit_insn(al1_insn, "dma_copy")
         setfmatrix_dict["conv_fm_c"] = a_l1.shape[1] * a_l1.shape[4]
         setfmatrix_dict["conv_fm_h"] = valid_shape[2] if valid_shape else a_l1.shape[2]
