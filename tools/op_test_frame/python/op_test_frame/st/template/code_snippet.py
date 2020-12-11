@@ -6,7 +6,6 @@ This file mainly involves op file content.
 Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
-# [TODO]
 MAIN_CPP_CONTENT = """
 /**
 * @file main.cpp
@@ -39,7 +38,6 @@ TESTCASE_CALL = """
         cout << "{function_name} execute failed!";
     }}
 """
-# [TODO]
 
 TESTCASE_FUNCTION = """
 OP_TEST({op_name}, {testcase_name})

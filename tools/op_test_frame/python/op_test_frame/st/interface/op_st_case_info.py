@@ -90,7 +90,7 @@ class OpSTStageResult:
                 "status": self.status,
                 "result": self.result,
                 "stage_name": self.stage_name,
-                "cmd":self.cmd
+                "cmd": self.cmd
             }
         return {
             "status": self.status,

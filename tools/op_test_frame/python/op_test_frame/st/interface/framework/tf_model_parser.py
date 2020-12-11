@@ -75,8 +75,8 @@ def _parse_attr(attr_key, value_data):
             'value': []}
     if value_data.list.shape:
         attr['type'] = "list(shape)"
-        for x in value_data.list.shape:
-            attr['value'] += _attr_value_shape_list(x.dim)
+        for value_sharp in value_data.list.shape:
+            attr['value'] += _attr_value_shape_list(value_sharp.dim)
     elif value_data.shape.dim:
         attr['type'] = "shape"
         attr['value'] += _attr_value_shape_list(value_data.shape.dim)

@@ -23,8 +23,8 @@ def parse_ini_to_obj(ini_file, aicpu_ops_info):
     '''
     parse all ini files to object
     '''
-    with open(ini_file) as file:
-        lines = file.readlines()
+    with open(ini_file) as ini_read_file:
+        lines = ini_read_file.readlines()
         ops = {}
         for line in lines:
             line = line.rstrip()
@@ -117,10 +117,10 @@ def write_json_file(aicpu_ops_info, json_file_path):
     write json file from ini file
     '''
     json_file_real_path = os.path.realpath(json_file_path)
-    with open(json_file_real_path, "w") as file:
+    with open(json_file_real_path, "w") as json_file:
         # Only the owner and group have rights
         os.chmod(json_file_real_path, stat.S_IWGRP + stat.S_IWUSR + stat.S_IRGRP + stat.S_IRUSR)
-        json.dump(aicpu_ops_info, file, sort_keys=True, indent=4, separators=(',', ':'))
+        json.dump(aicpu_ops_info, json_file, sort_keys=True, indent=4, separators=(',', ':'))
     print("Compile aicpu op info cfg successfully.")
 
 
@@ -137,12 +137,12 @@ def parse_ini_to_json(ini_file_paths_arg, outfile_path_arg):
 
 
 if __name__ == '__main__':
-    args = sys.argv
+    arguments = sys.argv
 
     OUTPUT = "tf_kernel.json"
     ini_file_paths = []
 
-    for arg in args:
+    for arg in arguments:
         if arg.endswith("ini"):
             ini_file_paths.append(arg)
         if arg.endswith("json"):

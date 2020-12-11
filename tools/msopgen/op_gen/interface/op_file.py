@@ -9,7 +9,8 @@ Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 try:
     import os
     import sys
-    from abc import ABCMeta, abstractmethod
+    from abc import ABCMeta
+    from abc import abstractmethod
     from . import utils
     from . import op_tmpl
     from .arg_parser import ArgParser
