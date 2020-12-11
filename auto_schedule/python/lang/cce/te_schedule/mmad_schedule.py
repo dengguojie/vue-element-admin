@@ -581,15 +581,17 @@ def get_tensor_reuse(batch, core_inner_m, k_shape, core_inner_n,
     tensor_a_num = m_max_num * k_shape
     tensor_b_num = n_max_num * k_shape
 
-    if m_max_num * k_shape <= size:
-        tensor_a = 2
-    elif m_l1_shape * k_shape <= size:
-        tensor_a = 1
+    if m_max_num != m_l1_shape:
+        if m_max_num * k_shape <= size:
+            tensor_a = 2
+        elif m_l1_shape * k_shape <= size:
+            tensor_a = 1
 
-    if n_max_num * k_shape <= size:
-        tensor_b = 2
-    elif n_l1_shape * k_shape <= size:
-        tensor_b = 1
+    if n_max_num != n_l1_shape:
+        if n_max_num * k_shape <= size:
+            tensor_b = 2
+        elif n_l1_shape * k_shape <= size:
+            tensor_b = 1
 
     if tensor_a == 1 and tensor_b == 1:
         aprts_a = core_inner_m // m_l1_shape
