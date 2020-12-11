@@ -16,7 +16,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 sqrt_grad
 """
 
-import operator
 import te.lang.cce as tbe
 from te import platform as tbe_platform
 import te.lang.base as tbe_base
@@ -85,14 +84,9 @@ def sqrt_grad(x, dx, out, kernel_name="sqrt_grad"):
     """
     x_dtype = x.get("dtype").lower()
     dx_dtype = dx.get("dtype").lower()
-    shape_x = x.get("shape")
-    shape_dx = dx.get("shape")
     check_list = ("float16", "float32")
     para_check.check_dtype(x_dtype, check_list, param_name="x")
     para_check.check_dtype(dx_dtype, check_list, param_name="dx")
-    if not operator.eq(list(shape_x), list(shape_dx)):
-        error_manager_vector.raise_err_inputs_shape_not_equal(kernel_name, 'x', 'dx',
-                                                              shape_x, shape_dx, shape_x)
     para_check.check_elewise_shape_range([x, dx], support_broadcast=False)
     if x_dtype != dx_dtype:
         error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "x", "dx",
@@ -102,7 +96,6 @@ def sqrt_grad(x, dx, out, kernel_name="sqrt_grad"):
     for (x, dx) in ins:
         with tbe_base.compute():
             x_shape, dx_shape = shape_util.variable_shape([x, dx], support_broadcast=False)
-            x_shape, dx_shape = shape_util.refine_shapes_for_broadcast(x_shape, dx_shape)
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")
             tensor_dx = tvm.placeholder(dx_shape, dx_dtype, "tensor_dx")
             res = sqrt_grad_compute(tensor_x, tensor_dx, out, kernel_name)

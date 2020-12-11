@@ -817,7 +817,7 @@ def check_elewise_shape_range(inputs: list, support_broadcast=False):
                     raise RuntimeError(
                         err_info,
                         "In op[%s],the range at the same location "
-                        "must have intersections" % (error_info['op_name']))
+                        "must have intersections" % (err_info['op_name']))
 
     if len(inputs) <= 1:
         return

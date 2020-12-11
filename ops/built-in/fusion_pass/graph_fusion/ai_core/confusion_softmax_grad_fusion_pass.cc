@@ -61,7 +61,6 @@ before:
     |——————> Sub
               |
            output
-
 after:
       input1  input0
           \      |
@@ -199,6 +198,9 @@ Status ConfusionSoftmaxGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
   ge::GeTensorDesc outputDesc = subNode->GetOpDesc()->GetOutputDesc(0);
   FUSION_PASS_CHECK(softmaxGradOpdesc->AddOutputDesc((outputDesc)) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add softmaxGrad output desc failed."), return FAILED);
+
+  // check ConfusionSoftmaxGrad op supported
+  FUSION_PASS_CHECK(!CheckOpSupported(softmaxGradOpdesc), OP_LOGI(FUSED_OP_TYPE.c_str(), "Op Not Supported."), return NOT_CHANGED);
 
   // add prelu node into graph
   ge::NodePtr softmaxGradNode = graph.AddNode(softmaxGradOpdesc);

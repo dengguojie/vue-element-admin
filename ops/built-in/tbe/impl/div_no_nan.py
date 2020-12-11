@@ -66,9 +66,9 @@ def div_no_nan_compute(input_x, input_y, output_z, kernel_name="div_no_nan"):
         help_rec_sec = tvm.const(2**44, "float32")
         neg_one = tvm.const(-1, "float32")
 
-    y_cmp = tbe.vmul(input_y, input_y)
+    y_cmp = tbe.vabs(input_y)
     if tbe_platform.cce_conf.api_check_support("te.lang.cce.vmins", "float32"):
-        y_index_help_1 = tbe.vmins(y_cmp,help_min)
+        y_index_help_1 = tbe.vmins(y_cmp, help_min)
     else:
         cmp_help = tbe.broadcast(help_min, shape_y)
         y_index_help_1 = tbe.vmin(y_cmp, cmp_help)
