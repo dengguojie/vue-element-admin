@@ -22,11 +22,11 @@ from te.utils.error_manager import error_manager_util
 from te import tvm
 
 
-CUBE_DIM = 16
-FLOAT16_SIZE = 2
-CUBE_MUL_SHAPE = 256
-OPEN_DOUBLE_BUFFER = 2
-DEFAULT_TILING_CASE = 32
+_CUBE_DIM = 16
+_FLOAT16_SIZE = 2
+_CUBE_MUL_SHAPE = 256
+_OPEN_DOUBLE_BUFFER = 2
+_DEFAULT_TILING_CASE = 32
 
 
 def _print_ir_conv(process, sch):
@@ -136,7 +136,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                         error_manager_util.get_error_message(dict_args))
 
             if bl1_shape:
-                if (bl1_shape[0] // CUBE_DIM) % bl0_matrix[0] != 0:
+                if (bl1_shape[0] // _CUBE_DIM) % bl0_matrix[0] != 0:
                     dict_args = {
                         'errCode': 'E62306',
                         'desc': 'k of BL1_shape should be integral '
@@ -280,20 +280,20 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             do L1 size limit check
 
             """
-            al1_min_byte = CUBE_DIM * CUBE_DIM * FLOAT16_SIZE
-            if width_grads >= CUBE_DIM:
-                if width_grads % CUBE_DIM == 0:
-                    bl1_min_byte = kernel_height * width_fmap * CUBE_DIM * FLOAT16_SIZE
+            al1_min_byte = _CUBE_DIM * _CUBE_DIM * _FLOAT16_SIZE
+            if width_grads >= _CUBE_DIM:
+                if width_grads % _CUBE_DIM == 0:
+                    bl1_min_byte = kernel_height * width_fmap * _CUBE_DIM * _FLOAT16_SIZE
                 else:
-                    bl1_min_byte = (kernel_height + stride_height) * width_fmap * CUBE_DIM * FLOAT16_SIZE
+                    bl1_min_byte = (kernel_height + stride_height) * width_fmap * _CUBE_DIM * _FLOAT16_SIZE
             else:
-                bl1_align_factor = te_util.int_ceil_div(CUBE_DIM, width_grads)
-                if CUBE_DIM % width_grads == 0:
+                bl1_align_factor = te_util.int_ceil_div(_CUBE_DIM, width_grads)
+                if _CUBE_DIM % width_grads == 0:
                     bl1_min_byte = (kernel_height + (bl1_align_factor-1)
-                                    * stride_height) * width_fmap * CUBE_DIM * FLOAT16_SIZE
+                                    * stride_height) * width_fmap * _CUBE_DIM * _FLOAT16_SIZE
                 else:
                     bl1_min_byte = (kernel_height +
-                                    bl1_align_factor * stride_height) * width_fmap * CUBE_DIM * FLOAT16_SIZE
+                                    bl1_align_factor * stride_height) * width_fmap * _CUBE_DIM * _FLOAT16_SIZE
             l1_size = tbe_platform.get_soc_spec("L1_SIZE")  # L1 size
             if (al1_min_byte + bl1_min_byte) > l1_size:
                 dict_args = {
@@ -318,7 +318,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             batch, real_k = sch[res_cc].op.reduce_axis
             batch_core, batch_in = sch[res_cc].split(batch, nparts=block_dim_batch)
 
-            real_k, k_in = sch[res_cc].split(real_k, CUBE_DIM)
+            real_k, k_in = sch[res_cc].split(real_k, _CUBE_DIM)
             k_1_multicore, real_k = sch[res_cc].split(real_k, nparts=block_dim_hw)
 
             sch[res_cc].reorder(k_1_multicore, batch_core, batch_in, real_k, k_in)
@@ -406,7 +406,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                 # nparts K1 in L1, nparts M1 in L1
                 grads_l1_tiling_nparts = [
                     hw_pad_1 // block_dim_hw //
-                    (tiling["AL1_shape"][0] // CUBE_DIM),
+                    (tiling["AL1_shape"][0] // _CUBE_DIM),
                     dw_tiling_nparts[1] // tiling["AL1_shape"][1]
                 ]
             else:
@@ -418,7 +418,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                 # DDR to L1 [nparts K1, nparts N1]
                 fmap_l1_tiling_nparts = [
                     hw_pad_1 // block_dim_hw //
-                    (tiling["BL1_shape"][0] // CUBE_DIM),
+                    (tiling["BL1_shape"][0] // _CUBE_DIM),
                     dw_tiling_nparts[0] // tiling["BL1_shape"][1]
                 ]
             else:
@@ -513,25 +513,25 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             achieve double_buffer
 
             """
-            if tiling.get("manual_pingpong_buffer").get("AL1_pbuffer") == OPEN_DOUBLE_BUFFER:
+            if tiling.get("manual_pingpong_buffer").get("AL1_pbuffer") == _OPEN_DOUBLE_BUFFER:
                 sch[grads_matrix].double_buffer()
 
-            if tiling.get("manual_pingpong_buffer").get("BL1_pbuffer") == OPEN_DOUBLE_BUFFER:
+            if tiling.get("manual_pingpong_buffer").get("BL1_pbuffer") == _OPEN_DOUBLE_BUFFER:
                 if not load2d_flag:
                     sch[fmap_l1].double_buffer()
                 else:
                     sch[fmap_matrix].double_buffer()
 
-            if tiling.get("manual_pingpong_buffer").get("AL0_pbuffer") == OPEN_DOUBLE_BUFFER:
+            if tiling.get("manual_pingpong_buffer").get("AL0_pbuffer") == _OPEN_DOUBLE_BUFFER:
                 sch[grads_fractal].double_buffer()
 
-            if tiling.get("manual_pingpong_buffer").get("BL0_pbuffer") == OPEN_DOUBLE_BUFFER:
+            if tiling.get("manual_pingpong_buffer").get("BL0_pbuffer") == _OPEN_DOUBLE_BUFFER:
                 sch[fmap_fractal].double_buffer()
 
-            if tiling.get("manual_pingpong_buffer").get("CL0_pbuffer") == OPEN_DOUBLE_BUFFER:
+            if tiling.get("manual_pingpong_buffer").get("CL0_pbuffer") == _OPEN_DOUBLE_BUFFER:
                 sch[dw_cc].double_buffer()
 
-            if tiling.get("manual_pingpong_buffer").get("CUB_pbuffer") == OPEN_DOUBLE_BUFFER:
+            if tiling.get("manual_pingpong_buffer").get("CUB_pbuffer") == _OPEN_DOUBLE_BUFFER:
                 sch[dw_ub].double_buffer()
 
         def _emit_insn():
@@ -656,12 +656,12 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
         default_tiling = {
             'AUB_shape': None,
             'BUB_shape': None,
-            'AL1_shape': [CUBE_DIM, 1, 1],
-            'BL1_shape': [CUBE_DIM, 1, 1],
-            'AL0_matrix': [1, 1, CUBE_DIM, CUBE_DIM, 1],
-            'BL0_matrix': [1, 1, CUBE_DIM, CUBE_DIM, 1],
-            'CL0_matrix': [1, 1, CUBE_DIM, CUBE_DIM, 1],
-            'CUB_matrix': [1, 1, CUBE_DIM, CUBE_DIM, 1],
+            'AL1_shape': [_CUBE_DIM, 1, 1],
+            'BL1_shape': [_CUBE_DIM, 1, 1],
+            'AL0_matrix': [1, 1, _CUBE_DIM, _CUBE_DIM, 1],
+            'BL0_matrix': [1, 1, _CUBE_DIM, _CUBE_DIM, 1],
+            'CL0_matrix': [1, 1, _CUBE_DIM, _CUBE_DIM, 1],
+            'CUB_matrix': [1, 1, _CUBE_DIM, _CUBE_DIM, 1],
             'block_dim': [1, 1, 1],
             'cout_bef_batch_flag': 0,
             'A_overhead_opt_flag': 0,
@@ -750,7 +750,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
         _tiling_shape_check()
         _tiling_buffer_check()
         # if no valid tiling found, the flag is as follows
-        if tiling["AL0_matrix"][2] == DEFAULT_TILING_CASE:
+        if tiling["AL0_matrix"][2] == _DEFAULT_TILING_CASE:
             tiling = default_tiling
         _l1_limit_check()
 
@@ -765,11 +765,11 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
 
         sch[grads_matrix].set_scope(tbe_platform.scope_cbuf)
         sch[grads_matrix].storage_align(sch[grads_matrix].op.axis[1],
-                                        CUBE_MUL_SHAPE, 0)
+                                        _CUBE_MUL_SHAPE, 0)
 
         sch[grads_fractal].set_scope(tbe_platform.scope_ca)
         sch[grads_fractal].buffer_align((1, 1), (1, 1), (1, 1), (1, 1),
-                                        (1, CUBE_DIM), (1, CUBE_DIM))
+                                        (1, _CUBE_DIM), (1, _CUBE_DIM))
 
         # fmap_shape_original_matrix is (batch_size*grads_depth,
         #                               grads_height*grads_width,
@@ -782,16 +782,16 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             sch[fmap_matrix].buffer_align(
                 (1, 1), (width_grads, width_grads), (1, 1),
                 (kernel_height, kernel_height), (kernel_width, kernel_width),
-                (1, CUBE_DIM))
+                (1, _CUBE_DIM))
         else:
             sch[fmap_matrix].storage_align(sch[fmap_matrix].op.axis[1],
-                                           CUBE_MUL_SHAPE, 0)
+                                           _CUBE_MUL_SHAPE, 0)
 
         sch[fmap_matrix].set_scope(tbe_platform.scope_cbuf)
 
         sch[fmap_fractal].set_scope(tbe_platform.scope_cb)
         sch[fmap_fractal].buffer_align((1, 1), (1, 1), (1, 1), (1, 1),
-                                       (1, CUBE_DIM), (1, CUBE_DIM))
+                                       (1, _CUBE_DIM), (1, _CUBE_DIM))
 
         dw_cc, dw_ub, dw_ddr, dw_ub_reduce, dw_ddr_reduce \
             = _atomic_add(sch, dw_cc, dw_ub, dw_ddr)
@@ -849,7 +849,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
 
         # split axis M
         c_grads_mad_at, c_grads_mad_insn = sch[dw_ddr].split(
-            sch[dw_ddr].op.axis[2], dw_tiling_factor[1]*CUBE_DIM)
+            sch[dw_ddr].op.axis[2], dw_tiling_factor[1]*_CUBE_DIM)
 
         c_grads_multicore, c_grads_mad_at = sch[dw_ddr].split(
             c_grads_mad_at, nparts=block_dim_cout)
@@ -939,7 +939,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
 
         # split dw_cc.op.axis[1](M1*M0), factor is one MMAD
         lc_mad_at, lc_mad_insn = sch[dw_cc].split(sch[dw_cc].op.axis[3],
-                                                  dw_tiling_factor[1] * CUBE_DIM)
+                                                  dw_tiling_factor[1] * _CUBE_DIM)
 
         sch[dw_cc].reorder(fkk_mad_at, lc_mad_at, sch[dw_cc].op.axis[0],
                            batch_insn_o, hw_mad_1_l1_out_at, hw_mad_1_l1_in_at,

@@ -23,19 +23,20 @@ from te.domain.tiling.get_tiling import get_tiling
 from te.utils.error_manager import error_manager_util
 
 # tiling check
-TILING_L1_SHAPWE_DIM = 4
-TILING_AL0_MATRIX_DIM = [6]
-TILING_BL0_MATRIX_DIM = [6, 0]
-TILING_CL0_MATRIX_DIM = [6]
-TILING_CUB_MATRIX_DIM = [6]
-TILING_BLOCK_DIM_DIM = [4]
-TILING_FLOAT16_MKN = 16
-VALID_TILING_NUM = 32
-CONV_NUM = 5
+_TILING_L1_SHAPWE_DIM = 4
+_TILING_AL0_MATRIX_DIM = [6]
+_TILING_BL0_MATRIX_DIM = [6, 0]
+_TILING_CL0_MATRIX_DIM = [6]
+_TILING_CUB_MATRIX_DIM = [6]
+_TILING_BLOCK_DIM_DIM = [4]
+_TILING_FLOAT16_MKN = 16
+_VALID_TILING_NUM = 32
+_CONV_NUM = 5
 
 
 class CceConv3dOp:
-    """class of cce index op
+    """
+    cce index op
 
     Parameters
     ----------
@@ -56,7 +57,7 @@ class CceConv3dOp:
         self._need_pragma = need_pragma
         self._scope = scope
         self._schedule = None
-        self._tensor_map = conv3d_compute.Conv3DParam.TENSOR_MAP
+        self._tensor_map = conv3d_compute.Conv3DParam._TENSOR_MAP
         self._dim_map = conv3d_compute.Conv3DParam.dim_map
         self._tiling = conv3d_compute.Conv3DParam.tiling
         self._fused_op_num = 0
@@ -77,7 +78,7 @@ class CceConv3dOp:
                                                                 ele][0]
         return res_ele
 
-    def int_ceil_div_tvm(self, num_a, num_b):
+    def _int_ceil_div_tvm(self, num_a, num_b):
         """
         tvm.floordiv result
         """
@@ -353,7 +354,7 @@ class CceConv3dOp:
 
         return nbuffer_flag_al1, compute_al1_axis, nbuffer_axis, k_outer_outer_inner_size // nbuffer_size
     
-    def get_cyclebuffer_flag(self, tiling, shape_w, w_dtype, shape_fmap, stride_d, 
+    def _get_cyclebuffer_flag(self, tiling, shape_w, w_dtype, shape_fmap, stride_d,
                              pad_d, l0a_load2d_flag):
         """
         calculate whether to do cyclebuffer
@@ -508,16 +509,16 @@ class CceConv3dOp:
         -------
         true for auto tiling, false for default tiling
         """
-        if tiling["AL0_matrix"][2] == VALID_TILING_NUM:
+        if tiling["AL0_matrix"][2] == _VALID_TILING_NUM:
             return False
 
         l1_shape = ["AL1_shape", "BL1_shape"]
         for shape in l1_shape:
-            if tiling[shape] and len(tiling[shape]) != TILING_L1_SHAPWE_DIM:
+            if tiling[shape] and len(tiling[shape]) != _TILING_L1_SHAPWE_DIM:
                 dict_args = {
                     'errCode': 'E62304',
                     'param_name': l1_shape,
-                    'expect_value': str(TILING_L1_SHAPWE_DIM),
+                    'expect_value': str(_TILING_L1_SHAPWE_DIM),
                     'value': str(len(tiling[shape]))
                 }
                 raise RuntimeError(dict_args,
@@ -527,8 +528,8 @@ class CceConv3dOp:
             "AL0_matrix", "BL0_matrix", "CL0_matrix", "CUB_matrix", "block_dim"
         ]
         matrix_dim = [
-            TILING_AL0_MATRIX_DIM, TILING_BL0_MATRIX_DIM,
-            TILING_CL0_MATRIX_DIM, TILING_CUB_MATRIX_DIM, TILING_BLOCK_DIM_DIM
+            _TILING_AL0_MATRIX_DIM, _TILING_BL0_MATRIX_DIM,
+            _TILING_CL0_MATRIX_DIM, _TILING_CUB_MATRIX_DIM, _TILING_BLOCK_DIM_DIM
         ]
         for matrix, dim in zip(matrix_list, matrix_dim):
             if len(tiling[matrix]) not in dim:
@@ -565,21 +566,21 @@ class CceConv3dOp:
 
         for matrix in matrix_list[0:3]:
             if tiling[matrix] != []:
-                if tiling[matrix][2] != TILING_FLOAT16_MKN:
+                if tiling[matrix][2] != _TILING_FLOAT16_MKN:
                     dict_args = {
                         'errCode': 'E62305',
                         'param_name': matrix,
-                        'expect_value': str(TILING_FLOAT16_MKN),
+                        'expect_value': str(_TILING_FLOAT16_MKN),
                         'value': str(tiling[matrix][2])
                     }
                     raise RuntimeError(dict_args,
                                        error_manager_util.get_error_message(dict_args))
 
-                if tiling[matrix][3] != TILING_FLOAT16_MKN:
+                if tiling[matrix][3] != _TILING_FLOAT16_MKN:
                     dict_args = {
                         'errCode': 'E62305',
                         'param_name': matrix,
-                        'expect_value': str(TILING_FLOAT16_MKN),
+                        'expect_value': str(_TILING_FLOAT16_MKN),
                         'value': str(tiling[matrix][3])
                     }
                     raise RuntimeError(dict_args,
@@ -623,7 +624,7 @@ class CceConv3dOp:
         fmap_n, fmap_d, fmap_c1, fmap_h, fmap_w, fmap_c0 = fmap_shape_ndc1hwc0
         fmap_shape_ndc1hwc0 = [fmap_n, fmap_d, cin1_g, fmap_h, fmap_w, fmap_c0]
         shape_w_ndc1hwc0 = [cout_g, kernel_d, cin1_g, kernel_h, kernel_w,
-                            TILING_FLOAT16_MKN]
+                            _TILING_FLOAT16_MKN]
         if self.dynamic_mode:
             tiling_new = self.tiling_case
             cyclebuffer_flag = False
@@ -649,7 +650,7 @@ class CceConv3dOp:
             self._schedule.set_var_range(self._tensor_map["d_dim"],
                                         int(tiling_new["block_dim"][-1]),
                                         int(tiling_new["block_dim"][-1]))
-            cyclebuffer_flag = self.get_cyclebuffer_flag(tiling_new, shape_w_ndc1hwc0,
+            cyclebuffer_flag = self._get_cyclebuffer_flag(tiling_new, shape_w_ndc1hwc0,
                                                         w_dtype, fmap_shape_ndc1hwc0,
                                                         strided, padd, l0a_load2d_flag)
 
@@ -1206,7 +1207,7 @@ class CceConv3dOp:
         bias_flag = conv3d_compute.Conv3DParam.tiling_query_param["bias_flag"]
 
         def _get_fused_op_num():
-            fuse_op_num = len(self.body_ops) - CONV_NUM
+            fuse_op_num = len(self.body_ops) - _CONV_NUM
             if not l0a_load2d_flag:
                 fuse_op_num -= 1
             if bias_flag:
@@ -1894,7 +1895,7 @@ class CceConv3dOp:
 
 class AutoScheduleDict(dict):
     """
-    class of AutoScheduleDict
+    AutoScheduleDict
     """
 
     def __init__(self, **kwargs):
@@ -1904,7 +1905,7 @@ class AutoScheduleDict(dict):
 
 class AutoScheduleOp:
     """
-    class of AutoScheduleOp
+    AutoScheduleOp
     """
 
     def __init__(self, *init_args):

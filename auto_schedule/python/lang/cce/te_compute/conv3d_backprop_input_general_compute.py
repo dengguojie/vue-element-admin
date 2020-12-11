@@ -23,7 +23,7 @@ from te import tvm
 
 class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
     """
-    class of convolution back propagation
+    convolution back propagation
 
     Parameters
     ----------

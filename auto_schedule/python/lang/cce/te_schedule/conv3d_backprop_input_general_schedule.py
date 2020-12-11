@@ -22,8 +22,8 @@ from te.utils.error_manager import error_manager_util
 from te import tvm
 
 
-NUM_3 = 3
-DEFAULT_TILING_FLAG = 32
+_NUM_3 = 3
+_DEFAULT_TILING_FLAG = 32
 
 
 def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
@@ -811,7 +811,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
     cddr_batch, cddr_depth, cddr_c1, cddr_h, cddr_w, cdder_c0 = output_shape
     tiling_output = [cddr_batch,
                      cddr_depth, cddr_h, cddr_w, cddr_c1 * cdder_c0]
-    kd_reduce_flag = bool(len(c_col.op.reduce_axis) == NUM_3)
+    kd_reduce_flag = bool(len(c_col.op.reduce_axis) == _NUM_3)
 
     info_dict = {
         "a_shape": img_shape,
@@ -834,7 +834,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
     }
     tiling = get_tiling(info_dict)
 
-    if tiling["AL0_matrix"][2] == DEFAULT_TILING_FLAG:
+    if tiling["AL0_matrix"][2] == _DEFAULT_TILING_FLAG:
         tiling = _default_tiling()
 
     if stride_w == 1 and stride_h == 1:

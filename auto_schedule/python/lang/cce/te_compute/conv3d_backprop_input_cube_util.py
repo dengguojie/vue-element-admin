@@ -164,7 +164,7 @@ def _im2col_fractal(a_im2col_shape, tensor_a_row_major, tag=''):
 
 class CubeDslPattern:
     """
-    class of cube mmad calculation
+    cube mmad calculation
 
     Parameters
     ----------
@@ -356,7 +356,7 @@ class CubeDslPattern:
 
 class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
     """
-    class of convolution
+    ConvDslPattern
 
     Parameters
     ----------

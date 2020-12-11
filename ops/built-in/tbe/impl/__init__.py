@@ -199,11 +199,9 @@ from .util.util_deconv_comm import check_conv2dbp_input_params
 from .deconvolution import deconvolution
 from .conv2d_transpose_d import conv2d_transpose_d
 from .conv3d import conv3d
-from .conv3d_backprop_input_d import conv3d_backprop_input_cce
-from .conv3d_backprop_filter_d import conv3d_backprop_filter_cce
+from .conv3d_backprop_input_d import conv3d_backprop_input_d
 from .conv3d_backprop_filter_d import conv3d_backprop_filter_d
 from .conv3d_transpose_d import conv3d_transpose_d
-from .conv3d_transpose_d import conv3d_transpose_cce
 
 # Mobilenetv2
 from .avg_pool_grad_d import avg_pool_grad_d

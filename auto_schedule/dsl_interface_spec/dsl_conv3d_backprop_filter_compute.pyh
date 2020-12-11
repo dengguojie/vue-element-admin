@@ -1,0 +1,5 @@
+# source file:../cann/auto_schedule/python/lang/cce/te_compute/conv3d_backprop_filter_compute.py
+
+class Conv3dBackpropFilter:
+
+def conv3d_dw(x, out_backprop, filter_size, para_dict):

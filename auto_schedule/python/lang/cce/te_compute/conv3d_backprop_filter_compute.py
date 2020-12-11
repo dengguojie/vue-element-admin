@@ -25,9 +25,9 @@ from te import tvm
 
 
 # fractal size, only support 16 for now
-BLOCK_SIZE = 16
+_BLOCK_SIZE = 16
 # maximum of int64 (2**63 - 1)
-DATA_SIZE_LIMIT_INT64 = 9223372036864776807
+_DATA_SIZE_LIMIT_INT64 = 9223372036864776807
 
 
 def _check_shape_rule(shape, dim, formats, name):
@@ -366,7 +366,7 @@ class Conv3dBackpropFilter:
 
         _check_dilation()
 
-        if self.shape_x_6hd[5] != BLOCK_SIZE:
+        if self.shape_x_6hd[5] != _BLOCK_SIZE:
             args_dict = {
                 'errCode': 'E62511',
                 'shape_c0': str(self.shape_x_6hd[5])
@@ -374,7 +374,7 @@ class Conv3dBackpropFilter:
             raise RuntimeError(args_dict,
                                error_manager_util.get_error_message(args_dict))
 
-        if self.shape_grads_6hd[5] != BLOCK_SIZE:
+        if self.shape_grads_6hd[5] != _BLOCK_SIZE:
             args_dict = {
                 'errCode': 'E62511',
                 'shape_c0': str(self.shape_grads_6hd[5])
@@ -479,9 +479,9 @@ class Conv3dBackpropFilter:
         kernel_fractal = (kernel_depth * fmap_channel_1 * kernel_height *
                           kernel_width, grads_channel_1 * grads_c0, fmap_c0)
 
-        _check_addressing_rule(self.shape_grads_6hd, 2, DATA_SIZE_LIMIT_INT64)
-        _check_addressing_rule(self.shape_x_6hd, 2, DATA_SIZE_LIMIT_INT64)
-        _check_addressing_rule(kernel_fractal, 4, DATA_SIZE_LIMIT_INT64)
+        _check_addressing_rule(self.shape_grads_6hd, 2, _DATA_SIZE_LIMIT_INT64)
+        _check_addressing_rule(self.shape_x_6hd, 2, _DATA_SIZE_LIMIT_INT64)
+        _check_addressing_rule(kernel_fractal, 4, _DATA_SIZE_LIMIT_INT64)
         return True
 
     def _deconv_dw_access(self):
@@ -528,7 +528,7 @@ class Conv3dBackpropFilter:
                 batch_size_index = batch_indices
                 grads_channel_1_index = group_indices * \
                     (group_dict['cout_g'] // 16) + grads_c1_indices
-                grads_hw_index = hw_mad_1_indices * BLOCK_SIZE + hw_mad_0_indices
+                grads_hw_index = hw_mad_1_indices * _BLOCK_SIZE + hw_mad_0_indices
                 grads_c0_index = grads_c0_indices
 
                 return grads_2_matrix(batch_size_index, grads_channel_1_index,
@@ -568,7 +568,7 @@ class Conv3dBackpropFilter:
                 cin_index = fmap_c1_indices % self.group_dict['cin1_g']
                 c1_index = depth_index * self.shape_x_6hd[2] \
                     + group_indices * self.group_dict['cin1_g'] + cin_index
-                fmap_hw_index = hw_mad_1_indices * BLOCK_SIZE + hw_mad_0_indices
+                fmap_hw_index = hw_mad_1_indices * _BLOCK_SIZE + hw_mad_0_indices
                 fmap_c0_index = fmap_c0_indices
 
                 return fmap_2_matrix(batch_size_index, c1_index,
@@ -595,7 +595,7 @@ class Conv3dBackpropFilter:
         cout_ori = self.group_dict['cout_ori']
         # align to 16
         hw_ori = grads_height * grads_width
-        hw_mad_1 = (hw_ori + BLOCK_SIZE - 1) // BLOCK_SIZE
+        hw_mad_1 = (hw_ori + _BLOCK_SIZE - 1) // _BLOCK_SIZE
 
         # move grads to L1
         grads_shape_matrix = (batch_size * grads_depth, grads_channel_1,
@@ -607,7 +607,7 @@ class Conv3dBackpropFilter:
         # move grads_matrix to L0A and do transpose
         grads_shape_fractal = (real_g, batch_size * grads_depth,
                                grads_channel_g // grads_c0,
-                               hw_mad_1, grads_c0, BLOCK_SIZE)
+                               hw_mad_1, grads_c0, _BLOCK_SIZE)
 
         self.shape_list['grads_fractal'] = grads_shape_fractal
         grads_fractal = _grads_2_fractal(grads_shape_fractal,
@@ -651,7 +651,7 @@ class Conv3dBackpropFilter:
             fmap_shape_fmap_matrix = (real_g, batch_size * grads_depth,
                                       hw_mad_1, kernel_depth *
                                       fmap_channel1_g * kernel_height *
-                                      kernel_width, fmap_c0, BLOCK_SIZE)
+                                      kernel_width, fmap_c0, _BLOCK_SIZE)
             self.shape_list['fmap_fmap_matrix'] = fmap_shape_fmap_matrix
 
             fmap_fractal = self._fmap_2_fractal(fmap_shape_fmap_matrix,
@@ -672,7 +672,7 @@ class Conv3dBackpropFilter:
             fmap_shape_fractal = (real_g, batch_size * grads_depth, hw_mad_1,
                                   kernel_depth * fmap_channel1_g *
                                   kernel_height * kernel_width, fmap_c0,
-                                  BLOCK_SIZE)
+                                  _BLOCK_SIZE)
             self.shape_list['fmap_fractal'] = fmap_shape_fractal
 
             fmap_fractal = _fmap_2_fractal_load2d(fmap_shape_fractal,
@@ -925,20 +925,20 @@ class Conv3dBackpropFilter:
             group_index, n_vm_index, hw_mad_1_indices, fkk_indices, \
                 fmap_c0_indices, hw_mad_0_indices = indices
 
-            hw_vm_index = hw_mad_1_indices * BLOCK_SIZE + hw_mad_0_indices
+            hw_vm_index = hw_mad_1_indices * _BLOCK_SIZE + hw_mad_0_indices
             c1_vm_index = ((
-                (fkk_indices * BLOCK_SIZE + fmap_c0_indices) // BLOCK_SIZE) //
+                (fkk_indices * _BLOCK_SIZE + fmap_c0_indices) // _BLOCK_SIZE) //
                 kernel_width) // kernel_height
             depth_index = c1_vm_index // self.group_dict['cin1_g']
             cin_index = c1_vm_index % self.group_dict['cin1_g']
             c1_index = depth_index * self.shape_x_6hd[2] \
                 + group_index * self.group_dict['cin1_g'] + cin_index
             kh_vm_index = ((
-                (fkk_indices * BLOCK_SIZE + fmap_c0_indices) // BLOCK_SIZE) //
+                (fkk_indices * _BLOCK_SIZE + fmap_c0_indices) // _BLOCK_SIZE) //
                 kernel_width) % kernel_height
-            kw_vm_index = ((fkk_indices * BLOCK_SIZE + fmap_c0_indices) //
-                           BLOCK_SIZE) % kernel_width
-            c0_vm_index = (fkk_indices * BLOCK_SIZE + fmap_c0_indices) % BLOCK_SIZE
+            kw_vm_index = ((fkk_indices * _BLOCK_SIZE + fmap_c0_indices) //
+                           _BLOCK_SIZE) % kernel_width
+            c0_vm_index = (fkk_indices * _BLOCK_SIZE + fmap_c0_indices) % _BLOCK_SIZE
 
             # select padding and 16 align
             return tvm.select(
@@ -1012,7 +1012,7 @@ class Conv3dBackpropFilter:
 @para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, (list, tuple),
                              (list, tuple), (list, tuple), dict, (list, tuple),
                              str, str)
-def conv3d_backprop_filter_compute(input_x,
+def _conv3d_backprop_filter_compute(input_x,
                                    out_backprop,
                                    filter_sizes,
                                    strides=None,
@@ -1105,7 +1105,7 @@ def conv3d_dw(x,
     res_dtype = para_dict.get("res_dtype", "float32")
     kernel_name = para_dict.get("kernel_name", "conv3d_backprop_filter_cce")
 
-    return conv3d_backprop_filter_compute(x,
+    return _conv3d_backprop_filter_compute(x,
                                           out_backprop,
                                           filter_size,
                                           strides,

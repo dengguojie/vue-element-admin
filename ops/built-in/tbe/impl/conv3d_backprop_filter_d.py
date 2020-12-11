@@ -25,45 +25,45 @@ from impl.util import util_common
 
 
 # the dim of shape in CONV3D_BACKPROP must be 5
-CONV3D_BACKPROP_SHAPE_DIM = 5
+_CONV3D_BACKPROP_SHAPE_DIM = 5
 # the dim of strides in CONV3D_BACKPROP must be 3
-STRIDES_SHAPE_DIM = 3
+_STRIDES_SHAPE_DIM = 3
 # the dim of pads in CONV3D_BACKPROP must be 6
-PADDING_SHAPE_DIM = 6
+_PADDING_SHAPE_DIM = 6
 # the min x or y dim for cube mul
-C0 = 16
+_C0 = 16
 # fmapH, fmapW must be in [1,4096]
-FMAP_HW_MAX = 4096
-FMAP_HW_MIN = 1
+_FMAP_HW_MAX = 4096
+_FMAP_HW_MIN = 1
 
 # DeDy H,W must be in [2,4096]
-DEDY_HW_MAX = 4096
-DEDY_HW_MIN = 2
+_DEDY_HW_MAX = 4096
+_DEDY_HW_MIN = 2
 
 # filterH, filterW must be in [1,255]
-FILTER_HW_MAX = 255
-FILTER_HW_MIN = 1
+_FILTER_HW_MAX = 255
+_FILTER_HW_MIN = 1
 
 # stride must be in [1,63]
-STRIDE_HW_MAX = 63
-STRIDE_HW_MIN = 1
+_STRIDE_HW_MAX = 63
+_STRIDE_HW_MIN = 1
 
 # pad must be in [0,255]
-PAD_MAX = 255
-PAD_MIN = 0
+_PAD_MAX = 255
+_PAD_MIN = 0
 
 # dilation must be in [1,255]
-DILATION_MIN = 1
-DILATION_MAX = 255
+_DILATION_MIN = 1
+_DILATION_MAX = 255
 
 # the max num of each axis of shape
-DEFAULT_MAX_SHAPE_NUM = 1000000
+_DEFAULT_MAX_SHAPE_NUM = 1000000
 
 # the max size is 2**63-1
-DATA_SIZE_MAX = 9223372036854775807
+_DATA_SIZE_MAX = 9223372036854775807
 
 # the bytes length of several dtype
-BIT_RATIO_DICT = {
+_BIT_RATIO_DICT = {
     "int32": 4,
     "float32": 4,
     "float16": 2,
@@ -74,9 +74,9 @@ BIT_RATIO_DICT = {
 }
 
 # pads valid mode to be [0, 0, 0, 0]
-PADDING_VAILD = [0, 0, 0, 0, 0, 0]
+_PADDING_VAILD = [0, 0, 0, 0, 0, 0]
 # If pads is string , only support "SAME" or "VALID"
-PADDING_SUPPORT = ('SAME', 'VALID')
+_PADDING_SUPPORT = ('SAME', 'VALID')
 
 
 @para_check.check_op_params(
@@ -207,7 +207,7 @@ def conv3d_backprop_filter_d(x_dict,
             raise RuntimeError(args_dict,
                                error_manager_util.get_error_message(args_dict))
 
-        if isinstance(pads, str) and pads not in PADDING_SUPPORT:
+        if isinstance(pads, str) and pads not in _PADDING_SUPPORT:
             args_dict = {
                 'errCode': 'E60021',
                 'expected_pad_mode': '[{}, {}]'.format('SAME', 'VALID'),
@@ -291,7 +291,7 @@ def conv3d_backprop_filter_d(x_dict,
                                        res_format_list,
                                        'y')
 
-    conv3d_backprop_filter_cce(shape_x, shape_out_backprop, shape_res,
+    _conv3d_backprop_filter_cce(shape_x, shape_out_backprop, shape_res,
                                strides, pads, groups, dilations, x_dtype,
                                out_backprop_dtype, res_dtype, kernel_name)
 
@@ -299,7 +299,7 @@ def conv3d_backprop_filter_d(x_dict,
 @para_check.check_input_type((list, tuple), (list, tuple), (list, tuple),
                              (list, tuple), (str, list, tuple), int,
                              (list, tuple), str, str, str, str)
-def check_conv3dbp_filter_params(shape_x, shape_out_backprop,
+def _check_conv3dbp_filter_params(shape_x, shape_out_backprop,
     filter_sizes, strides, pads, groups, dilations, x_dtype,
     out_backprop_dtype, res_dtype, kernel_name):
     """
@@ -329,7 +329,7 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop,
     res_dtype : Result(De/Dw) data dtype. Default value is float32
 
     kernel_name : Kernel name of cce
-        Default value is "conv3d_backprop_filter_cce"
+        Default value is "_conv3d_backprop_filter_cce"
 
     Returns
     ----------
@@ -348,10 +348,10 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop,
 
     def _check_64bits_limitation(attr_name, attr_value, dtype=None):
         if dtype:
-            bit_ratio = BIT_RATIO_DICT.get(dtype)
+            bit_ratio = _BIT_RATIO_DICT.get(dtype)
         else:
-            bit_ratio = BIT_RATIO_DICT.get("float16")
-        if attr_value * bit_ratio > DATA_SIZE_MAX:
+            bit_ratio = _BIT_RATIO_DICT.get("float16")
+        if attr_value * bit_ratio > _DATA_SIZE_MAX:
             args_dict = {'errCode': 'E60020', 'attr_name': attr_name}
             raise RuntimeError(args_dict,
                                error_manager_util.get_error_message(args_dict))
@@ -360,29 +360,29 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop,
     # ===========================================================
     # para_check check
     para_check.check_kernel_name(kernel_name)
-    para_check.check_shape_rule(shape_x, CONV3D_BACKPROP_SHAPE_DIM,
-                                CONV3D_BACKPROP_SHAPE_DIM,
-                                DEFAULT_MAX_SHAPE_NUM)
-    para_check.check_shape_rule(shape_out_backprop, CONV3D_BACKPROP_SHAPE_DIM,
-                                CONV3D_BACKPROP_SHAPE_DIM,
-                                DEFAULT_MAX_SHAPE_NUM)
-    para_check.check_shape_rule(filter_sizes, CONV3D_BACKPROP_SHAPE_DIM,
-                                CONV3D_BACKPROP_SHAPE_DIM,
-                                DEFAULT_MAX_SHAPE_NUM)
-    para_check.check_shape_rule(strides, STRIDES_SHAPE_DIM, STRIDES_SHAPE_DIM,
-                                DEFAULT_MAX_SHAPE_NUM)
+    para_check.check_shape_rule(shape_x, _CONV3D_BACKPROP_SHAPE_DIM,
+                                _CONV3D_BACKPROP_SHAPE_DIM,
+                                _DEFAULT_MAX_SHAPE_NUM)
+    para_check.check_shape_rule(shape_out_backprop, _CONV3D_BACKPROP_SHAPE_DIM,
+                                _CONV3D_BACKPROP_SHAPE_DIM,
+                                _DEFAULT_MAX_SHAPE_NUM)
+    para_check.check_shape_rule(filter_sizes, _CONV3D_BACKPROP_SHAPE_DIM,
+                                _CONV3D_BACKPROP_SHAPE_DIM,
+                                _DEFAULT_MAX_SHAPE_NUM)
+    para_check.check_shape_rule(strides, _STRIDES_SHAPE_DIM, _STRIDES_SHAPE_DIM,
+                                _DEFAULT_MAX_SHAPE_NUM)
 
     def _check_attr_pads():
         # pads check
-        if isinstance(pads, (tuple, list)) and len(pads) != PADDING_SHAPE_DIM:
+        if isinstance(pads, (tuple, list)) and len(pads) != _PADDING_SHAPE_DIM:
             args_dict = {'errCode': 'E62501', 'param_name': 'pads'}
             raise RuntimeError(args_dict,
                                error_manager_util.get_error_message(args_dict))
 
-        if isinstance(pads, str) and pads not in PADDING_SUPPORT:
+        if isinstance(pads, str) and pads not in _PADDING_SUPPORT:
             args_dict = {
                 'errCode': 'E60021',
-                'expected_pad_mode': '[{}]'.format(PADDING_SUPPORT),
+                'expected_pad_mode': '[{}]'.format(_PADDING_SUPPORT),
                 'actual_pad_mode': str(pads)
             }
             raise RuntimeError(args_dict,
@@ -414,16 +414,16 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop,
     _check_attr_groups()
 
     # dilations check
-    para_check.check_shape_rule(dilations, CONV3D_BACKPROP_SHAPE_DIM,
-                                CONV3D_BACKPROP_SHAPE_DIM,
-                                DEFAULT_MAX_SHAPE_NUM)
+    para_check.check_shape_rule(dilations, _CONV3D_BACKPROP_SHAPE_DIM,
+                                _CONV3D_BACKPROP_SHAPE_DIM,
+                                _DEFAULT_MAX_SHAPE_NUM)
     dilation_n, dilation_d, dilation_c, dilation_h, dilation_w = dilations
-    _check_attr_range_dw("dilations's H", dilation_h, DILATION_MIN,
-                         DILATION_MAX)
-    _check_attr_range_dw("dilations's W", dilation_w, DILATION_MIN,
-                         DILATION_MAX)
-    _check_attr_range_dw("dilations's D", dilation_d, DILATION_MIN,
-                         DILATION_MAX)
+    _check_attr_range_dw("dilations's H", dilation_h, _DILATION_MIN,
+                         _DILATION_MAX)
+    _check_attr_range_dw("dilations's W", dilation_w, _DILATION_MIN,
+                         _DILATION_MAX)
+    _check_attr_range_dw("dilations's D", dilation_d, _DILATION_MIN,
+                         _DILATION_MAX)
 
     if dilation_n != 1 or dilation_c != 1:
         args_dict = {
@@ -455,7 +455,7 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop,
     stride_d, stride_h, stride_w = strides
 
     group_dict = util_common.calculate_group(fmap_channel, dedy_channel,
-                                             groups, C0, C0)
+                                             groups, _C0, _C0)
     filter_d_dilation = (filter_d - 1) * dilation_d + 1
     filter_h_dilation = (filter_h - 1) * dilation_h + 1
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
@@ -476,7 +476,7 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop,
         pad_down = pad_h - pad_up
         pads = [pad_front, pad_back, pad_up, pad_down, pad_left, pad_right]
     elif pads == "VALID":
-        pads = PADDING_VAILD
+        pads = _PADDING_VAILD
     pads = list(pads)
     pad_front, pad_back, pad_up, pad_down, pad_left, pad_right = pads
     util_common.check_pads_value_3d(pads)
@@ -510,7 +510,7 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop,
     fmap_h_padding = fmap_h + pad_up + pad_down
 
     # special cases
-    fmap_hw_min, dey_hw_min = FMAP_HW_MIN, DEDY_HW_MIN
+    fmap_hw_min, dey_hw_min = _FMAP_HW_MIN, _DEDY_HW_MIN
     # limitation by chip:
     # if kernel h,w in [1,11] and fmap h/w after padding equals to filter h/w
     # load3d support h,w is 1
@@ -520,23 +520,23 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop,
         dey_hw_min = 1
 
     # Dedy value limit
-    _check_attr_range_dw("Dedy's H", dedy_h, dey_hw_min, DEDY_HW_MAX)
-    _check_attr_range_dw("Dedy's W", dedy_w, dey_hw_min, DEDY_HW_MAX)
+    _check_attr_range_dw("Dedy's H", dedy_h, dey_hw_min, _DEDY_HW_MAX)
+    _check_attr_range_dw("Dedy's W", dedy_w, dey_hw_min, _DEDY_HW_MAX)
 
     # filter value limit
-    _check_attr_range_dw("filter's H", filter_h, FILTER_HW_MIN, FILTER_HW_MAX)
-    _check_attr_range_dw("filter's W", filter_w, FILTER_HW_MIN, FILTER_HW_MAX)
-    _check_attr_range_dw("filter's D", filter_d, FILTER_HW_MIN, FILTER_HW_MAX)
+    _check_attr_range_dw("filter's H", filter_h, _FILTER_HW_MIN, _FILTER_HW_MAX)
+    _check_attr_range_dw("filter's W", filter_w, _FILTER_HW_MIN, _FILTER_HW_MAX)
+    _check_attr_range_dw("filter's D", filter_d, _FILTER_HW_MIN, _FILTER_HW_MAX)
 
     # Fmap value limit
-    _check_attr_range_dw("Fmap's H", fmap_h, fmap_hw_min, FMAP_HW_MAX)
-    _check_attr_range_dw("Fmap's W", fmap_w, fmap_hw_min, FMAP_HW_MAX)
-    _check_attr_range_dw("Fmap's D", fmap_d, fmap_hw_min, FMAP_HW_MAX)
+    _check_attr_range_dw("Fmap's H", fmap_h, fmap_hw_min, _FMAP_HW_MAX)
+    _check_attr_range_dw("Fmap's W", fmap_w, fmap_hw_min, _FMAP_HW_MAX)
+    _check_attr_range_dw("Fmap's D", fmap_d, fmap_hw_min, _FMAP_HW_MAX)
 
     # stride value limit
-    _check_attr_range_dw("stride's H", stride_h, STRIDE_HW_MIN, STRIDE_HW_MAX)
-    _check_attr_range_dw("stride's W", stride_w, STRIDE_HW_MIN, STRIDE_HW_MAX)
-    _check_attr_range_dw("stride's D", stride_d, STRIDE_HW_MIN, STRIDE_HW_MAX)
+    _check_attr_range_dw("stride's H", stride_h, _STRIDE_HW_MIN, _STRIDE_HW_MAX)
+    _check_attr_range_dw("stride's W", stride_w, _STRIDE_HW_MIN, _STRIDE_HW_MAX)
+    _check_attr_range_dw("stride's D", stride_d, _STRIDE_HW_MIN, _STRIDE_HW_MAX)
 
     def _check_axis_hw():
         if fmap_batch != dedy_batch:
@@ -596,12 +596,12 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop,
 
     def _min_l1_byte():
         # Forth : L1 limitation, Mainly required by chip
-        al1_min_byte = C0 * C0 * 2
+        al1_min_byte = _C0 * _C0 * 2
 
-        if dedy_w % C0 == 0:
-            bl1_min_byte = filter_h_dilation * fmap_w * C0 * 2
+        if dedy_w % _C0 == 0:
+            bl1_min_byte = filter_h_dilation * fmap_w * _C0 * 2
         else:
-            bl1_min_byte = (filter_h_dilation + stride_h) * fmap_w * C0 * 2
+            bl1_min_byte = (filter_h_dilation + stride_h) * fmap_w * _C0 * 2
 
         l1_size = tbe_platform.get_soc_spec("L1_SIZE")  # L1 size
         if (al1_min_byte + bl1_min_byte) > l1_size:
@@ -631,7 +631,7 @@ def check_conv3dbp_filter_params(shape_x, shape_out_backprop,
 @para_check.check_input_type((list, tuple), (list, tuple), (list, tuple),
                              (list, tuple), (str, list, tuple), int,
                              (list, tuple), str, str, str, str)
-def conv3d_backprop_filter_cce(shape_x,
+def _conv3d_backprop_filter_cce(shape_x,
                                shape_out_backprop,
                                filter_sizes,
                                strides,
@@ -641,7 +641,7 @@ def conv3d_backprop_filter_cce(shape_x,
                                x_dtype='float16',
                                out_backprop_dtype='float16',
                                res_dtype='float32',
-                               kernel_name="conv3d_backprop_filter_cce"):
+                               kernel_name="_conv3d_backprop_filter_cce"):
     """
     Topi interface of conv3d backprop filter
 
@@ -674,7 +674,7 @@ def conv3d_backprop_filter_cce(shape_x,
     res_dtype : The dtype of result(De/Dw) data. Default value is float32
 
     kernel_name : Cce kernel name
-        Default value is "conv3d_backprop_filter_cce"
+        Default value is "_conv3d_backprop_filter_cce"
 
     Returns
     ----------
@@ -684,7 +684,7 @@ def conv3d_backprop_filter_cce(shape_x,
                                                     "Hi3796CV300CS"):
         res_dtype = "float16"
 
-    res = check_conv3dbp_filter_params(shape_x, shape_out_backprop,
+    res = _check_conv3dbp_filter_params(shape_x, shape_out_backprop,
                                        filter_sizes, strides, pads,
                                        groups, dilations, x_dtype,
                                        out_backprop_dtype, res_dtype,
