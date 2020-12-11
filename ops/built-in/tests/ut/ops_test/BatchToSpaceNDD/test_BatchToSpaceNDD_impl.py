@@ -168,28 +168,28 @@ case6_10 = {"params": [{"shape": (16,32,2,2,2,16), "dtype": "float16", "format":
            "case_name": "batch_to_space_nd_d_6_10",
            "expect": RuntimeError,
            "support_expect": True}
-#NDHWC-5D-brach_2
+#NDHWC-5D-brach_1
 case7 = {"params": [{"shape": (16,64,2,2,2,16), "dtype": "float16", "format": "NDC1HWC0", "ori_shape": (16,64,2,2,32),"ori_format": "NDHWC"},
                     {"shape": (2,126,2,2,2,16), "dtype": "float16", "format": "NDC1HWC0", "ori_shape": (2,126,2,2,32),"ori_format": "NDHWC"},
                     [2, 2, 2], [[1, 1], [1, 1], [1, 1]]],
          "case_name": "batch_to_space_nd_d_7",
          "expect": "success",
          "support_expect": True}
-#NDHWC-5D-brach_2
+#NDHWC-5D-brach_1
 case8 = {"params": [{"shape": (16,32,248,2,2,16), "dtype": "float16", "format": "NDC1HWC0", "ori_shape": (16,32,2,2,3968),"ori_format": "NDHWC"},
                     {"shape": (2,62,248,2,2,16), "dtype": "float16", "format": "NDC1HWC0", "ori_shape": (2,62,2,2,3968),"ori_format": "NDHWC"},
                     [2, 2, 2], [[1, 1], [1, 1], [1, 1]]],
          "case_name": "batch_to_space_nd_d_8",
          "expect": "success",
          "support_expect": True}
-#NDHWC-5D-brach_3
+#NDHWC-5D-brach_2
 case9 = {"params": [{"shape": (16,32,2,2000,2,16), "dtype": "float16", "format": "NDC1HWC0", "ori_shape": (16,32,2000,2,32),"ori_format": "NDHWC"},
                     {"shape": (2,62,2,3998,2,16), "dtype": "float16", "format": "NDC1HWC0", "ori_shape": (2,62,3998,2,32),"ori_format": "NDHWC"},
                     [2, 2, 2], [[1, 1], [1, 1], [1, 1]]],
          "case_name": "batch_to_space_nd_d_9",
          "expect": "success",
          "support_expect": True}
-#NDHWC-5D-brach_4
+#NDHWC-5D-brach_3
 case10 = {"params": [{"shape": (16,32,2,2,4000,16), "dtype": "float16", "format": "NDC1HWC0", "ori_shape": (16,32,2,4000,32),"ori_format": "NDHWC"},
                     {"shape": (2,62,2,2,7998,16), "dtype": "float16", "format": "NDC1HWC0", "ori_shape": (2,62,2,7998,32),"ori_format": "NDHWC"},
                     [2, 2, 2], [[1, 1], [1, 1], [1, 1]]],
