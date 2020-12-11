@@ -41,8 +41,10 @@
     
     - 开始编译之前，请确保正确设置相关的环境变量。
       ```
-      export D_LINK_PATH="/path/to/atc/lib64";
+      export ASCEND_CUSTOM_PATH="/path/to/ascend";
       ```
+      1. 如通过安装方式部署，则默认的路径是`/usr/local/Ascend`。
+      2. 如通过解压安装包方式，则`ascend`目录下需包含`atc`，`opp`，`toolkit`目录。
 
     - 在`build.sh`的脚本中，会调用`cmake`下载一些依赖的库，如：`Google Protobuf`、`Google Test`、`Json`等，请确保网络连接正常。
     - 在`build.sh`的脚本中，默认会8线程编译，如果机器性能较差，可能会编译失败。可以通过`-j{线程数}`来控制线程数，如`bash build.sh -j4`。
