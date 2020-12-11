@@ -71,13 +71,13 @@ class TilingSelection:
         self.op = tiling_op
         self.seed_cnt = itertools.count(10000)
 
-    def calc_tiling(self, tgt_area):
+    def calc_tiling(self, target_area):
         """
         calculate tilings
 
         Parameters
         ----------
-        tgt_area: tuple, target area to be covered
+        target_area: tuple, target area to be covered
 
         Returns
         -------
@@ -86,15 +86,15 @@ class TilingSelection:
 
         add_compile_info("dynamic_mode", self.op.dynamic_mode)
         if self.op.dynamic_mode == "dynamic_hw":
-            tiling_cases = self._calc_hw(tgt_area)
+            tiling_cases = self._calc_hw(target_area)
         elif self.op.dynamic_mode == "dynamic_batch":
             batch_func_map = {"conv2d_bp_filter": self._calc_batch_v2}
             batch_func = batch_func_map.get(self.op.op_type, self._calc_batch)
-            tiling_cases = batch_func(tgt_area)
-        elif self.op.dynamic_mode == "dynamic_mkn":
-            tiling_cases = self._calc_mkn(tgt_area)
+            tiling_cases = batch_func(target_area)
+        elif self.op.dynamic_mode in ("dynamic_mkn", "dynamic_bmkn"):
+            tiling_cases = self._calc_matmul(target_area)
         elif self.op.dynamic_mode == "dynamic_dhw":
-            tiling_cases = self._calc_dhw(tgt_area)
+            tiling_cases = self._calc_dhw(target_area)
         else:
             raise RuntimeError("Only dynamic_dhw/dynamic_hw/dynamic_batch "
                                "is supported")
@@ -184,13 +184,15 @@ class TilingSelection:
         add_compile_info("cost_range", cost_range)
         return tiling_cases
 
-    def _calc_mkn(self, tgt_area):
+    def _calc_matmul(self, target_area):
         """
-        calculate tilings for dynamic mkn mode
+        calculate tilings for dynamic mkn or bmkn mode
 
         Parameters
         ----------
-        tgt_area: tuple, mkn range to be covered (m_min, m_amx, k_min, k_max, n_min, n_max)
+        target_area:list, range to be covered [[m_min, m_max], [k_min, k_max],
+                 [n_min, n_max],[batch_min, batch_max]], batch value exsit when
+                 dynamic_bmkn mode
 
         Returns
         -------
@@ -198,29 +200,33 @@ class TilingSelection:
         """
 
         def _correct_seed_range(seed_area):
+            # dynamic_bmkn or dynamic_mkn only compare m, k, n value
             funcs = (max, min, max, min, max, min)
-            return [func(ta, sa) for func, ta, sa in zip(funcs, tgt_area, seed_area)]
+            return [func(ta, sa) for func, ta, sa in zip(funcs, range_area, seed_area)]
 
-        tgt_area = tuple(tgt_area[0] + tgt_area[1] + tgt_area[2])
+        range_area = tuple(target_area[0] + target_area[1] + target_area[2])
         candidates = {}
         repo_seeds = self.op.get_repo_tiling()
 
         for seed in repo_seeds:
-            seed_k_value, seed_m_value = seed[self.op.key[0]][1:3]
-            seed_n_value = seed[self.op.key[1]][1]
-            m_k_n_shape = (seed_m_value, seed_k_value, seed_n_value)
-            seed_range = self.op.get_tiling_range(seed["tiling"], m_k_n_shape)
+            seed_batch_value, seed_k_value, seed_m_value = seed["A_shape"][0:3]
+            seed_n_value = seed["B_shape"][1]
+            seed_shape_info = [seed_m_value, seed_k_value, seed_n_value]
+            seed_range = self.op.get_tiling_range(seed["tiling"], seed_shape_info)
             seed_range = _correct_seed_range(seed_range)
-            candidates[next(self.seed_cnt)] = [seed_range, seed["tiling"], m_k_n_shape]
+            if self.op.dynamic_mode == "dynamic_bmkn":
+                seed_range += target_area[3]
+                seed_shape_info += [seed_batch_value]
+            candidates[next(self.seed_cnt)] = [seed_range, seed["tiling"], seed_shape_info]
 
-        cost_cases = self._select_tiling_mkn(tgt_area, candidates)
+        cost_cases = self._select_tiling_mkn(range_area, candidates)
         tiling_cases = [
             self.op.assembly_case(v[1], v[0], k) for k, v in candidates.items()]
         add_compile_info("repo_seeds", {k: v[-1] for k, v in candidates.items()})
         repo_range = {k: v[0] for k, v in candidates.items()}
 
         # call cost model
-        cost_tilings, cost_range = self._calc_costmodel_mkn(cost_cases)
+        cost_tilings, cost_range = self._calc_costmodel_matmul(cost_cases, target_area)
         tiling_cases += cost_tilings
         if not tiling_cases:
             raise RuntimeError("No tiling generated for this shape and range")
@@ -446,13 +452,13 @@ class TilingSelection:
 
         return deque(rest_area)
 
-    def _select_tiling_mkn(self, tgt_area, repo_tilings):
+    def _select_tiling_mkn(self, target_area, repo_tilings):
         """
         select repo seeds tiling to cover target area
 
         Parameters
         ----------
-        tgt_area: tuple, m k n range to be covered
+        target_area: tuple, m k n range to be covered
         repo_tilings: dict, repo seeds tilings with id
 
         Returns
@@ -462,9 +468,9 @@ class TilingSelection:
         """
 
         sort_tiling_list = sorted(repo_tilings.items(),
-                                  key=lambda x: _cal_overlap_three_dimesional(tgt_area, x[1][0])[0],
+                                  key=lambda x: _cal_overlap_three_dimesional(target_area, x[1][0])[0],
                                   reverse=True)
-        rest_area = set([tgt_area])
+        rest_area = set([target_area])
 
         for t_id, t_info in sort_tiling_list:
             generate_area = set()
@@ -522,7 +528,7 @@ class TilingSelection:
 
         return cost_tilings, tiling_range
 
-    def _calc_costmodel_mkn(self, cost_cases):
+    def _calc_costmodel_matmul(self, cost_cases, target_area):
         """
         calculate cost model to cover rest area after repo seeds
 
@@ -530,11 +536,13 @@ class TilingSelection:
         ----------
         cost_cases: deque, uncovered area in (t, b, l, r, up, down) rectangle format
 
-        tiling_range: list, each item means covered areas of a tiling cases
+        target_area: range value of dymanic elements
 
         Returns
         -------
         cost tilings: list, tilings calculated by cost model
+
+        tiling_range: list, each item means covered areas of a tiling cases
         """
 
         cost_tilings = []
@@ -555,7 +563,8 @@ class TilingSelection:
                     cost_cases.extend(gen_rects)
                 else:
                     raise RuntimeError("totally uncovered!!!")
-
+                if self.op.dynamic_mode == "dynamic_bmkn":
+                    covered_area += target_area[-1]
                 cur_seed_cnt = next(self.seed_cnt)
                 cost_tilings.append(
                     self.op.assembly_case(cost_seed["tiling"], covered_area,

@@ -39,7 +39,7 @@ BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
 BIT_DIR = {"float32": 16, "int32": 16, "float16": 16, "int8": 32}
 
 
-def set_var_value(info, tgt_area):
+def set_var_value(info, target_area):
     """
     set range value for tiling
 
@@ -47,17 +47,57 @@ def set_var_value(info, tgt_area):
     ----------
     info: ops information
 
-    tgt_area: range value of m k n.
+    target_area: range value of m k n b
 
     Returns
     -------
     total info of ops
     """
-
-    info["ha_var_range"] = tgt_area[0]
-    info["ca1_var_range"] = tgt_area[1]
-    info["cb1_var_range"] = tgt_area[2]
+    key_list = ["ha_var_range", "ca1_var_range", "cb1_var_range", "batch_var_range"]
+    for index, value in enumerate(target_area):
+        info[key_list[index]] = value
     return info
+
+
+def check_range_value(target_area):
+    """
+    check range value of target_area to find out None exit
+
+    Parameters
+    ----------
+    target_area: range value of dymanic elements
+
+    Returns
+    -------
+    return True means None exit,else return False
+    """
+    for value in target_area:
+        if value[1] is None:
+            return True
+    return False
+
+
+def set_default_tiling_case(target_area, tiling_op):
+    """
+    when range exit None, set default tiling_case with default elements
+
+    Parameters
+    ----------
+    target_area: range value of dymanic elements
+    tiling_op: instance of MatmulTiling
+
+    Returns
+    -------
+    default tiling_case: default tiling, default range
+    """
+    default_tiling_seed = tiling_op._set_default_tiling()
+    default_tiling = default_tiling_seed["tiling"]
+    target_area_list = []
+    for value in target_area:
+        target_area_list += value
+    tiling_case = [tiling_op.assembly_case(default_tiling, target_area_list, 0)]
+
+    return tiling_case
 
 
 @register_tiling_case(pattern=Pattern.MAT_MUL)
@@ -75,14 +115,17 @@ def calc_matmul(outs, option=None):
     """
 
     mode = GEMMParam.dynamic_mode
-    var_names = ("m", "k", "n")
-    tgt_area = [get_te_var(v).get_bound() for v in var_names]
+    var_names = {"dynamic_mkn": ("m", "k", "n"), "dynamic_bmkn": ("m", "k", "n", "batch")}
+    target_area = [get_te_var(v).get_bound() for v in var_names[mode]]
     info = GEMMParam.tiling_info_dict
-    info = set_var_value(info, tgt_area)
+    info = set_var_value(info, target_area)
 
     tiling_op = MatmulTiling(info, mode)
 
-    tiling_cases = TilingSelection(tiling_op).calc_tiling(tgt_area)
+    if check_range_value(target_area):
+        return set_default_tiling_case(target_area, tiling_op)
+
+    tiling_cases = TilingSelection(tiling_op).calc_tiling(target_area)
     return tiling_cases
 
 
@@ -121,13 +164,24 @@ class MatmulTiling(CubeTilingOp):
         tiling: tiling retrieved by cost model
         """
         self.tiling_info["tiling_type"] = "cost_model_tiling"
+        self.a_info[0] = 1
         self.a_info[1] = shape[1]
         self.a_info[2] = shape[0]
         self.b_info[0] = shape[1] * self.a_info[4]
         self.b_info[1] = shape[2]
 
         cost_seeds = get_tiling(self.tiling_info)
-        tiling = self._check_and_set_default_tiling(cost_seeds[0])
+
+        tiling = cost_seeds[0]
+
+        # check whether the tiling is default
+        def _check_defualt_tiling(tiling):
+            if tiling.get("tiling").get("AL0_matrix")[2] == DEFAULT_K_VALUE:
+                return True
+            return False
+
+        if _check_defualt_tiling(tiling):
+            tiling = self._set_default_tiling()
 
         return tiling
 
@@ -238,7 +292,7 @@ class MatmulTiling(CubeTilingOp):
         ----------
         tiling : dict, result of tiling fetch
 
-        coverage : list, size of m, k, n
+        coverage : list, size of dymanic element
 
         cnt: index of tiling
 
@@ -248,13 +302,16 @@ class MatmulTiling(CubeTilingOp):
         """
 
         var_range = collections.OrderedDict()
-        var_range['m'] = (int(coverage[0]), int(coverage[1]))
-        var_range['k'] = (int(coverage[2]), int(coverage[3]))
-        var_range['n'] = (int(coverage[4]), int(coverage[5]))
+
+        var_range["m"] = (coverage[0], coverage[1])
+        var_range["k"] = (coverage[2], coverage[3])
+        var_range["n"] = (coverage[4], coverage[5])
+        if self.dynamic_mode == "dynamic_bmkn":
+            var_range["batch"] = (coverage[6], coverage[7])
 
         return {"key": cnt, "tiling_strategy": tiling, "var_range": var_range}
 
-    def _check_and_set_default_tiling(self, tiling_in):
+    def _set_default_tiling(self):
         """
         check and set default tiling
 
@@ -267,61 +324,59 @@ class MatmulTiling(CubeTilingOp):
         tiling_in
         """
 
-        if tiling_in.get("tiling").get("AL0_matrix")[2] == 32:
-            tiling = {}
+        tiling = {}
 
-            a_dtype = self.tiling_info["A_dtype"]
-            b_dtype = self.tiling_info["B_dtype"]
+        a_dtype = self.tiling_info["A_dtype"]
+        b_dtype = self.tiling_info["B_dtype"]
 
-            if a_dtype in BIT_DIR.keys():
-                k_al1 = BIT_DIR[a_dtype]
-                k_al0 = BIT_DIR[a_dtype]
-            else:
-                # default value 32
-                k_al1 = DEFAULT_K_VALUE
-                k_al0 = DEFAULT_K_VALUE
-
-            if b_dtype in BIT_DIR.keys():
-                k_bl1 = BIT_DIR[b_dtype]
-                k_bl0 = BIT_DIR[b_dtype]
-            else:
-                # default value 32
-                k_bl1 = DEFAULT_K_VALUE
-                k_bl0 = DEFAULT_K_VALUE
-
-            tiling["AUB_shape"] = None
-            tiling["BUB_shape"] = None
-
-            tiling["AL1_shape"] = [k_al1, 1, 1, 1]
-            tiling["BL1_shape"] = [k_bl1, 1, 1, 1]
-            tiling["AL0_matrix"] = [1, 1, 16, k_al0, 1, 1]
-            tiling["BL0_matrix"] = [1, 1, 16, k_bl0, 1, 1]
-            tiling["CL0_matrix"] = [1, 1, 16, 16, 1, 1]
-            tiling["CUB_matrix"] = [1, 1, 16, 16, 1, 1]
-            tiling["block_dim"] = [1, 1, 1, 1]
-            tiling["n_bef_batch_flag"] = 0
-            tiling["n_bef_group_flag"] = 0
-            tiling["batch_bef_group_fla"] = 0
-            tiling["A_overhead_opt_flag"] = 0
-            tiling["B_overhead_opt_flag"] = 0
-            tiling["AUB_channel_wise_flag"] = None
-            tiling["BUB_channel_wise_flag"] = None
-            tiling["CUB_channel_wise_flag"] = None
-            tiling["manual_pingpong_buffer"] = {
-                'AUB_pbuffer': 1,
-                'BUB_pbuffer': 1,
-                'AL1_pbuffer': 1,
-                'BL1_pbuffer': 1,
-                'AL0_pbuffer': 1,
-                'BL0_pbuffer': 1,
-                'CL0_pbuffer': 1,
-                'CUB_pbuffer': 1,
-                'UBG_pbuffer': 1,
-            }
-            tiling = {"tiling": tiling, "A_shape": self.a_info,
-                      "B_shape": self.b_info, "C_shape": self.c_info}
+        if a_dtype in BIT_DIR.keys():
+            k_al1 = BIT_DIR[a_dtype]
+            k_al0 = BIT_DIR[a_dtype]
         else:
-            return tiling_in
+            # default value 32
+            k_al1 = DEFAULT_K_VALUE
+            k_al0 = DEFAULT_K_VALUE
+
+        if b_dtype in BIT_DIR.keys():
+            k_bl1 = BIT_DIR[b_dtype]
+            k_bl0 = BIT_DIR[b_dtype]
+        else:
+            # default value 32
+            k_bl1 = DEFAULT_K_VALUE
+            k_bl0 = DEFAULT_K_VALUE
+
+        tiling["AUB_shape"] = None
+        tiling["BUB_shape"] = None
+
+        tiling["AL1_shape"] = [k_al1, 1, 1, 1]
+        tiling["BL1_shape"] = [k_bl1, 1, 1, 1]
+        tiling["AL0_matrix"] = [1, 1, 16, k_al0, 1, 1]
+        tiling["BL0_matrix"] = [1, 1, 16, k_bl0, 1, 1]
+        tiling["CL0_matrix"] = [1, 1, 16, 16, 1, 1]
+        tiling["CUB_matrix"] = [1, 1, 16, 16, 1, 1]
+        tiling["block_dim"] = [1, 1, 1, 1]
+        tiling["n_bef_batch_flag"] = 0
+        tiling["n_bef_group_flag"] = 0
+        tiling["batch_bef_group_fla"] = 0
+        tiling["A_overhead_opt_flag"] = 0
+        tiling["B_overhead_opt_flag"] = 0
+        tiling["AUB_channel_wise_flag"] = None
+        tiling["BUB_channel_wise_flag"] = None
+        tiling["CUB_channel_wise_flag"] = None
+        tiling["manual_pingpong_buffer"] = {
+            'AUB_pbuffer': 1,
+            'BUB_pbuffer': 1,
+            'AL1_pbuffer': 1,
+            'BL1_pbuffer': 1,
+            'AL0_pbuffer': 1,
+            'BL0_pbuffer': 1,
+            'CL0_pbuffer': 1,
+            'CUB_pbuffer': 1,
+            'UBG_pbuffer': 1,
+        }
+        tiling = {"tiling": tiling, "A_shape": self.a_info,
+                    "B_shape": self.b_info, "C_shape": self.c_info}
+
         return tiling
 
     def _get_calc_info(self):
