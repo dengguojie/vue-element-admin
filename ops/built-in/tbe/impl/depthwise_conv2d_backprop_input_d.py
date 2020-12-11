@@ -20,13 +20,9 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils.error_manager import error_manager_util
 from te.utils.error_manager import error_manager_conv2d
-from te.lang.cce.te_compute.depthwise_conv2d_compute import \
-    depthwise_conv2d_backprop_input_d_compute
-from te.lang.cce.te_schedule.depthwise_conv2d_schedule import \
-    depthwise_conv2d_backprop_input_d_schedule
-
+from te.lang.cce.te_compute.depthwise_conv2d_compute import depthwise_conv2d_backprop_input_d_compute
+from te.lang.cce.te_schedule.depthwise_conv2d_schedule import depthwise_conv2d_backprop_input_d_schedule
 from te import tvm
-
 
 BLOCK_SIZE = tbe_platform.BLOCK_REDUCE
 
@@ -61,9 +57,7 @@ def _check_params(shape, dtype, format):
     None
     """
     if format == "NCHW":
-        para_check.check_shape(shape,
-                               min_rank=FEATURE_MAP_DIM,
-                               max_rank=FEATURE_MAP_DIM)
+        para_check.check_shape(shape, min_rank=FEATURE_MAP_DIM, max_rank=FEATURE_MAP_DIM)
     if format in ("HWCK", "HWCN"):
         para_check.check_shape(shape, min_rank=FILTER_DIM, max_rank=FILTER_DIM)
     para_check.check_dtype(dtype.lower(), ('float16', ))
@@ -77,13 +71,8 @@ def _ceil(x_size):
     if BLOCK_SIZE:
         return ((x_size + BLOCK_SIZE - 1) // BLOCK_SIZE) * BLOCK_SIZE
 
-    dict_args = {
-        'errCode': 'E67006',
-        'op_name': 'depthwise_conv2d_backprop_filter',
-        'param_name': 'param_name'
-    }
-    raise RuntimeError(dict_args,
-                       error_manager_util.get_error_message(dict_args))
+    dict_args = {'errCode': 'E67006', 'op_name': 'depthwise_conv2d_backprop_filter', 'param_name': 'param_name'}
+    raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
 
 def _check_input_size(input_size, input_shape):
@@ -100,8 +89,7 @@ def _check_input_size(input_size, input_shape):
             'param1_value': str(input_size),
             'param2_value': str(input_shape)
         }
-        raise RuntimeError(
-            dict_args, error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
 
 def _check_data_format(data_format, expect_format_list):
@@ -116,8 +104,7 @@ def _check_data_format(data_format, expect_format_list):
             'expected_format_list': str(expect_format_list),
             'format': data_format
         }
-        raise RuntimeError(
-            dict_args, error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
 
 def _check_stride(strides, dim_s_h, dim_s_w, dim_s_n, dim_s_c):
@@ -134,18 +121,15 @@ def _check_stride(strides, dim_s_h, dim_s_w, dim_s_n, dim_s_c):
             'param1_value': str(strides[dim_s_h]),
             'param2_value': str(strides[dim_s_w])
         }
-        raise RuntimeError(
-            dict_args, error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     if (strides[dim_s_n] != 1) or (strides[dim_s_c] != 1):
-        error_manager_conv2d.raise_err_specific_user(
-            "depthwise_backprob_input",
-            "the N-dim and C-dim of stride must be equal to 1.")
+        error_manager_conv2d.raise_err_specific_user("depthwise_backprob_input",
+                                                     "the N-dim and C-dim of stride must be equal to 1.")
 
 
 # pylint: disable=locally-disabled, too-many-arguments
-def _check_input_filter_shape(input_shape, output_shape, filter_shape,
-                              dim_n, dim_c, dim_w_c, dim_w_k):
+def _check_input_filter_shape(input_shape, output_shape, filter_shape, dim_n, dim_c, dim_w_c, dim_w_k):
     """
     check input and filter shape is valid
     """
@@ -157,8 +141,7 @@ def _check_input_filter_shape(input_shape, output_shape, filter_shape,
             'param2': 'output_shape[dim_n]',
             'actual_value': str(input_shape[dim_n])
         }
-        raise RuntimeError(
-            dict_args, error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
     if input_shape[dim_c] != output_shape[dim_c]:
         dict_args = {
             'errCode': 'E64002',
@@ -167,11 +150,9 @@ def _check_input_filter_shape(input_shape, output_shape, filter_shape,
             'param2': 'output_shape[dim_c]',
             'actual_value': str(input_shape[dim_c])
         }
-        raise RuntimeError(
-            dict_args, error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
-    if (_ceil(input_shape[dim_c]) //
-            BLOCK_SIZE) != (_ceil(filter_shape[dim_w_c]) // BLOCK_SIZE):
+    if (_ceil(input_shape[dim_c]) // BLOCK_SIZE) != (_ceil(filter_shape[dim_w_c]) // BLOCK_SIZE):
 
         dict_args = {
             'errCode': 'E64002',
@@ -180,8 +161,7 @@ def _check_input_filter_shape(input_shape, output_shape, filter_shape,
             'param2': '(_ceil(filter_shape[dim_w_c]) // BLOCK_SIZE)',
             'actual_value': str(_ceil(input_shape[dim_c]))
         }
-        raise RuntimeError(
-            dict_args, error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
     if filter_shape[dim_w_k] != 1:
         dict_args = {
             'errCode': 'E64002',
@@ -190,8 +170,7 @@ def _check_input_filter_shape(input_shape, output_shape, filter_shape,
             'param2': '1',
             'actual_value': str(filter_shape[dim_w_k])
         }
-        raise RuntimeError(
-            dict_args, error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
 
 def _check_dilations(dilations, dim_d_n, dim_d_c):
@@ -203,12 +182,10 @@ def _check_dilations(dilations, dim_d_n, dim_d_c):
             'errCode': 'E62510',
             'op_name': 'depthwise_conv2d_backprop_input',
         }
-        raise RuntimeError(
-            dict_args, error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
 
-def _check_output_backprop(output_height, output_width,
-                           out_backprop_height, out_backprop_width):
+def _check_output_backprop(output_height, output_width, out_backprop_height, out_backprop_width):
     """
     check output and out_backprop shape is equal
     """
@@ -222,8 +199,7 @@ def _check_output_backprop(output_height, output_width,
             'param1_value': str(output_height),
             'param2_value': str(out_backprop_height)
         }
-        raise RuntimeError(
-            dict_args, error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
     if output_width != out_backprop_width:
         dict_args = {
             'errCode': 'E60002',
@@ -234,8 +210,7 @@ def _check_output_backprop(output_height, output_width,
             'param1_value': str(output_width),
             'param2_value': str(out_backprop_width)
         }
-        raise RuntimeError(
-            dict_args, error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
 
 def _check_pad(pads):
@@ -250,28 +225,24 @@ def _check_pad(pads):
             'expected_length': "4",
             'length': str(len(pads))
         }
-        raise RuntimeError(
-            dict_args, error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
 
 # pylint: disable=too-many-statements, redefined-builtin
-# pylint: disable=locally-disabled, too-many-locals, too-many-arguments
-@para_check.check_op_params(
-    para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-    para_check.REQUIRED_OUTPUT,
-    para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
-    para_check.OPTION_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
-    para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
-def depthwise_conv2d_backprop_input_d(
-        filter,
-        out_backprop,
-        input_grad,
-        input_size,
-        strides,
-        dilations=(1, 1, 1, 1),
-        pads=(0, 0, 0, 0),
-        data_format='NHWC',
-        kernel_name="depthwise_conv2d_backprop_input"):
+# pylint: disable=locally-disabled, too-many-locals, too-many-arguments, invalid-name
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.OPTION_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
+def depthwise_conv2d_backprop_input_d(filter,
+                                      out_backprop,
+                                      input_grad,
+                                      input_size,
+                                      strides,
+                                      dilations=(1, 1, 1, 1),
+                                      pads=(0, 0, 0, 0),
+                                      data_format='NHWC',
+                                      kernel_name="depthwise_conv2d_backprop_input"):
     """
     algorithm: depthwise conv2d backprop input
 
@@ -350,38 +321,26 @@ def depthwise_conv2d_backprop_input_d(
     if input_ori_format == 'NHWC':
         dim_s_n, dim_s_h, dim_s_w, dim_s_c = 0, 1, 2, 3
         dim_d_n, dim_d_h, dim_d_w, dim_d_c = 0, 1, 2, 3
-        input_shape = [
-            input_shape[0], input_shape[3], input_shape[1], input_shape[2]
-        ]
+        input_shape = [input_shape[0], input_shape[3], input_shape[1], input_shape[2]]
     if dout_ori_format == 'NHWC':
-        output_shape = [
-            output_shape[0], output_shape[3], output_shape[1], output_shape[2]
-        ]
+        output_shape = [output_shape[0], output_shape[3], output_shape[1], output_shape[2]]
     if filter_ori_format == "NCHW":
-        filter_shape = [
-            filter_shape[2], filter_shape[3], filter_shape[1], filter_shape[0]
-        ]
+        filter_shape = [filter_shape[2], filter_shape[3], filter_shape[1], filter_shape[0]]
     _check_data_format(data_format, ['NCHW', 'NHWC'])
 
     # check if the parameter is valid
     _check_params(filter_shape, filter_dtype, "HWCK")
     _check_params(output_shape, output_dtype, "NCHW")
     _check_params(input_shape, input_dtype, "NCHW")
-    para_check.check_shape(output_shape, min_rank=FEATURE_MAP_DIM,
-                           max_rank=FEATURE_MAP_DIM, param_name="out_backprop")
-    para_check.check_shape(filter_shape, min_rank=FILTER_DIM,
-                           max_rank=FILTER_DIM, param_name="filter")
-    para_check.check_shape(input_shape, min_rank=FEATURE_MAP_DIM,
-                           max_rank=FEATURE_MAP_DIM, param_name="input_grad")
-    para_check.check_shape(strides, min_rank=STRIDES_DIM,
-                           max_rank=STRIDES_DIM, param_name="strides")
-    para_check.check_shape(dilations, min_rank=DILATIONS_DIM,
-                           max_rank=DILATIONS_DIM, param_name="dilations")
+    para_check.check_shape(output_shape, min_rank=FEATURE_MAP_DIM, max_rank=FEATURE_MAP_DIM, param_name="out_backprop")
+    para_check.check_shape(filter_shape, min_rank=FILTER_DIM, max_rank=FILTER_DIM, param_name="filter")
+    para_check.check_shape(input_shape, min_rank=FEATURE_MAP_DIM, max_rank=FEATURE_MAP_DIM, param_name="input_grad")
+    para_check.check_shape(strides, min_rank=STRIDES_DIM, max_rank=STRIDES_DIM, param_name="strides")
+    para_check.check_shape(dilations, min_rank=DILATIONS_DIM, max_rank=DILATIONS_DIM, param_name="dilations")
 
     _check_stride(strides, dim_s_h, dim_s_w, dim_s_n, dim_s_c)
     _check_dilations(dilations, dim_d_n, dim_d_c)
-    _check_input_filter_shape(input_shape, output_shape, filter_shape,
-                              dim_n, dim_c, dim_w_c, dim_w_k)
+    _check_input_filter_shape(input_shape, output_shape, filter_shape, dim_n, dim_c, dim_w_c, dim_w_k)
     # check pad parameter
     _check_pad(pads)
 
@@ -407,28 +366,18 @@ def depthwise_conv2d_backprop_input_d(
     out_backprop_height = (full_height - dilated_filter_height) // stride_h + 1
     out_backprop_width = (full_width - dilated_filter_width) // stride_w + 1
 
-    _check_output_backprop(output_height, output_width,
-                           out_backprop_height, out_backprop_width)
+    _check_output_backprop(output_height, output_width, out_backprop_height, out_backprop_width)
 
-    filter_shape = [
-        _ceil(filter_channel) // BLOCK_SIZE, filter_height * filter_width,
-        1, BLOCK_SIZE, BLOCK_SIZE]
-    filter_init = tvm.placeholder(
-        filter_shape, dtype=filter_dtype, name='filter')
+    filter_shape = [_ceil(filter_channel) // BLOCK_SIZE, filter_height * filter_width, 1, BLOCK_SIZE, BLOCK_SIZE]
+    filter_init = tvm.placeholder(filter_shape, dtype=filter_dtype, name='filter')
 
-    output_shape = [
-        batch, output_c1, 1, output_height, output_width, BLOCK_SIZE
-    ]
+    output_shape = [batch, output_c1, 1, output_height, output_width, BLOCK_SIZE]
     dout = tvm.placeholder(output_shape, dtype=output_dtype, name='dout')
 
-    input_shape = [
-        batch, input_c1, 1, input_height, input_width, BLOCK_SIZE
-    ]
-    res = depthwise_conv2d_backprop_input_d_compute(
-        input_shape, filter_init, dout, [filter_height, filter_width],
-        strides, pads, kernel_name)
+    input_shape = [batch, input_c1, 1, input_height, input_width, BLOCK_SIZE]
+    res = depthwise_conv2d_backprop_input_d_compute(input_shape, filter_init, dout, [filter_height, filter_width],
+                                                    strides, pads, kernel_name)
 
     sch = depthwise_conv2d_backprop_input_d_schedule(res)
     with tbe_platform.build_config:
-        tvm.build_module.build(
-            sch, [filter_init, dout, res], "cce", name=kernel_name)
+        tvm.build_module.build(sch, [filter_init, dout, res], "cce", name=kernel_name)

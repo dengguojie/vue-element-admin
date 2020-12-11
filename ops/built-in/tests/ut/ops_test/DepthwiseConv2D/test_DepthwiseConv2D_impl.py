@@ -60,11 +60,9 @@ dp_conv2d_op_testcase = [
 
 def _get_kernel_name(x_shape, filter_shape, bias_shape, stride, dilation, pads, dtype, offset_x):
     bias_shape = bias_shape if bias_shape else []
-    kernel_name = 'dp_conv2d_' + '_'.join(map(str, x_shape)) + '_' + \
-                  '_'.join(map(str, filter_shape)) + '_' + \
-                  '_'.join(map(str, bias_shape)) + '_' + \
-                  str(stride) + '_' + str(dilation) + "_" + \
-                  '_'.join(map(str, pads)) + '_' + dtype + '_' + str(offset_x)
+    kernel_name = 'dp_conv2d_' + '_'.join(map(str, x_shape)) + '_' + '_'.join(map(str, filter_shape)) + '_' + '_'.join(
+        map(str, bias_shape)) + '_' + str(stride) + '_' + str(dilation) + "_" + '_'.join(map(
+            str, pads)) + '_' + dtype + '_' + str(offset_x)
     return kernel_name
 
 
@@ -138,6 +136,31 @@ def _gen_trans_data_case(param):
     }
 
 
+# ============ auto test get_op_support_info and depthwise_compute api =====================
+# get_op_support_info, depthwise_compute
+def _test_other_api():
+    from impl.depthwise_conv2d import depthwise_compute
+    from impl.depthwise_conv2d import get_op_support_info
+    for case in dp_conv2d_op_testcase:
+        res = _gen_trans_data_case(case)
+        x = res["params"][0]
+        weights = res["params"][1]
+        bias = res["params"][2]
+        offset_w = res["params"][3]
+        outputs = res["params"][4]
+        strides = res["params"][5]
+        dilations = res["params"][6]
+        pads = res["params"][7]
+        data_format = res["params"][8]
+        offset_x = res["params"][9]
+        kernel_name = res["case_name"]
+        groups = 1
+        _ = get_op_support_info(x, weights, bias, offset_w, outputs, strides, pads, dilations, groups, data_format,
+                                offset_x, kernel_name)
+        _ = depthwise_compute(x, weights, bias, offset_w, outputs, strides, dilations, pads, data_format, offset_x,
+                              kernel_name)
+
+
 # ============ auto gen ["Ascend310"] test cases start ===============
 for case in dp_conv2d_op_testcase:
     ut_case.add_case(["Ascend310"], _gen_trans_data_case(case))
@@ -151,4 +174,6 @@ for case in dp_conv2d_op_testcase:
 if __name__ == '__main__':
     # ut_case.run("Ascend910")
     ut_case.run()
+    # test depthwise_conv2d other apis
+    ut_case.add_cust_test_func(test_func=_test_other_api)
     exit(0)

@@ -1219,7 +1219,7 @@ def _elewise_deq_mul(out, tensor_dict):
         tensor_dict["flag_is_broadcast"] = True
     else:
         tensor_dict["float16_mul_input_tensor"] = out.op.input_tensors[1]
-    
+
     tensor_dict = _dequant_remove_pad(tensor_dict["dequant_remove_pad"], tensor_dict)
     tensor_dict["flag_is_dequant"] = False
     tensor_dict["flag_is_dequant_mul"] = True
@@ -1240,7 +1240,7 @@ def _elewise_deq2_mul(out, tensor_dict):
         tensor_dict["flag_is_broadcast"] = True
     else:
         tensor_dict["float16_mul_input_tensor"] = out.op.input_tensors[1]
-    
+
     tensor_dict = _dequant2_remove_pad(tensor_dict["dequant2_remove_pad"], tensor_dict)
     tensor_dict["flag_is_dequant2"] = False
     tensor_dict["flag_is_dequant2_mul"] = True
@@ -1782,8 +1782,7 @@ def _set_sch_int32_phase1(tensor_dict, attrs_dict, out, sch):
         deq_reg_ubuf, bias_ub, dequant_ubuf, sch = _set_sch_int32_phase1_dequant_sigmoid_mul(
             tensor_dict, attrs_dict, out, buf, sch)
     elif tensor_dict["flag_is_eltwisce_case"]:
-        deq_reg_ubuf, bias_ub, dequant_ubuf, sch = _set_sch_int32_phase1_deqaunt_power_eltwise(
-            tensor_dict, buf, sch)
+        deq_reg_ubuf, bias_ub, dequant_ubuf, sch = _set_sch_int32_phase1_deqaunt_power_eltwise(tensor_dict, buf, sch)
     return deq_reg_ubuf, req_reg_ubuf, bias_ub, dequant_ubuf, requant_ubuf, sch
 
 
@@ -3644,9 +3643,17 @@ def depthwise_conv2d_backprop_input_d_schedule(dx_res):
         cub_tiling = [1, 1, 16, 16, 1, 1]
         aub_tiling = [1, 1, 1, 1]
         block_dim_tiling = [1, 1, 1, 1]
-        double_buffer_tiling = {'AUB_pbuffer': 1, 'BUB_pbuffer': 1, 'AL1_pbuffer': 1,
-                                'BL1_pbuffer': 1, 'AL0_pbuffer': 1, 'BL0_pbuffer': 1,
-                                'CL0_pbuffer': 1, 'CUB_pbuffer': 1, 'UBG_pbuffer': 2}
+        double_buffer_tiling = {
+            'AUB_pbuffer': 1,
+            'BUB_pbuffer': 1,
+            'AL1_pbuffer': 1,
+            'BL1_pbuffer': 1,
+            'AL0_pbuffer': 1,
+            'BL0_pbuffer': 1,
+            'CL0_pbuffer': 1,
+            'CUB_pbuffer': 1,
+            'UBG_pbuffer': 2
+        }
         tiling_out_invalid_flag = True
     autoting()
 

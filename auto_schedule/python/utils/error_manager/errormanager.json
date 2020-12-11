@@ -831,7 +831,7 @@
     },
     {
       "errCode": "E67013",
-      "errMessage": "n op[%s], [%s] must be [%s], but [%s].",
+      "errMessage": "In op[%s], [%s] must be [%s], but [%s].",
       "argList": "op_name, param_name,expect_format,real_format"
     },
     {

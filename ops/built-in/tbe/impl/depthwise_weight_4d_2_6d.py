@@ -30,13 +30,8 @@ def _ceil_div(val, block):
     if block:
         return (val + block - 1) // block
 
-    dict_args = {
-        'errCode': 'E67006',
-        'op_name': 'depthwise_conv2d',
-        'param_name': 'block'
-    }
-    raise RuntimeError(dict_args,
-                       error_manager_util.get_error_message(dict_args))
+    dict_args = {'errCode': 'E67006', 'op_name': 'depthwise_conv2d', 'param_name': 'block'}
+    raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
 
 def _ceil_fill(val, block):
@@ -57,13 +52,8 @@ def _floor_cut(val, block):
     if block:
         return (val // block) * block
 
-    dict_args = {
-        'errCode': 'E67006',
-        'op_name': 'depthwise_conv2d',
-        'param_name': 'block'
-    }
-    raise RuntimeError(dict_args,
-                       error_manager_util.get_error_message(dict_args))
+    dict_args = {'errCode': 'E67006', 'op_name': 'depthwise_conv2d', 'param_name': 'block'}
+    raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
 
 def _prod(values):
@@ -77,11 +67,7 @@ def _prod(values):
     return res
 
 
-def _apply_for_new_alloc(ib_,
-                         dtype,
-                         buf_len,
-                         align_size,
-                         scope=tbe_platform.scope_ubuf):
+def _apply_for_new_alloc(ib_, dtype, buf_len, align_size, scope=tbe_platform.scope_ubuf):
     """
     :param ib_: ir builder
     :param dtype : the data type
@@ -92,11 +78,7 @@ def _apply_for_new_alloc(ib_,
     """
     shape_x = (_ceil_fill(buf_len, align_size), )
     buf_var = ib_.allocate(dtype, shape_x, name="tmp_buf", scope=scope)
-    tmp_buffer = tvm.decl_buffer(shape_x,
-                                 buf_var.dtype,
-                                 name="tmp_buf",
-                                 scope=tbe_platform.scope_ubuf,
-                                 data=buf_var)
+    tmp_buffer = tvm.decl_buffer(shape_x, buf_var.dtype, name="tmp_buf", scope=tbe_platform.scope_ubuf, data=buf_var)
     return tmp_buffer
 
 
@@ -105,21 +87,16 @@ class _BasicParams():
     """
     parameters for Segment
     """
-
     def __init__(self, ib_, dtype):
         self.ib_ = ib_
         self.dtype = dtype
         self.type_size = tbe_platform.get_bit_len(dtype) // 8
         self.cp_align_len = tbe_platform.BLOCK_REDUCE_INT8 // self.type_size
 
-        self.unified_buffer_len = tbe_platform.get_soc_spec(
-            tbe_platform.UB_SIZE) // self.type_size
-        self.vec_align_len = tbe_platform.VECTOR_INST_BLOCK_WIDTH \
-            // self.type_size
+        self.unified_buffer_len = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) // self.type_size
+        self.vec_align_len = tbe_platform.VECTOR_INST_BLOCK_WIDTH // self.type_size
         self.uint8_max_value = 255
-        self.last_block = ib_.allocate("int32", (1, ),
-                                       name="last_block",
-                                       scope=tbe_platform.scope_reg)
+        self.last_block = ib_.allocate("int32", (1, ), name="last_block", scope=tbe_platform.scope_reg)
 
         self.device_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         self.block = tvm.thread_axis("blockIdx.x")
@@ -133,30 +110,22 @@ class _BasicParams():
         :param val : "PIPE_ALL", "PIPE_MTE3", "PIPE_MTE2",
         "PIPE_MTE1", "PIPE_M", "PIPE_V", "PIPE_S"
         """
-        args_str = tvm.intrin.call_pure_intrin(
-            "int32", "tvm_cce_string_print", val)
-        self.ib_.emit(tvm.intrin.call_extern(
-            'int32', 'pipe_barrier', args_str))
+        args_str = tvm.intrin.call_pure_intrin("int32", "tvm_cce_string_print", val)
+        self.ib_.emit(tvm.intrin.call_extern('int32', 'pipe_barrier', args_str))
 
     def apply_bufs(self, input_data_len, output_data_len):
         """
         :param input_data_len : input length
         :param output_data_len: output length
         """
-        total_buf_len = _ceil_fill(input_data_len,
-                                   self.vec_align_len) + _ceil_fill(
-            output_data_len, self.vec_align_len)
+        total_buf_len = _ceil_fill(input_data_len, self.vec_align_len) + _ceil_fill(output_data_len, self.vec_align_len)
 
         if total_buf_len > self.unified_buffer_len:
             return False
 
-        self.input_ub = _apply_for_new_alloc(self.ib_, self.dtype,
-                                             input_data_len,
-                                             self.vec_align_len,
+        self.input_ub = _apply_for_new_alloc(self.ib_, self.dtype, input_data_len, self.vec_align_len,
                                              tbe_platform.scope_ubuf)
-        self.output_ub = _apply_for_new_alloc(self.ib_, self.dtype,
-                                              output_data_len,
-                                              self.vec_align_len,
+        self.output_ub = _apply_for_new_alloc(self.ib_, self.dtype, output_data_len, self.vec_align_len,
                                               tbe_platform.scope_ubuf)
         return True
 
@@ -186,11 +155,8 @@ def _do_vector_dup(ubuf, dup_len, dtype, params, val=0):
         :param cycle_offset : cycle_offset
         """
         params.ib_.emit(
-            tvm.intrin.call_extern(
-                dtype, 'vector_dup',
-                buf.access_ptr("rw", offset=buf_offset + cycle_offset),
-                tvm.const(val, dtype),
-                _ceil_div(data_len, _get_vec_align_len(dtype)), 1, 1, 8, 8))
+            tvm.intrin.call_extern(dtype, 'vector_dup', buf.access_ptr("rw", offset=buf_offset + cycle_offset),
+                                   tvm.const(val, dtype), _ceil_div(data_len, _get_vec_align_len(dtype)), 1, 1, 8, 8))
 
     vec_buffer_max_len = params.uint8_max_value * params.vec_align_len
     num_cycle = dup_len // vec_buffer_max_len
@@ -211,10 +177,9 @@ def _do_cp_input_gm(input_gm, data_len, offset, params):
     :param params : parameters
     """
     params.ib_.emit(
-        tvm.intrin.call_extern(params.dtype, 'copy_gm_to_ubuf',
-                               params.input_ub.access_ptr("rw", offset=0),
-                               input_gm.access_ptr("r", offset=offset), 0, 1,
-                               _ceil_div(data_len, params.cp_align_len), 0, 0))
+        tvm.intrin.call_extern(params.dtype, 'copy_gm_to_ubuf', params.input_ub.access_ptr("rw", offset=0),
+                               input_gm.access_ptr("r", offset=offset), 0, 1, _ceil_div(data_len, params.cp_align_len),
+                               0, 0))
 
     params.set_pipe_barrier('PIPE_ALL')
 
@@ -270,40 +235,26 @@ def _all_in_fun(four2six, input_gm, output_gm, params):
         if core_cal_num == 0:
             return
 
-        _do_vector_dup((params.output_ub, 0), output_data_len, params.dtype,
-                       params)
+        _do_vector_dup((params.output_ub, 0), output_data_len, params.dtype, params)
         _do_cp_input_gm(input_gm, input_data_len, 0, params)
 
-        with params.ib_.for_range(0, core_cal_num, for_type="serial",
-                                  name="i") as i:
+        with params.ib_.for_range(0, core_cal_num, for_type="serial", name="i") as i:
             i_tmp = out_begin + i
-            with params.ib_.for_range(0,
-                                      channel0,
-                                      for_type="serial",
-                                      name="c0_index") as c0_index:
-                output_offset = i * channel0 * channel0 + \
-                    c0_index * channel0 + c0_index
+            with params.ib_.for_range(0, channel0, for_type="serial", name="c0_index") as c0_index:
+                output_offset = i * channel0 * channel0 + c0_index * channel0 + c0_index
 
                 c1_index = i_tmp // (hight * weight)
                 i_hw = i_tmp % (hight * weight)
 
-                with params.ib_.if_scope(channel0 *
-                                         (c1_index) + c0_index < channel):
-                    value = params.input_ub.vload(i_hw * channel +
-                                                  channel0 * c1_index +
-                                                  c0_index)
-                    params.ib_.emit(
-                        params.output_ub.vstore(output_offset, value))
+                with params.ib_.if_scope(channel0 * (c1_index) + c0_index < channel):
+                    value = params.input_ub.vload(i_hw * channel + channel0 * c1_index + c0_index)
+                    params.ib_.emit(params.output_ub.vstore(output_offset, value))
 
-        num_cp = _ceil_div((core_cal_num * channel0 * channel0),
-                           params.cp_align_len)
+        num_cp = _ceil_div((core_cal_num * channel0 * channel0), params.cp_align_len)
         params.ib_.emit(
-            tvm.intrin.call_extern(
-                params.dtype, 'copy_ubuf_to_gm',
-                output_gm.access_ptr("rw",
-                                     offset=out_begin * channel0 * channel0),
-                params.output_ub.access_ptr("r", offset=0), 0, 1, num_cp, 0,
-                0))
+            tvm.intrin.call_extern(params.dtype, 'copy_ubuf_to_gm',
+                                   output_gm.access_ptr("rw", offset=out_begin * channel0 * channel0),
+                                   params.output_ub.access_ptr("r", offset=0), 0, 1, num_cp, 0, 0))
 
     _multi_core(_core_func, total_element, params)
     return True
@@ -324,8 +275,8 @@ def _one_in_multi_out_fun(four2six, input_gm, output_gm, params):
 
     input_data_len = _prod(four2six.input_shape)
 
-    one_output_num = (params.unified_buffer_len - _ceil_fill(
-        input_data_len, params.vec_align_len)) // (channel0 * channel0)
+    one_output_num = (params.unified_buffer_len - _ceil_fill(input_data_len, params.vec_align_len)) // (channel0 *
+                                                                                                        channel0)
 
     output_data_len = one_output_num * channel0 * channel0
     # if output_data_len is too small, the performance deteriorates.
@@ -342,36 +293,22 @@ def _one_in_multi_out_fun(four2six, input_gm, output_gm, params):
         :param block_index : block index
         :param sub_num : sub cycle num
         """
-        _do_vector_dup((params.output_ub, 0), output_data_len, params.dtype,
-                       params)
-        with params.ib_.for_range(0, sub_num, for_type="serial",
-                                  name="sub_i") as sub_i:
+        _do_vector_dup((params.output_ub, 0), output_data_len, params.dtype, params)
+        with params.ib_.for_range(0, sub_num, for_type="serial", name="sub_i") as sub_i:
             i_tmp = out_begin + block_index * one_output_num + sub_i
-            with params.ib_.for_range(0,
-                                      channel0,
-                                      for_type="serial",
-                                      name="c0_index") as c0_index:
-                output_offset = sub_i * channel0 * channel0 + \
-                    c0_index * channel0 + c0_index
+            with params.ib_.for_range(0, channel0, for_type="serial", name="c0_index") as c0_index:
+                output_offset = sub_i * channel0 * channel0 + c0_index * channel0 + c0_index
                 c1_index = i_tmp // (hight * weight)
                 i_hw = i_tmp % (hight * weight)
-                with params.ib_.if_scope(
-                        channel0 * c1_index + c0_index < channel):
-                    input_offset = i_hw * channel + channel0 * c1_index + \
-                        c0_index
+                with params.ib_.if_scope(channel0 * c1_index + c0_index < channel):
+                    input_offset = i_hw * channel + channel0 * c1_index + c0_index
                     value = params.input_ub.vload(input_offset)
-                    params.ib_.emit(
-                        params.output_ub.vstore(output_offset, value))
+                    params.ib_.emit(params.output_ub.vstore(output_offset, value))
         num_cp = _ceil_div(sub_num * channel0 * channel0, params.cp_align_len)
-        out_gm_offset = (out_begin +
-                         block_index * one_output_num) * channel0 * channel0
+        out_gm_offset = (out_begin + block_index * one_output_num) * channel0 * channel0
         params.ib_.emit(
-            tvm.intrin.call_extern(params.dtype, 'copy_ubuf_to_gm',
-                                   output_gm.access_ptr(
-                                       "rw", offset=out_gm_offset),
-                                   params.output_ub.access_ptr(
-                                       "r", offset=0), 0, 1,
-                                   num_cp, 0, 0))
+            tvm.intrin.call_extern(params.dtype, 'copy_ubuf_to_gm', output_gm.access_ptr("rw", offset=out_gm_offset),
+                                   params.output_ub.access_ptr("r", offset=0), 0, 1, num_cp, 0, 0))
 
     def _core_func(out_begin, out_end, element_num_of_core):
         """
@@ -390,8 +327,7 @@ def _one_in_multi_out_fun(four2six, input_gm, output_gm, params):
         _do_cp_input_gm(input_gm, input_data_len, 0, params)
 
         cycle_num = core_cal_num // one_output_num
-        with params.ib_.for_range(0, cycle_num, for_type="serial",
-                                  name="i") as i:
+        with params.ib_.for_range(0, cycle_num, for_type="serial", name="i") as i:
             _out_put_one_time(out_begin, i, one_output_num)
         tail_num = core_cal_num % one_output_num
         if not isinstance(tail_num, int):
@@ -402,9 +338,7 @@ def _one_in_multi_out_fun(four2six, input_gm, output_gm, params):
                 'expected_data_type_list': "int",
                 'data_type': type(tail_num)
             }
-            raise RuntimeError(
-                dict_args,
-                error_manager_util.get_error_message(dict_args))
+            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
         if tail_num > 0:
             _out_put_one_time(out_begin, cycle_num, tail_num)
 
@@ -425,8 +359,7 @@ def _multi_in_multi_out_fun(four2six, input_gm, output_gm, params):
     total_element = hight * weight * four2six.channel1
 
     input_data_len = _prod(four2six.input_shape)
-    input_block_len = _ceil_fill(params.unified_buffer_len // 3 * 2,
-                                 params.vec_align_len)
+    input_block_len = _ceil_fill(params.unified_buffer_len // 3 * 2, params.vec_align_len)
 
     one_output_num = _floor_cut(params.unified_buffer_len - input_block_len,
                                 params.vec_align_len) // (channel0 * channel0)
@@ -436,19 +369,12 @@ def _multi_in_multi_out_fun(four2six, input_gm, output_gm, params):
             'op_name': 'depthwise_conv2d',
             'param_name': 'one_output_num',
         }
-        raise RuntimeError(
-            dict_args,
-            error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
     output_data_len = one_output_num * channel0 * channel0
 
     if not params.apply_bufs(input_block_len, output_data_len):
-        dict_args = {
-            'errCode': 'E67009',
-            'op_name': 'depthwise_conv2d'
-        }
-        raise RuntimeError(
-            dict_args,
-            error_manager_util.get_error_message(dict_args))
+        dict_args = {'errCode': 'E67009', 'op_name': 'depthwise_conv2d'}
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     def _out_put_one_time(out_begin, block_index, sub_num):
         """
@@ -456,57 +382,35 @@ def _multi_in_multi_out_fun(four2six, input_gm, output_gm, params):
         :param block_index : block index
         :param sub_num : sub cycle num
         """
-        _do_vector_dup((params.output_ub, 0), output_data_len, params.dtype,
-                       params)
-        with params.ib_.for_range(0, sub_num, for_type="serial",
-                                  name="sub_i") as sub_i:
+        _do_vector_dup((params.output_ub, 0), output_data_len, params.dtype, params)
+        with params.ib_.for_range(0, sub_num, for_type="serial", name="sub_i") as sub_i:
             i_tmp = out_begin + block_index * one_output_num + sub_i
-            with params.ib_.for_range(0,
-                                      channel0,
-                                      for_type="serial",
-                                      name="c0_index") as c0_index:
-                output_offset = sub_i * channel0 * channel0 + \
-                    c0_index * channel0 + c0_index
+            with params.ib_.for_range(0, channel0, for_type="serial", name="c0_index") as c0_index:
+                output_offset = sub_i * channel0 * channel0 + c0_index * channel0 + c0_index
 
                 c1_index = i_tmp // (hight * weight)
                 i_hw = i_tmp % (hight * weight)
 
-                with params.ib_.if_scope(
-                        channel0 * c1_index + c0_index < channel):
-                    input_offset = i_hw * channel + channel0 * c1_index + \
-                        c0_index
+                with params.ib_.if_scope(channel0 * c1_index + c0_index < channel):
+                    input_offset = i_hw * channel + channel0 * c1_index + c0_index
 
-                    with params.ib_.if_scope(
-                            params.last_block[0] != input_offset //
-                            input_block_len):
+                    with params.ib_.if_scope(params.last_block[0] != input_offset // input_block_len):
                         params.last_block[0] = input_offset // input_block_len
 
-                        with params.ib_.if_scope(
-                                params.last_block[0] == input_data_len //
-                                input_block_len):
-                            _do_cp_input_gm(
-                                input_gm, input_data_len % input_block_len,
-                                params.last_block[0] * input_block_len, params)
+                        with params.ib_.if_scope(params.last_block[0] == input_data_len // input_block_len):
+                            _do_cp_input_gm(input_gm, input_data_len % input_block_len,
+                                            params.last_block[0] * input_block_len, params)
                         with params.ib_.else_scope():
-                            _do_cp_input_gm(
-                                input_gm, input_block_len,
-                                params.last_block[0] * input_block_len, params)
+                            _do_cp_input_gm(input_gm, input_block_len, params.last_block[0] * input_block_len, params)
 
-                    value = params.input_ub.vload(input_offset %
-                                                  input_block_len)
-                    params.ib_.emit(
-                        params.output_ub.vstore(output_offset, value))
+                    value = params.input_ub.vload(input_offset % input_block_len)
+                    params.ib_.emit(params.output_ub.vstore(output_offset, value))
 
         num_cp = _ceil_div(sub_num * channel0 * channel0, params.cp_align_len)
-        out_gm_offset = (out_begin +
-                         block_index * one_output_num) * channel0 * channel0
+        out_gm_offset = (out_begin + block_index * one_output_num) * channel0 * channel0
         params.ib_.emit(
-            tvm.intrin.call_extern(params.dtype, 'copy_ubuf_to_gm',
-                                   output_gm.access_ptr(
-                                       "rw", offset=out_gm_offset),
-                                   params.output_ub.access_ptr(
-                                       "r", offset=0), 0, 1,
-                                   num_cp, 0, 0))
+            tvm.intrin.call_extern(params.dtype, 'copy_ubuf_to_gm', output_gm.access_ptr("rw", offset=out_gm_offset),
+                                   params.output_ub.access_ptr("r", offset=0), 0, 1, num_cp, 0, 0))
 
     def _core_func(out_begin, out_end, element_num_of_core):
         """
@@ -523,12 +427,10 @@ def _multi_in_multi_out_fun(four2six, input_gm, output_gm, params):
             return
 
         params.last_block[0] = 0
-        _do_cp_input_gm(input_gm, min(input_block_len, input_data_len), 0,
-                        params)
+        _do_cp_input_gm(input_gm, min(input_block_len, input_data_len), 0, params)
 
         cycle_num = core_cal_num // one_output_num
-        with params.ib_.for_range(0, cycle_num, for_type="serial",
-                                  name="i") as i:
+        with params.ib_.for_range(0, cycle_num, for_type="serial", name="i") as i:
             _out_put_one_time(out_begin, i, one_output_num)
 
         tail_num = core_cal_num % one_output_num
@@ -540,9 +442,7 @@ def _multi_in_multi_out_fun(four2six, input_gm, output_gm, params):
                 'expected_data_type_list': "int",
                 'data_type': type(tail_num)
             }
-            raise RuntimeError(
-                dict_args,
-                error_manager_util.get_error_message(dict_args))
+            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
         if tail_num > 0:
             _out_put_one_time(out_begin, cycle_num, tail_num)
 
@@ -578,7 +478,6 @@ class _Four2SixParam:
     """
     parameters for Segment
     """
-
     def __init__(self, input_shape):
         self.input_shape = input_shape
 
@@ -590,18 +489,14 @@ class _Four2SixParam:
                     'op_name': 'depthwise_conv2d',
                     'param_name': 'num',
                 }
-                raise RuntimeError(
-                    dict_args,
-                    error_manager_util.get_error_message(dict_args))
+                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
         else:
             dict_args = {
                 'errCode': 'E67015',
                 'op_name': 'depthwise_conv2d',
                 'param_name': 'input_shape',
             }
-            raise RuntimeError(
-                dict_args,
-                error_manager_util.get_error_message(dict_args))
+            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
         self.channel0 = tbe_platform.C0_SIZE
         self.channel1 = (self.channel + self.channel0 - 1) // self.channel0
@@ -610,8 +505,7 @@ class _Four2SixParam:
         """
         get 6D shape
         """
-        return (self.channel1, self.hight, self.weight, self.num,
-                self.channel0, self.channel0)
+        return (self.channel1, self.hight, self.weight, self.num, self.channel0, self.channel0)
 
     def get_hwc(self):
         """
@@ -621,16 +515,9 @@ class _Four2SixParam:
 
 
 # pylint: disable=locally-disabled, invalid-name, unused-argument
-@para_check.check_op_params(para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_STR,
-                            para_check.REQUIRED_ATTR_STR,
-                            para_check.KERNEL_NAME)
-def depthwise_weight_4d_2_6d(x,
-                             y,
-                             src_format,
-                             dst_format,
-                             kernel_name="depthwise_weight_4d_2_6d"):
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_STR,
+                            para_check.REQUIRED_ATTR_STR, para_check.KERNEL_NAME)
+def depthwise_weight_4d_2_6d(x, y, src_format, dst_format, kernel_name="depthwise_weight_4d_2_6d"):
     """Operation and Schedule for depthwise_weight_4d_2_6d.
 
     Parameters
@@ -658,9 +545,7 @@ def depthwise_weight_4d_2_6d(x,
             'expect_format': 'hwcn',
             'real_format': dst_format.lower(),
         }
-        raise RuntimeError(
-            dict_args,
-            error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     if dst_format.lower() != "c1hwncoc0":
         dict_args = {
@@ -670,9 +555,7 @@ def depthwise_weight_4d_2_6d(x,
             'expect_format': 'c1hwncoc0',
             'real_format': src_format.lower(),
         }
-        raise RuntimeError(
-            dict_args,
-            error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     input_shape = x.get("shape")
     dtype = x.get("dtype")
@@ -684,11 +567,10 @@ def depthwise_weight_4d_2_6d(x,
     input_data = tvm.placeholder(input_shape, name="input_data", dtype=dtype)
     four2six = _Four2SixParam(input_shape)
 
-    res = tvm.extern(
-        [four2six.get_out_shape()], [input_data],
-        lambda ins, outs: _intrin_factor(four2six, dtype, ins, outs),
-        name="res",
-        dtype=dtype)
+    res = tvm.extern([four2six.get_out_shape()], [input_data],
+                     lambda ins, outs: _intrin_factor(four2six, dtype, ins, outs),
+                     name="res",
+                     dtype=dtype)
 
     sch = tvm.schedule.create_schedule(res.op)
     build_list = [input_data, res]
