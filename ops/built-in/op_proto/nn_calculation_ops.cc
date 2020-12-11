@@ -4522,6 +4522,7 @@ static void SetConv3dOutShapeDimRange(const std::string& padding,
 
 static bool SetConv3dOutShapeRange(op::Conv3D& op,
                                    map<std::string, int32_t>& attr_params,
+                                   vector<int64_t>& y_shape,
                                    TensorDesc& y_tensor) {
   auto x_tensor = op.get_input_desc_x();
   auto x_shape = x_tensor.GetShape().GetDims();
@@ -4586,7 +4587,6 @@ static bool SetConv3dOutShapeRange(op::Conv3D& op,
   OP_LOGD(op.GetName().c_str(), "dynamic shape set range");
   std::vector<std::pair<int64_t, int64_t>> fm_range;
   x_tensor.GetShapeRange(fm_range);
-  vector<int64_t> y_shape = y_tensor.GetShape().GetDims();
   if (fm_range.empty()) {
     OP_LOGW(op.GetName().c_str(), "fm_range's shape is empty.");
     if (x_shape[idx_d] == -1) {
@@ -4834,7 +4834,8 @@ IMPLEMT_INFERFUNC(Conv3D, Conv3DInfer) {
     {"kn", kn}, {"kd", kd}, {"kh", kh}, {"kw", kw}
   };
   // attr_params data structure should keep same as SetConv3dOutShapeRange
-  if (!SetConv3dOutShapeRange(op, attr_params, y_tensor)) {
+  // GE will convert y_shape to only one -2 if shape contains -2, so can't get y_shape via y_tensor.GetShape
+  if (!SetConv3dOutShapeRange(op, attr_params, y_shape, y_tensor)) {
     return GRAPH_FAILED;
   }
 
