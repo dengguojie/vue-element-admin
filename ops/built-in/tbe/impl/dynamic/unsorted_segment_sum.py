@@ -1100,8 +1100,7 @@ def _enable_atomic_add(tik_inst):
     -------
     None
     """
-    if platform.cce_conf.get_soc_spec("SOC_VERSION") in (
-            "Ascend910", "Ascend610"):
+    if platform.api_check_support("tik.set_atomic_add"):
         tik_inst.set_atomic_add(1)
 
 
@@ -1117,8 +1116,7 @@ def _disable_atomic_add(tik_inst):
     -------
     None
     """
-    if platform.cce_conf.get_soc_spec("SOC_VERSION") in (
-            "Ascend910", "Ascend610"):
+    if platform.api_check_support("tik.set_atomic_add"):
         tik_inst.set_atomic_add(0)
 
 
