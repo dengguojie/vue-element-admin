@@ -582,13 +582,8 @@ def avg_pool_grad_d(input_grad,
 
     _, _, HH, WW, _ = orig_input_shape
 
-    if (HH == kernel_h and WW == kernel_w and input_grad_shape[2] == 1 and input_grad_shape[3] == 1
-            and padding == 'VALID'):
-        # for mobileV2 net, only support VALID padding.
-        if padding != 'VALID':
-            error_manager_vector.raise_err_pad_mode_invalid('avg_pool_grad_d gobal model', 'VALID', padding)
-        else:
-            pad_top, pad_left, pad_bottom, pad_right = 0, 0, 0, 0
+    if (HH == kernel_h and WW == kernel_w and input_grad_shape[2] == 1 and input_grad_shape[3] == 1):
+        pad_top, pad_left, pad_bottom, pad_right = 0, 0, 0, 0
 
         input_grad = tvm.placeholder(input_grad_shape, name="input_grad", dtype=data_dtype)
 
