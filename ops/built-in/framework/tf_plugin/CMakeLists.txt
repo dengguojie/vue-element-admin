@@ -100,6 +100,7 @@ set(_tf_plugins
   bitwise_and_plugin.cc
   bitwise_or_plugin.cc
   bitwise_xor_plugin.cc
+  bincount_plugin.cc
   bn_infer_grad_plugin.cc
   bn_infer_plugin.cc
   bn_training_reduce_grad_plugin.cc
