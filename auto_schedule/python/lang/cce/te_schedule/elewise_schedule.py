@@ -4086,9 +4086,21 @@ class CceOp:
             dict_args["detailed_cause"] = "%s not support" % lop["op"]
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
+        def _do_storage_align_for_multi_out(cache_buffer_for_res):
+            """do storage align for multi out"""
+            if self._need_storage_align_falg:
+                align_axis_before = self._reduce_axis_num[-1]
+                align_factor, _ = util.get_align_factor(
+                    cache_buffer_for_res.dtype)
+                self._schedule[cache_buffer_for_res].storage_align(
+                    cache_buffer_for_res.op.axis[align_axis_before], align_factor, 0)
+
         # by emit_insn phony_insn to rm the redundant copy_gm_ub op for muti-out
         if 'cache_read_for_res' in lop.keys():
             cache_buffer_for_res = lop['cache_read_for_res']
+            # do storage align for multi out node
+            _do_storage_align_for_multi_out(cache_buffer_for_res)
+            # set phony_insn to rm the redundant copy_gm_ub op for muti-out
             self._schedule[cache_buffer_for_res].emit_insn(
                 lop["tensorize_axis_for_res"], 'phony_insn')
 
