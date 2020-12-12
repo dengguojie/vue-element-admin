@@ -189,22 +189,33 @@ def _check_param(ori_input, ori_output, grad, ksize, strides, padding, kernel_na
     if len(strides) != 4:
         error_manager_vector.raise_err_input_param_range_invalid('max_pool_grad', 'strides', 4, 4, len(strides))
 
-    if ksize[0] != 1 or ksize[3] != 1:
+    if padding not in ("SAME", "VALID"):
+        error_manager_vector.raise_err_input_value_invalid('max_pool_grad', 'padding', ("SAME", "VALID"), padding)
+
+    ksize_n, ksize_h, ksize_w, ksize_c = ksize
+    strides_n, strides_h, strides_w, strides_c = strides
+    if ksize_n != 1 or ksize_c != 1:
         error_manager_vector.raise_err_check_params_rules(
             'max_pool_grad', "only supports pooling across width/height, and other ksize dimension should be one",
             "ksize", ksize)
-    if ksize[1] > 255 or ksize[3] > 255 or ksize[1] < 1 or ksize[3] < 1:
-        error_manager_vector.raise_err_input_param_not_in_range('max_pool_grad', "ksize", 1, 255, ksize)
-
-    if strides[0] != 1 or strides[3] != 1:
+    if strides_n != 1 or strides_c != 1:
         error_manager_vector.raise_err_check_params_rules(
             'max_pool_grad', "only supports pooling across width/height, and other strides dimension should be one",
             "strides", strides)
-    if strides[1] > 63 or strides[3] > 63 or strides[1] < 1 or strides[3] < 1:
-        error_manager_vector.raise_err_input_param_not_in_range('max_pool_grad', "strides", 1, 63, strides)
 
-    if padding not in ("SAME", "VALID"):
-        error_manager_vector.raise_err_input_value_invalid('max_pool_grad', 'padding', ("SAME", "VALID"), padding)
+    def _is_global():
+        return ori_input_shape[2] == ksize_h and ori_input_shape[3] == ksize_w and \
+               ori_output_shape[2] == 1 and ori_output_shape[3] == 1 and padding == 'VALID'
+
+    if _is_global():
+        return
+
+    # not global mode, limit by load3d instruction.
+    if ksize_h > 255 or ksize_w > 255 or ksize_h < 1 or ksize_w < 1:
+        error_manager_vector.raise_err_input_param_not_in_range('max_pool_grad', "ksize", 1, 255, ksize)
+
+    if strides_h > 63 or strides_w > 63 or strides_h < 1 or strides_w < 1:
+        error_manager_vector.raise_err_input_param_not_in_range('max_pool_grad', "strides", 1, 63, strides)
 
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name
