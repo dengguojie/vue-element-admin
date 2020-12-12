@@ -23,6 +23,7 @@ from te import tvm
 from te.platform import log
 
 from te.platform.cce_util import get_align_factor
+from te.platform import cce_conf as cceconf
 from .util import get_least_common_multiple
 from te.platform.cce_intrin_md import reset_mask_insn
 from te.platform.cce_intrin_md import reset_mask_insn_inverted
@@ -33,6 +34,7 @@ DMA_MODE = 0
 VECTOR_MODE = 1
 VECTOR_ENHANCED_MODE = 2
 UINT8_MAXIMUM = 255
+ME_LIMITS_LIST = [[3200, 10]] # MEB limits case, because of over stack
 
 
 def last_axis_broadcast(*args):  # pylint: disable=too-many-locals, too-many-statements
@@ -83,9 +85,11 @@ def last_axis_broadcast(*args):  # pylint: disable=too-many-locals, too-many-sta
     if int(broadcast_factor * dtype_byte_size % align_factor) == 0 or broadcast_src == 1:
         algorithm_score_dict["LFA"][0] = True
     # Rule 2: For unaligned broadcast_src >= 1 block, enable MG broadcast algorithm
-    if broadcast_factor * dtype_byte_size >= align_factor and \
-            not algorithm_score_dict["LFA"][0]:
-        algorithm_score_dict["MG"][0] = True
+    algorithm_score_dict["MG"][0] = is_mg_supported(broadcast_src, 
+                                                    broadcast_factor, 
+                                                    dtype_byte_size, 
+                                                    align_factor, 
+                                                    algorithm_score_dict["LFA"][0])
     # Rule 3: Enable LAT for binary16 unaligned broadcast
     if dtype_byte_size == 2 and \
             not algorithm_score_dict["LFA"][0]:
@@ -128,6 +132,20 @@ def is_falat_supported(broadcast_factor, broadcast_src, dtype_byte_size,
             broadcast_factor < 32 and \
             broadcast_factor % (32 // dtype_byte_size) == 0:
         return True
+    return False
+
+
+def is_mg_supported(broadcast_src, broadcast_factor, dtype_byte_size, align_factor, is_lfa):
+    """Check MG broadcast algorithm requirement"""
+    if broadcast_factor * dtype_byte_size >= align_factor and not is_lfa:
+        cce_product_params = cceconf.CceProductParams()
+        if cce_product_params.is_cloud_version():
+            return True
+        else:
+            if [broadcast_src, broadcast_factor] in ME_LIMITS_LIST:
+                return False
+            else:
+                return True
     return False
 
 
