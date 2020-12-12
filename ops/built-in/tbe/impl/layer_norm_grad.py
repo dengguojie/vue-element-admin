@@ -311,10 +311,10 @@ def _get_pd_var_front(data, cast_dtype):
         np.power((data_variance + EPSLON), (-0.5))
     """
     var_elta = tbe.vadds(data.get("data_variance"),
-                                 tvm.const(EPSLON, dtype=cast_dtype))
+                         tvm.const(EPSLON, dtype=cast_dtype))
     var_elta_log = tbe.vlog(var_elta)
     var_elta_mul = tbe.vmuls(var_elta_log,
-                                     tvm.const(-0.5, dtype=cast_dtype))
+                             tvm.const(-0.5, dtype=cast_dtype))
     var_elta_2 = tbe.vexp(var_elta_mul)
     pdvar1_mul = tbe.vmul(var_elta_2, var_elta_2)
     pd_var_1 = tbe.vmul(pdvar1_mul, var_elta_2)
@@ -356,7 +356,7 @@ def _get_pd_var(data, params, shape_x, pd_xl, cast_dtype):
 
     pdvar_mul1 = tbe.vmul(pd_xl, sub_x_mean)
     pdvar_sum = tbe.sum(pdvar_mul1, params.get("reduce_axis"),
-                                keepdims=True)
+                        keepdims=True)
     pdvar_mul3 = tbe.vmul(pdvar_sum, pd_var_1)
     pd_var = tbe.vmuls(pdvar_mul3, tvm.const(-0.5, dtype=cast_dtype))
 
@@ -394,18 +394,18 @@ def _get_pd_mean(params, pd_xl, pd_var, var_elta_2, sub_x_mean, cast_dtype):
         reduce_axis, keepdims=True)
     """
     pdmean1_sum = tbe.sum(pd_xl, params.get("reduce_axis"),
-                                  keepdims=True)
+                          keepdims=True)
     pdmean1_mul = tbe.vmul(pdmean1_sum, var_elta_2)
     pd_mean_1 = tbe.vmuls(pdmean1_mul,
-                                  tvm.const(-1.0, dtype=cast_dtype))
+                          tvm.const(-1.0, dtype=cast_dtype))
 
     pdmean2_mul1 = tbe.vmuls(sub_x_mean,
-                                     tvm.const(-2.0, dtype=cast_dtype))
+                             tvm.const(-2.0, dtype=cast_dtype))
     pdmean2_sum = tbe.sum(pdmean2_mul1, params.get("reduce_axis"),
-                                  keepdims=True)
+                          keepdims=True)
     pdmean2_mul3 = tbe.vmuls(pdmean2_sum,
-                                     tvm.const((params.get("mean_num")**(-1)),
-                                               dtype=cast_dtype))
+                             tvm.const((params.get("mean_num")**(-1)),
+                                       dtype=cast_dtype))
     pd_mean_2 = tbe.vmul(pd_var, pdmean2_mul3)
 
     pd_mean = tbe.vadd(pd_mean_2, pd_mean_1)
@@ -453,11 +453,11 @@ def _get_pd_x_front(data, params, shape_x, cast_dtype):
     pdx2_broad = tbe.broadcast(pd_var, shape_x)
     pdx2_mul = tbe.vmul(pdx2_broad, sub_x_mean)
     pd_x_2 = tbe.vmuls(pdx2_mul,
-                               tvm.const((2*(params.get("mean_num")**(-1))),
-                                         dtype=cast_dtype))
+                       tvm.const((2*(params.get("mean_num")**(-1))),
+                                 dtype=cast_dtype))
     pd_x_3 = tbe.vmuls(pd_mean,
-                               tvm.const((params.get("mean_num")**(-1)),
-                                         dtype=cast_dtype))
+                       tvm.const((params.get("mean_num")**(-1)),
+                                 dtype=cast_dtype))
 
     return pd_x_1, pd_x_2, pd_x_3, var_elta_2_cast, sub_x_mean
 
@@ -530,7 +530,7 @@ def _get_pd_gamma(data, params, var_elta_2_cast, sub_x_mean, dtype,
 
     if params.get("param_axis"):
         pd_gamma_ub = tbe.sum(pdga_mul, params.get("param_axis"),
-                                      keepdims=True)
+                              keepdims=True)
         if dtype == "float16" and cast_dtype == "float32":
             pd_gamma = tbe.cast_to(pd_gamma_ub, dtype)
         else:
@@ -565,7 +565,7 @@ def _get_pd_beta(data, params, dtype, cast_dtype):
     """
     if params.get("param_axis"):
         pd_beta_ub = tbe.sum(data.get("data_dy"),
-                                     params.get("param_axis"), keepdims=True)
+                             params.get("param_axis"), keepdims=True)
         if dtype == "float16" and cast_dtype == "float32":
             pd_beta = tbe.cast_to(pd_beta_ub, dtype)
         else:
@@ -574,7 +574,7 @@ def _get_pd_beta(data, params, dtype, cast_dtype):
         pd_beta = tbe.cast_to(data.get("data_dy"), dtype)
     else:
         pd_beta = tbe.vadds(data.get("data_dy"),
-                                    tvm.const(0, dtype="float32"))
+                            tvm.const(0, dtype="float32"))
 
     return pd_beta
 

@@ -22,6 +22,7 @@ import numpy
 import te.platform as tbe_platform
 from te import tik
 
+# pylint: disable=too-many-locals
 def get_offset_and_mask(dim, shape_list, output_shape,
                         align_len):
     """
@@ -105,7 +106,8 @@ def get_offset_and_mask(dim, shape_list, output_shape,
 
 
 def get_ceil_int(int1, int2):
-    """get cel for input1 and input2
+    """
+    get cel for input1 and input2
     """
     if int1 == 0:
         return 1
@@ -147,7 +149,12 @@ def cal_loop(ele_num, ub_size, align_len):
     return loop, ele_each_loop
 
 
+# pylint: disable=too-many-instance-attributes
 class ConcatL1Fusion:
+    """
+    ConcatL1fusion
+    """
+    # pylint: disable=no-member
     def __init__(self, input_values, output_data, axis, kernel_name):
         self.tik_instance = tik.Tik()
         self.aicore_num = \
@@ -186,7 +193,11 @@ class ConcatL1Fusion:
         self.is_data_move_first_dim = False
         self.kernel_name = kernel_name
 
+    # pylint: disable=unused-variable
     def check_support_l1_fusion(self):
+        """
+        chek_support_l1_fusion
+        """
         max_dims, _, _ = self.get_max_dims_remainder_half()
         if self.max_input_dim_size < self.ub_half_size \
                 and len(self.output_shape) == 2 \
@@ -195,6 +206,9 @@ class ConcatL1Fusion:
         return True
 
     def get_max_dims_remainder_half(self):
+        """
+        get_max_dims_remainder_half
+        """
         loop_num_list, _, _ = \
             get_offset_and_mask(self.concat_axis, self.input_shapes,
                                 self.output_shape, self.ele_each_block)
@@ -231,6 +245,9 @@ class ConcatL1Fusion:
         return max_dims, thread_num, max_input_dim_size
 
     def do_concat_l1fusion(self):
+        """
+        do_concat_l1fusion
+        """
         if self.is_data_move_first_dim:
             print(1.1)
             self.data_move_cut_by_fisrt_dim()
@@ -251,7 +268,8 @@ class ConcatL1Fusion:
 
     def proc_data_scedule_align(self, _core_index,
                                 core_dims_offset, core_process):
-        """proc_data_scedule
+        """
+        proc_data_scedule
         """
         output_gm_offset = []
         for idx, input_shape in enumerate(self.input_shapes):
@@ -267,7 +285,6 @@ class ConcatL1Fusion:
                           _input_idx, dim_size, _ub_tensor):
             """
             add attr
-
             """
             if self.jump_read:
                 input_offest = self.input_slice_offset[_input_idx][2]
@@ -343,6 +360,9 @@ class ConcatL1Fusion:
                               copy_ub_0)
 
     def data_move_cut_by_fisrt_dim(self):
+        """
+        data-move_cut_by_first_dim
+        """
 
         concat_fuc = self.proc_data_scedule_align
         inner_loop = 1
@@ -372,6 +392,7 @@ class ConcatL1Fusion:
             else:
                 concat_fuc(_core_index, core_dims_offset, dims_per_core)
 
+    # pylint: disable=too-many-statements
     def concat_compute_for_each_tensor(self, tensor_list, input_tensor_info,
                                        output_tensor_info, ele_num):
         """
@@ -702,6 +723,7 @@ class ConcatL1Fusion:
         output_offset = output_dic.get("slice_offset")
         return input_shapes, concat_axis, out_shape, input_slice_offset, output_offset, input_valid_shapes
 
+    # pylint: disable=too-many-arguments
     def init_tensor(self, input_shapes, output_shape, dtype, input_addr_type, output_addr_type):
         """
         init gm tensor

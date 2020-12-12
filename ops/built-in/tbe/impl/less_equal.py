@@ -69,27 +69,27 @@ def less_equal_compute(input_x, input_y, output_z, kernel_name="less_equal"):
 
     if dtype_x == "float32":
         tensor_min = tbe.broadcast(tvm.const(SCALAR_MIN_FP32,
-                                                     dtype="float32"),
-                                           shape_broadcast)
+                                             dtype="float32"),
+                                   shape_broadcast)
         tensor_mul = tbe.broadcast(tvm.const(SCALAR_MUL_FP32,
-                                                     dtype="float32"),
-                                           shape_broadcast)
+                                             dtype="float32"),
+                                   shape_broadcast)
         tensor_mul1 = tbe.broadcast(tvm.const(SCALAR_MUL2_FP32,
-                                                      dtype="float32"),
-                                            shape_broadcast)
+                                              dtype="float32"),
+                                    shape_broadcast)
         tensor_one = tbe.broadcast(tvm.const(SCALAR_ONE,
-                                                     dtype="float32"),
-                                           shape_broadcast)
+                                             dtype="float32"),
+                                   shape_broadcast)
     else:
         tensor_min = tbe.broadcast(tvm.const(SCALAR_MIN_FP16,
-                                                     dtype="float16"),
-                                           shape_broadcast)
+                                             dtype="float16"),
+                                   shape_broadcast)
         tensor_mul = tbe.broadcast(tvm.const(SCALAR_MUL_FP16,
-                                                     dtype="float16"),
-                                           shape_broadcast)
+                                             dtype="float16"),
+                                   shape_broadcast)
         tensor_one = tbe.broadcast(tvm.const(SCALAR_ONE,
-                                                     dtype="float16"),
-                                           shape_broadcast)
+                                             dtype="float16"),
+                                   shape_broadcast)
 
     if dtype_x in ("int8", "uint8"):
         input_x = tbe.cast_to(input_x, "float16")
@@ -117,6 +117,7 @@ def less_equal_compute(input_x, input_y, output_z, kernel_name="less_equal"):
     return res
 
 
+# pylint: disable=unused-variable
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def less_equal(input_x, input_y, output_z, kernel_name="less_equal"):

@@ -37,7 +37,11 @@ CUT_C_HW_SIZE = 128
 C0_SIZE = 16
 
 
+# pylint: disable=unused-argument
 def _lrn_parameter_check(input_data, depth_radius, norm_region, kernel_name):
+    """
+    _lrn_parameter_check
+    """
     shape_input = input_data.get("shape")
     dtype_input = input_data.get("dtype").lower()
     para_check.check_shape(shape_input, param_name="x")
@@ -124,14 +128,19 @@ def lrn(x, y, depth_radius=5, bias=1, alpha=1, beta=0.5,
         if lrn_d_obj.one_column_size % lrn_d_obj.alignment_standards != 0:
             return lrn_d_obj.tik_instance_function_not_align()
         return lrn_d_obj.tik_instance_function()
-    elif x.get("format") == "NC1HWC0":
+    if x.get("format") == "NC1HWC0":
         # only support float16
         lrn_d_obj = LRNBase5HD(x, depth_radius, bias, alpha, beta,
                                kernel_name, impl_mode)
         return lrn_d_obj.tik_instance_function()
 
 
-class LRNBase(object):
+# pylint: disable=too-few-public-methods
+class LRNBase():
+    """
+    LRNBase
+    """
+    # pylint: disable=no-self-use
     def __init__(self, tik_instance):
         self.tik_instance = tik_instance
 
@@ -444,6 +453,7 @@ class LRNBase5HD(LRNBase):
     """
     Function: use to store LRN compute parameters
     """
+    # pylint: disable=no-member,unused-variable
     def __init__(self, x, depth_radius, bias, alpha, beta, kernel_name,
                  impl_mode):
         self.tik_instance = tik.Tik()
@@ -603,6 +613,9 @@ class LRNBase5HD(LRNBase):
                 out_gm_offset += self.one_batch_size
 
     def do_cut_hw(self, tiling, batch_gm_offset):
+        """
+        do_cut_hw
+        """
         buffer_idx = 0
         in_gm_offset = batch_gm_offset
         out_gm_offset = batch_gm_offset
@@ -635,6 +648,9 @@ class LRNBase5HD(LRNBase):
             buffer_idx += 1
 
     def do_cut_c(self, tiling, batch_gm_offset):
+        """
+        do_cut_c
+        """
         buffer_idx = 0
         hw_gm_offset = batch_gm_offset
         for hw_idx in range(tiling["hw_loop"]):
@@ -681,6 +697,9 @@ class LRNBase5HD(LRNBase):
         return buffer_idx
 
     def move_data_stride_in(self, dest, src, hw_size, c_size, in_gm_offset):
+        """
+        move_data_stride_in
+        """
         nburst = int(c_size // 16)
         burst = int(hw_size)
         src_stride = int(self.hw_size - hw_size)
@@ -698,6 +717,9 @@ class LRNBase5HD(LRNBase):
                     constant.STRIDE_ZERO, constant.STRIDE_ZERO)
 
     def move_data_stride_out(self, dest, src, hw_size, c_size, out_gm_offset):
+        """
+        move_data_stride_out
+        """
         nburst = int(c_size // 16)
         burst = int(hw_size)
         dst_stride = int(self.hw_size - hw_size)
@@ -716,6 +738,9 @@ class LRNBase5HD(LRNBase):
 
     def do_operation(self, data_ub1, data_ub2, data_ub3, hw_size, c_size,
                      c_top=0, c_bottom=0):
+        """
+        do_operation
+        """
         hw_align_size = math.ceil(hw_size / 16) * 16
         compute_shape = (hw_align_size, c_size + c_top + c_bottom)
 
@@ -756,6 +781,9 @@ class LRNBase5HD(LRNBase):
         return data_ub2
 
     def do_depth_operation(self, dest, src, hw_size, c_size, c_top, c_bottom):
+        """
+        do_depth_operation
+        """
         zero_scalar = self.tik_instance.Scalar(dtype=self.input_dtype,
                                                name="zero_scalar",
                                                init_value=0.0)
@@ -772,6 +800,9 @@ class LRNBase5HD(LRNBase):
                                            int(c_size), c_top)
 
     def do_depth_operation_bottom(self, dest, src, hw_size, c_size, c_top):
+        """
+        do_depth_operation_bottom
+        """
         # add next
         first_flag = True
         top_offset = c_top * hw_size
@@ -801,6 +832,9 @@ class LRNBase5HD(LRNBase):
             src1_ub_offset -= hw_size
 
     def do_depth_operation_mid(self, dest, src, hw_size, c_size, c_top):
+        """
+        do_depth_operation_mid
+        """
         first_flag = True
         top_offset = c_top * hw_size
         src_ub_offset = hw_size + top_offset
@@ -822,6 +856,9 @@ class LRNBase5HD(LRNBase):
             src1_ub_offset -= hw_size
 
     def do_depth_operation_top(self, dest, src, hw_size, c_size):
+        """
+        do_depth_operation_top
+        """
         first_flag = True
         src_ub_offset = hw_size
         dst_ub_offset = hw_size
@@ -847,6 +884,9 @@ class LRNBase5HD(LRNBase):
             up_compute_size -= hw_size
 
     def do_depth_operation_all(self, dest, src, hw_size, c_size):
+        """
+        do_depth_operation_all
+        """
         # add next
         src_ub_offset = hw_size
         first_flag = True
@@ -872,6 +912,9 @@ class LRNBase5HD(LRNBase):
             compute_size -= hw_size
 
     def do_squared(self, data_ub, compute_shape):
+        """
+        do_squared
+        """
         if self.alpha_sqrt_flag:
             # do square operation
             self._vmuls_func(data_ub, data_ub, self.alpha_sqrt, compute_shape)
@@ -880,6 +923,9 @@ class LRNBase5HD(LRNBase):
             self._vmul_func(data_ub, data_ub, data_ub, compute_shape)
 
     def five2four(self, dest, src, hw_size, c_size):
+        """
+        five2four
+        """
         hw_size = int(hw_size)
         c_loop = int(c_size // 16)
         repeat = math.ceil(hw_size / 16)
@@ -900,6 +946,9 @@ class LRNBase5HD(LRNBase):
                                         repeat, dst_stride, src_stride)
 
     def four2five(self, dest, src, hw_size, c_size):
+        """
+        four2five
+        """
         hw_size = int(hw_size)
         c_loop = int(c_size // 16)
         repeat = math.ceil(hw_size / 16)
@@ -915,6 +964,9 @@ class LRNBase5HD(LRNBase):
                                         repeat, dst_stride, src_stride)
 
     def move_data(self, dest, src, data_type, copy_size):
+        """
+        move_data
+        """
         byte_num_one = common_util.get_data_size(data_type)
         one_block_ele_num = constant.BLOCK_SIZE // byte_num_one
         block_num = copy_size // one_block_ele_num
@@ -957,6 +1009,7 @@ class LRNBase4HD(LRNBase):
     """
     Function: use to store LRN compute parameters
     """
+    # pylint: disable=no-member
     def __init__(self, x, depth_radius, bias, alpha, beta, kernel_name,
                  impl_mode):
         self.tik_instance = tik.Tik()
@@ -1585,6 +1638,7 @@ class LRNBase4HD(LRNBase):
                                     self.data_output_ub,
                                     self.input_dtype, self.input_shape)
 
+    # pylint: disable=too-many-statements
     def _do_operation_each_loop_cut_h_w(self, offset_gm):
         mte2_num = self._get_align_size(self.input_shape[2]*self.input_shape[3])
         if self.dtype_real_in_out != self.input_dtype:
@@ -2743,6 +2797,7 @@ class LRNBase4HD(LRNBase):
         elif hw_c_all_cut_flag is True:
             self._do_operation_each_core_hw_c_all_cut_branch(offset_gm)
 
+    # pylint: disable=unused-variable
     def _check_c_axis_too_large(self):
         n_cut_flag, c_cut_flag, hw_cut_flag, hw_c_all_cut_flag = self._do_tiling()
         if c_cut_flag or hw_c_all_cut_flag:

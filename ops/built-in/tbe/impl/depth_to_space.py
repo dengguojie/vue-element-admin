@@ -15,7 +15,7 @@
 """
 depth_to_space
 """
-# pylint: disable=too-many-lines,import-error
+# pylint: disable=too-many-lines,import-error,too-many-public-methods,invalid-name
 import math
 import functools
 
@@ -48,9 +48,12 @@ MAX_N_BURST = 4095
 # pylint: disable = unused-argument
 def get_op_support_info(x, y, block_size, data_format='NHWC',
                         kernel_name="depth_to_space"):
+    """
+    get_op_support_info
+    """
     format_x = x.get("format").upper()
     if format_x == "NHWC":
-        axis_split_matrix=[
+        axis_split_matrix = [
             [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
             [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]])],
             [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])]
@@ -1115,6 +1118,9 @@ class DepthToSpaceNHWCCompute:
         return tik_instance
 
     def ub_rearrange_case_multi_core(self, tik_instance):
+        """
+        ub_rearrange_case_multi_core
+        """
         div_groups = self.input_batch*self.input_height
         each_core_process_groups = math.ceil(div_groups / MAX_CORE_NUM)
         use_cores = math.ceil(div_groups / each_core_process_groups)
@@ -1131,6 +1137,9 @@ class DepthToSpaceNHWCCompute:
                 self.ub_rearrange_case_compute_each_core(tik_instance, self.last_core_process_nums, core_offset)
     
     def ub_rearrange_case_compute_each_core(self, tik_instance, cal_nums, core_offset):
+        """
+        ub_rearrange_case_compute_each_core
+        """
         self.cal_nums_per_loop = self.ub_max_process_groups*self.one_core_min_size
         self.cal_nums_last_loop = cal_nums - (self.loop_times - 1)*self.cal_nums_per_loop
         if self.loop_times == 1:
@@ -1145,6 +1154,9 @@ class DepthToSpaceNHWCCompute:
                     self.ub_rearrange_data_move_in_each_loop(tik_instance, self.cal_nums_last_loop, loop_offset, True)
     
     def ub_rearrange_data_move_in_each_loop(self, tik_instance, cal_nums, loop_offset, address_rollback):
+        """
+        ub_rearrange_data_move_in_each_loop
+        """
         rearrange_loops = cal_nums // self.one_core_min_size
         if self.multi_times_in_out:
             input_ub = tik_instance.Tensor(self.dtype,

@@ -19,15 +19,15 @@ max_pool
 """
 import te.lang.cce as tbe
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
 import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from impl.util import util_select_op_base
 
 
+# pylint: disable=too-many-arguments,unused-argument
 def get_op_support_info(input_data, output_data, ksize, strides, padding,
-             data_format="NC1HWC0", kernel_name="max_pool"):
+                        data_format="NC1HWC0", kernel_name="max_pool"):
     """
     get the max_pool split
     """
@@ -46,7 +46,7 @@ def get_op_support_info(input_data, output_data, ksize, strides, padding,
     if format_x == "NC1HWC0":
         if (ksize_h == window[0] and ksize_w == window[1]) or padding == "SAME":
             axis_split_matrix = [[util_select_op_base.SplitInput([0, [0], [-1], [-1]]),
-                                 util_select_op_base.SplitOutput([0, [0]])]]
+                                  util_select_op_base.SplitOutput([0, [0]])]]
         elif ksize_h != window[0] and padding == "VALID":
             axis_split_matrix = [
                 [util_select_op_base.SplitInput([0, [0], [-1], [-1]]), util_select_op_base.SplitOutput([0, [0]])],
@@ -99,6 +99,7 @@ def get_fusion_params(input_data, output_data, is_fused_compute=True):
 
 
 # pylint: disable=unnecessary-lambda
+# pylint: disable=unused-argument,,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("max_pool")
 def max_pool_fuse_compute(input_data, output_data, ksize, strides, padding=None,
                           data_format="NC1HWC0", kernel_name="max_pool_fuse"):
@@ -146,8 +147,8 @@ def max_pool_fuse_compute(input_data, output_data, ksize, strides, padding=None,
         temp_tensor = temp_tensor.op.input_tensors[0]
     if conv_pooling_flag:
         res = tbe.max_pool_compute(input_data, (window_h, window_w),
-                                           (stride_h, stride_w), padding,
-                                           data_mode=1)
+                                   (stride_h, stride_w), padding,
+                                   data_mode=1)
     else:
         # l1 fusion and l2 fusion
         l1_fusion_type = input_data.op.attrs["L1_fusion_type"].value \
@@ -167,10 +168,10 @@ def max_pool_fuse_compute(input_data, output_data, ksize, strides, padding=None,
                             name="tensor_read_select",
                             attrs=input_data.op.attrs)
             res = tbe.pooling2d(select_tensor_in,
-                                        (window_h, window_w),
-                                        (stride_h, stride_w),
-                                        "MAX", padding, pad=(0, 0, 0, 0),
-                                        fusion_params=fusion_params)
+                                (window_h, window_w),
+                                (stride_h, stride_w),
+                                "MAX", padding, pad=(0, 0, 0, 0),
+                                fusion_params=fusion_params)
         elif l1_fusion_type == 1:
             input_data.op.attrs["addr_type"].value = 1
             in_l1_flag = True
@@ -183,19 +184,20 @@ def max_pool_fuse_compute(input_data, output_data, ksize, strides, padding=None,
                             name="l1_width_fusion_tensor_in",
                             attrs=input_data.op.attrs)
             res = tbe.pooling2d(l1_width_fusion_in,
-                                        (window_h, window_w),
-                                        (stride_h, stride_w),
-                                        "MAX", padding, pad=(0, 0, 0, 0),
-                                        fusion_params=fusion_params)
+                                (window_h, window_w),
+                                (stride_h, stride_w),
+                                "MAX", padding, pad=(0, 0, 0, 0),
+                                fusion_params=fusion_params)
         else:
             res = tbe.pooling2d(input_data, (window_h, window_w),
-                                        (stride_h, stride_w),
-                                        "MAX", padding, pad=(0, 0, 0, 0),
-                                        fusion_params=fusion_params)
+                                (stride_h, stride_w),
+                                "MAX", padding, pad=(0, 0, 0, 0),
+                                fusion_params=fusion_params)
     return res
 
 
-# pylint: disable=unnecessary-lambda,too-many-locals
+# pylint: disable=unnecessary-lambda,too-many-locals,too-many-arguments
+# pylint: disable=unused-argument
 def max_pool_compute(input_data, output_data, ksize, strides, padding,
                      data_format="NC1HWC0", kernel_name="max_pool"):
     """
@@ -248,9 +250,9 @@ def max_pool_compute(input_data, output_data, ksize, strides, padding,
                                        name="tensor_read_select",
                                        attrs=input_data.op.attrs)
         res = tbe.pooling2d(select_tensor_in, (window_h, window_w),
-                                    (stride_h, stride_w),
-                                    "MAX", padding, pad=(0, 0, 0, 0),
-                                    fusion_params=fusion_params)
+                            (stride_h, stride_w),
+                            "MAX", padding, pad=(0, 0, 0, 0),
+                            fusion_params=fusion_params)
     elif l1_fusion_type == 1:
         input_data.op.attrs["addr_type"].value = 1
         in_l1_flag = True
@@ -262,18 +264,19 @@ def max_pool_compute(input_data, output_data, ksize, strides, padding,
                                          name="l1_width_fusion_tensor_in",
                                          attrs=input_data.op.attrs)
         res = tbe.pooling2d(l1_width_fusion_in, (window_h, window_w),
-                                    (stride_h, stride_w), "MAX", padding,
-                                    pad=(0, 0, 0, 0),
-                                    fusion_params=fusion_params)
+                            (stride_h, stride_w), "MAX", padding,
+                            pad=(0, 0, 0, 0),
+                            fusion_params=fusion_params)
     else:
         res = tbe.pooling2d(input_data, (window_h, window_w),
-                                    (stride_h, stride_w),
-                                    "MAX", padding, pad=(0, 0, 0, 0),
-                                    fusion_params=fusion_params)
+                            (stride_h, stride_w),
+                            "MAX", padding, pad=(0, 0, 0, 0),
+                            fusion_params=fusion_params)
 
     return res
 
 
+# pylint: disable=too-many-arguments,too-many-statements
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_STR, para_check.OPTION_ATTR_STR,

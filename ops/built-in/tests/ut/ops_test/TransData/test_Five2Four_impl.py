@@ -50,6 +50,9 @@ ut_case.add_case(["Ascend910"],
 ut_case.add_case(["Ascend910"],
                  gen_trans_data_case((3, 3968, 4, 5, 16), (3, 4, 5, 63488),
                                      "float32", "nhwc_2", "success", "NHWC"))
+ut_case.add_case(["Ascend910"],
+                 gen_trans_data_case((3, 16, 31, 5001, 16), (3, 31, 5001, 16*16),
+                                     "float32", "nhwc_2", "success", "NHWC"))
 #invalid
 ut_case.add_case(["Ascend910"],
                  gen_trans_data_case((2,3,4,5,16), (2,30,4,5),

@@ -27,6 +27,8 @@ from te.utils.error_manager import error_manager_vector
 SIZE_SIXTEEN = 16
 
 
+# pylint: disable=too-many-statements,too-many-branches,too-many-nested-blocks,too-many-boolean-expressions
+# pylint: disable=too-many-locals
 def _can_division_sixteen(shape):
 
     if len(shape) < 2:
@@ -226,8 +228,8 @@ def op_select_format(x, y, output, kernel_name="mul"):
 
     # NZ+ND,ND+ND,5HD+5HD,FZ+FZ,ND+NZ
     elif len(shape_x) >= 2 and len(shape_y) >= 2 and (
-        (_can_division_sixteen(shape_x) and not _can_division_sixteen(shape_y)) or
-        (not _can_division_sixteen(shape_x) and _can_division_sixteen(shape_y))):
+            (_can_division_sixteen(shape_x) and not _can_division_sixteen(shape_y)) or
+            (not _can_division_sixteen(shape_x) and _can_division_sixteen(shape_y))):
         if len(shape_x) == 4 and len(shape_y) == 4 and format_x in format_4d_list and format_y in format_4d_list:
             if x_cdim % 16 == 0 and y_cdim % 16 == 0:
                 if x_cdim == y_cdim or x_cdim // 16 == 1 or y_cdim // 16 == 1:
@@ -522,9 +524,9 @@ def _infer_shape(format_pattern, x, y):
     shape_y = shape_util.scalar2tensor_one(shape_y)
     if format_pattern == 1:
         ori_shape_x, shape_y, shape_max = shape_util.broadcast_shapes(ori_shape_x,
-                                                                         shape_y,
-                                                                         param_name_input1="x",
-                                                                         param_name_input2="y")
+                                                                      shape_y,
+                                                                      param_name_input1="x",
+                                                                      param_name_input2="y")
         if shape_y[-2] == ori_shape_x[-2] and shape_y[-1] == ori_shape_x[-1]:
             error_manager_vector.raise_err_check_params_rules("mul", "the input shape of y is illegal", 'y', shape_y)
 
@@ -548,9 +550,9 @@ def _infer_shape(format_pattern, x, y):
 
     elif format_pattern == 2:
         shape_x, ori_shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
-                                                                         ori_shape_y,
-                                                                         param_name_input1="x",
-                                                                         param_name_input2="y")
+                                                                      ori_shape_y,
+                                                                      param_name_input1="x",
+                                                                      param_name_input2="y")
         if shape_x[-2] == ori_shape_y[-2] and shape_x[-1] == ori_shape_y[-1]:
             error_manager_vector.raise_err_check_params_rules("mul", "the input shape of x is illegal", 'x', shape_x)
 
@@ -599,9 +601,9 @@ def mul_compute(input_x, input_y, output_data, kernel_name="mul"):
     shape_y = shape_util.shape_to_list(input_y.shape)
 
     shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
-                                                                 shape_y,
-                                                                 param_name_input1="x",
-                                                                 param_name_input2="y")
+                                                              shape_y,
+                                                              param_name_input1="x",
+                                                              param_name_input2="y")
     if shape_x != shape_y and len(shape_x) == 2 and len(shape_y) == 2:
         res = _mul_compute_ex(input_x, input_y, shape_x, shape_y, shape_max)
         if res is not None:
@@ -661,7 +663,7 @@ def _mul_compute_ex(input_x, input_y, shape_x, shape_y, shape_max):
     with tvm.tag.tag_scope("elewise_binary_mul"):
         res = tvm.compute(shape_max,
                           lambda *indices: get_tensor_slice(large_input, small_index, True, *indices) *
-                          get_tensor_slice(small_input, small_index, False, *indices),
+                                           get_tensor_slice(small_input, small_index, False, *indices),
                           name="manual_mul_without_broadcast_" + str(tbe.te_compute.elewise_compute.NAME_INDEX[0]))
     tbe.te_compute.elewise_compute.NAME_INDEX[0] += 1
 
@@ -716,9 +718,9 @@ def mul(x, y, output, kernel_name="mul"):
         para_check.check_dtype(dtype_x, new_check_list, param_name="x")
 
     shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
-                                                                 shape_y,
-                                                                 param_name_input1="x",
-                                                                 param_name_input2="y")
+                                                              shape_y,
+                                                              param_name_input1="x",
+                                                              param_name_input2="y")
 
     shape_x, shape_y = shape_util.refine_shapes_for_broadcast(shape_x, shape_y)
     input_x = tvm.placeholder(shape_x, dtype=dtype_x, name="x")

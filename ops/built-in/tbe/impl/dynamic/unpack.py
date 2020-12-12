@@ -15,6 +15,8 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 dynamic unpack
 """
+# pylint: disable=too-many-locals,too-few-public-methods,too-many-branches,unused-argument
+# pylint: disable=too-many-arguments,too-many-instance-attributes
 from enum import Enum
 from enum import unique
 
@@ -49,12 +51,21 @@ class CompileVar:
         self.bound = bound
 
     def get_tvm_var(self):
+        """
+        get_tvm_var
+        """
         return self.tvm_var
 
     def get_name(self):
+        """
+        get_name
+        """
         return self.name
 
     def get_bound(self):
+        """
+        get_bound
+        """
         return self.bound
 
 
@@ -483,6 +494,9 @@ class Unpack:
         tbe_base.add_compile_info("vars", self.compile_vars)
 
     def build_cce(self):
+        """
+        build_cce
+        """
         self._build_unpack_cce()
 
 

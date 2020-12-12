@@ -72,7 +72,7 @@ def _check_dims_equal(shape_x, shape, data_format):
         if shape_x[index_c] != shape[0]:
             shape_rule = "The dimension value of mean or variance must be equal to C value of input_x"
             error_manager_vector.raise_err_check_params_rules("bninference_d", shape_rule, "x",
-                                                                            shape_x[index_c])
+                                                              shape_x[index_c])
 
 
 def _check_shape_dims(shape, data_format):
@@ -120,13 +120,13 @@ def param_scale_check(shape_x, shape_scale):
         if length_x != length_scale:
             error_detail = "The dims of input tensor x and tensor scale should be equal"
             error_manager_vector.raise_err_two_input_shape_invalid("Scale", "input_x", "scale",
-                                                                                 error_detail)
+                                                                   error_detail)
 
         for i in range(length_scale):
             if shape_scale[i] != shape_x[i] and shape_scale[i] != 1:
                 error_detail = "The inputs x and scale could not be broadcast together with mismatched shapes"
                 error_manager_vector.raise_err_two_input_shape_invalid("Scale", "input_x", "scale",
-                                                                                     error_detail)
+                                                                       error_detail)
 
 
 # pylint: disable=locally-disabled,too-many-arguments
@@ -169,6 +169,7 @@ def _shape_check(shape_x, shape_mean, shape_variance, scale, format_x):
 
 
 # pylint: disable=invalid-name,redefined-outer-name
+# pylint: dsiable=too-many-locals
 def _fused_scale_bias_compute(x, mean, variance, scale, bias):
     """
     algorithm: Scale
@@ -331,7 +332,7 @@ def bninference_d_compute(x, mean, variance, scale, bias, y,
     if l1_fusion_type != -1 and y.get("format").upper() != 'NC1HWC0':
         shape_rule = "when L1_FUSION is enabled for the bninference operator, the input format must be 5HD"
         error_manager_vector.raise_err_check_params_rules("bninference_d", shape_rule, "x",
-                                                                        y.get("format").upper())
+                                                          y.get("format").upper())
 
     fusion_params = get_fusion_params(x, mean, variance, scale, bias, fuse_y)
 
@@ -424,6 +425,7 @@ def para_shape_check(x, mean, variance, scale, format_x):
     _shape_check(shape_x, shape_mean, shape_variance, scale, format_x)
 
 
+# pylint: disable=redefined-argument-from-local
 def get_fusion_params(x, mean, variance, scale, bias, y):
     """
     Get L1 fusion_params
@@ -504,7 +506,7 @@ def para_scale_bias_check(x, mean, variance, scale, offect, use_global_stats, ke
     _dtype_scale_offset_check(x, mean, variance, scale, offect)
     if not use_global_stats:
         dict_args = {'errCode': 'E80000', 'opname': 'batchnorm', 'param_name': 'use_global_stats',
-                    'excepted_value': 'True', 'real_value': str(use_global_stats)}
+                     'excepted_value': 'True', 'real_value': str(use_global_stats)}
         raise RuntimeError(dict_args,
                            "In op[%s], the parameter[%s] should be [%s], but actually is [%s]."
                            % (dict_args['opname'], dict_args['param_name'],
@@ -527,7 +529,7 @@ def _para_check(x, mean, variance, scale, use_global_stats, kernel_name):
     _dtype_check(x, mean, variance)
     if not use_global_stats:
         dict_args = {'errCode': 'E80000', 'opname': 'batchnorm', 'param_name': 'use_global_stats',
-                    'excepted_value': 'True', 'real_value': str(use_global_stats)}
+                     'excepted_value': 'True', 'real_value': str(use_global_stats)}
         raise RuntimeError(dict_args,
                            "In op[%s], the parameter[%s] should be [%s], but actually is [%s]."
                            % (dict_args['opname'], dict_args['param_name'],
@@ -563,6 +565,7 @@ def get_param_scale_shape(shape_x, shape_scale):
     return shape
 
 
+# pylint: disable=too-many-branches,too-many-statements
 def gen_tensor(x, mean, variance, scale, offect):
     """
     :param x:x tensor
@@ -645,6 +648,9 @@ def gen_tensor(x, mean, variance, scale, offect):
 
 
 def get_l1_paras(x):
+    """
+    get_l1_paras
+    """
     l1_fusion_type = -1
     if tbe_platform.fusion_manager.fusion_manager.get_build_cfg() != "disable":
         l1_fusion_type = x.get('L1_fusion_type', -1)

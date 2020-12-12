@@ -33,11 +33,13 @@ EIGHT_BIT = 8
 BLOCK_BYTES = 32
 
 # pylint: disable=too-many-arguments,too-many-instance-attributes,unused-argument
+# pylint: disable=too-many-public-methods
 class ScatterNd():
     """
        Function: use to store scatter_nd base parameters
        Modify : 2020-12-01
     """
+    # pylint: disable=too-many-statements
     def __init__(self, indices, x, shape, y, kernel_name):
         """
         Init ScatterNd parameters
@@ -1237,7 +1239,7 @@ class ScatterNd():
                                         "indices_size": self.indices_dtype_bytes_size,
                                         "support_atomic": self.support_atomic})
 
-# pylint: disable=unused-argument
+# pylint: disable=unused-argument,invalid-name
 @te.op.register_operator("ScatterNd")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)

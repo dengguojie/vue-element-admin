@@ -36,7 +36,7 @@ INDEX_H = 2
 INDEX_W = 3
 
 
-# pylint: disable=locally-disabled,too-many-arguments
+# pylint: disable=locally-disabled,too-many-arguments,too-many-branches
 def _check_parameters(min_size, max_size, img_h, img_w,
                       step_h, step_w, variance):
     if len(min_size) <= 0:
@@ -128,6 +128,7 @@ def _check_parameters(min_size, max_size, img_h, img_w,
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals
+# pylint: disable=no-member,unused-argument
 def _prior_box_check(feature, img, data_h, data_w, min_size, max_size,
                      img_h, img_w, step_h, step_w, variance, kernel_name):
     shape_feature = feature.get("shape")
@@ -207,6 +208,7 @@ def _ins_emit(schedule, op_list, axis_list, ins_list):
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-statements,invalid-name
+# pylint: disable=unused-argument
 def prior_box_compute(feature, img, data_h, data_w, box_height, box_width, y, \
                       rec_img_h, rec_img_w, step_h, step_w, clip, offset, scale, variance):
     """
@@ -515,6 +517,9 @@ def prior_box_compute(feature, img, data_h, data_w, box_height, box_width, y, \
 
 
 def get_compute_axis(schedule, tensor_dic):
+    """
+    get_compute_axis
+    """
     compute_at_axis = {}
     compute_at_axis["feature_ub_axis"] = \
         schedule[tensor_dic.get("y")].op.axis[3]
@@ -611,6 +616,7 @@ def _get_ins_emit_axis(ops, last_axis):
     return axis_list
 
 
+# pylint: disable=too-many-branches
 def _double_buf(schedule, ops):
     if not ops:
         raise RuntimeError("operation list is empty")
@@ -769,23 +775,21 @@ def _tiling_factor_calculate(shape, split_axis_0, split_size, dtype, ub_size_lim
             if temp >= split_size * shape_1 * shape_2 * shape_3 * shape_4:
                 # no split
                 split_flag = False
-            elif temp < split_size * shape_1 * shape_2 * shape_3 * shape_4 and \
-                    temp >= shape_1 * shape_2 * shape_3 * shape_4:
+            elif shape_1 * shape_2 * shape_3 * shape_4 <= temp < split_size * shape_1 * shape_2 * shape_3 * shape_4:
                 # split on n.inner
                 split_flag = True
                 split_axis = 0
                 split_factor = int(temp // (shape_1 * shape_2 * shape_3 * shape_4))
-            elif temp < shape_1 * shape_2 * shape_3 * shape_4 and temp >= \
-                    shape_2 * shape_3 * shape_4:
+            elif shape_2 * shape_3 * shape_4 <= temp < shape_1 * shape_2 * shape_3 * shape_4:
                 # split on h
                 split_flag = True
                 split_axis = 1
                 split_factor = int(temp // (shape_2 * shape_3 * shape_4))
-            elif temp < shape_2 * shape_3 * shape_4 and temp >= shape_3 * shape_4:
+            elif shape_3 * shape_4 <= temp < shape_2 * shape_3 * shape_4:
                 split_flag = True
                 split_axis = 2
                 split_factor = int(temp // (shape_3 * shape_4))
-            elif temp < shape_3 * shape_4 and temp >= shape_4:
+            elif shape_4 <= temp < shape_3 * shape_4:
                 split_flag = True
                 split_axis = 3
                 split_factor = int(temp // shape_4)
@@ -798,17 +802,17 @@ def _tiling_factor_calculate(shape, split_axis_0, split_size, dtype, ub_size_lim
             if temp >= split_size * shape_1 * shape_2 * shape_3 * shape_4:
                 # no split
                 split_flag = False
-            elif temp < shape_1 * shape_2 * shape_3 * shape_4 and temp >= shape_2 * shape_3 * shape_4:
+            elif shape_2 * shape_3 * shape_4 <= temp < shape_1 * shape_2 * shape_3 * shape_4:
                 # split on h
                 split_flag = True
                 split_axis = 1
                 split_factor = int(temp // (shape_2 * shape_3 * shape_4))
-            elif temp < shape_2 * shape_3 * shape_4 and temp >= shape_3 * shape_4:
+            elif shape_3 * shape_4 <= temp < shape_2 * shape_3 * shape_4:
                 # split on h
                 split_flag = True
                 split_axis = 2
                 split_factor = int(temp // (shape_3 * shape_4))
-            elif temp < shape_3 * shape_4 and temp >= shape_4:
+            elif shape_4 <= temp < shape_3 * shape_4:
                 # split on h
                 split_flag = True
                 split_axis = 3
@@ -822,18 +826,17 @@ def _tiling_factor_calculate(shape, split_axis_0, split_size, dtype, ub_size_lim
         if temp >= split_size * shape_2 * shape_3 * shape_4:
             # no split
             split_flag = False
-        elif temp < split_size * shape_2 * shape_3 * shape_4 and temp >= \
-                shape_2 * shape_3 * shape_4:
+        elif shape_2 * shape_3 * shape_4 <= temp < split_size * shape_2 * shape_3 * shape_4:
             # split on h
             split_flag = True
             split_axis = 1
             split_factor = int(temp // (shape_2 * shape_3 * shape_4))
-        elif temp < shape_2 * shape_3 * shape_4 and temp >= shape_3 * shape_4:
+        elif shape_3 * shape_4 <= temp < shape_2 * shape_3 * shape_4:
             # split on h
             split_flag = True
             split_axis = 2
             split_factor = int(temp // (shape_3 * shape_4))
-        elif temp < shape_3 * shape_4 and temp >= shape_4:
+        elif shape_4 <= temp < shape_3 * shape_4:
             # split on h
             split_flag = True
             split_axis = 3
@@ -848,12 +851,12 @@ def _tiling_factor_calculate(shape, split_axis_0, split_size, dtype, ub_size_lim
             if temp >= split_size * shape_3 * shape_4:
                 # no split
                 split_flag = False
-            elif temp < split_size * shape_3 * shape_4 and temp >= shape_3 * shape_4:
+            elif shape_3 * shape_4 <= temp < split_size * shape_3 * shape_4:
                 # split on h
                 split_flag = True
                 split_axis = 2
                 split_factor = int(temp // (shape_3 * shape_4))
-            elif temp < shape_3 * shape_4 and temp >= shape_4:
+            elif shape_4 <= temp < shape_3 * shape_4 and temp:
                 # split on h
                 split_flag = True
                 split_axis = 3
@@ -876,7 +879,7 @@ def _tiling_factor_calculate(shape, split_axis_0, split_size, dtype, ub_size_lim
             if temp >= split_size * shape_0 * shape_1 * shape_4:
                 # no split
                 split_flag = False
-            elif temp < shape_1 * shape_4 and temp >= shape_4:
+            elif shape_4 <= temp < shape_1 * shape_4:
                 # split on h
                 split_flag = True
                 split_axis = 1
@@ -890,12 +893,12 @@ def _tiling_factor_calculate(shape, split_axis_0, split_size, dtype, ub_size_lim
             if temp >= split_size * shape_0 * shape_1 * shape_4 * shape_3:
                 # no split
                 split_flag = False
-            elif temp < shape_1 * shape_4 * shape_3 and temp >= shape_4 * shape_3:
+            elif shape_4 * shape_3 <= temp < shape_1 * shape_4 * shape_3:
                 # split on h
                 split_flag = True
                 split_axis = 1
                 split_factor = int(temp // (shape_4 * shape_3))
-            elif temp < shape_3 * shape_4 and temp >= shape_4:
+            elif shape_4 <= temp < shape_3 * shape_4:
                 # split on h
                 split_flag = True
                 split_axis = 3
@@ -909,7 +912,7 @@ def _tiling_factor_calculate(shape, split_axis_0, split_size, dtype, ub_size_lim
         if temp >= split_size * shape_4:
             # no split
             split_flag = False
-        elif temp < split_size * shape_4 and temp >= shape_4:
+        elif shape_4 <= temp < split_size * shape_4:
             # split on h
             split_flag = True
             split_axis = 3
@@ -956,6 +959,8 @@ def _align(schedule, ops, tensor_dic, clip, factor=16, offset=0):
                                            factor, offset)
 
 
+# pylint: disable=locally-disabled,too-many-arguments,too-many-locals,invalid-name
+# pylint: disable=dangerous-default-value
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
@@ -965,7 +970,6 @@ def _align(schedule, ops, tensor_dic, clip, factor=16, offset=0):
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_LIST_FLOAT, para_check.KERNEL_NAME)
-# pylint: disable=locally-disabled,too-many-arguments,too-many-locals,invalid-name
 def prior_box_d(feature, img, data_h, data_w, box_height, box_width, y,
                 min_size, max_size, img_h=0, img_w=0, step_h=0.0, step_w=0.0,
                 flip=True, clip=False, offset=0.5, variance=[0.1],
@@ -1081,7 +1085,7 @@ def prior_box_d(feature, img, data_h, data_w, box_height, box_width, y,
             axis_list = _get_ins_emit_axis(op_list, xhi)
         elif split_axis_0 == 3:
             axis_list = _get_ins_emit_axis(op_list, xwi)
-        elif split_axis_0 == 4 or split_axis_0 == 5:
+        elif split_axis_0 in (4,5):
             axis_list = _get_ins_emit_axis(op_list, xni)
 
         _ins_emit(schedule, op_list, axis_list, ins_list)

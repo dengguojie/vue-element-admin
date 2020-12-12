@@ -17,14 +17,14 @@ space_to_depth
 """
 from te import tik
 from te import platform as tbe_platform
-from topi.cce import util
+from te.utils.error_manager import error_manager_vector
+from te.utils.op_utils import *
+
 import impl
 from impl import common_util
 from impl import constant_util as constant
-from te.utils.op_utils import *
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
-from te.utils.error_manager import error_manager_vector
 from impl.util import util_select_op_base
 
 # pylint: disable=redefined-builtin
@@ -89,7 +89,7 @@ def get_op_support_info(x, filter, y, block_size, data_format, kernel_name="spac
     get split info
     """
     format_x = x.get("format").upper()
-    if format_x == "NC1HWC0" or format_x == "NHWC":
+    if format_x in ("NC1HWC0", "NHWC"):
         split_0 = [util_select_op_base.SplitInput([0, [0], [-1], [-1]]),
                    util_select_op_base.SplitOutput([0, [0]])]
         axis_split_list = [split_0]

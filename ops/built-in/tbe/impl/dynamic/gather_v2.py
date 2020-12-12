@@ -13,18 +13,13 @@
 # limitations under the License.
 # ============================================================================
 """
-gather_v2d 
+gather_v2d
 """
-from te import tvm
+
 import te.lang.dynamic
 from te import tik
-from te import platform as tbe_platform
-from functools import reduce as functools_reduce
-from topi.cce import util
-from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
-
 
 PARAMS_SIZE = 2**31 - 1
 INDICES_NUM = 2**31 - 1
@@ -81,6 +76,8 @@ TYPE_LEN_DICT = {"float16": 2, "float32": 4, "int8": 1, "uint8": 1,
                  "int64": 8, "uint64": 8}
 
 
+# pylint: disable=too-many-public-methods,invalid-name,too-many-arguments,too-many-locals
+# pylint: disable=too-many-lines,too-many-instance-attributes,too-many-statements
 def ceil_value(value, factor):
     """
     if not divide exactly then plus 1
@@ -114,6 +111,9 @@ def align_value(value, factor):
 
 
 class GatherV2():
+    """
+        Function: use to store concat base parameters
+    """
     def __init__(self, params_dict, indices_dict, axis_dict, y_dict, kernel_name):
         """
         constructor of GatherV2
@@ -740,7 +740,7 @@ class GatherV2():
 
             # b. process indices_row_num_last
             with tik_instance.if_scope(self.indices_row_num_last > 0):
-                indices_offset = block_id * self.indices_num_each_core +\
+                indices_offset = block_id * self.indices_num_each_core + \
                                  self.indices_loop_num * self.indices_row_num_once
                 tik_instance.data_move(indices_ub, self.indices[indices_offset], 0, 1,
                                        ceil_value(self.indices_row_num_last*indices_dsize, BLOCK_SIZE), 0, 0)
@@ -1542,40 +1542,40 @@ class GatherV2():
                                         })
 
     def gather_compute(self):
-            """
-            compute of gather
+        """
+        compute of gather
 
-            Parameters
-            ----------
-            None
+        Parameters
+        ----------
+        None
 
-            Returns
-            -------
-            compile info
-            """
-            self.x = self.tik_instance.Tensor(self.params_dtype, self.x_shape,
-                                              name="x", scope=tik.scope_gm)
-            self.indices = self.tik_instance.Tensor(self.indices_dtype, self.indices_shape,
-                                                    name="indices", scope=tik.scope_gm)
-            self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, (TILING_ARG_NUM,),
-                                                      name="ddr_arg", scope=tik.scope_gm)
-            self.y = self.tik_instance.Tensor(self.y_dtype, shape=self.y_shape,
-                                              name="y", scope=tik.scope_gm)
+        Returns
+        -------
+        compile info
+        """
+        self.x = self.tik_instance.Tensor(self.params_dtype, self.x_shape,
+                                          name="x", scope=tik.scope_gm)
+        self.indices = self.tik_instance.Tensor(self.indices_dtype, self.indices_shape,
+                                                name="indices", scope=tik.scope_gm)
+        self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, (TILING_ARG_NUM,),
+                                                  name="ddr_arg", scope=tik.scope_gm)
+        self.y = self.tik_instance.Tensor(self.y_dtype, shape=self.y_shape,
+                                          name="y", scope=tik.scope_gm)
 
-            self.gather_v2_compute_tiling()
+        self.gather_v2_compute_tiling()
 
-            self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                                       inputs=(self.x, self.indices),
-                                       outputs=(self.y,),
-                                       flowtable=(self.tiling_gm,), enable_l2=True)
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                   inputs=(self.x, self.indices),
+                                   outputs=(self.y,),
+                                   flowtable=(self.tiling_gm,), enable_l2=True)
 
-            # add compile info
-            te.op.add_compile_info("vars", {"core_num": self.core_num,
-                                            "ub_size": self.ub_size,
-                                            "l1_size": self.l1_size,
-                                            "params_dsize": self.params_dsize,
-                                            "indices_dsize": self.indices_dsize
-                                            })
+        # add compile info
+        te.op.add_compile_info("vars", {"core_num": self.core_num,
+                                        "ub_size": self.ub_size,
+                                        "l1_size": self.l1_size,
+                                        "params_dsize": self.params_dsize,
+                                        "indices_dsize": self.indices_dsize
+                                        })
 
 
 @te.op.register_operator("GatherV2")

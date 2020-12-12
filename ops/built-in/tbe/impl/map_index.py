@@ -38,6 +38,7 @@ def map_index_vec_dup(tik_instance, mask, dst, const, length):
             tik_instance.vec_dup(tail, dst[number*mask], const, 1, 8)
 
 
+# pylint: disable=too-many-arguments
 def map_index_vec_sub(tik_instance, mask, dst, src0, src1, length):
     """
     :param tik_instance:
@@ -59,10 +60,13 @@ def map_index_vec_sub(tik_instance, mask, dst, src0, src1, length):
                                  src1, 1, 8, 8, 8)
 
 
+# pylint: disable=too-many-instance-attributes,too-few-public-methods,too-many-statements
 class MapIndexProcess:
     """
     MapIndexProcess
     """
+    # pylint: disable=invalid-name,unused-variable,redefined-builtin
+    # pylint: disable=too-many-instance-attributes,too-few-public-methods
     def __init__(self, input_data):
         """
         :param input_data:
@@ -89,8 +93,8 @@ class MapIndexProcess:
         self.x = self.tik_instance.Tensor("int32", x_shape, name="x",
                                           scope=tik.scope_gm)
         self.data_seq = self.tik_instance.Tensor("int32", data_seq_shape,
-                                                   name="data_seq",
-                                                   scope=tik.scope_gm)
+                                                 name="data_seq",
+                                                 scope=tik.scope_gm)
         if self.have_level_index == True:
             self.level_index = self.tik_instance.Tensor("int32",
                                                         level_index_shape,
@@ -114,7 +118,7 @@ class MapIndexProcess:
                                                     name="data_seq_ub",
                                                     scope=tik.scope_ubuf)
         self.y_ub = self.tik_instance.Tensor("int32", [8], name="y_ub",
-                                          scope=tik.scope_ubuf)
+                                             scope=tik.scope_ubuf)
         self.tik_instance.vec_dup(8, self.y_ub, -1, 1, 8)
 
         self.tik_instance.data_move(self.x_ub, self.x, 0, 1, 1, 0, 0, 0)
@@ -122,6 +126,7 @@ class MapIndexProcess:
                                     self.data_seq_length // 8, 0, 0, 0)
 
 
+    # pylint: disable=too-many-locals,too-many-statements,too-few-public-methods
     def cce_map_index(self, kernel_name="map_index"):
         """
         :param kernel_name:
@@ -134,13 +139,13 @@ class MapIndexProcess:
         max = ((length + 127) // 128)*128
         count = ((max // 16 + 15) // 16)*16
         res = tik_instance.Tensor("uint16", [count], name="res",
-                                      scope=tik.scope_ubuf)
+                                  scope=tik.scope_ubuf)
         map_index_vec_dup(tik_instance, 128, res, 0, count)
 
         with tik_instance.for_range(0, self.x_length) as i:
             # compute ===> tmp : vec_dup(x[i])
             tmp = tik_instance.Tensor("int32", [length], name="tmp",
-                                                scope=tik.scope_ubuf)
+                                      scope=tik.scope_ubuf)
             x_scalar = tik_instance.Scalar(dtype="int32")
             x_scalar.set_as(self.x_ub[i])
 
@@ -213,12 +218,12 @@ class MapIndexProcess:
                         with tik_instance.for_range(0, 16) as j:
                             with tik_instance.if_scope(flag == 0):
                                 with tik_instance.if_scope(src_scalar % 2 != 0):
-                                        flag.set_as(1)
-                                        if self.have_level_index == True:
-                                            self.y_ub[0].set_as(
-                                                self.level_index_ub[i*16 + j])
-                                        else:
-                                            self.y_ub[0].set_as(i*16 + j)
+                                    flag.set_as(1)
+                                    if self.have_level_index == True:
+                                        self.y_ub[0].set_as(
+                                            self.level_index_ub[i*16 + j])
+                                    else:
+                                        self.y_ub[0].set_as(i*16 + j)
                                 with tik_instance.else_scope():
                                     src_scalar.set_as(src_scalar / 2)
 
@@ -259,7 +264,7 @@ def map_index(x_dic, data_seq_dic, level_index_dic, y_dic,
     data_seq_shape = data_seq_dic.get("shape")
     data_seq_dtype = data_seq_dic.get("dtype")
     para_check.check_dtype(data_seq_dtype.lower(), check_list,
-                param_name="data_seq")
+                           param_name="data_seq")
 
     y_dtype = y_dic.get("dtype")
     para_check.check_dtype(y_dtype.lower(), check_list, param_name="y")

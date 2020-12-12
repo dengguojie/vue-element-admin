@@ -22,6 +22,7 @@ from te.utils import para_check
 from te import tik
 
 
+# pylint: disable=too-many-arguments,unused-argument
 @para_check.check_op_params(para_check.OPTION_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_LIST_INT,
@@ -72,7 +73,12 @@ def stn_pre(theta, w_index, h_index, pos_coef, pos_offset,
     return stn_instance
 
 
+# pylint: disable=too-many-instance-attributes
 class SpatialTransformer:
+    """
+    SpatialTransformer operate is
+    """
+    # pylint: disable=no-member
     def __init__(self, theta, w_index, h_index, pos_coef,
                  pos_offset, size, default_theta, use_default_theta, kernel_name='stn_pre'):
 
@@ -129,6 +135,9 @@ class SpatialTransformer:
         )
 
     def stn_pre_compute(self):
+        """
+        stn_pre_compute is
+        """
         # tiling by batch
         if self.batch > self.ai_core_num:
             block_num = self.ai_core_num
@@ -156,7 +165,11 @@ class SpatialTransformer:
 
         return self.tik_instance
 
+    # pylint: disable=too-many-locals,too-many-branches,too-many-statements
     def process_on_each_core(self, batch_id, each_batch_loop_count):
+        """
+        process_on_each_core is
+        """
         theta1_1, theta1_2, theta1_3, theta2_1, theta2_2, theta2_3 = self.calc_theta(batch_id, "float16") if \
             self.calc_by_fp16 else self.calc_theta(batch_id, "float32")
 
@@ -386,6 +399,9 @@ class SpatialTransformer:
 
     def merge_res(self, ch_cw_res_ceof_ub, ch_cw_res_offset_ub, ch_fw_res_ceof_ub, ch_fw_res_offset_ub,
                   fh_cw_res_ceof_ub, fh_cw_res_offset_ub, fh_fw_res_ceof_ub, fh_fw_res_offset_ub):
+        """
+        merge_res
+        """
         offset_res_ub = self.tik_instance.Tensor(
             'int32', (128 * 4,), name='offset_res_ub', scope=tbe_platform.scope_ubuf
         )
@@ -434,6 +450,9 @@ class SpatialTransformer:
 
     def calc_ceof_and_offset(self, h_index_ub, theta1_1, theta1_2, theta1_3, theta2_1,
                              theta2_2, theta2_3, w_index_ub):
+        """
+        calc_ceof_and_offset
+        """
         # (theta1-1,theta1-2,theta1-3) dot ([h], [w], [1])
         origin_h_or_res_ub, origin_w_ub = self.calc_origin_h(h_index_ub, theta1_1, theta1_2, theta1_3, w_index_ub)
         # (theta2-1,theta1-2,theta1-3) dot ([h], [w], [1])
@@ -450,11 +469,13 @@ class SpatialTransformer:
 
             return self.mian_calc_ceof_offset(origin_h_or_res_ub, origin_w_or_res_ub, origin_h_res_ub16,
                                               origin_w_or_res_ub16)
-        else:
-            return self.mian_calc_ceof_offset(origin_h_or_res_ub, origin_w_or_res_ub, origin_h_or_res_ub,
-                                              origin_w_or_res_ub)
+        return self.mian_calc_ceof_offset(origin_h_or_res_ub, origin_w_or_res_ub, origin_h_or_res_ub,
+                                          origin_w_or_res_ub)
 
     def mian_calc_ceof_offset(self, origin_h_or_res_ub, origin_w_or_res_ub, origin_h_res_ub16, origin_w_res_ub16):
+        """
+        mian_calc_ceof_offset
+        """
         # floor origin h
         floor_h_fp16_ub, floor_h_ub_int32 = self.calc_floor_h(origin_h_res_ub16)
         # floor origin w
@@ -589,6 +610,9 @@ class SpatialTransformer:
                fh_cw_res_offset_ub, fh_fw_res_ceof_ub, fh_fw_res_offset_ub
 
     def calc_ceil_w(self, origin_w_or_res_ub):
+        """
+        cacl_ceil
+        """
         ceil_w_ub_int32 = self.tik_instance.Tensor(
             'int32', (128,), name='ceil_w_ub_int32', scope=tbe_platform.scope_ubuf
         )
@@ -606,6 +630,9 @@ class SpatialTransformer:
         return ceil_w_ub, ceil_w_ub_int32
 
     def calc_ceil_h(self, origin_h_or_res_ub):
+        """
+        calc_ceil
+        """
         ceil_h_ub_int32 = self.tik_instance.Tensor(
             'int32', (128,), name='ceil_h_ub_int32', scope=tbe_platform.scope_ubuf
         )
@@ -623,6 +650,9 @@ class SpatialTransformer:
         return ceil_h_ub, ceil_h_ub_int32
 
     def calc_floor_w(self, origin_w_or_res_ub):
+        """
+        calc_floor_w
+        """
         floor_w_ub_int32 = self.tik_instance.Tensor(
             'int32', (128,), name='floor_w_ub_int32', scope=tbe_platform.scope_ubuf
         )
@@ -640,6 +670,9 @@ class SpatialTransformer:
         return floor_w_ub, floor_w_ub_int32
 
     def calc_floor_h(self, origin_h_or_res_ub):
+        """
+        calc_floor_h
+        """
         floor_h_ub_int32 = self.tik_instance.Tensor(
             'int32', (128,), name='floor_h_ub_int32', scope=tbe_platform.scope_ubuf
         )
@@ -657,6 +690,9 @@ class SpatialTransformer:
         return floor_h_fp16_ub, floor_h_ub_int32
 
     def calc_origin_w(self, h_index_ub, origin_w_ub, theta2_1, theta2_2, theta2_3, w_index_ub):
+        """
+        calc_origin
+        """
         if self.calc_by_fp16:
             origin_w_or_res_ub = self.tik_instance.Tensor(
                 "float16", (self.w_index_ub_size,), name='origin_w_or_res_ub', scope=tbe_platform.scope_ubuf
@@ -679,6 +715,9 @@ class SpatialTransformer:
         return origin_w_or_res_ub
 
     def calc_origin_h(self, h_index_ub, theta1_1, theta1_2, theta1_3, w_index_ub):
+        """
+        cal_origin_h
+        """
         if self.calc_by_fp16:
             origin_h_or_res_ub = self.tik_instance.Tensor(
                 'float16', (self.w_index_ub_size,), name='origin_h_or_res_ub',
@@ -709,6 +748,9 @@ class SpatialTransformer:
         return origin_h_or_res_ub, origin_w_ub
 
     def calc_theta(self, batch_id, d_type):
+        """
+        calc_theta
+        """
         # get theta
         if self.use_default_theta.count(True) != 6:
             input_theta_ub = self.tik_instance.Tensor(
@@ -742,6 +784,9 @@ class SpatialTransformer:
         return theta1_1, theta1_2, theta1_3, theta2_1, theta2_2, theta2_3
 
     def get_theta_by_mix(self, d_type, input_theta_ub):
+        """
+        get_theta_by_mix
+        """
         use_default_theta_index = 0
         use_input_theta_index = 0
         if self.use_default_theta[0]:
@@ -789,6 +834,9 @@ class SpatialTransformer:
         return theta1_1, theta1_2, theta1_3, theta2_1, theta2_2, theta2_3
 
     def filter_coef(self, tmp_res_ceof_ub, float_filter_ub, floor_h_ub, floor_w_ub, filter_index, res_offset):
+        """
+        filter_coef
+        """
         # filter lt 0
         with self.tik_instance.new_stmt_scope():
             # filter ceof h < 0
@@ -847,6 +895,9 @@ class SpatialTransformer:
             self.tik_instance.vec_mul(64, res_offset, res_offset, offset_mul_int32, 2, 8, 8, 8)
 
     def calc_ceof_by_fp32(self, w_ub, origin_h_or_res_ub, origin_w_or_res_ub, h_ub, tmp_res_ceof_ub):
+        """
+        calc_ceof_by_fp32
+        """
         mask = 64
         repeat = 2
         with self.tik_instance.new_stmt_scope():
@@ -878,6 +929,9 @@ class SpatialTransformer:
             self.tik_instance.vec_conv(64, '', tmp_res_ceof_ub, res, 2, 4, 8)
 
     def calc_ceof(self, w_ub, origin_h_or_res_ub, origin_w_or_res_ub, h_ub, tmp_res_ceof_ub):
+        """
+        calc_ceof
+        """
         self.tik_instance.vec_muls(128, tmp_res_ceof_ub, h_ub, -1.0, 1, 0, 0)
         self.tik_instance.vec_add(128, tmp_res_ceof_ub, origin_h_or_res_ub, tmp_res_ceof_ub, 1, 0, 0, 0)
         self.tik_instance.vec_abs(128, tmp_res_ceof_ub, tmp_res_ceof_ub, 1, 0, 0)

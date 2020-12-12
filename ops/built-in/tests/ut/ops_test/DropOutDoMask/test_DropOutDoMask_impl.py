@@ -45,11 +45,21 @@ case5 = {"params": [{"shape": (1, 2), "dtype": "float32", "format": "ND", "ori_s
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+case6 = {"params": [{"shape": (3333333,), "dtype": "float32", "format": "ND", "ori_shape": (1, 2),"ori_format": "ND"},
+                    {"shape": (416672, ), "dtype": "float32", "format": "ND", "ori_shape": (16, ),"ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
+                    {"shape": (3333333,), "dtype": "float32", "format": "ND", "ori_shape": (1, 2),"ori_format": "ND"}],
+         "case_name": "drop_out_do_mask_5",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
 ut_case.add_case(["Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend710", "Ascend910"], case5)
+ut_case.add_case(["Ascend710", "Ascend910"], case6)
 
 def revert_bit(n):
     result = 0

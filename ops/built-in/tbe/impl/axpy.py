@@ -29,11 +29,26 @@ from topi import generic
 SIZE_SIXTEEN = 16
 
 
+def _check_support_nd_nz(shape_1, shape_2):
+    """
+    _check_support_nd_nz
+
+    check the two shape like this:
+        shapex  len >= 2
+        shapey  len =1 and the size is 16 align and = shapex[-1]
+
+    ex:
+        shapex = [10, 10, 256, 256]
+        shapey = [256]
+    """
+    return len(shape_1) >= 2 and len(shape_2) == 1 and shape_2[0] % SIZE_SIXTEEN == 0 and shape_2[-1] == shape_1[-1]
+
+
 # pylint: disable=unused-argument, too-many-nested-blocks
 # pylint: disable=invalid-name,too-many-locals,too-many-branches
 # pylint: disable=too-many-statements,too-many-boolean-expressions
 # op select format
-def op_select_format(input_x, input_y, output_z, kernel_name="axpy"):
+def op_select_format(input_x, input_y, output_z, alpha, kernel_name="axpy"):
     """
     select format dynamically, supporting dynamic shape format selecting
 
@@ -45,6 +60,8 @@ def op_select_format(input_x, input_y, output_z, kernel_name="axpy"):
         dict of input_y, include keys(shape and dtype).
     output_z: dict
         dict of output_z, include keys(shape and dtype).
+    alpha: float
+        alpha value
     kernel_name: str
         kernel name, default value is axpy
 
@@ -294,15 +311,25 @@ def op_select_format(input_x, input_y, output_z, kernel_name="axpy"):
             dtype_total = dtype_total + [dtype] * len(format_list)
         len_format_list = len(dtype_list)
         format_list = format_list * len_format_list
+        format_list1 = format_list.copy()
+        format_list2 = format_list.copy()
+        # add case nz + nd  or nd + nz (ex: [16, 16, 256] + [256])
+        if _check_support_nd_nz(shape_x, shape_y) or _check_support_nd_nz(shape_y, shape_x):
+            format_list = format_list + ["FRACTAL_NZ"] * len(dtype_list) if len(shape_x) >= 2 \
+                else format_list + ["ND"] * len(dtype_list)
+            format_list1 = format_list1 + ["ND"] * len(dtype_list) if len(shape_x) >= 2 \
+                else format_list1 + ["FRACTAL_NZ"] * len(dtype_list)
+            format_list2 = format_list2 + ["FRACTAL_NZ"] * len(dtype_list)
+            dtype_total = dtype_total + dtype_list
         input0 = gen_param(classify="input0", name="x1",
                            datatype=",".join(dtype_total),
                            format=",".join(format_list))
         input1 = gen_param(classify="input1", name="x2",
                            datatype=",".join(dtype_total),
-                           format=",".join(format_list))
+                           format=",".join(format_list1))
         output0 = gen_param(classify="output0", name="y",
                             datatype=",".join(dtype_total),
-                            format=",".join(format_list))
+                            format=",".join(format_list2))
 
     param_list = [input0, input1, output0]
     param_dynamic_in_json = get_dynamic_param_in_json(param_list)
@@ -327,9 +354,13 @@ def _add_check_format(x, y):
     list_format = [x.get("format"), y.get("format")]
     shape1 = shape_util.scalar2tensor_one(shape1)
     shape2 = shape_util.scalar2tensor_one(shape2)
+    list_shape = [shape1, shape2]
 
     format_list = ("ND", "NCHW", "NHWC")
-    if list_format[0] == "FRACTAL_NZ" and list_format[1] in format_list \
+    if (list_format[0] == "FRACTAL_NZ" and len(list_shape[1]) == 1 and list_shape[1][0] % SIZE_SIXTEEN == 0) \
+            or (list_format[1] == "FRACTAL_NZ" and len(list_shape[0]) == 1 and list_shape[0][0] % SIZE_SIXTEEN == 0):
+        format_pattern = 3
+    elif list_format[0] == "FRACTAL_NZ" and list_format[1] in format_list \
             and (len(shape2) != 1 or (len(shape2) == 1 and shape2[0] != 1)):
         format_pattern = 1
     elif list_format[0] in format_list and list_format[1] == "FRACTAL_NZ" \
@@ -339,6 +370,7 @@ def _add_check_format(x, y):
         format_pattern = 0
 
     return format_pattern
+
 
 def _infer_shape(format_pattern, x, y):
     """
@@ -364,7 +396,7 @@ def _infer_shape(format_pattern, x, y):
 
     if format_pattern == 1:
         ori_shape_x, shape_y, _ = shape_util.broadcast_shapes(ori_shape_x, shape_y, param_name_input1='x',
-                                                   param_name_input2='y')
+                                                              param_name_input2='y')
         if shape_y[-2] == 1 and shape_y[-1] == ori_shape_x[-1]:
             shape_y.append(1)
             shape_y.append(1)
@@ -383,7 +415,7 @@ def _infer_shape(format_pattern, x, y):
 
     elif format_pattern == 2:
         shape_x, ori_shape_y, _ = shape_util.broadcast_shapes(shape_x, ori_shape_y, param_name_input1='x',
-                                                   param_name_input2='y')
+                                                              param_name_input2='y')
         if shape_x[-2] == 1 and shape_x[-1] == ori_shape_y[-1]:
             shape_x.append(1)
             shape_x.append(1)
@@ -399,6 +431,18 @@ def _infer_shape(format_pattern, x, y):
         elif shape_x[-2] == shape_x[-1] == 1:
             shape_x.append(1)
             shape_x.append(1)
+    elif format_pattern == 3:
+        def _get_new_shape(_nz_shape, _nd_shape):
+            _nd_new_shape = [1 for _ in _nz_shape]
+            _nd_new_shape[-1] = _nz_shape[-1]
+            _nd_new_shape[-4] = _nz_shape[-4]
+
+            return _nz_shape, _nd_new_shape
+
+        if len(shape_y) == 1:
+            shape_x, shape_y = _get_new_shape(shape_x, shape_y)
+        else:
+            shape_y, shape_x = _get_new_shape(shape_y, shape_x)
 
     return shape_x, shape_y
 
@@ -435,7 +479,7 @@ def axpy_compute(x1, x2, y, alpha, kernel_name="axpy"):
     if shape_x != shape_y:
         # if shape not equal, then apply broadcast.
         shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y, param_name_input1='x1',
-                                                       param_name_input2='x2')
+                                                                  param_name_input2='x2')
 
         for i in range(len(shape_x) - 1):
             if shape_x[i] != shape_y[i]:
@@ -540,7 +584,7 @@ def axpy(x1, x2, y, alpha, kernel_name="axpy"):
 
     # produce shapes
     shape_x1, shape_x2, shape_max = shape_util.broadcast_shapes(shape_x1, shape_x2, param_name_input1='x1',
-                                                     param_name_input2='x2')
+                                                                param_name_input2='x2')
     if shape_x1[-1] == 1 and shape_x2[-1] == 1 and shape_max[-1] == 1:
         shape_x1 = shape_x1 if len(shape_x1) == 1 else shape_x1[:-1]
         shape_x2 = shape_x2 if len(shape_x2) == 1 else shape_x2[:-1]
@@ -562,3 +606,4 @@ def axpy(x1, x2, y, alpha, kernel_name="axpy"):
               "tensor_list": [data_input_x1, data_input_x2, res]}
 
     te.lang.cce.cce_build_code(schedule, config)
+

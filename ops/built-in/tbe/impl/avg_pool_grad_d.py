@@ -71,6 +71,8 @@ def _cal_multi_core_factor(m, n):
     return core_m, core_n
 
 
+# pylint: disable=too-many-locals,too-many-arguments
+# pylint: disable=unused-variable
 def _parameter_check(shape_in, shape_k, shape_out, dtype, strides, padding):
     para_check.check_shape(shape_in, min_rank=INPUT_DIM, max_rank=INPUT_DIM)
     para_check.check_shape(shape_k, min_rank=FILTER_DIM, max_rank=FILTER_DIM)
@@ -89,7 +91,8 @@ def _parameter_check(shape_in, shape_k, shape_out, dtype, strides, padding):
                                                           'input must be equal with out on N-dim and C-dim', 'input',
                                                           shape_in)
     if shape_in[DIM_C1] != shape_k[DIM_W_C1]:
-        error_manager_vector.raise_err_check_params_rules('avg_pool_grad_d', 'input must be equal with kernel on C-dim',
+        error_manager_vector.raise_err_check_params_rules('avg_pool_grad_d',
+                                                          'input must be equal with kernel on C-dim',
                                                           'input', shape_in)
     if shape_k[DIM_W_H] > 255 or shape_k[DIM_W_W] > 255:
         error_manager_vector.raise_err_check_params_rules('avg_pool_grad_d',
@@ -123,7 +126,7 @@ def _parameter_check(shape_in, shape_k, shape_out, dtype, strides, padding):
     # 3*max_h_in_ub * out_w which is out matrix+meanmatrix+mulmatrix size
     max_dh_in_ub = ((ub_size - l0a_size // 2) // (data_size * BLOCK_SIZE) +
                     (strides[DIM_S_H] - 1) * dilated_w) // (3 * wo + strides[DIM_S_H] * dilated_w)
-    if strides[DIM_S_H] > 1 and max_dh_in_ub < 1:
+    if strides[DIM_S_H] > 1 > max_dh_in_ub:
         error_manager_vector.raise_err_specific_reson(
             "avg_pool_grad_d", "UB's memory space must be enough to support dilated_h tiling with 1!")
 
@@ -143,9 +146,8 @@ def _parameter_check(shape_in, shape_k, shape_out, dtype, strides, padding):
         }
         raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
 
-    return
 
-
+# pylint: disable=too-many-arguments
 def _calculation_dilation(input_shape, weight_sizes, strides, padding="SAME"):
 
     input_n, input_cg, input_ci1, input_h, input_w, input_block = input_shape
@@ -323,7 +325,7 @@ def _avg_pool_grad_tiling(input_w, input_h, out_shape, res, stride):
     return res_l1, tile_input_h, tile_dile_h_ub, tile_m, tile_k, tile_n
 
 
-# pylint: disable=too-many-locals
+# pylint: disable=too-many-locals,too-many-statements
 def _avg_pool_grad_schedule(res):
     """
     the tiling avg pool grad schedule
@@ -384,7 +386,8 @@ def _avg_pool_grad_schedule(res):
     mad_res_shape = [int(i.value) for i in mad_res.shape]
     res_block_n, res_block_cgroup, _, _, _ = mad_res_shape
     #tiling
-    res_l1, _, tile_dile_h_ub, tile_m, tile_k, tile_n = _avg_pool_grad_tiling(input_w, input_h, dout_shape, res, stride)
+    res_l1, _, tile_dile_h_ub, tile_m, tile_k, tile_n = _avg_pool_grad_tiling(input_w, input_h,
+                                                                              dout_shape, res, stride)
 
     mad_cc_n_cut_o, mad_cc_n_cut_i = s[mad_cc].split(mad_cc_axis_n, factor=1)
     mad_cc_mcut_o, mad_cc_mcut_i = s[mad_cc].split(mad_cc_axis_howomad, factor=tile_m)
@@ -475,6 +478,7 @@ def _avg_pool_grad_schedule(res):
     return s
 
 
+# pylint: disable=unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
@@ -582,7 +586,7 @@ def avg_pool_grad_d(input_grad,
 
     _, _, HH, WW, _ = orig_input_shape
 
-    if (HH == kernel_h and WW == kernel_w and input_grad_shape[2] == 1 and input_grad_shape[3] == 1):
+    if HH == kernel_h and WW == kernel_w and input_grad_shape[2] == 1 and input_grad_shape[3] == 1:
         pad_top, pad_left, pad_bottom, pad_right = 0, 0, 0, 0
 
         input_grad = tvm.placeholder(input_grad_shape, name="input_grad", dtype=data_dtype)

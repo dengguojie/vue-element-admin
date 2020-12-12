@@ -15,8 +15,7 @@
 """
 zn_2_nchw
 """
-import json
-import os
+
 import functools
 
 from te import platform as tbe_platform
@@ -398,32 +397,32 @@ def _tranpose_notchange_last(data, shape_5hd, dst_shape, perm, dtype,
         if branch == "more_dim":
             res = tvm.extern(dst_shape, [res_5hd],
                              lambda ins, outs: five_2_four._more_dim_ir(outs[0],
-                                                            ins[0],
-                                                            max_dim,
-                                                            shape_all),
+                                                                        ins[0],
+                                                                        max_dim,
+                                                                        shape_all),
                              name="res", dtype=dtype)
         elif branch == "one_dim":
             res = tvm.extern(dst_shape, [res_5hd],
                              lambda ins, outs: five_2_four._one_dim_ir(outs[0],
-                                                           ins[0],
-                                                           max_dim,
-                                                           shape_all),
+                                                                       ins[0],
+                                                                       max_dim,
+                                                                       shape_all),
                              name="res", dtype=dtype)
         else:
             res = tvm.extern(dst_shape, [res_5hd],
                              lambda ins, outs: five_2_four._split_dim_ir(outs[0],
-                                                             ins[0],
-                                                             max_dim,
-                                                             shape_all),
+                                                                         ins[0],
+                                                                         max_dim,
+                                                                         shape_all),
                              name="res", dtype=dtype)
     else:
         branch_fp16 = five_2_four._get_ir_branch_fp16(dst_shape, dtype, shape_all)
         if branch_fp16 == "more_dim_fp16":
             res = tvm.extern(dst_shape, [res_5hd],
                              lambda ins, outs: five_2_four._more_dim_ir_fp16(outs[0],
-                                                                 ins[0],
-                                                                 max_dim,
-                                                                 shape_all),
+                                                                             ins[0],
+                                                                             max_dim,
+                                                                             shape_all),
                              name="res", dtype=dtype)
         else:
             res = tvm.extern(dst_shape, [res_5hd],
@@ -539,32 +538,32 @@ def _tranpose_notchange_last_two(data, shape_5hd, dst_shape_full, dst_shape,
         if branch == "more_dim":
             res = tvm.extern(dst_shape_full, [res_5hd],
                              lambda ins, outs: five_2_four._more_dim_ir(outs[0],
-                                                            ins[0],
-                                                            max_dim,
-                                                            shape_all),
+                                                                        ins[0],
+                                                                        max_dim,
+                                                                        shape_all),
                              name="res", dtype=dtype)
         elif branch == "one_dim":
             res = tvm.extern(dst_shape_full, [res_5hd],
                              lambda ins, outs: five_2_four._one_dim_ir(outs[0],
-                                                           ins[0],
-                                                           max_dim,
-                                                           shape_all),
+                                                                       ins[0],
+                                                                       max_dim,
+                                                                       shape_all),
                              name="res", dtype=dtype)
         else:
             res = tvm.extern(dst_shape_full, [res_5hd],
                              lambda ins, outs: five_2_four._split_dim_ir(outs[0],
-                                                             ins[0],
-                                                             max_dim,
-                                                             shape_all),
+                                                                         ins[0],
+                                                                         max_dim,
+                                                                         shape_all),
                              name="res", dtype=dtype)
     else:
         branch_fp16 = five_2_four._get_ir_branch_fp16(dst_shape_full, dtype, shape_all)
         if branch_fp16 == "more_dim_fp16":
             res = tvm.extern(dst_shape_full, [res_5hd],
                              lambda ins, outs: five_2_four._more_dim_ir_fp16(outs[0],
-                                                                 ins[0],
-                                                                 max_dim,
-                                                                 shape_all),
+                                                                             ins[0],
+                                                                             max_dim,
+                                                                             shape_all),
                              name="res", dtype=dtype)
         else:
             res = tvm.extern(dst_shape_full, [res_5hd],

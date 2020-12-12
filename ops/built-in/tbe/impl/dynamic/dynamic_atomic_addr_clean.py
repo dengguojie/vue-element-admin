@@ -15,19 +15,10 @@
 """
 atomic_addr_clean
 """
-import sys
-import math
-import json
-
-import numpy as np
-
-import te.lang.dynamic
-from te import tvm
 from te import tik
 from te import platform
-from topi import generic
-from functools import reduce as reduceIns
 from te.utils import para_check
+import te.lang.dynamic
 
 # max_int32
 MAX_INT32 = 2 ** 31 - 1
@@ -68,7 +59,12 @@ def _tik_get_ub_size(is_double_buffer=True):
     return ub_size
 
 
-class DynamicAtomicAddrClean(object):
+# pylint: disable=too-many-instance-attributes,too-few-public-methods
+class DynamicAtomicAddrClean():
+    """
+    DynamicAtomicAddrClean
+    """
+    # pylint: disable=too-few-public-methods,too-many-statements
     def __init__(self):
         """
         constructor of class DynamicAtomicAddrClean
@@ -92,7 +88,12 @@ class DynamicAtomicAddrClean(object):
                                                   (MAX_TILING_PARAMS_NUM,),
                                                   tik.scope_gm, "tiling_gm")
 
+        # pylint: disable=too-few-public-methods
         class CommonInputScalar():
+            """
+            CommonInputScalar
+            modify date 2020-12-10
+            """
             def __init__(self, tik_instance):
                 """
                 constructor of class CommonInputScalar
@@ -111,14 +112,18 @@ class DynamicAtomicAddrClean(object):
                     dtype="int32", name="need_core_num")
                 self.ele_num_full_mask_repeat_time = \
                     tik_instance.Scalar(
-                    dtype="int32",
-                    name="ele_num_full_mask_repeat_time")
+                        dtype="int32",
+                        name="ele_num_full_mask_repeat_time")
                 self.burst_len_full_mask_repeat_time = \
                     tik_instance.Scalar(
-                    dtype="int32",
-                    name="burst_len_full_mask_repeat_time")
+                        dtype="int32",
+                        name="burst_len_full_mask_repeat_time")
 
+        # pyint: disable=too-few-public-methods
         class InitInputScalar():
+            """
+            InitInputScalar
+            """
             def __init__(self, tik_instance):
                 """
                 constructor of class InitInputScalar
@@ -137,8 +142,8 @@ class DynamicAtomicAddrClean(object):
                 # front part full mask full repeat time front core
                 self.init_times_full_mask_repeat_time_front_core = \
                     tik_instance.Scalar(
-                    dtype="int32",
-                    name="init_times_full_mask_repeat_time_front_core")
+                        dtype="int32",
+                        name="init_times_full_mask_repeat_time_front_core")
                 self.ele_num_front_part_front_core = tik_instance.Scalar(
                     dtype="int32",
                     name="ele_num_front_part_front_core")
@@ -156,8 +161,8 @@ class DynamicAtomicAddrClean(object):
                 # front part full mask full repeat time last core
                 self.init_times_full_mask_repeat_time_last_core = \
                     tik_instance.Scalar(
-                    dtype="int32",
-                    name="init_times_full_mask_repeat_time_last_core")
+                        dtype="int32",
+                        name="init_times_full_mask_repeat_time_last_core")
                 self.ele_num_front_part_last_core = tik_instance.Scalar(
                     dtype="int32",
                     name="ele_num_front_part_last_core")
@@ -178,8 +183,8 @@ class DynamicAtomicAddrClean(object):
                                                  (MAX_TILING_PARAMS_NUM,),
                                                  tik.scope_ubuf, "tiling_ub")
             self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1,
-                MAX_TILING_PARAMS_NUM * INT32_BYTE // BLOCK_BYTE,
-                0, 0)
+                                        MAX_TILING_PARAMS_NUM * INT32_BYTE // BLOCK_BYTE,
+                                        0, 0)
             input_scalar_index = 0
             # common part input scalar
             self.obj_common_input_scalar.select_key.set_as(
@@ -198,7 +203,7 @@ class DynamicAtomicAddrClean(object):
             self.obj_init_input_scalar.ele_num_front_core.set_as(
                 tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
-            self.obj_init_input_scalar.\
+            self.obj_init_input_scalar. \
                 init_times_full_mask_repeat_time_front_core.set_as(
                 tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
@@ -214,7 +219,7 @@ class DynamicAtomicAddrClean(object):
             self.obj_init_input_scalar.ele_num_last_core.set_as(
                 tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
-            self.obj_init_input_scalar.\
+            self.obj_init_input_scalar. \
                 init_times_full_mask_repeat_time_last_core.set_as(
                 tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
@@ -230,26 +235,26 @@ class DynamicAtomicAddrClean(object):
         self.ub_tensor = self.tik_instance.Tensor("float32", (
             MASK_FP32 * MAX_REPEAT_TIME,), tik.scope_ubuf, "ub_tensor")
 
+    # pylint: disable=unused-argument
     def addr_clean(self, kernel_name):
+        """
+        addr_clean
+        :param kernel_name:
+        :return:
+        """
         with self.tik_instance.for_range(0, self.core_num,
                                          block_num=self.core_num) as core_index:
             with self.tik_instance.if_scope(
                     core_index <
                     self.obj_common_input_scalar.need_core_num - 1):
                 # front core
-                with self.tik_instance.for_range(0,
-                        self.obj_init_input_scalar.
-                            init_times_full_mask_repeat_time_front_core) as \
-                        init_index:
+                with self.tik_instance.for_range(
+                        0, self.obj_init_input_scalar.init_times_full_mask_repeat_time_front_core) as init_index:
                     # front part front core full mask full repeat time
                     self.tik_instance.vector_dup(MASK_FP32, self.ub_tensor[0],
-                                            ZERO_FP32, MAX_REPEAT_TIME, 1, 8)
-                    gm_offset = core_index * \
-                                self.obj_init_input_scalar.\
-                                    ele_num_front_core + \
-                                init_index * \
-                                self.obj_common_input_scalar.\
-                                    ele_num_full_mask_repeat_time
+                                                 ZERO_FP32, MAX_REPEAT_TIME, 1, 8)
+                    gm_offset = core_index * self.obj_init_input_scalar.ele_num_front_core + \
+                                init_index * self.obj_common_input_scalar.ele_num_full_mask_repeat_time
                     ub_offset = 0
                     self.tik_instance.data_move(self.gm_tensor[gm_offset],
                                                 self.ub_tensor[ub_offset], 0, 1,
@@ -259,16 +264,15 @@ class DynamicAtomicAddrClean(object):
                 # last part front core
                 with self.tik_instance.if_scope(
                         self.obj_init_input_scalar.
-                            init_times_full_mask_repeat_time_front_core == 0):
+                                init_times_full_mask_repeat_time_front_core == 0):
                     self.tik_instance.vector_dup(MASK_FP32, self.ub_tensor[0],
                                                  ZERO_FP32,
-                        self.obj_init_input_scalar.
-                        repeat_time_last_part_front_core,
-                        1, 8)
+                                                 self.obj_init_input_scalar.
+                                                 repeat_time_last_part_front_core,
+                                                 1, 8)
                 gm_offset = core_index * \
                             self.obj_init_input_scalar.ele_num_front_core + \
-                            self.obj_init_input_scalar.\
-                                ele_num_front_part_front_core
+                            self.obj_init_input_scalar.ele_num_front_part_front_core
                 self.tik_instance.data_move(self.gm_tensor[gm_offset],
                                             self.ub_tensor[0], 0, 1,
                                             self.obj_init_input_scalar.
@@ -278,19 +282,15 @@ class DynamicAtomicAddrClean(object):
                     core_index ==
                     self.obj_common_input_scalar.need_core_num - 1):
                 # last core
-                with self.tik_instance.for_range(0,
-                        self.obj_init_input_scalar.
-                            init_times_full_mask_repeat_time_last_core) as \
-                        init_index:
+                with self.tik_instance.for_range(
+                        0, self.obj_init_input_scalar.init_times_full_mask_repeat_time_last_core) as init_index:
                     # front part last core full mask full repeat time
                     self.tik_instance.vector_dup(MASK_FP32, self.ub_tensor[0],
                                                  ZERO_FP32,
                                                  MAX_REPEAT_TIME, 1, 8)
-                    gm_offset = core_index * \
-                                self.obj_init_input_scalar.ele_num_front_core + \
-                                init_index * \
-                                self.obj_common_input_scalar.\
-                                    ele_num_full_mask_repeat_time
+                    gm_offset = \
+                        core_index * self.obj_init_input_scalar.ele_num_front_core \
+                        + init_index * self.obj_common_input_scalar.ele_num_full_mask_repeat_time
                     ub_offset = 0
                     self.tik_instance.data_move(self.gm_tensor[gm_offset],
                                                 self.ub_tensor[ub_offset], 0, 1,
@@ -299,17 +299,15 @@ class DynamicAtomicAddrClean(object):
                                                 0, 0)
                 # last part last core
                 with self.tik_instance.if_scope(
-                        self.obj_init_input_scalar.
-                            init_times_full_mask_repeat_time_last_core == 0):
+                        self.obj_init_input_scalar.init_times_full_mask_repeat_time_last_core == 0):
                     self.tik_instance.vector_dup(MASK_FP32, self.ub_tensor[0],
-                        ZERO_FP32,
-                        self.obj_init_input_scalar.
-                        repeat_time_last_part_last_core,
-                        1, 8)
+                                                 ZERO_FP32,
+                                                 self.obj_init_input_scalar.
+                                                 repeat_time_last_part_last_core,
+                                                 1, 8)
                 gm_offset = core_index * \
                             self.obj_init_input_scalar.ele_num_front_core + \
-                            self.obj_init_input_scalar.\
-                                ele_num_front_part_last_core
+                            self.obj_init_input_scalar.ele_num_front_part_last_core
                 self.tik_instance.data_move(self.gm_tensor[gm_offset],
                                             self.ub_tensor[0], 0, 1,
                                             self.obj_init_input_scalar.
@@ -322,6 +320,7 @@ class DynamicAtomicAddrClean(object):
         return self.tik_instance
 
 
+# pylint: disable=unused-argument
 @te.op.register_operator("DynamicAtomicAddrClean")
 @para_check.check_op_params(para_check.REQUIRED_ATTR_LIST_INT, para_check.KERNEL_NAME)
 def dynamic_atomic_addr_clean(size_list, kernel_name="DynamicAtomicAddrClean"):
@@ -335,7 +334,7 @@ def dynamic_atomic_addr_clean(size_list, kernel_name="DynamicAtomicAddrClean"):
         kernel name, default value is "DynamicAtomicAddrClean"
 
     Returns
-    ------- 
+    -------
     compile info
     """
     obj_dynamic_atomic_addr_clean = DynamicAtomicAddrClean()

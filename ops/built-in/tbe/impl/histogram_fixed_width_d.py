@@ -22,9 +22,11 @@ from te.lang.cce.te_compute import irbuilder_api as kernel_api
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te.platform.cce_build import build_config
-from topi.cce import util
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+
+from topi.cce import util
+
 from impl.util.util_select_op_base import ReduceInput
 from impl.util.util_select_op_base import ReduceOutput
 from impl.util.util_select_op_base import get_op_cal_info
@@ -47,12 +49,15 @@ SCALAR_ONE = 1
 SCALAR_ZERO = 0
 
 
-# pylint: disable = unused-argument
+# pylint: disable = unused-argument,invalid-name,unused-variable
 def get_op_support_info(x,
                         y,
                         nbins,
                         dtype="int32",
                         kernel_name='histogram_fixed_width_d'):
+    """
+    get_op_support_info
+    """
     format_x = x.get("format").upper()
     shape_x_len = len(x.get("shape"))
     if format_x == "ND":
@@ -939,7 +944,7 @@ def histogram_fixed_width_d_compute(x,
     return res
 
 
-# pylint: disable=too-many-arguments,redefined-builtin
+# pylint: disable=too-many-arguments,redefined-builtin,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
 def histogram_fixed_width_d(x,
@@ -1006,4 +1011,3 @@ def histogram_fixed_width_d(x,
     sch = tvm.create_schedule(res.op)
     with build_config:
         tvm.build(sch, [data, range_data, res], "cce", name=kernel_name)
-

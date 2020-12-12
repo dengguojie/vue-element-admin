@@ -23,9 +23,9 @@ from te import platform as tbe_platform
 from te import tvm
 from te.lang.cce.te_compute import common
 from te.platform import insn_cmd
-from topi import generic
 from te.utils.error_manager import error_manager_vector
 from te.utils import para_check
+from topi import generic
 
 BLOCK_SIZE = cce_params.BLOCK_REDUCE
 
@@ -54,6 +54,7 @@ def _ceil(x):
     return ((x + BLOCK_SIZE - 1) // BLOCK_SIZE)*BLOCK_SIZE
 
 
+# pylint: disable=useless-return,too-many-branches
 def parameter_check(shape_in, shape_k, shape_out, dtype, strides,
                     padding_mode, pads, global_pooling, ceil_mode,
                     exclusive, kernel_name):
@@ -127,7 +128,7 @@ def parameter_check(shape_in, shape_k, shape_out, dtype, strides,
     max_dh_in_ub = ((ub_size - l0a_size // 2) // (data_size * BLOCK_SIZE)
                     +(strides[DIM_S_H] - 1) * dilated_w) // \
                    (3 * wo + strides[DIM_S_H] * dilated_w)
-    if strides[DIM_S_H] > 1 and max_dh_in_ub < 1:
+    if strides[DIM_S_H] > 1 > max_dh_in_ub:
         raise RuntimeError("In op[avg_pool_v2_grad], UB's memory space is not"
                            " enough to support dilated_h tiling with 1!")
 
@@ -137,10 +138,10 @@ def parameter_check(shape_in, shape_k, shape_out, dtype, strides,
         out_w, _, _ = common.tf_get_windowed_output_size_verbose(
             wi, wk, stride_w, padding_mode)
     elif ceil_mode:
-        out_h = ((hi - hk + pads[0] + pads[1] +\
-                 stride_h - 1) // stride_h) + 1
-        out_w = ((wi - wk + pads[1] + pads[2] +\
-                 stride_w - 1) // stride_w) + 1
+        out_h = ((hi - hk + pads[0] + pads[1] + \
+                  stride_h - 1) // stride_h) + 1
+        out_w = ((wi - wk + pads[1] + pads[2] + \
+                  stride_w - 1) // stride_w) + 1
     elif not ceil_mode:
         out_h = ((hi - hk + pads[0] + pads[1]) // stride_h) + 1
         out_w = ((wi - wk + pads[1] + pads[2]) // stride_w) + 1
@@ -203,10 +204,10 @@ def calculation_dilation(input_shape, weight_sizes, strides, padding_mode,
         out_w, pad_left, _ = common.tf_get_windowed_output_size_verbose(
             input_w, weight_width, stride_w, padding_mode)
     elif ceil_mode:
-        out_h = ((input_h - weight_height + pads[0] + pads[1] +\
-                 stride_h - 1) // stride_h) + 1
-        out_w = ((input_w - weight_width + pads[1] + pads[2] +\
-                 stride_w - 1) // stride_w) + 1
+        out_h = ((input_h - weight_height + pads[0] + pads[1] + \
+                  stride_h - 1) // stride_h) + 1
+        out_w = ((input_w - weight_width + pads[1] + pads[2] + \
+                  stride_w - 1) // stride_w) + 1
         pad_top = pads[0]
         pad_left = pads[2]
     elif not ceil_mode:
@@ -326,7 +327,7 @@ def avg_pool_grad_compute(input_shape, weight, out, vealuemean, k_sizes,
                              'weight_width': k_width,
                              'dilated_pad': dilated_pad,
                              'dilated_strides': dilated_strides
-                             })
+                         })
     return dx_res
 
 
@@ -387,7 +388,7 @@ def avg_pool_grad_tiling(input_w, input_h, kernel_shape, out_shape, res,
     # into L1. L1 SIZE = 1M, UB SIZE = 256K;
 
     max_h_in_ub = ((ub_size // data_size -
-                   (max_l0a_m * BLOCK_SIZE)) // BLOCK_SIZE +
+                    (max_l0a_m * BLOCK_SIZE)) // BLOCK_SIZE +
                    (stride - 1) * dila_w) // (3 * out_w + stride * dila_w)
     tile_dile_h_ub = max_h_in_ub * stride - (stride - 1)
     tile_hd = tile_dile_h_ub
@@ -395,7 +396,7 @@ def avg_pool_grad_tiling(input_w, input_h, kernel_shape, out_shape, res,
     # if tile_input_h > input_h, input_h no tiling
     if tile_input_h >= input_h:
         tile_input_h = input_h
-        tile_hd = tile_input_h - 1 + k_height - dilated_pad_top -\
+        tile_hd = tile_input_h - 1 + k_height - dilated_pad_top - \
                   dilated_pad_bottom
         tile_dile_h_ub = tile_hd
     # tiling in L0;
@@ -684,11 +685,11 @@ def avg_pool_v2_grad_d(input_grad,
     dtype = input_grad.get("dtype").lower()
 
     para_check.check_shape(input_grad_shape,
-                         min_rank = INPUT_DIM,
-                         max_rank = INPUT_DIM)
+                           min_rank = INPUT_DIM,
+                           max_rank = INPUT_DIM)
     para_check.check_shape(orig_input_shape,
-                         min_rank = INPUT_DIM,
-                         max_rank = INPUT_DIM)
+                           min_rank = INPUT_DIM,
+                           max_rank = INPUT_DIM)
     para_check.check_shape(strides, min_rank=SHAPE_SIZE, max_rank=SHAPE_SIZE)
     para_check.check_shape(ksize, min_rank=SHAPE_SIZE, max_rank=SHAPE_SIZE)
 
@@ -778,5 +779,4 @@ def avg_pool_v2_grad_d(input_grad,
                 dout_placeholder, vealuemean_placeholder, kernel_placeholder,
                 res
             ],
-            "cce",
-            name=kernel_name)
+                      "cce", name=kernel_name)

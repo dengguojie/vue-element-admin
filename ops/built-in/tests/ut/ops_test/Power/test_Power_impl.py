@@ -40,8 +40,8 @@ case5 = {"params": [{"shape": (1, 2), "dtype": "float32", "format": "ND", "ori_s
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
+ut_case.add_case(["Ascend710", "Ascend910"], case4)
+ut_case.add_case(["Ascend710", "Ascend910"], case5)
 
 def calc_expect_func(x, res, power, scale, shift):
     x_shape = x.get("shape")
@@ -58,7 +58,7 @@ def calc_expect_func(x, res, power, scale, shift):
     res = np.power(x_value * scale + shift, power).astype(s_type)
     return res
 
-ut_case.add_precision_case("all", {"params": [{"shape": (1, 1), "dtype": "float32", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND", "param_type": "input"},
+ut_case.add_precision_case(["Ascend910"], {"params": [{"shape": (1, 1), "dtype": "float32", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND", "param_type": "input"},
                                               {"shape": (1, 1), "dtype": "float32", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND", "param_type": "output"},
                                               1.0, 1.0, 0.0],
                                    "calc_expect_func": calc_expect_func,
@@ -72,7 +72,7 @@ ut_case.add_precision_case("all", {"params": [{"shape": (2, 16, 32), "dtype": "f
                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
                                    })
 
-ut_case.add_precision_case("all", {"params": [{"shape": (4,4,32,2), "dtype": "float32", "format": "ND", "ori_shape": (4,4,32,2),"ori_format": "ND", "param_type": "input"},
+ut_case.add_precision_case(["Ascend910"], {"params": [{"shape": (4,4,32,2), "dtype": "float32", "format": "ND", "ori_shape": (4,4,32,2),"ori_format": "ND", "param_type": "input"},
                                               {"shape": (4,4,32,2), "dtype": "float32", "format": "ND", "ori_shape": (4,4,32,2),"ori_format": "ND", "param_type": "output"},
                                               1.0, 1.0, 0.0],
                                    "calc_expect_func": calc_expect_func,
@@ -84,7 +84,7 @@ ut_case.add_precision_case("all", {"params": [{"shape": (4,4,32,2), "dtype": "fl
 
 if __name__ == '__main__':
     user_home_path = os.path.expanduser("~")
-    simulator_lib_path = os.path.join(user_home_path, ".mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")
+    simulator_lib_path = os.path.join(user_home_path, "Ascend/ascend-toolkit/20.1.rc1/x86_64-linux/toolkit/tools/simulator")
     ut_case.run(["Ascend910"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
 
 

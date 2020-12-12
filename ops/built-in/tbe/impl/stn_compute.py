@@ -15,6 +15,8 @@
 """
 stn_compute
 """
+# pylint: disable=too-many-locals,too-many-arguments,no-self-use,unused-argument
+# pylint: disable=too-many-instance-attributes,unused-argument
 import math
 import functools
 
@@ -65,6 +67,9 @@ def stn_compute(input_x, input_theta, input_offset, output_y, size=(-1, -1, -1, 
 
 # input_theta type same as input_x
 class SpatialTransformer:
+    """
+        Function: use to store concat base parameters
+    """
     def __init__(self, input_x, auxiliary_coefficients, auxiliary_offset, kernel_name='stn_compute'):
 
         self.d_type_x = input_x.get('dtype')
@@ -135,6 +140,9 @@ class SpatialTransformer:
         )
 
     def spatial_transformer_compute(self):
+        """
+        spatial_transformer_compute
+        """
         # handle one C1 data
         if self.if_skip_read_ceof:
             ceof_and_offset_size = self.theta_size // self.shape[1]
@@ -174,6 +182,9 @@ class SpatialTransformer:
         return self.tik_instance
 
     def process_on_core(self, each_core_loop_count, each_core_need_process_theta, processed_theta):
+        """
+        process_on_core
+        """
         if each_core_loop_count > 0:
             with self.tik_instance.for_range(0, each_core_loop_count) as move_theta_ub:
                 already_process_ceof = processed_theta + move_theta_ub * self.ub_theta_offset_size
@@ -236,6 +247,9 @@ class SpatialTransformer:
                 self.process_c1_hw(input_position_ub, input_theta_ub, already_process_ceof, last_num)
 
     def move_ceof_and_offset_to_ub_2(self, already_process_ceof, input_position_ub, input_theta_ub, need_hand_count):
+        """
+        move_ceof_and_offset_to_ub_2
+        """
         move_size = need_hand_count if need_hand_count < self.ub_theta_offset_size else self.ub_theta_offset_size
 
         self.tik_instance.data_move(
@@ -254,6 +268,9 @@ class SpatialTransformer:
         )
 
     def process_batch_hw(self, input_position_ub, input_ceof_ub, already_process_ceof, hande_ceof_size):
+        """
+        process_batch_hw
+        """
         if self.ub_tensor_size > (self.vec_compute_size // self.d_type_bytes_size):
             repeats = self.ub_tensor_size * self.d_type_bytes_size // self.vec_compute_size
             repeats_nums = self.vec_compute_size // self.d_type_bytes_size
@@ -314,6 +331,9 @@ class SpatialTransformer:
                             )
 
     def input_add(self, need_hand_last, repeats, repeats_nums, src1_ub, src2_ub, dst_ub, last_num):
+        """
+        input_add
+        """
         self.tik_instance.vec_add(repeats_nums, dst_ub, src1_ub, src2_ub, repeats,
                                   repeats_nums * self.d_type_bytes_size // 32,
                                   repeats_nums * self.d_type_bytes_size // 32,
@@ -323,6 +343,9 @@ class SpatialTransformer:
                                       src2_ub[repeats_nums * repeats], 1, 0, 0, 0)
 
     def input_muls(self, need_hand_last, repeats, repeats_nums, theta_reg, tmp_res_ub, last_num):
+        """
+        input_muls
+        """
         self.tik_instance.vec_muls(repeats_nums, tmp_res_ub, tmp_res_ub, theta_reg,
                                    repeats, repeats_nums * self.d_type_bytes_size // 32,
                                    repeats_nums * self.d_type_bytes_size // 32)
@@ -331,6 +354,9 @@ class SpatialTransformer:
                                        tmp_res_ub[repeats_nums * repeats], theta_reg, 1, 0, 0)
 
     def move_input_from_gm_2_ub(self, ub_input, start_index):
+        """
+        move_input_from_gm_2_ub
+        """
         if self.input_stride < 65535:
             self.tik_instance.data_move(
                 dst=ub_input, src=self.input_x_gm[start_index], sid=0,
@@ -393,6 +419,9 @@ class SpatialTransformer:
 
     # calc first loop count
     def calc_loop_count(self, ceof_size):
+        """
+        calc_loop_count
+        """
         loop = ceof_size // 4 // self.ai_core_num
         return ceof_size // 4 % self.ai_core_num if loop < 1 else self.ai_core_num
 

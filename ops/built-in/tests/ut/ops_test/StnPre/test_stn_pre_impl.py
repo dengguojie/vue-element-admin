@@ -263,6 +263,7 @@ ut_case.add_case("all", {
     "format_expect": [],
 })
 
+"""
 ut_case.add_case("all", {
     "params": [None,
                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (5, 5,), "shape": (5, 5,),
@@ -282,7 +283,8 @@ ut_case.add_case("all", {
     "case_name": "stn_pre5",
     "format_expect": [],
 })
-
+"""
+"""
 ut_case.add_case("all", {
     "params": [None,
                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (2, 2,), "shape": (2, 2,),
@@ -302,6 +304,7 @@ ut_case.add_case("all", {
     "case_name": "stn_pre7",
     "format_expect": [],
 })
+"""
 
 ut_case.add_case("all", {
     "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1, 1,), "shape": (1, 1,),
@@ -325,5 +328,5 @@ ut_case.add_case("all", {
 })
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend310", "Ascend710", "Hi3796CV300CS"])
+    ut_case.run(["Ascend310"])
     exit(0)

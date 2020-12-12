@@ -37,7 +37,8 @@ SHRINK_AXIS = -1
 NEW_AXIS = -2
 CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
-# pylint: disable = unused-argument
+
+# pylint: disable = unused-argument,too-many-arguments,too-many-locals
 def get_op_support_info(input_x,
                         output_x,
                         begin,
@@ -228,12 +229,12 @@ def _infer_shape(shape, begin, end, stride, begin_mask, end_mask, ellipsis_mask,
         masks = (dense_spec["begin_mask"] & bit_value, dense_spec["end_mask"] & bit_value)
         valid_range = (0 if stride[i] > 0 else -1, dim_i if stride[i] > 0 else dim_i - 1)
 
+        # pylint: disable=invalid-name,cell-var-from-loop
         def canonical(x, c):
             if masks[c] != 0:
                 return valid_range[c] if stride[i] > 0 else valid_range[(c + 1) & 1]
-            else:
-                x_fwd = (dim_i + x) if x < 0 else x
-                return valid_range[0] if x_fwd < valid_range[0] else min(x_fwd, valid_range[1])
+            x_fwd = (dim_i + x) if x < 0 else x
+            return valid_range[0] if x_fwd < valid_range[0] else min(x_fwd, valid_range[1])
 
         is_simple_slice &= (stride[i] == 1)
         begin_and_end_masked = (
@@ -328,6 +329,7 @@ def _infer_shape(shape, begin, end, stride, begin_mask, end_mask, ellipsis_mask,
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-branches,too-many-statements
+# pylint: disable=unused-variable
 def _init_parameter(input_list, begin_shape, end_shape, stride_shape,
                     begin_mask, end_mask, ellipsis_mask, new_axis_mask,
                     shrink_axis_mask):
@@ -955,12 +957,11 @@ def strided_slice_d(input_x,
                                      kernel_name)
         if res:
             return
-        else:
-            res1 = strided_slice_last_dim_one.strided_slice_last_dim_one(input_shape, input_dtype,
-                                              output_shape, begin_shape,
-                                              kernel_name)
-            if res1:
-                return
+        res1 = strided_slice_last_dim_one.strided_slice_last_dim_one(input_shape, input_dtype,
+                                          output_shape, begin_shape,
+                                          kernel_name)
+        if res1:
+            return
 
     split_axis, split_factor = _tilling_axis(out_shape, dtype=input_dtype)
     core_state = _get_multicore(out_shape, input_dtype, split_axis,

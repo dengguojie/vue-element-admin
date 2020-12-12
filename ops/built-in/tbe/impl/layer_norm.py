@@ -74,7 +74,6 @@ def get_op_support_info(input_x, input_gamma, input_beta,
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=too-many-locals,too-many-statements,too-many-branches
-# pylint: disable=no-member
 def _division_sixteen(shape):
 
     if len(shape) < 2:
@@ -537,7 +536,7 @@ def layer_norm_compute(input_x, input_gamma, input_beta,
 
     return mean, variance, res
 
-# pylint: disable=no-member
+
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
@@ -583,8 +582,6 @@ def layer_norm(input_x, input_gamma, input_beta,
     -------
     None
     """
-
-
     shape_x = list(input_x.get("shape"))
     input_gamma_shape = input_gamma.get("shape")
     input_beta_shape = input_beta.get("shape")

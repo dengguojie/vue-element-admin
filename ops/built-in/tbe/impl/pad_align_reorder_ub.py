@@ -15,11 +15,12 @@
 """
 pad_align_reorder_ub
 """
-# pylint: disable=too-many-lines,import-error
-from te import tik
-from topi.cce import util
-from te import platform as tbe_platform
+# pylint: disable=too-many-lines,import-error,no-self-use,too-many-arguments,too-many-branches
+# pylint: disable=too-many-locals,too-many-instance-attributes
 import math
+from te import tik
+from te import platform as tbe_platform
+from topi.cce import util
 
 # available number of cores
 MAX_CORE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
@@ -128,8 +129,10 @@ def _params_model(in_shape, ou_shape, core, ub_maxsize):
     return split_core_idx, [core_loop0, core_loop1], [model0, model1]
 
 
-class PadCompute(object):
-
+class PadCompute:
+    """
+        Function: use to store concat base parameters
+    """
     def __init__(self, in_shape, in_paddings, dtype, kernel_name):
         self.dtype = dtype
         self.in_shape = in_shape
@@ -142,17 +145,11 @@ class PadCompute(object):
 
         # make it 32B align
         if self.dtype == "float16":
-            self.ub_maxsize = tbe_platform.\
-                                  cce_conf.\
-                                  get_soc_spec(tbe_platform.
-                                               cce_conf.UB_SIZE) // 32 * 16
+            self.ub_maxsize = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) // 32 * 16
             self.mask = 128
             self.num_bit = 2
         else:
-            self.ub_maxsize = tbe_platform.\
-                                  cce_conf.\
-                                  get_soc_spec(tbe_platform.
-                                               cce_conf.UB_SIZE) // 32 * 8
+            self.ub_maxsize = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) // 32 * 8
             self.mask = 64
             self.num_bit = 4
 
@@ -180,7 +177,9 @@ class PadCompute(object):
 
     def pad_case0(self, tik_instance, split_core_idx,
                   core_loop_list, model_list):
-
+        """
+        pad_case0
+        """
         with tik_instance.for_range(0, MAX_CORE,
                                     block_num=MAX_CORE) as blk_idx:
             # use as many as possible core (MAX_CORE)
@@ -224,6 +223,9 @@ class PadCompute(object):
                                          dst_gm, vec_mark[1])
 
     def pad_case1(self, tik_instance):
+        """
+        pad_case1
+        """
         in_num = _prod(self.ou_shape)
         total_num = math.ceil(in_num * self.num_bit / MINI_UNIT)
         core_num = total_num
@@ -317,7 +319,9 @@ class PadCompute(object):
 
     def pad_vec_dup_outermost(self, tik_instance, in_num_top,
                               in_num_bottom, blk_idx):
-
+        """
+        pad_vec_dup_outermost
+        """
         top_index = 0
         bottom_index = _prod(self.ou_shape) - in_num_bottom
         in_num = max(in_num_top, in_num_bottom)
@@ -467,7 +471,9 @@ class PadCompute(object):
                                          mark_out_first)
 
     def set_vector_dup(self, tik_instance, psm, dst, number):
-
+        """
+        set_vector_dup
+        """
         if psm > self.ub_maxsize:
             psm = self.ub_maxsize
         dup_psm = MAX_REPEAT * self.mask
@@ -504,6 +510,9 @@ class PadCompute(object):
                                         dst_rep_stride)
 
     def copy_gm_2_ubuf_case0(self, tik_instance, in_num, ubuf, src_ub, src_gm):
+        """
+        copy_gm_2_ubuf_case0
+        """
         # ub must can be save all_data
         tik_instance.data_move(ubuf[src_ub],
                                self.input_x_gm[src_gm],
@@ -515,6 +524,9 @@ class PadCompute(object):
                                )
 
     def copy_ubuf_2_gm_case00(self, tik_instance, in_num, ubuf, src_ub, dst_gm):
+        """
+        copy_ubuf_2_gm_case00
+        """
         # ub must can be save all_data
         tik_instance.data_move(self.output_y_gm[dst_gm],
                                ubuf[src_ub],
@@ -528,6 +540,9 @@ class PadCompute(object):
     def copy_ubuf_2_gm_case01(self, tik_instance,
                               ac_num, vir_num, ubuf,
                               src_ub, dst_gm):
+        """
+        copy_ubuf_2_gm_case01
+        """
         if vir_num > self.ub_maxsize:
             vir_num = self.ub_maxsize
 
@@ -558,6 +573,9 @@ class PadCompute(object):
 
     def copy_ubuf_2_ubuf_case0(self, tik_instance, nburst, burstlen,
                                src_stride, dst_stride, ubuf, src_ub, dst_ub):
+        """
+        copy_ubuf_2_ubuf_case0
+        """
         # ub must can be save all_data
         tik_instance.data_move(ubuf[dst_ub],
                                ubuf[src_ub],

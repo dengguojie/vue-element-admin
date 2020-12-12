@@ -17,16 +17,16 @@ layer_norm_x_backprop
 """
 import operator
 
-import te.lang.cce as tbe
 from te import tvm
 from te import platform as tbe_platform
-from impl.util import util_select_op_base
+import te.lang.cce as tbe
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
+from impl.util import util_select_op_base
 
 # General limitation of the size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -35,7 +35,7 @@ SHAPE_SIZE_LIMIT = 2147483648
 EPSLON = 1e-12
 
 
-# pylint: disable = unused-argument
+# pylint: disable = unused-argument,too-many-arguments,too-many-locals
 def get_op_support_info(input_dy, input_x, input_variance, input_mean,
                           input_gamma, output_pd_x,
                           kernel_name="layer_norm_x_backprop"):

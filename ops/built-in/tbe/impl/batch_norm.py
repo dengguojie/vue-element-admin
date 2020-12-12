@@ -28,68 +28,72 @@ from impl.util.util_select_op_base import get_op_cal_info
 NONETYPE = type(None)
 
 
-# pylint: disable = unused-argument
+# pylint: disable=unused-argument,invalid-name
+# pylint: disable=too-many-arguments,too-many-locals,too-many-branches
 def get_op_support_info(x, scale, offset, mean, variance, y, batch_mean,
                         batch_variance, reserve_space_1, reserve_space_2,
                         epsilon=0.0001, data_format="NHWC",
                         is_training=True, kernel_name="batch_norm"):
+    """
+    get_op_support_info
+    """
     format_x = x.get("format")
     is_py = reserve_space_1 is None
     if format_x == "NHWC":
         if is_training:
             if not is_py:
-                axis_split_matrix=[[SplitInput([0, [3], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]]),\
-                                    SplitOutput([0, [3]], [1, [0]], [2, [0]], [3, [0]], [4, [0]])]]
+                axis_split_matrix = [[SplitInput([0, [3], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]]),
+                                      SplitOutput([0, [3]], [1, [0]], [2, [0]], [3, [0]], [4, [0]])]]
             else:
-                axis_split_matrix=[[SplitInput([0, [3], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]]), \
-                                    SplitOutput([0, [3]], [1, [0]], [2, [0]])]]
+                axis_split_matrix = [[SplitInput([0, [3], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]]),
+                                      SplitOutput([0, [3]], [1, [0]], [2, [0]])]]
         else:
             if not is_py:
-                axis_split_matrix=[[SplitInput([0, [3], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]], \
-                                               [3, [0], [-1], [-1]], [4, [0], [-1], [-1]]), \
-                                    SplitOutput([0, [3]], [1, [0]], [2, [0]], [3, [0]], [4, [0]])]]
+                axis_split_matrix = [[SplitInput([0, [3], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]],
+                                                 [3, [0], [-1], [-1]], [4, [0], [-1], [-1]]),
+                                      SplitOutput([0, [3]], [1, [0]], [2, [0]], [3, [0]], [4, [0]])]]
             else:
-                axis_split_matrix=[[SplitInput([0, [3], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]], \
-                                               [3, [0], [-1], [-1]], [4, [0], [-1], [-1]]), \
-                                    SplitOutput([0, [3]], [1, [0]], [2, [0]])]]
+                axis_split_matrix = [[SplitInput([0, [3], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]],
+                                                 [3, [0], [-1], [-1]], [4, [0], [-1], [-1]]),
+                                      SplitOutput([0, [3]], [1, [0]], [2, [0]])]]
 
     elif format_x == "NCHW":
         if is_training:
             if not is_py:
-                axis_split_matrix=[[SplitInput([0, [1], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]]), \
-                                    SplitOutput([0, [1]], [1, [0]], [2, [0]], [3, [0]], [4, [0]])]]
+                axis_split_matrix = [[SplitInput([0, [1], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]]),
+                                      SplitOutput([0, [1]], [1, [0]], [2, [0]], [3, [0]], [4, [0]])]]
             else:
-                axis_split_matrix=[[SplitInput([0, [1], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]]), \
-                                    SplitOutput([0, [1]], [1, [0]], [2, [0]])]]
+                axis_split_matrix = [[SplitInput([0, [1], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]]),
+                                      SplitOutput([0, [1]], [1, [0]], [2, [0]])]]
         else:
             if not is_py:
-                axis_split_matrix=[[SplitInput([0, [1], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]], \
-                                               [3, [0], [-1], [-1]], [4, [0], [-1], [-1]]), \
-                                    SplitOutput([0, [1]], [1, [0]], [2, [0]], [3, [0]], [4, [0]])]]
+                axis_split_matrix = [[SplitInput([0, [1], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]],
+                                                 [3, [0], [-1], [-1]], [4, [0], [-1], [-1]]),
+                                      SplitOutput([0, [1]], [1, [0]], [2, [0]], [3, [0]], [4, [0]])]]
             else:
-                axis_split_matrix=[[SplitInput([0, [1], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]], \
-                                               [3, [0], [-1], [-1]], [4, [0], [-1], [-1]]), \
-                                    SplitOutput([0, [1]], [1, [0]], [2, [0]])]]
+                axis_split_matrix = [[SplitInput([0, [1], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]],
+                                                 [3, [0], [-1], [-1]], [4, [0], [-1], [-1]]),
+                                      SplitOutput([0, [1]], [1, [0]], [2, [0]])]]
     elif format_x == "NC1HWC0":
         if is_training:
             if not is_py:
-                axis_split_matrix=[[SplitInput([0, [1], [-1], [-1]], [1, [1], [-1], [-1]], [2, [1], [-1], [-1]]), \
-                                    SplitOutput([0, [1]], [1, [1]], [2, [1]], [3, [1]], [4, [1]])]]
+                axis_split_matrix = [[SplitInput([0, [1], [-1], [-1]], [1, [1], [-1], [-1]], [2, [1], [-1], [-1]]),
+                                      SplitOutput([0, [1]], [1, [1]], [2, [1]], [3, [1]], [4, [1]])]]
             else:
-                axis_split_matrix=[[SplitInput([0, [1], [-1], [-1]], [1, [1], [-1], [-1]], [2, [1], [-1], [-1]]), \
-                                    SplitOutput([0, [1]], [1, [1]], [2, [1]])]]
+                axis_split_matrix = [[SplitInput([0, [1], [-1], [-1]], [1, [1], [-1], [-1]], [2, [1], [-1], [-1]]),
+                                      SplitOutput([0, [1]], [1, [1]], [2, [1]])]]
         else:
             if not is_py:
-                axis_split_matrix=[[SplitInput([0, [1], [-1], [-1]], [1, [1], [-1], [-1]], [2, [1], [-1], [-1]], \
-                                               [3, [1], [-1], [-1]], [4, [1], [-1], [-1]]), \
-                                    SplitOutput([0, [1]], [1, [1]], [2, [1]], [3, [1]], [4, [1]])]]
+                axis_split_matrix = [[SplitInput([0, [1], [-1], [-1]], [1, [1], [-1], [-1]], [2, [1], [-1], [-1]],
+                                                 [3, [1], [-1], [-1]], [4, [1], [-1], [-1]]),
+                                      SplitOutput([0, [1]], [1, [1]], [2, [1]], [3, [1]], [4, [1]])]]
             else:
-                axis_split_matrix=[[SplitInput([0, [1], [-1], [-1]], [1, [1], [-1], [-1]], [2, [1], [-1], [-1]], \
-                                               [3, [1], [-1], [-1]], [4, [1], [-1], [-1]]), \
-                                    SplitOutput([0, [1]], [1, [1]], [2, [1]])]]
+                axis_split_matrix = [[SplitInput([0, [1], [-1], [-1]], [1, [1], [-1], [-1]], [2, [1], [-1], [-1]],
+                                                 [3, [1], [-1], [-1]], [4, [1], [-1], [-1]]),
+                                      SplitOutput([0, [1]], [1, [1]], [2, [1]])]]
 
     else:
-        axis_split_matrix=None
+        axis_split_matrix = None
     axis_reduce_list = None
     op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
     return op_cal_info_in_json

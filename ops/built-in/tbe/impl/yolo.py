@@ -28,6 +28,7 @@ FP16_MINI = -65504
 FP32_MINI = -3.4 * (10**38)
 
 
+# pylint: disable=unused-argument
 def get_op_support_info(input_dic, coord_out_dic, obj_out_dic, class_out_dic,
                         boxes, coords, classes, yolo_version="V3",
                         softmax=False, background=False, softmaxtree=False,
@@ -67,8 +68,6 @@ def _check_yolo_param(check_dic_dic, param_dic, kernel_name_check):
     -------
     NONE
     """
-
-
     in_shape = check_dic_dic.get("in_dic").get("shape")
     out1_shape = check_dic_dic.get("out1_dic").get("shape")
     out2_shape = check_dic_dic.get("out2_dic").get("shape")
@@ -87,14 +86,14 @@ def _check_yolo_param(check_dic_dic, param_dic, kernel_name_check):
         raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be [%s], but actually is [%s]."
                            % (error_info['opname'], error_info['param_name'],
                               error_info['expect_value'], error_info['real_value']))
-        
+
     if param_dic['classes'] <= 0:
         error_info = {'errCode': 'E80002', 'opname': 'yolo', 'param_name': 'classes', 'min_value': '1',
                       'max_value': 'inf', 'real_value': str(param_dic['classes'])}
         raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s), but actually is [%s]."
                            % (error_info['opname'], error_info['param_name'], error_info['min_value'],
                               error_info['max_value'], error_info['real_value']))
-    
+
     para_check.check_shape(in_shape, param_name="input")
     para_check.check_shape(out1_shape, param_name="output1")
     para_check.check_shape(out2_shape, param_name="output2")
@@ -930,7 +929,7 @@ class YoloOp(InitTikAndTensor):
         else:
             error_info = {'errCode': 'E81010', 'opname': 'yolo', 'real_verison': yolo_ver.lower()}
             raise RuntimeError(error_info,
-                "In op[yolo], only v2 ro v3 is supported, but actually is [%s]." % error_info['real_verison'])
+                               "In op[yolo], only v2 ro v3 is supported, but actually is [%s]." % error_info['real_verison'])
 
         return yolo_mode
 
@@ -1147,9 +1146,9 @@ def yolo(input_dic, coord_out_dic, obj_out_dic, class_out_dic,
     """
 
     _check_yolo_param({'in_dic': input_dic, 'out1_dic': coord_out_dic,
-                      'out2_dic': obj_out_dic, 'out3_dic': class_out_dic},
-                     {'boxes': boxes, 'coords': coords, 'classes': classes},
-                     kernel_name)
+                       'out2_dic': obj_out_dic, 'out3_dic': class_out_dic},
+                      {'boxes': boxes, 'coords': coords, 'classes': classes},
+                      kernel_name)
 
     shape_info = {'batch': input_dic['shape'][0],
                   'height': input_dic['shape'][2],

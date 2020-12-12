@@ -62,6 +62,7 @@ FP_SIXTEEN_ONE_TIME = 128
 FP_32_ONE_TIME = 64
 
 
+# pylint: disable=too-many-locals,too-many-arguments,too-many-statements,too-many-lines,unused-argument
 def _roi_align_perf_scale(tik_instance, rois, feature_map_h, feature_map_w):
     """
     calculate the pos of roi box and  wide and height of grid
@@ -838,15 +839,15 @@ def _process_one_roi_vbi(tik_instance,
                                  init_value=hend - hstart)
     with tik_instance.if_scope(width >= ONE):
         with tik_instance.if_scope(height >= ONE):
-                _do_vbi_full_featuremap_mode(tik_instance,
-                                             cur_roi_num,
-                                             feature_shape,
-                                             featuremap_gm,
-                                             output_gm,
-                                             point_positions_int32,
-                                             point_weights_fp32,
-                                             wstart, hstart,
-                                             width, height)
+            _do_vbi_full_featuremap_mode(tik_instance,
+                                         cur_roi_num,
+                                         feature_shape,
+                                         featuremap_gm,
+                                         output_gm,
+                                         point_positions_int32,
+                                         point_weights_fp32,
+                                         wstart, hstart,
+                                         width, height)
 
         with tik_instance.else_scope():
             result_ub = tik_instance.Tensor("float16",
@@ -1081,7 +1082,7 @@ def _do_vbi_one_row_mode_c1_cut(tik_instance, block_id, cur_roi_num,
             tik_instance.vbi(FP_SIXTEEN_ONE_TIME, result_ub[0:, 0:,
                                                   index_height:, 0:, 0:],
                              featuremap_ub[0:, ], \
-                             vbi_weights[NUM_ADDR_ONE_VBI * index_height:, ],\
+                             vbi_weights[NUM_ADDR_ONE_VBI * index_height:, ], \
                              addr_one_time, ONE, repeat, \
                              NUM_ELMENTS_ONEBIN, ONE, \
                              EIGHT * NUM_ADDR_ONE_VBI // BYTES)
@@ -1137,9 +1138,9 @@ def roi_align_v200_compute(tik_instance, block_id, featuremap_gm, rois_gm,
                           index_array_fp32, rois_fp32_orig)
     else:
         _roi_align_roi_num_cut(tik_instance, block_id, rois_fp32, \
-                              grid_hw_fp32, featuremap_gm, \
-                              output_gm, feature_shape, rois_num, \
-                              index_array_fp32, rois_fp32_orig)
+                               grid_hw_fp32, featuremap_gm, \
+                               output_gm, feature_shape, rois_num, \
+                               index_array_fp32, rois_fp32_orig)
 
 
 def _roi_align_roi_num_cut(tik_instance, block_id, rois_fp32,

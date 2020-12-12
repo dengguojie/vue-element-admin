@@ -22,15 +22,16 @@ import functools
 
 from te import tvm
 import te.platform as tbe_platform
-from impl.util import util_select_op_base
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
+from impl.util import util_select_op_base
 
 # elems one batch can process
 SIZE_SIXTEEN = 16
 
 
+# pylint: disable=too-many-branches,unused-argument
 def _division_sixteen(shape):
     """
     judge whether the last two dimensions are divided by 16
@@ -47,10 +48,7 @@ def _division_sixteen(shape):
     if shape[-1] == 0 or shape[-2] == 0:
         raise RuntimeError("value of shape is illegal")
 
-    if shape[-1] % SIZE_SIXTEEN == 0 and shape[-2] % SIZE_SIXTEEN == 0:
-        return True
-    else:
-        return False
+    return shape[-1] % SIZE_SIXTEEN == 0 and shape[-2] % SIZE_SIXTEEN == 0
 
 
 def op_select_format(input_tensor,
@@ -88,39 +86,39 @@ def op_select_format(input_tensor,
             _division_sixteen(shape_input_mask) and not _division_sixteen(shape_input_keep_prob):
         # Nz+ND+ND
         input0 = util_select_op_base.gen_param(classify="input0",
-                           name="x",
-                           datatype="float16,float16,float,float",
-                           format="ND,FRACTAL_NZ,ND,FRACTAL_NZ")
+                                               name="x",
+                                               datatype="float16,float16,float,float",
+                                               format="ND,FRACTAL_NZ,ND,FRACTAL_NZ")
         input1 = util_select_op_base.gen_param(classify="input1",
-                           name="mask",
-                           datatype="uint8,uint8,uint8,uint8",
-                           format="ND,ND,ND,ND")
+                                               name="mask",
+                                               datatype="uint8,uint8,uint8,uint8",
+                                               format="ND,ND,ND,ND")
         input2 = util_select_op_base.gen_param(classify="input2",
-                           name="keep_prob",
-                           datatype="float16,float16,float,float",
-                           format="ND,ND,ND,ND")
+                                               name="keep_prob",
+                                               datatype="float16,float16,float,float",
+                                               format="ND,ND,ND,ND")
         output0 = util_select_op_base.gen_param(classify="output0",
-                            name="y",
-                            datatype="float16,float16,float,float",
-                            format="ND,FRACTAL_NZ,ND,FRACTAL_NZ")
+                                                name="y",
+                                                datatype="float16,float16,float,float",
+                                                format="ND,FRACTAL_NZ,ND,FRACTAL_NZ")
     else:
         # ND+ND
         input0 = util_select_op_base.gen_param(classify="input0",
-                           name="x",
-                           datatype="float16,float",
-                           format="ND,ND")
+                                               name="x",
+                                               datatype="float16,float",
+                                               format="ND,ND")
         input1 = util_select_op_base.gen_param(classify="input1",
-                           name="mask",
-                           datatype="uint8,uint8",
-                           format="ND,ND")
+                                               name="mask",
+                                               datatype="uint8,uint8",
+                                               format="ND,ND")
         input2 = util_select_op_base.gen_param(classify="input2",
-                           name="keep_prob",
-                           datatype="float16,float",
-                           format="ND,ND")
+                                               name="keep_prob",
+                                               datatype="float16,float",
+                                               format="ND,ND")
         output0 = util_select_op_base.gen_param(classify="output0",
-                            name="y",
-                            datatype="float16,float",
-                            format="ND,ND")
+                                                name="y",
+                                                datatype="float16,float",
+                                                format="ND,ND")
 
     param_list = [input0, input1, input2, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
@@ -236,22 +234,22 @@ def _do_operation(ir_builder, place_holders, plantform_paras, loops_remains, con
 
     if place_holders[0].dtype == 'float32':
         alloc_res[0], alloc_res[1], alloc_res[2], alloc_res[3] = \
-        _new_alloc(ir_builder,
-                   'float16', (tbe_platform.ELEMENTS_VECTOR_OP_FP16,),
-                   "data_zero_ub",
-                   scope=tbe_platform.scope_ubuf),\
-        _new_alloc(ir_builder,
-                   'float16', (tbe_platform.ELEMENTS_VECTOR_OP_FP16,),
-                   "data_fp16one_ub",
-                   scope=tbe_platform.scope_ubuf),\
-        _new_alloc(ir_builder,
-                   'float16', (tbe_platform.ELEMENTS_VECTOR_OP_FP16,),
-                   "data_fp16_all1_mask_ub",
-                   scope=tbe_platform.scope_ubuf),\
-        _new_alloc(ir_builder,
-                   'float32', (tbe_platform.ELEMENTS_VECTOR_OP_FP16,),
-                   "data_fp32one_ub",
-                   scope=tbe_platform.scope_ubuf)
+            _new_alloc(ir_builder,
+                       'float16', (tbe_platform.ELEMENTS_VECTOR_OP_FP16,),
+                       "data_zero_ub",
+                       scope=tbe_platform.scope_ubuf), \
+            _new_alloc(ir_builder,
+                       'float16', (tbe_platform.ELEMENTS_VECTOR_OP_FP16,),
+                       "data_fp16one_ub",
+                       scope=tbe_platform.scope_ubuf), \
+            _new_alloc(ir_builder,
+                       'float16', (tbe_platform.ELEMENTS_VECTOR_OP_FP16,),
+                       "data_fp16_all1_mask_ub",
+                       scope=tbe_platform.scope_ubuf), \
+            _new_alloc(ir_builder,
+                       'float32', (tbe_platform.ELEMENTS_VECTOR_OP_FP16,),
+                       "data_fp32one_ub",
+                       scope=tbe_platform.scope_ubuf)
     else:
         alloc_res[0], alloc_res[1], alloc_res[2], alloc_res[3] = \
             _new_alloc(ir_builder, 'float16', (tbe_platform.ELEMENTS_VECTOR_OP_FP16,), "data_zero_ub",
@@ -261,11 +259,11 @@ def _do_operation(ir_builder, place_holders, plantform_paras, loops_remains, con
             _new_alloc(ir_builder,
                        place_holders[0].dtype, (plantform_paras[0], ),
                        "data_tensor_ub",
-                       scope=tbe_platform.scope_ubuf),\
+                       scope=tbe_platform.scope_ubuf), \
             _new_alloc(ir_builder,
                        place_holders[1].dtype, (plantform_paras[0] // 8, ),
                        "data_mask_ub",
-                       scope=tbe_platform.scope_ubuf),\
+                       scope=tbe_platform.scope_ubuf), \
             _new_alloc(ir_builder,
                        place_holders[3].dtype, (1, ),
                        "keep_prob_tensor_ub",
@@ -280,7 +278,7 @@ def _do_operation(ir_builder, place_holders, plantform_paras, loops_remains, con
     if loops_remains[0] > 0:
         with ir_builder.for_range(0, loops_remains[0],
                                   name='index0') as index0:
-            offsets[2], offsets[3] = block_offset + plantform_paras[0]*index0,\
+            offsets[2], offsets[3] = block_offset + plantform_paras[0]*index0, \
                                      block_offset // 8 + plantform_paras[0] // 8 * index0
             # 16: fp16 elems can be move by once is 16,
             # lots of '16' below for this reason
@@ -289,10 +287,10 @@ def _do_operation(ir_builder, place_holders, plantform_paras, loops_remains, con
             # 64: fp32 elems can be process by vector instruction,
             # lots of '64' below for this reason
             if place_holders[0].dtype == 'float16':
-                repeates[0], repeates[1], repeates[2] = plantform_paras[0] // 16, plantform_paras[0] // 8 // 32,\
+                repeates[0], repeates[1], repeates[2] = plantform_paras[0] // 16, plantform_paras[0] // 8 // 32, \
                                                         plantform_paras[0] // tbe_platform.ELEMENTS_VECTOR_OP_FP16
             else:
-                repeates[0], repeates[1], repeates[2] = plantform_paras[0] // 8,\
+                repeates[0], repeates[1], repeates[2] = plantform_paras[0] // 8, \
                                                         plantform_paras[0] // 8 // 32, plantform_paras[0] // 64
 
             ir_builder.emit(
@@ -332,9 +330,9 @@ def _do_operation(ir_builder, place_holders, plantform_paras, loops_remains, con
                                 place_holders[3].access_ptr("r", offset=0), 0,
                                 1, 1, 0, 0))
             tbe_platform.reset_mask_insn(ir_builder,
-                                          const_1.dtype,
-                                          bits=1,
-                                          mask_func=None)
+                                         const_1.dtype,
+                                         bits=1,
+                                         mask_func=None)
             ir_builder.emit(
                 tvm.call_extern(place_holders[3].dtype, 'vdiv',
                                 alloc_res[6].access_ptr('w'),
@@ -343,9 +341,9 @@ def _do_operation(ir_builder, place_holders, plantform_paras, loops_remains, con
                                 8))
 
             tbe_platform.reset_mask_insn(ir_builder,
-                                          const_1.dtype,
-                                          bits=tbe_platform.ELEMENTS_VECTOR_OP_FP16,
-                                          mask_func=None)
+                                         const_1.dtype,
+                                         bits=tbe_platform.ELEMENTS_VECTOR_OP_FP16,
+                                         mask_func=None)
             ir_builder.emit(
                 tvm.call_extern(place_holders[3].dtype, "reg_mov",
                                 tvm.call_extern(reg.dtype, "reg", reg[0]),
@@ -384,7 +382,7 @@ def _do_operation(ir_builder, place_holders, plantform_paras, loops_remains, con
                     place_holders[2].access_ptr('w', offset=offsets[2]),
                     alloc_res[4].access_ptr("r"), 0, 1, repeates[0], 0, 0))
 
-        offsets[0], offsets[1] = offsets[0] + plantform_paras[0]*loops_remains[0],\
+        offsets[0], offsets[1] = offsets[0] + plantform_paras[0]*loops_remains[0], \
                                  offsets[1] + plantform_paras[0] * loops_remains[0] // 8
 
     if loops_remains[2]:
@@ -417,12 +415,12 @@ def _do_operation(ir_builder, place_holders, plantform_paras, loops_remains, con
         ]
 
         if place_holders[0].dtype == 'float32':
-            repeates[3], repeates[4], repeates[5] = int(math.ceil(remain_shapes[0][0]*1.0 / 8)),\
-                                                    int(math.ceil(remain_shapes[1][0]*1.0 / 32)),\
+            repeates[3], repeates[4], repeates[5] = int(math.ceil(remain_shapes[0][0]*1.0 / 8)), \
+                                                    int(math.ceil(remain_shapes[1][0]*1.0 / 32)), \
                                                     int(remain_shapes[0][0]*1.0 / 64)
         else:
-            repeates[3], repeates[4], repeates[5] = int(math.ceil(remain_shapes[0][0]*1.0 / 16)),\
-                                                    int(math.ceil(remain_shapes[1][0]*1.0 / 32)),\
+            repeates[3], repeates[4], repeates[5] = int(math.ceil(remain_shapes[0][0]*1.0 / 16)), \
+                                                    int(math.ceil(remain_shapes[1][0]*1.0 / 32)), \
                                                     int(remain_shapes[0][0]*1.0 / tbe_platform.ELEMENTS_VECTOR_OP_FP16)
 
         ir_builder.emit(
@@ -461,9 +459,9 @@ def _do_operation(ir_builder, place_holders, plantform_paras, loops_remains, con
                             place_holders[3].access_ptr("r", offset=0), 0, 1,
                             1, 0, 0))
         tbe_platform.reset_mask_insn(ir_builder,
-                                      const_1.dtype,
-                                      bits=1,
-                                      mask_func=None)
+                                     const_1.dtype,
+                                     bits=1,
+                                     mask_func=None)
 
         ir_builder.emit(
             tvm.call_extern(place_holders[3].dtype, 'vdiv',
@@ -472,9 +470,9 @@ def _do_operation(ir_builder, place_holders, plantform_paras, loops_remains, con
                             alloc_res[6].access_ptr('r'), 1, 1, 1, 1, 8, 8, 8))
 
         tbe_platform.reset_mask_insn(ir_builder,
-                                      const_1.dtype,
-                                      bits=tbe_platform.ELEMENTS_VECTOR_OP_FP16,
-                                      mask_func=None)
+                                     const_1.dtype,
+                                     bits=tbe_platform.ELEMENTS_VECTOR_OP_FP16,
+                                     mask_func=None)
         ir_builder.emit(
             tvm.call_extern(place_holders[0].dtype, "reg_mov",
                             tvm.call_extern(reg.dtype, "reg", reg[0]),
@@ -500,7 +498,7 @@ def _do_operation(ir_builder, place_holders, plantform_paras, loops_remains, con
 
         remains_divs = tbe_platform.ELEMENTS_VECTOR_OP_FP16 if place_holders[0].dtype == 'float16' \
             else 64
-        loops_remains[1], loops_remains[3] = remain_shapes[0][0] // remains_divs,\
+        loops_remains[1], loops_remains[3] = remain_shapes[0][0] // remains_divs, \
                                              remain_shapes[0][0] % remains_divs
 
         loops = ((loops_remains[1]) // 2) + 1 if place_holders[0].dtype == 'float32' \
@@ -513,17 +511,17 @@ def _do_operation(ir_builder, place_holders, plantform_paras, loops_remains, con
             _sel_data(ir_builder, place_holders[0], alloc_res,
                       tbe_platform.ELEMENTS_VECTOR_OP_FP16*index2)
         if place_holders[0].dtype == 'float32':
-            offsets[4], offsets[5] = plantform_paras[1] * loops_remains[1],\
+            offsets[4], offsets[5] = plantform_paras[1] * loops_remains[1], \
                                      plantform_paras[2] *loops_remains[1]
         else:
-            offsets[4], offsets[5] = plantform_paras[1] * loops_remains[1],\
+            offsets[4], offsets[5] = plantform_paras[1] * loops_remains[1], \
                                      plantform_paras[2] *loops_remains[1]
 
         if loops_remains[3]:
             tbe_platform.reset_mask_insn(ir_builder,
-                                          place_holders[0].dtype,
-                                          bits=loops_remains[3],
-                                          mask_func=None)
+                                         place_holders[0].dtype,
+                                         bits=loops_remains[3],
+                                         mask_func=None)
 
             ir_builder.emit(
                 tvm.call_extern(
@@ -539,9 +537,9 @@ def _do_operation(ir_builder, place_holders, plantform_paras, loops_remains, con
                         alloc_res[5].access_ptr('r', offset=offsets[5])))
                 _sel_data(ir_builder, place_holders[0], alloc_res, offsets[4])
                 tbe_platform.reset_mask_insn(ir_builder,
-                                              place_holders[0].dtype,
-                                              bits=tbe_platform.ELEMENTS_VECTOR_OP_FP16,
-                                              mask_func=None)
+                                             place_holders[0].dtype,
+                                             bits=tbe_platform.ELEMENTS_VECTOR_OP_FP16,
+                                             mask_func=None)
 
         ir_builder.emit(
             tvm.call_extern(
@@ -647,8 +645,7 @@ def _get_target_core_num(data_input, data_mask):
         else:
             mask_num_each_core = num_div_by_128
         return target_core_num, mask_num_each_core, core_num_one_more, num_remain_by_128, is_not_align
-    else:
-        is_not_align = False
+    is_not_align = False
 
     if int(num_div_by_128) <= int(target_core_num):
         target_core_num = num_div_by_128 if num_div_by_128 != 0 else 1

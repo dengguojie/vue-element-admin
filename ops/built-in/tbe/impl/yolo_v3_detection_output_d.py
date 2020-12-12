@@ -28,6 +28,8 @@ PRE_NMS_TOPN = 1024
 UB_NUM = 10240
 
 
+# pylint: disable=too-many-arguments,too-many-locals
+# pylint: disable=unused-argument
 def get_op_support_info(coord_data_low_dic, coord_data_mid_dic,
                         coord_data_high_dic, obj_prob_low_dic,
                         obj_prob_mid_dic,
@@ -199,7 +201,7 @@ class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
         self.bbox_num = self.instance.Tensor("int32", (self.batch, 8), \
                                              name="box_out_num",
                                              scope=tik.scope_gm)
-        
+
         if tbe_platform.get_soc_spec("SOC_VERSION") not in (
                 "Ascend310", "Ascend910", "Hi3796CV300ES") \
                 and self.obj_data.size // (8 * self.dsize) > self.max_ub_num:

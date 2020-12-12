@@ -1,10 +1,28 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+"""
+sort
+"""
 
+# pylint: disable=invalid-name,too-many-locals,too-many-arguments,unused-argument
+from functools import reduce as functools_reduce
 from te.platform.fusion_manager import fusion_manager
 from te import tik
 from topi.cce import util
-from functools import reduce as functools_reduce
 
 PROPOSAL_NUM = 8
 FP16_BYTE = 2
@@ -212,9 +230,8 @@ def vms4(tik_instance, num, total, input_ub, dest_pos_ub):
         _, input_ub, _ = merge2(tik_instance, num_list1, input_ub, 0, src_pos_ub, 0, dest_pos_ub)
         return input_ub, dest_pos_ub
 
-    else:
-        input_ub, dest_pos_ub, num_list = vms4core(tik_instance, input_ub, dest_pos_ub, 0, length, num_list)
-        return input_ub, dest_pos_ub
+    input_ub, dest_pos_ub, num_list = vms4core(tik_instance, input_ub, dest_pos_ub, 0, length, num_list)
+    return input_ub, dest_pos_ub
 
 
 def vms4core(tik_instance, input_ub, dest_pos_ub, leftset, rightset, num_list):
@@ -285,7 +302,7 @@ def moveout(tik_instance, descending, total, num, data_out, index, input_ub, des
         # move output (float16) from UB to GM
         tik_instance.data_move(data_out[index], input_ub[src_pos_ub], 0, 1, total // 16, 0, 0)
         # conv indices (float16->int32) , and move from UB to GM
-        if (total > 255 * 16):
+        if total > 255 * 16:
             tik_instance.vec_conv(16, "round", int_list, input_ub[src_pos_ub + total], 255, 2, 1)
             tik_instance.vec_conv(16, "round", int_list[255 * 16], input_ub[src_pos_ub + total + 255 * 16],
                                   total // 16 - 255, 2, 1)
@@ -303,7 +320,7 @@ def moveout(tik_instance, descending, total, num, data_out, index, input_ub, des
         # move output (float16) from UB to GM
         tik_instance.data_move(data_out[index], input_ub[src_pos_ub], 0, 1, total // 16, 0, 0)
         # conv indices (float16->int32) , and move from UB to GM
-        if (total > 255 * 16):
+        if total > 255 * 16:
             tik_instance.vec_conv(16, "round", int_list, input_ub[src_pos_ub + total], 255, 2, 1)
             tik_instance.vec_conv(16, "round", int_list[255 * 16], input_ub[src_pos_ub + total + 255 * 16],
                                   total // 16 - 255, 2, 1)

@@ -21,19 +21,15 @@ unsorted_segment_sum_d
 import operator
 from functools import reduce as functools_reduce
 
-import json
-import os
 import te.platform.cce_params as cce_params
 from te import platform as cce
 from te import tvm
 from te.platform.cce_build import build_config
-from topi.cce import util
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
-from te.utils.error_manager import error_manager_vector
 from impl.util.util_common import write_code
-
 
 MAX_REPEAT_NUM = 255
 BLOCK_BYTE = 32
@@ -42,7 +38,8 @@ MAX_CORE_NUM = cce.get_soc_spec(cce.CORE_NUM)
 REPEAT_BLOCK_NUM = 8
 
 
-# pylint: disable=locally-disabled,invalid-name
+# pylint: disable=locally-disabled,invalid-name,too-many-branches,unused-argument,too-many-locals
+# pylint: disable=too-many-boolean-expressions
 def get_cce_product_version():
     """
     get the current product version
@@ -90,9 +87,9 @@ def op_select_format(x, segment_ids, y, num_segments,
     ori_dtype = x.get("dtype").lower()
     ori_shape = list(x.get("shape"))
     cce_product = get_cce_product_version()
-    if (ori_dtype == "float16" or ori_dtype == "float32") and cce_product in ("Ascend910",) and \
-            ((ori_shape == [12288, 1024] or ori_shape == [200704, 256]) and \
-             (num_segments == 36548 or num_segments == 655360 or num_segments == 1128960)):
+    if (ori_dtype in ("float16", "float32")) and cce_product in ("Ascend910",) and \
+            ((ori_shape in ([12288, 1024], [200704, 256])) and \
+             (num_segments in (36548, 655360, 1128960))):
         input0 = gen_param(classify="input0", name="x",
                            datatype=input0_dtype,
                            format=input0_format)
@@ -1444,7 +1441,7 @@ def _multi_in_multi_out_fun_large(num_segments, input_buf, segment_ids,
 
     else:
         if ids_buf_len > params.unified_buffer_len // 2 or one_time_len <= 0:
-            return False        
+            return False
         if params.src_dtype == "float16" and params.element_len % one_time_len < 16:
             params.device_core_num = 1
         if params.src_dtype in("float32", "int32") and params.element_len % one_time_len < 8:
@@ -2521,10 +2518,9 @@ def _intrin_factor(in_shape, num_segments, dtype, ins, output_buf, gm_align):
 
             return _compute_for_atomic(in_shape, dtype, ins, output_buf,
                                        _one_core_in_multi_ir_atomic)
-        else:
-            if in_shape[-1] == 1:
-                return _compute_for_atomic(in_shape, dtype, ins, output_buf,
-                                           _one_core_in_multi_ir_atomic_col_one)
+        if in_shape[-1] == 1:
+            return _compute_for_atomic(in_shape, dtype, ins, output_buf,
+                                       _one_core_in_multi_ir_atomic_col_one)
 
     if (dtype == "float16") and align_flag and \
             _is_all_ids_in(in_shape, num_segments, dtype, ins[1]) and \
@@ -2602,7 +2598,7 @@ def unsorted_segment_sum_d(x,
         if shape_x[0] != shape_y[0]:
             error_detail = "shape_x and shape_y are not the same length at axis 0."
             error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", \
-                                                               "segment_ids", error_detail)
+                                                                   "segment_ids", error_detail)
 
         if len(shape_x) == 1:
             shape_x = (shape_x[0], 1)
@@ -2675,4 +2671,3 @@ def unsorted_segment_sum_d(x,
         workspace_dict = \
             {"workspace": {"num": num_workspace, "size": total_size}}
         write_code(workspace_dict,  kernel_name)
-

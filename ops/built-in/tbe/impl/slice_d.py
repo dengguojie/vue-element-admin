@@ -45,8 +45,11 @@ UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
 AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
 
 
-# pylint: disable = unused-argument
+# pylint: disable=unused-argument,invalid-name
 def get_op_support_info(x, y, begin, size, kernel_name="slice_d"):
+    """
+    get_op_support_info
+    """
     axis_split_matrix = None
     axis_reduce_list = None
     op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
@@ -58,7 +61,7 @@ def get_op_support_info(x, y, begin, size, kernel_name="slice_d"):
 # pylint: disable=locally-disabled,too-many-arguments
 # pylint: disable=locally-disabled,too-many-locals,singleton-comparison
 # pylint: disable=locally-disabled,invalid-name,attribute-defined-outside-init
-class SliceLastDimCompute(object):
+class SliceLastDimCompute():
     """
     class of SliceLastDimCompute for last dim small scene
 
@@ -83,12 +86,10 @@ class SliceLastDimCompute(object):
                 if shape_i != size_i:
                     self.check_result = False
                     return
-                else:
-                    self.dim_product *= shape_i
-            else:
-                self.input_dim_last = shape_i
-                self.begin_last = begin_i
-                self.output_dim_last = size_i
+                self.dim_product *= shape_i
+            self.input_dim_last = shape_i
+            self.begin_last = begin_i
+            self.output_dim_last = size_i
 
         # for moving data continuously, only small last dim is allowed
         # last dim data size <= 32B
@@ -266,7 +267,7 @@ class SliceLastDimCompute(object):
                               inputs=[x], outputs=[y])
 
 
-class SliceDiffLastDimCompute(object):
+class SliceDiffLastDimCompute():
     """
     class of SliceLastDimCompute for last dim small scene
 
@@ -301,14 +302,12 @@ class SliceDiffLastDimCompute(object):
                 if not (shape_i > 1 and size_i == 1):
                     self.check_result = False
                     return
-                else:
-                    self.begin_first = begin_i
+                self.begin_first = begin_i
             else:
                 if shape_i != size_i:
                     self.check_result = False
                     return
-                else:
-                    self.dim_product *= shape_i
+                self.dim_product *= shape_i
 
         # for moving data continuously, only small last dim is allowed
         # last dim data size <= 32B
@@ -641,7 +640,7 @@ def _tilling_axis(shape, dtype, no_remainder):
     calculate the split parameters according to different shapes
 
     """
-    #size of ub
+    # size of ub
     ub_size_bytes = UB_SIZE_B - 1024
     dtype_bytes_size = cce.cce_intrin.get_bit_len(dtype) // 8
     # 32 means one block size(32 Bytes), divide by 32 to get
@@ -665,7 +664,7 @@ def _tilling_axis(shape, dtype, no_remainder):
                 split_factor = _get_factor(shape_new[0], ele_cnt, total_ele,
                                            no_remainder)
             break
-        elif i == len(shape) - 1:
+        if i == len(shape) - 1:
             if len(shape) == 1:
                 split_axis = 0
                 split_factor = _get_factor(shape_new[0], 1, total_ele,
@@ -6450,10 +6449,10 @@ def _check_scalar_one(shape, size, dtype):
         return False
 
     for i in range(dim):
-        if i == 0 or i == 1:
+        if i in (0,1):
             if shape[i] != size[i]:
                 return False
-        if i == 2 or i == 3:
+        if i in (2,3):
             if shape[i] == size[i]:
                 return False
 
@@ -6530,9 +6529,7 @@ def _get_max_mod(a, b):
 
     """
     if b > a:
-        temp = a
-        a = b
-        b = temp
+        a, b = b, a
 
     c = b
     while a % b != 0:
@@ -6823,7 +6820,7 @@ def _check_21_91_602_1_branch(shape, size, dtype):
     if dim < 3:
         return False
 
-    if dtype != "float16" and dtype != "float32":
+    if dtype not in ("float16","float32"):
         return False
 
     for i in range(0, dim - 1):
@@ -6868,7 +6865,7 @@ def _check_32_32_4(shape, size, dtype):
     function of checking 32/32/4 branch
 
     """
-    if dtype != "float16" and dtype != "float32":
+    if dtype not in ("float16","float32"):
         return False
 
     if list(shape) != [32, 32, 32] or list(size) != [32, 32, 4]:
@@ -6894,7 +6891,7 @@ def _check_32_512_2(shape, size, dtype):
     function of checking 32 512/1024 2 branch
 
     """
-    if dtype != "float16" and dtype != "float32":
+    if dtype not in ("float16","float32"):
         return False
 
     if (shape, size) not in (([32, 512, 2], [32, 512, 1]),
@@ -6943,7 +6940,7 @@ def _check_32_1917_2(shape, size, dtype):
     function of checking 32 1917 2 branch
 
     """
-    if dtype != "float16" and dtype != "float32":
+    if dtype not in ("float16","float32"):
         return False
 
     if shape != [32, 1917, 2] or size != [32, 1917, 1]:
@@ -6973,7 +6970,7 @@ def _check_65472_4_2(shape, size, dtype):
     function of checking 65472 4/2 float16 branch
 
     """
-    if dtype != "float16" and dtype != "float32":
+    if dtype not in ("float16","float32"):
         return False
 
     if (shape, size) not in (([16, 4092, 2], [16, 4092, 1]),
@@ -7009,7 +7006,7 @@ def _check_32_300_3_2(shape, size, dtype):
     function of checking 32 300 3/2 branch
 
     """
-    if dtype != "float16" and dtype != "float32":
+    if dtype not in ("float16","float32"):
         return False
 
     if shape != [32, 300, 3] or size != [32, 300, 2]:
@@ -7302,7 +7299,7 @@ def _update_params_for_other_format(shape, begin, size, input_format, ori_format
 
         return begin_new, size_new
 
-
+# pylint: disable=unused-variable
 def get_fused_str(format_char_list):
     """get_fused_str for format
     """
@@ -7538,7 +7535,7 @@ def slice_d(x, y, begin, size, kernel_name="slice_d"):
 
         data = tvm.placeholder(shape_new, dtype=dtype, name='data')
 
-        if (shape_new == [32, 1024, 2] or shape_new == [10, 1024, 2])\
+        if (shape_new in([32, 1024, 2],[10, 1024, 2]))\
                 and dtype == "float32":
             res = tvm.extern(size_new, [data],
                              lambda ins, outs: _small_last_32_1024_2_fp32(

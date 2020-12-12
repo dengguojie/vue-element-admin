@@ -36,7 +36,7 @@ from impl.util.util_select_op_base import get_op_cal_info
 TRANSPOSE_SIZE = 256
 
 
-# pylint: disable = unused-argument
+# pylint: disable = unused-argument,too-many-locals
 def get_op_support_info(input_value, output_data, split_dim, num_split, kernel_name="split_d"):
     """
     get_op_support_info
@@ -488,7 +488,6 @@ def op_select_format(input_value, output_data, split_dim, num_split, kernel_name
     is_support_5hd = True
     support_ori_format = ["NCHW", "NHWC"]
     input_ori_shape = input_value.get("ori_shape")
-    input_ori_format = input_value.get("ori_format")
     split_dim = split_dim % len(input_ori_shape)
 
     for _, output_dict in enumerate(output_data):
@@ -515,13 +514,14 @@ def op_select_format(input_value, output_data, split_dim, num_split, kernel_name
             break
 
     is_support_nz = False
-    if input_ori_format[0] == "N" and split_dim == 0 and \
-            len(input_ori_shape) > 2:
-        is_support_nz = True
+    if len(input_ori_shape) > 2:
+        # if do not split with last two dim, will support nz
+        if split_dim < len(input_ori_shape) - 2:
+            is_support_nz = True
 
     split_with_5hd_not_align = \
         split_last_dim.SplitWith5HD(input_value, output_data,
-                     split_dim, num_split, kernel_name)
+                                    split_dim, num_split, kernel_name)
     is_support_other_5hd = split_with_5hd_not_align.check_op_select()
 
     dtype_base = ["float16", "float", "int32", "int8", "int16", "int64", "uint8", "uint16", "uint32", "uint64"]
@@ -574,10 +574,12 @@ def split_d(input_value, output_data, split_dim, num_split, kernel_name="split_d
     -------
     None.
     """
+    input_value = util_common.update_shape_base_other_format(input_value)
     input_format = input_value.get("format")
     ori_format = input_value.get("ori_format")
-    if input_format == "NC1HWC0":
-        split_dim = shape_util.axis_transform_5d(split_dim, ori_format)
+    ori_shape = input_value.get("ori_shape")
+    # update axis base on input format
+    split_dim = util_common.update_axis_for_other_format(ori_shape, split_dim, input_format, ori_format)
 
     shape = input_value.get("shape")
     dtype = input_value.get("dtype")
@@ -601,7 +603,7 @@ def split_d(input_value, output_data, split_dim, num_split, kernel_name="split_d
         return
 
     if shape[split_dim] % num_split != 0:
-        error_detail = "The num_split (%d) must be divisible by the length of split_dim (%d)"\
+        error_detail = "The num_split (%d) must be divisible by the length of split_dim (%d)" \
                        % (num_split, shape[split_dim])
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "input_value", error_detail)
 
@@ -638,3 +640,4 @@ def split_d(input_value, output_data, split_dim, num_split, kernel_name="split_d
 
     with tbe_platform.build_config:
         tvm.build(sch, build_list, "cce", name=kernel_name)
+

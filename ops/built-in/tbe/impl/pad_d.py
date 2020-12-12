@@ -16,15 +16,12 @@
 pad_d
 """
 # pylint: disable=locally-disabled,too-many-lines
-import json
-import os
-
 import te.platform as tbe_platform
 from te.utils import para_check
 from te import tvm
+from te.utils.error_manager import error_manager_vector
 from impl import pad_align_reorder_ub
 from impl.util import util_select_op_base
-from te.utils.error_manager import error_manager_vector
 from impl.util import util_common
 from impl.util.util_common import write_code
 from impl.util.util_select_op_base import SplitInput
@@ -37,10 +34,13 @@ UINT64_ALL_ONE = 18446744073709551615
 
 # pylint: disable = unused-argument
 def get_op_support_info(input_x, output_x, paddings, kernel_name="pad_d"):
+    """
+    get_op_support_info
+    """
     format_x = input_x.get("format").upper()
     shape_x_len = len(input_x.get("shape"))
     if format_x == "ND":
-        axis_split_matrix=[]
+        axis_split_matrix = []
         for i in range(0, shape_x_len):
             if paddings[i][0] == 0 and paddings[i][1] == 0:
                 split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]])]
@@ -48,7 +48,7 @@ def get_op_support_info(input_x, output_x, paddings, kernel_name="pad_d"):
         axis_reduce_list = None
 
     elif format_x == "NC1HWC0":
-        axis_split_matrix=[
+        axis_split_matrix = [
             [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
             [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]])]
         ]
@@ -104,6 +104,7 @@ def _get_scalar_dtype():
     dtype = "int32" if tvm.api_config.query_bit_width() == 32 else "int64"
 
     return dtype
+
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-branches,
 # pylint: disable=locally-disabled,too-many-statements,too-many-locals
@@ -457,42 +458,42 @@ def _do_padding(padding_len, out_ubuf, gm_out_buf, params,
                        params,
                        multi_core_top=multi_core_top)
         return gm_out_buf.offset + padding_len, out_ubuf.offset
-    else:
-        align_offset, mask = params.get_align_mask(out_ubuf.offset)
 
-        params.ib_.emit(
-            tvm.call_extern("uint64", 'set_vector_mask', params.uint64_all_one,
-                            mask))
+    align_offset, mask = params.get_align_mask(out_ubuf.offset)
 
-        params.ib_.emit(
-            tvm.call_extern(
-                params.dtype, 'vector_dup',
-                out_ubuf.buf.access_ptr(
-                    "rw", offset=out_ubuf.offset - align_offset),
-                params.constant_values, 1, 1, 1, 8, 8))
+    params.ib_.emit(
+        tvm.call_extern("uint64", 'set_vector_mask', params.uint64_all_one,
+                        mask))
 
-        params.ib_.emit(
-            tvm.call_extern("uint64", 'set_vector_mask', params.uint64_all_one,
-                            params.uint64_all_one))
+    params.ib_.emit(
+        tvm.call_extern(
+            params.dtype, 'vector_dup',
+            out_ubuf.buf.access_ptr(
+                "rw", offset=out_ubuf.offset - align_offset),
+            params.constant_values, 1, 1, 1, 8, 8))
 
-        # 0 < align_offset < params.cp_align_len, so add params.cp_align_len
-        remaining_length = padding_len + params.cp_align_len - \
-                           params.vec_align_len
+    params.ib_.emit(
+        tvm.call_extern("uint64", 'set_vector_mask', params.uint64_all_one,
+                        params.uint64_all_one))
 
-        if padding_len - params.vec_align_len > 0:
+    # 0 < align_offset < params.cp_align_len, so add params.cp_align_len
+    remaining_length = padding_len + params.cp_align_len - \
+                       params.vec_align_len
+
+    if padding_len - params.vec_align_len > 0:
+        _do_vector_dump(
+            out_ubuf.buf,
+            out_ubuf.offset - align_offset + params.vec_align_len,
+            remaining_length, params.constant_values, params)
+    elif remaining_length > 0:
+        with params.ib_.if_scope(
+            padding_len + align_offset - params.vec_align_len > 0):
             _do_vector_dump(
                 out_ubuf.buf,
                 out_ubuf.offset - align_offset + params.vec_align_len,
                 remaining_length, params.constant_values, params)
-        elif remaining_length > 0:
-            with params.ib_.if_scope(
-                padding_len + align_offset - params.vec_align_len > 0):
-                _do_vector_dump(
-                    out_ubuf.buf,
-                    out_ubuf.offset - align_offset + params.vec_align_len,
-                    remaining_length, params.constant_values, params)
 
-        return gm_out_buf.offset, out_ubuf.offset + padding_len
+    return gm_out_buf.offset, out_ubuf.offset + padding_len
 
 
 def _mode_large_last_axis(data_len,
@@ -1642,7 +1643,6 @@ def _load_and_save(tvm_ir, input_x, output_y, ub_addr, block_index, row_start,
             tvm_ir, dtype, output_y, ub_addr, 1, burstlen, 0, 0,
             block_offset + bottom_offset + cols_padding_left,
             i*cols_align)
-    return
 
 
 def _pad_for_n_c_hw(ins, outs, paddings):
@@ -1858,9 +1858,8 @@ def _check_align(shape, paddings, dtype, model):
             if in_num * num_bit % 32 != 0 or \
                     _prod(in_shape[axis:]) * num_bit % 32 != 0:
                 return False
-            else:
-                return True
-            break
+            return True
+            # break
         axis -= 1
 
     return True
@@ -2143,11 +2142,12 @@ def op_select_format(input_x,
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-branches,
-# pylint: disable=locally-disabled,too-many-statements
+# pylint: disable=locally-disabled,too-many-statements,inconsistent-return-statements
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_LIST_INT, para_check.KERNEL_NAME)
 def pad_d(input_x, output_x, paddings, kernel_name="pad_d"):
-    """ calculating pad tensor by paddings parameters
+    """
+    calculating pad tensor by paddings parameters
 
     Parameters
     ----------
@@ -2231,27 +2231,27 @@ def pad_d(input_x, output_x, paddings, kernel_name="pad_d"):
         if option:
             res = pad_align_reorder_ub.pad_align(new_shape, new_paddings, dtype, kernel_name)
             return res
-        else:
-            if len(in_shape) >= 2 and in_paddings[-1] == [0, 0] and in_shape[-1] * dtype_size % 32 != 0:
-                in_shape[-2] *= in_shape[-1]
-                in_paddings[-2][0] *= in_shape[-1]
-                in_paddings[-2][1] *= in_shape[-1]
-                in_shape = in_shape[0:len(in_shape) - 1].copy()
-                in_paddings = in_paddings[0:len(in_paddings) - 1].copy()
 
-            res = \
-                tvm.extern(
-                    [_get_output_shape(in_shape, in_paddings), shape, [one_core_align],
-                     _get_output_shape(in_shape, in_paddings)], [data],
-                    lambda ins, outs: _intrin_factor(ins[0], outs[0], outs[1], outs[2], outs[3],
-                                                     (in_shape, in_paddings, 0)),
-                    name="res", dtype=[dtype, dtype_now, dtype_now, dtype_now])
+        if len(in_shape) >= 2 and in_paddings[-1] == [0, 0] and in_shape[-1] * dtype_size % 32 != 0:
+            in_shape[-2] *= in_shape[-1]
+            in_paddings[-2][0] *= in_shape[-1]
+            in_paddings[-2][1] *= in_shape[-1]
+            in_shape = in_shape[0:len(in_shape) - 1].copy()
+            in_paddings = in_paddings[0:len(in_paddings) - 1].copy()
 
-            sch = tvm.create_schedule(res[0].op)
-            build_list = [data, res[0], res[1], res[2], res[3]]
+        res = \
+            tvm.extern(
+                [_get_output_shape(in_shape, in_paddings), shape, [one_core_align],
+                 _get_output_shape(in_shape, in_paddings)], [data],
+                lambda ins, outs: _intrin_factor(ins[0], outs[0], outs[1], outs[2], outs[3],
+                                                 (in_shape, in_paddings, 0)),
+                name="res", dtype=[dtype, dtype_now, dtype_now, dtype_now])
 
-            with tbe_platform.build_config:
-                tvm.build(sch, build_list, "cce", name=kernel_name)
+        sch = tvm.create_schedule(res[0].op)
+        build_list = [data, res[0], res[1], res[2], res[3]]
+
+        with tbe_platform.build_config:
+            tvm.build(sch, build_list, "cce", name=kernel_name)
 
         if dtype == "int8" or dtype == "uint8":
             size_align = one_core_align * dtype_size + 32

@@ -61,15 +61,15 @@ def relu_grad_compute(input_gradients, input_features, output_backprops,
     if list(shape_input_gradients) != list(shape_input_features):
         shape_input_gradients, shape_input_features, shape = \
             shape_util.broadcast_shapes(shape_input_gradients, shape_input_features,
-                             param_name_input1="input_gradients",
-                             param_name_input2="input_features")
+                                        param_name_input1="input_gradients",
+                                        param_name_input2="input_features")
         input_gradients = tbe.broadcast(input_gradients, shape,
-                                                trans_type)
+                                        trans_type)
         input_features = tbe.broadcast(input_features, shape,
-                                               trans_type)
+                                       trans_type)
 
     derivative_relu = tbe.calculate_one_or_zero(input_features,
-                                                        shape, trans_type)
+                                                shape, trans_type)
 
     result = tbe.vmul(input_gradients, derivative_relu)
 
@@ -80,6 +80,7 @@ def relu_grad_compute(input_gradients, input_features, output_backprops,
     return result
 
 
+# pylint: disable=unused-variable
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def relu_grad(input_gradients, input_features, output_backprops,
@@ -114,8 +115,8 @@ def relu_grad(input_gradients, input_features, output_backprops,
     if list(shape_input_gradients) != list(shape_input_features):
         shape_input_gradients, shape_input_features, shape_max = \
             shape_util.broadcast_shapes(shape_input_gradients, shape_input_features,
-                             param_name_input1="input_gradients",
-                             param_name_input2="input_features")
+                                        param_name_input1="input_gradients",
+                                        param_name_input2="input_features")
 
     dtype_input_gradients = input_gradients.get("dtype").lower()
     dtype_input_features = input_features.get("dtype").lower()
@@ -126,7 +127,7 @@ def relu_grad(input_gradients, input_features, output_backprops,
 
     shape_input_gradients, shape_input_features = \
         shape_util.refine_shapes_for_broadcast(shape_input_gradients,
-                                    shape_input_features)
+                                               shape_input_features)
     data_input_gradients = tvm.placeholder(shape_input_gradients,
                                            name="data_input_gradients",
                                            dtype=dtype_input_gradients)

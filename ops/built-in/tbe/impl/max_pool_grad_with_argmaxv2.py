@@ -19,8 +19,6 @@ max_pool_grad_with_argmaxv2
 """
 import math
 
-from te import tik
-from impl import constant_util as constant
 from impl import max_pool_grad_with_argmax_cut_h_v2 as argmax_cut_h_v2
 from impl import max_pool_grad_with_argmax_v2_resnet50 as resnet50
 from te.utils import para_check
@@ -51,8 +49,8 @@ DT_INT64 = 9
 
 # pylint: disable=locally-disabled,too-many-arguments,invalid-name
 @para_check.check_input_type(dict, dict, dict, dict, (list, tuple), (list, tuple),
-                       (list, tuple), int,
-                       (list, tuple), bool, str)
+                             (list, tuple), int,
+                             (list, tuple), bool, str)
 def max_pool_grad_with_argmax(x, grad, argmax, y, ksize, strides, pads,
                               dtype=DT_INT32,
                               dilation=(1, 1, 1, 1), ceil_mode=False,
@@ -98,13 +96,14 @@ def max_pool_grad_with_argmax(x, grad, argmax, y, ksize, strides, pads,
     return maxpoolgard.tik_instance_function(kernel_name)
 
 
+# pylint: disable=too-few-public-methods,useless-super-delegation
 class MaxpoolGard(argmax_cut_h_v2.MaxpoolGradBase):
     """
     parameter for max_pool_grad_with_pool
     """
 
     # pylint: disable=locally-disabled,too-many-arguments,
-    # too-many-locals,useless-super-delegation
+    # pylint: disable=too-many-locals
     def __init__(self, grad, argmax, input_x, ksize, strides, padding,
                  dilation, ceil_mode):
         """
@@ -124,12 +123,13 @@ class MaxpoolGard(argmax_cut_h_v2.MaxpoolGradBase):
         -------
         None
         """
+        # pylint: disable=super-with-arguments
         super(MaxpoolGard, self).__init__(grad, argmax, input_x, ksize,
                                           strides, padding,
                                           dilation, ceil_mode)
 
     # pylint: disable=locally-disabled,too-many-locals,too-many-statements,
-    # too-many-branches,too-many-return-statements
+    # pylint: disable=unused-variable,too-many-branches,too-many-return-statements
     def tik_instance_function(self, kernel_name):
         """
         get vector instruct repeat times
@@ -152,11 +152,8 @@ class MaxpoolGard(argmax_cut_h_v2.MaxpoolGradBase):
         ho_min = 1 if hoverlap == 0 else 2
         ho_max = ho_min
         wo_max = math.ceil(dyw / 16) * 16
-        col2img_one_h = strideh if hoverlap == 0 else windowh
-        col2img_w = wo_max * stridew if woverlap == 0 else (
-                                                            wo_max - 1) * stridew + windoww
-        col2img_h = ho_max * strideh if hoverlap == 0 else (
-                                                            ho_max - 1) * strideh + windowh
+        col2img_w = wo_max * stridew if woverlap == 0 else (wo_max - 1) * stridew + windoww
+        col2img_h = ho_max * strideh if hoverlap == 0 else (ho_max - 1) * strideh + windowh
 
         if windowh > 2 * strideh or windoww > 2 * stridew:
             raise RuntimeError(
@@ -204,7 +201,7 @@ def _pooling_output_shape_pad_lr(input_size, kernel_size, pad_l,
                                  pad_r, stride, dilation, ceil_mode):
     temp = input_size + pad_l + pad_r - dilation * (kernel_size - 1) - 1
 
-    if ceil_mode == True:
+    if ceil_mode:
         output_size = ((temp + (stride - 1)) // stride) + 1
     else:
         output_size = (temp // stride) + 1
@@ -350,7 +347,7 @@ def check_param(x, grad, argmax, y, ksize, strides, padding, dtype, dilation,
         raise RuntimeError(
             "The dtype of tensor must be same")
 
-    if dtype != DT_INT32 and dtype != DT_INT64:
+    if dtype not in (DT_INT32, DT_INT64):
         raise RuntimeError(
             "The dtype of input max indice must be int32 or int64")
 
@@ -360,6 +357,9 @@ def check_param(x, grad, argmax, y, ksize, strides, padding, dtype, dilation,
 
 
 def _ceil_div(value, factor):
+    """
+    _ceil_div
+    """
     if value % factor == 0:
         quotient = value // factor
     else:

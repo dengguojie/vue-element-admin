@@ -13,6 +13,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 tik op base
 """
+# pylint: disable=too-many-arguments,no-self-use
 import functools
 import impl.constant_util as constant
 from impl import common_util
@@ -20,14 +21,23 @@ from impl import common_util
 MAX_REPEAT_NUM = 255
 
 
-class TikOpBase(object):
+class TikOpBase:
+    """
+        Function: use to store concat base parameters
+    """
     def __init__(self, tik_instance):
         self.tik_instance = tik_instance
 
     def get_data_size(self, data_type):
+        """
+        get_data_size
+        """
         return common_util.get_data_size(data_type)
 
     def get_shape_size(self, data_shape):
+        """
+        get_shape_size
+        """
         data_size = int(functools.reduce(lambda i, j: i * j, data_shape))
         return data_size
 
@@ -166,6 +176,9 @@ class TikOpBase(object):
                       constant.REPEAT_STRIDE_EIGHT)
 
     def vector_dup_func(self, dest, scalar_val, compute_shape):
+        """
+        vector_dup_func
+        """
         func_name = self.tik_instance.vector_dup
         front_mask, last_mask, repeat_times = \
             self._get_mask_and_repeat(compute_shape, dest.dtype)
@@ -241,22 +254,34 @@ class TikOpBase(object):
                       constant.REPEAT_STRIDE_EIGHT)
 
     def vmul_func(self, dest, src0, src1, compute_shape, dest_offset=0,
-                   src0_offset=0, src1_offset=0):
+                  src0_offset=0, src1_offset=0):
+        """
+        vmul_func
+        """
         self._double_vector_func(self.tik_instance.vmul, dest, src0, src1,
                                  compute_shape, dest_offset, src0_offset,
                                  src1_offset)
 
     def vadd_func(self, dest, src0, src1, compute_shape, dest_offset=0,
-                   src0_offset=0, src1_offset=0):
+                  src0_offset=0, src1_offset=0):
+        """
+        vadd_func
+        """
         self._double_vector_func(self.tik_instance.vadd, dest, src0, src1,
                                  compute_shape, dest_offset, src0_offset,
                                  src1_offset)
 
     def vsub_func(self, dest, src0, src1, compute_shape):
+        """
+        vsub_func
+        """
         self._double_vector_func(self.tik_instance.vsub, dest, src0, src1,
                                  compute_shape)
 
     def move_data(self, dest, src, data_type, copy_shape):
+        """
+        move_data
+        """
         byte_num_one = common_util.get_data_size(data_type)
         copy_size = self.get_shape_size(copy_shape)
         one_block_ele_num = constant.BLOCK_SIZE // byte_num_one

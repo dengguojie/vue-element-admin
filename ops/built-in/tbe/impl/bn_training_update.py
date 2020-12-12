@@ -26,13 +26,14 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
-# pylint: disable = unused-argument
+# pylint: disable = unused-argument,invalid-name
+# pylint: disable = too-many-arguments,too-many-locals,redefined-builtin
 def get_op_support_info(x, sum, square_sum,
-                       scale, offset, mean,
-                       variance, y, mean_out,
-                       variance_out, batch_mean,
-                       batch_variance, factor, epsilon,
-                       kernel_name="bn_training_update"):
+                        scale, offset, mean,
+                        variance, y, mean_out,
+                        variance_out, batch_mean,
+                        batch_variance, factor, epsilon,
+                        kernel_name="bn_training_update"):
     """
     get_op_support_info
     """

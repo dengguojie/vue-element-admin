@@ -220,7 +220,7 @@ ut_case.add_case("all",
                                       "float32",
                                       "test_right_fp16_006",
                                       "success"))
-
+"""
 ut_case.add_precision_case("all",
                  gen_in_infer_v2_precision_case((6, 5, 8, 7, 16), 
                                       (6, 5, 1, 1, 16),
@@ -277,8 +277,11 @@ ut_case.add_precision_case("all",
                                       "float32", "float32",
                                       "in_infer_v2_precision_case_006",
                                       "success"))
-
+"""
 if __name__ == '__main__':
-    ut_case.run("Ascend310")
+    # ut_case.run("Ascend310")
+    import os
+    user_home_path = os.path.expanduser("~")
+    simulator_lib_path = os.path.join(user_home_path, "Ascend/ascend-toolkit/20.1.rc1/x86_64-linux/toolkit/tools/simulator")
     ut_case.run(["Ascend310"], simulator_mode="pv", 
-                simulator_lib_path="/usr/local/Ascend/toolkit/tools/simulator")
+                simulator_lib_path=simulator_lib_path)

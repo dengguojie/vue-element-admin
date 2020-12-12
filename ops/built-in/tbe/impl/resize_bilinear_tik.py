@@ -18,9 +18,9 @@ resize_bilinear
 from te import tik
 import te.platform as tbe_platform
 from te.utils import para_check
-import numpy as np
 from impl import common_util
 from impl.util import util_tik_comm_func
+
 
 # pylint: disable=too-many-instance-attributes
 class ResizeBilinear:
@@ -40,7 +40,7 @@ class ResizeBilinear:
         self.image_type = x.get("dtype")
         self.image_ori_shape = x.get("ori_shape")
         self.image_format = x.get("ori_format")
-        self.boxes_shape = (self.image_shape[0],4)
+        self.boxes_shape = (self.image_shape[0], 4)
         self.boxes_type = "float32"
 
         self.boxes_index_shape = (self.image_shape[0],)
@@ -75,7 +75,7 @@ class ResizeBilinear:
 
     # pylint: disable=locally-disabled,invalid-name,too-many-arguments,too-many-locals
     # pylint: disable=unused-argument
-    def check_supported_tik(self, method = "bilinear"):
+    def check_supported_tik(self, method="bilinear"):
         """To check whether the AICORE operator can support the length of w/h or not
         """
         input_shape = self.image_ori_shape
@@ -128,6 +128,7 @@ class ResizeBilinear:
 
         return self.tik_instance.Tensor(dtype, shape, name=name, scope=mem_type)
 
+    # pylint: disable=unused-variable
     def init_gm_mem(self):
         """init tik gm mem
         """
@@ -225,7 +226,8 @@ def fill_index_in_ub(tik_instance, idx_ub, idx_num):
             idx_ub[_idx].set_as(_idx)
 
 
-# pylint: disable=too-many-statements
+# pylint: disable=too-many-statements,too-many-locals,too-many-branches
+# pylint: disable=unused-variable,invalid-name
 def do_resize_bilinear_compute_one_core(box_num_sigment, obj, box_num_offset):
     """do crop and resize in one core
         step 1 read boxes from boxes and calc h_top_index/h_bottom_index/h_lerp/w_left_index/w_right_index/w_lerp
@@ -272,18 +274,15 @@ def do_resize_bilinear_compute_one_core(box_num_sigment, obj, box_num_offset):
     tik_instance.vector_dup(obj.boxes_vector_num, width_offset_ub,
                             obj.image_c0, 1, 1, 8)
 
-    """
-    float32 scalar for vector mask
-    boxes_ub_small is 00110011 :51
-    boxes_ub_big is 11001100 :204
-    """
+    # float32 scalar for vector mask
+    # boxes_ub_small is 00110011 :51
+    # boxes_ub_big is 11001100 :204
     src_scalar = tik_instance.Scalar(init_value=0, dtype="float32")
     src_scalar1 = tik_instance.Scalar(init_value=1, dtype="float32")
     tik_instance.vector_dup([0,204], boxes_ub_small, src_scalar1, men_len//8, 1, 1)
     tik_instance.vector_dup([0,51], boxes_ub_small, src_scalar, men_len//8, 1, 1)
     tik_instance.vector_dup([0,204], boxes_ub_big, src_scalar, men_len//8, 1, 1)
     tik_instance.vector_dup([0,51], boxes_ub_big, src_scalar1, men_len//8, 1, 1)
-
 
     # calc boxes[2] - boxes  means y2 - y1 and x2 - x1
     util_tik_comm_func.tik_func_vcomple(tik_instance, "vsub", boxes_ub_scale, boxes_ub_big, boxes_ub_small, men_len)
@@ -344,7 +343,8 @@ def do_resize_bilinear_compute_one_core(box_num_sigment, obj, box_num_offset):
         data_B[loop].set_as(box_num_offset + loop)
         box_index_ub[loop].set_as(box_num_offset + loop)
 
-    util_tik_comm_func.tik_func_vcomple(tik_instance, "vmul", box_index_ub, box_index_ub, batch_offset_ub, box_num_sigment, src1_rep=0)
+    util_tik_comm_func.tik_func_vcomple(tik_instance, "vmul", box_index_ub,
+                                        box_index_ub, batch_offset_ub, box_num_sigment, src1_rep=0)
 
     with tik_instance.for_range(0, box_num_sigment) as _box_idx:
         _out_batch_idx = _box_idx + box_num_offset
@@ -396,37 +396,36 @@ def do_resize_bilinear_compute_one_core(box_num_sigment, obj, box_num_offset):
                                            "tmp_float_ub_0", tik.scope_ubuf, obj.boxes_type)
             if not cast_flag:
                 util_tik_comm_func.tik_func_vconv(tik_instance, h_top_index, input_boxes_in_h, obj.crop_height,
-                               mode="floor", mini_mid_ub=tmp_float_ub_0)
+                                                  mode="floor", mini_mid_ub=tmp_float_ub_0)
             else:
                 util_tik_comm_func.tik_func_vconv(tik_instance, h_top_index, input_boxes_in_h, obj.crop_height,
-                               mode="floor")
+                                                  mode="floor")
                 # h_top_index vconv from int32 to float32
                 util_tik_comm_func.tik_func_vconv(tik_instance, tmp_float_ub_0, h_top_index, obj.crop_height)
-            util_tik_comm_func.tik_func_vcomple(tik_instance, "vmul", h_top_index, h_top_index, height_offset_ub, 
+            util_tik_comm_func.tik_func_vcomple(tik_instance, "vmul", h_top_index, h_top_index, height_offset_ub,
                                                 obj.crop_height, src1_rep=0)
-
             util_tik_comm_func.tik_func_vcomple(tik_instance, "vsub", input_boxes_in_h,
-                             input_boxes_in_h, tmp_float_ub_0, obj.crop_height)
+                                                input_boxes_in_h, tmp_float_ub_0, obj.crop_height)
             util_tik_comm_func.tik_func_vconv(tik_instance, h_index_post, input_boxes_in_h, obj.crop_height,
-                           mode="ceil")
+                                              mode="ceil")
             tmp_float_ub_1 = obj.apply_mem((get_ceil_int(obj.crop_width,
                                                          obj.boxes_block_num)
                                             * obj.boxes_block_num,),
                                            "tmp_float_ub_1", tik.scope_ubuf, obj.boxes_type)
             if not cast_flag:
                 util_tik_comm_func.tik_func_vconv(tik_instance, w_left_index, input_boxes_in_w, obj.crop_width,
-                               mode="floor", mini_mid_ub=tmp_float_ub_1)
+                                                  mode="floor", mini_mid_ub=tmp_float_ub_1)
             else:
                 util_tik_comm_func.tik_func_vconv(tik_instance, w_left_index, input_boxes_in_w, obj.crop_width,
-                               mode="floor")
+                                                  mode="floor")
                 # h_top_index vconv from int32 to float32
                 util_tik_comm_func.tik_func_vconv(tik_instance, tmp_float_ub_1, w_left_index, obj.crop_width)
-            util_tik_comm_func.tik_func_vcomple(tik_instance, "vmul", w_left_index, w_left_index, width_offset_ub, obj.crop_width,
-                             src1_rep=0)
+            util_tik_comm_func.tik_func_vcomple(
+                tik_instance, "vmul", w_left_index, w_left_index, width_offset_ub, obj.crop_width, src1_rep=0)
             util_tik_comm_func.tik_func_vcomple(tik_instance, "vsub", input_boxes_in_w,
-                             input_boxes_in_w, tmp_float_ub_1, obj.crop_width)
+                                                input_boxes_in_w, tmp_float_ub_1, obj.crop_width)
             util_tik_comm_func.tik_func_vconv(tik_instance, w_index_post, input_boxes_in_w, obj.crop_width,
-                           mode="ceil")
+                                              mode="ceil")
 
         # read input batch index and calc input offset
         input_batch_offset = tik_instance.Scalar(dtype="int32")
@@ -479,7 +478,8 @@ def do_resize_bilinear_compute_one_core(box_num_sigment, obj, box_num_offset):
                                         0, obj.image_c1, c0_block_num*2,
                                         obj.image_height*obj.image_width*c0_block_num - c0_block_num*2, 0)
                                 else:
-                                    util_tik_comm_func.tik_func_vector(tik_instance, h1_w_ub, 0, obj.image_c1*obj.image_c0*2)
+                                    util_tik_comm_func.tik_func_vector(
+                                        tik_instance, h1_w_ub, 0, obj.image_c1*obj.image_c0*2)
                             else:
                                 tik_instance.data_move(
                                     h0_w_ub, image_gm[input_batch_offset + input_h_offset + input_w_offset],
@@ -504,7 +504,8 @@ def do_resize_bilinear_compute_one_core(box_num_sigment, obj, box_num_offset):
                                         0, obj.image_c1, c0_block_num,
                                         obj.image_height*obj.image_width*c0_block_num - c0_block_num, c0_block_num)
                                 else:
-                                    util_tik_comm_func.tik_func_vector(tik_instance, h1_w_ub, 0, obj.image_c1*obj.image_c0*2)
+                                    util_tik_comm_func.tik_func_vector(
+                                        tik_instance, h1_w_ub, 0, obj.image_c1*obj.image_c0*2)
                         else:
                             # when input is fp16, will copy and cast to fp32
                             with tik_instance.new_stmt_scope():
@@ -516,7 +517,7 @@ def do_resize_bilinear_compute_one_core(box_num_sigment, obj, box_num_offset):
                                         0, obj.image_c1, c0_block_fp16*2,
                                         obj.image_height*obj.image_width*c0_block_fp16 - c0_block_fp16*2, 0)
                                     util_tik_comm_func.tik_func_vconv(tik_instance, h0_w_ub, h0_w_ub_fp16,
-                                                   obj.image_c1*obj.image_c0*2)
+                                                                      obj.image_c1*obj.image_c0*2)
                                     if obj.image_height > 1:
                                         tik_instance.data_move(
                                             h1_w_ub_fp16,
@@ -525,9 +526,10 @@ def do_resize_bilinear_compute_one_core(box_num_sigment, obj, box_num_offset):
                                             0, obj.image_c1, c0_block_fp16*2,
                                             obj.image_height*obj.image_width*c0_block_fp16 - c0_block_fp16*2, 0)
                                         util_tik_comm_func.tik_func_vconv(tik_instance, h1_w_ub, h1_w_ub_fp16,
-                                                       obj.image_c1*obj.image_c0*2)
+                                                                          obj.image_c1*obj.image_c0*2)
                                     else:
-                                        util_tik_comm_func.tik_func_vector(tik_instance, h1_w_ub, 0, obj.image_c1*obj.image_c0*2)
+                                        util_tik_comm_func.tik_func_vector(
+                                            tik_instance, h1_w_ub, 0, obj.image_c1*obj.image_c0*2)
                                 else:
                                     tik_instance.data_move(
                                         h0_w_ub_fp16,
@@ -542,7 +544,7 @@ def do_resize_bilinear_compute_one_core(box_num_sigment, obj, box_num_offset):
                                         obj.image_height*obj.image_width*c0_block_fp16 - c0_block_fp16,
                                         c0_block_fp16)
                                     util_tik_comm_func.tik_func_vconv(tik_instance, h0_w_ub, h0_w_ub_fp16,
-                                                   obj.image_c1*obj.image_c0*2)
+                                                                      obj.image_c1*obj.image_c0*2)
                                     if obj.image_height > 1:
                                         tik_instance.data_move(
                                             h1_w_ub_fp16,
@@ -559,26 +561,27 @@ def do_resize_bilinear_compute_one_core(box_num_sigment, obj, box_num_offset):
                                             obj.image_height*obj.image_width*c0_block_fp16 - c0_block_fp16,
                                             c0_block_fp16)
                                         util_tik_comm_func.tik_func_vconv(tik_instance, h1_w_ub, h1_w_ub_fp16,
-                                                       obj.image_c1*obj.image_c0*2)
+                                                                          obj.image_c1*obj.image_c0*2)
                                     else:
-                                        util_tik_comm_func.tik_func_vector(tik_instance, h1_w_ub, 0, obj.image_c1*obj.image_c0*2)
+                                        util_tik_comm_func.tik_func_vector(
+                                            tik_instance, h1_w_ub, 0, obj.image_c1*obj.image_c0*2)
 
                         util_tik_comm_func.tik_func_vcomple(tik_instance, "vsub", h1_w_ub,
-                                         h1_w_ub, h0_w_ub,
-                                         obj.image_c1*obj.image_c0*2)
+                                                            h1_w_ub, h0_w_ub,
+                                                            obj.image_c1*obj.image_c0*2)
 
                         util_tik_comm_func.tik_func_vmuls(tik_instance, h1_w_ub,
-                                       h1_w_ub, h_lerp, obj.image_c1*obj.image_c0*2)
+                                                          h1_w_ub, h_lerp, obj.image_c1*obj.image_c0*2)
 
                         util_tik_comm_func.tik_func_vcomple(tik_instance, "vadd", h0_w_ub,
-                                         h1_w_ub, h0_w_ub,
-                                         obj.image_c1*obj.image_c0*2)
+                                                            h1_w_ub, h0_w_ub,
+                                                            obj.image_c1*obj.image_c0*2)
 
                         tik_fun = tik_instance.vsub
                         tik_fun(obj.image_c0, h1_w_ub, h0_w_ub[16],
                                 h0_w_ub, obj.image_c1, 1, 1, 1, 2, 4, 4)
                         util_tik_comm_func.tik_func_vmuls(tik_instance, h1_w_ub,
-                                       h1_w_ub, w_lerp, obj.image_c1*obj.image_c0)
+                                                          h1_w_ub, w_lerp, obj.image_c1*obj.image_c0)
 
                         tik_fun = tik_instance.vadd
                         tik_fun(obj.image_c0, h1_w_ub[obj.image_c1*obj.image_c0:],
@@ -592,6 +595,7 @@ def do_resize_bilinear_compute_one_core(box_num_sigment, obj, box_num_offset):
                                                0, obj.crop_height*obj.crop_width*c0_block_num - c0_block_num)
 
 
+# pylint: disable=invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT,para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.KERNEL_NAME)
 def resize_bilinear(x, y, crop_size, kernel_name="resize_bilinear_v2"):

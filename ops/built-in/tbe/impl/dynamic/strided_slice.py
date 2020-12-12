@@ -19,31 +19,44 @@ strided slice
 from __future__ import absolute_import
 import math
 import te.lang.dynamic
-from topi.cce import util
-from impl import common_util
 from te.utils import para_check
 from te import tik
+
+from impl import common_util
 from impl import constant_util as constant
 
 MAX_SIZE = 2 ** 31 - 1
 
 
 def ceil_32bytes_align_count(count, dtype):
+    """
+    ceil_32bytes_align_count
+    """
     type_size = common_util.get_data_size(dtype)
     block_count = math.ceil(count * type_size / constant.BLOCK_SIZE)
     return block_count * constant.BLOCK_SIZE // type_size
 
 
 def _data_move(tik_instance: tik.Tik, dest: tik.Tensor, src: tik.Tensor, count):
+    """
+    _data_move
+    """
     dtype_size = common_util.get_data_size(src.dtype)
     burst = math.ceil(count * dtype_size / constant.BLOCK_SIZE)
     tik_instance.data_move(dest, src, 0, 1, burst, 0, 0)
 
 
-# pylint: too-many-locals, too-many-statements, too-many-instance-attributes
+# pylint: disable=too-many-locals, too-many-statements, too-many-instance-attributes
+# pylint: disable=too-few-public-methods
 class StridedSlice:
-    # pylint: too-many-locals, too-many-statements, too-many-instance-attributes
+    """
+    StridedSlice
+    """
+    # pylint: disable=too-many-locals, too-many-statements, too-many-instance-attributes
     class TilingParam:
+        """
+        TilingParam
+        """
         def __init__(self, input_x_shape, inst: tik.Tik):
             """
             tiling param
@@ -68,7 +81,11 @@ class StridedSlice:
             self.output_shape = tuple(map(lambda x: gen_shape("out_dim_", x[0]), enumerate(input_x_shape)))
             self.out_dim = inst.Scalar(dtype, name="out_dim")
 
+        # pylint: disable=invalid-name
         def init(self):
+            """
+            init process data
+            """
             with self.tik_instance.new_stmt_scope():
                 need_ub_size = ceil_32bytes_align_count(self.tiling_gm.shape[0], self.dtype)
                 ub = self.tik_instance.Tensor(self.dtype, (need_ub_size,), name="tiling_ub", scope=tik.scope_ubuf)
@@ -87,7 +104,7 @@ class StridedSlice:
                     self.out_dim.set_as(self.out_dim * dim)
 
     # pylint: disable=locally-disabled,too-many-arguments,
-    # pylint: unused-argument,too-many-locals
+    # pylint: disable=unused-argument,too-many-locals
     def __init__(self, input_x, strides, begin_mask, end_mask, ellipsis_mask, new_axis_mask, shrink_axis_mask,
                  kernel_name="strided_slice"):
         self.strides = strides
@@ -132,10 +149,16 @@ class StridedSlice:
         return result
 
     def _ceil_32bytes_count(self, count: tik.Scalar):
+        """
+        _ceil_32bytes_count
+        """
         ceil_num = self._ceil_div(count, self.block_element)
         return ceil_num * self.block_element
 
     def _get_input_gm_addr(self, cur_index: tik.Scalar):
+        """
+        _get_input_gm_addr
+        """
         reverse_part_output_shape = self.tiling_param.output_shape[::-1][1:]
         reverse_input_shape = self.tiling_param.input_shape[::-1]
         reverse_begin = self.tiling_param.begin[::-1][1:]
@@ -158,6 +181,9 @@ class StridedSlice:
         return addr
 
     def _get_output_gm_addr(self, cur_index: tik.Scalar):
+        """
+        _get_output_gm_addr
+        """
         reverse_part_output_shape = self.tiling_param.output_shape[::-1][1:]
         reverse_output_shape = self.tiling_param.output_shape[::-1]
         inst = self.tik_instance
@@ -179,11 +205,17 @@ class StridedSlice:
         return addr
 
     def _data_move(self, dest: tik.Tensor, src: tik.Tensor, count: tik.Scalar):
+        """
+        _data_move
+        """
         dtype_size = common_util.get_data_size(src.dtype)
         burst = self._ceil_div(count * dtype_size, constant.BLOCK_SIZE)
         self.tik_instance.data_move(dest, src, 0, 1, burst, 0, 0)
 
     def strided_slice(self):
+        """
+        strided_slice
+        """
         inst = self.tik_instance
         core_num = self.aicore_num
         output_shape = self.tiling_param.output_shape
@@ -214,7 +246,11 @@ class StridedSlice:
                     with inst.else_scope():
                         self._do_large_last_dim_not_align(input_gm_addr, output_gm_addr, inner_loop_idx)
 
+    # pylint: disable=invalid-name
     def _do_small_last_dim(self, core_idx):
+        """
+        _do_small_last_dim
+        """
         inst = self.tik_instance
         core_num = self.aicore_num
         output_shape = self.tiling_param.output_shape
@@ -272,7 +308,7 @@ class StridedSlice:
             self._data_move(ub, input_gm[input_gm_addr + inner_loop_idx * self.ub_size], count)
             self._data_move(output_gm[output_gm_addr + inner_loop_idx * self.ub_size], ub, count)
 
-    # pylint: too-many-locals
+    # pylint: disable=too-many-locals,invalid-name
     def _do_large_last_dim_not_align(self, input_gm_addr, output_gm_addr, inner_loop_idx):
         inst = self.tik_instance
         total = self.tiling_param.output_shape[-1]
@@ -327,7 +363,7 @@ class StridedSlice:
 
 
 # pylint: disable=locally-disabled,too-many-arguments,
-# pylint: unused-argument,too-many-locals
+# pylint: disable=unused-argument,too-many-locals
 @te.op.register_operator("StridedSlice")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,

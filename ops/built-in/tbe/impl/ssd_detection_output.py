@@ -27,6 +27,7 @@ from impl import nms
 from impl.util import util_select_op_base
 
 
+# pylint: disable=too-many-locals,too-many-statements,too-many-arguments,unused-argument,too-many-lines
 def get_op_support_info(bbox_delta, score, anchors,
                         out_boxnum, output_y,
                         num_classes,

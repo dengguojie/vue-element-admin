@@ -14,7 +14,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 transpose
 """
 
-
 import te.lang.dynamic
 from te import tvm
 from te.tvm import make as _make
@@ -24,12 +23,6 @@ from te.platform.cce_runtime import PIPELINES
 from te.platform import cce_params
 from te import tik
 from te import platform as tbe_platform
-#from te.utils.op_utils import REQUIRED_INPUT
-#from te.utils.op_utils import REQUIRED_OUTPUT
-#from te.utils.op_utils import REQUIRED_ATTR_LIST_INT
-#from te.utils.op_utils import KERNEL_NAME
-#from te.utils.op_utils import check_op_params
-#from te.utils.error_manager import error_manager_vector
 
 UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
 CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
@@ -47,9 +40,10 @@ BARRIER_INT_LEN = 4
 LIST_NUMBER = 16
 TILING_OFFSET_FOR_DIRTY_DATA = CORE_NUM * ELE_NUM_PER_BLOCK_INT64
 
+
 # pylint: disable=unused-argument,invalid-name, too-many-arguments, unused-variable, too-many-locals
 # pylint: disable=too-many-statements, invalid-name, no-self-use, protected-access
-# pylint: disable=too-many-instance-attributes, too-few-public-methods
+# pylint: disable=too-many-instance-attributes,too-few-public-methods,too-many-lines
 class Barrier:
     """this class should be part of tik."""
     def emit(self, tik_inst, stmt):
@@ -117,7 +111,7 @@ class Barrier:
 
                 with self.tik_instance.for_range(0, self.block_num, dtype='int64') as core_id:
                     with self.tik_instance.if_scope(
-                        self.sync_ub[core_id * self.int32_byte_size + self.seq % 2] != self.seq):
+                            self.sync_ub[core_id * self.int32_byte_size + self.seq % 2] != self.seq):
                         synced.set_as(0)
 
                 with self.tik_instance.if_scope(synced == 1):
@@ -191,7 +185,7 @@ class Transpose:
             """
 
 
-            for i in range(TILING_PARAM_NUM - TILING_OFFSET_FOR_DIRTY_DATA ):
+            for i in range(TILING_PARAM_NUM - TILING_OFFSET_FOR_DIRTY_DATA):
                 tiling_reg_list[i].set_as(ub_tiling[i + TILING_OFFSET_FOR_DIRTY_DATA])
 
             self.core_num = tiling_reg_list[0]
@@ -223,154 +217,6 @@ class Transpose:
             self.level_loop_num = []
             self.level_gap = []
             self.has_tail = []
-
-
-            # case_1
-            #self.case = tik_inst.Scalar('int64', init_value=1)
-            #self.src_axis_num = tik_inst.Scalar('int64', init_value=3)
-            #self.dst_axis_num = tik_inst.Scalar('int64', init_value=2)
-            #tiling_reg_list[100].set_as(100)
-            #tiling_reg_list[101].set_as(7)
-            #tiling_reg_list[102].set_as(3)
-            #tiling_reg_list[103].set_as(1280)
-            #tiling_reg_list[104].set_as(128000)
-            #tiling_reg_list[105].set_as(896000)
-            #tiling_reg_list[106].set_as(5)
-            #tiling_reg_list[107].set_as(10500)
-            #tiling_reg_list[108].set_as(2100)
-            #tiling_reg_list[109].set_as(0)
-            #tiling_reg_list[110].set_as(0)
-            #tiling_reg_list[111].set_as(0)
-            ##[2]:0,  [1]:0,  [0]:0
-            #self.src_jump_counter_0 = tiling_reg_list[109]
-            #self.src_jump_counter_1 = tiling_reg_list[110]
-            #self.src_jump_counter_2 = tiling_reg_list[111]
-            ##[2]:3, [1]:7,  [0]:100
-            #self.src_jump_factor_0 = tiling_reg_list[100]
-            #self.src_jump_factor_1 = tiling_reg_list[101]
-            #self.src_jump_factor_2 = tiling_reg_list[102]
-            ##[2]:896000,  [1]:128000,  [0]:1280
-            #self.src_jump_stride_0 = tiling_reg_list[103]
-            #self.src_jump_stride_1 = tiling_reg_list[104]
-            #self.src_jump_stride_2 = tiling_reg_list[105]
-            ##[0]:5
-            #self.dst_jump_factor_0 = tiling_reg_list[106]
-            ##[1]:2100,[0]:10500
-            #self.dst_jump_stride_0 = tiling_reg_list[107]
-            #self.dst_jump_stride_1 = tiling_reg_list[108]
-            #self.dst_jump_stride_2 = tiling_reg_list[0]#unused unused
-
-            #case_1_1
-            #self.line_per_batch = tik_inst.Scalar('int64', init_value=8)
-            #self.line_tail_batch = tik_inst.Scalar('int64', init_value=8)
-            #self.line_block_per_batch = tik_inst.Scalar('int64', init_value=1)
-            #self.line_block_tail_batch = tik_inst.Scalar('int64', init_value=1)
-            #self.round_num_per_core = tik_inst.Scalar('int64', init_value=1) # 32 core
-            #self.batch_num_per_round = tik_inst.Scalar('int64', init_value=262)
-            #self.back_step_up = tik_inst.Scalar('int64', init_value=4)
-            #self.loop_per_line = tik_inst.Scalar('int64', init_value=2)
-            #self.col_ele_per_batch = tik_inst.Scalar('int64', init_value=110)
-            #self.col_block_per_batch = tik_inst.Scalar('int64', init_value=14)
-            #self.col_ele_tail = tik_inst.Scalar('int64', init_value=36)
-            #self.col_block_tail = tik_inst.Scalar('int64', init_value=5)
-            #self.element_per_core = tik_inst.Scalar('int64', init_value=256)
-            #self.used_core = tik_inst.Scalar('int64', init_value=5)
-            #self.pad_ele_num_major = tik_inst.Scalar('int64', init_value=2)
-            #self.pad_ele_num_tail_col = tik_inst.Scalar('int64', init_value=4)
-            #case_1_1_end
-
-            #case_1_2
-            #self.line_per_batch = tik_inst.Scalar('int64', init_value=16)
-            #self.line_tail_batch = tik_inst.Scalar('int64', init_value=8)
-            #self.line_block_per_batch = tik_inst.Scalar('int64', init_value=2)
-            #self.line_block_tail_batch = tik_inst.Scalar('int64', init_value=1)
-            #self.round_num_per_core = tik_inst.Scalar('int64', init_value=1) # 32 core
-            #self.batch_num_per_round = tik_inst.Scalar('int64', init_value=131)
-            #self.back_step_up = tik_inst.Scalar('int64', init_value=4)
-            #self.loop_per_line = tik_inst.Scalar('int64', init_value=4)
-            #self.col_ele_per_batch = tik_inst.Scalar('int64', init_value=64)
-            #self.col_block_per_batch = tik_inst.Scalar('int64', init_value=8)
-            #self.col_ele_tail = tik_inst.Scalar('int64', init_value=0)
-            #self.col_block_tail = tik_inst.Scalar('int64', init_value=0)
-            #self.element_per_core = tik_inst.Scalar('int64', init_value=256)
-            #self.used_core = tik_inst.Scalar('int64', init_value=5)
-            #self.pad_ele_num_major = tik_inst.Scalar('int64', init_value=0)
-            #self.pad_ele_num_tail_col = tik_inst.Scalar('int64', init_value=0)
-            #case_1_2_end
-
-
-
-            # case_2
-            #self.case = tik_inst.Scalar('int64', init_value=2)
-            #self.src_axis_num = tik_inst.Scalar('int64', init_value=2)
-            #self.dst_axis_num = tik_inst.Scalar('int64', init_value=2)
-            #tiling_reg_list[100].set_as(7)
-            #tiling_reg_list[101].set_as(3)
-            #tiling_reg_list[102].set_as(128000)
-            #tiling_reg_list[103].set_as(896000)
-            #tiling_reg_list[104].set_as(5)
-            #tiling_reg_list[105].set_as(10500)
-            #tiling_reg_list[106].set_as(2100)
-            #tiling_reg_list[107].set_as(21)
-            #tiling_reg_list[108].set_as(0)
-            #tiling_reg_list[109].set_as(0)
-            #tiling_reg_list[110].set_as(0)
-            ##[1]:3, [0]:7
-            #self.src_jump_factor_0 = tiling_reg_list[100]
-            #self.src_jump_factor_1 = tiling_reg_list[101]
-            #self.src_jump_factor_2 = tiling_reg_list[0] #unused
-            ##[1]:896000,  [0]:128000
-            #self.src_jump_stride_0 = tiling_reg_list[102]
-            #self.src_jump_stride_1 = tiling_reg_list[103]
-            #self.src_jump_stride_2 = tiling_reg_list[0] #unused
-            ##[0]:5
-            #self.dst_jump_factor_0 = tiling_reg_list[104]
-            ##[2]:21, [1]:2100,   [0]:10500
-            #self.dst_jump_stride_0 = tiling_reg_list[105]
-            #self.dst_jump_stride_1 = tiling_reg_list[106]
-            #self.dst_jump_stride_2 = tiling_reg_list[107]
-            ##[1]:0,  [0]:0
-            #self.src_jump_counter_0 = tiling_reg_list[108]
-            #self.src_jump_counter_1 = tiling_reg_list[109]
-            #self.src_jump_counter_2 = tiling_reg_list[0]#unused
-
-            #case_2_1_begin
-            #self.line_per_batch = tik_inst.Scalar('int64', init_value=8)
-            #self.line_tail_batch = tik_inst.Scalar('int64', init_value=8)
-            #self.line_block_per_batch = tik_inst.Scalar('int64', init_value=1)
-            #self.line_block_tail_batch = tik_inst.Scalar('int64', init_value=1)
-            #self.round_num_per_core = tik_inst.Scalar('int64', init_value=15)#15    # 32 core
-            #self.batch_num_per_round = tik_inst.Scalar('int64', init_value=2)
-            #self.back_step_up = tik_inst.Scalar('int64', init_value=3)
-            #self.loop_per_line = tik_inst.Scalar('int64', init_value=2)#2
-            #self.col_ele_per_batch = tik_inst.Scalar('int64', init_value=128)
-            #self.col_block_per_batch = tik_inst.Scalar('int64', init_value=16)
-            #self.col_ele_tail = tik_inst.Scalar('int64', init_value=0)
-            #self.col_block_tail = tik_inst.Scalar('int64', init_value=0)
-            #self.element_per_core = tik_inst.Scalar('int64', init_value=3840) # 32 core
-            #self.used_core = tik_inst.Scalar('int64', init_value=32)
-            #self.pad_ele_num_major = tik_inst.Scalar('int64', init_value=0)
-            #self.pad_ele_num_tail_col = tik_inst.Scalar('int64', init_value=0)
-            #case_2_1_end
-
-            #case_2_2_begin
-            #self.line_per_batch = tik_inst.Scalar('int64', init_value=16)
-            #self.line_tail_batch = tik_inst.Scalar('int64', init_value=8)
-            #self.line_block_per_batch = tik_inst.Scalar('int64', init_value=2)
-            #self.line_block_tail_batch = tik_inst.Scalar('int64', init_value=1)
-            #self.round_num_per_core = tik_inst.Scalar('int64', init_value=15)    # 32 core
-            #self.batch_num_per_round = tik_inst.Scalar('int64', init_value=1)
-            #self.back_step_up = tik_inst.Scalar('int64', init_value=3)
-            #self.loop_per_line = tik_inst.Scalar('int64', init_value=4)
-            #self.col_ele_per_batch = tik_inst.Scalar('int64', init_value=64)
-            #self.col_block_per_batch = tik_inst.Scalar('int64', init_value=8)
-            #self.col_ele_tail = tik_inst.Scalar('int64', init_value=0)
-            #self.col_block_tail = tik_inst.Scalar('int64', init_value=0)
-            #self.element_per_core = tik_inst.Scalar('int64', init_value=3840) # 32 core
-            #self.used_core = tik_inst.Scalar('int64', init_value=32)
-            #self.pad_ele_num_major = tik_inst.Scalar('int64', init_value=0)
-            #self.pad_ele_num_tail_col = tik_inst.Scalar('int64', init_value=0)
-            #case_2_2_end
 
             # case_3
             self.case = tik_inst.Scalar('int64', init_value=3)
@@ -429,8 +275,6 @@ class Transpose:
             self.tail_col_major_batch = 0
             self.major_col_tail_batch = 0
             self.tail_col_tail_batch = 0
-            #case_3_1_end
-
 
             self.axis_7_src_stride = tik_inst.Scalar('int64', init_value=0)
             self.axis_6_src_stride = tik_inst.Scalar('int64', init_value=0)
@@ -460,7 +304,6 @@ class Transpose:
             self.axis_1_dst_stride = tik_inst.Scalar('int64', init_value=10500)
             self.axis_0_dst_stride = tik_inst.Scalar('int64', init_value=0)
 
-
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
                 self.level_loop_num.append(tiling_reg_list[self.count+ i])
             self.count += TRANSPOSE_MAX_AXIS_NUM
@@ -487,7 +330,7 @@ class Transpose:
         self.data_in, self.data_perm, self.data_out, self.data_workspace, self.data_tiling = tensor_list
         self.ub_tiling = tik_inst.Tensor("int64", (TILING_PARAM_NUM, ), tik.scope_ubuf, "ub_tiling")
         self.barrier_workspace = tik_inst.Tensor("int64", (BARRIER_INT_LEN * CORE_NUM,), tik.scope_gm,
-                "barrier_workspace", is_workspace=True, is_atomic_add=True)
+                                                 "barrier_workspace", is_workspace=True, is_atomic_add=True)
         self.tiling_reg_list = [tik_inst.Scalar("int64") for i in range(TILING_PARAM_NUM)]
         tik_inst.data_move(self.ub_tiling, self.data_tiling,  0, 1, TILING_PARAM_BURST_LEN, 0, 0)
         self.tiling_param = self.TilingParam(self.tiling_reg_list, self.ub_tiling, tik_inst)
@@ -533,12 +376,10 @@ class Transpose:
                 self.tik_inst.data_move(ub_input, self.data_in[j*1000*33 + i*33], 0, 1000, 5, 28, 0)
                 self.tik_inst.data_move(self.data_workspace[j*1000*40 + i*40], ub_input, 0, 1000, 5, 0, 35)
 
-
     def _copy_workspace_2_out(self, ub_input):
         with self.tik_inst.for_range(0, 15002) as i:
             self.tik_inst.data_move(ub_input, self.data_workspace[i * 40], 0, 1, 5, 0, 0)
             self.tik_inst.data_move(self.data_out[i * 40], ub_input, 0, 1, 5, 0, 0)
-
 
     #       cycle_num_wsp: 4
     #                loop_0       loop_1    tail
@@ -554,17 +395,17 @@ class Transpose:
         with self.tik_inst.for_range(0, tp.cycle_num_wsp) as i:
             with self.tik_inst.for_range(0, tp.loop_num_wsp) as j:
                 self.tik_inst.data_move(ub_input,
-                                        self.data_in[src_pos_wsp +\
-                                                j * tp.nburst_wsp * tp.last_axis_ele * self.element_per_block +\
-                                                i * tp.last_axis_ele],
+                                        self.data_in[src_pos_wsp + \
+                                                     j * tp.nburst_wsp * tp.last_axis_ele * self.element_per_block + \
+                                                     i * tp.last_axis_ele],
                                         0,
                                         tp.nburst_wsp,
                                         tp.burst_len,
                                         tp.src_stride_wsp,
                                         0)
-                self.tik_inst.data_move(self.data_workspace[dst_pos_wsp +\
-                                            j * tp.nburst_wsp * tp.last_axis_ele_a * self.element_per_block +\
-                                            i * tp.last_axis_ele_a],
+                self.tik_inst.data_move(self.data_workspace[dst_pos_wsp + \
+                                                            j * tp.nburst_wsp * tp.last_axis_ele_a * self.element_per_block + \
+                                                            i * tp.last_axis_ele_a],
                                         ub_input,
                                         0,
                                         tp.nburst_wsp,
@@ -573,19 +414,19 @@ class Transpose:
                                         tp.dst_stride_wsp)
             with self.tik_inst.if_scope(tp.nburst_tail_wsp != 0):
                 self.tik_inst.data_move(ub_input,
-                                        self.data_in[src_pos_wsp +\
-                                                     tp.loop_num_wsp * tp.nburst_wsp * tp.last_axis_ele *\
-                                                     self.element_per_block +\
+                                        self.data_in[src_pos_wsp + \
+                                                     tp.loop_num_wsp * tp.nburst_wsp * tp.last_axis_ele * \
+                                                     self.element_per_block + \
                                                      i * tp.last_axis_ele],
                                         0,
                                         tp.nburst_tail_wsp,
                                         tp.burst_len,
                                         tp.src_stride_wsp,
                                         0)
-                self.tik_inst.data_move(self.data_workspace[dst_pos_wsp +\
-                                                         tp.loop_num_wsp * tp.nburst_wsp * tp.last_axis_ele_a *\
-                                                         self.element_per_block +\
-                                                         i * tp.last_axis_ele_a],
+                self.tik_inst.data_move(self.data_workspace[dst_pos_wsp + \
+                                                            tp.loop_num_wsp * tp.nburst_wsp * tp.last_axis_ele_a * \
+                                                            self.element_per_block + \
+                                                            i * tp.last_axis_ele_a],
                                         ub_input,
                                         0,
                                         tp.nburst_tail_wsp,
@@ -593,23 +434,21 @@ class Transpose:
                                         0,
                                         tp.dst_stride_wsp)
 
-
-
     # pylint: disable=too-many-arguments, unused-argument, invalid-name
     def _reorder(self, dst_pos, ub_input, ub_offset, ub_offset_exclude_pad, dst_pos_offset_elements_fp16):
-        #step1. make all elements in the first col
+        # step1. make all elements in the first col
         ub_input_fp16 = ub_input.reinterpret_cast_to("float16")
         src_ele_num_in_fp16 = ub_offset * ELE_NUM_PER_BLOCK_FP16
         src_list = [ub_input_fp16[src_ele_num_in_fp16 * i] for i in range(ELE_NUM_PER_BLOCK_FP16)]
-        dst_list_intermediate = [ub_input_fp16[self.tiling_param.fp16_offset_1 + ELE_NUM_PER_BLOCK_FP16 * i]\
-                for i in range(ELE_NUM_PER_BLOCK_FP16)]
+        dst_list_intermediate = [ub_input_fp16[self.tiling_param.fp16_offset_1 + ELE_NUM_PER_BLOCK_FP16 * i] \
+                                 for i in range(ELE_NUM_PER_BLOCK_FP16)]
         with self.tik_inst.if_scope(ub_offset == 1):
             self.tik_inst.vnchwconv(False, False, dst_list_intermediate, src_list, 1, 0, 0)
         with self.tik_inst.if_scope(ub_offset != 1):
             self.tik_inst.vnchwconv(False, False, dst_list_intermediate,
                                     src_list, ub_offset, ELE_NUM_PER_BLOCK_FP16, 1)
 
-        #step2. erase unused elements aligned
+        # step2. erase unused elements aligned
         all_line_number = self.tiling_param.burst_len * ELE_NUM_PER_BLOCK_FP16
         pad_line_number = self.align_ele_in_fp16
         nburst = ub_offset // self.tiling_param.burst_len
@@ -619,12 +458,12 @@ class Transpose:
                                 ub_input_fp16[self.tiling_param.fp16_offset_1],
                                 0, nburst, burst_len, pad_line_number, 0)
 
-        #step3. make all elements in the first col be in memory of contiguous
-        #block numbers after erasing  elements aligned
+        # step3. make all elements in the first col be in memory of contiguous
+        # block numbers after erasing  elements aligned
         ub_offset_exclude_pad.set_as((nburst * burst_len + ELE_NUM_PER_BLOCK_FP16 - 1) // ELE_NUM_PER_BLOCK_FP16)
         src_ele_num_in_fp16_exclude_pad = ub_offset_exclude_pad * ELE_NUM_PER_BLOCK_FP16
-        src_list_intermediate = [ub_input_fp16[self.tiling_param.fp16_offset_2 +\
-                ELE_NUM_PER_BLOCK_FP16 * i] for i in range(ELE_NUM_PER_BLOCK_FP16)]
+        src_list_intermediate = [ub_input_fp16[self.tiling_param.fp16_offset_2 + \
+                                               ELE_NUM_PER_BLOCK_FP16 * i] for i in range(ELE_NUM_PER_BLOCK_FP16)]
         dst_list_finally = [ub_input_fp16[src_ele_num_in_fp16_exclude_pad * i] for i in range(ELE_NUM_PER_BLOCK_FP16)]
 
         with self.tik_inst.if_scope(ub_offset == 1):
@@ -632,7 +471,6 @@ class Transpose:
         with self.tik_inst.if_scope(ub_offset != 1):
             self.tik_inst.vnchwconv(False, False, dst_list_finally, src_list_intermediate,
                                     ub_offset_exclude_pad, 1, ELE_NUM_PER_BLOCK_FP16)
-
 
     def _save_ub_2_gm(self, dst_pos, ub_input, ub_offset):
         with self.tik_inst.if_scope(self.tiling_param.reorder_factor != 1): # 33 means need reorder
@@ -648,7 +486,6 @@ class Transpose:
             dst_pos.set_as(dst_pos + ub_offset * self._element_num_per_block())
         ub_offset.set_as(0)
 
-
     def _dump_tail(self, level_id, dst_pos, ub_input, ub_offset):
         with self.tik_inst.if_scope(self.tiling_param.has_tail[level_id] != 0):
             with self.tik_inst.if_scope(self.tiling_param.reorder_factor != 1):# 33 means need reorder
@@ -662,17 +499,14 @@ class Transpose:
                 dst_pos.set_as(dst_pos + ub_offset * self._element_num_per_block())
             ub_offset.set_as(0)
 
-
     def _correct_dirty_data(self, dirty_data_start_addr, block_idx, ub_input):
         self.tik_inst.data_move(self.data_out[dirty_data_start_addr],
-                                ub_input[self.tiling_param.fp16_offset_3//2 +\
+                                ub_input[self.tiling_param.fp16_offset_3//2 + \
                                          block_idx * self._element_num_per_block()],
                                 0, 1, 1, 0, 0)
 
-
     def _element_num_per_block(self):
         return BLOCK_SIZE // self._sizeof_dtype(self.x_dtype)
-
 
     def _do_shape_identical_copy(self, ub_input):
         tp = self.tiling_param
@@ -680,7 +514,7 @@ class Transpose:
             self.tik_inst.data_move(ub_input, self.data_in[i * tp.burst_len * self.element_per_block],
                                     0, 1, tp.burst_len, 0, 0)
             self.tik_inst.data_move(self.data_out[i * tp.burst_len * self.element_per_block],
-                                    ub_input,0, 1, tp.burst_len, 0, 0)
+                                    ub_input, 0, 1, tp.burst_len, 0, 0)
         with self.tik_inst.if_scope(tp.burstlen_tail != 0):
             self.tik_inst.data_move(ub_input, self.data_in[tp.identical_loop * tp.burst_len * self.element_per_block],
                                     0, 1, tp.burstlen_tail, 0, 0)
@@ -688,7 +522,7 @@ class Transpose:
                                     ub_input, 0, 1, tp.burstlen_tail, 0, 0)
 
     def _move_data(self):
-        with self.tik_inst.for_range(0, CORE_NUM, block_num = CORE_NUM) as block_idx:
+        with self.tik_inst.for_range(0, CORE_NUM, block_num=CORE_NUM) as block_idx:
             with self.tik_inst.if_scope(block_idx < CORE_NUM):
 
                 ub_offset = self.tik_inst.Scalar("int32") # unit : block
@@ -719,9 +553,9 @@ class Transpose:
                 src_pos_2 = self.tik_inst.Scalar("int64")
                 src_pos_1 = self.tik_inst.Scalar("int64")
 
-                #before use ub_input ,all used tiling_param should have been read.
+                # before use ub_input ,all used tiling_param should have been read.
                 ub_input = self.tik_inst.Tensor(self.data_in.dtype, (self.ub_size,), tik.scope_ubuf, "ub_input")
-                #store recovery data for dirty data
+                # store recovery data for dirty data
                 ub_input_x = self.ub_tiling.reinterpret_cast_to(self.data_in.dtype)
                 self.tik_inst.data_move(ub_input[self.tiling_param.fp16_offset_3//2], ub_input_x, 0, 1, CORE_NUM, 0, 0)
                 tp = self.tiling_param
@@ -749,7 +583,7 @@ class Transpose:
                                             src_pos_2.set_as(src_pos_3 + level_2 * tp.level_gap[5])
                                             with self.tik_inst.for_range(0, tp.level_loop_num[6]) as level_1:
                                                 src_pos_1.set_as(src_pos_2 + level_1 * tp.level_gap[6])
-                                                with self.tik_inst.if_scope(tp.by_workspace!= 0):
+                                                with self.tik_inst.if_scope(tp.by_workspace != 0):
                                                     self.tik_inst.data_move(ub_input[ub_offset * 8],
                                                                             self.data_workspace[src_pos_1],
                                                                             0,
@@ -757,7 +591,7 @@ class Transpose:
                                                                             tp.burst_len,
                                                                             tp.src_stride,
                                                                             0)
-                                                with self.tik_inst.if_scope(tp.by_workspace== 0):
+                                                with self.tik_inst.if_scope(tp.by_workspace == 0):
                                                     self.tik_inst.data_move(ub_input[ub_offset * 8],
                                                                             self.data_in[src_pos_1],
                                                                             0,
@@ -770,7 +604,7 @@ class Transpose:
                                                     self._save_ub_2_gm(dst_pos, ub_input, ub_offset)
                                             with self.tik_inst.if_scope(tp.nburst_tail != 0):
                                                 src_pos_1.set_as(src_pos_2 + tp.level_loop_num[6] * tp.level_gap[6])
-                                                with self.tik_inst.if_scope(tp.by_workspace!= 0):
+                                                with self.tik_inst.if_scope(tp.by_workspace != 0):
                                                     self.tik_inst.data_move(ub_input,
                                                                             self.data_workspace[src_pos_1],
                                                                             0,
@@ -778,7 +612,7 @@ class Transpose:
                                                                             tp.burst_len,
                                                                             tp.src_stride,
                                                                             0)
-                                                with self.tik_inst.if_scope(tp.by_workspace== 0):
+                                                with self.tik_inst.if_scope(tp.by_workspace == 0):
                                                     self.tik_inst.data_move(ub_input,
                                                                             self.data_in[src_pos_1],
                                                                             0,
@@ -797,11 +631,11 @@ class Transpose:
 
                     with self.tik_inst.if_scope(self.tiling_param.align_element != 0):
                         with self.tik_inst.if_scope(block_idx < CORE_NUM - 1):
-                        #Last core do not need to correct dirt data
+                            # Last core do not need to correct dirt data
                             self._correct_dirty_data(dirty_data_start_addr, block_idx, ub_input)
 
     def _init_jump_param(self, block_idx):
-        with self.tik_inst.if_scope(self.tiling_param.case==3):
+        with self.tik_inst.if_scope(self.tiling_param.case == 3):
             self.tiling_param.src_jump_counter_2.set_as(block_idx*128%4)
             self.tiling_param.src_jump_counter_1.set_as(((block_idx*128)//4)%128)
             self.tiling_param.src_jump_counter_0.set_as(((block_idx*128)//(4*128))%8)
@@ -810,11 +644,10 @@ class Transpose:
             self.tiling_param.src_jump_counter_1.set_as(0)
             self.tiling_param.src_jump_counter_0.set_as(0)
 
-
     def _update_jump_param(self):
         tp = self.tiling_param
 
-        #with self.tik_inst.if_scope(tp.src_axis_num == 4):
+        # with self.tik_inst.if_scope(tp.src_axis_num == 4):
         #    with self.tik_inst.if_scope(tp.src_jump_counter_3 == tp.src_jump_factor_3 - 1):
         #        tp.src_jump_counter_3.set_as(0)
         #        with self.tik_inst.if_scope(tp.src_jump_counter_2 == tp.src_jump_factor_2 - 1):
@@ -856,8 +689,6 @@ class Transpose:
             with self.tik_inst.else_scope():
                 tp.src_jump_counter_0.set_as(tp.src_jump_counter_0 + 1)
 
-
-
     def _update_jump_param_batch_tail(self):
         with self.tik_inst.if_scope(self.tiling_param.case == 1):
             self.tiling_param.src_jump_counter_2.set_as(1)
@@ -867,93 +698,89 @@ class Transpose:
             self.tiling_param.src_jump_counter_1.set_as(1)
             self.tiling_param.src_jump_counter_0.set_as(4)
 
-
     def _get_src_addr(self, block_idx, loop_on_col=0, round_num=0, ELEMENT_PER_CORE=0):
         tp = self.tiling_param
-        src_addr = self.tik_inst.Scalar("int64", init_value = 0)
+        src_addr = self.tik_inst.Scalar("int64", init_value=0)
         with self.tik_inst.if_scope(tp.case == 1):
             with self.tik_inst.if_scope(tp.src_axis_num == 3):
-                src_addr.set_as(block_idx * ELEMENT_PER_CORE +\
-                        loop_on_col * tp.col_ele_per_batch +\
-                        tp.src_jump_counter_2 * tp.src_jump_stride_2 +\
-                        tp.src_jump_counter_1 * tp.src_jump_stride_1 +\
-                        tp.src_jump_counter_0 * tp.src_jump_stride_0)
+                src_addr.set_as(block_idx * ELEMENT_PER_CORE + \
+                                loop_on_col * tp.col_ele_per_batch + \
+                                tp.src_jump_counter_2 * tp.src_jump_stride_2 + \
+                                tp.src_jump_counter_1 * tp.src_jump_stride_1 + \
+                                tp.src_jump_counter_0 * tp.src_jump_stride_0)
             with self.tik_inst.if_scope(tp.src_axis_num == 2):
-                src_addr.set_as(block_idx * ELEMENT_PER_CORE +\
-                        loop_on_col * tp.col_ele_per_batch +\
-                        tp.src_jump_counter_1 * tp.src_jump_stride_1 +\
-                        tp.src_jump_counter_0 * tp.src_jump_stride_0)
+                src_addr.set_as(block_idx * ELEMENT_PER_CORE + \
+                                loop_on_col * tp.col_ele_per_batch + \
+                                tp.src_jump_counter_1 * tp.src_jump_stride_1 + \
+                                tp.src_jump_counter_0 * tp.src_jump_stride_0)
             with self.tik_inst.if_scope(tp.src_axis_num == 1):
-                src_addr.set_as(block_idx * ELEMENT_PER_CORE +\
-                        loop_on_col * tp.col_ele_per_batch +\
-                        tp.src_jump_counter_0 * tp.src_jump_stride_0)
+                src_addr.set_as(block_idx * ELEMENT_PER_CORE + \
+                                loop_on_col * tp.col_ele_per_batch + \
+                                tp.src_jump_counter_0 * tp.src_jump_stride_0)
 
         with self.tik_inst.if_scope(tp.case == 2):
             with self.tik_inst.if_scope(block_idx <= 12):
-                src_addr.set_as(block_idx * 3840  + round_num * 256 +\
-                       loop_on_col * tp.col_ele_per_batch+\
-                       tp.src_jump_counter_1 * tp.src_jump_stride_1+\
-                       tp.src_jump_counter_0 * tp.src_jump_stride_0)
+                src_addr.set_as(block_idx * 3840  + round_num * 256 + \
+                                loop_on_col * tp.col_ele_per_batch+ \
+                                tp.src_jump_counter_1 * tp.src_jump_stride_1+ \
+                                tp.src_jump_counter_0 * tp.src_jump_stride_0)
             with self.tik_inst.else_scope():
-                src_addr.set_as(46080+(block_idx-12)*4096 + round_num*256 +\
-                       loop_on_col * tp.col_ele_per_batch+\
-                       tp.src_jump_counter_1 * tp.src_jump_stride_1+\
-                       tp.src_jump_counter_0 * tp.src_jump_stride_0)
+                src_addr.set_as(46080+(block_idx-12)*4096 + round_num*256 + \
+                                loop_on_col * tp.col_ele_per_batch+ \
+                                tp.src_jump_counter_1 * tp.src_jump_stride_1+ \
+                                tp.src_jump_counter_0 * tp.src_jump_stride_0)
 
         with self.tik_inst.if_scope(tp.case == 3):
             with self.tik_inst.if_scope(tp.src_axis_num == 3):
-                src_addr.set_as(loop_on_col * tp.col_ele_per_batch +\
-                        tp.src_jump_counter_2 * tp.src_jump_stride_2 +\
-                        tp.src_jump_counter_1 * tp.src_jump_stride_1 +\
-                        tp.src_jump_counter_0 * tp.src_jump_stride_0)
+                src_addr.set_as(loop_on_col * tp.col_ele_per_batch + \
+                                tp.src_jump_counter_2 * tp.src_jump_stride_2 + \
+                                tp.src_jump_counter_1 * tp.src_jump_stride_1 + \
+                                tp.src_jump_counter_0 * tp.src_jump_stride_0)
 
         return src_addr
-
 
     def _get_src_addr_tail_col(self, block_idx, ELEMENT_PER_CORE):
         tp = self.tiling_param
-        src_addr = self.tik_inst.Scalar("int64", init_value = 0)
+        src_addr = self.tik_inst.Scalar("int64", init_value=0)
         with self.tik_inst.if_scope(tp.case == 1):
             with self.tik_inst.if_scope(tp.src_axis_num == 3):
-                src_addr.set_as(block_idx * ELEMENT_PER_CORE + tp.loop_per_line * tp.col_ele_per_batch +\
-                        tp.src_jump_counter_2 * tp.src_jump_stride_2 +\
-                        tp.src_jump_counter_1 * tp.src_jump_stride_1 +\
-                        tp.src_jump_counter_0 * tp.src_jump_stride_0)
+                src_addr.set_as(block_idx * ELEMENT_PER_CORE + tp.loop_per_line * tp.col_ele_per_batch + \
+                                tp.src_jump_counter_2 * tp.src_jump_stride_2 + \
+                                tp.src_jump_counter_1 * tp.src_jump_stride_1 + \
+                                tp.src_jump_counter_0 * tp.src_jump_stride_0)
             with self.tik_inst.if_scope(tp.src_axis_num == 2):
-                src_addr.set_as(block_idx * ELEMENT_PER_CORE + tp.loop_per_line * tp.col_ele_per_batch +\
-                        tp.src_jump_counter_1 * tp.src_jump_stride_1 +\
-                        tp.src_jump_counter_0 * tp.src_jump_stride_0)
+                src_addr.set_as(block_idx * ELEMENT_PER_CORE + tp.loop_per_line * tp.col_ele_per_batch + \
+                                tp.src_jump_counter_1 * tp.src_jump_stride_1 + \
+                                tp.src_jump_counter_0 * tp.src_jump_stride_0)
             with self.tik_inst.if_scope(tp.src_axis_num == 1):
-                src_addr.set_as(block_idx * ELEMENT_PER_CORE + tp.loop_per_line * tp.col_ele_per_batch +\
-                        tp.src_jump_counter_0 * tp.src_jump_stride_0)
+                src_addr.set_as(block_idx * ELEMENT_PER_CORE + tp.loop_per_line * tp.col_ele_per_batch + \
+                                tp.src_jump_counter_0 * tp.src_jump_stride_0)
 
         return src_addr
-
 
     def _get_dst_addr(self, block_idx, round_num, batch_num, loop_on_col, col_id, back_step_up):
         tp = self.tiling_param
         dst_addr = self.tik_inst.Scalar("int64", init_value=0)
         with self.tik_inst.if_scope(tp.case == 1):
-            dst_addr.set_as(((block_idx * 1 + round_num) % tp.dst_jump_factor_0) * tp.dst_jump_stride_1 +\
-                             (loop_on_col * tp.col_ele_per_batch + col_id) * tp.dst_jump_stride_0+\
-                              batch_num * tp.line_per_batch - back_step_up)
+            dst_addr.set_as(((block_idx * 1 + round_num) % tp.dst_jump_factor_0) * tp.dst_jump_stride_1 + \
+                            (loop_on_col * tp.col_ele_per_batch + col_id) * tp.dst_jump_stride_0+ \
+                            batch_num * tp.line_per_batch - back_step_up)
 
         with self.tik_inst.if_scope(tp.case == 2):
             with self.tik_inst.if_scope(block_idx <= 12):
-                dst_addr.set_as(((block_idx*15+round_num)//tp.dst_jump_factor_0)*tp.dst_jump_stride_2 +\
-                        ((block_idx*15+round_num)%tp.dst_jump_factor_0)*tp.dst_jump_stride_1 +\
-                        (loop_on_col * tp.col_ele_per_batch + col_id) * tp.dst_jump_stride_0 +\
-                         batch_num * tp.line_per_batch - back_step_up)
+                dst_addr.set_as(((block_idx*15+round_num)//tp.dst_jump_factor_0)*tp.dst_jump_stride_2 + \
+                                ((block_idx*15+round_num)%tp.dst_jump_factor_0)*tp.dst_jump_stride_1 + \
+                                (loop_on_col * tp.col_ele_per_batch + col_id) * tp.dst_jump_stride_0 + \
+                                batch_num * tp.line_per_batch - back_step_up)
             with self.tik_inst.else_scope():
-                dst_addr.set_as(((180+(block_idx-12)*16+round_num)//tp.dst_jump_factor_0)*tp.dst_jump_stride_2 +\
-                        ((180+(block_idx-12)*16+round_num)%tp.dst_jump_factor_0)*tp.dst_jump_stride_1 +\
-                        (loop_on_col * tp.col_ele_per_batch + col_id) * tp.dst_jump_stride_0 +\
-                         batch_num * tp.line_per_batch - back_step_up)
+                dst_addr.set_as(((180+(block_idx-12)*16+round_num)//tp.dst_jump_factor_0)*tp.dst_jump_stride_2 + \
+                                ((180+(block_idx-12)*16+round_num)%tp.dst_jump_factor_0)*tp.dst_jump_stride_1 + \
+                                (loop_on_col * tp.col_ele_per_batch + col_id) * tp.dst_jump_stride_0 + \
+                                batch_num * tp.line_per_batch - back_step_up)
 
         with self.tik_inst.if_scope(tp.case == 3):
             dst_addr.set_as(block_idx * 128 + col_id * 4096)
         return dst_addr
-
 
     # --------------------------------------------------------
     #                         |                        |
@@ -964,7 +791,6 @@ class Transpose:
     # --------------------------------------------------------
     #             C           |          C             |  D
     # --------------------------------------------------------
-
     # A:   major_col_major_batch
     # B:   tail_col_major_batch
     # C:   major_col_tail_batch
@@ -975,7 +801,7 @@ class Transpose:
         tp = self.tiling_param
         with self.tik_inst.for_range(0, tp.col_ele_per_batch) as col_id:
             self.tik_inst.data_move(self.data_out[self._get_dst_addr(block_idx, round_num, batch_num,
-                                                                     loop_on_col, col_id,  0)],
+                                                                     loop_on_col, col_id, 0)],
                                     ub_input[col_id * tp.line_per_batch],
                                     0, 1, tp.line_block_per_batch, 0, 0)
 
@@ -983,7 +809,7 @@ class Transpose:
         tp = self.tiling_param
         with self.tik_inst.for_range(0, tp.col_ele_tail) as col_id:
             self.tik_inst.data_move(self.data_out[self._get_dst_addr(block_idx, round_num, batch_num,
-                                                                     tp.loop_per_line, col_id,  0)],
+                                                                     tp.loop_per_line, col_id, 0)],
                                     ub_input[col_id * tp.line_per_batch],
                                     0, 1, tp.line_block_per_batch, 0, 0)
 
@@ -991,7 +817,7 @@ class Transpose:
         tp = self.tiling_param
         with self.tik_inst.for_range(0, tp.col_ele_per_batch) as col_id:
             self.tik_inst.data_move(self.data_out[self._get_dst_addr(block_idx, round_num, tp.batch_num_per_round,
-                                                                     loop_on_col, col_id,  tp.back_step_up)],
+                                                                     loop_on_col, col_id, tp.back_step_up)],
                                     ub_input[col_id * tp.line_tail_batch],
                                     0, 1, tp.line_block_tail_batch, 0, 0)
 
@@ -999,46 +825,37 @@ class Transpose:
         tp = self.tiling_param
         with self.tik_inst.for_range(0, tp.col_ele_tail) as col_id:
             self.tik_inst.data_move(self.data_out[self._get_dst_addr(block_idx, round_num, tp.batch_num_per_round,
-                                                                     tp.loop_per_line, col_id,  tp.back_step_up)],
+                                                                     tp.loop_per_line, col_id, tp.back_step_up)],
                                     ub_input[col_id * tp.line_tail_batch],
                                     0, 1, tp.line_block_tail_batch, 0, 0)
 
     def _reorder_last_axis(self, ub_input, ub_offset, col_ele_num, line_per_batch, pad_ele_num):
-        #step1. make all elements in the first col
+        # step1. make all elements in the first col
         self.tiling_param.fp16_offset_1.set_as(2048)
         self.tiling_param.fp16_offset_2.set_as(2048+32768)
 
         ub_input_fp16 = ub_input.reinterpret_cast_to("float16")
         src_ele_num_in_fp16 = ub_offset * ELE_NUM_PER_BLOCK_FP16
         src_list = [ub_input_fp16[src_ele_num_in_fp16 * i] for i in range(ELE_NUM_PER_BLOCK_FP16)]
-        dst_list_intermediate = [ub_input_fp16[self.tiling_param.fp16_offset_1 + ELE_NUM_PER_BLOCK_FP16 * i]\
-                for i in range(ELE_NUM_PER_BLOCK_FP16)]
+        dst_list_intermediate = [ub_input_fp16[self.tiling_param.fp16_offset_1 + ELE_NUM_PER_BLOCK_FP16 * i] \
+                                 for i in range(ELE_NUM_PER_BLOCK_FP16)]
         with self.tik_inst.if_scope(ub_offset == 1):
             self.tik_inst.vnchwconv(False, False, dst_list_intermediate, src_list, 1, 0, 0)
         with self.tik_inst.if_scope(ub_offset != 1):
             self.tik_inst.vnchwconv(False, False, dst_list_intermediate,
                                     src_list, ub_offset, ELE_NUM_PER_BLOCK_FP16, 1)
-
-        #test_code
-        #self.tik_inst.data_move(self.data_out, ub_input, 0, 1, 8000, 0,0)
-        #return
-
-        #step2. move output elements together
+        # step2. move output elements together
         with self.tik_inst.for_range(0, col_ele_num) as i:
-            self.tik_inst.data_move(ub_input_fp16[self.tiling_param.fp16_offset_2 +\
+            self.tik_inst.data_move(ub_input_fp16[self.tiling_param.fp16_offset_2 + \
                                                   i * line_per_batch * self.fp16_times * ELE_NUM_PER_BLOCK_FP16],
-                                    ub_input_fp16[self.tiling_param.fp16_offset_1 +\
-                                            i * self.fp16_times * ELE_NUM_PER_BLOCK_FP16],
+                                    ub_input_fp16[self.tiling_param.fp16_offset_1 + \
+                                                  i * self.fp16_times * ELE_NUM_PER_BLOCK_FP16],
                                     0, line_per_batch, self.fp16_times,
                                     (col_ele_num + pad_ele_num) * self.fp16_times - self.fp16_times, 0)
-        #test_code
-        #self.tik_inst.data_move(self.data_out, ub_input, 0, 1, 8000, 0,0)
-        #return
-
-        #step3. make all elements in the first col be in memory of contiguous
-        #block numbers after erasing  elements aligned
-        src_list_intermediate = [ub_input_fp16[self.tiling_param.fp16_offset_2 + ELE_NUM_PER_BLOCK_FP16 * i]\
-                for i in range(ELE_NUM_PER_BLOCK_FP16)]
+        # step3. make all elements in the first col be in memory of contiguous
+        # block numbers after erasing  elements aligned
+        src_list_intermediate = [ub_input_fp16[self.tiling_param.fp16_offset_2 + ELE_NUM_PER_BLOCK_FP16 * i] \
+                                 for i in range(ELE_NUM_PER_BLOCK_FP16)]
         dst_list_finally = [ub_input_fp16[ub_offset * 16 * i] for i in range(ELE_NUM_PER_BLOCK_FP16)]
 
         with self.tik_inst.if_scope(ub_offset == 1):
@@ -1047,28 +864,25 @@ class Transpose:
             self.tik_inst.vnchwconv(False, False, dst_list_finally, src_list_intermediate,
                                     ub_offset, 1, ELE_NUM_PER_BLOCK_FP16)
 
-
     def _move_data_last_axis(self):
         tp = self.tiling_param
         ub_offset = self.tik_inst.Scalar("int32") # unit : block
         ub_offset.set_as(0)
         ub_input = self.tik_inst.Tensor(self.data_in.dtype, (self.ub_size,), tik.scope_ubuf, "ub_input")
-        ELEMENT_PER_CORE = 256 #32 core
+        # 32 core
+        ELEMENT_PER_CORE = 256
         round_num_per_core = self.tik_inst.Scalar("int32")
         round_num_per_core.set_as(tp.round_num_per_core)
 
-        with self.tik_inst.for_range(0, CORE_NUM, block_num = CORE_NUM) as block_idx:
+        with self.tik_inst.for_range(0, CORE_NUM, block_num=CORE_NUM) as block_idx:
             with self.tik_inst.if_scope(tp.case == 2):
                 with self.tik_inst.if_scope(block_idx > 11):
                     round_num_per_core.set_as(tp.round_num_per_core+1)
 
             with self.tik_inst.if_scope(block_idx < tp.used_core):
-            #with self.tik_inst.if_scope(block_idx == 0):
                 with self.tik_inst.for_range(0, round_num_per_core) as round_num:
-                    #major_col
                     with self.tik_inst.for_range(0, tp.loop_per_line) as loop_on_col:
                         self._init_jump_param(block_idx)
-                        #major_col_major_batch
                         with self.tik_inst.for_range(0, tp.batch_num_per_round) as batch_num:
                             ub_offset.set_as(0)
                             with self.tik_inst.for_range(0, tp.line_per_batch) as line_number:
@@ -1086,7 +900,7 @@ class Transpose:
                                                     tp.line_per_batch, tp.pad_ele_num_major)
                             self._save_ub2gm_major_col_major_batch(ub_input, ub_offset, block_idx,
                                                                    round_num, batch_num, loop_on_col)
-                        #major_col_tail_batch
+                        # major_col_tail_batch
                         with self.tik_inst.if_scope(tp.line_tail_batch != 0):
                             ub_offset.set_as(0)
                             self._update_jump_param_batch_tail()
@@ -1103,16 +917,14 @@ class Transpose:
                                 self._update_jump_param()
                                 ub_offset.set_as(ub_offset + tp.col_block_per_batch)
 
-                            #self.tik_inst.data_move(self.data_out, ub_input, 0, 1, 256, 0,0)
-                            #return
                             self._reorder_last_axis(ub_input, ub_offset, tp.col_ele_per_batch,
                                                     tp.line_tail_batch, tp.pad_ele_num_major)
                             self._save_ub2gm_major_col_tail_batch(ub_input, ub_offset,
                                                                   block_idx, round_num, loop_on_col)
-                    #tail_col
+                    # tail_col
                     with self.tik_inst.if_scope(tp.col_ele_tail != 0):
                         self._init_jump_param(block_idx)
-                        #tail_col_major_batch
+                        # tail_col_major_batch
                         with self.tik_inst.for_range(0, tp.batch_num_per_round) as batch_num:
                             ub_offset.set_as(0)
                             with self.tik_inst.for_range(0, tp.line_per_batch) as line_number:
@@ -1129,7 +941,7 @@ class Transpose:
                             self._reorder_last_axis(ub_input, ub_offset, tp.col_ele_tail, tp.line_per_batch,
                                                     tp.pad_ele_num_tail_col)
                             self._save_ub2gm_tail_col_major_batch(ub_input, ub_offset, block_idx, round_num, batch_num)
-                        #tail_col_tail_batch
+                        # tail_col_tail_batch
                         with self.tik_inst.if_scope(tp.line_tail_batch != 0):
                             ub_offset.set_as(0)
                             self._update_jump_param_batch_tail()
@@ -1148,7 +960,6 @@ class Transpose:
                                                     tp.pad_ele_num_tail_col)
                             self._save_ub2gm_tail_col_tail_batch(ub_input, ub_offset, block_idx, round_num)
 
-
     def _reorder_university(self, block_idx, ub_input, ub_offset):
         tp = self.tiling_param
         self.tiling_param.fp16_offset_1.set_as(256*256)
@@ -1162,39 +973,34 @@ class Transpose:
 
         # first vnchwconv
         src_addr_list = [ub_input_fp16[fp16_inner_hwc_len * i] for i in range(ELE_NUM_PER_BLOCK_FP16)]
-        dst_addr_list = [ub_input_fp16[tp.fp16_offset_1 + ELE_NUM_PER_BLOCK_FP16 * i] for\
-                i in range(ELE_NUM_PER_BLOCK_FP16)]
+        dst_addr_list = [ub_input_fp16[tp.fp16_offset_1 + ELE_NUM_PER_BLOCK_FP16 * i] for \
+                         i in range(ELE_NUM_PER_BLOCK_FP16)]
         repeat_cnt = 224
         src_stride = 0 if repeat_cnt == 1 else 1
         dst_stride = 0 if repeat_cnt == 1 else 16
         self.tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
 
-
         # do hwc to chw transfer
         with self.tik_inst.for_range(0, inner_hw_len_1) as i:
             self.tik_inst.data_move(ub_input_fp16[i * 2 * ELE_NUM_PER_BLOCK_FP16],
-                               ub_input_fp16[tp.fp16_offset_1 + i * tp.col_ele_per_batch * 2 * ELE_NUM_PER_BLOCK_FP16],
-                               0, tp.col_ele_per_batch, 2, 0, (inner_hw_len_1 - 1) * 2)
-
+                                    ub_input_fp16[tp.fp16_offset_1 + i * tp.col_ele_per_batch * 2 * ELE_NUM_PER_BLOCK_FP16],
+                                    0, tp.col_ele_per_batch, 2, 0, (inner_hw_len_1 - 1) * 2)
 
         # second vnchwconv
         src_addr_list = [ub_input_fp16[ELE_NUM_PER_BLOCK_FP16 * i] for i in range(ELE_NUM_PER_BLOCK_FP16)]
-        dst_addr_list = [ub_input_fp16[tp.fp16_offset_1 + fp16_inner_hwc_len * i] for\
-                i in range(ELE_NUM_PER_BLOCK_FP16)]
+        dst_addr_list = [ub_input_fp16[tp.fp16_offset_1 + fp16_inner_hwc_len * i] for \
+                         i in range(ELE_NUM_PER_BLOCK_FP16)]
         src_stride = 0 if repeat_cnt == 1 else 16
         dst_stride = 0 if repeat_cnt == 1 else 1
         self.tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
 
-
         # move hw in together
         with self.tik_inst.for_range(0, tp.col_ele_per_batch) as axis_c_idx:
-        #with self.tik_inst.for_range(0, 1) as axis_c_idx:
             with self.tik_inst.for_range(0, 2) as add_idx:
                 self.tik_inst.vadds(64, ub_input_fp32[axis_c_idx * 128 + add_idx * 64],
-                               ub_input_fp32[tp.fp16_offset_1//2 + axis_c_idx * 8 +\
-                                       add_idx * tp.col_ele_per_batch * 8 * 8],
-                               0, 1, 1, tp.col_ele_per_batch, 8, 8)
-
+                                    ub_input_fp32[tp.fp16_offset_1//2 + axis_c_idx * 8 + \
+                                                  add_idx * tp.col_ele_per_batch * 8 * 8],
+                                    0, 1, 1, tp.col_ele_per_batch, 8, 8)
 
     def _copy_in_major_col_major_batch(self, block_idx, ub_input, ub_offset):
         tp = self.tiling_param
@@ -1214,36 +1020,29 @@ class Transpose:
         tp = self.tiling_param
         ub_offset.set_as(0)
 
-
     def _copy_in_tail_col_major_batch(self, block_idx, ub_input, ub_offset):
         tp = self.tiling_param
         ub_offset.set_as(0)
-
 
     def _copy_in_tail_col_tail_batch(self, block_idx, ub_input, ub_offset):
         tp = self.tiling_param
         ub_offset.set_as(0)
 
-
     def _copy_out_major_col_major_batch(self, block_idx, ub_input, ub_offset):
         tp = self.tiling_param
         with self.tik_inst.for_range(0, tp.col_ele_per_batch) as col_id:
-            self.tik_inst.data_move(self.data_out[self._get_dst_addr(block_idx, 0, 0, tp.loop_per_line, col_id,  0)],
+            self.tik_inst.data_move(self.data_out[self._get_dst_addr(block_idx, 0, 0, tp.loop_per_line, col_id, 0)],
                                     ub_input[col_id * tp.line_per_batch],
                                     0, 1, tp.line_block_per_batch, 0, 0)
-
 
     def _copy_out_major_col_tail_batch(self, block_idx, ub_input, ub_offset):
         tp = self.tiling_param
 
-
     def _copy_out_tail_col_major_batch(self, block_idx, ub_input, ub_offset):
         tp = self.tiling_param
 
-
     def _copy_out_tail_col_tail_batch(self, block_idx, ub_input, ub_offset):
         tp = self.tiling_param
-
 
     def _move_data_last_axis_university(self):
         ub_offset = self.tik_inst.Scalar("int32") # unit : block
@@ -1251,10 +1050,9 @@ class Transpose:
         ub_input = self.tik_inst.Tensor(self.data_in.dtype, (self.ub_size,), tik.scope_ubuf, "ub_input")
         tp = self.tiling_param
 
-        with self.tik_inst.for_range(0, CORE_NUM, block_num = CORE_NUM) as block_idx:
+        with self.tik_inst.for_range(0, CORE_NUM, block_num=CORE_NUM) as block_idx:
             self._init_jump_param(block_idx)
             with self.tik_inst.if_scope(block_idx < tp.used_core):
-            #with self.tik_inst.if_scope(block_idx == 0):
                 with self.tik_inst.for_range(0, tp.loop_per_line) as loop_on_col:
                     self._copy_in_major_col_major_batch(block_idx, ub_input, ub_offset)
                     self._reorder_university(block_idx, ub_input, ub_offset)
@@ -1276,14 +1074,14 @@ class Transpose:
                     self._copy_out_tail_col_tail_batch(block_idx, ub_input, ub_offset)
 
     def _compute(self):
-        #self._move_data_last_axis()
         self._move_data_last_axis_university()
         self.tik_inst.BuildCCE(kernel_name=self.kernel_name,
-                          inputs=[self.data_in, self.data_perm],
-                          outputs=[self.data_out],
-                          flowtable=[self.data_tiling])
+                               inputs=[self.data_in, self.data_perm],
+                               outputs=[self.data_out],
+                               flowtable=[self.data_tiling])
         te.op.add_compile_info("vars", {"ub_size": UB_SIZE//BLOCK_SIZE, "core_num": CORE_NUM, "dtype": self.x_dtype})
         return {"compile_info": te.op.get_compile_info()}
+
 
 @te.op.register_operator("Transpose")
 def transpose(x, perm, y, kernel_name="transpose"):
@@ -1307,7 +1105,7 @@ def transpose(x, perm, y, kernel_name="transpose"):
     """
 
     x_dtype = x.get("dtype").lower()
-    p_dtype=perm.get("dtype").lower()
+    p_dtype = perm.get("dtype").lower()
     y_dtype = y.get("dtype").lower()
 
     tik_inst = tik.Tik()

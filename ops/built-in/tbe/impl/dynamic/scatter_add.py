@@ -33,6 +33,7 @@ EIGHT_BIT = 8
 BLOCK_BYTES = 32
 
 # pylint: disable=too-many-arguments,too-many-instance-attributes,unused-argument
+# pylint: disable=too-many-public-methods,invalid-name,too-many-lines
 class ScatterAdd():
     """
        Function: use to store scatter_add base parameters

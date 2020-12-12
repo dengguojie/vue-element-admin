@@ -20,9 +20,9 @@ from __future__ import division
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
 from te.utils import para_check
-from te import platform as tbe_platform
+from topi import generic
+
 
 NONETYPE = type(None)
 
@@ -46,9 +46,9 @@ def _check_shape(shape, data_format="NC1HWC0", param_name="x"):
      None
      """
     para_check.check_shape(shape, min_rank=5, max_rank=5,
-                param_name=param_name)
+                           param_name=param_name)
     para_check.check_format(data_format.upper(), ("NC1HWC0",),
-                 param_name=param_name)
+                            param_name=param_name)
 
 
 def check_rule(data, rule_desc, param_name=para_check.PARAM_NAME):
@@ -183,6 +183,7 @@ def in_infer_compute(x,
     return res
 
 
+# pylint: disable=unused-variable
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_OUTPUT, para_check.OPTION_OUTPUT,
@@ -251,9 +252,9 @@ def in_infer_v2(x, gamma, beta, mean, variance,
         _check_dims_equal(shape_x, shape_beta)
 
         para_check.check_dtype(dtype_gamma.lower(), ("float16", "float32"),
-                    param_name="gamma")
+                               param_name="gamma")
         para_check.check_dtype(dtype_beta.lower(), ("float16", "float32"),
-                    param_name="beta")
+                               param_name="beta")
 
         gamma_input = tvm.placeholder(shape_gamma, name="gamma_input",
                                       dtype=dtype_gamma.lower())
@@ -275,9 +276,9 @@ def in_infer_v2(x, gamma, beta, mean, variance,
         _check_dims_equal(shape_x, shape_var)
 
         para_check.check_dtype(dtype_mean.lower(), ("float16", "float32"),
-                    param_name="mean")
+                               param_name="mean")
         para_check.check_dtype(dtype_var.lower(), ("float16", "float32"),
-                    param_name="variance")
+                               param_name="variance")
 
         mean_input = tvm.placeholder(shape_mean, name="mean_input",
                                      dtype=dtype_mean.lower())

@@ -15,13 +15,11 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 log1p
 """
-from functools import reduce as functools_reduce
-
+from functools import reduce as reduce_ins
 import te.lang.cce as tbe
 from te import tvm
 from te import platform as tbe_platform
 import te.lang.base as tbe_base
-from functools import reduce as reduceIns
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils import shape_util
@@ -121,11 +119,11 @@ def _log1p_mini_compute(mini_res, input_x, shape):
     input_right_border = tvm.const(TAYLOR_POSITIVE_THRESHOLD, input_y.dtype)
     tensor_input_right_border = tbe.broadcast(input_right_border, shape)
     exp_taylor_neg = tbe.vcmpsel(input_y, tensor_input_left_border,
-                                             'gt', newton_taylor_res,
-                                             newton_exp_res)
+                                 'gt', newton_taylor_res,
+                                 newton_exp_res)
     mini_res = tbe.vcmpsel(input_y, tensor_input_right_border,
-                                             'lt', exp_taylor_neg,
-                                             newton_exp_res)
+                           'lt', exp_taylor_neg,
+                           newton_exp_res)
     return mini_res
 
 
@@ -145,52 +143,52 @@ def _exp_taylor_compute(input_x):
     taylor_second_order_param = tvm.const(TAYLOR_SECOND_ORDER_PARAM, "float32")
     data_power_2 = tbe.vmul(input_x, input_x)
     data_power_2_div_2 = tbe.vmuls(data_power_2,
-                                               taylor_second_order_param)
+                                   taylor_second_order_param)
 
     # calculate third order tayloy section : x^3 / 3!
     taylor_third_order_param = tvm.const(TAYLOR_THIRD_ORDER_PARAM, "float32")
     data_power_3 = tbe.vmul(data_power_2, input_x)
     data_power_3_div_6 = tbe.vmuls(data_power_3,
-                                               taylor_third_order_param)
+                                   taylor_third_order_param)
 
     # calculate fourth order tayloy section : x^4 / 4!
     taylor_fourth_order_param = tvm.const(TAYLOR_FOURTH_ORDER_PARAM, "float32")
     data_power_4 = tbe.vmul(data_power_3, input_x)
     data_power_4_div_24 = tbe.vmuls(data_power_4,
-                                                taylor_fourth_order_param)
+                                    taylor_fourth_order_param)
 
     # calculate fifth order tayloy section : x^5 / 5!
     taylor_fifth_order_param = tvm.const(TAYLOR_FIFTH_ORDER_PARAM, "float32")
     data_power_5 = tbe.vmul(data_power_4, input_x)
     data_power_5_div_120 = tbe.vmuls(data_power_5,
-                                                 taylor_fifth_order_param)
+                                     taylor_fifth_order_param)
 
     # xcalculate sixth order tayloy section : ^6 / 6!
     taylor_sixth_order_param = tvm.const(TAYLOR_SIXTH_ORDER_PARAM, "float32")
     data_power_6 = tbe.vmul(data_power_5, input_x)
     data_power_6_div_720 = tbe.vmuls(data_power_6,
-                                                 taylor_sixth_order_param)
+                                     taylor_sixth_order_param)
 
     # calculate seventh order tayloy section : x^7 / 7!
     taylor_seventh_order_param = tvm.const(TAYLOR_SEVENTH_ORDER_PARAM,
                                            "float32")
     data_power_7 = tbe.vmul(data_power_6, input_x)
     data_power_7_div_5040 = tbe.vmuls(data_power_7,
-                                                  taylor_seventh_order_param)
+                                      taylor_seventh_order_param)
 
     # calculate first order tayloy plus one section : 1 + x
     res_first_taylor = tbe.vadds(input_x,
-                                             tvm.const(SCALAR_ONE, "float32"))
+                                 tvm.const(SCALAR_ONE, "float32"))
     res_second_taylor = tbe.vadd(res_first_taylor,
-                                             data_power_2_div_2)
+                                 data_power_2_div_2)
     res_third_taylor = tbe.vadd(res_second_taylor,
-                                            data_power_3_div_6)
+                                data_power_3_div_6)
     res_fourth_taylor = tbe.vadd(res_third_taylor,
-                                             data_power_4_div_24)
+                                 data_power_4_div_24)
     res_fifth_taylor = tbe.vadd(res_fourth_taylor,
-                                            data_power_5_div_120)
+                                data_power_5_div_120)
     res_sixth_taylor = tbe.vadd(res_fifth_taylor,
-                                            data_power_6_div_720)
+                                data_power_6_div_720)
     res = tbe.vadd(res_sixth_taylor, data_power_7_div_5040)
 
     return res
@@ -211,9 +209,9 @@ def _newton_exp_iter(input_x, input_y):
     """
     # Newton begin:y(n+1) = y(n) - 1 + e^-y(n) + x(n)*e^-y(n)
     newton_exp = tbe.vadds(input_y, tvm.const(SCALAR_NEG_ONE,
-                                                          "float32"))
+                                              "float32"))
     input_y_mul = tbe.vmuls(input_y, tvm.const(SCALAR_NEG_ONE,
-                                                           "float32"))
+                                               "float32"))
     input_y_exp = tbe.vexp(input_y_mul)
     newton_exp = tbe.vadd(newton_exp, input_y_exp)
     input_y_res = tbe.vmul(input_x, input_y_exp)
@@ -237,9 +235,9 @@ def _newton_taylor_iter(input_x, input_y):
     """
     # Newton begin:y(n+1) = y(n) - 1 + e^-y(n) + x(n)*e^-y(n)
     newton_taylor = tbe.vadds(input_y, tvm.const(SCALAR_NEG_ONE,
-                                                             "float32"))
+                                                 "float32"))
     input_y_mul = tbe.vmuls(input_y, tvm.const(SCALAR_NEG_ONE,
-                                                           "float32"))
+                                               "float32"))
     input_y_taylor = _exp_taylor_compute(input_y_mul)
     newton_taylor = tbe.vadd(newton_taylor, input_y_taylor)
     input_y_res = tbe.vmul(input_x, input_y_taylor)
@@ -310,11 +308,11 @@ def log1p(input_x, output_y, kernel_name="log1p"):
     para_check.check_dtype(input_dtype, check_list, param_name="input_x")
     schedules, tensors = [], []
     ins = classify([input_x], Mode.ELEWISE)
-    for (input_x,) in ins:
+    for (_input_x,) in ins:
         with tbe_base.compute():
-            x_shape = shape_util.variable_shape([input_x])
+            x_shape = shape_util.variable_shape([_input_x])
             fuseshape = [1]
-            fuseshape[0] = reduceIns(lambda x, y: x * y, x_shape[0])
+            fuseshape[0] = reduce_ins(lambda x, y: x * y, x_shape[0])
             data_input = tvm.placeholder(fuseshape, dtype=input_dtype,
                                          name="data_input")
             res = log1p_compute(data_input, output_y, kernel_name)

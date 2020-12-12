@@ -17,11 +17,13 @@ nz_2_nd
 """
 # pylint: disable=too-many-lines,import-error,too-many-branches,too-many-arguments
 # pylint: disable=too-many-statements,too-many-locals,missing-function-docstring
+# pylint: disable=too-many-public-methods,unused-variable,invalid-name,no-self-use
+# pylint: disable=too-many-instance-attributes
 from functools import reduce as functools_reduce
+import math
 from te import platform as tbe_platform
 from te import tik
 from topi.cce import util
-import math
 
 # available ub size: split double ub
 TOTAL_UB_MEMORY = (tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) - 1024) // 2
@@ -78,7 +80,7 @@ def _check_db(total_loop, core_number):
     return thread_num
 
 
-class Nz2NDCompute(object):
+class Nz2NDCompute:
     """
     the main of Nz2ND
     """
@@ -1129,12 +1131,11 @@ class Nz2NDCompute(object):
             # psm exceed space of ub and [D,1,16,16] exceed space of ub
             # should return case1
             raise RuntimeError("not support c_split == 0")
-        else:
-            # psm exceed space of ub  while [D,1,16,16] not exceed space of ub
-            tail_d = 0
-            tail_block_d = d_value
-            tail_c = c_value // c_split
-            tail_block_c = c_value % c_split
+        # psm exceed space of ub  while [D,1,16,16] not exceed space of ub
+        tail_d = 0
+        tail_block_d = d_value
+        tail_c = c_value // c_split
+        tail_block_c = c_value % c_split
 
         with tik_instance.for_range(0, core_number,
                                     block_num=core_number) as num_core:
@@ -1644,8 +1645,8 @@ class Nz2NDCompute(object):
                 with tik_instance.new_stmt_scope():
                     with tik_instance.for_range(0, loop_num,
                                                 thread_num=thread) as loop:
-                            x_ub, y_ub = set_ub_tensor()
-                            case0_main_tail(loop, x_ub, y_ub)
+                        x_ub, y_ub = set_ub_tensor()
+                        case0_main_tail(loop, x_ub, y_ub)
 
             if tail_block_c != 0:
                 thread = \
@@ -1689,25 +1690,24 @@ class Nz2NDCompute(object):
             # psm exceed space of ub and [D,1,16,16] exceed space of ub
             # should return case1
             raise RuntimeError("not support c_split = 0")
-        else:
-            # psm exceed space of ub  while [D,1,16,16] not exceed space of ub
-            tail_d = 0
-            tail_block_d = d_value
-            tail_c = c_value // c_split
-            tail_block_c = c_value % c_split
+        # psm exceed space of ub  while [D,1,16,16] not exceed space of ub
+        tail_d = 0
+        tail_block_d = d_value
+        tail_c = c_value // c_split
+        tail_block_c = c_value % c_split
 
-            input_x_ub = tik_instance.Tensor(self.dtype,
-                                             [psm_ub_in, ], name="input_x_ub",
-                                             scope=tik.scope_ubuf)
+        input_x_ub = tik_instance.Tensor(self.dtype,
+                                         [psm_ub_in, ], name="input_x_ub",
+                                         scope=tik.scope_ubuf)
 
-            input_y_ub = tik_instance.Tensor("float32",
-                                             [psm_ub_out, ], name="input_y_ub",
-                                             scope=tik.scope_ubuf)
+        input_y_ub = tik_instance.Tensor("float32",
+                                         [psm_ub_out, ], name="input_y_ub",
+                                         scope=tik.scope_ubuf)
 
-            input_y_ub_vconv = tik_instance.Tensor(self.dtype,
-                                                   [psm_ub_out, ],
-                                                   name="input_y_ub",
-                                                   scope=tik.scope_ubuf)
+        input_y_ub_vconv = tik_instance.Tensor(self.dtype,
+                                               [psm_ub_out, ],
+                                               name="input_y_ub",
+                                               scope=tik.scope_ubuf)
 
         with tik_instance.for_range(
                 0, core_number, block_num=core_number) as num_core:
@@ -2002,24 +2002,23 @@ class Nz2NDCompute(object):
             # psm exceed space of ub and [D,1,16,16] exceed space of ub
             # should return case1
             raise RuntimeError("not support c_split = 0")
-        else:
-            # psm exceed space of ub  while [D,1,16,16] not exceed space of ub
-            tail_d = 0
-            tail_block_d = d_value
-            tail_c = c_value // c_split
-            tail_block_c = c_value % c_split
+        # psm exceed space of ub  while [D,1,16,16] not exceed space of ub
+        tail_d = 0
+        tail_block_d = d_value
+        tail_c = c_value // c_split
+        tail_block_c = c_value % c_split
 
-            input_x_ub = tik_instance.Tensor(self.dtype,
-                                             [psm_ub_in, ], name="input_x_ub",
-                                             scope=tik.scope_ubuf)
+        input_x_ub = tik_instance.Tensor(self.dtype,
+                                         [psm_ub_in, ], name="input_x_ub",
+                                         scope=tik.scope_ubuf)
 
-            input_y_ub = tik_instance.Tensor(self.dtype,
-                                             [psm_ub_out, ], name="input_y_ub",
-                                             scope=tik.scope_ubuf)
+        input_y_ub = tik_instance.Tensor(self.dtype,
+                                         [psm_ub_out, ], name="input_y_ub",
+                                         scope=tik.scope_ubuf)
 
-            input_v_ub = tik_instance.Tensor(self.dtype,
-                                             [16, ], name="input_v_ub",
-                                             scope=tik.scope_ubuf)
+        input_v_ub = tik_instance.Tensor(self.dtype,
+                                         [16, ], name="input_v_ub",
+                                         scope=tik.scope_ubuf)
 
         with tik_instance.for_range(
                 0, core_number, block_num=core_number) as num_core:

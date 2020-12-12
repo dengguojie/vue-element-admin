@@ -25,10 +25,14 @@ from impl.util import util_select_op_base
 
 MINI_STRIDE = 1
 
+
 def get_op_support_info(in_dic, filter_dic, out_dic, stride,
-                 reverse, kernel_name="pass_through"):
-    axis_split_matrix=[
-        [ util_select_op_base.SplitInput([0, [0], [-1], [-1]]), util_select_op_base.SplitOutput([0, [0]]) ]
+                        reverse, kernel_name="pass_through"):
+    """
+    get_op_support_info
+    """
+    axis_split_matrix = [
+        [util_select_op_base.SplitInput([0, [0], [-1], [-1]]), util_select_op_base.SplitOutput([0, [0]])]
     ]
     axis_reduce_list = None
     op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_matrix, axis_reduce_list)
@@ -36,6 +40,7 @@ def get_op_support_info(in_dic, filter_dic, out_dic, stride,
     return op_cal_info_in_json
 
 
+# pylint: disable=too-many-locals
 def op_select_format(in_dic, filter_dic, out_dic,
                      stride, reverse, kernel_name="pass_through"):
     """
@@ -70,11 +75,11 @@ def op_select_format(in_dic, filter_dic, out_dic,
                         FRACTAL_Z, FRACTAL_Z, FRACTAL_Z, FRACTAL_Z, FRACTAL_Z"
 
     input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                        datatype=dtype0, format=dformat0)
+                                           datatype=dtype0, format=dformat0)
     input1 = util_select_op_base.gen_param(classify="input1", name="filter",
-                        datatype=dtype1, format=dformat1)
+                                           datatype=dtype1, format=dformat1)
     output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                        datatype=dtype0, format=dformat0)
+                                            datatype=dtype0, format=dformat0)
 
     param_list = [input0, input1, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
@@ -113,35 +118,39 @@ def check_param(in_dic, out_dic, stride, reverse, kernel_name):
     para_check.check_shape(shape_in, param_name="in_dic")
     para_check.check_shape(shape_out, param_name="out_dic")
     para_check.check_dtype(dtype_in.lower(), ["float16", "float32",
-                                   "int8", "uint8",
-                                   "int16", "uint16",
-                                   "int32", "uint32",
-                                   "int64", "uint64"], param_name="in_dic")
+                                              "int8", "uint8",
+                                              "int16", "uint16",
+                                              "int32", "uint32",
+                                              "int64", "uint64"], param_name="in_dic")
     para_check.check_dtype(dtype_out.lower(), ["float16", "float32",
-                                    "int8", "uint8",
-                                    "int16", "uint16",
-                                    "int32", "uint32",
-                                    "int64", "uint64"], param_name="out_dic")
+                                               "int8", "uint8",
+                                               "int16", "uint16",
+                                               "int32", "uint32",
+                                               "int64", "uint64"], param_name="out_dic")
 
     if fmt_in.lower() != "nhwc" or fmt_out.lower() != "nhwc":
-        error_info = {'errCode': 'E80015', 'op_name': 'pass_through', 'param_name1': 'fmt_in', 'param_name2': 'fmt_out',
+        error_info = {'errCode': 'E80015', 'op_name': 'pass_through',
+                      'param_name1': 'fmt_in', 'param_name2': 'fmt_out',
                       'expect_value': 'NHWC', 'real_value1': fmt_in.lower(), 'real_value2': fmt_out.lower()}
         raise ValueError(error_info, "In op[%s], the format of [%s]/[%s] must be [%s], "
-                         "but actually is [%s]/[%s]." % (error_info['op_name'], \
-                         error_info['param_name1'], error_info['param_name2'],
-                         error_info['expect_value'], error_info['real_value1'], error_info['real_value2']))
+                                     "but actually is [%s]/[%s]." % (error_info['op_name'], \
+                                                                     error_info['param_name1'],
+                                                                     error_info['param_name2'],
+                                                                     error_info['expect_value'],
+                                                                     error_info['real_value1'],
+                                                                     error_info['real_value2']))
 
     if stride < MINI_STRIDE:
         error_info = {'errCode': 'E81007', 'param_name': 'stride', 'op_name': 'pass_through', 'real_value': stride}
         raise ValueError(error_info, "In op[%s], the parameter [%s] must be greater than 0, "
-                         "but actually is [%s]." % (error_info['op_name'], error_info['param_name'], \
-                         error_info['real_value']))
+                                     "but actually is [%s]." % (error_info['op_name'], error_info['param_name'], \
+                                                                error_info['real_value']))
     if reverse is True:
         if (shape_in[3] % (stride * stride)) != 0:
             error_info = {'errCode': 'E81008', 'param_name': 'C', 'op_name': 'pass_through', 'real_value': shape_in[3],
                           'expect_value': stride * stride}
             raise ValueError(error_info, "In op[%s], the parameter [%s] must be "
-                             "times of stride**2[%s], but actually is [%s]."
+                                         "times of stride**2[%s], but actually is [%s]."
                              % (error_info['op_name'], error_info['param_name'], \
                                 error_info['expect_value'], error_info['real_value']))
 
@@ -150,14 +159,14 @@ def check_param(in_dic, out_dic, stride, reverse, kernel_name):
             error_info = {'errCode': 'E81008', 'op_name': 'pass_through', 'param_value1': shape_in[1],
                           'param_value2': shape_in[2]}
             raise ValueError(error_info, "In op[%s], the parameter w/h must be "
-                             "times of stride[%s], but actually is [%s]/[%s]."
+                                         "times of stride[%s], but actually is [%s]/[%s]."
                              % (error_info['op_name'], stride, error_info['param_value2'], \
                                 error_info['param_value1']))
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
-                 para_check.OPTION_ATTR_INT,
-                 para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_INT,
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def pass_through(in_dic, filter_dic, out_dic, stride,
                  reverse, kernel_name="pass_through"):
     """

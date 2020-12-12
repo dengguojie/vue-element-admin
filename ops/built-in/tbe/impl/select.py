@@ -20,8 +20,8 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
-from impl.util import util_select_op_base
 from te.utils.error_manager import error_manager_vector
+from impl.util import util_select_op_base
 
 # define a VALUE, value = 1
 VALUE_ONE = 1
@@ -75,17 +75,17 @@ def op_select_format(condition, x1, x2, y, kernel_name="select"):
         dtype_total0 = dtype_total0 * len(dtype_total)
         format_list = format_list * len(dtype_list)
         input0 = util_select_op_base.gen_param(classify="input0", name="condition",
-                           datatype=",".join(dtype_total0),
-                           format=",".join(format_list))
+                                               datatype=",".join(dtype_total0),
+                                               format=",".join(format_list))
         input1 = util_select_op_base.gen_param(classify="input1", name="x1",
-                           datatype=",".join(dtype_total),
-                           format=",".join(format_list))
+                                               datatype=",".join(dtype_total),
+                                               format=",".join(format_list))
         input2 = util_select_op_base.gen_param(classify="input2", name="x2",
-                           datatype=",".join(dtype_total),
-                           format=",".join(format_list))
+                                               datatype=",".join(dtype_total),
+                                               format=",".join(format_list))
         output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                            datatype=",".join(dtype_total),
-                            format=",".join(format_list))
+                                                datatype=",".join(dtype_total),
+                                                format=",".join(format_list))
     else:
         format_list.append("ND")
         format_list1.append("ND")
@@ -109,17 +109,17 @@ def op_select_format(condition, x1, x2, y, kernel_name="select"):
         format_list1 = format_list1 * len(dtype_list)
         format_list = format_list * len(dtype_total)
         input0 = util_select_op_base.gen_param(classify="input0", name="condition",
-                           datatype=",".join(dtype_total0),
-                           format=",".join(format_list))
+                                               datatype=",".join(dtype_total0),
+                                               format=",".join(format_list))
         input1 = util_select_op_base.gen_param(classify="input1", name="x1",
-                           datatype=",".join(dtype_total),
-                           format=",".join(format_list1))
+                                               datatype=",".join(dtype_total),
+                                               format=",".join(format_list1))
         input2 = util_select_op_base.gen_param(classify="input2", name="x2",
-                           datatype=",".join(dtype_total),
-                           format=",".join(format_list1))
+                                               datatype=",".join(dtype_total),
+                                               format=",".join(format_list1))
         output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                            datatype=",".join(dtype_total),
-                            format=",".join(format_list1))
+                                                datatype=",".join(dtype_total),
+                                                format=",".join(format_list1))
 
     param_list = [input0, input1, input2, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
@@ -155,7 +155,7 @@ def select_compute(condition, x1, x2, y, kernel_name="select"):
     num_dtype = x1.dtype
 
     if (num_dtype in ("float32", "int32")) and \
-            (not (tbe_platform.api_check_support("te.lang.cce.vsel", "float32"))):
+            (not tbe_platform.api_check_support("te.lang.cce.vsel", "float32")):
         if num_dtype == "int32":
             condition = tbe.ceil(condition)
         else:

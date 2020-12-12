@@ -25,6 +25,7 @@ from te import tvm
 from te.utils import para_check
 
 
+# pylint: diable=unused-argument,too-many-locals
 def positive_compute(base, power, version, input_dtype):
     """
     calculate power for positive elements of base tensor
@@ -44,8 +45,8 @@ def positive_compute(base, power, version, input_dtype):
     base_cast = base
 
     if input_dtype == "float16" and \
-       tbe_platform.api_check_support("te.lang.cce.vexp", "float32") and \
-       tbe_platform.api_check_support("te.lang.cce.vlog", "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vexp", "float32") and \
+            tbe_platform.api_check_support("te.lang.cce.vlog", "float32"):
         base_cast = tbe.cast_to(base, "float32")
 
     log_val = tbe.vlog(base_cast)
@@ -79,8 +80,8 @@ def negtive_compute(base, power, nan_values, version, input_dtype):
         base_cast = base
 
         if input_dtype == "float16" and \
-           tbe_platform.api_check_support("te.lang.cce.vexp", "float32") and \
-           tbe_platform.api_check_support("te.lang.cce.vlog", "float32"):
+                tbe_platform.api_check_support("te.lang.cce.vexp", "float32") and \
+                tbe_platform.api_check_support("te.lang.cce.vlog", "float32"):
             base_cast = tbe.cast_to(base, "float32")
 
         sign_value = math.pow(-1, power)
@@ -185,9 +186,10 @@ def zero_diff_scale_compute(input_x, shift, power):
     return res
 
 # pylint: disable=locally-disabled,unused-argument,too-many-arguments
+# pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("power")
 def power_compute(input_x, output_y, power=1.0, scale=1.0,
-          shift=0.0, kernel_name="power"):
+                  shift=0.0, kernel_name="power"):
     """
     calculate power according to different cases
 
@@ -239,16 +241,16 @@ def power_compute(input_x, output_y, power=1.0, scale=1.0,
     zero_pow_val = zero_compute(power, nan_value, zeros)
 
     res = tbe.vcmpsel(shift_scaled_x, zeros,
-                              'gt', positive_pow_val, negative_pow_val)
+                      'gt', positive_pow_val, negative_pow_val)
     res = tbe.vcmpsel(shift_scaled_x, zeros,
-                              'eq', zero_pow_val, res)
+                      'eq', zero_pow_val, res)
 
     return res
 
 
 # pylint: disable=redefined-outer-name, too-many-arguments, unused-variable
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
-                 para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def power(input_x, output_y, power=1.0, scale=1.0,
           shift=0.0, kernel_name="power"):
     """
@@ -289,7 +291,7 @@ def power(input_x, output_y, power=1.0, scale=1.0,
         if input_dtype == "float32":
             error_info = {'errCode': 'E80008', 'param_name': 'input_x', 'op_name': 'power', 'expect_value': "float16",
                           'real_value': input_dtype}
-            raise RuntimeError(error_info, "In op[%s], the parameter[%s]'s dtype " 
+            raise RuntimeError(error_info, "In op[%s], the parameter[%s]'s dtype "
                                            "should be [%s], but actually is [%s]."
                                % (error_info['op_name'], error_info['param_name'],
                                   error_info['expect_value'], error_info['real_value']))

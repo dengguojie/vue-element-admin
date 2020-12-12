@@ -25,11 +25,12 @@ import te.platform as tbe_platform
 # pylint: disable=C0121
 
 
+# pylint: disable=too-many-instance-attributes,too-few-public-methods
 class NmsProcess:
     """
     NmsProcess
     """
-
+    # pylint: disable=invalid-name
     def __init__(self, input_data):
         self.tik_instance = input_data[0]
         self.dtype = input_data[1]
@@ -46,6 +47,7 @@ class NmsProcess:
         elif self.dtype == "float32":
             self.ratio = 2
 
+    # pylint: disable=too-many-arguments
     def nms(self, i, max_supmatrix_num, input_offset, proposal_box, supvec_ub):
         """
         :param i:
@@ -221,6 +223,7 @@ def init_select_proposal_ub(tik_instance, dtype, select_proposal_ub, num):
             tik_instance.vector_dup(64, select_proposal_ub, 0, num*2, 1, 8)
 
 
+# pylint: disable=too-many-arguments,too-many-statements
 def nms_no_tiling_select_proposal(input_data, selected_count, input_offset,
                                   proposal_box, supvec_ub, temp_proposal_out):
     """
@@ -1079,6 +1082,7 @@ def init_proposal_out(tik_instance, dtype, batch_id, post_nms_topn, proposal_out
                                tmp_post_nms_topn*size // 32, 0, 0, 0)
 
 
+# pylint: disable=invalid-name,too-many-branches
 def cce_nms(input_data, temp_proposal_out, proposal_box, proposal_actual_num,
             output_actual_bbox_num, proposal_out, used_in_proposal=True, used_in_ssd=False):
     """

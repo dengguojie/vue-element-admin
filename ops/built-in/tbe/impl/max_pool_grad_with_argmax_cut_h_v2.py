@@ -34,14 +34,14 @@ MASK_MAX = 8
 
 
 # pylint: disable=locally-disabled,too-few-public-methods,
-# too-many-instance-attributes,too-many-lines
+# pylint: disable=too-many-instance-attributes,too-many-lines
 class MaxpoolGradBase():
     """
     parameter for max_pool_grad_with_pool
     """
 
     # pylint: disable=locally-disabled,too-many-locals,
-    # too-many-arguments,too-many-statements
+    # pylint: disable=too-many-arguments,too-many-statements
     def __init__(self, grad, argmax, input_x, ksize, strides,
                  padding, dilation, ceil_mode):
         """
@@ -148,7 +148,7 @@ class MaxpoolGradBase():
         return real_block, block_cycle, block_index
 
     # pylint: disable=locally-disabled,too-many-arguments,
-    # too-many-locals,too-many-statements,too-many-branches
+    # pylint: disable=too-many-locals,too-many-statements,too-many-branches
     def tik_instance_cut_nc1_cut_h(self, kernel_name):
         """
         function for max_pool_grad_with_pool calc for normal shape
@@ -313,8 +313,9 @@ class MaxpoolGradBase():
                                  new_looph) * dyw * channel], constant.SID,
                             in_nburst, dyw, constant.STRIDE_ZERO, wo_max - dyw)
 
+                        # 3 x 3
                         with self.tik_instance.for_range(0,
-                            kernelh * kernelw) as mask_id:  # 3 x 3
+                                                         kernelh * kernelw) as mask_id:
                             with self.tik_instance.for_range(0, in_nburst) \
                                     as cycle:  # 6
                                 # mask copy gm to ub 6 x 16

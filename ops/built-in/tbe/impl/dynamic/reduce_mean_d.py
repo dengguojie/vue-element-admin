@@ -26,6 +26,8 @@ from te import tvm
 from te.lang.base.operation import add_compile_info
 
 
+# pylint: disable=too-many-branches,too-many-arguments,too-many-locals
+# pylint: disable=unused-argument,invalid-name
 def reduce_mean_d_compute(x,
                           y,
                           axes,
@@ -71,7 +73,7 @@ def reduce_mean_d_compute(x,
     elif dtype == "float16":
         cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
         if not tbe_platform.api_check_support("te.lang.cce.sum",
-                                                       "float32"):
+                                              "float32"):
             calc_dtype = "float16"
         elif cce_product == "Ascend310" and impl_mode == "high_performance":
             calc_dtype = "float16"
@@ -152,15 +154,14 @@ def reduce_mean_d(input_x, output_y, axes,
     schedules = []
     tensors = []
     ins = tbe_base.shape_classifier.classify([input_x, axes], tbe_base.shape_classifier.Mode.REDUCE)
-
-    for (input_x, axes) in ins:
+    for (_input_x, _axes) in ins:
         with tbe_base.compute():
             # not support 5HD
             is_5hdc = False
-            shape_var_new = shape_util.variable_shape([input_x])[0]
+            shape_var_new = shape_util.variable_shape([_input_x])[0]
             data_input = tvm.placeholder(shape_var_new, name="data_input",
                                          dtype=dtype_lower)
-            res = reduce_mean_d_compute(data_input, output_y, axes,
+            res = reduce_mean_d_compute(data_input, output_y, _axes,
                                         keepdims, impl_mode=impl_mode,
                                         is_5hdc=is_5hdc)
             tensors.append([data_input, res])

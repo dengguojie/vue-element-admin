@@ -17,14 +17,11 @@
 """
 pack
 """
-import te.lang.cce
+
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
-from impl.concat_v2_d import concat_v2_d
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.concat_v2_d import concat_v2_d
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
@@ -54,8 +51,8 @@ def get_op_support_info(x, y, axis, kernel_name="pack"):
         axis = axis + 1
     if axis < 0:
         axis += shape_x_len
-    if format_x == "ND" or format_x == "NC1HWC0":
-        axis_split_matrix=[]
+    if format_x in ("ND", "NC1HWC0"):
+        axis_split_matrix = []
         for i in range(0, shape_x_len-1):
             if i != axis:
                 input_list = []
@@ -102,11 +99,11 @@ def pack(x, y, axis, kernel_name="pack"):
     left_value = -len((x[0].get("shape")))-1
     right_value = len((x[0].get("shape")))
     if axis < left_value or axis > right_value:
-            expected_value = "All axes must be equal except merge axis,check your shape!"
-            real_value = "All axes must be equal except merge axis."
-            error_manager_vector.raise_err_input_value_invalid("pack",
-                                                               "value of shape",
-                                                               expected_value, real_value)
+        expected_value = "All axes must be equal except merge axis,check your shape!"
+        real_value = "All axes must be equal except merge axis."
+        error_manager_vector.raise_err_input_value_invalid("pack",
+                                                           "value of shape",
+                                                           expected_value, real_value)
 
     if axis < -1:
         axis = axis + 1

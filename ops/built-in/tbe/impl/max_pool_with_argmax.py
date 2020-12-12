@@ -49,15 +49,15 @@ UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
 L1_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.L1_SIZE)
 
 
-# pylint: disable=unused-argument
+# pylint: disable=unused-argument,too-many-arguments
 def get_op_support_info(input_x, output_y, output_argmax, ksize, strides,
-                         padding, kernel_name="max_pool_with_argmax"):
+                        padding, kernel_name="max_pool_with_argmax"):
     """
     return: split info of max_pool_with_argmax
     """
     format_x = input_x.get("format").upper()
     if format_x == "NC1HWC0":
-        axis_split_matrix=[
+        axis_split_matrix = [
             [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]], [1, [0]])],
             [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]], [1, [1]])]
         ]
@@ -119,8 +119,8 @@ def _check_param(input_x, ksize, strides, padding, kernel_name):
         expected_value = "equal to 5"
         real_value = "not equal to 5"
         error_manager_vector.raise_err_input_value_invalid(kernel_name,
-                                                                         "length of input_shape",
-                                                                         expected_value, real_value)
+                                                           "length of input_shape",
+                                                           expected_value, real_value)
     # get shape info of feature map in NC1HWC0 format
     in_size_h = input_shape[2]
     in_size_w = input_shape[3]
@@ -128,53 +128,53 @@ def _check_param(input_x, ksize, strides, padding, kernel_name):
 
     if c_block_size != SCALAR_C0:
         error_manager_vector.raise_err_input_value_invalid(kernel_name,
-                                                                         "input_shape[4]",
-                                                                         SCALAR_C0, c_block_size)
+                                                           "input_shape[4]",
+                                                           SCALAR_C0, c_block_size)
 
     if len(ksize) != 4:
         expected_value = "equal to 4"
         real_value = "not equal to 4"
         error_manager_vector.raise_err_input_value_invalid(kernel_name,
-                                                                         "length of ksize",
-                                                                         expected_value, real_value)
+                                                           "length of ksize",
+                                                           expected_value, real_value)
 
     if ksize[0] != 1 or ksize[3] != 1:
         expected_value = "equal to 1"
         real_value = "not equal to 1"
         error_manager_vector.raise_err_input_value_invalid(kernel_name,
-                                                                         "ksize[0] and ksize[3]",
-                                                                         expected_value, real_value)
+                                                           "ksize[0] and ksize[3]",
+                                                           expected_value, real_value)
     if len(strides) != 4:
         expected_value = "equal to 4"
         real_value = "not equal to 4"
         error_manager_vector.raise_err_input_value_invalid(kernel_name,
-                                                                         "length of strides",
-                                                                         expected_value, real_value)
+                                                           "length of strides",
+                                                           expected_value, real_value)
 
     if strides[0] != 1 or strides[3] != 1:
         expected_value = "equal to 1"
         real_value = "not equal to 1"
         error_manager_vector.raise_err_input_value_invalid(kernel_name,
-                                                                         "strides[0] and strides[3]",
-                                                                         expected_value, real_value)
+                                                           "strides[0] and strides[3]",
+                                                           expected_value, real_value)
 
     if ksize[1] > in_size_h or ksize[2] > in_size_w:
         expected_value = "smaller than or equal to 255"
         real_value = ksize[1]
         error_manager_vector.raise_err_input_value_invalid(kernel_name, "ksize",
-                                                                         expected_value, real_value)
+                                                           expected_value, real_value)
 
     if ksize[1] * ksize[2] > SCALAR_255:
         expected_value = "smaller than or equal to 255"
         real_value = "greater than 255"
         error_manager_vector.raise_err_input_value_invalid(kernel_name, "ksize[1] * ksize[2]",
-                                                                         expected_value, real_value)
+                                                           expected_value, real_value)
 
     if padding not in ("SAME", "VALID"):
         expected_value = "SAME or VALID"
         real_value = padding
         error_manager_vector.raise_err_input_value_invalid(kernel_name, "padding",
-                                                                         expected_value, real_value)
+                                                           expected_value, real_value)
 
 
 # pylint: disable=too-many-arguments,unused-argument,too-many-lines
@@ -408,8 +408,8 @@ class MaxPoolWithargmax():
             expected_value = "smaller than supported value"
             real_value = "greater than supported value"
             error_manager_vector.raise_err_input_value_invalid("max_pool_with_argmax",
-                                                                             "ksize or input shape",
-                                                                             expected_value, real_value)
+                                                               "ksize or input shape",
+                                                               expected_value, real_value)
 
         if not need_cut_h:
             if self.in_size_h * self.in_size_w * self.c_block_size * 2 > L1_SIZE:
@@ -876,7 +876,7 @@ class MaxPoolWithargmax():
                                              // (SCALAR_C0 * self.fmap_img2col_w)) //
                                             self.out_size_w) * self.stride_h - pad_top
                                 source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
-                                             (SCALAR_C0 * self.fmap_img2col_w)) % out_size_tail_w) *\
+                                             (SCALAR_C0 * self.fmap_img2col_w)) % out_size_tail_w) * \
                                            self.stride_w + cut_w_stride * cut_w_index - self.pad[0]
                                 self.scalar_source_h.set_as(source_h)
                                 self.scalar_source_w.set_as(source_w)
@@ -911,7 +911,7 @@ class MaxPoolWithargmax():
                                                             fmap_img2col_ub[0], 0, 1, gm_max_burst_len, 0, 0)
                                 self._dup_mask_fun(mask_ub, mask_shape_ub)
                             with self.tik_instance.for_range(0, self.fmap_img2col_w) as w_index:
-                                offset_output_mask = nc1_num * (self.fmap_img2col_h_num + 1) * self.fmap_img2col_w *\
+                                offset_output_mask = nc1_num * (self.fmap_img2col_h_num + 1) * self.fmap_img2col_w * \
                                                      self.c_block_size + cut_h_index * fmap_img2col_cut_h + \
                                                      cut_w_index * fmap_img2col_cut_w
                                 self.tik_instance.data_move(self.output_mask_gm[offset_output_mask + w_index *
@@ -926,7 +926,7 @@ class MaxPoolWithargmax():
                                          // (SCALAR_C0 * self.fmap_img2col_w)) //
                                         self.out_size_w) * self.stride_h - pad_top
                             source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
-                                         (SCALAR_C0 * self.fmap_img2col_w)) % out_size_cut_w) *\
+                                         (SCALAR_C0 * self.fmap_img2col_w)) % out_size_cut_w) * \
                                        self.stride_w - self.pad[0]
                             self.scalar_source_h.set_as(source_h)
                             self.scalar_source_w.set_as(source_w)
@@ -984,13 +984,14 @@ class MaxPoolWithargmax():
                             with self.tik_instance.for_range(0, fmap_img2col_cut_w_num) as h_index:
                                 source_h = 0
                                 source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
-                                             (SCALAR_C0 * self.fmap_img2col_w)) % out_size_cut_w) * self.stride_w +\
+                                             (SCALAR_C0 * self.fmap_img2col_w)) % out_size_cut_w) * self.stride_w + \
                                            cut_w_stride * cut_w_index - self.pad[0]
                                 self.scalar_source_h.set_as(source_h)
                                 self.scalar_source_w.set_as(source_w)
                                 self.tik_instance.load3dv1(fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 *
                                                                            self.fmap_img2col_w],
-                                                           input_fmap_l1[0], (self.pad[0], self.pad[1],0, self.pad[3]),
+                                                           input_fmap_l1[0],
+                                                           (self.pad[0], self.pad[1], 0, self.pad[3]),
                                                            (cut_h_size - self.pad[3]), self.in_size_w, 0, 0, 0,
                                                            self.scalar_source_w, self.scalar_source_h, self.stride_w,
                                                            self.stride_h, self.window_w, self.window_h, 1, 1, 1, 0,
@@ -1039,13 +1040,13 @@ class MaxPoolWithargmax():
                             with self.tik_instance.for_range(0, fmap_img2col_tail_w_num) as h_index:
                                 source_h = 0
                                 source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
-                                             (SCALAR_C0 * self.fmap_img2col_w)) % out_size_tail_w) *\
+                                             (SCALAR_C0 * self.fmap_img2col_w)) % out_size_tail_w) * \
                                            self.stride_w + cut_w_stride * cut_w_index - self.pad[0]
                                 self.scalar_source_h.set_as(source_h)
                                 self.scalar_source_w.set_as(source_w)
                                 self.tik_instance.load3dv1(fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 *
                                                                            self.fmap_img2col_w],
-                                                           input_fmap_l1[0], (self.pad[0], self.pad[1],0, self.pad[3]),
+                                                           input_fmap_l1[0], (self.pad[0], self.pad[1], 0, self.pad[3]),
                                                            (cut_h_size - self.pad[3]), self.in_size_w, 0, 0, 0,
                                                            self.scalar_source_w, self.scalar_source_h,
                                                            self.stride_w, self.stride_h, self.window_w, self.window_h,
@@ -1149,7 +1150,7 @@ class MaxPoolWithargmax():
                         with self.tik_instance.for_range(0, fmap_img2col_cut_w_num) as h_index:
                             source_h = -self.pad[2]
                             source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
-                                         (SCALAR_C0 * self.fmap_img2col_w)) % out_size_cut_w) *\
+                                         (SCALAR_C0 * self.fmap_img2col_w)) % out_size_cut_w) * \
                                        self.stride_w + cut_w_stride * cut_w_index - self.pad[0]
                             self.scalar_source_h.set_as(source_h)
                             self.scalar_source_w.set_as(source_w)
@@ -1197,7 +1198,7 @@ class MaxPoolWithargmax():
                         with self.tik_instance.for_range(0, fmap_img2col_tail_w_num) as h_index:
                             source_h = -self.pad[2]
                             source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
-                                         (SCALAR_C0 * self.fmap_img2col_w)) % out_size_tail_w) *\
+                                         (SCALAR_C0 * self.fmap_img2col_w)) % out_size_tail_w) * \
                                        self.stride_w + cut_w_stride * cut_w_index - self.pad[0]
                             self.scalar_source_h.set_as(source_h)
                             self.scalar_source_w.set_as(source_w)
@@ -1474,8 +1475,8 @@ class MaxPoolWithargmax():
             expected_value = "smaller than supported value"
             real_value = "greater than supported value"
             error_manager_vector.raise_err_input_value_invalid("max_pool_with_argmax",
-                                                                             "ksize or input shape",
-                                                                             expected_value, real_value)
+                                                               "ksize or input shape",
+                                                               expected_value, real_value)
 
         if cut_w_size >= cut_w_stride:
             fw_loop = _ceil_div(((self.in_size_w + self.pad[0] + self.pad[1]) - cut_w_size), cut_w_stride) + 1
@@ -1637,7 +1638,8 @@ class MaxPoolWithargmax():
             with self.tik_instance.if_scope(index_w > 0):
                 if fmap_img2col_tail_w == 0:
                     if fmap_img2col_tail_h == 0:
-                        self.tik_instance.vor(SCALAR_C0, mask_or[0], mask_ub[index_w * fmap_img2col_h_num * SCALAR_C0],
+                        self.tik_instance.vor(SCALAR_C0, mask_or[0],
+                                              mask_ub[index_w * fmap_img2col_h_num * SCALAR_C0],
                                               mask_or[0], fmap_img2col_h_num, DSTSTRIDEM0, SRC0STRIDEM0,
                                               SRC1STRIDEM0, DSTSTRIDEM0, SRC0STRIDEM0, SRC1STRIDEM0)
                         self.tik_instance.vand(SCALAR_C0, mask_ub[index_w * fmap_img2col_h_num * SCALAR_C0],

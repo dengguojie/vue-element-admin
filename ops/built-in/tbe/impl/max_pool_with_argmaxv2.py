@@ -49,7 +49,7 @@ UB_SIZE = MAX_ALLOW_UB if UB_SIZE > MAX_ALLOW_UB else UB_SIZE
 L1_SIZE = tbe_platform.cce_conf.CceProductParams().getParams("L1_Buffer")
 
 
-# pylint: disable=unused-argument
+# pylint: disable=unused-argument,invalid-name,too-many-arguments
 def get_op_support_info(x, y, argmax, ksize, strides, pads, dtype=DT_INT32,
                          dilation=(1, 1, 1, 1), ceil_mode=False,
                          kernel_name="max_pool_with_argmaxv2"):
@@ -94,6 +94,7 @@ def _ceil_div(value, factor):
     return quotient
 
 
+# pylint: disable=too-many-branches
 def _check_param(x, ksize, strides, padding, dtype, dilation, ceil_mode,
                  kernel_name):
     """
@@ -173,7 +174,7 @@ def _check_param(x, ksize, strides, padding, dtype, dilation, ceil_mode,
     if ceil_mode is not True and ceil_mode is not False:
         raise RuntimeError("MaxPoolWithArgmax only supports ceil_mode across "
                            "True/False, and other string not support!")
-    if dtype != DT_INT32 and dtype != DT_INT64:
+    if dtype not in (DT_INT32, DT_INT64):
         raise RuntimeError(
             "MaxPoolWithArgmax only supports output indices data type: "
             "int32, int64, and other data type not support!")
@@ -937,6 +938,7 @@ class MaxPoolWithargmaxPytorch():
                                       cut_h_num, input_fmap_l1, fmap_ub,
                                       fmap_cut_h, mask_shape_ub, nc1_num)
 
+    # pylint: disable=no-self-use
     def _pooling_output_shape_pad_lr(self, input_size, kernel_size, pad_l,
                                      pad_r, stride, dilation, ceil_mode):
         temp = input_size + pad_l + pad_r - dilation * (kernel_size - 1) - 1

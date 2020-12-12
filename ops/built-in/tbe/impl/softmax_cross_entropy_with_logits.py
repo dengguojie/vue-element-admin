@@ -129,9 +129,9 @@ def softmax_cross_entropy_with_logits_nchw_compute(
             shape_util.broadcast_shapes(shape_features, shape_labels, param_name_input1="input_features",
                                         param_name_input2="input_labels")
         input_features = tbe.broadcast(input_features, shape_broadcast,
-                                               dtype)
+                                       dtype)
         input_labels = tbe.broadcast(input_labels, shape_broadcast,
-                                             dtype)
+                                     dtype)
     else:
         shape_broadcast = shape_features
 
@@ -194,11 +194,11 @@ def softmax_cross_entropy_with_logits_compute(
     if list(shape_features) != list(shape_labels):
         shape_features, shape_labels, shape_broadcast = \
             shape_util.broadcast_shapes(shape_features, shape_labels, param_name_input1="input_features",
-                                param_name_input2="input_labels")
+                                        param_name_input2="input_labels")
         input_features = tbe.broadcast(input_features, shape_broadcast,
-                                               dtype)
+                                       dtype)
         input_labels = tbe.broadcast(input_labels, shape_broadcast,
-                                             dtype)
+                                     dtype)
     else:
         shape_broadcast = shape_features
 
@@ -212,8 +212,8 @@ def softmax_cross_entropy_with_logits_compute(
                                                             input_labels)
     has_improve_precision = False
     if dtype == "float16" and \
-        tbe_platform.api_check_support("te.lang.cce.vexp",
-                                                "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vexp",
+                                           "float32"):
         input_features = tbe.cast_to(input_features, "float32")
         input_labels = tbe.cast_to(input_labels, "float32")
         has_improve_precision = True
@@ -277,11 +277,11 @@ def softmax_cross_entropy_with_logits_compute_ex(input_features,
     if list(shape_features) != list(shape_labels):
         shape_features, shape_labels, shape_broadcast = \
             shape_util.broadcast_shapes(shape_features, shape_labels, param_name_input1="input_features",
-                             param_name_input2="input_labels")
+                                        param_name_input2="input_labels")
         input_features = tbe.broadcast(input_features, shape_broadcast,
-                                               dtype)
+                                       dtype)
         input_labels = tbe.broadcast(input_labels, shape_broadcast,
-                                             dtype)
+                                     dtype)
     else:
         shape_broadcast = shape_features
 
@@ -339,6 +339,7 @@ def softmax_cross_entropy_with_logits_compute_ex(input_features,
     return res
 
 
+# pylint: disable=unused-variable
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def softmax_cross_entropy_with_logits(
@@ -384,7 +385,7 @@ def softmax_cross_entropy_with_logits(
     if len(shape_features) == 4:
         if len(shape_features) != len(shape_labels):
             error_manager_vector.raise_err_specific_reson("softmax_cross_entropy_with_logits",
-                                                         "The length of two inputs must be same")
+                                                          "The length of two inputs must be same")
         if input_dtype != "float32":
             error_manager_vector.raise_err_specific_reson("softmax_cross_entropy_with_logits", "Not supported dtype!")
         data_features = tvm.placeholder(shape_features, dtype=input_dtype,
@@ -398,15 +399,15 @@ def softmax_cross_entropy_with_logits(
     else:
         if len(shape_features) == 1 and len(shape_labels) == 1:
             error_manager_vector.raise_err_specific_reson("softmax_cross_entropy_with_logits",
-                                                         "The rank of two inputs can not be 1 at the same time")
+                                                          "The rank of two inputs can not be 1 at the same time")
         if len(shape_features) > 2 or len(shape_labels) > 2:
             error_manager_vector.raise_err_specific_reson("softmax_cross_entropy_with_logits",
-                                                         "logits and labels must be either 2-dimensional,"
-                                                         "or broadcasted to 2-dimensional")
+                                                          "logits and labels must be either 2-dimensional,"
+                                                          "or broadcasted to 2-dimensional")
         if len(shape_features) == 1 or len(shape_labels) == 1:
             shape_features, shape_labels, shape_broadcast = \
                 shape_util.broadcast_shapes(shape_features, shape_labels, param_name_input1="input_features",
-                                    param_name_input2="input_labels")
+                                            param_name_input2="input_labels")
 
         data_features = tvm.placeholder(shape_features, dtype=input_dtype,
                                         name="data_features")

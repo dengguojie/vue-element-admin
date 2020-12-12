@@ -19,7 +19,6 @@ import functools
 
 import te.platform as tbe_platform
 from te.utils import para_check
-from te.utils import shape_util
 from te import tik
 
 # available ub size
@@ -319,7 +318,7 @@ class ND2NzCompute:
             if self.dst_shape[-4] * self.dst_shape[-1] * \
                     (self.dst_shape[-2] + 1) <= self.ub_memory // 2 and \
                     self.src_shape[-2] % (MAX_CORE_NUM * CUBE_SIZE) == 0 and \
-                    self.src_shape[-1] % CUBE_SIZE == 0 and\
+                    self.src_shape[-1] % CUBE_SIZE == 0 and \
                     self.src_shape[-2] // (MAX_CORE_NUM * CUBE_SIZE) >= 2:
                 format_transfer_case = 8
 
@@ -362,7 +361,7 @@ class ND2NzCompute:
         if (self.src_shape[-2] % CUBE_SIZE) != 0:
             with tik_instance.for_range(0, loop_num) as num_loop_index:
                 with tik_instance.for_range(
-                    0, self.dst_shape[-4] // NUM_CUBE) as num_col_cube:
+                        0, self.dst_shape[-4] // NUM_CUBE) as num_col_cube:
                     tik_instance.vector_dup(self.vadds_mask,
                                             ub_ori[num_loop_index *
                                                    self.dst_shape[-3] *
@@ -467,8 +466,8 @@ class ND2NzCompute:
             with tik_instance.for_range(0, self.dst_shape[-4] // NUM_CUBE) as \
                     num_col_cube:
                 with tik_instance.for_range(
-                    0, CUBE_SIZE * self.dst_shape[-3] // MAX_REPEATS) \
-                    as num_repeat_one:
+                        0, CUBE_SIZE * self.dst_shape[-3] // MAX_REPEATS) \
+                        as num_repeat_one:
                     tik_instance.vadds(self.vadds_mask,
                                        ub_trans[num_loop_index *
                                                 self.dst_shape[-3] *
@@ -635,8 +634,8 @@ class ND2NzCompute:
                                            self.num_data)
             if self.dst_shape[-4] % NUM_CUBE != 0:
                 with tik_instance.for_range(
-                    0, CUBE_SIZE * self.dst_shape[-3] // MAX_REPEATS) \
-                    as num_repeat_one:
+                        0, CUBE_SIZE * self.dst_shape[-3] // MAX_REPEATS) \
+                        as num_repeat_one:
                     tik_instance.vadds((self.dst_shape[-4] % NUM_CUBE) *
                                        CUBE_SIZE * self.vadds_mask // MAX_MASK,
                                        ub_trans[num_loop_index *
@@ -908,8 +907,8 @@ class ND2NzCompute:
         with tik_instance.for_range(0, col_cube_num // NUM_CUBE) as \
                 num_col_cube:
             with tik_instance.for_range(
-                0, CUBE_SIZE * self.dst_shape[-3] // MAX_REPEATS) \
-                as num_repeat_one:
+                    0, CUBE_SIZE * self.dst_shape[-3] // MAX_REPEATS) \
+                    as num_repeat_one:
                 tik_instance.vadds(self.vadds_mask,
                                    ub_trans[num_col_cube * NUM_CUBE *
                                             self.dst_shape[-3] *
@@ -1011,8 +1010,8 @@ class ND2NzCompute:
                                        self.num_data)
         with tik_instance.if_scope(col_cube_num % NUM_CUBE != 0):
             with tik_instance.for_range(
-                0, CUBE_SIZE * self.dst_shape[-3] // MAX_REPEATS) \
-                as num_repeat_one:
+                    0, CUBE_SIZE * self.dst_shape[-3] // MAX_REPEATS) \
+                    as num_repeat_one:
                 tik_instance.vadds((col_cube_num % NUM_CUBE) * CUBE_SIZE *
                                    self.vadds_mask // MAX_MASK,
                                    ub_trans[col_cube_num // NUM_CUBE *
@@ -1135,7 +1134,7 @@ class ND2NzCompute:
                     mask += 2 ** (CUBE_SIZE - 1 - i)
 
                 with tik_instance.for_range(0, loop_row * CUBE_SIZE //
-                                            MAX_REPEATS) as num_repeat:
+                                               MAX_REPEATS) as num_repeat:
                     tik_instance.vector_dup([0, mask],
                                             ub_ori[MAX_REPEATS * num_repeat *
                                                    self.dst_shape[-1]],
@@ -1203,7 +1202,7 @@ class ND2NzCompute:
         with tik_instance.if_scope(is_last == 1):
             if (self.src_shape[-2] % CUBE_SIZE) != 0:
                 with tik_instance.for_range(0, self.dst_shape[-4] //
-                                            NUM_CUBE) as num_col_cube:
+                                               NUM_CUBE) as num_col_cube:
                     tik_instance.vector_dup(self.vadds_mask,
                                             ub_ori[((loop_num - 1) *
                                                     self.dst_shape[-2] +
@@ -1284,7 +1283,7 @@ class ND2NzCompute:
         with tik_instance.for_range(0, self.dst_shape[-4] // NUM_CUBE) \
                 as num_col_cube:
             with tik_instance.for_range(0, CUBE_SIZE * loop_num //
-                                        MAX_REPEATS) as num_repeat_one:
+                                           MAX_REPEATS) as num_repeat_one:
                 tik_instance.vadds(self.vadds_mask,
                                    ub_trans[num_col_cube * NUM_CUBE *
                                             loop_num * self.dst_shape[-2] *
@@ -1380,7 +1379,7 @@ class ND2NzCompute:
                                        self.num_data)
         if self.dst_shape[-4] % NUM_CUBE != 0:
             with tik_instance.for_range(0, CUBE_SIZE * loop_num //
-                                        MAX_REPEATS) as num_repeat_one:
+                                           MAX_REPEATS) as num_repeat_one:
                 tik_instance.vadds((self.dst_shape[-4] % NUM_CUBE) *
                                    CUBE_SIZE * self.vadds_mask // MAX_MASK,
                                    ub_trans[self.dst_shape[-4] // NUM_CUBE *
@@ -1645,7 +1644,7 @@ class ND2NzCompute:
         with tik_instance.for_range(0, self.dst_shape[-4] // NUM_CUBE) \
                 as num_col_cube:
             with tik_instance.for_range(0, CUBE_SIZE * loop_num //
-                                        MAX_REPEATS) as num_repeat_one:
+                                           MAX_REPEATS) as num_repeat_one:
                 tik_instance.vadds(self.vadds_mask,
                                    ub_trans[num_col_cube * NUM_CUBE *
                                             loop_num * self.dst_shape[-2] *
@@ -1741,7 +1740,7 @@ class ND2NzCompute:
                                        self.num_data)
         if self.dst_shape[-4] % NUM_CUBE != 0:
             with tik_instance.for_range(0, CUBE_SIZE * loop_num //
-                                        MAX_REPEATS) as num_repeat_one:
+                                           MAX_REPEATS) as num_repeat_one:
                 tik_instance.vadds((self.dst_shape[-4] % NUM_CUBE) *
                                    CUBE_SIZE * self.vadds_mask // MAX_MASK,
                                    ub_trans[self.dst_shape[-4] // NUM_CUBE *
@@ -2141,7 +2140,7 @@ class ND2NzCompute:
                                (CUBE_SIZE * self.dst_shape[-3] + 1) * \
                                num_loop_time
                 with tik_instance.for_range(0, self.src_shape[-2] //
-                                            MAX_BURST_NUMBER) as num_repeat:
+                                               MAX_BURST_NUMBER) as num_repeat:
                     tik_instance.data_move(ub_ori[src_ub_index +
                                                   MAX_BURST_NUMBER *
                                                   num_repeat *
@@ -2331,9 +2330,9 @@ class ND2NzCompute:
                 count_loop.set_as(0)
                 with tik_instance.for_range(0, self.dst_shape[-3]) as num_cube:
                     with tik_instance.if_scope(
-                        tik.all(num_cube % loop_row == 0,
-                                num_cube != self.dst_shape[-3] -
-                                loop_remainder)):
+                            tik.all(num_cube % loop_row == 0,
+                                    num_cube != self.dst_shape[-3] -
+                                    loop_remainder)):
                         if self.src_shape[-1] % CUBE_SIZE != 0 or \
                                 (self.src_shape[-1] - CUBE_SIZE) // \
                                 self.num_data > MAX_STRIDE_BLK:
@@ -2402,10 +2401,10 @@ class ND2NzCompute:
                                 with tik_instance.for_range(0, CUBE_SIZE) \
                                         as num_cube_row:
                                     with tik_instance.if_scope(
-                                        ((count_loop * loop_row +
-                                          num_loop_row) * CUBE_SIZE +
-                                         num_cube_row) >
-                                        self.src_shape[-2]):
+                                            ((count_loop * loop_row +
+                                              num_loop_row) * CUBE_SIZE +
+                                             num_cube_row) >
+                                            self.src_shape[-2]):
                                         pass
                                     with tik_instance.else_scope():
                                         src_gm_index = num_outer_axis * \
@@ -2528,9 +2527,9 @@ class ND2NzCompute:
                                                    ub_trans, align_loop,
                                                    is_last)
                     with tik_instance.if_scope(
-                        (self.dst_shape[-3] - align_loop) *
-                        self.dst_shape[-1] * self.dst_shape[-2] //
-                        self.num_data > MAX_STRIDE_BLK):
+                            (self.dst_shape[-3] - align_loop) *
+                            self.dst_shape[-1] * self.dst_shape[-2] //
+                            self.num_data > MAX_STRIDE_BLK):
                         with tik_instance.for_range(0, self.dst_shape[-4]) \
                                 as num_col_cube:
                             dst_gm_index = num_third_last_axis * \
@@ -2610,9 +2609,9 @@ class ND2NzCompute:
                                                    ub_trans, remainder,
                                                    is_last)
                     with tik_instance.if_scope(
-                        (self.dst_shape[-3] - remainder) *
-                        self.dst_shape[-1] * self.dst_shape[-2] //
-                        self.num_data > MAX_STRIDE_BLK):
+                            (self.dst_shape[-3] - remainder) *
+                            self.dst_shape[-1] * self.dst_shape[-2] //
+                            self.num_data > MAX_STRIDE_BLK):
                         with tik_instance.for_range(0, self.dst_shape[-4]) \
                                 as num_col_cube:
                             dst_gm_index = num_third_last_axis * \
@@ -2703,7 +2702,7 @@ class ND2NzCompute:
                                                self.dst_shape[-3] - 1):
                         if self.src_shape[-2] % CUBE_SIZE != 0:
                             with tik_instance.for_range(0, self.src_shape[-2] %
-                                                        CUBE_SIZE) as \
+                                                           CUBE_SIZE) as \
                                     num_cube_row:
                                 tik_instance.data_move(ub_ori
                                                        [src_ub_index +
@@ -2775,9 +2774,9 @@ class ND2NzCompute:
                                                    ub_trans, align_loop,
                                                    is_last)
                     with tik_instance.if_scope(
-                        (self.dst_shape[-3] - align_loop) *
-                        self.dst_shape[-1] * self.dst_shape[-2] //
-                        self.num_data > MAX_STRIDE_BLK):
+                            (self.dst_shape[-3] - align_loop) *
+                            self.dst_shape[-1] * self.dst_shape[-2] //
+                            self.num_data > MAX_STRIDE_BLK):
                         with tik_instance.for_range(0, self.dst_shape[-4]) \
                                 as num_col_cube:
 
@@ -2830,9 +2829,9 @@ class ND2NzCompute:
                                                    ub_trans, remainder,
                                                    is_last)
                     with tik_instance.if_scope(
-                        (self.dst_shape[-3] - remainder) *
-                        self.dst_shape[-1] * self.dst_shape[-2] //
-                        self.num_data > MAX_STRIDE_BLK):
+                            (self.dst_shape[-3] - remainder) *
+                            self.dst_shape[-1] * self.dst_shape[-2] //
+                            self.num_data > MAX_STRIDE_BLK):
                         with tik_instance.for_range(0, self.dst_shape[-4]) \
                                 as num_col_cube:
 
@@ -2911,12 +2910,12 @@ class ND2NzCompute:
                         with tik_instance.for_range(0,
                                                     self.src_shape[-2] %
                                                     CUBE_SIZE) as num_cube_col:
-                            src_gm_index = num_outer_axis *\
+                            src_gm_index = num_outer_axis * \
                                            self.src_shape[-1] * \
                                            self.src_shape[-2] + \
                                            (num_loop_time * CUBE_SIZE +
-                                            num_cube_col) *\
-                                           self.src_shape[-1] + loop_time *\
+                                            num_cube_col) * \
+                                           self.src_shape[-1] + loop_time * \
                                            loop_col * CUBE_SIZE
                             tik_instance.data_move(ub_ori[loop_len *
                                                           CUBE_SIZE *
@@ -2932,8 +2931,8 @@ class ND2NzCompute:
                                            self.src_shape[-1] * \
                                            self.src_shape[-2] + \
                                            (num_loop_time * CUBE_SIZE +
-                                            num_cube_col) *\
-                                           self.src_shape[-1] + loop_time *\
+                                            num_cube_col) * \
+                                           self.src_shape[-1] + loop_time * \
                                            loop_col * CUBE_SIZE
                             tik_instance.data_move(ub_ori[loop_len *
                                                           CUBE_SIZE *
@@ -2957,8 +2956,8 @@ class ND2NzCompute:
                                                2, 0, 0)
             else:
                 src_gm_index = num_outer_axis * self.src_shape[-1] * \
-                               self.src_shape[-2] + num_loop_time *\
-                               CUBE_SIZE * self.src_shape[-1] +\
+                               self.src_shape[-2] + num_loop_time * \
+                               CUBE_SIZE * self.src_shape[-1] + \
                                loop_time * loop_col * CUBE_SIZE
                 if self.src_shape[-2] % CUBE_SIZE != 0:
                     with tik_instance.if_scope(num_loop_time ==
@@ -2992,7 +2991,7 @@ class ND2NzCompute:
                                           loop_len, is_last)
 
             if((self.dst_shape[-3] - 1) * self.dst_shape[-1] *
-               self.dst_shape[-2] // self.num_data > MAX_STRIDE_BLK):
+                    self.dst_shape[-2] // self.num_data > MAX_STRIDE_BLK):
                 with tik_instance.for_range(0, loop_len) as \
                         num_col_cube:
                     dst_gm_index = num_outer_axis * num_data_one_loop + \
@@ -3062,7 +3061,7 @@ class ND2NzCompute:
                     is_last = tik_instance.Scalar("uint64")
                     is_last.set_as(0)
                     with tik_instance.for_range(0, self.dst_shape[-4] //
-                                                loop_col) as num_cube:
+                                                   loop_col) as num_cube:
                         data_move_case_zero(tik_instance, ub_ori,
                                             ub_trans, is_last,
                                             num_outer_axis,
@@ -3096,7 +3095,7 @@ class ND2NzCompute:
                 core_loop, sum_core = _cal_core(tik_instance,
                                                 total_core_loop_num,
                                                 num_core, core_number)
-                with tik_instance.for_range(0, core_loop, thread_num=2)\
+                with tik_instance.for_range(0, core_loop, thread_num=2) \
                         as num_core_loop:
                     ub_ori = tik_instance.Tensor(self.dtype,
                                                  (ub_ori_data,),
@@ -3113,7 +3112,7 @@ class ND2NzCompute:
                     is_last = tik_instance.Scalar("uint64")
                     is_last.set_as(0)
                     with tik_instance.for_range(0, self.dst_shape[-4] //
-                                                loop_col) as num_cube:
+                                                   loop_col) as num_cube:
                         data_move_case_zero(tik_instance, ub_ori,
                                             ub_trans, is_last, num_outer_axis,
                                             num_loop_time, num_cube,
@@ -3157,7 +3156,7 @@ class ND2NzCompute:
             thread_number = 1 if core_loop_num == 1 else 2
             src_ub_index = 0
             with tik_instance.for_range(0, core_loop_num,
-                                        thread_num=thread_number)\
+                                        thread_num=thread_number) \
                     as num_core_loop:
                 ub_ori = tik_instance.Tensor(self.dtype,
                                              (ub_ori_data,),
@@ -3177,7 +3176,7 @@ class ND2NzCompute:
                                        self.num_data, 0, 0)
                 self.data_rearrange_case_five(tik_instance, ub_ori,
                                               ub_trans, align_loop)
-                if (self.dst_shape[-3] - align_loop) * self.dst_shape[-1] *\
+                if (self.dst_shape[-3] - align_loop) * self.dst_shape[-1] * \
                         self.dst_shape[-2] // self.num_data > MAX_STRIDE_BLK:
                     with tik_instance.for_range(0, self.dst_shape[-4]) \
                             as num_col_cube:
@@ -3559,7 +3558,7 @@ class ND2NzComputeInt8:
 
         with tik_instance.for_range(0, self.dst_shape[-4]) as num_col_cube:
             with tik_instance.for_range(0, CUBE_SIZE * loop_num //
-                                        MAX_REPEATS) as num_repeat_one:
+                                           MAX_REPEATS) as num_repeat_one:
                 tik_instance.vadds(CUBE_SIZE_2,
                                    ub_trans[num_col_cube * loop_num *
                                             self.dst_shape[-2] *
@@ -3747,9 +3746,9 @@ class ND2NzComputeInt8:
                                                   ub_cast_int8, align_loop,
                                                   is_last)
                     with tik_instance.if_scope(
-                        (self.dst_shape[-3] - align_loop) *
-                        self.dst_shape[-1] * self.dst_shape[-2] //
-                        self.num_data > MAX_STRIDE_BLK):
+                            (self.dst_shape[-3] - align_loop) *
+                            self.dst_shape[-1] * self.dst_shape[-2] //
+                            self.num_data > MAX_STRIDE_BLK):
                         with tik_instance.for_range(0, self.dst_shape[-4]) \
                                 as num_col_cube:
                             dst_gm_index = num_third_last_axis * \
@@ -3830,9 +3829,9 @@ class ND2NzComputeInt8:
                                                   ub_cast_int8, remainder,
                                                   is_last)
                     with tik_instance.if_scope(
-                        (self.dst_shape[-3] - remainder) *
-                        self.dst_shape[-1] * self.dst_shape[-2] //
-                        self.num_data > MAX_STRIDE_BLK):
+                            (self.dst_shape[-3] - remainder) *
+                            self.dst_shape[-1] * self.dst_shape[-2] //
+                            self.num_data > MAX_STRIDE_BLK):
                         with tik_instance.for_range(0, self.dst_shape[-4]) \
                                 as num_col_cube:
                             dst_gm_index = num_third_last_axis * \
@@ -3927,7 +3926,7 @@ class ND2NzComputeInt8:
                                            self.dst_shape[-3] - 1):
                     if self.src_shape[-2] % CUBE_SIZE != 0:
                         with tik_instance.for_range(
-                            0, self.src_shape[-2] % CUBE_SIZE) as num_cube_row:
+                                0, self.src_shape[-2] % CUBE_SIZE) as num_cube_row:
                             tik_instance.data_move(ub_ori
                                                    [src_ub_index +
                                                     num_cube_row *
@@ -3986,9 +3985,9 @@ class ND2NzComputeInt8:
                                                   ub_cast_int8, align_loop,
                                                   is_last)
                     with tik_instance.if_scope(
-                        (self.dst_shape[-3] - align_loop) *
-                        self.dst_shape[-1] * self.dst_shape[-2] //
-                        self.num_data > MAX_STRIDE_BLK):
+                            (self.dst_shape[-3] - align_loop) *
+                            self.dst_shape[-1] * self.dst_shape[-2] //
+                            self.num_data > MAX_STRIDE_BLK):
                         with tik_instance.for_range(0, self.dst_shape[-4]) \
                                 as num_col_cube:
 
@@ -4042,9 +4041,9 @@ class ND2NzComputeInt8:
                                                   ub_cast_int8, remainder,
                                                   is_last)
                     with tik_instance.if_scope(
-                        (self.dst_shape[-3] - remainder) *
-                        self.dst_shape[-1] * self.dst_shape[-2] //
-                        self.num_data > MAX_STRIDE_BLK):
+                            (self.dst_shape[-3] - remainder) *
+                            self.dst_shape[-1] * self.dst_shape[-2] //
+                            self.num_data > MAX_STRIDE_BLK):
                         with tik_instance.for_range(0, self.dst_shape[-4]) \
                                 as num_col_cube:
                             dst_gm_index = num_third_last_axis * \
@@ -4139,7 +4138,7 @@ class ND2NzComputeInt8:
                 is_last = tik_instance.Scalar("uint64")
                 is_last.set_as(0)
                 with tik_instance.for_range(0, self.dst_shape[-4] //
-                                            loop_col) as num_cube:
+                                               loop_col) as num_cube:
                     self.data_move_case_zero(tik_instance, ub_ori,
                                              ub_cast_fp16, ub_trans,
                                              ub_cast_int8, is_last,
@@ -4179,7 +4178,7 @@ class ND2NzComputeInt8:
                                        self.dst_shape[-3] - 1):
                 if self.src_shape[-2] % CUBE_SIZE != 0:
                     with tik_instance.for_range(0, self.src_shape[-2] %
-                                                CUBE_SIZE) as num_cube_col:
+                                                   CUBE_SIZE) as num_cube_col:
                         src_gm_index = num_outer_axis * self.src_shape[-1] * \
                                        self.src_shape[-2] + \
                                        (num_loop_time * CUBE_SIZE +
@@ -4258,7 +4257,7 @@ class ND2NzComputeInt8:
                                      loop_len, is_last)
 
         if((self.dst_shape[-3] - 1) * self.dst_shape[-1] *
-           self.dst_shape[-2] // self.num_data > MAX_STRIDE_BLK):
+                self.dst_shape[-2] // self.num_data > MAX_STRIDE_BLK):
             with tik_instance.for_range(0, loop_len, dtype='int64') as \
                     num_col_cube:
                 dst_gm_index = num_outer_axis * num_data_one_loop + \
@@ -4360,6 +4359,5 @@ def nd_2_nz(src, dst, src_format, dst_format, kernel_name="nd_2_nz"):
         nd_2_nz_template_int8 = ND2NzComputeInt8(src_shape, src_dtype,
                                                  kernel_name)
         return nd_2_nz_template_int8.get_tik_instance()
-    else:
-        nd_2_nz_template = ND2NzCompute(src_shape, src_dtype, kernel_name)
-        return nd_2_nz_template.get_tik_instance()
+    nd_2_nz_template = ND2NzCompute(src_shape, src_dtype, kernel_name)
+    return nd_2_nz_template.get_tik_instance()

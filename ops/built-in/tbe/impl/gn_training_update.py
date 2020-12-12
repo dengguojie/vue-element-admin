@@ -20,16 +20,16 @@ from __future__ import division
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
 from te.utils import para_check
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from topi import generic
 
 NONETYPE = type(None)
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name
-# pylint: disable=locally-disabled,redefined-builtin
+# pylint: disable=locally-disabled,redefined-builtin,too-many-arguments,too-many-locals
 def op_select_format(x, sum, square_sum, scale, offset, mean, variance,
                      y, batch_mean, batch_variance,
                      epsilon=0.0001, num_groups=2,
@@ -89,14 +89,17 @@ def check_rule(data, rule_desc, param_name=para_check.PARAM_NAME):
     error_info['rule_desc'] = rule_desc
     error_info['param_value'] = data
     raise RuntimeError(error_info,
-                       "Op[%s] has rule: %s, but [%s] is [%s]."\
-                        % (error_info['op_name'],
-                        error_info['rule_desc'],
-                        error_info['param_name'],
-                        error_info['param_value']))
+                       "Op[%s] has rule: %s, but [%s] is [%s]." \
+                       % (error_info['op_name'],
+                          error_info['rule_desc'],
+                          error_info['param_name'],
+                          error_info['param_value']))
 
 
 def check_input_shape(shape, data_format="NCHW", num_groups=2):
+    """
+    check_input_shape
+    """
     para_check.check_shape(shape, min_rank=4, max_rank=4, param_name="x")
     c_index = data_format.index("C")
     if shape[c_index] % num_groups != 0:
@@ -107,6 +110,9 @@ def check_input_shape(shape, data_format="NCHW", num_groups=2):
 
 def check_couple_shape(shape_a, shape_b, ori_shape, data_format,
                        num_groups, first_index=False):
+    """
+    check_couple_shape
+    """
     if first_index:
         first_value = ori_shape[0]
     else:

@@ -21,27 +21,32 @@ concat_v2_d: Concatenates tensors along one dimension.
 """
 from __future__ import absolute_import
 import math
+
 import te.lang.dynamic
-from impl import common_util
 from te.utils import para_check
 from te import platform as tbe_platform
 from te import tik
-from impl import constant_util as constant
 from te.utils.error_manager import error_manager_vector as error_manager
+
 from impl.util.util_tik_comm_func import gm2ub
 from impl.util.util_tik_comm_func import ub2gm
 from impl.util.util_tik_comm_func import ceil_div
-
+from impl import common_util
+from impl import constant_util as constant
 MAX_SIZE = 2 ** 31 - 1
 
 
 def ceil_32bytes_align_count(count, dtype):
+    """
+    ceil_32bytes_align_count
+    """
     type_size = common_util.get_data_size(dtype)
     block_elements = constant.BLOCK_SIZE // type_size
     block_count = math.ceil(count / block_elements)
     return block_count * block_elements
 
 
+# pylint: disable=too-many-arguments,too-many-locals
 def _get_mask2concat_ub(instance: tik.Tik, count, src_index, dtype):
     """
     get 128bit mask for concat ub
@@ -102,6 +107,9 @@ def _get_mask2concat_ub(instance: tik.Tik, count, src_index, dtype):
 
 def _concat_ub_vadds(instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, dst_index, src_index, count, row_count,
                      dst_row_stride, src_row_stride, mask=None, repeat_times=None, tail_count=None):
+    """
+    _concat_ub_vadds
+    """
     if dst.scope != tik.scope_ubuf or src.scope != tik.scope_ubuf:
         raise RuntimeError("dst and src must be UB, but dst is {} and src is {}.".format(dst.scope, src.scope))
 
@@ -159,8 +167,15 @@ def _concat_ub_vadds(instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, dst_in
                            src_row_stride)
 
 
+# pylint:disable=too-many-instance-attributes,too-few-public-methods
 class ConcatV2:
+    """
+    ConcatV2
+    """
     class TilingParam:
+        """
+        TilingParam
+        """
         def __init__(self, input_values, inst: tik.Tik):
             self.tik_instance = inst
             dtype = "int64"
@@ -201,6 +216,9 @@ class ConcatV2:
             self._dims = []
 
         def init(self):
+            """
+            :return:
+            """
             inst = self.tik_instance
             dtype = self.dtype
             head_count = 8
@@ -243,7 +261,11 @@ class ConcatV2:
             for _, dim_i in enumerate(self._dims):
                 dim_i.set_as(dim_i * multi_times)
 
+        # pylint: disable=no-self-use
         def need_ub_size(self):
+            """
+            :return: 0
+            """
             return 0
 
     def __init__(self, input_values, axis, kernel_name):
@@ -343,6 +365,7 @@ class ConcatV2:
         ceil_num = ceil_div(self.tik_instance, count, self.ele_each_block)
         return ceil_num * self.ele_each_block
 
+    # pylint: disable=invalid-name,unused-variable,too-many-statements
     def _concat_inner_dim_each_split(self, out_dim_idx, inner_dim_split_idx):
         for index, _ in enumerate(self.input_tensors):
             self._concat_compute_tensor_inner_dim(out_dim_idx, inner_dim_split_idx, index)
@@ -780,6 +803,7 @@ def __check_params(input_values, axis):
                                                            dtype_)
 
 
+# pylint: disable=unused-argument
 @te.op.register_operator("ConcatV2D")
 @para_check.check_op_params(para_check.DYNAMIC_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)

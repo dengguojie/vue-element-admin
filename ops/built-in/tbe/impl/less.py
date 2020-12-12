@@ -104,32 +104,33 @@ def less_compute(input_x, input_y, output_z, kernel_name="less"):
     if dtype == "float32":
         # minimun num of float32 2**(-126)
         data_min = tbe.broadcast(tvm.const(2**(-126),
-                                                   dtype=dtype), shape, dtype)
-    elif dtype == "float16" and cce_product not in ("Ascend910","Ascend710"):
+                                           dtype=dtype), shape, dtype)
+    elif dtype == "float16" and cce_product not in ("Ascend910", "Ascend710"):
         # minimun num of float16 2**(-24)
         data_min = tbe.broadcast(tvm.const(2**(-24), dtype=dtype),
-                                         shape, dtype)
-    elif dtype == "float16" and cce_product in ("Ascend910","Ascend710"):
+                                 shape, dtype)
+    elif dtype == "float16" and cce_product in ("Ascend910", "Ascend710"):
         input_x = tbe.cast_to(input_x, "float32")
         input_y = tbe.cast_to(input_y, "float32")
         dtype = "float32"
         data_min = tbe.broadcast(tvm.const(2**(-126),
-                                                   dtype=dtype), shape, dtype)
-    elif dtype == "int32" and cce_product not in ("Ascend910","Ascend710"):
+                                           dtype=dtype), shape, dtype)
+    elif dtype == "int32" and cce_product not in ("Ascend910", "Ascend710"):
         data_min = tbe.broadcast(tvm.const(1, dtype=dtype),
-                                         shape, dtype)
+                                 shape, dtype)
     else:
         input_x = tbe.cast_to(input_x, "float32")
         input_y = tbe.cast_to(input_y, "float32")
         dtype = "float32"
         data_min = tbe.broadcast(tvm.const(2**(-126),
-                                                   dtype=dtype), shape, dtype)
+                                           dtype=dtype), shape, dtype)
     input_x = tbe.broadcast(input_x, shape)
     input_y = tbe.broadcast(input_y, shape)
 
     return _less_compare((input_x, input_y), shape, dtype, data_min)
 
 
+# pylint: disable=unused-variable
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def less(input_x, input_y, output_z, kernel_name="less"):
@@ -166,7 +167,7 @@ def less(input_x, input_y, output_z, kernel_name="less"):
                                                               param_name_input1="input_x", param_name_input2="input_y")
 
     shape_x, shape_y = shape_util.refine_shapes_for_broadcast(shape_x,
-                                                   shape_y)
+                                                              shape_y)
     data_x = tvm.placeholder(shape_x, dtype=input_dtype, name="data_x")
     data_y = tvm.placeholder(shape_y, dtype=input_dtype, name="data_y")
 
