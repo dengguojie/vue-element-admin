@@ -188,18 +188,19 @@ def build_pointcut(func, *args, **kwargs):
 
 
 def _post_build():
-    is_const = operation.get_compile_info().get("reduce_shape_known")
-    if is_const:
-        tiling_keys = operation.get_context().get("_tiling_keys")
-        built_jsons = operation.get_context().get("_built_info")
-        block_dims, atomic_flags = {}, {}
-        for tiling_key, item in zip(tiling_keys, built_jsons):
-            tiling_key = str(tiling_key)
-            block_dims[tiling_key] = item["blockDim"]
-            atomic_flags[tiling_key] = any([x == 1 for x in item["parameters"]])
+    if operation.in_dynamic():
+        is_const = operation.get_compile_info().get("reduce_shape_known")
+        if is_const:
+            tiling_keys = operation.get_context().get("_tiling_keys")
+            built_jsons = operation.get_context().get("_built_info")
+            block_dims, atomic_flags = {}, {}
+            for tiling_key, item in zip(tiling_keys, built_jsons):
+                tiling_key = str(tiling_key)
+                block_dims[tiling_key] = item["blockDim"]
+                atomic_flags[tiling_key] = any([x == 1 for x in item["parameters"]])
 
-        operation.add_compile_info(CompileInfo.BLOCK_DIMS, block_dims)
-        operation.add_compile_info(CompileInfo.ATOMIC_FLAGS, atomic_flags)
+            operation.add_compile_info(CompileInfo.BLOCK_DIMS, block_dims)
+            operation.add_compile_info(CompileInfo.ATOMIC_FLAGS, atomic_flags)
 
 
 class SingleReduceInfo:

@@ -238,7 +238,9 @@ class Builder:
     def _call_tvm_build(self):
         # build config use mode: 1 + m + n
 
-        m_config_items = {"parse_ddr_args": True, "build_fatbin": True}
+        m_config_items = {}
+        if operation.in_dynamic():
+            m_config_items.update({"parse_ddr_args": True, "build_fatbin": True})
         if 'build_args' in self.config_map:
             m_config_items.update(self.config_map['build_args'])
         m_config_items.update(operation.get_build_args())
@@ -263,13 +265,21 @@ class Builder:
 
             build_configs.append(build_config)
 
-        with BuildConfigs(build_configs):
-            tvm.build(self.valid_schs,
-                      self.args_list,
-                      rules=self.tiling_keys,
-                      target="cce",
-                      name=self.config_map["name"],
-                      )
+        if operation.in_dynamic():
+            with BuildConfigs(build_configs):
+                tvm.build(self.valid_schs,
+                          self.args_list,
+                          rules=self.tiling_keys,
+                          target="cce",
+                          name=self.config_map["name"],
+                          )
+        else:
+            with build_configs[1]:
+                tvm.build(self.valid_schs[0],
+                          self.args_list[0],
+                          target="cce",
+                          name=self.config_map["name"],
+                          )
 
     def _handle_compile_info(self):
         operation.add_compile_info(CompileInfo.VARS, self.compile_vars)

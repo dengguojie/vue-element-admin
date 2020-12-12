@@ -775,6 +775,8 @@ def check_elewise_shape_range(inputs: list, support_broadcast=False):
     :param inputs: list, all inputs of operator
     :return:
     """
+    if not operation.in_dynamic():
+        return
 
     def _has_intersection(range0, range1):
         _range0 = list(range0)

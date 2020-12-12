@@ -45,7 +45,7 @@ def auto_schedule(outs, option=None):
 @auto_schedule.register("cce")
 @generic.auto_schedule.register("cce")
 def _schedule_cce(outs, option=None):
-    if operation.in_dynamic():
+    if operation.get_context():
         return dynamic.schedule_cce(outs, option)
 
     return static.schedule_cce(outs, option)
@@ -57,7 +57,7 @@ def build(sch, config_map=None):
     :param config_map:
     :return:
     """
-    if operation.in_dynamic():
+    if operation.get_context():
         return dynamic.build(sch, config_map)
 
     sch = sch[0] if isinstance(sch, list) else sch
