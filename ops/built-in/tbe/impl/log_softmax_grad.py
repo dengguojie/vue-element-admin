@@ -131,6 +131,7 @@ def log_softmax_grad(input_dy, input_x, output_z, axis=-1,
                                                                "input_x", error_detail)
 
     shape1, axis = shape_util.shape_refine(list(shape1), axis)
+    shape1, axis = shape_util.simplify_axis_shape(shape1, axis)
     shape2 = shape1
 
     data1 = tvm.placeholder(shape1, dtype=input_dtype, name="data1")
