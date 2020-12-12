@@ -36,6 +36,8 @@
 #include "scope_to_absolute_bbox_pass.h"
 #include "scope_preprocess_keep_ratio_resize_bilinear_pass.h"
 #include "scope_dynamic_rnn_pass.h"
+#include "scope_dynamic_gru_pass.h"
+
 
 namespace ge {
 REGISTER_SCOPE_FUSION_PASS("ScopeBasicLSTMCellPass", ScopeBasicLSTMCellPass, false);
@@ -54,6 +56,7 @@ REGISTER_SCOPE_FUSION_PASS("ScopeDecodeBboxV2Pass", ScopeDecodeBboxV2Pass, false
 REGISTER_SCOPE_FUSION_PASS("ScopeNormalizeBBoxPass", ScopeNormalizeBBoxPass, false);
 REGISTER_SCOPE_FUSION_PASS("ScopeToAbsoluteBBoxPass", ScopeToAbsoluteBBoxPass, false);
 REGISTER_SCOPE_FUSION_PASS("ScopeDynamicRNNPass", ScopeDynamicRNNPass, false);
+REGISTER_SCOPE_FUSION_PASS("ScopeDynamicGRUPass", ScopeDynamicGRUPass, false);
 REGISTER_SCOPE_FUSION_PASS("ScopeDynamicLSTMPass", ScopeDynamicLSTMPass, false);
 
 }  // namespace ge

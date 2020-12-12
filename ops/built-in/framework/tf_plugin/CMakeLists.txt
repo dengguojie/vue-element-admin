@@ -414,6 +414,7 @@ set(_tf_scope_fusion_passes
   ../tf_scope_fusion_passes/scope_decode_bbox_v2_pass.cc
   ../tf_scope_fusion_passes/scope_dynamic_lstm_pass.cc
   ../tf_scope_fusion_passes/scope_dynamic_rnn_pass.cc
+  ../tf_scope_fusion_passes/scope_dynamic_gru_pass.cc
   ../tf_scope_fusion_passes/scope_fastrcnn_predictions_pass.cc
   ../tf_scope_fusion_passes/scope_layernorm_grad_pass.cc
   ../tf_scope_fusion_passes/scope_layernorm_pass.cc
