@@ -24,7 +24,7 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
-
+# pylint: too-many-locals
 def get_fusion_params(x_tensor, y, x_tensor_num):
     """
     Get L1 fusion_params
@@ -193,7 +193,7 @@ def _eltwise_check_para(x, y, mode=1, coeff=[],
     dtype_output = y.get("dtype").lower()
     if dtype_output != dtype:
         error_manager_vector.raise_err_inputs_dtype_not_equal("eltwise", "dtype_output", "dtype",
-                                                                      str(dtype_output), str(dtype))
+                                                              str(dtype_output), str(dtype))
 
     #mode type must be 0, 1 or 2
     op_list = (0, 1, 2)
@@ -201,7 +201,7 @@ def _eltwise_check_para(x, y, mode=1, coeff=[],
         error_manager_vector.raise_err_check_params_rules("eltwise", "mode only support 0,1,2", "mode", mode)
 
 @para_check.check_op_params(para_check.DYNAMIC_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
-                 para_check.OPTION_ATTR_LIST_FLOAT, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_LIST_FLOAT, para_check.KERNEL_NAME)
 def eltwise(x, y, mode=1, coeff=[], kernel_name="eltwise"):
     """
     Compute elementwise modes, such as 0:PRODUCT, 1:SUM and 2:MAX

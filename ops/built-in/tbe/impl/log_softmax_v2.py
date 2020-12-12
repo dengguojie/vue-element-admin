@@ -17,7 +17,6 @@ log_softmax_v2
 """
 import te.lang.cce as tbe
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
@@ -29,8 +28,6 @@ SHAPE_SIZE_LIMIT = 2147483648
 
 # pylint: disable = unused-argument
 def get_op_support_info(input_x, output_y, axis=-1, kernel_name="log_softmax_v2"):
-    format_x = input_x.get("format")
-    origin_format_x = input_x.get("ori_format")
     dims_x = len(input_x.get("shape"))
     if not hasattr(axis, 'index'):
         new_axis = axis
@@ -129,7 +126,6 @@ def log_softmax_v2(input_x, output_y, axis=-1, kernel_name="log_softmax_v2", imp
     shape = input_x.get("shape")
     input_dtype = input_x.get("dtype").lower()
     shape_len = len(shape)
-    shape_list = list(shape)
 
     if not isinstance(axis, int):
         axis = list(axis)

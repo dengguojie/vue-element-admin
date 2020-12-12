@@ -48,7 +48,7 @@ def get_op_support_info(x, matrix, bias, y, window=(1, 1), stride=(1, 1),
     if format_x == "NC1HWC0":
         if (input_h == window[0] and input_w == window[1] and pad == [0, 0, 0, 0]) or global_pooling:
             axis_split_matrix = [[util_select_op_base.SplitInput([0, [0], [-1], [-1]]),
-                                 util_select_op_base.SplitOutput([0, [0]])]]
+                                  util_select_op_base.SplitOutput([0, [0]])]]
         else:
             axis_split_matrix = [
                 [util_select_op_base.SplitInput([0, [0], [-1], [-1]]), util_select_op_base.SplitOutput([0, [0]])],
@@ -136,7 +136,7 @@ def get_fusion_params(input_data, output_data, is_fused_compute=True):
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("pooling")
-# Example: pylint: disable=unnecessary-lambda
+# pylint: too-many-branches,too-many-statements
 def pool_fuse_compute(input_data, matrix, bias, output_data, window,
                       stride, offset_x=0, mode=0, pad=(0, 0, 0, 0),
                       global_pooling=False, ceil_mode=0,
@@ -204,10 +204,10 @@ def pool_fuse_compute(input_data, matrix, bias, output_data, window,
             window_h, window_w = window[0], window[1]
             stride_h, stride_w = stride[0], stride[1]
             res = tbe.max_pool_compute(input_data,
-                                               (window_h, window_w),
-                                               (stride_h, stride_w),
-                                               "SAME", pad,
-                                               ceil_mode)
+                                       (window_h, window_w),
+                                       (stride_h, stride_w),
+                                       "SAME", pad,
+                                       ceil_mode)
         else:
             # call pooling2d for max(pooling)&gmp
             mode_max = "MAX"
@@ -235,13 +235,13 @@ def pool_fuse_compute(input_data, matrix, bias, output_data, window,
                                 name="tensor_read_select",
                                 attrs=input_data.op.attrs)
                 res = tbe.pooling2d(select_tensor_in,
-                                            window,
-                                            stride,
-                                            mode_max,
-                                            pad=pad, data_mode=0,
-                                            ceil_mode=ceil_mode,
-                                            fusion_params=fusion_params,
-                                            impl_mode=impl_mode)
+                                    window,
+                                    stride,
+                                    mode_max,
+                                    pad=pad, data_mode=0,
+                                    ceil_mode=ceil_mode,
+                                    fusion_params=fusion_params,
+                                    impl_mode=impl_mode)
             elif l1_fusion_type == 1:
                 input_data.op.attrs["addr_type"].value = 1
                 in_l1_flag = True
@@ -254,21 +254,21 @@ def pool_fuse_compute(input_data, matrix, bias, output_data, window,
                                 name="l1_width_fusion_tensor_in",
                                 attrs=input_data.op.attrs)
                 res = tbe.pooling2d(l1_width_fusion_in, window,
-                                            stride,
-                                            mode_max, pad=pad, data_mode=0,
-                                            ceil_mode=ceil_mode,
-                                            fusion_params=fusion_params,
-                                            impl_mode=impl_mode)
+                                    stride,
+                                    mode_max, pad=pad, data_mode=0,
+                                    ceil_mode=ceil_mode,
+                                    fusion_params=fusion_params,
+                                    impl_mode=impl_mode)
             else:
                 res = tbe.pooling2d(input_data,
-                                            window,
-                                            stride,
-                                            mode_max,
-                                            pad=pad,
-                                            data_mode=0,
-                                            ceil_mode=ceil_mode,
-                                            fusion_params=fusion_params,
-                                            impl_mode=impl_mode)
+                                    window,
+                                    stride,
+                                    mode_max,
+                                    pad=pad,
+                                    data_mode=0,
+                                    ceil_mode=ceil_mode,
+                                    fusion_params=fusion_params,
+                                    impl_mode=impl_mode)
     elif mode == 1:
         mode_avg = "AVG"
         if (input_h == window[0] and input_w == window[1] and
@@ -281,11 +281,11 @@ def pool_fuse_compute(input_data, matrix, bias, output_data, window,
             # get real pad
             out_size_h, out_size_w, pad_top, pad_bottom, pad_left, pad_right \
                     = tbe.get_caffe_out_size_and_pad(ceil_mode, input_h, input_w,
-                                                window[0], window[1],
-                                                stride[0], stride[1],
-                                                dilation[0], dilation[1],
-                                                pad[0], pad[1], pad[2],
-                                                pad[3])
+                                                     window[0], window[1],
+                                                     stride[0], stride[1],
+                                                     dilation[0], dilation[1],
+                                                     pad[0], pad[1], pad[2],
+                                                     pad[3])
             conv2d_pad = (pad_top, pad_bottom, pad_left, pad_right)
             is_window_equal = _is_window_equal(out_size_h, out_size_w, input_h, input_w, window[0], window[1],
                                                stride[0], stride[1], pad_top, pad_bottom, pad_left, pad_right)
@@ -294,12 +294,12 @@ def pool_fuse_compute(input_data, matrix, bias, output_data, window,
                 strides = (1, 1, stride[0], stride[1])
                 # call conv2d_compute for avg
                 res = conv2d.conv2d_compute(input_data, matrix, bias, None,
-                                        output_data,
-                                        strides, conv2d_pad,
-                                        dilation, groups=1,
-                                        data_format='NCHW',
-                                        offset_x=offset_x,
-                                        kernel_name=kernel_name)
+                                            output_data,
+                                            strides, conv2d_pad,
+                                            dilation, groups=1,
+                                            data_format='NCHW',
+                                            offset_x=offset_x,
+                                            kernel_name=kernel_name)
             else:
                 # depthwise interface strides is 4D
                 out_dtype = output_data.get("dtype")
@@ -330,13 +330,13 @@ def pool_fuse_compute(input_data, matrix, bias, output_data, window,
                                 name="tensor_read_select",
                                 attrs=input_data.op.attrs)
                 res = tbe.pooling2d(select_tensor_in,
-                                            window,
-                                            stride,
-                                            mode_avg,
-                                            pad=pad, data_mode=0,
-                                            ceil_mode=ceil_mode,
-                                            fusion_params=fusion_params,
-                                            impl_mode=impl_mode)
+                                    window,
+                                    stride,
+                                    mode_avg,
+                                    pad=pad, data_mode=0,
+                                    ceil_mode=ceil_mode,
+                                    fusion_params=fusion_params,
+                                    impl_mode=impl_mode)
             elif l1_fusion_type == 1:
                 input_data.op.attrs["addr_type"].value = 1
                 in_l1_flag = True
@@ -349,21 +349,21 @@ def pool_fuse_compute(input_data, matrix, bias, output_data, window,
                                 name="l1_width_fusion_tensor_in",
                                 attrs=input_data.op.attrs)
                 res = tbe.pooling2d(l1_width_fusion_in, window,
-                                            stride,
-                                            mode_avg, pad=pad, data_mode=0,
-                                            ceil_mode=ceil_mode,
-                                            fusion_params=fusion_params,
-                                            impl_mode=impl_mode)
+                                    stride,
+                                    mode_avg, pad=pad, data_mode=0,
+                                    ceil_mode=ceil_mode,
+                                    fusion_params=fusion_params,
+                                    impl_mode=impl_mode)
             else:
                 res = tbe.pooling2d(input_data,
-                                            window,
-                                            stride,
-                                            mode_avg,
-                                            pad=pad,
-                                            data_mode=0,
-                                            ceil_mode=ceil_mode,
-                                            fusion_params=fusion_params,
-                                            impl_mode=impl_mode)
+                                    window,
+                                    stride,
+                                    mode_avg,
+                                    pad=pad,
+                                    data_mode=0,
+                                    ceil_mode=ceil_mode,
+                                    fusion_params=fusion_params,
+                                    impl_mode=impl_mode)
     else:
         error_manager_vector.raise_err_specific_reson("pooling", "the parameter mode should 0 or 1")
 
@@ -417,9 +417,9 @@ def pooling_compute(x, matrix, y, window, stride,
                                        name="tensor_read_select",
                                        attrs=x.op.attrs)
         res = tbe.pooling2d(select_tensor_in, window, stride, mode,
-                                    pad=pad, data_mode=0, ceil_mode=ceil_mode,
-                                    fusion_params=fusion_params,
-                                    impl_mode=impl_mode)
+                            pad=pad, data_mode=0, ceil_mode=ceil_mode,
+                            fusion_params=fusion_params,
+                            impl_mode=impl_mode)
     elif l1_fusion_type == 1:
         x.op.attrs["addr_type"].value = 1
         in_l1_flag = True
@@ -431,20 +431,20 @@ def pooling_compute(x, matrix, y, window, stride,
                                          name="l1_width_fusion_tensor_in",
                                          attrs=x.op.attrs)
         res = tbe.pooling2d(l1_width_fusion_in, window, stride,
-                                    mode, pad=pad, data_mode=0,
-                                    ceil_mode=ceil_mode,
-                                    fusion_params=fusion_params,
-                                    impl_mode=impl_mode)
+                            mode, pad=pad, data_mode=0,
+                            ceil_mode=ceil_mode,
+                            fusion_params=fusion_params,
+                            impl_mode=impl_mode)
     else:
         res = tbe.pooling2d(x, window, stride, mode, pad=pad,
-                                    data_mode=0,
-                                    ceil_mode=ceil_mode,
-                                    fusion_params=fusion_params,
-                                    impl_mode=impl_mode)
+                            data_mode=0,
+                            ceil_mode=ceil_mode,
+                            fusion_params=fusion_params,
+                            impl_mode=impl_mode)
 
     return res
 
-
+# pylint: too-many-branches,too-many-statements
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT, 
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_LIST_INT, 
                             para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT, 
@@ -522,7 +522,7 @@ def pooling(x, matrix, bias, y, window=(1, 1), stride=(1, 1),
         pad = (pad_top, pad_bottom, pad_left, pad_right)
 
         is_window_equal = _is_window_equal(out_size_h, out_size_w, input_h, input_w, window[0], window[1],
-                         stride[0], stride[1], pad_top, pad_bottom, pad_left, pad_right)
+                                           stride[0], stride[1], pad_top, pad_bottom, pad_left, pad_right)
 
         if is_window_equal:
             # input origin shape should be set to [N*C1, C0, H, W]
@@ -533,7 +533,7 @@ def pooling(x, matrix, bias, y, window=(1, 1), stride=(1, 1),
             # conv2d interface strides is 4D
             strides = (1, 1, stride[0], stride[1])
             conv2d.conv2d(x, matrix, None, None, y, strides, pad,
-                        dilations=(1, 1, 1, 1), kernel_name=kernel_name)
+                          dilations=(1, 1, 1, 1), kernel_name=kernel_name)
         else:
             addr_type = x.get("addr_type", 0)
             valid_shape = x.get("valid_shape", [])
@@ -555,7 +555,7 @@ def pooling(x, matrix, bias, y, window=(1, 1), stride=(1, 1),
             matrix_c1 = matrix_shape[0] / hw
             filter_shape_5d = matrix_c1, window[0], window[1], matrix_shape[2], matrix_shape[3]
             matrix_in = tvm.placeholder(filter_shape_5d, name="matrix_in",
-                                    dtype=matrix_dtype, attrs=attr)
+                                        dtype=matrix_dtype, attrs=attr)
             res = tbe.te_compute.depthwise_conv2d_compute(
                     tensor_in, matrix_in, output_dtype, stride, pad, dilations, {
                     "bias_tensor": None, "dsl_flag": False,
@@ -567,10 +567,10 @@ def pooling(x, matrix, bias, y, window=(1, 1), stride=(1, 1),
 
             # build
             config = {"print_ir": False,
-                    "need_build": False,
-                    "name": kernel_name,
-                    "tensor_list": tensor_list,
-                    "l1_fusion_option": is_l1fusion}
+                      "need_build": False,
+                      "name": kernel_name,
+                      "tensor_list": tensor_list,
+                      "l1_fusion_option": is_l1fusion}
 
             tbe.cce_build_code(sch, config)
     else:

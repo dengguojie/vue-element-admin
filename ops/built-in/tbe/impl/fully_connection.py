@@ -72,7 +72,7 @@ def get_format(x, w, b, offset_w, y, num_output, transpose, axis, offset_x, form
                                                  False, transpose, "ND", "FRACTAL_Z",
                                                  1.0, 0.0, 'float16', tensor_b, None)
 
-    if format_x_ori == "NCHW" or format_x_ori == "NHWC":
+    if format_x_ori in ("NCHW", "NHWC"):
         if format_x == "FRACTAL_NZ":
             format_x = "FRACTAL_Z"
 
@@ -104,7 +104,7 @@ def op_select_format(x, w, b, offset_w, y, num_output, transpose, axis, offset_x
                                                    format="NC1HWC0,NC1HWC0")
             input3 = util_select_op_base.gen_param(classify="input3", name="offset_w", datatype="int8,int8",
                                                    format="ND,ND")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y",datatype="float16,int32",
+            output0 = util_select_op_base.gen_param(classify="output0", name="y", datatype="float16,int32",
                                                     format="NC1HWC0, NC1HWC0")
         elif length_y_ori == 4:
             input0 = util_select_op_base.gen_param(classify="input0", name="x", datatype="float16, int8",
@@ -220,7 +220,7 @@ def fully_connection_check_rule(x, w, b, offset_w, y, num_output, transpose, axi
         para_check.check_format(format_b, ('NC1HWC0'), param_name="b")
         if b_size != n_shape:
             error_manager_vector.raise_err_specific_reson("fully_connection",
-                                                           "For bias, the C1*C0 must equal to aligned_Cout!")
+                                                          "For bias, the C1*C0 must equal to aligned_Cout!")
     # axis info
     if axis not in (1, 2):
         error_manager_vector.raise_err_specific_reson("fully_connection",
@@ -283,9 +283,9 @@ def fully_connection_compute(x, w, b, offset_w, y, num_output, transpose, axis, 
                                                       "For FullyConnection, tensor offset_w must be None!")
 
     result = tbe.matmul(tensor_a=x, tensor_b=w, trans_a=trans_a, trans_b=transpose,
-                                format_a=format_a, format_b=format_b, alpha_num=1.0, beta_num=0.0,
-                                dst_dtype=out_type, tensor_bias=b, quantize_params=quantize_params,
-                                format_out=out_format, attrs=attrs)
+                        format_a=format_a, format_b=format_b, alpha_num=1.0, beta_num=0.0,
+                        dst_dtype=out_type, tensor_bias=b, quantize_params=quantize_params,
+                        format_out=out_format, attrs=attrs)
     return result
 
 

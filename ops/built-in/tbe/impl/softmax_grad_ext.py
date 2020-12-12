@@ -180,8 +180,8 @@ def shape_broadcast(data_1, data_2):
     shape_y = te.lang.cce.util.shape_to_list(data_2.shape)
     if shape_x != shape_y:
         shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y,
-                                                       param_name_input1="data_1",
-                                                       param_name_input2="data_2")
+                                                                  param_name_input1="data_1",
+                                                                  param_name_input2="data_2")
         data_1 = _broadcast_nz(data_1, shape_max)
         data_2 = _broadcast_nz(data_2, shape_max)
 
@@ -303,10 +303,10 @@ def softmax_grad_ext(grad, x1, x2, y, axis, keepdims,
 
     shape_grad, shape_x1, shape_max_mul = \
         shape_util.broadcast_shapes(shape_grad, shape_grad, param_name_input1="grad",
-                         param_name_input2="grad")
+                                    param_name_input2="grad")
     shape_x1, shape_x2, shape_max_mul1 = \
         shape_util.broadcast_shapes(shape_x1, shape_x2, param_name_input1="x1",
-                         param_name_input2="x2")
+                                    param_name_input2="x2")
 
     data_grad = tvm.placeholder(shape_grad,
                                 name="data_grad",

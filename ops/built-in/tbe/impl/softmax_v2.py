@@ -121,7 +121,7 @@ def get_op_support_info(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
         for i in range(dims_x):
             if i != new_axis:
                 split_0 = [util_select_op_base.SplitInput([0, [i], [-1], [-1]]),
-                                                          util_select_op_base.SplitOutput([0, [i]])]
+                           util_select_op_base.SplitOutput([0, [i]])]
                 axis_split_matrix.append(split_0)
         axis_reduce_list = None
     else:
@@ -132,6 +132,9 @@ def get_op_support_info(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
 
 
 def select_nd_to_5d(dtype, shape_x_ori, axis):
+    """
+    select nd to 5d
+    """
     length_x_ori = len(shape_x_ori)
     if not isinstance(axis, int):
         axis = list(axis)
@@ -140,7 +143,7 @@ def select_nd_to_5d(dtype, shape_x_ori, axis):
     nd_to_5d = 0
     if ((dtype == "float16" and shape_x_ori[-1] % 16 != 0)
         or (dtype == "float32" and shape_x_ori[-1] % 8 !=
-            0)) and (length_x_ori == 3 or length_x_ori == 4):
+            0)) and length_x_ori in (3, 4):
         if (axis[0] == -1 and len(axis) == 1):
             nd_to_5d = 1
         else:
@@ -150,14 +153,17 @@ def select_nd_to_5d(dtype, shape_x_ori, axis):
 
 
 def check_axis_is_last(shape_x_ori, axis):
+    """
+    check axis is last
+    """
     length_x_ori = len(shape_x_ori)
     if not isinstance(axis, int):
         axis = list(axis)
     else:
         axis = [axis]
     axis_is_last = 0
-    if (length_x_ori == 2):
-        if (axis[0] == -1 or axis[0] == 1):
+    if length_x_ori == 2:
+        if axis[0] == -1 or axis[0] == 1:
             axis_is_last = 1
         else:
             axis_is_last = 0
@@ -245,7 +251,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
         if tbe_product in ("Ascend310",):
             if select_nd_to_5d(dtype, shape_x_ori, axis):
                 # Supplement dimensions to find the C-axis
-                if(len(shape_x_ori) < 4):
+                if len(shape_x_ori) < 4:
                     shape_x_ori = (1,) + shape_x_ori
                 if ori_input_format == "NCHW" and shape_x_ori[1] <= 16:
                     input0 = util_select_op_base.gen_param(classify="input0", name="x",
@@ -345,12 +351,11 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     vcmax_flag = False
 
     for i in axis:
-        if (i == -1) or (i == last_dim):
+        if i in (-1, last_dim):
             vcmax_flag = True
 
     if dtype == "float32" and vcmax_flag and \
-            not tbe_platform.cce_conf.api_check_support(
-                "te.lang.cce.reduce_max", "float32"):
+            not tbe_platform.cce_conf.api_check_support("te.lang.cce.reduce_max", "float32"):
         data_max_input = te.lang.cce.cast_to(input_x, "float16")
         data_max_output = te.lang.cce.reduce_max(data_max_input,
                                                  axis=axis, keepdims=True)
@@ -539,7 +544,7 @@ def tiling_factor_calculate(shape, split_axis_0, split_size, use_fp32):
         if temp >= split_size * shape[2] * shape[3]:
             # no split
             split_flag = False
-        elif temp < split_size * shape[2]*shape[3] and temp >= shape[2]*shape[3]:
+        elif temp < split_size * shape[2] * shape[3] and temp >= shape[2] * shape[3]:
             # split on n.inner
             split_flag = True
             split_axis = 0
@@ -668,7 +673,7 @@ def emit_axis_collect(ops, pad_param, instructions, last_axis):
         error_manager_vector.raise_err_specific_reson("softmax_v2", "operation list is empty")
     if len(ops) != len(instructions):
         error_manager_vector.raise_err_specific_reson("softmax_v2",
-                                                     "length of operations and instructions does not match")
+                                                      "length of operations and instructions does not match")
 
     axis_list = []
     length = len(ops)
@@ -696,7 +701,7 @@ def emit_nz_axis_collect(ops, pad_param, instructions, last_axis):
         error_manager_vector.raise_err_specific_reson("softmax_v2", "operation list is empty")
     if len(ops) != len(instructions):
         error_manager_vector.raise_err_specific_reson("softmax_v2",
-                                                     "length of operations and instructions does not match")
+                                                      "length of operations and instructions does not match")
     axis_list = []
     length = len(ops)
     for i in range(0, length-1):
@@ -713,7 +718,7 @@ def axis_reorder(schedule, ops, instructions):
         error_manager_vector.raise_err_specific_reson("softmax_v2", "operation list is empty")
     if len(ops) != len(instructions):
         error_manager_vector.raise_err_specific_reson("softmax_v2",
-                                                     "length of operations and instructions does not match")
+                                                      "length of operations and instructions does not match")
     length = len(ops)
     for i in range(0, length):
         if instructions[i] == 'vector_adds' or instructions[i] == 'vector_muls':
@@ -730,7 +735,7 @@ def axis_reorder_nz(schedule, ops, instructions):
         error_manager_vector.raise_err_specific_reson("softmax_v2", "operation list is empty")
     if len(ops) != len(instructions):
         error_manager_vector.raise_err_specific_reson("softmax_v2",
-                                                     "length of operations and instructions does not match")
+                                                      "length of operations and instructions does not match")
     length = len(ops)
     for i in range(0, length):
         if instructions[i] == 'vector_adds' or instructions[i] == 'vector_muls':
@@ -746,7 +751,7 @@ def instructions_replace(schedule, ops, axes, instructions):
         error_manager_vector.raise_err_specific_reson("softmax_v2", "operation list is empty")
     if len(ops) != len(instructions):
         error_manager_vector.raise_err_specific_reson("softmax_v2",
-                                                     "length of operations and instructions does not match")
+                                                      "length of operations and instructions does not match")
     length = len(ops)
     for i in range(0, length):
         schedule[ops[i]].emit_insn(axes[i], instructions[i])
@@ -837,8 +842,7 @@ def compute_nopad_fp32(tensor_in, shape):
         instruction_list += ['vector_muls']
 
         res_sub_fp32 = tvm.compute(shape, lambda n, c1, h, w, c0:
-        tensor_in_ub[n, c1, h, w, c0] + res_minus[n, 0, h, w, 0],
-                                   name="res_sub")
+        tensor_in_ub[n, c1, h, w, c0] + res_minus[n, 0, h, w, 0], name="res_sub")
         op_list += [res_sub_fp32]
         instruction_list += ['vector_adds']
 
@@ -1024,7 +1028,7 @@ def compute_nz_nopad_fp32(tensor_in, shape):
         instruction_list += ['vector_muls']
 
         res_sub_fp32 = tvm.compute(shape, lambda c1, n1, n0, c0:
-        tensor_in_ub[c1, n1, n0, c0] + res_minus[0, n1, n0, 0],
+                                   tensor_in_ub[c1, n1, n0, c0] + res_minus[0, n1, n0, 0],
                                    name="res_sub")
         op_list += [res_sub_fp32]
         instruction_list += ['vector_adds']
@@ -1462,15 +1466,15 @@ def compute_padding_fp32(tensor_in, shape, pad_param, impl_mode):
             ii = tvm.reduce_axis((0, shape[1]), "c1_sum_pad")
             jj = tvm.reduce_axis((0, shape[4] - pad_c0), "c0_sum_pad")
             res_sum = tvm.compute(reduce_shape,
-                                    lambda n, c1, h, w, c0:
-                                    tvm.sum(res_exp_fp32[n, ii, h, w, jj], axis=[ii, jj]),
-                                    name="res_sum")
+                                  lambda n, c1, h, w, c0:
+                                  tvm.sum(res_exp_fp32[n, ii, h, w, jj], axis=[ii, jj]),
+                                  name="res_sum")
             op_list += [res_sum]
             instruction_list += ['vector_reduce_sum']
         else:
             res_sum = tvm.compute(reduce_shape,
-                            lambda n, c1, h, w, c0:
-                            res_exp_fp32[n, shape[1] - 1, h, w, 0], name="res_sum")
+                                  lambda n, c1, h, w, c0:
+                                  res_exp_fp32[n, shape[1] - 1, h, w, 0], name="res_sum")
             op_list += [res_sum]
             instruction_list += ['vector_auto']
     else:
@@ -1488,15 +1492,15 @@ def compute_padding_fp32(tensor_in, shape, pad_param, impl_mode):
             ii = tvm.reduce_axis((shape[1] - pad_c1, shape[1]), "c1_sum_pad")
             jj = tvm.reduce_axis((0, shape[4] - pad_c0), "c0_sum_pad")
             sum2 = tvm.compute(reduce_shape,
-                            lambda n, c1, h, w, c0:
-                            tvm.sum(res_exp_fp32[n, ii, h, w, jj],
-                                    axis=[ii, jj]), name="sum2")
+                              lambda n, c1, h, w, c0:
+                              tvm.sum(res_exp_fp32[n, ii, h, w, jj],
+                              axis=[ii, jj]), name="sum2")
             op_list += [sum2]
             instruction_list += ['vector_reduce_sum']
         else:
             sum2 = tvm.compute(reduce_shape,
-                            lambda n, c1, h, w, c0:
-                            res_exp_fp32[n, shape[1] - 1, h, w, 0], name="sum2")
+                               lambda n, c1, h, w, c0:
+                               res_exp_fp32[n, shape[1] - 1, h, w, 0], name="sum2")
             op_list += [sum2]
             instruction_list += ['vector_auto']
 
@@ -1531,13 +1535,13 @@ def compute_padding_fp32(tensor_in, shape, pad_param, impl_mode):
             #loop 1
             # vmlu
             res_mul_newton = tvm.compute(reduce_shape,
-                                     lambda *i: res_rec(*i) * res_sum(*i), name="res_mul_newton")
+                                         lambda *i: res_rec(*i) * res_sum(*i), name="res_mul_newton")
             op_list += [res_mul_newton]
             instruction_list += ['vector_mul']
 
             res_const2 = tvm.compute(reduce_shape,
-                                    lambda *i: 2.0,
-                                    name="res_const2")
+                                     lambda *i: 2.0,
+                                     name="res_const2")
             op_list += [res_const2]
             instruction_list += ['vector_auto']
 
@@ -1560,9 +1564,9 @@ def compute_padding_fp32(tensor_in, shape, pad_param, impl_mode):
             instruction_list += ['vector_broadcast']
         # mul
         res_mul = tvm.compute(shape,
-                            lambda *i:
-                            res_exp_fp32(*i) * res_mul_newton_broadcast(*i),
-                            name="res_mul")
+                              lambda *i:
+                              res_exp_fp32(*i) * res_mul_newton_broadcast(*i),
+                              name="res_mul")
         op_list += [res_mul]
         instruction_list += ['vector_mul']
 
@@ -1925,15 +1929,15 @@ def compute_padding(tensor_in, shape, pad_param):
             ii = tvm.reduce_axis((0, shape[1]), "c1_sum_pad")
             jj = tvm.reduce_axis((0, shape[4] - pad_c0), "c0_sum_pad")
             res_sum = tvm.compute(reduce_shape,
-                                lambda n, c1, h, w, c0:
-                                tvm.sum(res_exp[n, ii, h, w, jj],
-                                        axis=[ii, jj]), name="res_sum")
+                                  lambda n, c1, h, w, c0:
+                                  tvm.sum(res_exp[n, ii, h, w, jj],
+                                  axis=[ii, jj]), name="res_sum")
             op_list += [res_sum]
             instruction_list += ['vector_reduce_sum']
         else:
             res_sum = tvm.compute(reduce_shape,
-                            lambda n, c1, h, w, c0:
-                            res_exp[n, shape[1] - 1, h, w, 0], name="res_sum")
+                                  lambda n, c1, h, w, c0:
+                                  res_exp[n, shape[1] - 1, h, w, 0], name="res_sum")
             op_list += [res_sum]
             instruction_list += ['vector_auto']
     else:
@@ -1943,7 +1947,7 @@ def compute_padding(tensor_in, shape, pad_param):
         sum1 = tvm.compute(reduce_shape,
                            lambda n, c1, h, w, c0:
                            tvm.sum(res_exp[n, ii, h, w, jj],
-                                   axis=[ii, jj]), name="sum1")
+                           axis=[ii, jj]), name="sum1")
         op_list += [sum1]
         instruction_list += ['vector_reduce_sum']
 
@@ -1951,15 +1955,15 @@ def compute_padding(tensor_in, shape, pad_param):
             ii = tvm.reduce_axis((shape[1] - pad_c1, shape[1]), "c1_sum_pad")
             jj = tvm.reduce_axis((0, shape[4] - pad_c0), "c0_sum_pad")
             sum2 = tvm.compute(reduce_shape,
-                            lambda n, c1, h, w, c0:
-                            tvm.sum(res_exp[n, ii, h, w, jj],
-                                    axis=[ii, jj]), name="sum2")
+                               lambda n, c1, h, w, c0:
+                               tvm.sum(res_exp[n, ii, h, w, jj],
+                               axis=[ii, jj]), name="sum2")
             op_list += [sum2]
             instruction_list += ['vector_reduce_sum']
         else:
             sum2 = tvm.compute(reduce_shape,
-                            lambda n, c1, h, w, c0:
-                            res_exp[n, shape[1] - 1, h, w, 0], name="sum2")
+                               lambda n, c1, h, w, c0:
+                               res_exp[n, shape[1] - 1, h, w, 0], name="sum2")
             op_list += [sum2]
             instruction_list += ['vector_auto']
 
@@ -2096,7 +2100,7 @@ def compute_nz_padding(tensor_in, shape, pad_param):
         sum1 = tvm.compute(reduce_shape,
                            lambda c1, n1, n0, c0:
                            tvm.sum(res_exp[ii, n1, n0, jj],
-                                   axis=[ii, jj]), name="sum1")
+                           axis=[ii, jj]), name="sum1")
         op_list += [sum1]
         instruction_list += ['vector_reduce_sum']
 
@@ -2106,7 +2110,7 @@ def compute_nz_padding(tensor_in, shape, pad_param):
             sum2 = tvm.compute(reduce_shape,
                                lambda c1, n1, n0, c0:
                                tvm.sum(res_exp[ii, n1, n0, jj],
-                                       axis=[ii, jj]), name="sum2")
+                               axis=[ii, jj]), name="sum2")
             op_list += [sum2]
             instruction_list += ['vector_reduce_sum']
         else:
@@ -2238,7 +2242,7 @@ def softmax_channel_calculate(shape, dtype, pad_flag, pad_param, kernel_name, im
             ops_integrate(sch, op_list, block_axis)
         elif split_axis_0 == 2:
             ops_integrate(sch, op_list, xni)
-        elif split_axis_0 == 3 or split_axis_0 == 4:
+        elif split_axis_0 in (3, 4):
             ops_integrate(sch, op_list, xhi)
 
         # buffer mapping
@@ -2252,7 +2256,7 @@ def softmax_channel_calculate(shape, dtype, pad_flag, pad_param, kernel_name, im
             axis_list = emit_axis_collect(op_list, pad_param, instruction_list, xni)
         elif split_axis_0 == 2:
             axis_list = emit_axis_collect(op_list, pad_param, instruction_list, xhi)
-        elif split_axis_0 == 3 or split_axis_0 == 4:
+        elif split_axis_0 in (3, 4):
             axis_list = emit_axis_collect(op_list, pad_param, instruction_list, xwi)
 
         axis_reorder(sch, op_list, instruction_list)
@@ -2357,7 +2361,7 @@ def softmax_nz_channel_calculate(shape, dtype, pad_flag, pad_param, kernel_name)
         # instructions replace
         if split_axis_0 == 1:
             axis_list = emit_nz_axis_collect(op_list, pad_param, instruction_list, xn1i)
-        elif split_axis_0 == 2 or split_axis_0 == 3:
+        elif split_axis_0 in (2, 3):
             axis_list = emit_nz_axis_collect(op_list, pad_param, instruction_list, xn0i)
 
         axis_reorder_nz(sch, op_list, instruction_list)
@@ -2489,7 +2493,7 @@ def softmax_nz_param_check(in_tensor, output_tensor, axis, kernel_name):
     pad_param = []
     if padding < 0:
         error_manager_vector.raise_err_specific_reson("softmax_v2",
-                                                     "the shapes of input tensor and original tensor don't match")
+                                                      "the shapes of input tensor and original tensor don't match")
     elif padding == 0:
         pad_flag = False
         pad_c1 = 0
