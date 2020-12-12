@@ -2129,7 +2129,8 @@ class CceOp:
                     ub_split_axis_before in tmp_reduce_axis_num:
                 reduce_op[0]["tensorize_axis"] = split_ni
             else:
-                if self._need_storage_align():
+                if self._need_storage_align() or \
+                    (self._is_last_axis_32b_align() and reduce_op[0]["op"] != "reduce_prod"):
                     reduce_op[0]["tensorize_axis"] = split_ni
                 else:
                     reduce_op[0]["tensorize_axis"] = reduce_axis[0]
