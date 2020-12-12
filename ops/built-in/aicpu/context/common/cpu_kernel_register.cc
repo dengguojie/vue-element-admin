@@ -5,6 +5,8 @@
 
 #include "cpu_kernel_register.h"
 
+#include <mutex>
+
 #include "aicpu_context.h"
 #include "cpu_kernel.h"
 #include "log.h"
@@ -12,6 +14,8 @@
 
 namespace {
 #define TYPE_REGISTAR(type, fun) type##Registerar(type, fun)
+// protect creatorMap_
+std::mutex g_mutex;
 }  // namespace
 
 namespace aicpu {
@@ -39,6 +43,7 @@ CpuKernelRegister &CpuKernelRegister::Instance() {
  */
 std::shared_ptr<CpuKernel> CpuKernelRegister::GetCpuKernel(
     const std::string &opType) {
+  std::unique_lock<std::mutex> lock(g_mutex);
   auto iter = creatorMap_.find(opType);
   if (iter != creatorMap_.end()) {
     return iter->second();
@@ -53,6 +58,7 @@ std::shared_ptr<CpuKernel> CpuKernelRegister::GetCpuKernel(
  */
 std::vector<std::string> CpuKernelRegister::GetAllRegisteredOpTypes() const {
   std::vector<std::string> ret;
+  std::unique_lock<std::mutex> lock(g_mutex);;
   for (auto iter = creatorMap_.begin(); iter != creatorMap_.end(); ++iter) {
     ret.push_back(iter->first);
   }
@@ -75,7 +81,7 @@ uint32_t CpuKernelRegister::RunCpuKernel(CpuKernelContext &ctx) {
   if (aicpu::SetThreadLocalCtx != nullptr) {
     if (aicpu::SetThreadLocalCtx(aicpu::CONTEXT_KEY_OP_NAME, type) !=
         aicpu::AICPU_ERROR_NONE) {
-      KERNEL_LOG_INFO("Set kernel name[%s] to context failed.", type.c_str());
+      KERNEL_LOG_ERROR("Set kernel name[%s] to context failed.", type.c_str());
       return KERNEL_STATUS_INNER_ERROR;
     }
   }
@@ -99,10 +105,11 @@ CpuKernelRegister::Registerar::Registerar(const std::string &type,
 // register creator, this function will call in the constructor
 void CpuKernelRegister::Register(const std::string &type,
                                  const KERNEL_CREATOR_FUN &fun) {
+  std::unique_lock<std::mutex> lock(g_mutex);
   std::map<std::string, KERNEL_CREATOR_FUN>::iterator iter =
       creatorMap_.find(type);
   if (iter != creatorMap_.end()) {
-    KERNEL_LOG_WARN("CpuKernelRegister::Register: %s creator already exist",
+    KERNEL_LOG_WARN("Register[%s] creator already exist",
                     type.c_str());
     return;
   }

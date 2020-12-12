@@ -127,6 +127,7 @@ if(BUILD_OPEN_PROJECT)
       -Wl,--exclude-libs=libascend_protobuf.a
       -Wl,-z,relro,-z,now
       -s
+      -Wl,-Bsymbolic
     )
 
     add_dependencies(cpu_kernels eigen_headers)
@@ -226,6 +227,7 @@ target_link_options(cpu_kernels PRIVATE
     -Wl,--exclude-libs=libascend_protobuf.a
     -Wl,-z,relro,-z,now
     -s
+    -Wl,-Bsymbolic
 )
 
 target_compile_definitions(cpu_kernels_static PRIVATE

@@ -62,7 +62,6 @@ if(BUILD_OPEN_PROJECT)
 
   target_compile_definitions(cpu_kernels_context_static PRIVATE
     _FORTIFY_SOURCE=2
-    VISIBILITY
     google=ascend_private
   )
 
@@ -72,6 +71,8 @@ if(BUILD_OPEN_PROJECT)
     -ftrapv
     -fstack-protector-all
     -fPIC
+    $<$<STREQUAL:${PRODUCT_SIDE},device>:-fvisibility-inlines-hidden>
+    $<$<STREQUAL:${PRODUCT_SIDE},device>:-fvisibility=hidden>
   )
 
   set(cpu_kernels_context_static ${CMAKE_CURRENT_BINARY_DIR}/libcpu_kernels_context_static.a)
@@ -175,7 +176,6 @@ target_include_directories(cpu_kernels_context_static PRIVATE
 
 target_compile_definitions(cpu_kernels_context_static PRIVATE
     _FORTIFY_SOURCE=2
-    VISIBILITY
     google=ascend_private
 )
 
@@ -184,6 +184,8 @@ target_compile_options(cpu_kernels_context_static PRIVATE
     -std=c++11
     -ftrapv
     -fstack-protector-all
+    $<$<STREQUAL:${PRODUCT_SIDE},device>:-fvisibility-inlines-hidden>
+    $<$<STREQUAL:${PRODUCT_SIDE},device>:-fvisibility=hidden>
 )
 
 target_link_libraries(cpu_kernels_context_static PRIVATE
