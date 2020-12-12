@@ -27,6 +27,8 @@ PROD_TYPE = "prod"
 # pylint: disable = unused-argument
 def get_op_support_info(x, y, axis=0, exclusive=False, reverse=False, kernel_name="cumprod_d"):
     format_x = x.get("format")
+    if axis < 0:
+        axis = len(shape) + axis
     if format_x == "ND" or format_x == "NHWC":
         axis_split_list = []
         for i in range(0, axis):

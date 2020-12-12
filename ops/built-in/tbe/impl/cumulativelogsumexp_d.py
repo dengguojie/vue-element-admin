@@ -28,7 +28,10 @@ COMPUTE_TYPE = "logsumexp"
 def get_op_support_info(x, y, axis, exclusive=False, reverse=False,
                         kernel_name="cumulative_logsumexp_d"):
     format_x = x.get("format")
-    if format_x == "ND":
+    if axis < 0:
+        axis = len(shape) + axis
+
+    if format_x == "ND" or format_x == "NHWC":
         axis_split_list = []
         for i in range(0, axis):
             split_0 = [util_select_op_base.SplitInput([0, [i], [-1], [-1]]),

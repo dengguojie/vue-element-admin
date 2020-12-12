@@ -29,6 +29,12 @@ def calc_expect_func(input, output, axis, exclusive, reverse):
 
     return np_res
 
+def test_get_op_support_info(test_arg):
+    from impl.cumulativelogsumexp_d import get_op_support_info
+    get_op_support_info({"shape": (15, 80, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (15, 80, 2, 32),"ori_format": "ND"}, 
+                        {"shape": (15, 80, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (15, 80, 2, 32),"ori_format": "ND"}, 0)
+
+ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 ut_case.add_precision_case("all", {
     "params": [
         {"shape": (1,), "dtype": "float16", "format": "ND",
