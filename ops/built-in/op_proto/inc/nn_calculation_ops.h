@@ -651,6 +651,8 @@ REG_OP(Conv2DBackpropFilterD)
     | Offset_x         |          | [-128, 127]
 
 @endverbatim
+* The W dimension of the input image supports cases exceeding 4096, but it may
+* cause compilation errors.
 *\n
 *
 *@par Outputs:
@@ -665,21 +667,6 @@ REG_OP(Conv2DBackpropFilterD)
 *     out_width = (in_width + pad_left + pad_right -
 *                  (dilation_w * (filter_width - 1) + 1))
 *                 / stride_w + 1
-*
-*@attention Constraints:
-*@li The following restrictions on the output must be met:
-*@verbatim
-    | Output  | Restrictions
-    ----------|--------------------------------
-    | H == 1  | H * W(input) == H * W(filter)
-    | W == 1  |
-    ----------|--------------------------------
-    | H != 1  | W(input) == W(filter)
-    | W == 1  | Only for Ascend310 Hi3796V300CS
-@endverbatim
-* "H * W (input)" indicates the image size after padding and "H * W (filter)"
-* indicates the filter size after dilation."W(input)" and W(filter) indicate
-* the same rule on the W dimension.
 *\n
 *
 *@par Quantization supported or not
@@ -841,21 +828,7 @@ REG_OP(Conv2DCompress)
 *     out_width = (in_width + pad_left + pad_right -
 *                  (dilation_w * (filter_width - 1) + 1))
 *                 / stride_w + 1
-*
-*@attention Constraints:
-*@li The following restrictions on the output must be met:
-*@verbatim
-    | Output  | Restrictions
-    ----------|--------------------------------
-    | H == 1  | H * W(input) == H * W(filter)
-    | W == 1  |
-    ----------|--------------------------------
-    | H != 1  | W(input) == W(filter)
-    | W == 1  | Only for Ascend310 Hi3796V300CS
-@endverbatim
-* "H * W(input)" indicates the image size after padding and "H * W(filter)"
-* indicates the filter size after dilation. "W(input)" and W(filter) indicate
-* the same rule on the W dimension.
+*\n
 *
 *@par Quantization supported or not
 *@li No
