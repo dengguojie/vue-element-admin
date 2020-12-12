@@ -885,6 +885,7 @@ class CceConv3dOp:
         if l0a_load2d_flag:
             sch[fmap_col].emit_insn(new_fmap_col_axis[3], 'dma_copy')
         elif self.dynamic_mode:
+            stride_update = 1 if self._tensor_map["opti_h_flag"] else c_ub.op.attrs['stride'][0]
             im2col_attr = {
                 'set_fmatrix': 1,
                 'conv_kernel_h': c_ub.op.attrs['kernel_h'],
@@ -893,7 +894,7 @@ class CceConv3dOp:
                 'conv_padding_bottom': c_ub.op.attrs['padding'][1],
                 'conv_padding_left': c_ub.op.attrs['padding'][2],
                 'conv_padding_right': c_ub.op.attrs['padding'][3],
-                'conv_stride_h': c_ub.op.attrs['stride'][0],
+                'conv_stride_h': stride_update,
                 'conv_stride_w': c_ub.op.attrs['stride'][1],
                 'conv_fm_c': fmap.op.shape[2] * fmap.op.shape[5],
                 'conv_fm_c1': fmap.op.shape[2],
@@ -904,7 +905,7 @@ class CceConv3dOp:
             if self._tensor_map["opti_h_flag"]:
                 im2col_attr["conv_stride_h"] = 1
             sch[fmap_col].emit_insn(new_fmap_col_axis[-5], 'im2col_v2', im2col_attr)
-            sch[al1].emit_insn(al1.op.axis[2], 'dma_copy', im2col_attr)
+            sch[al1].emit_insn(al1.op.axis[2], 'dma_copy')
         else:
             if self._tensor_map["opti_h_flag"]:
                 setfmatrix_dict["conv_stride_h"] = 1

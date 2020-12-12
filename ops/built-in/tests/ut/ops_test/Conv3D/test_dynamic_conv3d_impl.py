@@ -112,6 +112,29 @@ weight = {'ori_shape': (2, 2, 2, 32, 64), 'shape': (2, 2, 2, 32, 64),
         'ori_format': 'NDCHW', 'format': 'NDCHW', 'dtype': 'float16'}
 case16 = _run_api_end_with_d(weight=weight)
 
+# test_conv3d_load2d_dhw
+fmap = {'ori_shape': (1, 15, -1, -1, -1), 'shape': (1, 15, -1, -1, -1),
+        'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16', "range": [(1, 1), (15, 15), (10, 20), (10, 20), (10, 20)]}
+weight = {'ori_shape': (32, 15, 1, 1, 1), 'shape': (32, 15, 1, 1, 1),
+          'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16',"range": [(32, 32), (15, 15), (1, 1), (1, 1), (1,1)]}
+output = {'ori_shape': (1, 32, -1, -1, -1), 'shape': (1, 32, -1, -1, -1),
+          'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16', "range": [(1, 1), (32, 32), (10, 20), (10, 20), (10, 20)]}
+strides = (1, 1, 1, 1, 1)
+pads=[-1, -1, -1, -1, -1, -1]
+data_format="NCDHW"
+case17 = _run_api_end_with_d(fmap=fmap, weight=weight, output=output, strides=strides, pads=pads, data_format=data_format)
+
+# test_conv3d_stride_h_opti_dhw
+fmap = {'ori_shape': (1, 15, -1, -1, -1), 'shape': (1, 15, -1, -1, -1),
+        'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16', "range": [(1, 1), (15, 15), (10, 20), (10, 20), (10, 20)]}
+weight = {'ori_shape': (32, 15, 1, 1, 1), 'shape': (32, 15, 1, 1, 1),
+          'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16',"range": [(32, 32), (15, 15), (1, 1), (1, 1), (1,1)]}
+output = {'ori_shape': (1, 32, -1, -1, -1), 'shape': (1, 32, -1, -1, -1),
+          'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16', "range": [(1, 1), (32, 32), (10, 20), (10, 20), (10, 20)]}
+strides = (1, 1, 1, 2, 1)
+pads=[-1, -1, -1, -1, -1, -1]
+data_format="NCDHW"
+case18 = _run_api_end_with_d(fmap=fmap, weight=weight, output=output, strides=strides, pads=pads, data_format=data_format)
 # Add test Cases
 # Params is the input params of the operator.
 ut_case.add_case(["Ascend910"],
@@ -161,6 +184,12 @@ ut_case.add_case(["Ascend910"],
 
 ut_case.add_case(["Ascend910"],
                  _gen_data_case(case16, RuntimeError, "dynamic_case16", True))
+
+ut_case.add_case(["Ascend910"],
+                 _gen_data_case(case17, "success", "dynamic_case17", True))
+
+ut_case.add_case(["Ascend910"],
+                 _gen_data_case(case18, "success", "dynamic_case18", True))
 
 if __name__ == '__main__':
     with te.op.dynamic:

@@ -19,6 +19,7 @@ import copy
 import te.platform as tbe_platform
 from te.domain.tiling.get_tiling import get_tiling
 from te.utils.error_manager import error_manager_util
+from te.utils import shape_util
 from te.lang.cce.te_compute import cube_util
 from te.lang.cce.te_compute import util as te_util
 from te.lang.base.operation_impl import get_te_var
@@ -101,7 +102,7 @@ def _cube_3d_compute(fmap,
     _TENSOR_MAP["fmap"] = fmap
     _TENSOR_MAP["filter"] = weight
 
-    fmap_shape = te_util.shape_to_list(fmap.shape)
+    fmap_shape = shape_util.shape_to_list(fmap.shape)
     batch_size = fmap_shape[0]
     fmap_d = fmap_shape[1]
     fmap_c1 = fmap_shape[2]
@@ -164,6 +165,8 @@ def _cube_3d_compute(fmap,
                     howo_mad_1, filter_d * cin1_g * filter_h * filter_w,
                     block_size_m, block_size_k)
         stride_hw = stride_dhw[1:]
+        if opti_h_flag:
+            stride_hw[0] = 1
         im2col_para = (fuse_fmap_tensor, filter_h, filter_w, pad_hw, stride_hw,
                        width_out, 1, cin_ori)
         fmap_im2col_fractal_res = cube_util.im2col_fractal_v2(
@@ -253,7 +256,7 @@ def _cube_3d_compute(fmap,
                         attrs=attrs_dict)
 
     _TENSOR_MAP["c_ub"] = c_ub
-    dim_map1 = _im2col_dim(te_util.shape_to_list(fuse_fmap_tensor.shape),
+    dim_map1 = _im2col_dim(shape_util.shape_to_list(fuse_fmap_tensor.shape),
                            shape_filter_ncdhw, list(pads), list(stride_dhw),
                            config)
     dim_map_copy = _DIM_MAP.copy()
@@ -369,7 +372,7 @@ def _mad_by_load2d(mad_shape, fmap, weight, config, mad_dtype, pads, stride_d,
     -------
     new tensor
     """
-    fmap_shape = te_util.shape_to_list(fmap.shape)
+    fmap_shape = shape_util.shape_to_list(fmap.shape)
     batch_size = fmap_shape[0]
     fmap_d = fmap_shape[1]
     fmap_c1 = fmap_shape[2]
@@ -563,7 +566,7 @@ def _bias_add(in_tensor0, in_tensor1, attrs={}):
     in_tensor0+in_tensor1 tensor
     """
     dim_map = {}
-    dim_map["out_img_shape"] = te_util.shape_to_list(in_tensor0.shape)
+    dim_map["out_img_shape"] = shape_util.shape_to_list(in_tensor0.shape)
     _NAME_INDEX[0] += 1
 
     with tvm.tag_scope('conv_vector_bias_add'):
@@ -759,7 +762,7 @@ def conv3d(x, filter, filter_size, para_dict):
     # for tiling
     cin1_g = group_dict["cin1_g"]
     cout_g = group_dict["cout_g"]
-    fmap_shape_ndc1hwc0 = te_util.shape_to_list(x.shape)
+    fmap_shape_ndc1hwc0 = shape_util.shape_to_list(x.shape)
     fmap_n, fmap_d, fmap_c1, fmap_h, fmap_w, fmap_c0 = fmap_shape_ndc1hwc0
     fmap_shape_ndc1hwc0 = [fmap_n, fmap_d, cin1_g, fmap_h, fmap_w, fmap_c0]
     shape_w_ndc1hwc0 = [cout_g, filter_d, cin1_g, filter_h, filter_w,

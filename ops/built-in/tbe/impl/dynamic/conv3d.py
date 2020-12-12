@@ -852,6 +852,8 @@ def _calc_pads(fmap_shape_ndc1hwc0, shape_filter, stride_dhw, dilation_dhw, pads
     filter_h_dilation = (filter_h - 1) * dilation_h + 1
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
     if -1 in pads:
+        if list(stride_dhw) == [1, 1, 1] and [filter_d, filter_h, filter_w] == [1, 1, 1]:
+            return [0, 0, 0, 0, 0, 0]
         pad_d = \
             _ceil(fmap_d, stride_d) * stride_d - stride_d + filter_d_dilation - fmap_d
         pad_d = tvm.max(pad_d, 0)
