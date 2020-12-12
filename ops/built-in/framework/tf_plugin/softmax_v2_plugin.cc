@@ -26,19 +26,6 @@
 namespace domi {
 Status ParseParamsSoftmaxMappingFn(const Message* op_src, ge::Operator& op) {
   AutoMappingFn(op_src, op);
-  auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
-  ge::GeTensorDesc orgTensorW = op_dsc->GetInputDesc(0);
-  ge::GeTensorDesc orgTensorW1 = op_dsc->GetOutputDesc(0);
-  orgTensorW.SetOriginFormat(ge::FORMAT_NHWC);
-  orgTensorW.SetFormat(ge::FORMAT_NHWC);
-  orgTensorW1.SetOriginFormat(ge::FORMAT_NHWC);
-  orgTensorW1.SetFormat(ge::FORMAT_NHWC);
-  auto ret = op_dsc->UpdateInputDesc(0, orgTensorW);
-  auto ret1 = op_dsc->UpdateOutputDesc(0, orgTensorW1);
-  if (ret != ge::GRAPH_SUCCESS || ret1 != ge::GRAPH_SUCCESS) {
-    return FAILED;
-  }
-
   std::vector<int64_t> reduce_dims = {-1};
   if (op.GetAttr("axis", reduce_dims) != ge::GRAPH_SUCCESS) {
     OP_LOGW("SoftmaxV2", "GetAttr axis failed");
