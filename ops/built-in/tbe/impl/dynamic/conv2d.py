@@ -41,7 +41,6 @@ FORMAT_5D_DIMS = 5
 HW_MIN = 1
 HW_MAX = 4096
 
-
 def _ceil(x_1, x_2):
     if x_2 == 0:
         dict_args = {}

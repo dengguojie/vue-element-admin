@@ -27,7 +27,6 @@ from te.utils.error_manager import error_manager_conv2d as err_man
 from impl.util import util_select_op_base
 from impl.util import util_conv2d
 
-
 def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
                      pads, dilations, groups=1, data_format='NHWC',
                      offset_x=0, kernel_name="conv2d"):
