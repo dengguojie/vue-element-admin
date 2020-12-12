@@ -5081,17 +5081,6 @@ class CceConvOp:
 
         if self._dynamic_mode == "dynamic_hw":
             sch[res].pragma(c_pragma_axis, "gm_no_sync", 1)
-            if tiling["AL0_matrix"][0]*tiling["AL0_matrix"][2] > 64:
-                mo_block = tiling["block_dim"][2]*16
-                mo_block_miner = mo_block - 1
-                m_out = var_map["ho"]*var_map["wo"]
-                tiling_mal0 = tiling["AL0_matrix"][0]
-                if blocks > 1 and (get_soc_spec("CORE_NUM") != 30):
-                    constraint_extent = tvm.expr.LT(64, tvm.max(tvm.min((tvm.floordiv(
-                        ((m_out) + 15), 16) - (tvm.floormod(block.var, (tvm.floordiv(((m_out) - 1), (tvm.floordiv(
-                            ((m_out) + mo_block_miner), mo_block)*16)) + 1))*tvm.floordiv(
-                                ((m_out) + mo_block_miner), mo_block))), tiling_mal0), 0)*16)
-                    sch[res].pragma(noo, "constraint", constraint_extent)
 
         yuv_align, yuv_pad_align = aipp_conv_fuse_yuv_align()
         conv1d_w_split_tile()
