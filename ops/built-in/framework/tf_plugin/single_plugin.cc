@@ -1309,4 +1309,10 @@ REGISTER_CUSTOM_OP("DeformableOffsets")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
+// register DeformableOffsetsGrad op to GE
+REGISTER_CUSTOM_OP("DeformableOffsetsGrad")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("DeformableOffsetsGrad")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
 }  // namespace domi
