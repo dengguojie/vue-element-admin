@@ -38,8 +38,8 @@ namespace ge {
 * float32, int32. Has format [ND, NHWC] . \n
 
 *@par Attributes:
-*@li transpose_a: A bool. If True, changes the shape of "x1" from [M, K] to [K, M].
-*@li transpose_b: A bool. If True, changes the shape of "x2" from [M, K] to [K, M] . \n
+*@li transpose_x1: A bool. If True, changes the shape of "x1" from [M, K] to [K, M].
+*@li transpose_x2: A bool. If True, changes the shape of "x2" from [M, K] to [K, M] . \n
 
 *@par Outputs:
 *y: The result matrix Tensor. 2D. Must be one of the following types: float16,
@@ -70,8 +70,8 @@ REG_OP(MatMul)
 * float32, int32. Has format [ND, NHWC] . \n
 
 *@par Attributes:
-*@li transpose_a: A bool. If True, changes the shape of "x1" from [M, K] to [K, M].
-*@li transpose_b: A bool. If True, changes the shape of "x2" from [M, K] to [K, M] . \n
+*@li transpose_x1: A bool. If True, changes the shape of "x1" from [M, K] to [K, M].
+*@li transpose_x2: A bool. If True, changes the shape of "x2" from [M, K] to [K, M] . \n
 
 *@par Outputs:
 *y: The result matrix Tensor. 2D. Must be one of the following types: float16,
@@ -156,8 +156,8 @@ REG_OP(GEMM)
 * float32, int32. 2D or higher. Has format [ND, NHWC, FRACTAL_NZ] . \n
 
 *@par Attributes:
-*@li adj_x: A bool. If True, changes the shape of "x1" from [B, M, K] to [B, K, M].
-*@li adj_y: A bool. If True, changes the shape of "x2" from [B, M, K] to [B, K, M] . \n
+*@li adj_x1: A bool. If True, changes the shape of "x1" from [B, M, K] to [B, K, M].
+*@li adj_x2: A bool. If True, changes the shape of "x2" from [B, M, K] to [B, K, M] . \n
 
 *@par Outputs:
 *y: The result matrix Tensor. 2D or higher. Must be one of the following types: float16,
