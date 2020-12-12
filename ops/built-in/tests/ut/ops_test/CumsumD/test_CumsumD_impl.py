@@ -16,7 +16,7 @@ CumsumD ut case
 from op_test_frame.ut import OpUT
 from op_test_frame.common import precision_info
 import numpy as np
-ut_case = OpUT("CumsumD", None, None)
+ut_case = OpUT("CumsumD", "impl.cumsum_d", "cumsum_d")
 
 def calc_expect_func(x, y, axis, exclusive, reverse):
     shape = x['shape']
@@ -63,6 +63,11 @@ def calc_expect_func(x, y, axis, exclusive, reverse):
 
     ret = ret.reshape(y['shape'])
     return ret
+
+def test_get_op_support_info(test_arg):
+    from impl.cumsum_d import get_op_support_info
+    get_op_support_info({"shape": (15, 80, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (15, 80, 2, 32),"ori_format": "ND"}, 
+                        {"shape": (15, 80, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (15, 80, 2, 32),"ori_format": "ND"})
 
 case1 = {"params": [{"shape": (1, 1), "dtype": "float32", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND"}, #x
                     {"shape": (1, 1), "dtype": "float32", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND"},
@@ -152,6 +157,7 @@ ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case7)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case8)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case9)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case10)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 
 precision_case1 = {"params": [{"shape": (1, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 2), "ori_format": "ND","param_type":"input"}, #x
                               {"shape": (1, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 2), "ori_format": "ND","param_type":"output"},
