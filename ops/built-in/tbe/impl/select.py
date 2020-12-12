@@ -32,6 +32,53 @@ VALUE_ONE = 1
 def op_select_format(condition, x1, x2, y, kernel_name="select"):
     """
     select format dynamically
+    op_select_format support desc:
+        1. when all input(condition, x1, x2) have the same ori_shape, ori_format,
+           and the format is in ["NCHW", "NHWC", "HWCN"] or ["NDHWC", "DHWCN", "NCDHW"]
+           the Op Select can support
+                ND + ND + ND = ND,
+                FRACTAL_NZ + FRACTAL_NZ + FRACTAL_NZ = FRACTAL_NZ,
+                NC1HWC0(NDC1HWC0) + NC1HWC0(NDC1HWC0) + NC1HWC0(NDC1HWC0) = NC1HWC0(NDC1HWC0),
+                FRACTAL_Z(FRACTAL_Z_3D) + FRACTAL_Z(FRACTAL_Z_3D) + FRACTAL_Z(FRACTAL_Z_3D) = FRACTAL_Z(FRACTAL_Z_3D),
+
+           for example:
+           inputs:
+             conditon ori shape = [16, 16, 16, 16] ori_format = "NCHW"
+             x1       ori shape = [16, 16, 16, 16] ori_format = "NCHW"
+             x2       ori shape = [16, 16, 16, 16] ori_format = "NCHW"
+           outputs:
+             y2       ori shape = [16, 16, 16, 16] ori_format = "NCHW"
+
+           the Op Select can process with NC1HWC0:
+             conditon shape = [16, 1, 16, 16, 16] format = "NC1HWC0"
+             x1       shape = [16, 1, 16, 16, 16] format = "NC1HWC0"
+             x2       shape = [16, 1, 16, 16, 16] format = "NC1HWC0"
+           outputs:
+             y2       shape = [16, 1, 16, 16, 16] format = "NC1HWC0"
+
+        2. when all input(x1, x2) have the same ori_shape, ori_format,
+           and the format is in ["NCHW", "NHWC", "HWCN"] or ["NDHWC", "DHWCN", "NCDHW"]
+           and conditon is a scaler
+           he Op Select can support
+                ND + ND + ND = ND,
+                ND + FRACTAL_NZ + FRACTAL_NZ = FRACTAL_NZ,
+                ND + NC1HWC0(NDC1HWC0) + NC1HWC0(NDC1HWC0) = NC1HWC0(NDC1HWC0),
+                ND + FRACTAL_Z(FRACTAL_Z_3D) + FRACTAL_Z(FRACTAL_Z_3D) = FRACTAL_Z(FRACTAL_Z_3D),
+           for example:
+           inputs:
+             conditon ori shape = [] ori_format = "NCHW"
+             x1       ori shape = [16, 16, 16, 16] ori_format = "NCHW"
+             x2       ori shape = [16, 16, 16, 16] ori_format = "NCHW"
+           outputs:
+             y2       ori shape = [16, 16, 16, 16] ori_format = "NCHW"
+
+           the Op Select can process with NC1HWC0:
+             conditon shape = [] format = "NCHW"
+             x1       shape = [16, 1, 16, 16, 16] format = "NC1HWC0"
+             x2       shape = [16, 1, 16, 16, 16] format = "NC1HWC0"
+           outputs:
+             y2       shape = [16, 1, 16, 16, 16] format = "NC1HWC0"
+
     """
     shape_condition = condition.get("ori_shape")
     shape_x1 = x1.get("ori_shape")
@@ -64,11 +111,15 @@ def op_select_format(condition, x1, x2, y, kernel_name="select"):
             format_list.append("FRACTAL_Z")
             format_list.append("FRACTAL_NZ")
             format_list.append("NC1HWC0")
+        # the bool can not support the 6HD and FZ_3D,
+        # so the select can not support the 6HD and FZ_3D, and when transdata support will open this feather
         if format_condition == format_x1 == format_x2 and \
                 format_x1 in format_5d_list and \
                 list(shape_condition) == list(shape_x1) == list(shape_x2):
-            format_list.append("FRACTAL_Z_3D")
-            format_list.append("NDC1HWC0")
+            # do nothing now
+            pass
+            # modify: format_list.append("FRACTAL_Z_3D")
+            # modify: format_list.append("NDC1HWC0")
 
         for dtype in dtype_list:
             dtype_total = dtype_total + [dtype] * len(format_list)
@@ -278,3 +329,4 @@ def select(condition, x1, x2, y, kernel_name="select"):
         config = {"name": kernel_name,
                   "tensor_list": [condition, input_x1, input_x2, res]}
     tbe.cce_build_code(sch, config)
+
