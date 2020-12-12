@@ -15,12 +15,12 @@
  */
 
 /*!
- * \file example.h
+ * \file op_tiling.h
  * \brief
  */
 
-#ifndef CANN_OPS_COMMON_OP_TILING_H_
-#define CANN_OPS_COMMON_OP_TILING_H_
+#ifndef CANN_OPS_BUILT_IN_OP_TILING_H_
+#define CANN_OPS_BUILT_IN_OP_TILING_H_
 
 #include <map>
 #include <chrono>
@@ -31,6 +31,7 @@
 #include "register/op_tiling_registry.h"
 #include "op_log.h"
 #include "graph/debug/ge_log.h"
+#include "lock.h"
 
 using namespace std;
 
@@ -51,9 +52,14 @@ bool g_##optype##_TilingEntry(const TeOpParas& para, const OpCompileInfo& cinfo,
         start_tiling = std::chrono::steady_clock::now();                                                              \
     }                                                                                                                 \
     static std::map<std::string, std::shared_ptr<ParsedOpCompileInfo>> parsed_compile_info_storage;                   \
+    static RWLock rwlock;                                                                                             \
     const std::string& hash_key = cinfo.key;                                                                          \
-    if (!hash_key.empty() && parsed_compile_info_storage.find(hash_key) != parsed_compile_info_storage.end()) {       \
-        std::shared_ptr<ParsedOpCompileInfo> parsed_compile_info = parsed_compile_info_storage.at(hash_key);          \
+    rwlock.rdlock();                                                                                                  \
+    auto found_iterator = parsed_compile_info_storage.find(hash_key);                                                 \
+    std::shared_ptr<ParsedOpCompileInfo> parsed_compile_info = found_iterator != parsed_compile_info_storage.end() ?  \
+    found_iterator->second : std::shared_ptr<ParsedOpCompileInfo>(nullptr);                                           \
+    rwlock.unlock();                                                                                                  \
+    if (!hash_key.empty() && parsed_compile_info != nullptr) {                                                        \
         std::shared_ptr<void> parsed_object_ptr = parsed_compile_info->parsed_object;                                 \
         nlohmann::json* parsed_object = static_cast<nlohmann::json*>(parsed_object_ptr.get());                        \
         if (prof_switch) {                                                                                            \
@@ -64,16 +70,20 @@ bool g_##optype##_TilingEntry(const TeOpParas& para, const OpCompileInfo& cinfo,
             after_tiling = std::chrono::steady_clock::now();                                                          \
             uint64_t t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - start_tiling).count(); \
             uint64_t t1 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - before_tiling).count();\
-            GEEVENT("[OPTILING_PROF] op_name: %s, total_us: %d, tiling_us: %d", para.op_type.c_str(), t0, t1);        \
+            GEEVENT("[OPTILING_PROF] Found! op_name: %s, total_us: %d, tiling_us: %d", para.op_type.c_str(), t0, t1); \
         }                                                                                                             \
         return result;                                                                                                \
     }                                                                                                                 \
     const std::string& cinfo_str = cinfo.str;                                                                         \
     std::shared_ptr<nlohmann::json> parsed_object(new nlohmann::json(nlohmann::json::parse(cinfo_str)));              \
-    std::shared_ptr<ParsedOpCompileInfo> parsed_compile_info(new ParsedOpCompileInfo());                              \
-    parsed_compile_info->value = cinfo_str;                                                                           \
-    parsed_compile_info->parsed_object = std::static_pointer_cast<void>(parsed_object);                               \
-    parsed_compile_info_storage.emplace(hash_key, parsed_compile_info);                                               \
+    if (!hash_key.empty()) {                                                                                          \
+        std::shared_ptr<ParsedOpCompileInfo> parsed_compile_info(new ParsedOpCompileInfo());                          \
+        parsed_compile_info->value = cinfo_str;                                                                       \
+        parsed_compile_info->parsed_object = std::static_pointer_cast<void>(parsed_object);                           \
+        rwlock.wrlock();                                                                                              \
+        parsed_compile_info_storage.emplace(hash_key, parsed_compile_info);                                           \
+        rwlock.unlock();                                                                                              \
+    }                                                                                                                 \
     if (prof_switch) {                                                                                                \
         before_tiling = std::chrono::steady_clock::now();                                                             \
     }                                                                                                                 \

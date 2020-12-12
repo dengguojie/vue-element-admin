@@ -30,6 +30,7 @@ set(_optiling_files
   gather.cc
   gather_nd.cc
   gather_v2.cc
+  lock.cc
   pad_common.cc
   pad_d.cc
   reduce_tiling.cc
