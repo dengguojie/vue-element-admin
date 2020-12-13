@@ -19,17 +19,17 @@ from __future__ import division
 
 import te.lang.cce
 from te import tvm
+from te.utils import para_check
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
-from te.utils import para_check
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 NONETYPE = type(None)
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
-# pylint: disable=locally-disabled,redefined-builtin
+# pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-arguments
+# pylint: disable=locally-disabled,redefined-builtin,too-many-statements,too-many-locals
 def op_select_format(x, sum, square_sum, gamma, beta, mean, variance,
                      y, batch_mean, batch_variance,
                      momentum, epsilon,
@@ -103,11 +103,11 @@ def check_rule(data, rule_desc, param_name=para_check.PARAM_NAME):
     error_info['rule_desc'] = rule_desc
     error_info['param_value'] = data
     raise RuntimeError(error_info,
-                       "Op[%s] has rule: %s, but [%s] is [%s]."\
-                        % (error_info['op_name'],
-                        error_info['rule_desc'],
-                        error_info['param_name'],
-                        error_info['param_value']))
+                       "Op[%s] has rule: %s, but [%s] is [%s]." \
+                       % (error_info['op_name'],
+                          error_info['rule_desc'],
+                          error_info['param_name'],
+                          error_info['param_value']))
 
 
 def _check_dims_equal(shape_x, shape):
@@ -128,7 +128,7 @@ def _check_dims_equal(shape_x, shape):
     if shape_x[0] != shape[0] or shape_x[1] != shape[1] or shape_x[4] != \
             shape[4]:
         check_rule("{} and {}".format(shape_x, shape),
-                   "The dimensions N, C1, C0 of shape_x"\
+                   "The dimensions N, C1, C0 of shape_x" \
                    "and shape must be equal",
                    "shape_x and shape")
     if shape[2] != 1 or shape[3] != 1:
@@ -312,7 +312,7 @@ def in_training_update_v2(x, sum, square_sum,
     dtype_square_sum = square_sum.get("dtype")
     para_check.check_dtype(dtype_sum.lower(), ("float32",), param_name="sum")
     para_check.check_dtype(dtype_square_sum.lower(), ("float32",),
-                param_name="square_sum")
+                           param_name="square_sum")
 
     x_input = tvm.placeholder(shape_x, name="x_input",
                               dtype=dtype_x.lower())

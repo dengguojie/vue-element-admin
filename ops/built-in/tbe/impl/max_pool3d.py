@@ -17,15 +17,15 @@ max_pool3d
 """
 from __future__ import absolute_import
 
-# pylint: disable=E0401
+# pylint: disable=E0401,too-many-return-statements,too-many-arguments,invalid-name
 import te.lang.cce
 from te import platform as cce
 from te import tvm
+from te.utils import para_check
 from te.platform.fusion_manager import fusion_manager
 from te.platform.cce_build import build_config
 from te.platform.cce_conf import CceProductParams
 from topi.cce import util
-from te.utils import para_check
 from topi import generic
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
@@ -46,14 +46,14 @@ TENSORFLOW_DATA_MODE = 1
 
 # pylint: disable=unused-argument
 def get_op_support_info(x, y, ksize, strides, padding="SAME", pads=(0, 0, 0, 0, 0, 0),
-               dilation=(1, 1, 1), ceil_mode=0, data_format="NDHWC",
-               kernel_name="max_pool3d"):
+                        dilation=(1, 1, 1), ceil_mode=0, data_format="NDHWC",
+                        kernel_name="max_pool3d"):
     """
     return: spilt info of max_pool3d
     """
     format_x = x.get("format").upper()
-    if format_x == "NDHWC" or format_x == "NDC1HWC0":
-        axis_split_matrix=[[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
+    if format_x in ("NDHWC", "NDC1HWC0"):
+        axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
         axis_reduce_list = None
 
     else:
@@ -148,7 +148,7 @@ def max_pool3d_check_rule_new(input_dtype, output_dtype, ksize, strides):
     """
     # since float32/64 transpose not support yet
     # so check the dtyep here
-    para_check.check_dtype(input_dtype, ["float16"],  param_name="x")
+    para_check.check_dtype(input_dtype, ["float16"], param_name="x")
     para_check.check_dtype(output_dtype, ["float16"], param_name="y")
     if len(ksize) == 5:
         if ksize[0] != 1 or ksize[4] != 1:

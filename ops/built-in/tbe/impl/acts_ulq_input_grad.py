@@ -19,15 +19,14 @@ from __future__ import absolute_import
 
 import te.lang.cce
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 
 # General limitation of the reduce size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
 
+# pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals
 def acts_ulq_input_grad_compute(data_y_grad, data_clamp_min_mask, data_clamp_max_mask, kernel_name):
     """
     calculating grad of acts_ulq
@@ -115,9 +114,9 @@ def acts_ulq_input_grad(y_grad, clamp_min_mask, clamp_max_mask, x_grad, kernel_n
         schedule = generic.auto_schedule(res)
     tensor_list = [data_y_grad, data_clamp_min_mask, data_clamp_max_mask] + list(res)
     config = {
-              "bool_storage_as_1bit": False,
-              "print_ir": False,
-              "name": kernel_name,
-              "tensor_list": tensor_list}
+        "bool_storage_as_1bit": False,
+        "print_ir": False,
+        "name": kernel_name,
+        "tensor_list": tensor_list}
 
     te.lang.cce.cce_build_code(schedule, config)

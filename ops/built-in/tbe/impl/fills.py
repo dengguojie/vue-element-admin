@@ -29,13 +29,16 @@ fill
     ['int32', 'float32', 'float16']
     all format
 """
+from functools import reduce as reduceIns
+
 from te import tvm
 import te.lang.cce as tbe
 import te.platform as tbe_platform
-from functools import reduce as reduceIns
 from te.utils import shape_util
 from te.utils import para_check
 
+
+# pylint: disable=invalid-name,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("fills")
 def fills_compute(x, value, dtype, kernel_name="fills"):
     """
@@ -66,8 +69,8 @@ def fills_compute(x, value, dtype, kernel_name="fills"):
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
-para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT,
-para_check.KERNEL_NAME)
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT,
+                            para_check.KERNEL_NAME)
 def fills(x, y, value, kernel_name="fills"):
     """
     do  fill operation

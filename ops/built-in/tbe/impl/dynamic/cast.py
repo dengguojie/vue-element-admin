@@ -15,12 +15,13 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 cast_cce
 """
+# pylint: disable=too-many-locals
+from functools import reduce as reduce_ins
 import te.lang.cce as tbe
 from te import platform as tbe_platform
 import te.lang.base as tbe_base
 from te import tvm
 from te.platform.cce_build import build_config
-from functools import reduce as reduceIns
 from te.utils import shape_util
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
@@ -82,6 +83,7 @@ def _kernel_ir(dst, src, dst_type, src_type):
     return ir_builder.get()
 
 
+# pylint: disable=inconsistent-return-statements
 def _int8_uint8_process(data, dst_type):
     """
     deal with src dtype=int8 and uint8 case
@@ -174,7 +176,7 @@ def _float16_process(data, dst_type):
 
     if dst_type == "uint8":
         if not tbe_platform.cce_conf.api_check_support("te.lang.cce.cast_to", "s322f16") and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vmod", "float16"):
+                tbe_platform.cce_conf.api_check_support("te.lang.cce.vmod", "float16"):
             return tbe.cast_to(data, "uint8", True)
         data_int32 = tbe.cast_to(data, "int32")
         data_fp16 = tbe.cast_to(data_int32, "float16")
@@ -228,7 +230,7 @@ def check_supported(input_x, output_y, dst_type, kernel_name="cast"):
         check_list = ["bool", "uint8", "int8", "float32", "float16"]
 
     src_shape = input_x.get("shape")
-    shape_size = reduceIns(lambda x, y: x * y, src_shape)
+    shape_size = reduce_ins(lambda x, y: x * y, src_shape)
     if shape_size == 1 and src_type == "int64":
         check_list = ["int32", "float32"]
 
@@ -276,8 +278,8 @@ def cast_compute(data, output_y, dst_type, kernel_name="cast"):
     """
     src_data_type = data.dtype
     para_check.check_dtype(src_data_type,
-                ("float16", "float32", "int8", "uint8", "int32"),
-                param_name="input_x")
+                           ("float16", "float32", "int8", "uint8", "int32"),
+                           param_name="input_x")
 
     if src_data_type in ("int8", "uint8"):
         return _int8_uint8_process(data, dst_type)
@@ -342,12 +344,12 @@ def cast(input_x, output_y, dst_type, kernel_name="cast"):
 
     schedules, tensors = [], []
     ins = classify([input_x], Mode.ELEWISE)
-    for (input_x,) in ins:
+    for (_input_x,) in ins:
         with tbe_base.compute():
-            x_shape = shape_util.variable_shape([input_x])
+            x_shape = shape_util.variable_shape([_input_x])
             dst_type = _cast_dsttype_conversion(dst_type)
             fuseshape = [1]
-            fuseshape[0] = reduceIns(lambda x, y: x * y, x_shape[0])
+            fuseshape[0] = reduce_ins(lambda x, y: x * y, x_shape[0])
             data = tvm.placeholder(fuseshape, name="data", dtype=src_type)
             if src_type == "int64":
                 para_check.check_dtype(dst_type, ("float32", "int32"), param_name="dst_type")

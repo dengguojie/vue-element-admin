@@ -19,7 +19,6 @@ from __future__ import absolute_import
 
 import te.lang.cce
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 
@@ -27,8 +26,8 @@ from topi.cce import util
 SHAPE_SIZE_LIMIT = 2147483648
 EPS = 1.192092896e-07
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
 
+# pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals,invalid-name
 def acts_ulq_compute(data, clamp_min, clamp_max, fixed_min, step, kernel_name):
     """
     calculating data's add, c = a + b
@@ -86,8 +85,8 @@ def acts_ulq_compute(data, clamp_min, clamp_max, fixed_min, step, kernel_name):
 
     clamped_loss = te.lang.cce.vsub(round_x, raw_x)
     clamped_loss = te.lang.cce.vdiv(
-            clamped_loss,
-            te.lang.cce.broadcast(tvm.const(step, scale.dtype), clamped_loss.shape))
+        clamped_loss,
+        te.lang.cce.broadcast(tvm.const(step, scale.dtype), clamped_loss.shape))
 
     raw_m = te.lang.cce.vdiv(ori_clip_min, scale)
     round_m = te.lang.cce.round(raw_m)

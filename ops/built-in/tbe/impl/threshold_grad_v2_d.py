@@ -26,6 +26,7 @@ from te.utils import shape_util
 from te.utils.cce import auto_schedule
 
 
+# pylint: disable=too-many-locals,unused-argument
 @fusion_manager.register("threshold_grad_v2_d")
 def threshold_grad_v2_d_compute(input_gradients, input_features,
                                 output_backprops, threshold,
@@ -53,13 +54,13 @@ def threshold_grad_v2_d_compute(input_gradients, input_features,
 
     dtype = input_gradients.dtype
     result = _vcmpsel(input_features, threshold, 'gt',
-                                 input_gradients, tvm.const(0, dtype))
+                      input_gradients, tvm.const(0, dtype))
 
     return result
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                 para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
 def threshold_grad_v2_d(input_gradients, input_features, output_backprops,
                         threshold, kernel_name="threshold_grad_v2_d"):
     """
@@ -90,7 +91,7 @@ def threshold_grad_v2_d(input_gradients, input_features, output_backprops,
     dtype_input_features = input_features.get("dtype").lower()
 
     shape_list = shape_util.produce_shapes(shape_input_gradients,
-                                     shape_input_features)
+                                           shape_input_features)
     para_check.check_tensor_shape_size(shape_list[2])
     shape_input_gradients, shape_input_features = \
         shape_util.refine_shapes_for_broadcast(shape_list[0], shape_list[1])

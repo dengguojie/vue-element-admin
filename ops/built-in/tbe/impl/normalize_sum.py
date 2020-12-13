@@ -22,8 +22,11 @@ from te.utils import para_check
 from impl.util import util_select_op_base
 
 
-# pylint: disable = unused-argument
+# pylint: disable = unused-argument,invalid-name
 def get_op_support_info(x1, y, across_spatial=True, kernel_name="normalize_sum"):
+    """
+    get_op_support_info
+    """
     format_x = x1.get("format")
     axis_split_list = []
     if across_spatial:
@@ -33,12 +36,12 @@ def get_op_support_info(x1, y, across_spatial=True, kernel_name="normalize_sum")
         split_0 = [util_select_op_base.SplitInput([0, [0], [-1], [-1]]), util_select_op_base.SplitOutput([0, [0]])]
         split_1 = [util_select_op_base.SplitInput([0, [2], [-1], [-1]]), util_select_op_base.SplitOutput([0, [2]])]
         split_2 = [util_select_op_base.SplitInput([0, [3], [-1], [-1]]), util_select_op_base.SplitOutput([0, [3]])]
-        axis_split_list=[split_0, split_1, split_2]
+        axis_split_list = [split_0, split_1, split_2]
     elif format_x == "NHWC":
         split_0 = [util_select_op_base.SplitInput([0, [0], [-1], [-1]]), util_select_op_base.SplitOutput([0, [0]])]
         split_1 = [util_select_op_base.SplitInput([0, [1], [-1], [-1]]), util_select_op_base.SplitOutput([0, [1]])]
         split_2 = [util_select_op_base.SplitInput([0, [2], [-1], [-1]]), util_select_op_base.SplitOutput([0, [2]])]
-        axis_split_list=[split_0, split_1, split_2]
+        axis_split_list = [split_0, split_1, split_2]
     else:
         axis_split_list = None
 
@@ -86,13 +89,13 @@ def normalize_sum_compute(x1, y, data_format, across_spatial=True,
     if intermediate_dtype != x1.dtype:
         while x1_cast.dtype in dtype_cast_mapping:
             x1_cast = tbe.cast_to(x1_cast,
-                                          dtype_cast_mapping[x1_cast.dtype])
+                                  dtype_cast_mapping[x1_cast.dtype])
 
     x1_cast_sqr = tbe.vmul(x1_cast, x1_cast)
 
     if across_spatial:
         x1_cast_sqr_sum = tbe.sum(x1_cast_sqr, axis=[1, 2, 3],
-                                          keepdims=True)
+                                  keepdims=True)
     elif data_format == "NCHW":
         x1_cast_sqr_sum = tbe.sum(x1_cast_sqr, axis=[1], keepdims=True)
     elif data_format == "NHWC":
@@ -102,7 +105,7 @@ def normalize_sum_compute(x1, y, data_format, across_spatial=True,
 
 
 # pylint: disable=locally-disabled,invalid-name
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, 
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def normalize_sum(x1, y, across_spatial=True, kernel_name="normalize_sum"):
     """

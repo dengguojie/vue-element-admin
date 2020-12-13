@@ -20,13 +20,14 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
-from impl.util import util_select_op_base
 from te.utils.error_manager import error_manager_vector
+from impl.util import util_select_op_base
 
 # constant, value is 16
 SIZE_SIXTEEN = 16
 
 
+# pylint: disable=too-many-nested-blocks
 def _can_division_sixteen(shape):
     """
     check whether divided by 16.
@@ -81,7 +82,7 @@ def _can_broadcast(shape1, shape2):
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=invalid-name,too-many-locals,too-many-branches,unused-variable
-# pylint: disable=too-many-statements,too-many-boolean-expressions
+# pylint: disable=too-many-statements,too-many-boolean-expressions,consider-using-enumerate
 def op_select_format(input_x, input_y, output_z, kernel_name="add"):
     """
     select format dynamically, supporting dynamic shape format selecting.
@@ -174,7 +175,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
         format_list.append("FRACTAL_NZ")
         if len(shape_x) == 4 and len(shape_y) == 4 and format_x in format_4d_list and format_y in format_4d_list:
             if x_cdim % 16 == 0 and y_cdim % 16 == 0:
-                if format_x == format_y == "NCHW" and (x_cdim == y_cdim or x_cdim // 16 == 1 or y_cdim // 16 == 1)\
+                if format_x == format_y == "NCHW" and (x_cdim == y_cdim or x_cdim // 16 == 1 or y_cdim // 16 == 1) \
                         and (x_ndim == y_ndim or x_ndim == 1 or y_ndim == 1):
                     format_list.append("NC1HWC0")
                 if format_x == format_y == "HWCN":
@@ -201,7 +202,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
                         format_list.append("NC1HWC0")
             if x_cdim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0 and x_ndim % 16 == 0:
                 if (format_x == format_y == "NHWC" and list(shape_x) == list(shape_y)) or \
-                    (format_x == format_y == "NCHW" and list(shape_x) == list(shape_y)):
+                        (format_x == format_y == "NCHW" and list(shape_x) == list(shape_y)):
                     format_list.append("FRACTAL_Z")
                 if format_x == format_y == "HWCN" and x_wdim * x_hdim == y_wdim * y_hdim:
                     format_list.append("FRACTAL_Z")

@@ -20,9 +20,9 @@ import te.lang.cce
 from te import tvm
 from te import platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
+from te.utils import para_check
 from topi import generic
 from topi.cce import util
-from te.utils import para_check
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.util.util_select_op_base import SplitInput
@@ -132,8 +132,8 @@ def get_op_support_info(input_x, output_y, tiles, axis, kernel_name="tile_with_a
     format_x = input_x.get("format").upper()
     if axis < 0:
         axis += shape_x_len
-    if format_x == "NC1HWC0" or format_x == "ND":
-        axis_split_matrix=[]
+    if format_x in ("NC1HWC0", "ND"):
+        axis_split_matrix = []
         for i in range(0, shape_x_len-1):
             if i != axis:
                 split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]])]
@@ -200,7 +200,9 @@ def tile_with_axis(input_x, output_y, tiles, axis=1, kernel_name="tile_with_axis
 
 # pylint: disable=too-many-locals,too-many-branches,too-many-statements
 def check_param_range(param_name, min_value, max_value, real_value, op_name='tile_with_axis'):
-
+    """
+    check_param_range
+    """
     error_info = {}
     error_info['errCode'] = 'E80002'
     error_info['opname'] = op_name
@@ -211,7 +213,7 @@ def check_param_range(param_name, min_value, max_value, real_value, op_name='til
     raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s], but actually is [%s]."
                        % (error_info['opname'], error_info['param_name'], error_info['min_value'],
                           error_info['max_value'], error_info['real_value']))
-    
+
 
 # pylint: disable=too-many-locals,too-many-branches,too-many-statements
 def check_param(input_x, output_y, tiles, axis, kernel_name):
@@ -240,13 +242,13 @@ def check_param(input_x, output_y, tiles, axis, kernel_name):
     dtype_x = input_x.get("dtype").lower()
     shape_y = output_y.get("shape")
     dtype_y = output_y.get("dtype").lower()
-    
+
     para_check.check_shape(shape_x, param_name="input_x")
     para_check.check_shape(shape_y, param_name="input_y")
 
     check_list = ["int8", "int16", "int32", "int64", "uint8", "uint16",
                   "uint32", "uint64", "float16", "float32"]
-    
+
     para_check.check_dtype(dtype_x, check_list, param_name="input_x")
     para_check.check_dtype(dtype_y, check_list, param_name="input_x")
 

@@ -15,12 +15,12 @@
 """
 drop_out_do_mask.py
 """
+# pylint: disable=too-many-arguments,too-few-public-methods,too-many-instance-attributes
 from te import tik
 from te import platform as tbe_platform
 import te.lang.dynamic
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
-
 
 # max int32
 MAX_INT32 = 2 ** 31 - 1
@@ -32,7 +32,7 @@ RESERVED_UB_SIZE = 8 * 1024
 MAX_REPEAT_NUM = 254
 
 
-class DropOutDoMask(object):
+class DropOutDoMask:
     """
     Function: use to store dropoutdomask base parameters
     Modify: 2020-11-16
@@ -70,9 +70,18 @@ class DropOutDoMask(object):
         self.is_suport_vdiv = tbe_platform.cce_conf.api_check_support("tik.vdiv", self.keep_prob_dtype)
         # init ub
         self.var_ub = None
-        self.keep_prob_ub = None
         self.tiling_ub = None
         self.prob_rec = None
+        self.core_used_num = None
+        self.do_num_per_core = None
+        self.do_num_tail_core = None
+        self.mask_ub = None
+        self.zero_ub = None
+
+        if self.var_dtype == "float32":
+            self.one_ub = None
+            self.sel_fp16_ub = None
+            self.sel_fp32_ub = None
 
     def _tiling_args(self):
         """
@@ -93,8 +102,6 @@ class DropOutDoMask(object):
                                                name="var_ub", scope=tik.scope_ubuf)
         self.mask_ub = self.tik_instance.Tensor(self.mask_dtype, (self.max_process_num + 7 // 8,),
                                                 name="mask_ub", scope=tik.scope_ubuf)
-        self.out_ub = self.tik_instance.Tensor(self.var_dtype, (self.max_process_num,),
-                                               name="out_ub", scope=tik.scope_ubuf)
         self.zero_ub = self.tik_instance.Tensor("float16", (self.elememts_vector_fp16,),
                                                 name="zero_ub", scope=tik.scope_ubuf)
         self.tik_instance.vector_dup(self.elememts_vector_fp16, self.zero_ub,
@@ -287,4 +294,3 @@ def drop_out_do_mask(input_tensor, input_mask, input_keep_prob, output,
                         kernel_name)
 
     obj.drop_do_mask_operator()
-

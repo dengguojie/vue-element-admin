@@ -17,15 +17,15 @@ softmax_grad_ext
 """
 import te.lang.cce
 from te import tvm
+from te.utils import para_check
+from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 from impl import constant_util as constant
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
-from te.utils import para_check
-from te.utils import shape_util
-from te.utils.error_manager import error_manager_vector
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=locally-disabled,too-many-locals,unused-variable

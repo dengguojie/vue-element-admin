@@ -348,7 +348,7 @@ class NHWC2FRACTAL4Compute:
                                                 scalar_zero, 1, 0, 0)
                 else:
                     with tik_instance.for_range(0, loop_number //
-                                                MAX_REPEATS) as num_repeat:
+                                                   MAX_REPEATS) as num_repeat:
                         offset = (num_repeat * MAX_REPEATS + 1) * \
                                  self.dst_shape[0] * self.dst_shape[3] - \
                                  CUBE_SIZE
@@ -370,10 +370,10 @@ class NHWC2FRACTAL4Compute:
                                                 self.dst_shape[0] *
                                                 self.dst_shape[3] //
                                                 self.num_data)
-            with tik_instance.for_range(0, loop_number // NUM_CUBE)\
+            with tik_instance.for_range(0, loop_number // NUM_CUBE) \
                     as num_vadds:
                 with tik_instance.for_range(0, self.dst_shape[0] //
-                                            MAX_REPEATS) as num_repeat:
+                                               MAX_REPEATS) as num_repeat:
                     tik_instance.vadds(MAX_MASK,
                                        ub_trans[MAX_REPEATS * num_repeat *
                                                 loop_number *
@@ -415,7 +415,7 @@ class NHWC2FRACTAL4Compute:
                                        self.num_byte // 2)
             with tik_instance.if_scope(loop_number % NUM_CUBE != 0):
                 with tik_instance.for_range(0, self.dst_shape[0] //
-                                            MAX_REPEATS) as num_repeat:
+                                               MAX_REPEATS) as num_repeat:
                     tik_instance.vadds((loop_number % NUM_CUBE) * CUBE_SIZE,
                                        ub_trans[MAX_REPEATS * num_repeat *
                                                 loop_number *
@@ -472,16 +472,16 @@ class NHWC2FRACTAL4Compute:
 
             with tik_instance.for_range(0, loop_number) as num_loop:
                 with tik_instance.for_range(0, hwc // CUBE_SIZE) as num_row:
-                    with tik_instance.for_range(0, CUBE_SIZE // 4) as\
+                    with tik_instance.for_range(0, CUBE_SIZE // 4) as \
                             row_index:
-                        trans_offset = loop_number * self.dst_shape[3] *\
-                                       num_row + num_loop * CUBE_SIZE +\
+                        trans_offset = loop_number * self.dst_shape[3] * \
+                                       num_row + num_loop * CUBE_SIZE + \
                                        row_index * 4
                         ori_offset = num_loop * self.src_shape[1] * \
-                                     self.src_shape[2] * self.src_shape[3] +\
+                                     self.src_shape[2] * self.src_shape[3] + \
                                      num_row * self.src_shape[3] * C0 + \
                                      row_index * self.src_shape[3]
-                        with tik_instance.for_range(0, self.src_shape[3])\
+                        with tik_instance.for_range(0, self.src_shape[3]) \
                                 as num_c:
                             ub_trans[trans_offset + num_c].set_as(
                                 ub_ori[ori_offset + num_c])
@@ -497,7 +497,7 @@ class NHWC2FRACTAL4Compute:
                                      (self.dst_shape[0] - 1) * \
                                      self.src_shape[3] * C0 + \
                                      row_index * self.src_shape[3]
-                        with tik_instance.for_range(0, self.src_shape[3])\
+                        with tik_instance.for_range(0, self.src_shape[3]) \
                                 as num_c:
                             ub_trans[trans_offset + num_c].set_as(
                                 ub_ori[ori_offset + num_c])
@@ -536,7 +536,7 @@ class NHWC2FRACTAL4Compute:
                                         ub_ori[offset],
                                         scalar_zero, 1, 0, 0)
         else:
-            dup_number = (hw_number * C0 + CUBE_SIZE - 1) // CUBE_SIZE *\
+            dup_number = (hw_number * C0 + CUBE_SIZE - 1) // CUBE_SIZE * \
                          CUBE_SIZE
             self.vector_dup_zero_python(tik_instance, ub_trans, dup_number,
                                         0)
@@ -545,8 +545,8 @@ class NHWC2FRACTAL4Compute:
                 with tik_instance.for_range(0, CUBE_SIZE // 4) as row_index:
                     trans_offset = self.dst_shape[3] * num_row + \
                                    row_index * 4
-                    ori_offset = num_row * CUBE_SIZE // 4 *\
-                                 self.src_shape[3] + row_index *\
+                    ori_offset = num_row * CUBE_SIZE // 4 * \
+                                 self.src_shape[3] + row_index * \
                                  self.src_shape[3]
                     with tik_instance.for_range(0, self.src_shape[3]) as num_c:
                         ub_trans[trans_offset + num_c].set_as(ub_ori
@@ -554,13 +554,13 @@ class NHWC2FRACTAL4Compute:
                                                                num_c])
             if hw_number * C0 % CUBE_SIZE != 0:
                 with tik_instance.for_range(
-                    0, (hw_number * C0 % CUBE_SIZE) // 4) as row_index:
+                        0, (hw_number * C0 % CUBE_SIZE) // 4) as row_index:
                     trans_offset = self.dst_shape[3] * row_number + \
                                    row_index * 4
                     ori_offset = row_number * CUBE_SIZE // 4 * \
                                  self.src_shape[3] + row_index * \
                                  self.src_shape[3]
-                    with tik_instance.for_range(0, self.src_shape[3])\
+                    with tik_instance.for_range(0, self.src_shape[3]) \
                             as num_c:
                         ub_trans[trans_offset + num_c].set_as(ub_ori
                                                               [ori_offset +
@@ -582,9 +582,9 @@ class NHWC2FRACTAL4Compute:
         move data from gm to UB when UB can put in H * W * C0 data
         '''
         with tik_instance.if_scope(
-            (self.dst_shape[1] * self.dst_shape[2] -
-             loop_number) * self.dst_shape[3] //
-            self.num_data > MAX_STRIDE_BLK):
+                (self.dst_shape[1] * self.dst_shape[2] -
+                 loop_number) * self.dst_shape[3] //
+                self.num_data > MAX_STRIDE_BLK):
             with tik_instance.for_range(0, self.dst_shape[0]) \
                     as num_x1:
                 dst_gm_index = num_x1 * self.dst_shape[1] * \
@@ -667,8 +667,8 @@ class NHWC2FRACTAL4Compute:
                                             CUBE_SIZE - 1) // CUBE_SIZE) \
                     as num_x1:
                 dst_gm_index = (C0 * loop_hw // CUBE_SIZE *
-                                loop_time + num_x1) * self.dst_shape[1] *\
-                               self.dst_shape[2] * self.dst_shape[3] +\
+                                loop_time + num_x1) * self.dst_shape[1] * \
+                               self.dst_shape[2] * self.dst_shape[3] + \
                                num_n * self.dst_shape[3]
                 if self.src_shape[3] == C0:
                     tik_instance.data_move(self.dst_gm[dst_gm_index],
@@ -681,8 +681,8 @@ class NHWC2FRACTAL4Compute:
                                                     self.dst_shape[3]],
                                            0, 1, 1, 0, 0)
         else:
-            dst_gm_index = C0 * loop_hw // CUBE_SIZE *  loop_time *\
-                           self.dst_shape[1] * self.dst_shape[2] *\
+            dst_gm_index = C0 * loop_hw // CUBE_SIZE *  loop_time * \
+                           self.dst_shape[1] * self.dst_shape[2] * \
                            self.dst_shape[3] + num_n * self.dst_shape[3]
             if self.src_shape[3] == C0:
                 tik_instance.data_move(self.dst_gm[dst_gm_index],
@@ -778,14 +778,14 @@ class NHWC2FRACTAL4Compute:
                 self.data_rearrange_case_one(tik_instance, ub_trans,
                                              loop_number)
                 with tik_instance.if_scope(
-                    (self.dst_shape[1] * self.dst_shape[2] - 1) *
-                    self.dst_shape[3] // self.num_data >
-                    MAX_STRIDE_BLK):
+                        (self.dst_shape[1] * self.dst_shape[2] - 1) *
+                        self.dst_shape[3] // self.num_data >
+                        MAX_STRIDE_BLK):
                     with tik_instance.for_range(0, self.dst_shape[0]) \
                             as num_x1:
                         dst_gm_index = num_x1 * self.dst_shape[1] * \
-                                       self.dst_shape[2] *\
-                                       self.dst_shape[3] + num_n *\
+                                       self.dst_shape[2] * \
+                                       self.dst_shape[3] + num_n * \
                                        self.dst_shape[3]
                         tik_instance.data_move(self.dst_gm[dst_gm_index],
                                                ub_trans[num_x1 *
@@ -821,13 +821,13 @@ class NHWC2FRACTAL4Compute:
                 self.data_rearrange_case_one(tik_instance, ub_trans,
                                              align_loop)
                 with tik_instance.if_scope(
-                    (self.dst_shape[1] * self.dst_shape[2] -
-                     align_loop) * self.dst_shape[3] //
-                    self.num_data > MAX_STRIDE_BLK):
+                        (self.dst_shape[1] * self.dst_shape[2] -
+                         align_loop) * self.dst_shape[3] //
+                        self.num_data > MAX_STRIDE_BLK):
                     with tik_instance.for_range(0, self.dst_shape[0]) \
                             as num_x1:
                         dst_gm_index = num_x1 * self.dst_shape[1] * \
-                                       self.dst_shape[2] *\
+                                       self.dst_shape[2] * \
                                        self.dst_shape[3] + \
                                        (num_n - (align_loop - 1)) * \
                                        self.dst_shape[3]
@@ -839,7 +839,7 @@ class NHWC2FRACTAL4Compute:
                                                self.dst_shape[3] //
                                                self.num_data, 0, 0)
                 with tik_instance.else_scope():
-                    dst_gm_index = (num_n - (align_loop - 1)) *\
+                    dst_gm_index = (num_n - (align_loop - 1)) * \
                                    self.dst_shape[3]
                     tik_instance.data_move(self.dst_gm[dst_gm_index],
                                            ub_trans[0],
@@ -855,13 +855,13 @@ class NHWC2FRACTAL4Compute:
                 self.data_rearrange_case_one(tik_instance, ub_trans,
                                              remainder)
                 with tik_instance.if_scope(
-                    (self.dst_shape[1] * self.dst_shape[2] -
-                     remainder) * self.dst_shape[3] //
-                    self.num_data > MAX_STRIDE_BLK):
+                        (self.dst_shape[1] * self.dst_shape[2] -
+                         remainder) * self.dst_shape[3] //
+                        self.num_data > MAX_STRIDE_BLK):
                     with tik_instance.for_range(0, self.dst_shape[0]) \
                             as num_x1:
                         dst_gm_index = num_x1 * self.dst_shape[1] * \
-                                       self.dst_shape[2] *\
+                                       self.dst_shape[2] * \
                                        self.dst_shape[3] + \
                                        (num_n - (remainder - 1)) * \
                                        self.dst_shape[3]
@@ -872,7 +872,7 @@ class NHWC2FRACTAL4Compute:
                                                remainder * self.dst_shape[3] //
                                                self.num_data, 0, 0)
                 with tik_instance.else_scope():
-                    dst_gm_index = (num_n - (remainder - 1)) *\
+                    dst_gm_index = (num_n - (remainder - 1)) * \
                                    self.dst_shape[3]
                     tik_instance.data_move(self.dst_gm[dst_gm_index],
                                            ub_trans[0],
@@ -911,13 +911,13 @@ class NHWC2FRACTAL4Compute:
                 self.data_rearrange_case_zero(tik_instance, ub_ori, ub_trans,
                                               align_loop)
                 with tik_instance.if_scope(
-                    (self.dst_shape[1] * self.dst_shape[2] -
-                     align_loop) * self.dst_shape[3] //
-                    self.num_data > MAX_STRIDE_BLK):
+                        (self.dst_shape[1] * self.dst_shape[2] -
+                         align_loop) * self.dst_shape[3] //
+                        self.num_data > MAX_STRIDE_BLK):
                     with tik_instance.for_range(0, self.dst_shape[0]) \
                             as num_x1:
                         dst_gm_index = num_x1 * self.dst_shape[1] * \
-                                       self.dst_shape[2] *\
+                                       self.dst_shape[2] * \
                                        self.dst_shape[3] + \
                                        (num_n - (align_loop - 1)) * \
                                        self.dst_shape[3]
@@ -939,7 +939,7 @@ class NHWC2FRACTAL4Compute:
                                                    self.dst_shape[3] //
                                                    self.num_data, 0, 0)
                 with tik_instance.else_scope():
-                    dst_gm_index = (num_n - (align_loop - 1)) *\
+                    dst_gm_index = (num_n - (align_loop - 1)) * \
                                    self.dst_shape[3]
                     with tik_instance.if_scope(align_loop == 1):
                         tik_instance.data_move(self.dst_gm[dst_gm_index],
@@ -972,13 +972,13 @@ class NHWC2FRACTAL4Compute:
                 self.data_rearrange_case_zero(tik_instance, ub_ori, ub_trans,
                                               remainder)
                 with tik_instance.if_scope(
-                    (self.dst_shape[1] * self.dst_shape[2] -
-                     remainder) * self.dst_shape[3] //
-                    self.num_data > MAX_STRIDE_BLK):
+                        (self.dst_shape[1] * self.dst_shape[2] -
+                         remainder) * self.dst_shape[3] //
+                        self.num_data > MAX_STRIDE_BLK):
                     with tik_instance.for_range(0, self.dst_shape[0]) \
                             as num_x1:
                         dst_gm_index = num_x1 * self.dst_shape[1] * \
-                                       self.dst_shape[2] *\
+                                       self.dst_shape[2] * \
                                        self.dst_shape[3] + \
                                        (num_n - (remainder - 1)) * \
                                        self.dst_shape[3]
@@ -1000,7 +1000,7 @@ class NHWC2FRACTAL4Compute:
                                                    self.dst_shape[3] //
                                                    self.num_data, 0, 0)
                 with tik_instance.else_scope():
-                    dst_gm_index = (num_n - (remainder - 1)) *\
+                    dst_gm_index = (num_n - (remainder - 1)) * \
                                    self.dst_shape[3]
                     with tik_instance.if_scope(remainder == 1):
                         tik_instance.data_move(self.dst_gm[dst_gm_index],
@@ -1053,7 +1053,7 @@ class NHWC2FRACTAL4Compute:
 
         if loop_remainder != 0:
             is_last = 1
-            src_gm_index = num_n * self.src_shape[3] * ori_hw + ori_hw //\
+            src_gm_index = num_n * self.src_shape[3] * ori_hw + ori_hw // \
                            loop_hw * loop_hw * self.src_shape[3]
             tik_instance.data_move(ub_ori[0],
                                    self.src_gm[src_gm_index],
@@ -1081,7 +1081,7 @@ class NHWC2FRACTAL4Compute:
             self.data_rearrange_case_three(tik_instance, ub_trans, loop_hw)
             if (self.dst_shape[1] * self.dst_shape[2] - 1) * \
                     self.dst_shape[3] // self.num_data > MAX_STRIDE_BLK:
-                with tik_instance.for_range(0, C0 * loop_hw // CUBE_SIZE)\
+                with tik_instance.for_range(0, C0 * loop_hw // CUBE_SIZE) \
                         as num_x1:
                     dst_gm_index = (C0 * loop_hw // CUBE_SIZE * num_loop_hw +
                                     num_x1) * self.dst_shape[1] * \
@@ -1119,7 +1119,7 @@ class NHWC2FRACTAL4Compute:
                                                     self.dst_shape[3]],
                                            0, 1, 1, 0, 0)
             else:
-                dst_gm_index = C0 * loop_hw // CUBE_SIZE *\
+                dst_gm_index = C0 * loop_hw // CUBE_SIZE * \
                                (ori_hw // loop_hw) * \
                                self.dst_shape[1] * self.dst_shape[2] * \
                                self.dst_shape[3] + num_n * self.dst_shape[3]
@@ -1165,7 +1165,7 @@ class NHWC2FRACTAL4Compute:
             if self.src_shape[0] % CUBE_SIZE != 0:
                 with tik_instance.if_scope(sum_core + core_loop - 1 <
                                            self.src_shape[0]):
-                    if num_data_one_loop % CUBE_SIZE != 0 and\
+                    if num_data_one_loop % CUBE_SIZE != 0 and \
                             self.src_shape[3] == 4:
                         self.data_move_case_three(tik_instance, ub_ori,
                                                   ub_trans, core_loop,

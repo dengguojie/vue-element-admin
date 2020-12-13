@@ -15,6 +15,7 @@
 """
 dynamic div
 """
+# pylint: disable=too-many-locals,unused-argument
 import te.lang.cce as tbe
 from te import platform as tbe_platform
 import te.lang.base as tbe_base
@@ -49,8 +50,8 @@ def div_compute(input_x, input_y, output_z, kernel_name="div"):
     x_shape = shape_util.shape_to_list(input_x.shape)
     y_shape = shape_util.shape_to_list(input_y.shape)
     x_shape, y_shape, z_shape = shape_util.broadcast_shapes(x_shape, y_shape,
-                                                 param_name_input1="input_x",
-                                                 param_name_input2="input_y")
+                                                            param_name_input1="input_x",
+                                                            param_name_input2="input_y")
     dtype_x = input_x.dtype
     int_list = ("int8", "uint8", "int32")
     if tbe_platform.cce_conf.api_check_support("te.lang.cce.vdiv",
@@ -71,6 +72,7 @@ def div_compute(input_x, input_y, output_z, kernel_name="div"):
     return res
 
 
+# pylint: disable=redefined-argument-from-local
 @tbe_base.register_operator("Div")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)

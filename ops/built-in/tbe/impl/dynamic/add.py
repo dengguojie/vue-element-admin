@@ -27,6 +27,7 @@ SHAPE_SIZE_LIMIT = 2147483648
 SIZE_SIXTEEN = 16
 
 
+# pylint: disable=too-many-locals,unused-variable,invalid-name
 def _can_division_sixteen(shape):
     if shape[-1] == 0 or shape[-2] == 0:
         error_info = {}
@@ -39,12 +40,12 @@ def _can_division_sixteen(shape):
         error_info['param1_value'] = str(shape[-1])
         error_info['param2_value'] = str(shape[-2])
         raise RuntimeError(error_info, "Op[%s] has rule: %s, "
-                           "but [%s] is [%s], [%s] is [%s]." % (
-                           error_info['op_name'], error_info['rule_desc'],
-                           error_info['param_name1'],
-                           error_info['param1_value'],
-                           error_info['param_name2'],
-                           error_info['param2_value']))
+                                       "but [%s] is [%s], [%s] is [%s]." % (
+                               error_info['op_name'], error_info['rule_desc'],
+                               error_info['param_name1'],
+                               error_info['param1_value'],
+                               error_info['param_name2'],
+                               error_info['param2_value']))
 
     if shape[-1] % SIZE_SIXTEEN == 0 and shape[-2] % SIZE_SIXTEEN == 0:
         return True
@@ -128,6 +129,9 @@ def _infer_shape(format_pattern, x, y):
 
 @tbe_base.register_fusion_compute("Add")
 def add_fusion_compute(input_x, input_y, output_z, kernel_name="add"):
+    """
+    add_fusion_compute
+    """
     fusion_util.check_fusion_input([input_x, input_y])
 
     dict_x = fusion_util.extract_dict(input_x)
@@ -245,10 +249,10 @@ def add(input_x, input_y, output_z, kernel_name="add"):
 
     ins = tbe_base.classify([input_x, input_y], tbe_base.Mode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
-    for (input_x, input_y) in ins:
+    for (_input_x, _input_y) in ins:
         with tbe_base.compute():
             shape_x, shape_y = \
-                shape_util.variable_shape([input_x, input_y], support_broadcast=True)
+                shape_util.variable_shape([_input_x, _input_y], support_broadcast=True)
             shape_x, shape_y = shape_util.refine_shapes_for_broadcast(shape_x, shape_y)
             data_x = tvm.placeholder(shape_x, name="data_1", dtype=x_dtype)
             data_y = tvm.placeholder(shape_y, name="data_2", dtype=y_dtype)

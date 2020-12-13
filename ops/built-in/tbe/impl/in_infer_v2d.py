@@ -21,13 +21,14 @@ from __future__ import division
 import te.lang.cce
 from te import tvm
 from te import platform as tbe_platform
+from te.utils import para_check
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
-from te.utils import para_check
 
 NONETYPE = type(None)
 
 
+# pylint: disable=too-many-statements,unused-argument,unused-variable
 def _check_shape(shape, data_format="NC1HWC0", param_name="x"):
     """
      Function to check input tensors dims.
@@ -43,9 +44,9 @@ def _check_shape(shape, data_format="NC1HWC0", param_name="x"):
      None
      """
     para_check.check_shape(shape, min_rank=5, max_rank=5,
-                param_name=param_name)
+                           param_name=param_name)
     para_check.check_format(data_format.upper(), ("NC1HWC0",),
-                 param_name=param_name)
+                            param_name=param_name)
 
 
 def check_rule(data, rule_desc, param_name=para_check.PARAM_NAME):
@@ -278,7 +279,7 @@ def in_infer_v2d(x, gamma, beta, mean, variance, variance_sqrt,
 
         dtype_variance_sqrt = variance_sqrt.get("dtype")
         para_check.check_dtype(dtype_variance_sqrt.lower(), ("float32",),
-                    param_name="variance_sqrt")
+                               param_name="variance_sqrt")
 
         shape_mean = mean.get("shape")
         shape_variance = variance.get("shape")

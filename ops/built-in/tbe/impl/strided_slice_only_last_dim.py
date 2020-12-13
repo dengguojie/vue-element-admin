@@ -15,11 +15,15 @@
 """
 strided_slice_only_last_dim
 """
+# pylint: disable=too-many-locals,too-many-statements,unused-variable,
 from te import tik
 from te import platform as tbe_platform
 
 
 def strided_slice_only_last_dim(input_shape, dtype, output_shape, begin, kernel_name):
+    """
+    strided_slice_only_last_dim
+    """
     tik_instance = tik.Tik()
     aicore_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
 
@@ -76,7 +80,7 @@ def strided_slice_only_last_dim(input_shape, dtype, output_shape, begin, kernel_
     input_ub_size = expect_last_dim * input_len_stride
     output_ub_size = consecutive * input_len_stride
 
-    output_length_stride  = output_ub_size // type_block_number
+    output_length_stride = output_ub_size // type_block_number
     input_ub_len_stride = input_ub_size // type_block_number
 
     scalar = 1.0
@@ -114,8 +118,8 @@ def strided_slice_only_last_dim(input_shape, dtype, output_shape, begin, kernel_
         with tik_instance.if_scope(total_cycle == core_num - 1):
             with tik_instance.for_range(0, input_tail_stride) as group1:
                 tik_instance.data_move(input_ub_data[group1 * expect_last_dim],
-                                      input_data[(core_num-1) * tail_len_burst_one
-                                                 + (group1 * len_burst) + start], 0, 1, ub_block_dim, 0, 0)
+                                       input_data[(core_num-1) * tail_len_burst_one
+                                                  + (group1 * len_burst) + start], 0, 1, ub_block_dim, 0, 0)
             tik_instance.vmuls(64, output_ub_data, input_ub_data, scalar, input_tail_stride, 1, 1, 10, 11)
             tik_instance.vmuls(16, output_ub_data[64], input_ub_data[64], scalar, input_tail_stride, 1, 1, 10, 11)
             tik_instance.data_move(output_data[(core_num-1) * output_length_stride * type_block_number],

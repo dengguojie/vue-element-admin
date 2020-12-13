@@ -15,7 +15,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 sqrt_grad
 """
-
 import te.lang.cce as tbe
 from te import platform as tbe_platform
 import te.lang.base as tbe_base
@@ -30,8 +29,7 @@ from te.utils.error_manager import error_manager_vector
 SHAPE_LIMIT = 1 << 30
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-
+# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-locals
 def sqrt_grad_compute(x, dx, out, kernel_name="sqrt_grad"):
     """
     algorithm: sqrt_grad_compute
@@ -60,6 +58,7 @@ def sqrt_grad_compute(x, dx, out, kernel_name="sqrt_grad"):
     return res
 
 
+# pylint: disable=redefined-argument-from-local
 @tbe_base.register_operator("SqrtGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)

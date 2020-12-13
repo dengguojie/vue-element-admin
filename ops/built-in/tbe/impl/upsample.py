@@ -39,10 +39,9 @@ def _check_shape_dtype_format(input_shape, input_dtype, input_format, stride_h, 
     if len(input_shape) != DIM_5HD:
         error_info = {'errCode': 'E80012', 'opname': 'upsample', 'expect_value': '5',
                       'real_value': str(len(input_shape))}
-        raise RuntimeError(
-            error_info,
-            "In op[%s], the num of dimensions of input[%s] should be [%s], but actually is [%s]."
-            % (error_info['opname'], 'x', error_info['expect_value'], error_info['real_value']))
+        raise RuntimeError(error_info,
+                           "In op[%s], the num of dimensions of input[%s] should be [%s], but actually is [%s]."
+                           % (error_info['opname'], 'x', error_info['expect_value'], error_info['real_value']))
     n, c1, h, w, c0 = input_shape
 
     para_check.check_shape([n, c1, h * stride_h, w * stride_w, c0])
@@ -55,10 +54,9 @@ def _check_shape_dtype_format(input_shape, input_dtype, input_format, stride_h, 
     if input_dtype not in check_list:
         error_info = {'errCode': 'E80006', 'opname': 'upsample', 'tensor_name': 'x',
                       'excepted_dtype_list': str(check_list), 'dtype': str(input_dtype)}
-        raise RuntimeError(
-            error_info,
-            "In op[%s], the input[%s]'s dtype should be one of [%s], but actually is [%s]."
-            % (error_info['opname'], 'x', str(check_list), str(input_dtype)))
+        raise RuntimeError(error_info,
+                           "In op[%s], the input[%s]'s dtype should be one of [%s], but actually is [%s]."
+                           % (error_info['opname'], 'x', str(check_list), str(input_dtype)))
     shape_c0 = C0
     if input_shape[DIM_5HD - 1] != shape_c0:
         raise RuntimeError(
@@ -67,10 +65,9 @@ def _check_shape_dtype_format(input_shape, input_dtype, input_format, stride_h, 
     if input_format != "NC1HWC0":
         error_info = {'errCode': 'E80015', 'opname': 'upsample', 'tensor_name': 'x', 'excepted_dtype_list': "NC1HWC0",
                       'format': str(input_format)}
-        raise RuntimeError(
-            error_info,
-            "In op[%s], the input[%s]'s dtype should be [%s], but actually is [%s]."
-            % (error_info['opname'], 'x', "NC1HWC0", str(input_format)))
+        raise RuntimeError(error_info,
+                           "In op[%s], the input[%s]'s dtype should be [%s], but actually is [%s]."
+                           % (error_info['opname'], 'x', "NC1HWC0", str(input_format)))
 
 
 def _upsample_check(dic, stride_h, stride_w, kernel_name="upsample"):

@@ -66,9 +66,9 @@ def _gm_to_ub_one(args):
             c_cycle = ori_nburst // n_burst
             c_mod = ori_nburst % n_burst
             with tik_instance.for_range(0, c_cycle) as num_cy:
-                data_cur = data_offset + (burst_len + src_stride)\
+                data_cur = data_offset + (burst_len + src_stride) \
                            * cp_align_len * n_burst * num_cy
-                ub_cur = ub_offset + (burst_len + dst_stride)\
+                ub_cur = ub_offset + (burst_len + dst_stride) \
                          * cp_align_len * n_burst * num_cy
                 tik_instance.data_move(
                     data_ub[ub_cur],
@@ -78,9 +78,9 @@ def _gm_to_ub_one(args):
                     src_stride, dst_stride)
 
             if c_mod > 0:
-                data_cur = data_offset + (burst_len + src_stride)\
+                data_cur = data_offset + (burst_len + src_stride) \
                            * cp_align_len * n_burst * c_cycle
-                ub_cur = ub_offset + (burst_len + dst_stride)\
+                ub_cur = ub_offset + (burst_len + dst_stride) \
                          * cp_align_len * n_burst * c_cycle
                 tik_instance.data_move(
                     data_ub[ub_cur],
@@ -91,9 +91,9 @@ def _gm_to_ub_one(args):
 
     else:
         with tik_instance.for_range(0, ori_nburst) as num_nb:
-            data_cur = data_offset + (burst_len + src_stride)\
+            data_cur = data_offset + (burst_len + src_stride) \
                        * cp_align_len * num_nb
-            ub_cur = ub_offset + (burst_len + dst_stride)\
+            ub_cur = ub_offset + (burst_len + dst_stride) \
                      * cp_align_len * num_nb
             tik_instance.data_move(
                 data_ub[ub_cur],
@@ -125,9 +125,9 @@ def _ub_to_gm_one(args):
             c_mod = ori_nburst % n_burst
 
             with tik_instance.for_range(0, c_cycle) as num_cy:
-                dst_cur = dst_offset + (burst_len + dst_stride)\
+                dst_cur = dst_offset + (burst_len + dst_stride) \
                           * cp_align_len * n_burst * num_cy
-                res_cur = res_offset + (burst_len + src_stride)\
+                res_cur = res_offset + (burst_len + src_stride) \
                           * cp_align_len * n_burst * num_cy
 
                 tik_instance.data_move(
@@ -137,9 +137,9 @@ def _ub_to_gm_one(args):
                     src_stride, dst_stride)
 
             if c_mod > 0:
-                dst_cur = dst_offset + (burst_len + dst_stride)\
+                dst_cur = dst_offset + (burst_len + dst_stride) \
                           * cp_align_len * n_burst * c_cycle
-                res_cur = res_offset + (burst_len + src_stride)\
+                res_cur = res_offset + (burst_len + src_stride) \
                           * cp_align_len * n_burst * c_cycle
 
                 tik_instance.data_move(
@@ -150,9 +150,9 @@ def _ub_to_gm_one(args):
 
     else:
         with tik_instance.for_range(0, ori_nburst) as num_nb:
-            dst_cur = dst_offset + (burst_len + dst_stride)\
+            dst_cur = dst_offset + (burst_len + dst_stride) \
                       * cp_align_len * num_nb
-            res_cur = res_offset + (burst_len + src_stride)\
+            res_cur = res_offset + (burst_len + src_stride) \
                       * cp_align_len * num_nb
 
             tik_instance.data_move(
@@ -183,9 +183,9 @@ def _gm_to_ub_one_tik(args):
             c_cycle = ori_nburst // n_burst
             c_mod = ori_nburst % n_burst
             with tik_instance.for_range(0, c_cycle) as num_cy:
-                data_cur = data_offset + (burst_len + src_stride)\
+                data_cur = data_offset + (burst_len + src_stride) \
                            * cp_align_len * n_burst * num_cy
-                ub_cur = ub_offset + (burst_len + dst_stride)\
+                ub_cur = ub_offset + (burst_len + dst_stride) \
                          * cp_align_len * n_burst * num_cy
                 tik_instance.data_move(
                     data_ub[ub_cur],
@@ -195,9 +195,9 @@ def _gm_to_ub_one_tik(args):
                     src_stride, dst_stride)
 
             if c_mod > 0:
-                data_cur = data_offset + (burst_len + src_stride)\
+                data_cur = data_offset + (burst_len + src_stride) \
                            * cp_align_len * n_burst * c_cycle
-                ub_cur = ub_offset + (burst_len + dst_stride)\
+                ub_cur = ub_offset + (burst_len + dst_stride) \
                          * cp_align_len * n_burst * c_cycle
                 tik_instance.data_move(
                     data_ub[ub_cur],
@@ -208,9 +208,9 @@ def _gm_to_ub_one_tik(args):
 
     with tik_instance.else_scope():
         with tik_instance.for_range(0, ori_nburst) as num_nb:
-            data_cur = data_offset + (burst_len + src_stride)\
+            data_cur = data_offset + (burst_len + src_stride) \
                        * cp_align_len * num_nb
-            ub_cur = ub_offset + (burst_len + dst_stride)\
+            ub_cur = ub_offset + (burst_len + dst_stride) \
                      * cp_align_len * num_nb
             tik_instance.data_move(
                 data_ub[ub_cur],
@@ -242,9 +242,9 @@ def _ub_to_gm_one_tik(args):
             c_mod = ori_nburst % n_burst
 
             with tik_instance.for_range(0, c_cycle) as num_cy:
-                dst_cur = dst_offset + (burst_len + dst_stride)\
+                dst_cur = dst_offset + (burst_len + dst_stride) \
                           * cp_align_len * n_burst * num_cy
-                res_cur = res_offset + (burst_len + src_stride)\
+                res_cur = res_offset + (burst_len + src_stride) \
                           * cp_align_len * n_burst * num_cy
 
                 tik_instance.data_move(
@@ -254,9 +254,9 @@ def _ub_to_gm_one_tik(args):
                     src_stride, dst_stride)
 
             if c_mod > 0:
-                dst_cur = dst_offset + (burst_len + dst_stride)\
+                dst_cur = dst_offset + (burst_len + dst_stride) \
                           * cp_align_len * n_burst * c_cycle
-                res_cur = res_offset + (burst_len + src_stride)\
+                res_cur = res_offset + (burst_len + src_stride) \
                           * cp_align_len * n_burst * c_cycle
 
                 tik_instance.data_move(
@@ -267,9 +267,9 @@ def _ub_to_gm_one_tik(args):
 
     with tik_instance.else_scope():
         with tik_instance.for_range(0, ori_nburst) as num_nb:
-            dst_cur = dst_offset + (burst_len + dst_stride)\
+            dst_cur = dst_offset + (burst_len + dst_stride) \
                       * cp_align_len * num_nb
-            res_cur = res_offset + (burst_len + src_stride)\
+            res_cur = res_offset + (burst_len + src_stride) \
                       * cp_align_len * num_nb
 
             tik_instance.data_move(
@@ -301,9 +301,9 @@ def _ub_to_gm_one_tik2(args):
             c_mod = ori_nburst % n_burst
 
             with tik_instance.for_range(0, c_cycle) as num_cy:
-                dst_cur = dst_offset + (burst_len + dst_stride)\
+                dst_cur = dst_offset + (burst_len + dst_stride) \
                           * cp_align_len * n_burst * num_cy
-                res_cur = res_offset + (burst_len + src_stride)\
+                res_cur = res_offset + (burst_len + src_stride) \
                           * cp_align_len * n_burst * num_cy
 
                 tik_instance.data_move(
@@ -313,9 +313,9 @@ def _ub_to_gm_one_tik2(args):
                     src_stride, dst_stride)
 
             with tik_instance.if_scope(c_mod > 0):
-                dst_cur = dst_offset + (burst_len + dst_stride)\
+                dst_cur = dst_offset + (burst_len + dst_stride) \
                           * cp_align_len * n_burst * c_cycle
-                res_cur = res_offset + (burst_len + src_stride)\
+                res_cur = res_offset + (burst_len + src_stride) \
                           * cp_align_len * n_burst * c_cycle
 
                 tik_instance.data_move(
@@ -326,9 +326,9 @@ def _ub_to_gm_one_tik2(args):
 
     else:
         with tik_instance.for_range(0, ori_nburst) as num_nb:
-            dst_cur = dst_offset + (burst_len + dst_stride)\
+            dst_cur = dst_offset + (burst_len + dst_stride) \
                       * cp_align_len * num_nb
-            res_cur = res_offset + (burst_len + src_stride)\
+            res_cur = res_offset + (burst_len + src_stride) \
                       * cp_align_len * num_nb
 
             tik_instance.data_move(
@@ -362,7 +362,7 @@ def _set_loop(tik_instance, num_core, max_core, total_dim):
 
 
 # pylint: disable=locally-disabled,too-many-instance-attributes
-# pylint: disable=locally-disabled,old-style-class,too-many-statements
+# pylint: disable=locally-disabled,too-many-statements,unused-variable
 class Ndc1hwc02NcdhwCompute:
     """
     Rearranges data from NDC1HWC0 format to NCDHW format
@@ -398,20 +398,20 @@ class Ndc1hwc02NcdhwCompute:
         function of moving data for split hw scene
 
         """
-        tik_instance, ub_ori, ub_trans, nd_index, n_index,\
+        tik_instance, ub_ori, ub_trans, nd_index, n_index, \
         d_index, hw_before, hw_len = args
 
         hw_i = self.h_i * self.w_i
         c_align = self.c_1 * self.c_0
 
-        data_offset = nd_index * self.c_1 * hw_i * self.c_0\
+        data_offset = nd_index * self.c_1 * hw_i * self.c_0 \
                       + hw_before * self.c_0
         ub_offset = 0
         ori_nburst = self.c_1
         burst_len = hw_len * self.c_0 // self.cp_align_len
         src_stride = (hw_i - hw_len) * self.c_0 // self.cp_align_len
         dst_stride = 0
-        args = tik_instance, self.src_gm, ub_ori, data_offset, ub_offset,\
+        args = tik_instance, self.src_gm, ub_ori, data_offset, ub_offset, \
                ori_nburst, burst_len, src_stride, dst_stride, self.cp_align_len
         if isinstance(hw_len, int):
             _gm_to_ub_one(args)
@@ -465,8 +465,8 @@ class Ndc1hwc02NcdhwCompute:
 
         if hw_i % self.cp_align_len > 0:
             with tik_instance.for_range(0, self.c_i) as num_ci:
-                dst_cur = n_index * self.c_i * self.d_i * hw_i\
-                          + num_ci * self.d_i * hw_i\
+                dst_cur = n_index * self.c_i * self.d_i * hw_i \
+                          + num_ci * self.d_i * hw_i \
                           + d_index * hw_i + hw_before
                 res_cur = num_ci * hw_len
                 burst_len = hw_len // self.cp_align_len
@@ -475,16 +475,16 @@ class Ndc1hwc02NcdhwCompute:
                     ub_ori[res_cur],
                     0, 1, burst_len, 0, 0)
         else:
-            dst_offset = n_index * self.c_i * self.d_i * hw_i\
+            dst_offset = n_index * self.c_i * self.d_i * hw_i \
                          + d_index * hw_i + hw_before
             res_offset = 0
             ori_nburst = self.c_i
             burst_len = hw_len // self.cp_align_len
             src_stride = 0
-            dst_stride = ((self.d_i - 1) * hw_i + (hw_i - hw_len))\
+            dst_stride = ((self.d_i - 1) * hw_i + (hw_i - hw_len)) \
                          // self.cp_align_len
-            args = tik_instance, self.dst_gm, ub_ori, dst_offset,\
-                   res_offset, ori_nburst, burst_len, src_stride,\
+            args = tik_instance, self.dst_gm, ub_ori, dst_offset, \
+                   res_offset, ori_nburst, burst_len, src_stride, \
                    dst_stride, self.cp_align_len
             if isinstance(hw_len, int):
                 _ub_to_gm_one(args)
@@ -497,7 +497,7 @@ class Ndc1hwc02NcdhwCompute:
         16 <= ub_ele // c_align < hw_i
         """
         c_align = self.c_1 * self.c_0
-        hw_ub = (self.ub_ele // c_align // self.cp_align_len)\
+        hw_ub = (self.ub_ele // c_align // self.cp_align_len) \
                 * self.cp_align_len
         hw_i = self.h_i * self.w_i
         hw_zu = _ceil_div(hw_i, hw_ub)
@@ -528,7 +528,7 @@ class Ndc1hwc02NcdhwCompute:
                 with tik_instance.if_scope(hw_index < hw_zu - 1):
                     hw_len = hw_ub
                     hw_before = hw_index * hw_ub
-                    args = tik_instance, ub_ori, ub_trans, nd_index,\
+                    args = tik_instance, ub_ori, ub_trans, nd_index, \
                            n_index, d_index, hw_before, hw_len
                     self.func_split_hw(args)
                 with tik_instance.else_scope():
@@ -536,7 +536,7 @@ class Ndc1hwc02NcdhwCompute:
                     # hw_temp = hw_i - ((hw_zu - 1) * hw_ub)
                     hw_len = _ceil_fill(hw_temp, 16)
                     hw_before = hw_i - hw_len
-                    args = tik_instance, ub_ori, ub_trans, nd_index,\
+                    args = tik_instance, ub_ori, ub_trans, nd_index, \
                            n_index, d_index, hw_before, hw_len
                     self.func_split_hw(args)
 
@@ -593,8 +593,8 @@ class Ndc1hwc02NcdhwCompute:
 
         if hw_i % self.cp_align_len > 0:
             with tik_instance.for_range(0, self.c_i) as num_ci:
-                dst_cur = n_index * self.c_i * self.d_i * hw_i\
-                          + num_ci * self.d_i * hw_i\
+                dst_cur = n_index * self.c_i * self.d_i * hw_i \
+                          + num_ci * self.d_i * hw_i \
                           + d_index * hw_i
                 res_cur = num_ci * hw_align
                 sub_ele = hw_i - self.cp_align_len
@@ -611,15 +611,15 @@ class Ndc1hwc02NcdhwCompute:
                     ub_tail,
                     0, 1, 1, 0, 0)
         else:
-            dst_offset = n_index * self.c_i * self.d_i * hw_i\
+            dst_offset = n_index * self.c_i * self.d_i * hw_i \
                          + d_index * hw_i
             res_offset = 0
             ori_nburst = self.c_i
             burst_len = hw_i // self.cp_align_len
             src_stride = 0
             dst_stride = ((self.d_i - 1) * hw_i) // self.cp_align_len
-            args = tik_instance, self.dst_gm, ub_ori, dst_offset,\
-                   res_offset, ori_nburst, burst_len, src_stride,\
+            args = tik_instance, self.dst_gm, ub_ori, dst_offset, \
+                   res_offset, ori_nburst, burst_len, src_stride, \
                    dst_stride, self.cp_align_len
             _ub_to_gm_one(args)
 
@@ -664,7 +664,7 @@ class Ndc1hwc02NcdhwCompute:
         function of moving data for split c scene
 
         """
-        tik_instance, ub_ori, ub_trans, ub_tail, nd_index, n_index,\
+        tik_instance, ub_ori, ub_trans, ub_tail, nd_index, n_index, \
         d_index, c1_before, c1_len, c_before, c_len = args
 
         hw_i = self.h_i * self.w_i
@@ -713,8 +713,8 @@ class Ndc1hwc02NcdhwCompute:
 
         if hw_i % self.cp_align_len > 0:
             with tik_instance.for_range(0, c_len) as num_ci:
-                dst_cur = n_index * self.c_i * self.d_i * hw_i\
-                          + (c_before + num_ci) * self.d_i * hw_i\
+                dst_cur = n_index * self.c_i * self.d_i * hw_i \
+                          + (c_before + num_ci) * self.d_i * hw_i \
                           + d_index * hw_i
                 res_cur = num_ci * hw_align
                 sub_ele = hw_i - self.cp_align_len
@@ -731,8 +731,8 @@ class Ndc1hwc02NcdhwCompute:
                     ub_tail,
                     0, 1, 1, 0, 0)
         else:
-            dst_offset = n_index * self.c_i * self.d_i * hw_i\
-                         + c_before * self.d_i * hw_i\
+            dst_offset = n_index * self.c_i * self.d_i * hw_i \
+                         + c_before * self.d_i * hw_i \
                          + d_index * hw_i
             res_offset = 0
             ori_nburst = c_len
@@ -791,8 +791,8 @@ class Ndc1hwc02NcdhwCompute:
                     c1_len = c1_ub
                     c_before = c1_before * self.c_0
                     c_len = c1_len * self.c_0
-                    args = tik_instance, ub_ori, ub_trans, ub_tail,\
-                           nd_index, n_index, d_index, c1_before, c1_len,\
+                    args = tik_instance, ub_ori, ub_trans, ub_tail, \
+                           nd_index, n_index, d_index, c1_before, c1_len, \
                            c_before, c_len
                     self.func_split_c(args)
                 with tik_instance.else_scope():
@@ -800,7 +800,7 @@ class Ndc1hwc02NcdhwCompute:
                     c1_len = self.c_1 - (c1_index * c1_ub)
                     c_before = c1_before * self.c_0
                     c_len = c_d - c_before
-                    args = tik_instance, ub_ori, ub_trans, ub_tail,\
+                    args = tik_instance, ub_ori, ub_trans, ub_tail, \
                            nd_index, n_index, d_index, c1_before, c1_len, \
                            c_before, c_len
                     self.func_split_c(args)
@@ -812,12 +812,12 @@ class Ndc1hwc02NcdhwCompute:
         function of moving data for split big scene
 
         """
-        tik_instance, ub_ori, ub_trans, nd_index, n_index, d_index, c1_index,\
+        tik_instance, ub_ori, ub_trans, nd_index, n_index, d_index, c1_index, \
         hw_before, hw_len, c_before, c_len = args
 
         hw_i = self.h_i * self.w_i
-        data_offset = nd_index * self.c_1 * hw_i * self.c_0\
-                      + c1_index * hw_i * self.c_0\
+        data_offset = nd_index * self.c_1 * hw_i * self.c_0 \
+                      + c1_index * hw_i * self.c_0 \
                       + hw_before * self.c_0
         burst_len = hw_len * self.c_0 // self.cp_align_len
         tik_instance.data_move(ub_ori,
@@ -859,8 +859,8 @@ class Ndc1hwc02NcdhwCompute:
 
         if hw_i % self.cp_align_len > 0:
             with tik_instance.for_range(0, c_len) as num_ci:
-                dst_cur = n_index * self.c_i * self.d_i * hw_i\
-                          + (c_before + num_ci) * self.d_i * hw_i\
+                dst_cur = n_index * self.c_i * self.d_i * hw_i \
+                          + (c_before + num_ci) * self.d_i * hw_i \
                           + d_index * hw_i + hw_before
                 res_cur = num_ci * hw_len
                 burst_len = hw_len // self.cp_align_len
@@ -869,16 +869,16 @@ class Ndc1hwc02NcdhwCompute:
                     ub_trans[res_cur],
                     0, 1, burst_len, 0, 0)
         else:
-            dst_offset = n_index * self.c_i * self.d_i * hw_i\
-                          + c_before * self.d_i * hw_i\
-                          + d_index * hw_i + hw_before
+            dst_offset = n_index * self.c_i * self.d_i * hw_i \
+                         + c_before * self.d_i * hw_i \
+                         + d_index * hw_i + hw_before
             res_offset = 0
             ori_nburst = c_len
             burst_len = hw_len // self.cp_align_len
             src_stride = 0
             dst_stride = (self.d_i * hw_i - hw_len) // self.cp_align_len
-            args = tik_instance, self.dst_gm, ub_trans, dst_offset,\
-                   res_offset, ori_nburst, burst_len, src_stride,\
+            args = tik_instance, self.dst_gm, ub_trans, dst_offset, \
+                   res_offset, ori_nburst, burst_len, src_stride, \
                    dst_stride, self.cp_align_len
             if isinstance(hw_len, int):
                 _ub_to_gm_one(args)
@@ -891,7 +891,7 @@ class Ndc1hwc02NcdhwCompute:
         hw_i * c_i > ub_ele
         """
         hw_i = self.h_i * self.w_i
-        hw_ub = (self.ub_ele // self.c_0 // self.cp_align_len)\
+        hw_ub = (self.ub_ele // self.c_0 // self.cp_align_len) \
                 * self.cp_align_len
         hw_zu = _ceil_div(hw_i, hw_ub)
         all_core = self.n_i * self.d_i * self.c_1 * hw_zu
@@ -927,8 +927,8 @@ class Ndc1hwc02NcdhwCompute:
                     with tik_instance.if_scope(hw_index < hw_zu - 1):
                         hw_len = hw_ub
                         hw_before = hw_index * hw_ub
-                        args = tik_instance, ub_ori, ub_trans, nd_index,\
-                               n_index, d_index, c1_index, hw_before, hw_len,\
+                        args = tik_instance, ub_ori, ub_trans, nd_index, \
+                               n_index, d_index, c1_index, hw_before, hw_len, \
                                c_before, c_len
                         self.func_split_big(args)
 
@@ -936,8 +936,8 @@ class Ndc1hwc02NcdhwCompute:
                         hw_temp = hw_i - ((hw_zu - 1) * hw_ub)
                         hw_len = _ceil_fill(hw_temp, self.cp_align_len)
                         hw_before = hw_i - hw_len
-                        args = tik_instance, ub_ori, ub_trans, nd_index,\
-                               n_index, d_index, c1_index, hw_before, hw_len,\
+                        args = tik_instance, ub_ori, ub_trans, nd_index, \
+                               n_index, d_index, c1_index, hw_before, hw_len, \
                                c_before, c_len
                         self.func_split_big(args)
 
@@ -947,8 +947,8 @@ class Ndc1hwc02NcdhwCompute:
                     with tik_instance.if_scope(hw_index < hw_zu - 1):
                         hw_len = hw_ub
                         hw_before = hw_index * hw_ub
-                        args = tik_instance, ub_ori, ub_trans, nd_index,\
-                               n_index, d_index, c1_index, hw_before, hw_len,\
+                        args = tik_instance, ub_ori, ub_trans, nd_index, \
+                               n_index, d_index, c1_index, hw_before, hw_len, \
                                c_before, c_len
                         self.func_split_big(args)
 
@@ -956,8 +956,8 @@ class Ndc1hwc02NcdhwCompute:
                         hw_temp = hw_i - ((hw_zu - 1) * hw_ub)
                         hw_len = _ceil_fill(hw_temp, self.cp_align_len)
                         hw_before = hw_i - hw_len
-                        args = tik_instance, ub_ori, ub_trans, nd_index,\
-                               n_index, d_index, c1_index, hw_before, hw_len,\
+                        args = tik_instance, ub_ori, ub_trans, nd_index, \
+                               n_index, d_index, c1_index, hw_before, hw_len, \
                                c_before, c_len
                         self.func_split_big(args)
 
@@ -1073,13 +1073,13 @@ class Ndc1hwc02NcdhwCompute:
                 with tik_instance.if_scope(c1_index < self.c_1 - 1):
                     c_before = c1_index * self.c_0
                     c_len = self.c_0
-                    args = tik_instance, ub_ori, ub_trans, ub_tail, nd_index,\
+                    args = tik_instance, ub_ori, ub_trans, ub_tail, nd_index, \
                            n_index, d_index, c1_index, c_before, c_len
                     self.func_hwc0_core(args)
                 with tik_instance.else_scope():
                     c_before = c1_index * self.c_0
                     c_len = c_d - c_before
-                    args = tik_instance, ub_ori, ub_trans, ub_tail, nd_index,\
+                    args = tik_instance, ub_ori, ub_trans, ub_tail, nd_index, \
                            n_index, d_index, c1_index, c_before, c_len
                     self.func_hwc0_core(args)
 
@@ -1095,17 +1095,16 @@ class Ndc1hwc02NcdhwCompute:
         if hw_i >= self.cp_align_len:
             if c_align * hw_i <= self.ub_ele:
                 return "hw_align_chw_core"
-            elif c_align < self.ub_ele and self.ub_ele // c_align >= 16 \
+            if c_align < self.ub_ele and self.ub_ele // c_align >= 16 \
                     and self.ub_ele // c_align < hw_i:
                 return "split_hw"
-            elif c_align > self.ub_ele and hw_i * self.c_0 <= self.ub_ele:
+            if c_align > self.ub_ele and hw_i * self.c_0 <= self.ub_ele:
                 return "split_c"
-            elif hw_i * self.c_0 > self.ub_ele:
+            if hw_i * self.c_0 > self.ub_ele:
                 return "split_big"
-            elif hw_i * self.c_0 <= self.ub_ele:
+            if hw_i * self.c_0 <= self.ub_ele:
                 return "hwc0_core"
-        else:
-            return "not support"
+        return "not support"
 
     def ndc1hwc0_2_ncdhw_compute(self):
         """
@@ -1194,7 +1193,7 @@ def _check_parameters(src, dst, src_format, dst_format):
         raise RuntimeError(
             "the last dimension of src_shape is not 16, c0 must be 16 !")
 
-    if src_shape[0] != dst_shape[0] or src_shape[1] != dst_shape[2]\
+    if src_shape[0] != dst_shape[0] or src_shape[1] != dst_shape[2] \
             or src_shape[3] != dst_shape[3] or src_shape[4] != dst_shape[4]:
         raise RuntimeError("the shape of src and dst not match, "
                            "the 1st,2nd,4th,5th dimension of src_shape and "
@@ -1243,5 +1242,4 @@ def ndc1hwc0_2_ncdhw(src, dst, src_format, dst_format,
                                           dtype, kernel_name)
     if template_fp16.check_branch() != "not support":
         return template_fp16.get_tik_instance()
-    else:
-        raise RuntimeError("not support this kind of transfer")
+    raise RuntimeError("not support this kind of transfer")

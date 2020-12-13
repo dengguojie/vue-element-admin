@@ -21,10 +21,10 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
 
-
 SHAPE_SIZE_LIMIT = 2147483648
 
 
+# pylint: disable=too-many-locals,unused-variable,invalid-name,unused-argument
 @fusion_manager.register("segment_sum")
 def segment_sum_compute(input_x, input_y, output_y, kernel_name="segment_sum"):
     """
@@ -52,6 +52,9 @@ def segment_sum_compute(input_x, input_y, output_y, kernel_name="segment_sum"):
 
 
 def ids_is_1d_and_sorted(ids):
+    """
+    ids_is_1d_and_sorted
+    """
     n = len(ids)
     if ids != sorted(ids):
         raise RuntimeError("ids must be sorted!")

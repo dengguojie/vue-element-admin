@@ -18,7 +18,6 @@ lamb_next_m_v
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils import shape_util
 
@@ -48,8 +47,8 @@ def shape_broadcast(data_1, data_2):
     shape_y = shape_util.shape_to_list(data_2.shape)
     if shape_x != shape_y:
         shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y,
-                                                       param_name_input1="data_1",
-                                                       param_name_input2="data_2")
+                                                                  param_name_input1="data_1",
+                                                                  param_name_input2="data_2")
         data_1 = tbe.broadcast(data_1, shape_max)
         data_2 = tbe.broadcast(data_2, shape_max)
 
@@ -270,34 +269,34 @@ def lamb_next_m_v(input_mul3, input_mul2, input_realdiv1, input_mul1,
 
     shape_input_mul3, shape_mul3_sub1, shape_max_mul3 = \
         shape_util.broadcast_shapes(shape_input_mul3, shape_mul3_sub1, param_name_input1="input_mul3",
-                         param_name_input2="mul3_sub1")
+                                    param_name_input2="mul3_sub1")
     shape_input_mul2, shape_mul2_x, shape_max_mul2 = \
         shape_util.broadcast_shapes(shape_input_mul2, shape_mul2_x, param_name_input1="input_mul2",
-                         param_name_input2="mul2_x")
+                                    param_name_input2="mul2_x")
     shape_max_mul2, shape_max_mul3, shape_max_add1 = \
         shape_util.broadcast_shapes(shape_max_mul2, shape_max_mul3, param_name_input1="shape_max_mul2",
-                         param_name_input2="shape_max_mul3")
+                                    param_name_input2="shape_max_mul3")
     shape_input_realdiv1, shape_max_add1, shape_max_truediv1 = \
         shape_util.broadcast_shapes(shape_input_realdiv1, shape_max_add1, param_name_input1="input_realdiv1",
-                         param_name_input2="shape_max_add1")
+                                    param_name_input2="shape_max_add1")
     shape_max_truediv1, shape_add2_y, shape_max_add2 = \
         shape_util.broadcast_shapes(shape_max_truediv1, shape_add2_y, param_name_input1="shape_max_truediv1",
-                         param_name_input2="add2_y")
+                                    param_name_input2="add2_y")
     shape_input_mul1, shape_mul1_sub, shape_max_mul1 = \
         shape_util.broadcast_shapes(shape_input_mul1, shape_mul1_sub, param_name_input1="input_mul1",
-                         param_name_input2="mul1_sub")
+                                    param_name_input2="mul1_sub")
     shape_input_mul0, shape_mul0_x, shape_max_mul0 = \
         shape_util.broadcast_shapes(shape_input_mul0, shape_mul0_x, param_name_input1="input_mul0",
-                         param_name_input2="mul0_x")
+                                    param_name_input2="mul0_x")
     shape_max_mul0, shape_max_mul1, shape_max_add0 = \
         shape_util.broadcast_shapes(shape_max_mul0, shape_max_mul1, param_name_input1="shape_max_mul0",
-                         param_name_input2="shape_max_mul1")
+                                    param_name_input2="shape_max_mul1")
     shape_max_add0, shape_input_realdiv0, shape_max_truediv0 = \
         shape_util.broadcast_shapes(shape_max_add0, shape_input_realdiv0, param_name_input1="shape_max_add0",
-                         param_name_input2="input_realdiv0")
+                                    param_name_input2="input_realdiv0")
     shape_input_mul4, shape_mul4_x, shape_max_mul4 = \
         shape_util.broadcast_shapes(shape_input_mul4, shape_mul4_x, param_name_input1="input_mul4",
-                         param_name_input2="mul4_x")
+                                    param_name_input2="mul4_x")
 
     data_input_mul3 = tvm.placeholder(shape_input_mul3,
                                       name="data_input_mul3",

@@ -20,6 +20,7 @@ from te import tvm
 from te.utils.error_manager import error_manager_util
 
 
+# pylint: disable=invalid-name,unused-argument,too-many-arguments
 def _param_check(x, dilations):
     shape_x = x.get("shape")
     if shape_x is None:

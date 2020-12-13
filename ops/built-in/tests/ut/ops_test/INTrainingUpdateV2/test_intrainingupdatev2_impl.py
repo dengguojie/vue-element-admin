@@ -268,7 +268,7 @@ ut_case.add_case("all",
                                                 "test_right_010",
                                                 "success"))
 
-ut_case.add_precision_case("all",
+ut_case.add_precision_case(["Ascend910"],
                  gen_in_training_update_v2_precision_case((6, 15, 1, 1, 6),
                                                 (6, 15, 1, 1, 6),
                                                 (6, 15, 1, 1, 6), ((6, 15, 1, 1, 6)),
@@ -279,7 +279,7 @@ ut_case.add_precision_case("all",
                                                 "in_training_update_v2_precision_case_001",
                                                 "success"))
 
-ut_case.add_precision_case("all",
+ut_case.add_precision_case(["Ascend910"],
                  gen_in_training_update_v2_precision_case((6, 5, 1, 1, 6),
                                                 (6, 5, 1, 1, 6),
                                                 (6, 5, 1, 1, 6), (6, 5, 1, 1, 6),
@@ -289,7 +289,7 @@ ut_case.add_precision_case("all",
                                                 "float32",
                                                 "in_training_update_v2_precision_case_002",
                                                 "success"))
-ut_case.add_precision_case("all",
+ut_case.add_precision_case(["Ascend910"],
                  gen_in_training_update_v2_precision_case((6, 5, 1, 1, 6),
                                                 (6, 5, 1, 1, 6),
                                                 (6, 5, 1, 1, 6), (6, 5, 1, 1, 6),
@@ -300,7 +300,7 @@ ut_case.add_precision_case("all",
                                                 "in_training_update_v2_precision_case_003",
                                                 "success"))
 
-ut_case.add_precision_case("all",
+ut_case.add_precision_case(["Ascend910"],
                  gen_in_training_update_v2_precision_case((6, 5, 1, 1, 6),
                                                 (6, 5, 1, 1, 6),
                                                 (6, 5, 1, 1, 6), (6, 5, 1, 1, 6),

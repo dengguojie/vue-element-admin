@@ -32,6 +32,7 @@ acosh_grad
     [1] All : 'y' and 'dy' must have the same type and shape.
     [2] All : shape size limit is 2147483648.
 """
+# pylint: disable=invalid-name,too-many-locals
 import operator
 
 import te.lang.cce as tbe
@@ -81,7 +82,7 @@ def _taylor_sinh_compute(input_data):
     data_power_res = tbe.vmul(data_power_res, data_power_2)
 
     data_power_res = tbe.vadds(data_power_res, \
-                     tvm.const(NUM_ONE, input_data.dtype))
+                               tvm.const(NUM_ONE, input_data.dtype))
 
     # x * (1 + x^2( 1/3! + x^2(1/5! + x^2/7!)))
     data_power_res = tbe.vmul(data_power_res, input_data)
@@ -101,13 +102,13 @@ def _sinh_repeat_with_sqrt(data):
 
     data_square = tbe.vmul(data, data)
     data_square = tbe.vadds(data_square, tvm.const(NUM_ONE,
-                                                           data.dtype))
+                                                   data.dtype))
 
     data_square = tbe.vsqrt(data_square, 1)
 
     data_square = tbe.vmul(data_square, data)
     data_square = tbe.vmuls(data_square, tvm.const(NUM_TWO,
-                                                           data.dtype))
+                                                   data.dtype))
 
     return data_square
 

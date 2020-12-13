@@ -15,7 +15,7 @@
 """
 reverse_v2_d
 """
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name,too-many-statements,too-many-locals,too-many-lines
 import math
 import functools
 
@@ -34,14 +34,17 @@ MAX_BLOCK_NUM = 65536
 
 # pylint: disable = unused-argument
 def get_op_support_info(input_x, output_y, axis, kernel_name="reverse_v2_d"):
+    """
+    get_op_support_info
+    """
     shape_x = input_x.get("shape")
     dtype_x = input_x.get("dtype")
     format_x = input_x.get("format").upper()
     shape_x_len = len(input_x.get("shape"))
     axis = _param_check(shape_x, dtype_x, axis, kernel_name)
     axis = omit_axis_point_to_dim_1(shape_x, axis)
-    if format_x == "ND" or format_x == "NC1HWC0":
-        axis_split_matrix=[]
+    if format_x in ("ND", "NC1HWC0"):
+        axis_split_matrix = []
         for i in range(0, shape_x_len):
             if i not in axis:
                 split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]])]
@@ -79,7 +82,7 @@ def op_select_format(input_x, output_y, axis, kernel_name="reverse_v2_d"):
         is_support_5hd = False
 
     cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
-    if cce_product in ("Hi3796CV300ES",  "Hi3796CV300CS"):
+    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
         dtype_base = [
             "float16", "int8", "int16", "int32", "int64", "uint8",
             "uint16", "uint32", "uint64"
@@ -160,13 +163,12 @@ def reverse_v2_d(input_x, output_y, axis, kernel_name="reverse_v2_d"):
         move = MoveFromGm2Gm(shape_x, dtype_x, kernel_name)
         move.move()
         return move.tik_instance
+    reverse = ReverseExt2(shape_x, dtype_x, axis, kernel_name)
+    if reverse.reverse_bytesize < 32 or axis[-1] == len(shape_x) - 1:
+        reverse.reverse_ext2_scalar_compute()
     else:
-        reverse = ReverseExt2(shape_x, dtype_x, axis, kernel_name)
-        if reverse.reverse_bytesize < 32 or axis[-1] == len(shape_x) - 1:
-            reverse.reverse_ext2_scalar_compute()
-        else:
-            reverse.reverse_ext2_data_move_compute()
-        return reverse.tik_instance
+        reverse.reverse_ext2_data_move_compute()
+    return reverse.tik_instance
 
 
 def _param_check(shape_x, dtype_x, axis, kernel_name):
@@ -360,8 +362,8 @@ class ReverseExt2:
 
         block_bite_size = 32
         ub_size_bytes = (
-            tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) -
-            block_bite_size)
+                tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) -
+                block_bite_size)
         self.dsize = tbe_platform.get_bit_len(dtype_x) // 8
         self.data_each_block = block_bite_size // self.dsize
         self.ub_element_number = (
@@ -404,13 +406,13 @@ class ReverseExt2:
 
         if self.split_factor == 0 and self.split_axis == 0:
             self.input_ub_num = (
-                math.ceil(self.input_total_num / self.data_each_block) *
-                self.data_each_block)
+                    math.ceil(self.input_total_num / self.data_each_block) *
+                    self.data_each_block)
             self.get_outer_inner_shape_for_small_shape()
         else:
             self.input_ub_num = (
-                self.available_ub // self.data_each_block *
-                self.data_each_block)
+                    self.available_ub // self.data_each_block *
+                    self.data_each_block)
 
         self.data_x_gm = self.tik_instance.Tensor(
             self.dtype_x, self.old_shape_x, name="data_x_gm", scope=tik.scope_gm)
@@ -645,7 +647,7 @@ class ReverseExt2:
                     move_in_index1 = index * loop_step1
                     if 0 in self.axis:
                         move_out_index1 = (
-                            self.shape_x[0] - loop_step1 - index * loop_step1)
+                                self.shape_x[0] - loop_step1 - index * loop_step1)
                     else:
                         move_out_index1 = index * loop_step1
                     self.move_in_offset = move_in_index1 * inner_num
@@ -653,16 +655,16 @@ class ReverseExt2:
                     self.data_move_iteration(out_shape1, 0, 0, 0)
                 with self.tik_instance.else_scope():
                     move_in_index2 = (
-                        loop_num1 * loop_step1 +
-                        (index - loop_num1) * loop_step2)
-                    if 0 in self.axis:
-                        move_out_index2 = (
-                            self.shape_x[0] - loop_step1 * loop_num1 -
-                            loop_step2 - (index - loop_num1) * loop_step2)
-                    else:
-                        move_out_index2 = (
                             loop_num1 * loop_step1 +
                             (index - loop_num1) * loop_step2)
+                    if 0 in self.axis:
+                        move_out_index2 = (
+                                self.shape_x[0] - loop_step1 * loop_num1 -
+                                loop_step2 - (index - loop_num1) * loop_step2)
+                    else:
+                        move_out_index2 = (
+                                loop_num1 * loop_step1 +
+                                (index - loop_num1) * loop_step2)
                     self.move_in_offset = move_in_index2 * inner_num
                     self.move_out_offset = move_out_index2 * inner_num
                     self.data_move_iteration(out_shape2, 0, 0, 0)
@@ -951,8 +953,8 @@ class ReverseExt2:
         """
         inner_loop = self.shape_x[-1] // self.split_factor
         gm_read_index = (
-            indices_loop_index * self.shape_x[-1] +
-            inner_loop * self.split_factor)
+                indices_loop_index * self.shape_x[-1] +
+                inner_loop * self.split_factor)
         last_num = self.shape_x[-1] % self.split_factor
         burst_len = math.ceil(last_num / self.data_each_block)
         self.tik_instance.data_move(self.data_x_ub,
@@ -1005,9 +1007,9 @@ class ReverseExt2:
         """
         if self.split_axis != len(self.shape_x) - 1:
             outer_last_axis = (
-                self.shape_x[self.split_axis] // self.split_factor)
+                    self.shape_x[self.split_axis] // self.split_factor)
             self.outer_shape = (
-                self.shape_x[0:self.split_axis] + [outer_last_axis])
+                    self.shape_x[0:self.split_axis] + [outer_last_axis])
             self.inner_shape = ([self.split_factor] +
                                 self.shape_x[self.split_axis + 1:])
         else:
@@ -1043,7 +1045,7 @@ class ReverseExt2:
         if self.shape_x[-1] > half_ub_size:
             self.split_axis = len(self.shape_x) - 1
             self.split_factor = (
-                half_ub_size // self.data_each_block * self.data_each_block)
+                    half_ub_size // self.data_each_block * self.data_each_block)
 
         if self.split_axis < 0:
             self.split_axis = 0
@@ -1156,7 +1158,7 @@ class MoveFromGm2Gm:
         self.data_each_block = block_byte_size // dtype_byte_size
 
         ub_byte_size = (
-            tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - block_byte_size)
+                tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - block_byte_size)
 
         self.ub_element_number = (ub_byte_size // dtype_byte_size //
                                   self.data_each_block * self.data_each_block)

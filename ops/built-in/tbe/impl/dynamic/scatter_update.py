@@ -32,7 +32,7 @@ EIGHT_BIT = 8
 # bytes of one block
 BLOCK_BYTES = 32
 
-# pylint: disable=too-many-arguments,too-many-instance-attributes,unused-argument
+# pylint: disable=too-many-arguments,too-many-instance-attributes,unused-argument,invalid-name
 class ScatterUpdate():
     """
        Function: use to store scatter_update base parameters
@@ -494,10 +494,11 @@ def scatter_update(var, indices, updates, var_out, use_locking=False,
 
     Parameters
     ----------
-    var_dict: input var shape, dtype and range
-    indices_dict: input indices shape, dtype and range
-    updates_dict: input updates shape, dtype and range
-    var_out_dict: output shape, dtype and range
+    var: input var shape, dtype and range
+    indices: input indices shape, dtype and range
+    updates: input updates shape, dtype and range
+    var_out: output shape, dtype and range
+    use_locking: bool
     kernel_name: kernel name of scatter_add op
 
     Returns

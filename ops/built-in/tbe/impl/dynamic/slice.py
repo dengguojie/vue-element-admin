@@ -15,17 +15,14 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 strided slice
 """
-
 from __future__ import absolute_import
 import te.lang.dynamic
-from topi.cce import util
-from impl import common_util
 from te.utils import para_check
 from .strided_slice import StridedSlice
 
 
-# pylint: disable=locally-disabled,too-many-arguments,
-# pylint: unused-argument,too-many-locals
+# pylint: disable=locally-disabled,too-many-arguments,invalid-name,unused-argument
+# pylint: disable=unused-argument,too-many-locals,redefined-builtin
 @te.op.register_operator("Slice")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)

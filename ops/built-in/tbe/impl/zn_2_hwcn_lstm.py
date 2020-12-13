@@ -21,7 +21,6 @@ from functools import reduce as functools_reduce
 from te import tik
 from te import platform as tbe_platform
 from te.utils.op_utils import *
-from topi.cce import util
 
 # available ub size
 UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
@@ -31,7 +30,7 @@ MAX_CORE_NUM = tbe_platform.cce_conf.get_soc_spec(
 
 
 # pylint: disable=too-many-instance-attributes,too-many-statements
-# pylint: disable=too-many-arguments
+# pylint: disable=too-many-arguments,invalid-name
 class ZN2HWCNLSTM():
 
     """

@@ -63,7 +63,8 @@ TAIL = "tail"
 HEAD = "head"
 
 
-# pylint: disable=useless-object-inheritance, import-error
+# pylint: disable=useless-object-inheritance,too-many-statements,too-many-locals
+# pylint: disable=too-many-lines,too-many-instance-attributes
 class CumBase(object):
     """
         Function: use to store cumsum base parameters
@@ -92,7 +93,7 @@ class CumBase(object):
         self.reserved = self.get_reserved()
         self.dtype = dtype
         self.axis = axis
-        self.is_last_axis = True if (axis - len(shape)) == -1 else False
+        self.is_last_axis = (axis - len(shape)) == -1
 
     def get_each(self, shape, axis):
         """
@@ -132,6 +133,7 @@ class CumBase(object):
         return reserved
 
 
+# pylint: disable=global-statement,super-with-arguments
 class CumTensor(CumBase):
     """
         Function: use to store cumsum tensor
@@ -559,7 +561,7 @@ class CumComputer(CumTilingParam):
                             and self.spe_position == position else VALUE_ZERO
 
             self.tik_instance.data_move(last_ret, last_ori, VALUE_ZERO,
-                                        DEFAULT_BURST_LEN, burlen+offset, 
+                                        DEFAULT_BURST_LEN, burlen+offset,
                                         STRIDE_ZERO, STRIDE_ZERO)
 
     def t_dma_in(self, ub_in, ori, idx, burlen):
@@ -733,6 +735,9 @@ class CumComputer(CumTilingParam):
                     self.handle_every_loop(block_i)
 
     def handle_every_loop(self, block_i):
+        """
+        handle_every_loop
+        """
         o_idx = block_i
 
         if self.mov_tail != VALUE_ZERO:
@@ -1096,5 +1101,4 @@ def get_computer_by_ctype(input_x, axis, kernel_name, ctype):
     if ctype == LOGSUMEXP_TYPE:
         global MAX_COMPUTE_SIZE
         MAX_COMPUTE_SIZE = 15 * 1024
-    
     return CumComputer(input_x, axis, kernel_name, ctype)

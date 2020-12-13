@@ -21,23 +21,25 @@ import functools
 import te.platform as tbe_platform
 from te.utils import para_check
 from te import tik
-from impl import common_util
 from te.utils.error_manager import error_manager_vector
+from impl import common_util
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
-
 
 # available ub size
 UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 
 
-# pylint: disable = unused-argument
+# pylint: disable = unused-argument,too-many-branches
 def get_op_support_info(values, output_data, shape, num, kernel_name="parallel_concat"):
+    """
+    get_op_support_info
+    """
     shape_value_len = len(values[0].get("shape"))
     format_value = values[0].get("format").upper()
     if format_value == "ND":
-        axis_split_matrix=[]
+        axis_split_matrix = []
         for i in range(1, shape_value_len):
             input_list = []
             for j in range(0, num):
@@ -48,7 +50,7 @@ def get_op_support_info(values, output_data, shape, num, kernel_name="parallel_c
         axis_reduce_list = None
 
     elif format_value == "NCHW":
-        axis_split_matrix=[]
+        axis_split_matrix = []
         for i in range(2, shape_value_len):
             input_list = []
             for j in range(0, num):
@@ -59,7 +61,7 @@ def get_op_support_info(values, output_data, shape, num, kernel_name="parallel_c
         axis_reduce_list = None
 
     elif format_value == "NC1HWC0":
-        axis_split_matrix=[]
+        axis_split_matrix = []
         for i in range(2, shape_value_len-1):
             input_list = []
             for j in range(0, num):
@@ -70,7 +72,7 @@ def get_op_support_info(values, output_data, shape, num, kernel_name="parallel_c
         axis_reduce_list = None
 
     elif format_value == "NHWC":
-        axis_split_matrix=[]
+        axis_split_matrix = []
         for i in range(1, shape_value_len-1):
             input_list = []
             for j in range(0, num):
@@ -158,7 +160,7 @@ def _check_param(input_values, shape, kernel_name):
                            "while the {}th input dtype is {}, " \
                            "not same with the first dtype {}".format(i, dtype_input, first_dtype)
             error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "dtype_input", \
-                                                               "first_dtype", error_detail)
+                                                                   "first_dtype", error_detail)
     if list(shape[1:]) != list(first_shape[1:]):
         error_detail = "the input shape {} do not match the output shape {}".format(first_shape, shape)
         error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "first_shape", \

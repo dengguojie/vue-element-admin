@@ -25,7 +25,7 @@ SHAPE_SIZE_LIMIT = 2147483648  # shape limit
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=unused-variable,invalid-name
+# pylint: disable=unused-variable,invalid-name,too-many-locals
 def minimum_compute(x1, x2, y, kernel_name="minimum"):
     """dynamic minimum compute
 
@@ -49,8 +49,8 @@ def minimum_compute(x1, x2, y, kernel_name="minimum"):
     shape_x = shape_util.shape_to_list(x1.shape)
     shape_y = shape_util.shape_to_list(x2.shape)
     shape1, shape2, shape_max = shape_util.broadcast_shapes(shape_x, shape_y,
-                                                 param_name_input1="x1",
-                                                 param_name_input2="x2")
+                                                            param_name_input1="x1",
+                                                            param_name_input2="x2")
 
     data1 = tbe.broadcast(x1, shape_max)
     data2 = tbe.broadcast(x2, shape_max)
@@ -60,6 +60,7 @@ def minimum_compute(x1, x2, y, kernel_name="minimum"):
     return res
 
 
+# pylint: disable=redefined-argument-from-local
 @tbe_base.register_operator("Minimum")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
@@ -112,9 +113,9 @@ def minimum(x1, x2, y, kernel_name="minimum"):
     for (x1, x2) in ins:
         with tbe_base.compute():
             shape_x1, shape_x2 = shape_util.variable_shape([x1, x2],
-                                                support_broadcast=True)
+                                                           support_broadcast=True)
             shape_x1, shape_x2 = shape_util.refine_shapes_for_broadcast(shape_x1,
-                                                             shape_x2)
+                                                                        shape_x2)
             data1 = tvm.placeholder(shape_x1, dtype=dtype_x1, name="data1")
             data2 = tvm.placeholder(shape_x2, dtype=dtype_x2, name="data2")
             res = minimum_compute(data1, data2, y, kernel_name)

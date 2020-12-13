@@ -26,8 +26,11 @@ from impl.util import util_select_op_base
 SHAPE_SIZE_LIMIT = 2147483648
 
 
-# pylint: disable = unused-argument
+# pylint: disable = unused-argument,unused-variable,too-many-locals
 def get_op_support_info(input_x, output_y, axis=-1, kernel_name="log_softmax_v2"):
+    """
+    get_op_support_info
+    """
     dims_x = len(input_x.get("shape"))
     if not hasattr(axis, 'index'):
         new_axis = axis

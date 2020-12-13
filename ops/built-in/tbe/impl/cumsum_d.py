@@ -17,20 +17,21 @@ cumsum_d
 """
 
 from te.utils import para_check
-from impl import cum_computer
 from te.utils.error_manager import error_manager_vector
+from impl import cum_computer
 from impl.util import util_select_op_base
 
 # the computer type
 SUM_TYPE = "sum"
 
 
-# pylint: disable = unused-argument
+# pylint: disable = unused-argument,too-many-arguments,invalid-name
 def get_op_support_info(x, y, axis=0, exclusive=False, reverse=False, kernel_name="cumsum_d"):
+    """
+    get_op_support_info
+    """
     format_x = x.get("format")
-    if axis < 0:
-        axis = len(shape) + axis
-    if format_x == "ND" or format_x == "NHWC":
+    if format_x == "ND":
         axis_split_list = []
         for i in range(0, axis):
             split_0 = [util_select_op_base.SplitInput([0, [i], [-1], [-1]]),
@@ -99,7 +100,7 @@ def check_param(input_x, axis, kernel_name):
 
     para_check.check_shape(input_shape, param_name="input_x")
     para_check.check_dtype(input_dtype,
-                ("float16", "float32", "int32", "int8", "uint8"), param_name="input_x")
+                           ("float16", "float32", "int32", "int8", "uint8"), param_name="input_x")
 
     if axis < len(input_shape) * (-1) or axis >= len(input_shape):
         error_manager_vector.raise_err_input_param_not_in_range(kernel_name, "axis", \

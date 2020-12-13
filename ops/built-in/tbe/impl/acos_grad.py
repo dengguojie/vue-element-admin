@@ -46,7 +46,7 @@ NUM_MINUS_ONE = -1
 NUM_ONE = 1
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("acos_grad")
 def acos_grad_compute(y, dy, z, kernel_name="acos_grad"):
     """
@@ -64,7 +64,7 @@ def acos_grad_compute(y, dy, z, kernel_name="acos_grad"):
     dtype = y.dtype
     dtype_1 = dtype
     if dtype == "float16" and \
-       tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+            tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
         y = tbe.cast_to(y, "float32")
         dy = tbe.cast_to(dy, "float32")
         dtype = "float32"

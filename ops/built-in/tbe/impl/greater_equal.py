@@ -20,11 +20,12 @@ greater_equal
 
 from te import tvm
 import te.lang.cce as tbe
-from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 
+
+# pylint: disable=unused-variable
 def _greater_equal_compare(data, shape, dtype, data_min):
     """
     if x is greater than y or equals y, then return 1, else return 0.
@@ -47,7 +48,7 @@ def _greater_equal_compare(data, shape, dtype, data_min):
     data_zero = tbe.broadcast(tvm.const(0, dtype), shape, dtype)
     if dtype == "int32":
         data_one = tbe.broadcast(tvm.const(1, "float16"), shape,
-                                         "float16")
+                                 "float16")
     else:
         data_one = tbe.broadcast(tvm.const(1, dtype), shape, dtype)
 
@@ -114,14 +115,14 @@ def greater_equal_compute(input_x, input_y, output_z,
     if dtype == "float32":
         # minimun num of float32 2**(-126)
         data_min = tbe.broadcast(tvm.const(2**(-126),
-                                                   dtype=dtype), shape, dtype)
+                                           dtype=dtype), shape, dtype)
     elif dtype == "float16":
         # minimun num of float16 2**(-24)
         data_min = tbe.broadcast(tvm.const(2**(-24),
-                                                   dtype=dtype), shape, dtype)
+                                           dtype=dtype), shape, dtype)
     else:
         data_min = tbe.broadcast(tvm.const(1, dtype=dtype),
-                                         shape, dtype)
+                                 shape, dtype)
 
     return _greater_equal_compare((input_x, input_y), shape, dtype, data_min)
 

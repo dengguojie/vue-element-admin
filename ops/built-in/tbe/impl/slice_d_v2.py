@@ -17,14 +17,13 @@
 """
 slice_d_v2
 """
-
+# pylint: disable=too-many-statements,invalid-name,too-many-branches,unused-argument,too-many-locals
 from types import MethodType
 import math
-import numpy as np
 
 from te.utils import para_check
-from impl import common_util
 from te import tik
+from impl import common_util
 from impl import constant_util as constant
 
 from impl.dynamic.strided_slice import StridedSlice
@@ -60,8 +59,7 @@ def _check_parameters(shape, size, kernel_name):
                                                                expected_value, real_value)
 
 
-# pylint: disable=locally-disabled,too-many-arguments,
-# pylint: unused-argument,too-many-locals
+# pylint: disable=locally-disabled,too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.KERNEL_NAME)
 def slice_d_v2(x, offsets, y, size, kernel_name="slice_d_v2"):

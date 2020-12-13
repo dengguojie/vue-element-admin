@@ -37,7 +37,6 @@ data_format_dim_map
 
 import te.lang.cce as tbe
 import te.platform as tbe_platform
-from te.platform.fusion_manager import fusion_manager
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
@@ -52,23 +51,26 @@ MOD_RHS = 4
 QUARTER = 0.25
 
 
-# pylint: disable = unused-argument
+# pylint: disable = unused-argument,invalid-name
 def get_op_support_info(x,
                         y,
                         src_format="NHWC",
                         dst_format="NCHW",
                         kernel_name="data_format_dim_map"):
+    """
+    get_op_support_info
+    """
     format_x = x.get("format").upper()
     shape_x_len = len(x.get("shape"))
     if format_x == "ND":
-        axis_split_matrix=[]
+        axis_split_matrix = []
         for i in range(0, shape_x_len):
             split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]])]
             axis_split_matrix.append(split_0)
         axis_reduce_list = None
 
     elif format_x == "NC1HWC0":
-        axis_split_matrix=[
+        axis_split_matrix = [
             [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
             [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])],
             [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [3]])]
@@ -123,9 +125,9 @@ def _dimension_index(data_mod, ind):
     is_one = tbe.vcmp(data_mod, 1., 'eq')
     is_two = tbe.vcmp(data_mod, 2., 'eq')
     return tbe.cast_to(tbe.vsel(is_zero, ind[0], \
-                                                tbe.vsel(is_one, ind[1], \
-                                                                 tbe.vsel(is_two, ind[2], ind[3]))), \
-                               "int32")
+                                tbe.vsel(is_one, ind[1], \
+                                         tbe.vsel(is_two, ind[2], ind[3]))), \
+                       "int32")
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name

@@ -29,8 +29,8 @@ FP32_MAX = 64
 MASK_MAX = 8
 
 
-# pylint: disable=locally-disabled,too-few-public-methods,
-# pylint: disable=too-many-instance-attributes
+# pylint: disable=locally-disabled,too-few-public-methods,unused-variable
+# pylint: disable=too-many-instance-attributes,too-many-boolean-expressions
 class MaxpoolGradV2Resnet50():
     """
     parameter for max_pool_grad_with_pool
@@ -118,6 +118,9 @@ class MaxpoolGradV2Resnet50():
                                          constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT)
 
     def tik_instance_vconv_fp32(self, data_grad_ub, ub_fm_fp32_buf, align_len):
+        """
+        tik_instance_vconv_fp32
+        """
         repeat_time = align_len // constant.MASK64
         if repeat_time > V_MAX_REPEAT:
             res_repeat_time = repeat_time - V_MAX_REPEAT
@@ -325,7 +328,7 @@ class MaxpoolGradV2Resnet50():
                     self.tik_instance_vconv_fp32(data_grad_ub, ub_fm_fp32_buf, output_block_algn_len)
 
                     data_output_idx = batch * output_size + loopc * loop_h * \
-                        output_block_size + output_block_size * looph * 2
+                                      output_block_size + output_block_size * looph * 2
 
                     with self.tik_instance.if_scope(looph == 0):
                         with self.tik_instance.for_range(0, block_h*2) as loop_i:
@@ -421,7 +424,7 @@ class MaxpoolGradV2Resnet50():
                                                    7, 4, 4, 2, 32, 32, 16)
                     self.tik_instance_vconv_fp32(data_grad_ub, ub_fm_fp32_buf, output_block_algn_len)
                     data_output_idx = batch * output_size + loopc * loop_h * output_block_size + \
-                        output_block_size * (looph * 2 + 1)
+                                      output_block_size * (looph * 2 + 1)
 
                     data_output_idx = data_output_idx - dxh_address_res
 
@@ -447,6 +450,9 @@ class MaxpoolGradV2Resnet50():
 
 
 def is_valid_shape(resnet50shape, shape):
+    """
+    is_valid_shape
+    """
     if shape.get("dtype") != resnet50shape.get("dtype"):
         return False
 

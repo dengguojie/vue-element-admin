@@ -913,7 +913,6 @@ def _set_loop(tik_instance, num_core, max_core, total_dim):
 
 
 # pylint: disable=locally-disabled,too-many-instance-attributes
-# pylint: disable=locally-disabled,old-style-class
 class Dhwcn2Fz3dFp32Compute:
     """
     Rearranges data from DHWCN format to FRACTAL_Z_3D format fp32 scene
@@ -1019,7 +1018,7 @@ class Dhwcn2Fz3dFp32Compute:
             dup_offset = n_d * self.c_0 * 2
             _clean_ubuf(tik_instance, ub_trans, dup_offset, dup_len)
 
-        dst_offset = (d_index * self.c_1 * hw_d + c1_index * hw_d + hw_index)\
+        dst_offset = (d_index * self.c_1 * hw_d + c1_index * hw_d + hw_index) \
                      * n_o * self.n_i * self.c_0
         burst_len = n_o * self.n_i * self.c_0 // self.cp_align_len
         tik_instance.data_move(self.dst_gm[dst_offset],
@@ -1147,7 +1146,7 @@ class Dhwcn2Fz3dFp32Compute:
                                    dst_rep_stride,
                                    src_rep_stride)
 
-        dst_offset = (d_index * self.c_1 * hw_d + c1_index * hw_d + hw_index)\
+        dst_offset = (d_index * self.c_1 * hw_d + c1_index * hw_d + hw_index) \
                      * n_o * self.n_i * self.c_0
         burst_len = n_d * self.c_0 // self.cp_align_len
         tik_instance.data_move(self.dst_gm[dst_offset],
@@ -1160,7 +1159,7 @@ class Dhwcn2Fz3dFp32Compute:
             _clean_ubuf(tik_instance, ub_ori, 0, zero_ele * 2)
 
             dst_offset = (d_index * self.c_1 * hw_d
-                          + c1_index * hw_d + hw_index)\
+                          + c1_index * hw_d + hw_index) \
                          * n_o * self.n_i * self.c_0 + n_d * self.c_0
             burst_len = zero_ele // self.cp_align_len
             tik_instance.data_move(self.dst_gm[dst_offset],
@@ -1319,7 +1318,7 @@ class Dhwcn2Fz3dFp32Compute:
         """
         d_d, h_d, w_d, c_d, n_d = self.src_shape
         hw_d = h_d * w_d
-        n_ub = self.ub_ele // 16 // self.c_0\
+        n_ub = self.ub_ele // 16 // self.c_0 \
                // self.cp_align_len * self.cp_align_len
         n_zu = _ceil_div(n_d, n_ub)
 
@@ -1415,10 +1414,9 @@ class Dhwcn2Fz3dFp32Compute:
 
         if c0na_ele <= self.ub_ele:
             return "c0na_core"
-        elif c0n_ele <= self.ub_ele:
+        if c0n_ele <= self.ub_ele:
             return "c0n_core"
-        else:
-            return "split_n"
+        return "split_n"
 
     def dhwcn_2_fz3d_fp32_compute(self):
         """
@@ -1580,39 +1578,38 @@ def dhwcn_2_fractal_z_3d(src, dst, src_format, dst_format,
                                               kernel_name)
         return template_fp32.get_tik_instance()
 
-    else:
-        shape_in = src.get("shape")
-        dtype = src.get("dtype")
-        input_dtype = dtype.lower()
-        dst_dtype = dst.get("dtype").lower()
+    shape_in = src.get("shape")
+    dtype = src.get("dtype")
+    input_dtype = dtype.lower()
+    dst_dtype = dst.get("dtype").lower()
 
-        check_list = ("float16",)
-        check_dtype(input_dtype, check_list)
-        check_shape(shape_in, min_rank=5, max_rank=5)
-        shape_out = (shape_in[0], _ceil_div(shape_in[3], C0_LEN),
-                     shape_in[1] * shape_in[2],
-                     _ceil_div(shape_in[4], C0_LEN),
-                     C0_LEN, C0_LEN)
-        check_shape(shape_out)
+    check_list = ("float16",)
+    check_dtype(input_dtype, check_list)
+    check_shape(shape_in, min_rank=5, max_rank=5)
+    shape_out = (shape_in[0], _ceil_div(shape_in[3], C0_LEN),
+                 shape_in[1] * shape_in[2],
+                 _ceil_div(shape_in[4], C0_LEN),
+                 C0_LEN, C0_LEN)
+    check_shape(shape_out)
 
-        if input_dtype != dst_dtype:
-            raise RuntimeError("The input and output dtype should be same!")
+    if input_dtype != dst_dtype:
+        raise RuntimeError("The input and output dtype should be same!")
 
-        if src_format.upper() != "DHWCN" or dst_format.upper() != "FRACTAL_Z_3D":
-            raise RuntimeError("The src_format must be DHWCN and"
-                               " dst_format must be FRACTAL_Z_3D!")
+    if src_format.upper() != "DHWCN" or dst_format.upper() != "FRACTAL_Z_3D":
+        raise RuntimeError("The src_format must be DHWCN and"
+                           " dst_format must be FRACTAL_Z_3D!")
 
-        # initial Tik
-        tik_inst = tik.Tik()
-        # define input and output tensors
-        data_in = tik_inst.Tensor(input_dtype, shape_in,
-                                  tik.scope_gm, "data_in")
-        data_out = tik_inst.Tensor(input_dtype, shape_out,
-                                   tik.scope_gm, "data_out")
+    # initial Tik
+    tik_inst = tik.Tik()
+    # define input and output tensors
+    data_in = tik_inst.Tensor(input_dtype, shape_in,
+                              tik.scope_gm, "data_in")
+    data_out = tik_inst.Tensor(input_dtype, shape_out,
+                               tik.scope_gm, "data_out")
 
-        # do transfer
-        dhwcn_2_fractal_z_3d_compute(tik_inst, data_in, data_out, shape_in)
+    # do transfer
+    dhwcn_2_fractal_z_3d_compute(tik_inst, data_in, data_out, shape_in)
 
-        # build cce
-        tik_inst.BuildCCE(kernel_name=kernel_name,
-                          inputs=[data_in], outputs=[data_out])
+    # build cce
+    tik_inst.BuildCCE(kernel_name=kernel_name,
+                      inputs=[data_in], outputs=[data_out])

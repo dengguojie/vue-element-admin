@@ -15,7 +15,7 @@
 """
 threshold
 """
-
+# pylint: disable=invalid-name,unused-argument
 import functools
 
 import te.lang.cce as tbe
@@ -27,7 +27,6 @@ from te.utils import para_check
 SCALAR_POSITIVE_ONE = 1.0
 # define a scalar , value = 0.0
 SCALAR_ZERO = 0.0
-
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("threshold")
@@ -68,8 +67,8 @@ def threshold_compute(input_x, input_y, output_y, kernel_name="threshold"):
 
     return res
 
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, 
-                          para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def threshold(input_x, output_y, threshold=0.0, kernel_name="threshold"):
     """
     algorithm: threshold

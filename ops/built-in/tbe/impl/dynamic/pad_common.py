@@ -15,9 +15,9 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 pad_common
 """
+import math
 from te import tik
 from te import platform as tbe_platform
-import math
 
 # maximum of gm
 MAX_INT32 = 2**31 - 1
@@ -29,7 +29,7 @@ INT32_BLOCK = 8
 INT64_BLOCK = 4
 
 
-
+# pylint: disable=too-many-statements,too-many-instance-attributes,too-many-arguments
 def _prod(values):
     """
     Prod the input values by multiply.
@@ -63,6 +63,9 @@ def _init(buf, scalar_list, begin_idx, length):
 
 
 def init_params(obj):
+    """
+    init_params
+    """
     in_dict = obj.tiling_arg_idx
     _init(obj.tiling_buf, obj.branch, in_dict.get("branch")[0], in_dict.get("branch")[1])
     _init(obj.tiling_buf, obj.depth, in_dict.get("depth")[0], in_dict.get("depth")[1])
@@ -162,6 +165,9 @@ def calc_axis_amount(pads, mark):
 
 
 def make_dict(num0, num1, list0, list1):
+    """
+    make_dict
+    """
     in_dict = {}
     for key, value in enumerate(list0):
         in_dict.setdefault(value, [key*num0, num0])
@@ -173,8 +179,10 @@ def make_dict(num0, num1, list0, list1):
     return in_dict
 
 
-class PadInit(object):
-
+class PadInit:
+    """
+        Function: use to store concat base parameters
+    """
     def __init__(self, padding, dtype, kernel_name, tik_obj, fuse_mark):
         """
         Function: store pad_d's parameters of compilation

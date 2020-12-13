@@ -28,7 +28,7 @@ RESERVE_SIZE = 16 * 1024
 
 
 # pylint: disable=invalid-name,too-many-arguments,unused-argument,too-many-instance-attributes
-# pylint: disable=too-many-locals,too-many-statements
+# pylint: disable=too-many-locals,too-many-statements,too-many-lines
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_INT, para_check.REQUIRED_ATTR_LIST_INT, para_check.KERNEL_NAME)
 def crop(x, size, y, axis=2, offsets=(0), kernel_name="crop"):
@@ -827,7 +827,7 @@ def get_op_support_info(x, size, y, axis=2, offsets=(0), kernel_name="crop"):
     if format_x == "NC1HWC0":
         not_cut_dim = [1, 4]
 
-    if format_x == "ND" or format_x == "NC1HWC0":
+    if format_x in ("ND", "NC1HWC0"):
         axis_split_list = []
         for i in range(dim_x):
             if i < axis and i not in not_cut_dim:
