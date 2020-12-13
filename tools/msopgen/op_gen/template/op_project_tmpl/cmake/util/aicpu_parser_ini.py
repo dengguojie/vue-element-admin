@@ -55,7 +55,8 @@ def check_custom_op_opinfo(required_custom_op_info_keys, ops, op_key):
         raise KeyError("bad key value")
 
 
-def check_op_opinfo(required_op_info_keys, required_custom_op_info_keys, ops, op_key):
+def check_op_opinfo(required_op_info_keys, required_custom_op_info_keys,
+                    ops, op_key):
     '''
     check normal op info
     '''
@@ -95,7 +96,8 @@ def check_op_info(aicpu_ops):
         ops = aicpu_ops[op_key]
         for key in ops:
             if key == "opInfo":
-                check_op_opinfo(required_op_info_keys, required_custom_op_info_keys, ops, op_key)
+                check_op_opinfo(required_op_info_keys,
+                                required_custom_op_info_keys, ops, op_key)
 
             elif (key[:5] == "input") and (key[5:].isdigit()):
                 check_op_input_output("input", key, ops)
@@ -107,7 +109,7 @@ def check_op_info(aicpu_ops):
                 check_op_input_output("dynamic_output", key, ops)
             else:
                 print("Only opInfo, input[0-9], output[0-9] can be used as a key, "
-                      "but op %s has the key %s" %(op_key, key))
+                      "but op %s has the key %s" % (op_key, key))
                 raise KeyError("bad key value")
     print("==============check valid for aicpu ops info end================\n")
 
@@ -120,7 +122,8 @@ def write_json_file(aicpu_ops_info, json_file_path):
     with open(json_file_real_path, "w") as json_file:
         # Only the owner and group have rights
         os.chmod(json_file_real_path, stat.S_IWGRP + stat.S_IWUSR + stat.S_IRGRP + stat.S_IRUSR)
-        json.dump(aicpu_ops_info, json_file, sort_keys=True, indent=4, separators=(',', ':'))
+        json.dump(aicpu_ops_info, json_file, sort_keys=True,
+                  indent=4, separators=(',', ':'))
     print("Compile aicpu op info cfg successfully.")
 
 
@@ -137,12 +140,12 @@ def parse_ini_to_json(ini_file_paths_arg, outfile_path_arg):
 
 
 if __name__ == '__main__':
-    arguments = sys.argv
+    get_args = sys.argv
 
     OUTPUT = "tf_kernel.json"
     ini_file_paths = []
 
-    for arg in arguments:
+    for arg in get_args:
         if arg.endswith("ini"):
             ini_file_paths.append(arg)
         if arg.endswith("json"):
