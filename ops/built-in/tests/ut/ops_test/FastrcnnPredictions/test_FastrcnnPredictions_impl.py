@@ -22,15 +22,39 @@ def gen_fastrcnn_predictions_case(shape_x, shape_y, dtype_x, dtype_y, nms_thresh
             "format_expect": [],
             "support_expect": True}
 
+def gen_fastrcnn_predictions_case_err(shape_x, shape_y, dtype_x, dtype_y, nms_threshold, score_threshold,
+                                  k, case_name_val):
+    return {"params": [{"shape": shape_x, "dtype": dtype_x, "ori_shape": shape_x, "ori_format": "ND", "format": "ND"},
+                       {"shape": shape_y, "dtype": dtype_y, "ori_shape": shape_y, "ori_format": "ND", "format": "ND"},
+                       {"shape": [k,4], "dtype": dtype_x, "ori_shape": [k,4], "ori_format": "ND", "format": "ND"},
+                       {"shape": [k,1], "dtype": dtype_x, "ori_shape": [k,1], "ori_format": "ND", "format": "ND"},
+                       {"shape": [k,1], "dtype": dtype_x, "ori_shape": [k,1], "ori_format": "ND", "format": "ND"},
+                       nms_threshold,
+                       score_threshold,
+                       k],
+            "case_name": case_name_val,
+            "expect": RuntimeError,
+            "format_expect": [],
+            "support_expect": True}
+
 case1 = gen_fastrcnn_predictions_case((32 * 5, 4), (32, 6), "float16", "float16", 0.5, 0.01, 32, "fastrcnn_predictions_1")
 case2 = gen_fastrcnn_predictions_case((16 * 15, 4), (16, 16), "float16", "float16", 0.5, 0.01, 16, "fastrcnn_predictions_2")
-case3 = gen_fastrcnn_predictions_case((16 * 32, 4), (16, 33), "float16", "float16", 0.5, 0.01, 16, "fastrcnn_predictions_3")
-case4 = gen_fastrcnn_predictions_case((96, 4), (96, 2), "float16", "float16", 0.5, 0.01, 96, "fastrcnn_predictions_4")
+case3 = gen_fastrcnn_predictions_case_err((16 * 32, 4), (16, 33), "float16", "float32", 0.5, 0.01, 16, "fastrcnn_predictions_3")
+case4 = gen_fastrcnn_predictions_case_err((96, 4), (96, 2), "float32", "float16", 0.5, 0.01, 96, "fastrcnn_predictions_4")
+case5 = gen_fastrcnn_predictions_case_err((96, 16, 4), (96, 2), "float16", "float16", 0.5, 0.01, 96, "fastrcnn_predictions_5")
+case6 = gen_fastrcnn_predictions_case_err((96, 16, 4), (96, 32, 2), "float16", "float16", 0.5, 0.01, 96, "fastrcnn_predictions_6")
+case7 = gen_fastrcnn_predictions_case_err((96, 4), (128, 2), "float16", "float16", 0.5, 0.01, 96, "fastrcnn_predictions_7")
+case8 = gen_fastrcnn_predictions_case_err((96, 4), (96, 64), "float16", "float16", 0.5, 0.01, 96, "fastrcnn_predictions_8")
 
 ut_case.add_case(["Ascend610", "Ascend710", "Ascend615"], case1)
 ut_case.add_case(["Ascend610", "Ascend710", "Ascend615"], case2)
-ut_case.add_case(["Ascend610", "Ascend710", "Ascend615"], case3)
-ut_case.add_case(["Ascend610", "Ascend710", "Ascend615"], case4)
+ut_case.add_case(["Ascend910"], case3)
+ut_case.add_case(["Ascend910"], case4)
+ut_case.add_case(["Ascend910"], case5)
+ut_case.add_case(["Ascend910"], case6)
+ut_case.add_case(["Ascend910"], case7)
+ut_case.add_case(["Ascend910"], case8)
+
 
 ### precision cases
 def nms_proposal_aadd(area_0, area_1, thresh):

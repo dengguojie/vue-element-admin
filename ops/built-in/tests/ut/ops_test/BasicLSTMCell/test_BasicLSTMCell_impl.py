@@ -322,7 +322,7 @@ case4 = {"params": [{"shape": (3, 1,16,16), "dtype": "float16", "format": "FRACT
          "support_expect": True}
 
 case5 = {"params": [{"shape": (1000, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 16000),"ori_format": "ND"}, #x
-                    {"shape": (2, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 32),"ori_format": "ND"}, #h
+                    {"shape": (2, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16, 32),"ori_format": "ND"}, #h
                     {"shape": (2, 1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (1, 32),"ori_format": "ND"}, #c
                     {"shape": (1002, 8,16,16), "dtype": "float16", "format": "FRACTAL_ZN_LSTM", "ori_shape": (16032, 128),"ori_format": "ND"}, #w
                     {"shape": (128,), "dtype": "float32", "format": "ND", "ori_shape": (128,),"ori_format": "ND"},  #b
@@ -336,10 +336,10 @@ case5 = {"params": [{"shape": (1000, 1,16,16), "dtype": "float16", "format": "FR
                     {"shape": (2, 1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (1, 32),"ori_format": "ND"}, #tanhct
                     ],
          "case_name": "BasicLSTMCell_5",
-         "expect": "success",
+         "expect": RuntimeError,
          "support_expect": True}
 
-case6 = {"params": [{"shape": (1, 1000,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16000, 16),"ori_format": "ND"}, #x
+case6 = {"params": [{"shape": (1, 1000,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16000, 16),"ori_format": "ND"}, #x
                     {"shape": (2, 1000,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16000, 32),"ori_format": "ND"}, #h
                     {"shape": (2, 1000,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16000, 32),"ori_format": "ND"}, #c
                     {"shape": (3, 8,16,16), "dtype": "float16", "format": "FRACTAL_ZN_LSTM", "ori_shape": (48, 128),"ori_format": "ND"}, #w
@@ -354,12 +354,12 @@ case6 = {"params": [{"shape": (1, 1000,16,16), "dtype": "float16", "format": "FR
                     {"shape": (2, 1000,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16000, 32),"ori_format": "ND"}, #tanhct
                     ],
          "case_name": "BasicLSTMCell_6",
-         "expect": "success",
+         "expect": RuntimeError,
          "support_expect": True}
 
 case7 = {"params": [{"shape": (1, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 16),"ori_format": "ND"}, #x
                     {"shape": (100, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 1600),"ori_format": "ND"}, #h
-                    {"shape": (100, 1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (1, 1600),"ori_format": "ND"}, #c
+                    {"shape": (100, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 1600),"ori_format": "ND"}, #c
                     {"shape": (101, 400,16,16), "dtype": "float16", "format": "FRACTAL_ZN_LSTM", "ori_shape": (1616, 6400),"ori_format": "ND"}, #w
                     {"shape": (6400,), "dtype": "float32", "format": "ND", "ori_shape": (6400,),"ori_format": "ND"},  #b
                     {"shape": (6400,), "dtype": "uint8", "format": "ND", "ori_shape": (6400,),"ori_format": "ND"}, #mask
@@ -372,12 +372,12 @@ case7 = {"params": [{"shape": (1, 1,16,16), "dtype": "float16", "format": "FRACT
                     {"shape": (100, 1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (1, 1600),"ori_format": "ND"}, #tanhct
                     ],
          "case_name": "BasicLSTMCell_7",
-         "expect": "success",
+         "expect": RuntimeError,
          "support_expect": True}
 
 case8 = {"params": [{"shape": (3, 4,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (64, 48),"ori_format": "ND"}, #x
                     {"shape": (2, 4,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (64, 32),"ori_format": "ND"}, #h
-                    {"shape": (2, 4,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (64, 32),"ori_format": "ND"}, #c
+                    {"shape": (2, 4,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (64, 16),"ori_format": "ND"}, #c
                     {"shape": (5, 8,16,16), "dtype": "float16", "format": "FRACTAL_ZN_LSTM", "ori_shape": (80, 128),"ori_format": "ND"}, #w
                     {"shape": (128,), "dtype": "float16", "format": "ND", "ori_shape": (128,),"ori_format": "ND"},  #b
                     {"shape": (128,), "dtype": "uint8", "format": "ND", "ori_shape": (128,),"ori_format": "ND"}, #mask
@@ -390,11 +390,11 @@ case8 = {"params": [{"shape": (3, 4,16,16), "dtype": "float16", "format": "FRACT
                     {"shape": (2, 4,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (64, 32),"ori_format": "ND"}, #tanhct
                     ],
          "case_name": "BasicLSTMCell_8",
-         "expect": "success",
+         "expect": RuntimeError,
          "support_expect": True}
 
 case9 = {"params": [{"shape": (8, 128,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (2048, 128),"ori_format": "ND"}, #x
-                    {"shape": (8, 128,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (2048, 128),"ori_format": "ND"}, #h
+                    {"shape": (8, 128,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (2048, 64),"ori_format": "ND"}, #h
                     {"shape": (8, 128,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (2048, 128),"ori_format": "ND"}, #c
                     {"shape": (16,32,16,16), "dtype": "float16", "format": "FRACTAL_ZN_LSTM", "ori_shape": (256,512),"ori_format": "ND"}, #w
                     {"shape": (512,), "dtype": "float16", "format": "ND", "ori_shape": (512,),"ori_format": "ND"},  #b
@@ -408,14 +408,14 @@ case9 = {"params": [{"shape": (8, 128,16,16), "dtype": "float16", "format": "FRA
                     {"shape": (8, 128,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (2048, 128),"ori_format": "ND"}, #tanhct
                     ],
          "case_name": "BasicLSTMCell_9",
-         "expect": "success",
+         "expect": RuntimeError,
          "support_expect": True}
 
 case10 = {"params": [{"shape": (128, 8,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #x
                      {"shape": (128, 8,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #h
                      {"shape": (128, 8,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #c
                      {"shape": (256,512,16,16), "dtype": "float16", "format": "FRACTAL_ZN_LSTM", "ori_shape": (4096,8192),"ori_format": "ND"}, #w
-                     {"shape": (8192,), "dtype": "float16", "format": "ND", "ori_shape": (8192,),"ori_format": "ND"},  #b
+                     {"shape": (8192,), "dtype": "float16", "format": "ND", "ori_shape": (8190,),"ori_format": "ND"},  #b
                      {"shape": (8192,), "dtype": "uint8", "format": "ND", "ori_shape": (8192,),"ori_format": "ND"}, #mask
                      {"shape": (128, 8,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ct
                      {"shape": (128, 8,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ht
@@ -426,7 +426,7 @@ case10 = {"params": [{"shape": (128, 8,16,16), "dtype": "float16", "format": "FR
                      {"shape": (128, 8,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #tanhct
                      ],
           "case_name": "BasicLSTMCell_10",
-          "expect": "success",
+          "expect": RuntimeError,
           "support_expect": True}
 
 case11 = {"params": [{"shape": (3, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 48),"ori_format": "ND"}, #x
@@ -508,9 +508,9 @@ ut_case.add_case(["Ascend910"], case4)
 ut_case.add_case(["Ascend910"], case5)
 ut_case.add_case(["Ascend910"], case6)
 ut_case.add_case(["Ascend910"], case7)
-# ut_case.add_case(["Ascend910"], case8)
-# ut_case.add_case(["Ascend910"], case9)
-# ut_case.add_case(["Ascend910"], case10)
+ut_case.add_case(["Ascend910"], case8)
+ut_case.add_case(["Ascend910"], case9)
+ut_case.add_case(["Ascend910"], case10)
 # ut_case.add_case(["Ascend910"], case11)
 # ut_case.add_case(["Ascend910"], case12)
 # ut_case.add_case(["Ascend910"], case13)

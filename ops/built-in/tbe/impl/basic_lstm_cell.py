@@ -297,14 +297,17 @@ def basiclstm_cell_check(x, h, c, w, b, ct, ht, it, ft, jt, ot, tanhct):
     #todo add check for hisi_es only support for fp16
     if x["dtype"] != "float16" or h["dtype"] != "float16" or \
             w["dtype"] != "float16" or ht["dtype"] != "float16":
-        raise RuntimeError("x, h, w, ht supports x with dtype float16 only!")
+        error_detail = "x, h, w, ht only support float16"
+        error_manager_vector.raise_err_two_input_dtype_invalid("basic_lstm_cell", "x,h", "w,ht",
+                                                        error_detail)
     # Check c, b, ct, it, ft, jt, ot, tanhct dtype
     if c["dtype"] != b["dtype"] or b["dtype"] != ct["dtype"] or \
             ct["dtype"] != it["dtype"] or it["dtype"] != ft["dtype"] or \
             ft["dtype"] != jt["dtype"] or jt["dtype"] != ot["dtype"] or \
             ot["dtype"] != tanhct["dtype"]:
-        raise RuntimeError("c, b, ct, it, ft, jt, ot,"
-                           " tanhct dtype not match!")
+        error_detail = "the dtype of c, b, ct, it, ft, jt, ot and tanhct is not match"
+        error_manager_vector.raise_err_two_input_dtype_invalid("basic_lstm_cell", "c, b, ct, it",
+                                                            "ft, jt, ot, tanhct", error_detail)
     if c["dtype"] not in ["float16", "float32"]:
         rule_desc = "dtype of c should be one of [float16,float32]"
         error_manager_vector.raise_err_check_params_rules("basic_lstm_cell", rule_desc, "c", c["dtype"])
@@ -333,20 +336,30 @@ def basiclstm_cell_check(x, h, c, w, b, ct, ht, it, ft, jt, ot, tanhct):
     b_dim = b["ori_shape"][0]
 
     if batch_dim_x != batch_dim_h or batch_dim_x != batch_dim_c:
-        raise RuntimeError("wrong batch_dim:x {} h {} c {} ".format(batch_dim_x, batch_dim_h, batch_dim_c))
+        error_detail = "the batch_dim is wrong: x {} h {} c {}, please check!" \
+                        .format(batch_dim_x, batch_dim_h, batch_dim_c)
+        error_manager_vector.raise_err_input_shape_invalid("basic_lstm_cell", "batch_dim", error_detail)
 
     if output_dim_h != output_dim_c:
-        raise RuntimeError("wrong output_dim:h {} c {}  ".format(output_dim_h, output_dim_c))
+        error_detail = "output_dim_h {} should be equal to output_dim_c {}, please check!" \
+                        .format(output_dim_h, output_dim_c)
+        error_manager_vector.raise_err_input_shape_invalid("basic_lstm_cell", "output_dim", error_detail)
 
-    if (output_dim_h+input_dim_x) != w_h_dim or output_dim_h != w_w_dim//4:
-        raise RuntimeError("wrong w shape:output_dim_h+input_dim_x "
-                           "{} output_dim_h {} w_w_dim {} w_h_dim {}".format(output_dim_h+input_dim_x,
-                                                                             output_dim_h, w_w_dim, w_h_dim))
-    if output_dim_h != b_dim//4:
-        raise RuntimeError("wrong b shape: output_dim_h {} b_dim {} ".format(output_dim_h, b_dim))
+    if (output_dim_h + input_dim_x) != w_h_dim or output_dim_h != w_w_dim // 4:
+        error_detail = "the shape of w is wrong: output_dim_h+input_dim_x " \
+                        "{}, output_dim_h {}, w_w_dim {}, w_h_dim {}, please check!" \
+                        .format(output_dim_h + input_dim_x, output_dim_h, w_w_dim, w_h_dim)
+        error_manager_vector.raise_err_input_shape_invalid("basic_lstm_cell", "w", error_detail)
+    if output_dim_h != b_dim // 4:
+        error_detail = "the shape of b is wrong: output_dim_h {}, b_dim {}, please check!" \
+                       .format(output_dim_h, b_dim)
+        error_manager_vector.raise_err_input_shape_invalid("basic_lstm_cell", "b", error_detail)
 
 
 def get_matmul_tensor(x, h, c, w, b, build_list, tensor_list, scope_list, operation_list, is_hisi_es):
+    """
+    get_matmul_tensor
+    """
     shape_x = x.get("shape")
     shape_h = h.get("shape")
     shape_c = c.get("shape")

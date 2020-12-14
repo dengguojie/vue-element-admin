@@ -21,6 +21,7 @@ import math
 
 import te.platform as tbe_platform
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 from te import tvm
 
 
@@ -56,20 +57,20 @@ def _check_parameters(min_size, max_size, img_h, img_w,
     min_size_list = list(range(len(min_size)))
     for i in min_size_list:
         if min_size[i] <= 0:
-            raise RuntimeError("min_size must be positive. \
-                actual min_size value is %d" % (min_size[i]))
+            error_manager_vector.raise_err_input_value_invalid("prior_box_d", "min_size", "positive",
+                                                            min_size[i])
 
     if len(max_size) > 0:
         if len(max_size) != len(min_size):
-            raise RuntimeError("max_size_size must be equal to min_size_size, \
-                while max_size_size is %d, min_size_size is %d." \
-                               % (len(max_size), len(min_size)))
+            error_manager_vector.raise_err_inputs_shape_not_equal("prior_box_d", "max_size_size",
+                                                            "min_size_size", len(max_size), len(min_size),
+                                                            "equal")
         max_size_list = list(range(len(max_size)))
         for i in max_size_list:
             if max_size[i] <= min_size[i]:
-                raise RuntimeError("max_size must be greater than min_size, \
-                    while actual max_size is %f, actual min_size is %f." \
-                                   % (max_size[i], min_size[i]))
+                rule_desc = "max_size must be greater than min_size %f" % min_size[i]
+                error_manager_vector.raise_err_check_params_rules("prior_box_d", rule_desc,
+                                                                "max_size", max_size[i])
 
     if img_h != 0 or img_w != 0:
         if img_h < 0:
@@ -105,24 +106,25 @@ def _check_parameters(min_size, max_size, img_h, img_w,
 
     if step_h != 0 or step_w != 0:
         if step_h < 0:
-            raise RuntimeError("step_h should be larger than 0, \
-                while actual step_h is %f" % step_h)
+            error_manager_vector.raise_err_input_value_invalid("prior_box_d", "step_h",
+                                                            "larger than 0", step_h)
         if step_w < 0:
-            raise RuntimeError("step_w should be larger than 0, \
-                while actual step_w is %f" % step_w)
+            error_manager_vector.raise_err_input_value_invalid("prior_box_d", "step_w",
+                                                            "larger than 0", step_w)
     else:
         step_h = 0
         step_w = 0
 
     if len(variance) > 1:
         if len(variance) != 4:
-            raise RuntimeError("Must and only provide 4 variance, \
-                while actual number is %f" % (len(variance)))
+            rule_desc = "must and only provide 4 variance"
+            error_manager_vector.raise_err_check_params_rules("prior_box_d", rule_desc,
+                                                            "actual number", len(variance))
     variance_list = list(range(len(variance)))
     for i in variance_list:
         if variance[i] <= 0:
-            raise RuntimeError("variance value must be larger than 0, \
-                while actual variance value is %f" % (variance[i]))
+            error_manager_vector.raise_err_input_value_invalid("prior_box_d", "variance",
+                                                            "larger than 0", variance[i])
 
     return img_h, img_w, step_h, step_w
 
@@ -154,16 +156,14 @@ def _prior_box_check(feature, img, data_h, data_w, min_size, max_size,
 
     if feature_format == "NC1HWC0":
         if len(shape_feature) != DIM_5HD:
-            raise RuntimeError(
-                "The dim of tensor must be %d"
-                ", actual dim is %d" % (DIM_5HD, len(shape_feature)))
+            rule_desc = "the dim of feature must be 5"
+            error_manager_vector.raise_err_check_params_rules("prior_box_d", rule_desc,
+                                                        "shape_feature", len(shape_feature))
 
         shape_c0 = C0
         if shape_feature[DIM_5HD - 1] != shape_c0:
-            raise RuntimeError(
-                "The value of C0 must be %d,"
-                " actual input is (%d)"
-                % (shape_c0, shape_feature[DIM_5HD - 1]))
+            error_manager_vector.raise_err_input_value_invalid("prior_box_d", "value of C0",
+                                                            shape_c0, shape_feature[DIM_5HD - 1])
 
     img_h, img_w, step_h, step_w = \
         _check_parameters(min_size, max_size, img_h, img_w,

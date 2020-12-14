@@ -18,6 +18,8 @@ add_tik
 from te import tik
 from topi.cce import util
 from te import platform as tbe_platform
+from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 ONE = 1
 TWO = 2
@@ -49,7 +51,8 @@ def ceil_div(divisor_a, divisor_b):
     :return: int
     """
     if divisor_b == 0:
-        raise RuntimeError("division by zero")
+        error_manager_vector.raise_err_input_value_invalid("fastrcnn_predictions", "divisor_b",
+                                                        "not equal to 0", divisor_b)
     return (divisor_a + divisor_b - ONE) // divisor_b
 
 
@@ -69,22 +72,31 @@ def check_fastrcnn_predictions_params(rois, score, other_inputs):
 
     # Abnormality test
     if dtype_x != dtype_y:
-        raise RuntimeError("dtype of inputs and output should be consistent")
+        error_manager_vector.raise_err_inputs_dtype_not_equal("fastrcnn_predictions", "x", "y",
+                                                            dtype_x, dtype_y)
     if dtype_x != 'float16':
-        raise RuntimeError("dtype of rois should be float16")
+        error_manager_vector.raise_err_input_dtype_not_supported("fastrcnn_predictions", "rois",
+                                                                "float16", dtype_x)
     if len(shape_x) != TWO:
-        raise RuntimeError("dimension of rois should be TWO")
+        error_manager_vector.raise_err_input_value_invalid("fastrcnn_predictions", "dimension of rois",
+                                                        2, len(shape_x))
     if len(shape_y) != TWO:
-        raise RuntimeError("dimension of score score should be TWO")
+        error_manager_vector.raise_err_input_value_invalid("fastrcnn_predictions", "dimension of score",
+                                                        2, len(shape_y))
     if shape_y[0] not in (SIXTEEN, BLOCK_DATA, NINTY_SIX):
-        raise RuntimeError("first dimension of score should be 16 or 32 or 96")
+        error_manager_vector.raise_err_input_value_invalid("fastrcnn_predictions", "first dimension of score",
+                                                        "one of in [16,32,96]", shape_y[0])
     if not 1 <= shape_y[ONE] - ONE <= BLOCK_DATA:
-        raise RuntimeError("second dimension of rois should in [1, 32]")
+        error_manager_vector.raise_err_input_value_invalid("fastrcnn_predictions", "second dimension of score",
+                                                        "in the range of [1,32]", shape_y[1] - 1)
     if shape_x[0] != shape_y[0] * (shape_y[ONE] - ONE):
-        raise RuntimeError("first dimension of rois should be consistent to"
-                           " first dimension mul second dimension of score")
-    if shape_x[ONE] != FOUR:
-        raise RuntimeError("second dimension of rois should be FOUR")
+        rule_desc = "first dimension of rois should be equal to " \
+                    "first dimension of score multiplied by second dimension of score"
+        error_manager_vector.raise_err_check_params_rules("fastrcnn_predictions", rule_desc,
+                                                        "first dimension of rois", shape_x[0])
+    if shape_x[1] != FOUR:
+        error_manager_vector.raise_err_input_value_invalid("fastrcnn_predictions", "second dimension of rois",
+                                                        4, shape_x[1])
     check_fastrcnn_predictions_params_2(score, other_inputs)
 
 
@@ -106,14 +118,21 @@ def check_fastrcnn_predictions_params_2(score, other_inputs):
     k_check = other_inputs[5]
 
     if not 0 <= nms_threshold_check <= 1:
-        raise RuntimeError("the nms_threshold should in [0, 1]")
+        error_manager_vector.raise_err_input_value_invalid("fastrcnn_predictions", "nms_threshold",
+                                                        "in [0, 1]", nms_threshold_check)
     if not 0 <= score_threshold_check <= 1:
-        raise RuntimeError("the score_threshold should in [0, 1]")
+        error_manager_vector.raise_err_input_value_invalid("fastrcnn_predictions", "score_threshold",
+                                                        "in [0, 1]", score_threshold_check)
     if sorted_rois_check[0] != k_check or sorted_scores_check[0] != k_check \
             or sorted_classes_check[0] != k_check:
-        raise RuntimeError("first dimension of output should be consistent")
+        error_detail = "first dimension of output should be equal to %d" % (k_check)
+        error_manager_vector.raise_err_input_shape_invalid("fastrcnn_predictions",
+                                                    "sorted_rois, sorted_scores, sorted_classes",
+                                                    error_detail)
     if k_check != shape_y[0]:
-        raise RuntimeError("the k should be equle to N")
+        rule_desc = "k should be equle to N (%d)" % (shape_y[0])
+        error_manager_vector.raise_err_check_params_rules("fastrcnn_predictions", rule_desc,
+                                                        "k", k_check)
 
 
 class InitShape:
@@ -1277,7 +1296,11 @@ def fastrcnn_predictions_compute(input_dict, input_param, kernel_name):
     return tik_instance
 
 
-@util.check_input_type(dict, dict, dict, dict, dict, float, float, int, str)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT,
+                            para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_INT,
+                            para_check.KERNEL_NAME)
 def fastrcnn_predictions(rois, score,
                          sorted_rois, sorted_scores, sorted_classes,
                          nms_threshold, score_threshold, k,
@@ -1326,7 +1349,6 @@ def fastrcnn_predictions(rois, score,
     check_fastrcnn_predictions_params(
         rois, score,
         (sorted_rois, sorted_scores, sorted_classes, nms_threshold, score_threshold, k))
-    util.check_kernel_name(kernel_name)
 
     nms_threshold_new = nms_threshold / (1.0 + nms_threshold)
     tik_instance = fastrcnn_predictions_compute(
