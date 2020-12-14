@@ -5,6 +5,7 @@ import sys
 import conv2d_bp_filter_ut_testcase
 import util_for_conv2d_bp_filter as util
 from op_test_frame.ut import OpUT
+from impl.conv2d_backprop_filter_d import get_op_support_info
 
 ut_case = OpUT(
     "conv2d_backprop_filter_d",
@@ -113,9 +114,19 @@ def _gen_trans_data_case(
     }
 
 
+def _test_get_op_support_info(test_arg):
+    op_info_testcases = conv2d_bp_filter_ut_testcase.op_support_info_testcase
+    for testcase in op_info_testcases:
+        formatted_case = _gen_trans_data_case(*testcase)
+        params = formatted_case["params"]
+        params[0]["format"] = "NC1HWC0"
+        get_op_support_info(*params)
+
+
 def _gen_conv2d_bp_filter_op_case():
     for test_case in conv2d_bp_filter_ut_testcase.conv2d_bp_filter_op_testcase:
         ut_case.add_case(["Ascend910"], _gen_trans_data_case(*test_case))
+    ut_case.add_cust_test_func(test_func=_test_get_op_support_info)
 
 
 _gen_conv2d_bp_filter_op_case()

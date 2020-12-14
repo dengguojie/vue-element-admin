@@ -17,6 +17,7 @@ conv2d_backprop_filter_d
 """
 import te.lang.cce as tbe
 import te.platform as tbe_platform
+from impl.util import util_select_op_base
 from te import tvm
 from te.utils import error_manager
 from te.utils import para_check
@@ -55,6 +56,8 @@ DEFAULT_MAX_SHAPE_NUM = 1000000
 # the max size is 2**63-1
 DATA_SIZE_MAX = 9223372036854775807
 
+L1FUSION_INPUT_CTR = 2
+
 # the bytes length of several dtype
 BIT_RATIO_DICT = {
     "int32": 4,
@@ -72,6 +75,216 @@ PADDING_VAILD = [0, 0, 0, 0]
 PADDING_SUPPORT = ("SAME", "VALID")
 # conv1d situation support w not larger than 2^31-1
 CONV1D_MAX_W = 2147483647
+
+
+def _align(input_x, input_y):
+    if input_y == 0:
+        dict_args = {
+            "errCode": "E60108",
+            "reason": "Division by zero"
+        }
+        raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+    return (input_x + input_y - 1) // input_y * input_y
+
+
+def _cal_min_l1space(
+    shape_x,
+    shape_out_backprop,
+    filter_sizes,
+    strides,
+    dilations,
+    pads
+):
+    """
+    cal the mini l1space using in lxfusion
+    Parameters
+    ----------
+    shape_x: tuple/list of 4 integers
+    shape_out_backprop: tuple/list of 4 integers
+    filter_sizes: filter_sizes
+    strides: tuple/list of 2 integers
+    dilations: tuple/list of 4 integers
+    pads: tuple/list of 4 integers or string
+
+    Returns
+    -------
+    bl1_min_byte: int
+    """
+
+    filter_sizes = list(filter_sizes)
+    strides = list(strides)
+    dilations = list(dilations)
+    _, _, fmap_h, fmap_w = shape_x
+    dedy_w = shape_out_backprop[3]
+    _, _, filter_h, filter_w = filter_sizes
+    stride_h, stride_w = strides
+    _, _, dilation_h, dilation_w = dilations
+    filter_h_dilation = (filter_h - 1) * dilation_h + 1
+    filter_w_dilation = (filter_w - 1) * dilation_w + 1
+
+    if pads == "VALID":
+        pad_up = 0
+        pad_down = 0
+    elif pads == "SAME":
+        pad_h = max(
+            _align(fmap_h, stride_h) - stride_h + filter_h_dilation - fmap_h,
+            0
+        )
+        pad_up = pad_h // 2
+        pad_down = pad_h - pad_up
+    else:
+        pad_up, pad_down = pads[0:2]
+    fmap_h_padding = fmap_h + pad_up + pad_down
+
+    if fmap_h_padding == 1 and filter_h_dilation == 1 and stride_h == 1:
+        kl1_min = (C0 - 1) * stride_w + filter_w_dilation
+    else:
+        kl1_min = fmap_w
+
+    if dedy_w % C0 == 0:
+        bl1_min_byte = filter_h_dilation * kl1_min * C0 * 2
+    else:
+        bl1_min_byte = (filter_h_dilation + stride_h) * kl1_min * C0 * 2
+
+    return bl1_min_byte
+
+
+def _get_shape_by_format(ori_format, shape, param_name, support_hwcn=False):
+    """
+    format shape to NCHW
+    Parameters
+    ----------
+    ori_format: string
+        origin format
+    shape: list or tuple of 4 integers
+    param_name: string
+    support_hwcn: bool
+    Returns
+    -------
+    res: list of 4 integers
+        formatted shape of NCHW
+    """
+
+    if ori_format == "NHWC":
+        res = [shape[0], shape[3], shape[1], shape[2]]
+    elif ori_format == "NCHW":
+        res = shape[:]
+    else:
+        if support_hwcn and ori_format == "HWCN":
+            res = [shape[3], shape[2], shape[0], shape[1]]
+        else:
+            format_list = "[NCHW, NHWC, HWCN]" if support_hwcn else "[NCHW, NHWC]"
+            dict_args = {
+                "errCode": "E60008",
+                "param_name": param_name,
+                "expected_format_list": format_list,
+                "format": ori_format
+            }
+            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+    return res
+
+
+@para_check.check_op_params(
+    para_check.REQUIRED_INPUT,
+    para_check.REQUIRED_INPUT,
+    para_check.REQUIRED_OUTPUT,
+    para_check.REQUIRED_ATTR_LIST_INT,
+    para_check.REQUIRED_ATTR_LIST_INT,
+    para_check.REQUIRED_ATTR_LIST_INT,
+    para_check.OPTION_ATTR_LIST_INT,
+    para_check.OPTION_ATTR_INT,
+    para_check.OPTION_ATTR_STR,
+    para_check.KERNEL_NAME,
+)
+def get_op_support_info(
+    x,  # pylint: disable=invalid-name
+    out_backprop,
+    y,
+    filter_size,
+    strides,
+    pads,
+    dilations=(1, 1, 1, 1),
+    groups=1,
+    data_format="NHWC",
+    kernel_name="conv2d_backprop_filter",
+):
+    """
+    get the conv2d_backprop_filter split info
+
+    Parameters
+    ----------
+    x: dict with keys(ori_shape, ori_format, shape, format, dtype)
+        input feature map tensor.
+
+    out_backprop: dict with keys(ori_shape, ori_format, shape, format, dtype)
+        input weight tensor.
+
+    y: dict with keys(ori_shape, ori_format, shape, format, dtype)
+        output tensor, dtype must be assigned.
+
+    filter_size: tuple/list of 4 integers
+
+    strides: tuple/list of 2 integers
+
+    pads: tuple/list of 4 integers or string
+
+    dilations: tuple/list of 4 integers
+        filter expand size of dilated conv2d_backprop_filter. Default to (1, 1, 1, 1).
+
+    groups: int
+        param for group conv2d_backprop_filter. Default to 1.
+
+    data_format: str
+        input data format. Specify the data format of the input and output data.
+        Default to "NHWC".
+
+    kernel_name: str
+        kernel name. Default to "conv2d_backprop_filter".
+
+    Returns
+    -------
+    split info, split axis and min l1 space
+    """
+
+    format_x = x.get("format")
+    dtype_x = x.get("dtype")
+    if dtype_x != "float16":
+        dict_args = {
+            "errCode": "E60005",
+            "param_name": "x",
+            "expected_dtype_list": "[float16]",
+            "dtype": "{}".format(dtype_x)
+        }
+        raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+    axis_reduce_list = None
+    if format_x == "NC1HWC0":
+        # only Cout1 can be cut
+        axis_split_matrix = [
+            [
+                util_select_op_base.SplitInput([1, [1], [-1], [-1]]),
+                util_select_op_base.SplitOutput([0, [1]])
+            ]
+        ]
+    else:
+        axis_split_matrix = None
+
+    ori_format_x = x.get("ori_format")
+    ori_shape_x = x.get("ori_shape")
+    ori_format_out_backprop = out_backprop.get("ori_format")
+    ori_shape_out_backprop = out_backprop.get("ori_shape")
+    ori_format_y = y.get("ori_format")
+    ori_shape_y = y.get("ori_shape")
+    x_shape = _get_shape_by_format(ori_format_x, ori_shape_x, "x")
+    shape_out = _get_shape_by_format(ori_format_out_backprop, ori_shape_out_backprop, "out_backprop")
+    filter_shape = _get_shape_by_format(ori_format_y, ori_shape_y, "y", True)
+    if len(strides) == 4:
+        h_index = data_format.find("H")
+        w_index = data_format.find("W")
+        strides = [strides[h_index], strides[w_index]]
+    min_l1space = _cal_min_l1space(x_shape, shape_out, filter_shape, strides, dilations, pads)
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(
+        axis_split_matrix, axis_reduce_list, L1FUSION_INPUT_CTR, min_l1space)
+    return op_cal_info_in_json
 
 
 @para_check.check_op_params(
@@ -357,14 +570,6 @@ def check_conv2dbp_filter_params(
     Returns : All transformed params.
     ----------
     """
-
-    def _align(input_x, input_y):
-        if input_y == 0:
-            dict_args = {}
-            dict_args["errCode"] = "E60108"
-            dict_args["reason"] = "Division by zero"
-            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
-        return (input_x + input_y - 1) // input_y * input_y
 
     def _check_attr_range_dw(name, value, attr_min=None, attr_max=None):
         if not attr_min and not attr_max:
