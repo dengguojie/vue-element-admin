@@ -116,8 +116,33 @@ IMPLEMT_INFERFUNC(FIFOQueue, FIFOQueueInfer) {
   output_desc.SetDataType(output_type);
   graphStatus output_status = op.UpdateOutputDesc("handle", output_desc);
   if (output_status != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update handle failed");
+    OP_LOGE(op.GetName().c_str(), "Update handle failed");
     return GRAPH_FAILED;
+  }
+
+  // update attr to ShapesAndTypes
+  std::vector<DataType> component_types;
+  if (op.GetAttr("component_types", component_types) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Get attr component_types failed");
+    return GRAPH_FAILED;
+  }
+  Operator::OpListListInt elem_shapes;
+  if (op.GetAttr("shapes", elem_shapes) == GRAPH_SUCCESS) {
+    size_t num = std::min(elem_shapes.size(), component_types.size());
+    std::vector<ShapeAndType> handle_shapes_and_types;
+    handle_shapes_and_types.reserve(num);
+
+    for (size_t i = 0; i < num; ++i) {
+      Shape elem_shape(std::move(elem_shapes[i]));
+      DataType elem_type(std::move(component_types[i]));
+      ShapeAndType shape_and_type(elem_shape, elem_type);
+      handle_shapes_and_types.emplace_back(std::move(shape_and_type));
+    }
+
+    std::vector<std::vector<ShapeAndType>> shapes_and_types(2);
+    shapes_and_types[0] = handle_shapes_and_types;
+    auto context = op.GetInferenceContext();
+    context->SetOutputHandleShapesAndTypes(shapes_and_types);
   }
   return GRAPH_SUCCESS;
 }
