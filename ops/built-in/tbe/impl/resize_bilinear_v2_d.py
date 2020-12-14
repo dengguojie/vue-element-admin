@@ -15,8 +15,9 @@
 """
 resize_bilinear_v2_d
 """
-import numpy as np
+# pylint: disable=wildcard-import,unused-wildcard-import
 from functools import reduce as reduce_func
+import numpy as np
 import te
 from te import tvm
 from te import platform as tbe_platform

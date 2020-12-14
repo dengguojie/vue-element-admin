@@ -786,148 +786,130 @@ int64_t GetMin(const std::vector<int64_t>& vec) {
 
 // ----------------Transpose Op Begin-------------------
 static graphStatus TransposeCommonInferShape(const std::vector<int64_t>& perm_list, Operator& op) {
-  vector<int64_t> out_vec;
-  std::vector<std::pair<int64_t, int64_t>> shape_range;
-  std::vector<std::pair<int64_t, int64_t>> out_range;
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto input_shape = input_desc->MutableShape().GetDims();
+  auto input_dtype = input_desc->GetDataType();
+  auto output_desc = op_info->MutableOutputDesc("y");
 
-  Shape shape = op.GetInputDesc("x").GetShape();
-  op.GetInputDesc("x").GetShapeRange(shape_range);
+  // set output dtype as the same with input x
+  output_desc->SetDataType(input_dtype);
 
-  size_t dim_num = shape.GetDimNum();
-  // do perm operation when shape is not -2
-  if (shape.GetDims() != UNKNOWN_RANK) {
-    size_t perm_list_size = perm_list.size();
-    if (perm_list.empty() || (perm_list_size != dim_num)) {
-      OpsAttrValueErrReport(op.GetName(), "perm", ConcatString(dim_num), ConcatString(perm_list_size));
-      OP_LOGE(op.GetName().c_str(), "perm is empty or perm size is not match shape size");
-      return GRAPH_FAILED;
-    }
-    for (size_t i = 0; i < dim_num; ++i) {
-      if ((size_t)perm_list[i] >= dim_num || (size_t)perm_list[i] < 0) {
-        OP_LOGE(op.GetName().c_str(), "value of perm is wrong");
-        return GRAPH_FAILED;
-      }
-    }
-
-    // for shape is -1 case
-    if (shape_range.size() == dim_num) {
-      for (size_t i = 0; i < dim_num; ++i) {
-        out_range.push_back(shape_range[perm_list[i]]);
-      }
-    }
-    // for shape is static case
-    else {
-      out_range = shape_range;
-    }
-
-    for (size_t i = 0; i < dim_num; ++i) {
-      out_vec.push_back(shape.GetDim(perm_list[i]));
-    }
-
-  }
-  // for shape is -2 case
-  else {
+  if (IsUnknownRankShape(input_shape)) {
+    // UnknownRankShape, set shape is -1, -1, -1....
+    input_shape.clear();
     for (size_t i = 0; i < perm_list.size(); ++i) {
-      out_vec.push_back(-1);
-      out_range.push_back(std::make_pair(1, -1));
+      input_shape.push_back(-1);
     }
   }
 
-  Shape out_shape(out_vec);
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(out_shape);
-  tensordesc_output.SetOriginShape(out_shape);
-  tensordesc_output.SetDataType(op.GetInputDesc("x").GetDataType());
-  tensordesc_output.SetShapeRange(out_range);
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
+  // infer the shape
+  vector<int64_t> out_vec;
+  for (size_t i = 0; i < perm_list.size(); ++i) {
+    out_vec.push_back(input_shape[perm_list[i]]);
+  }
+  output_desc->SetShape(GeShape(out_vec));
+
+  // infer the range, when need
+  if (IsUnknownVec(out_vec)) {
+    output_desc->SetOriginShape(GeShape(out_vec));
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    std::vector<std::pair<int64_t, int64_t>> output_range;
+    input_desc->GetShapeRange(input_range);
+    MakeUpShapeRange(input_shape, input_range);
+    for (size_t i = 0; i < perm_list.size(); ++i) {
+      output_range.push_back(input_range[perm_list[i]]);
+    }
+    output_desc->SetShapeRange(output_range);
+  }
+
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(TransposeInferShape)
-  Tensor perm_tensor;
-  // in order to switch to aicpu when aicore not support
-  op_desc->SetOpInferDepends({"perm"});
+IMPLEMT_COMMON_INFERFUNC(TransposeInferShape) {
+  const vector<string> depend_names = {"perm"};
+  PREPARE_DYNAMIC_SHAPE(depend_names);
+  auto node = NodeUtils::GetNodeFromOperator(op);
 
-  if (GRAPH_SUCCESS != op.GetInputConstData("perm", perm_tensor)) {
-    OP_LOGI("GetInputConstData perm failed. Set unkonwn shape.");
-    Shape shape = op.GetInputDesc("x").GetShape();
-    std::vector<std::pair<int64_t, int64_t>> shape_range;
-    std::vector<std::pair<int64_t, int64_t>> out_range;
-    int64_t max_range_value = 0;
-    int64_t min_range_value = 0;
-    int64_t max_shape_value = 0;
-    int64_t min_shape_value = 0;
-    size_t dim_num = shape.GetDimNum();
-
-    vector<int64_t> out_vec;
-    if (shape.GetDims() != UNKNOWN_RANK) {
-      for (size_t i = 0; i < dim_num; ++i) {
-        out_vec.push_back(-1);
-      }
+  bool perm_done = false;
+  GeTensorPtr perm_tensor = nullptr;
+  std::vector<int64_t> perm_list;
+  if (GRAPH_SUCCESS == NodeUtils::GetInputConstData(node, "perm", perm_tensor)) {
+    auto const_desc = op_desc->MutableInputDesc("perm");
+    auto const_dtype = const_desc->GetDataType();
+    if (GetConstValue(op, perm_tensor, const_dtype, perm_list)) {
+      perm_done = true;
     } else {
-      out_vec.push_back(-2);
+      OP_LOGW(op.GetName().c_str(), "Get Const perm value failed ");
     }
+  }
 
-    // for shape is -1 case
-    std::vector<int64_t> range_list;
-    op.GetInputDesc("x").GetShapeRange(shape_range);
-    if (shape_range.size() == dim_num && shape.GetDims() != UNKNOWN_RANK) {
-      for (size_t i = 0; i < dim_num; ++i) {
-        range_list.push_back(shape_range[i].first);
-        range_list.push_back(shape_range[i].second);
-      }
-      max_range_value = GetMax(range_list);
-      min_range_value = GetMin(range_list);
-      for (size_t i = 0; i < dim_num; ++i) {
-        out_range.push_back(std::make_pair(min_range_value, max_range_value));
-      }
+  // perm is const node , will do infer use function TransposeCommonInferShape
+  if (perm_done) {
+    if (GRAPH_SUCCESS != TransposeCommonInferShape(perm_list, op)) {
+      return GRAPH_FAILED;
     }
-    // for shape is static
-    else if (shape.GetDims() != UNKNOWN_RANK && shape.GetDims() != UNKNOWN_SHAPE) {
-      max_shape_value = GetMax(shape.GetDims());
-      min_shape_value = GetMin(shape.GetDims());
-      for (size_t i = 0; i < dim_num; ++i) {
-        out_range.push_back(std::make_pair(min_shape_value, max_shape_value));
-      }
-    }
-    // for shape is -2 case, no shape range
-    else {
-      out_range = shape_range;
-    }
-
-    Shape out_shape(out_vec);
-    TensorDesc tensordesc_output = op.GetOutputDesc("y");
-    tensordesc_output.SetShape(out_shape);
-    tensordesc_output.SetOriginShape(out_shape);
-    tensordesc_output.SetDataType(op.GetInputDesc("x").GetDataType());
-    tensordesc_output.SetShapeRange(out_range);
-    (void)op.UpdateOutputDesc("y", tensordesc_output);
     return GRAPH_SUCCESS;
   }
-  DataType dtype = op.GetInputDesc("perm").GetDataType();
 
-  std::vector<int64_t> perm_list;
-  if (dtype == ge::DT_INT32) {
-    int32_t* const_data_ptr = (int32_t*)perm_tensor.GetData();
-    size_t const_num = perm_tensor.GetSize() / sizeof(int32_t);
-    for (size_t i = 0; i < const_num; ++i) {
-      perm_list.push_back((int32_t)((*(const_data_ptr + i))));
+  // perm is not const node, infer for aicpu
+  auto input_desc = op_desc->MutableInputDesc("x");
+  auto input_shape = input_desc->MutableShape().GetDims();
+  auto input_dtype = input_desc->GetDataType();
+  auto output_desc = op_desc->MutableOutputDesc("y");
+
+  // set output dtype as the same with input x
+  output_desc->SetDataType(input_dtype);
+
+  if (IsUnknownRankShape(input_shape)) {
+    auto perm_desc = op_desc->MutableInputDesc("perm");
+    auto perm_shape = perm_desc->MutableShape().GetDims();
+    if (IsUnknown(perm_shape)) {
+      // set output is -2 UnknownRank
+      OP_LOGW(op.GetName().c_str(), "the output will be set to -2");
+      output_desc->SetShape(GeShape(input_shape));
+      output_desc->SetOriginShape(GeShape(input_shape));
+      return GRAPH_SUCCESS;
     }
-  } else if (dtype == ge::DT_INT64) {
-    int64_t* const_data_ptr = (int64_t*)perm_tensor.GetData();
-    size_t const_num = perm_tensor.GetSize() / sizeof(int64_t);
-    for (size_t i = 0; i < const_num; ++i) {
-      perm_list.push_back((int64_t)((*(const_data_ptr + i))));
+
+    // pert is not dynamic shape, will update the input shape
+    if (perm_shape.empty()) {
+      perm_shape.push_back(1);
     }
-  } else {
-    OP_LOGE(op.GetName().c_str(), "transpose perm do not support this type %d", dtype);
-    return GRAPH_FAILED;
+    input_shape.clear();
+    for (auto i = 0; i < perm_shape[0]; ++i) {
+      input_shape.push_back(-1);
+    }
   }
 
-  if (GRAPH_SUCCESS != TransposeCommonInferShape(perm_list, op)) {
-    return GRAPH_FAILED;
+  // begin to infer shape and range
+  std::vector<std::pair<int64_t, int64_t>> input_range;
+  std::vector<std::pair<int64_t, int64_t>> output_range;
+  vector<int64_t> out_vec;
+  input_desc->GetShapeRange(input_range);
+  MakeUpShapeRange(input_shape, input_range);
+
+  int64_t range_first = input_range[0].first;
+  int64_t range_second = input_range[0].second;
+
+  for (size_t i = 0; i < input_range.size(); ++i) {
+    // all range is the same and get the shape range
+    range_first = std::min(range_first, input_range[i].first);
+    range_second = (range_second == -1 || input_range[i].second == -1) ?
+                   -1 :
+                   std::max(range_second, input_range[i].second);
   }
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+
+  for (size_t i = 0; i < input_range.size(); ++i) {
+    out_vec.push_back(-1);
+    output_range.push_back(std::pair<int64_t, int64_t>(range_first, range_second));
+  }
+  output_desc->SetShape(GeShape(out_vec));
+  output_desc->SetOriginShape(GeShape(out_vec));
+  output_desc->SetShapeRange(output_range);
+
+  return GRAPH_SUCCESS;
+}
 
 COMMON_INFER_FUNC_REG(Transpose, TransposeInferShape);
 
