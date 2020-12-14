@@ -30,6 +30,7 @@ TEN = 10
 SIXTEEN = 16
 BLOCK_DATA = 32
 SIXTY_FOUR = 64
+NINTY_SIX = 96
 MASK = 128
 MAXTRIX = 256
 
@@ -49,7 +50,7 @@ def ceil_div(divisor_a, divisor_b):
     """
     if divisor_b == 0:
         raise RuntimeError("division by zero")
-    return (divisor_a + divisor_b - 1) // divisor_b
+    return (divisor_a + divisor_b - ONE) // divisor_b
 
 
 def check_fastrcnn_predictions_params(rois, score, other_inputs):
@@ -75,14 +76,14 @@ def check_fastrcnn_predictions_params(rois, score, other_inputs):
         raise RuntimeError("dimension of rois should be TWO")
     if len(shape_y) != TWO:
         raise RuntimeError("dimension of score score should be TWO")
-    if shape_y[0] not in (16, 32, 96):
+    if shape_y[0] not in (SIXTEEN, BLOCK_DATA, NINTY_SIX):
         raise RuntimeError("first dimension of score should be 16 or 32 or 96")
-    if not 1 <= shape_y[1] - 1 <= 32:
+    if not 1 <= shape_y[ONE] - ONE <= BLOCK_DATA:
         raise RuntimeError("second dimension of rois should in [1, 32]")
-    if shape_x[0] != shape_y[0] * (shape_y[1] - 1):
+    if shape_x[0] != shape_y[0] * (shape_y[ONE] - ONE):
         raise RuntimeError("first dimension of rois should be consistent to"
                            " first dimension mul second dimension of score")
-    if shape_x[1] != FOUR:
+    if shape_x[ONE] != FOUR:
         raise RuntimeError("second dimension of rois should be FOUR")
     check_fastrcnn_predictions_params_2(score, other_inputs)
 
