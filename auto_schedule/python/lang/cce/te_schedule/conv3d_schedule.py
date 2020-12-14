@@ -1391,9 +1391,10 @@ class CceConv3dOp:
         # --------------------------tile res_c------------------------
         # to split G
         group_dict = tensor_map["group_dict"]
-        c_outer_g, c_outer_t = sch[res_c].split(res_c.op.axis[1], nparts=group_dict["real_g"])
+
+        c_outer_g, c_outer_inner = sch[res_c].split(res_c.op.axis[1], c_tiling_factor[0])
+        c_outer_g, c_outer_outer = sch[res_c].split(c_outer_g, nparts=group_dict["real_g"])
         c_outer_g_outer, c_outer_g_inner = sch[res_c].split(c_outer_g, nparts=tiling["g_dim"])
-        c_outer_outer, c_outer_inner = sch[res_c].split(c_outer_t, c_tiling_factor[0])
 
         m_outer_outer, m_outer_inner = sch[res_c].split(res_c.op.axis[2], c_tiling_factor[1])
         sch[res_c].reorder(c_outer_outer, m_outer_outer,
