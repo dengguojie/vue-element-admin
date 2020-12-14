@@ -1188,29 +1188,49 @@ class ReduceAtomicSchedule(VectorSchedule):
         :param max_ub_count:
         :return:
         """
-        def _shape_mul(shape):
-            if not shape:
-                return 1
-            return reduceIns(lambda x, y: x*y, shape)
-
         def _update_ub_max_by_align(max_ub_count):
-            a1_start_index, _ = self._find_last_none_reduce_axis(
-                shape_before_reduce,
-                reduce_axis_index)
-
+            """update max ub count"""
             align_type = self._res_tensor.dtype
             # bool is represented by int8
             if align_type == 'bool':
                 align_type = 'int8'
             align_factor, _ = util.get_align_factor(align_type)
 
-            total_size_of_reduce = _shape_mul(shape_before_reduce[a1_start_index:])
-
-            max_ub_count = int(total_size_of_reduce /
-                               (total_size_of_reduce + align_factor -
-                                total_size_of_reduce % align_factor) * max_ub_count)
-
+            max_ub_count =  max_ub_count // align_factor
             return max_ub_count
+
+        def _do_storage_align_for_reduce_all(ub_split_axis, shape_before_reduce):
+            """
+            do storage_align for reduce_all scene
+            """
+            align_axis = ub_split_axis + 1
+            if len(shape_before_reduce) == align_axis:
+                align_axis = -1
+
+            # get input align factor
+            input_align_type = self._input_tensors[0].dtype
+            # bool is represented by int8
+            if input_align_type == 'bool':
+                input_align_type = 'int8'
+            input_align_factor, _ = util.get_align_factor(input_align_type)
+
+            # get output align factor
+            output_align_type = self._res_tensor.dtype
+            if output_align_type == 'bool':
+                output_align_type = 'int8'
+            output_align_factor, _ = util.get_align_factor(output_align_type)
+
+            for key in self._cache_read_tensors_and_buffer_map:
+                cache_read_buffer = self._cache_read_tensors_and_buffer_map[key]
+                self._schedule[cache_read_buffer].storage_align(
+                    cache_read_buffer.op.axis[align_axis], input_align_factor, 0)
+
+            for key in self._cache_write_tensors_and_buffer_map:
+                if key != self._res_tensor:
+                    cache_write_buffer = self._cache_write_tensors_and_buffer_map[key]
+                    self._schedule[cache_write_buffer].storage_align(
+                        cache_write_buffer.op.axis[align_axis],
+                        output_align_factor, 0)
 
         reduce_tensor = self._reduce_info["reduce_tensor"]
         dtype = reduce_tensor.dtype
@@ -1222,8 +1242,13 @@ class ReduceAtomicSchedule(VectorSchedule):
             to_do_tiling_shape.append(shape_before_reduce[reduce_axis_index[i]])
 
         last_axis_size = shape_before_reduce[-1]
+        for i in range(len(shape_before_reduce) - 1, -1, -1):
+            if shape_before_reduce[i] != 1:
+                last_axis_size = shape_before_reduce[i]
+                break
         is_32b_align = self._is_last_axis_32b_align(last_axis_size, dtype)
-        if not is_32b_align and len(shape_before_reduce) > 1:
+        if not is_32b_align and len(shape_before_reduce) > 1 and \
+                len(self._vector_dup_tensors) > 0:
             max_ub_count = _update_ub_max_by_align(max_ub_count)
 
         if self._is_supported_atomic_add():
@@ -1241,8 +1266,9 @@ class ReduceAtomicSchedule(VectorSchedule):
                 shape_before_reduce, block_split_axis, block_split_inner,
                 max_ub_count)
 
-        if not is_32b_align and len(shape_before_reduce) > 1:
-            self._do_storage_align(shape_before_reduce, reduce_axis_index)
+        if not is_32b_align and len(shape_before_reduce) > 1 and \
+                len(self._vector_dup_tensors) > 0:
+            _do_storage_align_for_reduce_all(ub_split_axis, shape_before_reduce)
 
         self._need_db = self._is_need_double_buffer(shape_before_reduce,
                                                     0,
