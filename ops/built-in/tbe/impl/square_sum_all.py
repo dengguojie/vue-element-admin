@@ -42,8 +42,10 @@ def get_op_support_info(input_x, input_y, output_x, output_y, kernel_name="squar
     if format_x in support_format:
         axis_reduce_list = []
         for idx, _ in enumerate(shape_x):
-            reduce_info = [ReduceInput([0, [idx]], [1, [idx]]),
-                           ReduceOutput([0, "REDUCE_ADD", True], [1, "REDUCE_ADD", True])]
+            reduce_info = [
+                ReduceInput([0, [idx]], [1, [idx]]),
+                ReduceOutput([0, "REDUCE_ADD", True], [1, "REDUCE_ADD", True])
+            ]
         axis_reduce_list.append(reduce_info)
         axis_split_matrix = None
     else:
@@ -53,7 +55,8 @@ def get_op_support_info(input_x, input_y, output_x, output_y, kernel_name="squar
 
     return op_cal_info_in_json
 
-# pylint: disable=too-many-instance-attributes
+
+# pylint: disable=too-many-instance-attributes,too-few-public-methods
 class SquareSumAll():
     """
     Function: use to store square_sum_all base parameters
@@ -167,6 +170,7 @@ class SquareSumAll():
             error_manager_vector.raise_err_input_dtype_not_supported(self.kernel_name, "input_x", [],
                                                                      self.input_x_dtype)
 
+    # pylint: disable=too-many-arguments
     def _vector_add(self, mask, des_offset, src1_offset, src2_offset, repeat_times):
         """
         Execute the vector add calculation

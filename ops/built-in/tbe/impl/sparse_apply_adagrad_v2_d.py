@@ -25,7 +25,7 @@ class SparseApplyAdagrad(SparseApply):
     Sub class inherited form SparseApply for sparse_apply_adagrad op
     """
 
-    # pylint: disable=invalid-name
+    # pylint: disable=invalid-name,too-many-arguments
     def __init__(self, var, accum, grad, indices, lr, epsilon, update_slot, kernel_name):
         """
         init sparse_apply_adagrad  base parameters

@@ -48,6 +48,7 @@ def _can_division_sixteen(shape):
     return False
 
 
+# pylint: disable=too-many-locals
 def _broadcast_zn_rule(shape0, shape1, format0, format1):
 
     if format1 != format0:
@@ -95,7 +96,8 @@ def _broadcast_zn_rule(shape0, shape1, format0, format1):
     return True
 
 
-# pylint: disable=unused-argument,too-many-locals,invalid-name
+# pylint: disable=unused-argument,too-many-locals,invalid-name,too-many-branches,too-many-statements
+# pylint: disable=too-many-boolean-expressions,too-many-nested-blocks
 def op_select_format(x, y, output, kernel_name="mul"):
     """
     select format dynamically
@@ -124,7 +126,6 @@ def op_select_format(x, y, output, kernel_name="mul"):
     format_list = ["ND"]
     format_nz = ["FRACTAL_NZ"]
     len_format_list = len(dtype_list)
-
     if (len(shape_x) == 4 and len(shape_y) == 4 and format_x in format_4d_list and format_y in format_4d_list) or \
             (len(shape_x) == 5 and len(shape_y) == 5 and format_x == format_y and format_x in format_5d_list):
         x_cdim = shape_x[format_x.index("C")]

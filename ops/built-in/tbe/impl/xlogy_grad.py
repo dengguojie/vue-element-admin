@@ -112,6 +112,7 @@ def xlogy_grad_compute(placeholders, shape_max, dtype, rx, ry):
     return output_y1, output_y2
 
 
+# pylint: disable=too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def xlogy_grad(x1, x2, grad, y1, y2, kernel_name="xlogy_grad"):

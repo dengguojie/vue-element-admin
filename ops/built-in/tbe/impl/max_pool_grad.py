@@ -15,6 +15,7 @@
 """
 max_pool_grad
 """
+# pylint:disable=too-many-lines
 import math
 
 import te.platform as tbe_platform
@@ -86,6 +87,7 @@ def _cal_byte_size(shape, dtype):
         return _cal_shape_ele(shape) * 4
     error_manager_vector.raise_err_input_dtype_not_supported("max_pool_grad", "ori_input", ('float16', 'float32'),
                                                              dtype)
+    return None
 
 
 # MIN VALUE OF FP16
@@ -276,6 +278,7 @@ def max_pool_grad(ori_input,
     return maxpoolgrad.tik_instance_function(kernel_name)
 
 
+# pylint: disable=too-many-instance-attributes,too-few-public-methods
 class MaxpoolGrad:
     """
     MaxpoolGrad  Object include all fuction and paras
@@ -435,6 +438,7 @@ class MaxpoolGrad:
                     src[src_start + repeate_max_time * MAX_VECTOR_REPEATE_TIME * mask_value +
                         remain_repeate_time * mask_value], 1, 1, 1, dst_stride, src_stride)
 
+    # pylint: disable=too-many-branches
     def _vector_op(self, operator, src1, src2, dst, dtype, ele_num, stride_cofig=None, offset=None):
         if dtype == "float16":
             repeate_times = ele_num // VECTOR_FP16_SIZE
@@ -794,7 +798,7 @@ class MaxpoolGrad:
         fp32_data_size = tbe_platform.get_bit_len("float32") // 8
         uint16_data_size = tbe_platform.get_bit_len("uint16") // 8
 
-        need_cut_l1 = input_l1_size >= SIZE_L1
+        need_cut_l1 = bool(input_l1_size >= SIZE_L1)
 
         if self.kh > self.stride_h:
             each_process_hi = self.kh
@@ -1090,6 +1094,7 @@ class MaxpoolGrad:
                                         0, self.hi, self.wi * C0 // 16, 0,
                                         0)
 
+    # pylint: disable=too-many-statements
     def _tilling_ho_only(self, each_process_ho, n_index, c1_index, each_process_ho_block, each_process_hi_block,
                          mov_len_ho, mov_len_hi, start_ho_index, start_hi_index, start_threshold, offset_gm_block,
                          shape, pad):
@@ -1230,6 +1235,7 @@ class MaxpoolGrad:
                 output_data_nums = remain_ho_nums * self.wo * C0
                 process_ho(output_data_nums, cut_ho_nums, remain_ho_nums, remained_hi)
 
+    # pylint: disable=too-many-branches,too-many-statements
     def _tilling_l1_ho_only(self, each_process_ho, n_index, c1_index, each_process_ho_block, each_process_hi_block,
                             mov_len_ho, mov_len_hi, start_ho_index, start_hi_index, start_threshold, offset_gm_block,
                             shape, pad):
@@ -1541,6 +1547,7 @@ class MaxpoolGrad:
                 _process_tiling_l1_ho(n_hi_block, remain_hi_block, start_h, end_h, 0, src_output_offset,
                                       output_data_nums, remain_ho_nums, remained_hi, 0)
 
+    # pylint: disable=too-many-statements,too-many-branches
     def _tilling_l1_ho_wo(self, each_process_wo, n_index, c1_index, each_process_ho_block, each_process_hi_block,
                           mov_len_ho, mov_len_hi, start_ho_index, start_hi_index, start_threshold, offset_gm_block,
                           shape, pad):
@@ -2016,6 +2023,7 @@ class MaxpoolGrad:
                                                 _cal_shape_ele(temp_zero.shape) // 16, 0, 0)
                     self.offset_gm.set_as(self.offset_gm + _cal_shape_ele(temp_zero.shape))
 
+    # pylint:disable=no-self-use
     def _get_core_divlist(self):
         div_list = []
         for i in range(1, CORE_NUM + 1):
@@ -2046,6 +2054,7 @@ class MaxpoolGrad:
             return False
         return True
 
+    # pylint:disable=no-self-use
     def _get_block_num(self, block_num):
         if block_num > CORE_NUM:
             real_block = CORE_NUM
@@ -2055,6 +2064,7 @@ class MaxpoolGrad:
             block_cycle = 1
         return real_block, block_cycle
 
+    # pylint: disable=too-many-branches,too-many-statements
     def tik_instance_function(self, kernel_name):
         """
         main function of tik_instance

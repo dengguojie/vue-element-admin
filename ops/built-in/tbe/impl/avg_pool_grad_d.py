@@ -72,7 +72,6 @@ def _cal_multi_core_factor(m, n):
 
 
 # pylint: disable=too-many-locals,too-many-arguments
-# pylint: disable=unused-variable
 def _parameter_check(shape_in, shape_k, shape_out, dtype, strides, padding):
     para_check.check_shape(shape_in, min_rank=INPUT_DIM, max_rank=INPUT_DIM)
     para_check.check_shape(shape_k, min_rank=FILTER_DIM, max_rank=FILTER_DIM)
@@ -82,7 +81,7 @@ def _parameter_check(shape_in, shape_k, shape_out, dtype, strides, padding):
     # shape_in and shape_out is "NCHW"
     # shape_k is "HWC1"
     # (0, 1, 2, 3) corresponds to (N, C, H, W)in shape_in.
-    DIM_S_H, DIM_S_W = 0, 1
+    DIM_S_H, _ = 0, 1
     DIM_N, DIM_C1, _, _, _ = 0, 1, 2, 3, 4
     DIM_W_C1, DIM_W_H, DIM_W_W, _, _, _ = 0, 1, 2, 3, 4, 5
 
@@ -147,7 +146,7 @@ def _parameter_check(shape_in, shape_k, shape_out, dtype, strides, padding):
         raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
 
 
-# pylint: disable=too-many-arguments
+# pylint: disable=too-many-locals
 def _calculation_dilation(input_shape, weight_sizes, strides, padding="SAME"):
 
     input_n, input_cg, input_ci1, input_h, input_w, input_block = input_shape
@@ -179,7 +178,7 @@ def _calculation_dilation(input_shape, weight_sizes, strides, padding="SAME"):
     return dilated_shape, dilated_pad
 
 
-# pylint: disable=unnecessary-lambda
+# pylint: disable=unnecessary-lambda,too-many-locals,too-many-arguments
 def avg_pool_grad_compute(input_shape, weight, out, vealuemean, k_sizes, strides, padding):
     """
     Computes the gradients of avg pool, insert input.
@@ -257,6 +256,7 @@ def avg_pool_grad_compute(input_shape, weight, out, vealuemean, k_sizes, strides
     return dx_res
 
 
+# pylint: disable=too-many-locals,too-many-locals
 def _avg_pool_grad_tiling(input_w, input_h, out_shape, res, stride):
     """
     tiling plan, cut of batch and ci;
@@ -478,7 +478,7 @@ def _avg_pool_grad_schedule(res):
     return s
 
 
-# pylint: disable=unused-argument
+# pylint: disable=too-many-statements,too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
@@ -610,10 +610,12 @@ def avg_pool_grad_d(input_grad,
             res = tbe.broadcast(grad_tmp, orig_input_shape)
             sch = tbe.auto_schedule(res)
         # add two placeholder for mean_matrix and kernel_matrix
-        dummy_placeholder = tvm.placeholder((1,), name="dumy", dtype=data_dtype)
-        config = {"name": kernel_name,
-                  "tensor_list": [input_grad, dummy_placeholder, dummy_placeholder, res],
-                  "dummy_placeholder": True}
+        dummy_placeholder = tvm.placeholder((1, ), name="dumy", dtype=data_dtype)
+        config = {
+            "name": kernel_name,
+            "tensor_list": [input_grad, dummy_placeholder, dummy_placeholder, res],
+            "dummy_placeholder": True
+        }
         tbe.cce_build_code(sch, config)
     else:
         shape_in = orig_input_shape
@@ -640,3 +642,4 @@ def avg_pool_grad_d(input_grad,
 
         with tbe_platform.build_config:
             tvm.build(s, [dout_placeholder, vealuemean_placeholder, kernel_placeholder, res], "cce", name=kernel_name)
+

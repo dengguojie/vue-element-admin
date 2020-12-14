@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 # Copyright 2019 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -145,7 +146,7 @@ class L0ubTilingType(Enum):
     CUT_HOWO = 4
 
 
-# pylint:disable=too-many-arguments,too-many-locals,invalid-name
+# pylint:disable=too-many-arguments,too-many-locals,invalid-name,too-many-statements
 def _get_load3d_tiling(fmap_shape,
                        ksize,
                        strides,
@@ -745,7 +746,7 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
                     tvm.call_extern(grads.dtype, "vsel", grads_sel_ub.access_ptr("w", offset=data_offset),
                                     grads_ub.access_ptr("r", offset=data_offset),
                                     mask_ub.access_ptr("r", offset=data_offset // mask_type_bit_size), xt))
-            if grads_ele % (VSEL_MAX_SUPPORT_REPEAT * VECTOR_INST_BLOCK_SIZE) is not 0:
+            if grads_ele % (VSEL_MAX_SUPPORT_REPEAT * VECTOR_INST_BLOCK_SIZE) != 0:
                 # Tile
                 tile_offset = grads_ub_tiling * VSEL_MAX_SUPPORT_REPEAT * VECTOR_INST_BLOCK_SIZE
                 tvm_ir.emit(tvm.call_extern(grads_ub.dtype, "set_cmpmask", const_0_ub.access_ptr("r")))
@@ -857,7 +858,7 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
             _mov_output_ub(actual_tiling_l1_wo_i, output_ub, ho_o, wo_o, howo_o)
 
     def _calculation_in_each_block():
-        cut_w_flag = True if l1_tiling["type"] == L1TilingType.CUT_W else False
+        cut_w_flag = bool(l1_tiling["type"] == L1TilingType.CUT_W)
         if cut_w_flag:
             cur_pad_top = tvm_ir.allocate(FMATRIX_DTYPE, (1), name='pad_top', scope=tbe_platform.scope_reg)
             cur_pad_top[0] = tvm.const(pad_t, FMATRIX_DTYPE)

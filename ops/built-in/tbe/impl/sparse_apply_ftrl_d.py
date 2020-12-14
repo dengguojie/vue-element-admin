@@ -20,12 +20,13 @@ from te.utils.error_manager import error_manager_vector
 from impl import sparse_apply_common
 
 
+# pylint: disable=too-many-instance-attributes
 class SparseApplyFtrl(sparse_apply_common.SparseApply):
     """
     Sub class inherited form SparseApply for sparse_apply_ftrl op
     """
 
-    # pylint: disable=invalid-name
+    # pylint: disable=invalid-name,too-many-arguments
     def __init__(self, var, accum, linear, grad, indices, lr, lr_power, l1, l2, l2_shrinkage, kernel_name):
         """
         init sparse_apply_ftrl  base parameters
@@ -82,10 +83,12 @@ class SparseApplyFtrl(sparse_apply_common.SparseApply):
         para_check.check_dtype(self.linear_dtype, ("float32", ), param_name="input_x")
 
         if self.accum_shape != self.var_shape:
-            error_manager_vector.raise_err_inputs_shape_not_equal("sparse_apply_ftrl_d", "accum", "var", self.accum_shape, self.var_shape, self.var_shape)
+            error_manager_vector.raise_err_inputs_shape_not_equal("sparse_apply_ftrl_d", "accum", "var",
+                                                                  self.accum_shape, self.var_shape, self.var_shape)
 
         if self.linear_shape != self.var_shape:
-            error_manager_vector.raise_err_inputs_shape_not_equal("sparse_apply_ftrl_d", "linear", "var", self.linear_shape, self.var_shape, self.var_shape)
+            error_manager_vector.raise_err_inputs_shape_not_equal("sparse_apply_ftrl_d", "linear", "var",
+                                                                  self.linear_shape, self.var_shape, self.var_shape)
 
     def _calculate(self, repeat_times, mask, offset):
         """
@@ -174,7 +177,7 @@ class SparseApplyFtrl(sparse_apply_common.SparseApply):
         self.tik_instance.vdiv(mask, var_ub, tmp_ub, tmp2_ub, repeat_times, 1, 1, 1, 8, 8, 8)
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name
+# pylint: disable=too-many-arguments,unused-argument,invalid-name,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,

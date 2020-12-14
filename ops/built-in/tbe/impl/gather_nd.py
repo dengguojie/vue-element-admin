@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 # Copyright 2019 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,7 +55,7 @@ def _new_alloc(ir_build, dtype, shape, name, scope):
     return new_buffer
 
 
-# pylint: disable=unused-argument,too-many-arguments
+# pylint: disable=unused-argument,too-many-arguments,too-many-locals
 def _indice_unit_tiling(dst, data, indices, step_indices, jump_step, shape_data, shape_indices, dict_out):
     """
     tiling indices into unit
@@ -984,7 +985,7 @@ def _just_dma(src_shape, indice_shape, dst_shape, dtype, kernel_name="_just_dma"
         tvm.build(s, build_list, "cce", name=kernel_name)
 
 
-# pylint: disable=unnecessary-lambda
+# pylint: disable=unnecessary-lambda,too-many-boolean-expressions
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def gather_nd(dict_data, dict_indices, dict_out, kernel_name='gather_nd'):
@@ -1067,11 +1068,11 @@ def gather_nd(dict_data, dict_indices, dict_out, kernel_name='gather_nd'):
         elif indice_dtype == "int64":
             ele_per_block = 4
         # 32B aligned
-        if data_dtype == "int32" or data_dtype == "float32":
+        if data_dtype in ('int32', 'float32'):
             param_ele_per_block = 8
         elif data_dtype == "float16":
             param_ele_per_block = 16
-        elif data_dtype == "int8" or data_dtype == "uint8":
+        elif data_dtype in ('int8', 'uint8'):
             param_ele_per_block = 32
         if shape_indices[-1] != 0:
             # normal case

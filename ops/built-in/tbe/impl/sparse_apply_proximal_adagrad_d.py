@@ -21,12 +21,13 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
+# pylint: disable=too-many-instance-attributes
 class SparseApplyProximalAdagrad(SparseApply):
     """
     Function: use to store sparse_apply_proximal_adagrad base parameters
     """
 
-    # pylint: disable=invalid-name
+    # pylint: disable=invalid-name,too-many-arguments
     def __init__(self, var, accum, lr, l1, l2, grad, indices, kernel_name):
         """
         Init sparse_apply_proximal_adagrad base parameters
@@ -79,6 +80,7 @@ class SparseApplyProximalAdagrad(SparseApply):
             error_manager_vector.raise_err_inputs_shape_not_equal("sparse_apply_proximal_adagrad_d", "accum", "var",
                                                                   self.accum_shape, self.var_shape, self.var_shape)
 
+    # pylint: disable=too-many-locals,too-many-statements
     def _calculate(self, repeat_times, mask, offset):
         """
         The logical
@@ -87,7 +89,7 @@ class SparseApplyProximalAdagrad(SparseApply):
         lr1_ub = self._get_ub("lr1_ub")[offset]
         lr2_ub = self._get_ub("lr2_ub")[offset]
         prox_var_ub = self._get_ub("prox_var_ub")[offset]
-        oct_float_ub = self._get_ub("oct_float_ub") # eight float32
+        oct_float_ub = self._get_ub("oct_float_ub")  # eight float32
 
         lr_ub = self._get_ub("lr_ub")
         lr_gm = self._get_scalar_gm("lr_gm")

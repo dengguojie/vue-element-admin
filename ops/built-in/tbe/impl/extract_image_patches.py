@@ -16,7 +16,6 @@
 extract_image_patches
 """
 import functools
-import json
 import math
 import os
 import re
@@ -31,7 +30,6 @@ from impl.util.util_common import write_code
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
-
 
 BLOCK_SIZE = 16
 BLOCK_SIZE_ALIGN = 16
@@ -48,7 +46,7 @@ LOAD3D_REPEAT_TIME_LIMIT = 255
 DELTA = 0.000001  # aviod div zero, fp32 precision
 
 
-# pylint: disable = unused-argument,redefined-builtin
+# pylint: disable = unused-argument,redefined-builtin,too-many-arguments,invalid-name
 def get_op_support_info(images, y, ksizes, strides, dilates, padding, kernel_name="extract_image_patches"):
     """
     get extract_image_patches slice info
@@ -62,13 +60,11 @@ def get_op_support_info(images, y, ksizes, strides, dilates, padding, kernel_nam
     if format_x == "NC1HWC0":
         images_h = images_shape[2]
         if images_h == kernel_h or padding == "SAME":
-            axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]]),
-                                  SplitOutput([0, [0]])]]
+            axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
         elif padding == "VALID":
             axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]]),
-                                  SplitOutput([0, [0]])],
-                                 [SplitInput([0, [2], [0], [0]]),
-                                  SplitOutput([0, [1]])]]
+                                  SplitOutput([0, [0]])], [SplitInput([0, [2], [0], [0]]),
+                                                           SplitOutput([0, [1]])]]
         else:
             axis_split_matrix = None
         axis_reduce_list = None
@@ -143,6 +139,7 @@ def _ub_merge_co(ub_merge_co_shape, tensor):
     return tvm.compute(ub_merge_co_shape, lambda *indices: _ub_merge_co_indices(indices, tensor), name='_ub_merge_co')
 
 
+# pylint: disable=too-many-arguments
 def _im2col_row_major_v2(feature_map, im2col_vm_shape, kernel_h, kernel_w, padding, stride, dilate, compute_dtype):
     """
     calculate im2col_row_major tensor
@@ -167,7 +164,7 @@ def _im2col_row_major_v2(feature_map, im2col_vm_shape, kernel_h, kernel_w, paddi
     Returns : A_im2col_row_major tensor
     """
 
-    # pylint: disable=unused-argument,invalid-name
+    # pylint: disable=unused-argument,invalid-name,too-many-locals,too-many-arguments
     def _im2col_row_major_indices(indices, feature_map, kernel_h, kernel_w, padding, stride, dilate):
         """
         calculate im2col_row_major tvm lambda function
@@ -232,7 +229,7 @@ def _im2col_fractal_v2(im2col_shape, feature_map, config, compute_dtype):
     Returns : A_im2col_fractal tensor
     """
 
-    # pylint: disable=invalid-name
+    # pylint: disable=invalid-name,too-many-locals
     def _im2col_fractal_indices(indices, feature_map):
         """
         calculate im2col_fractal tvm lambda function
@@ -271,7 +268,7 @@ def _im2col_fractal_v2(im2col_shape, feature_map, config, compute_dtype):
                        tag='im2col_fractal')
 
 
-# pylint: disable=unused-argument
+# pylint: disable=unused-argument,too-many-locals,too-many-arguments
 @tbe_platform.fusion_manager.fusion_manager.register("extract_image_patches")
 def extract_image_patches_compute(fmap,
                                   c_in_real,
@@ -302,7 +299,7 @@ def extract_image_patches_compute(fmap,
     # fmap's format is NC1HWC0
     fmap_shape = fmap.shape
     dtype_input = fmap.dtype
-    if dtype_input == "int8" or dtype_input == "uint8":
+    if dtype_input in ('int8', 'uint8'):
         align_block_size = BLOCK_SIZE_INT8
     else:
         align_block_size = BLOCK_SIZE
@@ -388,6 +385,7 @@ def extract_image_patches_compute(fmap,
     return output_res, workspace_res, workspace_shape
 
 
+# pylint: disable=too-many-arguments
 def _get_tiling_param_cut_howo_col(used_ub_size, lcm_out_w, khkw, cut_h_col, fmap_w, fmap_c0, type_size, c_in_real):
     """
     get params for tiling
@@ -409,6 +407,7 @@ def _get_tiling_param_cut_howo_col(used_ub_size, lcm_out_w, khkw, cut_h_col, fma
     return max_v_ub, move_rate
 
 
+# pylint: disable=too-many-locals,too-many-arguments
 def _get_tiling_param_cut_howo_row(khkw, fmap_w, fmap_c0, dilated_kernel_h, dilated_kernel_w, stride_h, type_size,
                                    avg_split_ub_size, cut_w_row, cut_h_row, c_in_real):
     # cut howo row
@@ -435,6 +434,7 @@ def _get_tiling_param_cut_howo_row(khkw, fmap_w, fmap_c0, dilated_kernel_h, dila
     return max_v_ub, move_rate
 
 
+# pylint: disable=too-many-arguments
 def _get_tiling_param_cut_howo_partial_col(out_w, khkw, fmap_w, type_size, avg_split_ub_size, cut_h_row, c_in_real):
     # cut howo col partially
     max_v_ub = avg_split_ub_size // (khkw * c_in_real * BLOCK_SIZE)
@@ -463,6 +463,7 @@ def _get_tiling_param_cut_howo_min(fmap_w, fmap_c0, type_size, avg_split_ub_size
     return max_v_ub
 
 
+# pylint: disable=too-many-locals
 def _get_tiling_param(setfmatrix_dict, extract_params, used_ub_size, type_size, avg_split_ub_size):
 
     out_w = extract_params['out_w']
@@ -498,6 +499,7 @@ def _get_tiling_param(setfmatrix_dict, extract_params, used_ub_size, type_size, 
          move_rate_cut_col_p
 
 
+# pylint: disable=too-many-statements,too-many-branches,too-many-locals
 def _extract_image_patches_schedule(res, sch_list):
     """
     :param res: the multi-results in the operator
@@ -556,7 +558,7 @@ def _extract_image_patches_schedule(res, sch_list):
     sch[ub_res].set_scope(tbe_platform.scope_ubuf)
 
     dtype_input = ub_res.dtype
-    if dtype_input == "int8" or dtype_input == "uint8":
+    if dtype_input in ('int8', 'uint8'):
         align_block_size = BLOCK_SIZE_INT8
         type_size = INT8_SIZE
     else:
@@ -737,7 +739,7 @@ def _extract_image_patches_schedule(res, sch_list):
     sch[ub_res].double_buffer()
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name
+# pylint: disable=too-many-arguments,unused-argument,invalid-name,too-many-statements,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_STR, para_check.KERNEL_NAME)
@@ -765,7 +767,7 @@ def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_n
     shape_input_4d = images.get("ori_shape")
     dtype_input = images.get("dtype")
     dtype_input = dtype_input.lower()
-    if dtype_input == "int8" or dtype_input == "uint8":
+    if dtype_input in ('int8', 'uint8'):
         align_block_size = BLOCK_SIZE_INT8
         type_size = INT8_SIZE
     else:
@@ -795,14 +797,13 @@ def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_n
     _, dilate_h, dilate_w, _ = dilates
     out_h, _, _ = tbe.te_compute.common.tf_get_windowed_output_size_verbose_v2(fmap_h, kernel_h, dilate_h, stride_h,
                                                                                padding)
-    out_w, padding_w_before, padding_w_after = tbe.te_compute.common.tf_get_windowed_output_size_verbose_v2(
-        fmap_w, kernel_w, dilate_w, stride_w, padding)
+    out_w, _, _ = tbe.te_compute.common.tf_get_windowed_output_size_verbose_v2(fmap_w, kernel_w, dilate_w, stride_w,
+                                                                               padding)
 
     if (out_h <= 0) or (out_w <= 0):
         error_manager_vector.raise_err_specific_reson(kernel_name, "out_h and out_w can not <= 0!")
     # min cut_h
     dilated_kernel_h = (kernel_h - 1) * dilate_h + 1
-    dilated_kernel_w = (kernel_w - 1) * dilate_w + 1
     cut_h_col = (BLOCK_SIZE // math.gcd(out_w, BLOCK_SIZE) - 1) * stride_h + 1 + dilated_kernel_h // 2
     if cut_h_col > fmap_h:
         cut_h_col = fmap_h
@@ -819,7 +820,6 @@ def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_n
     _extract_image_patches_schedule(output_res, [sch])
 
     def _write_workspace_info(workspace_list, kernel_name):
-
         def _shape_to_list(shape):
             """
             translate tvm.shape to list type in python

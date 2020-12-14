@@ -32,10 +32,13 @@ UB_SIZE_RATIO = 0.9
 MAX_CORE_NUMBER = 65536
 
 
+# pylint: disable=too-many-instance-attributes,too-few-public-methods
 class ScatterNonAliasingAdd(object):
     """
        Function: use to store scatter base parameters
     """
+
+    # pylint: disable=too-many-arguments
     def __init__(self, inputs, indices, updates, outputs, kernel_name):
         """
         Init scatter base parameters
@@ -319,7 +322,7 @@ class ScatterNonAliasingAdd(object):
                 ele_every_block = math.ceil(self.inputs_ele_num / self.block_num)
                 with self.tik_instance.if_scope(self.indices_loop_index * ele_every_block <= self.inputs_read_index):
                     with self.tik_instance.if_scope(
-                        (self.indices_loop_index + 1) * ele_every_block > self.inputs_read_index):
+                            (self.indices_loop_index + 1) * ele_every_block > self.inputs_read_index):
                         self._get_updates_read_index(indices_ub_index + indices_in_index)
                         self.inputs_read_index.set_as(self.inputs_read_index)
                         self._calc_updates()
@@ -418,6 +421,9 @@ class ScatterNonAliasingAdd(object):
         else:
             self.tik_instance.data_move(self.outputs_gm[self.inputs_read_index + read_index_offset], self.inputs_ub, 0,
                                         1, updates_burst_len, 0, 0)
+
+
+# pylint: disable=too-many-arguments
 
     def _calc_process(self, mask, dest_addr, src_addr1, src_addr2, repeat_times, is_tile):
         """

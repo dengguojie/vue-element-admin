@@ -446,12 +446,12 @@ case_multi_core_single_not_aligned_fp32 = {
 }
 
 
-ut_case.add_case(["Ascend910", "Ascend310"], case_small_shape_scalar_fp32)
-ut_case.add_case(["Ascend910", "Ascend310"], case_not_aligned_gt_one_block_fp32)
-ut_case.add_case(["Ascend910", "Ascend310"], case_multi_dim_aligned_fp32)
-ut_case.add_case(["Ascend910", "Ascend310"], case_big_prime_scalar_fp32)
-ut_case.add_case(["Ascend910", "Ascend310"], case_big_shape_not_aligned_fp32)
-ut_case.add_case(["Ascend910", "Ascend310"], case_multi_core_single_not_aligned_fp32)
+ut_case.add_case(["Ascend910"], case_small_shape_scalar_fp32)
+ut_case.add_case(["Ascend910"], case_not_aligned_gt_one_block_fp32)
+ut_case.add_case(["Ascend910"], case_multi_dim_aligned_fp32)
+ut_case.add_case(["Ascend910"], case_big_prime_scalar_fp32)
+ut_case.add_case(["Ascend910"], case_big_shape_not_aligned_fp32)
+ut_case.add_case(["Ascend910"], case_multi_core_single_not_aligned_fp32)
 
 def calc_expect_func(var, accum, linear, grad, indices, out_var, out_accum, out_linear,
                      lr, l1, l2, l2_shrinkage, lr_power):

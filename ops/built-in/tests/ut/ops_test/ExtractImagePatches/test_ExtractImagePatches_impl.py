@@ -16,7 +16,7 @@ ExtractImagePatches ut case
 import numpy as np
 from op_test_frame.common import precision_info
 from op_test_frame.ut import OpUT
-ut_case = OpUT("ExtractImagePatches", None, None)
+ut_case = OpUT("ExtractImagePatches", "impl.extract_image_patches", "extract_image_patches")
 
 case1 = {
     "params": [{
@@ -62,8 +62,8 @@ case2 = {
     "support_expect":
     True
 }
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
+ut_case.add_case(["Ascend710", "Ascend910A"], case1)
+ut_case.add_case(["Ascend710", "Ascend910A"], case2)
 
 
 def extract_image_patches_produce(in_x, conv_param, src_type):
@@ -166,7 +166,7 @@ def calc_expect_func(images, y, ksizes, strides, dilates, padding):
 
 
 ut_case.add_precision_case(
-    "all", {
+    "Ascend910A", {
         "params": [{
             "shape": (2, 7, 7, 32),
             "dtype": "int8",
@@ -190,7 +190,7 @@ ut_case.add_precision_case(
     })
 
 ut_case.add_precision_case(
-    "all", {
+    "Ascend910A", {
         "params": [{
             "shape": (1, 17, 17, 16),
             "dtype": "float16",
@@ -214,7 +214,7 @@ ut_case.add_precision_case(
     })
 
 ut_case.add_precision_case(
-    "all", {
+    "Ascend910A", {
         "params": [{
             "shape": (1, 9, 9, 48),
             "dtype": "float16",
@@ -238,7 +238,7 @@ ut_case.add_precision_case(
     })
 
 ut_case.add_precision_case(
-    "all", {
+    "Ascend910A", {
         "params": [{
             "shape": (1, 9, 9, 48),
             "dtype": "float16",

@@ -27,7 +27,7 @@ from te.lang import cce as tbe
 from te.utils import para_check
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name
+# pylint: disable=too-many-arguments,unused-argument,invalid-name,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("fused_mul_apply_momentum_extern")
 def fused_mul_apply_momentum_extern_compute(var,
                                             accum,
@@ -131,7 +131,7 @@ def fused_mul_apply_momentum_extern_compute(var,
     return tvm.compute(accum.shape, _compute, name="outputs")
 
 
-# pylint: disable=too-many-arguments
+# pylint: disable=too-many-arguments,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,

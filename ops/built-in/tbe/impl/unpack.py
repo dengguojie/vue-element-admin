@@ -30,7 +30,7 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
-# pylint: disable=unused-argument
+# pylint: disable=unused-argument,invalid-name,too-many-locals
 def get_op_support_info(x, y, num, axis, kernel_name="unpack"):
     """
     get unpack slice info
@@ -61,7 +61,8 @@ def get_op_support_info(x, y, num, axis, kernel_name="unpack"):
 
     return op_cal_info_in_json
 
-# pylint: disable=unused-argument,invalid-name,too-many-arguments
+
+# pylint: disable=unused-argument,invalid-name,too-many-arguments,too-many-locals
 def op_select_format(x, y, num, axis, kernel_name="unpack"):
     """
     unpacks the given dimension of a rank R tensor into rank (R-1) tensors.
@@ -291,7 +292,7 @@ def _tiling_axis(shape, dtype):
             split_axis = index - 1
             split_factor = total_ele // ele_cnt
             break
-        elif index == len(tiling_shape) - 1:
+        if index == len(tiling_shape) - 1:
             split_axis = index
             split_factor = total_ele
             break
@@ -309,7 +310,7 @@ def _tiling_axis(shape, dtype):
     return split_axis, split_factor
 
 
-# pylint: disable=unnecessary-lambda
+# pylint: disable=unnecessary-lambda,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("unpack")
 def _unpack_compute_scalar(input_place, y, num, axis, kernel_name="unpack"):
     """
@@ -375,6 +376,7 @@ def _unpack_compute_scalar(input_place, y, num, axis, kernel_name="unpack"):
     return gm2ub_tensor, ub2ub_tensor_list, ub2gm_tensor_list, virtual_node
 
 
+# pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("unpack")
 def _unpack_compute_copy(input_place, y, num, axis, kernel_name="unpack"):
     """
@@ -435,6 +437,7 @@ def _unpack_compute_copy(input_place, y, num, axis, kernel_name="unpack"):
     return gm2ub_tensor_list, ub2gm_tensor_list, virtual_node
 
 
+# pylint: disable=too-many-branches,too-many-statements,too-many-locals
 def _unpack_schedule(input_place, output_shape, y, num, axis, dtype):
     """
     Create unpack schedule.
@@ -466,7 +469,7 @@ def _unpack_schedule(input_place, output_shape, y, num, axis, dtype):
     block_idx = tvm.thread_axis('blockIdx.x')
 
     # can open multi-core scene
-    if befordim >= ele_each_block and afterdim < ele_each_block:
+    if befordim >= ele_each_block > afterdim:
         befordim_in = ele_each_block // afterdim + 1
         befordim_out = (befordim + befordim_in - 1) // befordim_in
         while (befordim + befordim_out - 1) // befordim_out * afterdim < ele_each_block:
@@ -575,6 +578,7 @@ def _unpack_schedule(input_place, output_shape, y, num, axis, dtype):
     return sch, build_list
 
 
+# pylint: disable=too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.DYNAMIC_OUTPUT, para_check.OPTION_ATTR_INT,
                             para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def unpack(x, y, num=None, axis=0, kernel_name="unpack"):

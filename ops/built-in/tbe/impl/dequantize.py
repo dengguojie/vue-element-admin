@@ -232,9 +232,9 @@ def dequantize_compute(x, min_range, max_range, y, mode="MIN_COMBINED", kernel_n
     shape_range = shape_util.shape_to_list(max_range.shape)
 
     shape_x, shape_range, shape_max = shape_util.broadcast_shapes(shape_x,
-                                                                     shape_range,
-                                                                     param_name_input1="x",
-                                                                     param_name_input2="max_range")
+                                                                  shape_range,
+                                                                  param_name_input1="x",
+                                                                  param_name_input2="max_range")
 
     broadcast_min_range = tbe.broadcast(min_range, shape_max)
     broadcast_max_range = tbe.broadcast(max_range, shape_max)
@@ -251,6 +251,7 @@ def dequantize_compute(x, min_range, max_range, y, mode="MIN_COMBINED", kernel_n
     return res
 
 
+# pylint: disable=too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
 def dequantize(x, min_range, max_range, y, mode="MIN_COMBINED", kernel_name="dequantize"):
@@ -374,9 +375,9 @@ def dequantize(x, min_range, max_range, y, mode="MIN_COMBINED", kernel_name="deq
                                                           mode)
 
     shape_x, shape_range, _ = shape_util.broadcast_shapes(shape_x,
-                                                             shape_range,
-                                                             param_name_input1="x",
-                                                             param_name_input2="min_range")
+                                                          shape_range,
+                                                          param_name_input1="x",
+                                                          param_name_input2="min_range")
 
     shape_x, shape_range = shape_util.refine_shapes_for_broadcast(shape_x, shape_range)
     input_tensor = tvm.placeholder(shape_x, dtype=dtype_x, name="x")

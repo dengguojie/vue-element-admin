@@ -86,7 +86,7 @@ def calc_expect_func(weight, grad, weight_s, grad_s, weight_decay, learning_rate
         out = out.astype(sdtype)
     return [out]
 
-ut_case.add_precision_case("all", {
+ut_case.add_precision_case("Ascend910", {
     "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1, 1, 512, 128), "shape": (1, 1, 512, 128), "param_type": "input"},
                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1, 1, 512, 128), "shape": (1, 1, 512, 128), "param_type": "input"},
                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1, ), "shape": (1, ), "param_type": "input"},
@@ -99,7 +99,7 @@ ut_case.add_precision_case("all", {
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
 
-ut_case.add_precision_case("all", {
+ut_case.add_precision_case("Ascend910", {
     "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (7, 7, 3, 64), "shape": (7, 7, 3, 64), "param_type": "input"},
                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (7, 7, 3, 64), "shape": (7, 7, 3, 64), "param_type": "input"},
                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1, ), "shape": (1, ), "param_type": "input"},
@@ -112,7 +112,7 @@ ut_case.add_precision_case("all", {
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
 
-ut_case.add_precision_case("all", {
+ut_case.add_precision_case("Ascend910", {
     "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (3, 3, 64, 64), "shape": (3, 3, 64, 64), "param_type": "input"},
                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (3, 3, 64, 64), "shape": (3, 3, 64, 64), "param_type": "input"},
                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1, ), "shape": (1, ), "param_type": "input"},
@@ -125,7 +125,7 @@ ut_case.add_precision_case("all", {
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
 
-ut_case.add_precision_case("all", {
+ut_case.add_precision_case("Ascend910", {
     "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (7, 7, 128, 64), "shape": (7, 7, 128, 64), "param_type": "input"},
                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (7, 7, 128, 64), "shape": (7, 7, 128, 64), "param_type": "input"},
                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1, ), "shape": (1, ), "param_type": "input"},

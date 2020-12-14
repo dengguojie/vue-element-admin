@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 # Copyright 2019 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -5,6 +6,7 @@
 # You may obtain a copy of the License at
 #
 # http://www.apache.org/licenses/LICENSE-2.0
+#
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,6 +28,7 @@ from te.utils.error_manager import error_manager_vector
 FP16_MINIMUM = -65504
 
 
+# pylint: disable=invalid-name
 @unique
 class Mode(Enum):
     """Mode for Region proposal"""
@@ -36,6 +39,7 @@ class Mode(Enum):
     Score = 4
 
 
+# pylint: disable=too-many-instance-attributes,too-many-public-methods
 class GlobalVar:
     """GlobalVar Class Defination"""
     def __init__(self):
@@ -401,6 +405,7 @@ def _set_mask_insn(tvm_ir, type_, bits=128):
         tvm.call_extern(type_, 'set_vector_mask', tvm.const(mask1, dtype='uint64'), tvm.const(mask2, dtype='uint64')))
 
 
+# pylint: disable=too-many-arguments
 def _conv_fp162s32(tvm_ir, s32ub, s32ub_offset, fp16ub, fp16ub_offset, num):
     """
     fp16 to int32
@@ -419,6 +424,7 @@ def _conv_fp162s32(tvm_ir, s32ub, s32ub_offset, fp16ub, fp16ub_offset, num):
         _set_mask_insn(tvm_ir, 'int32', 128)
 
 
+# pylint: disable=too-many-arguments
 def _emit_copy_gm_to_ubuf(tvm_ir, dtype, dst, src, nburst, burstlen, srcstride, dststride, dst_offset=0, src_offset=0):
     """
     _emit_copy_gm_to_ubuf
@@ -428,6 +434,7 @@ def _emit_copy_gm_to_ubuf(tvm_ir, dtype, dst, src, nburst, burstlen, srcstride, 
                         src.access_ptr('r', offset=src_offset), 0, nburst, burstlen, srcstride, dststride))
 
 
+# pylint: disable=too-many-arguments
 def _emit_copy_ubuf_to_gm(tvm_ir, dtype, dst, src, nburst, burstlen, srcstride, dststride, dst_offset=0, src_offset=0):
     """
     _emit_copy_ubuf_to_gm
@@ -442,17 +449,18 @@ def _emit_reg_mov(tvm_ir, dtype, reg_addr, src, src_offset):
     _emit_reg_mov
     """
     tvm_ir.emit(
-        tvm.call_extern(dtype, "reg_mov", tvm.call_extern(dtype, "reg", reg_addr),
-                        src.access_ptr("r", offset=src_offset)))
+        tvm.call_extern(dtype, "reg_mov", tvm.call_extern(dtype, "reg", reg_addr), src.access_ptr("r",
+                                                                                                  offset=src_offset)))
 
 
+# pylint: disable=too-many-arguments
 def _emit_vector_dup(tvm_ir, dtype, dst, value, repeats, dst_offset=0, mask=128):
     """"
     _emit_vector_dup
     """
     _set_mask_insn(tvm_ir, 'int32', mask)
-    tvm_ir.emit(
-        tvm.call_extern(dtype, 'vector_dup', dst.access_ptr('w', offset=dst_offset), value, repeats, 1, 1, 8, 8))
+    tvm_ir.emit(tvm.call_extern(dtype, 'vector_dup', dst.access_ptr('w', offset=dst_offset), value, repeats, 1, 1, 8,
+                                8))
     _set_mask_insn(tvm_ir, 'int32', 128)
 
 
@@ -477,6 +485,7 @@ def _emit_vmuls(tvm_ir, dst, src, cnt):
         _set_mask_insn(tvm_ir, 'int32', 128)
 
 
+# pylint: disable=too-many-arguments
 def _emit_vconcat(tvm_ir, dst, src, mode, cnt, dst_offset=0, src_offset=0):
     """
     _emit_vconcat
@@ -496,6 +505,7 @@ def _emit_vconcat(tvm_ir, dst, src, mode, cnt, dst_offset=0, src_offset=0):
                             src.access_ptr('r', offset=src_offset + 255 * 16 * repeat_255), config))
 
 
+# pylint: disable=too-many-arguments
 def _emit_vextract(tvm_ir, dst, src, mode, cnt, dst_offset=0, src_offset=0):
     """
     _emit_vextract
@@ -515,6 +525,7 @@ def _emit_vextract(tvm_ir, dst, src, mode, cnt, dst_offset=0, src_offset=0):
                             src.access_ptr('r', offset=src_offset + 255 * 16 * 8 * repeat_255), config))
 
 
+# pylint: disable=too-many-arguments
 def _emit_vbitsort(tvm_ir, dst, src, cnt, dst_offset=0, src_offset=0):
     """
     _emit_vbitsort
@@ -534,6 +545,7 @@ def _emit_vbitsort(tvm_ir, dst, src, cnt, dst_offset=0, src_offset=0):
                             src.access_ptr('r', offset=src_offset + 255 * 16 * 8 * repeat_255), config))
 
 
+# pylint: disable=too-many-arguments,too-many-locals,too-many-statements
 def _merge_recur(tvm_ir,
                  src_ub,
                  dst_ub,
@@ -724,6 +736,7 @@ def _sort_region(tvm_ir, dst, src, rows, cols):
     return result_ub
 
 
+# pylint: disable=too-many-arguments
 def _copy_gm_to_ubuf(tvm_ir, dst, src, num_rows, cols, col_start, gm_offset):
     """
     _copy_gm_to_ubuf copy data from gm to ubuf
@@ -743,6 +756,7 @@ def _copy_gm_to_ubuf(tvm_ir, dst, src, num_rows, cols, col_start, gm_offset):
                               src_offset=cols * i + col_start + gm_offset)
 
 
+# pylint: disable=too-many-arguments
 def _copy_gm_to_ubuf_func(tvm_ir, dst, src, num_rows, cols, col_start, gm_offset, largest):
     """
     _copy_gm_to_ubuf copy data from gm to ubuf
@@ -771,6 +785,7 @@ def _copy_gm_to_ubuf_func(tvm_ir, dst, src, num_rows, cols, col_start, gm_offset
                                 tvm.call_extern('float16', 'reg', reg_min_number[0])))
 
 
+# pylint: disable=too-many-arguments
 def _copy_ubuf_to_gm(tvm_ir, dtype, dst, src, num_rows, cols_padding, k, tail_block_ub, gm_offset=0, multi_core=False):
     """
     _copy_ubuf_to_gm
@@ -832,6 +847,7 @@ def _copy_ubuf_to_gm(tvm_ir, dtype, dst, src, num_rows, cols_padding, k, tail_bl
                               src_offset=cols_padding * (num_rows - 1))
 
 
+# pylint: disable=too-many-arguments
 def _merge_two_sorted_region(tvm_ir, dst, src_region_k, src_region_sorted, len_region_k, len_region_sorted):
     """
     _merge_two_sorted_region
@@ -887,6 +903,7 @@ def _copy_region(tvm_ir, dst, src, num, dst_offset=0):
                         1, burstlen, 0, 0))
 
 
+# pylint: disable=too-many-arguments
 def _add(tvm_ir, dst, src1, src2, rows, cols_padding):
     # process 256B data per repeat for vsub
     vadd_len = 64
@@ -906,6 +923,7 @@ def _add(tvm_ir, dst, src1, src2, rows, cols_padding):
         _set_mask_insn(tvm_ir, 'int32', 128)
 
 
+# pylint: disable=too-many-arguments
 def _emit_vmul(tvm_ir, dtype, dst, src1, src2, cnt):
     """
     _emit_vmul
@@ -922,18 +940,18 @@ def _emit_vmul(tvm_ir, dtype, dst, src1, src2, cnt):
             times_len = tvm.min(repeat_255 - i * 255, 255)
             tvm_ir.emit(
                 tvm.call_extern(dtype, 'vmul', dst.access_ptr('w', offset=i * calc_num_each_times * 255),
-                                src1.access_ptr('r', offset=i * calc_num_each_times * 255),
-                                src2.access_ptr('r'), times_len, 1, 1, 0, 8, 8, 0))
+                                src1.access_ptr('r', offset=i * calc_num_each_times * 255), src2.access_ptr('r'),
+                                times_len, 1, 1, 0, 8, 8, 0))
     if repeat_remain > 0:
         _set_mask_insn(tvm_ir, 'int32', repeat_remain)
         tvm_ir.emit(
-            tvm.call_extern(dtype, 'vmul',
-                            dst.access_ptr('w', offset=repeat_255 * calc_num_each_times),
-                            src1.access_ptr('r', offset=repeat_255 * calc_num_each_times),
-                            src2.access_ptr('r'), 1, 1, 1, 0, 8, 8, 0))
+            tvm.call_extern(dtype, 'vmul', dst.access_ptr('w', offset=repeat_255 * calc_num_each_times),
+                            src1.access_ptr('r', offset=repeat_255 * calc_num_each_times), src2.access_ptr('r'), 1, 1,
+                            1, 0, 8, 8, 0))
         _set_mask_insn(tvm_ir, 'int32', 128)
 
 
+# pylint: disable=too-many-arguments,too-many-locals
 def _topk_rows(tvm_ir, row_start_in_core, rows, cols, k, core_rows_start, multi_core, largest):
     """
     _topk_rows do topk action muilti rows
@@ -1030,6 +1048,7 @@ def _topk_rows(tvm_ir, row_start_in_core, rows, cols, k, core_rows_start, multi_
                      multi_core=multi_core)
 
 
+# pylint: disable=too-many-arguments,too-many-locals,too-many-statements
 def _topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start, multi_core, largest):
     """
     _topk_a_row_by_part
@@ -1232,6 +1251,7 @@ def _tiling(rows, cols):
     return ret, turning, batch
 
 
+# pylint: disable=too-many-locals,too-many-statements
 def _kernel_ir(ins, outs, k, largest):
     """
     Funtion for common process in top_k op
@@ -1273,15 +1293,17 @@ def _kernel_ir(ins, outs, k, largest):
         offset_fp16_ub = offset_ub
         offset_int32_ub = _new_alloc(tvm_ir, 'int32', (1, 5120), name='offset_int32_ub', scope=tbe_platform.scope_ubuf)
 
-        region_ub = _new_alloc(tvm_ir, 'float16', (1, cols_per_part * 8),
-                               name='region_ub', scope=tbe_platform.scope_ubuf)
+        region_ub = _new_alloc(tvm_ir,
+                               'float16', (1, cols_per_part * 8),
+                               name='region_ub',
+                               scope=tbe_platform.scope_ubuf)
         region_sorted_ub = _new_alloc(tvm_ir,
                                       'float16', (1, cols_per_part * 8),
                                       name='region_sorted_ub',
                                       scope=tbe_platform.scope_ubuf)
         region_k_ub = _new_alloc(tvm_ir, 'float16', (1, 5120 * 8), name='region_k_ub', scope=tbe_platform.scope_ubuf)
         region_k2_ub = _new_alloc(tvm_ir, 'float16', (1, 5120 * 8), name='region_k2_ub', scope=tbe_platform.scope_ubuf)
-        index_reg = tvm_ir.allocate("float16", (1,), name="index_reg", scope=tbe_platform.scope_reg)
+        index_reg = tvm_ir.allocate("float16", (1, ), name="index_reg", scope=tbe_platform.scope_reg)
     else:
         data_ub = _new_alloc(tvm_ir, 'float16', (batch, cols_padding), name='data_ub', scope=tbe_platform.scope_ubuf)
         indices_ub = _new_alloc(tvm_ir, 'float16', (cols_padding, ), name='indices_ub', scope=tbe_platform.scope_ubuf)
@@ -1432,7 +1454,7 @@ def _kernel_ir(ins, outs, k, largest):
     return tvm_ir.get()
 
 
-# pylint: disable=unused-argument,redefined-builtin
+# pylint: disable=unused-argument,redefined-builtin,too-many-arguments
 def check_supported(input_tensor,
                     indices_tensor,
                     out_tensor,
@@ -1460,6 +1482,7 @@ def check_supported(input_tensor,
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
+# pylint: disable=too-many-arguments,too-many-locals
 def top_k(input_tensor,
           indices_tensor,
           out_tensor,

@@ -236,12 +236,12 @@ case_cut_high_dim_single_not_aligned_fp32 = {
     "expect": "success"
 }
 
-ut_case.add_case(["Ascend910", "Ascend310"], case_small_shape_scalar_fp32)
-ut_case.add_case(["Ascend910", "Ascend310"], case_scalar_not_aligned_gt_block_size_fp32)
-ut_case.add_case(["Ascend910", "Ascend310"], case_aligned_multi_dim_fp32)
-ut_case.add_case(["Ascend910", "Ascend310"], case_scalar_big_prime_fp32)
-ut_case.add_case(["Ascend910", "Ascend310"], case_big_shape_not_aligned_fp32)
-ut_case.add_case(["Ascend910", "Ascend310"], case_cut_high_dim_single_not_aligned_fp32)
+ut_case.add_case(["Ascend910"], case_small_shape_scalar_fp32)
+ut_case.add_case(["Ascend910"], case_scalar_not_aligned_gt_block_size_fp32)
+ut_case.add_case(["Ascend910"], case_aligned_multi_dim_fp32)
+ut_case.add_case(["Ascend910"], case_scalar_big_prime_fp32)
+ut_case.add_case(["Ascend910"], case_big_shape_not_aligned_fp32)
+ut_case.add_case(["Ascend910"], case_cut_high_dim_single_not_aligned_fp32)
 
 
 # ut_case.add_case(["Ascend310"], case1)
@@ -273,14 +273,14 @@ def calc_expect_func(input_x, input_y, output_x, output_y):
     out_y = np.ones(scalar_shape, dtype=sdtype) * sum_square_y
     return [out_x, out_y]
 
-# ut_case.add_precision_case("all", {
-#     "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (7,), "shape": (7,), "param_type": "input"},
-#                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (7,), "shape": (7,), "param_type": "input"},
-#                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,), "param_type": "output"},
-#                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,), "param_type": "output"}],
-#     "calc_expect_func": calc_expect_func,
-#     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-# })
+ut_case.add_precision_case("Ascend910", {
+    "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (7,), "shape": (7,), "param_type": "input"},
+               {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (7,), "shape": (7,), "param_type": "input"},
+               {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,), "param_type": "output"},
+               {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,), "param_type": "output"}],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
 
 if __name__ == '__main__':
     ut_case.run('Ascend910')

@@ -21,12 +21,13 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
+# pylint: disable=too-many-instance-attributes
 class SparseApplyRMSProp(SparseApply):
     """
         Function: use to store sparse_apply_rms_prop base parameters
     """
 
-    # pylint: disable=too-many-statements
+    # pylint: disable=too-many-statements,too-many-arguments
     def __init__(self, var, mean_square, mom, learning_rate, grad, indices, rho, momentum, epsilon, kernel_name):
         """
         Init sparse_apply_rms_prop base parameters
@@ -165,7 +166,7 @@ class SparseApplyRMSProp(SparseApply):
         self.tik_instance.vsub(mask, var_ub, var_ub, mom_ub, repeat_times, 1, 1, 1, 8, 8, 8)
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name
+# pylint: disable=too-many-arguments,unused-argument,invalid-name,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,

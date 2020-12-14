@@ -38,7 +38,7 @@ def _ceil_to(value, ceil_value):
     return ((value + ceil_value - 1) // ceil_value) * ceil_value
 
 
-# pylint: disable=too-many-arguments,invalid-name,too-many-locals,too-many-statements
+# pylint: disable=too-many-arguments,invalid-name,too-many-locals,too-many-statements,too-many-branches
 def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, max_next_valid_size, dtype):
     """
     get load3d tiling in davinci.

@@ -273,7 +273,7 @@ def strided_slice_assign_compute(data_ref, data_value, slice_params):
 
     return input_value_ub, out
 
-
+# pylint: disable=too-many-locals
 def _strided_slice_assign_schedule(schedule_list, out, input_value_shape, input_shape, data_dtype):
     """
     strided_slice_assign schedule function
@@ -353,7 +353,7 @@ def _strided_slice_assign_schedule(schedule_list, out, input_value_shape, input_
     return sch
 
 
-# pylint: disable=too-many-arguments,unused-argument
+# pylint: disable=too-many-arguments,unused-argument,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,

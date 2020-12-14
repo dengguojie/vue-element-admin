@@ -15,6 +15,7 @@
 """
 in_top_k
 """
+# pylint: disable=too-many-lines
 import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
@@ -41,9 +42,7 @@ def get_op_support_info(predictions, targets, precision, k, kernel_name="in_top_
     """
     format_x = predictions.get("format")
     if format_x == "ND":
-        axis_split_matrix = [
-            [SplitInput([0, [0], [-1], [-1]], [1, [0], [-1], [-1]]), SplitOutput([0, [0]])]
-        ]
+        axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]], [1, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
         axis_reduce_list = None
     else:
         axis_split_matrix = None
@@ -51,6 +50,7 @@ def get_op_support_info(predictions, targets, precision, k, kernel_name="in_top_
     op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
 
     return op_cal_info_in_json
+
 
 # pylint: disable=unused-argument
 def check_supported(predictions, targets, precision, k, kernel_name='in_top_k'):
@@ -199,7 +199,7 @@ def _in_top_k_special_k(predictions, targets, k, kernel_name):
     return tik_instance
 
 
-# pylint: disable=too-many-locals,too-many-branches
+# pylint: disable=too-many-locals,too-many-branches,too-many-statements
 def _in_top_k_inter_process(shape_info, tensor, tik_instance, k):
     """
     the _in_top_k_inter_process function
@@ -547,7 +547,7 @@ def _in_top_k_inter_process(shape_info, tensor, tik_instance, k):
     return tensor_output_ub
 
 
-# pylint: disable=too-many-locals,too-many-branches
+# pylint: disable=too-many-locals,too-many-branches,too-many-statements
 def _in_top_k_column_process(shape_info, tensor, tik_instance):
     """
     the _in_top_k_column_process function
@@ -830,7 +830,7 @@ def _in_top_k_single_core(predictions, targets, k, kernel_name):
     return tik_instance
 
 
-# pylint: disable=too-many-locals
+# pylint: disable=too-many-locals,too-many-statements
 def _in_top_k_mul_core(predictions, targets, k, kernel_name):
     """
     the _in_top_k_mul_core function
@@ -928,7 +928,7 @@ def _in_top_k_mul_core(predictions, targets, k, kernel_name):
     return tik_instance
 
 
-# pylint: disable=too-many-locals
+# pylint: disable=too-many-locals,too-many-statements
 def _in_top_k_mul_core_v2(predictions, targets, k, kernel_name):
     """
     the _in_top_k_mul_core_v2 function
@@ -1040,7 +1040,7 @@ def _in_top_k_mul_core_v2(predictions, targets, k, kernel_name):
     return tik_instance
 
 
-# pylint: disable=too-many-locals
+# pylint: disable=too-many-locals,too-many-statements
 def _in_top_k_column_inner_loop(shape_info, tensor, tik_instance, k):
     """
     the _in_top_k_column_inner_loop function

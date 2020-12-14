@@ -26,7 +26,7 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
-# pylint: disable = unused-argument,redefined-builtin
+# pylint: disable = unused-argument,redefined-builtin,too-many-arguments
 def get_op_support_info(input_x,
                         assist_matrix,
                         out_dict,

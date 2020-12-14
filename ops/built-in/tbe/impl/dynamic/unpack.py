@@ -29,6 +29,7 @@ from te.utils import para_check
 # When right_dim < MIN_RIGHT_DIM,Multi output go special tiling.
 MIN_RIGHT_DIM = 8
 
+
 @unique
 class TilingStrategy(Enum):
     """
@@ -52,27 +53,30 @@ class CompileVar:
 
     def get_tvm_var(self):
         """
-        get_tvm_var
+        get self.tvm_var
         """
         return self.tvm_var
 
     def get_name(self):
         """
-        get_name
+        get self.name
         """
         return self.name
 
     def get_bound(self):
         """
-        get_bound
+        get self.bound
         """
         return self.bound
 
 
+# pylint: disable=too-many-instance-attributes,too-few-public-methods
 class Unpack:
     """
     Base Class for Unpack Op, includes Unpack op info.
     """
+
+    # pylint: disable=too-many-arguments
     def __init__(self, input_x, output_y, num, axis, kernel_name):
         self.input_x = input_x
         self.output_num = num
@@ -173,8 +177,7 @@ class Unpack:
             self.right_range = (1, right_upper)
 
     def _init_flag(self):
-        self.special_tiling = (self.axis_at_last_dim
-                               or self.right_range[1] < MIN_RIGHT_DIM) and self.output_num > 1
+        self.special_tiling = (self.axis_at_last_dim or self.right_range[1] < MIN_RIGHT_DIM) and self.output_num > 1
 
     def _set_dim_var(self, dim_name, dim_range):
         """
@@ -196,6 +199,7 @@ class Unpack:
             output_index += (input_index[idx], )
         return output_index
 
+    # pylint: disable=unnecessary-lambda
     def _multi_output_common_compute(self):
         """
         Multi output compute function for common cases
@@ -220,10 +224,12 @@ class Unpack:
 
         self.virtual_node = tvm.compute(self.output_shape, lambda *index: _add_compute(*index), name="virtual_node")
 
+    # pylint: disable=unnecessary-lambda
     def _multi_output_special_compute(self):
         """
         Multi output compute function for special cases
         """
+
         self.gm2ub_tensor = tvm.compute(self.x_reshape,
                                         lambda *index: self._input_placeholder(*index),
                                         name="gm2ub_tensor")
@@ -248,13 +254,13 @@ class Unpack:
 
         self.virtual_node = tvm.compute(self.output_shape, lambda *index: _add_compute(*index), name="virtual_node")
 
+    # pylint: disable=unnecessary-lambda
     def _single_output_compute(self):
         """
         Single output compute function
         """
         tensor_ub = tvm.compute(self.output_shape, lambda *index: self._input_placeholder(*index), name="tensor_ub")
         self.ub_tensor_list.append(tensor_ub)
-
         self.single_out = tvm.compute(self.output_shape, lambda *index: tensor_ub(*index), name="res_tensor")
         self.res_tensor_list.append(self.single_out)
 
@@ -269,8 +275,12 @@ class Unpack:
             self._single_output_compute()
         else:
             self.output_shape = [self._input_placeholder.shape[0], 1, self._input_placeholder.shape[2]]
-            self._multi_output_special_compute() if self.special_tiling else self._multi_output_common_compute()
+            if self.special_tiling:
+                self._multi_output_special_compute()
+            else:
+                self._multi_output_common_compute()
 
+    # pylint: disable=too-many-locals,too-many-branches
     def _multi_output_schedule(self, left_dim_out, right_dim_in, ub_tiling_axis, split_factor):
         """
         unpack schedule function for multi_output
