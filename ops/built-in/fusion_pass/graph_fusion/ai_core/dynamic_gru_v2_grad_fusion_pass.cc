@@ -243,7 +243,7 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddOneHiddenGradMatmulNode(int64_t curT,
 
   vector<int64_t> outputDim{1, batch, hidden_dim};
   vector<int64_t> outputNzDim{1, nzHiddenDim, nzBatch, 16, 16};
-  AddOutputNodeDesc(matmulDesc, "dh", outputNzDim, ge::FORMAT_FRACTAL_NZ, outputDim, ge::FORMAT_ND, ge::DT_FLOAT);
+  AddOutputNodeDesc(matmulDesc, "dh", outputNzDim, ge::FORMAT_FRACTAL_NZ, outputDim, ge::FORMAT_ND, inputHType);
 
   // attr
   ge::AttrUtils::SetBool(matmulDesc, "adj_x1", false);
