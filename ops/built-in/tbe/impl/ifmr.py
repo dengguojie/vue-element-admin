@@ -16,7 +16,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 ifmr
 """
 
-
+# pylint: disable=import-error
 from math import ceil
 import functools
 from te import tik
@@ -29,6 +29,10 @@ from te.platform import cce_params
 from te.platform.cce_runtime import PIPELINES
 from te.utils import para_check
 
+# pylint: disable=locally-disabled,too-many-arguments
+# pylint: disable=too-many-branches, too-many-statements, too-many-locals, attribute-defined-outside-init
+# pylint: disable=too-many-instance-attributes, no-self-use, too-many-instance-attributes, protected-access
+# pylint: disable=too-few-public-methods
 
 SCALAR_MAX_FP16 = (2 ** 16 - 1)
 SHAPE_SIZE_LIMIT = 2 ** 31
@@ -103,7 +107,7 @@ class Barrier:
 
                 with self.tik_instance.for_range(0, self.block_num, dtype='int64') as core_id:
                     with self.tik_instance.if_scope(
-                        self.sync_ub[core_id * self.int32_byte_size + self.seq % 2] != self.seq):
+                            self.sync_ub[core_id * self.int32_byte_size + self.seq % 2] != self.seq):
                         synced.set_as(0)
 
                 with self.tik_instance.if_scope(synced == 1):
@@ -115,27 +119,27 @@ class Barrier:
 class Reconstruction():
     """IFMR: input feature map reconstruction"""
     def __init__(
-        self,
-        input_data,
-        input_min,
-        input_max,
-        input_cumsum,
-        output_scale,
-        output_offset,
-        min_percentile,
-        max_percentile,
-        search_range,
-        search_step,
-        with_offset,
-        kernel_name):
+            self,
+            input_data,
+            input_min,
+            input_max,
+            input_cumsum,
+            output_scale,
+            output_offset,
+            min_percentile,
+            max_percentile,
+            search_range,
+            search_step,
+            with_offset,
+            kernel_name):
 
         # The name with suffix "num" represent the true value of
         # variable. The name with suffix "size" represent the memory
         # space of variable. The name with suffix "repeat" represent the
         # number of repeat time when processing this variable.
-        self.tik_instance = tik.Tik(tik.Dprofile('v100', 'cloud'))
+        self.tik_instance = tik.Tik(tik.Dprofile())
         self.aicore_num = 30
-        self.unified_buffer_size = tik.Dprofile('v100', 'cloud').get_unified_buffer_size()
+        self.unified_buffer_size = tik.Dprofile().get_unified_buffer_size()
 
         self.data_dtype = input_data.get('dtype')
         data_shape = input_data.get('shape')
@@ -202,13 +206,13 @@ class Reconstruction():
         self.data_num_last_core = self.data_num % self.data_each_block + \
             self.data_num // self.data_each_block % self.aicore_num * self.data_each_block
         self.ub_tensor_size = (
-                (self.unified_buffer_size - 2 * self.steps_size * self.data_byte_size) //
-                self.data_byte_size // 4 // self.data_each_block * self.data_each_block)
+            (self.unified_buffer_size - 2 * self.steps_size * self.data_byte_size) //
+            self.data_byte_size // 4 // self.data_each_block * self.data_each_block)
 
         self.loss_each_core = (
             self.steps_num + self.data_each_block - 1) // self.data_each_block * self.data_each_block
         self.loss_workspace = self.tik_instance.Tensor(
-            'float32', (self.loss_each_core * self.aicore_num,), tik.scope_gm, 'loss_workspace',  is_workspace=True,
+            'float32', (self.loss_each_core * self.aicore_num,), tik.scope_gm, 'loss_workspace', is_workspace=True,
             is_atomic_add=True)
 
     def _compute_scale_offset(self):
@@ -669,6 +673,9 @@ class Reconstruction():
         self.tik_instance.tensor_mov(self.output_offset, offset_tensor, '', 1, 1, 0, 0)
 
     def ifmr_compute(self):
+        """
+        IFMR compute function
+        """
         with self.tik_instance.for_range(0, self.aicore_num, block_num=self.aicore_num) as index:
             self.barrier = Barrier(self.tik_instance, self.barrier_workspace, self.aicore_num, index)
 
@@ -705,20 +712,22 @@ class Reconstruction():
     para_check.REQUIRED_ATTR_BOOL,
     para_check.KERNEL_NAME)
 def ifmr(
-    data,
-    data_min,
-    data_max,
-    cumsum,
-    scale,
-    offset,
-    min_percentile,
-    max_percentile,
-    search_range,
-    search_step,
-    with_offset,
-    kernel_name='ifmr'):
-
-    ifmr = Reconstruction(
+        data,
+        data_min,
+        data_max,
+        cumsum,
+        scale,
+        offset,
+        min_percentile,
+        max_percentile,
+        search_range,
+        search_step,
+        with_offset,
+        kernel_name='ifmr'):
+    """
+    IFMR op
+    """
+    ifmr_inst = Reconstruction(
         data,
         data_min,
         data_max,
@@ -732,4 +741,4 @@ def ifmr(
         with_offset,
         kernel_name)
 
-    return ifmr.ifmr_compute()
+    return ifmr_inst.ifmr_compute()
