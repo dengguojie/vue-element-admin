@@ -1219,7 +1219,7 @@ def _elewise_deq_mul(out, tensor_dict):
         tensor_dict["flag_is_broadcast"] = True
     else:
         tensor_dict["float16_mul_input_tensor"] = out.op.input_tensors[1]
-
+    
     tensor_dict = _dequant_remove_pad(tensor_dict["dequant_remove_pad"], tensor_dict)
     tensor_dict["flag_is_dequant"] = False
     tensor_dict["flag_is_dequant_mul"] = True
@@ -1240,7 +1240,7 @@ def _elewise_deq2_mul(out, tensor_dict):
         tensor_dict["flag_is_broadcast"] = True
     else:
         tensor_dict["float16_mul_input_tensor"] = out.op.input_tensors[1]
-
+    
     tensor_dict = _dequant2_remove_pad(tensor_dict["dequant2_remove_pad"], tensor_dict)
     tensor_dict["flag_is_dequant2"] = False
     tensor_dict["flag_is_dequant2_mul"] = True
@@ -1782,7 +1782,8 @@ def _set_sch_int32_phase1(tensor_dict, attrs_dict, out, sch):
         deq_reg_ubuf, bias_ub, dequant_ubuf, sch = _set_sch_int32_phase1_dequant_sigmoid_mul(
             tensor_dict, attrs_dict, out, buf, sch)
     elif tensor_dict["flag_is_eltwisce_case"]:
-        deq_reg_ubuf, bias_ub, dequant_ubuf, sch = _set_sch_int32_phase1_deqaunt_power_eltwise(tensor_dict, buf, sch)
+        deq_reg_ubuf, bias_ub, dequant_ubuf, sch = _set_sch_int32_phase1_deqaunt_power_eltwise(
+            tensor_dict, buf, sch)
     return deq_reg_ubuf, req_reg_ubuf, bias_ub, dequant_ubuf, requant_ubuf, sch
 
 
@@ -2624,13 +2625,16 @@ def _default_tiling(tensor_dict, fmap_w, pad_top, pad_bottom, kernel_w, kernel_h
     m_bit_ratio = {"int32": 4, "float32": 4, "float16": 2, "uint8": 1, "int8": 1, "uint4": 1.0 / 2, "int4": 1.0 / 2}
     wo_shape = (fmap_w + (2 * pad_top) - kernel_w) // stride_w + 1
     gen_m_target = 0
-    for m_target in range(32, 0, -1):
-        tmp1 = ((m_target * m_bit_length['float16']) + wo_shape - 1) // wo_shape
-        tmp2 = ((tmp1 * pad_bottom) + kernel_h) * fmap_w
-        max_feature_map = tmp2 * 2 * m_bit_ratio[dtype]
-        if int(max_feature_map) < L1_MEM_LIMIT:
-            gen_m_target = m_target
-            break
+    if wo_shape <= 0:
+        gen_m_target = 1
+    else:
+        for m_target in range(32, 0, -1):
+            tmp1 = ((m_target * m_bit_length['float16']) + wo_shape - 1) // wo_shape
+            tmp2 = ((tmp1 * pad_bottom) + kernel_h) * fmap_w
+            max_feature_map = tmp2 * 2 * m_bit_ratio[dtype]
+            if int(max_feature_map) < L1_MEM_LIMIT:
+                gen_m_target = m_target
+                break
 
     tiling["AL1_shape"] = [1, 1, 1, 1]
     tiling["BL1_shape"] = None
@@ -2906,7 +2910,8 @@ def depthwise_conv2d_schedule(out):
             sch[b_cb].compute_at(sch[mad_cc], mad_cc_kcut_o)
 
         if out.op.tag == "elewise_single_VS_min":
-            sch[tensor_dict["bias_add"]].mem_unique()
+            if "bias_add" in tensor_dict:
+                sch[tensor_dict["bias_add"]].mem_unique()
             sch[tensor_dict["max_0"]].mem_unique()
             sch[attrs_dict["relu_ubuf"]].mem_unique()
 
@@ -3643,17 +3648,9 @@ def depthwise_conv2d_backprop_input_d_schedule(dx_res):
         cub_tiling = [1, 1, 16, 16, 1, 1]
         aub_tiling = [1, 1, 1, 1]
         block_dim_tiling = [1, 1, 1, 1]
-        double_buffer_tiling = {
-            'AUB_pbuffer': 1,
-            'BUB_pbuffer': 1,
-            'AL1_pbuffer': 1,
-            'BL1_pbuffer': 1,
-            'AL0_pbuffer': 1,
-            'BL0_pbuffer': 1,
-            'CL0_pbuffer': 1,
-            'CUB_pbuffer': 1,
-            'UBG_pbuffer': 2
-        }
+        double_buffer_tiling = {'AUB_pbuffer': 1, 'BUB_pbuffer': 1, 'AL1_pbuffer': 1,
+                                'BL1_pbuffer': 1, 'AL0_pbuffer': 1, 'BL0_pbuffer': 1,
+                                'CL0_pbuffer': 1, 'CUB_pbuffer': 1, 'UBG_pbuffer': 2}
         tiling_out_invalid_flag = True
     autoting()
 
