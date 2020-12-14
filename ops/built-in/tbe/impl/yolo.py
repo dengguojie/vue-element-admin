@@ -16,7 +16,7 @@
 yolo
 """
 # pylint: disable=too-many-lines
-# pylint: disable=too-many-arguments
+# pylint: disable=too-many-arguments,import-error
 
 import te.platform as tbe_platform
 from te import tik
@@ -56,6 +56,7 @@ def ceil_x(total_len, align_value):
     return align_len
 
 
+# pylint: disable=unused-argument
 def _check_yolo_param(check_dic_dic, param_dic, kernel_name_check):
     """
     check yolo param error
@@ -75,11 +76,13 @@ def _check_yolo_param(check_dic_dic, param_dic, kernel_name_check):
     dtype = check_dic_dic.get("in_dic").get("dtype")
 
     if param_dic['boxes'] <= 0:
-        error_info = {'errCode': 'E80002', 'opname': 'yolo', 'param_name': 'boxes', 'min_value': '1',
-                      'max_value': 'inf', 'real_value': str(param_dic['boxes'])}
-        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s), but actually is [%s]."
-                           % (error_info['opname'], error_info['param_name'], error_info['min_value'],
-                              error_info['max_value'], error_info['real_value']))
+        error_info = {'errCode': 'E80002', 'opname': 'yolo', 'param_name': 'boxes',
+                      'min_value': '1', 'max_value': 'inf', 'real_value': str(param_dic['boxes'])}
+        raise RuntimeError(
+            error_info,
+            "In op[%s], the parameter[%s] should be in the range of [%s, %s), but actually is [%s]."
+            % (error_info['opname'], error_info['param_name'], error_info['min_value'],
+               error_info['max_value'], error_info['real_value']))
     if param_dic['coords'] != 4:
         error_info = {'errCode': 'E80017', 'opname': 'yolo', 'param_name': 'coords', 'expect_value': '4',
                       'real_value': str(param_dic['coords'])}

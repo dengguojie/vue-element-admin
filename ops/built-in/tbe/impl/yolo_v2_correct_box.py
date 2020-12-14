@@ -559,8 +559,7 @@ class CorrectBoxComputer(CommonInstruct):
         self.t_vmuls(param['ub_d'], param['ub_d'], tmp_scalar, REPEAT_ONE)
 
         self.instance.vec_sel(self.mask, VALUE_ZERO, param['ret_tensor'], sel,
-                           param['lgt_tensor'],
-                           param['ub_d'], constant.STRIDE_ONE)
+                              param['lgt_tensor'], param['ub_d'], constant.STRIDE_ONE)
         new_w.set_as(param['ret_tensor'][0])
 
         # get new h
@@ -569,9 +568,8 @@ class CorrectBoxComputer(CommonInstruct):
 
         tmp_scalar.set_as(img_info[0])
         param['lgt_tensor'][0].set_as(tmp_scalar)
-        self.instance.vec_sel(self.mask, VALUE_ZERO, param['ret_tensor'], sel,
-                           param['ub_e'],
-                           param['lgt_tensor'], constant.STRIDE_ONE)
+        self.instance.vec_sel(self.mask, VALUE_ZERO, param['ret_tensor'], sel, param['ub_e'],
+                              param['lgt_tensor'], constant.STRIDE_ONE)
         new_h.set_as(param['ret_tensor'][0])
 
         return new_h, new_w

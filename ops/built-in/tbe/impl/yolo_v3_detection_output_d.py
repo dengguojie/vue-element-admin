@@ -15,6 +15,7 @@
 """
 yolo_v3_detection_output_d
 """
+# pylint: disable=import-error,too-many-lines
 import te.platform as tbe_platform
 from te.utils import para_check
 from te import tik
@@ -28,8 +29,7 @@ PRE_NMS_TOPN = 1024
 UB_NUM = 10240
 
 
-# pylint: disable=too-many-arguments,too-many-locals
-# pylint: disable=unused-argument
+# pylint: disable=unused-argument,too-many-arguments,too-many-locals
 def get_op_support_info(coord_data_low_dic, coord_data_mid_dic,
                         coord_data_high_dic, obj_prob_low_dic,
                         obj_prob_mid_dic,
@@ -49,22 +49,28 @@ def get_op_support_info(coord_data_low_dic, coord_data_mid_dic,
     only support split N
     """
     return util_select_op_base.get_split_n_info(
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [0, 1])
+        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [0, 1])
 
 
 # pylint: disable=invalid-name, too-many-locals, too-many-arguments
 # pylint: disable=unused-argument
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_LIST_FLOAT, para_check.REQUIRED_ATTR_LIST_FLOAT,
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_LIST_FLOAT,
+                            para_check.REQUIRED_ATTR_LIST_FLOAT,
                             para_check.REQUIRED_ATTR_LIST_FLOAT, para_check.OPTION_ATTR_INT,
-                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL,
-                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_FLOAT,
-                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,
+                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT,
+                            para_check.KERNEL_NAME)
 def yolo_v3_detection_output_d(coord_data_low_dic, coord_data_mid_dic,
                                coord_data_high_dic, obj_prob_low_dic,
                                obj_prob_mid_dic,
@@ -192,13 +198,13 @@ class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
                 or self.dtype == constant.DATA_TYPE_FP32:
             self.max_ub_num = UB_NUM // 2
 
-        self.obj_num = self.boxes * (self.height1 * self.width1 + \
-                                     self.height2 * self.width2 + \
+        self.obj_num = self.boxes * (self.height1 * self.width1 +
+                                     self.height2 * self.width2 +
                                      self.height3 * self.width3)
         self.bbox = self.instance.Tensor(self.dtype, (
-            self.batch, self.max_box_number_per_batch * 6), \
+            self.batch, self.max_box_number_per_batch * 6),
                                          name="box_out", scope=tik.scope_gm)
-        self.bbox_num = self.instance.Tensor("int32", (self.batch, 8), \
+        self.bbox_num = self.instance.Tensor("int32", (self.batch, 8),
                                              name="box_out_num",
                                              scope=tik.scope_gm)
 
@@ -206,7 +212,7 @@ class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
                 "Ascend310", "Ascend910", "Hi3796CV300ES") \
                 and self.obj_data.size // (8 * self.dsize) > self.max_ub_num:
             each_loop = (8 * self.dsize)
-            shape = (self.obj_data.size // each_loop + \
+            shape = (self.obj_data.size // each_loop +
                      (each_loop - 1)) // each_loop * each_loop
 
             if constant.DATA_TYPE_FP32 == self.dtype:
@@ -372,7 +378,7 @@ class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
             with self.instance.if_scope(param["count"] > 0):
                 self.get_x1y1x2y2(xyhw_ub, x1y1x2y2_ub, param)
                 if tbe_platform.get_soc_spec("SOC_VERSION") in (
-                    "Ascend310", "Ascend910", "Hi3796CV300ES"):
+                        "Ascend310", "Ascend910", "Hi3796CV300ES"):
                     self.concatx1y1x2y2(x1y1x2y2_ub, proposals_ub, param)
 
             self.process_each_class(proposals_ub, mask, param)
@@ -477,8 +483,7 @@ class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
                         param["mask_loop"] - 1 == param["mask_cycle"]):
                     nburst.set_as(
                         common_util.get_datamove_nburst(self.instance,
-                                                   param[
-                                                       "mask_last_ub"] * self.dsize))
+                                                        param["mask_last_ub"] * self.dsize))
                 self.instance.data_move(self.mask_gm[param["batch"], offset],
                                         mask, constant.SID,
                                         constant.DEFAULT_NBURST, nburst,
@@ -498,8 +503,7 @@ class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
                             param["mask_offset"] != 0)):
                 offset = param["mask_cycle"] * self.max_ub_num
                 nburst = common_util.get_datamove_nburst(self.instance,
-                                                    param[
-                                                        "mask_last_ub"] * self.dsize)
+                                                         param["mask_last_ub"] * self.dsize)
                 self.instance.data_move(self.mask_gm[param["batch"], offset],
                                         mask, constant.SID,
                                         constant.DEFAULT_NBURST, nburst,
@@ -756,8 +760,7 @@ class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
         -------
         None
         """
-        repeats = common_util.get_vector_repeat_times(self.instance,
-                                                 self.dsize * param["count"])
+        repeats = common_util.get_vector_repeat_times(self.instance, self.dsize * param["count"])
         self.instance.vec_muls(self.mask, xyhw_ub[2, 0], xyhw_ub[2, 0], 0.5,
                                repeats, constant.REPEAT_STRIDE_EIGHT,
                                constant.REPEAT_STRIDE_EIGHT)
@@ -1037,8 +1040,7 @@ class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
         image_w.set_as(image_ub[3])
         image_h = self.instance.Scalar(self.dtype)
         image_h.set_as(image_ub[2])
-        repeats = common_util.get_vector_repeat_times(self.instance,
-                                                 selected_count * self.dsize)
+        repeats = common_util.get_vector_repeat_times(self.instance, selected_count * self.dsize)
         self.instance.vec_adds(self.mask, ret_ub[0, 0], ret_ub[0, 0],
                                -1.0, repeats, constant.REPEAT_STRIDE_EIGHT,
                                constant.REPEAT_STRIDE_EIGHT)
@@ -1151,8 +1153,7 @@ class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
         -------
         None
         """
-        repeats = common_util.get_vector_repeat_times(self.instance,
-                                                 param["obj_total"])
+        repeats = common_util.get_vector_repeat_times(self.instance, param["obj_total"])
         if tbe_platform.get_soc_spec("SOC_VERSION") in (
                 "Ascend310", "Ascend910", "Hi3796CV300ES"):
             loop_start = self.instance.Scalar("int32")
@@ -1209,8 +1210,7 @@ class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
                                             > PRE_NMS_TOPN):
                     total_size = (PRE_NMS_TOPN - param["count_offset"]) \
                                  * self.dsize
-                    nburst = common_util.get_datamove_nburst(self.instance,
-                                                        total_size)
+                    nburst = common_util.get_datamove_nburst(self.instance, total_size)
                     self.instance.data_move(
                         param["classes_ub_nms"][param["count_offset"]],
                         reduce_xyhw, 0, 1, nburst, 0, 0)
@@ -1490,8 +1490,7 @@ class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
         self.instance.vrpac(area, selected_tmp, cycle_roi)
         supvec_ub = self.instance.Tensor("uint16", (iou_num,), name="supVec_ub",
                                          scope=tik.scope_ubuf)
-        repeat_supvec = common_util.get_vector_repeat_times(self.instance,
-                                                       selected_class * 2)
+        repeat_supvec = common_util.get_vector_repeat_times(self.instance, selected_class * 2)
         self.instance.vec_dup(self.mask, supvec_ub, 1, repeat_supvec,
                               constant.REPEAT_STRIDE_EIGHT)
 

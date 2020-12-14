@@ -1035,11 +1035,12 @@ class CorrectBoxComputer():
                     param['last_32b'][self.len_32b - \
                                       self.hwtail_len + \
                                       cycle].set_as(tmp_scalar)
-                self.instance.data_move(self.inter_coords[batch, \
-                      param['co_id'], param['out_offset'] + param['w'] * \
-                      param['h'] * param['box_id'] + param['mov_len'] * \
-                      loop + tail_idx], param['last_32b'], SID, NBURST_ONE,
-                      VALUE_ONE, GAP_ZERO, GAP_ZERO)
+                self.instance.data_move(
+                    self.inter_coords[
+                        batch, param['co_id'],
+                        param['out_offset'] + param['w'] * param['h'] * param['box_id'] +
+                        param['mov_len'] * loop + tail_idx], param['last_32b'],
+                    SID, NBURST_ONE, VALUE_ONE, GAP_ZERO, GAP_ZERO)
             with self.instance.else_scope():
                 dest = self.inter_coords[batch, param['co_id'], \
                                          param['out_offset'] + \

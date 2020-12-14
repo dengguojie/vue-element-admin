@@ -35,6 +35,7 @@ PRE_NMS_TOPN = 1024
 UB_NUM = 10240
 
 
+# pylint: disable=unused-argument, too-many-locals, too-many-arguments
 def get_op_support_info(input_x, box_out, box_out_num, biases,
                         boxes=3, coords=4, classes=80,
                         relative=True, obj_threshold=0.5,
@@ -401,8 +402,7 @@ class DetectionOutput(ClsProbComputer):
                 with self.instance.if_scope(cycle == obj_loop_times - 1):
                     param["obj_total"].set_as(obj_last_ub_size * self.dsize)
                     ub_num.set_as(obj_last_ub_size)
-                nburst = get_datamove_nburst(self.instance,
-                                             param["obj_total"])
+                nburst = get_datamove_nburst(self.instance, param["obj_total"])
                 self.instance.data_move(obj_ub, self.obj_data[offset],
                                         constant.SID,
                                         constant.DEFAULT_NBURST, nburst,
@@ -449,8 +449,7 @@ class DetectionOutput(ClsProbComputer):
                         param["mask_loop"] - 1 == param["mask_cycle"]):
                     nburst.set_as(
                         get_datamove_nburst(self.instance,
-                                            param[
-                                                "mask_last_ub"] * self.dsize))
+                                            param["mask_last_ub"] * self.dsize))
                 self.instance.data_move(self.mask_gm[param["batch"], offset],
                                         mask, constant.SID,
                                         constant.DEFAULT_NBURST, nburst,
@@ -459,8 +458,7 @@ class DetectionOutput(ClsProbComputer):
                 param["use_gm_mask"].set_as(1)
                 param["mask_cycle"].set_as(param["mask_cycle"] + 1)
                 param["mask_offset"].set_as(0)
-        repeats = get_vector_repeat_times(self.instance,
-                                          param["obj_total"])
+        repeats = get_vector_repeat_times(self.instance, param["obj_total"])
         self.instance.vcmpvs_gt(mask[param["mask_offset"]], obj_ub[0],
                                 self.obj_threshold,
                                 repeats, 1, 8)
@@ -470,8 +468,7 @@ class DetectionOutput(ClsProbComputer):
                          param["mask_offset"] != 0)):
                 offset = param["mask_cycle"] * self.max_ub_num
                 nburst = get_datamove_nburst(self.instance,
-                                             param[
-                                                 "mask_last_ub"] * self.dsize)
+                                             param["mask_last_ub"] * self.dsize)
                 self.instance.data_move(self.mask_gm[param["batch"], offset],
                                         mask, constant.SID,
                                         constant.DEFAULT_NBURST, nburst,
@@ -728,8 +725,7 @@ class DetectionOutput(ClsProbComputer):
         -------
         None
         """
-        repeats = get_vector_repeat_times(self.instance,
-                                          self.dsize * param["count"])
+        repeats = get_vector_repeat_times(self.instance, self.dsize * param["count"])
         self.instance.vec_muls(self.mask, xyhw_ub[2, 0], xyhw_ub[2, 0], 0.5,
                                repeats, constant.REPEAT_STRIDE_EIGHT,
                                constant.REPEAT_STRIDE_EIGHT)
@@ -946,8 +942,7 @@ class DetectionOutput(ClsProbComputer):
                         param["obj_total"].set_as(
                             param["last_ub_num"] * self.dsize)
                         param["ub_num"].set_as(param["last_ub_num"])
-                    nburst = get_datamove_nburst(self.instance,
-                                                 param["obj_total"])
+                    nburst = get_datamove_nburst(self.instance, param["obj_total"])
                     classes_ub = self.instance.Tensor(self.dtype,
                                                       (self.max_ub_num,),
                                                       name="classes_ub",
@@ -1009,8 +1004,7 @@ class DetectionOutput(ClsProbComputer):
         image_w.set_as(image_ub[3])
         image_h = self.instance.Scalar(self.dtype)
         image_h.set_as(image_ub[2])
-        repeats = get_vector_repeat_times(self.instance,
-                                          selected_count * self.dsize)
+        repeats = get_vector_repeat_times(self.instance, selected_count * self.dsize)
         self.instance.vec_adds(self.mask, ret_ub[0, 0], ret_ub[0, 0],
                                -1.0, repeats, constant.REPEAT_STRIDE_EIGHT,
                                constant.REPEAT_STRIDE_EIGHT)
@@ -1123,8 +1117,7 @@ class DetectionOutput(ClsProbComputer):
         -------
         None
         """
-        repeats = get_vector_repeat_times(self.instance,
-                                          param["obj_total"])
+        repeats = get_vector_repeat_times(self.instance, param["obj_total"])
         if cce_conf.get_soc_spec("SOC_VERSION") in (
                 "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
             loop_start = self.instance.Scalar("int32")
@@ -1177,12 +1170,9 @@ class DetectionOutput(ClsProbComputer):
                                       param["mask"][param["mask_offset"]],
                                       repeats, 1, 8, 1, 0, scalar,
                                       mask_mode="counter")
-                with self.instance.if_scope(param["count_offset"] + scalar \
-                                            > PRE_NMS_TOPN):
-                    total_size = (PRE_NMS_TOPN - param["count_offset"]) \
-                                 * self.dsize
-                    nburst = get_datamove_nburst(self.instance,
-                                                 total_size)
+                with self.instance.if_scope(param["count_offset"] + scalar > PRE_NMS_TOPN):
+                    total_size = (PRE_NMS_TOPN - param["count_offset"]) * self.dsize
+                    nburst = get_datamove_nburst(self.instance, total_size)
                     self.instance.data_move(
                         param["classes_ub_nms"][param["count_offset"]],
                         reduce_xyhw, 0, 1, nburst, 0, 0)
@@ -1521,8 +1511,8 @@ class DetectionOutput(ClsProbComputer):
                                            rpn_cor_ir)
             with self.instance.for_range(0, 16) as j:
                 tmp = 16 * count_cycle + j
-                with self.instance.if_scope(_all(tmp + 1 <= selected_class, \
-                                                 supvec_ub[tmp] == 0, \
+                with self.instance.if_scope(_all(tmp + 1 <= selected_class,
+                                                 supvec_ub[tmp] == 0,
                                                  selected_count < self.max_box_number_per_batch,
                                                  iou_count < self.post_top_k)):
                     index_tmp = tmp * 8
@@ -1555,8 +1545,7 @@ class DetectionOutput(ClsProbComputer):
         -------
         None
         """
-        nburst = get_datamove_nburst(self.instance,
-                                     selected_count * self.dsize)
+        nburst = get_datamove_nburst(self.instance, selected_count * self.dsize)
         offset = self.instance.Scalar(dtype="int32")
         offset.set_as(0)
         self.instance.data_move(self.bbox[batch, offset],

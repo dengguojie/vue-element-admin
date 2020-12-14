@@ -109,6 +109,7 @@ def yolo_v2_detection_output_d(coord_data, obj_prob, classes_prob,
     return nms_computer.compute_detection_output()
 
 
+# pylint: disable=too-many-public-methods
 class NmsComputer(yolo_v2_cls_prob.ClsProbComputer):
     """
      class for nms compute
@@ -147,7 +148,6 @@ class NmsComputer(yolo_v2_cls_prob.ClsProbComputer):
                                                     name="mask_gm",
                                                     is_workspace=True,
                                                     scope=tik.scope_gm)
-
 
     def compute_detection_output(self):
         """
@@ -355,8 +355,7 @@ class NmsComputer(yolo_v2_cls_prob.ClsProbComputer):
           -------
           None
           """
-        repeats = common_util.get_vector_repeat_times(self.instance,
-                                                 self.dsize * param["count"])
+        repeats = common_util.get_vector_repeat_times(self.instance, self.dsize * param["count"])
         self.instance.vec_muls(self.mask, xyhw_ub[2, 0], xyhw_ub[2, 0], 0.5,
                                repeats, constant.REPEAT_STRIDE_EIGHT,
                                constant.REPEAT_STRIDE_EIGHT)
@@ -428,9 +427,8 @@ class NmsComputer(yolo_v2_cls_prob.ClsProbComputer):
           -------
           None
           """
-        repeats = common_util.get_vector_repeat_times(self.instance,
-                                                 param["obj_total"])
-        if tbe_platform.get_soc_spec("SOC_VERSION") in ( \
+        repeats = common_util.get_vector_repeat_times(self.instance, param["obj_total"])
+        if tbe_platform.get_soc_spec("SOC_VERSION") in (
             "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
             loop_start = self.instance.Scalar("int32")
             loop_start.set_as(param["count_offset"])
@@ -487,8 +485,7 @@ class NmsComputer(yolo_v2_cls_prob.ClsProbComputer):
                                             > PRE_NMS_TOPN):
                     total_size = (PRE_NMS_TOPN - param["count_offset"]) \
                                  * self.dsize
-                    nburst = common_util.get_datamove_nburst(self.instance,
-                                                        total_size)
+                    nburst = common_util.get_datamove_nburst(self.instance, total_size)
                     self.instance.data_move(
                         param["classes_ub_nms"][param["count_offset"]],
                         reduce_xyhw, 0, 1, nburst, 0, 0)
@@ -525,6 +522,7 @@ class NmsComputer(yolo_v2_cls_prob.ClsProbComputer):
             param["mask_offset"].set_as(param["mask_offset"] + \
                                         self.max_ub_num // (8 * self.dsize))
 
+    # pylint: disable=too-many-statements
     def class_filter(self, selected_tmp, proposals_ub, selected_class, param):
         """
       filter by class threshold
@@ -559,8 +557,7 @@ class NmsComputer(yolo_v2_cls_prob.ClsProbComputer):
                                               name="reduce_mask_ub",
                                               scope=tik.scope_ubuf)
 
-        repeats = common_util.get_vector_repeat_times(self.instance,
-                                                 PRE_NMS_TOPN * self.dsize)
+        repeats = common_util.get_vector_repeat_times(self.instance, PRE_NMS_TOPN * self.dsize)
         with self.instance.new_stmt_scope():
             classes_ub_nms = self.instance.Tensor(self.dtype, (PRE_NMS_TOPN,),
                                                   name="classes_ub_nms",
@@ -786,8 +783,7 @@ class NmsComputer(yolo_v2_cls_prob.ClsProbComputer):
         self.instance.vrpac(area, selected_tmp, cycle_roi)
         supvec_ub = self.instance.Tensor("uint16", (iou_num,), name="supVec_ub",
                                          scope=tik.scope_ubuf)
-        repeat_supvec = common_util.get_vector_repeat_times(self.instance,
-                                                       selected_class * 2)
+        repeat_supvec = common_util.get_vector_repeat_times(self.instance, selected_class * 2)
         self.instance.vec_dup(self.mask, supvec_ub, 1, repeat_supvec,
                               constant.REPEAT_STRIDE_EIGHT)
 
@@ -969,12 +965,6 @@ class NmsComputer(yolo_v2_cls_prob.ClsProbComputer):
         param["classes_ub_nms"] = classes_ub_nms
 
         with self.instance.new_stmt_scope():
-            '''
-            classes_ub_nms = self.instance.Tensor(self.dtype, (PRE_NMS_TOPN,),
-                                                  name="classes_ub_nms",
-                                                  scope=tik.scope_ubuf)
-            param["classes_ub_nms"] = classes_ub_nms
-            '''
             with self.instance.for_range(0, param["loop_cycle"]) as inner_cycle:
                 with self.instance.if_scope(
                         param["count_offset"] < PRE_NMS_TOPN):
@@ -983,8 +973,7 @@ class NmsComputer(yolo_v2_cls_prob.ClsProbComputer):
                         param["obj_total"].set_as(
                             param["last_ub_num"] * self.dsize)
                         param["ub_num"].set_as(param["last_ub_num"])
-                    nburst = common_util.get_datamove_nburst(self.instance,
-                                                        param["obj_total"])
+                    nburst = common_util.get_datamove_nburst(self.instance, param["obj_total"])
                     classes_ub = self.instance.Tensor(self.dtype,
                                                       (self.max_ub_num,),
                                                       name="classes_ub",
@@ -1135,8 +1124,7 @@ class NmsComputer(yolo_v2_cls_prob.ClsProbComputer):
           -------
           None
           """
-        nburst = common_util.get_datamove_nburst(self.instance,
-                                            selected_count * self.dsize)
+        nburst = common_util.get_datamove_nburst(self.instance, selected_count * self.dsize)
         offset = self.instance.Scalar(dtype="int32")
         offset.set_as(0)
         self.instance.data_move(self.bbox[batch, offset],
@@ -1191,8 +1179,7 @@ class NmsComputer(yolo_v2_cls_prob.ClsProbComputer):
         image_w.set_as(image_ub[3])
         image_h = self.instance.Scalar(self.dtype)
         image_h.set_as(image_ub[2])
-        repeats = common_util.get_vector_repeat_times(self.instance,
-                                                 selected_count * self.dsize)
+        repeats = common_util.get_vector_repeat_times(self.instance, selected_count * self.dsize)
         self.instance.vec_adds(self.mask, ret_ub[0, 0], ret_ub[0, 0],
                                -1.0, repeats, constant.REPEAT_STRIDE_EIGHT,
                                constant.REPEAT_STRIDE_EIGHT)
@@ -1247,7 +1234,7 @@ class NmsComputer(yolo_v2_cls_prob.ClsProbComputer):
             self.instance.vec_dup(self.mask, threshold[0], image_h,
                                   repeats, constant.REPEAT_STRIDE_EIGHT)
             self.instance.vec_adds(self.mask, threshold, threshold, -1,
-                                   repeats,  constant.REPEAT_STRIDE_EIGHT,
+                                   repeats, constant.REPEAT_STRIDE_EIGHT,
                                    constant.REPEAT_STRIDE_EIGHT)
 
             self.instance.vec_min(self.mask, ret_ub[3, 0], ret_ub[3, 0],
@@ -1411,8 +1398,7 @@ class NmsComputer(yolo_v2_cls_prob.ClsProbComputer):
                 with self.instance.if_scope(cycle == obj_loop_times - 1):
                     param["obj_total"].set_as(obj_last_ub_size * self.dsize)
                     ub_num.set_as(obj_last_ub_size)
-                nburst = common_util.get_datamove_nburst(self.instance,
-                                                    param["obj_total"])
+                nburst = common_util.get_datamove_nburst(self.instance, param["obj_total"])
                 self.instance.data_move(obj_ub, self.obj_prob_v200[offset],
                                         constant.SID,
                                         constant.DEFAULT_NBURST, nburst,
@@ -1459,18 +1445,15 @@ class NmsComputer(yolo_v2_cls_prob.ClsProbComputer):
                         param["mask_loop"] - 1 == param["mask_cycle"]):
                     nburst.set_as(
                         common_util.get_datamove_nburst(self.instance,
-                                                   param[
-                                                       "mask_last_ub"] * self.dsize))
+                                                        param["mask_last_ub"] * self.dsize))
                 self.instance.data_move(self.mask_gm[param["batch"], offset],
-                                        mask, \
-                                        constant.SID, constant.DEFAULT_NBURST, \
-                                        nburst, constant.STRIDE_ZERO, \
+                                        mask, constant.SID, constant.DEFAULT_NBURST,
+                                        nburst, constant.STRIDE_ZERO,
                                         constant.STRIDE_ZERO)
                 param["use_gm_mask"].set_as(1)
                 param["mask_cycle"].set_as(param["mask_cycle"] + 1)
                 param["mask_offset"].set_as(0)
-        repeats = common_util.get_vector_repeat_times(self.instance,
-                                                 param["obj_total"])
+        repeats = common_util.get_vector_repeat_times(self.instance, param["obj_total"])
         self.instance.vcmpvs_gt(mask[param["mask_offset"]], obj_ub[0],
                                 self.obj_threshold,
                                 repeats, 1, 8)
@@ -1480,12 +1463,10 @@ class NmsComputer(yolo_v2_cls_prob.ClsProbComputer):
                             param["mask_offset"] != 0)):
                 offset = param["mask_cycle"] * self.max_ub_num
                 nburst = common_util.get_datamove_nburst(self.instance,
-                                                    param[
-                                                        "mask_last_ub"] * self.dsize)
+                                                         param["mask_last_ub"] * self.dsize)
                 self.instance.data_move(self.mask_gm[param["batch"], offset],
-                                        mask, \
-                                        constant.SID, constant.DEFAULT_NBURST, \
-                                        nburst, constant.STRIDE_ZERO, \
+                                        mask, constant.SID, constant.DEFAULT_NBURST,
+                                        nburst, constant.STRIDE_ZERO,
                                         constant.STRIDE_ZERO)
         coords_ub_xyhw = self.instance.Tensor(self.dtype, (4, self.max_ub_num),
                                               name="coords_ub_xyhw",

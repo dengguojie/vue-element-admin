@@ -18,7 +18,6 @@ yolo_v3_cls_prob
 # pylint: disable=ungrouped-imports,import-error,too-many-branches
 import te.platform as tbe_platform
 from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
 
 from impl import common_util
 from impl import constant_util as constant
@@ -49,13 +48,25 @@ SID = 0
 VALUE_ZERO = 0
 
 
-def check_param_range(param_name, min_value, max_value, real_value, op_name='yolo_v3_detection_output_d'):
-    
-    error_info = {'errCode': 'E80002', 'opname': op_name, 'param_name': param_name, 'min_value': str(min_value),
-                  'max_value': str(max_value), 'real_value': str(real_value)}
-    raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s], but actually is [%s]."
-                       % (error_info['opname'], error_info['param_name'], error_info['min_value'],
-                          error_info['max_value'], error_info['real_value']))
+def check_param_range(param_name, min_value, max_value, real_value,
+                      op_name='yolo_v3_detection_output_d'):
+    """
+    check_param_range
+    :param param_name:
+    :param min_value:
+    :param max_value:
+    :param real_value:
+    :param op_name:
+    :return:
+    """
+    error_info = {'errCode': 'E80002', 'opname': op_name, 'param_name': param_name,
+                  'min_value': str(min_value), 'max_value': str(max_value),
+                  'real_value': str(real_value)}
+    raise RuntimeError(
+        error_info,
+        "In op[%s], the parameter[%s] should be in the range of [%s, %s], but actually is [%s]."
+        % (error_info['opname'], error_info['param_name'], error_info['min_value'],
+           error_info['max_value'], error_info['real_value']))
 
 
 # pylint: disable=too-many-ancestors
@@ -88,7 +99,7 @@ class ClsProbComputer(yolo_v3_correct_region_box.GetCorrectBoxComputer):
         self.tail_len = self.len3 % (self.len_32b)
         shape = self.boxes * (self.height1 * self.width1 + \
                               self.height2 * self.width2)
-        
+
         if tbe_platform.get_soc_spec("SOC_VERSION") not in (
                 "Ascend310", "Ascend910", "Hi3796CV300ES"):
             each_burst = constant.BLOCK_SIZE // self.dsize
@@ -177,7 +188,7 @@ class ClsProbComputer(yolo_v3_correct_region_box.GetCorrectBoxComputer):
           -------
           None
           """
-        
+
         if tbe_platform.get_soc_spec("SOC_VERSION") in (
                 "Ascend310", "Ascend910", "Hi3796CV300ES"):
             self.set_index_ub_by_mask(param, length)
@@ -206,7 +217,8 @@ class ClsProbComputer(yolo_v3_correct_region_box.GetCorrectBoxComputer):
         work_tensor_ub = self.instance.Tensor(self.dtype, (16,),
                                               name="work_tensor_ub",
                                               scope=tbe_platform.scope_ubuf)
-        self.instance.vec_reduce_add(128, sum_mask_ub, param['reduce_mask_ub'], work_tensor_ub, 1, 8)
+        self.instance.vec_reduce_add(128, sum_mask_ub, param['reduce_mask_ub'],
+                                     work_tensor_ub, 1, 8)
 
         mask_scalar = self.instance.Scalar("uint16", name="mask_scalar")
         mask_scalar.set_as(sum_mask_ub[0])
@@ -326,9 +338,7 @@ class ClsProbComputer(yolo_v3_correct_region_box.GetCorrectBoxComputer):
           """
         self.init_small_clsprob_param(param)
         self.instance.vec_muls(self.mask, param['zero_tensor'], param['zero_tensor'],
-                            VALUE_ZERO,
-                            REPEAT_ONE, STRIDE_EIGHT,
-                            STRIDE_EIGHT)
+                               VALUE_ZERO, REPEAT_ONE, STRIDE_EIGHT, STRIDE_EIGHT)
 
         self.instance.data_move(param['ub_a'], param['obj_data'][batch, 0], SID,
                                 NBURST_ONE, param['burlen'], GAP_ZERO, GAP_ZERO)
@@ -341,8 +351,8 @@ class ClsProbComputer(yolo_v3_correct_region_box.GetCorrectBoxComputer):
             param['obj_gm_offset'].set_as(param['obj_gm_offset'] + \
                                           self.boxes * param['h'] * param['w'])
         # if obj_data < obj_threshold
-        self.instance.vec_dup(self.mask, param['ub_b'], self.obj_threshold,
-                                 param['repeat'], STRIDE_EIGHT)
+        self.instance.vec_dup(self.mask, param['ub_b'], self.obj_threshold, param['repeat'],
+                              STRIDE_EIGHT)
 
         ones_ub = self.instance.Tensor(self.dtype, (128,), name="ones_ub",
                                        scope=tbe_platform.scope_ubuf)
@@ -373,13 +383,13 @@ class ClsProbComputer(yolo_v3_correct_region_box.GetCorrectBoxComputer):
                                       1, 8, 8)
 
             self.instance.vec_sel(self.mask, VALUE_ZERO,
-                               param['ub_a'][param['num'] * cycle],
-                               sel,
-                               param['ub_a'][param['num'] * cycle],
-                               param['zero_tensor'], REPEAT_ONE)
+                                  param['ub_a'][param['num'] * cycle],
+                                  sel,
+                                  param['ub_a'][param['num'] * cycle],
+                                  param['zero_tensor'], REPEAT_ONE)
             self.instance.vec_sel(self.mask, 0, reduce_mask_ub[0], sel,
-                               ones_ub[0], zeros_ub[0], REPEAT_ONE,
-                               constant.STRIDE_ONE)
+                                  ones_ub[0], zeros_ub[0], REPEAT_ONE,
+                                  constant.STRIDE_ONE)
             param['reduce_mask_ub'] = reduce_mask_ub
             with self.instance.if_scope(cycle == param['repeat'] - 1):
                 index_len.set_as(last_index_len)
@@ -523,17 +533,13 @@ class ClsProbComputer(yolo_v3_correct_region_box.GetCorrectBoxComputer):
           None
           """
         param['mov_len'], param['mov_loop'], param[
-            'last_len'] = self.get_tiling_param(self.boxes * param['h'],
-                                                param['w'])
+            'last_len'] = self.get_tiling_param(self.boxes * param['h'], param['w'])
         each_len = self.instance.Scalar("int32")
         each_len.set_as(param['mov_len'])
         with self.instance.for_range(VALUE_ZERO, param['mov_loop']) as loop:
             self.init_bigcls_param(loop, param)
-            self.instance.vec_muls(self.mask, param['zero_tensor'],
-                                param['zero_tensor'],
-                                VALUE_ZERO, REPEAT_ONE,
-                                STRIDE_EIGHT,
-                                STRIDE_EIGHT)
+            self.instance.vec_muls(self.mask, param['zero_tensor'], param['zero_tensor'],
+                                   VALUE_ZERO, REPEAT_ONE, STRIDE_EIGHT, STRIDE_EIGHT)
             # move obj data to ub a
             self.instance.data_move(param['ub_a'],
                                     param['obj_data'][
@@ -543,21 +549,18 @@ class ClsProbComputer(yolo_v3_correct_region_box.GetCorrectBoxComputer):
                                     GAP_ZERO)
 
             # if obj_data < obj_threshold
-            self.instance.vec_dup(self.mask, param['ub_b'], self.obj_threshold,
-                                     param['repeat'], STRIDE_EIGHT)
+            self.instance.vec_dup(self.mask, param['ub_b'], self.obj_threshold, param['repeat'],
+                                  STRIDE_EIGHT)
 
             reduce_mask_ub = self.instance.Tensor(self.dtype, (128,),
                                                   name="reduce_mask_ub",
                                                   scope=tbe_platform.scope_ubuf)
             ones_ub = self.instance.Tensor(self.dtype, (128,), name="ones_ub",
                                            scope=tbe_platform.scope_ubuf)
-            self.instance.vec_dup(self.mask, ones_ub[0], VALUE_ONE, REPEAT_ONE,
-                                     STRIDE_EIGHT)
+            self.instance.vec_dup(self.mask, ones_ub[0], VALUE_ONE, REPEAT_ONE, STRIDE_EIGHT)
             zeros_ub = self.instance.Tensor(self.dtype, (128,), name="zeros_ub",
                                             scope=tbe_platform.scope_ubuf)
-            self.instance.vec_dup(self.mask, zeros_ub[0], VALUE_ZERO,
-                                     REPEAT_ONE,
-                                     STRIDE_EIGHT)
+            self.instance.vec_dup(self.mask, zeros_ub[0], VALUE_ZERO, REPEAT_ONE, STRIDE_EIGHT)
 
             with self.instance.if_scope(loop == param['mov_loop'] - 1):
                 each_len.set_as(param['last_len'])
@@ -587,20 +590,17 @@ class ClsProbComputer(yolo_v3_correct_region_box.GetCorrectBoxComputer):
                                            scope=tbe_platform.scope_ubuf)
                 self.instance.vec_dup(8, sel, 0, 1, 8)
                 self.instance.vec_cmpv_gt(sel,
-                                          param['ub_a'][
-                                              param['num'] * cycle], 
-                                          param['ub_b'][
-                                              param['num'] * cycle],
+                                          param['ub_a'][param['num'] * cycle],
+                                          param['ub_b'][param['num'] * cycle],
                                           1, 8, 8)
-                
-                self.instance.vec_sel(self.mask, VALUE_ZERO, param['ub_a'][
-                    param['num'] * cycle], sel,
-                                   param['ub_a'][
-                                       param['num'] * cycle],
-                                   param['zero_tensor'], REPEAT_ONE)
+
+                self.instance.vec_sel(self.mask, VALUE_ZERO,
+                                      param['ub_a'][param['num'] * cycle], sel,
+                                      param['ub_a'][param['num'] * cycle],
+                                      param['zero_tensor'], REPEAT_ONE)
 
                 self.instance.vec_sel(self.mask, 0, reduce_mask_ub[0], sel,
-                                   ones_ub[0], zeros_ub[0], 1, 1)
+                                      ones_ub[0], zeros_ub[0], 1, 1)
                 param['reduce_mask_ub'] = reduce_mask_ub
                 with self.instance.if_scope(cycle == param['repeat'] - 1):
                     index_len.set_as(last_index_len)
@@ -622,11 +622,8 @@ class ClsProbComputer(yolo_v3_correct_region_box.GetCorrectBoxComputer):
                     batch, co_id, param['mov_len'] * loop], SID, NBURST_ONE,
                                         param['burlen'], GAP_ZERO, GAP_ZERO)
 
-                self.instance.vec_mul(self.mask, param['ub_c'], param['ub_a'],
-                                   param['ub_c'], param['repeat'],
-                                   STRIDE_EIGHT,
-                                   STRIDE_EIGHT,
-                                   STRIDE_EIGHT)
+                self.instance.vec_mul(self.mask, param['ub_c'], param['ub_a'], param['ub_c'],
+                                      param['repeat'], STRIDE_EIGHT, STRIDE_EIGHT, STRIDE_EIGHT)
 
                 if self.tail_len != VALUE_ZERO and param['h'] == self.height3 \
                         and param['w'] == self.width3:
@@ -773,21 +770,28 @@ def check_param(input_dict):
 
     if tbe_platform.get_soc_spec("SOC_VERSION") in (
             "Ascend310", "Ascend910", "Hi3796CV300ES"):
-        para_check.check_dtype(input_dict.get("box1_info").get("dtype"), ["float16"], param_name="box1_info")
-        para_check.check_dtype(input_dict.get("box2_info").get("dtype"), ["float16"], param_name="box2_info")
-        para_check.check_dtype(input_dict.get("box3_info").get("dtype"), ["float16"], param_name="box3_info")
+        para_check.check_dtype(input_dict.get("box1_info").get("dtype"),
+                               ["float16"], param_name="box1_info")
+        para_check.check_dtype(input_dict.get("box2_info").get("dtype"),
+                               ["float16"], param_name="box2_info")
+        para_check.check_dtype(input_dict.get("box3_info").get("dtype"),
+                               ["float16"], param_name="box3_info")
     else:
-        para_check.check_dtype(input_dict.get("box1_info").get("dtype"), ["float16", "float32"], param_name="box1_info")
-        para_check.check_dtype(input_dict.get("box2_info").get("dtype"), ["float16", "float32"], param_name="box2_info")
-        para_check.check_dtype(input_dict.get("box3_info").get("dtype"), ["float16", "float32"], param_name="box3_info")
+        para_check.check_dtype(input_dict.get("box1_info").get("dtype"),
+                               ["float16", "float32"], param_name="box1_info")
+        para_check.check_dtype(input_dict.get("box2_info").get("dtype"),
+                               ["float16", "float32"], param_name="box2_info")
+        para_check.check_dtype(input_dict.get("box3_info").get("dtype"),
+                               ["float16", "float32"], param_name="box3_info")
 
     para_check.check_kernel_name(input_dict.get("kernel_name"))
     coords = input_dict.get("coords")
     post_top_k = input_dict.get("post_top_k")
     if coords != 4:
-        error_info = {'errCode': 'E80017', 'opname': 'yolo_v3_detection_output_d', 'param_name': 'coords',
-                      'expect_value': '4', 'real_value': str(coords)}
-        raise RuntimeError(error_info,
+        error_info = {'errCode': 'E80017', 'opname': 'yolo_v3_detection_output_d',
+                      'param_name': 'coords', 'expect_value': '4', 'real_value': str(coords)}
+        raise RuntimeError(
+            error_info,
             "In op[%s], the parameter[%s] should be [%s], but actually is [%s]."
             % (error_info['opname'], error_info['param_name'], error_info['expect_value'],
                error_info['real_value']))
@@ -808,7 +812,8 @@ def check_param(input_dict):
     if max_box_number_per_batch % 16 != 0:
         error_info = {'errCode': 'E81011', 'opname': 'yolo_v3_detection_output_d',
                       'real_value': str(max_box_number_per_batch)}
-        raise RuntimeError(error_info,
+        raise RuntimeError(
+            error_info,
             "In op[%s], max_box_number_per_batch should be a multiple of 16, but actually is [%s]."
             % (error_info['opname'], error_info['real_value']))
 
@@ -822,19 +827,19 @@ def check_param(input_dict):
     height = input_dict.get("box1_info").get("shape")[2]
     width = input_dict.get("box1_info").get("shape")[3]
     if height * width * dsize < constant.BLOCK_SIZE:
-        rule_desc = "box1_info's height multi with width's size must bigger than 32b"
-        error_manager_vector.raise_err_check_params_rules("yolo_v3_detection_output_d", rule_desc,
-                                                    "height * width * dsize", height * width * dsize)
+        raise RuntimeError(
+            "box1_info's height[%d] multi with width[%d]'s size \
+            must bigger than 32b" % (height, width))
 
     height = input_dict.get("box2_info").get("shape")[2]
     width = input_dict.get("box2_info").get("shape")[3]
     if height * width * dsize < constant.BLOCK_SIZE:
-        rule_desc = "box2_info's height multi with width's size must bigger than 32b"
-        error_manager_vector.raise_err_check_params_rules("yolo_v3_detection_output_d", rule_desc,
-                                                    "height * width * dsize", height * width * dsize)
+        raise RuntimeError(
+            "box2_info's height[%d] multi with width[%d]'s size \
+            must bigger than 32b" % (height, width))
     height = input_dict.get("box3_info").get("shape")[2]
     width = input_dict.get("box3_info").get("shape")[3]
     if height * width * dsize < constant.BLOCK_SIZE:
-        rule_desc = "box3_info's height multi with width's size must bigger than 32b"
-        error_manager_vector.raise_err_check_params_rules("yolo_v3_detection_output_d", rule_desc,
-                                                    "height * width * dsize", height * width * dsize)
+        raise RuntimeError(
+            "box3_info's height[%d] multi with width[%d]'s size\
+             must bigger than 32b" % (height, width))

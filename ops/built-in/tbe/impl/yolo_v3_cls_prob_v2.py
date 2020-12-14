@@ -59,8 +59,9 @@ def check_param_range(param_name, min_value, max_value, real_value,
     :param op_name: op name
     :return: None, raise RuntimeError of real_value is out of range
     """
-    error_info = {'errCode': 'E80002', 'opname': op_name, 'param_name': param_name, 'min_value': str(min_value),
-                  'max_value': str(max_value), 'real_value': str(real_value)}
+    error_info = {'errCode': 'E80002', 'opname': op_name, 'param_name': param_name,
+                  'min_value': str(min_value), 'max_value': str(max_value),
+                  'real_value': str(real_value)}
     raise RuntimeError(error_info,
                        "In op[%s], the parameter[%s] should be"
                        " in the range of [%s, %s], but actually is [%s]."
@@ -694,18 +695,17 @@ def check_param(input_dict):
             "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
         for box_info in input_dict.get("box_info"):
             para_check.check_dtype(box_info.get("dtype"), ["float16"],
-                                 param_name="box_info")
+                                   param_name="box_info")
     else:
         for box_info in input_dict.get("box_info"):
             para_check.check_dtype(box_info.get("dtype"), ["float16", "float32"],
-                                 param_name="box_info")
+                                   param_name="box_info")
 
     para_check.check_kernel_name(input_dict.get("kernel_name"))
     coords = input_dict.get("coords")
-    post_top_k = input_dict.get("post_top_k")
     if coords != 4:
-        error_info = {'errCode': 'E80017', 'opname': 'yolo_v3_detection_output_v2', 'param_name': 'coords',
-                      'expect_value': '4', 'real_value': str(coords)}
+        error_info = {'errCode': 'E80017', 'opname': 'yolo_v3_detection_output_v2',
+                      'param_name': 'coords', 'expect_value': '4', 'real_value': str(coords)}
         raise RuntimeError(error_info,
                            "In op[%s], the parameter[%s] should be [%s],"
                            " but actually is [%s]." %
