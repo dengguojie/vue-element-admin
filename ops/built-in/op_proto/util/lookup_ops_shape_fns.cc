@@ -86,10 +86,19 @@ graphStatus ValidateTableResourceHandle(const Operator& op,
                                         const bool& is_lookup,
                                         ShapeAndType& output_shape_and_type,
                                         const char* op_name) {
+  if (op.GetInferenceContext() == nullptr) {
+    OP_LOGI(op_name, "Op inference context is null, return unknwon shape");
+    output_shape_and_type.SetShape(Shape(UNKNOWN_RANK));
+    output_shape_and_type.SetType(DT_UNDEFINED);
+    return GRAPH_SUCCESS;
+  }
+
   const auto& shapes_and_types = op.GetInferenceContext()->GetInputHandleShapesAndTypes();
   if (shapes_and_types.empty()) {
-    OP_LOGE(op_name, "context GetInputHandleShapesAndTypes result is empty");
-    return GRAPH_FAILED;
+    OP_LOGI(op_name, "Context GetInputHandleShapesAndTypes result is empty, return unknwon shape");
+    output_shape_and_type.SetShape(Shape(UNKNOWN_RANK));
+    output_shape_and_type.SetType(DT_UNDEFINED);
+    return GRAPH_SUCCESS;
   }
 
   auto handle_data = shapes_and_types[0];
