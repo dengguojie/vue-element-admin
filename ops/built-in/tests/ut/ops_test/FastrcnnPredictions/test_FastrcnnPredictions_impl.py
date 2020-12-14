@@ -27,10 +27,10 @@ case2 = gen_fastrcnn_predictions_case((16 * 15, 4), (16, 16), "float16", "float1
 case3 = gen_fastrcnn_predictions_case((16 * 32, 4), (16, 33), "float16", "float16", 0.5, 0.01, 16, "fastrcnn_predictions_3")
 case4 = gen_fastrcnn_predictions_case((96, 4), (96, 2), "float16", "float16", 0.5, 0.01, 96, "fastrcnn_predictions_4")
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
+ut_case.add_case(["Ascend610", "Ascend710", "Ascend615"], case1)
+ut_case.add_case(["Ascend610", "Ascend710", "Ascend615"], case2)
+ut_case.add_case(["Ascend610", "Ascend710", "Ascend615"], case3)
+ut_case.add_case(["Ascend610", "Ascend710", "Ascend615"], case4)
 
 ### precision cases
 def nms_proposal_aadd(area_0, area_1, thresh):
@@ -173,5 +173,6 @@ def gen_precision_case(shape_x, shape_y, dtype_x, dtype_y, nms_threshold, score_
 ut_case.add_precision_case("Ascend910", gen_precision_case((16 * 1, 4), (16, 2), "float16", "float16", 0.5, 0.01, 16))
 ut_case.add_precision_case("Ascend910", gen_precision_case((16 * 15, 4), (16, 16), "float16", "float16", 0.5, 0.01, 16))
 ut_case.add_precision_case("Ascend910", gen_precision_case((32 * 5, 4), (32, 6), "float16", "float16", 0.5, 0.01, 32))
+ut_case.add_precision_case("Ascend615", gen_precision_case((16 * 1, 4), (16, 2), "float16", "float16", 0.5, 0.01, 16))
 
 
