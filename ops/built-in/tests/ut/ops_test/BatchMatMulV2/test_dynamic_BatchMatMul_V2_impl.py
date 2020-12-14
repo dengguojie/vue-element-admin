@@ -88,8 +88,25 @@ def gen_batch_matmul_dynamic(batch_range, m_range, k_range, n_range, src_dtype, 
         "expect": expect   
     }
 
+
+def test_op_select_format(test_arg):
+    from impl.batch_matmul_v2 import op_select_format
+    # static shape
+    op_select_format({"shape": (3, 2, 4), "dtype": "float16", "format": "ND", "ori_shape": (3, 2, 4), "ori_format": "ND"},
+                     {"shape": (3, 4, 5), "dtype": "float16", "format": "ND", "ori_shape": (4, 5), "ori_format": "ND"},
+                     )
+    op_select_format({"shape": (3, 2, 4), "dtype": "float", "format": "ND", "ori_shape": (3, 2, 4), "ori_format": "ND"},
+                     {"shape": (1, 4, 5), "dtype": "float", "format": "ND", "ori_shape": (1, 4, 5), "ori_format": "ND"},
+                     )
+    # dynamic shape
+    op_select_format({"shape": (-1, 2, 4), "dtype": "float16", "format": "ND", "ori_shape": (-1, 2, 4), "ori_format": "ND"},
+                     {"shape": (7, 4, 5), "dtype": "float16", "format": "ND", "ori_shape": (7, 4, 5), "ori_format": "ND"},
+                     )
+
+
 for case in matmul_case:
     ut_case.add_case("Ascend910", gen_batch_matmul_dynamic(*case))
+    ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 if __name__ == "__main__":
     with te.op.dynamic():

@@ -1,3 +1,5 @@
+#include <tuple>
+
 #include "gtest/gtest.h"
 #include "graph/compute_graph.h"
 #include "graph/graph.h"
@@ -7,6 +9,9 @@
 #include "array_ops.h"
 #include "op_proto_test_util.h"
 
+#define OP_TUPLE tuple<vector<int64_t>, DataType, ge::Format, vector<pair<int64_t,int64_t>>>
+
+using namespace std;
 using namespace ge;
 using namespace op;
 
@@ -46,7 +51,7 @@ TEST_F(matmul_infer_test, matmul_infer_test_1) {
   x2_range.push_back(std::pair<int64_t, int64_t>{1, -1});
   x2_range.push_back(std::pair<int64_t, int64_t>{1, -1});
   desc_data_x2.SetShapeRange(x2_range);
-  
+
   auto data_x2 = op::Data("x2");
   data_x2.update_input_desc_x(desc_data_x2);
   data_x2.update_output_desc_y(desc_data_x2);
@@ -138,4 +143,52 @@ TEST_F(matmul_infer_test, matmul_infer_test_2) {
   std::vector<std::pair<int64_t,int64_t>> output_range;
   EXPECT_EQ(output_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
   EXPECT_EQ(output_range, expected_range);
+}
+
+ge::op::MatMul CreateMatMulOp(OP_TUPLE a, OP_TUPLE b,
+                              bool trans_a, bool trans_b) {
+  auto tensor_a = create_desc_shape_range(get<0>(a), get<1>(a), get<2>(a), get<0>(a), get<2>(a), get<3>(a));
+  auto tensor_b = create_desc_shape_range(get<0>(b), get<1>(b), get<2>(b), get<0>(b), get<2>(b), get<3>(b));
+  ge::op::MatMul op;
+  op.UpdateInputDesc("x1", tensor_a);
+  op.UpdateInputDesc("x2", tensor_b);
+  op.SetAttr("transpose_x1", trans_a);
+  op.SetAttr("transpose_x2", trans_b);
+  return op;
+}
+
+void Operate(ge::op::MatMul &op) {
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+void Check(ge::op::MatMul &op, vector<int64_t> expected_shape, vector<pair<int64_t,int64_t>> expected_range) {
+  auto output_desc = op.GetOutputDesc("y");
+
+  auto shape = output_desc.GetShape().GetDims();
+  vector<pair<int64_t,int64_t>> range;
+  EXPECT_EQ(output_desc.GetShapeRange(range), ge::GRAPH_SUCCESS);
+
+  EXPECT_EQ(shape, expected_shape);
+  EXPECT_EQ(range, expected_range);
+}
+
+TEST_F(matmul_infer_test, static_normal) {
+  auto op = CreateMatMulOp(OP_TUPLE{{2, 4}, ge::DT_FLOAT16, ge::FORMAT_ND, {}},
+                           OP_TUPLE{{4, 5}, ge::DT_FLOAT16, ge::FORMAT_ND, {}},
+                           false, false);
+
+  Operate(op);
+
+  Check(op, {2, 5}, {{2, 2}, {5, 5}});
+}
+
+TEST_F(matmul_infer_test, dynamic_normal) {
+  auto op = CreateMatMulOp(OP_TUPLE{{-1, -1}, ge::DT_FLOAT16, ge::FORMAT_ND, {{1, 3}, {2, 5}}},
+                           OP_TUPLE{{-1, -1}, ge::DT_FLOAT16, ge::FORMAT_ND, {{1, 7}, {2, 9}}},
+                           false, false);
+
+  Operate(op);
+
+  Check(op, {-1, -1}, {{1, 3}, {2, 9}});
 }
