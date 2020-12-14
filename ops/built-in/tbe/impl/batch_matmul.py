@@ -240,8 +240,10 @@ def check_supported(input_x, input_y, bias=None, output_z={}, trans_a=False,
     shape_a = input_x.get("shape")
     shape_b = input_y.get("shape")
     src_dtype = input_x.get("dtype")
-    para_check.check_shape(shape_a, param_name="input_x")
-    para_check.check_shape(shape_b, param_name="input_y")
+    dynamic_flag = any(v == -1 for v in shape_a) or any(v == -1 for v in shape_b)
+    if not dynamic_flag:
+        para_check.check_shape(shape_a, param_name="input_x")
+        para_check.check_shape(shape_b, param_name="input_y")
     src_dtypes = ["float32", "int32"]
     if src_dtype in src_dtypes:
         shape_length = len(shape_a)
@@ -281,7 +283,7 @@ def check_supported(input_x, input_y, bias=None, output_z={}, trans_a=False,
         else:
             k_b_shape = shape_b[shape_length_b - 2]
 
-        if k_shape != k_b_shape:
+        if not dynamic_flag and k_shape != k_b_shape:
             return False
 
     return True

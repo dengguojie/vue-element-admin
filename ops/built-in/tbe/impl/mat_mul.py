@@ -247,8 +247,8 @@ def check_supported(input_x1, input_x2, bias, offset_w={}, output_y={},
     shape_a = input_x1.get("ori_shape")
     shape_b = input_x2.get("ori_shape")
     src_dtype = input_x1.get("dtype")
-    dymanic_flag = all(v == -1 for v in shape_a) and all(v == -1 for v in shape_b)
-    if not dymanic_flag:
+    dynamic_flag = any(v == -1 for v in shape_a) or any(v == -1 for v in shape_b)
+    if not dynamic_flag:
         para_check.check_shape(shape_a, param_name="input_x1")
         para_check.check_shape(shape_b, param_name="input_x2")
     target_type = ["float32", "int32"]
@@ -280,7 +280,7 @@ def check_supported(input_x1, input_x2, bias, offset_w={}, output_y={},
         else:
             k_b_shape = shape_b[0]
 
-        if k_shape != k_b_shape:
+        if not dynamic_flag and k_shape != k_b_shape:
             res = False
 
     return res

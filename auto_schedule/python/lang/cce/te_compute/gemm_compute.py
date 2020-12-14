@@ -182,19 +182,19 @@ def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
             raise RuntimeError(
                 args_dict, error_manager_util.get_error_message(args_dict)
             )
-
-        if (is_fractal_a == is_fractal_b) and (shape_len_a != shape_len_b):
-            args_dict = {
-                "errCode": "E60002",
-                "attr_name": "dim",
-                "param1_name": "a",
-                "param1_value": "{}".format(shape_len_a),
-                "param2_name": "b",
-                "param2_value": "{}".format(shape_len_b)
-            }
-            raise RuntimeError(
-                args_dict, error_manager_util.get_error_message(args_dict)
-            )
+        if not (GEMMParam.batch_a and not GEMMParam.batch_b):
+            if (is_fractal_a == is_fractal_b) and (shape_len_a != shape_len_b):
+                args_dict = {
+                    "errCode": "E60002",
+                    "attr_name": "dim",
+                    "param1_name": "a",
+                    "param1_value": "{}".format(shape_len_a),
+                    "param2_name": "b",
+                    "param2_value": "{}".format(shape_len_b)
+                }
+                raise RuntimeError(
+                    args_dict, error_manager_util.get_error_message(args_dict)
+                )
 
     _check_dtype()
     _check_fractal()
@@ -246,7 +246,7 @@ def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
                     args_dict, error_manager_util.get_error_message(args_dict)
                 )
 
-        if shape_len_a in (3, 5):
+        if shape_len_a in (3, 5) and not (GEMMParam.batch_a and not GEMMParam.batch_b):
             if _get_value(tensor_a.shape[0]) != _get_value(tensor_b.shape[0]):
                 args_dict = {
                     "errCode": "E60002",

@@ -72,6 +72,9 @@ from .zeros_like import zeros_like
 from .conv2d_backprop_input import conv2d_backprop_input
 from .conv2d_backprop_filter import conv2d_backprop_filter
 from .mat_mul import mat_mul
+from .batch_matmul import batch_matmul
+from .batch_matmul import batch_matmul_fuse_compute
+from .batch_matmul_v2 import batch_matmul_v2
 from .sub import sub
 from .transpose_d import transpose_d
 from .unpack import unpack
