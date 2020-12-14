@@ -3098,11 +3098,6 @@ IMPLEMT_INFERFUNC(MaxPoolWithArgmax, MaxPoolWithArgmaxInferShape) {
             "should be <= 255");
     return GRAPH_FAILED;
   }
-  if ((ksizeList[1] > in_size_h) || (ksizeList[2] > in_size_w)) {
-    OP_LOGE(op.GetName().c_str(), "can not support global pooling now");
-    return GRAPH_FAILED;
-  }
-
   // get input paddingMode
   std::string paddingMode;
   if (op.GetAttr("padding", paddingMode) != ge::GRAPH_SUCCESS) {
@@ -3110,13 +3105,16 @@ IMPLEMT_INFERFUNC(MaxPoolWithArgmax, MaxPoolWithArgmaxInferShape) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr padding failed!");
     return GRAPH_FAILED;
   }
-
   if (paddingMode != "SAME" && paddingMode != "VALID") {
     string excepted_value = ConcatString("SAME, VALID");
     OpsAttrValueErrReport(op.GetName(), "padding", excepted_value, paddingMode);
     OP_LOGE(op.GetName().c_str(),
             "MaxPoolWithArgmax can only support"
             "SAME or VALID padding mode!");
+    return GRAPH_FAILED;
+  }
+  if (((ksizeList[1] > in_size_h) || (ksizeList[2] > in_size_w)) && (paddingMode == "VALID")) {
+    OP_LOGE(op.GetName().c_str(), "when padding is VALID, ksize must be not less than input size.");
     return GRAPH_FAILED;
   }
   std::vector<int64_t> dims_input = shape.GetDims();
@@ -3240,10 +3238,6 @@ IMPLEMT_INFERFUNC(Mask2Argmax, Mask2ArgmaxInferShape) {
     OP_LOGE(op.GetName().c_str(),
             "invalid window params, window_h*window_w "
             "should be <= 255");
-    return GRAPH_FAILED;
-  }
-  if ((ksizeList[1] >= in_size_h) || (ksizeList[2] >= in_size_w)) {
-    OP_LOGE(op.GetName().c_str(), "can not support global pooling now");
     return GRAPH_FAILED;
   }
 

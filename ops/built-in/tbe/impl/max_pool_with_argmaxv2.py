@@ -179,9 +179,6 @@ def _check_param(x, ksize, strides, padding, dtype, dilation, ceil_mode,
             "MaxPoolWithArgmax only supports output indices data type: "
             "int32, int64, and other data type not support!")
 
-    if ksize[1] >= input_h or ksize[2] >= input_w:
-        raise RuntimeError("can not support global pooling now")
-
     if ksize[1] * ksize[2] > 255:
         raise RuntimeError("invalid window params, kernel_h*kernel_w "
                            "should be <= 255")

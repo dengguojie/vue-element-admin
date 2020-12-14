@@ -158,12 +158,6 @@ def _check_param(input_x, ksize, strides, padding, kernel_name):
                                                            "strides[0] and strides[3]",
                                                            expected_value, real_value)
 
-    if ksize[1] > in_size_h or ksize[2] > in_size_w:
-        expected_value = "smaller than or equal to 255"
-        real_value = ksize[1]
-        error_manager_vector.raise_err_input_value_invalid(kernel_name, "ksize",
-                                                           expected_value, real_value)
-
     if ksize[1] * ksize[2] > SCALAR_255:
         expected_value = "smaller than or equal to 255"
         real_value = "greater than 255"

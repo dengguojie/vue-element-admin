@@ -154,10 +154,6 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
             "should be <= 255");
     return NOT_CHANGED;
   }
-  if ((ksizeList[1] >= in_size_h) || (ksizeList[2] >= in_size_w)) {
-    OP_LOGW(op.GetName().c_str(), "can not support global pooling now");
-    return NOT_CHANGED;
-  }
   // get input paddingMode
   std::string paddingMode;
   if (op.GetAttr("padding", paddingMode) != ge::GRAPH_SUCCESS) {

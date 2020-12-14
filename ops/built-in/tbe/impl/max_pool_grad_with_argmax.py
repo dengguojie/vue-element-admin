@@ -590,11 +590,6 @@ def check_output_dim_with_ksize_stride(padding, input_gard_shape, y_shape, ksize
         dyh = (input_height - windowh + strides[1]) // strides[1]
         dyw = (input_weight - windoww + strides[2]) // strides[2]
 
-    if ksize[1] > input_height or ksize[2] > input_weight:
-        error_detail = "can not support global pooling now"
-        error_manager_vector.raise_err_input_shape_invalid("max_pool_grad_with_argmax", \
-                                                           "ksize", error_detail)
-
     if dyh != output_height or dyw != output_weight or input_batch != dyn or xc1 != dyc1 or xc0 != dyc0:
         raise RuntimeError("dimentions of dx dy padMode window stride is wrong,please check!")
 

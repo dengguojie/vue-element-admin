@@ -294,9 +294,6 @@ def check_output_dim_with_ksize_stride(padding, input_gard_shape, y_shape,
     dyw = _pooling_output_shape(input_width, windoww, pad_w, stride_w,
                                 dilation_w, ceil_mode)
 
-    if ksize[1] >= input_height or ksize[2] >= input_width:
-        raise RuntimeError("can not support global pooling now")
-
     if dyh != output_height or dyw != output_width or \
             input_batch != dyn or xc1 != dyc1 or xc0 != dyc0:
         raise RuntimeError("dimentions of dx dy \
