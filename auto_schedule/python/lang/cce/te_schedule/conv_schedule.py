@@ -4558,38 +4558,39 @@ class CceConvOp:
                 batch_outer, batch_inner = sch[res_c].split(
                     res_c.op.axis[0], nparts=block_dim[0])
 
-            if tiling["AL1_shape"]:
-                al1_factor_for_dynamic = tiling["AL1_shape"][1]*c_tiling_factor[1]
-                al1_bound = al1_factor_for_dynamic
-            else:
-                al1_bound = int_ceil_div_tvm(
-                    dim_map["out_img_shape"][-2],
-                    tiling["block_dim"][2])
-                al1_bound = int_ceil_div_tvm(al1_bound, 16)*16
-
-            # The al1_m of load2d and load3d are different
-            if not l0a_load2d_flag:
-                # load3d can not split wo
-                additional_rows = 2
-                ho_len = tvm.floordiv(al1_bound, var_map['wo']) + additional_rows
-                if strideh_opti_flag:
-                    hi_max = c_ub.op.attrs['kernel_h'] + (ho_len - 1)
+            if self._dynamic_mode == "dynamic_hw":
+                if tiling["AL1_shape"]:
+                    al1_factor_for_dynamic = tiling["AL1_shape"][1]*c_tiling_factor[1]
+                    al1_bound = al1_factor_for_dynamic
                 else:
-                    hi_max = c_ub.op.attrs['kernel_h'] + \
-                             (ho_len - 1)*c_ub.op.attrs['stride'][0]
-                al1_m = hi_max*var_map['fmap_w']
-            else:
-                # load2d unconstrained
-                al1_m = al1_bound
+                    al1_bound = int_ceil_div_tvm(
+                        dim_map["out_img_shape"][-2],
+                        tiling["block_dim"][2])
+                    al1_bound = int_ceil_div_tvm(al1_bound, 16)*16
 
-            # calculate al1_bound
-            fmap_shape_nc1hwc0 = ConvParam.tiling_query_param.get("fmap_shape_nc1hwc0")
-            _, fmap_c1, _, _, fmap_c0 = fmap_shape_nc1hwc0
-            if tiling["AL1_shape"]:
-                al1_bound = al1_m*tiling["AL1_shape"][0]*fmap_c0
-            else:
-                fmap_c1 = fmap_shape_nc1hwc0[1]
-                al1_bound = al1_m*fmap_c1*fmap_c0
+                # The al1_m of load2d and load3d are different
+                if not l0a_load2d_flag:
+                    # load3d can not split wo
+                    additional_rows = 2
+                    ho_len = tvm.floordiv(al1_bound, var_map['wo']) + additional_rows
+                    if strideh_opti_flag:
+                        hi_max = c_ub.op.attrs['kernel_h'] + (ho_len - 1)
+                    else:
+                        hi_max = c_ub.op.attrs['kernel_h'] + \
+                                 (ho_len - 1)*c_ub.op.attrs['stride'][0]
+                    al1_m = hi_max*var_map['fmap_w']
+                else:
+                    # load2d unconstrained
+                    al1_m = al1_bound
+
+                # calculate al1_bound
+                fmap_shape_nc1hwc0 = ConvParam.tiling_query_param.get("fmap_shape_nc1hwc0")
+                _, fmap_c1, _, _, fmap_c0 = fmap_shape_nc1hwc0
+                if tiling["AL1_shape"]:
+                    al1_bound = al1_m*tiling["AL1_shape"][0]*fmap_c0
+                else:
+                    fmap_c1 = fmap_shape_nc1hwc0[1]
+                    al1_bound = al1_m*fmap_c1*fmap_c0
 
             cout1_group_outer, cout1_group_inner = sch[res_c].split(cout1_group, nparts=block_dim[3])
 
