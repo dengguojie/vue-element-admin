@@ -69,12 +69,19 @@ class DynamicGRUV2GradFusionPass : public PatternFusionBasePass {
   // dw_x matmul(x.T, dgate_x)
   ge::NodePtr AddDwxMatmulNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr gateConcatNode, ge::ComputeGraph& graph,
                                vector<ge::NodePtr>& newNodes, bool& failStatus);
-  Status AddReduceSumNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr inputNode, int anchorIndex,
-                          const vector<int64_t>& axis, const string& nodeName, const string& indexName,
-                          ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes);
+  ge::NodePtr AddReduceSumNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr inputNode, int anchorIndex,
+                               const vector<int64_t>& axis, const string& nodeName, const string& indexName,
+                               ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes, bool& failStatus);
   ge::NodePtr AddNzTransDataNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr inputNode, int anchorIndex,
                                  const string& nodeName, ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes,
                                  bool& failStatus);
+  ge::NodePtr AddTReduceSumNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr inputNode,
+                                int anchorIndex,  const vector<int64_t>& axis, const string& nodeName,
+                                ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes, bool& failStatus);
+  Status AddDwReduceSumNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr dwxMatmulNode, ge::NodePtr dwhMatmulNode,
+                            ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes);
+  Status AddDbReduceSumNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr dbxNode, ge::NodePtr dbhNode,
+                            ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes);
   const string FUSED_OP_TYPE = "GRUV2HiddenGradCell_Split_Concat_Matmul_Reduce";
   int64_t t_size = 0;
   int64_t batch = 0;
