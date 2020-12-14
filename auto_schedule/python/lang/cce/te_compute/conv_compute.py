@@ -50,7 +50,7 @@ DILATE_MIN = 1
 DILATE_MAX = 255
 CONV_SHAPE_DIM = 4
 
-# V200, small channel: 4*filter_h*filter_w must small than 65536.
+# In v200, small channel case: 4*filter_h*filter_w must be smaller than 65536.
 HK_WK_C04_V200 = 65535
 
 
@@ -306,35 +306,6 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
     # calculated by h_i and w_i
     w_out = (w_i + (pad_left + pad_right) - wk_dilation) // stridew + 1
 
-    def _check_load3d_constraint(h_i, w_i, h_out, w_out):
-        """
-        Check load3d constraint.
-        """
-        load2d_pass_flag = (h_k == 1) and (w_k == 1) and \
-                           (pad_top == 0) and (pad_bottom == 0) and \
-                           (pad_left == 0) and (pad_right == 0) and \
-                           (strideh == 1) and (stridew == 1)
-        # w_out = 1 case only support fmap_w with padding equals filters_w after dilation
-        hout_equal_1 = h_i + pad_top + pad_bottom - hk_dilation == 0
-        wout_equal_1 = w_i + pad_left + pad_right - wk_dilation == 0
-        wout_equal_1_pass_flag = wout_equal_1 or load2d_pass_flag
-        # Ascend910 supports w_out equals 1 and h_out equals 1
-        out_both_equal_1_pass_flag = hout_equal_1 and wout_equal_1
-
-        if int(h_out) < 1 or int(w_out) < 1:
-            err_man.raise_err_specific("conv2d",
-                                       "output shape should greater than 0, " +
-                                       "please check input shape\n")
-        elif int(w_out) == 1:
-            if not (wout_equal_1_pass_flag or out_both_equal_1_pass_flag):
-                err_man.raise_err_specific_input_shape("conv2d",
-                                                       "op [Conv2D] output featuremap w == 1, " +
-                                                       "the input parameter must follow rule: " +
-                                                       "chips_version in [Ascend310, Hi3796CV300CS] and " +
-                                                       "fmap_h(with padding) == filters_h(after dilation)")
-        else:
-            pass
-
     def _check_pad():
         """
         Check pad.
@@ -374,12 +345,8 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
                     "conv2d",
                     "op [Conv2D] when w_in is {}, output " +
                     "featuremap w < 1, pleace check input range".format(w_in))
-            if h_out == 1 or w_out == 1:
-                _check_load3d_constraint(h_in, w_in, h_out, w_out)
-
-    if dynamic_mode != "dynamic_hw":
-        _check_load3d_constraint(h_i, w_i, h_out, w_out)
-    else:
+         
+    if dynamic_mode == "dynamic_hw":
         _check_dynamic_range()
 
     w_block_size_n = CUBE_MKN[w_dtype]['mac'][2]
@@ -398,7 +365,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
             err_man.raise_err_attr_range_invalid("conv2d", range_value, "kernel W", str(shape_w[3]))
         temp = 4*shape_w[2]*shape_w[3]
         if optim_dict.get("use_v200_c04_flg") and is_support_v200() and (temp > HK_WK_C04_V200):
-            err_man.raise_err_specific("conv2d", "In v200, small channel case, the 4*Hk*Wk must small than or equal "
+            err_man.raise_err_specific("conv2d", "In v200, small channel case, the 4*Hk*Wk must be smaller than or equal "
                 + "to " + str(HK_WK_C04_V200) + ". you can try to disable the small channel.")
 
     def _check_stride():
