@@ -1277,33 +1277,32 @@ class Argmin(ArgminBase):
                                         self.data_gm[input_gm_offset],
                                         0, nburst, nburst_len,
                                         src_nburst_stride, des_nburst_stride)
-        tail = self.c_align_ubsize % self.data_each_vector
-        if tail != 0:
-            mask_h, mask_l = _get_tail_mask(tail)
-            _offset = self.c_align_ubsize // self.data_each_vector
-            self.tik_instance.vector_dup(
-                [mask_h, mask_l], copy_ub[_offset * self.data_each_vector],
-                SCALAR_MAX_FP16, nburst,
-                1, vector_size_repeat*8)
+            tail = self.c_align_ubsize % self.data_each_vector
+            if tail != 0:
+                mask_h, mask_l = _get_tail_mask(tail)
+                _offset = self.c_align_ubsize // self.data_each_vector
+                self.tik_instance.vector_dup(
+                    [mask_h, mask_l], copy_ub[_offset * self.data_each_vector],
+                    SCALAR_MAX_FP16, nburst,
+                    1, vector_size_repeat * 8)
 
-        repeat_times = _get_ceil_int(self.c_align_ubsize,
-                                     self.data_each_vector)
-        self.tik_instance.vcmin(self.data_each_vector, copy_ub, copy_ub,
-                                vector_size_repeat*nburst, 8*8, 1, 8)
+            repeat_times = _get_ceil_int(self.c_align_ubsize,
+                                         self.data_each_vector)
+            self.tik_instance.vcmin(self.data_each_vector, copy_ub, copy_ub,
+                                    vector_size_repeat * nburst, 8 * 8, 1, 8)
 
-
-        _mask = _calu_mask_by_repeat_times(repeat_times)
-        self.tik_instance.vcmin(_mask, second_ub, copy_ub,
-                                nburst, 1, 8, repeat_times*8)
-        with self.tik_instance.for_range(0, nburst) as out_idx:
-            second_max_index = self.tik_instance.Scalar("uint16")
-            second_max_index.set_as(second_ub[out_idx*2 + 1])
-            last_max_index = self.tik_instance.Scalar("uint16")
-            last_max_index.set_as(copy_ub[vector_size*out_idx +
-                                          second_max_index*8 + 1])
-            result_int32.set_as(second_max_index * 8 + last_max_index)
-            self.ub_result_int32[out_idx*align_loop
-                                 + align_idx].set_as(result_int32)
+            _mask = _calu_mask_by_repeat_times(repeat_times)
+            self.tik_instance.vcmin(_mask, second_ub, copy_ub,
+                                    nburst, 1, 8, repeat_times * 8)
+            with self.tik_instance.for_range(0, nburst) as out_idx:
+                second_max_index = self.tik_instance.Scalar("uint16")
+                second_max_index.set_as(second_ub[out_idx * 2 + 1])
+                last_max_index = self.tik_instance.Scalar("uint16")
+                last_max_index.set_as(copy_ub[vector_size * out_idx +
+                                              second_max_index * 8 + 1])
+                result_int32.set_as(second_max_index * 8 + last_max_index)
+                self.ub_result_int32[out_idx * align_loop
+                                     + align_idx].set_as(result_int32)
 
     def compute_argmin_last_axis_copy_one_time(self, n_i, core_segment,
                                                segment_core):

@@ -60,12 +60,22 @@ case5 = {"params": [{"shape": (2,16,16), "dtype": "float16", "format": "ND", "or
          "expect": RuntimeError,
          "support_expect": True}
 
+case6 = {"params": [{"shape": (1, 1024, 2048, 150), "dtype": "float16", "format": "ND", "ori_shape": (1, 1024, 2048, 150), "ori_format": "ND", "param_type": "input"},
+                    {"shape": (1, 1024, 2048), "dtype": "int32", "format": "ND", "ori_shape": (1, 1024, 2048), "ori_format": "ND", "param_type": "output"},
+                    3,
+                    ],
+         "case_name": "ArgMinD_6",
+         "expect": RuntimeError,
+         "support_expect": True
+         }
+
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
 ut_case.add_case(["Ascend910","Ascend710"], case2)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
+ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case6)
 
 def calc_expect_func(x, y, dimension):
     x_shape = x.get("shape")
@@ -106,6 +116,3 @@ if __name__ == '__main__':
     user_home_path = os.path.expanduser("~")
     simulator_lib_path = os.path.join(user_home_path, ".mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")
     ut_case.run(["Ascend910"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
-
-
-

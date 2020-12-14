@@ -168,11 +168,6 @@ Status ConfusionSoftmaxGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
   auto reduceSumInputDimNum = reduceSumInputShape.GetDims().size();
   OP_LOGI(FUSED_OP_TYPE.c_str(), "reduce sum reduceSumInputDimNum=%d", reduceSumInputDimNum);
 
-  // axis must less than reduceSumInputDimNum
-  FUSION_PASS_CHECK(axisValue0 >= reduceSumInputDimNum,
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "reduce sum axisValue0 is [%d] must less than reduceSumInputDimNum %d, fusion failed.",
-    axisValue0, reduceSumInputDimNum), return PARAM_INVALID);
-
   // input is scalar
   FUSION_PASS_CHECK(reduceSumInputDimNum == 0,
     OP_LOGI(FUSED_OP_TYPE.c_str(), "reduce sum reduceSumInputDimNum is %d.", reduceSumInputDimNum),
