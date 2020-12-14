@@ -703,7 +703,8 @@ class ElewiseSchedule:
                 current_space = len(dependent_map)
             else:
                 current_space = len(dependent_map) + 1
-
+            if util.is_vtranspose_broadcast(self._out):
+                self._ub_size = self._ub_size - VTRANSPOSE_TEMP_SPACE
             if util.is_vsel_insn(self._out):
                 self._ub_size -= (BLOCK_SIZE_BYTE * (VSEL_INPUT_NUMBER - len(self._out.op.input_tensors)))
             if util.is_vcmpsel_insn(self._out):
