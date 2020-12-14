@@ -79,6 +79,7 @@ from .sub import sub
 from .transpose_d import transpose_d
 from .unpack import unpack
 from .top_k_d import top_k_d
+from .top_k_v2_d import top_k_v2_d
 from .pad_d import pad_d
 from .split_d import split_d
 from .strided_slice_grad import strided_slice_grad

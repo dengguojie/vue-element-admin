@@ -411,7 +411,7 @@ def set_tensor_more_4096(tik_instance, obj_gm, obj_ub, ins, outs):
     Set UB when tensor bigger than 4096
     """
     input_a = ins[0]
-    indices = ins[1]
+    indices = ins[-1]
     output = outs[0]
     indices_out = outs[1]
     cols_per_part = 1024
@@ -460,7 +460,7 @@ def set_tensor_less_4096(tik_instance, profile, obj_gm, obj_ub, ins, outs):
     Set UB when tensor less than 4096
     """
     input_a = ins[0]
-    indices = ins[1]
+    indices = ins[-1]
     output = outs[0]
     indices_out = outs[1]
     # there are 54 batch*cols_padding
@@ -506,8 +506,7 @@ def set_tensor_less_4096(tik_instance, profile, obj_gm, obj_ub, ins, outs):
 class GlobalVarFunction:
     """GlobalVarFunction Class Defination"""
 
-    # pylint: disable=too-many-arguments
-    def __init__(self, tik_instance, profile, obj_gm, obj_tiling, obj_ub, ins, outs):
+    def __init__(self, tik_instance, profile, obj_gm, obj_tiling, obj_ub):
         """
         constructor of class Function
 
@@ -549,13 +548,12 @@ class GlobalVarFunction:
         self.batch_num = obj_tiling.get_batch_num()
         self.turn_block_idx = obj_tiling.get_turn_num()
 
-    # pylint: disable=locally-disabled,too-many-locals,too-many-arguments
-    def kernel_ir(self, tik_instance, largest, by_part, block_idx, block_dim):
+    # pylint: disable=locally-disabled,too-many-locals
+    def kernel_ir(self, tik_instance, largest, by_part, block_idx, block_dim, k):
         """
         Funtion for common process in top_k op
         """
         cols = self.cols
-        k = self.k
         multi_core = tik_instance.Scalar(init_value=1)
         with tik_instance.if_scope(block_dim <= 1):
             multi_core.set_as(0)
@@ -1310,22 +1308,34 @@ def top_k_compute(tik_instance, obj_gm, obj_tiling, obj_ub, profile, dtype, indi
     indices = tik_instance.Tensor(indices_dtype.lower(), indices_shape, name='indices', scope=tik.scope_gm)
     res = tik_instance.Tensor(dtype.lower(), res_shape, name='res', scope=tik.scope_gm)
     indices_out = tik_instance.Tensor("int32", indices_out_shape, name='indices_out', scope=tik.scope_gm)
-    ins = [data_input, indices]
     outs = [res, indices_out]
     cols = obj_tiling.get_cols_num()
-
     soc_core_num = 32
     block_dim = obj_tiling.get_core_num()
+
+    if k > 0:
+        k_scalar = tik_instance.Scalar(dtype="int32", name="k_scalar", init_value=k)
+        ins = [data_input, indices]
+    else:
+        k_input = tik_instance.Tensor('int32', (1,), name='k_gm', scope=tik.scope_gm)
+        k_ub = tik_instance.Tensor('int32', (1,), name='k_ub', scope=tik.scope_ubuf)
+        ins = [data_input, k_input, indices]
+        k_scalar = tik_instance.Scalar(dtype="int32", name="k_scalar")
+        tik_instance.data_move(k_ub, k_input, 0, 1, 1, 0, 0)
+        k_scalar.set_as(k_ub[0])
+        with tik_instance.if_scope(k_scalar < 16):
+            block_dim.set_as(1)
+
     with tik_instance.for_range(0, soc_core_num, block_num=soc_core_num) as block_idx:
         with tik_instance.if_scope(block_idx < block_dim):
             with tik_instance.if_scope(cols > 4096):
                 set_tensor_more_4096(tik_instance, obj_gm, obj_ub, ins, outs)
-                obj_func = GlobalVarFunction(tik_instance, profile, obj_gm, obj_tiling, obj_ub, ins, outs)
-                obj_func.kernel_ir(tik_instance, largest, True, block_idx, block_dim)
+                obj_func = GlobalVarFunction(tik_instance, profile, obj_gm, obj_tiling, obj_ub)
+                obj_func.kernel_ir(tik_instance, largest, True, block_idx, block_dim, k_scalar)
             with tik_instance.else_scope():
                 set_tensor_less_4096(tik_instance, profile, obj_gm, obj_ub, ins, outs)
-                obj_func = GlobalVarFunction(tik_instance, profile, obj_gm, obj_tiling, obj_ub, ins, outs)
-                obj_func.kernel_ir(tik_instance, largest, False, block_idx, block_dim)
+                obj_func = GlobalVarFunction(tik_instance, profile, obj_gm, obj_tiling, obj_ub)
+                obj_func.kernel_ir(tik_instance, largest, False, block_idx, block_dim, k_scalar)
     ub_size = profile.get_unified_buffer_size()
     # there are 54 batch*cols_padding
     batch_cols_padding = (ub_size - 1024) // 54
@@ -1337,11 +1347,9 @@ def top_k_compute(tik_instance, obj_gm, obj_tiling, obj_ub, profile, dtype, indi
     })
     build_config = {"out_of_bound_sync_check": True}
     tik_instance.BuildCCE(kernel_name=kernel_name,
-                          inputs=(data_input, indices),
-                          outputs=(res, indices_out),
-                          flowtable=(obj_gm.tiling_gm, ),
-                          enable_l2=True,
-                          config=build_config)
+                          inputs=ins,
+                          outputs=outs,
+                          flowtable=(obj_gm.tiling_gm, ), enable_l2=True, config=build_config)
 
 
 # pylint: disable=too-many-arguments,too-many-locals

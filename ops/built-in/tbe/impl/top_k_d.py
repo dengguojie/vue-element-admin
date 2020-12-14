@@ -1514,7 +1514,8 @@ def check_supported(input_tensor,
     if sorted is not True:
         return True
     # When input_size > 32768 and k < 16, the AICPU performance is better than the AICore performance.
-    if input_size > 32768 and k < 16:
+    # k = 0 is set in fe pass when top_k is version two, top_k_v2 cannot check k value in compile phase.
+    if input_size > 32768 and k > 0 and k < 16:
         return False
     return True
 

@@ -90,12 +90,9 @@ bool GetTopkCompileParams(const std::string& op_type, const nlohmann::json& op_c
   core_num = all_vars["core_num"].get<std::int32_t>();
 
   // k num
-  if (all_vars.count("k_num") == 0) {
-    ge::OpsGetCompileParamsErrReport("Topk", "k_num");
-    OP_LOGE(op_type.c_str(), "k_num is null");
-    return false;
+  if (all_vars.count("k_num")) {
+    k_num = all_vars["k_num"].get<std::int32_t>();
   }
-  k_num = all_vars["k_num"].get<std::int32_t>();
 
   // batch_cols_padding num
   if (all_vars.count("batch_cols_padding") == 0) {
@@ -166,7 +163,8 @@ bool TopkTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
       turning = core_max;
     }
   }
-  if (k_num < 16) {
+  if (k_num < 16 && k_num > 0) {
+    // when k is not const, k_num use 0 as default value, and need to check k value in py to update these two scalars.
     need_core = 1;
     rows_per_core = row;
   }
@@ -184,4 +182,5 @@ bool TopkTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
   return true;
 }
 REGISTER_OP_TILING_FUNC_BUFFERED(TopKD, TopkTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(TopKV2D, TopkTiling);
 }  // namespace optiling

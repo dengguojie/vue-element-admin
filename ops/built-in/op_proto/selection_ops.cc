@@ -2328,6 +2328,8 @@ COMMON_INFER_FUNC_REG(TopKD, TopKDInferShape);
 IMPLEMT_VERIFIER(TopK, TopKVerify) { return GRAPH_SUCCESS; }
 
 IMPLEMT_COMMON_INFERFUNC(TopKInferShape) {
+  const vector<string> depend_names = {"k"};
+  PREPARE_DYNAMIC_SHAPE(depend_names);
   TensorDesc input_tensor_desc = op.GetInputDesc("x");
   TensorDesc value_tensor_desc = op.GetOutputDesc("values");
   TensorDesc indice_tensor_desc = op.GetOutputDesc("indices");
@@ -2373,12 +2375,24 @@ IMPLEMT_COMMON_INFERFUNC(TopKInferShape) {
       return GRAPH_FAILED;
     }
   }
-  dims_in[sorted_axis] = k;
   std::vector<std::pair<int64_t, int64_t>> shape_range;
   input_tensor_desc.GetShapeRange(shape_range);
   if (shape_range.size() > 0) {
-    shape_range[sorted_axis].second = k;
+    if (k > 0) {
+      shape_range[sorted_axis].first = k;
+      shape_range[sorted_axis].second = k;
+    }
+  } else {
+    // input is static shape
+    for (int i = 0; i < dims_in.size(); i++) {
+      if (i == sorted_axis && k > 0) {
+        shape_range.push_back(pair<int64_t, int64_t>(k, k));
+      } else {
+        shape_range.push_back(pair<int64_t, int64_t>(dims_in[i], dims_in[i]));
+      }
+    }
   }
+  dims_in[sorted_axis] = k;
 
   value_tensor_desc.SetShape(Shape(dims_in));
   value_tensor_desc.SetShapeRange(shape_range);

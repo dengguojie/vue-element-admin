@@ -43,6 +43,7 @@ namespace fe {
 static const string kPatternTopK = "TopK";
 static const string kConstantOp = "Constant";
 static const string kPatternTopKD = "TopKD";
+static const string kPatternTopKV2D = "TopKV2D";
 static const string kPatternTranspose = "TransposeD";
 
 Status PermVecGen(int64_t dim_size, int64_t dim_aim, vector<int64_t>& perm) {
@@ -136,17 +137,10 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
   vector<int64_t> dim_info_out = topk_data_out_shape.GetDims();
   FUSION_PASS_CHECK(dim_info_out.size() == 0,
                     OP_LOGE(kFusedOpType.c_str(), "The dim_info_out size is 0, fusion failed."), return PARAM_INVALID);
-  int64_t last_out_dim = dim_info_out[dim_info_out.size() - 1];
-  if (last_out_dim == UNKNOWN_DIM) {
-    OP_LOGI(kFusedOpType.c_str(),
-            "When the last dimension is unknown, topk does not support this kind of unknown shape, graph not changed.");
-    return NOT_CHANGED;
-  }
 
   vector<PassAttrInfo> topk_attr_info;
   PassAttrInfo k_attr = {1, "k", "SetInt"};
   topk_attr_info.push_back(k_attr);
-  NodePtr fusion_node = nullptr;
   string node_name = topk_node->GetName();
 
   OpDescPtr fusion_desc_ptr = AttrUtils::CloneOpDesc(topk_desc);
@@ -161,7 +155,7 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
   for (int i = attr_index_vec.size() - 1; i >= 0; i--) {
     unsigned int index = attr_index_vec[i];
     if (index >= fusion_desc_ptr->GetInputsSize()) {
-      OP_LOGI(kFusedOpType.c_str(), "Index[%u] is beyond the size[%d] of input desc", index,
+      OP_LOGI(kFusedOpType.c_str(), "Index[%u] is beyond the size[%u] of input desc", index,
               fusion_desc_ptr->GetInputsSize());
       continue;
     }
@@ -171,24 +165,28 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
   }
 
   Operator op = OpDescUtils::CreateOperatorFromNode(topk_node);
-  Tensor const_tensor;
-  (void)op.GetInputConstData("k", const_tensor);
-  auto k_tensor_desc = op.GetInputDesc("k");
-  DataType input_k_dtype = k_tensor_desc.GetDataType();
   int64_t const_data_val = 0;
-  uint8_t* const_data_ptr = const_tensor.GetData();
-  if (const_data_ptr == nullptr) {
-    OP_LOGI(kFusedOpType.c_str(), "GetData NULL.");
-    return NOT_CHANGED;
-  }
+  Tensor const_tensor;
+  bool is_topk_v2 = true;
+  if (op.GetInputConstData("k", const_tensor) == GRAPH_SUCCESS) {
+    // top_k_v2 use k = 0
+    is_topk_v2 = false;
+    auto k_tensor_desc = op.GetInputDesc("k");
+    DataType input_k_dtype = k_tensor_desc.GetDataType();
+    uint8_t* const_data_ptr = const_tensor.GetData();
+    if (const_data_ptr == nullptr) {
+      OP_LOGW(kFusedOpType.c_str(), "Get k const data failed.");
+      return NOT_CHANGED;
+    }
 
-  if (input_k_dtype == DT_INT32) {
-    const_data_val = static_cast<int64_t>(*(reinterpret_cast<int32_t*>(const_data_ptr)));
-  } else if (input_k_dtype == DT_INT64) {
-    const_data_val = *(reinterpret_cast<int64_t*>(const_data_ptr));
-  } else {
-    OP_LOGI(kFusedOpType.c_str(), "K only support int32 and int64 in AICORE");
-    return NOT_CHANGED;
+    if (input_k_dtype == DT_INT32) {
+      const_data_val = static_cast<int64_t>(*(reinterpret_cast<int32_t*>(const_data_ptr)));
+    } else if (input_k_dtype == DT_INT64) {
+      const_data_val = *(reinterpret_cast<int64_t*>(const_data_ptr));
+    } else {
+      OP_LOGI(kFusedOpType.c_str(), "K only support int32 and int64 in AICORE");
+      return NOT_CHANGED;
+    }
   }
 
   AttrUtils::SetInt(fusion_desc_ptr, "k", const_data_val);
@@ -201,16 +199,12 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
   FUSION_PASS_CHECK(!CheckOpSupported(fusion_desc_ptr), OP_LOGI(kFusedOpType.c_str(), "Op Not Supported."),
                     return NOT_CHANGED);
 
-  NodePtr fusionNode = nullptr;
-  Status ret = PatternFusionUtil::ConstToAttrWithNode(graph, topk_node, kPatternTopKD, topk_attr_info, fusionNode);
-  fusion_nodes.push_back(fusionNode);
-  for (auto node : graph.GetDirectNode()) {
-    if (node_name == node->GetName()) {
-      fusion_node = node;
-      OP_LOGI(kFusedOpType.c_str(), "Find FusionNode");
-      break;
-    }
+  Status ret = SUCCESS;
+  NodePtr fusion_node = topk_node;
+  if (!is_topk_v2) {
+    ret = PatternFusionUtil::ConstToAttrWithNode(graph, topk_node, kPatternTopKD, topk_attr_info, fusion_node);
   }
+  fusion_nodes.push_back(fusion_node);
 
   FUSION_PASS_CHECK(topk_desc == nullptr, OP_LOGE(kFusedOpType.c_str(), "FusionNode is null, fusion failed."),
                     return PARAM_INVALID);
@@ -242,7 +236,11 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
   }
   NodePtr const_input = const_input_nodes[0];
   const_input->GetOpDesc()->SetType(kConstantOp);
-  topk_desc->SetType(kPatternTopKD);
+  if (is_topk_v2) {
+    topk_desc->SetType(kPatternTopKV2D);
+  } else {
+    topk_desc->SetType(kPatternTopKD);
+  }
 
   OpDescPtr topkd_desc = fusion_node->GetOpDesc();
   int64_t dim_size = dim_info.size();
