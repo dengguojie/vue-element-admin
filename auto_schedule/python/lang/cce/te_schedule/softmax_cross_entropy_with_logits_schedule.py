@@ -32,6 +32,7 @@ from .util import DTYPE_WIDTH_MAP
 
 softmax_cross_logits_nhw = [11842605]
 
+
 def get_mask_fp16_skip_one(length):
     """
     calculate MASK in cce for skip one half

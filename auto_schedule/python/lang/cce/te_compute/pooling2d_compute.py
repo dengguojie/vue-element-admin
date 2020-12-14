@@ -97,7 +97,7 @@ def _check_fmap_shape(batch_size, c1_value, in_size_h, in_size_w, c_block_size):
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-arguments
 def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
               pad=(0, 0, 0, 0), dilation=(1, 1), data_mode=1, ceil_mode=0,
-              fusion_params={}, impl_mode="high_performance"):
+              fusion_params=None, impl_mode="high_performance"):
     """
     :params:
     :tensor_in: input tensor
@@ -111,10 +111,14 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
     :ceil_mode : caffe round_mode params, 0:CEIL(default), 1:FLOOR
     :return: pooling result
     """
+    if not fusion_params:
+        fusion_params = {}
     l1_fusion_type = fusion_params.get("l1_fusion_type", _DEFAULT_VALUE)
     is_l1fusion = l1_fusion_type in (_L1_DEPTH_FUSION, _L1_BREADTH_FUSION)
     is_l2fusion = get_L1_info("L2_fusion_enabled")
-    if not is_l1fusion and not is_l2fusion:
+
+    clear_fusion_params = not is_l1fusion and not is_l2fusion
+    if clear_fusion_params:
         fusion_params = {}
 
     _check_attr_rule(tensor_in, window, stride, pooling_mode, padding_mode, pad,
@@ -778,6 +782,7 @@ def _get_out_size_and_pad_with_ceil_mode(ceil_mode, in_size_h, in_size_w, window
 
     return out_size_h, out_size_w, pad_top, pad_bottom, pad_left, pad_right
 
+
 # pylint: disable=too-many-arguments
 def get_caffe_out_size_and_pad(ceil_mode, in_size_h, in_size_w, window_h, window_w,
                                stride_h, stride_w, dilation_h, dilation_w, pad_top,
@@ -809,7 +814,7 @@ def get_caffe_out_size_and_pad(ceil_mode, in_size_h, in_size_w, window_h, window
 def _get_out_size_and_pad_with_padding_mode(padding_mode, in_size_h, in_size_w, window_h, window_w,
                                             stride_h, stride_w, dilation_h, dilation_w, pad_top,
                                             pad_bottom, pad_left, pad_right,
-                                            fusion_params={}):
+                                            fusion_params=None):
     """
     :param padding_mode: can be SAME, VALID
     :param in_size_h: input tensor
@@ -826,6 +831,9 @@ def _get_out_size_and_pad_with_padding_mode(padding_mode, in_size_h, in_size_w, 
     :param pad_right: pad right
     :return:
     """
+    if not fusion_params:
+        fusion_params = {}
+
     if padding_mode == "SAME":
         # caculate output size in SAME mode
         l1_fusion_type = fusion_params.get("l1_fusion_type")

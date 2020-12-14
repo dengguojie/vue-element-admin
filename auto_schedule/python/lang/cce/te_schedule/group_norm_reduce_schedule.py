@@ -569,6 +569,7 @@ GN_REDUCE_NCHW_TILING_MAP = {
     "2_1024_1_14_14_float32_Ascend710": (1, 256, 1, 4),
 }
 
+
 def _gn_reduce_nchw_tiling(shape_before_reduce,
                            is_support_atomic_add,
                            max_ub_count, dtype):

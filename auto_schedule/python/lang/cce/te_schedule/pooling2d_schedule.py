@@ -2283,10 +2283,13 @@ def set_pragma_for_cache_read_mode(is_overload, stage, first_axis):
 def pooling_global_quant_schedule(
         sch_list, pooling_mode, pooling2d_res, res,
         tiling_params, pooling_params, fp32_ability,
-        quant_tensor_map, fusion_params={}):
+        quant_tensor_map, fusion_params=None):
     """
     do schedule for global quant pooling
     """
+    if not fusion_params:
+        fusion_params = {}
+
     # pylint: too-many-arguments
     l1_fusion_type = fusion_params.get("l1_fusion_type", DEFAULT_VALUE)
     in_l1_flag = fusion_params.get("in_l1_flag", False)

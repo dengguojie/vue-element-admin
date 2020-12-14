@@ -727,12 +727,12 @@ class SoftmaxSchedule(VectorSchedule):
 
         self._is_block_ub_one_axis = (block_axis >= ub_axis)
         self._is_block_fuse = (block_axis not in (0,))
-        
-        tilingAdjust = True
+
+        tiling_adjust = True
         if cce.get_soc_spec("CORE_NUM") == 30 and len(shape) == 2 and self._reduce_axis_num == 1:
             if shape[0] == 47182 or shape[0] == 180358:
-                tilingAdjust = False
-        if tilingAdjust:
+                tiling_adjust = False
+        if tiling_adjust:
             # like (7,2,42767,2,16) scene, if the block tiling split the 3 axis,
             # because 42767 is a prime number, then ub tiling should be divisible,
             # then lead to the dma copy is less efficient, so adjust the block tiling
