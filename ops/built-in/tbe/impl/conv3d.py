@@ -23,7 +23,7 @@ from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils.error_manager import error_manager_util
 from impl.util import util_select_op_base
-
+from impl.util import util_common
 
 _BIAS_LENGTH = 1
 # [strides_batch, strides_depth, strides_height,
@@ -229,38 +229,6 @@ def _get_mad_dtype(w_dtype):
         mad_dtype = "float16"
 
     return mad_dtype
-
-
-def _lcm(param1, param2):
-    """
-    calculate least common multiple
-    """
-    temp = param1 * param2
-    while param1 % param2 != 0:
-        param1, param2 = param2, param1 % param2
-
-    return temp // param2
-
-
-def _calculate_group(fmap_c, cout, groups):
-    """
-    calculate groups Parameter
-    """
-    mag_factor0 = _lcm(fmap_c // groups, _C0) // (fmap_c // groups)
-    mag_factor1 = _lcm(cout // groups, _C0) // (cout // groups)
-    mag_factor = min(_lcm(mag_factor0, mag_factor1), groups)
-
-    cin1_g = (mag_factor * fmap_c // groups + _C0 - 1) // _C0
-    cout_g = (mag_factor * cout // groups + _C0 - 1) // _C0 * _C0
-
-    group_dict = {"real_g": (groups + mag_factor - 1) // mag_factor,
-                  "mag_factor": mag_factor,
-                  "cin1_g": cin1_g,
-                  "cout_g": cout_g,
-                  "cin_ori": fmap_c,
-                  "cout_ori": cout}
-
-    return group_dict
 
 
 def _conv3d_compute(shape_fm,
@@ -849,24 +817,8 @@ def _check_input_param(fmp_shape, w_shape, fmp_dtype, w_dtype, res_dtype,
     # normalized format as NCDHW
     shape_fm, shape_filter, stride_dhw, dilation_dhw = _format_normalize(
         fmp_format, w_format, fmp_shape, w_shape, strides, dilations)
-    # check group
-    if groups <= 0 or groups > shape_fm[1] or groups > shape_filter[0]:
-        dict_args = {
-            'errCode': 'E50060',
-            'description': "Group must not be larger than x channel and filter channel"
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
 
-    if shape_fm[1] % groups != 0 or shape_filter[0] % groups != 0:
-        dict_args = {
-            'errCode': 'E50060',
-            'description': "Feature map's or filter's channel must be divisible by group"
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
-
-    group_dict = _calculate_group(shape_fm[1], shape_filter[0], groups)
+    group_dict = util_common.calculate_group(shape_fm[1], shape_filter[0], groups, _C0, _C0)
 
     _check_conv3d_dtype(fmp_dtype, w_dtype, res_dtype)
     # 16 aligned
@@ -900,7 +852,7 @@ def _cal_input_param(fmap, weight, bias_tensor, strides, pads, dilations, groups
     shape_fmap, shape_filter, stride_dhw, dilation_hw = _format_normalize(
         data_format, w_format, shape_fmap, shape_filter, strides, dilations)
 
-    group_dict = _calculate_group(shape_fmap[1], shape_filter[0], groups)
+    group_dict = util_common.calculate_group(shape_fmap[1], shape_filter[0], groups, _C0, _C0)
 
     para_dict = {
         "dsl_flag": True,

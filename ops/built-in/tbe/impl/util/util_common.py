@@ -137,6 +137,23 @@ def calculate_group(fmap_c, cout, groups, cout0, cin0):
     """
     calculate groups parameter
     """
+    # check group
+    if groups <= 0 or groups > fmap_c or groups > cout:
+        dict_args = {
+            'errCode': 'E60038',
+            'desc': "Group must not be larger than x channel and filter channel"
+        }
+        raise RuntimeError(dict_args,
+                           error_manager_util.get_error_message(dict_args))
+
+    if fmap_c % groups != 0 or cout % groups != 0:
+        dict_args = {
+            'errCode': 'E60038',
+            'desc': "Feature map's or filter's channel must be divisible by group"
+        }
+        raise RuntimeError(dict_args,
+                           error_manager_util.get_error_message(dict_args))
+
     mag_factor0 = lcm(fmap_c // groups, cin0) // (fmap_c // groups)
     mag_factor1 = lcm(cout // groups, cout0) // (cout // groups)
     mag_factor = min(lcm(mag_factor0, mag_factor1), groups)
