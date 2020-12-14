@@ -360,22 +360,22 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         """
         Check dynamic shape range.
         """
-        for hi, wi, ho, wo in zip(get_te_var("fmap_h").get_bound(),
-                                  get_te_var("fmap_w").get_bound(),
-                                  get_te_var("ho").get_bound(),
-                                  get_te_var("wo").get_bound()):
-            if ho < 1:
+        for h_in, w_in, h_out, w_out in zip(get_te_var("fmap_h").get_bound(),
+                                            get_te_var("fmap_w").get_bound(),
+                                            get_te_var("ho").get_bound(),
+                                            get_te_var("wo").get_bound()):
+            if h_out < 1:
                 err_man.raise_err_specific_input_shape(
                     "conv2d",
                     "op [Conv2D] when h_in is {}, output " +
-                    "featuremap h < 1, pleace check input range".format(hi))
-            if wo < 1:
+                    "featuremap h < 1, pleace check input range".format(h_in))
+            if w_out < 1:
                 err_man.raise_err_specific_input_shape(
                     "conv2d",
                     "op [Conv2D] when w_in is {}, output " +
-                    "featuremap w < 1, pleace check input range".format(wi))
-            if ho == 1 or wo == 1:
-                _check_load3d_constraint(hi, wi, ho, wo)
+                    "featuremap w < 1, pleace check input range".format(w_in))
+            if h_out == 1 or w_out == 1:
+                _check_load3d_constraint(h_in, w_in, h_out, w_out)
 
     if dynamic_mode != "dynamic_hw":
         _check_load3d_constraint(h_i, w_i, h_out, w_out)
@@ -1611,9 +1611,9 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         """
         res_tensor = tvm.compute(res_shape,
                                  lambda batch, cout1, howo, cout0:
-                                     padded_tensor(batch, cout1, howo*2, cout0),
-                                 name = 'remove_padded_column',
-                                 tag = OP_TAG + 'remove_padded_column',
+                                 padded_tensor(batch, cout1, howo*2, cout0),
+                                 name='remove_padded_column',
+                                 tag=OP_TAG + 'remove_padded_column',
                                  attrs={"width_out": ConvParam.w_out})
         ConvParam.tensor_map["remove_padded_column"] = res_tensor
         return res_tensor
@@ -1877,13 +1877,17 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         hk_dilation = (para_dict["filter_h"] - 1)*para_dict["dilate_h"] + 1
         wk_dilation = (para_dict["filter_w"] - 1)*para_dict["dilate_w"] + 1
         if 'value' in dir(data.shape[2]):
-            h_out = (data.shape[2].value + (para_dict["pad_h"][0] + para_dict["pad_h"][1]) - hk_dilation) // para_dict["stride_h"] + 1
+            h_out = (data.shape[2].value + (para_dict["pad_h"][0] + para_dict["pad_h"][1]) - hk_dilation) // \
+                para_dict["stride_h"] + 1
         else:
-            h_out = (data.shape[2] + (para_dict["pad_h"][0] + para_dict["pad_h"][1]) - hk_dilation) // para_dict["stride_h"] + 1
+            h_out = (data.shape[2] + (para_dict["pad_h"][0] + para_dict["pad_h"][1]) - hk_dilation) // \
+                para_dict["stride_h"] + 1
         if 'value' in dir(data.shape[3]):
-            w_out = (data.shape[3].value + (para_dict["pad_w"][0] + para_dict["pad_w"][1]) - wk_dilation) // para_dict["stride_w"] + 1
+            w_out = (data.shape[3].value + (para_dict["pad_w"][0] + para_dict["pad_w"][1]) - wk_dilation) // \
+                para_dict["stride_w"] + 1
         else:
-            w_out = (data.shape[3] + (para_dict["pad_w"][0] + para_dict["pad_w"][1]) - wk_dilation) // para_dict["stride_w"] + 1
+            w_out = (data.shape[3] + (para_dict["pad_w"][0] + para_dict["pad_w"][1]) - wk_dilation) // \
+                para_dict["stride_w"] + 1
         l0a_load2d_flag = False
         if list(para_dict["pad_h"]) == [0, 0] \
             and list(para_dict["pad_w"]) == [0, 0] \

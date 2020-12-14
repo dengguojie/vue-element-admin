@@ -77,65 +77,65 @@ def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
                 use_v200_c04_flag = util_conv2d.use_v200_c04_check(shape_fm, shape_filter, params)
             if use_v200_c04_flag:
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                   datatype="float16,float16,int8,int8",
-                                   format="NC1HWC0_C04,NC1HWC0,"
-                                          "NC1HWC0_C04,NC1HWC0")
+                                                       datatype="float16,float16,int8,int8",
+                                                       format="NC1HWC0_C04,NC1HWC0,"
+                                                              "NC1HWC0_C04,NC1HWC0")
             else:
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                   datatype="float16,float16,int8,int8",
-                                   format="NC1HWC0,NC1HWC0,"
-                                          "NC1HWC0,NC1HWC0")
+                                                       datatype="float16,float16,int8,int8",
+                                                       format="NC1HWC0,NC1HWC0,"
+                                                              "NC1HWC0,NC1HWC0")
             input1 = util_select_op_base.gen_param(classify="input1", name="filter",
-                               datatype="float16,float16,int8,int8",
-                               format="FRACTAL_Z_C04,FRACTAL_Z,"
-                                      "FRACTAL_Z_C04,FRACTAL_Z")
+                                                   datatype="float16,float16,int8,int8",
+                                                   format="FRACTAL_Z_C04,FRACTAL_Z,"
+                                                          "FRACTAL_Z_C04,FRACTAL_Z")
             input2 = util_select_op_base.gen_param(classify="input2", name="bias",
-                               datatype="float16,float16,int32,int32",
-                               format="ND,ND,ND,ND")
+                                                   datatype="float16,float16,int32,int32",
+                                                   format="ND,ND,ND,ND")
             input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
-                               datatype="int8,int8,int8,int8",
-                               format="ND,ND,ND,ND")
+                                                   datatype="int8,int8,int8,int8",
+                                                   format="ND,ND,ND,ND")
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                datatype="float16,float16,int32,int32",
-                                format="NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0")
+                                                    datatype="float16,float16,int32,int32",
+                                                    format="NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0")
         else:
             # only dynamic_hw or dynamic_batch is supported by dynamic conv2d
             if (shape_fm[0] == -1 and -1 not in shape_fm[1:]) or \
                 (shape_fm[2] == -1 and shape_fm[3] == -1 and -1 not in shape_fm[:2]):
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                   datatype="float16",
-                                   format="NC1HWC0",
-                                   unknownshape_format="NC1HWC0")
+                                                       datatype="float16",
+                                                       format="NC1HWC0",
+                                                       unknownshape_format="NC1HWC0")
                 input1 = util_select_op_base.gen_param(classify="input1", name="filter",
-                                   datatype="float16",
-                                   format="FRACTAL_Z",
-                                   unknownshape_format="FRACTAL_Z")
+                                                       datatype="float16",
+                                                       format="FRACTAL_Z",
+                                                       unknownshape_format="FRACTAL_Z")
                 input2 = util_select_op_base.gen_param(classify="input2", name="bias",
-                                   datatype="float16",
-                                   format="ND")
+                                                       datatype="float16",
+                                                       format="ND")
                 input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
-                                   datatype="int8",
-                                   format="ND")
+                                                       datatype="int8",
+                                                       format="ND")
                 output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                    datatype="float16",
-                                    format="NC1HWC0",
-                                    unknownshape_format="NC1HWC0")
+                                                        datatype="float16",
+                                                        format="NC1HWC0",
+                                                        unknownshape_format="NC1HWC0")
             else:
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                   datatype="float16,int8",
-                                   format="NC1HWC0,NC1HWC0")
+                                                       datatype="float16,int8",
+                                                       format="NC1HWC0,NC1HWC0")
                 input1 = util_select_op_base.gen_param(classify="input1", name="filter",
-                                   datatype="float16,int8",
-                                   format="FRACTAL_Z,FRACTAL_Z")
+                                                       datatype="float16,int8",
+                                                       format="FRACTAL_Z,FRACTAL_Z")
                 input2 = util_select_op_base.gen_param(classify="input2", name="bias",
-                                   datatype="float16,int32",
-                                   format="ND,ND")
+                                                       datatype="float16,int32",
+                                                       format="ND,ND")
                 input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
-                                   datatype="int8,int8",
-                                   format="ND,ND")
+                                                       datatype="int8,int8",
+                                                       format="ND,ND")
                 output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                    datatype="float16,int32",
-                                    format="NC1HWC0,NC1HWC0")
+                                                        datatype="float16,int32",
+                                                        format="NC1HWC0,NC1HWC0")
         return [input0, input1, input2, input3, output0]
 
     params = [inputs, weights, bias, offset_w, outputs, strides,
@@ -195,8 +195,7 @@ def conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads,
 
 
 @para_check.check_input_type(dict, dict, (dict, para_check.NONE_TYPE), (dict, para_check.NONE_TYPE), dict,
-                       (tuple, list), (tuple, list), (tuple, list), int,
-                       str, int, str)
+                             (tuple, list), (tuple, list), (tuple, list), int, str, int, str)
 def conv2d(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
            groups=1, data_format='NCHW', offset_x=0, kernel_name="conv2d"):
     """
@@ -254,26 +253,27 @@ def conv2d(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
 
 
     _conv_layer_cce(shape_fm, shape_filter, in_dtype, w_dtype, res_dtype,
-                   padh, padw, strideh, stridew, dlt_h, dlt_w,
-                   offset_x, groups=groups, offset_w=use_offset_w,
-                   bias=use_bias, optim_dict=optim_dict,
-                   fusion_para=fusion_para,
-                   kernel_name=kernel_name, need_build=True,
-                   need_print=False)
+                    padh, padw, strideh, stridew, dlt_h, dlt_w,
+                    offset_x, groups=groups, offset_w=use_offset_w,
+                    bias=use_bias, optim_dict=optim_dict,
+                    fusion_para=fusion_para,
+                    kernel_name=kernel_name, need_build=True,
+                    need_print=False)
 
 
-@para_check.check_input_type((list, tuple), (list, tuple), str, str, str, \
-    (list, int), (list, int), int, int, (int, para_check.NONE_TYPE), (int, para_check.NONE_TYPE), \
-    int, int, str, \
-    bool, bool,
-    dict, (dict, para_check.NONE_TYPE), str, \
-    bool, bool)
+@para_check.check_input_type((list, tuple), (list, tuple), str, str, str,
+                             (list, int), (list, int), int, int,
+                             (int, para_check.NONE_TYPE), (int, para_check.NONE_TYPE),
+                             int, int, str,
+                             bool, bool,
+                             dict, (dict, para_check.NONE_TYPE), str,
+                             bool, bool)
 def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
-                   padh, padw, strideh, stridew, dilateh=1, dilatew=1,
-                   offset_x=0, groups=1, offset_w_dtype='int32',
-                   offset_w=False, bias=False,
-                   optim_dict=None, fusion_para=None, kernel_name="cce_conv",
-                   need_build=False, need_print=False):
+                    padh, padw, strideh, stridew, dilateh=1, dilatew=1,
+                    offset_x=0, groups=1, offset_w_dtype='int32',
+                    offset_w=False, bias=False,
+                    optim_dict=None, fusion_para=None, kernel_name="cce_conv",
+                    need_build=False, need_print=False):
     """
 
     Parameters
@@ -351,12 +351,11 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
     weight_ori_shape_nchw = shape_w
     cin_ori = shape_in[1]//groups
     cout_ori = shape_w[0]//groups
-    shape_in, shape_w = \
-            util_conv2d.conv_layer_cce_para_check(shape_in, shape_w, padh, padw,
-                                      strideh, stridew, in_dtype, w_dtype,
-                                      res_dtype, offset_w_dtype, bias,
-                                      kernel_name, dilateh, dilatew,
-                                      optim_dict, fusion_para, groups)
+    shape_in, shape_w = util_conv2d.conv_layer_cce_para_check(shape_in, shape_w, padh, padw,
+                                                              strideh, stridew, in_dtype, w_dtype,
+                                                              res_dtype, offset_w_dtype, bias,
+                                                              kernel_name, dilateh, dilatew,
+                                                              optim_dict, fusion_para, groups)
 
     c0_val = 16
     if in_dtype == "int8":
@@ -388,29 +387,27 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
             bias_tensor = tvm.placeholder((cout_ori * groups,), name='bias_tensor',
                                           dtype=res_dtype)
             tensor_list.append(bias_tensor)
-        conv_res = tbe.conv(
-            data, weight, para_dict={"bias_tensor": bias_tensor,
-                           "offset_w_tensor": offset_w_tensor,
-                           "pad_h": padh, "pad_w": padw,
-                           "stride_h": strideh, "stride_w": stridew,
-                           "dilate_h": dilateh, "dilate_w": dilatew,
-                           "filter_h": filter_h, "filter_w": filter_w,
-                           "offset_x": offset_x, "groups": groups,
-                           "res_dtype": res_dtype,
-                           "fusion_para": fusion_para,
-                           "kernel_name": kernel_name,
-                           "group": groups,
-                           "enlarge": enlarge,
-                           "c1_opt": c1_opt,
-                           "cout1_opt": cout1_opt,
-                           "group_opt": group_opt,
-                           "a_shape": fmap_shape_nc1hwc0,
-                           "weight_fracz_shape": filter_shape_frac_z,
-                           "weight_ori_shape_nchw": weight_ori_shape_nchw,
-                            },
-
-            optim_dict=optim_dict,
-            dsl_flag=False)
+        conv_res = tbe.conv(data, weight,
+                            para_dict={"bias_tensor": bias_tensor,
+                                       "offset_w_tensor": offset_w_tensor,
+                                       "pad_h": padh, "pad_w": padw,
+                                       "stride_h": strideh, "stride_w": stridew,
+                                       "dilate_h": dilateh, "dilate_w": dilatew,
+                                       "filter_h": filter_h, "filter_w": filter_w,
+                                       "offset_x": offset_x, "groups": groups,
+                                       "res_dtype": res_dtype,
+                                       "fusion_para": fusion_para,
+                                       "kernel_name": kernel_name,
+                                       "group": groups,
+                                       "enlarge": enlarge,
+                                       "c1_opt": c1_opt,
+                                       "cout1_opt": cout1_opt,
+                                       "group_opt": group_opt,
+                                       "a_shape": fmap_shape_nc1hwc0,
+                                       "weight_fracz_shape": filter_shape_frac_z,
+                                       "weight_ori_shape_nchw": weight_ori_shape_nchw,},
+                            optim_dict=optim_dict,
+                            dsl_flag=False)
         tensor_list.append(conv_res)
         sch = tbe.auto_schedule(conv_res)
 
@@ -424,7 +421,7 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
     tbe.cce_build_code(sch, config)
 
 def get_op_support_info(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
-           groups=1, data_format='NCHW', offset_x=0, kernel_name="conv2d"):
+                        groups=1, data_format='NCHW', offset_x=0, kernel_name="conv2d"):
     """
     algorithm: get_op_support_info
 
@@ -464,31 +461,31 @@ def get_op_support_info(inputs, weights, bias, offset_w, outputs, strides, pads,
     None
     """
     slice_info = {"_op_slice_info":
-            {"splitMaps": [{"inputList": [{"idx": 0, "axis": [0], "headOverLap": [-1], "tailOverLap": [-1]}],"outputList": [{"idx": 0, "axis": [0]}]},
-                           {"inputList": [{"idx": 0, "axis": [2], "headOverLap": [0], "tailOverLap": [0]}],"outputList": [{"idx": 0, "axis": [2]}]},
-                           {"inputList": [{"idx": 0, "axis": [3], "headOverLap": [0], "tailOverLap": [0]}],"outputList": [{"idx": 0, "axis": [3]}]},
-                           {"inputList": [{"idx": 1, "axis": [1], "headOverLap": [-1], "tailOverLap": [-1]}],"outputList": [{"idx": 0, "axis": [1]}]}
-                          ],
-            "reduceMaps": [],
-            "l1FusionEnable": 2,
-            "minTbeL1Space": 0
-            }
-        }
+                  {"splitMaps": [{"inputList": [{"idx": 0, "axis": [0], "headOverLap": [-1], "tailOverLap": [-1]}],
+                                  "outputList": [{"idx": 0, "axis": [0]}]},
+                                 {"inputList": [{"idx": 0, "axis": [2], "headOverLap": [0], "tailOverLap": [0]}],
+                                  "outputList": [{"idx": 0, "axis": [2]}]},
+                                 {"inputList": [{"idx": 0, "axis": [3], "headOverLap": [0], "tailOverLap": [0]}],
+                                  "outputList": [{"idx": 0, "axis": [3]}]},
+                                 {"inputList": [{"idx": 1, "axis": [1], "headOverLap": [-1], "tailOverLap": [-1]}],
+                                  "outputList": [{"idx": 0, "axis": [1]}]}],
+                   "reduceMaps": [],
+                   "l1FusionEnable": 2,
+                   "minTbeL1Space": 0}}
     if bias:
         bias_input = [{"idx": 2, "axis": [0], "headOverLap": [-1], "tailOverLap": [-1]}]
         slice_info['_op_slice_info']["splitMaps"][3]["inputList"].extend(bias_input)
 
     # special scene: dilations is 1 and kernel is 1 and strides is 1, overlap is -1
-    _, shape_filter, _, _, strideh, stridew, dlt_h, dlt_w, _, _= util_conv2d.calc_para_from_dict(
+    _, shape_filter, _, _, strideh, stridew, dlt_h, dlt_w, _, _ = util_conv2d.calc_para_from_dict(
         inputs, weights, strides, pads, dilations, outputs, data_format)
     weight_h = shape_filter[2]
     weight_w = shape_filter[3]
-    if strideh == 1 and dlt_h == 1 and weight_h ==1:
+    if strideh == 1 and dlt_h == 1 and weight_h == 1:
         slice_info.get("_op_slice_info").get("splitMaps")[1].get("inputList")[0]["headOverLap"] = [-1]
         slice_info.get("_op_slice_info").get("splitMaps")[1].get("inputList")[0]["tailOverLap"] = [-1]
-    if stridew == 1 and dlt_w == 1 and weight_w ==1:
+    if stridew == 1 and dlt_w == 1 and weight_w == 1:
         slice_info.get("_op_slice_info").get("splitMaps")[2].get("inputList")[0]["headOverLap"] = [-1]
         slice_info.get("_op_slice_info").get("splitMaps")[2].get("inputList")[0]["tailOverLap"] = [-1]
 
     return json.dumps(slice_info)
-
