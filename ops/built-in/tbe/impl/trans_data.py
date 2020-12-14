@@ -47,6 +47,7 @@ from impl import ncdhw_2_fractal_z_3d
 from impl import fractal_z_3d_2_ncdhw
 from impl import ndhwc_2_fractal_z_3d
 from impl import fractal_z_3d_2_ndhwc
+from impl import zng_2_nchw_hwcn
 
 
 # pylint: disable=locally-disabled,redefined-builtin,too-many-statements
@@ -145,8 +146,12 @@ def trans_data(src, dst, src_format, dst_format, groups=1,
                                   dst_format, kernel_name)
     elif (src_format.upper() == "FRACTAL_ZN"
           or src_format.upper() == "FRACTAL_Z") \
-            and dst_format.upper() == "NCHW":
+            and dst_format.upper() == "NCHW" and groups == 1:
         zn_2_nchw.zn_2_nchw(src, dst, src_format, dst_format, kernel_name)
+    elif (src_format.upper() == "FRACTAL_ZN"
+          or src_format.upper() == "FRACTAL_Z") \
+            and dst_format.upper() == "NCHW" and groups > 1:
+        zng_2_nchw_hwcn.zng_2_nchw_hwcn(src, dst, src_format, dst_format, groups, kernel_name)
     elif src_format.upper() == "HWCN" \
             and (dst_format.upper() == "FRACTAL_ZN"
                  or dst_format.upper() == "FRACTAL_Z"
