@@ -20,7 +20,6 @@ import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
-from impl.util import util_select_op_base
 
 
 # data type of fp16
@@ -54,28 +53,6 @@ DIGIT_4 = 4
 DIGIT_5 = 5
 # digit 128
 DIGIT_128 = 128
-
-
-# pylint: disable = unused-argument
-def get_op_support_info(x_dict, y_dict, output_dim, group_size, kernel_name="swap_ci"):
-    """
-    LxFusion interface
-    """
-    format_x = x_dict.get("format")
-    if format_x == "NCHW":
-        axis_split_list = []
-        split_0 = [util_select_op_base.SplitInput([0, [0], [-1], [-1]]),
-                   util_select_op_base.SplitOutput([0, [0]])]
-        axis_split_list.append(split_0)
-        axis_reduce_list = None
-
-    else:
-        axis_split_list = None
-        axis_reduce_list = None
-
-    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_list, axis_reduce_list, 0, 0)
-
-    return op_cal_info_in_json
 
 
 def _ceil_value(value, factor):

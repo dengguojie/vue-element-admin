@@ -826,8 +826,8 @@ def aipp_compute_single(input_tensor, input_shape, input_format, output_data, ai
                                                 tail_ub = ib.allocate(dtype, (32 // size,), "tail_ub",
                                                                       scope=tbe_platform.scope_ubuf)
                                                 tail_ub_buf = tvm.decl_buffer((32 // size,), dtype, "tail_ub_buf",
-                                                                               scope=tbe_platform.scope_ubuf,
-                                                                               data=tail_ub)
+                                                                              scope=tbe_platform.scope_ubuf,
+                                                                              data=tail_ub)
                                                 aipp_comm.copy_ubuf_to_gm_tail(
                                                     ib, dtype, output_buf, output_ub_buf,
                                                     tail_ub_buf,
@@ -838,8 +838,7 @@ def aipp_compute_single(input_tensor, input_shape, input_format, output_data, ai
                                                 dtype, 'copy_ubuf_to_gm',
                                                 output_buf.access_ptr(
                                                     "w", ptr_type=dtype,
-                                                    offset=block_index*offset +
-                                                           output_offset),
+                                                    offset=block_index*offset + output_offset),
                                                 output_ub_buf.access_ptr(
                                                     "rw", ptr_type=dtype,
                                                     offset=h2*tiling_w*c0),

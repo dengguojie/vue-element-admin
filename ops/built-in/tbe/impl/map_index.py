@@ -134,7 +134,6 @@ class MapIndexProcess:
         """
         tik_instance = self.tik_instance
         tik_name = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-        print("tik_name:", tik_name)
         length = self.data_seq_length // self.x_length
         max = ((length + 127) // 128)*128
         count = ((max // 16 + 15) // 16)*16

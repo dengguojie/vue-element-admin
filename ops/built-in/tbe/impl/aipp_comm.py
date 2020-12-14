@@ -2005,7 +2005,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
 
     if 'src_image_size_w' in aipp_config:
         if ((aipp_config["src_image_size_w"] < 2 or aipp_config["src_image_size_w"] > 4096) and
-            aipp_config["src_image_size_w"] != 0):
+                aipp_config["src_image_size_w"] != 0):
             cause_desc = "src_image_size_w[%d] should " \
                          "be within [2, 4096] or equal to 0" % \
                          aipp_config["src_image_size_w"]
