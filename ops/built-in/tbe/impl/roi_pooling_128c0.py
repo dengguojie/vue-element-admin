@@ -20,7 +20,6 @@ from te import tik
 from impl import roi_pooling_base
 
 
-# pylint: disable=C0103
 # pylint: disable=unused-argument,no-member,super-init-not-called
 # pylint: disable=too-many-instance-attributes,self-assigning-variable
 # pylint: disable=too-many-locals,too-many-lines,useless-super-delegation
@@ -77,14 +76,14 @@ class RoiClass128C0(roi_pooling_base.RoiClass):
         with self.tik_instance.for_range(0, self.pooled_w) as w_index:
             self.tik_instance.vector_dup(256 // roi_pooling_base.TYPELEN_DICT[self.dtype], \
                                          pooled_res[0, 0, w_index, 0],
-                                         0,
+                                         roi_pooling_base.FLOATMIN_DICT[self.dtype],
                                          self.pooled_h,
                                          self.pooled_h * self.pooled_w,
                                          self.pooled_w)
         with self.tik_instance.for_range(0, self.pooled_h) as poolh:
             self.tik_instance.vector_dup(256 // roi_pooling_base.TYPELEN_DICT[self.dtype], \
                                          pooled_h_res[0, 0, 0, 0],
-                                         0,
+                                         roi_pooling_base.FLOATMIN_DICT[self.dtype],
                                          self.fm_w,
                                          self.fm_w,
                                          1)
@@ -142,12 +141,19 @@ class RoiClass128C0(roi_pooling_base.RoiClass):
                                 self.fm_w*16*2 // 32,
                                 0)
 
-                if self.dtype == "float32":
-                    self.proposal_pooling_w_float32(proposal_id)
-                else:
-                    self.proposal_pooling_w_float16(proposal_id, poolh, \
-                                                    pooled_res, pooled_h_res)
-                pooled_res = pooled_res
+            with self.tik_instance.else_scope():
+                self.tik_instance.vector_dup(256 // roi_pooling_base.TYPELEN_DICT[self.dtype], \
+                                            pooled_h_res[0, 0, 0, 0],
+                                            0,
+                                            self.fm_w,
+                                            self.fm_w,
+                                            1)
+            if self.dtype == "float32":
+                self.proposal_pooling_w_float32(proposal_id)
+            else:
+                self.proposal_pooling_w_float16(proposal_id, poolh, \
+                                                pooled_res, pooled_h_res)
+            pooled_res = pooled_res
         with self.tik_instance.if_scope(fm_c1_index != self.c1_looptime-1):
             self.tik_instance.data_move(
                 self.y[self.ouput_proposal_offset + self.calced_rois
@@ -189,18 +195,23 @@ class RoiClass128C0(roi_pooling_base.RoiClass):
         with self.tik_instance.for_range(0, self.pooled_w) as poolw:
             scalar_roi_start_w_from0.set_as(self.roi_start_w_from0[poolw, proposal_id])
             scalar_roi_bin_w.set_as(self.roi_bin_w[poolw, proposal_id])
-            self.tik_instance.vmax(
-                256 // roi_pooling_base.TYPELEN_DICT[self.dtype],
-                pooled_res[0, poolh, poolw, 0],
-                pooled_h_res[0, 0, scalar_roi_start_w_from0, 0],
-                pooled_res[0, poolh, poolw, 0],
-                scalar_roi_bin_w,
-                self.pooled_w*self.pooled_h,
-                self.fm_w,
-                self.pooled_w*self.pooled_h,
-                0,
-                1,
-                0)
+            with self.tik_instance.if_scope(scalar_roi_bin_w !=0):
+                self.tik_instance.vmax(
+                    256 // roi_pooling_base.TYPELEN_DICT[self.dtype],
+                    pooled_res[0, poolh, poolw, 0],
+                    pooled_h_res[0, 0, scalar_roi_start_w_from0, 0],
+                    pooled_res[0, poolh, poolw, 0],
+                    scalar_roi_bin_w,
+                    self.pooled_w*self.pooled_h,
+                    self.fm_w,
+                    self.pooled_w*self.pooled_h,
+                    0,
+                    1,
+                    0)
+            with self.tik_instance.else_scope():
+                self.tik_instance.vector_dup(256 // roi_pooling_base.TYPELEN_DICT[self.dtype],
+                                            pooled_res[0, poolh, poolw, 0],
+                                            0, EIGHT_C0, self.pooled_h * self.pooled_w, 0)
 
     def roi_pooling_main(self):
         """

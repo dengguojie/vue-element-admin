@@ -19,6 +19,7 @@ yolo_v2_cls_prob
 import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 from impl import common_util
 from impl import constant_util as constant
@@ -645,6 +646,6 @@ def check_param(input_dict):
     height = input_dict.get("height")
     width = input_dict.get("width")
     if height * width * dsize < constant.BLOCK_SIZE:
-        raise RuntimeError(
-            "height[%d] multi with width[%d]'s size \
-            must bigger than 32b" % (height, width))
+        rule_desc = "height multi with width's size must bigger than 32b"
+        error_manager_vector.raise_err_check_params_rules("yolo_v2_detection_output_d", rule_desc,
+                                                        "height * width * dsize", height * width * dsize)

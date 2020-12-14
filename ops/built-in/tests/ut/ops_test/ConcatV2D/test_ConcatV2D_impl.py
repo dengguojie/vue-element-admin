@@ -18,6 +18,14 @@ case2 = {"params": [[{"shape": (1,), "dtype": "float32", "format": "ND", "ori_sh
          "format_expect": [],
          "support_expect": True}
 
+case3 = {"params": [[{"shape": (2,), "dtype": "float32", "format": "ND", "ori_shape": (2,),"ori_format": "ND"}],
+                    {"shape": (2,), "dtype": "float32", "format": "ND", "ori_shape": (2,),"ori_format": "ND"},
+                    3],
+         "case_name": "ConcatV2D_3",
+         "expect": RuntimeError,
+         "format_expect": [],
+         "support_expect": True}
+
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 

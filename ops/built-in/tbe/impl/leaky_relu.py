@@ -22,6 +22,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 def get_fusion_params(x_tensor, y):
@@ -41,7 +42,8 @@ def get_fusion_params(x_tensor, y):
         l1_fusion_type = x_tensor.op.attrs["L1_fusion_type"].value \
             if "L1_fusion_type" in x_tensor.op.attrs else -1
         if l1_fusion_type == 1:
-            raise RuntimeError("leaky_relu does not support l1 width fusion")
+            error_manager_vector.raise_err_specific_reson("leaky_relu",
+                                        "leaky_relu does not support l1 width fusion")
     is_l1_depth_fusion = l1_fusion_type == 0
     in_l1_flag = x_tensor.op.attrs["addr_type"].value == 1 \
         if "addr_type" in x_tensor.op.attrs else False
@@ -134,7 +136,8 @@ def leaky_relu(x, y, negative_slope=0, kernel_name="leaky_relu"):
     if fusion_manager.get_build_cfg() != "disable":
         l1_fusion_type = x.get("L1_fusion_type", -1)
         if l1_fusion_type == 1:
-            raise RuntimeError("leaky_relu does not support l1 width fusion")
+            error_manager_vector.raise_err_specific_reson("leaky_relu",
+                                        "leaky_relu does not support l1 width fusion")
     is_l1_depth_fusion = l1_fusion_type == 0
     addr_type = x.get("addr_type", 0)
     valid_shape = x.get("valid_shape", [])

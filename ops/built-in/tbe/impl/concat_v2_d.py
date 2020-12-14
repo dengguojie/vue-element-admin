@@ -26,6 +26,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 from impl.concat_last_dim import ConcatWithVnchw
 from impl.concat_last_dim import ConcatWith5HD
 from impl.concat_tik import ConcatSchedule
@@ -266,9 +267,12 @@ def concat_v2_d(input_values, output_data, axis, kernel_name="concat_v2_d"):
     for _, tensor_dict in enumerate(input_values):
         shape_input = tensor_dict.get("shape")
         if len(shape_input) != dim_num:
-            raise RuntimeError("The length of each shape must be equal")
+            rule_desc = "The length of each shape must be equal"
+            error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "shape_input",
+                                                            len(shape_input))
     if axis < -dim_num or axis >= dim_num:
-        raise RuntimeError("Axis value out of range")
+        error_manager_vector.raise_err_input_param_not_in_range(kernel_name, "axis", -len(dim_num),
+                                                                len(dim_num), axis)
 
     # begin to check where user branch concat_last_dim with command nchwvconv
     concat_l = ConcatWithVnchw(input_values, output_data, kernel_name)

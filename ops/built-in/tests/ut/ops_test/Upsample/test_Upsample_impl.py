@@ -31,18 +31,19 @@ case4 = {"params": [{"shape": (1,16,16,16,16), "dtype": "float32", "format": "NC
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-case5 = {"params": [{"shape": (1,1,1,128,16), "dtype": "float32", "format": "NC1HWC0", "ori_shape": (1,1,1,128,16),"ori_format": "NC1HWC0"},
-                    {"shape": (1,1,1,128,16), "dtype": "float32", "format": "NC1HWC0", "ori_shape": (1,1,1,128,16),"ori_format": "NC1HWC0"},
+case5 = {"params": [{"shape": (1,1,1,128,3), "dtype": "float32", "format": "NC1HWC0", "ori_shape": (1,1,1,128,3),"ori_format": "NC1HWC0"},
+                    {"shape": (1,1,1,128,3), "dtype": "float32", "format": "NC1HWC0", "ori_shape": (1,1,1,128,3),"ori_format": "NC1HWC0"},
                     1.0, 2, 1],
          "case_name": "upsample_5",
-         "expect": "success",
+         "expect": RuntimeError,
          "format_expect": [],
          "support_expect": True}
+
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
+ut_case.add_case(["Ascend310"], case5)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910")

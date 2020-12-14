@@ -17,6 +17,7 @@ clip_boxes_d
 """
 from te import tik
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 from topi.cce import util
 from te import platform as tbe_platform
 
@@ -585,21 +586,25 @@ def check_clip_boxes_input_dict(boxes_input, boxes_output):
 
     # the shape and type of the output  should be the same as the input
     if input_shape != output_shape:
-        raise RuntimeError("The shape of output should be the same as the input!")
-
+        error_detail = "the shape of output should be the same as the input"
+        error_manager_vector.raise_err_two_input_shape_invalid("clip_boxes", "input", "output",
+                                                            error_detail)
     # Check the size of the input shape
-
     if len(input_shape) != CONFIG_TWO:
-        raise RuntimeError("The input shape should be two dimension only!")
+        error_manager_vector.raise_err_input_value_invalid("clip_boxes", "dimension of input",
+                                                        2, len(input_shape))
     n_x, n_y = input_shape
     if n_x <= 0 or n_x > SHAPE_SIZE_LIMIT:
-        raise RuntimeError("N dimension of inputs should be in [1, %d]" % SHAPE_SIZE_LIMIT)
+        error_manager_vector.raise_err_input_param_not_in_range("clip_boxes", "N dimension of input",
+                                                            1, SHAPE_SIZE_LIMIT, n_x)
     if n_y != CONFIG_FOUR:
-        raise RuntimeError("The last dimension of xxx tensor must be 4!")
+        error_manager_vector.raise_err_input_value_invalid("clip_boxes", "last dimension of input",
+                                                        4, n_y)
     para_check.check_dtype(input_dtype, ["float16"], param_name="x")
 
     if input_dtype != output_dtype:
-        raise RuntimeError("The dtype of output should be the same as the input!")
+        error_manager_vector.raise_err_inputs_dtype_not_equal("clip_boxes", "input", "output",
+                                                            input_dtype, output_dtype)
 
 
 def check_clip_boxes_input_attr(img_w, img_h):
@@ -613,7 +618,9 @@ def check_clip_boxes_input_attr(img_w, img_h):
 
     # the size of the image  should  be lager than zero
     if img_h <= 0 or img_w <= 0:
-        raise RuntimeError("img_h/img_w should be larger than zero!")
+        real_value = "img_h is {}, img_w is {}".format(img_h, img_w)
+        error_manager_vector.raise_err_input_value_invalid("clip_boxes", "img_h/img_w",
+                                                        "larger than zero", real_value)
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
@@ -632,14 +639,12 @@ def clip_boxes_d(boxes_input, boxes_output, img_size, kernel_name="clip_boxes"):
     """
 
     if len(img_size) != CONFIG_TWO:
-        raise RuntimeError("img_size should be [img_h, img_w]!")
+        error_manager_vector.raise_err_input_value_invalid("clip_boxes", "img_size",
+                                                        "[img_h, img_w]", len(img_size))
 
     img_h, img_w = img_size
     check_clip_boxes_input_dict(boxes_input, boxes_output)
     check_clip_boxes_input_attr(img_w, img_h)
-
-    if len(kernel_name) > util.MAX_KERNEL_NAEM_LEN:
-        raise RuntimeError("kernel_name len must be less than 200!")
     util.check_kernel_name(kernel_name)
 
     tik_instance = clip_boxes_d_compute(boxes_input, img_w, img_h, kernel_name=kernel_name)

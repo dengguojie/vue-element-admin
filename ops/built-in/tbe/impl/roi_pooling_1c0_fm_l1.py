@@ -21,7 +21,7 @@ from impl import roi_pooling_base
 
 
 # pylint: disable=C0103
-# pylint: disable=unused-argument,no-member,arguments-differ
+# pylint: disable=unused-argument,no-member,no-self-use
 # pylint: disable=too-many-instance-attributes
 # pylint: disable=too-many-locals,too-many-lines
 # pylint: disable=too-many-arguments,attribute-defined-outside-init
@@ -108,6 +108,14 @@ class RoiClassOneC0FML1(roi_pooling_base.RoiClass):
                                               0,
                                               self.fm_w_align * coeff,
                                               0)
+            with self.tik_instance.else_scope():
+                with self.tik_instance.for_range(0, roi_pooling_base.ceil_div(scalar_roi_width, ceil_loop)) as loop_w:
+                    self.tik_instance.vec_dup(
+                        256 // roi_pooling_base.TYPELEN_DICT[self.dtype],
+                        self.pooled_h_res[poolh, ceil_loop * loop_w, 0],
+                        0,
+                        1,
+                        0)
 
     def proposal_pooling_w_float16(self, proposal_id):
         """
@@ -137,6 +145,11 @@ class RoiClassOneC0FML1(roi_pooling_base.RoiClass):
                         self.pooled_res[loop_h * 8, poolw, 0],
                         scalar_roi_bin_w, self.pooled_w,
                         self.fm_w_align, self.pooled_w, 0, 1, 0)
+            with self.tik_instance.else_scope():
+                with self.tik_instance.for_range(0, roi_pooling_base.ceil_div(self.pooled_h + self.res_pad, 8)) as looph:
+                    self.tik_instance.vector_dup(256 // roi_pooling_base.TYPELEN_DICT[self.dtype],
+                                                self.pooled_res[looph * 8, poolw, 0],
+                                                0, 1, self.pooled_w, 0)
 
     def proposal_pooling_w_float32(self, proposal_id):
         """
@@ -163,7 +176,6 @@ class RoiClassOneC0FML1(roi_pooling_base.RoiClass):
             scalar_roi_start_w_from0 = self.tik_instance.Scalar("int32")
             scalar_roi_start_w_from0.set_as(
                 self.roi_start_w_from0[poolw, proposal_id])
-
             scalar_roi_bin_w = self.tik_instance.Scalar("int32")
             scalar_roi_bin_w.set_as(self.roi_bin_w[poolw, proposal_id])
             with self.tik_instance.for_range(0, roi_pooling_base.ceil_div(self.pooled_h + self.res_pad, 8)) as loop_h:
@@ -175,7 +187,13 @@ class RoiClassOneC0FML1(roi_pooling_base.RoiClass):
                         self.pooled_res[loop_h * 8, poolw, c0_index, 0],
                         scalar_roi_bin_w, self.pooled_w * 2,
                         self.fm_w_align * 2, self.pooled_w * 2, 0, 2, 0)
-
+            with self.tik_instance.else_scope():
+                with self.tik_instance.for_range(0, roi_pooling_base.ceil_div(self.pooled_h + self.res_pad, 8)) \
+                                        as loop_h:
+                    with self.tik_instance.for_range(0, 2) as c0_index:
+                        self.tik_instance.vector_dup(256 // roi_pooling_base.TYPELEN_DICT[self.dtype],
+                                                    self.pooled_res[loop_h * 8, poolw, c0_index, 0],
+                                                    0, 1, self.pooled_w, 0)
         self.pooled_res = self.pooled_res.reshape((self.pooled_h+self.res_pad, self.pooled_w, self.fm_c0))
         self.pooled_h_res = self.pooled_h_res.reshape((self.pooled_h + self.res_pad, self.fm_w_align, self.fm_c0))
 

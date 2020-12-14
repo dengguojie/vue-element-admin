@@ -18,7 +18,7 @@ crop
 from te import tik
 import te.platform as tbe_platform
 from te.utils import para_check
-
+from te.utils.error_manager import error_manager_vector
 from impl import constant_util as constant
 from impl import common_util
 from impl.util import util_select_op_base
@@ -927,8 +927,9 @@ def check_and_adjust_offset(input_dict):
     para_check.check_dtype(y_dtype, ("int8", "uint8", "int16", "uint16", "int32",
                                      "uint32", "int64", "uint64", "float16", "float32"), param_name="y")
     if x2_dtype != y_dtype or y_dtype != x1_dtype:
-        raise RuntimeError("size's datatype must be the same as \
-        y's datatype and x's datatype")
+        rule_desc = "the dtype of size, x and y should be same"
+        error_manager_vector.raise_err_check_params_rules("crop", rule_desc,
+                                                        "y_dtype", y_dtype)
 
     if not check_same_shape(y_shape, x2_shape):
         errorInfo = {'errCode': 'E80017', 'op_name': 'crop', 'param_name1': 'y_shape', 'param_name2': 'x2_shape',
@@ -977,15 +978,19 @@ def check_and_adjust_offset(input_dict):
             offset_final[i] = offset[0]
     elif len(offset) != 0:
         if len(offset) != len(x1_ori_shape) - axis:
-            raise RuntimeError(
-                "axis+len(offset) must equals input dim(x)")
+            rule_desc = "axis(%d)+len(offset)(%d) must equal to input dim(x)" \
+                        % (axis, len(offset))
+            error_manager_vector.raise_err_check_params_rules("crop", rule_desc,
+                                                    "input dim", len(x1_ori_shape))
+
         offset_final[axis:len(x1_ori_shape)] = offset
     len_offset_final = len(offset_final)
     for i in range(len_offset_final):
         if x1_shape[i] - offset_final[i] < x2_shape[i]:
-            raise RuntimeError(
-                "size's dimension i[%s]'s size can't be bigger than \
-                x's size minus offset" % i)
+            rule_desc = "the ith[%d]'s size's dimension can't be bigger than " \
+                        "x's size minus offset" % i
+            error_manager_vector.raise_err_check_params_rules("crop", rule_desc,
+                                                "size's dimension", x2_shape[i])
     input_dict["offset"] = offset_final
 
 

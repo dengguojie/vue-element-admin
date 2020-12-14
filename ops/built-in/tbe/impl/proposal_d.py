@@ -24,6 +24,7 @@ proposal_d
 
 import te.platform as tbe_platform
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 from te import tik
 from impl import decoded_bbox
 from impl import nms
@@ -467,11 +468,15 @@ def proposal_d(cls_prob_dic, bbox_delta_dic, im_info_dic, rpn_bbox_dic,
 
     if tik_name in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS) and \
             (pre_nms_topn > 3000 or post_nms_topn > 3000):
-        raise RuntimeError("pre_nms_topn and post_nms_topn "
-                           "must be <=3000 on hisi!")
+        rule_desc = "pre_nms_topn and post_nms_topn must be <=3000 in HISI"
+        param_value = ','.join((str(pre_nms_topn), str(post_nms_topn)))
+        error_manager_vector.raise_err_check_params_rules("proposal_d", rule_desc,
+                                                        "pre_nms_topn or post_nms_topn",
+                                                        param_value)
 
     if channel % 4 != 0:
-        raise RuntimeError("the channel must be multiples of 16!")
+        error_manager_vector.raise_err_input_value_invalid("proposal_d", "channel",
+                                                        "multiples of 16", channel)
 
     if iou_threshold <= 0 or iou_threshold >= 1:
         error_info = {'errCode': para_check.OP_ERROR_CODE_002,

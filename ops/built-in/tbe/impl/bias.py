@@ -136,8 +136,7 @@ def _param_bias_check(shape_x, shape_bias):
         for i in range(length_bias):
             if shape_bias[i] != shape_x[i] and shape_bias[i] != 1:
                 error_detail = "could not be broadcast together with shape_bias and shape_x"
-                error_manager_vector.raise_err_two_input_shape_invalid("bias", "shape_bias", "shape_x",
-                                                                       error_detail)
+                error_manager_vector.raise_err_two_input_shape_invalid("bias", "shape_bias", "shape_x", error_detail)
 
 
 def _get_param_bias_shape(shape_x, shape_bias):
@@ -325,8 +324,9 @@ def _check_dtype(dtype_x, dtype_bias):
     """
     if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS"):
         if dtype_x == "float32" or dtype_bias == "float32":
-            raise RuntimeError("float32 is not support in HISI")
-
+            error_detail = "float32 is not support in HISI"
+            error_manager_vector.raise_err_two_input_dtype_invalid("bias", "x", "bias",
+                                                                error_detail)
         check_tuple = ("float16",)
     else:
         check_tuple = ("float32", "float16",)

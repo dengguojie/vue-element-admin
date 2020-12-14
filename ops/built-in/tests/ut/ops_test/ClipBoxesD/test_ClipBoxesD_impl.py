@@ -41,27 +41,73 @@ case3 = {"params": [{"shape": (17600, 4), "dtype": "float16", "format": "ND", "o
          "format_expect": [],
          "support_expect": True}
 
-case4 = {"params": [{"shape": (4000, 4), "dtype": "float32", "format": "ND", "ori_shape": (4000, 4),"ori_format": "ND"},
+case4 = {"params": [{"shape": (4000, 5), "dtype": "float32", "format": "ND", "ori_shape": (4000, 5),"ori_format": "ND"},
                     {"shape": (4000, 4), "dtype": "float32", "format": "ND", "ori_shape": (4000, 4),"ori_format": "ND"},
                     [1024, 728]],
          "case_name": "clip_boxes_4",
          "expect": RuntimeError,
          "format_expect": [],
          "support_expect": True}
-case5 = {"params": [{"shape": (128,3), "dtype": "float16", "format": "ND", "ori_shape": (128,3),"ori_format": "ND"},
-                    {"shape": (128,3), "dtype": "float16", "format": "ND", "ori_shape": (128,3),"ori_format": "ND"},
-                    [128, 256]],
+
+case5 = {"params": [{"shape": (4000,), "dtype": "float32", "format": "ND", "ori_shape": (4000,),"ori_format": "ND"},
+                    {"shape": (4000, 4), "dtype": "float32", "format": "ND", "ori_shape": (4000, 4),"ori_format": "ND"},
+                    [1024, 728]],
          "case_name": "clip_boxes_5",
          "expect": RuntimeError,
          "format_expect": [],
          "support_expect": True}
 
 
+case6 = {"params": [{"shape": (65501,3), "dtype": "float16", "format": "ND", "ori_shape": (65501,3),"ori_format": "ND"},
+                    {"shape": (65501,3), "dtype": "float16", "format": "ND", "ori_shape": (65501,3),"ori_format": "ND"},
+                    [128, 256]],
+         "case_name": "clip_boxes_6",
+         "expect": RuntimeError,
+         "format_expect": [],
+         "support_expect": True}
+
+case7 = {"params": [{"shape": (17600, 5), "dtype": "float16", "format": "ND", "ori_shape": (17600, 5),"ori_format": "ND"},
+                    {"shape": (17600, 5), "dtype": "float16", "format": "ND", "ori_shape": (17600, 5),"ori_format": "ND"},
+                    [1024, 728]],
+         "case_name": "clip_boxes_7",
+         "expect": RuntimeError,
+         "format_expect": [],
+         "support_expect": True}
+
+case8 = {"params": [{"shape": (17600, 4), "dtype": "float16", "format": "ND", "ori_shape": (17600, 4),"ori_format": "ND"},
+                    {"shape": (17600, 4), "dtype": "float32", "format": "ND", "ori_shape": (17600, 4),"ori_format": "ND"},
+                    [1024, 728]],
+         "case_name": "clip_boxes_8",
+         "expect": RuntimeError,
+         "format_expect": [],
+         "support_expect": True}
+
+case9 = {"params": [{"shape": (16, 4), "dtype": "float16", "format": "ND", "ori_shape": (16, 4),"ori_format": "ND"},
+                    {"shape": (16, 4), "dtype": "float16", "format": "ND", "ori_shape": (16, 4),"ori_format": "ND"},
+                    [128,]],
+         "case_name": "clip_boxes_9",
+         "expect": RuntimeError,
+         "format_expect": [],
+         "support_expect": True}
+
+case10 = {"params": [{"shape": (16, 4), "dtype": "float16", "format": "ND", "ori_shape": (16, 4),"ori_format": "ND"},
+                    {"shape": (16, 4), "dtype": "float16", "format": "ND", "ori_shape": (16, 4),"ori_format": "ND"},
+                    [-128, 128]],
+         "case_name": "clip_boxes_10",
+         "expect": RuntimeError,
+         "format_expect": [],
+         "support_expect": True}
+
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
+ut_case.add_case(["Ascend910"], case4)
+ut_case.add_case(["Ascend910"], case5)
+ut_case.add_case(["Ascend910"], case6)
+ut_case.add_case(["Ascend910"], case7)
+ut_case.add_case(["Ascend910"], case8)
+ut_case.add_case(["Ascend910"], case9)
+ut_case.add_case(["Ascend910"], case10)
 
 precision_case1 = {"params": [{"shape": (16,4), "dtype": "float16", "format": "ND", "ori_shape": (16,4),"ori_format": "ND","param_type":"input"},
                               {"shape": (16,4), "dtype": "float16", "format": "ND", "ori_shape": (16,4),"ori_format": "ND","param_type":"output"},

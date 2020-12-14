@@ -20,7 +20,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
-
+from te.utils.error_manager import error_manager_vector
 from impl import tanh_compute
 
 NONETYPE = type(None)
@@ -654,39 +654,55 @@ def basiclstm_cell_v2_check(x, w_xc_x_static, h, c, w_xh, h_t, c_t,
     intput_dim = shape_x[0]
     output_dim = shape_h[0]
     if num_output != 0 and num_output != output_dim * C0:
-        raise RuntimeError("num_output[%s] is not equal"
-                           " output_dim[%s]!"
-                           % (str(num_output), str(num_output * C0)))
+        error_manager_vector.raise_err_input_value_invalid("BasicLSTMCellV2",
+                                    "num_output", output_dim * C0, num_output)
+
     if x["dtype"] != "float16" or w_xh["dtype"] != "float16":
-        error_info = {'errCode': 'E80008', 'param_name1': 'x', 'param_name2': 'w', 'op_name': 'BasicLSTMCellV2',
-                      'expect_value': 'float16', 'param1_dtype': x["dtype"], 'param2_dtype': w_xh["dtype"]}
-        raise RuntimeError(error_info, "In op[%s], the parameter[%s]/[%s]'s dtype should be "
-                                       "one of [%s], but actually is [%s]/[%s]."
-                           % (error_info['op_name'], error_info['param_name1'],
-                              error_info['param_name2'], error_info['expect_value'],
-                              error_info['param1_dtype'], error_info['param2_dtype']))
+        error_detail = "the dtype of x and w_xh should be float16"
+        error_manager_vector.raise_err_two_input_dtype_invalid("BasicLSTMCellV2",
+                                     "x", "w_xh", error_detail)
     if w_xh["shape"][0] != output_dim + intput_dim or w_xh["shape"][1] != 4 * output_dim:
-        raise RuntimeError("w_xh shape is wrong, please check!")
+        error_detail = "shape_w_xh[0] should be equal to output_dim plus input_dim %d," \
+                       "shape_w_xh[1] should be equal to 4 * output_dim %d" \
+                        %(output_dim + intput_dim, 4 * output_dim)
+        error_manager_vector.raise_err_input_shape_invalid("BasicLSTMCellV2",
+                                    "w_xh", error_detail)
     if expose_hidden:
         if h is None or c is None:
-            raise RuntimeError("h, c can not be None when expose_hidden is True!")
+            rule_desc = "h, c can not be None when expose_hidden is True"
+            param_value = "%s, c is %s" % (str(h), str(c))
+            error_manager_vector.raise_err_check_params_rules("BasicLSTMCellV2", 
+                                        rule_desc, "h", param_value)
         if h["dtype"] not in dtype_all or c["dtype"] not in dtype_all:
-            raise RuntimeError("h, c supports dtype(%s) only!"
-                               % (dtype_str))
+            error_detail = "h,c only support (%s)"% (dtype_str)
+            error_manager_vector.raise_err_two_input_dtype_invalid("BasicLSTMCellV2",
+                                        "h", "c", error_detail)
         if h["shape"][0] != output_dim or h["shape"][1] != n_dim or \
                 c["shape"][0] != output_dim or c["shape"][1] != n_dim:
-            raise RuntimeError("h or c shape is wrong, please check!")
+            error_detail = "shape_h[0] and shape_c[0] should be equal to output_dim %d," \
+                          "shape_h[1] and shape_c[1] should be equal to n_dim %d" \
+                           % (output_dim, n_dim)
+            error_manager_vector.raise_err_input_shape_invalid("BasicLSTMCellV2",
+                                        "h or c", error_detail)
     if h_t["dtype"] not in dtype_all or c_t["dtype"] not in dtype_all:
-        raise RuntimeError("h_t, c_t supports dtype(%s) only!"
-                           % (dtype_str))
+        error_detail = "h_t, c_t only support (%s)" % (dtype_str)
+        error_manager_vector.raise_err_two_input_dtype_invalid("BasicLSTMCellV2", "h_t", "c_t",
+                                                            error_detail)
     if c_t["shape"][0] != output_dim or c_t["shape"][1] != n_dim or shape_h[1] != n_dim:
-        raise RuntimeError("h_t or c_t shape is wrong, please check!")
+        error_detail = "shape_c_t[0] should be equal to output_dim %d," \
+                       "shape_c_t[1] and shape_h[1] should be equal to n_dim %d" \
+                        % (output_dim, n_dim)
+        error_manager_vector.raise_err_input_shape_invalid("BasicLSTMCellV2", "h_t or c_t", error_detail)
     if w_xc_x_static is not None:
         if w_xc_x_static["dtype"] not in dtype_all:
-            raise RuntimeError("w_xc_x_static supports dtype(%s) only!"
-                               % (dtype_str))
+            error_manager_vector.raise_err_input_dtype_not_supported("BasicLSTMCellV2",
+                                            "w_xc_x_static", dtype_str, w_xc_x_static["dtype"])
         if w_xc_x_static["shape"][1] != n_dim or w_xc_x_static["shape"][0] != 4 * output_dim:
-            raise RuntimeError("w_xc_x_static shape is wrong, please check!")
+            error_detail = "shape_w_xc_x_static[0] should be equal to 4*output_dim %d," \
+                       "shape_w_xc_x_static[1] should be equal to n_dim %d" \
+                        % (4 * output_dim, n_dim)
+            error_manager_vector.raise_err_input_shape_invalid("BasicLSTMCellV2",
+                                            "w_xc_x_static", error_detail)
 
 
 # pylint: disable=locally-disabled,too-many-statements,too-many-branches,unnecessary-lambda,too-many-locals

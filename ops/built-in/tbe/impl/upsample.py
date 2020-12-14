@@ -17,6 +17,7 @@ upsample
 """
 import te.platform as tbe_platform
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 from te import tvm
 
 # size of 5HD format
@@ -59,8 +60,8 @@ def _check_shape_dtype_format(input_shape, input_dtype, input_format, stride_h, 
                            % (error_info['opname'], 'x', str(check_list), str(input_dtype)))
     shape_c0 = C0
     if input_shape[DIM_5HD - 1] != shape_c0:
-        raise RuntimeError(
-            "The value of C0 must be 16")
+        error_manager_vector.raise_err_input_value_invalid("upsample", "C0", "16",
+                                                input_shape[DIM_5HD - 1])
 
     if input_format != "NC1HWC0":
         error_info = {'errCode': 'E80015', 'opname': 'upsample', 'tensor_name': 'x', 'excepted_dtype_list': "NC1HWC0",

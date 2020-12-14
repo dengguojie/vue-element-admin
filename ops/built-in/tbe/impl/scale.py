@@ -224,7 +224,9 @@ def _check_dtype(input_dtype, name):
     product_version = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
     if product_version in ("Hi3796CV300ES", "Hi3796CV300CS"):
         if input_dtype == "float32":
-            raise RuntimeError("float32 is not support in ES")
+            rule_desc = "float32 is not support in HISI"
+            error_manager_vector.raise_err_check_params_rules("scale", rule_desc, "input_dtype",
+                                                            input_dtype)
         para_check.check_dtype(input_dtype, ["float16"], param_name=name)
     else:
         para_check.check_dtype(input_dtype, ["float16", "float32"], param_name=name)
@@ -396,7 +398,8 @@ def get_fusion_params(x_tensor, scale_tensor, bias_tensor, y):
                 l1_fusion_type = x_tensor.op.attrs["L1_fusion_type"].value \
                     if "L1_fusion_type" in x_tensor.op.attrs else -1
                 if l1_fusion_type == 1:
-                    raise RuntimeError("Scale does not support l1 width fusion")
+                    error_manager_vector.raise_err_specific_reson("scale",
+                                        "Scale does not support l1 width fusion")
             is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
             in_l1_flag = x_tensor.op.attrs["addr_type"].value == 1 \
                 if "addr_type" in x_tensor.op.attrs else False
@@ -674,7 +677,8 @@ def scale(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True,
                 if fusion_manager.get_build_cfg() != "disable":
                     l1_fusion_type = input_.get("L1_fusion_type", -1)
                     if l1_fusion_type == 1:
-                        raise RuntimeError("scale does not support l1 width fusion")
+                        error_manager_vector.raise_err_specific_reson("scale",
+                                        "Scale does not support l1 width fusion")
                 is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
                 dtype = input_.get("dtype")
                 addr_type = input_.get("addr_type", 0)

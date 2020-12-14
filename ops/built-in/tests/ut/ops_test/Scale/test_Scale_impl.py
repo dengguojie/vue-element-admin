@@ -12,7 +12,7 @@ def scale_cce(shape_x, shape_scale, shape_bias, shape_y,
               dtype_x, dtype_scale, dtype_bias, dtype_y,
               format_x, format_scale, format_bias, format_y,
               format_x_ori, format_scale_ori, format_bias_ori, format_y_ori,
-              axis=1, num_axes=1, scale_from_blob=True, kernel_name_val="scale"):
+              axis=1, num_axes=1, scale_from_blob=True, expect="success", kernel_name_val="scale"):
 
     x_input = {"shape": shape_x, "ori_shape": shape_x_ori,
                "format": format_x, "ori_format": format_x_ori, "dtype": dtype_x}
@@ -28,7 +28,7 @@ def scale_cce(shape_x, shape_scale, shape_bias, shape_y,
 
     return {"params": [x_input, scale_input, bias_input, y, axis, num_axes, scale_from_blob],
             "case_name":kernel_name_val,
-            "expect": "success",
+            "expect": expect,
             "format_expect": [],
             "support_expect": True}
 
@@ -37,17 +37,25 @@ case1 = scale_cce((2, 3, 2, 3), (1, 3, 1, 1), (1, 3, 1, 1), (2, 3, 2, 3),
                   "float32", "float32", "float32", "float32",
                   "ND", "ND", "ND", "ND",
                   "ND", "ND", "ND", "ND",
-                  1, 1, True, "scale_1")
+                  1, 1, True, "success", "scale_1")
 
 case2 = scale_cce((1, 1, 448, 448, 16), (1, 1, 448, 448, 16), (1, 1, 448, 448, 16), (1, 1, 448, 448, 16),
                   (1, 1, 448, 448, 16), (1, 1, 448, 448, 16), (1, 1, 448, 448, 16), (1, 1, 448, 448, 16),
                   "float16", "float16", "float16", "float16",
                   "ND", "ND", "ND", "ND",
                   "ND", "ND", "ND", "ND",
-                  0, -1, True, "scale_2")
+                  0, -1, True, "success", "scale_2")
+
+case3 = scale_cce((1, 1, 448, 448, 16), (1, 1, 448, 448, 16), (1, 1, 448, 448, 16), (1, 1, 448, 448, 16),
+                  (1, 1, 448, 448, 16), (1, 1, 448, 448, 16), (1, 1, 448, 448, 16), (1, 1, 448, 448, 16),
+                  "float32", "float32", "float32", "float32",
+                  "ND", "ND", "ND", "ND",
+                  "ND", "ND", "ND", "ND",
+                  0, -1, True, RuntimeError, "scale_2")
 
 ut_case.add_case("Ascend910", case1)
 ut_case.add_case("Ascend910", case2)
+ut_case.add_case("Hi3796CV300ES", case3)
 
 def calc_expect_func(x, scale, bias, y, axis, num_axes, scale_from_blob):
     if bias is not None:

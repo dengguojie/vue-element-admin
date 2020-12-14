@@ -86,10 +86,12 @@ class SliceLastDimCompute():
                 if shape_i != size_i:
                     self.check_result = False
                     return
-                self.dim_product *= shape_i
-            self.input_dim_last = shape_i
-            self.begin_last = begin_i
-            self.output_dim_last = size_i
+                else:
+                    self.dim_product *= shape_i
+            else:
+                self.input_dim_last = shape_i
+                self.begin_last = begin_i
+                self.output_dim_last = size_i
 
         # for moving data continuously, only small last dim is allowed
         # last dim data size <= 32B
@@ -525,9 +527,8 @@ def _check_parameters(shape, dtype, begin, size, kernel_name):
     end = _get_end(shape, begin, size)
     for i, (shape_i, end_i) in enumerate(zip(shape, end)):
         if end[i] <= 0 or end_i > shape_i:
-            raise RuntimeError(
-                "value of end must be greater than 0,"
-                " less than or equal to shape!")
+            error_manager_vector.raise_err_input_value_invalid("slice_d", "value of end",
+                                                                "[0, shape]", end[i])
 
 
 def _get_end(shape, begin, size):
@@ -6449,10 +6450,10 @@ def _check_scalar_one(shape, size, dtype):
         return False
 
     for i in range(dim):
-        if i in (0,1):
+        if i in (0, 1):
             if shape[i] != size[i]:
                 return False
-        if i in (2,3):
+        if i in (2, 3):
             if shape[i] == size[i]:
                 return False
 
@@ -6820,7 +6821,7 @@ def _check_21_91_602_1_branch(shape, size, dtype):
     if dim < 3:
         return False
 
-    if dtype not in ("float16","float32"):
+    if dtype not in ("float16", "float32"):
         return False
 
     for i in range(0, dim - 1):
@@ -6865,7 +6866,7 @@ def _check_32_32_4(shape, size, dtype):
     function of checking 32/32/4 branch
 
     """
-    if dtype not in ("float16","float32"):
+    if dtype not in ("float16", "float32"):
         return False
 
     if list(shape) != [32, 32, 32] or list(size) != [32, 32, 4]:
@@ -6891,7 +6892,7 @@ def _check_32_512_2(shape, size, dtype):
     function of checking 32 512/1024 2 branch
 
     """
-    if dtype not in ("float16","float32"):
+    if dtype not in ("float16", "float32"):
         return False
 
     if (shape, size) not in (([32, 512, 2], [32, 512, 1]),
@@ -6940,7 +6941,7 @@ def _check_32_1917_2(shape, size, dtype):
     function of checking 32 1917 2 branch
 
     """
-    if dtype not in ("float16","float32"):
+    if dtype != "float16" and dtype != "float32":
         return False
 
     if shape != [32, 1917, 2] or size != [32, 1917, 1]:
@@ -6970,7 +6971,7 @@ def _check_65472_4_2(shape, size, dtype):
     function of checking 65472 4/2 float16 branch
 
     """
-    if dtype not in ("float16","float32"):
+    if dtype not in ("float16", "float32"):
         return False
 
     if (shape, size) not in (([16, 4092, 2], [16, 4092, 1]),
@@ -7006,7 +7007,7 @@ def _check_32_300_3_2(shape, size, dtype):
     function of checking 32 300 3/2 branch
 
     """
-    if dtype not in ("float16","float32"):
+    if dtype not in ("float16", "float32"):
         return False
 
     if shape != [32, 300, 3] or size != [32, 300, 2]:
@@ -7535,7 +7536,7 @@ def slice_d(x, y, begin, size, kernel_name="slice_d"):
 
         data = tvm.placeholder(shape_new, dtype=dtype, name='data')
 
-        if (shape_new in([32, 1024, 2],[10, 1024, 2]))\
+        if (shape_new in ([32, 1024, 2], [10, 1024, 2])) \
                 and dtype == "float32":
             res = tvm.extern(size_new, [data],
                              lambda ins, outs: _small_last_32_1024_2_fp32(

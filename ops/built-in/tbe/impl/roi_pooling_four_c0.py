@@ -107,16 +107,24 @@ class RoiClass4C0(roi_pooling_base.RoiClass):
             scalar_roi_bin_w.set_as(self.roi_bin_w[pooled_w_i, proposal_id])
 
             # calc element num is 4*16 per repeat
-            self.tik_instance.vmax(
-                FOUR_C0*self.fm_c0,
-                pooled_res[0, pooled_h_i, pooled_w_i, 0],
-                pooled_h_res[0, 0, scalar_roi_start_w_from0, 0],
-                pooled_res[0, pooled_h_i, pooled_w_i, 0],
-                scalar_roi_bin_w,
-                self.pooled_w*self.pooled_h*C0*self.dsize // BLOCK_SIZE,
-                self.fm_w_align*C0*self.dsize // BLOCK_SIZE,
-                self.pooled_w*self.pooled_h*C0*self.dsize // BLOCK_SIZE,
-                0, C0*self.dsize // BLOCK_SIZE, 0)
+            with self.tik_instance.if_scope(scalar_roi_bin_w != 0):
+                self.tik_instance.vmax(
+                    FOUR_C0*self.fm_c0,
+                    pooled_res[0, pooled_h_i, pooled_w_i, 0],
+                    pooled_h_res[0, 0, scalar_roi_start_w_from0, 0],
+                    pooled_res[0, pooled_h_i, pooled_w_i, 0],
+                    scalar_roi_bin_w,
+                    self.pooled_w*self.pooled_h*C0*self.dsize // BLOCK_SIZE,
+                    self.fm_w_align*C0*self.dsize // BLOCK_SIZE,
+                    self.pooled_w*self.pooled_h*C0*self.dsize // BLOCK_SIZE,
+                    0, C0*self.dsize // BLOCK_SIZE, 0)
+            with self.tik_instance.else_scope():
+                self.tik_instance.vector_dup(256 // roi_pooling_base.TYPELEN_DICT[self.dtype],
+                            self.pooled_res[0, pooled_h_i, pooled_w_i, 0],
+                            0,
+                            FOUR_C0,
+                            self.pooled_h * self.pooled_w,
+                            0)
 
     def proposal_pooling(self, proposal_id, c1_loop_index):
         """
@@ -158,13 +166,13 @@ class RoiClass4C0(roi_pooling_base.RoiClass):
         if res_size // DIGIT_128 >= 1:
             self.tik_instance.vec_dup(DIGIT_256 // self.dsize,
                                       pooled_res[0, 0, 0, 0],
-                                      0, res_size // DIGIT_128,
+                                      roi_pooling_base.FLOATMIN_DICT[self.dtype], res_size // DIGIT_128,
                                       DIGIT_8)
         if res_size % DIGIT_128 != 0:  # tail
             self.tik_instance.vec_dup(
                 res_size % DIGIT_128,
                 pooled_res[res_size // DIGIT_128*DIGIT_128],
-                0, DIGIT_1, DIGIT_8)
+                roi_pooling_base.FLOATMIN_DICT[self.dtype], DIGIT_1, DIGIT_8)
 
         pooled_h_res = self.tik_instance.Tensor(self.dtype, \
                 shape=(FOUR_C0, 1, self.fm_w_align, self.fm_c0), \
@@ -177,7 +185,7 @@ class RoiClass4C0(roi_pooling_base.RoiClass):
 
             with self.tik_instance.if_scope(tik.all(scalar_roi_bin_h != 0, scalar_roi_width != 0)):
                 self.tik_instance.vec_dup(DIGIT_256 // self.dsize,
-                                          pooled_h_res[0, 0, 0, 0], 0,
+                                          pooled_h_res[0, 0, 0, 0], roi_pooling_base.FLOATMIN_DICT[self.dtype],
                                           pooled_h_res_size // DIGIT_128,
                                           DIGIT_8)
 
@@ -232,6 +240,13 @@ class RoiClass4C0(roi_pooling_base.RoiClass):
                                     scalar_roi_bin_h,
                                     0, self.fm_w*C0*self.dsize // BLOCK_SIZE, 0)
 
+                self.proposal_pooling_w(proposal_id, pooled_h_i, pooled_res,
+                                        pooled_h_res)
+            with self.tik_instance.else_scope():
+                self.tik_instance.vec_dup(DIGIT_256 // self.dsize,
+                                          pooled_h_res[0, 0, 0, 0], 0,
+                                          pooled_h_res_size // DIGIT_128,
+                                          DIGIT_8)
                 self.proposal_pooling_w(proposal_id, pooled_h_i, pooled_res,
                                         pooled_h_res)
 
@@ -299,13 +314,13 @@ class RoiClass4C0(roi_pooling_base.RoiClass):
         if res_size // DIGIT_64 >= 1:
             self.tik_instance.vec_dup(DIGIT_256 // self.dsize,
                                       pooled_res[0, 0, 0, 0],
-                                      0, res_size // DIGIT_64,
+                                      roi_pooling_base.FLOATMIN_DICT[self.dtype], res_size // DIGIT_64,
                                       DIGIT_8)
         if res_size % DIGIT_64 != 0:  # tail
             self.tik_instance.vec_dup(
                 res_size % DIGIT_64,
                 pooled_res[res_size // DIGIT_64*DIGIT_64],
-                0, DIGIT_1, DIGIT_8)
+                roi_pooling_base.FLOATMIN_DICT[self.dtype], DIGIT_1, DIGIT_8)
 
         pooled_h_res = self.tik_instance.Tensor(FP32, \
                 shape=(FOUR_C0, 1, self.fm_w_align, self.fm_c0), \
@@ -318,7 +333,7 @@ class RoiClass4C0(roi_pooling_base.RoiClass):
 
             with self.tik_instance.if_scope(tik.all(scalar_roi_bin_h != 0, scalar_roi_width != 0)):
                 self.tik_instance.vec_dup(DIGIT_256 // self.dsize,
-                                          pooled_h_res[0, 0, 0, 0], 0,
+                                          pooled_h_res[0, 0, 0, 0], roi_pooling_base.FLOATMIN_DICT[self.dtype],
                                           pooled_h_res_size // DIGIT_64,
                                           DIGIT_8)
 

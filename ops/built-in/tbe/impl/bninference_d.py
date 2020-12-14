@@ -94,8 +94,9 @@ def _check_shape_dims(shape, data_format):
     """
     if data_format == "NC1HWC0":
         if len(shape) != 5:
-            raise RuntimeError(
-                "shape is invalid, which only support 5D Tensor")
+            error_detail = "bninference only support 5D Tensor"
+            error_manager_vector.raise_err_input_shape_invalid("bninference", "input_x",
+                                                            error_detail)
 
 
 def param_scale_check(shape_x, shape_scale):
@@ -119,14 +120,14 @@ def param_scale_check(shape_x, shape_scale):
     if not (length_scale == 1 and shape_scale[0] == 1):
         if length_x != length_scale:
             error_detail = "The dims of input tensor x and tensor scale should be equal"
-            error_manager_vector.raise_err_two_input_shape_invalid("Scale", "input_x", "scale",
-                                                                   error_detail)
+            error_manager_vector.raise_err_two_input_shape_invalid("bninference_d", "input_x", "scale",
+                                                                                 error_detail)
 
         for i in range(length_scale):
             if shape_scale[i] != shape_x[i] and shape_scale[i] != 1:
                 error_detail = "The inputs x and scale could not be broadcast together with mismatched shapes"
-                error_manager_vector.raise_err_two_input_shape_invalid("Scale", "input_x", "scale",
-                                                                       error_detail)
+                error_manager_vector.raise_err_two_input_shape_invalid("bninference_d", "input_x", "scale",
+                                                                                     error_detail)
 
 
 # pylint: disable=locally-disabled,too-many-arguments
@@ -453,7 +454,8 @@ def get_fusion_params(x, mean, variance, scale, bias, y):
                 l1_fusion_type = x.op.attrs["L1_fusion_type"].value \
                     if "L1_fusion_type" in x.op.attrs else -1
                 if l1_fusion_type == 1:
-                    raise RuntimeError("bninference does not support l1 width fusion")
+                    error_manager_vector.raise_err_specific_reson("bninference",
+                                        "bninference does not support l1 width fusion")
             is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
             in_l1_flag = x.op.attrs["addr_type"].value == 1 \
                 if "addr_type" in x.op.attrs else False
@@ -655,7 +657,8 @@ def get_l1_paras(x):
     if tbe_platform.fusion_manager.fusion_manager.get_build_cfg() != "disable":
         l1_fusion_type = x.get('L1_fusion_type', -1)
         if l1_fusion_type == 1:
-            raise RuntimeError("bninference does not support l1 width fusion")
+            error_manager_vector.raise_err_specific_reson("bninference",
+                                        "bninference does not support l1 width fusion")
     addr_type = x.get("addr_type", 0)
     valid_shape = x.get("valid_shape", [])
     slice_offset = x.get("slice_offset", [])

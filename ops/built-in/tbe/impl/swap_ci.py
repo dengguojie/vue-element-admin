@@ -19,6 +19,7 @@ import te.platform as tbe_platform
 
 from te import tik
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 from impl.util import util_select_op_base
 
 
@@ -200,32 +201,38 @@ class SwapClass():
             para_check.check_dtype(self.y_dtype.lower(), ["float16", "float32"], param_name="input_y")
 
         if self.dtype != self.y_dtype:
-            raise RuntimeError("dtype in x and y must be equal")
+            error_manager_vector.raise_err_inputs_dtype_not_equal("swap_ci", "x", "y",
+                                                                self.dtype, self.y_dtype)
         para_check.check_shape(self.x_shape, param_name="input_x")
         para_check.check_shape(self.y_shape, param_name="input_y")
 
         # x must be 4D, NCHW
         if len(self.x_shape) != DIGIT_4:
-            raise RuntimeError("input params check error,"
-                               " x shape must be 4D: NCHW")
+            error_detail = "x shape must be 4D: NCHW"
+            error_manager_vector.raise_err_input_shape_invalid("swap_ci", "x", error_detail)
         if len(self.y_shape) != DIGIT_5:
-            raise RuntimeError("input params check error, y shape must be 5HD")
+            error_detail = "y shape must be 5HD"
+            error_manager_vector.raise_err_input_shape_invalid("swap_ci", "y", error_detail)
 
         if self.group_size >= DIGIT_128:
-            raise RuntimeError("input params check error,"
-                               " group_size must be less than 128")
+            rule_desc = "group_size must be less than 128"
+            error_manager_vector.raise_err_check_params_rules("swap_ci", rule_desc, "group_size",
+                                                            self.group_size)
 
         calc_c = self.output_dim*self.group_size*self.group_size
         if self.x_shape[1] != calc_c and \
                 self.x_shape[1] != _align_value(calc_c, C0):
-            raise RuntimeError("input_param_check, input fm channel number"
-                               " does not match layer parameters,", calc_c)
+            error_detail = "input fm channel number does not match layer parameters"
+            error_manager_vector.raise_err_input_shape_invalid("swap_ci", "fm channel number",
+                                                            error_detail)
         if self.x_shape[0] != self.y_shape[0] or \
                 self.x_shape[2] != self.y_shape[2] or \
                 self.x_shape[3] != self.y_shape[3] or self.y_shape[1] != \
                 _ceil_value(self.output_dim, C0)*self.group_size*self.group_size:
-            raise RuntimeError("input params check error,"
-                               " x shape and y shape is not match")
+            error_detail = "x shape and y shape is not match"
+            error_manager_vector.raise_err_two_input_shape_invalid("swap_ci", "x", "y",
+                                                                error_detail)
+
 
     def __init__(self, x_dict, y_dict, param_tup, params_obj):
         """

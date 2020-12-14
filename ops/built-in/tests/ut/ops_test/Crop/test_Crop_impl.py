@@ -60,9 +60,29 @@ case3 = {"params": [{"shape": (1, 21, 568, 568), "dtype": "int32", "format": "NC
          "format_expect": [],
          "support_expect": True}
 
+case4 = {"params": [{"shape": (1, 21, 568, 568), "dtype": "int32", "format": "NCHW", "ori_shape": (1, 21, 568, 568), "ori_format": "NCHW"},
+                    {"shape": (1, 3, 500, 500), "dtype": "float32", "format": "NCHW", "ori_shape": (1, 3, 500, 500), "ori_format": "NCHW"},
+                    {"shape": (1, 3, 500, 500), "dtype": "float16", "format": "NCHW", "ori_shape": (1, 3, 500, 500), "ori_format": "NCHW"},
+                    0, [0, 3, 4, 5]],
+         "case_name": "crop_4",
+         "expect": RuntimeError,
+         "format_expect": [],
+         "support_expect": True}
+
+case5 = {"params": [{"shape": (1, 21, 568, 568), "dtype": "int32", "format": "NCHW", "ori_shape": (1, 21, 568, 568), "ori_format": "NCHW"},
+                    {"shape": (1, 3, 500, 500), "dtype": "int32", "format": "NCHW", "ori_shape": (1, 3, 500, 500), "ori_format": "NCHW"},
+                    {"shape": (1, 3, 500, 500), "dtype": "int32", "format": "NCHW", "ori_shape": (1, 3, 500, 500), "ori_format": "NCHW"},
+                    1, [0, 3, 4, 5]],
+         "case_name": "crop_5",
+         "expect": RuntimeError,
+         "format_expect": [],
+         "support_expect": True}
+
 ut_case.add_case("all", case1)
 ut_case.add_case("all", case2)
 ut_case.add_case("all", case3)
+ut_case.add_case("all", case4)
+ut_case.add_case("all", case5)
 
 ut_case.add_precision_case("all",
                            gen_crop_precision_case((10000, 4, 5, 6), (1849, 1, 1, 1), "float16", "success", 0,

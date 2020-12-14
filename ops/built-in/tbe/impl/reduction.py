@@ -21,6 +21,7 @@ import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 from te import tvm
 from impl.util import util_select_op_base
 
@@ -211,7 +212,9 @@ def reduction(input_x, output_y, operation=1, axis=0, coeff=1.0, kernel_name="re
             shape = shape[:axis] + [functools.reduce(lambda x, y: x * y, shape[axis:-1])] + [shape[-1]]
             mean_size = shape[-2]
         if axis == 1:
-            raise RuntimeError("The C axis does not support reduction when the data format is NC1HWC0.")
+            rule_desc = "The C axis does not support reduction when the data format is NC1HWC0"
+            error_manager_vector.raise_err_check_params_rules("reduction", rule_desc,
+                                                            "axis", axis)
         if axis == 0:
             shape = [functools.reduce(lambda x, y: x * y, shape)]
             ori_shape = [functools.reduce(lambda x, y: x * y, ori_shape)]
