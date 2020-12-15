@@ -19,6 +19,7 @@ import math
 
 import te.platform as tbe_platform
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 from te import tik
 from impl import constant_util as constant
 from impl import ssd_decode_bbox
@@ -74,7 +75,9 @@ def _check_product_info(input_dict):
 
     if not conf_dtype == loc_dtype and conf_dtype == loc_dtype \
             and loc_dtype == priorbox_dtype:
-        raise RuntimeError("input type is error")
+        error_detail = "the dtype of inputs should be same"
+        error_manager_vector.raise_err_two_input_dtype_invalid("ssd_detection_output",
+                            "mbox_conf, mbox_loc", "mbox_priorbox", error_detail)
 
     if tik_name in (tbe_platform.ASCEND_310,):
         para_check.check_dtype(conf_dtype.lower(), ["float16"], param_name="input_conf")
@@ -257,20 +260,33 @@ def _check_input_data_logical_relationship(input_dict):
 
     if not conf_shape[0] == loc_shape[0] and conf_shape[0] == priorbox_shape[0] \
             and loc_shape[0] == priorbox_shape[0]:
-        raise RuntimeError("batch num is error")
+        error_detail = "the batch num of inputs should be equal"
+        error_manager_vector.raise_err_two_input_shape_invalid("ssd_detection_output",
+                            "mbox_conf, mbox_loc", "mbox_priorbox", error_detail)
 
     if not conf_shape[1] // num_classes == loc_shape[1] // 4:
-        raise RuntimeError("input shape is error")
+        rule_desc = "the second dimension of mbox_conf divided by num_classes(%d) " \
+                "should be equal to the second dimension of mbox_loc(%d) divided by 4" \
+                % (num_classes, loc_shape[1])
+        error_manager_vector.raise_err_check_params_rules("ssd_detection_output", rule_desc,
+                                        "the second dimension of mbox_conf", conf_shape[1])
 
     if not loc_shape[1] // 4 == priorbox_shape[2] // 4:
-        raise RuntimeError("input shape is error")
+        rule_desc = "the second dimension of mbox_loc divided by 4 should be equal to " \
+                "the third dimension of mbox_priorbox(%d) divided by 4" % priorbox_shape[2]
+        error_manager_vector.raise_err_check_params_rules("ssd_detection_output", rule_desc,
+                                        "the second dimension of mbox_loc", loc_shape[1])
 
     if not input_dict.get("variance_encoded_in_target"):
         if not priorbox_shape[1] == 2:
-            raise RuntimeError("priorbox shape is error")
+            rule_desc = "the second dimension of mbox_prior should be equal to 2"
+            error_manager_vector.raise_err_check_params_rules("ssd_detection_output", rule_desc,
+                                    "the second dimension of mbox_prior", priorbox_shape[1])
     else:
         if not (priorbox_shape[1] == 2 or priorbox_shape[1] == 1):
-            raise RuntimeError("priorbox shape is error")
+            rule_desc = "the second dimension of mbox_prior should be equal to 1 or 2"
+            error_manager_vector.raise_err_check_params_rules("ssd_detection_output", rule_desc,
+                                    "the second dimension of mbox_prior", priorbox_shape[1])
 
 
 # pylint: disable=invalid-name, too-many-arguments, too-many-locals
