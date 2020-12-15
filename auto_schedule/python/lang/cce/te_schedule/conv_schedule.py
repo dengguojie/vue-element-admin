@@ -4574,8 +4574,7 @@ class CceConvOp:
                     if strideh_opti_flag:
                         hi_max = c_ub.op.attrs['kernel_h'] + (ho_len - 1)
                     else:
-                        hi_max = c_ub.op.attrs['kernel_h'] + \
-                                 (ho_len - 1)*c_ub.op.attrs['stride'][0]
+                        hi_max = c_ub.op.attrs['kernel_h'] + (ho_len - 1)*c_ub.op.attrs['stride'][0]
                     al1_m = hi_max*var_map['fmap_w']
                 else:
                     # load2d unconstrained
