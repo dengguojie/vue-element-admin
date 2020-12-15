@@ -22,6 +22,30 @@ from te.utils import shape_util
 from te import tvm
 from te.utils.error_manager import error_manager_vector
 
+def _is_equal_zero(x):
+    """
+    if x==0,then return 1,else return 0.
+    """
+    dtype = x.dtype
+    shape = x.shape
+    data_one = tbe.broadcast(tvm.const(1, dtype), shape, dtype)
+    abs_x = tbe.vabs(x)
+    if dtype == "float32":
+        data_min = tbe.broadcast(tvm.const(2 ** (-126), dtype=dtype),
+                                 shape, dtype)
+        abs_x_min = tbe.vmin(abs_x, data_min)
+        zero_mul_val = tbe.vmuls(abs_x_min, tvm.const(2 ** 62, dtype=dtype))
+        zero_mul = tbe.vmuls(zero_mul_val, tvm.const(2 ** 62, dtype=dtype))
+        zero_res = tbe.vmuls(zero_mul, tvm.const(2 ** 2, dtype=dtype))
+    else:
+        data_min = tbe.broadcast(tvm.const(2 ** (-24), dtype=dtype),
+                                 shape, dtype)
+        abs_x_min = tbe.vmin(abs_x, data_min)
+        zero_mul_val = tbe.vmuls(abs_x_min, tvm.const(2 ** 12, dtype=dtype))
+        zero_res = tbe.vmuls(zero_mul_val, tvm.const(2 ** 12, dtype=dtype))
+    zero_index = tbe.vsub(data_one, zero_res)
+
+    return zero_index
 
 def _less_compute(input_x, input_y):
     """
@@ -165,17 +189,23 @@ def pow_compute(input_x, input_y, output_z, kernel_name="pow"):
         data_x_negative = _less_compute_fp16(data_x, data_zero)
 
     # compute result of pow when data_x is more than 0
-    res_val_positive = _positive_compute(data_x, data_y)
     data_one = tbe.broadcast(tvm.const(1, cast_dtype), shape_list[2], cast_dtype)
-    sub_one_val = tbe.vsub(data_x_negative, data_one)
-    abs_val = tbe.vabs(sub_one_val)
-    res_positive = tbe.vmul(res_val_positive, abs_val)
+    zero_index_x = _is_equal_zero(data_x)
+    zero_index_y = _is_equal_zero(data_y)
+    data_x = tbe.vadd(data_x, zero_index_x)
+    res_val_positive = _positive_compute(data_x, data_y)
+    sub_one_val = tbe.vsub(data_one, data_x_negative)
+    sub_one_val_except_zero = tbe.vsub(sub_one_val, zero_index_x)
+    res_positive = tbe.vmul(res_val_positive, sub_one_val_except_zero)
 
     # compute result of pow when data_x is less than 0
     res_val_negative = _negative_compute(data_x, data_y)
     res_negative = tbe.vmul(res_val_negative, data_x_negative)
-
-    res = tbe.vadd(res_positive, res_negative)
+    # compute result of pow when data_x is equal 0
+    both_zero_index = tbe.vmul(zero_index_x, zero_index_y)
+    
+    res_tmp = tbe.vadd(res_positive, res_negative)
+    res = tbe.vadd(res_tmp, both_zero_index)
     if input_dtype == "int32":
         res = tbe.round(res)
     else:

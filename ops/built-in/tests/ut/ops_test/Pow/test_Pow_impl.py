@@ -66,7 +66,7 @@ ut_case.add_precision_case("all", {"params": [{"shape": (2, 16, 32), "dtype": "f
                                               {"shape": (2, 16, 32), "dtype": "float16", "format": "ND", "ori_shape": (2, 16, 32),"ori_format": "ND", "param_type": "output"},
                                               ],
                                    "calc_expect_func": calc_expect_func,
-                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                   "precision_standard": precision_info.PrecisionStandard(0.01, 0.01)
                                    })
 
 ut_case.add_precision_case("all", {"params": [{"shape": (4,4,32,2), "dtype": "int32", "format": "ND", "ori_shape": (4,4,32,2),"ori_format": "ND", "param_type": "input"},
@@ -77,13 +77,6 @@ ut_case.add_precision_case("all", {"params": [{"shape": (4,4,32,2), "dtype": "in
                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
                                    })
 
-
-# ============ auto gen ["Ascend910"] test cases end =================
-
-if __name__ == '__main__':
-    user_home_path = os.path.expanduser("~")
-    simulator_lib_path = os.path.join(user_home_path, ".mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")
-    ut_case.run(["Ascend910"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
 
 
 
