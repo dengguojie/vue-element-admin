@@ -17,6 +17,7 @@
 #define AICPU_SESSION_CACHE_H_
 
 #include <map>
+#include <mutex>
 
 #include "kernel_cache.h"
 
@@ -45,6 +46,7 @@ class SessionCache {
     if (sess_flag) {
       KERNEL_LOG_DEBUG("SessionCache KernelCache from session, id:%llu.",
                        session_id);
+      std::unique_lock<std::mutex> lock(session_mutex_);
       int32_t ret = GetOrCreateKernelCache<T>(session_kernel_cache_, session_id,
                                               sess_flag, kernel);
       if (ret != 0) {
@@ -53,6 +55,7 @@ class SessionCache {
     } else {
       KERNEL_LOG_DEBUG("SessionCache KernelCache from stream, id:%llu.",
                        stream_id);
+      std::unique_lock<std::mutex> lock(stream_mutex_);
       int32_t ret = GetOrCreateKernelCache<T>(stream_kernel_cache_, stream_id,
                                               sess_flag, kernel);
       if (ret != 0) {
@@ -96,8 +99,10 @@ class SessionCache {
   }
 
  private:
+  std::mutex stream_mutex_;
   std::map<uint64_t, std::shared_ptr<KernelCache<C>>>
       stream_kernel_cache_;  // key is stream id
+  std::mutex session_mutex_;
   std::map<uint64_t, std::shared_ptr<KernelCache<C>>>
       session_kernel_cache_;  // key is session id
 };
