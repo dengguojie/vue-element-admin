@@ -12,8 +12,28 @@ case1 = {"params": [{"shape": (1,), "dtype": "float32", "format": "ND", "ori_sha
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 
+case2 = {"params": [{"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"}],
+         "case_name": "assign_sub_2",
+         "expect": "failed",
+         "format_expect": [],
+         "support_expect": True}
+
+
+case3 = {"params": [{"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (2,), "dtype": "float32", "format": "ND", "ori_shape": (2,),"ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"}],
+         "case_name": "assign_sub_3",
+         "expect": "failed",
+         "format_expect": [],
+         "support_expect": True}
+
+
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 def calc_expect_func(x1, x2, y):
     res =  x2['value'] - x1['value']
     return res.astype(y['dtype'])

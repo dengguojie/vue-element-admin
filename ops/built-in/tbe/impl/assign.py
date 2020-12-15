@@ -24,124 +24,6 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
-# General limitation of the size for input shape: 2**31
-SHAPE_SIZE_LIMIT = 2147483648
-# available ub size
-UB_SIZE_B = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
-CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-
-
-def _get_factor(ele_zero, ele_cnt, total_ele, no_remainder):
-    """
-    get split factor for _tilling_one_axis function
-
-    Parameters
-    ----------
-    ele_zero: int
-        the number of shape's first dimension elements
-    ele_cnt: int
-        the number of all elements
-    total_ele: int
-        the number of total elements in UB
-    no_remainder: bool
-        when split_axis == 0,
-        the value of shape[0] whether divided by split_factor without remainder.
-
-    Returns
-    -------
-    split_factor: int
-        the factor used when tiling the target axis
-    """
-    split_factor = 1
-    if no_remainder:
-        for i in reversed(list(range(1, ele_zero))):
-            if ele_zero % i == 0 and i*ele_cnt <= total_ele:
-                split_factor = i
-                break
-    else:
-        for i in reversed(list(range(1, ele_zero))):
-            if i*ele_cnt <= total_ele:
-                split_factor = i
-                break
-
-    return split_factor
-
-
-def _tilling_axis(shape, dtype, no_remainder):
-    """
-    calculate the split parameters according to different shapes
-
-    Parameters
-    ----------
-    shape: tuple
-        shape of tensor
-    dtype: str
-        the data type
-    no_remainder: bool
-        when split_axis == 0,
-        the value of shape[0] whether divided by split_factor without remainder.
-
-    Returns
-    -------
-    split_axis: int
-        the target axis that is used for tiling the tensor to find
-    split_factor: int
-        the factor used when tiling the target axis
-    """
-    ub_size_bytes = UB_SIZE_B - 32
-    # 8 bit = 1byte, '8' below for this reason
-    dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(dtype) // 8
-    total_ele = ub_size_bytes // dtype_bytes_size
-    split_axis = 0
-    split_factor = 1
-
-    for i, _ in enumerate(shape):
-        ele_cnt = functools.reduce(lambda x, y: x*y, shape[i:])
-        if ele_cnt <= total_ele:
-            split_axis = i - 1
-            split_factor = total_ele // ele_cnt
-            if no_remainder and i == 1 and shape[0] % split_factor != 0:
-                split_factor = _get_factor(shape[0], ele_cnt, total_ele,
-                                           no_remainder)
-            break
-        elif i == len(shape) - 1:
-            if len(shape) == 1:
-                split_axis = 0
-                split_factor = _get_factor(shape[0], 1, total_ele, no_remainder)
-            else:
-                split_axis = i
-                split_factor = total_ele
-            break
-
-    if split_axis < 0:
-        split_axis = 0
-        split_factor = shape[0]
-
-    return split_axis, split_factor
-
-
-def _check_shape(ref_shape, value_shape):
-    """
-    check the ref_shape and value_shape
-
-    Parameters
-    ----------
-    ref_shape: list or tuple
-        shape of ref_tensor
-    value_shape: list or tuple
-        shape of value_tensor
-
-    Returns
-    -------
-    None
-    """
-    if operator.ne(list(ref_shape), list(value_shape)):
-        error_detail = "shape of ref and value should be same"
-        error_manager_vector.raise_err_two_input_shape_invalid("assign", "ref", "value", error_detail)
-
-    para_check.check_shape(ref_shape, param_name="ref")
-
-
 def _check_params(ref_shape, value_shape, dtype, kernel_name):
     """
     check the parameters including ref_shape, value_shape, dtype and kernel_name
@@ -161,64 +43,73 @@ def _check_params(ref_shape, value_shape, dtype, kernel_name):
     -------
     None
     """
-
-    check_list = (
-        "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32",
-        "uint64",
-        "float16", "float32")
+    check_list = ("int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "float16", "float32")
     para_check.check_dtype(dtype, check_list, param_name="ref")
 
-    _check_shape(ref_shape, value_shape)
+    if operator.ne(list(ref_shape), list(value_shape)):
+        error_detail = "Shape of ref and value should be same"
+        error_manager_vector.raise_err_two_input_shape_invalid("assign", "ref", "value", error_detail)
+
+    para_check.check_shape(ref_shape, param_name="ref")
 
 
-def _get_target_core_num(first_axis_size):
-    max_core_num = 65535
-    cloud_core_num = CORE_NUM
+def _assign_schedule(res, tensor_val):
+    """
+    assign schedule
 
-    if first_axis_size % cloud_core_num == 0:
-        return cloud_core_num
+    Parameters
+    ----------
+    res: result of compute
+    tensor_val: tensor val
 
-    if first_axis_size <= max_core_num:
-        return first_axis_size
+    Returns
+    -------
+    output sch
+    """
+    def _ceil(m, n):
+        return (m + n - 1) // n
 
-    target_core_num = 1
-    for i in reversed(list(range(1, max_core_num + 1))):
-        if first_axis_size % i == 0:
-            target_core_num = i
-            break
+    def _tiling(shape, dtype):
+        ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+        dtype_bytes_size = tbe_platform.get_bit_len(dtype) // 8
+        # only use 1/2 ub
+        total_ele = ub_size_bytes // dtype_bytes_size // 2
+        core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+        # 1 block is 32B
+        block_ele = 32 // dtype_bytes_size
 
-    return target_core_num
+        fused_axis_factor = shape[0]
+        one_core_limit = dtype_bytes_size * shape[0]
+        # 35000 is an experience number, the performance is better under one core.
+        if fused_axis_factor >= core_num and one_core_limit > 35000:
+            fused_axis_factor = _ceil(fused_axis_factor, core_num)
+            fused_axis_factor = _ceil(fused_axis_factor, block_ele) * block_ele
+        total_ele = ((total_ele + block_ele) // block_ele) * block_ele
+        fused_factor = min(fused_axis_factor, total_ele)
+        return fused_axis_factor, fused_factor
+    # set ub
+    tensor_input = tensor_val
+    x_shape = [i.value for i in tensor_input.shape]
+    core_factor, ub_factor = _tiling(x_shape, tensor_input.dtype)
+    sch = tvm.create_schedule(res.op)
+    tensor_input_in_ub = sch.cache_read(tensor_input, tbe_platform.scope_ubuf, [res])
 
+    # set axis info
+    axis_core_out, axis_core_in = sch[res].split(res.op.axis[0], core_factor)
+    axis_ub_out, axis_ub_in = sch[res].split(axis_core_in, ub_factor)
+    sch[tensor_input_in_ub].compute_at(sch[res], axis_ub_out)
 
-def _core_bind_axis(input_shape):
-    cloud_core_num = CORE_NUM
+    # set ping pong
+    sch[tensor_input_in_ub].double_buffer()
 
-    def __suite_factor(pre_size, axis_size):
-        for index in reversed(range(2, axis_size + 1)):
-            if pre_size * index <= cloud_core_num and axis_size % index == 0:
-                return axis_size // index
-        return 1
+    # set multi cores
+    block = tvm.thread_axis("blockIdx.x")
+    sch[res].bind(axis_core_out, block)
 
-    shape_len = len(input_shape)
-    cloud_core_num = CORE_NUM
-    shape_size = 1
-    for i in range(shape_len):
-        if shape_size * input_shape[i] <= cloud_core_num:
-            shape_size *= input_shape[i]
-            continue
-
-        if i == 0:
-            return 0, _get_target_core_num(input_shape[0])
-
-        if shape_size * 2 > cloud_core_num:
-            return i-1, 1
-        else:
-            factor = __suite_factor(shape_size, input_shape[i])
-            if factor == 1:
-                return i-1, 1
-            else:
-                return i, factor
-    return shape_len-1, 1
+    # set emit_insn
+    sch[tensor_input_in_ub].emit_insn(tensor_input_in_ub.op.axis[0], tbe_platform.DMA_COPY)
+    sch[res].emit_insn(axis_ub_in, tbe_platform.DMA_COPY)
+    return sch
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unnecessary-lambda
@@ -252,86 +143,14 @@ def assign(ref, value, output, kernel_name="assign"):
     dtype = ref.get("dtype").lower()
     _check_params(ref_shape, value_shape, dtype, kernel_name)
 
-    data_b = tvm.placeholder(value_shape, dtype=dtype, name='data_b')
-    data_b_ub = tvm.compute(value_shape, lambda *i: data_b(*i),
-                            name='data_b_ub')
-    data_a = tvm.compute(ref_shape, lambda *i: data_b_ub(*i), name='data_a')
-    sch = tvm.create_schedule(data_a.op)
-    sch[data_b_ub].set_scope(tbe_platform.scope_ubuf)
+    res_num = 1
+    for i in range(len(ref_shape)):
+        res_num = res_num * ref_shape[i]
+    reshape = [res_num,]
 
-    split_axis, split_factor = _tilling_axis(ref_shape, dtype, True)
-
-    core_bind_axis, core_bind_split_factor = _core_bind_axis(ref_shape)
-    if core_bind_axis < split_axis:
-        core_bind_axis_outer, core_bind_axis_inner = sch[data_a].split(
-            data_a.op.axis[core_bind_axis],
-            factor=core_bind_split_factor)
-        if core_bind_axis == 0:
-            axis_outer = core_bind_axis_outer
-        else:
-            axis_outer = data_a.op.axis[0]
-            for axis_index in range(1, core_bind_axis):
-                axis_outer = sch[data_a].fuse(axis_outer,
-                                              data_a.op.axis[axis_index])
-            axis_outer = sch[data_a].fuse(axis_outer, core_bind_axis_outer)
-        axis_inner = core_bind_axis_inner
-        for axis_index in range(core_bind_axis + 1, split_axis):
-            axis_inner = sch[data_a].fuse(axis_inner,
-                                          data_a.op.axis[axis_index])
-        tilling_axis_outer, tilling_axis_inner = sch[data_a].split(
-            data_a.op.axis[split_axis], factor=split_factor)
-        axis_inner = sch[data_a].fuse(axis_inner, tilling_axis_outer)
-    else:
-        if split_axis == 0:
-            axis_outer, tilling_axis_inner = sch[data_a].split(
-                data_a.op.axis[split_axis], factor=split_factor)
-            core_num = _get_target_core_num(
-                ref_shape[split_axis] // split_factor)
-            axis_outer, axis_inner = sch[data_a].split(
-                axis_outer,
-                nparts=core_num)
-        else:
-            temp_shape = list(ref_shape[:split_axis])
-            temp_shape.append(ref_shape[split_axis] // split_factor)
-            if split_axis == core_bind_axis and \
-                    core_bind_split_factor > split_factor:
-                core_bind_axis, core_bind_split_factor \
-                    = _core_bind_axis(temp_shape)
-                axis_outer, tilling_axis_inner = sch[data_a].split(
-                    data_a.op.axis[split_axis], factor=split_factor)
-
-                if core_bind_axis == split_axis:
-                    core_bind_axis_outer, axis_inner \
-                        = sch[data_a].split(axis_outer,
-                                            factor=core_bind_split_factor)
-                else:
-                    factor = ref_shape[split_axis] // split_factor
-                    core_bind_axis_outer, axis_inner \
-                        = sch[data_a].split(axis_outer,
-                                            factor=factor)
-
-                axis_outer = data_a.op.axis[0]
-                for axis_index in range(1, split_axis):
-                    axis_outer = sch[data_a].fuse(axis_outer,
-                                                  data_a.op.axis[axis_index])
-                axis_outer = sch[data_a].fuse(axis_outer, core_bind_axis_outer)
-            else:
-                core_bind_axis_outer, core_bind_axis_inner = sch[data_a].split(
-                    data_a.op.axis[core_bind_axis],
-                    factor=core_bind_split_factor)
-                axis_outer = data_a.op.axis[0]
-                for axis_index in range(1, core_bind_axis):
-                    axis_outer = sch[data_a].fuse(axis_outer,
-                                                  data_a.op.axis[axis_index])
-                axis_outer = sch[data_a].fuse(axis_outer, core_bind_axis_outer)
-                axis_inner = core_bind_axis_inner
-                tilling_axis_inner = axis_inner
-                split_axis = core_bind_axis
-
-    sch[data_a].bind(axis_outer, tvm.thread_axis('blockIdx.x'))
-    sch[data_b_ub].compute_at(sch[data_a], axis_inner)
-    sch[data_b_ub].emit_insn(data_b_ub.op.axis[split_axis], tbe_platform.insn_cmd.DMA_COPY)
-    sch[data_a].emit_insn(tilling_axis_inner, tbe_platform.insn_cmd.DMA_COPY)
+    tensor_val = tvm.placeholder(reshape, dtype=dtype, name='tensor_val')
+    res = tvm.compute(reshape, lambda *i: tensor_val(*i), name='res')
+    sch = _assign_schedule(res, tensor_val)
 
     with tbe_platform.cce_build.build_config:
-        tvm.build(sch, [data_a, data_b], "cce", name=kernel_name)
+        tvm.build(sch, [res, tensor_val], "cce", name=kernel_name)

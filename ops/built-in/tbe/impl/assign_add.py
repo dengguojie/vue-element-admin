@@ -19,290 +19,136 @@ import functools
 
 import te.platform as tbe_platform
 from te import tvm
+from te.lang import cce as tbe
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
-# shape limit for int64: 1
-SHAPE_SIZE_LIMIT_INT64 = 1
-# shape limit for the others: 2**31 - 1
-SHAPE_SIZE_LIMIT_OTHER = 2147483647
-# available ub size
-UB_SIZE_B = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
-
-
-def _tilling_axis(shape, dtype):
+def _assign_add_int64_schedule(res, tensor_ref, tensor_val, res_add):
     """
-    calculate the split parameters according to different shapes
+    assignadd int64 schedule
 
     Parameters
     ----------
-    shape : list or tuple
-        shape of tensor
-    dtype : string
-        buffer date type
+    res: result of compute
+    tensor_val: tensor val
 
     Returns
     -------
-    split_axis : the target axis that is used for spliting the tensor to find
-        the maximum amount of data can be stored and processed every time on UB.
-    split_factor : the factor used when spliting the target axis.
-        For example, for data of float16, [1024, 1024, 256] will be split to
-        [1024, 7, 164, 256], UB processes 164*256 elements every time.
-        In this case, the split_axis is 1 and the split_factor is 164.
+    output sch
     """
-    # ub_size_bytes is the size of the UB expressed by bytes(mod 8 bits).
-    ub_size_bytes = UB_SIZE_B - 1*1024
-    # dtype_bytes_size for float16 is 2, for float32 is 4
-    dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(dtype) // 8
-    # total_ele is the maximum amount of data that can be stored in UB.
-    if dtype in ("int8", "uint8"):
-        dtype_bytes_size_fp16 = tbe_platform.cce_intrin.get_bit_len("float16") // 8
-        total_ele = ub_size_bytes //\
-                    (dtype_bytes_size + dtype_bytes_size_fp16) // 3
-    else:
-        total_ele = ub_size_bytes // dtype_bytes_size // 3
+    def _ceil(m, n):
+        return (m + n - 1) // n
 
-    # To initialize the split_axis and the split_factor.
-    split_axis = 0
-    split_factor = 1
+    def _tiling(shape, dtype):
+        ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+        dtype_bytes_size = tbe_platform.get_bit_len(dtype) // 8
+        # only use 1/2 ub
+        total_ele = ub_size_bytes // dtype_bytes_size // 2
+        # 2 input ub and 1 output ub
+        total_ele = total_ele // 3
+        core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+        # 1 block is 32B
+        block_ele = 32 // dtype_bytes_size
 
-    # To find the appropriate axis from the first one to the last
-    # by comparing the amount of the elements of the split tensor with
-    # the maximum amount of data that can be stored in UB.
-    for index, _ in enumerate(shape):
-        ele_cnt = functools.reduce(lambda x, y: x*y, shape[index:])
-        if ele_cnt <= total_ele:
-            split_axis = index - 1
-            split_factor = total_ele // ele_cnt
-            break
+        fused_axis_factor = shape[0]
+        if fused_axis_factor >= core_num:
+            fused_axis_factor = _ceil(fused_axis_factor, core_num)
+            fused_axis_factor = _ceil(fused_axis_factor, block_ele) * block_ele
+        total_ele = ((total_ele + block_ele) // block_ele) * block_ele
+        fused_factor = min(fused_axis_factor, total_ele)
+        return fused_axis_factor, fused_factor
 
-    # when the last axis is still over the size of UB, we choose to split the
-    # last axis, and the split_factor is set as the maximum amount of data
-    # that can be stored in UB. For example, [10, 10, 256000] will be
-    # split to [10, 10, 7, 42154]
-    if shape[-1] > total_ele:
-        split_axis = len(shape) - 1
-        split_factor = total_ele
+    # set ub
+    tensor_input = tensor_ref
+    tensor_add = tensor_val
+    x_shape = [i.value for i in tensor_input.shape]
+    core_factor, ub_factor = _tiling(x_shape, tensor_input.dtype)
+    sch = tvm.create_schedule(res.op)
+    tensor_input_in_ub = sch.cache_read(tensor_input, tbe_platform.scope_ubuf, [res_add])
+    tensor_add_in_ub = sch.cache_read(tensor_add, tbe_platform.scope_ubuf, [res_add])
+    sch[res_add].set_scope(tbe_platform.scope_ubuf)
 
-    # when the amount of the elements of the tensor is less than the size of UB,
-    # it means UB can process the whole tensor in one time. But the split_axis
-    # has already been set to "-1", split_axis and split_factor
-    # should be initialized into "0" and shape[0]
-    if split_axis < 0:
-        split_axis = 0
-        split_factor = shape[0]
+    # set axis info
+    axis_core_out, axis_core_in = sch[res].split(res.op.axis[0], core_factor)
+    axis_ub_out, axis_ub_in = sch[res].split(axis_core_in, ub_factor)
+    sch[tensor_input_in_ub].compute_at(sch[res], axis_ub_out)
+    sch[tensor_add_in_ub].compute_at(sch[res], axis_ub_out)
+    sch[res_add].compute_at(sch[res], axis_ub_out)
 
-    return split_axis, split_factor
+    # set ping pong
+    sch[tensor_input_in_ub].preload()
+    sch[tensor_add_in_ub].preload()
+    sch[tensor_input_in_ub].double_buffer()
+    sch[tensor_add_in_ub].double_buffer()
+    sch[res_add].double_buffer()
 
+    # set multi cores
+    block = tvm.thread_axis("blockIdx.x")
+    sch[res].bind(axis_core_out, block)
 
-def _new_alloc(tvm_ir, dtype, shape, name, scope):
-    """
-    allocate new buffer for ir builder
-
-    Parameters
-    ----------
-    tvm_ir : tvm.ir_builder
-        Developer API of IR node builder make function
-    dtype : string
-        buffer date type
-    shape : list of int
-        buffer shape
-    name : string
-        buffer name
-    scope : string
-        buffer memory scope
-
-    Returns
-    -------
-    new_buffer : tvm.schedule.Buffer
-        Symbolic data buffer
-    """
-    buf_var = tvm_ir.allocate(dtype, shape, name=name, scope=scope)
-    new_buffer = tvm.decl_buffer(shape, buf_var.dtype, name=name, scope=scope,
-                                 data=buf_var)
-
-    return new_buffer
-
-
-def _kernel_ir(_, src):
-    """
-    algorithm: assignadd
-    calculating data's add: a = a + b in IR build method.
-
-    Parameters
-    ----------
-    src : data_a and data_b, the same address as dst.
-
-    Returns
-    -------
-    tvm_ir.get() : the ir_builder created
-        Developer API of IR node builder make function.
-    """
-    tvm_ir = tvm.ir_builder.create()
-
-    input_a = src[0]
-    input_b = src[1]
-
-    input_a_ub = _new_alloc(tvm_ir, input_a.dtype, input_a.shape,
-                            "input_a_ub", scope=tbe_platform.scope_ubuf)
-    input_b_ub = _new_alloc(tvm_ir, input_b.dtype, input_b.shape,
-                            "input_b_ub", scope=tbe_platform.scope_ubuf)
-    reg = tvm_ir.allocate("int64", (2,), name='reg', scope=tbe_platform.scope_reg)
-    tvm_ir.emit(tvm.call_extern(input_a.dtype, "copy_gm_to_ubuf",
-                                input_a_ub.access_ptr("w"),
-                                input_a.access_ptr("r"),
-                                0, 1, 1, 0, 0))
-
-    tvm_ir.emit(tvm.call_extern(input_b.dtype, "copy_gm_to_ubuf",
-                                input_b_ub.access_ptr("w"),
-                                input_b.access_ptr("r"),
-                                0, 1, 1, 0, 0))
-
-    tvm_ir.emit(tvm.call_extern(
-        input_a_ub.dtype, "reg_mov",
-        tvm.call_extern(reg.dtype, "reg", reg[0]),
-        input_a_ub.access_ptr('r', offset=0)
-    ))
-
-    tvm_ir.emit(tvm.call_extern(
-        input_b_ub.dtype, "reg_mov",
-        tvm.call_extern(reg.dtype, "reg", reg[1]),
-        input_b_ub.access_ptr('r', offset=0)
-    ))
-
-    reg[0] = reg[0] + reg[1]
-
-    tvm_ir.emit(tvm.call_extern(
-        input_a_ub.dtype, "reg_mov",
-        input_a_ub.access_ptr('w', offset=0),
-        tvm.call_extern(reg.dtype, "reg", reg[0])
-    ))
-
-    tvm_ir.emit(tvm.call_extern(input_a.dtype, "copy_ubuf_to_gm",
-                                input_a.access_ptr('w'),
-                                input_a_ub.access_ptr("r"),
-                                0, 1, 1, 0, 0))
-
-    return tvm_ir.get()
+    # set emit_insn
+    sch[tensor_input_in_ub].emit_insn(tensor_input_in_ub.op.axis[0], tbe_platform.DMA_COPY)
+    sch[tensor_add_in_ub].emit_insn(tensor_add_in_ub.op.axis[0], tbe_platform.DMA_COPY)
+    sch[res_add].emit_insn(res_add.op.axis[0], 'reg_add')
+    sch[res].emit_insn(axis_ub_in, tbe_platform.DMA_COPY)
+    return sch
 
 
 # pylint: disable=locally-disabled,too-many-locals,unnecessary-lambda
 # pylint: disable=locally-disabled,too-many-statements
-def _compute_assignadd(shape_x, shape_y, dtype):
+@tbe_platform.fusion_manager.fusion_manager.register("assign_add")
+def _compute_assign_add(tensor_x, tensor_y, output, kernel_name='assign_add'):
     """
     assignadd compute function for int8, uint8, int32, float16, float32
 
     Parameters
     ----------
-    shape_x : list or tuple
-        shape of data_1.
-    shape_y : list or tuple
-        shape of data_2.
+    tensor_x : list or tuple
+        shape of ref.
+    tensor_y : list or tuple
+        shape of val.
     dtype : str
         the data type.
 
     Returns
     -------
-    sch: tvm.schedule
-        the compute schedule
-    data_a: tvm.tensor
-        tensor of data_1
-    data_b: tvm.tensor
-        tensor of data_2
     res: tvm.tensor
         tensor of result
     """
-    data_a = tvm.placeholder(shape_x, dtype=dtype, name='data_a')
-    data_b = tvm.placeholder(shape_y, dtype=dtype, name='data_b')
-    data_a_ub = tvm.compute(shape_x, lambda *i: data_a(*i), name='data_a_ub')
-    data_b_ub = tvm.compute(shape_y, lambda *i: data_b(*i), name='data_b_ub')
-    if dtype in ("int8", "uint8"):
-        data_a_cast = tvm.compute(shape_x,
-                                  lambda *i: data_a_ub(*i).astype("float16"),
-                                  name="data_a_cast")
-        data_b_cast = tvm.compute(shape_y,
-                                  lambda *i: data_b_ub(*i).astype("float16"),
-                                  name="data_b_cast")
-    else:
-        data_a_cast = data_a_ub
-        data_b_cast = data_b_ub
-    res_ub = tvm.compute(shape_x, lambda *i: data_a_cast(*i) + data_b_cast(*i),
-                         name='res_ub.local.UB')
-    if dtype in ("int8", "uint8"):
-        res_ub_cast = tvm.compute(shape_x, lambda *i: res_ub(*i).astype(dtype),
-                                  name="res_ub_cast")
-    else:
-        res_ub_cast = res_ub
-    res = tvm.compute(shape_x, lambda *i: res_ub_cast(*i), name='res')
-    sch = tvm.create_schedule(res.op)
-
-    sch[data_a_ub].set_scope(tbe_platform.scope_ubuf)
-    sch[data_b_ub].set_scope(tbe_platform.scope_ubuf)
-    sch[data_a_cast].set_scope(tbe_platform.scope_ubuf)
-    sch[data_b_cast].set_scope(tbe_platform.scope_ubuf)
-    sch[res_ub].set_scope(tbe_platform.scope_ubuf)
-    sch[res_ub_cast].set_scope(tbe_platform.scope_ubuf)
-
-    # shape_x is same as shape_y
-    # choose a appropriate method of tiling the tensor
-    split_axis, split_factor = _tilling_axis(shape_x, dtype=dtype)
-    axis_outer, axis_inner = sch[res].split(res.op.axis[split_axis],
-                                            factor=split_factor)
-
-    if split_axis == 0:
-        core_num = shape_x[split_axis] // split_factor
-    else:
-        core_num = shape_x[0]
-
-    if core_num <= 65534:
-        if split_axis == 0:
-            sch[res].bind(axis_outer, tvm.thread_axis('blockIdx.x'))
-        else:
-            sch[res].bind(res.op.axis[0], tvm.thread_axis('blockIdx.x'))
-
-    sch[data_a_ub].compute_at(sch[res], axis_outer)
-    sch[data_b_ub].compute_at(sch[res], axis_outer)
-    sch[data_a_cast].compute_at(sch[res], axis_outer)
-    sch[data_b_cast].compute_at(sch[res], axis_outer)
-    sch[res_ub].compute_at(sch[res], axis_outer)
-    sch[res_ub_cast].compute_at(sch[res], axis_outer)
-
-    sch[data_a].reused_by(res)
-
-    sch[data_a_ub].emit_insn(data_a_ub.op.axis[split_axis], tbe_platform.insn_cmd.DMA_COPY)
-    sch[data_b_ub].emit_insn(data_b_ub.op.axis[split_axis], tbe_platform.insn_cmd.DMA_COPY)
-    if dtype in ("int8", "uint8"):
-        sch[data_a_cast].emit_insn(data_a_cast.op.axis[split_axis],
-                                   tbe_platform.insn_cmd.CAST)
-        sch[data_b_cast].emit_insn(data_b_cast.op.axis[split_axis],
-                                   tbe_platform.insn_cmd.CAST)
-    sch[res_ub].emit_insn(res_ub.op.axis[split_axis], tbe_platform.insn_cmd.ADD)
-    if dtype in ("int8", "uint8"):
-        sch[res_ub_cast].emit_insn(res_ub_cast.op.axis[split_axis],
-                                   tbe_platform.insn_cmd.CAST)
-    sch[res].emit_insn(axis_inner, tbe_platform.insn_cmd.DMA_COPY)
-
-    return sch, data_a, data_b, res
+    res = tbe.vadd(tensor_x, tensor_y)
+    return res
 
 
-def _update_shape(shape_x, shape_y):
+def _check_param(shape_ref, shape_val, dtype_ref, dtype_value, kernel_name):
     """
-    update the shape of shape_x and shape_y
+    check param
 
+    Parameters
+    ----------
+    shape_ref : shape
+        shape of ref.
+    shape_val : shape
+        shape of val.
+    dtype : str
+        the data type.
+    kernel_name : kernel name
+
+    Returns
+    -------
+    None
     """
-    if len(shape_x) >= 2 and shape_x[0] == 1:
-        len_s = len(shape_x)
-        flag = len_s - 1
-        for i in range(len_s):
-            if shape_x[i] != 1:
-                flag = i
-                break
-
-        shape_x = shape_x[flag:]
-        shape_y = shape_y[flag:]
-
-    return shape_x, shape_y
+    para_check.check_shape(shape_ref, param_name="ref")
+    para_check.check_shape(shape_val, param_name="value")
+    check_list = ("float16", "float32", "int8", "uint8", "int32", "int64")
+    para_check.check_dtype(dtype_ref, check_list, param_name="ref")
+    para_check.check_dtype(dtype_value, check_list, param_name="value")
+    if shape_ref != shape_val:
+        error_detail = "Shape of ref and value should be same."
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "ref", "value", error_detail)
+    if dtype_ref != dtype_value:
+        error_detail = "Dtype of ref and value should be same"
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "ref", "value", error_detail)
 
 
 # pylint: disable=unused-argument
@@ -312,16 +158,12 @@ def check_supported(ref, value, output, kernel_name="assign_add"):
     """
     ref_type = ref.get("dtype").lower()
     ref_shape = ref.get("shape")
-    ref_shape_size = functools.reduce(lambda x, y: x*y, ref_shape)
+    ref_shape_size = functools.reduce(lambda x, y: x * y, ref_shape)
     check_result = True
 
     check_list = ("float16", "float32", "int8", "uint8", "int32", "int64")
     if ref_type not in check_list:
         return False
-
-    if ref_type == "int64":
-        if ref_shape_size > 4:
-            check_result = False
 
     return check_result
 
@@ -351,38 +193,28 @@ def assign_add(ref, value, output, kernel_name="assign_add"):
     -------
     None
     """
+    shape_ref = shape_util.scalar2tensor_one(ref.get("shape"))
+    shape_val = shape_util.scalar2tensor_one(value.get("shape"))
+    dtype_ref = ref.get("dtype").lower()
+    dtype_value = value.get("dtype").lower()
+
     # check if the parameter is valid
-    shape_x = shape_util.scalar2tensor_one(ref.get("shape"))
-    shape_y = shape_util.scalar2tensor_one(value.get("shape"))
-    dtype = ref.get("dtype").lower()
-    para_check.check_shape(shape_x, param_name="ref")
-    para_check.check_shape(shape_y, param_name="value")
-    check_list = ("float16", "float32", "int8", "uint8", "int32", "int64")
-    para_check.check_dtype(dtype, check_list, param_name="ref")
+    _check_param(shape_ref, shape_val, dtype_ref, dtype_value, kernel_name)
 
-    # process the data of int64
-    if dtype == "int64":
-        para_check.check_shape(shape_x, param_name="ref")
-        para_check.check_shape(shape_y, param_name="value")
-        data_a = tvm.placeholder(shape_x, dtype=dtype, name="data_a")
-        data_b = tvm.placeholder(shape_y, dtype=dtype, name="data_b")
-        res = tvm.extern([shape_x, shape_y], [data_a, data_b],
-                         lambda ins, outs: _kernel_ir(outs, ins), name="res",
-                         dtype=dtype)
-        sch = tvm.create_schedule(res.op)
+    fused_shape = [functools.reduce(lambda x, y: x * y, shape_ref[:])]
 
-    # process the data of float16 or float32
+    tensor_ref = tvm.placeholder(fused_shape, dtype=dtype_ref, name="tensor_ref")
+    tensor_val = tvm.placeholder(fused_shape, dtype=dtype_value, name="tensor_val")
+    if dtype_ref == "int64":
+        # process the data of int64
+        res_add = tvm.compute(fused_shape, lambda *i: tensor_ref(*i) + tensor_val(*i), name='res_add')
+        res = tvm.compute(fused_shape, lambda *i: res_add(*i), name='res')
+        sch = _assign_add_int64_schedule(res, tensor_ref, tensor_val, res_add)
+        with tbe_platform.cce_build.build_config:
+            tvm.build(sch, [tensor_ref, tensor_val, res], "cce", name=kernel_name)
     else:
-        para_check.check_shape(shape_x, param_name="ref")
-        para_check.check_shape(shape_y, param_name="value")
-
-        if shape_x != shape_y:
-            error_detail = "shape of ref and value should be same"
-            error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "ref", "value", error_detail)
-
-        shape_x, shape_y = _update_shape(shape_x, shape_y)
-
-        sch, data_a, data_b, res = _compute_assignadd(shape_x, shape_y, dtype)
-
-    with tbe_platform.cce_build.build_config:
-        tvm.build(sch, [data_a, data_b, res], "cce", name=kernel_name)
+        res = _compute_assign_add(tensor_ref, tensor_val, output, kernel_name="assign_add")
+        with tvm.target.cce():
+            sch = tbe.auto_schedule(res)
+        config = {"name": kernel_name, "tensor_list": [tensor_ref, tensor_val, res]}
+        tbe.cce_build_code(sch, config)
