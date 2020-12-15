@@ -49,6 +49,7 @@ IMPLEMT_VERIFIER(FullyConnection, FullyConnectionVerify) {
 
   // check axis
   if (axis_new != 1 && axis_new != 2) {
+    OP_LOGE(op.GetName().c_str(), "Attr axis is wrong, the original value of axis %d is not supported.", axis);
     string realvalue = ConcatString(axis_new);
     OpsAttrValueErrReport(op.GetName().c_str(), "axis", "1 or 2", realvalue);
     return GRAPH_FAILED;

@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 from op_test_frame.ut import OpUT
-ut_case = OpUT("BninferenceD", None, None)
+ut_case = OpUT("BNInferenceD", "impl.bninference_d", "bninference_d")
 
 case1 = {"params": [{"shape": (1,16,10,10), "dtype": "float16", "format": "NCHW", "ori_shape": (1,16,10,10),"ori_format": "NCHW"},
                     {"shape": (16,), "dtype": "float16", "format": "ND", "ori_shape": (16,),"ori_format": "ND"},
