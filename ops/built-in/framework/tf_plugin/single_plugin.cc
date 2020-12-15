@@ -1302,6 +1302,20 @@ REGISTER_CUSTOM_OP("SparseSegmentMeanGrad")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
+// register SparseSegmentMean op to GE
+REGISTER_CUSTOM_OP("SparseSegmentMean")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("SparseSegmentMean")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register SparseSegmentSum op to GE
+REGISTER_CUSTOM_OP("SparseSegmentSum")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("SparseSegmentSum")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
 // register DeformableOffsets op to GE
 REGISTER_CUSTOM_OP("DeformableOffsets")
     .FrameworkType(TENSORFLOW)

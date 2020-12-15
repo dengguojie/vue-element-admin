@@ -1065,26 +1065,24 @@ INFER_FUNC_REG(SparseFillEmptyRowsGrad, SparseFillEmptyRowsGradInfer);
 IMPLEMT_INFERFUNC(SparseTensorDenseMatMul, SparseTensorDenseMatMulInfer) {
   int64_t unused_dim = 0;
   Shape unused_shape;
-  Shape x1_shape;
+  GeShape x1_shape;
   Shape x2_shape;
   auto x1_indices_tensor = op.get_input_desc_x1_indices();
   auto x1_values_tensor = op.get_input_desc_x1_values();
   auto x1_shape_tensor = op.get_input_desc_x1_shape();
   auto x2_tensor = op.get_input_desc_x2();
-  if (WithRank(x1_indices_tensor, 2, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(x1_indices_tensor, 2, unused_shape, op.GetName().c_str()) !=
+      GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Input x1_indices rank must be 2.");
     return GRAPH_FAILED;
   }
-  if (WithRank(x1_values_tensor, 1, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(x1_values_tensor, 1, unused_shape, op.GetName().c_str()) !=
+      GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Input x1_values rank must be 1.");
     return GRAPH_FAILED;
   }
-  Tensor shape_tensor;
-  if (op.GetInputConstData("x1_shape", shape_tensor) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "GetInputConstData error.");
-    return GRAPH_FAILED;
-  }
-  if (MakeShapeFromShapeTensor(shape_tensor, x1_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (MakeShapeFromShapeTensor(op, "x1_shape", x1_shape,
+                               op.GetName().c_str()) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "MakeShapeFromShapeTensor error.");
     return GRAPH_FAILED;
   }
