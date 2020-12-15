@@ -858,7 +858,5 @@ def print_iter_vars(iter_vars):
         None.
     """
 
-    pad = ""
-    for _, item in enumerate(iter_vars):
-        print(pad, item)
-        pad += "    "
+    for i, item in enumerate(iter_vars):
+        print(i * 4 * ' ', item)

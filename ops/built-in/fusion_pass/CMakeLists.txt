@@ -267,6 +267,7 @@ if(ENABLE_TEST STREQUAL "")
   # to solve the compile warnings in fp16_t.cc
   target_compile_options(ops_fusion_pass_aicore PRIVATE
     "-fno-strict-aliasing"
+    "-fno-common"
     -O2
     -Dgoogle=ascend_private
     # TODO: Fix warnings
