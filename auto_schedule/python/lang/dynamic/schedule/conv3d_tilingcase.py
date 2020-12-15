@@ -19,6 +19,7 @@ conv3d tiling case
 import copy
 from collections import OrderedDict
 from functools import reduce
+import te.platform as tbe_platform
 from te.domain.tiling.get_tiling import get_tiling
 from te.tvm.expr import Expr
 from te.lang.base.operation_impl import register_tiling_case
@@ -38,6 +39,7 @@ W_DELTA = 1
 H_LEN = 400
 W_LEN = 400
 D_LEN = 400
+VALID_TILING_NUM = 32
 
 
 # noinspection PyUnusedLocal
@@ -144,6 +146,19 @@ class Conv3dTiling(CubeTilingOp):
             new_block_dims[2] = int(self.schedule_handle(new_block_dims[2], new_tiling))
             block_dims = block_dim_multi *\
                 reduce(lambda x, y: x * y, new_block_dims)
+        if self.dynamic_mode == "dynamic_dhw" and tiling["AL0_matrix"][2] == VALID_TILING_NUM:
+            batch_size = self.a_info[0]
+            device_core_num = tbe_platform.get_soc_spec("CORE_NUM")
+            if te_util.get_and_res(batch_size > 1, device_core_num > 1):
+                if batch_size <= device_core_num:
+                    block_dims = batch_size
+                else:
+                    for i in range(device_core_num, 0, -1):
+                        if batch_size % i == 0:
+                            break
+                    block_dims = i
+            else:
+                block_dims = 1
 
         return {"key": cnt, "tiling_strategy": tiling, "var_range": var_range,
                 "block_dim": block_dims}
