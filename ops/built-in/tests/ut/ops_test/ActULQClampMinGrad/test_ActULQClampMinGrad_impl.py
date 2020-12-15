@@ -9,12 +9,12 @@ ut_case = OpUT('act_ulq_clamp_min_grad', None, None)
 ut_case.add_case(
     ['Ascend910'],
     {'params': [
-        {'shape': (32, 3, 5, 5), 'dtype': 'float16', 'format': 'ND',
-         'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND'},
-        {'shape': (32, 3, 5, 5), 'dtype': 'bool', 'format': 'ND',
-         'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND'},
-        {'shape': (32, 3, 5, 5), 'dtype': 'float16', 'format': 'ND',
-         'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND'},
+        {'shape': (128, 8), 'dtype': 'float16', 'format': 'ND',
+         'ori_shape': (128, 8), 'ori_format': 'ND'},
+        {'shape': (128, 8), 'dtype': 'bool', 'format': 'ND',
+         'ori_shape':(128, 8), 'ori_format': 'ND'},
+        {'shape': (128, 8), 'dtype': 'float16', 'format': 'ND',
+         'ori_shape':(128, 8), 'ori_format': 'ND'},
         {'shape': (1,), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (1,),
          'ori_format': 'ND'}],
         'expect': 'success',
@@ -23,12 +23,12 @@ ut_case.add_case(
 ut_case.add_case(
     ['Ascend910'],
     {'params': [
-        {'shape': (32, 3, 5, 5), 'dtype': 'float32', 'format': 'ND',
-         'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND'},
-        {'shape': (32, 3, 5, 5), 'dtype': 'bool', 'format': 'ND',
-         'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND'},
-        {'shape': (32, 3, 5, 5), 'dtype': 'float32', 'format': 'ND',
-         'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND'},
+        {'shape': (128, 8), 'dtype': 'float32', 'format': 'ND',
+         'ori_shape': (128, 8), 'ori_format': 'ND'},
+        {'shape': (128, 8), 'dtype': 'bool', 'format': 'ND',
+         'ori_shape': (128, 8), 'ori_format': 'ND'},
+        {'shape': (128, 8), 'dtype': 'float32', 'format': 'ND',
+         'ori_shape': (128, 8), 'ori_format': 'ND'},
         {'shape': (1,), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (1,),
          'ori_format': 'ND'}],
         'expect': 'success',
@@ -37,4 +37,3 @@ ut_case.add_case(
 
 if __name__ == '__main__':
     ut_case.run('Ascend910')
-    exit(0)

@@ -17,8 +17,6 @@ weights adaptive range quantization
 """
 from __future__ import absolute_import
 
-import collections
-
 import te.lang.cce
 from te import tvm
 from topi import generic
@@ -28,6 +26,7 @@ from topi.cce import util
 SHAPE_SIZE_LIMIT = 2147483648
 
 
+# pylint: disable=invalid-name, too-many-locals
 def wts_arq_compute(w, w_min, w_max, num_bits, offset_flag):
     """
     wts_arq compute
@@ -116,6 +115,7 @@ def wts_arq_compute(w, w_min, w_max, num_bits, offset_flag):
     return y
 
 
+# pylint: disable=invalid-name, too-many-locals, too-many-arguments
 @util.check_input_type(dict, dict, dict, dict, int, bool, str)
 def wts_arq(w,
             w_min,
@@ -180,11 +180,12 @@ def wts_arq(w,
             "w_min shape dim size:'{}' is different from w shape dim size:'{}'".format(
                 len(shape_w_min), len(shape_w)))
 
+    # pylint: disable=consider-using-enumerate
     for i in range(len(shape_w_min)):
         if shape_w_min[i] != 1 and shape_w_min[i] != shape_w[i]:
             raise ValueError(
-                "w_min shape dim[{}]:'{}' should be equal to w shape dim[{}]:'{}'".
-                format(i, shape_w_min[i], i, shape_w[i]))
+                "w_min shape dim[{0}]:'{1}' should be equal to w shape dim[{0}]:'{2}'".
+                format(i, shape_w_min[i], shape_w[i]))
 
     if num_bits != 8:
         raise ValueError(

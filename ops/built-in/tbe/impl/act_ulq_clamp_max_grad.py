@@ -28,9 +28,28 @@ SHAPE_SIZE_LIMIT = 2147483648
 
 
 @fusion_manager.register('act_ulq_clamp_max_grad')
-def act_ulq_clamp_max_grad_compute(y_grad, clamp_max_mask, x_clamped_loss, output, kernel_name='act_ulq_clamp_max_grad'):
+def act_ulq_clamp_max_grad_compute(
+    y_grad, clamp_max_mask, x_clamped_loss, output, kernel_name='act_ulq_clamp_max_grad'):
+    """
+    Function: Calculate the gradient of maximum clamped value.
+
+    Parameters:
+    ----------
+    y_grad: the placeholder of gradient
+
+    clamp_max_mask : the placeholder of clamp_max_mask
+
+    x_clamped_loss : the placeholder of x_clamped_loss
+
+    output: the dict of output
+
+    kernel_name: cce kernel name, default value is "act_ulq_clamp_max_grad"
+
+    Returns : A Tensor with float32 and (1,).
+    -------
+    """
     shape = y_grad.shape
-    axis = [i for i in range(len(shape))]
+    axis = list(range(len(shape)))
     signal = te.lang.cce.vsel(clamp_max_mask, tvm.const(0, 'float16'), tvm.const(1, 'float16'))
     signal = te.lang.cce.cast_to(signal, 'float32')
     x_clamped_loss = te.lang.cce.cast_to(x_clamped_loss, 'float32')
