@@ -4563,9 +4563,7 @@ class CceConvOp:
                     al1_factor_for_dynamic = tiling["AL1_shape"][1]*c_tiling_factor[1]
                     al1_bound = al1_factor_for_dynamic
                 else:
-                    al1_bound = int_ceil_div_tvm(
-                        dim_map["out_img_shape"][-2],
-                        tiling["block_dim"][2])
+                    al1_bound = dim_map["out_img_shape"][-2]
                     al1_bound = int_ceil_div_tvm(al1_bound, 16)*16
 
                 # The al1_m of load2d and load3d are different
