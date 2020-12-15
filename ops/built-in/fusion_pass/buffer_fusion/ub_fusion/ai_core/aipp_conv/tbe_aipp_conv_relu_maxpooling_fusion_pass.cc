@@ -148,9 +148,9 @@ bool TbeAippConvReluMaxpoolingFusionPass::CheckConvNodeValidation(const ge::Node
                       return false);
   }
   if (second_format == ge::FORMAT_NCHW) {
-    FUSION_PASS_CHECK(second_dims[0] > 64,
+    FUSION_PASS_CHECK(second_dims[0] > 96,
                       OP_LOGI(fused_op_type_.c_str(),
-                              "node[%s]'s second input shape is more than [64, N, N, N],"
+                              "node[%s]'s second input shape is more than [96, N, N, N],"
                               "can not fusion.",
                               conv_node->GetName().c_str()),
                       return false);
