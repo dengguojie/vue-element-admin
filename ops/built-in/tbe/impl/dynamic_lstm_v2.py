@@ -1500,7 +1500,6 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, static, s
 					 c_l0c.op.axis[4 + 1], l0_k_inner,
 					 c_l0c.op.reduce_axis[1])
 
-    s[s_state_h_mul_cont_ub].compute_at(s[c_l0c], l1_k_outer)
     s[a_ub].compute_at(s[c_l0c], l1_k_outer)
     s[a_l0a].compute_at(s[c_l0c], l0_k_outer)
     s[b_l0b].compute_at(s[c_l0c], l0_k_outer)
