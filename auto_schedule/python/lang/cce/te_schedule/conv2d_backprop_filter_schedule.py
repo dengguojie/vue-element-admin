@@ -1444,13 +1444,17 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
                 if self.dynamic_mode == "dynamic_hw":
                     # dynamic_hw returns exp
+                    # generally fix shape:
                     # 1. kbl1 < wo: ho = 1 if wo % kbl1 == 0 else ho = 2
-                    # 2. kbl1 >= wo: ho = ceilDiv(kbl1, wo) if kbl1%wo == 0 
-                    # and hw_single_core%wo == 0 else ho = ceilDiv(kbl1,wo) + 1
+                    # 2. kbl1 >= wo: ho = ceilDiv(kbl1, wo) if kbl1%wo == 0 else ho = ceilDiv(kbl1,wo) + 1
+                    # dynamic_hw need to consider multi_core tail blocks: hw_single_core%wo == 0
                     return tvm.select(
                                bl1_k < width_grads,
                                tvm.select(
-                                   tvm.floormod(width_grads, bl1_k) == 0,
+                                   tvm.all(
+                                       tvm.floormod(width_grads, bl1_k) == 0,
+                                       tvm.floormod(hw_single_core_factor,
+                                                    width_grads) == 0),
                                    1,
                                    LOOSE_LINE_CONDITION),
                                tvm.select(

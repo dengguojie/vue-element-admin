@@ -522,12 +522,22 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
 
     _check_axis_hw()
 
+    def _is_conv1d_situation():
+        if upper_fmap_h_padding == 1 and lower_fmap_h_padding == 1 and filter_h_dilation == 1 and stride_h == 1:
+            return True
+        return False
+
     def _min_l1_byte():
         # Forth : L1 limitation, Mainly required by chip
         al1_min_byte = C0_SIZE * C0_SIZE * 2
-        kl1_min = upper_fmap_w
-        bl1_min_byte = (filter_h_dilation + stride_h) * kl1_min * C0_SIZE * 2
-
+        if _is_conv1d_situation():
+            kl1_min = (C0_SIZE - 1) * stride_w + filter_w_dilation
+        else:
+            kl1_min = upper_fmap_w
+        if upper_dedy_w % C0_SIZE == 0:
+            bl1_min_byte = filter_h_dilation * kl1_min * C0_SIZE * 2
+        else:
+            bl1_min_byte = (filter_h_dilation + stride_h) * kl1_min * C0_SIZE * 2
         l1_size = tbe_platform.get_soc_spec("L1_SIZE")  # L1 size
         if (al1_min_byte + bl1_min_byte) > l1_size:
             dict_args = {}

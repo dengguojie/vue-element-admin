@@ -348,26 +348,30 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         if flag_fmap_load2d:
             return bl1_k
 
+        if tiling["AL0_matrix"]:
+            # dw_k equals to ka if L0A needs tiling
+            dw_k = tiling["AL0_matrix"][1]
+        elif tiling["BL0_matrix"]:
+            dw_k = tiling["BL0_matrix"][0]
+        else:
+            # both fully loaded
+            dw_k = hw_pad_1 // block_dim_hw
+
+        hw_single_core_factor = utils.icd(hw_pad_1, block_dim_hw) * \
+                                utils.CUBE_SIZE
+        hw_single_core_factor = utils.align(hw_single_core_factor,
+                                            dw_k * utils.CUBE_SIZE)
+
         if bl1_k < width_grads:
             # tiling load lens less then width_grads, need to load a full line
             if flag_conv1d_case:
                 return tiling["BL1_shape"][0]
             else:
                 # if res_data exists then need to load 2 lines
-                ho_len = 1 if (width_grads % bl1_k == 0) else 2
+                ho_len = 1 if (width_grads % bl1_k == 0 and \
+                               hw_single_core_factor % width_grads == 0) else 2
         else:
             # load3d instructions refer to load extra lines with pad/stride/filter
-            if tiling["AL0_matrix"]:  # dw_k equals to ka if L0A needs tiling
-                dw_k = tiling["AL0_matrix"][1]
-            elif tiling["BL0_matrix"]:
-                dw_k = tiling["BL0_matrix"][0]
-            else:  # both fully loaded
-                dw_k = hw_pad_1 // block_dim_hw
-
-            hw_single_core_factor = utils.icd(hw_pad_1, block_dim_hw) * \
-                                    utils.CUBE_SIZE
-            hw_single_core_factor = utils.align(hw_single_core_factor,
-                                           dw_k * utils.CUBE_SIZE)
             if bl1_k % width_grads == 0 and \
                     hw_single_core_factor % width_grads == 0:
                 # full line could load without extra lines
