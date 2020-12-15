@@ -1683,12 +1683,32 @@ static graphStatus VerifyConv2dbpInputCommon(const ge::Operator& op) {
   return GRAPH_SUCCESS;
 }
 
+static void GetConstValue(const GeTensorPtr& const_tensor,
+                   const DataType& dtype, std::vector<int64_t>& const_data) {
+  size_t size = const_tensor->GetData().GetSize();
+  void* data_ptr = (void*)const_tensor->GetData().GetData();
+
+  if (dtype == ge::DT_INT32){
+    int32_t* const_data_ptr = reinterpret_cast<int32_t*>(data_ptr);
+    size = size / sizeof(int32_t);
+    for (size_t i=0; i < size; i++) {
+      const_data.push_back((int64_t)((int32_t) ((*(const_data_ptr + i)))));
+    }
+  } else {
+    int64_t* const_data_ptr = reinterpret_cast<int64_t*>(data_ptr);
+    size = size / sizeof(int64_t);
+    for (size_t i=0; i < size; i++) {
+      const_data.push_back((int64_t)((int64_t) ((*(const_data_ptr + i)))));
+    }
+  }
+}
+
 IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
   OP_LOGI(op.GetName().c_str(), "Enter Conv2DBackpropInput inferfunction!");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   std::vector<std::string> input_infer_depends = {"input_size"};
   op_desc->SetOpInferDepends(input_infer_depends);
-  std::vector<int64_t> dy_sizes = op.GetInputDesc("out_backprop").GetShape().GetDims();
+  std::vector<int64_t> dy_sizes = op_desc->MutableInputDesc("out_backprop")->MutableShape().GetDims();
   bool is_dynamic = false;
   if (std::find(dy_sizes.begin(), dy_sizes.end(), -2) != dy_sizes.end()) {
     OP_LOGE(op.GetName().c_str(), "not support -2 in out_backprop.");
@@ -1710,10 +1730,20 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
   }
 
   std::vector<int64_t> input_sizes;
-  auto y_desc = op.GetOutputDesc("y");
+  auto y_desc = op_desc->MutableOutputDesc("y");
   if (!is_dynamic) {
-    Tensor input_sizes_tensor;
-    if (GRAPH_SUCCESS != op.GetInputConstData("input_size", input_sizes_tensor)) {
+    GeTensorPtr input_sizes_tensor = nullptr;
+    auto node = NodeUtils::GetNodeFromOperator(op);
+    if (node == nullptr) {
+      OP_LOGE(op.GetName().c_str(), "get null node ptr.");
+      map<std::string, std::string> err_map;
+      err_map["op_name"] = "Conv2DBackpropInput";
+      err_map["param_name"] = "node";
+      std::string report_error_code = "E50030";
+      (void)ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+      return GRAPH_FAILED;
+    }
+    if (GRAPH_SUCCESS != NodeUtils::GetInputConstData(node, "input_size", input_sizes_tensor)) {
       OP_LOGE(op.GetName().c_str(), "get input_size tensor failed.");
       map<std::string, std::string> err_map;
       err_map["op_name"] = "Conv2DBackpropInput";
@@ -1723,15 +1753,15 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
       return GRAPH_FAILED;
     }
     // get shape for output from input_size
-    auto input_sizes_desc = op.GetInputDesc("input_size");
-    DataType dtype = input_sizes_desc.GetDataType();
+    auto input_sizes_desc = op_desc->MutableInputDesc("input_size");
+    DataType dtype = input_sizes_desc->GetDataType();
     GetConstValue(input_sizes_tensor, dtype, input_sizes);
   } else {
     OP_LOGD(op.GetName().c_str(), "dynamic shape set range");
     std::vector<std::pair<int64_t, int64_t>> dx_range;
-    op.GetInputDesc("input_size").GetShapeRange(dx_range);
+    op_desc->MutableInputDesc("input_size")->GetShapeRange(dx_range);
     if (!dx_range.empty()) {
-      y_desc.SetShapeRange(dx_range);
+      y_desc->SetShapeRange(dx_range);
     }
     for (size_t i = 0; i < dx_range.size(); i++) {
       if (dx_range[i].first == dx_range[i].second) {
@@ -1749,11 +1779,11 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
   }
 
   // set dtype of output desc
-  auto out_backprop_dtype = op.GetInputDesc("out_backprop").GetDataType();
+  auto out_backprop_dtype = op_desc->MutableInputDesc("out_backprop")->GetDataType();
   if (out_backprop_dtype == DT_INT8) {
-    y_desc.SetDataType(DT_INT32);
+    y_desc->SetDataType(DT_INT32);
   } else {
-    y_desc.SetDataType(out_backprop_dtype);
+    y_desc->SetDataType(out_backprop_dtype);
   }
 
   // set shape of output desc, input_size should match the format of y
@@ -1763,30 +1793,18 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
     y_shape.push_back(input_sizes[1]);
     y_shape.push_back(input_sizes[2]);
     y_shape.push_back(input_sizes[3]);
-    y_desc.SetShape(ge::Shape(y_shape));
+    y_desc->SetShape(GeShape(y_shape));
   }
 
-  auto dx_shape = y_desc.GetShape().GetDims();
+  auto dx_shape = y_desc->MutableShape().GetDims();
   for (size_t i = 0; i < dx_shape.size(); i++) {
     OP_LOGD(op.GetName().c_str(), "dx_shape [%u] is %d", i, (int32_t)dx_shape[i]);
   }
 
-  // update output desc
-  if (GRAPH_SUCCESS != op.UpdateOutputDesc("y", y_desc)) {
-    OP_LOGE(op.GetName().c_str(), "update output desc failed.");
-    map<std::string, std::string> err_map;
-    err_map["op_name"] = "Conv2DBackpropInput";
-    err_map["param_name"] = "updating result";
-    err_map["rule_desc"] = "updata OutputDesc";
-    err_map["param_value"] = "failed";
-    std::string report_error_code = "E50012";
-    (void)ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  }
-
-  std::vector<int64_t> filter_sizes = op.GetInputDesc("filter").GetShape().GetDims();
-  Format filter_format = op.GetInputDesc("filter").GetFormat();
-  Format input_format = y_desc.GetFormat();
+  auto filter_desc = op_desc->MutableInputDesc("filter");
+  std::vector<int64_t> filter_sizes = filter_desc->MutableShape().GetDims();
+  Format filter_format = filter_desc->GetFormat();
+  Format input_format = y_desc->GetFormat();
   CHECK_FORMAT(filter_format);
   CHECK_FORMAT(input_format);
 
@@ -2051,8 +2069,18 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
   std::vector<std::string> input_infer_depends = {"filter_size"};
   op_desc->SetOpInferDepends(input_infer_depends);
 
-  Tensor filter_sizes_tensor;
-  if (GRAPH_SUCCESS != op.GetInputConstData("filter_size", filter_sizes_tensor)) {
+  GeTensorPtr filter_sizes_tensor = nullptr;
+  auto node = NodeUtils::GetNodeFromOperator(op);
+  if (node == nullptr) {
+    OP_LOGE(op.GetName().c_str(), "get null node ptr.");
+    map<std::string, std::string> err_map;
+    err_map["op_name"] = "Conv2DBackpropFilter";
+    err_map["param_name"] = "node";
+    std::string report_error_code = "E50030";
+    (void)ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return GRAPH_FAILED;
+  }
+  if (GRAPH_SUCCESS != NodeUtils::GetInputConstData(node, "filter_size", filter_sizes_tensor)) {
     OP_LOGE(op.GetName().c_str(), "get filter_size tensor failed.");
     map<std::string, std::string> err_map;
     err_map["op_name"] = "Conv2DBackpropFilter";
@@ -2062,40 +2090,28 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
     return GRAPH_FAILED;
   }
   // get shape for output from filter_size
-  auto filter_sizes_desc = op.GetInputDesc("filter_size");
-  DataType dtype = filter_sizes_desc.GetDataType();
+  auto filter_sizes_desc = op_desc->MutableInputDesc("filter_size");
+  DataType dtype = filter_sizes_desc->GetDataType();
   std::vector<int64_t> filter_sizes;
   GetConstValue(filter_sizes_tensor, dtype, filter_sizes);
 
   // set dtype of output desc
-  auto y_desc = op.GetOutputDesc("y");
-  auto out_backprop_dtype = op.GetInputDesc("out_backprop").GetDataType();
-  y_desc.SetDataType(out_backprop_dtype);
+  auto y_desc = op_desc->MutableOutputDesc("y");
+  auto out_backprop_dtype = op_desc->MutableInputDesc("out_backprop")->GetDataType();
+  y_desc->SetDataType(out_backprop_dtype);
   // set shape of output desc, filter_size should match the format of y
   std::vector<int64_t> y_shape;
   y_shape.push_back(filter_sizes[0]);
   y_shape.push_back(filter_sizes[1]);
   y_shape.push_back(filter_sizes[2]);
   y_shape.push_back(filter_sizes[3]);
-  y_desc.SetShape(ge::Shape(y_shape));
+  y_desc->SetShape(ge::GeShape(y_shape));
 
-  // update output desc
-  if (GRAPH_SUCCESS != op.UpdateOutputDesc("y", y_desc)) {
-    OP_LOGE(op.GetName().c_str(), "update output desc failed.");
-    map<std::string, std::string> err_map;
-    err_map["op_name"] = "Conv2DBackpropFilter";
-    err_map["param_name"] = "updating result";
-    err_map["rule_desc"] = "updata OutputDesc";
-    err_map["param_value"] = "failed";
-    std::string report_error_code = "E50012";
-    (void)ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  }
-
-  std::vector<int64_t> x_sizes = op.GetInputDesc("x").GetShape().GetDims();
-  Format x_format = op.GetInputDesc("x").GetFormat();
-  std::vector<int64_t> out_backprop_sizes = op.GetInputDesc("out_backprop").GetShape().GetDims();
-  Format filter_format = y_desc.GetFormat();
+  auto x_desc = op_desc->MutableInputDesc("x");
+  std::vector<int64_t> x_sizes = x_desc->MutableShape().GetDims();
+  Format x_format = x_desc->GetFormat();
+  std::vector<int64_t> out_backprop_sizes = op_desc->MutableInputDesc("out_backprop")->MutableShape().GetDims();
+  Format filter_format = y_desc->GetFormat();
   CHECK_FORMAT(x_format);
   CHECK_FORMAT(filter_format);
 
@@ -2548,10 +2564,11 @@ static void SetConv2dOutShapeRange(const std::string& pad_str,
 
 static bool SetConv2dOutShapeRange(op::Conv2D& op,
                                    const vector<int32_t>& attr_params,
-                                   TensorDesc& y_tensor) {
-  auto x_tensor = op.GetInputDesc("x");
-  auto x_shape = x_tensor.GetShape().GetDims();
-  auto x_format = x_tensor.GetFormat();
+                                   vector<int64_t>& y_shape,
+                                   ge::GeTensorDescPtr& x_tensor,
+                                   ge::GeTensorDescPtr& y_tensor) {
+  auto x_shape = x_tensor->MutableShape().GetDims();
+  auto x_format = x_tensor->GetFormat();
 
   size_t idx = 0;
   int32_t strh = attr_params[idx++];
@@ -2589,8 +2606,7 @@ static bool SetConv2dOutShapeRange(op::Conv2D& op,
 
   OP_LOGD(op.GetName().c_str(), "dynamic shape set range");
   std::vector<std::pair<int64_t, int64_t>> fm_range;
-  x_tensor.GetShapeRange(fm_range);
-  vector<int64_t> y_shape = y_tensor.GetShape().GetDims();
+  x_tensor->GetShapeRange(fm_range);
   if (x_shape[idx_h] == -1) {
     y_shape[idx_h] = -1;
   }
@@ -2612,12 +2628,12 @@ static bool SetConv2dOutShapeRange(op::Conv2D& op,
       vector<int32_t> attr_params_w = {strw, dilw, padl + padr, kw};
       SetConv2dOutShapeRange(pad_str, idx_w, attr_params_w, fm_range, out_range);
     }
-    y_tensor.SetShapeRange(out_range);
+    y_tensor->SetShapeRange(out_range);
     for (size_t i = 0; i < out_range.size(); i++) {
       OP_LOGD(op.GetName().c_str(), "output Range[%u] is (%lld, %lld)", i, out_range[i].first, out_range[i].second);
     }
   }
-  y_tensor.SetShape(Shape(y_shape));
+  y_tensor->SetShape(GeShape(y_shape));
   return true;
 }
 
@@ -2629,16 +2645,17 @@ static bool SetConv2dOutShapeRange(op::Conv2D& op,
   */
 IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
   OP_LOGD(op.GetName().c_str(), "Enter Conv2DInfer.");
-  auto x_tensor = op.GetInputDesc("x");
-  auto w_tensor = op.GetInputDesc("filter");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto x_tensor = op_desc->MutableInputDesc("x");
+  auto w_tensor = op_desc->MutableInputDesc("filter");
 
-  auto x_shape = x_tensor.GetShape().GetDims();
-  auto w_shape = w_tensor.GetShape().GetDims();
+  auto x_shape = x_tensor->MutableShape().GetDims();
+  auto w_shape = w_tensor->MutableShape().GetDims();
   if (x_shape.size() != 4 || w_shape.size() != 4) {
     return GRAPH_FAILED;
   }
-  auto x_format = x_tensor.GetFormat();
-  auto w_format = w_tensor.GetFormat();
+  auto x_format = x_tensor->GetFormat();
+  auto w_format = w_tensor->GetFormat();
   CHECK_FORMAT(x_format);
   CHECK_FORMAT(w_format);
 
@@ -2704,24 +2721,26 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return GRAPH_FAILED;
   }
-  auto bias_tensor = op.GetInputDesc("bias");
-  auto bias_shape = bias_tensor.GetShape().GetDims();
-  if (bias_shape.size() == 1 && bias_shape[0] != kn) {
-    OP_LOGE(op.GetName().c_str(), "input bias size should be equal to out_channels.");
-    map<string, string> err_map;
-    err_map["op_name"] = op.GetName().c_str();
-    err_map["description"] = "input bias size should be equal to out_channels.";
-    std::string report_error_code = "E50060";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  } else if (bias_shape.size() > 1) {
-    OP_LOGE(op.GetName().c_str(), "input bias shape should be 1D.");
-    map<string, string> err_map;
-    err_map["op_name"] = op.GetName().c_str();
-    err_map["description"] = "input bias shape should be 1D.";
-    std::string report_error_code = "E50060";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
+  auto bias_tensor = op_desc->MutableInputDesc("bias");
+  if(bias_tensor != nullptr) {
+    auto bias_shape = bias_tensor->MutableShape().GetDims();
+    if (bias_shape.size() == 1 && bias_shape[0] != kn) {
+      OP_LOGE(op.GetName().c_str(), "input bias size should be equal to out_channels.");
+      map<string, string> err_map;
+      err_map["op_name"] = op.GetName().c_str();
+      err_map["description"] = "input bias size should be equal to out_channels.";
+      std::string report_error_code = "E50060";
+      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+      return GRAPH_FAILED;
+    } else if (bias_shape.size() > 1) {
+      OP_LOGE(op.GetName().c_str(), "input bias shape should be 1D.");
+      map<string, string> err_map;
+      err_map["op_name"] = op.GetName().c_str();
+      err_map["description"] = "input bias shape should be 1D.";
+      std::string report_error_code = "E50060";
+      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+      return GRAPH_FAILED;
+    }
   }
 
   // set data_format: copy value of x_format to data_format
@@ -2807,8 +2826,8 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
   }
 
   vector<int64_t> y_shape;
-  auto y_tensor = op.GetOutputDesc("y");
-  auto y_format = y_tensor.GetFormat();
+  auto y_tensor = op_desc->MutableOutputDesc("y");
+  auto y_format = y_tensor->GetFormat();
   CHECK_FORMAT(y_format)
   if (y_format == FORMAT_NCHW) {
     y_shape.push_back(in);
@@ -2834,12 +2853,12 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return GRAPH_FAILED;
   }
-  y_tensor.SetShape(Shape(y_shape));
-  auto x_dtype = x_tensor.GetDataType();
+  y_tensor->SetShape(GeShape(y_shape));
+  auto x_dtype = x_tensor->GetDataType();
   if (x_dtype == ge::DT_INT8) {
-    y_tensor.SetDataType(ge::DT_INT32);
+    y_tensor->SetDataType(ge::DT_INT32);
   } else {
-    y_tensor.SetDataType(x_dtype);
+    y_tensor->SetDataType(x_dtype);
   }
 
   // set Range
@@ -2866,19 +2885,9 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
     vector<int32_t> attr_params = {strh, strw,dilh, dilw,
                                    padt, padb, padl, padr,
                                    kn, kh, kw};
-    if (!SetConv2dOutShapeRange(op, attr_params, y_tensor)) {
+    if (!SetConv2dOutShapeRange(op, attr_params, y_shape, x_tensor, y_tensor)) {
       return GRAPH_FAILED;
     }
-  }
-
-  if (GRAPH_SUCCESS != op.UpdateOutputDesc("y", y_tensor)) {
-    OP_LOGE(op.GetName().c_str(), "update output desc failed.");
-    map<string, string> err_map;
-    err_map["op_name"] = op.GetName().c_str();
-    err_map["description"] = "update output desc failed.";
-    std::string report_error_code = "E50058";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
   }
 
   OP_LOGD(op.GetName().c_str(), "Leave Conv2DInfer.");

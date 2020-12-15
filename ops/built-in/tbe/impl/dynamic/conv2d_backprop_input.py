@@ -230,7 +230,7 @@ def _conv2d_backprop_input_compute(input_size, filter, out_backprop,
 
 @tbe_base.register_operator('Conv2DBackpropInput')
 @para_check.check_input_type(dict, dict, dict, dict, (tuple, list),
-                             (str, tuple, list), (tuple, list), int, str, str,
+                             (tuple, list), (tuple, list), int, str, str,
                              (type(None), dict))
 def conv2d_backprop_input(input_size,  # pylint: disable=W0622,C0103,R0913,R0914
                           filter, out_backprop, y, strides,

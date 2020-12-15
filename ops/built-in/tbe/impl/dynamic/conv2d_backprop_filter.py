@@ -616,7 +616,7 @@ def _conv2d_backprop_filter_compute(x, filter_size, out_backprop, y,
 
 @tbe_base.register_operator('Conv2DBackpropFilter')
 @para_check.check_input_type(dict, dict, dict, dict, (tuple, list),
-                             (str, tuple, list), (tuple, list), int, str, str)
+                             (tuple, list), (tuple, list), int, str, str)
 def conv2d_backprop_filter(x, filter_size, out_backprop, y, strides, pads,
                            dilations=(1, 1, 1, 1), groups=1,
                            data_format='NHWC',
