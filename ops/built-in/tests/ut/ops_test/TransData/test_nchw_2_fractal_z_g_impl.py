@@ -1,0 +1,175 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+from op_test_frame.ut import OpUT
+import numpy as np
+import math
+from op_test_frame.common import precision_info
+
+ut_case = OpUT("TransData", "impl.trans_data", "trans_data")
+
+
+def gen_trans_data_case(src, dst, dtype, groups, case_name_val, expect):
+    return {"params": [{"shape": src, "dtype": dtype, "ori_shape": src, "ori_format": "NCHW", "format": "NCHW"},
+                       {"shape": dst, "dtype": dtype, "ori_shape": dst, "ori_format": "NCHW", "format": "NCHW"},
+                       "NCHW",
+                       "FRACTAL_Z_G",
+                       groups],
+            "case_name": case_name_val,
+            "expect": expect,
+            "format_expect": [],
+            "support_expect": True}
+
+def lcm(m,n):
+    return (m*n) // math.gcd(m,n)
+
+def ceil(m,n):
+    return (m+n-1)//n
+
+def calc_expect_func(in_tensor, out_tensor, src_format, dst_format, groups):
+    shape_in = in_tensor.get("shape")
+    in_dtype=in_tensor.get("dtype").lower()
+    v=1
+    for i in shape_in:
+        v *= i
+    filter_nchw = np.arange(1, v+1, 1, dtype="int").reshape(shape_in)
+    #print(filter_nchw)
+    CUBE_K = 16
+    CUBE_N = 16
+    Cout, Cin, kh, kw = shape_in
+    Cin_ori = Cin
+    Cout_ori = Cout // groups
+    print("Cin_ori=", Cin_ori, "Cout_ori=", Cout_ori)
+    A = lcm(Cin_ori, CUBE_K) // Cin_ori
+    B = lcm(Cout_ori, CUBE_N) // Cout_ori
+    C = lcm(A, B)
+    E = min(C, groups)
+    Cin_opt = ceil(E * Cin_ori, CUBE_K) * CUBE_K
+    Cout_opt = ceil(E * Cout_ori, CUBE_N) * CUBE_N
+    G = ceil(groups, E)
+
+    print("A=", A, "B=", B, "C=", C, "E=", E)
+    print("Cin_opt", Cin_opt)
+    print("Cout_opt", Cout_opt)
+    print("G:", G)
+
+    filter_shape_gc1hwnc0 = (G, Cin_opt// CUBE_K, kh, kw, Cout_opt, CUBE_K)
+    filter_gc1hwnc0 =  np.zeros(filter_shape_gc1hwnc0, in_dtype)
+    for g in range(groups):
+        for ci in range(Cin_ori):
+            for co in range(Cout_ori):
+                e = g % E
+                dst_ci = e * Cin_ori + ci
+                dst_co = e * Cout_ori + co
+                src_co = g * Cout_ori + co
+                filter_gc1hwnc0[g//E, dst_ci//CUBE_K, :, :, dst_co, dst_ci % CUBE_K] = filter_nchw[src_co, ci, :, :]
+    #print(filter_gc1hwnc0)
+    return filter_gc1hwnc0
+
+
+
+def gen_trans_data_precision_case(src, dst, dtype, groups, case_name_val, expect):
+    v = 1
+    for i in src:
+        v *= i
+    input_value = np.arange(1,v+1, dtype="int16")
+    #print(input_value)
+    return {"params": [{"shape": src, "dtype": dtype, "ori_shape": src, "ori_format": "NCHW", "format": "NCHW", "param_type": "input", "value": input_value},
+                       {"shape": dst, "dtype": dtype, "ori_shape": dst, "ori_format": "NCHW", "format": "NCHW", "param_type": "output"},
+                       "NCHW",
+                       "FRACTAL_ZN",
+                       groups],
+            "case_name": case_name_val,
+            "expect": expect,
+            "calc_expect_func": calc_expect_func,
+            "precision_standard": precision_info.PrecisionStandard(0.00, 0.00)}
+
+
+ut_case.add_precision_case(["Ascend910"],
+                           gen_trans_data_precision_case((6, 4, 3, 3), (1, 1, 3, 3, 16, 16),
+                                                         "int16", 2, "nchw_2_fractal_z_g_precision_001",
+                                                         "success"))
+ut_case.add_precision_case(["Ascend910"],
+                           gen_trans_data_precision_case((9, 4, 3, 3), (1, 1, 3, 3, 16, 16),
+                                                         "int16", 3, "nchw_2_fractal_z_g_precision_002",
+                                                         "success"))
+
+ut_case.add_precision_case(["Ascend910"],
+                           gen_trans_data_precision_case((16, 3, 3, 3), (1, 1, 3, 3, 16, 16),
+                                                         "int16", 4, "nchw_2_fractal_z_g_precision_003",
+                                                         "success"))
+
+ut_case.add_precision_case(["Ascend910"],
+                           gen_trans_data_precision_case((16, 5, 3, 3), (1, 2, 3, 3, 16, 16),
+                                                         "int16", 4, "nchw_2_fractal_z_g_precision_004",
+                                                         "success"))
+
+ut_case.add_precision_case(["Ascend910"],
+                           gen_trans_data_precision_case((32, 5, 3, 3), (1, 2, 3, 3, 32, 16),
+                                                         "int16", 4, "nchw_2_fractal_z_g_precision_005",
+                                                         "success"))
+
+ut_case.add_precision_case(["Ascend910"],
+                           gen_trans_data_precision_case((32, 5, 3, 3), (1, 3, 3, 3, 32, 16),
+                                                         "int16", 8, "nchw_2_fractal_z_g_precision_006",
+                                                         "success"))
+
+ut_case.add_precision_case(["Ascend910"],
+                           gen_trans_data_precision_case((8, 32, 3, 3), (1, 4, 3, 3, 16, 16),
+                                                         "int16", 2, "nchw_2_fractal_z_g_precision_007",
+                                                         "success"))
+
+ut_case.add_precision_case(["Ascend910"],
+                           gen_trans_data_precision_case((320, 3, 2, 2), (2, 3, 2, 2, 160, 16),
+                                                         "int16", 32, "nchw_2_fractal_z_g_precision_008",
+                                                         "success"))
+
+ut_case.add_precision_case(["Ascend910"],
+                           gen_trans_data_precision_case((320, 4, 2, 2), (4, 2, 2, 2, 80, 16),
+                                                         "int16", 32, "nchw_2_fractal_z_g_precision_009",
+                                                         "success"))
+
+ut_case.add_precision_case(["Ascend910"],
+                           gen_trans_data_precision_case((128, 2, 3, 3), (4, 1, 3, 3, 32, 16),
+                                                         "int16", 32, "nchw_2_fractal_z_g_precision_net_101",
+                                                         "success"))
+
+ut_case.add_precision_case(["Ascend910"],
+                           gen_trans_data_precision_case((128, 4, 3, 3), (8, 1, 3, 3, 16, 16),
+                                                         "int16", 32, "nchw_2_fractal_z_g_precision_net_102",
+                                                         "success"))
+
+ut_case.add_precision_case(["Ascend910"],
+                           gen_trans_data_precision_case((128, 8, 3, 3), (8, 2, 3, 3, 16, 16),
+                                                         "int16", 32, "nchw_2_fractal_z_g_precision_net_103",
+                                                         "success"))
+
+ut_case.add_precision_case(["Ascend910"],
+                           gen_trans_data_precision_case((256, 8, 3, 3), (16, 1, 3, 3, 16, 16),
+                                                         "int16", 32, "nchw_2_fractal_z_g_precision_net_104",
+                                                         "success"))
+ut_case.add_precision_case(["Ascend910"],
+                           gen_trans_data_precision_case((256, 16, 3, 3), (16, 2, 3, 3, 16, 16),
+                                                         "int16", 32, "nchw_2_fractal_z_g_precision_net_105",
+                                                         "success"))
+
+ut_case.add_precision_case(["Ascend910"],
+                           gen_trans_data_precision_case((512, 32, 3, 3), (32, 2, 3, 3, 16, 16),
+                                                         "int16", 32, "nchw_2_fractal_z_g_precision_net_106",
+                                                         "success"))
+
+ut_case.add_precision_case(["Ascend910"],
+                           gen_trans_data_precision_case((1024, 32, 3, 3), (32, 2, 3, 3, 32, 16),
+                                                         "int16", 32, "nchw_2_fractal_z_g_precision_net_107",
+                                                         "success"))
+
+ut_case.add_precision_case(["Ascend910"],
+                           gen_trans_data_precision_case((1024, 64, 3, 3), (32, 4, 3, 3, 32, 16),
+                                                         "int16", 32, "nchw_2_fractal_z_g_precision_net_108",
+                                                         "success"))
+
+
+
+if __name__ == '__main__':
+    simulator_lib_path ="/home/shenmin/Ascend/toolkit/tools/simulator"
+    ut_case.run(["Ascend910"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
+    #ut_case.run(["Ascend910"], simulator_mode="ca", simulator_lib_path=simulator_lib_path)
