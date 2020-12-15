@@ -1,20 +1,5 @@
 import os
-from absl import flags, app
 from typing import List, Dict
-
-from op_test_frame.ut import op_ut_runner
-from op_test_frame.common import op_status
-
-FLAGS = flags.FLAGS
-
-flags.DEFINE_string("soc_version", None, "SOC VERSION")
-flags.DEFINE_string("op", None, "Test case directory name of test op")
-flags.DEFINE_string("case_name", None, "Case name, run which case")
-flags.DEFINE_string("case_dir", None, "Case directory, test case in which directory")
-flags.DEFINE_string("report_path", None, "which directory to save ut test report")
-flags.DEFINE_string("cov_path", None, "which dirctory to save coverage report")
-flags.DEFINE_string("simulator_lib_path", None, "the path to simulator libs")
-flags.DEFINE_string("pr_changed_file", None, "git diff result file by ci, analyse relate ut by this file")
 
 cur_dir = os.path.realpath(__file__)
 repo_root = os.path.sep.join(cur_dir.split(os.path.sep)[:-4])
@@ -264,9 +249,6 @@ def get_file_change_info_from_ci(changed_file_info_from_ci):
     test_change_files = []
     op_test_frame_changed_files = []
     other_changed_files = []
-    print("----------ci changed file content----------")
-    print("".join(lines))
-    print("-------------------------------------------")
     for line in lines:
         line = line.strip()
         if line.startswith(os.path.join("ops", "built-in", "tests")):
@@ -281,15 +263,15 @@ def get_file_change_info_from_ci(changed_file_info_from_ci):
                           test_files=test_change_files, other_files=other_changed_files)
 
 
-def get_change_relate_ut_dir_list(changed_file_info_from_ci):
+def get_change_relate_op_type_list(changed_file_info_from_ci):
     file_change_info = get_file_change_info_from_ci(changed_file_info_from_ci)
     if not file_change_info:
         print("[ERROR] not found file change info, run ut failed.")
         return None
     file_change_info.print_change_info()
 
-    def _get_relate_ut_list_by_file_change():
-        relate_ut_dir_list = []
+    def _get_relate_op_list_by_file_change():
+        relate_op_type_list = []
 
         def _deal_ops_file_change():
             ops_changed_files = file_change_info.op_files
@@ -304,100 +286,34 @@ def get_change_relate_ut_dir_list(changed_file_info_from_ci):
                     impl_changed_files.append(ops_changed_file)
 
             op_types = get_change_file_op(impl_changed_files)
-            if not op_types:
-                print("[INFO] op file changes affect none op.")
-                return
-            print("[INFO] op file changes affect ops: [%s]" % ",".join(op_types))
             for op_type in op_types:
-                op_ut_test_dir = os.path.join(repo_root, "ops", "built-in", "tests", "ut", "ops_test", op_type)
-                if not os.path.exists(op_ut_test_dir):
-                    error_msg = "[ERROR] This commit will affect op: " + op_type
-                    error_msg += ", but this op has not found test case file. "
-                    error_msg += "Should has test case file like:"
-                    error_msg += " built-in/tests/ut/ops_test/" + op_type + "/test_*_impl.py"
-                    print(error_msg)
-                    raise RuntimeError("Not found test case directory")
-                relate_ut_dir_list.append(op_ut_test_dir)
+                if op_type not in relate_op_type_list:
+                    relate_op_type_list.append(op_type)
 
         _deal_ops_file_change()
 
-        def _deal_test_file_change():
-            test_changed_files = file_change_info.test_files
-            if not test_changed_files:
-                return
-            for test_changed_file in test_changed_files:
-                test_changed_file = str(test_changed_file).strip()
-                test_case_dir = os.path.join("ops", "built-in", "tests", "ut", "ops_test")
-                in_ut_dir = test_changed_file.startswith(test_case_dir)
-                test_changed_file_split = test_changed_file.split(os.path.sep)
-                test_changed_file_name = test_changed_file_split[-1]
-                file_name_match = test_changed_file_name.startswith("test_")
-                file_name_match = file_name_match and test_changed_file_name.endswith("_impl.py")
-
-                if in_ut_dir and file_name_match:
-                    if not len(test_changed_file_split) == 7:
-                        raise RuntimeError(
-                            "Can only add test case file like: built-in/tests/ut/ops_test/Add/test_*_impl.py.")
-                    op_ut_test_dir = os.path.join(repo_root, test_case_dir, test_changed_file.split(os.path.sep)[-2])
-                    if op_ut_test_dir not in relate_ut_dir_list:
-                        relate_ut_dir_list.append(os.path.join(op_ut_test_dir, test_changed_file_name))
-                        # not need test all test in dir, relate_ut_dir_list.append(op_ut_test_dir)
-
-        _deal_test_file_change()
-
         def _deal_op_test_frame_change():
-            if not relate_ut_dir_list:
-                relate_ut_dir_list.append(os.path.join(repo_root, "ops", "built-in", "tests", "ut", "ops_test", "Add"))
+            if not relate_op_type_list:
+                # if test frame change, test one op at least
+                relate_op_type_list.append("Add")
 
         _deal_op_test_frame_change()
 
-        return relate_ut_dir_list
+        return relate_op_type_list
 
     try:
-        relate_ut_directory_list = _get_relate_ut_list_by_file_change()
+        relate_ut_directory_list = _get_relate_op_list_by_file_change()
     except BaseException as e:
         print(e.args)
         return None
     if relate_ut_directory_list:
-        print("[INFO] relate ut directory list is: [%s]" % ", ".join(relate_ut_directory_list))
+        print("[INFO] relate op directory list is: [%s]" % ", ".join(relate_ut_directory_list))
     else:
         print("[INFO] relate ut directory list is empty")
     return relate_ut_directory_list
 
 
-def main(argv):
-    _ = argv
-    soc_version = FLAGS.soc_version
-    soc_version = [soc.strip() for soc in str(soc_version).split(",")]
-    pr_changed_file = FLAGS.pr_changed_file
-    if not pr_changed_file or not str(pr_changed_file).strip():
-        case_dir = FLAGS.case_dir
-        if not case_dir:
-            case_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "ut", "ops_test")
-    else:
-        case_dir = get_change_relate_ut_dir_list(pr_changed_file)
-        if case_dir is None:
-            # get relate ut failed.
-            exit(-1)
-        if not case_dir:
-            # has no relate ut, not need run ut.
-            exit(0)
-    cov_report_path = FLAGS.cov_path if FLAGS.cov_path else "./cov_report/ops/python_utest"
-    report_path = FLAGS.report_path if FLAGS.report_path else "./report/ops/python_report"
-    simulator_lib_path = FLAGS.simulator_lib_path if FLAGS.simulator_lib_path else "/usr/local/Ascend/toolkit/tools/simulator"
-    res = op_ut_runner.run_ut(case_dir,
-                              soc_version=soc_version,
-                              test_report="json",
-                              test_report_path=report_path,
-                              cov_report="html",
-                              cov_report_path=cov_report_path,
-                              simulator_mode="pv",
-                              simulator_lib_path=simulator_lib_path)
-    if res == op_status.SUCCESS:
-        exit(0)
-    else:
-        exit(-1)
-
-
-if __name__ == "__main__":
-    app.run(main)
+if __name__ == '__main__':
+    pr_changed_file = "or_filelist.txt"
+    case_dir = get_change_relate_op_type_list(pr_changed_file)
+    print(case_dir)
