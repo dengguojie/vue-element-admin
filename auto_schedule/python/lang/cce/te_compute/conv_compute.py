@@ -301,11 +301,6 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
     hk_dilation = (h_k - 1)*dilateh + 1
     wk_dilation = (w_k - 1)*dilatew + 1
 
-    # calculated by h_i and w_i
-    h_out = (h_i + (pad_top + pad_bottom) - hk_dilation) // strideh + 1
-    # calculated by h_i and w_i
-    w_out = (w_i + (pad_left + pad_right) - wk_dilation) // stridew + 1
-
     def _check_pad():
         """
         Check pad.
@@ -347,7 +342,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
                     "featuremap w < 1, pleace check input range".format(w_in))
          
     if dynamic_mode == "dynamic_hw":
-        _check_dynamic_range()
+    	_check_dynamic_range()
 
     w_block_size_n = CUBE_MKN[w_dtype]['mac'][2]
     shape_w[0] = ((shape_w[0] + w_block_size_n - 1) // w_block_size_n)*w_block_size_n
@@ -365,8 +360,8 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
             err_man.raise_err_attr_range_invalid("conv2d", range_value, "kernel W", str(shape_w[3]))
         temp = 4*shape_w[2]*shape_w[3]
         if optim_dict.get("use_v200_c04_flg") and is_support_v200() and (temp > HK_WK_C04_V200):
-            err_man.raise_err_specific("conv2d", "In v200, small channel case, the 4*Hk*Wk must be smaller than or equal "
-                + "to " + str(HK_WK_C04_V200) + ". you can try to disable the small channel.")
+            err_man.raise_err_specific("conv2d", "In v200, small channel case, the 4*Hk*Wk must be smaller than "
+            + "or equal to " + str(HK_WK_C04_V200) + ". you can try to disable the small channel.")
 
     def _check_stride():
         """
