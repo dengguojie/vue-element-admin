@@ -42,7 +42,7 @@ set_ut_env() {
 
 run_ut() {
   local pr_file="$1"
-  local supported_soc="Ascend910,Ascend310"
+  local supported_soc="Ascend910A,Ascend310"
   python3.7 "${CANN_ROOT}/ops/built-in/tests/run_ut.py"                     \
                 --soc_version="${supported_soc}"                            \
                 --simulator_lib_path="${BASE_HOME}/toolkit/tools/simulator" \
