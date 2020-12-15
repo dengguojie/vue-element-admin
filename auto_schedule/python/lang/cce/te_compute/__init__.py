@@ -38,11 +38,6 @@ from .segment_compute import unsorted_segment_max, unsorted_segment_min, \
     unsorted_segment_mean, unsorted_segment_prod
 from .depthwise_conv2d_compute import depthwise_conv2d_backprop_filter_d_compute
 from .depthwise_conv2d_compute import depthwise_conv2d_backprop_input_d_compute
-from .mmad_compute import matmul
-from .mmad_compute import matmul_cv_split
-from .mmad_compute import get_matmul_performance_format
-from .gemm_compute import gemm
 from .depthwise_conv2d_compute import depthwise_conv2d_compute, \
     DepthwiseConv2dParam
 from .inplace_compute import inplace_add, inplace_sub, inplace_update
-from .conv3d_compute import Conv3DParam

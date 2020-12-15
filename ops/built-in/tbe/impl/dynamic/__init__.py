@@ -35,7 +35,6 @@ from .reduce_sum_d import reduce_sum_d
 from .reduce_max_d import reduce_max_d
 from .reduce_mean_d import reduce_mean_d
 from .conv2d import conv2d
-from .conv3d import conv3d
 from .dynamic_atomic_addr_clean import dynamic_atomic_addr_clean
 from . import sparse_apply_ftrl_d
 from .div import div
@@ -69,12 +68,6 @@ from .log1p import log1p
 from .sigmoid_grad import sigmoid_grad
 from .sqrt_grad import sqrt_grad
 from .zeros_like import zeros_like
-from .conv2d_backprop_input import conv2d_backprop_input
-from .conv2d_backprop_filter import conv2d_backprop_filter
-from .mat_mul import mat_mul
-from .batch_matmul import batch_matmul
-from .batch_matmul import batch_matmul_fuse_compute
-from .batch_matmul_v2 import batch_matmul_v2
 from .sub import sub
 from .transpose_d import transpose_d
 from .unpack import unpack

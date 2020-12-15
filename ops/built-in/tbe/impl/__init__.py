@@ -192,17 +192,6 @@ from .conv2d import conv2d_compute
 
 from .conv2d_compress import conv2dcompress
 
-from .conv2d_backprop_filter_d import conv2d_backprop_filter_d
-from .conv2d_backprop_filter_d import check_conv2dbp_filter_params
-from .conv2d_backprop_input_d import conv2d_backprop_input_d
-from .util.util_deconv_comm import check_conv2dbp_input_params
-from .deconvolution import deconvolution
-from .conv2d_transpose_d import conv2d_transpose_d
-from .conv3d import conv3d
-from .conv3d_backprop_input_d import conv3d_backprop_input_d
-from .conv3d_backprop_filter_d import conv3d_backprop_filter_d
-from .conv3d_transpose_d import conv3d_transpose_d
-
 # Mobilenetv2
 from .avg_pool_grad_d import avg_pool_grad_d
 from .depthwise_conv2d import depthwise_conv2d
@@ -233,7 +222,6 @@ from .less import less
 from .log_softmax_grad import log_softmax_grad
 from .log_softmax_v2 import log_softmax_v2
 from .mat_mul import mat_mul
-from .gemm import gemm
 from .real_div import real_div
 from .one_hot_d import one_hot_d
 from .pad_d import pad_d
