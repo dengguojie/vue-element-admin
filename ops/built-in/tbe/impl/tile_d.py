@@ -112,7 +112,7 @@ def op_select_format(input_x, output_x, multiples, kernel_name="tile_d"):
             and len(input_shape) == len(multiples):
         is_muti_c_align = multiples[input_format.index("C")] % align_len == 0
         is_shape_c_align = input_shape[input_format.index("C")] % align_len == 0
-        is_shape_n_align = input_shape[input_format.index("C")] % align_len == 0
+        is_shape_n_align = input_shape[input_format.index("N")] % align_len == 0
         # special 4d to 5hd
         if input_format in ("NCHW", "NHWC") and input_shape[1] == 1 \
                 and input_shape[2] == 1 and input_shape[3] == 1 and is_muti_c_align:

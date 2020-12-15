@@ -151,7 +151,6 @@ def op_select_format(condition, x1, x2, y, kernel_name="select"):
                 format_list1.append("FRACTAL_NZ")
             elif len(shape_x1) == 5 and len(shape_x2) == 5 and \
                     format_x1 in format_5d_list and format_x2 in format_5d_list:
-                format_list1.append("FRACTAL_Z_3D")
                 format_list1.append("NDC1HWC0")
 
         for dtype in dtype_list:
