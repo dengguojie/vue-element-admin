@@ -1673,3 +1673,23 @@ conv2d_bp_input_fusion_testcase = [
         "default",
     ),
 ]
+
+conv2d_bp_input_op_slice_testcase = [
+    # w_dtype, dedy_dtype, dx_dtype, w_shape, dedy_shape, dx_shape, dedy_format,
+    # w_format, dx_format, input_size, stride, padding, dilations, groups, expect, dataflow
+    # base case
+    (
+        "float16",
+        "float16",
+        "float16",
+        (32, 32, 3, 3),
+        (16, 32, 2, 2),
+        (16, 32, 5, 5),
+        "NCHW",
+        "NCHW",
+        "NCHW",
+        (16, 32, 5, 5),
+        (1, 1, 2, 2),
+        (0, 0, 0, 0),
+    ),
+]

@@ -18,7 +18,9 @@ conv2d_backprop_input_d
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from impl.util import util_deconv_comm
+from impl.util import util_select_op_base
 from te import tvm
+from te.platform import cce_params
 from te.utils import error_manager
 from te.utils import para_check
 
@@ -27,6 +29,176 @@ CONV_BACKPROP_SHAPE_DIM = 4
 
 # each axis of shape must less than 1000000
 DEFAULT_MAX_SHAPE_NUM = 1000000
+
+# memory type
+L1FUSION_INPUT_CTR = 2
+
+
+def _cal_min_l1space(out_backprop,  # pylint: disable=invalid-name
+                     weight, y, strides, dilations, pads):
+    """
+    cal the mini l1space using in lxfusion
+
+    Parameters
+    ----------
+    out_backprop: dict with keys(shape and dtype) or Tensor
+        The shape of gradients.
+
+    weight: dict with keys(shape and dtype) or Tensor
+        input weight tensor
+
+    y: dict with keys(shape and dtype)
+        conv2d_backprop_input output tensor, dtype must be assigned.
+
+    strides: list of 2 integers
+
+    dilations: tuple/list of 2 integers
+
+    pads: tuple/list of 4 integers
+        [pad_top, pad_bottom, pad_left, pad_right].
+
+
+    Returns
+    -------
+    res: the min l1 space of lxfusion
+    """
+    def _cal_al1_size():
+        w_value = shape_out_backprop[3] * strides[1]
+        if shape_res[3] > c0_size:
+            h_value_max = filter_h_dilation + 1
+        elif c0_size % shape_res[3] == 0:
+            h_value_max = filter_h_dilation + c0_size // shape_res[3] - 1
+        else:
+            h_value_max = filter_h_dilation + c0_size // shape_res[3] + 1
+        a_l1_size = h_value_max * w_value * c0_size_k * util_deconv_comm.BIT_RATIO_DICT.get(filters_dtype)
+        return a_l1_size
+
+    shape_filters = util_deconv_comm.get_filter_shape(weight.get("ori_format"), weight.get("ori_shape"))
+    shape_out_backprop = util_deconv_comm.get_shape_out_backprop(
+        out_backprop.get("ori_format"), out_backprop.get("ori_shape"))
+    shape_res = util_deconv_comm.get_shape_res(y.get("ori_format"), y.get("ori_shape"))
+    filters_dtype = weight.get("dtype")
+
+    c0_size = cce_params.C0_SIZE
+    c0_size_k = cce_params.CUBE_MKN[filters_dtype]['mac'][1]
+    filter_h_dilation = (shape_filters[2] - 1) * dilations[0] + 1
+
+    bl1_size = shape_filters[2] * shape_filters[3] * c0_size * c0_size_k * \
+               util_deconv_comm.BIT_RATIO_DICT.get(filters_dtype)
+    al1_size = 0
+    if (list(pads) != [0, 0, 0, 0] or list(shape_filters[2:]) != [1, 1]) and list(strides) != [1, 1]:
+        al1_size = _cal_al1_size()
+    return al1_size + bl1_size
+
+
+def get_op_support_info( # pylint: disable=invalid-name,R0913,R0914,W0613
+        filter,
+        out_backprop,
+        y,
+        input_size,
+        strides,
+        pads,
+        dilations=(1, 1, 1, 1),
+        groups=1,
+        data_format="NHWC",
+        kernel_name="conv2d_backprop_input",
+):
+    """
+    get the deconvolution split
+
+    Parameters
+    ----------
+    filter: dict with keys(shape and dtype) or Tensor
+        input weight tensor
+
+    out_backprop: dict with keys(shape and dtype) or Tensor
+        The shape of gradients.
+
+    y: dict with keys(shape and dtype)
+        conv2d_backprop_input output tensor, dtype must be assigned.
+
+    input_size: The shape of feature map.
+        4-D with shape [batch, channels, height, weight].
+
+    strides: tuple/list of 4 integers
+        filter move stride.
+    
+    pads: tuple/list of 4 integers
+        [pad_top, pad_bottom, pad_left, pad_right].
+
+    dilations: tuple/list of 4 integers
+        filter expand size of dilated conv2d_backprop_input.
+
+    groups: int
+        param for group conv2d_backprop_input. Default to 1.
+
+    data_format: str
+        input data format. Specify the data format of the input and output data.
+        Default to "NHWC".
+
+    kernel_name: str
+        kernel name. Default to "conv2d_backprop_input".
+
+    Returns
+    -------
+    res: the json of op info with split
+    """
+    dtype_out_backprop = out_backprop.get("dtype")
+    if dtype_out_backprop != "float16":
+        dict_args = {
+            "errCode": "E60005",
+            "param_name": "out_backprop",
+            "expected_dtype_list": "[float16]",
+            "dtype": "{}".format(dtype_out_backprop)
+        }
+        raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+    h_pos = data_format.find("H")
+    w_pos = data_format.find("W")
+    shape_filters = util_deconv_comm.get_filter_shape(filter.get("ori_format"),
+                                                      filter.get("ori_shape"))
+    head_overlap_h = -1 if (shape_filters[2] == 1 and strides[h_pos] == 1) else 0
+    tail_overlap_h = head_overlap_h
+    head_overlap_w = -1 if (shape_filters[3] == 1 and strides[w_pos] == 1) else 0
+    tail_overlap_w = head_overlap_w
+
+    format_out_backprop = out_backprop.get("format")
+    if format_out_backprop == "NC1HWC0":
+        axis_split_matrix = [
+            # cut N
+            [
+                util_select_op_base.SplitInput([1, [0], [-1], [-1]]),
+                util_select_op_base.SplitOutput([0, [0]])
+            ],
+            # cut H
+            [
+                util_select_op_base.SplitInput([1, [2], [head_overlap_h], [tail_overlap_h]]),
+                util_select_op_base.SplitOutput([0, [2]])
+            ],
+            # cut W
+            [
+                util_select_op_base.SplitInput([1, [3], [head_overlap_w], [tail_overlap_w]]),
+                util_select_op_base.SplitOutput([0, [3]])
+            ],
+        ]
+        # cut Cin
+        axis_split_matrix += [
+            [
+                util_select_op_base.SplitInput([0, [0], [0], [0]]),
+                util_select_op_base.SplitOutput([0, [1]])
+            ],
+        ]
+        axis_reduce_list = None
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    stride_list = [strides[h_pos], strides[w_pos]]
+    dilation_list = [dilations[h_pos], dilations[w_pos]]
+    min_l1space = _cal_min_l1space(out_backprop, filter, y, stride_list, dilation_list, pads)
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_matrix, axis_reduce_list,
+                                                              L1FUSION_INPUT_CTR, min_l1space)
+
+    return op_cal_info_in_json
+
 
 
 def _check_conv2dbp_input_para(  # pylint: disable=W0622,C0103,R0913,R0914

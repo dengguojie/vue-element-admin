@@ -10,6 +10,7 @@ import te.lang.cce as tbe
 import util_for_conv2d_bp_input as util
 from op_test_frame.ut import OpUT
 from te import tvm
+from impl.conv2d_backprop_input_d import get_op_support_info as dx_get_op_support_info
 
 ut_case = OpUT(
     "Conv2DBackpropInputD", "impl.conv2d_backprop_input_d", "conv2d_backprop_input_d"
@@ -136,6 +137,69 @@ def _test_conv2d_bp_input_fusion(
     return _test_conv2d_bp_input_ubfusion
 
 
+def _test_conv2d_bp_input_slice(
+    w_dtype,
+    dedy_dtype,
+    dx_dtype,
+    w_shape,
+    dedy_shape,
+    dx_shape,
+    w_format,
+    dedy_format,
+    dx_format,
+    input_size,
+    stride,
+    padding,
+    dilations=(1, 1, 1, 1),
+    groups=1,
+    expect="success",
+    data_flow="default",
+):
+    """
+    the sclice test for conv2d_bp_input
+    """
+    def _test_conv2d_bp_input_slice_function():
+        out_backprop = {"ori_shape": dedy_shape, "dtype": dedy_dtype, "ori_format": dedy_format, "format":"NC1HWC0"}
+        filter = {"ori_shape": w_shape, "dtype": w_dtype, "ori_format": w_format, "format":"NC1HWC0"}
+        y = {"ori_shape": input_size, "dtype": dedy_dtype, "ori_format": "NCHW", "format":"NC1HWC0"}
+        slice_josn = dx_get_op_support_info(
+            filter,
+            out_backprop,
+            y,
+            input_size,
+            stride,
+            padding,
+            dilations=(1, 1, 1, 1),
+            groups=1,
+            data_format=dedy_format,
+        kernel_name="conv2d_backprop_input",
+        )
+        print(f"slice_josn:{slice_josn}")
+
+    def _test_conv2d_bp_input_slice(test_arg):
+        if expect == "success":
+            _test_conv2d_bp_input_slice_function()
+        elif expect == RuntimeError:
+            error_flag = False
+            try:
+                _test_conv2d_bp_input_slice_function()
+            except RuntimeError:
+                error_flag = True
+
+            if not error_flag:
+                raise RuntimeError(
+                    "error_case.: {}".format(
+                        _gen_kernel_name(
+                            dedy_shape, w_shape, dx_shape, stride, "slice"
+                        )
+                    )
+                )
+
+
+    return _test_conv2d_bp_input_slice
+
+
+
 def _gen_conv2d_bp_input_op_fusion_case():
     for fusion_case in conv2d_bp_input_ut_testcase.conv2d_bp_input_fusion_testcase:
         ut_case.add_cust_test_func(
@@ -143,8 +207,14 @@ def _gen_conv2d_bp_input_op_fusion_case():
         )
 
 
-_gen_conv2d_bp_input_op_fusion_case()
+def _gen_conv2d_bp_input_op_slice_case():
+    for slice_case in conv2d_bp_input_ut_testcase.conv2d_bp_input_op_slice_testcase:
+        ut_case.add_cust_test_func(
+            "Ascend910", test_func=_test_conv2d_bp_input_slice(*slice_case)
+        )
 
+_gen_conv2d_bp_input_op_fusion_case()
+_gen_conv2d_bp_input_op_slice_case()
 
 if __name__ == "__main__":
     ut_case.run(["Ascend910", "Ascend710", "Ascend310"])
