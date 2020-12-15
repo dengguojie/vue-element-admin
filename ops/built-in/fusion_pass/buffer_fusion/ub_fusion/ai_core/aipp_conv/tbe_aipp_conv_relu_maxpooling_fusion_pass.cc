@@ -319,6 +319,8 @@ void TbeAippConvReluMaxpoolingFusionPass::PoolingValidationAndFormatSet(const ge
 
     ge::AttrUtils::SetBool(aipp_node->GetOpDesc(), NEED_RE_PRECOMPILE, true);
     ge::AttrUtils::SetBool(conv_node->GetOpDesc(), NEED_RE_PRECOMPILE, true);
+    ge::ComputeGraphPtr graph_ptr = conv_node->GetOwnerComputeGraph();
+    (void)ge::AttrUtils::SetBool(graph_ptr, NEED_RE_PRECOMPILE, true);
 
     OP_LOGI(fused_op_type_.c_str(), "Node[%s]'s output format has been changed to [%d].",
             aipp_node->GetName().c_str(), aipp_node->GetOpDesc()->GetOutputDesc(0).GetFormat());
