@@ -216,12 +216,6 @@ def calculate_group(out_backprop, input_size, w_shape_nchw, groups, filter_dtype
     """
     calculate groups Parameter
     """
-    if groups != 1:
-        args_dict = {
-            "errCode": "E60108",
-            "reason": "groups only supports 1 now, actual it is {}".format(groups),
-        }
-        raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
     if out_backprop[1] % groups != 0:
         args_dict = {
             "errCode": "E60108",

@@ -1585,7 +1585,10 @@ def general_schedule(
                     aub_w,
                     al1_co0
                 ]
-                sch_agent.attach_at(a_filling, a_l1, ub_shape, flag_nparts=True)
+                if dynamic_mode == "dynamic_hw":
+                    sch_agent.attach_at(a_filling, a_l1, ub_shape)
+                else:
+                    sch_agent.attach_at(a_filling, a_l1, ub_shape, flag_nparts=True)
             if not dynamic_mode:
                 sch_agent.same_attach(a_zero, a_filling)
             sch_agent.same_attach(a_ub, a_filling)
