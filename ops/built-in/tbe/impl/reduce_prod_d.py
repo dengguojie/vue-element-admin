@@ -33,7 +33,7 @@ def check_supported(x, y, axes, keep_dims=None, kernel_name="reduce_prod_d"):
     input_dtype = x.get("dtype").lower()
     dim_num = len(input_shape)
     for axis in axes:
-        if axis in [-1, dim_num - 1] and input_dtype == "float32":
+        if axis in [-1, dim_num - 1] and input_dtype == "float32" and input_shape[-1] ==1:
             return False
     return True
 

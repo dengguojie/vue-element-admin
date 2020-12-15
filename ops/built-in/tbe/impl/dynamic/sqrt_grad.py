@@ -83,10 +83,15 @@ def sqrt_grad(x, dx, out, kernel_name="sqrt_grad"):
     """
     x_dtype = x.get("dtype").lower()
     dx_dtype = dx.get("dtype").lower()
+    shape_x = x.get("shape")
+    shape_dx = dx.get("shape")
     check_list = ("float16", "float32")
     para_check.check_dtype(x_dtype, check_list, param_name="x")
     para_check.check_dtype(dx_dtype, check_list, param_name="dx")
     para_check.check_elewise_shape_range([x, dx], support_broadcast=False)
+    if len(shape_x) != len(shape_dx):
+        error_detail = "The shapes of two input parameters are not match for dynamic sqrt_grad"
+        error_manager_vector.raise_err_two_input_dtype_invalid("sqrt_grad", "x", "dx", error_detail)
     if x_dtype != dx_dtype:
         error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "x", "dx",
                                                               x_dtype, dx_dtype)
