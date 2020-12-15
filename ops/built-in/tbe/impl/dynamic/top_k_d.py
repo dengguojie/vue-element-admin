@@ -1325,6 +1325,7 @@ def top_k_compute(tik_instance, obj_gm, obj_tiling, obj_ub, profile, dtype, indi
         k_scalar.set_as(k_ub[0])
         with tik_instance.if_scope(k_scalar < 16):
             block_dim.set_as(1)
+            obj_tiling.num_rows_cores_scalar.set_as(obj_tiling.num_rows_scalar)
 
     with tik_instance.for_range(0, soc_core_num, block_num=soc_core_num) as block_idx:
         with tik_instance.if_scope(block_idx < block_dim):
