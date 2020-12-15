@@ -48,7 +48,8 @@ private:
         vector<ge::NodePtr> &newNodes, const InputIndexInfo &inputIndexInfo);
     ge::GeTensorPtr ProcessLSTMWxh(ge::NodePtr fusedNode, bool &failStatus, const InputIndexInfo &inputIndexInfo);
     Status AddDynamicLSTMNode(ge::OpDescPtr &thisOpDesc, const ge::OpDescPtr &formerOpdesc,
-        const ge::GeTensorDesc &wxhTensorDesc, const InputIndexInfo &inputIndexInfo, bool expose_hidden, ge::GeTensorDesc &staticTensorDesc);
+        const ge::GeTensorDesc &wxhTensorDesc, const InputIndexInfo &inputIndexInfo, bool expose_hidden, ge::GeTensorDesc &staticTensorDesc,
+        int32_t outputSize);
     const string FUSED_OP_TYPE = "DynamicLSTMV2";
 };
 }  // namespace fe

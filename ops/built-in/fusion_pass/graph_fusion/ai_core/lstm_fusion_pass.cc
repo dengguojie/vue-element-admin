@@ -525,12 +525,6 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
                     return PARAM_INVALID);
   ge::GeTensorDesc tempInput0Desc = fusedDesc->GetInputDesc(0);
   ge::GeShape shapeInput0 = tempInput0Desc.GetShape();
-  OP_LOGI(FUSED_OP_TYPE.c_str(),"Op[%s]: input x shape is [ %I64d],[ %I64d],[ %I64d].", fusedDesc->GetName().c_str(),
-  shapeInput0.GetDim(0),shapeInput0.GetDim(1),shapeInput0.GetDim(2));
-  bool damoShape = false;
-  if (shapeInput0.GetDim(0) == 75 && (shapeInput0.GetDim(1) == 1 || shapeInput0.GetDim(1) == 32) && shapeInput0.GetDim(2) == 512){
-      damoShape = true;
-  }
   int64_t last_dim_value = shapeInput0.GetDim(2);
   if (shapeInput0.GetDims().size() == 4) {
     if (PatternFusionUtil::IsUnknownShape(shapeInput0.GetDim(2)) ||
@@ -606,52 +600,15 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   ge::NodePtr dequantNode;
   ge::GeTensorDesc outInnerProductTensorDesc;
 
-  //tmp DAMO Academy shape handle by dynamic_lstm_v2
-  if (damoShape){
-      ge::GeTensorDesc biasDesc = fusedDesc->GetInputDesc(biasIndex);
-      ge::GeShape biasShape = biasDesc.GetShape();
-      OP_LOGD(FUSED_OP_TYPE.c_str(), "Op[%s]: bias shape is [ %I64d].", fusedDesc->GetName().c_str(),biasShape.GetDim(0));
-      if (biasShape.GetDim(0) !=1024){
-          damoShape = false;
-      }
+  // check shape handle by dynamic_lstm_v2
+  ge::GeTensorDesc wxDesc = fusedDesc->GetInputDesc(wxIndex);
+  ge::GeShape wxShape = wxDesc.GetShape();
+  ge::GeTensorDesc whDesc = fusedDesc->GetInputDesc(whIndex);
+  ge::GeShape whShape = whDesc.GetShape();
+  if((wxShape.GetDim(1) + whShape.GetDim(1)) % 16 == 0) {
+    return SUCCESS;
   }
-  //OP_LOGI(FUSED_OP_TYPE.c_str(), "Op[%s]: input x shape is [ %I64d],[ %I64d],[ %I64d].", fusedDesc->GetName().c_str(),shapeInput0.GetDim(0),shapeInput0.GetDim(1),shapeInput0.GetDim(2));
-  if (damoShape){
-      ge::GeTensorDesc wxDesc = fusedDesc->GetInputDesc(wxIndex);
-      ge::GeShape wxShape = wxDesc.GetShape();
-      OP_LOGD(FUSED_OP_TYPE.c_str(), "Op[%s]: wx shape is [ %I64d],[ %I64d].", fusedDesc->GetName().c_str(),wxShape.GetDim(0),wxShape.GetDim(1));
-      if (wxShape.GetDim(0) !=1024 || wxShape.GetDim(1) !=512){
-          damoShape = false;
-      }
-  }
-
-  if (damoShape){
-      ge::GeTensorDesc whDesc = fusedDesc->GetInputDesc(whIndex);
-      ge::GeShape whShape = whDesc.GetShape();
-      OP_LOGD(FUSED_OP_TYPE.c_str(),"Op[%s]:wh shape is [ %I64d],[ %I64d].",fusedDesc->GetName().c_str(),whShape.GetDim(0),whShape.GetDim(1));
-      if (whShape.GetDim(0) != 1024 || whShape.GetDim(1) != 256){
-          damoShape = false;
-      }
-  }
-
-  if (damoShape){
-      ge::GeTensorDesc contDesc = fusedDesc->GetInputDesc(1);
-      ge::GeShape contShape = contDesc.GetShape();
-      OP_LOGD(FUSED_OP_TYPE.c_str(),"Op[%s]: cont shape is [ %I64d],[ %I64d].",fusedDesc->GetName().c_str(),contShape.GetDim(0),contShape.GetDim(1));
-      if (contShape.GetDim(0) != 75 || (contShape.GetDim(1) != 1 && contShape.GetDim(1) != 32)){
-          damoShape = false;
-      }
-  }
-
-  OP_LOGD(FUSED_OP_TYPE.c_str(),"Op[%s]: num_output is [ %I64d].",fusedDesc->GetName().c_str(),num_output);
-  if (damoShape && num_output != 256){
-      damoShape = false;
-  }
-
-  if (damoShape){
-      return SUCCESS;
-  }
-  // end handle damo shape
+  // end check shape handle by dynamic_lstm_v2
 
   bool failStatus = false;
   if (has_static) {

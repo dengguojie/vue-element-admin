@@ -225,13 +225,14 @@ def check_attr(cell_type, direction, cell_depth, use_peephole, keep_prob,
                             para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT,
                             para_check.OPTION_INPUT, para_check.OPTION_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_OUTPUT, para_check.OPTION_OUTPUT,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
 # pylint: disable=too-many-function-args,too-many-statements
 def dynamic_lstm_v2(input_x, weight, bias, cont, w_xc_x_static, h0, c0, wci, wcf,
-                wco, mask, y, output_h, output_c,
-                num_output=0, expose_hidden=False, time_major=True, forget_bias=0.0,
+                wco, mask, y, output_h, output_c, last_output_h, last_output_c,
+                num_output=0, expose_hidden=False, need_output_last=False, forget_bias=0.0,
                 kernel_name="dynamic_lstm", impl_mode='high_performance'):
     """
     dynamic_lstm_v2
@@ -247,6 +248,9 @@ def dynamic_lstm_v2(input_x, weight, bias, cont, w_xc_x_static, h0, c0, wci, wcf
 
     input_dtype = input_x.get("dtype").lower()
     bias_dtype = bias.get("dtype").lower()
+
+    if bias_dtype == 'float32':
+        impl_mode = "high_precision"
 
     t_size = shape_x_input[0]
     m_size = shape_x_input[2]
@@ -267,6 +271,10 @@ def dynamic_lstm_v2(input_x, weight, bias, cont, w_xc_x_static, h0, c0, wci, wcf
     if h0 is not None:
         is_global_init = True
 
+    has_static = False
+    if w_xc_x_static is not None:
+        has_static = True
+
     tik_instance = Tik(Dprofile())
 
     input_x = tik_instance.Tensor(shape=shape_x, dtype=input_dtype,
@@ -277,14 +285,19 @@ def dynamic_lstm_v2(input_x, weight, bias, cont, w_xc_x_static, h0, c0, wci, wcf
                                dtype=bias_dtype, name='bias')
     sync = tik_instance.Tensor(shape=(128, ), dtype='int64', scope=scope_gm, name='sync',
                                is_workspace=True, is_atomic_add=True)
-    cont_gm = tik_instance.Tensor(shape=cont['shape'], dtype=cont['dtype'], scope=scope_gm, name='cont_gm')
+    cont = tik_instance.Tensor(shape=cont['shape'], dtype=cont['dtype'], scope=scope_gm, name='cont')
 
     if is_global_init:
         s_init_h_gm = tik_instance.Tensor(shape=shape_hc_init,
                                           dtype=input_dtype,
                                           scope=scope_gm,
                                           name='s_init_h_gm')
-        s_init_c_gm = tik_instance.Tensor(shape=shape_hc_init, dtype=bias_dtype, scope=scope_gm, name='s_init_c_gm')
+        s_init_c_gm = tik_instance.Tensor(shape=shape_hc_init, dtype=bias_dtype, scope=scope_gm, name='s_init_c_gm')    
+    if need_output_last:
+        last_output_h_gm = tik_instance.Tensor(shape=shape_hc_init, dtype=input_dtype,
+                                               scope=scope_gm, name='last_output_h_gm')
+        last_output_c_gm = tik_instance.Tensor(shape=shape_hc_init, dtype=input_dtype,
+                                               scope=scope_gm, name='last_output_c_gm')
                                     
     update_h_gm = tik_instance.Tensor(shape=shape_hc, dtype=input_dtype,
                                       scope=scope_gm, name='update_h_gm')
@@ -293,13 +306,19 @@ def dynamic_lstm_v2(input_x, weight, bias, cont, w_xc_x_static, h0, c0, wci, wcf
     update_h_gm_as_y = tik_instance.Tensor(shape=shape_hc, dtype=bias_dtype,
                                            scope=scope_gm,
                                            name='update_h_gm_as_y')
-
-    if is_global_init:
-        build_input_list = [input_x, weight, bias, cont_gm, s_init_h_gm, s_init_c_gm]
+    build_input_list = [input_x, weight, bias, cont]
+    if has_static:
+        w_xc_x_static_gm = tik_instance.Tensor(shape=w_xc_x_static['shape'], dtype=w_xc_x_static['dtype'],
+                                               scope=scope_gm, name='w_xc_x_static_gm')
+        build_input_list.append(w_xc_x_static_gm)
     else:
-        build_input_list = [input_x, weight, bias, cont_gm]
+        w_xc_x_static_gm = None
+    if is_global_init:
+        build_input_list.extend([s_init_h_gm, s_init_c_gm])
 
     build_output_list = [update_h_gm_as_y, update_h_gm, update_c_gm]
+    if need_output_last:
+        build_output_list.extend([last_output_h_gm, last_output_c_gm])
 
     # for RL tune getting tik input&output tensor
     fusion_manager.set_tik_tensor(build_input_list, build_output_list)
@@ -318,7 +337,12 @@ def dynamic_lstm_v2(input_x, weight, bias, cont, w_xc_x_static, h0, c0, wci, wcf
                           :,
                           loop_j * cut_m: loop_j * cut_m + cut_m,
                           :, :]
-            cont_var = cont_gm[loop_i, :]
+            cont_var = cont[loop_i, :]
+            if need_output_last:
+                last_output_h_gm_var = last_output_h_gm[:, :, loop_j * cut_m: loop_j * cut_m + cut_m,
+                                  :, :]
+                last_output_c_gm_var = last_output_c_gm[:, :, loop_j * cut_m: loop_j * cut_m + cut_m,
+                                  :, :]
             if is_global_init:
                 s_init_c_gm_var = s_init_c_gm[:, :, loop_j * cut_m: loop_j * cut_m + cut_m,
                                   :, :]
@@ -356,10 +380,14 @@ def dynamic_lstm_v2(input_x, weight, bias, cont, w_xc_x_static, h0, c0, wci, wcf
                                    :, :]
 
             input_list = [input_x_var, weight, bias, s_init_h_gm_var,
-                          s_init_c_gm_var, state_h_last, state_c_last, cont_var, sync]
-
-            output_list = [update_h_gm_var, update_c_gm_var,
-                               update_h_gm_as_y_var]
+                          s_init_c_gm_var, state_h_last, state_c_last, cont_var, w_xc_x_static_gm, sync]
+            
+            if need_output_last:
+                output_list = [update_h_gm_var, update_c_gm_var,
+                                update_h_gm_as_y_var, last_output_h_gm_var, last_output_c_gm_var]
+            else:
+                output_list = [update_h_gm_var, update_c_gm_var,
+                                update_h_gm_as_y_var]
 
             if impl_mode == "high_performance":
                 with tik_instance.if_scope(loop_i == 0):
@@ -368,7 +396,7 @@ def dynamic_lstm_v2(input_x, weight, bias, cont, w_xc_x_static, h0, c0, wci, wcf
                         dynamic_rnn_tik_high_performance,
                         input_list,
                         output_list,
-                        [False, is_first_round, is_global_init, forget_bias])
+                        [is_first_round, is_global_init, has_static, need_output_last])
 
                 with tik_instance.if_scope(loop_i > 0):
                     is_first_round = False
@@ -376,7 +404,7 @@ def dynamic_lstm_v2(input_x, weight, bias, cont, w_xc_x_static, h0, c0, wci, wcf
                         dynamic_rnn_tik_high_performance,
                         input_list,
                         output_list,
-                        [False, is_first_round, is_global_init, forget_bias])
+                        [is_first_round, is_global_init, has_static, need_output_last])
             else:
                 with tik_instance.if_scope(loop_i == 0):
                     is_first_round = True
@@ -384,7 +412,7 @@ def dynamic_lstm_v2(input_x, weight, bias, cont, w_xc_x_static, h0, c0, wci, wcf
                         dynamic_rnn_tik_high_precision,
                         input_list,
                         output_list,
-                        [False, is_first_round, is_global_init, forget_bias])
+                        [is_first_round, is_global_init, has_static, need_output_last])
 
                 with tik_instance.if_scope(loop_i > 0):
                     is_first_round = False
@@ -392,7 +420,7 @@ def dynamic_lstm_v2(input_x, weight, bias, cont, w_xc_x_static, h0, c0, wci, wcf
                         dynamic_rnn_tik_high_precision,
                         input_list,
                         output_list,
-                        [False, is_first_round, is_global_init, forget_bias])
+                        [is_first_round, is_global_init, has_static, need_output_last])
 
 
     config_map = {
@@ -418,14 +446,17 @@ def dynamic_rnn_tik_high_performance(input_list, custom_list):
     s_state_h_gm_last = input_list[5]
     s_state_c_gm_last = input_list[6]
     seq_length_gm = input_list[7]
-    sync0 = input_list[8]
+    static_gm = input_list[8]
+    sync0 = input_list[9]
 
-    is_first_round = custom_list[1]
-    is_global_init = custom_list[2]
+    is_first_round = custom_list[0]
+    is_global_init = custom_list[1]
+    has_static = custom_list[2]
+    need_output_last = custom_list[3]
 
-    return dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length_gm, s_init_h_gm, s_init_c_gm,
+    return dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length_gm, static_gm, s_init_h_gm, s_init_c_gm,
                             s_state_h_gm_last, s_state_c_gm_last, sync0, 
-                            is_first_round, is_global_init,)
+                            is_first_round, is_global_init, has_static, need_output_last)
 
 
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
@@ -442,22 +473,24 @@ def dynamic_rnn_tik_high_precision(input_list, custom_list):
     s_state_h_gm_last = input_list[5]
     s_state_c_gm_last = input_list[6]
     seq_length_gm = input_list[7]
-    sync0 = input_list[8]
+    static_gm = input_list[8]
+    sync0 = input_list[9]
 
+    is_first_round = custom_list[0]
+    is_global_init = custom_list[1]
+    has_static = custom_list[2]
+    need_output_last = custom_list[3]
 
-    is_gate_output = custom_list[0]
-    is_first_round = custom_list[1]
-    is_global_init = custom_list[2]
-    forget_bias = custom_list[3]
-
-    return dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length_gm, s_init_h_gm, s_init_c_gm,
-                            s_state_h_gm_last, s_state_c_gm_last, sync0, is_first_round, is_global_init)
+    return dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length_gm, static_gm, s_init_h_gm, s_init_c_gm,
+                            s_state_h_gm_last, s_state_c_gm_last, sync0, 
+                            is_first_round, is_global_init, has_static, need_output_last)
 
 
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
 # pylint: disable=too-many-statements
-def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, s_init_h_gm, s_init_c_gm,
-                     s_state_h_gm_last, s_state_c_gm_last, sync0, is_first_round, is_global_init):
+def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, static, s_init_h_gm, s_init_c_gm,
+                     s_state_h_gm_last, s_state_c_gm_last, sync0, is_first_round, is_global_init,
+                     has_static, need_output_last):
     """
     dynamic rnn core tvm
     """
@@ -589,19 +622,57 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, s_init_
                     lambda t, i, j, k, l: c_ub_bias(t, j_t_index, i, j, k, l),
                     name="j_t",
                     tag="split_com")
-    shape_fio = (t_size, 3, hidden_size, m_size, 16, 16)
-    f_i_o = tvm.compute(shape_fio, lambda t, x, i, j, k, l: c_ub_bias(t, x, i, j, k, l), name='f_i_o', tag="split_com")
-    f_i_o_sigmoid = sigmoid_compute(f_i_o)
-    f_t_sigmoid = tvm.compute(shape_i,
-                lambda t, i, j, k, l: f_i_o_sigmoid(t, f_t_index, i, j, k, l),
-                name="f_t_sigmoid", tag="split_com")
-    i_t_sigmoid = tvm.compute(shape_i,
-            lambda t, i, j, k, l: f_i_o_sigmoid(t, i_t_index, i, j, k, l),
-            name="i_t_sigmoid", tag="split_com")
-    o_t_sigmoid = tvm.compute(shape_i,
-            lambda t, i, j, k, l: f_i_o_sigmoid(t, o_t_index, i, j, k, l),
-            name="o_t_sigmoid", tag="split_com")
-    j_t_tanh = tanh_compute(j_t)
+    if has_static:
+        i_t = tvm.compute(shape_i,
+                    lambda t, i, j, k, l: c_ub_bias(t, i_t_index, i, j, k, l),
+                    name="i_t",
+                    tag="split_com")
+        f_t = tvm.compute(shape_i,
+                    lambda t, i, j, k, l: c_ub_bias(t, f_t_index, i, j, k, l),
+                    name="f_t",
+                    tag="split_com")
+        o_t = tvm.compute(shape_i,
+                    lambda t, i, j, k, l: c_ub_bias(t, o_t_index, i, j, k, l),
+                    name="o_t",
+                    tag="split_com")
+        shape_static = (1, n_size, m_size, 16, 16)
+        output_dim = shape_i[1]
+        tensor_static_ub = tvm.compute(shape_static, lambda _, j, k, l, m: static(j, k, l, m), name="tensor_static_ub")
+        it_add_static = tvm.compute(
+            shape_i, lambda t, i, j, k, l: i_t(t, i, j, k, l) + tensor_static_ub(t, i, j, k, l),
+            name='it_add_static', tag='elewise_binary_add'
+        )
+        ft_add_static = tvm.compute(
+            shape_i, lambda t, i, j, k, l: f_t(t, i, j, k, l) + tensor_static_ub(t, i + output_dim, j, k, l),
+            name='ft_add_static', tag='elewise_binary_add'
+        )
+        ot_add_static = tvm.compute(
+            shape_i, lambda t, i, j, k, l: o_t(t, i, j, k, l) + tensor_static_ub(t, i + output_dim * 2, j, k, l),
+            name='ot_add_static', tag='elewise_binary_add'
+        )
+        jt_add_static = tvm.compute(
+            shape_i, lambda t, i, j, k, l: j_t(t, i, j, k, l) + tensor_static_ub(t, i + output_dim * 3, j, k, l),
+            name='jt_add_static', tag='elewise_binary_add'
+        )
+        f_t_sigmoid = sigmoid_compute(ft_add_static)
+        i_t_sigmoid = sigmoid_compute(it_add_static)
+        o_t_sigmoid = sigmoid_compute(ot_add_static)
+        j_t_tanh = tanh_compute(jt_add_static)
+    else:
+        shape_fio = (t_size, 3, hidden_size, m_size, 16, 16)
+        f_i_o = tvm.compute(shape_fio, lambda t, x, i, j, k, l: c_ub_bias(t, x, i, j, k, l),
+         name='f_i_o', tag="split_com")
+        f_i_o_sigmoid = sigmoid_compute(f_i_o)
+        f_t_sigmoid = tvm.compute(shape_i,
+                    lambda t, i, j, k, l: f_i_o_sigmoid(t, f_t_index, i, j, k, l),
+                    name="f_t_sigmoid", tag="split_com")
+        i_t_sigmoid = tvm.compute(shape_i,
+                lambda t, i, j, k, l: f_i_o_sigmoid(t, i_t_index, i, j, k, l),
+                name="i_t_sigmoid", tag="split_com")
+        o_t_sigmoid = tvm.compute(shape_i,
+                lambda t, i, j, k, l: f_i_o_sigmoid(t, o_t_index, i, j, k, l),
+                name="o_t_sigmoid", tag="split_com")
+        j_t_tanh = tanh_compute(j_t)
 
     if ''.join([str(i) for i in shape_h]) == ''.join([str(i) for i in shape_i]):
         tensor_cont_ub = tensor_seq_length_bc_ub
@@ -635,7 +706,18 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, s_init_
                                          lambda *indices: update_c_gm(*indices),
                                          name="update_c_fp16_back",
                                          tag="out_to_ub")
-    c_t_tanh = tanh_compute(update_c_fp16_back)
+    if need_output_last:
+        last_update_c_gm = tvm.compute(
+            shape_i, lambda *indices: update_c_fp16_back(*indices), name='last_update_c_gm',
+            tag='ub_to_out'
+        )
+        last_update_c_back = tvm.compute(
+            shape_i, lambda *indices: last_update_c_gm(*indices), name='last_update_c_back',
+            tag='out_to_ub'
+        )
+        c_t_tanh = tanh_compute(last_update_c_back)
+    else:
+        c_t_tanh = tanh_compute(update_c_fp16_back)
     c_t_tanh_ub = c_t_tanh
 
     update_h = vmul(c_t_tanh_ub, o_t_sigmoid_ub)
@@ -647,17 +729,34 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, s_init_
                                         lambda *indices: update_h_gm_as_y(*indices),
                                         name="update_h_gm_as_y_back",
                                         tag="out_to_ub")
-    update_h_gm = tvm.compute(shape_i,
+    if need_output_last:
+        last_update_h_gm = tvm.compute(
+            shape_i, lambda *indices: update_h_gm_as_y_back(*indices), name='last_update_h_gm',
+            tag='ub_to_out'
+        )
+        last_update_h_back = tvm.compute(
+            shape_i, lambda *indices: last_update_h_gm(*indices), name='last_update_h_back',
+            tag='out_to_ub'
+        )
+        update_h_gm = tvm.compute(shape_i,
+                                lambda *indices: last_update_h_back(*indices),
+                                name="update_h_gm",
+                                tag="ub_to_out")
+    else:
+        update_h_gm = tvm.compute(shape_i,
                                 lambda *indices: update_h_gm_as_y_back(*indices),
                                 name="update_h_gm",
                                 tag="ub_to_out")
 
     # end compute
-    return_list = [update_h_gm, update_c_gm, update_h_gm_as_y]
+    if not need_output_last:
+        return_list = [update_h_gm, update_c_gm, update_h_gm_as_y]
+    else:
+        return_list = [update_h_gm, update_c_gm, update_h_gm_as_y, last_update_h_gm, last_update_c_gm]
     return_list, s = rl_bank.tik_dsl_bank_proc(return_list, sync_tensor=sync0)
     if s is not None:
         return return_list, s
-
+    
     # schedule
     s = create_schedule([update_h_gm.op])
 
@@ -707,6 +806,13 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, s_init_
     s[s_state_c_ub].set_scope(scope_ubuf)
     s[a_ub].set_scope(scope_ubuf)
 
+    if has_static:
+        s[tensor_static_ub].set_scope(scope_ubuf)
+    
+    if need_output_last:
+        s[last_update_c_back].set_scope(scope_ubuf)
+        s[last_update_h_back].set_scope(scope_ubuf)
+
     for tensor in elewise_tensors:
         s[tensor].set_scope(scope_ubuf)
 
@@ -715,13 +821,17 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, s_init_
     s[update_h_gm_as_y_back].set_scope(scope_ubuf)
 
     # compute inline
-    compute_inline_tensors = [j_t, f_i_o, i_t_sigmoid, f_t_sigmoid, o_t_sigmoid]
+    if has_static:
+        compute_inline_tensors = [j_t, i_t, o_t, f_t, it_add_static, ft_add_static, ot_add_static, jt_add_static]
+    else:
+        compute_inline_tensors = [j_t, f_i_o, i_t_sigmoid, f_t_sigmoid, o_t_sigmoid]
+
     for tensor in compute_inline_tensors:
         s[tensor].compute_inline()
 
     # matmul tiling
     factor_l1_m, factor_l1_n, factor_l1_k, \
-    factor_l0_m, factor_l0_n, factor_l0_k =  1, 1, 12, 1, 1, 12
+    factor_l0_m, factor_l0_n, factor_l0_k = 1, 1, 12, 1, 1, 12
 
     l1_n_outer, l1_n_inner = \
         s[c_l0c].split(c_l0c.op.axis[2],
@@ -754,6 +864,7 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, s_init_
     s[a_l0a].compute_at(s[c_l0c], l0_k_outer)
     s[b_l0b].compute_at(s[c_l0c], l0_k_outer)
     s[a_l1].compute_at(s[c_l0c], l1_k_outer)
+    s[b_l1].compute_at(s[c_l0c], l1_k_outer)
 
     ub_n_outer, ub_n_inner = \
         s[c_ub].split(c_ub.op.axis[2],
@@ -793,7 +904,7 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, s_init_
         s[update_h_gm].split(update_h_gm.op.axis[0 + 2],
                              factor=factor_l1_m)
     # second_split_factor default is (hidden_size // factor_l1_n) // 1
-    second_split_factor = 8
+    second_split_factor = (hidden_size // factor_l1_n) // 2
 
     vn_o_outer, vn_o_inner = \
         s[update_h_gm].split(vn_outer,
@@ -819,7 +930,16 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, s_init_
     s[update_c].compute_at(s[update_h_gm], vn_o_inner)
     s[update_h_gm_as_y].compute_at(s[update_h_gm], vn_o_inner)
     s[update_h_gm_as_y_back].compute_at(s[update_h_gm], vn_o_inner)
-
+    
+    if need_output_last:
+        s[last_update_c_gm].compute_at(s[update_h_gm], vn_o_inner)
+        s[last_update_h_gm].compute_at(s[update_h_gm], vn_o_inner)
+        s[last_update_c_back].compute_at(s[update_h_gm], vn_o_inner)
+        s[last_update_h_back].compute_at(s[update_h_gm], vn_o_inner)
+        s[update_c].reused_by(last_update_c_back)
+        s[last_update_c_back].reused_by(reuse_data=True)
+        s[update_h].reused_by(last_update_h_back)
+        s[last_update_h_back].reused_by(reuse_data=True)
 
     s[update_c].reused_by(update_c_fp16_back)
     s[update_c_fp16_back].reused_by(reuse_data=True)
@@ -842,12 +962,18 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, s_init_
     s[tensor_seq_length_ub].emit_insn(tensor_seq_length_ub.op.axis[0], 'dma_copy')
     s[a_ub].emit_insn(a_ub.op.axis[0], 'dma_copy')
 
+    if has_static:
+        s[tensor_static_ub].emit_insn(tensor_static_ub.op.axis[0], 'dma_copy')
+        s[tensor_static_ub].compute_at(s[update_h_gm], vn_o_inner)
+
     mad_dict = {"mad_pattern": 0, "k_outer": [l1_k_outer, l0_k_outer]}
     s[c_l0c].emit_insn(l0_n_inner, 'mad', mad_dict)
     s[c_ub].emit_insn(ub_n_inner, 'dma_copy')
 
     s[bias_bc_ub].emit_insn(bias_bc_ub.op.axis[0], 'unified_broadcast')
     s[tensor_seq_length_bc_ub].emit_insn(tensor_seq_length_bc_ub.op.axis[0], 'unified_broadcast')
+    if ''.join([str(i) for i in shape_h]) != ''.join([str(i) for i in shape_i]):
+        s[tensor_seq_length_ub_bc_conv].emit_insn(tensor_seq_length_ub_bc_conv.op.axis[0], 'unified_broadcast')
 
     if is_first_round:
         if is_global_init:
@@ -873,6 +999,9 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, s_init_
     s[bias_ub].emit_insn(bias_ub.op.axis[0], 'dma_copy')
 
     s[update_c_gm].emit_insn(s[update_c_gm].op.axis[1], 'dma_copy')
+    if need_output_last:
+        s[last_update_c_gm].emit_insn(s[last_update_c_gm].op.axis[1], 'dma_copy')
+        s[last_update_h_gm].emit_insn(s[last_update_h_gm].op.axis[1], 'dma_copy')
     s[update_h_gm].emit_insn(s[update_h_gm].op.axis[3], 'dma_copy')
 
     block = tvm.thread_axis('blockIdx.x')
@@ -881,6 +1010,9 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, s_init_
     s[update_h_gm].set_block_sync(axis=vn_m_outer, tensor=sync0[0], bottom=True)
 
     # fp16 in
+    if need_output_last:
+        s[last_update_c_back].emit_insn(last_update_c_back.op.axis[0], 'phony_insn')
+        s[last_update_h_back].emit_insn(last_update_h_back.op.axis[0], 'phony_insn')
     s[update_c_fp16_back].emit_insn(update_c_fp16_back.op.axis[0],
                                         'phony_insn')
     s[update_h_gm_as_y].emit_insn(update_h_gm_as_y.op.axis[0], 'dma_copy')
@@ -891,8 +1023,9 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, s_init_
 
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
 # pylint: disable=too-many-statements
-def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, s_init_h_gm, s_init_c_gm,
-                     s_state_h_gm_last, s_state_c_gm_last, sync0, is_first_round, is_global_init):
+def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, static, s_init_h_gm, s_init_c_gm,
+                     s_state_h_gm_last, s_state_c_gm_last, sync0, is_first_round, is_global_init,
+                     has_static, need_output_last):
     """
     dynamic rnn core tvm
     """
@@ -955,7 +1088,15 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, s_init_h_
     tmp_shape = [1, 1, (seq_length.shape[1] + 15) // 16, 16, 1]
     tensor_seq_length_ub = tvm.compute(tmp_shape, lambda i, j, l, m, n: seq_length[l, m], name='tensor_seq_length_ub')
     tensor_seq_length_bc_ub = broadcast(tensor_seq_length_ub, shape_h)
-    s_state_h_mul_cont_ub = vmul(s_state_h_ub, tensor_seq_length_bc_ub)
+    s_state_h_mul_cont_ub_tmp = vmul(s_state_h_ub, tensor_seq_length_bc_ub)
+    s_state_h_mul_cont_ub = s_state_h_mul_cont_ub_tmp
+    if s_state_h_mul_cont_ub_tmp.dtype != input_x.dtype:
+        s_state_h_mul_cont_ub_tmp_conv = tvm.compute(
+            s_state_h_mul_cont_ub_tmp.shape,
+            lambda *i: s_state_h_mul_cont_ub_tmp(*i).astype(input_x.dtype),
+            name='s_state_h_mul_cont_ub_tmp_conv', tag='elewise_single_cast'
+        )
+        s_state_h_mul_cont_ub = s_state_h_mul_cont_ub_tmp_conv
     
 
     # input and s_start_h is Nz, need trans to zZ
@@ -1029,19 +1170,66 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, s_init_h_
                     lambda t, i, j, k, l: c_ub_bias(t, j_t_index, i, j, k, l),
                     name="j_t",
                     tag="split_com")
-    shape_fio = (t_size, 3, hidden_size, m_size, 16, 16)
-    f_i_o = tvm.compute(shape_fio, lambda t, x, i, j, k, l: c_ub_bias(t, x, i, j, k, l), name='f_i_o', tag="split_com")
-    f_i_o_sigmoid = sigmoid_compute(f_i_o)
-    f_t_sigmoid = tvm.compute(shape_i,
-                lambda t, i, j, k, l: f_i_o_sigmoid(t, f_t_index, i, j, k, l),
-                name="f_t_sigmoid", tag="split_com")
-    i_t_sigmoid = tvm.compute(shape_i,
-            lambda t, i, j, k, l: f_i_o_sigmoid(t, i_t_index, i, j, k, l),
-            name="i_t_sigmoid", tag="split_com")
-    o_t_sigmoid = tvm.compute(shape_i,
-            lambda t, i, j, k, l: f_i_o_sigmoid(t, o_t_index, i, j, k, l),
-            name="o_t_sigmoid", tag="split_com")
-    j_t_tanh = tanh_compute_high_precision(j_t)
+    if has_static:
+        i_t = tvm.compute(shape_i,
+                    lambda t, i, j, k, l: c_ub_bias(t, i_t_index, i, j, k, l),
+                    name="i_t",
+                    tag="split_com")
+        f_t = tvm.compute(shape_i,
+                    lambda t, i, j, k, l: c_ub_bias(t, f_t_index, i, j, k, l),
+                    name="f_t",
+                    tag="split_com")
+        o_t = tvm.compute(shape_i,
+                    lambda t, i, j, k, l: c_ub_bias(t, o_t_index, i, j, k, l),
+                    name="o_t",
+                    tag="split_com")
+        shape_static = (1, n_size, m_size, 16, 16)
+        output_dim = shape_i[1]
+        tensor_static_ub_fp16 = tvm.compute(shape_static, lambda _, j, k, l, m: static(j, k, l, m),
+         name="tensor_static_ub")
+        tensor_static_ub = tensor_static_ub_fp16
+        if fp16_input_output:
+            tensor_static_ub_fp32 = tvm.compute(
+                shape_static, lambda *indices: tensor_static_ub_fp16(*indices).astype('float32'),
+                name="tensor_static_ub_fp32_drnn_cast", tag="elewise_single_cast"
+            )
+            tensor_static_ub = tensor_static_ub_fp32
+
+        it_add_static = tvm.compute(
+            shape_i, lambda t, i, j, k, l: i_t(t, i, j, k, l) + tensor_static_ub(t, i, j, k, l),
+            name='it_add_static', tag='elewise_binary_add'
+        )
+        ft_add_static = tvm.compute(
+            shape_i, lambda t, i, j, k, l: f_t(t, i, j, k, l) + tensor_static_ub(t, i + output_dim, j, k, l),
+            name='ft_add_static', tag='elewise_binary_add'
+        )
+        ot_add_static = tvm.compute(
+            shape_i, lambda t, i, j, k, l: o_t(t, i, j, k, l) + tensor_static_ub(t, i + output_dim * 2, j, k, l),
+            name='ot_add_static', tag='elewise_binary_add'
+        )
+        jt_add_static = tvm.compute(
+            shape_i, lambda t, i, j, k, l: j_t(t, i, j, k, l) + tensor_static_ub(t, i + output_dim * 3, j, k, l),
+            name='jt_add_static', tag='elewise_binary_add'
+        )
+        f_t_sigmoid = sigmoid_compute(ft_add_static)
+        i_t_sigmoid = sigmoid_compute(it_add_static)
+        o_t_sigmoid = sigmoid_compute(ot_add_static)
+        j_t_tanh = tanh_compute(jt_add_static)
+    else:
+        shape_fio = (t_size, 3, hidden_size, m_size, 16, 16)
+        f_i_o = tvm.compute(shape_fio, lambda t, x, i, j, k, l: c_ub_bias(t, x, i, j, k, l),
+         name='f_i_o', tag="split_com")
+        f_i_o_sigmoid = sigmoid_compute(f_i_o)
+        f_t_sigmoid = tvm.compute(shape_i,
+                    lambda t, i, j, k, l: f_i_o_sigmoid(t, f_t_index, i, j, k, l),
+                    name="f_t_sigmoid", tag="split_com")
+        i_t_sigmoid = tvm.compute(shape_i,
+                lambda t, i, j, k, l: f_i_o_sigmoid(t, i_t_index, i, j, k, l),
+                name="i_t_sigmoid", tag="split_com")
+        o_t_sigmoid = tvm.compute(shape_i,
+                lambda t, i, j, k, l: f_i_o_sigmoid(t, o_t_index, i, j, k, l),
+                name="o_t_sigmoid", tag="split_com")
+        j_t_tanh = tanh_compute_high_precision(j_t)
 
     if ''.join([str(i) for i in shape_h]) == ''.join([str(i) for i in shape_i]):
         tensor_cont_ub = tensor_seq_length_bc_ub
@@ -1083,22 +1271,48 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, s_init_h_
                                   lambda *indices: update_c(*indices),
                                   name="update_c_gm",
                                   tag="ub_to_out")
+    
     if bias_dtype == 'float16':
         update_c_fp16_back = tvm.compute(shape_i,
                                         lambda *indices: update_c_gm(*indices),
                                         name = "update_c_fp16_back",
                                         tag = "out_to_ub")
-        update_c_fp16_back_fp32 = tvm.compute(shape_i,
-                                        lambda *indices: update_c_fp16_back(*indices).astype('float32'),
-                                        name = "update_c_fp16_back_fp32_drnn_cast",
-                                        tag = "elewise_single_cast")
+        if need_output_last:
+            last_update_c_gm = tvm.compute(shape_i,
+                                        lambda *indices: update_c_fp16_back(*indices),
+                                        name = "last_update_c_gm",
+                                        tag = "ub_to_out")
+            last_update_c_back = tvm.compute(shape_i,
+                                        lambda *indices: last_update_c_gm(*indices),
+                                        name = "last_update_c_back",
+                                        tag = "out_to_ub")
+            update_c_fp16_back_fp32 = tvm.compute(shape_i,
+                                            lambda *indices: last_update_c_back(*indices).astype('float32'),
+                                            name = "update_c_fp16_back_fp32_drnn_cast",
+                                            tag = "elewise_single_cast")
+        else:
+            update_c_fp16_back_fp32 = tvm.compute(shape_i,
+                                            lambda *indices: update_c_fp16_back(*indices).astype('float32'),
+                                            name = "update_c_fp16_back_fp32_drnn_cast",
+                                            tag = "elewise_single_cast")
         c_t_tanh = tanh_compute_high_precision(update_c_fp16_back_fp32)
     else:
         update_c_fp32_back = tvm.compute(shape_i,
                                         lambda *indices: update_c_gm(*indices),
                                         name = "update_c_fp32_back",
                                         tag = "out_to_ub")
-        c_t_tanh = tanh_compute_high_precision(update_c_fp32_back)
+        if need_output_last:
+            last_update_c_gm = tvm.compute(shape_i,
+                                        lambda *indices: update_c_fp32_back(*indices),
+                                        name = "last_update_c_gm",
+                                        tag = "ub_to_out")
+            last_update_c_back = tvm.compute(shape_i,
+                                        lambda *indices: last_update_c_gm(*indices),
+                                        name = "last_update_c_back",
+                                        tag = "out_to_ub") 
+            c_t_tanh = tanh_compute_high_precision(last_update_c_back)           
+        else:
+            c_t_tanh = tanh_compute_high_precision(update_c_fp32_back)
         
     c_t_tanh_ub = c_t_tanh
     update_h = vmul(c_t_tanh_ub, o_t_sigmoid_ub)
@@ -1116,10 +1330,24 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, s_init_h_
                                         lambda *indices: update_h_gm_as_y(*indices),
                                         name = "update_h_gm_as_y_back",
                                         tag = "out_to_ub")
-        update_h_gm = tvm.compute(shape_i,
-                                lambda *indices: update_h_gm_as_y_back(*indices),
-                                name = "update_h_gm",
-                                tag = "ub_to_out")                                
+        if need_output_last:
+            last_update_h_gm = tvm.compute(shape_i,
+                                    lambda *indices: update_h_gm_as_y_back(*indices),
+                                    name = "last_update_h_gm",
+                                    tag = "ub_to_out")   
+            last_update_h_back = tvm.compute(shape_i,
+                                    lambda *indices: last_update_h_gm(*indices),
+                                    name = "last_update_h_back",
+                                    tag = "out_to_ub")   
+            update_h_gm = tvm.compute(shape_i,
+                                    lambda *indices: last_update_h_back(*indices),
+                                    name = "update_h_gm",
+                                    tag = "ub_to_out")   
+        else:
+            update_h_gm = tvm.compute(shape_i,
+                                    lambda *indices: update_h_gm_as_y_back(*indices),
+                                    name = "update_h_gm",
+                                    tag = "ub_to_out")                                
     else:
         update_h_gm_as_y = tvm.compute(shape_i,
                                     lambda *indices: update_h(*indices),
@@ -1133,17 +1361,34 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, s_init_h_
                                         lambda *indices: update_h_gm_as_y_back(*indices).astype('float16'),
                                         name = "update_h_fp16_cast_drnn_cast",
                                         tag = "elewise_single_cast")
-        update_h_gm = tvm.compute(shape_i,
-                                lambda *indices: update_h_fp16_cast(*indices),
-                                name = "update_h_gm",
-                                tag = "ub_to_out") 
+        if need_output_last:
+            last_update_h_gm = tvm.compute(shape_i,
+                                    lambda *indices: update_h_fp16_cast(*indices),
+                                    name = "last_update_h_gm",
+                                    tag = "ub_to_out")   
+            last_update_h_back = tvm.compute(shape_i,
+                                    lambda *indices: last_update_h_gm(*indices),
+                                    name = "last_update_h_back",
+                                    tag = "out_to_ub")   
+            update_h_gm = tvm.compute(shape_i,
+                                    lambda *indices: last_update_h_back(*indices),
+                                    name = "update_h_gm",
+                                    tag = "ub_to_out") 
+            
+        else:    
+            update_h_gm = tvm.compute(shape_i,
+                                    lambda *indices: update_h_fp16_cast(*indices),
+                                    name = "update_h_gm",
+                                    tag = "ub_to_out") 
 
     #end compute
     return_list = [update_h_gm, update_c_gm, update_h_gm_as_y]
+    if need_output_last:
+        return_list.extend([last_update_h_gm, last_update_c_gm])
     return_list, s = rl_bank.tik_dsl_bank_proc(return_list, sync_tensor = sync0)
     if s is not None:
         return return_list, s
-    
+
     #schedule
     s = create_schedule([update_h_gm.op])
     
@@ -1193,6 +1438,14 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, s_init_h_
     s[s_state_c_ub].set_scope(scope_ubuf)
     
     s[a_ub].set_scope(scope_ubuf)
+    if has_static:
+        s[tensor_static_ub_fp16].set_scope(scope_ubuf)
+        if fp16_input_output:
+            s[tensor_static_ub_fp32].set_scope(scope_ubuf)
+    
+    if need_output_last:
+        s[last_update_c_back].set_scope(scope_ubuf)
+        s[last_update_h_back].set_scope(scope_ubuf)
     
     if fp16_input_output:
         s[bias_ub_fp32].set_scope(scope_ubuf)
@@ -1212,7 +1465,10 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, s_init_h_
     s[update_h_gm_as_y_back].set_scope(scope_ubuf)
     
     #compute inline
-    compute_inline_tensors = [j_t, f_i_o, i_t_sigmoid, f_t_sigmoid, o_t_sigmoid]
+    if has_static:
+        compute_inline_tensors = [j_t, i_t, o_t, f_t, it_add_static, ft_add_static, ot_add_static, jt_add_static]
+    else:
+        compute_inline_tensors = [j_t, f_i_o, i_t_sigmoid, f_t_sigmoid, o_t_sigmoid]
     for tensor in compute_inline_tensors:
         s[tensor].compute_inline()
         
@@ -1249,6 +1505,7 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, s_init_h_
     s[a_l0a].compute_at(s[c_l0c], l0_k_outer)
     s[b_l0b].compute_at(s[c_l0c], l0_k_outer)
     s[a_l1].compute_at(s[c_l0c], l1_k_outer)
+    s[b_l1].compute_at(s[c_l0c], l1_k_outer)
 
     ub_n_outer, ub_n_inner = s[c_ub].split(c_ub.op.axis[2], factor=factor_l1_n)
 
@@ -1313,11 +1570,12 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, s_init_h_
         s[update_c_fp16].compute_at(s[update_h_gm], vn_o_inner)
         s[update_c_fp16_back].compute_at(s[update_h_gm], vn_o_inner)
         s[update_c_fp16_back_fp32].compute_at(s[update_h_gm], vn_o_inner)
-        s[update_h_fp16].compute_at(s[update_h_gm], vn_o_inner)
+        s[update_h_fp16].compute_at(s[update_h_gm], vn_o_inner)            
     else:
         s[update_c_fp32_back].compute_at(s[update_h_gm], vn_o_inner)
         s[update_c].compute_at(s[update_h_gm], vn_o_inner)
         s[update_h_fp16_cast].compute_at(s[update_h_gm], vn_o_inner)
+   
 
     s[update_h_gm_as_y].compute_at(s[update_h_gm], vn_o_inner)
     s[update_h_gm_as_y_back].compute_at(s[update_h_gm], vn_o_inner)
@@ -1327,11 +1585,30 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, s_init_h_
         s[update_c_fp16_back_fp32].reused_by(reuse_data=True)
         s[update_h_fp16].reused_by(update_h_gm_as_y_back)
         s[update_h_gm_as_y_back].reused_by(reuse_data=True)
+        if need_output_last:
+            s[update_c_fp16].reused_by(last_update_c_back)
+            s[update_c_fp16].reused_by(update_c_fp16_back)
+            s[update_c_fp16_back].reused_by(reuse_data=True)
+            s[last_update_c_back].reused_by(reuse_data=True)
+            s[update_h_fp16].reused_by(last_update_h_back)
+            s[last_update_h_back].reused_by(reuse_data=True)
     else:
         s[update_c].reused_by(update_c_fp32_back)
         s[update_c_fp32_back].reused_by(reuse_data=True)
         s[update_h].reused_by(update_h_gm_as_y_back)
         s[update_h_gm_as_y_back].reused_by(reuse_data=True)
+        if need_output_last:
+            s[update_c].reused_by(last_update_c_back)
+            s[last_update_c_back].reused_by(reuse_data=True)
+            s[update_h].reused_by(last_update_h_back)
+            s[last_update_h_back].reused_by(reuse_data=True)
+    
+    if need_output_last:
+        s[last_update_c_gm].compute_at(s[update_h_gm], vn_o_inner)
+        s[last_update_h_gm].compute_at(s[update_h_gm], vn_o_inner)
+        s[last_update_c_back].compute_at(s[update_h_gm], vn_o_inner)
+        s[last_update_h_back].compute_at(s[update_h_gm], vn_o_inner)
+
 
     s[a_l1].double_buffer()
     s[b_l1].double_buffer()
@@ -1351,6 +1628,13 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, s_init_h_
 
     if fp16_input_output:
         s[bias_ub_fp32].emit_insn(bias_ub_fp32.op.axis[0], 'vector_conv')
+    
+    if has_static:
+        s[tensor_static_ub_fp16].emit_insn(tensor_static_ub_fp16.op.axis[0], 'dma_copy')
+        s[tensor_static_ub_fp16].compute_at(s[update_h_gm], vn_o_inner)
+        if fp16_input_output:
+            s[tensor_static_ub_fp32].emit_insn(tensor_static_ub_fp32.op.axis[0], 'vector_conv')
+            s[tensor_static_ub_fp32].compute_at(s[update_h_gm], vn_o_inner)
 
     mad_dict = {"mad_pattern":0, "k_outer":[l1_k_outer, l0_k_outer]}
     s[c_l0c].emit_insn(l0_n_inner, 'mad', mad_dict)
@@ -1358,6 +1642,8 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, s_init_h_
 
     s[bias_bc_ub].emit_insn(bias_bc_ub.op.axis[0], 'unified_broadcast')
     s[tensor_seq_length_bc_ub].emit_insn(tensor_seq_length_bc_ub.op.axis[0], 'unified_broadcast')
+    if ''.join([str(i) for i in shape_h]) != ''.join([str(i) for i in shape_i]):
+        s[tensor_seq_length_ub_bc_conv].emit_insn(tensor_seq_length_ub_bc_conv.op.axis[0], 'unified_broadcast')
 
     if is_first_round:
         if is_global_init:
@@ -1382,6 +1668,9 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, s_init_h_
             s[tensor].emit_insn(tensor.op.axis[0], insn)
 
     s[bias_ub].emit_insn(bias_ub.op.axis[0], 'dma_copy')
+    if need_output_last:
+        s[last_update_c_gm].emit_insn(s[last_update_c_gm].op.axis[1], 'dma_copy')
+        s[last_update_h_gm].emit_insn(s[last_update_h_gm].op.axis[1], 'dma_copy')
 
     s[update_c_gm].emit_insn(s[update_c_gm].op.axis[1], 'dma_copy')
     s[update_h_gm].emit_insn(s[update_h_gm].op.axis[3], 'dma_copy')
@@ -1390,6 +1679,9 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, s_init_h_
     s[update_h_gm].bind(vn_o_outer, block)
     s[update_h_gm].wait_block_sync(axis=vn_m_outer, tensor=sync0[0], bottom=True)
     s[update_h_gm].set_block_sync(axis=vn_m_outer, tensor=sync0[0], bottom=True)
+    if need_output_last:
+        s[last_update_c_back].emit_insn(last_update_c_back.op.axis[0], 'phony_insn')
+        s[last_update_h_back].emit_insn(last_update_h_back.op.axis[0], 'phony_insn')
                     
     # fp16 in
     if bias_dtype == 'float16':

@@ -273,7 +273,7 @@ REG_OP(DynamicRNN)
 *@par Attributes:
 *@li num_output:An integer identifying the num projection in the op. Default to 0.
 *@li expose_hidden:An bool identifying the expose_hidden in the op. Default to flase.
-*@li time_major:An bool identifying the time major in the op. Default to true.
+*@li need_output_last:An bool identifying the time major in the op. Default to true.
 *@li forget_bias:An float identifying the forget bias in the op. Default to 0.
 
 *@par Outputs:
@@ -281,11 +281,8 @@ REG_OP(DynamicRNN)
 *@li y:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 *@li output_h:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 *@li output_c:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
-*@li i:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
-*@li j:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
-*@li f:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
-*@li o:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
-*@li tanhct:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
+*@li last_output_h:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
+*@li last_output_c:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 */
 REG_OP(DynamicLSTMV2)
     .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT}))
@@ -302,14 +299,11 @@ REG_OP(DynamicLSTMV2)
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OUTPUT(output_h, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OUTPUT(output_c, TensorType({DT_FLOAT16, DT_FLOAT}))
-    .OUTPUT(i, TensorType({DT_FLOAT16, DT_FLOAT}))
-    .OUTPUT(j, TensorType({DT_FLOAT16, DT_FLOAT}))
-    .OUTPUT(f, TensorType({DT_FLOAT16, DT_FLOAT}))
-    .OUTPUT(o, TensorType({DT_FLOAT16, DT_FLOAT}))
-    .OUTPUT(tanhc, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(last_output_h, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(last_output_c, TensorType({DT_FLOAT16, DT_FLOAT}))
     .ATTR(num_output, Int, 0)
     .ATTR(expose_hidden, Bool, false)
-    .ATTR(time_major, Bool, true)
+    .ATTR(need_output_last, Bool, false)
     .ATTR(forget_bias, Float, 0.0)
     .OP_END_FACTORY_REG(DynamicLSTMV2)
 
