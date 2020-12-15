@@ -236,10 +236,10 @@ def _batch_matmul_compute(input_x1, input_x2, bias, output_z, trans_a, trans_b, 
 
     batch_range, m_range, k_range, n_range = input_range
 
-    batch_var = tbe_base.var("batch", batch_range)
     m_var = tbe_base.var("m", m_range)
     k_var = tbe_base.var("k", k_range)
     n_var = tbe_base.var("n", n_range)
+    batch_var = tbe_base.var("batch", batch_range)
 
     shape_x1_nz = [batch_var, DYNAMIC_FLAG, DYNAMIC_FLAG, BLOCK_CUBE, BLOCK_CUBE]
     shape_x2_nz = [DYNAMIC_FLAG, DYNAMIC_FLAG, BLOCK_CUBE, BLOCK_CUBE]

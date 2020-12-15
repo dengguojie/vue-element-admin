@@ -115,7 +115,7 @@ def calc_matmul(outs, option=None):
     """
 
     mode = GEMMParam.dynamic_mode
-    var_names = {"dynamic_mkn": ("m", "k", "n"), "dynamic_bmkn": ("m", "k", "n", "batch")}
+    var_names = {"dynamic_mkn": ("m", "k", "n"), "dynamic_mknb": ("m", "k", "n", "batch")}
     target_area = [get_te_var(v).get_bound() for v in var_names[mode]]
     info = GEMMParam.tiling_info_dict
     info = set_var_value(info, target_area)
@@ -306,7 +306,7 @@ class MatmulTiling(CubeTilingOp):
         var_range["m"] = (coverage[0], coverage[1])
         var_range["k"] = (coverage[2], coverage[3])
         var_range["n"] = (coverage[4], coverage[5])
-        if self.dynamic_mode == "dynamic_bmkn":
+        if self.dynamic_mode == "dynamic_mknb":
             var_range["batch"] = (coverage[6], coverage[7])
 
         return {"key": cnt, "tiling_strategy": tiling, "var_range": var_range}

@@ -668,7 +668,7 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
 
     if in_dynamic():
         if GEMMParam.batch_a:
-            GEMMParam.dynamic_mode = "dynamic_bmkn"
+            GEMMParam.dynamic_mode = "dynamic_mknb"
         else:
             GEMMParam.dynamic_mode = "dynamic_mkn"
 

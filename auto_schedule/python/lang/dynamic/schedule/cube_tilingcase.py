@@ -91,7 +91,7 @@ class TilingSelection:
             batch_func_map = {"conv2d_bp_filter": self._calc_batch_v2}
             batch_func = batch_func_map.get(self.op.op_type, self._calc_batch)
             tiling_cases = batch_func(target_area)
-        elif self.op.dynamic_mode in ("dynamic_mkn", "dynamic_bmkn"):
+        elif self.op.dynamic_mode in ("dynamic_mkn", "dynamic_mknb"):
             tiling_cases = self._calc_matmul(target_area)
         elif self.op.dynamic_mode == "dynamic_dhw":
             tiling_cases = self._calc_dhw(target_area)
@@ -192,7 +192,7 @@ class TilingSelection:
         ----------
         target_area:list, range to be covered [[m_min, m_max], [k_min, k_max],
                  [n_min, n_max],[batch_min, batch_max]], batch value exsit when
-                 dynamic_bmkn mode
+                 dynamic_mknb mode
 
         Returns
         -------
@@ -200,7 +200,7 @@ class TilingSelection:
         """
 
         def _correct_seed_range(seed_area):
-            # dynamic_bmkn or dynamic_mkn only compare m, k, n value
+            # dynamic_mknb or dynamic_mkn only compare m, k, n value
             funcs = (max, min, max, min, max, min)
             return [func(ta, sa) for func, ta, sa in zip(funcs, range_area, seed_area)]
 
@@ -214,7 +214,7 @@ class TilingSelection:
             seed_shape_info = [seed_m_value, seed_k_value, seed_n_value]
             seed_range = self.op.get_tiling_range(seed["tiling"], seed_shape_info)
             seed_range = _correct_seed_range(seed_range)
-            if self.op.dynamic_mode == "dynamic_bmkn":
+            if self.op.dynamic_mode == "dynamic_mknb":
                 seed_range += target_area[3]
                 seed_shape_info += [seed_batch_value]
             candidates[next(self.seed_cnt)] = [seed_range, seed["tiling"], seed_shape_info]
@@ -563,7 +563,7 @@ class TilingSelection:
                     cost_cases.extend(gen_rects)
                 else:
                     raise RuntimeError("totally uncovered!!!")
-                if self.op.dynamic_mode == "dynamic_bmkn":
+                if self.op.dynamic_mode == "dynamic_mknb":
                     covered_area += target_area[-1]
                 cur_seed_cnt = next(self.seed_cnt)
                 cost_tilings.append(

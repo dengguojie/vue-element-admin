@@ -20,6 +20,7 @@
  */
 #include <algorithm>
 #include <climits>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -56,7 +57,8 @@ const int64_t kBlockOut = 16;
 
 namespace optiling {
 
-bool GetGEMMBatch(const vector<int64_t> &shape_a, const vector<int64_t> &shape_b, int64_t *batch) {
+bool GetGEMMBatch(const string &op_type, const vector<int64_t> &shape_a, const vector<int64_t> &shape_b,
+                  int64_t *batch) {
   if (shape_a.size() < 3 && shape_b.size() < 3) {
     *batch = 1;
     return true;
@@ -68,6 +70,7 @@ bool GetGEMMBatch(const vector<int64_t> &shape_a, const vector<int64_t> &shape_b
 
   for (int i = shape_broadcast.size() - 3; i >= static_cast<int>(shape_broadcast.size() - shape_short.size()); --i) {
     if (shape_short[i] != shape_long[i] && shape_short[i] != 1 && shape_long[i] != 1) {
+      OP_LOGE(op_type.c_str(), "Tensor a and b do not meet the broadcast rule");
       return false;
     }
     shape_broadcast[i] = max(shape_short[i], shape_long[i]);
@@ -77,31 +80,37 @@ bool GetGEMMBatch(const vector<int64_t> &shape_a, const vector<int64_t> &shape_b
   return true;
 }
 
-bool CalcGEMMMkn(const string &op_type, const json &compile_info,
-                 const TeOpTensor &tensor_a, const TeOpTensor &tensor_b,
-                 int64_t *m, int64_t *k, int64_t *n, int64_t *batch) {
+bool CalcGEMMMknb(const string &op_type, const json &compile_info,
+                  const TeOpTensor &tensor_a, const TeOpTensor &tensor_b,
+                  int64_t *m, int64_t *k, int64_t *n, int64_t *batch) {
     int32_t block_reduce = kBlockReduce, block_in = kBlockIn, block_out = kBlockOut;
     if (tensor_a.dtype == "int8" || tensor_a.dtype == "uint8") {
       block_reduce = kBlockReduceS8;
     }
 
-    int32_t idx_m_of_a = 0;
-    int32_t idx_k_of_a = 1;
-    int32_t idx_k_of_b = 0;
-    int32_t idx_n_of_b = 1;
+    int32_t idx_m_of_a = -2;
+    int32_t idx_k_of_a = -1;
+    int32_t idx_k_of_b = -2;
+    int32_t idx_n_of_b = -1;
 
     auto trans_a = compile_info["attrs"]["transpose_a"].get<bool>();
     auto trans_b = compile_info["attrs"]["transpose_b"].get<bool>();
     if (trans_a) {
-      idx_m_of_a = 1;
-      idx_k_of_a = 0;
+      idx_m_of_a = -1;
+      idx_k_of_a = -2;
     }
     if (trans_b) {
-      idx_k_of_b = 1;
-      idx_n_of_b = 0;
+      idx_k_of_b = -1;
+      idx_n_of_b = -2;
     }
 
+    idx_m_of_a += tensor_a.ori_shape.size();
+    idx_k_of_a += tensor_a.ori_shape.size();
+    idx_k_of_b += tensor_b.ori_shape.size();
+    idx_n_of_b += tensor_b.ori_shape.size();
+
     if (tensor_a.ori_shape[idx_k_of_a] != tensor_b.ori_shape[idx_k_of_b]) {
+      OP_LOGE(op_type.c_str(), "The k-axis of a and b tensors must be the same");
       return false;
     }
 
@@ -109,7 +118,52 @@ bool CalcGEMMMkn(const string &op_type, const json &compile_info,
     *k = std::ceil(static_cast<double>(tensor_a.ori_shape[idx_k_of_a]) / block_reduce);
     *n = std::ceil(static_cast<double>(tensor_b.ori_shape[idx_n_of_b]) / block_out);
 
-    return GetGEMMBatch(tensor_a.ori_shape, tensor_b.ori_shape, batch);
+    return GetGEMMBatch(op_type, tensor_a.ori_shape, tensor_b.ori_shape, batch);
+}
+
+string StringTeOperator(const TeOpTensor &tensor) {
+    std::ostringstream oss;
+    oss << "\t\tori_shape: (";
+    for (auto dim : tensor.ori_shape) {
+      oss << dim << ", ";
+    }
+    oss << ")" << endl;
+
+    oss << "\t\tshape: (";
+    for (auto dim : tensor.shape) {
+      oss << dim << ", ";
+    }
+    oss << ")" << endl;
+
+    oss << "\t\tdtype: " << tensor.dtype << endl;
+    oss << "\t\tformat: " << tensor.format << endl;
+    oss << "\t\tori_format: " << tensor.ori_format << endl;
+    return oss.str();
+}
+
+string DebugInfoGEMM(const TeOpParas &op_paras, const json &compile_info) {
+  std::ostringstream oss;
+  oss << "inputs:" << endl;
+  for (uint32_t i = 0; i < op_paras.inputs.size(); ++i) {
+    oss << "\tinput " << i << endl;
+    if (!op_paras.inputs[i].tensor.empty()) {
+      auto tensor = op_paras.inputs[i].tensor[0];
+      oss << StringTeOperator(tensor);
+    }
+  }
+
+  oss << "outputs:" << endl;
+  for (uint32_t i = 0; i < op_paras.outputs.size(); ++i) {
+    oss << "\toutput " << i << endl;
+    if (!op_paras.outputs[i].tensor.empty()) {
+      auto tensor = op_paras.outputs[i].tensor[0];
+      oss << StringTeOperator(tensor);
+    }
+  }
+
+  oss << "compile_info:" << endl;
+  oss << compile_info.dump() << endl;
+  return oss.str();
 }
 
 /*
@@ -122,16 +176,19 @@ bool CalcGEMMMkn(const string &op_type, const json &compile_info,
  */
 bool GEMMTiling(const std::string &op_type, const TeOpParas &op_paras, const json &compile_info,
                 OpRunInfo& run_info) {
-  auto tensor_a = op_paras.inputs[0].tensor[0];
-  auto tensor_b = op_paras.inputs[1].tensor[0];
-  int64_t m, k, n, batch;
-  if (!CalcGEMMMkn(op_type, compile_info, tensor_a, tensor_b, &m, &k, &n, &batch)) {
+  OP_LOGD(op_type.c_str(), "%s", DebugInfoGEMM(op_paras, compile_info).c_str());
+
+  auto dynamic_mode = compile_info["dynamic_mode"].get<std::string>();
+  if (dynamic_mode != "dynamic_mkn" && dynamic_mode != "dynamic_mknb") {
+    OP_LOGE(op_type.c_str(), "Only support dynamic_mode: dynamic_mkn, dynamic_mknb");
     return false;
   }
 
-  auto dynamic_mode = compile_info["dynamic_mode"].get<std::string>();
-
-  if (dynamic_mode != "dynamic_mkn" && dynamic_mode != "dynamic_mknb") {
+  auto tensor_a = op_paras.inputs[0].tensor[0];
+  auto tensor_b = op_paras.inputs[1].tensor[0];
+  int64_t m, k, n, batch;
+  if (!CalcGEMMMknb(op_type, compile_info, tensor_a, tensor_b, &m, &k, &n, &batch)) {
+    OP_LOGE(op_type.c_str(), "Failed to calculate m, k, n, batch");
     return false;
   }
 
@@ -169,12 +226,17 @@ bool GEMMTiling(const std::string &op_type, const TeOpParas &op_paras, const jso
                       range[kIdxNLow] <= n && n <= range[kIdxNHigh];
       if (in_range) {
         tiling_id = element.key();
+        OP_LOGD(op_type.c_str(), "match tiling_id(%s) in costmodel", tiling_id.c_str());
         break;
       }
     }
+  } else {
+    OP_LOGD(op_type.c_str(), "match tiling_id(%s) in repository", tiling_id.c_str());
   }
 
   if (tiling_id == "-1") {
+    OP_LOGE(op_type.c_str(), "This shape is not covered by any tiling, "
+            "please modify range and recompile");
     return false;
   }
 
