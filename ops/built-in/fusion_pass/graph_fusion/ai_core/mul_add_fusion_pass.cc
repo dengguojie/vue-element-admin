@@ -16,7 +16,7 @@
 
 /*!
  * \file mul_add_fusion_pass.cpp
- * \brief mul add usion pass(mul --> add)
+ * \brief mul add fusion pass(mul --> add)
  */
 #include "mul_add_fusion_pass.h"
 
