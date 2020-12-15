@@ -30,6 +30,7 @@ from impl.util.util_common import write_code
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
+from topi.cce.util import check_load3d_w_out_1_support
 
 BLOCK_SIZE = 16
 BLOCK_SIZE_ALIGN = 16
@@ -795,13 +796,29 @@ def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_n
     _, kernel_h, kernel_w, _ = ksizes
     _, stride_h, stride_w, _ = strides
     _, dilate_h, dilate_w, _ = dilates
+
     out_h, _, _ = tbe.te_compute.common.tf_get_windowed_output_size_verbose_v2(fmap_h, kernel_h, dilate_h, stride_h,
                                                                                padding)
-    out_w, _, _ = tbe.te_compute.common.tf_get_windowed_output_size_verbose_v2(fmap_w, kernel_w, dilate_w, stride_w,
-                                                                               padding)
+    out_w, padding_w_before, padding_w_after = tbe.te_compute.common.tf_get_windowed_output_size_verbose_v2(
+        fmap_w, kernel_w, dilate_w, stride_w, padding)
 
     if (out_h <= 0) or (out_w <= 0):
         error_manager_vector.raise_err_specific_reson(kernel_name, "out_h and out_w can not <= 0!")
+
+    if not check_load3d_w_out_1_support() and (out_h != 1 and out_w == 1):
+        if fmap_w + padding_w_before + padding_w_after - kernel_w < stride_w:
+            error_manager_vector.raise_err_specific_reson(
+                'extract_image_patches',
+                "Platform cloud and DC DO NOT support these invalid params,"
+                " it must be fmap_w + pad_l + pad_r - kernel_w >= stride_w"
+            )
+        if (fmap_w + padding_w_before + padding_w_after) <= (kernel_w - 1) * dilate_w + 1:
+            error_manager_vector.raise_err_specific_reson(
+                'extract_image_patches',
+                "Platform cloud and DC DO NOT support these invalid params,"
+                " it must be fmap_w + pad_l + pad_r > kernel_w(after dilation)"
+            )
+
     # min cut_h
     dilated_kernel_h = (kernel_h - 1) * dilate_h + 1
     cut_h_col = (BLOCK_SIZE // math.gcd(out_w, BLOCK_SIZE) - 1) * stride_h + 1 + dilated_kernel_h // 2

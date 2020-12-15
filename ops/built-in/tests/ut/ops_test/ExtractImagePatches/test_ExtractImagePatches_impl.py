@@ -62,8 +62,54 @@ case2 = {
     "support_expect":
     True
 }
-ut_case.add_case(["Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend710", "Ascend910A"], case2)
+case3 = {
+    "params": [{
+        "shape": (2, 16, 1, 64),
+        "dtype": "float16",
+        "format": "NHWC",
+        "ori_shape": (2, 16, 1, 64),
+        "ori_format": "NHWC"
+    }, {
+        "shape": (2, 8, 1, 576),
+        "dtype": "float16",
+        "format": "NHWC",
+        "ori_shape": (2, 8, 1, 576),
+        "ori_format": "NHWC"
+    }, (1, 3, 3, 1), (1, 2, 2, 1), (1, 3, 3, 1), "SAME"],
+    "case_name":
+    "extract_image_patches_3",
+    "expect":
+    RuntimeError,
+    "format_expect": [],
+    "support_expect":
+    True
+}
+case4 = {
+    "params": [{
+        "shape": (2, 16, 1, 64),
+        "dtype": "float16",
+        "format": "NHWC",
+        "ori_shape": (2, 16, 1, 64),
+        "ori_format": "NHWC"
+    }, {
+        "shape": (2, 4, 1, 256),
+        "dtype": "float16",
+        "format": "NHWC",
+        "ori_shape": (2, 4, 1, 256),
+        "ori_format": "NHWC"
+    }, (1, 2, 2, 1), (1, 4, 4, 1), (1, 3, 3, 1), "SAME"],
+    "case_name":
+    "extract_image_patches_4",
+    "expect":
+    RuntimeError,
+    "format_expect": [],
+    "support_expect":
+    True
+}
+ut_case.add_case(["Ascend710", "Ascend910"], case1)
+ut_case.add_case(["Ascend710", "Ascend910"], case2)
+ut_case.add_case(["Ascend710", "Ascend910"], case3)
+ut_case.add_case(["Ascend710", "Ascend910"], case4)
 
 
 def extract_image_patches_produce(in_x, conv_param, src_type):
@@ -261,6 +307,6 @@ ut_case.add_precision_case(
         precision_info.PrecisionStandard(0.001, 0.001)
     })
 
-if __name__ == '__main__':
-    ut_case.run("Ascend910A")
-    exit(0)
+# if __name__ == '__main__':
+#     ut_case.run("Ascend910")
+#     exit(0)
