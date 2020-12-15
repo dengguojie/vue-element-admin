@@ -41,44 +41,44 @@ def calc_expect_func(predict, target, weight, pos_weight, y, reduction):
 
     return loss
 
-case1 = {"params": [{"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #predict
-                    {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #target
-                    {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #weight
-                    {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #pos_weight
-                    {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"output"}, #loss
+case1 = {"params": [{"shape": (128, 128), "dtype": "float32", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #predict
+                    {"shape": (128, 128), "dtype": "float32", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #target
+                    {"shape": (128, 128), "dtype": "float32", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #weight
+                    {"shape": (128, 128), "dtype": "float32", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #pos_weight
+                    {"shape": (128, 128), "dtype": "float32", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"output"}, #loss
                     "none"],
          "case_name": "sigmoid_cross_entropy_with_logits_v2_1",
          "expect": "success",
          "calc_expect_func": calc_expect_func,
-         "precision_standard": precision_info.PrecisionStandard(0.1, 0.1)}
+         "precision_standard": precision_info.PrecisionStandard(0.0001, 0.0001)}
 
-case2 = {"params": [{"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #predict
-                    {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #target
-                    {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #weight
-                    {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #pos_weight
-                    {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),"ori_format": "ND", "param_type":"output"}, #loss
+case2 = {"params": [{"shape": (128, 128), "dtype": "float32", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #predict
+                    {"shape": (128, 128), "dtype": "float32", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #target
+                    {"shape": (128, 128), "dtype": "float32", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #weight
+                    {"shape": (128, 128), "dtype": "float32", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #pos_weight
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND", "param_type":"output"}, #loss
                     "mean"],
          "case_name": "sigmoid_cross_entropy_with_logits_v2_2",
          "expect": "success",
          "calc_expect_func": calc_expect_func,
-         "precision_standard": precision_info.PrecisionStandard(0.1, 0.1)}
+         "precision_standard": precision_info.PrecisionStandard(0.0001, 0.0001)}
 
-case3 = {"params": [{"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #predict
-                    {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #target
-                    {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #weight
-                    {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #pos_weight
-                    {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),"ori_format": "ND", "param_type":"output"}, #loss
+case3 = {"params": [{"shape": (128, 128), "dtype": "float32", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #predict
+                    {"shape": (128, 128), "dtype": "float32", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #target
+                    {"shape": (128, 128), "dtype": "float32", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #weight
+                    {"shape": (128, 128), "dtype": "float32", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #pos_weight
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND", "param_type":"output"}, #loss
                     "sum"],
          "case_name": "sigmoid_cross_entropy_with_logits_v2_3",
          "expect": "success",
          "calc_expect_func": calc_expect_func,
-         "precision_standard": precision_info.PrecisionStandard(0.1, 0.1)}
+         "precision_standard": precision_info.PrecisionStandard(0.0001, 0.0001)}
 
 case4 = {"params": [{"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #predict
                     {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #target
                     {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #weight
                     {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #pos_weight
-                    {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),"ori_format": "ND", "param_type":"output"}, #loss
+                    {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (1,),"ori_format": "ND", "param_type":"output"}, #loss
                     "none"],
          "case_name": "sigmoid_cross_entropy_with_logits_v2_4",
          "expect": "success",
@@ -104,10 +104,34 @@ case6 = {"params": [{"shape": (128, 128), "dtype": "float16", "format": "ND", "o
          "expect": "success",
          "support_expect": True}
 
+def test_op_select_format(test_arg):
+    from impl.sigmoid_cross_entropy_with_logits_v2 import op_select_format
+    op_select_format({"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #predict
+                     {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #target
+                     {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #weight
+                     {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #pos_weight
+                     {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (1,),"ori_format": "ND", "param_type":"output"}, #loss
+                     "none")
+
+    op_select_format({"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #predict
+                     {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #target
+                     {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #weight
+                     {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #pos_weight
+                     {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),"ori_format": "ND", "param_type":"output"}, #loss
+                     "mean")
+    
+    op_select_format({"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #predict
+                     {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #target
+                     {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #weight
+                     {"shape": (128, 128), "dtype": "float16", "format": "ND", "ori_shape": (128, 128),"ori_format": "ND", "param_type":"input"}, #pos_weight
+                     {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),"ori_format": "ND", "param_type":"output"}, #loss
+                     "sum")
+
 ut_case.add_precision_case(["Ascend910"], case1)
 ut_case.add_precision_case(["Ascend910"], case2)
 ut_case.add_precision_case(["Ascend910"], case3)
-ut_case.add_case(["Ascend910","Ascend310"], case4)
-ut_case.add_case(["Ascend910","Ascend310"], case5)
-ut_case.add_case(["Ascend910","Ascend310"], case6)
+ut_case.add_case(["Ascend710","Ascend910"], case4)
+ut_case.add_case(["Ascend710","Ascend910"], case5)
+ut_case.add_case(["Ascend710","Ascend910"], case6)
+ut_case.add_cust_test_func(test_func=test_op_select_format)
 
