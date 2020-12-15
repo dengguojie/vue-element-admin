@@ -4525,93 +4525,22 @@ class CceConvOp:
             noi_true = batch_inner_outer
             res_c = sum_x_ub_rf
         else:
-            if self._dynamic_mode == "dynamic_hw":
-                cout1_group, cout1_ori = sch[res_c].split(
-                    res_c.op.axis[1], factor=ConvParam.para_dict["cout1_opt"])
-                if ConvParam.para_dict["group_opt"] == 1:
-                    c_outer_outer, c_outer_inner = sch[res_c].split(
-                        cout1_ori, (res_c.shape[1].value // c_factor[0]))
-                else:
-                    c_outer_outer, c_outer_inner = sch[res_c].split(
-                        cout1_ori, factor=c_tiling_factor[0])
-                # split for mul_core
-                m_mulcore_factor = int_ceil_div(dim_map["out_img_shape"][-2],
-                                                tiling["block_dim"][2])
-                m_mulcore_factor = int_ceil_div(m_mulcore_factor, 16)*16
-                dynamic_outer, dynamic_inner = sch[res_c].split(
-                    res_c.op.axis[2], m_mulcore_factor)
-
-                # split res_c for al1 attach
-                if tiling["AL1_shape"]:
-                    al1_factor_for_dynamic = tiling["AL1_shape"][1]*c_tiling_factor[1]
-                    al1_bound = al1_factor_for_dynamic
-                    dynamic_inner_outer, dynamic_inner_inner = sch[res_c].split(
-                        dynamic_inner, al1_factor_for_dynamic)
-                else:
-                    al1_bound = int_ceil_div_tvm(
-                        dim_map["out_img_shape"][-2],
-                        tiling["block_dim"][2])
-                    al1_bound = int_ceil_div_tvm(al1_bound, 16)*16
-                    al1_naparts_for_dynamic = 1
-                    dynamic_inner_outer, dynamic_inner_inner = sch[res_c].split(
-                        dynamic_inner, nparts=al1_naparts_for_dynamic)
-
-                # The al1_m of load2d and load3d are different
-                if not l0a_load2d_flag:
-                    # load3d can not split wo
-                    additional_rows = 2
-                    ho_len = tvm.floordiv(al1_bound, var_map['wo']) + additional_rows
-                    if strideh_opti_flag:
-                        hi_max = c_ub.op.attrs['kernel_h'] + (ho_len - 1)
-                    else:
-                        hi_max = c_ub.op.attrs['kernel_h'] + \
-                            (ho_len - 1)*c_ub.op.attrs['stride'][0]
-                    al1_m = hi_max*var_map['fmap_w']
-                else:
-                    # load2d unconstrained
-                    al1_m = al1_bound
-
-                # calculate al1_bound
-                fmap_shape_nc1hwc0 = ConvParam.tiling_query_param.get("fmap_shape_nc1hwc0")
-                _, fmap_c1, _, _, fmap_c0 = fmap_shape_nc1hwc0
-                if tiling["AL1_shape"]:
-                    al1_bound = al1_m*tiling["AL1_shape"][0]*fmap_c0
-                else:
-                    fmap_c1 = fmap_shape_nc1hwc0[1]
-                    al1_bound = al1_m*fmap_c1*fmap_c0
-
-                # split res_c for al0 attach
-                dynamic_inner_inner_outer, dynamic_inner_inner_inner = sch[
-                    res_c].split(dynamic_inner_inner, factor=c_tiling_factor[1])
-
-                m_outer_outer_outer_outer = dynamic_outer
-                m_outer_outer_outer_inner = dynamic_inner_outer
-                m_outer_outer_inner = dynamic_inner_inner_outer
-                m_outer_inner = dynamic_inner_inner_inner
-                sch[res_c].reorder(m_outer_outer_outer_outer,
-                                   c_outer_outer,
-                                   m_outer_outer_outer_inner,
-                                   m_outer_outer_inner,
-                                   c_outer_inner, m_outer_inner)
-                c_outer_outer_outer, c_outer_outer_inner = \
-                    sch[res_c].split(c_outer_outer, nparts=bl1_factor[1])
+            cout1_group, cout1_ori = sch[res_c].split(
+                res_c.op.axis[1], factor=ConvParam.para_dict["cout1_opt"])
+            if ConvParam.para_dict["group_opt"] == 1:
+                c_outer_outer, c_outer_inner = sch[res_c].split(
+                    cout1_ori, (res_c.shape[1].value // c_factor[0]))
             else:
-                cout1_group, cout1_ori = sch[res_c].split(
-                    res_c.op.axis[1], factor=ConvParam.para_dict["cout1_opt"])
-                if ConvParam.para_dict["group_opt"] == 1:
-                    c_outer_outer, c_outer_inner = sch[res_c].split(
-                        cout1_ori, (res_c.shape[1].value // c_factor[0]))
-                else:
-                    c_outer_outer, c_outer_inner = sch[res_c].split(
-                        cout1_ori, factor=c_tiling_factor[0])
-                m_outer_outer, m_outer_inner = sch[res_c].split(
-                    res_c.op.axis[2], c_tiling_factor[1])
-                sch[res_c].reorder(c_outer_outer, m_outer_outer,
-                                   c_outer_inner, m_outer_inner)
-                m_outer_outer_outer, m_outer_outer_inner = sch[res_c].split(
-                    m_outer_outer, nparts=al1_factor[1])
-                c_outer_outer_outer, c_outer_outer_inner = sch[res_c].split(
-                    c_outer_outer, nparts=bl1_factor[1])
+                c_outer_outer, c_outer_inner = sch[res_c].split(
+                    cout1_ori, factor=c_tiling_factor[0])
+            m_outer_outer, m_outer_inner = sch[res_c].split(
+                res_c.op.axis[2], c_tiling_factor[1])
+            sch[res_c].reorder(c_outer_outer, m_outer_outer,
+                                c_outer_inner, m_outer_inner)
+            m_outer_outer_outer, m_outer_outer_inner = sch[res_c].split(
+                m_outer_outer, nparts=al1_factor[1])
+            c_outer_outer_outer, c_outer_outer_inner = sch[res_c].split(
+                c_outer_outer, nparts=bl1_factor[1])
 
             block_dim = [1, 1, 1]
             if "block_dim" in tiling:
@@ -4629,6 +4558,37 @@ class CceConvOp:
                 batch_outer, batch_inner = sch[res_c].split(
                     res_c.op.axis[0], nparts=block_dim[0])
 
+            if self._dynamic_mode == "dynamic_hw":
+                if tiling["AL1_shape"]:
+                    al1_factor_for_dynamic = tiling["AL1_shape"][1]*c_tiling_factor[1]
+                    al1_bound = al1_factor_for_dynamic
+                else:
+                    al1_bound = dim_map["out_img_shape"][-2]
+                    al1_bound = int_ceil_div_tvm(al1_bound, 16)*16
+
+                # The al1_m of load2d and load3d are different
+                if not l0a_load2d_flag:
+                    # load3d can not split wo
+                    additional_rows = 2
+                    ho_len = tvm.floordiv(al1_bound, var_map['wo']) + additional_rows
+                    if strideh_opti_flag:
+                        hi_max = c_ub.op.attrs['kernel_h'] + (ho_len - 1)
+                    else:
+                        hi_max = c_ub.op.attrs['kernel_h'] + (ho_len - 1)*c_ub.op.attrs['stride'][0]
+                    al1_m = hi_max*var_map['fmap_w']
+                else:
+                    # load2d unconstrained
+                    al1_m = al1_bound
+
+                # calculate al1_bound
+                fmap_shape_nc1hwc0 = ConvParam.tiling_query_param.get("fmap_shape_nc1hwc0")
+                _, fmap_c1, _, _, fmap_c0 = fmap_shape_nc1hwc0
+                if tiling["AL1_shape"]:
+                    al1_bound = al1_m*tiling["AL1_shape"][0]*fmap_c0
+                else:
+                    fmap_c1 = fmap_shape_nc1hwc0[1]
+                    al1_bound = al1_m*fmap_c1*fmap_c0
+
             cout1_group_outer, cout1_group_inner = sch[res_c].split(cout1_group, nparts=block_dim[3])
 
             batch_inner_outer, batch_inner_inner = sch[res_c].split(
@@ -4638,9 +4598,8 @@ class CceConvOp:
             # split cout of res_c
             c_outer_outer_outer_outer, c_outer_outer_outer_inner = sch[
                 res_c].split(c_outer_outer_outer, nparts=block_dim[1])
-            if self._dynamic_mode is None or self._dynamic_mode == "dynamic_batch":
-                m_outer_outer_outer_outer, m_outer_outer_outer_inner = sch[
-                    res_c].split(m_outer_outer_outer, nparts=block_dim[2])
+            m_outer_outer_outer_outer, m_outer_outer_outer_inner = sch[
+                res_c].split(m_outer_outer_outer, nparts=block_dim[2])
 
             bl1_at_c_axis = c_outer_outer_outer_inner
             al1_at_c_axis = m_outer_outer_outer_inner
