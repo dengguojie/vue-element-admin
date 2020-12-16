@@ -380,15 +380,14 @@ COMMON_INFER_FUNC_REG(Reciprocal, ReciprocalInferShape);
 // ---------------Reciprocal END-----------------
 
 // -------------------Sub----------------------
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(SubInferShape)
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
+IMPLEMT_COMMON_INFERFUNC(SubInferShape) {
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", is_dynamic_output)) {
     return GRAPH_FAILED;
   }
 
-  if (!InferShapeRangeTwoInOneOutBroadcase(op, "x1", "x2", "y")) {
-    return GRAPH_FAILED;
-  }
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 COMMON_INFER_FUNC_REG(Sub, SubInferShape);
 // -----------------Sub END-----------------

@@ -238,80 +238,31 @@ IMPLEMT_VERIFIER(SoftmaxCrossEntropyWithLogits, SoftmaxCrossEntropyWithLogitsVer
 }
 
 IMPLEMT_COMMON_INFERFUNC(SoftmaxCrossEntropyWithLogitsInferShape) {
-  TensorDesc tensordesc_loss = op.GetOutputDesc(0);
-  TensorDesc tensordesc_backprop = op.GetOutputDesc(1);
-  auto shape_loss = op.GetInputDesc(0).GetShape();
-  auto shape_backprop = op.GetInputDesc(1).GetShape();
-  vector<int64_t> dimsX = shape_loss.GetDims();
-  vector<int64_t> dimsY = shape_backprop.GetDims();
-
-  if (dimsX.size() < dimsY.size()) {
-    std::vector<int64_t> dimsTmp = dimsX;
-    dimsX = dimsY;
-    dimsY = dimsTmp;
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "features", "labels", "backprop", is_dynamic_output)) {
+    return GRAPH_FAILED;
   }
 
-  if (dimsX.size() != dimsY.size()) {
-    int dec = dimsX.size() - dimsY.size();
-    for (int i = 0; i < dec; i++) {
-      dimsY.insert(dimsY.begin(), (int64_t)1);
-    }
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto backprop_output = op_desc->MutableOutputDesc("backprop");
+  auto loss_output = op_desc->MutableOutputDesc("loss");
+
+  auto backprop_shape = backprop_output->GetShape().GetDims();
+  auto backprop_dtype = backprop_output->GetDataType();
+  if (backprop_shape.size() > 1) {
+    backprop_shape.pop_back();
   }
+  loss_output->SetShape(GeShape(backprop_shape));
+  loss_output->SetDataType(backprop_dtype);
 
-  std::vector<int64_t> dimVec;
-  for (size_t i = 0; i < dimsX.size(); i++) {
-    if ((dimsX[i] != dimsY[i]) && (dimsX[i] != 1) && (dimsY[i] != 1) && (dimsX[i] != -1) && (dimsY[i] != -1)) {
-      OpsInputShapeBroadcastErrReport(op.GetName(), "loss", "backprop", ConcatString(dimsX[i]), ConcatString(dimsY[i]));
-      OP_LOGE(op.GetName().c_str(),
-              "The %s op dimensions does not match the broadcast"
-              "rule(%lu %lu).",
-              op.GetName().c_str(), dimsX[i], dimsY[i]);
-      return GRAPH_FAILED;
+  if (is_dynamic_output) {
+    std::vector<std::pair<int64_t, int64_t>> backprop_range;
+    backprop_output->GetShapeRange(backprop_range);
+    if (backprop_range.size() > 1) {
+      backprop_range.pop_back();
     }
-    if ((dimsX[i] == -1) && (dimsY[i] != -1)) {
-      if (dimsY[i] > 1) {
-        int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
-        dimVec.push_back(dims);
-      } else if (dimsY[i] == 1) {
-        int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
-        dimVec.push_back(dims);
-        dimVec[i] = -1;
-      }
-    } else if ((dimsX[i] != -1) && (dimsY[i] == -1)) {
-      if (dimsX[i] > 1) {
-        int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
-        dimVec.push_back(dims);
-      } else if (dimsX[i] == 1) {
-        int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
-        dimVec.push_back(dims);
-        dimVec[i] = -1;
-      }
-    } else {
-      if ((dimsX[i] == -1) && (dimsY[i] == -1)) {
-        int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
-        dimVec.push_back(dims);
-        dimVec[i] = -1;
-      } else {
-        int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
-        dimVec.push_back(dims);
-      }
-    }
+    loss_output->SetShapeRange(backprop_range);
   }
-
-  std::vector<int64_t> dimVec_backprop = dimVec;
-  Shape out_backprop_shape(dimVec_backprop);         // second output shape
-  tensordesc_backprop.SetShape(out_backprop_shape);  // set NC or NCHW
-  dimVec.pop_back();
-  Shape out_loss_shape(dimVec);              // N or NHW
-  tensordesc_loss.SetShape(out_loss_shape);  // first output shape
-
-  DataType input_dtype = op.GetInputDesc(0).GetDataType();
-  tensordesc_loss.SetDataType(input_dtype);
-  tensordesc_backprop.SetDataType(input_dtype);
-
-  (void)op.UpdateOutputDesc("loss", tensordesc_loss);
-  (void)op.UpdateOutputDesc("backprop", tensordesc_backprop);
-
   return GRAPH_SUCCESS;
 }
 

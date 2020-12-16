@@ -61,7 +61,7 @@ auto output_desc = op.GetOutputDesc("y");
 EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT32);
 std::vector<int64_t> expected_output_shape = {3, 4, 5, 6, -1};
 EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
-std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{3,3},{4,4},{5,5},{6,6},{1,8}};
+std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{3,3},{4,4},{5,5},{6,6},{3,8}};
 std::vector<std::pair<int64_t, int64_t>> output_shape_range;
 output_desc.GetShapeRange(output_shape_range);
 EXPECT_EQ(output_shape_range, expected_output_shape_range);

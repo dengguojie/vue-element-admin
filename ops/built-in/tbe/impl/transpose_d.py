@@ -23875,6 +23875,21 @@ def check_014253_sp2(shape, perm, dtype):
     return True
 
 
+def check_supported(input_x, output_y, perm, kernel_name="transpose_d"):
+    """
+    when input is -2 dynamic shape, aicore can not support
+    when input is -1 dynamic shape and the dim len is more than three, aicore can not support
+    """
+    x_shape = input_x.get("ori_shape")
+    if -2 in x_shape:
+        return False
+
+    if -1 in x_shape and len(x_shape) > 3:
+        return False
+
+    return True
+
+
 # pylint: disable=locally-disabled,too-many-locals,too-many-arguments
 @check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, KERNEL_NAME)
 def transpose_d(input_x, output_y, perm, kernel_name="transpose_d"):

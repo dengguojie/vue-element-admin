@@ -146,6 +146,122 @@ bool CheckInputsShapeDtypeSame(const Operator& op, const std::vector<std::string
 }
 
 bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_name1, const string& input_name2,
+                                           const string& output_name, bool& is_dynamic) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  DataType input_dtype = op_desc->MutableInputDesc(input_name1)->GetDataType();
+
+  // output Desc
+  GeTensorDescPtr tensordesc_output = op_desc->MutableOutputDesc(output_name);
+  tensordesc_output->SetDataType(input_dtype);
+
+  ge::GeShape shapeX = op_desc->MutableInputDesc(input_name1)->GetShape();
+  ge::GeShape shapeY = op_desc->MutableInputDesc(input_name2)->GetShape();
+  OP_LOGI(op.GetName().c_str(), "shape %s: %s, shape %s: %s.", input_name1.c_str(), to_string(shapeX).c_str(),
+          input_name2.c_str(), to_string(shapeY).c_str());
+  std::vector<int64_t> dimsX = shapeX.GetDims();
+  std::vector<int64_t> dimsY = shapeY.GetDims();
+  // swap based on shape size
+  if (dimsX.size() < dimsY.size()) {
+    std::vector<int64_t> dimsTmp = dimsX;
+    dimsX = dimsY;
+    dimsY = dimsTmp;
+  }
+
+  std::vector<int64_t> dimVec;
+
+  // unknown rank
+  if (IsUnknownRankShape(dimsX) || IsUnknownRankShape(dimsY)) {
+    dimVec.push_back(-2);
+    tensordesc_output->SetShape(ge::GeShape(dimVec));
+    OP_LOGI(op.GetName().c_str(), "output shape is: %s, output dtype is:%d.", to_string(ge::Shape(dimVec)).c_str(),
+            input_dtype);
+    is_dynamic = false;
+    return true;
+  }
+
+  // pad 1 for small shape
+  if (dimsX.size() != dimsY.size()) {
+    int dec = dimsX.size() - dimsY.size();
+    for (int i = 0; i < dec; i++) {
+      dimsY.insert(dimsY.begin(), (int64_t)1);
+    }
+  }
+
+  // when not dynamic case, do infer shape only
+  if (!IsUnknown(dimsY) && !IsUnknown(dimsX)) {
+    for (size_t i = 0; i < dimsX.size(); i++) {
+      int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
+      dims = (dimsY[i] == 0 || dimsX[i] == 0) ? 0 : dims;
+      dimVec.push_back(dims);
+    }
+    tensordesc_output->SetShape(ge::GeShape(dimVec));
+    is_dynamic = false;
+    return true;
+  }
+
+  // dynamic case
+  for (size_t i = 0; i < dimsX.size(); i++) {
+    if ((dimsX[i] != dimsY[i]) && (dimsX[i] != 1) && (dimsY[i] != 1) && (dimsX[i] != -1) && (dimsY[i] != -1)) {
+      OpsInputShapeBroadcastErrReport(op.GetName(), input_name1, input_name2, ConcatString(dimsX[i]),
+                                      ConcatString(dimsY[i]));
+      OP_LOGE(op.GetName().c_str(), "The %s's dimensions does not match the broadcast rule(%lu %lu).",
+              op.GetName().c_str(), dimsX[i], dimsY[i]);
+      return false;
+    }
+
+    if ((dimsX[i] == -1) && (dimsY[i] != -1)) {
+      if (dimsY[i] > 1) {
+        int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
+        dimVec.push_back(dims);
+      } else if (dimsY[i] == 1) {
+        int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
+        dimVec.push_back(dims);
+        dimVec[i] = -1;
+      } else if ((dimsY[i] == 0) || (dimsX[i] == 0)) {
+        dimVec.push_back(0);
+      }
+    } else if ((dimsX[i] != -1) && (dimsY[i] == -1)) {
+      if (dimsX[i] > 1) {
+        int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
+        dimVec.push_back(dims);
+      } else if (dimsX[i] == 0) {
+        dimVec.push_back(0);
+      } else if (dimsX[i] == 1) {
+        int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
+        dimVec.push_back(dims);
+        dimVec[i] = -1;
+      }
+    } else {
+      if ((dimsX[i] == -1) && (dimsY[i] == -1)) {
+        int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
+        dimVec.push_back(dims);
+        dimVec[i] = -1;
+      } else {
+        if (dimsY[i] == 0 || dimsX[i] == 0) {
+          dimVec.push_back(0);
+        } else {
+          int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
+          dimVec.push_back(dims);
+        }
+      }
+    }
+  }
+  ge::GeShape outputShape = ge::GeShape(dimVec);
+  tensordesc_output->SetShape(outputShape);
+
+  OP_LOGI(op.GetName().c_str(), "output shape is: %s, output dtype is:%s.", to_string(outputShape).c_str(),
+          ge::TypeUtils::DataTypeToSerialString(input_dtype).c_str());
+  is_dynamic = IsUnknown(dimVec);
+
+  if (is_dynamic) {
+    if (!InferShapeRangeTwoInOneOutBroadcase(op, input_name1, input_name2, output_name)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_name1, const string& input_name2,
                                            const string& output_name) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   DataType input_dtype = op_desc->MutableInputDesc(input_name1)->GetDataType();
@@ -291,7 +407,11 @@ bool InferShapeRangeTwoInOneOutBroadcase(Operator& op, const string& input_name1
         } else if (shape_range_x[i].second == 1 && shape_range_y[i].second == -1) {
           out_range.push_back(std::pair<int64_t, int64_t>(1, -1));
         } else {
-          out_range.push_back(std::pair<int64_t, int64_t>(std::min(shape_range_x[i].first, shape_range_y[i].first),
+          int64_t first_range = std::min(shape_range_x[i].first, shape_range_y[i].first);
+          first_range = (shape_range_x[i].first == 1 || shape_range_y[i].first == 1)
+                        ? std::max(shape_range_x[i].first, shape_range_y[i].first)
+                        : first_range;
+          out_range.push_back(std::pair<int64_t, int64_t>(first_range,
                                                           std::max(shape_range_x[i].second, shape_range_y[i].second)));
         }
       }

@@ -126,6 +126,20 @@ bool CheckInputDtypeAndShape(const Operator& op, const std::map<std::string, std
 bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_name1, const string& input_name2,
                                            const string& output_name);
 
+/*
+ * infer shape of two input and on output with broadcast
+ * param[in] op  op desc supply by ge
+ * param[in] inputName1  first input name
+ * param[in] inputName2  second input name
+ * param[in] outputName  output name
+ * param[in] is_dynamic  whether the shape of output is dynamic shape
+ * return SUCCESS:infer success
+ *        FAILED:infer failed like unsupported broadcast input shape
+ */
+
+bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_name1, const string& input_name2,
+                                           const string& output_name, bool& is_dynamic);
+
 bool InferShapeRangeTwoInOneOutBroadcase(Operator& op, const string& input_name1, const string& input_name2,
                                          const string& output_name);
 
