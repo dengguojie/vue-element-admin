@@ -121,13 +121,13 @@ def param_scale_check(shape_x, shape_scale):
         if length_x != length_scale:
             error_detail = "The dims of input tensor x and tensor scale should be equal"
             error_manager_vector.raise_err_two_input_shape_invalid("bninference_d", "input_x", "scale",
-                                                                                 error_detail)
+                                                                   error_detail)
 
         for i in range(length_scale):
             if shape_scale[i] != shape_x[i] and shape_scale[i] != 1:
                 error_detail = "The inputs x and scale could not be broadcast together with mismatched shapes"
                 error_manager_vector.raise_err_two_input_shape_invalid("bninference_d", "input_x", "scale",
-                                                                                     error_detail)
+                                                                       error_detail)
 
 
 # pylint: disable=locally-disabled,too-many-arguments
