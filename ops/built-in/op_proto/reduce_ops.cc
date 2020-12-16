@@ -31,8 +31,6 @@
 namespace ge {
 using std::string;
 const static bool prof_switch = std::getenv("REDUCE_INFER_PROF") != nullptr;
-static std::chrono::time_point<std::chrono::steady_clock> before_infer, after_infer;
-static int64_t t0 = -1;
 
 // Obtains the value of the constant tensor.
 static void GetAllConstValue(const Tensor& data, std::vector<int64_t>& const_vec, ge::DataType axisType) {
@@ -254,10 +252,6 @@ static bool CheckReduceInfo(const ge::Operator& op, const size_t& input_size, co
                             const string& keep_dims_name, bool& keep_dims) {
   if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {
     OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
-    return false;
-  }
-  if (axis_size > 1) {
-    OP_LOGE(op.GetName().c_str(), "size of axis is illegal.");
     return false;
   }
   return true;
@@ -824,16 +818,8 @@ COMMON_INFER_FUNC_REG(ReduceProdD, ReduceProdDInferShape);
 
 // ----------------ReduceMean Op-------------------
 IMPLEMT_COMMON_INFERFUNC(ReduceMeanInferShape) {
-  if (prof_switch) {
-    before_infer = std::chrono::steady_clock::now();
-  }
   OP_LOGD(op.GetName().c_str(), "Enter ReduceMeanInferShape");
   if (InferReduceShapeProcess(op, "x", "axes", "keep_dims")) {
-    if (prof_switch) {
-      after_infer = std::chrono::steady_clock::now();
-      t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();
-      GEEVENT("[REDUCE_INFER_PROF] op[%s]: total_us: %d", op.GetName().c_str(), t0);
-    }
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
@@ -844,6 +830,7 @@ COMMON_INFER_FUNC_REG(ReduceMean, ReduceMeanInferShape);
 
 // ----------------ReduceMeanD Op-------------------
 IMPLEMT_COMMON_INFERFUNC(ReduceMeanDInferShape) {
+  std::chrono::time_point<std::chrono::steady_clock> before_infer, after_infer;
   if (prof_switch) {
     before_infer = std::chrono::steady_clock::now();
   }
@@ -851,8 +838,8 @@ IMPLEMT_COMMON_INFERFUNC(ReduceMeanDInferShape) {
   if (InferReduceDShapeProcess(op, "x", "axes", "keep_dims")) {
     if (prof_switch) {
       after_infer = std::chrono::steady_clock::now();
-      t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();
-      GEEVENT("[REDUCE_INFER_PROF] op[%s]: total_us: %d", op.GetName().c_str(), t0);
+      auto t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();
+      GEEVENT("[REDUCE_INFER_PROF] op[%s]: total: %d(us)", op.GetName().c_str(), static_cast<int>(t0));
     }
     return GRAPH_SUCCESS;
   }
@@ -1082,6 +1069,7 @@ VERIFY_FUNC_REG(BNInferGrad, BNInferGradVerify);
 
 // ----------------ReduceSum Op-------------------
 IMPLEMT_COMMON_INFERFUNC(ReduceSumInferShape) {
+  std::chrono::time_point<std::chrono::steady_clock> before_infer, after_infer;
   if (prof_switch) {
     before_infer = std::chrono::steady_clock::now();
   }
@@ -1089,8 +1077,8 @@ IMPLEMT_COMMON_INFERFUNC(ReduceSumInferShape) {
   if (InferReduceShapeProcess(op, "x", "axes", "keep_dims")) {
     if (prof_switch) {
       after_infer = std::chrono::steady_clock::now();
-      t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();
-      GEEVENT("[REDUCE_INFER_PROF] op[%s]: total_us: %d", op.GetName().c_str(), t0);
+      auto t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();
+      GEEVENT("[REDUCE_INFER_PROF] op[%s]: total: %d(us)", op.GetName().c_str(), static_cast<int>(t0));
     }
     return GRAPH_SUCCESS;
   }
@@ -1102,6 +1090,7 @@ COMMON_INFER_FUNC_REG(ReduceSum, ReduceSumInferShape);
 
 // ----------------ReduceSumD Op-------------------
 IMPLEMT_COMMON_INFERFUNC(ReduceSumDInferShape) {
+  std::chrono::time_point<std::chrono::steady_clock> before_infer, after_infer;
   if (prof_switch) {
     before_infer = std::chrono::steady_clock::now();
   }
@@ -1109,8 +1098,8 @@ IMPLEMT_COMMON_INFERFUNC(ReduceSumDInferShape) {
   if (InferReduceDShapeProcess(op, "x", "axes", "keep_dims")) {
     if (prof_switch) {
       after_infer = std::chrono::steady_clock::now();
-      t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();
-      GEEVENT("[REDUCE_INFER_PROF] op[%s]: total_us: %d", op.GetName().c_str(), t0);
+      auto t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();
+      GEEVENT("[REDUCE_INFER_PROF] op[%s]: total: %d(us)", op.GetName().c_str(), static_cast<int>(t0));
     }
     return GRAPH_SUCCESS;
   }
@@ -1184,16 +1173,8 @@ COMMON_INFER_FUNC_REG(ReduceAnyD, ReduceAnyDInferShape);
 
 // ----------------ReduceMax Op-------------------
 IMPLEMT_COMMON_INFERFUNC(ReduceMaxInferShape) {
-  if (prof_switch) {
-    before_infer = std::chrono::steady_clock::now();
-  }
   OP_LOGD(op.GetName().c_str(), "Enter ReduceMaxInferShape");
   if (InferReduceShapeProcess(op, "x", "axes", "keep_dims")) {
-    if (prof_switch) {
-      after_infer = std::chrono::steady_clock::now();
-      t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();
-      GEEVENT("[REDUCE_INFER_PROF] op[%s]: total_us: %d", op.GetName().c_str(), t0);
-    }
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
@@ -1204,6 +1185,7 @@ COMMON_INFER_FUNC_REG(ReduceMax, ReduceMaxInferShape);
 
 // ----------------ReduceMaxD Op-------------------
 IMPLEMT_COMMON_INFERFUNC(ReduceMaxDInferShape) {
+  std::chrono::time_point<std::chrono::steady_clock> before_infer, after_infer;
   if (prof_switch) {
     before_infer = std::chrono::steady_clock::now();
   }
@@ -1211,8 +1193,8 @@ IMPLEMT_COMMON_INFERFUNC(ReduceMaxDInferShape) {
   if (InferReduceDShapeProcess(op, "x", "axes", "keep_dims")) {
     if (prof_switch) {
       after_infer = std::chrono::steady_clock::now();
-      t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();
-      GEEVENT("[REDUCE_INFER_PROF] op[%s]: total_us: %d", op.GetName().c_str(), t0);
+      auto t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();
+      GEEVENT("[REDUCE_INFER_PROF] op[%s]: total: %d(us)", op.GetName().c_str(), static_cast<int>(t0));
     }
     return GRAPH_SUCCESS;
   }

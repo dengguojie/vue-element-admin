@@ -17,11 +17,13 @@
  * @version 1.0
  *
  */
+#include <stdlib.h>
 #include <iostream>
 #include <gtest/gtest.h>
 #include "op_proto_test_util.h"
 #include "reduce_ops.h"
 
+const static int switch_value = setenv("REDUCE_INFER_PROF", "test", 1);
 class ReduceSumD : public testing::Test {
  protected:
   static void SetUpTestCase() {
