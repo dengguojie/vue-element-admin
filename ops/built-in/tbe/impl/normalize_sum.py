@@ -15,6 +15,7 @@
 """
 normalize_sum
 """
+import functools
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
@@ -150,8 +151,12 @@ def normalize_sum(x1, y, across_spatial=True, kernel_name="normalize_sum"):
     para_check.check_format(data_format, ("NCHW", "NHWC"), param_name="x1")
 
     para_check.check_shape(shape_1, min_rank=4, max_rank=4, param_name="x1")
-
-    data_x1 = tvm.placeholder(shape_1, name="data_1", dtype=dtype_1)
+    shape = list(shape_1)
+    if not across_spatial and data_format == "NCHW":
+        shape_new = shape[:2] + [functools.reduce(lambda x, y: x * y, shape[2:])]
+    else:
+        shape_new = shape
+    data_x1 = tvm.placeholder(shape_new, name="data_1", dtype=dtype_1)
     res = normalize_sum_compute(data_x1, y, data_format, across_spatial,
                                 kernel_name)
 

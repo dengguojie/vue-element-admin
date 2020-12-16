@@ -117,8 +117,7 @@ def normalize_scale_compute(x1, x2, x3, y,
 
     x1_scaled = tbe.vmul(x1_cast, x2_cast_broadcast)
 
-    if cce_product in ("Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", \
-                       "Ascend610", "Ascend710"):
+    if cce_product in ("Ascend910", "Ascend610", "Ascend710"):
         x1_sqr_sum_sqrt = tbe.vsqrt(x1_sqr_sum)
         x1_sqr_sum_sqrt_broadcast = tbe.broadcast(x1_sqr_sum_sqrt,
                                                           x1_shape)
