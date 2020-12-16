@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
 # Copyright 2019-2020 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +17,6 @@
 """
 Compute of depthwise conv2d.
 """
-# pylint: disable=import-error
 from te.tvm import api as tvm
 from te.platform import cce_conf
 from te.platform import cce_params
@@ -49,7 +50,7 @@ class DepthwiseConv2dParam:
     }
 
 
-def check_support_v200():
+def _check_support_v200():
     """
     check if Ascend610/Ascend615/Ascend710/Hi3796CV300CS version
     ----------
@@ -103,14 +104,14 @@ def _fusion_fmap_select(fmap, l1_fusion_para):
     return data_res, fmp_select_h, fmp_select_w
 
 
-def shape_to_list(shape):
+def _shape_to_list(shape):
     """
     translate tvm.shape to list type in python
     """
     return [i.value for i in shape]
 
 
-def bias_add(res, bias):
+def _bias_add(res, bias):
     """
     calculate depthwise res + bias in UB
     Parameters
@@ -125,7 +126,7 @@ def bias_add(res, bias):
     res+bias tensor
     """
     dim_map = {}
-    dim_map["out_img_shape"] = shape_to_list(res.shape)
+    dim_map["out_img_shape"] = _shape_to_list(res.shape)
     fractal_n_split = dim_map["out_img_shape"][2]
     c_add_vector = tvm.compute(dim_map["out_img_shape"],
                                lambda *indice: res(*indice) + bias(
@@ -168,8 +169,6 @@ def _img2col(input_img, col_shape, filter_h, filter_w, pad, stride, dilations):
     """
     def _img2col_compute(indices):
         """img2col for depthwise conv2d backprop filter"""
-        # input_img.shape is (fmap_cg, fmap_c1, fmap_n,
-        #           fmap_h, fmap_w, fmap_c0)
         _, _, _, fmap_h, fmap_w, _ = input_img.shape
 
         kernel_dilate_w = (filter_w - 1) * dilations[1] + 1
@@ -269,18 +268,10 @@ def _backprop_filter_matmul(mad_shape, left_tensor, right_tensor, dout_hw, dout_
     -------
         tensor in fractal(in L0C).
     """
-    # (fmap_cgroup, fmap_c1*kernel_h*kernel_w, dout_c1 * BLOCK_SIZE,
-    #  BLOCK_SIZE)
     k_n = tvm.reduce_axis((0, dout_n), name='k_n')
     k_hw = tvm.reduce_axis((0, dout_hw), name='k_hw')
     k1_val = k_hw.var // BLOCK_SIZE
     k0_val = k_hw.var % BLOCK_SIZE
-    # left_tensor.shape is (fmap_cgroup, dout_n, dout_c1,
-    #                       dout_hw_pad // BLOCK_SIZE,
-    #                       BLOCK_SIZE, BLOCK_SIZE)
-    # right_tensor.shape is (fmap_cgroup, dout_n, dout_hw_pad // BLOCK_SIZE,
-    #                        fmap_c1*kernel_h*kernel_w, BLOCK_SIZE,
-    #                        BLOCK_SIZE)
     return tvm.compute(mad_shape,
                        lambda cg, j1, i, j0: tvm.sum((left_tensor[cg, k_n, i // BLOCK_SIZE, k1_val, i % BLOCK_SIZE, k0_val] *
                                                       right_tensor[cg, k_n, k1_val, j1, j0, k0_val]).astype(res_type),
@@ -365,6 +356,8 @@ def depthwise_conv2d_compute(fmap,
 
     calculating  depthwise convolution compute
 
+    the interface will be eliminated soon!
+
     Parameters
     ----------
     fmap : feature map placehold
@@ -404,13 +397,10 @@ def depthwise_conv2d_compute(fmap,
         fmap_n, fmap_c1, fmap_h, fmap_w, _ = fmap_shape
     filter_c1, kernel_h, kernel_w, filter_co, filter_c0 = weight_shape
 
-    # padding_mode's pads is [0, 0, 0, 0]
     valid_mode_pad = [0, 0, 0, 0]
-    # if howo == 1, howo_one_flag is 1
     howo_one_flag = (fmap_h == kernel_h) and (fmap_w == kernel_w) and (list(pad)
                                                                        == list(valid_mode_pad)) and (fmap.dtype
                                                                                                      == "float16")
-    # modify fmatrix's pad_right value to accelerate load3d
     if howo_one_flag:
         pad = (0, 0, 0, 15)
 
@@ -442,16 +432,12 @@ def depthwise_conv2d_compute(fmap,
     bias_tensor = para_dict.get('bias_tensor')
     dsl_flag = para_dict.get('dsl_flag')
 
-    # float32 for cloud, float16 for mini, int8 for quant;
-    # How to tell the two get_version
     mad_out_dtype, mad_res_block_size, fractal_n_split = _get_mad_info(fmap, depthwise_res_dtype)
 
     fmap_im2col_row_major_shape = (fmap_n, fmap_c1, output_h * output_w, 1, kernel_h, kernel_w, mad_res_block_size)
     feature_col = common.im2col_6d(fmap_select, fmap_im2col_row_major_shape, kernel_h, kernel_w, pad, stride, offset_x,
                                    dilation)
 
-    # fractal M == 16; fractal N == 16; quant mode,
-    # M*K*N == 16*32*16; no-quant mode, M*K*N == 16*16*16
     howo_mad = (output_h * output_w + FRACTAL_M - 1) // FRACTAL_M * FRACTAL_M
     fmap_im2col_fractal_shape = (fmap_n, fmap_c1, howo_mad // FRACTAL_M, 1 * kernel_h * kernel_w, FRACTAL_M,
                                  mad_res_block_size)
@@ -477,30 +463,22 @@ def depthwise_conv2d_compute(fmap,
         raise RuntimeError(dict_args, err_mana.get_error_message(dict_args))
 
     mad_shape = (fmap_n, fmap_c1, fractal_n_split, howo_mad, FRACTAL_N)
-    v200_flag = check_support_v200()
+    v200_flag = _check_support_v200()
     mad_res = common.mad(mad_shape, feature_col_pad, filter_reshape, mad_out_dtype, offset_x, v200_flag)
 
-    # if bias true, increase data flow, else hide bias
     bias_tensor_flag = (bias_tensor is not None and bias_tensor != {})
     if bias_tensor_flag:
         bias_flag = True
-        # bias model: data flow
-        # dsl_flag == 1: bias add in l0c, then cast in ub
-        # dsl_flag == 0: cast in ub, then bias add in ub
         if dsl_flag is True and mad_out_dtype == "int32":
             bias_ub_brc_shape = list(mad_shape)
             bias_ub_brc_shape[3] = bias_ub_brc_shape[3] // 16
-            # bias UB broadcast ho*wo//16
             bias_ub_brc = tvm.compute(bias_ub_brc_shape,
                                       lambda i, j, a, k, l: bias_tensor(j * 2 * 16 + a * 16 + l),
                                       name='bias_ub_brc')
-            # bias l0c broadcast ho*wo
             bias_l0c = tvm.compute(mad_shape,
                                    lambda i1, j1, a1, k1_val, l1: bias_ub_brc(i1, j1, a1, k1_val // 16, l1),
                                    name='bias_l0c')
-            # l0c add
             mad_res = tvm.compute(mad_shape, lambda *index: bias_l0c(*index) + mad_res(*index), name='c_col_bias')
-        # l0c---ub cast
         depthwise_cast = tvm.compute(mad_res.shape,
                                      lambda *index: mad_res(*index).astype(depthwise_res_dtype),
                                      name='depthwise_cast',
@@ -515,7 +493,7 @@ def depthwise_conv2d_compute(fmap,
         if dsl_flag is True and mad_out_dtype == "int32":
             depthwise_res_bias = depthwise_cast
         else:
-            depthwise_res_bias = bias_add(depthwise_cast, bias_tensor)
+            depthwise_res_bias = _bias_add(depthwise_cast, bias_tensor)
     else:
         bias_flag = False
         depthwise_cast = tvm.compute(mad_res.shape,
@@ -562,6 +540,8 @@ def depthwise_conv2d_backprop_filter_d_compute(fmap,
                                                kernel_name="depthwise_conv2d_compute"):
     """
     compute of depthwise conv2d backprop filter
+    
+    the interface will be eliminated soon!
 
     Parameters
     ----------
@@ -607,9 +587,7 @@ def depthwise_conv2d_backprop_filter_d_compute(fmap,
     fmap_shape = (int(i.value) for i in fmap.shape)
     dout_shape = (int(i.value) for i in dout.shape)
 
-    # NCgC1HiWiC0 (C1 = 1)
     fmap_n, fmap_cgroup, fmap_c1, fmap_h, fmap_w, fmap_c0 = fmap_shape
-    # NCgC1HoWoC0 (C1 = 1)
     dout_n, _, dout_c1, dout_h, dout_w, dout_c0 = dout_shape
 
     stride_h, stride_w = stride
@@ -652,25 +630,17 @@ def depthwise_conv2d_backprop_filter_d_compute(fmap,
                                  lambda cg, n, c1, h, w, c0: fmap(n, cg, c1, h, w, c0),
                                  name='fmap_transpose')
 
-    # set_fmatrix CgC1NHiWiC0 --> Cg,NHoWo,C1,Hw,Ww,C0
     a_im2col_row_major_shape = (fmap_cgroup, dout_n, dout_h * dout_w, fmap_c1, kernel_h, kernel_w, BLOCK_SIZE)
     feature_col = _img2col(fmap_transpose, a_im2col_row_major_shape, kernel_h, kernel_w, pad, (stride_h, stride_w),
                            (dilation_h, dilation_w))
 
     dout_hw_pad = _ceil(dout_h * dout_w)
 
-    # Cg,NHoWo,C1,Hw,Ww,C0 (axis K in cube is NHoWo,axis N in cube is C1HwWwC0)
-    # --> Cg,NHoWo // 16,C1HwWw,16,16 (nZ in L0B)
     a_im2col_fractal_shape = (fmap_cgroup, dout_n, dout_hw_pad // BLOCK_SIZE, fmap_c1 * kernel_h * kernel_w, BLOCK_SIZE,
                               BLOCK_SIZE)
 
-    # dw_in_L0C (from backward filter view) is transposed dw_in_L0B
-    #  (from forward view).
-    # dw.T = dout.T <matmul> im2col(fmap)
-    # (Co, Ci1.Hk.Wk.Ci0) = (Co, Ho.Wo.N) <matmul> (Ho.Wo.N, Ci1.Hk.Wk.Ci0)
     feature_col_pad = _im2col_fractal(a_im2col_fractal_shape, feature_col, dout_h, dout_w)
 
-    # NCgC1HoWoC0 --> CgC1NHoWoC0
     dout_trans_shape = (fmap_cgroup, dout_n, dout_c1, dout_h * dout_w, dout_c0)
     dout_transpose = tvm.compute(dout_trans_shape,
                                  lambda cg, n, c1, hw, c0: dout(n, cg, c1, hw // dout_w, hw % dout_w, c0),
@@ -682,17 +652,12 @@ def depthwise_conv2d_backprop_filter_d_compute(fmap,
         hw_val = hw1_val * BLOCK_SIZE + hw0_val
         return dout_ph(cg_val, n_val, c1_val, hw_val, c0_val)
 
-    # CgC1NHoWoC0 (axis M in cube is C1C0, axis K in cube is NHoWo)
-    # --> Cg,C1,NHoWo // 16,C0,16 (zZ in L0A)
     dout_fractal_shape = (fmap_cgroup, dout_n, dout_c1, dout_hw_pad // BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE)
     dout_fractal = tvm.compute(dout_fractal_shape,
                                lambda *index: _dout_fractal_compute(index, dout_transpose),
                                name='dout_fractal')
 
-    # dw is float32 only.
     res_dtype = "float32"
-    # axis M in cube is C1C0, axis N in cube is C1HwWwC0
-    # Cg,C1HwWw,C1C0,C0 (zN in L0C)
     mad_shape = (fmap_cgroup, fmap_c1 * kernel_h * kernel_w, dout_c1 * BLOCK_SIZE, BLOCK_SIZE)
     mad_res = _backprop_filter_matmul(mad_shape, dout_fractal, feature_col_pad, dout_h * dout_w, dout_n, res_dtype)
 
@@ -726,6 +691,8 @@ def depthwise_conv2d_backprop_input_d_compute(input_shape,
     """
     Computes the gradients of depthwise convolution with respect to the input.
 
+    the interface will be eliminated soon!
+
     Parameters
     ----------
     input_shape: a list or tuple representing the shape of input,
@@ -757,7 +724,6 @@ def depthwise_conv2d_backprop_input_d_compute(input_shape,
     input_h, input_w = input_shape[3], input_shape[4]
     pad_top, _, pad_left, _ = pads
 
-    # get the dialted shape, padding and strides of out_backprop
     dilated_padded_h = input_shape[3] + weight_height - 1
     dilated_padded_w = input_shape[4] + weight_width - 1
 
@@ -775,7 +741,6 @@ def depthwise_conv2d_backprop_input_d_compute(input_shape,
 
     dilated_strides = (1, 1)
 
-    # compute of out_backprop dilation
     dout_dilated = tvm.compute(
         dilated_shape,
         lambda n, cg, c1, h, w, c0: tvm.select(tvm.all(h % strides[0] == 0, w % strides[1] == 0), dout[
@@ -783,7 +748,6 @@ def depthwise_conv2d_backprop_input_d_compute(input_shape,
         attrs={'strides': strides},
         name='dout_dilated')
 
-    # image to column of dilated out_backprop
     dout_im2col_row_major_shape = (dout_n, dout_cgroup, input_h * input_w, dout_c1, weight_height, weight_width,
                                    BLOCK_SIZE)
     dout_col = common.im2col_6d(dout_dilated, dout_im2col_row_major_shape, weight_height, weight_width, dilated_pad,
@@ -796,26 +760,21 @@ def depthwise_conv2d_backprop_input_d_compute(input_shape,
 
     dout_col_pad = common.im2col_fractal_6d(dout_im2col_fractal_shape, dout_col)
 
-    # rotate weight with a degree of 180
     weight_rotated = tvm.compute(
         weight.shape,
         lambda cg, khkw, co1, co0, c0: weight[cg, (weight_height - 1 - khkw // weight_width) * weight_width +
                                               (weight_width - 1 - khkw % weight_width), co1, co0, c0],
         name='weight_rotated')
 
-    # float32 for cloud, float16 for mini. How to tell the two get_version
     if not cce_conf.intrinsic_check_support("Intrinsic_mmad", "f162f32"):
         mad_out_dtype = "float16"
     else:
         mad_out_dtype = "float32"
-    # matrix multiplication of dilated out_backprop and rotated weight
     mad_shape = (dout_n, dout_cgroup, dout_c1, hiwi_mad, dout_c0)
     mad_res = common.mad(mad_shape, dout_col_pad, weight_rotated, mad_out_dtype)
 
-    # cast dX from float32 to float16
     dx_cast = tvm.compute(mad_res.shape, lambda *index: mad_res(*index).astype(dout_dtype), name='dx_cast')
 
-    # remove the padding of dX
     res_shape = (dout_n, dout_cgroup, dout_c1, input_h * input_w, dout_c0)
     dx_res = tvm.compute(res_shape,
                          lambda *index: dx_cast(*index).astype(dout_dtype),

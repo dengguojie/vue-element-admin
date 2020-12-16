@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
 # Copyright 2019-2020 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +17,6 @@
 """
 Schedule of depthwise conv2d.
 """
-# pylint: disable=too-many-lines
 from te.utils.error_manager import error_manager_util
 from te.domain.tiling.get_tiling import get_tiling
 from te.domain.tiling.tiling_query import tiling_query
@@ -30,27 +31,17 @@ TILING_HO_TIMES = 16
 
 BLOCK_SIZE = cce_params.BLOCK_REDUCE
 
-# fp16 dtype size 2
 FP16_SIZE = 2
-# l1 and l0, ping pong read/write mechanism
 DOUBLE_BUFFER = 2
-# l1 memory size 1M byte
 L1_MEM_LIMIT = cce_conf.get_soc_spec(cce_conf.L1_SIZE)
-# tilling batch in l1
 RESHAPE_BATCH_SIZE_IN_L1 = 1
-# l1 include 1 batch
 BATCH_SIZE_IN_L1 = 1
-# Split ho and wo for mad_cc as 1.
 SPLIT_SLOT_TO_BE_FILL_BY_COMPUTE_AT = 1
-# L1 size cell
 CUBE_M_SIZE_CELL = cce_conf.get_soc_spec(cce_conf.L0B_SIZE) // DOUBLE_BUFFER // FP16_SIZE // BLOCK_SIZE
 
-# fmap h/w 14, N,C fusion tiling
 SMALL_FEATURE_MAP_SIZE = 14
-# N,C fusion tiling, N max 32
 BATCH_TILING_FACTOR = 32
 
-# tiling check
 TILING_AL1_SHAPWE_DIM = 4
 TILING_BL1_SHAPWE_DIM = 4
 TILING_AL0_MATRIX_DIM = 6
@@ -77,7 +68,7 @@ def _ceil(num):
     return ((num + BLOCK_SIZE - 1) // BLOCK_SIZE) * BLOCK_SIZE
 
 
-def set_pragma_for_cache_read_mode(is_overload, stage, first_axis):
+def _set_pragma_for_cache_read_mode(is_overload, stage, first_axis):
     """
     set pragma on the first axis for cache read mode
 
@@ -390,7 +381,7 @@ def _check_tiling_valid_rasie_error(tiling, tilling_fractor_k):
             raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
 
-def check_tiling_raise_error(tiling, dtype):
+def _check_tiling_raise_error(tiling, dtype):
     """
     check tiling and raise error
     """
@@ -480,17 +471,17 @@ def check_tiling_raise_error(tiling, dtype):
     _check_tiling_valid_rasie_error(tiling, tilling_fractor_k)
 
 
-def check_tiling(tiling, dtype):
+def _check_tiling(tiling, dtype):
     """
     check tiling dtype
     """
     if tiling["AL0_matrix"][2] == 32:
         return False
-    check_tiling_raise_error(tiling, dtype)
+    _check_tiling_raise_error(tiling, dtype)
     return True
 
 
-def tiling_new_check_empty(input_module, string, place):
+def _tiling_new_check_empty(input_module, string, place):
     """
     check tiling empty
     """
@@ -499,7 +490,7 @@ def tiling_new_check_empty(input_module, string, place):
     return []
 
 
-def tiling_new_check_none(input_module, string, place):
+def _tiling_new_check_none(input_module, string, place):
     """
     check tiling none
     """
@@ -508,7 +499,7 @@ def tiling_new_check_none(input_module, string, place):
     return input_module[string]
 
 
-def tiling_new_check_none_empty(input_module, string, place):
+def _tiling_new_check_none_empty(input_module, string, place):
     """
     check tiling none and empty
     """
@@ -525,12 +516,12 @@ def get_tiling_dict_first(tiling_new):
     tiling["AL0_matrix"] = tiling_new["AL0_matrix"][0:6]
     tiling["CL0_matrix"] = tiling_new["CL0_matrix"][0:6]
     tiling["CUB_matrix"] = tiling_new["CUB_matrix"][0:6]
-    tiling["BL0_matrix"] = tiling_new_check_empty(tiling_new, "BL0_matrix", 6)
+    tiling["BL0_matrix"] = _tiling_new_check_empty(tiling_new, "BL0_matrix", 6)
     tiling["manual_pingpong_buffer"] = tiling_new["manual_pingpong_buffer"]
     tiling["n_bef_batch_flag"] = tiling_new["n_bef_batch_flag"]
-    tiling["AUB_shape"] = tiling_new_check_none(tiling_new, "AUB_shape", 4)
-    tiling["AL1_shape"] = tiling_new_check_empty(tiling_new, "AL1_shape", 4)
-    tiling["BL1_shape"] = tiling_new_check_none_empty(tiling_new, "BL1_shape", 5)
+    tiling["AUB_shape"] = _tiling_new_check_none(tiling_new, "AUB_shape", 4)
+    tiling["AL1_shape"] = _tiling_new_check_empty(tiling_new, "AL1_shape", 4)
+    tiling["BL1_shape"] = _tiling_new_check_none_empty(tiling_new, "BL1_shape", 5)
     tiling["block_dim"] = tiling_new["block_dim"][0:4]
 
     tiling["scale_drq_split_flag"] = False
@@ -548,7 +539,7 @@ def get_tiling_dict_second(tiling, shape_input, padding, stride, dtype):
     """
     get tiling dictionary second
     """
-    if not check_tiling(tiling, dtype):
+    if not _check_tiling(tiling, dtype):
         tiling = {}
         m_bit_length = {"float32": 32, "float16": 16, "uint8": 8, "int8": 8, "uint4": 4, "int4": 4}
         m_bit_ratio = {"int32": 4, "float32": 4, "float16": 2, "uint8": 1, "int8": 1, "uint4": 1.0 / 2, "int4": 1.0 / 2}
@@ -756,7 +747,6 @@ def _set_common_flag():
 
     tensor_dict["fused_double_operand_num"] = 0
     tensor_dict["fused_c_dtype"] = "int8"
-    # group_num is used to distin pre_relu
     tensor_dict["group_num"] = 1
 
     return tensor_dict
@@ -1032,11 +1022,9 @@ def _quant(out, tensor_dict):
 
         tensor_dict["input_ub"] = tensor_dict["reform_by_vadds"].op.input_tensors[0]
 
-        # eltwise_case
         if "eltwise_case" in tensor_dict["input_ub"].op.input_tensors[0].op.attrs:
 
             def _last_node_vmul_quant(tensor_dict):
-                # case 0 last node is vmul
                 if tensor_dict["input_ub"].op.input_tensors[0].op.attrs["eltwise_case"] == "eltwise_case_0":
                     tensor_dict["mul_res"] = tensor_dict["input_ub"].op.input_tensors[0]
                     tensor_dict["power1_add"] = tensor_dict["mul_res"].op.input_tensors[1]
@@ -1747,7 +1735,6 @@ def _set_sch_int32_phase1_deqaunt_power_eltwise(tensor_dict, buf, sch):
     return deq_reg_ubuf, bias_ub, dequant_ubuf, sch
 
 
-# phase1, set scope
 def _set_sch_int32_phase1(tensor_dict, attrs_dict, out, sch):
     """
     set schedule int32 and phase1
@@ -1787,7 +1774,6 @@ def _set_sch_int32_phase1(tensor_dict, attrs_dict, out, sch):
     return deq_reg_ubuf, req_reg_ubuf, bias_ub, dequant_ubuf, requant_ubuf, sch
 
 
-# phase2, compute at
 def _sch_flag_is_dequant_power_eltwise(sch, tensor_dict, attrs_dict, res_cut_dict):
     """
     schedule flag is dequant power relu6 power eltwise quant
@@ -2067,7 +2053,6 @@ def _emit_insn_dequant1(tensor_dict, sch):
         sch[tensor_dict["dequant1"]].pragma(sch[tensor_dict["dequant1"]].op.axis[3], 'deq_scale', 'vector')
 
 
-# phase 3, emit insn phase
 def _flag_is_dequant_sqrt_bias(tensor_dict, sch, attrs_dict):
     """
     flag is dequant sqrt
@@ -2354,7 +2339,6 @@ def _set_sch_int32_phase3(tensor_dict, sch, attrs_dict, res_cut_dict, out):
         sch[attrs_dict["relu_ubuf"]].emit_insn(sch[attrs_dict["relu_ubuf"]].op.axis[0], 'vector_auto')
     elif tensor_dict["flag_is_eltwisce_case"]:
         sch = _flag_is_dequant_power_eltwise(tensor_dict, sch, attrs_dict)
-    # STRIDE WRITE
     if out.op.tag == "write_select":
         align_length = int(out.op.attrs["HWC0"])
         sch[out].bind_buffer(out.op.axis[1], align_length, 0)
@@ -2456,9 +2440,7 @@ def _l1_fusion_phase1(sch, tensor_dict):
                     (None, None), (None, None), (-pad_top, tensor_dict["fmap"].op.shape[2] + pad_top + pad_bottom),
                     (-pad_left, tensor_dict["fmap"].op.shape[3] + pad_left + pad_right), (None, None))
     else:
-        # need L1 fusion buffer to storage L1 data
         if l1_fusion_type in (0, 1):
-            # DDR in and select
             if valid_shape:
                 sch[tensor_dict["fusion_fmap_select"]].set_scope(cce_params.scope_cbuf_fusion)
                 a_cbuf_nc1hwc0 = tensor_dict["fusion_fmap_select"]
@@ -2466,7 +2448,6 @@ def _l1_fusion_phase1(sch, tensor_dict):
                 a_cbuf_nc1hwc0 = sch.cache_read(tensor_dict["fmap"], cce_params.scope_cbuf_fusion,
                                                 [tensor_dict["im2col_row_major"]])
         else:
-            # DDR in and not select, not fusion
             a_cbuf_nc1hwc0 = sch.cache_read(tensor_dict["fmap"], cce_params.scope_cbuf,
                                             [tensor_dict["im2col_row_major"]])
     return sch, a_cbuf_nc1hwc0
@@ -2501,10 +2482,8 @@ def _fmp_emit_insn(sch, a_cbuf_nc1hwc0):
     input_mem_type = int(DepthwiseConv2dParam.fusion_para.get("input_memory_type"))
     l1_fusion_type = int(DepthwiseConv2dParam.fusion_para.get("l1_fusion_type"))
     valid_shape = DepthwiseConv2dParam.fusion_para.get("valid_shape")
-    # no l1fusion
     if l1_fusion_type == -1:
         sch[a_cbuf_nc1hwc0].emit_insn(a_cbuf_nc1hwc0.op.axis[0], 'dma_copy')
-    # L1 in, do nothing
     if input_mem_type == 1:
         sch[a_cbuf_nc1hwc0].emit_insn(a_cbuf_nc1hwc0.op.axis[0], 'phony_insn')
     else:
@@ -2525,7 +2504,6 @@ def _set_sch_ph1(out, sch, tensor_dict, attrs_dict, mad_dtype):
         out_addr_type = int(out.op.attrs["addr_type"])
         if out_addr_type == 1:
             sch[out].set_scope(cce_params.scope_cbuf_fusion)
-            # when ub fusion, depthwise out may not be final out
             tensor_dict["output_memory_type"] = 1
     if True in [tensor_dict["flag_is_dequant"], tensor_dict["flag_is_dequant2"], tensor_dict["flag_is_requant"]]:
         sch[tensor_dict["mad_ubuf"]].compute_inline()
@@ -2562,7 +2540,7 @@ def _set_sch_ph1(out, sch, tensor_dict, attrs_dict, mad_dtype):
     return sch, tensor_dict, attrs_dict
 
 
-def get_shape_type():
+def _get_shape_type():
     """
     get relative shape, type and size
     """
@@ -2576,7 +2554,7 @@ def get_shape_type():
     return is_overload, offset, valid_shape, input_mem_type, output_mem_type, l1_fusion_type, l1_valid_size
 
 
-def prepare_tensor_attrs(out, input_mem_type, output_mem_type, l1_fusion_type, l1_valid_size):
+def _prepare_tensor_attrs(out, input_mem_type, output_mem_type, l1_fusion_type, l1_valid_size):
     """
     Prepare tensors and attrs
     """
@@ -2591,7 +2569,7 @@ def prepare_tensor_attrs(out, input_mem_type, output_mem_type, l1_fusion_type, l
     return attrs_dict, tensor_dict
 
 
-def get_sch_cache(sch, tensor_dict):
+def _get_sch_cache(sch, tensor_dict):
     """
     get schedule cache
     """
@@ -2748,7 +2726,6 @@ def _set_res_cut_dict(sch, out, tensor_dict, a_l1_tiling, a_l0_tiling, b_l1_tili
                                                   tensor_dict["data_transfer"].op.axis[2], requant_o,
                                                   tensor_dict["data_transfer"].op.axis[-2], requant_i)
 
-    # m
     res_mcut_o, res_mcut_i = sch[out].split(out.op.axis[3], factor=a_l1_tiling[1] * c_l0_tiling[1] * a_l0_tiling[2])
     res_mcut_io, res_mcut_ii = sch[out].split(res_mcut_i, factor=a_l0_tiling[0] * a_l0_tiling[2])
     res_mcut_iio, res_mcut_iii = sch[out].split(res_mcut_ii, factor=c_ub_tiling[1] * c_ub_tiling[2])
@@ -2758,7 +2735,6 @@ def _set_res_cut_dict(sch, out, tensor_dict, a_l1_tiling, a_l0_tiling, b_l1_tili
     res_cut_dict["res_mcut_ii"] = res_mcut_ii
     res_cut_dict["res_mcut_iio"] = res_mcut_iio
     res_cut_dict["res_mcut_iii"] = res_mcut_iii
-    # n
     res_ncut_o, res_ncut_i = sch[out].split(out.op.axis[2], factor=b_l1_tiling[1])
     res_ncut_io, res_ncut_ii = sch[out].split(res_ncut_i, factor=b_l0_tiling[1])
     res_ncut_iio, res_ncut_iii = sch[out].split(res_ncut_ii, factor=c_ub_tiling[0])
@@ -2793,13 +2769,12 @@ def _set_res_cut_dict(sch, out, tensor_dict, a_l1_tiling, a_l0_tiling, b_l1_tili
 def depthwise_conv2d_schedule(out):
     """
     depthwise conv2d schedule
+    the interface will be eliminated soon!
     """
-    is_overload, offset, valid_shape, input_mem_type, output_mem_type, l1_fusion_type, l1_valid_size = get_shape_type()
+    is_overload, offset, valid_shape, input_mem_type, output_mem_type, l1_fusion_type, l1_valid_size = _get_shape_type()
     sch = create_schedule(out.op)
-    # Prepare tensors.
-    attrs_dict, tensor_dict = prepare_tensor_attrs(out, input_mem_type, output_mem_type, l1_fusion_type, l1_valid_size)
+    attrs_dict, tensor_dict = _prepare_tensor_attrs(out, input_mem_type, output_mem_type, l1_fusion_type, l1_valid_size)
 
-    # set data flow
     if "relu" in tensor_dict["im2col_row_major"].op.input_tensors[0].name:
         pre_relu_ubuf = sch.cache_read(tensor_dict["fmap"], cce_params.scope_ubuf, [tensor_dict["relu_0"]])
         pre_relu_cbuf = sch.cache_read(tensor_dict["relu_0"], cce_params.scope_cbuf, [tensor_dict["im2col_row_major"]])
@@ -2810,8 +2785,7 @@ def depthwise_conv2d_schedule(out):
         L1CommonParam.l1_fusion_tensors_map = _save_workspace(tensor_dict, a_cbuf_nc1hwc0, sch)
         fmp_shape = a_cbuf_nc1hwc0.shape
 
-    a_cbuf_row_major, a_ca, b_cbuf, b_cb, mad_cc, mad_dtype, sch = get_sch_cache(sch, tensor_dict)
-    # out to L1
+    a_cbuf_row_major, a_ca, b_cbuf, b_cb, mad_cc, mad_dtype, sch = _get_sch_cache(sch, tensor_dict)
     sch, tensor_dict, attrs_dict = _set_sch_ph1(out, sch, tensor_dict, attrs_dict, mad_dtype)
 
     if len(fmp_shape) == 6:
@@ -2831,7 +2805,6 @@ def depthwise_conv2d_schedule(out):
         howo_one_flag = howo_one_flag.value
     wo_shape = (fmap_w + pad_left + pad_right - kernel_w) // stride_w + 1
     ho_shape = (fmap_h + pad_top + pad_bottom - kernel_h) // stride_h + 1
-    # get tiling params
     tiling = _get_tiling_fetch(mad_dtype, tensor_dict)
 
     if tiling["AL0_matrix"][2] == 32 or not isinstance(tiling["AL1_shape"], list):
@@ -2869,26 +2842,19 @@ def depthwise_conv2d_schedule(out):
     is_overload, a_l1_tiling, b_l1_tiling, b_l0_tiling = _tiling_handle(a_l1_tiling, b_l1_tiling, b_l0_tiling,
                                                                         is_overload)
 
-    # --------------------------double buffer------------------------
     double_buffer_flag = _set_double_buffer_flag(tiling)
-    # L0C
-    # batch
     mad_cc_bcut_o, mad_cc_bcut_ii = sch[mad_cc].split(mad_cc.op.axis[0], factor=a_l0_tiling[4])
 
-    # m
     mad_cc_mcut_o, mad_cc_mcut_ii = sch[mad_cc].split(mad_cc.op.axis[3], factor=a_l0_tiling[0] * a_l0_tiling[2])
 
-    # n
     mad_cc_ncut_o, mad_cc_ncut_ii = sch[mad_cc].split(mad_cc.op.axis[2], factor=b_l0_tiling[1])
 
-    # k
     mad_cc_kcut_o, mad_cc_kcut_ii = sch[mad_cc].split(mad_cc.op.reduce_axis[0], factor=b_l0_tiling[0])
 
     sch[mad_cc].reorder(mad_cc_bcut_o, mad_cc.op.axis[1], mad_cc_ncut_o, mad_cc_mcut_o, mad_cc_kcut_o, mad_cc_bcut_ii,
                         mad_cc_ncut_ii, mad_cc_mcut_ii, mad_cc.op.axis[4], mad_cc_kcut_ii, mad_cc.op.reduce_axis[1])
     sch[a_ca].compute_at(sch[mad_cc], mad_cc_kcut_o)
     sch = _set_a_cbuf_row_major(mad_dtype, a_cbuf_row_major, wo_shape, sch)
-    # batch
     res_cut_dict = _set_res_cut_dict(sch, out, tensor_dict, a_l1_tiling, a_l0_tiling, b_l1_tiling, b_l0_tiling,
                                      c_ub_tiling, c_l0_tiling, block_dim_tiling)
     blocks = block_dim_tiling[0] * block_dim_tiling[1] * block_dim_tiling[2] * block_dim_tiling[3]
@@ -2979,7 +2945,6 @@ def depthwise_conv2d_schedule(out):
         if input_module == 2:
             sch_to_deal.double_buffer()
 
-    # al1
     if "relu" not in tensor_dict["im2col_row_major"].op.input_tensors[0].name:
         _set_double_buffer(double_buffer_flag["AL1_pbuffer"], sch[a_cbuf_nc1hwc0])
     _set_double_buffer(double_buffer_flag["BL1_pbuffer"], sch[b_cbuf])
@@ -3017,7 +2982,6 @@ def depthwise_conv2d_schedule(out):
 
     setfmatrix_dict = _valid_shape_handle()
 
-    # emit insn
     def _bias_relu_emit_insn(sch):
         if tensor_dict["bias_flag"]:
             sch[attrs_dict["bias_ubuf"]].emit_insn(sch[attrs_dict["bias_ubuf"]].op.axis[0], 'dma_copy')
@@ -3062,12 +3026,12 @@ def depthwise_conv2d_schedule(out):
     attrs_dict["mad_dtype"] = mad_dtype
     sch = _set_sch_int32_phase3(tensor_dict, sch, attrs_dict, res_cut_dict, out)
 
-    set_pragma_for_cache_read_mode(is_overload, sch[out], res_cut_dict["res_mmcut_i"])
+    _set_pragma_for_cache_read_mode(is_overload, sch[out], res_cut_dict["res_mmcut_i"])
 
     return sch
 
 
-def pragma_overload_filter(condition0, condition1, stage, first_axis):
+def _pragma_overload_filter(condition0, condition1, stage, first_axis):
     """
     pragma overload filter
     """
@@ -3076,7 +3040,7 @@ def pragma_overload_filter(condition0, condition1, stage, first_axis):
     if condition0 > 1 or condition1 > 1:
         is_overload = True
 
-    set_pragma_for_cache_read_mode(is_overload, stage, first_axis)
+    _set_pragma_for_cache_read_mode(is_overload, stage, first_axis)
 
 
 # pylint: disable=locally-disabled,too-many-locals,too-many-statements
@@ -3091,6 +3055,8 @@ def depthwise_conv2d_backprop_filter_d_schedule(depthwise_dfilter_res):
     ----->feature_col_pad---------------/          depthwise_dfilter_res
     reduce : K=NHoWo M=16 N=HwWw*16
 
+    the interface will be eliminated soon!
+
     Parameters
     ----------
     depthwise_dfilter_res : tvm tensor
@@ -3103,7 +3069,6 @@ def depthwise_conv2d_backprop_filter_d_schedule(depthwise_dfilter_res):
     """
     sch = create_schedule(depthwise_dfilter_res.op)
 
-    # get tensors form input
     depthwise_dfilter = depthwise_dfilter_res.op.input_tensors[0]
     mad_res = depthwise_dfilter.op.input_tensors[0]
     dout_fractal = mad_res.op.input_tensors[0]
@@ -3114,7 +3079,6 @@ def depthwise_conv2d_backprop_filter_d_schedule(depthwise_dfilter_res):
     fmap_transpose = feature_col.op.input_tensors[0]
     fmap = fmap_transpose.op.input_tensors[0]
 
-    # define stages
     fmap_cbuf_nc1hwc0 = sch.cache_write(fmap_transpose, cce_params.scope_cbuf)
     sch[fmap_transpose].compute_inline()
     fmap_cbuf_row_major = sch.cache_write(feature_col, cce_params.scope_cbuf)
@@ -3131,13 +3095,10 @@ def depthwise_conv2d_backprop_filter_d_schedule(depthwise_dfilter_res):
     depthwise_dfilter_ubuf = sch.cache_write(depthwise_dfilter, cce_params.scope_ubuf)
     sch[depthwise_dfilter].compute_inline()
 
-    # get shape values
     fmap_shape = [int(i.value) for i in fmap.shape]
     dout_shape = [int(i.value) for i in dout.shape]
 
-    # NCgC1HiWiC0 (C1 = 1)
     fmap_n, fmap_cg, _, fmap_h, fmap_w, fmap_c0 = fmap_shape
-    # NCgC1HoWoC0 (C1 = 1)
     dout_n, dout_cg, dout_c1, dout_h, dout_w, dout_c0 = dout_shape
     filter_h = depthwise_dfilter_res.op.attrs['kernel_h'].value
     filter_w = depthwise_dfilter_res.op.attrs['kernel_w'].value
@@ -3184,7 +3145,6 @@ def depthwise_conv2d_backprop_filter_d_schedule(depthwise_dfilter_res):
         dict_args = {'errCode': 'E67004', 'op_name': 'depthwise_conv2d_backprop_filter', 'BL1_shape': 'None'}
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
-    # Cg,C1HwWw,C1C0,C0 (zN in L0C, Cg, N1, M, N0)
     mad_cc_axis_cg, mad_cc_axis_n1, mad_cc_axis_m, mad_cc_axis_n0 = mad_cc.op.axis
     n1_l0_factor = tiling["CL0_matrix"][0]  # tiling["BL0_matrix"][1]
     m0_l0_factor = tiling["CL0_matrix"][2]
@@ -3220,14 +3180,11 @@ def depthwise_conv2d_backprop_filter_d_schedule(depthwise_dfilter_res):
         block_h_nparts = tiling["AUB_shape"][0]
     if tiling["AL1_shape"] is None:
         sch[dout_cbuf].compute_inline()
-    # N
     mad_cc_n1_l1o, mad_cc_n1_l1i = sch[mad_cc].split(mad_cc_axis_n1, n1_l1_factor)
     mad_cc_n1_l0o, mad_cc_n1_l0i = sch[mad_cc].split(mad_cc_n1_l1i, n1_l0_factor)
-    # M
     mad_cc_m1_l1o, mad_cc_m_l1i = sch[mad_cc].split(mad_cc_axis_m, m_l1_factor)
     mad_cc_m1, mad_cc_m0 = sch[mad_cc].split(mad_cc_m_l1i, m0_l0_factor)
     mad_cc_m1_l0o, mad_cc_m1_l0i = sch[mad_cc].split(mad_cc_m1, m1_l0_factor)
-    # K
     mad_cc_kn_l1o = mad_cc.op.reduce_axis[0]
     block_batch_o, block_batch_i = sch[mad_cc].split(mad_cc_kn_l1o, nparts=block_batch_nparts)
     mad_cc_axis_k = mad_cc.op.reduce_axis[1]
@@ -3259,18 +3216,15 @@ def depthwise_conv2d_backprop_filter_d_schedule(depthwise_dfilter_res):
     dw_axis_cg, dw_axis_n1, dw_axis_m, dw_axis_n0 = sch[depthwise_dfilter_res].op.axis
     n1_ub_factor = tiling["CUB_matrix"][0]
     m1_ub_factor = tiling["CUB_matrix"][1]
-    # Block tiling
     block_cg_o, block_cg_i = sch[depthwise_dfilter_res].split(dw_axis_cg, nparts=block_cg_nparts)
     block_n_o, block_n_i = sch[depthwise_dfilter_res].split(dw_axis_n1, nparts=block_n_nparts)
     block_m_o, block_m_i = sch[depthwise_dfilter_res].split(dw_axis_m, nparts=block_m_nparts)
 
-    # N
     dw_n1_l0o, dw_n1_l0i = sch[depthwise_dfilter_res].split(block_n_i, n1_l0_factor)
     dw_n1_ubo, dw_n1_ubi = sch[depthwise_dfilter_res].split(dw_n1_l0i, n1_ub_factor)
 
-    pragma_overload_filter(block_n_nparts, block_m_nparts, sch[depthwise_dfilter_res], dw_n1_ubi)
+    _pragma_overload_filter(block_n_nparts, block_m_nparts, sch[depthwise_dfilter_res], dw_n1_ubi)
 
-    # M
     dw_m1, dw_m0 = sch[depthwise_dfilter_res].split(block_m_i, m0_l0_factor)
     dw_m1_l0o, dw_m1_l0i = sch[depthwise_dfilter_res].split(dw_m1, m1_l0_factor)
     dw_m1_ubo, dw_m1_ubi = sch[depthwise_dfilter_res].split(dw_m1_l0i, m1_ub_factor)
@@ -3303,9 +3257,7 @@ def depthwise_conv2d_backprop_filter_d_schedule(depthwise_dfilter_res):
 
     sch[mad_ubuf].reused_by(depthwise_dfilter_ubuf)
 
-    # emit insn
     sch[fmap_cbuf_nc1hwc0].emit_insn(fmap_cbuf_nc1hwc0.op.axis[0], 'dma_copy')
-    # emit convolution params.
     setfmatrix_dict = {
         "conv_kernel_h": depthwise_dfilter_res.op.attrs['kernel_h'],
         "conv_kernel_w": depthwise_dfilter_res.op.attrs['kernel_w'],
@@ -3325,7 +3277,6 @@ def depthwise_conv2d_backprop_filter_d_schedule(depthwise_dfilter_res):
     sch[dout_ca].emit_insn(dout_ca.op.axis[0], 'dma_copy')
 
     sch[mad_ubuf].emit_insn(mad_ubuf.op.axis[0], 'dma_copy')
-    # mad_pattern value: 0 for gemm, 1 for gemv, 2 for convolution
     mad_dict = {
         "mad_pattern": cce_params.CONV_MODE,
         'k_outer': [block_batch_o, block_batch_i, block_h_o, mad_cc_ak1_l1o, mad_cc_bk1_l1o, mad_cc_k1_l0o]
@@ -3336,7 +3287,6 @@ def depthwise_conv2d_backprop_filter_d_schedule(depthwise_dfilter_res):
     sch[depthwise_dfilter_ubuf].emit_insn(depthwise_dfilter_ubuf.op.axis[1], 'elewise_single_diagonal')
     sch[depthwise_dfilter_res].emit_insn(dw_n1_ubi, 'dma_copy')
 
-    # for multi cores
     block = tvm.thread_axis("blockIdx.x")
     block_axis = sch[depthwise_dfilter_res].fuse(block_cg_o, block_m_o, block_n_o)
     sch[depthwise_dfilter_res].bind(block_axis, block)
@@ -3352,13 +3302,11 @@ def _tiling_fetch(dx_res, stride, mad_cc, dout_shape, weight_shape):
     padding_bottom = int(dx_res.op.attrs['dilated_pad'][1])
     padding_left = int(dx_res.op.attrs['dilated_pad'][2])
     padding_right = int(dx_res.op.attrs['dilated_pad'][3])
-    # after expand, full model sliding window, value must be 1
     stride_h = int(dx_res.op.attrs['dilated_strides'][0])
     stride_w = int(dx_res.op.attrs['dilated_strides'][1])
     kernel_h = int(dx_res.op.attrs['weight_height'])
     kernel_w = int(dx_res.op.attrs['weight_width'])
     kernel_name = dx_res.op.attrs['kernel_name']
-    # expand stride equal ops interface parameter
     strideh_expand = stride
     stridew_expand = stride
     dilation_h = 1
@@ -3385,7 +3333,6 @@ def _tiling_fetch(dx_res, stride, mad_cc, dout_shape, weight_shape):
     hd_value = dout_shape_output_height * stride - (stride - 1)
     wi_value = (wd_value + padding_left + padding_right - kernel_w) // stride_w + 1
     hi_value = (hd_value + padding_top + padding_bottom - kernel_h) // stride_h + 1
-    # shape format must be 5HD
     dout_shape_tiling = list(map(int, dout_shape_tiling))
     weight_shape_tiling = list(map(int, weight_shape_tiling))
     tiling_new = tiling_query(a_shape=dout_shape_tiling,
@@ -3411,7 +3358,6 @@ def _tiling_fetch(dx_res, stride, mad_cc, dout_shape, weight_shape):
                               op_tag="depthwise_bp_input",
                               kernel_name=kernel_name)
 
-    # get tiling params
     al1_tiling = tiling_new['AL1_shape']
     bl1_tiling = tiling_new['BL1_shape']
     al0_tiling = tiling_new['AL0_matrix']
@@ -3440,10 +3386,10 @@ def _tiling_fetch(dx_res, stride, mad_cc, dout_shape, weight_shape):
 def depthwise_conv2d_backprop_input_d_schedule(dx_res):
     """
     the schedule of depthwise_conv2d_backprop_input
+    the interface will be eliminated soon!
     """
     sch = create_schedule(dx_res.op)
 
-    # get tensor info
     dx_cast = dx_res.op.input_tensors[0]
     mad_res = dx_cast.op.input_tensors[0]
     dout_col_pad = mad_res.op.input_tensors[0]
@@ -3453,7 +3399,6 @@ def depthwise_conv2d_backprop_input_d_schedule(dx_res):
     dout_dilated = dout_col.op.input_tensors[0]
     dout = dout_dilated.op.input_tensors[0]
 
-    # set data flow
     dout_ubuf = sch.cache_read(dout, cce_params.scope_ubuf, [dout_dilated])
     dout_cbuf_nc1hwc0 = sch.cache_write(dout_dilated, cce_params.scope_cbuf)
     dout_dilated_ubuf = sch.cache_write(dout_cbuf_nc1hwc0, cce_params.scope_ubuf)
@@ -3472,14 +3417,12 @@ def depthwise_conv2d_backprop_input_d_schedule(dx_res):
     sch[mad_res].compute_inline()
     sch[dx_cast].compute_inline()
 
-    # compute shape value, out input img2col_padding
     block_size = dout.op.shape[len(dout.op.shape) - 1].value
     _, _, _, _, dout_dilated_w, _ = dout_dilated.shape
     fmap_w = dout_dilated_w.value + dx_res.op.attrs['dilated_pad'][2].value + dx_res.op.attrs['dilated_pad'][
         3].value - dx_res.op.attrs['weight_width'].value + 1
     stride = int(dout_dilated.op.attrs["strides"][0].value)
 
-    # get shape value
     weight_shape = [int(i.value) for i in weight.shape]
     dout_shape = [int(i.value) for i in dout.shape]
 
@@ -3496,7 +3439,6 @@ def depthwise_conv2d_backprop_input_d_schedule(dx_res):
         l1_factor_n = al1_tiling[2]
         l1_factor_m = al1_tiling[1] * cl0_tiling[1] * 16
 
-        # double buffer
         double_buffer_flag = {
             'AUB_pbuffer': False,
             'AL1_pbuffer': False,
@@ -3508,7 +3450,6 @@ def depthwise_conv2d_backprop_input_d_schedule(dx_res):
             'UBG_pbuffer': False,
         }
         double_buffer_flag = double_buffer_tiling
-        # muti core bind
         blocks = block_dim_tiling[0] * block_dim_tiling[3]
         mad_cc_axis_n, mad_cc_axis_cg, mad_cc_axis_co1, mad_cc_axis_howomad, mad_cc_axis_co0 = mad_cc.op.axis
         mad_cc_ncut_o_n, mad_cc_ncut_i_n = sch[mad_cc].split(mad_cc_axis_n, factor=loc_factor_na)
@@ -3559,7 +3500,6 @@ def depthwise_conv2d_backprop_input_d_schedule(dx_res):
             sch[dout_dilated_ubuf].emit_insn(dila_o_h, 'dma_padding')
             sch[dout_ubuf].emit_insn(dout_ubuf.op.axis[0], 'dma_copy')
 
-            # aub double buffer
             if double_buffer_flag["AUB_pbuffer"] == 2:
                 sch[dout_dilated_ubuf].double_buffer()
                 sch[dout_ubuf].double_buffer()
@@ -3570,7 +3510,6 @@ def depthwise_conv2d_backprop_input_d_schedule(dx_res):
             sch[dout_ubuf].compute_inline()
             sch[dout_cbuf_nc1hwc0].emit_insn(dout_cbuf_nc1hwc0.op.axis[0], 'dma_copy')
 
-        # emit convolution params.
         setfmatrix_dict = {
             "conv_kernel_h": dx_res.op.attrs['weight_height'],
             "conv_kernel_w": dx_res.op.attrs['weight_width'],
@@ -3591,7 +3530,7 @@ def depthwise_conv2d_backprop_input_d_schedule(dx_res):
         kernel_w = int(dx_res.op.attrs['weight_width'])
         if block_dim_tiling[1] > 1 or (block_dim_tiling[2] > 1 and (stride_h < kernel_h or stride_w < kernel_w)):
             is_overload = True
-        set_pragma_for_cache_read_mode(is_overload, sch[dx_res], conv_ncut_i)
+        _set_pragma_for_cache_read_mode(is_overload, sch[dx_res], conv_ncut_i)
 
         sch[dout_cbuf_row_major].emit_insn(dout_cbuf_row_major.op.axis[1], 'set_fmatrix', setfmatrix_dict)
         sch[dout_ca].emit_insn(dout_ca.op.axis[1], 'im2col')
@@ -3603,29 +3542,21 @@ def depthwise_conv2d_backprop_input_d_schedule(dx_res):
         sch[mad_cc].emit_insn(mad_cc_ncut_i_n, 'mad', mad_dict)
         sch[dx_res].emit_insn(conv_ncut_i, 'dma_copy')
 
-        # turn on dubole buffer
-        # al1
         if double_buffer_flag["AL1_pbuffer"] == 2:
             sch[dout_cbuf_nc1hwc0].double_buffer()
-        # bl1
         if double_buffer_flag["BL1_pbuffer"] == 2:
             sch[weight_cbuf].double_buffer()
-        # l0a
         if double_buffer_flag["AL0_pbuffer"] == 2:
             sch[dout_ca].double_buffer()
-        # l0b
         if double_buffer_flag["BL0_pbuffer"] == 2:
             sch[weight_cb].double_buffer()
-        # L0C
         if double_buffer_flag["CL0_pbuffer"] == 2:
             sch[mad_cc].double_buffer()
-        # CUB
         if double_buffer_flag["CUB_pbuffer"] == 2:
             sch[mad_ubuf].double_buffer()
         sch[dx_res].reorder(conv_ncut_o, dx_res.op.axis[1], conv_hcut_o, conv_mcut_o, conv_ncut_i, dx_res.op.axis[2],
                             conv_mcut_i, dx_res.op.axis[4])
 
-        # bind muti core
         if blocks != 1:
             res_nncut_o, res_nncut_i = sch[dx_res].split(conv_ncut_o, nparts=block_dim_tiling[0])
             res_cccut_o, res_cccut_i = sch[dx_res].split(dx_res.op.axis[1], nparts=block_dim_tiling[3])
@@ -3638,7 +3569,6 @@ def depthwise_conv2d_backprop_input_d_schedule(dx_res):
 
     al1_tiling, _, al0_tiling, bl0_tiling, cl0_tiling, cub_tiling, aub_tiling, block_dim_tiling, double_buffer_tiling \
         = _tiling_fetch(dx_res, stride, mad_cc, dout_shape, weight_shape)
-    # when tiling value invalid, set mini value
     tiling_out_invalid_flag = False
     if al0_tiling[2] == 32:
         al1_tiling = [1, 1, 1, 1]
