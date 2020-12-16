@@ -2407,8 +2407,8 @@ def opti_schedule(
         if bias_ub_brc is not None:
             sch[bias_l0c].reused_by(c_add_bias, c_l0c)
             sch[c_add_bias].emit_insn(c_add_bias.op.axis[0], 'phony_insn')
-            k_out, k_inner = sch[bias_l0c].split(bias_l0c.op.axis[3], BRC_STANDARD_BLOCK_SIZE)
-            sch[bias_l0c].emit_insn(k_out, 'dma_copy')
+            sch[bias_l0c].split(bias_l0c.op.axis[3], BRC_STANDARD_BLOCK_SIZE)
+            sch[bias_l0c].emit_insn(bias_l0c.op.axis[2], 'dma_copy')
             sch[bias_ub].emit_insn(bias_ub.op.axis[0], 'dma_copy')
             sch[bias_ub_brc].emit_insn(bias_ub_brc.op.axis[0], 'vector_auto')
             mad_dict["init_bias"] = 1
