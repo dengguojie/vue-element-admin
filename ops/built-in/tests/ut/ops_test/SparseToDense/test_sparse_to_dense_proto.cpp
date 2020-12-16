@@ -10,7 +10,7 @@
  * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @file test_sparse_tensor_dense_mat_mul_proto.cpp
+ * @file test_sparse_to_dense_proto.cpp
  *
  * @brief
  *
@@ -23,29 +23,29 @@
 #include "op_proto_test_util.h"
 #include "sparse_ops.h"
 
-class SPARSE_TENSOR_DENSE_MAT_MUL_UT : public testing::Test {
+class SPARSE_TO_DENSE_UT : public testing::Test {
  protected:
   static void SetUpTestCase() {
-    std::cout << "SPARSE_TENSOR_DENSE_MAT_MUL_UT SetUp" << std::endl;
+    std::cout << "SPARSE_TO_DENSE_UT SetUp" << std::endl;
   }
 
   static void TearDownTestCase() {
-    std::cout << "SPARSE_TENSOR_DENSE_MAT_MUL_UT TearDown" << std::endl;
+    std::cout << "SPARSE_TO_DENSE_UT TearDown" << std::endl;
   }
 };
 
-TEST_F(SPARSE_TENSOR_DENSE_MAT_MUL_UT, InferShape) {
-  ge::op::SparseTensorDenseMatMul op;
-  op.UpdateInputDesc("x1_indices", create_desc({2, 2}, ge::DT_INT32));
-  op.UpdateInputDesc("x1_values", create_desc({2}, ge::DT_INT32));
-  op.UpdateInputDesc("x1_shape", create_desc({2}, ge::DT_INT64));
-  op.UpdateInputDesc("x2", create_desc({2, 2}, ge::DT_INT32));
+TEST_F(SPARSE_TO_DENSE_UT, InferShape) {
+  ge::op::SparseToDense op;
+  op.UpdateInputDesc("indices", create_desc({2, 2}, ge::DT_INT32));
+  op.UpdateInputDesc("output_shape", create_desc({2}, ge::DT_INT32));
+  op.UpdateInputDesc("values", create_desc({2}, ge::DT_INT32));
+  op.UpdateInputDesc("default_value", create_desc({}, ge::DT_INT32));
 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
   auto y_desc = op.GetOutputDesc("y");
   EXPECT_EQ(y_desc.GetDataType(), ge::DT_INT32);
-  std::vector<int64_t> expected_y_shape = {-1, 2};
+  std::vector<int64_t> expected_y_shape = {-1, -1};
   EXPECT_EQ(y_desc.GetShape().GetDims(), expected_y_shape);
 }

@@ -529,12 +529,15 @@ graphStatus Vector(int64_t dim, Shape& out) {
   return GRAPH_SUCCESS;
 }
 
-static graphStatus GetShapeDataFromShapeTensor(Operator& op, const string& dst_name, int64_t rank,
-                                               std::vector<int64_t>& data, const char* op_name) {
+static graphStatus GetShapeDataFromShapeTensor(Operator& op,
+                                               const string& dst_name,
+                                               int64_t rank,
+                                               std::vector<int64_t>& data,
+                                               const char* op_name) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto shape_data_desc = op_desc->MutableInputDesc(dst_name);
 
-  std::vector<std::string> input_infer_depends = {"output_shape"};
+  std::vector<std::string> input_infer_depends = {dst_name};
   op_desc->SetOpInferDepends(input_infer_depends);
 
   GeShape shape_data_shape(shape_data_desc->GetShape());
@@ -542,7 +545,8 @@ static graphStatus GetShapeDataFromShapeTensor(Operator& op, const string& dst_n
   DataType data_type = shape_data_desc->GetDataType();
 
   if (dims.size() != static_cast<size_t>(rank)) {
-    OP_LOGE(op_name, "Shape's rank must be %u, but it is %u", rank, dims.size());
+    OP_LOGE(op_name, "Shape's rank must be %u, but it is %u",
+            rank, dims.size());
     return GRAPH_FAILED;
   }
   int64_t dim_value = rank > 0 ? dims[0] : 1;
@@ -551,24 +555,28 @@ static graphStatus GetShapeDataFromShapeTensor(Operator& op, const string& dst_n
   Tensor shape_tensor;
   if (data_type == DT_INT32) {
     if (op.GetInputConstData(dst_name, shape_tensor) == GRAPH_SUCCESS) {
-      const int32_t* shape_data = reinterpret_cast<const int32_t*>(shape_tensor.GetData());
+      const int32_t* shape_data =
+          reinterpret_cast<const int32_t*>(shape_tensor.GetData());
       for (int64_t i = 0; i < dim_value; i++) {
         data.push_back(static_cast<int64_t>(shape_data[i]));
       }
     } else {
-      OP_LOGI(op.GetName().c_str(), "output_shape is not a const tensor.");
+      OP_LOGI(op.GetName().c_str(), "Input [%s] is not a const tensor.",
+              dst_name.c_str());
       for (int64_t i = 0; i < dim_value; i++) {
         data.push_back(UNKNOWN_DIM);
       }
     }
   } else if (data_type == DT_INT64) {
     if (op.GetInputConstData(dst_name, shape_tensor) == GRAPH_SUCCESS) {
-      const int64_t* shape_data = reinterpret_cast<const int64_t*>(shape_tensor.GetData());
+      const int64_t* shape_data =
+          reinterpret_cast<const int64_t*>(shape_tensor.GetData());
       for (int64_t i = 0; i < dim_value; i++) {
         data.push_back(static_cast<int64_t>(shape_data[i]));
       }
     } else {
-      OP_LOGI(op.GetName().c_str(), "output_shape is not a const tensor.");
+      OP_LOGI(op.GetName().c_str(), "Input [%s] is not a const tensor.",
+              dst_name.c_str());
       for (int64_t i = 0; i < dim_value; i++) {
         data.push_back(UNKNOWN_DIM);
       }
