@@ -38,7 +38,8 @@ def reduce_mean_d_compute(x,
                           keepdims,
                           kernel_name="reduce_mean_d",
                           impl_mode="high_performance",
-                          is_5hdc=False):
+                          is_5hdc=False,
+                          is_nz_nd=False):
     """reduce_mean_d compute
 
     Parameters:
@@ -53,7 +54,8 @@ def reduce_mean_d_compute(x,
         if true, retains reduced dimensions with length 1.
     kernel_name: str
         cce kernel name, default value is "reduce_mean_d".
-
+    is_nz_nd: bool
+    is_5hdc: bool
     Returns
     -------
     res: TVM tensor
@@ -88,13 +90,13 @@ def reduce_mean_d_compute(x,
 
     if cce_product not in ("Ascend310",) and dtype == "float16" and \
             tbe_platform.cce_conf.api_check_support(
-                "te.lang.cce.sum", "float32") and not is_5hdc:
+                "te.lang.cce.sum", "float32") and not (is_5hdc or is_nz_nd):
         data_input_tmp = tbe.cast_to(data_input_tmp, "float32")
         has_improve_precision = True
     elif cce_product in ("Ascend310",) and dtype == "float16" \
             and tbe_platform.cce_conf.api_check_support("te.lang.cce.sum",
                                                         "float32") \
-            and not is_5hdc and impl_mode != "high_performance":
+            and not (is_5hdc or is_nz_nd) and impl_mode != "high_performance":
         data_input_tmp = tbe.cast_to(data_input_tmp, "float32")
         has_improve_precision = True
 
@@ -138,6 +140,10 @@ def reduce_mean_d(input_x, output_y, axes,
     global ori_shape
     global ori_format
     shape = input_x.get("shape")
+    format_x = input_x.get("format")
+    format_y = output_y.get("format")
+    format_ori_y = output_y.get("ori_format")
+    
     para_check.check_shape(shape, param_name="input_x")
     check_list = ["float16", "float32"]
     shape_len = len(shape)
@@ -155,6 +161,9 @@ def reduce_mean_d(input_x, output_y, axes,
 
     # Shape should not be modified in 5HD mode
     # 5HD Special param for 5hd schedule
+    is_nz_nd = False
+    if format_x == "FRACTAL_NZ" and format_y == format_ori_y:
+        is_nz_nd = True
     is_5hdc = para_check.check_and_init_5hdc_reduce_support(input_x, axes)
     if not is_5hdc:
         shape, axes = shape_util.shape_refine(list(shape), axes)
@@ -164,7 +173,8 @@ def reduce_mean_d(input_x, output_y, axes,
     ori_format = [input_x["ori_format"], input_x["format"]]
     data_input = tvm.placeholder(shape, name="data_input", dtype=inp_dtype)
     res = reduce_mean_d_compute(data_input, output_y, axes, keepdims,
-                                impl_mode=impl_mode, is_5hdc=is_5hdc)
+                                impl_mode=impl_mode, is_5hdc=is_5hdc,
+                                is_nz_nd=is_nz_nd)
     if is_5hdc:
         res.ori_shape = input_x["ori_shape"]
         res.ori_format = input_x["ori_format"]

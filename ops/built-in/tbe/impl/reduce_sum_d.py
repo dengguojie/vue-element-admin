@@ -31,7 +31,8 @@ def reduce_sum_d_compute(x,
                          axis,
                          keepdims,
                          kernel_name="reduce_sum_d",
-                         is_5hdc=False):
+                         is_5hdc=False,
+                         is_nz_nd=False):
     """redusce_sum_d compute
 
     Parameters:
@@ -47,6 +48,7 @@ def reduce_sum_d_compute(x,
     kernel_name: str
         cce kernel name, default value is "reduce_sum_d".
     is_5hdc: bool
+    is_nz_nd: bool
     Returns
     -------
     res: TVM tensor
@@ -64,7 +66,7 @@ def reduce_sum_d_compute(x,
 
     if cce_product not in ("Ascend310",) and dtype == "float16" and \
             tbe_platform.api_check_support("te.lang.cce.sum", "float32") and \
-            not is_5hdc:
+            not (is_5hdc or is_nz_nd):
         x = tbe.cast_to(x, "float32")
     res_sum = tbe.sum(x, axis=axis, keepdims=keepdims)
     res = tbe.cast_to(res_sum, dtype)
@@ -98,6 +100,9 @@ def reduce_sum_d(x, y, axis, keepdims=None, kernel_name="reduce_sum_d"):
     """
     shape = x.get("shape")
     dtype = x.get("dtype")
+    format_x = x.get("format")
+    format_y = y.get("format")
+    format_ori_y = y.get("ori_format")
     dtype_lower = dtype.lower()
     check_list = ("float16", "float32")
 
@@ -113,6 +118,9 @@ def reduce_sum_d(x, y, axis, keepdims=None, kernel_name="reduce_sum_d"):
         axis_d = list(axis)
     axis_d = shape_util.axis_check(shape_len, axis_d)
     # 5HD Special param for 5hd schedule
+    is_nz_nd = False
+    if format_x == "FRACTAL_NZ" and format_ori_y == format_y:
+        is_nz_nd = True
     is_5hdc = para_check.check_and_init_5hdc_reduce_support(x, axis)
 
     if not keepdims and not is_5hdc:
@@ -122,7 +130,7 @@ def reduce_sum_d(x, y, axis, keepdims=None, kernel_name="reduce_sum_d"):
     data_input = tvm.placeholder(shape, name="data_input_" + kernel_name,
                                  dtype=dtype_lower)
     res = reduce_sum_d_compute(data_input, y, axis_d, keepdims,
-                               is_5hdc=is_5hdc)
+                               is_5hdc=is_5hdc, is_nz_nd=is_nz_nd)
     if is_5hdc:
         res.ori_shape = x["ori_shape"]
         res.ori_format = x["ori_format"]
