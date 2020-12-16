@@ -28,6 +28,7 @@ from te.lang.cce import vmuls
 from te.lang.cce import vrec
 from te.lang.cce import vsub
 from te.domain.rl_bank import rl_bank
+from te.domain.rl_bank import bank_manager
 from te.platform import scope_ca
 from te.platform import scope_cb
 from te.platform import scope_cbuf
@@ -815,6 +816,7 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
 
     # for RL tune getting tik input&output tensor
     fusion_manager.set_tik_tensor(build_input_list, build_output_list)
+    bank_manager.init_bank_hit_info(kernel_name)
 
     last = 1
     cut_t = 1
@@ -1345,6 +1347,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     if s is not None:
         return return_list, s
 
+    bank_manager.update_bank_hit_info(True)
     # schedule
     s = create_schedule([update_h_gm.op])
 

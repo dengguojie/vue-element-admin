@@ -25,6 +25,7 @@ from te import tvm
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from te.domain.rl_bank import rl_bank
+from te.domain.rl_bank import bank_manager
 
 
 def _sigmoid_compute(input_x):
@@ -440,6 +441,7 @@ def _solution(x, bias_input, bias_hidden, init_h, y, update, gate_order, kernel_
 
     # for RL tune getting tik input&output tensor
     tbe_platform.fusion_manager.set_tik_tensor(build_input_list, build_output_list)
+    bank_manager.init_bank_hit_info(kernel_name)
 
     last = 1
     sub_t = 1
@@ -846,6 +848,7 @@ def _dynamic_gru_v2_inner(input_list, custom_list):
     if sch_rl is not None:
         return output_list, sch_rl
 
+    bank_manager.update_bank_hit_info(True)
     # schedule
     sch = tvm.schedule.create_schedule([update_h_gm.op])
 

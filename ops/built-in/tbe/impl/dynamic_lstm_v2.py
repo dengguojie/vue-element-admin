@@ -27,6 +27,7 @@ from te.lang.cce import vmuls
 from te.lang.cce import vrec
 from te.lang.cce import vsub
 from te.domain.rl_bank import rl_bank
+from te.domain.rl_bank import bank_manager
 from te.platform import scope_ca
 from te.platform import scope_cb
 from te.platform import scope_cbuf
@@ -322,6 +323,7 @@ def dynamic_lstm_v2(input_x, weight, bias, cont, w_xc_x_static, h0, c0, wci, wcf
 
     # for RL tune getting tik input&output tensor
     fusion_manager.set_tik_tensor(build_input_list, build_output_list)
+    bank_manager.init_bank_hit_info(kernel_name)
 
     last = 1
     cut_t = 1
@@ -756,7 +758,8 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, static,
     return_list, s = rl_bank.tik_dsl_bank_proc(return_list, sync_tensor=sync0)
     if s is not None:
         return return_list, s
-    
+
+    bank_manager.update_bank_hit_info(True)
     # schedule
     s = create_schedule([update_h_gm.op])
 
