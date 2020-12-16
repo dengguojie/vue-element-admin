@@ -22,7 +22,7 @@ def static():
 
 def dynamic():
 
-def operator(mode=operation_impl.OpMode.STATIC):
+def operator(mode=OpMode.STATIC):
 
 def compute(_operator=None):
 
