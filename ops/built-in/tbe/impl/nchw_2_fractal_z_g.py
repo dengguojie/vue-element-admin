@@ -26,6 +26,8 @@ UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
 CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
 OFFSET_1 = 256 * 256
 OFFSET_2 = 0
+MAX_CORE_NUM = 32
+
 
 
 class Nchw2Fractalzg(object):
@@ -44,13 +46,12 @@ class Nchw2Fractalzg(object):
             self.kh = shape_in[2]
             self.kw = shape_in[3]
             self.groups = groups
-            self.c1 = shape_out[1]
             self.loop_on_chw = 1
             self.loop_on_groups = self.groups
-            self.n = shape_out[4]
+            self.n = shape_out[1] * shape_out[2]
             self.n16 = self.n // EPB
             self.loop_on_n = 1
-            self.c0 = shape_out[5]
+            self.c0 = shape_out[3]
             self.khw = self.kh * self.kw
             self.ele_per_line = self.cin_orig_ms * self.kh * self.kw
             self.line_blocks = (self.ele_per_line + EPB - 1) // EPB
@@ -74,17 +75,13 @@ class Nchw2Fractalzg(object):
             print("cout_orig = ", self.cout_orig, ",cin_orig = ", self.cin_orig)
             print("cin_orig_ms = ", self.cin_orig_ms, ",cin_orig_ts = ", self.cin_orig_ts)
             print("kh = ", self.kh, ", kw = ", self.kw)
-            print("groups = ", self.groups, ", c1=", self.c1, ", n = ", self.n)
+            print("groups = ", self.groups, ", n = ", self.n)
             print("loop_on_n = ", self.loop_on_n, ",loop_on_chw = ", self.loop_on_chw,
                   ",loop_on_groups = ", self.loop_on_groups)
             print("ele_per_line =", self.ele_per_line, ",ele_per_line_with_tail =", self.ele_per_line_with_tail,
                   ",tail_ele_num =", self.tail_ele_num)
             print("line_blocks =", self.line_blocks)
-            print("vol_per_c1 = ", self.vol_per_c1)
-            print("unit_height = ", self.unit_height)
-            print("group_height = ", self.group_height)
             print("summary_t:", self.summary_t)
-            print("summary:", self.summary)
             print("loops:", self.loops)
 
         def _update_loop_on_chw(self):
@@ -102,7 +99,7 @@ class Nchw2Fractalzg(object):
                 self.summary = self.summary_t
                 while len(self.loops) < self.loop_on_groups:
                     self.loops.append(1)
-                while len(self.loops) < 32:
+                while len(self.loops) < MAX_CORE_NUM:
                     self.loops.append(0)
                     self.summary.append(0)
             else:
@@ -291,102 +288,10 @@ class Nchw2Fractalzg(object):
         lgs.set_as(summary // tp.cin_orig_ms)
 
     def _get_param_by_block_idx(self, block_idx, tp, summary, loops):
-        with self.tik_inst.if_scope(block_idx == 0):
-            summary.set_as(tp.summary[0])
-            loops.set_as(tp.loops[0])
-        with self.tik_inst.if_scope(block_idx == 1):
-            summary.set_as(tp.summary[1])
-            loops.set_as(tp.loops[1])
-        with self.tik_inst.if_scope(block_idx == 2):
-            summary.set_as(tp.summary[2])
-            loops.set_as(tp.loops[2])
-        with self.tik_inst.if_scope(block_idx == 3):
-            summary.set_as(tp.summary[3])
-            loops.set_as(tp.loops[3])
-        with self.tik_inst.if_scope(block_idx == 4):
-            summary.set_as(tp.summary[4])
-            loops.set_as(tp.loops[4])
-        with self.tik_inst.if_scope(block_idx == 5):
-            summary.set_as(tp.summary[5])
-            loops.set_as(tp.loops[5])
-        with self.tik_inst.if_scope(block_idx == 6):
-            summary.set_as(tp.summary[6])
-            loops.set_as(tp.loops[6])
-        with self.tik_inst.if_scope(block_idx == 7):
-            summary.set_as(tp.summary[7])
-            loops.set_as(tp.loops[7])
-        with self.tik_inst.if_scope(block_idx == 8):
-            summary.set_as(tp.summary[8])
-            loops.set_as(tp.loops[8])
-        with self.tik_inst.if_scope(block_idx == 9):
-            summary.set_as(tp.summary[9])
-            loops.set_as(tp.loops[9])
-        with self.tik_inst.if_scope(block_idx == 10):
-            summary.set_as(tp.summary[10])
-            loops.set_as(tp.loops[10])
-        with self.tik_inst.if_scope(block_idx == 11):
-            summary.set_as(tp.summary[11])
-            loops.set_as(tp.loops[11])
-        with self.tik_inst.if_scope(block_idx == 12):
-            summary.set_as(tp.summary[12])
-            loops.set_as(tp.loops[12])
-        with self.tik_inst.if_scope(block_idx == 13):
-            summary.set_as(tp.summary[13])
-            loops.set_as(tp.loops[13])
-        with self.tik_inst.if_scope(block_idx == 14):
-            summary.set_as(tp.summary[14])
-            loops.set_as(tp.loops[14])
-        with self.tik_inst.if_scope(block_idx == 15):
-            summary.set_as(tp.summary[15])
-            loops.set_as(tp.loops[15])
-        with self.tik_inst.if_scope(block_idx == 16):
-            summary.set_as(tp.summary[16])
-            loops.set_as(tp.loops[16])
-        with self.tik_inst.if_scope(block_idx == 17):
-            summary.set_as(tp.summary[17])
-            loops.set_as(tp.loops[17])
-        with self.tik_inst.if_scope(block_idx == 18):
-            summary.set_as(tp.summary[18])
-            loops.set_as(tp.loops[18])
-        with self.tik_inst.if_scope(block_idx == 19):
-            summary.set_as(tp.summary[19])
-            loops.set_as(tp.loops[29])
-        with self.tik_inst.if_scope(block_idx == 20):
-            summary.set_as(tp.summary[20])
-            loops.set_as(tp.loops[20])
-        with self.tik_inst.if_scope(block_idx == 21):
-            summary.set_as(tp.summary[21])
-            loops.set_as(tp.loops[21])
-        with self.tik_inst.if_scope(block_idx == 22):
-            summary.set_as(tp.summary[22])
-            loops.set_as(tp.loops[22])
-        with self.tik_inst.if_scope(block_idx == 23):
-            summary.set_as(tp.summary[23])
-            loops.set_as(tp.loops[23])
-        with self.tik_inst.if_scope(block_idx == 24):
-            summary.set_as(tp.summary[24])
-            loops.set_as(tp.loops[24])
-        with self.tik_inst.if_scope(block_idx == 25):
-            summary.set_as(tp.summary[25])
-            loops.set_as(tp.loops[25])
-        with self.tik_inst.if_scope(block_idx == 26):
-            summary.set_as(tp.summary[26])
-            loops.set_as(tp.loops[26])
-        with self.tik_inst.if_scope(block_idx == 27):
-            summary.set_as(tp.summary[27])
-            loops.set_as(tp.loops[27])
-        with self.tik_inst.if_scope(block_idx == 28):
-            summary.set_as(tp.summary[28])
-            loops.set_as(tp.loops[28])
-        with self.tik_inst.if_scope(block_idx == 29):
-            summary.set_as(tp.summary[29])
-            loops.set_as(tp.loops[29])
-        with self.tik_inst.if_scope(block_idx == 30):
-            summary.set_as(tp.summary[30])
-            loops.set_as(tp.loops[30])
-        with self.tik_inst.if_scope(block_idx == 31):
-            summary.set_as(tp.summary[31])
-            loops.set_as(tp.loops[31])
+        for i in range(MAX_CORE_NUM):
+            with self.tik_inst.if_scope(block_idx == i):
+                summary.set_as(tp.summary[i])
+                loops.set_as(tp.loops[i])
 
     def _calc_loop_param(self, block_idx, tp, summary, partial, loops, left_zero, c1_pos, cur_height, lgs):
         self._get_param_by_block_idx(block_idx, tp, summary, loops)

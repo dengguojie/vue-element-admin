@@ -62,8 +62,8 @@ def calc_expect_func(in_tensor, out_tensor, src_format, dst_format, groups):
                 dst_co = e * Cout_ori + co
                 src_co = g * Cout_ori + co
                 filter_gc1hwnc0[g//E, dst_ci//CUBE_K, :, :, dst_co, dst_ci % CUBE_K] = filter_nchw[src_co, ci, :, :]
-    #print(filter_gc1hwnc0)
-    return filter_gc1hwnc0
+    dst_4d = filter_gc1hwnc0.reshape(G * (Cin_opt // CUBE_K) * kh * kw, Cout_opt // CUBE_N, CUBE_N, CUBE_K)
+    return dst_4d
 
 
 
@@ -85,86 +85,91 @@ def gen_trans_data_precision_case(src, dst, dtype, groups, case_name_val, expect
 
 
 ut_case.add_precision_case(["Ascend910"],
-                           gen_trans_data_precision_case((6, 4, 3, 3), (1, 1, 3, 3, 16, 16),
+                           gen_trans_data_precision_case((6, 4, 3, 3), (9, 1, 16, 16),
                                                          "int16", 2, "nchw_2_fractal_z_g_precision_001",
                                                          "success"))
 ut_case.add_precision_case(["Ascend910"],
-                           gen_trans_data_precision_case((9, 4, 3, 3), (1, 1, 3, 3, 16, 16),
+                           gen_trans_data_precision_case((9, 4, 3, 3), (9, 1, 16, 16),
                                                          "int16", 3, "nchw_2_fractal_z_g_precision_002",
                                                          "success"))
 
 ut_case.add_precision_case(["Ascend910"],
-                           gen_trans_data_precision_case((16, 3, 3, 3), (1, 1, 3, 3, 16, 16),
+                           gen_trans_data_precision_case((16, 3, 3, 3), (9, 1, 16, 16),
                                                          "int16", 4, "nchw_2_fractal_z_g_precision_003",
                                                          "success"))
 
 ut_case.add_precision_case(["Ascend910"],
-                           gen_trans_data_precision_case((16, 5, 3, 3), (1, 2, 3, 3, 16, 16),
+                           gen_trans_data_precision_case((16, 5, 3, 3), (18, 1, 16, 16),
                                                          "int16", 4, "nchw_2_fractal_z_g_precision_004",
                                                          "success"))
 
 ut_case.add_precision_case(["Ascend910"],
-                           gen_trans_data_precision_case((32, 5, 3, 3), (1, 2, 3, 3, 32, 16),
+                           gen_trans_data_precision_case((32, 5, 3, 3), (18, 2, 16, 16),
                                                          "int16", 4, "nchw_2_fractal_z_g_precision_005",
                                                          "success"))
 
 ut_case.add_precision_case(["Ascend910"],
-                           gen_trans_data_precision_case((32, 5, 3, 3), (1, 3, 3, 3, 32, 16),
+                           gen_trans_data_precision_case((32, 5, 3, 3), (27, 2, 16, 16),
                                                          "int16", 8, "nchw_2_fractal_z_g_precision_006",
                                                          "success"))
 
 ut_case.add_precision_case(["Ascend910"],
-                           gen_trans_data_precision_case((8, 32, 3, 3), (1, 4, 3, 3, 16, 16),
+                           gen_trans_data_precision_case((8, 32, 3, 3), (36, 1, 16, 16),
                                                          "int16", 2, "nchw_2_fractal_z_g_precision_007",
                                                          "success"))
 
 ut_case.add_precision_case(["Ascend910"],
-                           gen_trans_data_precision_case((320, 3, 2, 2), (2, 3, 2, 2, 160, 16),
+                           gen_trans_data_precision_case((320, 3, 2, 2), (24, 10, 16, 16),
                                                          "int16", 32, "nchw_2_fractal_z_g_precision_008",
                                                          "success"))
 
 ut_case.add_precision_case(["Ascend910"],
-                           gen_trans_data_precision_case((320, 4, 2, 2), (4, 2, 2, 2, 80, 16),
+                           gen_trans_data_precision_case((320, 4, 2, 2), (32, 5, 16, 16),
                                                          "int16", 32, "nchw_2_fractal_z_g_precision_009",
                                                          "success"))
 
 ut_case.add_precision_case(["Ascend910"],
-                           gen_trans_data_precision_case((128, 2, 3, 3), (4, 1, 3, 3, 32, 16),
+                           gen_trans_data_precision_case((128, 2, 3, 3), (36, 2, 16, 16),
                                                          "int16", 32, "nchw_2_fractal_z_g_precision_net_101",
                                                          "success"))
 
 ut_case.add_precision_case(["Ascend910"],
-                           gen_trans_data_precision_case((128, 4, 3, 3), (8, 1, 3, 3, 16, 16),
+                           gen_trans_data_precision_case((128, 4, 3, 3), (72, 1, 16, 16),
                                                          "int16", 32, "nchw_2_fractal_z_g_precision_net_102",
                                                          "success"))
 
 ut_case.add_precision_case(["Ascend910"],
-                           gen_trans_data_precision_case((128, 8, 3, 3), (8, 2, 3, 3, 16, 16),
+                           gen_trans_data_precision_case((128, 8, 3, 3), (144, 1, 16, 16),
                                                          "int16", 32, "nchw_2_fractal_z_g_precision_net_103",
                                                          "success"))
 
 ut_case.add_precision_case(["Ascend910"],
-                           gen_trans_data_precision_case((256, 8, 3, 3), (16, 1, 3, 3, 16, 16),
+                           gen_trans_data_precision_case((256, 8, 3, 3), (144, 1, 16, 16),
                                                          "int16", 32, "nchw_2_fractal_z_g_precision_net_104",
                                                          "success"))
 ut_case.add_precision_case(["Ascend910"],
-                           gen_trans_data_precision_case((256, 16, 3, 3), (16, 2, 3, 3, 16, 16),
+                           gen_trans_data_precision_case((256, 16, 3, 3), (288, 1, 16, 16),
                                                          "int16", 32, "nchw_2_fractal_z_g_precision_net_105",
                                                          "success"))
 
 ut_case.add_precision_case(["Ascend910"],
-                           gen_trans_data_precision_case((512, 32, 3, 3), (32, 2, 3, 3, 16, 16),
+                           gen_trans_data_precision_case((512, 32, 3, 3), (576, 1, 16, 16),
                                                          "int16", 32, "nchw_2_fractal_z_g_precision_net_106",
                                                          "success"))
 
 ut_case.add_precision_case(["Ascend910"],
-                           gen_trans_data_precision_case((1024, 32, 3, 3), (32, 2, 3, 3, 32, 16),
+                           gen_trans_data_precision_case((1024, 32, 3, 3), (576, 2, 16, 16),
                                                          "int16", 32, "nchw_2_fractal_z_g_precision_net_107",
                                                          "success"))
 
 ut_case.add_precision_case(["Ascend910"],
-                           gen_trans_data_precision_case((1024, 64, 3, 3), (32, 4, 3, 3, 32, 16),
+                           gen_trans_data_precision_case((1024, 64, 3, 3), (1152, 2, 16, 16),
                                                          "int16", 32, "nchw_2_fractal_z_g_precision_net_108",
+                                                         "success"))
+
+ut_case.add_precision_case(["Ascend910"],
+                           gen_trans_data_precision_case((512, 16, 3, 3), (288, 1, 16, 16),
+                                                         "int16", 32, "nchw_2_fractal_z_g_precision_net_109",
                                                          "success"))
 
 
@@ -172,4 +177,3 @@ ut_case.add_precision_case(["Ascend910"],
 if __name__ == '__main__':
     simulator_lib_path ="/home/shenmin/Ascend/toolkit/tools/simulator"
     ut_case.run(["Ascend910"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
-    #ut_case.run(["Ascend910"], simulator_mode="ca", simulator_lib_path=simulator_lib_path)
