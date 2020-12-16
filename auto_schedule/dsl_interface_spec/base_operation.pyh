@@ -1,0 +1,29 @@
+# source file:python/te/lang/base/operation.py
+
+OpMode = operation_impl.OpMode
+
+def register_operator(op_type, pattern=None):
+
+def register_fusion_compute(op_type):
+
+def var(name, bound=None, dtype="int32", addition=None):
+
+def add_compile_info(key, value):
+
+def get_compile_info() -> dict:
+
+def add_build_arg(key, value):
+
+def compute_build_arg(key, func):
+
+def add_exclude_bound_var(var_):
+
+def static():
+
+def dynamic():
+
+def operator(mode=operation_impl.OpMode.STATIC):
+
+def compute(_operator=None):
+
+def schedule(_compute=None):

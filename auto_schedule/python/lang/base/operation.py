@@ -15,11 +15,10 @@
 """
 operation interface
 """
-from typing import Optional
 from te.lang.base import operation_impl
-from te.lang.base.operation_impl import OpMode
-from te.lang.base.operation_impl import OperatorContext
-from te.lang.base.operation_impl import ComputeContext
+
+
+OpMode = operation_impl.OpMode
 
 
 def register_operator(op_type, pattern=None):
@@ -106,7 +105,7 @@ def dynamic():
     return operation_impl.dynamic()
 
 
-def operator(mode=operation_impl.OpMode.STATIC):
+def operator(mode=OpMode.STATIC):
     """
     :param mode:
     :return:
@@ -128,26 +127,3 @@ def schedule(_compute=None):
     :return:
     """
     return operation_impl.schedule(_compute)
-
-
-def get_context() -> Optional[OperatorContext]:
-    """
-    :return:
-    """
-    return operation_impl.get_context()
-
-
-def get_operator(op_type):
-    """
-    :param op_type:
-    :return:
-    """
-    return operation_impl.get_operator(op_type)
-
-
-def get_fusion_compute(op_type):
-    """
-    :param op_type:
-    :return:
-    """
-    return operation_impl.get_fusion_compute(op_type)
