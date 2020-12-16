@@ -26,7 +26,6 @@ targetdir="$archdirname"
 filesizes="$filesizes"
 keep="n"
 nooverwrite="$NOOVERWRITE"
-quiet="n"
 accept="n"
 nodiskspace="n"
 export_conf="$EXPORT_CONF"
@@ -152,7 +151,6 @@ MS_Help()
   \$0 [options] [--] [additional arguments to embedded script]
   with following options (in that order)
   --confirm             Ask before running embedded script
-  --quiet		Do not print anything except error messages
   --accept              Accept the license
   --noexec              Do not run embedded script
   --target dir          Extract directly to a target directory (absolute or relative)
@@ -181,9 +179,6 @@ MS_Check()
     SHA_PATH=\`exec <&- 2>&-; which shasum || command -v shasum || type shasum\`
     test -x "\$SHA_PATH" || SHA_PATH=\`exec <&- 2>&-; which sha256sum || command -v sha256sum || type sha256sum\`
 
-    if test x"\$quiet" = xn; then
-		MS_Printf "Verifying archive integrity..."
-    fi
     offset=\`head -n $SKIP "\$1" | wc -c | tr -d " "\`
     verb=\$2
     i=1
@@ -240,18 +235,11 @@ MS_Check()
 		i=\`expr \$i + 1\`
 		offset=\`expr \$offset + \$s\`
     done
-    if test x"\$quiet" = xn; then
-		echo " All good."
-    fi
 }
 
 UnTAR()
 {
-    if test x"\$quiet" = xn; then
-		tar \$1vf - $UNTAR_EXTRA 2>&1 || { echo " ... Extraction failed." > /dev/tty; kill -15 \$$; }
-    else
-		tar \$1f - $UNTAR_EXTRA 2>&1 || { echo Extraction failed. > /dev/tty; kill -15 \$$; }
-    fi
+    tar \$1f - $UNTAR_EXTRA 2>&1 || { echo Extraction failed. > /dev/tty; kill -15 \$$; }
 }
 
 finish=true
@@ -270,11 +258,6 @@ do
     -h | --help)
 	MS_Help
 	exit 0
-	;;
-    -q | --quiet)
-	quiet=y
-	noprogress=y
-	shift
 	;;
 	--accept)
 	accept=y
@@ -410,12 +393,6 @@ EOLSM
     esac
 done
 
-quiet_para=""
-
-if test x"\$quiet" = xy; then 
-    quiet_para="--quiet "
-fi
-
 keep_para=""
 
 if test x"\$keep" = xy; then 
@@ -429,11 +406,7 @@ if test x"\$verbose" = xy; then
 fi
 
 
-scriptargs="\$scriptargs""--\$name_of_file""--\$pwd_of_file""\$quiet_para""\$keep_para""\$confirm_para"
-if test x"\$quiet" = xy -a x"\$verbose" = xy; then
-	echo Cannot be verbose and quiet at the same time. >&2
-	exit 1
-fi
+scriptargs="\$scriptargs""--\$name_of_file""--\$pwd_of_file""\$keep_para""\$confirm_para"
 
 if test x"$NEED_ROOT" = xy -a \`id -u\` -ne 0; then
 	echo "Administrative privileges required for this archive (use su or sudo)" >&2
@@ -495,9 +468,6 @@ else
             echo "Target directory \$targetdir already exists, aborting." >&2
             exit 1
 	fi
-	if test x"\$quiet" = xn; then
-	    echo "Creating directory \$targetdir" >&2
-	fi
 	tmpdir="\$targetdir"
 	dashp="-p"
     else
@@ -526,15 +496,6 @@ if test x"\$verbose" = xy; then
 	fi
 fi
 
-if test x"\$quiet" = xn; then
-	MS_Printf "Uncompressing \$label"
-	
-    # Decrypting with openssl will ask for password,
-    # the prompt needs to start on new line
-	if test x"$ENCRYPT" = xy; then
-	    echo
-	fi
-fi
 res=3
 if test x"\$keep" = xn; then
     trap 'echo Signal caught, cleaning up >&2; cd \$TMPROOT; /bin/rm -rf "\$tmpdir"; eval \$finish; exit 15' 1 2 3 15
@@ -568,9 +529,6 @@ do
     fi
     offset=\`expr \$offset + \$s\`
 done
-if test x"\$quiet" = xn; then
-	echo
-fi
 
 cd "\$tmpdir"
 res=0

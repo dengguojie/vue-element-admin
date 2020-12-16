@@ -100,7 +100,6 @@ MS_Usage()
     echo "    --version | -v     : Print out Makeself version number and exit"
     echo "    --help | -h        : Print out this help message"
     echo "    --tar-quietly      : Suppress verbose output from the tar command"
-    echo "    --quiet | -q       : Do not print any messages other than errors."
     echo "    --gzip             : Compress using gzip (default if detected)"
     echo "    --pigz             : Compress with pigz"
     echo "    --bzip2            : Compress using bzip2 instead of gzip"
@@ -377,10 +376,6 @@ do
     EXPORT_CONF=y
     shift
     ;;
-    -q | --quiet)
-	QUIET=y
-	shift
-	;;
     -h | --help)
 	MS_Usage
 	;;
