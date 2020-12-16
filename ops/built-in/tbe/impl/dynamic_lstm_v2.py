@@ -1391,7 +1391,8 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, static, s
     return_list, s = rl_bank.tik_dsl_bank_proc(return_list, sync_tensor = sync0)
     if s is not None:
         return return_list, s
-
+    
+    bank_manager.update_bank_hit_info(True)
     #schedule
     s = create_schedule([update_h_gm.op])
     
