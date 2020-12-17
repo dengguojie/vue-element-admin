@@ -17,6 +17,7 @@
 set(_optiling_files
   ../op_proto/util/error_util.cc
   ../fusion_pass/common/fp16_t.cc
+  bias_add.cc
   concat.cc
   concat_offset.cc
   conv2d_backprop_filter.cc
@@ -44,6 +45,7 @@ set(_optiling_files
   split_d.cc
   strided_slice.cc
   strided_slice_grad.cc
+  select.cc
   tile_d.cc
   tile.cc
   drop_out_do_mask.cc

@@ -51,6 +51,7 @@ def calc_expect_func(input_x, output_y):
     res = np.log(input_x["value"]).astype(sdtype)
     return res
 
+"""
 ut_case.add_precision_case("all", {
     "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, ), "shape": (1, ), "param_type": "input"},
                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, ), "shape": (1, ), "param_type": "output"}],
@@ -78,6 +79,7 @@ ut_case.add_precision_case("all", {
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
+"""
 if __name__ == '__main__':
     # ut_case.run("Ascend910")
     ut_case.run()

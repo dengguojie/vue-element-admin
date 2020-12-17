@@ -22,7 +22,6 @@ from te.lang.base.shape_classifier import Mode
 import te.lang.base as tbe_base
 from te.utils import para_check
 from te.utils import shape_util
-from te.utils.op_utils import variable_shape
 
 
 # pylint: disable=invalid-name,too-many-arguments,too-many-locals
@@ -357,9 +356,10 @@ def apply_adam_d(var, m, v, beta1_power, beta2_power, lr, beta1, beta2, epsilon,
     ins = classify([var, m, v, grad], Mode.ELEWISE)
     schedules, tensors = [], []
 
-    for(var, m, v, grad) in ins:
+    for(_var, _m, _v, _grad) in ins:
         with tbe_base.compute():
-            shape_var, shape_m, shape_v, shape_grad = variable_shape([var, m, v, grad], support_broadcast=False)
+            shape_var, shape_m, shape_v, shape_grad = shape_util.variable_shape([_var, _m, _v, _grad],
+                                                                                support_broadcast=False)
             data_var = tvm.placeholder(shape_var, name="data_var", dtype=compute_type)
             data_m = tvm.placeholder(shape_m, name="data_m", dtype=compute_type)
             data_v = tvm.placeholder(shape_v, name="data_v", dtype=compute_type)
@@ -378,3 +378,4 @@ def apply_adam_d(var, m, v, beta1_power, beta2_power, lr, beta1, beta2, epsilon,
 
     config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)
+

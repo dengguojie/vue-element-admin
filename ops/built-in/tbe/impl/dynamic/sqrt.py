@@ -26,6 +26,7 @@ from te.utils import shape_util
 from te.utils import para_check
 
 
+# pylint: disable=locally-disabled,unused-argument
 def sqrt_compute(input_data, output_data, kernel_name="sqrt"):
     """
     calculating data sqrt,y= x**0.5,mini not support vsqrt, use exp(0.5*log(x))
@@ -86,10 +87,10 @@ def sqrt(input_x, output_y, kernel_name="sqrt"):
 
     ins = classify([input_x], Mode.ELEWISE)
     schedules, tensors = [], []
-    for (input_x,) in ins:
+    for (_input_x,) in ins:
         with tbe_base.compute():
             # shape
-            x_shape = shape_util.variable_shape([input_x])
+            x_shape = shape_util.variable_shape([_input_x])
             fuseshape = [1]
             fuseshape[0] = reduceIns(lambda x, y: x * y, x_shape[0])
             # div_compute
@@ -105,3 +106,4 @@ def sqrt(input_x, output_y, kernel_name="sqrt"):
     # build
     config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)
+
