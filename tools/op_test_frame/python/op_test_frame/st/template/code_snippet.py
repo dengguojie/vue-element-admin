@@ -96,8 +96,8 @@ class Net(nn.Cell):
         super(Net, self).__init__()
         self.{op_lower} = {op_name}()
     
-    def construct(self,data):
-        return self.{op_lower}(data)
+    def construct(self,{inputs}):
+        return self.{op_lower}({inputs})
 """
 
 TESTCASE_CLASS_CONTENT_WITH_ATTR_CONSTRUCT = """

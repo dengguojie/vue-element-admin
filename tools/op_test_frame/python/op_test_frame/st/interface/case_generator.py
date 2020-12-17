@@ -170,7 +170,7 @@ class CaseGenerator:
         module_name, _ = os.path.splitext(py_file)
         utils.print_info_log("Start to import {} in {}.".format(
             module_name, py_file))
-        class_name = "{}_op_info".format(module_name.rstrip("_impl"))
+        class_name = "{}op_info".format(module_name.rstrip("impl"))
         try:
             params = importlib.import_module(module_name)
             mindspore_ops_info = getattr(params, class_name)

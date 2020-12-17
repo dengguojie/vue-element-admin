@@ -319,6 +319,7 @@ PY_MS_OP_INFO = """
     .get_op_info()
 
 """
+PY_MS_OP_INFO_REGISTER_TVM = """data{data_count} = tvm.placeholder(shape, name="data{data_count}", dtype=dtype.lower())"""
 PY_MS_OP_INFO_REGISTER = """
 # Binding kernel info with the kernel implementation.
 @op_info_register({name}_op_info)
@@ -330,16 +331,16 @@ def {name}_impl({input_name}, {output}, kernel_name="{name}_impl"):
     dtype = {input_x}.get("dtype").lower()
 
     shape = util.shape_refine(shape)
-    data = tvm.placeholder(shape, name="data", dtype=dtype.lower())
+    {tvm_placeholder}
 
     with tvm.target.cce():
-        res = {name}_compute(data, {output})
+        res = {name}_compute({datas_join}, {output})
         sch = generic.auto_schedule(res)
 """
 PY_MS_OP_INFO_REGISTER_CONFIG = """
-    config = {"print_ir": False,
+    config = {{"print_ir": False,
               "name": kernel_name,
-              "tensor_list": [data, res]}
+              "tensor_list": [{datas_join}, res]}}
 
     te.lang.cce.cce_build_code(sch, config)
 """
@@ -358,11 +359,11 @@ class {up_name}(PrimitiveWithInfer):
         #  path or PYTHONPATH.
         from {name}_impl import {name}_impl
 
-    def infer_shape(self, data_shape):
-        return data_shape
+    def infer_shape(self, {data_shapes}):
+        return data1_shape
 
-    def infer_dtype(self, data_dtype):
-        return data_dtype"""
+    def infer_dtype(self, {data_dtypes}):
+        return data1_dtype"""
 # ==================5.AICPU ini file==================
 AICPU_INI_STRING = """[{op_type}]
 opInfo.engine=DNN_VM_AICPU

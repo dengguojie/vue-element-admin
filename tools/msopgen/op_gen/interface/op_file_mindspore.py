@@ -117,13 +117,23 @@ class OpFileMindSpore(OPFile):
             data_types='\n    '.join(data_types_list))
 
         # 4.make op_info_register
+        tvm_placeholder_list =[]
+        datas_list =[]
+        for data_count in range(len(list(self.op_info.parsed_input_info))):
+            tvm_placeholder_list.append(op_tmpl.PY_MS_OP_INFO_REGISTER_TVM.format(
+                data_count=data_count+1))
+            datas_list.append(f"data{data_count}".format(data_count=data_count+1))
+        tvm_placeholder_join = '\n    '.join(tvm_placeholder_list)
+        datas_join = ', '.join(datas_list)
         head_str += op_tmpl.PY_MS_OP_INFO_REGISTER.format(
             name=self.op_info.fix_op_type,
             up_name=self.op_info.op_type,
             input_name=op_input,
             input_x=op_input_x,
-            output=op_output)
-        head_str += op_tmpl.PY_MS_OP_INFO_REGISTER_CONFIG
+            output=op_output,
+            tvm_placeholder=tvm_placeholder_join,
+            datas_join=datas_join)
+        head_str += op_tmpl.PY_MS_OP_INFO_REGISTER_CONFIG.format(datas_join=datas_join)
 
         # create mindspore directory
         py_dir = os.path.join(self.output_path, utils.MS_IMPL_DIR)
@@ -143,14 +153,24 @@ class OpFileMindSpore(OPFile):
         self._generate_ms_proto()
 
     def _generate_ms_proto(self):
-        op_input = ", ".join(list(self.op_info.parsed_input_info))
+        input_list = list(self.op_info.parsed_input_info)
+        op_input = ", ".join(input_list)
         op_output = ", ".join(list(self.op_info.parsed_output_info))
+        data_shape_list = []
+        data_dtype_list = []
+        for input_count in range(len(input_list)):
+            data_shape_list.append("data{num}_shape".format(num=input_count+1))
+            data_dtype_list.append("data{num}_dtype".format(num=input_count+1))
+        data_shapes = ", ".join(data_shape_list)
+        data_dtypes = ", ".join(data_dtype_list)
         # 1.make mindspore proto string
         ms_proto_str = op_tmpl.PY_MS_PROTO_HEAD.format(
             name=self.op_info.fix_op_type,
             up_name=self.op_info.op_type,
             input_name=op_input,
-            output=op_output)
+            output=op_output,
+            data_shapes=data_shapes,
+            data_dtypes=data_dtypes)
         # create ms_proto_dir
         ms_proto_dir = os.path.join(self.output_path, "op_proto")
         ms_proto_path = os.path.join(ms_proto_dir, self.op_info.fix_op_type +

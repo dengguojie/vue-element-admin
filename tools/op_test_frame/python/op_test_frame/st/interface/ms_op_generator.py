@@ -154,14 +154,13 @@ class MsOpGenerator:
                     "\" directory, please delete or move it and retry.")
             self.output_path = op_name_path
 
-    def _copy_entire_template_dir(self):
+    def _mkdir_output_dir(self):
         ####### [step 1]
-        ####### copy entire template dir to output path
-        template_path = os.path.realpath(
-            os.path.split(os.path.realpath(__file__))[
-                0] + utils.MS_SRC_RELATIVE_TEMPLATE_PATH)
-
-        copy_template(template_path, self.output_path)
+        ####### create output_path dir
+        run_dir = os.path.join(self.output_path, 'run', 'out', 'test_data')
+        utils.make_dirs(run_dir)
+        src_dir = os.path.join(self.output_path, 'src')
+        utils.make_dirs(src_dir)
 
     def _rewrite_files_for_output_dir(self):
         testcase_test_net_content = ''
@@ -238,7 +237,8 @@ class MsOpGenerator:
             testcase_test_net_func_content += code_snippet \
                 .TESTCASE_CLASS_CONTENT_NO_ATTR.format(
                 op_lower=op_name_lower,
-                op_name=op_name)
+                op_name=op_name,
+                inputs=input_name_join)
         else:
             attr_value_list = []
             for attr_info in self.testcase_list[0]['attr']:
@@ -282,7 +282,7 @@ class MsOpGenerator:
             generate mindspore op python files containing info of testcases
         :return:
         """
-        self._copy_entire_template_dir()
+        self._mkdir_output_dir()
         self._rewrite_files_for_output_dir()
         utils.print_info_log("mindspore operator test code files for specified"
                              " test cases have been successfully generated.")
