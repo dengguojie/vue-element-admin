@@ -31,34 +31,26 @@
 namespace optiling {
 
 const int64_t BLOCK_SIZE = 32;
-// 32b aligned, ub can store all updatesNum, float32 atomic
-const int64_t TILING_MODE_1 = 1;
-// 32b aligned, ub can't store all updatesNum, float32 atomic
-const int64_t TILING_MODE_2 = 2;
-// updateDataNum is less than 1 block, ub can store all updatesNum, float32 atomic
-const int64_t TILING_MODE_3 = 3;
-// updateDataNum is less than 1 block, ub can't store all updatesNum, float32 atomic
-const int64_t TILING_MODE_4 = 4;
-// updateDataNum is more than 1 block, float32 atomic
-const int64_t TILING_MODE_5 = 5;
 // 32b aligned, ub can store all var and updates, not atomic
-const int64_t TILING_MODE_6 = 6;
+const int64_t TILING_MODE_1 = 1;
 // 32b aligned, ub can store all var, not atomic
-const int64_t TILING_MODE_7 = 7;
+const int64_t TILING_MODE_2 = 2;
 // 32b aligned, ub can store all updates, not atomic
-const int64_t TILING_MODE_8 = 8;
+const int64_t TILING_MODE_3 = 3;
 // 32b aligned, ub can't store all var and updates, not atomic
-const int64_t TILING_MODE_9 = 9;
+const int64_t TILING_MODE_4 = 4;
 // updateDataNum is less than 1 block, ub can store all var and updates, not atomic
-const int64_t TILING_MODE_10 = 10;
+const int64_t TILING_MODE_5 = 5;
 // updateDataNum is less than 1 block, ub can store all var, not atomic
-const int64_t TILING_MODE_11 = 11;
+const int64_t TILING_MODE_6 = 6;
 // updateDataNum is less than 1 block, ub can store all updates, not atomic
-const int64_t TILING_MODE_12 = 12;
+const int64_t TILING_MODE_7 = 7;
 // updateDataNum is less than 1 block, ub can't store all var and updates, not atomic
-const int64_t TILING_MODE_13 = 13;
-// updateDataNum is more than 1 block, not atomic
-const int64_t TILING_MODE_14 = 14;
+const int64_t TILING_MODE_8 = 8;
+// updateDataNum is more than 1 block, not atomic, and less than updateubnum
+const int64_t TILING_MODE_9 = 9;
+// updateDataNum is more than 1 block, not atomic, and more than updateubnum
+const int64_t TILING_MODE_10 = 10;
 
 struct ScatterSubTilingParams {
   int64_t tilingMode;
@@ -98,40 +90,6 @@ void InitRunningParams(ScatterSubTilingParams& params) {
   params.varEachCoreData = 0;
 }
 
-void CalAtomicBranchRunningParams(ScatterSubTilingParams& runParams, int64_t indicesNum, int64_t updatesNum,
-                                  int64_t updateDataNum, int64_t ubSize, int64_t varSize, int64_t indicesSize,
-                                  int64_t varDataEachBlock) {
-  int64_t updateSizeByte = varSize * updatesNum;
-  int64_t indicesSizeByte = indicesSize * indicesNum;
-  int64_t halfUbSize = ubSize / 2;
-  runParams.updatesLoopNum = updateDataNum / (halfUbSize / varSize);
-  runParams.updatesLastNum = updateDataNum % (halfUbSize / varSize);
-  runParams.indicesLoopNum = indicesNum / (halfUbSize / indicesSize);
-  runParams.indicesLastNum = indicesNum % (halfUbSize / indicesSize);
-  runParams.updatesDataNum = updateDataNum;
-  runParams.updatesNum = updatesNum;
-
-  if (updateDataNum % varDataEachBlock == 0) {
-    if (updateSizeByte <= halfUbSize) {
-      runParams.tilingMode = TILING_MODE_1;
-    } else {
-      runParams.tilingMode = TILING_MODE_2;
-    }
-  } else {
-      if (updateDataNum < varDataEachBlock) {
-        if (updateSizeByte <= halfUbSize) {
-          runParams.tilingMode = TILING_MODE_3;
-          runParams.updatesLoopNum = updatesNum / (halfUbSize / varSize);
-          runParams.updatesLastNum = updatesNum % (halfUbSize / varSize);
-        } else {
-          runParams.tilingMode = TILING_MODE_4;
-        }
-      } else {
-          runParams.tilingMode = TILING_MODE_5;
-      }
-  }
-}
-
 void CalNotAtomicBranchRunningParams(ScatterSubTilingParams& runParams, int64_t varNum, int64_t indicesNum,
                                      int64_t updatesNum, int64_t updateDataNum, int64_t maxIndice, int64_t ubSize,
                                      int64_t coreNum, int64_t varSize, int64_t indicesSize, int64_t varDataEachBlock,
@@ -154,35 +112,40 @@ void CalNotAtomicBranchRunningParams(ScatterSubTilingParams& runParams, int64_t 
 
   if (updateDataNum % varDataEachBlock == 0) {
     if (updateSizeByte <= varUbSize && varSizeByte <= varUbSize) {
-      runParams.tilingMode = TILING_MODE_6;
+      runParams.tilingMode = TILING_MODE_1;
     } else if (updateSizeByte > varUbSize && varSizeByte <= varUbSize) {
-        runParams.tilingMode = TILING_MODE_7;
+        runParams.tilingMode = TILING_MODE_2;
     } else if (updateSizeByte <= varUbSize && varSizeByte > varUbSize) {
-        runParams.tilingMode = TILING_MODE_8;
+        runParams.tilingMode = TILING_MODE_3;
     } else {
-        runParams.tilingMode = TILING_MODE_9;
+        runParams.tilingMode = TILING_MODE_4;
     }
   } else if (updateDataNum < varDataEachBlock) {
       if (updateSizeByte <= varUbSize && varAllSizeByte <= varUbSize) {
-        runParams.tilingMode = TILING_MODE_10;
+        runParams.tilingMode = TILING_MODE_5;
     } else if (updateSizeByte > varUbSize && varAllSizeByte <= varUbSize) {
-        runParams.tilingMode = TILING_MODE_11;
+        runParams.tilingMode = TILING_MODE_6;
     } else if (updateSizeByte <= varUbSize && varAllSizeByte > varUbSize) {
-        runParams.tilingMode = TILING_MODE_12;
+        runParams.tilingMode = TILING_MODE_7;
     } else {
-        runParams.tilingMode = TILING_MODE_13;
+        runParams.tilingMode = TILING_MODE_8;
     }
   } else {
-      runParams.tilingMode = TILING_MODE_14;
+      if (updateDataNum / (varUbSize / varSize) == 0) {
+        runParams.tilingMode = TILING_MODE_9;
+      } else {
+        runParams.tilingMode = TILING_MODE_10;
+      }
   }
   
-  if (runParams.tilingMode == TILING_MODE_6 || runParams.tilingMode == TILING_MODE_7) {
+  if (runParams.tilingMode == TILING_MODE_1 || runParams.tilingMode == TILING_MODE_2) {
     runParams.varEachCoreData = runParams.indiceStep * runParams.updatesDataNum;
     int64_t varLastCoreData = varNum - runParams.varEachCoreData * (coreNum - 1);
     runParams.varEachCoreBurstLen = runParams.varEachCoreData / varDataEachBlock;
     runParams.varLastCoreBurstLen = varLastCoreData / varDataEachBlock;
   }
-  if (runParams.tilingMode == TILING_MODE_9 || runParams.tilingMode == TILING_MODE_14) {
+  if (runParams.tilingMode == TILING_MODE_4 || runParams.tilingMode == TILING_MODE_9 ||
+      runParams.tilingMode == TILING_MODE_10) {
     runParams.varLoopNum = updateDataNum / (varUbSize / varSize);
     runParams.varLastNum = updateDataNum % (varUbSize / varSize);
   }
@@ -254,7 +217,7 @@ bool CheckScatterSubShape(const std::string& opType, std::vector<int64_t> varSha
 }
 
 bool GetScatterSubCompileParams(const std::string& opType, const nlohmann::json& opCompileInfo, int64_t& coreNum,
-                                int64_t& ubSize, int64_t& varSize, int64_t& indicesSize, int64_t& supportAtomic) {
+                                int64_t& ubSize, int64_t& varSize, int64_t& indicesSize) {
   using namespace nlohmann;
   const auto& allVars = opCompileInfo["vars"];
   if (allVars.count("core_num") == 0) {
@@ -284,13 +247,6 @@ bool GetScatterSubCompileParams(const std::string& opType, const nlohmann::json&
     return false;
   }
   indicesSize = allVars["indices_size"].get<std::int64_t>();
-
-  if (allVars.count("support_atomic") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "support_atomic");
-    OP_LOGE(opType.c_str(), "op [ScatterSubTiling] : GetCompileParams, get support_atomic error");
-    return false;
-  }
-  supportAtomic = allVars["support_atomic"].get<std::int64_t>();
 
   return true;
 }
@@ -336,9 +292,8 @@ bool ScatterSubTiling(const std::string& opType, const TeOpParas& opParas, const
   int64_t ubSize = 0;
   int64_t varSize = 0;
   int64_t indicesSize = 0;
-  int64_t supportAtomic = 0;
-  bool can_get_params = GetScatterSubCompileParams(opType, opCompileInfo, coreNum, ubSize, varSize,
-                                                   indicesSize, supportAtomic);
+
+  bool can_get_params = GetScatterSubCompileParams(opType, opCompileInfo, coreNum, ubSize, varSize, indicesSize);
   if (!can_get_params) {
     OP_LOGE(opType.c_str(), "op [ScatterSubTiling] : GetScatterSubCompileParams error.");
     return false;
@@ -375,13 +330,8 @@ bool ScatterSubTiling(const std::string& opType, const TeOpParas& opParas, const
     dataNumOneRepeat = 128;
   }
 
-  if (supportAtomic == 1 && input_dtype == "float32") {
-    CalAtomicBranchRunningParams(runParams, indicesNum, updatesNum, updateDataNum, ubSize,
-                                 varSize, indicesSize, varDataEachBlock);
-  } else {
-    CalNotAtomicBranchRunningParams(runParams, varNum, indicesNum, updatesNum, updateDataNum, maxIndice, ubSize,
-                                    runParams.coreNum, varSize, indicesSize, varDataEachBlock, dataNumOneRepeat);
-  }
+  CalNotAtomicBranchRunningParams(runParams, varNum, indicesNum, updatesNum, updateDataNum, maxIndice, ubSize,
+                                  runParams.coreNum, varSize, indicesSize, varDataEachBlock, dataNumOneRepeat);
 
   SetRuningParams(runParams, runInfo);
 
