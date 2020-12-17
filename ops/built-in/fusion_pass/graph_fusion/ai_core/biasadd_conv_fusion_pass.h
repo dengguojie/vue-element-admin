@@ -31,6 +31,8 @@ class BiasaddConvFusionPass : public PatternFusionBasePass {
 
  private:
   const string FUSED_OP_TYPE = "Conv2D/Conv3D/DepthwiseConv2D";
+
+  vector<ge::NodePtr> GetConstOrDataInputs(const ge::Node &node);
 };
 
 }  // namespace fe

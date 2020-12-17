@@ -61,6 +61,32 @@ vector<FusionPattern*> BiasaddConvFusionPass::DefinePatterns() {
   return patterns;
 }
 
+vector<ge::NodePtr> BiasaddConvFusionPass::GetConstOrDataInputs(const ge::Node &node) {
+  vector<ge::NodePtr> ret;
+  auto in_anchors = node.GetAllInDataAnchors();
+  for (const auto &in_anchor : in_anchors) {
+    auto out_anchor = in_anchor->GetPeerOutAnchor();
+    if (out_anchor == nullptr) continue;
+
+    auto in_node = out_anchor->GetOwnerNode();
+    if (in_node->GetType() == "Const") {
+      ret.push_back(in_node);
+    } else if (in_node->GetType() == "Switch" && node.GetType() == "Matmul") {
+      // const --> switch --> matmul
+      auto switch_input = GetConstOrDataInputs(*in_node);
+      if (switch_input.size() > 0) {
+        ret.insert(ret.end(), switch_input.begin(), switch_input.end());
+      }
+    } else if (in_node->GetType() == "Data") {
+      auto parent = NodeUtils::GetParentInput(in_node);
+      if ((parent != nullptr) && (parent->GetType() == "Const")) {
+        ret.push_back(in_node);
+      }
+    }
+  }
+  return ret;
+}
+
 // vector<ge::NodePtr> &fusionNodes: Store fusion nodes,
 //       including newly added nodes and fused but not deleted nodes
 Status BiasaddConvFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
@@ -77,7 +103,7 @@ Status BiasaddConvFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
     return NOT_CHANGED;
   }
   vector<ge::ConstGeTensorPtr> weights = ge::OpDescUtils::GetWeights(biasadd_node);
-  vector<ge::NodePtr> const_input_nodes = ge::OpDescUtils::GetConstInputs(biasadd_node);
+  vector<ge::NodePtr> const_input_nodes = GetConstOrDataInputs(*biasadd_node);
   auto biasAddWeightSize = weights.size();
   if (biasAddWeightSize == 0 && biasadd_node->GetType() == ADD_3D && src_node->GetType() == CONVOLUTION_3D) {
     bool checkNull = biasadd_node->GetInDataAnchor(1) == nullptr ||
@@ -93,7 +119,7 @@ Status BiasaddConvFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
       /* This case, the BiasAdd is Add and the input of Add is Reshape,
        * we just get the first weight of reshape as the bias. */
       weights = ge::OpDescUtils::GetWeights(nodeInfrontOfAdd);
-      const_input_nodes = ge::OpDescUtils::GetConstInputs(nodeInfrontOfAdd);
+      const_input_nodes = GetConstOrDataInputs(*nodeInfrontOfAdd);
       FUSION_PASS_CHECK(weights.empty(), OP_LOGI(FUSED_OP_TYPE.c_str(), "Node Add:[%s]'s weight size %u is invalid.",
                                                  nodeInfrontOfAdd->GetName().c_str(), weights.size()),
                         return NOT_CHANGED);
