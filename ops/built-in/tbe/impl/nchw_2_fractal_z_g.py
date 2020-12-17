@@ -29,7 +29,6 @@ OFFSET_2 = 0
 MAX_CORE_NUM = 32
 
 
-
 class Nchw2Fractalzg(object):
     """
     Nchw2Fractalzg
@@ -82,6 +81,7 @@ class Nchw2Fractalzg(object):
                   ",tail_ele_num =", self.tail_ele_num)
             print("line_blocks =", self.line_blocks)
             print("summary_t:", self.summary_t)
+            print("summary:", self.summary)
             print("loops:", self.loops)
 
         def _update_loop_on_chw(self):
@@ -113,6 +113,9 @@ class Nchw2Fractalzg(object):
                 for i in range(CORE_NUM):
                     self.summary.append(self.summary_t[index])
                     index = index + self.loops[i]
+                while len(self.loops) < MAX_CORE_NUM:
+                    self.loops.append(0)
+                    self.summary.append(0)
 
         def _update_loop_on_groups(self):
             self.loop_on_groups = 0
@@ -211,8 +214,8 @@ class Nchw2Fractalzg(object):
             active_ele_num.set_as(partial)
             skip_ele_num.set_as(tp.cin_orig_ms - active_ele_num)
 
-        #mask,dst,scalar, repeat_times, dst_blk_stride, dst_rep_stride
-        tik_inst.vector_dup(128, ub_input[OFFSET_1], 0, 255, 1, 8)
+        # mask,dst,scalar, repeat_times, dst_blk_stride, dst_rep_stride
+        tik_inst.vector_dup(128, ub_input[OFFSET_1], 0, 248, 1, 8)
 
         # step 1 : first vnchwconv
         with tik_inst.for_range(0, tp.loop_on_n) as ln:
@@ -228,7 +231,7 @@ class Nchw2Fractalzg(object):
             tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt_first, dst_stride, src_stride)
             self._clear_tail_memory(tp, head_offset)
 
-        tik_inst.vector_dup(128, ub_input[OFFSET_2], 0, 255, 1, 8)
+        tik_inst.vector_dup(128, ub_input[OFFSET_2], 0, 248, 1, 8)
 
         # step 2 : second vnchwconv
         src_addr_list = [ub_input[OFFSET_1 + skip_ele_num * tp.khw * EPB + tp.loop_on_n * tp.khw * EPB * i]\
@@ -273,11 +276,20 @@ class Nchw2Fractalzg(object):
             with tik_inst.else_scope():
                 partial.set_as(0)
                 left_zero.set_as(left_zero + active)
-                line_ele.set_as(left_zero + tp.cin_orig_ms)
-                with tik_inst.if_scope(line_ele > EPB):
-                    active.set_as(tp.cin_orig_ms - (line_ele - EPB))
+                with tik_inst.if_scope(left_zero == EPB):
+                    left_zero.set_as(0)
+                    c1_pos.set_as(c1_pos + 1)
+                    with tik_inst.if_scope(active != tp.cin_orig_ms):
+                        partial.set_as(tp.cin_orig_ms - active)
+                        active.set_as(partial)
+                    with tik_inst.else_scope():
+                        active.set_as(tp.cin_orig_ms)
                 with tik_inst.else_scope():
-                    active.set_as(tp.cin_orig_ms)
+                    line_ele.set_as(left_zero + tp.cin_orig_ms)
+                    with tik_inst.if_scope(line_ele > EPB):
+                        active.set_as(tp.cin_orig_ms - (line_ele - EPB))
+                    with tik_inst.else_scope():
+                        active.set_as(tp.cin_orig_ms)
         with tik_inst.else_scope():
             c1_pos.set_as(c1_pos + 1)
             left_zero.set_as(0)
@@ -299,7 +311,8 @@ class Nchw2Fractalzg(object):
         left_zero.set_as(summary % EPB)
         c1_pos.set_as(summary // EPB)
         lgs.set_as(summary // tp.cin_orig_ms)
-        partial.set_as((tp.cin_orig_ms - summary % tp.cin_orig_ms) % tp.cin_orig_ms)
+        #partial.set_as((tp.cin_orig_ms - summary % tp.cin_orig_ms) % tp.cin_orig_ms)
+        partial.set_as(tp.cin_orig_ms - summary % tp.cin_orig_ms)
 
     def _compute(self, tp, data_in, data_out):
         tik_inst = self.tik_inst
