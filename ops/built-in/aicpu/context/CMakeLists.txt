@@ -54,6 +54,7 @@ if(BUILD_OPEN_PROJECT)
 
   add_library(cpu_kernels_context_static STATIC
     ${local_context_src_files}
+    $<$<NOT:$<STREQUAL:${PRODUCT_SIDE},device>>:${local_context_stub_files}>
   )
 
   target_include_directories(cpu_kernels_context_static PRIVATE

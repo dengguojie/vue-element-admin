@@ -27,12 +27,6 @@ if(BUILD_OPEN_PROJECT)
     FILES "${CMAKE_CURRENT_BINARY_DIR}/config/aicpu_kernel/aicpu_kernel.json"
     DESTINATION "${TBE_OP_PATH}/aicpu/aicpu_kernel/config"
   )
-
-  if(DEFINED ENV{ASCEND_CUSTOM_PATH})
-    set(AICPU_OPP_ENV $ENV{ASCEND_CUSTOM_PATH}/opp/op_impl/built-in/aicpu/aicpu_kernel)
-  else()
-    set(AICPU_OPP_ENV /usr/local/Ascend/opp/op_impl/built-in/aicpu/aicpu_kernel)
-  endif()
 else()
   install(
     FILES       ${ALL_JSON_FILES}
@@ -43,4 +37,5 @@ endif()
 
 add_subdirectory(impl)
 add_subdirectory(context)
+add_subdirectory(folding)
 

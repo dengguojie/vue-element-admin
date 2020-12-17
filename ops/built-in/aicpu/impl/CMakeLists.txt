@@ -2,7 +2,6 @@ set(SUB_SO_WITH_VERSION libcpu_kernels_v1.0.1.so)
 
 set(local_kernels_src_files
     kernels/normalized/expanddims.cc
-    kernels/normalized/reshape_kernels.cc
     kernels/normalized/less.cc
     kernels/normalized/top_k_kernels.cc
     kernels/normalized/get_dynamic_dims.cc
@@ -144,6 +143,38 @@ if(BUILD_OPEN_PROJECT)
     add_custom_command(TARGET cpu_kernels POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:cpu_kernels> ${COPY_TO_PATH}
       COMMENT "[AICPU] copying cpu_kernels library to '${COPY_TO_PATH}'"
+    )
+  else()
+    add_library(cpu_kernels_static STATIC
+        ${local_kernels_src_files}
+        ${local_host_kernels_src_files}
+    )
+
+    target_include_directories(cpu_kernels_static PRIVATE
+        ${local_kernels_inc_path}
+    )
+
+    target_compile_definitions(cpu_kernels_static PRIVATE
+        _FORTIFY_SOURCE=2
+    )
+
+    target_link_libraries(cpu_kernels_static PRIVATE
+        $<BUILD_INTERFACE:intf_pub>
+    )
+
+    target_compile_options(cpu_kernels_static PRIVATE
+        -O2
+        -std=c++11
+        -ftrapv
+        -fstack-protector-all
+    )
+
+    add_dependencies(cpu_kernels_static eigen_headers)
+
+    set(cpu_kernels_static ${CMAKE_CURRENT_BINARY_DIR}/libcpu_kernels.a)
+    set_target_properties(cpu_kernels_static
+        PROPERTIES
+        OUTPUT_NAME cpu_kernels
     )
   endif()
 else()

@@ -13,26 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef AICPU_FOLDING_FOLDING_
+#define AICPU_FOLDING_FOLDING_
 
-#ifndef _AICPU_RESHAPE_KERNELS_H_
-#define _AICPU_RESHAPE_KERNELS_H_
+#include <stdint.h>
 
-#include "cpu_kernel.h"
+#include <map>
+#include <string>
 
-namespace aicpu {
-struct MatrixInfo {
-  std::vector<int> matrix_shape;
-  int32_t matrix_type;
-};
+#include "graph/utils/op_desc_utils.h"
+#include "register/host_cpu_context.h"
+#include "register/register.h"
 
-class ReshapeCpuKernel : public CpuKernel {
- public:
-  ~ReshapeCpuKernel() = default;
-  uint32_t Compute(CpuKernelContext &ctx) override;
+extern "C" {
+__attribute__((visibility("default"))) int32_t InitCpuConstantFolding(
+    ge::HostCpuOp *(*create_fn)());
 
- private:
-  MatrixInfo matrix_info_;
-  size_t input_size_ = 0;
-};
-}  // namespace aicpu
-#endif
+__attribute__((visibility("default"))) int32_t CpuConstantFoldingCompute(
+    ge::Operator &op, const std::map<std::string, const ge::Tensor> &inputs,
+    std::map<std::string, ge::Tensor> outputs);
+}
+#endif  // AICPU_FOLDING_FOLDING_

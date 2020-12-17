@@ -19,7 +19,8 @@ BASE_PATH=$(cd "$(dirname $0)"; pwd)
 RELEASE_PATH="${BASE_PATH}/output"
 export BUILD_PATH="${BASE_PATH}/build"
 INSTALL_PATH="${BUILD_PATH}/install"
-CMAKE_PATH="${BUILD_PATH}/cann"
+CMAKE_HOST_PATH="${BUILD_PATH}/cann"
+CMAKE_DEVICE_PATH="${BUILD_PATH}/cann_device"
 
 source scripts/util.sh
 
@@ -78,14 +79,15 @@ build_cann() {
   fi
   logging "Start build host target. CMake Args: ${CMAKE_ARGS}"
 
-  mk_dir "${CMAKE_PATH}"
-  cd "${CMAKE_PATH}" && cmake ${CMAKE_ARGS} ../..
+  mk_dir "${CMAKE_HOST_PATH}"
+  cd "${CMAKE_HOST_PATH}" && cmake ${CMAKE_ARGS} ../..
   make ${VERBOSE} -j${THREAD_NUM}
 
   CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device"
   
   logging "Start build device target. CMake Args: ${CMAKE_ARGS}"
-  cmake ${CMAKE_ARGS} ../..
+  mk_dir "${CMAKE_DEVICE_PATH}"
+  cd "${CMAKE_DEVICE_PATH}" && cmake ${CMAKE_ARGS} ../..
   make ${VERBOSE} -j${THREAD_NUM}
 
   logging "CANN build success!"
