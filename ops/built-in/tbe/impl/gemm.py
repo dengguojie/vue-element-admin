@@ -42,116 +42,108 @@ def op_select_format(  # pylint: disable=too-many-arguments
     kernel_name="gemm",
 ):
     """
-    1. when the ori_format of input_x1 and input_x2 are ND, the dtype of input_x1 and input_x2 are float16,
-       and the ori_shape[n_dim] is a multiple of 16
-    > the Op Select can support:
-    > FRACTAL_NZ + FRACTAL_NZ + FRACTAL_NZ + ND + ND = FRACTAL_NZ
-    > ND + ND + ND + ND + ND = ND
-    > for example:
-    > ori_inputs:
-    > input_x1 = Tensor(shape(16, 32), dtype="float16", format="ND")
-    > input_x2 = Tensor(shape(32, 48), dtype="float16", format="ND")
-    > bias = Tensor(shape(16, 48), dtype="float16", format="ND")
-    > alpha = Tensor(shape(1, ), dtype="float16", format="ND")
-    > beta = Tensor(shape(1,), dtype="float16", format="ND")
-    > the Op Select can process with FRACTAL_NZ:
-    > input_x1 = Tensor(shape(2, 1, 16, 16),  dtype="float16", format="FRACTAL_NZ")
-    > input_x2 = Tensor(shape(3, 2, 16, 16),  dtype="float16", format="FRACTAL_NZ")
-    > bias = Tensor(shape(3, 1, 16, 16)),  dtype="float16", format="FRACTAL_NZ")
-    > alpha = Tensor(shape(1, ),  dtype="float16", format="ND")
-    > beta = Tensor(shape(1,),  dtype="float16", format="ND")
+    Select format according to the following rules.
+    1.When ori_format of input_x1 and input_x2 is ND, dtype of input_x1 and input_x2 is float16,
+    and ori_shape[n_dim] is a multiple of 16, Op select supports the following format combination:
+    |        |  input_x1   |  input_x2  |    bias    |   alpha   |   beta   |  output_y  |
+    | :----: |   :----:    |   :----:   |   :----:   |   :----:  |  :----:  |   :----:   |
+    | Format | FRACTAL_NZ  | FRACTAL_NZ | FRACTAL_NZ |     ND    |    ND    | FRACTAL_NZ |
+    | Dtype  |  float16    |  float16   |  float16   |  float16  |  float16 |  float16   |
+    |        | FRACTAL_NZ  | FRACTAL_NZ | FRACTAL_NZ |     ND    |    ND    | FRACTAL_NZ |
+    |        |  float16    |  float16   |  float32   |  float32  |  float32 |  float32   |
+    |        |     ND      |    ND      |    ND      |     ND    |    ND    |    ND      |
+    |        |  float16    |  float16   |  float16   |  float16  |  float16 |  float16   |
+    |        |    ND       |    ND      |    ND      |     ND    |    ND    |    ND      |
+    |        |  float16    |  float16   |  float32   |  float32  |  float32 |  float32   |
+    Example:
+    ori_inputs:
+    - input_x1 = Tensor(shape(16, 32), dtype="float16", format="ND")
+    - input_x2 = Tensor(shape(32, 48), dtype="float16", format="ND")
+    - bias = Tensor(shape(16, 48), dtype="float16", format="ND")
+    - alpha = Tensor(shape(1, ), dtype="float16", format="ND")
+    - beta = Tensor(shape(1,), dtype="float16", format="ND")
 
-    2. when the ori_format of input_x1 and input_x2 are ND, the dtype of input_x1 and input_x2 are int8,
-       the dtype if bias is int32, and the ori_shape[n_dim] is a multiple of 16
-    > the Op Select can support:
-    > FRACTAL_NZ + FRACTAL_Z + ND + ND + ND = FRACTAL_NZ
-    > ND + ND + ND + ND + ND = ND
-    > for example:
-    > ori_inputs:
-    > input_x1 = Tensor(shape(16, 32), dtype="int8", format="ND")
-    > input_x2 = Tensor(shape(32, 48), dtype="int8", format="ND")
-    > bias = Tensor(shape(16, 48), dtype="int32", format="ND")
-    > alpha = Tensor(shape(1, ), dtype="int32", format="ND")
-    > beta = Tensor(shape(1,), dtype="int32", format="ND")
-    > the Op Select can process with FRACTAL_NZ and FRACTAL_Z:
-    > input_x1 = Tensor(shape(1, 1, 16, 32),  dtype="int8", format="FRACTAL_NZ")
-    > input_x2 = Tensor(shape(3, 1, 32, 16),  dtype="int8", format="FRACTAL_Z")
-    > bias = Tensor(shape(16, 48)),  dtype="int32", format="ND")
-    > alpha = Tensor(shape(1, ),  dtype="int32", format="ND")
-    > beta = Tensor(shape(1,),  dtype="int32", format="ND")
+    Op Select can work with FRACTAL_NZ:
+    - input_x1 = Tensor(shape(2, 1, 16, 16),  dtype="float16", format="FRACTAL_NZ")
+    - input_x2 = Tensor(shape(3, 2, 16, 16),  dtype="float16", format="FRACTAL_NZ")
+    - bias = Tensor(shape(3, 1, 16, 16)),  dtype="float16", format="FRACTAL_NZ")
+    - alpha = Tensor(shape(1, ),  dtype="float16", format="ND")
+    - beta = Tensor(shape(1,),  dtype="float16", format="ND")
 
-    3. when the ori_format of input_x1 and input_x2 are ND, the dtype of input_x1 and input_x2 are int8,
-       the dtype if bias is float32, and the ori_shape[n_dim] is a multiple of 16,
-    > the Op Select can support:
-    > FRACTAL_NZ + FRACTAL_Z + FRACTAL_NZ + ND + ND = FRACTAL_NZ
-    > ND + ND + ND + ND + ND = ND
-    > for example:
-    > ori_inputs:
-    > input_x1 = Tensor(shape(16, 32), dtype="int8", format="ND")
-    > input_x2 = Tensor(shape(32, 48), dtype="int8", format="ND")
-    > bias = Tensor(shape(16, 48), dtype="int32", format="ND")
-    > alpha = Tensor(shape(1, ), dtype="int32", format="ND")
-    > beta = Tensor(shape(1,), dtype="int32", format="ND")
-    > the Op Select can process with FRACTAL_NZ and FRACTAL_Z:
-    > input_x1 = Tensor(shape(1, 1, 16, 32),  dtype="int8", format="FRACTAL_NZ")
-    > input_x2 = Tensor(shape(3, 1, 32, 16),  dtype="int8", format="FRACTAL_Z")
-    > bias = Tensor(shape(3, 1, 16, 16)),  dtype="int32", format="FRACTAL_NZ")
-    > alpha = Tensor(shape(1, ),  dtype="int32", format="ND")
-    > beta = Tensor(shape(1,),  dtype="int32", format="ND")
+    2.When ori_format of input_x1 and input_x2 is ND, dtype of input_x1 and input_x2 is int8,
+    and ori_shape[n_dim] is a multiple of 16, Op select supports the following format combination:
+    |        |  input_x1   |  input_x2  |    bias    |   alpha   |   beta   |  output_y  |
+    | :----: |   :----:    |   :----:   |   :----:   |   :----:  |  :----:  |   :----:   |
+    | Format | FRACTAL_NZ  | FRACTAL_Z  |     ND     |     ND    |    ND    | FRACTAL_NZ |
+    | Dtype  |    int8     |   int8     |   int32    |   int32   |   int32  |   int32    |
+    |        | FRACTAL_NZ  | FRACTAL_Z  | FRACTAL_NZ |     ND    |    ND    | FRACTAL_NZ |
+    |        |    int8     |   int8     |  float32   |  float32  |  float32 |  float32   |
+    |        |     ND      |    ND      |    ND      |     ND    |    ND    |    ND      |
+    |        |   int8      |   int8     |   int32    |    int32  |  int32   |   int32    |
+    |        |    ND       |    ND      |    ND      |     ND    |    ND    |    ND      |
+    |        |   int8      |   int8     |  float32   |  float32  |  float32 |  float32   |
 
-    4. when the ori_format of input_x1 and input_x2 are ND, the dtype of input_x1 and input_x2 are float16,
-       and the ori_shape[n_dim] is not a multiple of 16
-    > the Op Select can support:
-    > FRACTAL_NZ + FRACTAL_NZ + FRACTAL_NZ + ND + ND = FRACTAL_NZ
-    > for example:
-    > ori_inputs:
-    > input_x1 = Tensor(shape(16, 32), dtype="float16", format="ND")
-    > input_x2 = Tensor(shape(32, 52), dtype="float16", format="ND")
-    > bias = Tensor(shape(16, 52), dtype="float16", format="ND")
-    > alpha = Tensor(shape(1, ), dtype="float16", format="ND")
-    > beta = Tensor(shape(1,), dtype="float16", format="ND")
-    > the Op Select can process with FRACTAL_NZ:
-    > input_x1 = Tensor(shape(2, 1, 16, 16),  dtype="float16", format="FRACTAL_NZ")
-    > input_x2 = Tensor(shape(4, 2, 16, 16),  dtype="float16", format="FRACTAL_NZ")
-    > bias = Tensor(shape(4, 1, 16, 16)),  dtype="float16", format="FRACTAL_NZ")
-    > alpha = Tensor(shape(1, ),  dtype="float16", format="ND")
-    > beta = Tensor(shape(1,),  dtype="float16", format="ND")
+    Example:
+    ori_inputs:
+    - input_x1 = Tensor(shape(16, 32), dtype="int8", format="ND")
+    - input_x2 = Tensor(shape(32, 48), dtype="int8", format="ND")
+    - bias = Tensor(shape(16, 48), dtype="int32", format="ND")
+    - alpha = Tensor(shape(1, ), dtype="int32", format="ND")
+    - beta = Tensor(shape(1,), dtype="int32", format="ND")
 
-    5. when the ori_format of input_x1 and input_x2 are ND, the dtype of input_x1 and input_x2 are int8,
-       the dtype if bias is int32, and the ori_shape[n_dim] is not a multiple of 16
-    > the Op Select can support:
-    > FRACTAL_NZ + FRACTAL_Z + ND + ND + ND = FRACTAL_NZ
-    > for example:
-    > ori_inputs:
-    > input_x1 = Tensor(shape(16, 32), dtype="int8", format="ND")
-    > input_x2 = Tensor(shape(32, 52), dtype="int8", format="ND")
-    > bias = Tensor(shape(16, 52), dtype="int32", format="ND")
-    > alpha = Tensor(shape(1, ), dtype="int32", format="ND")
-    > beta = Tensor(shape(1,), dtype="int32", format="ND")
-    > the Op Select can process with FRACTAL_NZ and FRACTAL_Z:
-    > input_x1 = Tensor(shape(1, 1, 16, 32),  dtype="int8", format="FRACTAL_NZ")
-    > input_x2 = Tensor(shape(4, 1, 32, 16),  dtype="int8", format="FRACTAL_Z")
-    > bias = Tensor(shape(16, 51)),  dtype="int32", format="ND")
-    > alpha = Tensor(shape(1, ),  dtype="int32", format="ND")
-    > beta = Tensor(shape(1,),  dtype="int32", format="ND")
+    Op Select can work  with FRACTAL_NZ and FRACTAL_Z:
+    - input_x1 = Tensor(shape(1, 1, 16, 32),  dtype="int8", format="FRACTAL_NZ")
+    - input_x2 = Tensor(shape(3, 1, 32, 16),  dtype="int8", format="FRACTAL_Z")
+    - bias = Tensor(shape(16, 48)),  dtype="int32", format="ND")
+    - alpha = Tensor(shape(1, ),  dtype="int32", format="ND")
+    - beta = Tensor(shape(1,),  dtype="int32", format="ND")
 
-    6. when the ori_format of input_x1 and input_x2 are ND, the dtype of input_x1 and input_x2 are int8,
-       the dtype if bias is float32, and the ori_shape[n_dim] is not a multiple of 16,
-    > the Op Select can support:
-    > FRACTAL_NZ + FRACTAL_Z + ND + ND + ND = FRACTAL_NZ
-    > for example:
-    > ori_inputs:
-    > input_x1 = Tensor(shape(16, 32), dtype="int8", format="ND")
-    > input_x2 = Tensor(shape(32, 52), dtype="int8", format="ND")
-    > bias = Tensor(shape(16, 52), dtype="int32", format="ND")
-    > alpha = Tensor(shape(1, ), dtype="int32", format="ND")
-    > beta = Tensor(shape(1,), dtype="int32", format="ND")
-    > the Op Select can process with FRACTAL_NZ and FRACTAL_Z:
-    > input_x1 = Tensor(shape(1, 1, 16, 32),  dtype="int8", format="FRACTAL_NZ")
-    > input_x2 = Tensor(shape(4, 1, 32, 16),  dtype="int8", format="FRACTAL_Z")
-    > bias = Tensor(shape(4, 1, 16, 16)),  dtype="int32", format="FRACTAL_NZ")
-    > alpha = Tensor(shape(1, ),  dtype="int32", format="ND")
-    > beta = Tensor(shape(1,),  dtype="int32", format="ND")
+    3.When ori_format of input_x1 and input_x2 is ND, dtype of input_x1 and input_x2 is float16,
+    and ori_shape[n_dim] is not a multiple of 16, Op select supports the following format combination:
+    |        |  input_x1   |  input_x2  |    bias    |   alpha   |   beta   |  output_y  |
+    | :----: |   :----:    |   :----:   |   :----:   |   :----:  |  :----:  |   :----:   |
+    | Format | FRACTAL_NZ  | FRACTAL_NZ | FRACTAL_NZ |     ND    |    ND    | FRACTAL_NZ |
+    | Dtype  |  float16    |  float16   |  float16   |  float16  |  float16 |  float16   |
+    |        | FRACTAL_NZ  | FRACTAL_NZ | FRACTAL_NZ |     ND    |    ND    | FRACTAL_NZ |
+    |        |  float16    |  float16   |  float32   |  float32  |  float32 |  float32   |
+    Example:
+    ori_inputs:
+    - input_x1 = Tensor(shape(16, 32), dtype="float16", format="ND")
+    - input_x2 = Tensor(shape(32, 52), dtype="float16", format="ND")
+    - bias = Tensor(shape(16, 52), dtype="float16", format="ND")
+    - alpha = Tensor(shape(1, ), dtype="float16", format="ND")
+    - beta = Tensor(shape(1,), dtype="float16", format="ND")
+
+    Op Select can work with FRACTAL_NZ:
+    - input_x1 = Tensor(shape(2, 1, 16, 16),  dtype="float16", format="FRACTAL_NZ")
+    - input_x2 = Tensor(shape(4, 2, 16, 16),  dtype="float16", format="FRACTAL_NZ")
+    - bias = Tensor(shape(4, 1, 16, 16)),  dtype="float16", format="FRACTAL_NZ")
+    - alpha = Tensor(shape(1, ),  dtype="float16", format="ND")
+    - beta = Tensor(shape(1,),  dtype="float16", format="ND")
+
+    4.When ori_format of input_x1 and input_x2 is ND, dtype of input_x1 and input_x2 is int8,
+    and ori_shape[n_dim] is a multiple of 16, Op select supports the following format combination:
+    |        |  input_x1   |  input_x2  |    bias    |   alpha   |   beta   |  output_y  |
+    | :----: |   :----:    |   :----:   |   :----:   |   :----:  |  :----:  |   :----:   |
+    | Format | FRACTAL_NZ  | FRACTAL_Z  |     ND     |     ND    |    ND    | FRACTAL_NZ |
+    | Dtype  |    int8     |   int8     |   int32    |   int32   |   int32  |   int32    |
+    |        | FRACTAL_NZ  | FRACTAL_Z  | FRACTAL_NZ |     ND    |    ND    | FRACTAL_NZ |
+    |        |    int8     |   int8     |  float32   |  float32  |  float32 |  float32   |
+
+    for example:
+    ori_inputs:
+    - input_x1 = Tensor(shape(16, 32), dtype="int8", format="ND")
+    - input_x2 = Tensor(shape(32, 52), dtype="int8", format="ND")
+    - bias = Tensor(shape(16, 52), dtype="int32", format="ND")
+    - alpha = Tensor(shape(1, ), dtype="int32", format="ND")
+    - beta = Tensor(shape(1,), dtype="int32", format="ND")
+
+    Op Select can process with FRACTAL_NZ and FRACTAL_Z:
+    - input_x1 = Tensor(shape(1, 1, 16, 32),  dtype="int8", format="FRACTAL_NZ")
+    - input_x2 = Tensor(shape(4, 1, 32, 16),  dtype="int8", format="FRACTAL_Z")
+    - bias = Tensor(shape(16, 51)),  dtype="int32", format="ND")
+    - alpha = Tensor(shape(1, ),  dtype="int32", format="ND")
+    - beta = Tensor(shape(1,),  dtype="int32", format="ND")
     """
 
     def _select_format(params):
