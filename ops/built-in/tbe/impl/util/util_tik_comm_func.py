@@ -281,23 +281,14 @@ def tik_func_vconv(tik_instance, dst_ub, src_ub, do_len, mode="", mini_mid_ub=No
             do_vconv(8, 8)
 
 
-def ceil_div(tik_instance: tik.Tik, int1, int2):
+def ceil_div(int1, int2):
     """
     ceil for (int1 / int2)
-    :param tik_instance: tik instance
     :param int1: Scalar variable or an immediate
     :param int2: Scalar variable or an immediate
     :return: ceil for (int1 / int2)
     """
-    if isinstance(int1, int) and isinstance(int2, int):
-        return math.ceil(int1 / int2)
-
-    result = tik_instance.Scalar("int64")
-    result.set_as(int1 // int2)
-    with tik_instance.if_scope(int1 % int2 != 0):
-        result.set_as(result + 1)
-
-    return result
+    return (int1 + int2 - 1) // int2
 
 
 def ub2ub(tik_instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, count, tail_overlap=True):
@@ -322,7 +313,7 @@ def ub2ub(tik_instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, count, tail_o
     dtype_size = common_util.get_data_size(src.dtype)
     block_element = constant_util.BLOCK_SIZE // dtype_size
     if tail_overlap:
-        burst = ceil_div(tik_instance, count, block_element)
+        burst = ceil_div(count, block_element)
         tik_instance.data_move(dst, src, 0, 1, burst, 0, 0)
     else:
         burst = count // block_element
@@ -355,7 +346,7 @@ def ub2gm(tik_instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, count, burst=
     dtype_size = common_util.get_data_size(src.dtype)
     block_element = constant_util.BLOCK_SIZE // dtype_size
     if burst is None:
-        burst = ceil_div(tik_instance, count, block_element)
+        burst = ceil_div(count, block_element)
     tik_instance.data_move(dst, src, 0, 1, burst, 0, 0)
 
 
@@ -381,6 +372,6 @@ def gm2ub(tik_instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, count, burst=
     dtype_size = common_util.get_data_size(src.dtype)
     block_element = constant_util.BLOCK_SIZE // dtype_size
     if burst is None:
-        burst = ceil_div(tik_instance, count, block_element)
+        burst = ceil_div(count, block_element)
     tik_instance.data_move(dst, src, 0, 1, burst, 0, 0)
 

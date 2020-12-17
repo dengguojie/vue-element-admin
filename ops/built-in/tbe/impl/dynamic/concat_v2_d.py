@@ -34,6 +34,8 @@ from impl.util.util_tik_comm_func import ceil_div
 from impl import common_util
 from impl import constant_util as constant
 MAX_SIZE = 2 ** 31 - 1
+VNCHW_BLOCK_SIZE = 512
+VNCHW_ELEMENT_FP16 = VNCHW_BLOCK_SIZE // 2
 
 
 def ceil_32bytes_align_count(count, dtype):
@@ -68,7 +70,7 @@ def _get_mask2concat_ub(instance: tik.Tik, count, src_index, dtype):
 
         dtype_size = common_util.get_data_size(covert_dtype_map[ori_dtype_size])
         count = count * ori_dtype_size // dtype_size
-        src_index = ceil_div(instance, src_index * ori_dtype_size, dtype_size)
+        src_index = ceil_div(src_index * ori_dtype_size, dtype_size)
 
     # {dtype_size: (max_hight_mask, max_low_mask)}
     dtype_vadds_mask_map = {
@@ -116,28 +118,8 @@ def _concat_ub_vadds(instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, dst_in
     if dst.dtype != src.dtype:
         raise RuntimeError("dst.dtype[{}] != src.dtype[{}].".format(dst.dtype, src.dtype))
 
-    supported_dtypes = {"float16", "float32", "int32", "int8", "int16", "int64", "uint8", "uint16", "uint32", "uint64"}
-    if dst.dtype not in supported_dtypes:
-        raise RuntimeError("{} is not supported, supported dtypes: {}.".format(dst.dtype, supported_dtypes))
-
-    ori_dtype_size = common_util.get_data_size(dst.dtype)
-    if not tbe_platform.cce_conf.api_check_support("tik.vadds", dst.dtype) or ori_dtype_size not in (2, 4):
-        covert_dtype_map = {
-            1: "float16",
-            2: "float16",
-            4: "float32",
-            8: "float32",
-        }
-
-        if ori_dtype_size == 1:
-            with instance.if_scope(dst_index % 2 != 0):
-                dst[dst_index + 1] = src[src_index + 1]
-        dst = dst.reinterpret_cast_to(covert_dtype_map[ori_dtype_size])
-        src = src.reinterpret_cast_to(covert_dtype_map[ori_dtype_size])
-        dtype_size = common_util.get_data_size(dst.dtype)
-        count = count * ori_dtype_size // dtype_size
-        dst_index = ceil_div(instance, dst_index * ori_dtype_size, dtype_size)
-        src_index = ceil_div(instance, src_index * ori_dtype_size, dtype_size)
+    if not tbe_platform.cce_conf.api_check_support("tik.vadds", dst.dtype):
+        raise RuntimeError("{} is not supported by vadds.".format(dst.dtype))
 
     dtype_size = common_util.get_data_size(dst.dtype)
     block_element = constant.BLOCK_SIZE // dtype_size
@@ -249,17 +231,20 @@ class ConcatV2:
             index = input_index * 2
             return self._dims[index], self._dims[index + 1]
 
-        def update_tiling(self, multi_times):
+        def update_tiling(self, src_dtype, dst_dtype):
             """
             update inner dims information multiply by multi_times
-            :param multi_times: multi_times
+            :param src_dtype: src dtype
+            :param dst_dtype: dst dtype
             :return: None
             """
-            self.max_inner_dim.set_as(self.max_inner_dim * multi_times)
-            self.min_inner_dim.set_as(self.min_inner_dim * multi_times)
-            self.output_inner_length.set_as(self.output_inner_length * multi_times)
+            src_type_size = common_util.get_data_size(src_dtype)
+            dst_type_size = common_util.get_data_size(dst_dtype)
+            self.max_inner_dim.set_as(self.max_inner_dim * src_type_size // dst_type_size)
+            self.min_inner_dim.set_as(self.min_inner_dim * src_type_size // dst_type_size)
+            self.output_inner_length.set_as(self.output_inner_length * src_type_size // dst_type_size)
             for _, dim_i in enumerate(self._dims):
-                dim_i.set_as(dim_i * multi_times)
+                dim_i.set_as(dim_i * src_type_size // dst_type_size)
 
         # pylint: disable=no-self-use
         def need_ub_size(self):
@@ -362,7 +347,7 @@ class ConcatV2:
         return inst
 
     def _get_ceil_32bytes_count(self, count: tik.Scalar):
-        ceil_num = ceil_div(self.tik_instance, count, self.ele_each_block)
+        ceil_num = ceil_div(count, self.ele_each_block)
         return ceil_num * self.ele_each_block
 
     # pylint: disable=invalid-name,unused-variable,too-many-statements
@@ -447,10 +432,10 @@ class ConcatV2:
         aicore_num = self.aicore_num
         out_dims = self.tiling_param.out_dim
         max_inner_dim = self.tiling_param.max_inner_dim
-        inner_dims_loops = ceil_div(inst, max_inner_dim, self.ub_buffer_length)
+        inner_dims_loops = ceil_div(max_inner_dim, self.ub_buffer_length)
         max_loops = out_dims * inner_dims_loops
 
-        out_loops = ceil_div(inst, max_loops, aicore_num)
+        out_loops = ceil_div(max_loops, aicore_num)
         with inst.for_range(0, out_loops, name="out_loops_idx") as i:
             loop_idx = i + out_loops * core_idx
             with inst.if_scope(loop_idx < max_loops):
@@ -465,23 +450,43 @@ class ConcatV2:
         inst = self.tik_instance
         aicore_num = self.aicore_num
         out_dims = self.tiling_param.out_dim
-        ub_len = (self.ub_buffer_length // 4) // self.ele_each_block * self.ele_each_block
+        ub_len = self.ub_buffer_length // 4
+        ub_len = ub_len // self.ele_each_block * self.ele_each_block
         output_inner_dim = self.tiling_param.output_inner_length
         ub_can_storage_lines_vnchwconv = ub_len // self.ele_each_block
         ub_can_copy_lines = inst.Scalar(dtype="int64", name="ub_can_copy_lines",
                                         init_value=self.ub_buffer_length // (self.tiling_param.output_inner_length * 4))
-        lines_each_core = ceil_div(inst, ceil_div(inst, out_dims, self.aicore_num),
-                                   self.ele_each_block) * self.ele_each_block
-
-        with inst.if_scope(tik.all(output_inner_dim >= self.ele_each_block,
-                                   ub_can_copy_lines >= self.ele_each_block,
-                                   output_inner_dim < 256)):
-            with inst.if_scope(lines_each_core < ub_can_copy_lines):
-                ub_can_copy_lines.set_as(lines_each_core)
-            self._concat_small_inner_each_core_multi_line(core_idx, out_dims, ub_can_copy_lines)
-        with inst.else_scope():
-            count_each_core = ceil_div(inst, out_dims, aicore_num)
-            self._concat_small_inner_each_core_one_line(core_idx, out_dims, count_each_core)
+        if self.type_size % 2 == 0:
+            with inst.if_scope(tik.all(self.type_size % 2 == 0,
+                                       self.tiling_param.max_inner_dim == self.tiling_param.min_inner_dim,
+                                       ub_can_storage_lines_vnchwconv >= output_inner_dim,
+                                       16 % self.tiling_param.min_inner_dim == 0,
+                                       out_dims * self.tiling_param.min_inner_dim * self.type_size >= VNCHW_BLOCK_SIZE)):
+                self._concat_with_vnchwconv(core_idx, out_dims, ub_len)
+            with inst.else_scope():
+                with inst.if_scope(tik.all(output_inner_dim >= self.ele_each_block,
+                                           ub_can_copy_lines >= self.ele_each_block,
+                                           output_inner_dim < 256)):
+                    lines_each_core = ceil_div(ceil_div(out_dims, self.aicore_num),
+                                               self.ele_each_block) * self.ele_each_block
+                    with inst.if_scope(lines_each_core < ub_can_copy_lines):
+                        ub_can_copy_lines.set_as(lines_each_core)
+                    self._concat_small_inner_each_core_multi_line(core_idx, out_dims, ub_can_copy_lines)
+                with inst.else_scope():
+                    count_each_core = ceil_div(out_dims, aicore_num)
+                    self._concat_small_inner_each_core_one_line(core_idx, out_dims, count_each_core)
+        else:
+            with inst.if_scope(tik.all(output_inner_dim >= self.ele_each_block,
+                                       ub_can_copy_lines >= self.ele_each_block,
+                                       output_inner_dim < 256)):
+                lines_each_core = ceil_div(ceil_div(out_dims, self.aicore_num),
+                                           self.ele_each_block) * self.ele_each_block
+                with inst.if_scope(lines_each_core < ub_can_copy_lines):
+                    ub_can_copy_lines.set_as(lines_each_core)
+                self._concat_small_inner_each_core_multi_line(core_idx, out_dims, ub_can_copy_lines)
+            with inst.else_scope():
+                count_each_core = ceil_div(out_dims, aicore_num)
+                self._concat_small_inner_each_core_one_line(core_idx, out_dims, count_each_core)
 
     def _concat_small_inner_each_core_one_line(self, core_idx, out_dims, count_each_core):
         inst = self.tik_instance
@@ -537,7 +542,7 @@ class ConcatV2:
                         ub_data_count.set_as(0)
                         out_start_idx.set_as(out_row_start_idx + output_idx)
 
-                    loops = ceil_div(inst, inner_dim, ub_length)
+                    loops = ceil_div(inner_dim, ub_length)
                     with inst.for_range(0, loops, name="inner_loop") as idx:
                         in_start_idx = ub_length * idx + inner_dim * row_idx
                         out_start_idx.set_as(ub_length * idx + out_row_start_idx + output_idx)
@@ -573,7 +578,7 @@ class ConcatV2:
                 ub_data_count.set_as(inner_dim)
                 pad_count = inst.Scalar("int32", name="pad_count")
                 pad_count.set_as(self.ele_each_block - inner_dim)
-                loops = ceil_div(inst, pad_count, output_inner_len)
+                loops = ceil_div(pad_count, output_inner_len)
                 with inst.for_range(0, loops) as loop:
                     new_out_dim_idx = row_idx + loop
                     with inst.if_scope(new_out_dim_idx < out_dims):
@@ -589,7 +594,7 @@ class ConcatV2:
 
                 ub2gm(inst, output_tensor[out_start_idx:], out_ub, inner_dim)
             with inst.else_scope():
-                loops = ceil_div(inst, inner_dim, ub_length)
+                loops = ceil_div(inner_dim, ub_length)
                 with inst.for_range(0, loops, name="inner_loop") as idx:
                     in_start_idx = (ub_length * idx + inner_dim * row_idx)
                     out_start_idx.set_as(ub_length * idx + output_inner_len * row_idx + output_idx)
@@ -619,8 +624,8 @@ class ConcatV2:
 
     def _concat_small_inner_each_core_multi_line(self, core_idx, out_dims, ub_can_copy_lines):
         inst = self.tik_instance
-        ub_copy_times = ceil_div(inst, out_dims, ub_can_copy_lines)
-        ub_copy_times_each_core = ceil_div(inst, ub_copy_times, self.aicore_num)
+        ub_copy_times = ceil_div(out_dims, ub_can_copy_lines)
+        ub_copy_times_each_core = ceil_div(ub_copy_times, self.aicore_num)
         to_do_count = inst.Scalar(dtype="int64", name="to_do_count")
         with inst.for_range(0, ub_copy_times_each_core, name="inner_loop", thread_num=1) as j:
             row_idx = j * ub_can_copy_lines + ub_can_copy_lines * ub_copy_times_each_core * core_idx
@@ -629,7 +634,7 @@ class ConcatV2:
                     to_do_count.set_as(ub_can_copy_lines)
                 with inst.else_scope():
                     to_do_count.set_as(out_dims - row_idx)
-                if self.type_size % 2 != 1:
+                if tbe_platform.cce_conf.api_check_support("tik.vadds", self.dtype):
                     with inst.if_scope(self.tiling_param.max_inner_dim >= self.ele_each_block):
                         self._concat_small_inner_each_core_multi_line_by_vadds(row_idx, to_do_count)
                     with inst.else_scope():
@@ -654,7 +659,6 @@ class ConcatV2:
                 self._concat_small_inner_each_core_multi_lines_first_block_element_rows(out_ub, tmp_ub, lines)
                 row_idx.set_as(row_idx + self.ele_each_block)
                 lines.set_as(lines - self.ele_each_block)
-            
             with inst.if_scope(lines > 0):
                 out_row_start_idx = output_inner_len * row_idx
                 out_start_idx = inst.Scalar("int64", name="ub_data_count")
@@ -717,21 +721,103 @@ class ConcatV2:
         ii = self.ele_each_block - 1
         for index, input_tensor in enumerate(tensors):
             inner_dim, output_idx = self.tiling_param.get_dims(index)
-            align_size = ceil_div(inst, inner_dim, self.ele_each_block) * self.ele_each_block
+            align_size = ceil_div(inner_dim, self.ele_each_block) * self.ele_each_block
             with inst.if_scope(tik.any(lines > self.ele_each_block, output_idx + align_size <= output_inner_len)):
-                burst = ceil_div(inst, inner_dim, self.ele_each_block)
+                burst = ceil_div(inner_dim, self.ele_each_block)
                 cur_out_ub = ub_list[index % len(ub_list)]
                 gm2ub(inst, cur_out_ub, input_tensor[inner_dim * ii], inner_dim, burst)
                 ub2gm(inst, output_tensor[output_inner_len * ii + output_idx], cur_out_ub, inner_dim, burst)
             with inst.else_scope():
                 reserve_count = align_size - inner_dim
-                burst = ceil_div(inst, align_size, self.ele_each_block)
+                burst = ceil_div(align_size, self.ele_each_block)
                 gm2ub(inst, tmp_ub, input_tensor[inner_dim * ii - reserve_count], align_size, burst)
                 gm2ub(inst, out_ub, output_tensor[output_inner_len * ii + output_idx - reserve_count],
                       align_size, burst)
                 _concat_ub_vadds(inst, out_ub, tmp_ub, reserve_count, reserve_count, inner_dim, 1, 0, 0)
                 ub2gm(inst, output_tensor[output_inner_len * ii + output_idx - reserve_count], out_ub,
                       align_size, burst)
+
+    def _concat_with_vnchwconv(self, core_idx, out_dims, ub_len):
+        need_recover = False
+        ori_dtype = self.dtype
+        if self._check_need_convert2float16():
+            ub_len = ub_len * common_util.get_data_size(self.dtype) // common_util.get_data_size("float16")
+            self._convert_dtype("float16")
+            need_recover = True
+        inst = self.tik_instance
+        output_inner_dim = self.tiling_param.output_inner_length
+        inner_dim = self.tiling_param.min_inner_dim
+        vnchwconv_input_lines = VNCHW_ELEMENT_FP16 // inner_dim
+        output_lines_vnchwconv = inst.Scalar(dtype="int64", name="output_lines_vnchwconv")
+        output_lines_vnchwconv.set_as(ub_len // len(self.input_tensors) // inner_dim //
+                                      vnchwconv_input_lines * vnchwconv_input_lines)
+        lines_each_core = ceil_div(ceil_div(out_dims, self.aicore_num), vnchwconv_input_lines) * vnchwconv_input_lines
+        with inst.if_scope(lines_each_core < output_lines_vnchwconv):
+            output_lines_vnchwconv.set_as(lines_each_core)
+        output_tensor = self.output_tensor
+        vnchwconv_times = ceil_div(lines_each_core, output_lines_vnchwconv)
+        do_lines = inst.Scalar(dtype="int64", name="do_lines", init_value=output_lines_vnchwconv)
+        all_in_ub_index = []
+        input_tensors = self.input_tensors
+        for index, _ in enumerate(input_tensors):
+            _, output_idx = self.tiling_param.get_dims(index)
+            all_in_ub_index.append(inst.Scalar(dtype="int64", init_value=output_idx * output_lines_vnchwconv))
+        repeat_times = ceil_div(inner_dim * output_lines_vnchwconv, VNCHW_ELEMENT_FP16)
+        tensor_count = len(input_tensors)
+        with inst.new_stmt_scope():
+            with inst.for_range(0, vnchwconv_times, thread_num=2) as idx:
+                in_ub = inst.Tensor(self.dtype, (ub_len,), scope=tik.scope_ubuf, name="in_ub")
+                out_ub = inst.Tensor(self.dtype, (ub_len,), scope=tik.scope_ubuf, name="out_ub")
+                row_idx = output_lines_vnchwconv * idx + lines_each_core * core_idx
+                with inst.if_scope(row_idx < out_dims):
+                    with inst.if_scope(row_idx + output_lines_vnchwconv > out_dims):
+                        do_lines.set_as(out_dims - row_idx)
+                    out_row_start_idx = output_inner_dim * row_idx
+                    for index, input_tensor in enumerate(self.input_tensors):
+                        inner_dim, output_idx = self.tiling_param.get_dims(index)
+                        in_ub_index = all_in_ub_index[index]
+                        in_start_idx = inner_dim * row_idx
+                        gm2ub(inst, in_ub[in_ub_index], input_tensor[in_start_idx], inner_dim * do_lines)
+                        dst_list = []
+                        for i, _ in enumerate(range(16)):
+                            tensor_start = index * self.ele_each_block * inner_dim
+                            row_start = (self.ele_each_block * (i % inner_dim) +
+                                         self.ele_each_block * (i // inner_dim) * output_inner_dim)
+                            dst_list.append(out_ub[tensor_start + row_start])
+                        src_list = [in_ub[in_ub_index + self.ele_each_block * i] for i in range(16)]
+                        with inst.if_scope(repeat_times == 1):
+                            inst.vnchwconv(False, False, dst_list, src_list, repeat_times, 0, 0)
+                        with inst.else_scope():
+                            inst.vnchwconv(False, False, dst_list, src_list, repeat_times, 16 * tensor_count, 16)
+                    for index, _ in enumerate(input_tensors):
+                        dst_list = [in_ub[index * self.ele_each_block + self.ele_each_block * tensor_count * i]
+                                    for i in range(16)]
+                        src_list = [out_ub[index * VNCHW_ELEMENT_FP16 + self.ele_each_block * i] for i in range(16)]
+                        with inst.if_scope(repeat_times == 1):
+                            inst.vnchwconv(False, False, dst_list, src_list, repeat_times, 0, 0)
+                        with inst.else_scope():
+                            inst.vnchwconv(False, False, dst_list, src_list, repeat_times,
+                                           16 * tensor_count, 16 * tensor_count)
+                    ub2gm(inst, output_tensor[out_row_start_idx], in_ub, output_inner_dim * do_lines)
+        if need_recover:
+            self._convert_dtype(ori_dtype)
+
+    def _check_need_convert2float16(self):
+        if not tbe_platform.cce_conf.api_check_support("tik.vnchwconv", self.dtype) or self.type_size != 2:
+            return True
+        return False
+
+    def _convert_dtype(self, dtype):
+        for index, _ in enumerate(self.input_tensors):
+            self.input_tensors[index] = self.input_tensors[index].reinterpret_cast_to(dtype)
+        self.output_tensor = self.output_tensor.reinterpret_cast_to(dtype)
+        src_dtype_size = common_util.get_data_size(self.dtype)
+        dst_dtype_size = common_util.get_data_size(dtype)
+        if self.type_size != dst_dtype_size:
+            self.tiling_param.update_tiling(self.dtype, dtype)
+        self.type_size = dst_dtype_size
+        self.ele_each_block = self.ele_each_block * src_dtype_size // dst_dtype_size
+        self.dtype = dtype
 
 
 def _check_shape(input_values, shape_name):
