@@ -294,7 +294,7 @@ class SquareSumAll():
             self._calc_op(self.core_tail_num, data_offset)
 
     # pylint: disable=too-many-arguments,
-    def _vector_mul(self, mask, des_offset, src1_offset, src2_offset, repeat_times):
+    def _vector_mul(self, mask, des_offset, src1_offset, src2_offset, repeat_times, calc_target):
         """
         Execute the vector mul calculation
 
@@ -310,14 +310,14 @@ class SquareSumAll():
             src2 address offset
         repeat_times: int
             the repeat times of instruction
+        calc_target: string
+            which input calculate on
         Returns
         -------
         None
         """
-        self.tik_instance.vmul(mask, self.input_x_ub[des_offset], self.input_x_ub[src1_offset],
-                               self.input_x_ub[src2_offset], repeat_times, 1, 1, 1, 8, 8, 8)
-        self.tik_instance.vmul(mask, self.input_y_ub[des_offset], self.input_y_ub[src1_offset],
-                               self.input_y_ub[src2_offset], repeat_times, 1, 1, 1, 8, 8, 8)
+        for _, i in enumerate(calc_target):
+            self.tik_instance.vmul(mask, i[des_offset], i[src1_offset], i[src2_offset], repeat_times, 1, 1, 1, 8, 8, 8)
 
     def _calc_op(self, calc_num, offset):
         """
@@ -343,17 +343,21 @@ class SquareSumAll():
         if calc_loop > 0:
             with self.tik_instance.for_range(0, calc_loop) as add_index:
                 calc_offset = add_index * self.vector_mask_max * 255
-                self._vector_mul(self.vector_mask_max, calc_offset, calc_offset, calc_offset, 255)
+                self._vector_mul(self.vector_mask_max, calc_offset, calc_offset, calc_offset, 255, [self.input_x_ub])
+            with self.tik_instance.for_range(0, calc_loop) as add_index:
+                calc_offset = add_index * self.vector_mask_max * 255
+                self._vector_mul(self.vector_mask_max, calc_offset, calc_offset, calc_offset, 255, [self.input_y_ub])
             calc_offset = self.vector_mask_max * 255 * (calc_loop)
 
         repeat_time = (calc_num % (self.vector_mask_max * 255) // self.vector_mask_max)
 
         if repeat_time > 0:
-            self._vector_mul(self.vector_mask_max, calc_offset, calc_offset, calc_offset, repeat_time)
+            self._vector_mul(self.vector_mask_max, calc_offset, calc_offset, calc_offset, repeat_time,
+                             [self.input_x_ub, self.input_y_ub])
         last_num = calc_num % self.vector_mask_max
         if last_num > 0:
             calc_offset += repeat_time * self.vector_mask_max
-            self._vector_mul(last_num, calc_offset, calc_offset, calc_offset, 1)
+            self._vector_mul(last_num, calc_offset, calc_offset, calc_offset, 1, [self.input_x_ub, self.input_y_ub])
         while calc_num > self.vector_process_bytes // self.dtype_bytes_size:
             calc_num = self._reduce_sum(calc_num)
             if calc_num <= self.vector_process_bytes // self.dtype_bytes_size:

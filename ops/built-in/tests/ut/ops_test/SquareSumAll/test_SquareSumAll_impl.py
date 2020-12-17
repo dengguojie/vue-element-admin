@@ -273,7 +273,7 @@ def calc_expect_func(input_x, input_y, output_x, output_y):
     out_y = np.ones(scalar_shape, dtype=sdtype) * sum_square_y
     return [out_x, out_y]
 
-ut_case.add_precision_case("Ascend910", {
+ut_case.add_precision_case("Ascend910A", {
     "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (7,), "shape": (7,), "param_type": "input"},
                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (7,), "shape": (7,), "param_type": "input"},
                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,), "param_type": "output"},
@@ -281,7 +281,11 @@ ut_case.add_precision_case("Ascend910", {
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
-
-if __name__ == '__main__':
-    ut_case.run('Ascend910')
-    exit(0)
+ut_case.add_precision_case("Ascend910A", {
+    "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (279,499), "shape": (279,499), "param_type": "input"},
+               {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (279,499), "shape": (279,499), "param_type": "input"},
+               {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,), "param_type": "output"},
+               {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,), "param_type": "output"}],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
