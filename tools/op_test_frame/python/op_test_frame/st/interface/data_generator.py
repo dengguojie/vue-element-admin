@@ -137,7 +137,7 @@ class DataGenerator:
                 'Start to generate the data for %s.' % case_name)
             for index, input_desc in enumerate(case['input_desc']):
                 range_min, range_max = input_desc['value_range']
-                if 'st_mode' in case:
+                if case.get('st_mode') == "ms_python_train":
                     dtype = utils.DTYPE_TO_MINDSPORE_MAP[input_desc['type']]
                 else:
                     dtype = utils.DTYPE_TO_NUMPY_MAP[input_desc['type']]
@@ -171,9 +171,10 @@ class DataGenerator:
                             file_path, error))
                     raise utils.OpTestGenException(
                         utils.OP_TEST_GEN_WRITE_FILE_ERROR)
-            utils.print_info_log(
-                'Finish to generator the expect output data for '
-                '%s.' % case_name)
+            # get attr param
+            if case.get('attr'):
+                for index, attr in enumerate(case['attr']):
+                    calc_func_params_tmp.append({'value': attr.get('value')})
             expect_data_paths = self._generate_expect_data(
                 case, calc_func_params_tmp)
             # deal with report

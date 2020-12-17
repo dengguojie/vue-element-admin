@@ -39,16 +39,10 @@ def _do_mi_cmd(args, cmd, report):
             case_list = design.design()
             # create acl_op project path and generate op test case code
             output_path = os.path.realpath(args.output_path)
-            if 'st_mode' in case_list[0]:
-                if case_list[0]['st_mode'] == 'ms_python_train':
-                    ms_op_generator_instance = MsOpGenerator(
-                        case_list, output_path, True, report)
-                    ms_op_generator_instance.generate()
-                else:
-                    utils.print_error_log("please modify it to 'st_mode':"
-                                          "'ms_python_train'.")
-                    raise utils.OpTestGenException(
-                        utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+            if case_list[0].get('st_mode') == 'ms_python_train':
+                ms_op_generator_instance = MsOpGenerator(
+                    case_list, output_path, True, report)
+                ms_op_generator_instance.generate()
             else:
                 acl_op_generator_instance = AclOpGenerator(case_list, output_path,
                                                            True, report)
@@ -90,15 +84,10 @@ def _do_run_cmd(args, report):
         design = CaseDesign(args.input_file, args.case_name, report)
         case_list = design.design()
         # create op project path and generate op test case code
-        if 'st_mode' in case_list[0]:
-            if case_list[0]['st_mode'] == 'ms_python_train':
-                ms_op_generator_instance = MsOpGenerator(
-                    case_list, output_path, False, report)
-                ms_op_generator_instance.generate()
-            else:
-                utils.print_error_log("please modify it to 'st_mode':"
-                                      "'ms_python_train'.")
-                raise utils.OP_TEST_GEN_INVALID_PARAM_ERROR
+        if case_list[0].get('st_mode') == 'ms_python_train':
+            ms_op_generator_instance = MsOpGenerator(
+                case_list, output_path, False, report)
+            ms_op_generator_instance.generate()
         else:
             output_path = os.path.realpath(args.output_path)
             acl_op_generator_instance = AclOpGenerator(case_list, output_path,
@@ -112,7 +101,7 @@ def _do_run_cmd(args, report):
         # run operator
         path = os.path.join(output_path,
                             case_list[0]['op'].replace('/', '_'))
-        if 'st_mode' in case_list[0]:
+        if case_list[0].get('st_mode') == 'ms_python_train':
             op_name_fixed = case_list[0]['op'].lower()
             runner = MsOpRunner(path, op_name_fixed, args.soc_version, report)
             runner.process()
@@ -266,17 +255,19 @@ def main():
         parse.print_usage()
         sys.exit(utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
     args = parse.parse_args(sys.argv[1:])
+    # run/mi gen command generator report.
+    report = st_report.OpSTReport(" ".join(sys.argv))
+    register(save_report, report=report, output_path=args.output_path)
     if sys.argv[1] == 'create':
         # generate test_case.json
         try:
+            global abnormal_termination
+            abnormal_termination = True
             generator = CaseGenerator(args)
             generator.generate()
         except utils.OpTestGenException as ex:
             sys.exit(ex.error_info)
-    # run/mi gen command generator report.
-    report = st_report.OpSTReport(" ".join(sys.argv))
-    register(save_report, report=report, output_path=args.output_path)
-    if sys.argv[1] == 'run':
+    elif sys.argv[1] == 'run':
         _do_run_cmd(args, report)
     else:
         _do_mi_cmd(args, sys.argv[2], report)

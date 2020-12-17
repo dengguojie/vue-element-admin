@@ -1,4 +1,3 @@
-
 import os
 from . import utils
 import time
@@ -40,7 +39,7 @@ def _parse_dtype_by_filename(file_name):
 
 def _get_np_dtype(type_str):
     type_dict = {
-        'fp64': np.float64, 'fp32': np.float32,  'float32': np.float32,
+        'fp64': np.float64, 'fp32': np.float32, 'float32': np.float32,
         'float': np.float32, 'fp16': np.float16, 'float16': np.float16,
         'int64': np.int64, 'int32': np.int32, 'int16': np.int16,
         'int8': np.int8,
@@ -102,7 +101,7 @@ def _display_error_output(real_data, expect_data, err_idx, relative_diff, start,
 
 
 def _data_compare(npu_output, cpu_output, diff_thd=0.01, pct_thd=0.05,
-                 max_diff_hd=0.1):
+                  max_diff_hd=0.1):
     real_data = npu_output.flatten()
     data_compe = cpu_output.flatten()
     if real_data.size == 0 and real_data.size == data_compe.size:
@@ -118,7 +117,7 @@ def _data_compare(npu_output, cpu_output, diff_thd=0.01, pct_thd=0.05,
     if real_data.size != data_compe.size:
         utils.print_error_log(
             'Error,the size of npu output[%s] and benchmark[%s] is not equal.' % (
-            real_data.size, data_compe.size))
+                real_data.size, data_compe.size))
         return result, 0.0, max_error
 
     overflows_count = data_compe[np.isinf(data_compe)].size + data_compe[
@@ -138,8 +137,8 @@ def _data_compare(npu_output, cpu_output, diff_thd=0.01, pct_thd=0.05,
         return result, 0.0, max_error
     diff_index = np.where(diff_abs > 0)
     rdiff = _cal_relative_diff_np(real_data[diff_index].astype(np.float32),
-                                 data_compe[diff_index].astype(np.float32),
-                                 diff_thd)
+                                  data_compe[diff_index].astype(np.float32),
+                                  diff_thd)
     err_diff = rdiff[rdiff > diff_thd]
     diff_idx_list = diff_index[0]
     err_idx = diff_idx_list[np.where(rdiff > diff_thd)]
@@ -160,13 +159,13 @@ def _data_compare(npu_output, cpu_output, diff_thd=0.01, pct_thd=0.05,
     utils.print_info_log(
         '---------------------------------------------------------------------------------------')
     utils.print_info_log('%.4f     \t %.2f%%   \t %.6f%%   \t %s' % (
-    diff_thd, pct_thd, fulfill_percent, result))
+        diff_thd, pct_thd, fulfill_percent, result))
     if len(err_diff) > 0:
         utils.print_info_log('Maximum error is: %s. Tolerance threshold is: %s.' % (
-        max_error, max_diff_hd))
+            max_error, max_diff_hd))
     if result == "Failed":
         _display_error_output(real_data, data_compe, err_idx, err_diff, start,
-                             end, diff_thd)
+                              end, diff_thd)
     return result, fulfill_percent, max_error
 
 
@@ -203,12 +202,12 @@ def compare2(result_dir, expect_dir):
         npu_output = np.fromfile(result_file, np_type)
         cpu_output = np.fromfile(expect_file, np_type)
         result, error_percent, max_error = _data_compare(npu_output,
-                                                        cpu_output)
+                                                         cpu_output)
         result_list.append([result, error_percent, max_error])
 
     utils.print_info_log(
         'End to compare result. Duration:%0.2f second.' % (
-                    time.time() - start_time))
+                time.time() - start_time))
     return
 
 
@@ -221,7 +220,7 @@ def compare(report, run_dir):
     """
     start_time = time.time()
     utils.print_info_log(
-        'Step:------>>>>>> Start to compare result <<<<<<------ ')
+        'Step:------>>>>>> Start to get result <<<<<<------ ')
     # 1. check run result , if failed , record failed and skip compare
     result_txt = os.path.join(run_dir, 'run', 'out', 'result_files',
                               'result.txt')
@@ -247,96 +246,116 @@ def compare(report, run_dir):
             utils.print_warn_log("The result line '%s' format error." %
                                  line)
             continue
+        case_report = report.get_case_report(case_name)
+        if not case_report:
+            continue
+        is_compare = case_report.trace_detail.st_case_info.op_params.get(
+            "calc_expect_func_file_func")
+        if is_compare:
+            _get_compare_stage_result(result, index, case_name, case_report)
+        else:
+            _get_run_stage_result(result, case_name, case_report)
+    # exist expect func, print compare cost time.
+    if is_compare:
+        utils.print_info_log(
+            'End to compare result. Duration:%0.2f second.' % (
+                    time.time() - start_time))
+
+
+def _get_run_stage_result(result, case_name, case_report):
+    if result == "[fail]":
+        utils.print_info_log("There case '%s' run failed." % case_name)
+        _add_op_st_stage_result(
+            case_report, op_status.FAILED, "run_acl_code", None)
+    elif result == "[pass]":
+        utils.print_info_log("There case '%s' run success." % case_name)
+        _add_op_st_stage_result(
+            case_report, op_status.SUCCESS, "run_acl_code", None)
+    else:
+        utils.print_warn_log("The result in result.txt only support "
+                             "'[pass]' and '[fail]', '%s' is "
+                             "unsupported." % result)
+
+
+def _get_compare_stage_result(result, index, case_name, case_report):
+    if result == "[fail]":
+        utils.print_info_log("There case '%s' run failed. "
+                             "no result data for compare, "
+                             "compare skip." % case_name)
+        _add_op_st_stage_result(
+            case_report, op_status.FAILED, "run_acl_code", None)
+    elif result == "[pass]":
+        utils.print_info_log("There case '%s' run success." % case_name)
+        _add_op_st_stage_result(
+            case_report, op_status.SUCCESS, "run_acl_code", None)
         utils.print_info_log(
             'Index %s:------>>>>>> Start to compare %s result '
             '<<<<<<------ '
             % (index, case_name))
-        case_report = report.get_case_report(case_name)
-        if not case_report:
-            continue
-        if not case_report.trace_detail.st_case_info.op_params.get(
-            "calc_expect_func_file_func"):
-            utils.print_info_log("There is no 'calc_expect_func_file_func'"
-                                 "for compare, skip compare.")
+        result_list = list()
+        case_info = case_report.trace_detail.st_case_info
+        if not case_info:
+            utils.print_warn_log("There is no case info for '%s'."
+                                 % case_name)
+            _add_op_st_stage_result(
+                case_report, op_status.FAILED, "compare_data", None)
             return
-        if result == "[fail]":
-            utils.print_info_log("There case '%s' run failed, "
-                                 "no result data for compare, compare "
-                                 "skipped." % case_name)
-            run_acl_result = op_st_case_info.OpSTStageResult(
-                op_status.FAILED, "run_acl_code", None)
-            case_report.trace_detail.add_stage_result(run_acl_result)
-        elif result == "[pass]":
-            result_list = list()
-            run_acl_result = op_st_case_info.OpSTStageResult(
-                op_status.SUCCESS, "run_acl_code", None)
-            case_report.trace_detail.add_stage_result(run_acl_result)
-            case_info = case_report.trace_detail.st_case_info
-            if not case_info:
-                utils.print_warn_log("There is no case info for '%s'."
-                                     % case_name)
-                _add_compare_failed_stage(case_report)
+        if not case_info.expect_data_paths:
+            utils.print_warn_log("There is no expect data in %s for '%s'."
+                                 % (case_info.expect_data_paths, case_name))
+            _add_op_st_stage_result(
+                case_report, op_status.FAILED, "compare_data", None)
+            return
+        for idx, expect_file in enumerate(case_info.expect_data_paths):
+            result_file = case_info.planned_output_data_paths[idx]
+            utils.print_info_log(
+                "The result file %s comapre vs expect data %s" % (
+                    os.path.basename(result_file),
+                    os.path.basename(expect_file)))
+            if not os.path.isfile(result_file):
+                utils.print_warn_log("There is no result file :%s,"
+                                     "skip compare." % result_file)
                 continue
-            if not case_info.expect_data_paths:
-                utils.print_warn_log("There is no expect_data_paths for '%s'."
-                                     % case_name)
-                _add_compare_failed_stage(case_report)
+            if not os.path.isfile(expect_file):
+                utils.print_warn_log("There is no expect output file"
+                                     ":%s,skip compare." % expect_file)
                 continue
-            for idx, expect_file in enumerate(case_info.expect_data_paths):
-                result_file = case_info.planned_output_data_paths[idx]
-                utils.print_info_log(
-                    "The result file %s comapre vs expect data %s" % (
-                        os.path.basename(result_file),
-                        os.path.basename(expect_file)))
-                if not os.path.isfile(result_file):
-                    utils.print_warn_log("There is no result file :%s,"
-                                         "skip compare." %
-                                         result_file)
-                    continue
-                if not os.path.isfile(expect_file):
-                    utils.print_warn_log("There is no expect output file"
-                                         ":%s,skip compare." % expect_file)
-                    continue
-                ouput_configs = case_info.op_params.get("output_desc")
-                if not ouput_configs:
-                    utils.print_warn_log("Failed to output data type.")
-                    continue
-                str_type = ouput_configs[idx].get("type")
-                np_type = _get_np_dtype(str_type)
-                utils.print_info_log(
-                    "The data type is {}, the numpy type is {}".format(
-                        str_type, np_type))
-                if not np_type:
-                    utils.print_warn_log(
-                        "Failed to get numpy data type. Skip compare")
-                    continue
-                npu_output = np.fromfile(result_file, np_type)
-                cpu_output = np.fromfile(expect_file, np_type)
-                result, error_percent, max_error = _data_compare(npu_output,
-                                                                 cpu_output)
-                result_list.append([result, error_percent, max_error])
+            ouput_configs = case_info.op_params.get("output_desc")
+            if not ouput_configs:
+                utils.print_warn_log("Failed to output data type.")
+                continue
+            str_type = ouput_configs[idx].get("type")
+            np_type = _get_np_dtype(str_type)
+            utils.print_info_log(
+                "The data type is {}, the numpy type is {}".format(
+                    str_type, np_type))
+            if not np_type:
+                utils.print_warn_log(
+                    "Failed to get numpy data type. Skip compare")
+                continue
+            npu_output = np.fromfile(result_file, np_type)
+            cpu_output = np.fromfile(expect_file, np_type)
+            result, error_percent, max_error = _data_compare(npu_output,
+                                                             cpu_output)
+            result_list.append([result, error_percent, max_error])
 
-            # add compare report
-            compare_status = op_status.SUCCESS
-            if not result_list:
+        # add compare report
+        compare_status = op_status.SUCCESS
+        if not result_list:
+            compare_status = op_status.FAILED
+        for result_out in result_list:
+            if result_out[0] == "Failed":
                 compare_status = op_status.FAILED
-            for result_out in result_list:
-                if result_out[0] == "Failed":
-                    compare_status = op_status.FAILED
-            compare_data_result = op_st_case_info.OpSTStageResult(
-                compare_status, "compare_data", None)
-            case_report.trace_detail.add_stage_result(compare_data_result)
-
-        else:
-            utils.print_warn_log("The result in result.txt only support "
-                                 "'[pass]' and '[fail]', '%s' is "
-                                 "unsupported." % result)
-    utils.print_info_log(
-        'End to compare result. Duration:%0.2f second.' % (
-                    time.time() - start_time))
+        _add_op_st_stage_result(
+            case_report, compare_status, "compare_data", None)
+    else:
+        utils.print_warn_log("The result in result.txt only support "
+                             "'[pass]' and '[fail]', '%s' is "
+                             "unsupported." % result)
 
 
-def _add_compare_failed_stage(case_report):
-    compare_data_result = op_st_case_info.OpSTStageResult(
-        op_status.FAILED, "compare_data", None)
-    case_report.trace_detail.add_stage_result(compare_data_result)
+def _add_op_st_stage_result(case_report, status=op_status.FAILED,
+                            stage_name=None, result=None):
+    stage_result = op_st_case_info.OpSTStageResult(
+        status, stage_name, result)
+    case_report.trace_detail.add_stage_result(stage_result)

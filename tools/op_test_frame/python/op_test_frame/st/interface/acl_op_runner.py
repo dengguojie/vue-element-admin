@@ -61,7 +61,7 @@ class AclOpRunner:
             self._execute_command(make_cmd)
         except utils.OpTestGenException:
             self.add_op_st_stage_result(op_status.FAILED, "compile_acl_code",
-            None, cmd_str)
+                                        None, cmd_str)
         utils.print_info_log('Finish to compile %s.' % self.path)
         self.add_op_st_stage_result(op_status.SUCCESS, "compile_acl_code",
                                     None, cmd_str)

@@ -413,7 +413,7 @@ class CaseDesign:
         return total_case_list
 
     def _check_required_key_valid(self, json_obj, required_key_list, tensor):
-        if ST_MODE in json_obj:
+        if json_obj.get(ST_MODE) == "ms_python_train":
             required_key_list.append(ST_MODE)
         missing_keys = []
         for key in required_key_list:
@@ -456,7 +456,7 @@ class CaseDesign:
                         utils.OP_TEST_GEN_INVALID_DATA_ERROR)
                 self.case_name_to_json_file_map[json_obj[CASE_NAME]] = json_path
 
-                if ST_MODE in json_obj:
+                if json_obj.get(ST_MODE) == "ms_python_train":
                     input_desc_list = self._make_input_desc_list_ms(json_obj)
                     output_desc_list = self._make_output_desc_list_ms(json_obj)
                     attr_list = self._check_attr_valid(json_obj)
@@ -479,7 +479,7 @@ class CaseDesign:
                 count = len(input_case_list[0])
                 prefix = json_obj[CASE_NAME].replace('/', '_') + '_'
                 if self.multi:
-                    if ST_MODE in json_obj:
+                    if json_obj.get(ST_MODE) == "ms_python_train":
                         prefix += 'sub_'
                     else:
                         prefix += 'sub_case_'
@@ -487,7 +487,7 @@ class CaseDesign:
                     prefix += 'case_'
                 pyfile, function = self._check_expect_output_param(json_obj)
                 for index in range(count):
-                    if ST_MODE in json_obj:
+                    if json_obj.get(ST_MODE) == "ms_python_train":
                         case = {OP: json_obj[OP], ST_MODE: json_obj[ST_MODE],
                                 INPUT_DESC: [], OUTPUT_DESC: [],
                                 'case_name': prefix + '%d' % case_idx}
