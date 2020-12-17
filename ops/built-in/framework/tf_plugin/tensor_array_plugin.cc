@@ -20,11 +20,31 @@
  */
 #include "register/register.h"
 
+#include "op_log.h"
+
 namespace domi {
+Status AutoMappingFnTensorArray(const Message* op_src, ge::Operator& op) {
+  Status ret = AutoMappingFn(op_src, op);
+  if (ret != SUCCESS) {
+    OP_LOGE("TensorArray", "Tensorflow plugin parser failed. Auto mapping failed.");
+    return FAILED;
+  }
+  ge::Operator::OpListInt elem_dims;
+  if (op.GetAttr("element_shape", elem_dims) != ge::GRAPH_SUCCESS) {
+    OP_LOGE("TensorArray", "GetAttr element_shape failed");
+    return FAILED;
+  }
+  if (elem_dims == ge::UNKNOWN_SHAPE) {
+    op.SetAttr("element_shape", ge::UNKNOWN_RANK);
+  }
+  OP_LOGI("TensorArray", "Op[TensorArray] tensorflow plugin parser[AutoMapping] success.");
+  return SUCCESS;
+}
+
 // register TensorArray op to GE
 REGISTER_CUSTOM_OP("TensorArray")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("TensorArrayV3")
-    .ParseParamsFn(AutoMappingFn)
+    .ParseParamsFn(AutoMappingFnTensorArray)
     .ImplyType(ImplyType::AI_CPU);
 }  // namespace domi
