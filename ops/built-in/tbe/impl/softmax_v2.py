@@ -252,7 +252,10 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
             if select_nd_to_5d(dtype, shape_x_ori, axis):
                 # Supplement dimensions to find the C-axis
                 if len(shape_x_ori) < 4:
-                    shape_x_ori = (1,) + shape_x_ori
+                    if isinstance(shape_x_ori, list):
+                        shape_x_ori.insert(0, 1)
+                    else:
+                        shape_x_ori = (1,) + shape_x_ori
                 if ori_input_format == "NCHW" and shape_x_ori[1] <= 16:
                     input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                            datatype="float16,float",
