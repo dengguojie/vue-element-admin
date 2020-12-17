@@ -4536,7 +4536,7 @@ class CceConvOp:
             m_outer_outer, m_outer_inner = sch[res_c].split(
                 res_c.op.axis[2], c_tiling_factor[1])
             sch[res_c].reorder(c_outer_outer, m_outer_outer,
-                                c_outer_inner, m_outer_inner)
+                               c_outer_inner, m_outer_inner)
             m_outer_outer_outer, m_outer_outer_inner = sch[res_c].split(
                 m_outer_outer, nparts=al1_factor[1])
             c_outer_outer_outer, c_outer_outer_inner = sch[res_c].split(
