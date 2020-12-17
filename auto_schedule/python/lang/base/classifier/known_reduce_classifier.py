@@ -15,6 +15,7 @@
 """
 classifier of shape in known reduce axis
 """
+from te import platform as cce
 
 from . import reduce_helper as helper
 from . import util
@@ -25,6 +26,8 @@ CONST = "const"
 class KnownReduceClassifier:
 
     def __init__(self, ins: list):
+        self.ins = ins
+
         self.input_x, self.reduce_axes = ins[0], ins[1]
         self.n_shape, self.n_ranges, self.n_reduce_axes = self._normalize()
         self.f_shape, self.f_ranges, self.f_reduce_axes = helper.simplify(self.n_shape,
@@ -33,6 +36,9 @@ class KnownReduceClassifier:
         self.dim_len, self.reduce_axis_size = len(self.f_shape), len(self.f_reduce_axes)
 
     def classify(self):
+        if cce.fusion_manager.fusion_manager.get_build_cfg() == "disable":
+            return [self.ins]
+
         return self._classify_const() if self._is_const() else self._classify_var()
 
     def _normalize(self):

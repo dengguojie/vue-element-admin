@@ -49,7 +49,7 @@ class TilingStrategy(Enum):
 
 
 # noinspection PyUnusedLocal
-@register_tiling_case(pattern=Pattern.ELEMWISE)
+@register_tiling_case(pattern=(Pattern.ELEMWISE, Pattern.BROADCAST))
 def calc(outs, option=None):
     """
     :param outs:
@@ -316,7 +316,7 @@ def _pre_build(schedules_list):
     operation.add_build_arg("double_buffer_non_reuse", True)
 
 
-@register_build_pointcut(pattern=Pattern.ELEMWISE)
+@register_build_pointcut(pattern=(Pattern.ELEMWISE, Pattern.BROADCAST))
 def build_pointcut(func, *args, **kwargs):
     """
     build pointcut

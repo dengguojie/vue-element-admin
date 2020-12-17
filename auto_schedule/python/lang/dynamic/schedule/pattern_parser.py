@@ -23,7 +23,6 @@ from te.lang.base import operation_impl as operation
 
 from . import Pattern
 from . import util
-from .reduce_schedule import ReduceSchedule
 
 ELEWISE_COMPUTE = {
     "elewise_binary_add", "elewise_binary_sub", "elewise_binary_div",
@@ -134,6 +133,8 @@ def _parse_pattern(outs):
         return Pattern.MAT_MUL
     if _is_elewise(compute_type_size_map):
         return Pattern.ELEMWISE
+    if _is_broadcast(compute_type_size_map):
+        return Pattern.BROADCAST
     if _is_reduce(compute_type_size_map):
         return Pattern.REDUCE
 
@@ -141,6 +142,14 @@ def _parse_pattern(outs):
 
 
 def _is_elewise(compute_type_size_map: dict):
+    ph_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
+    elewise_size = compute_type_size_map.get(ComputeType.ELEWISE, 0)
+    cast_size = compute_type_size_map.get(ComputeType.CAST, 0)
+    total = compute_type_size_map.get(ComputeType.ANY, 0)
+    return ph_size + elewise_size + cast_size == total
+
+
+def _is_broadcast(compute_type_size_map: dict):
     ph_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
     elewise_size = compute_type_size_map.get(ComputeType.ELEWISE, 0)
     broadcast_size = compute_type_size_map.get(ComputeType.BROADCAST, 0)

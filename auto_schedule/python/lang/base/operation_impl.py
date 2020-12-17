@@ -17,22 +17,38 @@ operation impl
 """
 import functools
 import threading
+from dataclasses import dataclass
 from enum import Enum
 from enum import auto
+from typing import Any
+from typing import Callable
+from typing import Dict
 from typing import Optional
+from typing import Tuple
+from typing import Union
 
 from te.tvm import api as tvm
 from te.utils.error_manager.error_manager_util import get_error_message
-
 
 # 'pylint: disable=C0103
 _contexts = {}
 
 operators = {}
 fusion_computes = {}
+computes = {}  # type: Dict[Tuple[str, str], Compute]
 schedules = {}
 tiling_cases = {}
 builds = {}
+
+
+@dataclass
+class Compute:
+    """
+    The attribute of registered compute.
+    """
+    func: Callable[..., Any]
+    op_mode: str
+    support_fusion: bool
 
 
 def _get_contexts():
@@ -540,7 +556,11 @@ def register_schedule(pattern):
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
 
-        schedules[pattern] = wrapper
+        if isinstance(pattern, (tuple, list)):
+            for p in pattern:
+                schedules[p] = wrapper
+        else:
+            schedules[pattern] = wrapper
         return wrapper
 
     return decorator
@@ -565,7 +585,12 @@ def register_tiling_case(pattern):
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
 
-        tiling_cases[pattern] = wrapper
+        if isinstance(pattern, (tuple, list)):
+            for p in pattern:
+                tiling_cases[p] = wrapper
+        else:
+            tiling_cases[pattern] = wrapper
+
         return wrapper
 
     return decorator
@@ -604,6 +629,41 @@ def get_fusion_compute(op_type):
     return fusion_computes.get(op_type)
 
 
+def register_op_compute(op_type, op_mode="dynamic", support_fusion=True):
+    # type: (str, str, bool) -> Callable
+    """
+    :param op_type:
+    :param op_mode:
+    :param support_fusion:
+    :return:
+    """
+
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        computes[(op_type, op_mode)] = Compute(wrapper, op_mode, support_fusion)
+        return wrapper
+
+    return decorator
+
+
+def get_op_compute(op_type, op_mode="dynamic", verbose=False):
+    # type: (str, str, bool) -> Union[Callable, Compute, None]
+    """
+    :param op_type:
+    :param op_mode:
+    :param verbose:
+    :return:
+    """
+    compute_ = computes.get((op_type, op_mode))
+    if compute_:
+        return compute_ if verbose else compute_.func
+
+    return None
+
+
 def register_build_pointcut(pattern):
     """
     :param pattern:
@@ -615,7 +675,12 @@ def register_build_pointcut(pattern):
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
 
-        builds[pattern] = wrapper
+        if isinstance(pattern, (tuple, list)):
+            for p in pattern:
+                builds[p] = wrapper
+        else:
+            builds[pattern] = wrapper
+
         return wrapper
 
     return decorator

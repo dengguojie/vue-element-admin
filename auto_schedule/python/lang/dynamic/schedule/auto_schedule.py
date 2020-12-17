@@ -24,6 +24,7 @@ from te.tvm.build_module import BuildConfigs
 from te.utils.error_manager.error_manager_util import get_error_message
 
 from . import CompileInfo
+from . import Pattern
 from . import pattern_parser
 from . import util
 
@@ -44,7 +45,12 @@ def schedule_cce(outs, option=None):
     if util.get_build_cfg() == "disable":
         # prebuild
         f_m = cce.fusion_manager.fusion_manager
-        f_m.set_current_op_pattern(pattern)
+        op_type = operation.get_context().get_op_type()
+        compute = operation.get_op_compute(op_type, verbose=True)
+        if compute is None or compute.support_fusion is False:
+            f_m.set_current_op_pattern(Pattern.OPAQUE)
+        else:
+            f_m.set_current_op_pattern(pattern)
         return None
 
     tiling_case_func = operation.get_tiling_case(pattern)

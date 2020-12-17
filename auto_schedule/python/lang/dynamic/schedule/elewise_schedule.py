@@ -18,17 +18,21 @@ elewise schedule
 from typing import Optional
 
 from te import tvm
+from te.lang.base import op_tiling
+from te.lang.base import operation_impl as operation
+from te.lang.base.expr_compare import expr_equal
+from te.lang.base.operation_impl import get_compile_info
+from te.lang.base.operation_impl import register_schedule
 
-from . import Pattern, INSN_MAPPING, DTYPE_BYTE_MAPPING, FAKE_NODE_TAG, \
-    SUPPORT_SCALAR_INSNS, TERNARY_INSNS, NEED_EXTENT_NODE_INSNS
 from . import CompileInfo
+from . import DTYPE_BYTE_MAPPING
+from . import FAKE_NODE_TAG
+from . import INSN_MAPPING
+from . import Pattern
+from . import SUPPORT_SCALAR_INSNS
+from . import TERNARY_INSNS
 from . import util
 from .elewise_tilingcase import TilingStrategy
-from te.lang.base.operation_impl import register_schedule
-from te.lang.base.operation_impl import get_compile_info
-from te.lang.base import operation_impl as operation
-from te.lang.base import op_tiling
-from te.lang.base.expr_compare import expr_equal
 
 # block size in D architecture
 BLOCK_SIZE_BYTE = 32
@@ -36,7 +40,7 @@ MULTI_CORE_THRESHOLD = 1024
 
 N_LAST_BROADCAST_THRESHOLD = 512
 
-#temp space for last axis broadcast use vtranspose
+# temp space for last axis broadcast use vtranspose
 VTRANSPOSE_TEMP_SPACE = 8192
 
 CONST = "const"
@@ -46,7 +50,8 @@ VECTOR = "vector"
 VSEL_INPUT_NUMBER = 3
 VCMPSEL_INPUT_NUMBER = 4
 
-@register_schedule(pattern=Pattern.ELEMWISE)
+
+@register_schedule(pattern=(Pattern.ELEMWISE, Pattern.BROADCAST))
 def schedule(outs, tiling_case):
     """
     :param outs:
@@ -573,8 +578,8 @@ class ElewiseSchedule:
             sch = self._schedule
 
             tensors = self._pure_middle_tensors \
-            .union(self._cache_read_buffer_tensor_map.keys()) \
-            .union(self._cache_write_buffer_tensor_map.keys())
+                .union(self._cache_read_buffer_tensor_map.keys()) \
+                .union(self._cache_write_buffer_tensor_map.keys())
 
             for tensor_i in tensors:
                 sch[tensor_i].double_buffer()
@@ -628,9 +633,7 @@ class ElewiseSchedule:
         for tensor_i in self._compute_inline_broadcast:
             input_tensor = tensor_i.op.input_tensors[0]
             input_tensor, broadcast_tensor = __get_ub_tensor(input_tensor, tensor_i)
-            util.merge_value(self._data_reuse_map,
-                            input_tensor,
-                            broadcast_tensor)
+            util.merge_value(self._data_reuse_map, input_tensor, broadcast_tensor)
 
     def _do_mem_reuse(self):
         sch = self._schedule

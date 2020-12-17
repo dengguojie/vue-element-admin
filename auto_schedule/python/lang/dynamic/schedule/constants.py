@@ -23,6 +23,7 @@ class Pattern:
     Built-in Patterns
     """
     ELEMWISE = "ElemWise"
+    BROADCAST = "Broadcast"
     REDUCE = "CommReduce"
     OPAQUE = "Opaque"
     CONV2D = "Convolution"

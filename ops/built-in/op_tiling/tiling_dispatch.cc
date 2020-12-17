@@ -48,7 +48,7 @@ bool AutoTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
   bool ret = false;
   if (pattern == "CommReduce") {
     ret = ReduceTiling(op_type, op_paras, op_info, run_info);
-  } else if (pattern == "ElemWise") {
+  } else if (pattern == "ElemWise" || pattern == "Broadcast") {
     ret = EletwiseTiling(op_type, op_paras, op_info, run_info);
   } else {
     ret = false;
