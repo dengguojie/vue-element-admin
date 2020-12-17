@@ -288,7 +288,6 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
     if optim_dict["c0_optim_flg"]:
         shape_in[1] = 4
         shape_w[1] = 4
-    h_i = shape_in[2]
     w_i = shape_in[3]
     h_k = shape_w[2]
     w_k = shape_w[3]
@@ -360,8 +359,8 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
             err_man.raise_err_attr_range_invalid("conv2d", range_value, "kernel W", str(shape_w[3]))
         temp = 4*shape_w[2]*shape_w[3]
         if optim_dict.get("use_v200_c04_flg") and is_support_v200() and (temp > HK_WK_C04_V200):
-            err_man.raise_err_specific("conv2d", "In v200, small channel case, the 4*Hk*Wk must be smaller than "
-            + "or equal to " + str(HK_WK_C04_V200) + ". you can try to disable the small channel.")
+            err_man.raise_err_specific("conv2d", "In v200, small channel case, the 4*Hk*Wk must be smaller than " +
+                                       "or equal to " + str(HK_WK_C04_V200) + ". you can try to disable the small channel.")
 
     def _check_stride():
         """
@@ -2165,7 +2164,8 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             conv_res = _cube_compute(data, weight, mad_dtype, \
                 tiling=ConvParam.tiling, optim_dict=optim_dict, bias=bias_tensor)
             remove_pad_params = calculate_remove_pad_params(conv_shape, ConvParam.v200_width_out_1_flag)
-            res_remove_pad = remove_pad_quant_dsl(conv_res, conv_shape, invalid_data_rm_flag, params_dict=remove_pad_params)
+            res_remove_pad = remove_pad_quant_dsl(conv_res, conv_shape, invalid_data_rm_flag, \
+                params_dict=remove_pad_params)
             return res_remove_pad
         # quant single op
         conv_res = _cube_compute(data, weight, mad_dtype, tiling=ConvParam.tiling,
