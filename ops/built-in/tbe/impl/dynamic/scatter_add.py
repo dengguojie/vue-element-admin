@@ -376,7 +376,7 @@ class ScatterAdd():
             with self.tik_instance.else_scope():
                 self.tik_instance.set_atomic_add(1)
                 self.tik_instance.data_move(self.var_gm[var_loop_index], self.updates_ub, 0, 1,
-                                            self.updates_burst_len-1, 0, 0)
+                                            self.updates_burst_len - 1, 0, 0)
                 self.tik_instance.set_atomic_add(0)
                 with self.tik_instance.for_range(0, self.var_data_each_block) as updates_ub_index:
                     self.update_value.set_as(self.updates_ub[update_num - self.var_data_each_block + updates_ub_index])
@@ -512,7 +512,7 @@ class ScatterAdd():
                                                                       self.update_data_num], 255, 8, 8, 8)
                             self.var_offset.set_as(255 * self.data_num_one_repeat)
                             self.last_var_num.set_as(self.update_data_num - 255 * self.data_num_one_repeat)
-                        self.repeat.set_as(self.last_var_num  // self.data_num_one_repeat)
+                        self.repeat.set_as(self.last_var_num // self.data_num_one_repeat)
                         self.mask.set_as(self.last_var_num % self.data_num_one_repeat)
                         self.tik_instance.vec_add(self.data_num_one_repeat,
                                                   self.var_ub[(self.var_read_index - self.indice_step *
@@ -614,7 +614,7 @@ class ScatterAdd():
                                                       self.updates_ub, 255, 8, 8, 8)
                             self.var_offset.set_as(255 * self.data_num_one_repeat)
                             self.last_var_num.set_as(self.update_data_num - 255 * self.data_num_one_repeat)
-                        self.repeat.set_as(self.last_var_num  // self.data_num_one_repeat)
+                        self.repeat.set_as(self.last_var_num // self.data_num_one_repeat)
                         self.mask.set_as(self.last_var_num % self.data_num_one_repeat)
                         self.tik_instance.vec_add(self.data_num_one_repeat,
                                                   self.var_ub[(self.var_read_index - self.indice_step *
@@ -679,7 +679,7 @@ class ScatterAdd():
                                                                       self.update_data_num], 255, 8, 8, 8)
                             self.var_offset.set_as(255 * self.data_num_one_repeat)
                             self.last_var_num.set_as(self.update_data_num - 255 * self.data_num_one_repeat)
-                        self.repeat.set_as(self.last_var_num  // self.data_num_one_repeat)
+                        self.repeat.set_as(self.last_var_num // self.data_num_one_repeat)
                         self.mask.set_as(self.last_var_num % self.data_num_one_repeat)
                         self.tik_instance.vec_add(self.data_num_one_repeat, self.var_ub[self.var_offset],
                                                   self.var_ub[self.var_offset],
@@ -820,7 +820,7 @@ class ScatterAdd():
                                           self.var_ub, self.updates_ub, 255, 8, 8, 8)
                 self.var_offset.set_as(255 * self.data_num_one_repeat)
                 self.last_var_num.set_as(var_num - 255 * self.data_num_one_repeat)
-            self.repeat.set_as(self.last_var_num  // self.data_num_one_repeat)
+            self.repeat.set_as(self.last_var_num // self.data_num_one_repeat)
             self.mask.set_as(self.last_var_num % self.data_num_one_repeat)
             self.tik_instance.vec_add(self.data_num_one_repeat, self.var_ub[self.var_offset],
                                       self.var_ub[self.var_offset], self.updates_ub[self.var_offset],
@@ -887,7 +887,7 @@ class ScatterAdd():
                     self.tik_instance.vec_add(self.mask, self.var_ub[self.data_num_one_repeat * self.repeat +
                                                                      self.var_offset],
                                               self.var_ub[self.data_num_one_repeat * self.repeat + self.var_offset],
-                                              self.updates_ub[self.data_num_one_repeat * self.repeat +self.var_offset],
+                                              self.updates_ub[self.data_num_one_repeat * self.repeat + self.var_offset],
                                               1, 8, 8, 8)
             with self.tik_instance.else_scope():
                 self.tik_instance.vector_dup(var_forward_offset - var_num, self.updates_ub, 0, 1, 1, 8)
@@ -1066,10 +1066,8 @@ class ScatterAdd():
         -------
         None
         """
-        with self.tik_instance.if_scope(self.indices_loop_num > 0):
-            with self.tik_instance.for_range(
-                    0, self.indices_loop_num) as indices_loop_index:
-                self.move_indices(indices_loop_index * self.indices_ub_num, self.indices_ub_num)
+        with self.tik_instance.for_range(0, self.indices_loop_num) as indices_loop_index:
+            self.move_indices(indices_loop_index * self.indices_ub_num, self.indices_ub_num)
 
         with self.tik_instance.if_scope(self.indices_last_num > 0):
             self.move_indices(self.indices_loop_num * self.indices_ub_num, self.indices_last_num)
