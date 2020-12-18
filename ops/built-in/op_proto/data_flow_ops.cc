@@ -29,6 +29,35 @@
 namespace ge {
 static std::map<std::string, std::vector<ShapeAndType>> shape_and_type_map;
 namespace {
+graphStatus SetAttrsToShapesAndTypes(Operator& op,
+                                     const std::string& dtypes,
+                                     const std::string& shapes) {
+  std::vector<DataType> elem_types;
+  if (op.GetAttr(dtypes, elem_types) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Get attr [%s] failed", dtypes.c_str());
+    return GRAPH_FAILED;
+  }
+  Operator::OpListListInt elem_shapes;
+  if (op.GetAttr(shapes, elem_shapes) == GRAPH_SUCCESS) {
+    size_t num = std::min(elem_shapes.size(), elem_types.size());
+    std::vector<ShapeAndType> handle_shapes_and_types;
+    handle_shapes_and_types.reserve(num);
+
+    for (size_t i = 0; i < num; ++i) {
+      Shape elem_shape(std::move(elem_shapes[i]));
+      DataType elem_type(std::move(elem_types[i]));
+      ShapeAndType shape_and_type(elem_shape, elem_type);
+      handle_shapes_and_types.emplace_back(std::move(shape_and_type));
+    }
+
+    std::vector<std::vector<ShapeAndType>> shapes_and_types(2);
+    shapes_and_types[0] = handle_shapes_and_types;
+    auto context = op.GetInferenceContext();
+    context->SetOutputHandleShapesAndTypes(shapes_and_types);
+  }
+  return GRAPH_SUCCESS;
+}
+
 graphStatus DequeueManyShape(Operator& op, const Shape& n_shape, const std::string& out_name) {
   auto operator_context = op.GetInferenceContext();
   std::vector<std::vector<ShapeAndType>> handle_shapes_and_types;
@@ -119,32 +148,7 @@ IMPLEMT_INFERFUNC(FIFOQueue, FIFOQueueInfer) {
     OP_LOGE(op.GetName().c_str(), "Update handle failed");
     return GRAPH_FAILED;
   }
-
-  // update attr to ShapesAndTypes
-  std::vector<DataType> component_types;
-  if (op.GetAttr("component_types", component_types) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get attr component_types failed");
-    return GRAPH_FAILED;
-  }
-  Operator::OpListListInt elem_shapes;
-  if (op.GetAttr("shapes", elem_shapes) == GRAPH_SUCCESS) {
-    size_t num = std::min(elem_shapes.size(), component_types.size());
-    std::vector<ShapeAndType> handle_shapes_and_types;
-    handle_shapes_and_types.reserve(num);
-
-    for (size_t i = 0; i < num; ++i) {
-      Shape elem_shape(std::move(elem_shapes[i]));
-      DataType elem_type(std::move(component_types[i]));
-      ShapeAndType shape_and_type(elem_shape, elem_type);
-      handle_shapes_and_types.emplace_back(std::move(shape_and_type));
-    }
-
-    std::vector<std::vector<ShapeAndType>> shapes_and_types(2);
-    shapes_and_types[0] = handle_shapes_and_types;
-    auto context = op.GetInferenceContext();
-    context->SetOutputHandleShapesAndTypes(shapes_and_types);
-  }
-  return GRAPH_SUCCESS;
+  return SetAttrsToShapesAndTypes(op, "component_types", "shapes");
 }
 
 INFER_FUNC_REG(FIFOQueue, FIFOQueueInfer);
@@ -207,14 +211,17 @@ INFER_FUNC_REG(QueueDequeue, QueueDequeueInfer);
 IMPLEMT_INFERFUNC(QueueDequeueMany, QueueDequeueManyInfer) {
   Tensor n_tensor;
   Shape n_shape;
-  op.GetInputConstData("n", n_tensor);
-  const uint8_t* n = n_tensor.GetData();
-  const int32_t* n_data = reinterpret_cast<const int32_t*>(n);
-  if (*n_data < 0) {
-    OP_LOGE(op.GetName().c_str(), "Input 'n' must be >= 0, but is %d", *n_data);
-    return GRAPH_FAILED;
+  if (op.GetInputConstData("n", n_tensor) == GRAPH_SUCCESS) {
+    const uint8_t* n = n_tensor.GetData();
+    const int32_t* n_data = reinterpret_cast<const int32_t*>(n);
+    if (*n_data < 0) {
+      OP_LOGE(op.GetName().c_str(), "Input n must >= 0, but got [%d]", *n_data);
+      return GRAPH_FAILED;
+    }
+    n_shape = Shape({*n_data});
+  } else {
+    n_shape = Shape({ge::UNKNOWN_DIM});
   }
-  n_shape = Shape({*n_data});
   return DequeueManyShape(op, n_shape, "components");
 }
 
@@ -985,7 +992,7 @@ IMPLEMT_INFERFUNC(RandomShuffleQueue, RandomShuffleQueueInfer) {
     OP_LOGE(op.GetName().c_str(), "update handle desc failed");
     return GRAPH_FAILED;
   }
-  return GRAPH_SUCCESS;
+  return SetAttrsToShapesAndTypes(op, "component_types", "shapes");
 }
 
 INFER_FUNC_REG(RandomShuffleQueue, RandomShuffleQueueInfer);
@@ -1247,7 +1254,7 @@ IMPLEMT_INFERFUNC(PaddingFIFOQueue, PaddingFIFOQueueInfer) {
     OP_LOGE(op.GetName().c_str(), "update handle desc failed.");
     return GRAPH_FAILED;
   }
-  return GRAPH_SUCCESS;
+  return SetAttrsToShapesAndTypes(op, "component_types", "shapes");
 }
 
 INFER_FUNC_REG(PaddingFIFOQueue, PaddingFIFOQueueInfer);
@@ -1260,7 +1267,7 @@ IMPLEMT_INFERFUNC(PriorityQueue, PriorityQueueInfer) {
     OP_LOGE(op.GetName().c_str(), "update handle desc failed.");
     return GRAPH_FAILED;
   }
-  return GRAPH_SUCCESS;
+  return SetAttrsToShapesAndTypes(op, "component_types", "shapes");
 }
 
 INFER_FUNC_REG(PriorityQueue, PriorityQueueInfer);
