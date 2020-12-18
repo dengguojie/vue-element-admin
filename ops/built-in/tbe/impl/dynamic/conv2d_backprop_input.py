@@ -200,30 +200,22 @@ def _conv2d_backprop_input_compute(input_size, filter, out_backprop,
         = _check_and_config_para(filter, out_backprop, y, input_size, strides,
                                  pads, dilations, data_format, groups, kernel_name)
 
-    if 1 == groups:
-        # for old fwkacllib version
-        dedx = tbe.conv2d_backprop_input_compute(
-            filters=filter_frac,
-            out_backprop=dedy,
-            filter_sizes=shape_filter,
-            input_sizes=input_size,
-            strides=strides,
-            padding=pads,
-            dilations=dilations,
-            res_dtype=res_dtype,
-            kernel_name=kernel_name)
-    else:
-        dedx = tbe.conv2d_backprop_input_compute(
-            filters=filter_frac,
-            out_backprop=dedy,
-            filter_sizes=shape_filter,
-            input_sizes=input_size,
-            strides=strides,
-            padding=pads,
-            dilations=dilations,
-            res_dtype=res_dtype,
-            kernel_name=kernel_name,
-            group_dict=group_dict)
+    para_dict = {
+        "strides": strides,
+        "padding": pads,
+        "dilations": dilations,
+        "res_dtype": res_dtype,
+        "kernel_name": kernel_name,
+        "group_dict": group_dict
+    }
+
+    dedx = tbe.conv2d_backprop_input_compute(
+        filters=filter_frac,
+        out_backprop=dedy,
+        filter_sizes=shape_filter,
+        input_sizes=input_size,
+        para_dict=para_dict
+    )
 
     return {'op_placeholder': [dx_shape, filter_frac, dedy],  'op_res': [dedx]}
 

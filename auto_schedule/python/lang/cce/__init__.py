@@ -21,10 +21,6 @@ from .te_compute.common import round_to, cast_to, cast_to_round, calculate_one_o
 from .te_compute.concat_compute import concat
 from .te_compute.conv_compute import conv
 from .te_compute.conv_compute import ConvParam
-from .te_compute.conv2d_backprop_input_compute import DeconvParam
-from .te_compute.conv2d_backprop_input_general_compute import DeConvPattern
-from .te_compute.conv2d_backprop_input_opti_compute \
-    import DeConvKernelSize1Pattern
 from .te_compute.depthwise_conv2d_compute import depthwise_conv2d_backprop_filter_d_compute
 from .te_compute.depthwise_conv2d_compute import depthwise_conv2d_backprop_input_d_compute
 from .te_compute.depthwise_conv2d_compute import depthwise_conv2d_compute
@@ -56,7 +52,6 @@ from .te_compute.pooling3d_max_grad_grad_compute import max_pooling3d_grad_grad
 from .te_compute.pooling3d_max_grad_grad_compute import pooling3d_max_grad_grad
 from .te_compute.conv2d_backprop_filter_compute import conv2d_backprop_filter_compute
 from .te_compute.conv2d_backprop_input_compute import conv2d_backprop_input_compute
-from .te_compute.conv2d_backprop_input_compute import DynamicConv2dBpInputParams
 from .te_compute.split_compute import split
 from .te_compute.split_compute import split_compute_com
 from .te_schedule.split_schedule import split_schedule_com
@@ -68,7 +63,6 @@ from .te_compute.util import dsl_check_support
 
 from .te_schedule.conv_schedule import CceConvOp, AutoScheduleOp
 from .te_schedule.cce_schedule import reget_tensor_list, get_op_info
-from .te_schedule.conv2d_backprop_input_schedule import CceConv2dBackpropInputOp
 
 from .te_schedule.cce_schedule import schedule_cce
 from te.utils.cce import auto_schedule, build

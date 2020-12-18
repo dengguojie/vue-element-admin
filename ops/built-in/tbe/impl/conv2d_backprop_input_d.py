@@ -528,32 +528,23 @@ def conv2d_backprop_input_d_compute(  # pylint: disable=C0103,W0622,R0913,R0914
         pads, shape_res, strides, shape_filters, dilations
     )
 
-    if 1 == groups:
-        # for old fwkacllib version
-        res = tbe.conv2d_backprop_input_compute(
-            filter,
-            out_backprop,
-            shape_filters,
-            shape_res,
-            strides,
-            pads,
-            dilations,
-            res_dtype=res_dtype,
-            kernel_name=kernel_name
-        )
-    else:
-        res = tbe.conv2d_backprop_input_compute(
-            filter,
-            out_backprop,
-            shape_filters,
-            shape_res,
-            strides,
-            pads,
-            dilations,
-            res_dtype=res_dtype,
-            kernel_name=kernel_name,
-            group_dict=group_dict
-        )
+    para_dict = {
+        "strides": strides,
+        "padding": pads,
+        "dilations": dilations,
+        "res_dtype": res_dtype,
+        "kernel_name": kernel_name,
+        "group_dict": group_dict
+    }
+
+    res = tbe.conv2d_backprop_input_compute(
+        filter,
+        out_backprop,
+        shape_filters,
+        shape_res,
+        para_dict=para_dict
+    )
+
     return res
 
 
@@ -682,32 +673,22 @@ def _conv2d_backprop_input_cce(  # pylint: disable=R0913,R0914
 
     filter_frac = tvm.placeholder(shape_filter_frac, name="filter", dtype=filter_dtype)
 
-    if 1 == groups:
-        # for old fwkacllib version
-        dedx = tbe.conv2d_backprop_input_compute(
-            filters=filter_frac,
-            out_backprop=dedy,
-            filter_sizes=shape_filter,
-            input_sizes=input_sizes,
-            strides=strides,
-            padding=pads,
-            dilations=dilations,
-            res_dtype=res_dtype,
-            kernel_name=kernel_name
-        )
-    else:
-        dedx = tbe.conv2d_backprop_input_compute(
-            filters=filter_frac,
-            out_backprop=dedy,
-            filter_sizes=shape_filter,
-            input_sizes=input_sizes,
-            strides=strides,
-            padding=pads,
-            dilations=dilations,
-            res_dtype=res_dtype,
-            kernel_name=kernel_name,
-            group_dict=group_dict
-        )
+    para_dict = {
+        "strides": strides,
+        "padding": pads,
+        "dilations": dilations,
+        "res_dtype": res_dtype,
+        "kernel_name": kernel_name,
+        "group_dict": group_dict
+    }
+
+    dedx = tbe.conv2d_backprop_input_compute(
+        filters=filter_frac,
+        out_backprop=dedy,
+        filter_sizes=shape_filter,
+        input_sizes=input_sizes,
+        para_dict=para_dict
+    )
     tensor_list = [filter_frac, dedy, dedx]
 
     with tvm.target.cce():

@@ -596,30 +596,21 @@ def _conv2d_backprop_filter_compute(x, filter_size, out_backprop, y,
     filter_size = tvm.placeholder([4], name="filter_size", dtype="int32")
     dedy = tvm.placeholder(dedy_shape, name="dedy", dtype=dedy_dtype)
 
-    if 1 == groups:
-        # for old fwkacllib version
-        dedw = tbe.conv2d_backprop_filter_compute(
-            input_x=fmap,
-            out_backprop=dedy,
-            filter_sizes=dedw_nchw,
-            strides=strides,
-            padding=pad,
-            dilations=dilations,
-            res_dtype=dedw_dtype,
-            kernel_name=kernel_name
-        )
-    else:
-        dedw = tbe.conv2d_backprop_filter_compute(
-            input_x=fmap,
-            out_backprop=dedy,
-            filter_sizes=dedw_nchw,
-            strides=strides,
-            padding=pad,
-            dilations=dilations,
-            groups=groups,
-            res_dtype=dedw_dtype,
-            kernel_name=kernel_name
-        )
+    para_dict = {
+        "strides": strides,
+        "padding": pads,
+        "dilations": dilations,
+        "groups": groups,
+        "res_dtype": dedw_dtype,
+        "kernel_name": kernel_name
+    }
+
+    dedw = tbe.conv2d_backprop_filter_compute(
+        input_x=fmap,
+        out_backprop=dedy,
+        filter_sizes=dedw_nchw,
+        para_dict=para_dict
+    )
 
     return {'op_placeholder': [fmap, filter_size, dedy], 'op_res': [dedw]}
 

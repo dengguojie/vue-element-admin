@@ -991,30 +991,22 @@ def _conv2d_backprop_filter_cce(
     shape_fmap = (fmap_batch, _ceil(fmap_channel, c0_size), fmap_h, fmap_w, c0_size)
     dedy = tvm.placeholder(shape_dedy, name="dedy", dtype=out_backprop_dtype)
     fmap = tvm.placeholder(shape_fmap, name="fmap", dtype=x_dtype)
-    if 1 == groups:
-        # for old fwkacllib version
-        dedw = tbe.conv2d_backprop_filter_compute(
-            input_x=fmap,
-            out_backprop=dedy,
-            filter_sizes=filter_sizes,
-            strides=strides,
-            padding=pads,
-            dilations=dilations,
-            res_dtype=res_dtype,
-            kernel_name=kernel_name,
-        )
-    else:
-        dedw = tbe.conv2d_backprop_filter_compute(
-            input_x=fmap,
-            out_backprop=dedy,
-            filter_sizes=filter_sizes,
-            strides=strides,
-            padding=pads,
-            dilations=dilations,
-            groups=groups,
-            res_dtype=res_dtype,
-            kernel_name=kernel_name,
-        )
+
+    para_dict = {
+        "strides": strides,
+        "padding": pads,
+        "dilations": dilations,
+        "groups": groups,
+        "res_dtype": res_dtype,
+        "kernel_name": kernel_name
+    }
+
+    dedw = tbe.conv2d_backprop_filter_compute(
+        input_x=fmap,
+        out_backprop=dedy,
+        filter_sizes=filter_sizes,
+        para_dict=para_dict
+    )
     tensor_list_input = [fmap, dedy]
 
     with tvm.target.cce():

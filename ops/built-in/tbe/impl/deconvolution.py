@@ -477,38 +477,25 @@ def deconvolution_compute(  # pylint: disable=invalid-name,R0913,R0914,W0613
         pads, shape_res, strides, shape_weight, dilations
     )
 
-    if 1 == groups:
-        # for old fwkacllib version
-        res = tbe.conv2d_backprop_input_compute(
-            weight,
-            x,
-            shape_weight,
-            shape_res,
-            strides,
-            pads,
-            dilations,
-            res_dtype=res_dtype,
-            tensor_bias=bias,
-            offset_x=offset_x,
-            fusion_para=fusion_para,
-            kernel_name=kernel_name
-        )
-    else:
-        res = tbe.conv2d_backprop_input_compute(
-            weight,
-            x,
-            shape_weight,
-            shape_res,
-            strides,
-            pads,
-            dilations,
-            res_dtype=res_dtype,
-            tensor_bias=bias,
-            offset_x=offset_x,
-            fusion_para=fusion_para,
-            kernel_name=kernel_name,
-            group_dict=group_dict
-        )
+    para_dict = {
+        "strides": strides,
+        "padding": pads,
+        "dilations": dilations,
+        "res_dtype": res_dtype,
+        "tensor_bias": bias,
+        "offset_x": offset_x,
+        "fusion_para": fusion_para,
+        "kernel_name": kernel_name,
+        "group_dict": group_dict
+    }
+
+    res = tbe.conv2d_backprop_input_compute(
+        weight,
+        x,
+        shape_weight,
+        shape_res,
+        para_dict=para_dict
+    )
 
     return res
 
@@ -691,38 +678,26 @@ def _deconvolution_cce(  # pylint: disable=R0913, R0914
             (input_channel,), name="tensor_bias", dtype=res_dtype
         )
 
-    if 1 == groups:
-        # for old fwkacllib version
-        dedx = tbe.conv2d_backprop_input_compute(
-            filters=tensor_filter_frac,
-            out_backprop=tensor_dedy,
-            filter_sizes=shape_filter,
-            input_sizes=input_sizes,
-            strides=strides,
-            padding=pads,
-            dilations=dilations,
-            res_dtype=res_dtype,
-            tensor_bias=tensor_bias,
-            offset_x=offset_x,
-            fusion_para=fusion_para,
-            kernel_name=kernel_name
-        )
-    else:
-        dedx = tbe.conv2d_backprop_input_compute(
-            filters=tensor_filter_frac,
-            out_backprop=tensor_dedy,
-            filter_sizes=shape_filter,
-            input_sizes=input_sizes,
-            strides=strides,
-            padding=pads,
-            dilations=dilations,
-            res_dtype=res_dtype,
-            tensor_bias=tensor_bias,
-            offset_x=offset_x,
-            fusion_para=fusion_para,
-            kernel_name=kernel_name,
-            group_dict=group_dict
-        )
+    para_dict = {
+        "strides": strides,
+        "padding": pads,
+        "dilations": dilations,
+        "res_dtype": res_dtype,
+        "tensor_bias": tensor_bias,
+        "offset_x": offset_x,
+        "fusion_para": fusion_para,
+        "kernel_name": kernel_name,
+        "group_dict": group_dict
+    }
+
+    dedx = tbe.conv2d_backprop_input_compute(
+        filters=tensor_filter_frac,
+        out_backprop=tensor_dedy,
+        filter_sizes=shape_filter,
+        input_sizes=input_sizes,
+        para_dict=para_dict
+    )
+
     if bias:
         tensor_list = [tensor_dedy, tensor_filter_frac, tensor_bias, dedx]
     else:

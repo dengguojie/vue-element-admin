@@ -1193,15 +1193,8 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                                   'dilation': self.dilation,
                                   'kernel_size': self.weight_shape})
 
-@para_check.check_input_type(Tensor, Tensor, (list, tuple),
-                             (list, tuple), (list, tuple),
-                             (list, tuple), int, str, str)
-def conv2d_backprop_filter_compute(input_x,  # pylint: disable=R0913
-                                   out_backprop, filter_sizes,
-                                   strides=None, padding=None,
-                                   dilations=None, groups=1,
-                                   res_dtype="float32",
-                                   kernel_name="conv2d_backprop_filter_cce"):
+@para_check.check_input_type(Tensor, Tensor, (list, tuple), dict)
+def conv2d_backprop_filter_compute(input_x, out_backprop, filter_sizes, para_dict):
     """
     the DSL interface of conv2d backprop filter compute
 
@@ -1213,26 +1206,30 @@ def conv2d_backprop_filter_compute(input_x,  # pylint: disable=R0913
 
     filter_sizes : 4-D shape, specifies the filter sizes
 
-    strides : 2-D shape, specifies in height and width dimension
+    para_dict:
 
-    padding : 4-D shape, specifies in up/down/left/right dimension
+        strides : 2-D shape, specifies in height and width dimension
 
-    dilations : 4-D shape, specifies in batch/channel/height/width dimension
+        padding : 4-D shape, specifies in up/down/left/right dimension
 
-    groups : The number of filter's group. Default value is 1.
+        dilations : 4-D shape, specifies in batch/channel/height/width dimension
 
-    res_dtype : the output data type
+        groups : The number of filter's group. Default value is 1.
+
+        res_dtype : the output data type
 
     Returns
     -------
     result tensor of conv2d_backprop_filter compute
     """
-    if not strides:
-        strides = [1, 1]
-    if not padding:
-        padding = [0, 0, 0, 0]
-    if not dilations:
-        dilations = [1, 1, 1, 1]
+
+    strides = para_dict.get("strides", [1, 1])
+    padding = para_dict.get("padding", [0, 0, 0, 0])
+    dilations = para_dict.get("dilations", [1, 1, 1, 1])
+    groups = para_dict.get("groups", 1)
+    res_dtype = para_dict.get("res_dtype", "float32")
+    kernel_name = para_dict.get("kernel_name", "conv2d_backprop_filter_cce")
+
     deconv_dw_object = Conv2dBackpropFilter(input_x, out_backprop,
                                             filter_sizes,
                                             strides=strides,

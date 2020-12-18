@@ -84,19 +84,22 @@ def _test_conv2d_bp_input_fusion(
             "filter_c_ori": w_shape[1],
             "filter_ori_format": "NCHW"
         }
+        para_dict = {
+            "strides": (stride[2], stride[3]),
+            "padding": padding,
+            "dilations": dilations,
+            "res_dtype": dx_dtype,
+            "kernel_name": _gen_kernel_name(
+                dedy_shape, w_shape, dx_shape, stride, "fusion"
+            ),
+            "group_dict": group_dict
+        }
         dedx = tbe.conv2d_backprop_input_compute(
             filters=w_tensor,
             out_backprop=dedy_tensor,
             filter_sizes=w_shape,
             input_sizes=input_size,
-            strides=(stride[2], stride[3]),
-            padding=padding,
-            dilations=dilations,
-            res_dtype=dx_dtype,
-            kernel_name=_gen_kernel_name(
-                dedy_shape, w_shape, dx_shape, stride, "fusion"
-            ),
-            group_dict=group_dict,
+            para_dict=para_dict
         )
         mask_shape = [i.value for i in dedx.shape]
         mask = tvm.placeholder(mask_shape, name="mask", dtype="bool")

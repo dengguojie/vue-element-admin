@@ -687,40 +687,8 @@ def _get_dynamic_para(out_backprop):
     return dynamic_para
 
 
-@para_check.check_input_type(
-    Tensor,
-    Tensor,
-    (list, tuple),
-    (list, tuple),
-    (list, tuple),
-    (list, tuple),
-    (list, tuple),
-    str,
-    (Tensor, NoneType),
-    int,
-    (Tensor, NoneType),
-    (dict, NoneType),
-    (dict, NoneType),
-    str,
-    (dict, NoneType)
-)
-def conv2d_backprop_input_compute(  # pylint: disable=R0913,R0914
-    filters,
-    out_backprop,
-    filter_sizes,
-    input_sizes,
-    strides,
-    padding,
-    dilations,
-    res_dtype="float16",
-    tensor_bias=None,
-    offset_x=0,
-    offset_w=None,
-    fusion_para=None,
-    dynamic_para=None,
-    kernel_name="conv2d_backprop_input_cce",
-    group_dict=None
-):
+@para_check.check_input_type(Tensor, Tensor, (list, tuple), (list, tuple), dict)
+def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_sizes, para_dict):
     """
     DSL interface of conv2d backprop input
 
@@ -734,28 +702,42 @@ def conv2d_backprop_input_compute(  # pylint: disable=R0913,R0914
 
     input_sizes : shape of dE/dX, [N, C, H, W]
 
-    strides : list of strides, [strideh, stridew]
+    para_dict:
 
-    padding : list of padding, [pad_up, pad_down, pad_left, pad_right]
+        strides : list of strides, [strideh, stridew]
 
-    dilations : [1, 1, 1, 1] by default
+        padding : list of padding, [pad_up, pad_down, pad_left, pad_right]
 
-    res_dtype : dE/dX data type, "float16" by default
+        dilations : list of dilations, [dilation_n, dilation_c, dilation_h, dilation_w]
 
-    offset_x : offset of x
+        res_dtype : dE/dX data type, "float16" by default
 
-    offset_w : offset of w
+        offset_x : offset of x
 
-    fusion_para: the l1 fuison para
+        offset_w : offset of w
 
-    kernel_name : cce kernel name
+        fusion_para: the l1 fuison para
 
-    group_dict : The params of group convolution.
+        kernel_name : cce kernel name
+
+        group_dict : The params of group convolution.
 
     Returns
     ----------
     dx_ddr: dE/dX tensor
     """
+
+    strides = para_dict.get("strides")
+    padding = para_dict.get("padding")
+    dilations = para_dict.get("dilations")
+    res_dtype = para_dict.get("res_dtype", "float16")
+    tensor_bias = para_dict.get("tensor_bias")
+    offset_x = para_dict.get("offset_x", 0)
+    offset_w = para_dict.get("offset_w")
+    fusion_para = para_dict.get("fusion_para")
+    dynamic_para = para_dict.get("dynamic_para")
+    kernel_name = para_dict.get("kernel_name", "conv2d_backprop_input_cce")
+    group_dict = para_dict.get("group_dict")
 
     def ceil(lhs, rhs):
         return (lhs + rhs - 1) // rhs
