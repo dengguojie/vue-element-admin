@@ -1653,20 +1653,10 @@ IMPLEMT_VERIFIER(Select, SelectVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(SelectInferShape) {
-  TensorDesc desc = op.GetInputDesc("x2");
-  Shape input_shape = desc.GetShape();
-  DataType input_dtype = desc.GetDataType();
-  TensorDesc td = op.GetOutputDesc("y");
-  std::vector<std::pair<int64_t,int64_t>> range;
-  auto status = desc.GetShapeRange(range);
-  if (status != GRAPH_SUCCESS) {
-    return GRAPH_FAILED;
+  if (TwoInOneOutDynamicInferNoBroadcast(op, "x1", "x2", {"y"})) {
+    return GRAPH_SUCCESS;
   }
-  td.SetShapeRange(range);
-  td.SetShape(Shape(input_shape));
-  td.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("y", td);
-  return GRAPH_SUCCESS;
+  return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(Select, SelectInferShape);

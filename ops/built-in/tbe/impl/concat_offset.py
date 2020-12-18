@@ -22,12 +22,17 @@ from te.utils import para_check
 # pylint: disable=unused-argument,invalid-name
 def check_supported(concat_dim, x, y, kernel_name="concat_offset"):
     """
-    verify the types of cast supported by tbe
+    if the inputs is dynamic case, and the all num of x is <= 95, will support the aicore Op
     """
-    if util_common.is_dynamic_input(x) or util_common.is_dynamic_input([concat_dim]):
-        return True
+    if not util_common.is_dynamic_input(x) and not util_common.is_dynamic_input([concat_dim]):
+        return False
 
-    return False
+    # when input is more than 95, changed to aicpu
+    # because the system only support 192 gm num for one Op
+    if len(x) > 95:
+        return False
+
+    return True
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.DYNAMIC_INPUT,
