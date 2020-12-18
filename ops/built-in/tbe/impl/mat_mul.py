@@ -231,8 +231,14 @@ def _get_input_shape_b(shape_y, transpose):
 # pylint: disable=locally-disabled,too-many-arguments
 # pylint: disable=unused-argument, too-many-statements
 # pylint: disable=dangerous-default-value
-def check_supported(input_x1, input_x2, bias, offset_w={}, output_y={},
-                    trans_a=False, trans_b=False, offset_x=0,
+def check_supported(input_x1,
+                    input_x2,
+                    bias,
+                    offset_w={},
+                    output_y={},
+                    trans_a=False,
+                    trans_b=False,
+                    offset_x=0,
                     kernel_name="matmul"):
     """
     check the op support situation
@@ -290,8 +296,14 @@ def check_supported(input_x1, input_x2, bias, offset_w={}, output_y={},
 # pylint: disable=locally-disabled, simplifiable-if-expression
 # pylint: disable=too-many-locals, too-many-statements, dangerous-default-value
 @tbe_platform.fusion_manager.fusion_manager.register("mat_mul")
-def mat_mul_compute(input_x1, input_x2, bias, offset_w={}, output_y={},
-                    trans_a=False, trans_b=False, offset_x=0,
+def mat_mul_compute(input_x1,
+                    input_x2,
+                    bias,
+                    offset_w={},
+                    output_y={},
+                    trans_a=False,
+                    trans_b=False,
+                    offset_x=0,
                     kernel_name="matmul"):
     """
     calculating  matrix multiplication with bias, C = A*B + bias, support input
@@ -350,18 +362,30 @@ def mat_mul_compute(input_x1, input_x2, bias, offset_w={}, output_y={},
         error_manager_vector.raise_err_specific_reson("mat_mul",
                                                       "For MatMul, tensor offset_w must be None!")
 
-    result = tbe.matmul(tensor_a=input_x1, tensor_b=input_x2,
+    result = tbe.matmul(tensor_a=input_x1,
+                        tensor_b=input_x2,
                         trans_a=trans_a_local,
                         trans_b=trans_b_local,
-                        format_a=format_a, format_b=format_b,
-                        alpha_num=1.0, beta_num=0.0,
-                        dst_dtype=dst_dtype, tensor_bias=bias, attrs=attrs)
+                        format_a=format_a,
+                        format_b=format_b,
+                        alpha_num=1.0,
+                        beta_num=0.0,
+                        dst_dtype=dst_dtype,
+                        tensor_bias=bias,
+                        attrs=attrs,
+                        kernel_name=kernel_name)
 
     return result
 
 
-def mat_mul_compute_self(input_x1, input_x2, bias, offset_w={}, output_y={},
-                         trans_a=False, trans_b=False, offset_x=0,
+def mat_mul_compute_self(input_x1,
+                         input_x2,
+                         bias,
+                         offset_w={},
+                         output_y={},
+                         trans_a=False,
+                         trans_b=False,
+                         offset_x=0,
                          kernel_name="matmul"):
     """
     calculating  matrix multiplication with bias, C = A*B + bias, support input
@@ -420,18 +444,18 @@ def mat_mul_compute_self(input_x1, input_x2, bias, offset_w={}, output_y={},
         error_manager_vector.raise_err_specific_reson("mat_mul",
                                                       "For MatMul, tensor offset_w must be None!")
 
-    if cube_vector_split:
-        result = tbe.matmul_cv_split(tensor_a=input_x1, tensor_b=input_x2,
-                                     trans_a=trans_a_local, trans_b=trans_b_local,
-                                     format_a=format_a, format_b=format_b,
-                                     dst_dtype=dst_dtype, tensor_bias=bias,
-                                     kernel_name=kernel_name)
-    else:
-        result = tbe.matmul(tensor_a=input_x1, tensor_b=input_x2,
-                            trans_a=trans_a_local, trans_b=trans_b_local,
-                            format_a=format_a, format_b=format_b,
-                            alpha_num=1.0, beta_num=0.0,
-                            dst_dtype=dst_dtype, tensor_bias=bias, attrs=attrs)
+    result = tbe.matmul(tensor_a=input_x1,
+                        tensor_b=input_x2,
+                        trans_a=trans_a_local,
+                        trans_b=trans_b_local,
+                        format_a=format_a,
+                        format_b=format_b,
+                        alpha_num=1.0,
+                        beta_num=0.0,
+                        dst_dtype=dst_dtype,
+                        tensor_bias=bias,
+                        attrs=attrs,
+                        kernel_name=kernel_name)
 
     return result
 
@@ -545,13 +569,18 @@ def _matmul_vector_one(shape_a, shape_b, src_type, trans_a, trans_b, bias, kerne
 # pylint: disable=locally-disabled,too-many-arguments
 # pylint: disable=too-many-locals, too-many-statements, dangerous-default-value
 # pylint: disable=too-many-locals, line-too-long
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.OPTION_INPUT, para_check.OPTION_INPUT,
-                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_BOOL,
-                            para_check.REQUIRED_ATTR_BOOL,
-                            para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
-def mat_mul(input_x1, input_x2, bias, offset_w={}, output_y={},
-            trans_a=False, trans_b=False, offset_x=0, kernel_name="matmul"):
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
+                            para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_BOOL,
+                            para_check.REQUIRED_ATTR_BOOL, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
+def mat_mul(input_x1,
+            input_x2,
+            bias,
+            offset_w={},
+            output_y={},
+            trans_a=False,
+            trans_b=False,
+            offset_x=0,
+            kernel_name="matmul"):
     """
     calculating  matrix multiplication with bias, C = A*B + bias, support input
     data with fractal format.

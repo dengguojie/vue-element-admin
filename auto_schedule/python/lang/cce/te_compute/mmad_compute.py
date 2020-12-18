@@ -21,7 +21,7 @@ from __future__ import absolute_import
 from functools import reduce as functools_reduce
 
 import te.platform.cce_params as cce
-import te.platform.cce_conf as conf
+import te.platform.cce_conf as cce_conf
 from te.utils.error_manager import error_manager_util
 from te.utils.shape_util import shape_to_list
 from te.utils import para_check
@@ -32,7 +32,7 @@ from te import tvm
 from .util import check_input_tensor_shape
 
 
-def elecnt_of_shape(shape):
+def _elecnt_of_shape(shape):
     """
     calculate reduce shape
     """
@@ -45,7 +45,7 @@ SHAPE_SIZE_LIMIT = 2**31 - 1
 FORMAT_DYNAMIC_THRESHOLD = 1 * 1
 
 
-def shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
+def _shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
                 tensor_bias, trans_a, trans_b, format_a, format_b, dst_dtype,
                 nz_a):
     """
@@ -114,37 +114,23 @@ def shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R091
                 raise RuntimeError(
                     "Not support A transpose for u8/s8 input and 'ND' & 'fractal'.")
 
-    def __check_shape_len():
+    def _check_shape_len(is_fractal_a, shape_len_a, is_fractal_b, shape_len_b):
         if (is_fractal_a == is_fractal_b) and \
                 (shape_len_b not in [shape_len_a - 1, shape_len_a]):
-            return False
-        return True
-
-    if not __check_shape_len():
-        raise RuntimeError("A and B shape length should be equal:", shape_a, shape_b)
-
-    def _check_shape_len(is_fractal_a, shape_len_a, is_fractal_b, shape_len_b):
+            raise RuntimeError("A and B shape length should be equal:", shape_a, shape_b)
         if is_fractal_a:
             if shape_len_a not in (4, 5):
-                raise RuntimeError(
-                    "for fractal input data, "
-                    "only support tensor's dim is 4 or 5!")
+                raise RuntimeError("for fractal input data, only support tensor's dim is 4 or 5!")
         else:
             if shape_len_a not in (2, 3):
-                raise RuntimeError(
-                    "for nd input data, "
-                    "only support tensor's dim is 2 or 3!")
+                raise RuntimeError("for nd input data, only support tensor's dim is 2 or 3!")
 
         if is_fractal_b:
             if shape_len_b not in (4, 5):
-                raise RuntimeError(
-                    "for fractal input data, "
-                    "only support tensor's dim is 4 or 5!")
+                raise RuntimeError("for fractal input data, only support tensor's dim is 4 or 5!")
         else:
             if shape_len_b not in (2, 3):
-                raise RuntimeError(
-                    "for nd input data, "
-                    "only support tensor's dim is 2 or 3!")
+                raise RuntimeError("for nd input data, only support tensor's dim is 2 or 3!")
 
     _check_shape_len(is_fractal_a, shape_len_a, is_fractal_b, shape_len_b)
 
@@ -157,7 +143,7 @@ def shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R091
             raise RuntimeError(
                 "for nd input data, only support tensor's dim is 2 or 3!")
 
-    def __check_batch_size():
+    def _check_batch_size():
         if shape_len_a == shape_len_b and \
                 tensor_a.shape[0].value != tensor_b.shape[0].value:
             return False
@@ -165,7 +151,7 @@ def shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R091
 
     batch = None
     if shape_len_a in (3, 5):
-        if not __check_batch_size():
+        if not _check_batch_size():
             raise RuntimeError("the shape's batch size not equal!")
         batch = tensor_a.shape[0].value
 
@@ -377,7 +363,7 @@ def shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R091
                     "[b,1,n] for gevm and gemm, current is ", shape_bias)
 
 
-def check_quantize_params(quantize_params=None):  # pylint: disable=R0912
+def _check_quantize_params(quantize_params=None):  # pylint: disable=R0912
     """
     Parameters:
     quantize_params: quantization parameters,
@@ -467,7 +453,7 @@ def check_quantize_params(quantize_params=None):  # pylint: disable=R0912
             "Lack of 'sqrt_mode_out', need to supply it.")
 
 
-def get_quantize_params(quantize_params=None, out_type="float16"):
+def _get_quantize_params(quantize_params=None, out_type="float16"):
     """
     algorithm: check matmul quantize parameters
 
@@ -535,11 +521,11 @@ def get_quantize_params(quantize_params=None, out_type="float16"):
     return scale_drq, scale_drq_tensor, sqrt_out
 
 
-def get_compress_tensor_compute(tensor_src, comp_index, op_name):
+def _get_compress_tensor_compute(tensor_src, comp_index, op_name):
     """
     get compress tensor compute
     """
-    _, _, _, compress_mode = conf.get_soc_spec("UNZIP")
+    _, _, _, compress_mode = cce_conf.get_soc_spec("UNZIP")
     comp_size = 8 if compress_mode == 1 else 2
 
     tile_k_value = tvm.var("tile_L1_k", dtype="int32")
@@ -569,7 +555,7 @@ def get_compress_tensor_compute(tensor_src, comp_index, op_name):
     return tensor
 
 
-def check_and_get_dtype_info(src_dtype_a, src_dtype_b, dst_dtype,
+def _check_and_get_dtype_info(src_dtype_a, src_dtype_b, dst_dtype,
                              l0c_support_fp32, quantize_params):
     """
     check input dtype and output dtype,
@@ -602,7 +588,7 @@ def check_and_get_dtype_info(src_dtype_a, src_dtype_b, dst_dtype,
     return out_dtype, is_fusion_mode
 
 
-def get_matmul_output_format(format_a, format_out):
+def _get_matmul_output_format(format_a, format_out):
     """
     get matmul output format
 
@@ -621,30 +607,125 @@ def get_matmul_output_format(format_a, format_out):
     return default_format
 
 
-def _update_gevm_out_block_value(block):
-    """
-    update gemv or gevm out block value
-
-    Parameters:
-        block: input block value
-
-    Returns:
-        block value
-    """
-    if block != cce.BLOCK_VECTOR:
-        return block
-    return cce.BLOCK_IN
-
-
-@para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, bool, bool, str,
-                             str, float, float, str, (type(None), tvm.tensor.Tensor),
-                             (type(None), dict), (type(None), str),
-                             (type(None), tvm.tensor.Tensor), (type(None), dict))
+@para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, bool, bool, str, str, float, float, str,
+                             (type(None), tvm.tensor.Tensor), (type(None), dict), (type(None), str),
+                             (type(None), tvm.tensor.Tensor), (type(None), dict), str)
 def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
            tensor_b, trans_a=False, trans_b=False, format_a="ND", format_b="ND",
            alpha_num=1.0, beta_num=0.0, dst_dtype="float16", tensor_bias=None,
            quantize_params=None, format_out=None, compress_index=None,
-           attrs={}):
+           attrs={}, kernel_name="MatMul"):
+    """
+    algorithm: mmad
+    calculating  matrix multiplication, C=alpha_num*A*B+beta_num*C
+
+    Parameters:
+    tensor_a : the first tensor a
+
+    tensor_b : second tensor b with the same type and shape with a
+
+              If tensor_a/tensor_b is int8/uint8,then L0A must be 16*32,L0B
+              must be 32*16.
+              If A is transpose , then AShape classification matrix must be
+              32*16 in gm/L1,then it is 16*32 in L0A.
+              If B is transpose , then BShape classification matrix must be
+              16*32 in gm/L1,then it is 32*16 in L0B.
+
+    trans_a : if True, a needs to be transposed
+
+    trans_b : if True, b needs to be transposed
+
+    is_fractal: If type is bool, a and b's format both be fractal or ND,
+                default is ND;
+                If type is list, len must be 2, [0] is is_fractal_a,
+                [1] is is_fractal_b
+
+    alpha_num: scalar used for multiplication
+
+    beta_num: scalar used for multiplication
+
+    dst_dtype: output data type,support "float16" "float32", default is "float16"
+
+    tensor_bias :the bias with used to init L0C for tensor c
+
+    quantize_params: quantization parameters,
+            not None means enable quantization, it is dictionary structure
+
+        quantize_alg: quantize mode,
+            support 'NON_OFFSET' 'HALF_OFFSET_A' 'HALF_OFFSET_B' 'ALL_OFFSET'
+
+        scale_mode_a: tensor_a inbound quantization mode,
+                support 'SCALAR' and 'VECTOR'
+        scale_mode_b: tensor_b inbound quantization mode,
+                support 'SCALAR' and 'VECTOR'
+        scale_mode_out: out tensor quantization mode,
+                support 'SCALAR' and 'VECTOR'
+
+        sqrt_mode_a: tensor_a inbound sqrt mode, support 'NON_SQRT' and 'SQRT'
+        sqrt_mode_b: tensor_b inbound sqrt mode, support 'NON_SQRT' and 'SQRT'
+        sqrt_mode_out: out tensor sqrt mode, support 'NON_SQRT' and 'SQRT'
+
+        scale_q_a: scale placeholder for tensor_a inbound quantization
+        offset_q_a: offset placeholder for tensor_a inbound quantization
+        scale_q_b: scale placeholder for tensor_b inbound quantization
+        offset_q_b: offset placeholder for tensor_b inbound quantization
+
+        scale_drq: scale placeholder for requantization or dequantization
+        offset_drq: scale placeholder for requantization or dequantization
+    out_format: output format
+    attrs:
+        offset_x: the offset for fmap
+        offset_w: the offset for w
+
+    compress_index: index for compressed wights, None means not compress wights
+    Returns None
+    """
+    cube_vector_split = cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT")
+    if cube_vector_split:
+        result = _matmul_cv_split(tensor_a=tensor_a,
+                                  tensor_b=tensor_b,
+                                  trans_a=trans_a,
+                                  trans_b=trans_b,
+                                  format_a=format_a,
+                                  format_b=format_b,
+                                  dst_dtype=dst_dtype,
+                                  tensor_bias=tensor_bias,
+                                  format_out=format_out,
+                                  kernel_name=kernel_name)
+    else:
+        result = _matmul_compute(tensor_a=tensor_a,
+                                tensor_b=tensor_b,
+                                trans_a=trans_a,
+                                trans_b=trans_b,
+                                format_a=format_a,
+                                format_b=format_b,
+                                alpha_num=alpha_num,
+                                beta_num=beta_num,
+                                dst_dtype=dst_dtype,
+                                tensor_bias=tensor_bias,
+                                quantize_params=quantize_params,
+                                format_out=format_out,
+                                compress_index=compress_index,
+                                attrs=attrs)
+
+    return result
+
+
+def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
+        tensor_a,
+        tensor_b,
+        trans_a=False,
+        trans_b=False,
+        format_a="ND",
+        format_b="ND",
+        alpha_num=1.0,
+        beta_num=0.0,
+        dst_dtype="float16",
+        tensor_bias=None,
+        quantize_params=None,
+        format_out=None,
+        compress_index=None,
+        attrs={}):
     """
     algorithm: mmad
     calculating  matrix multiplication, C=alpha_num*A*B+beta_num*C
@@ -721,10 +802,10 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
         nz_b = True
         format_b = "fractal"
 
-    shape_check(tensor_a, tensor_b, tensor_bias, trans_a, trans_b, format_a,
+    _shape_check(tensor_a, tensor_b, tensor_bias, trans_a, trans_b, format_a,
                 format_b, dst_dtype, nz_a)
 
-    format_out = get_matmul_output_format(format_a, format_out)
+    format_out = _get_matmul_output_format(format_a, format_out)
 
     in_a_dtype = tensor_a.dtype
     in_b_dtype = tensor_b.dtype
@@ -732,11 +813,11 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
     tensor_b.op.attrs['trans_b'] = trans_b
 
     l0c_support_fp32 = 1
-    support_type = conf.getValue("Intrinsic_mmad")
+    support_type = cce_conf.getValue("Intrinsic_mmad")
     if "f162f32" not in support_type:
         l0c_support_fp32 = 0
     # used for inner_product and ascend_dequant UB fusion
-    out_dtype, is_fusion_mode = check_and_get_dtype_info(
+    out_dtype, is_fusion_mode = _check_and_get_dtype_info(
         in_a_dtype, in_b_dtype, dst_dtype, l0c_support_fp32, quantize_params)
 
     def _check_quant_param_valid():
@@ -770,7 +851,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                                    % (tensor_bias.dtype, out_dtype))
 
         bias_shape = []
-        if elecnt_of_shape(tensor_bias.shape).value == 1:
+        if _elecnt_of_shape(tensor_bias.shape).value == 1:
             bias_shape = [1]
         else:
             for i in tensor_bias.shape:
@@ -873,7 +954,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                 n_shape = 1
                 vn_shape = 1
 
-    def gevm_block_in_value(
+    def _gevm_block_in_value(
             is_fractal, m_shape, vm_shape, km_shape, n_shape_ori, block_in_val):
         """
         calculate k!= block_in*block_reduce gevm block_in
@@ -892,7 +973,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                     block_in = block_in_val
         return block_in, block_in_ori
 
-    block_in, block_in_ori = gevm_block_in_value(
+    block_in, block_in_ori = _gevm_block_in_value(
         is_fractal_a, m_shape, vm_shape, km_shape, n_shape*vn_shape, block_in)
 
     if n_shape == 1 and vn_shape == 1:
@@ -946,14 +1027,14 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
     if is_fractal_b:
         _check_fractal_b_value()
 
-    def get_offset_info(attrs_dict, dtype_a, dtype_b):
+    def _get_offset_info(attrs_dict, dtype_a, dtype_b):
         """
         get offset info, like offset_x and offset_w
         """
         offset_x = 0
         offset_w = 0
 
-        if conf.is_v200_version_new():
+        if cce_conf.is_v200_version_new():
             if dtype_a in ("uint8", "int8"):
                 if attrs_dict.get("offset_x") is not None:
                     offset_x = attrs_dict.get("offset_x")
@@ -963,16 +1044,16 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
 
         return offset_x, offset_w
 
-    offset_x, _ = get_offset_info(attrs, in_a_dtype, in_b_dtype)
+    offset_x, _ = _get_offset_info(attrs, in_a_dtype, in_b_dtype)
     # define reduce axis
     # kBurstAxis
     reduce_kb = tvm.reduce_axis((0, km_shape), name='kb')
     # kPointAxis
     reduce_kp = tvm.reduce_axis((0, block_reduce), name='kp')
 
-    check_quantize_params(quantize_params)
+    _check_quantize_params(quantize_params)
     scale_drq, scale_drq_tensor, sqrt_out = \
-        get_quantize_params(quantize_params, dst_dtype)
+        _get_quantize_params(quantize_params, dst_dtype)
 
     # vadds function only support fp16 and fp32
     optmt_a = 0
@@ -1132,7 +1213,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
             if not trans_b:
                 if is_fractal_b:
                     if compress_index is not None:
-                        tensor_b_l1 = get_compress_tensor_compute(
+                        tensor_b_l1 = _get_compress_tensor_compute(
                             tensor_b, compress_index, 'tensor_b_l1')
                     else:
                         tensor_b_l1 = tvm.compute(
@@ -1171,7 +1252,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
             else:
                 if is_fractal_b:
                     if compress_index is not None:
-                        tensor_b_l1 = get_compress_tensor_compute(
+                        tensor_b_l1 = _get_compress_tensor_compute(
                             tensor_b, compress_index, 'tensor_b_l1')
                     else:
                         tensor_b_l1 = tvm.compute(
@@ -1594,7 +1675,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
             if not trans_b:
                 if is_fractal_b:
                     if compress_index is not None:
-                        tensor_b_l1 = get_compress_tensor_compute(
+                        tensor_b_l1 = _get_compress_tensor_compute(
                             tensor_b, compress_index, 'tensor_b_l1')
                     else:
                         tensor_b_l1 = tvm.compute(
@@ -1665,7 +1746,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
             else:
                 if is_fractal_b:
                     if compress_index is not None:
-                        tensor_b_l1 = get_compress_tensor_compute(
+                        tensor_b_l1 = _get_compress_tensor_compute(
                             tensor_b, compress_index, 'tensor_b_l1')
                     else:
                         tensor_b_l1 = tvm.compute(
@@ -2109,7 +2190,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
             if trans_b:
                 if is_fractal_b:
                     if compress_index is not None:
-                        tensor_b_l1 = get_compress_tensor_compute(
+                        tensor_b_l1 = _get_compress_tensor_compute(
                             tensor_b, compress_index, 'tensor_b_l1')
                     else:
                         tensor_b_l1 = tvm.compute(
@@ -2152,7 +2233,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
             else:
                 if is_fractal_b:
                     if compress_index is not None:
-                        tensor_b_l1 = get_compress_tensor_compute(
+                        tensor_b_l1 = _get_compress_tensor_compute(
                             tensor_b, compress_index, 'tensor_b_l1')
                     else:
                         tensor_b_l1 = tvm.compute(
@@ -2391,7 +2472,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
             if trans_b:
                 if is_fractal_b:
                     if compress_index is not None:
-                        tensor_b_l1 = get_compress_tensor_compute(
+                        tensor_b_l1 = _get_compress_tensor_compute(
                             tensor_b, compress_index, 'tensor_b_l1')
                     else:
                         tensor_b_l1 = tvm.compute(
@@ -2470,7 +2551,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
             else:
                 if is_fractal_b:
                     if compress_index is not None:
-                        tensor_b_l1 = get_compress_tensor_compute(
+                        tensor_b_l1 = _get_compress_tensor_compute(
                             tensor_b, compress_index, 'tensor_b_l1')
                     else:
                         tensor_b_l1 = tvm.compute(
@@ -2715,7 +2796,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
     return tensor_c_gm
 
 
-def get_tensor_c_out_dtype(tensor_a, tensor_b, dst_dtype):
+def _get_tensor_c_out_dtype(tensor_a, tensor_b, dst_dtype):
     """
     get tensor c out date type
 
@@ -2738,7 +2819,7 @@ def get_tensor_c_out_dtype(tensor_a, tensor_b, dst_dtype):
 
     l0c_support_fp32 = 1
 
-    support_type = conf.getValue("Intrinsic_mmad")
+    support_type = cce_conf.getValue("Intrinsic_mmad")
     if "f162f32" not in support_type:
         l0c_support_fp32 = 0
     if in_a_dtype == "float16" and in_b_dtype == "float16":
@@ -2756,7 +2837,7 @@ def get_tensor_c_out_dtype(tensor_a, tensor_b, dst_dtype):
     return out_dtype
 
 
-def get_block_in_value():
+def _get_block_in_value():
     """
     get block in value
 
@@ -2771,7 +2852,7 @@ def get_block_in_value():
     return cce.BLOCK_IN
 
 
-def get_block_out_value():
+def _get_block_out_value():
     """
     get block out value
 
@@ -2786,7 +2867,7 @@ def get_block_out_value():
     return cce.BLOCK_OUT
 
 
-def get_block_reduce_value(tensor_dtype):
+def _get_block_reduce_value(tensor_dtype):
     """
     get block reduce value
 
@@ -2806,7 +2887,7 @@ def get_block_reduce_value(tensor_dtype):
     return block_reduce
 
 
-def update_gevm_block_in(m_shape, vm_shape, km_shape, block_in_ori):
+def _update_gevm_block_in(m_shape, vm_shape, km_shape, block_in_ori):
     """
     update gevm block in value
 
@@ -2831,7 +2912,7 @@ def update_gevm_block_in(m_shape, vm_shape, km_shape, block_in_ori):
     return block_in
 
 
-def update_gevm_block_out(n_shape, vn_shape, block_out_ori):
+def _update_gevm_block_out(n_shape, vn_shape, block_out_ori):
     """
     update gevm block out value
 
@@ -2854,7 +2935,7 @@ def update_gevm_block_out(n_shape, vn_shape, block_out_ori):
     return block_out
 
 
-def get_m_k_value(tensor_a, trans_a):
+def _get_m_k_value(tensor_a, trans_a):
     """
     get tensor a m k axis value
 
@@ -2892,7 +2973,7 @@ def get_m_k_value(tensor_a, trans_a):
     return m_shape, km_shape, vm_shape
 
 
-def get_n_k_value(tensor_b, trans_b):
+def _get_n_k_value(tensor_b, trans_b):
     """
     get tensor b n k axis value
 
@@ -2930,7 +3011,7 @@ def get_n_k_value(tensor_b, trans_b):
     return n_shape, kn_shape, vn_shape
 
 
-def check_reduce_shape(km_shape, kn_shape):
+def _check_reduce_shape(km_shape, kn_shape):
     """
     check reduce shape valid
 
@@ -2949,7 +3030,7 @@ def check_reduce_shape(km_shape, kn_shape):
         raise RuntimeError("the k shape is wrong in mmad")
 
 
-def check_default_param(alpha_num, beta_num, quantize_params, format_out):
+def _check_default_param(alpha_num, beta_num, quantize_params, format_out):
     """
     check get perfomance format default param
 
@@ -2976,7 +3057,7 @@ def check_default_param(alpha_num, beta_num, quantize_params, format_out):
         raise RuntimeError("format output should be none")
 
 
-def get_l0_byte(tensor_a_dtype, tensor_b_dtype, l0c_out_dtype):
+def _get_l0_byte(tensor_a_dtype, tensor_b_dtype, l0c_out_dtype):
     """
     calculate the number of l0 bytes occupied by an element
 
@@ -3003,7 +3084,7 @@ def get_l0_byte(tensor_a_dtype, tensor_b_dtype, l0c_out_dtype):
     return l0a_byte, l0b_byte, l0c_byte
 
 
-def get_l1_byte(tensor_a_dtype, tensor_b_dtype):
+def _get_l1_byte(tensor_a_dtype, tensor_b_dtype):
     """
     calculate the number of l1 bytes occupied by an element
 
@@ -3025,7 +3106,7 @@ def get_l1_byte(tensor_a_dtype, tensor_b_dtype):
     return l1a_byte, l1b_byte
 
 
-def is_gemv_mode(block_out):
+def _is_gemv_mode(block_out):
     """
     Determine if GEMV mode
 
@@ -3043,7 +3124,7 @@ def is_gemv_mode(block_out):
     return True
 
 
-def is_gevm_mode(block_in):
+def _is_gevm_mode(block_in):
     """
     Determine if GEVM mode
 
@@ -3061,7 +3142,7 @@ def is_gevm_mode(block_in):
     return True
 
 
-def get_core_factor(m_var, n_var):
+def _get_core_factor(m_var, n_var):
     """
     get block core process uint
 
@@ -3097,7 +3178,7 @@ def get_core_factor(m_var, n_var):
     return core_inner_m, core_inner_n
 
 
-def get_ub_byte_size(date_type, tensor_ub_fract):
+def _get_ub_byte_size(date_type, tensor_ub_fract):
     """
     calculate the number of ub bytes occupied by an element
 
@@ -3128,7 +3209,7 @@ def get_ub_byte_size(date_type, tensor_ub_fract):
     return ub_byte
 
 
-def get_special_l0_factor_tiling(src_shape, m_l0_shape, k_l0_shape, n_l0_shape):
+def _get_special_l0_factor_tiling(src_shape, m_l0_shape, k_l0_shape, n_l0_shape):
     """
     update l0 tiling parameter
 
@@ -3171,7 +3252,7 @@ def get_special_l0_factor_tiling(src_shape, m_l0_shape, k_l0_shape, n_l0_shape):
     return m_l0_shape, k_l0_shape, n_l0_shape
 
 
-def get_core_num_tiling(m_shape,  # pylint: disable=too-many-locals
+def _get_core_num_tiling(m_shape,  # pylint: disable=too-many-locals
                         n_shape, k_shape):
     """
     get block tiling parameter
@@ -3191,7 +3272,7 @@ def get_core_num_tiling(m_shape,  # pylint: disable=too-many-locals
     n_factor : n axis split factor
     """
     frac_size = 16
-    core_num = conf.getValue("Device_core_num")
+    core_num = cce_conf.getValue("Device_core_num")
     m_axis_outer = (m_shape + frac_size - 1) // frac_size
     if m_shape == 1:
         m_axis_outer = 1
@@ -3286,11 +3367,11 @@ def get_matmul_performance_format(tensor_a,  # pylint: disable=W0108, R1702, R09
     Returns: tensor a format
     """
 
-    l0c_out_dtype = get_tensor_c_out_dtype(tensor_a, tensor_b, dst_dtype)
+    l0c_out_dtype = _get_tensor_c_out_dtype(tensor_a, tensor_b, dst_dtype)
 
-    block_in = get_block_in_value()
+    block_in = _get_block_in_value()
 
-    m_shape, km_shape, vm_shape = get_m_k_value(tensor_a, trans_a)
+    m_shape, km_shape, vm_shape = _get_m_k_value(tensor_a, trans_a)
 
     frac_n_size = 16
     frac_k_size = 16
@@ -3306,36 +3387,36 @@ def get_matmul_performance_format(tensor_a,  # pylint: disable=W0108, R1702, R09
     if remainder * km_shape > FORMAT_DYNAMIC_THRESHOLD:
         return "NC1HWC0"
 
-    n_shape, kn_shape, vn_shape = get_n_k_value(tensor_b, trans_b)
+    n_shape, kn_shape, vn_shape = _get_n_k_value(tensor_b, trans_b)
     kn_shape = (kn_shape + frac_k_size - 1) // frac_k_size * frac_k_size
     n_shape = (n_shape + frac_n_size - 1) // frac_n_size * frac_n_size
 
-    block_in = update_gevm_block_in(m_shape, vm_shape, km_shape, block_in)
+    block_in = _update_gevm_block_in(m_shape, vm_shape, km_shape, block_in)
 
-    check_reduce_shape(km_shape, kn_shape)
-    check_default_param(alpha_num, beta_num, quantize_params, format_out)
+    _check_reduce_shape(km_shape, kn_shape)
+    _check_default_param(alpha_num, beta_num, quantize_params, format_out)
 
-    m_factors, n_factors = get_core_num_tiling(m_shape, n_shape, km_shape)
+    m_factors, n_factors = _get_core_num_tiling(m_shape, n_shape, km_shape)
 
     m_var = [m_shape, m_factors]
     n_var = [n_shape, n_factors]
 
-    core_inner_m, core_inner_n = get_core_factor(m_var, n_var)
+    core_inner_m, core_inner_n = _get_core_factor(m_var, n_var)
 
-    l0a_byte, l0b_byte, l0c_byte = get_l0_byte(tensor_a.dtype,
+    l0a_byte, l0b_byte, l0c_byte = _get_l0_byte(tensor_a.dtype,
                                                tensor_b.dtype,
                                                l0c_out_dtype)
 
-    l1a_byte, l1b_byte = get_l1_byte(tensor_a.dtype,
+    l1a_byte, l1b_byte = _get_l1_byte(tensor_a.dtype,
                                      tensor_b.dtype)
 
     ub_reserve_buff = 0
 
-    a_ub_byte = get_ub_byte_size(tensor_a.dtype, True)
-    b_ub_byte = get_ub_byte_size(None, False)
-    ub_res_byte = get_ub_byte_size(l0c_out_dtype, False)
+    a_ub_byte = _get_ub_byte_size(tensor_a.dtype, True)
+    b_ub_byte = _get_ub_byte_size(None, False)
+    ub_res_byte = _get_ub_byte_size(l0c_out_dtype, False)
 
-    is_gemv = is_gemv_mode(block_in)
+    is_gemv = _is_gemv_mode(block_in)
     if is_gemv:
         a_ub_byte, b_ub_byte = b_ub_byte, a_ub_byte
 
@@ -3356,7 +3437,7 @@ def get_matmul_performance_format(tensor_a,  # pylint: disable=W0108, R1702, R09
     n_l0_shape = int(tiled_shape[5])
 
     src_shape = [m_shape, km_shape, n_shape]
-    m_l0_shape, k_l0_shape, n_l0_shape = get_special_l0_factor_tiling(
+    m_l0_shape, k_l0_shape, n_l0_shape = _get_special_l0_factor_tiling(
         src_shape, m_l0_shape, k_l0_shape, n_l0_shape)
 
     if core_inner_n // n_l0_shape > 1:
@@ -3365,10 +3446,7 @@ def get_matmul_performance_format(tensor_a,  # pylint: disable=W0108, R1702, R09
     return "NC1HWC0"
 
 
-@para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, bool, bool, str,
-                             str, str, (type(None), tvm.tensor.Tensor), (type(None), str),
-                             (type(None), str))
-def matmul_cv_split(tensor_a,
+def _matmul_cv_split(tensor_a,
     tensor_b, trans_a=False, trans_b=False, format_a="ND", format_b="ND",
     dst_dtype="float32", tensor_bias=None, format_out=None, kernel_name="MatMul"):
     """

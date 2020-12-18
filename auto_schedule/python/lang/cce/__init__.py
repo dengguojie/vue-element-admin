@@ -47,7 +47,6 @@ from .te_compute.segment_compute import unsorted_segment_max, \
 from .te_compute import util
 from .te_schedule import cce_build_code
 from .te_compute.mmad_compute import matmul
-from .te_compute.mmad_compute import matmul_cv_split
 from .te_compute.mmad_compute import get_matmul_performance_format
 from .te_compute.gemm_compute import gemm
 from .te_compute.pooling2d_compute import pooling2d
