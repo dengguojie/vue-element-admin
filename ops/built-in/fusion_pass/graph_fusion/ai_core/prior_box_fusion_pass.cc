@@ -111,7 +111,8 @@ Status PriorBoxPass::ComputeBoxes(int64_t layer_w, int64_t layer_h, int64_t img_
       float center_x = (w + offset) * step_w;
       float center_y = (h + offset) * step_h;
 
-      float box_width, box_height;
+      float box_width = 0.0;
+      float box_height = 0.0;
       for (unsigned int s = 0; s < min_size.size(); ++s) {
         int min_value = min_size[s];
         // first prior: aspect_ratio = 1, size = min_size
@@ -256,22 +257,22 @@ Status PriorBoxPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge
   vector<float> max_size;
   ge::AttrUtils::GetListFloat(fusedNode->GetOpDesc(), "max_size", max_size);
   int64_t max_size_size = max_size.size();
-  bool flip;
+  bool flip = true;
   ge::AttrUtils::GetBool(fusedNode->GetOpDesc(), "flip", flip);
   // Get value from prior box
   vector<float> variance;
   ge::AttrUtils::GetListFloat(fusedNode->GetOpDesc(), "variance", variance);
-  int64_t img_h;
+  int64_t img_h = 0;
   ge::AttrUtils::GetInt(fusedNode->GetOpDesc(), "img_h", img_h);
-  int64_t img_w;
+  int64_t img_w = 0;
   ge::AttrUtils::GetInt(fusedNode->GetOpDesc(), "img_w", img_w);
-  float step_w;
+  float step_w = 0.0;
   ge::AttrUtils::GetFloat(fusedNode->GetOpDesc(), "step_w", step_w);
-  float step_h;
+  float step_h = 0.0;
   ge::AttrUtils::GetFloat(fusedNode->GetOpDesc(), "step_h", step_h);
-  bool clip;
+  bool clip = false;
   ge::AttrUtils::GetBool(fusedNode->GetOpDesc(), "clip", clip);
-  float offset;
+  float offset = 0.0;
   ge::AttrUtils::GetFloat(fusedNode->GetOpDesc(), "offset", offset);
 
   GE_CHECK_POSITIVE_SIZE_RANGE(aspect_ratio.size());
@@ -300,7 +301,7 @@ Status PriorBoxPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge
   }
   int64_t ar_new_size = aspectratios_new.size();
 
-  int64_t priorNum;
+  int64_t priorNum = 0;
   if (ar_size == 1 && (fabsf(aspect_ratio[0] - 1.0) < 1e-6)) {
     priorNum = min_size_size * ar_size + max_size_size;
   } else {
@@ -314,9 +315,11 @@ Status PriorBoxPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge
     OP_LOGE(FUSED_OP_TYPE.c_str(), "PriorBoxPass cannot be applied for unknown shape.");
     return NOT_CHANGED;
   }
-  float step_w_size, step_h_size;
+  float step_w_size = 0.0;
+  float step_h_size = 0.0;
   // set image width and height
-  int64_t img_width, img_height;
+  int64_t img_width = 0;
+  int64_t img_height = 0;
   // If img_w and img_h is none in attribute, set width and height from img's dims
   if (img_h == 0 || img_w == 0) {
     // The width and height of input
