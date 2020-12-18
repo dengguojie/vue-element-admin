@@ -33,6 +33,7 @@ from impl.util.util_tik_comm_func import ub2gm
 from impl.util.util_tik_comm_func import ceil_div
 from impl import common_util
 from impl import constant_util as constant
+
 MAX_SIZE = 2 ** 31 - 1
 VNCHW_BLOCK_SIZE = 512
 VNCHW_ELEMENT_FP16 = VNCHW_BLOCK_SIZE // 2
@@ -59,7 +60,7 @@ def _get_mask2concat_ub(instance: tik.Tik, count, src_index, dtype):
     :return: [h_64_mask, l_64_mask]
     """
     dtype_size = common_util.get_data_size(dtype)
-    if not tbe_platform.cce_conf.api_check_support("tik.vadds", dtype):
+    if not tbe_platform.cce_conf.api_check_support("tik.vadd", dtype):
         ori_dtype_size = common_util.get_data_size(dtype)
         covert_dtype_map = {
             1: "float16",
@@ -73,7 +74,7 @@ def _get_mask2concat_ub(instance: tik.Tik, count, src_index, dtype):
         src_index = ceil_div(src_index * ori_dtype_size, dtype_size)
 
     # {dtype_size: (max_hight_mask, max_low_mask)}
-    dtype_vadds_mask_map = {
+    dtype_vadd_mask_map = {
         2: (2 ** 64 - 1, 2 ** 64 - 1),
         4: (0, 2 ** 64 - 1)
     }
@@ -82,8 +83,8 @@ def _get_mask2concat_ub(instance: tik.Tik, count, src_index, dtype):
     dst_reserve = src_index % block_element
     repeat_times = count // (block_element * 8)
     if isinstance(count, int) and isinstance(src_index, int):
-        h_64_mask = dtype_vadds_mask_map[dtype_size][0]
-        l_64_mask = dtype_vadds_mask_map[dtype_size][1]
+        h_64_mask = dtype_vadd_mask_map[dtype_size][0]
+        l_64_mask = dtype_vadd_mask_map[dtype_size][1]
         l_64_mask = l_64_mask & (l_64_mask << dst_reserve)
         if repeat_times == 0 and count != block_element * 8:
             if count > 64:
@@ -93,8 +94,8 @@ def _get_mask2concat_ub(instance: tik.Tik, count, src_index, dtype):
                 l_64_mask = l_64_mask & ((1 << count) - 1)
         return [h_64_mask, l_64_mask]
 
-    h_64_mask = instance.Scalar(dtype="int64", name="h_64_mask", init_value=dtype_vadds_mask_map[dtype_size][0])
-    l_64_mask = instance.Scalar(dtype="int64", name="l_64_mask", init_value=dtype_vadds_mask_map[dtype_size][1])
+    h_64_mask = instance.Scalar(dtype="int64", name="h_64_mask", init_value=dtype_vadd_mask_map[dtype_size][0])
+    l_64_mask = instance.Scalar(dtype="int64", name="l_64_mask", init_value=dtype_vadd_mask_map[dtype_size][1])
     scalar_one = instance.Scalar(dtype="int64", name="scalar_one", init_value=1)
     l_64_mask.set_as(l_64_mask & (l_64_mask << dst_reserve))
     with instance.if_scope(repeat_times == 0):
@@ -107,10 +108,10 @@ def _get_mask2concat_ub(instance: tik.Tik, count, src_index, dtype):
     return [h_64_mask, l_64_mask]
 
 
-def _concat_ub_vadds(instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, dst_index, src_index, count, row_count,
-                     dst_row_stride, src_row_stride, mask=None, repeat_times=None, tail_count=None):
+def _concat_ub_vadd(instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, dst_index, src_index, count, row_count,
+                    dst_row_stride, src_row_stride, mask=None, repeat_times=None, tail_count=None):
     """
-    _concat_ub_vadds
+    _concat_ub_vadd
     """
     if dst.scope != tik.scope_ubuf or src.scope != tik.scope_ubuf:
         raise RuntimeError("dst and src must be UB, but dst is {} and src is {}.".format(dst.scope, src.scope))
@@ -118,8 +119,8 @@ def _concat_ub_vadds(instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, dst_in
     if dst.dtype != src.dtype:
         raise RuntimeError("dst.dtype[{}] != src.dtype[{}].".format(dst.dtype, src.dtype))
 
-    if not tbe_platform.cce_conf.api_check_support("tik.vadds", dst.dtype):
-        raise RuntimeError("{} is not supported by vadds.".format(dst.dtype))
+    if not tbe_platform.cce_conf.api_check_support("tik.vadd", dst.dtype):
+        raise RuntimeError("{} is not supported by vadd.".format(dst.dtype))
 
     dtype_size = common_util.get_data_size(dst.dtype)
     block_element = constant.BLOCK_SIZE // dtype_size
@@ -135,18 +136,22 @@ def _concat_ub_vadds(instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, dst_in
     if not tail_count:
         tail_count = count - repeat_times * block_element * 8
 
-    instance.vadds(mask, dst[new_dst_index], src[new_src_index], 0, row_count, 1, 1, dst_row_stride, src_row_stride)
-    with instance.if_scope(repeat_times > 0):
-        with instance.for_range(1, repeat_times) as repeat_idx:
-            instance.vadds(block_element * 8, dst[new_dst_index + block_element * 8 * repeat_idx],
-                           src[new_src_index + block_element * 8 * repeat_idx], 0,
-                           row_count, 1, 1, dst_row_stride, src_row_stride)
+    with instance.new_stmt_scope():
+        zero_ub = instance.Tensor(dst.dtype, (block_element,), scope=tik.scope_ubuf, name="zero_ub")
+        instance.vector_dup(block_element, zero_ub, 0, 1, 0, 0)
+        instance.vadd(mask, dst[new_dst_index], src[new_src_index], zero_ub, row_count, 1, 1, 0,
+                      dst_row_stride, src_row_stride, 0)
+        with instance.if_scope(repeat_times > 0):
+            with instance.for_range(1, repeat_times) as repeat_idx:
+                instance.vadd(block_element * 8, dst[new_dst_index + block_element * 8 * repeat_idx],
+                              src[new_src_index + block_element * 8 * repeat_idx], zero_ub,
+                              row_count, 1, 1, 0, dst_row_stride, src_row_stride, 0)
 
-        new_dst_index = new_dst_index + block_element * 8 * repeat_times
-        new_src_index = new_src_index + block_element * 8 * repeat_times
-        with instance.if_scope(tail_count > 0):
-            instance.vadds(tail_count, dst[new_dst_index], src[new_src_index], 0, row_count, 1, 1, dst_row_stride,
-                           src_row_stride)
+            new_dst_index = new_dst_index + block_element * 8 * repeat_times
+            new_src_index = new_src_index + block_element * 8 * repeat_times
+            with instance.if_scope(tail_count > 0):
+                instance.vadd(tail_count, dst[new_dst_index], src[new_src_index], zero_ub, row_count, 1, 1, 0,
+                              dst_row_stride, src_row_stride, 0)
 
 
 # pylint:disable=too-many-instance-attributes,too-few-public-methods
@@ -154,10 +159,12 @@ class ConcatV2:
     """
     ConcatV2
     """
+
     class TilingParam:
         """
         TilingParam
         """
+
         def __init__(self, input_values, inst: tik.Tik):
             self.tik_instance = inst
             dtype = "int64"
@@ -249,7 +256,7 @@ class ConcatV2:
         # pylint: disable=no-self-use
         def need_ub_size(self):
             """
-            :return: 0
+            :return: ub size needed by tiling
             """
             return 0
 
@@ -262,8 +269,8 @@ class ConcatV2:
         self.axis = axis
 
         self.dtype = input_values[0].get("dtype").lower()
-        self.output_shape = (MAX_SIZE,)
-        self.input_shape = (MAX_SIZE,)
+        self.output_shape = [MAX_SIZE, ]
+        self.input_shape = [MAX_SIZE, ]
 
         self.input_tensors, self.output_tensor = self._init_gm_tensor(self.input_shape, self.output_shape,
                                                                       len(input_values),
@@ -457,11 +464,13 @@ class ConcatV2:
         ub_can_copy_lines = inst.Scalar(dtype="int64", name="ub_can_copy_lines",
                                         init_value=self.ub_buffer_length // (self.tiling_param.output_inner_length * 4))
         if self.type_size % 2 == 0:
+            min_inner_dim = self.tiling_param.min_inner_dim
+            max_inner_dim = self.tiling_param.max_inner_dim
             with inst.if_scope(tik.all(self.type_size % 2 == 0,
-                                       self.tiling_param.max_inner_dim == self.tiling_param.min_inner_dim,
+                                       max_inner_dim == min_inner_dim,
                                        ub_can_storage_lines_vnchwconv >= output_inner_dim,
-                                       16 % self.tiling_param.min_inner_dim == 0,
-                                       out_dims * self.tiling_param.min_inner_dim * self.type_size >= VNCHW_BLOCK_SIZE)):
+                                       16 % min_inner_dim == 0,
+                                       out_dims * min_inner_dim * self.type_size >= VNCHW_BLOCK_SIZE)):
                 self._concat_with_vnchwconv(core_idx, out_dims, ub_len)
             with inst.else_scope():
                 with inst.if_scope(tik.all(output_inner_dim >= self.ele_each_block,
@@ -559,7 +568,6 @@ class ConcatV2:
 
     def _concat_small_inner_each_core_last_row_last_tensor(self, row_idx):
         inst = self.tik_instance
-        inst = self.tik_instance
         ub_length = self.ub_buffer_length
         output_inner_len = self.tiling_param.output_inner_length
         out_dims = self.tiling_param.out_dim
@@ -634,15 +642,15 @@ class ConcatV2:
                     to_do_count.set_as(ub_can_copy_lines)
                 with inst.else_scope():
                     to_do_count.set_as(out_dims - row_idx)
-                if tbe_platform.cce_conf.api_check_support("tik.vadds", self.dtype):
+                if tbe_platform.cce_conf.api_check_support("tik.vadd", self.dtype):
                     with inst.if_scope(self.tiling_param.max_inner_dim >= self.ele_each_block):
-                        self._concat_small_inner_each_core_multi_line_by_vadds(row_idx, to_do_count)
+                        self._concat_small_inner_each_core_multi_line_by_vadd(row_idx, to_do_count)
                     with inst.else_scope():
                         self._concat_small_inner_each_core_multi_line_by_scalar(row_idx, to_do_count)
                 else:
                     self._concat_small_inner_each_core_multi_line_by_scalar(row_idx, to_do_count)
 
-    def _concat_small_inner_each_core_multi_line_by_vadds(self, row_idx, lines):
+    def _concat_small_inner_each_core_multi_line_by_vadd(self, row_idx, lines):
         inst = self.tik_instance
         tensors = self.input_tensors
         output_tensor = self.output_tensor
@@ -673,15 +681,15 @@ class ConcatV2:
                                 pre_redundant_cnt = out_ub_idx % self.ele_each_block
                                 gm2ub(inst, tmp_ub, input_tensor[inner_dim * line_idx - pre_redundant_cnt:],
                                       inner_dim * repeat_times * self.ele_each_block + pre_redundant_cnt)
-                                _concat_ub_vadds(inst, out_ub, tmp_ub, out_ub_idx, pre_redundant_cnt, inner_dim,
-                                                 repeat_times, output_inner_len, inner_dim)
+                                _concat_ub_vadd(inst, out_ub, tmp_ub, out_ub_idx, pre_redundant_cnt, inner_dim,
+                                                repeat_times, output_inner_len, inner_dim)
 
                         with inst.for_range(row_idx + repeat_times * self.ele_each_block, row_idx + lines) as line_idx:
                             out_ub_idx = output_inner_len * (line_idx - row_idx) + output_idx
                             pre_redundant_cnt = out_ub_idx % self.ele_each_block
                             gm2ub(inst, tmp_ub, input_tensor[inner_dim * line_idx - pre_redundant_cnt:],
                                   inner_dim + pre_redundant_cnt)
-                            _concat_ub_vadds(inst, out_ub, tmp_ub, out_ub_idx, pre_redundant_cnt, inner_dim, 1, 0, 0)
+                            _concat_ub_vadd(inst, out_ub, tmp_ub, out_ub_idx, pre_redundant_cnt, inner_dim, 1, 0, 0)
                 ub2gm(inst, output_tensor[out_start_idx:], out_ub, output_inner_len * lines)
 
     def _concat_small_inner_each_core_multi_line_by_scalar(self, row_idx, lines):
@@ -733,7 +741,7 @@ class ConcatV2:
                 gm2ub(inst, tmp_ub, input_tensor[inner_dim * ii - reserve_count], align_size, burst)
                 gm2ub(inst, out_ub, output_tensor[output_inner_len * ii + output_idx - reserve_count],
                       align_size, burst)
-                _concat_ub_vadds(inst, out_ub, tmp_ub, reserve_count, reserve_count, inner_dim, 1, 0, 0)
+                _concat_ub_vadd(inst, out_ub, tmp_ub, reserve_count, reserve_count, inner_dim, 1, 0, 0)
                 ub2gm(inst, output_tensor[output_inner_len * ii + output_idx - reserve_count], out_ub,
                       align_size, burst)
 
