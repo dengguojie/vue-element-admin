@@ -291,8 +291,6 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
     w_i = shape_in[3]
     h_k = shape_w[2]
     w_k = shape_w[3]
-    if fusion_para and fusion_para.get("valid_shape"):
-        h_i = fusion_para.get("valid_shape")[2]
 
     # dilateh, dilatew check
     dilate_check()
@@ -339,9 +337,9 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
                     "conv2d",
                     "op [Conv2D] when w_in is {}, output " +
                     "featuremap w < 1, pleace check input range".format(w_in))
-         
+
     if dynamic_mode == "dynamic_hw":
-    	_check_dynamic_range()
+        _check_dynamic_range()
 
     w_block_size_n = CUBE_MKN[w_dtype]['mac'][2]
     shape_w[0] = ((shape_w[0] + w_block_size_n - 1) // w_block_size_n)*w_block_size_n
@@ -360,7 +358,8 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         temp = 4*shape_w[2]*shape_w[3]
         if optim_dict.get("use_v200_c04_flg") and is_support_v200() and (temp > HK_WK_C04_V200):
             err_man.raise_err_specific("conv2d", "In v200, small channel case, the 4*Hk*Wk must be smaller than " +
-                                       "or equal to " + str(HK_WK_C04_V200) + ". you can try to disable the small channel.")
+                                       "or equal to " + str(HK_WK_C04_V200) +
+                                       ". you can try to disable the small channel.")
 
     def _check_stride():
         """
