@@ -15,14 +15,14 @@
 # ============================================================================
 
 set -e
-BASE_PATH=$(cd "$(dirname $0)"; pwd)
-RELEASE_PATH="${BASE_PATH}/output"
+export BASE_PATH=$(cd "$(dirname $0)"; pwd)
 export BUILD_PATH="${BASE_PATH}/build"
+RELEASE_PATH="${BASE_PATH}/output"
 INSTALL_PATH="${BUILD_PATH}/install"
 CMAKE_HOST_PATH="${BUILD_PATH}/cann"
 CMAKE_DEVICE_PATH="${BUILD_PATH}/cann_device"
 
-source scripts/util.sh
+source scripts/util/util.sh
 
 # print usage message
 usage() {

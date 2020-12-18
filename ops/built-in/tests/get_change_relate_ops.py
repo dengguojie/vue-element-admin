@@ -1,4 +1,5 @@
 import os
+import sys
 from typing import List, Dict
 
 cur_dir = os.path.realpath(__file__)
@@ -235,13 +236,13 @@ class FileChangeInfo:
 
 def get_file_change_info_from_ci(changed_file_info_from_ci):
     """
-    get file change info from ci, ci will write `git diff > /or_filelist.txt`
+    get file change info from ci, ci will write `git diff > /pr_filelist.txt`
     :param changed_file_info_from_ci: git diff result file from ci
     :return: None or FileChangeInf
     """
     or_file_path = os.path.realpath(changed_file_info_from_ci)
     if not os.path.exists(or_file_path):
-        print("[ERROR] %s file is not exist, can not get file change info in this pull request.")
+        print("[ERROR] %s file is not exist, can not get file change info in this pull request." % or_file_path)
         return None
     with open(or_file_path) as or_f:
         lines = or_f.readlines()
@@ -266,7 +267,7 @@ def get_file_change_info_from_ci(changed_file_info_from_ci):
 def get_change_relate_op_type_list(changed_file_info_from_ci):
     file_change_info = get_file_change_info_from_ci(changed_file_info_from_ci)
     if not file_change_info:
-        print("[ERROR] not found file change info, run ut failed.")
+        print("[ERROR] not found file change info, run failed.")
         return None
     file_change_info.print_change_info()
 
@@ -302,18 +303,22 @@ def get_change_relate_op_type_list(changed_file_info_from_ci):
         return relate_op_type_list
 
     try:
-        relate_ut_directory_list = _get_relate_op_list_by_file_change()
+        relate_directory_list = _get_relate_op_list_by_file_change()
     except BaseException as e:
         print(e.args)
         return None
-    if relate_ut_directory_list:
-        print("[INFO] relate op directory list is: [%s]" % ", ".join(relate_ut_directory_list))
+    if relate_directory_list:
+        print("[INFO] relate op directory list is: [%s]" % ", ".join(relate_directory_list))
     else:
-        print("[INFO] relate ut directory list is empty")
-    return relate_ut_directory_list
+        print("[INFO] relate directory list is empty")
+    return relate_directory_list
 
 
 if __name__ == '__main__':
-    pr_changed_file = "or_filelist.txt"
-    case_dir = get_change_relate_op_type_list(pr_changed_file)
-    print(case_dir)
+    pr_changed_file = ""
+    if len(sys.argv) >= 2:
+        pr_changed_file = sys.argv[1]
+    else:
+        pr_changed_file = "pr_filelist.txt"
+    case_dirs = get_change_relate_op_type_list(pr_changed_file)
+    print("related_ops_dirs=%s" % ' '.join(case_dirs))

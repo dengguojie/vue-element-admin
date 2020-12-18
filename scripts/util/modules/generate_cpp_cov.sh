@@ -14,10 +14,11 @@
 # limitations under the License.
 # ============================================================================
 
-BASE_PATH="$(dirname $0)"
-FILTER_PATTERNS="filter_patterns.ini"
+if [[ -z "${BASE_PATH}" ]]; then
+  BASE_PATH="$(dirname $(dirname $0))"
+fi
 
-source "${BASE_PATH}/util.sh"
+source "${BASE_PATH}/scripts/util/util.sh"
 
 # using lcov to generate coverage for cpp files
 generate_coverage() {

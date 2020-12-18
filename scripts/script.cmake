@@ -13,4 +13,4 @@
 # limitations under the License.
 # ============================================================================
 
-set(GENERATE_CPP_COV ${CMAKE_SOURCE_DIR}/scripts/generate_cpp_cov.sh)
+set(GENERATE_CPP_COV ${CMAKE_SOURCE_DIR}/scripts/util/modules/generate_cpp_cov.sh)
