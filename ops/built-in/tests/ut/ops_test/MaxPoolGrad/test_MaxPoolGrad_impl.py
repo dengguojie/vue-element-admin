@@ -123,7 +123,7 @@ def do_case(ori_shape0,
                                           shape0, ori_shape0, shape1, ori_shape1,
                                           ksize, strides, pads, data_format)
 
-    ut_case.add_case(["Ascend910", "Ascend610"], params)
+    ut_case.add_case(["Ascend910A", "Ascend610"], params)
 
 
 def gen_max_pool3d_grad_add_case_error(expect, case_name_val, in_dtype, ou_dtype,
@@ -150,7 +150,7 @@ def do_case_error(list_ori_shape, ksize, strides, paddings, data_format, case_na
         list_shape.append(_shape_4d_2_5d(list_ori_shape[i], data_format))
     # pads = _calc_pads(paddings, list_ori_shape[0], ksize, strides, data_format)
     pads = paddings
-    ut_case.add_case(["Ascend910"],
+    ut_case.add_case(["Ascend910A"],
                      gen_max_pool3d_grad_add_case_error(
                          "success", case_name, "float16", "float32",
                          list_shape, list_ori_shape,
@@ -339,6 +339,14 @@ paddings = "VALID"
 data_format = "NHWC"
 do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_21")
 
+ori_shape0 = [1, 935, 935, 16]
+ori_shape1 = [1, 921, 461, 16]
+ksize = [1, 15, 15, 1]
+strides = [1, 1, 2, 1]
+paddings = "VALID"
+data_format = "NHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_22")
+
 # SPECIAL SPLIT CORE
 ori_shape0 = [1, 13, 4, 16]
 ori_shape1 = [1, 4, 1, 16]
@@ -346,7 +354,7 @@ ksize = [1, 2, 2, 1]
 strides = [1, 3, 3, 1]
 paddings = "VALID"
 data_format = "NHWC"
-do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_22")
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_23")
 
 ori_shape0 = [1, 7, 7, 16]
 ori_shape1 = [1, 2, 2, 16]
@@ -354,7 +362,7 @@ ksize = [1, 2, 2, 1]
 strides = [1, 3, 3, 1]
 paddings = "VALID"
 data_format = "NHWC"
-do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_23")
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_24")
 
 ori_shape0 = [1, 4, 4, 16]
 ori_shape1 = [1, 1, 1, 16]
@@ -362,7 +370,7 @@ ksize = [1, 2, 2, 1]
 strides = [1, 3, 3, 1]
 paddings = "VALID"
 data_format = "NHWC"
-do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_24")
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_25")
 
 # ============================================
 # SAME:SPLIT DIFFERENT AXIS AS CORE
@@ -374,7 +382,7 @@ ksize = [1, 2, 2, 1]
 strides = [1, 3, 3, 1]
 paddings = "SAME"
 data_format = "NHWC"
-do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_25")
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_26")
 
 ori_shape0 = [32, 3, 3, 16]
 ori_shape1 = [32, 2, 2, 16]
@@ -382,7 +390,7 @@ ksize = [1, 2, 2, 1]
 strides = [1, 2, 2, 1]
 paddings = "SAME"
 data_format = "NHWC"
-do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_26")
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_27")
 
 ori_shape0 = [32, 3, 3, 16]
 ori_shape1 = [32, 3, 3, 16]
@@ -390,7 +398,7 @@ ksize = [1, 2, 2, 1]
 strides = [1, 1, 1, 1]
 paddings = "SAME"
 data_format = "NHWC"
-do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_27")
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_28")
 
 # ============================================
 # GLOBAL:split n c1 as core
@@ -401,7 +409,7 @@ ksize = [1, 3, 3, 1]
 strides = [1, 2, 2, 1]
 paddings = "VALID"
 data_format = "NHWC"
-do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_28")
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_29")
 
 ori_shape0 = [1, 23, 41, 16]
 ori_shape1 = [1, 1, 1, 16]
@@ -409,7 +417,7 @@ ksize = [1, 23, 41, 1]
 strides = [1, 5, 7, 1]
 paddings = "VALID"
 data_format = "NHWC"
-do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_29")
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_30")
 
 ori_shape0 = [16, 90, 90, 16]
 ori_shape1 = [16, 1, 1, 16]
@@ -417,7 +425,7 @@ ksize = [1, 90, 90, 1]
 strides = [1, 10, 10, 1]
 paddings = "VALID"
 data_format = "NHWC"
-do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_30")
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_31")
 
 ori_shape0 = [1, 111, 91, 16]
 ori_shape1 = [1, 1, 1, 16]
@@ -425,7 +433,7 @@ ksize = [1, 111, 91, 1]
 strides = [1, 21, 17, 1]
 paddings = "VALID"
 data_format = "NHWC"
-do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_31")
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_32")
 
 ori_shape0 = [1, 63, 8000, 16]
 ori_shape1 = [1, 1, 1, 16]
@@ -433,9 +441,9 @@ ksize = [1, 63, 8000, 1]
 strides = [1, 21, 47, 1]
 paddings = "VALID"
 data_format = "NHWC"
-do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_32")
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_33")
 
 
-if __name__ == '__main__':
-    ut_case.run("Ascend910")
-    exit(0)
+# if __name__ == '__main__':
+#     ut_case.run("Ascend910")
+#     exit(0)
