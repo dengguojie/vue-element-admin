@@ -130,10 +130,10 @@ def gen_matmul_dynamic_errorcase(m_range, k_range, n_range, src_dtype, dst_dtype
     }
 
 for case in matmul_case_succ:
-    ut_case.add_case("Ascend910", gen_matmul_dynamic_succecase(*case))
+    ut_case.add_case("Ascend910A", gen_matmul_dynamic_succecase(*case))
 
 for error_case in matmul_case_error:
-    ut_case.add_case("Ascend910", gen_matmul_dynamic_errorcase(*error_case))
+    ut_case.add_case("Ascend910A", gen_matmul_dynamic_errorcase(*error_case))
 
 if __name__ == "__main__":
     with te.op.dynamic():

@@ -105,7 +105,7 @@ def test_op_select_format(test_arg):
 
 
 for case in matmul_case:
-    ut_case.add_case("Ascend910", gen_batch_matmul_dynamic(*case))
+    ut_case.add_case("Ascend910A", gen_batch_matmul_dynamic(*case))
     ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 if __name__ == "__main__":

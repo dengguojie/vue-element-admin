@@ -34,6 +34,7 @@ MKN_MIN = 1
 MKN_MAX = 2147483648
 BLOCK_CUBE = 16
 DYNAMIC_FLAG = -1
+DYNAMIC_FLAG_UNRANK = [-2]
 NZ_LENGTH = 4
 ND_LENGTH = 2
 
@@ -47,16 +48,23 @@ def _check_format(real_format, expect_format, param_name):
             "mat_mul", param_name, expect_format, real_format)
 
 
-def _check_relation_range(range1, range2, name):
+def _get_range_intersection(range1, range2, param_name):
     """
-    check range is unite from different variable
+    get range intersection of two range
     """
-    if list(range1) != list(range2):
-        error_reson = "the range of " + name + " is not unit"
-        error_manager_vector.raise_err_specific_reson("mat_mul", error_reson)
+    if range1[1] is None:
+        return range2
+    if range2[1] is None:
+        return range1
+
+    range_ins = [max(range1[0], range2[0]), min(range1[1], range2[1])]
+    if range_ins[0] > range_ins[1]:
+        reson = "interval is not valid of " + param_name
+        error_manager_vector.raise_err_specific_reson("mat_mul", reson)
+    return range_ins
 
 
-def _get_input_range(range_x1, range_x2, trans_a, trans_b):
+def _get_input_range(range_x1, range_x2, range_bias, trans_a, trans_b):
     """
     get range in m, k, n
     """
@@ -84,12 +92,10 @@ def _get_input_range(range_x1, range_x2, trans_a, trans_b):
             "mat_mul", "length of x2_range must be 4"
         )
 
-    # check range unite in different var
-    if k_range_x1[1] is not None and k_range_x2[1] is not None:
-        _check_relation_range(k_range_x1, k_range_x2, "k")
-        k_range = k_range_x1
-    else:
-        k_range = k_range_x1 if k_range_x1[1] is not None else k_range_x2
+    k_range = _get_range_intersection(k_range_x1, k_range_x2, "k_range")
+    if range_bias:
+        range_bias_n = list(range_bias[0])
+        n_range = _get_range_intersection(n_range, range_bias_n, "n_range")
 
     return [m_range, k_range, n_range]
 
@@ -112,6 +118,30 @@ def _check_dynamic_mode(shape_x1, shape_x2):
         error_manager_vector.raise_err_specific_reson(
             "mat_mul", "dynamic must at least one in m,k,n"
         )
+
+
+def _get_dynamic_shape_and_range(input_x1, input_x2, bias):
+    """
+    get the shape and range of matmul
+    """
+    shape_x1 = input_x1.get("ori_shape")
+    shape_x2 = input_x2.get("ori_shape")
+    range_x1 = input_x1.get("range")
+    range_x2 = input_x2.get("range")
+    bias_range = None
+
+    if list(shape_x1) == DYNAMIC_FLAG_UNRANK:
+        shape_x1 = (-1, -1)
+        range_x1 = ((1, None), (1, None))
+
+    if list(shape_x2) == DYNAMIC_FLAG_UNRANK:
+        shape_x2 = (-1, -1)
+        range_x2 = ((1, None), (1, None))
+
+    if bias:
+        bias_range = bias.get("range")
+
+    return [shape_x1, shape_x2], [range_x1, range_x2, bias_range]
 
 
 def check_and_config_para(input_x1, input_x2, bias, output_y,
@@ -138,15 +168,14 @@ def check_and_config_para(input_x1, input_x2, bias, output_y,
     _check_format(format_out, "FRACTAL_NZ", "output")
 
     # get range and ori_shape
-    range_x1 = input_x1.get("range")
-    range_x2 = input_x2.get("range")
-    shape_x1 = input_x1.get("ori_shape")
-    shape_x2 = input_x2.get("ori_shape")
+    shape_input, range_input = _get_dynamic_shape_and_range(input_x1, input_x2, bias)
+    range_x1, range_x2, range_bias = range_input
+    shape_x1, shape_x2 = shape_input
 
     # check dynamic mode
     _check_dynamic_mode(shape_x1, shape_x2)
     # get range in m,k,n
-    input_range = _get_input_range(range_x1, range_x2, trans_a, trans_b)
+    input_range = _get_input_range(range_x1, range_x2, range_bias, trans_a, trans_b)
 
     # check bias if bias in not None
     if bias:

@@ -122,7 +122,7 @@ def general_schedule(
     sch = sch_list[0]
     tiling = None
 
-    def set_output_mem():
+    def _set_output_mem():
         if out_mem == "fuse_flag":
             if "addr_type" in c_ddr.op.attrs:
                 res_addr_type = c_ddr.op.attrs["addr_type"].value
@@ -144,7 +144,7 @@ def general_schedule(
     out_mem = fusion_para.get("output_memory_type")
     valid_shape = fusion_para.get("valid_shape")
     slice_offset = fusion_para.get("slice_offset")
-    out_mem = set_output_mem()
+    out_mem = _set_output_mem()
     fmap_l1_addr_flag = fusion_para.get("fmap_l1_addr_flag")
     fmap_l1_valid_size = fusion_para.get("fmap_l1_valid_size")
     cube_vector_split = cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT")
@@ -689,7 +689,7 @@ def general_schedule(
 
         return tensor_map, tensor_attr
 
-    def get_fusion_type():
+    def _get_fusion_type():
         fusion_type = 0
         # the single deconv fusion is 1 for fp16, 2 for int8
         if deconv_res.op.tag == "conv2d_backprop_input":
@@ -937,7 +937,7 @@ def general_schedule(
     _kernel_name = _get_kernel_name()
 
     if not dynamic_mode:
-        fusion_type = get_fusion_type()
+        fusion_type = _get_fusion_type()
         info_dict = {
             "op_type": "conv2d_backprop_input",
             "A_shape": list(img_shape_g[1:]),
