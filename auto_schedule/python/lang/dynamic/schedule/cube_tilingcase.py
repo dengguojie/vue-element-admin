@@ -324,10 +324,18 @@ class TilingSelection:
         lower_bound = batch_range[0]
         for i, seed in enumerate(tiling_seeds[:-1]):
             cur_batch = seed['A_shape'][0]
-            if cur_batch == tiling_seeds[i + 1]['A_shape'][0] or \
+            if cur_batch == tiling_seeds[i - 1]['A_shape'][0] or \
                     cur_batch < lower_bound:
                 continue
             seed_cnt = next(self.seed_cnt)
+            if self.op.op_type == "conv2d":
+                tiling = seed["tiling"]
+                if seed['A_shape'][0] > tiling["block_dim"][0] and tiling["BL1_sahpe"]:
+                    Cin = seed["B_shape"][1]*seed["B_shape"][2]*seed["B_shape"][3]*seed["B_shape"][4]
+                    k_bl1 = tiling["BL1_shape"][0]
+                    if k_bl1 == Cin:
+                        tiling["n_bef_batch_flag"] = 1
+                        seed["tiling"] = tiling
             repo_selections[next(self.seed_cnt)] = \
                 [seed['tiling'], (lower_bound, min(cur_batch, batch_range[1]))]
             lower_bound = cur_batch + 1

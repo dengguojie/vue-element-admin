@@ -4683,7 +4683,7 @@ class CceConvOp:
         reorder_flag = handle_res_c_reorder()
 
         batch_cout_reorder_flag = False
-        if "n_bef_batch_flag" in tiling and not self._dynamic_mode:
+        if "n_bef_batch_flag" in tiling:
             if tiling["n_bef_batch_flag"] and (not reorder_flag) and \
                     (not self._l0b_first_flag):
                 sch[res_c].reorder(c_outer_outer_outer_inner, noo)
