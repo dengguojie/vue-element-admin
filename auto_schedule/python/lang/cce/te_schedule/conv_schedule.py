@@ -1219,7 +1219,8 @@ class CceConvOp:
                                                     'BL0_pbuffer': 1,
                                                     'CL0_pbuffer': 1,
                                                     'CUB_pbuffer': 1,
-                                                    'UBG_pbuffer': 1}
+                                                    'UBG_pbuffer': 1,
+                                                    'AUB_pbuffer': 1}
                 tiling["A_overhead_opt_flag"] = False
                 tiling["B_overhead_opt_flag"] = False
                 tiling["CUB_channel_wise_flag"] = True
@@ -3883,6 +3884,16 @@ class CceConvOp:
                 sch[al1].emit_insn(al1_k_inner, 'dma_copy')
                 self._schedule[fmap].reused_by(tensor_map["fmap_ub"])
 
+        def _pragma_for_convbn():
+            if self._convbn1_flag:
+                if tiling["CUB_channel_wise_flag"]:
+                    sch[sum_x_global].emit_insn(c_rf_outer_inner, "dma_copy")
+                else:
+                    sch[sum_x_global].emit_insn(c_rf_outer_outer_inner, "dma_copy")
+                sch[sum_x_ub_rf].emit_insn(m_outer_inner_inner,
+                                        "vector_dichotomy_add_for_bn_reduce")
+
+
         self_init()
         tensor_map = ConvParam.tensor_map
         sch = self._schedule
@@ -4509,7 +4520,10 @@ class CceConvOp:
                                                         sum_x_global.op.reduce_axis[0], c_rf_outer_outer_outer_outer)
             c_slice_axis = sum_x_ub_rf.op.reduce_axis[2]
             al1_at_c_axis = sum_x_ub_rf.op.reduce_axis[1]
-            sch[sum_x_ub_rf].compute_at(sch[sum_x_global], batch_fuse_channel)
+            sum_rf_compute_at_axis = batch_fuse_channel
+            if tiling["CUB_channel_wise_flag"]:
+                sum_rf_compute_at_axis = c_rf_outer_outer_outer_inner
+            sch[sum_x_ub_rf].compute_at(sch[sum_x_global], sum_rf_compute_at_axis)
             mc_flag = False
 
             blocks = block_dim[0]*block_dim[1]*block_dim[2]*block_dim[3]
@@ -5051,16 +5065,11 @@ class CceConvOp:
         _body_ops_compute_at()
         _body_ops_convbn1_flag(multiout_ub2)
         _input_ops_compute_at()
+        _pragma_for_convbn()
 
         self._flag_dict["addrelu_flag"] = False
         if set_biasrelu_optim_flag():
             self._flag_dict["addrelu_flag"] = True
-
-        # mean_out
-        if self._convbn1_flag:
-            sch[sum_x_global].emit_insn(c_rf_outer_outer_inner, "dma_copy")
-            sch[sum_x_ub_rf].emit_insn(m_outer_inner_inner,
-                                       "vector_dichotomy_add_for_bn_reduce")
 
         for lop in self._op_graph.body_ops:
             pragma_flag = (("convolution" not in lop["op"]) or ("convolution_A" in lop["op"])) or \
