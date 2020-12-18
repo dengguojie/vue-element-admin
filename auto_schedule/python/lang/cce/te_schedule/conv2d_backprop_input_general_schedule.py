@@ -36,6 +36,7 @@ DEBUG_MODE = False  # pylint: disable=C0302
 DX_SUPPORT_TAG_LOG_PREFIX = "#Conv2DBackpropInput only support#"
 # broadcast should be 16
 BRC_STANDARD_BLOCK_SIZE = 16
+OUT_OF_ORDER_SHIFT_BIT = 13
 
 
 def _raise_dx_general_err(msg):
@@ -971,7 +972,7 @@ def general_schedule(
         }
         tiling = get_tiling(info_dict)
         if tiling.get("compile_para") is not None:
-            out_of_order = (tiling.get("compile_para") >> 13) & 1
+            out_of_order = (tiling.get("compile_para") >> OUT_OF_ORDER_SHIFT_BIT) & 1
     else:
         tiling = tiling_case
 
@@ -1148,7 +1149,7 @@ def general_schedule(
     def _check_overload_dy():
         """
         check whether dy is overload
-        Use the following conditions to judge：
+        Use the following conditions to judge:
         1. if multi core in n axis, dy will overload
         2. if split al1's and bl1's k, and al1_k < bl1_k
         3. if stride < kernel and spilt al1's m

@@ -37,6 +37,7 @@ DX_SUPPORT_TAG_LOG_PREFIX = "#Conv2DBackpropInput only support#"
 # default False
 DEBUG_MODE = 0
 CONST_L1_SHAPE_DIM = 4
+OUT_OF_ORDER_SHIFT_BIT = 13
 DTYPE_BYTE_MAP = {"float16": 2, "float32": 4, "int8": 1, "int32": 4}
 CUB_BUFFER_LIMIT = 4096
 TENSOR_MAP = {}
@@ -648,7 +649,7 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
             }
             TILING = get_tiling(info_dict)
             if TILING.get("compile_para") is not None:
-                out_of_order = (TILING.get("compile_para") >> 13) & 1
+                out_of_order = (TILING.get("compile_para") >> OUT_OF_ORDER_SHIFT_BIT) & 1
                 DeconvParam.update_para_map("out_of_order", out_of_order)
         else:
             TILING = deepcopy(tiling_case)
@@ -2030,7 +2031,7 @@ def opti_schedule(
                         strideh, stridew = 1, 1
                     else:
                         strideh, stridew = DIM_MAP["dilate_dim"]
-                    align_buffer = reduce(lambda x, y: x * y, TILING["CUB_matrix"][1:4] * strideh * stridew)
+                    align_buffer = reduce(lambda x, y: x * y, TILING["CUB_matrix"][1:4]) * strideh * stridew
                     _print_debug("mask_ub_need_bind_buffer, align_buffer:",align_buffer)
                     sch[bitmask_ub].bind_buffer(bitmask_ub.op.axis[1], align_buffer, 0)
                 sch[bitmask_ub].compute_at(sch[c_gm], c_slice_axis)
