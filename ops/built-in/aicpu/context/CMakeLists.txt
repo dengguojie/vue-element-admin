@@ -118,15 +118,14 @@ set(local_context_inc_path
 
 add_library(cpu_kernels_context SHARED
     ${local_context_src_files}
-    $<$<OR:$<STREQUAL:${PRODUCT_SIDE},host>,$<STREQUAL:${PRODUCT},npuf10>>:${local_context_stub_files}>
+    ${local_context_stub_files}
 )
 
 add_library(cpu_kernels_context_static STATIC
     ${local_context_src_files}
-    $<$<OR:$<STREQUAL:${PRODUCT_SIDE},host>,$<STREQUAL:${PRODUCT},npuf10>>:${local_context_stub_files}>
+    ${local_context_stub_files}
 )
 
-if(${PRODUCT_SIDE} STREQUAL "host")
 target_link_libraries(cpu_kernels_context PRIVATE
     $<BUILD_INTERFACE:intf_pub>
     slog
@@ -134,17 +133,7 @@ target_link_libraries(cpu_kernels_context PRIVATE
     ascend_protobuf
     -ldl
 )
-else()
-target_link_libraries(cpu_kernels_context PRIVATE
-    $<BUILD_INTERFACE:intf_pub>
-    slog
-    PUBLIC c_sec
-    ascend_protobuf
-    $<$<NOT:$<STREQUAL:${PRODUCT},npuf10>>:aicpu_sharder>
-    -ldl
-)
 
-endif()
 
 ##cpu_kernels_context
 target_include_directories(cpu_kernels_context PRIVATE

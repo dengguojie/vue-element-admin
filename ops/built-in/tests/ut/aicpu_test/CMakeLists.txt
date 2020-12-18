@@ -117,10 +117,12 @@ target_link_libraries(cpu_kernels_llt
   PUBLIC
     ascend_protobuf
     c_sec
+    -ldl
 )
 
 set(_cpu_kernels_ut_files
   ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/node_def_builder.cpp
+  testcase/sharder_utest.cpp
   testcase/concatv2_utest.cpp
   testcase/trans_data_utest.cpp
   testcase/get_dynamic_dims_utest.cpp

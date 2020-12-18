@@ -235,7 +235,6 @@ target_link_libraries(cpu_kernels PRIVATE
     -Wl,--no-as-needed
     slog
     c_sec
-    $<$<NOT:$<STREQUAL:${PRODUCT},npuf10>>:aicpu_sharder>
     -ldl
     -Wl,--as-needed
 )

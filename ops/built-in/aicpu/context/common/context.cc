@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "cpu_context.h"
+#include "aicpu_context.h"
 #include "cpu_node_def.h"
 #include "device.h"
 #include "log.h"
@@ -30,42 +31,42 @@ CpuKernelContext::CpuKernelContext(DeviceType type) {
   }
 }
 
-uint32_t CpuKernelContext::Init(NodeDef *nodeDef) {
-  KERNEL_CHECK_NULLPTR(nodeDef, KERNEL_STATUS_PARAM_INVALID,
+uint32_t CpuKernelContext::Init(NodeDef *node_def) {
+  KERNEL_CHECK_NULLPTR(node_def, KERNEL_STATUS_PARAM_INVALID,
                        "Node def is null.")
-  op_ = nodeDef->GetOpType();
-  KERNEL_LOG_INFO("Construct the ctx of the op:%s begin.", op_.c_str());
-  for (int32_t i = 0; i < nodeDef->InputsSize(); i++) {
-    auto input = nodeDef->MutableInputs(i);
+  op_ = node_def->GetOpType();
+  KERNEL_LOG_INFO("Construct the ctx of the op[%s] begin.", op_.c_str());
+  for (int32_t i = 0; i < node_def->InputsSize(); i++) {
+    auto input = node_def->MutableInputs(i);
     KERNEL_CHECK_NULLPTR(input, KERNEL_STATUS_PARAM_INVALID,
-                         "Get input:%d tensor failed in op:%s.", i, op_.c_str())
+                         "Get input[%d] tensor failed in op[%s].", i, op_.c_str())
     inputs_.emplace_back(std::move(input));
   }
 
-  for (int32_t i = 0; i < nodeDef->OutputsSize(); i++) {
-    auto output = nodeDef->MutableOutputs(i);
+  for (int32_t i = 0; i < node_def->OutputsSize(); i++) {
+    auto output = node_def->MutableOutputs(i);
     KERNEL_CHECK_NULLPTR(output, KERNEL_STATUS_PARAM_INVALID,
-                         "Get output:%d tensor failed in op:%s.", i,
+                         "Get output[%d] tensor failed in op[%s].", i,
                          op_.c_str())
     outputs_.emplace_back(std::move(output));
   }
 
-  auto attrMap = nodeDef->Attrs();
+  auto attrMap = node_def->Attrs();
   for (auto iter = attrMap.begin(); iter != attrMap.end(); ++iter) {
-    auto attrValuePtr = iter->second;
-    KERNEL_CHECK_NULLPTR(attrValuePtr, KERNEL_STATUS_PARAM_INVALID,
-                         "Get attr:%s failed in op:%s.", iter->first.c_str(),
+    auto attr_value_ptr = iter->second;
+    KERNEL_CHECK_NULLPTR(attr_value_ptr, KERNEL_STATUS_PARAM_INVALID,
+                         "Get attr[%s] failed in op[%s].", iter->first.c_str(),
                          op_.c_str())
     auto ret =
-        attrs_.insert(std::make_pair(iter->first, std::move(attrValuePtr)));
+        attrs_.insert(std::make_pair(iter->first, std::move(attr_value_ptr)));
     if (ret.second != true) {
-      KERNEL_LOG_ERROR("Insert attr:%s failed in op:%s.", iter->first.c_str(),
+      KERNEL_LOG_ERROR("Insert attr[%s] failed in op[%s].", iter->first.c_str(),
                        op_.c_str());
       return KERNEL_STATUS_INNER_ERROR;
     }
   }
 
-  KERNEL_LOG_INFO("Construct the ctx of the op:%s succcess.", op_.c_str());
+  KERNEL_LOG_INFO("Construct the ctx of the op[%s] succcess.", op_.c_str());
 
   return KERNEL_STATUS_OK;
 }
@@ -82,7 +83,7 @@ std::string CpuKernelContext::GetOpType() const { return op_; }
  */
 Tensor *CpuKernelContext::Input(uint32_t index) const {
   if (index >= inputs_.size()) {
-    KERNEL_LOG_WARN("Index:%u should be less than input tensors size:%zu.",
+    KERNEL_LOG_WARN("Index[%u] should be less than input tensors size[%zu].",
                     index, inputs_.size());
     return nullptr;
   }
@@ -96,7 +97,7 @@ Tensor *CpuKernelContext::Input(uint32_t index) const {
  */
 Tensor *CpuKernelContext::Output(uint32_t index) const {
   if (index >= outputs_.size()) {
-    KERNEL_LOG_WARN("Index:%u should be less than output tensors size:%zu.",
+    KERNEL_LOG_WARN("Index[%u] should be less than output tensors size[%zu].",
                     index, outputs_.size());
     return nullptr;
   }
@@ -111,7 +112,7 @@ Tensor *CpuKernelContext::Output(uint32_t index) const {
 AttrValue *CpuKernelContext::GetAttr(std::string name) const {
   auto it = attrs_.find(name);
   if (it == attrs_.end()) {
-    KERNEL_LOG_WARN("Attr:%s is not exist.", name.c_str());
+    KERNEL_LOG_WARN("Attr[%s] is not exist.", name.c_str());
     return nullptr;
   }
 

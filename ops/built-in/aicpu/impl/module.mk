@@ -42,9 +42,7 @@ LOCAL_LDFLAGS += -Wl,-Bsymbolic -Wl,--exclude-libs=libascend_protobuf.a
 LOCAL_WHOLE_STATIC_LIBRARIES := libcpu_kernels_context
 LOCAL_STATIC_LIBRARIES += libascend_protobuf
 LOCAL_SHARED_LIBRARIES := libslog libc_sec
-ifneq ($(product)$(chip_id), lhisinpuf10)
-    LOCAL_SHARED_LIBRARIES += libaicpu_sharder
-endif
+
 ifeq ($(device_os), android)
     LOCAL_LDLIBS += -llog
 endif
@@ -62,9 +60,7 @@ LOCAL_LDFLAGS += -Wl,-Bsymbolic -Wl,--exclude-libs=libascend_protobuf.a
 LOCAL_WHOLE_STATIC_LIBRARIES := libcpu_kernels_context
 LOCAL_STATIC_LIBRARIES += libascend_protobuf
 LOCAL_SHARED_LIBRARIES := libslog libc_sec
-ifneq ($(product)$(chip_id), lhisinpuf10)
-    LOCAL_SHARED_LIBRARIES += libaicpu_sharder
-endif
+
 ifeq ($(device_os), android)
     LOCAL_LDLIBS += -llog
 endif

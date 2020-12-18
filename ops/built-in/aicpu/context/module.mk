@@ -43,18 +43,13 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE := libcpu_kernels_context
 
-LOCAL_SRC_FILES := $(local_context_src_files)
+LOCAL_SRC_FILES := $(local_context_src_files) \
+                   $(local_context_stub_files)
 LOCAL_C_INCLUDES := $(local_context_inc_path)
 
 LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -O2 -ftrapv -std=c++11 -Dgoogle=ascend_private
 LOCAL_LDFLAGS += -Wl,-z,relro,-z,now -s -ldl -shared
 LOCAL_SHARED_LIBRARIES := libslog libc_sec libascend_protobuf
-
-ifeq ($(product)$(chip_id), lhisinpuf10)
-    LOCAL_SRC_FILES += $(local_context_stub_files)
-else
-    LOCAL_SHARED_LIBRARIES += libaicpu_sharder
-endif
 
 include $(BUILD_SHARED_LIBRARY)
 
@@ -99,16 +94,13 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE := libcpu_kernels_context
 
-LOCAL_SRC_FILES := $(local_context_src_files)
+LOCAL_SRC_FILES := $(local_context_src_files) \
+                   $(local_context_stub_files)
 LOCAL_C_INCLUDES := $(local_context_inc_path)
 
 LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -O2 -ftrapv -DVISIBILITY -std=c++11 -Dgoogle=ascend_private
 
 LOCAL_LDFLAGS += -Wl,-z,relro,-z,now -s -ldl -shared
 LOCAL_UNINSTALLABLE_MODULE := false
-
-ifeq ($(product)$(chip_id), lhisinpuf10)
-    LOCAL_SRC_FILES += $(local_context_stub_files)
-endif
 
 include $(BUILD_STATIC_LIBRARY)

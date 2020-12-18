@@ -34,6 +34,12 @@ typedef enum {
   AICPU_ERROR_FAILED = 1,
 } status_t;
 
+enum CtxType : int32_t {
+  CTX_DEFAULT = 0,
+  CTX_PROF,
+  CTX_DEBUG
+};
+
 const std::string CONTEXT_KEY_OP_NAME = "opname";
 
 status_t aicpuSetContext(aicpuContext_t *ctx);
@@ -54,6 +60,5 @@ SetThreadLocalCtx(const std::string &key, const std::string &value);
 status_t GetThreadLocalCtx(const std::string &key, std::string &value);
 
 status_t RemoveThreadLocalCtx(const std::string &key);
-
 }  // namespace aicpu
 #endif
