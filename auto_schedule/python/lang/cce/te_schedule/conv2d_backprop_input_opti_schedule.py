@@ -2032,7 +2032,7 @@ def opti_schedule(
                     else:
                         strideh, stridew = DIM_MAP["dilate_dim"]
                     align_buffer = reduce(lambda x, y: x * y, TILING["CUB_matrix"][1:4]) * strideh * stridew
-                    _print_debug("mask_ub_need_bind_buffer, align_buffer:",align_buffer)
+                    _print_debug("mask_ub_need_bind_buffer, align_buffer:", align_buffer)
                     sch[bitmask_ub].bind_buffer(bitmask_ub.op.axis[1], align_buffer, 0)
                 sch[bitmask_ub].compute_at(sch[c_gm], c_slice_axis)
             else:
