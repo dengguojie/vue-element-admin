@@ -35,6 +35,7 @@ DX_SUPPORT_TAG_LOG_PREFIX = "#Conv2DBackpropInput only support#"
 # default False
 DEBUG_MODE = 0
 CONST_L1_SHAPE_DIM = 4
+OUT_OF_ORDER_SHIFT_BIT = 13
 DTYPE_BYTE_MAP = {"float16": 2, "float32": 4, "int8": 1, "int32": 4}
 CUB_BUFFER_LIMIT = 4096
 TENSOR_MAP = {}
@@ -94,7 +95,7 @@ class DeconvParam:
         """
         get value by key
         """
-        return DeconvParam.para_map[key]
+        return DeconvParam.para_map.get(key, None)
 
 
 def _raise_dx_opti_err(msg):
@@ -645,6 +646,9 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
                 "fusion_type": DeconvParam.get_para_map("fusion_type_num")
             }
             TILING = get_tiling(info_dict)
+            if TILING.get("compile_para") is not None:
+                out_of_order = (TILING.get("compile_para") >> OUT_OF_ORDER_SHIFT_BIT) & 1
+                DeconvParam.update_para_map("out_of_order", out_of_order)
         else:
             TILING = deepcopy(tiling_case)
     TILING = _check_and_set_default_tiling(
@@ -1477,6 +1481,8 @@ def _get_aicore_tiling_factor(
                 undilate_l0c_m = _get_undilate_loc_m_dynamic(l0c_tiling_factor, sch)
             if undilate_l0c_m % block_m != 0:
                 need_buffer_tile = True
+    
+    mask_ub_need_bind_buffer = False
     if TENSOR_MAP.get("drelu_ub") is not None:
         if (
             l0c_tiling_factor[1] % block_m != 0
@@ -1485,6 +1491,8 @@ def _get_aicore_tiling_factor(
                 DIM_MAP["out_img_shape"][2] // l0c_tiling_factor[1] * l0c_tiling_factor[1]
             ) % block_m != 0
         ):
+            _print_debug("Tiling[CUB_matrix][0] reset to 1, mask_ub_need_bind_buffer")
+            mask_ub_need_bind_buffer = True
             TILING["CUB_matrix"][0] = 1
 
     # From LOC to GM [NumOfparts for N axis, NumOfparts for M axis ]
@@ -1548,7 +1556,8 @@ def _get_aicore_tiling_factor(
         al1_parts,
         bl1_parts,
         undilate_l0c_m,
-        need_buffer_tile
+        need_buffer_tile,
+        mask_ub_need_bind_buffer
     )
 
 
@@ -2009,10 +2018,27 @@ def opti_schedule(
                 else:
                     sch[bias_ub].compute_at(sch[c_gm], batch_in_out_axis)
 
-        if fusion_type in [FUSION_DX_ADD_DRELU, FUSION_DX_DRELU]:
-            if fusion_type == FUSION_DX_ADD_DRELU:
-                sch[add_res_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
-                sch[add_input_ub].compute_at(sch[c_gm], add_input_at)
+        if fusion_type in [FUSION_DX_DRELU]:
+            sch[drelu_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
+            if DeconvParam.get_para_map("out_of_order") is not None:
+                # if cub_m%16!=0, when copy bitmask to ub, for every n0,
+                # the buffer should align to 32B*strideh*stridew
+                _print_debug("bitmask_ub compute_at c_slice_axis")
+                if mask_ub_need_bind_buffer:
+                    if TENSOR_MAP.get("dilate_ub") is None:
+                        strideh, stridew = 1, 1
+                    else:
+                        strideh, stridew = DIM_MAP["dilate_dim"]
+                    align_buffer = reduce(lambda x, y: x * y, TILING["CUB_matrix"][1:4]) * strideh * stridew
+                    _print_debug("mask_ub_need_bind_buffer, align_buffer:", align_buffer)
+                    sch[bitmask_ub].bind_buffer(bitmask_ub.op.axis[1], align_buffer, 0)
+                sch[bitmask_ub].compute_at(sch[c_gm], c_slice_axis)
+            else:
+                sch[bitmask_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
+            sch[fusion_dx_gm].compute_at(sch[c_gm], l0c_m_inner_outer)
+        elif fusion_type in [FUSION_DX_ADD_DRELU]:
+            sch[add_res_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
+            sch[add_input_ub].compute_at(sch[c_gm], add_input_at)
             sch[drelu_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
             sch[bitmask_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
             sch[fusion_dx_gm].compute_at(sch[c_gm], l0c_m_inner_outer)
@@ -2638,7 +2664,8 @@ def opti_schedule(
         al1_parts,
         bl1_parts,
         undilate_l0c_m,
-        need_buffer_tile
+        need_buffer_tile,
+        mask_ub_need_bind_buffer
     ) = _get_aicore_tiling_factor(is_conv1d_bool, dynamic_para, sch)
     al0_axis_factor, bl0_axis_factor, reduce_axis_factor = _get_mmad_factor()
     num_batch = DIM_MAP["img_shape"][0]
@@ -2757,7 +2784,6 @@ def opti_schedule(
         _print_debug("dx opti ub preload enable.")
         if fusion_type == FUSION_DX_DRELU:
             sch[bitmask_ub].double_buffer()
-            sch[bitmask_ub].preload()
         elif fusion_type == FUSION_DX_ADD_DRELU:
             sch[bitmask_ub].double_buffer()
             sch[bitmask_ub].preload()

@@ -15,6 +15,7 @@
 """
 conv2d backprop input general schedule.
 """
+from functools import reduce
 from te import tvm
 from te.domain.tiling.get_tiling import get_tiling
 from te.lang.cce.boost_schedule_kit import Compare
@@ -35,6 +36,7 @@ DEBUG_MODE = False  # pylint: disable=C0302
 DX_SUPPORT_TAG_LOG_PREFIX = "#Conv2DBackpropInput only support#"
 # broadcast should be 16
 BRC_STANDARD_BLOCK_SIZE = 16
+OUT_OF_ORDER_SHIFT_BIT = 13
 
 
 def _raise_dx_general_err(msg):
@@ -121,6 +123,7 @@ def general_schedule(
     c_ddr = tensor
     sch = sch_list[0]
     tiling = None
+    out_of_order = None
 
     def _set_output_mem():
         if out_mem == "fuse_flag":
@@ -968,6 +971,8 @@ def general_schedule(
             "general_flag": True,
         }
         tiling = get_tiling(info_dict)
+        if tiling.get("compile_para") is not None:
+            out_of_order = (tiling.get("compile_para") >> OUT_OF_ORDER_SHIFT_BIT) & 1
     else:
         tiling = tiling_case
 
@@ -1144,7 +1149,7 @@ def general_schedule(
     def _check_overload_dy():
         """
         check whether dy is overload
-        Use the following conditions to judge：
+        Use the following conditions to judge:
         1. if multi core in n axis, dy will overload
         2. if split al1's and bl1's k, and al1_k < bl1_k
         3. if stride < kernel and spilt al1's m
@@ -1244,12 +1249,14 @@ def general_schedule(
                     sch_agent[c_ub].reused_by(c_ub_cut, vadd_res, c_ub_drelu)
                     sch_agent.same_attach(vadd_res, c_ub)
                     sch_agent.same_attach(vadd_tensor_ub, c_ub)
+                    sch_agent.same_attach(mask_ub, c_ub)
                 else:
                     sch_agent[c_ub].reused_by(c_ub_cut, c_ub_drelu)
+                    if out_of_order is None:
+                        sch_agent.same_attach(mask_ub, c_ub)
 
                 sch_agent.same_attach(c_ub_cut, c_ub)
                 sch_agent.same_attach(c_ub_drelu, c_ub)
-                sch_agent.same_attach(mask_ub, c_ub)
             elif deconv_res.op.tag == "requant_remove_pad":
                 sch_agent.same_attach(tensor_map["deq"], c_ub)
             elif tensor_attr.get("quant_fuse"):
@@ -1365,7 +1372,16 @@ def general_schedule(
                 sch_agent.attach_at(c_col, c_ddr, affine_shape=affine_l0c)
             else:
                 _raise_dx_general_err("c_col attach error.")
-
+        if deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool" \
+                and "conv2d_backprop_input" in deconv_res.op.input_tensors[1].op.tag \
+                and out_of_order is not None:
+            align_buffer = 0
+            if (dx_h * dx_w) % cce_params.CUBE_MKN[c_col.dtype]["mac"][0] != 0:
+                align_buffer = reduce(lambda x, y: x * y, tiling["CUB_matrix"][1:4])
+                sch[mask_ub].bind_buffer(mask_ub.op.axis[1], align_buffer, 0)
+            if DEBUG_MODE:
+                print("mask_ub same_attach c_col, align_buffer:", align_buffer)
+            sch_agent.same_attach(mask_ub, c_col)
         sch[c_col].buffer_align(
             (1, 1),
             (1, 1),
