@@ -1598,13 +1598,10 @@ def general_schedule(
                     1,
                     aub_tiling_k // (kernel_h * kernel_w * 16),
                     aub_h,
-                    aub_w,
+                    aub_w + kernel_w - 1,
                     al1_co0
                 ]
-                if dynamic_mode == "dynamic_hw":
-                    sch_agent.attach_at(a_filling, a_l1, ub_shape)
-                else:
-                    sch_agent.attach_at(a_filling, a_l1, ub_shape, flag_nparts=True)
+                sch_agent.attach_at(a_filling, a_l1, ub_shape)
             if not dynamic_mode:
                 sch_agent.same_attach(a_zero, a_filling)
             sch_agent.same_attach(a_ub, a_filling)
@@ -1811,7 +1808,7 @@ def general_schedule(
                 afill_h, factor=stride_h
             )
             sch_agent[a_filling].reorder(
-                afill_h_inner, afill_w_inner, afill_n, afill_c, afill_h, afill_h_out, afill_w_out
+                afill_h_inner, afill_w_inner, afill_n, afill_c, afill_h_out, afill_w_out
             )
             sch_agent[a_filling].unroll(afill_h_inner)
             sch_agent[a_filling].unroll(afill_w_inner)
