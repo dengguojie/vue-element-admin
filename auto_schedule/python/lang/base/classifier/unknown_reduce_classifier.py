@@ -70,11 +70,6 @@ class UnknownReduceClassifier:
                 f_shape, f_ranges, f_reduce_axes = helper.simplify(self.n_shape,
                                                                    self.n_ranges,
                                                                    reduce_axes)
-                if not f_reduce_axes:
-                    f_shape = [1] + f_shape
-                    f_ranges = [(1, 1)] + f_ranges
-                    f_reduce_axes = [0, ]
-
                 input_x = {
                     "shape": f_shape,
                     "range": f_ranges,

@@ -191,6 +191,9 @@ void Reduce::EliminateOne() {
   // sort axis
   normalize_axis.resize(pos_r);
   reduce_axis_ori = normalize_axis;
+  if (input_shape_ori.empty()) {
+    input_shape_ori.emplace_back(1);
+  }
 }
 
 bool Reduce::ConstInputProcPost() {
