@@ -942,49 +942,19 @@ static graphStatus CaffeReshapeInferShape(const vector<int64_t>& dims, const int
   auto x_dims = x_desc->GetShape().GetDims();
   auto data_type = x_desc->GetDataType();
 
-  if (x_dims == UNKNOWN_RANK && dims == UNKNOWN_RANK) {
-    y_desc->SetShape(GeShape(UNKNOWN_SHAPE));
-    y_desc->SetOriginShape(GeShape(UNKNOWN_SHAPE));
+  if (x_dims == UNKNOWN_RANK || dims == UNKNOWN_RANK) {
+    GE_OP_LOGD("Input data is unknown_rank");
+    y_desc->SetShape(GeShape(UNKNOWN_RANK));
+    y_desc->SetOriginShape(GeShape(UNKNOWN_RANK));
     y_desc->SetDataType(data_type);
-    return GRAPH_SUCCESS;
-  } else if (x_dims != UNKNOWN_RANK && dims == UNKNOWN_RANK ) {
-    y_desc->SetShape(GeShape(UNKNOWN_SHAPE));
-    y_desc->SetOriginShape(GeShape(UNKNOWN_SHAPE));
-    y_desc->SetDataType(data_type);
-    return GRAPH_SUCCESS;
-  } else if (x_dims == UNKNOWN_RANK && dims != UNKNOWN_RANK) {
-    if (axis == 0 && num_axes == -1) {
-      y_desc->SetShape(GeShape(dims));
-      y_desc->SetOriginShape(GeShape(dims));
-      y_desc->SetDataType(data_type);
-    } else {
-      y_desc->SetShape(GeShape(UNKNOWN_SHAPE));
-      y_desc->SetOriginShape(GeShape(UNKNOWN_SHAPE));
-      y_desc->SetDataType(data_type);
-    }
     return GRAPH_SUCCESS;
   }
 
-  std::vector<std::pair<int64_t, int64_t>> x_range;
-  x_desc->GetShapeRange(x_range);
-  if (x_dims == UNKNOWN_SHAPE && dims == UNKNOWN_SHAPE) {
+  if (x_dims == UNKNOWN_SHAPE) {
+    GE_OP_LOGD("Input data is unknown_shape.");
     y_desc->SetShape(GeShape(UNKNOWN_SHAPE));
     y_desc->SetOriginShape(GeShape(UNKNOWN_SHAPE));
     y_desc->SetDataType(data_type);
-    y_desc->SetShapeRange(x_range);
-    return GRAPH_SUCCESS;
-  } else if (x_dims == UNKNOWN_SHAPE) {
-    if (axis == 0 && num_axes == -1) {
-      y_desc->SetShape(GeShape(dims));
-      y_desc->SetOriginShape(GeShape(dims));
-      y_desc->SetDataType(data_type);
-      y_desc->SetShapeRange(x_range);
-    } else {
-      y_desc->SetShape(GeShape(UNKNOWN_SHAPE));
-      y_desc->SetOriginShape(GeShape(UNKNOWN_SHAPE));
-      y_desc->SetDataType(data_type);
-      y_desc->SetShapeRange(x_range);
-    }
     return GRAPH_SUCCESS;
   }
 
