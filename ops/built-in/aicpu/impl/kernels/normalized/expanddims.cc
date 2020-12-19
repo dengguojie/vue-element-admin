@@ -20,7 +20,7 @@
 #include "status.h"
 
 namespace {
-const char *EXPANDDIMS = "ExpandDims";
+const char *kExpandDims = "ExpandDims";
 const size_t kExpandDimsOutputDescNum = 1;
 const size_t kExpandDimsInputNum = 2;
 }
@@ -76,5 +76,5 @@ uint32_t ExpandDimsCpuKernel::Compute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-REGISTER_CPU_KERNEL(EXPANDDIMS, ExpandDimsCpuKernel);
+REGISTER_CPU_KERNEL(kExpandDims, ExpandDimsCpuKernel);
 }  // namespace aicpu

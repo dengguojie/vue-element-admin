@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef AICPU_KERNEL_CACHE_H_
-#define AICPU_KERNEL_CACHE_H_
+#ifndef AICPU_CONTEXT_COMMON_KERNEL_CACHE_H_
+#define AICPU_CONTEXT_COMMON_KERNEL_CACHE_H_
 
 #include <stdint.h>
 
@@ -55,11 +55,11 @@ class KernelCache {
    * @return T *: cache content pointer
    */
   T *GetCache(uint64_t key) {
-    KERNEL_LOG_DEBUG("GetCache begin, key:%llu.", key);
+    KERNEL_LOG_DEBUG("GetCache begin, key[%llu].", key);
     T *ret = nullptr;
     auto it = kernel_cache_iter_.find(key);
     if (it != kernel_cache_iter_.end()) {
-      KERNEL_LOG_DEBUG("GetCache success, key:%llu.", key);
+      KERNEL_LOG_DEBUG("GetCache success, key[%llu].", key);
       ret = it->second->second.get();
       if (!sess_flag_) {
         auto pair_iter = it->second;
@@ -78,10 +78,10 @@ class KernelCache {
    * @param value: cache content
    */
   void SetCache(uint64_t key, std::shared_ptr<T> value) {
-    KERNEL_LOG_DEBUG("SetCache begin, key:%llu.", key);
+    KERNEL_LOG_DEBUG("SetCache begin, key[%llu].", key);
     auto iter = kernel_cache_iter_.find(key);
     if (iter != kernel_cache_iter_.end()) {
-      KERNEL_LOG_DEBUG("SetCache update cache, key:%llu.", key);
+      KERNEL_LOG_DEBUG("SetCache update cache, key[%llu].", key);
       auto pair_iter = iter->second;
       pair_iter->second = value;
       if (!sess_flag_) {
@@ -95,8 +95,8 @@ class KernelCache {
       if ((capacity_ < kernel_cache_.size()) && (!sess_flag_)) {
         uint64_t del_key = kernel_cache_.back().first;
         KERNEL_LOG_DEBUG(
-            "SetCache is full, pop last element, capacity：%u, delete "
-            "key:%llu.",
+            "SetCache is full, pop last element, capacity[%u], delete "
+            "key[%llu].",
             capacity_, key);
         kernel_cache_.pop_back();
         auto del_iter = kernel_cache_iter_.find(del_key);
@@ -104,7 +104,7 @@ class KernelCache {
           kernel_cache_iter_.erase(del_iter);
         }
       }
-      KERNEL_LOG_DEBUG("SetCache success, key:%llu.", key);
+      KERNEL_LOG_DEBUG("SetCache success, key[%llu].", key);
       kernel_cache_.push_front(pair);
       kernel_cache_iter_[key] = kernel_cache_.begin();
     }
@@ -156,4 +156,4 @@ class KernelCache {
       kernel_cache_iter_;
 };
 }  // namespace aicpu
-#endif  // AICPU_KERNEL_CACHE_H_
+#endif  // AICPU_CONTEXT_COMMON_KERNEL_CACHE_H_

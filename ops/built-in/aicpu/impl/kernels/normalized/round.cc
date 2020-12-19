@@ -22,7 +22,7 @@
 #include "status.h"
 
 namespace {
-const char *ROUND = "Round";
+const char *kRound = "Round";
 
 template <typename T>
 const T ScalarRound(const T &x) {
@@ -124,5 +124,5 @@ uint32_t RoundCpuKernel::Compute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-REGISTER_CPU_KERNEL(ROUND, RoundCpuKernel);
+REGISTER_CPU_KERNEL(kRound, RoundCpuKernel);
 }  // namespace aicpu

@@ -1,10 +1,4 @@
-#ifndef private
-#define private public
-#define protected public
-#endif
 #include "gtest/gtest.h"
-#include "mockcpp/mockcpp.hpp"
-#include <mockcpp/ChainingMockHelper.h>
 
 #include <limits.h>
 #include "cce/fwk_adpt_struct.h"
@@ -38,19 +32,7 @@ protected:
 REGISTER_CPU_KERNEL(Test, TestKernel);
 } // namespace aicpu
 
-class CPU_KERNEL_REGISTAR_UTest : public testing::Test {
-protected:
-    virtual void SetUp()
-    {
-    }
-
-    virtual void TearDown()
-    {
-        GlobalMockObject::verify();
-    }
-
-private:
-};
+class CPU_KERNEL_REGISTAR_UTest : public testing::Test {};
 
 TEST_F(CPU_KERNEL_REGISTAR_UTest, GetAndRunKernel)
 {
@@ -186,7 +168,7 @@ TEST_F(CPU_KERNEL_REGISTAR_UTest, DeviceRunKernel_ShapeTypeFailed)
     memcpy(param, static_cast<const char *>(nodeDefStr.data()), nodeDefStr.length());
 
     uint32_t ret = RunCpuKernel(parambase);
-    EXPECT_EQ(ret, KERNEL_STATUS_PARAM_INVALID);
+    EXPECT_NE(ret, KERNEL_STATUS_OK);
     free(parambase);
 }
 
@@ -246,6 +228,6 @@ TEST_F(CPU_KERNEL_REGISTAR_UTest, DeviceRunKernel_InputShapeFailed)
     memcpy(param, static_cast<const char *>(nodeDefStr.data()), nodeDefStr.length());
 
     uint32_t ret = RunCpuKernel(parambase);
-    EXPECT_EQ(ret, KERNEL_STATUS_PARAM_INVALID);
+    EXPECT_NE(ret, KERNEL_STATUS_OK);
     free(parambase);
 }

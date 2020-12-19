@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef AICPU_SESSION_CACHE_H_
-#define AICPU_SESSION_CACHE_H_
+#ifndef AICPU_CONTEXT_COMMON_SESSION_CACHE_H_
+#define AICPU_CONTEXT_COMMON_SESSION_CACHE_H_
 
 #include <map>
 #include <mutex>
@@ -44,7 +44,7 @@ class SessionCache {
                     bool sess_flag) {
     std::shared_ptr<KernelCache<C>> kernel = nullptr;
     if (sess_flag) {
-      KERNEL_LOG_DEBUG("SessionCache KernelCache from session, id:%llu.",
+      KERNEL_LOG_DEBUG("SessionCache KernelCache from session, id[%llu].",
                        session_id);
       std::unique_lock<std::mutex> lock(session_mutex_);
       int32_t ret = GetOrCreateKernelCache<T>(session_kernel_cache_, session_id,
@@ -53,7 +53,7 @@ class SessionCache {
         return ret;
       }
     } else {
-      KERNEL_LOG_DEBUG("SessionCache KernelCache from stream, id:%llu.",
+      KERNEL_LOG_DEBUG("SessionCache KernelCache from stream, id[%llu].",
                        stream_id);
       std::unique_lock<std::mutex> lock(stream_mutex_);
       int32_t ret = GetOrCreateKernelCache<T>(stream_kernel_cache_, stream_id,
@@ -79,12 +79,12 @@ class SessionCache {
       uint64_t id, bool sess_flag, std::shared_ptr<KernelCache<C>> &kernel) {
     auto iter = kernel_map.find(id);
     if (iter != kernel_map.end()) {
-      KERNEL_LOG_DEBUG("Get kernel from cache success, id:%llu.", id);
+      KERNEL_LOG_DEBUG("Get kernel from cache success, id[%llu].", id);
       kernel = iter->second;
     } else {
       KernelCache<C> *cache = new (std::nothrow) T();
       if (cache == nullptr) {
-        KERNEL_LOG_DEBUG("Create kernel cache failed, id:%llu.", id);
+        KERNEL_LOG_DEBUG("Create kernel cache failed, id[%llu].", id);
         return -1;
       }
       kernel = std::shared_ptr<KernelCache<C>>(cache);
@@ -93,7 +93,7 @@ class SessionCache {
         return ret;
       }
       kernel_map.insert(std::make_pair(id, kernel));
-      KERNEL_LOG_DEBUG("Create kernel cache, id:%llu.", id);
+      KERNEL_LOG_DEBUG("Create kernel cache, id[%llu].", id);
     }
     return 0;
   }
@@ -107,4 +107,4 @@ class SessionCache {
       session_kernel_cache_;  // key is session id
 };
 }  // namespace aicpu
-#endif  // AICPU_SESSION_CACHE_H_
+#endif  // AICPU_CONTEXT_COMMON_SESSION_CACHE_H_

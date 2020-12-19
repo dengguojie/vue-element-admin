@@ -122,7 +122,14 @@ target_link_libraries(cpu_kernels_llt
 
 set(_cpu_kernels_ut_files
   ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/node_def_builder.cpp
+  testcase/attr_value_utest.cpp
+  testcase/context_utest.cpp
+  testcase/cpu_kernels_register_utest.cpp
+  testcase/device_utest.cpp
+  testcase/eigen_threadpool_utest.cpp
+  testcase/node_def_utest.cpp
   testcase/sharder_utest.cpp
+  testcase/tensor_utest.cpp
   testcase/concatv2_utest.cpp
   testcase/trans_data_utest.cpp
   testcase/get_dynamic_dims_utest.cpp

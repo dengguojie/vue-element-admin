@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-// #include "gmock/gmock.h"
+
 #ifndef private
 #define private public
 #define protected public
@@ -26,10 +26,6 @@ private:
 
 TEST_F(SHARDER_UTest, ParallelFor)
 {
-    // MOCKER_CPP(&EigenThreadPool::ParallelFor).stubs().will(invoke(EigenParallelForFake));
-    // MOCKER_CPP(&EigenThreadPool::ParallelFor).stubs().will(invoke(EigenParallelForFake));
-    // HostSharder hostSharder(HOST);
-    // hostSharder.ParallelFor(10, 1, [&](int64_t start, int64_t end){});
     DeviceSharder deviceSharder(DEVICE);
     deviceSharder.ParallelFor(10, 1, [&](int64_t start, int64_t end){});
 }

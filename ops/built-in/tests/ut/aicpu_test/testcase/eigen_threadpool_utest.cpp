@@ -1,10 +1,9 @@
+#include "gtest/gtest.h"
+
 #ifndef private
 #define private public
 #define protected public
 #endif
-#include "gtest/gtest.h"
-#include "mockcpp/mockcpp.hpp"
-#include <mockcpp/ChainingMockHelper.h>
 
 #include <unistd.h>
 #include <sys/sysinfo.h>
@@ -15,16 +14,6 @@ using namespace std;
 using namespace aicpu;
 
 class EIGEN_THREAD_POOL_UTest : public testing::Test {
-protected:
-    virtual void SetUp()
-    {
-    }
-
-    virtual void TearDown()
-    {
-        GlobalMockObject::verify();
-    }
-
 private:
     EigenThreadPool instance;
 };
@@ -67,13 +56,4 @@ TEST_F(EIGEN_THREAD_POOL_UTest, ParallelFor)
 TEST_F(EIGEN_THREAD_POOL_UTest, ParallelForFailed)
 {
     instance.ParallelFor(10, 5, nullptr);
-}
-
-TEST_F(EIGEN_THREAD_POOL_UTest, GetInstanceFailed)
-{
-    MOCKER(get_nprocs).stubs().will(returnValue(-1));
-    EigenThreadPool poolInstance;
-    poolInstance.initFlag_ = false;
-    EigenThreadPool *pool = poolInstance.GetInstance();
-    EXPECT_EQ(pool, nullptr);
 }

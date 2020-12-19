@@ -1,10 +1,9 @@
+#include "gtest/gtest.h"
+
 #ifndef private
 #define private public
 #define protected public
 #endif
-#include "gtest/gtest.h"
-#include "mockcpp/mockcpp.hpp"
-#include <mockcpp/ChainingMockHelper.h>
 
 #include "cpu_tensor.h"
 #include "device.h"
@@ -14,19 +13,7 @@
 using namespace std;
 using namespace aicpu;
 
-class TENSOR_UTest : public testing::Test {
-protected:
-    virtual void SetUp()
-    {
-    }
-
-    virtual void TearDown()
-    {
-        GlobalMockObject::verify();
-    }
-
-private:
-};
+class TENSOR_UTest : public testing::Test {};
 
 TEST_F(TENSOR_UTest, TensorShape)
 {
@@ -62,17 +49,6 @@ TEST_F(TENSOR_UTest, TensorShape)
     EXPECT_EQ(format, FORMAT_NCHW);
 }
 
-TEST_F(TENSOR_UTest, CalcDataSizeByShapeFailed)
-{
-    MOCKER(GetSizeByDataType)
-    .stubs()
-    .will(returnValue(-1));
-
-    auto tensor = CpuKernelUtils::CreateTensor();
-    int64_t size = tensor->CalcDataSizeByShape();
-    EXPECT_LT(size, 0);
-}
-
 TEST_F(TENSOR_UTest, DataType)
 {
     auto tensor = CpuKernelUtils::CreateTensor();
@@ -88,21 +64,4 @@ TEST_F(TENSOR_UTest, Data)
     tensor->SetDataSize(4);
     EXPECT_NE(tensor->GetData(), nullptr);
     EXPECT_EQ(tensor->GetDataSize(), 4);
-}
-
-TEST_F(TENSOR_UTest, GetTensorShapeFailed)
-{
-    auto shape = CpuKernelUtils::CreateTensorShape();
-    shape->SetFormat(FORMAT_NCHW);
-    vector<int64_t> dims = {3,1,3,5};
-    shape->SetDimSizes(dims);
-    shape->SetUnknownRank(false);
-    auto tensor = CpuKernelUtils::CreateTensor();
-    tensor->SetTensorShape(shape.get());
-
-    MOCKER_CPP(CpuKernelUtils::CreateTensorShape, std::shared_ptr<TensorShape>(TensorShapeImpl *))
-    .stubs()
-    .will(returnValue(std::shared_ptr<TensorShape>(nullptr)));
-
-    auto outShape = tensor->GetTensorShape();
 }

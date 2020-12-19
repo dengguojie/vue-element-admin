@@ -1,10 +1,9 @@
+#include "gtest/gtest.h"
+
 #ifndef private
 #define private public
 #define protected public
 #endif
-#include "gtest/gtest.h"
-#include "mockcpp/mockcpp.hpp"
-#include <mockcpp/ChainingMockHelper.h>
 
 #include "cpu_attr_value.h"
 #include "cpu_kernel_utils.h"
@@ -12,19 +11,7 @@
 using namespace std;
 using namespace aicpu;
 
-class ATTR_VALUE_UTest : public testing::Test {
-protected:
-    virtual void SetUp()
-    {
-    }
-
-    virtual void TearDown()
-    {
-        GlobalMockObject::verify();
-    }
-
-private:
-};
+class ATTR_VALUE_UTest : public testing::Test {};
 
 TEST_F(ATTR_VALUE_UTest, String)
 {
@@ -143,37 +130,6 @@ TEST_F(ATTR_VALUE_UTest, TensorShape)
     EXPECT_EQ(listRet[1].GetDims(), 2);
 }
 
-TEST_F(ATTR_VALUE_UTest, AddListTensorShapeFailed)
-{
-    auto attr = CpuKernelUtils::CreateAttrValue();
-    MOCKER_CPP(CpuKernelUtils::CreateTensorShape, std::shared_ptr<TensorShape>(TensorShapeImpl *))
-    .stubs()
-    .will(returnValue(std::shared_ptr<TensorShape>(nullptr)));
-    auto shape = attr->AddListTensorShape();
-    EXPECT_EQ(shape, nullptr);
-}
-
-TEST_F(ATTR_VALUE_UTest, GetTensorShapeFailed)
-{
-    auto attr = CpuKernelUtils::CreateAttrValue();
-    MOCKER_CPP(CpuKernelUtils::CreateTensorShape, std::shared_ptr<TensorShape>(TensorShapeImpl *))
-    .stubs()
-    .will(returnValue(std::shared_ptr<TensorShape>(nullptr)));
-    auto shape = attr->GetTensorShape();
-    EXPECT_EQ(shape, nullptr);
-}
-
-TEST_F(ATTR_VALUE_UTest, GetListTensorShapeFailed)
-{
-    auto attr = CpuKernelUtils::CreateAttrValue();
-    attr->AddListTensorShape();
-
-    MOCKER_CPP(CpuKernelUtils::CreateTensorShape, std::shared_ptr<TensorShape>(TensorShapeImpl *))
-    .stubs()
-    .will(returnValue(std::shared_ptr<TensorShape>(nullptr)));
-    auto ret = attr->GetListTensorShape();
-    EXPECT_EQ(ret.size(), 0);
-}
 
 TEST_F(ATTR_VALUE_UTest, Tensor)
 {
@@ -199,49 +155,3 @@ TEST_F(ATTR_VALUE_UTest, Tensor)
     EXPECT_EQ(listRet[1].GetDataType(), DT_INT16);
 }
 
-TEST_F(ATTR_VALUE_UTest, AddListTensorFailed)
-{
-    auto attr = CpuKernelUtils::CreateAttrValue();
-    MOCKER_CPP(CpuKernelUtils::CreateTensor, std::shared_ptr<Tensor>(TensorImpl *))
-    .stubs()
-    .will(returnValue(std::shared_ptr<Tensor>(nullptr)));
-    auto tensor = attr->AddListTensor();
-    EXPECT_EQ(tensor, nullptr);
-}
-
-TEST_F(ATTR_VALUE_UTest, GetTensorFailed)
-{
-    auto attr = CpuKernelUtils::CreateAttrValue();
-    MOCKER_CPP(CpuKernelUtils::CreateTensor, std::shared_ptr<Tensor>(TensorImpl *))
-    .stubs()
-    .will(returnValue(std::shared_ptr<Tensor>(nullptr)));
-    auto tensor = attr->GetTensor();
-    EXPECT_EQ(tensor, nullptr);
-}
-
-TEST_F(ATTR_VALUE_UTest, GetListTensorFailed)
-{
-    auto attr = CpuKernelUtils::CreateAttrValue();
-    attr->AddListTensor();
-
-    MOCKER_CPP(CpuKernelUtils::CreateTensor, std::shared_ptr<Tensor>(TensorImpl *))
-    .stubs()
-    .will(returnValue(std::shared_ptr<Tensor>(nullptr)));
-    auto ret = attr->GetListTensor();
-    EXPECT_EQ(ret.size(), 0);
-}
-
-TEST_F(ATTR_VALUE_UTest, SetListTensorFailed)
-{
-    auto attr = CpuKernelUtils::CreateAttrValue();
-    vector<Tensor *> list;
-    auto tensor = CpuKernelUtils::CreateTensor();
-    tensor->SetDataType(DT_INT32);
-    list.push_back(tensor.get());
-
-    MOCKER_CPP(CpuKernelUtils::GetImpl, std::shared_ptr<TensorImpl>(const Tensor *))
-    .stubs()
-    .will(returnValue(std::shared_ptr<TensorImpl>(nullptr)));
-    auto ret = attr->SetListTensor(list);
-    EXPECT_EQ(ret, 0);
-}

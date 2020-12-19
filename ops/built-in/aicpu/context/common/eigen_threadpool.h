@@ -40,11 +40,11 @@ private:
     EigenThreadPool &operator = (EigenThreadPool &&) = delete;
 
 private:
-    static std::mutex mutex_; // protect initFlag_
-    static bool initFlag_;    // true means initialized
-    static int32_t coreNum_;  // the number of CPU cores that can be used by users
-    static std::unique_ptr<Eigen::ThreadPool> eigenThreadpool_;
-    static std::unique_ptr<Eigen::ThreadPoolDevice> threadpoolDevice_;
+    static std::mutex mutex_; // protect init_flag_
+    static bool init_flag_;    // true means initialized
+    static int32_t core_num_;  // the number of CPU cores that can be used by users
+    static std::unique_ptr<Eigen::ThreadPool> eigen_threadpool_;
+    static std::unique_ptr<Eigen::ThreadPoolDevice> threadpool_device_;
 };
 };     // namespace aicpu
 #endif // CPU_KERNELS_EIGEN_THREAD_POOL_H

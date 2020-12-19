@@ -1,29 +1,16 @@
+#include "gtest/gtest.h"
+
 #ifndef private
 #define private public
 #define protected public
 #endif
-#include "gtest/gtest.h"
-#include "mockcpp/mockcpp.hpp"
-#include <mockcpp/ChainingMockHelper.h>
 
 #include "device.h"
 
 using namespace std;
 using namespace aicpu;
 
-class DEVICE_UTest : public testing::Test {
-protected:
-    virtual void SetUp()
-    {
-    }
-
-    virtual void TearDown()
-    {
-        GlobalMockObject::verify();
-    }
-
-private:
-};
+class DEVICE_UTest : public testing::Test {};
 
 TEST_F(DEVICE_UTest, InitHost)
 {
