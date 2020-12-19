@@ -612,4 +612,131 @@ IMPLEMT_COMMON_INFERFUNC(MishInferShape) {
 COMMON_INFER_FUNC_REG(Mish, MishInferShape);
 // ------------Mish Op End----------------
 
+// ----------------HardtanhGrad Begin-------------------
+IMPLEMT_VERIFIER(HardtanhGrad, HardtanhGradVerify) {
+  DataType input_type_x = op.GetInputDesc("result").GetDataType();
+  DataType input_type_y = op.GetInputDesc("grad").GetDataType();
+  if (input_type_x != input_type_y) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(HardtanhGradInferShape) {
+  TensorDesc output_desc = op.GetOutputDesc("y");
+
+  auto tensor_desc = op.GetInputDesc("result");
+  auto tensor_shape = tensor_desc.GetShape();
+  output_desc.SetShape(tensor_shape);
+
+  (void)op.UpdateOutputDesc("y", output_desc);
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(HardtanhGrad, HardtanhGradInferShape);
+VERIFY_FUNC_REG(HardtanhGrad, HardtanhGradVerify);
+// ----------------HardtanhGrad END---------------------
+
+// ----------------SoftplusV2 Begin-------------------
+IMPLEMT_INFERFUNC(SoftplusV2, SoftplusV2InferShape) {
+  TensorDesc tensordesc_input = op.GetInputDesc("x");
+  Shape input_shape = tensordesc_input.GetShape();
+  Format input_format = tensordesc_input.GetFormat();
+  DataType input_dtype = tensordesc_input.GetDataType();
+
+  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+
+  tensordesc_output.SetShape(input_shape);
+  tensordesc_output.SetDataType(input_dtype);
+  tensordesc_output.SetFormat(input_format);
+  (void)op.UpdateOutputDesc("y", tensordesc_output);
+  return GRAPH_SUCCESS;
+}
+
+// Registered inferfunction
+INFER_FUNC_REG(SoftplusV2, SoftplusV2InferShape);
+// ----------------SoftplusV2 END---------------------
+
+// ----------------SoftplusV2Grad Begin-------------------
+IMPLEMT_INFERFUNC(SoftplusV2Grad, SoftplusV2GradInferShape) {
+  TensorDesc tensordesc_input1 = op.GetInputDesc("input_gradients");
+  Shape input_shape1 = tensordesc_input1.GetShape();
+  Format input_format1 = tensordesc_input1.GetFormat();
+  DataType input_dtype1 = tensordesc_input1.GetDataType();
+  std::vector<int64_t> dims_input1 = input_shape1.GetDims();
+  TensorDesc tensordesc_input2 = op.GetInputDesc("input_features");
+  Shape input_shape2 = tensordesc_input2.GetShape();
+  std::vector<int64_t> dims_input2 = input_shape2.GetDims();
+
+  if (dims_input1.size() != dims_input2.size()) {
+    OP_LOGE(op.GetName().c_str(), "Input shapes are not the same.");
+    return GRAPH_FAILED;
+  }
+
+  TensorDesc tensordesc_output = op.GetOutputDesc("output_backprops");
+  std::vector<int64_t> dim_vec;
+  for (size_t i = 0; i < dims_input1.size(); i++) {
+    if ((dims_input1[i] != dims_input2[i]) && (dims_input1[i] != 1) &&
+        (dims_input2[i] != 1)) {
+      OP_LOGE(op.GetName().c_str(), "Input shapes are not compatible.");
+      return GRAPH_FAILED;
+    }
+
+    int64_t dims =
+        dims_input1[i] > dims_input2[i] ? dims_input1[i] : dims_input2[i];
+    dim_vec.push_back(dims);
+  }
+  ge::Shape output_shape = ge::Shape(dim_vec);
+  tensordesc_output.SetShape(output_shape);
+  tensordesc_output.SetDataType(input_dtype1);
+  tensordesc_output.SetFormat(input_format1);
+  (void)op.UpdateOutputDesc("output_backprops", tensordesc_output);
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(SoftplusV2Grad, SoftplusV2GradVerify) {
+  // check input tensors' dtype which needed to be same
+  if (op.GetInputDesc("input_gradients").GetDataType() !=
+      op.GetInputDesc("input_features").GetDataType()) {
+    OP_LOGE(op.GetName().c_str(), "Input dtypes are not the same.");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+// Registered inferfunction
+INFER_FUNC_REG(SoftplusV2Grad, SoftplusV2GradInferShape);
+// Registered verify function
+VERIFY_FUNC_REG(SoftplusV2Grad, SoftplusV2GradVerify);
+// ----------------SoftplusV2Grad END---------------------
+
+// ----------------ThresholdedRelu Begin-------------------
+IMPLEMT_COMMON_INFERFUNC(ThresholdedReluInferShape) {
+  ge::TensorDesc input_desc = op.GetInputDesc(0);
+  ge::TensorDesc output_desc = op.GetOutputDesc(0);
+  output_desc.SetShape(input_desc.GetShape());
+  output_desc.SetFormat(input_desc.GetFormat());
+  output_desc.SetDataType(input_desc.GetDataType());
+  op.UpdateOutputDesc("y", output_desc);
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(ThresholdedRelu, ThresholdedReluVerify) {
+  float alpha = 1.0;
+  auto ret = op.GetAttr("alpha", alpha);
+  if (ret != ge::GRAPH_SUCCESS) {
+    OP_LOGE("ThresholdedReluVerify", "OP GetAttr alpha fail.");
+    return GRAPH_FAILED;
+  }
+  ge::TensorDesc input_desc = op.GetInputDesc(0);
+  ge::DataType data_type = input_desc.GetDataType();
+  if (data_type != DT_FLOAT16 && data_type != DT_FLOAT) {
+    OP_LOGE("ThresholdedReluVerify", "Input DataType is not fp16 or fp32");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(ThresholdedRelu, ThresholdedReluInferShape);
+VERIFY_FUNC_REG(ThresholdedRelu, ThresholdedReluVerify);
+// ----------------ThresholdedRelu END---------------------
+
 }  // namespace ge

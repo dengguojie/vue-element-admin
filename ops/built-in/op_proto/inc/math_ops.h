@@ -857,6 +857,33 @@ REG_OP(ActULQClampMinGrad)
   .OUTPUT(clamp_min_grad, TensorType({DT_FLOAT16, DT_FLOAT}))
   .OP_END_FACTORY_REG(ActULQClampMinGrad)
 
+/**
+* @brief Computes Lp norm.
+
+* @par Inputs:
+* @li x: An ND tensor of type float16, float32. \n
+*
+* @par Attributes:
+* @li p: Int, "inf" or "-inf", default value is 2.
+* @li axes: ListInt, {} means all axes will be computed.
+* @li keepdim: Bool, default is false.
+* @li epsilon: Float, default is 1e-12. \n
+
+* @par Outputs:
+* @li y: An ND tensor of type float16, float32. The shape of y is depending
+* on axes and keepdim. \n
+
+* @par Third-party framework compatibility
+* Compatible with the Pytorch operator LpNorm.
+*/
+REG_OP(LpNorm)
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .ATTR(p, Int, 2)
+    .ATTR(axes, ListInt, {})
+    .ATTR(keepdim, Bool, false)
+    .ATTR(epsilon, Float, 1e-12)
+    .OP_END_FACTORY_REG(LpNorm)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_MATH_OPS_H_

@@ -3359,6 +3359,226 @@ REG_OP(TensorRedirect)
     .OUTPUT(output_x, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT8,
                            DT_INT64, DT_INT16, DT_UINT16, DT_UINT64, DT_UINT32}))
     .OP_END_FACTORY_REG(TensorRedirect)
+
+/**
+* @brief Performs the element-wise division of tensor x2 by tensor x3,
+* multiply the result by the scalar value and add it to tensor x1
+
+* @par Inputs:
+* Three inputs, including:
+* @li input_data: A mutable input Tensor. Must be one of the following types:
+*     float16, float32.
+* @li x1: A mutable input Tensor of the same type as x1.
+* @li x2: A mutable input Tensor of the same type as x1.
+* @li value: A mutable input Tensor. Must be one of the following types:
+*     float16, float32, int32. \n
+
+* @par Outputs:
+* @li y: A mutable Tensor. Has the same type as "x1". \n
+
+* @par Third-party framework compatibility
+* Compatible with the Pytorch operator Addcdiv.
+*/
+REG_OP(Addcdiv)
+    .INPUT(input_data, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(x1, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(x2, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(value, TensorType({ DT_FLOAT16, DT_FLOAT, DT_INT32 }))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OP_END_FACTORY_REG(Addcdiv)
+
+/**
+* @brief Performs the element-wise multiplication of tensor x2 by tensor x3, 
+* multiply the result by the scalar value and add it to tensor input_data 
+
+
+* @par Inputs:
+* Three inputs, including:
+* @li input_data: A mutable input Tensor. Must be one of the following types:
+*     float16, float32, int8, int32, uint8.
+* @li x1: A mutable input Tensor of the same type as x1.
+* @li x2: A mutable input Tensor of the same type as x1.
+* @li value: A tensor which includes only one element of the same type as x1. \n
+
+* @par Outputs:
+* @li y: A mutable output Tensor. Has the same type as "x1". \n
+
+* @par Third-party framework compatibility
+* Compatible with the Pytorch operator Addcmul.
+*/
+REG_OP(Addcmul)
+    .INPUT(input_data, TensorType({ DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT8 }))
+    .INPUT(x1, TensorType({ DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT8 }))
+    .INPUT(x2, TensorType({ DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT8 }))
+    .INPUT(value, TensorType({ DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT8 }))
+    .OUTPUT(y, TensorType({ DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT8 }))
+    .OP_END_FACTORY_REG(Addcmul)
+
+/**
+* @brief Computes the result of x2 * alpha + x1.
+
+* @par Inputs:
+* @li x1: An ND tensor of type float16, float32, int32.
+* @li x2: An ND tensor of type float16, float32, int32.
+* @li alpha: A scalar tensor of type float16, float32. \n
+
+* @par Outputs:
+* @li y: An ND tensor tensor with the same shape and type as "x1". \n
+
+* @par Third-party framework compatibility
+* Compatible with the Pytorch operator Axpy.
+*/
+REG_OP(AxpyV2)
+    .INPUT(x1, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32}))
+    .INPUT(x2, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32}))
+    .INPUT(alpha, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32}))
+    .OP_END_FACTORY_REG(AxpyV2)
+
+/**
+* @brief Computes the result of x1 + x2.
+
+* @par Inputs:
+* @li x1: An ND tensor of type float16, float, int32.
+* @li x2: An ND tensor of type float16, float, int32. \n
+
+* @par Outputs:
+* @li y: An ND tensor tensor with the same type as "x1". \n
+
+* @par Third-party framework compatibility
+* Compatible with the Pytorch operator Add.
+*/
+REG_OP(PtAdd)
+    .INPUT(x1, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32}))
+    .INPUT(x2, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32}))
+    .OP_END_FACTORY_REG(PtAdd)
+
+/**
+* @brief Computes the result of x1 * x2.
+
+* @par Inputs:
+* @li x1: An ND tensor of type float16, float32, int32.
+* @li x2: An ND tensor of type float16, float32, int32. \n
+
+* @par Outputs:
+* @li y: Same shape and type as the largest ND tensor in x1 x2. \n
+
+* @par Third-party framework compatibility
+* Compatible with the Pytorch operator muls.
+*/
+REG_OP(PtMuls)
+    .INPUT(x1, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32}))
+    .INPUT(x2, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32}))
+    .OP_END_FACTORY_REG(PtMuls)
+
+/**
+* @brief Computes the result of x1 - x2.
+
+* @par Inputs:
+* @li x1: An ND tensor of type float16, float, int32.
+* @li x2: An ND tensor of type float16, float, int32. \n
+
+* @par Outputs:
+* @li y: An ND tensor tensor with the same type as "x1". \n
+
+* @par Third-party framework compatibility
+* Compatible with the Pytorch operator Sub.
+*/
+REG_OP(PtSub)
+    .INPUT(x1, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32}))
+    .INPUT(x2, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32}))
+    .OP_END_FACTORY_REG(PtSub)
+
+/**
+* @brief Add the partial values of two tensors in format NC1HWC0.
+
+* @par Inputs:
+* @li x1: A Tensor in 5HD, and must be one of the following types: float16,
+* float32. \n
+* @li x2: A Tensor of the same type as "x1", and the same shape as "x1",
+* except for the C1 value. \n
+
+* @par Attributes:
+* @li x1_c1_offset: A required int. Offset value of C1 in "x1". \n
+* @li x2_c1_offset: A required int. Offset value of C1 in "x2". \n
+* @li c1_len: A required int. C1 len of "y". The value must be less than
+* the difference between C1 and offset in "x1" and "x2". \n
+
+* @par Outputs:
+* @li y:  A Tensor of the same type as "x1", and the same shape as "x1",
+* except for the C1 value. Record the result after adding. \n
+*/
+REG_OP(StrideAdd)
+    .INPUT(x1, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .INPUT(x2, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .OUTPUT(y, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .REQUIRED_ATTR(x1_c1_offset, Int)
+    .REQUIRED_ATTR(x2_c1_offset, Int)
+    .REQUIRED_ATTR(c1_len, Int)
+    .OP_END_FACTORY_REG(StrideAdd)
+
+/**
+* @brief Compare two tensors are totally equal or not, only output a bool value"
+
+* @par Inputs:
+* Two inputs, including:
+* @li input_x: A Tensor. the first tensor. \n
+* @li input_y: A Tensor. the second tensor. \n
+
+* @par Outputs:
+* @li output_z: A Tensor. Bool type, compare result of the two inputs. \n
+
+* @par Third-party framework compatibility
+* Compatible with the Pytorch equal operator. \n
+*/
+REG_OP(TensorEqual)
+    .INPUT(input_x, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT8, DT_UINT8}))
+    .INPUT(input_y, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT8, DT_UINT8}))
+    .OUTPUT(output_z, TensorType({DT_BOOL}))
+    .OP_END_FACTORY_REG(TensorEqual)
+
+/**
+ * @brief Element-wise min of each of the input tensors (with Numpy-style broadcasting support). 
+ * All inputs and outputs must have the same data type. This operator supports multidirectional 
+ * (i.e., Numpy-style) broadcasting
+ * 
+ * @par inputs
+ * one input including:
+ * @li x: dynamic input A Tensor. Must be one of the following types: float32, float16, double, int32, int64
+ * 
+ * @par output
+ * one output including:
+ * @li y:A Tensor of the same type as x
+ * 
+ */
+REG_OP(MaxN)
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_FLOAT64, DT_INT32, DT_INT64})) 
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_FLOAT64, DT_INT32, DT_INT64}))
+    .OP_END_FACTORY_REG(MaxN)
+
+/**
+ * @brief Element-wise min of each of the input tensors (with Numpy-style broadcasting support). 
+ * All inputs and outputs must have the same data type. This operator supports multidirectional 
+ * (i.e., Numpy-style) broadcasting
+ * 
+ * @par inputs
+ * one input including:
+ * @li x: dynamic input A Tensor. Must be one of the following types: float32, float16, double, int32, int64
+ * 
+ * @par output
+ * one output including:
+ * @li y:A Tensor of the same type as x
+ * 
+ */
+REG_OP(MinN)
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_FLOAT64,
+                                  DT_INT32, DT_INT64}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_FLOAT64,
+                           DT_INT32, DT_INT64}))
+    .OP_END_FACTORY_REG(MinN)
 }  // namespace ge
 
 

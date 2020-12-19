@@ -719,4 +719,53 @@ IMPLEMT_INFERFUNC(DynamicGRUV2Grad, DynamicGRUV2GradInferShape) {
 
 INFER_FUNC_REG(DynamicGRUV2Grad, DynamicGRUV2GradInferShape);
 VERIFY_FUNC_REG(DynamicGRUV2Grad, DynamicGRUV2GradVerify);
+
+// ----------------EmbeddingDenseGrad Begin-------------------
+bool InferShapeAndTypeEmbeddingDenseGrad(Operator &op,
+                                         const string &input_name1,
+                                         const string &input_name2,
+                                         const string &output_name) {
+  TensorDesc v_output_desc = op.GetOutputDesc(output_name);
+  DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
+  Format input_format = op.GetInputDesc(input_name1).GetFormat();
+  ge::Shape shapeX = op.GetInputDesc(input_name1).GetShape();
+  ge::Shape shapeY = op.GetInputDesc(input_name2).GetShape();
+  std::vector<int64_t> dims_x = shapeX.GetDims();
+
+  int64_t num_weights_value = 0;
+  std::vector<int64_t> dim_vec;
+  op.GetAttr("num_weights", num_weights_value);
+  OP_LOGI(op.GetName().c_str(), "the attr num_weights is %d",
+          num_weights_value);
+  if (num_weights_value == 0) {
+    OP_LOGE(op.GetName().c_str(), "num_weights not be zero");
+    return false;
+  }
+  dim_vec.push_back(num_weights_value);
+  dim_vec.push_back(dims_x.back());
+  ge::Shape output_shape = ge::Shape(dim_vec);
+  v_output_desc.SetShape(output_shape);
+  v_output_desc.SetDataType(input_dtype);
+  v_output_desc.SetFormat(input_format);
+  op.UpdateOutputDesc(output_name, v_output_desc);
+  return true;
+}
+
+IMPLEMT_VERIFIER(EmbeddingDenseGrad, EmbeddingDenseGradVerify) {
+  return GRAPH_SUCCESS;
+}
+
+// Obtains the processing function of the output tensor description.
+IMPLEMT_COMMON_INFERFUNC(g_embeddingDenseGradInferShape) {
+  if (InferShapeAndTypeEmbeddingDenseGrad(op, "grad", "indices", "y")) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+
+// Registered inferfunction
+COMMON_INFER_FUNC_REG(EmbeddingDenseGrad, g_embeddingDenseGradInferShape);
+// Registered verify function
+VERIFY_FUNC_REG(EmbeddingDenseGrad, EmbeddingDenseGradVerify);
+// ----------------EmbeddingDenseGrad END---------------------
 }  // namespace ge

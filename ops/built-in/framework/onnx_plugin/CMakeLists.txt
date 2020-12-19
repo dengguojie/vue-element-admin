@@ -50,6 +50,37 @@ set(_onnx_plugins
   tile_plugin.cc
   topk_plugin.cc
   unsqueeze_plugin.cc
+  argmax_plugin.cc
+  argmin_plugin.cc
+  average_pool_plugin.cc
+  batch_matmul_plugin.cc
+  cast_plugin.cc
+  constantofshape_plugin.cc
+  conv_transpose_plugin.cc
+  cumsum_plugin.cc
+  elu_plugin.cc
+  flatten_plugin.cc
+  leakyrelu_plugin.cc
+  logsoftmax_plugin.cc
+  lrn_plugin.cc
+  matmul_plugin.cc
+  max_plugin.cc
+  min_plugin.cc
+  multinomial_plugin.cc
+  reduce_max_plugin.cc
+  reduce_min_plugin.cc
+  reduce_prod_plugin.cc
+  resize_plugin.cc
+  reverseSequence_plugin.cc
+  roiAlign_plugin.cc
+  similar_opp_plugins.cc
+  size_plugin.cc
+  softmax_plugin.cc
+  split_plugin.cc
+  squeeze_plugin.cc
+  sum_plugin.cc
+  threshold_relu_plugin.cc
+  transpose_plugin.cc
 )
 
 add_library(ops_all_onnx_plugin SHARED
@@ -66,6 +97,7 @@ target_include_directories(ops_all_onnx_plugin PRIVATE
   ${GRAPHENGINE_INCLUDE}
   ${PROTO_BINARY_DIR}/opp
   ${Protobuf_INCLUDE}
+  ${OPS_DIR}/built-in/op_proto/inc
 )
 
 target_compile_options(ops_all_onnx_plugin PRIVATE

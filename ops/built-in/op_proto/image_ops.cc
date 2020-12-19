@@ -1806,4 +1806,146 @@ IMPLEMT_INFERFUNC(SpatialTransformerD, SpatialTransformerDInferShape) {
 
 INFER_FUNC_REG(SpatialTransformerD, SpatialTransformerDInferShape);
 
+// ----------------Resize Begin-------------------
+static bool GetConstValueFloat(const Operator& op, const Tensor& const_tensor,
+                               const DataType& dtype,
+                               std::vector<float_t>& const_data) {
+  size_t size = 0;
+  if (dtype == ge::DT_FLOAT) {
+    const float_t* const_data_ptr =
+        reinterpret_cast<const float_t*>(const_tensor.GetData());
+    size = const_tensor.GetSize() / sizeof(float_t);
+    for (size_t i = 0; i < size; ++i) {
+      const_data.push_back((float_t)((*(const_data_ptr + i))));
+      OP_LOGD(op.GetName().c_str(), "const data int32 fusion pass ====== %d",
+              (float_t)(*(const_data_ptr + i)));
+    }
+  } else {
+    OP_LOGE(op.GetName().c_str(), "not support this type");
+    return false;
+  }
+  return true;
+}
+
+static bool CalculateSizeOut(const Operator& op,
+                             const std::vector<int64_t>& image_shape,
+                             std::vector<float_t>& scale_out,
+                             const ge::Format& input_format,
+                             std::vector<int64_t>& size_out) {
+  int64_t size_out_h;
+  int64_t size_out_w;
+  if (scale_out.size() == DIM_SIZE4) {
+    if (input_format == FORMAT_NHWC) {
+      scale_out.erase(scale_out.begin() + 3);  // 3 is index
+      scale_out.erase(scale_out.begin() + 0);  // 0 is index
+    } else if (input_format == FORMAT_NCHW) {
+      scale_out.erase(scale_out.begin() + 1);  // 1 is index
+      scale_out.erase(scale_out.begin() + 0);  // 0 is index
+    } else {
+      OP_LOGE(op.GetName().c_str(), "Not supported this format%d",
+              input_format);
+    }
+  }
+  if (scale_out.size() != DIM_SIZE2) {
+    OP_LOGE(op.GetName().c_str(),
+            "length of scale_out after erase must be equal to 2");
+    return false;
+  }
+  if (input_format == FORMAT_NHWC) {
+    size_out_h = image_shape[1] * scale_out[0];  // 0 and 1 is index
+    size_out_w = image_shape[2] * scale_out[1];  // 2 and 1 is index
+  } else if (input_format == FORMAT_NCHW) {
+    size_out_h = image_shape[2] * scale_out[0];  // 0 and 2 is index
+    size_out_w = image_shape[3] * scale_out[1];  // 3 and 1 is index
+  } else {
+    OP_LOGE(op.GetName().c_str(),
+            "Not supported this format%d, output tensor will be wrong",
+            input_format);
+    return false;
+  }
+  size_out.push_back(size_out_h);
+  size_out.push_back(size_out_w);
+  return true;
+}
+
+static graphStatus HadleSizeOut(const Operator& op,
+                                const ge::Format& input_format,
+                                std::vector<int64_t>& size_out) {
+  if (size_out.size() == DIM_SIZE4) {
+    if (input_format == FORMAT_NHWC) {
+      size_out.erase(size_out.begin() + 3);  // 3 is index
+      size_out.erase(size_out.begin() + 0);  // 0 is index
+    } else if (input_format == FORMAT_NCHW) {
+      size_out.erase(size_out.begin() + 1);  // 1 is index
+      size_out.erase(size_out.begin() + 0);  // 0 is index
+    } else {
+      OP_LOGE(op.GetName().c_str(), "Not supported this format%d",
+              input_format);
+    }
+  }
+  if (size_out.size() != DIM_SIZE2) {
+    OP_LOGE(op.GetName().c_str(),
+            "length of size_out after erase must be equal to 2");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+// ---------------ResizeNearest Op start-------------------
+IMPLEMT_INFERFUNC(Resize, ResizeNearestInferShape) {
+  vector<int64_t> images_shape = op.GetInputDesc("x").GetShape().GetDims();
+  DataType input_dtype = op.GetInputDesc("x").GetDataType();
+  Format input_format = op.GetInputDesc("x").GetFormat();
+  int64_t inputs_size = op.GetInputsSize();
+  DataType inputs_dtype_scales = op.GetInputDesc("scales").GetDataType();
+  TensorDesc td = op.GetOutputDesc("y");
+  Tensor scales_tensor;
+  Tensor sizes_tensor;
+  vector<int64_t> size_out;
+  vector<float_t> scale_out;
+
+  if (op.GetInputConstData("scales", scales_tensor) != GRAPH_SUCCESS) {
+    OP_LOGW(op.GetName().c_str(), "Get constValue failed of [scales]");
+  }
+
+  if (inputs_size == 4) {  // 4 is number of inputs
+    if (op.GetInputConstData("sizes", sizes_tensor) != GRAPH_SUCCESS) {
+      OP_LOGW(op.GetName().c_str(), "Get constValue failed of [sizes]");
+    }
+    DataType input_dtype_sizes = op.GetInputDesc("sizes").GetDataType();
+    GetConstValue(op, sizes_tensor, input_dtype_sizes, size_out);
+  }
+  if (size_out.size() == 0) {
+    GetConstValueFloat(op, scales_tensor, inputs_dtype_scales, scale_out);
+    if (!CalculateSizeOut(op, images_shape, scale_out, input_format,
+                          size_out)) {
+      OP_LOGE(op.GetName().c_str(), "calculate size out failed.");
+      return GRAPH_FAILED;
+    }
+  }
+  HadleSizeOut(op, input_format, size_out);
+
+  vector<int64_t> y_shape;
+  if (input_format == FORMAT_NHWC) {
+    y_shape.push_back(images_shape[0]);  // 0 is index
+    y_shape.push_back(size_out[0]);      // 0 is index
+    y_shape.push_back(size_out[1]);      // 1 is index
+    y_shape.push_back(images_shape[3]);  // 3 is index
+  } else if (input_format == FORMAT_NCHW) {
+    y_shape.push_back(images_shape[0]);  // 0 is index
+    y_shape.push_back(images_shape[1]);  // 1 is index
+    y_shape.push_back(size_out[0]);      // 0 is index
+    y_shape.push_back(size_out[1]);      // 1 is index
+  } else {
+    OP_LOGE(op.GetName().c_str(), "Not supported this format%d", input_format);
+  }
+  td.SetShape(ge::Shape(y_shape));
+  td.SetDataType(input_dtype);
+  (void)op.UpdateOutputDesc("y", td);
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(Resize, ResizeNearestInferShape);
+// ---------------ResizeNearest Op End-------------------
+// ----------------Resize END---------------------
+
 }  // namespace ge

@@ -1364,5 +1364,136 @@ REG_OP(Dilation2D)
     .ATTR(pads, ListInt, {0,0,0,0})
     .OP_END_FACTORY_REG(Dilation2D)
 
+/**
+* @brief Applies a 2D adaptive average pooling over  
+*       an input signal composed of several input planes.  \n
+
+* @par Inputs:
+* One input, including:
+* @li x: A Tensor. Must be one of the following data types:
+*     float16, float32. \n
+
+* @par Attributes:
+* @li output_size: A required list of 2 ints
+*    specifying the size (H,W) of the output tensor. \n
+
+* @par Outputs:
+* @li y: A Tensor. Has the same data type as "x" \n
+
+* @par Third-party framework compatibility
+* Compatible with the Pytorch operator AdaptiveAvgPool2d.
+*/
+REG_OP(AdaptiveAvgPool2d)
+    .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .REQUIRED_ATTR(output_size, ListInt)
+    .OP_END_FACTORY_REG(AdaptiveAvgPool2d)
+
+/**
+* @brief Compute gradients of adaptive averagev2 pooling function.
+
+* @par Inputs:
+* @li input_grad: A NCHW Tensor. Must be one of the following data types:
+* float16, float32.
+
+* @par Attributes:
+* @li orig_input_shape: A required tuple or list of type int32.
+
+* @par Outputs:
+* @li output_grad: A tensor with the same shape and type as "orig_input_shape".
+
+* @par Third-party framework compatibility
+* Compatible with the Pytorch operator AdaptiveAvgPool2dGrad.
+*/
+REG_OP(AdaptiveAvgPool2dGrad)
+    .INPUT(input_grad, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .OUTPUT(output_grad, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .REQUIRED_ATTR(orig_input_shape, ListInt)
+    .OP_END_FACTORY_REG(AdaptiveAvgPool2dGrad)
+
+/**
+* @brief Performs the backpropagation of MaxPoolWithGradArgmaxV1.
+
+* @par Inputs:
+* Three inputs, including:
+* @li x: An NC1HWC0 tensor of type float16.
+* @li grad: An NC1HWC0 tensor of type float16.
+* @li argmax: An NC1HWC0 tensor of type uint16 or int64. \n
+
+* @par Attributes:
+* @li ksize: A required list of int8, int16, int32, or int64 values, specifying the size of the window for
+* each dimension of the input tensor. No default value.
+* @li strides: A required list of int8, int16, int32, or int64 values, specifying the stride of the sliding window for
+* each dimension of the input tensor. No default value.
+* @li pads: A required listint. \n
+
+* @par Outputs:
+* y: A Tensor. Has the same type and format as input "x". \n
+
+* @attention Constraints:
+* @li "ksize" is a list that has length 4: ksize[0] = 1 or ksize[3] = 1, ksize[1] * ksize[2] <= 255.
+* @li "strides" is a list that has length 4: strides[0] = 1 or strides[3] = 1
+* @li "pads" is listint.
+* @li "ceil_mode" defaults to False.
+* @li "data_format" defaults to "NC1HWC0". \n
+
+* @par Third-party framework compatibility
+* Compatible with the TensorFlow operator MaxPoolGradWithArgmaxV1.
+*/
+
+REG_OP(MaxPoolGradWithArgmaxV1)
+    .INPUT(x, TensorType({DT_FLOAT16}))
+    .INPUT(grad, TensorType({DT_FLOAT16}))
+    .INPUT(argmax, TensorType({DT_UINT16}))
+    .OUTPUT(y, TensorType({DT_FLOAT16}))
+    .REQUIRED_ATTR(ksize, ListInt)
+    .REQUIRED_ATTR(strides, ListInt)
+    .REQUIRED_ATTR(pads, ListInt)
+    .ATTR(dtype, Int, 3)
+    .ATTR(dilation, ListInt, {1, 1, 1, 1})
+    .ATTR(ceil_mode, Bool, false)
+    .OP_END_FACTORY_REG(MaxPoolGradWithArgmaxV1)
+
+/**
+* @brief Performs max pooling on the input and outputs both max values and indices.
+
+* @par Inputs:
+* One input:
+* x: An NC1HWC0 Tensor of type float16. \n
+
+* @par Attributes:
+* @li ksize: A required list of int8, int16, int32, or int64 values, specifying the size of the window for
+* each dimension of the input tensor. No default value.
+* @li strides: A required list of int8, int16, int32, or int64 values, specifying the stride of the sliding window for
+* each dimension of the input tensor. No default value.
+* @li pads: A required string. No default value. \n
+
+* @par Outputs:
+* y: A Tensor. Has the same type and format as input "x".
+* argmax:  A Tensor. type:uint16, format:NC1HWC0. \n
+
+* @attention Constraints:
+* @li "ksize" is a list that has length 4: ksize[0] = 1 or ksize[3] = 1, ksize[1] * ksize[2] <= 255.
+* @li "stride is a list that has length 4: strides[0] = 1 or strides[3] = 1, strides[1] <= 63, strides[0] >= 1,
+* strides[2] <= 63, strides[2] >= 1.
+* @li "pads" is listint.
+* @li "ceil_mode" defaults to False.
+* @li "data_format" defaults to "NC1HWC0". \n
+
+* @par Third-party framework compatibility
+* Compatible with the TensorFlow operator MaxPoolWithArgmaxV1.
+*/
+REG_OP(MaxPoolWithArgmaxV1)
+    .INPUT(x, TensorType({DT_FLOAT16}))
+    .OUTPUT(y, TensorType({DT_FLOAT16}))
+    .OUTPUT(argmax, TensorType({DT_UINT16}))
+    .REQUIRED_ATTR(ksize, ListInt)
+    .REQUIRED_ATTR(strides, ListInt)
+    .REQUIRED_ATTR(pads, ListInt)
+    .ATTR(dtype, Int, 3)
+    .ATTR(dilation, ListInt, {1, 1, 1, 1})
+    .ATTR(ceil_mode, Bool, false)
+    .OP_END_FACTORY_REG(MaxPoolWithArgmaxV1)
+
 }  // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_NN_POOLING_OPS_H

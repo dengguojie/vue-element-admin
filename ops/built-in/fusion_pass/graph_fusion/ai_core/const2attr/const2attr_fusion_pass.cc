@@ -405,4 +405,9 @@ REGISTER_CONST2ATTR("CumulativeLogsumexpD")
     .OriginOpType("CumulativeLogsumexp")
     .NeedCheckSupported(true)
     .SetConstToAttr(1, "axis", "SetInt");
+
+REGISTER_CONST2ATTR("FillV2D")
+    .OriginOpType("FillV2")
+    .NeedCheckSupported(true)
+    .SetConstToAttr(0, "dims", "SetListInt");
 }  // namespace fe

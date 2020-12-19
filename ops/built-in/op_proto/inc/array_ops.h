@@ -1153,6 +1153,30 @@ REG_OP(EditDistance)
     .OUTPUT(output, TensorType({DT_FLOAT}))
     .OP_END_FACTORY_REG(EditDistance)
 
+/**
+* @brief sort_v2.
+
+* @par Inputs:
+* @li x: An ND tensor of type float16.
+
+* @par Attributes:
+
+* @li axis: An optional int. The dimension to sort along. This value defaults to -1.
+* @li descending: An optional bool. Controls the sorting order (ascending or descending). This value defaults to False.
+
+* @par Outputs:
+* @li y: An ND tensor of type float16.
+
+* @attention Constraints:
+* @li Axis should select the last dim.
+* @li The upper limit of data on Ascend310 is 500K, and that on Ascend910 is 2000K.
+*/
+REG_OP(SortV2)
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .ATTR(axis, Int, -1)
+    .ATTR(descending, Bool, false)
+    .OP_END_FACTORY_REG(SortV2)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_ARRAY_OPS_H_

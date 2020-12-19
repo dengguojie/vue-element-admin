@@ -1894,5 +1894,62 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
 
 INFER_FUNC_REG(MatrixDiagV2, MatrixDiagV2InferShape);
 
+// ----------------IndexAdd Begin-------------------
+bool InferShapeAndTypeIndexAdd(Operator& op) {
+  TensorDesc output_desc = op.GetOutputDesc("var_out");
+  DataType var_dtype = op.GetInputDesc("var").GetDataType();
+  Format var_format = op.GetInputDesc("var").GetFormat();
+  ge::Shape var_shape = op.GetInputDesc("var").GetShape();
+  std::vector<int64_t> var_dims = var_shape.GetDims();
+
+  ge::Shape updates_shape = op.GetInputDesc("updates").GetShape();
+  std::vector<int64_t> updates_dims = updates_shape.GetDims();
+
+  if (updates_dims != var_dims) {
+    OP_LOGE(op.GetName().c_str(), "var_dims not equal updates dims");
+    return GRAPH_FAILED;
+  }
+
+  ge::Shape output_shape = ge::Shape(var_dims);
+  output_desc.SetShape(output_shape);
+  output_desc.SetDataType(var_dtype);
+  output_desc.SetFormat(var_format);
+  op.UpdateOutputDesc("var_out", output_desc);
+
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(IndexAdd, IndexAddVerify) {
+  DataType var_dtype = op.GetInputDesc("var").GetDataType();
+  DataType indices_dtype = op.GetInputDesc("indices").GetDataType();
+  DataType updates_dtype = op.GetInputDesc("updates").GetDataType();
+  DataType var_out_dtype = op.GetInputDesc("var_out").GetDataType();
+  if (var_dtype != var_out_dtype || var_dtype != updates_dtype) {
+    OP_LOGE(op.GetName().c_str(),
+            "The input shape of var var_out updates is equal, please check!");
+    return GRAPH_FAILED;
+  }
+  if (indices_dtype != DT_INT32) {
+    OP_LOGE(op.GetName().c_str(),
+            "The input shape of indices is not int32, please check!");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(IndexAddInferShape) {
+  if (InferShapeAndTypeIndexAdd(op) == GRAPH_FAILED) {
+    OP_LOGE(op.GetName().c_str(), "index_add infer shape failed!");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+// Registered inferfunction
+COMMON_INFER_FUNC_REG(IndexAdd, IndexAddInferShape);
+// Registered verify function
+VERIFY_FUNC_REG(IndexAdd, IndexAddVerify);
+// ----------------IndexAdd END---------------------
+
 }  // namespace ge
 

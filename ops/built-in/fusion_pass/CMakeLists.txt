@@ -237,6 +237,14 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/yolo_v3_detection_output_fusion_pass.cc
   graph_fusion/ai_core/yolo_v3_detection_output_v2_fusion_pass.cc
   graph_fusion/ai_core/slice_fusion_pass.cc
+  graph_fusion/ai_core/adaptive_avg_pool_fussion_pass.cc
+  graph_fusion/ai_core/adaptive_avg_pool_grad_fusion_pass.cc
+  graph_fusion/ai_core/max_fusion_pass.cc
+  graph_fusion/ai_core/min_fusion_pass.cc
+  graph_fusion/ai_core/multinomial_fusion_pass.cc
+  graph_fusion/ai_core/resize_fusion_pass.cc
+  graph_fusion/ai_core/strided_slice_v2_fusion_pass.cc
+  graph_fusion/ai_core/threshold_relu_fusion_pass.cc
 )
 
 set(ops_fusion_pass_path "${INSTALL_PATH}/opp/fusion_pass/built_in")

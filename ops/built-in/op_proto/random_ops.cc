@@ -412,4 +412,51 @@ IMPLEMT_COMMON_INFERFUNC(ShuffleChannelInferShape) {
 
 COMMON_INFER_FUNC_REG(ShuffleChannel, ShuffleChannelInferShape);
 VERIFY_FUNC_REG(ShuffleChannel, ShuffleChannelVerify);
+
+// ----------------MultinomialFuss Begin-------------------
+static bool CheckDtype(const ge::Operator& op) {
+  int DATA_TYPE_INT32_ONNX = 6;
+  int DATA_TYPE_INT64_ONNX = 7;
+  int data_type = DATA_TYPE_INT32_ONNX;
+  op.GetAttr("dtype", data_type);
+  if (data_type != DATA_TYPE_INT32_ONNX && data_type != DATA_TYPE_INT64_ONNX) {
+    OP_LOGE("MultinomialFussVerify", "data_type not int32 or int64");
+    return false;
+  }
+  return true;
+}
+
+IMPLEMT_COMMON_INFERFUNC(MultinomialFussInferShape) {
+  int DATA_TYPE_INT32_ONNX = 6;
+  int DATA_TYPE_INT64_ONNX = 7;
+  ge::TensorDesc input_desc = op.GetInputDesc(0);
+  ge::TensorDesc output_desc = op.GetOutputDesc(0);
+  std::vector<int64_t> dims = input_desc.GetShape().GetDims();
+  int sample_size = 1;
+  op.GetAttr("sample_size", sample_size);
+  int size = dims.size();
+  dims[size - 1] = sample_size;
+  int data_type = DATA_TYPE_INT32_ONNX;
+  op.GetAttr("dtype", data_type);
+  ge::DataType data_type_om = DT_INT64;
+  if (data_type == DATA_TYPE_INT32_ONNX) {
+    data_type_om = DT_INT32;
+  }
+  output_desc.SetDataType(data_type_om);
+  output_desc.SetFormat(input_desc.GetFormat());
+  output_desc.SetShape(Shape(dims));
+  op.UpdateOutputDesc("y", output_desc);
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(MultinomialFuss, MultinomialFussVerify) {
+  if (!CheckDtype(op)) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(MultinomialFuss, MultinomialFussInferShape);
+VERIFY_FUNC_REG(MultinomialFuss, MultinomialFussVerify);
+// ----------------MultinomialFuss END---------------------
+
 }  // namespace ge

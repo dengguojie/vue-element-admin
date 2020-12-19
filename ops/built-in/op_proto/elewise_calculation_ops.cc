@@ -3561,4 +3561,616 @@ COMMON_INFER_FUNC_REG(TensorMove, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
 COMMON_INFER_FUNC_REG(TensorRedirect, ELMTWISE_INFER_SHAPEANDTYPE("x", "output_x"));
 // --------------TensorRedirect END-----------------------
 
+// ----------------MaxN Begin-------------------
+static bool MaxNCheckDtype(const ge::Operator& op) {
+  int32_t input_num = op.GetInputsSize();
+  if (input_num <= 0) {
+    OP_LOGE("MaxNInferShape", "DynamicInputNum is le 0");
+    return false;
+  }
+  ge::TensorDesc input_desc0 = op.GetDynamicInputDesc("x", 0);
+  DataType data_ty0 = input_desc0.GetDataType();
+  for (int i = 1; i < input_num; ++i) {
+    ge::TensorDesc input_desc = op.GetDynamicInputDesc("x", i);
+    DataType data_ty = input_desc.GetDataType();
+    if (data_ty0 != data_ty) {
+      OP_LOGE("MaxNInferShape", "DynamicInput DataType is not equal");
+      return false;
+    }
+  }
+  return true;
+}
+
+static void MaxNUpdateInferShape(std::vector<int64_t>& dims,
+                             const ge::Shape input_shape) {
+  int32_t dims_size = dims.size();
+  std::vector<int64_t> input_dims = input_shape.GetDims();
+  int32_t input_dims_size = input_dims.size();
+  if (input_dims_size > dims_size) {
+    for (int i = 0; i < input_dims_size - dims_size; ++i) {
+      dims.insert(dims.begin(), 0);
+    }
+    dims_size = dims.size();
+  }
+  int32_t i = dims_size - input_dims_size;
+  int32_t j = 0;
+  while (i < dims_size && j < input_dims_size) {
+    if (dims[i] < input_dims[j]) {
+      dims[i] = input_dims[j];
+    }
+    i++;
+    j++;
+  }
+}
+IMPLEMT_COMMON_INFERFUNC(MaxNInferShape) {
+  std::vector<int64_t> dims(1, 0);
+  int32_t input_num = op.GetInputsSize();
+  if (input_num <= 0) {
+    OP_LOGE("MaxNInferShape", "DynamicInputNum is le 0");
+    return GRAPH_FAILED;
+  }
+  for (int i = 0; i < input_num; ++i) {
+    ge::TensorDesc input_desc = op.GetDynamicInputDesc("x", i);
+    ge::Shape input_shape = input_desc.GetShape();
+    MaxNUpdateInferShape(dims, input_shape);
+  }
+  ge::TensorDesc input_desc0 = op.GetDynamicInputDesc("x", 0);
+  ge::TensorDesc output_desc = op.GetOutputDesc("y");
+  ge::Shape inferShape(dims);
+  output_desc.SetShape(inferShape);
+  output_desc.SetDataType(input_desc0.GetDataType());
+  output_desc.SetFormat(input_desc0.GetFormat());
+  op.UpdateOutputDesc("y", output_desc);
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(MaxN, MaxNVerify) {
+  if (!MaxNCheckDtype(op)) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(MaxN, MaxNInferShape);
+VERIFY_FUNC_REG(MaxN, MaxNVerify);
+// ----------------MaxN END---------------------
+
+// ----------------MinN Begin-------------------
+static bool MinFussCheckDtype(const ge::Operator& op) {
+  int32_t input_num = op.GetInputsSize();
+  if (input_num <= 0) {
+    OP_LOGE("MinFussInferShape", "DynamicInputNum is le 0");
+    return false;
+  }
+  ge::TensorDesc input_desc0 = op.GetDynamicInputDesc("x", 0);
+  DataType data_ty0 = input_desc0.GetDataType();
+  for (int i = 1; i < input_num; ++i) {
+    ge::TensorDesc input_desc = op.GetDynamicInputDesc("x", i);
+    DataType data_ty = input_desc.GetDataType();
+    if (data_ty0 != data_ty) {
+      OP_LOGE("MinFussInferShape", "DynamicInput DataType is not equal");
+      return false;
+    }
+  }
+  return true;
+}
+
+static void MinFussUpdateInferShape(std::vector<int64_t>& dims,
+                             const ge::Shape input_shape) {
+  int32_t dims_size = dims.size();
+  std::vector<int64_t> input_dims = input_shape.GetDims();
+  int32_t input_dims_size = input_dims.size();
+  if (input_dims_size > dims_size) {
+    for (int i = 0; i < input_dims_size - dims_size; ++i) {
+      dims.insert(dims.begin(), 1);
+    }
+    dims_size = dims.size();
+  }
+  int32_t i = dims_size - input_dims_size;
+  int32_t j = 0;
+  while (i < dims_size && j < input_dims_size) {
+    if (dims[i] < input_dims[j]) {
+      dims[i] = input_dims[j];
+    }
+    i++;
+    j++;
+  }
+}
+IMPLEMT_COMMON_INFERFUNC(MinNInferShape) {
+  std::vector<int64_t> dims(1, 0);
+  int32_t input_num = op.GetInputsSize();
+  if (input_num <= 0) {
+    OP_LOGE("MinFussInferShape", "DynamicInputNum is le 0");
+    return GRAPH_FAILED;
+  }
+  for (int i = 0; i < input_num; ++i) {
+    ge::TensorDesc input_desc = op.GetDynamicInputDesc("x", i);
+    ge::Shape input_shape = input_desc.GetShape();
+    MinFussUpdateInferShape(dims, input_shape);
+  }
+  ge::TensorDesc input_desc0 = op.GetDynamicInputDesc("x", 0);
+  ge::TensorDesc output_desc = op.GetOutputDesc("y");
+  ge::Shape infer_shape(dims);
+  output_desc.SetShape(infer_shape);
+  output_desc.SetDataType(input_desc0.GetDataType());
+  output_desc.SetFormat(input_desc0.GetFormat());
+  op.UpdateOutputDesc("y", output_desc);
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(MinN, MinNVerify) {
+  if (!MinFussCheckDtype(op)) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(MinN, MinNInferShape);
+VERIFY_FUNC_REG(MinN, MinNVerify);
+// ----------------MinN END---------------------
+
+// ----------------TensorEqual Begin-------------------
+bool InferShapeAndTypeTensorEqual(Operator &op, const string &input_name1,
+                                  const string &input_name2,
+                                  const string &output_name) {
+  TensorDesc v_output_desc = op.GetOutputDesc(output_name);
+
+  DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
+  Format input_format = op.GetInputDesc(input_name1).GetFormat();
+
+  ge::Shape shape_x = op.GetInputDesc(input_name1).GetShape();
+  ge::Shape shape_y = op.GetInputDesc(input_name2).GetShape();
+  std::vector<int64_t> dims_x = shape_x.GetDims();
+  std::vector<int64_t> dims_y = shape_y.GetDims();
+
+  if (shape_x.GetShapeSize() != shape_y.GetShapeSize()) {
+    OP_LOGE("The ShapeSize of input_x does not match input_y.");
+    return false;
+  }
+  return true;
+
+  std::vector<int64_t> dim_vec = {1};
+  ge::Shape output_shape = ge::Shape(dim_vec);
+  v_output_desc.SetShape(output_shape);
+  v_output_desc.SetDataType(DT_BOOL);
+  v_output_desc.SetFormat(input_format);
+  op.UpdateOutputDesc(output_name, v_output_desc);
+
+  return true;
+}
+
+IMPLEMT_COMMON_INFERFUNC(TensorEqualInferShape) {
+  if (InferShapeAndTypeTensorEqual(op, "input_x", "input_y", "output_z")) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+
+IMPLEMT_VERIFIER(TensorEqual, TensorEqualVerify) {
+  // Check whether the data types of two input tensors are the same.
+  if (op.GetInputDesc("input_x").GetDataType() !=
+      op.GetInputDesc("input_y").GetDataType()) {
+    OP_LOGE("input_x input_y tensor dtype does not match.");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(TensorEqual, TensorEqualInferShape);
+VERIFY_FUNC_REG(TensorEqual, TensorEqualVerify);
+// ----------------TensorEqual END---------------------
+
+void CompareBothShape(std::vector<int64_t>& dims_fst,
+                      std::vector<int64_t>& dims_sec) {
+  if (dims_fst.size() < dims_sec.size()) {
+    std::vector<int64_t> dims_tmp = dims_fst;
+    dims_fst = dims_sec;
+    dims_sec = dims_tmp;
+  }
+
+  if (dims_fst.size() > dims_sec.size()) {
+    int dec = dims_fst.size() - dims_sec.size();
+    dims_sec.insert(dims_sec.begin(), dec, (int64_t)1);
+  }
+}
+
+graphStatus ChangeShape(std::vector<int64_t>& dims_fst,
+                        std::vector<int64_t>& dims_sec,
+                        std::vector<int64_t>& dims_vec) {
+  CompareBothShape(dims_fst, dims_sec);
+  // calculate shape of output: shape[i] = max(dims_fst[i], dims_sec[i])
+  for (size_t i = 0; i < dims_fst.size(); i++) {
+    if ((dims_fst[i] != dims_sec[i]) && (dims_fst[i] != 1) &&
+        (dims_sec[i] != 1)) {
+      OP_LOGE("[ERROR] dims_fst and dims_sec can not be broadcast");
+      return GRAPH_FAILED;
+    }
+
+    int64_t dims = (dims_fst[i] > dims_sec[i]) ? dims_fst[i] : dims_sec[i];
+    dims_vec.push_back(dims);
+  }
+  return GRAPH_SUCCESS;
+}
+
+graphStatus ReplenishShape(std::vector<int64_t>& dims_x,
+                           std::vector<int64_t>& dims_y,
+                           std::vector<int64_t>& dims_z,
+                           std::vector<int64_t>& dims_vec) {
+  std::vector<int64_t> dims_vec1;
+  if (ChangeShape(dims_x, dims_y, dims_vec1) == GRAPH_FAILED) {
+    return GRAPH_FAILED;
+  }
+
+  if (ChangeShape(dims_vec1, dims_z, dims_vec) == GRAPH_FAILED) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+graphStatus InferShapeAndTypeAddcdivAndAddcmul(Operator& op,
+                                               const string& input_name1,
+                                               const string& input_name2,
+                                               const string& input_name3,
+                                               const string& output_name) {
+  TensorDesc v_output_desc = op.GetOutputDesc(output_name);
+
+  DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
+  Format input_format = op.GetInputDesc(input_name1).GetFormat();
+  ge::Shape shape_x = op.GetInputDesc(input_name3).GetShape();
+  ge::Shape shape_y = op.GetInputDesc(input_name2).GetShape();
+  ge::Shape shape_z = op.GetInputDesc(input_name1).GetShape();
+  std::vector<int64_t> dims_x = shape_x.GetDims();
+  std::vector<int64_t> dims_y = shape_y.GetDims();
+  std::vector<int64_t> dims_z = shape_z.GetDims();
+  if (dims_x.size() < dims_y.size()) {
+    std::vector<int64_t> dims_tmp = dims_x;
+    dims_x = dims_y;
+    dims_y = dims_tmp;
+  }
+
+  std::vector<int64_t> dims_vec;
+  if (ReplenishShape(dims_x, dims_y, dims_z, dims_vec) == GRAPH_FAILED) {
+    OP_LOGE(op.GetName().c_str(), "ReplenishShape run failed");
+    return GRAPH_FAILED;
+  }
+
+  ge::Shape output_shape = ge::Shape(dims_vec);
+
+  v_output_desc.SetShape(output_shape);
+  v_output_desc.SetDataType(input_dtype);
+  v_output_desc.SetFormat(input_format);
+  op.UpdateOutputDesc(output_name, v_output_desc);
+
+  return GRAPH_SUCCESS;
+}
+
+// ----------------Addcdiv begin-------------------
+IMPLEMT_VERIFIER(Addcdiv, AddcdivVerify) {
+  // the data type of input_data, x1 and x2 should be same.
+  if (op.GetInputDesc("x2").GetDataType() !=
+          op.GetInputDesc("input_data").GetDataType() ||
+      op.GetInputDesc("x1").GetDataType() !=
+          op.GetInputDesc("input_data").GetDataType()) {
+    OP_LOGE(op.GetName().c_str(),
+            "input_data data type and x1, x2 match failed");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+// Obtains the processing function of the output tensor description.
+IMPLEMT_COMMON_INFERFUNC(AddcdivInferShape) {
+  if (InferShapeAndTypeAddcdivAndAddcmul(op, "input_data", "x1", "x2", "y") ==
+      GRAPH_SUCCESS) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+// Registered inferfunction
+COMMON_INFER_FUNC_REG(Addcdiv, AddcdivInferShape);
+// Registered verify function
+VERIFY_FUNC_REG(Addcdiv, AddcdivVerify);
+// ----------------Addcdiv end-------------------
+
+// ----------------Addcmul begin-------------------
+IMPLEMT_VERIFIER(Addcmul, AddcmulVerify) {
+  // the data type of input_data,x1 and x2 should be same.
+  if (op.GetInputDesc("input_data").GetDataType() !=
+          op.GetInputDesc("x1").GetDataType() ||
+      op.GetInputDesc("input_data").GetDataType() !=
+          op.GetInputDesc("x2").GetDataType()) {
+    OP_LOGE(op.GetName().c_str(),
+            "input_data data type and x1,x2 match failed");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+// Obtains the processing function of the output tensor description.
+IMPLEMT_COMMON_INFERFUNC(AddcmulInferShape) {
+  if (InferShapeAndTypeAddcdivAndAddcmul(op, "input_data", "x1", "x2", "y") ==
+      GRAPH_SUCCESS) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+// Registered inferfunction
+COMMON_INFER_FUNC_REG(Addcmul, AddcmulInferShape);
+// Registered verify function
+VERIFY_FUNC_REG(Addcmul, AddcmulVerify);
+// ----------------Addcmul end-------------------
+
+// ----------------AxpyV2 Begin-------------------
+IMPLEMT_VERIFIER(AxpyV2, AxpyV2Verify) {
+  if (!CheckTwoInputDtypeSame(op, "x1", "x2")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(AxpyV2InferShape) {
+  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+
+COMMON_INFER_FUNC_REG(AxpyV2, AxpyV2InferShape);
+VERIFY_FUNC_REG(AxpyV2, AxpyV2Verify);
+// ----------------AxpyV2 END---------------------
+
+// ----------------PtAdd Begin-------------------
+bool InferShapeAndTypePtAdd(Operator& op, const string& input_name1,
+                            const string& input_name2,
+                            const string& output_name) {
+  TensorDesc output_desc = op.GetOutputDesc(output_name);
+  DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
+  Format input_format = op.GetInputDesc(input_name1).GetFormat();
+  // The size of the shape dimension is exchanged.
+  // Each dimension of dims_x uses the larger value of the corresponding
+  // dimension in two tensors.
+  ge::Shape shape_x = op.GetInputDesc(input_name1).GetShape();
+  ge::Shape shape_y = op.GetInputDesc(input_name2).GetShape();
+  std::vector<int64_t> dims_x = shape_x.GetDims();
+  std::vector<int64_t> dims_y = shape_y.GetDims();
+  if (dims_x.size() < dims_y.size()) {
+    dims_x.swap(dims_y);
+  }
+
+  // The small shape is padded with 1.
+  if (dims_x.size() != dims_y.size()) {
+    int dec = dims_x.size() - dims_y.size();
+    for (int i = 0; i < dec; i++) {
+      dims_y.insert(dims_y.begin(), (int64_t)1);
+    }
+  }
+
+  // The value of each dimension in the shape of the output tensor is the
+  // larger value of the corresponding dimension in the two inputs.
+  std::vector<int64_t> dim_vec;
+  for (size_t i = 0; i < dims_x.size(); i++) {
+    if ((dims_x[i] != dims_y[i]) && (dims_x[i] != 1) && (dims_y[i] != 1)) {
+      OP_LOGE("The shape of x1 and x2 can not broadcast.");
+      return false;
+    }
+
+    int64_t dims = (dims_x[i] > dims_y[i]) ? dims_x[i] : dims_y[i];
+    dim_vec.push_back(dims);
+  }
+  ge::Shape output_shape = ge::Shape(dim_vec);
+
+  output_desc.SetShape(output_shape);
+  output_desc.SetDataType(input_dtype);
+  output_desc.SetFormat(input_format);
+  op.UpdateOutputDesc(output_name, output_desc);
+
+  return true;
+}
+
+IMPLEMT_VERIFIER(PtAdd, PtAddVerify) {
+  // Check whether the data types of two input tensors are the same.
+  if (op.GetInputDesc("x1").GetDataType() !=
+      op.GetInputDesc("x2").GetDataType()) {
+    OP_LOGE("x1 x2 tensor dtype does not match.");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+// Obtains the processing function of the output tensor description.
+IMPLEMT_COMMON_INFERFUNC(PtAddInferShape) {
+  // Check whether the data shape of two input tensors are the same.
+  if (InferShapeAndTypePtAdd(op, "x1", "x2", "y")) {
+    return GRAPH_SUCCESS;
+  }
+  OP_LOGE("The shape of output y does not match that of x1 x2.");
+  return GRAPH_FAILED;
+}
+
+COMMON_INFER_FUNC_REG(PtAdd, PtAddInferShape);
+VERIFY_FUNC_REG(PtAdd, PtAddVerify);
+// ----------------PtAdd END---------------------
+
+// ----------------PtMuls Begin-------------------
+bool InferShapeAndTypePtMuls(Operator &op, const string &input_name1,
+                             const string &input_name2,
+                             const string &output_name) {
+  TensorDesc v_output_desc = op.GetOutputDesc(output_name);
+
+  DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
+  Format input_format = op.GetInputDesc(input_name1).GetFormat();
+  // The size of the shape dimension is exchanged.
+  // Each dimension of dims_x uses the larger value of the corresponding
+  // dimension in two tensors.
+  ge::Shape shape_x = op.GetInputDesc(input_name1).GetShape();
+  ge::Shape shape_y = op.GetInputDesc(input_name2).GetShape();
+  std::vector<int64_t> dims_x = shape_x.GetDims();
+  std::vector<int64_t> dims_y = shape_y.GetDims();
+  if (dims_x.size() < dims_y.size()) {
+    dims_x.swap(dims_y);
+  }
+
+  // The small shape is padded with 1.
+  if (dims_x.size() != dims_y.size()) {
+    int dec = dims_x.size() - dims_y.size();
+    for (int i = 0; i < dec; i++) {
+      dims_y.insert(dims_y.begin(), (int64_t)1);
+    }
+  }
+
+  // The value of each dimension in the shape of the output tensor is the
+  // larger value of the corresponding dimension in the two inputs.
+  std::vector<int64_t> dim_vec;
+  for (size_t i = 0; i < dims_x.size(); i++) {
+    if ((dims_x[i] != dims_y[i]) && (dims_x[i] != 1) && (dims_y[i] != 1)) {
+      return false;
+    }
+
+    int64_t dims = (dims_x[i] > dims_y[i]) ? dims_x[i] : dims_y[i];
+    dim_vec.push_back(dims);
+  }
+  ge::Shape output_shape = ge::Shape(dim_vec);
+
+  v_output_desc.SetShape(output_shape);
+  v_output_desc.SetDataType(input_dtype);
+  v_output_desc.SetFormat(input_format);
+  op.UpdateOutputDesc(output_name, v_output_desc);
+
+  return true;
+}
+
+IMPLEMT_COMMON_INFERFUNC(PtMulsInferShape) {
+  if (InferShapeAndTypePtMuls(op, "x1", "x2", "y")) {
+    return GRAPH_SUCCESS;
+  }
+  OP_LOGE("The shape of output y does not match that of x1 x2.");
+  return GRAPH_FAILED;
+}
+
+IMPLEMT_VERIFIER(PtMuls, PtMulsVerify) {
+  // Check whether the data types of two input tensors are the same.
+  if (op.GetInputDesc("x1").GetDataType() !=
+      op.GetInputDesc("x2").GetDataType()) {
+    OP_LOGE("x1 x2 tensor dtype does not match.");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(PtMuls, PtMulsInferShape);
+VERIFY_FUNC_REG(PtMuls, PtMulsVerify);
+// ----------------PtMuls END---------------------
+
+// ----------------PtSub Begin-------------------
+bool InferShapeAndTypePtSub(Operator& op, const string& input_name1,
+                            const string& input_name2,
+                            const string& output_name) {
+  TensorDesc output_desc = op.GetOutputDesc(output_name);
+  DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
+  Format input_format = op.GetInputDesc(input_name1).GetFormat();
+  // The size of the shape dimension is exchanged.
+  // Each dimension of dims_x uses the larger value of the corresponding
+  // dimension in two tensors.
+  ge::Shape shape_x = op.GetInputDesc(input_name1).GetShape();
+  ge::Shape shape_y = op.GetInputDesc(input_name2).GetShape();
+  std::vector<int64_t> dims_x = shape_x.GetDims();
+  std::vector<int64_t> dims_y = shape_y.GetDims();
+  if (dims_x.size() < dims_y.size()) {
+    dims_x.swap(dims_y);
+  }
+
+  // The small shape is padded with 1.
+  if (dims_x.size() != dims_y.size()) {
+    int dec = dims_x.size() - dims_y.size();
+    for (int i = 0; i < dec; i++) {
+      dims_y.insert(dims_y.begin(), (int64_t)1);
+    }
+  }
+
+  // The value of each dimension in the shape of the output tensor is the
+  // larger value of the corresponding dimension in the two inputs.
+  std::vector<int64_t> dim_vec;
+  for (size_t i = 0; i < dims_x.size(); i++) {
+    if ((dims_x[i] != dims_y[i]) && (dims_x[i] != 1) && (dims_y[i] != 1)) {
+      OP_LOGE("The shape of x1 and x2 can not broadcast.");
+      return false;
+    }
+
+    int64_t dims = (dims_x[i] > dims_y[i]) ? dims_x[i] : dims_y[i];
+    dim_vec.push_back(dims);
+  }
+  ge::Shape output_shape = ge::Shape(dim_vec);
+
+  output_desc.SetShape(output_shape);
+  output_desc.SetDataType(input_dtype);
+  output_desc.SetFormat(input_format);
+  op.UpdateOutputDesc(output_name, output_desc);
+
+  return true;
+}
+
+IMPLEMT_VERIFIER(PtSub, PtSubVerify) {
+  // Check whether the data types of two input tensors are the same.
+  if (op.GetInputDesc("x1").GetDataType() !=
+      op.GetInputDesc("x2").GetDataType()) {
+    OP_LOGE("x1 x2 tensor dtype does not match.");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+// Obtains the processing function of the output tensor description.
+IMPLEMT_COMMON_INFERFUNC(PtSubInferShape) {
+  // Check whether the data shape of two input tensors are the same.
+  if (InferShapeAndTypePtSub(op, "x1", "x2", "y")) {
+    return GRAPH_SUCCESS;
+  }
+  OP_LOGE("The shape of output y does not match that of x1 x2.");
+  return GRAPH_FAILED;
+}
+
+COMMON_INFER_FUNC_REG(PtSub, PtSubInferShape);
+VERIFY_FUNC_REG(PtSub, PtSubVerify);
+// ----------------PtSub END---------------------
+
+// ----------------StrideAdd Begin-------------------
+bool InferShapeAndTypeStrideAdd(Operator &op, const string &input_name1,
+                                const string &input_name2,
+                                const string &outputName) {
+  TensorDesc output_desc = op.GetOutputDesc(outputName);
+  DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
+  Format input_format = op.GetInputDesc(input_name1).GetFormat();
+
+  ge::Shape shape_x = op.GetInputDesc(input_name1).GetShape();
+  ge::Shape shape_y = op.GetInputDesc(input_name2).GetShape();
+  std::vector<int64_t> dims_x = shape_x.GetDims();  // (N, x1_C1, H, W, C0)
+
+  int64_t c1_len = 0;
+
+  op.GetAttr("c1_len", c1_len);  // (N, c1_len, H, W, C0)
+  dims_x[1] = c1_len;
+  ge::Shape output_shape = ge::Shape(dims_x);
+
+  output_desc.SetShape(output_shape);
+  output_desc.SetDataType(input_dtype);
+  output_desc.SetFormat(input_format);
+  op.UpdateOutputDesc(outputName, output_desc);
+
+  return true;
+}
+
+IMPLEMT_VERIFIER(StrideAdd, StrideAddVerify) { return GRAPH_SUCCESS; }
+
+// Obtains the processing function of the output tensor description
+IMPLEMT_COMMON_INFERFUNC(StrideAddInferShape) {
+  if (InferShapeAndTypeStrideAdd(op, "x1", "x2", "y")) {
+    return GRAPH_SUCCESS;
+  }
+  OP_LOGE(op.GetName().c_str(), "IMPLEMT_COMMON_INFERFUNC FAILED.");
+  return GRAPH_FAILED;
+}
+
+// Registered inferfunction
+COMMON_INFER_FUNC_REG(StrideAdd, StrideAddInferShape);
+// Registered verify function
+VERIFY_FUNC_REG(StrideAdd, StrideAddVerify);
+// ----------------StrideAdd END---------------------
 }  // namespace ge

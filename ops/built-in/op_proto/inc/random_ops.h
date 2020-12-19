@@ -495,6 +495,34 @@ REG_OP(ShuffleChannel)
                            DT_UINT16, DT_INT32, DT_UINT32,DT_INT64,DT_UINT64}))
     .ATTR(group, Int, 1)
     .OP_END_FACTORY_REG(ShuffleChannel)
+
+/**
+ * @briefGenerate a tensor of samples from a multinomial 
+ * distribution according to the probabilities of each of 
+ * the possible outcomes.
+ * 
+ * @par inputs
+ * one input including:
+ * @li x:Input tensor with shape [batch_size, class_size], 
+ * where class_size is the number of all possible outcomes.
+ * Each value along the axis zero represents the unnormalized 
+ * log-probability of each corresponding outcome in a batch.
+ * 
+ * @par output
+ * one output including:
+ * @li y:Output tensor with shape [batch_size, sample_size], 
+ * where sample_size is the number of times to sample. 
+ * Each value along the axis zero represents the outcome of 
+ * the corresponding sample in a batch.
+ * 
+ */
+REG_OP(MultinomialFuss)
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_FLOAT64}))
+    .OUTPUT(y, TensorType({DT_INT32, DT_INT64}))
+    .ATTR(dtype, Int, 6)
+    .ATTR(sample_size, Int, 1)
+    .ATTR(seed, Float, 0)
+    .OP_END_FACTORY_REG(MultinomialFuss)
 }   // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_RANDOM_OPS_H_

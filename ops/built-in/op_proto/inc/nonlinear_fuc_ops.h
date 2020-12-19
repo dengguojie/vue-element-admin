@@ -640,6 +640,112 @@ REG_OP(Mish)
     .OUTPUT(y, TensorType({ DT_FLOAT,DT_FLOAT16 }))
     .OP_END_FACTORY_REG(Mish)
 
+/**
+ * @brief pytorch hardtanh_backward operator.
+ *
+ * @par Inputs:
+ * 2 inputs, including:
+ * @li result, minimum tensor of the linear region range,
+ * datatype: float16/float32, format:ND/5HD.
+ * @li grad, maximum tensor of the linear region range,
+ * datatype:float16/float32, format:ND/5HD. \n
+
+ * @par Attributes:
+ * 2 attributes, including:
+ * @li min_val, minimum value of the linear region range, datatype:float.
+ * @li max_val, maximum value of the linear region range, datatype:float. \n
+
+ * @par Outputs:
+ * 1 output, including:
+ * @li y, hardtanh_backward output tensor, datatype and format is same as
+ * input result. \n
+
+ * @attention Constraints:
+ * This operator only supports dataType: float16/float32, format: ND/5HD. \n
+
+ * @par Third-party framework compatibility
+ * Compatible with the Pytorch operator HardtanhGrad.
+ */
+REG_OP(HardtanhGrad)
+    .INPUT(result, TensorType({ DT_FLOAT16, DT_FLOAT })) /* "First operand." */
+    .INPUT(grad, TensorType({ DT_FLOAT16, DT_FLOAT }))   /* "Second operand." */
+    .OUTPUT(y, TensorType({ DT_FLOAT16, DT_FLOAT }))     /* "Result, has same element type as two inputs" */
+    .ATTR(min_val, Float, -1.0)
+    .ATTR(max_val, Float, 1.0)
+    .OP_END_FACTORY_REG(HardtanhGrad)
+
+/**
+* @brief Calculates the softplus loss function with attributes of beta and threshold. \n
+
+* @par Inputs:
+* One inputs, including:
+* @li x: A mutable Tensor. Must be one of the following types:
+*     float16, float32. \n
+
+* @par Attributes:
+* @li beta: An optional float. Defaults to "1.0" \n
+
+* @li threshold: An optional float. Defaults to "20.0" \n
+
+* @par Outputs:
+* @li y: A mutable Tensor. Has the same type as "x" \n
+
+* @par Third-party framework compatibility
+* Compatible with the Pytorch operator Softplus.
+*/
+REG_OP(SoftplusV2)
+    .INPUT(x, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .OUTPUT(y, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .ATTR(beta, Float, 1.0)
+    .ATTR(threshold, Float, 20.0)
+    .OP_END_FACTORY_REG(SoftplusV2)
+
+/**
+* @brief Calculates the reversed outputs of the function "softplus_v2". \n
+
+* @par Inputs:
+* Two inputs, including:
+* @li input_gradients: A mutable Tensor. Must be one of the following types:
+*     float16, float32.
+* @li input_features: A mutable Tensor of the same type as "input_gradients" \n
+
+* @par Attributes:
+* @li beta: An optional float. Defaults to "1.0" \n
+
+* @li threshold: An optional float. Defaults to "20.0" \n
+
+* @par Outputs:
+* @li output_backprops: A mutable Tensor. Has the same type as "input_gradients" \n
+
+* @par Third-party framework compatibility
+* Compatible with the Pytorch operator SoftplusGrad.
+*/
+REG_OP(SoftplusV2Grad)
+    .INPUT(input_gradients, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .INPUT(input_features, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .OUTPUT(output_backprops, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .ATTR(beta, Float, 1.0)
+    .ATTR(threshold, Float, 20.0)
+    .OP_END_FACTORY_REG(SoftplusV2Grad)
+
+/**
+ * @brief ThresholdedRelu takes one input data (Tensor) and produces one output data (Tensor)
+ *  where the rectified linear function, y = x for x > alpha, y = 0 otherwise, is applied to the tensor elementwise.
+ * 
+ * @par inputs
+ * one input including:
+ * @li x: input A Tensor. Must be one of the following types: float32, float16
+ * 
+ * @par output
+ * one output including:
+ * @li y:A Tensor of the same type as x
+ * 
+ */
+REG_OP(ThresholdedRelu)
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .ATTR(alpha, Float, 1.0)
+    .OP_END_FACTORY_REG(ThresholdedRelu)
 } // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_NONLINEAR_FUC_OPS_H_

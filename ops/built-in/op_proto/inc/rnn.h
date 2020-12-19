@@ -821,6 +821,39 @@ REG_OP(GRUV2HiddenGradCell)
     .ATTR(t_state, Int, 0)
     .ATTR(gate_order, String, "zrh")
     .OP_END_FACTORY_REG(GRUV2HiddenGradCell)
+
+/**
+* @brief Calculates the reversed outputs of the function "embedding". \n
+
+* @par Inputs:
+* Two inputs, including:
+* @li grad: A mutable Tensor of word grad. Must be one of the following types:
+*     float32.
+* @li indices: A mutable word index Tensor of the int32 type.\n
+
+* @par Attributes:
+* @li num_weights: An int attr which use to judge how many words in dict. \n
+
+* @li padding_idx: An int attr judge which word to fill zeros. Defaults to "-1". \n
+
+* @li scale_grad_by_freq: An optional bool. Defaults to "False".
+*     If "True", "grad_weight" will be scale by word_frequency.
+*     If "False", "grad_weight" will not be scale by word_frequency. \n
+
+* @par Outputs:
+* @li grad_weight: A mutable output Tensor of new word grad has the same type as "grads". \n
+
+* @par Third-party framework compatibility
+* Compatible with the Pytorch operator EmbeddingDenseGrad.
+*/
+REG_OP(EmbeddingDenseGrad)
+    .INPUT(grad, TensorType({ DT_FLOAT32 }))  /* "First operand." */
+    .INPUT(indices, TensorType({ DT_INT32 })) /* "Second operand." */
+    .OUTPUT(y, TensorType({ DT_FLOAT32 }))    /* "Result, has same element type as two inputs" */
+    .REQUIRED_ATTR(num_weights, Int)
+    .ATTR(padding_idx, Int, -1)
+    .ATTR(scale_grad_by_freq, Bool, false)
+    .OP_END_FACTORY_REG(EmbeddingDenseGrad)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_RNN_H_

@@ -1495,6 +1495,13 @@ REG_OP(Sort)
     .ATTR(descending, Bool, false)
     .OP_END_FACTORY_REG(Sort)
 
+REG_OP(PtIou)
+    .INPUT(bboxes, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(gtboxes, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(overlap, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .ATTR(mode, String, "iou")
+    .OP_END_FACTORY_REG(PtIou)
+
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_NN_DETECT_OPS_H_

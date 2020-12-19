@@ -850,4 +850,73 @@ IMPLEMT_COMMON_INFERFUNC(EmbeddingRankIdInferShape) {
 COMMON_INFER_FUNC_REG(EmbeddingRankId, EmbeddingRankIdInferShape);
 // ---------------------EmbeddingRankId END-------------------------------------
 
+// ----------------FillV2 Begin-------------------
+IMPLEMT_INFERFUNC(FillV2, FillV2InferShape) {
+  Tensor data;
+  std::vector<int64_t> vec_dim;
+  TensorDesc td = op.GetOutputDesc("y");
+  if (op.GetInputConstData("dims", data) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Get constValue failed of [dims]");
+    auto shape = op.GetInputDesc("dims").GetShape();
+    int64_t dimValue;
+    dimValue = shape.GetDim(0);
+    for (int64_t m = 0; m < dimValue; m++) {
+      vec_dim.push_back(-1);
+    }
+    td.SetShape(Shape(vec_dim));
+    td.SetDataType(op.GetInputDesc("value").GetDataType());
+    (void)op.UpdateOutputDesc("y", td);
+    return GRAPH_SUCCESS;
+  } else {
+    DataType dataType = data.GetTensorDesc().GetDataType();
+    std::vector<int64_t> vec_dim;
+    if (dataType == DT_INT32) {
+      CaclDims<int32_t>(data, vec_dim);
+    } else if (dataType == DT_INT64) {
+      CaclDims<int64_t>(data, vec_dim);
+    } else {
+      OP_LOGE(op.GetName().c_str(), "data type not supported");
+      return GRAPH_PARAM_INVALID;
+    }
+    td.SetShape(Shape(vec_dim));
+    td.SetDataType(op.GetInputDesc("value").GetDataType());
+    (void)op.UpdateOutputDesc("y", td);
+    return GRAPH_SUCCESS;
+  }
+}
+
+// Registered inferfunction
+INFER_FUNC_REG(FillV2, FillV2InferShape);
+// ----------------FillV2 END---------------------
+
+// ----------------FillV2D Begin-------------------
+IMPLEMT_INFERFUNC(FillV2D, FillV2DInferShape) {
+  const int DIM_SIZE1 = 1;
+  const int DIM_SIZE8 = 8;
+  std::vector<int64_t> vec_dim;
+  if (ge::GRAPH_SUCCESS != op.GetAttr("dims", vec_dim)) {
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr failed of FillD!");
+    return GRAPH_FAILED;
+  }
+
+  OP_LOGI(op.GetName().c_str(), "start infershape");
+
+  if (vec_dim.size() < DIM_SIZE1 || vec_dim.size() > DIM_SIZE8) {
+    OP_LOGE(op.GetName().c_str(), "dims must between 1 and 8.");
+    return GRAPH_FAILED;
+  }
+
+  TensorDesc td = op.GetOutputDesc("y");
+  td.SetShape(Shape(vec_dim));
+  td.SetDataType(DT_FLOAT);
+
+  op.UpdateOutputDesc("y", td);
+  OP_LOGI(op.GetName().c_str(), "infershape success!");
+  return GRAPH_SUCCESS;
+}
+
+// Registered inferfunction
+INFER_FUNC_REG(FillV2D, FillV2DInferShape);
+// ----------------FillV2D END---------------------
+
 }  // namespace ge

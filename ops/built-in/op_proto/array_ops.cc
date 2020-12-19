@@ -2132,4 +2132,28 @@ IMPLEMT_INFERFUNC(EditDistance, EditDistanceInfer) {
 
 INFER_FUNC_REG(EditDistance, EditDistanceInfer);
 
+// ----------------SortV2 Begin-------------------
+IMPLEMT_INFERFUNC(SortV2, SortV2InferShape) {
+  TensorDesc tensordesc_input = op.GetInputDesc("x");
+  Shape input_shape = tensordesc_input.GetShape();
+  DataType input_dtype = tensordesc_input.GetDataType();
+  std::vector<int64_t> dims_input = input_shape.GetDims();
+
+  TensorDesc tensordesc_output1 = op.GetOutputDesc("y");
+
+  tensordesc_output1.SetShape(ge::Shape(dims_input));
+
+  tensordesc_output1.SetDataType(input_dtype);
+
+  (void)op.UpdateOutputDesc("y", tensordesc_output1);
+
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(SortV2, SortV2Verify) { return GRAPH_SUCCESS; }
+
+INFER_FUNC_REG(SortV2, SortV2InferShape);
+VERIFY_FUNC_REG(SortV2, SortV2Verify);
+// ----------------SortV2 END---------------------
+
 }  // namespace ge

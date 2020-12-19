@@ -5241,4 +5241,255 @@ IMPLEMT_INFERFUNC(MaxPoolV3Grad, MaxPoolV3GradInferShape) {
 INFER_FUNC_REG(MaxPoolV3Grad, MaxPoolV3GradInferShape);
 VERIFY_FUNC_REG(MaxPoolV3Grad, MaxPoolV3GradVerify);
 // ----------------------MaxPoolV3Grad--------------------------
+
+// ------------AdaptiveAvgPool2d Op Begin----------------
+IMPLEMT_INFERFUNC(AdaptiveAvgPool2d, AdaptiveAvgPool2dInferShape) {
+  OP_LOGI(op.GetName().c_str(), " AdaptiveAvgPool2d inferShape begin!");
+  const size_t DIM_SIZE1 = 1;
+  const size_t DIM_SIZE2 = 2;
+  const size_t DIM_SIZE3 = 3;
+  const size_t DIM_SIZE4 = 4;
+  auto input_tensor_desc = op.GetInputDesc("x");
+  auto shape = input_tensor_desc.GetShape();
+  Format input_format = input_tensor_desc.GetFormat();
+  // get output_size
+  std::vector<int64_t> ouput_size_list;
+  if (GRAPH_SUCCESS != op.GetAttr("output_size", ouput_size_list)) {
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr ouput_size_list failed!");
+    return GRAPH_FAILED;
+  }
+  // check output size
+  if (ouput_size_list.size() != DIM_SIZE2) {
+    OP_LOGE(op.GetName().c_str(), "length of output_size must be 2");
+    return GRAPH_FAILED;
+  }
+  std::vector<int64_t> dims_input = shape.GetDims();
+  // set output shape
+  std::vector<int64_t> dim_vector;
+  for (size_t i = 0; i < dims_input.size(); i++) {
+    int64_t dims = dims_input[i];
+    dim_vector.push_back(dims);
+  }
+  size_t index0 = dims_input.size() - 2;
+  size_t index1 = dims_input.size() - 1;
+  dim_vector[index0] = ouput_size_list[0];
+  dim_vector[index1] = ouput_size_list[1];
+  TensorDesc td = op.GetOutputDesc("y");
+  DataType input_dtype = input_tensor_desc.GetDataType();
+  Shape output_shape(dim_vector);
+  td.SetShape(output_shape);
+  td.SetDataType(input_dtype);
+  (void)op.UpdateOutputDesc("y", td);
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(AdaptiveAvgPool2d, AdaptiveAvgPool2dVerify) {
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(AdaptiveAvgPool2d, AdaptiveAvgPool2dInferShape);
+VERIFY_FUNC_REG(AdaptiveAvgPool2d, AdaptiveAvgPool2dVerify);
+// ------------AdaptiveAvgPool2d Op End----------------
+
+// ------------AdaptiveAvgPool2dGrad Op Begin----------------
+IMPLEMT_INFERFUNC(AdaptiveAvgPool2dGrad, AdaptiveAvgPool2dGradInferShape) {
+  OP_LOGI(op.GetName().c_str(), " AdaptiveAvgPool2dGrad inferShape begin!");
+  // get orig_input_shape
+  std::vector<int64_t> ori_shape;
+  if (GRAPH_SUCCESS != op.GetAttr("orig_input_shape", ori_shape)) {
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr orig_input_shape failed!");
+    return GRAPH_FAILED;
+  }
+  // get output size
+  if (ori_shape.size() != 4) {
+    OP_LOGE(op.GetName().c_str(), "length of orig_input_shape must be 4");
+    return GRAPH_FAILED;
+  }
+
+  TensorDesc output_grad = op.GetOutputDesc("output_grad");
+  DataType input_dtype = op.GetInputDesc("input_grad").GetDataType();
+  Shape output_shape(ori_shape);
+  output_grad.SetShape(output_shape);
+  output_grad.SetDataType(input_dtype);
+  (void)op.UpdateOutputDesc("output_grad", output_grad);
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(AdaptiveAvgPool2dGrad, AdaptiveAvgPool2dGradVerify) {
+  auto input_tensor_desc = op.GetInputDesc("input_grad");
+  auto grad_input_shape = input_tensor_desc.GetShape();
+  std::vector<int64_t> dims_input = grad_input_shape.GetDims();
+  if (dims_input.size() != 4) {
+    OP_LOGE(op.GetName().c_str(), "length of input_grad must be 4");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(AdaptiveAvgPool2dGrad, AdaptiveAvgPool2dGradInferShape);
+VERIFY_FUNC_REG(AdaptiveAvgPool2dGrad, AdaptiveAvgPool2dGradVerify);
+// ------------AdaptiveAvgPool2dGrad Op End----------------
+
+// ------------max_pool_grad_with_argmaxv1 Op Begin----------------
+IMPLEMT_VERIFIER(MaxPoolGradWithArgmaxV1, MaxPoolGradWithArgmaxV1Verify) {
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(MaxPoolGradWithArgmaxV1InferShape) {
+  TensorDesc output_y = op.GetOutputDesc("y");
+  auto tensor_desc = op.GetInputDesc("x");
+  auto shape = tensor_desc.GetShape();
+  output_y.SetShape(shape);
+  (void)op.UpdateOutputDesc("y", output_y);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(MaxPoolGradWithArgmaxV1,
+                      MaxPoolGradWithArgmaxV1InferShape);
+VERIFY_FUNC_REG(MaxPoolGradWithArgmaxV1, MaxPoolGradWithArgmaxV1Verify);
+// ------------max_pool_grad_with_argmaxv1 Op End----------------
+
+// ------------MaxPoolWithArgmaxV1 Op Begin----------------
+struct MaxPoolWithArgmaxParam {
+  int input_size;
+  int pad;
+  int dilation;
+  int kernel_size;
+  int stride;
+  bool ceil_mode;
+};
+
+int CalMax(const MaxPoolWithArgmaxParam &maxpool) {
+  const uint32_t G_DIM_C = 1;
+  const uint32_t G_DIM_H = 2;
+  int max_size = 0;
+  int temp = 0;
+  int input_size = maxpool.input_size;
+  int pad = maxpool.pad;
+  int dilation = maxpool.dilation;
+  int kernel_size = maxpool.kernel_size;
+  int stride = maxpool.stride;
+  bool ceil_mode = maxpool.ceil_mode;
+  if (stride == 0) {
+    return 0;
+  }
+  temp =
+      input_size + G_DIM_H * pad - dilation * (kernel_size - G_DIM_C) - G_DIM_C;
+  if (ceil_mode) {
+    max_size = (temp + stride - G_DIM_C) / stride + G_DIM_C;
+  } else {
+    max_size = temp / stride + G_DIM_C;
+  }
+  return max_size;
+}
+
+int CalCeil(int a, int b) {
+  const uint32_t G_DIM_C = 1;
+  int r = 0;
+  if (b == 0) {
+    return 0;
+  }
+
+  if (a % b == 0) {
+    r = a / b;
+  } else {
+    r = a / b + G_DIM_C;
+  }
+  return r;
+}
+
+int CalMaskH(int max_h, int max_w, int kernel_h, int kernel_w, int input_c0) {
+  int mask_h = 0;
+  mask_h = kernel_h * kernel_w;
+  return mask_h;
+}
+
+int CalMaskW(int max_h, int max_w, int kernel_h, int kernel_w, int input_c0) {
+  const uint32_t G_DIM_C = 1;
+  int max_mul = 0;
+  int mask_w = 0;
+  max_mul = max_h * max_w;
+  mask_w = CalCeil(max_mul, input_c0) + G_DIM_C;
+  return mask_w;
+}
+
+IMPLEMT_VERIFIER(MaxPoolWithArgmaxV1, MaxPoolWithArgmaxV1Verify) {
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(MaxPoolWithArgmaxV1InferShape) {
+  TensorDesc output_max = op.GetOutputDesc("y");
+  TensorDesc output_mask = op.GetOutputDesc("argmax");
+
+  auto tensor_desc = op.GetInputDesc(0);
+  auto shape = tensor_desc.GetShape();
+
+  std::vector<int64_t> vec_max, vec_mask, vec_pads, vec_dilation, vec_kernel,
+      vec_strides;
+  int batch_size, c1_size, input_h, input_w, kernel_h, kernel_w;
+  int input_c0 = 16;
+  bool ceil_mode = false;
+  op.GetAttr("ksize", vec_kernel);
+  op.GetAttr("strides", vec_strides);
+  op.GetAttr("pads", vec_pads);
+  op.GetAttr("dilation", vec_dilation);
+  op.GetAttr("ceil_mode", ceil_mode);
+  const uint32_t G_DIM_N = 0;
+  const uint32_t G_DIM_C = 1;
+  const uint32_t G_DIM_H = 2;
+  const uint32_t G_DIM_W = 3;
+  batch_size = shape.GetDim(G_DIM_N);
+  c1_size = shape.GetDim(G_DIM_C);
+  input_h = shape.GetDim(G_DIM_H);
+  input_w = shape.GetDim(G_DIM_W);
+  kernel_h = vec_kernel[G_DIM_C];
+  kernel_w = vec_kernel[G_DIM_H];
+
+  MaxPoolWithArgmaxParam maxpool_h = {input_h,
+                                      static_cast<int>(vec_pads[G_DIM_C]),
+                                      static_cast<int>(vec_dilation[G_DIM_C]),
+                                      kernel_h,
+                                      static_cast<int>(vec_strides[G_DIM_C]),
+                                      ceil_mode};
+  MaxPoolWithArgmaxParam maxpool_w = {input_w,
+                                      static_cast<int>(vec_pads[G_DIM_H]),
+                                      static_cast<int>(vec_dilation[G_DIM_H]),
+                                      kernel_w,
+                                      static_cast<int>(vec_strides[G_DIM_H]),
+                                      ceil_mode};
+  int max_h = CalMax(maxpool_h);
+  int max_w = CalMax(maxpool_w);
+  int mask_h = CalMaskH(max_h, max_w, kernel_h, kernel_w, input_c0);
+  int mask_w = CalMaskW(max_h, max_w, kernel_h, kernel_w, input_c0);
+
+  vec_max.push_back(batch_size);
+  vec_max.push_back(c1_size);
+  vec_max.push_back(max_h);
+  vec_max.push_back(max_w);
+  vec_mask.push_back(batch_size);
+  vec_mask.push_back(c1_size);
+  vec_mask.push_back(mask_h);
+  vec_mask.push_back(mask_w);
+
+  ge::Shape max_shape = ge::Shape(vec_max);
+  ge::Shape mask_shape = ge::Shape(vec_mask);
+
+  output_max.SetShape(max_shape);
+  output_max.SetDataType(op.GetInputDesc("x").GetDataType());
+  output_max.SetFormat(op.GetInputDesc("x").GetFormat());
+  output_mask.SetShape(mask_shape);
+  output_mask.SetFormat(op.GetInputDesc("x").GetFormat());
+
+  (void)op.UpdateOutputDesc("y", output_max);
+  (void)op.UpdateOutputDesc("argmax", output_mask);
+  return GRAPH_SUCCESS;
+}
+
+// Registered inferfunction
+COMMON_INFER_FUNC_REG(MaxPoolWithArgmaxV1, MaxPoolWithArgmaxV1InferShape);
+
+// Registered verify function
+VERIFY_FUNC_REG(MaxPoolWithArgmaxV1, MaxPoolWithArgmaxV1Verify);
+// ------------MaxPoolWithArgmaxV1 Op End----------------
+
 }  // namespace ge
