@@ -374,16 +374,16 @@ bool GetEleDtype(const std::string& dtype, EleByte& elebyte) {
 }
 
 bool IsUsingAllCore(const int32_t& ids_size, const int32_t& core_num, int32_t& need_core_num, int32_t& e_size) {
+  int32_t ele_num = ids_size / core_num;
   if (e_size>1){
-    if (ids_size >= MIN_ELE_SIZE_USING_ALL_CORE) {
+    if (ele_num >= 1) {
       need_core_num = core_num;
       return true;
     }else{
-      need_core_num = 1;
+      need_core_num = ids_size;
       return true;
     }
   }else{
-    int32_t ele_num = ids_size / core_num;
     if (ids_size <= 64 || ele_num < 0){
       need_core_num = 1;
       return true;
@@ -472,12 +472,9 @@ void ComputeEleNumOneCore(const int32_t& min_ele_num, const int32_t& ids_num, co
     input_ele_num_last_core = ids_ele_num_last_core;
     return;
   }
-  ids_ele_num_front_core = ids_num_align / core_num;
-  if (ids_num % ids_ele_num_front_core == 0) {
-    ids_ele_num_last_core = ids_ele_num_front_core;
-  } else {
-    ids_ele_num_last_core = ComputeDivRemainders(ids_num, ids_ele_num_front_core, core_num - 1);
-  }
+  ids_ele_num_front_core = ids_num / core_num;
+
+  ids_ele_num_last_core = ComputeDivRemainders(ids_num, ids_ele_num_front_core, core_num - 1);
   input_ele_num_front_core = ids_ele_num_front_core * e_size;
   input_ele_num_last_core = ids_ele_num_last_core * e_size;
 }

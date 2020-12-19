@@ -180,6 +180,8 @@ Status ReduceMaxDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   out_tensor1_new.SetShape(ge::GeShape(oShapeVector));
   out_tensor1_new.SetDataType(input_type);
   out_tensor1_new.SetFormat(input_format);
+  out_tensor1_new.SetOriginFormat(input_format);
+  out_tensor1_new.SetOriginShape(ge::GeShape(oShapeVector));
   FUSION_PASS_CHECK(minNewOpdesc->AddOutputDesc(out_tensor1_new) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "minNew add output failed."), return FAILED);
 
@@ -199,6 +201,8 @@ Status ReduceMaxDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   out_tensor1.SetShape(ge::GeShape(oShapeVector1));
   out_tensor1.SetDataType(input_type);
   out_tensor1.SetFormat(input_format);
+  out_tensor1.SetOriginFormat(input_format);
+  out_tensor1.SetOriginShape(ge::GeShape(oShapeVector1));
   FUSION_PASS_CHECK(minLastOpdesc->AddOutputDesc(out_tensor1) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "minLast add output failed."), return FAILED);
 
