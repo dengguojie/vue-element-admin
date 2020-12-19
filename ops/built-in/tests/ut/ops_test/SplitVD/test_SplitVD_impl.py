@@ -39,11 +39,46 @@ case4 = {"params": [{"shape": (3, 1, 16, 16), "dtype": "int32", "format": "FRACT
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-
+case5 = {"params": [{"shape": (48000, 256), "dtype": "float16", "format": "ND",
+                     "ori_shape": (48000, 256),"ori_format": "ND"},
+                    [{"shape": (48000, 80), "dtype": "float16", "format": "ND",
+                     "ori_shape": (48000, 80),"ori_format": "ND"},
+                     {"shape": (48000, 80), "dtype": "float16", "format": "ND",
+                     "ori_shape": (48000, 80),"ori_format": "ND"},
+                     {"shape": (48000, 80), "dtype": "float16", "format": "ND",
+                     "ori_shape": (48000, 80),"ori_format": "ND"},
+                     {"shape": (48000, 1), "dtype": "float16", "format": "ND",
+                     "ori_shape": (48000, 1),"ori_format": "ND"},
+                     {"shape": (48000, 1), "dtype": "float16", "format": "ND",
+                     "ori_shape": (48000, 1),"ori_format": "ND"},
+                     {"shape": (48000, 1), "dtype": "float16", "format": "ND",
+                     "ori_shape": (48000, 1),"ori_format": "ND"},
+                     {"shape": (48000, 13), "dtype": "float16", "format": "ND",
+                     "ori_shape": (48000, 13),"ori_format": "ND"},], [80, 80, 80, 1, 1, 1, 13], -1, 7],
+         "case_name": "split_d_v_5",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+case6 = {"params": [{"shape": (16, 52, 52, 3, 85), "dtype": "float16", "format": "ND",
+                     "ori_shape": (16, 52, 52, 3, 85),"ori_format": "ND"},
+                     [{"shape": (16, 52, 52, 3, 1), "dtype": "float16", "format": "ND",
+                     "ori_shape": (16, 52, 52, 3, 1),"ori_format": "ND"},
+                     {"shape": (16, 52, 52, 3, 2), "dtype": "float16", "format": "ND",
+                     "ori_shape": (16, 52, 52, 3, 2),"ori_format": "ND"},
+                     {"shape": (16, 52, 52, 3, 2), "dtype": "float16", "format": "ND",
+                     "ori_shape": (16, 52, 52, 3, 2),"ori_format": "ND"},
+                     {"shape": (16, 52, 52, 3, 80), "dtype": "float16", "format": "ND",
+                     "ori_shape": (16, 52, 52, 3, 80),"ori_format": "ND"},], [1,2,2,80],-1, 4],
+         "case_name": "split_d_v_6",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
 
 if __name__ == '__main__':
     ut_case.run()

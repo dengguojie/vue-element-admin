@@ -75,7 +75,7 @@ case5 = {"params": [{"shape": (1, 1024, 3, 7), "dtype": "float32", "format": "NH
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
+ut_case.add_case(["Ascend910","Ascend710"], case4)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
 
 def calc_expect_func(grads, x, y, z):

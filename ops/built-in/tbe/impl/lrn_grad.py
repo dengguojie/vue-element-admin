@@ -61,20 +61,17 @@ def _double_vector_func(func, dest, src0, src1, count):
 
     while remain > 0:
         if remain > element_count * MAX_REPEAT:
-            func(element_count, dest[index],
-                 src0[index], src1[index], MAX_REPEAT,
-                 1, 1, 1, dst_rep_stride, src_rep_stride, src_rep_stride)
+            func(element_count, dest[index], src0[index], src1[index], MAX_REPEAT, 1, 1, 1, dst_rep_stride,
+                 src_rep_stride, src_rep_stride)
             handle_count = element_count * MAX_REPEAT
         elif remain > element_count:
             repeat_times = remain // element_count
-            func(element_count, dest[index],
-                 src0[index], src1[index], repeat_times,
-                 1, 1, 1, dst_rep_stride, src_rep_stride, src_rep_stride)
+            func(element_count, dest[index], src0[index], src1[index], repeat_times, 1, 1, 1, dst_rep_stride,
+                 src_rep_stride, src_rep_stride)
             handle_count = element_count * repeat_times
         else:
-            func(remain, dest[index],
-                 src0[index], src1[index], 1,
-                 1, 1, 1, dst_rep_stride, src_rep_stride, src_rep_stride)
+            func(remain, dest[index], src0[index], src1[index], 1, 1, 1, 1, dst_rep_stride, src_rep_stride,
+                 src_rep_stride)
             handle_count = remain
         index += handle_count
         remain -= handle_count
@@ -96,20 +93,16 @@ def _vector_scalar_func(func, dest, src0, scalar_value, count):
 
     while remain > 0:
         if remain > element_count * MAX_REPEAT:
-            func(element_count, dest[index],
-                 src0[index], scalar_value, MAX_REPEAT,
-                 1, 1, dst_rep_stride, src_rep_stride)
+            func(element_count, dest[index], src0[index], scalar_value, MAX_REPEAT, 1, 1, dst_rep_stride,
+                 src_rep_stride)
             handle_count = element_count * MAX_REPEAT
         elif remain > element_count:
             repeat_times = remain // element_count
-            func(element_count, dest[index],
-                 src0[index], scalar_value, repeat_times,
-                 1, 1, dst_rep_stride, src_rep_stride)
+            func(element_count, dest[index], src0[index], scalar_value, repeat_times, 1, 1, dst_rep_stride,
+                 src_rep_stride)
             handle_count = element_count * repeat_times
         else:
-            func(remain, dest[index],
-                 src0[index], scalar_value, 1,
-                 1, 1, dst_rep_stride, src_rep_stride)
+            func(remain, dest[index], src0[index], scalar_value, 1, 1, 1, dst_rep_stride, src_rep_stride)
             handle_count = remain
         index += handle_count
         remain -= handle_count
@@ -130,20 +123,14 @@ def _single_vector_func(func, dest, src, count):
 
     while remain > 0:
         if remain > element_count * MAX_REPEAT:
-            func(element_count, dest[index],
-                 src[index], MAX_REPEAT,
-                 1, 1, dst_rep_stride, src_rep_stride)
+            func(element_count, dest[index], src[index], MAX_REPEAT, 1, 1, dst_rep_stride, src_rep_stride)
             handle_count = element_count * MAX_REPEAT
         elif remain > element_count:
             repeat_times = remain // element_count
-            func(element_count, dest[index],
-                 src[index], repeat_times,
-                 1, 1, dst_rep_stride, src_rep_stride)
+            func(element_count, dest[index], src[index], repeat_times, 1, 1, dst_rep_stride, src_rep_stride)
             handle_count = element_count * repeat_times
         else:
-            func(remain, dest[index],
-                 src[index], 1,
-                 1, 1, dst_rep_stride, src_rep_stride)
+            func(remain, dest[index], src[index], 1, 1, 1, dst_rep_stride, src_rep_stride)
             handle_count = remain
         index += handle_count
         remain -= handle_count
@@ -155,9 +142,9 @@ class LrnGrad:
     """
      implementation of lrn_grad
     """
+
     # pylint: disable=locally-disabled,too-many-locals,too-many-arguments
-    def __init__(self, shape, dtype, depth_radius=5, bias=1, alpha=1, beta=0.5,
-                 kernel_name="lrn_grad"):
+    def __init__(self, shape, dtype, depth_radius=5, bias=1, alpha=1, beta=0.5, kernel_name="lrn_grad"):
         self.shape = shape
         dtype = dtype.lower()
         self.dtype = dtype
@@ -189,17 +176,10 @@ class LrnGrad:
 
         gm_shape = (gm_size,)
 
-        self.data_input_grads = tik_instance.Tensor(dtype, gm_shape,
-                                                    name="input_grads",
-                                                    scope=tik.scope_gm)
-        self.data_input_image = tik_instance.Tensor(dtype, gm_shape,
-                                                    name="input_image",
-                                                    scope=tik.scope_gm)
-        self.data_output_image = tik_instance.Tensor(dtype, gm_shape,
-                                                     name="output_image",
-                                                     scope=tik.scope_gm)
-        self.data_output = tik_instance.Tensor(dtype, gm_shape, name="output",
-                                               scope=tik.scope_gm)
+        self.data_input_grads = tik_instance.Tensor(dtype, gm_shape, name="input_grads", scope=tik.scope_gm)
+        self.data_input_image = tik_instance.Tensor(dtype, gm_shape, name="input_image", scope=tik.scope_gm)
+        self.data_output_image = tik_instance.Tensor(dtype, gm_shape, name="output_image", scope=tik.scope_gm)
+        self.data_output = tik_instance.Tensor(dtype, gm_shape, name="output", scope=tik.scope_gm)
 
         need_ub_segment_count = 6
         if self.dtype != self.ub_dtype:
@@ -242,28 +222,15 @@ class LrnGrad:
     def _alloc_all_ub(self):
         tik_instance = self.tik_instance
         if self.dtype != self.ub_dtype:
-            self.data_cov_ub = tik_instance.Tensor(self.dtype, self.ub_shape,
-                                                   name="data_cov_ub",
-                                                   scope=tik.scope_ubuf)
+            self.data_cov_ub = tik_instance.Tensor(self.dtype, self.ub_shape, name="data_cov_ub", scope=tik.scope_ubuf)
 
         dtype = self.ub_dtype
-        self.input_grads_ub = tik_instance.Tensor(dtype, self.ub_shape,
-                                                  name="input_grads_ub",
-                                                  scope=tik.scope_ubuf)
-        self.input_image_ub = tik_instance.Tensor(dtype, self.ub_shape,
-                                                  name="input_image_ub",
-                                                  scope=tik.scope_ubuf)
-        self.output_image_ub = tik_instance.Tensor(dtype, self.ub_shape,
-                                                   name="output_image_ub",
-                                                   scope=tik.scope_ubuf)
-        self.pre_norm_ub = tik_instance.Tensor(dtype, self.ub_shape,
-                                               name="pre_norm_ub",
-                                               scope=tik.scope_ubuf)
-        self.norm_ub = tik_instance.Tensor(dtype, self.ub_shape,
-                                           name="norm_ub", scope=tik.scope_ubuf)
-        self.norm_beta_ub = tik_instance.Tensor(dtype, self.ub_shape,
-                                                name="norm_beta_ub",
-                                                scope=tik.scope_ubuf)
+        self.input_grads_ub = tik_instance.Tensor(dtype, self.ub_shape, name="input_grads_ub", scope=tik.scope_ubuf)
+        self.input_image_ub = tik_instance.Tensor(dtype, self.ub_shape, name="input_image_ub", scope=tik.scope_ubuf)
+        self.output_image_ub = tik_instance.Tensor(dtype, self.ub_shape, name="output_image_ub", scope=tik.scope_ubuf)
+        self.pre_norm_ub = tik_instance.Tensor(dtype, self.ub_shape, name="pre_norm_ub", scope=tik.scope_ubuf)
+        self.norm_ub = tik_instance.Tensor(dtype, self.ub_shape, name="norm_ub", scope=tik.scope_ubuf)
+        self.norm_beta_ub = tik_instance.Tensor(dtype, self.ub_shape, name="norm_beta_ub", scope=tik.scope_ubuf)
         self.data_output_ub = self.norm_beta_ub
 
     def _alloc_all_ub_cut_channel(self):
@@ -272,48 +239,27 @@ class LrnGrad:
         radius = self.depth_radius
         ub_output_count = channels_out * factor
 
-        ub_input_shape = (ub_output_count + MORE_THREE_RADIUS*radius*factor,)
-        ub_pre_norm_shape = (ub_output_count +
-                             (MORE_THREE_RADIUS * radius + 1) * factor,)
+        ub_input_shape = (ub_output_count + MORE_THREE_RADIUS * radius * factor,)
+        ub_pre_norm_shape = (ub_output_count + (MORE_THREE_RADIUS * radius + 1) * factor,)
         ub_norm_shape = (ub_output_count + MORE_TWO_RADIUS * radius * factor,)
-        ub_pre_norm2_shape = (ub_output_count +
-                              (MORE_TWO_RADIUS * radius + 1) * factor,)
+        ub_pre_norm2_shape = (ub_output_count + (MORE_TWO_RADIUS * radius + 1) * factor,)
         ub_norm2_shape = (ub_output_count + radius * factor,)
         ub_output_shape = (ub_output_count,)
 
         tik_instance = self.tik_instance
         if self.dtype != self.ub_dtype:
-            self.data_cov_ub = tik_instance.Tensor(self.dtype, ub_input_shape,
-                                                   name="data_cov_ub",
-                                                   scope=tik.scope_ubuf)
+            self.data_cov_ub = tik_instance.Tensor(self.dtype, ub_input_shape, name="data_cov_ub", scope=tik.scope_ubuf)
 
         dtype = self.ub_dtype
-        self.input_grads_ub = tik_instance.Tensor(dtype, ub_input_shape,
-                                                  name="input_grads_ub",
-                                                  scope=tik.scope_ubuf)
-        self.input_image_ub = tik_instance.Tensor(dtype, ub_input_shape,
-                                                  name="input_image_ub",
-                                                  scope=tik.scope_ubuf)
-        self.output_image_ub = tik_instance.Tensor(dtype, ub_input_shape,
-                                                   name="output_image_ub",
-                                                   scope=tik.scope_ubuf)
-        self.pre_norm_ub = tik_instance.Tensor(dtype, ub_pre_norm_shape,
-                                               name="pre_norm_ub",
-                                               scope=tik.scope_ubuf)
-        self.norm_ub = tik_instance.Tensor(dtype, ub_norm_shape,
-                                           name="norm_ub", scope=tik.scope_ubuf)
-        self.norm_beta_ub = tik_instance.Tensor(dtype, ub_norm_shape,
-                                                name="norm_beta_ub",
-                                                scope=tik.scope_ubuf)
-        self.pre_norm2_ub = tik_instance.Tensor(dtype, ub_pre_norm2_shape,
-                                                name="pre_norm2_ub",
-                                                scope=tik.scope_ubuf)
-        self.norm2_ub = tik_instance.Tensor(dtype, ub_norm2_shape,
-                                            name="norm2_ub",
-                                            scope=tik.scope_ubuf)
-        self.data_output_ub = tik_instance.Tensor(dtype, ub_output_shape,
-                                                  name="output_ub",
-                                                  scope=tik.scope_ubuf)
+        self.input_grads_ub = tik_instance.Tensor(dtype, ub_input_shape, name="input_grads_ub", scope=tik.scope_ubuf)
+        self.input_image_ub = tik_instance.Tensor(dtype, ub_input_shape, name="input_image_ub", scope=tik.scope_ubuf)
+        self.output_image_ub = tik_instance.Tensor(dtype, ub_input_shape, name="output_image_ub", scope=tik.scope_ubuf)
+        self.pre_norm_ub = tik_instance.Tensor(dtype, ub_pre_norm_shape, name="pre_norm_ub", scope=tik.scope_ubuf)
+        self.norm_ub = tik_instance.Tensor(dtype, ub_norm_shape, name="norm_ub", scope=tik.scope_ubuf)
+        self.norm_beta_ub = tik_instance.Tensor(dtype, ub_norm_shape, name="norm_beta_ub", scope=tik.scope_ubuf)
+        self.pre_norm2_ub = tik_instance.Tensor(dtype, ub_pre_norm2_shape, name="pre_norm2_ub", scope=tik.scope_ubuf)
+        self.norm2_ub = tik_instance.Tensor(dtype, ub_norm2_shape, name="norm2_ub", scope=tik.scope_ubuf)
+        self.data_output_ub = tik_instance.Tensor(dtype, ub_output_shape, name="output_ub", scope=tik.scope_ubuf)
 
     def _gm2ub(self, dest, src, count, channels_count):
         tik_instance = self.tik_instance
@@ -332,35 +278,27 @@ class LrnGrad:
             src_stride = (height * width - count) * dtype_size // \
                          constant.BLOCK_SIZE
             if src_stride <= MAX_STRIDE:
-                tik_instance.data_move(data_move_ub, src, 0, repeats, burst,
-                                       src_stride, 0)
+                tik_instance.data_move(data_move_ub, src, 0, repeats, burst, src_stride, 0)
             else:
                 count_one_burst = burst * constant.BLOCK_SIZE // self.dtype_size
                 with tik_instance.for_range(0, repeats) as i:
                     ub_index = i * count_one_burst
-                    tik_instance.data_move(data_move_ub[ub_index],
-                                           src[i * width * height], 0, 1, burst,
-                                           0, 0)
+                    tik_instance.data_move(data_move_ub[ub_index], src[i * width * height], 0, 1, burst, 0, 0)
         elif self.tail != width * height:
             count_one_burst = burst * constant.BLOCK_SIZE // self.dtype_size
             with tik_instance.for_range(0, repeats) as i:
                 ub_index = i * count_one_burst
-                tik_instance.data_move(data_move_ub[ub_index],
-                                       src[i * width * height], 0, 1, burst, 0,
-                                       0)
+                tik_instance.data_move(data_move_ub[ub_index], src[i * width * height], 0, 1, burst, 0, 0)
         else:
             count_one_block = constant.BLOCK_SIZE // self.dtype_size
             head_count = self.tail % count_one_block
             count_one_burst = burst * constant.BLOCK_SIZE // self.dtype_size
             with tik_instance.for_range(0, repeats) as i:
                 ub_index = i * count_one_burst
-                tik_instance.data_move(data_move_ub[ub_index],
-                                       src[i * width * height], 0, 1, 1, 0, 0)
+                tik_instance.data_move(data_move_ub[ub_index], src[i * width * height], 0, 1, 1, 0, 0)
                 if burst - 1 > 0:
-                    tik_instance.data_move(data_move_ub[ub_index +
-                                                        count_one_block],
-                                           src[i * width * height + head_count],
-                                           0, 1, burst - 1, 0, 0)
+                    tik_instance.data_move(data_move_ub[ub_index + count_one_block],
+                                           src[i * width * height + head_count], 0, 1, burst - 1, 0, 0)
 
         if dest.dtype != src.dtype:
             conv_count = self._get_32bytes_align_count(count) * repeats
@@ -386,37 +324,27 @@ class LrnGrad:
             desc_stride = (width * height - count) * dtype_size // \
                           constant.BLOCK_SIZE
             if desc_stride <= MAX_STRIDE:
-                tik_instance.data_move(dest, data_move_ub,
-                                       0, repeats, burst, 0, desc_stride)
+                tik_instance.data_move(dest, data_move_ub, 0, repeats, burst, 0, desc_stride)
             else:
                 count_one_burst = burst * constant.BLOCK_SIZE // self.dtype_size
                 with tik_instance.for_range(0, repeats) as i:
                     ub_index = i * count_one_burst
-                    tik_instance.data_move(dest[i * width * height],
-                                           data_move_ub[ub_index], 0, 1, burst,
-                                           0, 0)
+                    tik_instance.data_move(dest[i * width * height], data_move_ub[ub_index], 0, 1, burst, 0, 0)
         elif self.tail != width * height:
             count_one_burst = burst * constant.BLOCK_SIZE // self.dtype_size
             with tik_instance.for_range(0, repeats) as i:
                 ub_index = i * count_one_burst
-                tik_instance.data_move(dest[i * width * height],
-                                       data_move_ub[ub_index], 0, 1, burst, 0,
-                                       0)
+                tik_instance.data_move(dest[i * width * height], data_move_ub[ub_index], 0, 1, burst, 0, 0)
         else:
             count_one_block = constant.BLOCK_SIZE // self.dtype_size
             count_one_burst = burst * constant.BLOCK_SIZE // self.dtype_size
             head_count = self.tail % count_one_block
             with tik_instance.for_range(0, repeats) as i:
                 ub_index = i * count_one_burst
-                tik_instance.data_move(dest[i * width * height],
-                                       data_move_ub[ub_index], 0, 1, 1, 0,
-                                       0)
+                tik_instance.data_move(dest[i * width * height], data_move_ub[ub_index], 0, 1, 1, 0, 0)
                 if burst - 1 > 0:
-                    tik_instance.data_move(dest[i * width * height +
-                                                head_count],
-                                           data_move_ub[ub_index +
-                                                        count_one_block],
-                                           0, 1, burst - 1, 0, 0)
+                    tik_instance.data_move(dest[i * width * height + head_count],
+                                           data_move_ub[ub_index + count_one_block], 0, 1, burst - 1, 0, 0)
 
     def _vconv(self, dest, src, count):
         tik_instance = self.tik_instance
@@ -428,20 +356,16 @@ class LrnGrad:
 
         while remain > 0:
             if remain > constant.MASK64 * MAX_REPEAT:
-                tik_instance.vconv(constant.MASK64, "",
-                                   dest[index], src[index], MAX_REPEAT,
-                                   1, 1, dst_rep_stride, src_rep_stride)
+                tik_instance.vconv(constant.MASK64, "", dest[index], src[index], MAX_REPEAT, 1, 1, dst_rep_stride,
+                                   src_rep_stride)
                 handle_count = constant.MASK64 * MAX_REPEAT
             elif remain > constant.MASK64:
                 repeat_times = remain // constant.MASK64
-                tik_instance.vconv(constant.MASK64, "",
-                                   dest[index], src[index], repeat_times,
-                                   1, 1, dst_rep_stride, src_rep_stride)
+                tik_instance.vconv(constant.MASK64, "", dest[index], src[index], repeat_times, 1, 1, dst_rep_stride,
+                                   src_rep_stride)
                 handle_count = constant.MASK64 * repeat_times
             else:
-                tik_instance.vconv(remain, "",
-                                   dest[index], src[index], 1,
-                                   1, 1, dst_rep_stride, src_rep_stride)
+                tik_instance.vconv(remain, "", dest[index], src[index], 1, 1, 1, dst_rep_stride, src_rep_stride)
                 handle_count = remain
 
             index += handle_count
@@ -502,12 +426,12 @@ class LrnGrad:
             self._vexp(dest, dest, count)
         elif self.alpha < 0 and self.bias < 0:
             excepted_value = "greater than 0"
-            real_value = "alpha (%d),bias (%d)"%(self.alpha, self.bias)
+            real_value = "alpha (%d),bias (%d)" % (self.alpha, self.bias)
             error_manager_vector.raise_err_input_value_invalid("lrn_grad", "alpha and bias", \
                                                                excepted_value, real_value)
         else:
             excepted_value = "greater than 0"
-            real_value = "alpha (%d),bias (%d)"%(self.alpha, self.bias)
+            real_value = "alpha (%d),bias (%d)" % (self.alpha, self.bias)
             error_manager_vector.raise_err_input_value_invalid("lrn_grad", "alpha and bias", \
                                                                excepted_value, real_value)
 
@@ -533,35 +457,26 @@ class LrnGrad:
             tik_instance.scalar_min(end_idx, channels - 1, end_idx)
 
             with tik_instance.if_scope(i != 0):
-                self._vadds(dest[i * count_one_window],
-                            dest[last_idx * count_one_window],
-                            0.0, count_one_window)
+                self._vadds(dest[i * count_one_window:], dest[last_idx * count_one_window:], 0.0, count_one_window)
                 with tik_instance.for_range(last_end_idx + 1, end_idx + 1) as j:
-                    self._vadd(dest[i * count_one_window],
-                               dest[i * count_one_window],
-                               src[j * count_one_window], count_one_window)
+                    self._vadd(dest[i * count_one_window:], dest[i * count_one_window:], src[j * count_one_window:],
+                               count_one_window)
 
                 with tik_instance.for_range(last_begin_idx, begin_idx) as j:
-                    self._vsub(dest[i * count_one_window],
-                               dest[i * count_one_window],
-                               src[j * count_one_window], count_one_window)
+                    self._vsub(dest[i * count_one_window:], dest[i * count_one_window:], src[j * count_one_window:],
+                               count_one_window)
 
             with tik_instance.else_scope():
-                self._vadds(dest[i * count_one_window],
-                            src[end_idx * count_one_window],
-                            0.0, count_one_window)
+                self._vadds(dest[i * count_one_window:], src[end_idx * count_one_window:], 0.0, count_one_window)
                 with tik_instance.for_range(begin_idx, end_idx) as j:
-                    self._vadd(dest[i * count_one_window],
-                               dest[i * count_one_window],
-                               src[j * count_one_window],
+                    self._vadd(dest[i * count_one_window:], dest[i * count_one_window:], src[j * count_one_window:],
                                count_one_window)
 
             last_begin_idx.set_as(begin_idx)
             last_end_idx.set_as(end_idx)
             last_idx.set_as(i)
 
-    def _sum4windows_cut_channels(self, dest, src, count_one_window,
-                                  channel_idx, channel_count):
+    def _sum4windows_cut_channels(self, dest, src, count_one_window, channel_idx, channel_count):
         tik_instance = self.tik_instance
         radius = self.depth_radius
         channels = self.channels
@@ -602,28 +517,18 @@ class LrnGrad:
                         is_first.set_as(1)
 
                 with tik_instance.if_scope(is_first == 1):
-                    self._vadds(dest[i * count_one_window],
-                                src[end_idx * count_one_window],
-                                0.0, count_one_window)
+                    self._vadds(dest[i * count_one_window:], src[end_idx * count_one_window:], 0.0, count_one_window)
                     with tik_instance.for_range(begin_idx, end_idx) as j:
-                        self._vadd(dest[i * count_one_window],
-                                   dest[i * count_one_window],
-                                   src[j * count_one_window],
+                        self._vadd(dest[i * count_one_window:], dest[i * count_one_window:], src[j * count_one_window:],
                                    count_one_window)
                 with tik_instance.else_scope():
-                    self._vadds(dest[i * count_one_window],
-                                dest[last_idx * count_one_window],
-                                0.0, count_one_window)
+                    self._vadds(dest[i * count_one_window:], dest[last_idx * count_one_window:], 0.0, count_one_window)
                     with tik_instance.if_scope(last_end_idx != end_idx):
-                        self._vadd(dest[i * count_one_window],
-                                   dest[i * count_one_window],
-                                   src[(i + radius) * count_one_window],
-                                   count_one_window)
+                        self._vadd(dest[i * count_one_window:], dest[i * count_one_window:],
+                                   src[(i + radius) * count_one_window:], count_one_window)
                     with tik_instance.if_scope(last_begin_idx != begin_idx):
-                        self._vsub(dest[i * count_one_window],
-                                   dest[i * count_one_window],
-                                   src[sub_idx * count_one_window],
-                                   count_one_window)
+                        self._vsub(dest[i * count_one_window:], dest[i * count_one_window:],
+                                   src[sub_idx * count_one_window:], count_one_window)
                         sub_idx.set_as(sub_idx + 1)
 
                 last_begin_idx.set_as(begin_idx)
@@ -640,27 +545,20 @@ class LrnGrad:
         self._vmuls(self.norm_ub, self.norm_ub, self.alpha, count_one_loop)
         self._vadds(self.norm_ub, self.norm_ub, self.bias, count_one_loop)
 
-        self._vpow(self.norm_beta_ub, self.norm_ub, -1 * self.beta,
-                   count_one_loop)
-        self._vmul(self.norm_beta_ub, self.norm_beta_ub, self.input_grads_ub,
-                   count_one_loop)
+        self._vpow(self.norm_beta_ub, self.norm_ub, -1 * self.beta, count_one_loop)
+        self._vmul(self.norm_beta_ub, self.norm_beta_ub, self.input_grads_ub, count_one_loop)
 
-        self._vmul(self.pre_norm_ub, self.output_image_ub,
-                   self.input_grads_ub, count_one_loop)
-        self._vdiv(self.pre_norm_ub, self.pre_norm_ub, self.norm_ub,
-                   count_one_loop)
+        self._vmul(self.pre_norm_ub, self.output_image_ub, self.input_grads_ub, count_one_loop)
+        self._vdiv(self.pre_norm_ub, self.pre_norm_ub, self.norm_ub, count_one_loop)
 
         norm_ub = self.norm_ub
         pre_norm_ub = self.pre_norm_ub
         self._sum4windows_cut_hw(norm_ub, pre_norm_ub, count_one_window)
 
-        self._vmul(norm_ub, norm_ub,
-                   self.input_image_ub, count_one_loop)
-        self._vmuls(norm_ub, norm_ub,
-                    -2.0 * self.alpha * self.beta, count_one_loop)
+        self._vmul(norm_ub, norm_ub, self.input_image_ub, count_one_loop)
+        self._vmuls(norm_ub, norm_ub, -2.0 * self.alpha * self.beta, count_one_loop)
         data_output_ub = self.data_output_ub
-        self._vadd(data_output_ub, self.norm_beta_ub,
-                   self.norm_ub, count_one_loop)
+        self._vadd(data_output_ub, self.norm_beta_ub, self.norm_ub, count_one_loop)
 
     def _cut_hw_one_batch(self, batch_idx):
         tik_instance = self.tik_instance
@@ -676,8 +574,7 @@ class LrnGrad:
                 gm_index = batch_idx * batch_size
                 self._treat_cut_hw_one_part(gm_index, tail)
         else:
-            with tik_instance.for_range(0, loop,
-                                        thread_num=thread_num) as idx:
+            with tik_instance.for_range(0, loop, thread_num=thread_num) as idx:
                 self._alloc_all_ub()
                 if tail != 0:
                     with tik_instance.if_scope(idx == 0):
@@ -702,26 +599,20 @@ class LrnGrad:
 
         tik_instance = self.tik_instance
         with tik_instance.for_range(0, loop_b) as loop_idx:
-            with tik_instance.for_range(0, aicore_num,
-                                        block_num=aicore_num) as block_idx:
+            with tik_instance.for_range(0, aicore_num, block_num=aicore_num) as block_idx:
                 batch_idx = block_idx + loop_idx * aicore_num
                 with tik_instance.if_scope(batch_idx < batch):
                     self._cut_hw_one_batch(block_idx + loop_idx * aicore_num)
 
         tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                              inputs=[self.data_input_grads,
-                                      self.data_input_image,
-                                      self.data_output_image],
+                              inputs=[self.data_input_grads, self.data_input_image, self.data_output_image],
                               outputs=[self.data_output])
         return tik_instance
 
     def _all_gm2ub_cut_hw(self, gm_index, factor):
-        self._gm2ub(self.input_image_ub,
-                    self.data_input_image[gm_index], factor, self.channels)
-        self._gm2ub(self.input_grads_ub,
-                    self.data_input_grads[gm_index], factor, self.channels)
-        self._gm2ub(self.output_image_ub,
-                    self.data_output_image[gm_index], factor, self.channels)
+        self._gm2ub(self.input_image_ub, self.data_input_image[gm_index], factor, self.channels)
+        self._gm2ub(self.input_grads_ub, self.data_input_grads[gm_index], factor, self.channels)
+        self._gm2ub(self.output_image_ub, self.data_output_image[gm_index], factor, self.channels)
 
     def _cut_channels_one_batch(self, batch_idx):
         radius = self.depth_radius
@@ -748,15 +639,8 @@ class LrnGrad:
                 convent_ub_seg_count = im_seg_count * self.ub_dtype_size / \
                                        self.dtype_size
 
-            segment_count = (im_seg_count +
-                             ig_seg_count +
-                             om_seg_count +
-                             pre_norm_seg_count +
-                             norm_seg_count +
-                             norm_beta_seg_count +
-                             pre_norm2_seg_count +
-                             norm2_seg_count +
-                             output_seg_count +
+            segment_count = (im_seg_count + ig_seg_count + om_seg_count + pre_norm_seg_count + norm_seg_count +
+                             norm_beta_seg_count + pre_norm2_seg_count + norm2_seg_count + output_seg_count +
                              convent_ub_seg_count) * 2
 
             cut_hw_factor_size = _get_ub_segment_size(segment_count)
@@ -779,21 +663,17 @@ class LrnGrad:
             if tail != 0:
                 self._alloc_all_ub_cut_channel()
                 gm_index = batch_idx * batch_size
-                self._treat_cut_channels_one_part(gm_index, tail,
-                                                  channels_out_one_loop)
+                self._treat_cut_channels_one_part(gm_index, tail, channels_out_one_loop)
         else:
-            with tik_instance.for_range(0, loop,
-                                        thread_num=thread_num) as idx:
+            with tik_instance.for_range(0, loop, thread_num=thread_num) as idx:
                 self._alloc_all_ub_cut_channel()
                 if tail != 0:
                     with tik_instance.if_scope(idx == 0):
                         gm_index = batch_idx * batch_size
-                        self._treat_cut_channels_one_part(gm_index, tail,
-                                                          channels_out_one_loop)
+                        self._treat_cut_channels_one_part(gm_index, tail, channels_out_one_loop)
 
                 gm_index = batch_idx * batch_size + tail + idx * hw_factor
-                self._treat_cut_channels_one_part(gm_index, hw_factor,
-                                                  channels_out_one_loop)
+                self._treat_cut_channels_one_part(gm_index, hw_factor, channels_out_one_loop)
 
     def _cut_channels(self):
         batch = self.batch
@@ -809,17 +689,13 @@ class LrnGrad:
 
         tik_instance = self.tik_instance
         with tik_instance.for_range(0, loop_b) as loop_idx:
-            with tik_instance.for_range(0, aicore_num,
-                                        block_num=aicore_num) as block_idx:
+            with tik_instance.for_range(0, aicore_num, block_num=aicore_num) as block_idx:
                 batch_idx = block_idx + loop_idx * aicore_num
                 with tik_instance.if_scope(batch_idx < batch):
-                    self._cut_channels_one_batch(block_idx +
-                                                 loop_idx * aicore_num)
+                    self._cut_channels_one_batch(block_idx + loop_idx * aicore_num)
 
         tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                              inputs=[self.data_input_grads,
-                                      self.data_input_image,
-                                      self.data_output_image],
+                              inputs=[self.data_input_grads, self.data_input_image, self.data_output_image],
                               outputs=[self.data_output])
         return tik_instance
 
@@ -865,64 +741,39 @@ class LrnGrad:
                 channels = channels_count
                 ub_idx = MORE_THREE_RADIUS * radius * count_one_window
                 with tik_instance.for_range(1, loop_c) as c_idx:
-                    gm_in_idx = gm_index + width * height * (MORE_THREE_RADIUS *
-                                                             radius +
-                                                             channels_count *
-                                                             c_idx)
-                    gm_out_idx = gm_index + (channels_count * c_idx *
-                                             width * height)
+                    gm_in_idx = gm_index + width * height * (MORE_THREE_RADIUS * radius + channels_count * c_idx)
+                    gm_out_idx = gm_index + (channels_count * c_idx * width * height)
                     if tail_c > MORE_THREE_RADIUS * radius:
-                        self._all_gm2ub_cut_channels(gm_in_idx, count, ub_idx,
-                                                     channels)
+                        self._all_gm2ub_cut_channels(gm_in_idx, count, ub_idx, channels)
                     else:
                         with tik_instance.if_scope(c_idx != loop_c - 1):
-                            self._all_gm2ub_cut_channels(gm_in_idx, count,
-                                                         ub_idx, channels)
+                            self._all_gm2ub_cut_channels(gm_in_idx, count, ub_idx, channels)
                         with tik_instance.else_scope():
-                            if channels + tail_c - MORE_THREE_RADIUS*radius > 0:
-                                self._all_gm2ub_cut_channels(gm_in_idx, count,
-                                                             ub_idx,
-                                                             channels + tail_c -
-                                                             MORE_THREE_RADIUS *
-                                                             radius)
-                    self._cut_channels_compute(count_one_window, ub_idx,
-                                               channels, channels_count * c_idx)
-                    self._ub2gm(gm_out_idx,
-                                count, channels)
+                            if channels + tail_c - MORE_THREE_RADIUS * radius > 0:
+                                self._all_gm2ub_cut_channels(gm_in_idx, count, ub_idx,
+                                                             channels + tail_c - MORE_THREE_RADIUS * radius)
+                    self._cut_channels_compute(count_one_window, ub_idx, channels, channels_count * c_idx)
+                    self._ub2gm(gm_out_idx, count, channels)
 
                     self._backup_ub_cut_channels(count_one_window, False)
             if tail_c > 0:
-                gm_in_idx = gm_index + width * height * (MORE_THREE_RADIUS *
-                                                         radius +
-                                                         channels_count *
-                                                         loop_c)
-                gm_out_idx = gm_index + (channels_count * loop_c *
-                                         width * height)
+                gm_in_idx = gm_index + width * height * (MORE_THREE_RADIUS * radius + channels_count * loop_c)
+                gm_out_idx = gm_index + (channels_count * loop_c * width * height)
                 ub_idx = MORE_THREE_RADIUS * radius * count_one_window
 
                 if tail_c > MORE_THREE_RADIUS * radius:
                     tail_channels = tail_c - MORE_THREE_RADIUS * radius
-                    self._all_gm2ub_cut_channels(gm_in_idx, count, ub_idx,
-                                                 tail_channels)
-                self._cut_channels_compute(count_one_window, ub_idx, tail_c,
-                                           channels_count * loop_c)
-                self._ub2gm(gm_out_idx,
-                            count, tail_c)
+                    self._all_gm2ub_cut_channels(gm_in_idx, count, ub_idx, tail_channels)
+                self._cut_channels_compute(count_one_window, ub_idx, tail_c, channels_count * loop_c)
+                self._ub2gm(gm_out_idx, count, tail_c)
 
     def _all_gm2ub_cut_channels(self, gm_index, count, ub_idx, channels):
-        self._gm2ub(self.input_image_ub[ub_idx:],
-                    self.data_input_image[gm_index], count,
-                    channels)
-        self._gm2ub(self.input_grads_ub[ub_idx:],
-                    self.data_input_grads[gm_index], count,
-                    channels)
-        self._gm2ub(self.output_image_ub[ub_idx:],
-                    self.data_output_image[gm_index], count,
-                    channels)
+        self._gm2ub(self.input_image_ub[ub_idx:], self.data_input_image[gm_index], count, channels)
+        self._gm2ub(self.input_grads_ub[ub_idx:], self.data_input_grads[gm_index], count, channels)
+        self._gm2ub(self.output_image_ub[ub_idx:], self.data_output_image[gm_index], count, channels)
 
     # pylint: disable=too-many-statements
-    def _cut_channels_compute(self, count_one_window, ub_idx, channels,
-                              channel_idx):
+    def _cut_channels_compute(self, count_one_window, ub_idx, channels, channel_idx):
         radius = self.depth_radius
         count_one_loop = channels * count_one_window
 
@@ -960,8 +811,7 @@ class LrnGrad:
 
         norm_ub = self.norm_ub[norm_ub_idx:]
         pre_norm_ub = self.pre_norm_ub[pre_norm_ub_idx:]
-        self._sum4windows_cut_channels(norm_ub, pre_norm_ub, count_one_window,
-                                       sum_first_start_idx, channels_count)
+        self._sum4windows_cut_channels(norm_ub, pre_norm_ub, count_one_window, sum_first_start_idx, channels_count)
 
         norm_value = self.norm_beta_ub[norm_ub_idx:]
         self._vmuls(norm_value, norm_ub, self.alpha, norm_count)
@@ -979,16 +829,12 @@ class LrnGrad:
 
         pre_norm2_ub = self.pre_norm2_ub[pre_norm2_ub_idx:]
         norm_ub2 = self.norm2_ub[norm_ub2_idx:]
-        self._sum4windows_cut_channels(norm_ub2, pre_norm2_ub, count_one_window,
-                                       sum_second_start_idx,
+        self._sum4windows_cut_channels(norm_ub2, pre_norm2_ub, count_one_window, sum_second_start_idx,
                                        second_channels_out)
-        self._vmul(self.data_output_ub, self.norm2_ub,
-                   self.input_image_ub, output_count)
-        self._vmuls(self.data_output_ub, self.data_output_ub,
-                    -2.0 * self.alpha * self.beta, output_count)
+        self._vmul(self.data_output_ub, self.norm2_ub, self.input_image_ub, output_count)
+        self._vmuls(self.data_output_ub, self.data_output_ub, -2.0 * self.alpha * self.beta, output_count)
 
-        self._vadd(self.data_output_ub, self.norm_beta_ub,
-                   self.data_output_ub, output_count)
+        self._vadd(self.data_output_ub, self.norm_beta_ub, self.data_output_ub, output_count)
 
     def _backup_ub_cut_channels(self, count_one_window, first_backup):
         src_idx = self.channels_out_one_loop * count_one_window
@@ -1000,37 +846,31 @@ class LrnGrad:
 
         radius = self.depth_radius
         if radius != 0:
-            self._vadds(self.input_image_ub[0:], self.input_image_ub[src_idx:],
-                        0.0, MORE_THREE_RADIUS * radius * count_one_window)
+            self._vadds(self.input_image_ub[0:], self.input_image_ub[src_idx:], 0.0,
+                        MORE_THREE_RADIUS * radius * count_one_window)
 
-            self._vadds(self.input_grads_ub[0:], self.input_grads_ub[src_idx:],
-                        0.0, MORE_THREE_RADIUS * radius * count_one_window)
+            self._vadds(self.input_grads_ub[0:], self.input_grads_ub[src_idx:], 0.0,
+                        MORE_THREE_RADIUS * radius * count_one_window)
 
-            self._vadds(self.output_image_ub[0:],
-                        self.output_image_ub[src_idx:],
-                        0.0, MORE_THREE_RADIUS * radius * count_one_window)
+            self._vadds(self.output_image_ub[0:], self.output_image_ub[src_idx:], 0.0,
+                        MORE_THREE_RADIUS * radius * count_one_window)
 
-            self._vadds(self.norm_ub[0:], self.norm_ub[src_idx:], 0.0,
-                        MORE_TWO_RADIUS * radius * count_one_window)
+            self._vadds(self.norm_ub[0:], self.norm_ub[src_idx:], 0.0, MORE_TWO_RADIUS * radius * count_one_window)
 
             self._vadds(self.norm_beta_ub[0:], self.norm_beta_ub[src_idx:], 0.0,
                         MORE_TWO_RADIUS * radius * count_one_window)
 
             norm2_ub = self.norm2_ub
-            self._vadds(norm2_ub, norm2_ub[src_idx:], 0.0,
-                        radius * count_one_window)
+            self._vadds(norm2_ub, norm2_ub[src_idx:], 0.0, radius * count_one_window)
 
         self._vadds(self.pre_norm_ub[0:], self.pre_norm_ub[pre_norm_idx:], 0.0,
-                    MORE_THREE_RADIUS*radius*count_one_window +
-                    count_one_window)
+                    MORE_THREE_RADIUS * radius * count_one_window + count_one_window)
 
-        self._vadds(self.pre_norm2_ub[0:], self.pre_norm2_ub[pre_norm_idx:],
-                    0.0, MORE_TWO_RADIUS*radius*count_one_window +
-                    count_one_window)
+        self._vadds(self.pre_norm2_ub[0:], self.pre_norm2_ub[pre_norm_idx:], 0.0,
+                    MORE_TWO_RADIUS * radius * count_one_window + count_one_window)
 
 
-def _check_param(input_grads, input_image, output_image, depth_radius,
-                 kernel_name):
+def _check_param(input_grads, input_image, output_image, depth_radius, kernel_name):
     input_grads_shape = input_grads.get("shape")
     input_grads_dtype = input_grads.get("dtype")
 
@@ -1040,26 +880,22 @@ def _check_param(input_grads, input_image, output_image, depth_radius,
     output_image_shape = output_image.get("shape")
     output_image_dtype = output_image.get("dtype")
 
-
     para_check.check_dtype(input_grads_dtype, ("float16", "float32"), param_name="grads")
     para_check.check_dtype(input_image_dtype, ("float16", "float32"), param_name="x")
     para_check.check_dtype(output_image_dtype, ("float16", "float32"), param_name="y")
-
 
     if len(input_grads_shape) != 4:
         error_detail = "The shape of grads must be 4D."
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "grads", error_detail)
 
-    if (input_grads_dtype != input_image_dtype or
-            input_grads_dtype != output_image_dtype):
+    if (input_grads_dtype != input_image_dtype or input_grads_dtype != output_image_dtype):
         rule_desc = "The dtype of input_grads,input_x,output_y must be same"
-        param_value = "%s %s %s"%(input_grads_dtype, input_image_dtype, output_image_dtype)
+        param_value = "%s %s %s" % (input_grads_dtype, input_image_dtype, output_image_dtype)
         error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "grads,x,y", param_value)
 
-    if (input_grads_shape != input_image_shape or
-            input_grads_shape != output_image_shape):
+    if (input_grads_shape != input_image_shape or input_grads_shape != output_image_shape):
         rule_desc = "The shape of input_grads,input_x,output_y must be same"
-        param_value = "%s %s %s"%(input_grads_shape, input_image_shape, output_image_shape)
+        param_value = "%s %s %s" % (input_grads_shape, input_image_shape, output_image_shape)
         error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "grads,x,y", param_value)
 
     if depth_radius > 48 or depth_radius < 0:
@@ -1073,8 +909,7 @@ def _check_param(input_grads, input_image, output_image, depth_radius,
                             (para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT),
                             (para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT),
                             (para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT), para_check.KERNEL_NAME)
-def lrn_grad(grads, x, y, z, depth_radius=5,
-             bias=1.0, alpha=1.0, beta=0.5, kernel_name="lrn_grad"):
+def lrn_grad(grads, x, y, z, depth_radius=5, bias=1.0, alpha=1.0, beta=0.5, kernel_name="lrn_grad"):
     """
     calculating data
 
@@ -1106,6 +941,5 @@ def lrn_grad(grads, x, y, z, depth_radius=5,
 
     _check_param(grads, x, y, depth_radius, kernel_name)
 
-    lrngrad = LrnGrad(grads.get("shape"), grads.get("dtype"),
-                      depth_radius, bias, alpha, beta, kernel_name)
+    lrngrad = LrnGrad(grads.get("shape"), grads.get("dtype"), depth_radius, bias, alpha, beta, kernel_name)
     return lrngrad.lrn_grad()
