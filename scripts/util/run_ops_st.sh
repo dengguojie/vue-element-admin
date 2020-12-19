@@ -26,6 +26,9 @@ CANN_ST_SOURCE="${CANN_ROOT}/st"
 
 test ! -d "${CANN_ST_OUT}" && mkdir -p "${CANN_ST_OUT}"
 
+ALL_CASES="cases.txt"
+RESULT="result.txt"
+
 set_st_env() {
   local install_path="$1"
   # atc
@@ -52,12 +55,12 @@ run_st() {
   fi
   mkdir -p "$CANN_ST_OUT"
 
-  if [[ -z "${op_type}" ]]; then
+  if [[ ! -z "${op_type}" ]]; then
     op_dir="${CANN_ST_SOURCE}/${op_type}"
   else
     op_dir="${CANN_ST_SOURCE}"
   fi
-  json_cases=$(find "${op_dir}" -name *.json)
+  json_cases=$(find "${op_dir}" -name *.json 2>/dev/null)
   for op_case in $(echo $json_cases); do
     echo "[INFO] run case file: $op_case"
     python3.7 "$msopst" run -i "$op_case" -soc "$supported_soc" -out "$CANN_ST_OUT"
@@ -68,11 +71,30 @@ run_st() {
   done
 }
 
+gen_all_cases() {
+  op_dir="${CANN_ST_SOURCE}"
+  touch "${ALL_CASES}"
+  find "${CANN_ST_SOURCE}" -name "*.json" |
+    xargs grep -F "case_name" |
+    sed 's/^ \+//g; s/\"//g; s/, *//g' > "${ALL_CASES}" 2>/dev/null
+  echo "[INFO] find cases to execute:" && cat "${ALL_CASES}"
+}
+
+get_results() {
+  touch "${RESULT}"
+  find "${CANN_TEST_OUT}" -name "result.txt" |
+    xargs grep -v "Test Result" |
+    awk '{print $2" : "$3}' > "${RESULT}" 2>/dev/null
+  echo "[INFO] get results:" && cat "${RESULT}"
+}
+
 main() {
   local base_path="$1"
   local op_type="$2"
+  gen_all_cases
   set_st_env "${base_path}"
   run_st "${op_type}"
+  get_results
 }
 
 if [[ $# -lt 1 ]]; then
