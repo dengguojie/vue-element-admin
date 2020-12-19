@@ -28,6 +28,7 @@ COMPUTE_TYPE = "logsumexp"
 def get_op_support_info(x, y, axis, exclusive=False, reverse=False,
                         kernel_name="cumulative_logsumexp_d"):
     format_x = x.get("format")
+    shape = x.get("shape")
     if axis < 0:
         axis = len(shape) + axis
 

@@ -31,6 +31,7 @@ def get_op_support_info(x, y, axis=0, exclusive=False, reverse=False, kernel_nam
     get_op_support_info
     """
     format_x = x.get("format")
+    shape = x.get("shape")
     if axis < 0:
         axis = len(shape) + axis
     if format_x == "ND" or format_x == "NHWC":
