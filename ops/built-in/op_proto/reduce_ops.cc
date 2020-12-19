@@ -381,11 +381,6 @@ static void DoAxisUnKnown(const bool& keep_dims, const std::vector<int64_t>& axi
   size_t input_length = input_shape.size();
   size_t axis_length = axis_shape.size();
   if (keep_dims) {
-    if (axis_length == 0) {
-      // output is [1,1,1,1,.....,1]
-      output_shape = std::vector<int64_t>(input_length, 1);
-      return;
-    }
     for (size_t item = 0; item < input_length; ++item) {
       int64_t range_min_value = 1;
       int64_t range_max_value = input_shape_range[item].second;
@@ -397,7 +392,7 @@ static void DoAxisUnKnown(const bool& keep_dims, const std::vector<int64_t>& axi
       }
     }
   } else {
-    int64_t output_dimNum = axis_length == 0 ? 0 : (int64_t)input_length - axis_shape[0];
+    int64_t output_dimNum = axis_length == 0 ? (int64_t)input_length - 1 : (int64_t)input_length - axis_shape[0];
     int64_t range_min_value = input_shape_range[0].first;
     int64_t range_max_value = input_shape_range[0].second;
     for (size_t item = 0; item < input_shape.size(); ++item) {
