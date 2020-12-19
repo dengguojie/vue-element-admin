@@ -405,7 +405,7 @@ def op_select_format(x, y, output, kernel_name="mul"):
             if format_x == format_y and format_y in ("NHWC", ):
                 format_list.append("NC1HWC0")
             if format_x == format_y and format_y in ("NCHW", "HWCN"):
-                if y_cdim == shape_x[0] or y_cdim == 1 or shape_x[0] == 1 or y_cdim // 16 == 1 or shape_x[0] // 16 == 1:
+                if y_cdim == shape_x[0] or y_cdim == 1 or shape_x[0] == 1 or shape_x[0] // 16 == 1:
                     format_list.append("NC1HWC0")
         if len(shape_y) == 1 and len(shape_x) == 4:
             if format_x == format_y and format_x in ("NHWC", ):
