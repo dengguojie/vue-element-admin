@@ -1,8 +1,6 @@
 [canndev]
 ops/built-in/aicpu/
-ops/built-in/framework/caffe_plugin
-ops/built-in/framework/onnx_plugin
-ops/built-in/framework/tf_plugin
+ops/built-in/framework/
 ops/built-in/fusion_pass/
 ops/built-in/fusion_rules/
 ops/built-in/op_proto/
