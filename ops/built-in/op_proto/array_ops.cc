@@ -1864,9 +1864,7 @@ IMPLEMT_INFERFUNC(Empty, EmptyInfer) {
   op_desc->SetOpInferDepends(dep_inputs);
   auto input_desc_shape = op_desc->MutableInputDesc("shape");
   auto output_desc_y = op_desc->MutableOutputDesc("y");
-
-  uint32_t dtype = DT_INT32;
-  (void)op.GetAttr("dtype", dtype);
+  auto dtype = op.get_attr_dtype();
 
   std::vector<std::pair<int64_t, int64_t>> shape_range;
   std::vector<std::pair<int64_t, int64_t>> y_range;
@@ -1886,7 +1884,7 @@ IMPLEMT_INFERFUNC(Empty, EmptyInfer) {
     GE_OP_LOGD(op.GetName().c_str(), "all inputs are unknown rank!");
     output_desc_y->SetShape(GeShape(UNKNOWN_SHAPE));
     output_desc_y->SetOriginShape(GeShape(UNKNOWN_SHAPE));
-    output_desc_y->SetDataType(data_type);
+    output_desc_y->SetDataType((DataType)dtype);
     return GRAPH_SUCCESS;
   }
 
