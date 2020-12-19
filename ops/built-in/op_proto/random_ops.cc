@@ -217,9 +217,14 @@ IMPLEMT_INFERFUNC(TruncatedNormal, TruncatedNormalInfer) {
 INFER_FUNC_REG(TruncatedNormal, TruncatedNormalInfer);
 
 IMPLEMT_INFERFUNC(DropOutGenMask, DropOutGenMaskInfer) {
+  std::vector<std::string> input_infer_depends = {"shape"};
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  op_desc->SetOpInferDepends(input_infer_depends);
   Tensor shape_tensor;
   if (op.GetInputConstData("shape", shape_tensor) != GRAPH_SUCCESS) {
-    return GRAPH_FAILED;
+    TensorDesc output_desc = op.GetOutputDesc("y");
+    output_desc.SetShape(ge::Shape(ge::UNKNOWN_RANK));
+    return op.UpdateOutputDesc("y", output_desc);
   }
   Shape unused;
   if (WithRank(op.GetInputDesc(1), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
