@@ -22,6 +22,7 @@
 #define OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_AIPP_CONV_TBE_AIPP_FUSION_RULE_H_
 #include <string>
 #include "graph/node.h"
+#include "common/op_slice_info.h"
 
 namespace fe {
 
@@ -30,6 +31,11 @@ class TbeAippFusionRule {
   static bool CheckAippConvStridehValidation(const ge::NodePtr conv_node);
   static bool CheckConvload2dNodeValidation(const ge::NodePtr conv_node);
   static bool CheckAippConvEltwiseFusionValidation(const ge::NodePtr conv_node, const string& input_format);
+  static bool CheckElemwiseValidation(const ge::NodePtr elemwise_node);
+  static void SetSplitInfo(std::vector<ge::NodePtr> &conv_nodes, std::vector<ge::NodePtr> &fusion_nodes,
+                           const bool &is_deal_c_axis);
+ private:
+  static void DelSplitInfoByAxis(std::vector<AxisSplitMap> &split_maps, const int64_t &axis);
 };
 }  // namespace fe
 #endif  // OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_AIPP_CONV_TBE_AIPP_FUSION_RULE_H_
