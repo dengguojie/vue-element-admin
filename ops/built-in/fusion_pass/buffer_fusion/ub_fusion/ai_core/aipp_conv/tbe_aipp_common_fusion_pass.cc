@@ -118,6 +118,7 @@ Status TbeAippCommonFusionPass::GetFusionNodes(const BufferFusionMapping& mappin
   OP_LOGD(fused_op_type_.c_str(), "End to do TbeAippCommonFusionPass.");
   return SUCCESS;
 }
+
 void TbeAippCommonFusionPass::FilterElemwiseNodes(std::vector<ge::NodePtr> &elemwise_nodes,
                                                   std::vector<ge::NodePtr> &quant_nodes,
                                                   std::vector<ge::NodePtr> &strided_write_nodes,
@@ -155,6 +156,7 @@ void TbeAippCommonFusionPass::FilterElemwiseNodes(std::vector<ge::NodePtr> &elem
     }
   }
 }
+
 void TbeAippCommonFusionPass::AddRemovingReluNodes(ge::NodePtr remove_node,
                                                    const std::vector<ge::NodePtr> &elemwise_nodes,
                                                    std::vector<ge::NodePtr> &remove_nodes) {
