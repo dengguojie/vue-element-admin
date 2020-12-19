@@ -31,7 +31,7 @@ class TbeAippFusionRule {
   static bool CheckAippConvStridehValidation(const ge::NodePtr conv_node);
   static bool CheckConvload2dNodeValidation(const ge::NodePtr conv_node);
   static bool CheckAippConvEltwiseFusionValidation(const ge::NodePtr conv_node, const string& input_format);
-  static bool CheckElemwiseValidation(xisge::NodePtr elemwise_node);
+  static bool CheckElemwiseValidation(ge::NodePtr elemwise_node);
   static void SetSplitInfo(std::vector<ge::NodePtr> &conv_nodes, std::vector<ge::NodePtr> &fusion_nodes,
                            const bool &is_deal_c_axis);
  private:

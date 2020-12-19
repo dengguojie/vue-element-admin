@@ -45,7 +45,7 @@ class TbeAippCommonFusionPass : public BufferFusionPassBase {
    * @param [out] mapping: nodes matched by pattern
    * @return bool: fusion status ok or not.
    */
-  Status GetFusionNodes(const BufferFusionMapping& mapping, std::vector<ge::NodePtr> &fusion_nodes) override;
+  Status GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr> &fusion_nodes) override;
 
  private:
   const string fused_op_type_ = "AippCommonFusedOp";

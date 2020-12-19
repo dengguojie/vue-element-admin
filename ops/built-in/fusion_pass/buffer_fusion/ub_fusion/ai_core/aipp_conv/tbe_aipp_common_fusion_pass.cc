@@ -59,7 +59,7 @@ vector<BufferFusionPattern*> TbeAippCommonFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status TbeAippCommonFusionPass::GetFusionNodes(const BufferFusionMapping& mapping, std::vector<ge::NodePtr>& fusion_nodes) {
+Status TbeAippCommonFusionPass::GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
   OP_LOGD(fused_op_type_.c_str(), "Begin to do TbeAippCommonFusionPass.");
   std::vector<ge::NodePtr> conv_nodes = GetMatchedNodesByDescName(kPatternConv, mapping);
   std::vector<ge::NodePtr> aipp_nodes = GetMatchedNodesByDescName(kPatternAipp, mapping);
@@ -67,7 +67,7 @@ Status TbeAippCommonFusionPass::GetFusionNodes(const BufferFusionMapping& mappin
   std::vector<ge::NodePtr> quant_nodes = GetMatchedNodesByDescName(kPatternQuant, mapping);
   std::vector<ge::NodePtr> strided_write_nodes = GetMatchedNodesByDescName(kPatternStridedWrite, mapping);
 
-  string input_format = "";
+  std::string input_format = "";
 
   for (auto aipp_node : aipp_nodes) {
     string aipp_config_str = "";
@@ -138,7 +138,7 @@ void TbeAippCommonFusionPass::FilterElemwiseNodes(std::vector<ge::NodePtr> &elem
     return;
   }
 
-  vector<ge::NodePtr> remove_nodes;
+  std::vector<ge::NodePtr> remove_nodes;
   for (ge::NodePtr &non_relu_node : non_relu_nodes) {
     AddRemovingReluNodes(non_relu_node, elemwise_nodes, remove_nodes);
   }
