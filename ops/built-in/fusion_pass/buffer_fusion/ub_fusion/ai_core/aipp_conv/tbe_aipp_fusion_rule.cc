@@ -266,7 +266,7 @@ bool TbeAippFusionRule::CheckAippConvEltwiseFusionValidation(const ge::NodePtr c
   return true;
 }
 
-bool TbeAippFusionRule::CheckElemwiseValidation(const ge::NodePtr elemwise_node) {
+bool TbeAippFusionRule::CheckElemwiseValidation(ge::NodePtr elemwise_node) {
   // only support relu, relu6 or leakyrelu
   const std::vector<std::string> elemwise_op_type_vec = {"Relu", "Relu6", "LeakyRelu"};
   auto iter = std::find(elemwise_op_type_vec.begin(), elemwise_op_type_vec.end(), elemwise_node->GetType());
@@ -301,7 +301,7 @@ void TbeAippFusionRule::SetSplitInfo(std::vector<ge::NodePtr> &conv_nodes, std::
 
   OP_LOGD(conv_node->GetName().c_str(), "ori _op_slice_info is %s", op_slice_info_str.c_str());
   if (op_slice_info_str.empty()) {
-    return:
+    return;
   }
 
   OpCalcInfo op_calc_info;

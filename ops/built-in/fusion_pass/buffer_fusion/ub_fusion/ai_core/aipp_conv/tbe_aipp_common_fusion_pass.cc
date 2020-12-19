@@ -33,14 +33,14 @@ static const char kPatternAipp[] = "aipp";
 static const char kPatternConv[] = "convolution";
 static const char kPatternElemwise[] = "elemwise";
 static const char kPatternQuant[] = "quant";
-static const char kPatternStridedWrite[] = "convolution";
+static const char kPatternStridedWrite[] = "stridedwrite";
 
 vector<BufferFusionPattern*> TbeAippCommonFusionPass::DefinePatterns() {
   vector<BufferFusionPattern*> patterns;
-  string pass_name1 = "TbeAippCommonFusionPattern1";
-  BufferFusionPattern* pattern1 = new (std::nothrow) BufferFusionPattern(pass_name1);
+  string pattern_name1 = "TbeAippCommonFusionPattern1";
+  BufferFusionPattern* pattern1 = new (std::nothrow) BufferFusionPattern(pattern_name1);
   FUSION_PASS_CHECK((pattern1 == nullptr), OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
-  OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pass_name1.c_str());
+  OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pattern_name1.c_str());
   // define pattern rules
   pattern1->AddOpDesc(kPatternAipp, {OP_PATTERN_AIPP}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
           .AddOpDesc(kPatternConv, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
@@ -49,23 +49,23 @@ vector<BufferFusionPattern*> TbeAippCommonFusionPass::DefinePatterns() {
           .AddOpDesc(kPatternStridedWrite, {OP_PATTERN_STRIDED_WRITE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
           .SetHead({kPatternAipp})
           .SetOutputs(kPatternAipp, {kPatternConv})
-          .SetOutputs(kPatternConv, {kPatternElemwise}, TBE_OUT_BRANCH_SINGLE, true)
-          .SetOutputs(kPatternElemwise, {kPatternQuant}, TBE_OUT_BRANCH_SINGLE, true)
+          .SetOutputs(kPatternConv, {kPatternElemwise}, TBE_OUTPUT_BRANCH_SINGLE, true)
+          .SetOutputs(kPatternElemwise, {kPatternQuant}, TBE_OUTPUT_BRANCH_SINGLE, true)
           .SetOutputs(kPatternQuant, {kPatternStridedWrite});
 
   patterns.push_back(pattern1);
-  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pass_name1.c_str());
+  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pattern_name1.c_str());
 
   return patterns;
 }
 
-Status TbeAippCommonFusionPass::GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
-  OP_LOGD(fused_op_type_.c_str(), "Begin to do TbeConvReluFusionPass!");
-  vector<ge::NodePtr> conv_nodes = GetMatchedNodesByDescName(kPatternConv, mapping);
-  vector<ge::NodePtr> aipp_nodes = GetMatchedNodesByDescName(kPatternAipp, mapping);
-  vector<ge::NodePtr> elemwise_nodes = GetMatchedNodesByDescName(kPatternElemwise, mapping);
-  vector<ge::NodePtr> quant_nodes = GetMatchedNodesByDescName(kPatternQuant, mapping);
-  vector<ge::NodePtr> strided_write_nodes = GetMatchedNodesByDescName(kPatternStridedWrite, mapping);
+Status TbeAippCommonFusionPass::GetFusionNodes(const BufferFusionMapping& mapping, std::vector<ge::NodePtr>& fusion_nodes) {
+  OP_LOGD(fused_op_type_.c_str(), "Begin to do TbeAippCommonFusionPass.");
+  std::vector<ge::NodePtr> conv_nodes = GetMatchedNodesByDescName(kPatternConv, mapping);
+  std::vector<ge::NodePtr> aipp_nodes = GetMatchedNodesByDescName(kPatternAipp, mapping);
+  std::vector<ge::NodePtr> elemwise_nodes = GetMatchedNodesByDescName(kPatternElemwise, mapping);
+  std::vector<ge::NodePtr> quant_nodes = GetMatchedNodesByDescName(kPatternQuant, mapping);
+  std::vector<ge::NodePtr> strided_write_nodes = GetMatchedNodesByDescName(kPatternStridedWrite, mapping);
 
   string input_format = "";
 
@@ -78,7 +78,7 @@ Status TbeAippCommonFusionPass::GetFusionNodes(const BufferFusionMapping& mappin
 
     nlohmann::json aipp_config_json = nlohmann::json::parse(aipp_config_str);
     FUSION_PASS_CHECK(!aipp_config_json.is_object(),
-                      OP_LOGE(fused_op_type_.c_str(), "The aipp_config_str is not an object, the aipp_config_str is %s.",
+                      OP_LOGE(fused_op_type_.c_str(), "The aipp_config_str is not an object, aipp_config_str is %s.",
                               aipp_config_str.c_str()),
                       return FAILED);
     input_format = aipp_config_json["input_format"];
@@ -115,7 +115,7 @@ Status TbeAippCommonFusionPass::GetFusionNodes(const BufferFusionMapping& mappin
     TbeAippFusionRule::SetSplitInfo(conv_nodes, fusion_nodes, true);
   }
 
-  OP_LOGD(fused_op_type_.c_str(), "End to do TbeAippCommonFusionPass!");
+  OP_LOGD(fused_op_type_.c_str(), "End to do TbeAippCommonFusionPass.");
   return SUCCESS;
 }
 void TbeAippCommonFusionPass::FilterElemwiseNodes(std::vector<ge::NodePtr> &elemwise_nodes,
@@ -128,8 +128,8 @@ void TbeAippCommonFusionPass::FilterElemwiseNodes(std::vector<ge::NodePtr> &elem
 
   vector<ge::NodePtr> non_relu_nodes;
   for (ge::NodePtr &elemwise_node : elemwise_nodes) {
-    if (!TbeAippFusionRule::CheckAippConvEltwiseFusionValidation(elemwise_node)) {
-      OP_LOGD(elemwise_node->GetName().c_str(), "Op type[%s] must bt relu, relu6 or leakyrelu.",
+    if (!TbeAippFusionRule::CheckElemwiseValidation(elemwise_node)) {
+      OP_LOGD(elemwise_node->GetName().c_str(), "Op type[%s] must be relu, relu6 or leakyrelu.",
               elemwise_node->GetType().c_str());
       non_relu_nodes.push_back(elemwise_node);
     }
@@ -175,6 +175,5 @@ void TbeAippCommonFusionPass::AddRemovingReluNodes(ge::NodePtr remove_node,
   AddRemovingReluNodes(out_data_nodes.at(0), elemwise_nodes, remove_nodes);
 }
 
-
-REGISTER_BUFFER_FUSION_PASS("TbeAippCommonFusion_Pass", BUILT_IN_AI_CORE_BUFFER_FUSION_PASS, TbeAippCommonFusionPass);
+REGISTER_BUFFER_FUSION_PASS("TbeAippCommonFusionPass", BUILT_IN_AI_CORE_BUFFER_FUSION_PASS, TbeAippCommonFusionPass);
 }  // namespace fe
