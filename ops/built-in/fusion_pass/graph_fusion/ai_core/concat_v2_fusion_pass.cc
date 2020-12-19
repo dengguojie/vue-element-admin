@@ -190,10 +190,8 @@ Status ConcatExt2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
           axis += (dimnum);
         }
         for (int64_t n = 0; n < num_concat; n++) {
-          //            ge::GeTensorDesc ConcatExt2InputTensor_1 = ConcatExt2Desc->GetDynamicInputDesc("x",i);
-          Operator op1 = ge::OpDescUtils::CreateOperatorFromNode(fused_node);
-          ge::TensorDesc ConcatExt2InputTensor_1 = op1.GetDynamicInputDesc("x", 63 * i + n);
-          ge::Shape ConcatExt2InputShape_1 = ConcatExt2InputTensor_1.GetShape();
+          ge::GeTensorDesc ConcatExt2InputTensor_1 = ConcatExt2Desc->GetInputDesc(63 * i + n);
+          ge::GeShape ConcatExt2InputShape_1 = ConcatExt2InputTensor_1.GetShape();
           int64_t dim_axis_value = ConcatExt2InputShape_1.GetDim(axis);
           if (PatternFusionUtil::IsUnknownShape(dim_axis_value)) {
             OP_LOGE(FUSED_OP_TYPE.c_str(), "ZConcatExt2FusionPass cannot be applied for unknown shape.");
@@ -259,10 +257,8 @@ Status ConcatExt2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
           axis += (dimnum);
         }
         for (int32_t n = 0; n < num_concat; n++) {
-          //ge::GeTensorDesc ConcatExt2InputTensor_2 = LastConcatExt2Desc->GetDynamicInputDesc("x",i);
-          Operator op2 = ge::OpDescUtils::CreateOperatorFromNode(fused_node);
-          ge::TensorDesc ConcatExt2InputTensor_2 = op2.GetDynamicInputDesc("x", n + 63 * i);
-          ge::Shape ConcatExt2InputShape_2 = ConcatExt2InputTensor_2.GetShape();
+          ge::GeTensorDesc ConcatExt2InputTensor_2 = LastConcatExt2Desc->GetInputDesc(n);
+          ge::GeShape ConcatExt2InputShape_2 = ConcatExt2InputTensor_2.GetShape();
           int64_t dim_axis_value = ConcatExt2InputShape_2.GetDim(axis);
           if (PatternFusionUtil::IsUnknownShape(dim_axis_value)) {
             OP_LOGE(FUSED_OP_TYPE.c_str(), "ZConcatExt2FusionPass cannot be applied for unknown shape.");
