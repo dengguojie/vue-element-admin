@@ -94,41 +94,21 @@ err6 = {"params": [{"shape": (35100, 8, 16, 16), "dtype": "float16",
         "format_expect": ["NCDHW"],
         "support_expect": False}
 
-case1 = {"params": [{"shape": (36, 2, 16, 16), "dtype": "float16",
-                     "ori_shape": (36, 2, 16, 16), "format": "FRACTAL_Z",
+case1 = {"params": [{"shape": (72, 1, 16, 16), "dtype": "float16",
+                     "ori_shape": (72, 1, 16, 16), "format": "FRACTAL_Z",
                      "ori_format": "FRACTAL_Z"},
-                    {"shape": (128, 2, 3, 3), "dtype": "float16",
-                     "ori_shape": (128, 2, 3, 3), "format": "NCHW", "ori_format": "NCHW"},
-                    "FRACTAL_Z", "NCHW", 32],
-         "expect": "success",
-         "format_expect": ["NCHW"],
-         "support_expect": False}
-
-case2 = {"params": [{"shape": (9, 8, 16, 16), "dtype": "float16",
-                     "ori_shape": (9, 8, 16, 16), "format": "FRACTAL_Z",
-                     "ori_format": "FRACTAL_Z"},
-                    {"shape": (128, 2, 3, 3), "dtype": "float16",
-                     "ori_shape": (128, 2, 3, 3), "format": "NCHW", "ori_format": "NCHW"},
-                    "FRACTAL_Z", "NCHW", 1],
-         "expect": "success",
-         "format_expect": ["NCHW"],
-         "support_expect": False}
-
-case3 = {"params": [{"shape": (36, 2, 16, 16), "dtype": "float16",
-                     "ori_shape": (36, 2, 16, 16), "format": "FRACTAL_Z",
-                     "ori_format": "FRACTAL_Z"},
-                    {"shape": (3, 3, 2, 128), "dtype": "float16",
-                     "ori_shape": (3, 3, 2, 128), "format": "HWCN", "ori_format": "HWCN"},
+                    {"shape": (3, 3, 4, 128), "dtype": "float16",
+                     "ori_shape": (3, 3, 4, 128), "format": "HWCN", "ori_format": "HWCN"},
                     "FRACTAL_Z", "HWCN", 32],
          "expect": "success",
          "format_expect": ["HWCN"],
          "support_expect": False}
 
-case4 = {"params": [{"shape": (9, 8, 16, 16), "dtype": "float16",
+case2 = {"params": [{"shape": (9, 8, 16, 16), "dtype": "float16",
                      "ori_shape": (9, 8, 16, 16), "format": "FRACTAL_Z",
                      "ori_format": "FRACTAL_Z"},
-                    {"shape": (3, 3, 2, 128), "dtype": "float16",
-                     "ori_shape": (3, 3, 2, 128), "format": "NCHW", "ori_format": "HWCN"},
+                    {"shape": (3, 3, 4, 128), "dtype": "float16",
+                     "ori_shape": (3, 3, 4, 128), "format": "NCHW", "ori_format": "HWCN"},
                     "FRACTAL_Z", "HWCN", 1],
          "expect": "success",
          "format_expect": ["HWCN"],
@@ -230,5 +210,5 @@ case12 = {"params": [{"shape": (351, 8, 16, 16), "dtype": "float16",
           "calc_expect_func": calc_expect_func,
           "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
 
-ut_case.add_case(["Ascend910"], case1)
-ut_case.add_case(["Ascend910"], case2)
+ut_case.add_case(["Ascend910","Ascend310"], case1)
+ut_case.add_case(["Ascend910","Ascend310"], case2)

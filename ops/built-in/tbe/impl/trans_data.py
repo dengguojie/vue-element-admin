@@ -170,8 +170,12 @@ def trans_data(src, dst, src_format, dst_format, groups=1,
                                       dst_format, kernel_name)
     elif (src_format.upper() == "FRACTAL_ZN"
           or src_format.upper() == "FRACTAL_Z") \
-            and dst_format.upper() == "HWCN":
+            and dst_format.upper() == "HWCN" and groups == 1:
         zn_2_hwcn.zn_2_hwcn(src, dst, src_format, dst_format, kernel_name)
+    elif (src_format.upper() == "FRACTAL_ZN"
+          or src_format.upper() == "FRACTAL_Z") \
+            and dst_format.upper() == "HWCN" and groups > 1:
+        zng_2_nchw_hwcn.zng_2_nchw_hwcn(src, dst, src_format, dst_format, groups, kernel_name)
     elif src_format.upper() == "HWCN" \
             and dst_format.upper() == "C1HWNCOC0":
         depthwise_weight_4d_2_6d(src, dst, src_format, dst_format, kernel_name)

@@ -607,6 +607,7 @@ def zng_2_nchw_hwcn(src, dst, src_format, dst_format, groups=1, kernel_name="zng
             tiling_params = get_tp_zng_2_nchw(args)
             zng_nchw_transform(tensor_args, tiling_params)
         else:
+            # for hwcn
             tiling_params = get_tp_zng_2_hwcn(args)
             zng_hwcn_transform(tensor_args, tiling_params)
 
