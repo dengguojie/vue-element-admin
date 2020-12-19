@@ -34,6 +34,7 @@ class ScopeDynamicRNNPass : public ScopeBasePass {
   Status LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& scope_graph, std::vector<ScopesResult>& results) override;
   void GenerateFusionResult(const std::vector<Scope*>& scopes, FusionScopesResult* fusion_rlt) override;
   void GenScopePatterns(ScopeFusionPatterns& patterns);
+  void GenTacotronScopePatterns(ScopeFusionPatterns& patterns);
 };
 }  // namespace ge
 

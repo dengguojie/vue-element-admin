@@ -32,12 +32,19 @@ static const char* const kKernelBiasType = "kernel_bias_in";
 static const char* const kWhileType = "while";
 static const char* const kOpType = "DynamicRNN";
 static const char* const kTranspose = "transpose";
+static const char* const kLstmTransType = "lstm_transpose_scope";
+static const char* const kLstmNoTransType = "lstm_no_transpose_scope";
 
 std::vector<ScopeFusionPatterns> ScopeDynamicRNNPass::DefinePatterns() {
   std::vector<ScopeFusionPatterns> patterns_list;
-  ScopeFusionPatterns patterns;
-  GenScopePatterns(patterns);
-  patterns_list.push_back(patterns);
+  ScopeFusionPatterns patterns1;
+  GenScopePatterns(patterns1);
+  patterns_list.push_back(patterns1);
+
+  ScopeFusionPatterns patterns2;
+  GenTacotronScopePatterns(patterns2);
+  patterns_list.push_back(patterns2);
+
   return patterns_list;
 }
 
@@ -175,6 +182,62 @@ void ScopeDynamicRNNPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
   patterns.push_back(batch3);
 }
 
+void ScopeDynamicRNNPass::GenTacotronScopePatterns(ScopeFusionPatterns &patterns){
+  // distinguish lstm
+  std::vector<ScopePattern *> batch1;
+  ScopePattern *lstm_while = new(std::nothrow) ScopePattern();
+  if (lstm_while == nullptr) {
+    ScopeUtil::FreeScopePatterns(patterns);
+    ScopeUtil::FreeOneBatchPattern(batch1);
+    OP_LOGE(kOpType, "Alloc an object failed.");
+    return;
+  }
+
+  lstm_while->SetSubType(kWhileType);
+  // The number of BiasAdd is a multiple of 3.
+  lstm_while->AddNodeOpTypeFeature(NodeOpTypeFeature("BiasAdd", 0, 4));
+  // The number of Mul is a Sigmoid of 3.
+  lstm_while->AddNodeOpTypeFeature(NodeOpTypeFeature("Sigmoid", 0, 3));
+  // The number of Tanh is a multiple of 2.
+  lstm_while->AddNodeOpTypeFeature(NodeOpTypeFeature("Tanh", 0, 2));
+  // The number of MatMul is 8.
+  lstm_while->AddNodeOpTypeFeature(NodeOpTypeFeature("MatMul", 8, 0));
+  ScopeAttrValue split_attr_value1;
+  // The Split node has a "num_split" attribute which value is 4.
+  split_attr_value1.SetIntValue(4);
+  lstm_while->AddNodeAttrFeature(NodeAttrFeature("Split", "num_split", ge::DT_INT32, split_attr_value1));
+
+  batch1.push_back(lstm_while);
+  patterns.push_back(batch1);
+
+  // distinguish Lstm
+  std::vector<ScopePattern *> batch2;
+  ScopePattern *p_lstm_no_transpose = new(std::nothrow) ScopePattern();
+  if (p_lstm_no_transpose == nullptr) {
+    ScopeUtil::FreeScopePatterns(patterns);
+    ScopeUtil::FreeOneBatchPattern(batch2);
+    OP_LOGE(kOpType, "Alloc an object failed.");
+    return;
+  }
+  p_lstm_no_transpose->SetSubType(kLstmNoTransType);
+  p_lstm_no_transpose->AddScopeFeature(ScopeFeature(kWhileType, 1, ""));
+  p_lstm_no_transpose->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", 0, -1));
+  batch2.push_back(p_lstm_no_transpose);
+
+  ScopePattern *p_lstm_transpose = new(std::nothrow) ScopePattern();
+  if (p_lstm_transpose == nullptr) {
+    ScopeUtil::FreeScopePatterns(patterns);
+    ScopeUtil::FreeOneBatchPattern(batch2);
+    OP_LOGE(kOpType, "Alloc an object failed.");
+    return;
+  }
+  p_lstm_transpose->SetSubType(kLstmTransType);
+  p_lstm_transpose->AddScopeFeature(ScopeFeature(kWhileType, 1, ""));
+  p_lstm_transpose->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", 0, 1));
+  batch2.push_back(p_lstm_transpose);
+  patterns.push_back(batch2);
+}
+
 Status ScopeDynamicRNNPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& scope_graph,
                                                   std::vector<ScopesResult>& results) {
   if (scope_graph == nullptr) {
@@ -189,7 +252,7 @@ Status ScopeDynamicRNNPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& s
   // Class ScopeGraph guarantees scope_tree is not empty.
   const std::vector<Scope*>& scopes = scope_tree->GetAllScopes();
   std::set<string> support_types = {kFwWhileType, kBwWhileType, kFwWhile_noTranposeType, kBwWhile_noTranposeType,
-                                    kRnnWhileType};
+                                    kRnnWhileType, kLstmNoTransType, kLstmTransType};
   for (auto& scope : scopes) {
     // Class ScopeTree guarantees scope is not empty.
     if (support_types.count(scope->SubType()) != 0) {
@@ -216,11 +279,22 @@ void ScopeDynamicRNNPass::GenerateFusionResult(const std::vector<Scope*>& scopes
     for (auto& it : nodes_map) {
       auto node_def = it.second;
       std::string sub_node_name = node_def->GetName().c_str();
-      if (sub_node_name.find("lstm_cell/MatMul/Enter") != string::npos) {
-        w_in_node_name = sub_node_name;
-      }
-      if (sub_node_name.find("lstm_cell/BiasAdd/Enter") != string::npos) {
-        b_in_node_name = sub_node_name;
+      if (scope->SubType() == kLstmTransType || scope->SubType() == kLstmNoTransType) {
+        // keras lstm for tacotron
+        if (sub_node_name.find("split/ReadVariableOp/Enter") != string::npos) {
+          w_in_node_name = sub_node_name;
+        }
+        if (sub_node_name.find("split_1/ReadVariableOp/Enter") != string::npos) {
+          b_in_node_name = sub_node_name;
+        }
+      } else {
+        // original
+        if (sub_node_name.find("lstm_cell/MatMul/Enter") != string::npos) {
+          w_in_node_name = sub_node_name;
+        }
+        if (sub_node_name.find("lstm_cell/BiasAdd/Enter") != string::npos) {
+          b_in_node_name = sub_node_name;
+        }
       }
       if (!w_in_node_name.empty() && !b_in_node_name.empty()) {
         OP_LOGD(kOpType, "DynamicRNN w input node name is %s ", w_in_node_name.c_str());
@@ -233,7 +307,12 @@ void ScopeDynamicRNNPass::GenerateFusionResult(const std::vector<Scope*>& scopes
       fusion_rlt->InsertInputs("transpose", {0, kFusionDisableIndex});  // Input 0 : x
       fusion_rlt->InsertOutputs("transpose_1", {0});                    // Output index 0 : outputs
     }
-    if (scope->SubType() == kFwWhile_noTranposeType || scope->SubType() == kBwWhile_noTranposeType) {
+    if (scope->SubType() == kLstmTransType){
+      fusion_rlt->InsertInputs("transpose", {0, kFusionDisableIndex});  // Input 0 : x
+      fusion_rlt->InsertOutputs("transpose_2", {0});                    // Output index 0 : outputs
+    }
+    if (scope->SubType() == kFwWhile_noTranposeType || scope->SubType() == kBwWhile_noTranposeType
+            || scope->SubType() == kLstmNoTransType) {
       fusion_rlt->InsertInputs("TensorArrayUnstack/TensorArrayScatter/TensorArrayScatterV3",
                                {kFusionDisableIndex, kFusionDisableIndex, 0, kFusionDisableIndex});  // Input 0 : x
       fusion_rlt->InsertOutputs("TensorArrayStack/TensorArrayGatherV3", {0});  // Output index 0 : outputs
@@ -249,7 +328,7 @@ void ScopeDynamicRNNPass::GenerateFusionResult(const std::vector<Scope*>& scopes
     std::string scope_name = scope->Name();
     fusion_rlt->SetName(scope_name.substr(0, scope_name.length() - 1));
   }
-  OP_LOGI(kOpType, "DynamicLSTM Scope fusion success.");
+  OP_LOGI(kOpType, "DynamicRNN Scope fusion success.");
   return;
 }
 }  // namespace ge
