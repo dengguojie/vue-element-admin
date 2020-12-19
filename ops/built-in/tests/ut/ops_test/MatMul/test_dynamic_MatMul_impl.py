@@ -85,7 +85,8 @@ def gen_matmul_dynamic_errorcase(m_range, k_range, n_range, src_dtype, dst_dtype
     """
     gen the error case for ut test
     """
-
+    if format == "NZ":
+        format = "FRACTAL_NZ"
     block_range = [[CUBE_BLOCK, CUBE_BLOCK], [CUBE_BLOCK, CUBE_BLOCK]]
     x1_range = [m_range, k_range] if trans_a else [k_range, m_range]
     x1_range += block_range

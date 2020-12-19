@@ -133,10 +133,15 @@ def _get_dynamic_shape_and_range(input_x1, input_x2, bias):
     if list(shape_x1) == DYNAMIC_FLAG_UNRANK:
         shape_x1 = (-1, -1)
         range_x1 = ((1, None), (1, None))
-
     if list(shape_x2) == DYNAMIC_FLAG_UNRANK:
         shape_x2 = (-1, -1)
         range_x2 = ((1, None), (1, None))
+
+    # if input shape is fixed, add the range
+    if all([i != DYNAMIC_FLAG for i in shape_x1]):
+        range_x1 = (shape_x1[:1] * 2, shape_x1[1:] * 2)
+    if all([i != DYNAMIC_FLAG for i in shape_x2]):
+        range_x2 = (shape_x2[:1] * 2, shape_x2[1:] * 2)
 
     if bias:
         bias_range = bias.get("range")
