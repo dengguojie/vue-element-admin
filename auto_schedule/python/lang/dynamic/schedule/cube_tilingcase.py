@@ -330,7 +330,7 @@ class TilingSelection:
             seed_cnt = next(self.seed_cnt)
             if self.op.op_type == "conv2d":
                 tiling = seed["tiling"]
-                if seed['A_shape'][0] > tiling["block_dim"][0] and tiling["BL1_sahpe"]:
+                if seed['A_shape'][0] > tiling["block_dim"][0] and tiling["BL1_shape"]:
                     Cin = seed["B_shape"][1]*seed["B_shape"][2]*seed["B_shape"][3]*seed["B_shape"][4]
                     k_bl1 = tiling["BL1_shape"][0]
                     if k_bl1 == Cin:
