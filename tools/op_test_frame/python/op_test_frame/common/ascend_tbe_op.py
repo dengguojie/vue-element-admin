@@ -46,6 +46,8 @@ class AscendOpKernel:
         self.stub_func_p = None
         self.input_infos = []
         self.output_infos = []
+        self.compile_info = None
+        self.need_do_tiling = False
 
     def is_registered_to_device(self):
         return self.stub_func_p is not None
@@ -79,6 +81,10 @@ class AscendOpKernel:
 
     def set_output_info(self, output_infos):
         self.output_infos = output_infos
+
+    def set_compile_info(self, compile_info):
+        self.compile_info = compile_info
+        self.need_do_tiling = True
 
 
 def calc_op_param_size(shape_size, dtype):
@@ -179,9 +185,12 @@ class AscendOp:
         return kernel_input_list, kernel_output_list
 
     def compile(self, *args, **kwargs) -> AscendOpKernel:
+        import te
         op_func = self._load_op_func()
         try:
-            op_func(*args, **kwargs)
+            with te.op.dynamic():
+                op_func(*args, **kwargs)
+                compile_info = te.op.get_compile_info()
         except BaseException as compile_err:
             raise RuntimeError("Compile op failed.") from compile_err
 
@@ -193,6 +202,7 @@ class AscendOp:
             raise RuntimeError("Compile op failed, .o or .json is not generate successful.")
 
         kernel = AscendOpKernel(bin_path, json_path)
+        kernel.set_compile_info(compile_info)
 
         kernel_inputs, kernel_outputs = self._pick_kernel_args(args)
         kernel.set_input_info(kernel_inputs)
@@ -284,6 +294,7 @@ class AscendOpKernelRunner:
         if profiling_times < 1 or profiling_times > 100:
             raise ValueError("profiling times should between [1, 100]")
         self.device_id = device_id
+
         self.ascend_device = AscendRTSApi(simulator_mode=simulator_mode,
                                           soc_version=soc_version,
                                           simulator_lib_path=simulator_lib_path,
@@ -352,22 +363,33 @@ class AscendOpKernelRunner:
                     output_param = input_params[output_input_ref_map[output_idx]].create_ref()
                 else:
                     out_size = output_info.get("size")
-                    if not out_size:
+                    shape = output_info.get("run_shape")
+                    if shape is None:
                         shape = output_info.get("shape")
+                    dtype = output_info.get("dtype")
+                    if not out_size:
                         shape_size = shape_utils.calc_shape_size(shape)
-                        dtype = output_info.get("dtype")
                         out_size = -1 if shape_size < 0 else calc_op_param_size(shape_size, dtype)
                     out_hbm_pointer = self.ascend_device.malloc(out_size)
                     self.ascend_device.memset(out_hbm_pointer, out_size, 0, out_size)
-                    output_param = AscendOpKernelParam(shape=output_info.get("shape"),
-                                                       dtype=output_info.get("dtype"),
+                    output_param = AscendOpKernelParam(shape=shape,
+                                                       dtype=dtype,
                                                        ascend_device=self.ascend_device,
                                                        hbm_pointer=out_hbm_pointer)
                 output_params.append(output_param)
                 output_param.concat_into_kernel_args(kernel_args)
                 self.cache_kernel_param(output_param)
 
-    def _execute_kernel(self, kernel: AscendOpKernel, kernel_args):
+    def _fill_tiling(self, kernel: AscendOpKernel, tiling_data: bytes, tiling_hbm: List, kernel_args: List):
+        if not kernel.need_do_tiling:
+            return
+        if not tiling_data:
+            raise RuntimeError("Tiling data is None")
+        hbm_pointer = self.ascend_device.copy_bin_to_hbm(tiling_data)
+        tiling_hbm.append(hbm_pointer)
+        kernel_args.append(hbm_pointer)
+
+    def _execute_kernel(self, kernel: AscendOpKernel, kernel_args, block_dim):
         if self.profiling:
             self.ascend_device.start_online_profiling(self._stream, self.profiling_times)
         if not kernel.is_registered_to_device():
@@ -377,7 +399,7 @@ class AscendOpKernelRunner:
 
         def _execute_kernel():
             self.ascend_device.launch_kernel(kernel.stub_func_p,
-                                             kernel.block_dim,
+                                             block_dim,
                                              kernel_args,
                                              len(kernel_args),
                                              None,
@@ -397,7 +419,8 @@ class AscendOpKernelRunner:
             self.ascend_device.stop_online_profiling(self._stream)
 
     def run(self, kernel: AscendOpKernel, inputs, output_input_ref: List[List[int]] = None,
-            tiling=None, actual_output_info=None) -> Union[AscendOpKernelParam, List[AscendOpKernelParam], None]:
+            tiling=None, block_dim=None, actual_output_info=None) -> Union[
+        AscendOpKernelParam, List[AscendOpKernelParam], None]:
 
         if not isinstance(inputs, (list, tuple)):
             inputs = [inputs]
@@ -409,8 +432,14 @@ class AscendOpKernelRunner:
         self._fill_outputs(kernel, output_input_ref, actual_output_info, input_params, output_params, kernel_args)
         workspace_hbm_p_list = []
         self._fill_workspace(kernel, workspace_hbm_p_list, kernel_args)
+        tiling_hbm = []
+        self._fill_tiling(kernel, tiling, tiling_hbm, kernel_args)
         knl_args = [arg.value for arg in kernel_args]
-        self._execute_kernel(kernel, knl_args)
+        if not block_dim:
+            block_dim = kernel.block_dim
+        self._execute_kernel(kernel, knl_args, block_dim)
         for workspace_hbm_p in workspace_hbm_p_list:
             self.ascend_device.free(workspace_hbm_p)
+        for tiling_hbm_p in tiling_hbm:
+            self.ascend_device.free(tiling_hbm_p)
         return output_params[0] if len(output_params) == 1 else output_params

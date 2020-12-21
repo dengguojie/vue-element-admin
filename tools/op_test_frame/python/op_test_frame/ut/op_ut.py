@@ -19,6 +19,7 @@ the op ut test main class: OpUT, BroadcaseOpUT, ElementwiseOpUT, ReduceOpUT
 import os
 import sys
 import stat
+import json
 import inspect
 import traceback
 from enum import Enum
@@ -249,7 +250,9 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
             data_type = str(param_info.get("dtype")).strip()
             data_from_file = np.fromfile(input_data_path, data_type)
             data_from_file_size = len(data_from_file)
-            param_shape = param_info.get("shape")
+            param_shape = param_info.get("run_shape")
+            if param_shape is None:
+                param_shape = param_info.get("shape")
             param_shape_size = shape_utils.calc_shape_size(param_shape)
             if data_from_file_size < param_shape_size:
                 raise RuntimeError("Input data file size(%s) is len than shape size(%s), dtype is %s. " % (
@@ -261,7 +264,10 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                 return
             distribution = param_info.get("distribution", "uniform")
             value_range = param_info.get("value_range", [0.1, 1])
-            shape = param_info.get("shape")
+            # if dynamic shape use run_shape, if static shape use shape
+            shape = param_info.get("run_shape")
+            if shape is None:
+                shape = param_info.get("shape")
             dtype = param_info.get("dtype")
             data = data_generator.gen_data(data_shape=shape,
                                            min_value=value_range[0],
@@ -271,7 +277,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
             param_info["value"] = data
 
         if "data_path" in param_info.keys():
-            param_info()
+            _deal_data_path()
         else:
             _deal_no_param_data_path()
 
@@ -507,6 +513,33 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
             return True
         return False
 
+    @staticmethod
+    def _get_kernel_name(run_soc_version: str, case_info: op_ut_case_info.OpUTCase) -> str:
+        return case_info.case_name + "_" + run_soc_version.lower()
+
+    @staticmethod
+    def _get_compile_info_file_name(kernel_name):
+        return kernel_name + "_compile_info.json"
+
+    def _save_compile_info_json(self, kernel_name: str, compile_info: Any):
+        compile_info_save_path = os.path.join(self.KERNEL_DIR, self._get_compile_info_file_name(kernel_name))
+        if not os.path.exists(compile_info_save_path):
+            with os.fdopen(os.open(compile_info_save_path, DATA_FILE_FLAGS, DATA_FILE_MODES), 'w') as fout:
+                fout.write("")
+
+        if isinstance(compile_info, str):
+            compile_info_str = compile_info
+        else:
+            compile_info_str = json.dumps(compile_info, indent=4)
+        with open(compile_info_save_path, "w") as info_f:
+            info_f.write(compile_info_str)
+
+    def _get_compile_info(self, kernel_name):
+        compile_info_save_path = os.path.join(self.KERNEL_DIR, self._get_compile_info_file_name(kernel_name))
+        with open(compile_info_save_path) as info_f:
+            compile_info_str = info_f.read()
+        return json.loads(compile_info_str)
+
     def _call_op_func(self, run_soc_version: str, op_func, case_info: op_ut_case_info.OpUTCase, check_exist=False):
         kernel_name = case_info.case_name + "_" + run_soc_version.lower()
         if not case_info.addition_params:
@@ -523,6 +556,8 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                 import te  # pylint: disable=import-outside-toplevel
                 with te.op.dynamic():
                     op_func(*case_info.op_params, **addition_params)
+                    compile_info = te.op.get_compile_info()
+                    self._save_compile_info_json(kernel_name=kernel_name, compile_info=compile_info)
             else:
                 op_func(*case_info.op_params, **addition_params)
         except BaseException as run_err:  # pylint: disable=broad-except
@@ -536,7 +571,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                 err_trace = get_trace_info()
                 err_msg = "Call op func failed, err_trace: %s" % err_trace
 
-        if case_info.expect == op_status.SUCCESS:
+        if case_info.expect == op_status.SUCCESS and call_op_success:
             if check_exist and not self._check_kernel_so_exist(self.KERNEL_DIR, kernel_name):
                 call_op_success = False
                 err_msg = "Call op func success, but no .o and .json generated."
@@ -598,6 +633,27 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
             file_util.makedirs(model_data_path, DATA_DIR_MODES)
         return model_data_path
 
+    def _do_tiling(self, run_soc_version: str, case_info: op_ut_case_info.OpUTCase,
+                   input_info_list: List, output_info_list: List):
+        from te.lang.base import op_tiling
+        kernel_name = self._get_kernel_name(run_soc_version, case_info)
+        compile_info = self._get_compile_info(kernel_name)
+        tiling_inputs = []
+        tiling_outputs = []
+        for input_info in input_info_list:
+            tiling_inputs.append({
+                "shape": input_info.get("run_shape"),
+                "dtype": input_info.get("dtype")
+            })
+        for output_info in output_info_list:
+            tiling_outputs.append({
+                "shape": output_info.get("run_shape"),
+                "dtype": input_info.get("dtype")
+            })
+        tiling_info = op_tiling.do_op_tiling(self.op_type, compile_info=compile_info,
+                                             inputs=tiling_inputs, outputs=tiling_outputs)
+        return tiling_info.get("block_dim"), tiling_info.get("tiling_data")
+
     def _run_kernel(self, run_soc_version: str, case_info: op_ut_case_info.OpUTCase, run_cfg: Dict[str, Any] = None):
         bin_path = os.path.join(OpUT.KERNEL_DIR, case_info.case_name + "_" + run_soc_version.lower() + ".o")
         json_path = os.path.join(OpUT.KERNEL_DIR, case_info.case_name + "_" + run_soc_version.lower() + ".json")
@@ -615,7 +671,17 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                                   soc_version=run_soc_version,
                                   simulator_lib_path=self._get_simulator_lib_path(run_cfg),
                                   simulator_dump_path=simulator_dump_path) as runner:
-            output_data_list = runner.run(op_kernel, inputs=input_data_list)
+            if self.imply_type == OpImplyType.DYNAMIC_SHAPE:
+                op_kernel.set_compile_info({})
+                block_dim, tiling_data = self._do_tiling(run_soc_version=run_soc_version,
+                                                         case_info=case_info,
+                                                         input_info_list=input_info_list,
+                                                         output_info_list=output_info_list)
+                output_data_list = runner.run(op_kernel, inputs=input_data_list,
+                                              tiling=tiling_data, block_dim=block_dim)
+            else:
+                output_data_list = runner.run(op_kernel, inputs=input_data_list)
+
             if not isinstance(output_data_list, (tuple, list)):
                 output_data_list = [output_data_list, ]
             for output_data in output_data_list:
