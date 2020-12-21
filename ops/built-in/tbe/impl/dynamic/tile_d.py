@@ -46,7 +46,12 @@ def tile_d_compute(data, output_x, multiples, kernel_name="tile_d"):
     for shape_i, multiples_i in zip(shape, multiples):
         out_shape_i = shape_i * multiples_i
         out_shape.append(out_shape_i)
-    res = tbe.broadcast(data, out_shape)
+    if data.dtype == "int8":
+        data = tbe.cast_to(data, "float16")
+        res_tmp = tbe.broadcast(data, out_shape)
+        res = tbe.cast_to(res_tmp, "int8")
+    else:
+        res = tbe.broadcast(data, out_shape)
 
     return res
 
@@ -88,7 +93,7 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
     """
     origin_multiples = list(multiples)
     input_dtype = input_x.get("dtype").lower()
-    check_list = ("float16", "float32", "int32")
+    check_list = ("float16", "float32", "int32", "int8")
     para_check.check_dtype(input_dtype, check_list, param_name="input_x")
     input_shape = list(input_x.get("shape"))
     compile_shape = input_shape.copy()

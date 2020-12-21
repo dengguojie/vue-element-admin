@@ -616,12 +616,16 @@ def bn_training_reduce(x, sum, square_sum,
     if data_format == "NC1HWC0":
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)
-    else:
-        sch, tensor_list = bn_training_reduce_schedule_nd(res)
-
-        with tbe_platform.cce_build.build_config:
-            tvm.build(sch, tensor_list, "cce", name=kernel_name)
-        return
+    else:        
+        auto_sch_choose = set(shape_x) == {1}
+        if auto_sch_choose:
+             with tvm.target.cce():
+                 sch = tbe.auto_schedule(res)
+        else:
+            sch, tensor_list = bn_training_reduce_schedule_nd(res)
+            with tbe_platform.cce_build.build_config:
+                tvm.build(sch, tensor_list, "cce", name=kernel_name)
+            return
     tensor_list = [x_input] + list(res)
 
     config = {"name": kernel_name,
