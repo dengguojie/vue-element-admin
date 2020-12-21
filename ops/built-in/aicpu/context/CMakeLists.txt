@@ -64,6 +64,7 @@ if(BUILD_OPEN_PROJECT)
   target_compile_definitions(cpu_kernels_context_static PRIVATE
     _FORTIFY_SOURCE=2
     google=ascend_private
+    $<$<NOT:$<STREQUAL:${PRODUCT_SIDE},device>>:LOG_CPP>
   )
 
   target_compile_options(cpu_kernels_context_static PRIVATE
@@ -167,6 +168,7 @@ target_include_directories(cpu_kernels_context_static PRIVATE
 target_compile_definitions(cpu_kernels_context_static PRIVATE
     _FORTIFY_SOURCE=2
     google=ascend_private
+    $<$<NOT:$<STREQUAL:${PRODUCT_SIDE},device>>:LOG_CPP>
 )
 
 target_compile_options(cpu_kernels_context_static PRIVATE

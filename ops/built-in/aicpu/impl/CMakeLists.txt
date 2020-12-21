@@ -261,6 +261,7 @@ target_link_options(cpu_kernels PRIVATE
 
 target_compile_definitions(cpu_kernels_static PRIVATE
     _FORTIFY_SOURCE=2
+    $<$<NOT:$<STREQUAL:${PRODUCT_SIDE},device>>:LOG_CPP>
 )
 
 target_link_libraries(cpu_kernels_static PRIVATE
