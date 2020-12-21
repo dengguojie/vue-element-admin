@@ -774,26 +774,6 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(GatherNdInferShape)
   DataType params_type = input_params->GetDataType();
   if (indices_last_element == -1 || indices_last_element == -2 || IsUnknownRankShape(params_shape_vec)) {
     dim_vec.push_back(-2);
-    if (shape_range_indices.size() == 0) {
-      OP_LOGW(op.GetName().c_str(), "Shape range of indices is null, output range can't infer");
-    } else {
-      for (size_t i = 0; i < shape_range_indices.size() - 1; i++) {
-        out_range.push_back(shape_range_indices[i]);
-      }
-      std::pair<int64_t, int64_t> range_last = shape_range_indices[shape_range_indices.size() - 1];
-      if (range_last.first == range_last.second) {
-        indices_last_element = range_last.second;
-      }
-      if (indices_last_element > 0) {
-        for (size_t i = indices_last_element; i < shape_range_x.size(); i++) {
-          out_range.push_back(shape_range_x[i]);
-        }
-      } else {
-        for (size_t i = range_last.first; i < shape_range_x.size(); i++) {
-          out_range.push_back(std::pair<int64_t, int64_t>(1, -1));
-        }
-      }
-    }
   } else if (!CheckGatherNdParamsSize(op, indices_last_element, (int)params_shape_size)) {
     return GRAPH_FAILED;
   } else {
@@ -815,7 +795,9 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(GatherNdInferShape)
   output_tensor_desc->SetShape(output_shape);
   output_tensor_desc->SetDataType(output_dtype);
   TensorUtils::SetRealDimCnt(*output_tensor_desc, dim_vec.size());
-  output_tensor_desc->SetShapeRange(out_range);
+  if (!IsUnknownRankShape(dim_vec)) {
+    output_tensor_desc->SetShapeRange(out_range);
+  }
 IMPLEMT_COMMON_INFERFUNC_HELPER_END()
 
 COMMON_INFER_FUNC_REG(GatherNd, GatherNdInferShape);
@@ -912,34 +894,6 @@ static graphStatus GatherV2InferOptimize(ge::Operator& op, int64_t& axis, GeTens
   return GRAPH_SUCCESS;
 }
 
-void InferRangeOfUnknownRank(graphStatus result, int64_t& axis, std::vector<std::pair<int64_t, int64_t>>& out_range,
-                             std::vector<std::pair<int64_t, int64_t>>& shape_range_x,
-                             std::vector<std::pair<int64_t, int64_t>>& shape_range_indices) {
-  if (result == GRAPH_SUCCESS) {
-    size_t axis_temp = axis >= 0 ? axis : axis + shape_range_x.size();
-    for (size_t i = 0; i < axis_temp; i++) {
-      if (i < shape_range_x.size()) {
-        out_range.push_back(shape_range_x[i]);
-      }
-    }
-    for (size_t i = 0; i < shape_range_indices.size(); i++) {
-      out_range.push_back(shape_range_indices[i]);
-    }
-    for (size_t i = axis_temp + 1; i < shape_range_x.size(); i++) {
-      if (i < shape_range_x.size()) {
-        out_range.push_back(shape_range_x[i]);
-      }
-    }
-  } else {
-    out_range.push_back(std::pair<int64_t, int64_t>(1, -1));
-    for (size_t i = 0; i < shape_range_indices.size(); i++) {
-      out_range.push_back(shape_range_indices[i]);
-    }
-    out_range.push_back(std::pair<int64_t, int64_t>(1, -1));
-  }
-  return;
-}
-
 IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(GatherV2InferShape)
   vector<string> input_infer_depends = {"axis"};
   op_desc->SetOpInferDepends(input_infer_depends);
@@ -977,19 +931,8 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(GatherV2InferShape)
   // unknown rank
   if (IsUnknownRankShape(indices_shape) || IsUnknownRankShape(x_shape)) {
     y_shape.push_back(-2);
-
-    // infer shape range
-    // unknownshape input with no range can't infer output range
-    if (shape_range_x.empty() || shape_range_indices.empty()) {
-      OP_LOGW(op.GetName().c_str(), "Output range can't infer because that input shape range is empty.");
-      y_desc->SetShape(ge::GeShape(y_shape));
-      y_desc->SetDataType(x_desc->GetDataType());
-    } else {
-      InferRangeOfUnknownRank(result, axis, out_range, shape_range_x, shape_range_indices);
-      y_desc->SetShape(ge::GeShape(y_shape));
-      y_desc->SetDataType(x_desc->GetDataType());
-      y_desc->SetShapeRange(out_range);
-    }
+    y_desc->SetShape(ge::GeShape(y_shape));
+    y_desc->SetDataType(x_desc->GetDataType());
   } else if (result != GRAPH_SUCCESS) {
     // unknown shape
     OP_LOGI(op.GetName().c_str(), "GetInputConstData(axis) [%d]", result);
@@ -1175,25 +1118,15 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(GatherInferShape)
   // unknown rank
   if (IsUnknownRankShape(indices_shape) || IsUnknownRankShape(x_shape)) {
     y_shape.push_back(-2);
-    // infer shape range unknownshape input with no range can't infer output range
-    if (x_shape_range.empty() || indices_shape_range.empty()) {
-      OP_LOGW(op.GetName().c_str(), "Output range can't infer because that input shape range is empty.");
-      y_desc->SetShape(ge::GeShape(y_shape));
-      y_desc->SetDataType(x_dtype);
-      // y_desc.SetRealDimCnt(y_dimnum);
-    } else {
-      InferRangeOfUnknownRank(GRAPH_SUCCESS, axis, y_shape_range, x_shape_range, indices_shape_range);
-      y_desc->SetShape(ge::GeShape(y_shape));
-      y_desc->SetDataType(x_dtype);
-      y_desc->SetShapeRange(y_shape_range);
-    }
+    y_desc->SetShape(ge::GeShape(y_shape));
+    y_desc->SetDataType(x_dtype);
   } else {
     if (GatherV2InferOptimize(op, axis, x_desc, indices_desc, y_desc, x_shape, indices_shape, y_shape, x_shape_range,
                               indices_shape_range, y_shape_range) != GRAPH_SUCCESS) {
       return GRAPH_FAILED;
     }
   }
-  OP_LOGI(op.GetName().c_str(), "output shape is:%s", to_string(y_shape_range).c_str());
+  OP_LOGI(op.GetName().c_str(), "output shape range is:%s", to_string(y_shape_range).c_str());
 IMPLEMT_COMMON_INFERFUNC_HELPER_END()
 
 COMMON_INFER_FUNC_REG(Gather, GatherInferShape);

@@ -88,7 +88,7 @@ TEST_F(gather_nd, gather_nd_infershape_diff_test_5) {
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT32);
   std::vector<int64_t> expected_output_shape = {-2};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
-  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{10,10},{6,9},{6,9}};
+  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {};
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   output_desc.GetShapeRange(output_shape_range);
   EXPECT_EQ(output_shape_range, expected_output_shape_range);
@@ -104,7 +104,7 @@ TEST_F(gather_nd, gather_nd_infershape_diff_test_6) {
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT32);
   std::vector<int64_t> expected_output_shape = {-2};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
-  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{1,10},{5,5},{6,6},{7,7}};
+  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {};
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   output_desc.GetShapeRange(output_shape_range);
   EXPECT_EQ(output_shape_range, expected_output_shape_range);
@@ -136,7 +136,7 @@ TEST_F(gather_nd, gather_nd_infershape_diff_test_8) {
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT32);
   std::vector<int64_t> expected_output_shape = {-2};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
-  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{3,3},{4,4},{5,5},{6,6},{7,7}};
+  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {};
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   output_desc.GetShapeRange(output_shape_range);
   EXPECT_EQ(output_shape_range, expected_output_shape_range);
@@ -152,7 +152,7 @@ TEST_F(gather_nd, gather_nd_infershape_diff_test_9) {
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT32);
   std::vector<int64_t> expected_output_shape = {-2};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
-  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{3,3},{5,5},{6,6},{7,7}};
+  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {};
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   output_desc.GetShapeRange(output_shape_range);
   EXPECT_EQ(output_shape_range, expected_output_shape_range);
