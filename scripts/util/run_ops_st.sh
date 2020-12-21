@@ -55,11 +55,17 @@ run_st() {
   fi
   mkdir -p "$CANN_ST_OUT"
 
-  if [[ ! -z "${op_type}" ]]; then
+  if [[ "${op_type}" == "all" ]]; then
+    echo "[INFO] Run all testcases"
+    op_dir="${CANN_ST_SOURCE}"
+  elif [[ -d "${CANN_ST_SOURCE}/${op_type}" ]]; then
+    echo "[INFO] Only run testcases for ${op_type}"
     op_dir="${CANN_ST_SOURCE}/${op_type}"
   else
-    op_dir="${CANN_ST_SOURCE}"
+    echo "[ERROR] testcase is missing under ${CANN_ST_SOURCE}/${op_type}"
+    exit $STATUS_FAILED
   fi
+
   json_cases=$(find "${op_dir}" -name *.json 2>/dev/null)
   for op_case in $(echo $json_cases); do
     echo "[INFO] run case file: $op_case"
@@ -68,11 +74,18 @@ run_st() {
       echo "[ERROR] run ops stest failed, case file is: $op_case."
       exit $STATUS_FAILED
     fi
+    if [[ "${op_type}" != "all" ]]; then
+      op_result="${CANN_ST_OUT}/result_${op_type}.txt"
+      touch "${op_result}"
+      find "${CANN_ST_OUT}/${op_type}" -name "result.txt" |
+        xargs grep -v "Test Result" |
+        awk '{print $2" : "$3}' >> "${op_result}" 2>/dev/null
+        echo "[INFO] get results for ${op_type}:" && cat "${op_result}"
+    fi
   done
 }
 
 gen_all_cases() {
-  op_dir="${CANN_ST_SOURCE}"
   touch "${ALL_CASES}"
   find "${CANN_ST_SOURCE}" -name "*.json" |
     xargs grep -F "case_name" |
@@ -85,12 +98,15 @@ get_results() {
   find "${CANN_TEST_OUT}" -name "result.txt" |
     xargs grep -v "Test Result" |
     awk '{print $2" : "$3}' > "${RESULT}" 2>/dev/null
-  echo "[INFO] get results:" && cat "${RESULT}"
+  echo "[INFO] get results for all:" && cat "${RESULT}"
 }
 
 main() {
   local base_path="$1"
   local op_type="$2"
+  if [[ -z "${op_type}" ]]; then
+    op_type="all"
+  fi
   gen_all_cases
   set_st_env "${base_path}"
   run_st "${op_type}"

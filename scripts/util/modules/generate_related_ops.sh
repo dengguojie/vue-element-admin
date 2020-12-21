@@ -56,16 +56,13 @@ install_related_ops() {
     op_dir="${OPS_SOURCE_DIR}/${op_name}"
     if [[ ! -d "${op_dir}" ]]; then
       echo "[ERROR] no st directory found for ${op_dir}"
-      exit $STATUS_SUCCESS
       # exit $STATUS_FAILED
     fi
     json_cases=$(find "${op_dir}" -name *.json)
     if [[ -z $json_cases ]]; then
       echo "[ERROR] no json testcases found ${op_dir}/OP_case.json"
-      exit $STATUS_SUCCESS
       # exit $STATUS_FAILED
     fi
-    # install st testcases
     if [[ -z "${all_cases}" ]]; then
       all_cases="${op_dir}"
     else

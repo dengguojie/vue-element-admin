@@ -45,12 +45,20 @@ install_stest() {
     echo "[INFO] install testcase: ${op_case}"
     if [[ ! -d "${op_case}" ]]; then
       echo "[ERROR] cannot find testcase ${op_case}"
-      exit $STATUS_SUCCESS
+      # exit $STATUS_FAILED
+    else
+      cp -rf "${op_case}" "${TEST_INSTALL_PATH}"
     fi
-    cp -rf "${op_case}" "${TEST_INSTALL_PATH}"
   done
+}
+
+install_script() {
   echo "[INFO] install run_ops_test.sh"
   cp -f "${CUR_PATH}/util/run_ops_st.sh" "${TEST_BIN_PATH}"
+}
+
+install_package() {
+  echo "[INFO] install ${TEST_TARGET}"
   cd "${BUILD_PATH}" && tar cvf "${TEST_TARGET}" "${OPS_TESTCASE_DIR}"
 }
 
@@ -62,6 +70,8 @@ main() {
     exit $STATUS_SUCCESS
   fi
   install_stest "${task_type}" "${pr_file}"
+  install_script
+  install_package
 }
 
 task_type="$1"
@@ -77,5 +87,7 @@ else
   echo "[ERROR] unsuported task type ${task_type}"
   exit $STATUS_FAILED
 fi
+
+test ! -d "${TEST_BIN_PATH}" && mkdir -p "${TEST_BIN_PATH}"
 
 main $@
