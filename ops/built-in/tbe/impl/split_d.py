@@ -163,7 +163,7 @@ class SplitMov:
             with self.tik_instance.for_range(0, loop_num, thread_num=multi_thread) as inner_loop:
                 ub_tensor = self.tik_instance.Tensor(self.dtype, (ub_size,), name="ub_tmp", scope=tik.scope_ubuf)
                 offset = inner_loop * one_loop_ele
-                self.tik_instance.data_move(ub_tensor, self.input_tensor[move_in_index][offset], 0, 1, loop_burst_len,
+                self.tik_instance.data_move(ub_tensor, self.input_tensor[move_in_index:][offset], 0, 1, loop_burst_len,
                                             0, 0)
                 self.tik_instance.data_move(output_tensor[offset], ub_tensor, 0, 1, loop_burst_len, 0, 0)
         if last_ele > 0:
@@ -172,7 +172,7 @@ class SplitMov:
                 offset = loop_num * one_loop_ele
                 if last_ele // self.one_block_ele != 0:
                     last_burst_len = last_ele // self.one_block_ele
-                    self.tik_instance.data_move(ub_tensor, self.input_tensor[move_in_index][offset], 0, 1,
+                    self.tik_instance.data_move(ub_tensor, self.input_tensor[move_in_index:][offset], 0, 1,
                                                 last_burst_len, 0, 0)
                     self.tik_instance.data_move(output_tensor[offset], ub_tensor, 0, 1, last_burst_len, 0, 0)
 
@@ -181,7 +181,7 @@ class SplitMov:
                                                        name="ub_last",
                                                        scope=tik.scope_ubuf)
                     offset = one_core_ele - self.one_block_ele
-                    self.tik_instance.data_move(ub_last, self.input_tensor[move_in_index][offset], 0, 1, 1, 0, 0)
+                    self.tik_instance.data_move(ub_last, self.input_tensor[move_in_index:][offset], 0, 1, 1, 0, 0)
                     self.tik_instance.data_move(output_tensor[offset], ub_last, 0, 1, 1, 0, 0)
 
     def split_compute_first_dim_for_core(self, core_index):
@@ -193,18 +193,18 @@ class SplitMov:
             if last_ele == 0:
                 move_in_index = (out_offset + one_core_ele * core_index)
                 move_out_index = (one_core_ele * core_index)
-                self.split_compute_for_tensor(move_in_index, self.output_tensors[tensor_index][move_out_index],
+                self.split_compute_for_tensor(move_in_index, self.output_tensors[tensor_index][move_out_index:],
                                               one_core_ele)
             else:
                 with self.tik_instance.if_scope(core_index < self.aicore_num - 1):
                     move_in_index = (out_offset + one_core_ele * core_index)
                     move_out_index = (one_core_ele * core_index)
-                    self.split_compute_for_tensor(move_in_index, self.output_tensors[tensor_index][move_out_index],
+                    self.split_compute_for_tensor(move_in_index, self.output_tensors[tensor_index][move_out_index:],
                                                   one_core_ele)
                 with self.tik_instance.else_scope():
                     move_in_index = (out_offset + one_core_ele * core_index)
                     move_out_index = (one_core_ele * core_index)
-                    self.split_compute_for_tensor(move_in_index, self.output_tensors[tensor_index][move_out_index],
+                    self.split_compute_for_tensor(move_in_index, self.output_tensors[tensor_index][move_out_index:],
                                                   last_ele)
             out_offset += output_shape[self.split_dim]
 
@@ -222,7 +222,7 @@ class SplitMov:
                         move_in_index = (out_offset + one_core_ele * core_index +
                                          loop_index * self.input_shape[self.split_dim])
                         move_out_index = (one_core_ele * core_index + loop_index * output_shape[self.split_dim])
-                        self.split_compute_for_tensor(move_in_index, self.output_tensors[tensor_index][move_out_index],
+                        self.split_compute_for_tensor(move_in_index, self.output_tensors[tensor_index][move_out_index:],
                                                       one_core_ele)
                 else:
                     with self.tik_instance.if_scope(core_index < self.aicore_num - 1):
@@ -231,7 +231,7 @@ class SplitMov:
                                              loop_index * self.input_shape[self.split_dim])
                             move_out_index = (one_core_ele * core_index + loop_index * output_shape[self.split_dim])
                             self.split_compute_for_tensor(move_in_index,
-                                                          self.output_tensors[tensor_index][move_out_index],
+                                                          self.output_tensors[tensor_index][move_out_index:],
                                                           one_core_ele)
                     with self.tik_instance.else_scope():
                         with self.tik_instance.for_range(0, out_loop, thread_num=2) as loop_index:
@@ -239,7 +239,7 @@ class SplitMov:
                                              loop_index * self.input_shape[self.split_dim])
                             move_out_index = (one_core_ele * core_index + loop_index * output_shape[self.split_dim])
                             self.split_compute_for_tensor(move_in_index,
-                                                          self.output_tensors[tensor_index][move_out_index], last_ele)
+                                                          self.output_tensors[tensor_index][move_out_index:], last_ele)
                 out_offset += output_shape[self.split_dim]
         else:
             out_offset = 0
@@ -254,7 +254,7 @@ class SplitMov:
                                      loop_index * self.input_shape[self.split_dim])
                     move_out_index = (core_index * out_loop * output_shape[self.split_dim] +
                                       loop_index * output_shape[self.split_dim])
-                    self.split_compute_for_tensor(move_in_index, self.output_tensors[tensor_index][move_out_index],
+                    self.split_compute_for_tensor(move_in_index, self.output_tensors[tensor_index][move_out_index:],
                                                   one_core_ele)
                 out_offset += output_shape[self.split_dim]
 

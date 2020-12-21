@@ -224,6 +224,11 @@ void ScopeLayerNormPass::FindInputIndex(const Scope* scope, int& index, const st
       OP_LOGI(kOpType, "The %s is not found, the index is %d", base_name.c_str(), i);
       return;
     }
+    if (mul_input_name.find("batchnorm/mul/Enter") != string::npos) {
+      index = i;
+      OP_LOGI(kOpType, "found batchnorm/mul/Enter, the index is %d", i);
+      return;
+    }
   }
 }
 }  // namespace ge
