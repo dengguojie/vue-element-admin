@@ -80,7 +80,7 @@ def _get_input_range(range_x1, range_x2, range_bias, trans_a, trans_b):
             "mat_mul", "length of x1_range must be 4"
         )
 
-    if range_x2 and len(range_x2):
+    if range_x2 and len(range_x2) == NZ_LENGTH:
         if trans_b:
             k_range_x2 = list(range_x2[0])
             n_range = list(range_x2[1])
@@ -94,7 +94,7 @@ def _get_input_range(range_x1, range_x2, range_bias, trans_a, trans_b):
 
     k_range = _get_range_intersection(k_range_x1, k_range_x2, "k_range")
     if range_bias:
-        range_bias_n = list(range_bias[0])
+        range_bias_n = [math.ceil(i / BLOCK_CUBE) for i in range_bias[0]]
         n_range = _get_range_intersection(n_range, range_bias_n, "n_range")
 
     return [m_range, k_range, n_range]
@@ -136,12 +136,6 @@ def _get_dynamic_shape_and_range(input_x1, input_x2, bias):
     if list(shape_x2) == DYNAMIC_FLAG_UNRANK:
         shape_x2 = (-1, -1)
         range_x2 = ((1, None), (1, None))
-
-    # if input shape is fixed, add the range
-    if all([i != DYNAMIC_FLAG for i in shape_x1]):
-        range_x1 = (shape_x1[:1] * 2, shape_x1[1:] * 2)
-    if all([i != DYNAMIC_FLAG for i in shape_x2]):
-        range_x2 = (shape_x2[:1] * 2, shape_x2[1:] * 2)
 
     if bias:
         bias_range = bias.get("range")

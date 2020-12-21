@@ -1312,9 +1312,9 @@ def _get_aicore_tiling_factor_dynamic():
             Params.TILING["AL1_shape"][1],
         ]
     else:
-        m_parts = _int_ceil_div(Params.DIM_MAP["A_matrix_dim"][0], l0c_tiling_factor[1])
+        m_parts = _int_ceil_div(Params.DIM_MAP["A_matrix_dim"][-4], l0c_tiling_factor[1])
         al1_factors_m = _int_ceil_div(m_parts, Params.TILING["block_dim"][2])
-        al1_factors = [Params.DIM_MAP["A_matrix_dim"][1], al1_factors_m]
+        al1_factors = [Params.DIM_MAP["A_matrix_dim"][-3], al1_factors_m]
 
     if Params.TILING["BL1_shape"]:
         bl1_factors = [
@@ -1322,9 +1322,9 @@ def _get_aicore_tiling_factor_dynamic():
             Params.TILING["BL1_shape"][1],
         ]
     else:
-        n_parts = _int_ceil_div(Params.DIM_MAP["B_matrix_dim"][1], l0c_tiling_factor[0])
+        n_parts = _int_ceil_div(Params.DIM_MAP["B_matrix_dim"][-3], l0c_tiling_factor[0])
         bl1_factors_n = _int_ceil_div(n_parts, Params.TILING["block_dim"][1])
-        bl1_factors = [Params.DIM_MAP["B_matrix_dim"][0], bl1_factors_n]
+        bl1_factors = [Params.DIM_MAP["B_matrix_dim"][-4], bl1_factors_n]
 
     return l0c_tiling_factor, l0c_ub_parts, al1_factors, bl1_factors
 
@@ -4049,11 +4049,11 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
                 k_bound = Params.TILING["AL1_shape"][0]
                 al1_bound = m_bound * k_bound
             else:
-                k_bound = Params.DIM_MAP["A_matrix_dim"][1] * Params.block_reduce
+                k_bound = Params.DIM_MAP["A_matrix_dim"][-3] * Params.block_reduce
                 if Params.TILING["block_dim"][2] == 1:
-                    m_bound = Params.DIM_MAP["A_matrix_dim"][0] * Params.block_in
+                    m_bound = Params.DIM_MAP["A_matrix_dim"][-4] * Params.block_in
                 else:
-                    m_parts = _int_ceil_div(Params.DIM_MAP["A_matrix_dim"][0], Params.TILING["CL0_matrix"][1])
+                    m_parts = _int_ceil_div(Params.DIM_MAP["A_matrix_dim"][-4], Params.TILING["CL0_matrix"][1])
                     m_factors = _int_ceil_div(m_parts, Params.TILING["block_dim"][2])
                     m_bound = m_factors * Params.TILING["CL0_matrix"][1] * Params.block_in
                 al1_bound = m_bound * k_bound
@@ -4065,11 +4065,11 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
                 k_bound = Params.TILING["BL1_shape"][0]
                 bl1_bound = n_bound * k_bound
             else:
-                k_bound = Params.DIM_MAP["B_matrix_dim"][0] * Params.block_reduce
+                k_bound = Params.DIM_MAP["B_matrix_dim"][-4] * Params.block_reduce
                 if Params.TILING["block_dim"][1] == 1:
-                    n_bound = Params.DIM_MAP["B_matrix_dim"][1] * Params.block_out
+                    n_bound = Params.DIM_MAP["B_matrix_dim"][-3] * Params.block_out
                 else:
-                    n_parts = _int_ceil_div(Params.DIM_MAP["B_matrix_dim"][1], Params.TILING["CL0_matrix"][0])
+                    n_parts = _int_ceil_div(Params.DIM_MAP["B_matrix_dim"][-3], Params.TILING["CL0_matrix"][0])
                     n_factors = _int_ceil_div(n_parts, Params.TILING["block_dim"][1])
                     n_bound = n_factors * Params.TILING["CL0_matrix"][0] * Params.block_out
                 bl1_bound = n_bound * k_bound

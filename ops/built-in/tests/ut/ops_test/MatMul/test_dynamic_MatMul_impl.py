@@ -15,6 +15,7 @@ matmul_case_succ = [
     ((1, 4), (1, 2, 1, None), (2, 4), "float16", "float16", "NZ", True, True, True, "dynamic_matmul_succcase4"),
 ]
 
+
 matmul_case_error = [
     # dtype error
     ((1, 4), (1, 2), (2, 4), "float32", "float16", "NZ", False, False, False, "dynamic_matmul_errorcase0", "dtype"),
@@ -56,28 +57,28 @@ def gen_matmul_dynamic_succecase(m_range, k_range, n_range, src_dtype, dst_dtype
     x2_range = [nk_range, n_range] if trans_b else [n_range, nk_range]
     x2_range += block_range
     y_range = [n_range, m_range] + block_range
-
-    x1 = {"ori_shape": (-1, -1), "dtype": src_dtype, "shape": (-1, -1, CUBE_BLOCK, CUBE_BLOCK), 
+    
+    x1 = {"ori_shape": (-1, -1), "dtype": src_dtype, "shape": (-1, -1, CUBE_BLOCK, CUBE_BLOCK),
           "format": format , "ori_format": "ND", "range": x1_range
     }
-    x2 = {"ori_shape": (-1, -1), "dtype": src_dtype, "shape": (-1, -1, CUBE_BLOCK, CUBE_BLOCK), 
+    x2 = {"ori_shape": (-1, -1), "dtype": src_dtype, "shape": (-1, -1, CUBE_BLOCK, CUBE_BLOCK),
           "format": format , "ori_format": "ND", "range": x2_range
     }
-    y = {"ori_shape": (-1, -1), "dtype": src_dtype, "shape": (-1, -1, CUBE_BLOCK, CUBE_BLOCK), 
+    y = {"ori_shape": (-1, -1), "dtype": src_dtype, "shape": (-1, -1, CUBE_BLOCK, CUBE_BLOCK),
          "format": format , "ori_format": "ND", "range": y_range
     }
-    
+
     if bias_flag:
+        bias_n_range = [16*i for i in n_range]
         bias = {"ori_shape": (-1, ), "dtype": dst_dtype, "shape": (-1,),
-                "format": "ND", "ori_format": "ND", "range": [n_range]
-               }
+                "format": "ND", "ori_format": "ND", "range": (bias_n_range,)}
     else:
         bias = None
 
     return {
         "params": [x1, x2, bias, None, y, trans_a, trans_b],
         "case_name": case_name,
-        "expect": "success"   
+        "expect": "success" 
     }
 
 def gen_matmul_dynamic_errorcase(m_range, k_range, n_range, src_dtype, dst_dtype,
@@ -93,13 +94,13 @@ def gen_matmul_dynamic_errorcase(m_range, k_range, n_range, src_dtype, dst_dtype
     x2_range = [k_range, n_range] if trans_b else [n_range, k_range]
     x2_range += block_range
     y_range = [n_range, m_range] +  block_range
-    x1 = {"ori_shape": (-1, -1), "dtype": src_dtype, "shape": (-1, -1, CUBE_BLOCK, CUBE_BLOCK), 
+    x1 = {"ori_shape": (-1, -1), "dtype": src_dtype, "shape": (-1, -1, CUBE_BLOCK, CUBE_BLOCK),
           "format": format , "ori_format": "ND", "range": x1_range
     }
-    x2 = {"ori_shape": (-1, -1), "dtype": src_dtype, "shape": (-1, -1, CUBE_BLOCK, CUBE_BLOCK), 
+    x2 = {"ori_shape": (-1, -1), "dtype": src_dtype, "shape": (-1, -1, CUBE_BLOCK, CUBE_BLOCK),
           "format": format , "ori_format": "ND", "range": x2_range
     }
-    y = {"ori_shape": (-1, -1), "dtype": src_dtype, "shape": (-1, -1, CUBE_BLOCK, CUBE_BLOCK), 
+    y = {"ori_shape": (-1, -1), "dtype": src_dtype, "shape": (-1, -1, CUBE_BLOCK, CUBE_BLOCK),
          "format": format , "ori_format": "ND", "range": y_range
     }
     if bias_flag:

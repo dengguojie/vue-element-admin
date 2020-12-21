@@ -48,19 +48,20 @@ def gen_batch_matmul_dynamic(batch_range, m_range, k_range, n_range, src_dtype, 
     x2_ori_shape = (-1,) * (len(x2_range) - 2)
 
 
-    x1 = {"ori_shape": x1_ori_shape, "dtype": src_dtype, "shape": x1_ori_shape + (CUBE_BLOCK, CUBE_BLOCK), 
+    x1 = {"ori_shape": x1_ori_shape, "dtype": src_dtype, "shape": x1_ori_shape + (CUBE_BLOCK, CUBE_BLOCK),
           "format": format , "ori_format": "ND", "range": x1_range
     }
-    x2 = {"ori_shape": x2_ori_shape, "dtype": src_dtype, "shape":  x2_ori_shape + (CUBE_BLOCK, CUBE_BLOCK), 
+    x2 = {"ori_shape": x2_ori_shape, "dtype": src_dtype, "shape":  x2_ori_shape + (CUBE_BLOCK, CUBE_BLOCK),
           "format": format , "ori_format": "ND", "range": x2_range
     }
-    y = {"ori_shape": x1_ori_shape, "dtype": dst_dtype, "shape": x1_ori_shape + (CUBE_BLOCK, CUBE_BLOCK), 
+    y = {"ori_shape": x1_ori_shape, "dtype": dst_dtype, "shape": x1_ori_shape + (CUBE_BLOCK, CUBE_BLOCK),
          "format": format , "ori_format": "ND", "range": y_range
     }
-    
+
     if bias_flag:
+        bias_n_range = [16*i for i in n_range]
         bias = {"ori_shape": (-1, ), "dtype": dst_dtype, "shape": (-1,),
-                "format": "ND", "ori_format": "ND", "range": (n_range,)}
+                "format": "ND", "ori_format": "ND", "range": (bias_n_range,)}
     else:
         bias = None
 
@@ -85,7 +86,7 @@ def gen_batch_matmul_dynamic(batch_range, m_range, k_range, n_range, src_dtype, 
     return {
         "params": [x1, x2, bias, y, trans_a, trans_b],
         "case_name": case_name,
-        "expect": expect   
+        "expect": expect
     }
 
 

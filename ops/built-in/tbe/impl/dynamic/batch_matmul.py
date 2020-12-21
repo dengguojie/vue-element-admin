@@ -15,6 +15,8 @@
 """
 dynamic batch_matmul
 """
+import math
+
 import te.lang.cce as tbe
 import te.lang.base as tbe_base
 import te.platform as tbe_platform
@@ -142,7 +144,7 @@ def _get_input_range(range_x1, range_x2, range_bias, trans_a, trans_b):
 
     k_range = _get_range_intersection(k_range_x1, k_range_x2, "k_range")
     if range_bias:
-        range_bias_n = list(range_bias[0])
+        range_bias_n = [math.ceil(i / BLOCK_CUBE) for i in range_bias[0]]
         n_range = _get_range_intersection(n_range, range_bias_n, "n_range")
 
     batch_range = _get_batch_range(batch_range_x1, batch_range_x2)
@@ -186,16 +188,6 @@ def _get_dynamic_shape_and_range(input_x1, input_x2, bias):
     if list(shape_x2) == DYNAMIC_FLAG_UNRANK:
         shape_x2 = (-1, -1, -1)
         range_x2 = ((1, None), (1, None), (1, None))
-
-    # if input shape is fixed, add the range
-    if all([i != DYNAMIC_FLAG for i in shape_x1]):
-        range_x1 = []
-        for i in range(len(shape_x1)):
-            range_x1.append(shape_x1[i:i + 1] * 2)
-    if all([i != DYNAMIC_FLAG for i in shape_x2]):
-        range_x2 = []
-        for i in range(len(shape_x2)):
-            range_x2.append(shape_x2[i:i + 1] * 2)
 
     if bias:
         bias_range = bias.get("range")
