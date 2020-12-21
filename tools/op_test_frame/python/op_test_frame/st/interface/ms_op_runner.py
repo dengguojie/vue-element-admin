@@ -17,7 +17,6 @@ except ImportError as import_error:
     sys.exit("[ms_op_runner] Unable to import module: %s." % str(
         import_error))
 
-CMAKE_LIST_FILE_NAME = 'CMakeLists.txt'
 BUILD_INTERMEDIATES_HOST = 'build/intermediates/host'
 RUN_OUT = 'run/out'
 TEST_PY = 'test_{op_name}.py'
@@ -37,7 +36,7 @@ class MsOpRunner:
     @staticmethod
     def _execute_command(cmd):
         utils.print_info_log('Execute command: %s' % cmd)
-        process = subprocess.Popen(cmd.split(), shell=False,
+        process = subprocess.Popen(cmd, shell=False,
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT)
         while process.poll() is None:
@@ -66,10 +65,11 @@ class MsOpRunner:
                 utils.OP_TEST_GEN_INVALID_DATA_ERROR)
         src_path = os.path.dirname(test_py_path)
         utils.check_path_valid(src_path, True)
-        os.chdir(src_path)
-        run_cmd = 'pytest -s ' + test_file
+        output_path = os.path.dirname(self.path)
+        os.chdir(output_path)
+        run_cmd = ['python3', '-m', 'pytest', '-s', test_py_path]
         utils.print_info_log("Run command line: cd %s && %s " % (
-            src_path, run_cmd))
+            output_path, " ".join(run_cmd)))
         self._execute_command(run_cmd)
         utils.print_info_log('Finish to run %s.' % test_py_path)
 

@@ -122,7 +122,7 @@ class OpFileMindSpore(OPFile):
         for data_count in range(len(list(self.op_info.parsed_input_info))):
             tvm_placeholder_list.append(op_tmpl.PY_MS_OP_INFO_REGISTER_TVM.format(
                 data_count=data_count+1))
-            datas_list.append(f"data{data_count}".format(data_count=data_count+1))
+            datas_list.append("data{num}".format(num=data_count+1))
         tvm_placeholder_join = '\n    '.join(tvm_placeholder_list)
         datas_join = ', '.join(datas_list)
         head_str += op_tmpl.PY_MS_OP_INFO_REGISTER.format(
