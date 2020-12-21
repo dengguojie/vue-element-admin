@@ -1617,9 +1617,9 @@ class LRNBase4HD(LRNBase):
                     src_ub_offset = batch_idx*self.one_batch_size +\
                                     add_idx*self.one_column_size
 
-                    self._vadd_func(self.data_output_ub[dest_ub_offset],
-                                    self.data_output_ub[dest_ub_offset],
-                                    self.data_square_ub[src_ub_offset],
+                    self._vadd_func(self.data_output_ub[dest_ub_offset:],
+                                    self.data_output_ub[dest_ub_offset:],
+                                    self.data_square_ub[src_ub_offset:],
                                     (self.one_column_size,))
 
         self._do_eltwise_operation()
@@ -1708,9 +1708,9 @@ class LRNBase4HD(LRNBase):
                         left_val, right_val+1) as add_idx:
                     dest_ub_offset = c_idx * one_column_size_cut_h_w
                     src_ub_offset = add_idx * one_column_size_cut_h_w
-                    self._vadd_func(self.data_output_ub[dest_ub_offset],
-                                    self.data_output_ub[dest_ub_offset],
-                                    self.data_square_ub[src_ub_offset],
+                    self._vadd_func(self.data_output_ub[dest_ub_offset:],
+                                    self.data_output_ub[dest_ub_offset:],
+                                    self.data_square_ub[src_ub_offset:],
                                     (one_column_size_cut_h_w,))
             else:
                 def _inner_process():
@@ -1894,9 +1894,9 @@ class LRNBase4HD(LRNBase):
                     src_ub_offset = batch_idx*one_batch_size_aligned + \
                                     add_idx*one_column_size_aligned
 
-                    self._vadd_func(self.data_output_ub[dest_ub_offset],
-                                    self.data_output_ub[dest_ub_offset],
-                                    self.data_square_ub[src_ub_offset],
+                    self._vadd_func(self.data_output_ub[dest_ub_offset:],
+                                    self.data_output_ub[dest_ub_offset:],
+                                    self.data_square_ub[src_ub_offset:],
                                     (one_column_size_aligned,))
 
         self._do_eltwise_operation()
@@ -2089,7 +2089,7 @@ class LRNBase4HD(LRNBase):
             with self.tik_instance.for_range(0, self.depth_radius+1) as c_idx:
                 src_ub_offset = c_idx*mte2_num
                 self._vadd_func(self.data_output_ub, self.data_output_ub,
-                                self.data_square_ub[src_ub_offset], (mte2_num,))
+                                self.data_square_ub[src_ub_offset:], (mte2_num,))
 
             self.tik_instance.data_move(self.pre_square_sum_ub,
                                         self.data_output_ub, constant.SID,
@@ -2197,7 +2197,7 @@ class LRNBase4HD(LRNBase):
         with self.tik_instance.for_range(0, copy_c_size) as c_idx:
             src_ub_offset = c_idx*self._get_align_size(self.one_column_size)
             self._vadd_func(self.data_output_ub, self.data_output_ub,
-                            self.data_square_ub[src_ub_offset],
+                            self.data_square_ub[src_ub_offset:],
                             (self._get_align_size(self.one_column_size),))
 
     def _do_operation_each_loop_cut_c(self, c_size_pre_loop,
@@ -2299,9 +2299,9 @@ class LRNBase4HD(LRNBase):
                                     self.data_square_ub,
                                     (self._get_align_size(self.one_column_size),))
                     self._vsub_func(self.data_output_ub[
-                        c_idx*self._get_align_size(self.one_column_size)],
+                        c_idx*self._get_align_size(self.one_column_size):],
                                     self.data_output_ub[
-                                        c_idx*self._get_align_size(self.one_column_size)],
+                                        c_idx*self._get_align_size(self.one_column_size):],
                                     self.data_square_ub,
                                     (self._get_align_size(self.one_column_size),))
 
@@ -2340,9 +2340,9 @@ class LRNBase4HD(LRNBase):
                                     self.right_square_sum_ub,
                                     (self._get_align_size(self.one_column_size),))
                     self._vadd_func(self.data_output_ub[
-                        c_idx*self._get_align_size(self.one_column_size)],
+                        c_idx*self._get_align_size(self.one_column_size):],
                                     self.data_output_ub[c_idx *
-                                                        self._get_align_size(self.one_column_size)],
+                                                        self._get_align_size(self.one_column_size):],
                                     self.right_square_sum_ub,
                                     (self._get_align_size(self.one_column_size),))
 
@@ -2570,8 +2570,8 @@ class LRNBase4HD(LRNBase):
 
                     self._vmul_func(self.data_square_ub, self.data_square_ub,
                                     self.data_square_ub, (current_hw_size,))
-                    self._vsub_func(self.data_output_ub[c_idx*current_hw_size],
-                                    self.data_output_ub[c_idx*current_hw_size],
+                    self._vsub_func(self.data_output_ub[c_idx*current_hw_size:],
+                                    self.data_output_ub[c_idx*current_hw_size:],
                                     self.data_square_ub, (current_hw_size,))
 
                 with self.tik_instance.if_scope(right_add_val <=
@@ -2604,8 +2604,8 @@ class LRNBase4HD(LRNBase):
                                     self.right_square_sum_ub,
                                     self.right_square_sum_ub,
                                     (current_hw_size,))
-                    self._vadd_func(self.data_output_ub[c_idx*current_hw_size],
-                                    self.data_output_ub[c_idx*current_hw_size],
+                    self._vadd_func(self.data_output_ub[c_idx*current_hw_size:],
+                                    self.data_output_ub[c_idx*current_hw_size:],
                                     self.right_square_sum_ub,
                                     (current_hw_size,))
 
@@ -2675,7 +2675,7 @@ class LRNBase4HD(LRNBase):
         with self.tik_instance.for_range(0, self.depth_radius+1) as c_idx:
             src_ub_offset = c_idx*mte2_num
             self._vadd_func(self.data_output_ub, self.data_output_ub,
-                            self.data_square_ub[src_ub_offset], (mte2_num,))
+                            self.data_square_ub[src_ub_offset:], (mte2_num,))
 
         self.tik_instance.data_move(self.pre_square_sum_ub, self.data_output_ub,
                                     constant.SID, constant.DEFAULT_NBURST,
