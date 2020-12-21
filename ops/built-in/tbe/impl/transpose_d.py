@@ -23886,6 +23886,9 @@ def check_supported(input_x, output_y, perm, kernel_name="transpose_d"):
 
     if -1 in x_shape and len(x_shape) > 3:
         return False
+    x_dtype = input_x.get("dtype")
+    if -1 in x_shape and x_dtype not in ("float32",):
+        return False
 
     return True
 

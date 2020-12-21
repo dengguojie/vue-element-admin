@@ -1383,6 +1383,7 @@ REG_OP(DecodeWheelsTarget)
 
 *@attention Constraints:
 * Only computation of float16 data is supported.
+* Note: when the class num per image * max_size_per_class is too big, will compile fail with ERROR-insufficient memory
 */
 REG_OP(BatchMultiClassNonMaxSuppression)
     .INPUT(boxes, TensorType({DT_FLOAT16}))
