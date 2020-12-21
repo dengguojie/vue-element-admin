@@ -43,14 +43,23 @@ def check_supported(x, segment_ids, y, num_segments, kernel_name="unsorted_segme
     check_list_ids = ("int32")
     para_check.check_dtype(segment_ids_dtype, check_list_ids, param_name="segment_ids")
     if num_segments <= 0:
+        error_manager_vector.raise_err_check_params_rules(kernel_name, 'num_segments must greater than 0',
+                                                          "num_segments", num_segments)
         return False
     first_shape = int(shape[0])
     ids_length = int(segment_ids_shape[0])
     if first_shape != ids_length:
+        error_manager_vector.raise_err_specific_reson(
+            kernel_name,
+            "only supported x.shape[0] equals to segment_ids.shape[0], while x.shape[0] is %d, segment_ids.shape[0] is %d"
+            % (first_shape, ids_length))
         return False
     total_ub_size = (num_segments + first_shape) * BLOCK_LENGTH + (
         (BLOCK_LENGTH // 2 - first_shape % (BLOCK_LENGTH // 4)) + first_shape) * (BLOCK_LENGTH // 8)
     if total_ub_size > UB_SIZE_MAX // 2:
+        error_manager_vector.raise_err_specific_reson(
+            kernel_name, "the memory usage is greater than UB_SIZE_MAX when num_segments=%d and shape[0]=%d" %
+            (num_segments, shape[0]))
         return False
     return True
 
@@ -119,7 +128,7 @@ def unsorted_segment_prod_d(x, segment_ids, y, num_segments, kernel_name="unsort
     first_shape = int(shape[0])
     ids_length = int(segment_ids_shape[0])
     if first_shape != ids_length:
-        error_manager_vector.raise_err_specific_input_shape(
+        error_manager_vector.raise_err_specific_reson(
             kernel_name,
             "only supported x.shape[0] equals to segment_ids.shape[0], while x.shape[0] is %d, segment_ids.shape[0] is %d"
             % (first_shape, ids_length))
