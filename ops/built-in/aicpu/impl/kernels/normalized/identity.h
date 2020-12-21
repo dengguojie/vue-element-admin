@@ -14,26 +14,16 @@
  * limitations under the License.
  */
 
-#ifndef _AICPU_IDENTITY_KERNELS_H_
-#define _AICPU_IDENTITY_KERNELS_H_
+#ifndef AICPU_KERNELS_NORMALIZED_IDENTITY_H_
+#define AICPU_KERNELS_NORMALIZED_IDENTITY_H_
 
-#include <vector>
 #include "cpu_kernel.h"
 
 namespace aicpu {
 class IdentityCpuKernel : public CpuKernel {
- public:
+public:
   ~IdentityCpuKernel() = default;
   uint32_t Compute(CpuKernelContext &ctx) override;
-
- private:
-  uint32_t DoCompute();
-
-  uint32_t GetInputAndCheck(CpuKernelContext &ctx);
-
-  std::vector<Tensor *> inputs_;
-  std::vector<Tensor *> outputs_;
 };
-
 }  // namespace aicpu
 #endif

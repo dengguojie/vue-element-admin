@@ -5,7 +5,7 @@ set(local_kernels_src_files
     kernels/normalized/less.cc
     kernels/normalized/top_k_kernels.cc
     kernels/normalized/get_dynamic_dims.cc
-    kernels/normalized/identity_kernels.cc
+    kernels/normalized/identity.cc
     kernels/normalized/ceil_kernels.cc
     kernels/normalized/realdiv_kernels.cc
     kernels/normalized/sparse_to_dense_kernels.cc
@@ -28,7 +28,6 @@ set(local_host_kernels_src_files
 )
 
 if(BUILD_OPEN_PROJECT)
-  
   set(AICPU_INCLUDE ${AICPU_OPP_ENV}/inc)
 
   set(local_kernels_inc_path
@@ -138,7 +137,7 @@ if(BUILD_OPEN_PROJECT)
       FILES       $<TARGET_FILE:cpu_kernels>
       DESTINATION "${INSTALL_PATH}/aicpu/aicpu_kernels_device/lib64"
     )
-    
+
     set(COPY_TO_PATH ${OPS_AICPU_PATH}/${SUB_SO_WITH_VERSION})
     add_custom_command(TARGET cpu_kernels POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:cpu_kernels> ${COPY_TO_PATH}
