@@ -65,6 +65,8 @@ in aipp config file, framework will auto add one input node to graph at last. \n
 
 *@par Third-party framework compatibility
 *Compatible with the TensorFlow operator AippData.
+*@par Restrictions:
+*Warning: This operator can be integrated only by configuring INSERT_OP_FILE of aclgrphBuildModel. Please do not use it directly.
 */
 REG_OP(AippData)
     .INPUT(data, TensorType::ALL())
