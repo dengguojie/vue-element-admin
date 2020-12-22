@@ -43,6 +43,7 @@ static const char* CONVOLUTION = "Conv2D";
 static const char* DEPTHWISECONVOLUTION = "DepthwiseConv2D";
 static const char* BIASADD = "BiasAdd";
 static const char* CONVOLUTION_3D = "Conv3D";
+static const char *VARIABLE = "Variable";
 static const char* ADD_3D = "Add";
 static const int64_t DIM1 = 1;
 static const int64_t DIM_COUNT = 4;
@@ -61,9 +62,9 @@ vector<FusionPattern*> BiasaddConvFusionPass::DefinePatterns() {
   return patterns;
 }
 
-vector<ge::NodePtr> BiasaddConvFusionPass::GetConstOrDataInputs(const ge::Node &node) {
+vector<ge::NodePtr> BiasaddConvFusionPass::GetConstOrDataInputs(const ge::NodePtr &node) {
   vector<ge::NodePtr> ret;
-  auto in_anchors = node.GetAllInDataAnchors();
+  auto in_anchors = node->GetAllInDataAnchors();
   for (const auto &in_anchor : in_anchors) {
     auto out_anchor = in_anchor->GetPeerOutAnchor();
     if (out_anchor == nullptr) continue;
@@ -71,10 +72,10 @@ vector<ge::NodePtr> BiasaddConvFusionPass::GetConstOrDataInputs(const ge::Node &
     auto in_node = out_anchor->GetOwnerNode();
     if (in_node->GetType() == "Const") {
       ret.push_back(in_node);
-    } else if (in_node->GetType() == "Switch" && node.GetType() == "Matmul") {
+    } else if (in_node->GetType() == "Switch" && node->GetType() == "Matmul") {
       // const --> switch --> matmul
-      auto switch_input = GetConstOrDataInputs(*in_node);
-      if (switch_input.size() > 0) {
+      auto switch_input = GetConstOrDataInputs(in_node);
+      if (!switch_input.empty()) {
         ret.insert(ret.end(), switch_input.begin(), switch_input.end());
       }
     } else if (in_node->GetType() == "Data") {
@@ -87,80 +88,17 @@ vector<ge::NodePtr> BiasaddConvFusionPass::GetConstOrDataInputs(const ge::Node &
   return ret;
 }
 
-// vector<ge::NodePtr> &fusionNodes: Store fusion nodes,
-//       including newly added nodes and fused but not deleted nodes
-Status BiasaddConvFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter BiasaddConvFusionPass");
-  ge::NodePtr src_node = GetNodeFromMapping(PATTERN_SRC, mapping);
-  ge::NodePtr biasadd_node = GetNodeFromMapping(PATTERN_BIASADD, mapping);
-  FUSION_PASS_CHECK(src_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Node conv2d is null, fusion failed."),
-                    return PARAM_INVALID);
-  FUSION_PASS_CHECK(biasadd_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Node BiasAdd is null, fusion failed."),
-                    return PARAM_INVALID);
-
-  if (src_node->GetOutDataNodes().size() > 1) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "out data size is invalid.");
-    return NOT_CHANGED;
-  }
-  vector<ge::ConstGeTensorPtr> weights = ge::OpDescUtils::GetWeights(biasadd_node);
-  vector<ge::NodePtr> const_input_nodes = GetConstOrDataInputs(*biasadd_node);
-  auto biasAddWeightSize = weights.size();
-  if (biasAddWeightSize == 0 && biasadd_node->GetType() == ADD_3D && src_node->GetType() == CONVOLUTION_3D) {
-    bool checkNull = biasadd_node->GetInDataAnchor(1) == nullptr ||
-                     biasadd_node->GetInDataAnchor(1)->GetPeerOutAnchor() == nullptr ||
-                     biasadd_node->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode() == nullptr;
-
-    FUSION_PASS_CHECK(checkNull,
-                      OP_LOGI(FUSED_OP_TYPE.c_str(), "The input of add %s is null!", biasadd_node->GetName().c_str()),
-                      return NOT_CHANGED);
-    auto nodeInfrontOfAdd = biasadd_node->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode();
-
-    if (nodeInfrontOfAdd->GetType() == "Reshape") {
-      /* This case, the BiasAdd is Add and the input of Add is Reshape,
-       * we just get the first weight of reshape as the bias. */
-      weights = ge::OpDescUtils::GetWeights(nodeInfrontOfAdd);
-      const_input_nodes = GetConstOrDataInputs(*nodeInfrontOfAdd);
-      FUSION_PASS_CHECK(weights.empty(), OP_LOGI(FUSED_OP_TYPE.c_str(), "Node Add:[%s]'s weight size %u is invalid.",
-                                                 nodeInfrontOfAdd->GetName().c_str(), weights.size()),
-                        return NOT_CHANGED);
-    } else {
-      OP_LOGI(FUSED_OP_TYPE.c_str(), "The input of biasadd %s is invalid.", biasadd_node->GetName().c_str());
-      return NOT_CHANGED;
-    }
-  } else {
-    FUSION_PASS_CHECK(biasAddWeightSize != 1,
-                      OP_LOGI(FUSED_OP_TYPE.c_str(), "Node BiasAdd:[%s]'s weight size %u is invalid.",
-                              biasadd_node->GetName().c_str(), biasAddWeightSize),
-                      return NOT_CHANGED);
-    /* The weights will be the weight of BiasAdd node */
-  }
-
-  ge::OpDescPtr src_op = src_node->GetOpDesc();
-  FUSION_PASS_CHECK(src_op == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.",
-                                               src_node->GetName().c_str()),
-                    return PARAM_INVALID);
-  std::map<string, uint32_t> inputNameMap = src_op->GetAllInputName();
-  ge::OpDescPtr biasadd_op = biasadd_node->GetOpDesc();
-  FUSION_PASS_CHECK(biasadd_op == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.",
-                                                   biasadd_node->GetName().c_str()),
-                    return PARAM_INVALID);
-
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "BiasaddConvFusionPass: conv2d [%s] has %u input anchor.", src_node->GetName().c_str(),
-          src_node->GetAllInDataAnchors().size());
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "BiasaddConvFusionPass: conv2d [%s] has %u input desc.", src_node->GetName().c_str(),
-          src_op->GetAllInputsDesc().size());
-  int32_t in_edges_size = src_node->GetInDataNodes().size();
-  if (in_edges_size < 0) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "inEdges size is invalid.");
-    return NOT_CHANGED;
-  }
-
+Status BiasaddConvFusionPass::AdjustShapeOfBiasWeight(
+    const vector<ge::ConstGeTensorPtr> &weights, ge::GeShape &bias_shape) {
   ge::ConstGeTensorPtr biases = weights[0];
-  FUSION_PASS_CHECK(biases == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Biasadd node's weight is null, fusion failed."),
-                    return PARAM_INVALID);
 
+  if (biases == nullptr) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Biasadd node weight is null, fusion failed.");
+    return NOT_CHANGED;
+  }
+  int64_t new_dim = 1;
   int64_t dim1Count = 0;
-  int64_t newShape = 1;
+
   if (biases->GetTensorDesc().GetShape().GetDims().size() != 1) {
     for (int64_t dim : biases->GetTensorDesc().GetShape().GetDims()) {
       if (PatternFusionUtil::IsUnknownShape(dim)) {
@@ -170,44 +108,140 @@ Status BiasaddConvFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
       if (dim == DIM1) {
         dim1Count++;
       } else {
-        newShape = dim;
+        new_dim = dim;
       }
     }
     if (dim1Count < DIM_COUNT) {
       return NOT_CHANGED;
     }
+    std::vector<int64_t> newDimVec;
+    newDimVec.emplace_back(new_dim);
+    bias_shape = ge::GeShape(newDimVec);
   } else {
-    newShape = biases->GetTensorDesc().GetShape().GetDims()[0];
+    bias_shape = biases->GetTensorDesc().GetShape();
   }
 
-  FUSION_PASS_CHECK(SUCCESS != PatternFusionUtil::LinkControlEdge(biasadd_node, src_node),
+  return SUCCESS;
+}
+
+Status BiasaddConvFusionPass::GetWeightNode(const ge::NodePtr &biasadd_node, const ge::NodePtr conv,
+    ge::NodePtr &weight_node, ge::GeShape &bias_shape) {
+  auto nodeInfrontOfAdd = biasadd_node->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode();
+  bool case_training = (nodeInfrontOfAdd->GetType() == VARIABLE);
+
+  if (case_training) {
+    bias_shape = nodeInfrontOfAdd->GetOpDesc()->MutableOutputDesc(0)->GetShape();
+    weight_node = nodeInfrontOfAdd;
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "Do BiasaddConvFusionPass for op %s in training mode.", conv->GetName().c_str());
+  } else {
+    // Inference mode
+    vector<ge::ConstGeTensorPtr> weights = ge::OpDescUtils::GetWeights(biasadd_node);
+    auto biasAddWeightSize = weights.size();
+    vector<ge::NodePtr> const_input_nodes = GetConstOrDataInputs(biasadd_node);
+
+    bool case_conv3d_with_reshape = (biasadd_node->GetType() == ADD_3D && conv->GetType() == CONVOLUTION_3D);
+    if (case_conv3d_with_reshape) {
+      bool checkNull = biasadd_node->GetInDataAnchor(1) == nullptr ||
+                       biasadd_node->GetInDataAnchor(1)->GetPeerOutAnchor() == nullptr ||
+                       biasadd_node->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode() == nullptr;
+
+      FUSION_PASS_CHECK(checkNull,
+                        OP_LOGI(FUSED_OP_TYPE.c_str(), "The input of add %s is null!", biasadd_node->GetName().c_str()),
+                        return NOT_CHANGED);
+
+      if (nodeInfrontOfAdd->GetType() == "Reshape") {
+        /* This case, the BiasAdd is Add and the input of Add is Reshape,
+         * we just get the first weight of reshape as the bias. */
+        weights = ge::OpDescUtils::GetWeights(nodeInfrontOfAdd);
+        const_input_nodes = GetConstOrDataInputs(nodeInfrontOfAdd);
+        FUSION_PASS_CHECK(weights.empty(), OP_LOGI(FUSED_OP_TYPE.c_str(), "Node Add:[%s]'s weight size %u is invalid.",
+                                                   nodeInfrontOfAdd->GetName().c_str(), weights.size()),
+                          return NOT_CHANGED);
+      }
+    } else if (biasAddWeightSize != 1) {
+      OP_LOGI(FUSED_OP_TYPE.c_str(), "Node BiasAdd:[%s]'s weight size %u is invalid.",
+                              biasadd_node->GetName().c_str(), biasAddWeightSize);
+      return NOT_CHANGED;
+    } // for other cases, we just use the weight of BiasAdd
+    FUSION_PASS_CHECK(AdjustShapeOfBiasWeight(weights, bias_shape) != SUCCESS,
+                      OP_LOGI(FUSED_OP_TYPE.c_str(), "The bias shape is not valid for node %s!",
+                              biasadd_node->GetName().c_str()),
+                      return NOT_CHANGED);
+    FUSION_PASS_CHECK(const_input_nodes.empty(), OP_LOGI(FUSED_OP_TYPE.c_str(), "The bias %s's weight is empty!",
+                                                         biasadd_node->GetName().c_str()),
+                      return NOT_CHANGED);
+    weight_node = const_input_nodes[0];
+  }
+  return SUCCESS;
+}
+
+Status BiasaddConvFusionPass::CheckParam(const ge::NodePtr &conv, const ge::NodePtr &biasadd_node) {
+  FUSION_PASS_CHECK(conv == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Node conv2d is null, fusion failed."),
+                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(biasadd_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Node BiasAdd is null, fusion failed."),
+                    return PARAM_INVALID);
+
+  if (conv->GetOutDataNodes().size() > 1) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "out data size is invalid.");
+    return NOT_CHANGED;
+  }
+
+  int32_t in_edges_size = conv->GetInDataNodes().size();
+  if (in_edges_size < 0) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "inEdges size is invalid.");
+    return NOT_CHANGED;
+  }
+  return SUCCESS;
+}
+
+// vector<ge::NodePtr> &fusionNodes: Store fusion nodes,
+//       including newly added nodes and fused but not deleted nodes
+Status BiasaddConvFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter BiasaddConvFusionPass");
+  ge::NodePtr conv = GetNodeFromMapping(PATTERN_SRC, mapping);
+  ge::NodePtr biasadd_node = GetNodeFromMapping(PATTERN_BIASADD, mapping);
+  Status result = CheckParam(conv, biasadd_node);
+  FUSION_PASS_CHECK(result != SUCCESS, , return result);
+
+  ge::OpDescPtr src_op = conv->GetOpDesc();
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "BiasaddConvFusionPass: conv2d [%s] has %u input anchor.", conv->GetName().c_str(),
+          conv->GetAllInDataAnchors().size());
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "BiasaddConvFusionPass: conv2d [%s] has %u input desc.", conv->GetName().c_str(),
+          src_op->GetAllInputsDesc().size());
+
+  std::map<string, uint32_t> inputNameMap = src_op->GetAllInputName();
+  ge::OpDescPtr biasadd_op = biasadd_node->GetOpDesc();
+  FUSION_PASS_CHECK(biasadd_op == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.",
+                                                   biasadd_node->GetName().c_str()),
+                    return PARAM_INVALID);
+
+  ge::NodePtr weight_node;
+  ge::GeShape bias_shape;
+  result = GetWeightNode(biasadd_node, conv, weight_node, bias_shape);
+  if (result != SUCCESS) {
+    return result;
+  }
+
+  FUSION_PASS_CHECK(SUCCESS != PatternFusionUtil::LinkControlEdge(biasadd_node, conv),
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Link control edge from [%s] to [%s] failed",
-                            biasadd_node->GetName().c_str(), src_node->GetName().c_str()),
+                            biasadd_node->GetName().c_str(), conv->GetName().c_str()),
                     return FAILED);
 
-  std::vector<int64_t> newDimVec;
-  newDimVec.push_back(newShape);
-  ge::GeShape biasShape(newDimVec);
-  if (const_input_nodes.empty()) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to get const node.");
-    return FAILED;
-  }
-  ge::NodePtr const_node = const_input_nodes[0];
-  GeTensorDesc constTensor = const_node->GetOpDesc()->GetOutputDesc(0);
-  constTensor.SetShape(biasShape);
-  constTensor.SetOriginShape(biasShape);
+  GeTensorDesc constTensor = weight_node->GetOpDesc()->GetOutputDesc(0);
+  constTensor.SetShape(bias_shape);
+  constTensor.SetOriginShape(bias_shape);
   ge::Format inputFormat = biasadd_op->GetInputDesc(0).GetFormat();
   constTensor.SetFormat(inputFormat);
   inputFormat = biasadd_op->GetInputDesc(0).GetOriginFormat();
   constTensor.SetOriginFormat(inputFormat);
 
-  const_node->GetOpDesc()->UpdateOutputDesc(0, constTensor);
+  weight_node->GetOpDesc()->UpdateOutputDesc(0, constTensor);
 
-  FUSION_PASS_CHECK(src_node->AddLinkFrom(2, const_node) != ge::GRAPH_SUCCESS,
-                    OP_LOGE(src_node->GetName().c_str(), "Fail to link const node with conv node."),
+  FUSION_PASS_CHECK(conv->AddLinkFrom(2, weight_node) != ge::GRAPH_SUCCESS,
+                    OP_LOGE(conv->GetName().c_str(), "Fail to link const node with conv node."),
                     return FAILED);
 
-  FUSION_PASS_CHECK(true != ge::AttrUtils::SetBool(src_node->GetOpDesc(), ge::MATMUL_HAS_BIAS, true),
+  FUSION_PASS_CHECK(!ge::AttrUtils::SetBool(conv->GetOpDesc(), ge::MATMUL_HAS_BIAS, true),
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Biasadd op weight should be 1-D."), return FAILED);
   GeTensorDesc convbiasTensor = src_op->GetInputDesc(2);
   GeTensorDesc inputTensor = src_op->GetInputDesc(0);
@@ -230,7 +264,7 @@ Status BiasaddConvFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(biasadd_node),
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove node:[%s] failed", biasadd_node->GetName().c_str()),
                     return FAILED);
-  fusionNodes.push_back(src_node);
+  fusionNodes.push_back(conv);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "BiasaddConvFusionPass fusion success.");
 
   return SUCCESS;
