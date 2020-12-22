@@ -173,5 +173,5 @@ ut_case.add_precision_case(["Ascend910", "Ascend310"],
 
 if __name__ == '__main__':
     simulator_lib_path ="/home/shenmin/Ascend/toolkit/tools/simulator"
-    #ut_case.run(["Ascend910"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
-    ut_case.run(["Ascend310"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
+    ut_case.run(["Ascend910"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
+    #ut_case.run(["Ascend310"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
