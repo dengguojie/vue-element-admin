@@ -292,11 +292,12 @@ class DynamicAtomicAddrClean():
                         core_index * self.obj_init_input_scalar.ele_num_front_core \
                         + init_index * self.obj_common_input_scalar.ele_num_full_mask_repeat_time
                     ub_offset = 0
-                    self.tik_instance.data_move(self.gm_tensor[gm_offset],
-                                                self.ub_tensor[ub_offset], 0, 1,
-                                                self.obj_common_input_scalar.
-                                                burst_len_full_mask_repeat_time,
-                                                0, 0)
+                    with self.tik_instance.if_scope(self.obj_common_input_scalar.burst_len_full_mask_repeat_time > 0):
+                        self.tik_instance.data_move(self.gm_tensor[gm_offset],
+                                                    self.ub_tensor[ub_offset], 0, 1,
+                                                    self.obj_common_input_scalar.
+                                                    burst_len_full_mask_repeat_time,
+                                                    0, 0)
                 # last part last core
                 with self.tik_instance.if_scope(
                         self.obj_init_input_scalar.init_times_full_mask_repeat_time_last_core == 0):
@@ -308,11 +309,12 @@ class DynamicAtomicAddrClean():
                 gm_offset = core_index * \
                             self.obj_init_input_scalar.ele_num_front_core + \
                             self.obj_init_input_scalar.ele_num_front_part_last_core
-                self.tik_instance.data_move(self.gm_tensor[gm_offset],
-                                            self.ub_tensor[0], 0, 1,
-                                            self.obj_init_input_scalar.
-                                            burst_len_last_part_last_core,
-                                            0, 0)
+                with self.tik_instance.if_scope(self.obj_init_input_scalar.burst_len_last_part_last_core > 0):
+                    self.tik_instance.data_move(self.gm_tensor[gm_offset],
+                                                self.ub_tensor[0], 0, 1,
+                                                self.obj_init_input_scalar.
+                                                burst_len_last_part_last_core,
+                                                0, 0)
         self.tik_instance.BuildCCE(kernel_name=kernel_name,
                                    inputs=[self.gm_tensor],
                                    outputs=[],

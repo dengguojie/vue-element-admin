@@ -37,11 +37,10 @@ def get_op_support_info(input_data, output_data, ksize, strides, padding,
     if data_format in ("NHWC",):
         ksize_h = ksize[1]
         ksize_w = ksize[2]
-        window = [input_shape[1], input_shape[2]]
     else:
         ksize_h = ksize[2]
         ksize_w = ksize[3]
-        window = [input_shape[2], input_shape[3]]
+    window = [input_shape[2], input_shape[3]]
 
     if format_x == "NC1HWC0":
         if (ksize_h == window[0] and ksize_w == window[1]) or padding == "SAME":

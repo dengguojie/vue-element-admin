@@ -90,8 +90,8 @@ def confusion_mul_grad_compute(data_input0, data_input1, data_input2,
     result0 = tbe.vmul(mul_data_input0, mul_data_input1)
 
     # mul_1
-    data_input0, data_input2 = shape_broadcast(data_input0, data_input2)
-    mul_1_result = tbe.vmul(data_input0, data_input2)
+    data_input1, data_input2 = shape_broadcast(data_input1, data_input2)
+    mul_1_result = tbe.vmul(data_input1, data_input2)
 
     # temp compute for tvm
     shape_x = shape_util.shape_to_list(mul_1_result.shape)
