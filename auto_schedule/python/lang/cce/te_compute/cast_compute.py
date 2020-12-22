@@ -101,6 +101,10 @@ def _cast(raw_tensor, dst_dtype, is_auto_cast=True):
                 dst_dtype.lower()):
             raw_tensor = _cast_op(raw_tensor, "float16", 'elewise_single_cast')
             src_dtype = raw_tensor.dtype
+        elif not intrinsic_check_support("Intrinsic_vconv", "deq") and \
+                intrinsic_check_support("Intrinsic_vcbd", "s322s16"):
+            raw_tensor = _cast_op(raw_tensor, "int16", 'elewise_single_cast')
+            src_dtype = raw_tensor.dtype
         else:
             dict_args = dict()
             dict_args["errCode"] = "E90002"
