@@ -223,7 +223,7 @@ message CustomTestParameter {
 """
 # =================================================
 # ==================4.impl file==================
-PY_HEAD = """import te.lang.cce
+PY_HEAD = """import te.lang.cce as tbe
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
@@ -246,7 +246,7 @@ def {name}_compute({input_name}, {output}, {attr}, kernel_name="{name}"):
     \"""
 """
 PY_COMPUTE_END = """
-    res = te.lang.cce.XXX({input_name})
+    res = tbe.XXX({input_name})
     return res
 """
 PY_DEF_WITHOUT_ATTR = """
@@ -275,13 +275,13 @@ PY_RES_WIT_ATTR = """
 PY_TARGET_CCE = """
     # auto schedule
     with tvm.target.cce():
-        schedule = generic.auto_schedule(res)
+        schedule = tbe.auto_schedule(res)
 """
 PY_BUILD = """
     # operator build
     config = {left_braces}"name": kernel_name,
               "tensor_list": [{input_data}, res]{right_braces}
-    te.lang.cce.cce_build_code(schedule, config)
+    tbe.build(schedule, config)
     """
 # ==================4.2 MindSpore python file================
 PY_MS_HEAD = """from __future__ import absolute_import
