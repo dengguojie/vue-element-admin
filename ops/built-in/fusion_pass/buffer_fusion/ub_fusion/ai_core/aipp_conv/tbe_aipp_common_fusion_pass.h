@@ -15,38 +15,26 @@
  */
 
 /*!
- * \file tbe_aipp_conv_single_in_fusion_pass.h
- * \brief tbe aipp convolution and element-wise ops fusion pattern
+ * \file tbe_aipp_common_fusion_pass.h
+ * \brief tbe aipp convolution common ops fusion pattern
  */
-#ifndef OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_AIPP_CONV_TBE_AIPP_CONV_SINGLE_IN_FUSION_PASS_H_
-#define OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_AIPP_CONV_TBE_AIPP_CONV_SINGLE_IN_FUSION_PASS_H_
+#ifndef OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_AIPP_CONV_TBE_AIPP_COMMON_FUSION_PASS_H_
+#define OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_AIPP_CONV_TBE_AIPP_COMMON_FUSION_PASS_H_
 
 #include <vector>
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_base.h"
-#include "tbe_aipp_conv_fusion_pass.h"
 
 namespace fe {
 
-class TbeAippConvSingleInFusionPass : public TbeAippConvFusionPass {
+class TbeAippCommonFusionPass : public BufferFusionPassBase {
  public:
-  explicit TbeAippConvSingleInFusionPass() {
-  }
+  TbeAippCommonFusionPass() {}
 
-  ~TbeAippConvSingleInFusionPass() {
-  }
+  ~TbeAippCommonFusionPass() {}
 
  protected:
   /*
-   * @brief:  define convolution and single input op fusion pattern
-   *
-   * pattern configuration limit:
-   * 1. total min value must be 1 for all head candidated desc.
-   * 2. any head candidated desc max value must be 1.
-   * 3. output desc can not be itself.
-   *
-   *    1) Convolution-->ElemWise_1-->ElemWise_2
-   * 
-   * fusion node: ElemWise_1, ElemWise_2, Convolution
+   * @brief:  define convolution common op fusion pattern
    *
    * @return BufferFusionPattern: return all valid patterns.
    */
@@ -61,9 +49,14 @@ class TbeAippConvSingleInFusionPass : public TbeAippConvFusionPass {
   Status GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
 
  private:
-  const string fused_op_type_ = "FusedOp";
+  const string fused_op_type_ = "AippCommonFusedOp";
+
+  void AddRemovingReluNodes(ge::NodePtr remove_node, const std::vector<ge::NodePtr> &elemwise_nodes,
+                            std::vector<ge::NodePtr> &remove_nodes);
+  void FilterElemwiseNodes(std::vector<ge::NodePtr> &elemwise_nodes, std::vector<ge::NodePtr> &quant_nodes,
+                           std::vector<ge::NodePtr> &strided_write_nodes, std::vector<ge::NodePtr> &fusion_nodes);
 };
 
 }  // namespace fe
 
-#endif  // OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_AIPP_CONV_TBE_AIPP_CONV_SINGLE_IN_FUSION_PASS_H_
+#endif  // OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_AIPP_CONV_TBE_AIPP_COMMON_FUSION_PASS_H_

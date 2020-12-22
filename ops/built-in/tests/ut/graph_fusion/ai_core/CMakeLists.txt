@@ -22,6 +22,8 @@ if(BUILD_OPEN_PROJECT)
   )
   target_include_directories(ops_cpp_fusion_pass_aicore_utest PRIVATE
     ${OPS_DIR}/built-in/op_proto/inc
+    ${OPS_DIR}/built-in/fusion_pass
+    ${OPS_DIR}/../third_party/fusion_engine/inc
     ${OP_TEST_FUSION_PASS_INCLUDE}
     ${GTEST_INCLUDE}
     ${OP_TEST_PLUFIN_AND_PROTO_INCLUDE}
@@ -52,11 +54,17 @@ elseif(OPS_UT_YELLOW)
   )
   protobuf_generate(ops PROTO_SRCS PROTO_HDRS ${PROTO_LIST})
   file(GLOB_RECURSE graph_fusion_srcs "${TOP_DIR}/cann/ops/built-in/fusion_pass/graph_fusion/ai_core/*.cc")
+  file(GLOB_RECURSE aipp_ub_fusion_srcs "${TOP_DIR}/cann/ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv/*.cc")
   file(GLOB_RECURSE common_srcs "${TOP_DIR}/cann/ops/built-in/fusion_pass/common/*.cc")
   file(GLOB_RECURSE op_proto_srcs "${TOP_DIR}/cann/ops/built-in/op_proto/*.cc")
+  file(GLOB_RECURSE third_fe_common_srcs "${TOP_DIR}/cann/third_party/fusion_engine/inc/common/*.cc")
+  file(GLOB_RECURSE third_fe_utils_srcs "${TOP_DIR}/cann/third_party/fusion_engine/inc/utils/*.cc")
   set(src_files
     ${TOP_DIR}/cann/ops/built-in/tests/common/src/fusion_pass_utils/fusion_pass_test_utils.cpp
     ${graph_fusion_srcs}
+    ${aipp_ub_fusion_srcs}
+    ${third_fe_common_srcs}
+    ${third_fe_utils_srcs}
     ${common_srcs}
     ${op_proto_srcs}
   )
@@ -94,6 +102,7 @@ elseif(OPS_UT_YELLOW)
     ${TOP_DIR}/cann/ops/built-in/fusion_pass/common
     ${TOP_DIR}/cann/ops/built-in/tests/stub/fusion_engine
     ${TOP_DIR}/cann/ops/built-in/tests/common/src/inc
+    ${TOP_DIR}/cann/third_party/fusion_engine/inc
     ${CMAKE_BINARY_DIR}/proto/ops
   )
   target_compile_options(ut_ops_cpp_graph_fusion_aicore PRIVATE
