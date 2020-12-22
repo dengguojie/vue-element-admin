@@ -29,6 +29,7 @@ from te.platform import cce_params
 from te.tvm.schedule import InferBound
 from te.tvm.schedule import ScheduleOps
 from te.utils.error_manager import error_manager_util
+from te.lang.cce.te_schedule.util import parse_tbe_compile_para
 
 # default false
 DEBUG_MODE = False  # pylint: disable=C0302
@@ -123,7 +124,7 @@ def general_schedule(
     c_ddr = tensor
     sch = sch_list[0]
     tiling = None
-    out_of_order = None
+    out_of_order = False
 
     def _set_output_mem():
         if out_mem == "fuse_flag":
@@ -971,10 +972,13 @@ def general_schedule(
             "general_flag": True,
         }
         tiling = get_tiling(info_dict)
-        if tiling.get("compile_para") is not None:
-            out_of_order = (tiling.get("compile_para") >> OUT_OF_ORDER_SHIFT_BIT) & 1
     else:
         tiling = tiling_case
+
+    tbe_compile_param = tiling.get("tbe_compile_para")
+    sch.tbe_compie_para, preload = parse_tbe_compile_para(tbe_compile_param)
+    if sch.tbe_compie_para is not None:
+        out_of_order = sch.tbe_compie_para.get("out_of_order")
 
     tiling = check_and_set_default_tiling(tiling, a_ddr.dtype,
                                           b_ddr.dtype, stride_h,
@@ -1252,7 +1256,7 @@ def general_schedule(
                     sch_agent.same_attach(mask_ub, c_ub)
                 else:
                     sch_agent[c_ub].reused_by(c_ub_cut, c_ub_drelu)
-                    if out_of_order is None:
+                    if not out_of_order:
                         sch_agent.same_attach(mask_ub, c_ub)
 
                 sch_agent.same_attach(c_ub_cut, c_ub)
@@ -1374,7 +1378,7 @@ def general_schedule(
                 _raise_dx_general_err("c_col attach error.")
         if deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool" \
                 and "conv2d_backprop_input" in deconv_res.op.input_tensors[1].op.tag \
-                and out_of_order is not None:
+                and out_of_order:
             align_buffer = 0
             if (dx_h * dx_w) % cce_params.CUBE_MKN[c_col.dtype]["mac"][0] != 0:
                 align_buffer = reduce(lambda x, y: x * y, tiling["CUB_matrix"][1:4])
@@ -2173,6 +2177,10 @@ def general_schedule(
         _handle_dynamic_workspace(stride_w)
     else:
         _handle_workspace()
+
+    if preload:
+        if l0c_pbuffer == 2:
+            sch[c_col].preload()
 
     tiling.clear()
     return True

@@ -29,6 +29,7 @@ from te.lang.cce.te_schedule.util import L1CommonParam
 from te.platform import cce_conf
 from te.platform import cce_params
 from te.utils.error_manager import error_manager_util
+from te.lang.cce.te_schedule.util import parse_tbe_compile_para
 
 # Don't modify,used in log_util
 DX_SUPPORT_TAG_LOG_PREFIX = "#Conv2DBackpropInput only support#"
@@ -646,11 +647,18 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
                 "fusion_type": DeconvParam.get_para_map("fusion_type_num")
             }
             TILING = get_tiling(info_dict)
-            if TILING.get("compile_para") is not None:
-                out_of_order = (TILING.get("compile_para") >> OUT_OF_ORDER_SHIFT_BIT) & 1
-                DeconvParam.update_para_map("out_of_order", out_of_order)
         else:
             TILING = deepcopy(tiling_case)
+
+    compile_param = TILING.get("tbe_compile_para")
+    tbe_compile_para, preload = parse_tbe_compile_para(compile_param)
+    DeconvParam.update_para_map("tbe_compile_para", tbe_compile_para)
+    DeconvParam.update_para_map("preload", preload)
+    out_of_order = False
+    if tbe_compile_para is not None:
+        out_of_order = tbe_compile_para.get("out_of_order")
+    DeconvParam.update_para_map("out_of_order", out_of_order)
+
     TILING = _check_and_set_default_tiling(
         TILING, TENSOR_MAP["img_placehold"].dtype, TENSOR_MAP["filter_placehold"].dtype
     )
@@ -2020,7 +2028,7 @@ def opti_schedule(
 
         if fusion_type in [FUSION_DX_DRELU]:
             sch[drelu_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
-            if DeconvParam.get_para_map("out_of_order") is not None:
+            if DeconvParam.get_para_map("out_of_order"):
                 # if cub_m%16!=0, when copy bitmask to ub, for every n0,
                 # the buffer should align to 32B*strideh*stridew
                 _print_debug("bitmask_ub compute_at c_slice_axis")
@@ -2821,6 +2829,12 @@ def opti_schedule(
     # clear global cache
     if dynamic_para:
         _handle_dynamic_shape()
+
+    sch.tbe_compile_para = DeconvParam.get_para_map("tbe_compile_para")
+    preload = DeconvParam.get_para_map("preload")
+    if preload:
+        if TILING.get("manual_pingpong_buffer")["CL0_pbuffer"] == 2:
+            sch[c_l0c].preload()
 
     TILING.clear()
     DIM_MAP.clear()
