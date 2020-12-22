@@ -367,10 +367,10 @@ class BoundingBoxDecode(object):
         start_block_addrss = block_number_loop // self.loop_cycle
         if self.loop_cycle > 1:
             if block_number_loop % self.loop_cycle != 0:
-                start_block_addrss = self.ub_max_size // self.rois_data_each_block
                 block_number = block_number_loop - start_block_addrss * \
                                (self.loop_cycle - 1)
-                if block_number * self.rois_data_each_block > MAX_UB_ELEMENT_NUMBER_FP16:
+                while block_number * self.loop_cycle < block_number_loop or \
+                      block_number * self.rois_data_each_block > MAX_UB_ELEMENT_NUMBER_FP16:
                     self.loop_cycle += 1
                     start_block_addrss = block_number_loop // self.loop_cycle
                     block_number = block_number_loop - start_block_addrss * \

@@ -304,10 +304,10 @@ class BoundingBoxEncode():
 
         if self.loop_cycle > 1:
             if block_number % self.loop_cycle != 0:
-                start_block_addr = self.ub_max_size // self.data_num_in_each_block
                 block_number_loop = block_number - start_block_addr * (
                     self.loop_cycle - 1)
-                if block_number_loop * 16 > MAX_UB_ELEMENT_NUMBER_FP16:
+                while block_number * self.loop_cycle < block_number_loop or \
+                      block_number_loop * 16 > MAX_UB_ELEMENT_NUMBER_FP16:
                     self.loop_cycle += 1
                     start_block_addr = block_number // self.loop_cycle
                     block_number_loop = block_number - start_block_addr * (
@@ -692,7 +692,7 @@ def bounding_box_encode(anchorbox_in_dict,
                         delta_out_dict,
                         means_attrs=(0, 0, 0, 0),
                         stds_attrs=(1, 1, 1, 1),
-                        kernel_name_val="bounding_box_encode"):
+                        kernel_name="bounding_box_encode"):
     """
     algorithm: bounding_box_encode
 
@@ -724,7 +724,7 @@ def bounding_box_encode(anchorbox_in_dict,
 
     bounding_box_encode_ = BoundingBoxEncode(
         anchorbox_in_dict, ground_truth_in_dict, delta_out_dict, means_attrs,
-        stds_attrs, kernel_name_val)
+        stds_attrs, kernel_name)
 
     bounding_box_encode_.tik_instance_function()
 
