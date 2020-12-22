@@ -1280,7 +1280,8 @@ class CceConvOp:
                 if self._l1_fusion_type == 1 or self._l1_fusion_type == 0:
                     tiling["A_overhead_opt_flag"] = False
                     tiling["B_overhead_opt_flag"] = False
-
+                # get tbe tbe compile parameter
+                tiling["compile_para"] = tiling_new.get("tbe_compile_para", None)
                 return tiling
 
             def get_cub_channel_wise():
@@ -3694,6 +3695,8 @@ class CceConvOp:
                 self.conv_pool_2_2_fused_flag = True
             self._compute_at_buffer = []
             self._compute_at_axis = []
+            self._compile_para = None
+            self._preload = 0
 
         def set_overload_flag(overload_flag, param, noi):
             """
@@ -3885,6 +3888,14 @@ class CceConvOp:
                     sch[tensor_map["fmap_ub"]].compute_at(sch[al1], al1_h_outer)
                 sch[al1].emit_insn(al1_k_inner, 'dma_copy')
                 self._schedule[fmap].reused_by(tensor_map["fmap_ub"])
+        def parser_tbe_compile_para(compile_para):
+            """
+            parser the tbe compile parameter into dict and preload.
+            """
+            sch.tbe_compile_para = {}
+            sch.tbe_compile_para, self._preload = util.parse_tbe_compile_para(compile_para)
+            if double_buffer_flag["CL0_pbuffer"] == 2 and self._preload:
+                sch[c_col].preload()
 
         def _pragma_for_convbn():
             if self._convbn1_flag:
@@ -5071,6 +5082,10 @@ class CceConvOp:
 
         if self._dynamic_mode == "dynamic_hw":
             sch[res].pragma(c_pragma_axis, "gm_no_sync", 1)
+
+        # parser the tbe compile parameter
+        self._compile_para = tiling.get("compile_para")
+        parser_tbe_compile_para(self._compile_para)
 
         yuv_align, yuv_pad_align = aipp_conv_fuse_yuv_align()
         conv1d_w_split_tile()
