@@ -598,7 +598,7 @@ def _conv2d_backprop_filter_compute(x, filter_size, out_backprop, y,
 
     para_dict = {
         "strides": strides,
-        "padding": pads,
+        "padding": pad,
         "dilations": dilations,
         "groups": groups,
         "res_dtype": dedw_dtype,
