@@ -91,7 +91,7 @@ class LstmCellGradInput():
 
         self.dgate_shape = (self.c_shape[0] * 4, self.c_shape[1],
                             self.c_shape[2], self.c_shape[3])
-        self.dgate_dtype = "float32"
+        self.dgate_dtype = "float16"
 
         self.kernel_name = kernel_name
 
@@ -516,6 +516,15 @@ class LstmCellGrad(LstmCellGradInput):
         # compute process for dct-1
         self.tik_instance.vmul(mask, self.ub_dct1[index], self.ub_dc[index],
                                self.ub_ft[index], repeat, 1, 1, 1, 8, 8, 8)
+        if self.it_dtype == "float32":
+            self.tik_instance.vconv(mask, "", self.ub_dot_conv[index],
+                                    self.ub_dot[index], repeat, 1, 1, 4, 8)
+            self.tik_instance.vconv(mask, "", self.ub_dit_conv[index],
+                                    self.ub_dit[index], repeat, 1, 1, 4, 8)
+            self.tik_instance.vconv(mask, "", self.ub_djt_conv[index],
+                                    self.ub_djt[index], repeat, 1, 1, 4, 8)
+            self.tik_instance.vconv(mask, "", self.ub_dft_conv[index],
+                                    self.ub_dft[index], repeat, 1, 1, 4, 8)
 
     def compute_each_loop(self, ele_num):
         """
@@ -637,11 +646,18 @@ class LstmCellGrad(LstmCellGradInput):
         None
         """
         burst_len = ele_num // self.v_ele_each_block
-        djt_src = self.ub_djt
-        dit_src = self.ub_dit
-        dot_src = self.ub_dot
-        dft_src = self.ub_dft
-        dgate_burst_len = burst_len
+        if self.it_dtype == "float32":
+            djt_src = self.ub_djt_conv
+            dit_src = self.ub_dit_conv
+            dot_src = self.ub_dot_conv
+            dft_src = self.ub_dft_conv
+            dgate_burst_len = burst_len // 2
+        else:
+            djt_src = self.ub_djt
+            dit_src = self.ub_dit
+            dot_src = self.ub_dot
+            dft_src = self.ub_dft
+            dgate_burst_len = burst_len
 
         offset = self.batch_size * self.hidden_size
         self.tik_instance.data_move(self.gm_dgate[index], dit_src, 0, 1,

@@ -349,6 +349,7 @@ from .batch_to_space_d import batch_to_space_d
 from .depth_to_space import depth_to_space
 from .lrn_grad import lrn_grad
 from .basic_lstm_cell import basic_lstm_cell
+from .basic_lstm_cell_c_state_grad_v2 import basic_lstm_cell_c_state_grad_v2
 from .dynamic_lstm import dynamic_lstm
 from .dynamic_rnn import dynamic_rnn
 from .dynamic_lstm_v2 import dynamic_lstm_v2

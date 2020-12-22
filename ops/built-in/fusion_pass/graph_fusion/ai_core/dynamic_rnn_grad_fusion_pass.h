@@ -56,7 +56,7 @@ class DynamicRNNGradFusionPass : public PatternFusionBasePass {
   Status AddDwReduceSumNode(ge::NodePtr dynamicRNNGradNode, ge::NodePtr matmulNode, ge::ComputeGraph& graph,
                             vector<ge::NodePtr>& newNodes);
   Status AddDbReduceSumNode(ge::NodePtr dynamicRNNGradNode, ge::NodePtr lstmInputGradNode, ge::ComputeGraph& graph,
-                            vector<ge::NodePtr>& newNodes);
+                            vector<ge::NodePtr>& newNodes, ge::NodePtr const_one_node);
   const string FUSED_OP_TYPE = "LSTMInputGrad_Split_Concat_Matmul_Reduce";
 };
 
