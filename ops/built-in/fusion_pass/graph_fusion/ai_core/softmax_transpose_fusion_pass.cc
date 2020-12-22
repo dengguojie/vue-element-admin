@@ -171,6 +171,12 @@ Status softmaxTransFusionPass::INFuison(ge::ComputeGraph& graph, ge::NodePtr& in
     OP_LOGI(FUSED_OP_TYPE.c_str(), "shape_len is less then 2");
     return NOT_CHANGED;
   }
+  for (uint64_t i = 0; i < oriShapelens; i++) {
+      if (PatternFusionUtil::IsUnknownShape(inputOrishape[i])){
+          OP_LOGI(FUSED_OP_TYPE.c_str(), "NODE %s is unknownshape, not changed", inOpDescPtr->GetName().c_str());
+          return NOT_CHANGED;
+      }
+    }
 
   // normal check
   bool shapeCheck = CheckStatus(inOpDescPtr, inputShape, 16, 10, 600000);
