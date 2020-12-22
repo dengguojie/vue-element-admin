@@ -461,30 +461,16 @@ def _get_tiling_param_cut_howo_partial_col(out_w, khkw, fmap_w, type_size, avg_s
     return max_v_ub, move_rate
 
 
-def _get_tiling_param_cut_howo_min(fmap_w, fmap_c0, type_size, avg_split_ub_size, cut_h_row, cut_h_row_per_core):
+def _get_tiling_param_cut_howo_min(fmap_w, fmap_c0, type_size, avg_split_ub_size, cut_h_row):
     # cut howo khkw c, minimum cut
     max_v_ub = avg_split_ub_size // (1 * BLOCK_SIZE_ALIGN * BLOCK_SIZE)
     if max_v_ub > LOAD3D_REPEAT_TIME_LIMIT:
         max_v_ub = LOAD3D_REPEAT_TIME_LIMIT
     max_v_l1 = SIZE_L1 // (cut_h_row * fmap_w * fmap_c0 * type_size * DOUBLE_BUFFER)
-    force_bind_khkw_axis = False
-    if max_v_l1 == 0:
-        max_v_l1 = SIZE_L1 // (cut_h_row_per_core * fmap_w * fmap_c0 * type_size * DOUBLE_BUFFER)
-        force_bind_khkw_axis = True
     if max_v_ub > max_v_l1:
         max_v_ub = max_v_l1
 
-    return max_v_ub, force_bind_khkw_axis
-
-
-def _get_cut_h_row_per_core(kernel_h, dilate_h, stride_h, stride_w, fmap_w):
-    device_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-    kernel_h_per_core = _ceil_div(kernel_h, device_core_num)
-    dilated_kernel_h = (kernel_h_per_core - 1) * dilate_h + 1
-    cut_w_row_s = (BLOCK_SIZE - 1) * stride_w + 1
-    cut_h_row_s = (((cut_w_row_s - 1) // fmap_w + 1) - 1) * stride_h + 1
-    cut_h_row_per_core = cut_h_row_s + dilated_kernel_h - 1
-    return cut_h_row_per_core
+    return max_v_ub
 
 
 # pylint: disable=too-many-locals
@@ -503,8 +489,6 @@ def _get_tiling_param(setfmatrix_dict, extract_params, used_ub_size, type_size, 
     kernel_h = setfmatrix_dict['conv_kernel_h']
     kernel_w = setfmatrix_dict['conv_kernel_w']
     stride_h = setfmatrix_dict['conv_stride_h']
-
-    cut_h_row_per_core = extract_params['cut_h_row_per_core']
     khkw = kernel_h * kernel_w
 
     max_v_cut_col, move_rate_cut_col = _get_tiling_param_cut_howo_col(used_ub_size, lcm_out_w, khkw, cut_h_col, fmap_w,
@@ -519,10 +503,9 @@ def _get_tiling_param(setfmatrix_dict, extract_params, used_ub_size, type_size, 
                                                                                   avg_split_ub_size, cut_h_row,
                                                                                   c_in_real)
 
-    max_v_cut_min, force_bind_khkw_axis = _get_tiling_param_cut_howo_min(fmap_w, fmap_c0, type_size, avg_split_ub_size,
-                                                                         cut_h_row, cut_h_row_per_core)
+    max_v_cut_min = _get_tiling_param_cut_howo_min(fmap_w, fmap_c0, type_size, avg_split_ub_size, cut_h_row)
     return [max_v_cut_col, max_v_cut_row, max_v_cut_col_p, max_v_cut_min, move_rate_cut_col, move_rate_cut_row, \
-            move_rate_cut_col_p, force_bind_khkw_axis]
+            move_rate_cut_col_p]
 
 
 # pylint: disable=too-many-statements,too-many-branches,too-many-locals
@@ -552,6 +535,7 @@ def _extract_image_patches_schedule(res, sch_list):
     out_w = extract_params['out_w']
     fmap_shape = extract_params['fmap_shape']
     c_in_real = extract_params["c_in_real"]
+    fmap_n = fmap_shape[0].value
     fmap_c1 = fmap_shape[1].value
     fmap_h = fmap_shape[2].value
     fmap_w = fmap_shape[3].value
@@ -606,15 +590,12 @@ def _extract_image_patches_schedule(res, sch_list):
     if lcm_out_w > out_hw_up16:
         lcm_out_w = out_hw_up16
 
-    cut_h_row_per_core = _get_cut_h_row_per_core(kernel_h, dilate_h, stride_h, stride_w, fmap_w)
-
     extract_params['lcm_out_w'] = lcm_out_w
     extract_params['cut_h_col'] = cut_h_col
     extract_params['cut_w_row'] = cut_w_row
     extract_params['cut_h_row'] = cut_h_row
     extract_params['dilated_kernel_h'] = dilated_kernel_h
     extract_params['dilated_kernel_w'] = dilated_kernel_w
-    extract_params['cut_h_row_per_core'] = cut_h_row_per_core
 
     sch[ub_res].buffer_align((1, 1), (1, 1), (1, 1), (1, align_block_size))
     sch[fmap_im2col].buffer_align((1, 1), (out_w, out_w), (1, 1), (1, 1), (1, 1), (1, align_block_size))
@@ -626,6 +607,8 @@ def _extract_image_patches_schedule(res, sch_list):
     khkw = kernel_h * kernel_w
     c_out = khkw * fmap_c1 * fmap_c0
 
+    device_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+
     if c_in_real % align_block_size == 0:
         n_factor = 1
         howo_factor = howo
@@ -636,14 +619,14 @@ def _extract_image_patches_schedule(res, sch_list):
                                          type_size, avg_split_ub_size)
 
         max_v_cut_col, max_v_cut_row, max_v_cut_col_p, max_v_cut_min, move_rate_cut_col, move_rate_cut_row, \
-        move_rate_cut_col_p, force_bind_khkw_axis_min = tiling_param
+        move_rate_cut_col_p = tiling_param
 
         move_rate = move_rate_cut_col
         if move_rate < move_rate_cut_row:
             move_rate = move_rate_cut_row
         if move_rate < move_rate_cut_col_p:
             move_rate = move_rate_cut_col_p
-        force_bind_khkw_axis = False
+        split_khkw_mode = False
         if lcm_out_w * c_out <= avg_split_ub_size and khkw * fmap_c1 <= LOAD3D_REPEAT_TIME_LIMIT:
             max_v = avg_split_ub_size // lcm_out_w // c_out
             if lcm_out_w * max_v < howo:
@@ -671,55 +654,63 @@ def _extract_image_patches_schedule(res, sch_list):
             # cut howo khkw c
             howo_factor = BLOCK_SIZE
             max_v = max_v_cut_min
+            if max_v == 0:
+                max_v = 1
+                split_khkw_mode = True
             khkw_factor = 1
             c_factor = align_block_size * max_v
-            force_bind_khkw_axis = force_bind_khkw_axis_min
 
-        device_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+        bind_axis_id = 0
+
         res_n_outer, res_n_inner = sch[res].split(res.op.axis[0], factor=n_factor)
         res_howo_outer, res_howo_inner = sch[res].split(res.op.axis[1], factor=howo_factor)
         res_khkw_outer, res_khkw_inner = sch[res].split(res.op.axis[2], factor=khkw_factor)
         res_c_inner_outer, res_c_inner = sch[res].split(res.op.axis[3], factor=align_block_size)
         res_c_outer, res_c_outer_inner = sch[res].split(res_c_inner_outer, factor=c_factor // align_block_size)
-        sch[res].reorder(res_n_outer, res_howo_outer, res_khkw_outer, res_c_outer, res_n_inner,
-                         res_c_outer_inner, res_howo_inner, res_khkw_inner, res_c_inner)
 
-        if force_bind_khkw_axis:
-            bind_axis, res_khkw_outer = sch[res].split(res_khkw_outer, nparts=device_core_num)
-        else:
-            bind_axis, res_n_outer = sch[res].split(res_n_outer, nparts=device_core_num)
+        res_axis_outer_list = [res_n_outer, res_howo_outer, res_khkw_outer, res_c_outer]
 
+        bind_axis, res_axis_outer_list[bind_axis_id] = sch[res].split(res_axis_outer_list[bind_axis_id],
+                                                                      nparts=device_core_num)
+
+        res_axis_outer_outer_list = [bind_axis]
 
         if SIZE_L1 >= fmap_h * fmap_w * fmap_c0 * fmap_c1 * type_size * DOUBLE_BUFFER:
-            sch[fmap_im2col].compute_at(sch[res], res_n_outer)
-            sch[fmap_in_l1].compute_at(sch[res], res_n_outer)
+            compute_at_id = 0
         elif SIZE_L1 >= cut_h_row * fmap_w * fmap_c0 * fmap_c1 * type_size * DOUBLE_BUFFER \
                 and move_rate != move_rate_cut_col:
-            sch[fmap_im2col].compute_at(sch[res], res_howo_outer)
-            sch[fmap_in_l1].compute_at(sch[res], res_howo_outer)
+            compute_at_id = 1
         elif SIZE_L1 >= cut_h_col * fmap_w * fmap_c0 * fmap_c1 * type_size * DOUBLE_BUFFER \
                 and move_rate == move_rate_cut_col:
-            sch[fmap_im2col].compute_at(sch[res], res_howo_outer)
-            sch[fmap_in_l1].compute_at(sch[res], res_howo_outer)
-        elif SIZE_L1 >= cut_h_row_per_core * fmap_w * fmap_c0 * fmap_c1 * type_size * DOUBLE_BUFFER \
-                and force_bind_khkw_axis:
-            sch[fmap_im2col].compute_at(sch[res], res_howo_outer)
-            sch[fmap_in_l1].compute_at(sch[res], res_howo_outer)
+            compute_at_id = 1
+        elif SIZE_L1 >= cut_h_row_s * fmap_w * fmap_c0 * type_size * DOUBLE_BUFFER \
+                and split_khkw_mode:
+            res_axis_outer_list[2], res_khkw_outer_inner = sch[res].split(res_axis_outer_list[2],
+                                                                          factor=kernel_w // khkw_factor)
+            res_c_out_outer, res_axis_outer_list[3] = sch[res].split(res_axis_outer_list[3],
+                                                                          factor=1)
+            res_axis_outer_outer_list.append(res_c_out_outer)
+            compute_at_id = 2
         else:
-            sch[fmap_im2col].compute_at(sch[res], res_c_outer)
-            sch[fmap_in_l1].compute_at(sch[res], res_c_outer)
+            compute_at_id = 3
 
-        sch[transpose_ub].compute_at(sch[res], res_c_outer)
-        sch[fmap_fractal].compute_at(sch[res], res_c_outer)
+        sch[res].reorder(*(res_axis_outer_outer_list + res_axis_outer_list +
+                           [res_n_inner, res_c_outer_inner, res_howo_inner, res_khkw_inner, res_c_inner]))
 
-        block = tvm.thread_axis("blockIdx.x")
-        sch[res].bind(bind_axis, block)
+
+        sch[fmap_im2col].compute_at(sch[res], res_axis_outer_list[compute_at_id])
+        sch[fmap_in_l1].compute_at(sch[res], res_axis_outer_list[compute_at_id])
+        sch[transpose_ub].compute_at(sch[res], res_axis_outer_list[3])
+        sch[fmap_fractal].compute_at(sch[res], res_axis_outer_list[3])
 
         sch[workspace_res].compute_inline()
         sch[ub_res].compute_inline()
         sch[merge_co_ub].compute_inline()
         sch[merge_hw_ub].compute_inline()
         sch[split_c1_ub].compute_inline()
+
+        block = tvm.thread_axis("blockIdx.x")
+        sch[res].bind(bind_axis, block)
 
         sch[fmap_in_l1].emit_insn(fmap_in_l1.op.axis[0], tbe_platform.DMA_COPY)
         sch[fmap_im2col].emit_insn(fmap_im2col.op.axis[0], tbe_platform.SET_FMATRIX, setfmatrix_dict)
@@ -865,8 +856,9 @@ def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_n
     if cut_h_col > fmap_h:
         cut_h_col = fmap_h
     if fmap_c % align_block_size == 0:
-        cut_h_row_per_core = _get_cut_h_row_per_core(kernel_h, dilate_h, stride_h, stride_w, fmap_w)
-        min_cut_h = min(cut_h_col, cut_h_row_per_core)
+        cut_w_row_s = (BLOCK_SIZE - 1) * stride_w + 1
+        cut_h_row_s = (((cut_w_row_s - 1) // fmap_w + 1) - 1) * stride_h + 1
+        min_cut_h = min(cut_h_col, cut_h_row_s)
     else:
         min_cut_h = cut_h_col
 
