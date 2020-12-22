@@ -16,7 +16,6 @@
 auto_schedule template, if user call auto_schedule, this file will choose a
 corresponding schedule template for user's compute
 """
-import te.lang.cce as static
 from te import platform as cce
 from te import tvm
 from te.lang.base import operation_impl as operation
@@ -57,23 +56,16 @@ def schedule_cce(outs, option=None):
     tiling_case_ret = tiling_case_func(outs, option)
 
     schedules = []
-    if operation.get_context().get_current_compute().get("_mode") == CONST:
+    schedule_func = operation.get_schedule(pattern)
+    for tiling_case in tiling_case_ret:
+        param_outs = original_outs.copy()
         with operation.ScheduleContext() as context:
-            sch = static.te_schedule.cce_schedule.schedule_cce(outs, option)
-            sch.tiling_key = tiling_case_ret
-            util.add_sch_additional_entry(sch, "context", context)
+            sch = schedule_func(param_outs, tiling_case)
+            if sch is not None:
+                util.add_sch_additional_entry(sch, "original_outs", original_outs)
+                util.add_sch_additional_entry(sch, "real_outs", param_outs)
+                util.add_sch_additional_entry(sch, "context", context)
         schedules.append(sch)
-    else:
-        schedule_func = operation.get_schedule(pattern)
-        for tiling_case in tiling_case_ret:
-            param_outs = original_outs.copy()
-            with operation.ScheduleContext() as context:
-                sch = schedule_func(param_outs, tiling_case)
-                if sch is not None:
-                    util.add_sch_additional_entry(sch, "original_outs", original_outs)
-                    util.add_sch_additional_entry(sch, "real_outs", param_outs)
-                    util.add_sch_additional_entry(sch, "context", context)
-            schedules.append(sch)
 
     return schedules
 
@@ -206,40 +198,16 @@ class Builder:
 
     # noinspection PyMethodMayBeStatic
     def _handle_tensors(self, sch_tensors, sch):
-        sch_context = util.get_sch_additional_entry(sch, "context")
-        if sch_context.get_compute_context().get("_mode") == CONST:
-            # code from schedule_cce of static shape
+        real_sch_tensors = sch_tensors.copy()
+        original_outs = util.get_sch_additional_entry(sch, "original_outs")
+        real_outs = util.get_sch_additional_entry(sch, "real_outs")
 
-            real_out_tensors = sch.cce_special["real_out_tensor"]
-            orign_out_tensors = sch.cce_special["orign_out_tensor"]
-            # update the config_tensor_list:update 1 auto_cast tensor 2 compute
-            # group tensor
-            config_tensor_list_tmp = []
-            for tensor in sch_tensors:
-                if tensor not in orign_out_tensors:
-                    config_tensor_list_tmp.append(tensor)
-                else:
-                    index = orign_out_tensors.index(tensor)
-                    config_tensor_list_tmp.append(real_out_tensors[index])
-            # update special_tensor_list:if the spec node is a output, no need
-            # to use workspace
-            special_tensor_list = []
-            for tensor in sch.cce_special["tensor_list"]:
-                if tensor not in config_tensor_list_tmp:
-                    special_tensor_list.append(tensor)
-            tensor_list = config_tensor_list_tmp + special_tensor_list
-            return tensor_list
-        else:
-            real_sch_tensors = sch_tensors.copy()
-            original_outs = util.get_sch_additional_entry(sch, "original_outs")
-            real_outs = util.get_sch_additional_entry(sch, "real_outs")
-
-            if original_outs != real_outs:
-                for tensor_i in original_outs:
-                    real_sch_tensors.remove(tensor_i)
-                for tensor_i in real_outs:
-                    real_sch_tensors.append(tensor_i)
-            return real_sch_tensors
+        if original_outs != real_outs:
+            for tensor_i in original_outs:
+                real_sch_tensors.remove(tensor_i)
+            for tensor_i in real_outs:
+                real_sch_tensors.append(tensor_i)
+        return real_sch_tensors
 
     def _call_tvm_build(self):
         # build config use mode: 1 + m + n
@@ -258,17 +226,12 @@ class Builder:
         build_configs = [update_func(dynamic_config, m_config_items)]
         for sch in self.valid_schs:
             sch_context = util.get_sch_additional_entry(sch, "context")
-            compute_context = sch_context.get_compute_context()
 
             n_config_items = sch_context.get("_build_config")
             if n_config_items is not None:
                 m_config_items.update(n_config_items)
 
-            if compute_context.get("_mode") != CONST:
-                build_config = update_func(dynamic_config, m_config_items)
-            else:
-                build_config = update_func(static_config, m_config_items)
-
+            build_config = update_func(dynamic_config, m_config_items)
             build_configs.append(build_config)
 
         if operation.in_dynamic():
