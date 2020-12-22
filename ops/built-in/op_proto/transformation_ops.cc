@@ -243,7 +243,7 @@ IMPLEMT_COMMON_INFERFUNC(SpaceToBatchNDInferShape) {
   auto node = NodeUtils::GetNodeFromOperator(op);
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto input_desc = op_info->MutableInputDesc("x");
-  auto input_shape = input_desc->MutableShape().GetDims();;
+  auto input_dims = input_desc->MutableShape().GetDims();;
   auto input_dtype = input_desc->GetDataType();
 
   auto output_desc = op_info->MutableOutputDesc("y");
@@ -252,11 +252,11 @@ IMPLEMT_COMMON_INFERFUNC(SpaceToBatchNDInferShape) {
   // get const node block_shape
   bool block_done = false;
   std::vector<int64_t> block_shape;
-  GeTensorPtr block_shape_tensor = nullptr;
-  if (GRAPH_SUCCESS == NodeUtils::GetInputConstData(node, "block_shape", block_shape_tensor)) {
+  GeTensorPtr block_tensor = nullptr;
+  if (GRAPH_SUCCESS == NodeUtils::GetInputConstData(node, "block_shape", block_tensor)) {
     auto const_desc = op_info->MutableInputDesc("block_shape");
     auto const_dtype = const_desc->GetDataType();
-    if (GetConstValue(op, block_shape_tensor, const_dtype, block_shape)) {
+    if (GetConstValue(op, block_tensor, const_dtype, block_shape)) {
       block_done = true;
     } else {
       OP_LOGW(op.GetName().c_str(), "Get Const block_shape value failed ");
@@ -276,81 +276,80 @@ IMPLEMT_COMMON_INFERFUNC(SpaceToBatchNDInferShape) {
     }
   }
 
-  if (!IsUnknown(input_shape) && padding_done && block_done) {
-    // not dynamic case, only set shape
-    std::vector<int64_t> y_shape;
-    int64_t block_shape_size = input_shape[0];
+  // not dynamic case, only set shape
+  if (!IsUnknown(input_dims) && padding_done && block_done) {
+    std::vector<int64_t> output_dims;
+    int64_t first_dim = input_dims[0];
     for (size_t i = 0; i < block_shape.size(); i++) {
-      block_shape_size = block_shape_size * block_shape[i];
+      first_dim = first_dim * block_shape[i];
     }
-    y_shape.push_back(block_shape_size);
+    output_dims.push_back(first_dim);
     for (size_t i = 1; i <= block_shape.size(); i++) {
-      y_shape.push_back((input_shape[i] + paddings[2 * i - 2] + paddings[2 * i - 1]) / block_shape[i - 1]);
+      output_dims.push_back((input_dims[i] + paddings[2 * i - 2] + paddings[2 * i - 1]) / block_shape[i - 1]);
     }
-    for (size_t i = block_shape.size() + 1; i < input_shape.size(); i++) {
-      y_shape.push_back(input_shape[i]);
+    for (size_t i = block_shape.size() + 1; i < input_dims.size(); i++) {
+      output_dims.push_back(input_dims[i]);
     }
-    output_desc->SetShape(GeShape(y_shape));
-
+    output_desc->SetShape(GeShape(output_dims));
     return GRAPH_SUCCESS;
   }
 
-  // dynamic case
-  // input shape is -2, output is -2
-  if (IsUnknownRankShape(input_shape)) {
-    output_desc->SetShape(GeShape(input_shape));
+  // dynamic case, input shape is -2, output is -2
+  if (IsUnknownRankShape(input_dims)) {
+    output_desc->SetShape(GeShape(input_dims));
     OP_LOGW(op.GetName().c_str(), "input shape is UnknownRank, set output is UnknownRank");
     return GRAPH_SUCCESS;
   }
 
+  // dynamic case, input shape is -1, output is -1
   std::vector<std::pair<int64_t,int64_t>> input_range;
   input_desc->GetShapeRange(input_range);
-  MakeUpShapeRange(input_shape, input_range);
+  MakeUpShapeRange(input_dims, input_range);
 
-  auto desc_block = op_info->MutableInputDesc("block_shape");
-  std::vector<int64_t> block_shape_shape = desc_block->MutableShape().GetDims();
+  auto block_desc = op_info->MutableInputDesc("block_shape");
+  std::vector<int64_t> block_dims = block_desc->MutableShape().GetDims();
   std::vector<std::pair<int64_t,int64_t>> block_range;
-  if (IsUnknownRankShape(block_shape_shape)) {
-    block_shape_shape = {-1};
+  if (IsUnknownRankShape(block_dims)) {
+    block_dims = {-1};
   } else {
-    desc_block->GetShapeRange(block_range);
+    block_desc->GetShapeRange(block_range);
   }
-  MakeUpShapeRange(block_shape_shape, block_range);
+  MakeUpShapeRange(block_dims, block_range);
 
-  auto desc_paddings = op_info->MutableInputDesc("paddings");
-  std::vector<int64_t> paddings_shape = desc_paddings->MutableShape().GetDims();
+  auto paddings_desc = op_info->MutableInputDesc("paddings");
+  std::vector<int64_t> paddings_dims = paddings_desc->MutableShape().GetDims();
   std::vector<std::pair<int64_t,int64_t>> paddings_range;
-  if (IsUnknownRankShape(paddings_shape)) {
-    paddings_shape = {-1, -1};
+  if (IsUnknownRankShape(paddings_dims)) {
+    paddings_dims = {-1, -1};
   } else {
-    desc_paddings->GetShapeRange(paddings_range);
+    paddings_desc->GetShapeRange(paddings_range);
   }
-  MakeUpShapeRange(paddings_shape, paddings_range);
+  MakeUpShapeRange(paddings_dims, paddings_range);
 
   auto block_size_max = std::min(paddings_range[0].second, block_range[0].second);
   block_size_max = block_size_max == -1 ? std::max(paddings_range[0].second, block_range[0].second) : block_size_max;
   block_size_max = block_size_max == -1 ?
-	           static_cast<int64_t>(input_shape.size()) - 1 :
-		   std::min(block_size_max, static_cast<int64_t>(input_shape.size()) - 1);
-  std::vector<int64_t> y_shape;
-  std::vector<std::pair<int64_t,int64_t>> y_range;
+                   static_cast<int64_t>(input_dims.size()) - 1 :
+                   std::min(block_size_max, static_cast<int64_t>(input_dims.size()) - 1);
+  std::vector<int64_t> output_dims;
+  std::vector<std::pair<int64_t,int64_t>> output_range;
   int64_t block_total = 1;
   if (block_done) {
     for (size_t i = 0; i < block_shape.size(); i++) {
       block_total = block_total * block_shape[i];
     }
   }
-  int64_t batch_dim = (input_shape[0] == -1 || !block_done) ? -1 : input_shape[0] * block_total;
-  y_shape.push_back(batch_dim);
+  int64_t batch_dim = (input_dims[0] == -1 || !block_done) ? -1 : input_dims[0] * block_total;
+  output_dims.push_back(batch_dim);
   int64_t batch_range_min = !block_done ? input_range[0].first : input_range[0].first * block_total;
   int64_t batch_range_max =  (input_range[0].second == -1 || !block_done) ? -1 : input_range[0].second * block_total;
-  y_range.push_back(std::pair<int64_t, int64_t>(batch_range_min, batch_range_max));
+  output_range.push_back(std::pair<int64_t, int64_t>(batch_range_min, batch_range_max));
 
   for (auto i = 1; i <= block_size_max; i++) {
-    auto shape_dim = (input_shape[i] == -1 || !block_done || !padding_done) ?
+    auto shape_dim = (input_dims[i] == -1 || !block_done || !padding_done) ?
                      -1 :
-                     (input_shape[i] + paddings[2 * i - 2] + paddings[2 * i - 1]) / block_shape[i - 1];
-    y_shape.push_back(shape_dim);
+                     (input_dims[i] + paddings[2 * i - 2] + paddings[2 * i - 1]) / block_shape[i - 1];
+    output_dims.push_back(shape_dim);
     auto range_min = (!padding_done) ?
                       input_range[i].first :
                       input_range[i].first + paddings[2 * i - 2] + paddings[2 * i - 1];
@@ -358,17 +357,17 @@ IMPLEMT_COMMON_INFERFUNC(SpaceToBatchNDInferShape) {
                      -1 :
                      input_range[i].second + paddings[2 * i - 2] + paddings[2 * i - 1];
     range_min = (!block_done) ? 1 : std::ceil(static_cast<float>(range_min) / static_cast<float>(block_shape[i - 1]));
-    range_min = std::max(range_min, int64_t(1));
+    range_min = std::max(int64_t(range_min), int64_t(1));
     range_max = (!block_done || range_max == -1) ? range_max : range_max / block_shape[i - 1];
-    y_range.push_back(std::pair<int64_t, int64_t>(range_min, range_max));
+    output_range.push_back(std::pair<int64_t, int64_t>(range_min, range_max));
   }
-  for (auto i = block_size_max + 1; i < input_shape.size(); i++) {
-    y_shape.push_back(input_shape[i]);
-    y_range.push_back(input_range[i]);
+  for (auto i = block_size_max + 1; i < input_dims.size(); i++) {
+    output_dims.push_back(input_dims[i]);
+    output_range.push_back(input_range[i]);
   }
 
-  output_desc->SetShape(GeShape(y_shape));
-  output_desc->SetShapeRange(y_range);
+  output_desc->SetShape(GeShape(output_dims));
+  output_desc->SetShapeRange(output_range);
   return GRAPH_SUCCESS;
 }
 
@@ -385,21 +384,19 @@ VERIFY_FUNC_REG(SpaceToBatchND, SpaceToBatchNDVerify);
 
 // ----------------SpaceToBatchNDD Op Start-------------------
 IMPLEMT_COMMON_INFERFUNC(SpaceToBatchNDDInferShape) {
-  auto tensordesc = op.GetInputDesc("x");
-  auto dtype = tensordesc.GetDataType();
-  auto shape = tensordesc.GetShape();
-  int64_t shape_2 = shape.GetDim(2);
-  int64_t shape_3 = shape.GetDim(3);
-  std::vector<int64_t> shape_vector = shape.GetDims();
+  auto node = NodeUtils::GetNodeFromOperator(op);
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto input_dims = input_desc->MutableShape().GetDims();;
+  auto input_dtype = input_desc->GetDataType();
+
+  auto output_desc = op_info->MutableOutputDesc("y");
+  output_desc->SetDataType(input_dtype);
+
   std::vector<int64_t> block_shape;
   if (op.GetAttr("block_shape", block_shape) != GRAPH_SUCCESS) {
     OpsGetAttrErrReport(op.GetName(), "block_shape");
     OP_LOGE(op.GetName().c_str(), "GetOpAttr ConstValue block_shape failed!");
-    return GRAPH_FAILED;
-  }
-  if (block_shape.size() != 2) {
-    OpsAttrValueErrReport(op.GetName(), "block_shape", "2", ConcatString(block_shape.size()));
-    OP_LOGE(op.GetName().c_str(), "the shape of block_shape should be 2 !");
     return GRAPH_FAILED;
   }
 
@@ -409,48 +406,66 @@ IMPLEMT_COMMON_INFERFUNC(SpaceToBatchNDDInferShape) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr ConstValue paddings failed!");
     return GRAPH_FAILED;
   }
-  if ((paddings.size() != 4)) {
-    OpsAttrValueErrReport(op.GetName(), "paddings", "4", ConcatString(paddings.size()));
-    OP_LOGE(op.GetName().c_str(), "the shape of paddings should be 2x2 !");
-    return GRAPH_FAILED;
-  }
-  if ((paddings[0] < 0) || (paddings[1] < 0) || (paddings[2] < 0) || (paddings[3] < 0)) {
-    OP_LOGE(op.GetName().c_str(), "the value of paddings should be greater or equal to 0");
-    return GRAPH_FAILED;
-  }
-  if ((shape_2 + paddings[0] + paddings[1]) % (block_shape[0]) != 0) {
-    OP_LOGE(op.GetName().c_str(), "paddings height should be exactly divisible by block height");
-    return GRAPH_FAILED;
-  }
-  if ((shape_3 + paddings[2] + paddings[3]) % (block_shape[1]) != 0) {
-    OP_LOGE(op.GetName().c_str(), "paddings width should be exactly divisible by block width");
-    return GRAPH_FAILED;
-  }
-  if (shape_vector.size() <= block_shape.size()) {
-    OP_LOGE(op.GetName().c_str(),
-            "DimSize of x is not greater than size \
-                                   of block_shape.");
-    return GRAPH_FAILED;
+
+  // not dynamic case, only set shape
+  if (!IsUnknown(input_dims)) {
+    std::vector<int64_t> output_dims;
+    int64_t first_dim = input_dims[0];
+    for (size_t i = 0; i < block_shape.size(); i++) {
+      first_dim = first_dim * block_shape[i];
+    }
+    output_dims.push_back(first_dim);
+    for (size_t i = 1; i <= block_shape.size(); i++) {
+      output_dims.push_back((input_dims[i] + paddings[2 * i - 2] + paddings[2 * i - 1]) / block_shape[i - 1]);
+    }
+    for (size_t i = block_shape.size() + 1; i < input_dims.size(); i++) {
+      output_dims.push_back(input_dims[i]);
+    }
+    output_desc->SetShape(GeShape(output_dims));
+    return GRAPH_SUCCESS;
   }
 
-  TensorDesc td = op.GetOutputDesc("y");
-  std::vector<int64_t> y_shape;
-  int64_t block_shape_size = shape_vector[0];
+  // dynamic case, input shape is -2, output is -2
+  if (IsUnknownRankShape(input_dims)) {
+    output_desc->SetShape(GeShape(input_dims));
+    OP_LOGW(op.GetName().c_str(), "input shape is UnknownRank, set output is UnknownRank");
+    return GRAPH_SUCCESS;
+  }
+
+  // dynamic case, input shape is -1, output is -1
+  std::vector<std::pair<int64_t,int64_t>> input_range;
+  input_desc->GetShapeRange(input_range);
+  MakeUpShapeRange(input_dims, input_range);
+
+  std::vector<int64_t> output_dims;
+  std::vector<std::pair<int64_t,int64_t>> output_range;
+  int64_t block_total = 1;
   for (size_t i = 0; i < block_shape.size(); i++) {
-    block_shape_size = block_shape_size * block_shape[i];
+    block_total = block_total * block_shape[i];
   }
-  y_shape.push_back(block_shape_size);
+  int64_t batch_dim = input_dims[0] == -1 ? -1 : input_dims[0] * block_total;
+  output_dims.push_back(batch_dim);
+  int64_t batch_range_min = input_range[0].first * block_total;
+  int64_t batch_range_max = input_range[0].second == -1 ? -1 : input_range[0].second * block_total;
+  output_range.push_back(std::pair<int64_t, int64_t>(batch_range_min, batch_range_max));
+
   for (size_t i = 1; i <= block_shape.size(); i++) {
-    y_shape.push_back((shape_vector[i] + paddings[2 * i - 2] + paddings[2 * i - 1]) / block_shape[i - 1]);
+    auto shape_dim = input_dims[i] == -1 ? -1 :
+                     (input_dims[i] + paddings[2 * i - 2] + paddings[2 * i - 1]) / block_shape[i - 1];
+    output_dims.push_back(shape_dim);
+    auto range_min = std::ceil(static_cast<float>(input_range[i].first + paddings[2 * i - 2] + paddings[2 * i - 1]) / static_cast<float>(block_shape[i - 1]));
+    range_min = std::max(int64_t(range_min), int64_t(1));
+    auto range_max = input_range[i].second == -1 ? -1 :
+                     (input_range[i].second + paddings[2 * i - 2] + paddings[2 * i - 1]) / block_shape[i - 1];
+    output_range.push_back(std::pair<int64_t, int64_t>(range_min, range_max));
   }
-  for (size_t i = block_shape.size() + 1; i < shape_vector.size(); i++) {
-    y_shape.push_back(shape_vector[i]);
+  for (size_t i = block_shape.size() + 1; i < input_dims.size(); i++) {
+    output_dims.push_back(input_dims[i]);
+    output_range.push_back(input_range[i]);
   }
 
-  Shape outShape(y_shape);
-  td.SetShape(outShape);
-  td.SetDataType(dtype);
-  (void)op.UpdateOutputDesc("y", td);
+  output_desc->SetShape(GeShape(output_dims));
+  output_desc->SetShapeRange(output_range);
   return GRAPH_SUCCESS;
 }
 

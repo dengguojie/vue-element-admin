@@ -1835,7 +1835,7 @@ static void UpdateDimAndRange(const int64_t& ksize, const int64_t& strides,
     dim_range = std::pair<int64_t, int64_t>{output_dim_size, output_dim_size};
     dim_size = output_dim_size;
   } else {
-    int64_t first_range = dim_range.first == -1 ? -1 : (dim_range.first - ksize + strides) / strides;
+    int64_t first_range = dim_range.first == 1 ? 1 : (dim_range.first - ksize + strides) / strides;
     int64_t second_range = dim_range.second == -1 ? -1 : (dim_range.second - ksize + strides) / strides;
     dim_range = std::pair<int64_t, int64_t>{first_range, second_range};
   }
@@ -1866,7 +1866,6 @@ IMPLEMT_INFERFUNC(MaxPool, MaxPoolInferShape) {
             "length of shape!");
     return GRAPH_FAILED;
   }
-
   // get input strides
   std::vector<int32_t> stridesList;
   if (GRAPH_SUCCESS != op.GetAttr("strides", stridesList)) {
@@ -1935,8 +1934,9 @@ IMPLEMT_INFERFUNC(MaxPool, MaxPoolInferShape) {
   std::vector<int64_t> dims_input = shape.GetDims();
   std::vector<std::pair<int64_t, int64_t>> input_range;
   bool is_unkown_rank = dims_input == UNKNOWN_RANK ? true : false;
+  // only support NHWC or NCHW
   if (is_unkown_rank) {
-    OP_LOGW(op.GetName().c_str(), "the input os unkown rank, will set the input -1, -1, -1 , -1");
+    OP_LOGW(op.GetName().c_str(), "the input os unkown rank, will set the input [-1, -1, -1, -1]");
     dims_input = {-1, -1, -1, -1};
   } else {
     inputTensorDesc.GetShapeRange(input_range);
@@ -1947,10 +1947,10 @@ IMPLEMT_INFERFUNC(MaxPool, MaxPoolInferShape) {
   std::vector<int64_t> dimVector;
   std::vector<std::pair<int64_t, int64_t>> output_range;
 
-  auto shape_h_dim = input_format == FORMAT_NCHW ? DIM_SIZE2 : DIM_SIZE1;
-  auto shape_w_dim = input_format == FORMAT_NCHW ? DIM_SIZE3 : DIM_SIZE2;
-  auto stride_h_dim = dataFormat == "NCHW" ? DIM_SIZE2 : DIM_SIZE1;
-  auto stride_w_dim = dataFormat == "NCHW" ? DIM_SIZE3 : DIM_SIZE2;
+  auto shape_h_dim = input_format == FORMAT_NHWC ? DIM_SIZE1 : DIM_SIZE2;
+  auto shape_w_dim = input_format == FORMAT_NHWC ? DIM_SIZE2 : DIM_SIZE3;
+  auto stride_h_dim = dataFormat == "NHWC" ? DIM_SIZE1 : DIM_SIZE2;
+  auto stride_w_dim = dataFormat == "NHWC" ? DIM_SIZE2 : DIM_SIZE3;
 
   if (paddingMode != "VALID") {
     ksizeList[stride_h_dim] = 1;
