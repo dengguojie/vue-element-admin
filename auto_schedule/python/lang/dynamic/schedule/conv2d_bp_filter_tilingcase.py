@@ -442,8 +442,11 @@ class Conv2dBpFilterTiling(CubeTilingOp):
                             tiling["flag_fmap_load2d"],
                             tiling["k_atomic_add_len"],)
 
-        if seed_tiling_flag[:-2] != local_tiling_flag[:-2]:
-            return False
+        for index, flag in enumerate(seed_tiling_flag[:-2]):
+            if flag == "dw_cc":
+                continue
+            elif flag != local_tiling_flag[index]:
+                return False
 
         # align tiling["BL1_shape"] for k_h * k_w
         tiling["BL1_shape"][1] = utils.align(
