@@ -1,0 +1,72 @@
+[
+    {
+        "case_name": "Test_Conv2D_001",
+        "op": "Conv2D",
+        "input_desc": [
+            {
+                "format": [
+                    "NCHW"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [8,512,7,7],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "NCHW"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [512,512,3,3],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "NCHW"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [8,512,7,7]
+            }
+        ],
+        "attr": [
+            {
+                "name": "strides",
+                "type": "list_int",
+                "value": [1,1,1,1]
+            },
+            {
+                "name": "pads",
+                "type": "list_int",
+                "value": [1,1,1,1]
+            },
+            {
+                "name": "dilations",
+                "type": "list_int",
+                "value": [1,1,1,1]
+            }
+        ]
+    }
+]
