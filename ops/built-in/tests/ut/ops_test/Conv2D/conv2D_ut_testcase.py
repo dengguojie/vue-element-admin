@@ -11,7 +11,8 @@ conv2D_ut_testcase = [
 ["all", {'ori_shape': (4, 64, 64, 4), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (3, 3, 4, 1), 'ori_format': 'HWCN', 'dtype': 'float16', "format":'FRACTAL_Z_C04'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
 # ============ base case bias ===============
 ["all", {'ori_shape': (4, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 1, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (16), "dtype": "float16"}, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
-
+# ============ base case wo=1 hw!=1 ===============
+["all", {'ori_shape': (1, 32, 7, 1), 'ori_format': 'NCHW', 'dtype': 'int8'}, {'ori_shape': (32, 32, 1, 1), 'ori_format': 'NCHW', 'dtype': 'int8'}, None, None, {'dtype': 'int32'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
 # ============ RuntimeError ===============
 # ============ base case C0=4   H and W are both equal to 1 ===============
 ["all", {'ori_shape': (4, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 4, 1), 'ori_format': 'HWCN', 'dtype': 'float16', "format":'FRACTAL_Z_C04'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), RuntimeError],

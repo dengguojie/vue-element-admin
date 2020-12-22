@@ -1104,7 +1104,8 @@ class CceConvOp:
                              "kernel_name": ConvParam.kernel_name,
                              "pooling_shape": pooling_shape,
                              "pooling_stride": pooling_stride,
-                             "special_mode": special_mode_dict}
+                             "special_mode": special_mode_dict,
+                             "placeholder_fmap_5hd_shape": list(ConvParam.dim_map["fmap_5hd_shape"])}
 
                 tiling_new = get_tiling(info_dict)
                 return tiling_new
@@ -1427,7 +1428,8 @@ class CceConvOp:
                                  "reserved_ub": reserved_ub,
                                  "fused_ub_cl0": fused_ub_cl0,
                                  "kernel_name": ConvParam.kernel_name,
-                                 "special_mode": special_mode_dict}
+                                 "special_mode": special_mode_dict,
+                                 "placeholder_fmap_5hd_shape": list(ConvParam.dim_map["fmap_5hd_shape"])}
                     tiling_new = get_tiling(info_dict)
                     return tiling_new
 
@@ -2412,11 +2414,11 @@ class CceConvOp:
                     if tiling["BL0_matrix"] == []:
                         weight_repeat_load_num = 1
                     else:
-                        weight_repeat_load_num = al1_factor[1]
+                        weight_repeat_load_num = int(al1_factor[1])
                 elif tiling["BL1_shape"] == []:
                     weight_repeat_load_num = 1
                 else:
-                    weight_repeat_load_num = al1_factor[1]
+                    weight_repeat_load_num = int(al1_factor[1])
                 sch[res_c].pragma(bido, "json_info_weight_repeat",
                                   weight_repeat_load_num)
 
@@ -3205,7 +3207,7 @@ class CceConvOp:
                 if "convolution" in lop["op"] or (("bias_tensor" in lop["op"]) and ("bias" in tensor_map.keys())):
                     return True
                 if tensor_map.get("fp16_bias") == lop["dst_buffer"] and (not tiling["CUB_channel_wise_flag"]):
-                    sch[lop['cache_buffer']].compute_at(sch[res_c], cout1_group_inner_outer)
+                    sch[lop['cache_buffer']].compute_at(sch[res_c], bido)
                     return True
                 if "max_pooling_pad_" in lop["op"]:
                     return True
@@ -3891,7 +3893,7 @@ class CceConvOp:
                 else:
                     sch[sum_x_global].emit_insn(c_rf_outer_outer_inner, "dma_copy")
                 sch[sum_x_ub_rf].emit_insn(m_outer_inner_inner,
-                                        "vector_dichotomy_add_for_bn_reduce")
+                                           "vector_dichotomy_add_for_bn_reduce")
 
 
         self_init()
@@ -4194,9 +4196,14 @@ class CceConvOp:
         filter_matrix[1] = filter_matrix[1] // tiling["block_dim"][1]
         if tiling["BL0_matrix"] == filter_matrix:
             tiling["BL0_matrix"] = []
-        if tiling["BL0_matrix"] == [] and not self.unzip_parameters.get(
-                "weight_zip_flag"):
-            tiling["BL1_shape"] = None
+        if tiling["BL0_matrix"] == [] and not self.unzip_parameters.get("weight_zip_flag"):
+            if int_ceil_div(ConvParam.para_dict["group_opt"], tiling["block_dim"][3]) == 1:
+                tiling["BL1_shape"] = None
+            elif int_ceil_div(ConvParam.para_dict["group_opt"], tiling["block_dim"][3]) > 1 \
+                and tiling["BL1_shape"] is not None:
+                tiling["BL1_shape"] = []
+            else:
+                pass
 
         if self.unzip_parameters.get("weight_zip_flag"):
             if tiling["BL1_shape"] is None:
@@ -4331,7 +4338,7 @@ class CceConvOp:
 
         c_tiling_factor = [tiling["CL0_matrix"][0],
                            tiling["CL0_matrix"][1]*tiling["CL0_matrix"][2]]
-        c_factor = [int_ceil_div(dim_map["out_img_shape"][1],
+        c_factor = [int_ceil_div(ConvParam.para_dict["cout1_opt"],
                                  c_tiling_factor[0]),
                     int_ceil_div(dim_map["out_img_shape"][2],
                                  c_tiling_factor[1])]
@@ -4427,8 +4434,14 @@ class CceConvOp:
             # add for group pattern
             cout1_group, cout1_ori = sch[sum_x_global].split(
                 sum_x_global.op.axis[0], factor=ConvParam.para_dict["cout1_opt"])
-            c_rf_outer_outer, c_rf_outer_inner = sch[sum_x_global].split(
-                cout1_ori, (sum_x_global.shape[0].value // c_factor[0]))
+
+            if ConvParam.para_dict["group_opt"] == 1:
+                c_rf_outer_outer, c_rf_outer_inner = sch[sum_x_global].split(
+                    cout1_ori, (sum_x_global.shape[0].value // c_factor[0]))
+            else:
+                c_rf_outer_outer, c_rf_outer_inner = sch[sum_x_global].split(
+                    cout1_ori, factor=c_tiling_factor[0])
+
             # end for group pattern
             tmp_value = (sum_x_global.op.axis[0].dom.extent) // \
                 (sum_x_global.shape[0].value // c_factor[0])
@@ -4444,7 +4457,7 @@ class CceConvOp:
 
             # add for group pattern
             cout1_group_rf, cout1_ori_rf = sch[sum_x_ub_rf].split(
-                sum_x_ub_rf.op.axis[1], nparts=ConvParam.para_dict["group_opt"])
+                sum_x_ub_rf.op.axis[1], factor=ConvParam.para_dict["cout1_opt"])
 
             if ConvParam.para_dict["group_opt"] == 1:
                 c_outer_outer, c_outer_inner = sch[sum_x_ub_rf].split(
@@ -4539,14 +4552,18 @@ class CceConvOp:
             noi_true = batch_inner_outer
             res_c = sum_x_ub_rf
         else:
-            cout1_group, cout1_ori = sch[res_c].split(
-                res_c.op.axis[1], factor=ConvParam.para_dict["cout1_opt"])
-            if ConvParam.para_dict["group_opt"] == 1:
-                c_outer_outer, c_outer_inner = sch[res_c].split(
-                    cout1_ori, (res_c.shape[1].value // c_factor[0]))
+            if res_c.dtype == "int8" or "virtual_res" in res_c.op.name:
+                cout1_group, cout1_ori = sch[res_c].split(
+                    res_c.op.axis[1], factor=int_ceil_div(ConvParam.para_dict["cout1_opt"], 2))
             else:
-                c_outer_outer, c_outer_inner = sch[res_c].split(
-                    cout1_ori, factor=c_tiling_factor[0])
+                cout1_group, cout1_ori = sch[res_c].split(
+                    res_c.op.axis[1], factor=ConvParam.para_dict["cout1_opt"])
+
+            if res_c.dtype == "int8" or "virtual_res" in res_c.op.name:
+                c_outer_outer, c_outer_inner = sch[res_c].split(cout1_ori, c_tiling_factor[0] // 2)
+            else:
+                c_outer_outer, c_outer_inner = sch[res_c].split(cout1_ori, c_tiling_factor[0])
+
             m_outer_outer, m_outer_inner = sch[res_c].split(
                 res_c.op.axis[2], c_tiling_factor[1])
             sch[res_c].reorder(c_outer_outer, m_outer_outer,
@@ -4742,7 +4759,7 @@ class CceConvOp:
                     if tiling.get("CUB_channel_wise_flag"):
                         sch[buffer_data].compute_at(sch[res_c], c_slice_axis)
                     else:
-                        sch[buffer_data].compute_at(self._schedule[res_c], cout1_group_inner_outer)
+                        sch[buffer_data].compute_at(self._schedule[res_c], bido)
                 # input_y in conv + dequant + add + quant
                 elif buffer_data.dtype == "float16":
                     sch[buffer_data].compute_at(
@@ -4983,7 +5000,7 @@ class CceConvOp:
 
         if self._lhisi_data_flow_type:
             if not tiling.get("CUB_channel_wise_flag"):
-                sch[scale_ub].compute_at(sch[res_c], cout1_group_inner_outer)
+                sch[scale_ub].compute_at(sch[res_c], bido)
             else:
                 sch[scale_ub].compute_at(sch[res_c], m_outer_outer_inner)
 
@@ -4994,7 +5011,7 @@ class CceConvOp:
                     sch[bias_ub_brc].compute_at(
                         sch[res_c], m_outer_outer_inner)
             else:
-                sch[bias_ub].compute_at(sch[res_c], cout1_group_inner_outer)
+                sch[bias_ub].compute_at(sch[res_c], bido)
                 if bias_optimize_flag:
                     sch[bias_ub_brc].compute_at(
                         sch[res_c], m_outer_outer_inner)

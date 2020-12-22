@@ -55,7 +55,7 @@ def ascend_dequant_s16_compute(x0, deq_scale, x1, y, relu_flag=False, kernel_nam
     if conv_flag:
         x0_input_shape = shape_util.shape_to_list(x0.op.input_tensors[0].shape)
         align_shape = [x0_input_shape[1],
-                       x0_input_shape[0] * x0_input_shape[2],
+                       x0.shape[1],
                        x0_input_shape[3],
                        x0_input_shape[4]]
     else:

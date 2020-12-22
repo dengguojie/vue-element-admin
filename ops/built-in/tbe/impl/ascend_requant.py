@@ -54,7 +54,7 @@ def ascend_requant_compute(x, req_scale, y, relu_flag=False, kernel_name="ascend
     if conv_flag:
         x_input_shape_list = shape_util.shape_to_list(x.op.input_tensors[0].shape)
         align_shape = [x_input_shape_list[1],
-                       x_input_shape_list[0] * x_input_shape_list[2],
+                       x.shape[1],
                        x_input_shape_list[3],
                        x_input_shape_list[4]]
         c1_index = 1

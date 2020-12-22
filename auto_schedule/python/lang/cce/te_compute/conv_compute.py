@@ -131,8 +131,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
 
             valid_shape_check_flg = (valid_shape[2] + slice_offset[2] <=
                                      shape_in[2]) and (valid_shape[2] >= 0) \
-                and valid_shape[0] == shape_in[0] and valid_shape[3] == \
-                shape_in[3] and valid_shape[1]*valid_shape[4] == shape_in[1]
+                and valid_shape[0] == shape_in[0] and valid_shape[3] == shape_in[3]
 
             if not slice_offset_check_flg:
                 err_man.raise_err_check_the_validity_of_one_variable("conv2d",
@@ -715,7 +714,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             in_channel_c0 = CUBE_MKN[data.dtype]['mac'][1]
             if l0a_load2d_flag:
                 shape_al1_load2d = (batch_size,
-                                    in_channel_c1,
+                                    ConvParam.dim_map["fmap_5hd_shape"][1],
                                     feature_map_h*feature_map_w,
                                     in_channel_c0)
                 if valid_shape:
@@ -739,7 +738,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                     in_channel_c0)
 
                 al0_load2d = tvm.compute(shape_al0_load2d, \
-                    lambda group, n, m_1, c1, m_0, c0: al1_load2d(n, c1, \
+                    lambda group, n, m_1, c1, m_0, c0: al1_load2d(n, group*ConvParam.para_dict["c1_opt"]+c1, \
                         m_0 + CUBE_MKN[fmap.dtype]["mac"][0]*m_1, c0), \
                     name=OP_TAG + "al0_load2d")
                 TENSOR_MAP["al0_load2d"] = al0_load2d
@@ -853,18 +852,18 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                 bias_ub_brc_shape = list(mad_shape)
                 bias_ub_brc_shape[3] = bias_ub_brc_shape[3] // 16
                 bias_ub_brc = tvm.compute(bias_ub_brc_shape, \
-                    lambda group, i, j, k, l: bias_tensor(j * config['mac'][2] \
-                        + l), \
+                    lambda group, i, j, k, l: bias_tensor(group * bias_ub_brc_shape[2] * config['mac'][2] \
+                    + j * config['mac'][2] + l), \
                     name=OP_TAG + 'bias_ub_brc')
                 bias_l0c = tvm.compute(mad_shape, lambda group, i1, j1, k_1, l1:
-                                       bias_ub_brc(0, i1, j1, k_1 // 16, l1),
+                                       bias_ub_brc(group, i1, j1, k_1 // 16, l1),
                                        name=OP_TAG + 'bias_l0c')
                 TENSOR_MAP["bias_ub_brc"] = bias_ub_brc
                 TENSOR_MAP["bias_l0c"] = bias_l0c
             else:
                 bias_l0c = \
                     tvm.compute(mad_shape, lambda group, i1, j1, k_1, l1:
-                                bias_tensor(j1 * config['mac'][2] + l1),
+                                bias_tensor(group * mad_shape[2] * config['mac'][2] + j1 * config['mac'][2] + l1),
                                 name=OP_TAG + 'bias_l0c')
                 TENSOR_MAP["bias_l0c"] = bias_l0c
 
@@ -2111,8 +2110,6 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
 
     in_dtype = data.dtype
     w_dtype = weight.dtype
-    data_shape = shape_to_list(data.shape)
-    weight_shape = shape_to_list(weight.shape)
 
     stride_h = para_dict["stride_h"]
     stride_w = para_dict["stride_w"]
@@ -2138,9 +2135,6 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
     check_optim_dict(optim_dict, para_dict, data, weight)
     check_data(data, optim_dict)
     check_weight(weight)
-
-    if not optim_dict["c0_optim_flg"] and int(data_shape[1]) != int((weight_shape[0] / filter_h) / filter_w):
-        err_man.raise_err_scene_equal_limitation("conv2d", "data_shape[1]", "((weight_shape[0]/filter_h)/filter_w)")
 
     _save_conv_param()
 

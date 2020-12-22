@@ -61,7 +61,8 @@ def calc_para_from_tensor(inputs, weights, bias, offset_w, strides, pads,
     pos_cout = format_w.find('N')
     weight_h = shape_w[pos_h]
     weight_w = shape_w[pos_w]
-    shape_c = shape_w[pos_c]
+    # fix the weight's channel=cin_ori
+    shape_c = shape_w[pos_c]*groups
     cout_all = shape_w[pos_cout]
 
     if len(strides) != 4:
@@ -69,12 +70,6 @@ def calc_para_from_tensor(inputs, weights, bias, offset_w, strides, pads,
     if len(dilations) != 4:
         err_man.raise_err_should_be_4d("conv2d", "directions")
 
-    format_x = inputs.op.attrs['ori_format'].value
-
-    all_fmt = ["NCHW", "NHWC"]
-    if format_x not in all_fmt:
-        err_man.raise_err_input_format_invalid("conv2d", \
-        "input", ["NCHW", "NHWC"], format_x)
     pos_h = data_format.find('H')
     pos_w = data_format.find('W')
     strideh = strides[pos_h]
@@ -202,7 +197,8 @@ def calc_para_from_dict(inputs, weights, strides, pads,
     pos_c = format_w.find('C')
     pos_h = format_w.find('H')
     pos_w = format_w.find('W')
-    shape_filter = [shape_w[pos_n], shape_w[pos_c], \
+    # fix the weight's channel=cin_ori
+    shape_filter = [shape_w[pos_n], shape_fm[1], \
                     shape_w[pos_h], shape_w[pos_w]]
 
     fusion_para = _conv2d_fusion_para(inputs, outputs)
@@ -423,6 +419,10 @@ def _conv2d_compute_fusion_para(inputs):
         slice_offset = []
         l1_fusion_type = -1
 
+    if (l2_fusion_enable_flag or (not l1_fusion_enable_flag)) and (input_memory_type == 1 or l1_fusion_type != -1):
+        err_man.raise_err_specific_user("conv2d", "if enable L2 fusion and"\
+            + "not enable L1 fusion, input_memory_type must not be 1 or L1 fusion type can't equal -1")
+
     if input_memory_type not in (0, 1, 2):
         err_man.raise_err_input_mem_type("conv2d", input_memory_type)
     if valid_shape and not slice_offset:
@@ -500,6 +500,10 @@ def _conv2d_fusion_para(inputs, outputs):
         valid_shape = []
         slice_offset = []
         l1_fusion_type = -1
+
+    if (l2_fusion_enable_flag or (not l1_fusion_enable_flag)) and (input_memory_type == 1 or l1_fusion_type != -1):
+        err_man.raise_err_specific_user("conv2d", "if enable L2 fusion and"\
+            + "not enable L1 fusion, input_memory_type must not be 1 or L1 fusion type can't equal -1")
 
     if input_memory_type not in (0, 1, 2):
         err_man.raise_err_input_mem_type("conv2d", input_memory_type)

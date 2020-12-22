@@ -348,6 +348,8 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
 
     shape_in = list(shape_in)
     shape_w = list(shape_w)
+    # fix the weight's channel=cin_ori
+    shape_w[1] = shape_in[1]
     weight_ori_shape_nchw = shape_w
     cin_ori = shape_in[1]//groups
     cout_ori = shape_w[0]//groups
