@@ -202,11 +202,10 @@ def strided_slice_last_dim(input_shape, dtype, output_shape, begin, end, stride,
                                 block_num=total_core_num) as total_cycle:
         with tik_instance.if_scope(total_cycle < aicore_num):
             with tik_instance.for_range(0, split_factor_group_1)as axis_outer:
-                if (input_group_1 % type_block_num) == 0:
-                    stride_length = input_group_1 // type_block_num
+                if ((input_group_1 // split_factor_group_1) % type_block_num) == 0:
+                    stride_length = input_group_1 // split_factor_group_1 // type_block_num
                 else:
-                    stride_length = (input_group_1 // type_block_num) + 1
-                stride_length = stride_length // split_factor_group_1
+                    stride_length = (input_group_1 // split_factor_group_1 // type_block_num) + 1
                 tik_instance.data_move(input_data_ub,
                                        input_data[(total_cycle * input_group_1)
                                                   + (axis_outer * input_group_1
@@ -222,15 +221,13 @@ def strided_slice_last_dim(input_shape, dtype, output_shape, begin, end, stride,
                 gm_deviation = axis_outer * output_group_1 // split_factor_group_1
                 output_data_src1 = total_cycle * output_group_1 + gm_deviation
 
-                if (output_group_1 % type_block_num) == 0:
-                    output_stride_length = output_group_1 // type_block_num
+                if ((output_group_1 // split_factor_group_1) % type_block_num) == 0:
+                    output_stride_length = (output_group_1 // split_factor_group_1) // type_block_num
                 else:
-                    output_stride_length = (output_group_1 // type_block_num) + 1
-
-                output_data_burlen = output_stride_length // split_factor_group_1
+                    output_stride_length = ((output_group_1 // split_factor_group_1) // type_block_num) + 1
                 tik_instance.data_move(output_data[output_data_src1],
                                        output_data_ub, 0, 1,
-                                       output_data_burlen,
+                                       output_stride_length,
                                        0, 0)
         if tail_flag:
             with tik_instance.else_scope():
