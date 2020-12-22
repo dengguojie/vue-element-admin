@@ -64,6 +64,6 @@ TEST_F(AippConvCommonFusionTest, AippConvCommonFusionTest_1) {
 
   fe::Status status = fusion_pass.GetFusionNodes(mapping, fusion_nodes);
   EXPECT_EQ(fusion_nodes.size(), 1);
-  delete fusion_desc_ptr;
+  fusion_desc_ptr = nullptr;
 }
 
