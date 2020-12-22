@@ -27,6 +27,7 @@ from te.platform.cce_params import scope_cbuf
 from te.platform.cce_conf import get_soc_spec
 from te.domain.tiling.get_tiling import get_tiling
 from te.lang.cce.te_compute.cube_util import shape_to_list
+from te.lang.cce.te_schedule.util import parse_tbe_compile_para
 
 from te.utils.error_manager import error_manager_util
 from te.lang.cce.te_compute.conv2d_backprop_filter_compute \
@@ -837,6 +838,15 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             else:
                 tiling = dynamic_para.get('tiling')
             return tiling
+
+
+        def _handle_tbe_compile_para():
+            tbe_compile_para = tiling.get("tbe_compile_para")
+            sch.tbe_compile_para, preload = parse_tbe_compile_para(tbe_compile_para)
+            if preload:
+                if tiling.get("manual_pingpong_buffer").get("CL0_pbuffer") == 2:
+                    sch[dw_cc].preload()
+
 
         def _get_attach_flag():
             dynamic_l0a_attach = None
@@ -1668,6 +1678,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         _bl1_attach()
         _double_buffer()
         _emit_insn()
+        _handle_tbe_compile_para()
         if self.dynamic_mode:
             hw_single_core_factor = _ceil_div(hw_pad_1, block_dim_hw) * \
                                     CUBE_DIM
