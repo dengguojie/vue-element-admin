@@ -39,6 +39,7 @@ class TbeAippCommonFusionPass : public BufferFusionPassBase {
    * @return BufferFusionPattern: return all valid patterns.
    */
   vector<BufferFusionPattern*> DefinePatterns() override;
+
   /*
    * @brief: parse nodes matched in mapping and call DoFusion
    * @param [in] graph: original graph
