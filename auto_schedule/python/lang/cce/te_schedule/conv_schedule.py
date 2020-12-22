@@ -5027,7 +5027,7 @@ class CceConvOp:
                     sch[bias_ub_brc].compute_at(
                         sch[res_c], m_outer_outer_inner)
 
-        if self.unzip_parameters.get("weight_zip_flag"):
+        if self.unzip_parameters.get("weight_zip_flag") or (self._dynamic_mode and tiling["BL1_shape"] == []):
             tiling["B_overhead_opt_flag"] = False
 
         out_extract_axis = -1

@@ -321,13 +321,23 @@ class TilingSelection:
         # using repo seeds
         repo_selections = {}
         tiling_seeds.sort(key=lambda x: (x['A_shape'][0], x['tiling']['block_dim'][0]))
+        # remove duplicate repo tilings
+        tiling_seeds_unique = []
+        for i, seed in enumerate(tiling_seeds):
+            if seed['A_shape'][0] == tiling_seeds[i - 1]['A_shape'][0]:
+                continue
+            tiling_seeds_unique.append(seed)
         lower_bound = batch_range[0]
-        for i, seed in enumerate(tiling_seeds[:-1]):
+        for i, seed in enumerate(tiling_seeds_unique[:-1]):
             cur_batch = seed['A_shape'][0]
-            if cur_batch == tiling_seeds[i - 1]['A_shape'][0] or \
-                    cur_batch < lower_bound:
+            next_batch = tiling_seeds_unique[i + 1]['A_shape'][0]
+            if next_batch <= lower_bound:
                 continue
             seed_cnt = next(self.seed_cnt)
+            tiling_block_dims = seed["tiling"]["block_dim"]
+            block_nums = tiling_block_dims[0]*tiling_block_dims[1]*tiling_block_dims[2]
+            if block_nums < CORE_NUM:
+                seed["tiling"]["block_dim"][0] = CORE_NUM // (tiling_block_dims[1]*tiling_block_dims[2])
             if self.op.op_type == "conv2d":
                 tiling = seed["tiling"]
                 if seed['A_shape'][0] > tiling["block_dim"][0] and tiling["BL1_shape"]:
@@ -336,11 +346,12 @@ class TilingSelection:
                     if k_bl1 == Cin:
                         tiling["n_bef_batch_flag"] = 1
                         seed["tiling"] = tiling
+            # cover upper range
             repo_selections[next(self.seed_cnt)] = \
-                [seed['tiling'], (lower_bound, min(cur_batch, batch_range[1]))]
-            lower_bound = cur_batch + 1
+                [seed['tiling'], (lower_bound, min(next_batch - 1, batch_range[1]))]
+            lower_bound = next_batch
             repo_seeds[seed_cnt] = cur_batch
-            if cur_batch >= batch_range[1]:
+            if lower_bound >= batch_range[1]:
                 break
         else:
             seed_cnt = next(self.seed_cnt)
