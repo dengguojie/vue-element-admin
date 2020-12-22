@@ -1,7 +1,5 @@
 # source file:python/te/lang/base/operation.py
 
-OpMode = operation_impl.OpMode
-
 def register_operator(op_type, pattern=None):
 
 def register_fusion_compute(op_type):
@@ -22,7 +20,7 @@ def static():
 
 def dynamic():
 
-def operator(mode=OpMode.STATIC):
+def operator(mode="static"):
 
 def compute(_operator=None):
 

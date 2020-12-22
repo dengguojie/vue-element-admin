@@ -18,8 +18,6 @@ operation impl
 import functools
 import threading
 from dataclasses import dataclass
-from enum import Enum
-from enum import auto
 from typing import Any
 from typing import Callable
 from typing import Dict
@@ -33,12 +31,12 @@ from te.utils.error_manager.error_manager_util import get_error_message
 # 'pylint: disable=C0103
 _contexts = {}
 
-operators = {}
-fusion_computes = {}
-computes = {}  # type: Dict[Tuple[str, str], Compute]
-schedules = {}
-tiling_cases = {}
-builds = {}
+_operators = {}
+_fusion_computes = {}
+_computes = {}  # type: Dict[Tuple[str, str], Compute]
+_schedules = {}
+_tiling_cases = {}
+_builds = {}
 
 
 @dataclass
@@ -55,20 +53,12 @@ def _get_contexts():
     return _contexts.setdefault(threading.currentThread().ident, [])
 
 
-class OpMode(Enum):
-    """
-    OpMode
-    """
-    STATIC = auto()
-    DYNAMIC = auto()
-
-
 class OperatorContext:
     """
     OperatorContext
     """
 
-    def __init__(self, mode: OpMode):
+    def __init__(self, mode: str):
         self.mode = mode
 
         self.op_type = None
@@ -531,7 +521,7 @@ def register_operator(op_type, pattern=None):
             context.set_pattern(pattern)
             return func(*args, **kwargs)
 
-        operators[op_type] = wrapper
+        _operators[op_type] = wrapper
         return wrapper
 
     return decorator
@@ -542,7 +532,7 @@ def get_operator(op_type):
     :param op_type:
     :return:
     """
-    return operators.get(op_type)
+    return _operators.get(op_type)
 
 
 def register_schedule(pattern):
@@ -558,9 +548,9 @@ def register_schedule(pattern):
 
         if isinstance(pattern, (tuple, list)):
             for p in pattern:
-                schedules[p] = wrapper
+                _schedules[p] = wrapper
         else:
-            schedules[pattern] = wrapper
+            _schedules[pattern] = wrapper
         return wrapper
 
     return decorator
@@ -571,7 +561,7 @@ def get_schedule(pattern):
     :param pattern:
     :return:
     """
-    return schedules.get(pattern)
+    return _schedules.get(pattern)
 
 
 def register_tiling_case(pattern):
@@ -587,9 +577,9 @@ def register_tiling_case(pattern):
 
         if isinstance(pattern, (tuple, list)):
             for p in pattern:
-                tiling_cases[p] = wrapper
+                _tiling_cases[p] = wrapper
         else:
-            tiling_cases[pattern] = wrapper
+            _tiling_cases[pattern] = wrapper
 
         return wrapper
 
@@ -601,7 +591,7 @@ def get_tiling_case(pattern):
     :param pattern:
     :return:
     """
-    return tiling_cases.get(pattern)
+    return _tiling_cases.get(pattern)
 
 
 def register_fusion_compute(op_type):
@@ -615,7 +605,7 @@ def register_fusion_compute(op_type):
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
 
-        fusion_computes[op_type] = wrapper
+        _fusion_computes[op_type] = wrapper
         return wrapper
 
     return decorator
@@ -626,7 +616,7 @@ def get_fusion_compute(op_type):
     :param op_type:
     :return:
     """
-    return fusion_computes.get(op_type)
+    return _fusion_computes.get(op_type)
 
 
 def register_op_compute(op_type, op_mode="dynamic", support_fusion=True):
@@ -643,7 +633,7 @@ def register_op_compute(op_type, op_mode="dynamic", support_fusion=True):
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
 
-        computes[(op_type, op_mode)] = Compute(wrapper, op_mode, support_fusion)
+        _computes[(op_type, op_mode)] = Compute(wrapper, op_mode, support_fusion)
         return wrapper
 
     return decorator
@@ -657,7 +647,7 @@ def get_op_compute(op_type, op_mode="dynamic", verbose=False):
     :param verbose:
     :return:
     """
-    compute_ = computes.get((op_type, op_mode))
+    compute_ = _computes.get((op_type, op_mode))
     if compute_:
         return compute_ if verbose else compute_.func
 
@@ -677,9 +667,9 @@ def register_build_pointcut(pattern):
 
         if isinstance(pattern, (tuple, list)):
             for p in pattern:
-                builds[p] = wrapper
+                _builds[p] = wrapper
         else:
-            builds[pattern] = wrapper
+            _builds[pattern] = wrapper
 
         return wrapper
 
@@ -691,7 +681,7 @@ def get_build_pointcut(pattern):
     :param pattern:
     :return:
     """
-    return builds.get(pattern)
+    return _builds.get(pattern)
 
 
 def var(name, bound=None, dtype="int32", addition=None):
@@ -723,7 +713,15 @@ def in_dynamic():
     :return:
     """
     context = get_context()
-    return context is not None and context.get_mode() == OpMode.DYNAMIC
+    return context is not None and context.get_mode() == "dynamic"
+
+
+def get_op_mode():
+    """
+    :return:
+    """
+    context = get_context()
+    return context.get_mode() if context else None
 
 
 def get_context() -> Optional[OperatorContext]:
@@ -800,17 +798,17 @@ def static():
     """
     :return:
     """
-    return OperatorContext(OpMode.STATIC)
+    return OperatorContext("static")
 
 
 def dynamic():
     """
     :return:
     """
-    return OperatorContext(OpMode.DYNAMIC)
+    return OperatorContext("dynamic")
 
 
-def operator(mode=OpMode.STATIC):
+def operator(mode="static"):
     """
     :param mode:
     :return:

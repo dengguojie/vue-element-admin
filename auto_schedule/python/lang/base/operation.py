@@ -18,9 +18,6 @@ operation interface
 from te.lang.base import operation_impl
 
 
-OpMode = operation_impl.OpMode
-
-
 def register_operator(op_type, pattern=None):
     """
     :param op_type:
@@ -105,7 +102,7 @@ def dynamic():
     return operation_impl.dynamic()
 
 
-def operator(mode=OpMode.STATIC):
+def operator(mode="static"):
     """
     :param mode:
     :return:
