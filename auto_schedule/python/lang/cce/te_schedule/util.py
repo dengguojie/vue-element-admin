@@ -95,13 +95,14 @@ class L1CommonParam(object):
     def __init__(self):
         pass
 
+
 def parse_tbe_compile_para(compile_para):
     tbe_compile_para = {}
     pipeline_opt = 0
     read_write_bank_conflict = 0
     out_of_order = 0
     preload = 0
-    if compile_para == None:
+    if compile_para is None:
         tbe_compile_para = None
         preload = None
     else:
@@ -110,6 +111,8 @@ def parse_tbe_compile_para(compile_para):
         tbe_compile_para["out_of_order"] = (compile_para >> 2) & 1
         preload = (compile_para >> 3) & 1
     return tbe_compile_para, preload
+
+
 def get_split_axis(shape, max_ub_count):
     """
     obtains the axis and factor of segmentation based on the number of data
