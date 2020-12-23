@@ -203,7 +203,7 @@ def prelu_grad_compute(input_gradients,
 
     # need cast float16 to float32
     if dtype == "float16" and tbe_platform.api_check_support(
-            "tbe.broadcast", "float32"):
+            "te.lang.cce.broadcast", "float32"):
         input_gradients = tbe.cast_to(input_gradients, "float32")
         input_features = tbe.cast_to(input_features, "float32")
         input_weights = tbe.cast_to(input_weights, "float32")
@@ -226,7 +226,7 @@ def prelu_grad_compute(input_gradients,
     output_backprops_da = tbe.vmul(res_da, input_gradients)
     # custom vcmpsel end
 
-    if dtype == "float16" and tbe_platform.cce_conf.api_check_support("tbe.vmuls", "float32"):
+    if dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vmuls", "float32"):
         output_backprops_dx = tbe.cast_to(output_backprops_dx, dtype)
         output_backprops_dx_tmp = tbe.cast_to(output_backprops_dx, "float32")
     else:
