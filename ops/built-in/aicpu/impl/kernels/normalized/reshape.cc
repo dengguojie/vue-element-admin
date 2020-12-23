@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "identity.h"
+#include "reshape.h"
 
 #include "securec.h"
 #include "cpu_types.h"
@@ -23,35 +23,29 @@
 #include "utils/kernel_util.h"
 
 namespace {
-constexpr uint32_t kIdentityInputNum = 1;
-constexpr uint32_t kIdentityOutputNum = 1;
-const char *kIdentity = "Identity";
+constexpr uint32_t kReshapeInputNum = 2;
+constexpr uint32_t kReshapeOutputNum = 1;
+const char *kReshape = "Reshape";
 }
 
 namespace aicpu {
-uint32_t IdentityCpuKernel::Compute(CpuKernelContext &ctx) {
+uint32_t ReshapeCpuKernel::Compute(CpuKernelContext &ctx) {
   // check params
-  KERNEL_HANDLE_ERROR(NormalCheck(ctx, kIdentityInputNum, kIdentityOutputNum),
-                      "[%s] check params failed.", kIdentity);
+  KERNEL_HANDLE_ERROR(NormalCheck(ctx, kReshapeInputNum, kReshapeOutputNum),
+                      "[%s] check params failed.", kReshape);
 
   // parse params
   void *input_data = ctx.Input(0)->GetData();
   KERNEL_CHECK_NULLPTR(input_data, KERNEL_STATUS_PARAM_INVALID,
-                       "[%s] get input_data[0] failed.", kIdentity);
+                       "[%s] get input_data[0] failed.", kReshape);
   void *output_data = ctx.Output(0)->GetData();
   KERNEL_CHECK_NULLPTR(output_data, KERNEL_STATUS_PARAM_INVALID,
-                       "[%s] get output_data[0] failed.", kIdentity);
+                       "[%s] get output_data[0] failed.", kReshape);
   int64_t input_size = ctx.Input(0)->GetDataSize();
   int64_t output_size = ctx.Output(0)->GetDataSize();
-  if (output_size < input_size) {
-    KERNEL_LOG_WARN("[%s] output size [%ld] less than input size [%ld].",
-                    kIdentity, output_size, input_size);
-    input_size = output_size;
-  } else if (output_size > input_size) {
-    KERNEL_LOG_ERROR("[%s] output size [%ld] greater than input size [%ld].",
-                     kIdentity, output_size, input_size);
-    return KERNEL_STATUS_PARAM_INVALID;
-  }
+  KERNEL_CHECK_FALSE((output_size == input_size), KERNEL_STATUS_PARAM_INVALID,
+                     "[%s] output size [%ld] not match input size [%ld].",
+                     kReshape, output_size, input_size);
 
   // do copy
   if (output_data != input_data) {
@@ -59,9 +53,10 @@ uint32_t IdentityCpuKernel::Compute(CpuKernelContext &ctx) {
     KERNEL_CHECK_FALSE(
       (cpret == EOK), KERNEL_STATUS_INNER_ERROR,
       "[%s] memcpy_s to output failed, destMax [%ld], count [%ld].",
-      kIdentity, output_size, input_size);
+      kReshape, output_size, input_size);
   }
   return KERNEL_STATUS_OK;
 }
-REGISTER_CPU_KERNEL(kIdentity, IdentityCpuKernel);
+
+REGISTER_CPU_KERNEL(kReshape, ReshapeCpuKernel);
 }  // namespace aicpu

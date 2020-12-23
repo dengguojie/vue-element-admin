@@ -20,23 +20,23 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *RANDOM_UNIFORM = "RandomUniform";
+const char *kRandomUniform = "RandomUniform";
 
-#define RANDOM_UNIFORM_GENERATE_CASE(DTYPE, TYPE)                           \
-  case (DTYPE): {                                                           \
-    if (Generate<TYPE>(ctx, output) != KERNEL_STATUS_OK) {                  \
-      KERNEL_LOG_ERROR("Generate random_distribution failed, data_type=%u", \
-                       DTYPE);                                              \
-      return KERNEL_STATUS_PARAM_INVALID;                                   \
-    }                                                                       \
-    break;                                                                  \
+#define RANDOM_UNIFORM_GENERATE_CASE(DTYPE, TYPE)                             \
+  case (DTYPE): {                                                             \
+    if (Generate<TYPE>(ctx, output) != KERNEL_STATUS_OK) {                    \
+      KERNEL_LOG_ERROR("Generate random_distribution failed, data_type [%u]", \
+                       DTYPE);                                                \
+      return KERNEL_STATUS_PARAM_INVALID;                                     \
+    }                                                                         \
+    break;                                                                    \
   }
 }
 
 namespace aicpu {
 uint32_t RandomUniformCpuKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_LOG_INFO("RandomUniform folding kernel in.");
-  auto attr_value = ctx.GetAttr(ATTR_NAME_DTYPE);
+  auto attr_value = ctx.GetAttr("dtype");
   KERNEL_CHECK_NULLPTR(attr_value, KERNEL_STATUS_PARAM_INVALID,
                        "Get attr dtype failed")
   auto data_type = static_cast<DataType>(attr_value->GetDataType());
@@ -45,8 +45,8 @@ uint32_t RandomUniformCpuKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_CHECK_NULLPTR(output, KERNEL_STATUS_PARAM_INVALID, "Get output failed")
   if (data_type != output->GetDataType()) {
     KERNEL_LOG_ERROR(
-        "RandomUniform kernel data type not matched, dtype=%u, "
-        "out_data_type=%u.",
+        "RandomUniform kernel data type not matched, dtype [%u], "
+        "out_data_type [%u].",
         data_type, output->GetDataType());
     return KERNEL_STATUS_PARAM_INVALID;
   }
@@ -56,7 +56,7 @@ uint32_t RandomUniformCpuKernel::Compute(CpuKernelContext &ctx) {
     RANDOM_UNIFORM_GENERATE_CASE(DT_FLOAT, float)
     RANDOM_UNIFORM_GENERATE_CASE(DT_DOUBLE, double)
     default:
-      KERNEL_LOG_ERROR("RandomUniform kernel data type %u not support.",
+      KERNEL_LOG_ERROR("RandomUniform kernel data type [%u] not support.",
                        data_type);
       return KERNEL_STATUS_PARAM_INVALID;
   }
@@ -68,12 +68,12 @@ uint32_t RandomUniformCpuKernel::Compute(CpuKernelContext &ctx) {
 template <typename T>
 uint32_t RandomUniformCpuKernel::Generate(CpuKernelContext &ctx, Tensor *output) {
   int64_t final_seed = 0;
-  auto attr_seed = ctx.GetAttr(ATTR_NAME_RANDOM_UNIFORM_SEED);
+  auto attr_seed = ctx.GetAttr("seed");
   if (attr_seed != nullptr) {
     final_seed = attr_seed->GetInt();
   }
   if (final_seed == 0) {
-    auto attr_seed2 = ctx.GetAttr(ATTR_NAME_RANDOM_UNIFORM_SEED2);
+    auto attr_seed2 = ctx.GetAttr("seed2");
     if (attr_seed2 != nullptr) {
       final_seed = attr_seed2->GetInt();
     }
@@ -90,5 +90,5 @@ uint32_t RandomUniformCpuKernel::Generate(CpuKernelContext &ctx, Tensor *output)
   return KERNEL_STATUS_OK;
 }
 
-REGISTER_CPU_KERNEL(RANDOM_UNIFORM, RandomUniformCpuKernel);
+REGISTER_CPU_KERNEL(kRandomUniform, RandomUniformCpuKernel);
 }  // namespace aicpu

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef _AICPU_AICPU_DEVICE_CPU_KERNELS_UTILS_MATH_UTIL_H_
-#define _AICPU_AICPU_DEVICE_CPU_KERNELS_UTILS_MATH_UTIL_H_
+#ifndef AICPU_UTILS_KERNEL_UTIL_H_
+#define AICPU_UTILS_KERNEL_UTIL_H_
 
 #include <climits>
 #include <cmath>
@@ -35,36 +35,30 @@ const uint32_t kFirstOutputIndex = 0;
 const uint32_t kDynamicInput = -1;
 const uint32_t kDynamicOutput = -2;
 
-// attr name
-const std::string ATTR_NAME_DTYPE = "dtype";
-const std::string ATTR_NAME_RANDOM_UNIFORM_SEED = "seed";
-const std::string ATTR_NAME_RANDOM_UNIFORM_SEED2 = "seed2";
-
-/// @ingroup kernel_util
-/// @brief get debug string of vector
-/// @param [in] values  values in vector
-/// @return string of values
+/**
+ * @brief get debug string of vector
+ * @param values values in vector
+ * @return string of values
+ */
 template <typename T>
 inline std::string VectorToString(const std::vector<T> &values) {
   std::stringstream ss;
-  ss << '[';
   for (auto iter = values.begin(); iter != values.end(); ++iter) {
     ss << *iter;
     if (iter != values.end() - 1) {
       ss << ", ";
     }
   }
-  ss << ']';
   return ss.str();
 }
 
-/// @ingroup kernel_util
-/// @brief multiply two nonnegative int64's
-/// @param
-///  @li [in]  x  mul value x
-///  @li [in]  y  mul value y
-///  @li [out] xy product of x and y
-/// @return true: normal, false: overflow
+/**
+ * @brief multiply two nonnegative int64's
+ * @param x mul value x
+ * @param y mul value y
+ * @param xy product of x and y
+ * @return true: normal, false: overflow
+ */
 inline bool MulWithoutOverflow(const int64_t x, const int64_t y, int64_t &xy) {
   // Multiply in uint64 rather than int64 since signed overflow is undefined.
   // Negative values will wrap around to large unsigned values in the casts
@@ -78,7 +72,7 @@ inline bool MulWithoutOverflow(const int64_t x, const int64_t y, int64_t &xy) {
     // Ensure nonnegativity.  Note that negative numbers will appear "large"
     // to the unsigned comparisons above.
     if (x < 0 || y < 0) {
-      KERNEL_LOG_ERROR("can't multiply negative numbers.");
+      KERNEL_LOG_ERROR("Can't multiply negative numbers.");
       return false;
     }
 
@@ -91,13 +85,13 @@ inline bool MulWithoutOverflow(const int64_t x, const int64_t y, int64_t &xy) {
   return true;
 }
 
-/// @ingroup kernel_util
-/// @brief add two int64's
-/// @param
-///  @li [in]  x    add value x
-///  @li [in]  y    add value y
-///  @li [out] sum  sum of x and y
-/// @return true: normal, false: overflow
+/**
+ * @brief add two int64's
+ * @param x add value x
+ * @param y add value y
+ * @param sum sum of x and y
+ * @return true: normal, false: overflow
+ */
 inline bool AddWithoutOverflow(const int64_t x, const int64_t y, int64_t &sum) {
   const uint64_t ux = x;
   const uint64_t uy = y;
@@ -107,21 +101,36 @@ inline bool AddWithoutOverflow(const int64_t x, const int64_t y, int64_t &sum) {
   return !(x >= 0 == y >=0 && sum >= 0 != x >= 0);
 }
 
-/// @ingroup kernel_util
-/// @brief normal check for calculation
-/// @param [in] ctx  context
-/// @return uint32_t
+/**
+ * @brief normal check for calculation
+ * @param ctx context
+ * @return status code
+ */
 uint32_t NormalMathCheck(CpuKernelContext &ctx);
 
-/// @ingroup kernel_util
-/// @brief normal check for kernel
-/// @param
-///  @li [in] ctx           context
-///  @li [in] inputs_num    num of inputs
-///  @li [in] outputs_num   num of outputs
-/// @return uint32_t
+/**
+ * @brief normal check for kernel
+ * @param ctx context
+ * @param inputs_num num of inputs
+ * @param outputs_num num of outputs
+ * @return status code
+ */
 uint32_t NormalCheck(CpuKernelContext &ctx,
                      const uint32_t inputs_num,
                      const uint32_t outputs_num);
+
+/**
+ * @brief get data type from string
+ * @param dtype_str string of data type
+ * @return DataType
+ */
+DataType GetDataType(std::string dtype_str);
+
+/**
+ * @brief get string from data type
+ * @param dtype data type
+ * @return string of data type
+ */
+std::string GetDataType(DataType dtype);
 }  // namespace aicpu
-#endif  // _AICPU_AICPU_DEVICE_CPU_KERNELS_UTILS_MATH_UTIL_H_
+#endif

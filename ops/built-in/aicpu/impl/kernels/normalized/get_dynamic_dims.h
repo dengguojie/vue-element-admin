@@ -14,8 +14,8 @@
 * limitations under the License.
 */
 
-#ifndef _AICPU_GET_DYNAMIC_DIMS_KERNELS_H_
-#define _AICPU_GET_DYNAMIC_DIMS_KERNELS_H_
+#ifndef AICPU_KERNELS_NORMALIZED_GET_DYNAMIC_DIMS_H_
+#define AICPU_KERNELS_NORMALIZED_GET_DYNAMIC_DIMS_H_
 
 #include "cpu_kernel.h"
 
@@ -26,14 +26,22 @@ public:
   uint32_t Compute(CpuKernelContext &ctx) override;
 
 private:
-  // get each input's configured shape from attr shape_info
+  /**
+   * @brief get inputs' configured shape from attr shape_info
+   * @param shape_info attr shape_info
+   * @return inputs' configured shape
+   */
   std::vector<std::vector<int64_t>>
       GetShapeInfos(std::vector<int64_t> &shape_info) const;
 
-  // get each input's practical shape from inputs
+  /**
+   * @brief get inputs' practical shape from inputs
+   * @param ctx op context
+   * @param input_shapes inputs' configured shape
+   * @return status code
+   */
   uint32_t GetInputShapes(CpuKernelContext &ctx,
       std::vector<std::vector<int64_t>> &input_shapes) const;
 };
 } // namespace aicpu
-
 #endif

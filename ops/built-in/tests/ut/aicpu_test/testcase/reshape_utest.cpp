@@ -13,16 +13,17 @@
 using namespace std;
 using namespace aicpu;
 
-class TEST_IDENTITY_UT : public testing::Test {};
+class TEST_RESHAPE_UT : public testing::Test {};
 
 #define CREATE_NODEDEF(shapes, data_types, datas)                   \
   auto node_def = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();  \
-  NodeDefBuilder(node_def.get(), "Identity", "Identity")            \
+  NodeDefBuilder(node_def.get(), "Reshape", "Reshape")              \
       .Input({"x", data_types[0], shapes[0], datas[0]})             \
+      .Input({"shape", data_types[0], shapes[0], datas[0]})         \
       .Output({"y", data_types[1], shapes[1], datas[1]})
 
 #define ADD_CASE(base_type, aicpu_type)                                     \
-  TEST_F(TEST_IDENTITY_UT, TestIdentifyBroad_##aicpu_type) {                \
+  TEST_F(TEST_RESHAPE_UT, TestIdentifyBroad_##aicpu_type) {                 \
     vector<DataType> data_types = {aicpu_type, aicpu_type};                 \
     vector<vector<int64_t>> shapes = {{2, 11}, {2, 11}};                    \
     vector<base_type> input(22);                                            \
@@ -35,30 +36,30 @@ class TEST_IDENTITY_UT : public testing::Test {};
     EXPECT_EQ(output, expect_out);                                          \
   }
 
-TEST_F(TEST_IDENTITY_UT, ExpSizeNotMatch) {
+TEST_F(TEST_RESHAPE_UT, ExpSizeNotMatch) {
   vector<DataType> data_types = {DT_INT32, DT_INT32};
-  vector<vector<int64_t>> shapes = {{2, 2, 4}, {2, 2, 5}};
+  vector<vector<int64_t>> shapes = {{2, 2, 4}, {2, 2, 3}};
   vector<int32_t> input(16);
-  vector<int32_t> output(20);
+  vector<int32_t> output(12);
   vector<void *> datas = {(void *)input.data(), (void *)output.data()};
   CREATE_NODEDEF(shapes, data_types, datas);
   RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
 }
 
-TEST_F(TEST_IDENTITY_UT, ExpInputNull) {
+TEST_F(TEST_RESHAPE_UT, ExpInputNull) {
   vector<DataType> data_types = {DT_INT32, DT_INT32};
   vector<vector<int64_t>> shapes = {{2, 11}, {2, 11}};
   vector<int32_t> output(22);
-  vector<void *> datas = {(void *)nullptr, (void *)output.data()};
+  vector<void *> datas = {nullptr, (void *)output.data()};
   CREATE_NODEDEF(shapes, data_types, datas);
   RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
 }
 
-TEST_F(TEST_IDENTITY_UT, ExpOutputNull) {
+TEST_F(TEST_RESHAPE_UT, ExpOutputNull) {
   vector<DataType> data_types = {DT_INT32, DT_INT32};
   vector<vector<int64_t>> shapes = {{2, 11}, {2, 11}};
   vector<int32_t> input(22);
-  vector<void *> datas = {(void *)input.data(), (void *)nullptr};
+  vector<void *> datas = {(void *)input.data(), nullptr};
   CREATE_NODEDEF(shapes, data_types, datas);
   RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
 }
