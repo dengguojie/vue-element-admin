@@ -27,8 +27,9 @@ class KnownReduceClassifier:
 
     def __init__(self, ins: list):
         self.ins = ins
-
-        self.input_x, self.reduce_axes = ins[0], ins[1]
+        inputs_before_reduce, inputs_after_reduce, self.inputs_classification = helper.inputs_classify(ins[:-1])
+        self.input_x, self.reduce_axes = helper.generate_reduce_input(inputs_before_reduce), ins[-1]
+        self.keep_dims = helper.judge_keep_dims(inputs_before_reduce, inputs_after_reduce)
         self.n_shape, self.n_ranges, self.n_reduce_axes = self._normalize()
         self.f_shape, self.f_ranges, self.f_reduce_axes = helper.simplify(self.n_shape,
                                                                           self.n_ranges,
@@ -68,30 +69,25 @@ class KnownReduceClassifier:
 
     def _classify_const(self):
 
-        input_x = {
+        ins_before_reduce = {
             "shape": self.f_shape,
             "range": self.f_ranges,
             "mode": CONST,
             "ori_axis": self.n_reduce_axes
         }
-        ins = [[input_x, self.f_reduce_axes]]
+        ins_after_reduce = helper.generate_ins_of_after_reduce(ins_before_reduce, self.f_reduce_axes, self.keep_dims)
+        out_ins = [helper.generate_ins_of_all(ins_before_reduce, ins_after_reduce,
+                                              self.inputs_classification, self.f_reduce_axes)]
+        helper.refine_ins(out_ins[0])
 
-        if not ins[0][1]:
-            ins[0][0]["shape"] = [1] + ins[0][0]["shape"]
-            ins[0][0]["range"] = [(1, 1)] + ins[0][0]["range"]
-            ins[0][1] = [0, ]
-
-        return ins
+        return out_ins
 
     def _classify_var(self):
         out_ins = []
         for ins in helper.generate_ins(self.reduce_axis_size, self.dim_len):
-            if ins[1]:
-                out_ins.append(ins)
-            else:
-                ins[0]["shape"] = [1] + ins[0]["shape"]
-                ins[0]["range"] = [(1, 1)] + ins[0]["range"]
-                ins[1] = [0, ]
-                out_ins.append(ins)
+            ins_after_reduce = helper.generate_ins_of_after_reduce(ins[0], ins[1], self.keep_dims)
+            ins_local = helper.generate_ins_of_all(ins[0], ins_after_reduce, self.inputs_classification, ins[1])
+            helper.refine_ins(ins_local)
+            out_ins.append(ins_local)
 
         return out_ins

@@ -26,7 +26,7 @@ def classify(ins: list):
     :param ins:
     :return:
     """
-    reduce_info = ins[1]
+    reduce_info = ins[-1]
     if isinstance(reduce_info, (list, tuple)):
         return KnownReduceClassifier(ins).classify()
     elif isinstance(reduce_info, dict):

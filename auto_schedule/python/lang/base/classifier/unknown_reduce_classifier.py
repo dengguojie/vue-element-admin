@@ -27,13 +27,15 @@ CONST = "const"
 class UnknownReduceClassifier:
 
     def __init__(self, ins):
-        self.input_x = ins[0]
+        inputs_before_reduce, inputs_after_reduce, self.inputs_classification = helper.inputs_classify(ins[:-1])
+        self.input_x = helper.generate_reduce_input(inputs_before_reduce)
+        self.keep_dims = helper.judge_keep_dims(inputs_before_reduce, inputs_after_reduce)
         self.n_shape, self.n_ranges = self._normalize()
         self.dim_len = len(self.n_shape)
 
-        size0 = ins[1]["shape"][0]
+        size0 = ins[-1]["shape"][0]
         size1 = (len(self.n_shape) + 1) // 2
-        self.axis_type = ins[1]["dtype"]
+        self.axis_type = ins[-1]["dtype"]
         self.reduce_axis_size = size1 if size0 < 0 else min(size0, size1)
         self.const_reduce_axis_size = self.dim_len if size0 < 0 else min(size0, self.dim_len)
 
@@ -70,6 +72,13 @@ class UnknownReduceClassifier:
                 f_shape, f_ranges, f_reduce_axes = helper.simplify(self.n_shape,
                                                                    self.n_ranges,
                                                                    reduce_axes)
+
+                if not f_reduce_axes:
+                    f_shape = [1] + f_shape
+                    f_ranges = [(1, 1)] + f_ranges
+                    f_reduce_axes = [0, ]
+                    reduce_axes = []
+
                 input_x = {
                     "shape": f_shape,
                     "range": f_ranges,
@@ -79,7 +88,7 @@ class UnknownReduceClassifier:
                 }
                 ret.append([input_x, f_reduce_axes])
         # if reduce dim has 1, should append pure move case
-        if any(x == 1 for x in self.input_x["shape"]):
+        if any(x == 1 for x in self.input_x["shape"]) and list(self.n_shape) != [1, ]:
             input_x = {
                 "shape": [1] + [util.combine_dim(self.n_shape)],
                 "range": [(1, 1)] + [util.combine_range(self.n_ranges)],
@@ -88,18 +97,18 @@ class UnknownReduceClassifier:
                 "axis_dtype": self.axis_type
             }
             ret.append([input_x, [0, ]])
-
-        return ret
+        out_ins = []
+        for ins in ret:
+            ins_after_reduce = helper.generate_ins_of_after_reduce(ins[0], ins[1], self.keep_dims)
+            out_ins.append(helper.generate_ins_of_all(ins[0], ins_after_reduce, self.inputs_classification, ins[1]))
+        return out_ins
 
     def _classify_var(self):
         out_ins = []
         for ins in helper.generate_ins(self.reduce_axis_size, self.dim_len):
-            if ins[1]:
-                out_ins.append(ins)
-            else:
-                ins[0]["shape"] = [1] + ins[0]["shape"]
-                ins[0]["range"] = [(1, 1)] + ins[0]["range"]
-                ins[1] = [0, ]
-                out_ins.append(ins)
+            ins_after_reduce = helper.generate_ins_of_after_reduce(ins[0], ins[1], self.keep_dims)
+            ins_local = helper.generate_ins_of_all(ins[0], ins_after_reduce, self.inputs_classification, ins[1])
+            helper.refine_ins(ins_local)
+            out_ins.append(ins_local)
 
         return out_ins

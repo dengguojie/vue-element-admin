@@ -126,10 +126,7 @@ def _gen_const_tiling_case(single_reduce_info, compute_graph_info):
     # the flag of invoking op_tiling interface during compilation
     add_compile_info("const_shape_post", False)
     run_info = op_tiling.do_op_tiling(get_context().get_op_type(), get_compile_info(), inputs, outputs)
-    tiling_format = {"block_axis": "int",
-                     "block_factor": "int",
-                     "ub_axis": "int",
-                     "ub_factor": "int"}
+    tiling_format = {"block_axis": "int", "block_factor": "int", "ub_axis": "int", "ub_factor": "int"}
     tiling_data = op_tiling.decode(run_info["tiling_data"], tiling_format)
     const_tiling_case.block_split_axis_index = tiling_data["block_axis"]
     const_tiling_case.block_factor = tiling_data["block_factor"]
@@ -143,6 +140,17 @@ def _gen_const_tiling_case(single_reduce_info, compute_graph_info):
     # invoking op_tiling interface during running need axis info in ops
     if ori_reduce_axis is not None:
         add_compile_info("_ori_axis", ori_reduce_axis)
+
+    block_dims = get_compile_info().get(CompileInfo.BLOCK_DIMS)
+    if block_dims is None:
+        block_dims = {}
+        add_compile_info(CompileInfo.BLOCK_DIMS, block_dims)
+    block_dims[str(const_tiling_case.tiling_key)] = run_info["block_dim"]
+    atomic_flags = get_compile_info().get(CompileInfo.ATOMIC_FLAGS)
+    if atomic_flags is None:
+        atomic_flags = {}
+        add_compile_info(CompileInfo.ATOMIC_FLAGS, atomic_flags)
+    atomic_flags[str(const_tiling_case.tiling_key)] = run_info["clear_atomic"]
 
     return [const_tiling_case]
 
@@ -184,23 +192,6 @@ def build_pointcut(func, *args, **kwargs):
     :return:
     """
     func(*args, **kwargs)
-    _post_build()
-
-
-def _post_build():
-    if operation.in_dynamic():
-        is_const = operation.get_compile_info().get("reduce_shape_known")
-        if is_const:
-            tiling_keys = operation.get_context().get("_tiling_keys")
-            built_jsons = operation.get_context().get("_built_info")
-            block_dims, atomic_flags = {}, {}
-            for tiling_key, item in zip(tiling_keys, built_jsons):
-                tiling_key = str(tiling_key)
-                block_dims[tiling_key] = item["blockDim"]
-                atomic_flags[tiling_key] = any([x == 1 for x in item["parameters"]])
-
-            operation.add_compile_info(CompileInfo.BLOCK_DIMS, block_dims)
-            operation.add_compile_info(CompileInfo.ATOMIC_FLAGS, atomic_flags)
 
 
 class SingleReduceInfo:
