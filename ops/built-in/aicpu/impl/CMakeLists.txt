@@ -3,7 +3,7 @@ set(SUB_SO_WITH_VERSION libcpu_kernels_v1.0.1.so)
 set(local_kernels_src_files
     kernels/normalized/expanddims.cc
     kernels/normalized/less.cc
-    kernels/normalized/top_k_kernels.cc
+    kernels/normalized/top_k.cc
     kernels/normalized/get_dynamic_dims.cc
     kernels/normalized/identity.cc
     kernels/normalized/ceil_kernels.cc

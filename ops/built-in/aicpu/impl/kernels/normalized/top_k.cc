@@ -1,0 +1,413 @@
+/**
+ * Copyright 2020 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "top_k.h"
+
+#include <algorithm>
+#include <cmath>
+#include <string>
+#include <vector>
+
+#include "Eigen/Core"
+#include "cpu_kernel_utils.h"
+#include "cpu_types.h"
+#include "kernel_util.h"
+#include "log.h"
+#include "securec.h"
+#include "status.h"
+
+namespace {
+const char *TOPK = "TopK";
+
+template <typename T>
+struct ValueIndex {
+  T value;
+  int32_t index;
+  bool operator<(const ValueIndex<T> &other) const {
+    if (value == other.value) {
+      return index < other.index;
+    }
+    return value > other.value;
+  }
+};
+
+class TopK {
+ public:
+  /**
+   * @brief put the first k input data into value
+   * @param input address of input data
+   * @param value address of value data
+   * @param indices address of indices data
+   * @param k number of top elements
+   */
+  template <typename T>
+  static void GetValueAndSelect(T *input, T *value, int32_t *indices,
+                                int32_t k) {
+    for (int i = 0; i < k; i++) {
+      value[i] = input[i];
+      indices[i] = i;
+      int node_son = i;
+      while (node_son != 0) {
+        if ((value[node_son] < value[(node_son - 1) / 2]) ||
+            ((value[node_son] == value[(node_son - 1) / 2]) &&
+             (indices[node_son] > indices[(node_son - 1) / 2]))) {
+          TopK::Exchange(value, indices, node_son, (node_son - 1) / 2);
+          node_son = (node_son - 1) / 2;
+        } else {
+          break;
+        }
+      }
+    }
+  }
+
+  /**
+   * @brief put the k-th input data to the n-th input data into value
+   * @param input address of input data
+   * @param value address of value data
+   * @param indices address of indices data
+   * @param k number of top elements
+   * @param n the length of one vector
+   */
+  template <typename T>
+  static void Select(T *input, T *value, int32_t *indices, int32_t k,
+                     int32_t n) {
+    for (int i = k; i < n; i++) {
+      if (input[i] > value[0]) {
+        // when input is greater than the minimum heap
+        value[0] = input[i];
+        indices[0] = i;
+        int32_t node_father = 0;
+        while (node_father * 2 + 1 < k) {
+          int32_t node_left = node_father * 2 + 1;
+          int32_t node_right = node_father * 2 + 2;
+          if (node_right >= k) {
+            // when the right son node doesn't exit
+            TopK::ExchangeForTypeOne(value, indices, node_father, node_left);
+            break;
+          } else if (value[node_father] < value[node_left]) {
+            // when the father node is less than the left son node
+            if (TopK::ExchangeForTypeTwo(value, indices, node_father,
+                                         node_right)) {
+              break;
+            }
+          } else if (value[node_father] > value[node_left]) {
+            // when the father node is greater than the left son node
+            TopK::ExchangeForTypeThree(value, indices, node_father, node_left,
+                                       node_right);
+          } else {
+            // when the father node is equal to the left son node
+            if (TopK::ExchangeForTypeFour(value, indices, node_father,
+                                          node_left, node_right)) {
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+
+ private:
+  /**
+   * @brief exchange the father node and the child node when the right son node
+   * doesn't exit
+   * @param value address of value data
+   * @param indices address of indices data
+   * @param node_father index of father node
+   * @param node_left index of left son node
+   */
+  template <typename T>
+  static void ExchangeForTypeOne(T *value, int32_t *indices,
+                                 int32_t node_father, int32_t node_left) {
+    if ((value[node_father] > value[node_left]) ||
+        ((value[node_father] == value[node_left]) &&
+         (indices[node_father] < indices[node_left]))) {
+      TopK::Exchange(value, indices, node_father, node_left);
+    }
+  }
+
+  /**
+   * @brief exchange the father node and the child node when the father node is
+   * less than the left son node
+   * @param value address of value data
+   * @param indices address of indices data
+   * @param node_father index of father node
+   * @param node_right index of right son node
+   * @return whether to exit loop
+   */
+  template <typename T>
+  static bool ExchangeForTypeTwo(T *value, int32_t *indices,
+                                 int32_t &node_father, int32_t node_right) {
+    if (value[node_father] < value[node_right]) {
+      return true;
+    } else if ((value[node_father] > value[node_right]) ||
+               (indices[node_father] < indices[node_right])) {
+      TopK::Exchange(value, indices, node_father, node_right);
+      node_father = node_right;
+      return false;
+    } else {
+      return true;
+    }
+  }
+
+  /**
+   * @brief exchange the father node and the child node when the father node is
+   * greater than the left son node
+   * @param value address of value data
+   * @param indices address of indices data
+   * @param node_father index of father node
+   * @param node_left index of left son node
+   * @param node_right index of right son node
+   */
+  template <typename T>
+  static void ExchangeForTypeThree(T *value, int32_t *indices,
+                                   int32_t &node_father, int32_t node_left,
+                                   int32_t node_right) {
+    if (value[node_father] <= value[node_right]) {
+      TopK::Exchange(value, indices, node_father, node_left);
+      node_father = node_left;
+    } else {
+      if (value[node_left] < value[node_right]) {
+        TopK::Exchange(value, indices, node_father, node_left);
+        node_father = node_left;
+      } else if (value[node_left] > value[node_right]) {
+        TopK::Exchange(value, indices, node_father, node_right);
+        node_father = node_right;
+      } else if (indices[node_left] < indices[node_right]) {
+        TopK::Exchange(value, indices, node_father, node_right);
+        node_father = node_right;
+      } else {
+        TopK::Exchange(value, indices, node_father, node_left);
+        node_father = node_left;
+      }
+    }
+  }
+
+  /**
+   * @brief exchange the father node and the child node when the father node is
+   * equal to the left son node
+   * @param value address of value data
+   * @param indices address of indices data
+   * @param node_father index of father node
+   * @param node_left index of left son node
+   * @param node_right index of right son node
+   * @return whether to exit loop
+   */
+  template <typename T>
+  static bool ExchangeForTypeFour(T *value, int32_t *indices,
+                                  int32_t &node_father, int32_t node_left,
+                                  int32_t node_right) {
+    if (value[node_father] > value[node_right]) {
+      TopK::Exchange(value, indices, node_father, node_right);
+      node_father = node_right;
+    } else if (value[node_father] < value[node_right]) {
+      if (indices[node_father] < indices[node_left]) {
+        TopK::Exchange(value, indices, node_father, node_left);
+        node_father = node_left;
+      } else {
+        return true;
+      }
+    } else if ((indices[node_father] < indices[node_left]) &&
+               (indices[node_left] > indices[node_right])) {
+      TopK::Exchange(value, indices, node_father, node_left);
+      node_father = node_left;
+    } else if ((indices[node_father] < indices[node_right]) &&
+               (indices[node_left] < indices[node_right])) {
+      TopK::Exchange(value, indices, node_father, node_right);
+      node_father = node_right;
+    } else {
+      return true;
+    }
+    return false;
+  }
+
+  template <typename T>
+  static void Exchange(T *value, int32_t *indices, int32_t index1,
+                       int32_t index2) {
+    T tmp1 = value[index1];
+    value[index1] = value[index2];
+    value[index2] = tmp1;
+    int32_t tmp2 = indices[index1];
+    indices[index1] = indices[index2];
+    indices[index2] = tmp2;
+  }
+};
+
+}  // namespace
+
+namespace aicpu {
+uint32_t TopKCpuKernel::Compute(CpuKernelContext &ctx) {
+  uint32_t res = GetInputAndCheck(ctx);
+  if (res != KERNEL_STATUS_OK) {
+    return res;
+  }
+  switch (data_type_) {
+    case DT_FLOAT16:
+      res = DoCompute<Eigen::half>(ctx);
+      break;
+    case DT_FLOAT:
+      res = DoCompute<float>(ctx);
+      break;
+    case DT_DOUBLE:
+      res = DoCompute<double>(ctx);
+      break;
+    case DT_UINT8:
+      res = DoCompute<uint8_t>(ctx);
+      break;
+    case DT_INT8:
+      res = DoCompute<int8_t>(ctx);
+      break;
+    case DT_UINT16:
+      res = DoCompute<uint16_t>(ctx);
+      break;
+    case DT_INT16:
+      res = DoCompute<int16_t>(ctx);
+      break;
+    case DT_UINT32:
+      res = DoCompute<uint32_t>(ctx);
+      break;
+    case DT_INT32:
+      res = DoCompute<int32_t>(ctx);
+      break;
+    case DT_UINT64:
+      res = DoCompute<uint64_t>(ctx);
+      break;
+    case DT_INT64:
+      res = DoCompute<int64_t>(ctx);
+      break;
+    default: {
+      KERNEL_LOG_ERROR("TopK op don't support input tensor types[%s]",
+                       GetDataType(data_type_).c_str());
+      return KERNEL_STATUS_PARAM_INVALID;
+    }
+  }
+  if (res != KERNEL_STATUS_OK) {
+    return KERNEL_STATUS_INNER_ERROR;
+  }
+  return KERNEL_STATUS_OK;
+}
+
+template <typename T>
+uint32_t TopKCpuKernel::DoCompute(CpuKernelContext &ctx) {
+  KERNEL_LOG_INFO("TopKCpuKernel::DoCompute start");
+  auto input_data = reinterpret_cast<T *>(input_tensor_->GetData());
+  auto values_data = reinterpret_cast<T *>(output_values_->GetData());
+  auto indices_data = reinterpret_cast<int32_t *>(output_indices_->GetData());
+  auto shard_top_k = [&](size_t start, size_t end) {
+    TopKCpuKernel::TopKForNVector(
+        input_data + start * col_, values_data + start * k_,
+        indices_data + start * k_, col_, k_, end - start, sorted_);
+  };
+  uint32_t ret = CpuKernelUtils::ParallelFor(
+      ctx, row_, 1, shard_top_k);  // the minimum unit of segmentation is 1
+  if (ret != KERNEL_STATUS_OK) {
+    KERNEL_LOG_ERROR("CpuKernelUtils::ParallelFor failed");
+    return KERNEL_STATUS_INNER_ERROR;
+  }
+  KERNEL_LOG_INFO("TopKCpuKernel::DoCompute end! ");
+  return KERNEL_STATUS_OK;
+}
+
+template <typename T>
+void TopKCpuKernel::TopKForNVector(T *input, T *value, int32_t *indices,
+                                   int col, int k, int n, bool sorted) {
+  for (int i = 0; i < n; i++) {
+    TopK::GetValueAndSelect(input + i * col, value + i * k, indices + i * k, k);
+    TopK::Select(input + i * col, value + i * k, indices + i * k, k, col);
+    if (sorted) {
+      std::vector<ValueIndex<T>> data(k);
+      for (int j = 0; j < k; j++) {
+        data[j].value = *(value + i * k + j);
+        data[j].index = *(indices + i * k + j);
+      }
+      std::sort(data.begin(), data.end());
+      for (int j = 0; j < k; j++) {
+        *(value + i * k + j) = data[j].value;
+        *(indices + i * k + j) = data[j].index;
+      }
+    }
+  }
+}
+
+uint32_t TopKCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
+  // get x
+  input_tensor_ = ctx.Input(0);
+  KERNEL_CHECK_NULLPTR(input_tensor_, KERNEL_STATUS_PARAM_INVALID,
+                       "Get input[0], name[x] failed");
+
+  // get col_
+  std::shared_ptr<TensorShape> input_shape = input_tensor_->GetTensorShape();
+  KERNEL_CHECK_NULLPTR(input_shape, KERNEL_STATUS_PARAM_INVALID,
+                       "Get shape of input[0], name[x] failed");
+  int32_t input_rank = input_shape->GetDims();
+  if (input_rank < 1) {
+    KERNEL_LOG_ERROR("Rank[%d] must be >= 1-D", input_rank);
+    return KERNEL_STATUS_PARAM_INVALID;
+  }
+  col_ = input_shape->GetDimSize(input_rank - 1);
+  if (col_ <= 0) {
+    KERNEL_LOG_ERROR("Col[%d] must be > 0", col_);
+    return KERNEL_STATUS_PARAM_INVALID;
+  }
+
+  // get data_type_
+  data_type_ = static_cast<DataType>(input_tensor_->GetDataType());
+
+  // cal row_
+  size_t input_size = 1;
+  for (int i = 0; i < input_rank; i++) {
+    input_size *= input_shape->GetDimSize(i);
+  }
+
+  row_ = input_size / col_;
+
+  // get k
+  Tensor *k_tensor = ctx.Input(1);
+  KERNEL_CHECK_NULLPTR(k_tensor, KERNEL_STATUS_PARAM_INVALID,
+                       "Get input[1], name[k] failed");
+  KERNEL_CHECK_NULLPTR(k_tensor->GetData(), KERNEL_STATUS_PARAM_INVALID,
+                       "Get input[1], name[k] failed");
+  k_ = *static_cast<int32_t *>(k_tensor->GetData());
+  if (k_ <= 0) {
+    KERNEL_LOG_ERROR("K[%d] must be greater than 0", k_);
+    return KERNEL_STATUS_PARAM_INVALID;
+  }
+  if (col_ < k_) {
+    KERNEL_LOG_ERROR("Input must have at least %d columns, but got %d", k_,
+                     col_);
+    return KERNEL_STATUS_PARAM_INVALID;
+  }
+
+  // get attr: sorted
+  AttrValue *sorted = ctx.GetAttr("sorted");
+  KERNEL_CHECK_NULLPTR(sorted, KERNEL_STATUS_PARAM_INVALID,
+                       "Get attr[sorted] failed.");
+  sorted_ = sorted->GetBool();
+
+  // get values
+  output_values_ = ctx.Output(0);
+  KERNEL_CHECK_NULLPTR(output_values_, KERNEL_STATUS_PARAM_INVALID,
+                       "Get output[0], name[values] failed");
+
+  // get indices
+  output_indices_ = ctx.Output(1);
+  KERNEL_CHECK_NULLPTR(output_indices_, KERNEL_STATUS_PARAM_INVALID,
+                       "Get output[1], name[indices] failed");
+
+  return KERNEL_STATUS_OK;
+}
+
+REGISTER_CPU_KERNEL(TOPK, TopKCpuKernel);
+}  // namespace aicpu

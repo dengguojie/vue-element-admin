@@ -72,6 +72,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/round.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/less.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/logging.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/top_k.cc
 )
 
 set(cpu_kernels_llt_src
@@ -140,6 +141,7 @@ set(_cpu_kernels_ut_files
   testcase/round_utest.cpp
   testcase/less_kernel_utest.cpp
   testcase/logging_kernel_utest.cpp
+  testcase/top_k_utest.cpp
 )
 
 add_executable(cpu_kernels_ut

@@ -14,16 +14,12 @@
  * limitations under the License.
  */
 
-#ifndef _AICPU_TOPK_KERNELS_H_
-#define _AICPU_TOPK_KERNELS_H_
+#ifndef AICPU_KERNELS_NORMALIZED_TOPK_H
+#define AICPU_KERNELS_NORMALIZED_TOPK_H
 
 #include "cpu_kernel.h"
 
 namespace aicpu {
-struct MatrixInfo {
-  std::vector<int> matrix_shape;
-  int32_t matrix_type;
-};
 class TopKCpuKernel : public CpuKernel {
  public:
   ~TopKCpuKernel() = default;
@@ -34,15 +30,26 @@ class TopKCpuKernel : public CpuKernel {
   uint32_t GetInputAndCheck(CpuKernelContext &ctx);
   template <typename T>
   uint32_t DoCompute(CpuKernelContext &ctx);
+  /**
+   * @brief topK for n vectors
+   * @param input address of input data
+   * @param value address of value data
+   * @param indices address of indices data
+   * @param col the length of one vector
+   * @param k number of top elements
+   * @param n number of vectors
+   * @param sorted if true the resulting k elements will be sorted by values in
+   * descending order
+   */
   template <typename T>
-  static uint32_t TopKForNVector(T *input, T *value, int32_t *indices, int col,
-                                 int k, int n, bool sorted);
+  static void TopKForNVector(T *input, T *value, int32_t *indices, int col,
+                             int k, int n, bool sorted);
   int32_t k_;
   bool sorted_;
+  DataType data_type_;
   Tensor *input_tensor_;
   Tensor *output_values_;
   Tensor *output_indices_;
-  MatrixInfo matrix_info_;
   int32_t col_ = 0;
   int32_t row_ = 0;
 };
