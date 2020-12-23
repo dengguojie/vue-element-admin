@@ -319,33 +319,30 @@ IMPLEMT_INFERFUNC(StringJoin, StringJoinInfer) {
 INFER_FUNC_REG(StringJoin, StringJoinInfer);
 
 IMPLEMT_INFERFUNC(StringFormat, StringFormatInfer) {
-  string template_;
-  string placeholder;
-  if (op.GetAttr("template", template_) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr[template] failed.");
+  string template_attr;
+  string placeholder_attr;
+  if (op.GetAttr("template", template_attr) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Get attr[template] failed.");
     return GRAPH_FAILED;
   }
-  if (op.GetAttr("placeholder", placeholder) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr[placeholder] failed.");
+  if (op.GetAttr("placeholder", placeholder_attr) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Get attr[placeholder] failed.");
     return GRAPH_FAILED;
   }
-  if (op.GetInputsSize() == 0) {
-    OP_LOGE(op.GetName().c_str(), "input size is 0.");
-    return GRAPH_FAILED;
-  }
-  std::istringstream str_template(template_);
+
+  std::istringstream str_template(template_attr);
   std::string token;
   size_t pos = -1;
   size_t num_placeholders = 0;
   while (str_template >> token) {
-    while ((pos = token.rfind(placeholder)) != std::string::npos) {
+    while ((pos = token.rfind(placeholder_attr)) != std::string::npos) {
       num_placeholders++;
       token.erase(pos, 1);
     }
   }
 
   if (op.GetInputsSize() != num_placeholders) {
-    OP_LOGE(op.GetName().c_str(), "num placeholders in template and num inputs must match.");
+    OP_LOGE(op.GetName().c_str(), "Num placeholders in template and num inputs must match.");
     return GRAPH_FAILED;
   }
 
@@ -354,7 +351,7 @@ IMPLEMT_INFERFUNC(StringFormat, StringFormatInfer) {
   desc.SetShape(Shape());
 
   if (op.UpdateOutputDesc("y", desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update y desc failed.");
+    OP_LOGE(op.GetName().c_str(), "Update y desc failed.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
