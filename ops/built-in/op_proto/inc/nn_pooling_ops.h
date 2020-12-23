@@ -519,8 +519,9 @@ REG_OP(MaxPoolV2)
 
 *@par Inputs:
 * One input:
-*x: An NC1HWC0 Tensor. Supported type: float, double, int32,
- * uint8, int16, int8, int64, uint16, half, uint32, uint64 . \n
+*x: An 4D Tensor. Supported type: float, double, int32,
+ * uint8, int16, int8, int64, uint16, half, uint32, uint64.
+ * Must set the format, supported format list ["NCHW, NHWC"]. \n
 
 *@par Attributes:
 *@li ksize: A required list of int8, int16, int32, or int64 values,
@@ -559,10 +560,12 @@ REG_OP(MaxPoolWithArgmax)
 
 *@par Inputs:
 * Three inputs, including:
-*@li x: An NC1HWC0 tensor. Supported type: float, double, int32,
+*@li x: An 4d tensor. Supported type: float, double, int32,
  * uint8, int16, int8, int64, uint16, half, uint32, uint64.
-*@li grad: An NC1HWC0 tensor. Supported type: float, double, int32,
+ * Must set the format, supported format list ["NCHW, NHWC"]
+*@li grad: An 4d tensor. Supported type: float, double, int32,
  * uint8, int16, int8, int64, uint16, half, uint32, uint64.
+ * Must set the format, supported format list ["NCHW, NHWC"]
 *@li argmx: An NC1HWC0 tensor of type int32 or int64 . \n
 
 *@par Attributes:
@@ -1149,7 +1152,7 @@ REG_OP(AvgPool1DD)
 
 *@par Inputs:
 * One input:
-*x: An NC1HWC0 Tensor of type float16.
+*x: An 4d Tensor of type float16. Must set the format, supported format list ["NCHW, NHWC"].
 *@par Attributes:
 *@li ksize: A required list of int8, int16, int32, or int64 values, specifying the size of the window for
 * each dimension of the input tensor. No default value.
@@ -1190,9 +1193,9 @@ REG_OP(MaxPoolWithArgmaxV2)
 
 *@par Inputs:
 * Three inputs, including:
-*@li x: An NC1HWC0 tensor of type float16.
-*@li grad: An NC1HWC0 tensor of type float16.
-*@li argmx: An NC1HWC0 tensor of type uint16 or int64 . \n
+*@li x: An 4d tensor of type float16. Must set the format, supported format list ["NCHW, NHWC"]
+*@li grad: An 4d tensor of type float16. Must set the format, supported format list ["NCHW, NHWC"]
+*@li argmx: An 4d tensor of type uint16 or int64. Must set the format, supported format list ["NCHW, NHWC"] \n
 
 *@par Attributes:
 *@li ksize: A required list of int8, int16, int32, or int64 values, specifying the size of the window for

@@ -497,7 +497,7 @@ REG_OP(ResizeBicubic)
 *@par Inputs:
 *Input grads must be a 4-D tensor. Inputs include:
 *@li grads: A Tensor. Must be one of the following types: uint8, int8, int32,
-float16, float, double. 4-D with shape [batch, height, width, channels].
+float16, float, double. Must set the format, supported format list ["NCHW, NHWC"]
 *@li size: A 1-D int32 Tensor of 2 elements: orig_height, orig_width.
 The original input size . \n
 
@@ -564,9 +564,8 @@ REG_OP(ResizeNearestNeighborV2GradD)
 
 *@par Inputs:
 *Input grads must be a 4-D tensor. Inputs include:
-*@li grads: A Tensor of type float32. 4-D with shape [batch, height, width,
-channels].
-*@li original_image: A Tensor. 4-D with shape [batch, orig_height, orig_width,
+*@li grads: A Tensor of type float32. Must set the format, supported format list ["NCHW, NHWC"]
+*@li original_image: A Tensor. 4-D shape. Must set the format, supported format list ["NCHW, NHWC"]
 channels], The image tensor that was resized . \n
 
 *@par Attributes:
@@ -597,7 +596,7 @@ REG_OP(ResizeBilinearV2Grad)
 
 *@par Inputs:
 *Input images must be a 4-D tensor. Inputs include:
-*@li x: 4-D with shape [batch, height, width, channels].
+*@li x: 4-D tensor. Must set the format, supported format list ["NCHW, NHWC"]
 *@li size: A 1-D int32 Tensor of 2 elements: new_height, new_width. The new
 size for the images . \n
 
@@ -711,7 +710,7 @@ REG_OP(SampleDistortedBoundingBoxExt2)
 
 *@par Inputs:
 *Input x must be a 4-D tensor. Inputs include:
-*@li x: 4-D with shape [batch, height, width, channels].
+*@li x: 4-D tensor. Must set the format, supported format list ["NCHW, NHWC"].
 *@li size: A 1-D int32 Tensor of 2 elements: new_height, new_width.
 The new size for the images . \n
 

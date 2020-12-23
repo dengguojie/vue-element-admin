@@ -357,7 +357,7 @@ REG_OP(DepthToSpace)
 *@brief Permutes data into spatial data blocks and then prunes them . \n
 
 *@par Inputs:
-*@li x: A 4D Tensor with format NHWC.
+*@li x: A 4D Tensor with format. Must set the format, supported format list ["NCHW, NHWC"]
 *@li crops: A 1D list or tuple of int32 or int64 . \n
 
 *Must be one of the following types: float16, float32
@@ -434,9 +434,10 @@ REG_OP(BatchToSpaceD)
 
 *@par Inputs:
 * Two inputs, including:
-*@li x: An NHWC Tensor. Must be one of the following types:
+*@li x: An 4D Tensor. Must be one of the following types:
 * float16, float32, double, int64, int32, uint8, uint16, uint32, uint64, int8,
 * int16, complex64, complex128, qint8, quint8, qint16, quint16, qint32.
+* Must set the format, supported format list ["NCHW, NHWC"]
 *@li paddings: A 2D tensor of type int, specifying the input . \n
 
 *@par Attributes:
