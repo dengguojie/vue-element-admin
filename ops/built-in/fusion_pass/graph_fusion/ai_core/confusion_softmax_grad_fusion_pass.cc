@@ -166,6 +166,7 @@ Status ConfusionSoftmaxGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
   ge::GeTensorDesc reduceSumInputDesc = reduceSumNode->GetOpDesc()->GetInputDesc(0);
   ge::GeShape reduceSumInputShape = reduceSumInputDesc.GetShape();
   auto reduceSumInputDimNum = reduceSumInputShape.GetDims().size();
+  axisValue0 = axisValue0 < 0 ? axisValue0 + int64_t(reduceSumInputDimNum) : axisValue0;
   OP_LOGI(FUSED_OP_TYPE.c_str(), "reduce sum reduceSumInputDimNum=%d", reduceSumInputDimNum);
 
   // input is scalar

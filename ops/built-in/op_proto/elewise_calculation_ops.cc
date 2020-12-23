@@ -124,13 +124,11 @@ IMPLEMT_VERIFIER(Add, AddVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(AddInferShape) {
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", is_dynamic_output)) {
     return GRAPH_FAILED;
   }
 
-  if (!InferShapeRangeTwoInOneOutBroadcase(op, "x1", "x2", "y")) {
-    return GRAPH_FAILED;
-  }
   return GRAPH_SUCCESS;
 }
 
