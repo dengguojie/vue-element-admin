@@ -30,6 +30,21 @@ from .util import check_input_tensor_shape
 from .util import dsl_support_dtype
 from .util import DTYPE_MAP
 
+from functools import wraps
+try:
+    from te.tvm.dsl_source_info import source_info_decorator
+except ImportError:
+    def source_info_decorator(depth=1):
+        def get_source_info_decorator(func):
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                f_return = func(*args, **kwargs)
+                return f_return
+
+            return wrapper
+        
+        return get_source_info_decorator
+
 NAME_INDEX = [0]
 
 
@@ -124,6 +139,7 @@ def _cast(raw_tensor, dst_dtype, is_auto_cast=True):
                     is_auto_cast=is_auto_cast)
 
 
+@source_info_decorator()
 @_auto_cast_of_cast
 def ceil(raw_tensor):
     """
@@ -141,6 +157,7 @@ def ceil(raw_tensor):
     return _cast_op(raw_tensor, dst_dtype, "elewise_single_ceil")
 
 
+@source_info_decorator()
 @_auto_cast_of_cast
 def floor(raw_tensor):
     """
@@ -159,6 +176,7 @@ def floor(raw_tensor):
 
 
 # pylint: disable=redefined-builtin
+@source_info_decorator()
 @_auto_cast_of_cast
 def round(raw_tensor):
     """
@@ -176,6 +194,7 @@ def round(raw_tensor):
     return _cast_op(raw_tensor, dst_dtype, "elewise_single_round")
 
 
+@source_info_decorator()
 @_auto_cast_of_cast
 def trunc(raw_tensor):
     """
@@ -203,6 +222,7 @@ def trunc(raw_tensor):
     return _cast_op(raw_tensor, dst_dtype, "elewise_single_trunc")
 
 
+@source_info_decorator()
 def round_half_up(raw_tensor):
     """
     cast tensor from src_type to dst_dtype with rounding method
@@ -229,6 +249,7 @@ def round_half_up(raw_tensor):
     return _cast_op(raw_tensor, dst_dtype, "elewise_single_round_d")
 
 
+@source_info_decorator()
 def round_d(raw_tensor):
     """
     cast tensor from src_type to dst_dtype with rounding method

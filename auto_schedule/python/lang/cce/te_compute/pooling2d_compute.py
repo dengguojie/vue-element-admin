@@ -31,6 +31,21 @@ from .cast_compute import _cast
 from .max_pool2d_compute import max_pool2d
 from .avg_pool2d_compute import avg_pool2d
 
+from functools import wraps
+try:
+    from te.tvm.dsl_source_info import source_info_decorator
+except ImportError:
+    def source_info_decorator(depth=1):
+        def get_source_info_decorator(func):
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                f_return = func(*args, **kwargs)
+                return f_return
+
+            return wrapper
+        
+        return get_source_info_decorator
+
 
 _SIZE_OF_FP16 = 2
 _BLOCK_SIZE = 16
@@ -95,6 +110,7 @@ def _check_fmap_shape(batch_size, c1_value, in_size_h, in_size_w, c_block_size):
 
 
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-arguments
+@source_info_decorator()
 def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
               pad=(0, 0, 0, 0), dilation=(1, 1), data_mode=1, ceil_mode=0,
               fusion_params=None, impl_mode="high_performance"):

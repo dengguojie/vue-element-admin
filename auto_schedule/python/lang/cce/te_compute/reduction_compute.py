@@ -33,7 +33,21 @@ from .util import reduce_axis_check
 from .util import auto_cast_tensor
 from .util import dsl_support_dtype
 
+from functools import wraps
+try:
+    from te.tvm.dsl_source_info import source_info_decorator
+except ImportError:
+    def source_info_decorator(depth=1):
+        def get_source_info_decorator(func):
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                f_return = func(*args, **kwargs)
+                return f_return
 
+            return wrapper
+        
+        return get_source_info_decorator
+        
 # pylint: disable=too-many-branches
 @decorator
 def _auto_cast_of_reduce(func, *args, **kwargs):
@@ -137,6 +151,7 @@ NAME_INDEX = [0]
 
 
 # pylint: disable=redefined-builtin
+@source_info_decorator()
 @_auto_cast_of_reduce
 def sum(raw_tensor, axis, keepdims=False):
     """
@@ -154,6 +169,7 @@ def sum(raw_tensor, axis, keepdims=False):
     return _single_reduce_op(raw_tensor, axis, "reduce_sum", keepdims)
 
 
+@source_info_decorator()
 @_auto_cast_of_reduce
 def reduce_min(raw_tensor, axis, keepdims=False, priority_flag=False):
     """
@@ -172,6 +188,7 @@ def reduce_min(raw_tensor, axis, keepdims=False, priority_flag=False):
 
 
 # pylint: disable=unused-argument
+@source_info_decorator()
 @_auto_cast_of_reduce
 def reduce_max(raw_tensor, axis, keepdims=False, priority_flag=False):
     """
@@ -190,6 +207,7 @@ def reduce_max(raw_tensor, axis, keepdims=False, priority_flag=False):
     return _single_reduce_op(raw_tensor, axis, "reduce_max", keepdims)
 
 
+@source_info_decorator()
 @_auto_cast_of_reduce
 def reduce_prod(raw_tensor, axis, keepdims=False):
     """
@@ -385,6 +403,7 @@ def _auto_cast_of_tuple_reduce(func, *args, **kwargs):
     return func(*args, **kwargs)
 
 
+@source_info_decorator()
 @_auto_cast_of_tuple_reduce
 def tuple_sum(input_tensor_list, axis, keepdims=False):
     """

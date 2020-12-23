@@ -40,10 +40,26 @@ from .cast_compute import round_half_up
 from .util import check_input_tensor_shape
 from .util import DTYPE_MAP
 
+from functools import wraps
+try:
+    from te.tvm.dsl_source_info import source_info_decorator
+except ImportError:
+    def source_info_decorator(depth=1):
+        def get_source_info_decorator(func):
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                f_return = func(*args, **kwargs)
+                return f_return
+
+            return wrapper
+        
+        return get_source_info_decorator
+
 _BLOCK_SIZE = cce_params.BLOCK_REDUCE
 _BLOCK_INT8_SIZE = cce_params.BLOCK_REDUCE_INT8
 
 
+@source_info_decorator()
 def round_to(data, max_value, min_value):
     """
     round data to [min_value,max_value]
@@ -75,6 +91,7 @@ def round_to(data, max_value, min_value):
     return data1
 
 
+@source_info_decorator()
 def cast_to_round(data, dtype):
     """
     Parameters
@@ -109,6 +126,7 @@ def cast_to_round(data, dtype):
 
 
 # pylint: disable=too-many-locals, invalid-name
+@source_info_decorator()
 def cast_to(data, dtype, f1628IntegerFlag=True):
     """
     a wrapped cast operations , cast data to the type of dtype

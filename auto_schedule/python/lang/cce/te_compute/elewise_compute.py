@@ -35,6 +35,21 @@ from .util import _get_priority_flag_value
 from .util import dsl_check_support
 from .util import util_astype
 
+from functools import wraps
+try:
+    from te.tvm.dsl_source_info import source_info_decorator
+except ImportError:
+    def source_info_decorator(depth=1):
+        def get_source_info_decorator(func):
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                f_return = func(*args, **kwargs)
+                return f_return
+
+            return wrapper
+        
+        return get_source_info_decorator
+
 
 NAME_INDEX = [0]
 
@@ -321,6 +336,7 @@ def _intrinsic_check(intr):
     return ret_intr
 
 
+@source_info_decorator()
 @_auto_cast_of_elewise
 @dtype_check_decorator
 def vmuls(raw_tensor, scalar):
@@ -351,6 +367,7 @@ def vmuls(raw_tensor, scalar):
                                args=[scalar])
 
 
+@source_info_decorator()
 @_auto_cast_of_elewise
 @dtype_check_decorator
 def vadds(raw_tensor, scalar):
@@ -381,6 +398,7 @@ def vadds(raw_tensor, scalar):
                                args=[scalar])
 
 
+@source_info_decorator()
 @_auto_cast_of_elewise
 @dtype_check_decorator
 def vmaxs(raw_tensor, scalar):
@@ -413,6 +431,7 @@ def vmaxs(raw_tensor, scalar):
                                args=[scalar])
 
 
+@source_info_decorator()
 @_auto_cast_of_elewise
 @dtype_check_decorator
 def vmins(raw_tensor, scalar):
@@ -659,6 +678,7 @@ def vlog(raw_tensor, priority_flag=0):
     return __single_elewise_op(raw_tensor, dtype, 'elewise_single_log')
 
 
+@source_info_decorator()
 @_auto_cast_of_elewise
 @dtype_check_decorator
 def vexp(raw_tensor):
@@ -678,6 +698,7 @@ def vexp(raw_tensor):
     return __single_elewise_op(raw_tensor, dtype, 'elewise_single_exp')
 
 
+@source_info_decorator()
 @_auto_cast_of_elewise
 @dtype_check_decorator
 def vabs(raw_tensor):
@@ -697,6 +718,7 @@ def vabs(raw_tensor):
     return __single_elewise_op(raw_tensor, dtype, 'elewise_single_abs')
 
 
+@source_info_decorator()
 @_auto_cast_of_elewise
 @dtype_check_decorator
 def vrec(raw_tensor):
@@ -757,6 +779,7 @@ def _check_multi_compute_pattern(pattern, *tensors):
     return True
 
 
+@source_info_decorator()
 @_auto_cast_of_elewise
 @dtype_check_decorator
 def vrelu(raw_tensor):
@@ -788,6 +811,7 @@ def vrelu(raw_tensor):
     return __single_elewise_op(raw_tensor, dtype, 'elewise_single_relu')
 
 
+@source_info_decorator()
 @dtype_check_decorator
 def vlrelu(raw_tensor, alpha=0):
     """
@@ -855,6 +879,7 @@ def vlrelu(raw_tensor, alpha=0):
     return tmp
 
 
+@source_info_decorator()
 @_auto_cast_of_elewise
 @dtype_check_decorator
 def vnot(raw_tensor):
@@ -907,6 +932,7 @@ def __vsqrt_calculate_by_newton(raw_tensor):
     return res
 
 
+@source_info_decorator()
 @_auto_cast_of_elewise
 @dtype_check_decorator
 def vsqrt(raw_tensor, priority_flag=0):
@@ -965,6 +991,7 @@ def __vrsqrt_calculate_by_newton(raw_tensor):
     return vrec(res)
 
 
+@source_info_decorator()
 @_auto_cast_of_elewise
 @dtype_check_decorator
 def vrsqrt(raw_tensor, priority_flag=0):
@@ -1104,6 +1131,7 @@ def __single_elewise_op(input_tensor, dtype, op_name, args=None):
     return tmp
 
 
+@source_info_decorator()
 @_auto_cast_of_elewise
 @dtype_check_decorator
 def vmul(lhs, rhs):
@@ -1133,6 +1161,7 @@ def vmul(lhs, rhs):
     return __binary_elewise_op(lhs, rhs, "elewise_binary_mul")
 
 
+@source_info_decorator()
 @_auto_cast_of_elewise
 @dtype_check_decorator
 def vdiv(lhs, rhs):
@@ -1240,6 +1269,7 @@ def __vmod_mini(lhs, rhs):
     return _cast(result, dtype)
 
 
+@source_info_decorator()
 @dtype_check_decorator
 def vmod(lhs, rhs):
     """
@@ -1312,6 +1342,7 @@ def vmod(lhs, rhs):
     return res
 
 
+@source_info_decorator()
 @_auto_cast_of_elewise
 @dtype_check_decorator
 def vadd(lhs, rhs):
@@ -1355,6 +1386,7 @@ def vadd(lhs, rhs):
     return __binary_elewise_op(lhs, rhs, "elewise_binary_add")
 
 
+@source_info_decorator()
 @_auto_cast_of_elewise
 @dtype_check_decorator
 def vsub(lhs, rhs):
@@ -1385,6 +1417,7 @@ def vsub(lhs, rhs):
     return __binary_elewise_op(lhs, rhs, "elewise_binary_sub")
 
 
+@source_info_decorator()
 @_auto_cast_of_elewise
 @dtype_check_decorator
 def vmin(lhs, rhs):
@@ -1411,6 +1444,7 @@ def vmin(lhs, rhs):
     return __binary_elewise_op(lhs, rhs, "elewise_binary_min")
 
 
+@source_info_decorator()
 @_auto_cast_of_elewise
 @dtype_check_decorator
 def vmax(lhs, rhs):
@@ -1463,6 +1497,7 @@ def vor(lhs, rhs):
     return __binary_elewise_op(lhs, rhs, "elewise_binary_or")
 
 
+@source_info_decorator()
 @_auto_cast_of_elewise
 @dtype_check_decorator
 def vand(lhs, rhs):
@@ -1489,6 +1524,7 @@ def vand(lhs, rhs):
     return __binary_elewise_op(lhs, rhs, "elewise_binary_and")
 
 
+@source_info_decorator()
 @_auto_cast_of_elewise
 @dtype_check_decorator
 def vaxpy(lhs, rhs, scalar):
@@ -1527,6 +1563,7 @@ def _vcmp_supported_types(mode):
 
 
 # pylint: disable=too-many-branches, too-many-statements
+@source_info_decorator()
 def vcmp(lhs, rhs, operation='lt', mode='bool'):
     """
     calculate elewise compare
@@ -1690,6 +1727,7 @@ def vcmp(lhs, rhs, operation='lt', mode='bool'):
     return tmp
 
 
+@source_info_decorator()
 @dtype_check_decorator
 def vlogic(lhs, rhs=None, operation='logic_and'):
     """
@@ -1746,6 +1784,7 @@ def vlogic(lhs, rhs=None, operation='logic_and'):
     return __binary_elewise_op(lhs, rhs, "elewise_binary_logic", args=[operation[6:]])
 
 
+@source_info_decorator()
 @dtype_check_decorator
 def vaddrelu(lhs, rhs):
     """
@@ -1806,6 +1845,7 @@ def vaddrelu(lhs, rhs):
     return tmp
 
 
+@source_info_decorator()
 @dtype_check_decorator
 def vsubrelu(lhs, rhs):
     """
@@ -2074,6 +2114,7 @@ def _check_is_equal(lhs, rhs):
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
+@source_info_decorator()
 @_auto_cast_of_elewise
 @dtype_check_decorator
 def vmla(tensor_0, tensor_1, tensor_2):
@@ -2099,6 +2140,7 @@ def vmla(tensor_0, tensor_1, tensor_2):
                                  "elewise_multiple_mla")
 
 
+@source_info_decorator()
 @_auto_cast_of_elewise
 @dtype_check_decorator
 def vmadd(tensor_0, tensor_1, tensor_2):
@@ -2125,6 +2167,7 @@ def vmadd(tensor_0, tensor_1, tensor_2):
                                  "elewise_multiple_madd")
 
 
+@source_info_decorator()
 @_auto_cast_of_elewise
 @dtype_check_decorator
 def vmaddrelu(tensor_0, tensor_1, tensor_2):
@@ -2315,6 +2358,7 @@ def _vsel_bit_shape_check(condition, input_tensor):
 
 
 # pylint: disable=too-many-branches, too-many-statements
+@source_info_decorator()
 def vsel(condition, lhs, rhs):
     """
     if condition = ture, the result is lhs,
@@ -2565,6 +2609,7 @@ def _vcmpsel_data_dtype_check(*args):
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
+@source_info_decorator()
 def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
     """
     calculate elewise compare
