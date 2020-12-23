@@ -17,6 +17,7 @@ util
 """
 # pylint: disable=import-error
 from decorator import decorator
+from functools import wraps
 import warnings
 from te import tvm
 from te.lang.base import operation_impl as operation
@@ -963,3 +964,15 @@ def _get_priority_flag_value(priority_flag):
     if isinstance(priority_flag, (int, float)):
         return priority_flag
     return priority_flag.value
+
+
+def source_info_decorator(depth=1):
+    def get_source_info_decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            f_return = func(*args, **kwargs)
+            return f_return
+
+        return wrapper
+
+    return get_source_info_decorator

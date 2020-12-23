@@ -31,20 +31,10 @@ from .cast_compute import _cast
 from .max_pool2d_compute import max_pool2d
 from .avg_pool2d_compute import avg_pool2d
 
-from functools import wraps
 try:
     from te.tvm.dsl_source_info import source_info_decorator
 except ImportError:
-    def source_info_decorator(depth=1):
-        def get_source_info_decorator(func):
-            @wraps(func)
-            def wrapper(*args, **kwargs):
-                f_return = func(*args, **kwargs)
-                return f_return
-
-            return wrapper
-        
-        return get_source_info_decorator
+    from .util import source_info_decorator
 
 
 _SIZE_OF_FP16 = 2

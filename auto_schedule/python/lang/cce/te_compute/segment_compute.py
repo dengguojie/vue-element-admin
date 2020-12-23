@@ -25,20 +25,10 @@ from .elewise_compute import __binary_elewise_op
 from .util import dtype_check_decorator
 from .util import check_input_tensor_shape
 
-from functools import wraps
 try:
     from te.tvm.dsl_source_info import source_info_decorator
 except ImportError:
-    def source_info_decorator(depth=1):
-        def get_source_info_decorator(func):
-            @wraps(func)
-            def wrapper(*args, **kwargs):
-                f_return = func(*args, **kwargs)
-                return f_return
-
-            return wrapper
-        
-        return get_source_info_decorator
+    from .util import source_info_decorator
 
 
 @source_info_decorator()
