@@ -277,11 +277,16 @@ def _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y, trans_a, tran
             bias_shape, name="bias", dtype=bias_dtype)
     else:
         tensor_bias = None
-
-    op_res = tbe.gemm(tensor_x1, tensor_x2, None, None, trans_a, trans_b,
-                      format_a="FRACTAL_NZ", format_b="FRACTAL_NZ",
-                      dst_dtype=dtype_out, tensor_bias=tensor_bias,
-                      kernel_name=kernel_name)
+    para_dict = {
+        "trans_a": trans_a,
+        "trans_b": trans_b,
+        "format_a": "FRACTAL_NZ",
+        "format_b": "FRACTAL_NZ",
+        "dst_dtype": dtype_out,
+        "tensor_bias": tensor_bias,
+        "kernel_name": kernel_name
+    }
+    op_res = tbe.gemm(tensor_x1, tensor_x2, para_dict)
     tensor_list = [tensor_x1, tensor_x2]
     if bias:
         tensor_list.append(tensor_bias)
@@ -324,9 +329,15 @@ def mat_mul_fuse_compute(input_x1, input_x2, bias, offset_w, output_y,
     build_cfg = tbe_platform.get_fusion_build_cfg()
     build_cfg['constant_realize_extent_in_infer_bound'] = False
 
-    op_res = tbe.gemm(input_x1, input_x2, None, None, trans_a, trans_b,
-                      format_a="FRACTAL_NZ", format_b="FRACTAL_NZ",
-                      tensor_bias=bias, kernel_name=kernel_name)
+    para_dict = {
+        "trans_a": trans_a,
+        "trans_b": trans_b,
+        "format_a": "FRACTAL_NZ",
+        "format_b": "FRACTAL_NZ",
+        "tensor_bias": bias,
+        "kernel_name": kernel_name
+    }
+    op_res = tbe.gemm(input_x1, input_x2, para_dict)
     tensor_list = [input_x1, input_x2]
     if bias:
         tensor_list.append(bias)

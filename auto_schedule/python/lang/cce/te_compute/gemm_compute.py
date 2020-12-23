@@ -16,10 +16,10 @@
 gemm_compute
 """
 import math
+from enum import Enum
 
-from te.lang.cce.te_compute.util import (
-    check_input_tensor_shape  # pylint: disable=too-many-lines
-)
+from te.lang.cce.te_compute.util import check_input_tensor_shape
+from te.lang.cce.te_compute.mmad_compute import matmul
 from te.lang.base.operation_impl import in_dynamic
 from te.platform import cce_conf
 from te.platform import cce_params
@@ -182,7 +182,7 @@ def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
             raise RuntimeError(
                 args_dict, error_manager_util.get_error_message(args_dict)
             )
-        if not (GEMMParam.batch_a and not GEMMParam.batch_b):
+        if not (GEMMComputeParam.batch_a and not GEMMComputeParam.batch_b):
             if (is_fractal_a == is_fractal_b) and (shape_len_a != shape_len_b):
                 args_dict = {
                     "errCode": "E60002",
@@ -246,7 +246,7 @@ def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
                     args_dict, error_manager_util.get_error_message(args_dict)
                 )
 
-        if shape_len_a in (3, 5) and not (GEMMParam.batch_a and not GEMMParam.batch_b):
+        if shape_len_a in (3, 5) and not (GEMMComputeParam.batch_a and not GEMMComputeParam.batch_b):
             if _get_value(tensor_a.shape[0]) != _get_value(tensor_b.shape[0]):
                 args_dict = {
                     "errCode": "E60002",
@@ -514,26 +514,14 @@ def _get_value(shape_object):
     return shape_object.value if hasattr(shape_object, "value") else shape_object
 
 
-@para_check.check_input_type(
-    Tensor, Tensor, (type(None), Tensor), (type(None), Tensor), bool, bool, str, str, str, (type(None), Tensor)
-)
-def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
-    tensor_a,
-    tensor_b,
-    tensor_alpha,
-    tensor_beta,
-    trans_a=False,
-    trans_b=False,
-    format_a="ND",
-    format_b="ND",
-    dst_dtype="float16",
-    tensor_bias=None,
-    quantize_params=None,
-    kernel_name="gemm"
-):
+@para_check.check_input_type(Tensor, Tensor, dict)
+def gemm(tensor_a, tensor_b, para_dict):
     """
-    algorithm: mmad
-    calculating  matrix multiplication, C=alpha_num*A*B+beta_num*C
+    algorithm: gemm and matmul
+    for gemm:
+        calculating matrix multiplication, C = alpha_num*A*B+  beta_num*C
+    for matmul:
+        caculating matrix multiplication with bias, C = A*B + bias
 
     Parameters:
     tensor_a : the first tensor a
@@ -547,267 +535,75 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
               If B is transpose , then BShape classification matrix must be
               16*32 in gm/L1,then it is 32*16 in L0B.
 
-    trans_a : if True, a needs to be transposed
+    para_dict:
 
-    trans_b : if True, b needs to be transposed
-
-    is_fractal: If type is bool, a and b's format both be fractal or ND,
-                default is ND;
-                If type is list, len must be 2, [0] is is_fractal_a,
-                [1] is is_fractal_b
-
-    alpha_num: scalar used for multiplication
-
-    beta_num: scalar used for multiplication
-
-    dst_dtype: output data type,support "float16" "float32", default is "float16"
-
-    tensor_bias :the bias with used to init L0C for tensor c
-
-    quantize_params: quantization parameters,
-            not None means enable quantization, it is dictionary structure
-
-        quantize_alg: quantize mode,
-            support 'NON_OFFSET' 'HALF_OFFSET_A' 'HALF_OFFSET_B' 'ALL_OFFSET'
-
-        scale_mode_a: tensor_a inbound quantization mode,
-                support 'SCALAR' and 'VECTOR'
-        scale_mode_b: tensor_b inbound quantization mode,
-                support 'SCALAR' and 'VECTOR'
-        scale_mode_out: out tensor quantization mode,
-                support 'SCALAR' and 'VECTOR'
-
-        sqrt_mode_a: tensor_a inbound sqrt mode, support 'NON_SQRT' and 'SQRT'
-        sqrt_mode_b: tensor_b inbound sqrt mode, support 'NON_SQRT' and 'SQRT'
-        sqrt_mode_out: out tensor sqrt mode, support 'NON_SQRT' and 'SQRT'
-
-        scale_q_a: scale placeholder for tensor_a inbound quantization
-        offset_q_a: offset placeholder for tensor_a inbound quantization
-        scale_q_b: scale placeholder for tensor_b inbound quantization
-        offset_q_b: offset placeholder for tensor_b inbound quantization
-
-        scale_drq: scale placeholder for requantization or dequantization
-        offset_drq: scale placeholder for requantization or dequantization
-
-    Returns None
+    Returns result
     """
+    gemm_compute = GEMMCompute(tensor_a, tensor_b, para_dict)
+    result = gemm_compute.calculate()
 
-    def _get_dtype():
-        if (
-            not is_fractal_a
-            and not is_fractal_b
-            and tensor_a.dtype == "int8"
-            and tensor_bias.dtype == "float32"
-        ):
-            in_a_dtype = "float16"
-            in_b_dtype = "float16"
-            is_nd_int82fp32 = True
-        else:
-            in_a_dtype = tensor_a.dtype
-            in_b_dtype = tensor_b.dtype
-            is_nd_int82fp32 = False
-        return in_a_dtype, in_b_dtype, is_nd_int82fp32
+    return result
 
-    nz_a = False
-    if format_a == "FRACTAL_NZ":
-        nz_a = True
-        format_a = "fractal"
 
-    nz_b = False
-    if format_b == "FRACTAL_NZ":
-        nz_b = True
-        format_b = "fractal"
-
-    def _compute_alpha_beta():
-        if tensor_alpha.dtype == "float16":
-            tensor_alpha_temp_ub = tvm.compute(
-                tensor_alpha.shape,
-                lambda *indices: tensor_alpha(*indices),  # pylint: disable=W0108
-                name="tensor_alpha_temp_ub"
-            )
-
-            tensor_beta_temp_ub = tvm.compute(
-                tensor_beta.shape,
-                lambda *indices: tensor_beta(*indices),  # pylint: disable=W0108
-                name="tensor_beta_temp_ub"
-            )
-
-            tensor_alpha_ub = tvm.compute(
-                tensor_alpha.shape,
-                lambda *indices: shape_util.cast(
-                    tensor_alpha_temp_ub(*indices), dtype="float32"
-                ),
-                name="tensor_alpha_ub"
-            )
-            tensor_beta_ub = tvm.compute(
-                tensor_beta.shape,
-                lambda *indices: shape_util.cast(
-                    tensor_beta_temp_ub(*indices), dtype="float32"
-                ),
-                name="tensor_beta_ub"
-            )
-        else:
-            tensor_alpha_ub = tvm.compute(
-                tensor_alpha.shape,
-                lambda *indices: tensor_alpha(*indices),  # pylint: disable=W0108
-                name="tensor_alpha_ub"
-            )
-            tensor_beta_ub = tvm.compute(
-                tensor_beta.shape,
-                lambda *indices: tensor_beta(*indices),  # pylint: disable=W0108
-                name="tensor_beta_ub"
-            )
-        return tensor_alpha_ub, tensor_beta_ub
-
-    matmul_flag = tensor_alpha is None or tensor_beta is None
-    tensor_a_length = len(tensor_a.shape)
-    tensor_b_length = len(tensor_b.shape)
-
-    GEMMParam.batch_a = (tensor_a_length == 5)
-    GEMMParam.batch_b = (tensor_b_length == 5)
-
-    if in_dynamic():
-        if GEMMParam.batch_a:
-            GEMMParam.dynamic_mode = "dynamic_mknb"
-        else:
-            GEMMParam.dynamic_mode = "dynamic_mkn"
-
-    tensor_alpha_ub, tensor_beta_ub = None, None
-    if not matmul_flag:
-        tensor_alpha_ub, tensor_beta_ub = _compute_alpha_beta()
-
-    _shape_check(
-        tensor_a,
-        tensor_b,
-        tensor_bias,
-        tensor_alpha,
-        tensor_beta,
-        trans_a,
-        trans_b,
-        format_a,
-        format_b,
-        dst_dtype,
-        matmul_flag
+def _do_align(tensor_need_align, shape_aligned, name, in_dtype):
+    """
+    do align for a_martix or b_martix, pad zero along the way.
+    input:
+        tensor_need_align: tensor, the tensor need align
+        shape_aligned: shape, tensor_need_align's aligned shape
+        name: str, a or b
+        in_dtype: str, input data type
+    return:
+        aligned tensor
+    """
+    ax_outer = int(tensor_need_align.shape[0])
+    ax_inner = int(tensor_need_align.shape[1])
+    tensor_normalize_ub = tvm.compute(
+        shape_aligned,
+        lambda i, j: tvm.select(
+            i < ax_outer,
+            tvm.select(
+                j < ax_inner,
+                tensor_need_align[i, j],
+                tvm.convert(0).astype(in_dtype)
+            ),
+            tvm.convert(0).astype(in_dtype)
+        ),
+        name="tensor_{}_normalize_ub".format(name)
     )
+    return tensor_normalize_ub
 
-    is_fractal_a = format_a != "ND"
-    is_fractal_b = format_b != "ND"
+def _check_shape_align(shape, factor):
+    """
+    Check that the shape is aligned
+    input:
+        shape: the shape for check
+        factor: alignment factor
+    return:
+        is_align
+    """
+    is_align = True
+    if in_dynamic():
+        is_align = False
+    for item in shape:
+        if _get_value(item) % factor != 0:
+            is_align = False
+            break
+    return is_align
 
-    in_a_dtype, in_b_dtype, is_nd_int82fp32 = _get_dtype()
+def _get_block(dtype):
+        """
+        Get the number of elements in one block
+        1 block = 32 byte
 
-    def _get_output_type():
-        l0c_support_fp32 = cce_conf.intrinsic_check_support("Intrinsic_mmad", "f162f32")
-
-        def _out_dtype():
-            if in_a_dtype == "float16" and in_b_dtype == "float16":
-                if dst_dtype not in ("float16", "float32"):
-                    args_dict = {
-                        "errCode": "E60003",
-                        "a_dtype": in_a_dtype,
-                        "expected_dtype_list": "float16, float32",
-                        "out_dtype": "{}".format(dst_dtype)
-                    }
-                    raise RuntimeError(
-                        args_dict, error_manager_util.get_error_message(args_dict)
-                    )
-                out_dtype = "float32"
-                if not l0c_support_fp32:
-                    out_dtype = "float16"
-            elif (in_a_dtype == "int8" and in_b_dtype == "int8") or (
-                in_a_dtype == "uint8" and in_b_dtype == "int8"
-            ):
-                out_dtype = "int32"
-            else:
-                args_dict = {
-                    "errCode": "E60114",
-                    "reason": "data type of tensor not supported",
-                    "value": "in_a_dtype = {},"
-                    " in_b_dtype = {}".format(in_a_dtype, in_b_dtype)
-                }
-                raise RuntimeError(
-                    args_dict, error_manager_util.get_error_message(args_dict)
-                )
-            if (out_dtype == dst_dtype) and (quantize_params is not None):
-                args_dict = {
-                    "errCode": "E60000",
-                    "param_name": "quantize_params",
-                    "expected_value": "None",
-                    "input_value": "{}".format(quantize_params)
-                }
-                raise RuntimeError(
-                    args_dict, error_manager_util.get_error_message(args_dict)
-                )
-
-            if dst_dtype not in (out_dtype, "float16") and not (
-                dst_dtype == "float32" and out_dtype == "int32"
-            ):
-                args_dict = {
-                    "errCode": "E60114",
-                    "reason": "y_dtype should be float16 for a_dtype ="
-                    " {} and b_dtype = {}".format(in_a_dtype, in_b_dtype),
-                    "value": dst_dtype
-                }
-                raise RuntimeError(
-                    args_dict, error_manager_util.get_error_message(args_dict)
-                )
-            return out_dtype
-
-        out_dtype = _out_dtype()
-
-        if (
-            (out_dtype not in (dst_dtype, "float32"))
-            and (quantize_params is None)
-            and not (dst_dtype == "float32" and out_dtype == "int32")
-        ):
-            args_dict = {"errCode": "E60001", "param_name": "quantize_params"}
-            raise RuntimeError(
-                args_dict, error_manager_util.get_error_message(args_dict)
-            )
-        if (quantize_params is not None) and (not isinstance(quantize_params, dict)):
-            args_dict = {
-                "errCode": "E60005",
-                "param_name": "quantize_params",
-                "expected_dtype_list": "[dict]",
-                "dtype": "{}".format(type(quantize_params))
-            }
-            raise RuntimeError(
-                args_dict, error_manager_util.get_error_message(args_dict)
-            )
-        if in_a_dtype == "int8" and dst_dtype == "float32":
-            out_dtype = "float32"
-        return l0c_support_fp32, out_dtype
-
-    l0c_support_fp32, out_dtype = _get_output_type()
-
-    def _get_bias_shape():
-        if tensor_bias.dtype != dst_dtype:
-            args_dict = {
-                "errCode": "E60005",
-                "param_name": "c",
-                "expected_dtype_list": "[{}]".format(dst_dtype),
-                "dtype": "{}".format(tensor_bias.dtype)
-            }
-            raise RuntimeError(
-                args_dict, error_manager_util.get_error_message(args_dict)
-            )
-        bias_shape = list(tensor_bias.shape)
-        if len(bias_shape) == 2:
-            origin_bias_shape = bias_shape.copy()
-            for index, value in enumerate(bias_shape):
-                if index == 0:
-                    block = cce_params.BLOCK_IN
-                else:
-                    block = cce_params.BLOCK_OUT
-                bias_shape[index] = ((value + block - 1) // block) * block
-        else:
-            origin_bias_shape = None
-        return bias_shape, origin_bias_shape
-
-    if tensor_bias is not None:
-        bias_shape, origin_bias_shape = _get_bias_shape()
-
-    def _get_block():
-        if in_a_dtype == "float16":
+        Input: None
+        ---------------------------------
+        Return:
+            block_reduce
+            block_in
+            block_out
+        """
+        if dtype == "float16":
             block_reduce = cce_params.BLOCK_REDUCE
         else:
             block_reduce = cce_params.BLOCK_REDUCE_INT8
@@ -815,1101 +611,6 @@ def gemm(  # pylint: disable=R1702, R0912, R0913, R0914, R0915
         block_in = cce_params.BLOCK_IN
         block_out = cce_params.BLOCK_OUT
         return block_reduce, block_in, block_out
-
-    block_reduce, block_in, block_out = _get_block()
-    gm_a_shape_normalize = []
-
-    def _get_a_martix_shape(gm_a_shape_normalize):  # pylint: disable=R0912
-        if trans_a:
-            if is_fractal_a:
-                m_shape = _get_value(tensor_a.shape[tensor_a_length - 3])
-                m_shape_ori = m_shape
-                km_shape = _get_value(tensor_a.shape[tensor_a_length - 4])
-                gm_a_shape_normalize = tensor_a.shape
-            else:
-                if is_nd_int82fp32:
-                    m_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 1]) / 32) * 32 // 16
-                    km_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 2]) / 32) * 32 // 16
-                else:
-                    if in_a_dtype == "int8":
-                        m_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 1]) / 32) * 32 // 16
-                    else:
-                        m_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 1]) / block_in)
-                    km_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 2]) / block_reduce)
-                m_shape_ori = _get_value(tensor_a.shape[tensor_a_length - 1])
-                gm_a_shape_normalize.append(km_shape * block_reduce)
-                gm_a_shape_normalize.append(m_shape * block_in)
-        else:
-            if is_fractal_a:
-                m_shape = _get_value(tensor_a.shape[tensor_a_length - 4])
-                m_shape_ori = m_shape
-                km_shape = _get_value(tensor_a.shape[tensor_a_length - 3])
-                gm_a_shape_normalize = tensor_a.shape
-            else:
-                if is_nd_int82fp32:
-                    m_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 2]) / 32) * 32 // 16
-                    km_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 1]) / 32) * 32 // 16
-                else:
-                    if in_a_dtype == "int8":
-                        m_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 2]) / 32) * 32 // 16
-                    else:
-                        m_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 2]) / block_in)
-                    km_shape = math.ceil(_get_value(tensor_a.shape[tensor_a_length - 1]) / block_reduce)
-                m_shape_ori = _get_value(tensor_a.shape[tensor_a_length - 2])
-                gm_a_shape_normalize.append(m_shape * block_in)
-                gm_a_shape_normalize.append(km_shape * block_reduce)
-
-        return m_shape, m_shape_ori, km_shape, gm_a_shape_normalize
-
-    (
-        m_shape,
-        m_shape_ori,
-        km_shape,
-        gm_a_shape_normalize
-    ) = _get_a_martix_shape(gm_a_shape_normalize)
-
-    gm_b_shape_normalize = []
-
-    def _get_b_martix_shape(gm_b_shape_normalize):
-        if trans_b:
-            if is_fractal_b:
-                kn_shape = _get_value(tensor_b.shape[tensor_b_length - 3])
-                kn_shape_ori = kn_shape
-                n_shape = _get_value(tensor_b.shape[tensor_b_length - 4])
-                n_shape_ori = n_shape
-                gm_b_shape_normalize = tensor_b.shape
-            else:
-                if is_nd_int82fp32:
-                    kn_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 1]) / 32) * 32 // 16
-                    n_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 2]) / 32) * 32 // 16
-                else:
-                    kn_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 1]) / block_reduce)
-                    if in_b_dtype == "int8":
-                        n_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 2]) / 32) * 32 // 16
-                    else:
-                        n_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 2]) / block_out)
-                kn_shape_ori = _get_value(tensor_b.shape[tensor_b_length - 1])
-                n_shape_ori = _get_value(tensor_b.shape[tensor_b_length - 2])
-                gm_b_shape_normalize.append(n_shape * block_out)
-                gm_b_shape_normalize.append(kn_shape * block_reduce)
-        else:
-            if is_fractal_b:
-                kn_shape = _get_value(tensor_b.shape[tensor_b_length - 4])
-                kn_shape_ori = kn_shape
-                n_shape = _get_value(tensor_b.shape[tensor_b_length - 3])
-                n_shape_ori = n_shape
-                gm_b_shape_normalize = tensor_b.shape
-            else:
-                if is_nd_int82fp32:
-                    kn_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 2]) / 32) * 32 // 16
-                    n_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 1]) / 32) * 32 // 16
-                else:
-                    kn_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 2]) / block_reduce)
-                    if in_b_dtype == "int8":
-                        n_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 1]) / 32) * 32 // 16
-                    else:
-                        n_shape = math.ceil(_get_value(tensor_b.shape[tensor_b_length - 1]) / block_out)
-                kn_shape_ori = _get_value(tensor_b.shape[tensor_b_length - 2])
-                n_shape_ori = _get_value(tensor_b.shape[tensor_b_length - 1])
-                gm_b_shape_normalize.append(kn_shape * block_reduce)
-                gm_b_shape_normalize.append(n_shape * block_out)
-
-        return kn_shape, n_shape, n_shape_ori, kn_shape_ori, gm_b_shape_normalize
-
-    (
-        kn_shape,
-        n_shape,
-        n_shape_ori,
-        kn_shape_ori,
-        gm_b_shape_normalize
-    ) = _get_b_martix_shape(gm_b_shape_normalize)
-
-    def _check_k():
-        # check shape
-        if km_shape != kn_shape:
-            args_dict = {
-                "errCode": "E60002",
-                "attr_name": "shape",
-                "param1_name": "km_shape",
-                "param1_value": "{}".format(km_shape),
-                "param2_name": "kn_shape",
-                "param2_value": "{}".format(kn_shape)
-            }
-            raise RuntimeError(
-                args_dict, error_manager_util.get_error_message(args_dict)
-            )
-
-    _check_k()
-
-    def _check_shape():
-        if is_fractal_a:
-            if trans_a:
-                if not (
-                    _get_value(tensor_a.shape[tensor_a_length - 1]) == block_reduce
-                    and _get_value(tensor_a.shape[tensor_a_length - 2]) == block_in
-                ):
-                    args_dict = {
-                        "errCode": "E60108",
-                        "reason": "AShape classification matrix is wrong"
-                    }
-                    raise RuntimeError(
-                        args_dict, error_manager_util.get_error_message(args_dict)
-                    )
-            else:
-                if not (
-                    _get_value(tensor_a.shape[tensor_a_length - 2]) == block_in
-                    and _get_value(tensor_a.shape[tensor_a_length - 1]) == block_reduce
-                ):
-                    args_dict = {
-                        "errCode": "E60108",
-                        "reason": "AShape classification matrix is wrong"
-                    }
-                    raise RuntimeError(
-                        args_dict, error_manager_util.get_error_message(args_dict)
-                    )
-        if is_fractal_b:
-            if trans_b:
-                if not (
-                    _get_value(tensor_b.shape[tensor_b_length - 2]) == block_reduce
-                    and _get_value(tensor_b.shape[tensor_b_length - 1]) == block_out
-                ):
-                    args_dict = {
-                        "errCode": "E60108",
-                        "reason": "BShape classification matrix is wrong"
-                    }
-                    raise RuntimeError(
-                        args_dict, error_manager_util.get_error_message(args_dict)
-                    )
-            else:
-                if not (
-                    _get_value(tensor_b.shape[tensor_b_length - 2]) == block_out
-                    and _get_value(tensor_b.shape[tensor_b_length - 1]) == block_reduce
-                ):
-                    args_dict = {
-                        "errCode": "E60108",
-                        "reason": "BShape classification matrix is wrong"
-                    }
-                    raise RuntimeError(
-                        args_dict, error_manager_util.get_error_message(args_dict)
-                    )
-
-    _check_shape()
-
-    def _get_reduce():
-        # kBurstAxis and kPointAxis
-        if in_a_dtype == "int8" and dst_dtype == "float32":
-            reduce_kp = tvm.reduce_axis((0, 16), name="kp")
-            reduce_kb = tvm.reduce_axis((0, km_shape * 2), name="kb")
-        else:
-            reduce_kp = tvm.reduce_axis((0, block_reduce), name="kp")
-            reduce_kb = tvm.reduce_axis((0, km_shape), name="kb")
-        return reduce_kp, reduce_kb
-
-    reduce_kp, reduce_kb = _get_reduce()
-
-    out_shape = (_get_value(n_shape), _get_value(m_shape), _get_value(block_in), _get_value(block_out))
-    out_shape_ori = [_get_value(m_shape_ori), _get_value(n_shape_ori)]
-    if GEMMParam.batch_a:
-        out_shape = list(out_shape)
-        matmul_batch =  _get_value(tensor_a.shape[0])
-        out_shape.insert(0, matmul_batch)
-        out_shape_ori.insert(0, matmul_batch)
-
-    def _do_align(tensor_need_align, shape_aligned, name, in_dtype):
-        """
-        do align for a_martix or b_martix, pad zero along the way.
-        input:
-            tensor_need_align: tensor, the tensor need align
-            shape_aligned: shape, tensor_need_align's aligned shape
-            name: str, a or b
-            in_dtype: str, input data type
-        return:
-            aligned tensor
-        """
-        ax_outer = int(tensor_need_align.shape[0])
-        ax_inner = int(tensor_need_align.shape[1])
-        tensor_normalize_ub = tvm.compute(
-            shape_aligned,
-            lambda i, j: tvm.select(
-                i < ax_outer,
-                tvm.select(
-                    j < ax_inner,
-                    tensor_need_align[i, j],
-                    tvm.convert(0).astype(in_dtype)
-                ),
-                tvm.convert(0).astype(in_dtype)
-            ),
-            name="tensor_{}_normalize_ub".format(name)
-        )
-        return tensor_normalize_ub
-
-    def check_shape_align(shape, factor):
-        is_align = True
-        if in_dynamic():
-            is_align = False
-        for item in shape:
-            if _get_value(item) % factor != 0:
-                is_align = False
-                break
-        return is_align
-
-    def _compute_bias():
-        tensor_beta_bias_ub = None
-        if not matmul_flag:
-            if len(bias_shape) == 2:
-                if not is_fractal_a:
-                    bias_m_shape_ori = tensor_bias.shape[0]
-                    bias_n_shape_ori = tensor_bias.shape[1]
-                    ub_bias_shape_normalize = [m_shape * block_in, n_shape * block_out]
-                    tensor_bias_ub = tvm.compute(
-                        ub_bias_shape_normalize,
-                        lambda i, j: tvm.select(
-                            i < bias_m_shape_ori,
-                            tvm.select(
-                                j < bias_n_shape_ori,
-                                tensor_bias[i, j],
-                                tvm.convert(0).astype(tensor_bias.dtype)
-                            ),
-                            tvm.convert(0).astype(tensor_bias.dtype)
-                        ),
-                        name="tensor_bias_ub"
-                    )
-                else:
-                    tensor_bias_ub = tvm.compute(
-                        bias_shape,
-                        lambda i, j: tvm.select(
-                            j < origin_bias_shape[-1],
-                            tvm.select(
-                                i < origin_bias_shape[-2],
-                                tensor_bias[i, j],
-                                tvm.convert(0).astype(dst_dtype)
-                            ),
-                            tvm.convert(0).astype(dst_dtype)
-                        ),
-                        name="tensor_bias_ub"
-                    )
-                    tensor_bias_ub = tvm.compute(
-                        out_shape,
-                        lambda i, j, k, l: tensor_bias_ub[
-                            j * block_in + k, i * block_out + l
-                        ]
-                        + 0,
-                        name="tensor_bias_ub_fract"
-                    )
-            elif len(bias_shape) == 4:
-                tensor_bias_ub = tvm.compute(
-                    out_shape,
-                    lambda *indices: tensor_bias(*indices),  # pylint: disable=W0108
-                    name="tensor_bias_ub"
-                )
-
-            if tensor_beta_ub.dtype == "float32" and tensor_bias_ub.dtype == "float16":
-                tensor_float32_bias_ub = tvm.compute(
-                    tensor_bias_ub.shape,
-                    lambda *indices: shape_util.cast(
-                        tensor_bias_ub(*indices), dtype="float32"
-                    ),
-                    name="tensor_float32_bias_ub"
-                )
-                tensor_beta_bias_ub = tvm.compute(
-                    tensor_bias_ub.shape,
-                    lambda *indices: tensor_beta_ub[0] 
-                    * tensor_float32_bias_ub(*indices),
-                    name="tensor_beta_bias_ub"
-                )
-            else:
-                tensor_beta_bias_ub = tvm.compute(
-                    tensor_bias_ub.shape,
-                    lambda *indices: tensor_beta_ub[0] * tensor_bias_ub(*indices),
-                    name="tensor_beta_bias_ub"
-                )
-        else:
-            if tensor_bias is not None:
-                tensor_beta_bias_ub = tvm.compute(
-                    bias_shape, lambda i:
-                    tensor_bias[i], name="tensor_bias_ub"
-                )
-
-        return tensor_beta_bias_ub
-
-    tensor_beta_bias_ub = _compute_bias()
-
-    def _a_nd_part_not_trans():
-        tensor_a_l1_shape = (m_shape, km_shape, block_in, block_reduce)
-        if in_a_dtype == "int8":
-            is_a_align = check_shape_align(tensor_a.shape, 32)
-            if not is_a_align:
-                tensor_a_normalize_ub = _do_align(
-                    tensor_a, gm_a_shape_normalize, "a", in_a_dtype
-                )
-            else:
-                tensor_a_normalize_ub = tvm.compute(
-                    gm_a_shape_normalize,
-                    lambda i, j: tensor_a[i, j],
-                    name="tensor_a_normalize_ub"
-                )
- 
-            tensor_a_fract_k = tvm.compute(
-                tensor_a_l1_shape,
-                lambda i, j, k, l: tensor_a_normalize_ub[
-                    i * block_in + k, j * block_reduce + l
-                ],
-                name="a_fract_k"
-            )
-            tensor_a_l1 = tvm.compute(
-                tensor_a_l1_shape,
-                lambda *indices: tensor_a_fract_k(*indices),  # pylint: disable=W0108
-                name="tensor_a_l1"
-            )
-            tensor_a_l0a = tvm.compute(
-                tensor_a_l1_shape,
-                lambda *indices: tensor_a_l1(*indices),  # pylint: disable=W0108
-                name="tensor_a_l0a"
-            )
-        else:
-            if is_nd_int82fp32:
-                is_a_align = check_shape_align(tensor_a.shape, 32)
-                if not is_a_align:
-                    tensor_a_normalize_ub = _do_align(
-                        tensor_a, gm_a_shape_normalize, "a", "int8"
-                    )
-                else:
-                    tensor_a_normalize_ub = tvm.compute(
-                        gm_a_shape_normalize,
-                        lambda i, j: tensor_a[i, j],
-                        name="tensor_a_normalize_ub"
-                    )
-                tensor_a_normalize_ub = tvm.compute(
-                    gm_a_shape_normalize,
-                    lambda *indices: shape_util.cast(
-                        tensor_a_normalize_ub(*indices), "float16"
-                    ),
-                    name="tensor_a_float16_normalize_ub"
-                )
-            else:
-                is_a_align = check_shape_align(tensor_a.shape, 16)
-                if not is_a_align:
-                    tensor_a_normalize_ub = _do_align(
-                        tensor_a, gm_a_shape_normalize, "a", in_a_dtype
-                    )
-                else:
-                    tensor_a_normalize_ub = tvm.compute(
-                        gm_a_shape_normalize,
-                        lambda i, j: tensor_a[i, j],
-                        name="tensor_a_normalize_ub"
-                    )
-            tensor_a_fract_k_shape = (m_shape, km_shape * block_reduce, block_in)
-            tensor_a_fract_k = tvm.compute(
-                tensor_a_fract_k_shape,
-                lambda i, j, k: tensor_a_normalize_ub[i * block_in + k, j],
-                name="a_fract_k"
-            )
-            tensor_a_l1 = tvm.compute(
-                tensor_a_fract_k_shape,
-                lambda *indices: tensor_a_fract_k(*indices),  # pylint: disable=W0108
-                name="tensor_a_l1"
-            )
-            tensor_a_l0a = tvm.compute(
-                tensor_a_l1_shape,
-                lambda i, j, k, l: tensor_a_l1[i, j * block_reduce + l, k],
-                name="tensor_a_l0a"
-            )
-        return tensor_a_l0a
-
-    def _a_part_not_trans():
-        if is_fractal_a:
-            tensor_a_l1 = tvm.compute(
-                gm_a_shape_normalize,
-                lambda *indices: tensor_a(*indices),  # pylint: disable=W0108
-                name="tensor_a_l1"
-            )
-            if GEMMParam.batch_a:
-                tensor_a_l0a = tvm.compute(
-                    (matmul_batch, m_shape, km_shape, block_in, block_reduce),
-                    lambda b, i, j, k, l: tensor_a_l1[b, i, j, l, k],
-                    name="tensor_a_l0a"
-                )
-            else:
-                tensor_a_l0a = tvm.compute(
-                    (m_shape, km_shape, block_in, block_reduce),
-                    lambda i, j, k, l: tensor_a_l1[i, j, l, k],
-                    name="tensor_a_l0a"
-                )
-        else:
-            tensor_a_l0a = _a_nd_part_not_trans()
-        return tensor_a_l0a
-
-    def _compute_a_matrix():  # pylint: disable=too-many-branches
-        if not trans_a:
-            tensor_a_l0a = _a_part_not_trans()
-        else:
-            def _part_trans():
-                if is_fractal_a:
-                    if in_a_dtype == "int8" and dst_dtype == "float32":
-                        tensor_a_ub = tvm.compute(
-                            gm_a_shape_normalize,
-                            lambda *indices: tensor_a(  # pylint: disable=W0108
-                                *indices
-                            ),
-                            name="tensor_a_ub"
-                        )
-                        tensor_float16_a_ub = tvm.compute(
-                            gm_a_shape_normalize,
-                            lambda *indices: shape_util.cast(
-                                tensor_a_ub(*indices), "float16"
-                            ),
-                            name="tensor_float16_a_ub"
-                        )
-                        new_a_shape = [
-                            gm_a_shape_normalize[1],
-                            gm_a_shape_normalize[0] * 2,
-                            gm_a_shape_normalize[2],
-                            gm_a_shape_normalize[3] // 2
-                        ]
-                        tensor_zz_a_ub = tvm.compute(
-                            new_a_shape,
-                            lambda i, j, k, l: tensor_float16_a_ub[
-                                j // 2, i, k, (j * 16 + l) % 32
-                            ],
-                            name="tensor_zz_a_ub"
-                        )
-                        tensor_a_l1 = tvm.compute(
-                            new_a_shape,
-                            lambda *indices: tensor_zz_a_ub(  # pylint: disable=W0108
-                                *indices
-                            ),
-                            name="tensor_a_l1"
-                        )
-                        tensor_a_l0a = tvm.compute(
-                            new_a_shape,
-                            lambda *indices: tensor_a_l1(  # pylint: disable=W0108
-                                *indices
-                            ),
-                            name="tensor_a_l0a"
-                        )
-                    else:
-                        tensor_a_l1 = tvm.compute(
-                            gm_a_shape_normalize,
-                            lambda *indices: tensor_a(  # pylint: disable=W0108
-                                *indices
-                            ),
-                            name="tensor_a_l1"
-                        )
-                        if GEMMParam.batch_a:
-                            tensor_a_l0a = tvm.compute(
-                                (matmul_batch, m_shape, km_shape, block_in, block_reduce),
-                                lambda b, i, j, k, l: tensor_a_l1[b, j, i, k, l],
-                                name="tensor_a_l0a"
-                            )
-                        else:
-                            tensor_a_l0a = tvm.compute(
-                                (m_shape, km_shape, block_in, block_reduce),
-                                lambda i, j, k, l: tensor_a_l1[j, i, k, l],
-                                name="tensor_a_l0a"
-                            )
-                else:
-                    if in_a_dtype == "float16":
-                        tensor_a_l1_shape = (m_shape, km_shape, block_in, block_reduce)
-                        if is_nd_int82fp32:
-                            is_a_align = check_shape_align(tensor_a.shape, 32)
-                            if not is_a_align:
-                                tensor_a_normalize_ub = _do_align(
-                                    tensor_a, gm_a_shape_normalize, "a", "int8"
-                                )
-                            else:
-                                tensor_a_normalize_ub = tvm.compute(
-                                    gm_a_shape_normalize,
-                                    lambda i, j: tensor_a[i, j],
-                                    name="tensor_a_normalize_ub"
-                                )
-                            tensor_a_normalize_ub = tvm.compute(
-                                gm_a_shape_normalize,
-                                lambda *indices: shape_util.cast(
-                                    tensor_a_normalize_ub(*indices), "float16"
-                                ),
-                                name="tensor_a_float16_normalize_ub"
-                            )
-                        else:
-                            is_a_align = check_shape_align(tensor_a.shape, 16)
-                            if not is_a_align:
-                                tensor_a_normalize_ub = _do_align(
-                                    tensor_a, gm_a_shape_normalize, "a", in_a_dtype
-                                )
-                            else:
-                                tensor_a_normalize_ub = tvm.compute(
-                                    gm_a_shape_normalize,
-                                    lambda i, j: tensor_a[i, j],
-                                    name="tensor_a_normalize_ub"
-                                )
-                        tensor_a_fract_k_shape = (
-                            km_shape,
-                            m_shape * block_in,
-                            block_reduce
-                        )
-                        tensor_a_fract_k = tvm.compute(
-                            tensor_a_fract_k_shape,
-                            lambda i, j, k: tensor_a_normalize_ub[
-                                i * block_reduce + k, j
-                            ],
-                            name="a_fract_k"
-                        )
-                        tensor_a_l1 = tvm.compute(
-                            tensor_a_fract_k_shape,
-                            lambda *indices: tensor_a_fract_k(  # pylint: disable=W0108
-                                *indices
-                            ),
-                            name="tensor_a_l1"
-                        )
-                        tensor_a_l0a = tvm.compute(
-                            tensor_a_l1_shape,
-                            lambda i, j, k, l: tensor_a_l1[j, i * block_in + k, l],
-                            name="tensor_a_l0a",
-                            attrs={"transpose_a": "true"}
-                        )
-                    else:
-                        is_a_align = check_shape_align(tensor_a.shape, 32)
-                        tensor_a_fract_shape = (
-                            m_shape,
-                            km_shape,
-                            block_in,
-                            block_reduce
-                        )
-                        if not is_a_align:
-                            tensor_a_normalize_ub = _do_align(
-                                tensor_a, gm_a_shape_normalize, "a", in_a_dtype
-                            )
-                        else:
-                            tensor_a_normalize_ub = tvm.compute(
-                                gm_a_shape_normalize,
-                                lambda *indices: tensor_a(  # pylint: disable=W0108
-                                    *indices
-                                ),
-                                name="tensor_a_normalize_ub"
-                            )
-                        tensor_a_transpose_shape = (
-                            m_shape * block_in,
-                            km_shape * block_reduce
-                        )
-                        tensor_a_transpose = tvm.compute(
-                            tensor_a_transpose_shape,
-                            lambda i, j: tensor_a_normalize_ub[j, i],
-                            name="a_transpose"
-                        )
-                        tensor_a_fract = tvm.compute(
-                            tensor_a_fract_shape,
-                            lambda i, j, k, l: tensor_a_transpose[
-                                i * block_in + k, j * block_reduce + l
-                            ],
-                            name="a_fract_k"
-                        )
-                        tensor_a_l1 = tvm.compute(
-                            tensor_a_fract_shape,
-                            lambda *indices: tensor_a_fract(  # pylint: disable=W0108
-                                *indices
-                            ),
-                            name="tensor_a_l1"
-                        )
-                        tensor_a_l0a = tvm.compute(
-                            tensor_a_fract_shape,
-                            lambda *indices: tensor_a_l1(  # pylint: disable=W0108
-                                *indices
-                            ),
-                            name="tensor_a_l0a",
-                            attrs={"transpose_a": "true"}
-                        )
-                return tensor_a_l0a
-            tensor_a_l0a = _part_trans()
-        return tensor_a_l0a
-
-    tensor_a_l0a = _compute_a_matrix()
-
-    def _b_nd_part_not_trans():
-        if in_b_dtype == "int8":
-            is_b_align = check_shape_align(tensor_b.shape, 32)
-            tensor_b_l1_shape = (kn_shape, n_shape, block_out, block_reduce)
-            tensor_b_ub_shape = (kn_shape * block_reduce, n_shape * block_out)
-            if is_b_align is False:
-                tensor_b_normalize_ub = _do_align(
-                    tensor_b, gm_b_shape_normalize, "b", "int8"
-                )
-            else:
-                tensor_b_normalize_ub = tvm.compute(
-                    tensor_b_ub_shape,
-                    lambda i, j: tensor_b[i, j],
-                    name="tensor_b_normalize_ub"
-                )
-            tensor_b_transpose_shape = (n_shape * block_out, kn_shape * block_reduce)
-            tensor_b_transpose = tvm.compute(
-                tensor_b_transpose_shape,
-                lambda i, j: tensor_b_normalize_ub[j, i],
-                name="b_transpose"
-            )
-            tensor_b_fract = tvm.compute(
-                (kn_shape, n_shape, block_out, block_reduce),
-                lambda i, j, k, l: tensor_b_transpose[
-                    j * block_in + k, i * block_reduce + l
-                ],
-                name="b_fract"
-            )
-            tensor_b_l1 = tvm.compute(
-                tensor_b_l1_shape,
-                lambda *indices: tensor_b_fract(*indices),  # pylint: disable=W0108
-                name="tensor_b_l1"
-            )
-            tensor_b_l0b = tvm.compute(
-                (kn_shape, n_shape, block_out, block_reduce),
-                lambda i, j, k, l: tensor_b_l1[i, j, k, l],
-                name="tensor_b_l0b"
-            )
-        else:
-            if is_nd_int82fp32:
-                is_b_align = check_shape_align(tensor_b.shape, 32)
-                if not is_b_align:
-                    tensor_b_normalize_ub = _do_align(
-                        tensor_b, gm_b_shape_normalize, "b", "int8"
-                    )
-                else:
-                    tensor_b_normalize_ub = tvm.compute(
-                        gm_b_shape_normalize,
-                        lambda i, j: tensor_b[i, j],
-                        name="tensor_b_normalize_ub"
-                    )
-                tensor_b_normalize_ub = tvm.compute(
-                    gm_b_shape_normalize,
-                    lambda *indices: shape_util.cast(
-                        tensor_b_normalize_ub(*indices), "float16"
-                    ),
-                    name="tensor_b_float16_normalize_ub"
-                )
-            else:
-                is_b_align = check_shape_align(tensor_b.shape, 16)
-                if not is_b_align:
-                    tensor_b_normalize_ub = _do_align(
-                        tensor_b, gm_b_shape_normalize, "b", in_b_dtype
-                    )
-                else:
-                    tensor_b_normalize_ub = tvm.compute(
-                        gm_b_shape_normalize,
-                        lambda i, j: tensor_b[i, j],
-                        name="tensor_b_normalize_ub"
-                    )
-
-            tensor_b_fract_shape = (kn_shape, n_shape * block_out, block_reduce)
-            tensor_b_fract = tvm.compute(
-                tensor_b_fract_shape,
-                lambda i, j, k: tensor_b_normalize_ub[i * block_reduce + k, j],
-                name="b_fract"
-            )
-            tensor_b_l1 = tvm.compute(
-                tensor_b_fract_shape,
-                lambda *indices: tensor_b_fract(*indices),  # pylint: disable=W0108
-                name="tensor_b_l1"
-            )
-            tensor_b_l0b = tvm.compute(
-                (kn_shape, n_shape, block_out, block_reduce),
-                lambda i, j, k, l: tensor_b_l1[i, j * block_reduce + k, l],
-                name="tensor_b_l0b"
-            )
-        return tensor_b_l0b
-
-    def _b_part_not_trans():
-        if is_fractal_b:
-            if nz_b:
-                tensor_b_l1 = tvm.compute(
-                    tensor_b.shape,
-                    lambda *indices: tensor_b(*indices),  # pylint: disable=W0108
-                    name="tensor_b_l1"
-                )
-                tensor_b_l0b = tvm.compute(
-                    tensor_b.shape,
-                    lambda *indices: tensor_b_l1(*indices),  # pylint: disable=W0108
-                    name="tensor_b_l0b"
-                )
-            else:
-                if in_b_dtype == "int8" and dst_dtype == "float32":
-                    tensor_b_ub = tvm.compute(
-                        tensor_b.shape,
-                        lambda *indices: tensor_b(*indices),  # pylint: disable=W0108
-                        name="tensor_b_ub"
-                    )
-                    tensor_float16_b_ub = tvm.compute(
-                        tensor_b.shape,
-                        lambda *indices: shape_util.cast(
-                            tensor_b_ub(*indices), "float16"
-                        ),
-                        name="tensor_float16_b_ub"
-                    )
-                    new_b_shape = [
-                        tensor_b.shape[0] * 2,
-                        tensor_b.shape[1],
-                        tensor_b.shape[2],
-                        tensor_b.shape[3] // 2
-                    ]
-                    tensor_zn_b_ub = tvm.compute(
-                        new_b_shape,
-                        lambda i, j, k, l: tensor_float16_b_ub[
-                            i // 2, j, k, (i * 16 + l) % 32
-                        ],
-                        name="tensor_zn_b_ub"
-                    )
-                    tensor_b_l1 = tvm.compute(
-                        new_b_shape,
-                        lambda *indices: tensor_zn_b_ub(  # pylint: disable=W0108
-                            *indices
-                        ),
-                        name="tensor_b_l1"
-                    )
-                    tensor_b_l0b = tvm.compute(
-                        new_b_shape,
-                        lambda *indices: tensor_b_l1(*indices),  # pylint: disable=W0108
-                        name="tensor_b_l0b"
-                    )
-                else:
-                    tensor_b_l1 = tvm.compute(
-                        tensor_b.shape,
-                        lambda *indices: tensor_b(*indices),  # pylint: disable=W0108
-                        name="tensor_b_l1"
-                    )
-                    tensor_b_l0b = tvm.compute(
-                        tensor_b.shape,
-                        lambda *indices: tensor_b_l1(*indices),  # pylint: disable=W0108
-                        name="tensor_b_l0b"
-                    )
-        else:
-            tensor_b_l0b = _b_nd_part_not_trans()
-        return tensor_b_l0b
-
-    def _nd_part_trans():
-        if in_b_dtype == "float16":
-            if is_nd_int82fp32:
-                is_b_align = check_shape_align(tensor_b.shape, 32)
-                if not is_b_align:
-                    tensor_b_normalize_ub = _do_align(
-                        tensor_b, gm_b_shape_normalize, "b", "int8"
-                    )
-                else:
-                    tensor_b_normalize_ub = tvm.compute(
-                        gm_b_shape_normalize,
-                        lambda i, j: tensor_b[i, j],
-                        name="tensor_b_normalize_ub"
-                    )
-                if not trans_a and trans_b:
-                    transpose_shape = gm_b_shape_normalize[::-1]
-                    tensor_b_transpose_ub = tvm.compute(
-                        transpose_shape,
-                        lambda i, j: tensor_b_normalize_ub[j, i],
-                        name="b_transpose_only"
-                    )
-                    tensor_b_transpose_zero_ub = tvm.compute(
-                        transpose_shape,
-                        lambda i, j: tvm.select(
-                            i < kn_shape_ori,
-                            tensor_b_transpose_ub[i, j],
-                            tvm.const(0).astype("int8")
-                        ),
-                        name="b_transpose_zero"
-                    )
-                    tensor_b_normalize_ub = tvm.compute(
-                        gm_b_shape_normalize,
-                        lambda i, j: tensor_b_transpose_zero_ub[j, i],
-                        name="b_after_process"
-                    )
-                tensor_b_normalize_ub = tvm.compute(
-                    gm_b_shape_normalize,
-                    lambda *indices: shape_util.cast(
-                        tensor_b_normalize_ub(*indices), "float16"
-                    ),
-                    name="tensor_b_float16_normalize_ub"
-                )
-            else:
-                is_b_align = check_shape_align(tensor_b.shape, 16)
-                if not is_b_align:
-                    tensor_b_normalize_ub = _do_align(
-                        tensor_b, gm_b_shape_normalize, "b", in_b_dtype
-                    )
-                else:
-                    tensor_b_normalize_ub = tvm.compute(
-                        gm_b_shape_normalize,
-                        lambda i, j: tensor_b[i, j],
-                        name="tensor_b_normalize_ub"
-                    )
-            tensor_b_fract_shape = (n_shape, kn_shape * block_reduce, block_out)
-            tensor_b_fract = tvm.compute(
-                tensor_b_fract_shape,
-                lambda i, j, k: tensor_b_normalize_ub[i * block_out + k, j],
-                name="b_fract"
-            )
-            tensor_b_l1 = tvm.compute(
-                tensor_b_fract_shape,
-                lambda *indices: tensor_b_fract(*indices),  # pylint: disable=W0108
-                name="tensor_b_l1"
-            )
-            tensor_b_l0b = tvm.compute(
-                (kn_shape, n_shape, block_out, block_reduce),
-                lambda i, j, k, l: tensor_b_l1[j, i * block_reduce + l, k],
-                name="tensor_b_l0b",
-                attrs={"transpose_b": "true"}
-            )
-        else:
-            is_b_align = check_shape_align(tensor_b.shape, 32)
-            tensor_b_fract_shape = (
-                kn_shape,
-                n_shape,
-                block_out,
-                block_reduce
-            )
-            if not is_b_align:
-                tensor_b_normalize_ub = _do_align(
-                    tensor_b, gm_b_shape_normalize, "b", in_b_dtype
-                )
-            else:
-                tensor_b_normalize_ub = tvm.compute(
-                    gm_b_shape_normalize,
-                    lambda *indices: tensor_b(*indices),  # pylint: disable=W0108
-                    name="tensor_b_normalize_ub"
-                )
-            if not trans_a and trans_b:
-                transpose_shape = gm_b_shape_normalize[::-1]
-                tensor_b_transpose_ub = tvm.compute(
-                    transpose_shape,
-                    lambda i, j: tensor_b_normalize_ub[j, i],
-                    name="b_transpose_only"
-                )
-                tensor_b_transpose_zero_ub = tvm.compute(
-                    transpose_shape,
-                    lambda i, j: tvm.select(
-                        i < kn_shape_ori,
-                        tensor_b_transpose_ub[i, j],
-                        tvm.const(0).astype(in_b_dtype)
-                    ),
-                    name="b_transpose_zero"
-                )
-                tensor_b_normalize_ub = tvm.compute(
-                    gm_b_shape_normalize,
-                    lambda i, j: tensor_b_transpose_zero_ub[j, i],
-                    name="b_after_process"
-                )
-            tensor_b_fract = tvm.compute(
-                tensor_b_fract_shape,
-                lambda i, j, k, l: tensor_b_normalize_ub[
-                    j * block_out + k, i * block_reduce + l
-                ],
-                name="b_fract"
-            )
-            tensor_b_l1 = tvm.compute(
-                tensor_b_fract_shape,
-                lambda *indices: tensor_b_fract(*indices),  # pylint: disable=W0108
-                name="tensor_b_l1"
-            )
-            tensor_b_l0b = tvm.compute(
-                tensor_b_fract_shape,
-                lambda *indices: tensor_b_l1(*indices),  # pylint: disable=W0108
-                name="tensor_b_l0b",
-                attrs={"transpose_b": "true"}
-            )
-        return tensor_b_l0b
-
-    def _compute_b_matrix():  # pylint: disable=too-many-branches
-        if not trans_b:
-            tensor_b_l0b = _b_part_not_trans()
-        else:
-            def _part_trans():
-                if is_fractal_b:
-                    if nz_b:
-                        tensor_b_l1 = tvm.compute(
-                            tensor_b.shape,
-                            lambda *indices: tensor_b(  # pylint: disable=W0108
-                                *indices
-                            ),
-                            name="tensor_b_l1"
-                        )
-                        if GEMMParam.batch_b:
-                            tensor_b_l0b = tvm.compute(
-                                (matmul_batch, kn_shape, n_shape, block_out, block_reduce),
-                                lambda b, i, j, k, l: tensor_b_l1[b, j, i, l, k],
-                                name="tensor_b_l0b"
-                            )
-                        else:
-                            tensor_b_l0b = tvm.compute(
-                                (kn_shape, n_shape, block_out, block_reduce),
-                                lambda i, j, k, l: tensor_b_l1[j, i, l, k],
-                                name="tensor_b_l0b"
-                            )
-                    else:
-                        tensor_b_l1 = tvm.compute(
-                            tensor_b.shape,
-                            lambda *indices: tensor_b(  # pylint: disable=W0108
-                                *indices
-                            ),
-                            name="tensor_b_l1"
-                        )
-                        tensor_b_l0b = tvm.compute(
-                            (kn_shape, n_shape, block_out, block_reduce),
-                            lambda i, j, k, l: tensor_b_l1[j, i, l, k],
-                            name="tensor_b_l0b"
-                        )
-                else:
-                    tensor_b_l0b = _nd_part_trans()
-                return tensor_b_l0b
-
-            tensor_b_l0b = _part_trans()
-
-        return tensor_b_l0b
-
-    tensor_b_l0b = _compute_b_matrix()
-
-    def _compute_c_martix():
-        if block_in != cce_params.BLOCK_VECTOR:  # gemm
-            # define mad compute
-            if GEMMParam.batch_a:
-                tensor_c = tvm.compute(
-                out_shape,
-                lambda batch, nb, mb, mp, np: tvm.sum(
-                    (
-                        tensor_a_l0a[batch, mb, reduce_kb, mp, reduce_kp]
-                        * (tensor_b_l0b[batch, reduce_kb, nb, np, reduce_kp]
-                        if GEMMParam.batch_b else tensor_b_l0b[reduce_kb, nb, np, reduce_kp])
-                    ).astype(out_dtype),
-                    axis=[reduce_kb, reduce_kp]
-                ),
-                name="tensor_c",
-                attrs={"input_order": "positive"}
-                )
-            else:
-                tensor_c = tvm.compute(
-                    out_shape,
-                    lambda nb, mb, mp, np: tvm.sum(
-                        (
-                            tensor_a_l0a[mb, reduce_kb, mp, reduce_kp]
-                            * tensor_b_l0b[reduce_kb, nb, np, reduce_kp]
-                        ).astype(out_dtype),
-                        axis=[reduce_kb, reduce_kp]
-                    ),
-                    name="tensor_c",
-                    attrs={"input_order": "positive"}
-                )
-            if matmul_flag and tensor_bias is not None:
-                if tensor_bias.dtype == "float16" and l0c_support_fp32 == 1:
-                    if GEMMParam.batch_a:
-                        tensor_bias_l0c = tvm.compute(
-                            out_shape, lambda b, i, j, k, l: shape_util.cast(
-                                tensor_beta_bias_ub[i * block_out + l], dtype="float32"),
-                                name="tensor_bias_l0c"
-                        )
-                    else:
-                        tensor_bias_l0c = tvm.compute(
-                            out_shape, lambda i, j, k, l: shape_util.cast(
-                                tensor_beta_bias_ub[i * block_out + l], dtype="float32"),
-                                name="tensor_bias_l0c"
-                        )
-                else:
-                    if GEMMParam.batch_a:
-                        tensor_bias_l0c = tvm.compute(
-                            out_shape,
-                            lambda b, i, j, k, l: tensor_beta_bias_ub[i * block_out + l],
-                            name="tensor_bias_l0c"
-                        )
-                    else:
-                        tensor_bias_l0c = tvm.compute(
-                            out_shape,
-                            lambda i, j, k, l: tensor_beta_bias_ub[i * block_out + l],
-                            name="tensor_bias_l0c"
-                        )
-                tensor_c = tvm.compute(
-                    out_shape,
-                    lambda *indices: tensor_bias_l0c[indices] + tensor_c[indices],
-                    name="tensor_c_add_bias"
-                )
-            tensor_c_ub = _get_tensor_c_ub(
-                tensor_c,
-                out_shape,
-                tensor_bias,
-                tensor_alpha_ub,
-                l0c_support_fp32,
-                tensor_beta_bias_ub,
-                dst_dtype,
-                is_fractal_a,
-                matmul_flag
-            )
-
-            if is_fractal_a and is_fractal_b:
-                tensor_c_gm = tvm.compute(
-                    out_shape,
-                    lambda *indices: tensor_c_ub(*indices),  # pylint: disable=W0108
-                    name="tensor_c_gm",
-                    tag="gemm",
-                    attrs={"kernel_name": kernel_name}
-                )
-            else:
-                # ND out shape is dim 2, shape m is original value
-                tensor_c_gm = tvm.compute(
-                    out_shape_ori,
-                    lambda i, j: tvm.select(
-                        i < m_shape_ori,
-                        tvm.select(j < n_shape_ori, tensor_c_ub[i, j])
-                    ),
-                    name="tensor_c_gm",
-                    tag="gemm",
-                    attrs={"kernel_name": kernel_name}
-                )
-        return tensor_c_gm
-
-    tensor_c_gm = _compute_c_martix()
-
-    if in_dynamic():
-        def _get_trans_flag(transpose_a, transpose_b):
-            trans_flag = 1
-            if transpose_a:
-                if transpose_b:
-                    trans_flag = 4
-                else:
-                    trans_flag = 2
-            elif transpose_b:
-                trans_flag = 3
-            return trans_flag
-
-        def _get_a_shape_in_nc1hwc0():
-            if GEMMParam.batch_a:
-                return [tensor_a_l0a.shape[0], tensor_a_l0a.shape[2], tensor_a_l0a.shape[1], 16, 16]
-            else:
-                return [1, tensor_a_l0a.shape[1], tensor_a_l0a.shape[0], 16, 16]
-
-        def _get_b_shape_in_nc1hwc0():
-            if GEMMParam.batch_b:
-                return [tensor_b_l0b.shape[1] * 16, tensor_b_l0b.shape[2], 1, 1, 16]
-            else:
-                return [tensor_b_l0b.shape[0] * 16, tensor_b_l0b.shape[1], 1, 1, 16]
-
-        GEMMParam.tiling_info_dict = {
-            "A_shape": _get_a_shape_in_nc1hwc0(),
-            "B_shape": _get_b_shape_in_nc1hwc0(),
-            "C_shape": None,
-            "A_dtype": tensor_a.dtype,
-            "B_dtype": tensor_b.dtype,
-            "C_dtype": tensor_c_gm.dtype,
-            "mad_dtype": out_dtype,
-            "padl": 0,
-            "padr": 0,
-            "padu": 0,
-            "padd": 0,
-            "strideH": 1,
-            "strideW": 1,
-            "strideH_expand": 1,
-            "strideW_expand": 1,
-            "dilationH": _get_trans_flag(not trans_a, not trans_b),
-            "dilationW": 1,
-            "group": 1,
-            "fused_double_operand_num": 0,
-            "bias_flag": (tensor_bias is not None),
-            "op_tag": "matmul",
-            "op_type": "matmul",
-            "kernel_name": kernel_name,
-            "dynamic_shape_flag": True,
-            "trans_a": trans_a if format_a != "fractal" else not trans_a,
-            "trans_b": trans_b if format_b != "fractal" else not trans_b
-        }
-
-    return tensor_c_gm
 
 
 def _get_tensor_c_ub(  # pylint: disable=too-many-arguments
@@ -1981,10 +682,1593 @@ def _get_tensor_c_ub(  # pylint: disable=too-many-arguments
     return tensor_c_ub
 
 
-class GEMMParam:
+class GEMMComputeParam:
     tiling_info_dict = {}
     dynamic_mode = None
     batch_a = False
     batch_b = False
     def __init__(self) -> None:
         pass
+
+
+class GEMMCompute:
+    """
+    algorithm: gemm and matmul
+    for gemm:
+        calculating matrix multiplication, C = alpha_num*A*B + beta_num*C
+    for matmul:
+        caculating matrix multiplication with bias, C = A*B + bias
+
+    Parameters:
+    tensor_a : the first tensor a
+
+    tensor_b : second tensor b with the same type and shape with a
+
+              If tensor_a/tensor_b is int8/uint8,then L0A must be 16*32,L0B
+              must be 32*16.
+              If A is transpose , then AShape classification matrix must be
+              32*16 in gm/L1,then it is 16*32 in L0A.
+              If B is transpose , then BShape classification matrix must be
+              16*32 in gm/L1,then it is 32*16 in L0B.
+
+    para_dict:
+        alpha: scalar used for multiplication
+
+        beta: scalar used for multiplication
+
+        trans_a : if True, a needs to be transposed
+
+        trans_b : if True, b needs to be transposed
+
+        format_a : the format of tensor a
+
+        format_b : the format of tensor b
+
+        dst_dtype: output data type,support "float16" "float32", default is "float16"
+
+        tensor_bias :the bias with used to init L0C for tensor c
+
+        format_out: output format, now support ND,Nz
+
+        kernel_name: kernel name, default is "MatMul"
+
+        quantize_params: quantization parameters,
+                not None means enable quantization, it is dictionary structure
+
+            quantize_alg: quantize mode,
+                support 'NON_OFFSET' 'HALF_OFFSET_A' 'HALF_OFFSET_B' 'ALL_OFFSET'
+
+            scale_mode_a: tensor_a inbound quantization mode,
+                    support 'SCALAR' and 'VECTOR'
+            scale_mode_b: tensor_b inbound quantization mode,
+                    support 'SCALAR' and 'VECTOR'
+            scale_mode_out: out tensor quantization mode,
+                    support 'SCALAR' and 'VECTOR'
+
+            sqrt_mode_a: tensor_a inbound sqrt mode, support 'NON_SQRT' and 'SQRT'
+            sqrt_mode_b: tensor_b inbound sqrt mode, support 'NON_SQRT' and 'SQRT'
+            sqrt_mode_out: out tensor sqrt mode, support 'NON_SQRT' and 'SQRT'
+
+            scale_q_a: scale placeholder for tensor_a inbound quantization
+            offset_q_a: offset placeholder for tensor_a inbound quantization
+            scale_q_b: scale placeholder for tensor_b inbound quantization
+            offset_q_b: offset placeholder for tensor_b inbound quantization
+
+            scale_drq: scale placeholder for requantization or dequantization
+            offset_drq: scale placeholder for requantization or dequantization
+
+        attrs:
+            offset_x: the offset for fmap
+            offset_w: the offset for w
+
+        compress_index: index for compressed wights, None means not compress wights, now only for matmul
+
+    Returns None
+    """
+
+    def __init__(self, tensor_a, tensor_b, para_dict):
+        self.tensor_a = tensor_a
+        self.tensor_b = tensor_b
+        self.tensor_bias = para_dict.get("tensor_bias")
+        self.alpha = para_dict.get("alpha")
+        self.beta = para_dict.get("beta")
+        self.trans_a = para_dict.get("trans_a", False)
+        self.trans_b = para_dict.get("trans_b", False)
+        self.format_a = para_dict.get("format_a", "ND")
+        self.format_b = para_dict.get("format_b", "ND")
+        self.dst_dtype = para_dict.get("dst_dtype", "float16")
+        self.quantize_params = para_dict.get("quantize_params")
+        self.format_out = para_dict.get("format_out")
+        self.compress_index = para_dict.get("compress_index")
+        self.attrs = para_dict.get("attrs", {})
+        self.kernel_name = para_dict.get("kernel_name", "gemm")
+        self._get_matmul_flag()
+
+    def _get_tensor_alpha_beta(self):
+        """
+        Get tensor of alpha and beta for gemm
+
+        Input: None
+        ---------------------------------
+        Return: None
+        """
+        expected_type = (type(None), Tensor, float)
+        if type(self.alpha) == type(None):
+            self.tensor_alpha = None
+        elif isinstance(self.alpha, float):
+            self.tensor_alpha = tvm.placeholder([1], name="tensor_alpha", dtype=self.dst_dtype)
+        elif isinstance(self.alpha, Tensor):
+            self.tensor_alpha = self.alpha
+        else:
+            args_dict = {
+                "errCode": "E60038",
+                "desc": "Input parameter alpha type error, expected type is {}, " \
+                    "actual input is {}".format(expected_type, type(self.alpha))
+            }
+            raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
+
+        if type(self.beta) == type(None):
+            self.tensor_beta = None
+        elif isinstance(self.beta, float):
+            self.tensor_beta = tvm.placeholder([1], name="tensor_beta", dtype=self.dst_dtype)
+        elif isinstance(self.beta, Tensor):
+            self.tensor_beta = self.beta
+        else:
+            args_dict = {
+                "errCode": "E60038",
+                "desc": "Input parameter beta type error, expected type is {}, " \
+                    "actual input is {}".format(expected_type, type(self.beta))
+            }
+            raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
+
+    def _get_matmul_flag(self):
+        """
+        Get flag of matmul compute
+        if matmul_flag is True, then use the matmul compute
+
+        Input: None
+        ---------------------------------
+        Return: None
+        """
+        self.matmul_flag = False
+        if not (isinstance(self.alpha, Tensor) or isinstance(self.beta, Tensor)):
+            self.matmul_flag = ((self.alpha is None or self.beta is None) or
+                (math.isclose(self.alpha, 1.0) and math.isclose(self.beta, 1.0)))
+
+    def _compute_alpha_beta(self):
+        """
+        The compute process of tensor alpha and beta in ub
+
+        Input: None
+        ---------------------------------
+        Return:
+            tensor_alpha_ub: tensor alpha in ub
+            tensor_beta_ub: tensor beta in ub
+        """
+        if self.tensor_alpha.dtype == "float16":
+            tensor_alpha_temp_ub = tvm.compute(
+                self.tensor_alpha.shape,
+                lambda *indices: self.tensor_alpha(*indices),  # pylint: disable=W0108
+                name="tensor_alpha_temp_ub"
+            )
+
+            tensor_beta_temp_ub = tvm.compute(
+                self.tensor_beta.shape,
+                lambda *indices: self.tensor_beta(*indices),  # pylint: disable=W0108
+                name="tensor_beta_temp_ub"
+            )
+
+            tensor_alpha_ub = tvm.compute(
+                self.tensor_alpha.shape,
+                lambda *indices: shape_util.cast(
+                    tensor_alpha_temp_ub(*indices), dtype="float32"
+                ),
+                name="tensor_alpha_ub"
+            )
+            tensor_beta_ub = tvm.compute(
+                self.tensor_beta.shape,
+                lambda *indices: shape_util.cast(
+                    tensor_beta_temp_ub(*indices), dtype="float32"
+                ),
+                name="tensor_beta_ub"
+            )
+        else:
+            tensor_alpha_ub = tvm.compute(
+                self.tensor_alpha.shape,
+                lambda *indices: self.tensor_alpha(*indices),  # pylint: disable=W0108
+                name="tensor_alpha_ub"
+            )
+            tensor_beta_ub = tvm.compute(
+                self.tensor_beta.shape,
+                lambda *indices: self.tensor_beta(*indices),  # pylint: disable=W0108
+                name="tensor_beta_ub"
+            )
+        return tensor_alpha_ub, tensor_beta_ub
+
+    def _get_dtype(self):
+        """
+        Get the dtype of tensor a , b and int8 to float32 flag
+
+        Input: None
+        ---------------------------------
+        Return: None
+        """
+        if (not self.is_fractal_a and not self.is_fractal_b and self.tensor_a.dtype == "int8"
+                and self.tensor_bias.dtype == "float32"):
+            self.in_a_dtype = "float16"
+            self.in_b_dtype = "float16"
+            self.is_nd_int82fp32 = True
+        else:
+            self.in_a_dtype = self.tensor_a.dtype
+            self.in_b_dtype = self.tensor_b.dtype
+            self.is_nd_int82fp32 = False
+
+    def _get_output_type(self):
+        """
+        Get the dtype of output
+
+        Input: None
+        ---------------------------------
+        Return: out_dtype
+        """
+        l0c_support_fp32 = cce_conf.intrinsic_check_support("Intrinsic_mmad", "f162f32")
+        def _out_dtype():
+            if self.in_a_dtype == "float16" and self.in_b_dtype == "float16":
+                if self.dst_dtype not in ("float16", "float32"):
+                    args_dict = {
+                        "errCode": "E60003",
+                        "a_dtype": self.in_a_dtype,
+                        "expected_dtype_list": "float16, float32",
+                        "out_dtype": "{}".format(self.dst_dtype)
+                    }
+                    raise RuntimeError(
+                        args_dict, error_manager_util.get_error_message(args_dict)
+                    )
+                out_dtype = "float32"
+                if not l0c_support_fp32:
+                    out_dtype = "float16"
+            elif ((self.in_a_dtype == "int8" and self.in_b_dtype == "int8")
+                or (self.in_a_dtype == "uint8" and self.in_b_dtype == "int8")):
+                out_dtype = "int32"
+            else:
+                args_dict = {
+                    "errCode": "E60114",
+                    "reason": "data type of tensor not supported",
+                    "value": "in_a_dtype = {},"
+                    " in_b_dtype = {}".format(self.in_a_dtype, self.in_b_dtype)
+                }
+                raise RuntimeError(
+                    args_dict, error_manager_util.get_error_message(args_dict)
+                )
+            if (out_dtype == self.dst_dtype) and (self.quantize_params is not None):
+                args_dict = {
+                    "errCode": "E60000",
+                    "param_name": "quantize_params",
+                    "expected_value": "None",
+                    "input_value": "{}".format(self.quantize_params)
+                }
+                raise RuntimeError(
+                    args_dict, error_manager_util.get_error_message(args_dict)
+                )
+
+            if self.dst_dtype not in (out_dtype, "float16") and not (
+                self.dst_dtype == "float32" and out_dtype == "int32"
+            ):
+                args_dict = {
+                    "errCode": "E60114",
+                    "reason": "y_dtype should be float16 for a_dtype ="
+                    " {} and b_dtype = {}".format(self.in_a_dtype, self.in_b_dtype),
+                    "value": self.dst_dtype
+                }
+                raise RuntimeError(
+                    args_dict, error_manager_util.get_error_message(args_dict)
+                )
+            return out_dtype
+
+        out_dtype = _out_dtype()
+
+        if ((out_dtype not in (self.dst_dtype, "float32")) and (self.quantize_params is None)
+                and not (self.dst_dtype == "float32" and out_dtype == "int32")):
+            args_dict = {"errCode": "E60001", "param_name": "quantize_params"}
+            raise RuntimeError(
+                args_dict, error_manager_util.get_error_message(args_dict)
+            )
+        if (self.quantize_params is not None) and (not isinstance(self.quantize_params, dict)):
+            args_dict = {
+                "errCode": "E60005",
+                "param_name": "quantize_params",
+                "expected_dtype_list": "[dict]",
+                "dtype": "{}".format(type(self.quantize_params))
+            }
+            raise RuntimeError(
+                args_dict, error_manager_util.get_error_message(args_dict)
+            )
+        if self.in_a_dtype == "int8" and self.dst_dtype == "float32":
+            out_dtype = "float32"
+        return out_dtype
+
+    def _get_bias_shape(self):
+        """
+        Get the shape of bias
+
+        Input: None
+        ---------------------------------
+        Return:
+            bias_shape: the shape of bias for calculation in Davinci
+            origin_bias_shape: the origin shape of bias
+        """
+        if self.tensor_bias.dtype != self.dst_dtype:
+            args_dict = {
+                "errCode": "E60005",
+                "param_name": "c",
+                "expected_dtype_list": "[{}]".format(self.dst_dtype),
+                "dtype": "{}".format(self.tensor_bias.dtype)
+            }
+            raise RuntimeError(
+                args_dict, error_manager_util.get_error_message(args_dict)
+            )
+        bias_shape = list(self.tensor_bias.shape)
+        if len(bias_shape) == 2:
+            origin_bias_shape = bias_shape.copy()
+            for index, value in enumerate(bias_shape):
+                if index == 0:
+                    block = cce_params.BLOCK_IN
+                else:
+                    block = cce_params.BLOCK_OUT
+                bias_shape[index] = ((value + block - 1) // block) * block
+        else:
+            origin_bias_shape = None
+        return bias_shape, origin_bias_shape
+
+    def _get_a_martix_shape(self, gm_a_shape_normalize):  # pylint: disable=R0912
+        """
+        Get the martix shape of tensor a
+
+        Input: gm_a_shape_normalize
+        ---------------------------------
+        Return:
+            m_shape
+            m_shape_ori
+            km_shape
+            gm_a_shape_normalize
+        """
+        if self.trans_a:
+            if self.is_fractal_a:
+                m_shape = _get_value(self.tensor_a.shape[self.tensor_a_length - 3])
+                m_shape_ori = m_shape
+                km_shape = _get_value(self.tensor_a.shape[self.tensor_a_length - 4])
+                gm_a_shape_normalize = self.tensor_a.shape
+            else:
+                if self.is_nd_int82fp32:
+                    m_shape = math.ceil(_get_value(self.tensor_a.shape[self.tensor_a_length - 1]) / 32) * 32 // 16
+                    km_shape = math.ceil(_get_value(self.tensor_a.shape[self.tensor_a_length - 2]) / 32) * 32 // 16
+                else:
+                    if self.in_a_dtype == "int8":
+                        m_shape = math.ceil(_get_value(self.tensor_a.shape[self.tensor_a_length - 1]) / 32) * 32 // 16
+                    else:
+                        m_shape = math.ceil(_get_value(self.tensor_a.shape[self.tensor_a_length - 1]) / self.block_in)
+                    km_shape = math.ceil(_get_value(self.tensor_a.shape[self.tensor_a_length - 2]) / self.block_reduce)
+                m_shape_ori = _get_value(self.tensor_a.shape[self.tensor_a_length - 1])
+                gm_a_shape_normalize.append(km_shape * self.block_reduce)
+                gm_a_shape_normalize.append(m_shape * self.block_in)
+        else:
+            if self.is_fractal_a:
+                m_shape = _get_value(self.tensor_a.shape[self.tensor_a_length - 4])
+                m_shape_ori = m_shape
+                km_shape = _get_value(self.tensor_a.shape[self.tensor_a_length - 3])
+                gm_a_shape_normalize = self.tensor_a.shape
+            else:
+                if self.is_nd_int82fp32:
+                    m_shape = math.ceil(_get_value(self.tensor_a.shape[self.tensor_a_length - 2]) / 32) * 32 // 16
+                    km_shape = math.ceil(_get_value(self.tensor_a.shape[self.tensor_a_length - 1]) / 32) * 32 // 16
+                else:
+                    if self.in_a_dtype == "int8":
+                        m_shape = math.ceil(_get_value(self.tensor_a.shape[self.tensor_a_length - 2]) / 32) * 32 // 16
+                    else:
+                        m_shape = math.ceil(_get_value(self.tensor_a.shape[self.tensor_a_length - 2]) / self.block_in)
+                    km_shape = math.ceil(_get_value(self.tensor_a.shape[self.tensor_a_length - 1]) / self.block_reduce)
+                m_shape_ori = _get_value(self.tensor_a.shape[self.tensor_a_length - 2])
+                gm_a_shape_normalize.append(m_shape * self.block_in)
+                gm_a_shape_normalize.append(km_shape * self.block_reduce)
+
+        return m_shape, m_shape_ori, km_shape, gm_a_shape_normalize
+
+    def _get_b_martix_shape(self, gm_b_shape_normalize):
+        """
+        Get the martix shape of tensor b
+
+        Input: gm_b_shape_normalize
+        ---------------------------------
+        Return:
+            kn_shape
+            n_shape
+            n_shape_ori
+            kn_shape_ori
+            gm_b_shape_normalize
+        """
+        if self.trans_b:
+            if self.is_fractal_b:
+                kn_shape = _get_value(self.tensor_b.shape[self.tensor_b_length - 3])
+                kn_shape_ori = kn_shape
+                n_shape = _get_value(self.tensor_b.shape[self.tensor_b_length - 4])
+                n_shape_ori = n_shape
+                gm_b_shape_normalize = self.tensor_b.shape
+            else:
+                if self.is_nd_int82fp32:
+                    kn_shape = math.ceil(_get_value(self.tensor_b.shape[self.tensor_b_length - 1]) / 32) * 32 // 16
+                    n_shape = math.ceil(_get_value(self.tensor_b.shape[self.tensor_b_length - 2]) / 32) * 32 // 16
+                else:
+                    kn_shape = math.ceil(_get_value(self.tensor_b.shape[self.tensor_b_length - 1]) / self.block_reduce)
+                    if self.in_b_dtype == "int8":
+                        n_shape = math.ceil(_get_value(self.tensor_b.shape[self.tensor_b_length - 2]) / 32) * 32 // 16
+                    else:
+                        n_shape = math.ceil(_get_value(self.tensor_b.shape[self.tensor_b_length - 2]) / self.block_out)
+                kn_shape_ori = _get_value(self.tensor_b.shape[self.tensor_b_length - 1])
+                n_shape_ori = _get_value(self.tensor_b.shape[self.tensor_b_length - 2])
+                gm_b_shape_normalize.append(n_shape * self.block_out)
+                gm_b_shape_normalize.append(kn_shape * self.block_reduce)
+        else:
+            if self.is_fractal_b:
+                kn_shape = _get_value(self.tensor_b.shape[self.tensor_b_length - 4])
+                kn_shape_ori = kn_shape
+                n_shape = _get_value(self.tensor_b.shape[self.tensor_b_length - 3])
+                n_shape_ori = n_shape
+                gm_b_shape_normalize = self.tensor_b.shape
+            else:
+                if self.is_nd_int82fp32:
+                    kn_shape = math.ceil(_get_value(self.tensor_b.shape[self.tensor_b_length - 2]) / 32) * 32 // 16
+                    n_shape = math.ceil(_get_value(self.tensor_b.shape[self.tensor_b_length - 1]) / 32) * 32 // 16
+                else:
+                    kn_shape = math.ceil(_get_value(self.tensor_b.shape[self.tensor_b_length - 2]) / self.block_reduce)
+                    if self.in_b_dtype == "int8":
+                        n_shape = math.ceil(_get_value(self.tensor_b.shape[self.tensor_b_length - 1]) / 32) * 32 // 16
+                    else:
+                        n_shape = math.ceil(_get_value(self.tensor_b.shape[self.tensor_b_length - 1]) / self.block_out)
+                kn_shape_ori = _get_value(self.tensor_b.shape[self.tensor_b_length - 2])
+                n_shape_ori = _get_value(self.tensor_b.shape[self.tensor_b_length - 1])
+                gm_b_shape_normalize.append(kn_shape * self.block_reduce)
+                gm_b_shape_normalize.append(n_shape * self.block_out)
+
+        return kn_shape, n_shape, n_shape_ori, kn_shape_ori, gm_b_shape_normalize
+
+    def _check_shape(self):
+        """
+        Check the legitimacy of shape
+
+        Input: None
+        ---------------------------------
+        Return: None
+        """
+        if self.km_shape != self.kn_shape:
+            args_dict = {
+                "errCode": "E60002",
+                "attr_name": "shape",
+                "param1_name": "km_shape",
+                "param1_value": "{}".format(self.km_shape),
+                "param2_name": "self.kn_shape",
+                "param2_value": "{}".format(self.kn_shape)
+            }
+            raise RuntimeError(
+                args_dict, error_manager_util.get_error_message(args_dict)
+            )
+
+        if self.is_fractal_a:
+            if self.trans_a:
+                if not (
+                    _get_value(self.tensor_a.shape[self.tensor_a_length - 1]) == self.block_reduce
+                    and _get_value(self.tensor_a.shape[self.tensor_a_length - 2]) == self.block_in
+                ):
+                    args_dict = {
+                        "errCode": "E60108",
+                        "reason": "AShape classification matrix is wrong"
+                    }
+                    raise RuntimeError(
+                        args_dict, error_manager_util.get_error_message(args_dict)
+                    )
+            else:
+                if not (
+                    _get_value(self.tensor_a.shape[self.tensor_a_length - 2]) == self.block_in
+                    and _get_value(self.tensor_a.shape[self.tensor_a_length - 1]) == self.block_reduce
+                ):
+                    args_dict = {
+                        "errCode": "E60108",
+                        "reason": "AShape classification matrix is wrong"
+                    }
+                    raise RuntimeError(
+                        args_dict, error_manager_util.get_error_message(args_dict)
+                    )
+        if self.is_fractal_b:
+            if self.trans_b:
+                if not (
+                    _get_value(self.tensor_b.shape[self.tensor_b_length - 2]) == self.block_reduce
+                    and _get_value(self.tensor_b.shape[self.tensor_b_length - 1]) == self.block_out
+                ):
+                    args_dict = {
+                        "errCode": "E60108",
+                        "reason": "BShape classification matrix is wrong"
+                    }
+                    raise RuntimeError(
+                        args_dict, error_manager_util.get_error_message(args_dict)
+                    )
+            else:
+                if not (
+                    _get_value(self.tensor_b.shape[self.tensor_b_length - 2]) == self.block_out
+                    and _get_value(self.tensor_b.shape[self.tensor_b_length - 1]) == self.block_reduce
+                ):
+                    args_dict = {
+                        "errCode": "E60108",
+                        "reason": "BShape classification matrix is wrong"
+                    }
+                    raise RuntimeError(
+                        args_dict, error_manager_util.get_error_message(args_dict)
+                    )
+
+    def _get_reduce(self):
+        """
+        Get the kBurstAxis and kPointAxis
+
+        Input: None
+        ---------------------------------
+        Return:
+            reduce_kp: kPointAxis
+            reduce_kb: kBurstAxis
+        """
+
+        if self.in_a_dtype == "int8" and self.dst_dtype == "float32":
+            reduce_kp = tvm.reduce_axis((0, 16), name="kp")
+            reduce_kb = tvm.reduce_axis((0, self.km_shape * 2), name="kb")
+        else:
+            reduce_kp = tvm.reduce_axis((0, self.block_reduce), name="kp")
+            reduce_kb = tvm.reduce_axis((0, self.km_shape), name="kb")
+        return reduce_kp, reduce_kb
+
+    def _compute_bias(self, bias_shape, origin_bias_shape, tensor_beta_ub):
+        """
+        The compute process of bias
+
+        Input:
+            bias_shape: the shape of bias for calculation in Davinci
+            origin_bias_shape: the origin shape of bias
+            tensor_beta_ub: the tensor of beta in ub
+        ---------------------------------
+        Return:
+            tensor_beta_bias_ub
+        """
+        tensor_beta_bias_ub = None
+        if not self.matmul_flag:
+            if len(bias_shape) == 2:
+                if not self.is_fractal_a:
+                    bias_m_shape_ori = self.tensor_bias.shape[0]
+                    bias_n_shape_ori = self.tensor_bias.shape[1]
+                    ub_bias_shape_normalize = [self.m_shape * self.block_in, self.n_shape * self.block_out]
+                    tensor_bias_ub = tvm.compute(
+                        ub_bias_shape_normalize,
+                        lambda i, j: tvm.select(
+                            i < bias_m_shape_ori,
+                            tvm.select(
+                                j < bias_n_shape_ori,
+                                self.tensor_bias[i, j],
+                                tvm.convert(0).astype(self.tensor_bias.dtype)
+                            ),
+                            tvm.convert(0).astype(self.tensor_bias.dtype)
+                        ),
+                        name="tensor_bias_ub"
+                    )
+                else:
+                    tensor_bias_ub = tvm.compute(
+                        bias_shape,
+                        lambda i, j: tvm.select(
+                            j < origin_bias_shape[-1],
+                            tvm.select(
+                                i < origin_bias_shape[-2],
+                                self.tensor_bias[i, j],
+                                tvm.convert(0).astype(self.dst_dtype)
+                            ),
+                            tvm.convert(0).astype(self.dst_dtype)
+                        ),
+                        name="tensor_bias_ub"
+                    )
+                    tensor_bias_ub = tvm.compute(
+                        self.out_shape,
+                        lambda i, j, k, l: tensor_bias_ub[
+                            j * self.block_in + k, i * self.block_out + l
+                        ]
+                        + 0,
+                        name="tensor_bias_ub_fract"
+                    )
+            elif len(bias_shape) == 4:
+                tensor_bias_ub = tvm.compute(
+                    self.out_shape,
+                    lambda *indices: self.tensor_bias(*indices),  # pylint: disable=W0108
+                    name="tensor_bias_ub"
+                )
+
+            if tensor_beta_ub.dtype == "float32" and tensor_bias_ub.dtype == "float16":
+                tensor_float32_bias_ub = tvm.compute(
+                    tensor_bias_ub.shape,
+                    lambda *indices: shape_util.cast(
+                        tensor_bias_ub(*indices), dtype="float32"
+                    ),
+                    name="tensor_float32_bias_ub"
+                )
+                tensor_beta_bias_ub = tvm.compute(
+                    tensor_bias_ub.shape,
+                    lambda *indices: tensor_beta_ub[0]
+                    * tensor_float32_bias_ub(*indices),
+                    name="tensor_beta_bias_ub"
+                )
+            else:
+                tensor_beta_bias_ub = tvm.compute(
+                    tensor_bias_ub.shape,
+                    lambda *indices: tensor_beta_ub[0] * tensor_bias_ub(*indices),
+                    name="tensor_beta_bias_ub"
+                )
+        else:
+            if self.tensor_bias is not None:
+                tensor_beta_bias_ub = tvm.compute(
+                    bias_shape, lambda i:
+                    self.tensor_bias[i], name="tensor_bias_ub"
+                )
+
+        return tensor_beta_bias_ub
+
+    def _a_nd_part_not_trans(self, gm_a_shape_normalize):
+        """
+        The compute process of a with ND part and not trans
+
+        Input:
+            gm_a_shape_normalize
+        ---------------------------------
+        Return:
+            tensor_a_l0a
+        """
+        tensor_a_l1_shape = (self.m_shape, self.km_shape, self.block_in, self.block_reduce)
+        if self.in_a_dtype == "int8":
+            is_a_align = _check_shape_align(self.tensor_a.shape, 32)
+            if not is_a_align:
+                tensor_a_normalize_ub = _do_align(
+                    self.tensor_a, gm_a_shape_normalize, "a", self.in_a_dtype
+                )
+            else:
+                tensor_a_normalize_ub = tvm.compute(
+                    gm_a_shape_normalize,
+                    lambda i, j: self.tensor_a[i, j],
+                    name="tensor_a_normalize_ub"
+                )
+
+            tensor_a_fract_k = tvm.compute(
+                tensor_a_l1_shape,
+                lambda i, j, k, l: tensor_a_normalize_ub[
+                    i * self.block_in + k, j * self.block_reduce + l
+                ],
+                name="a_fract_k"
+            )
+            tensor_a_l1 = tvm.compute(
+                tensor_a_l1_shape,
+                lambda *indices: tensor_a_fract_k(*indices),  # pylint: disable=W0108
+                name="tensor_a_l1"
+            )
+            tensor_a_l0a = tvm.compute(
+                tensor_a_l1_shape,
+                lambda *indices: tensor_a_l1(*indices),  # pylint: disable=W0108
+                name="tensor_a_l0a"
+            )
+        else:
+            if self.is_nd_int82fp32:
+                is_a_align = _check_shape_align(self.tensor_a.shape, 32)
+                if not is_a_align:
+                    tensor_a_normalize_ub = _do_align(
+                        self.tensor_a, gm_a_shape_normalize, "a", "int8"
+                    )
+                else:
+                    tensor_a_normalize_ub = tvm.compute(
+                        gm_a_shape_normalize,
+                        lambda i, j: self.tensor_a[i, j],
+                        name="tensor_a_normalize_ub"
+                    )
+                tensor_a_normalize_ub = tvm.compute(
+                    gm_a_shape_normalize,
+                    lambda *indices: shape_util.cast(
+                        tensor_a_normalize_ub(*indices), "float16"
+                    ),
+                    name="tensor_a_float16_normalize_ub"
+                )
+            else:
+                is_a_align = _check_shape_align(self.tensor_a.shape, 16)
+                if not is_a_align:
+                    tensor_a_normalize_ub = _do_align(
+                        self.tensor_a, gm_a_shape_normalize, "a", self.in_a_dtype
+                    )
+                else:
+                    tensor_a_normalize_ub = tvm.compute(
+                        gm_a_shape_normalize,
+                        lambda i, j: self.tensor_a[i, j],
+                        name="tensor_a_normalize_ub"
+                    )
+            tensor_a_fract_k_shape = (self.m_shape, self.km_shape * self.block_reduce, self.block_in)
+            tensor_a_fract_k = tvm.compute(
+                tensor_a_fract_k_shape,
+                lambda i, j, k: tensor_a_normalize_ub[i * self.block_in + k, j],
+                name="a_fract_k"
+            )
+            tensor_a_l1 = tvm.compute(
+                tensor_a_fract_k_shape,
+                lambda *indices: tensor_a_fract_k(*indices),  # pylint: disable=W0108
+                name="tensor_a_l1"
+            )
+            tensor_a_l0a = tvm.compute(
+                tensor_a_l1_shape,
+                lambda i, j, k, l: tensor_a_l1[i, j * self.block_reduce + l, k],
+                name="tensor_a_l0a"
+            )
+        return tensor_a_l0a
+
+    def _a_part_not_trans(self, gm_a_shape_normalize):
+        """
+        The compute process of a with part and not trans
+
+        Input:
+            gm_a_shape_normalize
+        ---------------------------------
+        Return:
+            tensor_a_l0a
+        """
+        if self.is_fractal_a:
+            tensor_a_l1 = tvm.compute(
+                gm_a_shape_normalize,
+                lambda *indices: self.tensor_a(*indices),  # pylint: disable=W0108
+                name="tensor_a_l1"
+            )
+            if GEMMComputeParam.batch_a:
+                tensor_a_l0a = tvm.compute(
+                    (self.matmul_batch, self.m_shape, self.km_shape, self.block_in, self.block_reduce),
+                    lambda b, i, j, k, l: tensor_a_l1[b, i, j, l, k],
+                    name="tensor_a_l0a"
+                )
+            else:
+                tensor_a_l0a = tvm.compute(
+                    (self.m_shape, self.km_shape, self.block_in, self.block_reduce),
+                    lambda i, j, k, l: tensor_a_l1[i, j, l, k],
+                    name="tensor_a_l0a"
+                )
+        else:
+            tensor_a_l0a = self._a_nd_part_not_trans(gm_a_shape_normalize)
+        return tensor_a_l0a
+
+    def _compute_a_matrix(self, gm_a_shape_normalize):  # pylint: disable=too-many-branches
+        """
+        The compute process of matrix a
+
+        Input:
+            gm_a_shape_normalize
+        ---------------------------------
+        Input:
+            tensor_a_l0a
+        """
+        if not self.trans_a:
+            tensor_a_l0a = self._a_part_not_trans(gm_a_shape_normalize)
+        else:
+            def _part_trans():
+                if self.is_fractal_a:
+                    if self.in_a_dtype == "int8" and self.dst_dtype == "float32":
+                        tensor_a_ub = tvm.compute(
+                            gm_a_shape_normalize,
+                            lambda *indices: self.tensor_a(  # pylint: disable=W0108
+                                *indices
+                            ),
+                            name="tensor_a_ub"
+                        )
+                        tensor_float16_a_ub = tvm.compute(
+                            gm_a_shape_normalize,
+                            lambda *indices: shape_util.cast(
+                                tensor_a_ub(*indices), "float16"
+                            ),
+                            name="tensor_float16_a_ub"
+                        )
+                        new_a_shape = [
+                            gm_a_shape_normalize[1],
+                            gm_a_shape_normalize[0] * 2,
+                            gm_a_shape_normalize[2],
+                            gm_a_shape_normalize[3] // 2
+                        ]
+                        tensor_zz_a_ub = tvm.compute(
+                            new_a_shape,
+                            lambda i, j, k, l: tensor_float16_a_ub[
+                                j // 2, i, k, (j * 16 + l) % 32
+                            ],
+                            name="tensor_zz_a_ub"
+                        )
+                        tensor_a_l1 = tvm.compute(
+                            new_a_shape,
+                            lambda *indices: tensor_zz_a_ub(  # pylint: disable=W0108
+                                *indices
+                            ),
+                            name="tensor_a_l1"
+                        )
+                        tensor_a_l0a = tvm.compute(
+                            new_a_shape,
+                            lambda *indices: tensor_a_l1(  # pylint: disable=W0108
+                                *indices
+                            ),
+                            name="tensor_a_l0a"
+                        )
+                    else:
+                        tensor_a_l1 = tvm.compute(
+                            gm_a_shape_normalize,
+                            lambda *indices: self.tensor_a(  # pylint: disable=W0108
+                                *indices
+                            ),
+                            name="tensor_a_l1"
+                        )
+                        if GEMMComputeParam.batch_a:
+                            tensor_a_l0a = tvm.compute(
+                                (self.matmul_batch, self.m_shape, self.km_shape, self.block_in, self.block_reduce),
+                                lambda b, i, j, k, l: tensor_a_l1[b, j, i, k, l],
+                                name="tensor_a_l0a"
+                            )
+                        else:
+                            tensor_a_l0a = tvm.compute(
+                                (self.m_shape, self.km_shape, self.block_in, self.block_reduce),
+                                lambda i, j, k, l: tensor_a_l1[j, i, k, l],
+                                name="tensor_a_l0a"
+                            )
+                else:
+                    if self.in_a_dtype == "float16":
+                        tensor_a_l1_shape = (self.m_shape, self.km_shape, self.block_in, self.block_reduce)
+                        if self.is_nd_int82fp32:
+                            is_a_align = _check_shape_align(self.tensor_a.shape, 32)
+                            if not is_a_align:
+                                tensor_a_normalize_ub = _do_align(
+                                    self.tensor_a, gm_a_shape_normalize, "a", "int8"
+                                )
+                            else:
+                                tensor_a_normalize_ub = tvm.compute(
+                                    gm_a_shape_normalize,
+                                    lambda i, j: self.tensor_a[i, j],
+                                    name="tensor_a_normalize_ub"
+                                )
+                            tensor_a_normalize_ub = tvm.compute(
+                                gm_a_shape_normalize,
+                                lambda *indices: shape_util.cast(
+                                    tensor_a_normalize_ub(*indices), "float16"
+                                ),
+                                name="tensor_a_float16_normalize_ub"
+                            )
+                        else:
+                            is_a_align = _check_shape_align(self.tensor_a.shape, 16)
+                            if not is_a_align:
+                                tensor_a_normalize_ub = _do_align(
+                                    self.tensor_a, gm_a_shape_normalize, "a", self.in_a_dtype
+                                )
+                            else:
+                                tensor_a_normalize_ub = tvm.compute(
+                                    gm_a_shape_normalize,
+                                    lambda i, j: self.tensor_a[i, j],
+                                    name="tensor_a_normalize_ub"
+                                )
+                        tensor_a_fract_k_shape = (
+                            self.km_shape,
+                            self.m_shape * self.block_in,
+                            self.block_reduce
+                        )
+                        tensor_a_fract_k = tvm.compute(
+                            tensor_a_fract_k_shape,
+                            lambda i, j, k: tensor_a_normalize_ub[
+                                i * self.block_reduce + k, j
+                            ],
+                            name="a_fract_k"
+                        )
+                        tensor_a_l1 = tvm.compute(
+                            tensor_a_fract_k_shape,
+                            lambda *indices: tensor_a_fract_k(  # pylint: disable=W0108
+                                *indices
+                            ),
+                            name="tensor_a_l1"
+                        )
+                        tensor_a_l0a = tvm.compute(
+                            tensor_a_l1_shape,
+                            lambda i, j, k, l: tensor_a_l1[j, i * self.block_in + k, l],
+                            name="tensor_a_l0a",
+                            attrs={"transpose_a": "true"}
+                        )
+                    else:
+                        is_a_align = _check_shape_align(self.tensor_a.shape, 32)
+                        tensor_a_fract_shape = (
+                            self.m_shape,
+                            self.km_shape,
+                            self.block_in,
+                            self.block_reduce
+                        )
+                        if not is_a_align:
+                            tensor_a_normalize_ub = _do_align(
+                                self.tensor_a, gm_a_shape_normalize, "a", self.in_a_dtype
+                            )
+                        else:
+                            tensor_a_normalize_ub = tvm.compute(
+                                gm_a_shape_normalize,
+                                lambda *indices: self.tensor_a(  # pylint: disable=W0108
+                                    *indices
+                                ),
+                                name="tensor_a_normalize_ub"
+                            )
+                        tensor_a_transpose_shape = (
+                            self.m_shape * self.block_in,
+                            self.km_shape * self.block_reduce
+                        )
+                        tensor_a_transpose = tvm.compute(
+                            tensor_a_transpose_shape,
+                            lambda i, j: tensor_a_normalize_ub[j, i],
+                            name="a_transpose"
+                        )
+                        tensor_a_fract = tvm.compute(
+                            tensor_a_fract_shape,
+                            lambda i, j, k, l: tensor_a_transpose[
+                                i * self.block_in + k, j * self.block_reduce + l
+                            ],
+                            name="a_fract_k"
+                        )
+                        tensor_a_l1 = tvm.compute(
+                            tensor_a_fract_shape,
+                            lambda *indices: tensor_a_fract(  # pylint: disable=W0108
+                                *indices
+                            ),
+                            name="tensor_a_l1"
+                        )
+                        tensor_a_l0a = tvm.compute(
+                            tensor_a_fract_shape,
+                            lambda *indices: tensor_a_l1(  # pylint: disable=W0108
+                                *indices
+                            ),
+                            name="tensor_a_l0a",
+                            attrs={"transpose_a": "true"}
+                        )
+                return tensor_a_l0a
+            tensor_a_l0a = _part_trans()
+        return tensor_a_l0a
+
+    def _b_nd_part_not_trans(self, gm_b_shape_normalize):
+        """
+        The compute process of b with nd part and not trans
+
+        Input:
+            gm_b_shape_normalize
+        ---------------------------------
+        Input:
+            tensor_b_l0b
+        """
+        if self.in_b_dtype == "int8":
+            is_b_align = _check_shape_align(self.tensor_b.shape, 32)
+            tensor_b_l1_shape = (self.kn_shape, self.n_shape, self.block_out, self.block_reduce)
+            tensor_b_ub_shape = (self.kn_shape *self. block_reduce, self.n_shape * self.block_out)
+            if is_b_align is False:
+                tensor_b_normalize_ub = _do_align(
+                    self.tensor_b, gm_b_shape_normalize, "b", "int8"
+                )
+            else:
+                tensor_b_normalize_ub = tvm.compute(
+                    tensor_b_ub_shape,
+                    lambda i, j: self.tensor_b[i, j],
+                    name="tensor_b_normalize_ub"
+                )
+            tensor_b_transpose_shape = (self.n_shape * self.block_out, self.kn_shape * self.block_reduce)
+            tensor_b_transpose = tvm.compute(
+                tensor_b_transpose_shape,
+                lambda i, j: tensor_b_normalize_ub[j, i],
+                name="b_transpose"
+            )
+            tensor_b_fract = tvm.compute(
+                (self.kn_shape, self.n_shape, self.block_out, self.block_reduce),
+                lambda i, j, k, l: tensor_b_transpose[
+                    j * self.block_in + k, i * self.block_reduce + l
+                ],
+                name="b_fract"
+            )
+            tensor_b_l1 = tvm.compute(
+                tensor_b_l1_shape,
+                lambda *indices: tensor_b_fract(*indices),  # pylint: disable=W0108
+                name="tensor_b_l1"
+            )
+            tensor_b_l0b = tvm.compute(
+                (self.kn_shape, self.n_shape, self.block_out, self.block_reduce),
+                lambda i, j, k, l: tensor_b_l1[i, j, k, l],
+                name="tensor_b_l0b"
+            )
+        else:
+            if self.is_nd_int82fp32:
+                is_b_align = _check_shape_align(self.tensor_b.shape, 32)
+                if not is_b_align:
+                    tensor_b_normalize_ub = _do_align(
+                        self.tensor_b, gm_b_shape_normalize, "b", "int8"
+                    )
+                else:
+                    tensor_b_normalize_ub = tvm.compute(
+                        gm_b_shape_normalize,
+                        lambda i, j: self.tensor_b[i, j],
+                        name="tensor_b_normalize_ub"
+                    )
+                tensor_b_normalize_ub = tvm.compute(
+                    gm_b_shape_normalize,
+                    lambda *indices: shape_util.cast(
+                        tensor_b_normalize_ub(*indices), "float16"
+                    ),
+                    name="tensor_b_float16_normalize_ub"
+                )
+            else:
+                is_b_align = _check_shape_align(self.tensor_b.shape, 16)
+                if not is_b_align:
+                    tensor_b_normalize_ub = _do_align(
+                        self.tensor_b, gm_b_shape_normalize, "b", self.in_b_dtype
+                    )
+                else:
+                    tensor_b_normalize_ub = tvm.compute(
+                        gm_b_shape_normalize,
+                        lambda i, j: self.tensor_b[i, j],
+                        name="tensor_b_normalize_ub"
+                    )
+
+            tensor_b_fract_shape = (self.kn_shape, self.n_shape * self.block_out, self.block_reduce)
+            tensor_b_fract = tvm.compute(
+                tensor_b_fract_shape,
+                lambda i, j, k: tensor_b_normalize_ub[i * self.block_reduce + k, j],
+                name="b_fract"
+            )
+            tensor_b_l1 = tvm.compute(
+                tensor_b_fract_shape,
+                lambda *indices: tensor_b_fract(*indices),  # pylint: disable=W0108
+                name="tensor_b_l1"
+            )
+            tensor_b_l0b = tvm.compute(
+                (self.kn_shape, self.n_shape, self.block_out, self.block_reduce),
+                lambda i, j, k, l: tensor_b_l1[i, j * self.block_reduce + k, l],
+                name="tensor_b_l0b"
+            )
+        return tensor_b_l0b
+
+    def _b_part_not_trans(self, gm_b_shape_normalize):
+        """
+        The compute process of b with part and not trans
+
+        Input:
+            gm_b_shape_normalize
+        ---------------------------------
+        Input:
+            tensor_b_l0b
+        """
+        if self.is_fractal_b:
+            if self.nz_b:
+                tensor_b_l1 = tvm.compute(
+                    self.tensor_b.shape,
+                    lambda *indices: self.tensor_b(*indices),  # pylint: disable=W0108
+                    name="tensor_b_l1"
+                )
+                tensor_b_l0b = tvm.compute(
+                    self.tensor_b.shape,
+                    lambda *indices: tensor_b_l1(*indices),  # pylint: disable=W0108
+                    name="tensor_b_l0b"
+                )
+            else:
+                if self.in_b_dtype == "int8" and self.dst_dtype == "float32":
+                    tensor_b_ub = tvm.compute(
+                        self.tensor_b.shape,
+                        lambda *indices: self.tensor_b(*indices),  # pylint: disable=W0108
+                        name="tensor_b_ub"
+                    )
+                    tensor_float16_b_ub = tvm.compute(
+                        self.tensor_b.shape,
+                        lambda *indices: shape_util.cast(
+                            tensor_b_ub(*indices), "float16"
+                        ),
+                        name="tensor_float16_b_ub"
+                    )
+                    new_b_shape = [
+                        self.tensor_b.shape[0] * 2,
+                        self.tensor_b.shape[1],
+                        self.tensor_b.shape[2],
+                        self.tensor_b.shape[3] // 2
+                    ]
+                    tensor_zn_b_ub = tvm.compute(
+                        new_b_shape,
+                        lambda i, j, k, l: tensor_float16_b_ub[
+                            i // 2, j, k, (i * 16 + l) % 32
+                        ],
+                        name="tensor_zn_b_ub"
+                    )
+                    tensor_b_l1 = tvm.compute(
+                        new_b_shape,
+                        lambda *indices: tensor_zn_b_ub(  # pylint: disable=W0108
+                            *indices
+                        ),
+                        name="tensor_b_l1"
+                    )
+                    tensor_b_l0b = tvm.compute(
+                        new_b_shape,
+                        lambda *indices: tensor_b_l1(*indices),  # pylint: disable=W0108
+                        name="tensor_b_l0b"
+                    )
+                else:
+                    tensor_b_l1 = tvm.compute(
+                        self.tensor_b.shape,
+                        lambda *indices: self.tensor_b(*indices),  # pylint: disable=W0108
+                        name="tensor_b_l1"
+                    )
+                    tensor_b_l0b = tvm.compute(
+                        self.tensor_b.shape,
+                        lambda *indices: tensor_b_l1(*indices),  # pylint: disable=W0108
+                        name="tensor_b_l0b"
+                    )
+        else:
+            tensor_b_l0b = self._b_nd_part_not_trans(gm_b_shape_normalize)
+        return tensor_b_l0b
+
+    def _nd_part_trans(self, gm_b_shape_normalize):
+        """
+        The compute process of b with nd part and trans
+
+        Input:
+            gm_b_shape_normalize
+        ---------------------------------
+        Input:
+            tensor_b_l0b
+        """
+        if self.in_b_dtype == "float16":
+            if self.is_nd_int82fp32:
+                is_b_align = _check_shape_align(self.tensor_b.shape, 32)
+                if not is_b_align:
+                    tensor_b_normalize_ub = _do_align(
+                        self.tensor_b, gm_b_shape_normalize, "b", "int8"
+                    )
+                else:
+                    tensor_b_normalize_ub = tvm.compute(
+                        gm_b_shape_normalize,
+                        lambda i, j: self.tensor_b[i, j],
+                        name="tensor_b_normalize_ub"
+                    )
+                if not self.trans_a and self.trans_b:
+                    transpose_shape = gm_b_shape_normalize[::-1]
+                    tensor_b_transpose_ub = tvm.compute(
+                        transpose_shape,
+                        lambda i, j: tensor_b_normalize_ub[j, i],
+                        name="b_transpose_only"
+                    )
+                    tensor_b_transpose_zero_ub = tvm.compute(
+                        transpose_shape,
+                        lambda i, j: tvm.select(
+                            i < self.kn_shape_ori,
+                            tensor_b_transpose_ub[i, j],
+                            tvm.const(0).astype("int8")
+                        ),
+                        name="b_transpose_zero"
+                    )
+                    tensor_b_normalize_ub = tvm.compute(
+                        gm_b_shape_normalize,
+                        lambda i, j: tensor_b_transpose_zero_ub[j, i],
+                        name="b_after_process"
+                    )
+                tensor_b_normalize_ub = tvm.compute(
+                    gm_b_shape_normalize,
+                    lambda *indices: shape_util.cast(
+                        tensor_b_normalize_ub(*indices), "float16"
+                    ),
+                    name="tensor_b_float16_normalize_ub"
+                )
+            else:
+                is_b_align = _check_shape_align(self.tensor_b.shape, 16)
+                if not is_b_align:
+                    tensor_b_normalize_ub = _do_align(
+                        self.tensor_b, gm_b_shape_normalize, "b", self.in_b_dtype
+                    )
+                else:
+                    tensor_b_normalize_ub = tvm.compute(
+                        gm_b_shape_normalize,
+                        lambda i, j: self.tensor_b[i, j],
+                        name="tensor_b_normalize_ub"
+                    )
+            tensor_b_fract_shape = (self.n_shape, self.kn_shape * self.block_reduce, self.block_out)
+            tensor_b_fract = tvm.compute(
+                tensor_b_fract_shape,
+                lambda i, j, k: tensor_b_normalize_ub[i * self.block_out + k, j],
+                name="b_fract"
+            )
+            tensor_b_l1 = tvm.compute(
+                tensor_b_fract_shape,
+                lambda *indices: tensor_b_fract(*indices),  # pylint: disable=W0108
+                name="tensor_b_l1"
+            )
+            tensor_b_l0b = tvm.compute(
+                (self.kn_shape, self.n_shape, self.block_out, self.block_reduce),
+                lambda i, j, k, l: tensor_b_l1[j, i * self.block_reduce + l, k],
+                name="tensor_b_l0b",
+                attrs={"transpose_b": "true"}
+            )
+        else:
+            is_b_align = _check_shape_align(self.tensor_b.shape, 32)
+            tensor_b_fract_shape = (
+                self.kn_shape,
+                self.n_shape,
+                self.block_out,
+                self.block_reduce
+            )
+            if not is_b_align:
+                tensor_b_normalize_ub = _do_align(
+                    self.tensor_b, gm_b_shape_normalize, "b", self.in_b_dtype
+                )
+            else:
+                tensor_b_normalize_ub = tvm.compute(
+                    gm_b_shape_normalize,
+                    lambda *indices: self.tensor_b(*indices),  # pylint: disable=W0108
+                    name="tensor_b_normalize_ub"
+                )
+            if not self.trans_a and self.trans_b:
+                transpose_shape = gm_b_shape_normalize[::-1]
+                tensor_b_transpose_ub = tvm.compute(
+                    transpose_shape,
+                    lambda i, j: tensor_b_normalize_ub[j, i],
+                    name="b_transpose_only"
+                )
+                tensor_b_transpose_zero_ub = tvm.compute(
+                    transpose_shape,
+                    lambda i, j: tvm.select(
+                        i < self.kn_shape_ori,
+                        tensor_b_transpose_ub[i, j],
+                        tvm.const(0).astype(self.in_b_dtype)
+                    ),
+                    name="b_transpose_zero"
+                )
+                tensor_b_normalize_ub = tvm.compute(
+                    gm_b_shape_normalize,
+                    lambda i, j: tensor_b_transpose_zero_ub[j, i],
+                    name="b_after_process"
+                )
+            tensor_b_fract = tvm.compute(
+                tensor_b_fract_shape,
+                lambda i, j, k, l: tensor_b_normalize_ub[
+                    j * self.block_out + k, i * self.block_reduce + l
+                ],
+                name="b_fract"
+            )
+            tensor_b_l1 = tvm.compute(
+                tensor_b_fract_shape,
+                lambda *indices: tensor_b_fract(*indices),  # pylint: disable=W0108
+                name="tensor_b_l1"
+            )
+            tensor_b_l0b = tvm.compute(
+                tensor_b_fract_shape,
+                lambda *indices: tensor_b_l1(*indices),  # pylint: disable=W0108
+                name="tensor_b_l0b",
+                attrs={"transpose_b": "true"}
+            )
+        return tensor_b_l0b
+
+    def _compute_b_matrix(self, gm_b_shape_normalize):  # pylint: disable=too-many-branches
+        """
+        The compute process of B martix
+
+        Input:
+            gm_b_shape_normalize
+        ---------------------------------
+        Input:
+            tensor_b_l0b
+        """
+        if not self.trans_b:
+            tensor_b_l0b = self._b_part_not_trans(gm_b_shape_normalize)
+        else:
+            def _part_trans():
+                if self.is_fractal_b:
+                    if self.nz_b:
+                        tensor_b_l1 = tvm.compute(
+                            self.tensor_b.shape,
+                            lambda *indices: self.tensor_b(  # pylint: disable=W0108
+                                *indices
+                            ),
+                            name="tensor_b_l1"
+                        )
+                        if GEMMComputeParam.batch_b:
+                            tensor_b_l0b = tvm.compute(
+                                (self.matmul_batch, self.kn_shape, self.n_shape, self.block_out, self.block_reduce),
+                                lambda b, i, j, k, l: tensor_b_l1[b, j, i, l, k],
+                                name="tensor_b_l0b"
+                            )
+                        else:
+                            tensor_b_l0b = tvm.compute(
+                                (self.kn_shape, self.n_shape, self.block_out, self.block_reduce),
+                                lambda i, j, k, l: tensor_b_l1[j, i, l, k],
+                                name="tensor_b_l0b"
+                            )
+                    else:
+                        tensor_b_l1 = tvm.compute(
+                            self.tensor_b.shape,
+                            lambda *indices: self.tensor_b(  # pylint: disable=W0108
+                                *indices
+                            ),
+                            name="tensor_b_l1"
+                        )
+                        tensor_b_l0b = tvm.compute(
+                            (self.kn_shape, self.n_shape, self.block_out, self.block_reduce),
+                            lambda i, j, k, l: tensor_b_l1[j, i, l, k],
+                            name="tensor_b_l0b"
+                        )
+                else:
+                    tensor_b_l0b = self._nd_part_trans(gm_b_shape_normalize)
+                return tensor_b_l0b
+
+            tensor_b_l0b = _part_trans()
+
+        return tensor_b_l0b
+
+    def _compute_c_martix(self, tensor_a_l0a, tensor_b_l0b, reduce_kb, reduce_kp, tensor_alpha_ub,
+                          tensor_beta_bias_ub):
+        """
+        The compute process of C martix
+
+        Input:
+            tensor_a_l0a: tensor a in l0a
+            tensor_b_l0b: tensor b in l0b
+            reduce_kb
+            reduce_kp
+            tensor_alpha_ub: tensor alpha in ub
+            tensor_beta_bias_ub : tensor beta*bias in ub
+        ---------------------------------
+        Input:
+            tensor_c_gm
+        """
+
+        l0c_support_fp32 = cce_conf.intrinsic_check_support("Intrinsic_mmad", "f162f32")
+
+        if self.block_in != cce_params.BLOCK_VECTOR:  # gemm
+            # define mad compute
+            if GEMMComputeParam.batch_a:
+                tensor_c = tvm.compute(
+                self.out_shape,
+                lambda batch, nb, mb, mp, np: tvm.sum(
+                    (
+                        tensor_a_l0a[batch, mb, reduce_kb, mp, reduce_kp]
+                        * (tensor_b_l0b[batch, reduce_kb, nb, np, reduce_kp]
+                        if GEMMComputeParam.batch_b else tensor_b_l0b[reduce_kb, nb, np, reduce_kp])
+                    ).astype(self.out_dtype),
+                    axis=[reduce_kb, reduce_kp]
+                ),
+                name="tensor_c",
+                attrs={"input_order": "positive"}
+                )
+            else:
+                tensor_c = tvm.compute(
+                    self.out_shape,
+                    lambda nb, mb, mp, np: tvm.sum((
+                            tensor_a_l0a[mb, reduce_kb, mp, reduce_kp]
+                            * tensor_b_l0b[reduce_kb, nb, np, reduce_kp]
+                        ).astype(self.out_dtype),
+                        axis=[reduce_kb, reduce_kp]
+                    ),
+                    name="tensor_c",
+                    attrs={"input_order": "positive"}
+                )
+            if self.matmul_flag and self.tensor_bias is not None:
+                if self.tensor_bias.dtype == "float16" and l0c_support_fp32 == 1:
+                    if GEMMComputeParam.batch_a:
+                        tensor_bias_l0c = tvm.compute(
+                            self.out_shape, lambda b, i, j, k, l: shape_util.cast(
+                                tensor_beta_bias_ub[i * self.block_out + l], dtype="float32"),
+                                name="tensor_bias_l0c"
+                        )
+                    else:
+                        tensor_bias_l0c = tvm.compute(
+                            self.out_shape, lambda i, j, k, l: shape_util.cast(
+                                tensor_beta_bias_ub[i * self.block_out + l], dtype="float32"),
+                                name="tensor_bias_l0c"
+                        )
+                else:
+                    if GEMMComputeParam.batch_a:
+                        tensor_bias_l0c = tvm.compute(
+                            self.out_shape,
+                            lambda b, i, j, k, l: tensor_beta_bias_ub[i * self.block_out + l],
+                            name="tensor_bias_l0c"
+                        )
+                    else:
+                        tensor_bias_l0c = tvm.compute(
+                            self.out_shape,
+                            lambda i, j, k, l: tensor_beta_bias_ub[i * self.block_out + l],
+                            name="tensor_bias_l0c"
+                        )
+                tensor_c = tvm.compute(
+                    self.out_shape,
+                    lambda *indices: tensor_bias_l0c[indices] + tensor_c[indices],
+                    name="tensor_c_add_bias"
+                )
+            tensor_c_ub = _get_tensor_c_ub(
+                tensor_c,
+                self.out_shape,
+                self.tensor_bias,
+                tensor_alpha_ub,
+                l0c_support_fp32,
+                tensor_beta_bias_ub,
+                self.dst_dtype,
+                self.is_fractal_a,
+                self.matmul_flag
+            )
+
+            if self.is_fractal_a and self.is_fractal_b:
+                tensor_c_gm = tvm.compute(
+                    self.out_shape,
+                    lambda *indices: tensor_c_ub(*indices),  # pylint: disable=W0108
+                    name="tensor_c_gm",
+                    tag="gemm",
+                    attrs={"kernel_name": self.kernel_name}
+                )
+            else:
+                # ND out shape is dim 2, shape m is original value
+                tensor_c_gm = tvm.compute(
+                    self.out_shape_ori,
+                    lambda i, j: tvm.select(
+                        i < self.m_shape_ori,
+                        tvm.select(j < self.n_shape_ori, tensor_c_ub[i, j])
+                    ),
+                    name="tensor_c_gm",
+                    tag="gemm",
+                    attrs={"kernel_name": self.kernel_name}
+                )
+        return tensor_c_gm
+
+    def _gemm_compute(self):
+        """
+        The compute process of gemm and dynamic matmul
+
+        Input:None
+        ---------------------------------
+        Return: tensor_c_gm: gemm_result
+        """
+        self.nz_a = False
+        if self.format_a == "FRACTAL_NZ":
+            self.nz_a = True
+            self.format_a = "fractal"
+
+        self.nz_b = False
+        if self.format_b == "FRACTAL_NZ":
+            self.nz_b = True
+            self.format_b = "fractal"
+
+        self.tensor_a_length = len(self.tensor_a.shape)
+        self.tensor_b_length = len(self.tensor_b.shape)
+
+        GEMMComputeParam.batch_a = (self.tensor_a_length == 5)
+        GEMMComputeParam.batch_b = (self.tensor_b_length == 5)
+
+        if in_dynamic():
+            if GEMMComputeParam.batch_a:
+                GEMMComputeParam.dynamic_mode = "dynamic_mknb"
+            else:
+                GEMMComputeParam.dynamic_mode = "dynamic_mkn"
+
+        tensor_alpha_ub, tensor_beta_ub = None, None
+        if not self.matmul_flag:
+            tensor_alpha_ub, tensor_beta_ub = self._compute_alpha_beta()
+
+        _shape_check(self.tensor_a, self.tensor_b, self.tensor_bias, self.tensor_alpha, self.tensor_beta, self.trans_a,
+                     self.trans_b, self.format_a, self.format_b, self.dst_dtype, self.matmul_flag)
+
+        self.is_fractal_a = self.format_a != "ND"
+        self.is_fractal_b = self.format_b != "ND"
+
+        self._get_dtype()
+
+        if self.tensor_bias is not None:
+            bias_shape, origin_bias_shape = self._get_bias_shape()
+        else:
+            bias_shape, origin_bias_shape = None, None
+
+        self.block_reduce, self.block_in, self.block_out = _get_block(self.in_a_dtype)
+
+        gm_a_shape_normalize = []
+        (self.m_shape, self.m_shape_ori, self.km_shape,
+         gm_a_shape_normalize) = self._get_a_martix_shape(gm_a_shape_normalize)
+
+        gm_b_shape_normalize = []
+        (self.kn_shape, self.n_shape, self.n_shape_ori, self.kn_shape_ori,
+         gm_b_shape_normalize) = self._get_b_martix_shape(gm_b_shape_normalize)
+
+        self._check_shape()
+
+        reduce_kp, reduce_kb = self._get_reduce()
+
+        self.out_shape = (_get_value(self.n_shape), _get_value(self.m_shape),
+                          _get_value(self.block_in), _get_value(self.block_out))
+        self.out_shape_ori = [_get_value(self.m_shape_ori), _get_value(self.n_shape_ori)]
+
+        if GEMMComputeParam.batch_a:
+            self.out_shape = list(self.out_shape)
+            self.matmul_batch = _get_value(self.tensor_a.shape[0])
+            self.out_shape.insert(0, self.matmul_batch)
+            self.out_shape_ori.insert(0, self.matmul_batch)
+
+        tensor_beta_bias_ub = self._compute_bias(bias_shape, origin_bias_shape, tensor_beta_ub)
+
+        tensor_a_l0a = self._compute_a_matrix(gm_a_shape_normalize)
+
+        tensor_b_l0b = self._compute_b_matrix(gm_b_shape_normalize)
+
+        self.out_dtype = self._get_output_type()
+
+        tensor_c_gm = self._compute_c_martix(tensor_a_l0a, tensor_b_l0b, reduce_kb, reduce_kp, tensor_alpha_ub,
+                                             tensor_beta_bias_ub)
+
+        if in_dynamic():
+
+            def _get_trans_flag(transpose_a, transpose_b):
+                trans_flag = 1
+                if transpose_a:
+                    if transpose_b:
+                        trans_flag = 4
+                    else:
+                        trans_flag = 2
+                elif transpose_b:
+                    trans_flag = 3
+                return trans_flag
+
+            def _get_a_shape_in_nc1hwc0():
+                if GEMMComputeParam.batch_a:
+                    return [tensor_a_l0a.shape[0], tensor_a_l0a.shape[2], tensor_a_l0a.shape[1], 16, 16]
+                else:
+                    return [1, tensor_a_l0a.shape[1], tensor_a_l0a.shape[0], 16, 16]
+
+            def _get_b_shape_in_nc1hwc0():
+                if GEMMComputeParam.batch_b:
+                    return [tensor_b_l0b.shape[1] * 16, tensor_b_l0b.shape[2], 1, 1, 16]
+                else:
+                    return [tensor_b_l0b.shape[0] * 16, tensor_b_l0b.shape[1], 1, 1, 16]
+
+            GEMMComputeParam.tiling_info_dict = {
+                "A_shape": _get_a_shape_in_nc1hwc0(),
+                "B_shape": _get_b_shape_in_nc1hwc0(),
+                "C_shape": None,
+                "A_dtype": self.tensor_a.dtype,
+                "B_dtype": self.tensor_b.dtype,
+                "C_dtype": tensor_c_gm.dtype,
+                "mad_dtype": self.out_dtype,
+                "padl": 0,
+                "padr": 0,
+                "padu": 0,
+                "padd": 0,
+                "strideH": 1,
+                "strideW": 1,
+                "strideH_expand": 1,
+                "strideW_expand": 1,
+                "dilationH": _get_trans_flag(not self.trans_a, not self.trans_b),
+                "dilationW": 1,
+                "group": 1,
+                "fused_double_operand_num": 0,
+                "bias_flag": (self.tensor_bias is not None),
+                "op_tag": "matmul",
+                "op_type": "matmul",
+                "kernel_name": self.kernel_name,
+                "dynamic_shape_flag": True,
+                "trans_a": self.trans_a if self.format_a != "fractal" else not self.trans_a,
+                "trans_b": self.trans_b if self.format_b != "fractal" else not self.trans_b
+            }
+
+        return tensor_c_gm
+
+    def calculate(self):
+        """
+        Get calculate result of gemm and matmul
+
+        Input: None
+        ---------------------------------q
+        Return: result
+        """
+        if self.matmul_flag and not in_dynamic():
+            result = matmul(tensor_a=self.tensor_a,
+                            tensor_b=self.tensor_b,
+                            trans_a=self.trans_a,
+                            trans_b=self.trans_b,
+                            format_a=self.format_a,
+                            format_b=self.format_b,
+                            dst_dtype=self.dst_dtype,
+                            tensor_bias=self.tensor_bias,
+                            quantize_params=self.quantize_params,
+                            format_out=self.format_out,
+                            compress_index=self.compress_index,
+                            attrs=self.attrs,
+                            kernel_name=self.kernel_name)
+        else:
+            self._get_tensor_alpha_beta()
+            result = self._gemm_compute()
+        return result

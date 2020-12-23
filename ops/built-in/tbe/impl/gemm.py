@@ -863,19 +863,18 @@ def gemm(  # pylint: disable=I0011, R0913, R0914
         tensor_bias = tvm.placeholder(
             shape_bias_temp, name="tensor_bias", dtype=dst_dtype
         )
-        result = tbe.gemm(
-            tensor_a,
-            tensor_b,
-            tensor_alpha,
-            tensor_beta,
-            trans_a,
-            trans_b,
-            format_a=format_a,
-            format_b=format_b,
-            dst_dtype=dst_dtype,
-            tensor_bias=tensor_bias,
-            kernel_name=kernel_name,
-        )
+        para_dict = {
+            "tensor_bias": tensor_bias,
+            "alpha": tensor_alpha,
+            "beta": tensor_beta,
+            "trans_a": trans_a,
+            "trans_b": trans_b,
+            "format_a": format_a,
+            "format_b": format_b,
+            "dst_dtype": dst_dtype,
+            "kernel_name": kernel_name
+        }
+        result = tbe.gemm(tensor_a=tensor_a, tensor_b=tensor_b, para_dict=para_dict)
 
         with tvm.target.cce():
             schedule = tbe.auto_schedule(result)

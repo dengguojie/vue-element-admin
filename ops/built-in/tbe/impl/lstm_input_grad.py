@@ -17,7 +17,7 @@ lstm_grad
 # pylint: disable=locally-disabled,import-error,unused-import,ungrouped-imports
 from te.lang.cce import vmul
 from te.lang.cce import vadd
-from te.lang.cce import matmul
+from te.lang.cce import gemm
 from te.lang.cce import broadcast
 from te.lang.cce import cast_to
 from te.lang.cce import concat
@@ -56,11 +56,15 @@ def matmul_compute(tensor_d_gate, tensor_w, tensor_list, emit_list, scope_list, 
         tensor_d_gate_fp16 = tensor_d_gate
         tensor_w_fp16 = tensor_w
         dst_type = "float16"
-    matmul_res_gm = matmul(tensor_a=tensor_d_gate_fp16, tensor_b=tensor_w_fp16, trans_a=True,
-                                       trans_b=False,
-                                       format_a="FRACTAL_NZ", format_b="FRACTAL_NZ",
-                                       alpha_num=1.0, beta_num=0.0,
-                                       dst_dtype=dst_type, tensor_bias=None)
+
+    para_dict = {
+            "trans_a": True,
+            "trans_b": False,
+            "format_a": "FRACTAL_NZ",
+            "format_b": "FRACTAL_NZ",
+            "dst_dtype": dst_type,
+        }
+    matmul_res_gm = gemm(tensor_a=tensor_d_gate_fp16, tensor_b=tensor_w_fp16, para_dict=para_dict)
 
     matmul_res = matmul_res_gm.op.input_tensors[0]
 

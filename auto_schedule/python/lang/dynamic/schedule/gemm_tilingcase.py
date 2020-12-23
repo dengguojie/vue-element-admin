@@ -24,7 +24,7 @@ from te.lang.base.operation_impl import register_tiling_case
 from te.lang.base.operation_impl import get_te_var
 from te.platform import get_soc_spec
 
-from te.lang.cce.te_compute.gemm_compute import GEMMParam
+from te.lang.cce.te_compute.gemm_compute import GEMMComputeParam
 from te.lang.dynamic.schedule.cube_tilingcase import TilingSelection
 from te.lang.dynamic.schedule.cube_tilingcase import CubeTilingOp
 from te.lang.dynamic.schedule.constants import Pattern
@@ -114,10 +114,10 @@ def calc_matmul(outs, option=None):
     list of dict, each dict for a tiling case
     """
 
-    mode = GEMMParam.dynamic_mode
+    mode = GEMMComputeParam.dynamic_mode
     var_names = {"dynamic_mkn": ("m", "k", "n"), "dynamic_mknb": ("m", "k", "n", "batch")}
     target_area = [get_te_var(v).get_bound() for v in var_names[mode]]
-    info = GEMMParam.tiling_info_dict
+    info = GEMMComputeParam.tiling_info_dict
     info = set_var_value(info, target_area)
 
     tiling_op = MatmulTiling(info, mode)

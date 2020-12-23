@@ -627,7 +627,7 @@ def _get_matmul_output_format(format_a, format_out):
                              (type(None), tvm.tensor.Tensor), (type(None), dict), str)
 def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
            tensor_b, trans_a=False, trans_b=False, format_a="ND", format_b="ND",
-           alpha_num=1.0, beta_num=0.0, dst_dtype="float16", tensor_bias=None,
+           alpha_num=1.0, beta_num=1.0, dst_dtype="float16", tensor_bias=None,
            quantize_params=None, format_out=None, compress_index=None,
            attrs={}, kernel_name="MatMul"):
     """
@@ -734,7 +734,7 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
         format_a="ND",
         format_b="ND",
         alpha_num=1.0,
-        beta_num=0.0,
+        beta_num=1.0,
         dst_dtype="float16",
         tensor_bias=None,
         quantize_params=None,
@@ -1000,7 +1000,7 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
     _check_reduce_shape()
 
     def _check_alpha_beta_numb():
-        if alpha_num != 1.0 or beta_num != 0.0:
+        if alpha_num != 1.0 or beta_num != 1.0:
             raise RuntimeError("we not support this situation now!")
     _check_alpha_beta_numb()
 
@@ -3064,7 +3064,7 @@ def _check_default_param(alpha_num, beta_num, quantize_params, format_out):
     None
 
     """
-    if alpha_num != 1.0 or beta_num != 0.0:
+    if alpha_num != 1.0 or beta_num != 1.0:
         raise RuntimeError("mmad does not support this situation now")
     if quantize_params is not None:
         raise RuntimeError("quant parameter should be none")
@@ -3350,7 +3350,7 @@ def _get_core_num_tiling(m_shape,  # pylint: disable=too-many-locals
 def get_matmul_performance_format(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                                   tensor_b, trans_a=False, trans_b=False,
                                   format_a="ND", format_b="ND", alpha_num=1.0,
-                                  beta_num=0.0, dst_dtype="float16",
+                                  beta_num=1.0, dst_dtype="float16",
                                   tensor_bias=None, quantize_params=None,
                                   format_out=None):
     """

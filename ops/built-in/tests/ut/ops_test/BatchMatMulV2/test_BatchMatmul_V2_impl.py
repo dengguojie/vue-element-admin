@@ -62,12 +62,12 @@ case4 = {"params": [{"shape": (3, 112, 64), "dtype": "float32", "format": "ND", 
 
 
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910"], case1)
-ut_case.add_case(["Ascend910"], case2)
-ut_case.add_case(["Ascend910"], case3)
-ut_case.add_case(["Ascend910"], case4)
+ut_case.add_case(["Ascend910A"], case1)
+ut_case.add_case(["Ascend910A"], case2)
+ut_case.add_case(["Ascend910A"], case3)
+ut_case.add_case(["Ascend910A"], case4)
 
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910"])
+    ut_case.run(["Ascend910A"])
     exit(0)

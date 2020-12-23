@@ -74,7 +74,7 @@ def get_format(x, w, b, offset_w, y, num_output, transpose, axis, offset_x, form
 
     format_x = te.lang.cce.get_matmul_performance_format(tensor_x, tensor_w,
                             False, transpose, "ND", "FRACTAL_Z",
-                            1.0, 0.0, 'float16', tensor_b, None)
+                            1.0, 1.0, 'float16', tensor_b, None)
 
     if format_x_ori == "NCHW" or format_x_ori == "NHWC":
         if format_x == "FRACTAL_NZ":
@@ -338,10 +338,21 @@ def compress_fully_connection_compute(
     if offset_w is not None:
         raise RuntimeError("For CompressFullyConnection, tensor offset_w must be None!")
 
-    result = te.lang.cce.matmul(tensor_a=x, tensor_b=w, trans_a=trans_a, trans_b=transpose,
-                                format_a=format_a, format_b=format_b, alpha_num=1.0, beta_num=0.0,
-                                dst_dtype=out_type, tensor_bias=b, quantize_params=quantize_params,
-                                format_out=out_format, compress_index=compress_index, attrs=attrs)
+    para_dict = {
+            "trans_a": trans_a,
+            "trans_b": transpose,
+            "format_a": format_a,
+            "format_b": format_b,
+            "dst_dtype": out_type,
+            "tensor_bias": b,
+            "quantize_params": quantize_params,
+            "format_out": out_format,
+            "compress_index": compress_index,
+            "attrs": attrs,
+            "kernel_name": kernel_name
+        }
+    result = te.lang.cce.gemm(tensor_a=x, tensor_b=w, para_dict=para_dict)
+
     return result
 
 

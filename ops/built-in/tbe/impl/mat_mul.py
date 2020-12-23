@@ -362,18 +362,17 @@ def mat_mul_compute(input_x1,
         error_manager_vector.raise_err_specific_reson("mat_mul",
                                                       "For MatMul, tensor offset_w must be None!")
 
-    result = tbe.matmul(tensor_a=input_x1,
-                        tensor_b=input_x2,
-                        trans_a=trans_a_local,
-                        trans_b=trans_b_local,
-                        format_a=format_a,
-                        format_b=format_b,
-                        alpha_num=1.0,
-                        beta_num=0.0,
-                        dst_dtype=dst_dtype,
-                        tensor_bias=bias,
-                        attrs=attrs,
-                        kernel_name=kernel_name)
+    para_dict = {
+            "tensor_bias": bias,
+            "trans_a": trans_a_local,
+            "trans_b": trans_b_local,
+            "format_a": format_a,
+            "format_b": format_b,
+            "dst_dtype": dst_dtype,
+            "attrs": attrs,
+            "kernel_name": kernel_name
+        }
+    result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
 
     return result
 
@@ -444,18 +443,17 @@ def mat_mul_compute_self(input_x1,
         error_manager_vector.raise_err_specific_reson("mat_mul",
                                                       "For MatMul, tensor offset_w must be None!")
 
-    result = tbe.matmul(tensor_a=input_x1,
-                        tensor_b=input_x2,
-                        trans_a=trans_a_local,
-                        trans_b=trans_b_local,
-                        format_a=format_a,
-                        format_b=format_b,
-                        alpha_num=1.0,
-                        beta_num=0.0,
-                        dst_dtype=dst_dtype,
-                        tensor_bias=bias,
-                        attrs=attrs,
-                        kernel_name=kernel_name)
+    para_dict = {
+            "tensor_bias": bias,
+            "trans_a": trans_a_local,
+            "trans_b": trans_b_local,
+            "format_a": format_a,
+            "format_b": format_b,
+            "dst_dtype": dst_dtype,
+            "attrs": attrs,
+            "kernel_name": kernel_name
+        }
+    result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
 
     return result
 
