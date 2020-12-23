@@ -19,6 +19,7 @@ mmad_compute
 from __future__ import absolute_import
 
 from functools import reduce as functools_reduce
+from functools import wraps
 
 import te.platform.cce_params as cce
 import te.platform.cce_conf as cce_conf
@@ -30,6 +31,19 @@ from te.utils import para_check
 import topi
 from te import tvm
 from .util import check_input_tensor_shape
+try:
+    from te.tvm.dsl_source_info import source_info_decorator
+except ImportError:
+    def source_info_decorator(depth=1):
+        def get_source_info_decorator(func):
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                f_return = func(*args, **kwargs)
+                return f_return
+
+            return wrapper
+
+        return get_source_info_decorator
 
 
 def _elecnt_of_shape(shape):
@@ -607,6 +621,7 @@ def _get_matmul_output_format(format_a, format_out):
     return default_format
 
 
+@source_info_decorator()
 @para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, bool, bool, str, str, float, float, str,
                              (type(None), tvm.tensor.Tensor), (type(None), dict), (type(None), str),
                              (type(None), tvm.tensor.Tensor), (type(None), dict), str)

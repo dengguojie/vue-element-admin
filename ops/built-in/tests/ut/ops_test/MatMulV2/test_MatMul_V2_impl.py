@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+import numpy as np
+
 from op_test_frame.ut import OpUT
 from op_test_frame.common import precision_info
-import numpy as np
+from matmul_cpu_dsl import matmul_cpu_validation
+
 ut_case = OpUT("MatMul", None, None)
 
 case1 = {"params": [{"shape": (6, 2,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 96),"ori_format": "ND"},
@@ -181,4 +184,30 @@ ut_case.add_precision_case("Ascend910", {"params": [{"shape": (6, 2,16,16), "dty
                                          "expect": "success",
                                          "calc_expect_func": calc_expect_func,
                                          "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)})
+
+
+# cpu dsl validation case
+dsl_case = {
+    "params": [
+        {"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 96), "ori_format": "ND"},
+        {"shape": (4, 6, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (96, 64), "ori_format": "ND"},
+        {"shape": (64, ), "dtype": "float16", "format": "ND", "ori_shape": (64, ), "ori_format": "ND"},
+        None,
+        {"shape": (4, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 64), "ori_format": "ND"},
+        False,
+        False
+    ],
+    "case_name": "MatMul_1",
+    "expect": "success",
+    "format_expect": [],
+    "support_expect": True
+}
+
+
+def test_matmul_cpu_validation(test_arg):
+    params = dsl_case["params"]
+    matmul_cpu_validation(params)
+
+
+ut_case.add_cust_test_func(test_func=test_matmul_cpu_validation)
 
