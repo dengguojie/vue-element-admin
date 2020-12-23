@@ -549,7 +549,7 @@ static graphStatus GetShapeDataFromShapeTensor(Operator& op,
             rank, dims.size());
     return GRAPH_FAILED;
   }
-  int64_t dim_value = rank > 0 ? dims[0] : 1;
+  int64_t dim_value = ((rank > 0) && (dims[0] > 0)) ? dims[0] : 1;
   data.clear();
   data.reserve(dim_value);
   Tensor shape_tensor;
