@@ -2033,16 +2033,12 @@ def general_schedule(
         sch.disable_allocate(cce_params.scope_ca)
         sch.disable_allocate(cce_params.scope_cb)
         sch.disable_allocate(cce_params.scope_cc)
-        sch.disable_allocate(cce_params.scope_ubuf)
+
         sch[a_l1].mem_unique()
         sch[a_col].mem_unique()
         sch[b_l1].mem_unique()
         sch[b_col].mem_unique()
         sch[c_col].mem_unique()
-        sch[c_ub].mem_unique()
-        if stride_h > 1 or stride_w > 1:
-            sch[a_filling].mem_unique()
-            sch[a_ub].mem_unique()
 
     def _handle_workspace():
         l1_tensor_map = {}
