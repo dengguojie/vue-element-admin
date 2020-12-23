@@ -35,6 +35,7 @@ from te.platform import log
 
 from te.platform import get_soc_spec
 from te.platform import conv_buffer_ex
+from te.platform import cce_conf
 from te.platform.cce_conf import get_kernel_meta_dir
 
 from te.platform.fusion_manager import fusion_manager
@@ -1233,7 +1234,8 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
     """
     warnings.warn("cce_build_code is expired, please replace it with the func build in cce",
                   DeprecationWarning)
-    if fusion_manager.get_build_cfg() == "disable":
+    if fusion_manager.get_build_cfg() == "disable" and \
+            not cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT"):
         te_util.L1CommonParam.l1_fusion_tensors_map = None
         return
 

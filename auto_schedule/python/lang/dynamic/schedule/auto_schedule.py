@@ -20,6 +20,7 @@ from te import platform as cce
 from te import tvm
 from te.lang.base import operation_impl as operation
 from te.tvm.build_module import BuildConfigs
+from te.platform import cce_conf
 from te.utils.error_manager.error_manager_util import get_error_message
 
 from . import CompileInfo
@@ -77,7 +78,8 @@ def build(schedules_list, config_map=None):
     :param config_map:
     :return:
     """
-    if util.get_build_cfg() == "disable":
+    if util.get_build_cfg() == "disable" and \
+            not cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT"):
         # prebuild
         return
 
