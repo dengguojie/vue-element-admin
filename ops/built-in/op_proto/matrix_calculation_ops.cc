@@ -21,9 +21,10 @@
 #include "inc/matrix_calculation_ops.h"
 
 #include <algorithm>
+#include <limits>
 #include <string>
-#include <vector>
 #include <utility>
+#include <vector>
 
 #include "util/util.h"
 #include "util/common_shape_fns.h"
@@ -363,149 +364,438 @@ string GetMatMulInfo(const Operator &op) {
   return oss.str();
 }
 
-static const std::pair<int64_t, int64_t> UNKNOWN_RANGE = {1, -1};
+static const std::pair<int64_t, int64_t> FULL_RANGE = {1, -1};
 static const std::pair<int64_t, int64_t> EMPTY_RANGE = {0, 0};
-static const std::pair<int64_t, int64_t> ARBITRARILY_BROADCAST = {1, 1};
+static const std::pair<int64_t, int64_t> NORMALIZE_FULL_RANGE = {1, std::numeric_limits<int64_t>::max()};
 static const int64_t VALUE_UNKNOWN_RANK = -2;
+bool IsDimValid(int64_t dim) {
+  return dim >= VALUE_UNKNOWN_RANK && dim != 0;
+}
 
-void GetDimAndRange(const std::string &name_op, const ge::Shape &shape,
-                    const std::vector<std::pair<int64_t, int64_t>> &shape_range, int64_t idx,
-                    int64_t *dim, std::pair<int64_t, int64_t> *range) {
-  if (shape.GetDims() == UNKNOWN_RANK) {
-    *dim = -2;
-    *range = {1, -1};
-    return;
-  }
-
-  idx = idx >= 0 ? idx : idx + shape.GetDimNum();
-  *dim = shape.GetDim(idx);
-  if (*dim == -1 && shape_range.empty()) {
-    *range = {1, -1};
-    OP_LOGW(name_op.c_str(), "[Plugin][WARNING] the dimension is -1 and no range is provided, therefore, the range is assumed to be [1, -1]");
-  } else if (*dim > 0) {
-    *range = {*dim, *dim};
+void NormalizeRange(const std::string &op_name, const int64_t dim,
+                    const std::pair<int64_t, int64_t> &shape_range,
+                    std::pair<int64_t, int64_t> &range) {
+  if (dim == UNKNOWN_DIM && (shape_range == EMPTY_RANGE || shape_range == FULL_RANGE)) {
+    range = NORMALIZE_FULL_RANGE;
+    if (shape_range == EMPTY_RANGE) {
+      OP_LOGW(
+          op_name.c_str(),
+          "[InferShape] the dimension is -1 and no range is provided, therefore, the range is assumed to be [1, %lld]",
+          NORMALIZE_FULL_RANGE.second);
+    }
+  } else if (dim > 0) {
+    range = {dim, dim};
   } else {
-    *range = shape_range.at(idx);
+    range = shape_range;
   }
 }
 
-bool IntersectionRange(const std::string &name_op,
-                       const std::pair<int64_t, int64_t> &range_a,
-                       const std::pair<int64_t, int64_t> &range_b,
-                       std::pair<int64_t, int64_t> *range) {
-  if (range_a == UNKNOWN_RANGE) {
-    *range = range_b;
-    return true;
-  }
-  if (range_b == UNKNOWN_RANGE) {
-    *range = range_a;
+bool IntersectDimensionAndRange(const std::string &op_name,
+                                const int64_t dim_a,
+                                const int64_t dim_b,
+                                const std::pair<int64_t, int64_t> &range_a,
+                                const std::pair<int64_t, int64_t> &range_b,
+                                int64_t &dim,
+                                std::pair<int64_t, int64_t> &range) {
+  // | b\a        | -1,(y1,y2)                      | y          |
+  // | ---------- | ------------------------------- | ---------- |
+  // | -1,(x1,x2) | -1,(max(x1,y1),min(x2,y)) check | y check    |
+  // | x          | x check                         | x==y check |
+
+  if (dim_a > 0 && dim_b > 0) {
+    if (dim_a != dim_b || range_a != range_b) {
+      OP_LOGE(op_name.c_str(), "[InferShape] dimensions a(%lld) and b(%lld) must be same", dim_a, dim_b);
+      return false;
+    }
+    dim = dim_a;
+    range = range_a;
     return true;
   }
 
-  auto lower_bound = std::max(range_a.first, range_b.first);
-  auto upper_bound = std::min(range_a.second, range_b.second);
-  if (lower_bound > upper_bound) {
-    OP_LOGE(name_op.c_str(), "[Plugin][ERROR] range_a and range_b do not overlap");
+  if (dim_a == UNKNOWN_DIM && dim_b == UNKNOWN_DIM) {
+    auto lower_bound = std::max(range_a.first, range_b.first);
+    auto upper_bound = std::min(range_a.second, range_b.second);
+    if (lower_bound > upper_bound) {
+      OP_LOGE(op_name.c_str(), "[InferShape] range a(%lld, %lld) and b(%lld, %lld) must have intersections",
+              range_a.first, range_a.second, range_b.first, range_b.second);
+      return false;
+    }
+
+    range.first = lower_bound;
+    range.second = upper_bound;
+    return true;
+  }
+
+  if (dim_a == UNKNOWN_DIM) {
+    if (range_a.first <= dim_b && dim_b <= range_a.second) {
+      dim = dim_b;
+      range = range_b;
+      return true;
+    }
+    OP_LOGE(op_name.c_str(), "[InferShape] dimension(%lld) must be in range(%lld, %lld)", dim_b, range_a.first,
+            range_b.second);
     return false;
   }
-
-  range->first = lower_bound;
-  range->second = upper_bound;
-  return true;
-}
-
-bool BroadcastRange(const std::pair<int64_t, int64_t> &range_a,
-                    const std::pair<int64_t, int64_t> &range_b,
-                    std::pair<int64_t, int64_t> *range) {
-  // [] [c, d] -> [c, d]
-  if (range_a == EMPTY_RANGE) {
-    *range = range_b;
+  if (range_b.first <= dim_a && dim_a <= range_b.second) {
+    dim = dim_a;
+    range = range_a;
     return true;
   }
-  // [a, b] [] -> [a, b]
-  if (range_b == EMPTY_RANGE) {
-    *range = range_a;
-    return true;
-  }
-
-  // [1, -1]|[1, 1] [c, d] -> [c, d] 
-  if (range_a == UNKNOWN_RANGE || range_a == ARBITRARILY_BROADCAST) {
-    *range = range_b;
-    return true;
-  }
-  // [a, b] [1, -1]|[1, 1] -> [a, b] 
-  if (range_b == UNKNOWN_RANGE || range_b == ARBITRARILY_BROADCAST) {
-    *range = range_a;
-    return true;
-  }
-
-  // [a, b] [c, d] where a>1 and c>1
-  if (range_a.first != 1 && range_b.first != 1 && range_a.second != range_b.second) {
-    return false;
-  }
-
-  // [a, b] [c, d] where a>1 or c>1
-  if (range_a.first == 1) {
-    *range = range_b;
-  } else {
-    *range = range_a;
-  }
-  return true;
-}
-
-bool BroadcastDim(const int64_t val_a,
-                  const int64_t val_b,
-                  int64_t *val) {
-  if (val_a == 0) {
-    *val = val_b;
-    return true;
-  }
-  if (val_b == 0) {
-    *val = val_a;
-    return true;
-  }
-
-  if (val_a < 0 || val_b < 0) {
-    *val = -1;
-    return true;
-  }
-
-  if (val_a == val_b || val_a == 1 || val_b == 1) {
-    *val = std::max(val_a, val_b);
-    return true;
-  }
-
+  OP_LOGE(op_name.c_str(), "[InferShape] dimension(%lld) must be in range(%lld, %lld)", dim_a, range_b.first,
+          range_b.second);
   return false;
 }
 
-bool all_equal(const ge::Shape &arr, int32_t start, int32_t end, int64_t v) {
-  for (auto i = start; i < end; ++i) {
-    if (arr.GetDim(i) != v) {
+bool BroadcastDimensionAndRange(const std::string &op_name,
+                                const int64_t dim_a,
+                                const int64_t dim_b,
+                                const std::pair<int64_t, int64_t> &range_a,
+                                const std::pair<int64_t, int64_t> &range_b,
+                                int64_t &dim,
+                                std::pair<int64_t, int64_t> &range) {
+  // | b\a        | -1,(1,y)        | -1,(y1,y2)                       | 0          | 1          | y          |
+  // | ---------- | --------------- | -------------------------------- | ---------- | ---------- | ---------- |
+  // | -1,(1,x)   | -1,(1,max(x,y)) | -1,(y1,y2)                       | -1,(1,x)   | -1,(1,x)   | y check    |
+  // | -1,(x1,x2) | -1,(x1,x2)      | -1,(max(x1,y1),min(x2,y2)) check | -1,(x1,x2) | -1,(x1,x2) | y check    |
+  // | 0          | -1,(1,y)        | -1,(y1,y2)                       | 0          | 1          | y          |
+  // | 1          | -1,(1,y)        | -1,(y1,y2)                       | 1          | 1          | y          |
+  // | x          | x check         | x check                          | x          | x          | x==y check |
+
+  if (dim_a == 0) {
+    dim = dim_b;
+    range = range_b;
+    return true;
+  }
+  if (dim_b == 0) {
+    dim = dim_a;
+    range = range_a;
+    return true;
+  }
+
+  if (dim_a == 1) {
+    dim = dim_b;
+    range = range_b;
+    return true;
+  }
+  if (dim_b == 1) {
+    dim = dim_a;
+    range = range_a;
+    return true;
+  }
+
+  if (dim_a > 1 && dim_b > 1) {
+    if (dim_a != dim_b) {
+      OP_LOGE(op_name.c_str(), "[InferShape] dimensions a(%lld) and b(%lld) must be equal", dim_a, dim_b);
       return false;
+    }
+    dim = dim_a;
+    range = range_a;
+    return true;
+  }
+  if (dim_a > 1) {
+    if (range_b.first <= dim_a && dim_a <= range_b.second) {
+      dim = dim_a;
+      range = range_a;
+      return true;
+    }
+    OP_LOGE(op_name.c_str(), "[InferShape] dimension(%lld) must be in range(%lld, %lld)", dim_a, range_b.first,
+            range_b.second);
+    return false;
+  }
+  if (dim_b > 1) {
+    if (range_a.first <= dim_b && dim_b <= range_a.second) {
+      dim = dim_b;
+      range = range_b;
+      return true;
+    }
+    OP_LOGE(op_name.c_str(), "[InferShape] dimension(%lld) must be in range(%lld, %lld)", dim_b, range_a.first,
+            range_a.second);
+    return false;
+  }
+
+  if (range_a.first == 1 && range_b.first == 1) {
+    dim = UNKNOWN_DIM;
+    range = {1, std::max(range_a.second, range_b.second)};
+    return true;
+  }
+  if (range_a.first > 1 && range_b.first > 1) {
+    auto lower_bound = std::max(range_a.first, range_b.first);
+    auto upper_bound = std::min(range_a.second, range_b.second);
+    if (lower_bound > upper_bound) {
+      OP_LOGE(op_name.c_str(), "[InferShape] range a(%lld, %lld) and b(%lld, %lld) must have intersections",
+              range_a.first, range_a.second, range_b.first, range_b.second);
+      return false;
+    }
+    dim = UNKNOWN_DIM;
+    range = {lower_bound, upper_bound};
+    return true;
+  }
+  if (range_a.first > 1) {
+    dim = dim_a;
+    range = range_a;
+  } else {
+    dim = dim_b;
+    range = range_b;
+  }
+
+  return true;
+}
+
+class InferShapeMatMul {
+ public:
+  bool GetShapeRangeOfOutput();
+  InferShapeMatMul(const string &op_name, const vector<int64_t> &shape_a, const vector<int64_t> &shape_b,
+                   const vector<int64_t> &shape_bias, const vector<std::pair<int64_t, int64_t>> &range_a,
+                   const vector<std::pair<int64_t, int64_t>> &range_b,
+                   const vector<std::pair<int64_t, int64_t>> &range_bias, bool trans_a, bool trans_b,
+                   vector<int64_t> &shape_out, vector<std::pair<int64_t, int64_t>> &range_out, bool has_batch);
+
+ private:
+  void NormalizeShapeAndRange();
+  bool InferMKN();
+  bool InferBatch();
+  void SimplifyShapeAndRange();
+
+  const string& op_name;
+  const vector<int64_t> &shape_a;
+  const vector<int64_t> &shape_b;
+  const vector<int64_t> &shape_bias;
+  const vector<std::pair<int64_t, int64_t>> &range_a;
+  const vector<std::pair<int64_t, int64_t>> &range_b;
+  const vector<std::pair<int64_t, int64_t>> &range_bias;
+  bool trans_a;
+  bool trans_b;
+  vector<int64_t> &shape_out;
+  vector<std::pair<int64_t, int64_t>> &range_out;
+  bool has_batch;
+  int64_t num_dim;
+
+  vector<int64_t> infer_shape_a;
+  vector<int64_t> infer_shape_b;
+  vector<int64_t> infer_shape_bias;
+  vector<std::pair<int64_t, int64_t>> infer_range_a;
+  vector<std::pair<int64_t, int64_t>> infer_range_b;
+  vector<std::pair<int64_t, int64_t>> infer_range_bias;
+};
+
+InferShapeMatMul::InferShapeMatMul(const string &op_name, const vector<int64_t> &shape_a,
+                                   const vector<int64_t> &shape_b, const vector<int64_t> &shape_bias,
+                                   const vector<std::pair<int64_t, int64_t>> &range_a,
+                                   const vector<std::pair<int64_t, int64_t>> &range_b,
+                                   const vector<std::pair<int64_t, int64_t>> &range_bias, bool trans_a, bool trans_b,
+                                   vector<int64_t> &shape_out, vector<std::pair<int64_t, int64_t>> &range_out,
+                                   bool has_batch)
+    : op_name(op_name),
+      shape_a(shape_a),
+      shape_b(shape_b),
+      shape_bias(shape_bias),
+      range_a(range_a),
+      range_b(range_b),
+      range_bias(range_bias),
+      trans_a(trans_a),
+      trans_b(trans_b),
+      shape_out(shape_out),
+      range_out(range_out),
+      has_batch(has_batch) {
+  int64_t base_len = has_batch ? 3 : 2;
+  num_dim = std::max(std::max(shape_a.size(), shape_b.size()), shape_bias.size());
+  num_dim = std::max(base_len, num_dim);
+
+  infer_shape_a = vector<int64_t>(num_dim);
+  infer_range_a = vector<std::pair<int64_t, int64_t>>(num_dim);
+
+  infer_shape_b = vector<int64_t>(num_dim);
+  infer_range_b = vector<std::pair<int64_t, int64_t>>(num_dim);
+
+  if (!shape_bias.empty()) {
+    infer_shape_bias = vector<int64_t>(num_dim);
+    infer_range_bias = vector<std::pair<int64_t, int64_t>>(num_dim);
+  }
+
+  shape_out = vector<int64_t>(num_dim);
+  range_out = vector<std::pair<int64_t, int64_t>>(num_dim);
+}
+
+void InferShapeMatMul::NormalizeShapeAndRange() {
+  int64_t base_len = has_batch ? 3 : 2;
+  if (shape_a == UNKNOWN_RANK) {
+    for (int i = num_dim - base_len; i < num_dim; ++i) {
+      infer_shape_a[i] = UNKNOWN_DIM;
+      infer_range_a[i] = NORMALIZE_FULL_RANGE;
+    }
+  } else {
+      copy(shape_a.begin(), shape_a.end(), infer_shape_a.begin() + num_dim - shape_a.size());
+      copy(range_a.begin(), range_a.end(), infer_range_a.begin() + num_dim - range_a.size());
+  }
+
+  if (shape_b == UNKNOWN_RANK) {
+    for (int i = num_dim - base_len; i < num_dim; ++i) {
+      infer_shape_b[i] = UNKNOWN_DIM;
+      infer_range_b[i] = NORMALIZE_FULL_RANGE;
+    }
+  } else {
+      copy(shape_b.begin(), shape_b.end(), infer_shape_b.begin() + num_dim - shape_b.size());
+      copy(range_b.begin(), range_b.end(), infer_range_b.begin() + num_dim - range_b.size());
+  }
+
+  if (!shape_bias.empty()) {
+    if (shape_bias == UNKNOWN_RANK) {
+      infer_shape_bias[num_dim - 1] = UNKNOWN_DIM;
+      infer_range_bias[num_dim - 1] = NORMALIZE_FULL_RANGE;
+    } else {
+      copy(shape_bias.begin(), shape_bias.end(), infer_shape_bias.begin() + num_dim - shape_bias.size());
+      copy(range_bias.begin(), range_bias.end(), infer_range_bias.begin() + num_dim - range_bias.size());
+    }
+  }
+
+  for (auto i = num_dim - shape_a.size(); i < num_dim; ++i) {
+    NormalizeRange(op_name, infer_shape_a[i], infer_range_a[i], infer_range_a[i]);
+  }
+
+  for (auto i = num_dim - shape_b.size(); i < num_dim; ++i) {
+    NormalizeRange(op_name, infer_shape_b[i], infer_range_b[i], infer_range_b[i]);
+  }
+
+  if (!shape_bias.empty()) {
+    for (auto i = num_dim - shape_bias.size(); i < num_dim; ++i) {
+      NormalizeRange(op_name, infer_shape_bias[i], infer_range_bias[i], infer_range_bias[i]);
+    }
+  }
+}
+
+bool InferShapeMatMul::InferMKN() {
+  int64_t idx_m = trans_a ? num_dim - 1 : num_dim - 2;
+  int64_t idx_k_a = trans_a ? num_dim - 2 : num_dim - 1;
+  int64_t idx_k_b = trans_b ? num_dim - 1 : num_dim - 2;
+  int64_t idx_n_b = trans_b ? num_dim - 2 : num_dim - 1;
+
+  auto m = infer_shape_a[idx_m];
+  auto k_a = infer_shape_a[idx_k_a];
+  auto k_b = infer_shape_b[idx_k_b];
+  auto n_b = infer_shape_b[idx_n_b];
+  auto n = n_b;
+
+  int64_t k;
+  if (!IsDimValid(m) || !IsDimValid(k_a) || !IsDimValid(k_b) || !IsDimValid(n_b)) {
+    OP_LOGE(op_name.c_str(), "[InferShape] dimension must be -2, -1 or greater than 0");
+    return false;
+  }
+
+  std::pair<int64_t, int64_t> range_k, range_n = infer_range_b[idx_n_b];
+  if (k_a > 0 && k_b > 0 && k_a != k_b) {
+    OP_LOGE(op_name.c_str(), "[InferShape] The k-axis of a(%lld) and b(%lld) tensors must be the same", k_a, k_b);
+    return false;
+  } else if (k_a < 0 && k_b < 0) {
+    if (!IntersectDimensionAndRange(op_name, k_a, k_b, infer_range_a[idx_k_a], infer_range_b[idx_k_b], k, range_k)) {
+      OP_LOGE(op_name.c_str(), "[InferShape] The intersection of the k-axis of tensor a and b is invalid");
+      return false;
+    }
+  }
+  if (!shape_bias.empty()) {
+    int64_t idx_n_bias = num_dim - 1;
+    int64_t n_bias = infer_shape_bias[idx_n_bias];
+    if (!IsDimValid(n_bias)) {
+      OP_LOGE(op_name.c_str(), "[InferShape] dimension must be -2, -1 or greater than 0");
+      return false;
+    }
+
+    if (!IntersectDimensionAndRange(op_name, n_b, n_bias, infer_range_b[idx_n_b], infer_range_bias[idx_n_bias], n,
+                                    range_n)) {
+      OP_LOGE(op_name.c_str(), "[InferShape] The intersection of the n-axis of tensor b and bias is invalid");
+      return false;
+    }
+  }
+
+  shape_out[num_dim - 2] = m;
+  shape_out[num_dim - 1] = n;
+  range_out[num_dim - 2] = infer_range_a[idx_m] == NORMALIZE_FULL_RANGE ? FULL_RANGE : infer_range_a[idx_m];
+  range_out[num_dim - 1] = range_n == NORMALIZE_FULL_RANGE ? FULL_RANGE : range_n;
+
+  return true;
+}
+
+bool InferShapeMatMul::InferBatch() {
+  for (auto i = 0; i < num_dim - 2; ++i) {
+    if (!BroadcastDimensionAndRange(op_name, infer_shape_a[i], infer_shape_b[i], infer_range_a[i], infer_range_b[i],
+                                    shape_out[i], range_out[i])) {
+      OP_LOGE(op_name.c_str(),
+              "[InferShape] The broadcst operation for tensor a and b on the n-th dimension is failed");
+      return false;
+    }
+
+    if (!shape_bias.empty()) {
+      if (!BroadcastDimensionAndRange(op_name, shape_out[i], infer_shape_bias[i], range_out[i], infer_range_bias[i],
+                                      shape_out[i], range_out[i])) {
+        OP_LOGE(op_name.c_str(),
+                "[InferShape] The broadcst operation for tensor out and bias on the n-th dimension is failed");
+        return false;
+      }
+    }
+
+    if (range_out[i] == NORMALIZE_FULL_RANGE) {
+      range_out[i] = FULL_RANGE;
     }
   }
   return true;
 }
 
-bool IsUnknownRankMatMul(int64_t m, int64_t n, const ge::Shape &shape_a, const ge::Shape &shape_b) {
-  auto num_dim = std::max(shape_a.GetDimNum(), shape_b.GetDimNum());
-  return m == VALUE_UNKNOWN_RANK && n == VALUE_UNKNOWN_RANK &&
-         all_equal(shape_a, num_dim - shape_a.GetDimNum(), num_dim - 2, VALUE_UNKNOWN_RANK) &&
-         all_equal(shape_b, num_dim - shape_b.GetDimNum(), num_dim - 2, VALUE_UNKNOWN_RANK);
+void InferShapeMatMul::SimplifyShapeAndRange() {
+  for (int i = 0; i < range_out.size(); i++) {
+    if (range_out[i].first == range_out[i].second) {
+      shape_out[i] = range_out[i].first;
+    }
+  }
 }
 
-bool IsDimValid(int64_t dim) {
-  return dim >= VALUE_UNKNOWN_RANK && dim != 0;
+bool InferShapeMatMul::GetShapeRangeOfOutput() {
+  if (!has_batch && shape_a == UNKNOWN_RANK && shape_b == UNKNOWN_RANK &&
+      (shape_bias.empty() || shape_bias == UNKNOWN_RANK)) {
+    shape_out = UNKNOWN_RANK;
+    range_out = {};
+    OP_LOGW(op_name.c_str(), "[InferShape] cannot derive any shape and range information of output");
+    return true;
+  }
+  if (has_batch && (shape_a == UNKNOWN_RANK || shape_b == UNKNOWN_RANK || shape_bias == UNKNOWN_RANK)) {
+    shape_out = UNKNOWN_RANK;
+    range_out = {};
+    OP_LOGW(op_name.c_str(), "[InferShape] cannot derive any shape and range information of output");
+    return true;
+  }
+
+  NormalizeShapeAndRange();
+
+  if (!InferMKN()) {
+    return false;
+  }
+
+  if (!InferBatch()) {
+    return false;
+  }
+
+  SimplifyShapeAndRange();
+  return true;
 }
 
 graphStatus GetMatMulOutputShape(const Operator &op,
-                                 std::vector<int64_t> *shape_out,
-                                 std::vector<std::pair<int64_t, int64_t>> *shape_range_out,
-                                 const std::string &name_attr) {
+                                 std::vector<int64_t> &shape_out,
+                                 std::vector<std::pair<int64_t, int64_t>> &shape_range_out,
+                                 const std::string &name_attr, bool has_batch) {
   ge::TensorDesc desc_a = op.GetInputDesc("x1");
   ge::TensorDesc desc_b = op.GetInputDesc("x2");
-  ge::Shape shape_a = desc_a.GetShape();
-  ge::Shape shape_b = desc_b.GetShape();
+  auto shape_a = desc_a.GetShape().GetDims();
+  auto shape_b = desc_b.GetShape().GetDims();
+  std::vector<std::pair<int64_t, int64_t>> shape_range_a;
+  std::vector<std::pair<int64_t, int64_t>> shape_range_b;
+  desc_a.GetShapeRange(shape_range_a);
+  desc_b.GetShapeRange(shape_range_b);
+
+  ge::TensorDesc desc_bias;
+  std::vector<std::pair<int64_t, int64_t>> shape_range_bias;
+  vector<int64_t> shape_bias;
+  if (ge::GRAPH_SUCCESS == op.TryGetInputDesc("bias", desc_bias)) {
+    shape_bias = desc_bias.GetShape().GetDims();
+    desc_bias.GetShapeRange(shape_range_bias);
+  }
 
   bool trans_a = false;
   if (ge::GRAPH_SUCCESS != op.GetAttr(name_attr + "_x1", trans_a)) {
@@ -521,71 +811,13 @@ graphStatus GetMatMulOutputShape(const Operator &op,
             op.GetName().c_str(), name_attr.c_str());
     return GRAPH_FAILED;
   }
-  std::vector<std::pair<int64_t, int64_t>> shape_range_a;
-  std::vector<std::pair<int64_t, int64_t>> shape_range_b;
-  desc_a.GetShapeRange(shape_range_a);
-  desc_b.GetShapeRange(shape_range_b);
 
-  auto num_dim = std::max(shape_a.GetDimNum(), shape_b.GetDimNum());
-  int64_t idx_m = trans_a ? num_dim - 1 : num_dim - 2;
-  int64_t idx_k_a = trans_a ? num_dim - 2 : num_dim - 1;
-  int64_t idx_k_b = trans_b ? num_dim - 1 : num_dim - 2;
-  int64_t idx_n = trans_b ? num_dim - 2 : num_dim - 1;
-
-  vector<int64_t> infer_shape_a(num_dim), infer_shape_b(num_dim);
-  vector<std::pair<int64_t, int64_t>> infer_range_a(num_dim), infer_range_b(num_dim);
-  for (auto i = num_dim - shape_a.GetDimNum(); i < num_dim; ++i) {
-    auto real_idx = i - (num_dim - shape_a.GetDimNum());
-    GetDimAndRange(op.GetName(), shape_a, shape_range_a, real_idx, &infer_shape_a[i], &infer_range_a[i]);
-  }
-  for (auto i = num_dim - shape_b.GetDimNum(); i < num_dim; ++i) {
-    auto real_idx = i - (num_dim - shape_b.GetDimNum());
-    GetDimAndRange(op.GetName(), shape_b, shape_range_b, real_idx, &infer_shape_b[i], &infer_range_b[i]);
-  }
-
-  // check
-  auto m = infer_shape_a[idx_m];
-  auto k_a = infer_shape_a[idx_k_a];
-  auto k_b = infer_shape_b[idx_k_b];
-  auto n = infer_shape_b[idx_n];
-  if (!IsDimValid(m) || !IsDimValid(k_a) || !IsDimValid(k_b) || !IsDimValid(n)) {
-    OP_LOGE(op.GetName().c_str(), "[InferShape] The upper-layer operator dimension is inappropriate. %s", GetMatMulInfo(op).c_str());
+  auto obj = InferShapeMatMul(op.GetName(), shape_a, shape_b, shape_bias, shape_range_a, shape_range_b,
+                              shape_range_bias, trans_a, trans_b, shape_out, shape_range_out, has_batch);
+  if (!obj.GetShapeRangeOfOutput()) {
     return GRAPH_FAILED;
   }
 
-  std::pair<int64_t, int64_t> range_k;
-  if (k_a > 0 && k_b > 0 && k_a != k_b) {
-    OP_LOGE(op.GetName().c_str(), "[InferShape] The k-axis of a and b tensors must be the same");
-    return GRAPH_FAILED;
-  } else if (k_a < 0 && k_b < 0) {
-    if (!IntersectionRange(op.GetName(), infer_range_a[idx_k_a], infer_range_b[idx_k_b], &range_k)) {
-      OP_LOGE(op.GetName().c_str(), "[InferShape] The intersection of the k-axis of tensor a and b is invalid");
-      return GRAPH_FAILED;
-    }
-  }
-
-  if (IsUnknownRankMatMul(m, n, shape_a, shape_b)) {
-    *shape_out = UNKNOWN_RANK;
-  } else {
-    *shape_out = vector<int64_t>(num_dim);
-    *shape_range_out = vector<std::pair<int64_t, int64_t>>(num_dim);
-
-    for (auto i = 0; i < num_dim - 2; ++i) {
-      if (!BroadcastDim(infer_shape_a[i], infer_shape_b[i], &(*shape_out)[i])) {
-        OP_LOGE(op.GetName().c_str(), "[InferShape] Tensor a and b do not meet the broadcast rule");
-        return GRAPH_FAILED;
-      }
-      if (!BroadcastRange(infer_range_a[i], infer_range_b[i], &(*shape_range_out)[i])) {
-        OP_LOGE(op.GetName().c_str(), "[InferShape] Tensor a and b do not meet the broadcast rule");
-        return GRAPH_FAILED;
-      }
-    }
-
-    (*shape_out)[num_dim - 2] = m;
-    (*shape_out)[num_dim - 1] = n;
-    (*shape_range_out)[num_dim - 2] = infer_range_a[idx_m];
-    (*shape_range_out)[num_dim - 1] = infer_range_b[idx_n];
-  }
   return GRAPH_SUCCESS;
 }
 
@@ -620,7 +852,7 @@ IMPLEMT_COMMON_INFERFUNC(MatMulInferShape) {
 
   std::vector<int64_t> shape_out;
   std::vector<std::pair<int64_t, int64_t>> shape_range_out;
-  if (GRAPH_SUCCESS != GetMatMulOutputShape(op, &shape_out, &shape_range_out, "transpose")) {
+  if (GRAPH_SUCCESS != GetMatMulOutputShape(op, shape_out, shape_range_out, "transpose", false)) {
     return GRAPH_FAILED;
   }
 
@@ -669,7 +901,7 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
     OP_LOGW(op.GetName().c_str(), "[Plugin][WARNING]MatMul fp32 op has poor performance!");
   }
 
-  if (shape_x1.GetDims().size() != 2 && shape_x1.GetDims().size() != 4){
+  if (shape_x1.GetDims() != UNKNOWN_RANK && shape_x1.GetDims().size() != 2 && shape_x1.GetDims().size() != 4) {
     OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]Matmul the first input dims is not 2 or 4!");
     return GRAPH_FAILED;
   }
@@ -678,7 +910,7 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
 
   std::vector<int64_t> shape_out;
   std::vector<std::pair<int64_t, int64_t>> shape_range_out;
-  if (GRAPH_SUCCESS != GetMatMulOutputShape(op, &shape_out, &shape_range_out, "transpose")) {
+  if (GRAPH_SUCCESS != GetMatMulOutputShape(op, shape_out, shape_range_out, "transpose", false)) {
     return GRAPH_FAILED;
   }
 
@@ -823,13 +1055,15 @@ graphStatus CommonBatchMatMulInferShape(const Operator &op) {
   }
 
   int dim_num = std::max(dim_num_x1, dim_num_x2);
-  if (dim_num < 3 || dim_num > 8) {
+  bool all_unknown_rank = shape_x1.GetDims() == UNKNOWN_RANK && shape_x1.GetDims() == UNKNOWN_RANK;
+  if (!all_unknown_rank && (dim_num < 3 || dim_num > 8)) {
+    OP_LOGE(op.GetName().c_str(), "[Infershape]The shape can only be in the range of 3 to 8.");
     return GRAPH_FAILED;
   }
 
   std::vector<int64_t> shape_out;
   std::vector<std::pair<int64_t, int64_t>> shape_range_out;
-  if (GRAPH_SUCCESS != GetMatMulOutputShape(op, &shape_out, &shape_range_out, "adj")) {
+  if (GRAPH_SUCCESS != GetMatMulOutputShape(op, shape_out, shape_range_out, "adj", true)) {
     return GRAPH_FAILED;
   }
 
