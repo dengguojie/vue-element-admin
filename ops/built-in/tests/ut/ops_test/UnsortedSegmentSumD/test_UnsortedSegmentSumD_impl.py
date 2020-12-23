@@ -60,6 +60,15 @@ case5 = {"params": [{"shape": (5, 17), "dtype": "float32", "format": "NC1HWC0", 
          "case_name": "UnsortedSegmentSumD_5",
          "expect": RuntimeError,
          "support_expect": True}
+def test_op_select_format(test_arg):
+    from impl.unsorted_segment_sum_d import op_select_format
+    op_select_format({"shape": (20, 28, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (20, 28, 16, 16),"ori_format": "NCHW"},
+                     {"shape": (28, 16, 16), "dtype": "int32", "format": "ND", "ori_shape": (28, 16, 16),"ori_format": "ND"},
+                     {"shape": (200, 28, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (200,28, 16, 16),"ori_format": "NCHW"},200)
+
+    op_select_format({"shape": (25, 28, 16, 16), "dtype": "uint8", "format": "NCHW", "ori_shape": (25, 28, 16, 16),"ori_format": "NCHW"},
+                     {"shape": (25,), "dtype": "int32", "format": "ND", "ori_shape": (25,),"ori_format": "ND"},
+                     {"shape": (300, 28, 16, 16), "dtype": "uint8", "format": "NCHW", "ori_shape": (300,28, 16, 16),"ori_format": "NCHW"},300)
 
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
@@ -67,6 +76,7 @@ ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
+ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910","Ascend310","Ascend710"])

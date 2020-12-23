@@ -61,8 +61,20 @@ def op_select_format(x, segment_ids, y, num_segments,
     select format dynamically
     """
     segment_ids_shape = list(segment_ids.get("shape"))
-    if len(segment_ids_shape) == 1:
+    atomic_add = cce.api_check_support("tik.set_atomic_add")
+    if len(segment_ids_shape) == 1 and not atomic_add:
 
+        input0_dtype = "float,float"
+        input0_format = "NC1HWC0,ND"
+        input1_dtype = "int32,int32"
+        input1_format = "ND,ND"
+        input0_ori_dtype = "float16,float16,int8,int8,uint8,uint8," \
+                           "int32,int32"
+        input0_ori_format = "NC1HWC0,ND,NC1HWC0,ND,NC1HWC0,ND,NC1HWC0,ND"
+        input1_ori_dtype = "int32,int32,int32,int32,int32,int32," \
+                           "int32,int32"
+        input1_ori_format = "ND,ND,ND,ND,ND,ND,ND,ND"
+    elif len(segment_ids_shape) == 1 and atomic_add:
         input0_dtype = "float,float"
         input0_format = "NC1HWC0,ND"
         input1_dtype = "int32,int32"
@@ -73,6 +85,17 @@ def op_select_format(x, segment_ids, y, num_segments,
         input1_ori_dtype = "int32,int32,int32,int32,int32,int32,int32,int32," \
                            "int32,int32"
         input1_ori_format = "ND,ND,ND,ND,ND,ND,ND,ND,ND,ND"
+    elif len(segment_ids_shape) > 1 and not atomic_add:
+        input0_dtype = "float"
+        input0_format = "ND"
+        input1_dtype = "int32"
+        input1_format = "ND"
+        input0_ori_dtype = "float16,int8,uint8," \
+                           "int32"
+        input0_ori_format = "ND,ND,ND,ND"
+        input1_ori_dtype = "int32,int32," \
+                           "int32,int32"
+        input1_ori_format = "ND,ND,ND,ND"
     else:
         input0_dtype = "float"
         input0_format = "ND"
