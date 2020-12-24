@@ -4711,10 +4711,11 @@ static bool GetPadConv3D(ge::Operator& op, int32_t id, int32_t ih, int32_t iw,
   padr = pad_vec[5];
 
   auto x_shape = op.GetInputDesc("x").GetShape().GetDims();
-  bool is_dynamic = std::find(x_shape.begin(), x_shape.end(), -1) != x_shape.end();
+  bool unknown_rank = IsUnknownRankShape(x_shape);
+  bool unknown_shape = IsUnKnownShape(x_shape);
   bool negative_pad = (padf < 0 || padba < 0 || padt < 0 || padb < 0 || padl < 0 || padr < 0);
   // dynamic shape pad maybe negative
-  if ((!is_dynamic) && negative_pad) {
+  if ((!unknown_shape) && (!unknown_rank) && negative_pad) {
     OP_LOGE(op.GetName().c_str(), "pads should be positive");
     map<std::string, std::string> err_map;
     err_map["param_name"] = "pads_list";
@@ -4839,24 +4840,32 @@ static bool SetConv3dOutShapeRange(op::Conv3D& op,
                                    TensorDesc& y_tensor) {
   auto x_tensor = op.get_input_desc_x();
   auto x_shape = x_tensor.GetShape().GetDims();
-  if (std::find(x_shape.begin(), x_shape.end(), -2) != x_shape.end()) {
-    OP_LOGE(op.GetName().c_str(), "not support -2 in fmap");
-    map<std::string, std::string> err_map;
-    err_map["param_name"] = "x_shape";
-    err_map["op_name"] = "Conv3d";
-    err_map["excepted_value"] = "positive or -1";
-    err_map["input_value"] = std::to_string(x_shape[0]) + " " + \
-                             std::to_string(x_shape[1]) + " " + \
-                             std::to_string(x_shape[2]) + " " + \
-                             std::to_string(x_shape[3]) + " " + \
-                             std::to_string(x_shape[4]);
-    std::string report_error_code = "E50029";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return false;
+  bool unknown_rank = IsUnknownRankShape(x_shape);
+  bool unknown_shape = IsUnKnownShape(x_shape);
+
+  // default format: NDHWC
+  size_t idx_n = DIM_INDEX0;
+  size_t idx_d = DIM_INDEX1;
+  size_t idx_h = DIM_INDEX2;
+  size_t idx_w = DIM_INDEX3;
+  size_t idx_c = DIM_INDEX4;
+  if (op.get_input_desc_x().GetFormat() == FORMAT_NCDHW) {
+    idx_c = DIM_INDEX1;
+    idx_d = DIM_INDEX2;
+    idx_h = DIM_INDEX3;
+    idx_w = DIM_INDEX4;
   }
 
-  bool is_dynamic = std::find(x_shape.begin(), x_shape.end(), -1) != x_shape.end();
-  if (!is_dynamic) {
+  // update pads if padding is SAME
+  std::string padding;
+  // when rank is unknown, or D/H/W is unknown, set SAME padding as -1
+  bool unknown_pad = (unknown_rank || (unknown_shape && (x_shape[idx_n] != -1)));
+  if ((op.GetAttr("padding", padding) == GRAPH_SUCCESS) && (padding == "SAME") && unknown_pad) {
+    op.SetAttr("pads", {-1, -1, -1, -1, -1, -1});
+    OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1, -1, -1} when padding is SAME in dynamic_shape");
+  }
+
+  if (!unknown_shape) {
     return true;
   }
 
@@ -4876,26 +4885,6 @@ static bool SetConv3dOutShapeRange(op::Conv3D& op,
   int32_t kd = attr_params["kd"];
   int32_t kh = attr_params["kh"];
   int32_t kw = attr_params["kw"];
-
-  // default format: NDHWC
-  size_t idx_n = 0;
-  size_t idx_d = 1;
-  size_t idx_h = 2;
-  size_t idx_w = 3;
-  size_t idx_c = 4;
-  if (op.get_input_desc_x().GetFormat() == FORMAT_NCDHW) {
-    idx_c = 1;
-    idx_d = 2;
-    idx_h = 3;
-    idx_w = 4;
-  }
-
-  // update pads if padding is SAME
-  std::string padding;
-  if ((op.GetAttr("padding", padding) == GRAPH_SUCCESS) && (padding == "SAME") && (x_shape[idx_n] != -1)) {
-    op.SetAttr("pads", {-1, -1, -1, -1, -1, -1});
-    OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1, -1, -1} when padding is SAME in dynamic_shape");
-  }
 
   OP_LOGD(op.GetName().c_str(), "dynamic shape set range");
   std::vector<std::pair<int64_t, int64_t>> fm_range;
@@ -4967,15 +4956,13 @@ static bool SetConv3dOutShapeRange(op::Conv3D& op,
   return true;
 }
 
-IMPLEMT_INFERFUNC(Conv3D, Conv3DInfer) {
-  OP_LOGD(op.GetName().c_str(), "Enter Conv3DInfer.");
-
+static bool NormalizeConv3dShape(const op::Conv3D& op, vector<int64_t>& x_shape_new, vector<int64_t>& w_shape_new) {
   auto x_tensor = op.get_input_desc_x();
   auto x_format = x_tensor.GetFormat();
   auto x_shape = x_tensor.GetShape().GetDims();
-
-  if (x_shape.size() != kConv3dInputSizeLimit) {
-    OP_LOGE(op.GetName().c_str(), "x_shape's shape should be 5d.");
+  bool unknown_rank = IsUnknownRankShape(x_shape);
+  if (!((x_shape.size() == kConv3dInputSizeLimit) || unknown_rank)) {
+    OP_LOGE(op.GetName().c_str(), "x_shape's shape should be 5d or -2.");
     map<std::string, std::string> err_map;
     err_map["param_name"] = "x_shape";
     err_map["op_name"] = "Conv3DInfer";
@@ -4983,26 +4970,30 @@ IMPLEMT_INFERFUNC(Conv3D, Conv3DInfer) {
     err_map["input_value"] = std::to_string(x_shape.size());
     std::string report_error_code = "E50029";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
+    return false;
   }
 
-  int32_t in = 0;
-  int32_t ic = 0;
-  int32_t id = 0;
-  int32_t ih = 0;
-  int32_t iw = 0;
+  int32_t in = -1;
+  int32_t ic = -1;
+  int32_t id = -1;
+  int32_t ih = -1;
+  int32_t iw = -1;
   if (x_format == FORMAT_NCDHW) {
-    in = x_shape[0];
-    ic = x_shape[1];
-    id = x_shape[2];
-    ih = x_shape[3];
-    iw = x_shape[4];
+    if (!unknown_rank) {
+      in = x_shape[DIM_INDEX0];
+      ic = x_shape[DIM_INDEX1];
+      id = x_shape[DIM_INDEX2];
+      ih = x_shape[DIM_INDEX3];
+      iw = x_shape[DIM_INDEX4];
+    }
   } else if (x_format == FORMAT_NDHWC) {
-    in = x_shape[0];
-    ic = x_shape[4];
-    id = x_shape[1];
-    ih = x_shape[2];
-    iw = x_shape[3];
+    if (!unknown_rank) {
+      in = x_shape[DIM_INDEX0];
+      ic = x_shape[DIM_INDEX4];
+      id = x_shape[DIM_INDEX1];
+      ih = x_shape[DIM_INDEX2];
+      iw = x_shape[DIM_INDEX3];
+    }
   } else {
     OP_LOGE(op.GetName().c_str(), "input x format should be NCDHW or NDHWC.");
     map<std::string, std::string> err_map;
@@ -5012,7 +5003,7 @@ IMPLEMT_INFERFUNC(Conv3D, Conv3DInfer) {
     err_map["input_value"] = x_format;
     std::string report_error_code = "E50029";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
+    return false;
   }
   auto w_tensor = op.get_input_desc_filter();
   auto w_shape = w_tensor.GetShape().GetDims();
@@ -5026,7 +5017,7 @@ IMPLEMT_INFERFUNC(Conv3D, Conv3DInfer) {
     err_map["input_value"] = std::to_string(w_shape.size());
     std::string report_error_code = "E50029";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
+    return false;
   }
 
   int32_t kn = 0;
@@ -5035,23 +5026,23 @@ IMPLEMT_INFERFUNC(Conv3D, Conv3DInfer) {
   int32_t kh = 0;
   int32_t kw = 0;
   if (w_format == FORMAT_NCDHW) {
-    kn = w_shape[0];
-    kc = w_shape[1];
-    kd = w_shape[2];
-    kh = w_shape[3];
-    kw = w_shape[4];
+    kn = w_shape[DIM_INDEX0];
+    kc = w_shape[DIM_INDEX1];
+    kd = w_shape[DIM_INDEX2];
+    kh = w_shape[DIM_INDEX3];
+    kw = w_shape[DIM_INDEX4];
   } else if (w_format == FORMAT_NDHWC) {
-    kn = w_shape[0];
-    kc = w_shape[4];
-    kd = w_shape[1];
-    kh = w_shape[2];
-    kw = w_shape[3];
+    kn = w_shape[DIM_INDEX0];
+    kc = w_shape[DIM_INDEX4];
+    kd = w_shape[DIM_INDEX1];
+    kh = w_shape[DIM_INDEX2];
+    kw = w_shape[DIM_INDEX3];
   } else if (w_format == FORMAT_DHWCN) {
-    kn = w_shape[4];
-    kc = w_shape[3];
-    kd = w_shape[0];
-    kh = w_shape[1];
-    kw = w_shape[2];
+    kn = w_shape[DIM_INDEX4];
+    kc = w_shape[DIM_INDEX3];
+    kd = w_shape[DIM_INDEX0];
+    kh = w_shape[DIM_INDEX1];
+    kw = w_shape[DIM_INDEX2];
   } else {
     OP_LOGE(op.GetName().c_str(), "input filter format should be NCDHW, NDHWC or DHWCN.");
     map<std::string, std::string> err_map;
@@ -5061,15 +5052,59 @@ IMPLEMT_INFERFUNC(Conv3D, Conv3DInfer) {
     err_map["input_value"] = w_format;
     std::string report_error_code = "E50029";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
+    return false;
   }
+
+  x_shape_new.clear();
+  x_shape_new.push_back(in);
+  x_shape_new.push_back(id);
+  x_shape_new.push_back(ih);
+  x_shape_new.push_back(iw);
+  x_shape_new.push_back(ic);
+
+  w_shape_new.clear();
+  w_shape_new.push_back(kn);
+  w_shape_new.push_back(kd);
+  w_shape_new.push_back(kh);
+  w_shape_new.push_back(kw);
+  w_shape_new.push_back(kc);
+
+  return true;
+}
+
+IMPLEMT_INFERFUNC(Conv3D, Conv3DInfer) {
+  OP_LOGD(op.GetName().c_str(), "Enter Conv3DInfer.");
+
+  auto x_tensor = op.get_input_desc_x();
+  auto x_format = x_tensor.GetFormat();
+  auto x_shape = x_tensor.GetShape().GetDims();
+  auto w_tensor = op.get_input_desc_filter();
+
+  bool unknown_rank = IsUnknownRankShape(x_shape);
+  vector<int64_t> x_shape_new;
+  vector<int64_t> w_shape_new;
+  if (!NormalizeConv3dShape(op, x_shape_new, w_shape_new)) {
+      return GRAPH_FAILED;
+  }
+
+  int32_t in = x_shape_new[DIM_INDEX0];
+  int32_t id = x_shape_new[DIM_INDEX1];
+  int32_t ih = x_shape_new[DIM_INDEX2];
+  int32_t iw = x_shape_new[DIM_INDEX3];
+  int32_t ic = x_shape_new[DIM_INDEX4];
+
+  int32_t kn = w_shape_new[DIM_INDEX0];
+  int32_t kd = w_shape_new[DIM_INDEX1];
+  int32_t kh = w_shape_new[DIM_INDEX2];
+  int32_t kw = w_shape_new[DIM_INDEX3];
+  int32_t kc = w_shape_new[DIM_INDEX4];
 
   int64_t group = 1;
   if (GRAPH_SUCCESS != op.GetAttr("groups", group)) {
     OP_LOGI(op.GetName().c_str(), "no group setting, use group as 1");
   }
 
-  if (ic != kc * group) {
+  if ((!unknown_rank) && (ic != kc * group)) {
     OP_LOGE(op.GetName().c_str(), "input x channel should be equal to filter.");
     map<std::string, std::string> err_map;
     err_map["op_name"] = "Conv3d";
@@ -5106,6 +5141,11 @@ IMPLEMT_INFERFUNC(Conv3D, Conv3DInfer) {
   int64_t od = (id + padf + padba - dild * (kd - 1) - 1) / strd + 1;
   int64_t oh = (ih + padt + padb - dilh * (kh - 1) - 1) / strh + 1;
   int64_t ow = (iw + padl + padr - dilw * (kw - 1) - 1) / strw + 1;
+  if (unknown_rank) {
+      od = -1;
+      oh = -1;
+      ow = -1;
+  }
 
   vector<int64_t> y_shape;
   auto y_tensor = op.get_output_desc_y();
@@ -5353,8 +5393,9 @@ IMPLEMT_VERIFIER(Conv3D, Conv3DVerify) {
 
   auto x_shape = x_tensor.GetOriginShape().GetDims();
   auto w_shape = w_tensor.GetOriginShape().GetDims();
-  if (x_shape.size() != kConv3dInputSizeLimit) {
-    OP_LOGE(op.GetName().c_str(), "input x shape should be 5d.");
+  bool unknown_rank = IsUnknownRankShape(x_shape);
+  if (!((x_shape.size() == kConv3dInputSizeLimit) || unknown_rank)) {
+    OP_LOGE(op.GetName().c_str(), "input x shape should be 5d or -2.");
     map<std::string, std::string> err_map;
     err_map["param_name"] = "xShape_size";
     err_map["op_name"] = "Conv3d";
