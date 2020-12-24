@@ -21,7 +21,7 @@ import te.platform as tbe_platform
 
 CONV = "Conv2D"
 DATA = "Data"
-STRIDED_READ = "StrideRead"
+STRIDED_READ = "StridedRead"
 DATA_RM = "conv2d_data_rm"
 
 DEQUANT_PATTERN = "dequant"
@@ -55,9 +55,8 @@ PARAM_KEY_DATA_RM = "invalid_data_rm"
 L1_FUSION_DISABLE = -1
 ELTWISE_INPUT_SIZE_MAX = 1
 OUTPUT_DESC_SIZE_MAX = 2
-HEAD_STRUCK_OP_SIZE_ONE = 1
-HEAD_STRUCK_OP_SIZE_TWO = 2
-TAIL_OP_SIZE = 1
+HEAD_STRUCT_OP_SIZE_ONE = 1
+HEAD_STRUCT_OP_SIZE_TWO = 2
 DOUBLE_OUTPUT = 2
 SINGLE_OUTPUT = 1
 
@@ -108,7 +107,7 @@ def get_pre_op(op_list, current_op):
                     return op_node
     return []
 
-def total_struct_check(op_list, head_op, tail_op, head_struck_oplist, tail_op_list):
+def total_struct_check(op_list, head_op, tail_op, head_struct_oplist, tail_op_list):
     """
     check struct of op_list whether it meets the conditions
 
@@ -120,7 +119,7 @@ def total_struct_check(op_list, head_op, tail_op, head_struck_oplist, tail_op_li
     last op of common head_struct
     tail_op:dict
     first op of common tail_struct
-    head_struck_oplist:list
+    head_struct_oplist:list
     head struct ops in op_list
     tail_op_list:list
     all last ops in op_list
@@ -139,42 +138,42 @@ def total_struct_check(op_list, head_op, tail_op, head_struck_oplist, tail_op_li
             for output_desc in op[OUTPUT_DESC]:
                 if L1_FUSION_TYPE in output_desc and output_desc[L1_FUSION_TYPE] != L1_FUSION_DISABLE:
                     return False
-                if op[TYPE_STR] == DATA:
-                    continue
-                if op[PATTERN_STR] == ELTWISE_PATTERN and len(op[INPUT_DESC]) > ELTWISE_INPUT_SIZE_MAX:
+            if op[TYPE_STR] == DATA:
+                continue
+            if op[PATTERN_STR] == ELTWISE_PATTERN and len(op[INPUT_DESC]) > ELTWISE_INPUT_SIZE_MAX:
+                return False
+            if len(op[OUTPUT_DESC]) == OUTPUT_DESC_SIZE_MAX:
+                if op[PATTERN_STR] not in double_output_oplist or\
+                    strided_read_flag ==True:
                     return False
-                if len(op[OUTPUT_DESC]) == OUTPUT_DESC_SIZE_MAX:
-                    if op[PATTERN_STR] not in double_output_oplist or\
-                        strided_read_flag ==True:
-                        return False
-                    tail_op_list.append(op)
-                    continue
-                next_op = get_next_op(op_list, op)
-                if op[TYPE_STR] == STRIDED_READ:
-                    strided_read_flag = True
-                    if next_op and next_op[TYPE_STR] == CONV:
-                        head_op.update(op)
-                        head_struck_oplist.append(op)
-                    else:
-                        return False
-                if op[TYPE_STR] == CONV:
+                tail_op_list.append(op)
+                continue
+            next_op = get_next_op(op_list, op)
+            if op[TYPE_STR] == STRIDED_READ:
+                strided_read_flag = True
+                if next_op and next_op[TYPE_STR] == CONV:
                     head_op.update(op)
-                    head_struck_oplist.append(op)
-                if not next_op:
-                    if op[PATTERN_STR] not in tail_oplist:
-                        return False
-                    if op[PATTERN_STR] == STRIDED_WRITE_PATTERN:
-                        strided_write_flag == True
-                    tail_op_list.append(op)
-                    tail_op.update(op)
+                    head_struct_oplist.append(op)
+                else:
+                    return False
+            if op[TYPE_STR] == CONV:
+                head_op.update(op)
+                head_struct_oplist.append(op)
+            if not next_op:
+                if op[PATTERN_STR] not in tail_oplist:
+                    return False
+                if op[PATTERN_STR] == STRIDED_WRITE_PATTERN:
+                    strided_write_flag = True
+                tail_op_list.append(op)
+                tail_op.update(op)
     if strided_write_flag and len(tail_op_list) == DOUBLE_OUTPUT:
         return False
-    if len(head_struck_oplist) == HEAD_STRUCK_OP_SIZE_ONE and\
-        head_struck_oplist[0][TYPE_STR] == CONV:
+    if len(head_struct_oplist) == HEAD_STRUCT_OP_SIZE_ONE and\
+        head_struct_oplist[0][TYPE_STR] == CONV:
         return True
-    if len(head_struck_oplist) == HEAD_STRUCK_OP_SIZE_TWO and\
-        head_struck_oplist[0][TYPE_STR] in head_oplist and\
-        head_struck_oplist[1][TYPE_STR] in head_oplist:
+    if len(head_struct_oplist) == HEAD_STRUCT_OP_SIZE_TWO and\
+        head_struct_oplist[0][TYPE_STR] in head_oplist and\
+        head_struct_oplist[1][TYPE_STR] in head_oplist:
         return True
     return False
 
@@ -203,7 +202,7 @@ def pattern1_match(op_list, head_op, tail_op):
             return False
         if next_op[NAME_STR] == tail_op[NAME_STR]:
             return True
-        head_op = next_olltllyp
+        head_op = next_op
 
 def pattern2_match(op_list, head_op, tail_op):
     """
@@ -245,7 +244,7 @@ def pattern3_match(op_list, head_op, tail_op, head_struct_oplist, tail_op_list):
     last op of common head_struct
     tail_op:dict
     first op of common tail_struct
-    head_struck_oplist:list
+    head_struct_oplist:list
     head struct ops in op_list
     tail_op_list:list
     all last ops in op_list
@@ -262,7 +261,7 @@ def pattern3_match(op_list, head_op, tail_op, head_struct_oplist, tail_op_list):
             return False
         if next_op[NAME_STR] == tail_op[NAME_STR]:
             return True
-        head_op = tail_op
+        head_op = next_op
 
 def can_user_define_compute(op_list, tail_op_list):
     """
@@ -273,7 +272,7 @@ def can_user_define_compute(op_list, tail_op_list):
     op_list:list
     op info of fusion op
     tail_op_list:list
-    all last op in op_list
+    all last ops in op_list
 
     Returns
     -------
@@ -309,7 +308,7 @@ def set_rm_in_options(op_list, rm_flag=False):
     op_list:list
     op info of fusion op
     rm_flag:bool
-    whether user define compue
+    whether user define compute
 
     Returns
     -------
@@ -329,7 +328,7 @@ def add_rm_op_in_op_list(op_list, tail_op_list):
     op_list:list
     op info of fusion op
     tail_op_list:list
-    all last op in op_list
+    all last ops in op_list
 
     Returns
     -------
@@ -352,14 +351,14 @@ def add_rm_op_in_op_list(op_list, tail_op_list):
                                 last_op_desc_flag = False
                                 break
                 if last_op_desc_flag:
-                    rm_op[INPUT_DESC] = [copy.deepcopy(last_op[OUTPUT_DESC])]
-                    rm_op[OUTPUT_DESC] = [copy.deepcopy(last_op[OUTPUT_DESC])]
+                    rm_op[INPUT_DESC] = [copy.deepcopy(output_desc)]
+                    rm_op[OUTPUT_DESC] = [copy.deepcopy(output_desc)]
                     output_desc[NAME_STR] = name + NAME_SUFFIX
                 last_op_desc_flag = True
         else:
             rm_op[INPUT_DESC] = copy.deepcopy(last_op[OUTPUT_DESC])
             rm_op[OUTPUT_DESC] = copy.deepcopy(last_op[OUTPUT_DESC])
-            output_desc[NAME_STR] = name + NAME_SUFFIX
+            last_op[OUTPUT_DESC][0][NAME_STR] = name + NAME_SUFFIX
         rm_op[FUNC_NAME] = DATA_RM
         rm_op[INDEX] = rm_op[INDEX] * 2
         del rm_op[INPUT_DESC][0][OUTPUT_INDEX]
