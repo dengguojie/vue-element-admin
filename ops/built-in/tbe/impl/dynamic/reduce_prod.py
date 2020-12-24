@@ -55,6 +55,8 @@ def reduce_prod_compute(x, axes, y, keepdims=None, kernel_name="reduce_prod"):
         output tensor, has the same type as input tensor.
     """
     dtype = x.dtype
+    if dtype in ("int8", "uint8"):
+        x = tbe.cast_to(x, "float16")
     res_prod = tbe.reduce_prod(x, axis=axes, keepdims=keepdims)
     res = tbe.cast_to(res_prod, dtype)
 
@@ -88,7 +90,7 @@ def reduce_prod(x, axes, y, keepdims=False, kernel_name="reduce_prod"):
 
     dtype_x = x["dtype"]
     dtype_lower_x = dtype_x.lower()
-    check_list_x = ("float16", "float32")
+    check_list_x = ("float16", "float32", "int8", "uint8")
     check_dtype(dtype_lower_x, check_list_x, param_name="x")
 
     dtype_axes = axes["dtype"]
