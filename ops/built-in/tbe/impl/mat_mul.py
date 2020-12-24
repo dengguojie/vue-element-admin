@@ -253,7 +253,7 @@ def check_supported(input_x1,
     shape_a = input_x1.get("ori_shape")
     shape_b = input_x2.get("ori_shape")
     src_dtype = input_x1.get("dtype")
-    dynamic_flag = any(v == -1 for v in shape_a) or any(v == -1 for v in shape_b)
+    dynamic_flag = any(v < 0 for v in shape_a) or any(v < 0 for v in shape_b)
     if not dynamic_flag:
         para_check.check_shape(shape_a, param_name="input_x1")
         para_check.check_shape(shape_b, param_name="input_x2")

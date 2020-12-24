@@ -59,30 +59,6 @@ def _get_range_intersection(range1, range2, param_name):
     return range_ins
 
 
-def _get_batch_range_intersection(range1, range2):
-    """
-    get batch range intersection of two range
-    """
-
-    if range1[0] == 1:
-        if range2[0] == 1:
-            if range1[1] is None or range2[1] is None:
-                range_ins = [1, None]
-            else:
-                range_ins = [1, max(range1[1], range2[1])]
-        else:
-            range_ins = range2
-    elif range2[0] == 1:
-        range_ins = range1
-    else:
-        range_ins = [max(range1[0], range2[0]), min(range1[1], range2[1])]
-        if range_ins[0] > range_ins[1]:
-            error_manager_vector.raise_err_specific_reson(
-                "mat_mul",  "interval is not valid of batch range"
-            )
-    return range_ins
-
-
 def _get_batch_range(range_x1, range_x2):
     """
     get range of batch
@@ -95,7 +71,7 @@ def _get_batch_range(range_x1, range_x2):
                 "batch_matmul", "the batch length is not same of x1 and x2"
             )
         for range_mem1, range_mem2 in zip(range_x1, range_x2):
-            range_ins = _get_batch_range_intersection(range_mem1, range_mem2)
+            range_ins = _get_range_intersection(range_mem1, range_mem2, "batch_range")
             range_x.append(range_ins)
     else:
         range_x = range_x1

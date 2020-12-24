@@ -12,7 +12,7 @@ matmul_case = [
     (((1, 5), ), (1, 4), (1, 2), (2, 4), "float16", "float16", "NZ", False, False, False, False, "dynamic_batch_matmul_v2_succcase0"),
     (((1, 5), ), (1, 4), (1, 2), (2, 4), "float16", "float16", "NZ", True, True, True, True, "dynamic_batch_matmul_v2_succcase1"),
     # dtype error
-    (((1, 5), ), (1, 4), (1, 2), (2, 4), "float16", "float16", "NZ", False, False, False, True, "dynamic_matmul_errorcase0", "dtype"),
+    (((1, 5), ), (1, 4), (1, 2), (2, 4), "float16", "float32", "NZ", False, False, False, True, "dynamic_matmul_errorcase0", "dtype"),
     # format error
     (((1, 5), ), (1, 4), (1, 2), (2, 4), "float16", "float16", "ND", False, False, False, True, "dynamic_matmul_errorcase1", "format"),
     # ori_shape error
@@ -104,10 +104,16 @@ def test_op_select_format(test_arg):
                      {"shape": (7, 4, 5), "dtype": "float16", "format": "ND", "ori_shape": (7, 4, 5), "ori_format": "ND"},
                      )
 
+def test_op_check_supported(test_arg):
+     from impl.batch_matmul_v2 import check_supported
+     input_x1 = {"ori_shape": (-1, -1, -1), "shape": (-1, -1, -1, 16, 16), "range": ((1,3), (2,3), (3,5)), "dtype": 'float16'}
+     input_x2 = {"ori_shape": (-1, -1, -1), "shape": (-1, -1, -1, 16, 16), "range": ((1,3), (3,5), (4,5)), "dtype": 'float16'}
+     check_supported(input_x1, input_x2)
 
 for case in matmul_case:
     ut_case.add_case("Ascend910A", gen_batch_matmul_dynamic(*case))
     ut_case.add_cust_test_func(test_func=test_op_select_format)
+    ut_case.add_cust_test_func(test_func=test_op_check_supported)
 
 if __name__ == "__main__":
     with te.op.dynamic():

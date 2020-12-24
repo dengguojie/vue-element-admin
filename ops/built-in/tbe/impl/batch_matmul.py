@@ -28,6 +28,8 @@ from te.utils.error_manager import error_manager_vector
 # General limitation of the size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
 NoneType = type(None)
+DYNAMIC_UNRANK = [-2]
+ND_LENGTH = 2
 
 
 # pylint: disable=locally-disabled,too-many-arguments
@@ -186,6 +188,47 @@ def _get_input_shape(shape_x):
     return res
 
 
+def _check_batch_range(input_x, input_y):
+    """
+    Check the batch shape and range legal
+
+    Parameters
+    ----------
+    input_x: dict with shape and range
+    input_y: dict with shape and range
+
+    Returns
+    -------
+    legit or not
+    """
+    shape_a = input_x.get("ori_shape")
+    shape_b = input_y.get("ori_shape")
+    if list(shape_a) == DYNAMIC_UNRANK and list(shape_b) == DYNAMIC_UNRANK:
+        return True
+
+    range_x1 = input_x.get("range")
+    range_x2 = input_y.get("range")
+    if not range_x1 or len(shape_a) <= ND_LENGTH:
+        return False
+    if not range_x2 or len(shape_b) < ND_LENGTH:
+        return False
+
+    batch_range_x1 = range_x1[:(len(shape_a) - ND_LENGTH)]
+    batch_range_x2 = range_x2[:(len(shape_b) - ND_LENGTH)]
+
+    if not batch_range_x2:
+        return True
+
+    if len(batch_range_x1) != len(batch_range_x2):
+        return False
+
+    for range1, range2 in zip(batch_range_x1, batch_range_x2):
+        if range1[1] is not None and range2[1] is not None:
+            if max(range1[0], range2[0]) > min(range1[1], range2[1]):
+                return False
+
+    return True
+
 # pylint: disable=locally-disabled,too-many-arguments
 # pylint: disable=dangerous-default-value, no-member
 # pylint: disable=too-many-statements, unused-argument
@@ -258,13 +301,18 @@ def check_supported(input_x, input_y, bias=None, output_z={}, trans_a=False,
     """
     get the op supported situation
     """
+
     shape_a = input_x.get("shape")
     shape_b = input_y.get("shape")
     src_dtype = input_x.get("dtype")
-    dynamic_flag = any(v == -1 for v in shape_a) or any(v == -1 for v in shape_b)
+    dynamic_flag = any(v < 0 for v in shape_a) or any(v < 0 for v in shape_b)
     if not dynamic_flag:
         para_check.check_shape(shape_a, param_name="input_x")
         para_check.check_shape(shape_b, param_name="input_y")
+    else:
+        if not _check_batch_range(input_x, input_y):
+            return False
+
     src_dtypes = ["float32", "int32"]
     if src_dtype in src_dtypes:
         shape_length = len(shape_a)
