@@ -115,12 +115,12 @@ def _gen_trans_data_case(
 
 def _gen_conv2d_bp_input_op_case():
     for test_case in conv2d_bp_input_ut_testcase.conv2d_bp_input_op_testcase:
-        ut_case.add_case(["Ascend910"], _gen_trans_data_case(*test_case))
+        ut_case.add_case(["Ascend910A"], _gen_trans_data_case(*test_case))
 
 
 _gen_conv2d_bp_input_op_case()
 
 
 if __name__ == "__main__":
-    ut_case.run("Ascend910")
+    ut_case.run("Ascend910A")
     sys.exit(0)

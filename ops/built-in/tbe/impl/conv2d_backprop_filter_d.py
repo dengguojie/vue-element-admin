@@ -715,11 +715,18 @@ def check_conv2dbp_filter_params(
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
 
     # groups check
-    if groups != 1 and groups != fmap_channel:
+    if fmap_channel % groups != 0:
         dict_args = {
-            'errCode': 'E50060',
-            'op_name': 'conv2d_backprop_filter',
-            'description': "only supports conv/depthwise situation"
+            'errCode': "E60108",
+            'reason': "fmap's channel must be a multiple of groups"
+        }
+        raise RuntimeError(dict_args,
+                           error_manager.get_error_message(dict_args))
+
+    if dedy_channel % groups != 0:
+        dict_args = {
+            'errCode': "E60108",
+            'reason': "outbackprop's channel must be a multiple of groups"
         }
         raise RuntimeError(dict_args,
                            error_manager.get_error_message(dict_args))

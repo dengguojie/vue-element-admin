@@ -206,19 +206,19 @@ def _test_conv2d_bp_input_slice(
 def _gen_conv2d_bp_input_op_fusion_case():
     for fusion_case in conv2d_bp_input_ut_testcase.conv2d_bp_input_fusion_testcase:
         ut_case.add_cust_test_func(
-            "Ascend910", test_func=_test_conv2d_bp_input_fusion(*fusion_case)
+            "Ascend910A", test_func=_test_conv2d_bp_input_fusion(*fusion_case)
         )
 
 
 def _gen_conv2d_bp_input_op_slice_case():
     for slice_case in conv2d_bp_input_ut_testcase.conv2d_bp_input_op_slice_testcase:
         ut_case.add_cust_test_func(
-            "Ascend910", test_func=_test_conv2d_bp_input_slice(*slice_case)
+            "Ascend910A", test_func=_test_conv2d_bp_input_slice(*slice_case)
         )
 
 _gen_conv2d_bp_input_op_fusion_case()
 _gen_conv2d_bp_input_op_slice_case()
 
 if __name__ == "__main__":
-    ut_case.run(["Ascend910", "Ascend710", "Ascend310"])
+    ut_case.run(["Ascend910A", "Ascend710", "Ascend310"])
     sys.exit(0)

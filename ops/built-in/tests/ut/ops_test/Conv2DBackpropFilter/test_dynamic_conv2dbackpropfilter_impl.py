@@ -221,5 +221,5 @@ ut_case.add_case(
 
 if __name__ == '__main__':
     with te.op.dynamic():
-        ut_case.run("Ascend910")
+        ut_case.run("Ascend910A")
     exit(0)

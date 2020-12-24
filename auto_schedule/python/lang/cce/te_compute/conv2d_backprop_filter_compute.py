@@ -443,7 +443,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         _, grads_channel_1, grads_height, grads_width, grads_c0 \
             = self.shape_grads_5hd
         _, fmap_channel_1, fmap_height, fmap_width, fmap_c0 = self.shape_x_5hd
-        _, kernel_channel, kernel_height, kernel_width = self.weight_shape
+        kernel_batch, _, kernel_height, kernel_width = self.weight_shape
         dilationn, dilationc, dilationh, dilationw = self.dilation
 
         def _check_dilation():
@@ -461,11 +461,10 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                                   "dilationw")
 
         def _check_groups():
-            if self.group != 1 and kernel_channel != 1:
+            if kernel_batch % self.group != 0:
                 dict_args = {
-                    'errCode': 'E50060',
-                    'op_name': 'conv2d_backprop_filter',
-                    'description': "only supports conv/depthwise situation"
+                    "errCode": "E60108",
+                    "reason": "outbackprop's channel must be a multiple of groups"
                 }
                 error_manager_util.raise_runtime_error(dict_args)
 
