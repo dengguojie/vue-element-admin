@@ -782,7 +782,7 @@ def _indices_tiling(tensor_params, tensor_indices, row_num_each_core):
     if row_size < 32:
         if params_size * params_dtype_size < ub_size // 2:
             ub_size = ub_size // 2
-        indices_size = row_num_each_core * (row_size + indices_dtype_size)
+        indices_size = int(row_num_each_core) * (row_size + indices_dtype_size)
         loop_num = indices_size // ub_size
     else:
         ub_size = ub_size // 2
