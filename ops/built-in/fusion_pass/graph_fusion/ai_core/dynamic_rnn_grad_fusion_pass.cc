@@ -921,7 +921,7 @@ ge::NodePtr DynamicRNNGradFusionPass::AddMatmulNode(ge::NodePtr dynamicRNNGradNo
   outputDims.push_back(inputTensorDescDgate.GetOriginShape().GetDim(2));
   ge::GeShape outputOriginShape(outputDims);
   ge::GeShape outputShape(outputDims);
-  ge::GeTensorDesc outputTensorDesc = ge::GeTensorDesc(outputShape, ge::FORMAT_ND, ge::DT_FLOAT);
+  ge::GeTensorDesc outputTensorDesc = ge::GeTensorDesc(outputShape, ge::FORMAT_ND, ge::DT_FLOAT16);
   outputTensorDesc.SetOriginShape(outputOriginShape);
   outputTensorDesc.SetOriginFormat(ge::FORMAT_ND);
   matmulDesc->AddOutputDesc("y", outputTensorDesc);
@@ -955,7 +955,7 @@ Status DynamicRNNGradFusionPass::AddDwReduceSumNode(ge::NodePtr dynamicRNNGradNo
   input_dims.push_back(16);
   input_dims.push_back(16);
   ge::GeShape input_shape(input_dims);
-  ge::GeTensorDesc inputTensorDescMatmul = ge::GeTensorDesc(input_shape, ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT);
+  ge::GeTensorDesc inputTensorDescMatmul = ge::GeTensorDesc(input_shape, ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
   inputTensorDescMatmul.SetOriginShape(matmulNode->GetOpDesc()->GetOutputDesc(0).GetShape());
   inputTensorDescMatmul.SetOriginFormat(ge::FORMAT_ND);
   reduceSumDesc->AddInputDesc("input_matmul", inputTensorDescMatmul);
@@ -966,7 +966,7 @@ Status DynamicRNNGradFusionPass::AddDwReduceSumNode(ge::NodePtr dynamicRNNGradNo
   output_dims.push_back(16);
   output_dims.push_back(16);
   ge::GeShape output_shape(output_dims);
-  ge::GeTensorDesc outputTensorDesc = ge::GeTensorDesc(output_shape, ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT);
+  ge::GeTensorDesc outputTensorDesc = ge::GeTensorDesc(output_shape, ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
   outputTensorDesc.SetOriginShape(dynamicRNNGradNode->GetOpDesc()->GetOutputDesc(0).GetShape());
   outputTensorDesc.SetOriginFormat(ge::FORMAT_ND);
   reduceSumDesc->AddOutputDesc("y", outputTensorDesc);
