@@ -1373,6 +1373,11 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
       continue;
     }
   }
+  
+  if (SetScalarOutputDesc(string("x"), string("y"), op_desc, output_shape)) {
+    return GRAPH_SUCCESS;
+  }
+
   // Shape_size is 0, means shape tensor value is [], implying convert vector/scalar to scalar
   bool convert_to_scalar =
       (shape_size == 0 && (input_size == 1 || (input_size == 0 && input_shape.GetDims().size() == 0)));

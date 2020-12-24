@@ -974,4 +974,17 @@ bool TwoInOneOutDynamicInferNoBroadcast(Operator& op,
   return true;
 }
 
+bool SetScalarOutputDesc(const string& input, const string& output, OpDescPtr op_desc, GeShape& output_shape) {
+  if (output_shape.IsScalar()) {
+    auto td = op_desc->MutableOutputDesc(output);
+    td->SetShape(output_shape);
+    td->SetOriginShape(output_shape);
+    td->SetDataType(op_desc->MutableInputDesc(input)->GetDataType());
+    td->SetOriginDataType(op_desc->MutableInputDesc(input)->GetDataType());
+    return true;
+  } else {
+    return false;
+  }
+}
+
 }  // namespace ge

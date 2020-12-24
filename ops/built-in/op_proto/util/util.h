@@ -36,6 +36,8 @@
 #include "graph/utils/tensor_utils.h"
 #include "graph/utils/node_utils.h"
 #include "graph/tensor.h"
+#include "graph/node.h"
+#include "graph/ge_tensor.h"
 
 #include "op_log.h"
 
@@ -360,6 +362,11 @@ void FixShapeRangeWithDims(const std::vector<int64_t>& dims,
                            std::vector<int64_t>& shape_2,
                            std::vector<std::pair<int64_t, int64_t>>& range_1,
                            std::vector<std::pair<int64_t, int64_t>>& range_2);
+
+bool SetScalarOutputDesc(const string& input, 
+                         const string& output,
+                         OpDescPtr op_desc, 
+                         GeShape& output_shape);
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_UTIL_UTIL_H_
