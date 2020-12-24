@@ -32,7 +32,14 @@ class BiasaddConvFusionPass : public PatternFusionBasePass {
  private:
   const string FUSED_OP_TYPE = "Conv2D/Conv3D/DepthwiseConv2D";
 
-  vector<ge::NodePtr> GetConstOrDataInputs(const ge::Node &node);
+  Status AdjustShapeOfBiasWeight(const vector<ge::ConstGeTensorPtr> &weights, ge::GeShape &bias_shape);
+
+  Status GetWeightNode(const ge::NodePtr &biasadd_node, const ge::NodePtr conv,
+                                           ge::NodePtr &weight_node, ge::GeShape &bias_shape);
+
+  Status CheckParam(const ge::NodePtr &conv, const ge::NodePtr &biasadd_node);
+
+  vector<ge::NodePtr> GetConstOrDataInputs(const ge::NodePtr &node);
 };
 
 }  // namespace fe
