@@ -406,28 +406,27 @@ bool InferShapeRangeTwoInOneOutBroadcase(Operator& op, const string& input_name1
           out_range.push_back(std::pair<int64_t, int64_t>(1, -1));
         } else if (shape_range_x[i].second == 1 && shape_range_y[i].second == -1) {
           out_range.push_back(std::pair<int64_t, int64_t>(1, -1));
+        } else if (shape_range_x[i].first == 1 || shape_range_y[i].first == 1) {
+          // one shape size maybe 1, so will support boardcast
+          // first_range == max first
+          int64_t first_range = std::max(shape_range_x[i].first, shape_range_y[i].first);
+          int64_t second_range = shape_range_x[i].first == 1 ? shape_range_y[i].second : shape_range_x[i].second;
+          if (shape_range_x[i].first == 1 && shape_range_y[i].first == 1) {
+            second_range = std::max(shape_range_x[i].second, shape_range_y[i].second);
+            second_range = (shape_range_x[i].second == -1 || shape_range_y[i].second == -1) ? -1 : second_range;
+          }
+          out_range.push_back(std::pair<int64_t, int64_t>(first_range, second_range));
         } else {
-          int64_t first_range = std::min(shape_range_x[i].first, shape_range_y[i].first);
-          first_range = (shape_range_x[i].first == 1 || shape_range_y[i].first == 1)
-                        ? std::max(shape_range_x[i].first, shape_range_y[i].first)
-                        : first_range;
-          out_range.push_back(std::pair<int64_t, int64_t>(first_range,
-                                                          std::max(shape_range_x[i].second, shape_range_y[i].second)));
+          // no 1 in range.first, mean no boardcast for range
+          // get intersect range
+          int64_t first_range = std::max(shape_range_x[i].first, shape_range_y[i].first);
+          int64_t second_range = std::min(shape_range_x[i].second, shape_range_y[i].second);
+          second_range = (shape_range_x[i].second == -1 || shape_range_y[i].second == -1)
+                         ? std::max(shape_range_x[i].second, shape_range_y[i].second)
+                         : second_range;
+          out_range.push_back(std::pair<int64_t, int64_t>(first_range, second_range));
         }
       }
-    }
-  } else {
-    size_t max_size = std::max(shape_range_x.size(), shape_range_y.size());
-    while (shape_range_x.size() < max_size) {
-      shape_range_x.insert(shape_range_x.begin(), std::pair<int64_t, int64_t>(1, 1));
-    }
-    while (shape_range_y.size() < max_size) {
-      shape_range_y.insert(shape_range_y.begin(), std::pair<int64_t, int64_t>(1, 1));
-    }
-
-    for (size_t i = 0; i < max_size; i++) {
-      out_range.push_back(std::pair<int64_t, int64_t>(std::min(shape_range_x[i].first, shape_range_y[i].first),
-                                                      std::max(shape_range_x[i].second, shape_range_y[i].second)));
     }
   }
 
@@ -988,3 +987,4 @@ bool SetScalarOutputDesc(const string& input, const string& output, OpDescPtr op
 }
 
 }  // namespace ge
+

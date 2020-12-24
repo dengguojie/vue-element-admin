@@ -24,7 +24,7 @@ TEST_F(equal, equal_infershape_diff_test_4) {
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_BOOL);
   std::vector<int64_t> expected_output_shape = {-2};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
-  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{1,3},{1,4},{1,5},{1,6},{4,7}};
+  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {};
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   output_desc.GetShapeRange(output_shape_range);
   EXPECT_EQ(output_shape_range, expected_output_shape_range);
@@ -40,7 +40,8 @@ TEST_F(equal, equal_infershape_diff_test_5) {
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_BOOL);
   std::vector<int64_t> expected_output_shape = {-2};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
-  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{1,10},{1,10},{1,7}};
+  // std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{1,10},{1,10},{1,7}};
+  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {};
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   output_desc.GetShapeRange(output_shape_range);
   EXPECT_EQ(output_shape_range, expected_output_shape_range);
@@ -72,7 +73,7 @@ TEST_F(equal, equal_infershape_diff_test_7) {
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_BOOL);
   std::vector<int64_t> expected_output_shape = {-2};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
-  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{1,10}, {2,7},{1,7}};
+  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {};
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   output_desc.GetShapeRange(output_shape_range);
   EXPECT_EQ(output_shape_range, expected_output_shape_range);
