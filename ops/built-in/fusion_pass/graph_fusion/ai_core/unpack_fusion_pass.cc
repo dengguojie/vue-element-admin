@@ -123,9 +123,21 @@ Status UnpackFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<No
                     OP_LOGE(kFusedOpType.c_str(), "The fused_node's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
+  GeTensorDesc input_desc = fused_desc->GetInputDesc(0);
+  vector<int64_t> input_shape = input_desc.GetShape().GetDims();
+  for (int idx = 0; idx < input_shape.size(); idx++) {
+    if (PatternFusionUtil::IsUnknownShape(input_shape[idx])) {
+      OP_LOGE("UnpackFusionPass cannot be applied for unknown shape.");
+      return NOT_CHANGED;
+    }
+  }
   // A maximum of 63 tensors are supported in mini mode.
   int64_t num;
   AttrUtils::GetInt(fused_desc, "num", num);
+  if (PatternFusionUtil::IsUnknownShape(num)) {
+    OP_LOGE("UnpackFusionPass cannot be applied for num unknown shape.");
+    return NOT_CHANGED;
+  }
   FUSION_PASS_CHECK(num <= kMiniOut,
                     OP_LOGD(kFusedOpType.c_str(), "The amount of num of Unapck node is less than %lld.", kMiniOut),
                     return SUCCESS);

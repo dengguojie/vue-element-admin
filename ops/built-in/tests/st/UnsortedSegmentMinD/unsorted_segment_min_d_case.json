@@ -1,0 +1,36 @@
+[
+  {
+    "op": "UnsortedSegmentMinD",
+    "case_name" : "test_unsorted_segment_min_d_001",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [16],
+        "type": ["float16"],
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [16],
+        "type": ["int32"],
+        "value_range": [[0, 1]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [5],
+        "type": ["float16"]
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_segments",
+        "value": 5,
+        "type": "int"
+      }
+    ]
+  }
+]
+
