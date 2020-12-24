@@ -322,7 +322,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
         if fmap_channel != filter_channel * groups:
             dict_args = {
                 'errCode': 'E60108',
-                'reason': "Shape error: Fmap's C must be equal to Filter'C."
+                'reason': "Shape error: Fmap's C must be equal to Filter'C * groups."
             }
             raise RuntimeError(dict_args,
                                error_manager_util.get_error_message(dict_args))

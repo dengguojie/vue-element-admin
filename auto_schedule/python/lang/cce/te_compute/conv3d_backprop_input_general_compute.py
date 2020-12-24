@@ -78,9 +78,17 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
         stride_d, stride_h, stride_w = self._stride_d, self._stride_h, self._stride_w
         shape_dy_filling = (dy_batch, dy_deep, kernel_cout1, dy_h * stride_h,
                             dy_w * stride_w, kernel_cout0)
+        cout1_filling = self.real_g * self.cout_g // kernel_cout0
+        shape_dy_filling_l1 = (dy_batch, dy_deep, cout1_filling, dy_h * stride_h,
+                            dy_w * stride_w, kernel_cout0)
+
         self.dy_d = dy_deep
         if stride_h == 1 and stride_w == 1:
-            dy_filling = dy_ddr
+            dy_filling = tvm.compute(shape_dy_filling_l1,
+                                lambda i, j, k, l, m, n: tvm.select(k < kernel_cout1,
+                                dy_ddr(i, j, k, l, m, n)),
+                                name="dy_l1_s1",
+                                tag="dy_l1_s1")
         else:
             dy_zero = tvm.compute(
                 shape_dy_filling,
@@ -129,7 +137,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                 shape_down_modify = (pad_down_after - abs(pad_down_after)) // 2
                 shape_right_modify = (pad_right_after - abs(pad_right_after)) // 2
                 shape_dy_filling_cut = (dy_batch, dy_deep,
-                                        kernel_cout1,
+                                        cout1_filling,
                                         dy_h * stride_h + shape_down_modify,
                                         dy_w * stride_w + shape_right_modify,
                                         kernel_cout0)
@@ -156,7 +164,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                 pad_tail_after = (pad_tail_after + abs(pad_tail_after)) // 2
             else:
                 dy_filling_l1 = tvm.compute(
-                    shape_dy_filling,
+                    shape_dy_filling_l1,
                     lambda batch_idx, dy_deep, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx:
                     dy_filling[batch_idx,
                                dy_deep,
