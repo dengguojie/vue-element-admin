@@ -366,6 +366,9 @@ def variable_shape(inputs: list, support_broadcast=False):
             if range_y[0] == range_y[1]:
                 shape1[index] = range_y[0]
 
+    def _get_dim(_i, _shapes):
+        return max([s[_i] for s in _shapes])
+
     def _fill(_inputs):
         if support_broadcast:
             if len(inputs) != 2:
@@ -396,6 +399,9 @@ def variable_shape(inputs: list, support_broadcast=False):
         for _input in inputs:
             _shapes.append(_input["shape"])
             _ranges.append(_input["range"])
+        _shape = [_get_dim(_i, _shapes) for _i in range(len(_shapes[0]))]
+        _shapes = [_shape.copy() for _ in range(len(_shapes))]
+
         return _shapes, _ranges
 
     def _maybe_broadcast():
