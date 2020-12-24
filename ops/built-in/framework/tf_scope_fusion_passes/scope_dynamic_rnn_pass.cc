@@ -221,7 +221,7 @@ void ScopeDynamicRNNPass::GenTacotronScopePatterns(ScopeFusionPatterns &patterns
   }
   p_lstm_no_transpose->SetSubType(kLstmNoTransType);
   p_lstm_no_transpose->AddScopeFeature(ScopeFeature(kWhileType, 1, ""));
-  p_lstm_no_transpose->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", 0, -1));
+  p_lstm_no_transpose->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", -1, 0));
   batch2.push_back(p_lstm_no_transpose);
 
   ScopePattern *p_lstm_transpose = new(std::nothrow) ScopePattern();
