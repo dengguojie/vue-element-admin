@@ -43,6 +43,9 @@ _STRIDE_MAX = 63
 # fmap H and W must be in [1, 4096]
 _FMAP_HW_MIN = 1
 _FMAP_HW_MAX = 4096
+# dilations must be in [1,255]
+_DILATION_MIN = 1
+_DILATION_MAX = 255
 
 
 class Conv3DParam(object):
@@ -74,6 +77,7 @@ def _cube_3d_compute(fmap,
                      res_dtype,
                      pads,
                      stride_dhw,
+                     dilation_dhw,
                      shape_filter_ncdhw,
                      cyclebuffer_flag,
                      group_dict,
@@ -96,6 +100,9 @@ def _cube_3d_compute(fmap,
 
     stride_dhw: the stride value
         [stride_d, stride_h, stride_w]
+
+    dilation_dhw: the dilation value
+        [dilation_d, dilation_h, dilation_w]
 
     shape_filter_ncdhw: the filter shape
 
@@ -126,6 +133,7 @@ def _cube_3d_compute(fmap,
     filter_cout, _, filter_d, filter_h, filter_w = shape_filter_ncdhw
     pad_head, pad_tail, pad_top, pad_bottom, pad_left, pad_right = pads
     stride_d, stride_h, stride_w = stride_dhw
+    dilation_d, dilation_h, dilation_w = dilation_dhw
 
     _TENSOR_MAP["filter_d"] = filter_d
     if Conv3DParam.dynamic_mode == "dynamic_dhw":
@@ -133,9 +141,9 @@ def _cube_3d_compute(fmap,
         width_out = Conv3DParam.var_map.get("w_out")
         d_out = Conv3DParam.var_map.get("d_out")
     else:
-        height_out = (fmap_h + pad_top + pad_bottom - filter_h) // stride_h + 1
-        width_out = (fmap_w + pad_left + pad_right - filter_w) // stride_w + 1
-        d_out = (fmap_d + pad_head + pad_tail - filter_d) // stride_d + 1
+        height_out = (fmap_h + pad_top + pad_bottom - ((filter_h - 1) * dilation_h + 1)) // stride_h + 1
+        width_out = (fmap_w + pad_left + pad_right - ((filter_w - 1) * dilation_w + 1)) // stride_w + 1
+        d_out = (fmap_d + pad_head + pad_tail - ((filter_d - 1) * dilation_d + 1)) // stride_d + 1
 
     config = tbe_platform.CUBE_MKN[in_dtype]
     block_size_k = config['mac'][1]
@@ -190,26 +198,28 @@ def _cube_3d_compute(fmap,
         # set_fmatrix
         # new data layout (N,C1,H,W,C0) -> (N,HoWo,C1,Hk,Wk,C0)
         fmap_im2col_row_major_shape = (fmap_fuse_shape[0], height_out * width_out,
-                                    fmap_fuse_shape[1], filter_h, filter_w,
-                                    fmap_c0)
+                                       fmap_fuse_shape[1], filter_h, filter_w,
+                                       fmap_c0)
         stride_hw = [stride_h, stride_w]
+        dilation_hw = [dilation_h, dilation_w]
         fmap_im2col_row_major_res = cube_util.im2col_row_major(fmap_im2col_row_major_shape,
-                                                            fuse_fmap_tensor,
-                                                            filter_w,
-                                                            pad_hw,
-                                                            stride_hw,
-                                                            fmap.dtype,
-                                                            opti_h_flag,
-                                                            tag=_OP_TAG)
+                                                               fuse_fmap_tensor,
+                                                               filter_w,
+                                                               pad_hw,
+                                                               stride_hw,
+                                                               fmap.dtype,
+                                                               opti_h_flag,
+                                                               tag=_OP_TAG,
+                                                               dilation=dilation_hw)
         _TENSOR_MAP["fmap_im2col_row_major_res"] = fmap_im2col_row_major_res
 
         # im2col
         # small-z-big-Z
         # new data layout (N,HoWo,C1,Hk,Wk,C0) -> (N,loop_m,loop_k,cube_m,cube_k)
         fmap_im2col_fractal_shape = (real_g, fmap_fuse_shape[0],
-                                    howo_mad // block_size_m,
-                                    filter_d * cin1_g * filter_h * filter_w,
-                                    block_size_m, block_size_k)
+                                     howo_mad // block_size_m,
+                                     filter_d * cin1_g * filter_h * filter_w,
+                                     block_size_m, block_size_k)
 
         fmap_im2col_fractal_res = cube_util.im2col_fractal_3d(
             fmap_im2col_fractal_shape,
@@ -256,14 +266,15 @@ def _cube_3d_compute(fmap,
                   'kernel_w': filter_w,
                   'kernel_d': filter_d,
                   'padding': pads[2:],
-                  'stride': stride_dhw[1:]}
+                  'stride': stride_dhw[1:],
+                  'dilation': dilation_dhw[1:]}
 
     conv_aligned_shape = (fmap_fuse_shape[0],
                   (cout_ori + config['mac'][2] - 1) // (config['mac'][2]),
                   howo_mad, config['mac'][2])
     c_ub = tvm.compute(conv_aligned_shape,
                         lambda n, i, j, k: c_col(i // cout1_g, n,
-                                                i % cout1_g, j, k).astype(
+                                                 i % cout1_g, j, k).astype(
                             res_dtype),
                         name='C_UB',
                         tag=_OP_TAG + "C_UB",
@@ -272,7 +283,7 @@ def _cube_3d_compute(fmap,
     _TENSOR_MAP["c_ub"] = c_ub
     dim_map1 = _im2col_dim(shape_util.shape_to_list(fuse_fmap_tensor.shape),
                            shape_filter_ncdhw, list(pads), list(stride_dhw),
-                           config)
+                           list(dilation_dhw), config)
     dim_map_copy = _DIM_MAP.copy()
     dim_map_copy.update(dim_map1)
 
@@ -307,9 +318,9 @@ def _get_fuse_fmap_tensor(fmap_fuse_shape, fmap, d_out, kernel_d, stride_d,
 
     pad_head : the pad head of pads
 
-    tiling ： the tiling of Conv3D
+    tiling : the tiling of Conv3D
 
-    opti_h_flag ：the flag for optimizing on h dimension
+    opti_h_flag : the flag for optimizing on h dimension
 
     cyclebuffer_flag : the flag for cyclebuffer
 
@@ -453,7 +464,7 @@ def _get_load2d_flag(stride, pads, shape_filter_ncdhw):
     return l0a_load2d_flag
 
 
-def _im2col_dim(shape_fmap, shape_filter_ncdhw, pads, stride_dhw, config):
+def _im2col_dim(shape_fmap, shape_filter_ncdhw, pads, stride_dhw, dilation_dhw, config):
     """
     calculate shape
     Parameters
@@ -478,9 +489,10 @@ def _im2col_dim(shape_fmap, shape_filter_ncdhw, pads, stride_dhw, config):
     batch, fmap_c1, fmap_h, fmap_w, fmap_c0 = shape_fmap
     filter_cout, _, _, filter_h, filter_w = shape_filter_ncdhw
     _, _, pad_top, pad_bottom, pad_left, pad_right = pads
+    _, dilation_h, dilation_w = dilation_dhw
 
-    out_h = ((fmap_h + pad_top + pad_bottom) - filter_h) // stride_dhw[1] + 1
-    out_w = ((fmap_w + pad_left + pad_right) - filter_w) // stride_dhw[2] + 1
+    out_h = (fmap_h + pad_top + pad_bottom - ((filter_h - 1) * dilation_h + 1)) // stride_dhw[1] + 1
+    out_w = (fmap_w + pad_left + pad_right - ((filter_w - 1) * dilation_w + 1)) // stride_dhw[2] + 1
 
     fmap_valid_dim = (batch, out_h * out_w,
                       fmap_c1 * filter_h * filter_w * fmap_c0)
@@ -724,8 +736,9 @@ def _get_var_map():
                 for v in ("fmap_h", "fmap_w", "fmap_d", "h_out", "w_out", "d_out")}
     return None
 
+
 def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
-                       fmp_dtype, w_dtype):
+                        fmp_dtype, w_dtype):
     """
     algorithm: check the input params of conv3d
 
@@ -796,12 +809,13 @@ def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
                                error_manager_util.get_error_message(dict_args))
 
     # check for not bigger than L1
+    _, dilation_h, dilation_w = dilation_dhw
     l1_buffer_size = tbe_platform.get_soc_spec("L1_SIZE")
     m_bit_ratio = {"float16": 2, "int8": 1}
-    point_per_w = (fmap_w - filter_w +
+    point_per_w = ((fmap_w - (filter_w - 1) * dilation_w + 1) +
                    pad_w[0] + pad_w[1]) // stride_dhw[2] + 1
     w_in = block_size_m // point_per_w + 2
-    tmp = ((w_in - 1) * stride_dhw[1] + filter_h) * fmap_w
+    tmp = ((w_in - 1) * stride_dhw[1] + (filter_h - 1) * dilation_h + 1) * fmap_w
     max_feature_map_l1 = block_size_k * tmp * m_bit_ratio[w_dtype]
 
     if max_feature_map_l1 > l1_buffer_size:
@@ -813,6 +827,7 @@ def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
 
 
 def _check_d_dimension(fmap_d, filter_d, pad_d, stride_d, dilation_d):
+    filter_dilated_d = (filter_d - 1) * dilation_d + 1
     if filter_d < _FILTER_DHW_MIN or filter_d > _FILTER_DHW_MAX:
         dict_args = {
             'errCode': 'E62003',
@@ -824,11 +839,11 @@ def _check_d_dimension(fmap_d, filter_d, pad_d, stride_d, dilation_d):
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
 
-    if (fmap_d + pad_d[0] + pad_d[1]) < ((filter_d - 1) * dilation_d + 1):
+    if (fmap_d + pad_d[0] + pad_d[1]) < filter_dilated_d:
         dict_args = {
             'errCode': 'E60012',
             'depth_of_x': str(fmap_d + pad_d[0] + pad_d[1]),
-            'depth_of_filter': str((filter_d - 1) * dilation_d + 1),
+            'depth_of_filter': str(filter_dilated_d),
         }
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
@@ -845,12 +860,12 @@ def _check_d_dimension(fmap_d, filter_d, pad_d, stride_d, dilation_d):
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
 
-    if pad_d[0] >= filter_d or pad_d[1] >= filter_d:
+    if pad_d[0] >= filter_dilated_d or pad_d[1] >= filter_dilated_d:
         dict_args = {
             'errCode': 'E60013',
             'depth_of_pad': 'pad_d[0] = {}, pad_d[1] = {}'.format(pad_d[0],
                                                                   pad_d[1]),
-            'depth_of_filter': str(filter_d)
+            'depth_of_filter': str(filter_dilated_d)
         }
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
@@ -866,8 +881,20 @@ def _check_d_dimension(fmap_d, filter_d, pad_d, stride_d, dilation_d):
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
 
+    if dilation_d < _DILATION_MIN or dilation_d > _DILATION_MAX:
+        dict_args = {
+            'errCode': 'E62003',
+            'param_name': 'dilation',
+            'dim': 'D',
+            'range': '[{}, {}]'.format(_DILATION_MIN, _DILATION_MAX),
+            'actual_value': str(dilation_d),
+        }
+        raise RuntimeError(dict_args,
+                           error_manager_util.get_error_message(dict_args))
+
 
 def _check_h_dimension(fmap_h, filter_h, pad_h, stride_h, dilation_h):
+    filter_dilated_h = (filter_h - 1) * dilation_h + 1
     if fmap_h < _FMAP_HW_MIN or fmap_h > _FMAP_HW_MAX:
         dict_args = {
             'errCode': 'E62003',
@@ -902,12 +929,12 @@ def _check_h_dimension(fmap_h, filter_h, pad_h, stride_h, dilation_h):
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
 
-    if (fmap_h + pad_h[0] + pad_h[1]) < ((filter_h - 1) * dilation_h + 1):
+    if (fmap_h + pad_h[0] + pad_h[1]) < filter_dilated_h:
         # Chip Design demand, Load3D
         dict_args = {
             'errCode': 'E60014',
             'h_of_x': str(fmap_h + pad_h[0] + pad_h[1]),
-            'h_of_filter': str(filter_h)
+            'h_of_filter': str(filter_dilated_h)
         }
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
@@ -923,17 +950,29 @@ def _check_h_dimension(fmap_h, filter_h, pad_h, stride_h, dilation_h):
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
 
-    if pad_h[0] >= filter_h or pad_h[1] >= filter_h:
+    if pad_h[0] >= filter_dilated_h or pad_h[1] >= filter_dilated_h:
         dict_args = {
             'errCode': 'E60016',
-            'h_of_filter': str(filter_h),
+            'h_of_filter': str(filter_dilated_h),
             'h_of_pad': '[pad_h[0]={}, pad_h[1]={}]'.format(pad_h[0], pad_h[1])
+        }
+        raise RuntimeError(dict_args,
+                           error_manager_util.get_error_message(dict_args))
+
+    if dilation_h < _DILATION_MIN or dilation_h > _DILATION_MAX:
+        dict_args = {
+            'errCode': 'E62003',
+            'param_name': 'dilation',
+            'dim': 'H',
+            'range': '[{}, {}]'.format(_DILATION_MIN, _DILATION_MAX),
+            'actual_value': str(dilation_h),
         }
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
 
 
 def _check_w_dimension(fmap_w, filter_w, pad_w, stride_w, dilation_w):
+    filter_dilated_w = (filter_w - 1) * dilation_w + 1
     if fmap_w < _FMAP_HW_MIN or fmap_w > _FMAP_HW_MAX:
         dict_args = {
             'errCode': 'E62003',
@@ -968,12 +1007,12 @@ def _check_w_dimension(fmap_w, filter_w, pad_w, stride_w, dilation_w):
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
 
-    if ((filter_w - 1) * dilation_w + 1) > (fmap_w + pad_w[0] + pad_w[1]):
+    if filter_dilated_w > (fmap_w + pad_w[0] + pad_w[1]):
         # Chip Design demand, Load3D
         dict_args = {
             'errCode': 'E60015',
             'w_of_x': str(fmap_w + pad_w[0] + pad_w[1]),
-            'w_of_filter': str(filter_w)
+            'w_of_filter': str(filter_dilated_w)
         }
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
@@ -989,11 +1028,22 @@ def _check_w_dimension(fmap_w, filter_w, pad_w, stride_w, dilation_w):
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
 
-    if pad_w[0] >= filter_w or pad_w[1] >= filter_w:
+    if pad_w[0] >= filter_dilated_w or pad_w[1] >= filter_dilated_w:
         dict_args = {
             'errCode': 'E60017',
-            'w_of_filter': str(filter_w),
+            'w_of_filter': str(filter_dilated_w),
             'w_of_pad': '[pad_w[0]={}, pad_w[1]={}]'.format(pad_w[0], pad_w[1])
+        }
+        raise RuntimeError(dict_args,
+                           error_manager_util.get_error_message(dict_args))
+
+    if dilation_w < _DILATION_MIN or dilation_w > _DILATION_MAX:
+        dict_args = {
+            'errCode': 'E62003',
+            'param_name': 'dilation',
+            'dim': 'W',
+            'range': '[{}, {}]'.format(_DILATION_MIN, _DILATION_MAX),
+            'actual_value': str(dilation_w),
         }
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
@@ -1064,6 +1114,7 @@ def conv3d(x, filter, filter_size, para_dict):
         _check_conv3d_shape(shape_fmap_ncdhw, shape_filter_ncdhw, pads,
                             stride_dhw, dilation_dhw, in_dtype, w_dtype)
 
+    dilation_d, dilation_h, dilation_w = dilation_dhw
     Conv3DParam.tiling_query_param = {
         "fmap_shape_ndc1hwc0": fmap_shape_ndc1hwc0,
         "shape_w_ndc1hwc0": shape_w_ndc1hwc0,
@@ -1077,6 +1128,9 @@ def conv3d(x, filter, filter_size, para_dict):
         "strideh": stride_h,
         "stridew": stride_w,
         "strided": stride_d,
+        "dilationd": dilation_d,
+        "dilationh": dilation_h,
+        "dilationw": dilation_w,
         "bias_flag": bias_flag,
         "default_tiling": False,
         "group": group_dict["real_g"]
@@ -1115,6 +1169,7 @@ def conv3d(x, filter, filter_size, para_dict):
                                 res_dtype,
                                 pads,
                                 stride_dhw,
+                                dilation_dhw,
                                 shape_filter_ncdhw,
                                 cyclebuffer_flag,
                                 group_dict,

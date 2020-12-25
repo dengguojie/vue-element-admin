@@ -355,7 +355,7 @@ class CceConv3dOp:
         return nbuffer_flag_al1, compute_al1_axis, nbuffer_axis, k_outer_outer_inner_size // nbuffer_size
     
     def _get_cyclebuffer_flag(self, tiling, shape_w, w_dtype, shape_fmap, stride_d,
-                             pad_d, l0a_load2d_flag):
+                              pad_d, l0a_load2d_flag, dilation_h, dilation_w):
         """
         calculate whether to do cyclebuffer
         
@@ -372,6 +372,10 @@ class CceConv3dOp:
         pad_d : pad of d direction
 
         l0a_load2d_flag : whether fmap to load2d
+
+        dilation_h : dilation on h direction
+
+        dilation_w : dilation on w direction
         
         return
         ---------
@@ -387,9 +391,11 @@ class CceConv3dOp:
         matrix_ka = tiling["AL0_matrix"][1] * tiling["AL0_matrix"][-1]
         d_out = (fmap_d + pad_d[0] + pad_d[1] - filter_d) // stride_d + 1
         cyc_size = 0
+        dilated_k_w = (filter_w - 1) * dilation_w + 1
+        dilated_k_h = (filter_h - 1) * dilation_h + 1
         if tiling["AL1_shape"]:
             cyc_size = int(tiling["AL1_shape"][0] * tiling["AL1_shape"][-1] // \
-                           (shape_w[-3] * shape_w[-2] * tbe_platform.CUBE_MKN[w_dtype]['mac'][1]))
+                           (dilated_k_w * dilated_k_h * tbe_platform.CUBE_MKN[w_dtype]['mac'][1]))
         
         if cyc_size == filter_d * channel_c1:
             cyclebuffer_flag = True
@@ -610,6 +616,9 @@ class CceConv3dOp:
         strideh = conv3d_compute.Conv3DParam.tiling_query_param["strideh"]
         stridew = conv3d_compute.Conv3DParam.tiling_query_param["stridew"]
         strided = conv3d_compute.Conv3DParam.tiling_query_param["strided"]
+        dilationh = conv3d_compute.Conv3DParam.tiling_query_param["dilationh"]
+        dilationw = conv3d_compute.Conv3DParam.tiling_query_param["dilationw"]
+        dilationd = conv3d_compute.Conv3DParam.tiling_query_param["dilationd"]
         bias_flag = conv3d_compute.Conv3DParam.tiling_query_param["bias_flag"]
         batch_size = fmap_shape_ndc1hwc0[0]
         in_size_w = fmap_shape_ndc1hwc0[-2]
@@ -639,6 +648,7 @@ class CceConv3dOp:
                 "mad_dtype": mad_dtype,
                 "pad": [padd[0], padd[1], padh[0], padh[1], padw[0], padw[1]],
                 "stride": [strided, strideh, stridew],
+                "dilation": [1, dilationh, dilationw],
                 "bias_flag": bias_flag,
                 "fused_coefficient": [0, 0, self._fused_op_num],
                 "group": real_g,
@@ -651,8 +661,9 @@ class CceConv3dOp:
                                         int(tiling_new["block_dim"][-1]),
                                         int(tiling_new["block_dim"][-1]))
             cyclebuffer_flag = self._get_cyclebuffer_flag(tiling_new, shape_w_ndc1hwc0,
-                                                        w_dtype, fmap_shape_ndc1hwc0,
-                                                        strided, padd, l0a_load2d_flag)
+                                                          w_dtype, fmap_shape_ndc1hwc0,
+                                                          strided, padd, l0a_load2d_flag,
+                                                          dilationh, dilationw)
 
         tiling_ok_flag = self._check_tiling(tiling_new, w_dtype)
 
@@ -679,7 +690,8 @@ class CceConv3dOp:
             tiling["AL1_shape"] = tiling_new["AL1_shape"][0:2]
             tiling["AL1_shape"][0] = int(
                 tiling["AL1_shape"][0] * tiling_new["AL1_shape"][-1] /
-                (kernel_h * kernel_w * tbe_platform.CUBE_MKN[w_dtype]['mac'][1]))
+                (((kernel_h - 1) * dilationh + 1) * ((kernel_w - 1) * dilationw + 1) *
+                tbe_platform.CUBE_MKN[w_dtype]['mac'][1]))
 
         if te_util.get_or_res(tiling_new["BL1_shape"] == [],
                               tiling_new["BL1_shape"] is None):
@@ -719,7 +731,7 @@ class CceConv3dOp:
                 "int4": 1.0 / 2
             }
             input_data_type = in_dtype
-            w_out = (in_size_w + (padw[0] + padw[1] - kernel_w)) // stridew + 1
+            w_out = (in_size_w + padw[0] + padw[1] - ((kernel_w - 1) * dilationw + 1)) // stridew + 1
             if self.dynamic_mode == "dynamic_dhw":
                 w_out = self.var_range.get('w_out')[1]
                 in_size_w = self.var_range.get('fmap_w')[1]
@@ -727,14 +739,14 @@ class CceConv3dOp:
             for m_target in range(32, 0, -1):
                 tmp1 = (
                     (m_target * m_bit_length['float16']) + w_out - 1) // w_out
-                tmp2 = ((tmp1 * strideh) + kernel_h) * in_size_w
+                tmp2 = ((tmp1 * strideh) + (kernel_h - 1) * dilationh + 1) * in_size_w
                 max_feature_map = 1 * ci0 * tmp2 * 2 * m_bit_ratio[input_data_type]
                 if max_feature_map < l1_buffer_size:
                     break
 
             tiling_m = m_target
             tiling_k = 1
-            tiling_n = 2
+            tiling_n = 1
             tiling["AL1_shape"] = [1]
             tiling["BL1_shape"] = None
             tiling["AL0_matrix"] = [tiling_m, tiling_k, 16, 16]
@@ -861,6 +873,8 @@ class CceConv3dOp:
             "conv_padding_right": c_ub.op.attrs['padding'][3],
             "conv_stride_h": c_ub.op.attrs['stride'][0],
             "conv_stride_w": c_ub.op.attrs['stride'][1],
+            "conv_dilation_h": c_ub.op.attrs['dilation'][0],
+            "conv_dilation_w":  c_ub.op.attrs['dilation'][1]
         }
 
         setfmatrix_dict["conv_fm_c"] = self._tensor_map["group_dict"][
@@ -1236,6 +1250,7 @@ class CceConv3dOp:
         fmap_w = fmap.shape[-2] if fmap.op.input_tensors else fmap.op.shape[-2]
         fmap_cin1_ori = fmap.shape[2] if fmap.op.input_tensors else fmap.op.shape[2]
         stride_w = c_ub.op.attrs['stride'][1]
+        dilation_w = c_ub.op.attrs['dilation'][1]
         if self.dynamic_mode == "dynamic_dhw":
             w_out = self.var_map.get("w_out")
             sch.set_var_range(self.var_map.get("fmap_d"), *self.var_range.get('fmap_d'))
@@ -1248,7 +1263,7 @@ class CceConv3dOp:
             w_out = (fmap_w + pad_left + pad_right - kernel_w) // stride_w + 1
             sch.set_var_range(self.var_map.get("batch_n"), *self.var_range.get('batch_n'))
         else:
-            w_out = (fmap_w + pad_left + pad_right - kernel_w) // stride_w + 1
+            w_out = (fmap_w + pad_left + pad_right - ((kernel_w - 1) * dilation_w + 1)) // stride_w + 1
 
         def _load2d_process():
             if l0a_load2d_flag:

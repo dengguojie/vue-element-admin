@@ -30,6 +30,8 @@ _CONV_BACKPROP_SHAPE_DIM = 5
 _CONV_BACKPROP_PAD_SHAPE_DIM = 6
 # the dim of strides in conv_backprop must be 5
 _STRIDES_SHAPE_DIM = 5
+# the dim of dilations in conv_backprop must be 5
+_DILATIONS_SHAPE_DIM = 5
 
 # fmapH, fmapW must be in [2,4096]
 _FMAP_HW_MIN = 2
@@ -56,6 +58,10 @@ _KHWD_COEFF = 343
 
 # the max num of each axis of shape
 _DEFAULT_MAX_SHAPE_NUM = 1000000
+
+# dilation must be in [1,255]
+DILATION_HW_MIN = 1
+DILATION_HW_MAX = 255
 
 # the bytes length of several dtype
 _BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
@@ -304,7 +310,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
         else:
             h_value_max = filter_h_dilation + block_size // fmap_w + 1
 
-        a_l1_size = h_value_max * w_value * ((filter_d_dilation - 2)//stride_d + 2) * block_size * 2
+        a_l1_size = h_value_max * w_value * ((filter_d_dilation - 2) // stride_d + 2) * block_size * 2
         b_l1_size = filter_h_dilation * filter_w_dilation * filter_d_dilation * block_size * block_size * 2
         l1_size = tbe_platform.get_soc_spec("L1_SIZE")
         if (a_l1_size + b_l1_size) > l1_size:
@@ -390,25 +396,6 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
             raise RuntimeError(dict_args,
                                error_manager_util.get_error_message(dict_args))
 
-    def _check_attr_groups():
-        if groups < 1 or groups > fmap_channel or groups > dedy_channel:
-            dict_args = {
-                'errCode': 'E50060',
-                'description': "Group must not be larger than feature map's"
-                               " and filter's channel"
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
-
-        if fmap_channel % groups != 0 or dedy_channel % groups != 0:
-            dict_args = {
-                'errCode': 'E50060',
-                'description': "Feature map's or filter's channel"
-                               " must be divisible by group"
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
-
     # Base check, Mainly required by interface appearance
     # ===========================================================
     # para_check check
@@ -421,6 +408,8 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
                                 _CONV_BACKPROP_SHAPE_DIM, _DEFAULT_MAX_SHAPE_NUM)
     para_check.check_shape_rule(strides, _STRIDES_SHAPE_DIM, _STRIDES_SHAPE_DIM,
                                 _DEFAULT_MAX_SHAPE_NUM)
+    para_check.check_shape_rule(dilations, _DILATIONS_SHAPE_DIM,
+                                _DILATIONS_SHAPE_DIM, _DEFAULT_MAX_SHAPE_NUM)
 
     # pads check
     if isinstance(pads, (tuple, list)) and len(pads) != _CONV_BACKPROP_PAD_SHAPE_DIM:
@@ -440,19 +429,14 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
         }
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
-    # dilations check
-    para_check.check_shape_rule(dilations, _CONV_BACKPROP_SHAPE_DIM,
-                                _CONV_BACKPROP_SHAPE_DIM, _DEFAULT_MAX_SHAPE_NUM)
     dilation_n, dilation_d, dilation_h, dilation_w, dilation_c = dilations
-    if dilation_n != 1 or dilation_c != 1:
+    if dilation_d != 1:
         dict_args = {
-            'errCode': 'E60023',
-            'dilation_n': str(dilation_n),
-            'dilation_c': str(dilation_c),
+            'errCode': 'E60038',
+            'desc': 'dilation in D dimension only supports 1',
         }
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
-
     # dtype check
     filter_dtype = filter_dtype.lower()
     out_backprop_dtype = out_backprop_dtype.lower()
@@ -470,7 +454,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     dedy_batch, dedy_deep, dedy_h, dedy_w, dedy_channel = shape_out_backprop
     filter_depth, filter_h, filter_w, filter_channel, filter_batch = shape_filter
     _, stride_d, stride_h, stride_w, _ = strides
-    _check_attr_groups()
+
     group_dict = util_common.calculate_group(fmap_channel,
                                              dedy_channel, groups, _C0_SIZE, _C0_SIZE)
 
@@ -479,15 +463,15 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     filter_d_dilation = (filter_depth - 1) * dilation_d + 1
 
     if pads == 'SAME':
-        pad_h = util_common.align(fmap_h, stride_h) - stride_h + filter_h - fmap_h
+        pad_h = util_common.align(fmap_h, stride_h) - stride_h + filter_h_dilation - fmap_h
         pad_h = max(pad_h, 0)
         pad_up = pad_h // 2
         pad_down = pad_h - pad_up
-        pad_w = util_common.align(fmap_w, stride_w) - stride_w + filter_w - fmap_w
+        pad_w = util_common.align(fmap_w, stride_w) - stride_w + filter_w_dilation - fmap_w
         pad_w = max(pad_w, 0)
         pad_left = pad_w // 2
         pad_right = pad_w - pad_left
-        pad_d = util_common.align(fmap_deep, stride_d) - stride_d + filter_depth - fmap_deep
+        pad_d = util_common.align(fmap_deep, stride_d) - stride_d + filter_d_dilation - fmap_deep
         pad_d = max(pad_d, 0)
         pad_head = pad_d // 2
         pad_tail = pad_d - pad_head
@@ -503,13 +487,13 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     fmap_w_padding = fmap_w + pad_left + pad_right
 
     # special cases
-    dey_hw_min, fmap_hw_min = _DEDY_HW_MIN, _FMAP_HW_MIN
+    dedy_hw_min, fmap_hw_min = _DEDY_HW_MIN, _FMAP_HW_MIN
     # limitation by chip:
     # if kernel h,w in [1,11] and fmap h/w after padding equals to filter h/w
     # load3d support h,w is 1
     if (1 <= filter_h <= 11) and (1 <= filter_w <= 11) and (fmap_h_padding == filter_h
         or fmap_w_padding == filter_w):
-        dey_hw_min = 1
+        dedy_hw_min = 1
         fmap_hw_min = 1
     _check_shape_error()
 
@@ -520,9 +504,9 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
 
     # Dedy value limit
     _check_attr_range("Dedy's H after expands", dedy_h * stride_h,
-                      dey_hw_min, _DEDY_HW_MAX)
+                      dedy_hw_min, _DEDY_HW_MAX)
     _check_attr_range("Dedy's W after expands", dedy_w * stride_w,
-                      dey_hw_min, _DEDY_HW_MAX)
+                      dedy_hw_min, _DEDY_HW_MAX)
 
     # filter value limit
     _check_attr_range("filter's H", filter_h, _FILTER_HW_MIN, _FILTER_HW_MAX)
@@ -547,6 +531,9 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     _check_attr_range("stride's H*W*D", stride_h*stride_w*stride_d,
                       _STRIDE_HW_MIN, _STRIDE_SIZE_HWD_MAX)
 
+    # dilation value limit
+    _check_attr_range("dilation's H", dilation_h, DILATION_HW_MIN, DILATION_HW_MAX)
+    _check_attr_range("dilation's W", dilation_w, DILATION_HW_MIN, DILATION_HW_MAX)
     # check shape size, 64 bits limitation
     # ===========================================================
 

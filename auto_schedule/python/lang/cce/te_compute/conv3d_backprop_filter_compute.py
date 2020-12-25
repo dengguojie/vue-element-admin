@@ -220,8 +220,8 @@ class Conv3dBackpropFilter:
         # (1) height & weight of x/output_backprop/filter are all 1
         # (2) strides is [1,1]
         if (self.stride[1:] == [1, 1] and self.shape_x_6hd[3:5] == [1, 1]
-                and self.shape_grads_6hd[3:5] == [1, 1]
-                and self.weight_shape[3:5] == [1, 1]):
+            and self.shape_grads_6hd[3:5] == [1, 1]
+            and self.weight_shape[3:5] == [1, 1]):
             self.flag_all_one_case = True
 
         self.flag_load3d_special_case = False
@@ -232,11 +232,15 @@ class Conv3dBackpropFilter:
         _, fmap_depth, _, fmap_height, fmap_width, _ = self.shape_x_6hd
         _, kernel_depth, _, kernel_height, kernel_width = self.weight_shape
         pad_front, pad_back, pad_top, pad_bottom, pad_left, pad_right = self.pad
+        _, dilation_d, _, dilation_h, dilation_w = dilations
 
+        filter_dilated_d = (kernel_depth - 1) * dilation_d + 1
+        filter_dilated_h = (kernel_height - 1) * dilation_h + 1
+        filter_dilated_w = (kernel_width - 1) * dilation_w + 1
         if ((1 <= kernel_height <= 11) and (1 <= kernel_width <= 11)
-            and (fmap_height + pad_top + pad_bottom == kernel_height
-            or fmap_width + pad_left + pad_right == kernel_width or
-            fmap_depth + pad_front + pad_back == kernel_depth)):
+            and (fmap_height + pad_top + pad_bottom == filter_dilated_h
+            or fmap_width + pad_left + pad_right == filter_dilated_w or
+            fmap_depth + pad_front + pad_back == filter_dilated_d)):
             self.flag_load3d_special_case = True
 
     def _deconv_dw_input_check_1(self):
@@ -327,7 +331,7 @@ class Conv3dBackpropFilter:
 
         _check_attr_rule(self.stride, 3, [1, 63],
                          "[strideD, strideH, strideW]", "stride")
-        _check_attr_rule(self.pad, 6, [0, 266],
+        _check_attr_rule(self.pad, 6, [0, 255],
                         "[front,back,up,down,left,right]", "pad")
         return True
 
@@ -345,8 +349,8 @@ class Conv3dBackpropFilter:
 
         def _check_dilation():
             dilation_min = 1
-            dilation_max = 266
-            if dilationn * dilationc != 1:
+            dilation_max = 255
+            if dilationn != 1 or dilationc != 1:
                 args_dict = {
                     'errCode': 'E62510'
                 }
@@ -521,13 +525,13 @@ class Conv3dBackpropFilter:
 
                 """
                 group_dict = self.group_dict
-                group_indices, batch_indices, \
-                    grads_c1_indices, hw_mad_1_indices, \
-                    grads_c0_indices, hw_mad_0_indices = indices
+                (group_indices, batch_indices, grads_c1_indices,
+                 hw_mad_1_indices, grads_c0_indices, hw_mad_0_indices) = indices
 
                 batch_size_index = batch_indices
-                grads_channel_1_index = group_indices * \
-                    (group_dict['cout_g'] // 16) + grads_c1_indices
+                grads_channel_1_index = (
+                    group_indices *
+                    (group_dict['cout_g'] // 16) + grads_c1_indices)
                 grads_hw_index = hw_mad_1_indices * _BLOCK_SIZE + hw_mad_0_indices
                 grads_c0_index = grads_c0_indices
 
@@ -559,15 +563,15 @@ class Conv3dBackpropFilter:
                 """
                 do coordinate calculation
                 """
-                group_indices, batch_indices, \
-                    hw_mad_1_indices, fmap_c1_indices, \
-                    fmap_c0_indices, hw_mad_0_indices = indices
+                (group_indices, batch_indices,
+                 hw_mad_1_indices, fmap_c1_indices,
+                 fmap_c0_indices, hw_mad_0_indices) = indices
 
                 batch_size_index = batch_indices
                 depth_index = fmap_c1_indices // self.group_dict['cin1_g']
                 cin_index = fmap_c1_indices % self.group_dict['cin1_g']
-                c1_index = depth_index * self.shape_x_6hd[2] \
-                    + group_indices * self.group_dict['cin1_g'] + cin_index
+                c1_index = (depth_index * self.shape_x_6hd[2] + group_indices *
+                            self.group_dict['cin1_g'] + cin_index)
                 fmap_hw_index = hw_mad_1_indices * _BLOCK_SIZE + hw_mad_0_indices
                 fmap_c0_index = fmap_c0_indices
 
@@ -583,10 +587,10 @@ class Conv3dBackpropFilter:
 
         fmap_dtype = self.fmap_dtype
 
-        batch_size, grads_depth, grads_channel_1, grads_height, grads_width, \
-            grads_c0 = self.shape_grads_6hd
-        _, fmap_depth, fmap_channel_1, fmap_height, fmap_width, fmap_c0 \
-            = self.shape_x_6hd
+        (batch_size, grads_depth, grads_channel_1, grads_height, grads_width,
+         grads_c0) = self.shape_grads_6hd
+        (_, fmap_depth, fmap_channel_1, fmap_height, fmap_width,
+         fmap_c0) = self.shape_x_6hd
         _, kernel_depth, _, kernel_height, kernel_width = self.weight_shape
         real_g = self.group_dict['real_g']
         fmap_channel1_g = self.group_dict['cin1_g']
@@ -646,7 +650,7 @@ class Conv3dBackpropFilter:
             self.shape_list['fmap_original_matrix'] = fmap_shape_original_matrix
 
             fmap_matrix = self._fmap_2_matrix(fmap_shape_original_matrix,
-                                             fmap_l1, fmap_dtype)
+                                              fmap_l1, fmap_dtype)
             # move fmap to L0B
             fmap_shape_fmap_matrix = (real_g, batch_size * grads_depth,
                                       hw_mad_1, kernel_depth *
@@ -655,7 +659,7 @@ class Conv3dBackpropFilter:
             self.shape_list['fmap_fmap_matrix'] = fmap_shape_fmap_matrix
 
             fmap_fractal = self._fmap_2_fractal(fmap_shape_fmap_matrix,
-                                               fmap_matrix, fmap_dtype)
+                                                fmap_matrix, fmap_dtype)
 
         # else: all_one_case, using load_2d instead of load_3d
         else:
@@ -667,7 +671,7 @@ class Conv3dBackpropFilter:
             self.shape_list['fmap_matrix'] = fmap_shape_matrix
 
             fmap_matrix = self._fmap_2_matrix_load2d(fmap_shape_matrix,
-                                                    self.fmap)
+                                                     self.fmap)
             # move fmap to L0B
             fmap_shape_fractal = (real_g, batch_size * grads_depth, hw_mad_1,
                                   kernel_depth * fmap_channel1_g *

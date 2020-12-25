@@ -26,7 +26,8 @@ def _im2col_row_major(a_im2col_vm_shape,  # pylint: disable=R0913, E1101
                       padding,
                       stride,
                       compute_dtype,
-                      tag=''):
+                      tag='',
+                      dilation=(1, 1, 1)):
     """
     calculate im2col_row_major tensor
     Parameters
@@ -46,6 +47,8 @@ def _im2col_row_major(a_im2col_vm_shape,  # pylint: disable=R0913, E1101
     compute_dtype: dtype of compute result
 
     tag : tag for different compute stage, '' by default
+
+    dilation: the dilation value, (1, 1, 1) by default
     -------
     Returns : a_im2col_row_major tensor
 
@@ -54,7 +57,8 @@ def _im2col_row_major(a_im2col_vm_shape,  # pylint: disable=R0913, E1101
                                    tensor_a,
                                    kernel_w,
                                    padding,
-                                   stride):
+                                   stride,
+                                   dilation):
         """
         calculate im2col_row_major tvm lambda function
         Parameters
@@ -68,18 +72,21 @@ def _im2col_row_major(a_im2col_vm_shape,  # pylint: disable=R0913, E1101
         padding: the padding shape
 
         stride: the stride value
+
+        dilation: the dilation value
         -------
         Returns : im2col_row_major tensor
         """
         _, _, _, a_height, a_width, c_0 = tensor_a.shape
         g_index, n_index, deep_index, hw_index, c1_index, kh_index, kw_index, c0_index = indices
         stride_h, stride_w = stride
+        _, dilate_h, dilate_w = dilation
         padding_up, _, padding_left, padding_right = padding
-        width_out = (a_width.value + padding_left + padding_right - kernel_w) // stride_w + 1
+        width_out = (a_width.value + padding_left + padding_right - ((kernel_w - 1) * dilate_w + 1)) // stride_w + 1
 
         c1_index = g_index * (cout_g // c_0) + c1_index
-        h_index = (hw_index // width_out) * stride_h + kh_index
-        w_index = (hw_index % width_out) * stride_w + kw_index
+        h_index = (hw_index // width_out) * stride_h + kh_index * dilate_h
+        w_index = (hw_index % width_out) * stride_w + kw_index * dilate_w
 
         return tvm.select(tvm.any(h_index < padding_up,
                                   h_index > a_height.value + padding_up - 1,
@@ -95,10 +102,10 @@ def _im2col_row_major(a_im2col_vm_shape,  # pylint: disable=R0913, E1101
 
     return tvm.compute(a_im2col_vm_shape,
                        lambda *indices: __im2col_row_major_indices(
-                           indices, tensor_a, kernel_w, padding, stride),
+                           indices, tensor_a, kernel_w, padding, stride, dilation),
                        name='im2col_row_major',
                        tag=tag + 'im2col_row_major',
-                       attrs={'padding': padding})
+                       attrs={'padding': padding, "dilation":dilation})
 
 
 def _im2col_fractal(a_im2col_shape, tensor_a_row_major, tag=''):
@@ -373,12 +380,13 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
     conv_pattern_instance : instance of conv pattern
     """
 
-    def __init__(self, kernel_h, kernel_w, stride, pad):
+    def __init__(self, kernel_h, kernel_w, stride, pad, dilation):
         super(ConvDslPattern, self).__init__()
         self._kernel_h = kernel_h
         self._kernel_w = kernel_w
         self._stride_d, self._stride_h, self._stride_w = stride
         self._pad_head, self._pad_tail, self._pad_up, self._pad_down, self._pad_left, self._pad_right = pad
+        self._dilate_d, self._dilate_h, self._dilate_w = dilation
         self._m0 = 16
 
     def _cal_howo(self, height_in, width_in):
@@ -402,15 +410,17 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         new_pad_before = (self._pad_up, self._pad_left)
         new_pad_after = (self._pad_down, self._pad_right)
         stride = [self._stride_h, self._stride_w]
+        dilation = [self._dilate_h, self._dilate_w]
 
         height_out, width_out = list(
-            ((i + p_before + p_after - kernel) // s + 1)
-            for i, p_before, p_after, kernel, s in
+            ((i + p_before + p_after - ((kernel - 1) * d + 1)) // s + 1)
+            for i, p_before, p_after, kernel, s, d in
             zip(new_hw,
                 new_pad_before,
                 new_pad_after,
                 [kernel_h, kernel_w],
-                stride))
+                stride,
+                dilation))
         return height_out, width_out
 
     def generate_a(self, feature_map, group_dict):  # pylint: disable=R0914
@@ -419,7 +429,7 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
 
         Parameters
         ----------
-        feature_map : feature map tensor in the shape of NC1HWC0
+        feature_map : feature map tensor in the shape of NDC1HWC0
 
         group_dict: the information needed for group convolution, None by default
 
@@ -433,7 +443,7 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         new_pad = [self._pad_up, self._pad_down,
                    self._pad_left, self._pad_right]
         stride = [self._stride_h, self._stride_w]
-
+        dilation = [self._dilate_d, self._dilate_h, self._dilate_w]
         height_out, width_out = self._cal_howo(a_h, a_w)
         a_group = group_dict["real_g"]
         cout_g = group_dict["cout_g"]
@@ -454,7 +464,8 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
                                         cout_g,
                                         padding=new_pad,
                                         stride=stride,
-                                        compute_dtype=feature_map.dtype)
+                                        compute_dtype=feature_map.dtype,
+                                        dilation=dilation)
         a_im2col_fractal_shape = (a_group,
                                   a_batch,
                                   a_deep,

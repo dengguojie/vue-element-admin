@@ -4624,6 +4624,17 @@ INFER_FUNC_REG(Deconvolution, DeconvolutionInfer);
 VERIFY_FUNC_REG(Deconvolution, DeconvolutionVerify);
 
 // ---------------------------Conv3D---------------------------
+template <typename T1>
+static bool CheckVectorAnyNegative(const std::vector<T1>& list)
+{
+    for (const auto& iter : list) {
+        if (iter < 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
 static bool VerifyConv3dDilations(const ge::Operator& op, std::vector<int32_t>& dilation_list) {
   //check dilations shape
   if (op.GetAttr("dilations", dilation_list) != GRAPH_SUCCESS) {
@@ -4647,6 +4658,7 @@ static bool VerifyConv3dDilations(const ge::Operator& op, std::vector<int32_t>& 
   }
   return true;
 }
+
 static bool GetPadConv3D(ge::Operator& op, int32_t id, int32_t ih, int32_t iw,
                          int32_t kd, int32_t kh, int32_t kw, int32_t strd,
                          int32_t strh, int32_t strw, int32_t dild, const int32_t dilh,
@@ -4661,9 +4673,12 @@ static bool GetPadConv3D(ge::Operator& op, int32_t id, int32_t ih, int32_t iw,
       int32_t tails_d = id % strd;
       int32_t tails_h = ih % strh;
       int32_t tails_w = iw % strw;
-      int32_t pad_d = std::max((tails_d > 0 ? kd - tails_d : kd - strd), 0);
-      int32_t pad_h = std::max((tails_h > 0 ? kh - tails_h : kh - strh), 0);
-      int32_t pad_w = std::max((tails_w > 0 ? kw - tails_w : kw - strw), 0);
+      int32_t dilate_kernel_d = dild * (kd - 1) + 1;
+      int32_t dilate_kernel_h = dilh * (kh - 1) + 1;
+      int32_t dilate_kernel_w = dilw * (kw - 1) + 1;
+      int32_t pad_d = std::max((tails_d > 0 ? dilate_kernel_d - tails_d : dilate_kernel_d - strd), 0);
+      int32_t pad_h = std::max((tails_h > 0 ? dilate_kernel_h - tails_h : dilate_kernel_h - strh), 0);
+      int32_t pad_w = std::max((tails_w > 0 ? dilate_kernel_w - tails_w : dilate_kernel_w - strw), 0);
       pad_list.push_back(pad_d / 2);
       pad_list.push_back(pad_d / 2 + pad_d % 2);
       pad_list.push_back(pad_h / 2);
@@ -4794,13 +4809,13 @@ static bool GetAttrsConv3D(ge::Operator& op, Format refer,  int32_t& strd,
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return false;
   }
-  if (dild != 1 || dilh != 1 || dilw != 1) {
-    OP_LOGE(op.GetName().c_str(), "dilations only support 1 now.");
+  if (dild != 1) {
+    OP_LOGE(op.GetName().c_str(), "dilations in the D dimension only supports 1 now.");
     map<std::string, std::string> err_map;
     err_map["param_name"] = "dilations";
     err_map["op_name"] = "Conv3d";
-    err_map["excepted_value"] = "1, 1, 1";
-    err_map["input_value"] = std::to_string(dild) + " " + std::to_string(dilh) + " " + std::to_string(dilw);
+    err_map["excepted_value"] = "1";
+    err_map["input_value"] = std::to_string(dild);
     std::string report_error_code = "E50029";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return false;
@@ -5509,6 +5524,13 @@ static bool SetPadListByPaddingConv3dbp(ge::Operator& op, const std::vector<T1>&
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return false;
   }
+
+  std::vector<int32_t> dilations_list;
+  if (!VerifyConv3dDilations(op, dilations_list)) {
+    OP_LOGE(op.GetName().c_str(), "get dilation attrs failed.");
+    return false;
+  }
+
   std::string input_format_str = format2str[input_format];
   int32_t h_input_position = input_format_str.find("H");
   CHECK_POSITION(h_input_position);
@@ -5536,6 +5558,10 @@ static bool SetPadListByPaddingConv3dbp(ge::Operator& op, const std::vector<T1>&
   int32_t filter_w = filter_sizes[w_filter_position];
   int32_t filter_d = filter_sizes[d_filter_position];
 
+  int32_t dilation_h = dilations_list[h_input_position];
+  int32_t dilation_w = dilations_list[w_input_position];
+  int32_t dilation_d = dilations_list[d_input_position];
+
   std::string padding;
   std::vector<int32_t> pads;
   if (GRAPH_SUCCESS == op.GetAttr("padding", padding)) {
@@ -5550,13 +5576,13 @@ static bool SetPadListByPaddingConv3dbp(ge::Operator& op, const std::vector<T1>&
     int32_t pad_head = 0;
     int32_t pad_tail = 0;
     if (padding == "SAME") {
-      pad_h = std::max(ALIGN_CONV2DBP(dx_h, stride_h) - stride_h + filter_h - dx_h, 0);
+      pad_h = std::max(ALIGN_CONV2DBP(dx_h, stride_h) - stride_h + (filter_h - 1) * dilation_h + 1 - dx_h, 0);
       pad_up = pad_h / 2;
       pad_down = pad_h - pad_up;
-      pad_w = std::max(ALIGN_CONV2DBP(dx_w, stride_w) - stride_w + filter_w - dx_w, 0);
+      pad_w = std::max(ALIGN_CONV2DBP(dx_w, stride_w) - stride_w + (filter_w - 1) * dilation_w + 1 - dx_w, 0);
       pad_left = pad_w / 2;
       pad_right = pad_w - pad_left;
-      pad_d = std::max(ALIGN_CONV2DBP(dx_d, stride_d) - stride_d + filter_d - dx_d, 0);
+      pad_d = std::max(ALIGN_CONV2DBP(dx_d, stride_d) - stride_d + (filter_d - 1) * dilation_d + 1 - dx_d, 0);
       pad_head = pad_d / 2;
       pad_tail = pad_d - pad_head;
     }
@@ -5582,7 +5608,7 @@ static bool SetPadListByPaddingConv3dbp(ge::Operator& op, const std::vector<T1>&
       ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
       return false;
     }
-    if (pads[0] < 0 || pads[1] < 0 || pads[2] < 0 || pads[3] < 0 || pads[4] < 0 || pads[5] < 0) {
+    if (!CheckVectorAnyNegative(pads)) {
       OP_LOGE(op.GetName().c_str(), "op get pads is illegal");
       map<std::string, std::string> err_map;
       err_map["param_name"] = "pads";
@@ -5688,6 +5714,7 @@ static graphStatus VerifyConv3dbpInputCommon(const ge::Operator& op) {
   }
   return GRAPH_SUCCESS;
 }
+
 static graphStatus VerifyConv3dbpPads(const ge::Operator& op) {
   std::vector<int> pads;
   if (GRAPH_SUCCESS == op.GetAttr("pads", pads)) {
@@ -5703,7 +5730,7 @@ static graphStatus VerifyConv3dbpPads(const ge::Operator& op) {
       return GRAPH_FAILED;
     }
 
-    if (pads[0] < 0 || pads[1] < 0 || pads[2] < 0 || pads[3] < 0 || pads[4] < 0 || pads[5] < 0) {
+    if (!CheckVectorAnyNegative(pads)) {
       OP_LOGE(op.GetName().c_str(), "op get pads is illegal");
       map<std::string, std::string> err_map;
       err_map["param_name"] = "pads";
@@ -6043,7 +6070,7 @@ static graphStatus VerifyConv3dbpFilterPads(const ge::Operator& op) {
       return GRAPH_FAILED;
     }
 
-    if (pads[0] < 0 || pads[1] < 0 || pads[2] < 0 || pads[3] < 0 || pads[4] < 0 || pads[5] < 0) {
+    if (!CheckVectorAnyNegative(pads)) {
       OP_LOGE(op.GetName().c_str(), "op get pads is illegal");
       map<std::string, std::string> err_map;
       err_map["param_name"] = "pads";

@@ -60,7 +60,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
         self.cout_g = group_dict["cout_g"]
         self.m_0, _, _ = tbe_platform.CUBE_MKN["float16"]['mac']
         self.dy_d = 0
-        _, _, self._dilate_h, self._dilate_w, _ = dilations
+        _, self._dilate_d, self._dilate_h, self._dilate_w, _ = dilations
 
     def generate_a(self, dy_ddr):  # pylint: disable=R0914
         """
@@ -117,18 +117,22 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                 attrs={"stride_expand": (self._stride_h, self._stride_w)})
 
         kernel_d, kernel_h, kernel_w = self._kernel_d, self._kernel_h, self._kernel_w
+        dilate_d, dilate_h, dilate_w = self._dilate_d, self._dilate_h, self._dilate_w
         new_stride = (1, 1, 1)
         new_hw = (dy_deep * stride_d, dy_h * stride_h, dy_w * stride_w)
-        new_pad_before = (kernel_d - 1 - self._pad_head,
-                          kernel_h - 1 - self._pad_up,
-                          kernel_w - 1 - self._pad_left)
+        new_pad_before = ((kernel_d - 1) * dilate_d - self._pad_head,
+                          (kernel_h - 1) * dilate_h - self._pad_up,
+                          (kernel_w - 1) * dilate_w - self._pad_left)
+        pad_head_before, pad_up_before, pad_left_before = new_pad_before
         _, dx_d, _, dx_h, dx_w, _ = self.output_shape
-        new_pad_after = tuple((o - 1) * s + k - i - pb for i, pb, k, s, o in
+        dilate_shape = (dilate_d, dilate_h, dilate_w)
+        new_pad_after = tuple((o - 1) * s + (k - 1) * d + 1 - i - pb for i, pb, k, s, o, d in
                               zip(new_hw,
                                   new_pad_before,
                                   (kernel_d, kernel_h, kernel_w),
                                   new_stride,
-                                  (dx_d, dx_h, dx_w)))
+                                  (dx_d, dx_h, dx_w),
+                                  dilate_shape))
         pad_tail_after, pad_down_after, pad_right_after = new_pad_after
 
         # stride > 1 ub->l1 may cut
@@ -175,13 +179,23 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                     name="dy_l1",
                     tag="dy_l1")
 
-        new_pad = (kernel_d - 1 - self._pad_head,
+        new_pad = (pad_head_before,
                    pad_tail_after,
-                   kernel_h - 1 - self._pad_up,
+                   pad_up_before,
                    pad_down_after,
-                   kernel_w - 1 - self._pad_left,
+                   pad_left_before,
                    pad_right_after)
-        pat_conv = conv3d_dx_utils.ConvDslPattern(kernel_h, kernel_w, new_stride, new_pad)
+
+        for i in new_pad:
+            if i < 0 or i > 255:
+                dict_args = {
+                    'errCode': 'E62006',
+                    'error_desc': 'pad value in reverse process of convolution should be in [0,255]',
+                }
+                raise RuntimeError(dict_args,
+                                   error_manager_util.get_error_message(dict_args))
+
+        pat_conv = conv3d_dx_utils.ConvDslPattern(kernel_h, kernel_w, new_stride, new_pad, dilate_shape)
 
         if stride_h > 1 or stride_w > 1:
             dy_col = pat_conv.generate_a(dy_filling_l1, self.group_dict)
@@ -238,8 +252,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
             lambda g_idx, w_d, w_k1_idx, kernel_cin1_idx, w_k0_idx, kernel_cout0_idx:
             w_l1[g_idx, w_d,
                  kernel_cin1_idx * kernel_h * kernel_w +
-                 (kernel_h * kernel_w - 1 -
-                     w_k1_idx % (kernel_h * kernel_w)),
+                 (kernel_h * kernel_w - 1 - w_k1_idx % (kernel_h * kernel_w)),
                  w_k1_idx // (kernel_h * kernel_w),
                  kernel_cout0_idx, w_k0_idx],
             name="w_col",
@@ -262,7 +275,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
         """
         c_dtype = "float32"
         if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
-                                           "Hi3796CV300CS"):
+                                                        "Hi3796CV300CS"):
             c_dtype = "float16"
         dx_col = super(DeConvPattern, self).generate_c(dy_col,
                                                        w_col,

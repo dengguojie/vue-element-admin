@@ -27,11 +27,11 @@ from te import tvm
                              (list, tuple), (list, tuple), (list, tuple),
                              (list, tuple), str, str, dict)
 def _conv3d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
-                                  out_backprop, filter_sizes,
-                                  input_sizes, strides, padding,
-                                  dilations, res_dtype="float16",
-                                  kernel_name="conv3d_backprop_input_cce",
-                                  group_dict=None):
+                                   out_backprop, filter_sizes,
+                                   input_sizes, strides, padding,
+                                   dilations, res_dtype="float16",
+                                   kernel_name="conv3d_backprop_input_cce",
+                                   group_dict=None):
     """
     DSL interface of conv3d backprop input
 
@@ -67,10 +67,10 @@ def _conv3d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
     _, _, config_n0 = tbe_platform.CUBE_MKN[res_dtype]['mac']
     shape_dx = (dx_batch, dx_d, te_util.int_ceil_div(dx_c, config_n0), dx_h, dx_w, config_n0)
     pattc = conv3d_bp_gen_dx.DeConvPattern(filter_sizes, strides=strides,
-                                    pad=padding, output_shape=shape_dx,
-                                    dilations=dilations,
-                                    kernel_name=kernel_name,
-                                    group_dict=group_dict)
+                                           pad=padding, output_shape=shape_dx,
+                                           dilations=dilations,
+                                           kernel_name=kernel_name,
+                                           group_dict=group_dict)
     dy_col = pattc.generate_a(out_backprop)
     w_col = pattc.generate_b(filters)
     dx_ddr = pattc.generate_c(dy_col, w_col)
@@ -120,8 +120,8 @@ def conv3d_dx(filter,
     group_dict = para_dict.get("group_dict", None)
 
     return _conv3d_backprop_input_compute(filter,
-                                         out_backprop, filter_size,
-                                         input_size, strides, pads,
-                                         dilations, res_dtype,
-                                         kernel_name,
-                                         group_dict)
+                                          out_backprop, filter_size,
+                                          input_size, strides, pads,
+                                          dilations, res_dtype,
+                                          kernel_name,
+                                          group_dict)

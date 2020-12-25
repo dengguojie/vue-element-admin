@@ -55,6 +55,8 @@ _PAD_MIN = 0
 # dilation must be in [1,255]
 _DILATION_MIN = 1
 _DILATION_MAX = 255
+# dilation in the D dimension only supports 1 now
+_DILATION_D = 1
 
 # the max num of each axis of shape
 _DEFAULT_MAX_SHAPE_NUM = 1000000
@@ -299,7 +301,8 @@ def conv3d_backprop_filter_d(x_dict,
 @para_check.check_input_type((list, tuple), (list, tuple), (list, tuple),
                              (list, tuple), (str, list, tuple), int,
                              (list, tuple), str, str, str, str)
-def _check_conv3dbp_filter_params(shape_x, shape_out_backprop,
+def _check_conv3dbp_filter_params(
+    shape_x, shape_out_backprop,
     filter_sizes, strides, pads, groups, dilations, x_dtype,
     out_backprop_dtype, res_dtype, kernel_name):
     """
@@ -422,8 +425,8 @@ def _check_conv3dbp_filter_params(shape_x, shape_out_backprop,
                          _DILATION_MAX)
     _check_attr_range_dw("dilations's W", dilation_w, _DILATION_MIN,
                          _DILATION_MAX)
-    _check_attr_range_dw("dilations's D", dilation_d, _DILATION_MIN,
-                         _DILATION_MAX)
+    _check_attr_range_dw("dilations's D", dilation_d, _DILATION_D,
+                         _DILATION_D)
 
     if dilation_n != 1 or dilation_c != 1:
         args_dict = {
@@ -510,18 +513,18 @@ def _check_conv3dbp_filter_params(shape_x, shape_out_backprop,
     fmap_h_padding = fmap_h + pad_up + pad_down
 
     # special cases
-    fmap_hw_min, dey_hw_min = _FMAP_HW_MIN, _DEDY_HW_MIN
+    fmap_hw_min, dedy_hw_min = _FMAP_HW_MIN, _DEDY_HW_MIN
     # limitation by chip:
     # if kernel h,w in [1,11] and fmap h/w after padding equals to filter h/w
     # load3d support h,w is 1
     if (1 <= filter_w <= 11) and (1 <= filter_h <= 11) and (1 <= filter_d <= 11) and (
             fmap_w_padding == filter_w or fmap_h_padding == filter_h):
         fmap_hw_min = 1
-        dey_hw_min = 1
+        dedy_hw_min = 1
 
     # Dedy value limit
-    _check_attr_range_dw("Dedy's H", dedy_h, dey_hw_min, _DEDY_HW_MAX)
-    _check_attr_range_dw("Dedy's W", dedy_w, dey_hw_min, _DEDY_HW_MAX)
+    _check_attr_range_dw("Dedy's H", dedy_h, dedy_hw_min, _DEDY_HW_MAX)
+    _check_attr_range_dw("Dedy's W", dedy_w, dedy_hw_min, _DEDY_HW_MAX)
 
     # filter value limit
     _check_attr_range_dw("filter's H", filter_h, _FILTER_HW_MIN, _FILTER_HW_MAX)
@@ -689,9 +692,8 @@ def _conv3d_backprop_filter_cce(shape_x,
                                        groups, dilations, x_dtype,
                                        out_backprop_dtype, res_dtype,
                                        kernel_name)
-    shape_x, shape_out_backprop, filter_sizes, strides, \
-        pads, dilations, x_dtype, \
-        out_backprop_dtype, res_dtype, kernel_name, group_dict = res
+    (shape_x, shape_out_backprop, filter_sizes, strides, pads, dilations,
+     x_dtype, out_backprop_dtype, res_dtype, kernel_name, group_dict) = res
     fmap_batch, fmap_depth, fmap_channel, fmap_h, fmap_w = shape_x
     dedy_batch, dedy_d, dedy_channel, dedy_h, dedy_w = shape_out_backprop
 

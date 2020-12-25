@@ -120,9 +120,9 @@ def get_op_support_info(fmap,
                          and min_tbe_l1_space)
     """
     def _get_slice_info():
-        overlap_d = -1 if filter_shape[2] <= strides_formated[2] else 0
-        overlap_h = -1 if filter_shape[3] <= strides_formated[3] else 0
-        overlap_w = -1 if filter_shape[4] <= strides_formated[4] else 0
+        overlap_d = -1 if (filter_d - 1) * dilation_d + 1 <= strides_d else 0
+        overlap_h = -1 if (filter_h - 1) * dilation_h + 1 <= strides_h else 0
+        overlap_w = -1 if (filter_w - 1) * dilation_w + 1 <= strides_w else 0
 
         axis_split_matrix = []
         axis_reduce_list = []
@@ -185,6 +185,15 @@ def get_op_support_info(fmap,
         }
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
+
+    dilations_formated = _transform_shape_with_format(fmap.get("ori_format"),
+                                                      _FMAP_TARGET_FORMAT,
+                                                      dilations,
+                                                      _FMAP_FORMAT_WHITE_LIST)
+
+    _, _, filter_d, filter_h, filter_w = filter_shape
+    _, strides_d, strides_h, strides_w, _ = strides_formated
+    _, dilation_d, dilation_h, dilation_w, _ = dilations_formated
 
     axis_split_info, axis_reduce_info = _get_slice_info()
 
@@ -251,11 +260,13 @@ def _conv3d_compute(shape_fm,
 
     res_dtype: The dtype of output
 
-    kernel_name: Str
-        Kernel name, default value is "conv3d"
+    dilation_dhw: A tuple/list of `ints` that has length `==3`
 
     group_dict: Dict
         Group convolution related information
+
+    kernel_name: Str
+        Kernel name, default value is "conv3d"
 
     Returns
     -------
@@ -483,16 +494,6 @@ def _check_input_param(fmp_shape, w_shape, fmp_dtype, w_dtype, res_dtype,
         }
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
-    # check dilations for it1
-    if len(set(dilations)) != 1 or dilations[2] != 1:
-        dict_args = {
-            'errCode': 'E62001',
-            'dilation_h': str(dilations[2]),
-            'dilation_w': str(dilations[3]),
-            'dilation_d': str(dilations[1])
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
 
     if len(pads) != _PADS_LENGTH:
         dict_args = {
@@ -510,6 +511,14 @@ def _check_input_param(fmp_shape, w_shape, fmp_dtype, w_dtype, res_dtype,
     # normalized format as NCDHW
     shape_fm, shape_filter, stride_dhw, dilation_dhw = _format_normalize(
         fmp_format, w_format, fmp_shape, w_shape, strides, dilations)
+    dilation_d, _, _ = dilation_dhw
+    if dilation_d != 1:
+        dict_args = {
+            'errCode': 'E60038',
+            'desc': 'dilation in D dimension only supports 1',
+        }
+        raise RuntimeError(dict_args,
+                           error_manager_util.get_error_message(dict_args))
 
     group_dict = util_common.calculate_group(shape_fm[1], shape_filter[0], groups, _C0, _C0)
 
@@ -670,6 +679,7 @@ def conv3d(fmap,
 
     pads = list(pads)
     stride_dhw = list(stride_dhw)
+    dilations_dhw = list(dilation_dhw)
 
     tensor_list = _conv3d_compute(shape_fm,
                                   shape_filter,

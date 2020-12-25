@@ -374,6 +374,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         sch[b_l1].set_scope(tbe_platform.scope_cbuf)
         b_ddr = b_l1.op.input_tensors[0]  # weight in ddr
         a_col_before = a_col.op.input_tensors[0]  # im2col_row_major in L1
+        dilation = list(i.value for i in a_col_before.op.attrs["dilation"])
 
         tensor_map['c_ub'] = c_ub
         tensor_map['c_col'] = c_col
@@ -382,6 +383,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         tensor_map['b_l1'] = b_l1
         tensor_map['b_ddr'] = b_ddr
         tensor_map['a_col_before'] = a_col_before
+        tensor_map['dilation'] = dilation
 
         # stride > 1
         if (a_col_before.op.input_tensors[0].op.tag == "dy_l1" or
@@ -680,7 +682,6 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
             sch[a_zero].emit_insn(sch[a_zero].op.axis[0], "vector_dup")
             sch[a_filling].emit_insn(afill_n, "vector_muls")
             sch[a_l1].emit_insn(sch[a_l1].op.axis[0], "dma_copy")
-
         setfmatrix_dict = {"conv_kernel_h": kernel_h,
                            "conv_kernel_w": kernel_w,
                            "conv_padding_top": padu,
@@ -691,7 +692,9 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
                            "conv_stride_w": 1,
                            "conv_fm_c": cout1_g * a_l1.shape[5],
                            "conv_fm_h": a_l1.shape[3],
-                           "conv_fm_w": a_l1.shape[4]}
+                           "conv_fm_w": a_l1.shape[4],
+                           "conv_dilation_h": dilation_h,
+                           "conv_dilation_w": dilation_w}
 
         sch[a_col_before].emit_insn(a_col_before.op.axis[2],
                                     'set_fmatrix', setfmatrix_dict)
@@ -785,6 +788,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
     stride_d = tensor_attr.get("stride_d")
     b_ddr_kd = tensor_attr.get("kernel_d")
     c_fill_zero = tensor_map.get("c_fill_zero")
+    _, dilation_h, dilation_w = tensor_map.get("dilation")
 
     # =========================tiling_query======================#
     real_g = group_dict["real_g"].value
@@ -830,7 +834,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         "stride": [stride_d, 1, 1],
         "strideh_expand": stride_h,
         "stridew_expand": stride_w,
-        "dilation": [1, 1, 1],
+        "dilation": [1, dilation_h, dilation_w],
         "group": real_g,
         "fused_coefficient": [0, 0, 0],
         "bias_flag": False,

@@ -152,16 +152,16 @@ def get_op_support_info(out_backprop,
         if format_out_backprop == "NDC1HWC0":
             # cut N
             axis_split_matrix.append([util_select_op_base.SplitInput([0, [0], [-1], [-1]]),
-                                    util_select_op_base.SplitOutput([0, [0]])])
+                                     util_select_op_base.SplitOutput([0, [0]])])
             # cut D
             axis_split_matrix.append([util_select_op_base.SplitInput([0, [1], [overlap_d], [overlap_d]]),
-                                    util_select_op_base.SplitOutput([0, [1]])])
+                                     util_select_op_base.SplitOutput([0, [1]])])
             # cut H
             axis_split_matrix.append([util_select_op_base.SplitInput([0, [3], [overlap_h], [overlap_h]]),
-                                    util_select_op_base.SplitOutput([0, [3]])])
+                                     util_select_op_base.SplitOutput([0, [3]])])
             # cut W
             axis_split_matrix.append([util_select_op_base.SplitInput([0, [4], [overlap_w], [overlap_w]]),
-                                    util_select_op_base.SplitOutput([0, [4]])])
+                                     util_select_op_base.SplitOutput([0, [4]])])
             # cut Cout
             if bias:
                 axis_split_matrix.append(
@@ -186,6 +186,7 @@ def get_op_support_info(out_backprop,
                                                     _OUT_BACKPROP_TARGET_FORMAT,
                                                     strides,
                                                     _OUT_BACKPROP_FORMAT_WHITE_LIST)
+
     if ori_shape_out_backprop is None or strides_formated is None:
         dict_args = {
             'errCode': 'E60008',
