@@ -136,7 +136,6 @@ Status BiasaddConvFusionPass::GetWeightNode(const ge::NodePtr &biasadd_node, con
   } else {
     // Inference mode
     vector<ge::ConstGeTensorPtr> weights = ge::OpDescUtils::GetWeights(biasadd_node);
-    auto biasAddWeightSize = weights.size();
     vector<ge::NodePtr> const_input_nodes = GetConstOrDataInputs(biasadd_node);
 
     bool case_conv3d_with_reshape = (biasadd_node->GetType() == ADD_3D && conv->GetType() == CONVOLUTION_3D);
@@ -154,19 +153,15 @@ Status BiasaddConvFusionPass::GetWeightNode(const ge::NodePtr &biasadd_node, con
          * we just get the first weight of reshape as the bias. */
         weights = ge::OpDescUtils::GetWeights(nodeInfrontOfAdd);
         const_input_nodes = GetConstOrDataInputs(nodeInfrontOfAdd);
-        FUSION_PASS_CHECK(weights.empty(), OP_LOGI(FUSED_OP_TYPE.c_str(), "Node Add:[%s]'s weight size %u is invalid.",
-                                                   nodeInfrontOfAdd->GetName().c_str(), weights.size()),
-                          return NOT_CHANGED);
       }
-    } else if (biasAddWeightSize != 1) {
-      OP_LOGI(FUSED_OP_TYPE.c_str(), "Node BiasAdd:[%s]'s weight size %u is invalid.",
-                              biasadd_node->GetName().c_str(), biasAddWeightSize);
-      return NOT_CHANGED;
     } // for other cases, we just use the weight of BiasAdd
+
+    FUSION_PASS_CHECK(weights.size() != 1, OP_LOGI(FUSED_OP_TYPE.c_str(), "Node Add:[%s]'s weight size %u is invalid.",
+                                                                                           nodeInfrontOfAdd->GetName().c_str(), weights.size()),
+                                          return NOT_CHANGED);
     FUSION_PASS_CHECK(AdjustShapeOfBiasWeight(weights, bias_shape) != SUCCESS,
-                      OP_LOGI(FUSED_OP_TYPE.c_str(), "The bias shape is not valid for node %s!",
-                              biasadd_node->GetName().c_str()),
-                      return NOT_CHANGED);
+                                          OP_LOGI(FUSED_OP_TYPE.c_str(), "The bias shape is not valid for node %s!", biasadd_node->GetName().c_str()),
+                                          return NOT_CHANGED);
     FUSION_PASS_CHECK(const_input_nodes.empty(), OP_LOGI(FUSED_OP_TYPE.c_str(), "The bias %s's weight is empty!",
                                                          biasadd_node->GetName().c_str()),
                       return NOT_CHANGED);
