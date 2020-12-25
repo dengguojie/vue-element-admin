@@ -52,7 +52,7 @@ vector<FusionPattern*> FullyConnectionReshapePass::DefinePatterns() {
   FusionPattern* pattern1 = new (std::nothrow) FusionPattern("FullyConnectionReshapePass");
   FUSION_PASS_CHECK(pattern1 == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed"), return patterns);
 
-  pattern1->AddOpDesc(PATTERN_RESHAPE, {"Reshape"})
+  pattern1->AddOpDesc(PATTERN_RESHAPE, {"Reshape", "FlattenV2"})
       .AddOpDesc(PATTERN_FULLYCONNECTION, {"FullyConnection"})
       .SetInputs(PATTERN_FULLYCONNECTION, {PATTERN_RESHAPE})
       .SetOutput(PATTERN_FULLYCONNECTION);
@@ -166,5 +166,5 @@ Status FullyConnectionReshapePass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   return SUCCESS;
 }
 
-REGISTER_PASS("FullyConnectionReshapePass", BUILT_IN_GRAPH_PASS, FullyConnectionReshapePass);
+REGISTER_PASS("AFullyConnectionReshapePass", BUILT_IN_GRAPH_PASS, FullyConnectionReshapePass);
 }  // namespace fe

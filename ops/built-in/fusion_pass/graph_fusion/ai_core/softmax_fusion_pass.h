@@ -28,6 +28,8 @@ class SoftmaxFusionPass : public PatternFusionBasePass {
  protected:
   vector<FusionPattern*> DefinePatterns() override;
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
+ private:
+  Status UpdateFormat(ge::NodePtr& inNodePtr);
   const string FUSED_OP_TYPE = "TransposeD_SoftmaxV2";
 };
 

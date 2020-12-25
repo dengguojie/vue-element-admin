@@ -57,11 +57,45 @@ vector<FusionPattern*> SoftmaxFusionPass::DefinePatterns() {
   return patterns;
 }
 
+Status SoftmaxFusionPass::UpdateFormat(ge::NodePtr& inNodePtr) {
+  ge::OpDescPtr inOpDescPtr = inNodePtr->GetOpDesc();
+  ge::GeTensorDesc xInputDesc = inOpDescPtr->GetInputDesc(0);
+  ge::GeTensorDesc yOutputDesc = inOpDescPtr->GetOutputDesc(0);
+  ge::Format inputOriginFormat = xInputDesc.GetOriginFormat();
+  vector<int64_t> inputOriginShap = xInputDesc.GetOriginShape().GetDims();
+  uint32_t oriShapelens = inputOriginShap.size();
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "softmax updateFormat input format = %d",inputOriginFormat);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "softmax updateFormat input size = %d",oriShapelens);
+  if(inputOriginFormat != ge::FORMAT_NCHW && inputOriginFormat != ge::FORMAT_NHWC) {
+    if (oriShapelens <= 4) {
+      xInputDesc.SetFormat(ge::FORMAT_NHWC);
+      xInputDesc.SetOriginFormat(ge::FORMAT_NHWC);
+      yOutputDesc.SetFormat(ge::FORMAT_NHWC);
+      yOutputDesc.SetOriginFormat(ge::FORMAT_NHWC);
+    }
+    else if(oriShapelens == 5) {
+      xInputDesc.SetFormat(ge::FORMAT_NDHWC);
+      xInputDesc.SetOriginFormat(ge::FORMAT_NDHWC);
+      yOutputDesc.SetFormat(ge::FORMAT_NDHWC);
+      yOutputDesc.SetOriginFormat(ge::FORMAT_NDHWC);
+    }
+    auto ret = inOpDescPtr->UpdateInputDesc(0, xInputDesc);
+    auto ret1 = inOpDescPtr->UpdateInputDesc(0, yOutputDesc);
+
+    if (ret != ge::GRAPH_SUCCESS || ret1 != ge::GRAPH_SUCCESS) {
+      return FAILED;
+    }
+  }
+  return SUCCESS;
+}
+
 Status SoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   ge::NodePtr softmaxNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
 
   FUSION_PASS_CHECK(softmaxNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "softmax node is null"),
                     return PARAM_INVALID);
+  FUSION_PASS_CHECK(UpdateFormat(softmaxNode) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "update format fail"),
+                    return NOT_CHANGED);               
   ge::OpDescPtr softmaxOpDesc = softmaxNode->GetOpDesc();
   FUSION_PASS_CHECK(softmaxOpDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "softmax is null"), return PARAM_INVALID);
 
