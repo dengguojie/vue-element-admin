@@ -24,6 +24,10 @@ from topi.cce import util
 from topi.cce.util import check_load3d_w_out_1_support
 from te.utils.error_manager import error_manager_conv2d as err_man
 from te.lang.base.operation_impl import get_te_var
+try:
+    from te.tvm.dsl_source_info import source_info_decorator
+except ImportError:
+    from .util import source_info_decorator
 
 # fmapH, fmapW must be in [1,4096]
 FMAP_HW_MIN = 1
@@ -517,7 +521,6 @@ def _fmap_c0_check_value(dtype, optim_dict):
         else CUBE_MKN[dtype]['mac'][1]
 
     return fmap_c0_check_value
-
 @tvm.target.generic_func
 def conv_compress(inputs, weight_compress, compress_index, compress_index_shape,
                   para_dict, optim_dict=None, dsl_flag=True):
@@ -543,6 +546,7 @@ def conv_compress(inputs, weight_compress, compress_index, compress_index_shape,
     res = conv(inputs, weight, para_dict, optim_dict, dsl_flag)
     return res
 
+@source_info_decorator()
 @tvm.target.generic_func
 def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
     """
