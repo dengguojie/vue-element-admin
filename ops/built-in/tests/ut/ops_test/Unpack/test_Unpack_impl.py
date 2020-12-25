@@ -279,11 +279,67 @@ case_multi_output_fp16 = {
     "expect": RuntimeError
 }
 
+case_num_is_none = {
+    "params":
+        [
+            {
+                "shape": (512, 2, 3),
+                "format": "ND",
+                "dtype": "float16",
+                "ori_shape": (512, 2, 3),
+                "ori_format": "ND"
+            },
+            [
+                {
+                    "shape": (512, 3),
+                    "format": "ND",
+                    "dtype": "float16",
+                    "ori_shape": (512, 3),
+                    "ori_format": "ND"
+                }
+            ],
+            None, 1
+        ],
+    "case_name": 'test_unpack_num_is_none_case',
+    "expect": "success"
+}
+
+case_input_num_invaild = {
+    "params":
+        [
+            {
+                "shape": (512, 2, 3),
+                "format": "ND",
+                "dtype": "float16",
+                "ori_shape": (512, 2, 3),
+                "ori_format": "ND"
+            },
+            [
+                {
+                    "shape": (512, 3),
+                    "format": "ND",
+                    "dtype": "float16",
+                    "ori_shape": (512, 3),
+                    "ori_format": "ND"
+                }
+            ],
+            10, 1
+        ],
+    "case_name": 'test_unpack_input_num_invaild_case',
+    "expect": RuntimeError
+}
+
 def test_get_op_support_info(test_arg):
     from impl.unpack import get_op_support_info
     get_op_support_info({"shape": (20, 2, 16, 16), "dtype": "float32", "format": "NCHW", "ori_shape": (20, 2, 16, 16),"ori_format": "NCHW"},
                         {"shape": (20, 16, 16), "dtype": "float32", "format": "NCHW", "ori_shape": (20, 16, 16),"ori_format": "NCHW"},
                         2, 0)
+
+def test_check_supported(test_arg):
+    from impl.unpack import check_supported
+    check_supported({"shape": (1, 4000, 1, 1), "dtype": "float32", "format": "NCHW", "ori_shape": (1, 4000, 1, 1), "ori_format": "NCHW"},
+                    {"shape": (1, 1, 1), "dtype": "float32", "format": "NCHW", "ori_shape": (1, 1, 1), "ori_format": "NCHW"},
+                    4000, 1)
 
 ut_case.add_case(["Ascend910", "Ascend310"], case_small_shape_scalar_fp16)
 ut_case.add_case(["Ascend910", "Ascend310"], case_small_shape_not_aligned_fp16)
@@ -294,7 +350,10 @@ ut_case.add_case(["Ascend910", "Ascend310"], case_small_shape_not_aligned_fp16)
 # ut_case.add_case(["Ascend910", "Ascend310"], case_big_prime_fp16)
 # ut_case.add_case(["Ascend910", "Ascend310"], case_big_shape_not_aligned_fp16)
 ut_case.add_case(["Ascend910", "Ascend310"], case_multi_output_fp16)
+ut_case.add_case(["Ascend910", "Ascend310"], case_num_is_none)
+ut_case.add_case(["Ascend910", "Ascend310"], case_input_num_invaild)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info)
+ut_case.add_cust_test_func(test_func=test_check_supported)
 
 
 # ut_case.add_case(["Ascend310"], case1)

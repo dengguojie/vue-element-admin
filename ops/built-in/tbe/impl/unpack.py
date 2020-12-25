@@ -100,6 +100,49 @@ def op_select_format(x, y, num, axis, kernel_name="unpack"):
     return param_dynamic_in_json
 
 
+# pylint: disable=unused-argument
+def check_supported(x, y, num=None, axis=0, kernel_name="unpack"):
+    """
+    The maximum number of outputs supported by the unpack must be less than 63*63
+    """
+    input_shape = x.get("shape")
+    real_num = _process_num_param(input_shape, num, axis, kernel_name)
+    max_output_num = 63 * 63
+    if real_num > max_output_num:
+        return False
+ 
+    return True
+
+
+def _process_num_param(input_shape, num, axis, kernel_name):
+    """
+    process num param
+
+    Parameters
+    ----------
+    input_shape: tuple
+        the shape of tensor.
+    num: int
+        the length of the dim axis.
+    axis: int.
+        the axis of unapck.
+    kernel_name: str
+        cce kernel name.
+
+    Returns
+    -------
+    real num
+    """
+    if num is None:
+        num = input_shape[axis]
+    if num is None:
+        error_manager_vector.raise_err_check_params_rules("unpack", 'shape[axis] not be None', 'shape[axis]',
+                                                          input_shape[axis])
+    if num != input_shape[axis]:
+        error_manager_vector.raise_err_input_value_invalid(kernel_name, 'num', input_shape[axis], num)
+    return num
+
+
 def _check_params(shape, num, axis, dformat, dtype, kernel_name):
     """
     check the parameters including shape, num, axis, dformat, dtype, kernel_name
@@ -145,14 +188,7 @@ def _check_params(shape, num, axis, dformat, dtype, kernel_name):
     if axis < -len(shape) or axis >= len(shape):
         error_manager_vector.raise_err_input_param_not_in_range(kernel_name, 'axis', 1 - len(shape), len(shape), axis)
 
-    # check num value
-    if num is None:
-        num = shape[axis]
-    if num is None:
-        error_manager_vector.raise_err_check_params_rules("unpack", 'shape[axis] not be None', 'shape[axis]',
-                                                          shape[axis])
-    if num != shape[axis]:
-        error_manager_vector.raise_err_input_value_invalid(kernel_name, 'num', shape[axis], num)
+    num = _process_num_param(shape, num, axis, kernel_name)
 
     # 1536B means stack holding the param provided to the platform,
     # 1 param takes 8 bytes, needs Multiple output param and 1 input param

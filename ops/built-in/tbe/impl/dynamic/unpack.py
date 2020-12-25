@@ -24,6 +24,7 @@ from te import tvm
 import te.platform as tbe_platform
 import te.lang.base as tbe_base
 from te.platform import cce_build
+from te.utils.error_manager import error_manager_vector
 from te.utils import para_check
 
 # When right_dim < MIN_RIGHT_DIM,Multi output go special tiling.
@@ -121,12 +122,26 @@ class Unpack:
         x_shape = list(self.input_x["shape"])
         if self.output_num is not None and x_shape[axis] != -1:
             if self.output_num != x_shape[axis]:
-                raise RuntimeError("The num must be equal to input_x[axis]")
+                error_manager_vector.raise_err_specific_reson(self.kernel_name,
+                                                             "the num must be equal to x_shape[axis]")
         if self.output_num is None:
             self.output_num = x_shape[axis]
         if self.output_num == -1:
-            raise RuntimeError("The number of outputs is unknown, Dynamic unpack CAN NOT support")
-
+            error_manager_vector.raise_err_specific_reson(self.kernel_name, 
+                                                          "the number of outputs is unknown, do not support")
+        # 1536B means stack holding the param provided to the platform,
+        # 1 param takes 8 bytes, needs Multiple output param and 1 input param and 1 input dynamic_param
+        # mini has more parameters (offset, index) than cloud
+        compile_platform = tbe_platform.get_soc_spec("SOC_VERSION")
+        if compile_platform in ("Ascend310", ):
+            max_num = (1536 // 3) // 8 - 2
+        else:
+            max_num = 1536 // 8 - 2
+        if self.output_num > max_num:
+            error_manager_vector.raise_err_input_param_not_in_range(self.kernel_name, 'num',
+                                                                    1, max_num, self.output_num)
+    
+    
     def _init_params(self):
         """
         Init params info of unpack op
@@ -149,7 +164,7 @@ class Unpack:
         x_range = list(self.input_x["range"])
 
         if len(x_shape) != len(x_range):
-            raise RuntimeError("Unpack:input_x shape is invalid")
+            error_manager_vector.raise_err_specific_reson(self.kernel_name, "input_x shape is invalid")
 
         real_axis = axis + len(x_shape) if axis < 0 else axis
         left_upper = 1

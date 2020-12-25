@@ -141,6 +141,10 @@ Status UnpackFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<No
   FUSION_PASS_CHECK(num <= kMiniOut,
                     OP_LOGD(kFusedOpType.c_str(), "The amount of num of Unapck node is less than %lld.", kMiniOut),
                     return SUCCESS);
+  FUSION_PASS_CHECK(num > kMiniOut * kMiniOut,
+                    OP_LOGD(kFusedOpType.c_str(), "The amount of num of Unapck node is greater than %lld.",
+                            kMiniOut * kMiniOut),
+                    return SUCCESS);
   if (num > kMiniOut) {
     int64_t nodes_num = (num + kMiniOut - 1) / kMiniOut;
     int64_t last_node_num_unpack = num - (kMiniOut * (nodes_num - 1));
