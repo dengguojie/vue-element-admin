@@ -974,3 +974,11 @@ def source_info_decorator(depth=1):
         return wrapper
 
     return get_source_info_decorator
+
+
+def in_dynamic_and_static_unify():
+    """
+    determine whether to perform the unification of dynamic and static shape
+    """
+    context = operation.get_context()
+    return context is not None and context.get_mode() in ("dynamic", "static")

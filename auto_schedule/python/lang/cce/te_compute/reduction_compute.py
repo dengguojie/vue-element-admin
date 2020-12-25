@@ -19,7 +19,6 @@ reduction compute
 from decorator import decorator
 import warnings
 from te import tvm
-from te.lang.base import operation_impl as operation
 from te.platform import intrinsic_check_support
 from te.platform import get_soc_spec
 from te.utils.error_manager.error_manager_util import get_error_message
@@ -32,6 +31,7 @@ from .util import check_input_tensor_shape
 from .util import reduce_axis_check
 from .util import auto_cast_tensor
 from .util import dsl_support_dtype
+from .util import in_dynamic_and_static_unify
 
 try:
     from te.tvm.dsl_source_info import source_info_decorator
@@ -112,7 +112,7 @@ def _auto_cast_of_reduce(func, *args, **kwargs):
             dict_args["detailed_cause"] = "[%s] is not supported!" % intr
             raise RuntimeError(dict_args, get_error_message(dict_args))
         # dynamic shape do not perform auto cast
-        if operation.in_dynamic():
+        if in_dynamic_and_static_unify():
             _check_dynamic_dtype(raw_tensor, intr, supported_dtypes, is_last_axis)
             return func(raw_tensor, axis, keepdims)
 
@@ -294,7 +294,7 @@ def _single_reduce_op(input_tensor,  # pylint: disable=too-many-statements
 
     if keepdims:
         axis = res_axis[:]
-        if not operation.in_dynamic():
+        if not in_dynamic_and_static_unify():
             axis_for_loop = axis.copy()
             for index in axis_for_loop:
                 if int(input_tensor.shape[index]) == 1:

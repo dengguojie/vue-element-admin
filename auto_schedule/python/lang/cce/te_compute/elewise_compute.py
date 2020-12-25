@@ -34,6 +34,7 @@ from .util import dtype_check_decorator
 from .util import _get_priority_flag_value
 from .util import dsl_check_support
 from .util import util_astype
+from .util import in_dynamic_and_static_unify
 
 try:
     from te.tvm.dsl_source_info import source_info_decorator
@@ -55,7 +56,7 @@ def _auto_cast_of_elewise(func, *args, **kwargs):
     If the cast type is not supported,raising a RuntimeError).
     """
     # dynamic not support auto_cast
-    if operation_context.in_dynamic():
+    if in_dynamic_and_static_unify():
         return func(*args, **kwargs)
 
     def _check_args_type(args):
@@ -533,7 +534,7 @@ def __vlog_calculate_by_taylor(data_x):
         # pylint: disable=too-many-locals
         # if data > 2, use vlog
         threshold_3 = broadcast(tvm.const(const_two, dtype), shape)
-        if operation_context.in_dynamic():
+        if in_dynamic_and_static_unify():
             res = vcmpsel(data_x, threshold_3, 'ge', vlog(data_x), res)
         else:
             index_3 = vcmp(data_x, threshold_3, 'ge')
@@ -542,7 +543,7 @@ def __vlog_calculate_by_taylor(data_x):
         float_16_max_tensor = broadcast(tvm.const(float_16_max, dtype), shape)
         overflow_value = vmuls(data_x, const_five_two)
         res_overflow = vadds(vlog(overflow_value), log_five_two)
-        if operation_context.in_dynamic():
+        if in_dynamic_and_static_unify():
             res = vcmpsel(data_x, float_16_max_tensor, 'ge', res_overflow, res)
         else:
             index_4 = vcmp(data_x, float_16_max_tensor, 'ge')
@@ -559,7 +560,7 @@ def __vlog_calculate_by_taylor(data_x):
         data_1 = vadds(data,
                        tvm.const(const_neg_one * const_log_threshold_1, dtype))
         data1_vmuls = vmuls(data_1, tvm.const(const_dot_six, dtype))
-        if operation_context.in_dynamic():
+        if in_dynamic_and_static_unify():
             data_sel = vcmpsel(data, threshold_1, 'ge', data1_vmuls, data)
         else:
             index_1 = vcmp(data, threshold_1, 'ge')
@@ -572,7 +573,7 @@ def __vlog_calculate_by_taylor(data_x):
                        tvm.const(const_neg_one * const_log_threshold_2, dtype))
         data2_vmuls = vmuls(data_2, tvm.const(const_three_four, dtype))
 
-        if operation_context.in_dynamic():
+        if in_dynamic_and_static_unify():
             data_sel = vcmpsel(data_sel, threshold_2, 'ge', data2_vmuls, data_sel)
         else:
             index_2 = vcmp(data_sel, threshold_2, 'ge')
@@ -584,7 +585,7 @@ def __vlog_calculate_by_taylor(data_x):
 
         # phase4:return back to original data
         # add log(4/3)
-        if operation_context.in_dynamic():
+        if in_dynamic_and_static_unify():
             res = vcmpsel(data_sel, threshold_2, 'ge',
                           vadds(taylor, tvm.const(log_four_three, dtype)), taylor)
             res = cast_to(res, dtype)
@@ -613,7 +614,7 @@ def __vlog_calculate_by_taylor(data_x):
         threshold_5 = broadcast(tvm.const(const_one, dtype), shape)
         data = vadds(data_x, tvm.const(const_neg_one, dtype))
         taylor = _taylor_compute(data)
-        if operation_context.in_dynamic():
+        if in_dynamic_and_static_unify():
             res = vcmpsel(data_x, threshold_5, 'le', taylor, res)
         else:
             index_6 = vcmp(data_x, threshold_5, 'le')
@@ -624,7 +625,7 @@ def __vlog_calculate_by_taylor(data_x):
 
     def _log_compute_block_lt_half(data_x, res, shape):
         threshold_4 = broadcast(tvm.const(const_half, dtype), shape)
-        if operation_context.in_dynamic():
+        if in_dynamic_and_static_unify():
             res = vcmpsel(data_x, threshold_4, 'le',
                           vmuls(_log_compute_block_gt_1(vrec(data_x), shape), const_neg_one), res)
         else:
@@ -1232,7 +1233,7 @@ def __vmod_mini(lhs, rhs):
     test_floor = _cast(test_floor, dtype)
     zero = broadcast(0.0, lhs.shape, dtype)
 
-    if operation_context.in_dynamic():
+    if in_dynamic_and_static_unify():
         # rhs positive: 0 <= res < rhs
         prhs_floor = vcmpsel(test_res, zero, 'lt', vadds(test_floor, -1.0), test_floor)
         # rhs negative: rhs < res <= 0
@@ -1576,7 +1577,7 @@ def vcmp(lhs, rhs, operation='lt', mode='bool'):
     wrapped_tensor
     """
     def __vcmp_input_check(lhs, operation, mode, shape):
-        if operation_context.in_dynamic():
+        if in_dynamic_and_static_unify():
             dict_args = dict()
             dict_args["errCode"] = "E90003"
             dict_args["detailed_cause"] = "Dynamic shape not support vcmp"
@@ -1737,7 +1738,7 @@ def vlogic(lhs, rhs=None, operation='logic_and'):
     -------
     wrapped_tensor
     """
-    if operation_context.in_dynamic():
+    if in_dynamic_and_static_unify():
         dict_args = dict()
         dict_args["errCode"] = "E90003"
         dict_args["detailed_cause"] = "Dynamic shape not support vlogic"
@@ -2368,7 +2369,7 @@ def vsel(condition, lhs, rhs):
     """
 
     def __vsel_input_check(condition):
-        if operation_context.in_dynamic():
+        if in_dynamic_and_static_unify():
             dict_args = dict()
             dict_args["errCode"] = "E90003"
             dict_args["detailed_cause"] = "Dynamic shape not support vsel!"
@@ -2637,7 +2638,7 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
                                           "value must be eq, ne, lt, gt, ge, le!" % operation
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
-        if operation_context.in_dynamic():
+        if in_dynamic_and_static_unify():
             if not dsl_check_support("te.lang.cce.vcmpsel", lhs.dtype):
                 dict_args = dict()
                 dict_args["errCode"] = "E90002"
@@ -2731,7 +2732,7 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
     input_type_str = get_vcmpsel_input_type(rhs, slhs, srhs)
 
     if input_type_str == "SCALAR_SCALAR_SCALAR":
-        if not operation_context.in_dynamic():
+        if not in_dynamic_and_static_unify():
             lhs = auto_cast_tensor(lhs, "vsel")
         rhs = get_tvm_scalar(rhs, lhs.dtype)
         slhs = get_tvm_scalar(slhs, lhs.dtype)
@@ -2798,7 +2799,7 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
     if input_type_str == "TENSOR_SCALAR_SCALAR":
         _vcmpsel_data_shape_check(lhs, rhs)
         _vcmpsel_data_dtype_check(lhs, rhs)
-        if not operation_context.in_dynamic():
+        if not in_dynamic_and_static_unify():
             lhs = auto_cast_tensor(lhs, "vsel")
             rhs = auto_cast_tensor(rhs, "vsel")
         slhs = get_tvm_scalar(slhs, lhs.dtype)
@@ -2865,7 +2866,7 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
     if input_type_str == "SCALAR_TENSOR_SCALAR":
         _vcmpsel_data_shape_check(lhs, slhs)
         _vcmpsel_data_dtype_check(lhs, slhs)
-        if not operation_context.in_dynamic():
+        if not in_dynamic_and_static_unify():
             lhs = auto_cast_tensor(lhs, "vsel")
             slhs = auto_cast_tensor(slhs, "vsel")
         rhs = get_tvm_scalar(rhs, lhs.dtype)
@@ -2932,7 +2933,7 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
     if input_type_str == "SCALAR_SCALAR_TENSOR":
         _vcmpsel_data_shape_check(lhs, srhs)
         _vcmpsel_data_dtype_check(lhs, srhs)
-        if not operation_context.in_dynamic():
+        if not in_dynamic_and_static_unify():
             srhs = auto_cast_tensor(srhs, "vsel")
             lhs = auto_cast_tensor(lhs, "vsel")
         rhs = get_tvm_scalar(rhs, lhs.dtype)
@@ -2999,7 +3000,7 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
     if input_type_str == "TENSOR_TENSOR_SCALAR":
         _vcmpsel_data_shape_check(lhs, rhs, slhs)
         _vcmpsel_data_dtype_check(lhs, rhs, slhs)
-        if not operation_context.in_dynamic():
+        if not in_dynamic_and_static_unify():
             lhs = auto_cast_tensor(lhs, "vsel")
             rhs = auto_cast_tensor(rhs, "vsel")
             slhs = auto_cast_tensor(slhs, "vsel")
@@ -3066,7 +3067,7 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
     if input_type_str == "TENSOR_SCALAR_TENSOR":
         _vcmpsel_data_shape_check(lhs, rhs, srhs)
         _vcmpsel_data_dtype_check(lhs, rhs, srhs)
-        if not operation_context.in_dynamic():
+        if not in_dynamic_and_static_unify():
             lhs = auto_cast_tensor(lhs, "vsel")
             rhs = auto_cast_tensor(rhs, "vsel")
             srhs = auto_cast_tensor(srhs, "vsel")
@@ -3133,7 +3134,7 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
     if input_type_str == "SCALAR_TENSOR_TENSOR":
         _vcmpsel_data_shape_check(lhs, slhs, srhs)
         _vcmpsel_data_dtype_check(lhs, slhs, srhs)
-        if not operation_context.in_dynamic():
+        if not in_dynamic_and_static_unify():
             lhs = auto_cast_tensor(lhs, "vsel")
             slhs = auto_cast_tensor(slhs, "vsel")
             srhs = auto_cast_tensor(srhs, "vsel")
@@ -3200,7 +3201,7 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
     _vcmpsel_data_shape_check(lhs, rhs, slhs, srhs)
     _vcmpsel_data_dtype_check(lhs, rhs, slhs, srhs)
 
-    if not operation_context.in_dynamic():
+    if not in_dynamic_and_static_unify():
         lhs = auto_cast_tensor(lhs, "vsel")
         rhs = auto_cast_tensor(rhs, "vsel")
         slhs = auto_cast_tensor(slhs, "vsel")

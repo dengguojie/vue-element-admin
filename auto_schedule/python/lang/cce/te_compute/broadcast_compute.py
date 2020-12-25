@@ -16,13 +16,13 @@
 broadcat compute
 """
 from te import tvm
-from te.lang.base import operation_impl as operation
 from te.lang.base.expr_compare import expr_equal as equal
 from te.utils.error_manager.error_manager_util import get_error_message
 from te.utils.shape_util import shape_to_list
 from .util import dtype_check_decorator
 from .util import judge_var
 from .util import check_input_tensor_shape
+from .util import in_dynamic_and_static_unify
 
 try:
     from te.tvm.dsl_source_info import source_info_decorator
@@ -137,7 +137,7 @@ def _tensor_broadcast(var, shape) -> tvm.tensor.Tensor:
     name = "broadcast_tensor_" + str(NAME_INDEX[0])
     NAME_INDEX[0] += 1
 
-    if operation.in_dynamic():
+    if in_dynamic_and_static_unify():
         if is_unknown_broadcast:
             _op = 'unknown_broadcast'
         else:

@@ -20,7 +20,6 @@ import warnings
 from decorator import decorator
 from te import tvm
 from te.platform import intrinsic_check_support
-from te.lang.base import operation_impl as operation
 from te.utils.error_manager.error_manager_util import get_error_message
 from te.utils.shape_util import shape_to_list
 from .util import auto_cast_tensor
@@ -29,6 +28,7 @@ from .util import get_cast_type
 from .util import check_input_tensor_shape
 from .util import dsl_support_dtype
 from .util import DTYPE_MAP
+from .util import in_dynamic_and_static_unify
 
 try:
     from te.tvm.dsl_source_info import source_info_decorator
@@ -48,7 +48,7 @@ def _auto_cast_of_cast(func, *args, **kwargs):
     (On condition that the cast type is supported.
     If the cast type is not supported,raising a RuntimeError).
     '''
-    if operation.in_dynamic():
+    if in_dynamic_and_static_unify():
         return func(*args, **kwargs)
     intr = func.__name__
 
