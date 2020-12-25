@@ -287,6 +287,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
     if optim_dict["c0_optim_flg"]:
         shape_in[1] = 4
         shape_w[1] = 4
+    h_i = shape_in[2]
     w_i = shape_in[3]
     h_k = shape_w[2]
     w_k = shape_w[3]
@@ -296,6 +297,11 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
 
     hk_dilation = (h_k - 1)*dilateh + 1
     wk_dilation = (w_k - 1)*dilatew + 1
+
+    h_out = (h_i + pad_top + pad_bottom - hk_dilation) // strideh + 1
+    w_out = (w_i + pad_left + pad_right - wk_dilation) // stridew + 1
+    if int(w_out) < 1 or int(h_out) < 1:
+        err_man.raise_err_specific("conv2d", "output shape should greater than 0, please check the input shape.\n")
 
     def _check_pad():
         """
