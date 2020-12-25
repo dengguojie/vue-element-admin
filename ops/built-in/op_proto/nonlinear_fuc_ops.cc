@@ -739,4 +739,109 @@ INFER_FUNC_REG(ThresholdedRelu, ThresholdedReluInferShape);
 VERIFY_FUNC_REG(ThresholdedRelu, ThresholdedReluVerify);
 // ----------------ThresholdedRelu END---------------------
 
+// ----------------HardShrink Begin-------------------
+IMPLEMT_COMMON_INFERFUNC(HardShrinkInferShape) {
+  TensorDesc output_desc = op.GetOutputDesc("output_y");
+  DataType predict_dtype = op.GetInputDesc("input_x").GetDataType();
+  Format predict_format = op.GetInputDesc("input_x").GetFormat();
+  ge::Shape output_shape = op.GetInputDesc("input_x").GetShape();
+  output_desc.SetDataType(predict_dtype);
+  output_desc.SetFormat(predict_format);
+  output_desc.SetShape(output_shape);
+  (void)op.UpdateOutputDesc("output_y", output_desc);
+      return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(HardShrink, HardShrinkVerify) {
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(HardShrink, HardShrinkInferShape);
+VERIFY_FUNC_REG(HardShrink, HardShrinkVerify);
+// ----------------HardShrink END---------------------
+
+// ----------------HardSigmoid Begin-------------------
+IMPLEMT_INFERFUNC(HardSigmoid,HardSigmoidInferShape) {
+  TensorDesc tensordesc_output = op.GetOutputDesc("output_y");
+  tensordesc_output.SetShape(op.GetInputDesc("input_x").GetShape());
+  tensordesc_output.SetDataType(op.GetInputDesc("input_x").GetDataType());
+  tensordesc_output.SetFormat(op.GetInputDesc("input_x").GetFormat());
+
+  (void)op.UpdateOutputDesc("output_y", tensordesc_output);
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(HardSigmoid, HardSigmoidInferShape);
+// ----------------HardSigmoid END---------------------
+
+// ----------------SoftShrink Begin-------------------
+IMPLEMT_COMMON_INFERFUNC(SoftShrinkInferShape) {
+  TensorDesc output_desc = op.GetOutputDesc("output_y");
+  DataType predict_dtype = op.GetInputDesc("input_x").GetDataType();
+  Format predict_format = op.GetInputDesc("input_x").GetFormat();
+  ge::Shape output_shape = op.GetInputDesc("input_x").GetShape();
+  output_desc.SetDataType(predict_dtype);
+  output_desc.SetFormat(predict_format);
+  output_desc.SetShape(output_shape);
+  (void)op.UpdateOutputDesc("output_y", output_desc);
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(SoftShrink, SoftShrinkVerify) {
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(SoftShrink, SoftShrinkInferShape);
+VERIFY_FUNC_REG(SoftShrink, SoftShrinkVerify);
+// ----------------SoftShrink END---------------------
+
+// ----------------SoftShrinkGrad Begin-------------------
+IMPLEMT_COMMON_INFERFUNC(SoftShrinkGradInferShape) {
+  TensorDesc output_desc = op.GetOutputDesc("output_y");
+  DataType dtype_x = op.GetInputDesc("input_x").GetDataType();
+  Format format_x = op.GetInputDesc("input_x").GetFormat();
+  ge::Shape shape_x = op.GetInputDesc("input_x").GetShape();
+  ge::Shape shape_grad = op.GetInputDesc("input_grad").GetShape();
+  std::vector<int64_t> dims_x = shape_x.GetDims();
+  std::vector<int64_t> dims_grad = shape_grad.GetDims();
+  if (dims_x.size() < dims_grad.size()) {
+    std::vector<int64_t> dims_tmp = dims_x;
+    dims_x = dims_grad;
+    dims_grad = dims_tmp;
+  }
+  if (dims_x.size() != dims_grad.size()) {
+    int dec = dims_x.size() - dims_grad.size();
+    for (int i = 0; i < dec; i++) {
+      dims_grad.insert(dims_grad.begin(), (int64_t)1);
+    }
+  }
+  std::vector<int64_t> dim_vec;
+  for (size_t i = 0; i < dims_x.size(); i++) {
+    if ((dims_x[i] != dims_grad[i]) && (dims_x[i] != 1) && (dims_grad[i] != 1)) {
+      OP_LOGE(op.GetName().c_str(), "Input shapes are not compatible.");
+      return GRAPH_FAILED;
+    }
+    int64_t dims = dims_x[i] > dims_grad[i] ? dims_x[i] : dims_grad[i];
+    dim_vec.push_back(dims);
+  }
+  ge::Shape output_shape = ge::Shape(dim_vec);
+  output_desc.SetDataType(dtype_x);
+  output_desc.SetFormat(format_x);
+  output_desc.SetShape(output_shape);
+  (void)op.UpdateOutputDesc("output_y", output_desc);
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(SoftShrinkGrad, SoftShrinkGradVerify) {
+  if (op.GetInputDesc("input_x").GetDataType() != op.GetInputDesc("input_grad").GetDataType()) {
+    OP_LOGE(op.GetName().c_str(), "Input dtypes are not the same.");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(SoftShrinkGrad, SoftShrinkGradInferShape);
+VERIFY_FUNC_REG(SoftShrinkGrad, SoftShrinkGradVerify);
+// ----------------SoftShrinkGrad END---------------------
+
 }  // namespace ge

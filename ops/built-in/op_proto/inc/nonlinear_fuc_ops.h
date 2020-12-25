@@ -746,6 +746,102 @@ REG_OP(ThresholdedRelu)
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
     .ATTR(alpha, Float, 1.0)
     .OP_END_FACTORY_REG(ThresholdedRelu)
+
+/**
+* @brief Calculate the hard shrinkage function. \n
+
+* @par Inputs:
+* One inputs, including:
+* @li input_x: A tensor. Must be one of the following types:
+*     float16, float32. \n
+
+* @par Attributes:
+* @li lambd: An optional float. Defaults to 0.5. \n
+
+* @par Outputs:
+* y: A Tensor with the same dtype and shape of input_x's. \n
+
+* @par Third-party framework compatibility
+* Compatible with the Pytorch operator Hardshrink. \n
+*/
+REG_OP(HardShrink)
+    .INPUT(input_x, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(output_y, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .ATTR(lambd, Float, 0.5)
+    .OP_END_FACTORY_REG(HardShrink)
+
+/**
+* @brief Calculate the hard sigmoid function. \n
+
+* @par Inputs:
+* One inputs, including:
+* @li input_x: A tensor. Must be one of the following types:
+*     float16, float32, int32. \n
+
+* @par Attributes:
+* @li alpha: An optional float. Defaults to 0.16666666. \n
+* @li beta: An optional float. Defaults to 0.5. \n
+
+* @par Outputs:
+* y: A Tensor with the same dtype and shape of input_x's. \n
+
+* @par Third-party framework compatibility
+* Compatible with the Pytorch operator Hardsigmoid. \n
+*/    
+REG_OP(HardSigmoid)
+    .INPUT(input_x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))
+    .OUTPUT(output_y, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .ATTR(alpha, Float, 0.16666666)
+    .ATTR(beta, Float, 0.5)
+    .OP_END_FACTORY_REG(HardSigmoid)
+
+/**
+* @brief Calculate the soft shrinkage function. \n
+
+* @par Inputs:
+* One inputs, including:
+* @li input_x: A tensor. Must be one of the following types:
+*     float16, float32. \n
+
+* @par Attributes:
+* @li lambd: An optional float. Defaults to 0.5. \n
+
+* @par Outputs:
+* y: A Tensor with the same dtype and shape of input_x's. \n
+
+* @par Third-party framework compatibility
+* Compatible with the Pytorch operator Softshrink. \n
+*/
+REG_OP(SoftShrink)
+     .INPUT(input_x, TensorType({DT_FLOAT16, DT_FLOAT}))
+     .OUTPUT(output_y, TensorType({DT_FLOAT16, DT_FLOAT}))
+     .ATTR(lambd, Float, 0.5)
+     .OP_END_FACTORY_REG(SoftShrink)
+
+/**
+* @brief Calculate the reversed outputs of the function "soft_shrink". \n
+
+* @par Inputs:
+* Two inputs, including:
+* @li input_grad: A tensor. Must be one of the following types:
+*     float16, float32. \n
+* @li input_x: A tensor of the same dtype as "input_grad". \n
+
+* @par Attributes:
+* @li lambd: An optional float. Defaults to 0.5. \n
+
+* @par Outputs:
+* y: A Tensor of the same dtype and shape as "input_graxd". \n
+
+* @par Third-party framework compatibility
+* Compatible with the Pytorch operator SoftShrinkGrad. \n
+*/
+REG_OP(SoftShrinkGrad)
+     .INPUT(input_grad, TensorType({DT_FLOAT16, DT_FLOAT}))
+     .INPUT(input_x, TensorType({DT_FLOAT16, DT_FLOAT}))
+     .OUTPUT(output_y, TensorType({DT_FLOAT16, DT_FLOAT}))
+     .ATTR(lambd, Float, 0.5)
+     .OP_END_FACTORY_REG(SoftShrinkGrad)
 } // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_NONLINEAR_FUC_OPS_H_
