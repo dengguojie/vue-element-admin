@@ -161,6 +161,8 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
 
     tbe.build(sch, config)
 
+    len_diff = len(origin_multiples) - len(compile_shape)
+    compile_shape = [1] * len_diff + compile_shape
     tbe_base.add_compile_info("_compile_shape", compile_shape)
     tbe_base.add_compile_info("_origin_multiples", origin_multiples)
     tbe_base.add_compile_info("_flag_info", [True, False, False, False, 1])
