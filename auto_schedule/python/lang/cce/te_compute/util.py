@@ -18,7 +18,6 @@ util
 # pylint: disable=import-error
 from decorator import decorator
 from functools import wraps
-import warnings
 from te import tvm
 from te.lang.base import operation_impl as operation
 from te.platform import intrinsic_check_support
@@ -31,6 +30,7 @@ from te.platform.cce_conf import VERSION_MINI_NG1PG2
 from te.platform.cce_conf import CceProductParams as pver
 from te.utils.error_manager.error_manager_util import get_error_message
 from te.utils import shape_util
+
 
 # Save op's output dtype, when first call the template api,we will save the dtype.
 # Before auto scheduling,get the dtype and convert the res tensor to this dtype,
@@ -752,8 +752,6 @@ def shape_to_list(shape):
     """
     translate tvm.shape to list type in python
     """
-    warnings.warn("shape_to_list in te.lang.cce.util is expired,"
-                  "please replace it with the same func in shape_util", DeprecationWarning)
     return shape_util.shape_to_list(shape)
 
 

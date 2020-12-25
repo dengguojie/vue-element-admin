@@ -20,6 +20,12 @@ import warnings
 
 from te import tvm
 
+warnings.filterwarnings(action='default',
+                        message="get_loopnum_and_masklist|ib_new_alloc|kernel_two_to_one_common_fuc|"
+                                "kernel_one_to_one_common_fuc|kernel_scalar_to_one_fuc|kernel_cp_fuc|"
+                                "kernel_cast_to_fuc|kernel_vector_dup_fuc",
+                        category=DeprecationWarning)
+
 
 # the max value int 64bit, 2**64 - 1
 _MAX_VALUE_UINT64 = 18446744073709551615
@@ -41,7 +47,7 @@ def get_loopnum_and_masklist(data_len, align_len):
         [loop num, tail flag, [align_mask0, align_mask1]]
     """
     warnings.warn("get_loopnum_and_masklist is expired, please do not use it",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel=2)
     mask0 = 0
     mask1 = 0
     is_need_mask = 0
@@ -84,7 +90,7 @@ def ib_new_alloc(ir_builder, dtype, shape, name, scope):
         Symbolic data buffer.
     """
     warnings.warn("ib_new_alloc is expired, please do not use it",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel=2)
     buf_var = ir_builder.allocate(dtype, shape, name=name, scope=scope)
     new_buffer = tvm.decl_buffer(shape, buf_var.dtype, name=name, scope=scope, data=buf_var)
 
@@ -111,7 +117,7 @@ def kernel_two_to_one_common_fuc(_ib, addr_info_list, data_info_list, fuc_type):
     None
     """
     warnings.warn("kernel_two_to_one_common_fuc is expired, please do not use it",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel=2)
     _data_len, _align_len = data_info_list
     _addr_list = [addr_list[0] for addr_list in addr_info_list]
     _offset_list = [offset_list[1] for offset_list in addr_info_list]
@@ -159,7 +165,7 @@ def kernel_one_to_one_common_fuc(_ib, addr_info_list, data_info_list, fuc_type):
     None
     """
     warnings.warn("kernel_one_to_one_common_fuc is expired, please do not use it",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel=2)
     _data_len, _align_len = data_info_list
     _addr_list = [addr_list[0] for addr_list in addr_info_list]
     _offset_list = [offset_list[1] for offset_list in addr_info_list]
@@ -204,7 +210,7 @@ def kernel_scalar_to_one_fuc(_ib, addr_info_list, data_info_list, fuc_info_list)
     None
     """
     warnings.warn("kernel_scalar_to_one_fuc is expired, please do not use it",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel=2)
     _data_len, _align_len = data_info_list
     _addr_list = [addr_list[0] for addr_list in addr_info_list]
     _offset_list = [offset_list[1] for offset_list in addr_info_list]
@@ -256,7 +262,7 @@ def kernel_cp_fuc(_ib, addr_info_list, data_info_list, fuc_type):
     None
     """
     warnings.warn("kernel_cp_fuc is expired, please do not use it",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel=2)
     _src_addr, _src_offset = addr_info_list[1]
     _des_addr, _des_offset = addr_info_list[0]
     _data_len, _align_len = data_info_list
@@ -296,7 +302,7 @@ def kernel_cast_to_fuc(_ib, addr_info_list, data_info_list, fuc_type):
     None
     """
     warnings.warn("kernel_cast_to_fuc is expired, please do not use it",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel=2)
     _data_len, _align_len = data_info_list
     _addr_list = [addr_list[0] for addr_list in addr_info_list]
     _offset_list = [offset_list[1] for offset_list in addr_info_list]
@@ -365,7 +371,7 @@ def kernel_vector_dup_fuc(_ib, des_info_list, dup_value, data_info_list):
     None
     """
     warnings.warn("kernel_vector_dup_fuc is expired, please do not use it",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel=2)
     _des_addr, _des_offset = des_info_list
     _data_len, _align_len = data_info_list
 

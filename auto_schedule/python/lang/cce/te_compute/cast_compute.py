@@ -245,7 +245,7 @@ def round_d(raw_tensor):
     cast tensor from src_type to dst_dtype with rounding method
     """
     warnings.warn("round_d is expired, please replace it with the func round_half_up",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel=2)
     return round_half_up(raw_tensor)
 
 

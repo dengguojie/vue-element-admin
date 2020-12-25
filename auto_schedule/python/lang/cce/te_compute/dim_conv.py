@@ -40,7 +40,7 @@ def compute_four2five(input_tensor, raw_shape_4D):
         type: Tensor
     '''
     warnings.warn("compute_four2five is expired, please replace it with the same func in ops",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel=2)
     if not isinstance(input_tensor, tvm.tensor.Tensor):
         raise RuntimeError("The input type must be tvm.tensor")
 
@@ -77,7 +77,7 @@ def compute_five2four(input_tensor, raw_shape_4D):
         type: Tensor
     '''
     warnings.warn("compute_five2four is expired, please replace it with the same func in ops",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel=2)
     if not isinstance(input_tensor, tvm.tensor.Tensor):
         raise RuntimeError("The input type must be tvm.tensor")
 

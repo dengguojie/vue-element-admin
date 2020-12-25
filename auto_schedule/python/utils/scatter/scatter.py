@@ -28,6 +28,8 @@ NEG_TWO = -2
 # neg one
 NEG_ONE = -1
 
+warnings.filterwarnings(action='default', message="the class Scatter", category=DeprecationWarning)
+
 
 class Scatter:
     """
@@ -64,7 +66,7 @@ class Scatter:
         None
         """
         warnings.warn("the class Scatter is expired, please do not use it",
-                      DeprecationWarning)
+                      DeprecationWarning, stacklevel=2)
         self.tik_instance = tik.Tik(tik.Dprofile())
         self.nd_flag = nd_flag
         self.var_shape = var.get("shape")
