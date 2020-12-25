@@ -15,6 +15,7 @@
 """
 pt_muls
 """
+import functools
 import te.lang.cce as tbe
 from te import tvm
 import te.platform as tbe_platform
@@ -25,30 +26,67 @@ from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 
 def op_select_format(x1, x2, y, kernel_name="pt_muls"):
-    dtype_list = ["float16", "float32", "int32"]
-    dtype_len = len(dtype_list)
+    """
+    Dynamic matching format
 
-    support_format = ["ND", "NC1HWC0", "FRACTAL_Z", "FRACTAL_NZ"]
-    support_dtype = []
+    Parameters
+    ----------
+    x1 : dict
+        shape and dtype of input_x
+    x2 : dict
+        shape and dtype of input_y
+    y : dict
+        shape and dtype of output, should be same shape and type as input
 
-    for dtype in dtype_list:
-        support_dtype.extend([dtype] * len(support_format))
+    kernel_name : str
+        kernel name, default value is "pt_muls"
 
-    support_format = support_format * dtype_len
+    Returns
+    -------
+    None
+    """
+    shape_x1 = x1.get("ori_shape")
+    shape_x2 = x2.get("ori_shape")
 
-    input0 = gen_param(classify="input0", name="x1",
-                       datatype=",".join(support_dtype),
-                       format=",".join(support_format))
-    input1 = gen_param(classify="input1", name="x2",
-                       datatype=",".join(support_dtype),
-                       format=",".join(support_format))
-    output0 = gen_param(classify="output0", name="y",
-                        datatype=",".join(support_dtype),
-                        format=",".join(support_format))
+    shape_x1 = shape_util.scalar2tensor_one(shape_x1)
+    shape_x2 = shape_util.scalar2tensor_one(shape_x2)
 
-    param_list = [input0, input1, output0]
-    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
-    return param_dynamic_in_json
+    enum_x1 = functools.reduce(lambda x, y: x * y, shape_x1)
+    enum_x2 = functools.reduce(lambda x, y: x * y, shape_x2)
+
+    dtype_list = ("float16", "float32", "int32")
+
+    if enum_x1 == 1 or enum_x2 == 1:
+        format_list = ("ND", "NCHW", "NHWC", "FRACTAL_NZ", "NC1HWC0", "FRACTAL_Z", "C1HWNCoC0")
+        dtype_list_total = functools.reduce(lambda x, y: x + y, [[ele] * len(format_list) for ele in dtype_list])
+        format_list_for_non_one = format_list * len(dtype_list)
+        if enum_x1 == 1:
+            format_list_for_one = [x1.get("format")] * len(format_list) * len(dtype_list)
+            input0 = gen_param(classify="input0", name="x1",
+                               datatype=",".join(dtype_list_total),
+                               format=",".join(format_list_for_one))
+            input1 = gen_param(classify="input1", name="x2",
+                               datatype=",".join(dtype_list_total),
+                               format=",".join(format_list_for_non_one))
+        else:
+            format_list_for_one = [x2.get("format")] * len(format_list) * len(dtype_list)
+            input0 = gen_param(classify="input0", name="x1",
+                               datatype=",".join(dtype_list_total),
+                               format=",".join(format_list_for_non_one))
+            input1 = gen_param(classify="input1", name="x2",
+                               datatype=",".join(dtype_list_total),
+                               format=",".join(format_list_for_one))
+
+        output0 = gen_param(classify="output0", name="y",
+                               datatype=",".join(dtype_list_total),
+                               format=",".join(format_list_for_non_one))
+
+        param_list = [input0, input1, output0]
+        param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+
+        return param_dynamic_in_json
+
+    raise RuntimeError("The shape of input0 or input1 must be 1.")
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("pt_muls")
