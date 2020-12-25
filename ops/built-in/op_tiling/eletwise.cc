@@ -324,7 +324,8 @@ bool Eletwise::DoUbTiling() {
       if (broadcast_aixs == i && broadcast_aixs != shape_len) {
         bool is_cut_under_b = (under_broadcast_shape > N_LAST_BROADCAST_THRESHOLD ||
                                (under_broadcast_shape > (ele_in_block * 2) && output_shape[i] < ele_in_block)) &&
-                              under_broadcast_shape % ele_in_block != 0;
+                              under_broadcast_shape % ele_in_block != 0 &&
+			      under_broadcast_shape >= BLOCK_SIZE / GetTypeSize(out_type);
         if (is_cut_under_b) {
           ub_axis = i + 1;
           ub_factor = output_shape[i + 1];
