@@ -31,13 +31,13 @@ namespace optiling {
 
 bool TileDTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                  OpRunInfo& run_info) {
-  CHECK((op_info.find("_compile_shape") != op_info.end()),
+  CHECK((op_info.count("_compile_shape") > 0),
         "op [%s] : compile info not contain [_compile_shape]", op_type.c_str());
-  CHECK((op_info.find("_origin_multiples") != op_info.end()),
+  CHECK((op_info.count("_origin_multiples") > 0),
         "op [%s] : compile info not contain [_origin_multiples]", op_type.c_str());
 
-  const std::vector<int64_t>& compile_shape = op_info["_compile_shape"];
-  const std::vector<int64_t> origin_multiples = op_info["_origin_multiples"];
+  std::vector<int64_t> compile_shape = op_info["_compile_shape"].get<std::vector<int64_t>>();
+  std::vector<int64_t> origin_multiples = op_info["_origin_multiples"].get<std::vector<int64_t>>();
 
   CHECK(!op_paras.inputs.empty(), "op [%s] : op_paras.inputs cannot be empty", op_type.c_str());
   CHECK(!op_paras.inputs[0].tensor.empty(), "op [%s] : op_paras.inputs[0].tensor cannot be empty", op_type.c_str());
@@ -47,18 +47,19 @@ bool TileDTiling(const std::string& op_type, const TeOpParas& op_paras, const nl
   std::vector<int64_t> broadcast_multiples = {};
 
   // align shape for multiples and input shapes
-  uint64_t len_diff = origin_multiples.size() - runtime_shape.size();
+  uint64_t len_diff = origin_multiples.size() - compile_shape.size();
+  compile_shape.insert(compile_shape.begin(), len_diff, 1);
   runtime_shape.insert(runtime_shape.begin(), len_diff, 1);
 
   for (uint64_t i = 0; i < origin_multiples.size(); i++) {
     if (compile_shape[i] != 1 && origin_multiples[i] != 1) {
-      broadcast_input.emplace_back(1);
-      broadcast_input.emplace_back(runtime_shape[i]);
-      broadcast_multiples.emplace_back(origin_multiples[i]);
-      broadcast_multiples.emplace_back(runtime_shape[i]);
+      broadcast_input.push_back(1);
+      broadcast_input.push_back(runtime_shape[i]);
+      broadcast_multiples.push_back(origin_multiples[i]);
+      broadcast_multiples.push_back(runtime_shape[i]);
     } else {
-      broadcast_input.emplace_back(runtime_shape[i]);
-      broadcast_multiples.emplace_back(origin_multiples[i] * runtime_shape[i]);
+      broadcast_input.push_back(runtime_shape[i]);
+      broadcast_multiples.push_back(origin_multiples[i] * runtime_shape[i]);
     }
   }
 
