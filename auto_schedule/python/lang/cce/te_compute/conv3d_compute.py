@@ -783,28 +783,14 @@ def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
                            (stride_dhw[1] == 1) and
                            (h_out == 1))
 
-    #  Chip Design demand both h_dimesion and w_dimension constraint
-    fhkh_fwkw_pass_flag = ((1 <= filter_w <= 11) and (1 <= filter_h <= 11) and
-                           (stride_dhw[1] == 1) and (stride_dhw[2] == 1) and
-                           (h_out == 1) and (w_out == 1))
-
-    if load2d_pass_flag or only_fhkh_pass_flag or fhkh_fwkw_pass_flag:
+    if load2d_pass_flag or only_fhkh_pass_flag:
         pass
     else:
-        if w_out < 2:
-            # Chip Design demand w_out must >=2
+        if w_out < 2 and h_out != 1:
+            # Chip Design demand w_out must >=2 when h_out != 1
             dict_args = {
                 'errCode': 'E62006',
-                'error_desc': 'Chip Design demand w_out must >=2'
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
-
-        if h_out < 2:
-            # Chip Design demand h_out must >=2
-            dict_args = {
-                'errCode': 'E62006',
-                'error_desc': 'Chip Design demand h_out must >=2'
+                'error_desc': 'Chip Design demand w_out must >=2 when h_out != 1'
             }
             raise RuntimeError(dict_args,
                                error_manager_util.get_error_message(dict_args))
