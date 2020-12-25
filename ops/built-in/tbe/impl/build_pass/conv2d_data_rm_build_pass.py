@@ -84,6 +84,7 @@ def get_next_op(op_list, current_op):
                     return op_node
     return []
 
+
 def get_pre_op(op_list, current_op):
     """
     get pre node based on the current node
@@ -106,6 +107,7 @@ def get_pre_op(op_list, current_op):
                     op_node[TYPE_STR] != DATA:
                     return op_node
     return []
+
 
 def total_struct_check(op_list, head_op, tail_op, head_struct_oplist, tail_op_list):
     """
@@ -144,7 +146,7 @@ def total_struct_check(op_list, head_op, tail_op, head_struct_oplist, tail_op_li
                 return False
             if len(op[OUTPUT_DESC]) == OUTPUT_DESC_SIZE_MAX:
                 if op[PATTERN_STR] not in double_output_oplist or\
-                    strided_read_flag ==True:
+                    strided_read_flag == True:
                     return False
                 tail_op_list.append(op)
                 continue
@@ -177,6 +179,7 @@ def total_struct_check(op_list, head_op, tail_op, head_struct_oplist, tail_op_li
         return True
     return False
 
+
 def pattern1_match(op_list, head_op, tail_op):
     """
     check pattern: (stridedread) + conv + dequant + eltwise*N + (stridedwrite)
@@ -204,6 +207,7 @@ def pattern1_match(op_list, head_op, tail_op):
             return True
         head_op = next_op
 
+
 def pattern2_match(op_list, head_op, tail_op):
     """
     check pattern: (stridedread) + conv + (dequant) + (eltwise*N) + quant + (stridedwrite)
@@ -230,6 +234,7 @@ def pattern2_match(op_list, head_op, tail_op):
         if next_op[NAME_STR] == tail_op[NAME_STR]:
             return True
         head_op = next_op
+
 
 def pattern3_match(op_list, head_op, tail_op, head_struct_oplist, tail_op_list):
     """
@@ -262,6 +267,7 @@ def pattern3_match(op_list, head_op, tail_op, head_struct_oplist, tail_op_list):
         if next_op[NAME_STR] == tail_op[NAME_STR]:
             return True
         head_op = next_op
+
 
 def can_user_define_compute(op_list, tail_op_list):
     """
@@ -299,6 +305,7 @@ def can_user_define_compute(op_list, tail_op_list):
                 return True
     return False
 
+
 def set_rm_in_options(op_list, rm_flag=False):
     """
     set invalid_data_rm in options as True or False
@@ -318,6 +325,7 @@ def set_rm_in_options(op_list, rm_flag=False):
         if op_node[TYPE_STR] == CONV:
             op_node[OP_LIST_KEY_OPTIONS] = {PARAM_KEY_DATA_RM: rm_flag}
             return
+
 
 def add_rm_op_in_op_list(op_list, tail_op_list):
     """
@@ -376,6 +384,7 @@ def add_rm_op_in_op_list(op_list, tail_op_list):
             rm_op[PREBUILD_ATTRS][LIST_ARGS] = []
         rm_op[TYPE_STR] = DATA_RM
         op_list.append(rm_op)
+
 
 @tbe_platform.fusion_manager.fusion_manager.register_build_pass()
 def conv2d_data_rm_build_pass(op_list):
