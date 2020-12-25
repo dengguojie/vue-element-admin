@@ -1183,6 +1183,9 @@ def basic_rnn_cell(x,
     -------
     None
     """
+    if len(o_t["shape"]) == 5:
+        o_t["shape"] = [o_t["shape"][1], o_t["shape"][2], o_t["shape"][3], o_t["shape"][4]]
+
     rnn_cell = BasicRNNCell(x, cont, w_xh_x_static, h_0, w_xh, bias_h,
                             w_hh, w_ho, bias_o, o_t, h_t, expose_hidden,
                             num_output, kernel_name)

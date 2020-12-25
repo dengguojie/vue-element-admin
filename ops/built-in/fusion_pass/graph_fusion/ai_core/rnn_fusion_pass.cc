@@ -204,6 +204,20 @@ vector<ge::NodePtr> RNNFusionPass::ProcessRnnCell(ge::NodePtr fusedNode, ge::Com
   hTensorDesc.SetOriginShape(inputHOriginShape);
   ge::TensorUtils::SetRealDimCnt(hTensorDesc, 2);
 
+  std::vector<int64_t> dimsHShapeH;
+  dimsHShapeH.push_back(1);
+  dimsHShapeH.push_back(hDim1);
+  dimsHShapeH.push_back(hDim2);
+  ge::GeShape inputHShapeH(dimsHShapeH);
+  std::vector<int64_t> dimsHOriginShapeH;
+  dimsHOriginShapeH.push_back(1);
+  dimsHOriginShapeH.push_back(batchDim);
+  dimsHOriginShapeH.push_back(numOutputDim);
+  ge::GeShape inputHOriginShapeH(dimsHOriginShapeH);
+  ge::GeTensorDesc hTensorDescH = ge::GeTensorDesc(inputHShapeH, ge::FORMAT_ND, dataType);
+  hTensorDescH.SetOriginFormat(ge::FORMAT_ND);
+  hTensorDescH.SetOriginShape(inputHOriginShapeH);
+
   int32_t wxhRow = wxhTensorDesc.GetShape().GetDim(0);
   int32_t wxhCol = wxhTensorDesc.GetShape().GetDim(1);
   int32_t destWxhRow = (wxhRow + 15) / 16 * 16;
@@ -295,10 +309,10 @@ vector<ge::NodePtr> RNNFusionPass::ProcessRnnCell(ge::NodePtr fusedNode, ge::Com
       ge::GeTensorDesc hTensorDescLast = ge::GeTensorDesc(hTensorDesc.GetShape(), ge::FORMAT_ND, dataType);
       hTensorDescLast.SetOriginShape(outputOriShape);
       hTensorDescLast.SetOriginFormat(ge::FORMAT_ND);
-      basicRNNDesc2->AddOutputDesc("o_t", hTensorDesc);
+      basicRNNDesc2->AddOutputDesc("o_t", hTensorDescH);
       basicRNNDesc2->AddOutputDesc("h_t", hTensorDescLast);
     } else {
-      basicRNNDesc2->AddOutputDesc("o_t", hTensorDesc);
+      basicRNNDesc2->AddOutputDesc("o_t", hTensorDescH);
       basicRNNDesc2->AddOutputDesc("h_t", hTensorDesc);
     }
 
