@@ -30,7 +30,8 @@ SHAPE_SIZE_LIMIT = 2147483648
 
 # Minimum positive number greater than 0
 EPSLON = 1e-12
-
+# reduce axis
+PARAMS_AXIS = []
 
 # pylint: disable=too-many-locals,too-many-arguments
 # pylint: disable=locally-disabled,unused-argument
@@ -247,7 +248,7 @@ def _get_params(shape_x, shape_mean, shape_gamma):
         {"param_axis": param_axis, "reduce_axis": reduce_axis,
         "mean_num": mean_num}
     """
-    param_axis = _update_gamma_shape(shape_x, shape_gamma)[1]
+    param_axis = PARAMS_AXIS
 
     reduce_axis_tmp = []
     flag = -1
@@ -766,6 +767,7 @@ def layer_norm_grad(input_dy, input_x, input_variance, input_mean,
     -------
     None
     """
+    global PARAMS_AXIS
     dtype = input_dy.get("dtype").lower()
     shape_dy = input_dy.get("shape")
     shape_x = input_x.get("shape")
@@ -778,7 +780,7 @@ def layer_norm_grad(input_dy, input_x, input_variance, input_mean,
                    "shape_mean": shape_mean, "shape_gamma": shape_gamma,
                    "dtype": dtype, "kernel_name": kernel_name})
 
-    shape_gamma = _update_gamma_shape(shape_x, shape_gamma)[0]
+    shape_gamma, PARAMS_AXIS = _update_gamma_shape(shape_x, shape_gamma)
 
     data_gm = _get_data_gm({"shape_dy": shape_dy, "shape_x": shape_x,
                             "shape_var": shape_variance,

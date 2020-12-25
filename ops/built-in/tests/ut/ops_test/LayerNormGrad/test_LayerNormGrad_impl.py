@@ -30,10 +30,23 @@ case2 = {"params": [{"shape": (3, 8), "dtype": "int16", "format": "NCHW", "ori_s
          "expect": RuntimeError,
          "format_expect": [],
          "support_expect": True}
+case3 = {"params": [{"shape": (1, 3, 7), "dtype": "int16", "format": "NCHW", "ori_shape": (1, 3, 7),"ori_format": "NCHW"},
+                    {"shape": (1, 3, 7), "dtype": "int16", "format": "NCHW", "ori_shape": (1, 3, 7),"ori_format": "NCHW"},
+                    {"shape": (1, 3, 1), "dtype": "int16", "format": "NCHW", "ori_shape": (1, 3, 1),"ori_format": "NCHW"},
+                    {"shape": (1, 3, 1), "dtype": "int16", "format": "NCHW", "ori_shape": (1, 3, 1),"ori_format": "NCHW"},
+                    {"shape": (7,), "dtype": "int16", "format": "NCHW", "ori_shape": (7,),"ori_format": "NCHW"},
+                    {"shape": (7,), "dtype": "int16", "format": "NCHW", "ori_shape": (7,),"ori_format": "NCHW"},
+                    {"shape": (7,), "dtype": "int16", "format": "NCHW", "ori_shape": (7,),"ori_format": "NCHW"},
+                    {"shape": (7,), "dtype": "int16", "format": "NCHW", "ori_shape": (7,),"ori_format": "NCHW"}],
+         "case_name": "LayerNormGrad_3",
+         "expect": RuntimeError,
+         "format_expect": [],
+         "support_expect": True}
 
 
-# ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-# ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 
 def calc_expect_func(dy, x, variance, mean, gamma, res_x, res_gamma, res_beta):
     data_dy_ori = dy['value']
@@ -118,7 +131,7 @@ def calc_expect_func(dy, x, variance, mean, gamma, res_x, res_gamma, res_beta):
 
     return pd_x_res, pd_gamma_res, pd_beta_res
 
-case3 = {"params": [{"shape": (3, 8), "dtype": "float32", "format": "NCHW", "ori_shape": (3, 8),"ori_format": "NCHW", "param_type": "input", "value_range":[-10,10]},
+case4 = {"params": [{"shape": (3, 8), "dtype": "float32", "format": "NCHW", "ori_shape": (3, 8),"ori_format": "NCHW", "param_type": "input", "value_range":[-10,10]},
                     {"shape": (3, 8), "dtype": "float32", "format": "NCHW", "ori_shape": (3, 8),"ori_format": "NCHW", "param_type": "input", "value_range":[-10,10]},
                     {"shape": (3, 1), "dtype": "float32", "format": "NCHW", "ori_shape": (3, 1),"ori_format": "NCHW", "param_type": "input", "value_range":[0,10]},
                     {"shape": (3, 1), "dtype": "float32", "format": "NCHW", "ori_shape": (3, 1),"ori_format": "NCHW", "param_type": "input", "value_range":[-10,10]},
@@ -131,4 +144,4 @@ case3 = {"params": [{"shape": (3, 8), "dtype": "float32", "format": "NCHW", "ori
          "calc_expect_func": calc_expect_func,
          "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
 
-ut_case.add_precision_case("Ascend910", case3)
+ut_case.add_precision_case("Ascend910", case4)
