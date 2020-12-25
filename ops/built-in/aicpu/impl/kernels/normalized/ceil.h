@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef _AICPU_CEIL_KERNELS_H_
-#define _AICPU_CEIL_KERNELS_H_
+#ifndef AICPU_KERNELS_NORMALIZED_CEIL_H
+#define AICPU_KERNELS_NORMALIZED_CEIL_H
 
 #include "cpu_kernel.h"
 
@@ -28,7 +28,8 @@ class CeilCpuKernel : public CpuKernel {
 
  private:
   template <typename T>
-  void ComputeCeil(Tensor *x, Tensor *y, uint64_t dataSize, CpuKernelContext &ctx);
+  uint32_t ComputeCeil(Tensor *x, Tensor *y, uint64_t dataSize,
+                       CpuKernelContext &ctx);
 };
 }  // namespace aicpu
 #endif

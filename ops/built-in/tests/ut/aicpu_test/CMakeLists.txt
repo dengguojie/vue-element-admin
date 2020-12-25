@@ -73,6 +73,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/less.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/logging.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/top_k.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/ceil.cc
 )
 
 set(cpu_kernels_llt_src
@@ -142,6 +143,7 @@ set(_cpu_kernels_ut_files
   testcase/less_kernel_utest.cpp
   testcase/logging_kernel_utest.cpp
   testcase/top_k_utest.cpp
+  testcase/ceil_utest.cpp
 )
 
 add_executable(cpu_kernels_ut
