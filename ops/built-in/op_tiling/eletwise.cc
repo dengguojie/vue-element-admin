@@ -75,7 +75,7 @@ bool Eletwise::Init() {
   }
   CHECK((op_info.find("_flag_info") != op_info.end()), "op [%s] : compile info not contain [_flag_info]",
         op_type.c_str());
-  // op_info["_flag_info"] = ["_is_support_broadcast", "_use_special_pattern",
+  // "_flag_info": ["_is_support_broadcast", "_use_special_pattern",
   // "_is_support_absorbable_broadcast", "_is_const_shapes", "_fusion"]
   const int32_t flag_info_size = 5;
   const std::vector<int32_t>& flag_info = op_info["_flag_info"];
@@ -89,11 +89,14 @@ bool Eletwise::Init() {
   return true;
 }
 
-void FusionContinuousAxis(const std::vector<int64_t>& input_shape_x, const std::vector<int64_t>& input_shape_y,
-                          std::vector<int64_t>& fused_shape_x, std::vector<int64_t>& fused_shape_y) {
+void FusionContinuousAxis(const std::array<int64_t, MAX_DIM_LEN>& input_shape_x,
+                          const std::array<int64_t, MAX_DIM_LEN>& input_shape_y,
+                          std::vector<int64_t>& fused_shape_x,
+                          std::vector<int64_t>& fused_shape_y,
+                          size_t dim_len) {
   bool state = (input_shape_x[0] == input_shape_y[0]);
   size_t last = 0;
-  for (size_t i = 1; i < input_shape_x.size(); i++) {
+  for (size_t i = 1; i < dim_len; i++) {
     if (input_shape_x[i] == 1 && input_shape_y[i] == 1) {
       continue;
     }
@@ -109,6 +112,9 @@ void FusionContinuousAxis(const std::vector<int64_t>& input_shape_x, const std::
       fused_shape_x.push_back(input_shape_x[i]);
       fused_shape_y.push_back(input_shape_y[i]);
       state = (input_shape_x[i] == input_shape_y[i]);
+      if (fused_shape_x.size() > MAX_PATTERN_DIM) {
+        break;
+      }
     }
     last = i;
   }
@@ -118,13 +124,10 @@ bool Eletwise::TrySwitchToPerfPattern() {
   if (compileInfo.fusion_flag == 0 || !compileInfo.use_special_pattern) {
     return true;
   }
-  CHECK_EQ(input_shape_x.size(), input_shape_y.size(), "op [%s] : input shapes not match, cannot fuse axis",
-           op_type.c_str());
-  CHECK((!input_shape_x.empty() && !input_shape_y.empty()), "op [%s] : input shapes cannot be empty", op_type.c_str());
-  std::vector<int64_t> fused_shape_x{input_shape_x[0]};
-  std::vector<int64_t> fused_shape_y{input_shape_y[0]};
-  FusionContinuousAxis(input_shape_x, input_shape_y, fused_shape_x, fused_shape_y);
-  if (fused_shape_x.size() > 3) {
+  std::vector<int64_t> fused_shape_x{input_shapes[0][0]};
+  std::vector<int64_t> fused_shape_y{input_shapes[1][0]};
+  FusionContinuousAxis(input_shapes[0], input_shapes[1], fused_shape_x, fused_shape_y, dim_len);
+  if (fused_shape_x.size() > MAX_PATTERN_DIM) {
     return true;
   }
   int32_t pattern_key = 0;
@@ -133,7 +136,8 @@ bool Eletwise::TrySwitchToPerfPattern() {
     if (fused_shape_x[i] == fused_shape_y[i]) {
       pattern_key += base;
     } else {
-      pattern_key += (base * 2);
+      pattern_key += (base * BROADCAST_BASE_KEY);
+      broadcast_aixs = i;
     }
     base /= 10;
   }
@@ -142,10 +146,120 @@ bool Eletwise::TrySwitchToPerfPattern() {
     if (s_pattern == BROADCAST && compileInfo.is_support_absorbable_broadcast) {
       s_pattern = fused_shape_x[0] == 1 ? SCALAR_BROADCAST : BROADCAST_SCALAR;
     }
-    input_shape_x = std::move(fused_shape_x);
-    input_shape_y = std::move(fused_shape_y);
-    bool ret = BroadcastShapes();
-    return ret;
+    dim_len = fused_shape_x.size();
+    for (size_t i = 0; i < dim_len; i++) {
+      input_shapes[0][i] = fused_shape_x[i];
+      input_shapes[1][i] = fused_shape_y[i];
+      bool verify_broadcast = fused_shape_x[i] != fused_shape_y[i] && fused_shape_x[i] != 1 && fused_shape_y[i] != 1;
+      CHECK(!verify_broadcast, "op [%s] : input shapes [%s] cannot broadcast to shape [%s]", op_type.c_str(),
+          std::to_string(fused_shape_x[i]).c_str(), std::to_string(fused_shape_y[i]).c_str());
+      output_shape.push_back(std::max(input_shapes[0][i], input_shapes[1][i]));
+    }
+  }
+  return true;
+}
+
+void Eletwise::MulFusionContinuousAxis(std::vector<std::vector<int64_t>>& fusion_shapes, size_t& fusion_length) {
+  int32_t last_index = 0;
+  bool input_all_one = true;
+  for (size_t i = 0; i < dim_len; i++) {
+    bool all_one = true;
+    bool state_same = true;
+    for (size_t j = 0; j < input_num; j++) {
+      if (input_shapes[j][i] != 1) {
+        all_one = false;
+      }
+      if (state_same && input_shapes[j][i] != input_shapes[j][last_index] &&
+          (input_shapes[j][i] == 1 || input_shapes[j][last_index] == 1)) {
+        state_same = false;
+      }
+    }
+    if (all_one) {
+      continue;
+    }
+    if (input_all_one || state_same) {
+      input_all_one = false;
+      for (size_t j = 0; j < input_num; j++) {
+        fusion_shapes[j][fusion_length] *= input_shapes[j][i];
+      }
+    } else {
+      for (size_t j = 0; j < input_num; j++) {
+        fusion_shapes[j].push_back(input_shapes[j][i]);
+      }
+      fusion_length++;
+      if (fusion_length > (MAX_PATTERN_DIM - 1)) {
+        break;
+      }
+    }
+    last_index = i;
+  }
+}
+
+bool Eletwise::MulTrySwitchToPerfPattern() {
+  if (compileInfo.fusion_flag == 0 || !compileInfo.use_special_pattern) {
+    return true;
+  }
+  std::vector<std::vector<int64_t>> fusion_shapes(input_num, std::vector<int64_t>{1});
+  size_t fusion_length = 0;
+  MulFusionContinuousAxis(fusion_shapes, fusion_length);
+  if (fusion_length <= (MAX_PATTERN_DIM - 1)) {
+    int32_t pattern_key = 0;
+    int32_t base = 100;
+    for (size_t i = 0; i <= fusion_length; i++) {
+      bool is_broadcast = false;
+      int64_t shape = fusion_shapes[0][i];
+      for (size_t j = 1; j < input_num; j++) {
+        if (shape != fusion_shapes[j][i]) {
+          is_broadcast = true;
+          break;
+        }
+      }
+      if (is_broadcast) {
+        pattern_key += (base * BROADCAST_BASE_KEY);
+        broadcast_aixs = i;
+      } else {
+        pattern_key += base;
+      }
+      base /= 10;
+    }
+    if (special_pattern.find(pattern_key) != special_pattern.end()) {
+      s_pattern = special_pattern[pattern_key];
+      dim_len = fusion_shapes[0].size();
+      for (size_t i = 0; i < dim_len; i++) {
+        int32_t max_output = 1;
+        for (size_t j = 0; j < input_num; j++) {
+          input_shapes[j][i] = fusion_shapes[j][i];
+          if (input_shapes[j][i] > max_output) {
+            max_output = input_shapes[j][i];
+          }
+          bool verify_broadcast = input_shapes[j][i] != 1 && input_shapes[j][i] != max_output;
+          CHECK(!verify_broadcast, "op [%s] : input shapes [%s] cannot broadcast to shape [%s]", op_type.c_str(),
+                std::to_string(input_shapes[j][i]).c_str(), std::to_string(max_output).c_str());
+        }
+        output_shape.push_back(max_output);
+      }
+    }
+  }
+  return true;
+}
+
+bool Eletwise::GetCompletedShapes() {
+  input_num = op_paras.inputs.size();
+  dim_len = 0;
+  for (size_t i = 0; i < input_num; i++) {
+    CHECK(!op_paras.inputs[i].tensor.empty(), "op [%s] : input tensor cannot be empty", op_type.c_str());
+    CHECK(!op_paras.inputs[i].tensor[0].shape.empty(), "op [%s] : input shape cannot be empty", op_type.c_str());
+    input_shapes[i].fill(1);
+    if (op_paras.inputs[i].tensor[0].shape.size() > dim_len) {
+      dim_len = op_paras.inputs[i].tensor[0].shape.size();
+    }
+  }
+  for (size_t i = 0; i < input_num; i++) {
+    size_t cur_dim_len = op_paras.inputs[i].tensor[0].shape.size();
+    size_t start_index = dim_len - cur_dim_len;
+    for (size_t j = 0; j < cur_dim_len; j++) {
+      input_shapes[i][start_index++] = op_paras.inputs[i].tensor[0].shape[j];
+    }
   }
   return true;
 }
@@ -155,26 +269,16 @@ bool Eletwise::GenerateOutputShape() {
   if (only_const_tiling) {
     output_shape = op_paras.outputs[0].tensor[0].shape;
   } else if (compileInfo.is_support_broadcast) {
-    bool verify_input =
-        op_paras.inputs.size() == 2 && !op_paras.inputs[0].tensor.empty() && !op_paras.inputs[1].tensor.empty();
-    CHECK(verify_input, "op [%s] : input shape cannot be empty", op_type.c_str());
-    input_shape_x = op_paras.inputs[0].tensor[0].shape;
-    input_shape_y = op_paras.inputs[1].tensor[0].shape;
-    ret = BroadcastShapes();
-    ret = ret && TrySwitchToPerfPattern();
+    ret = GetCompletedShapes();
+    if (input_num == SPECIAL_BROADCAST_INPUT_NUMS) {
+      ret = ret && TrySwitchToPerfPattern();
+    } else {
+      ret = ret && MulTrySwitchToPerfPattern();
+    }
     if (compileInfo.fusion_flag == 2 && s_pattern == Pattern::ORIGINAL) {
       ret = ret && RefineShapesForBroadcast();
-    }
-    if (ret) {
-      CHECK_EQ(input_shape_x.size(), input_shape_y.size(), "op [%s] : input shapes not match, cannot fuse axis",
-               op_type.c_str());
-      int32_t input_length = input_shape_x.size();
-      for (int32_t i = input_length - 1; i >= 0; i--) {
-        if ((input_shape_x[i] == 1 && input_shape_y[i] != 1) || (input_shape_y[i] == 1 && input_shape_x[i] != 1)) {
-          broadcast_aixs = i;
-          break;
-        }
-      }
+    } else if (s_pattern == Pattern::ORIGINAL) {
+      ret = ret && BroadcastShapes();
     }
   } else {
     const std::vector<int64_t>& shapes = op_paras.outputs[0].tensor[0].shape;
@@ -188,50 +292,66 @@ bool Eletwise::GenerateOutputShape() {
     } else {
       output_shape = shapes;
     }
+    for (size_t i = 0; i < output_shape.size(); i++) {
+      input_shapes[0][i] = output_shape[i];
+    }
   }
   return ret;
 }
 
 bool Eletwise::BroadcastShapes() {
-  size_t shape_len_x = input_shape_x.size();
-  size_t shape_len_y = input_shape_y.size();
-  size_t max_len = shape_len_x > shape_len_y ? shape_len_x : shape_len_y;
-
-  std::vector<int64_t> output(max_len, 1);
-  if (shape_len_x < max_len) {
-    input_shape_x.insert(input_shape_x.begin(), output.begin(), output.begin() + (max_len - shape_len_x));
-  } else if (shape_len_y < max_len) {
-    input_shape_y.insert(input_shape_y.begin(), output.begin(), output.begin() + (max_len - shape_len_y));
+  output_shape.reserve(dim_len);
+  for (size_t i = 0; i < dim_len; i++) {
+    int64_t max_output = 1;
+    int64_t min_output = 2;
+    for (size_t j = 0; j < input_num; j++) {
+      if (input_shapes[j][i] > max_output) {
+        max_output = input_shapes[j][i];
+      }
+      if (input_shapes[j][i] < min_output) {
+        min_output = input_shapes[j][i];
+      }
+      bool verify_broadcast = input_shapes[j][i] != 1 && input_shapes[j][i] != max_output;
+      CHECK(!verify_broadcast, "op [%s] : input shapes [%s] cannot broadcast to shape [%s]", op_type.c_str(),
+            std::to_string(input_shapes[j][i]).c_str(), std::to_string(max_output).c_str());
+    }
+    output_shape.push_back(max_output);
+    if (min_output == 1 && max_output != 1) {
+      broadcast_aixs = i;
+    }
   }
-
-  for (size_t i = 0; i < max_len; i++) {
-    bool verify_broadcast = input_shape_x[i] != input_shape_y[i] && input_shape_x[i] != 1 && input_shape_y[i] != 1;
-    CHECK(!verify_broadcast, "op [%s] : input shapes [%s] cannot broadcast to shape [%s]", op_type.c_str(),
-          std::to_string(input_shape_x[i]).c_str(), std::to_string(input_shape_y[i]).c_str());
-    output[i] = input_shape_x[i] == 1 ? input_shape_y[i] : input_shape_x[i];
-  }
-  output_shape = std::move(output);
   return true;
 }
 
 bool Eletwise::RefineShapesForBroadcast() {
-  CHECK_EQ(input_shape_x.size(), input_shape_y.size(), "op [%s] : input shapes not match, cannot broadcast",
-           op_type.c_str());
   CHECK((op_info.find("_fusion_index") != op_info.end()), "op [%s] : compile info not contain [_fusion_index]",
         op_type.c_str());
   const auto& fusion_index = op_info["_fusion_index"];
   size_t fusion_len = fusion_index.size();
-  std::vector<int64_t> output(fusion_len, 1);
+  output_shape.reserve(fusion_len);
   for (size_t i = 0; i < fusion_len; i++) {
-    int64_t fused_x = 1;
-    int64_t fused_y = 1;
-    for (const auto& j : fusion_index[i]) {
-      fused_x *= input_shape_x[j];
-      fused_y *= input_shape_y[j];
+    std::vector<int64_t> fused(input_num, 1);
+    int64_t max_output = 1;
+    int64_t min_output = 2;
+    for (size_t j = 0; j < input_num; j++) {
+      for (const auto& k : fusion_index[i]) {
+        fused[j] *= input_shapes[j][k];
+      }
+      if (fused[j] > max_output) {
+        max_output = fused[j];
+      }
+      if (fused[j] < min_output) {
+        min_output = fused[j];
+      }
+      bool verify_broadcast = fused[j] != 1 && fused[j] != max_output;
+      CHECK(!verify_broadcast, "op [%s] : input shapes [%s] cannot broadcast to shape [%s]", op_type.c_str(),
+            std::to_string(fused[j]).c_str(), std::to_string(max_output).c_str());
     }
-    output[i] = fused_x == 1 ? fused_y : fused_x;
+    output_shape.push_back(max_output);
+    if (min_output == 1 && max_output != 1) {
+      broadcast_aixs = i;
+    }
   }
-  output_shape = std::move(output);
   return true;
 }
 
@@ -247,7 +367,7 @@ bool Eletwise::CalcTiling() {
   std::string pattern_key = keys;
   CHECK((op_info.find("_base_info") != op_info.end()), "op [%s] : compile info not contain [_base_info]",
         op_type.c_str());
-  // op_info["_base_info"] = ["_ub_size", "_max_dtype", "_coexisting_quantity", "_core_num"]
+  // "_base_info": ["_ub_size", "_max_dtype", "_coexisting_quantity", "_core_num"]
   const int32_t base_info_size = 4;
   const std::vector<int32_t>& base_info = op_info["_base_info"][pattern_key];
   CHECK_EQ(base_info.size(), base_info_size, "op [%s] : base info must be _ub_size, _max_dtype, _coexisting_quantity"
@@ -280,7 +400,6 @@ bool Eletwise::DoBlockTiling() {
     block_factor = std::ceil(output_shape[0] * 1.0 / cur_core);
     block_factor = std::ceil(block_factor * 1.0 / ele_in_block) * ele_in_block;
     block_dims = std::ceil(output_shape[0] * 1.0 / block_factor);
-    block_axis_output = output_shape[0];
     output_shape[0] = block_factor;
   } else {
     for (size_t i = 0; i < output_shape.size(); i++) {
@@ -288,7 +407,6 @@ bool Eletwise::DoBlockTiling() {
         block_axis = i;
         block_factor = std::ceil(output_shape[i] * 1.0 / cur_core);
         block_dims *= std::ceil(output_shape[i] * 1.0 / block_factor);
-        block_axis_output = output_shape[i];
         output_shape[i] = block_factor;
         break;
       } else {
@@ -382,11 +500,15 @@ bool Eletwise::CalcConstKey() {
     bool verify_input =
             op_paras.inputs.size() == 2 && !op_paras.inputs[0].tensor.empty() && !op_paras.inputs[1].tensor.empty();
     CHECK(verify_input, "op [%s] : input shape cannot be empty", op_type.c_str());
-    input_shape_x = op_paras.inputs[0].tensor[0].shape;
-    input_shape_y = op_paras.inputs[1].tensor[0].shape;
-    bool ret = BroadcastShapes();
-    if (!ret) {
-      return ret;
+    std::vector<int64_t> input_shape_x = op_paras.inputs[0].tensor[0].shape;
+    std::vector<int64_t> input_shape_y = op_paras.inputs[1].tensor[0].shape;
+    size_t shape_len_x = input_shape_x.size();
+    size_t shape_len_y = input_shape_y.size();
+    size_t max_len = shape_len_x > shape_len_y ? shape_len_x : shape_len_y;
+    if (shape_len_x < max_len) {
+      input_shape_x.insert(input_shape_x.begin(), max_len - shape_len_x, 1);
+    } else if (shape_len_y < max_len) {
+      input_shape_y.insert(input_shape_y.begin(), max_len - shape_len_y, 1);
     }
     CHECK_EQ(input_shape_x.size(), input_shape_y.size(), "op [%s] : input shape must be same", op_type.c_str());
     std::vector<int64_t> const_shapes(input_shape_x.size(), 0);
@@ -450,37 +572,19 @@ bool Eletwise::WriteTilingData(OpRunInfo& run_info) {
     }
     std::string str_key = keys + key_len + 1;
     const auto& all_vars = op_info["_elewise_vars"][str_key];
-    if (!compileInfo.is_support_broadcast) {
-      input_shape_x = std::move(output_shape);
-    }
     for (const auto& var : all_vars) {
-      if (var >= 3000) {
+      if (var >= 30000) {
         CHECK((ub_axis >= 0), "op [%s] : Not cut ub", op_type.c_str())
         ByteBufferPut(run_info.tiling_data, ub_factor);
-      } else if (var >= 2000) {
+      } else if (var >= 20000) {
         CHECK((ub_axis >= 0), "op [%s] : Not cut block", op_type.c_str())
         ByteBufferPut(run_info.tiling_data, block_factor);
       } else {
         int32_t var_value = var;
-        int32_t operator_index = var_value % 10;
-        var_value /= 10;
+        int32_t operator_index = var_value % 100;
+        var_value /= 100;
         size_t dim_index = var_value % 100;
-        switch (operator_index) {
-          case 0:
-            CHECK((input_shape_x.size() > dim_index), "op [%s] : Compile info error", op_type.c_str())
-              ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_shape_x[dim_index]));
-            break;
-          case 1:
-            CHECK((input_shape_y.size() > dim_index), "op [%s] : Compile info error", op_type.c_str())
-              ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_shape_y[dim_index]));
-            break;
-          case 2:
-            CHECK((output_shape.size() > dim_index), "op [%s] : Compile info error", op_type.c_str())
-              ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(output_shape[dim_index]));
-            break;
-          default:
-            CHECK(false, "op [%s] : Too many operands", op_type.c_str())
-        }
+        ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_shapes[operator_index][dim_index]));
       }
     }
   }
@@ -512,7 +616,6 @@ bool Eletwise::DoTiling() {
                  * BLOCK_SIZE) / compileInfo.max_dtype;
       }
       ret = ret && DoUbTiling();
-      output_shape[block_axis] = block_axis_output;
     } else {
       if (output_shape.size() == 1) {
         ub_axis = 0;

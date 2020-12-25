@@ -655,7 +655,7 @@ class ElewiseSchedule:
             for _tensor_i in _tensor.op.input_tensors:
                 _need_space.append(_r_coexisting(_tensor_i))
             # one of the input of the ternary instruction must be reused with the output
-            if util.get_dsl_insn(tensor_i) in TERNARY_INSNS:
+            if util.get_dsl_insn(_tensor) in TERNARY_INSNS:
                 _current_space = len(dependent_map)
             else:
                 _current_space = len(dependent_map) + 1

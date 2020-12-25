@@ -230,11 +230,11 @@ def _pre_build(schedules_list):
         for index, name in enumerate(_var_names):
             names = name.split("_")
             if names[0] == "dim":
-                _var_names[index] = 1000 + int(names[1]) * 10 + int(names[2])
+                _var_names[index] = 10000 + int(names[1]) * 100 + int(names[2])
             elif names[0] == "block":
-                _var_names[index] = 2000 + int(names[2])
+                _var_names[index] = 20000 + int(names[2])
             elif names[0] == "ub":
-                _var_names[index] = 3000 + int(names[2])
+                _var_names[index] = 30000 + int(names[2])
         return _var_names
 
     def _get_pattern_key(_mode, _pattern):

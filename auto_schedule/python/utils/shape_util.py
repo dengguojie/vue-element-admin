@@ -24,6 +24,7 @@ from te.tvm import api as tvm
 from te.tvm import tensor as _tensor
 from te.utils import para_check
 from functools import reduce
+from te.utils.error_manager.error_manager_util import get_error_message
 
 
 def squeeze_shape(shape):
@@ -307,93 +308,83 @@ def variable_shape(inputs: list, support_broadcast=False):
     :param support_broadcast: whether to support broadcast
     :return:
     """
-    def _has_intersection(range0, range1):
-        _range0 = list(range0)
-        _range1 = list(range1)
-        if _range0[1] is None:
-            _range0[1] = para_check.MAX_UNKNOWN_SHAPE_NUM
-        if _range1[1] is None:
-            _range1[1] = para_check.MAX_UNKNOWN_SHAPE_NUM
-        return max(_range0[0], _range1[0]) <= min(_range0[1], _range1[1])
 
-    def _select(cond, then_case, else_case):
-        if cond:
-            return then_case
-        else:
-            return else_case
+    def _get_range_intersection(ranges):
+        def _range_intersection(range_a, range_b):
+            if range_a is None or range_b is None:
+                return None
+            a_lower, a_upper = range_a
+            b_lower, b_upper = range_b
+            if max(a_lower, b_lower) > min(a_upper, b_upper):
+                return None
+            return (max(a_lower, b_lower), min(a_upper, b_upper))
 
-    def _update_range(shape0, range0, shape1, range1):
-        for index in range(len(range0)):
-            verify_shape = (shape0[index] != -1 and shape1[index] != -1) or \
-                           shape0[index] == 1 or shape1[index] == 1
-            if verify_shape:
-                continue
-            range_x = list(range0[index])
-            range_y = list(range1[index])
-            for j, (_rx, _ry) in enumerate(zip(range_x, range_y)):
-                if _rx is None:
-                    range_x[j] = para_check.MAX_UNKNOWN_SHAPE_NUM
-                if _ry is None:
-                    range_y[j] = para_check.MAX_UNKNOWN_SHAPE_NUM
-            x_const = shape0[index] != -1 and shape1[index] == -1
-            y_const = shape0[index] == -1 and shape1[index] != -1
-            variable_intersection = \
-                _has_intersection(range_x, range_y) and \
-                (range_x[0] > 1) and (range_y[0] > 1)
-            if x_const:
-                range_y = (_select(range_y[0] <= 1, range_y[0],
-                                   shape0[index]),
-                           _select(range_y[1] >= shape0[index],
-                                   shape0[index], 1))
-            elif y_const:
-                range_y = (_select(range_x[0] <= 1, range_x[0],
-                                   shape1[index]),
-                           _select(range_x[1] >= shape1[index],
-                                   shape1[index], 1))
-            elif variable_intersection:
-                range_x = (max(range_x[0], range_y[0]),
-                           min(range_x[1], range_y[1]))
-                range_y = range_x
-            elif not _has_intersection(range_x, range_y):
-                if range_x[0] <= 1:
-                    range_x = (1, 1)
-                if range_y[0] <= 1:
-                    range_y = (1, 1)
-            range0[index] = tuple(range_x)
-            range1[index] = tuple(range_y)
-            if range_x[0] == range_x[1]:
-                shape0[index] = range_x[0]
-            if range_y[0] == range_y[1]:
-                shape1[index] = range_y[0]
+        return reduce(_range_intersection, ranges)
+
+    def _range_has_one(ranges):
+        for r in ranges:
+            if 1 in r:
+                return True
+        return False
+
+    def _update_range(shapes, ranges):
+        def _fixed_shape_range():
+            for _range in ranges:
+                for i, (r0, r1) in enumerate(_range):
+                    if r0 is None:
+                        _range[i] = (para_check.MAX_UNKNOWN_SHAPE_NUM, r1)
+                    if r1 is None:
+                        _range[i] = (r0, para_check.MAX_UNKNOWN_SHAPE_NUM)
+            for _shape, _range in zip(shapes, ranges):
+                for i, (s, (r0, r1)) in enumerate(zip(_shape, _range)):
+                    if s != -1:
+                        _range[i] = (s, s)
+                    elif r0 == r1:
+                        _shape[i] = r0
+
+        _fixed_shape_range()
+        t_shapes = list(map(list, zip(*shapes)))
+        t_ranges = list(map(list, zip(*ranges)))
+        for _shape, _range in zip(t_shapes, t_ranges):
+            mied_range = _get_range_intersection(_range)
+            has_one = _range_has_one(_range)
+            if mied_range is None:
+                if not has_one:
+                    dict_args = dict()
+                    dict_args["errCode"] = "E90001"
+                    dict_args["detailed_cause"] = "input shape error, shape range no intersection"
+                    raise RuntimeError(dict_args, get_error_message(dict_args))
+                for i, r in enumerate(_range):
+                    if 1 in r:
+                        _range[i] = (1, 1)
+            else:
+                if mied_range[0] != 1:
+                    if not has_one:
+                        for i, r in enumerate(_range):
+                            if 1 in r:
+                                _range[i] = (1, mied_range[1])
+        _fixed_shape_range()
 
     def _get_dim(_i, _shapes):
         return max([s[_i] for s in _shapes])
 
     def _fill(_inputs):
+        def _complete(_in):
+            shapes, ranges = [], []
+            for x in _in:
+                _shape, _range = list(x["shape"]), x.get("range")
+                d_v = dim_length - len(_shape)
+                x_shape = [1] * d_v + _shape
+                x_range = [(1, 1)] * d_v + list(_range)
+                shapes.append(x_shape)
+                ranges.append(x_range)
+            return shapes, ranges
+
         if support_broadcast:
-            if len(inputs) != 2:
-                error_info = {
-                    'errCode': para_check.OP_ERROR_CODE_027,
-                    'op_name': operation.get_context().get_op_type(),
-                    'param_name': para_check.PARAM_NAME}
-                raise RuntimeError(
-                    error_info,
-                    "In op[%s], only support two inputs for broadcast"
-                    % (error_info['op_name']))
-            x_0, x_1 = _inputs
-            shape0, range0 = list(x_0["shape"]), list(x_0["range"])
-            shape1, range1 = list(x_1["shape"]), list(x_1["range"])
-            swapped = False
-            if len(shape0) < len(shape1):
-                shape0, range0, shape1, range1 = shape1, range1, shape0, range0
-                swapped = True
-            d_v = len(shape0) - len(shape1)
-            shape1 = [1] * d_v + shape1
-            range1 = [(1, 1)] * d_v + range1
-            if swapped:
-                shape0, range0, shape1, range1 = shape1, range1, shape0, range0
-            _update_range(shape0, range0, shape1, range1)
-            return [shape0, shape1], [range0, range1]
+            dim_length = max([len(s["shape"]) for s in _inputs])
+            shapes, ranges = _complete(_inputs)
+            _update_range(shapes, ranges)
+            return shapes, ranges
 
         _shapes, _ranges = [], []
         for _input in inputs:

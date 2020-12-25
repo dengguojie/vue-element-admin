@@ -34,6 +34,11 @@ namespace optiling {
 const int32_t BLOCK_SIZE = 32;
 const int32_t DOUBLE_BUFFER_SIZE = 2;
 const int32_t N_LAST_BROADCAST_THRESHOLD = 512;
+const int32_t MAX_PATTERN_DIM = 3;
+const int32_t SPECIAL_BROADCAST_INPUT_NUMS = 2;
+const int32_t BROADCAST_BASE_KEY = 2;
+const size_t MAX_DIM_LEN = 16;
+const size_t MAX_INPUT_NUMS = 70;
 
 struct CompileInfo {
   int32_t ub_size{0};
@@ -65,8 +70,11 @@ public:
   ~Eletwise() {
   }
   bool Init();
+  bool GetCompletedShapes();
   bool GenerateOutputShape();
   bool TrySwitchToPerfPattern();
+  bool MulTrySwitchToPerfPattern();
+  void MulFusionContinuousAxis(std::vector<std::vector<int64_t>>& fusion_shapes, size_t& fusion_length);
   bool BroadcastShapes();
   bool RefineShapesForBroadcast();
   bool CalcTiling();
@@ -99,8 +107,9 @@ private:
   int32_t broadcast_aixs{-1};
   int32_t block_axis_output{-1};
   Pattern s_pattern{Pattern::ORIGINAL};
-  std::vector<int64_t> input_shape_x;
-  std::vector<int64_t> input_shape_y;
+  std::array<std::array<int64_t, MAX_DIM_LEN>, MAX_INPUT_NUMS> input_shapes{};
+  size_t input_num{0};
+  size_t dim_len{0};
   std::vector<int64_t> output_shape;
 };
 

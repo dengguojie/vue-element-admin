@@ -15,7 +15,7 @@
 """
 classifier of shape in broadcast elewise
 """
-import re
+import copy
 from enum import Enum, auto
 from te.utils.error_manager.error_manager_util import get_error_message
 
@@ -29,6 +29,7 @@ SPECIAL_SCALAR = "special_scalar"
 CONST = "const"
 ORIGINAL = "original"
 VAR_BOUND_LIMIT = 2147483647
+MAX_BROADCAST_INPUT = 70
 
 
 class BroadcastElewiseClassifier:
@@ -41,35 +42,30 @@ class BroadcastElewiseClassifier:
         init
         :param ins:
         """
-        if len(ins) != 2:
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "The size of input parameter [%s] must be 2, " \
-                                          "when support broadcast." % len(ins)
-            raise RuntimeError(dict_args, get_error_message(dict_args))
-
         self.ins = ins
         shapes = [x["shape"] for x in self.ins]
         self.dim_length = max([len(s) for s in shapes])
 
-        self.normalized_ins = self._normalize()
-        self.normalized_shapes = [x["shape"] for x in self.normalized_ins]
+        self.completed_ins = self._complete()
+        self.completed_shapes = [x["shape"] for x in self.completed_ins]
+        self.completed_ranges = [x["range"] for x in self.completed_ins]
+        self.f_shapes, self.f_ranges = _simplify_shape(self.completed_shapes, self.completed_ranges)
 
-        f_shape1, f_range1, f_shape2, f_range2 = _simplify_shape(*self.normalized_ins)
-        self.f_shapes = [f_shape1, f_shape2]
-        self.f_ranges = [f_range1, f_range2]
-
-        self.f_strict_pattern = _get_strict_pattern(f_shape1, f_shape2)
-        self.f_patterns = _combinations(self.f_strict_pattern)
+        self.normalize_shapes = self._normalize()
 
     def classify(self):
         """
         classify
         :return:
         """
+        if len(self.completed_shapes) > MAX_BROADCAST_INPUT:
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "more than 70 input are not supported"
+            raise RuntimeError(dict_args, get_error_message(dict_args))
         return self._classify_const() if self._is_const() else self._classify_var()
 
-    def _normalize(self):
+    def _complete(self):
         def clone_complete(_in):
             _shape, _range = list(_in["shape"]), _in.get("range")
             d_v = self.dim_length - len(_shape)
@@ -82,9 +78,24 @@ class BroadcastElewiseClassifier:
 
         return [clone_complete(x) for x in self.ins]
 
+    def _normalize(self):
+        normalize_shapes = copy.deepcopy(self.f_shapes)
+        for i in range(len(normalize_shapes)):
+            for j in range(len(normalize_shapes[i])):
+                if normalize_shapes[i][j] > 1 or \
+                        (normalize_shapes[i][j] == -1 and self.f_ranges[i][j][0] > 1):
+                    normalize_shapes[i][j] = ShapeValueType.COMMON
+                elif normalize_shapes[i][j] == -1:
+                    normalize_shapes[i][j] = ShapeValueType.UNKNOWN
+                else:
+                    normalize_shapes[i][j] = ShapeValueType.ONE
+        return normalize_shapes
+
     def _is_const(self):
+        if len(self.completed_shapes) > 2:
+            return False
         for i in range(self.dim_length):
-            dims_i = [s[i] for s in self.normalized_shapes]
+            dims_i = [s[i] for s in self.completed_shapes]
             min_dim_v, max_dim_v = min(dims_i), max(dims_i)
             if min_dim_v == -1 and max_dim_v in (-1, 1):
                 return False
@@ -96,7 +107,7 @@ class BroadcastElewiseClassifier:
             if i == self.dim_length:
                 return [_shapes]
 
-            dims_i = [s[i] for s in self.normalized_shapes]
+            dims_i = [s[i] for s in self.completed_shapes]
             min_dim_v, max_dim_v = min(dims_i), max(dims_i)
 
             # 1. don't need divide, all const value in the current axis
@@ -121,46 +132,216 @@ class BroadcastElewiseClassifier:
 
         def append_i(_shapes, dim_i):
             for i, _shape in enumerate(_shapes):
-                _shape.append(self.normalized_shapes[i][dim_i])
+                _shape.append(self.completed_shapes[i][dim_i])
 
         def append_b(_shapes, dim_i, dim_v):
             for i, _shape in enumerate(_shapes):
-                _shape.append(max(self.normalized_shapes[i][dim_i], dim_v))
+                _shape.append(max(self.completed_shapes[i][dim_i], dim_v))
 
         def copy(_shapes):
             return [_shape.copy() for _shape in _shapes]
 
         ret = []
-        for shapes in divide(0, [[] for _ in self.normalized_ins]):
+        for shapes in divide(0, [[] for _ in self.completed_ins]):
             ret.append([ConstMode.gen_in(shapes[0]), ConstMode.gen_in(shapes[1])])
 
         return ret
 
     def _classify_var(self):
+        def merge_shape_range(left, right, need_update_shape_range):
+            shape = [1] * input_length
+            _range = [(1, 1)] * input_length
+            for i in range(left, right + 1):
+                shape = ShapeSimplifier.combine_dim(self.f_shapes[i], shape)
+                _range = ShapeSimplifier.combine_range(self.f_ranges[i], _range)
+            if need_update_shape_range:
+                for i, (s, (_, r1)) in enumerate(zip(shape, _range)):
+                    if s != 1:
+                        shape[i] = -1
+                        _range[i] = (1, r1)
+            return shape, _range
+
+        def adapter_broadcast_pattern(_b_shape, _b_range, b_pattern):
+            for index, pattern in enumerate(b_pattern):
+                if pattern == ShapeValueType.ONE:
+                    _b_shape[index] = 1
+                    _b_range[index] = (1, 1)
+
+        def gen_common():
+            if len(known_broadcast_pattern) > 0:
+                return [], []
+            if left_no_one > right_no_one:
+                a_shape = [1] * input_length
+                a_range = [(1, 1)] * input_length
+            else:
+                a_shape, a_range = merge_shape_range(left_no_one, right_no_one, False)
+            return [a_shape], [a_range]
+
+        def find_broadcast(location_b):
+            def find_common_broadcast():
+                a_index = [left_no_one, dim_length - 2]
+                b_index = [left_no_one + 1, dim_length - 1]
+                if len(known_broadcast_index) > 0:
+                    a_index = [left_no_one, known_broadcast_index[0] - 1]
+                if len(known_const_index) > 0:
+                    b_index = [known_const_index[-1] + 1, dim_length - 1]
+                return a_index, b_index
+
+            def find_broadcast_common():
+                b_index = [0, right_no_one - 1]
+                a_index = [1, right_no_one]
+                if len(known_broadcast_index) > 0:
+                    a_index = [known_broadcast_index[-1] + 1, right_no_one]
+                if len(known_const_index) > 0:
+                    b_index = [0, known_const_index[0] - 1]
+                return a_index, b_index
+
+            def find_common_broadcast_common():
+                a_index = [[left_no_one, right_no_one - 2],
+                           [left_no_one + 2, right_no_one]]
+                b_index = [left_no_one + 1, right_no_one - 1]
+                if len(known_broadcast_index) > 0:
+                    a_index = [[left_no_one, known_broadcast_index[0] - 1],
+                               [known_broadcast_index[-1] + 1, right_no_one]]
+                    if len(known_const_index) > 0:
+                        for kci in known_const_index:
+                            if kci < known_broadcast_index[0]:
+                                b_index[0] = kci + 1
+                            if kci > known_broadcast_index[-1]:
+                                b_index[1] = kci - 1
+                                break
+                return a_index, b_index
+
+            if location_b == SpecialMode.RIGHT:
+                return find_common_broadcast()
+            if location_b == SpecialMode.LEFT:
+                return find_broadcast_common()
+            if location_b == SpecialMode.MIDDLE:
+                return find_common_broadcast_common()
+
+        def gen_common_broadcast():
+            after_known_broadcast_has_const = len(known_const_index) > 0 and len(known_broadcast_index) > 0 \
+                                              and known_const_index[-1] > known_broadcast_index[0]
+            befor_known_broadcast_no_common = len(known_broadcast_index) > 0 and \
+                                              left_no_one >= known_broadcast_index[0]
+            last_no_broadcast_first_no_common = dim_length - 1 in known_const_index or left_no_one >= dim_length - 1
+            no_common_broadcast = after_known_broadcast_has_const or \
+                                  befor_known_broadcast_no_common or last_no_broadcast_first_no_common
+            if no_common_broadcast:
+                return [], []
+            a_index, b_index = find_broadcast(SpecialMode.RIGHT)
+            need_update_shape_range = b_index[0] != b_index[1]
+            a_shape, a_range = merge_shape_range(a_index[0], a_index[1], need_update_shape_range)
+            b_shape, b_range = merge_shape_range(b_index[0], b_index[1], need_update_shape_range)
+            b_pattern = []
+            if not need_update_shape_range:
+                b_pattern = self.f_shapes[b_index[0]]
+            if len(known_broadcast_index) > 0:
+                b_pattern = self.f_shapes[known_broadcast_index[0]]
+            if len(b_pattern) > 0:
+                adapter_broadcast_pattern(b_shape, b_range, b_pattern)
+            return [a_shape, b_shape], [a_range, b_range]
+
+        def gen_broadcast_common():
+            befer_known_broadcast_has_const = len(known_const_index) > 0 and len(known_broadcast_index) > 0 \
+                                              and known_const_index[0] < known_broadcast_index[0]
+            after_known_broadcast_no_common = len(known_broadcast_index) > 0 and \
+                                              right_no_one <= known_broadcast_index[-1]
+            first_no_broadcast_last_no_common = 0 in known_const_index or right_no_one <= 0
+            no_broadcast_common = befer_known_broadcast_has_const or \
+                                  after_known_broadcast_no_common or first_no_broadcast_last_no_common
+            if no_broadcast_common:
+                return [], []
+            a_index, b_index = find_broadcast(SpecialMode.LEFT)
+            need_update_shape_range = b_index[0] != b_index[1]
+            a_shape, a_range = merge_shape_range(a_index[0], a_index[1], need_update_shape_range)
+            b_shape, b_range = merge_shape_range(b_index[0], b_index[1], need_update_shape_range)
+            b_pattern = []
+            if not need_update_shape_range:
+                b_pattern = self.f_shapes[b_index[0]]
+            if len(known_broadcast_index) > 0:
+                b_pattern = self.f_shapes[known_broadcast_index[0]]
+            if len(b_pattern) > 0:
+                adapter_broadcast_pattern(b_shape, b_range, b_pattern)
+            return [b_shape, a_shape], [b_range, a_range]
+
+        def gen_common_broadcast_common():
+            def all_const():
+                return all([i in known_const_index for i in range(left_no_one + 1, right_no_one)])
+
+            right_left_no_common = len(known_broadcast_index) > 0 and \
+                    (right_no_one <= known_broadcast_index[-1] or left_no_one >= known_broadcast_index[0])
+            no_broadcast = right_no_one <= left_no_one or all_const()
+            if right_left_no_common or no_broadcast:
+                return [], []
+            a_index, b_index = find_broadcast(SpecialMode.MIDDLE)
+            need_update_shape_range = b_index[0] != b_index[1]
+            a1_shape, a1_range = merge_shape_range(a_index[0][0], a_index[0][1], need_update_shape_range)
+            a2_shape, a2_range = merge_shape_range(a_index[1][0], a_index[1][1], need_update_shape_range)
+            b_shape, b_range = merge_shape_range(b_index[0], b_index[1], need_update_shape_range)
+            b_pattern = []
+            if not need_update_shape_range:
+                b_pattern = self.f_shapes[b_index[0]]
+            if len(known_broadcast_index) > 0:
+                b_pattern = self.f_shapes[known_broadcast_index[0]]
+            if len(b_pattern) > 0:
+                adapter_broadcast_pattern(b_shape, b_range, b_pattern)
+            return [a1_shape, b_shape, a2_shape], [a1_range, b_range, a2_range]
+
+        def gen_broadcast():
+            if len(known_const_index) > 0:
+                return [], []
+            b_shape, b_range = merge_shape_range(0, dim_length - 1, False)
+            b_pattern = []
+            if dim_length == 1:
+                b_pattern = self.f_shapes[0]
+            if len(known_broadcast_index) > 0:
+                b_pattern = self.f_shapes[known_broadcast_index[0]]
+            if len(b_pattern) > 0:
+                adapter_broadcast_pattern(b_shape, b_range, b_pattern)
+            return [b_shape], [b_range]
+
         def add_special():
             ins_list = []
-            for rs, p, sp in zip(SpecialMode.REGS, SpecialMode.PATTERS,
-                                 SpecialMode.STRICT_PATTERNS):
-                matched_list = SpecialMode.match(rs, self.f_patterns)
-                if not any(matched_list):
-                    continue
-                ins_list.append(SpecialMode.gen_ins(matched_list, p, sp))
-
+            special_pattern = {
+                SpecialMode.COMMON: gen_common(),
+                SpecialMode.COMMON_BROADCAST: gen_common_broadcast(),
+                SpecialMode.COMMON_BROADCAST_COMMON: gen_common_broadcast_common(),
+                SpecialMode.BROADCAST_COMMON: gen_broadcast_common(),
+            }
+            if len(self.completed_shapes) > 2:
+                special_pattern[SpecialMode.BROADCAST] = gen_broadcast()
+            for key, value in special_pattern.items():
+                if len(value[0]) > 0:
+                    ins_list.append(SpecialMode.gen_ins(list(zip(*value[0])), list(zip(*value[1])), key))
             return ins_list
 
         def add_special_scalar():
             ins_list = []
-            for r, p, ss in zip(SpecialScalarMode.REGEX, SpecialScalarMode.PATTERNS,
-                                SpecialScalarMode.SHAPES_LIST):
-                if _match(r, self.f_patterns):
-                    x_0 = SpecialScalarMode.gen_in(ss[0], p)
-                    x_1 = SpecialScalarMode.gen_in(ss[1], p)
+            shapes = list(zip(*self.f_shapes))
+            ranges = list(zip(*self.f_ranges))
+            if len(shapes) != 2:
+                return ins_list
+            # SA
+            is_sa = SpecialScalarMode.maybe_all_one(shapes[0], ranges[0]) and \
+                    not SpecialScalarMode.must_all_one(shapes[1])
+
+            # AS
+            is_as = not SpecialScalarMode.must_all_one(shapes[0]) and \
+                    SpecialScalarMode.maybe_all_one(shapes[1], ranges[1])
+
+            match_list = [is_sa, is_as]
+            for match, pattern, shape_list in zip(match_list, SpecialScalarMode.PATTERNS,
+                                                  SpecialScalarMode.SHAPES_LIST):
+                if match:
+                    x_0 = SpecialScalarMode.gen_in(shape_list[0], pattern)
+                    x_1 = SpecialScalarMode.gen_in(shape_list[1], pattern)
                     ins_list.append([x_0, x_1])
 
             return ins_list
 
         def add_original():
-            if _get_broadcast_axis_size(self.f_strict_pattern) <= 1:
+            if _get_broadcast_axis_size(self.normalize_shapes) <= 1:
                 return []
 
             ins = []
@@ -172,98 +353,105 @@ class BroadcastElewiseClassifier:
 
             return [ins]
 
+        def get_known_broadcast_and_const(n_shapes):
+            def _all_const(shape):
+                return all([s == ShapeValueType.COMMON for s in shape])
+
+            known_broadcast_pattern = []
+            known_broadcast_index = []
+            known_const_index = []
+            new_broadcast = True
+            for i, n_s in enumerate(n_shapes):
+                if not new_broadcast and _is_known_broadcast(n_s):
+                    if known_broadcast_pattern[-1] != n_s:
+                        known_broadcast_pattern.append(n_s)
+                    known_broadcast_index.append(i)
+                elif new_broadcast and _is_known_broadcast(n_s):
+                    known_broadcast_pattern.append(n_s)
+                    known_broadcast_index.append(i)
+                    new_broadcast = False
+                elif _all_const(n_s):
+                    known_const_index.append(i)
+                    new_broadcast = True
+            return known_broadcast_pattern, known_broadcast_index, known_const_index
+
+        def get_no_one_index():
+            left_no_one = 0
+            right_no_one = len(self.normalize_shapes) - 1
+            for i, ns in enumerate(self.normalize_shapes):
+                if ShapeValueType.ONE not in ns or ShapeValueType.COMMON in ns:
+                    break
+                left_no_one += 1
+            for i in range(right_no_one, -1, -1):
+                if ShapeValueType.ONE not in self.normalize_shapes[i] or \
+                        ShapeValueType.COMMON in self.normalize_shapes[i]:
+                    break
+                right_no_one -= 1
+            return left_no_one, right_no_one
+
+        known_broadcast_pattern, known_broadcast_index, known_const_index = \
+            get_known_broadcast_and_const(self.normalize_shapes)
+        left_no_one, right_no_one = get_no_one_index()
         ret = []
-        ret.extend(add_special())
-        ret.extend(add_special_scalar())
+        if len(known_broadcast_pattern) <= 1:
+            input_length = len(self.completed_shapes)
+            dim_length = len(self.f_shapes)
+            ret.extend(add_special())
+            ret.extend(add_special_scalar())
         ret.extend(add_original())
         return ret
 
 
-def _simplify_shape(d_1, d_2):
-    shape1, shape2 = d_1["shape"], d_2["shape"]
-    len1, len2 = len(shape1), len(shape2)
-    diff12, diff21 = len1 - len2, len2 - len1
+def _simplify_shape(completed_shapes, completed_ranges):
+    input_length = len(completed_shapes)
+    transpose_shapes = list(zip(*completed_shapes))
+    transpose_ranges = list(zip(*completed_ranges))
 
-    shape1 = diff21 * [1] + list(shape1)
-    shape2 = diff12 * [1] + list(shape2)
-    f_shape1, f_shape2 = [1], [1]
+    f_shapes = [[1] * input_length]
+    f_ranges = [[(1, 1)] * input_length]
 
-    range1 = diff21 * [(1, 1)] + list(d_1["range"])
-    range2 = diff12 * [(1, 1)] + list(d_2["range"])
-    f_range1, f_range2 = [(1, 1)], [(1, 1)]
-
-    state = ShapeSimplifier.State.ONE
-    for s_1, s_2, r_1, r_2 in zip(shape1, shape2, range1, range2):
-        state_i = ShapeSimplifier.get_state(s_1, s_2)
+    all_one = str(ShapeValueType.ONE) * input_length
+    state = all_one
+    for s, r in zip(transpose_shapes, transpose_ranges):
+        status = ShapeSimplifier.get_state(s, r)
+        state_i = ''.join(list(map(str, status)))
         operator = ShapeSimplifier.get_operator(state, state_i)
 
         if operator == ShapeSimplifier.Operator.FUSED:
-            f_shape1[-1] = ShapeSimplifier.combine_dim(f_shape1[-1], s_1)
-            f_shape2[-1] = ShapeSimplifier.combine_dim(f_shape2[-1], s_2)
-            f_range1[-1] = ShapeSimplifier.combine_range(f_range1[-1], r_1)
-            f_range2[-1] = ShapeSimplifier.combine_range(f_range2[-1], r_2)
+            f_shapes[-1] = ShapeSimplifier.combine_dim(f_shapes[-1], s)
+            f_ranges[-1] = ShapeSimplifier.combine_range(f_ranges[-1], r)
         else:
-            f_shape1.append(s_1)
-            f_shape2.append(s_2)
-            f_range1.append(r_1)
-            f_range2.append(r_2)
+            f_shapes.append(list(s))
+            f_ranges.append(list(r))
 
-        if state_i != ShapeSimplifier.State.ONE:
+        if state_i != all_one:
             state = state_i
 
-    return f_shape1, f_range1, f_shape2, f_range2
+    return f_shapes, f_ranges
 
 
-def _get_strict_pattern(shape1, shape2):
-    return [StrictPattern.get_pattern(a, b) for a, b in zip(shape1, shape2)]
+def _is_known_broadcast(shape):
+    return ShapeValueType.COMMON in shape and ShapeValueType.ONE in shape
 
 
-def _combinations(dim_patterns):
-    def divide(i, c_shape_patterns):
-        if i == len(dim_patterns):
-            return c_shape_patterns
-        shape_patterns = []
-        for sp in c_shape_patterns:
-            for dp in dim_patterns[i]:
-                spc = sp.copy()
-                spc.append(dp)
-                shape_patterns.append(spc)
-        return divide(i + 1, shape_patterns)
-
-    def convert_to_str(p_list):
-        p = list(map(lambda x: "" if x == "A" else x, p_list))
-        return "".join(p) if any(p) else "0"
-
-    return [convert_to_str(p) for p in divide(0, [[]])]
-
-
-def _match(reg, patterns):
-    for p in patterns:
-        if re.match(reg, p):
-            return True
-    return False
-
-
-def _get_broadcast_axis_size(pattern):
+def _get_broadcast_axis_size(shapes):
     broadcast_axis_size = 0
-    for p_i in pattern:
-        if AxisType.ATOB in p_i or AxisType.BTOA in p_i:
+    for s in shapes:
+        if ShapeValueType.UNKNOWN in s or ShapeValueType.ONE in s:
             broadcast_axis_size += 1
     return broadcast_axis_size
 
 
-class AxisType:
+class ShapeValueType:
     """
-    there are three axis type, one axis may contains some of them
+    there are three shape value type
     """
-    # 'All equals 1, for example: (a, b) = (1, 1)
-    ONE = "A"
-    # common axis, not need broadcast, and not equals 1
-    COMMON = "0"
-    # a broadcast to b
-    ATOB = "1"
-    # b broadcast to a
-    BTOA = "2"
+    # 1
+    ONE = 1
+    # const or (-1 and range not contains 1)
+    COMMON = 2
+    # -1 and the range contains 1
+    UNKNOWN = 3
 
 
 class SpecialMode:
@@ -271,72 +459,53 @@ class SpecialMode:
     SpecialMode const
     """
     # The (BROADCAST,) pattern covered by special scalar mode
-    PATTERS = [
-        (COMMON,),
-        (COMMON, BROADCAST),
-        (COMMON, BROADCAST, COMMON),
-        (BROADCAST, COMMON)
-    ]
+    COMMON = 'A'
+    COMMON_BROADCAST = 'AB'
+    COMMON_BROADCAST_COMMON = 'ABA'
+    BROADCAST_COMMON = 'BA'
+    BROADCAST = 'B'
 
-    # what's 012 means, @see AxisType
-    STRICT_PATTERNS = [
-        ["0"],
-        ["01", "02"],
-        ["010", "020"],
-        ["10", "20"],
-    ]
+    PATTERS = {
+        COMMON: [1, 1, 1],
+        COMMON_BROADCAST: [0, 1, 1],
+        COMMON_BROADCAST_COMMON: [0, 1, 0],
+        BROADCAST_COMMON: [1, 1, 0],
+    }
 
-    REGS = [
-        ["^0+$"],
-        ["^0+1+$", "^0+2+$"],
-        ["^0+1+0+$", "^0+2+0+$"],
-        ["^1+0+$", "^2+0+$"],
-    ]
+    LEFT = 'left'
+    RIGHT = 'right'
+    MIDDLE = 'middle'
 
     @classmethod
-    def match(cls, regs, patterns):
-        """
-        match regex
-        :param regs:
-        :param patterns:
-        :return:
-        """
-        return [_match(r, patterns) for r in regs]
-
-    @classmethod
-    def gen_ins(cls, matched_list, pattern, strict_pattern):
+    def gen_ins(cls, shape, _range, pattern):
         """
         generate inputs
-        :param matched_list:
-        :param pattern:
-        :param strict_pattern:
+        :param pattern_status:
+        :param pattern: pattern of special
         :return:
         """
 
-        def gen_in(shape):
-            return {"shape": shape,
-                    "range": util.generate_range(shape),
+        def gen_in(s, r):
+            def _get_pattern():
+                pattern_list = []
+                for p in pattern:
+                    if p == 'A':
+                        pattern_list.append(COMMON)
+                    elif p == 'B':
+                        pattern_list.append(BROADCAST)
+                return pattern_list
+
+            return {"shape": s,
+                    "range": r,
                     "support_broadcast": True,
                     "mode": SPECIAL,
-                    "pattern": pattern
+                    "pattern": _get_pattern()
                     }
 
-        if all(matched_list):
-            [shape1, shape2] = [[-1] * len(pattern)] * 2
-            return [gen_in(shape1), gen_in(shape2)]
-
-        shape1, shape2 = [], []
-        for sp_i in strict_pattern[matched_list.index(True)]:
-            if sp_i == '0':
-                shape1.append(-1)
-                shape2.append(-1)
-            elif sp_i == '1':
-                shape1.append(1)
-                shape2.append(-1)
-            elif sp_i == '2':
-                shape1.append(-1)
-                shape2.append(1)
-        return [gen_in(shape1), gen_in(shape2)]
+        shapes = []
+        for s, r in zip(shape, _range):
+            shapes.append(gen_in(s, r))
+        return shapes
 
 
 class SpecialScalarMode:
@@ -348,15 +517,28 @@ class SpecialScalarMode:
         (BROADCAST, SCALAR),
     ]
 
-    REGEX = [
-        "^1+$",
-        "^2+$",
-    ]
-
     SHAPES_LIST = [
         [[1], [-1]],
         [[-1], [1]],
     ]
+
+    @classmethod
+    def maybe_all_one(cls, shape, _range):
+        """
+        Is it possible to take 1 for all inputs
+        :param shape: input shape
+        :return:
+        """
+        return all([(s == 1 or (s == -1 and r0 <= 1)) for s, (r0, _) in zip(shape, _range)])
+
+    @classmethod
+    def must_all_one(cls, shape):
+        """
+        all input values 1
+        :param shape: input shape
+        :return:
+        """
+        return all([s == ShapeValueType.ONE for s in shape])
 
     @classmethod
     def gen_in(cls, shape, pattern):
@@ -412,53 +594,10 @@ class ConstMode:
                 }
 
 
-class StrictPattern:
-    """
-    StrictPattern
-    """
-    # 'KNOWN: dim > 1; UNKNOWN: dim = -1; ONE: dim == 1
-    KNOWN, UNKNOWN, ONE = 1, -1, 0
-
-    # (axis types, strict pattern) mapping
-    CATEGORY = {
-        (ONE, ONE): [AxisType.ONE],
-        (ONE, KNOWN): [AxisType.ATOB],
-        (ONE, UNKNOWN): [AxisType.ONE, AxisType.ATOB],
-        (KNOWN, ONE): [AxisType.BTOA],
-        (KNOWN, KNOWN): [AxisType.COMMON],
-        (KNOWN, UNKNOWN): [AxisType.COMMON, AxisType.BTOA],
-        (UNKNOWN, ONE): [AxisType.ONE, AxisType.BTOA],
-        (UNKNOWN, KNOWN): [AxisType.COMMON, AxisType.ATOB],
-        (UNKNOWN, UNKNOWN): [AxisType.COMMON, AxisType.ATOB, AxisType.BTOA, AxisType.ONE],
-    }
-
-    @classmethod
-    def get_pattern(cls, dim1, dim2):
-        def get_axis_type(_dim):
-            return cls.UNKNOWN if _dim < 0 else cls.KNOWN if _dim > 1 else cls.ONE
-
-        return cls.CATEGORY[(get_axis_type(dim1), get_axis_type(dim2))]
-
-
 class ShapeSimplifier:
     """
     ShapeSimplifier
     """
-
-    class State(Enum):
-        """
-        the axis type in same location of two shapes
-        """
-        # 'a, b all equals 1, for example: (a, b) = (1, 1)
-        ONE = auto()
-        # 'a, b all const and not equal 1, for example: (a, b) = (8, 8)
-        CONST = auto()
-        # 'a broadcast to b, for example: (a, b) = (1, 4), (a, b) = (1, -1)
-        ATOB = auto()
-        # 'b broadcast to a, for example: (a, b) = (4, 1), (a, b) = (-1, 1)
-        BTOA = auto()
-        # 'runtime-broadcast, for example: (a, b) = (-1, -1), (a, b) = (-1, 8), (a, b) = (8, -1)
-        UNKNOWN_BROADCAST = auto()
 
     class Operator(Enum):
         """
@@ -470,23 +609,22 @@ class ShapeSimplifier:
         ALONE = auto()
 
     @classmethod
-    def get_state(cls, dim1, dim2):
+    def get_state(cls, shape, _range):
         """
         get_state
-        :param dim1:
-        :param dim2:
+        :param shape:
+        :param range:
         :return:
         """
-        if dim1 == 1 and dim2 == 1:
-            return cls.State.ONE
-        if dim1 > 1 and dim2 > 1:
-            return cls.State.CONST
-        if dim1 == 1 and dim2 != 1:
-            return cls.State.ATOB
-        if dim1 != 1 and dim2 == 1:
-            return cls.State.BTOA
-
-        return cls.State.UNKNOWN_BROADCAST
+        status = []
+        for s, (r0, _) in zip(shape, _range):
+            if s > 1 or s == -1 and r0 > 1:
+                status.append(ShapeValueType.COMMON)
+            elif s == -1:
+                status.append(ShapeValueType.UNKNOWN)
+            elif s == 1:
+                status.append(ShapeValueType.ONE)
+        return status
 
     @classmethod
     def get_operator(cls, state1, state2):
@@ -496,9 +634,19 @@ class ShapeSimplifier:
         :param state2:
         :return:
         """
-        if state1 == cls.State.ONE or state2 == cls.State.ONE:
+        state1_all_one = all([s == str(ShapeValueType.ONE) for s in state1])
+        state2_all_one = all([s == str(ShapeValueType.ONE) for s in state2])
+        if state1_all_one or state2_all_one:
             return cls.Operator.FUSED
-        if state1 == cls.State.UNKNOWN_BROADCAST or state2 == cls.State.UNKNOWN_BROADCAST:
+        dim_diff = 0
+        for s1, s2 in zip(state1, state2):
+            if s1 != s2:
+                dim_diff += 1
+            elif s1 == s2 and s1 != str(ShapeValueType.ONE):
+                dim_diff += 1
+        if dim_diff <= 1:
+            return cls.Operator.FUSED
+        if str(ShapeValueType.UNKNOWN) in state1 or str(ShapeValueType.UNKNOWN) in state2:
             return cls.Operator.ALONE
         if state1 == state2:
             return cls.Operator.FUSED
@@ -513,7 +661,8 @@ class ShapeSimplifier:
         :param dim2:
         :return:
         """
-        return -1 if -1 in (dim1, dim2) else dim1 * dim2
+
+        return [-1 if -1 in (d1, d2) else d1 * d2 for d1, d2 in zip(dim1, dim2)]
 
     @classmethod
     def combine_range(cls, range1, range2):
@@ -523,4 +672,4 @@ class ShapeSimplifier:
         :param range2:
         :return:
         """
-        return util.combine_range([range1, range2])
+        return [util.combine_range([r1, r2]) for r1, r2 in zip(range1, range2)]
