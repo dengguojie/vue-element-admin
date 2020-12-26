@@ -49,6 +49,7 @@ OPS_PKG_SHARED_LIBS := \
         aic-ascend615-ops-info.json \
         aic-hi3796cv300es-ops-info.json \
         aic-hi3796cv300cs-ops-info.json \
+        aic-sd3403-ops-info.json \
         vector_core_tbe_ops_info.json \
         tf_kernel.json \
         npu_supported_ops.json
@@ -610,6 +611,24 @@ include $(BUILD_SYSTEM)/base_rules.mk
 $(LOCAL_BUILT_MODULE):
 	@mkdir -p $(dir $@)
 	@./cann/ops/built-in/tbe/scripts/compile_tbe_info.sh $(product) hi3796cv300cs
+	@echo $@
+	@echo $(HOST_OUT_INTERMEDIATES)/$(notdir $@)
+	@cp $(HOST_OUT_INTERMEDIATES)/$(notdir $@) $@
+	@echo $(HOST_OUT_INTERMEDIATES)
+
+#########################################
+
+########################################
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := aic-sd3403-ops-info.json
+
+include $(BUILD_SYSTEM)/base_rules.mk
+
+$(LOCAL_BUILT_MODULE):
+	@mkdir -p $(dir $@)
+	@./cann/ops/built-in/tbe/scripts/compile_tbe_info.sh $(product) sd3403
 	@echo $@
 	@echo $(HOST_OUT_INTERMEDIATES)/$(notdir $@)
 	@cp $(HOST_OUT_INTERMEDIATES)/$(notdir $@) $@
