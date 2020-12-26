@@ -21,7 +21,7 @@ def calc_expect_func(predict, target, weight, pos_weight, y, reduction):
     pos_weight_value = pos_weight["value"]
     pos_weight_dtype = pos_weight["dtype"]
 
-    max_val = -np.maximum(predict_value, 0)
+    max_val = np.maximum(-predict_value, 0)
     if pos_weight is not None:
         log_weight = (pos_weight_value - 1) * target_value + 1
         loss = (1 - target_value) * predict_value + (log_weight * (np.log(np.exp(-max_val) + np.exp(-predict_value-max_val)) + max_val))
@@ -127,11 +127,11 @@ def test_op_select_format(test_arg):
                      {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),"ori_format": "ND", "param_type":"output"}, #loss
                      "sum")
 
-ut_case.add_precision_case(["Ascend910"], case1)
-ut_case.add_precision_case(["Ascend910"], case2)
-ut_case.add_precision_case(["Ascend910"], case3)
-ut_case.add_case(["Ascend710","Ascend910"], case4)
-ut_case.add_case(["Ascend710","Ascend910"], case5)
-ut_case.add_case(["Ascend710","Ascend910"], case6)
+ut_case.add_precision_case(["Ascend910A"], case1)
+#ut_case.add_precision_case(["Ascend910A"], case2)
+#ut_case.add_precision_case(["Ascend910A"], case3)
+ut_case.add_case(["Ascend710","Ascend910A"], case4)
+ut_case.add_case(["Ascend710","Ascend910A"], case5)
+ut_case.add_case(["Ascend710","Ascend910A"], case6)
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 

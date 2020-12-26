@@ -33,68 +33,6 @@ SCALAR_ONE = 1
 SCALAR_ZREO = 0
 
 
-# pylint: disable=too-many-arguments,invalid-name,unused-argument,too-many-locals,too-many-return-statements
-def is_support_5hd(predict, target, weight, pos_weight, reduction):
-    """is_support_5hd.
-
-    Parameters
-    ----------
-    predict : dict
-        shape and dtype of predict
-    target : dict
-        shape and dtype of target
-    weight : dict
-        shape and dtype of weight
-    pos_weight : dict
-        shape and dtype of pos_weight
-
-    Returns
-    -------
-    bool
-    """
-    predict_shape = predict.get("ori_shape")
-    predict_format = predict.get("ori_format")
-    target_shape = target.get("ori_shape")
-    target_format = target.get("ori_format")
-
-    if predict_shape != target_shape \
-            or predict_format != target_format:
-        return False
-
-    if weight is not None:
-        weight_shape = weight.get("ori_shape")
-        weight_format = weight.get("ori_format")
-        #broadcast
-        if predict_shape != weight_shape \
-                or predict_format != weight_format:
-            return False
-
-    if pos_weight is not None:
-        pos_weight_shape = pos_weight.get("ori_shape")
-        pos_weight_format = pos_weight.get("ori_format")
-        #broadcast
-        if predict_shape != pos_weight_shape \
-                or predict_format != pos_weight_format:
-            return False
-
-    if reduction in ("none", "sum"):
-        return True
-
-    c0_num = 16
-    if len(predict_shape) == 4:
-        if predict_format == "NCHW":
-            dim_c = predict_shape[1]
-        elif predict_format == "NHWC":
-            dim_c = predict_shape[3]
-        else:
-            return False
-
-        if dim_c % c0_num == 0:
-            return True
-
-    return False
-
-
 def op_select_format(predict, target, weight, pos_weight, loss, reduction="mean",
                      kernel_name="sigmoid_cross_entropy_with_logits_v2"):
     """op_select_format.
@@ -127,11 +65,12 @@ def op_select_format(predict, target, weight, pos_weight, loss, reduction="mean"
         dtype = ["float16", "float"]
 
     dtype_length = len(dtype)
-    format = ["ND"] * dtype_length
+    format_list = ["ND", "NC1HWC0"]
+    dtype = dtype * len(format_list)
 
-    if is_support_5hd(predict, target, weight, pos_weight, reduction):
-        dtype = dtype * dtype_length
-        format = format + ["NC1HWC0"] * dtype_length
+    format = []
+    for data_format in format_list:
+        format = format + [data_format] * dtype_length
 
     dtype_total = ','.join(dtype)
     format_total = ','.join(format)
@@ -216,46 +155,45 @@ def sigmoid_cross_entropy_with_logits_v2_compute(predict,
             pos_weight = te.lang.cce.cast_to(pos_weight, "float32")
 
     shape_predict = te.lang.cce.util.shape_to_list(predict.shape)
-    # info: log(1+exp(-x)) == max(predict,0)+log(1+exp(-abs(x))
     const_zero = tvm.const(SCALAR_ZREO, dtype=predict.dtype)
     const_one = tvm.const(SCALAR_ONE, dtype=predict.dtype)
-    # info: max(predict,0)
-    max_predict_zero = te.lang.cce.vmaxs(predict, const_zero)
-    # info: log(1+exp(-abs(x))
-    abs_predict = te.lang.cce.vabs(predict)
     const_zero_broadcast = te.lang.cce.broadcast(const_zero, shape_predict)
-    reverse_abs_predict = te.lang.cce.vsub(const_zero_broadcast, abs_predict)
-    exp_predict = te.lang.cce.vexp(reverse_abs_predict)
-    adds_exp_predict = te.lang.cce.vadds(exp_predict, const_one)
-    log_exp_predict = te.lang.cce.vlog(adds_exp_predict, priority_flag=1)
-    log_exp_predict_res = te.lang.cce.vadd(max_predict_zero, log_exp_predict)
+    const_one_broadcast = te.lang.cce.broadcast(const_one, shape_predict)
+
+    # info: max(-predict,0)
+    reversed_predict = te.lang.cce.vsub(const_zero_broadcast, predict)
+    max_predict_zero = te.lang.cce.vmaxs(reversed_predict, const_zero)
+
+    # info: max_val=max(-predict,0)
+    # info: ln(1+exp(-x))=max_val+np.log(np.exp(-max_val)+np.exp(-predict-max_val)))
+    reversed_max_predict_zero = te.lang.cce.vsub(const_zero_broadcast, max_predict_zero)
+    exp_reversed_max_predict_zero = te.lang.cce.vexp(reversed_max_predict_zero)
+    sub_reversed_max_predict_zero = te.lang.cce.vsub(reversed_max_predict_zero, predict)
+    exp_sub_reversed_max_predict_zero = te.lang.cce.vexp(sub_reversed_max_predict_zero)
+    add_reversed_predict = te.lang.cce.vadd(exp_reversed_max_predict_zero, exp_sub_reversed_max_predict_zero)
+    log_reversed_predict = te.lang.cce.vlog(add_reversed_predict, priority_flag=1)
+    add_max_predict = te.lang.cce.vadd(log_reversed_predict, max_predict_zero)
+
+    # info: (1-target)*predict
+    sub_target = te.lang.cce.vsub(const_one_broadcast, target)
+    mul_predict_target = te.lang.cce.vmul(sub_target, predict)
 
     if pos_weight is not None:
+        # info: log_weight=(pos_weight - 1)*target+1
+        # info: loss=(1-target)*predict+(log_weight*(max_val+np.log(np.exp(-max_val)+np.exp(-predict-max_val))))
         pos_weight = te.lang.cce.broadcast(pos_weight, shape_predict)
-        mul_pos_weight_target = te.lang.cce.vmul(pos_weight, target)
-        sub_pos_weight = te.lang.cce.vsub(mul_pos_weight_target, target)
-        adds_pos_weight = te.lang.cce.vadds(sub_pos_weight, const_one)
-        mul_pos_weight_log = te.lang.cce.vmul(adds_pos_weight, log_exp_predict_res)
-        mul_pos_weight_target_predict = te.lang.cce.vmul(mul_pos_weight_target, predict)
-        loss = te.lang.cce.vsub(mul_pos_weight_log, mul_pos_weight_target_predict)
+        sub_pos_weight = te.lang.cce.vsub(pos_weight, const_one_broadcast)
+        mul_pos_weight = te.lang.cce.vmul(sub_pos_weight, target)
+        add_pos_weight = te.lang.cce.vadds(mul_pos_weight, const_one)
+        mul_pos_weight_predict = te.lang.cce.vmul(add_pos_weight, add_max_predict)
+        loss = te.lang.cce.vadd(mul_predict_target, mul_pos_weight_predict)
     else:
-        mul_res = te.lang.cce.vmul(predict, target)
-        loss = te.lang.cce.vsub(log_exp_predict_res, mul_res)
+        # info: loss=(1-target)*predict+max_val+np.log(np.exp(-max_val)+np.exp(-predict-max_val))
+        loss = te.lang.cce.vadd(mul_predict_target, add_max_predict)
 
     if weight is not None:
         weight = te.lang.cce.broadcast(weight, shape_predict)
         loss = te.lang.cce.vmul(loss, weight)
-
-    if reduction != "none":
-        axis = list(range(len(shape_predict)))
-        if reduction == "mean":
-            reduce_elts = 1.0
-            for i in axis:
-                reduce_elts *= shape_predict[i]
-            cof = reduce_elts ** (-1)
-            loss = te.lang.cce.vmuls(loss, cof)
-
-        loss = te.lang.cce.sum(loss, axis)
 
     if predict_dtype == "float16" and reduction == "none":
         loss = te.lang.cce.cast_to(loss, "float16")
