@@ -2631,7 +2631,7 @@ class CceConvOp:
                     elif lop["op"] == "dequant_remove_pad":
                         self._schedule[lop["dst_buffer"]].compute_inline()
                     else:
-                        if lop["dst_buffer"].op.tag != "strided_read":
+                        if lop["dst_buffer"].op.tag != "strided_read" and lop["dst_buffer"].op.name != "fmap_l1":
                             if ConvParam.invalid_data_rm_flag:
                                 self._schedule[lop["dst_buffer"]].buffer_align((1, 1), (1, 1), (1, 16), (1, 1))
                             self._schedule[lop["dst_buffer"]].compute_at(self._schedule[res_c], m_outer_inner_outer)
