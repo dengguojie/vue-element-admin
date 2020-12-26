@@ -123,15 +123,15 @@ def calc(outs, option=None):
     return _calc_general(outs, base_key, enable_db_func)
 
 
-def _default_db_func(db_params={}):
+def _default_db_func(db_params=None):
     return False
 
 
-def _pure_eletwise_db_func(db_params={}):
+def _pure_eletwise_db_func():
     return True
 
 
-def _special_last_broadcast_db_func(db_params={}):
+def _special_last_broadcast_db_func(db_params):
 
     if db_params.get("ub_tiling_axis") == (db_params.get("dim_len") - 1):
         return True
