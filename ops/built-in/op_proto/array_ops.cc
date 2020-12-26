@@ -2064,6 +2064,9 @@ IMPLEMT_INFERFUNC(TransShape, TransShapeInfer) {
 INFER_FUNC_REG(TransShape, TransShapeInfer);
 
 IMPLEMT_INFERFUNC(EditDistance, EditDistanceInfer) {
+  std::vector<std::string> input_infer_depends = {"hypothesis_shape", "truth_shape"};
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  op_desc->SetOpInferDepends(input_infer_depends);
   auto hypothesis_indices_desc = op.GetInputDesc(0);
   auto hypothesis_values_desc = op.GetInputDesc(1);
   auto hypothesis_shape_desc = op.GetInputDesc(2);
@@ -2089,14 +2092,14 @@ IMPLEMT_INFERFUNC(EditDistance, EditDistanceInfer) {
   Tensor hypothesis_shape_tensor, truth_shape_tensor;
   if (op.GetInputConstData("hypothesis_shape", hypothesis_shape_tensor) != GRAPH_SUCCESS) {
     OP_LOGW(op.GetName().c_str(), "failed to get tensor from input hypothesis shape, return unknown shape");
-    output_desc.SetShape(ge::Shape(std::vector<int64_t>{UNKNOWN_SHAPE}));
+    output_desc.SetShape(ge::Shape(ge::UNKNOWN_RANK));
     op.UpdateOutputDesc("output", output_desc);
     return GRAPH_SUCCESS;
   }
 
   if (op.GetInputConstData("truth_shape", truth_shape_tensor) != GRAPH_SUCCESS) {
     OP_LOGW(op.GetName().c_str(), "failed to get tensor from input truth shape, return unknown shape");
-    output_desc.SetShape(ge::Shape(std::vector<int64_t>{UNKNOWN_SHAPE}));
+    output_desc.SetShape(ge::Shape(ge::UNKNOWN_RANK));
     op.UpdateOutputDesc("output", output_desc);
     return GRAPH_SUCCESS;
   }
