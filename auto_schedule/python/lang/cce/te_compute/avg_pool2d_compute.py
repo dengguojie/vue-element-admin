@@ -16,8 +16,11 @@
 pooling2d compute
 """
 from te import tvm
-_POOL2D_TAG = "pooling2d_"
+from te.utils.error_manager.error_manager_util import get_error_message
 
+_POOL2D_TAG = "pooling2d_"
+_AVG_KERNEL_SIZE_H_MUL_W = 255  # kernel_h * kernel_w
+_AVG_KERNEL_SIZE = 20
 
 def avg_pool2d(t_x, pooling_params, fusion_params):
     """
@@ -29,13 +32,29 @@ def avg_pool2d(t_x, pooling_params, fusion_params):
     """
     x_n, x_c1, x_h, _, x_c0 = t_x.shape
     k_h, k_w = pooling_params["window_h"], pooling_params["window_w"]
+    # if window_h or window_w
+    is_support_kernel = (k_h * k_w <= _AVG_KERNEL_SIZE_H_MUL_W) or \
+                        (k_h <= _AVG_KERNEL_SIZE and k_w <= _AVG_KERNEL_SIZE)
+    if not is_support_kernel:
+        dict_args = dict()
+        dict_args["errCode"] = "E90003"
+        dict_args["detailed_cause"] = "kw [%s] and kh [%s] is too big! " \
+                                      "avgpool schedule only support " \
+                                      "(k_h * k_w <= _AVG_KERNEL_SIZE_H_MUL_W) " \
+                                      "or (k_h <= _AVG_KERNEL_SIZE and k_w <= _AVG_KERNEL_SIZE)" % (k_w, k_h)
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+
     s_h, s_w = pooling_params["stride_h"], pooling_params["stride_w"]
     dtype = t_x.dtype
     o_h, o_w = pooling_params["out_size_h"], pooling_params["out_size_w"]
-    # h, w with pad
-    h_p, w_p = (o_h - 1)*s_h + k_h, (o_w - 1)*s_w + k_w
     p_t, p_b = pooling_params["pad_top"], pooling_params["pad_bottom"]
     p_l, p_r = pooling_params["pad_left"], pooling_params["pad_right"]
+    # h, w with pad
+    if pooling_params["ceil_mode"] == 0:
+        h_p, w_p = (o_h - 1) * s_h + k_h, (o_w - 1) * s_w + k_w
+    elif pooling_params["ceil_mode"] == 1:
+        h_p, w_p = pooling_params["in_size_h"] + p_t + p_b, \
+            pooling_params["in_size_w"] + p_l + p_r
 
     def _select(indices):
         i_n, i_c1, i_c0 = indices[0], indices[1], indices[4]
@@ -69,8 +88,8 @@ def avg_pool2d(t_x, pooling_params, fusion_params):
     if k_w > 1:
         tx_rw1 = tvm.compute(
             shape,
-            lambda *i: tvm.sum(tx_ub[i[0], i[1], i[2], i[3], i[4]],
-                               tx_ub[i[0], i[1], i[2], i[3] + 1, i[4]]),
+            lambda *i: tvm.sum(tx_ub[i[0], i[1], i[2], i[3] * s_w, i[4]],
+                               tx_ub[i[0], i[1], i[2], i[3] * s_w + 1, i[4]]),
             name="tx_rw1",
             tag="reduce_sum"
         )
@@ -78,22 +97,29 @@ def avg_pool2d(t_x, pooling_params, fusion_params):
         for j in range(2, k_w):
             tx_rwx = tvm.compute(
                 shape,
-                lambda *i: tvm.sum(tx_ub[i[0], i[1], i[2], i[3] + j, i[4]],
+                lambda *i: tvm.sum(tx_ub[i[0], i[1], i[2], i[3] * s_w + j, i[4]],
                                    tx_rw[i[0], i[1], i[2], i[3], i[4]]),
                 name="tx_rw" + str(j),
                 tag="reduce_sum"
             )
             tx_rw = tx_rwx
     elif k_w == 1:
-        tx_rw = tx_ub
+        tx_rw0 = tvm.compute(
+            shape,
+            lambda *i: tvm.max(tx_ub[i[0], i[1], i[2], i[3] * s_w, i[4]],
+                               tx_ub[i[0], i[1], i[2], i[3] * s_w, i[4]]),
+            name="tx_rw0",
+            tag="reduce_max"
+        )
+        tx_rw = tx_rw0
 
     # reduce h
     shape = (x_n, x_c1, o_h, o_w, x_c0)
     if k_h > 1:
         tx_rh1 = tvm.compute(
             shape,
-            lambda *i: tvm.sum(tx_rw[i[0], i[1], i[2]*s_h, i[3], i[4]],
-                               tx_rw[i[0], i[1], i[2]*s_h + 1, i[3], i[4]]),
+            lambda *i: tvm.sum(tx_rw[i[0], i[1], i[2] * s_h, i[3], i[4]],
+                               tx_rw[i[0], i[1], i[2] * s_h + 1, i[3], i[4]]),
             name="tx_rh1",
             tag="reduce_sum"
         )
@@ -101,7 +127,7 @@ def avg_pool2d(t_x, pooling_params, fusion_params):
         for j in range(2, k_h):
             tx_rhx = tvm.compute(
                 shape,
-                lambda *i: tvm.sum(tx_rw[i[0], i[1], i[2]*s_h + j, i[3], i[4]],
+                lambda *i: tvm.sum(tx_rw[i[0], i[1], i[2] * s_h + j, i[3], i[4]],
                                    tx_rh[i[0], i[1], i[2], i[3], i[4]]),
                 name="tx_rh" + str(j),
                 tag="reduce_sum"
@@ -127,20 +153,27 @@ def avg_pool2d(t_x, pooling_params, fusion_params):
     else:
         h_end = h_value[1]
     last_h = h_end - h_start
-    if last_h == k_h:
+    if pooling_params["ceil_mode"] == 1:
         t_avg = tvm.compute(
             shape,
             lambda *i: area * tx_rh(*i),
             name="tx_avg",
             tag="vector_muls")
     else:
-        area1 = tvm.const(1 / (last_h * k_w), dtype=dtype)
-        t_avg = tvm.compute(shape,
-                            lambda n, c1, h, w, c0:
-                            tvm.select(h < (o_h - 1), tx_rh[n, c1, h, w, c0] * area,
-                                       tx_rh[n, c1, h, w, c0] * area1),
-                            name="tx_avg",
-                            tag="vector_muls")
+        if last_h == k_h:
+            t_avg = tvm.compute(
+                shape,
+                lambda *i: area * tx_rh(*i),
+                name="tx_avg",
+                tag="vector_muls")
+        else:
+            area1 = tvm.const(1 / (last_h * k_w), dtype=dtype)
+            t_avg = tvm.compute(shape,
+                                lambda n, c1, h, w, c0:
+                                tvm.select(h < (o_h - 1), tx_rh[n, c1, h, w, c0] * area,
+                                        tx_rh[n, c1, h, w, c0] * area1),
+                                name="tx_avg",
+                                tag="vector_muls")
 
     # copy ub to gm
     t_y = tvm.compute(
