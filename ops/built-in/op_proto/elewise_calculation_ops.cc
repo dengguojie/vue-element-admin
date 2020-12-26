@@ -394,12 +394,15 @@ COMMON_INFER_FUNC_REG(SquaredDifference, SquaredDifferenceInferShape);
 
 // ----------------Cos-------------------
 IMPLEMT_COMMON_INFERFUNC(CosInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter CosInferShape");
-  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
-    return GRAPH_SUCCESS;
-  }
-  return GRAPH_FAILED;
+  Shape x_shape = op.GetInputDesc("x").GetShape();
+  DataType input_dtype = op.GetInputDesc("x").GetDataType();
+  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  tensordesc_output.SetShape(x_shape);
+  tensordesc_output.SetDataType(input_dtype);
+  (void)op.UpdateOutputDesc("y", tensordesc_output);
+  return GRAPH_SUCCESS;
 }
+
 COMMON_INFER_FUNC_REG(Cos, CosInferShape);
 // --------------Cos END-----------------
 
@@ -688,12 +691,15 @@ VERIFY_FUNC_REG(Xlogy, XlogyVerify);
 
 // ----------------Cosh-------------------
 IMPLEMT_COMMON_INFERFUNC(CoshInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter CoshInferShape");
-  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
-    return GRAPH_SUCCESS;
-  }
-  return GRAPH_FAILED;
+  Shape x_shape = op.GetInputDesc("x").GetShape();
+  DataType input_dtype = op.GetInputDesc("x").GetDataType();
+  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  tensordesc_output.SetShape(x_shape);
+  tensordesc_output.SetDataType(input_dtype);
+  (void)op.UpdateOutputDesc("y", tensordesc_output);
+  return GRAPH_SUCCESS;
 }
+
 COMMON_INFER_FUNC_REG(Cosh, CoshInferShape);
 // ---------------Cosh END------------------
 
@@ -800,12 +806,15 @@ VERIFY_FUNC_REG(RsqrtGrad, RsqrtGradVerify);
 
 // ----------------Sinh-------------------
 IMPLEMT_COMMON_INFERFUNC(SinhInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter SinhInferShape");
-  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
-    return GRAPH_SUCCESS;
-  }
-  return GRAPH_FAILED;
+  Shape x_shape = op.GetInputDesc("x").GetShape();
+  DataType input_dtype = op.GetInputDesc("x").GetDataType();
+  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  tensordesc_output.SetShape(x_shape);
+  tensordesc_output.SetDataType(input_dtype);
+  (void)op.UpdateOutputDesc("y", tensordesc_output);
+  return GRAPH_SUCCESS;
 }
+
 COMMON_INFER_FUNC_REG(Sinh, SinhInferShape);
 // ---------------Sinh END----------------
 
@@ -847,15 +856,8 @@ VERIFY_FUNC_REG(LogicalOr, LogicalOrVerify);
 COMMON_INFER_FUNC_REG(Rsqrt, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
 // ----------------Rsqrt-------------------
 
-// ----------------Asin--------------------
-IMPLEMT_COMMON_INFERFUNC(AsinInferShape) {
-  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
-    return GRAPH_SUCCESS;
-  }
-  return GRAPH_FAILED;
-}
-
-COMMON_INFER_FUNC_REG(Asin, AsinInferShape);
+// ----------------Asin-------------------
+COMMON_INFER_FUNC_REG(Asin, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
 // --------------Asin END-----------------
 
 // ----------------Acos-------------------
@@ -1130,14 +1132,7 @@ COMMON_INFER_FUNC_REG(Asinh, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
 // --------------Asinh END-----------------
 
 // ----------------Acosh-------------------
-IMPLEMT_COMMON_INFERFUNC(AcoshInferShape) {
-  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
-    return GRAPH_SUCCESS;
-  }
-  return GRAPH_FAILED;
-}
-
-COMMON_INFER_FUNC_REG(Acosh, AcoshInferShape);
+COMMON_INFER_FUNC_REG(Acosh, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
 // --------------Acosh END-----------------
 
 // ----------------Atan-------------------
@@ -1170,17 +1165,10 @@ IMPLEMT_VERIFIER(AbsGrad, AbsGradVerify) {
   }
   return GRAPH_SUCCESS;
 }
-VERIFY_FUNC_REG(AbsGrad, AbsGradVerify);
 
-IMPLEMT_COMMON_INFERFUNC(AbsGradInferShape) {
-  bool is_dynamic_output = true;
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "y", "dy", "z", is_dynamic_output)) {
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-COMMON_INFER_FUNC_REG(AbsGrad, AbsGradInferShape);
-// --------------AbsGrad END-------------------
+COMMON_INFER_FUNC_REG(AbsGrad, ELMTWISE_INFER_SHAPEANDTYPE("y", "z"));
+VERIFY_FUNC_REG(AbsGrad, AbsGradVerify);
+// --------------AbsGrad END-----------------
 
 // ----------------AsinGrad-------------------
 IMPLEMT_VERIFIER(AsinGrad, AsinGradVerify) {
@@ -1189,16 +1177,9 @@ IMPLEMT_VERIFIER(AsinGrad, AsinGradVerify) {
   }
   return GRAPH_SUCCESS;
 }
-VERIFY_FUNC_REG(AsinGrad, AsinGradVerify);
 
-IMPLEMT_COMMON_INFERFUNC(AsinGradInferShape) {
-  bool is_dynamic_output = true;
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "y", "dy", "z", is_dynamic_output)) {
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-COMMON_INFER_FUNC_REG(AsinGrad, AsinGradInferShape);
+COMMON_INFER_FUNC_REG(AsinGrad, ELMTWISE_INFER_SHAPEANDTYPE("y", "z"));
+VERIFY_FUNC_REG(AsinGrad, AsinGradVerify);
 // --------------AsinGrad END-----------------
 
 // ----------------AcosGrad-------------------
@@ -1535,15 +1516,7 @@ COMMON_INFER_FUNC_REG(BitwiseXor, BitwiseXorInferShape);
 // ------------------BitwiseXor END-------------------------
 
 // ----------------Ceil-------------------
-IMPLEMT_COMMON_INFERFUNC(CeilInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter CeilInferShape");
-  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
-    return GRAPH_SUCCESS;
-  }
-  return GRAPH_FAILED;
-}
-
-COMMON_INFER_FUNC_REG(Ceil, CeilInferShape);
+COMMON_INFER_FUNC_REG(Ceil, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
 // --------------Ceil END-----------------
 
 // ----------------FakeQuantWithMinMaxArgs-----------------------
@@ -1943,14 +1916,13 @@ VERIFY_FUNC_REG(Pow, PowVerify);
 COMMON_INFER_FUNC_REG(Round, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
 // ----------------Round END-----------------------------------------
 
-// --------------------Tan-------------------
+// --------------------Tan Op Begin-------------------
+// Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(TanInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter TanInferShape");
-  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
-    return GRAPH_SUCCESS;
-  }
-  return GRAPH_FAILED;
+  (void)op.UpdateOutputDesc("y", op.GetInputDesc("x"));
+  return GRAPH_SUCCESS;
 }
+
 COMMON_INFER_FUNC_REG(Tan, TanInferShape);
 // --------------------Tan Op End-------------------
 
@@ -1967,14 +1939,7 @@ COMMON_INFER_FUNC_REG(TruncateMod, TruncateModInferShape);
 // ----------------TruncateMod END---------------------------------
 
 // ----------------Sin-------------------
-IMPLEMT_COMMON_INFERFUNC(SinInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter SinInferShape");
-  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
-    return GRAPH_SUCCESS;
-  }
-  return GRAPH_FAILED;
-}
-COMMON_INFER_FUNC_REG(Sin, SinInferShape);
+COMMON_INFER_FUNC_REG(Sin, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
 // ---------------Sin END----------------
 
 // ---------------------------------ArgMin--------------------------------------
@@ -3181,23 +3146,46 @@ IMPLEMT_INFERFUNC(Muls, MulsInferShape) {
 INFER_FUNC_REG(Muls, MulsInferShape);
 VERIFY_FUNC_REG(Muls, MulsVerify);
 // ------------Muls Op End----------------
+// ------------adds Op Start----------------
+bool InferShapeAndTypeAdds(Operator& op, const string& x, const string& y, const string& value) {
+  float value_num;
+  if (op.GetAttr(value, value_num) != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
+  TensorDesc vOutputDesc = op.GetOutputDesc(y);
 
-// ------------Adds-----------------------
+  DataType input_dtype = op.GetInputDesc(x).GetDataType();
+  Format input_format = op.GetInputDesc(x).GetFormat();
+  ge::Shape shapeX = op.GetInputDesc(x).GetShape();
+
+  vOutputDesc.SetShape(shapeX);
+  vOutputDesc.SetDataType(input_dtype);
+  vOutputDesc.SetFormat(input_format);
+  op.UpdateOutputDesc(y, vOutputDesc);
+
+  return true;
+}
+
+// ----------------Add-------------------
 IMPLEMT_VERIFIER(Adds, AddsVerify) {
   return GRAPH_SUCCESS;
 }
-VERIFY_FUNC_REG(Adds, AddsVerify);
 
+// Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(AddsInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter AddsInferShape");
-  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+  if (InferShapeAndTypeAdds(op, "x", "y", "value")) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
 }
-COMMON_INFER_FUNC_REG(Adds, AddsInferShape);
-// ------------Adds Op End------------------
 
+// Registered inferfunction
+COMMON_INFER_FUNC_REG(Adds, AddsInferShape);
+
+// Registered verify function
+VERIFY_FUNC_REG(Adds, AddsVerify);
+
+// ------------adds Op End----------------
 // ------------fills Op Start----------------
 bool InferShapeAndTypeFills(Operator& op, const string& x, const string& y, const string& value) {
   float value_num;

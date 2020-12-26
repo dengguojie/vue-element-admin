@@ -105,14 +105,3 @@ from .relu6_grad import relu6_grad
 from .relu_grad import relu_grad
 from .select import select
 from .sign import sign
-from .adds import adds
-from .tan import tan
-from .asin import asin
-from .asin_grad import asin_grad
-from .cos import cos
-from .cosh import cosh
-from .sigmoid import sigmoid
-from .sinh import sinh
-from .ceil import ceil
-from .sin import sin
-from .acosh import acosh

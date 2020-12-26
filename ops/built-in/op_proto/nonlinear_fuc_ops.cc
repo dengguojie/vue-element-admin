@@ -340,14 +340,21 @@ COMMON_INFER_FUNC_REG(SigmoidGrad, SigmoidGradInferShape);
 VERIFY_FUNC_REG(SigmoidGrad, SigmoidGradVerify);
 // ----------------SigmoidGrad-------------------
 
-// ----------------Sigmoid-----------------------
+// ----------------Sigmoid Op Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(SigmoidInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter SigmoidInferShape");
-  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
-    return GRAPH_SUCCESS;
+  Shape shape = op.GetInputDesc("x").GetShape();
+  DataType input_dtype = op.GetInputDesc("x").GetDataType();
+  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  tensordesc_output.SetShape(shape);
+  tensordesc_output.SetDataType(input_dtype);
+  if (op.UpdateOutputDesc("y", tensordesc_output) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    OpsOPUpdateErrReport(op.GetName(), "y");
+    return GRAPH_FAILED;
   }
-  return GRAPH_FAILED;
+  return GRAPH_SUCCESS;
 }
+
 COMMON_INFER_FUNC_REG(Sigmoid, SigmoidInferShape);
 // ----------------Sigmoid Op End-------------------
 
