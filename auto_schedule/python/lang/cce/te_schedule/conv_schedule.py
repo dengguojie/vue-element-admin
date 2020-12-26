@@ -689,6 +689,8 @@ class CceConvOp:
         self._fused_flag = False
         self._compute_at_buffer = None
         self._compute_at_axis = None
+        self._compile_para = None
+        self._preload = 0
 
     def schedule(self, res, spec_node_list, sch_list, convbn1_flag=False, tiling_case=None, var_range=None):
         """
