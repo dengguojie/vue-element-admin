@@ -27,9 +27,19 @@
 #include <iostream>
 #include <sstream>
 
-template<typename T1, typename T2>
-std::ostream &operator<<(std::ostream &os, std::pair<T1, T2> values) {
+template <typename T1, typename T2>
+std::ostream& operator<<(std::ostream& os, const std::pair<T1, T2>& values) {
   os << "[" << values.first << ", " << values.second << "]";
+  return os;
+}
+
+template <typename T>
+std::ostream& operator<<(std::ostream& os, const std::vector<T>& values) {
+  os << "[";
+  for (const auto& item : values) {
+    os << item << ", ";
+  }
+  os << "]";
   return os;
 }
 

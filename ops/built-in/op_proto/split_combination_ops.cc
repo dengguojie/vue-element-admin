@@ -26,6 +26,7 @@
 #include <cmath>
 
 #include "common/util/error_manager/error_manager.h"
+#include "util/op_common_util.h"
 #include "util/util.h"
 #include "util/error_util.h"
 #include "op_log.h"
@@ -947,72 +948,125 @@ COMMON_INFER_FUNC_REG(ConcatV2, ConcatV2InferShape);
 // ----------------ConcatV2 OP End-------------------
 
 // ----------------Pack OP Begin-------------------
-IMPLEMT_COMMON_INFERFUNC(PackInferShape) {
-  auto ge_tensor_desc = op.GetDynamicInputDesc("x", 0);
-  auto shape = ge_tensor_desc.GetShape();
-  DataType input_dtype = ge_tensor_desc.GetDataType();
-  TensorDesc y_desc = op.GetOutputDesc("y");
-
-  int64_t dimnum;
-  dimnum = shape.GetDimNum();
-  int64_t axis;
-  int64_t pack_num;
-  if (op.GetAttr("axis", axis) == GRAPH_FAILED) {
-    OpsGetAttrErrReport(op.GetName(), "axis");
-    OP_LOGE(op.GetName().c_str(), "get attr axis failed");
+bool MergeShapes(vector<int64_t>& dst_shape, const vector<int64_t>& src_shape) {
+  if (dst_shape == src_shape) {
+    return true;
   }
+
+  if (dst_shape.empty() || IsUnknownRankShape(dst_shape)) {
+    dst_shape = src_shape;
+    return true;
+  }
+
+  if (!IsUnknownRankShape(src_shape)) {
+    if (dst_shape.size() != src_shape.size()) {
+      return false;
+    }
+
+    auto shape_dims = dst_shape.size();
+    for (size_t i = 0; i < shape_dims; i++) {
+      if (dst_shape[i] == src_shape[i]) {
+        continue;
+      }
+
+      if (dst_shape[i] != UNKNOWN_DIM && src_shape[i] != UNKNOWN_DIM) {
+        return false;
+      }
+
+      if (src_shape[i] != UNKNOWN_DIM) {
+        dst_shape[i] = src_shape[i];
+      }
+    }
+  }
+
+  return true;
+}
+
+IMPLEMT_COMMON_INFERFUNC(PackInferShape) {
+  int64_t pack_num;
   if (op.GetAttr("N", pack_num) == GRAPH_FAILED) {
     OpsGetAttrErrReport(op.GetName(), "N");
     OP_LOGE(op.GetName().c_str(), "get attr N failed");
+    return GRAPH_FAILED;
   }
+
   if (pack_num < 1) {
     OpsAttrValueErrReport(op.GetName(), "N", "greater than or equals to 1", ConcatString(pack_num));
-    OP_LOGE(op.GetName().c_str(), "N is out of range");
+    OP_LOGE(op.GetName().c_str(), "N[%lld] is out of range.", pack_num);
+    return GRAPH_FAILED;
   }
-  if (axis < (-dimnum - 1) || axis > dimnum) {
-    string correct_value = ConcatString("in range [", -dimnum - 1, ", ", dimnum, "]");
+
+  int64_t axis;
+  if (op.GetAttr("axis", axis) == GRAPH_FAILED) {
+    OpsGetAttrErrReport(op.GetName(), "axis");
+    OP_LOGE(op.GetName().c_str(), "get attr axis failed");
+    return GRAPH_FAILED;
+  }
+
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto ge_tensor_desc = op_info->MutableInputDesc(0);
+  vector<int64_t> output_shape_dims;
+  for (int64_t input_idx = 0; input_idx < pack_num; input_idx++) {
+    auto input_shape_dims = op_info->MutableInputDesc(input_idx)->MutableShape().GetDims();
+    if (!MergeShapes(output_shape_dims, input_shape_dims)) {
+      vector<vector<int64_t>> shapes = {output_shape_dims, input_shape_dims};
+      OpsInputShapeErrReport(op.GetName(), "the input shape dims should be equal", "x", ops::to_string(shapes).c_str());
+      OP_LOGE(op.GetName().c_str(), "the input shape dims should be equal %s.", ops::to_string(shapes).c_str());
+      return GRAPH_FAILED;
+    }
+  }
+
+  auto y_desc = op_info->MutableOutputDesc("y");
+  DataType input_dtype = ge_tensor_desc->GetDataType();
+  if (IsUnknownRankShape(output_shape_dims)) {
+    y_desc->SetShape(ge::GeShape(UNKNOWN_RANK));
+    y_desc->SetDataType(input_dtype);
+    OP_LOGD(op.GetName().c_str(), "N:%lld, axis:%lld, output shape:%s.", pack_num, axis,
+            to_string(y_desc->MutableShape()).c_str());
+    return GRAPH_SUCCESS;
+  }
+
+  int64_t dim_num = static_cast<int64_t>(output_shape_dims.size());
+  if (axis < (-dim_num - 1) || axis > dim_num) {
+    string correct_value = ConcatString("in range [", -dim_num - 1, ", ", dim_num, "]");
     AttrValueErrReport("axis", op.GetName(), ConcatString(axis), correct_value);
     OP_LOGE(op.GetName().c_str(), "attr axis is not in range");
     return GRAPH_FAILED;
   }
+
   if (axis < 0) {
-    axis += (dimnum + 1);
+    axis += (dim_num + 1);
   }
 
-  // check unkown_rank and set unkown_rank
-  auto shape_dims = ge_tensor_desc.GetShape().GetDims();
-  bool is_unkown_rank = shape_dims == UNKNOWN_RANK ? true : false;
-  if (is_unkown_rank) {
-    y_desc.SetShape(ge::Shape(UNKNOWN_RANK));
-    y_desc.SetDataType(input_dtype);
-    (void)op.UpdateOutputDesc("y", y_desc);
-    return GRAPH_SUCCESS;
-  }
+  output_shape_dims.reserve(output_shape_dims.size() + 1);
+  output_shape_dims.insert(output_shape_dims.begin() + axis, pack_num);
+  GeShape x_shape(output_shape_dims);
+  y_desc->SetShape(x_shape);
+  y_desc->SetOriginShape(x_shape);
+  y_desc->SetDataType(input_dtype);
 
-  std::vector<std::pair<int64_t, int64_t>> x_range;
-  ge_tensor_desc.GetShapeRange(x_range);
-  MakeUpShapeRange(shape_dims, x_range);
-  std::vector<std::pair<int64_t, int64_t>> y_range;
-  vector<int64_t> dimVector;
-  for (int64_t i = 0; i < dimnum + 1; i++) {
-    if (i < axis) {
-      dimVector.push_back(shape.GetDim(i));
-      y_range.push_back(x_range[i]);
-    } else if (i == axis) {
-      dimVector.push_back(pack_num);
-      y_range.push_back(std::pair<int64_t, int64_t>{pack_num, pack_num});
-    } else {
-      dimVector.push_back(shape.GetDim(i - 1));
-      y_range.push_back(x_range[i - 1]);
+  if (IsUnKnownShape(output_shape_dims)) {
+    std::vector<std::pair<int64_t, int64_t>> y_range;
+    for (int64_t input_idx = 0; input_idx < pack_num; input_idx++) {
+      auto input_shape_dims = op_info->MutableInputDesc(input_idx)->MutableShape().GetDims();
+      std::vector<std::pair<int64_t, int64_t>> shape_range;
+      op_info->MutableInputDesc(input_idx)->GetShapeRange(shape_range);
+      MakeUpShapeRange(input_shape_dims, shape_range);
+      if (y_range.empty()) {
+        y_range = shape_range;
+      } else {
+        JoinShapeRanges(y_range, shape_range);
+      }
     }
-  }
-  Shape x_shape(dimVector);
 
-  y_desc.SetShape(ge::Shape(x_shape));
-  y_desc.SetOriginShape(ge::Shape(x_shape));
-  y_desc.SetDataType(input_dtype);
-  y_desc.SetShapeRange(y_range);
-  (void)op.UpdateOutputDesc("y", y_desc);
+    y_range.reserve(y_range.size() + 1);
+    y_range.insert(y_range.begin() + axis, std::pair<int64_t, int64_t>{pack_num, pack_num});
+    y_desc->SetShapeRange(y_range);
+    OP_LOGD(op.GetName().c_str(), "output shape range:%s.", to_string(y_range).c_str());
+  }
+
+  OP_LOGD(op.GetName().c_str(), "N:%lld, axis:%lld, output shape:%s.", pack_num, axis,
+          to_string(y_desc->MutableShape()).c_str());
   return GRAPH_SUCCESS;
 }
 
