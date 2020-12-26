@@ -142,14 +142,14 @@ def bias_add(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
                                    "be equal to the second axis of shape_x")
             if ori_format_x == "NHWC" and not check_equal(ori_shape_x[-1], ori_shape_bias[0]):
                 raise RuntimeError("data_format is NHWC, shape_bias must "
-                                   "be equal to the second axis of shape_x")
+                                   "be equal to the last axis of shape_x")
         else:
             if ori_format_x == "NCHW" and not check_equal(ori_shape_x[1], shape_bias[0]):
                 raise RuntimeError("data_format is NCHW, shape_bias must "
                                    "be equal to the second axis of shape_x")
             if ori_format_x == "NHWC" and not check_equal(ori_shape_x[-1], shape_bias[0]):
                 raise RuntimeError("data_format is NHWC, shape_bias must "
-                                   "be equal to the second axis of shape_x")
+                                   "be equal to the last axis of shape_x")
         shape_bias = (1, shape_x[1], 1, 1, shape_x[4])
         range_bias = ((1, 1), range_x[1], (1, 1), (1, 1), range_x[4])
 
@@ -168,7 +168,7 @@ def bias_add(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
             raise RuntimeError("bias_add only support shape 2D to 5D"
                                "when input format is NCDHW")
         if not check_equal(shape_x[1], shape_bias[0]):
-            raise RuntimeError("data_format is NDHWC, shape_bias must "
+            raise RuntimeError("data_format is NCDHW, shape_bias must "
                                "be equal to the second axis of shape_x")
         shape_bias = (1, shape_x[1]) + (1, ) * (len(shape_x) - 2)
         range_bias = ((1, 1), range_x[1]) + ((1, 1), ) * (len(shape_x) - 2)
@@ -186,7 +186,7 @@ def bias_add(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
                                        "be equal to the fifth axis of shape_x")
             elif x.get("ori_format").upper() == "NCDHW":
                 if not check_equal(ori_shape_x[1], ori_shape_bias[0]):
-                    raise RuntimeError("data_format is NDHWC, shape_bias must "
+                    raise RuntimeError("data_format is NCDHW, shape_bias must "
                                        "be equal to the second axis of shape_x")
         else:
             if x.get("ori_format").upper() == "NDHWC":
@@ -195,7 +195,7 @@ def bias_add(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
                                        "be equal to the fifth axis of shape_x")
             elif x.get("ori_format").upper() == "NCDHW":
                 if not check_equal(ori_shape_x[1], shape_bias[0]):
-                    raise RuntimeError("data_format is NDHWC, shape_bias must "
+                    raise RuntimeError("data_format is NCDHW, shape_bias must "
                                        "be equal to the second axis of shape_x")
         shape_bias = (1, 1, shape_x[2], 1, 1, shape_x[5])
         range_bias = ((1, 1), (1, 1), range_x[2], (1, 1), (1, 1), range_x[5])
