@@ -12,14 +12,14 @@ using namespace ge;
 using namespace op;
 
 class softmax_fusion_test : public testing::Test {
-protected:
-    static void SetUpTestCase() {
-        std::cout << "softmax_fusion_test SetUp" << std::endl;
-    }
+ protected:
+  static void SetUpTestCase() {
+    std::cout << "softmax_fusion_test SetUp" << std::endl;
+  }
 
-    static void TearDownTestCase() {
-        std::cout << "softmax_fusion_test TearDown" << std::endl;
-    }
+  static void TearDownTestCase() {
+    std::cout << "softmax_fusion_test TearDown" << std::endl;
+  }
 };
 
 TEST_F(softmax_fusion_test, softmax_fusion_test_1) {

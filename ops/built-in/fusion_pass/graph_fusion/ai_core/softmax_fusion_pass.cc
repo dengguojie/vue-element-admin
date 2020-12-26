@@ -72,15 +72,14 @@ Status SoftmaxFusionPass::UpdateFormat(ge::NodePtr& inNodePtr) {
       xInputDesc.SetOriginFormat(ge::FORMAT_NHWC);
       yOutputDesc.SetFormat(ge::FORMAT_NHWC);
       yOutputDesc.SetOriginFormat(ge::FORMAT_NHWC);
-    }
-    else if(oriShapelens == 5) {
+    }else if(oriShapelens == 5) {
       xInputDesc.SetFormat(ge::FORMAT_NDHWC);
       xInputDesc.SetOriginFormat(ge::FORMAT_NDHWC);
       yOutputDesc.SetFormat(ge::FORMAT_NDHWC);
       yOutputDesc.SetOriginFormat(ge::FORMAT_NDHWC);
     }
     auto ret = inOpDescPtr->UpdateInputDesc(0, xInputDesc);
-    auto ret1 = inOpDescPtr->UpdateInputDesc(0, yOutputDesc);
+    auto ret1 = inOpDescPtr->UpdateOutputDesc(0, yOutputDesc);
 
     if (ret != ge::GRAPH_SUCCESS || ret1 != ge::GRAPH_SUCCESS) {
       return FAILED;
