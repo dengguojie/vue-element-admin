@@ -1504,13 +1504,15 @@ class GEMMCompute:
                             tensor_a_l0a = tvm.compute(
                                 (self.matmul_batch, self.m_shape, self.km_shape, self.block_in, self.block_reduce),
                                 lambda b, i, j, k, l: tensor_a_l1[b, j, i, k, l],
-                                name="tensor_a_l0a"
+                                name="tensor_a_l0a",
+                                attrs={"transpose_a": "true"}
                             )
                         else:
                             tensor_a_l0a = tvm.compute(
                                 (self.m_shape, self.km_shape, self.block_in, self.block_reduce),
                                 lambda i, j, k, l: tensor_a_l1[j, i, k, l],
-                                name="tensor_a_l0a"
+                                name="tensor_a_l0a",
+                                attrs={"transpose_a": "true"}
                             )
                 else:
                     if self.in_a_dtype == "float16":
@@ -1966,13 +1968,15 @@ class GEMMCompute:
                             tensor_b_l0b = tvm.compute(
                                 (self.matmul_batch, self.kn_shape, self.n_shape, self.block_out, self.block_reduce),
                                 lambda b, i, j, k, l: tensor_b_l1[b, j, i, l, k],
-                                name="tensor_b_l0b"
+                                name="tensor_b_l0b",
+                                attrs={"transpose_b": "true"}
                             )
                         else:
                             tensor_b_l0b = tvm.compute(
                                 (self.kn_shape, self.n_shape, self.block_out, self.block_reduce),
                                 lambda i, j, k, l: tensor_b_l1[j, i, l, k],
-                                name="tensor_b_l0b"
+                                name="tensor_b_l0b",
+                                attrs={"transpose_b": "true"}
                             )
                     else:
                         tensor_b_l1 = tvm.compute(

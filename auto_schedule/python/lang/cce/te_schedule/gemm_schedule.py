@@ -606,12 +606,12 @@ def _get_tiling(kernel_name):  # pylint: disable=too-many-statements
         if Params.TILING.get(l1_shape) == []:
             if l1_shape == "AL1_shape":
                 data_amount_l1 = (
-                    reduce(lambda x, y: x * y, Params.DIM_MAP["A_matrix_dim"][1:])
+                    reduce(lambda x, y: x * y, Params.DIM_MAP["A_matrix_dim"][-4:])
                     // Params.TILING["block_dim"][2]
                 )
             if l1_shape == "BL1_shape":
                 data_amount_l1 = (
-                    reduce(lambda x, y: x * y, Params.DIM_MAP["B_matrix_dim"])
+                    reduce(lambda x, y: x * y, Params.DIM_MAP["B_matrix_dim"][-4:])
                     // Params.TILING["block_dim"][1]
                 )
         else:
@@ -923,6 +923,8 @@ def _get_tiling(kernel_name):  # pylint: disable=too-many-statements
         a_shape, b_shape, pad_l, pad_r, fused_num = get_tiling_param_nz()
         mad_type = Params.MAD_TYPE.get(Params.ops_mode)
         bias_flag = Params.MAT_MUL and Params.TENSOR_MAP.get("bias_ub") is not None
+        transpose_op_a, transpose_op_b = _get_transpose()
+        trans_flag = _get_trans_flag(not transpose_op_a, not transpose_op_b) if Params.MAT_MUL else 1
         info_dict = {
             "op_type": "matmul",
             "A_shape": a_shape,
@@ -940,7 +942,7 @@ def _get_tiling(kernel_name):  # pylint: disable=too-many-statements
             "strideW": 1,
             "strideH_expand": 1,
             "strideW_expand": 1,
-            "dilationH": 1,
+            "dilationH": trans_flag,
             "dilationW": 1,
             "group": 1,
             "bias_flag": bias_flag,
@@ -1229,10 +1231,10 @@ def _get_aicore_tiling_factor():
         _int_ceil_div(l0c_tiling_factor[1], l0c_ub_tiling_factor[1])
     ]
 
-    if Params.TILING["AL1_shape"]:  # AL1_shape = [n/16, m/16, 16, 16]
+    if Params.TILING["AL1_shape"]:  # AL1_shape = [(batch), n/16, m/16, 16, 16]
         al1_parts = [
             _int_ceil_div(
-                Params.DIM_MAP["A_matrix_dim"][1],
+                Params.DIM_MAP["A_matrix_dim"][-3],
                 _int_ceil_div(Params.TILING["AL1_shape"][0], Params.block_reduce)
             ),
             _int_ceil_div(l0c_parts[1], Params.TILING["AL1_shape"][1])
@@ -1244,7 +1246,7 @@ def _get_aicore_tiling_factor():
     if Params.TILING["BL1_shape"]:
         bl1_parts = [
             _int_ceil_div(
-                Params.DIM_MAP["B_matrix_dim"][0],
+                Params.DIM_MAP["B_matrix_dim"][-4],
                 _int_ceil_div(Params.TILING["BL1_shape"][0], Params.block_reduce)
             ),
             _int_ceil_div(l0c_parts[0], Params.TILING["BL1_shape"][1])
@@ -1346,7 +1348,7 @@ def _get_mmad_factor():
         if Params.TILING.get("BL0_matrix"):
             kl0_factor = Params.TILING.get("BL0_matrix")[0]
         else:
-            kl0_factor = Params.DIM_MAP.get("A_matrix_dim")[1]
+            kl0_factor = Params.DIM_MAP.get("A_matrix_dim")[-3]
         al0_factor = [Params.TILING.get("CL0_matrix")[1], kl0_factor]
 
     if Params.TILING.get("BL0_matrix"):
@@ -1358,7 +1360,7 @@ def _get_mmad_factor():
         if Params.TILING.get("AL0_matrix"):
             kl0_factor = Params.TILING.get("AL0_matrix")[1]
         else:
-            kl0_factor = Params.DIM_MAP.get("B_matrix_dim")[0]
+            kl0_factor = Params.DIM_MAP.get("B_matrix_dim")[-4]
         bl0_factor = [kl0_factor, Params.TILING.get("CL0_matrix")[0]]
     reduce_factor = bl0_factor[0]
 
