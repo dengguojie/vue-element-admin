@@ -907,7 +907,7 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, static,
         s[update_h_gm].split(update_h_gm.op.axis[0 + 2],
                              factor=factor_l1_m)
     # second_split_factor default is (hidden_size // factor_l1_n) // 1
-    second_split_factor = (hidden_size // factor_l1_n) // 2
+    second_split_factor = (hidden_size // factor_l1_n) // 1
 
     vn_o_outer, vn_o_inner = \
         s[update_h_gm].split(vn_outer,
@@ -1544,9 +1544,7 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, static, s
     vn_m_outer, vn_m_inner = \
         s[update_h_gm].split(update_h_gm.op.axis[0 + 2], factor=factor_l1_m)
 
-    # second_split_factor = \
-    #     (hidden_size // factor_l1_n) // 1
-    second_split_factor = 8
+    second_split_factor = (hidden_size // factor_l1_n) // 1
 
     vn_o_outer, vn_o_inner = \
         s[update_h_gm].split(vn_outer,
