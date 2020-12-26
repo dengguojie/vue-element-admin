@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "random_uniform_kernel.h"
+#include "random_uniform.h"
 
 #include "utils/eigen_tensor.h"
 #include "utils/kernel_util.h"
@@ -22,35 +22,35 @@
 namespace {
 const char *kRandomUniform = "RandomUniform";
 
-#define RANDOM_UNIFORM_GENERATE_CASE(DTYPE, TYPE)                             \
-  case (DTYPE): {                                                             \
-    if (Generate<TYPE>(ctx, output) != KERNEL_STATUS_OK) {                    \
-      KERNEL_LOG_ERROR("Generate random_distribution failed, data_type [%u]", \
-                       DTYPE);                                                \
-      return KERNEL_STATUS_PARAM_INVALID;                                     \
-    }                                                                         \
-    break;                                                                    \
+#define RANDOM_UNIFORM_GENERATE_CASE(DTYPE, TYPE)                                \
+  case (DTYPE): {                                                                \
+    if (Generate<TYPE>(ctx, output) != KERNEL_STATUS_OK) {                       \
+      KERNEL_LOG_ERROR("Generate random_distribution failed, data_type is [%u]", \
+                       DTYPE);                                                   \
+      return KERNEL_STATUS_PARAM_INVALID;                                        \
+    }                                                                            \
+    break;                                                                       \
   }
 }
 
 namespace aicpu {
 uint32_t RandomUniformCpuKernel::Compute(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("RandomUniform folding kernel in.");
+  KERNEL_LOG_INFO("RandomUniformCpuKernel start.");
   auto attr_value = ctx.GetAttr("dtype");
   KERNEL_CHECK_NULLPTR(attr_value, KERNEL_STATUS_PARAM_INVALID,
-                       "Get attr dtype failed")
+                       "Get attr[dtype] failed")
   auto data_type = static_cast<DataType>(attr_value->GetDataType());
 
   Tensor *output = ctx.Output(kFirstOutputIndex);
   KERNEL_CHECK_NULLPTR(output, KERNEL_STATUS_PARAM_INVALID, "Get output failed")
   if (data_type != output->GetDataType()) {
     KERNEL_LOG_ERROR(
-        "RandomUniform kernel data type not matched, dtype [%u], "
-        "out_data_type [%u].",
+        "RandomUniform kernel data type not matched, dtype is [%u], "
+        "out_data_type is [%u].",
         data_type, output->GetDataType());
     return KERNEL_STATUS_PARAM_INVALID;
   }
-
+  //choose random data generate function depend on dataType
   switch (data_type) {
     RANDOM_UNIFORM_GENERATE_CASE(DT_FLOAT16, Eigen::half)
     RANDOM_UNIFORM_GENERATE_CASE(DT_FLOAT, float)
@@ -61,7 +61,6 @@ uint32_t RandomUniformCpuKernel::Compute(CpuKernelContext &ctx) {
       return KERNEL_STATUS_PARAM_INVALID;
   }
 
-  KERNEL_LOG_INFO("RandomUniform kernel run success.");
   return KERNEL_STATUS_OK;
 }
 

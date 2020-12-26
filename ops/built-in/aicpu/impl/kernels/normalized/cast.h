@@ -14,25 +14,30 @@
  * limitations under the License.
  */
 
-#ifndef _AICPU_AICPU_DEVICE_CPU_KERNELS_KERNELS_RANDOM_UNIFORM_KERNEL_H_
-#define _AICPU_AICPU_DEVICE_CPU_KERNELS_KERNELS_RANDOM_UNIFORM_KERNEL_H_
-#define EIGEN_USE_THREADS
-#define EIGEN_USE_SIMPLE_THREAD_POOL
+#ifndef _AICPU_KERNELS_NORMALIZED_CAST_H_
+#define _AICPU_KERNELS_NORMALIZED_CAST_H_
 
 #include "cpu_kernel.h"
+#include "cpu_types.h"
 
 namespace aicpu {
-class RandomUniformCpuKernel : public CpuKernel {
+class CastCpuKernel : public CpuKernel {
  public:
-  RandomUniformCpuKernel() = default;
-  ~RandomUniformCpuKernel() override = default;
-
- protected:
+  ~CastCpuKernel() = default;
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  template <typename T>
-  uint32_t Generate(CpuKernelContext &ctx, Tensor *output);
+  uint32_t TransferType(int64_t start, int64_t end);
+  void SetMap();
+  std::map<int, std::map<int, std::function<uint32_t(Tensor *&, Tensor *&,
+                                                     int64_t &, int64_t &)>>>
+      calls_;
+  Tensor *x_tensor_;
+  Tensor *y_tensor_;
+  DataType x_data_type_;
+  DataType y_data_type_;
+  int64_t x_data_size_ = 1;
+  int64_t y_data_size_ = 1;
 };
 }  // namespace aicpu
-#endif  // _AICPU_AICPU_DEVICE_CPU_KERNELS_KERNELS_RANDOM_UNIFORM_KERNEL_H_
+#endif // _AICPU_KERNELS_NORMALIZED_CAST_H_

@@ -10,10 +10,13 @@ set(local_kernels_src_files
     kernels/normalized/reshape.cc
     kernels/normalized/realdiv_kernels.cc
     kernels/normalized/sparse_to_dense_kernels.cc
-    kernels/normalized/cast_kernels.cc
     kernels/normalized/logging.cc
     kernels/normalized/concatv2.cc
     kernels/normalized/round.cc
+    kernels/normalized/cast.cc
+    kernels/normalized/add.cc
+    kernels/normalized/mul.cc
+    kernels/normalized/random_uniform.cc
     utils/sparse_group.cc
     utils/eigen_tensor.cc
     utils/kernel_util.cc
@@ -22,10 +25,7 @@ set(local_kernels_src_files
 )
 
 set(local_host_kernels_src_files
-    kernels/host/add_kernel.cc
-    kernels/host/mul_kernel.cc
     kernels/host/transdata.cc
-    kernels/host/random_uniform_kernel.cc
 )
 
 if(BUILD_OPEN_PROJECT)

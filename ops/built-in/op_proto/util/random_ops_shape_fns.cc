@@ -19,6 +19,7 @@
  * \brief
  */
 #include "random_ops_shape_fns.h"
+#include "graph/utils/op_desc_utils.h"
 #include "op_log.h"
 
 namespace ge {
@@ -43,10 +44,14 @@ graphStatus RandomShape(Operator& op, const std::string& shape_name, const std::
 graphStatus RandomShapeWithDataType(Operator& op, const std::string& shape_name, const std::string& date_type_attr_name,
                                     const std::string& out_name) {
   Tensor tensor;
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr output_desc = op_desc->MutableOutputDesc(0);
+  TensorDesc output_tensor = op.GetOutputDesc(0);
   if (op.GetInputConstData(shape_name, tensor) != GRAPH_SUCCESS) {
-    std::string info = ": GetInputConstData failed.";
-    OP_LOGE(op.GetName().c_str(), "%s", info.c_str());
-    return GRAPH_FAILED;
+    output_desc->SetShape(GeShape({UNKNOWN_DIM}));
+    output_desc->SetOriginShape(GeShape({UNKNOWN_DIM}));
+    output_desc->SetShapeRange({std::make_pair(1, -1)});
+    return GRAPH_SUCCESS;
   }
   Shape shape;
   if (MakeShapeFromShapeTensor(tensor, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
@@ -60,9 +65,10 @@ graphStatus RandomShapeWithDataType(Operator& op, const std::string& shape_name,
     OP_LOGE(op.GetName().c_str(), "%s", info.c_str());
     return GRAPH_FAILED;
   }
-  TensorDesc output_desc = op.GetOutputDesc(out_name);
-  output_desc.SetDataType(type);
-  output_desc.SetShape(shape);
-  return op.UpdateOutputDesc(out_name, output_desc);
+
+  output_tensor.SetDataType(type);
+  output_tensor.SetShape(shape);
+  output_tensor.SetOriginShape(shape);
+  return op.UpdateOutputDesc(out_name.c_str(), output_tensor);
 }
 }  // namespace ge

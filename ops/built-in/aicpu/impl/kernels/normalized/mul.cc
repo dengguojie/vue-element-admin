@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-#include "mul_kernel.h"
+#include "mul.h"
 #include <algorithm>
 #include "utils/eigen_tensor.h"
 #include "utils/kernel_util.h"
 
+
 namespace {
-const char *MUL = "Mul";
+const char *kMul = "Mul";
 
 #define MUL_COMPUTE_CASE(DTYPE, TYPE)                 \
   case (DTYPE): {                                     \
@@ -40,12 +41,12 @@ const char *MUL = "Mul";
 
 namespace aicpu {
 uint32_t MulCpuKernel::Compute(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("Mul folding kernel in.");
+  KERNEL_LOG_INFO("MulCpuKernel start.");
   if (NormalMathCheck(ctx) != KERNEL_STATUS_OK) {
     KERNEL_LOG_ERROR("Check mul %s failed.", ctx.GetOpType().c_str());
     return KERNEL_STATUS_PARAM_INVALID;
   }
-
+  //choose compute function depend on dataType
   auto data_type =
       static_cast<DataType>(ctx.Input(kFirstInputIndex)->GetDataType());
   switch (data_type) {
@@ -61,11 +62,10 @@ uint32_t MulCpuKernel::Compute(CpuKernelContext &ctx) {
     MUL_COMPUTE_CASE(DT_FLOAT, float)
     MUL_COMPUTE_CASE(DT_DOUBLE, double)
     default:
-      KERNEL_LOG_ERROR("Mul kernel data type %u not support.", data_type);
+      KERNEL_LOG_ERROR("Mul kernel data type [%s] not support.", GetDataType(data_type).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
   }
 
-  KERNEL_LOG_INFO("Mul kernel run success.");
   return KERNEL_STATUS_OK;
 }
 
@@ -82,20 +82,18 @@ uint32_t MulCpuKernel::MulCompute(CpuKernelContext &ctx) {
   KERNEL_CHECK_NULLPTR(calc_info.output->GetData(), KERNEL_STATUS_PARAM_INVALID,
                        "Get output data failed")
   KERNEL_LOG_INFO(
-      "Mul %s, input0: addr=%p, size=%llu; input1: addr=%p, size=%llu; output: "
-      "addr %p, size %llu.",
-      ctx.GetOpType().c_str(), calc_info.input_0->GetData(),
-      calc_info.input_0->GetDataSize(), calc_info.input_1->GetData(),
-      calc_info.input_1->GetDataSize(), calc_info.output->GetData(),
-      calc_info.output->GetDataSize());
-
+      "Mul %s, input[0]: size is [%llu]; input[1]: size is [%llu]; output: "
+      "size is [%llu].",
+      ctx.GetOpType().c_str(), calc_info.input_0->GetDataSize(),
+      calc_info.input_1->GetDataSize(), calc_info.output->GetDataSize());
+  //broadcast input
   Bcast bcast;
   if (bcast.GenerateBcastInfo(calc_info) != KERNEL_STATUS_OK) {
     KERNEL_LOG_ERROR("Generate broadcast info failed.");
     return KERNEL_STATUS_PARAM_INVALID;
   }
   (void)bcast.GetBcastVec(calc_info);
-
+ //choose eigen calculate function depend on rank of input
   switch (static_cast<int32_t>(calc_info.shape_out.size())) {
     case 0: {
       T v0 = *(reinterpret_cast<const T *>(calc_info.input_0->GetData()));
@@ -104,14 +102,14 @@ uint32_t MulCpuKernel::MulCompute(CpuKernelContext &ctx) {
       *(value_out) = v0 * v1;
       break;
     }
-      MUL_CALCULATE_CASE(1, T)
-      MUL_CALCULATE_CASE(2, T)
-      MUL_CALCULATE_CASE(3, T)
-      MUL_CALCULATE_CASE(4, T)
-      MUL_CALCULATE_CASE(5, T)
-      MUL_CALCULATE_CASE(6, T)
+    MUL_CALCULATE_CASE(1, T)
+    MUL_CALCULATE_CASE(2, T)
+    MUL_CALCULATE_CASE(3, T)
+    MUL_CALCULATE_CASE(4, T)
+    MUL_CALCULATE_CASE(5, T)
+    MUL_CALCULATE_CASE(6, T)
     default:
-      KERNEL_LOG_ERROR("Mul kernel not support rank=%zu.",
+      KERNEL_LOG_ERROR("Mul kernel not support rank is [%zu].",
                        calc_info.shape_out.size());
       return KERNEL_STATUS_PARAM_INVALID;
   }
@@ -157,5 +155,5 @@ void MulCpuKernel::MulCalculate(CalcInfo &calc_info) {
       eigen_input_1.reshape(reshape_1).broadcast(bcast_1);
 }
 
-REGISTER_CPU_KERNEL(MUL, MulCpuKernel);
+REGISTER_CPU_KERNEL(kMul, MulCpuKernel);
 }  // namespace aicpu

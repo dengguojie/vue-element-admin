@@ -74,6 +74,10 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/logging.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/top_k.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/ceil.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/add.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/mul.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/cast.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/random_uniform.cc
 )
 
 set(cpu_kernels_llt_src
@@ -144,6 +148,10 @@ set(_cpu_kernels_ut_files
   testcase/logging_kernel_utest.cpp
   testcase/top_k_utest.cpp
   testcase/ceil_utest.cpp
+  testcase/add_utest.cpp
+  testcase/mul_utest.cpp
+  testcase/cast_utest.cpp
+  testcase/random_uniform_utest.cpp
 )
 
 add_executable(cpu_kernels_ut

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef _AICPU_AICPU_DEVICE_CPU_KERNELS_KERNELS_MUL_KERNEL_H_
-#define _AICPU_AICPU_DEVICE_CPU_KERNELS_KERNELS_MUL_KERNEL_H_
+#ifndef _AICPU_KERNELS_NORMALIZED_ADD_H_
+#define _AICPU_KERNELS_NORMALIZED_ADD_H_
 #define EIGEN_USE_THREADS
 #define EIGEN_USE_SIMPLE_THREAD_POOL
 
@@ -24,20 +24,26 @@
 #include "utils/bcast.h"
 
 namespace aicpu {
-class MulCpuKernel : public CpuKernel {
+class AddCpuKernel : public CpuKernel {
  public:
-  MulCpuKernel() = default;
-  ~MulCpuKernel() override = default;
-
- protected:
+  AddCpuKernel() = default;
+  ~AddCpuKernel() override = default;
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
+  /**
+   *@brief compute for all types
+   *@param ctx cpu kernel context
+   *@return int: status if success 
+  */
   template <typename T>
-  static uint32_t MulCompute(CpuKernelContext &ctx);
-
+  static uint32_t AddCompute(CpuKernelContext &ctx);
+  /**
+   *@brief Eigen calculate for all types
+   *@param calc_info data used to calculate
+  */
   template <int32_t RANK, typename T>
-  static void MulCalculate(CalcInfo &calc_info);
+  static void AddCalculate(CalcInfo &calc_info);
 };
 }  // namespace aicpu
-#endif  // _AICPU_AICPU_DEVICE_CPU_KERNELS_KERNELS_MUL_KERNEL_H_
+#endif  // _AICPU_KERNELS_NORMALIZED_ADD_H_
