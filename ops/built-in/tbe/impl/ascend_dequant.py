@@ -189,6 +189,7 @@ def _vector_dequant_v100(x, x_shape, align_shape, deq_scale, relu_flag, sqrt_mod
             remove_padded_column_shape = align_shape
             remove_padded_column_shape[-2] = res_shape_nchw_after_removepad[-2].value//2 # remove padded column and pad
             res_shape_nchw_after_removepad = x.op.attrs["true_conv_shape"]
+            x_shape = res_shape_nchw_after_removepad
             res_f16 = tvm.compute(remove_padded_column_shape,
                                   lambda batch, cout1, howo, cout0:
                                       res_f16(batch, cout1, howo*2, cout0),
