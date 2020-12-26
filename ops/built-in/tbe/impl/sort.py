@@ -277,7 +277,7 @@ def vms4core(tik_instance, input_ub, dest_pos_ub, leftset, rightset, num_list):
     return input_ub, dest_pos_ub, num_list
 
 
-def moveout(tik_instance, descending, total, num, data_out, index, input_ub, dest_pos_ub, data_indices, threadNum):
+def moveout(tik_instance, descending, num_16, num, data_out, offset_out, input_ub, dest_pos_ub, data_indices, threadNum):
     """
     Function: Move UB to GM, and trans y2 from fp16 to int32.
     Modify : 2020-08-03
@@ -286,54 +286,58 @@ def moveout(tik_instance, descending, total, num, data_out, index, input_ub, des
     Init base parameters
     Parameters
     ----------
-    descending, index, total(add16+num), num, dest_pos_ub : for index compute
+    descending, offset_out, num_16, num, dest_pos_ub : for index compute
     data_out, input_ub, data_indices : for data move
     ----------
     """
-    int_list = tik_instance.Tensor("int32", [total], name="data_indices_ub_list", scope=tik.scope_ubuf)
+    int_list = tik_instance.Tensor("int32", [num_16], name="data_indices_ub_list", scope=tik.scope_ubuf)
 
-    src_pos_ub = total * PROPOSAL_NUM if dest_pos_ub == 0 else 0
+    src_pos_ub = num_16 * PROPOSAL_NUM if dest_pos_ub == 0 else 0
     # ascend
     with tik_instance.if_scope(descending is False):
         # data is continuous in GM & gather scattered data together
         with tik_instance.for_range(0, num, thread_num=threadNum) as i2:
-            input_ub[i2 + src_pos_ub].set_as(input_ub[(total - 1 - i2) * PROPOSAL_NUM + 4 + dest_pos_ub])
-            input_ub[i2 + src_pos_ub + total].set_as(input_ub[(total - 1 - i2) * PROPOSAL_NUM + dest_pos_ub])
+            input_ub[i2 + src_pos_ub].set_as(input_ub[(num_16 - 1 - i2) * PROPOSAL_NUM + 4 + dest_pos_ub])
+            input_ub[i2 + src_pos_ub + num_16].set_as(input_ub[(num_16 - 1 - i2) * PROPOSAL_NUM + dest_pos_ub])
         # move output (float16) from UB to GM
-        tik_instance.data_move(data_out[index], input_ub[src_pos_ub], 0, 1, total // 16, 0, 0)
+        tik_instance.data_move(data_out[offset_out], input_ub[src_pos_ub], 0, 1, num_16 // 16, 0, 0)
         # conv indices (float16->int32) , and move from UB to GM
-        if total > 255 * 16:
-            tik_instance.vec_conv(16, "round", int_list, input_ub[src_pos_ub + total], 255, 2, 1)
-            tik_instance.vec_conv(16, "round", int_list[255 * 16], input_ub[src_pos_ub + total + 255 * 16],
-                                  total // 16 - 255, 2, 1)
+        if num_16 > 255 * 16:
+            tik_instance.vec_conv(16, "round", int_list, input_ub[src_pos_ub + num_16], 255, 2, 1)
+            tik_instance.vec_conv(16, "round", int_list[255 * 16], input_ub[src_pos_ub + num_16 + 255 * 16],
+                                  num_16 // 16 - 255, 2, 1)
         else:
-            tik_instance.vec_conv(16, "round", int_list, input_ub[src_pos_ub + total], total // 16, 2, 1)
+            tik_instance.vec_conv(16, "round", int_list, input_ub[src_pos_ub + num_16], num_16 // 16, 2, 1)
 
-        tik_instance.data_move(data_indices[index], int_list, 0, 1, total // 8, 0, 0)
+        tik_instance.data_move(data_indices[offset_out], int_list, 0, 1, num_16 // 8, 0, 0)
 
     # descend
     with tik_instance.else_scope():
         # data is continuous in GM & gather scattered data together
-        with tik_instance.for_range(0, num, thread_num=threadNum) as i2:
-            input_ub[i2 + src_pos_ub].set_as(input_ub[i2 * PROPOSAL_NUM + 4 + dest_pos_ub])
-            input_ub[i2 + src_pos_ub + total].set_as(input_ub[i2 * PROPOSAL_NUM + dest_pos_ub])
-        # move output (float16) from UB to GM
-        tik_instance.data_move(data_out[index], input_ub[src_pos_ub], 0, 1, total // 16, 0, 0)
-        # conv indices (float16->int32) , and move from UB to GM
-        if total > 255 * 16:
-            tik_instance.vec_conv(16, "round", int_list, input_ub[src_pos_ub + total], 255, 2, 1)
-            tik_instance.vec_conv(16, "round", int_list[255 * 16], input_ub[src_pos_ub + total + 255 * 16],
-                                  total // 16 - 255, 2, 1)
+        if num_16 > 4080:
+            tik_instance.vextract(input_ub[src_pos_ub], input_ub[dest_pos_ub], 255, 4)
+            tik_instance.vextract(input_ub[src_pos_ub + 4080], input_ub[dest_pos_ub + 4080 * PROPOSAL_NUM],
+                                  (num_16 % 4080) // 16, 4)
         else:
-            tik_instance.vec_conv(16, "round", int_list, input_ub[src_pos_ub + total], total // 16, 2, 1)
+            tik_instance.vextract(input_ub[src_pos_ub], input_ub[dest_pos_ub], num_16 // 16, 4)
+        with tik_instance.for_range(0, num, thread_num=threadNum) as i2:
+            input_ub[i2 + src_pos_ub + num_16].set_as(input_ub[i2 * PROPOSAL_NUM + dest_pos_ub])
+        # move output (float16) from UB to GM
+        tik_instance.data_move(data_out[offset_out], input_ub[src_pos_ub], 0, 1, num_16 // 16, 0, 0)
+        # conv indices (float16->int32) , and move from UB to GM
+        if num_16 > 255 * 16:
+            tik_instance.vec_conv(16, "round", int_list, input_ub[src_pos_ub + num_16], 255, 2, 1)
+            tik_instance.vec_conv(16, "round", int_list[255 * 16], input_ub[src_pos_ub + num_16 + 255 * 16],
+                                  num_16 // 16 - 255, 2, 1)
+        else:
+            tik_instance.vec_conv(16, "round", int_list, input_ub[src_pos_ub + num_16], num_16 // 16, 2, 1)
 
-        tik_instance.data_move(data_indices[index], int_list, 0, 1, total // 8, 0, 0)
+        tik_instance.data_move(data_indices[offset_out], int_list, 0, 1, num_16 // 8, 0, 0)
 
     return data_out, data_indices
 
 
-def sort_compute(tik_instance, dtype, total, i0, descending, num, distance, shape, big_distance, data_out, data_indices,
-                 input_gm, L):
+def sort_compute(tik_instance, dtype, num_16, i0, descending, num, data_out, data_indices, input_gm):
     """
     Function: sortcompute in UB.
     Modify : 2020-08-03
@@ -342,39 +346,35 @@ def sort_compute(tik_instance, dtype, total, i0, descending, num, distance, shap
     Init base parameters
     Parameters
     ----------
-    dtype, total, i0, descending, num, distance, shape, big_distance, L : for index compute
+    dtype, num_16, i0, descending, num, distance, shape, big_distance, L : for index compute
     data_out, data_indices, input_gm : for data move
     ----------
     """
+    input_ub = tik_instance.Tensor(dtype, [num_16 * PROPOSAL_NUM * 2], name="input_ub", scope=tik.scope_ubuf)
 
-    input_ub = tik_instance.Tensor(dtype, [total * PROPOSAL_NUM * 2], name="input_ub", scope=tik.scope_ubuf)
-    data_out_ub_ = tik_instance.Tensor(dtype, [16], name="data_out_ub_", scope=tik.scope_ubuf)
-    data_indices_ub_int_ = tik_instance.Tensor("int32", [16], name="data_indices_ub_int_", scope=tik.scope_ubuf)
-
-    index = 0
-    big_index = 0
-    for i1 in range(L - 1):
-        index += (i0 % shape[i1]) * distance[i1]
-        big_index += (i0 % shape[i1]) * big_distance[i1]
-        i0 = i0 // shape[i1]
-
+    offset_in = i0 * num
+    offset_out = i0 * num_16
+    dest_pos_ub = num_16 * PROPOSAL_NUM
     # 1. Move data from OUT to UB
-    tik_instance.data_move(input_ub[0], input_gm[index], 0, 1, total // 16, 0, 0)
+    tik_instance.data_move(input_ub[dest_pos_ub], input_gm[offset_in], 0, 1, num_16 // 16, 0, 0)
     threadNum = 2 if num > 1 else 1
+    idx = tik_instance.Scalar(dtype="float32", init_value=num)
+
     with tik_instance.for_range(0, num, thread_num=threadNum) as i2:
-        input_ub[(num - 1 - i2) * PROPOSAL_NUM + 4].set_as(input_ub[(num - 1 - i2)])
-        data_indices_ub_int_.set_as(num - 1 - i2)
-        tik_instance.vec_conv(1, "none", data_out_ub_, data_indices_ub_int_, 1, 0, 0, deqscale=1.0)
-        input_ub[(num - 1 - i2) * PROPOSAL_NUM].set_as(data_out_ub_[0])
+        idx.set_as(idx - 1)
+        input_ub[(num - 1 - i2) * PROPOSAL_NUM].set_as(idx)
 
+    if num_16 > 4080:
+        tik_instance.vconcat(input_ub[0], input_ub[dest_pos_ub], 255, 4)
+        tik_instance.vconcat(input_ub[4080 * PROPOSAL_NUM], input_ub[dest_pos_ub + 4080], (num_16 % 4080) // 16, 4)
+    else:
+        tik_instance.vconcat(input_ub[0], input_ub[dest_pos_ub], num_16 // 16, 4)
     # 2. vbs16
-    input_ub, dest_pos_ub = vbs16(tik_instance, num, total, input_ub, descending)
-
+    input_ub, dest_pos_ub = vbs16(tik_instance, num, num_16, input_ub, descending)
     # 3. vms4
-    input_ub, dest_pos_ub = vms4(tik_instance, num, total, input_ub, dest_pos_ub)
-
+    input_ub, dest_pos_ub = vms4(tik_instance, num, num_16, input_ub, dest_pos_ub)
     # 4. Move Data from UB to OUT
-    data_out, data_indices = moveout(tik_instance, descending, total, num, data_out, big_index, input_ub,
+    data_out, data_indices = moveout(tik_instance, descending, num_16, num, data_out, offset_out, input_ub,
                                      dest_pos_ub, data_indices, threadNum)
 
     return data_out, data_indices
@@ -403,34 +403,17 @@ def sort(x, y1, y2, axis=-1, descending=False, kernel_name="sort"):
     """
     shape, dtype, allnum, num = cheak(x, y1, y2, axis, kernel_name)
 
-    tik_instance = tik.Tik(tik.Dprofile())
-
-    add16 = (16 - (num % 16)) % 16
-    total = num + add16
-
-    big_shape = list(shape)
-    big_shape[-1] = total
-
-    input_gm = tik_instance.Tensor(dtype, shape, name="x", scope=tik.scope_gm)
-    data_out = tik_instance.Tensor(dtype, big_shape, name="data_out", scope=tik.scope_gm, is_workspace=True)
-    data_indices = tik_instance.Tensor("int32", big_shape, name="data_indices", scope=tik.scope_gm, is_workspace=True)
-    data_out_ = tik_instance.Tensor(dtype, shape, name="data_out_", scope=tik.scope_gm)
-    data_indices_ = tik_instance.Tensor("int32", shape, name="data_indices_", scope=tik.scope_gm)
-
-    # to figure the index of input_gm
-    L = len(shape)
-    distance = []
-    big_distance = []
-    tmp = allnum
-    big_tmp = allnum // num * total
-
-    for i in range(L - 1):
-        tmp = tmp // shape[i]
-        distance.append(tmp)
-        big_tmp = big_tmp // shape[i]
-        big_distance.append(big_tmp)
+    tik_instance = tik.Tik(tik.Dprofile('cloud'))
 
     rounds = allnum // num
+
+    num_16 = (num + 15) // 16 * 16
+
+    input_gm = tik_instance.Tensor(dtype, shape, name="x", scope=tik.scope_gm)
+    data_out = tik_instance.Tensor(dtype, [rounds * num_16], name="data_out", scope=tik.scope_gm, is_workspace=True)
+    data_indices = tik_instance.Tensor("int32",  [rounds * num_16], name="data_indices", scope=tik.scope_gm, is_workspace=True)
+    data_out_ = tik_instance.Tensor(dtype, shape, name="data_out_", scope=tik.scope_gm)
+    data_indices_ = tik_instance.Tensor("int32", shape, name="data_indices_", scope=tik.scope_gm)
 
     available_aicore_num = tik.Dprofile().get_aicore_num()
     used_aicore_num = available_aicore_num if rounds > available_aicore_num else rounds
@@ -439,23 +422,22 @@ def sort(x, y1, y2, axis=-1, descending=False, kernel_name="sort"):
 
     with tik_instance.for_range(0, used_aicore_num, block_num=used_aicore_num) as i:
         with tik_instance.for_range(0, batch_num_per_aicore_process) as k:
-            data_out, data_indices = sort_compute(tik_instance, dtype, total, i + k * used_aicore_num, descending,
-                                                  num, distance, shape, big_distance, data_out, data_indices, input_gm,
-                                                  L)
+            data_out, data_indices = sort_compute(tik_instance, dtype, num_16, i + k * used_aicore_num, descending,
+                                                  num, data_out, data_indices, input_gm)
         with tik_instance.if_scope(i < batch_tail):
-            data_out, data_indices = sort_compute(tik_instance, dtype, total,
+            data_out, data_indices = sort_compute(tik_instance, dtype, num_16,
                                                   batch_num_per_aicore_process * used_aicore_num + i, descending, num,
-                                                  distance, shape, big_distance, data_out, data_indices, input_gm, L)
+                                                  data_out, data_indices, input_gm)
 
-    float_ub = tik_instance.Tensor("float16", [total], name="float_ub", scope=tik.scope_ubuf)
-    int_ub = tik_instance.Tensor("int32", [total], name="int_ub", scope=tik.scope_ubuf)
+    float_ub = tik_instance.Tensor("float16", [num_16], name="float_ub", scope=tik.scope_ubuf)
+    int_ub = tik_instance.Tensor("int32", [num_16], name="int_ub", scope=tik.scope_ubuf)
 
     with tik_instance.for_range(0, rounds) as i:
-        tik_instance.data_move(float_ub[0], data_out[i * total], 0, 1, total // 16, 0, 0)
-        tik_instance.data_move(data_out_[i * num], float_ub[0], 0, 1, total // 16, 0, 0)
+        tik_instance.data_move(float_ub[0], data_out[i * num_16], 0, 1, num_16 // 16, 0, 0)
+        tik_instance.data_move(data_out_[i * num], float_ub[0], 0, 1, num_16 // 16, 0, 0)
 
-        tik_instance.data_move(int_ub[0], data_indices[i * total], 0, 1, total // 8, 0, 0)
-        tik_instance.data_move(data_indices_[i * num], int_ub[0], 0, 1, total // 8, 0, 0)
+        tik_instance.data_move(int_ub[0], data_indices[i * num_16], 0, 1, num_16 // 8, 0, 0)
+        tik_instance.data_move(data_indices_[i * num], int_ub[0], 0, 1, num_16 // 8, 0, 0)
 
     tik_instance.BuildCCE(kernel_name=kernel_name, inputs=[input_gm], outputs=[data_out_, data_indices_])
 

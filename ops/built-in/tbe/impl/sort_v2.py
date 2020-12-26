@@ -286,8 +286,13 @@ def sort_in_gm(tik_instance, k, temp, num_gm, batchsize, input_ub, offset):
     temp, input_ub : for data move
     ----------
     """
-    src_pos_ub, dest_pos_ub = 0, batchsize * PROPOSAL_NUM
-    with tik_instance.for_range(0, num_gm - 1) as tail:  # 4
+    src_pos_ub = tik_instance.Scalar("int32")
+    dest_pos_ub = tik_instance.Scalar("int32")
+
+    with tik_instance.for_range(0, num_gm - 1) as tail:
+        src_pos_ub.set_as(0)
+        dest_pos_ub.set_as(batchsize * PROPOSAL_NUM)
+
         tik_instance.data_move(input_ub[src_pos_ub + k * PROPOSAL_NUM], temp[offset], 0, 1, (k * PROPOSAL_NUM) // 16, 0,
                                0)
         with tik_instance.for_range(1, num_gm - tail) as i:
@@ -299,11 +304,11 @@ def sort_in_gm(tik_instance, k, temp, num_gm, batchsize, input_ub, offset):
                                     input_ub[0], input_ub[0]], [k, k, 0, 0], if_exhausted_suspension=False,
                                    valid_bit="0011", repeat_times=1)
 
-            tik_instance.data_move(input_ub[src_pos_ub], input_ub[dest_pos_ub], 0, 1, (batchsize * PROPOSAL_NUM) // 16,
-                                   0, 0)
-
-            tik_instance.data_move(temp[offset + k * (i - 1) * PROPOSAL_NUM], input_ub[src_pos_ub], 0, 1,
+            tik_instance.data_move(temp[offset + k * (i - 1) * PROPOSAL_NUM], input_ub[dest_pos_ub], 0, 1,
                                    (k * PROPOSAL_NUM) // 16, 0, 0)
+            
+            dest_pos_ub.set_as(src_pos_ub)
+            src_pos_ub.set_as(batchsize * PROPOSAL_NUM - dest_pos_ub)
 
         # Move Data from UB to GM
         tik_instance.data_move(temp[offset + k * (num_gm - tail - 1) * PROPOSAL_NUM],
