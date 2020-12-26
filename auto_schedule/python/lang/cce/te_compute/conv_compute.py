@@ -185,7 +185,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         if valid_shape:
             handle_valid_shape()
 
-    def _l1_buffer_size_check(max_feature_map_l1, fusion_para, dynamic_mode=None):
+    def _l1_buffer_size_check(max_feature_map_l1, fusion_para, dynamic_para=None):
         """
         Check for not bigger than L1 size.
         """
@@ -194,7 +194,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         if l1_fusion_type in (0, 1):
             pass
         elif int(max_feature_map_l1) > l1_buffer_size:
-            if dynamic_mode is None:
+            if not dynamic_para:
                 err_man.raise_err_specific("conv2d", "Input is too large, the minimum tiling may exceed L1_Buffer")
             else:
                 err_man.raise_err_specific("conv2d",
@@ -226,8 +226,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         """
         Check dilate.
         """
-        if dynamic_mode and (dilateh != 1 or dilatew != 1):
-            err_man.raise_err_specific_input_shape("conv2d", "Invalid dilation check")
+
         if dilateh < DILATE_MIN or dilateh > DILATE_MAX:
             range_value = "".join([str(DILATE_MIN), ", ", str(DILATE_MAX)])
             err_man.raise_err_attr_range_invalid("conv2d", range_value, "dilateh", str(dilateh))
@@ -236,8 +235,6 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
             err_man.raise_err_attr_range_invalid("conv2d", range_value, "dilatew", str(dilatew))
 
     conv1d_split_w_flag = conv1d_split_w_flag_set()
-    dynamic_mode = None if dynamic_para is None else dynamic_para.get("dynamic_mode")
-    fmap_range = None if dynamic_para is None else dynamic_para.get("fmap_range")
 
     def check_fm_w_flag_set():
         """
@@ -247,35 +244,42 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         check_fm_w_flag = (int(shape_in[3]) < FMAP_HW_MIN or int(shape_in[3]) > FMAP_W_MAX) and not conv1d_split_w_flag
         return check_fm_w_flag
 
-    def _check_fmap_range():
+    def _check_fmap_range(fmap_range):
         """
         Check fmap range.
         """
-        if dynamic_mode not in ("dynamic_hw", "dynamic_all"):
-            if int(shape_in[2]) < FMAP_HW_MIN or int(shape_in[2]) > FMAP_H_MAX:
-                range_value = "".join([str(FMAP_HW_MIN), ", ", str(FMAP_H_MAX)])
-                err_man.raise_err_attr_range_invalid("conv2d", range_value, "feature map H", shape_in[2])
-            if check_fm_w_flag_set():
-                range_value = "".join([str(FMAP_HW_MIN), ", ", str(FMAP_W_MAX)])
-                err_man.raise_err_attr_range_invalid("conv2d", range_value, "feature map W", shape_in[3])
-            if conv1d_split_w_flag and \
-            (shape_in[3] < FMAP_W_MIN_SPLIT_W or shape_in[3] > \
-                FMAP_W_MAX_SPLIT_W):
-                range_value = "".join([str(FMAP_W_MIN_SPLIT_W), ", ", str(FMAP_W_MAX_SPLIT_W)])
-                err_man.raise_err_attr_range_invalid("conv2d", range_value,
-                                                     "feature map W when split w", shape_in[3])
-        elif dynamic_mode == "dynamic_hw":
-            range_value = "".join([str(FMAP_HW_MIN), ", ", str(FMAP_H_MAX)])
-            if int(fmap_range[0][0]) < FMAP_HW_MIN or int(fmap_range[0][1]) > FMAP_H_MAX:
-                err_man.raise_err_attr_range_invalid("conv2d", range_value,
-                                                     "feature map H's range", fmap_range[0][1])
-            range_value = "".join([str(FMAP_HW_MIN), ", ", str(FMAP_W_MAX)])
-            if int(fmap_range[1][0]) < FMAP_HW_MIN or int(fmap_range[1][1]) > FMAP_W_MAX:
-                err_man.raise_err_attr_range_invalid("conv2d", range_value,
-                                                     "feature map W's range", fmap_range[1][1])
 
-    _check_fmap_range()
-    if dynamic_mode is None:
+        def _check_h_range():
+            if "fmap_h" in ConvParam.var_map and dynamic_para:
+                range_value = "".join([str(FMAP_HW_MIN), ", ", str(FMAP_H_MAX)])
+                if int(fmap_range[1][0]) < FMAP_HW_MIN or int(fmap_range[1][1]) > FMAP_H_MAX:
+                    err_man.raise_err_attr_range_invalid("conv2d", range_value,
+                                                         "feature map H's range", fmap_range[0][1])
+            else:
+                if int(shape_in[2]) < FMAP_HW_MIN or int(shape_in[2]) > FMAP_H_MAX:
+                    range_value = "".join([str(FMAP_HW_MIN), ", ", str(FMAP_H_MAX)])
+                    err_man.raise_err_attr_range_invalid("conv2d", range_value, "feature map H", shape_in[2])
+
+        def _check_w_range():
+            if "fmap_w" in ConvParam.var_map and dynamic_para:
+                range_value = "".join([str(FMAP_HW_MIN), ", ", str(FMAP_W_MAX)])
+                if int(fmap_range[2][0]) < FMAP_HW_MIN or int(fmap_range[2][1]) > FMAP_W_MAX:
+                    err_man.raise_err_attr_range_invalid("conv2d", range_value,
+                                                         "feature map W's range", fmap_range[1][1])
+            else:
+                if check_fm_w_flag_set():
+                    range_value = "".join([str(FMAP_HW_MIN), ", ", str(FMAP_W_MAX)])
+                    err_man.raise_err_attr_range_invalid("conv2d", range_value, "feature map W", shape_in[3])
+                if conv1d_split_w_flag and (shape_in[3] < FMAP_W_MIN_SPLIT_W or shape_in[3] > FMAP_W_MAX_SPLIT_W):
+                    range_value = "".join([str(FMAP_W_MIN_SPLIT_W), ", ", str(FMAP_W_MAX_SPLIT_W)])
+                    err_man.raise_err_attr_range_invalid("conv2d", range_value,
+                                                         "feature map W when split w", shape_in[3])
+        _check_h_range()
+        _check_w_range()
+
+    fmap_range = None if dynamic_para is None else dynamic_para.get("fmap_range")
+    _check_fmap_range(fmap_range)
+    if not dynamic_para:
         util.check_shape_rule(shape_in, CONV_SHAPE_DIM, CONV_SHAPE_DIM)
     util.check_shape_rule(shape_w, CONV_SHAPE_DIM, CONV_SHAPE_DIM)
 
@@ -304,7 +308,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
 
     h_out = (h_i + pad_top + pad_bottom - hk_dilation) // strideh + 1
     w_out = (w_i + pad_left + pad_right - wk_dilation) // stridew + 1
-    if int(w_out) < 1 or int(h_out) < 1:
+    if not dynamic_para and (int(w_out) < 1 or int(h_out) < 1):
         err_man.raise_err_specific("conv2d", "output shape should greater than 0, please check the input shape.\n")
 
     def _check_pad():
@@ -327,28 +331,6 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
             actual_value = "".join([str(pad_left), ", ", str(pad_right)])
             err_man.raise_err_attr_range_invalid("conv2d", range_value,
                                                  "pad_left or pad_right", actual_value)
-
-    def _check_dynamic_range():
-        """
-        Check dynamic shape range.
-        """
-        for h_in, w_in, h_out, w_out in zip(get_te_var("fmap_h").get_bound(),
-                                            get_te_var("fmap_w").get_bound(),
-                                            get_te_var("ho").get_bound(),
-                                            get_te_var("wo").get_bound()):
-            if h_out < 1:
-                err_man.raise_err_specific_input_shape(
-                    "conv2d",
-                    "op [Conv2D] when h_in is {}, output " +
-                    "featuremap h < 1, pleace check input range".format(h_in))
-            if w_out < 1:
-                err_man.raise_err_specific_input_shape(
-                    "conv2d",
-                    "op [Conv2D] when w_in is {}, output " +
-                    "featuremap w < 1, pleace check input range".format(w_in))
-
-    if dynamic_mode == "dynamic_hw":
-        _check_dynamic_range()
 
     w_block_size_n = CUBE_MKN[w_dtype]['mac'][2]
     shape_w[0] = ((shape_w[0] + w_block_size_n - 1) // w_block_size_n)*w_block_size_n
@@ -394,21 +376,21 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
 
     # check for not bigger than L1
     m_bit_ratio = {"float16": 2, "int8": 1}
-    if dynamic_mode == "dynamic_hw":
+    if "fmap_w" in ConvParam.var_map and dynamic_para:
         point_per_w = get_te_var("wo").get_bound()[1]
         w_in = math.floor(config['mac'][0] / point_per_w) + 2
-        tmp = ((w_in - 1)*strideh + hk_dilation)*(fmap_range[1][1])
-        max_feature_map_l1 = ci0*tmp*m_bit_ratio[w_dtype]
-        _l1_buffer_size_check(max_feature_map_l1, fusion_para, "dynamic_hw")
+        tmp = ((w_in - 1) * strideh + hk_dilation) * (dynamic_para.get("fmap_range")[1][1])
+        max_feature_map_l1 = ci0 * tmp * m_bit_ratio[w_dtype]
+        _l1_buffer_size_check(max_feature_map_l1, fusion_para, "dynamic")
     else:
         point_per_w = math.floor((w_i - wk_dilation + pad_left + pad_right) / stridew) + 1
         w_in = math.floor(config['mac'][0] / point_per_w) + 2
-        tmp = ((int(w_in) - 1)*strideh + hk_dilation)*w_i
-        max_feature_map_l1 = ci0*tmp*m_bit_ratio[w_dtype]
+        tmp = ((int(w_in) - 1) * strideh + hk_dilation) * w_i
+        max_feature_map_l1 = ci0 * tmp * m_bit_ratio[w_dtype]
         if conv1d_split_w_flag:
-            conv1d_filter_size = (shape_w[3] - 1)*wk_dilation + 1
-            conv1d_min_l1 = (config['mac'][0] - 1)*stridew + conv1d_filter_size
-            max_feature_map_l1 = ci0*conv1d_min_l1*m_bit_ratio[w_dtype]
+            conv1d_filter_size = (shape_w[3] - 1) * wk_dilation + 1
+            conv1d_min_l1 = (config['mac'][0] - 1) * stridew + conv1d_filter_size
+            max_feature_map_l1 = ci0 * conv1d_min_l1 * m_bit_ratio[w_dtype]
         if not load2d_split_w_flag_set():
             _l1_buffer_size_check(max_feature_map_l1, fusion_para)
 
@@ -437,6 +419,7 @@ class ConvParam:
         cls.tensor_map.clear()
         cls.dim_map.clear()
         cls.tiling = None
+        cls.var_map = None
         cls.tiling_query_param.clear()
         cls.convbn1_flag = False
         cls.conv_deq_req_double_out = False
@@ -470,11 +453,10 @@ class ConvParam:
     compress_tiling_n = {}
     compress_tiling_n_frac = {}
     compress_tiling_frac = {}
-    var_map = {}
     tiling_info_dict = {}
     para_dict = {}
+    var_map = {}
     fmap_range = None
-    dynamic_mode = None
     kernel_name = None
 
 
@@ -488,7 +470,7 @@ def shape_to_list(shape):
     for i in shape:
         if isinstance(i, tvm.expr.IntImm):
             tmp.append(int(i.value))
-        elif isinstance(i, tvm.expr.Var):
+        elif isinstance(i, tvm.expr.Expr):
             tmp.append(i)
         else:
             tmp.append(i.value)
@@ -521,6 +503,7 @@ def _fmap_c0_check_value(dtype, optim_dict):
         else CUBE_MKN[dtype]['mac'][1]
 
     return fmap_c0_check_value
+
 @tvm.target.generic_func
 def conv_compress(inputs, weight_compress, compress_index, compress_index_shape,
                   para_dict, optim_dict=None, dsl_flag=True):
@@ -786,7 +769,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             -------
             tensor: im2col result tensor
             """
-            if ConvParam.dynamic_mode is None:
+            if not ConvParam.var_map:
                 in_channel_c1 = ConvParam.para_dict["c1_opt"]
                 fmap_im2col_row_major_shape = (ConvParam.para_dict["group_opt"],
                                                ConvParam.para_dict["a_shape"][0],
@@ -1181,13 +1164,15 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         mac_dim = config['mac']
 
         batch = img_shape[0]
-        if ConvParam.dynamic_mode != "dynamic_hw":
+        if "fmap_h" not in ConvParam.var_map:
             out_h = ((img_shape[-3] + pad[2] + pad[3]) -
                      ((filter_shape[-3]-1)*dilate[0] + 1)) // stride[0] + 1
+        else:
+            out_h = ConvParam.var_map['ho']
+        if "fmap_w" not in ConvParam.var_map:
             out_w = ((img_shape[-2] + pad[0] + pad[1]) -
                      ((filter_shape[-2]-1)*dilate[1] + 1)) // stride[1] + 1
         else:
-            out_h = ConvParam.var_map['ho']
             out_w = ConvParam.var_map['wo']
 
         fmap_valid_dim = (batch, out_h*out_w, \
@@ -1693,12 +1678,12 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                 """
                 valid_shape = ConvParam.fusion_para.get("valid_shape")
                 if valid_shape:
-                    if ConvParam.dynamic_mode is None:
+                    if not ConvParam.var_map:
                         fmap_shape_nc1hwc0 = list(shape_to_list(valid_shape))
                     else:
                         fmap_shape_nc1hwc0 = list(valid_shape)
                 else:
-                    if ConvParam.dynamic_mode is None:
+                    if not ConvParam.var_map:
                         fmap_shape_nc1hwc0 = list(shape_to_list(data.shape))
                     else:
                         fmap_shape_nc1hwc0 = list(data.shape)
@@ -1782,14 +1767,17 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
 
             filter_h_dilation = (ConvParam.filter_h - 1)*ConvParam.dilate_h + 1
             filter_w_dilation = (ConvParam.filter_w - 1)*ConvParam.dilate_w + 1
-            if ConvParam.dynamic_mode == "dynamic_hw":
-                ConvParam.h_out = ConvParam.var_map['ho']
-                ConvParam.w_out = ConvParam.var_map['wo']
+            if 'ho' in ConvParam.var_map:
+                ConvParam.h_out = ConvParam.var_map.get('ho')
             else:
-                ConvParam.h_out = (ConvParam.h_in + (ConvParam.pad_h[0] + \
-                    ConvParam.pad_h[1]) - filter_h_dilation) // ConvParam.stride_h + 1
-                ConvParam.w_out = (ConvParam.w_in + (ConvParam.pad_w[0] + \
-                    ConvParam.pad_w[1]) - filter_w_dilation) // ConvParam.stride_w + 1
+                ConvParam.h_out = (ConvParam.h_in + (ConvParam.pad_h[0] + ConvParam.pad_h[1]) -
+                                   filter_h_dilation) // ConvParam.stride_h + 1
+
+            if 'wo' in ConvParam.var_map:
+                ConvParam.w_out = ConvParam.var_map.get('wo')
+            else:
+                ConvParam.w_out = (ConvParam.w_in + (ConvParam.pad_w[0] + ConvParam.pad_w[1]) -
+                                   filter_w_dilation) // ConvParam.stride_w + 1
 
         def _config_tiling_query_param():
             """
@@ -1833,7 +1821,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         """
         Set this flag to define whether is doing conv1d.
         """
-        if ConvParam.dynamic_mode is None and data.shape[2].value == 1 \
+        if not ConvParam.var_map and data.shape[2].value == 1 \
         and para_dict.get("filter_h") == 1 \
         and (pad_top + pad_bottom) == 0 and \
         not load2d_to_load3d_flag:
@@ -1880,7 +1868,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         """
         Save tiling_info_dict for dynamic.
         """
-        if ConvParam.dynamic_mode:
+        if ConvParam.var_map:
             in_size_h = shape_fmap_nc1hwc0[2]
             in_size_w = shape_fmap_nc1hwc0[3]
             kernel_h = shape_w_nc1hwc0[2]
@@ -1903,6 +1891,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             ConvParam.tiling_info_dict = {
                 "op_type": 'conv2d',
                 "a_shape": list(shape_fmap_nc1hwc0),
+                "placeholder_fmap_5hd_shape": list(ConvParam.dim_map["fmap_5hd_shape"]),
                 "b_shape": list(shape_w_nc1hwc0),
                 "c_shape": c_shape,
                 "a_dtype": in_dtype,
@@ -1928,39 +1917,34 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         """
         Get dynamic para.
         """
-        if ConvParam.dynamic_mode == "dynamic_batch":
-            fmap_range = [get_te_var("batch_n").get_bound()]
-        elif ConvParam.dynamic_mode == "dynamic_hw":
-            fmap_range = [get_te_var("fmap_h").get_bound(),
-                          get_te_var("fmap_w").get_bound()]
+
+        fmap_range = []
+        var_map = {}
+        if isinstance(data.shape[0], tvm.expr.Var):
+            fmap_range.append(get_te_var("batch_n").get_bound())
+            var_map["batch_n"] = get_te_var("batch_n").get_tvm_var()
         else:
-            return None
+            fmap_range.append((data.shape[0], data.shape[0]))
+
+        if isinstance(data.shape[2], tvm.expr.Var):
+            fmap_range.append(get_te_var("fmap_h").get_bound())
+            var_map["fmap_h"] = get_te_var("fmap_h").get_tvm_var()
+            var_map["ho"] = get_te_var("ho").get_tvm_var()
+        else:
+            fmap_range.append((data.shape[2], data.shape[2]))
+
+        if isinstance(data.shape[3], tvm.expr.Var):
+            fmap_range.append(get_te_var("fmap_w").get_bound())
+            var_map["fmap_w"] = get_te_var("fmap_w").get_tvm_var()
+            var_map["wo"] = get_te_var("wo").get_tvm_var()
+        else:
+            fmap_range.append((data.shape[3], data.shape[3]))
+
         dynamic_para = {
-            "dynamic_mode": ConvParam.dynamic_mode,
-            "fmap_range": fmap_range
+            "fmap_range": fmap_range,
+            "var_map": var_map
         }
         return dynamic_para
-
-    def _get_dynamic_mode():
-        """
-        Return dynamic mode.
-        """
-        if isinstance(data.shape[0], tvm.expr.Var):
-            return "dynamic_batch"
-        if isinstance(data.shape[2], tvm.expr.Var) and isinstance(data.shape[3], tvm.expr.Var):
-            return "dynamic_hw"
-        return None
-
-    def _get_var_map():
-        """
-        Get dynamic mode for ConvParam.
-        """
-        if ConvParam.dynamic_mode == "dynamic_batch":
-            return {"batch_n": get_te_var("batch_n").get_tvm_var()}
-        if ConvParam.dynamic_mode == "dynamic_hw":
-            return {v: get_te_var(v).get_tvm_var()
-                    for v in ("fmap_h", "fmap_w", "ho", "wo")}
-        return None
 
     def calculate_remove_pad_params(padded_column_shape, v200_width_out_1_flag):
         """
@@ -2102,8 +2086,8 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
 
 
     ConvParam.set_default()
-    ConvParam.dynamic_mode = _get_dynamic_mode()
-    ConvParam.var_map = _get_var_map()
+    ConvParam.dynamic_para = _get_dynamic_para()
+    ConvParam.var_map = ConvParam.dynamic_para.get("var_map")
 
     bias_tensor = para_dict.get("bias_tensor")
     bias_tensor_flag = isinstance(bias_tensor, tvm.tensor.Tensor)
@@ -2154,7 +2138,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
     shape_w_nc1hwc0 = ConvParam.dim_map["weight_tiling_b_shape"]
     check_conv_shape(shape_in, shape_w, pad_top, pad_bottom, pad_left, pad_right, stride_h, stride_w, in_dtype, w_dtype,
                      para_dict["fusion_para"], optim_dict, dilateh=dilate_h, dilatew=dilate_w,
-                     dynamic_para=_get_dynamic_para(), groups=para_dict['group'])
+                     dynamic_para=ConvParam.dynamic_para, groups=para_dict['group'])
 
     conv_shape = ConvParam.dim_map["output_conv_res_shape"]
     if "invalid_data_rm" not in optim_dict:

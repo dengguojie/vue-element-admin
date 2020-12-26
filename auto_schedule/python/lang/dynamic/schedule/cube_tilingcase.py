@@ -33,7 +33,6 @@ C0_SIZE = 16
 class CubeTilingOp:
     def __init__(self, tiling_info, dynamic_mode):
         self.tiling_info = tiling_info
-
         self.key = None
         self.dynamic_mode = dynamic_mode
         self.op_type = None
@@ -84,29 +83,63 @@ class TilingSelection:
         tilings_cases: list, calculated tilings
         """
 
-        add_compile_info("dynamic_mode", self.op.dynamic_mode)
-        if self.op.dynamic_mode == "dynamic_hw":
-            tiling_cases = self._calc_hw(target_area)
-        elif self.op.dynamic_mode == "dynamic_batch":
-            batch_func_map = {"conv2d_bp_filter": self._calc_batch_v2}
-            batch_func = batch_func_map.get(self.op.op_type, self._calc_batch)
-            tiling_cases = batch_func(target_area)
-        elif self.op.dynamic_mode in ("dynamic_mkn", "dynamic_mknb"):
-            tiling_cases = self._calc_matmul(target_area)
-        elif self.op.dynamic_mode == "dynamic_dhw":
-            tiling_cases = self._calc_dhw(target_area)
+        if self.op.op_type == "conv2d":
+            if "fmap_h" in self.op.var_map or "fmap_w" in self.op.var_map:
+                tiling_cases = self._calc_hw([target_area.get(key) for key in target_area])
+            elif "batch_n" in self.op.var_map:
+                tiling_cases = self._calc_batch([target_area.get("batch_n")])
+            else:
+                raise RuntimeError("Only dynamic N/H/W is supported")
         else:
-            raise RuntimeError("Only dynamic_dhw/dynamic_hw/dynamic_batch "
-                               "is supported")
+            add_compile_info("dynamic_mode", self.op.dynamic_mode)
+            if self.op.dynamic_mode == "dynamic_hw":
+                tiling_cases = self._calc_hw(target_area)
+            elif self.op.dynamic_mode == "dynamic_batch":
+                batch_func_map = {"conv2d_bp_filter": self._calc_batch_v2}
+                batch_func = batch_func_map.get(self.op.op_type, self._calc_batch)
+                tiling_cases = batch_func(target_area)
+            elif self.op.dynamic_mode in ("dynamic_mkn", "dynamic_mknb"):
+                tiling_cases = self._calc_matmul(target_area)
+            elif self.op.dynamic_mode == "dynamic_dhw":
+                tiling_cases = self._calc_dhw(target_area)
+            else:
+                raise RuntimeError("Only dynamic_dhw/dynamic_hw/dynamic_batch "
+                                   "is supported")
 
         tiling_blockdim = {}
         for case in tiling_cases:
-            tiling_blockdim[case['key']] = \
-                case["block_dim"] if "block_dim" in case else int(
-                reduce(lambda x, y: x * y, case['tiling_strategy']['block_dim']))
+            tiling_blockdim[case['key']] = (case["block_dim"] if "block_dim" in case
+                                            else int(reduce(lambda x, y: x * y, case['tiling_strategy']['block_dim'])))
         add_compile_info("block_dim", tiling_blockdim)
 
         return tiling_cases
+
+    def _modify_core_num(self, seed):
+        tiling = seed["tiling"]
+        if self.op.op_type == "conv2d":
+            block_dims = tiling["block_dim"]
+            block_nums = block_dims[0] * block_dims[1] * block_dims[2]
+            if block_nums < CORE_NUM:
+                if seed["A_shape"][0] > 1 and block_dims[0] < seed["A_shape"][0] and \
+                    seed["A_shape"][0] * block_dims[1] * block_dims[2] <= CORE_NUM:
+                    tiling["block_dim"][0] = seed["A_shape"][0]
+            if tiling["BL0_matrix"] and tiling["BL1_shape"]:
+                co1 = (seed["B_shape"][0] + C0_SIZE - 1) // C0_SIZE
+                if block_dims[1] * tiling["BL1_shape"][1] * tiling["BL0_matrix"][1] * 2 < co1 and \
+                    co1 // (tiling["BL1_shape"][1] * tiling["BL0_matrix"][1] * 2) * block_dims[0] * \
+                    block_dims[2] <= CORE_NUM:
+                    tiling["block_dim"][1] = co1 // (tiling["BL1_shape"][1] * tiling["BL0_matrix"][1] * 2)
+            block_nums = block_dims[0] * block_dims[1] * block_dims[2]
+            if block_nums < CORE_NUM and tiling["AL1_shape"]:
+                hout = self.op.get_output_h(seed["A_shape"][2])
+                wout = self.op.get_output_w(seed["A_shape"][3])
+                tmp = hout * wout // (tiling["AL0_matrix"][0] * C0_SIZE * tiling["AL1_shape"][1] * block_dims[2])
+                if tmp >= 1 and block_dims[0] * block_dims[1] * tmp <= CORE_NUM:
+                    tiling["block_dim"][2] = ((hout * wout + (tiling["AL0_matrix"][0] * C0_SIZE *
+                                                              tiling["AL1_shape"][1] - 1)) //
+                                              (tiling["AL0_matrix"][0] * C0_SIZE * tiling["AL1_shape"][1]))
+        return tiling
+
 
     def _calc_hw(self, tgt_area):
         """
@@ -121,10 +154,10 @@ class TilingSelection:
         tilings_cases: list, calculated tilings
         """
         def _correct_seed_range(seed_area):
-            funcs = (max, min, max, min)
+            funcs = (max, min, max, min, max, min) if len(tgt_area) == 6 else (max, min, max, min)
             return [func(ta, sa) for func, ta, sa in zip(funcs, tgt_area, seed_area)]
 
-        tgt_area = tuple(tgt_area[0] + tgt_area[1])
+        tgt_area = reduce(lambda x, y: x + y, tgt_area)
         candidates = {}
         repo_seeds = self.op.get_repo_tiling()
         seed_points = set()
@@ -132,32 +165,7 @@ class TilingSelection:
 
         for seed in repo_seeds:
             seed_hw = tuple(seed[self.op.key][2:4])
-            if self.op.op_type == "conv2d":
-                tiling = seed["tiling"]
-                block_dims = tiling["block_dim"]
-                block_nums = block_dims[0]*block_dims[1]*block_dims[2]
-                if block_nums < CORE_NUM:
-                    if seed["A_shape"][0] > 1 and block_dims[0] < seed["A_shape"][0] and \
-                            seed["A_shape"][0]*block_dims[1]*block_dims[2] <= CORE_NUM:
-                        tiling["block_dim"][0] = seed["A_shape"][0]
-                        block_dims = tiling["block_dim"]
-                if tiling["BL0_matrix"] and tiling["BL1_shape"]:
-                    co1 = (seed["B_shape"][0] + C0_SIZE - 1) // C0_SIZE
-                    if block_dims[1]*tiling["BL1_shape"][1]*tiling["BL0_matrix"][1]*2 < co1 and \
-                            co1 // (tiling["BL1_shape"][1]*tiling["BL0_matrix"][1]*2)*block_dims[0]* \
-                            block_dims[2] <= CORE_NUM:
-                        tiling["block_dim"][1] = co1 // (tiling["BL1_shape"][1]*tiling["BL0_matrix"][1]*2)
-                        block_dims = tiling["block_dim"]
-                block_nums = block_dims[0]*block_dims[1]*block_dims[2]
-                if block_nums < CORE_NUM and tiling["AL1_shape"]:
-                    hout = self.op._get_output_h(seed["A_shape"][2])
-                    wout = self.op._get_output_w(seed["A_shape"][3])
-                    tmp = hout*wout // (tiling["AL0_matrix"][0]*C0_SIZE*tiling["AL1_shape"][1]*block_dims[2])
-                    if tmp >= 1:
-                        tmp = tiling["AL0_matrix"][0]*C0_SIZE*tiling["AL1_shape"][1]
-                        used_core_num = block_dims[0]*block_dims[1]
-                        tiling["block_dim"][2] = min((hout*wout + tmp - 1) // tmp, CORE_NUM // used_core_num)
-                seed["tiling"] = tiling
+            seed["tiling"] = self._modify_core_num(seed)
             seed_range = self.op.get_tiling_range(seed['tiling'], seed[self.op.key])
             if seed_hw in seed_points_dup or _cal_overlap(seed_range, tgt_area)[0] == 0:
                 seed_points_dup.add(seed_hw)
@@ -347,8 +355,7 @@ class TilingSelection:
                         tiling["n_bef_batch_flag"] = 1
                         seed["tiling"] = tiling
             # cover upper range
-            repo_selections[next(self.seed_cnt)] = \
-                [seed['tiling'], (lower_bound, min(next_batch - 1, batch_range[1]))]
+            repo_selections[seed_cnt] = [seed['tiling'], (lower_bound, min(next_batch - 1, batch_range[1]))]
             lower_bound = next_batch
             repo_seeds[seed_cnt] = cur_batch
             if lower_bound >= batch_range[1]:
@@ -404,8 +411,7 @@ class TilingSelection:
                 lower_bound = lower_covered
             upper_covered = min(upper_covered, candidates[i + 1][2] - 1)
             seed_cnt = next(self.seed_cnt)
-            tiling_selections[seed_cnt] = \
-                [seed[1], (lower_bound, upper_covered)]
+            tiling_selections[seed_cnt] = [seed[1], (lower_bound, upper_covered)]
             repo_seeds[seed_cnt] = seed[2]
             lower_bound = upper_covered + 1
             if lower_bound > batch_range[1]:
@@ -527,7 +533,11 @@ class TilingSelection:
             cost_len = len(cost_cases)
             for _ in range(cost_len):
                 cut_range = cost_cases.popleft()
-                cost_seed = self.op.get_costmodel_tiling(tuple(cut_range[1::2]))
+                if self.op.op_type == "conv2d" and len(cut_range) == 6:
+                    seed_shape = tuple([cut_range[0], cut_range[3], cut_range[5]])
+                else:
+                    seed_shape = tuple(cut_range[1::2])
+                cost_seed = self.op.get_costmodel_tiling(seed_shape)
                 seed_range = self.op.get_tiling_range(cost_seed['tiling'],
                                                       cost_seed[self.op.key])
                 if self.op.dynamic_mode == "dynamic_dhw" and seed_range[1] == -1:

@@ -394,3 +394,24 @@ def raise_err_contain_key_invalid(op_name, param_name, key):
     }
     msg = get_error_message(args_dict)
     raise RuntimeError(args_dict, msg)
+
+
+def raise_invalid_range(op_name, attr_name, attr_range, name):
+    """
+    In op[%s], the lower range of [%s]'s [%s] must greater than 0, the upper range must
+    greater or equal to lower range, actual is [%s] (op_name, attr_name, attr_range)
+    :param op_name
+    :param attr_name
+    :param attr_range
+    :param name
+    :return
+    """
+    args_dict = {
+        "errCode": "E67016",
+        "op_name": op_name,
+        "attr_name": attr_name,
+        "range": attr_range,
+        "name": name,
+    }
+    msg = get_error_message(args_dict)
+    raise RuntimeError(args_dict, msg)

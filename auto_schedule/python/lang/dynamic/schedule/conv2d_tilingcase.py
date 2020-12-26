@@ -19,6 +19,7 @@ import copy
 import math
 from collections import OrderedDict
 
+import te
 from te.tvm.expr import Expr
 from te.domain.tiling.get_tiling import get_tiling
 
@@ -31,13 +32,14 @@ from te.lang.dynamic.schedule.cube_tilingcase import CubeTilingOp
 from te.lang.dynamic.schedule.cube_tilingcase import TilingUtils as utils
 from te.lang.dynamic.schedule.constants import Pattern
 
-
+HW_MIN = 1
+N_RANGE = 4096
 H_RANGE = 4096
 W_RANGE = 4096
 W_DELTA = 1
 H_LEN = 400
 W_LEN = 400
-
+N_BASE = 2
 
 # noinspection PyUnusedLocal
 @register_tiling_case(pattern=Pattern.CONV2D)
@@ -53,26 +55,42 @@ def calc_conv2d(outs, option=None):
     -------
     list of dict, each dict for a tiling case
     """
-    mode = ConvParam.dynamic_mode
-    var_names = {'dynamic_batch': ('batch_n', ), 'dynamic_hw': ('fmap_h', 'fmap_w')}
-    tgt_area = [get_te_var(v).get_bound() for v in var_names[mode]]
+
+    var_names = ["batch_n", "fmap_h", "fmap_w"]
     conv_info = ConvParam.tiling_info_dict
+    tgt_area = {}
+    shape_dict = {"batch_n": conv_info.get("a_shape")[0],
+                  "fmap_h": conv_info.get("a_shape")[2],
+                  "fmap_w": conv_info.get("a_shape")[3]}
+    for var_name in var_names:
+        if get_te_var(var_name):
+            tgt_area[var_name] = get_te_var(var_name).get_bound()
+        else:
+            tgt_area[var_name] = (int(shape_dict.get(var_name)), int(shape_dict.get(var_name)))
 
     # check fusion
-    if outs[-1].op.tag == 'elewise_single_relu':
-        conv_info['fusion_type'] = 3
-        conv_info['fused_coefficient'] = [0, 0, 1]
+    if outs[-1].op.tag == "elewise_single_relu":
+        if outs[-1].op.input_tensors[0].op.input_tensors[0].op.tag == "conv_vector_bias_add":
+            conv_info['fusion_type'] = 4
+            conv_info['fused_coefficient'] = [0, 0, 3]
+        else:
+            conv_info['fusion_type'] = 1
+            conv_info['fused_coefficient'] = [0, 0, 1]
+    elif outs[-1].op.input_tensors[0].op.tag == "conv_vector_bias_add":
+        conv_info['fusion_type'] = 1
+        conv_info['fused_coefficient'] = [0, 0, 2]
 
-    tiling_op = Conv2dTiling(conv_info, mode)
-
+    tiling_op = Conv2dTiling(conv_info, ConvParam.dynamic_para)
     tiling_cases = TilingSelection(tiling_op).calc_tiling(tgt_area)
     return tiling_cases
 
 
 class Conv2dTiling(CubeTilingOp):
-    def __init__(self, tiling_info, dynamic_mode):
-        super().__init__(tiling_info, dynamic_mode)
+    def __init__(self, tiling_info, dynamic_para):
+        super().__init__(tiling_info, None)
+        self.var_map = dynamic_para.get("var_map")
         self.a_info = tiling_info['a_shape']
+        self.a_5hd_info = tiling_info['placeholder_fmap_5hd_shape']
         self.b_info = tiling_info['b_shape']
         self.c_info = tiling_info['c_shape']
         self._get_calc_info()
@@ -83,8 +101,8 @@ class Conv2dTiling(CubeTilingOp):
         tiling_list = get_tiling(self.tiling_info)
         res_list = []
         for tiling in tiling_list:
-            t_h, t_w = self._get_output_h(tiling["A_shape"][2]), \
-                self._get_output_w(tiling["A_shape"][3])
+            t_h, t_w = self.get_output_h(tiling["A_shape"][2]), \
+                self.get_output_w(tiling["A_shape"][3])
             if t_h == tiling["C_shape"][2] and t_w == tiling["C_shape"][3]:
                 res_list.append(tiling)
         return res_list
@@ -102,18 +120,83 @@ class Conv2dTiling(CubeTilingOp):
         tiling: tiling retrieved by cost model
         """
 
-        if self.dynamic_mode == "dynamic_batch":
-            self.a_info[0] = shape
-            self.c_info[0] = shape
-        elif self.dynamic_mode == "dynamic_hw":
-            self.a_info[2], self.a_info[3] = shape[0], shape[1]
-            self.c_info[2] = self._get_output_h(self.a_info[2])
-            self.c_info[3] = self._get_output_w(self.a_info[3])
-            if self.pad_mode == "VAR":
-                self.tiling_info["pad"] = self._calc_pads(shape[0], shape[1])
+        if "batch_n" in self.var_map:
+            self.a_info[0] = shape if isinstance(shape, int) else shape[0]
+            self.c_info[0] = shape if isinstance(shape, int) else shape[0]
+        if "fmap_h" in self.var_map:
+            self.a_info[2] = shape[1]
+            self.c_info[2] = self.get_output_h(self.a_info[2])
+        if "fmap_w" in self.var_map:
+            self.a_info[3] = shape[2]
+            self.c_info[3] = self.get_output_w(self.a_info[3])
+        if self.pad_mode == "VAR":
+            self.tiling_info["pad"] = self._calc_pads(shape[0], shape[1])
         self.tiling_info["tiling_type"] = "cost_model_tiling"
         tiling = get_tiling(self.tiling_info)[0]
         return tiling
+
+    def get_batch_range(self, batch):
+        """
+        get batch covering range
+        """
+
+        if "batch_n" in self.var_map:
+            core_num = te.platform.cce_conf.SOC_VERSION_MAP.get(
+                te.platform.get_soc_spec("SOC_VERSION")).get("AiCore").get("AICoreNum")
+            if batch >= core_num:
+                return core_num, N_RANGE
+            if core_num == N_BASE:
+                return 1, N_RANGE
+            batch_log = int(math.log(batch, N_BASE))
+            return N_BASE ** batch_log, N_BASE ** (int(batch_log + 1))
+        return batch, batch
+
+    def get_h_range(self, fmap_h, tiling):
+        """
+        get h covering range
+        """
+
+        if "fmap_h" in self.var_map:
+            if not tiling["AL1_shape"]:
+                return 1, fmap_h
+            hi_min = HW_MIN
+            if self.pad_mode != "VAR":
+                hi_min = max(self.k_h - self.cur_pads[2] - self.cur_pads[3], hi_min)
+            hi_min = max(hi_min, fmap_h - H_LEN)
+            hi_max = min(H_RANGE, fmap_h + H_LEN)
+
+            return hi_min, hi_max
+        return fmap_h, fmap_h
+
+    def get_w_range(self, fmap_h, fmap_w, tiling):
+        """
+        get w covering range
+        """
+
+        if "fmap_w" in self.var_map:
+            if not tiling["AL1_shape"]:
+                return 1, fmap_w
+            wi_min = HW_MIN
+            if self.pad_mode != "VAR":
+                wi_min = max(self.k_w - self.cur_pads[0] - self.cur_pads[1], wi_min)
+            support_w_min = wi_min
+            cur_w_size = fmap_w
+            # searching up-ward fo rw_max
+            while self._check_tiling_match(tiling, cur_w_size, fmap_h) and cur_w_size > support_w_min:
+                wi_min = cur_w_size
+                cur_w_size = cur_w_size - W_DELTA
+            # searching down-ward for w_min
+            cur_w_size = fmap_w
+            while self._check_tiling_match(tiling, cur_w_size, fmap_h) and cur_w_size <= W_RANGE:
+                wi_max = cur_w_size
+                cur_w_size = cur_w_size + W_DELTA
+
+            wi_min = max(wi_min, fmap_w - W_LEN)
+            wi_max = min(wi_max, fmap_w + W_LEN)
+            if wi_min > wi_max:
+                return 0, 0
+            return wi_min, wi_max
+        return fmap_w, fmap_w
 
     def get_tiling_range(self, tiling_in, a_shape):
         """
@@ -132,86 +215,61 @@ class Conv2dTiling(CubeTilingOp):
 
         tiling = self._preprocess_tiling(tiling_in)
         _, _, fmap_h, fmap_w, _ = a_shape
-        if not tiling["AL1_shape"]:
-            # fully load in AL1, covering lower region
-            return [1, fmap_h, 1, fmap_w]
 
-        h_o = self._get_output_h(fmap_h)
-        w_o = self._get_output_w(fmap_w)
-        # get min value
-        hi_min, wi_min = 1, 1
-        if self.pad_mode != "VAR":
-            hi_min = max(self.k_h - self.cur_pads[2] - self.cur_pads[3], 1)
-            wi_min = max(self.k_w - self.cur_pads[0] - self.cur_pads[1], 1)
-        support_w_min = wi_min
-
-        hi_max = H_RANGE
-        cur_w_size = fmap_w
-
+        n_range_min, n_range_max = self.get_batch_range(a_shape[0])
+        tiling_range = [n_range_min, n_range_max]
         # check tiling covering itself situation
-        if not self._check_tiling_match(tiling, cur_w_size, fmap_h) or \
-                fmap_h > H_RANGE or fmap_w > W_RANGE:
-            return [0, 0, 0, 0]
 
-        # searching up-ward for w_max
-        while self._check_tiling_match(tiling, cur_w_size, fmap_h) \
-                and cur_w_size > support_w_min:
-            wi_min = cur_w_size
-            cur_w_size = cur_w_size - W_DELTA
+        if not self._check_tiling_match(tiling, fmap_w, fmap_h) or fmap_h > H_RANGE or fmap_w > W_RANGE:
+            return tiling_range + [0, 0, 0, 0]
 
-        # searching down-ward for w_min
-        cur_w_size = fmap_w
-        while self._check_tiling_match(tiling, cur_w_size, fmap_h) \
-                and cur_w_size <= W_RANGE:
-            wi_max = cur_w_size
-            cur_w_size = cur_w_size + W_DELTA
+        h_range_min, h_range_max = self.get_h_range(fmap_h, tiling)
+        tiling_range += [h_range_min, h_range_max]
 
-        perf_hi_min = max(hi_min, fmap_h - H_LEN)
-        perf_wi_min = max(wi_min, fmap_w - W_LEN)
-        perf_hi_max = min(hi_max, fmap_h + H_LEN)
-        perf_wi_max = min(wi_max, fmap_w + W_LEN)
+        w_range_min, w_range_max = self.get_w_range(fmap_h, fmap_w, tiling)
+        tiling_range += [w_range_min, w_range_max]
 
-        if perf_wi_min > perf_wi_max:
-            return [0, 0, 0, 0]
+        if not tiling.get("AL1_shape"):
+            return tiling_range
+
+        h_o = self.get_output_h(fmap_h)
+        w_o = self.get_output_w(fmap_w)
 
         # modify range for curv performance line
-        bool_check_case = utils.icd(
-            utils.icd(utils.icd(h_o * w_o, tiling["block_dim"][2]), utils.FP16_M),
-            tiling["AL0_matrix"][0]) <= tiling["AL1_shape"][1]
-        if not bool_check_case:
-            perf_range = [perf_hi_min, perf_hi_max, perf_wi_min, perf_wi_max]
-        else:
-            range_max = tiling["AL1_shape"][1] * tiling["AL0_matrix"][0] * \
-                        utils.FP16_M * tiling["block_dim"][2]
-            perf_ho = self._get_output_h(perf_hi_max)
-            perf_wo = self._get_output_w(perf_wi_max)
+        if utils.icd(utils.icd(utils.icd(h_o * w_o, tiling["block_dim"][2]), utils.FP16_M),
+                     tiling["AL0_matrix"][0]) <= tiling["AL1_shape"][1]:
+            range_max = tiling["AL1_shape"][1] * tiling["AL0_matrix"][0] * utils.FP16_M * tiling["block_dim"][2]
+            perf_ho = self.get_output_h(h_range_max)
+            perf_wo = self.get_output_w(w_range_max)
             if perf_ho * perf_wo <= range_max:
-                perf_range = [perf_hi_min, perf_hi_max, perf_wi_min, perf_wi_max]
+                tiling_range = [n_range_min, n_range_max, h_range_min, h_range_max, w_range_min, w_range_max]
             else:
-                range_inc = int((math.sqrt((h_o + w_o)**2 - 4*(h_o*w_o - range_max)) - (h_o + w_o))/2)
+                range_inc = int((math.sqrt((h_o + w_o) ** 2 - 4 * (h_o*w_o - range_max)) - (h_o + w_o)) / 2)
                 perf_ho_max = h_o + range_inc
                 perf_wo_max = w_o + range_inc
                 perf_hi_max_rev = self._get_input_h(perf_ho_max)
                 perf_wi_max_rev = self._get_input_w(perf_wo_max)
-                perf_hi_max = min(perf_hi_max, perf_hi_max_rev)
-                perf_wi_max = min(perf_wi_max, perf_wi_max_rev)
-                perf_range = [perf_hi_min, perf_hi_max, perf_wi_min, perf_wi_max]
+                perf_hi_max = min(h_range_max, perf_hi_max_rev)
+                perf_wi_max = min(w_range_max, perf_wi_max_rev)
+                tiling_range = [n_range_min, n_range_max, h_range_min, perf_hi_max, w_range_min, perf_wi_max]
 
-        perf_range = [int(v) for v in perf_range]
-        return perf_range
+        tiling_range = [int(v) for v in tiling_range]
+        return tiling_range
 
     def assembly_case(self, tiling, coverage, cnt):
         var_range = OrderedDict()
-        if self.dynamic_mode == "dynamic_hw":
-            var_range['fmap_h'] = (int(coverage[0]), int(coverage[1]))
-            var_range['fmap_w'] = (int(coverage[2]), int(coverage[3]))
-            var_range['ho'] = (self._get_output_h(var_range['fmap_h'][0]),
-                               self._get_output_h(var_range['fmap_h'][1]))
-            var_range['wo'] = (self._get_output_w(var_range['fmap_w'][0]),
-                               self._get_output_w(var_range['fmap_w'][1]))
-
-        elif self.dynamic_mode == "dynamic_batch":
+        if self.var_map.get("batch_n") is not None:
             var_range['batch_n'] = (int(coverage[0]), int(coverage[1]))
+
+        if self.var_map.get("fmap_h") is not None:
+            var_range['fmap_h'] = (int(coverage[2]), int(coverage[3]))
+            var_range['ho'] = (self.get_output_h(var_range['fmap_h'][0]),
+                               self.get_output_h(var_range['fmap_h'][1]))
+
+        if self.var_map.get("fmap_w") is not None:
+            var_range['fmap_w'] = (int(coverage[4]), int(coverage[5]))
+            var_range['wo'] = (self.get_output_w(var_range['fmap_w'][0]),
+                               self.get_output_w(var_range['fmap_w'][1]))
 
         return {"key": cnt, "tiling_strategy": tiling, "var_range": var_range}
 
@@ -233,7 +291,7 @@ class Conv2dTiling(CubeTilingOp):
 
         # shape info
         h_i, w_i = curent_size, curent_size
-        out_w = self._get_output_w(w_i)
+        out_w = self.get_output_w(w_i)
 
         zero_padding = False
         if self.pad_mode == "VAR":
@@ -294,6 +352,9 @@ class Conv2dTiling(CubeTilingOp):
 
         """
 
+        if not tiling.get("AL1_shape"):
+            return True
+
         # get M axis length in al1
         al1_bound = self._get_al1_bound(tiling, current_w)
 
@@ -319,7 +380,7 @@ class Conv2dTiling(CubeTilingOp):
         return int(fmap_l1_size) + int(filter_l1_size) <= utils.L1BUFFER
 
     def _get_calc_info(self):
-        self._convert_type(self.a_info, self.b_info, self.c_info)
+        self._convert_type(self.a_info, self.a_5hd_info, self.b_info, self.c_info)
         self.k_h, self.k_w = self.b_info[2:4]
         self.k_cin = self.b_info[1] * self.b_info[4]
         self.k_cout = self.b_info[0]
@@ -328,7 +389,7 @@ class Conv2dTiling(CubeTilingOp):
 
         self.pad_mode = "FIX"
         # currently, in dynamic_hw, when padding is SAME, pad_mode is "VAR"
-        if isinstance(self.tiling_info["pad"][0], Expr):
+        if isinstance(self.tiling_info["pad"][0], Expr) or isinstance(self.tiling_info["pad"][2], Expr):
             self.pad_mode = "VAR"
             self.tiling_info["pad"] = [-1, -1, -1, -1]
         self.cur_pads = self.tiling_info["pad"]
@@ -350,33 +411,51 @@ class Conv2dTiling(CubeTilingOp):
                 (self.k_h * self.k_w * utils.CUBE_SIZE)
         return tiling
 
-    def _get_output_h(self, h_in):
+    def get_output_h(self, h_in):
+        """
+        calculate output h
+        """
+
         if self.pad_mode == "VAR":
             return utils.icd(h_in, self.stride_h)
         return (h_in + self.cur_pads[2] + self.cur_pads[3] - self.dilate_h *
                 (self.k_h - 1) - 1) // self.stride_h + 1
 
-    def _get_output_w(self, w_in):
+    def get_output_w(self, w_in):
+        """
+        calculate output w
+        """
+
         if self.pad_mode == "VAR":
             return utils.icd(w_in, self.stride_w)
         return (w_in + self.cur_pads[0] + self.cur_pads[1] - self.dilate_w *
                 (self.k_w - 1) - 1) // self.stride_w + 1
 
     def _get_input_h(self, h_out):
-        # get max input h
+        """
+        calculate max input h
+        """
+
         if self.pad_mode == "VAR":
             return h_out * self.stride_h
         return h_out * self.stride_h - self.cur_pads[2] - self.cur_pads[3] \
             + self.dilate_h * (self.k_h - 1)
 
     def _get_input_w(self, w_out):
-        # get max input w
+        """
+        calculate max input w
+        """
+
         if self.pad_mode == "VAR":
             return w_out * self.stride_w
         return w_out * self.stride_w - self.cur_pads[0] - self.cur_pads[1] \
             + self.dilate_w * (self.k_w - 1)
 
     def _calc_pads(self, h_in, w_in):
+        """
+        calculate pads
+        """
+
         pad_h = utils.align(h_in, self.stride_h) - self.stride_h + \
             self.k_h_dilation - h_in
         pad_h = max(pad_h, 0)
