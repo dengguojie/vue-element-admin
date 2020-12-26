@@ -97,33 +97,14 @@ COMMON_INFER_FUNC_REG(SigmoidCrossEntropyWithLogitsGrad, SigmoidCrossEntropyWith
 // ---------------SigmoidCrossEntropyWithLogitsGrad END-----------------
 
 // -------------------SigmoidCrossEntropyWithLogits---------------------
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(SigmoidCrossEntropyWithLogitsInferShape)
-  auto input_type = op.GetInputDesc("predict").GetDataType();
-  auto input_shape = op.GetInputDesc("predict").GetShape();
-  auto target_shape = op.GetInputDesc("target").GetShape();
-  std::vector<int64_t> predict_dims = input_shape.GetDims();
-  std::vector<int64_t> target_dims = target_shape.GetDims();
-  std::vector<int64_t> output_dims;
-
-  for (auto i = 0; i < predict_dims.size(); i++) {
-    if (predict_dims[i] == UNKNOWN_DIM) {
-      output_dims.push_back(target_dims[i]);
-    } else {
-      output_dims.push_back(predict_dims[i]);
-    }
+IMPLEMT_COMMON_INFERFUNC(SigmoidCrossEntropyWithLogitsInferShape) {
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "predict", "target", "loss", is_dynamic_output)) {
+    return GRAPH_FAILED;
   }
 
-  TensorDesc td = op.GetOutputDesc("loss");
-  td.SetShape(ge::Shape(output_dims));
-  td.SetDataType(input_type);
-
-  std::vector<std::pair<int64_t, int64_t>> shape_range_x;
-  op.GetInputDesc("predict").GetShapeRange(shape_range_x);
-  td.SetShapeRange(shape_range_x);
-
-  (void)op.UpdateOutputDesc("loss", td);
   return GRAPH_SUCCESS;
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+}
 
 COMMON_INFER_FUNC_REG(SigmoidCrossEntropyWithLogits, SigmoidCrossEntropyWithLogitsInferShape);
 // ------------------SigmoidCrossEntropyWithLogits END------------------

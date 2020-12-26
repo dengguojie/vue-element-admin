@@ -1049,7 +1049,7 @@ INFER_FORMAT_FUNC_REG(Transpose, TransposeInferFormat);
 
 // ----------------TransposeD Op Begin-------------------
 // to adapt dynamic shape case
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(TransposeDInferShape)
+IMPLEMT_COMMON_INFERFUNC(TransposeDInferShape) {
   std::vector<int64_t> perm_list;
   if (ge::GRAPH_SUCCESS != op.GetAttr("perm", perm_list)) {
     OpsGetAttrErrReport(op.GetName(), "perm");
@@ -1058,7 +1058,8 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(TransposeDInferShape)
   if (GRAPH_SUCCESS != TransposeCommonInferShape(perm_list, op)) {
     return GRAPH_FAILED;
   }
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 COMMON_INFER_FUNC_REG(TransposeD, TransposeDInferShape);
 
@@ -1151,7 +1152,7 @@ INFER_FORMAT_FUNC_REG(TransposeD, TransposeDInferFormat);
 // ----------------TransposeD Op End-------------------
 
 // ----------------TranData Op Begin---------------------
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(TransDataInferShape)
+IMPLEMT_COMMON_INFERFUNC(TransDataInferShape) {
 // main part of shape infer
 TensorDesc src_tensor = op.GetInputDesc("src");
   Shape src_shape = src_tensor.GetShape();
@@ -1162,7 +1163,8 @@ TensorDesc src_tensor = op.GetInputDesc("src");
     td.SetDataType(input_dtype);
     (void)op.UpdateOutputDesc("dst", td);
   }
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 COMMON_INFER_FUNC_REG(TransData, TransDataInferShape);
 // ----------------TranData Op End------------------------

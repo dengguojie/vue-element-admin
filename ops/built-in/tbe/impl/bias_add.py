@@ -57,15 +57,20 @@ def op_select_format(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                    datatype="float16, float, int32, float16, float,"
                                                             "int32, float16, float",
+                                                   unknownshape_format="NC1HWC0, NC1HWC0, NCHW, NCHW, NCHW, NHWC,"
+                                                                       "NHWC, NHWC",
                                                    format="NC1HWC0, NC1HWC0, NCHW, NCHW, NCHW, NHWC,"
                                                           "NHWC, NHWC")
             input1 = util_select_op_base.gen_param(classify="input1", name="bias",
                                                    datatype="float16, float, int32, float16, float,"
                                                             "int32, float16, float",
+                                                   unknownshape_format="ND, ND, NCHW, NCHW, NCHW, NHWC, NHWC, NHWC",
                                                    format="ND, ND, NCHW, NCHW, NCHW, NHWC, NHWC, NHWC")
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                     datatype="float16, float, int32, float16, float,"
                                                              "int32, float16, float",
+                                                    unknownshape_format="NC1HWC0, NC1HWC0, NCHW, NCHW, NCHW, NHWC,"
+                                                                        "NHWC, NHWC",
                                                     format="NC1HWC0, NC1HWC0, NCHW, NCHW, NCHW, NHWC,"
                                                            "NHWC, NHWC")
         elif shape_bias[0] % c0 != 0 and len(ori_shape_x) == 4:
@@ -73,29 +78,38 @@ def op_select_format(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                    datatype="float16, float, int32, float16, float,"
                                                             "int32, float16, float",
+                                                   unknownshape_format="NC1HWC0, NC1HWC0, NCHW, NCHW, NCHW, NHWC,"
+                                                                       "NHWC, NHWC",
                                                    format="NC1HWC0, NC1HWC0, NCHW, NCHW, NCHW, NHWC,"
                                                           "NHWC, NHWC")
             input1 = util_select_op_base.gen_param(classify="input1", name="bias",
                                                    datatype="float16, float, int32, float16, float,"
                                                             "int32, float16, float",
+                                                   unknownshape_format="NC1HWC0, NC1HWC0, NCHW, NCHW, NCHW, NHWC,"
+                                                                       "NHWC, NHWC",
                                                    format="NC1HWC0, NC1HWC0, NCHW, NCHW, NCHW, NHWC,"
                                                           "NHWC, NHWC")
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                     datatype="float16, float, int32, float16, float,"
                                                              "int32, float16, float",
+                                                    unknownshape_format="NC1HWC0, NC1HWC0, NCHW, NCHW, NCHW, NHWC,"
+                                                                        "NHWC, NHWC",
                                                     format="NC1HWC0, NC1HWC0, NCHW, NCHW, NCHW, NHWC,"
                                                            "NHWC, NHWC")
         else:
             # NCHW+NCHW NHWC+NHWC
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                    datatype="int32, float16, float, int32, float16, float",
-                                                   format="NCHW, NCHW, NCHW, NHWC, NHWC, NHWC")
+                                                   format="NCHW, NCHW, NCHW, NHWC, NHWC, NHWC",
+                                                   unknownshape_format="NCHW, NCHW, NCHW, NHWC, NHWC, NHWC")
             input1 = util_select_op_base.gen_param(classify="input1", name="bias",
                                                    datatype="int32, float16, float, int32, float16, float",
-                                                   format="NCHW, NCHW, NCHW, NHWC, NHWC, NHWC")
+                                                   format="NCHW, NCHW, NCHW, NHWC, NHWC, NHWC",
+                                                   unknownshape_format="NCHW, NCHW, NCHW, NHWC, NHWC, NHWC")
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                     datatype="int32, float16, float, int32, float16, float",
-                                                    format="NCHW, NCHW, NCHW, NHWC, NHWC, NHWC")
+                                                    format="NCHW, NCHW, NCHW, NHWC, NHWC, NHWC",
+                                                    unknownshape_format="NCHW, NCHW, NCHW, NHWC, NHWC, NHWC")
     else:
         if shape_bias[0] % c0 == 0:
             # NDHWC+NDHWC NCDHW+NCDHW NDC1HWC0+NDC1HWC0
@@ -103,34 +117,43 @@ def op_select_format(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
                                                    datatype="int32, float16, float, int32, float16,"
                                                             "float, int32, float16, float",
                                                    format="NDHWC, NDHWC, NDHWC, NCDHW, NCDHW,"
-                                                          "NCDHW, NDC1HWC0, NDC1HWC0, NDC1HWC0")
+                                                          "NCDHW, NDC1HWC0, NDC1HWC0, NDC1HWC0",
+                                                   unknownshape_format="NDHWC, NDHWC, NDHWC, NCDHW, NCDHW,"
+                                                                       "NCDHW, NDC1HWC0, NDC1HWC0, NDC1HWC0")
             input1 = util_select_op_base.gen_param(classify="input1", name="bias",
                                                    datatype="int32, float16, float, int32, float16,"
                                                             "float, int32, float16, float",
-                                                   format="ND, ND, ND, ND, ND, ND, ND, ND, ND")
+                                                   format="ND, ND, ND, ND, ND, ND, ND, ND, ND",
+                                                   unknownshape_format="ND, ND, ND, ND, ND, ND, ND, ND, ND")
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                     datatype="int32, float16, float, int32, float16,"
                                                              "float, int32, float16, float",
                                                     format="NDHWC, NDHWC, NDHWC, NCDHW, NCDHW,"
-                                                           "NCDHW, NDC1HWC0, NDC1HWC0, NDC1HWC0")
+                                                           "NCDHW, NDC1HWC0, NDC1HWC0, NDC1HWC0",
+                                                    unknownshape_format="NDHWC, NDHWC, NDHWC, NCDHW, NCDHW,"
+                                                                        "NCDHW, NDC1HWC0, NDC1HWC0, NDC1HWC0")
 
         else:
             # NDHWC+NDHWC NCDHW+NCDHW
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                    datatype="int32, float16, float, int32, float16,"
                                                             "float",
-                                                   format="NDHWC, NDHWC, NDHWC, NCDHW, NCDHW, NCDHW")
+                                                   format="NDHWC, NDHWC, NDHWC, NCDHW, NCDHW, NCDHW",
+                                                   unknownshape_format="NDHWC, NDHWC, NDHWC, NCDHW, NCDHW, NCDHW")
             input1 = util_select_op_base.gen_param(classify="input1", name="bias",
                                                    datatype="int32, float16, float, int32, float16,"
                                                             "float",
-                                                   format="ND, ND, ND, ND, ND, ND")
+                                                   format="ND, ND, ND, ND, ND, ND",
+                                                   unknownshape_format="ND, ND, ND, ND, ND, ND")
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                     datatype="int32, float16, float, int32, float16,"
                                                              "float",
-                                                    format="NDHWC, NDHWC, NDHWC, NCDHW, NCDHW, NCDHW")
+                                                    format="NDHWC, NDHWC, NDHWC, NCDHW, NCDHW, NCDHW",
+                                                    unknownshape_format="NDHWC, NDHWC, NDHWC, NCDHW, NCDHW, NCDHW")
 
     param_list = [input0, input1, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+    print(param_dynamic_in_json)
     return param_dynamic_in_json
 
 @tbe_platform.fusion_manager.fusion_manager.register("bias_add")
@@ -306,3 +329,4 @@ def bias_add(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
         "name": kernel_name,
         "tensor_list": [data_x, bias, res]}
     tbe.cce_build_code(sch, config)
+

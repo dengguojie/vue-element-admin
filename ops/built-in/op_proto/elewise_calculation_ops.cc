@@ -91,6 +91,22 @@ bool InferShapeForMaximumAndMinimum(Operator& op) {
   return true;
 }
 
+IMPLEMT_COMMON_INFERFUNC(TwoInOneOutCommonInferShape) {
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", is_dynamic_output)) {
+    return GRAPH_FAILED;
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(OneInOneOutCommonInferShape) {
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+
 // ----------------MaximumGrad-------------------
 IMPLEMT_COMMON_INFERFUNC(MaximumGradInferShape) {
   if (InferShapeForMaximumAndMinimum(op)) {
@@ -203,26 +219,30 @@ VERIFY_FUNC_REG(AddV2, AddV2Verify);
 // -------------------AddV2 END----------------------
 
 // ----------------Cast-------------------
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(CastInferShape)
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  Shape x_shape = op.GetInputDesc("x").GetShape();
-  tensordesc_output.SetShape(x_shape);
+IMPLEMT_COMMON_INFERFUNC(CastInferShape) {
+  // get input desc
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  vector<int64_t> input_shape = input_desc->MutableShape().GetDims();
 
-  std::vector<std::pair<int64_t, int64_t>> range;
-  auto status = op.GetInputDesc("x").GetShapeRange(range);
-  if (status != GRAPH_SUCCESS) {
-    return GRAPH_FAILED;
+  auto output_desc = op_info->MutableOutputDesc("y");
+  if (IsUnknown(input_shape)) {
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    input_desc->GetShapeRange(input_range);
+    MakeUpShapeRange(input_shape, input_range);
+
+    output_desc->SetShape(GeShape(input_shape));
+    output_desc->SetOriginShape(GeShape(input_shape));
+    output_desc->SetShapeRange(input_range);
+  } else {
+    output_desc->SetShape(GeShape(input_shape));
   }
-  tensordesc_output.SetShapeRange(range);
-
   int type;
   if (op.GetAttr("dst_type", type) == GRAPH_SUCCESS) {
-    tensordesc_output.SetDataType((ge::DataType)type);
+    output_desc->SetDataType((ge::DataType)type);
   }
-
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
   return GRAPH_SUCCESS;
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+}
 
 COMMON_INFER_FUNC_REG(Cast, CastInferShape);
 // --------------Cast END-----------------
@@ -235,11 +255,11 @@ IMPLEMT_VERIFIER(GreaterEqual, GreaterEqualVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(GreaterEqualInferShape)
+IMPLEMT_COMMON_INFERFUNC(GreaterEqualInferShape) {
   if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
     return GRAPH_FAILED;
   }
-
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto vec_y = op_desc->MutableOutputDesc("y")->MutableShape().GetDims();
   if (IsUnknownRankShape(vec_y) || IsUnknownVec(vec_y)) {
     if (!InferShapeRangeTwoInOneOutBroadcase(op, "x1", "x2", "y")) {
@@ -248,7 +268,8 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(GreaterEqualInferShape)
   }
 
   op_desc->MutableOutputDesc("y")->SetDataType(DT_BOOL);
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 COMMON_INFER_FUNC_REG(GreaterEqual, GreaterEqualInferShape);
 VERIFY_FUNC_REG(GreaterEqual, GreaterEqualVerify);
@@ -262,11 +283,11 @@ IMPLEMT_VERIFIER(Less, LessVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(LessInferShape)
+IMPLEMT_COMMON_INFERFUNC(LessInferShape) {
   if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
     return GRAPH_FAILED;
   }
-
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto vec_y = op_desc->MutableOutputDesc("y")->MutableShape().GetDims();
   if (IsUnknownRankShape(vec_y) || IsUnknownVec(vec_y)) {
     if (!InferShapeRangeTwoInOneOutBroadcase(op, "x1", "x2", "y")) {
@@ -275,7 +296,8 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(LessInferShape)
   }
 
   op_desc->MutableOutputDesc("y")->SetDataType(DT_BOOL);
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 COMMON_INFER_FUNC_REG(Less, LessInferShape);
 VERIFY_FUNC_REG(Less, LessVerify);
@@ -289,32 +311,13 @@ IMPLEMT_VERIFIER(RealDiv, RealDivVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(RealDivInferShape)
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
-    return GRAPH_FAILED;
-  }
 
-  if (!InferShapeRangeTwoInOneOutBroadcase(op, "x1", "x2", "y")) {
-    return GRAPH_FAILED;
-  }
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
-
-COMMON_INFER_FUNC_REG(RealDiv, RealDivInferShape);
+COMMON_INFER_FUNC_REG(RealDiv, TwoInOneOutCommonInferShape);
 VERIFY_FUNC_REG(RealDiv, RealDivVerify);
 // ----------------RealDiv END------------------
 
 // ----------------Sqrt Op Begin------------
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(SqrtInferShape)
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(op.GetInputDesc("x").GetShape());
-  tensordesc_output.SetDataType(op.GetInputDesc("x").GetDataType());
-  std::vector<std::pair<int64_t, int64_t>> shape_range_x;
-  op.GetInputDesc("x").GetShapeRange(shape_range_x);
-  tensordesc_output.SetShapeRange(shape_range_x);
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
-
-COMMON_INFER_FUNC_REG(Sqrt, SqrtInferShape);
+COMMON_INFER_FUNC_REG(Sqrt, OneInOneOutCommonInferShape);
 // ----------------Sqrt Op End---------------
 
 // ----------------Maximum--------------------
@@ -325,16 +328,7 @@ IMPLEMT_VERIFIER(Maximum, MaximumVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(MaximumInferShape)
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
-    return GRAPH_FAILED;
-  }
-  if (!InferShapeRangeTwoInOneOutBroadcase(op, "x1", "x2", "y")) {
-    return GRAPH_FAILED;
-  }
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
-
-COMMON_INFER_FUNC_REG(Maximum, MaximumInferShape);
+COMMON_INFER_FUNC_REG(Maximum, TwoInOneOutCommonInferShape);
 VERIFY_FUNC_REG(Maximum, MaximumVerify);
 // --------------Maximum END------------------
 
@@ -346,35 +340,12 @@ IMPLEMT_VERIFIER(Minimum, MinimumVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(MinimumInferShape)
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
-    return GRAPH_FAILED;
-  }
-  if (!InferShapeRangeTwoInOneOutBroadcase(op, "x1", "x2", "y")) {
-    return GRAPH_FAILED;
-  }
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
-
-COMMON_INFER_FUNC_REG(Minimum, MinimumInferShape);
+COMMON_INFER_FUNC_REG(Minimum, TwoInOneOutCommonInferShape);
 VERIFY_FUNC_REG(Minimum, MinimumVerify);
 // -----------------Minimum END-----------------
 
 // ----------------Reciprocal-------------------
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ReciprocalInferShape)
-  Shape x_shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-
-  std::vector<std::pair<int64_t, int64_t>> shape_range_x;
-  op.GetInputDesc("x").GetShapeRange(shape_range_x);
-
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(x_shape);
-  tensordesc_output.SetDataType(input_dtype);
-  tensordesc_output.SetShapeRange(shape_range_x);
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
-
-COMMON_INFER_FUNC_REG(Reciprocal, ReciprocalInferShape);
+COMMON_INFER_FUNC_REG(Reciprocal, OneInOneOutCommonInferShape);
 // ---------------Reciprocal END-----------------
 
 // -------------------Sub----------------------
@@ -440,17 +411,7 @@ IMPLEMT_VERIFIER(Div, DivVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(DivInferShape)
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
-    return GRAPH_FAILED;
-  }
-
-  if (!InferShapeRangeTwoInOneOutBroadcase(op, "x1", "x2", "y")) {
-    return GRAPH_FAILED;
-  }
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
-
-COMMON_INFER_FUNC_REG(Div, DivInferShape);
+COMMON_INFER_FUNC_REG(Div, TwoInOneOutCommonInferShape);
 VERIFY_FUNC_REG(Div, DivVerify);
 // -----------------Div END------------------
 
@@ -462,11 +423,12 @@ IMPLEMT_VERIFIER(Equal, EqualVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(EqualInferShape)
+IMPLEMT_COMMON_INFERFUNC(EqualInferShape) {
   if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
     return GRAPH_FAILED;
   }
 
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto vec_y = op_desc->MutableOutputDesc("y")->MutableShape().GetDims();
   if (IsUnknownRankShape(vec_y) || IsUnknownVec(vec_y)) {
     if (!InferShapeRangeTwoInOneOutBroadcase(op, "x1", "x2", "y")) {
@@ -475,29 +437,15 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(EqualInferShape)
   }
 
   op_desc->MutableOutputDesc("y")->SetDataType(DT_BOOL);
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 COMMON_INFER_FUNC_REG(Equal, EqualInferShape);
 VERIFY_FUNC_REG(Equal, EqualVerify);
 // ------------------Equal END--------------------
 
 // ----------------Exp-------------------
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ExpInferShape)
-  Shape x_shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  std::vector<std::pair<int64_t, int64_t>> shape_range_x;
-  auto status = op.GetInputDesc("x").GetShapeRange(shape_range_x);
-  if (status != GRAPH_SUCCESS) {
-    return GRAPH_FAILED;
-  }
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(x_shape);
-  tensordesc_output.SetDataType(input_dtype);
-  tensordesc_output.SetShapeRange(shape_range_x);
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
-
-COMMON_INFER_FUNC_REG(Exp, ExpInferShape);
+COMMON_INFER_FUNC_REG(Exp, OneInOneOutCommonInferShape);
 // ----------------Exp END-------------------
 
 // ----------------Expm1-------------------
@@ -555,11 +503,11 @@ IMPLEMT_VERIFIER(LessEqual, LessEqualVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(LessEqualInferShape)
+IMPLEMT_COMMON_INFERFUNC(LessEqualInferShape) {
   if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
     return GRAPH_FAILED;
   }
-
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto vec_y = op_desc->MutableOutputDesc("y")->MutableShape().GetDims();
   if (IsUnknownRankShape(vec_y) || IsUnknownVec(vec_y)) {
     if (!InferShapeRangeTwoInOneOutBroadcase(op, "x1", "x2", "y")) {
@@ -568,29 +516,16 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(LessEqualInferShape)
   }
 
   op_desc->MutableOutputDesc("y")->SetDataType(DT_BOOL);
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
+
 
 COMMON_INFER_FUNC_REG(LessEqual, LessEqualInferShape);
 VERIFY_FUNC_REG(LessEqual, LessEqualVerify);
 // --------------------LessEqual END-----------------------
 
 // ----------------Log1p-------------------
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(Log1pInferShape)
-  Shape x_shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  std::vector<std::pair<int64_t, int64_t>> shape_range_x;
-  auto status = op.GetInputDesc("x").GetShapeRange(shape_range_x);
-  if (status != GRAPH_SUCCESS) {
-    return GRAPH_FAILED;
-  }
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(x_shape);
-  tensordesc_output.SetDataType(input_dtype);
-  tensordesc_output.SetShapeRange(shape_range_x);
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
-
-COMMON_INFER_FUNC_REG(Log1p, Log1pInferShape);
+COMMON_INFER_FUNC_REG(Log1p, OneInOneOutCommonInferShape);
 // --------------Log1p END-----------------
 
 // ------------------Mod--------------------
@@ -691,21 +626,7 @@ VERIFY_FUNC_REG(NotEqual, NotEqualVerify);
 // -------------------NotEqual END---------------------
 
 // ----------------Neg-------------------
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(NegInferShape)
-  Shape x_shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-
-  std::vector<std::pair<int64_t, int64_t>> shape_range_x;
-  op.GetInputDesc("x").GetShapeRange(shape_range_x);
-
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(x_shape);
-  tensordesc_output.SetDataType(input_dtype);
-  tensordesc_output.SetShapeRange(shape_range_x);
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
-
-COMMON_INFER_FUNC_REG(Neg, NegInferShape);
+COMMON_INFER_FUNC_REG(Neg, OneInOneOutCommonInferShape);
 // ---------------Neg EDN-----------------
 
 // -----------------TruncateDiv------------------
@@ -846,11 +767,7 @@ VERIFY_FUNC_REG(ReciprocalGrad, ReciprocalGradVerify);
 // --------------ReciprocalGrad END-----------------
 
 // ----------------Square Op Begin-----------------
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(SquareInferShape)
-  (void)op.UpdateOutputDesc("y", op.GetInputDesc("x"));
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
-
-COMMON_INFER_FUNC_REG(Square, SquareInferShape);
+COMMON_INFER_FUNC_REG(Square, OneInOneOutCommonInferShape);
 // ----------------Square Op End-------------------
 
 // ----------------RsqrtGrad----------------------
@@ -922,17 +839,7 @@ IMPLEMT_VERIFIER(LogicalOr, LogicalOrVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(LogicalOrInferShape)
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
-    return GRAPH_FAILED;
-  }
-
-  if (!InferShapeRangeTwoInOneOutBroadcase(op, "x1", "x2", "y")) {
-    return GRAPH_FAILED;
-  }
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
-
-COMMON_INFER_FUNC_REG(LogicalOr, LogicalOrInferShape);
+COMMON_INFER_FUNC_REG(LogicalOr, TwoInOneOutCommonInferShape);
 VERIFY_FUNC_REG(LogicalOr, LogicalOrVerify);
 // ----------------LogicalOr END--------------------
 
@@ -971,19 +878,7 @@ IMPLEMT_VERIFIER(Mul, MulVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(MulInferShape)
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
-    return GRAPH_FAILED;
-  }
-  auto vec_y = op_desc->MutableOutputDesc("y")->MutableShape().GetDims();
-  if (IsUnknownRankShape(vec_y) || IsUnknownVec(vec_y)) {
-    if (!InferShapeRangeTwoInOneOutBroadcase(op, "x1", "x2", "y")) {
-      return GRAPH_FAILED;
-    }
-  }
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
-
-COMMON_INFER_FUNC_REG(Mul, MulInferShape);
+COMMON_INFER_FUNC_REG(Mul, TwoInOneOutCommonInferShape);
 VERIFY_FUNC_REG(Mul, MulVerify);
 // ----------------Mul END--------------------
 
@@ -995,7 +890,7 @@ IMPLEMT_VERIFIER(SqrtGrad, SqrtGradVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(SqrtGradInferShape)
+IMPLEMT_COMMON_INFERFUNC(SqrtGradInferShape) {
   Shape shape_x = op.GetInputDesc("y").GetShape();
   DataType input_dtype = op.GetInputDesc("y").GetDataType();
   TensorDesc tensordesc_output = op.GetOutputDesc("z");
@@ -1007,7 +902,8 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(SqrtGradInferShape)
   if (op.UpdateOutputDesc("z", tensordesc_output) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
   }
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+   return GRAPH_SUCCESS;
+}
 
 COMMON_INFER_FUNC_REG(SqrtGrad, SqrtGradInferShape);
 VERIFY_FUNC_REG(SqrtGrad, SqrtGradVerify);
@@ -1091,7 +987,7 @@ int64_t AddNInferClassify(ge::Operator& op, int64_t &tensor_num) {
   }
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(AddNInferShape)
+IMPLEMT_COMMON_INFERFUNC(AddNInferShape) {
   /*
   add_n has four type inputs:
   1.empty 2.static shape 3.-1 4.-2
@@ -1186,8 +1082,8 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(AddNInferShape)
     y_desc.SetShapeRange(out_range);
     (void)op.UpdateOutputDesc("y", y_desc);
   }
-
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 COMMON_INFER_FUNC_REG(AddN, AddNInferShape);
 // ----------------AddN END-------------------
@@ -1477,22 +1373,7 @@ VERIFY_FUNC_REG(Greater, GreaterVerify);
 // --------------------Greater END---------------------
 
 // --------------------ZerosLike----------------
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ZerosLikeInferShape)
-  Shape y_shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc td = op.GetOutputDesc("y");
-  td.SetShape(ge::Shape(y_shape));
-  td.SetDataType(input_dtype);
-  std::vector<std::pair<int64_t, int64_t>> shape_range_x;
-  auto status = op.GetInputDesc("x").GetShapeRange(shape_range_x);
-  if (status != GRAPH_SUCCESS) {
-    return GRAPH_FAILED;
-  }
-  td.SetShapeRange(shape_range_x);
-  (void)op.UpdateOutputDesc("y", td);
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
-
-COMMON_INFER_FUNC_REG(ZerosLike, ZerosLikeInferShape);
+COMMON_INFER_FUNC_REG(ZerosLike, OneInOneOutCommonInferShape);
 // ----------------ZerosLike END-----------------
 
 // ----------------LogicalNot-------------------
@@ -2022,17 +1903,7 @@ IMPLEMT_VERIFIER(FloorDiv, FloorDivVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(FloorDivInferShape)
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
-    return GRAPH_FAILED;
-  }
-
-  if (!InferShapeRangeTwoInOneOutBroadcase(op, "x1", "x2", "y")) {
-    return GRAPH_FAILED;
-  }
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
-
-COMMON_INFER_FUNC_REG(FloorDiv, FloorDivInferShape);
+COMMON_INFER_FUNC_REG(FloorDiv, TwoInOneOutCommonInferShape);
 VERIFY_FUNC_REG(FloorDiv, FloorDivVerify);
 // ----------------FloorDiv END------------------------
 
@@ -2044,20 +1915,7 @@ IMPLEMT_VERIFIER(FloorMod, FloorModVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(FloorModInferShape)
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
-    return GRAPH_FAILED;
-  }
-
-  auto vec_y = op_desc->MutableOutputDesc("y")->MutableShape().GetDims();
-  if (IsUnknownRankShape(vec_y) || IsUnknownVec(vec_y)) {
-    if (!InferShapeRangeTwoInOneOutBroadcase(op, "x1", "x2", "y")) {
-      return GRAPH_FAILED;
-    }
-  }
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
-
-COMMON_INFER_FUNC_REG(FloorMod, FloorModInferShape);
+COMMON_INFER_FUNC_REG(FloorMod, TwoInOneOutCommonInferShape);
 VERIFY_FUNC_REG(FloorMod, FloorModVerify);
 // ----------------FloorMod END---------------------
 

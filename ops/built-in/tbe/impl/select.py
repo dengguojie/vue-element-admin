@@ -127,15 +127,19 @@ def op_select_format(condition, x1, x2, y, kernel_name="select"):
         format_list = format_list * len(dtype_list)
         input0 = util_select_op_base.gen_param(classify="input0", name="condition",
                                                datatype=",".join(dtype_total0),
+                                               unknownshape_format=",".join(format_list),
                                                format=",".join(format_list))
         input1 = util_select_op_base.gen_param(classify="input1", name="x1",
                                                datatype=",".join(dtype_total),
+                                               unknownshape_format=",".join(format_list),
                                                format=",".join(format_list))
         input2 = util_select_op_base.gen_param(classify="input2", name="x2",
                                                datatype=",".join(dtype_total),
+                                               unknownshape_format=",".join(format_list),
                                                format=",".join(format_list))
         output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                 datatype=",".join(dtype_total),
+                                                unknownshape_format=",".join(format_list),
                                                 format=",".join(format_list))
     else:
         format_list.append("ND")
@@ -160,15 +164,19 @@ def op_select_format(condition, x1, x2, y, kernel_name="select"):
         format_list = format_list * len(dtype_total)
         input0 = util_select_op_base.gen_param(classify="input0", name="condition",
                                                datatype=",".join(dtype_total0),
+                                               unknownshape_format=",".join(format_list),
                                                format=",".join(format_list))
         input1 = util_select_op_base.gen_param(classify="input1", name="x1",
                                                datatype=",".join(dtype_total),
+                                               unknownshape_format=",".join(format_list1),
                                                format=",".join(format_list1))
         input2 = util_select_op_base.gen_param(classify="input2", name="x2",
                                                datatype=",".join(dtype_total),
+                                               unknownshape_format=",".join(format_list1),
                                                format=",".join(format_list1))
         output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                 datatype=",".join(dtype_total),
+                                                unknownshape_format=",".join(format_list1),
                                                 format=",".join(format_list1))
 
     param_list = [input0, input1, input2, output0]

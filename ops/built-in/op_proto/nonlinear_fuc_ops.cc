@@ -26,6 +26,13 @@
 #include "./util/error_util.h"
 
 namespace ge {
+
+IMPLEMT_COMMON_INFERFUNC(OneInOneOutCommonInferShape) {
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
 // ----------------------GeluGrad----------------------
 IMPLEMT_VERIFIER(GeluGrad, GeluGradVerify) {
   if (!CheckTwoInputDtypeSame(op, "x", "dy") || !CheckTwoInputDtypeSame(op, "x", "y")) {
@@ -147,42 +154,11 @@ INFER_FUNC_REG(PReluGrad, PReluGradInferShape);
 VERIFY_FUNC_REG(PReluGrad, PReluGradVerify);
 // ----------------PReluGrad End---------------
 // ----------------Tanh Op Begin-----------------
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(TanhInferShape)
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(op.GetInputDesc("x").GetShape());
-  tensordesc_output.SetDataType(op.GetInputDesc("x").GetDataType());
-  std::vector<std::pair<int64_t, int64_t>> shape_range_x;
-  op.GetInputDesc("x").GetShapeRange(shape_range_x);
-  tensordesc_output.SetShapeRange(shape_range_x);
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
-  return GRAPH_SUCCESS;
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
-
-COMMON_INFER_FUNC_REG(Tanh, TanhInferShape);
+COMMON_INFER_FUNC_REG(Tanh, OneInOneOutCommonInferShape);
 // ----------------Tanh Op End-------------------
 
 // ----------------Relu-------------------
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ReluInferShape)
-  OP_LOGI(op.GetName().c_str(), "Enter relu infershape");
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(op.GetInputDesc("x").GetShape());
-  auto getXShapeSize = op.GetInputDesc("x").GetShape().GetDims();
-  for (size_t i = 0; i < getXShapeSize.size(); i++) {
-    OP_LOGI(op.GetName().c_str(), "getXShape[%u] is %lld", i, getXShapeSize[i]);
-  }
-  tensordesc_output.SetDataType(op.GetInputDesc("x").GetDataType());
-  std::vector<std::pair<int64_t, int64_t>> shape_range_x;
-  op.GetInputDesc("x").GetShapeRange(shape_range_x);
-  tensordesc_output.SetShapeRange(shape_range_x);
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
-  auto getYShapeSize = op.GetOutputDesc("y").GetShape().GetDims();
-  for (size_t i = 0; i < getYShapeSize.size(); i++) {
-    OP_LOGI(op.GetName().c_str(), "getYShape[%u] is %lld", i, getYShapeSize[i]);
-  }
-  OP_LOGI(op.GetName().c_str(), "Leave relu infershape");
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
-
-COMMON_INFER_FUNC_REG(Relu, ReluInferShape);
+COMMON_INFER_FUNC_REG(Relu, OneInOneOutCommonInferShape);
 // --------------Relu END-----------------
 
 // ----------------ReluV2-------------------
@@ -345,7 +321,7 @@ IMPLEMT_VERIFIER(SigmoidGrad, SigmoidGradVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(SigmoidGradInferShape)
+IMPLEMT_COMMON_INFERFUNC(SigmoidGradInferShape) {
   Shape shape_x = op.GetInputDesc("y").GetShape();
   DataType input_dtype = op.GetInputDesc("y").GetDataType();
   std::vector<std::pair<int64_t, int64_t>> shape_range_y;
@@ -357,7 +333,8 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(SigmoidGradInferShape)
   if (op.UpdateOutputDesc("z", tensordesc_output) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
   }
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 COMMON_INFER_FUNC_REG(SigmoidGrad, SigmoidGradInferShape);
 VERIFY_FUNC_REG(SigmoidGrad, SigmoidGradVerify);
@@ -458,23 +435,12 @@ VERIFY_FUNC_REG(ReluGrad, ReluGradVerify);
 // ----------------ReluGrad END-----------------
 
 // ----------------ReluGradV2-------------------
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ReluGradV2InferShape)
-  auto x_shape = op.GetInputDesc("gradients").GetShape().GetDims();
-  auto x_type = op.GetInputDesc("gradients").GetDataType();
-  TensorDesc op_output_desc = op.GetOutputDesc("backprops");
-
-  std::vector<std::pair<int64_t, int64_t>> shape_range_x;
-  op.GetInputDesc("gradients").GetShapeRange(shape_range_x);
-  op_output_desc.SetShapeRange(shape_range_x);
-
-  op_output_desc.SetShape(ge::Shape(x_shape));
-
-  op_output_desc.SetDataType(x_type);
-  (void)op.UpdateOutputDesc("backprops", op_output_desc);
-  return GRAPH_SUCCESS;
-
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
-
+IMPLEMT_COMMON_INFERFUNC(ReluGradV2InferShape) {
+  if (OneInOneOutDynamicInfer(op, "gradients", {"backprops"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
 COMMON_INFER_FUNC_REG(ReluGradV2, ReluGradV2InferShape);
 
 // ----------------ReluGradV2 END-----------------
@@ -496,7 +462,7 @@ IMPLEMT_VERIFIER(LeakyReluGrad, LeakyReluGradVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(LeakyReluGradInferShape)
+IMPLEMT_COMMON_INFERFUNC(LeakyReluGradInferShape) {
   TensorDesc tensordesc_output = op.GetOutputDesc("backprops");
   tensordesc_output.SetShape(op.GetInputDesc("gradients").GetShape());
   tensordesc_output.SetDataType(op.GetInputDesc("gradients").GetDataType());
@@ -504,7 +470,8 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(LeakyReluGradInferShape)
   op.GetInputDesc("gradients").GetShapeRange(shape_range_grad);
   tensordesc_output.SetShapeRange(shape_range_grad);
   (void)op.UpdateOutputDesc("backprops", tensordesc_output);
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 VERIFY_FUNC_REG(LeakyReluGrad, LeakyReluGradVerify);
 COMMON_INFER_FUNC_REG(LeakyReluGrad, LeakyReluGradInferShape);

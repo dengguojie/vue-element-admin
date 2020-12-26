@@ -538,11 +538,10 @@ static void CaclDims(const Tensor& data, std::vector<int64_t>& vec_dim) {
   }
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(FillInferShape)
-
+IMPLEMT_COMMON_INFERFUNC(FillInferShape) {
   GeTensorPtr data;
   std::vector<int64_t> vec_dim;
-
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   op_desc->SetOpInferDepends({"dims"});
 
   auto node = NodeUtils::GetNodeFromOperator(op);
@@ -615,13 +614,13 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(FillInferShape)
     (void)op.UpdateOutputDesc("y", td);
     return GRAPH_SUCCESS;
   }
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+}
 
 COMMON_INFER_FUNC_REG(Fill, FillInferShape);
 // ----------------Fill Op End-------------------
 
 // ----------------FillD Op Begin-------------------
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(FillDInferShape)
+IMPLEMT_COMMON_INFERFUNC(FillDInferShape) {
   std::vector<int64_t> vec_dim;
   if (ge::GRAPH_SUCCESS != op.GetAttr("dims", vec_dim)) {
     OpsGetAttrErrReport(op.GetName(), "dims");
@@ -642,7 +641,8 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(FillDInferShape)
 
   (void)op.UpdateOutputDesc("y", td);
   OP_LOGI(op.GetName().c_str(), "infershape success");
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+ }
 
 COMMON_INFER_FUNC_REG(FillD, FillDInferShape);
 // ----------------FillD Op End-------------------

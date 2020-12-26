@@ -444,7 +444,8 @@ static graphStatus TileInferShapeAndType(ge::Operator& op, std::vector<int64_t>&
   }
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(TileInferShape)
+IMPLEMT_COMMON_INFERFUNC(TileInferShape) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   Tensor multiples_tensor;
   // in order to switch to aicpu when aicore not support
   op_desc->SetOpInferDepends({"multiples"});
@@ -507,7 +508,7 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(TileInferShape)
   std::vector<int64_t> multiples;
   GetTileConstValue(op, multiples_tensor, dtype, multiples);
   return TileInferShapeAndType(op, multiples);
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+}
 
 COMMON_INFER_FUNC_REG(Tile, TileInferShape);
 // -----------------------Tile Op end----------------------------------
@@ -523,7 +524,7 @@ vector<int64_t> GetTileDConstValue(const ge::Operator& op, const std::string& ke
 }
 
 // Obtains the processing function of the output tensor description.
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(TileDInferShape)
+IMPLEMT_COMMON_INFERFUNC(TileDInferShape) {
   std::vector<int64_t> multiples;
   multiples = GetTileDConstValue(op, "multiples");
   if (multiples.empty()) {
@@ -532,7 +533,7 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(TileDInferShape)
     return GRAPH_FAILED;
   }
   return TileInferShapeAndType(op, multiples);
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+}
 
 COMMON_INFER_FUNC_REG(TileD, TileDInferShape);
 // -----------------------TileD Op end----------------------------------
@@ -749,7 +750,8 @@ IMPLEMT_VERIFIER(GatherNd, GatherNdVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(GatherNdInferShape)
+IMPLEMT_COMMON_INFERFUNC(GatherNdInferShape) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   GeTensorDescPtr output_tensor_desc = op_desc->MutableOutputDesc("y");
   std::vector<std::pair<int64_t, int64_t>> shape_range_x;
   op_desc->MutableInputDesc("x")->GetShapeRange(shape_range_x);
@@ -798,7 +800,8 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(GatherNdInferShape)
   if (!IsUnknownRankShape(dim_vec)) {
     output_tensor_desc->SetShapeRange(out_range);
   }
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 COMMON_INFER_FUNC_REG(GatherNd, GatherNdInferShape);
 VERIFY_FUNC_REG(GatherNd, GatherNdVerify);
@@ -894,7 +897,8 @@ static graphStatus GatherV2InferOptimize(ge::Operator& op, int64_t& axis, GeTens
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(GatherV2InferShape)
+IMPLEMT_COMMON_INFERFUNC(GatherV2InferShape) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   vector<string> input_infer_depends = {"axis"};
   op_desc->SetOpInferDepends(input_infer_depends);
 
@@ -966,7 +970,9 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(GatherV2InferShape)
       return GRAPH_FAILED;
     }
   }
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+
+  return GRAPH_SUCCESS;
+}
 
 COMMON_INFER_FUNC_REG(GatherV2, GatherV2InferShape);
 // ----------------GatherV2 END-------------------
@@ -1068,7 +1074,8 @@ static graphStatus GatherV2InferShapeAndType(ge::Operator& op, int32_t& axis) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(GatherV2DInferShape)
+IMPLEMT_COMMON_INFERFUNC(GatherV2DInferShape) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   GeTensorDescPtr x_desc = op_desc->MutableInputDesc("x");
   int32_t dimnum = 0;
   dimnum = x_desc->GetShape().GetDimNum();
@@ -1089,13 +1096,15 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(GatherV2DInferShape)
   if (GatherV2InferShapeAndType(op, axis) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 COMMON_INFER_FUNC_REG(GatherV2D, GatherV2DInferShape);
 // ----------------GatherV2D END-------------------
 
 // ----------------Gather-------------------
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(GatherInferShape)
+IMPLEMT_COMMON_INFERFUNC(GatherInferShape) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   GeTensorDescPtr x_desc = op_desc->MutableInputDesc("x");
   std::vector<int64_t> x_shape = x_desc->MutableShape().GetDims();
   DataType x_dtype = op.GetInputDesc("x").GetDataType();
@@ -1127,7 +1136,8 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(GatherInferShape)
     }
   }
   OP_LOGI(op.GetName().c_str(), "output shape range is:%s", to_string(y_shape_range).c_str());
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 COMMON_INFER_FUNC_REG(Gather, GatherInferShape);
 // ----------------Gather END-------------------
@@ -1143,8 +1153,9 @@ static void GetUnsortedSegmentSumConstValue(const Tensor& const_tensor, const Da
   }
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(UnsortedSegmentSumInferShape)
+IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentSumInferShape) {
   vector<string> input_infer_depends = {"num_segments"};
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   op_desc->SetOpInferDepends(input_infer_depends);
 
   Tensor input_num_segments_tensor;
@@ -1207,13 +1218,15 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(UnsortedSegmentSumInferShape)
   tensordesc_output->SetDataType(input_dtype);
   tensordesc_output->SetShapeRange(out_range);
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 COMMON_INFER_FUNC_REG(UnsortedSegmentSum, UnsortedSegmentSumInferShape);
 // ----------------UnsortedSegmentSum END----------------
 
 // ----------------UnsortedSegmentSumD-------------------
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(UnsortedSegmentSumDInferShape)
+IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentSumDInferShape) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   int64_t input_num_segments;
   if (ge::GRAPH_SUCCESS != op.GetAttr("num_segments", input_num_segments)) {
     OpsGetAttrErrReport(op.GetName(), "num_segments");
@@ -1248,7 +1261,8 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(UnsortedSegmentSumDInferShape)
   ge::GeShape out_shape = ge::GeShape(shape_vector);
   tensordesc_output->SetShape(out_shape);
   tensordesc_output->SetDataType(input_dtype);
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 COMMON_INFER_FUNC_REG(UnsortedSegmentSumD, UnsortedSegmentSumDInferShape);
 // ----------------UnsortedSegmentSumD END------------------
@@ -2353,8 +2367,9 @@ VERIFY_FUNC_REG(TopK, TopKVerify);
 // ----------------TopK Op End-------------------
 
 // ----------------ScatterNd-------------------
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ScatterNdInferShape)
+IMPLEMT_COMMON_INFERFUNC(ScatterNdInferShape) {
   vector<string> input_infer_depends = {"shape"};
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   op_desc->SetOpInferDepends(input_infer_depends);
 
   auto output_desc = op_desc->MutableOutputDesc("y");
@@ -2400,13 +2415,14 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ScatterNdInferShape)
   output_desc->SetShape(output_shape);
   output_desc->SetShapeRange(out_range);
   output_desc->SetDataType(op_desc->MutableInputDesc("x")->GetDataType());
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 COMMON_INFER_FUNC_REG(ScatterNd, ScatterNdInferShape);
 // ----------------ScatterNd End-------------------
 
 // ----------------ScatterNdD-------------------
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ScatterNdDInferShape)
+IMPLEMT_COMMON_INFERFUNC(ScatterNdDInferShape) {
   auto output_desc = op.GetInputDesc("x");
   const std::string shape_name = "shape";
   std::vector<int64_t> shape_out_list;
@@ -2436,7 +2452,8 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ScatterNdDInferShape)
   Shape output_shape(shape_dims);
   output_desc.SetShape(output_shape);
   op.UpdateOutputDesc("y", output_desc);
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 COMMON_INFER_FUNC_REG(ScatterNdD, ScatterNdDInferShape);
 // ----------------ScatterNdD End-------------------

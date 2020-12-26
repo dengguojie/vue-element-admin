@@ -310,25 +310,6 @@ class DynamicShapeInfer {
       }                                                     \
     } while(0)
 
-#define IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(fuction_name) \
-  IMPLEMT_COMMON_INFERFUNC(fuction_name) {                  \
-    auto op_desc = OpDescUtils::GetOpDescFromOperator(op);  \
-    DynamicShapeInfer shapeInfer{op, op_desc};              \
-    shapeInfer.CatchFormatAndShape();
-
-#define IMPLEMT_COMMON_INFERFUNC_HELPER_END() \
-  return GRAPH_SUCCESS;                       \
-  }
-
-#define IMPLEMT_INFERFUNC_HELPER_BEGIN(op_name, fuction_name) \
-  IMPLEMT_INFERFUNC(op_name, fuction_name) {                  \
-    auto op_desc = OpDescUtils::GetOpDescFromOperator(op);    \
-    DynamicShapeInfer shapeInfer{op, op_desc};                \
-    shapeInfer.CatchFormatAndShape();
-
-#define IMPLEMT_INFERFUNC_HELPER_END() \
-  return GRAPH_SUCCESS;                \
-  }
 
 bool IsEmptyTensor(const std::vector<int64_t>& dims);
 

@@ -902,7 +902,7 @@ COMMON_INFER_FUNC_REG(SparseApplyProximalAdagrad, ELMTWISE_INFER_SHAPEANDTYPE("v
 
 // ----------------SparseApplyProximalAdagradD Op-------------------
 // Registered inferfunction
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(SparseApplyProximalAdagradDShape)
+IMPLEMT_COMMON_INFERFUNC(SparseApplyProximalAdagradDShape) {
   OP_LOGI(op.GetName().c_str(), "Enter SparseApplyProximalAdagradD op_proto inferfunction!");
   // var_out
   TensorDesc var_tensordesc_output = op.GetOutputDesc("var");
@@ -921,7 +921,8 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(SparseApplyProximalAdagradDShape)
   accum_tensordesc_output.SetShapeRange(shape_range_accum);
   (void)op.UpdateOutputDesc("accum", accum_tensordesc_output);
   OP_LOGI(op.GetName().c_str(), "Leave SparseApplyProximalAdagradD op_proto inferfunction!");
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 COMMON_INFER_FUNC_REG(SparseApplyProximalAdagradD, SparseApplyProximalAdagradDShape);
 // ----------------SparseApplyProximalAdagradD END-------------------
@@ -1641,11 +1642,12 @@ void DynamicApplyInferShapeAndDtype(Operator& op, const string& input_name, cons
   output_tensor_desc->SetShapeRange(input_shape_range);
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(SparseApplyFtrlDInferShape)
+IMPLEMT_COMMON_INFERFUNC(SparseApplyFtrlDInferShape) {
   DynamicApplyInferShapeAndDtype(op, "var", "var");
   DynamicApplyInferShapeAndDtype(op, "accum", "accum");
   DynamicApplyInferShapeAndDtype(op, "linear", "linear");
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 IMPLEMT_VERIFIER(SparseApplyFtrlD, SparseApplyFtrlDVerify) {
   DataType var_dtype = op.GetInputDesc(0).GetDataType();

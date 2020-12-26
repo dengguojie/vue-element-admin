@@ -1423,8 +1423,9 @@ IMPLEMT_VERIFIER(ScatterAdd, ScatterAddVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ScatterAddInferShape)
+IMPLEMT_COMMON_INFERFUNC(ScatterAddInferShape) {
   // main part of shape infer
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   ge::GeShape var_shape = op_desc->MutableInputDesc("var")->GetShape();
   std::vector<std::pair<int64_t, int64_t>> var_shape_range;
   op_desc->MutableInputDesc("var")->GetShapeRange(var_shape_range);
@@ -1433,7 +1434,8 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ScatterAddInferShape)
   td->SetShape(var_shape);
   td->SetDataType(input_dtype);
   td->SetShapeRange(var_shape_range);
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 COMMON_INFER_FUNC_REG(ScatterAdd, ScatterAddInferShape);
 VERIFY_FUNC_REG(ScatterAdd, ScatterAddVerify);
@@ -1561,8 +1563,9 @@ IMPLEMT_VERIFIER(ScatterSub, ScatterSubVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ScatterSubInferShape)
+IMPLEMT_COMMON_INFERFUNC(ScatterSubInferShape) {
   // main part of shape infer
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   ge::GeShape var_shape = op_desc->MutableInputDesc("var")->GetShape();
   std::vector<std::pair<int64_t, int64_t>> var_shape_range;
   op_desc->MutableInputDesc("var")->GetShapeRange(var_shape_range);
@@ -1571,7 +1574,8 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ScatterSubInferShape)
   td->SetShape(var_shape);
   td->SetDataType(input_dtype);
   td->SetShapeRange(var_shape_range);
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 COMMON_INFER_FUNC_REG(ScatterSub, ScatterSubInferShape);
 VERIFY_FUNC_REG(ScatterSub, ScatterSubVerify);
@@ -1656,8 +1660,9 @@ IMPLEMT_VERIFIER(ScatterUpdate, ScatterUpdateVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ScatterUpdateInferShape)
+IMPLEMT_COMMON_INFERFUNC(ScatterUpdateInferShape) {
   // main part of shape infer
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   ge::GeShape var_shape = op_desc->MutableInputDesc("var")->GetShape();
   std::vector<std::pair<int64_t, int64_t>> var_shape_range;
   op_desc->MutableInputDesc("var")->GetShapeRange(var_shape_range);
@@ -1666,7 +1671,8 @@ IMPLEMT_COMMON_INFERFUNC_HELPER_BEGIN(ScatterUpdateInferShape)
   td->SetShape(var_shape);
   td->SetDataType(input_dtype);
   td->SetShapeRange(var_shape_range);
-IMPLEMT_COMMON_INFERFUNC_HELPER_END()
+  return GRAPH_SUCCESS;
+}
 
 COMMON_INFER_FUNC_REG(ScatterUpdate, ScatterUpdateInferShape);
 VERIFY_FUNC_REG(ScatterUpdate, ScatterUpdateVerify);
