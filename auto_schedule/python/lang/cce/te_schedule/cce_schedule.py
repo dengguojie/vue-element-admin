@@ -112,8 +112,6 @@ from .cosine_embedding_loss_schedule import \
     cosine_embedding_loss_schedule
 from .dilation_schedule import dilation_schedule
 
-warnings.filterwarnings(action='always', message="cce_build_code", category=DeprecationWarning)
-
 
 def get_op_info(outs):  # pylint: disable=R0912, R0914, R0915
     """
@@ -1235,7 +1233,7 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
     None
     """
     warnings.warn("cce_build_code is expired, please replace it with the func build in cce",
-                  DeprecationWarning, stacklevel=2)
+                  DeprecationWarning)
     if fusion_manager.get_build_cfg() == "disable" and \
             not cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT"):
         te_util.L1CommonParam.l1_fusion_tensors_map = None

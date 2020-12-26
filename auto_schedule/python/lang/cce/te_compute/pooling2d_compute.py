@@ -810,7 +810,7 @@ def get_caffe_out_size_and_pad(ceil_mode, in_size_h, in_size_w, window_h, window
     :return:
     """
     warnings.warn("get_caffe_out_size_and_pad will be hidden, please do not use it",
-                  DeprecationWarning, stacklevel=2)
+                  DeprecationWarning)
     return _get_out_size_and_pad_with_ceil_mode(ceil_mode, in_size_h, in_size_w, window_h, window_w,
                                                 stride_h, stride_w, dilation_h, dilation_w, pad_top,
                                                 pad_bottom, pad_left, pad_right)

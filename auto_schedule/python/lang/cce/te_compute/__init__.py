@@ -19,8 +19,6 @@ TensorEngine APIs.
 Using those API to develop operators, you can use the "Auto_schedule" create
 schedule.
 """
-import warnings
-
 # pylint: disable=redefined-builtin
 from .broadcast_compute import broadcast
 from .cast_compute import ceil, floor, round, trunc, round_half_up, round_d
@@ -43,10 +41,3 @@ from .depthwise_conv2d_compute import depthwise_conv2d_backprop_input_d_compute
 from .depthwise_conv2d_compute import depthwise_conv2d_compute, \
     DepthwiseConv2dParam
 from .inplace_compute import inplace_add, inplace_sub, inplace_update
-
-warnings.filterwarnings(action='default',
-                        message="round_d|cast_to_round|compute_four2five|compute_five2four|"
-                                "get_caffe_out_size_and_pad|pooling3d_max_grad_grad|tuple_sum|unsorted_segment_sum|"
-                                "unsorted_segment_mean|unsorted_segment_prod|unsorted_segment_min|"
-                                "unsorted_segment_max|split_compute_com",
-                        category=DeprecationWarning)

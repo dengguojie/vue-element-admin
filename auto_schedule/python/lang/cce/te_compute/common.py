@@ -97,7 +97,7 @@ def cast_to_round(data, dtype):
     tensor : tvm.tensor
     """
     warnings.warn("cast_to_round is expired, please replace it with the func round_half_up and cast_to",
-                  DeprecationWarning, stacklevel=2)
+                  DeprecationWarning)
     dtype = dtype.lower()
     if dtype != "int32":
         dict_args = dict()

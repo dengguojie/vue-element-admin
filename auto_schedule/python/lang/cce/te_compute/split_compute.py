@@ -58,7 +58,7 @@ def split_compute_com(data, split_dim, size_splits):
     Split a tensor into len(size_splits) tensors along one dimension
     """
     warnings.warn("split_compute_com is expired, please replace it with the func split",
-                  DeprecationWarning, stacklevel=2)
+                  DeprecationWarning)
     return split(data, split_dim, size_splits)
 
 

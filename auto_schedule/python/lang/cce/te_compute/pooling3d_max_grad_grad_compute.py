@@ -38,7 +38,7 @@ def pooling3d_max_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
                             data_format="NDHWC",
                             padding="SAME"):
     warnings.warn("pooling3d_max_grad_grad is expired, please replace it with the func max_pooling3d_grad_grad",
-                  DeprecationWarning, stacklevel=2)
+                  DeprecationWarning)
     return max_pooling3d_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
                                    ksize, strides, pads, data_format, padding)
 
