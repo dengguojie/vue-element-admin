@@ -77,10 +77,10 @@ def test_op_select_format(test_arg):
                      {"shape": (1, ), "dtype": "float16", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
                      {"shape": (20, 28, 16, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (20, 28, 16, 16),"ori_format": "NHWC"})
 
-ut_case.add_case(["Ascend310", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend910"], case3)
-ut_case.add_case(["Ascend310", "Ascend910"], case4)
+ut_case.add_case(["Ascend310", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend910A"], case4)
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 

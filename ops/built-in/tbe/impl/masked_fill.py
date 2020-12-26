@@ -48,13 +48,20 @@ def masked_fill_compute(x, mask, value, y, kernel_name="masked_fill"):
     x_shape, mask_shpae, target_shape = shape_util.broadcast_shapes(x_shape, mask_shape)
     target_dtype = x.dtype
     mask = tbe.cast_to(mask, x.dtype)
-    value = tbe.cast_to(value, x.dtype)
+    if value.dtype != x.dtype:
+        value = tbe.cast_to(value, x.dtype)
 
-    mask = tbe.broadcast(mask, target_shape)
+    if mask_shape != target_shape:
+        mask = tbe.broadcast(mask, target_shape)
     tensor_ones = tbe.broadcast(tvm.const(1, target_dtype), target_shape)
     value = tbe.broadcast(value, target_shape)
-    x = tbe.broadcast(x, target_shape)
-    y = tbe.vcmpsel(mask, tensor_ones, 'eq', value, x)
+    if x_shape != target_shape:
+        x = tbe.broadcast(x, target_shape)
+
+    tensor_mask_value = tbe.vmul(mask, value)
+    tensor_mask_sub = tbe.vsub(tensor_ones, mask)
+    tensor_x_mul = tbe.vmul(x, tensor_mask_sub)
+    y = tbe.vadd(tensor_x_mul, tensor_mask_value)
 
     if y.dtype != ori_dtype:
         y = tbe.cast_to(y, ori_dtype)
