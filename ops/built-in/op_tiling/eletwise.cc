@@ -248,7 +248,6 @@ bool Eletwise::GetCompletedShapes() {
   dim_len = 0;
   for (size_t i = 0; i < input_num; i++) {
     CHECK(!op_paras.inputs[i].tensor.empty(), "op [%s] : input tensor cannot be empty", op_type.c_str());
-    CHECK(!op_paras.inputs[i].tensor[0].shape.empty(), "op [%s] : input shape cannot be empty", op_type.c_str());
     input_shapes[i].fill(1);
     if (op_paras.inputs[i].tensor[0].shape.size() > dim_len) {
       dim_len = op_paras.inputs[i].tensor[0].shape.size();
