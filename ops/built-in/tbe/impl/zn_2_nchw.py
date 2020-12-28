@@ -571,14 +571,15 @@ def _tranpose_notchange_last_two(data, shape_5hd, dst_shape_full, dst_shape,
                                  outs[0], ins[0], max_dim, shape_all),
                              name="res", dtype=dtype)
 
-    res_end = tvm.extern(dst_shape, [res],
-                         lambda ins, outs: _temp_ir(outs[0], ins[0]),
-                         name="res_end", dtype=dtype)
+    # delete the lines: res_end = tvm.extern(dst_shape, [res],
+    # ################     lambda ins, outs: _temp_ir(outs[0], ins[0]),
+    # ################     name="res_end", dtype=dtype)
+    # in order to fix issues caused by multiple core
 
-    sch = tvm.create_schedule(res_end.op)
+    sch = tvm.create_schedule(res.op)
     args = [sch, data, res_5hd, data_ub, shape_5hd, dtype]
     sch, _ = _schedule_for_not_change_last(args)
-    tensor_list = [data, res_end, res_5hd, res]
+    tensor_list = [data, res, res_5hd]
 
     return sch, tensor_list
 
@@ -791,6 +792,6 @@ def zn_2_nchw(src, dst, src_format, dst_format, kernel_name='zn_2_nchw'):
         size = 2
         for item in shape_5hd:
             size *= item
-        total_size = [size * float_size, size * float_size]
-        workspace_dict = {"workspace": {"num": 2, "size": total_size}}
+        total_size = [size * float_size]
+        workspace_dict = {"workspace": {"num": 1, "size": total_size}}
         write_code(workspace_dict, kernel_name)
