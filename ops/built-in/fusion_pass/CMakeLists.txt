@@ -78,7 +78,6 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/a_a_square_sum_maximum_rsqrt_mul_fusion_pass.cc
   graph_fusion/ai_core/a_conv2d_mul_fusion_pass.cc
   graph_fusion/ai_core/add_n_fusion_pass.cc
-  graph_fusion/ai_core/antiquant_maxpool_fusion_pass.cc
   graph_fusion/ai_core/apply_addoutput_fusion_pass.cc
   graph_fusion/ai_core/a_reduce_all_fusion_pass.cc
   graph_fusion/ai_core/a_reduce_any_fusion_pass.cc
