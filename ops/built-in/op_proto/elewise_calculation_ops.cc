@@ -4029,4 +4029,61 @@ COMMON_INFER_FUNC_REG(StrideAdd, StrideAddInferShape);
 // Registered verify function
 VERIFY_FUNC_REG(StrideAdd, StrideAddVerify);
 // ----------------StrideAdd END---------------------
+
+// ----------------MaskedScale Begin-------------------
+bool VerifyMaskedScaleShapeAndType(Operator &op, DataType x_dtype, DataType mask_dtype)
+{
+    if ((x_dtype != DT_FLOAT) && (x_dtype != DT_FLOAT16)) {
+        OP_LOGE(op.GetName().c_str(), "The input dtype of x is invalid, please check!");
+        return false;
+    }
+
+    if ((mask_dtype != DT_INT8) && (mask_dtype != DT_FLOAT) && (mask_dtype != DT_FLOAT16)) {
+        OP_LOGE(op.GetName().c_str(), "The input dtype of mask is invalid, please check!");
+        return false;
+    }
+
+    return true;
+}
+
+IMPLEMT_VERIFIER(MaskedScale, MaskedScaleVerify) {
+    TensorDesc x_tensordesc = op.GetInputDesc("x");
+    DataType x_dtype = x_tensordesc.GetDataType();
+    TensorDesc mask_tensordesc = op.GetInputDesc("mask");
+    DataType mask_dtype = mask_tensordesc.GetDataType();
+
+    if (false == VerifyMaskedScaleShapeAndType(op, x_dtype, mask_dtype)) {
+        return GRAPH_FAILED;	
+    }
+
+    return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(MaskedScaleInferShape) {
+    OP_LOGI("MaskedScale", "infer shape begin");
+    TensorDesc tensordesc_input = op.GetInputDesc("x");
+    ge::Shape input_shape = tensordesc_input.GetShape();
+    DataType input_dtype = tensordesc_input.GetDataType();
+	
+    TensorDesc mask_tensordesc = op.GetInputDesc("mask");
+    ge::Shape mask_shape = mask_tensordesc.GetShape();
+    DataType mask_dtype = mask_tensordesc.GetDataType();
+	
+    if (input_shape.GetShapeSize() != mask_shape.GetShapeSize()) {
+        OP_LOGE(op.GetName().c_str(), "shapesize of x not match mask");
+        return GRAPH_FAILED;
+    }
+
+    TensorDesc tensordesc_output = op.GetOutputDesc("y");
+    tensordesc_output.SetShape(input_shape);
+    tensordesc_output.SetDataType(input_dtype);
+    (void)op.UpdateOutputDesc("y", tensordesc_output);
+
+    return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(MaskedScale, MaskedScaleInferShape);
+VERIFY_FUNC_REG(MaskedScale, MaskedScaleVerify);
+// ----------------MaskedScale END---------------------
+
 }  // namespace ge

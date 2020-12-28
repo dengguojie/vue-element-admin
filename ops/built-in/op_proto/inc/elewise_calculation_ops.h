@@ -3579,8 +3579,28 @@ REG_OP(MinN)
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_FLOAT64,
                            DT_INT32, DT_INT64}))
     .OP_END_FACTORY_REG(MinN)
+
+/**
+ * @brief Calculates x * maske * value.
+ *
+ * @par Inputs:
+ * @li x: An tensor of type float16 or float32, specifying the input to the data layer.
+ * @li mask: An tensor of type int8 or float16 or float32, be same shape with x. \n
+ *
+ * @par Attributes:
+ * value: A optional float. \n
+ *
+ * @par Outputs:
+ * y: The output tensor of type float16 or float32.
+ @ li y:A Tensor of the same type and shape as x
+ *
+ */
+REG_OP(MaskedScale)
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT32}))
+    .INPUT(mask, TensorType({DT_INT8, DT_FLOAT16, DT_FLOAT32}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT32}))
+    .REQUIRED_ATTR(value, Float)
+    .OP_END_FACTORY_REG(MaskedScale)
 }  // namespace ge
-
-
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_ELEWISE_CALCULATION_OPS_H_
