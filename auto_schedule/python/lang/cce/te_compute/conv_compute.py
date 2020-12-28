@@ -379,7 +379,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
     if "fmap_w" in ConvParam.var_map and dynamic_para:
         point_per_w = get_te_var("wo").get_bound()[1]
         w_in = math.floor(config['mac'][0] / point_per_w) + 2
-        tmp = ((w_in - 1) * strideh + hk_dilation) * (dynamic_para.get("fmap_range")[1][1])
+        tmp = ((w_in - 1) * strideh + hk_dilation) * (dynamic_para.get("fmap_range")[2][1])
         max_feature_map_l1 = ci0 * tmp * m_bit_ratio[w_dtype]
         _l1_buffer_size_check(max_feature_map_l1, fusion_para, "dynamic")
     else:

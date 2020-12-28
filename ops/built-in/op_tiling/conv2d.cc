@@ -84,7 +84,7 @@ string ConvTilingNHW(const std::vector<int32_t>& curShape, const nlohmann::json&
     std::vector<int32_t> seed = it.value().get<std::vector<int32_t>>();
     auto& range = repoRange[it.key()];
     if (curShape[g_nDim] >= range[g_nMinDim] && curShape[g_nDim] <= range[g_nMaxDim] &&
-        curShape[g_hDim] >= range[g_hMinDim] && curShape[g_hDim] <= range[g_hMaxDim] && 
+        curShape[g_hDim] >= range[g_hMinDim] && curShape[g_hDim] <= range[g_hMaxDim] &&
         curShape[g_wDim] >= range[g_wMinDim] && curShape[g_wDim] <= range[g_wMaxDim]) {
         int32_t dist = abs(curShape[g_hDim] - seed[seedHDim]) + abs(curShape[g_wDim] - seed[seedWDim]);
         if (dist < minDist) {
@@ -101,7 +101,7 @@ string ConvTilingNHW(const std::vector<int32_t>& curShape, const nlohmann::json&
   return tilingID;
 }
 
-int32_t ConvTiling(const std::string& opType, const std::vector<int32_t>& curShape, 
+int32_t ConvTiling(const std::string& opType, const std::vector<int32_t>& curShape,
                    const nlohmann::json& opInfo, OpRunInfo& runInfo) {
   std::vector<std::string> varMap = opInfo.at("_vars")["10000"];
   std::string tilingID("0");

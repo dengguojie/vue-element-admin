@@ -1815,14 +1815,17 @@ class CceConvOp:
             if self._var_map and (self._fused_flag or "fp16_bias" in tensor_map):
                 ub_tensor_dynamic = self._res_tensor.op.input_tensors[0]
                 reuse_tensors = []
-
+                if self._fused_flag:
+                    res_ub_dynamic = self._op_graph.output_ops[0]["dst_buffer"]
+                    reuse_tensors.append(res_ub_dynamic)
                 while ub_tensor_dynamic.op.tag != "convolution_C_UB":
                     reuse_tensors.append(ub_tensor_dynamic)
-                    if double_buffer_flag["CUB_pbuffer"] == 2 or double_buffer_flag["UBG_pbuffer"] == 2:
-                        sch[ub_tensor_dynamic].double_buffer()
                     ub_tensor_dynamic = ub_tensor_dynamic.op.input_tensors[0]
+
                 sch[c_ub].reused_by(*reuse_tensors)
-                if double_buffer_flag["UBG_pbuffer"] == 2:
+                if double_buffer_flag["CUB_pbuffer"] == 2 or double_buffer_flag["UBG_pbuffer"] == 2:
+                    for tensor in reuse_tensors:
+                        sch[tensor].double_buffer()
                     sch[c_ub].double_buffer()
 
             if double_buffer_flag["CUB_pbuffer"] == 2:
