@@ -682,7 +682,9 @@ bool InferShapeMatMul::InferMKN() {
   }
 
   std::pair<int64_t, int64_t> range_k, range_n = infer_range_b[idx_n_b];
+  OP_LOGI(op_name.c_str(), "[InferShape] start check the k dim!");
   if (k_a > 0 && k_b > 0 && k_a != k_b) {
+    OpsInputShapeErrReport(op_name.c_str(), "The k-axis of a and b tensors must be the same", "a and b", "");
     OP_LOGE(op_name.c_str(), "[InferShape] The k-axis of a(%lld) and b(%lld) tensors must be the same", k_a, k_b);
     return false;
   } else if (k_a < 0 && k_b < 0) {
