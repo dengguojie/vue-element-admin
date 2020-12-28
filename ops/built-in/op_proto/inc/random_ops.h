@@ -523,6 +523,32 @@ REG_OP(MultinomialFuss)
     .ATTR(sample_size, Int, 1)
     .ATTR(seed, Float, 0)
     .OP_END_FACTORY_REG(MultinomialFuss)
+
+/**
+* @brief During training, randomly zeroes some of the elements of the input tensor
+* with probability
+*
+* @par Inputs:
+* @li x: A ND Tensor. Must be one of the following data types: Float, Float16
+* @li seed: A ND Tensor. Must be one of the following data types: Float
+*
+* @par Attributes:
+* @li p: probability of an element to be zeroed
+*
+* @par Outputs:
+* @li y: A tensor with the same shape and type as "x".
+* @li mask: A tensor with the same shape and type as "x".
+* @li new_seed: A tensor with the same shape and type as "seed".
+*/
+
+REG_OP(DropoutV2)
+    .INPUT(x, TensorType({ DT_FLOAT16, DT_FLOAT }))
+    .INPUT(seed, TensorType({ DT_FLOAT }))
+    .OUTPUT(y, TensorType({ DT_FLOAT16, DT_FLOAT }))
+    .OUTPUT(mask, TensorType({ DT_FLOAT }))
+    .OUTPUT(seed, TensorType({ DT_FLOAT }))
+    .REQUIRED_ATTR(p, Float)
+    .OP_END_FACTORY_REG(DropoutV2)
 }   // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_RANDOM_OPS_H_

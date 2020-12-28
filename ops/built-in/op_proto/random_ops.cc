@@ -462,4 +462,56 @@ INFER_FUNC_REG(MultinomialFuss, MultinomialFussInferShape);
 VERIFY_FUNC_REG(MultinomialFuss, MultinomialFussVerify);
 // ----------------MultinomialFuss END---------------------
 
+// ------------------DropoutV2 Start-------------------------------
+IMPLEMT_COMMON_INFERFUNC(DropoutV2InferShape)
+{
+    const int axis_n = 0;
+    TensorDesc x_desc = op.GetInputDesc(axis_n);
+    TensorDesc y_desc = op.GetOutputDesc(axis_n);
+    y_desc.SetShape(x_desc.GetShape());
+    y_desc.SetFormat(x_desc.GetFormat());
+    y_desc.SetDataType(x_desc.GetDataType());
+    op.UpdateOutputDesc("y", y_desc);
+
+    const int axis_c = 1;
+    TensorDesc seed_desc = op.GetInputDesc(axis_c);
+    TensorDesc mask_desc = op.GetOutputDesc(axis_c);
+    mask_desc.SetShape(x_desc.GetShape());
+    mask_desc.SetFormat(x_desc.GetFormat());
+    mask_desc.SetDataType(seed_desc.GetDataType());
+    op.UpdateOutputDesc("mask", mask_desc);
+
+    const int axis_h = 2;
+    TensorDesc new_seed_desc = op.GetOutputDesc(axis_h);
+    new_seed_desc.SetShape(seed_desc.GetShape());
+    new_seed_desc.SetFormat(seed_desc.GetFormat());
+    new_seed_desc.SetDataType(seed_desc.GetDataType());
+    op.UpdateOutputDesc("seed", new_seed_desc);
+
+    return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(DropoutV2, DropoutV2Verify)
+{
+    TensorDesc x_desc = op.GetInputDesc(0);
+    DataType x_dtype = x_desc.GetDataType();
+    if (x_dtype != DT_FLOAT16 && x_dtype != DT_FLOAT) {
+        OP_LOGE("DropoutV2 x input should be float16 or float32");
+        return GRAPH_FAILED;
+    }
+
+    TensorDesc seed_desc = op.GetInputDesc(1);
+    DataType seed_dtype = seed_desc.GetDataType();
+    if (seed_dtype != DT_FLOAT) {
+        OP_LOGE("DropoutV2 seed input should be float32");
+        return GRAPH_FAILED;
+    }
+
+    return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(DropoutV2, DropoutV2InferShape);
+VERIFY_FUNC_REG(DropoutV2, DropoutV2Verify);
+// ------------------DropoutV2 End-------------------------------
+
 }  // namespace ge
