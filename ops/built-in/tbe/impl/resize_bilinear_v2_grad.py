@@ -108,9 +108,9 @@ def check_supported(grads, images, y, align_corners=False,
     2. when the format of input images is not in "NHWC,NCHW", AICORE do not support, will change to aicpu
     3. when the height/weight of input images or output images is more than 10000 or less than 1, will change to aicpu
     """
-    grads_shape = grads.get("shape")
-    images_shape = images.get("shape")
-    format_grads = grads.get("format")
+    grads_shape = grads.get("ori_shape")
+    images_shape = images.get("ori_shape")
+    format_grads = grads.get("ori_format")
     if len(grads_shape) != 4 or len(images_shape) != 4:
         # the size of image_shape must be 4
         return False

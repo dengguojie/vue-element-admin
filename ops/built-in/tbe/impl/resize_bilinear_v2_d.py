@@ -120,8 +120,9 @@ def check_supported(images,
     2. when the format of input images is not in "NHWC,NCHW", AICORE do not support, will change to aicpu
     3. when the height/weight of input images or output images is more than 2048 or less than 1, will change to aicpu
     """
-    image_shape = images.get("shape")
-    image_format = images.get("format")
+    image_shape = images.get("ori_shape")
+    image_format = images.get("ori_format")
+
     if len(image_shape) != 4:
         # the size of image_shape must be 4
         return False

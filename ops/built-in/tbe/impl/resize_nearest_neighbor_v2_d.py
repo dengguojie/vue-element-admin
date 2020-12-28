@@ -907,8 +907,8 @@ def check_supported(images,
     3. when the height of input images or output images is more than 7680, will change to aicpu
     3. when the weight of input images or output images is more than 4320, will change to aicpu
     """
-    images_shape = images.get("shape")
-    images_format = images.get("format")
+    images_shape = images.get("ori_shape")
+    images_format = images.get("ori_format")
     if len(images_shape) != 4:
         # the size of image_shape must be 4
         return False
