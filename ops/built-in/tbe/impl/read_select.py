@@ -142,7 +142,7 @@ def read_select(input_x, output_x, stride_list=[1, 1, 1, 1, 1],
 
     _check_para_list_len(total_shape, valid_shape, slice_offset, stride_list)
 
-    check_list = ["float16", "int8"]
+    check_list = ["float16", "int8", "int16"]
     if input_dtype not in check_list:
         raise RuntimeError("read_select only support %s while dtype is %s"
                            % (",".join(check_list), input_dtype))
