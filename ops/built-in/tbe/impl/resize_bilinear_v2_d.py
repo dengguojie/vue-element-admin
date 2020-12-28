@@ -115,10 +115,16 @@ def check_supported(images,
                     half_pixel_centers=False,
                     kernel_name="resize_bilinear_v2"):
     """
-    To check whether the AICORE operator can support the length of w/h or not
+    To check whether the AICORE operator can support
+    1. when the shape of input images is unrank shape or dim size not equal 4, will change to aicpu
+    2. when the format of input images is not in "NHWC,NCHW", AICORE do not support, will change to aicpu
+    3. when the height/weight of input images or output images is more than 2048 or less than 1, will change to aicpu
     """
     image_shape = images.get("shape")
     image_format = images.get("format")
+    if len(image_shape) != 4:
+        # the size of image_shape must be 4
+        return False
 
     if image_format == "NHWC":
         h_in = image_shape[1]
@@ -127,14 +133,14 @@ def check_supported(images,
         h_in = image_shape[2]
         w_in = image_shape[3]
     else:
-        excepted_format_list = "NHWC,NCHW,NC1HWC0"
-        error_manager_vector.raise_err_input_format_invalid(kernel_name, "images", \
-                                                            excepted_format_list, image_format)
-
+        # format is not in "NHWC,NCHW,NC1HWC0" not suppord
+        return False
     try:
 
         if w_in > HW_SIZE_2048 or h_in > HW_SIZE_2048 or \
                 size[0] > HW_SIZE_2048 or size[1] > HW_SIZE_2048:
+            return False
+        if w_in < 1 or h_in < 1 or size[0] < 1 or size[1] < 1:
             return False
 
     except RuntimeError as e:

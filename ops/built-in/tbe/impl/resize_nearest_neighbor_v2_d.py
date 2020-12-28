@@ -900,10 +900,19 @@ def check_supported(images,
                     align_corners=False,
                     half_pixel_centers=False,
                     kernel_name="resize_nearest_neighbor"):
-    """check if need go to aicore
+    """
+    To check whether the AICORE operator can support
+    1. when the shape of input images is unrank shape or dim size not equal 4, will change to aicpu
+    2. when the format of input images is not in "NHWC,NCHW", AICORE do not support, will change to aicpu
+    3. when the height of input images or output images is more than 7680, will change to aicpu
+    3. when the weight of input images or output images is more than 4320, will change to aicpu
     """
     images_shape = images.get("shape")
     images_format = images.get("format")
+    if len(images_shape) != 4:
+        # the size of image_shape must be 4
+        return False
+
     if images_format == "NHWC":
         in_size_h = images_shape[1]
         in_size_w = images_shape[2]
@@ -911,8 +920,8 @@ def check_supported(images,
         in_size_h = images_shape[2]
         in_size_w = images_shape[3]
     else:
-        error_manager_vector.raise_err_input_format_invalid(kernel_name, "images", \
-                                                            "NHWC,NCHW,NC1HWC0", images_format)
+        # format is not in "NHWC,NCHW,NC1HWC0", not suppord
+        return False
 
     try:
         if in_size_h > 7680 or in_size_w > 4320:
@@ -920,6 +929,10 @@ def check_supported(images,
 
         if size[0] > 7680 or size[1] > 4320:
             return False
+
+        if in_size_h < 1 or in_size_w < 1 or size[0] < 1 or size[1] < 1:
+            return False
+
     except RuntimeError:
         return False
 
