@@ -485,29 +485,53 @@ class MaxpoolGrad:
             dst_offset = 0
             src1_offset = 0
             src2_offset = 0
-            if repeat_max_loop > 0:
-                self.tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset], src2[src2_offset], 255,
-                                       stride_cofig[0], stride_cofig[1], stride_cofig[2], stride_cofig[3],
-                                       stride_cofig[4], stride_cofig[5])
-                dst_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(dst.dtype.lower()) // 8) * stride_cofig[3] * 255
-                src1_offset += \
-                    BLOCK_SIZE // (tbe_platform.get_bit_len(src1.dtype.lower()) // 8) * stride_cofig[4] * 255
-                src2_offset += \
-                    BLOCK_SIZE // (tbe_platform.get_bit_len(src2.dtype.lower()) // 8) * stride_cofig[5] * 255
-            if remain_max_loop > 0:
-                self.tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset], src2[src2_offset], remain_max_loop,
-                                       stride_cofig[0], stride_cofig[1], stride_cofig[2], stride_cofig[3],
-                                       stride_cofig[4], stride_cofig[5])
-                dst_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(dst.dtype.lower()) //
-                                             8) * stride_cofig[3] * remain_max_loop
-                src1_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(src1.dtype.lower()) //
-                                              8) * stride_cofig[4] * remain_max_loop
-                src2_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(src2.dtype.lower()) //
-                                              8) * stride_cofig[5] * remain_max_loop
-            if remain_ele > 0:
-                self.tik_instance.vadd(remain_ele, dst[dst_offset], src1[src1_offset], src2[src2_offset], 1,
-                                       stride_cofig[0], stride_cofig[1], stride_cofig[2], stride_cofig[3],
-                                       stride_cofig[4], stride_cofig[5])
+            if stride_cofig[3] > 255 or stride_cofig[4] > 255 or stride_cofig[5] > 255:
+                if repeat_max_loop > 0:
+                    with self.tik_instance.for_range(0, 255, thread_num=1):
+                        self.tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset], src2[src2_offset], 1,
+                                               stride_cofig[0], stride_cofig[1], stride_cofig[2], 8, 8, 8)
+                        dst_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(dst.dtype.lower()) // 8) * stride_cofig[3]
+                        src1_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(src1.dtype.lower()) //
+                                                      8) * stride_cofig[4]
+                        src2_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(src2.dtype.lower()) //
+                                                      8) * stride_cofig[5]
+                if remain_max_loop > 0:
+                    with self.tik_instance.for_range(0, remain_max_loop, thread_num=1):
+                        self.tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset], src2[src2_offset], 1,
+                                               stride_cofig[0], stride_cofig[1], stride_cofig[2], 8, 8, 8)
+                        dst_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(dst.dtype.lower()) // 8) * stride_cofig[3]
+                        src1_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(src1.dtype.lower()) //
+                                                      8) * stride_cofig[4]
+                        src2_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(src2.dtype.lower()) //
+                                                      8) * stride_cofig[5]
+                if remain_ele > 0:
+                    self.tik_instance.vadd(remain_ele, dst[dst_offset], src1[src1_offset], src2[src2_offset], 1,
+                                           stride_cofig[0], stride_cofig[1], stride_cofig[2], 8, 8, 8)
+            else:
+                if repeat_max_loop > 0:
+                    self.tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset], src2[src2_offset], 255,
+                                           stride_cofig[0], stride_cofig[1], stride_cofig[2], stride_cofig[3],
+                                           stride_cofig[4], stride_cofig[5])
+                    dst_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(dst.dtype.lower()) //
+                                                 8) * stride_cofig[3] * 255
+                    src1_offset += \
+                        BLOCK_SIZE // (tbe_platform.get_bit_len(src1.dtype.lower()) // 8) * stride_cofig[4] * 255
+                    src2_offset += \
+                        BLOCK_SIZE // (tbe_platform.get_bit_len(src2.dtype.lower()) // 8) * stride_cofig[5] * 255
+                if remain_max_loop > 0:
+                    self.tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset], src2[src2_offset], remain_max_loop,
+                                           stride_cofig[0], stride_cofig[1], stride_cofig[2], stride_cofig[3],
+                                           stride_cofig[4], stride_cofig[5])
+                    dst_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(dst.dtype.lower()) //
+                                                 8) * stride_cofig[3] * remain_max_loop
+                    src1_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(src1.dtype.lower()) //
+                                                  8) * stride_cofig[4] * remain_max_loop
+                    src2_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(src2.dtype.lower()) //
+                                                  8) * stride_cofig[5] * remain_max_loop
+                if remain_ele > 0:
+                    self.tik_instance.vadd(remain_ele, dst[dst_offset], src1[src1_offset], src2[src2_offset], 1,
+                                           stride_cofig[0], stride_cofig[1], stride_cofig[2], stride_cofig[3],
+                                           stride_cofig[4], stride_cofig[5])
 
     def _calc_mask(self, index_h, index_w, mask_shape, ori_output_ub, ori_input_col_ub, mask_or, mask_not):
         mask_ori = self.tik_instance.Tensor('uint16', mask_shape, name='mask_ori', scope=tik.scope_ubuf)
@@ -787,7 +811,7 @@ class MaxpoolGrad:
         return remained_hi
 
     def _tilling_factor(self, ori_input_shape, pad):
-        pad_left, pad_right, _, _ = pad
+        pad_left, pad_right, pad_top, _ = pad
         c0_local = ori_input_shape[-1]
         input_l1_size = _cal_byte_size(ori_input_shape, self.dtype)
         # each type of buffer's bit size
@@ -802,61 +826,193 @@ class MaxpoolGrad:
         else:
             each_process_hi = self.stride_h
 
-        # define extra_size for some case
-        # if each_process_wo is not 32B alined and 256B alined
-        extra_size = (VECTOR_FP16_SIZE * c0_local + c0_local) * fp16_data_size
-        if self.kw > self.stride_w:
-            extra_size += each_process_hi * (self.kw - self.stride_w) * c0_local * (fp16_data_size + fp32_data_size)
-
         # calculate col ub size
         # There are two col ub, one is fp32, other is fp16, shape is (each_hi, each_wi, c0_local)
         # Here we need calculate each_wi to judge if need cut wo or cut ho.
         # self.kw > self.stride_w, each_wi = (each_process_wo - 1) * self.stride_w + self.kw
         # self.kw <= self.stride_w, each_wi = each_process_wo * self.stride_w
-
-        col_ub_size_times = each_process_hi * self.stride_w * c0_local * (fp16_data_size + fp32_data_size)
+        col_size_times = each_process_hi * self.stride_w * c0_local * (fp16_data_size + fp32_data_size)
+        col_size_const = each_process_hi * max(0,
+                                               self.kw - self.stride_w) * c0_local * (fp16_data_size + fp32_data_size)
 
         # calculate mask ub size
         # There are for mask buffer on ub, each is (math.ceil(each_wo_16 * c0_local // 128) * 128, )
         # Here each_wo_16 is ceil to 16 times.
-        mask_ub_size_times = uint16_data_size * 4
+        # Since it is not evenly divisible, consider the maximum possible value
+        mask_size_times = uint16_data_size * 4
+        mask_size_const = (MASK128_VALUE - 1) * uint16_data_size * 4
 
-        # calculate tensor ub siez
-        # There are five tensor buffer on UB, each is (each_wo_16, 16, c0_local), one is fp32, others
-        # are fp16. Here each_wo_16 is ceil to 16 times.
-        tensor_ub_size_time = c0_local * (4 * fp16_data_size + fp32_data_size)
+        # calculate tensor ub size
+        # There are five tensor buffer on UB, each is (each_wo_16, 16, c0_local), one is fp32, others are fp16.
+        # Here each_wo_16 is ceil to 16 times.
+        # Since it is not evenly divisible, consider the maximum possible value
+        tensor_size_times = c0_local * (4 * fp16_data_size + fp32_data_size)
+        tensor_size_const = (c0_local - 1) * c0_local * (4 * fp16_data_size + fp32_data_size)
 
         # some temp size
-        # at most have 4 temp buffer on ub, each is (128, ), dtype is float16
-        temp_ub_size = fp16_data_size * self.wi * c0_local
+        # At most have 3 temp buffer on UB, one is (128, ), one is (wi, c0_local), dtype is fp16
+        temp_ub_size = fp16_data_size * self.wi * c0_local + MASK128_VALUE * fp16_data_size
+        # Tail block data may need dump 0 when last_valid_wi > each_process_wi
+        # shape is ((last_valid_wi - each_process_wi) * c0_local, )
+        temp_remain_size_const = (self.wi - max(0, self.kw - self.stride_w)) * c0_local * fp16_data_size
 
-        each_process_wo = (SIZE_UB - temp_ub_size) * 1.0 / (col_ub_size_times + mask_ub_size_times +
-                                                            tensor_ub_size_time) - pad_left - pad_right
-        each_process_wo = int(each_process_wo // 16 * 16)
+        # mode1: last_valid_wi > each_process_wi, need dump 0
+        const_remain = SIZE_UB - temp_ub_size - temp_remain_size_const - tensor_size_const - mask_size_const - \
+            col_size_const
+        each_process_wo_mode1 = const_remain * 1.0 / (col_size_times + mask_size_times + tensor_size_times -
+                                                      self.stride_w * c0_local * fp16_data_size)
 
-        if each_process_wo >= self.wo:
+        wo_mode1_effect = False
+        if each_process_wo_mode1 == 0:
+            wo_mode1_effect = False
+        elif min(self.wi - ((self.wo - 1) // each_process_wo_mode1 * each_process_wo_mode1 * self.stride_w - pad_left),
+                 self.wi) > (self.stride_w * each_process_wo_mode1 + max(0, self.kw - self.stride_w)):
+            wo_mode1_effect = True
+            if each_process_wo_mode1 >= 16:
+                each_process_wo_mode1 = int(each_process_wo_mode1 // 16 * 16)
+            else:
+                each_process_wo_mode1 = int(each_process_wo_mode1)
+
+        # mode2: last_valid_wi <= each_process_wi, no need to dump 0
+        const_remain = SIZE_UB - temp_ub_size - tensor_size_const - mask_size_const - col_size_const
+        each_process_wo_mode2 = const_remain * 1.0 / (col_size_times + mask_size_times + tensor_size_times)
+
+        wo_mode2_effect = False
+        if each_process_wo_mode2 == 0:
+            wo_mode2_effect = False
+        elif min(self.wi - ((self.wo - 1) // each_process_wo_mode2 * each_process_wo_mode2 * self.stride_w - pad_left),
+                 self.wi) <= (self.stride_w * each_process_wo_mode2 + max(0, self.kw - self.stride_w)):
+            wo_mode2_effect = True
+            if each_process_wo_mode2 >= 16:
+                each_process_wo_mode2 = int(each_process_wo_mode2 // 16 * 16)
+            else:
+                each_process_wo_mode2 = int(each_process_wo_mode2)
+
+        each_process_wo_min = 0
+        each_process_wo_max = 0
+
+        if wo_mode1_effect and wo_mode2_effect:
+            each_process_wo_min = min(each_process_wo_mode1, each_process_wo_mode2)
+            each_process_wo_max = max(each_process_wo_mode1, each_process_wo_mode2)
+        else:
+            if wo_mode1_effect:
+                each_process_wo_min = each_process_wo_mode1
+                each_process_wo_max = each_process_wo_mode1
+            if wo_mode2_effect:
+                each_process_wo_min = each_process_wo_mode2
+                each_process_wo_max = each_process_wo_mode2
+
+        if each_process_wo_min >= self.wo:
             wi = self.wi + pad_left + pad_right
-            extra_size = 0
-            if self.kh > self.stride_h:
-                extra_size += (self.kh - self.stride_h) * wi * c0_local * (fp16_data_size + 2 * fp32_data_size)
+
             # calculate col ub size
             # There are two col ub, one is fp32, other is fp16, shape is (each_hi, wi, c0_local)
             # self.kh > self.stride_h, each_hi = (each_process_ho - 1) * self.stride_h + self.kh
             # self.kh <= self.stride_h, each_hi = each_process_ho * self.stride_h
-            col_ub_size_times = self.stride_h * wi * c0_local * (fp16_data_size + fp32_data_size)
+            col_size_times = self.stride_h * wi * c0_local * (fp16_data_size + fp32_data_size)
+            col_size_const = max(0, self.kh - self.stride_h) * wi * c0_local * (fp16_data_size + fp32_data_size)
 
-            mask_ub_size_times = self.wo * uint16_data_size * 4
+            # calculate mask ub size
+            # There are for mask buffer on UB, each is (math.ceil(each_process_ho_wo_div16 * c0_local // 128) * 128, )
+            # Here each_process_ho_wo_div16 is (each_process_ho * self.wo) ceil to 16 times.
+            # Since it is not evenly divisible, consider the maximum possible value
+            mask_size_times = self.wo * uint16_data_size * 4
+            mask_size_const = (MASK128_VALUE - 1) * uint16_data_size * 4
 
-            tensor_ub_size_time = self.wo * c0_local * (4 * fp16_data_size + fp32_data_size)
+            # calculate tensor ub size
+            # There are five tensor buffer on UB, each is (each_process_ho_wo_div16, 16, c0_local), one is fp32,
+            # others are fp16.
+            # Here each_process_ho_wo_div16 is (each_process_ho * self.wo) ceil to 16 times.
+            # Since it is not evenly divisible, consider the maximum possible value
+            tensor_size_times = self.wo * c0_local * (4 * fp16_data_size + fp32_data_size)
+            tensor_size_const = (c0_local - 1) * c0_local * (4 * fp16_data_size + fp32_data_size)
 
-            temp_ub_size = fp16_data_size * self.wo * c0_local
-            each_process_ho = (SIZE_UB - temp_ub_size - extra_size) // (col_ub_size_times + mask_ub_size_times +
-                                                                        tensor_ub_size_time)
+            # calculate temp tensor size
+            # There is one temp tensor on UB, dtype is fp32
+            # self.kh > self.stride_h, shape is ((self.kh - self.stride_h), wi, c0_local)
+            # self.kh <= self.stride_h, shape is (1, 16, c0_local)
+            if self.kh > self.stride_h:
+                temp_tensor_size = (self.kh - self.stride_h) * wi * c0_local * fp32_data_size
+            else:
+                temp_tensor_size = c0_local * c0_local * fp32_data_size
+
+            # some temp size
+            # one fixed temp buffer on UB, shape is (128, ), dtype is float16
+            temp_ub_size = MASK128_VALUE * fp16_data_size
+
+            each_process_ho = 0
+            if self.tile_h_to_block:
+                # when tiling h to block, tail block data need dump 0, tensor shape is (1, self.wi, c0_local)
+                temp_remain_size_const = self.wi * c0_local * fp16_data_size
+                const_remain = SIZE_UB - temp_remain_size_const - temp_ub_size - temp_tensor_size - mask_size_const - \
+                    tensor_size_const - col_size_const
+                each_process_ho = const_remain // (col_size_times + mask_size_times + tensor_size_times)
+            else:
+
+                def _judge_last_and_process(each_process):
+                    if (self.ho - 1) // each_process == 0:
+                        return self.hi > (self.stride_h * each_process + max(0, self.kh - self.stride_h))
+                    return (self.hi - ((self.ho - 1) // each_process * each_process * self.stride_h - pad_top)) > (
+                        self.stride_h * each_process + max(0, self.kh - self.stride_h))
+
+                # when there is no need to tile h to block, tail block data may need dump 0
+                # mode1: last_valid_hi > each_process_hi
+                # dump tensor shape is ((last_valid_hi - each_process_hi), self.wi * c0_local)
+                temp_remain_size_const = (self.hi -
+                                          max(0, self.kh - self.stride_h)) * self.wi * c0_local * fp16_data_size
+                const_remain = SIZE_UB - temp_remain_size_const - temp_ub_size - temp_tensor_size - mask_size_const - \
+                    tensor_size_const - col_size_const
+                each_process_ho_mode1 = const_remain // (col_size_times + mask_size_times + tensor_size_times -
+                                                         self.stride_h * self.wi * c0_local * fp16_data_size)
+
+                ho_mode1_effect = False
+                if each_process_ho_mode1 == 0:
+                    ho_mode1_effect = False
+                elif _judge_last_and_process(each_process_ho_mode1):
+                    if each_process_ho_mode1 * self.stride_h >= pad_top or (self.ho - 1) // each_process_ho_mode1 == 0:
+                        ho_mode1_effect = True
+                if not ho_mode1_effect:
+                    # when ((self.ho - 1) // each_process * each_process * self.stride_h - pad_top) < 0,
+                    # last_valid_hi > self.hi
+                    # Since the value is uncertain, consider the maximum possible value
+                    temp_remain_size_const = (self.hi + pad_top -
+                                              max(0, self.kh - self.stride_h)) * self.wi * c0_local * fp16_data_size
+                    const_remain = SIZE_UB - temp_remain_size_const - temp_ub_size - temp_tensor_size - \
+                        mask_size_const - tensor_size_const - col_size_const
+                    each_process_ho_mode1 = const_remain // (col_size_times + mask_size_times + tensor_size_times -
+                                                             self.stride_h * 2 * self.wi * c0_local * fp16_data_size)
+                    if each_process_ho_mode1 == 0:
+                        ho_mode1_effect = False
+                    elif _judge_last_and_process(each_process_ho_mode1):
+                        if each_process_ho_mode1 * self.stride_h < pad_top and (self.ho -
+                                                                                1) // each_process_ho_mode1 > 0:
+                            ho_mode1_effect = True
+
+                # mode2: last_valid_hi <= each_process_hi, no need to dump 0
+                const_remain = SIZE_UB - temp_ub_size - temp_tensor_size - mask_size_const - tensor_size_const - \
+                    col_size_const
+                each_process_ho_mode2 = const_remain // (col_size_times + mask_size_times + tensor_size_times)
+
+                ho_mode2_effect = False
+                if each_process_ho_mode2 == 0:
+                    ho_mode2_effect = False
+                elif not _judge_last_and_process(each_process_ho_mode2):
+                    ho_mode2_effect = True
+
+                if ho_mode1_effect and ho_mode2_effect:
+                    each_process_ho = max(each_process_ho_mode1, each_process_ho_mode2)
+                else:
+                    if ho_mode1_effect:
+                        each_process_ho = each_process_ho_mode1
+                    if ho_mode2_effect:
+                        each_process_ho = each_process_ho_mode2
+
             if each_process_ho <= 0:
                 each_process_ho = 1
-                each_process_wo = self.wo
+            each_process_wo = self.wo
         else:
             each_process_ho = 0
+            each_process_wo = each_process_wo_max
 
         if each_process_ho >= self.ho:
             need_cut_ho = False
@@ -1896,10 +2052,9 @@ class MaxpoolGrad:
                     with self.tik_instance.if_scope(ho_index != 0):
                         if cut_wo_nums == 0:
                             with self.tik_instance.for_range(0, self.kh - self.stride_h) as index_khs:
-                                self.tik_instance.data_move(
-                                    col2img_fp32_ub[index_khs * each_process_wi * C0],
-                                    overlap_l1[index_khs * overlap_l1_w], 0, 1,
-                                    each_process_remain_wi * C0 // 8, 0, 0)
+                                self.tik_instance.data_move(col2img_fp32_ub[index_khs * each_process_wi * C0],
+                                                            overlap_l1[index_khs * overlap_l1_w], 0, 1,
+                                                            each_process_remain_wi * C0 // 8, 0, 0)
                         else:
                             start_pos = (each_process_wi - self.stride_w * each_process_wo) * C0
                             with self.tik_instance.for_range(0, self.kh - self.stride_h) as index_khs:
