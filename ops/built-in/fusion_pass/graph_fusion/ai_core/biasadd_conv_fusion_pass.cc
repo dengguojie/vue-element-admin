@@ -130,6 +130,10 @@ Status BiasaddConvFusionPass::GetWeightNode(const ge::NodePtr &biasadd_node, con
   bool case_training = (nodeInfrontOfAdd->GetType() == VARIABLE);
 
   if (case_training) {
+    FUSION_PASS_CHECK(biasadd_node->GetType() == ADD_3D,
+                                          OP_LOGI(FUSED_OP_TYPE.c_str(),
+                                                          "We do not support fusion of Conv2D + Add in training mode."),
+                                          return NOT_CHANGED);
     bias_shape = nodeInfrontOfAdd->GetOpDesc()->MutableOutputDesc(0)->GetShape();
     weight_node = nodeInfrontOfAdd;
     OP_LOGD(FUSED_OP_TYPE.c_str(), "Do BiasaddConvFusionPass for op %s in training mode.", conv->GetName().c_str());
