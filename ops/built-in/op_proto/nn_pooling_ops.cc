@@ -5242,6 +5242,51 @@ INFER_FUNC_REG(MaxPoolV3Grad, MaxPoolV3GradInferShape);
 VERIFY_FUNC_REG(MaxPoolV3Grad, MaxPoolV3GradVerify);
 // ----------------------MaxPoolV3Grad--------------------------
 
+// ------------AdaptiveMaxPool2d Op Begin----------------
+IMPLEMT_INFERFUNC(AdaptiveMaxPool2d, AdaptiveMaxPool2dInferShape) {
+  OP_LOGI(op.GetName().c_str(), " AdaptiveMaxPool2d inferShape begin!");
+  const size_t DIM_SIZE2 = 2;
+  auto input_tensor_desc = op.GetInputDesc("x");
+  auto shape = input_tensor_desc.GetShape();
+  // get output_size
+  std::vector<int64_t> ouput_size_list;
+  if (GRAPH_SUCCESS != op.GetAttr("output_size", ouput_size_list)) {
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr ouput_size_list failed!");
+    return GRAPH_FAILED;
+  }
+  // check output size
+  if (ouput_size_list.size() != DIM_SIZE2) {
+    OP_LOGE(op.GetName().c_str(), "length of output_size must be 2");
+    return GRAPH_FAILED;
+  }
+  std::vector<int64_t> dims_input = shape.GetDims();
+  // set output shape
+  std::vector<int64_t> dim_vector;
+  for (size_t i = 0; i < dims_input.size(); i++) {
+    int64_t dims = dims_input[i];
+    dim_vector.push_back(dims);
+  }
+  size_t index0 = dims_input.size() - 2;
+  size_t index1 = dims_input.size() - 1;
+  dim_vector[index0] = ouput_size_list[0];
+  dim_vector[index1] = ouput_size_list[1];
+  TensorDesc td = op.GetOutputDesc("y");
+  DataType input_dtype = input_tensor_desc.GetDataType();
+  Shape output_shape(dim_vector);
+  td.SetShape(output_shape);
+  td.SetDataType(input_dtype);
+  (void)op.UpdateOutputDesc("y", td);
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(AdaptiveMaxPool2d, AdaptiveMaxPool2dVerify) {
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(AdaptiveMaxPool2d, AdaptiveMaxPool2dInferShape);
+VERIFY_FUNC_REG(AdaptiveMaxPool2d, AdaptiveMaxPool2dVerify);
+// ------------AdaptiveMaxPool2d Op End----------------
+
 // ------------AdaptiveAvgPool2d Op Begin----------------
 IMPLEMT_INFERFUNC(AdaptiveAvgPool2d, AdaptiveAvgPool2dInferShape) {
   OP_LOGI(op.GetName().c_str(), " AdaptiveAvgPool2d inferShape begin!");

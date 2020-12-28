@@ -350,6 +350,31 @@ REG_OP(MaxPool3D)
     .ATTR(data_format, String, "NDHWC")
     .OP_END_FACTORY_REG(MaxPool3D)
 
+/**
+*@brief Applies a 2D adaptive max pooling over an input signal conposed of several input planes. \n
+* The output is of size H x W, for any input size. 
+
+* @par Inputs:
+* One input, including:
+* @li x: A Tensor. Must be one of the following data types:
+*     float16, float32, float64. \n
+
+* @par Attributes:
+* @li output_size: A required list of 2 ints
+*    specifying the size (H,W) of the output tensor. \n
+
+* @par Outputs:
+* @li y: A Tensor. Has the same data type as "x" \n
+
+* @par Third-party framework compatibility
+* Compatible with the Pytorch operator AdaptiveMaxPool2d.
+*/
+REG_OP(AdaptiveMaxPool2d)
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT32, DT_DOUBLE}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT32, DT_DOUBLE}))
+    .OUTPUT(argmax, TensorType::IndexNumberType())
+    .REQUIRED_ATTR(output_size, ListInt)
+    .OP_END_FACTORY_REG(AdaptiveMaxPool2d)
 
 /**
 * @brief Computes second-order gradients of the maxpooling3d function . \n

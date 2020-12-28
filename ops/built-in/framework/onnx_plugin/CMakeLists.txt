@@ -23,6 +23,7 @@ protobuf_generate(opp _proto_cc _proto_h ${_proto_srcs})
 set(_onnx_plugins
   abs_plugin.cc
   add_plugin.cc
+  adaptive_max_pool2d_plugin.cc
   ascend_anti_quant_plugin.cc
   ascend_dequant_plugin.cc
   ascend_dequant_s16_plugin.cc
