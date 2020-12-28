@@ -91,7 +91,7 @@ graphStatus DequeueManyShape(Operator& op, const Shape& n_shape, const std::stri
   } else {
     for (size_t i = 0; i < num_outputs_data; ++i) {
       TensorDesc output_desc = op.GetDynamicOutputDesc(out_name, i);
-      output_desc.SetShape(Shape(ge::UNKNOWN_SHAPE));
+      output_desc.SetShape(Shape(ge::UNKNOWN_RANK));
       output_desc.SetDataType(component_types[i]);
       graphStatus output_status = op.UpdateDynamicOutputDesc(out_name, i, output_desc);
       if (output_status != GRAPH_SUCCESS) {

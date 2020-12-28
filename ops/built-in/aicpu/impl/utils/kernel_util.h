@@ -124,13 +124,13 @@ uint32_t NormalCheck(CpuKernelContext &ctx,
  * @param dtype_str string of data type
  * @return DataType
  */
-DataType GetDataType(std::string dtype_str);
+DataType DType(std::string dtype_str);
 
 /**
  * @brief get string from data type
  * @param dtype data type
  * @return string of data type
  */
-std::string GetDataType(DataType dtype);
+std::string DTypeStr(DataType dtype);
 }  // namespace aicpu
 #endif

@@ -62,7 +62,7 @@ uint32_t MulCpuKernel::Compute(CpuKernelContext &ctx) {
     MUL_COMPUTE_CASE(DT_FLOAT, float)
     MUL_COMPUTE_CASE(DT_DOUBLE, double)
     default:
-      KERNEL_LOG_ERROR("Mul kernel data type [%s] not support.", GetDataType(data_type).c_str());
+      KERNEL_LOG_ERROR("Mul kernel data type [%s] not support.", DTypeStr(data_type).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
   }
 

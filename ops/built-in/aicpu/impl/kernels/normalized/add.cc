@@ -61,7 +61,7 @@ uint32_t AddCpuKernel::Compute(CpuKernelContext &ctx) {
     ADD_COMPUTE_CASE(DT_FLOAT, float, ctx)
     ADD_COMPUTE_CASE(DT_DOUBLE, double, ctx)
     default:
-      KERNEL_LOG_ERROR("Add kernel data type [%s] not support.", GetDataType(data_type).c_str());
+      KERNEL_LOG_ERROR("Add kernel data type [%s] not support.", DTypeStr(data_type).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
   }
 

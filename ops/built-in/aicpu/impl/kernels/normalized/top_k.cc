@@ -288,8 +288,8 @@ uint32_t TopKCpuKernel::Compute(CpuKernelContext &ctx) {
       res = DoCompute<int64_t>(ctx);
       break;
     default: {
-      KERNEL_LOG_ERROR("TopK op don't support input tensor types[%s]",
-                       GetDataType(data_type_).c_str());
+      KERNEL_LOG_ERROR("TopK op don't support input tensor type [%s]",
+                       DTypeStr(data_type_).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
     }
   }

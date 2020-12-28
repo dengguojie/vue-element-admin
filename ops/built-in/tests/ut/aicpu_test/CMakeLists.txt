@@ -138,6 +138,7 @@ set(_cpu_kernels_ut_files
   testcase/node_def_utest.cpp
   testcase/sharder_utest.cpp
   testcase/tensor_utest.cpp
+  testcase/kernel_util_utest.cpp
   testcase/concatv2_utest.cpp
   testcase/trans_data_utest.cpp
   testcase/get_dynamic_dims_utest.cpp

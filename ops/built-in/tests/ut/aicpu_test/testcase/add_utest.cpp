@@ -58,6 +58,19 @@ void CalcExpectFunc(const NodeDef &node_def, T expect_out[]) {
     RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);                       \
   }                                                                                \
 
+TEST_F(TEST_ADD_UT, ExpUndefinedType) {
+    vector<vector<int64_t>> shapes = {{}, {}, {}};
+    vector<DataType> data_types = {DT_UNDEFINED, DT_UNDEFINED, DT_UNDEFINED};
+    vector<int32_t> input1 = {1};
+    vector<int32_t> input2 = {1};
+    vector<int32_t> output = {0};
+    vector<void *> datas = { (void *)input1.data(),
+                             (void *)input2.data(),
+                             (void *)output.data() };
+    CREATE_NODEDEF(shapes, data_types, datas);
+    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
+}
+
 vector<vector<int64_t>> shapes1 = {{}, {}, {}};
 vector<int64_t> data_num1 = {1, 1, 1};
 ADD_CASE_WITH_SHAPE(int8_scalar_add_scalar, int8_t, DT_INT8, shapes1, data_num1)

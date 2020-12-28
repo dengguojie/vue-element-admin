@@ -64,7 +64,7 @@ uint32_t CeilCpuKernel::Compute(CpuKernelContext &ctx) {
       res = ComputeCeil<double>(x, y, data_size, ctx);
       break;
     default:
-      KERNEL_LOG_ERROR("Ceil invalid input type[%s]", GetDataType(data_type).c_str());
+      KERNEL_LOG_ERROR("Ceil invalid input type [%s]", DTypeStr(data_type).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
   }
   if (res != KERNEL_STATUS_OK) {

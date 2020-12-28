@@ -123,7 +123,7 @@ uint32_t NormalCheck(CpuKernelContext &ctx,
   return KERNEL_STATUS_OK;
 }
 
-DataType GetDataType(std::string dtype_str) {
+DataType DType(std::string dtype_str) {
   auto iter = dtype_maps.find(dtype_str);
   if (iter != dtype_maps.end()) {
     return iter->second;
@@ -132,7 +132,7 @@ DataType GetDataType(std::string dtype_str) {
   }
 }
 
-std::string GetDataType(DataType dtype) {
+std::string DTypeStr(DataType dtype) {
   auto iter = std::find_if(dtype_maps.begin(), dtype_maps.end(),
       [dtype](const std::map<std::string, DataType>::value_type &kv) {
         return (kv.second == dtype);
