@@ -54,6 +54,10 @@ static const int64_t COUT32 = 32;
 static const int64_t CIN32 = 32;
 const int32_t INDEX_CO_avg = 1;
 const int32_t INDEX_CI_avg = 0;
+// kernel_h*kernel_w
+static const int64_t AVG_KERNEL_SIZE_H_MUL_W = 255;
+// ksize restrictions
+static const int64_t AVG_KERNEL_SIZE = 20;
 
 Status GenerateFilterFP16(const vector<int64_t> shape, const float areaFactor, uint16_t& output1) {
   uint16_t* output = &output1;
@@ -632,6 +636,16 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     return NOT_CHANGED;
   }
 
+  if(stridesH > 63 || stridesW > 63){
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "strided_h or strided_w >63, not support");
+    return NOT_CHANGED;
+  }
+  bool AicoreSupport = true;
+  AicoreSupport = (ksizeH * ksizeW <= AVG_KERNEL_SIZE_H_MUL_W) || (ksizeH < AVG_KERNEL_SIZE and ksizeW < AVG_KERNEL_SIZE);
+  if(!AicoreSupport){
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "ksize_h or ksize_w aicore not support");
+    return NOT_CHANGED;
+  }
   // get pre node of pooling
   ge::InDataAnchorPtr poolingAnchorPtr0 = avgPoolNode->GetInDataAnchor(0);
   ge::OutDataAnchorPtr preAnchorPtr0 = poolingAnchorPtr0->GetPeerOutAnchor();

@@ -95,7 +95,7 @@ case6 = {"params": [{"shape": (1, 8, 32, 32, 16), "dtype": "float16", "format": 
                     {"shape": (1, 8, 32, 32, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, 32, 128),"ori_format": "NC1HWC0","param_type": "output"},
                     [1,2,2,1], [1,1,1,1], "SAME"],
          "calc_expect_func": calc_expect_func,
-         "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
+         "precision_standard": precision_info.PrecisionStandard(0.05, 0.05)}
 
 case7 = {"params": [{"shape": (3, 4, 16, 16, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (3, 16, 16, 64),"ori_format": "NC1HWC0",
                     "param_type": "input", "value_range": [1.0, 10.0]},
@@ -104,7 +104,7 @@ case7 = {"params": [{"shape": (3, 4, 16, 16, 16), "dtype": "float16", "format": 
                     {"shape": (3, 4, 15, 15, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (3, 15, 15, 64),"ori_format": "NC1HWC0","param_type": "output"},
                     [1,2,2,1], [1,1,1,1], "VALID"],
          "calc_expect_func": calc_expect_func,
-         "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
+         "precision_standard": precision_info.PrecisionStandard(0.05, 0.05)}
 
 case8 = {"params": [{"shape": (4, 8, 10, 10, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (4, 10, 10, 128),"ori_format": "NC1HWC0",
                      "param_type": "input", "value_range": [1.0, 10.0]},
@@ -113,7 +113,7 @@ case8 = {"params": [{"shape": (4, 8, 10, 10, 16), "dtype": "float16", "format": 
                     {"shape": (4, 8, 8, 8, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (4, 8, 8, 128),"ori_format": "NC1HWC0","param_type": "output"},
                     [1,3,3,1], [1,1,1,1], "VALID"],
          "calc_expect_func": calc_expect_func,
-         "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
+         "precision_standard": precision_info.PrecisionStandard(0.05, 0.05)}
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 
@@ -130,6 +130,25 @@ ut_case.add_precision_case(["Ascend310", "Ascend710", "Ascend910"], case6)
 ut_case.add_precision_case(["Ascend310", "Ascend710", "Ascend910"], case7)
 
 ut_case.add_precision_case(["Ascend310", "Ascend710", "Ascend910"], case8)
+
+from impl.avg_pool import check_supported
+
+def test_check_support(test_arg):
+    check_supported({"shape": (1, 24, 1, 256), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "input"},
+    None,None,{"shape": (1, 24, 1, 256 ), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "output"},
+    [1,2,2,1],[1,4,4,1],"VALIED","NHWC")
+    check_supported({"shape": (1, 24, 1, 256), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "input"},
+    None,None,{"shape": (1, 24, 1, 256 ), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "output"},
+    [1,2,2,1],[1,4,4,1],"VALIED","NCHW")
+    check_supported({"shape": (1, 24, 1, 256), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "input"},
+    None,None,{"shape": (1, 1, 1, 256 ), "dtype": "float16", "format": "ND", "ori_shape": (1, 1, 1, 256),"ori_format": "ND", "param_type": "output"},
+    [1,2,2,1],[1,4,4,1],"VALIED","NHWC")
+    check_supported({"shape": (1, 24, 1, 256), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "input"},
+    None,None,{"shape": (1, 3, 3, 256 ), "dtype": "float16", "format": "ND", "ori_shape": (1, 3, 3, 256),"ori_format": "ND", "param_type": "output"},
+    [1,255,21,1],[1,4,4,1],"VALIED","NHWC")
+
+
+ut_case.add_cust_test_func(test_func=test_check_support)
 
 
 if __name__ == '__main__':

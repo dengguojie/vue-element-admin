@@ -164,20 +164,6 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
     if data_mode == 1:
         pooling_mode = _get_pooling_mode_with_padding_mode(padding_mode, pooling_mode, in_size_h, in_size_w,
                                                            window_h, window_w)
-
-    def _check_stride_window_rule(pooling_mode, stride, window):
-        if pooling_mode in ["AVG"]:
-            is_stride_invalid = stride[0] > 2 * window[0] or \
-                stride[1] > 2 * window[1]
-            if is_stride_invalid:
-                dict_args = dict()
-                dict_args["errCode"] = "E90001"
-                dict_args["detailed_cause"] = "stride_h [%s] should be <= 2*window_h [%s], " \
-                                              "stride_w [%s] should be <= 2*window_w [%s]." \
-                                              % (stride[0], window[0], stride[1], window[1])
-                raise RuntimeError(dict_args, get_error_message(dict_args))
-    _check_stride_window_rule(pooling_mode, stride, window)
-
     # avg or max pooling
     if pooling_mode in ["AVG", "MAX"]:
         # only in AVG pooling related, img2col instrin nRepeat in [1,255]
@@ -315,13 +301,15 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
         if in_size_h != window_h and in_size_w == window_w and data_mode == 0:
             return True
         if data_mode == 1:
+            if stride_h > 63 or stride_w > 63:
+                return True
             if padding_mode == "SAME":
                 output_h = (in_size_h + stride_h - 1) // stride_h
                 output_w = (in_size_w + stride_w - 1) // stride_w
             else:
                 output_h = (in_size_h - window_h + 1 + (stride_h - 1)) // stride_h
                 output_w = (in_size_w - window_w + 1 + (stride_w - 1)) // stride_w
-            if output_h != 1 and output_w == 1 and (in_size_h != window_h or in_size_w != window_w):
+            if output_h != 1 and output_w == 1:
                 return True
 
         return False
@@ -582,7 +570,7 @@ def _check_stride_rule(tensor_in, data_mode, padding_mode, pooling_mode, window,
                                                            in_size_h, in_size_w,
                                                            window_h, window_w)
     # global
-    if pooling_mode not in ["GAP", "GMP"]:
+    if pooling_mode not in ["GAP", "GMP", "AVG"]:
         if stride[0] > 63 or stride[0] < 1:
             dict_args = dict()
             dict_args["errCode"] = "E90001"

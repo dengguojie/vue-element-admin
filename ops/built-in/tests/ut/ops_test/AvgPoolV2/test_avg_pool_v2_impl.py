@@ -2,6 +2,7 @@
 import sys
 import numpy as np
 from op_test_frame.ut import BroadcastOpUT
+from op_test_frame.common import precision_info
 
 ut_case = BroadcastOpUT("avg_pool_v2")
 
@@ -137,7 +138,8 @@ ut_case.add_precision_case("all", {
                False,
                False,
                True],
-    "calc_expect_func": calc_expect_func
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(50, 50)
 })
 
 ut_case.add_precision_case("all", {
@@ -154,7 +156,8 @@ ut_case.add_precision_case("all", {
                True,
                False,
                True],
-    "calc_expect_func": calc_expect_func
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(50, 50)
 })
 
 ut_case.add_precision_case("all", {
@@ -171,7 +174,8 @@ ut_case.add_precision_case("all", {
                False,
                False,
                True],
-    "calc_expect_func": calc_expect_func
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(50, 50)
 })
 
 ut_case.add_precision_case("all", {
@@ -190,7 +194,8 @@ ut_case.add_precision_case("all", {
                False,
                False,
                True],
-    "calc_expect_func": calc_expect_func
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(50, 50)
 })
 
 ut_case.add_precision_case("all", {
@@ -209,7 +214,8 @@ ut_case.add_precision_case("all", {
                False,
                True,
                True],
-    "calc_expect_func": calc_expect_func
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(50, 50)
 })
 
 ut_case.add_precision_case("all", {
@@ -228,7 +234,8 @@ ut_case.add_precision_case("all", {
                False,
                False,
                True],
-    "calc_expect_func": calc_expect_func
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(50, 50)
 })
 
 ut_case.add_case("all", {
@@ -456,3 +463,21 @@ ut_case.add_case("all", {
                True],
     "expect": RuntimeError
 })
+from impl.avg_pool_v2 import check_supported
+
+def test_check_support(test_arg):
+    check_supported({"shape": (1, 24, 1, 256), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "input"},
+    None,{"shape": (1, 24, 1, 256 ), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "output"},
+    [1,2,2,1],[1,4,4,1],"VALIED",[0,0,0,0],"NHWC")
+    check_supported({"shape": (1, 24, 1, 256), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "input"},
+    None,{"shape": (1, 24, 1, 256 ), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "output"},
+    [1,2,2,1],[1,4,4,1],"VALIED",[0,0,0,0],"NCHW")
+    check_supported({"shape": (1, 24, 1, 256), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "input"},
+    None,{"shape": (1, 1, 1, 256 ), "dtype": "float16", "format": "ND", "ori_shape": (1, 1, 1, 256),"ori_format": "ND", "param_type": "output"},
+    [1,2,2,1],[1,4,4,1],"VALIED",[0,0,0,0],"NHWC")
+    check_supported({"shape": (1, 24, 1, 256), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "input"},
+    None,{"shape": (1, 3, 3, 256 ), "dtype": "float16", "format": "ND", "ori_shape": (1, 3, 3, 256),"ori_format": "ND", "param_type": "output"},
+    [1,255,21,1],[1,4,4,1],"VALIED",[0,0,0,0],"NHWC")
+
+
+ut_case.add_cust_test_func(test_func=test_check_support)

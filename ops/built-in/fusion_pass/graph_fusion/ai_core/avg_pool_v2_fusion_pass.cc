@@ -46,6 +46,10 @@ static const uint16_t UINT_NUM_ZERO = 0;
 static const string PATTERN_AVGPOOL = "AvgPoolV2";
 static const std::string CONSTANTOP = "Const";
 static const char* AVGPOOL = "AvgPoolV2";
+// kernel_h*kernel_w
+static const int64_t AVGV2_KERNEL_SIZE_H_MUL_W = 255;
+// ksize restrictions
+static const int64_t AVGV2_KERNEL_SIZE = 20;
 
 vector<FusionPattern*> AvgPoolV2FusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -437,6 +441,16 @@ Status AvgPoolV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   is_global = CheckGlobal(padding, inputH, inputW, ksizeH, ksizeW, stridesH, stridesW, pads, global_pooling);
   if (is_global) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "avg_pool_v2 is global, graph not changed.");
+    return NOT_CHANGED;
+  }
+  if(stridesH > 63 || stridesW > 63){
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "strided_h or strided_w >63, not support");
+    return NOT_CHANGED;
+  }
+  bool AicoreSupport = true;
+  AicoreSupport = (ksizeH * ksizeW <= AVGV2_KERNEL_SIZE_H_MUL_W) || (ksizeH < AVGV2_KERNEL_SIZE and ksizeW < AVGV2_KERNEL_SIZE);
+  if(!AicoreSupport){
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "ksize_h or ksize_w aicore not support");
     return NOT_CHANGED;
   }
 
