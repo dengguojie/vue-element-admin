@@ -76,10 +76,6 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
         error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
                                                            "shape length for batch matmul must large than 2")
 
-    if shape_len == 2:
-        error_manager_vector.raise_err_input_shape_invalid(
-            'batch_matmul', 'input', "batch matmul not support shape length 2, if shape length equal 2, use matmul!")
-
     if len(shape_a) == len(shape_b):
         if shape_a[:shape_len_a - 2] != shape_b[:shape_len_b - 2]:
             error_manager_vector.raise_err_two_input_shape_invalid('batch_matmul', 'input_x', 'input_y',
@@ -203,7 +199,7 @@ def _check_batch_range(input_x, input_y):
     """
     shape_a = input_x.get("ori_shape")
     shape_b = input_y.get("ori_shape")
-    if list(shape_a) == DYNAMIC_UNRANK and list(shape_b) == DYNAMIC_UNRANK:
+    if list(shape_a) == DYNAMIC_UNRANK or list(shape_b) == DYNAMIC_UNRANK:
         return True
 
     range_x1 = input_x.get("range")
@@ -664,7 +660,7 @@ def batch_matmul_v2(input_x, input_y, bias=None, output_z={}, trans_a=False,
     else:
         batch_shape = batch_shape_b
 
-    if batch_shape >= 1:
+    if batch_shape is not None and batch_shape >= 1:
         if is_fractal:
             if batch_shape_a is not None:
                 shape_a_dup = (batch_shape_a,) + shape_a_dup
