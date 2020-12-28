@@ -49,7 +49,7 @@ vector<FusionPattern*> Padv3dPoolingFusionPass::DefinePatterns() {
                     "new a pattern object failed."), return patterns);
 
   pattern->AddOpDesc(PATTERN_PADV3D, {PADV3D})
-      .AddOpDesc(PATTERN_POOLING, {Pooling})
+      .AddOpDesc(PATTERN_POOLING, {POOLING})
       .SetInputs(PATTERN_POOLING, {PATTERN_PADV3D})
       .SetOutput(PATTERN_POOLING);
 
