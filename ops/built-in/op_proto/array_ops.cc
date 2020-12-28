@@ -2164,4 +2164,126 @@ INFER_FUNC_REG(SortV2, SortV2InferShape);
 VERIFY_FUNC_REG(SortV2, SortV2Verify);
 // ----------------SortV2 END---------------------
 
+// ----------------Expand Begin-------------------
+template<typename T> static bool ExpandCalDim(const Tensor &data,
+                                               std::vector<int64_t> &vec_dim, 
+                                               std::vector<int64_t> &vec_x) {
+  uint32_t size_shape = data.GetSize() / sizeof(T);
+  uint32_t size_x = vec_x.size();
+  if (size_shape < size_x) {
+    uint32_t diff = size_x - size_shape;
+    for (int32_t i = 0; i < size_x; i++) {
+      if (i < diff) {
+        vec_dim.push_back(vec_x[i]);
+      } else {
+        T dim = *((T *)data.GetData() + (i - diff));
+        if ((vec_x[i] != dim) && (vec_x[i] != 1) && (dim != 1)) {
+          return false;
+        }
+        if (vec_x[i] > dim) {
+          vec_dim.push_back(vec_x[i]);
+        } else {
+          vec_dim.push_back(dim);
+        }
+      }
+    }
+  } else {
+    uint32_t diff = size_shape - size_x;
+    for (int32_t i = 0; i < size_shape; i++) {
+      T dim = *((T *)data.GetData() + i);
+      if (i < diff) {
+        vec_dim.push_back(dim);
+      } else {
+        if ((vec_x[i - diff] != dim) && (vec_x[i-diff] != 1) && (dim != 1)) {
+          return false;
+        }
+        if (vec_x[i - diff] > dim) {
+          vec_dim.push_back(vec_x[i - diff]);
+        } else {
+          vec_dim.push_back(dim);
+        }
+      }
+    }
+  }
+  return true;
+}
+
+IMPLEMT_COMMON_INFERFUNC(ExpandInferShape) {
+  Shape x_shape = op.GetInputDesc("x").GetShape();
+  DataType x_dtype = op.GetInputDesc("x").GetDataType();
+  std::vector <int64_t> dims_x = x_shape.GetDims();
+  Tensor data;
+  std::vector <int64_t> vec_dim;
+  TensorDesc td = op.GetOutputDesc("y");
+  if (op.GetInputConstData("shape", data) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Get constValue failed of [shape]");
+    return GRAPH_FAILED;
+  } else {
+    DataType data_type = data.GetTensorDesc().GetDataType();
+    std::vector <int64_t> vec_dim;
+    if (data_type == DT_INT32) {
+      if (!ExpandCalDim <int32_t>(data, vec_dim, dims_x)) {
+        OP_LOGE(op.GetName().c_str(), "Data shape are not compatible!");
+        return GRAPH_FAILED;
+      }
+    } else if (data_type == DT_INT64) {
+      if (!ExpandCalDim <int64_t>(data, vec_dim, dims_x)) {
+        OP_LOGE(op.GetName().c_str(), "Data shape are not compatible!");
+        return GRAPH_FAILED;
+      }
+    } else {
+      OP_LOGE(op.GetName().c_str(), "Data type not supported!");
+      return GRAPH_PARAM_INVALID;
+    }
+
+    td.SetShape(ge::Shape(vec_dim));
+    td.SetDataType(x_dtype);
+    (void)op.UpdateOutputDesc("y", td);
+    return GRAPH_SUCCESS;
+  }
+}
+
+COMMON_INFER_FUNC_REG(Expand, ExpandInferShape);
+// ----------------Expand END---------------------
+
+// ----------------ExpandD Begin-------------------
+IMPLEMT_COMMON_INFERFUNC(ExpandDInferShape) {
+  Shape x_shape = op.GetInputDesc("x").GetShape();
+  DataType x_dtype = op.GetInputDesc("x").GetDataType();
+  std::vector<int64_t> shape;
+  op.GetAttr("shape", shape);
+  std::vector<int64_t> dims_x = x_shape.GetDims();
+  TensorDesc td = op.GetOutputDesc("y");
+
+  std::vector<int64_t> dim_vec;
+  if (shape.size() < dims_x.size()) {
+    std::vector<int64_t> dims_tmp = shape;
+    shape = dims_x;
+    dims_x = dims_tmp;
+  }
+  if (shape.size() != dims_x.size()) {
+    int dec = shape.size() - dims_x.size();
+    for (int i = 0; i < dec; i++) {
+      dims_x.insert(dims_x.begin(), (int64_t)1);
+    }
+  }
+  for (size_t i = 0; i < shape.size(); i++) {
+    if ((shape[i] != dims_x[i]) && (shape[i] != 1) && (dims_x[i] != 1)) {
+      OP_LOGE(op.GetName().c_str(), "The input shape and attr shape are not compatible.");
+      return GRAPH_FAILED;
+    }
+    if (shape[i] > dims_x[i]) {
+      dim_vec.push_back(shape[i]);
+    } else {
+      dim_vec.push_back(dims_x[i]);
+    }
+  }
+  td.SetShape(ge::Shape(dim_vec));
+  td.SetDataType(x_dtype);
+  (void)op.UpdateOutputDesc("y", td);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(ExpandD, ExpandDInferShape);
+// ----------------Expand END---------------------
 }  // namespace ge

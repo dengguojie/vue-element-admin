@@ -410,4 +410,9 @@ REGISTER_CONST2ATTR("FillV2D")
     .OriginOpType("FillV2")
     .NeedCheckSupported(true)
     .SetConstToAttr(0, "dims", "SetListInt");
+
+REGISTER_CONST2ATTR("ExpandD")
+    .OriginOpType("Expand")
+    .NeedCheckSupported(true)
+    .SetConstToAttr(1, "shape", "SetListInt");
 }  // namespace fe

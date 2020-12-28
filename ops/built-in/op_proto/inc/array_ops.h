@@ -1177,6 +1177,53 @@ REG_OP(SortV2)
     .ATTR(axis, Int, -1)
     .ATTR(descending, Bool, false)
     .OP_END_FACTORY_REG(SortV2)
+
+/**
+* @brief Expand the input tensor to a compatible shape. \n
+
+* @par Inputs:
+* One inputs, including:
+* @li x: A Tensor. Must be one of the following types:
+*     float16, float32, int32, int8 ,uint8. \n
+* @li shape: A Tensor to specify the shape that the input tensor expanded to. \n
+
+* @par Outputs:
+* @li y: A Tensor. Has the same type as "x", and the shape specified by input and attr shape \n
+
+* @par Third-party framework compatibility
+* Compatible with the ONNX operator Expand.
+*/
+
+REG_OP(Expand)
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT8, DT_UINT8}))
+    .INPUT(shape, TensorType({DT_INT16, DT_INT32, DT_INT64}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT8, DT_UINT8}))
+    .OP_END_FACTORY_REG(Expand)
+
+/**
+* @brief Expand the input tensor to a compatible shape. \n
+
+* @par Inputs:
+* One inputs, including:
+* @li x: A Tensor. Must be one of the following types:
+*     float16, float32, int32, int8 ,uint8. \n
+
+* @par Attributes:
+* @li shape: A required listInt to specify the shape that the input tensor expanded to. \n
+
+
+* @par Outputs:
+* @li y: A Tensor. Has the same type as "x", and the shape specified by input and attr shape \n
+
+* @par Third-party framework compatibility
+* Compatible with the ONNX operator Expand.
+*/
+
+REG_OP(ExpandD)
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT8, DT_UINT8}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT8, DT_UINT8}))
+    .REQUIRED_ATTR(shape, ListInt)
+    .OP_END_FACTORY_REG(ExpandD)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_ARRAY_OPS_H_
