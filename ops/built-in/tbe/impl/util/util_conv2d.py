@@ -8,14 +8,42 @@ provide common function used by conv2d
 """
 
 import math
-import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te.utils import para_check
+from te import tvm
+from te.platform import cce_conf
+from te.platform import CUBE_MKN
+from topi.cce import util
+from topi.cce.util import check_load3d_w_out_1_support
 from te.utils.error_manager import error_manager_conv2d as err_man
 
 
 PAD_SHAPE_DIM = 2
+# fmapH, fmapW must be in [1,4096]
+FMAP_HW_MIN = 1
+FMAP_W_MAX = 2**32-1
+FMAP_H_MAX = 100000
 
+
+# filterH, filterW must be in [1,255]
+FILTER_HW_MIN = 1
+FILTER_HW_MAX = 255
+
+# padH, padW must be in [0,255]
+PAD_MIN = 0
+PAD_MAX = 255
+
+# stride must be in [1,63]
+STRIDE_MIN = 1
+STRIDE_MAX = 63
+
+# dilate must be in [1,255]
+DILATE_MIN = 1
+DILATE_MAX = 255
+CONV_SHAPE_DIM = 4
+
+# In v200, small channel case: 4*filter_h*filter_w must be smaller than 65536.
+HK_WK_C04_V200 = 65535
 
 def lcm(a_val, b_val):
     return (a_val*b_val)//math.gcd(a_val, b_val)
@@ -34,7 +62,317 @@ def _shape_to_list(shape):
         tmp.append(i.value)
     return tmp
 
+def is_support_v200():
+    """
+    Check if Ascend610/Ascend615/Ascend710/Hi3796CV300CS version.
+    ----------
 
+    Returns
+    -------
+    True:  Ascend610/Ascend615/Ascend710/Hi3796CV300CS version
+    False: Other version
+    """
+    soc_version = cce_conf.get_soc_spec("SOC_VERSION")
+    if soc_version in ("Ascend710", "Ascend610", "Ascend615", "Hi3796CV300CS"):
+        return True
+    return False
+def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
+                     pad_left, pad_right, strideh, stridew, in_dtype, w_dtype, fusion_para,
+                     optim_dict=None, dilateh=1, dilatew=1, dynamic_para=None, groups=1):
+    """
+
+    Parameters
+    ----------
+    shape_in : shape of data_in
+
+    shape_w : shape of filter
+
+    padh: the padding shape in H
+
+    padw: the padding shape in weight
+
+    strideh: the stride value in H
+
+    stridew: the stride value in weight
+
+    dilateh: the dilate value in H
+
+    dilatew: the dilate value in weight
+
+    optim_dict: optimize feature dict
+
+    in_dtype : the feature map data type
+
+    w_dtype : the weight data type
+
+    fusion_para: the config for Lx Fusion
+
+    Returns
+    -------
+    None
+
+    """
+
+    def fusion_para_check(fusion_para, pad_top, pad_bottom, shape_in):
+        """
+        Check Lx fusion para.
+        """
+        def handle_valid_shape():
+            """
+            Check valid shape in lx fusion para.
+            """
+            if not slice_offset:
+                err_man.raise_err_specific("conv2d",
+                                           "if valid_shape exists, "
+                                           + "offset can not be []")
+            slice_offset_check_flg = (slice_offset[2] < shape_in[2]) and \
+                (slice_offset[2] >= 0) \
+                and slice_offset[0] == 0 and slice_offset[1] == 0 and \
+                slice_offset[3] == 0 and slice_offset[4] == 0
+
+            valid_shape_check_flg = (valid_shape[2] + slice_offset[2] <=
+                                     shape_in[2]) and (valid_shape[2] >= 0) \
+                and valid_shape[0] == shape_in[0] and valid_shape[3] == shape_in[3]
+
+            if not slice_offset_check_flg:
+                err_man.raise_err_check_the_validity_of_one_variable("conv2d",
+                                                                     "Invalid valid_shape",
+                                                                     str(slice_offset))
+            if not valid_shape_check_flg:
+                err_man.raise_err_check_the_validity_of_variable("conv2d",
+                                                                 "Invalid valid_shape",
+                                                                 str(valid_shape), str(shape_in))
+
+            if fusion_para.get("input_memory_type") == 1:
+                if slice_offset[2] == 0 and pad_bottom != 0:
+                    err_man.raise_err_scene_limitation("conv2d", "first",
+                                                       "pad_bottom", "0")
+                if slice_offset[2] == (shape_in[2] - valid_shape[2]) and \
+                        pad_top != 0:
+                    err_man.raise_err_scene_limitation("conv2d", "last",
+                                                       "pad_top", "0")
+                if (slice_offset[2] > 0 and slice_offset[2] <
+                        (shape_in[2] - valid_shape[2])) and \
+                        (pad_top != 0 or pad_bottom != 0):
+                    err_man.raise_err_scene_limitation("conv2d", "middle",
+                                                       "pad_top and pad_bottom", "0")
+
+        if fusion_para is None:
+            fusion_para = {"input_memory_type": 0,
+                           "output_memory_type": 0,
+                           "valid_shape": (),
+                           "slice_offset": (),
+                           "l1_fusion_type": -1,
+                           "fmap_l1_addr_flag": False,
+                           "fmap_l1_valid_size": -1}
+
+        valid_shape = fusion_para.get("valid_shape")
+        slice_offset = fusion_para.get("slice_offset")
+        l1_fusion_type = fusion_para.get("l1_fusion_type")
+        input_memory_type = fusion_para.get("input_memory_type")
+        output_memory_type = fusion_para.get("output_memory_type")
+
+        if l1_fusion_type == -1:
+            if input_memory_type == 1 or output_memory_type == 1:
+                err_man.raise_err_check_the_validity_of_variable("conv2d",
+                                                                 "input_memory_type/output_memory_type"
+                                                                 + " must be 0 when l1_fusion_type is -1",
+                                                                 str(input_memory_type), str(output_memory_type))
+
+        if valid_shape:
+            handle_valid_shape()
+
+    def _l1_buffer_size_check(max_feature_map_l1, fusion_para, dynamic_para=None):
+        """
+        Check for not bigger than L1 size.
+        """
+        l1_buffer_size = cce_conf.get_soc_spec("L1_SIZE")
+        l1_fusion_type = fusion_para.get("l1_fusion_type")
+        if l1_fusion_type in (0, 1):
+            pass
+        elif int(max_feature_map_l1) > l1_buffer_size:
+            if not dynamic_para:
+                err_man.raise_err_specific("conv2d", "Input is too large, the minimum tiling may exceed L1_Buffer")
+            else:
+                err_man.raise_err_specific("conv2d",
+                                           "Input range is too large, the minimum tiling may exceed L1_Buffer")
+
+    def conv1d_split_w_flag_set():
+        """
+        For load2d case and load3d cases, set a conv1d_split_w_flag and
+        some checks do not apply to conv1D
+        """
+        conv1d_split_w_flag = shape_in[2] == 1 and shape_w[2] == 1 and pad_top == 0 and pad_bottom == 0
+        return conv1d_split_w_flag
+
+    def load2d_split_w_flag_set():
+        """
+        Set a flag for load2d to replace the load3d
+        and can split w
+        Some checks do not apply to conv1D.
+        """
+        load2d_to_load3d_flag = (shape_w[2] == 1) and (shape_w[3] == 1) and \
+                                (pad_top == 0) and (pad_bottom == 0) and \
+                                (pad_left == 0) and (pad_right == 0) and \
+                                (strideh == 1) and (stridew == 1) and \
+                                (in_dtype == "float16") and \
+                                (w_dtype == "float16") and (shape_in[2] == 1)
+        return load2d_to_load3d_flag
+
+    def dilate_check():
+        """
+        Check dilate.
+        """
+
+        if dilateh < DILATE_MIN or dilateh > DILATE_MAX:
+            range_value = "".join([str(DILATE_MIN), ", ", str(DILATE_MAX)])
+            err_man.raise_err_attr_range_invalid("conv2d", range_value, "dilateh", str(dilateh))
+        if dilatew < DILATE_MIN or dilatew > DILATE_MAX:
+            range_value = "".join([str(DILATE_MIN), ", ", str(DILATE_MAX)])
+            err_man.raise_err_attr_range_invalid("conv2d", range_value, "dilatew", str(dilatew))
+
+    conv1d_split_w_flag = conv1d_split_w_flag_set()
+
+    def check_fm_w_flag_set():
+        """
+        Check fmap split width flag.
+        """
+        check_fm_w_flag = False
+        check_fm_w_flag = (int(shape_in[3]) < FMAP_HW_MIN or int(shape_in[3]) > FMAP_W_MAX) and not conv1d_split_w_flag
+        return check_fm_w_flag
+
+    def _check_fmap_range(fmap_range):
+        """
+        Check fmap range.
+        """
+
+        def _check_h_range():
+            if int(shape_in[2]) < FMAP_HW_MIN or int(shape_in[2]) > FMAP_H_MAX:
+                range_value = "".join([str(FMAP_HW_MIN), ", ", str(FMAP_H_MAX)])
+                err_man.raise_err_attr_range_invalid("conv2d", range_value, "feature map H", shape_in[2])
+
+        def _check_w_range():
+            if check_fm_w_flag_set():
+                range_value = "".join([str(FMAP_HW_MIN), ", ", str(FMAP_W_MAX)])
+                err_man.raise_err_attr_range_invalid("conv2d", range_value, "feature map W", shape_in[3])
+            if conv1d_split_w_flag and (shape_in[3] < FMAP_W_MIN_SPLIT_W or shape_in[3] > FMAP_W_MAX_SPLIT_W):
+                range_value = "".join([str(FMAP_W_MIN_SPLIT_W), ", ", str(FMAP_W_MAX_SPLIT_W)])
+                err_man.raise_err_attr_range_invalid("conv2d", range_value,
+                                                         "feature map W when split w", shape_in[3])
+        _check_h_range()
+        _check_w_range()
+
+    fmap_range = None if dynamic_para is None else dynamic_para.get("fmap_range")
+    _check_fmap_range(fmap_range)
+    if not dynamic_para:
+        util.check_shape_rule(shape_in, CONV_SHAPE_DIM, CONV_SHAPE_DIM)
+    util.check_shape_rule(shape_w, CONV_SHAPE_DIM, CONV_SHAPE_DIM)
+
+    if shape_in[1] != shape_w[1]:
+        err_man.raise_err_scene_equal_limitation("conv2d", "input feature map channel", "filter channel")
+
+    if optim_dict is None:
+        optim_dict = {"c0_optim_flg": False, "use_v200_c04_flg": False}
+    block_size_k = CUBE_MKN[in_dtype]['mac'][1]
+    shape_in[1] = ((shape_in[1] + block_size_k - 1) // block_size_k)*block_size_k
+    # int8 feature_map_channel_in is aligned by 16, but weight_channel_in is aligned by 32.
+    shape_w[1] = ((shape_in[1] + block_size_k - 1) // block_size_k)*block_size_k
+    if optim_dict["c0_optim_flg"]:
+        shape_in[1] = 4
+        shape_w[1] = 4
+    h_i = shape_in[2]
+    w_i = shape_in[3]
+    h_k = shape_w[2]
+    w_k = shape_w[3]
+
+    # dilateh, dilatew check
+    dilate_check()
+
+    hk_dilation = (h_k - 1)*dilateh + 1
+    wk_dilation = (w_k - 1)*dilatew + 1
+
+    h_out = (h_i + pad_top + pad_bottom - hk_dilation) // strideh + 1
+    w_out = (w_i + pad_left + pad_right - wk_dilation) // stridew + 1
+    if not dynamic_para and (int(w_out) < 1 or int(h_out) < 1):
+        err_man.raise_err_specific("conv2d", "output shape should greater than 0, please check the input shape.\n")
+
+    def _check_pad():
+        """
+        Check pad.
+        """
+        # padh, padw check
+        if isinstance(pad_top, tvm.expr.Expr) or isinstance(pad_bottom, tvm.expr.Expr) or \
+                isinstance(pad_left, tvm.expr.Expr) or isinstance(pad_right, tvm.expr.Expr):
+            return
+        if pad_top < PAD_MIN or pad_bottom < PAD_MIN or \
+                pad_top > PAD_MAX or pad_bottom > PAD_MAX:
+            range_value = "".join([str(PAD_MIN), ", ", str(PAD_MAX)])
+            actual_value = "".join([str(pad_top), ", ", str(pad_bottom)])
+            err_man.raise_err_attr_range_invalid("conv2d", range_value,
+                                                 "pad_top or pad_bottom", actual_value)
+        if pad_left < PAD_MIN or pad_right < PAD_MIN or \
+                pad_left > PAD_MAX or pad_right > PAD_MAX:
+            range_value = "".join([str(PAD_MIN), ", ", str(PAD_MAX)])
+            actual_value = "".join([str(pad_left), ", ", str(pad_right)])
+            err_man.raise_err_attr_range_invalid("conv2d", range_value,
+                                                 "pad_left or pad_right", actual_value)
+
+    w_block_size_n = CUBE_MKN[w_dtype]['mac'][2]
+    shape_w[0] = ((shape_w[0] + w_block_size_n - 1) // w_block_size_n)*w_block_size_n
+
+    # filterH, filterW check(before dilation according to chip design demand )
+    def _check_w_range():
+        """
+        Check width shape.
+        """
+        if shape_w[2] < FILTER_HW_MIN or shape_w[2] > FILTER_HW_MAX:
+            range_value = "".join([str(FILTER_HW_MIN), ", ", str(FILTER_HW_MAX)])
+            err_man.raise_err_attr_range_invalid("conv2d", range_value, "kernel H", str(shape_w[2]))
+        if shape_w[3] < FILTER_HW_MIN or shape_w[3] > FILTER_HW_MAX:
+            range_value = "".join([str(FILTER_HW_MIN), ", ", str(FILTER_HW_MAX)])
+            err_man.raise_err_attr_range_invalid("conv2d", range_value, "kernel W", str(shape_w[3]))
+        temp = 4*shape_w[2]*shape_w[3]
+        if optim_dict.get("use_v200_c04_flg") and is_support_v200() and (temp > HK_WK_C04_V200):
+            err_man.raise_err_specific("conv2d", "In v200, small channel case, the 4*Hk*Wk must be smaller than " +
+                                       "or equal to " + str(HK_WK_C04_V200) +
+                                       ". you can try to disable the small channel.")
+
+    def _check_stride():
+        """
+        Check stride.
+        """
+        if strideh < STRIDE_MIN or strideh > STRIDE_MAX:
+            range_value = "".join([str(STRIDE_MIN), ", ", str(STRIDE_MAX)])
+            err_man.raise_err_attr_range_invalid("conv2d", range_value, "strideh", str(strideh))
+        if stridew < STRIDE_MIN or stridew > STRIDE_MAX:
+            range_value = "".join([str(STRIDE_MIN), ", ", str(STRIDE_MAX)])
+            err_man.raise_err_attr_range_invalid("conv2d", range_value, "stridew", str(stridew))
+    _check_w_range()
+    _check_pad()
+    _check_stride()
+
+    config = CUBE_MKN[w_dtype]
+    ci0 = config['mac'][1]
+    if ci0 <= 0:
+        err_man.raise_err_specific("conv2d", "ci0 must > 0")
+    shape_in_fusion_para_check = shape_in
+    shape_in_fusion_para_check[1] = shape_in_fusion_para_check[1]//groups
+    fusion_para_check(fusion_para, pad_top, pad_bottom, shape_in_fusion_para_check)
+
+    # check for not bigger than L1
+    m_bit_ratio = {"float16": 2, "int8": 1}
+    point_per_w = math.floor((w_i - wk_dilation + pad_left + pad_right) / stridew) + 1
+    w_in = math.floor(config['mac'][0] / point_per_w) + 2
+    tmp = ((int(w_in) - 1) * strideh + hk_dilation) * w_i
+    max_feature_map_l1 = ci0 * tmp * m_bit_ratio[w_dtype]
+    if conv1d_split_w_flag:
+        conv1d_filter_size = (shape_w[3] - 1) * wk_dilation + 1
+        conv1d_min_l1 = (config['mac'][0] - 1) * stridew + conv1d_filter_size
+        max_feature_map_l1 = ci0 * conv1d_min_l1 * m_bit_ratio[w_dtype]
+    if not load2d_split_w_flag_set():
+        _l1_buffer_size_check(max_feature_map_l1, fusion_para)
+
+    return shape_in, shape_w
 def calc_para_from_tensor(inputs, weights, bias, offset_w, strides, pads,
                           dilations, offset_x, groups, kernel_name,
                           data_format="NCHW", options=None):
@@ -332,7 +670,7 @@ def conv_layer_cce_para_check(shape_in, shape_w, padh, padw, strideh, stridew,
                        "fmap_l1_addr_flag": 0, \
                        "fmap_l1_valid_size": -1}
 
-    shape_in, shape_w = tbe.check_conv_shape(shape_in, shape_w,
+    shape_in, shape_w = check_conv_shape(shape_in, shape_w,
                                          pad_top, pad_bottom,
                                          pad_left, pad_right, strideh, stridew,
                                          in_dtype, w_dtype, fusion_para,
