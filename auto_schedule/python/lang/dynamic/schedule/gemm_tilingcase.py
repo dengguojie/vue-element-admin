@@ -19,21 +19,23 @@ import collections
 import copy
 import math
 
+from functools import reduce
 from te.domain.tiling.get_tiling import get_tiling
+from te.lang.base.operation_impl import add_compile_info
 from te.lang.base.operation_impl import register_tiling_case
 from te.lang.base.operation_impl import get_te_var
-from te.platform import get_soc_spec
-
 from te.lang.cce.te_compute.gemm_compute import GEMMComputeParam
 from te.lang.dynamic.schedule.cube_tilingcase import TilingSelection
 from te.lang.dynamic.schedule.cube_tilingcase import CubeTilingOp
 from te.lang.dynamic.schedule.constants import Pattern
+from te.platform import get_soc_spec
 
 K_LEN = 2
 M_LEN = 2
 N_LEN = 2
 UNIT_LEN = 16
 DEFAULT_K_VALUE = 32
+INT_32_MAX = 2147483647
 BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
                   "uint8": 1, "int8": 1, "uint4": 0.5, "int4": 0.5}
 BIT_DIR = {"float32": 16, "int32": 16, "float16": 16, "int8": 32}
@@ -77,6 +79,40 @@ def check_range_value(target_area):
     return False
 
 
+def set_default_compile_info(tiling_op, tiling_case, target_area_list):
+    """
+    add compile info for default case
+
+    Parameters
+    ----------
+    target_area: range value of dymanic elements
+
+    tiling_case: default tiling, default range
+
+    tiling_op: instance of MatmulTiling
+
+    -------
+    """
+    add_compile_info("dynamic_mode", tiling_op.dynamic_mode)
+    add_compile_info("repo_range", {})
+    add_compile_info("repo_seeds", {})
+
+    cost_range = {}
+    cost_range[0] = target_area_list
+    add_compile_info("cost_range", cost_range)
+
+    if "trans_a" in tiling_op.tiling_info and "trans_b" in tiling_op.tiling_info:
+        add_compile_info("attrs", {"transpose_a": tiling_op.tiling_info["trans_a"],
+                                   "transpose_b": tiling_op.tiling_info["trans_b"]})
+
+    tiling_blockdim = {}
+    for case in tiling_case:
+        tiling_blockdim[case['key']] = (case["block_dim"] if "block_dim" in case else
+            int(reduce(lambda x, y: x * y, case['tiling_strategy']['block_dim'])))
+
+    add_compile_info("block_dim", tiling_blockdim)
+
+
 def set_default_tiling_case(target_area, tiling_op):
     """
     when range exit None, set default tiling_case with default elements
@@ -94,8 +130,13 @@ def set_default_tiling_case(target_area, tiling_op):
     default_tiling = default_tiling_seed["tiling"]
     target_area_list = []
     for value in target_area:
+        if value[1] is None:
+            value[1] = INT_32_MAX
         target_area_list += value
+
     tiling_case = [tiling_op.assembly_case(default_tiling, target_area_list, 0)]
+
+    set_default_compile_info(tiling_op, tiling_case, target_area_list)
 
     return tiling_case
 
