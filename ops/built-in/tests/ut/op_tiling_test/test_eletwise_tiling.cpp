@@ -75,7 +75,7 @@ TEST_F(EletwiseTiling, Eletwise_tiling1) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 25);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "1 5824 4 3 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "1 5824 4 2 ");
 }
 
 TEST_F(EletwiseTiling, Eletwise_tiling2) {

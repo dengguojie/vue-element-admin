@@ -466,7 +466,11 @@ bool Eletwise::DoUbTiling() {
       ub_axis = block_axis;
       ub_factor = output_shape[block_axis];
     } else {
-      // Adjust the UB factor to avoid tail block less tah 32 bytes
+      if (block_axis == ub_axis) {
+        int32_t ub_for_num = std::ceil(output_shape[ub_axis] * 1.0 / ub_factor);
+        ub_factor = std::ceil(output_shape[ub_axis] * 1.0 / ub_for_num);
+      }
+      // Adjust the UB factor to avoid tail block less than 32 bytes
       int32_t ele_in_block = BLOCK_SIZE / GetTypeSize(out_type);
       int32_t ub_tail = output_shape[ub_axis] % ub_factor;
       if (ub_tail != 0 && (under_ub_shape * ub_tail < ele_in_block)) {
