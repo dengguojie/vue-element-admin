@@ -19,8 +19,9 @@
 
 #include <string>
 #include <vector>
-
 #include "register/scope/scope_fusion_pass_register.h"
+#include "register/register_types.h"
+#include "graph/operator.h"
 
 namespace ge {
 class ScopeDynamicRNNPass : public ScopeBasePass {
@@ -35,6 +36,11 @@ class ScopeDynamicRNNPass : public ScopeBasePass {
   void GenerateFusionResult(const std::vector<Scope*>& scopes, FusionScopesResult* fusion_rlt) override;
   void GenScopePatterns(ScopeFusionPatterns& patterns);
   void GenTacotronScopePatterns(ScopeFusionPatterns& patterns);
+  void GenChinaMobileScopePatterns(ScopeFusionPatterns& patterns);
+  void DynamicRNNPassParserParams(const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map, const std::string &origin_node_name, const std::string &op_type, ge::Operator* inner_node);
+  void GenerateFusionResultForMultiLSTM(const Scope* scope, FusionScopesResult* fusion_rlt);
+  void GenerateFusionResultForMultiNetease(const Scope* scope, FusionScopesResult* fusion_rlt);
+  void ConcatParserParams(const std::string &origin_node_name, const std::string &op_type, ge::Operator* inner_node, FusionScopesResult *fusion_rlt);
 };
 }  // namespace ge
 
