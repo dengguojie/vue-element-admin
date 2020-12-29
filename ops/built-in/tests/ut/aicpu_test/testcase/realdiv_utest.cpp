@@ -1,492 +1,56 @@
+#include "gtest/gtest.h"
 #ifndef private
 #define private public
 #define protected public
 #endif
-#include "gtest/gtest.h"
-#include "mockcpp/mockcpp.hpp"
-#include <mockcpp/ChainingMockHelper.h>
-#include <stdint.h>
-#include <Eigen/Dense>
-
-#include "cpu_kernel.h"
-#include "status.h"
-#include "cpu_kernel_register.h"
-#include "aicpu_task_struct.h"
-#include "device_cpu_kernel.h"
-#include "cpu_types.h"
+#include "aicpu_test_utils.h"
 #include "cpu_kernel_utils.h"
+#include "node_def_builder.h"
+#undef private
+#undef protected
+#include <math.h>
+#include "Eigen/Core"
 
 using namespace std;
 using namespace aicpu;
-using namespace Eigen;
 
-namespace {
-    const char* Test  = "RealDiv";
-}
+class TEST_REALDIV_UT : public testing::Test {};
 
-class REALDIV_KERNEL_UTest : public testing::Test {
-protected:
-    virtual void SetUp()
-    {
-    }
+#define CREATE_NODEDEF(shapes, data_types, datas)                                 \
+  auto node_def = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();                \
+  NodeDefBuilder(node_def.get(), "RealDiv", "RealDiv")                            \
+      .Input({"x1", data_types[0], shapes[0], datas[0]})                          \
+      .Input({"x2", data_types[1], shapes[1], datas[1]})                          \
+      .Output({"y", data_types[2], shapes[2], datas[2]})
 
-    virtual void TearDown()
-    {
-        GlobalMockObject::verify();
-    }
+#define ADD_CASE(base_type, aicpu_type)                                           \
+  TEST_F(TEST_REALDIV_UT, TestRealDiv_##aicpu_type) {                             \
+    vector<DataType> data_types = {aicpu_type, aicpu_type, aicpu_type};           \
+    vector<vector<int64_t>> shapes = {{24}, {24}, {24}};                          \
+    base_type input_x1[24];                                                       \
+    SetRandomValue<base_type>(input_x1, 24);                                      \
+    base_type input_x2[24];                                                       \
+    SetRandomValue<base_type>(input_x2, 24, 1);                                   \
+    base_type output[24] = {(base_type)0};                                        \
+    vector<void *> datas = {(void *)input_x1, (void *)input_x2, (void *)output};  \
+    CREATE_NODEDEF(shapes, data_types, datas);                                    \
+    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);                                 \
+  }
 
-private:
-};
+ADD_CASE(Eigen::half, DT_FLOAT16)
 
-TEST_F(REALDIV_KERNEL_UTest, Host_double)
-{
-    auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-    nodeDef->SetOpType("RealDiv");
+ADD_CASE(float, DT_FLOAT)
 
-    double input1[2][2] = {{22, 32},{78,28}};
-	//double input2[2][2] = {{2,2},{2,2}};
-    double input2[2] = {2,1};
-    double output[2][2] = {};
-    std::vector<int64_t> v1 = {2,2};
-    std::vector<int64_t> v2 = {2};
-    std::vector<int64_t> v3 = {2,2};
-    
-	double output_expect[2][2] = {};
-    for(int i=0;i<2;i++){
-        for(int j=0;j<2;j++){
-            output_expect[i][j]=input1[i][j]/input2[i];
-        }
-    }
-    
-//input1
-    auto inputTensor1 = nodeDef->AddInputs();
-    EXPECT_NE(inputTensor1, nullptr);
+ADD_CASE(double, DT_DOUBLE)
 
-    inputTensor1->SetDataType(aicpu::DT_DOUBLE);
-    inputTensor1->SetData(input1);
-    //inputTensor1->SetDataSize(4 * sizeof(double));
-	
-//input2
-    auto inputTensor2 = nodeDef->AddInputs();
-    EXPECT_NE(inputTensor2, nullptr);
+ADD_CASE(int8_t, DT_INT8)
 
-    inputTensor2->SetDataType(aicpu::DT_DOUBLE);
-    inputTensor2->SetData(input2);
-    //inputTensor2->SetDataSize(4 * sizeof(double));
-//output
-	auto outputTensor = nodeDef->AddOutputs();
-    EXPECT_NE(outputTensor, nullptr);
+ADD_CASE(int16_t, DT_INT16)
 
-    outputTensor->SetDataType(aicpu::DT_DOUBLE);
-    outputTensor->SetData(output);
-    //outputTensor->SetDataSize(4 * sizeof(double));
+ADD_CASE(int32_t, DT_INT32)
 
-    auto Shape1 = inputTensor1->GetTensorShape();
-    auto Shape2 = inputTensor2->GetTensorShape();
-    auto Shape3 = outputTensor->GetTensorShape();
-    Shape1->SetDimSizes(v1);
-    Shape2->SetDimSizes(v2);
-    Shape3->SetDimSizes(v3);
+ADD_CASE(int64_t, DT_INT64)
 
-    CpuKernelContext ctx(HOST);
-    EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-    uint32_t ret = CpuKernelRegister::Instance().RunCpuKernel(ctx);
-    EXPECT_EQ(ret, KERNEL_STATUS_OK);
-	
-	auto outputAddr=outputTensor->GetData();
-	double *p=(double *)outputAddr;
-    cout << "shuju:" <<endl;
-    cout << *p << endl;
-    cout << *(p+1) << endl;
-    cout << *(p+2) << endl;
-    cout << *(p+3) << endl;
-    
-	EXPECT_EQ(*p, output_expect[0][0]);
-	EXPECT_EQ(*(p+1), output_expect[0][1]);
-	EXPECT_EQ(*(p+2), output_expect[1][0]);
-	EXPECT_EQ(*(p+3), output_expect[1][1]);
-}
+ADD_CASE(uint8_t, DT_UINT8)
 
-TEST_F(REALDIV_KERNEL_UTest, Host_float)
-{
-    auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-    nodeDef->SetOpType("RealDiv");
-
-    float input1[2] = {};
-    float input2[2] = {2,1};
-    float output[2] = {};
-    std::vector<int64_t> v1 = {2};
-    std::vector<int64_t> v2 = {2};
-    std::vector<int64_t> v3 = {2};
-    
-//input1
-    auto inputTensor1 = nodeDef->AddInputs();
-    EXPECT_NE(inputTensor1, nullptr);
-
-    inputTensor1->SetDataType(aicpu::DT_FLOAT);
-    inputTensor1->SetData(input1);
-    //inputTensor1->SetDataSize(4 * sizeof(float));
-	
-//input2
-    auto inputTensor2 = nodeDef->AddInputs();
-    EXPECT_NE(inputTensor2, nullptr);
-
-    inputTensor2->SetDataType(aicpu::DT_FLOAT);
-    inputTensor2->SetData(input2);
-    //inputTensor2->SetDataSize(4 * sizeof(float));
-//output
-	auto outputTensor = nodeDef->AddOutputs();
-    EXPECT_NE(outputTensor, nullptr);
-
-    outputTensor->SetDataType(aicpu::DT_FLOAT);
-    outputTensor->SetData(output);
-    //outputTensor->SetDataSize(4 * sizeof(float));
-
-    auto Shape1 = inputTensor1->GetTensorShape();
-    auto Shape2 = inputTensor2->GetTensorShape();
-    auto Shape3 = outputTensor->GetTensorShape();
-    Shape1->SetDimSizes(v1);
-    Shape2->SetDimSizes(v2);
-    Shape3->SetDimSizes(v3);
-
-    CpuKernelContext ctx(HOST);
-    EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-    uint32_t ret = CpuKernelRegister::Instance().RunCpuKernel(ctx);
-    EXPECT_EQ(ret, KERNEL_STATUS_OK);
-}
-
-TEST_F(REALDIV_KERNEL_UTest, Host_half)
-{
-    auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-    nodeDef->SetOpType("RealDiv");
-
-    half input1[2][2][2] = {};
-    half input2[2] = {half(2),half(1)};
-    half output[2][2][2] = {};
-    std::vector<int64_t> v1 = {2,2,2};
-    std::vector<int64_t> v2 = {2};
-    std::vector<int64_t> v3 = {2,2,2};
-    
-//input1
-    auto inputTensor1 = nodeDef->AddInputs();
-    EXPECT_NE(inputTensor1, nullptr);
-
-    inputTensor1->SetDataType(aicpu::DT_FLOAT16);
-    inputTensor1->SetData(input1);
-    //inputTensor1->SetDataSize(4 * sizeof(half));
-	
-//input2
-    auto inputTensor2 = nodeDef->AddInputs();
-    EXPECT_NE(inputTensor2, nullptr);
-
-    inputTensor2->SetDataType(aicpu::DT_FLOAT16);
-    inputTensor2->SetData(input2);
-    //inputTensor2->SetDataSize(4 * sizeof(half));
-//output
-	auto outputTensor = nodeDef->AddOutputs();
-    EXPECT_NE(outputTensor, nullptr);
-
-    outputTensor->SetDataType(aicpu::DT_FLOAT16);
-    outputTensor->SetData(output);
-    //outputTensor->SetDataSize(4 * sizeof(half));
-
-    auto Shape1 = inputTensor1->GetTensorShape();
-    auto Shape2 = inputTensor2->GetTensorShape();
-    auto Shape3 = outputTensor->GetTensorShape();
-    Shape1->SetDimSizes(v1);
-    Shape2->SetDimSizes(v2);
-    Shape3->SetDimSizes(v3);
-
-    CpuKernelContext ctx(HOST);
-    EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-    uint32_t ret = CpuKernelRegister::Instance().RunCpuKernel(ctx);
-    EXPECT_EQ(ret, KERNEL_STATUS_OK);
-}
-
-TEST_F(REALDIV_KERNEL_UTest, Host_uint8_t)
-{
-    auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-    nodeDef->SetOpType("RealDiv");
-
-    uint8_t input1[2][2][2][2] = {};
-    uint8_t input2[2] = {2,1};
-    uint8_t output[2][2][2][2] = {};
-    std::vector<int64_t> v1 = {2,2,2,2};
-    std::vector<int64_t> v2 = {2};
-    std::vector<int64_t> v3 = {2,2,2,2};
-    
-//input1
-    auto inputTensor1 = nodeDef->AddInputs();
-    EXPECT_NE(inputTensor1, nullptr);
-
-    inputTensor1->SetDataType(aicpu::DT_UINT8);
-    inputTensor1->SetData(input1);
-    //inputTensor1->SetDataSize(4 * sizeof(uint8_t));
-	
-//input2
-    auto inputTensor2 = nodeDef->AddInputs();
-    EXPECT_NE(inputTensor2, nullptr);
-
-    inputTensor2->SetDataType(aicpu::DT_UINT8);
-    inputTensor2->SetData(input2);
-    //inputTensor2->SetDataSize(4 * sizeof(uint8_t));
-//output
-	auto outputTensor = nodeDef->AddOutputs();
-    EXPECT_NE(outputTensor, nullptr);
-
-    outputTensor->SetDataType(aicpu::DT_UINT8);
-    outputTensor->SetData(output);
-    //outputTensor->SetDataSize(4 * sizeof(uint8_t));
-
-    auto Shape1 = inputTensor1->GetTensorShape();
-    auto Shape2 = inputTensor2->GetTensorShape();
-    auto Shape3 = outputTensor->GetTensorShape();
-    Shape1->SetDimSizes(v1);
-    Shape2->SetDimSizes(v2);
-    Shape3->SetDimSizes(v3);
-
-    CpuKernelContext ctx(HOST);
-    EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-    uint32_t ret = CpuKernelRegister::Instance().RunCpuKernel(ctx);
-    EXPECT_EQ(ret, KERNEL_STATUS_OK);
-}
-
-TEST_F(REALDIV_KERNEL_UTest, Host_int8_t)
-{
-    auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-    nodeDef->SetOpType("RealDiv");
-
-    int8_t input1[2][2][2][2][2] = {};
-    int8_t input2[2] = {2,1};
-    int8_t output[2][2][2][2][2] = {};
-    std::vector<int64_t> v1 = {2,2,2,2,2};
-    std::vector<int64_t> v2 = {2};
-    std::vector<int64_t> v3 = {2,2,2,2,2};
-    
-//input1
-    auto inputTensor1 = nodeDef->AddInputs();
-    EXPECT_NE(inputTensor1, nullptr);
-
-    inputTensor1->SetDataType(aicpu::DT_INT8);
-    inputTensor1->SetData(input1);
-    //inputTensor1->SetDataSize(4 * sizeof(int8_t));
-	
-//input2
-    auto inputTensor2 = nodeDef->AddInputs();
-    EXPECT_NE(inputTensor2, nullptr);
-
-    inputTensor2->SetDataType(aicpu::DT_INT8);
-    inputTensor2->SetData(input2);
-    //inputTensor2->SetDataSize(4 * sizeof(int8_t));
-//output
-	auto outputTensor = nodeDef->AddOutputs();
-    EXPECT_NE(outputTensor, nullptr);
-
-    outputTensor->SetDataType(aicpu::DT_INT8);
-    outputTensor->SetData(output);
-    //outputTensor->SetDataSize(4 * sizeof(int8_t));
-
-    auto Shape1 = inputTensor1->GetTensorShape();
-    auto Shape2 = inputTensor2->GetTensorShape();
-    auto Shape3 = outputTensor->GetTensorShape();
-    Shape1->SetDimSizes(v1);
-    Shape2->SetDimSizes(v2);
-    Shape3->SetDimSizes(v3);
-
-    CpuKernelContext ctx(HOST);
-    EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-    uint32_t ret = CpuKernelRegister::Instance().RunCpuKernel(ctx);
-    EXPECT_EQ(ret, KERNEL_STATUS_OK);
-}
-
-TEST_F(REALDIV_KERNEL_UTest, Host_uint16_t)
-{
-    auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-    nodeDef->SetOpType("RealDiv");
-
-    uint16_t input1[2][2][2][2][2][2] = {};
-    uint16_t input2[2] = {2,1};
-    uint16_t output[2][2][2][2][2][2] = {};
-    std::vector<int64_t> v1 = {2,2,2,2,2,2};
-    std::vector<int64_t> v2 = {2};
-    std::vector<int64_t> v3 = {2,2,2,2,2,2};
-    
-//input1
-    auto inputTensor1 = nodeDef->AddInputs();
-    EXPECT_NE(inputTensor1, nullptr);
-
-    inputTensor1->SetDataType(aicpu::DT_UINT16);
-    inputTensor1->SetData(input1);
-    //inputTensor1->SetDataSize(4 * sizeof(uint16_t));
-	
-//input2
-    auto inputTensor2 = nodeDef->AddInputs();
-    EXPECT_NE(inputTensor2, nullptr);
-
-    inputTensor2->SetDataType(aicpu::DT_UINT16);
-    inputTensor2->SetData(input2);
-    //inputTensor2->SetDataSize(4 * sizeof(uint16_t));
-//output
-	auto outputTensor = nodeDef->AddOutputs();
-    EXPECT_NE(outputTensor, nullptr);
-
-    outputTensor->SetDataType(aicpu::DT_UINT16);
-    outputTensor->SetData(output);
-    //outputTensor->SetDataSize(4 * sizeof(uint16_t));
-
-    auto Shape1 = inputTensor1->GetTensorShape();
-    auto Shape2 = inputTensor2->GetTensorShape();
-    auto Shape3 = outputTensor->GetTensorShape();
-    Shape1->SetDimSizes(v1);
-    Shape2->SetDimSizes(v2);
-    Shape3->SetDimSizes(v3);
-
-    CpuKernelContext ctx(HOST);
-    EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-    uint32_t ret = CpuKernelRegister::Instance().RunCpuKernel(ctx);
-    EXPECT_EQ(ret, KERNEL_STATUS_OK);
-}
-
-TEST_F(REALDIV_KERNEL_UTest, Host_int16_t)
-{
-    auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-    nodeDef->SetOpType("RealDiv");
-
-    int16_t input1[2][2][2][2][2][2][2] = {};
-    int16_t input2[2] = {2,1};
-    int16_t output[2][2][2][2][2][2][2] = {};
-    std::vector<int64_t> v1 = {2,2,2,2,2,2,2};
-    std::vector<int64_t> v2 = {2};
-    std::vector<int64_t> v3 = {2,2,2,2,2,2,2};
-    
-//input1
-    auto inputTensor1 = nodeDef->AddInputs();
-    EXPECT_NE(inputTensor1, nullptr);
-
-    inputTensor1->SetDataType(aicpu::DT_INT16);
-    inputTensor1->SetData(input1);
-    //inputTensor1->SetDataSize(4 * sizeof(int16_t));
-	
-//input2
-    auto inputTensor2 = nodeDef->AddInputs();
-    EXPECT_NE(inputTensor2, nullptr);
-
-    inputTensor2->SetDataType(aicpu::DT_INT16);
-    inputTensor2->SetData(input2);
-    //inputTensor2->SetDataSize(4 * sizeof(int16_t));
-//output
-	auto outputTensor = nodeDef->AddOutputs();
-    EXPECT_NE(outputTensor, nullptr);
-
-    outputTensor->SetDataType(aicpu::DT_INT16);
-    outputTensor->SetData(output);
-    //outputTensor->SetDataSize(4 * sizeof(int16_t));
-
-    auto Shape1 = inputTensor1->GetTensorShape();
-    auto Shape2 = inputTensor2->GetTensorShape();
-    auto Shape3 = outputTensor->GetTensorShape();
-    Shape1->SetDimSizes(v1);
-    Shape2->SetDimSizes(v2);
-    Shape3->SetDimSizes(v3);
-
-    CpuKernelContext ctx(HOST);
-    EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-    uint32_t ret = CpuKernelRegister::Instance().RunCpuKernel(ctx);
-    EXPECT_EQ(ret, KERNEL_STATUS_OK);
-}
-
-TEST_F(REALDIV_KERNEL_UTest, Host_int32_t)
-{
-    auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-    nodeDef->SetOpType("RealDiv");
-
-    int32_t input1[2][2][2] = {};
-    int32_t input2[2] = {2,1};
-    int32_t output[2][2][2] = {};
-    std::vector<int64_t> v1 = {2,2,2};
-    std::vector<int64_t> v2 = {2};
-    std::vector<int64_t> v3 = {2,2,2};
-    
-//input1
-    auto inputTensor1 = nodeDef->AddInputs();
-    EXPECT_NE(inputTensor1, nullptr);
-
-    inputTensor1->SetDataType(aicpu::DT_INT32);
-    inputTensor1->SetData(input1);
-    //inputTensor1->SetDataSize(4 * sizeof(int32_t));
-	
-//input2
-    auto inputTensor2 = nodeDef->AddInputs();
-    EXPECT_NE(inputTensor2, nullptr);
-
-    inputTensor2->SetDataType(aicpu::DT_INT32);
-    inputTensor2->SetData(input2);
-    //inputTensor2->SetDataSize(4 * sizeof(int32_t));
-//output
-	auto outputTensor = nodeDef->AddOutputs();
-    EXPECT_NE(outputTensor, nullptr);
-
-    outputTensor->SetDataType(aicpu::DT_INT32);
-    outputTensor->SetData(output);
-    //outputTensor->SetDataSize(4 * sizeof(int32_t));
-
-    auto Shape1 = inputTensor1->GetTensorShape();
-    auto Shape2 = inputTensor2->GetTensorShape();
-    auto Shape3 = outputTensor->GetTensorShape();
-    Shape1->SetDimSizes(v1);
-    Shape2->SetDimSizes(v2);
-    Shape3->SetDimSizes(v3);
-
-    CpuKernelContext ctx(HOST);
-    EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-    uint32_t ret = CpuKernelRegister::Instance().RunCpuKernel(ctx);
-    EXPECT_EQ(ret, KERNEL_STATUS_OK);
-}
-
-TEST_F(REALDIV_KERNEL_UTest, Host_int64_t)
-{
-    auto nodeDef = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
-    nodeDef->SetOpType("RealDiv");
-
-    int64_t input1[2][2][2] = {};
-    int64_t input2[2] = {2,1};
-    int64_t output[2][2][2] = {};
-    std::vector<int64_t> v1 = {2,2,2};
-    std::vector<int64_t> v2 = {2};
-    std::vector<int64_t> v3 = {2,2,2};
-    
-//input1
-    auto inputTensor1 = nodeDef->AddInputs();
-    EXPECT_NE(inputTensor1, nullptr);
-
-    inputTensor1->SetDataType(aicpu::DT_INT64);
-    inputTensor1->SetData(input1);
-    //inputTensor1->SetDataSize(4 * sizeof(int64_t));
-	
-//input2
-    auto inputTensor2 = nodeDef->AddInputs();
-    EXPECT_NE(inputTensor2, nullptr);
-
-    inputTensor2->SetDataType(aicpu::DT_INT64);
-    inputTensor2->SetData(input2);
-    //inputTensor2->SetDataSize(4 * sizeof(int64_t));
-//output
-	auto outputTensor = nodeDef->AddOutputs();
-    EXPECT_NE(outputTensor, nullptr);
-
-    outputTensor->SetDataType(aicpu::DT_INT64);
-    outputTensor->SetData(output);
-    //outputTensor->SetDataSize(4 * sizeof(int64_t));
-
-    auto Shape1 = inputTensor1->GetTensorShape();
-    auto Shape2 = inputTensor2->GetTensorShape();
-    auto Shape3 = outputTensor->GetTensorShape();
-    Shape1->SetDimSizes(v1);
-    Shape2->SetDimSizes(v2);
-    Shape3->SetDimSizes(v3);
-
-    CpuKernelContext ctx(HOST);
-    EXPECT_EQ(ctx.Init(nodeDef.get()), KERNEL_STATUS_OK);
-    uint32_t ret = CpuKernelRegister::Instance().RunCpuKernel(ctx);
-    EXPECT_EQ(ret, KERNEL_STATUS_OK);
-}
+ADD_CASE(uint16_t, DT_UINT16)

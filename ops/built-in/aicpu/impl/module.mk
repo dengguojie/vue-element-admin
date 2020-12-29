@@ -8,7 +8,7 @@ local_normalized_kernels := kernels/normalized/expanddims.cc \
                             kernels/normalized/identity.cc \
                             kernels/normalized/ceil.cc \
                             kernels/normalized/reshape.cc \
-                            kernels/normalized/realdiv_kernels.cc \
+                            kernels/normalized/realdiv.cc \
                             kernels/normalized/sparse_to_dense_kernels.cc \
                             kernels/normalized/cast_kernels.cc \
                             kernels/normalized/concatv2.cc \
