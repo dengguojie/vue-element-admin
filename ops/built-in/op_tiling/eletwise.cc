@@ -435,19 +435,19 @@ bool Eletwise::DoUbTiling() {
     }
   } else {
     int32_t shape_len = static_cast<int32_t>(output_shape.size()) - 1;
-    int64_t under_broadcast_shape = 1;
+    int64_t under_ub_shape = 1;
     int32_t ele_in_block = BLOCK_SIZE / GetTypeSize(in_type);
     for (int32_t i = shape_len; i >= block_axis; i--) {
       if (broadcast_aixs == i && broadcast_aixs != shape_len) {
-        bool is_cut_under_b = (under_broadcast_shape > N_LAST_BROADCAST_THRESHOLD ||
-                               (under_broadcast_shape > (ele_in_block * 2) && output_shape[i] < ele_in_block)) &&
-                              under_broadcast_shape % ele_in_block != 0 &&
-			      under_broadcast_shape >= BLOCK_SIZE / GetTypeSize(out_type);
+        bool is_cut_under_b = (under_ub_shape > N_LAST_BROADCAST_THRESHOLD ||
+                               (under_ub_shape > (ele_in_block * 2) && output_shape[i] < ele_in_block)) &&
+                              under_ub_shape % ele_in_block != 0 &&
+			      under_ub_shape >= BLOCK_SIZE / GetTypeSize(out_type);
         if (is_cut_under_b) {
           ub_axis = i + 1;
           ub_factor = output_shape[i + 1];
           break;
-        } else if (output_shape[i] > (ele_in_block * 3) && under_broadcast_shape % ele_in_block != 0) {
+        } else if (output_shape[i] > (ele_in_block * 3) && under_ub_shape % ele_in_block != 0) {
           ub_axis = i;
           ub_factor = std::min(static_cast<int32_t>(output_shape[i]), limit);
           break;
@@ -459,12 +459,21 @@ bool Eletwise::DoUbTiling() {
         break;
       } else {
         limit /= output_shape[i];
-        under_broadcast_shape *= output_shape[i];
+        under_ub_shape *= output_shape[i];
       }
     }
     if (ub_axis < 0) {
       ub_axis = block_axis;
       ub_factor = output_shape[block_axis];
+    } else {
+      // Adjust the UB factor to avoid tail block less tah 32 bytes
+      int32_t ele_in_block = BLOCK_SIZE / GetTypeSize(out_type);
+      int32_t ub_tail = output_shape[ub_axis] % ub_factor;
+      if (ub_tail != 0 && (under_ub_shape * ub_tail < ele_in_block)) {
+        int32_t need_tail = std::ceil(ele_in_block * 1.0 / under_ub_shape);
+        int32_t ub_gap = std::ceil((need_tail - ub_tail) * 1.0 / (output_shape[ub_axis] / ub_factor));
+        ub_factor -= ub_gap;
+      }
     }
   }
   return true;
