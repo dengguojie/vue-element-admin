@@ -41,6 +41,7 @@ class ScopeDynamicRNNPass : public ScopeBasePass {
   void GenerateFusionResultForMultiLSTM(const Scope* scope, FusionScopesResult* fusion_rlt);
   void GenerateFusionResultForMultiNetease(const Scope* scope, FusionScopesResult* fusion_rlt);
   void ConcatParserParams(const std::string &origin_node_name, const std::string &op_type, ge::Operator* inner_node, FusionScopesResult *fusion_rlt);
+  std::string GetNodeNameFromScope(const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map, const std::string &sub_name);
 };
 }  // namespace ge
 

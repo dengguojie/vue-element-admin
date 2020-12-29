@@ -409,6 +409,20 @@ void ScopeDynamicRNNPass::ConcatParserParams(const std::string &origin_node_name
   op_src.BreakConnect();
 }
 
+std::string ScopeDynamicRNNPass::GetNodeNameFromScope(const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map, const std::string &sub_name){
+  for (auto& it : nodes_map){
+    auto node_def = it.second;
+    std::string sub_node_name = node_def->GetName().c_str();
+    int src_len = sub_node_name.size();
+    int sub_len = sub_name.size();
+    if (sub_node_name.find(sub_name) != string::npos && sub_node_name.substr(src_len - sub_len, sub_len) == sub_name){
+      return sub_node_name;
+    }
+  }
+  OP_LOGE(kOpType, "Cannot find node [%s] in scope.", sub_name.c_str());
+  return "";
+}
+
 void ScopeDynamicRNNPass::GenerateFusionResultForMultiLSTM(const Scope* scope, FusionScopesResult *fusion_rlt) {
   OP_LOGD(kOpType, "Match DynamicRNN scope name is %s ", scope->Name().c_str());
   const std::unordered_map<std::string, ge::OperatorPtr> &nodes_map = scope->AllNodesMap();
@@ -642,41 +656,14 @@ void ScopeDynamicRNNPass::GenerateFusionResultForMultiNetease(const Scope* scope
   fusion_rlt->SetName(scope_name.substr(0, scope_name.length() - 1));
   fusion_rlt->SetDescription("");
     
-  std::string w_in_node_name;
-  std::string w_recurrent_in_node_name;
-  std::string b_in_node_name;
-  std::string transpose_perm_name;
-  std::string transpose2_perm_name;
-  std::string transpose_name;
-  std::string transpose2_name;
+  std::string w_in_node_name = GetNodeNameFromScope(nodes_map, "/kernel");
+  std::string w_recurrent_in_node_name = GetNodeNameFromScope(nodes_map, "/recurrent_kernel");
+  std::string b_in_node_name = GetNodeNameFromScope(nodes_map, "/bias");
+  std::string transpose_perm_name = GetNodeNameFromScope(nodes_map, "transpose/perm");
+  std::string transpose2_perm_name = GetNodeNameFromScope(nodes_map, "transpose_2/perm");
+  std::string transpose_name = GetNodeNameFromScope(nodes_map, "/transpose");
+  std::string transpose2_name = GetNodeNameFromScope(nodes_map, "/transpose_2");
 
-  for (auto& it : nodes_map) {
-    auto node_def = it.second;
-    std::string sub_node_name = node_def->GetName().c_str();
-    int srclen = sub_node_name.size();
-    if (sub_node_name.find("/kernel") != string::npos && sub_node_name.substr(srclen - 7, 7) == "/kernel"){
-      w_in_node_name = sub_node_name;
-    }
-    if (sub_node_name.find("/recurrent_kernel") != string::npos && sub_node_name.substr(srclen - 17, 17) == "/recurrent_kernel"){
-      w_recurrent_in_node_name = sub_node_name;
-    }
-    if (sub_node_name.find("/bias") != string::npos && sub_node_name.substr(srclen - 5, 5) == "/bias"){
-      b_in_node_name = sub_node_name;
-    }
-    if (sub_node_name.find("transpose/perm") != string::npos && sub_node_name.substr(srclen - 14, 14) == "transpose/perm"){
-      transpose_perm_name = sub_node_name;
-    }
-    if (sub_node_name.find("transpose_2/perm") != string::npos && sub_node_name.substr(srclen - 16, 16) == "transpose_2/perm"){
-      transpose2_perm_name = sub_node_name;
-    }
-    if (sub_node_name.find("/transpose") != string::npos && sub_node_name.substr(srclen - 10, 10) == "/transpose"){
-      transpose_name = sub_node_name;
-    }
-    if (sub_node_name.find("/transpose_2") != string::npos && sub_node_name.substr(srclen - 12, 12) == "/transpose_2"){
-      transpose2_name = sub_node_name;
-    }
-  }
-    
   // 添加小算子
   // start to range
   auto perm_0 = fusion_rlt->AddInnerNode("perm_0", "Const");
@@ -723,7 +710,7 @@ void ScopeDynamicRNNPass::GenerateFusionResultForMultiNetease(const Scope* scope
   }
   delete[] beginBatchData;
 
-  // concat, input : kernel, recurrent kernel, output : dynamicrnn
+  // input: kernel, recurrent kernel, output: dynamicrnn
   auto concat_0 = fusion_rlt->AddInnerNode("concat_0", "ConcatV2");
   ret = concat_0->InsertInput("weight_0", 0)
           .InsertInput("weight_1", 0)
