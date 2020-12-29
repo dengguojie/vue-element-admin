@@ -205,7 +205,8 @@ def get_dynamic_param_in_json(param_desc_list):
         param_dict = {}
         param_dict["name"] = item.element.name
         param_dict["dtype"] = item.element.datatype
-        param_dict["format"] = item.element.format
+        if item.element.format is not None:
+            param_dict["format"] = item.element.format
         if item.element.unknownshape_format is not None:
             param_dict["unknownshape_format"] = \
                 item.element.unknownshape_format
