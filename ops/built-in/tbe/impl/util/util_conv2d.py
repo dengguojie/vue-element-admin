@@ -24,6 +24,8 @@ FMAP_HW_MIN = 1
 FMAP_W_MAX = 2**32-1
 FMAP_H_MAX = 100000
 
+FMAP_W_MIN_SPLIT_W = 1
+FMAP_W_MAX_SPLIT_W = 4294967295
 
 # filterH, filterW must be in [1,255]
 FILTER_HW_MIN = 1
@@ -257,8 +259,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
                 err_man.raise_err_attr_range_invalid("conv2d", range_value, "feature map W", shape_in[3])
             if conv1d_split_w_flag and (shape_in[3] < FMAP_W_MIN_SPLIT_W or shape_in[3] > FMAP_W_MAX_SPLIT_W):
                 range_value = "".join([str(FMAP_W_MIN_SPLIT_W), ", ", str(FMAP_W_MAX_SPLIT_W)])
-                err_man.raise_err_attr_range_invalid("conv2d", range_value,
-                                                         "feature map W when split w", shape_in[3])
+                err_man.raise_err_attr_range_invalid("conv2d", range_value, "feature map W when split w", shape_in[3])
         _check_h_range()
         _check_w_range()
 
