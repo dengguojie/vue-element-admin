@@ -64,35 +64,35 @@ def calc_expect_func(input_x, output_arr, hg):
     output_arr=input_x.get("value")+input_y
     return output_arr
 
-ut_case.add_precision_case("all", {"params": [{"shape": (125, 125), "dtype": "float16", "format": "ND", "ori_shape": (125, 125),"ori_format": "ND", "param_type": "input"},
+ut_case.add_precision_case("Ascend910", {"params": [{"shape": (125, 125), "dtype": "float16", "format": "ND", "ori_shape": (125, 125),"ori_format": "ND", "param_type": "input"},
                     {"shape": (125, 125), "dtype": "float16", "format": "ND", "ori_shape": (125, 125),"ori_format": "ND", "param_type": "output"},
                     3.0],
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
 
-ut_case.add_precision_case("all", {"params": [{"shape": (3, 30, 100), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 100),"ori_format": "ND", "param_type": "input"},
+ut_case.add_precision_case("Ascend910", {"params": [{"shape": (3, 30, 100), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 100),"ori_format": "ND", "param_type": "input"},
                     {"shape": (3, 30, 100), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 100),"ori_format": "ND", "param_type": "output"},
                     3.0],
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
 
-ut_case.add_precision_case("all", {"params": [{"shape": (3, 30, 100, 16), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 100, 16),"ori_format": "ND", "param_type": "input"},
+ut_case.add_precision_case("Ascend910", {"params": [{"shape": (3, 30, 100, 16), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 100, 16),"ori_format": "ND", "param_type": "input"},
                     {"shape": (3, 30, 100, 16), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 100, 16),"ori_format": "ND", "param_type": "output"},
                     3.0],
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
 
-ut_case.add_precision_case("all", {"params": [{"shape": (3, 30, 100, 16, 17), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 100, 16, 17),"ori_format": "ND", "param_type": "input"},
+ut_case.add_precision_case("Ascend910", {"params": [{"shape": (3, 30, 100, 16, 17), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 100, 16, 17),"ori_format": "ND", "param_type": "input"},
                     {"shape": (3, 30, 100, 16, 17), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 100, 16, 17),"ori_format": "ND", "param_type": "output"},
                     3.0],
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
 
-ut_case.add_precision_case("all", {
+ut_case.add_precision_case("Ascend910", {
     "params": [{"shape": (3, 30, 1, 16, 17), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 1, 16, 17),"ori_format": "ND", "param_type": "input"},
                {"shape": (3, 30, 1, 16, 17), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 1, 16, 17),"ori_format": "ND", "param_type": "output"},
                3.0],

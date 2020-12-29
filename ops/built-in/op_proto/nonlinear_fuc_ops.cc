@@ -313,51 +313,6 @@ COMMON_INFER_FUNC_REG(Relu6D, Relu6DInferShape);
 VERIFY_FUNC_REG(Relu6D, Relu6DVerify);
 // ----------------Relu6D END-------------------
 
-// ----------------SigmoidGrad----------------
-IMPLEMT_VERIFIER(SigmoidGrad, SigmoidGradVerify) {
-  if (!CheckTwoInputDtypeSame(op, "y", "dy")) {
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
-IMPLEMT_COMMON_INFERFUNC(SigmoidGradInferShape) {
-  Shape shape_x = op.GetInputDesc("y").GetShape();
-  DataType input_dtype = op.GetInputDesc("y").GetDataType();
-  std::vector<std::pair<int64_t, int64_t>> shape_range_y;
-  op.GetInputDesc("y").GetShapeRange(shape_range_y);
-  TensorDesc tensordesc_output = op.GetOutputDesc("z");
-  tensordesc_output.SetShape(shape_x);
-  tensordesc_output.SetDataType(input_dtype);
-  tensordesc_output.SetShapeRange(shape_range_y);
-  if (op.UpdateOutputDesc("z", tensordesc_output) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
-  }
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(SigmoidGrad, SigmoidGradInferShape);
-VERIFY_FUNC_REG(SigmoidGrad, SigmoidGradVerify);
-// ----------------SigmoidGrad-------------------
-
-// ----------------Sigmoid Op Begin-------------------
-IMPLEMT_COMMON_INFERFUNC(SigmoidInferShape) {
-  Shape shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(shape);
-  tensordesc_output.SetDataType(input_dtype);
-  if (op.UpdateOutputDesc("y", tensordesc_output) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
-    OpsOPUpdateErrReport(op.GetName(), "y");
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(Sigmoid, SigmoidInferShape);
-// ----------------Sigmoid Op End-------------------
-
 // ----------------Softplus-------------------
 IMPLEMT_COMMON_INFERFUNC(SoftplusInferShape) {
   Shape features_shape = op.GetInputDesc("x").GetShape();
@@ -809,6 +764,17 @@ IMPLEMT_VERIFIER(SoftShrinkGrad, SoftShrinkGradVerify) {
 
 COMMON_INFER_FUNC_REG(SoftShrinkGrad, SoftShrinkGradInferShape);
 VERIFY_FUNC_REG(SoftShrinkGrad, SoftShrinkGradVerify);
-// ----------------SoftShrinkGrad END---------------------
+// ----------------SoftShrinkGrad END-----------
+
+// ----------------Sigmoid----------------------
+IMPLEMT_COMMON_INFERFUNC(SigmoidInferShape) {
+  OP_LOGI(op.GetName().c_str(), "Enter SigmoidInferShape");
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(Sigmoid, SigmoidInferShape);
+// ----------------Sigmoid Op End---------------
 
 }  // namespace ge

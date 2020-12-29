@@ -1,0 +1,131 @@
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+"""
+dynamic sinh
+"""
+import functools
+
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te import tvm
+from te.utils import para_check
+from te.lang.base.shape_classifier import classify
+from te.lang.base.shape_classifier import Mode
+import te.lang.base as tbe_base
+from te.utils import shape_util
+
+# define a scaler , value = -1
+SCALER_NEGATIVE_ONE = -1
+# define a scaler , value = 0.5
+SCALER_ZERO_POINT_FIVE = 0.5
+# define a scaler , value = 2
+SCALAR_TWO = 2
+
+
+# pylint: disable=locally-disabled,unused-argument,too-many-locals
+@tbe_platform.fusion_manager.fusion_manager.register("sinh")
+def sinh_compute(input_data, output_data, kernel_name="sinh"):
+    """
+    algorithm: sinh
+    calculating data's sinh = (exp(x) - exp(-x)) / 2
+
+    Parameters
+    ----------
+    input_data: TVM tensor
+        data of input.
+    output_data: dict
+        shape and dtype of output, should be same shape and type as input
+    kernel_name: str
+        kernel name, default value is "sinh"
+
+    Returns
+    -------
+    res: TVM tensor
+        the res of sinh
+    """
+
+    dtype = input_data.dtype
+    shape = input_data.shape
+
+    # in order to get the precise calcuate result
+    has_improve_precision = False
+    if dtype.lower() == "float16" and \
+            tbe_platform.api_check_support("te.lang.cce.vexp", "float32"):
+        input_data = tbe.cast_to(input_data, "float32")
+        dtype = "float32"
+        has_improve_precision = True
+
+    data_mul = tbe.vmuls(input_data, tvm.const(SCALER_NEGATIVE_ONE, dtype))
+    data_exp = tbe.vexp(data_mul)
+    data_exp_x = tbe.vmuls(data_exp, tvm.const(SCALER_ZERO_POINT_FIVE, dtype))
+
+    tensor_two = tbe.broadcast(tvm.const(SCALAR_TWO, dtype), shape)
+    data_ln2 = tbe.vlog(tensor_two)
+    data_neg_ln2 = tbe.vmuls(data_ln2, tvm.const(SCALER_NEGATIVE_ONE, dtype))
+    data_x = tbe.vadd(input_data, data_neg_ln2)
+    data_exp_data = tbe.vexp(data_x)
+
+    res = tbe.vsub(data_exp_data, data_exp_x)
+
+    # cast the dtype to float16
+    if has_improve_precision:
+        res = tbe.cast_to(res, "float16")
+
+    return res
+
+
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
+def sinh(input_data, output_data, kernel_name="sinh"):
+    """
+    algorithm: sinh
+    calculating data's sinh = (exp(x) - exp(-x)) / 2
+
+    Parameters
+    ----------
+    input_data: dict
+        shape and dtype of input, only support float16, float32
+    output_data: dict
+        shape and dtype of output, should be same shape and type as input
+    kernel_name: str
+        kernel name, default value is "sinh"
+
+    Returns
+    -------
+    None
+    """
+    check_list = ("float16", "float32")
+    dtype_input = input_data.get("dtype")
+    input_dtype = dtype_input.lower()
+    para_check.check_dtype(input_dtype, check_list, param_name="input_data")
+
+    schedules, tensors = [], []
+    ins = classify([input_data], Mode.ELEWISE)
+    for (_input_data,) in ins:
+        with tbe_base.compute():
+            x_shape = shape_util.variable_shape([_input_data])
+            fuseshape = [1]
+            fuseshape[0] = functools.reduce(lambda x, y: x * y, x_shape[0])
+            data_input = tvm.placeholder(fuseshape, dtype=input_dtype,
+                                         name="data_input")
+            res = sinh_compute(data_input, output_data, kernel_name)
+            tensors.append([data_input, res])
+        with tvm.target.cce():
+            sch = tbe.auto_schedule(res)
+        schedules.append(sch)
+
+    config = {"name": kernel_name,
+              "tensor_list": tensors,
+              "bool_storage_as_1bit": False}
+    tbe.build(schedules, config)
