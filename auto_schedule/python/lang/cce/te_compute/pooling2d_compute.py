@@ -301,6 +301,8 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
         if in_size_h != window_h and in_size_w == window_w and data_mode == 0:
             return True
         if data_mode == 1:
+            output_h = 1
+            output_w = 1
             if stride_h > 63 or stride_w > 63:
                 return True
             if padding_mode == "SAME":

@@ -109,7 +109,7 @@ def avg_pool2d(t_x, pooling_params, fusion_params):
             lambda *i: tvm.max(tx_ub[i[0], i[1], i[2], i[3] * s_w, i[4]],
                                tx_ub[i[0], i[1], i[2], i[3] * s_w, i[4]]),
             name="tx_rw0",
-            tag="reduce_max"
+            tag="reduce_sum"
         )
         tx_rw = tx_rw0
 
