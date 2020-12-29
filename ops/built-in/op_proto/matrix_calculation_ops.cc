@@ -676,7 +676,9 @@ bool InferShapeMatMul::InferMKN() {
   auto n = n_b;
 
   int64_t k;
+  OP_LOGD(op_name.c_str(), "[InferShape] start check the input dim!");
   if (!IsDimValid(m) || !IsDimValid(k_a) || !IsDimValid(k_b) || !IsDimValid(n_b)) {
+    OpsInputShapeErrReport(op_name.c_str(), "The dimension must be -2, -1 or greater than 0", "a and b", "");
     OP_LOGE(op_name.c_str(), "[InferShape] dimension must be -2, -1 or greater than 0");
     return false;
   }
@@ -693,10 +695,12 @@ bool InferShapeMatMul::InferMKN() {
       return false;
     }
   }
+  OP_LOGD(op_name.c_str(), "[InferShape] start check the bias input dim!");
   if (!shape_bias.empty()) {
     int64_t idx_n_bias = num_dim - 1;
     int64_t n_bias = infer_shape_bias[idx_n_bias];
     if (!IsDimValid(n_bias)) {
+      OpsInputShapeErrReport(op_name.c_str(), "The dimension must be -2, -1 or greater than 0", "a and b", "");
       OP_LOGE(op_name.c_str(), "[InferShape] dimension must be -2, -1 or greater than 0");
       return false;
     }
