@@ -593,6 +593,16 @@ def check_axis_sequence(reorder_flag, bl1_factor, al1_factor, block_dim):
             (al1_factor[0] == 1 and (not reorder_flag) and bl1_at_c_axis_value == 1)
     return axis_sequence
 
+def _is_depthwise_scene():
+    '''
+    there are some special settings in depthwise_conv2d(different form conv2d) which must be kept not changed
+    currently only one scene is considered as depthwise_conv2d: cout_ori=cin_ori=1 and group>1,
+    if cout_ori>1, then considered as group_conv2d, not depthwise_conv2d
+    '''
+    group = ConvParam.para_dict["group"]
+    is_depthwise_scene = group > 1 and \
+        ConvParam.dim_map["fmap_ori_nchw_shape"][1] == ConvParam.dim_map["weight_ori_nchw_shape"][0] == group
+    return is_depthwise_scene
 
 class CceConvOp:
 
@@ -936,8 +946,13 @@ class CceConvOp:
                     """
                     if self._lhisi_data_flow_type or self._v200_data_flow_type:
                         return True
-                    if "convolution" in lop["op"] or (("bias_tensor" in lop["op"]) and ("bias" in tensor_map.keys())):
+                    if "convolution" in lop["op"]:
                         return True
+                    # quant bias belongs to channelwise input, do not count here
+                    if lop["dst_buffer"] == tensor_map.get("int32_bias"):
+                        return True
+                    # float bias shouldn't count here ,bug in fused scene, bias are coutned due to misuse of op.name
+                    # float bias of single op does not count here
                     if ("bias_tensor" in lop["op"]) and ("fp16_bias" in tensor_map.keys()):
                         return True
                     if "max_pooling_pad_" in lop["op"]:
@@ -1847,7 +1862,7 @@ class CceConvOp:
                 """
                 bias intrin mapping.
                 """
-                if "bias" in tensor_map.keys():
+                if "int32_bias" in tensor_map.keys():
                     if bias_preload_flag:
                         sch[bias_l0c].reused_by(c_col_bias, c_col)
                         sch[c_col_bias].emit_insn(c_col_bias.op.axis[0],
@@ -1872,6 +1887,8 @@ class CceConvOp:
                         sch[bias_l0c].emit_insn(
                             bias_l0c.op.axis[1], 'dma_copy')
                         sch[bias_ub].emit_insn(bias_ub.op.axis[0], 'dma_copy')
+                elif "fp16_bias" in tensor_map.keys():
+                    sch[tensor_map["bias_ub"]].emit_insn(tensor_map["bias_ub"].op.axis[0], 'dma_copy')
 
             def config_setfmatrix(setfmatrix_dict):
                 """
@@ -2489,7 +2506,7 @@ class CceConvOp:
                         "k_outer": [k_outer_outer_outer_outer,
                                     k_outer_outer_outer_inner,
                                     k_outer_outer_inner]}
-            if "bias" in tensor_map.keys():
+            if "int32_bias" in tensor_map.keys():
                 # only use this pragma in bias case
                 mad_dict["init_bias"] = 1
             sch[c_col].emit_insn(cn_axis, 'mad', mad_dict)
@@ -2622,7 +2639,7 @@ class CceConvOp:
             for lop in self._op_graph.body_ops:
                 if (("convolution" not in lop["op"]) or ("convolution_A" in lop["op"])) or \
                         (self._fused_flag and (lop["op"] == "convolution_C")):
-                    if lop['dst_buffer'] == res or lop["op"] == "conv_vector_remove_pad":
+                    if lop['dst_buffer'] == res or lop["op"] == "conv_vector_remove_pad" or lop["op"] == "bias_ub":
                         continue
                     if lop["op"] == "input_ub":
                         quant_input = tensor_map["quant_input"]
@@ -2718,7 +2735,8 @@ class CceConvOp:
                     lop["cache_buffer"] = tmp_cache_buffer
                     scale_ub = tmp_cache_buffer
                     continue
-                v100_quant_continue_flag = "convolution" in lop["op"] or \
+                v100_quant_continue_flag = \
+                    "convolution" in lop["op"] or \
                     "convolution_bias_ub_brc" in tmp_read_map[0].op.name or \
                     "fusion_fmap_select" in tmp_read_map[0].op.name or \
                     "fmap_l1" in tmp_read_map[0].op.name or \
@@ -2726,7 +2744,8 @@ class CceConvOp:
                     "weight_unzip" in tmp_read_map[0].op.name or\
                     "strided_read" in tmp_read_map[0].op.tag or \
                     lop["dst_buffer"].name == 'compress_index' or \
-                    lop["dst_buffer"].name == "Filter"
+                    lop["dst_buffer"].name == "Filter" or \
+                    lop["dst_buffer"] == tensor_map.get("int32_bias")
                 if v100_quant_continue_flag:
                     continue
                 tmp_cache_buffer = self._schedule.cache_read(
@@ -2862,21 +2881,20 @@ class CceConvOp:
             """
             set corresponding scope for quant bias related stage
             """
-            bias = tensor_map["bias"]
+            bias = tensor_map["int32_bias"]
             bias_l0c = tensor_map["bias_l0c"]
             c_col_bias = tensor_map["c_col_bias"]
             bias_ub_brc = None
             sch[bias_l0c].set_scope(cce.scope_cc)
             sch[c_col_bias].set_scope(cce.scope_cc)
+
+            bias_ub = tensor_map["bias_ub"]
+            sch[bias_ub].set_scope(cce.scope_ubuf)
             if bias_optimize_flag:
                 bias_ub_brc = tensor_map["bias_ub_brc"]
                 sch[bias_ub_brc].set_scope(cce.scope_ubuf)
-                bias_ub = sch.cache_read(bias, cce.scope_ubuf, [bias_ub_brc])
-            else:
-                bias_ub = sch.cache_read(bias, cce.scope_ubuf, [bias_l0c])
-            has_bias_ub = True
 
-            return bias, bias_l0c, c_col_bias, bias_ub_brc, bias_ub, has_bias_ub
+            return bias_l0c, c_col_bias, bias_ub_brc, bias_ub
             # for multi core pass must assert all buffer in one for Loop
 
         def set_output_memory_type():
@@ -2955,9 +2973,8 @@ class CceConvOp:
                     return True
                 if "max_pooling_pad_" in lop["op"]:
                     return True
-                if lop["dst_buffer"] == tensor_map.get("bias"):
-                    return True
-                if ("bias_tensor" in lop["dst_buffer"].name) and ("bias" in tensor_map.keys()):
+                if lop["dst_buffer"] == tensor_map.get("int32_bias") \
+                    or lop["dst_buffer"] == tensor_map.get("fp16_bias"):
                     return True
                 if "dma_copy" in lop["next_op"][0]["dst_buffer"].op.attrs:
                     handle_dma_copy()
@@ -3211,10 +3228,11 @@ class CceConvOp:
                     return True
                 if self._pre_relu_fused_flag and ("relu" in lop["next_op"][0]["dst_buffer"].op.name):
                     return True
-                if "convolution" in lop["op"] or (("bias_tensor" in lop["op"]) and ("bias" in tensor_map.keys())):
+                if "convolution" in lop["op"]:
                     return True
-                if tensor_map.get("fp16_bias") == lop["dst_buffer"] and (not tiling["CUB_channel_wise_flag"]):
-                    sch[lop['cache_buffer']].compute_at(sch[res_c], bido)
+                # bias is handled in _handle_bias_compute_at
+                if tensor_map.get("fp16_bias") == lop["dst_buffer"] \
+                    or tensor_map.get("int32_bias") == lop["dst_buffer"]:
                     return True
                 if "max_pooling_pad_" in lop["op"]:
                     return True
@@ -3921,6 +3939,32 @@ class CceConvOp:
                 sch[sum_x_ub_rf].emit_insn(m_outer_inner_inner,
                                            "vector_dichotomy_add_for_bn_reduce")
 
+        def _handle_bias_compute_at():
+            """
+            compute_at of float/quant bias
+            """
+            if "int32_bias" in tensor_map.keys(): # quant bias
+                # split M -> M1 M0, then reorder
+                a2_axis, a3_axis = sch[c_col_bias].split(sch[c_col_bias].op.axis[3], config["mac"][0])
+                sch[c_col_bias].reorder(sch[c_col_bias].op.axis[0], sch[c_col_bias].op.axis[1],
+                    sch[c_col_bias].op.axis[2], a2_axis, a3_axis, sch[c_col_bias].op.axis[4])
+
+                if tiling["CUB_channel_wise_flag"]:
+                    sch[bias_ub].compute_at(sch[res_c], c_slice_axis)
+                else:
+                    sch[bias_ub].compute_at(sch[res_c], bido)
+
+                if bias_optimize_flag:
+                    sch[bias_ub_brc].compute_at(sch[res_c], c_slice_axis)
+
+                sch[c_col_bias].compute_at(sch[res_c], c_slice_axis)
+                sch[bias_l0c].compute_at(sch[res_c], c_slice_axis)
+            elif "fp16_bias" in tensor_map.keys(): # float bias
+                if tiling["CUB_channel_wise_flag"]:
+                    sch[tensor_map["bias_ub"]].compute_at(sch[res_c], c_slice_axis)
+                else:
+                    sch[tensor_map["bias_ub"]].compute_at(sch[res_c], bido)
+
         self_init()
         tensor_map = ConvParam.tensor_map
         sch = self._schedule
@@ -4107,10 +4151,8 @@ class CceConvOp:
         strideh_opti_flag = tensor_map["strideh_opti_flag"]
         c0_optim_flg = tensor_map["c0_optim_flg"]
         c04_v200_flag = tensor_map["c04_v200_flag"]
-        has_bias_ub = False
-        if "bias" in tensor_map.keys():
-            _, bias_l0c, c_col_bias, bias_ub_brc, bias_ub, has_bias_ub = \
-                _quant_bias_set_scope()
+        if "int32_bias" in tensor_map.keys():
+            bias_l0c, c_col_bias, bias_ub_brc, bias_ub = _quant_bias_set_scope()
 
         fmap = tensor_map["fmap"]
         if strideh_opti_flag:
@@ -4149,7 +4191,7 @@ class CceConvOp:
             c04_row_major_reshape_compute(tensor_map)
 
         bias_preload_flag = False
-        if "bias" in tensor_map.keys():
+        if "int32_bias" in tensor_map.keys():
             bias_preload_flag = True
 
         kernel_h = ConvParam.filter_h
@@ -4356,13 +4398,6 @@ class CceConvOp:
         new_c_col_axis = [sch[c_col].op.axis[1], sch[c_col].op.axis[2],
                           sch[c_col].op.axis[3], sch[c_col].op.axis[4]]
         _, _, _, nn_axis = new_c_col_axis
-
-        if "bias" in tensor_map.keys():
-            a2_axis, a3_axis = sch[c_col_bias].split(
-                sch[c_col_bias].op.axis[3], config["mac"][0])
-            sch[c_col_bias].reorder(sch[c_col_bias].op.axis[0],
-                                    sch[c_col_bias].op.axis[1], sch[c_col_bias].op.axis[2],
-                                    a2_axis, a3_axis, sch[c_col_bias].op.axis[4])
 
         c_tiling_factor = [tiling["CL0_matrix"][0],
                            tiling["CL0_matrix"][1]*tiling["CL0_matrix"][2]]
@@ -4789,10 +4824,6 @@ class CceConvOp:
         self._compute_at_buffer.append(res_c)
         self._compute_at_axis.append(m_outer_inner_outer)
 
-        if "bias" in tensor_map.keys():
-            sch[c_col_bias].compute_at(sch[res_c], c_slice_axis)
-            sch[bias_l0c].compute_at(sch[res_c], c_slice_axis)
-
         _, reduce_kk = sch[c_col].op.reduce_axis
 
         if self.conv_pool_fused_flag or self.conv_pool_2_2_fused_flag:
@@ -5000,18 +5031,6 @@ class CceConvOp:
             else:
                 sch[scale_ub].compute_at(sch[res_c], m_outer_outer_inner)
 
-        if has_bias_ub:
-            if tiling["CUB_channel_wise_flag"]:
-                sch[bias_ub].compute_at(sch[res_c], m_outer_outer_inner)
-                if bias_optimize_flag:
-                    sch[bias_ub_brc].compute_at(
-                        sch[res_c], m_outer_outer_inner)
-            else:
-                sch[bias_ub].compute_at(sch[res_c], bido)
-                if bias_optimize_flag:
-                    sch[bias_ub_brc].compute_at(
-                        sch[res_c], m_outer_outer_inner)
-
         if self.unzip_parameters.get("weight_zip_flag") or (self._var_map and tiling["BL1_shape"] == []):
             tiling["B_overhead_opt_flag"] = False
 
@@ -5078,6 +5097,7 @@ class CceConvOp:
         _body_ops_convbn1_flag(multiout_ub2)
         _input_ops_compute_at()
         _pragma_for_convbn()
+        _handle_bias_compute_at()
 
         self._flag_dict["addrelu_flag"] = False
         if set_biasrelu_optim_flag():
@@ -5172,7 +5192,7 @@ class CceConvOp:
                 return True
             if "max_pooling_pad_" in lop["op"]:
                 return True
-            if lop["dst_buffer"] == tensor_map.get("bias"):
+            if lop["dst_buffer"] == tensor_map.get("int32_bias"):
                 return True
             if "dma_copy" in lop["next_op"][0]["dst_buffer"].op.attrs:
                 return True
@@ -5311,7 +5331,7 @@ class CceConvOp:
             elif lop["op"] == "cast_i8_ub":
                 round_mode_emit_insn = 'vector_conv_%s' % self._lhisi_dequant_quant_para['quant_round'].value.lower()
                 if cce_conf.get_soc_spec("SOC_VERSION") == "Ascend310" or \
-                        "Ascend910" in cce_conf.get_soc_spec("SOC_VERSION"):
+                        "Ascend910" in cce_conf.get_soc_spec("SOC_VERSION") or _is_depthwise_scene():
                     round_mode_emit_insn = 'vector_conv'
                 self._schedule[cache_buffer].emit_insn(tensorize_axis, round_mode_emit_insn)
             elif lop["op"] == "conv_virtual_res":
@@ -5632,8 +5652,6 @@ class AutoScheduleOp:
                 i.tag = "convolution_A"
             if "fmap_l1" in tmp_op["op"] or "aipp_res" in tmp_op["op"]:
                 i.tag = "convolution_A"
-            if tmp_op["op"] == "convolution_bias_l0c":
-                i.tag = "convolution_bias_tensor"
             if "aipp_res" in tmp_op["op"]:
                 ConvParam.tensor_map["aipp_input_format"] = tmp_op["dst_buffer"].op.attrs["input_format"]
             self.__scrapy_tensor_graph(i)
@@ -5901,6 +5919,7 @@ class AutoScheduleOp:
             "invalid_conv2d_rmpad": OpFusionype.CONV,
             "convolution_im2col_fractal_convolution_Input": OpFusionype.CONV,
             "convolution__im2col_fractal_convolution_Input": OpFusionype.CONV,
+            "bias_ub": OpFusionype.OP_EMPTY,
             # for read select
             "strided_read_convolution_A": OpFusionype.OP_EMPTY,
             "aipp_res_convolution": OpFusionype.OP_EMPTY,
@@ -5962,7 +5981,7 @@ class AutoScheduleOp:
             # quant bias
             "convolution_c_col_bias": OpFusionype.BIAS_QUANT,
             "convolution_bias_l0c": OpFusionype.BIAS_QUANT,
-            "convolution_bias_ub_brc_convolution_bias_tensor": OpFusionype.BIAS_QUANT,
+            "convolution_bias_ub_brc": OpFusionype.BIAS_QUANT,
             # quant case data_flow 0
             "dequant1_vector": OpFusionype.CONV_DEQUANT,
             "dequant1_scale": OpFusionype.CONV_DEQUANT,

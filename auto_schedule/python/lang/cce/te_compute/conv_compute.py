@@ -841,11 +841,15 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             Calculate bias result.
             """
             config = CUBE_MKN[w_dtype]
+            # load bias into UB and do 32Byte align
+            bias_32byte_align_shape = []
+            bias_32byte_align_shape.append(ceil(bias_tensor.shape[0], 8))
+            bias_ub = tvm.compute(bias_32byte_align_shape, lambda *indice: bias_tensor(*indice), name='bias_ub')
             if bias_optimize_flag:
                 bias_ub_brc_shape = list(mad_shape)
                 bias_ub_brc_shape[3] = bias_ub_brc_shape[3] // 16
                 bias_ub_brc = tvm.compute(bias_ub_brc_shape, \
-                    lambda group, i, j, k, l: bias_tensor(group * bias_ub_brc_shape[2] * config['mac'][2] \
+                    lambda group, i, j, k, l: bias_ub(group * bias_ub_brc_shape[2] * config['mac'][2] \
                     + j * config['mac'][2] + l), \
                     name=OP_TAG + 'bias_ub_brc')
                 bias_l0c = tvm.compute(mad_shape, lambda group, i1, j1, k_1, l1:
@@ -856,7 +860,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             else:
                 bias_l0c = \
                     tvm.compute(mad_shape, lambda group, i1, j1, k_1, l1:
-                                bias_tensor(group * mad_shape[2] * config['mac'][2] + j1 * config['mac'][2] + l1),
+                                bias_ub(group * mad_shape[2] * config['mac'][2] + j1 * config['mac'][2] + l1),
                                 name=OP_TAG + 'bias_l0c')
                 TENSOR_MAP["bias_l0c"] = bias_l0c
 
@@ -866,6 +870,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                                 bias_l0c(*index) + TENSOR_MAP["c_col"](*index),
                                 name=OP_TAG + 'c_col_bias')
             TENSOR_MAP["c_col_bias"] = c_col
+            TENSOR_MAP["bias_ub"] = bias_ub
             return bias_l0c, c_col
 
         fmap = data
@@ -1457,10 +1462,16 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         out_shape = shape_to_list(in_tensor0.shape)
         NAME_INDEX[0] += 1
 
+        # load bias into UB and do 32Byte align
+        bias_32byte_align_shape = []
+        bias_32byte_align_shape.append(ceil(in_tensor1.shape[0], 16))
+        bias_ub = tvm.compute(bias_32byte_align_shape, lambda *indice: in_tensor1(*indice), name='bias_ub')
+        TENSOR_MAP["bias_ub"] = bias_ub
+
         with tvm.tag_scope('conv_vector_bias_add'):
             c_add_vector = \
                 tvm.compute(out_shape, lambda *indice: in_tensor0(*indice) + \
-                    in_tensor1(indice[1]*CUBE_MKN[in_tensor0.dtype]['mac'][2] \
+                    bias_ub(indice[1]*CUBE_MKN[in_tensor0.dtype]['mac'][2] \
                         + indice[3]), \
                     name='bias_add_vector' + "_cc_" + str(NAME_INDEX[0]), \
                     attrs={'width_out': in_tensor0.op.attrs["width_out"]})
@@ -1992,7 +2003,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             if data.dtype != "int8":
                 TENSOR_MAP["fp16_bias"] = bias_tensor   # float bias
             else:
-                TENSOR_MAP["bias"] = bias_tensor # quant bias
+                TENSOR_MAP["int32_bias"] = bias_tensor # quant bias
 
     def _input_parameters_completion_and_modification(dsl_flag, optim_dict):
         """
