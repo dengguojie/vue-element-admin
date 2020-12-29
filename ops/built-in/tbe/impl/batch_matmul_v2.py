@@ -74,7 +74,7 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
 
     if shape_len < 2:
         error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
-                                                           "shape length for batch matmul must large than 2")
+                                                           "shape length for batch matmul greater than or equal to 2")
 
     if len(shape_a) == len(shape_b):
         if shape_a[:shape_len_a - 2] != shape_b[:shape_len_b - 2]:

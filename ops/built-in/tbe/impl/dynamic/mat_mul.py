@@ -94,7 +94,9 @@ def _get_input_range(range_x1, range_x2, range_bias, trans_a, trans_b):
 
     k_range = _get_range_intersection(k_range_x1, k_range_x2, "k_range")
     if range_bias:
-        range_bias_n = [math.ceil(i / BLOCK_CUBE) for i in range_bias[0]]
+        range_bias_n = list(range_bias[0])
+        if range_bias[0][1] is not None:
+            range_bias_n = [math.ceil(i / BLOCK_CUBE) for i in range_bias[0]]
         n_range = _get_range_intersection(n_range, range_bias_n, "n_range")
 
     return [m_range, k_range, n_range]

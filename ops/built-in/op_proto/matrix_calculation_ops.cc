@@ -315,7 +315,7 @@ INFER_FUNC_REG(FullyConnectionCompress, FullyConnectionCompressInfer);
 VERIFY_FUNC_REG(FullyConnectionCompress, FullyConnectionCompressVerify);
 
 // ----------------Matmul-------------------
-string GetMatMulInfo(const Operator &op) {
+string GetMatMulInfo(const Operator &op, const std::string &name_attr) {
   auto desc_a = op.GetInputDesc("x1");
   auto desc_b = op.GetInputDesc("x2");
   ge::Shape shape_a = desc_a.GetShape();
@@ -328,8 +328,8 @@ string GetMatMulInfo(const Operator &op) {
   desc_b.GetShapeRange(range_b);
 
   bool trans_a = false, trans_b = false;
-  op.GetAttr("transpose_x1", trans_a);
-  op.GetAttr("transpose_x2", trans_b);
+  op.GetAttr(name_attr + "_x1", trans_a);
+  op.GetAttr(name_attr + "_x2", trans_b);
 
   std::ostringstream oss;
   oss << "shape of a: ";
@@ -370,6 +370,17 @@ static const std::pair<int64_t, int64_t> NORMALIZE_FULL_RANGE = {1, std::numeric
 static const int64_t VALUE_UNKNOWN_RANK = -2;
 bool IsDimValid(int64_t dim) {
   return dim >= VALUE_UNKNOWN_RANK && dim != 0;
+}
+
+bool IsUnknownShape(const std::vector<int64_t> &shape) {
+  if (shape.empty()) {
+    return false;
+  }
+
+  if (shape == UNKNOWN_RANK || std::find(shape.begin(), shape.end(), UNKNOWN_DIM) != shape.end()) {
+    return true;
+  }
+  return false;
 }
 
 void NormalizeRange(const std::string &op_name, const int64_t dim,
@@ -545,9 +556,9 @@ class InferShapeMatMul {
  public:
   bool GetShapeRangeOfOutput();
   InferShapeMatMul(const string &op_name, const vector<int64_t> &shape_a, const vector<int64_t> &shape_b,
-                   const vector<int64_t> &shape_bias, const vector<std::pair<int64_t, int64_t>> &range_a,
-                   const vector<std::pair<int64_t, int64_t>> &range_b,
-                   const vector<std::pair<int64_t, int64_t>> &range_bias, bool trans_a, bool trans_b,
+                   const vector<int64_t> &shape_bias, vector<std::pair<int64_t, int64_t>> &range_a,
+                   vector<std::pair<int64_t, int64_t>> &range_b,
+                   vector<std::pair<int64_t, int64_t>> &range_bias, bool trans_a, bool trans_b,
                    vector<int64_t> &shape_out, vector<std::pair<int64_t, int64_t>> &range_out, bool has_batch);
 
  private:
@@ -555,14 +566,16 @@ class InferShapeMatMul {
   bool InferMKN();
   bool InferBatch();
   void SimplifyShapeAndRange();
+  bool IsStaticShape();
 
+  static const int64_t base_len;
   const string& op_name;
   const vector<int64_t> &shape_a;
   const vector<int64_t> &shape_b;
   const vector<int64_t> &shape_bias;
-  const vector<std::pair<int64_t, int64_t>> &range_a;
-  const vector<std::pair<int64_t, int64_t>> &range_b;
-  const vector<std::pair<int64_t, int64_t>> &range_bias;
+  vector<std::pair<int64_t, int64_t>> &range_a;
+  vector<std::pair<int64_t, int64_t>> &range_b;
+  vector<std::pair<int64_t, int64_t>> &range_bias;
   bool trans_a;
   bool trans_b;
   vector<int64_t> &shape_out;
@@ -578,11 +591,21 @@ class InferShapeMatMul {
   vector<std::pair<int64_t, int64_t>> infer_range_bias;
 };
 
+const int64_t InferShapeMatMul::base_len = 2;
+
+bool InferShapeMatMul::IsStaticShape() {
+  if (!IsUnknownShape(shape_a) && !IsUnknownShape(shape_b) && !IsUnknownShape(shape_bias)) {
+    return true;
+  }
+  return false;
+}
+
 InferShapeMatMul::InferShapeMatMul(const string &op_name, const vector<int64_t> &shape_a,
                                    const vector<int64_t> &shape_b, const vector<int64_t> &shape_bias,
-                                   const vector<std::pair<int64_t, int64_t>> &range_a,
-                                   const vector<std::pair<int64_t, int64_t>> &range_b,
-                                   const vector<std::pair<int64_t, int64_t>> &range_bias, bool trans_a, bool trans_b,
+                                   vector<std::pair<int64_t, int64_t>> &range_a,
+                                   vector<std::pair<int64_t, int64_t>> &range_b,
+                                   vector<std::pair<int64_t, int64_t>> &range_bias,
+                                   bool trans_a, bool trans_b,
                                    vector<int64_t> &shape_out, vector<std::pair<int64_t, int64_t>> &range_out,
                                    bool has_batch)
     : op_name(op_name),
@@ -597,7 +620,6 @@ InferShapeMatMul::InferShapeMatMul(const string &op_name, const vector<int64_t> 
       shape_out(shape_out),
       range_out(range_out),
       has_batch(has_batch) {
-  int64_t base_len = has_batch ? 3 : 2;
   num_dim = std::max(std::max(shape_a.size(), shape_b.size()), shape_bias.size());
   num_dim = std::max(base_len, num_dim);
 
@@ -614,10 +636,15 @@ InferShapeMatMul::InferShapeMatMul(const string &op_name, const vector<int64_t> 
 
   shape_out = vector<int64_t>(num_dim);
   range_out = vector<std::pair<int64_t, int64_t>>(num_dim);
+
+  if (IsStaticShape()) {
+    range_a = {};
+    range_b = {};
+    range_bias = {};
+  }
 }
 
 void InferShapeMatMul::NormalizeShapeAndRange() {
-  int64_t base_len = has_batch ? 3 : 2;
   if (shape_a == UNKNOWN_RANK) {
     for (int i = num_dim - base_len; i < num_dim; ++i) {
       infer_shape_a[i] = UNKNOWN_DIM;
@@ -854,7 +881,7 @@ IMPLEMT_COMMON_INFERFUNC(MatMulInferShape) {
     OP_LOGW(op.GetName().c_str(), "[Plugin][WARNING]MatMul fp32 op has poor performance!");
   }
 
-  OP_LOGD(op.GetName().c_str(), "%s", GetMatMulInfo(op).c_str());
+  OP_LOGD(op.GetName().c_str(), "%s", GetMatMulInfo(op, "transpose").c_str());
 
   std::vector<int64_t> shape_out;
   std::vector<std::pair<int64_t, int64_t>> shape_range_out;
@@ -912,7 +939,7 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
     return GRAPH_FAILED;
   }
 
-  OP_LOGD(op.GetName().c_str(), "%s", GetMatMulInfo(op).c_str());
+  OP_LOGD(op.GetName().c_str(), "%s", GetMatMulInfo(op, "transpose").c_str());
 
   std::vector<int64_t> shape_out;
   std::vector<std::pair<int64_t, int64_t>> shape_range_out;
@@ -1036,16 +1063,23 @@ IMPLEMT_VERIFIER(BatchMatMul, BatchMatMulVerify) {
 }
 
 graphStatus CommonBatchMatMulInferShape(const Operator &op) {
+  OP_LOGD(op.GetName().c_str(), "%s", GetMatMulInfo(op, "adj").c_str());
+
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   auto tensordesc_out = op_desc->MutableOutputDesc("y");
   auto tensordesc_x1 = op_desc->GetInputDesc("x1");
   auto tensordesc_x2 = op_desc->GetInputDesc("x2");
+  ge::TensorDesc tensordesc_bias;
+  vector<int64_t> shape_bias;
+  if (ge::GRAPH_SUCCESS == op.TryGetInputDesc("bias", tensordesc_bias)) {
+    shape_bias = tensordesc_bias.GetShape().GetDims();
+  }
 
-  auto shape_x1 = tensordesc_x1.GetShape();
-  auto shape_x2 = tensordesc_x2.GetShape();
+  auto shape_x1 = tensordesc_x1.GetShape().GetDims();
+  auto shape_x2 = tensordesc_x2.GetShape().GetDims();
 
-  size_t dim_num_x1 = shape_x1.GetDimNum();
-  size_t dim_num_x2 = shape_x2.GetDimNum();
+  size_t dim_num_x1 = shape_x1.size();
+  size_t dim_num_x2 = shape_x2.size();
 
   bool trans_a = false;
   bool trans_b = false;
@@ -1061,9 +1095,9 @@ graphStatus CommonBatchMatMulInferShape(const Operator &op) {
   }
 
   int dim_num = std::max(dim_num_x1, dim_num_x2);
-  bool all_unknown_rank = shape_x1.GetDims() == UNKNOWN_RANK && shape_x1.GetDims() == UNKNOWN_RANK;
-  if (!all_unknown_rank && (dim_num < 3 || dim_num > 8)) {
-    OP_LOGE(op.GetName().c_str(), "[Infershape]The shape can only be in the range of 3 to 8.");
+  bool any_unknown_rank = shape_x1 == UNKNOWN_RANK || shape_x1 == UNKNOWN_RANK || shape_bias == UNKNOWN_RANK;
+  if (!any_unknown_rank && (dim_num < 2 || dim_num > 8)) {
+    OP_LOGE(op.GetName().c_str(), "[Infershape]The shape can only be in the range of 2 to 8.");
     return GRAPH_FAILED;
   }
 

@@ -1,4 +1,5 @@
 #include <tuple>
+#include <cstdlib>
 
 #include "gtest/gtest.h"
 #include "matrix_calculation_ops.h"
@@ -15,6 +16,12 @@ using namespace op;
 vector<CASE_TUPLE> testcase_batchmatmulv2 = {
     /* no bias */
     CASE_TUPLE{OP_TUPLE{{3, 2, 4}, DT_FLOAT16, FORMAT_ND, {}}, OP_TUPLE{{4, 5}, DT_FLOAT16, FORMAT_ND, {}},
+               OP_TUPLE{{5}, DT_FLOAT16, FORMAT_ND, {}}, false, false, RES_TUPLE{{3, 2, 5}, {{3, 3}, {2, 2}, {5, 5}}}},
+    CASE_TUPLE{OP_TUPLE{{2, 4}, DT_FLOAT16, FORMAT_ND, {}}, OP_TUPLE{{3, 4, 5}, DT_FLOAT16, FORMAT_ND, {}},
+               OP_TUPLE{{5}, DT_FLOAT16, FORMAT_ND, {}}, false, false, RES_TUPLE{{3, 2, 5}, {{3, 3}, {2, 2}, {5, 5}}}},
+    CASE_TUPLE{OP_TUPLE{{2, 4}, DT_FLOAT16, FORMAT_ND, {}}, OP_TUPLE{{3, 4, 5}, DT_FLOAT16, FORMAT_ND, {}},
+               OP_TUPLE{{5}, DT_FLOAT16, FORMAT_ND, {}}, false, false, RES_TUPLE{{3, 2, 5}, {{3, 3}, {2, 2}, {5, 5}}}},
+    CASE_TUPLE{OP_TUPLE{{1, 2, 4}, DT_FLOAT16, FORMAT_ND, {}}, OP_TUPLE{{3, 4, 5}, DT_FLOAT16, FORMAT_ND, {}},
                OP_TUPLE{{5}, DT_FLOAT16, FORMAT_ND, {}}, false, false, RES_TUPLE{{3, 2, 5}, {{3, 3}, {2, 2}, {5, 5}}}},
     CASE_TUPLE{OP_TUPLE{{4, 3, 5}, DT_FLOAT16, FORMAT_ND, {}},
                OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}},
@@ -35,6 +42,24 @@ vector<CASE_TUPLE> testcase_batchmatmulv2 = {
                false,
                false,
                RES_TUPLE{{-1, -1, 7}, {{4, 5}, {1, -1}, {7, 7}}}},
+    CASE_TUPLE{OP_TUPLE{{-1, -1, -1}, DT_FLOAT16, FORMAT_ND, {{1, 8}, {1, -1}, {1, -1}}},
+               OP_TUPLE{{-1, -1, -1}, DT_FLOAT16, FORMAT_ND, {{1, 6}, {1, -1}, {7, 7}}},
+               {},
+               false,
+               false,
+               RES_TUPLE{{-1, -1, 7}, {{1, 8}, {1, -1}, {7, 7}}}},
+    CASE_TUPLE{OP_TUPLE{{1, -1, -1}, DT_FLOAT16, FORMAT_ND, {{1, 1}, {1, -1}, {1, -1}}},
+               OP_TUPLE{{-1, -1, -1}, DT_FLOAT16, FORMAT_ND, {{2, 5}, {1, -1}, {7, 7}}},
+               {},
+               false,
+               false,
+               RES_TUPLE{{-1, -1, 7}, {{2, 5}, {1, -1}, {7, 7}}}},
+    CASE_TUPLE{OP_TUPLE{{-1, -1, -1}, DT_FLOAT16, FORMAT_ND, {{2, 5}, {1, -1}, {1, -1}}},
+               OP_TUPLE{{1, -1, -1}, DT_FLOAT16, FORMAT_ND, {{1, 1}, {1, -1}, {7, 7}}},
+               {},
+               false,
+               false,
+               RES_TUPLE{{-1, -1, 7}, {{2, 5}, {1, -1}, {7, 7}}}},
     /* with bias */
     CASE_TUPLE{OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}}, OP_TUPLE{{4, 3, 5}, DT_FLOAT16, FORMAT_ND, {}},
                OP_TUPLE{{5}, DT_FLOAT16, FORMAT_ND, {}}, false, false, RES_TUPLE{{-2}, {}}},
@@ -50,6 +75,18 @@ vector<CASE_TUPLE> testcase_batchmatmulv2 = {
                OP_TUPLE{{-1, -1, -1, -1}, DT_FLOAT16, FORMAT_ND, {{2, 80}, {2, 80}, {2, 80}, {2, 80}}},
                OP_TUPLE{{5}, DT_FLOAT16, FORMAT_ND, {}}, false, false,
                RES_TUPLE{{-1, 3, -1, 5}, {{2, 80}, {3, 3}, {1, 5}, {5, 5}}}},
+    CASE_TUPLE{OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}},
+               OP_TUPLE{{5, -1}, DT_FLOAT16, FORMAT_ND, {{5, 5}, {1, 60}}},
+               {},
+               true,
+               false,
+               RES_TUPLE{{-2}, {}}},
+    CASE_TUPLE{OP_TUPLE{{5, 20}, DT_FLOAT16, FORMAT_ND, {}},
+               OP_TUPLE{{5, 60}, DT_FLOAT16, FORMAT_ND, {{1, 4}, {1, 1}, {16, 16}, {16, 16}}},
+               {},
+               true,
+               false,
+               RES_TUPLE{{20, 60}, {{20, 20}, {60, 60}}}},
 };
 
 BatchMatMulV2 CreateBatchMatMulV2Op(OP_TUPLE a, OP_TUPLE b, OP_TUPLE bias,
@@ -93,6 +130,12 @@ class BatchMatMulV2Test :
   public testing::TestWithParam<CASE_TUPLE> {
 public:
   BatchMatMulV2Test() {}
+  static void SetUpTestSuite() {
+    setenv("GLOBAL_LOG_LEVEL", "0", true);
+  }
+  static void TearDownTestSuite() {
+    unsetenv("GLOBAL_LOG_LEVEL");
+  }
 };
 
 TEST_P(BatchMatMulV2Test, General) {
