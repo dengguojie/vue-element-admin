@@ -43,6 +43,18 @@ Status ParseDilation2D(const Message* op_src, ge::Operator& op) {
     OP_LOGE(op.GetName().c_str(), "Update output format failed.");
     return FAILED;
   }
+  ge::TensorDesc filter_tensor = op.GetInputDesc("filter");
+  filter_tensor.SetOriginFormat(ge::FORMAT_NHWC);
+  filter_tensor.SetFormat(ge::FORMAT_NHWC);
+  auto filter_ret = op.UpdateInputDesc("filter", filter_tensor);
+  if (filter_ret != ge::GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Update filter format failed.");
+    return FAILED;
+  }
+  std::string padding;
+  if (op.GetAttr("padding", padding) == ge::GRAPH_SUCCESS) {
+    op.SetAttr("padding_mode", padding);
+  }
   return SUCCESS;
 }
 // register Dilation2D op to GE
@@ -50,5 +62,5 @@ REGISTER_CUSTOM_OP("Dilation2D")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("Dilation2D")
     .ParseParamsFn(ParseDilation2D)
-    .ImplyType(ImplyType::AI_CPU);
+    .ImplyType(ImplyType::TVM);
 }  // namespace domi

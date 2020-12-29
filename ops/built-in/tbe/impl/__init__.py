@@ -416,6 +416,7 @@ from .arg_max_with_kd import arg_max_with_kd
 from .ascend_dequant_s16 import ascend_dequant_s16
 from .ascend_requant import ascend_requant
 from .ascend_requant_s16 import ascend_requant_s16
+from .dilation2d import dilation2d
 from .euclidean_norm_d import euclidean_norm_d
 from .mul_no_nan import mul_no_nan
 from .adds import adds

@@ -1374,7 +1374,9 @@ and the c dimension is same with x. \n
 *@li strides: A required list of 4 ints, specifying the stride of the sliding window. The strides of the N and C dimensions are 1.
 *@li rates: A required list of 4 ints. The rates of the N and C dimensions are 1.
 *@li padding_mode: A optional string. Defaults to "SAME", it support SAME and VALID.
-*@li pads: A optional list of 4 ints. \n
+*@li pads: An optional list of 4 ints.
+*@li ceil_mode: An optional bool. Defaults to "false". Use ceil or floor to calculate the output size when padding_mode is "CALCULATED".
+*@li data_format: An optional string, specifying the data format of "rates" and "strides", either "NCHW" or "NHWC" (default). \n
 
 *@par Outputs:
 *y: The output tensor. Has the same type and format as input "x" . \n
@@ -1390,6 +1392,8 @@ REG_OP(Dilation2D)
     .REQUIRED_ATTR(rates, ListInt)
     .ATTR(padding_mode, String, "SAME")
     .ATTR(pads, ListInt, {0,0,0,0})
+    .ATTR(ceil_mode, Bool, false)
+    .ATTR(data_format, String, "NHWC")
     .OP_END_FACTORY_REG(Dilation2D)
 
 /**

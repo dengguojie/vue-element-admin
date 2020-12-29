@@ -253,7 +253,8 @@ static bool GetStridesAndKSize(Operator& op, Format refer, int32_t& strd, int32_
 
 static graphStatus GetWindowedOutputSizeVerboseV2(int64_t input_size, int64_t filter_size,
                                                   int64_t dilation_rate, int64_t stride,
-                                                  const std::string padding_type, int64_t* output_size,
+                                                  const std::string padding_type, bool ceil_mode,
+                                                  int64_t* output_size,
                                                   int64_t* padding_before,
                                                   int64_t* padding_after) {
   if (stride <= 0) {
@@ -282,6 +283,16 @@ static graphStatus GetWindowedOutputSizeVerboseV2(int64_t input_size, int64_t fi
     // side of the given dimension.
     *padding_before = padding_needed / 2;
     *padding_after = padding_needed - *padding_before;
+  } else if (padding_type == "CALCULATED") {
+    if (ceil_mode) {
+      *output_size = (input_size -effective_filter_size + *padding_before + *padding_after + stride - 1) / stride + 1;
+    } else {
+      *output_size = (input_size -effective_filter_size + *padding_before + *padding_after) / stride + 1;
+    }
+    const int64_t padding_needed =
+        std::max(int64_t{0}, (*output_size - 1) * stride +
+                 effective_filter_size - input_size);
+    *padding_after = std::max(int64_t{0}, padding_needed - *padding_before);
   } else {
     OP_LOGE("Padding [%s] is invaild.", padding_type.c_str());
     return GRAPH_FAILED;
@@ -294,69 +305,208 @@ static graphStatus GetWindowedOutputSizeVerboseV2(int64_t input_size, int64_t fi
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_INFERFUNC(Dilation2D, Dilation2DInfer) {
-  Shape x_shape;
-  Shape filter_shape;
+IMPLEMT_VERIFIER(Dilation2D, Dilation2DVerify) {
+  auto x_shape = op.GetInputDesc("x").GetShape();
+  Format input_format = op.GetInputDesc("x").GetFormat();
+  auto filter_shape = op.GetInputDesc("filter").GetShape();
+  std::vector<int64_t> filter_list = filter_shape.GetDims();
+
+  if (!CheckTwoInputDtypeSame(op, "x", "filter")) {
+    OP_LOGE(op.GetName().c_str(), "Two input dtypes must be same.");
+    return GRAPH_FAILED;
+  }
   if (WithRank(op.GetInputDesc(0), 4, x_shape, op.GetName().c_str())
       != GRAPH_SUCCESS) {
+    OpsOneInputShapeErrReport(op.GetName(), "X Shape Size", "XShape Size != 4");
     OP_LOGE(op.GetName().c_str(), "The rank of x must be 4.");
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(1), 3, filter_shape, op.GetName().c_str())
       != GRAPH_SUCCESS) {
+    OpsOneInputShapeErrReport(op.GetName(), "Filter Shape Size", "FilterShape Size != 3");
     OP_LOGE(op.GetName().c_str(), "The rank of filter must be 3.");
     return GRAPH_FAILED;
   }
 
-  std::vector<int32_t> strides;
-  if (op.GetAttr("strides", strides) == GRAPH_SUCCESS) {
-    if (strides.size() != 4) {
-      OP_LOGE(op.GetName().c_str(), "Strides size is [%zu], it must be 4.",
-              strides.size());
-      return GRAPH_FAILED;
-    }
-  } else {
-    OP_LOGE(op.GetName().c_str(), "Get attr strides failed.");
+  std::string data_format;
+  if (op.GetAttr("data_format", data_format) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(op.GetName(), "data_format");
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr data_format failed!");
+    return GRAPH_FAILED;
+  }
+  if (data_format != "NHWC" && data_format != "NCHW") {
+    OpsAttrValueErrReport(op.GetName(), "data_format", "NHWC,NCHW", data_format);
+    OP_LOGE(op.GetName().c_str(), "data_format[%s] is invalid!", data_format.c_str());
+    return GRAPH_FAILED;
+  }
+  if((input_format == FORMAT_NCHW && data_format != "NCHW") || (input_format == FORMAT_NHWC && data_format != "NHWC")) {
+    InferShapeOtherErrReport(op.GetName(), "Input format and data_format is not same");
+    return GRAPH_FAILED;
+  }
+  std::vector<int64_t> strides;
+  if (op.GetAttr("strides", strides) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(op.GetName(), "strides");
+    OP_LOGE(op.GetName().c_str(), "Get attr strides failed");
+    return GRAPH_FAILED;
+  }
+  if (strides.size() != 4) {
+    AttrSizeErrReport("strides", op.GetName(), ConcatString(strides.size()), "4");
+    OP_LOGE(op.GetName().c_str(), "Attr strides(%u) must be 4", strides.size());
     return GRAPH_FAILED;
   }
 
-  std::vector<int32_t> rates;
-  if (op.GetAttr("rates", rates) == GRAPH_SUCCESS) {
-    if (rates.size() != 4) {
-      OP_LOGE(op.GetName().c_str(), "Rates size is [%zu], it must be 4.",
-              rates.size());
-      return GRAPH_FAILED;
-    }
-  } else {
-    OP_LOGE(op.GetName().c_str(), "Get attr rates failed.");
+  std::vector<int64_t> rates;
+  if (op.GetAttr("rates", rates) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(op.GetName(), "rates");
+    OP_LOGE(op.GetName().c_str(), "Get attr rates failed");
+    return GRAPH_FAILED;
+  }
+  if (rates.size() != 4) {
+    AttrSizeErrReport("rates", op.GetName(), ConcatString(rates.size()), "4");
+    OP_LOGE(op.GetName().c_str(), "Attr rates(%u) must be 4", rates.size());
     return GRAPH_FAILED;
   }
 
+  std::string padding_mode;
+  if (op.GetAttr("padding_mode", padding_mode) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(op.GetName(), "padding_mode");
+    OP_LOGE(op.GetName().c_str(), "Get padding failed!");
+    return GRAPH_FAILED;
+  }
+  if (padding_mode != "SAME" && padding_mode != "VALID" && padding_mode != "CALCULATED") {
+    OpsAttrValueErrReport(op.GetName(), "padding_mode", "SAME,VALID,CALCULATED", padding_mode);
+    OP_LOGE(op.GetName().c_str(), "Attr padding(%s) only support SAME,VALID,CALCULATED", padding_mode.c_str());
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> pads;
+  if (op.GetAttr("pads", pads) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(op.GetName(), "pads");
+    OP_LOGE(op.GetName().c_str(), "Get attr pads failed");
+    return GRAPH_FAILED;
+  }
+  if (pads.size() != 4) {
+    AttrSizeErrReport("pads", op.GetName(), ConcatString(pads.size()), "4");
+    OP_LOGE(op.GetName().c_str(), "Attr pads(%u) must be 4", pads.size());
+    return GRAPH_FAILED;
+  }
+
+  bool ceil_mode;
+  if (op.GetAttr("ceil_mode", ceil_mode) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(op.GetName(), "ceil_mode");
+    OP_LOGE(op.GetName().c_str(), "Get attr ceil_mode failed");
+    return GRAPH_FAILED;
+  }
+
+  int64_t window_h;
+  int64_t window_w;
+  int64_t rate_n;
+  int64_t rate_c;
+  int64_t stride_n;
+  int64_t stride_c;
+  if (input_format == FORMAT_NHWC) {
+    rate_n = rates[0];
+    rate_c = rates[3];
+    stride_n = strides[0];
+    stride_c = strides[3];
+    window_h = (filter_list[0] - 1) * rates[1] + 1;
+    window_w = (filter_list[1] - 1) * rates[2] + 1;
+  } else {
+    rate_n = rates[0];
+    rate_c = rates[1];
+    stride_n = strides[0];
+    stride_c = strides[1];
+    window_h = (filter_list[1] - 1) * rates[2] + 1;
+    window_w = (filter_list[2] - 1) * rates[3] + 1;
+  }
+  if (rate_n != 1 || rate_c != 1) {
+    OpsAttrValueErrReport(op.GetName(), "rates", "1", ConcatString(rate_n, ",",rate_c));
+    OP_LOGE(op.GetName().c_str(), "rates[%d,%d] of NC is invalid!", rate_n, rate_c);
+    return GRAPH_FAILED;
+  }
+  if (stride_n != 1 || stride_c != 1) {
+    OpsAttrValueErrReport(op.GetName(), "strides", "1", ConcatString(stride_n, ",",stride_c));
+    OP_LOGE(op.GetName().c_str(), "strides[%d,%d] of NC is invalid!", stride_n, stride_c);
+    return GRAPH_FAILED;
+  }
+  if (padding_mode == "CALCULATED" &&
+      (pads[0] >= window_h || pads[1] >= window_h || pads[2] >= window_w || pads[3] >= window_w)) {
+    InferShapeOtherErrReport(op.GetName(), "pads must be less than window size when using CALCULATED mode");
+    OP_LOGE(op.GetName().c_str(), "pads must be less than window size when using CALCULATED mode");
+    return GRAPH_FAILED;
+  }
+
+  return GRAPH_SUCCESS;
+}
+IMPLEMT_INFERFUNC(Dilation2D, Dilation2DInfer) {
+  auto strides =  op.get_attr_strides();
+  auto rates = op.get_attr_rates();
+  auto padding_mode = op.get_attr_padding_mode();
+  auto pads = op.get_attr_pads();
+  auto ceil_mode = op.get_attr_ceil_mode();
+  Shape x_shape = op.GetInputDesc("x").GetShape();
+  Shape filter_shape = op.GetInputDesc("filter").GetShape();
   auto data_type = op.GetInputDesc("x").GetDataType();
+  Format input_format = op.GetInputDesc("x").GetFormat();
   TensorDesc output_desc = op.GetOutputDesc("y");
 
-  int32_t stride_rows = strides[1];
-  int32_t stride_cols = strides[2];
+  int32_t stride_rows;
+  int32_t stride_cols;
+  int32_t rate_rows;
+  int32_t rate_cols;
+  int64_t batch_size_dim;
+  int64_t in_rows_dim;
+  int64_t in_cols_dim;
+  int64_t filter_rows_dim;
+  int64_t filter_cols_dim;
+  int64_t output_depth_dim;
+  int64_t unused;
+  int32_t x_h_dim;
+  int32_t x_w_dim;
+  int32_t filter_h_dim;
+  int32_t filter_w_dim;
+  if (input_format == FORMAT_NHWC) {
+    stride_rows = strides[1];
+    stride_cols = strides[2];
+    rate_rows = rates[1];
+    rate_cols = rates[2];
+    batch_size_dim = x_shape.GetDim(0);
+    in_rows_dim = x_shape.GetDim(1);
+    in_cols_dim = x_shape.GetDim(2);
+    filter_rows_dim = filter_shape.GetDim(0);
+    filter_cols_dim = filter_shape.GetDim(1);
+    output_depth_dim = filter_shape.GetDim(2);
+    unused = x_shape.GetDim(3);
+    x_h_dim = 1;
+    x_w_dim = 2;
+    filter_h_dim = 0;
+    filter_w_dim = 1;
+  } else {
+    stride_rows = strides[2];
+    stride_cols = strides[3];
+    rate_rows = rates[2];
+    rate_cols = rates[3];
+    batch_size_dim = x_shape.GetDim(0);
+    in_rows_dim = x_shape.GetDim(2);
+    in_cols_dim = x_shape.GetDim(3);
+    filter_rows_dim = filter_shape.GetDim(1);
+    filter_cols_dim = filter_shape.GetDim(2);
+    output_depth_dim = filter_shape.GetDim(0);
+    unused = x_shape.GetDim(1);
+    x_h_dim = 2;
+    x_w_dim = 3;
+    filter_h_dim = 1;
+    filter_w_dim = 2;
+  }
 
-  int32_t rate_rows = rates[1];
-  int32_t rate_cols = rates[2];
-
-  int64_t batch_size_dim = x_shape.GetDim(0);
-  int64_t in_rows_dim = x_shape.GetDim(1);
-  int64_t in_cols_dim = x_shape.GetDim(2);
-  int64_t filter_rows_dim = filter_shape.GetDim(0);
-  int64_t filter_cols_dim = filter_shape.GetDim(1);
-  int64_t output_depth_dim = filter_shape.GetDim(2);
-
-  if (!ValueKnown(x_shape, 1) || !ValueKnown(x_shape, 2) ||
-      !ValueKnown(filter_shape, 0) || !ValueKnown(filter_shape, 1)) {
+  if (!ValueKnown(x_shape, x_h_dim) || !ValueKnown(x_shape, x_w_dim) ||
+      !ValueKnown(filter_shape, filter_h_dim) || !ValueKnown(filter_shape, filter_w_dim)) {
     Shape output_shape({batch_size_dim, -1, -1, output_depth_dim});
     output_desc.SetShape(output_shape);
     output_desc.SetDataType(data_type);
     return op.UpdateOutputDesc("y", output_desc);
   }
 
-  int64_t unused = x_shape.GetDim(3);
   if (Merge(unused, output_depth_dim, unused) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Merge unused and output_depth_dim failed.");
     return GRAPH_FAILED;
@@ -367,37 +517,47 @@ IMPLEMT_INFERFUNC(Dilation2D, Dilation2DInfer) {
   auto filter_cols_eff = filter_cols_dim +
                          (filter_cols_dim - 1) * (rate_cols - 1);
 
-  std::string padding;
-  if (op.GetAttr("padding", padding) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get attr padding failed.");
-    return GRAPH_FAILED;
-  }
-  if(padding != "SAME" && padding != "VALID") {
-    OP_LOGE(op.GetName().c_str(), "Padding is only support SAME and VALID.");
-    return GRAPH_FAILED;
-  }
-
   int64_t output_rows = 0;
   int64_t output_cols = 0;
   int64_t padding_before = 0;
   int64_t padding_after = 0;
 
+  if (padding_mode == "CALCULATED") {
+    padding_before = pads[0];
+    padding_after = pads[1];
+  } else {
+    padding_before = 0;
+    padding_after = 0;
+  }
   if(GetWindowedOutputSizeVerboseV2(
-      in_rows_dim, filter_rows_eff, 1, stride_rows, padding, &output_rows,
+      in_rows_dim, filter_rows_eff, 1, stride_rows, padding_mode, ceil_mode, &output_rows,
       &padding_before, &padding_after) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
+
+  if (padding_mode == "CALCULATED") {
+    padding_before = pads[2];
+    padding_after = pads[3];
+  } else {
+    padding_before = 0;
+    padding_after = 0;
+  }
   if(GetWindowedOutputSizeVerboseV2(
-      in_cols_dim, filter_cols_eff, 1, stride_cols, padding, &output_cols,
+      in_cols_dim, filter_cols_eff, 1, stride_cols, padding_mode, ceil_mode, &output_cols,
       &padding_before, &padding_after) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
-  Shape y_shape({batch_size_dim, output_rows, output_cols, output_depth_dim});
-  output_desc.SetShape(y_shape);
+  if (input_format == FORMAT_NHWC) {
+    Shape y_shape({batch_size_dim, output_rows, output_cols, output_depth_dim});
+    output_desc.SetShape(y_shape);
+  } else {
+    Shape y_shape({batch_size_dim, output_depth_dim, output_rows, output_cols});
+    output_desc.SetShape(y_shape);
+  }
   output_desc.SetDataType(data_type);
   return op.UpdateOutputDesc("y", output_desc);
 }
-
+VERIFY_FUNC_REG(Dilation2D, Dilation2DVerify);
 INFER_FUNC_REG(Dilation2D, Dilation2DInfer);
 // ----------------Pooling-------------------
 IMPLEMT_INFERFUNC(Pooling, PoolingInferShape) {

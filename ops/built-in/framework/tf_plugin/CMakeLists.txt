@@ -150,6 +150,7 @@ set(_tf_plugins
   dynamic_lstm_plugin.cc
   dynamic_plugin.cc
   dynamic_rnn_plugin.cc
+  dilation2d_plugin.cc
   elu_grad_plugin.cc
   elu_plugin.cc
   equal_plugin.cc
