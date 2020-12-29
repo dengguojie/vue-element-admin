@@ -1169,7 +1169,9 @@ REG_OP(EditDistance)
 
 * @attention Constraints:
 * @li Axis should select the last dim.
-* @li The upper limit of data on Ascend310 is 500K, and that on Ascend910 is 2000K.
+* @li When the sorting data is less than 150K, it is recommended to use this tbe ops,
+ and the descending performance is better than the ascending.
+* @li The upper limit of data on Ascend910 is 2000K.
 */
 REG_OP(SortV2)
     .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
