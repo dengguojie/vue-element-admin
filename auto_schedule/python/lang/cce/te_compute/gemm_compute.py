@@ -2255,7 +2255,7 @@ class GEMMCompute:
         Get calculate result of gemm and matmul
 
         Input: None
-        ---------------------------------q
+        ---------------------------------
         Return: result
         """
         if self.matmul_flag and not in_dynamic():

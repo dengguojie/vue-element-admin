@@ -97,65 +97,115 @@ def _shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R09
     shape_len_b = len(shape_b)
 
     if format_a not in ("ND", "fractal", "FRACTAL_Z"):
-        raise RuntimeError("format_a must be ND or fractal!")
+        dict_args = {
+            'errCode': 'E60008',
+            'param_name': 'tensor_a',
+            'expected_format_list': ("ND", "fractal", "FRACTAL_Z"),
+            'format': format_a
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     if format_b not in ("ND", "fractal", "FRACTAL_Z"):
-        raise RuntimeError("format_b must be ND or fractal!")
+        dict_args = {
+            'errCode': 'E60008',
+            'param_name': 'tensor_b',
+            'expected_format_list': ("ND", "fractal", "FRACTAL_Z"),
+            'format': format_b
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     is_fractal_a = format_a != "ND"
     is_fractal_b = format_b != "ND"
 
     # fractal and ND not support
     if is_fractal_a and not is_fractal_b:
-        raise RuntimeError("Not support A is fractal and B is ND!")
+        dict_args = {
+            'errCode': 'E61001',
+            'reason': 'not support A is fractal and B is ND!'
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
     # ND and ND only support 'float16'
     if not is_fractal_a and not is_fractal_b:
         if in_a_dtype != "float16" or in_b_dtype != "float16":
-            raise RuntimeError(
-                "only support 'float16' input datatype for 'ND' and 'ND' "
-                "format.")
+            dict_args = {
+                'errCode': 'E61001',
+                'reason': "only support 'float16' input datatype for 'ND' and 'ND' format!"
+            }
+            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
     # ND and fractal support 'float16' and 'b8'
     else:
         if not (in_a_dtype == "float16" and in_b_dtype == "float16") and \
                 not (in_a_dtype in ("uint8", "int8") and (in_b_dtype == "int8")):
-            raise RuntimeError(
-                "only support float16 & float16 and uint8/int8 & int8 intput "
-                "data type.")
+            dict_args = {
+                'errCode': 'E61001',
+                'reason': "only support float16 & float16 and uint8/int8 & int8 intput data type."
+            }
+            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     if (in_a_dtype in ("uint8", "int8")) and (in_b_dtype == "int8"):
         if not is_fractal_a and is_fractal_b:
             if trans_a:
-                raise RuntimeError(
-                    "Not support A transpose for u8/s8 input and 'ND' & 'fractal'.")
+                dict_args = {
+                    'errCode': 'E61001',
+                    'reason': "Not support A transpose for u8/s8 input and 'ND' & 'fractal'."
+                }
+                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     def _check_shape_len(is_fractal_a, shape_len_a, is_fractal_b, shape_len_b):
         if (is_fractal_a == is_fractal_b) and \
                 (shape_len_b not in [shape_len_a - 1, shape_len_a]):
-            raise RuntimeError("A and B shape length should be equal:", shape_a, shape_b)
+            dict_args = {
+                'errCode': 'E61001',
+                'reason': "The length of B shape shoud be equal to {} or {}, but now it's " \
+                    "equal to {}".format(shape_len_a - 1, shape_len_a, shape_len_b)
+            }
+            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
         if is_fractal_a:
             if shape_len_a not in (4, 5):
-                raise RuntimeError("for fractal input data, only support tensor's dim is 4 or 5!")
+                dict_args = {
+                    'errCode': 'E61001',
+                    'reason': "for fractal input data, only support tensor's dim is 4 or 5!"
+                }
+                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
         else:
             if shape_len_a not in (2, 3):
-                raise RuntimeError("for nd input data, only support tensor's dim is 2 or 3!")
+                dict_args = {
+                    'errCode': 'E61001',
+                    'reason': "for nd input data, only support tensor's dim is 2 or 3!"
+                }
+                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
         if is_fractal_b:
             if shape_len_b not in (4, 5):
-                raise RuntimeError("for fractal input data, only support tensor's dim is 4 or 5!")
+                dict_args = {
+                    'errCode': 'E61001',
+                    'reason': "for fractal input data, only support tensor's dim is 4 or 5!"
+                }
+                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
         else:
             if shape_len_b not in (2, 3):
-                raise RuntimeError("for nd input data, only support tensor's dim is 2 or 3!")
+                dict_args = {
+                    'errCode': 'E61001',
+                    'reason': "for nd input data, only support tensor's dim is 2 or 3!"
+                }
+                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     _check_shape_len(is_fractal_a, shape_len_a, is_fractal_b, shape_len_b)
 
     if is_fractal_b:
         if shape_len_b not in (4, 5):
-            raise RuntimeError(
-                "for fractal input data, only support tensor's dim is 4 or 5!")
+            dict_args = {
+                'errCode': 'E61001',
+                'reason': "for fractal input data, only support tensor's dim is 4 or 5!"
+            }
+            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
     else:
         if shape_len_b not in (2, 3):
-            raise RuntimeError(
-                "for nd input data, only support tensor's dim is 2 or 3!")
+            dict_args = {
+                'errCode': 'E61001',
+                'reason': "for nd input data, only support tensor's dim is 2 or 3!"
+            }
+            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     def _check_batch_size():
         if shape_len_a == shape_len_b and \
@@ -166,7 +216,15 @@ def _shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R09
     batch = None
     if shape_len_a in (3, 5):
         if not _check_batch_size():
-            raise RuntimeError("the shape's batch size not equal!")
+            args_dict = {
+                "errCode": "E60002",
+                "attr_name": "shape's batch size",
+                "param1_name": "tensor_a",
+                "param1_value": tensor_a.shape[0].value,
+                "param2_name": "tensor_b",
+                "param2_value": tensor_b.shape[0].value,
+            }
+            raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
         batch = tensor_a.shape[0].value
 
     if tensor_bias is not None:
@@ -179,8 +237,13 @@ def _shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R09
     def _check_dst_dtype(dst_dtype):
         dst_dtype_check_list = ["float16", "float32", "int32", "int8"]
         if dst_dtype not in dst_dtype_check_list:
-            raise RuntimeError(
-                "dst dtype only support float16 or float32 or int32!")
+            args_dict = {
+                "errCode": "E60000",
+                "param_name": "dst_dtype",
+                "expected_value": "dst_dtype_check_list",
+                "input_value": dst_dtype
+            }
+            raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
 
     _check_dst_dtype(dst_dtype)
 
@@ -194,9 +257,12 @@ def _shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R09
             km_shape = shape_a[shape_len_a - 2]
             # non 16 multi result in buffer not align while transport
             if m_shape != cce.BLOCK_VECTOR and m_shape % cce.BLOCK_IN != 0:
-                raise RuntimeError(
-                    "for ND input, shape_m must be %d or %d multi "
-                    "for A transport" % (cce.BLOCK_VECTOR, cce.BLOCK_IN))
+                dict_args = {
+                    'errCode': 'E61001',
+                    'reason': "for ND input, shape_m must be {} or {} " \
+                        "multi when A transport".format(cce.BLOCK_VECTOR, cce.BLOCK_IN)
+                }
+                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
         else:
             m_shape = shape_a[shape_len_a - 2]
             km_shape = shape_a[shape_len_a - 1]
@@ -223,24 +289,35 @@ def _shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R09
         real_shape_m = m_shape*a_block_in
 
         if a_block_reduce != k_block_size:
-            raise RuntimeError(
-                "for fractal input,tensor_a's shape last 2 dim must be %d or %d"
-                % (cce.BLOCK_IN, cce.BLOCK_VECTOR))
-
+            dict_args = {
+                'errCode': 'E61001',
+                'reason': "for fractal input,tensor_a's shape last 2 dim must be {} or {}.".format(
+                    cce.BLOCK_IN, cce.BLOCK_VECTOR)
+            }
+            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
         if a_block_in not in (cce.BLOCK_VECTOR, cce.BLOCK_IN):
-            raise RuntimeError(
-                "for fractal input,tensor_a's shape last 2 dim must be %d or %d"
-                % (cce.BLOCK_IN, cce.BLOCK_VECTOR))
+            dict_args = {
+                'errCode': 'E61001',
+                'reason': "for fractal input,tensor_a's shape last 2 dim must be {} or {}.".format(
+                    cce.BLOCK_IN, cce.BLOCK_VECTOR)
+            }
+            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
         if a_block_in == cce.BLOCK_VECTOR:
             is_vector_a = True
             if m_shape != cce.BLOCK_VECTOR:
-                raise RuntimeError(
-                    "for fractal input,tensor_a's shape last 2 dim "
-                    "must be %d or %d" % (cce.BLOCK_IN, cce.BLOCK_VECTOR))
+                dict_args = {
+                    'errCode': 'E61001',
+                    'reason': "for fractal input,tensor_a's shape last 2 dim must be {} or {}.".format(
+                        cce.BLOCK_IN, cce.BLOCK_VECTOR)
+                }
+                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
             if km_shape % (cce.BLOCK_IN) != 0:
-                raise RuntimeError(
-                    "for fractal gevm input,K should be multiple of %d"
-                    % (cce.BLOCK_IN*k_block_size))
+                dict_args = {
+                    'errCode': 'E61001',
+                    'reason': "for fractal gevm input,K should be multiple of {}.".format(cce.BLOCK_IN * k_block_size)
+                }
+                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+
     b_block_reduce = 1
     b_block_out = 1
     if not is_fractal_b:
@@ -253,8 +330,11 @@ def _shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R09
             n_shape = shape_b[shape_len_b - 1]
 
         if n_shape != 1 and n_shape % cce.BLOCK_IN != 0:
-            raise RuntimeError(
-                "input shape N should be multiple of %d or 1" % (cce.BLOCK_IN))
+            dict_args = {
+                'errCode': 'E61001',
+                'reason': "input shape N should be multiple of {} or 1.".format(cce.BLOCK_IN)
+            }
+            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     else:
         if trans_b:
@@ -269,9 +349,11 @@ def _shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R09
             b_block_out = shape_b[shape_len_b - 2]
 
         if b_block_reduce != k_block_size:
-            raise RuntimeError(
-                "for fractal input,tensor_b's shape last 2 dim must be %d"
-                % (k_block_size))
+            dict_args = {
+                'errCode': 'E61001',
+                'reason': "for fractal input,tensor_b's shape last 2 dim must be {}.".format(k_block_size)
+            }
+            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
         if b_block_out not in (cce.BLOCK_VECTOR, cce.BLOCK_IN):
             raise RuntimeError(
@@ -280,101 +362,162 @@ def _shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R09
         if b_block_out == cce.BLOCK_VECTOR:
             is_gemv = True
             if is_vector_a:
-                raise RuntimeError("input shape M and N can't both be 1")
+                dict_args = {
+                    'errCode': 'E61001',
+                    'reason': "input shape M and N can't both be 1."
+                }
+                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
             if n_shape != 1:
-                raise RuntimeError(
-                    "for fractal input,tensor_b's shape last 2 dim "
-                    "must be %d or %d" % (cce.BLOCK_IN, cce.BLOCK_VECTOR))
+                dict_args = {
+                    'errCode': 'E61001',
+                    'reason': "for fractal input,tensor_a's shape last 2 dim must be {} or {}.".format(
+                        cce.BLOCK_IN, cce.BLOCK_VECTOR)
+                }
+                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
             if kn_shape % (cce.BLOCK_IN) != 0:
-                raise RuntimeError(
-                    "for fractal gemv input,K should be multiple of %d"
-                    % (cce.BLOCK_IN*k_block_size))
+                dict_args = {
+                    'errCode': 'E61001',
+                    'reason': "for fractal gemv input,K should be multiple of {}.".format(
+                        cce.BLOCK_IN*k_block_size)
+                }
+                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
             # gemv u8/s8 is transed to gevm(s8/u8), s8/u8 is not support for mad intri
             if in_a_dtype == "uint8" and in_b_dtype == "int8":
-                raise RuntimeError(
-                    "b8 gemv only support int8 & int8, current type is %s "
-                    "and %s." % (in_a_dtype, in_b_dtype))
+                dict_args = {
+                    'errCode': 'E61001',
+                    'reason': "b8 gemv only support int8 & int8, current type is {} and {}.".format(
+                        in_a_dtype, in_b_dtype)
+                }
+                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
     if is_fractal_a == is_fractal_b:
         if km_shape != kn_shape:
-            raise RuntimeError("reduce axis not same")
+            dict_args = {
+                'errCode': 'E61001',
+                'reason': "reduce axis not same."
+            }
+            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
     elif not is_fractal_a and is_fractal_b:
         if km_shape != (kn_shape*b_block_reduce):
-            raise RuntimeError(
-                "Km shape should be equal whit kn*block")
+            dict_args = {
+                'errCode': 'E61001',
+                'reason': "Km shape should be equal whit kn*block."
+            }
+            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     if not is_fractal_a and not is_fractal_b:
         if m_shape == 1 and n_shape == 1:
-            raise RuntimeError("input shape M and N can't both be 1")
+            dict_args = {
+                'errCode': 'E61001',
+                'reason': "input shape M and N can't both be 1."
+            }
+            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
         if n_shape == 1:
             if kn_shape % (cce.BLOCK_IN*cce.BLOCK_IN) != 0:
-                raise RuntimeError(
-                    "input shape K should be multiple of %d"
-                    % (cce.BLOCK_IN*cce.BLOCK_IN))
+                dict_args = {
+                    'errCode': 'E61001',
+                    'reason': "input shape K should be multiple of {}.".format(cce.BLOCK_IN * cce.BLOCK_IN)
+                }
+                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
         elif km_shape % k_block_size != 0:
-            raise RuntimeError(
-                "input shape K should be multiple of %d" % (cce.BLOCK_IN))
-
+            dict_args = {
+                'errCode': 'E61001',
+                'reason': "input shape K should be multiple of {}.".format(cce.BLOCK_IN)
+            }
+            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
         is_gemv = n_shape == 1
 
     if in_b_dtype == "int8":
         if is_gemv:
             if trans_a:
                 # Load2D intri has error from L1 to L0B transport for b8
-                raise RuntimeError("Not support A transpose for gemv b8 input.")
+                dict_args = {
+                    'errCode': 'E61001',
+                    'reason': "Not support A transpose for gemv b8 input."
+                }
+                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
         else:
             if trans_b:
                 # Load2D intri has error from L1 to L0B transport for b8
-                raise RuntimeError(
-                    "Not support B transpose for gevm or gemm b8 input.")
+                dict_args = {
+                    'errCode': 'E61001',
+                    'reason': "Not support B transpose for gevm or gemm b8 input."
+                }
+                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
     # 2d case
     if shape_bias:
         if is_gemv:
             if len(shape_bias) == 1:
-                raise RuntimeError(
-                    "bias shape for gemv must be [m,1] or [1,m,1] or ",
-                    "[b,m,1], curr is ", shape_bias)
+                dict_args = {
+                    'errCode': 'E61001',
+                    'reason': "bias shape for gemv must be [m,1] or [1,m,1] or [b,m,1]," \
+                        " current is {}.".format(shape_bias)
+                }
+                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
             if len(shape_bias) == 2:
                 if shape_bias != [real_shape_m, 1]:
-                    raise RuntimeError(
-                        "bias shape for gemv must be [m,1] or [1,m,1] or ",
-                        "[b,m,1] for gemv, curr is ", shape_bias)
+                    dict_args = {
+                        'errCode': 'E61001',
+                        'reason': "bias shape for gemv must be [m,1] or [1,m,1] or [b,m,1]," \
+                            " current is {}.".format(shape_bias)
+                    }
+                    raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
             elif len(shape_bias) == 3:
                 if batch is None:
-                    raise RuntimeError(
-                        "tensor A and tensor B lack of batch "
-                        "while bias has batch")
-                if shape_bias not in ([1, real_shape_m, 1],
-                                      [batch, real_shape_m, 1]):
-                    raise RuntimeError(
-                        "bias shape for gemv must be [m,1] or [1,m,1] or ",
-                        "[b,m,1] for gemv, curr is ", shape_bias)
+                    dict_args = {
+                        'errCode': 'E61001',
+                        'reason': "tensor A and tensor B lack of batch while bias has batch"
+                    }
+                    raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+                if shape_bias not in ([1, real_shape_m, 1], [batch, real_shape_m, 1]):
+                    dict_args = {
+                        'errCode': 'E61001',
+                        'reason': "bias shape for gemv must be [m,1] or [1,m,1] or [b,m,1]," \
+                            " current is {}.".format(shape_bias)
+                    }
+                    raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
             else:
-                raise RuntimeError(
-                    "bias shape must be [m,1] or [1,m,1] or ",
-                    "[b,m,1] for gemv, curr is ", shape_bias)
+                dict_args = {
+                    'errCode': 'E61001',
+                    'reason': "bias shape for gemv must be [m,1] or [1,m,1] or [b,m,1]," \
+                        " current is {}.".format(shape_bias)
+                }
+                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
         else:
             if len(shape_bias) == 1:
                 if shape_bias[0] != n_shape*b_block_out:
-                    raise RuntimeError(
-                        "broadcast bias shape must be equal to shape n")
+                    dict_args = {
+                        'errCode': 'E61001',
+                        'reason': "broadcast bias shape must be equal to shape n"
+                    }
+                    raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
             elif len(shape_bias) == 2:
                 if shape_bias not in ([1, n_shape*b_block_out], ):
-                    raise RuntimeError("bias shape must be [1,n], curr is ",
-                                       shape_bias)
+                    dict_args = {
+                        'errCode': 'E61001',
+                        'reason': "bias shape must be [1,n], current is {}".format(shape_bias)
+                    }
+                    raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
             elif len(shape_bias) == 3:
                 if batch is None:
-                    raise RuntimeError(
-                        "tensor A and tensor B lack of batch "
-                        "while bias has batch")
-                if shape_bias not in ([1, 1, n_shape*b_block_out],
-                                      [batch, 1, n_shape*b_block_out]):
-                    raise RuntimeError(
-                        "bias shape must be [n,] or [1,n] or [1,1,n] or "
-                        "[b,1,n] for gevm and gemm, current is ", shape_bias)
+                    dict_args = {
+                        'errCode': 'E61001',
+                        'reason': "tensor A and tensor B lack of batch while bias has batch"
+                    }
+                    raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+                if shape_bias not in ([1, 1, n_shape*b_block_out], [batch, 1, n_shape*b_block_out]):
+                    dict_args = {
+                        'errCode': 'E61001',
+                        'reason': "bias shape must be [n,] or [1,n] or [1,1,n] or [b,1,n]" \
+                            " for gevm and gemm current is {}.".format(shape_bias)
+                    }
+                    raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
             else:
-                raise RuntimeError(
-                    "bias shape must be [n,] or [1,n] or [1,1,n] or "
-                    "[b,1,n] for gevm and gemm, current is ", shape_bias)
+                dict_args = {
+                    'errCode': 'E61001',
+                    'reason': "bias shape must be [n,] or [1,n] or [1,1,n] or [b,1,n]" \
+                        " for gevm and gemm current is {}.".format(shape_bias)
+                }
+                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
 
 def _check_quantize_params(quantize_params=None):  # pylint: disable=R0912
@@ -414,57 +557,92 @@ def _check_quantize_params(quantize_params=None):  # pylint: disable=R0912
 
     # check quantize_alg value
     if "quantize_alg" not in quantize_params:
-        raise RuntimeError(
-            "Lack of 'quantize_alg', need to supply it.")
+        dict_args = {
+            'errCode': 'E61001',
+            'reason': "Lack of 'quantize_alg', need to supply it."
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
     quantize_mode = quantize_params["quantize_alg"]
     if quantize_mode not in ("NON_OFFSET", "HALF_OFFSET_A"):
-        raise RuntimeError(
-            "'quantize_alg' is %s, it should be "
-            "'NON_OFFSET' or 'HALF_OFFSET_A'." % (quantize_mode))
+        dict_args = {
+            'errCode': 'E61001',
+            'reason': "quantize_alg is {}, it should be 'NON_OFFSET' or" \
+                "'HALF_OFFSET_A'.".format(quantize_mode)
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
     # check inbound scale mode paras
     if "scale_mode_a" in quantize_params:
-        raise RuntimeError(
-            "Inbound scale mode a function is not supported.")
+        dict_args = {
+            'errCode': 'E61001',
+            'reason': "Inbound scale mode a function is not supported."
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     if "scale_mode_b" in quantize_params:
-        raise RuntimeError(
-            "Inbound scale mode b function is not supported.")
+        dict_args = {
+            'errCode': 'E61001',
+            'reason': "Inbound scale mode b function is not supported."
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     if "scale_q_a" in quantize_params:
-        raise RuntimeError(
-            "Inbound scale quant a function is not supported.")
+        dict_args = {
+            'errCode': 'E61001',
+            'reason': "Inbound scale quant a function is not supported."
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     if "offset_q_a" in quantize_params:
-        raise RuntimeError(
-            "Inbound offset quant a function is not supported.")
+        dict_args = {
+            'errCode': 'E61001',
+            'reason': "Inbound offset quant a function is not supported."
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     if "scale_q_b" in quantize_params:
-        raise RuntimeError(
-            "Inbound scale quant b function is not supported.")
+        dict_args = {
+            'errCode': 'E61001',
+            'reason': "Inbound scale quant b function is not supported."
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     if "offset_q_b" in quantize_params:
-        raise RuntimeError(
-            "Inbound offset quant b function is not supported.")
+        dict_args = {
+            'errCode': 'E61001',
+            'reason': "Inbound offset quant b function is not supported."
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     # check outbound scale mode paras
     if "scale_mode_out" not in quantize_params:
-        raise RuntimeError(
-            "Lack of 'scale_mode_out', need to supply it.")
+        dict_args = {
+            'errCode': 'E61001',
+            'reason': "Lack of 'scale_mode_out', need to supply it."
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     scale_out = quantize_params["scale_mode_out"]
     if scale_out not in ("SCALAR", "VECTOR"):
-        raise RuntimeError(
-            "'scale_mode_out' is %s, should be 'SCALAR' or 'VECTOR'."
-            % (scale_out))
+        dict_args = {
+            'errCode': 'E61001',
+            'reason': "'scale_mode_out' is {}, should be 'SCALAR' or 'VECTOR'.".format(scale_out)
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     # check inbound scale mode paras
     if "sqrt_mode_a" in quantize_params or "sqrt_mode_b" in quantize_params:
-        raise RuntimeError(
-            "Inbound sqrt mode function is not supported.")
+        dict_args = {
+            'errCode': 'E61001',
+            'reason': "Inbound sqrt mode function is not supported."
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
     # check outbound sqrt mode paras
     if "sqrt_mode_out" not in quantize_params:
-        raise RuntimeError(
-            "Lack of 'sqrt_mode_out', need to supply it.")
+        dict_args = {
+            'errCode': 'E61001',
+            'reason': "Lack of 'sqrt_mode_out', need to supply it."
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
 
 def _get_quantize_params(quantize_params=None, out_type="float16"):
@@ -511,26 +689,40 @@ def _get_quantize_params(quantize_params=None, out_type="float16"):
     if quantize_params is not None:
         sqrt_out = quantize_params["sqrt_mode_out"]
         if sqrt_out not in ("NON_SQRT", "SQRT"):
-            raise RuntimeError(
-                "'scale_mode_out' is %s, should be 'NON_SQRT' or 'SQRT'."
-                % (sqrt_out))
+            dict_args = {
+                'errCode': 'E61001',
+                'reason': "'scale_mode_out' is {}, should be 'NON_SQRT' or 'SQRT'.".format(sqrt_out)
+            }
+            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
         # check out dyte and tensor drq
         if out_type == "float16":
             if "scale_drq" not in quantize_params:
-                raise RuntimeError(
-                    "'scale_drq' is None, should not be None "
-                    "while out_dtype is 'float16'.")
+                dict_args = {
+                    'errCode': 'E61001',
+                    'reason': "'scale_drq' is None, should not be None" \
+                        " while out_dtype is 'float16'."
+                }
+                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
             scale_drq = "ENABLE"
             scale_drq_tensor = quantize_params["scale_drq"]
             if scale_drq_tensor is None:
-                raise RuntimeError(
-                    "scale_drq_tensor is None, need to supply it.")
+                dict_args = {
+                    'errCode': 'E61001',
+                    'reason': "scale_drq_tensor is None, need to supply it."
+                }
+                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
             if "offset_drq" in quantize_params:
-                raise RuntimeError(
-                    "'offset_drq' is unnecessary, please delete it.")
+                dict_args = {
+                    'errCode': 'E61001',
+                    'reason': "'offset_drq' is unnecessary, please delete it."
+                }
+                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
         else:
-            raise RuntimeError(
-                "'dst_dtype' is '%s', should be 'float16'" % (out_type))
+            dict_args = {
+                'errCode': 'E61001',
+                'reason': "'dst_dtype' is {}, should be 'float16'".format(out_type)
+            }
+            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     return scale_drq, scale_drq_tensor, sqrt_out
 
@@ -577,7 +769,13 @@ def _check_and_get_dtype_info(src_dtype_a, src_dtype_b, dst_dtype,
     """
     if (src_dtype_a, src_dtype_b) == ("float16", "float16"):
         if dst_dtype not in ("float16", "float32"):
-            raise RuntimeError("dst_dtype must be 'float16' or 'float32'.")
+            dict_args = {
+                'errCode': 'E60000',
+                'param_name': "dst_dtype",
+                "expected_value": "'float16', 'float32'",
+                "input_value": str(dst_dtype)
+            }
+            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
         out_dtype = "float32"
         if l0c_support_fp32 == 0:
             out_dtype = "float16"
@@ -585,19 +783,31 @@ def _check_and_get_dtype_info(src_dtype_a, src_dtype_b, dst_dtype,
             (src_dtype_a, src_dtype_b) == ("uint8", "int8"):
         out_dtype = "int32"
     else:
-        raise RuntimeError("data type of tensor not supported")
+        dict_args = {
+            'errCode': 'E61001',
+            'reason': "data type of tensor not supported"
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     if dst_dtype not in (out_dtype, "float16", "int8"):
-        raise RuntimeError(
-            "dst_dtype[%s] should be 'float16' for a_type[%s] and b_type[%s]."
-            % (dst_dtype, src_dtype_a, src_dtype_b))
+        dict_args = {
+            'errCode': 'E60000',
+            'param_name': "dst_dtype",
+            "expected_value": "'float16', 'int8' or same as out_dtype",
+            "input_value": str(dst_dtype)
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     is_fusion_mode = False
     if (src_dtype_a in ("int8", "uint8")) and (quantize_params is None):
         is_fusion_mode = True
     if (out_dtype not in (dst_dtype, "float32", "int32")) and \
             (quantize_params is None) and not is_fusion_mode:
-        raise RuntimeError("Lack of quantize parameter 'quantize_params'.")
+        dict_args = {
+            'errCode': 'E61001',
+            'reason': "Lack of quantize parameter 'quantize_params'."
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     return out_dtype, is_fusion_mode
 
@@ -837,12 +1047,18 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
 
     def _check_quant_param_valid():
         if (out_dtype == dst_dtype) and (quantize_params is not None):
-            raise RuntimeError(
-                "quantize parameter 'quantize_params' is unexpected.")
+            dict_args = {
+                'errCode': 'E61001',
+                'reason': "When out_dtype = dst_dtype, quantize_params should be None."
+            }
+            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
-        if (quantize_params is not None) and (
-                not isinstance(quantize_params, dict)):
-            raise RuntimeError("'quantize_params' should be dict type.")
+        if (quantize_params is not None) and (not isinstance(quantize_params, dict)):
+            dict_args = {
+                'errCode': 'E61001',
+                'reason': "'quantize_params' should be dict type."
+            }
+            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     _check_quant_param_valid()
 
@@ -858,12 +1074,22 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
     if tensor_bias is not None:
         if quantize_params is None and not is_fusion_mode:
             if tensor_bias.dtype != dst_dtype:
-                raise RuntimeError(
-                    "Tensor bias type error, should be '%s'" % dst_dtype)
+                args_dict = {
+                    "errCode": "E60000",
+                    "param_name": "dtype of tensor_bias",
+                    "expected_value": dst_dtype,
+                    "input_value": tensor_bias.dtype
+                }
+                raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
         else:
             if tensor_bias.dtype != out_dtype:
-                raise RuntimeError("Tensor bias type is '%s', should be '%s'"
-                                   % (tensor_bias.dtype, out_dtype))
+                args_dict = {
+                    "errCode": "E60000",
+                    "param_name": "dtype of tensor_bias",
+                    "expected_value": out_dtype,
+                    "input_value": tensor_bias.dtype
+                }
+                raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
 
         bias_shape = []
         if _elecnt_of_shape(tensor_bias.shape).value == 1:
@@ -996,34 +1222,72 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
 
     def _check_reduce_shape():
         if km_shape != kn_shape:
-            raise RuntimeError("the k shape is wrong in mmad")
+            args_dict = {
+                "errCode": "E60002",
+                "attr_name": "shape k",
+                "param1_name": "tensor_a",
+                "param1_value": str(km_shape),
+                "param2_name": "tensor_b",
+                "param2_value": str(kn_shape),
+            }
+            raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
+
     _check_reduce_shape()
 
     def _check_alpha_beta_numb():
         if alpha_num != 1.0 or beta_num != 1.0:
-            raise RuntimeError("we not support this situation now!")
+            dict_args = {
+                'errCode': 'E61001',
+                'reason': "mmad now only supprot alpha_num = {0} and beta_num = {0}.".format(1.0)
+            }
+            raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
+
     _check_alpha_beta_numb()
 
     def _check_fractal_a_value():
         length = tensor_a_length
         if trans_a:
             if nz_a:
-                if not (tensor_a.shape[length - 1].value == block_reduce and
-                        tensor_a.shape[length - 2].value == block_in):
-                    raise RuntimeError("AShape classification matrix is wrong")
+                if not (tensor_a.shape[length - 1].value == block_reduce
+                        and tensor_a.shape[length - 2].value == block_in):
+                    args_dict = {
+                        "errCode": "E60101",
+                        "param_name": "tensor_a",
+                        "expected_two_dims": "{}".format([block_in, block_reduce]),
+                        "actual_two_dim": "{}".format(tensor_a.shape[-2:]),
+                    }
+                    raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
             else:
-                if not (tensor_a.shape[length - 2].value == block_reduce and
-                        tensor_a.shape[length - 1].value == block_in):
-                    raise RuntimeError("AShape classification matrix is wrong")
+                if not (tensor_a.shape[length - 2].value == block_reduce
+                        and tensor_a.shape[length - 1].value == block_in):
+                    args_dict = {
+                        "errCode": "E60101",
+                        "param_name": "tensor_a",
+                        "expected_two_dims": "{}".format([block_reduce, block_in]),
+                        "actual_two_dim": "{}".format(tensor_a.shape[-2:]),
+                    }
+                    raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
         else:
             if nz_a:
-                if not (tensor_a.shape[length - 1].value == block_in and
-                        tensor_a.shape[length - 2].value == block_reduce):
-                    raise RuntimeError("AShape classification matrix is wrong")
+                if not (tensor_a.shape[length - 1].value == block_in
+                        and tensor_a.shape[length - 2].value == block_reduce):
+                    args_dict = {
+                        "errCode": "E60101",
+                        "param_name": "tensor_a",
+                        "expected_two_dims": "{}".format([block_reduce, block_in]),
+                        "actual_two_dim": "{}".format(tensor_a.shape[-2:]),
+                    }
+                    raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
             else:
-                if not (tensor_a.shape[length - 2].value == block_in and
-                        tensor_a.shape[length - 1].value == block_reduce):
-                    raise RuntimeError("AShape classification matrix is wrong")
+                if not (tensor_a.shape[length - 2].value == block_in
+                        and tensor_a.shape[length - 1].value == block_reduce):
+                    args_dict = {
+                        "errCode": "E60101",
+                        "param_name": "tensor_a",
+                        "expected_two_dims": "{}".format([block_in, block_reduce]),
+                        "actual_two_dim": "{}".format(tensor_a.shape[-2:]),
+                    }
+                    raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
 
     if is_fractal_a:
         _check_fractal_a_value()
@@ -1031,14 +1295,25 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
     def _check_fractal_b_value():
         if trans_b:
             if not (tensor_b.shape[tensor_b_length - 2].value == block_reduce
-                    and
-                    tensor_b.shape[tensor_b_length - 1].value == block_out):
-                raise RuntimeError("BShape classification matrix is wrong")
+                    and tensor_b.shape[tensor_b_length - 1].value == block_out):
+                args_dict = {
+                    "errCode": "E60101",
+                    "param_name": "tensor_b",
+                    "expected_two_dims": "{}".format([block_reduce, block_out]),
+                    "actual_two_dim": "{}".format(tensor_b.shape[-2:]),
+                }
+                raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
         else:
             if not (tensor_b.shape[tensor_b_length - 2].value == block_out
-                    and
-                    tensor_b.shape[tensor_b_length - 1].value == block_reduce):
-                raise RuntimeError("BShape classification matrix is wrong")
+                    and tensor_b.shape[tensor_b_length - 1].value == block_reduce):
+                args_dict = {
+                    "errCode": "E60101",
+                    "param_name": "tensor_b",
+                    "expected_two_dims": "{}".format([block_out, block_reduce]),
+                    "actual_two_dim": "{}".format(tensor_b.shape[-2:]),
+                }
+                raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
+
     if is_fractal_b:
         _check_fractal_b_value()
 
@@ -2839,7 +3114,11 @@ def _get_tensor_c_out_dtype(tensor_a, tensor_b, dst_dtype):
         l0c_support_fp32 = 0
     if in_a_dtype == "float16" and in_b_dtype == "float16":
         if dst_dtype not in ("float16", "float32"):
-            raise RuntimeError("dst_dtype must be 'float16' or 'float32'.")
+            dict_args = {
+                'errCode': 'E61001',
+                'reason': "dst_dtype must be 'float16' or 'float32'."
+            }
+            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
         out_dtype = "float32"
         if l0c_support_fp32 == 0:
             out_dtype = "float16"
@@ -2847,7 +3126,11 @@ def _get_tensor_c_out_dtype(tensor_a, tensor_b, dst_dtype):
             (in_a_dtype == "uint8" and in_b_dtype == "int8"):
         out_dtype = "int32"
     else:
-        raise RuntimeError("data type of tensor not supported")
+        dict_args = {
+            'errCode': 'E61001',
+            'reason': "data type of tensor not supported."
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     return out_dtype
 
@@ -3042,7 +3325,11 @@ def _check_reduce_shape(km_shape, kn_shape):
 
     """
     if km_shape != kn_shape:
-        raise RuntimeError("the k shape is wrong in mmad")
+        dict_args = {
+            'errCode': 'E61001',
+            'reason': "the k shape is wrong in mmad."
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
 
 def _check_default_param(alpha_num, beta_num, quantize_params, format_out):
@@ -3065,11 +3352,23 @@ def _check_default_param(alpha_num, beta_num, quantize_params, format_out):
 
     """
     if alpha_num != 1.0 or beta_num != 1.0:
-        raise RuntimeError("mmad does not support this situation now")
+        dict_args = {
+            'errCode': 'E61001',
+            'reason': "mmad now only supprot alpha_num = {0} and beta_num = {0}.".format(1.0)
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
     if quantize_params is not None:
-        raise RuntimeError("quant parameter should be none")
+        dict_args = {
+            'errCode': 'E61001',
+            'reason': "quant parameter should be none."
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
     if format_out is not None:
-        raise RuntimeError("format output should be none")
+        dict_args = {
+            'errCode': 'E61001',
+            'reason': "format output should be none."
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
 
 def _get_l0_byte(tensor_a_dtype, tensor_b_dtype, l0c_out_dtype):
@@ -3444,7 +3743,11 @@ def get_matmul_performance_format(tensor_a,  # pylint: disable=W0108, R1702, R09
                                     False, False)
 
     if tiling_shape.find('_') == -1:
-        raise RuntimeError(tiling_shape)
+        dict_args = {
+            'errCode': 'E61001',
+            'reason': "tiling shape {} is illegal.".format(tiling_shape)
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     tiled_shape = tiling_shape.split('_')
     m_l0_shape = int(tiled_shape[3])
