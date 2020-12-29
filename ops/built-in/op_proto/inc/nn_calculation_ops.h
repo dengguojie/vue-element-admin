@@ -1215,9 +1215,7 @@ REG_OP(Conv3DBackpropInputD)
 * @li c_t: A optinal Tensor dtype of float16, float32. The cell state at time t . \n
 
 *@par Third-party framework compatibility:
-* Compatible with the Pytorch operator adds.
-*@par Restrictions:
-*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+* Compatible with the Caffe operator LSTM.
 */
 REG_OP(LSTM)
     .INPUT(x, TensorType({DT_FLOAT16}))
