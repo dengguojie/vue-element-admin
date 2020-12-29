@@ -1074,24 +1074,29 @@ IMPLEMT_INFERFUNC(SparseTensorDenseMatMul, SparseTensorDenseMatMulInfer) {
   if (WithRank(x1_indices_tensor, 2, unused_shape, op.GetName().c_str()) !=
       GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Input x1_indices rank must be 2.");
+    InferShapeErrorReport(op.GetName().c_str(), "x1_indices", "dims rank", "Input x1_indices rank must be 2.");
     return GRAPH_FAILED;
   }
   if (WithRank(x1_values_tensor, 1, unused_shape, op.GetName().c_str()) !=
       GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Input x1_values rank must be 1.");
+    InferShapeErrorReport(op.GetName().c_str(), "x1_values", "dims rank", "Input x1_values rank must be 1.");
     return GRAPH_FAILED;
   }
   if (MakeShapeFromShapeTensor(op, "x1_shape", x1_shape,
                                op.GetName().c_str()) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "MakeShapeFromShapeTensor error.");
+    InferShapeErrorReport(op.GetName().c_str(), "x1_shape", "MakeShapeFromShapeTensor", "MakeShapeFromShapeTensor error.");
     return GRAPH_FAILED;
   }
   if (x1_shape.GetDimNum() != 2) {
     OP_LOGE(op.GetName().c_str(), "Input x1_shape rank must be 2.");
+    InferShapeErrorReport(op.GetName().c_str(), "x1_shape", "dims rank", "Input x1_shape rank must be 2.");
     return GRAPH_FAILED;
   }
   if (WithRank(x2_tensor, 2, x2_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Input x2 rank must be 2.");
+    InferShapeErrorReport(op.GetName().c_str(), "x2_shape", "dims rank", "Input x2 rank must be 2.");
     return GRAPH_FAILED;
   }
 
@@ -1117,7 +1122,7 @@ IMPLEMT_INFERFUNC(SparseTensorDenseMatMul, SparseTensorDenseMatMulInfer) {
   Shape output_shape;
   status = Matrix(output_left_shape, output_right_shape, output_shape);
   if (status != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Creat Matrix shape error.");
+    OP_LOGE(op.GetName().c_str(), "Create Matrix shape error.");
     return GRAPH_FAILED;
   }
 

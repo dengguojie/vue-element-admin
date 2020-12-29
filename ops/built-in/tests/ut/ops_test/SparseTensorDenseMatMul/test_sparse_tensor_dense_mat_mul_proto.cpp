@@ -49,3 +49,49 @@ TEST_F(SPARSE_TENSOR_DENSE_MAT_MUL_UT, InferShape) {
   std::vector<int64_t> expected_y_shape = {-1, 2};
   EXPECT_EQ(y_desc.GetShape().GetDims(), expected_y_shape);
 }
+
+TEST_F(SPARSE_TENSOR_DENSE_MAT_MUL_UT, test1_InferShape) {
+  ge::op::SparseTensorDenseMatMul op;
+  op.UpdateInputDesc("x1_indices", create_desc({2}, ge::DT_INT32));
+  op.UpdateInputDesc("x1_values", create_desc({2}, ge::DT_INT32));
+  op.UpdateInputDesc("x1_shape", create_desc({2}, ge::DT_INT64));
+  op.UpdateInputDesc("x2", create_desc({2, 2}, ge::DT_INT32));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+}
+
+TEST_F(SPARSE_TENSOR_DENSE_MAT_MUL_UT, test2_InferShape) {
+  ge::op::SparseTensorDenseMatMul op;
+  op.UpdateInputDesc("x1_indices", create_desc({2,2}, ge::DT_INT32));
+  op.UpdateInputDesc("x1_values", create_desc({2,2}, ge::DT_INT32));
+  op.UpdateInputDesc("x1_shape", create_desc({2}, ge::DT_INT64));
+  op.UpdateInputDesc("x2", create_desc({2, 2}, ge::DT_INT32));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+}
+
+TEST_F(SPARSE_TENSOR_DENSE_MAT_MUL_UT, test3_InferShape) {
+  ge::op::SparseTensorDenseMatMul op;
+  op.UpdateInputDesc("x1_indices", create_desc({2,2}, ge::DT_INT32));
+  op.UpdateInputDesc("x1_values", create_desc({2}, ge::DT_INT32));
+  op.UpdateInputDesc("x1_shape", create_desc({2,2}, ge::DT_INT64));
+  op.UpdateInputDesc("x2", create_desc({2, 2}, ge::DT_INT32));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(SPARSE_TENSOR_DENSE_MAT_MUL_UT, test4_InferShape) {
+  ge::op::SparseTensorDenseMatMul op;
+  op.UpdateInputDesc("x1_indices", create_desc({2,2}, ge::DT_INT32));
+  op.UpdateInputDesc("x1_values", create_desc({2}, ge::DT_INT32));
+  op.UpdateInputDesc("x1_shape", create_desc({2}, ge::DT_DOUBLE));
+  op.UpdateInputDesc("x2", create_desc({2, 2,3}, ge::DT_INT32));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}

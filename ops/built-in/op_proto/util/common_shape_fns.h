@@ -27,6 +27,7 @@
 #include "graph/operator.h"
 #include "graph/op_desc.h"
 #include "graph/ge_tensor.h"
+#include "error_code.h"
 
 namespace ge {
 
@@ -400,6 +401,16 @@ graphStatus ValidateVariableResourceHandle(Operator& op, std::vector<ShapeAndTyp
  * @param shape input tensor datatype
  */
 void FillOpDesc(GeTensorDescPtr& op_desc, const GeShape& shape, const DataType& data_type = DT_FLOAT);
+
+/**
+ * InferShapeErrorReport info
+ * @param op_name Operator name
+ * @param op_type Operator type
+ * @param value Operator value
+ * @param reason error reason
+ */
+void InferShapeErrorReport(const std::string& op_name, const std::string& op_type,
+                           const std::string& value, const std::string& reason);
 
 }  // namespace ge
 

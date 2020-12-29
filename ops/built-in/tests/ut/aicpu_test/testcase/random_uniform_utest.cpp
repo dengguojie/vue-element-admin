@@ -13,6 +13,7 @@
 using namespace std;
 using namespace aicpu;
 
+
 class TEST_RANDOM_UNIFORM_UT : public testing::Test {};
 
 #define CREATE_NODEDEF(shapes, data_types, datas, seed1, seed2)        \
@@ -36,7 +37,7 @@ class TEST_RANDOM_UNIFORM_UT : public testing::Test {};
       .Attr("seed2", seed2)                                            \
       .Attr("dtype", data_types[2]);                                   \
   }
-  
+
 
 #define RANDOM_UNIFORM_CASE_WITH_TYPE(case_name, base_type, aicpu_data_type,             \
                                       aicpu_dtype, seed1, seed2)                         \
@@ -66,3 +67,4 @@ RANDOM_UNIFORM_CASE_WITH_TYPE(double_with_no_seed, double, DT_DOUBLE, DT_DOUBLE,
 RANDOM_UNIFORM_CASE_WITH_TYPE(data_type_not_match, double, DT_DOUBLE, DT_INT64, -1, -1)
 
 RANDOM_UNIFORM_CASE_WITH_TYPE(data_type_not_support, int64_t, DT_INT64, DT_INT64, -1, -1)
+

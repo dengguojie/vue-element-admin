@@ -23,6 +23,7 @@
 #include <limits>
 #include "op_log.h"
 #include "graph/utils/op_desc_utils.h"
+#include "common/util/error_manager/error_manager.h"
 
 namespace ge {
 graphStatus WithRankAtLeast(const TensorDesc& tensor, int64_t rank, Shape& out, const char* op_name) {
@@ -543,10 +544,12 @@ static graphStatus GetShapeDataFromShapeTensor(Operator& op,
   GeShape shape_data_shape(shape_data_desc->GetShape());
   std::vector<int64_t> dims = shape_data_shape.GetDims();
   DataType data_type = shape_data_desc->GetDataType();
-
   if (dims.size() != static_cast<size_t>(rank)) {
-    OP_LOGE(op_name, "Shape's rank must be %u, but it is %u",
+    OP_LOGE(op_name, "Shape's rank must be [%u], but it is [%u]",
             rank, dims.size());
+    std::string info = "Shape's rank must be " + std::to_string(rank)
+                       + ", but it is " + std::to_string(dims.size()) + ".";
+    InferShapeErrorReport(op_name, "shape_data_desc", "shape's rank", info);
     return GRAPH_FAILED;
   }
   int64_t dim_value = ((rank > 0) && (dims[0] > 0)) ? dims[0] : 1;
@@ -597,7 +600,10 @@ static graphStatus GetShapeDataFromConstData(const Tensor& tensor, int64_t rank,
   DataType data_type = shape_data_desc.GetDataType();
 
   if (dims.size() != static_cast<size_t>(rank)) {
-    OP_LOGE(op_name, "Shape's rank must be %u, but it is %u", rank, dims.size());
+    OP_LOGE(op_name, "Shape's rank must be [%u], but it is [%u]", rank, dims.size());
+    std::string info = "Shape's rank must be " + std::to_string(rank)
+                       + ", but it is " + std::to_string(dims.size()) + ".";
+    InferShapeErrorReport(op_name, "shape_data_desc", "shape's rank", info);
     return GRAPH_FAILED;
   }
   int64_t dim_value = rank > 0 ? dims[0] : 1;
@@ -1020,6 +1026,13 @@ void FillOpDesc(GeTensorDescPtr& op_desc, const GeShape& shape, const DataType& 
   }
   op_desc->SetShape(shape);
   op_desc->SetDataType(data_type);
+}
+
+void InferShapeErrorReport(const std::string& op_name, const std::string& op_type, const std::string& value,
+                            const std::string& reason) {
+  std::string report_error_code = "E14001";
+  ErrorManager::GetInstance().ATCReportErrMessage(report_error_code, {"opname", "optype", "value", "reason"},
+                                                  {op_name, op_type, value, reason});
 }
 
 }  // namespace ge
