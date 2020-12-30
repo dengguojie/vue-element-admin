@@ -342,10 +342,6 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
     res_dtype = res_dtype.lower()
     offset_w_dtype = offset_w_dtype.lower()
 
-    mad_dtype = 'float32'
-    if w_dtype == 'int8':
-        mad_dtype = 'int32'
-
     shape_in = list(shape_in)
     shape_w = list(shape_w)
     # fix the weight's channel=cin_ori
