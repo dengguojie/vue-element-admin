@@ -150,6 +150,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         sch[a_l1].reorder(a_l1_k_outer, a_l1_h_outer, a_l1_w_outer,
                           sch[a_l1].op.axis[0], sch[a_l1].op.axis[1],
                           a_l1_k_inner, a_l1_h_inner, a_l1_w_inner)
+
         return a_l1_h_outer
 
     def _multi_core():  # pylint:disable=R0914
@@ -204,7 +205,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         _tiling_check_value()
         _tiling_check_factor()
         _tiling_check_pbuffer()
-        if stride_h == 1 and stride_w == 1:
+        if stride_h == 1 and stride_w == 1 and dsl_flag == False:
             if tiling.get("AUB_shape") is not None:
                 dict_args = {
                     'errCode': 'E62306',
@@ -358,19 +359,19 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
                                     error_manager_util.get_error_message(dict_args))
 
     def _fetch_tensor_info():  # pylint:disable=R0914, R0915
-        tensor_map = {}
         tensor_attr = {}
+
         stride_d = c_ddr.op.attrs["stride_d"].value
         group_dict = c_ddr.op.attrs["group_dict"]
         kernel_d, _, _ = list(i.value for i in c_ddr.op.attrs["kernels"])
-        c_fill_zero = c_ddr.op.input_tensors[0]
-        c_ub = c_fill_zero.op.input_tensors[0]
-        tensor_map['c_fill_zero'] = c_fill_zero
+        c_fill_zero = tensor_map.get("c_fill_zero")
+        c_ub = tensor_map.get("c_ub")
         sch[c_fill_zero].set_scope(tbe_platform.scope_ubuf)
-        c_col = c_ub.op.input_tensors[0]
-        a_col = c_col.op.input_tensors[0]  # im2col_fractal in L0A
-        b_col = c_col.op.input_tensors[1]  # weight_transform in L0B
-        b_l1 = b_col.op.input_tensors[0]
+        c_col = tensor_map.get("c_col")
+        a_col = tensor_map.get("a_col")
+        a_col_before = tensor_map.get("a_col_before")
+        b_col = tensor_map.get("b_col")
+        b_l1 = tensor_map.get("b_l1")
         sch[b_l1].set_scope(tbe_platform.scope_cbuf)
         b_ddr = b_l1.op.input_tensors[0]  # weight in ddr
         a_col_before = a_col.op.input_tensors[0]  # im2col_row_major in L1
@@ -386,20 +387,15 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         tensor_map['dilation'] = dilation
 
         # stride > 1
-        if (a_col_before.op.input_tensors[0].op.tag == "dy_l1" or
-                a_col_before.op.input_tensors[0].op.tag == "dy_l1_cut"):
-
-            a_l1 = a_col_before.op.input_tensors[0]
-            a_filling = a_l1.op.input_tensors[0]
+        if "a_filling" in tensor_map.keys():
+            a_l1 = tensor_map.get("a_l1")
+            a_filling = tensor_map.get("a_filling")
+            a_zero = tensor_map.get("a_zero")
 
             stride_h, stride_w = list(i.value for i in
                                       a_filling.op.attrs["stride_expand"])
             a_ddr = a_filling.op.input_tensors[0]  # dEdY in ddr
-            a_zero = a_filling.op.input_tensors[1]  # dEdY_zero in ub
-            tensor_map['a_l1'] = a_l1
-            tensor_map['a_filling'] = a_filling
             tensor_map['a_ddr'] = a_ddr
-            tensor_map['a_zero'] = a_zero
         else:
             a_l1 = a_col_before.op.input_tensors[0]
             a_ddr = a_l1.op.input_tensors[0]  # dEdY in ddr
@@ -413,9 +409,14 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         if stride_h == 1 and stride_w == 1:
             sch[a_l1].set_scope(tbe_platform.scope_cbuf)
             tensor_map['a_l1'] = a_l1
+            if dsl_flag:
+                tensor_map['a_filling'] = tensor_map['elewise_mul']
         else:
-            a_ub = sch.cache_read(a_ddr, tbe_platform.scope_ubuf, [a_filling])
-            tensor_map['a_ub'] = a_ub
+            if dsl_flag:
+                tensor_map['a_ub'] = tensor_map['elewise_mul']
+            else:
+                a_ub = sch.cache_read(a_ddr, tbe_platform.scope_ubuf, [a_filling])
+                tensor_map['a_ub'] = a_ub
             # generate a_zero in ub
             sch[a_zero].set_scope(tbe_platform.scope_ubuf)
             sch[a_filling].set_scope(tbe_platform.scope_ubuf)
@@ -433,7 +434,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         tensor_attr['output_shape'] = output_shape
         tensor_attr['stride_d'] = stride_d
         tensor_attr['kernel_d'] = kernel_d
-        return tensor_map, tensor_attr, group_dict
+        return tensor_attr, group_dict
 
     def _tiling_l0_process():
         if al0_tiling_ma == a_col_ma and al0_tiling_ka == a_col_ka and a_col_batch == 1:
@@ -623,7 +624,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         k0_size = tbe_platform.CUBE_MKN[a_ddr.dtype]["mac"][1]
         k_al1 = kernel_h * kernel_w * k0_size
 
-        if stride_h > 1 or stride_w > 1:
+        if stride_h > 1 or stride_w > 1 or dsl_flag:
             tiling["AUB_shape"] = [kernel_h * kernel_w * k0_size, 1, 1, 1]
             tiling["BUB_shape"] = None
         else:
@@ -661,13 +662,12 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
     def _emit_insn_process():
         sch[b_l1].emit_insn(sch[b_l1].op.axis[1], "dma_copy")
         sch[b_col].emit_insn(sch[b_col].op.axis[3], "dma_copy")
+        sch[a_l1].emit_insn(sch[a_l1].op.axis[0], "dma_copy")
 
-        if stride_h == 1 and stride_w == 1:
-            sch[a_l1].emit_insn(sch[a_l1].op.axis[0], "dma_copy")
-        else:
-            sch[a_ub].emit_insn(sch[a_ub].op.axis[0], "dma_copy")
+        if stride_h > 1 or stride_w > 1:
+            if dsl_flag == False:
+                sch[a_ub].emit_insn(sch[a_ub].op.axis[0], "dma_copy")
             afill_n, afill_d, afill_c, afill_h, afill_w, _ = sch[a_filling].op.axis
-
             afill_w_out, afill_w_inner = sch[a_filling].split(
                 afill_w, factor=stride_w)
             sch[a_filling].reorder(
@@ -682,6 +682,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
             sch[a_zero].emit_insn(sch[a_zero].op.axis[0], "vector_dup")
             sch[a_filling].emit_insn(afill_n, "vector_muls")
             sch[a_l1].emit_insn(sch[a_l1].op.axis[0], "dma_copy")
+
         setfmatrix_dict = {"conv_kernel_h": kernel_h,
                            "conv_kernel_w": kernel_w,
                            "conv_padding_top": padu,
@@ -766,9 +767,84 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
             bl0_pbuffer = 1
         return al1_pbuffer, bl1_pbuffer, bl0_pbuffer
 
+    def _get_op_infor(color_op):
+        tensor_map = {}
+        tag_map = {"conv3d_backprop_input_dx_filing_zero": "c_fill_zero",
+                   "conv3d_backprop_input_c_ub": "c_ub",
+                   "conv3d_backprop_input_mad": "c_col",
+                   "conv3d_backprop_input_im2col_fractal": "a_col",
+                   "conv3d_backprop_input_w_col": "b_col",
+                   "conv3d_backprop_input_im2col_row_major": "a_col_before",
+                   "conv3d_backprop_input_w_l1": "b_l1",
+                   "conv3d_backprop_input_dy_l1": "a_l1",
+                   "conv3d_backprop_input_dy_filling": "a_filling",
+                   "conv3d_backprop_input_dy_zero": "a_zero",
+                   "elewise_binary_mul": "elewise_mul"}
+
+        for op in color_op.body_ops:
+            if op["op"] in tag_map.keys():
+                tensor_map[tag_map[op["op"]]] = op["dst_buffer"]
+            if "conv3d_backprop_input_" not in op["op"] and op["op"] != "c_ddr":
+                sch[op["dst_buffer"]].set_scope(tbe_platform.scope_ubuf)
+
+        for op in color_op.input_ops:
+            if op["op"] in tag_map.keys():
+                tensor_map[tag_map[op["op"]]] = op["dst_buffer"]
+            tmp_read_map = []
+            for nop in op["next_op"]:
+                if (nop["op"] == "conv3d_backprop_input_dy_filling" or
+                        nop["op"] == "conv3d_backprop_input_w_l1" or
+                        nop["op"] == "conv3d_backprop_input_dy_l1_s1"):
+                    continue
+                else:
+                    tmp_read_map.append(nop["dst_buffer"])
+            if tmp_read_map:
+                tmp_cache_buffer = sch.cache_read(op["dst_buffer"],
+                                                  tbe_platform.scope_ubuf,
+                                                  list(set(tmp_read_map)))
+                op["cache_buffer"] = tmp_cache_buffer
+
+        return tensor_map, color_op.body_ops, color_op.input_ops
+
+    def _emit_insn_fusion_op():
+        # emit insn
+        for lop in body_ops:
+            if "conv3d_backprop_input_" not in lop["op"] and lop["op"] != "c_ddr":
+                sch[lop["dst_buffer"]].emit_insn(lop["dst_buffer"].op.axis[0],
+                                                 "vector_auto")
+
+        for lop in input_ops:
+            if "conv3d_backprop_input_" in lop["op"]:
+                continue
+            if (lop["next_op"][0]["op"] == "conv3d_backprop_input_dy_filling" or
+                    lop["next_op"][0]["op"] == "conv3d_backprop_input_w_l1" or
+                    lop["next_op"][0]["op"] == "conv3d_backprop_input_dy_l1_s1"):
+                continue
+
+            sch[lop["cache_buffer"]].emit_insn(lop["cache_buffer"].op.axis[0],
+                                               "dma_copy")
+
+    def _fusion_op_compute_at():
+        for lop in body_ops:
+            if "conv3d_backprop_input_" not in lop["op"] and lop["op"] != "c_ddr":
+                sch[lop["dst_buffer"]].compute_at(sch[compute_at_buffer[0]],
+                                                  compute_at_axis[0])
+        for lop in input_ops:
+            if "conv3d_backprop_input_" in lop["op"]:
+                continue
+            if (lop["next_op"][0]["op"] == "conv3d_backprop_input_dy_filling" or
+                    lop["next_op"][0]["op"] == "conv3d_backprop_input_w_l1" or
+                    lop["next_op"][0]["op"] == "conv3d_backprop_input_dy_l1_s1"):
+                continue
+            sch[lop["cache_buffer"]].compute_at(sch[compute_at_buffer[0]],
+                                                compute_at_axis[0])
+
     c_ddr = tensor
     sch = sch_list[0]
-    tensor_map, tensor_attr, group_dict = _fetch_tensor_info()
+    color_op = AutoScheduleOp(c_ddr)
+    tensor_map, body_ops, input_ops = _get_op_infor(color_op)
+    dsl_flag = True if "elewise_mul" in tensor_map.keys() else False
+    tensor_attr, group_dict = _fetch_tensor_info()
     c_ub = tensor_map.get("c_ub")
     c_col = tensor_map.get("c_col")
     a_col = tensor_map.get("a_col")
@@ -816,6 +892,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
     tiling_output = [cddr_batch,
                      cddr_depth, cddr_h, cddr_w, cddr_c1 * cdder_c0]
     kd_reduce_flag = bool(len(c_col.op.reduce_axis) == _NUM_3)
+    fused_num = 1 if dsl_flag else 0
 
     tiling_img_shape = img_shape
     tiling_img_shape[2] = cout1_g
@@ -836,7 +913,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         "stridew_expand": stride_w,
         "dilation": [1, dilation_h, dilation_w],
         "group": real_g,
-        "fused_coefficient": [0, 0, 0],
+        "fused_coefficient": [0, 0, fused_num],
         "bias_flag": False,
         "op_type": "conv3d_backprop_input",
         "kernel_name": c_ddr.op.attrs["kernel_name"].value
@@ -846,7 +923,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
     if tiling["AL0_matrix"][2] == _DEFAULT_TILING_FLAG:
         tiling = _default_tiling()
 
-    if stride_w == 1 and stride_h == 1:
+    if stride_w == 1 and stride_h == 1 and dsl_flag == False:
         tiling['AUB_shape'] = None
     _, n_dim, m_dim, _ = tiling.get("block_dim")
     aub_pbuffer = tiling.get("manual_pingpong_buffer").get("AUB_pbuffer")
@@ -905,7 +982,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
     k_bl1_factor = bl1_tiling_k // bl0_tiling_kb // tbe_platform.CUBE_MKN[c_col.dtype]["mac"][0]
     reduce_axis_serial, bl1_at_l0c_axis, al1_at_l0c_axis = _al1_and_bl1_process()
 
-    if stride_h > 1 or stride_w > 1:
+    if stride_h > 1 or stride_w > 1 or dsl_flag:
         a_l1_h_outer = _aub_process()
 
     _reorder_management()
@@ -957,7 +1034,15 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
     (batch_outer, c_ddr_deep_outer, bl1_at_ddr_n_outer, al1_at_ddr_m_outer,
      g_axis, blockidx, blocks) = _multi_core()
 
+    compute_at_buffer = []
+    compute_at_axis = []
+    if dsl_flag:
+        compute_at_buffer.append(a_l1)
+        compute_at_axis.append(a_l1_h_outer)
+
     _do_compute_at()
+    if dsl_flag:
+        _fusion_op_compute_at()
 
     # to correct n_axis inaccurate inference
     def _n_buffer_tile():
@@ -996,4 +1081,127 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
 
     # emit insn
     _emit_insn_process()
+    if dsl_flag:
+        _emit_insn_fusion_op()
     return sch
+
+
+class AutoScheduleDict(dict):
+    """
+    AutoScheduleDict
+    """
+
+    def __init__(self, **kwargs):
+        super(AutoScheduleDict, self).__init__(**kwargs)
+        self.read_only = False
+
+
+class AutoScheduleOp:
+    """
+    AutoScheduleOp
+    """
+
+    def __init__(self, *init_args):
+        if len(init_args) == 1 and isinstance(init_args[0], tvm.tensor.Tensor):
+            res_tensor = init_args[0]
+            self._color_count = 0
+            self._op = []
+            self.body_ops = []
+            self.input_ops = []
+            self.output_ops = []
+            self._res_tensor = res_tensor
+            self._befor_conv_flag = False
+            self.__scrapy_tensor_graph(self._res_tensor)
+            self.__connect_op()
+            self._end_op = self._get_op_by_tensor(self._res_tensor)
+            self._end_op["color"] = self._color_count
+            self.__init_color(self._end_op)
+            self.__analyse_input_output()
+
+    def __split_tensor(self, tensor):
+        tmp_op = AutoScheduleDict()
+        operator = tensor.op
+        if hasattr(operator, "tag"):
+            if operator.tag == "":
+                tmp_op["op"] = operator.name
+            else:
+                tmp_op["op"] = operator.tag
+        if tmp_op["op"].find("|") != -1:
+            str_list = operator.tag.split("|")
+            tmp_op["op"] = str_list[0]
+        if hasattr(tensor, "tag"):
+            tmp_op["op"] = tmp_op["op"] + "_" + tensor.tag
+        tmp_op["dst_buffer"] = tensor
+        tmp_op["src_buffer"] = list(operator.input_tensors)
+
+        if "conv3d_backprop_input_A" in tmp_op["op"]:
+            self._befor_conv_flag = True
+        if self._befor_conv_flag:
+            tmp_op["op"] = tmp_op["op"] + "_Before"
+
+        return tmp_op
+
+    def __scrapy_tensor_graph(self, res_tensor):
+        operation_list = [res_tensor]
+        while operation_list:
+            tmp_operation_list = []
+            for operation in operation_list:
+                tmp_op = self.__split_tensor(operation)
+                self._op.append(tmp_op)
+                for i in tmp_op["src_buffer"]:
+                    i.next = operation
+                    operation.prev = i
+                    tmp_operation_list.append(i)
+
+            operation_list = list(set(tmp_operation_list))
+
+    def __connect_op(self):
+        for lop in self._op:
+            lop["prev_op"] = []
+            lop["next_op"] = []
+
+        for lop in self._op:
+            for src_tensor in lop["src_buffer"]:
+                tmp_op = self._get_op_by_tensor(src_tensor)
+                lop["prev_op"].append(tmp_op)
+                tmp_op["next_op"].append(lop)
+
+    def __init_color(self, start_op):
+        for p_op in start_op["prev_op"]:
+            p_op["color"] = start_op["color"]
+            self.__init_color(p_op)
+
+    def _get_op_by_tensor(self, src_tensor):
+        for i in self._op:
+            if i["dst_buffer"].same_as(src_tensor):
+                return i
+        return None
+
+    def __analyse_input_output(self):
+        input_ops = []
+        output_ops = []
+        body_ops = []
+        input_tensor_name = []
+        body_tensor_name = []
+        for lop in self._op:
+            if not lop["prev_op"]:
+                lop["color"] = -1
+                if lop["dst_buffer"].name not in input_tensor_name:
+                    input_ops.append(lop)
+                    input_tensor_name.append(lop["dst_buffer"].name)
+                else:
+                    continue
+            else:
+                if lop["dst_buffer"].name not in body_tensor_name:
+                    body_ops.append(lop)
+                    body_tensor_name.append(lop["dst_buffer"].name)
+                else:
+                    continue
+                if not lop["next_op"]:
+                    output_ops.append(lop)
+
+        for i in input_ops:
+            i["color"] = -1
+        self.input_ops = input_ops
+        self.output_ops = output_ops
+        self.body_ops = body_ops

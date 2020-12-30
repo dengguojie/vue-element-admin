@@ -223,7 +223,7 @@ class CubeDslPattern:
         return type_c
 
     def generate_c(self,  # pylint: disable=R0914
-                   tensor_a, tensor_b, c_type=None):
+                   tensor_a, tensor_b, c_type=None, tag=""):
         """
         calculate the mad result tensor
 
@@ -336,28 +336,28 @@ class CubeDslPattern:
                               axis_k0)).astype(type_c),
                     axis=[axis_k1, axis_k0]),
                 name="C",
-                tag="mad")
+                tag=tag + "mad")
         elif kernel_d <= stride_d:
             tensor_c = tvm.compute(
                 shape_c,
                 lambda *indices: __conv3d_backprop_input_mad_noverlap(
                     indices, tensor_a, tensor_b),
                 name="C",
-                tag="mad")
+                tag=tag + "mad")
         elif stride_d == 1:
             tensor_c = tvm.compute(
                 shape_c,
                 lambda *indices: __conv3d_backprop_input_mad_stride1(
                     indices, tensor_a, tensor_b),
                 name="C",
-                tag="mad")
+                tag=tag + "mad")
         else:
             tensor_c = tvm.compute(
                 shape_c,
                 lambda *indices: __conv3d_backprop_input_mad(
                     indices, tensor_a, tensor_b),
                 name="C",
-                tag="mad")
+                tag=tag + "mad")
         return tensor_c
 
 
@@ -423,7 +423,7 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
                 dilation))
         return height_out, width_out
 
-    def generate_a(self, feature_map, group_dict):  # pylint: disable=R0914
+    def generate_a(self, feature_map, group_dict, tag=""):  # pylint: disable=R0914
         """
         calculate im2col_fractal tensor
 
@@ -432,6 +432,8 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         feature_map : feature map tensor in the shape of NDC1HWC0
 
         group_dict: the information needed for group convolution, None by default
+
+        tag: the tag of tensor, None by default
 
         Returns
         -------
@@ -465,7 +467,9 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
                                         padding=new_pad,
                                         stride=stride,
                                         compute_dtype=feature_map.dtype,
-                                        dilation=dilation)
+                                        dilation=dilation,
+                                        tag=tag)
+
         a_im2col_fractal_shape = (a_group,
                                   a_batch,
                                   a_deep,
@@ -473,10 +477,10 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
                                   a_c1 * kernel_h * kernel_w,
                                   self._m0,
                                   a_c0)
-        a_col = _im2col_fractal(a_im2col_fractal_shape, a_row_major)
+        a_col = _im2col_fractal(a_im2col_fractal_shape, a_row_major, tag=tag)
         return a_col
 
-    def generate_c(self, tensor_a, tensor_b):  # pylint: disable=W0221
+    def generate_c(self, tensor_a, tensor_b, tag=""):  # pylint: disable=W0221
         """
         calculate convolution output tensor
 
@@ -489,7 +493,7 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         ----------
         tensor_c: convolution output tensor
         """
-        tensor_c = super(ConvDslPattern, self).generate_c(tensor_a, tensor_b)
+        tensor_c = super(ConvDslPattern, self).generate_c(tensor_a, tensor_b, tag=tag)
         row_major = tensor_a.op.input_tensors[0]
         ho_wo = row_major.shape[3].value
         _, _, c_m, _ = list(i.value for i in tensor_c.shape)

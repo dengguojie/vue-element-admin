@@ -61,6 +61,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
         self.m_0, _, _ = tbe_platform.CUBE_MKN["float16"]['mac']
         self.dy_d = 0
         _, self._dilate_d, self._dilate_h, self._dilate_w, _ = dilations
+        self.op_tag = "conv3d_backprop_input_"
 
     def generate_a(self, dy_ddr):  # pylint: disable=R0914
         """
@@ -88,13 +89,13 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                                 lambda i, j, k, l, m, n: tvm.select(k < kernel_cout1,
                                 dy_ddr(i, j, k, l, m, n)),
                                 name="dy_l1_s1",
-                                tag="dy_l1_s1")
+                                tag=self.op_tag + "dy_l1_s1")
         else:
             dy_zero = tvm.compute(
                 shape_dy_filling,
                 lambda *indice: tvm.convert(0).astype(dy_ddr.dtype),
                 name="dy_zero",
-                tag="init_zero")
+                tag=self.op_tag + "dy_zero")
             dy_filling = tvm.compute(
                 shape_dy_filling,
                 lambda batch_idx, dy_deep_idx, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx:
@@ -113,7 +114,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                                    wo_idx,
                                    kernel_cout0_idx)),
                 name="dy_filling",
-                tag="stride_filling",
+                tag=self.op_tag + "dy_filling",
                 attrs={"stride_expand": (self._stride_h, self._stride_w)})
 
         kernel_d, kernel_h, kernel_w = self._kernel_d, self._kernel_h, self._kernel_w
@@ -160,8 +161,8 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                                ho_idx,
                                wo_idx,
                                kernel_cout0_idx],
-                    name="dy_l1_cut",
-                    tag="dy_l1_cut")
+                    name="dy_l1",
+                    tag=self.op_tag + "dy_l1")
 
                 pad_down_after = (pad_down_after + abs(pad_down_after)) // 2
                 pad_right_after = (pad_right_after + abs(pad_right_after)) // 2
@@ -177,7 +178,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                                wo_idx,
                                kernel_cout0_idx],
                     name="dy_l1",
-                    tag="dy_l1")
+                    tag=self.op_tag + "dy_l1")
 
         new_pad = (pad_head_before,
                    pad_tail_after,
@@ -198,9 +199,9 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
         pat_conv = conv3d_dx_utils.ConvDslPattern(kernel_h, kernel_w, new_stride, new_pad, dilate_shape)
 
         if stride_h > 1 or stride_w > 1:
-            dy_col = pat_conv.generate_a(dy_filling_l1, self.group_dict)
+            dy_col = pat_conv.generate_a(dy_filling_l1, self.group_dict, self.op_tag)
         else:
-            dy_col = pat_conv.generate_a(dy_filling, self.group_dict)
+            dy_col = pat_conv.generate_a(dy_filling, self.group_dict, self.op_tag)
 
         return dy_col
 
@@ -239,7 +240,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                            lambda g, d, k1, n1, n0, k0:
                            kernels(g * kernel_d * ckk + d * ckk + k1, n1, n0, k0),
                            name="w_l1",
-                           tag="split_g")
+                           tag=self.op_tag + "w_l1")
 
         shape_w_l0b = (real_g,
                        kernel_d,
@@ -256,7 +257,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                  w_k1_idx // (kernel_h * kernel_w),
                  kernel_cout0_idx, w_k0_idx],
             name="w_col",
-            tag="inverse_trans_dma")
+            tag=self.op_tag + "w_col")
         return w_col
 
     def generate_c(self, dy_col, w_col):  # pylint: disable=W0221,R0914
@@ -279,7 +280,8 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
             c_dtype = "float16"
         dx_col = super(DeConvPattern, self).generate_c(dy_col,
                                                        w_col,
-                                                       c_type=c_dtype)
+                                                       c_type=c_dtype,
+                                                       tag=self.op_tag)
 
         # mad dx shape
         dx_group, dx_batch, dx_deep, dx_c1, dx_hw, dx_c0 = list(i.value for i in dx_col.shape)
@@ -294,7 +296,8 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
             dx_col[dx_cin1_idx // self.cin1_g, dx_batch_idx, dx_deep_idx,
                    dx_cin1_idx - dx_cin1_idx // self.cin1_g * self.cin1_g,
                    dx_hw_idx, dx_cin0_idx].astype("float16"),
-            name="c_ub")
+            name="c_ub",
+            tag=self.op_tag + "c_ub")
 
         # sd>kd,add0
         if self._stride_d >= self._kernel_d:
@@ -310,7 +313,8 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                     tvm.const(0, dtype="float16"),
                     dx_ub[dx_batch_idx, dx_deep_idx,
                           dx_cin1_idx, dx_hw_idx, dx_cin0_idx]),
-                name="dx_filing_zero"
+                name="dx_filing_zero",
+                tag=self.op_tag + "dx_filing_zero"
             )
         else:
             dx_ub = tvm.compute(
@@ -322,7 +326,8 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                     tvm.const(0, dtype="float16"),
                     dx_ub[dx_batch_idx, dx_deep_idx,
                           dx_cin1_idx, dx_hw_idx, dx_cin0_idx]),
-                name="dx_filing_zero"
+                name="dx_filing_zero",
+                tag=self.op_tag + "dx_filing_zero"
             )
 
         dx_ddr = tvm.compute(
@@ -331,7 +336,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
             dx_ub[dx_batch_idx, dx_deep_idx,
                   dx_cin1_idx, dx_hw_idx, dx_cin0_idx],
             name="c_ddr",
-            tag="conv3d_backprop_input",
+            tag="c_ddr",
             attrs={"output_shape": self.output_shape,
                    "stride_d": self._stride_d,
                    'depth_pad': (self._pad_head, self._pad_tail),
@@ -339,4 +344,5 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                                self._kernel_h, self._kernel_w),
                    "kernel_name": self._kernel_name,
                    "group_dict": self.group_dict})
+
         return dx_ddr

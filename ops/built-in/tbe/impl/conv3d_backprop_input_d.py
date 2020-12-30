@@ -17,6 +17,7 @@ conv3d_backprop_input_d
 """
 import te.lang.cce as tbe
 import te.platform as tbe_platform
+from te.platform.fusion_manager import fusion_manager
 from te.lang.cce.te_compute import conv3d_backprop_input_compute as conv3d_bp_dx
 from te.utils import para_check
 from te.utils.error_manager import error_manager_util
@@ -70,6 +71,166 @@ _DATA_SIZE_MAX = 9223372036854775807
 _PADDING_VAILD = [0, 0, 0, 0, 0, 0]
 # align with 16 for chips
 _C0_SIZE = tbe_platform.C0_SIZE
+
+
+def _get_ndhwc_shape(ori_format_filters, ori_shape_filters,
+                     ori_format_out_backprop, ori_shape_out_backprop,
+                     ori_shape_strides, ori_shape_dialtions,
+                     ori_format_res, ori_shape_res):
+    def _ncdhw2ndhwc(shape_ncdhw):
+        shape_ndhwc = [shape_ncdhw[0], shape_ncdhw[2], shape_ncdhw[3], shape_ncdhw[4], shape_ncdhw[1]]
+        return shape_ndhwc
+    
+    if ori_format_filters == "DHWCN":
+        shape_filters = ori_shape_filters
+    elif ori_format_filters == "NDHWC":
+        shape_filters = (ori_shape_filters[1],
+                         ori_shape_filters[2],
+                         ori_shape_filters[3],
+                         ori_shape_filters[4],
+                         ori_shape_filters[0],
+                        )
+    elif ori_format_filters == "NCDHW":
+        shape_filters = (ori_shape_filters[2],
+                         ori_shape_filters[3],
+                         ori_shape_filters[4],
+                         ori_shape_filters[1],
+                         ori_shape_filters[0],
+                        )
+    else:
+        dict_args = {
+            'errCode': 'E60008',
+            'param_name': 'filter',
+            'expected_format_list': '[{}, {}, {}]'
+                                    .format('DHWCN', 'NDHWC', 'NCDHW'),
+            'format': ori_format_filters
+        }
+        raise RuntimeError(dict_args,
+                           error_manager_util.get_error_message(dict_args))
+
+    if ori_format_out_backprop == "NDHWC":
+        shape_out_backprop = list(ori_shape_out_backprop)
+        shape_strides = ori_shape_strides
+        shape_dilations = ori_shape_dialtions
+    elif ori_format_out_backprop == "NCDHW":
+        shape_out_backprop = _ncdhw2ndhwc(ori_shape_out_backprop)
+        shape_strides = _ncdhw2ndhwc(ori_shape_strides)
+        shape_dilations = _ncdhw2ndhwc(ori_shape_dialtions)
+    else:
+        dict_args = {
+            'errCode': 'E60008',
+            'param_name': 'y_backprop',
+            'expected_format_list': '[{}, {}]'.format('NDHWC', 'NCDHW'),
+            'format': ori_format_out_backprop
+        }
+        raise RuntimeError(dict_args,
+                           error_manager_util.get_error_message(dict_args))
+
+    if ori_format_res == "NDHWC":
+        shape_res = ori_shape_res
+    elif ori_format_res == "NCDHW":
+        shape_res = _ncdhw2ndhwc(ori_shape_res)
+    else:
+        dict_args = {
+            'errCode': 'E60008',
+            'param_name': 'y',
+            'expected_format_list': '[{}, {}]'.format('NDHWC', 'NCDHW'),
+            'format': ori_format_res
+        }
+        raise RuntimeError(dict_args,
+                           error_manager_util.get_error_message(dict_args))
+
+    shape_out_backprop[-1] = shape_filters[-1]
+
+    return shape_filters, shape_out_backprop, shape_strides, shape_dilations, shape_res
+
+
+@fusion_manager.register("conv3d_backprop_input")
+def conv3d_backprop_input_fusion_compute(filters, #pylint: disable=R0913,R0914
+                                         out_backprop, y_input, input_sizes, strides,
+                                         pads, dilations=(1, 1, 1, 1, 1), groups=1,
+                                         data_format="NDHWC",
+                                         kernel_name="conv3d_backprop_input"):
+    shape_filter = []
+    for i in filters.op.attrs['ori_shape']:
+        shape_filter.append(i.value)
+    filter_format = filters.op.attrs['ori_format']
+
+    shape_out_backprop_6hd = []
+    for i in out_backprop.shape:
+        shape_out_backprop_6hd.append(i.value)
+    shape_out_backprop = [shape_out_backprop_6hd[0],
+                          shape_out_backprop_6hd[1],
+                          shape_out_backprop_6hd[3],
+                          shape_out_backprop_6hd[4],
+                          shape_out_backprop_6hd[2] * shape_out_backprop_6hd[0]
+                          ]
+    shape_filters, shape_out_backprop, shape_strides, shape_dilations, shape_res = \
+        _get_ndhwc_shape(filter_format,
+                         shape_filter,
+                         "NDHWC",
+                         shape_out_backprop,
+                         strides,
+                         dilations,
+                         data_format,
+                         input_sizes)
+    filter_dtype = filters.op.attrs['data_type'].value
+    out_backprop_dtype = out_backprop.dtype
+    res_dtype = "float16"
+
+    res = check_conv3dbp_input_params(shape_filters,
+                                      shape_out_backprop,
+                                      shape_res,
+                                      shape_strides,
+                                      pads,
+                                      groups,
+                                      shape_dilations,
+                                      filter_dtype,
+                                      out_backprop_dtype,
+                                      res_dtype,
+                                      kernel_name)
+    (shape_filter, shape_out_backprop, input_sizes, strides, pads, dilations,
+     filter_dtype, out_backprop_dtype, res_dtype, kernel_name, group_dict) = res
+
+    dedy_batch, dedy_deep, dedy_h, dedy_w, dedy_channel = shape_out_backprop
+    filter_depth, filter_h, filter_w, filter_channel, filter_batch = shape_filter
+    pads = list(pads)
+
+    shape_dedy = (dedy_batch,
+                  dedy_deep,
+                  util_common.ceil(dedy_channel, _C0_SIZE),
+                  dedy_h,
+                  dedy_w,
+                  _C0_SIZE)
+
+    real_g = group_dict["real_g"]
+    cin1_g = group_dict["cin1_g"]
+    cout_g = group_dict["cout_g"]
+
+    shape_filter_frac = (real_g * filter_depth * cin1_g * filter_h * filter_w,
+                         cout_g // _C0_SIZE,
+                         _C0_SIZE,
+                         _C0_SIZE)
+    shape_filter_ncdhw = [filter_batch,
+                          filter_channel,
+                          filter_depth,
+                          filter_h,
+                          filter_w]
+
+    para_dict = {"strides": strides,
+                 "pads": pads,
+                 "dilations": dilations,
+                 "res_dtype": res_dtype,
+                 "kernel_name": kernel_name,
+                 "group_dict": group_dict}
+
+    dedx = conv3d_bp_dx.conv3d_dx(filter=filters,
+                                  out_backprop=out_backprop,
+                                  filter_size=shape_filter_ncdhw,
+                                  input_size=input_sizes,
+                                  para_dict=para_dict)
+
+    return dedx
 
 
 @para_check.check_op_params(
@@ -128,15 +289,12 @@ def conv3d_backprop_input_d(filters, # pylint: disable=R0913,R0914
     -------
     None
     """
-    def _ncdhw2ndhwc(shape_ncdhw):
-        shape_ndhwc = (shape_ncdhw[0], shape_ncdhw[2], shape_ncdhw[3], shape_ncdhw[4], shape_ncdhw[1])
-        return shape_ndhwc
-
+    
     ori_shape_filters = filters.get("ori_shape")
     ori_shape_out_backprop = out_backprop.get("ori_shape")
     ori_shape_res = input_sizes
     ori_shape_strides = strides
-    ori_shape_dialtions = dilations
+    ori_shape_dilations = dilations
 
     filters_dtype = filters.get("dtype")
     out_backprop_dtype = out_backprop.get("dtype")
@@ -146,65 +304,16 @@ def conv3d_backprop_input_d(filters, # pylint: disable=R0913,R0914
     ori_format_out_backprop = data_format
     ori_format_res = data_format
 
-    if ori_format_filters == "DHWCN":
-        shape_filters = ori_shape_filters
-    elif ori_format_filters == "NDHWC":
-        shape_filters = (ori_shape_filters[1],
-                         ori_shape_filters[2],
-                         ori_shape_filters[3],
-                         ori_shape_filters[4],
-                         ori_shape_filters[0],
-                        )
-    elif ori_format_filters == "NCDHW":
-        shape_filters = (ori_shape_filters[2],
-                         ori_shape_filters[3],
-                         ori_shape_filters[4],
-                         ori_shape_filters[1],
-                         ori_shape_filters[0],
-                        )
-    else:
-        dict_args = {
-            'errCode': 'E60008',
-            'param_name': 'filter',
-            'expected_format_list': '[{}, {}, {}]'
-                                    .format('DHWCN', 'NDHWC', 'NCDHW'),
-            'format': ori_format_filters
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
-
-    if ori_format_out_backprop == "NDHWC":
-        shape_out_backprop = ori_shape_out_backprop
-        shape_strides = ori_shape_strides
-        shape_dilations = ori_shape_dialtions
-    elif ori_format_out_backprop == "NCDHW":
-        shape_out_backprop = _ncdhw2ndhwc(ori_shape_out_backprop)
-        shape_strides = _ncdhw2ndhwc(ori_shape_strides)
-        shape_dilations = _ncdhw2ndhwc(ori_shape_dialtions)
-    else:
-        dict_args = {
-            'errCode': 'E60008',
-            'param_name': 'y_backprop',
-            'expected_format_list': '[{}, {}]'.format('NDHWC', 'NCDHW'),
-            'format': ori_format_out_backprop
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
-
-    if ori_format_res == "NDHWC":
-        shape_res = ori_shape_res
-    elif ori_format_res == "NCDHW":
-        shape_res = _ncdhw2ndhwc(ori_shape_res)
-    else:
-        dict_args = {
-            'errCode': 'E60008',
-            'param_name': 'y',
-            'expected_format_list': '[{}, {}]'.format('NDHWC', 'NCDHW'),
-            'format': ori_format_res
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
-
+    shape_filters, shape_out_backprop, shape_strides, shape_dilations, shape_res = \
+        _get_ndhwc_shape(ori_format_filters,
+                         ori_shape_filters,
+                         ori_format_out_backprop,
+                         ori_shape_out_backprop,
+                         ori_shape_strides,
+                         ori_shape_dilations,
+                         ori_format_res,
+                         ori_shape_res)
+    
     _conv3d_backprop_input_cce(shape_filters,
                               shape_out_backprop,
                               shape_res,
@@ -456,7 +565,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     _, stride_d, stride_h, stride_w, _ = strides
 
     group_dict = util_common.calculate_group(fmap_channel,
-                                             dedy_channel, groups, _C0_SIZE, _C0_SIZE)
+                                             filter_batch, groups, _C0_SIZE, _C0_SIZE)
 
     filter_h_dilation = (filter_h - 1) * dilation_h + 1
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
@@ -527,8 +636,8 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     _check_attr_range("stride's H", stride_h, _STRIDE_HW_MIN, _STRIDE_HW_MAX)
     _check_attr_range("stride's W", stride_w, _STRIDE_HW_MIN, _STRIDE_HW_MAX)
     _check_attr_range("stride's H*W",
-                      stride_h*stride_w, _STRIDE_HW_MIN, _STRIDE_SIZE_MAX)
-    _check_attr_range("stride's H*W*D", stride_h*stride_w*stride_d,
+                      stride_h * stride_w, _STRIDE_HW_MIN, _STRIDE_SIZE_MAX)
+    _check_attr_range("stride's H*W*D", stride_h * stride_w * stride_d,
                       _STRIDE_HW_MIN, _STRIDE_SIZE_HWD_MAX)
 
     # dilation value limit

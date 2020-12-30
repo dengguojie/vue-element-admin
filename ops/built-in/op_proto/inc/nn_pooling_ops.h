@@ -223,6 +223,83 @@ REG_OP(AvgPool3DD)
     .ATTR(data_format, String, "NDHWC")
     .OP_END_FACTORY_REG(AvgPool3DD)
 
+/**
+* @brief Computes AvgPool3DGrad function.
+
+* @par Inputs:
+* @li grads: An NDHWC tensor of type int32.
+* @li orig_input_shape: An NDHWC tensor of type float16, float32, or double.
+
+* @par Attributes:
+* @li ksize: List of ints that has length 1, 3 or 5. The size of the window for each dimension of the input tensor.
+* @li strides:List of ints that has length 1, 3 or 5. The stride of the sliding window for each dimension of the input tensor.
+* @li pads: List of ints, implicit zero paddings on both sides of the input.
+* @li ceil_mode: When true, will use ceil instead of floor in the formula to compute the output shape.
+* @li count_include_pad: When true, will include the zero-padding in the averaging calculation.
+* @li divisor_override: if specified, it will be used as divisor, otherwise size of the pooling region will be used.
+* @li data_format: A string, format of input data . 
+
+* @par Outputs:
+* @output: A mutable tensor with the same shape and type as "orig_input".
+
+* @par Third-party framework compatibility
+* @li Compatible with the TensorFlow operator AvgPoolGrad.
+*/
+
+REG_OP(AvgPool3DGrad)
+    .INPUT(grads, TensorType({DT_INT32}))
+    .INPUT(orig_input_shape, TensorType({DT_FLOAT16, DT_FLOAT32, DT_DOUBLE}))
+    .OUTPUT(output, TensorType({DT_FLOAT16, DT_FLOAT32, DT_DOUBLE}))
+    .REQUIRED_ATTR(ksize, ListInt)
+    .REQUIRED_ATTR(strides, ListInt)
+    .REQUIRED_ATTR(pads, ListInt)
+    .ATTR(ceil_mode, Bool, false)
+    .ATTR(count_include_pad, Bool, true)
+    .ATTR(divisor_override, Int, 0)
+    .ATTR(data_format, String, "NDHWC")
+    .OP_END_FACTORY_REG(AvgPool3DGrad)
+
+/**
+* @brief Performs average pooling on the input.
+
+* @par Inputs:
+* @li grads: An NDHWC tensor of type float16.
+* @li filter: An optional tensor of type float16, fractal_z_3d layout.
+* @li multiplier: An optional tensor of float16.
+
+* @par Attributes:
+* @li orig_input_shape: List of ints that has length 5. The size of the window for each dimension of the input tensor.
+* @li ksize: List of ints that has length 3. The size of the window for each dimension of the input tensor.
+* @li strides:List of ints that has length 3. The stride of the sliding window for each dimension of the input tensor.
+* @li pads: List of ints, implicit zero paddings on both sides of the input.
+* @li ceil_mode: When true, will use ceil instead of floor in the formula to compute the output shape.
+* @li count_include_pad: When true, will include the zero-padding in the averaging calculation.
+* @li divisor_override: if specified, it will be used as divisor, otherwise size of the pooling region will be used.
+* @li data_format: A string, format of input data . \n
+
+* @par Outputs:
+* @output: The average pooled output tensor . \n
+
+* @attention Constraints:
+* @li "ksize" is in the range [1, 255]. "strides" is in the range [1, 63]
+
+* @par Third-party framework compatibility
+* Compatible with the TensorFlow operator AvgPool3DGradD.
+*/
+REG_OP(AvgPool3DGradD)
+    .INPUT(grads, TensorType({DT_FLOAT16}))
+    .OPTIONAL_INPUT(filter, TensorType({DT_FLOAT16}))
+    .OPTIONAL_INPUT(multiplier, TensorType({DT_FLOAT16}))
+    .OUTPUT(output, TensorType({DT_FLOAT16, DT_FLOAT32, DT_DOUBLE}))
+    .REQUIRED_ATTR(orig_input_shape, ListInt)
+    .REQUIRED_ATTR(ksize, ListInt)
+    .REQUIRED_ATTR(strides, ListInt)
+    .REQUIRED_ATTR(pads, ListInt)
+    .ATTR(ceil_mode, Bool, false)
+    .ATTR(count_include_pad, Bool, true)
+    .ATTR(divisor_override, Int, 0)
+    .ATTR(data_format, String, "NDHWC")
+    .OP_END_FACTORY_REG(AvgPool3DGradD)
 
 /**
 *@brief Performs max_pool_ext2 on the input . \n

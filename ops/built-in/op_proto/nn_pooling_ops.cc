@@ -36,6 +36,15 @@
 #include "graph/debug/ge_attr_define.h"
 
 namespace ge {
+
+namespace {
+  constexpr size_t kAvgpool3DGradOriShapeDim = 5;
+  constexpr size_t kAvgpool3DGradKsizeDim = 3;
+  constexpr size_t kAvgpool3DGradStridesDim = 3;
+  constexpr size_t kAvgpool3DGradPadsDim = 6;
+  constexpr size_t kAvgpool3DGradShapeDim = 6;
+}
+
 // Obtains the value of the attr.
 static std::vector<int64_t> GetAttrValue(const ge::Operator& op, const std::string& key_name) {
   std::vector<int64_t> list;
@@ -1987,6 +1996,208 @@ VERIFY_FUNC_REG(AvgPool3DD, AvgPool3DDVerify);
 INFER_DATA_SLICE_FUNC_REG(AvgPool3DD, AvgPool3DDInferDataSlice);
 // ----------------AvgPool3D-------------------
 
+// ----------------AvgPool3DGradD-------------------
+IMPLEMT_VERIFIER(AvgPool3DGradD, AvgPool3DGradDVerify) {
+  std::vector<int64_t> orig_input_shape = GetAttrValue(op, "orig_input_shape");
+  if (orig_input_shape.size() != kAvgpool3DGradOriShapeDim) {
+    OP_LOGE(op.GetName().c_str(), "orig_input_shape length is not %zu.", kAvgpool3DGradOriShapeDim);
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> ksize = GetAttrValue(op, "ksize");
+  if (ksize.size() != kAvgpool3DGradKsizeDim) {
+    OP_LOGE(op.GetName().c_str(), "ksize size is not %zu.", kAvgpool3DGradKsizeDim);
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> strides = GetAttrValue(op, "strides");
+  if (strides.size() != kAvgpool3DGradStridesDim) {
+    OP_LOGE(op.GetName().c_str(), "strides size is not %zu.", kAvgpool3DGradStridesDim);
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> padding;
+  if (op.GetAttr("pads", padding) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Get pads failed!");
+    return GRAPH_FAILED;
+  }
+  if (padding.size() != kAvgpool3DGradPadsDim) {
+    OP_LOGE(op.GetName().c_str(), "pads size is not %zu.", kAvgpool3DGradPadsDim);
+    return GRAPH_FAILED;
+  }
+
+  std::string data_format;
+  if (op.GetAttr("data_format", data_format) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "get attr data_format failed.");
+    return GRAPH_FAILED;
+  }
+  if (data_format != "NDHWC" && data_format != "NCDHW") {
+    OP_LOGE(op.GetName().c_str(), "Attr data_format(%s) only support NDHWC.", data_format.c_str());
+    return GRAPH_FAILED;
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(AvgPool3DGradD, AvgPool3DGradDInferShape) {
+  std::vector<int64_t> orig_input_shape = GetAttrValue(op, "orig_input_shape");
+  if (orig_input_shape.size() != kAvgpool3DGradOriShapeDim) {
+    OP_LOGE(op.GetName().c_str(), "Get orig_input_shape failed!");
+    return GRAPH_FAILED;
+  }
+  TensorDesc grads_desc = op.GetInputDesc("grads");
+
+  std::vector<int64_t> ksize = GetAttrValue(op, "ksize");
+  if (!CheckListEmpty(op.GetName(), ksize, "ksize")) {
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> strides = GetAttrValue(op, "strides");
+  if (!CheckListEmpty(op.GetName(), strides, "strides")) {
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> pads;
+  if (op.GetAttr("pads", pads) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Get pads failed!");
+    return GRAPH_FAILED;
+  }
+
+  std::string data_format;
+  if (op.GetAttr("data_format", data_format) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Get data_format failed!");
+    return GRAPH_FAILED;
+  }
+
+  TensorDesc mean_desc = op.GetInputDesc("multiplier");
+  if (data_format == "NDHWC") {
+    mean_desc.SetOriginFormat(FORMAT_NDHWC);
+    mean_desc.SetFormat(FORMAT_NDHWC);
+  } else if (data_format == "NCDHW") {
+    mean_desc.SetOriginFormat(FORMAT_NCDHW);
+    mean_desc.SetFormat(FORMAT_NCDHW);
+  } else {
+    OP_LOGE(op.GetName().c_str(), "Attr data_format(%s) only support NDHWC or NCDHW", data_format.c_str());
+    return GRAPH_FAILED;
+  }
+
+  Shape grads_shape = grads_desc.GetShape();
+  DataType grads_dtype = grads_desc.GetDataType();
+  mean_desc.SetShape(grads_shape);
+  mean_desc.SetOriginShape(grads_shape);
+  mean_desc.SetDataType(grads_dtype);
+  if (op.UpdateInputDesc("multiplier", mean_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Fail to update input multiplier!");
+    return GRAPH_FAILED;
+  }
+
+  string::size_type c_position = data_format.find("C");
+  if (c_position == std::string::npos) {
+    return GRAPH_FAILED;
+  }
+  vector<int64_t> kernel_shape = {ksize.at(2), ksize.at(0), ksize.at(1), 1,
+                                  orig_input_shape.at(c_position)};
+
+  TensorDesc filter_desc = op.GetInputDesc("filter");
+  filter_desc.SetShape(Shape(kernel_shape));
+  filter_desc.SetOriginShape(Shape(kernel_shape));
+  filter_desc.SetOriginFormat(FORMAT_DHWCN);
+  filter_desc.SetFormat(FORMAT_DHWCN);
+  filter_desc.SetDataType(grads_dtype);
+  if (op.UpdateInputDesc("filter", filter_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Fail to update input:filter desc!");
+    return GRAPH_FAILED;
+  }
+
+  TensorDesc output_desc = op.GetOutputDesc("output");
+  output_desc.SetShape(Shape(orig_input_shape));
+  output_desc.SetDataType(grads_dtype);
+  if (op.UpdateOutputDesc("output", output_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Fail to update output:output desc!");
+    return GRAPH_FAILED;
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+VERIFY_FUNC_REG(AvgPool3DGradD, AvgPool3DGradDVerify);
+INFER_FUNC_REG(AvgPool3DGradD, AvgPool3DGradDInferShape);
+
+// ----------------AvgPool3DGrad-------------------
+IMPLEMT_VERIFIER(AvgPool3DGrad, AvgPool3DGradVerify) {
+  Tensor orig_input_shape_tensor;
+  if (op.GetInputConstData("orig_input_shape", orig_input_shape_tensor) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Get constdata failed");
+    return GRAPH_FAILED;
+  }
+
+  DataType dtype = op.GetInputDesc("orig_input_shape").GetDataType();
+  std::vector<int64_t> orig_input_shape;
+  GetConstValue(op, orig_input_shape_tensor, dtype, orig_input_shape);
+  if (orig_input_shape.size() != kAvgpool3DGradOriShapeDim) {
+    OP_LOGE(op.GetName().c_str(), "Input:orig_input_shape has an incorreted length");
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> ksize = GetAttrValue(op, "ksize");
+  if (ksize.size() != kAvgpool3DGradKsizeDim) {
+    OP_LOGE(op.GetName().c_str(), "Attr:ksize has an incorreted length");
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> strides = GetAttrValue(op, "strides");
+  if (strides.size() != kAvgpool3DGradStridesDim) {
+    OP_LOGE(op.GetName().c_str(), "Attr:strides has an incorreted length");
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> padding;
+  if (op.GetAttr("pads", padding) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Get pads failed!");
+    return GRAPH_FAILED;
+  }
+  if (padding.size() != kAvgpool3DGradPadsDim) {
+    OP_LOGE(op.GetName().c_str(), "Attr:pads has an incorreted length");
+    return GRAPH_FAILED;
+  }
+
+  std::string data_format;
+  if (op.GetAttr("data_format", data_format) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "get attr data_format failed.");
+    return GRAPH_FAILED;
+  }
+  if (data_format != "NDHWC" && data_format != "NCDHW") {
+    OP_LOGE(op.GetName().c_str(), "Attr data_format(%s) only support NDHWC or NCDHW.", data_format.c_str());
+    return GRAPH_FAILED;
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(AvgPool3DGrad, AvgPool3DGradInferShape) {
+  Tensor orig_input_shape_tensor;
+  if (op.GetInputConstData("orig_input_shape", orig_input_shape_tensor) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Get constdata failed");
+    return GRAPH_FAILED;
+  }
+
+  DataType dtype = op.GetInputDesc("orig_input_shape").GetDataType();
+  std::vector<int64_t> orig_input_shape;
+  GetConstValue(op, orig_input_shape_tensor, dtype, orig_input_shape);
+  DataType output_dtype = op.GetInputDesc("grads").GetDataType();
+  TensorDesc output_desc = op.GetOutputDesc("output");
+  output_desc.SetShape(Shape(orig_input_shape));
+  output_desc.SetDataType(output_dtype);
+  if (op.UpdateOutputDesc("output", output_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    return GRAPH_FAILED;
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(AvgPool3DGrad, AvgPool3DGradInferShape);
+VERIFY_FUNC_REG(AvgPool3DGrad, AvgPool3DGradVerify);
 
 static void UpdateDimAndRange(const int64_t& ksize, const int64_t& strides,
                               int64_t& dim_size, std::pair<int64_t, int64_t>& dim_range) {
