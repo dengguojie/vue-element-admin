@@ -123,6 +123,7 @@ class PatternFusionUtil {
                                      const int32_t &index, std::atomic<uint64_t> &name_id);
   static ge::NodePtr InsertOutputNode(ge::ComputeGraph &graph, ge::NodePtr &src_node, const string &op_type,
                                       const int32_t &index, std::atomic<uint64_t> &name_id);
+  static Status LinkControlAnchorForConst(ge::NodePtr oneConstNode, ge::NodePtr fusionNode);
 };
 
 }  // namespace fe
