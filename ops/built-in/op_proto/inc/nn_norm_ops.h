@@ -160,20 +160,20 @@ REG_OP(SigmoidCrossEntropyWithLogits)
     .OP_END_FACTORY_REG(SigmoidCrossEntropyWithLogits)
 
 /**
-*@brief Computes the sigmoid cross entropy loss of "predict" and "target" . \n
+*@brief Computes the sigmoid cross entropy loss of "predict" and "target".
 
 *@par Inputs:
 * four inputs, including:
 *@li predict: A multi-dimensional Tensor of type float16 or float32, specifying the predictive value.
-*@li target: A multi-dimensional Tensor of type float16 or float32, specifying the target value . \n
-*@li weight: An multi-dimensional Tensor, specifying the weight value. \n
+*@li target: A multi-dimensional Tensor of type float16 or float32, specifying the target value.
+*@li weight: An multi-dimensional Tensor, specifying the weight value.
 *@li pos_weight: An multi-dimensional Tensor, specifying the pos weight value. \n
 
 *@par Attributes:
-*reduction: A character string from "none", "mean", and "sum", specifying the reduction type to be applied to the output. Defaults to "mean" . \n
+*reduction: A character string from "none", "mean", and "sum", specifying the reduction type to be applied to the output. Defaults to "mean". \n
 
 *@par Outputs:
-*loss: Sigmoid cross entropy between the predictive value and target value. Has the same dimensions as "predict" . \n
+*loss: Sigmoid cross entropy between the predictive value and target value. Has the same dimensions as "predict". \n
 
 *@par Third-party framework compatibility
 * Compatible with PyTorch operator BCEWithLogitsLoss.
