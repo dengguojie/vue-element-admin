@@ -23,7 +23,7 @@ from te.utils import shape_util
 # define a scalar, value = -(2**16 - 1)
 SCALAR_MIN_FP16 = -(2 ** 16 - 1)
 # define a scalar, value = -(2**32 - 1)
-SCALAR_MIN_FP32 = -(2 ** 31 - 1)
+SCALAR_MIN_FP32 = -3402823424.0
 # max set_mask_int64 value
 MAX_MASK_INT64 = 2 ** 64 - 1
 # max segment len
