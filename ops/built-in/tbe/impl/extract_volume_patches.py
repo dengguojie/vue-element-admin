@@ -111,8 +111,8 @@ def _check_shape_and_format_vailded(input_x, output_y, ksizes, strides, padding,
             _, _, stride_d, stride_h, stride_w = strides
             fmap_n, fmap_c, fmap_d, fmap_h, fmap_w = shape_x
             shape_x = [fmap_n, fmap_d, fmap_h, fmap_w, fmap_c]
-            ksizes == [1, kernel_d, kernel_h, kernel_w, 1]
-            strides == [1, stride_d, stride_h, stride_w, 1]
+            ksizes = [1, kernel_d, kernel_h, kernel_w, 1]
+            strides = [1, stride_d, stride_h, stride_w, 1]
     elif len(ksizes) != 5:
         error_manager_vector.raise_err_input_param_range_invalid(kernel_name, 'ksizes', 5, 5, len(ksizes))
     else:

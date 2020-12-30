@@ -45,6 +45,31 @@ ut_case = OpUT("ExtractVolumePatches")
 #     "expect": "success"
 # }
 
+case_small_shape_same_aligned_fp16_ncdhw = {
+    "params":
+        [
+            {
+                "shape": (1, 3, 1, 3, 3, 16),
+                "format": "NDC1HWC0",
+                "dtype": "float16",
+                "ori_shape": (1, 16, 3, 3, 3),
+                "ori_format": "NCDHW"
+            },
+            {
+                "shape": (1, 3, 8, 3, 3, 16),
+                "format": "NDC1HWC0",
+                "dtype": "float16",
+                "ori_shape": (1, 128, 3, 3, 3),
+                "ori_format": "NCDHW"
+            },
+            (1, 1, 2, 2, 2),
+            (1, 1, 1, 1, 1),
+            "SAME"
+        ],
+    "case_name": 'test_extract_volume_patches_small_shape_same_aligned_fp16_ncdhw',
+    "expect": "success"
+}
+
 case_small_shape_same_not_aligned_fp16 = {
     "params":
         [
@@ -146,6 +171,7 @@ case_big_shape_same_howo_aligned_fp16 = {
 }
 
 # ut_case.add_case(["Ascend910", "Ascend310"], case_small_shape_same_not_aligned_uint8)
+ut_case.add_case(["Ascend910", "Ascend310"], case_small_shape_same_aligned_fp16_ncdhw)
 ut_case.add_case(["Ascend910", "Ascend310"], case_small_shape_same_not_aligned_fp16)
 ut_case.add_case(["Ascend910", "Ascend310"], case_small_shape_same_aligned_multi_batch_fp16)
 ut_case.add_case(["Ascend910", "Ascend310"], case_medium_shape_same_howo_not_aligned_fp16)
