@@ -394,7 +394,7 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddHTransData(ge::NodePtr dynamicGRUGrad
 
   // output
   vector<int64_t> dstDims = {t_size, nzHiddenDim, nzBatch, 16, 16};
-  AddOutputNodeDesc(transDataDesc, "trans_dst", dstDims, inputHType, ge::FORMAT_FRACTAL_NZ);
+  AddOutputNodeDesc(transDataDesc, "trans_dst", dstDims, inputTensorDescH.GetDataType(), ge::FORMAT_FRACTAL_NZ);
 
   // attr
   ge::AttrUtils::SetStr(transDataDesc, "src_format", "ND");
@@ -455,7 +455,7 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddDwhTransData(ge::NodePtr dynamicGRUGr
   transDataDesc->AddInputDesc("trans_src", inputTensorDescInitH);
   // output
   vector<int64_t> dstDims = {1, nzHiddenDim, nzBatch, 16, 16};
-  AddOutputNodeDesc(transDataDesc, "trans_dst", dstDims, inputHType, ge::FORMAT_FRACTAL_NZ);
+  AddOutputNodeDesc(transDataDesc, "trans_dst", dstDims, inputTensorDescInitH.GetDataType(), ge::FORMAT_FRACTAL_NZ);
 
   // attr
   ge::AttrUtils::SetStr(transDataDesc, "src_format", "ND");
@@ -785,20 +785,10 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddReduceSumNode(ge::NodePtr dynamicGRUG
   // input
   ge::GeTensorDesc inputTensorDesc = inputNode->GetOpDesc()->GetOutputDesc(anchorIndex).Clone();
   reduceSumDesc->AddInputDesc("input_" + nodeName, inputTensorDesc);
-  
-  // gen output dims
-  vector<int64_t> outputDim = inputTensorDesc.GetShape().GetDims();
-  for (int64_t i: axis) {
-    outputDim[i] = 1;
-  }
 
   // output
   ge::GeTensorDesc outputTensorDesc = dynamicGRUGradNode->GetOpDesc()->GetOutputDesc(OUTPUT_INDEX[indexName]).Clone();
   // no need to trans data while reduce 3 axis
-  if (axis.size() != 2) {
-    outputTensorDesc.SetFormat(inputTensorDesc.GetFormat());
-    outputTensorDesc.SetShape(GeShape(outputDim));
-  }
   reduceSumDesc->AddOutputDesc("output_" + nodeName, outputTensorDesc);
 
   // attr
@@ -817,33 +807,6 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddReduceSumNode(ge::NodePtr dynamicGRUG
     ge::GraphUtils::AddEdge(reduceSumNode->GetOutDataAnchor(0), inAnchorPtr);
   }
   return reduceSumNode;
-}
-
-ge::NodePtr DynamicGRUV2GradFusionPass::AddNzTransDataNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr inputNode,
-                                                           int anchorIndex, const string& nodeName,
-                                                           ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes,
-                                                           bool& failStatus) {
-  // create desc
-  ge::OpDescPtr transDataDesc = std::make_shared<ge::OpDesc>(
-      dynamicGRUGradNode->GetName() + "GRUWeightGrad/" + nodeName + "/TransData", "TransData");
-
-  // input
-  ge::GeTensorDesc inputTensorDesc = inputNode->GetOpDesc()->GetOutputDesc(anchorIndex).Clone();
-  transDataDesc->AddInputDesc("trans_src", inputTensorDesc);
-
-  vector<int64_t> dstDims = {t_size, batch, 3 * hidden_dim};
-  AddOutputNodeDesc(transDataDesc, "trans_dst", dstDims, inputHType, ge::FORMAT_ND);
-
-  // attr
-  ge::AttrUtils::SetStr(transDataDesc, "src_format", "FRACTAL_NZ");
-  ge::AttrUtils::SetStr(transDataDesc, "dst_format", "ND");
-
-  // create node
-  ge::NodePtr transNode = AddNewNode(graph, transDataDesc, newNodes, failStatus);
-
-  // Edge
-  ge::GraphUtils::AddEdge(inputNode->GetOutDataAnchor(anchorIndex), transNode->GetInDataAnchor(0));
-  return transNode;
 }
 
 ge::NodePtr DynamicGRUV2GradFusionPass::AddTReduceSumNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr inputNode,
@@ -920,8 +883,10 @@ Status DynamicGRUV2GradFusionPass::AddDbReduceSumNode(ge::NodePtr gruV2GradNode,
   bool isFailure = false;
   vector<int64_t> reduceDbAxis{2, 3};
   if (t_size == 1) {
-    // {1, 3 * nzHiddenDim, nzBatch, 16, 16}
-    AddReduceSumNode(gruV2GradNode, dbxNode, anchorOutputIndex, reduceDbAxis, "dbx", "db_input",
+    // NZ {1, 3 * nzHiddenDim, nzBatch, 16, 16}
+    // ND {1, batch, 3*hidden}
+    vector<int64_t> reduceDbxAxis{1};
+    AddReduceSumNode(gruV2GradNode, dbxNode, anchorOutputIndex, reduceDbxAxis, "dbx", "db_input",
                      graph, newNodes, isFailure);
     FUSION_PASS_CHECK(isFailure, OP_LOGE(FUSED_OP_TYPE.c_str(), "AddDbxReduceSumNode:check failed, fusion failed."),
                       return FAILED);
