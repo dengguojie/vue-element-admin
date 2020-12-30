@@ -154,6 +154,7 @@ Status Conv2DbpFilterMulFusionPass::AddAssit(ge::ComputeGraph& graph,
     // create and set assitDesc
     ge::GeTensorDesc assitDesc;
     ge::GeShape assitShapeOrigin(inDimInfo);
+    assitDesc.SetFormat(inputDesc0OriginFormat);
     assitDesc.SetOriginFormat(inputDesc0OriginFormat);
     assitDesc.SetShape(assitShapeOrigin);
     assitDesc.SetOriginShape(assitShapeOrigin);

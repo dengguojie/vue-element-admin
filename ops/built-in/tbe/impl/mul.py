@@ -192,7 +192,7 @@ def op_select_format(x, y, output, kernel_name="mul"):
                     format_list.append("FRACTAL_Z")
             if list(shape_x) == list(shape_y) and -1 not in shape_x:
                 format_list.append("NC1HWC0")
-            if format_x == format_y == "FRACTAL_Z" and list(shape_x) == list(shape_y):
+            if format_x == format_y and list(shape_x) == list(shape_y):
                 format_list.append("FRACTAL_Z")
 
         for dtype in dtype_list:
