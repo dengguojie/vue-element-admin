@@ -56,10 +56,8 @@ def check_supported(x, segment_ids, y, num_segments, kernel_name="unsorted_segme
         return False
     total_ub_size = (num_segments + first_shape) * BLOCK_LENGTH + (
         (BLOCK_LENGTH // 2 - first_shape % (BLOCK_LENGTH // 4)) + first_shape) * (BLOCK_LENGTH // 8)
+    # not supported in aicore now
     if total_ub_size > UB_SIZE_MAX // 2:
-        error_manager_vector.raise_err_specific_reson(
-            kernel_name, "the memory usage is greater than UB_SIZE_MAX when num_segments=%d and shape[0]=%d" %
-            (num_segments, shape[0]))
         return False
     return True
 
