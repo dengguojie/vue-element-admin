@@ -87,44 +87,44 @@ Status SingleBatchNormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
 
   // add inputs for bnreduce
   ge::GeTensorDesc reduce_input_tensor1 = batchNormNode->GetOpDesc()->GetInputDesc(0);
-  FUSION_PASS_CHECK(newReduceOpdesc->AddInputDesc(reduce_input_tensor1) != SUCCESS,
+  FUSION_PASS_CHECK(newReduceOpdesc->AddInputDesc("x", reduce_input_tensor1) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add input failed."), return FAILED);
 
   // add inputs for bnupdatev3
   ge::GeTensorDesc update_input_tensor1 = batchNormNode->GetOpDesc()->GetInputDesc(0);
-  FUSION_PASS_CHECK(newUpdateOpdesc->AddInputDesc(update_input_tensor1) != SUCCESS,
+  FUSION_PASS_CHECK(newUpdateOpdesc->AddInputDesc("x", update_input_tensor1) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add input tensor0 failed."), return FAILED);
 
   ge::GeTensorDesc update_input_tensor2 = batchNormNode->GetOpDesc()->GetInputDesc(1);
-  FUSION_PASS_CHECK(newUpdateOpdesc->AddInputDesc(update_input_tensor2) != SUCCESS,
+  FUSION_PASS_CHECK(newUpdateOpdesc->AddInputDesc("sum", update_input_tensor2) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add input tensor1 failed."), return FAILED);
-  FUSION_PASS_CHECK(newUpdateOpdesc->AddInputDesc(update_input_tensor2) != SUCCESS,
+  FUSION_PASS_CHECK(newUpdateOpdesc->AddInputDesc("square_sum", update_input_tensor2) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add input tensor2 failed."), return FAILED);
-  FUSION_PASS_CHECK(newUpdateOpdesc->AddInputDesc(update_input_tensor2) != SUCCESS,
+  FUSION_PASS_CHECK(newUpdateOpdesc->AddInputDesc("scale", update_input_tensor2) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add input tensor3 failed."), return FAILED);
-  FUSION_PASS_CHECK(newUpdateOpdesc->AddInputDesc(update_input_tensor2) != SUCCESS,
+  FUSION_PASS_CHECK(newUpdateOpdesc->AddInputDesc("offset", update_input_tensor2) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add input tensor4 failed."), return FAILED);
 
   // add output for bnreduce
   ge::GeTensorDesc reduce_tensor1 = batchNormNode->GetOpDesc()->GetOutputDesc(1);
-  FUSION_PASS_CHECK(newReduceOpdesc->AddOutputDesc(reduce_tensor1) != SUCCESS,
+  FUSION_PASS_CHECK(newReduceOpdesc->AddOutputDesc("sum", reduce_tensor1) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add output tensor0 failed."), return FAILED);
-  FUSION_PASS_CHECK(newReduceOpdesc->AddOutputDesc(reduce_tensor1) != SUCCESS,
+  FUSION_PASS_CHECK(newReduceOpdesc->AddOutputDesc("square_sum", reduce_tensor1) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add output tensor1 failed."), return FAILED);
 
   // add output for bnupdate
   ge::GeTensorDesc update_tensor1 = batchNormNode->GetOpDesc()->GetOutputDesc(0);
-  FUSION_PASS_CHECK(newUpdateOpdesc->AddOutputDesc(update_tensor1) != SUCCESS,
+  FUSION_PASS_CHECK(newUpdateOpdesc->AddOutputDesc("y", update_tensor1) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add output tensor0 failed."), return FAILED);
 
   ge::GeTensorDesc update_tensor2 = batchNormNode->GetOpDesc()->GetOutputDesc(1);
-  FUSION_PASS_CHECK(newUpdateOpdesc->AddOutputDesc(update_tensor2) != SUCCESS,
+  FUSION_PASS_CHECK(newUpdateOpdesc->AddOutputDesc("batch_mean", update_tensor2) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add output tensor1 failed."), return FAILED);
-  FUSION_PASS_CHECK(newUpdateOpdesc->AddOutputDesc(update_tensor2) != SUCCESS,
+  FUSION_PASS_CHECK(newUpdateOpdesc->AddOutputDesc("batch_variance", update_tensor2) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add output tensor2 failed."), return FAILED);
-  FUSION_PASS_CHECK(newUpdateOpdesc->AddOutputDesc(update_tensor2) != SUCCESS,
+  FUSION_PASS_CHECK(newUpdateOpdesc->AddOutputDesc("reserve_1", update_tensor2) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add output tensor3 failed."), return FAILED);
-  FUSION_PASS_CHECK(newUpdateOpdesc->AddOutputDesc(update_tensor2) != SUCCESS,
+  FUSION_PASS_CHECK(newUpdateOpdesc->AddOutputDesc("reserve_2", update_tensor2) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add output tensor4 failed."), return FAILED);
 
   // add nodes in graph
