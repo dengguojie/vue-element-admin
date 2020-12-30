@@ -976,9 +976,9 @@ def general_schedule(
         tiling = tiling_case
 
     tbe_compile_param = tiling.get("tbe_compile_para")
-    sch.tbe_compie_para, preload = parse_tbe_compile_para(tbe_compile_param)
-    if sch.tbe_compie_para is not None:
-        out_of_order = sch.tbe_compie_para.get("out_of_order")
+    sch.tbe_compile_para, preload = parse_tbe_compile_para(tbe_compile_param)
+    if sch.tbe_compile_para is not None:
+        out_of_order = sch.tbe_compile_para.get("out_of_order")
 
     tiling = check_and_set_default_tiling(tiling, a_ddr.dtype,
                                           b_ddr.dtype, stride_h,
