@@ -1579,11 +1579,6 @@ def vcmp(lhs, rhs, operation='lt', mode='bool'):
     wrapped_tensor
     """
     def __vcmp_input_check(lhs, operation, mode, shape):
-        if in_dynamic_and_static_unify():
-            dict_args = dict()
-            dict_args["errCode"] = "E90003"
-            dict_args["detailed_cause"] = "Dynamic shape not support vcmp"
-            raise RuntimeError(dict_args, get_error_message(dict_args))
 
         if not isinstance(lhs, tvm.tensor.Tensor):
             dict_args = dict()
@@ -1608,7 +1603,7 @@ def vcmp(lhs, rhs, operation='lt', mode='bool'):
                                           " while mode is [%s]" % mode
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
-        if mode == 'bit' and shape[-1] % 8 != 0:
+        if mode == 'bit' and isinstance(shape[-1], int) and shape[-1] % 8 != 0:
             dict_args = dict()
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "in bit mode the last dim must be " \
@@ -1636,48 +1631,57 @@ def vcmp(lhs, rhs, operation='lt', mode='bool'):
         rhs = get_tvm_scalar(rhs, lhs.dtype)
 
     cmp_op = "emit_insn_elewise_binary_cmp"
-    if isinstance(rhs, tvm.tensor.Tensor):
-        if operation == 'lt':
-            lambda_func = lambda *indice: lhs(*indice) < rhs(*indice)
-        elif operation == 'gt':
-            lambda_func = lambda *indice: lhs(*indice) > rhs(*indice)
-        elif operation == 'le':
-            lambda_func = lambda *indice: lhs(*indice) <= rhs(*indice)
-        elif operation == 'ge':
-            lambda_func = lambda *indice: lhs(*indice) >= rhs(*indice)
-        elif operation == 'eq':
-            lambda_func = lambda *indice: \
-                tvm.expr.EQ(lhs(*indice), rhs(*indice))
-        elif operation == 'ne':
-            lambda_func = lambda *indice: \
-                tvm.expr.NE(lhs(*indice), rhs(*indice))
+
+    # generate lambda function
+    def __generate_lambda_func(lhs, rhs, operation):
+        if isinstance(rhs, tvm.tensor.Tensor):
+            if operation == 'lt':
+                lambda_func = lambda *indice: lhs(*indice) < rhs(*indice)
+            elif operation == 'gt':
+                lambda_func = lambda *indice: lhs(*indice) > rhs(*indice)
+            elif operation == 'le':
+                lambda_func = lambda *indice: lhs(*indice) <= rhs(*indice)
+            elif operation == 'ge':
+                lambda_func = lambda *indice: lhs(*indice) >= rhs(*indice)
+            elif operation == 'eq':
+                lambda_func = lambda *indice: \
+                    tvm.expr.EQ(lhs(*indice), rhs(*indice))
+            else:
+                lambda_func = lambda *indice: \
+                    tvm.expr.NE(lhs(*indice), rhs(*indice))
         else:
-            dict_args = dict()
-            dict_args["errCode"] = "E90002"
-            dict_args["detailed_cause"] = "vcmp does not support the " \
-                                          "operation: %s, The operation's " \
-                                          "value must be eq, ne, lt, gt, ge, le!" % operation
-            raise RuntimeError(dict_args, get_error_message(dict_args))
-    else:
-        if operation == 'lt':
-            lambda_func = lambda *indice: lhs(*indice) < rhs
-        elif operation == 'gt':
-            lambda_func = lambda *indice: lhs(*indice) > rhs
-        elif operation == 'le':
-            lambda_func = lambda *indice: lhs(*indice) <= rhs
-        elif operation == 'ge':
-            lambda_func = lambda *indice: lhs(*indice) >= rhs
-        elif operation == 'eq':
-            lambda_func = lambda *indice: tvm.expr.EQ(lhs(*indice), rhs)
-        elif operation == 'ne':
-            lambda_func = lambda *indice: tvm.expr.NE(lhs(*indice), rhs)
-        else:
-            dict_args = dict()
-            dict_args["errCode"] = "E90002"
-            dict_args["detailed_cause"] = "vcmp does not support the " \
-                                          "operation: %s, The operation's " \
-                                          "value must be eq, ne, lt, gt, ge, le!" % operation
-            raise RuntimeError(dict_args, get_error_message(dict_args))
+            if operation == 'lt':
+                lambda_func = lambda *indice: lhs(*indice) < rhs
+            elif operation == 'gt':
+                lambda_func = lambda *indice: lhs(*indice) > rhs
+            elif operation == 'le':
+                lambda_func = lambda *indice: lhs(*indice) <= rhs
+            elif operation == 'ge':
+                lambda_func = lambda *indice: lhs(*indice) >= rhs
+            elif operation == 'eq':
+                lambda_func = lambda *indice: tvm.expr.EQ(lhs(*indice), rhs)
+            else:
+                lambda_func = lambda *indice: tvm.expr.NE(lhs(*indice), rhs)
+
+        return lambda_func
+
+    lambda_func = __generate_lambda_func(lhs, rhs, operation)
+
+    # dynamic realize
+    if in_dynamic_and_static_unify():
+
+        if mode == "bit":
+            # result dtype uint1
+            cmp_op = "elewise_binary_vcmpv_" + operation
+            with tvm.tag_scope(cmp_op):
+                output = tvm.compute(shape, lambda_func, name="output")
+            return output
+
+        # result dtype bool
+        dict_args = dict()
+        dict_args["errCode"] = "E90003"
+        dict_args["detailed_cause"] = "Dynamic shape vcmp only support bit mode"
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
     name = cmp_op.split("_")[-1] + "_" + str(NAME_INDEX[0])
     NAME_INDEX[0] += 1
@@ -2371,11 +2375,6 @@ def vsel(condition, lhs, rhs):
     """
 
     def __vsel_input_check(condition):
-        if in_dynamic_and_static_unify():
-            dict_args = dict()
-            dict_args["errCode"] = "E90003"
-            dict_args["detailed_cause"] = "Dynamic shape not support vsel!"
-            raise RuntimeError(dict_args, get_error_message(dict_args))
 
         if not isinstance(condition, tvm.tensor.Tensor):
             dict_args = dict()
@@ -2387,28 +2386,112 @@ def vsel(condition, lhs, rhs):
     __vsel_input_check(condition)
 
     src_dtype = "float16"
+
+    def _get_vsel_input_type(inputs):
+        type_strs = []
+        for one in inputs:
+            if isinstance(one, tvm.tensor.Tensor):
+                type_strs.append("TENSOR")
+            else:
+                type_strs.append("SCALAR")
+
+        return "_".join(type_strs)
+
+    input_type_str = _get_vsel_input_type([lhs, rhs])
+
+    # two const input check
+    def _check_two_scalar_inputs(lhs, rhs):
+        # if lhs,rhs are all scalar, only support float16
+        if judge_var(lhs) == "tvm_const" and lhs.dtype != "float16":
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "when lhs and rhs are all scalar, " \
+                                          "only support float16, while lhs.dtype is [%s]" % lhs.dtype
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+
+        if judge_var(rhs) == "tvm_const" and rhs.dtype != "float16":
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "when lhs and rhs are all scalar, " \
+                                          "only support float16, while rhs.dtype is [%s]" % rhs.dtype
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+
+    # dynamic realize
+    def _dynamic_check_shape(condition_shape):
+        if isinstance(condition_shape[-1], int) and condition_shape[-1] % 8 != 0:
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "vsel last dim must be " \
+                                          "mutiply of 8, while last dim is [%s]" % condition_shape[-1]
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+
+    if in_dynamic_and_static_unify():
+        shape = condition.shape
+        _dynamic_check_shape(shape)
+
+        # mode bit dtype = "uint1"
+        if condition.dtype == "uint1":
+            op_name = "elewise_multiple_sel"
+            supported_type = ["float16"]
+
+            if input_type_str == "TENSOR_TENSOR":
+                _check_multiple_elewise_op_shape(condition, lhs, rhs)
+                lhs = auto_cast_tensor(lhs, 'vsel', supported_type)
+                rhs = auto_cast_tensor(rhs, 'vsel', supported_type)
+                lambda_func = lambda *indice: \
+                    tvm.select(condition(*indice), lhs(*indice), rhs(*indice))
+            elif input_type_str == "SCALAR_TENSOR":
+                _check_elewise_binary_shape(condition, rhs)
+                rhs = auto_cast_tensor(rhs, 'vsel', supported_type)
+                lhs = get_tvm_scalar(lhs, rhs.dtype)
+                lambda_func = lambda *indice: \
+                    tvm.select(condition(*indice), lhs, rhs(*indice))
+            elif input_type_str == "TENSOR_SCALAR":
+                _check_elewise_binary_shape(condition, lhs)
+                lhs = auto_cast_tensor(lhs, 'vsel', supported_type)
+                rhs = get_tvm_scalar(rhs, lhs.dtype)
+                lambda_func = lambda *indice: \
+                    tvm.select(condition(*indice), lhs(*indice), rhs)
+            else:
+                # if lhs,rhs are all scalar, only support float16
+                _check_two_scalar_inputs(lhs, rhs)
+
+                lhs = get_tvm_scalar(lhs, "float16")
+                rhs = get_tvm_scalar(rhs, "float16")
+
+                lambda_func = lambda *indice: \
+                    tvm.select(condition(*indice), lhs, rhs)
+
+            name = "sel_" + str(NAME_INDEX[0])
+            NAME_INDEX[0] += 1
+            with tvm.tag_scope(op_name):
+                tmp = tvm.compute(shape, lambda_func, name=name)
+            return tmp
+
+        dict_args = dict()
+        dict_args["errCode"] = "E90003"
+        dict_args["detailed_cause"] = "Dynamic shape vsel only support bit mode!"
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+
     op_name = "emit_insn_elewise_multiple_sel"
     if condition.dtype == "bool":
         mode = 'bool'
         shape = condition.shape
-        if isinstance(lhs, tvm.tensor.Tensor) \
-                and isinstance(rhs, tvm.tensor.Tensor):
+        if input_type_str == "TENSOR_TENSOR":
             src_dtype = lhs.dtype
             lhs = auto_cast_tensor(lhs, 'vsel')
             rhs = auto_cast_tensor(rhs, 'vsel')
             _check_multiple_elewise_op_shape(condition, lhs, rhs)
             lambda_func = lambda *indice: \
                 tvm.select(condition(*indice), lhs(*indice), rhs(*indice))
-        elif not isinstance(lhs, tvm.tensor.Tensor) \
-                and isinstance(rhs, tvm.tensor.Tensor):
+        elif input_type_str == "SCALAR_TENSOR":
             _check_elewise_binary_shape(condition, rhs)
             src_dtype = rhs.dtype
             rhs = auto_cast_tensor(rhs, 'vsel')
             lhs = get_tvm_scalar(lhs, rhs.dtype)
             lambda_func = lambda *indice: \
                 tvm.select(condition(*indice), lhs, rhs(*indice))
-        elif isinstance(lhs, tvm.tensor.Tensor) \
-                and not isinstance(rhs, tvm.tensor.Tensor):
+        elif input_type_str == "TENSOR_SCALAR":
             _check_elewise_binary_shape(condition, lhs)
             src_dtype = lhs.dtype
             lhs = auto_cast_tensor(lhs, 'vsel')
@@ -2417,19 +2500,7 @@ def vsel(condition, lhs, rhs):
                 tvm.select(condition(*indice), lhs(*indice), rhs)
         else:
             # if lhs,rhs are all scalar, only support float16
-            if judge_var(lhs) == "tvm_const" and lhs.dtype != "float16":
-                dict_args = dict()
-                dict_args["errCode"] = "E90001"
-                dict_args["detailed_cause"] = "when lhs and rhs are all scalar, " \
-                                              "only support float16, while lhs.dtype is [%s]" % lhs.dtype
-                raise RuntimeError(dict_args, get_error_message(dict_args))
-
-            if judge_var(rhs) == "tvm_const" and rhs.dtype != "float16":
-                dict_args = dict()
-                dict_args["errCode"] = "E90001"
-                dict_args["detailed_cause"] = "when lhs and rhs are all scalar, " \
-                                              "only support float16, while rhs.dtype is [%s]" % rhs.dtype
-                raise RuntimeError(dict_args, get_error_message(dict_args))
+            _check_two_scalar_inputs(lhs, rhs)
 
             lhs = get_tvm_scalar(lhs, "float16")
             rhs = get_tvm_scalar(rhs, "float16")
@@ -2462,8 +2533,7 @@ def vsel(condition, lhs, rhs):
                     res_index.append(value)
             return res_index
 
-        if isinstance(lhs, tvm.tensor.Tensor) \
-                and isinstance(rhs, tvm.tensor.Tensor):
+        if input_type_str == "TENSOR_TENSOR":
             _check_elewise_binary_shape(lhs, rhs)
             _vsel_bit_shape_check(condition, lhs)
             src_dtype = lhs.dtype
@@ -2474,8 +2544,7 @@ def vsel(condition, lhs, rhs):
                 res_index = get_indice(indice)
                 return tvm.select(condition(*res_index).astype('bool'),
                                   lhs(*indice), rhs(*indice))
-        elif not isinstance(lhs, tvm.tensor.Tensor) \
-                and isinstance(rhs, tvm.tensor.Tensor):
+        elif input_type_str == "SCALAR_TENSOR":
             _vsel_bit_shape_check(condition, rhs)
             src_dtype = rhs.dtype
             rhs = auto_cast_tensor(rhs, 'vsel', supported_type)
@@ -2485,8 +2554,7 @@ def vsel(condition, lhs, rhs):
                 res_index = get_indice(indice)
                 return tvm.select(condition(*res_index).astype('bool'),
                                   lhs, rhs(*indice))
-        elif isinstance(lhs, tvm.tensor.Tensor) \
-                and not isinstance(rhs, tvm.tensor.Tensor):
+        elif input_type_str == "TENSOR_SCALAR":
             _vsel_bit_shape_check(condition, lhs)
             src_dtype = lhs.dtype
             lhs = auto_cast_tensor(lhs, 'vsel', supported_type)
@@ -2498,19 +2566,7 @@ def vsel(condition, lhs, rhs):
                                   lhs(*indice), rhs)
         else:
             # if lhs,rhs are all scalar, only support float16
-            if judge_var(lhs) == "tvm_const" and lhs.dtype != "float16":
-                dict_args = dict()
-                dict_args["errCode"] = "E90001"
-                dict_args["detailed_cause"] = "when lhs and rhs are all scalar, " \
-                                        "only support float16, while lhs.dtype is [%s]" % lhs.dtype
-                raise RuntimeError(dict_args, get_error_message(dict_args))
-
-            if judge_var(rhs) == "tvm_const" and rhs.dtype != "float16":
-                dict_args = dict()
-                dict_args["errCode"] = "E90001"
-                dict_args["detailed_cause"] = "when lhs and rhs are all scalar, " \
-                                        "only support float16, while rhs.dtype is [%s]" % rhs.dtype
-                raise RuntimeError(dict_args, get_error_message(dict_args))
+            _check_two_scalar_inputs(lhs, rhs)
 
             lhs = get_tvm_scalar(lhs, "float16")
             rhs = get_tvm_scalar(rhs, "float16")

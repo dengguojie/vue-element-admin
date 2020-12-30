@@ -51,6 +51,8 @@ int32_t GetTypeSize(const std::string& dtype) {
     type_size = 8;
   } else if (dtype == "bool") {
     type_size = 1;
+  } else if (dtype == "uint1") {
+    type_size = 1;
   }
   return type_size;
 }
@@ -390,6 +392,7 @@ bool Eletwise::DoBlockTiling() {
   int32_t cur_core = compileInfo.core_num;
   size_t len = output_shape.size();
   int32_t ele_in_block = BLOCK_SIZE / GetTypeSize(out_type);
+  ele_in_block = (out_type == "uint1") ? ele_in_block * UINT1_FACTOR : ele_in_block;
   if (len == 1) {
     block_axis = 0;
     if (output_shape.empty()) {
@@ -425,6 +428,7 @@ bool Eletwise::DoUbTiling() {
     limit = std::min(limit, split_factors[compileInfo.max_dtype]);
     if (limit < ub_factor) {
       int32_t ele_in_block = BLOCK_SIZE / GetTypeSize(out_type);
+      ele_in_block = (out_type == "uint1") ? ele_in_block * UINT1_FACTOR : ele_in_block;
       int32_t ub_for_num = std::ceil(ub_factor * 1.0 / limit);
       int32_t adjust_factor = std::ceil(ub_factor * 1.0 / ub_for_num);
       int32_t align_factor = std::ceil(adjust_factor * 1.0 / ele_in_block);
@@ -437,6 +441,7 @@ bool Eletwise::DoUbTiling() {
     int32_t shape_len = static_cast<int32_t>(output_shape.size()) - 1;
     int64_t under_ub_shape = 1;
     int32_t ele_in_block = BLOCK_SIZE / GetTypeSize(in_type);
+    ele_in_block = (in_type == "uint1") ? ele_in_block * UINT1_FACTOR : ele_in_block;
     for (int32_t i = shape_len; i >= block_axis; i--) {
       if (broadcast_aixs == i && broadcast_aixs != shape_len) {
         bool is_cut_under_b = (under_ub_shape > N_LAST_BROADCAST_THRESHOLD ||

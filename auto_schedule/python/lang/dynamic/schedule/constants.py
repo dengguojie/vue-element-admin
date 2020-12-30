@@ -163,6 +163,15 @@ NEED_SPACE_WITH_DIFF_TYPE = [
     "elewise_single_VS_mul",
 ]
 
+VCMP_INSNS = [
+    "elewise_binary_vcmpv_gt",
+    "elewise_binary_vcmpv_ge",
+    "elewise_binary_vcmpv_lt",
+    "elewise_binary_vcmpv_le",
+    "elewise_binary_vcmpv_eq",
+    "elewise_binary_vcmpv_ne",
+]
+
 VSEL_INSNS = "elewise_multiple_sel"
 
 VCMPSEL_INSNS = [
@@ -181,6 +190,7 @@ BROADCAST_INSNS = [
 ]
 
 DTYPE_BYTE_MAPPING = {
+    "uint1": 0.125,
     "bool": 1,
     "int8": 1,
     "uint8": 1,

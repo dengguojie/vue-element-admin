@@ -38,6 +38,7 @@ const int32_t MAX_PATTERN_DIM = 3;
 const int32_t SPECIAL_BROADCAST_INPUT_NUMS = 2;
 const int32_t BROADCAST_BASE_KEY = 2;
 const size_t MAX_DIM_LEN = 16;
+const int32_t UINT1_FACTOR = 8;
 const size_t MAX_INPUT_NUMS = 70;
 
 struct CompileInfo {

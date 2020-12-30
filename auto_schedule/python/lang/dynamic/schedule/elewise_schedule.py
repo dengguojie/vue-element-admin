@@ -47,6 +47,7 @@ CONST = "const"
 VECTOR = "vector"
 
 # vcmpsel constant
+VCMP_INPUT_NUMBER = 2
 VSEL_INPUT_NUMBER = 3
 VCMPSEL_INPUT_NUMBER = 4
 
@@ -94,6 +95,7 @@ class ElewiseSchedule:
         self._coexisting_quantity = 1
         self._tensor_space = None
         self._ub_size = util.get_ub_size()
+        self._correct_factor = 2 if self._is_db else 1
 
         # input -> outputs mapping relations
         self._in_out_map = {}
@@ -559,7 +561,7 @@ class ElewiseSchedule:
                 else:
                     u_idx = self._tiling_case["ub_tiling_axis"]
                 src_shapes = tensor_i.op.input_tensors[0].shape[u_idx:]
-                tensor_bound = self._tensor_space // DTYPE_BYTE_MAPPING[tensor_i.dtype]
+                tensor_bound = int(self._tensor_space // DTYPE_BYTE_MAPPING[tensor_i.dtype])
                 src_shape = tvm.expr.Call('handle', 'tvm_tuple', src_shapes,
                                           tvm.expr.Call.PureIntrinsic, None, 0)
                 sch[tensor_i].emit_insn(param[0], param[1],
@@ -646,11 +648,25 @@ class ElewiseSchedule:
                 sch[b_i].reused_by(reuse_data=True)
 
     def _calc_storage_bound(self):
+
+        def _correct_ub_size_by_cmp_sel(_tensor):
+            if util.is_vcmp_insn(_tensor):
+                self._ub_size -= self._correct_factor * \
+                                 (BLOCK_SIZE_BYTE * (VCMP_INPUT_NUMBER - len(_tensor.op.input_tensors)))
+            if util.is_vsel_insn(_tensor):
+                self._ub_size -= self._correct_factor * \
+                                 (BLOCK_SIZE_BYTE * (VSEL_INPUT_NUMBER - len(_tensor.op.input_tensors)))
+                if util.is_v200() and (VSEL_INPUT_NUMBER == len(_tensor.op.input_tensors)):
+                    self._ub_size -= self._correct_factor * BLOCK_SIZE_BYTE
+            if util.is_vcmpsel_insn(_tensor):
+                self._ub_size -= self._correct_factor * \
+                                 (BLOCK_SIZE_BYTE * (VCMPSEL_INPUT_NUMBER - len(_tensor.op.input_tensors)))
+
         def _r_coexisting(_tensor):
             if _tensor in dependent_map:
                 return len(dependent_map)
             if util.is_vtranspose_broadcast(_tensor):
-                self._ub_size = self._ub_size - VTRANSPOSE_TEMP_SPACE
+                self._ub_size -= self._correct_factor * VTRANSPOSE_TEMP_SPACE
             _need_space = []
             for _tensor_i in _tensor.op.input_tensors:
                 _need_space.append(_r_coexisting(_tensor_i))
@@ -662,11 +678,11 @@ class ElewiseSchedule:
             if util.need_extent_node(_tensor) and _tensor not in self._compute_inline_broadcast:
                 _current_space += 1
             if util.need_temp_space(_tensor) or _need_external_space(_tensor):
-                self._ub_size -= BLOCK_SIZE_BYTE
-            if util.is_vsel_insn(_tensor):
-                self._ub_size -= (BLOCK_SIZE_BYTE * (VSEL_INPUT_NUMBER - len(_tensor.op.input_tensors)))
-            if util.is_vcmpsel_insn(_tensor):
-                self._ub_size -= (BLOCK_SIZE_BYTE * (VCMPSEL_INPUT_NUMBER - len(_tensor.op.input_tensors)))
+                self._ub_size -= self._correct_factor * BLOCK_SIZE_BYTE
+
+            # correct ub size in vcmp or vsel or vcmpsel
+            _correct_ub_size_by_cmp_sel(_tensor)
+
             _need_space.append(_current_space)
             _refresh_dependent(_tensor)
             if _tensor not in dependent_map:
@@ -707,22 +723,20 @@ class ElewiseSchedule:
             else:
                 current_space = len(dependent_map) + 1
             if util.is_vtranspose_broadcast(self._out):
-                self._ub_size = self._ub_size - VTRANSPOSE_TEMP_SPACE
-            if util.is_vsel_insn(self._out):
-                self._ub_size -= (BLOCK_SIZE_BYTE * (VSEL_INPUT_NUMBER - len(self._out.op.input_tensors)))
-            if util.is_vcmpsel_insn(self._out):
-                self._ub_size -= (BLOCK_SIZE_BYTE * (VCMPSEL_INPUT_NUMBER - len(self._out.op.input_tensors)))
+                self._ub_size -= self._correct_factor * VTRANSPOSE_TEMP_SPACE
+
+            # correct ub size in vcmp or vsel or vcmpsel
+            _correct_ub_size_by_cmp_sel(self._out)
+
             if util.need_temp_space(self._out) or _need_external_space(self._out):
-                self._ub_size -= BLOCK_SIZE_BYTE
+                self._ub_size -= self._correct_factor * BLOCK_SIZE_BYTE
             if util.need_extent_node(self._out):
                 current_space += 1
             coexisting_quantities.append(current_space)
 
         self._coexisting_quantity = max(coexisting_quantities)
         if self._coexisting_quantity == 1:
-            self._ub_size -= BLOCK_SIZE_BYTE
-            if self._is_db:
-                self._ub_size -= BLOCK_SIZE_BYTE
+            self._ub_size -= self._correct_factor * BLOCK_SIZE_BYTE
 
         tensor_space = self._ub_size // self._coexisting_quantity
         if self._is_db:
@@ -736,7 +750,7 @@ class ElewiseSchedule:
             .union(self._cache_write_buffer_tensor_map.keys())
 
         for tensor_i in tensors:
-            storage_bound = self._tensor_space // DTYPE_BYTE_MAPPING[tensor_i.dtype]
+            storage_bound = int(self._tensor_space // DTYPE_BYTE_MAPPING[tensor_i.dtype])
             sch[tensor_i].set_storage_bound(storage_bound)
 
     def _check_tiling_case(self):

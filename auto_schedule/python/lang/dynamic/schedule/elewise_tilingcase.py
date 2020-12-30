@@ -151,6 +151,7 @@ def _calc_one_dim(outs, base_key, enable_db_func=_default_db_func):
 
     # schedule in var bound
     c_bounds = {
+        0.125: (1, 32767),
         1: (1, 32767),
         2: (1, 32767),
         4: (1, 16383),

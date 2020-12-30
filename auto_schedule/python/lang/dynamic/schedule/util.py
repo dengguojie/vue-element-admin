@@ -31,7 +31,7 @@ from te.lang.base.expr_compare import expr_equal
 from te.utils.error_manager.error_manager_util import get_error_message
 
 from . import BROADCAST_INSNS, SUPPORT_SCALAR_INSNS, \
-    NEED_TEMP_SPACE_INSNS, VSEL_INSNS, VCMPSEL_INSNS, NEED_SPACE_WITH_DIFF_TYPE, NEED_EXTENT_NODE_INSNS
+    NEED_TEMP_SPACE_INSNS, VCMP_INSNS, VSEL_INSNS, VCMPSEL_INSNS, NEED_SPACE_WITH_DIFF_TYPE, NEED_EXTENT_NODE_INSNS
 
 VAR_BOUND_LIMIT = 2147483647
 
@@ -78,6 +78,13 @@ def is_v100():
     return product_params().is_mini_version() or product_params().is_cloud_version()
 
 
+def is_v200():
+    """
+    :return:
+    """
+    return product_params().is_ng1_version() or product_params().is_lhisi_version()
+
+
 def need_temp_space(tensor: tvm.tensor.Tensor):
     """
     :param tensor:
@@ -94,6 +101,14 @@ def need_extent_node(tensor: tvm.tensor.Tensor):
     :return:
     """
     return get_dsl_insn(tensor) in NEED_EXTENT_NODE_INSNS
+
+
+def is_vcmp_insn(tensor: tvm.tensor.Tensor):
+    """
+    :param tensor:
+    :return:
+    """
+    return get_dsl_insn(tensor) in VCMP_INSNS
 
 
 def is_vsel_insn(tensor: tvm.tensor.Tensor):
