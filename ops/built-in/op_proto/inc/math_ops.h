@@ -381,7 +381,7 @@ REG_OP(GetNext)
 
 REG_OP(GetDynamicDims)
     .DYNAMIC_INPUT(input, TensorType({DT_INT32, DT_INT64}))
-    .OUTPUT(dims, TensorType({DT_INT64}))
+    .OUTPUT(dims, TensorType({DT_INT32, DT_INT64}))
     .REQUIRED_ATTR(shape_info, ListInt)
     .REQUIRED_ATTR(N, Int)
     .OP_END_FACTORY_REG(GetDynamicDims)

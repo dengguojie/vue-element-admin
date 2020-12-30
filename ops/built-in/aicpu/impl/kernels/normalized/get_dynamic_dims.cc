@@ -33,6 +33,25 @@ uint32_t GetDynamicDimsCpuKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_HANDLE_ERROR(NormalCheck(ctx, kDynamicInput, kGetDynamicDimsOutputNum),
                       "[%s] check params failed.", kGetDynamicDims);
 
+  Tensor *output_tensor = ctx.Output(0);
+  KERNEL_CHECK_NULLPTR(output_tensor, KERNEL_STATUS_PARAM_INVALID,
+                       "[%s] get output[0] failed.", kGetDynamicDims);
+  DataType data_type = output_tensor->GetDataType();
+  switch (data_type) {
+    case DT_INT32:
+      return DoCompute<int32_t>(ctx);
+    case DT_INT64:
+      return DoCompute<int64_t>(ctx);
+    default:
+      KERNEL_LOG_ERROR("[%s] output[0] data_type [%s] must be in ",
+                       "{DT_INT32 DT_INT64}.",
+                       kGetDynamicDims, DTypeStr(data_type).c_str());
+      return KERNEL_STATUS_PARAM_INVALID;
+  }
+}
+
+template <typename T>
+uint32_t GetDynamicDimsCpuKernel::DoCompute(CpuKernelContext &ctx) {
   // parse attr
   AttrValue *n_attr = ctx.GetAttr("N");
   KERNEL_CHECK_NULLPTR(n_attr, KERNEL_STATUS_PARAM_INVALID,
@@ -60,12 +79,12 @@ uint32_t GetDynamicDimsCpuKernel::Compute(CpuKernelContext &ctx) {
       kGetDynamicDims, inputs_size, shape_infos.size());
 
   // get input shapes
-  std::vector<std::vector<int64_t>> input_shapes;
+  std::vector<std::vector<T>> input_shapes;
   KERNEL_HANDLE_ERROR(GetInputShapes(ctx, input_shapes),
                       "[%s] get input shapes failed.", kGetDynamicDims);
 
   // find -1 in shape_infos, and record corresponding input_dim into dims
-  std::vector<int64_t> dims;
+  std::vector<T> dims;
   for (uint32_t i = 0; i < inputs_size; ++i) {
     KERNEL_LOG_INFO("[%s] shape_infos[%u] [%s].", kGetDynamicDims, i,
                     VectorToString(shape_infos[i]).c_str());
@@ -94,7 +113,7 @@ uint32_t GetDynamicDimsCpuKernel::Compute(CpuKernelContext &ctx) {
   uint64_t output_size = output_tensor->GetDataSize();
 
   errno_t cpret = memcpy_s(output_data, output_size, dims.data(),
-                           dims.size() * sizeof(int64_t));
+                           dims.size() * sizeof(T));
   KERNEL_CHECK_FALSE(
       (cpret == EOK), KERNEL_STATUS_INNER_ERROR,
       "[%s] memcpy_s to output failed, destMax [%ld], count [%zu].",
@@ -117,34 +136,17 @@ std::vector<std::vector<int64_t>> GetDynamicDimsCpuKernel::GetShapeInfos(
   return shape_infos;
 }
 
+template <typename T>
 uint32_t GetDynamicDimsCpuKernel::GetInputShapes(
     CpuKernelContext &ctx,
-    std::vector<std::vector<int64_t>> &input_shapes) const {
+    std::vector<std::vector<T>> &input_shapes) const {
   for (uint32_t i = 0; i < ctx.GetInputsSize(); ++i) {
     Tensor *input_tensor = ctx.Input(i);
     KERNEL_CHECK_NULLPTR(input_tensor, KERNEL_STATUS_INNER_ERROR,
                          "[%s] get input[%u] failed.", kGetDynamicDims, i);
-    std::vector<int64_t> input_shape;
     int64_t input_size = input_tensor->NumElements();
-    switch (input_tensor->GetDataType()) {
-      case DT_INT32: {
-        int32_t *input_data = static_cast<int32_t *>(input_tensor->GetData());
-        input_shape.insert(input_shape.begin(), input_data,
-                           input_data + input_size);
-        break;
-      }
-      case DT_INT64: {
-        int64_t *input_data = static_cast<int64_t *>(input_tensor->GetData());
-        input_shape.insert(input_shape.begin(), input_data,
-                           input_data + input_size);
-        break;
-      }
-      default:
-        KERNEL_LOG_ERROR("[%s] input[%u] data_tpye must be in {int32 int64}.",
-                         kGetDynamicDims, i);
-        return KERNEL_STATUS_INNER_ERROR;
-        break;
-    }
+    T *input_data = static_cast<T *>(input_tensor->GetData());
+    std::vector<T> input_shape(input_data, input_data + input_size);
     input_shapes.emplace_back(std::move(input_shape));
   }
 

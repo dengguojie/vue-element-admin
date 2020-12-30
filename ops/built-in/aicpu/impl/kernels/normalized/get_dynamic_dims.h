@@ -26,6 +26,9 @@ public:
   uint32_t Compute(CpuKernelContext &ctx) override;
 
 private:
+  template <typename T>
+  uint32_t DoCompute(CpuKernelContext &ctx);
+
   /**
    * @brief get inputs' configured shape from attr shape_info
    * @param shape_info attr shape_info
@@ -40,8 +43,9 @@ private:
    * @param input_shapes inputs' configured shape
    * @return status code
    */
+  template <typename T>
   uint32_t GetInputShapes(CpuKernelContext &ctx,
-      std::vector<std::vector<int64_t>> &input_shapes) const;
+      std::vector<std::vector<T>> &input_shapes) const;
 };
 } // namespace aicpu
 #endif
