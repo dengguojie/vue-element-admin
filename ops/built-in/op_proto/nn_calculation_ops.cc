@@ -4329,7 +4329,8 @@ IMPLEMT_INFER_DATA_SLICE(Deconvolution, DeconvolutionInferDataSlice) {
   return GRAPH_FAILED;
 }
 
-static void set_deconvolution_out_shape_range(size_t idx,
+static void set_deconvolution_out_shape_range(const std::string& pad_str,
+                    size_t idx,
                     const vector<int32_t>& attrParams,
                     const std::vector<std::pair<int64_t, int64_t>>& fm_range,
                     std::vector<std::pair<int64_t, int64_t>>& out_range) {
@@ -4344,8 +4345,13 @@ static void set_deconvolution_out_shape_range(size_t idx,
     out_range[idx].first = low;
     out_range[idx].second = high;
   } else {
-    out_range[idx].first = stride * (low - 1) + kernel - pad;
-    out_range[idx].second = stride * (high - 1) + kernel - pad;
+    if (pad_str == "SAME") {
+      out_range[idx].first = stride * low;
+      out_range[idx].second = stride * high;
+    } else {
+      out_range[idx].first = stride * (low - 1) + kernel - pad;
+      out_range[idx].second = stride * (high - 1) + kernel - pad;
+    }
   }
 }
 
@@ -4479,6 +4485,15 @@ IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
   int khext = dilh * (kh - 1) + 1;
   int kwext = dilw * (kw - 1) + 1;
   if (isDynamic) {
+    // update pads list by padding[SAME,VALID]
+    std::string pad_str;
+    if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME") {
+      op.SetAttr("pads", {-1, -1, -1, -1});
+      OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in dynamic_shape");
+    } else if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "VALID") {
+      op.SetAttr("pads", {0, 0, 0, 0});
+      OP_LOGD(op.GetName().c_str(), "set pads to {0, 0, 0, 0} when padding is VALID in dynamic_shape");
+    }
     size_t idxC = 1;
     size_t idxH = 2;
     size_t idxW = 3;
@@ -4497,12 +4512,15 @@ IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
       y_range[idxC].second = (int64_t)kc * groups;
       if (ih == -1) {
         vector<int32_t> attr_params_h = {strh, khext, padt + padb};
-        set_deconvolution_out_shape_range(idxH, attr_params_h, x_range, y_range);
+        set_deconvolution_out_shape_range(pad_str, idxH, attr_params_h, x_range, y_range);
       }
       if (iw == -1) {
         vector<int32_t> attr_params_w = {strw, kwext, padl + padr};
-        set_deconvolution_out_shape_range(idxW, attr_params_w, x_range, y_range);
+        set_deconvolution_out_shape_range(pad_str, idxW, attr_params_w, x_range, y_range);
       }
+    }
+    for (size_t i = 0; i < y_range.size(); i++) {
+      OP_LOGD(op.GetName().c_str(), "output Range[%u] is (%lld, %lld)", i, y_range[i].first, y_range[i].second);
     }
     yTensor->SetShapeRange(y_range);
   } else {
@@ -4530,6 +4548,9 @@ IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
     std::string report_error_code = "E50033";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return GRAPH_FAILED;
+  }
+  for (size_t i = 0; i < y_shape.size(); i++) {
+    OP_LOGD(op.GetName().c_str(), "output shape[%u] is (%lld)", i, y_shape[i]);
   }
   yTensor->SetShape(GeShape(y_shape));
   auto xDtype = xTensor->GetDataType();
@@ -7127,7 +7148,7 @@ static bool SetInputsizeListConv2DTranspose(ge::Operator& op, const std::vector<
   int32_t output_w = 0;
   int32_t output_n = 0;
   int32_t output_c = 0;
-  if (!CheckVectorAllZero(input_sizes)) {
+  if (!CheckVectorAllZero(input_sizes) && input_sizes.size() == 4) {
     output_h = input_sizes[h_input_position];
     output_w = input_sizes[w_input_position];
     output_n = input_sizes[n_input_position];
@@ -7358,21 +7379,9 @@ IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
       } else {
         input_sizes.push_back(-1);
       }
-      OP_LOGD(op.GetName().c_str(), "dx Range[%u] is (%lld, %lld)", i, dx_range[i].first, dx_range[i].second);
     }
   }
 
-  if (input_sizes.size() != dimSizeLimit) {
-    OP_LOGE(op.GetName().c_str(), "input_size list should be 4d.");
-    map<std::string, std::string> err_map;
-    err_map["param_name"] = "input_size";
-    err_map["op_name"] = "Conv2DTranspose";
-    err_map["excepted_value"] = std::to_string(4);
-    err_map["input_value"] = std::to_string(input_sizes.size());
-    std::string reportErrorCode = "E50029";
-    ErrorManager::GetInstance().ReportErrMessage(reportErrorCode, err_map);
-    return GRAPH_FAILED;
-  }
   // set dtype of x
   auto x_dtype = xDesc->GetDataType();
   std::vector<int64_t> filter_sizes = filterDesc->MutableShape().GetDims();
@@ -7387,6 +7396,17 @@ IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
   if (!SetInputsizeListConv2DTranspose(op, x_sizes, x_format, filter_sizes, filter_format, input_sizes, input_format)) {
     OP_LOGE(op.GetName().c_str(), "Set Conv2DTranspose InputsizeList failed.");
     return GRAPH_FAILED;
+  }
+  if (isDynamic) {
+    // update pads list by padding[SAME,VALID]
+    std::string pad_str;
+    if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME") {
+      op.SetAttr("pads", {-1, -1, -1, -1});
+      OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in dynamic_shape");
+    } else if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "VALID") {
+      op.SetAttr("pads", {0, 0, 0, 0});
+      OP_LOGD(op.GetName().c_str(), "set pads to {0, 0, 0, 0} when padding is VALID in dynamic_shape");
+    }
   }
   // set out type
   if (x_dtype == DT_INT8) {
@@ -7406,25 +7426,23 @@ IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
     return GRAPH_FAILED;
   }
 
-  if (dedx.size() != dimSizeLimit) {
-    OP_LOGE(op.GetName().c_str(), "dedx list should be 4d.");
-    map<std::string, std::string> err_map;
-    err_map["param_name"] = "dedx";
-    err_map["op_name"] = "Conv2DTranspose";
-    err_map["excepted_value"] = std::to_string(4);
-    err_map["input_value"] = std::to_string(dedx.size());
-    std::string report_error_code = "E50029";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  }
-
   std::vector<int64_t> out_shape;
-  for (auto i : dedx) {
-    out_shape.push_back(i);
+  if (input_sizes.size() == 4) {
+    for (auto i : dedx) {
+      out_shape.push_back(i);
+    }
+    yDesc->SetShape(ge::GeShape(out_shape));
   }
-
-  yDesc->SetShape(ge::GeShape(out_shape));
-
+  auto y_shape = yDesc->MutableShape().GetDims();
+  for (size_t i = 0; i < y_shape.size(); i++) {
+    OP_LOGD(op.GetName().c_str(), "y_shape[%u] is %d", i, (int32_t)y_shape[i]);
+  }
+  std::vector<std::pair<int64_t, int64_t>> y_range;
+  yDesc->GetShapeRange(y_range);
+  for (size_t i = 0; i < y_range.size(); i++) {
+    OP_LOGD(op.GetName().c_str(), "y_range[%u] is (%lld, %lld)", i, y_range[i].first, y_range[i].second);
+  }
+  OP_LOGD(op.GetName().c_str(), "Leave Conv2DTransposeInfer.");
   return GRAPH_SUCCESS;
 }
 

@@ -270,7 +270,8 @@ def get_padlist(  # pylint: disable=too-many-locals
     shape_res,
     strides,
     shape_filters,
-    dilations):
+    dilations,
+    dynamic_mode=None):
     """
     Get pad list of int
     :param pads: "SAME" or "VALID" or list of int
@@ -278,6 +279,7 @@ def get_padlist(  # pylint: disable=too-many-locals
     :param strides:
     :param shape_filters:
     :param dilations:
+    :param dynamic_mode: "dynamic_hw" or "dynamic_batch" or None
     :return: pad list of int
     """
     fmap_h, fmap_w = shape_res[2], shape_res[3]
@@ -287,7 +289,7 @@ def get_padlist(  # pylint: disable=too-many-locals
 
     filter_h_dilation = (filter_h - 1) * dilation_h + 1
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
-    if pads == 'SAME' or -1 in pads:
+    if pads == 'SAME' or (dynamic_mode and -1 in pads):
         pad_h = \
             align(fmap_h, stride_h) - stride_h + filter_h_dilation - fmap_h
         pad_h = tvm.max(pad_h, 0)
@@ -774,7 +776,7 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
     filter_h_dilation = (filter_h - 1) * dilation_h + 1
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
 
-    pads = get_padlist(pads, input_sizes, strides, shape_filter, dilations)
+    pads = get_padlist(pads, input_sizes, strides, shape_filter, dilations, dynamic_mode)
     pad_up, pad_down, pad_left, pad_right = pads
 
     fmap_h_padding = fmap_h + pad_up + pad_down

@@ -70,6 +70,32 @@ TEST_F(DeconvProtoTest, deconvBaseTestInt8) {
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
 
+// base dyanmic ut
+TEST_F(DeconvProtoTest, deconvDynamicBaseTestFp16) {
+    ge::op::Deconvolution deconv;
+    deconv.UpdateInputDesc("x", create_desc_shape_range({1, 16,  -1, -1},
+                                                        ge::DT_FLOAT16,
+                                                        ge::FORMAT_NCHW,
+                                                        {1, 16, -1, -1},
+                                                        ge::FORMAT_NCHW,
+                                                        {{1, 1}, {16, 16}, {6, 26}, {6, 26}}));
+    deconv.UpdateInputDesc("filter", create_desc_with_ori({16, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 16, 1, 1}, ge::FORMAT_NCHW));
+    deconv.UpdateOutputDesc("y", create_desc_shape_range({1, 16,  -1, -1},
+                                                        ge::DT_FLOAT16,
+                                                        ge::FORMAT_NCHW,
+                                                        {1, 16, -1, -1},
+                                                        ge::FORMAT_NCHW,
+                                                        {{1, 1}, {16, 16}, {6, 26}, {6, 26}}));
+    deconv.SetAttr("strides", {1, 1});
+    deconv.SetAttr("pads", {0, 0, 0, 0});
+    deconv.SetAttr("padding", "SAME");
+    deconv.SetAttr("dilations", {1, 1, 1, 1});
+    auto status = deconv.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = deconv.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
 // input x shape not 4D(case 5D)
 TEST_F(DeconvProtoTest, deconvBaseInputTest) {
     ge::op::Deconvolution deconv;
