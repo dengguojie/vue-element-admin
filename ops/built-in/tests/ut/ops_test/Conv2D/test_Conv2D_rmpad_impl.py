@@ -58,7 +58,7 @@ def test_conv2d_rmpad(test_arg):
         dequant = ascend_dequant_compute(conv_res, vdeq, None, sqrt_mode=False, relu_flag=False)
         relu = relu6_compute(dequant, None)
         out = ascend_quant_compute(relu, None, scale=1, offset=0, sqrt_mode=False)
-        out = conv2d_data_rm_compute(out)
+        out = conv2d_data_rm_compute(out, res_tensor=None)
         tensor_list = [fm, filter_w, vdeq, out]
         sch = generic.auto_schedule(out)
 

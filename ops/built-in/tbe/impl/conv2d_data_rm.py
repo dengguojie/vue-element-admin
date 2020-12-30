@@ -23,13 +23,15 @@ from te.platform.fusion_manager import fusion_manager
 COMPUTE_INDEX = [0]
 
 @fusion_manager.register("conv2d_data_rm")
-def conv2d_data_rm_compute(input_tensor):
+def conv2d_data_rm_compute(input_tensor, res_tensor=None):
     """
     Compute for removing dirty data of tensor in M axis.
 
     Parameters
     ----------
     input_tensor: input tensor.
+
+    res_tensor: res tensor set by Tefusion.
 
     Returns
     -------
