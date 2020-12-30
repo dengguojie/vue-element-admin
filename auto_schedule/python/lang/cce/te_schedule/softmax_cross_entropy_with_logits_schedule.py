@@ -1143,6 +1143,9 @@ def _get_tiling_large_axis_workspace(shape, dtype):
             else:
                 block_factor = min_num_size_one_core
 
+        # for when block tile ub, ub nums not 32B aligned case.
+        block_factor = (block_factor + min_num_size_one_core - 1) // min_num_size_one_core * min_num_size_one_core
+
         block_outer = (batch + block_factor - 1) // block_factor
 
     # ub tiling
