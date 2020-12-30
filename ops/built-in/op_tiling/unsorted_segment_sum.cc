@@ -150,6 +150,14 @@ struct TilingParamsFp32 {
   int32_t input_last_axis_align_front_part_ele_num_input_scalar;
   int32_t input_last_axis_align_floor_ele_num_input_scalar;
   int32_t last_part_vadd_mask_input_scalar;
+  int32_t output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar;
+  int32_t output_ub_init_last_row_times_front_part_front_core_input_scalar;
+  int32_t output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar;
+  int32_t output_ub_init_last_row_times_last_part_front_core_input_scalar;
+  int32_t output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar;
+  int32_t output_ub_init_last_row_times_front_part_last_core_input_scalar;
+  int32_t output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar;
+  int32_t output_ub_init_last_row_times_last_part_last_core_input_scalar;
 };
 
 struct TilingParamsInt32 {
@@ -838,6 +846,14 @@ void InitTilingParams(TilingParamsFp32& params) {
   params.input_last_axis_align_front_part_ele_num_input_scalar = 0;
   params.input_last_axis_align_floor_ele_num_input_scalar = 0;
   params.last_part_vadd_mask_input_scalar = 0;
+  params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar = 0;
+  params.output_ub_init_last_row_times_front_part_front_core_input_scalar = 0;
+  params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar = 0;
+  params.output_ub_init_last_row_times_last_part_front_core_input_scalar = 0;
+  params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar = 0;
+  params.output_ub_init_last_row_times_front_part_last_core_input_scalar = 0;
+  params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar = 0;
+  params.output_ub_init_last_row_times_last_part_last_core_input_scalar = 0;
 }
 
 void InitTilingParams(TilingParamsInt32& params) {
@@ -957,6 +973,14 @@ void WriteTilingParams(const TilingParamsFp32& params, OpRunInfo& run_info) {
   ByteBufferPut(run_info.tiling_data, params.input_last_axis_align_floor_ele_num_input_scalar);
   ByteBufferPut(run_info.tiling_data, params.last_part_vadd_mask_input_scalar);
   ByteBufferPut(run_info.tiling_data, params.e_gm2ub_last_burst_len_input_scalar);
+  ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar);
+  ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_times_front_part_front_core_input_scalar);
+  ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar);
+  ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_times_last_part_front_core_input_scalar);
+  ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar);
+  ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_times_front_part_last_core_input_scalar);
+  ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar);
+  ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_times_last_part_last_core_input_scalar);
 
 }
 
@@ -1119,7 +1143,23 @@ void PrintTilingParams(const std::string& op_type, const TilingParamsFp32& param
          params.last_part_vadd_mask_input_scalar);
   GELOGD("op [%s] : params.e_gm2ub_last_burst_len_input_scalar=%d", op_type.c_str(),
   params.e_gm2ub_last_burst_len_input_scalar);
-
+  
+  GELOGD("op [%s] : params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar=%d", op_type.c_str(),
+  params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar);
+  GELOGD("op [%s] : params.output_ub_init_last_row_times_front_part_front_core_input_scalar=%d", op_type.c_str(),
+  params.output_ub_init_last_row_times_front_part_front_core_input_scalar);
+  GELOGD("op [%s] : params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar=%d", op_type.c_str(),
+  params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar);
+  GELOGD("op [%s] : params.output_ub_init_last_row_times_last_part_front_core_input_scalar=%d", op_type.c_str(),
+  params.output_ub_init_last_row_times_last_part_front_core_input_scalar);
+  GELOGD("op [%s] : params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar=%d", op_type.c_str(),
+  params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar);
+  GELOGD("op [%s] : params.output_ub_init_last_row_times_front_part_last_core_input_scalar=%d", op_type.c_str(),
+  params.output_ub_init_last_row_times_front_part_last_core_input_scalar);
+  GELOGD("op [%s] : params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar=%d", op_type.c_str(),
+  params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar);
+  GELOGD("op [%s] : params.output_ub_init_last_row_times_last_part_last_core_input_scalar=%d", op_type.c_str(),
+  params.output_ub_init_last_row_times_last_part_last_core_input_scalar);
 }
 
 void PrintTilingParams(const std::string& op_type, const TilingParamsInt32& params) {
@@ -1466,22 +1506,38 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
                                  params.input_last_rows_last_part_last_core_input_scalar);
 
       // output init params
-      // front part front core
-      ComputeInitOutputUbParams(params.ids_ele_num_ub_front_part_front_core_input_scalar, output_ub_ele_num_one_row,
+      // front row front part front core
+      ComputeInitOutputUbParams(params.input_front_rows_front_part_front_core_input_scalar, output_ub_ele_num_one_row,
                                 params.output_ub_init_last_repeat_time_front_part_front_core_input_scalar,
                                 params.output_ub_init_times_front_part_front_core_input_scalar);
-      // last part front core
-      ComputeInitOutputUbParams(params.ids_ele_num_ub_last_part_front_core_input_scalar, output_ub_ele_num_one_row,
+      // last row front part front core
+      ComputeInitOutputUbParams(params.input_last_rows_front_part_front_core_input_scalar, output_ub_ele_num_one_row,
+                                params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar,
+                                params.output_ub_init_last_row_times_front_part_front_core_input_scalar);
+      // front row last part front core
+      ComputeInitOutputUbParams(params.input_front_rows_last_part_front_core_input_scalar, output_ub_ele_num_one_row,
                                 params.output_ub_init_last_repeat_time_last_part_front_core_input_scalar,
                                 params.output_ub_init_times_last_part_front_core_input_scalar);
-      // front part last core
-      ComputeInitOutputUbParams(params.ids_ele_num_ub_front_part_last_core_input_scalar, output_ub_ele_num_one_row,
+      // last row last part front core
+      ComputeInitOutputUbParams(params.input_last_rows_last_part_front_core_input_scalar, output_ub_ele_num_one_row,
+                                params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar,
+                                params.output_ub_init_last_row_times_last_part_front_core_input_scalar);
+      // front row front part last core
+      ComputeInitOutputUbParams(params.input_front_rows_front_part_last_core_input_scalar, output_ub_ele_num_one_row,
                                 params.output_ub_init_last_repeat_time_front_part_last_core_input_scalar,
                                 params.output_ub_init_times_front_part_last_core_input_scalar);
-      // last part last core
-      ComputeInitOutputUbParams(params.ids_ele_num_ub_last_part_last_core_input_scalar, output_ub_ele_num_one_row,
+      // last row front part last core
+      ComputeInitOutputUbParams(params.input_last_rows_front_part_last_core_input_scalar, output_ub_ele_num_one_row,
+                                params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar,
+                                params.output_ub_init_last_row_times_front_part_last_core_input_scalar);
+      // front row last part last core
+      ComputeInitOutputUbParams(params.input_front_rows_last_part_last_core_input_scalar, output_ub_ele_num_one_row,
                                 params.output_ub_init_last_repeat_time_last_part_last_core_input_scalar,
                                 params.output_ub_init_times_last_part_last_core_input_scalar);
+      // last row last part last core
+      ComputeInitOutputUbParams(params.input_last_rows_last_part_last_core_input_scalar, output_ub_ele_num_one_row,
+                                params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar,
+                                params.output_ub_init_last_row_times_last_part_last_core_input_scalar);
       params.input_last_axis_align_front_part_ele_num_input_scalar =
           e_size / FP32_ELE_NUM_ALIGN_32B * FP32_ELE_NUM_ALIGN_32B;
       params.input_last_axis_align_floor_ele_num_input_scalar = UssCeil(e_size, FP32_ELE_NUM_ALIGN_32B);

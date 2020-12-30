@@ -74,7 +74,7 @@ CLOUD_CORE_NUM = 32
 MIN_TENSOR_ELE_NUM = 32
 
 # tiling params num
-TILING_PARAMS_NUM = 64
+TILING_PARAMS_NUM = 128
 
 # fp32 ele num one ub block
 ELE_NUM_ONE_BLOCK_FP32 = BYTE_BLOCK // BYTE_FP32
@@ -599,7 +599,38 @@ class UnsortedSegmentSum():
                     tik_instance.Scalar(
                         dtype=TILING_PARAM_DTYPE,
                         name="last_part_vadd_mask")
-
+                self.last_repeat_time_last_row_front_part_front_core = \
+                    tik_instance.Scalar(
+                        dtype=TILING_PARAM_DTYPE,
+                        name="last_repeat_time_last_row_front_part_front_core")
+                self.init_times_last_row_front_part_front_core = \
+                    tik_instance.Scalar(
+                        dtype=TILING_PARAM_DTYPE,
+                        name="init_times_last_row_front_part_front_core")
+                self.last_repeat_time_last_row_last_part_front_core = \
+                    tik_instance.Scalar(
+                        dtype=TILING_PARAM_DTYPE,
+                        name="last_repeat_time_last_row_last_part_front_core")
+                self.init_times_last_row_last_part_front_core = \
+                    tik_instance.Scalar(
+                        dtype=TILING_PARAM_DTYPE,
+                        name="init_times_last_row_last_part_front_core")
+                self.last_repeat_time_last_row_front_part_last_core = \
+                    tik_instance.Scalar(
+                        dtype=TILING_PARAM_DTYPE,
+                        name="last_repeat_time_last_row_front_part_last_core")
+                self.init_times_last_row_front_part_last_core = \
+                    tik_instance.Scalar(
+                        dtype=TILING_PARAM_DTYPE,
+                        name="init_times_last_row_front_part_last_core")
+                self.last_repeat_time_last_row_last_part_last_core = \
+                    tik_instance.Scalar(
+                        dtype=TILING_PARAM_DTYPE,
+                        name="last_repeat_time_last_row_last_part_last_core")
+                self.init_times_last_row_last_part_last_core = \
+                    tik_instance.Scalar(
+                        dtype=TILING_PARAM_DTYPE,
+                        name="init_times_last_row_last_part_last_core")
 
         self.obj_gm_tensor = GmTensor(self.tik_instance, self.input_dtype,
                                       self.ids_dtype, self.num_segments_dtype)
@@ -897,6 +928,38 @@ class UnsortedSegmentSum():
                 set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
             self.obj_fp32_e_num_input_scalar.e_gm2ub_last_burst_len. \
+                set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            input_scalar_index = input_scalar_index + 1
+            self.obj_fp32_output_init_input_scalar. \
+                last_repeat_time_last_row_front_part_front_core. \
+                set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            input_scalar_index = input_scalar_index + 1
+            self.obj_fp32_output_init_input_scalar. \
+                init_times_last_row_front_part_front_core. \
+                set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            input_scalar_index = input_scalar_index + 1
+            self.obj_fp32_output_init_input_scalar. \
+                last_repeat_time_last_row_last_part_front_core. \
+                set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            input_scalar_index = input_scalar_index + 1
+            self.obj_fp32_output_init_input_scalar. \
+                init_times_last_row_last_part_front_core. \
+                set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            input_scalar_index = input_scalar_index + 1
+            self.obj_fp32_output_init_input_scalar. \
+                last_repeat_time_last_row_front_part_last_core. \
+                set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            input_scalar_index = input_scalar_index + 1
+            self.obj_fp32_output_init_input_scalar. \
+                init_times_last_row_front_part_last_core. \
+                set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            input_scalar_index = input_scalar_index + 1
+            self.obj_fp32_output_init_input_scalar. \
+                last_repeat_time_last_row_last_part_last_core. \
+                set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            input_scalar_index = input_scalar_index + 1
+            self.obj_fp32_output_init_input_scalar. \
+                init_times_last_row_last_part_last_core. \
                 set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
 
     def unsorted_segment_sum(self):
@@ -3172,9 +3235,9 @@ def _tik_atomic_add_last_axis_not_align_small_e(block_index,
                         _tik_init_ub_tensor(tik_inst,
                                             obj_ub_tensor.output_ub,
                                             obj_fp32_output_init_input_scalar.
-                                            last_repeat_time_front_part_front_core,
+                                            last_repeat_time_last_row_front_part_front_core,
                                             obj_fp32_output_init_input_scalar.
-                                            init_times_front_part_front_core)
+                                            init_times_last_row_front_part_front_core)
                         with tik_inst.for_range(0,
                                                 obj_fp32_input_data_input_scalar.
                                                         last_rows_front_part_front_core) as \
@@ -3383,9 +3446,9 @@ def _tik_atomic_add_last_axis_not_align_small_e(block_index,
                         _tik_init_ub_tensor(tik_inst,
                                             obj_ub_tensor.output_ub,
                                             obj_fp32_output_init_input_scalar.
-                                            last_repeat_time_last_part_front_core,
+                                            last_repeat_time_last_row_last_part_front_core,
                                             obj_fp32_output_init_input_scalar.
-                                            init_times_last_part_front_core)
+                                            init_times_last_row_last_part_front_core)
                         with tik_inst.for_range(0,
                                                 obj_fp32_input_data_input_scalar.
                                                         last_rows_last_part_front_core) as \
@@ -3600,9 +3663,9 @@ def _tik_atomic_add_last_axis_not_align_small_e(block_index,
                         _tik_init_ub_tensor(tik_inst,
                                             obj_ub_tensor.output_ub,
                                             obj_fp32_output_init_input_scalar.
-                                            last_repeat_time_front_part_last_core,
+                                            last_repeat_time_last_row_front_part_last_core,
                                             obj_fp32_output_init_input_scalar.
-                                            init_times_front_part_last_core)
+                                            init_times_last_row_front_part_last_core)
                         with tik_inst.for_range(0,
                                                 obj_fp32_input_data_input_scalar.
                                                         last_rows_front_part_last_core) as \
@@ -3811,9 +3874,9 @@ def _tik_atomic_add_last_axis_not_align_small_e(block_index,
                         _tik_init_ub_tensor(tik_inst,
                                             obj_ub_tensor.output_ub,
                                             obj_fp32_output_init_input_scalar.
-                                            last_repeat_time_last_part_last_core,
+                                            last_repeat_time_last_row_last_part_last_core,
                                             obj_fp32_output_init_input_scalar.
-                                            init_times_last_part_last_core)
+                                            init_times_last_row_last_part_last_core)
                         with tik_inst.for_range(0,
                                                 obj_fp32_input_data_input_scalar.
                                                         last_rows_last_part_last_core) as rows_index:
