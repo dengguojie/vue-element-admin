@@ -313,6 +313,33 @@ COMMON_INFER_FUNC_REG(Relu6D, Relu6DInferShape);
 VERIFY_FUNC_REG(Relu6D, Relu6DVerify);
 // ----------------Relu6D END-------------------
 
+// ----------------SigmoidGrad----------------
+IMPLEMT_VERIFIER(SigmoidGrad, SigmoidGradVerify) {
+  if (!CheckTwoInputDtypeSame(op, "y", "dy")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(SigmoidGradInferShape) {
+  Shape shape_x = op.GetInputDesc("y").GetShape();
+  DataType input_dtype = op.GetInputDesc("y").GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> shape_range_y;
+  op.GetInputDesc("y").GetShapeRange(shape_range_y);
+  TensorDesc tensordesc_output = op.GetOutputDesc("z");
+  tensordesc_output.SetShape(shape_x);
+  tensordesc_output.SetDataType(input_dtype);
+  tensordesc_output.SetShapeRange(shape_range_y);
+  if (op.UpdateOutputDesc("z", tensordesc_output) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(SigmoidGrad, SigmoidGradInferShape);
+VERIFY_FUNC_REG(SigmoidGrad, SigmoidGradVerify);
+// ----------------SigmoidGrad-------------------
+
 // ----------------Softplus-------------------
 IMPLEMT_COMMON_INFERFUNC(SoftplusInferShape) {
   Shape features_shape = op.GetInputDesc("x").GetShape();
