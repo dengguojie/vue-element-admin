@@ -154,8 +154,8 @@ def bias_add(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
         range_bias = ((1, 1), range_x[1], (1, 1), (1, 1), range_x[4])
 
     elif x.get("format") is not None and x.get("format").upper() == "NDHWC":
-        if not 2 <= len(shape_x) <= 5:
-            raise RuntimeError("bias_add only support shape 2D to 5D, when input format is NDHWC")
+        if len(shape_x) != 5:
+            raise RuntimeError("bias_add only support shape 5D, when input format is NDHWC")
 
         if not check_equal(shape_x[4], shape_bias[0]):
             raise RuntimeError("data_format is NDHWC, shape_bias must"
@@ -164,8 +164,8 @@ def bias_add(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
         range_bias = ((1, 1), ) * (len(shape_x) - 1) + (range_x[-1], )
 
     elif x.get("format") is not None and x.get("format").upper() == "NCDHW":
-        if not 2 <= len(shape_x) <= 5:
-            raise RuntimeError("bias_add only support shape 2D to 5D"
+        if len(shape_x) != 5:
+            raise RuntimeError("bias_add only support shape 5D, "
                                "when input format is NCDHW")
         if not check_equal(shape_x[1], shape_bias[0]):
             raise RuntimeError("data_format is NCDHW, shape_bias must "
@@ -178,25 +178,14 @@ def bias_add(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
             raise RuntimeError("bias_add only support shape 6D"
                                "when input format is NDC1HWC0")
         ori_shape_x = x.get("ori_shape")
-        if bias.get("format") is not None and bias.get("format").upper() == "NDC1HWC0":
-            ori_shape_bias = bias.get("ori_shape")
-            if x.get("ori_format").upper() == "NDHWC":
-                if not check_equal(ori_shape_x[4], ori_shape_bias[0]):
-                    raise RuntimeError("data_format is NDHWC, shape_bias must "
-                                       "be equal to the fifth axis of shape_x")
-            elif x.get("ori_format").upper() == "NCDHW":
-                if not check_equal(ori_shape_x[1], ori_shape_bias[0]):
-                    raise RuntimeError("data_format is NCDHW, shape_bias must "
-                                       "be equal to the second axis of shape_x")
-        else:
-            if x.get("ori_format").upper() == "NDHWC":
-                if not check_equal(ori_shape_x[4], shape_bias[0]):
-                    raise RuntimeError("data_format is NDHWC, shape_bias must "
-                                       "be equal to the fifth axis of shape_x")
-            elif x.get("ori_format").upper() == "NCDHW":
-                if not check_equal(ori_shape_x[1], shape_bias[0]):
-                    raise RuntimeError("data_format is NCDHW, shape_bias must "
-                                       "be equal to the second axis of shape_x")
+        if x.get("ori_format").upper() == "NDHWC":
+            if not check_equal(ori_shape_x[4], shape_bias[0]):
+                raise RuntimeError("data_format is NDHWC, shape_bias must "
+                                   "be equal to the fifth axis of shape_x")
+        elif x.get("ori_format").upper() == "NCDHW":
+            if not check_equal(ori_shape_x[1], shape_bias[0]):
+                raise RuntimeError("data_format is NCDHW, shape_bias must "
+                                   "be equal to the second axis of shape_x")
         shape_bias = (1, 1, shape_x[2], 1, 1, shape_x[5])
         range_bias = ((1, 1), (1, 1), range_x[2], (1, 1), (1, 1), range_x[5])
 

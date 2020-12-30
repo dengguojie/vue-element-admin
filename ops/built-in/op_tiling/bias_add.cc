@@ -22,7 +22,7 @@ bool BiasAddTiling(const std::string& op_type, const TeOpParas& op_paras, const 
     CHECK((op_info.count("_boardcast_bias_shape") > 0),
           "op [%s] : compile info not contain [_boardcast_bias_shape]", op_type.c_str());
 
-    const std::vector<int64_t> boardcast_bias_shape = op_info["_boardcast_bias_shape"];
+    std::vector<int64_t> boardcast_bias_shape = op_info["_boardcast_bias_shape"];
 
     CHECK(!op_paras.inputs.empty(), "op [%s] : op_paras.inputs cannot be empty", op_type.c_str());
     CHECK(!op_paras.inputs[0].tensor.empty(), "op [%s] : op_paras.inputs[0].tensor cannot be empty", op_type.c_str());
@@ -30,7 +30,7 @@ bool BiasAddTiling(const std::string& op_type, const TeOpParas& op_paras, const 
     const std::vector<int64_t> input_shape_x = op_paras.inputs[0].tensor[0].shape;
 
     for (size_t i = 0; i < boardcast_bias_shape.size(); i++) {
-        boardcast_bias_shape[i] == boardcast_bias_shape[i] == -1 ? input_shape_x[i] : boardcast_bias_shape[i];
+        boardcast_bias_shape[i] = boardcast_bias_shape[i] == -1 ? input_shape_x[i] : boardcast_bias_shape[i];
     }
 
     TeOpParas op_paras_tmp = op_paras;
