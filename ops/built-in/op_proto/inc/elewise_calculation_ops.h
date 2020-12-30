@@ -3601,6 +3601,31 @@ REG_OP(MaskedScale)
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT32}))
     .REQUIRED_ATTR(value, Float)
     .OP_END_FACTORY_REG(MaskedScale)
+
+/**
+ * @brief Calculate the lerp function. \n
+
+ * @par Inputs:
+ * Three inputs, including:
+ * @li start: A tensor. Must be one of the following types:
+ *     float16, float32. \n
+ * @li end: A tensor. Must be one of the following types:
+ *     float16, float32. \n
+ * @li weight: A tensor. Must be one of the following types:
+ *     float16, float32. \n
+
+ * @par Outputs:
+ * y: A Tensor with the same type and shape of input_x's. \n
+
+ * @par Third-party framework compatibility
+ * Compatible with the Pytorch operator Lerp. \n
+ */
+REG_OP(Lerp)
+    .INPUT(start, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(end, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(weight, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OP_END_FACTORY_REG(Lerp)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_ELEWISE_CALCULATION_OPS_H_

@@ -4096,4 +4096,93 @@ IMPLEMT_COMMON_INFERFUNC(TanInferShape) {
 COMMON_INFER_FUNC_REG(Tan, TanInferShape);
 // --------------------Tan Op End----------
 
+// ----------------Lerp Begin-------------------
+bool InferShapeAndTypeLerp(Operator& op, 
+                           const string& input_name1, const string& input_name2, 
+                           const string& input_name3, const string& output_name) {
+  TensorDesc v_output_desc = op.GetOutputDesc(output_name);
+
+  DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
+  Format input_format = op.GetInputDesc(input_name1).GetFormat();
+
+  ge::Shape shape_x = op.GetInputDesc(input_name1).GetShape();
+  ge::Shape shape_y = op.GetInputDesc(input_name2).GetShape();
+  ge::Shape shape_z = op.GetInputDesc(input_name3).GetShape();
+  std::vector<int64_t> dims_x = shape_x.GetDims();
+  std::vector<int64_t> dims_y = shape_y.GetDims();
+  std::vector<int64_t> dims_z = shape_z.GetDims();
+  if (dims_x.size() < dims_y.size()) {
+    std::vector<int64_t> dims_tmp = dims_x;
+    dims_x = dims_y;
+    dims_y = dims_tmp;
+  }
+  if (dims_x.size() < dims_z.size()) {
+    std::vector<int64_t> dims_tmp = dims_x;
+    dims_x = dims_z;
+    dims_z = dims_tmp;
+  }
+
+  if (dims_x.size() != dims_y.size()) {
+    int dec = dims_x.size() - dims_y.size();
+    for (int i = 0; i < dec; i++) {
+      dims_y.insert(dims_y.begin(), (int64_t)1);
+    }
+  }
+  if (dims_x.size() != dims_z.size()) {
+    int dec = dims_x.size() - dims_z.size();
+    for (int i = 0; i < dec; i++) {
+      dims_z.insert(dims_z.begin(), (int64_t)1);
+    }
+  }
+
+  std::vector<int64_t> dim_vec;
+  for (size_t i = 0; i < dims_x.size(); i++) {
+    if ((dims_x[i] != dims_y[i]) && (dims_x[i] != 1) && (dims_y[i] != 1)) {
+      OP_LOGE(op.GetName().c_str(), "Input shapes are not compatible.");
+      return false;
+    }
+    if ((dims_x[i] != dims_z[i]) && (dims_x[i] != 1) && (dims_z[i] != 1)) {
+      OP_LOGE(op.GetName().c_str(), "Input shapes are not compatible.");
+      return false;
+    }
+    int64_t dims_tmp = dims_x[i] > dims_y[i] ? dims_x[i] : dims_y[i];
+    int64_t dims = dims_tmp > dims_z[i] ? dims_tmp : dims_z[i];
+    dim_vec.push_back(dims);
+  }
+  ge::Shape output_shape = ge::Shape(dim_vec);
+
+  v_output_desc.SetShape(output_shape);
+  v_output_desc.SetDataType(input_dtype);
+  v_output_desc.SetFormat(input_format);
+  op.UpdateOutputDesc(output_name, v_output_desc);
+
+  return true;
+}
+
+IMPLEMT_VERIFIER(Lerp, LerpVerify) {
+  DataType start_type = op.GetInputDesc("start").GetDataType();
+  DataType end_type = op.GetInputDesc("end").GetDataType();
+  DataType weight_type = op.GetInputDesc("weight").GetDataType();
+  if (start_type != end_type) {
+    OP_LOGE(op.GetName().c_str(), "Input dtypes are not the same.");
+    return GRAPH_FAILED;
+  }
+  if (start_type != weight_type) {
+    OP_LOGE(op.GetName().c_str(), "Input dtypes are not the same.");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(LerpInferShape) {
+    if (InferShapeAndTypeLerp(op, "start", "end", "weight", "y")) {
+      return GRAPH_SUCCESS;
+    }
+    return GRAPH_FAILED;
+}
+
+COMMON_INFER_FUNC_REG(Lerp, LerpInferShape);
+VERIFY_FUNC_REG(Lerp, LerpVerify);
+// ----------------Lerp END---------------------
+
 }  // namespace ge
