@@ -23,6 +23,11 @@ import warnings
 import te.lang.cce
 from te import tvm
 
+try:
+    from te.tvm.dsl_source_info import source_info_decorator
+except ImportError:
+    from .util import source_info_decorator
+
 
 def _index_offset(shape, axis, offset, *index):
     """Compute the offset of index along one dimension.
@@ -53,6 +58,7 @@ def _index_offset(shape, axis, offset, *index):
     return output_index
 
 
+@source_info_decorator()
 def split_compute_com(data, split_dim, size_splits):
     """
     Split a tensor into len(size_splits) tensors along one dimension
@@ -62,6 +68,7 @@ def split_compute_com(data, split_dim, size_splits):
     return split(data, split_dim, size_splits)
 
 
+@source_info_decorator()
 def split(data, split_dim, size_splits):
     """Split a tensor into len(size_splits) tensors along one dimension.
 

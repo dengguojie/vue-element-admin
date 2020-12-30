@@ -20,7 +20,12 @@ from te.utils.shape_util import shape_to_list
 from .util import dtype_check_decorator
 from .util import get_tvm_scalar
 
+try:
+    from te.tvm.dsl_source_info import source_info_decorator
+except ImportError:
+    from .util import source_info_decorator
 
+@source_info_decorator()
 @dtype_check_decorator
 def inplace_add(lhs, inplace_ids, rhs):
     """
@@ -44,6 +49,7 @@ def inplace_add(lhs, inplace_ids, rhs):
     return _inplace_op(lhs, inplace_ids, rhs, ops="inplace_add")
 
 
+@source_info_decorator()
 @dtype_check_decorator
 def inplace_sub(lhs, inplace_ids, rhs):
     """
@@ -67,6 +73,7 @@ def inplace_sub(lhs, inplace_ids, rhs):
     return _inplace_op(lhs, inplace_ids, rhs, ops="inplace_sub")
 
 
+@source_info_decorator()
 @dtype_check_decorator
 def inplace_update(lhs, inplace_ids, rhs):
     """

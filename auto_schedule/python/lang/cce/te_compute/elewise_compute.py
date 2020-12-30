@@ -645,6 +645,7 @@ def __vlog_calculate_by_taylor(data_x):
     return res
 
 
+@source_info_decorator()
 @_auto_cast_of_elewise
 @dtype_check_decorator
 def vlog(raw_tensor, priority_flag=0):
@@ -1462,6 +1463,7 @@ def vmax(lhs, rhs):
     return __binary_elewise_op(lhs, rhs, "elewise_binary_max")
 
 
+@source_info_decorator()
 @_auto_cast_of_elewise
 @dtype_check_decorator
 def vor(lhs, rhs):

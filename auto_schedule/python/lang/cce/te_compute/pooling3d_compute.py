@@ -19,6 +19,11 @@ import math
 from te import tvm
 from te.platform.cce_conf import get_soc_spec
 
+try:
+    from te.tvm.dsl_source_info import source_info_decorator
+except ImportError:
+    from .util import source_info_decorator
+
 _POOL3D_TAG = "pooling3d_"
 _DATA_MODE_CEIL = 0
 _DATA_MODE_PADDING = 1
@@ -30,6 +35,7 @@ _C0_DIMENSION_DATA_SIZE_MAP = {"float16": 32, "float32": 64, "double": 128}
 
 # 'pylint: disable=too-many-locals, too-many-arguments, invalid-name
 # 'pylint: disable=unused-argument,too-many-statements, cell-var-from-loop
+@source_info_decorator()
 def pooling3d(tensor_in, window, stride, padding_mode="SAME",
               pads=(0, 0, 0, 0, 0, 0),
               pooling_mode="MAX", dilation=(1, 1, 1), ceil_mode=0):

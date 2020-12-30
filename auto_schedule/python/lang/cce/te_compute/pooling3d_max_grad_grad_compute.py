@@ -20,6 +20,11 @@ import warnings
 
 from te import tvm
 
+try:
+    from te.tvm.dsl_source_info import source_info_decorator
+except ImportError:
+    from .util import source_info_decorator
+
 _POOL3D_TAG = "pooling3d_"
 _SIZE_OF_FP16 = 2
 _BLOCK_SIZE = 16
@@ -33,6 +38,7 @@ _DTYPE_MAP = {"float16": "uint16", "float32": "uint32", "double": "uint64"}
 
 
 # 'pylint: disable=too-many-arguments
+@source_info_decorator()
 def pooling3d_max_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
                             ksize, strides, pads=(0, 0, 0, 0, 0, 0),
                             data_format="NDHWC",
