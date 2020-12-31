@@ -22,8 +22,10 @@ from te import tik
 
 # define a scalar, value = -(2**16 - 1)
 SCALAR_MIN_FP16 = -(2**16 - 1)
-# define a scalar, value = -(2**32 - 1)
+# define a scalar, value = -3402823424.0
 SCALAR_MIN_FP32 = -3402823424.0
+# define a scalar, value = -(2**31 - 1)
+SCALAR_MIN_INT32 = -(2**31 - 1)
 # max set_mask_int64 value
 MAX_MASK_INT64 = 2**64 - 1
 # max segment len
@@ -242,6 +244,7 @@ class Argmax(ArgmaxBase):
             self.gm_result_size = \
                 self.first_dim_size + 2 * self.repeat_times + 15
 
+        self.minest_value = SCALAR_MIN_FP32 if self.dtype_x == "float32" else SCALAR_MIN_INT32
         self.thread_num = 1
         if self.first_dim_size != 1:
             self.thread_num = 2
@@ -374,10 +377,10 @@ class Argmax(ArgmaxBase):
                 self.result_out_scalar = self.tik_instance.Scalar(self.dtype_x)
 
                 argmax_func = self.do_max_last_axis_fp32
-                self.result_out_scalar.set_as(SCALAR_MIN_FP32)
+                self.result_out_scalar.set_as(self.minest_value)
                 self.tik_instance.vector_dup(self.data_each_vector,
                                              self.ub_result_64,
-                                             SCALAR_MIN_FP32, 1, 1, 8)
+                                             self.minest_value, 1, 1, 8)
                 if loop_times != 0:
                     thread_num = 1
                     if loop_times > 2:
@@ -459,7 +462,7 @@ class Argmax(ArgmaxBase):
             _offset = ub_buf_size // self.data_each_vector
             self.tik_instance.vector_dup(
                 [mask_h, mask_l], ub_data[_offset * self.data_each_vector],
-                SCALAR_MIN_FP32, 1, 1, 8)
+                self.minest_value, 1, 1, 8)
         total_block = repeat
         while total_block > 1:
             total_block = self.get_half_max(self.tik_instance,
