@@ -19,6 +19,7 @@
  * \brief
  */
 #include "inc/array_ops.h"
+#include <climits>
 #include <unordered_set>
 #include <utility>
 
@@ -1255,9 +1256,7 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
         if (x_range.empty()) {
           return GRAPH_SUCCESS;
         }
-        for (auto& ele : x_range) {
-          range_max *= ele.second;
-        }
+        ge::array_ops::ReshapeRangeInfer(op, x_range, range_max);
       } else {
         // known dim, shape size as range_max
         range_max = input_shape_size;
@@ -1328,29 +1327,7 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
         GE_OP_LOGI(op.GetName().c_str(), "input x doesnot have shape range!");
       } else {
         // If last op have already set shape range, try best to infer shape range
-        for (auto& pair : x_range) {
-          if (pair.second < 0) {
-            max_input_dims = -1;
-            break;
-          }
-          max_input_dims *= pair.second;
-        }
-        int64_t left = max_input_dims;
-        for (auto dim : output_shape.GetDims()) {
-          if (dim < 0) {
-            if (max_input_dims == -1) {
-              y_range.emplace_back(std::pair<int64_t, int64_t>(1, max_input_dims));
-            } else {
-              y_range.emplace_back(std::pair<int64_t, int64_t>(1, left));
-            }
-          } else {
-            y_range.emplace_back(std::pair<int64_t, int64_t>(dim, dim));
-            if (max_input_dims == -1) {
-              continue;
-            }
-            left = static_cast<int64_t>((static_cast<double>(max_input_dims) + 0.5) / dim);
-          }
-        }
+        ge::array_ops::ReshapeRangeInfer(op, x_range, y_range, output_shape);
       }
 
       td->SetShapeRange(y_range);

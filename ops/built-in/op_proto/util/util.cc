@@ -986,5 +986,91 @@ bool SetScalarOutputDesc(const string& input, const string& output, OpDescPtr op
   }
 }
 
+namespace array_ops {
+
+bool CheckInt64MulOverflow(int64_t a, int64_t b) {
+  if (a > 0) {
+    if (b > 0) {
+      if (a >(INT64_MAX / b)) {
+        return false;
+      }
+    } else {
+      if (b < (INT64_MIN / a)) {
+        return false;
+      }
+    }
+  } else {
+    if (b > 0) {
+      if (a < (INT64_MIN / b)) {
+        return false;
+      }
+    } else {
+      if ((a != 0) && (b < (INT64_MAX / a))) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+void ReshapeRangeInfer(const Operator &op, const std::vector<std::pair<int64_t, int64_t>>& x_range, 
+                       int64_t& range_max) {
+  for (const auto& ele : x_range) {
+    if (ele.second < 0) {
+      range_max = -1;
+      return;
+    }
+
+    if (array_ops::CheckInt64MulOverflow(range_max, ele.second)) {
+      range_max *= ele.second;
+    } else {
+      range_max = INT64_MAX;
+      GE_OP_LOGW(op.GetName().c_str(), "Range Infer out of int64 max!Do set int64max!");
+      return;
+    }
+  }
+}
+
+void ReshapeRangeInfer(const Operator &op, const std::vector<std::pair<int64_t, int64_t>>& x_range, 
+                       std::vector<std::pair<int64_t, int64_t>>& y_range, GeShape& output_shape) {
+  int64_t max_input_dims = 1;
+  for (const auto& pair : x_range) {
+    if (pair.second < 0) {
+      max_input_dims = -1;
+      break;
+    }
+    if (array_ops::CheckInt64MulOverflow(max_input_dims, pair.second)) {
+      max_input_dims *= pair.second;
+    } else {
+      max_input_dims = INT64_MAX;
+      GE_OP_LOGW(op.GetName().c_str(), "Range Infer out of int64 max!Do set int64max!");
+      break;
+    }
+  }
+
+  if (max_input_dims < 0) {
+    for (const auto dim : output_shape.GetDims()) {
+      if (dim < 0) {
+        y_range.emplace_back(std::pair<int64_t, int64_t>(1, -1));
+      } else {
+        y_range.emplace_back(std::pair<int64_t, int64_t>(dim, dim));
+      }
+    }
+  } else {
+    int left = max_input_dims;
+    for (const auto dim : output_shape.GetDims()) {
+      if (dim < 0) {
+        y_range.emplace_back(std::pair<int64_t, int64_t>(1, left));
+      } else {
+        y_range.emplace_back(std::pair<int64_t, int64_t>(dim, dim));
+        left = static_cast<int64_t>((static_cast<double>(left) + 0.5) / dim);
+      }
+    }
+  }
+}
+
+}
+
 }  // namespace ge
 

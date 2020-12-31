@@ -348,6 +348,16 @@ bool SetScalarOutputDesc(const string& input,
                          const string& output,
                          OpDescPtr op_desc, 
                          GeShape& output_shape);
+
+namespace array_ops {
+bool CheckInt64MulOverflow(int64_t a, int64_t b);
+
+void ReshapeRangeInfer(const Operator &op, const std::vector<std::pair<int64_t, int64_t>>& x_range, 
+                       int64_t& range_max);
+
+void ReshapeRangeInfer(const Operator &op, const std::vector<std::pair<int64_t, int64_t>>& x_range, 
+                       std::vector<std::pair<int64_t, int64_t>>& y_range, GeShape& output_shape);
+}    
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_UTIL_UTIL_H_
