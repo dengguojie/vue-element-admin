@@ -44,31 +44,32 @@ graphStatus RandomShape(Operator& op, const std::string& shape_name, const std::
 graphStatus RandomShapeWithDataType(Operator& op, const std::string& shape_name, const std::string& date_type_attr_name,
                                     const std::string& out_name) {
   Tensor tensor;
+  std::vector<std::string> input_infer_depends = {"shape"};
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  op_desc->SetOpInferDepends(input_infer_depends);
   GeTensorDescPtr output_desc = op_desc->MutableOutputDesc(0);
-  TensorDesc output_tensor = op.GetOutputDesc(0);
+  DataType type;
+  if (op.GetAttr(date_type_attr_name.c_str(), type) != GRAPH_SUCCESS) {
+    std::string info = ": Get dtype attr failed.";
+    OP_LOGE(op_desc->GetName().c_str(), "%s", info.c_str());
+    return GRAPH_FAILED;
+  }
   if (op.GetInputConstData(shape_name, tensor) != GRAPH_SUCCESS) {
-    output_desc->SetShape(GeShape({UNKNOWN_DIM}));
-    output_desc->SetOriginShape(GeShape({UNKNOWN_DIM}));
-    output_desc->SetShapeRange({std::make_pair(1, -1)});
+    output_desc->SetDataType(type);
+    output_desc->SetShape(GeShape(UNKNOWN_RANK));
+    output_desc->SetOriginShape(GeShape(UNKNOWN_RANK));
     return GRAPH_SUCCESS;
   }
   Shape shape;
-  if (MakeShapeFromShapeTensor(tensor, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (MakeShapeFromShapeTensor(tensor, shape, op_desc->GetName().c_str()) != GRAPH_SUCCESS) {
     std::string info = ": MakeShapeFromShapeTensor failed.";
-    OP_LOGE(op.GetName().c_str(), "%s", info.c_str());
+    OP_LOGE(op_desc->GetName().c_str(), "%s", info.c_str());
     return GRAPH_FAILED;
   }
-  Operator::OpType type;
-  if (op.GetAttr(date_type_attr_name, type) != GRAPH_SUCCESS) {
-    std::string info = ": get dtype attr failed.";
-    OP_LOGE(op.GetName().c_str(), "%s", info.c_str());
-    return GRAPH_FAILED;
-  }
-
-  output_tensor.SetDataType(type);
-  output_tensor.SetShape(shape);
-  output_tensor.SetOriginShape(shape);
-  return op.UpdateOutputDesc(out_name.c_str(), output_tensor);
+  std::vector<int64_t> output_shape = shape.GetDims();
+  output_desc->SetDataType(type);
+  output_desc->SetShape(GeShape(output_shape));
+  output_desc->SetOriginShape(GeShape(output_shape));
+  return GRAPH_SUCCESS;
 }
 }  // namespace ge

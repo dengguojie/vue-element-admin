@@ -205,9 +205,6 @@ IMPLEMT_INFERFUNC(RandomUniformInt, RandomUniformIntInfer) {
 INFER_FUNC_REG(RandomUniformInt, RandomUniformIntInfer);
 
 IMPLEMT_INFERFUNC(RandomUniform, RandomUniformInfer) {
-  std::vector<std::string> input_infer_depends = {"shape"};
-  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  op_desc->SetOpInferDepends(input_infer_depends);
   return RandomShapeWithDataType(op, "shape", "dtype", "y");
 }
 
