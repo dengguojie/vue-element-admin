@@ -1743,13 +1743,10 @@ IMPLEMT_COMMON_INFERFUNC(ExtractImagePatchesInferShape) {
 
   std::vector<int64_t> ksize;
   ksize = GetAttrValue(op, "ksizes");
-
   std::vector<int64_t> stride;
   stride = GetAttrValue(op, "strides");
-
   std::vector<int64_t> dilation;
   dilation = GetAttrValue(op, "rates");
-
   std::string padding;
   if (op.GetAttr("padding", padding) == GRAPH_FAILED) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr ConstValue padding failed!");
@@ -1761,25 +1758,7 @@ IMPLEMT_COMMON_INFERFUNC(ExtractImagePatchesInferShape) {
   GeTensorDescPtr desc_out_ptr = op_desc->MutableOutputDesc("y");
   auto dtype = desc_in_ptr->GetDataType();
   auto shape_in = desc_in_ptr->GetShape();
-
-  std::string data_format;
-  if (op.GetAttr("data_format", data_format) == GRAPH_FAILED || (data_format != "NHWC" && data_format != "NCHW")) {
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr data_format failed, data_format must be NHWC or NCHW!");
-    return GRAPH_FAILED;
-  }
-
   auto x_format = desc_in_ptr->GetOriginFormat();
-  const std::map<std::string, Format> format_map{{"NHWC", FORMAT_NHWC}, {"NCHW", FORMAT_NCHW}};
-
-  // Set ori_format as data_format if input ori_format is the default value ND.
-  if (x_format == FORMAT_ND) {
-    desc_in_ptr->SetOriginFormat(format_map.at(data_format));
-    desc_in_ptr->SetFormat(format_map.at(data_format));
-    desc_out_ptr->SetOriginFormat(format_map.at(data_format));
-    desc_out_ptr->SetFormat(format_map.at(data_format));
-  }
-
-  x_format = desc_in_ptr->GetOriginFormat();
   if (x_format != FORMAT_NHWC && x_format != FORMAT_NCHW) {
     OP_LOGE(op.GetName().c_str(), "Attr x_format only support NHWC or NCHW");
     return GRAPH_FAILED;
@@ -1820,7 +1799,7 @@ IMPLEMT_COMMON_INFERFUNC(ExtractImagePatchesInferShape) {
   }
   out_c = in_c * filter_h * filter_w;
   std::vector<int64_t> out_dim{in_n, out_h, out_w, out_c};
-  if(x_format == FORMAT_NCHW) {
+  if (x_format == FORMAT_NCHW) {
     out_dim = {in_n, out_c, out_h, out_w};
   }
 
@@ -1855,23 +1834,7 @@ IMPLEMT_INFER_DATA_SLICE(ExtractImagePatches, ExtractImagePatchesInferDataSlice)
   GeTensorDescPtr tensor_in_ptr = op_desc->MutableInputDesc("x");
   GeTensorDescPtr tensor_out_ptr = op_desc->MutableOutputDesc("y");
   auto shape_in = tensor_in_ptr->GetShape();
-
-  std::string data_format;
-  if (op.GetAttr("data_format", data_format) == GRAPH_FAILED || (data_format != "NHWC" && data_format != "NCHW")) {
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr data_format failed, data_format must be NHWC or NCHW!");
-    return GRAPH_FAILED;
-  }
-
   auto images_format = tensor_in_ptr->GetOriginFormat();
-  const std::map<std::string, Format> format_map{{"NHWC", FORMAT_NHWC}, {"NCHW", FORMAT_NCHW}};
-
-  // Set ori_format as data_format if input ori_format is the default value ND.
-  if (images_format == FORMAT_ND) {
-    tensor_in_ptr->SetOriginFormat(format_map.at(data_format));
-    tensor_in_ptr->SetFormat(format_map.at(data_format));
-  }
-
-  images_format = tensor_in_ptr->GetOriginFormat();
   if (images_format != FORMAT_NHWC && images_format != FORMAT_NCHW) {
     OP_LOGE(op.GetName().c_str(), "Attr x_format only support NHWC or NCHW");
     return GRAPH_FAILED;
@@ -1899,7 +1862,7 @@ IMPLEMT_INFER_DATA_SLICE(ExtractImagePatches, ExtractImagePatchesInferDataSlice)
   vector<vector<int64_t>> y_data_slice = {{}, {}, {}, {}, {}};
   vector<vector<int64_t>> x_data_slice = {{}, {}, {}, {}, {}};
   if (!AttrUtils::GetListListInt(tensor_out_ptr, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
-    OP_LOGI(op.GetName().c_str(), "No data slice, not need infer input");
+    OP_LOGE(op.GetName().c_str(), "No data slice, not need infer input");
     return GRAPH_FAILED;
   }
 
@@ -1913,24 +1876,26 @@ IMPLEMT_INFER_DATA_SLICE(ExtractImagePatches, ExtractImagePatchesInferDataSlice)
         vector<int64_t> slice_data_h;
         InferHExtractImagePatches(ksize_h, dilation_h, stride_h, images_h, y_data_slice[idx], slice_data_h);
         OP_LOGD(op.GetName().c_str(),
-                "ExtractImagePatches h axis slice ori_scope is [%d, %d], calced output scope is [%d, %d]",
+                "ExtractImagePatches h axis slice ori_scope is [%lld, %lld], calced output scope is [%lld, %lld]",
                 slice_data_h[0], slice_data_h[1], y_data_slice[idx][0], y_data_slice[idx][1]);
         x_data_slice[idx] = slice_data_h;
       }
     }
   }
   if (!have_slice) {
+    OP_LOGE(op.GetName().c_str(), "The op dose not have slice.");
     return GRAPH_FAILED;
   }
   if (!need_infer) {
+    OP_LOGI(op.GetName().c_str(), "The op dose not have overlap dim.");
     return NO_OVERLAP_DIM;
-  } else {
-    if (!AttrUtils::SetListListInt(tensor_in_ptr, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
-      return GRAPH_FAILED;
-    }
-    return GRAPH_SUCCESS;
+  }
+  if (!AttrUtils::SetListListInt(tensor_in_ptr, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+    OP_LOGE(op.GetName().c_str(), "The op SetListListInt failed");
+    return GRAPH_FAILED;
   }
   OP_LOGI(op.GetName().c_str(), "Calc ExtractImagePatches InferDataSlice end!");
+  return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(ExtractImagePatches, ExtractImagePatchesInferShape);
@@ -1950,7 +1915,7 @@ static std::vector<int64_t> GetAttrValueVolume(const Operator& op, const std::st
 static bool CheckListEmptyAndValueVolume(const std::string& op_name, const std::vector<int64_t>& list,
                                          const std::string& attr_name) {
   if (list.size() < 5) {
-    OP_LOGE(op_name.c_str(), "The %s dose not have enough elements(%u)!", attr_name.c_str(), list.size());
+    OP_LOGE(op_name.c_str(), "The %s dose not have enough elements(%llu)!", attr_name.c_str(), list.size());
     return false;
   }
   if (list.at(0) != 1 || list.at(1) < 1 || list.at(2) < 1 || list.at(3) < 1 || list.at(4) != 1) {
@@ -1966,19 +1931,16 @@ IMPLEMT_VERIFIER(ExtractVolumePatches, ExtractVolumePatchesVerify) {
   if (!CheckListEmptyAndValueVolume(op.GetName(), ksize, "ksizes")) {
     return GRAPH_FAILED;
   }
-
   std::vector<int64_t> stride;
   stride = GetAttrValueVolume(op, "strides");
   if (!CheckListEmptyAndValueVolume(op.GetName(), stride, "strides")) {
     return GRAPH_FAILED;
   }
-
   std::string padding;
   if (op.GetAttr("padding", padding) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Get padding failed!");
     return GRAPH_FAILED;
   }
-
   if (padding != "SAME" && padding != "VALID") {
     OP_LOGE(op.GetName().c_str(), "Padding only supported SAME and VALID!");
     return GRAPH_FAILED;
@@ -1994,13 +1956,11 @@ IMPLEMT_COMMON_INFERFUNC(ExtractVolumePatchesInferShape) {
   ksize = GetAttrValueVolume(op, "ksizes");
   std::vector<int64_t> stride;
   stride = GetAttrValueVolume(op, "strides");
-
   std::string padding;
   if (op.GetAttr("padding", padding) == GRAPH_FAILED) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr ConstValue padding failed!");
     return GRAPH_FAILED;
   }
-
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   if (op_desc == nullptr) {
     OP_LOGE(op.GetName().c_str(), "GetOpDescFromOperator return nullptr!");
@@ -2013,30 +1973,13 @@ IMPLEMT_COMMON_INFERFUNC(ExtractVolumePatchesInferShape) {
   }
   auto shape_in = desc_in_ptr->GetShape();
   auto dtype = desc_in_ptr->GetDataType();
-
-  std::string data_format;
-  if (op.GetAttr("data_format", data_format) == GRAPH_FAILED || (data_format != "NDHWC" && data_format != "NCDHW")) {
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr data_format failed, data_format must be NDHWC or NCDHW!");
-    return GRAPH_FAILED;
-  }
-
   auto x_format = desc_in_ptr->GetOriginFormat();
-  const std::map<std::string, Format> format_map{{"NDHWC", FORMAT_NDHWC}, {"NCDHW", FORMAT_NCDHW}};
-
-  // Set ori_format as data_format if input ori_format is the default value ND.
-  if (x_format == FORMAT_ND) {
-    desc_in_ptr->SetOriginFormat(format_map.at(data_format));
-    desc_in_ptr->SetFormat(format_map.at(data_format));
-  }
-
-  x_format = desc_in_ptr->GetOriginFormat();
-
   if (x_format != FORMAT_NDHWC && x_format != FORMAT_NCDHW) {
     OP_LOGE(op.GetName().c_str(), "Attr x_format only support NDHWC or NCDHW");
     return GRAPH_FAILED;
   }
 
-  std::map<char, int> idx_map{{'N', 0}, {'D', 1}, {'H', 2},{'W', 3},{'C', 4}};
+  std::map<char, int> idx_map{{'N', 0}, {'D', 1}, {'H', 2}, {'W', 3}, {'C', 4}};
   if (x_format == FORMAT_NCDHW) {
     idx_map = {{'N', 0}, {'C', 1}, {'D', 2}, {'H', 3}, {'W', 4}};
   }
@@ -2121,23 +2064,7 @@ IMPLEMT_INFER_DATA_SLICE(ExtractVolumePatches, ExtractVolumePatchesInferDataSlic
   }
   GeTensorDescPtr tensor_out_ptr = op_desc->MutableOutputDesc("y");
   auto shape_in = tensor_in_ptr->GetShape();
-
-  std::string data_format;
-  if (op.GetAttr("data_format", data_format) == GRAPH_FAILED || (data_format != "NDHWC" && data_format != "NCDHW")) {
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr data_format failed, data_format must be NDHWC or NCDHW!");
-    return GRAPH_FAILED;
-  }
-
   auto x_format = tensor_in_ptr->GetOriginFormat();
-  const std::map<std::string, Format> format_map{{"NDHWC", FORMAT_NDHWC}, {"NCDHW", FORMAT_NCDHW}};
-
-  // Set ori_format as data_format if input ori_format is the default value ND.
-  if (x_format == FORMAT_ND) {
-    tensor_in_ptr->SetOriginFormat(format_map.at(data_format));
-    tensor_in_ptr->SetFormat(format_map.at(data_format));
-  }
-
-  x_format = tensor_in_ptr->GetOriginFormat();
   if (x_format != FORMAT_NDHWC && x_format != FORMAT_NCDHW) {
     OP_LOGE(op.GetName().c_str(), "Input x format only support NDHWC or NCDHW");
     return GRAPH_FAILED;
@@ -2147,7 +2074,6 @@ IMPLEMT_INFER_DATA_SLICE(ExtractVolumePatches, ExtractVolumePatchesInferDataSlic
   if (x_format == FORMAT_NCDHW) {
     idx_map = {{'N', 0}, {'C', 1}, {'D', 2}, {'H', 3}, {'W', 4}};
   }
-
 
   std::vector<int64_t> kernel_size;
   kernel_size = GetAttrValue(op, "ksizes");
@@ -2165,7 +2091,7 @@ IMPLEMT_INFER_DATA_SLICE(ExtractVolumePatches, ExtractVolumePatchesInferDataSlic
   vector<vector<int64_t>> y_data_slice = {{}, {}, {}, {}, {}, {}};
   vector<vector<int64_t>> x_data_slice = {{}, {}, {}, {}, {}, {}};
   if (!AttrUtils::GetListListInt(tensor_out_ptr, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
-    OP_LOGI(op.GetName().c_str(), "No data slice, not need infer input");
+    OP_LOGE(op.GetName().c_str(), "No data slice, not need infer input");
     return GRAPH_FAILED;
   }
 
@@ -2179,15 +2105,15 @@ IMPLEMT_INFER_DATA_SLICE(ExtractVolumePatches, ExtractVolumePatchesInferDataSlic
         vector<int64_t> slice_data_d;
         InferHDExtractVolumePatches(filter_d, stride_d, input_d, y_data_slice[idx], slice_data_d);
         OP_LOGD(op.GetName().c_str(),
-                "ExtractVolumePatches d axis slice ori_scope is [%d, %d], calced output scope is [%d, %d]",
+                "ExtractVolumePatches d axis slice ori_scope is [%lld, %lld], calced output scope is [%lld, %lld]",
                 slice_data_d[0], slice_data_d[1], y_data_slice[idx][0], y_data_slice[idx][1]);
         x_data_slice[idx] = slice_data_d;
-      } else if(idx == 3) {
+      } else if (idx == 3) {
         need_infer = true;
         vector<int64_t> slice_data_h;
         InferHDExtractVolumePatches(filter_h, stride_h, input_h, y_data_slice[idx], slice_data_h);
         OP_LOGD(op.GetName().c_str(),
-                "ExtractVolumePatches h axis slice ori_scope is [%d, %d], calced output scope is [%d, %d]",
+                "ExtractVolumePatches h axis slice ori_scope is [%lld, %lld], calced output scope is [%lld, %lld]",
                 slice_data_h[0], slice_data_h[1], y_data_slice[idx][0], y_data_slice[idx][1]);
         x_data_slice[idx] = slice_data_h;
       }
@@ -2195,17 +2121,19 @@ IMPLEMT_INFER_DATA_SLICE(ExtractVolumePatches, ExtractVolumePatchesInferDataSlic
   }
 
   if (!have_slice) {
+    OP_LOGE(op.GetName().c_str(), "The op dose not have slice.");
     return GRAPH_FAILED;
   }
   if (!need_infer) {
+    OP_LOGI(op.GetName().c_str(), "The op dose not have overlap dim.");
     return NO_OVERLAP_DIM;
-  } else {
-    if (!AttrUtils::SetListListInt(tensor_in_ptr, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
-      return GRAPH_FAILED;
-    }
-    return GRAPH_SUCCESS;
+  }
+  if (!AttrUtils::SetListListInt(tensor_in_ptr, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+    OP_LOGE(op.GetName().c_str(), "The op SetListListInt failed");
+    return GRAPH_FAILED;
   }
   OP_LOGI(op.GetName().c_str(), "Calc ExtractVolumePatches InferDataSlice end!");
+  return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(ExtractVolumePatches, ExtractVolumePatchesInferShape);
