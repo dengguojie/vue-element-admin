@@ -950,7 +950,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
     _tiling_check()
 
     # axis management
-    g_axis, n_after_multicore = sch[c_ddr].split(c_ddr.op.axis[2], nparts=real_g)
+    g_axis, n_after_multicore = sch[c_ddr].split(c_ddr.op.axis[2], factor=cin1_g)
     batch_after_multicore, d_after_multicore, m_after_multicore = (
         c_ddr.op.axis[0], c_ddr.op.axis[1], c_ddr.op.axis[3])
     sch[c_ddr].reorder(g_axis,
@@ -1048,13 +1048,13 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
     def _n_buffer_tile():
         _, n_dim, m_dim, _ = tiling["block_dim"]
         group_dim = tiling["g_dim"]
-        bl1_outer_size = te_util.int_ceil_div(cddr_c1, real_g * n_dim) // bl1_tiling_n // cl0_tiling_nc
+        bl1_outer_size = te_util.int_ceil_div(cin1_g, n_dim) // bl1_tiling_n // cl0_tiling_nc
         bl1_inner_size = bl1_tiling_n
         g_size = te_util.int_ceil_div(real_g, group_dim)
 
         if blocks != 1:
             block_n = blockidx // m_dim % n_dim
-            axis = block_n * (g_size * bl1_outer_size * bl1_inner_size)
+            axis = block_n * (bl1_outer_size * bl1_inner_size)
             n_axis = (axis + bl1_at_ddr_n_outer * bl1_inner_size + bl1_at_ddr_n_inner) * cl0_tiling_nc
         else:
             n_axis = (bl1_at_ddr_n_outer * bl1_inner_size + bl1_at_ddr_n_inner) * cl0_tiling_nc
