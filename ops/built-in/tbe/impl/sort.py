@@ -58,14 +58,12 @@ def cheak(x, y1, y2, axis, kernel_name):
     if axis != len(shape) - 1:
         raise RuntimeError("Dim should take the last one.")
 
-    allnum = functools_reduce(lambda x, y: x * y, shape)
-
     num = shape[axis]
 
     if num > MAX_NUM:
         raise RuntimeError("Num in dim is too big (>7040).")
 
-    return shape, dtype, allnum, num
+    return shape, dtype, num
 
 
 def vbs16(tik_instance, num, total, input_ub, descending):
@@ -277,7 +275,8 @@ def vms4core(tik_instance, input_ub, dest_pos_ub, leftset, rightset, num_list):
     return input_ub, dest_pos_ub, num_list
 
 
-def moveout(tik_instance, descending, num_16, num, data_out, offset_out, input_ub, dest_pos_ub, data_indices, threadNum):
+def moveout(tik_instance, descending, num_16, num, data_out, offset_out, input_ub, dest_pos_ub, data_indices,
+            threadNum):
     """
     Function: Move UB to GM, and trans y2 from fp16 to int32.
     Modify : 2020-08-03
@@ -401,7 +400,8 @@ def sort(x, y1, y2, axis=-1, descending=False, kernel_name="sort"):
         the name of the operator
     ----------
     """
-    shape, dtype, allnum, num = cheak(x, y1, y2, axis, kernel_name)
+    shape, dtype, num = cheak(x, y1, y2, axis, kernel_name)
+    allnum = functools_reduce(lambda x, y: x * y, shape)
 
     tik_instance = tik.Tik(tik.Dprofile('cloud'))
 
@@ -411,7 +411,8 @@ def sort(x, y1, y2, axis=-1, descending=False, kernel_name="sort"):
 
     input_gm = tik_instance.Tensor(dtype, shape, name="x", scope=tik.scope_gm)
     data_out = tik_instance.Tensor(dtype, [rounds * num_16], name="data_out", scope=tik.scope_gm, is_workspace=True)
-    data_indices = tik_instance.Tensor("int32",  [rounds * num_16], name="data_indices", scope=tik.scope_gm, is_workspace=True)
+    data_indices = tik_instance.Tensor("int32", [rounds * num_16], name="data_indices", scope=tik.scope_gm,
+                                       is_workspace=True)
     data_out_ = tik_instance.Tensor(dtype, shape, name="data_out_", scope=tik.scope_gm)
     data_indices_ = tik_instance.Tensor("int32", shape, name="data_indices_", scope=tik.scope_gm)
 
