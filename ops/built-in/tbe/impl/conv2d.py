@@ -183,7 +183,7 @@ def conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads,
 
     Returns
     -------
-    tvm compute res
+    tvm compute
     """
     para_dict, optim_dict = util_conv2d.calc_para_from_tensor(
         inputs, weights, bias, offset_w, strides, \

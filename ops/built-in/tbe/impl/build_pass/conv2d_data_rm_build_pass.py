@@ -51,6 +51,7 @@ MODULE_NAME = "module_name"
 OP_MODULE = "impl.conv2d_data_rm"
 OP_LIST_KEY_OPTIONS = "options"
 PARAM_KEY_DATA_RM = "invalid_data_rm"
+MULTI_REFERED_FLAG = ":"
 
 L1_FUSION_DISABLE = -1
 ELTWISE_INPUT_SIZE_MAX = 1
@@ -361,12 +362,18 @@ def add_rm_op_in_op_list(op_list, tail_op_list):
                 if last_op_desc_flag:
                     rm_op[INPUT_DESC] = [copy.deepcopy(output_desc)]
                     rm_op[OUTPUT_DESC] = [copy.deepcopy(output_desc)]
-                    output_desc[NAME_STR] = name + NAME_SUFFIX
+                    if output_desc[NAME_STR].find(MULTI_REFERED_FLAG) == -1:
+                        output_desc[NAME_STR] = name + NAME_SUFFIX
+                    else:
+                        _, name_suffix = output_desc[NAME_STR].split(MULTI_REFERED_FLAG, 1)
+                        output_desc[NAME_STR] = name + MULTI_REFERED_FLAG + name_suffix
+                    rm_op[INPUT_DESC][0][NAME_STR] = output_desc[NAME_STR]
                 last_op_desc_flag = True
         else:
             rm_op[INPUT_DESC] = copy.deepcopy(last_op[OUTPUT_DESC])
             rm_op[OUTPUT_DESC] = copy.deepcopy(last_op[OUTPUT_DESC])
             last_op[OUTPUT_DESC][0][NAME_STR] = name + NAME_SUFFIX
+            rm_op[INPUT_DESC][0][NAME_STR] = last_op[OUTPUT_DESC][0][NAME_STR]
         rm_op[FUNC_NAME] = DATA_RM
         rm_op[INDEX] = rm_op[INDEX] * 2
         del rm_op[INPUT_DESC][0][OUTPUT_INDEX]
@@ -377,7 +384,6 @@ def add_rm_op_in_op_list(op_list, tail_op_list):
             rm_op[ORIGINAL_NAME] = [NAME_PREFIX + name]
         else:
             rm_op[ORIGINAL_NAME][0] = NAME_PREFIX + name
-        rm_op[INPUT_DESC][0][NAME_STR] = name + NAME_SUFFIX
         rm_op[PATTERN_STR] = INVALID_PATTERN
         if PREBUILD_ATTRS in rm_op:
             rm_op[PREBUILD_ATTRS][KWDS_ARGS] = {}
