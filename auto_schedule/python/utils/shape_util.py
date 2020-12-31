@@ -317,15 +317,9 @@ def variable_shape(inputs: list, support_broadcast=False):
             b_lower, b_upper = range_b
             if max(a_lower, b_lower) > min(a_upper, b_upper):
                 return None
-            return (max(a_lower, b_lower), min(a_upper, b_upper))
+            return max(a_lower, b_lower), min(a_upper, b_upper)
 
         return reduce(_range_intersection, ranges)
-
-    def _range_has_one(ranges):
-        for r in ranges:
-            if 1 in r:
-                return True
-        return False
 
     def _update_range(shapes, ranges):
         def _fixed_shape_range():
@@ -346,23 +340,24 @@ def variable_shape(inputs: list, support_broadcast=False):
         t_shapes = list(map(list, zip(*shapes)))
         t_ranges = list(map(list, zip(*ranges)))
         for _shape, _range in zip(t_shapes, t_ranges):
-            mied_range = _get_range_intersection(_range)
-            has_one = _range_has_one(_range)
-            if mied_range is None:
-                if not has_one:
+            no_one_range = [r for r in _range if r[0] > 1]
+            if len(no_one_range) > 0:
+                mied_range = _get_range_intersection(no_one_range)
+                if mied_range is None:
                     dict_args = dict()
                     dict_args["errCode"] = "E90001"
                     dict_args["detailed_cause"] = "input shape error, shape range no intersection"
                     raise RuntimeError(dict_args, get_error_message(dict_args))
                 for i, r in enumerate(_range):
                     if 1 in r:
-                        _range[i] = (1, 1)
-            else:
-                if mied_range[0] != 1:
-                    if not has_one:
-                        for i, r in enumerate(_range):
-                            if 1 in r:
-                                _range[i] = (1, mied_range[1])
+                        if r[1] < mied_range[1]:
+                            _range[i] = (1, 1)
+                        elif r[1] > mied_range[1]:
+                            _range[i] = (1, mied_range[1])
+                    else:
+                        _range[i] = mied_range
+        shapes = list(map(list, zip(*t_shapes)))
+        ranges = list(map(list, zip(*t_ranges)))
         _fixed_shape_range()
 
     def _get_dim(_i, _shapes):
@@ -412,14 +407,14 @@ def variable_shape(inputs: list, support_broadcast=False):
                 const_shape = inputs[0]["shape"]
             operation.get_context().get_current_compute(). \
                 add("const_shape", const_shape)
-        elif mode == para_check.SPECIAL:
+        elif mode == para_check.SPECIAL and inputs[0].get("pattern"):
             pattern = inputs[0].get("pattern")
             operation.get_context().\
                 get_current_compute().add("pattern", pattern)
-            if support_broadcast:
-                for i, _pattern in enumerate(pattern):
-                    if _pattern == para_check.COMMON:
-                        for j in range(len(shapes)):
+            for i, _pattern in enumerate(pattern):
+                if _pattern == para_check.COMMON:
+                    for j in range(len(shapes)):
+                        if shapes[j][i] == -1:
                             shapes[j][i] = -77
         elif mode == para_check.SPECIAL_SCALAR:
             pattern = inputs[0].get("pattern")

@@ -152,9 +152,6 @@ bool Eletwise::TrySwitchToPerfPattern() {
     for (size_t i = 0; i < dim_len; i++) {
       input_shapes[0][i] = fused_shape_x[i];
       input_shapes[1][i] = fused_shape_y[i];
-      bool verify_broadcast = fused_shape_x[i] != fused_shape_y[i] && fused_shape_x[i] != 1 && fused_shape_y[i] != 1;
-      CHECK(!verify_broadcast, "op [%s] : input shapes [%s] cannot broadcast to shape [%s]", op_type.c_str(),
-          std::to_string(fused_shape_x[i]).c_str(), std::to_string(fused_shape_y[i]).c_str());
       output_shape.push_back(std::max(input_shapes[0][i], input_shapes[1][i]));
     }
   }
@@ -234,9 +231,6 @@ bool Eletwise::MulTrySwitchToPerfPattern() {
           if (input_shapes[j][i] > max_output) {
             max_output = input_shapes[j][i];
           }
-          bool verify_broadcast = input_shapes[j][i] != 1 && input_shapes[j][i] != max_output;
-          CHECK(!verify_broadcast, "op [%s] : input shapes [%s] cannot broadcast to shape [%s]", op_type.c_str(),
-                std::to_string(input_shapes[j][i]).c_str(), std::to_string(max_output).c_str());
         }
         output_shape.push_back(max_output);
       }
@@ -260,6 +254,18 @@ bool Eletwise::GetCompletedShapes() {
     size_t start_index = dim_len - cur_dim_len;
     for (size_t j = 0; j < cur_dim_len; j++) {
       input_shapes[i][start_index++] = op_paras.inputs[i].tensor[0].shape[j];
+    }
+  }
+  for (size_t i = 0; i < dim_len; i++) {
+    int64_t max_output = input_shapes[0][i];
+    for (size_t j = 1; j < input_num; j++) {
+      bool verify_broadcast = input_shapes[j][i] != 1 &&
+          (input_shapes[j][i] != max_output && max_output != 1);
+      if (input_shapes[j][i] > max_output) {
+        max_output = input_shapes[j][i];
+      }
+      CHECK(!verify_broadcast, "op [%s] : input shapes [%s] cannot broadcast to shape [%s]", op_type.c_str(),
+            std::to_string(input_shapes[j][i]).c_str(), std::to_string(max_output).c_str());
     }
   }
   return true;
@@ -312,9 +318,6 @@ bool Eletwise::BroadcastShapes() {
       if (input_shapes[j][i] < min_output) {
         min_output = input_shapes[j][i];
       }
-      bool verify_broadcast = input_shapes[j][i] != 1 && input_shapes[j][i] != max_output;
-      CHECK(!verify_broadcast, "op [%s] : input shapes [%s] cannot broadcast to shape [%s]", op_type.c_str(),
-            std::to_string(input_shapes[j][i]).c_str(), std::to_string(max_output).c_str());
     }
     output_shape.push_back(max_output);
     if (min_output == 1 && max_output != 1) {
@@ -331,22 +334,19 @@ bool Eletwise::RefineShapesForBroadcast() {
   size_t fusion_len = fusion_index.size();
   output_shape.reserve(fusion_len);
   for (size_t i = 0; i < fusion_len; i++) {
-    std::vector<int64_t> fused(input_num, 1);
     int64_t max_output = 1;
     int64_t min_output = 2;
     for (size_t j = 0; j < input_num; j++) {
+      int64_t fused = 1;
       for (const auto& k : fusion_index[i]) {
-        fused[j] *= input_shapes[j][k];
+        fused *= input_shapes[j][k];
       }
-      if (fused[j] > max_output) {
-        max_output = fused[j];
+      if (fused > max_output) {
+        max_output = fused;
       }
-      if (fused[j] < min_output) {
-        min_output = fused[j];
+      if (fused < min_output) {
+        min_output = fused;
       }
-      bool verify_broadcast = fused[j] != 1 && fused[j] != max_output;
-      CHECK(!verify_broadcast, "op [%s] : input shapes [%s] cannot broadcast to shape [%s]", op_type.c_str(),
-            std::to_string(fused[j]).c_str(), std::to_string(max_output).c_str());
     }
     output_shape.push_back(max_output);
     if (min_output == 1 && max_output != 1) {

@@ -16,6 +16,7 @@
 classifier of shape in broadcast elewise
 """
 import copy
+from functools import reduce
 from enum import Enum, auto
 from te.utils.error_manager.error_manager_util import get_error_message
 
@@ -49,6 +50,7 @@ class BroadcastElewiseClassifier:
         self.completed_ins = self._complete()
         self.completed_shapes = [x["shape"] for x in self.completed_ins]
         self.completed_ranges = [x["range"] for x in self.completed_ins]
+        self._update_shape_range()
         self.f_shapes, self.f_ranges = _simplify_shape(self.completed_shapes, self.completed_ranges)
 
         self.normalize_shapes = self._normalize()
@@ -90,6 +92,57 @@ class BroadcastElewiseClassifier:
                 else:
                     normalize_shapes[i][j] = ShapeValueType.ONE
         return normalize_shapes
+
+    def _update_shape_range(self):
+        def get_range_intersection(ranges):
+            def range_intersection(range_a, range_b):
+                if range_a is None or range_b is None:
+                    return None
+                a_lower, a_upper = range_a
+                b_lower, b_upper = range_b
+                if max(a_lower, b_lower) > min(a_upper, b_upper):
+                    return None
+                return max(a_lower, b_lower), min(a_upper, b_upper)
+
+            return reduce(range_intersection, ranges)
+
+        def fixed_shape_range():
+            for _range in self.completed_ranges:
+                for i, (r0, r1) in enumerate(_range):
+                    if r0 is None:
+                        _range[i] = (VAR_BOUND_LIMIT, r1)
+                    if r1 is None:
+                        _range[i] = (r0, VAR_BOUND_LIMIT)
+            for _shape, _range in zip(self.completed_shapes, self.completed_ranges):
+                for i, (s, (r0, r1)) in enumerate(zip(_shape, _range)):
+                    if s != -1:
+                        _range[i] = (s, s)
+                    elif r0 == r1:
+                        _shape[i] = r0
+
+        fixed_shape_range()
+        t_shapes = list(map(list, zip(*self.completed_shapes)))
+        t_ranges = list(map(list, zip(*self.completed_ranges)))
+        for _shape, _range in zip(t_shapes, t_ranges):
+            no_one_range = [r for r in _range if r[0] > 1]
+            if len(no_one_range) > 0:
+                mied_range = get_range_intersection(no_one_range)
+                if mied_range is None:
+                    dict_args = dict()
+                    dict_args["errCode"] = "E90001"
+                    dict_args["detailed_cause"] = "input shape error, shape range no intersection"
+                    raise RuntimeError(dict_args, get_error_message(dict_args))
+                for i, r in enumerate(_range):
+                    if 1 in r:
+                        if r[1] < mied_range[1]:
+                            _range[i] = (1, 1)
+                        elif r[1] > mied_range[1]:
+                            _range[i] = (1, mied_range[1])
+                    else:
+                        _range[i] = mied_range
+        self.completed_shapes = list(map(list, zip(*t_shapes)))
+        self.completed_ranges = list(map(list, zip(*t_ranges)))
+        fixed_shape_range()
 
     def _is_const(self):
         if len(self.completed_shapes) > 2:
@@ -148,24 +201,36 @@ class BroadcastElewiseClassifier:
         return ret
 
     def _classify_var(self):
-        def merge_shape_range(left, right, need_update_shape_range):
+        def merge_shape_range(left, right, common_need_update):
             shape = [1] * input_length
             _range = [(1, 1)] * input_length
             for i in range(left, right + 1):
                 shape = ShapeSimplifier.combine_dim(self.f_shapes[i], shape)
                 _range = ShapeSimplifier.combine_range(self.f_ranges[i], _range)
-            if need_update_shape_range:
+            if common_need_update:
                 for i, (s, (_, r1)) in enumerate(zip(shape, _range)):
                     if s != 1:
                         shape[i] = -1
                         _range[i] = (1, r1)
             return shape, _range
 
-        def adapter_broadcast_pattern(_b_shape, _b_range, b_pattern):
-            for index, pattern in enumerate(b_pattern):
-                if pattern == ShapeValueType.ONE:
-                    _b_shape[index] = 1
-                    _b_range[index] = (1, 1)
+        def adapter_broadcast_pattern(common_need_update, b_index, _b_shape, _b_range):
+            b_pattern = []
+            if not common_need_update:
+                b_pattern = self.f_shapes[b_index[0]]
+            if len(known_broadcast_index) > 0:
+                b_pattern = self.f_shapes[known_broadcast_index[0]]
+            if len(b_pattern) > 0:
+                for index, pattern in enumerate(b_pattern):
+                    if pattern == ShapeValueType.ONE:
+                        _b_shape[index] = 1
+                        _b_range[index] = (1, 1)
+
+        def update_common(_a_shape, _a_range):
+            max_shape = max(_a_shape)
+            if max_shape != -1:
+                return [max_shape] * len(_a_shape), [(max_shape, max_shape)] * len(_a_shape)
+            return _a_shape, _a_range
 
         def gen_common():
             if len(known_broadcast_pattern) > 0:
@@ -175,6 +240,7 @@ class BroadcastElewiseClassifier:
                 a_range = [(1, 1)] * input_length
             else:
                 a_shape, a_range = merge_shape_range(left_no_one, right_no_one, False)
+                a_shape, a_range = update_common(a_shape, a_range)
             return [a_shape], [a_range]
 
         def find_broadcast(location_b):
@@ -230,16 +296,11 @@ class BroadcastElewiseClassifier:
             if no_common_broadcast:
                 return [], []
             a_index, b_index = find_broadcast(SpecialMode.RIGHT)
-            need_update_shape_range = b_index[0] != b_index[1]
-            a_shape, a_range = merge_shape_range(a_index[0], a_index[1], need_update_shape_range)
-            b_shape, b_range = merge_shape_range(b_index[0], b_index[1], need_update_shape_range)
-            b_pattern = []
-            if not need_update_shape_range:
-                b_pattern = self.f_shapes[b_index[0]]
-            if len(known_broadcast_index) > 0:
-                b_pattern = self.f_shapes[known_broadcast_index[0]]
-            if len(b_pattern) > 0:
-                adapter_broadcast_pattern(b_shape, b_range, b_pattern)
+            common_need_update = b_index[0] != b_index[1]
+            a_shape, a_range = merge_shape_range(a_index[0], a_index[1], common_need_update)
+            a_shape, a_range = update_common(a_shape, a_range)
+            b_shape, b_range = merge_shape_range(b_index[0], b_index[1], common_need_update)
+            adapter_broadcast_pattern(common_need_update, b_index, b_shape, b_range)
             return [a_shape, b_shape], [a_range, b_range]
 
         def gen_broadcast_common():
@@ -253,16 +314,11 @@ class BroadcastElewiseClassifier:
             if no_broadcast_common:
                 return [], []
             a_index, b_index = find_broadcast(SpecialMode.LEFT)
-            need_update_shape_range = b_index[0] != b_index[1]
-            a_shape, a_range = merge_shape_range(a_index[0], a_index[1], need_update_shape_range)
-            b_shape, b_range = merge_shape_range(b_index[0], b_index[1], need_update_shape_range)
-            b_pattern = []
-            if not need_update_shape_range:
-                b_pattern = self.f_shapes[b_index[0]]
-            if len(known_broadcast_index) > 0:
-                b_pattern = self.f_shapes[known_broadcast_index[0]]
-            if len(b_pattern) > 0:
-                adapter_broadcast_pattern(b_shape, b_range, b_pattern)
+            common_need_update = b_index[0] != b_index[1]
+            a_shape, a_range = merge_shape_range(a_index[0], a_index[1], common_need_update)
+            a_shape, a_range = update_common(a_shape, a_range)
+            b_shape, b_range = merge_shape_range(b_index[0], b_index[1], common_need_update)
+            adapter_broadcast_pattern(common_need_update, b_index, b_shape, b_range)
             return [b_shape, a_shape], [b_range, a_range]
 
         def gen_common_broadcast_common():
@@ -275,30 +331,25 @@ class BroadcastElewiseClassifier:
             if right_left_no_common or no_broadcast:
                 return [], []
             a_index, b_index = find_broadcast(SpecialMode.MIDDLE)
-            need_update_shape_range = b_index[0] != b_index[1]
-            a1_shape, a1_range = merge_shape_range(a_index[0][0], a_index[0][1], need_update_shape_range)
-            a2_shape, a2_range = merge_shape_range(a_index[1][0], a_index[1][1], need_update_shape_range)
-            b_shape, b_range = merge_shape_range(b_index[0], b_index[1], need_update_shape_range)
-            b_pattern = []
-            if not need_update_shape_range:
-                b_pattern = self.f_shapes[b_index[0]]
-            if len(known_broadcast_index) > 0:
-                b_pattern = self.f_shapes[known_broadcast_index[0]]
-            if len(b_pattern) > 0:
-                adapter_broadcast_pattern(b_shape, b_range, b_pattern)
+            common_need_update = b_index[0] != b_index[1]
+            a1_shape, a1_range = merge_shape_range(a_index[0][0], a_index[0][1], common_need_update)
+            a1_shape, a1_range = update_common(a1_shape, a1_range)
+            a2_shape, a2_range = merge_shape_range(a_index[1][0], a_index[1][1], common_need_update)
+            a2_shape, a2_range = update_common(a2_shape, a2_range)
+            b_shape, b_range = merge_shape_range(b_index[0], b_index[1], common_need_update)
+            adapter_broadcast_pattern(common_need_update, b_index, b_shape, b_range)
             return [a1_shape, b_shape, a2_shape], [a1_range, b_range, a2_range]
 
         def gen_broadcast():
             if len(known_const_index) > 0:
                 return [], []
             b_shape, b_range = merge_shape_range(0, dim_length - 1, False)
-            b_pattern = []
+            common_need_update = True
+            b_index = []
             if dim_length == 1:
-                b_pattern = self.f_shapes[0]
-            if len(known_broadcast_index) > 0:
-                b_pattern = self.f_shapes[known_broadcast_index[0]]
-            if len(b_pattern) > 0:
-                adapter_broadcast_pattern(b_shape, b_range, b_pattern)
+                common_need_update = False
+                b_index = [0]
+            adapter_broadcast_pattern(common_need_update, b_index, b_shape, b_range)
             return [b_shape], [b_range]
 
         def add_special():
