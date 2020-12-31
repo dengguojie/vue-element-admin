@@ -553,7 +553,7 @@ class ScatterNd(ScatterNdBase):
                                     constant.REPEAT_STRIDE_FOUR,
                                     constant.REPEAT_STRIDE_EIGHT)
         else:
-            mask = 256//self.data_size
+            mask = min(process.update_each_size, 256 // self.data_size)
             if process.update_each_size * self.data_size < constant.BLOCK_SIZE:
                 mask = element_num
             self.tik_instance.vadd(mask, process.input_ub,
