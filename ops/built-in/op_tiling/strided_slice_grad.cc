@@ -24,6 +24,8 @@
 
 #include "op_log.h"
 #include "pad_common.h"
+#include "../op_proto/strided_slice_infer_shape.h"
+#include "../op_proto/util/util.h"
 
 namespace optiling {
 
@@ -121,260 +123,6 @@ static bool GetStridedSliceSocParams(const std::string& opType, const nlohmann::
   return true;
 }
 
-static void StridedSliceInferShape(const std::string& opType, const std::vector<int64_t> input_shape,
-                                   struct SliceParameters& slice_params, struct SliceMasks& slicemasks) {
-  int32_t base_number = 2;
-  int32_t newbeginmask = 0;
-  int32_t newendmask = 0;
-  int32_t newshrinkmask = 0;
-  int32_t newaxismask = 0;
-  uint32_t begin_len = slice_params.begin_list.size();
-  uint32_t dim_num = input_shape.size();
-  slice_params.input = input_shape;
-  // compute the right_move of begin end stride and masks
-  // because of non-zero ellipsismask
-  int32_t right_move = std::max<int64_t>(dim_num - begin_len, 0);
-  if (dim_num < begin_len && slicemasks.newaxismask != 0) {
-    dim_num = begin_len;
-  }
-
-  // rebuild the begin end stride of new_axis,
-  // because ignored when new_axis is true.
-  if (slicemasks.newaxismask != 0) {
-    for (uint32_t i = 0; i < dim_num; i++) {
-      if ((slicemasks.newaxismask & ((uint64_t)pow(base_number, i))) == ((uint64_t)pow(base_number, i))) {
-        slice_params.begin_list[i] = 0;
-        slice_params.end_list[i] = 1;
-        slice_params.stride_list[i] = 1;
-        if ((slicemasks.shrinkaxismask & ((uint64_t)pow(base_number, i))) == ((uint64_t)pow(base_number, i))) {
-          slicemasks.shrinkaxismask -= (uint64_t)pow(base_number, i);
-        }
-      }
-    }
-  }
-  if (slicemasks.ellipsismask != 0) {
-    for (size_t i = 0; i < dim_num; i++) {
-      if ((slicemasks.ellipsismask & ((uint64_t)pow(base_number, i))) == ((uint64_t)pow(base_number, i))) {
-        if ((slicemasks.shrinkaxismask & ((uint64_t)pow(base_number, i))) == ((uint64_t)pow(base_number, i))) {
-          slicemasks.shrinkaxismask -= (uint64_t)pow(base_number, i);
-        }
-        if ((slicemasks.newaxismask & ((uint64_t)pow(base_number, i))) == ((uint64_t)pow(base_number, i))) {
-          slicemasks.newaxismask -= (uint64_t)pow(base_number, i);
-        }
-        if ((slicemasks.beginmask & ((uint64_t)pow(base_number, i))) == ((uint64_t)pow(base_number, i))) {
-          slicemasks.beginmask -= (uint64_t)pow(base_number, i);
-        }
-        if ((slicemasks.endmask & ((uint64_t)pow(base_number, i))) == ((uint64_t)pow(base_number, i))) {
-          slicemasks.endmask -= (uint64_t)pow(base_number, i);
-        }
-      }
-    }
-  }
-  int32_t tmp_shrink = 0;
-  if (slicemasks.shrinkaxismask != 0) {
-    for (size_t i = 0; i < dim_num; i++) {
-      if ((slicemasks.shrinkaxismask & ((uint64_t)pow(base_number, i))) == ((uint64_t)pow(base_number, i))) {
-        if (begin_len > i) {
-          tmp_shrink += (uint64_t)pow(base_number, i);
-        }
-      }
-    }
-    slicemasks.shrinkaxismask = tmp_shrink;
-  }
-  int32_t tmp_new_axis = 0;
-  if (slicemasks.newaxismask != 0) {
-    for (size_t i = 0; i < dim_num; i++) {
-      if ((slicemasks.newaxismask & ((uint64_t)pow(base_number, i))) == ((uint64_t)pow(base_number, i))) {
-        tmp_new_axis += 1;
-      }
-      right_move += tmp_new_axis;
-    }
-  }
-  if (slicemasks.ellipsismask != 0) {
-    uint32_t bitellipsis = (uint64_t)log2(slicemasks.ellipsismask);
-    for (size_t i = 0; i < dim_num; i++) {
-      if ((slicemasks.beginmask & (1 << i)) && (bitellipsis >= i)) {
-        newbeginmask += (uint64_t)pow(base_number, i);
-      } else if ((slicemasks.beginmask & (1 << i)) && (bitellipsis < i)) {
-        newbeginmask += (uint64_t)pow(base_number, i + right_move);
-      }
-      if ((slicemasks.endmask & (1 << i)) && (bitellipsis >= i)) {
-        newendmask += (uint64_t)pow(base_number, i);
-      } else if ((slicemasks.endmask & (1 << i)) && (bitellipsis < i)) {
-        newendmask += (uint64_t)pow(base_number, i + right_move);
-      }
-      if ((slicemasks.shrinkaxismask & (1 << i)) && (bitellipsis >= i)) {
-        newshrinkmask += (uint64_t)pow(base_number, i);
-      } else if ((slicemasks.shrinkaxismask & (1 << i)) && (bitellipsis < i)) {
-        newshrinkmask += (uint64_t)pow(base_number, i + right_move);
-      }
-      if ((slicemasks.newaxismask & (1 << i)) && (bitellipsis >= i)) {
-        newaxismask += (uint64_t)pow(base_number, i);
-      } else if ((slicemasks.newaxismask & (1 << i)) && (bitellipsis < i)) {
-        newaxismask += (uint64_t)pow(base_number, i + right_move);
-      }
-    }
-    slicemasks.beginmask = newbeginmask;
-    slicemasks.endmask = newendmask;
-    slicemasks.shrinkaxismask = newshrinkmask;
-    slicemasks.newaxismask = newaxismask;
-  }
-  for (size_t i = 0; i < dim_num; i++) {
-    if ((slicemasks.newaxismask & ((uint64_t)pow(base_number, i))) == ((uint64_t)pow(base_number, i))) {
-      slice_params.input.insert(slice_params.input.begin() + i, 1);
-    }
-  }
-  uint32_t bitellipsis = (uint64_t)log2(slicemasks.ellipsismask);
-  if (slicemasks.ellipsismask != 0 && bitellipsis > begin_len - 1) {
-    if (begin_len < dim_num) {
-      for (size_t i = 0; i < dim_num - begin_len; i++) {
-        slice_params.begin_list.push_back(0);
-        slice_params.end_list.push_back(slice_params.input[begin_len + i]);
-        slice_params.stride_list.push_back(1);
-        begin_len += 1;
-      }
-    }
-    if (slicemasks.ellipsismask != 0) {
-      for (size_t i = 0; i < dim_num; i++) {
-        if ((slicemasks.ellipsismask & ((uint64_t)pow(base_number, i))) == ((uint64_t)pow(base_number, i))) {
-          uint32_t ellipsis_dim = i;
-          slice_params.begin_list[i] = 0;
-          slice_params.end_list[i] = input_shape[i];
-          slice_params.stride_list[i] = 1;
-          if ((slicemasks.shrinkaxismask & ((uint64_t)pow(base_number, i))) == ((uint64_t)pow(base_number, i))) {
-            slicemasks.shrinkaxismask -= (uint64_t)pow(base_number, i);
-          }
-          if (begin_len < dim_num + tmp_new_axis) {
-            uint32_t begin_len_tmp = begin_len;
-            for (size_t j = 1; j <= dim_num + tmp_new_axis - begin_len_tmp; j++) {
-              slice_params.begin_list.insert(slice_params.begin_list.begin() + ellipsis_dim + j, 0);
-              slice_params.end_list.insert(slice_params.end_list.begin() + ellipsis_dim + j,
-                                           slice_params.input[ellipsis_dim + j]);
-              slice_params.stride_list.insert(slice_params.stride_list.begin() + ellipsis_dim + j, 1);
-            }
-          }
-        }
-      }
-    }
-  } else {
-    if (slicemasks.ellipsismask != 0) {
-      for (size_t i = 0; i < dim_num; i++) {
-        if ((slicemasks.ellipsismask & ((uint64_t)pow(base_number, i))) == ((uint64_t)pow(base_number, i))) {
-          uint32_t ellipsis_dim = i;
-          slice_params.begin_list[i] = 0;
-          slice_params.end_list[i] = input_shape[i];
-          slice_params.stride_list[i] = 1;
-          if ((slicemasks.shrinkaxismask & ((uint64_t)pow(base_number, i))) == ((uint64_t)pow(base_number, i))) {
-            slicemasks.shrinkaxismask -= (uint64_t)pow(base_number, i);
-          }
-          if (begin_len < dim_num + tmp_new_axis) {
-            uint32_t begin_len_tmp = begin_len;
-            for (size_t j = 1; j <= dim_num + tmp_new_axis - begin_len_tmp; j++) {
-              slice_params.begin_list.insert(slice_params.begin_list.begin() + ellipsis_dim + j, 0);
-              slice_params.end_list.insert(slice_params.end_list.begin() + ellipsis_dim + j,
-                                           slice_params.input[ellipsis_dim + j]);
-              slice_params.stride_list.insert(slice_params.stride_list.begin() + ellipsis_dim + j, 1);
-              begin_len += 1;
-            }
-          }
-        }
-      }
-    }
-    if (begin_len < slice_params.input.size()) {
-      for (size_t i = 0; i < slice_params.input.size() - begin_len; i++) {
-        slice_params.begin_list.push_back(0);
-        slice_params.end_list.push_back(slice_params.input[begin_len + i]);
-        slice_params.stride_list.push_back(1);
-      }
-    }
-  }
-  for (size_t i = 0; i < dim_num; i++) {
-    if (slice_params.begin_list[i] < 0) {
-      slice_params.begin_list[i] = input_shape[i] + slice_params.begin_list[i];
-    }
-    if (slice_params.end_list[i] < 0) {
-      slice_params.end_list[i] = input_shape[i] + slice_params.end_list[i];
-    }
-  }
-  for (size_t i = 0; i < dim_num; i++) {
-    if ((slicemasks.beginmask & ((uint64_t)pow(base_number, i))) == ((uint64_t)pow(base_number, i))) {
-      if (slice_params.stride_list[i] > 0) {
-        slice_params.begin_list[i] = 0;
-      }
-      if (slice_params.stride_list[i] < 0) {
-        slice_params.begin_list[i] = slice_params.input[i];
-      }
-    }
-    if ((slicemasks.endmask & ((uint64_t)pow(base_number, i))) == ((uint64_t)pow(base_number, i))) {
-      if (slice_params.stride_list[i] > 0) {
-        slice_params.end_list[i] = slice_params.input[i];
-      }
-      if (slice_params.stride_list[i] < 0) {
-        slice_params.end_list[i] = 0;
-      }
-    }
-    if ((slicemasks.ellipsismask & ((uint64_t)pow(base_number, i))) == ((uint64_t)pow(base_number, i))) {
-      slice_params.begin_list[i] = 0;
-      slice_params.end_list[i] = input_shape[i];
-      slice_params.stride_list[i] = 1;
-    }
-  }
-
-  uint32_t new_axis_flag = 0;
-  for (size_t i = 0; i < dim_num; i++) {
-    if ((slicemasks.newaxismask & ((uint64_t)pow(base_number, i))) == ((uint64_t)pow(base_number, i))) {
-      new_axis_flag += 1;
-    }
-  }
-
-  for (size_t i = 0; i < slice_params.input.size(); i++) {
-    if ((slicemasks.shrinkaxismask & ((uint64_t)pow(base_number, i))) == ((uint64_t)pow(base_number, i))) {
-      slice_params.end_list[i] = slice_params.begin_list[i] + 1;
-    }
-  }
-
-  for (size_t i = 0; i < slice_params.begin_list.size(); i++) {
-    if (slice_params.stride_list[i] > 0) {
-      if (slice_params.begin_list[i] >= slice_params.end_list[i]) {
-        slice_params.begin_list[i] = slice_params.end_list[i];
-      }
-
-      if (slice_params.end_list[i] > slice_params.input[i]) {
-        slice_params.end_list[i] = slice_params.input[i];
-      }
-      if (slice_params.end_list[i] == 0) {
-        slice_params.begin_list[i] = slice_params.end_list[i];
-      }
-      if (slice_params.begin_list[i] < 0 && slice_params.end_list[i] >= 0) {
-        slice_params.begin_list[i] = 0;
-        if (slice_params.end_list[i] >= slice_params.input[i]) {
-          slice_params.end_list[i] = slice_params.input[i];
-        }
-      }
-    }
-    if (slice_params.stride_list[i] < 0) {
-      if (slice_params.begin_list[i] >= slice_params.input[i]) {
-        if (slice_params.end_list[i] >= 0) {
-          slice_params.begin_list[i] = slice_params.input[i] - 1;
-        }
-        if (slice_params.end_list[i] < 0) {
-          slice_params.begin_list[i] = slice_params.input[i];
-          slice_params.end_list[i] = 0;
-        }
-      }
-      if (slice_params.begin_list[i] == 0) {
-        if (slice_params.begin_list[i] <= slice_params.end_list[i]) {
-          slice_params.begin_list[i] = slice_params.end_list[i];
-        }
-        if (slice_params.begin_list[i] > slice_params.end_list[i]) {
-          slice_params.begin_list[i] = 0;
-          slice_params.end_list[i] = -1;
-        }
-      }
-    }
-  }
-}
-
 void _printTensorValue(std::vector<int64_t>& in, int64_t len, std::string name) {
   using namespace std;
   string vec_str;
@@ -424,6 +172,14 @@ bool CheckTensorValue(const std::string& opType, SliceParameters& slice_params_o
   }
   return true;
 }
+
+int CheckAlign(const std::vector<int64_t>& inShape, int numBit) {
+  int64_t axis = inShape.size() - 1;
+  if (inShape[axis] * numBit % 32 != 0) {
+    return 0;
+  }
+  return 1;
+} 
 
 bool StridedSliceGradTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& opCompileInfo,
                             OpRunInfo& runInfo) {
@@ -486,8 +242,44 @@ bool StridedSliceGradTiling(const std::string& opType, const TeOpParas& opParas,
   vector<int64_t> ori_begin = slice_params_output.begin_list;
   int choose_padding = 0;
 
-  // Get InferShape: produce begin_shape, end_shape for calc padding
-  StridedSliceInferShape(opType, input_shape, slice_params_output, slicemasks_output);
+  StridedSliceParams input_params = {
+      input_shape,
+      slice_params_output.begin_list,
+      slice_params_output.end_list,
+      slice_params_output.stride_list,
+      vector<pair<int64_t, int64_t>>(),
+      slicemasks_output.beginmask,
+      slicemasks_output.endmask,
+      slicemasks_output.ellipsismask,
+      slicemasks_output.newaxismask,
+      slicemasks_output.shrinkaxismask,
+      true,
+      true,
+      true,
+  };
+
+  OP_LOGI(opType.c_str(), "original begin end and stride is %s, %s, and %s.", ops::to_string(input_params.begin).c_str(),
+	  ops::to_string(input_params.end).c_str(), ops::to_string(input_params.strides).c_str());
+
+  vector<int64_t> output_shape;
+  vector<pair<int64_t, int64_t>> output_ranges;
+
+  if (!StridedSliceCommonInferShape(opType, input_params, output_shape, output_ranges)) {
+    OP_LOGE(opType.c_str(), "StridedSliceCommonInferShape failed.");
+    return false;
+  }
+
+  OP_LOGI(opType.c_str(), "after infershape, begin end and stride is %s, %s, and %s.", ops::to_string(input_params.begin).c_str(),
+          ops::to_string(input_params.end).c_str(), ops::to_string(input_params.strides).c_str());
+
+  slice_params_output.begin_list = input_params.begin;
+  slice_params_output.end_list = input_params.end;
+  slice_params_output.stride_list = input_params.strides;
+
+  _printTensorValue(slice_params_output.input, length_shape, "shape");
+  _printTensorValue(slice_params_output.begin_list, length_begin, "begin");
+  _printTensorValue(slice_params_output.end_list, length_end, "end");
+  _printTensorValue(slice_params_output.stride_list, length_strides, "strides");
 
   if (cond0 && cond1 && cond2 && cond3) {
     choose_padding = 1;
@@ -513,6 +305,10 @@ bool StridedSliceGradTiling(const std::string& opType, const TeOpParas& opParas,
       padding[i][0] = begin_i;
       padding[i][1] = shape_i - end_i;
     }
+  }
+
+  for (uint32_t i=0; i<padding.size(); i++) {
+    OP_LOGI(opType.c_str(), "pad[%d] is %s.", i, ops::to_string(padding[i]).c_str());
   }
 
   // check_rule: shape, begin, and, strides
@@ -546,8 +342,7 @@ bool StridedSliceGradTiling(const std::string& opType, const TeOpParas& opParas,
   pad.InitTilingParams(runParams, int(inShape.size()));
 
   // Discriminate Align(1) and Not Align(0).
-  runParams.branch =
-      pad.CheckBranch(inShape, outShape, padding, numBit, 0) * pad.CheckBranch(inShape, outShape, padding, numBit, 1);
+  runParams.branch = CheckAlign(inShape, numBit);
 
   // Get Params In Circulation Layer
   pad.GetDepth(inShape, outShape, padding, runParams.depth, maxCore, numBit, runParams.branch);

@@ -292,8 +292,19 @@ def _data_move_last_dim(obj, in_num, src_gm, dst_gm, max_num):
         # Move in
         tik_align(obj, tail_block, max_num, block_num)
         with tik_instance.if_scope(align_vol == 0):
-            _move_in(tail*vir_num-offset, block_num, src_gm, obj.buf)
-            _move_out(tail*vir_num-offset, block_num, dst_gm, obj.buf)
+            with tik_instance.if_scope(tail != 0):
+                # Mean sizeof(in_num) > 32B
+                _move_in(tail*vir_num-offset, block_num, src_gm, obj.buf)
+                _move_out(tail*vir_num-offset, block_num, dst_gm, obj.buf)
+            with tik_instance.else_scope():
+                # Mean sizeof(in_num) <= 32B
+                _move_in(0, block_num, src_gm, obj.buf)
+                max_num.set_as(0)
+                with tik_instance.for_range(0, in_num) as i:
+                    obj.help_buf[i] = obj.buf[i]
+                with tik_instance.for_range(in_num, block_num) as i:
+                    obj.help_buf[i] = max_num
+                _move_out(0, block_num, dst_gm, obj.help_buf)
 
         with tik_instance.else_scope():
             _move_in(tail*vir_num, max_num, src_gm, obj.buf)
