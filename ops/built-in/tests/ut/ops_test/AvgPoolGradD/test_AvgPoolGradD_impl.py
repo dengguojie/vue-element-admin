@@ -28,7 +28,7 @@ case1 = {"params": [{"shape": (1,2,32,1,16), "dtype": "float16", "format": "NC1H
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case("Ascend910", case1)
+ut_case.add_case("Ascend910A", case1)
 
 def _NCHW_to_NC1C0HW(tensor):
     c0 = 16
@@ -359,22 +359,22 @@ def case_gen(inputShape, ksizes, strides, dtype="float16", padding="VALID", calc
 def calc_expect_func_1(input_grad, mean_matrix, kernel_matrix, out_grad, orig_input_shape, ksize, strides, padding):
     return calc_expect_func_res[calc_expect_func_1]
 case_param_1 = case_gen(inputShape=(1, 1922, 3, 1), ksizes=(1, 4, 1, 1), strides=(1, 2, 2, 1), dtype="float16", padding="SAME", calc_expect_func = calc_expect_func_1)
-ut_case.add_precision_case("Ascend910", case_param_1)
+ut_case.add_precision_case("Ascend910A", case_param_1)
 
 def calc_expect_func_2(input_grad, mean_matrix, kernel_matrix, out_grad, orig_input_shape, ksize, strides, padding):
     return calc_expect_func_res[calc_expect_func_2]
 case_param_2 = case_gen(inputShape=(1, 5, 5, 1), ksizes=(1, 3, 3, 1), strides=(1, 2, 2, 1), dtype="float16", padding="SAME", calc_expect_func = calc_expect_func_2)
-ut_case.add_precision_case("Ascend910", case_param_2)
+ut_case.add_precision_case("Ascend910A", case_param_2)
 
 def calc_expect_func_3(input_grad, mean_matrix, kernel_matrix, out_grad, orig_input_shape, ksize, strides, padding):
     return calc_expect_func_res[calc_expect_func_3]
 case_param_3 = case_gen(inputShape=(1, 10, 1, 16), ksizes=(1, 5, 1, 1), strides=(1, 2, 2, 1), dtype="float16", padding="SAME", calc_expect_func = calc_expect_func_3)
-ut_case.add_precision_case("Ascend910", case_param_3)
+ut_case.add_precision_case("Ascend910A", case_param_3)
 
 def calc_expect_func_4(input_grad, mean_matrix, kernel_matrix, out_grad, orig_input_shape, ksize, strides, padding):
     return calc_expect_func_res[calc_expect_func_4]
 case_param_4 = case_gen(inputShape=(1, 10, 1, 1), ksizes=(1, 5, 1, 1), strides=(1, 2, 2, 1), dtype="float16", padding="SAME", calc_expect_func = calc_expect_func_4)
-ut_case.add_precision_case("Ascend910", case_param_4)
+ut_case.add_precision_case("Ascend910A", case_param_4)
 
-if __name__ == '__main__':
-    ut_case.run("Ascend910")
+# if __name__ == '__main__':
+#     ut_case.run("Ascend910")

@@ -60,14 +60,15 @@ def _cal_multi_core_factor(m, n):
         """
         return (x + y - 1) // y
 
-    min_cycle_num = _ceiling(m * n, DEVICE_CORE_NUM)
-    core_m, core_n = m, n
-    for j in range(1, n + 1):
-        for i in range(1, m + 1):
-            if _ceiling(m, i) * _ceiling(n, j) * _ceiling(i * j, DEVICE_CORE_NUM) <= min_cycle_num:
-                core_m, core_n = i, j
-                return core_m, core_n
-
+    min_cycle_num = m * n
+    core_m, core_n = 1, 1
+    for i in range(min(m, DEVICE_CORE_NUM), 0, -1):
+        j = min(n, DEVICE_CORE_NUM // i)
+        m_inner = _ceiling(m, i)
+        n_inner = _ceiling(n, j)
+        if m_inner * n_inner < min_cycle_num:
+            core_m, core_n = i, j
+            min_cycle_num = m_inner * n_inner
     return core_m, core_n
 
 
