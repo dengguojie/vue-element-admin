@@ -2802,19 +2802,19 @@ class ArgMax():
                 if loop_times != 0:
                     with self.tik_instance.for_range(0, loop_times, thread_num=thread_2) as loop:
                         argmax_func(ub_buf_size, loop, offset, need_merge,
-                                    ub_result_first[core_i * repeat_num_2 * self.data_each_vector],
-                                    ub_result_second[core_i * 2 * self.data_each_block],
-                                    ub_result_third[core_i * self.data_each_block],
-                                    ub_result_indices[core_i],
-                                    ub_result_value[core_i * DATA_EACH_VNCHWCONV])
+                                    ub_result_first[core_i * repeat_num_2 * self.data_each_vector:],
+                                    ub_result_second[core_i * 2 * self.data_each_block:],
+                                    ub_result_third[core_i * self.data_each_block:],
+                                    ub_result_indices[core_i:],
+                                    ub_result_value[core_i * DATA_EACH_VNCHWCONV:])
                 if align_flag:
                     with self.tik_instance.new_stmt_scope():
                         argmax_func(over_size, loop_times, offset, need_merge,
-                                    ub_result_first[core_i * repeat_num_2 * self.data_each_vector],
-                                    ub_result_second[core_i * 2 * self.data_each_block],
-                                    ub_result_third[core_i * self.data_each_block],
-                                    ub_result_indices[core_i],
-                                    ub_result_value[core_i * DATA_EACH_VNCHWCONV])
+                                    ub_result_first[core_i * repeat_num_2 * self.data_each_vector:],
+                                    ub_result_second[core_i * 2 * self.data_each_block:],
+                                    ub_result_third[core_i * self.data_each_block:],
+                                    ub_result_indices[core_i:],
+                                    ub_result_value[core_i * DATA_EACH_VNCHWCONV:])
 
             gm_out_offset = n_i * segment_core + CORE_SEGMENT_LEN_DB * segment_index
             # store the indices
