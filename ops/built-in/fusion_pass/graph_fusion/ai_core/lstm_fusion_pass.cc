@@ -40,6 +40,7 @@
 using namespace ge;
 namespace fe {
 
+
 static const char* FUSED_NODE = "LSTM";
 static const std::string PATTERN_FUSEDNODE = "LSTM";
 
@@ -76,7 +77,7 @@ ge::GeTensorDesc ALSTMFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t n
 
   // create the OpDescPtr for InnerProduct
   ge::OpDescPtr innerProductStaticDesc =
-      std::make_shared<ge::OpDesc>(fusedDesc->GetName() + "/FullyConnection", "FullyConnection");
+    std::make_shared<ge::OpDesc>(string("FullyConnection/") + fusedDesc->GetName(), "FullyConnection");
 
   ge::GeShape outputShape = inputTensorDesc.GetShape();
   std::vector<int64_t> dimsInputXShape;
@@ -90,6 +91,8 @@ ge::GeTensorDesc ALSTMFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t n
   ge::InDataAnchorPtr inputWAnchorPtr0 = fusedNode->GetInDataAnchor(wxStaticIndex);
   ge::OutDataAnchorPtr constAnchorPtr0 = inputWAnchorPtr0->GetPeerOutAnchor();
   ge::NodePtr inputWNode = constAnchorPtr0->GetOwnerNode();
+  Operator constWxStaticOp = OpDescUtils::CreateOperatorFromNode(inputWNode);
+  bool constAdjustFlag = false;
   vector<ge::GeTensorPtr> weights = ge::OpDescUtils::MutableWeights(inputWNode);
   if (weights.empty()) {
     failStatus = true;
@@ -99,55 +102,59 @@ ge::GeTensorDesc ALSTMFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t n
   ge::GeTensorPtr inputWConstGeTensor = weights[0];
 
   ge::GeTensorDesc inputWTensorDesc = inputWConstGeTensor->GetTensorDesc();
-  int32_t c0 = 16;
-  if (opType == "AscendQuant") {
-    c0 = 32;
-    dataType = ge::DT_INT8;
-  };
-  int32_t wRow = inputWTensorDesc.GetShape().GetDim(1);
-  int32_t wCol = inputWTensorDesc.GetShape().GetDim(0);
-  int32_t destWRow = (wRow + 15) / 16 * 16;
-  // there why
-  int32_t destWCol = 4 * ((wCol / 4 + c0 - 1) / c0 * c0);
+  constWxStaticOp.GetAttr("const_adjust_flag", constAdjustFlag);
+  if (!constAdjustFlag) {
+    int32_t c0 = 16;
+    if (opType == "AscendQuant") {
+      c0 = 32;
+      dataType = ge::DT_INT8;
+    };
+    int32_t wRow = inputWTensorDesc.GetShape().GetDim(1);
+    int32_t wCol = inputWTensorDesc.GetShape().GetDim(0);
+    int32_t destWRow = (wRow + 15) / 16 * 16;
+    // there why
+    int32_t destWCol = 4 * ((wCol / 4 + c0 - 1) / c0 * c0);
 
-  std::vector<int64_t> dimsInputWDim;
-  // no need padding
-  dimsInputWDim.push_back(destWCol);
-  dimsInputWDim.push_back(destWRow);
+    std::vector<int64_t> dimsInputWDim;
+    // no need padding
+    dimsInputWDim.push_back(destWCol);
+    dimsInputWDim.push_back(destWRow);
 
-  dimsInputWDim.push_back(1);
-  dimsInputWDim.push_back(1);
+    dimsInputWDim.push_back(1);
+    dimsInputWDim.push_back(1);
 
-  std::vector<int64_t> dimsOriInputWDim;
-  // no need padding
-  dimsOriInputWDim.push_back(wCol);
-  dimsOriInputWDim.push_back(wRow);
+    std::vector<int64_t> dimsOriInputWDim;
+    // no need padding
+    dimsOriInputWDim.push_back(wCol);
+    dimsOriInputWDim.push_back(wRow);
 
-  dimsOriInputWDim.push_back(1);
-  dimsOriInputWDim.push_back(1);
+    dimsOriInputWDim.push_back(1);
+    dimsOriInputWDim.push_back(1);
 
-  ge::GeShape dimsInputWShape(dimsInputWDim);
-  ge::GeShape dimsOriInputWShape(dimsOriInputWDim);
+    ge::GeShape dimsInputWShape(dimsInputWDim);
+    ge::GeShape dimsOriInputWShape(dimsOriInputWDim);
 
-  inputWTensorDesc.SetShape(dimsInputWShape);
-  inputWTensorDesc.SetOriginShape(dimsOriInputWShape);
-  inputWTensorDesc.SetFormat(ge::FORMAT_NCHW);
-  inputWTensorDesc.SetOriginFormat(ge::FORMAT_NCHW);
-
-  innerProductStaticDesc->AddInputDesc("w", inputWTensorDesc);
-  inputWConstGeTensor->SetTensorDesc(inputWTensorDesc);
-  fusedNode->GetInDataAnchor(wxStaticIndex)
+    inputWTensorDesc.SetShape(dimsInputWShape);
+    inputWTensorDesc.SetOriginShape(dimsOriInputWShape);
+    inputWTensorDesc.SetFormat(ge::FORMAT_NCHW);
+    inputWTensorDesc.SetOriginFormat(ge::FORMAT_NCHW);
+    fusedNode->GetInDataAnchor(wxStaticIndex)
       ->GetPeerOutAnchor()
       ->GetOwnerNode()
       ->GetOpDesc()
       ->UpdateOutputDesc(0, inputWTensorDesc);
+    constWxStaticOp.SetAttr("const_adjust_flag", true);
+  }
+  innerProductStaticDesc->AddInputDesc("w", inputWTensorDesc);
+  inputWConstGeTensor->SetTensorDesc(inputWTensorDesc);
+
   // output todo shape   product output
   ge::GeTensorDesc outputTensorDesc = ge::GeTensorDesc(outputShape, ge::FORMAT_NCHW, dataType);
   std::vector<int64_t> dimsY;
 
   dimsY.push_back(inputTensorDesc.GetShape().GetDim(0));
 
-  dimsY.push_back(destWCol);
+  dimsY.push_back(inputWTensorDesc.GetShape().GetDim(0));
   ge::GeShape dimsYShape(dimsY);
   outputTensorDesc.SetShape(dimsYShape);
   outputTensorDesc.SetOriginShape(dimsYShape);
@@ -196,6 +203,8 @@ ge::GeTensorPtr ALSTMFusionPass::ProcessWxh(ge::NodePtr fusedNode, bool& failSta
   ge::InDataAnchorPtr inputWxAnchorPtr0 = fusedNode->GetInDataAnchor(wxIndex);
   ge::OutDataAnchorPtr constWxAnchorPtr0 = inputWxAnchorPtr0->GetPeerOutAnchor();
   ge::NodePtr inputWxNode = constWxAnchorPtr0->GetOwnerNode();
+  Operator constWxOp = OpDescUtils::CreateOperatorFromNode(inputWxNode);
+  bool constAdjustFlag = false;
   vector<ge::GeTensorPtr> weightsWx = ge::OpDescUtils::MutableWeights(inputWxNode);
   if (weightsWx.empty()) {
     failStatus = true;
@@ -203,7 +212,11 @@ ge::GeTensorPtr ALSTMFusionPass::ProcessWxh(ge::NodePtr fusedNode, bool& failSta
     return nullptr;
   }
   ge::GeTensorPtr wxTensorPtr = weightsWx[0];
-
+  constWxOp.GetAttr("const_adjust_flag", constAdjustFlag);
+  if (constAdjustFlag) {
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "LSTM const_adjust_flag is true, no need adjust again.");
+    return wxTensorPtr;
+  }
   ge::InDataAnchorPtr inputWhAnchorPtr0 = fusedNode->GetInDataAnchor(whIndex);
   ge::OutDataAnchorPtr constWhAnchorPtr0 = inputWhAnchorPtr0->GetPeerOutAnchor();
   ge::NodePtr inputWhNode = constWhAnchorPtr0->GetOwnerNode();
@@ -290,6 +303,7 @@ ge::GeTensorPtr ALSTMFusionPass::ProcessWxh(ge::NodePtr fusedNode, bool& failSta
     }
 
     wxTensorPtr->SetData(reinterpret_cast<uint8_t*>(wxhPaddData.get()), (targetRow * destWhCol) * sizeof(float));
+    constWxOp.SetAttr("const_adjust_flag", true);
 
   } else {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's dtype is not in (float16, int8), fusion failed.",
@@ -326,35 +340,39 @@ vector<ge::NodePtr> ALSTMFusionPass::ProcessLstmCellV2(ge::NodePtr fusedNode, ge
     OP_LOGE(FUSED_OP_TYPE.c_str(), "LSTM bias_data is null, fusion failed.");
     return lstmCellV2Node;
   }
-  ge::GeTensorPtr biasTensorPtr = bias_data[0];
-
+  Operator biasOp = OpDescUtils::CreateOperatorFromNode(inputBiasNode);
+  bool constAdjustFlag = false;
+  biasOp.GetAttr("const_adjust_flag", constAdjustFlag);
   ge::GeTensorDesc biasTensorDesc = fusedDesc->GetInputDesc(biasIndex);
+  if (!constAdjustFlag) {
+    ge::GeTensorPtr biasTensorPtr = bias_data[0];
+    int32_t bias_dim = biasTensorDesc.GetShape().GetDim(0);
+    int32_t tar_bias_dim = (((bias_dim / 4) + 15) / 16 * 16) * 4;
+    vector<int64_t> biasDims;
+    biasDims.push_back(tar_bias_dim);
+    GeShape biasShape(biasDims);
+    biasTensorDesc.SetShape(biasShape);
+    biasTensorDesc.SetOriginShape(biasShape);
+    biasTensorPtr->SetTensorDesc(biasTensorDesc);
 
-  int32_t bias_dim = biasTensorDesc.GetShape().GetDim(0);
-  int32_t tar_bias_dim = (((bias_dim / 4) + 15) / 16 * 16) * 4;
-  vector<int64_t> biasDims;
-  biasDims.push_back(tar_bias_dim);
-  GeShape biasShape(biasDims);
-  biasTensorDesc.SetShape(biasShape);
-  biasTensorDesc.SetOriginShape(biasShape);
-  biasTensorPtr->SetTensorDesc(biasTensorDesc);
-
-  fusedNode->GetInDataAnchor(biasIndex)->GetPeerOutAnchor()->GetOwnerNode()->GetOpDesc()->UpdateOutputDesc(
+    fusedNode->GetInDataAnchor(biasIndex)->GetPeerOutAnchor()->GetOwnerNode()->GetOpDesc()->UpdateOutputDesc(
       0, biasTensorDesc);
-  unique_ptr<float[]> biasPadData(new (std::nothrow) float[tar_bias_dim]());
+    unique_ptr<float[]> biasPadData(new (std::nothrow) float[tar_bias_dim]());
 
-  memset_s(biasPadData.get(), tar_bias_dim, 0, tar_bias_dim);
-  float* dstBias = biasPadData.get();
-  float* srcBias = (float*)biasTensorPtr->GetData().data();
-  for (int32_t repeat = 0; repeat < 4; repeat++) {
-    int32_t dst_burst = tar_bias_dim / 4 * repeat;
-    int32_t src_burst = bias_dim / 4 * repeat;
-    for (int32_t i = 0; i < (bias_dim / 4); i++) {
-      *(dstBias + dst_burst + i) = *(srcBias + src_burst + i);
+    memset_s(biasPadData.get(), tar_bias_dim, 0, tar_bias_dim);
+    float* dstBias = biasPadData.get();
+    float* srcBias = (float*)biasTensorPtr->GetData().data();
+    for (int32_t repeat = 0; repeat < 4; repeat++) {
+      int32_t dst_burst = tar_bias_dim / 4 * repeat;
+      int32_t src_burst = bias_dim / 4 * repeat;
+      for (int32_t i = 0; i < (bias_dim / 4); i++) {
+        *(dstBias + dst_burst + i) = *(srcBias + src_burst + i);
+      }
     }
-  }
 
-  biasTensorPtr->SetData(reinterpret_cast<uint8_t*>(biasPadData.get()), (tar_bias_dim) * sizeof(float));
+    biasTensorPtr->SetData(reinterpret_cast<uint8_t*>(biasPadData.get()), (tar_bias_dim) * sizeof(float));
+    biasOp.SetAttr("const_adjust_flag", true);
+  }
 
   string opType = GetPeerNodeOptype(fusedNode);
   DataType dataType = biasTensorDesc.GetDataType();
@@ -365,20 +383,23 @@ vector<ge::NodePtr> ALSTMFusionPass::ProcessLstmCellV2(ge::NodePtr fusedNode, ge
   ge::GeTensorDesc inputTensorDesc0 = fusedDesc->GetInputDesc(0);
   auto shape_0 = inputTensorDesc0.GetShape();
 
+  ge::GeTensorDesc outTensorDesc = fusedDesc->GetOutputDesc(0);
+  int32_t hiddenSize = outTensorDesc.GetShape().GetDim(2);
+  int32_t tarHiddenDim = ((hiddenSize +15) / 16 * 16) * 4;
   vector<int64_t> outputOriDims;
   outputOriDims.push_back(shape_0.GetDim(1));
-  outputOriDims.push_back(bias_dim / 4);
+  outputOriDims.push_back(hiddenSize);
   GeShape outputOriShape(outputOriDims);
 
   vector<int64_t> inOriDims;
   vector<int64_t> inOriDims2;
   inOriDims.push_back(1);
   inOriDims.push_back(shape_0.GetDim(1));
-  inOriDims.push_back(bias_dim / 4);
+  inOriDims.push_back(hiddenSize);
   GeShape inputOriShape(inOriDims);
 
   inOriDims2.push_back(shape_0.GetDim(1));
-  inOriDims2.push_back(bias_dim / 4);
+  inOriDims2.push_back(hiddenSize);
   GeShape inputOriShape2(inOriDims2);
 
   ge::GeTensorDesc cTensorDesc = ge::GeTensorDesc(hTensorDesc.GetShape(), ge::FORMAT_ND, dataType);
@@ -481,7 +502,7 @@ vector<ge::NodePtr> ALSTMFusionPass::ProcessLstmCellV2(ge::NodePtr fusedNode, ge
     }
     std::vector<int64_t> shapeNd = {};
     shapeNd.push_back(shape_desc.GetDim(1));
-    shapeNd.push_back(tar_bias_dim / 4);
+    shapeNd.push_back(tarHiddenDim / 4);
     ge::GeShape shapeFz(shapeNd);
 
     if (i == tSize) {
@@ -589,10 +610,8 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     wxIndex = 2;
     whIndex = 4;
   }
-  ge::GeTensorDesc biasTensorDesc = fusedDesc->GetInputDesc(biasIndex);
-  int32_t outputDim = (biasTensorDesc.GetShape().GetDim(0)) / 4;
-
-  ge::GeTensorDesc outputDesc = fusedDesc->GetInputDesc(biasIndex);
+  ge::GeTensorDesc outTensorDesc = fusedDesc->GetOutputDesc(0);
+  int32_t outputDim = outTensorDesc.GetShape().GetDim(2);
 
   int32_t num_output = 0;
   ge::AttrUtils::GetInt(fusedDesc, "num_output", num_output);
@@ -631,7 +650,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   ge::GeTensorDesc splitNode1Desc =
       ge::GeTensorDesc(inputTensorDesc0.GetShape(), inputTensorDesc0.GetFormat(), startType);
   splitNode1Desc.SetOriginShape(inputTensorDesc0.GetOriginShape());
-  ge::OpDescPtr spiltStaticDesc = std::make_shared<ge::OpDesc>(fusedDesc->GetName() + "/SplitVD1", "SplitVD");
+  ge::OpDescPtr spiltStaticDesc = std::make_shared<ge::OpDesc>(string("SplitVD1/") + fusedDesc->GetName(), "SplitVD");
   spiltStaticDesc->AddInputDesc("input_value", splitNode1Desc);
   ge::GeShape shape0 = inputTensorDesc0.GetShape();
   int64_t tSize = shape0.GetDim(0);
@@ -680,7 +699,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   // create the OpDescPtr for SplitVD cont
   ge::GeTensorDesc inputContTensorDesc = fusedDesc->GetInputDesc(1);
   int32_t numSplitCont = inputContTensorDesc.GetShape().GetDim(0);
-  ge::OpDescPtr spiltContStaticDesc = std::make_shared<ge::OpDesc>(fusedDesc->GetName() + "/SplitVD2", "SplitVD");
+  ge::OpDescPtr spiltContStaticDesc = std::make_shared<ge::OpDesc>(string("SplitVD2/") + fusedDesc->GetName(), "SplitVD");
   ge::GeTensorDesc splitInputDesc =
       ge::GeTensorDesc(inputContTensorDesc.GetShape(), inputContTensorDesc.GetFormat(), ge::DT_FLOAT16);
   splitInputDesc.SetOriginShape(inputContTensorDesc.GetShape());
@@ -733,7 +752,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
                         newNodes, failStatus, biasIndex, has_static);
 
   // create the OpDescPtr for concat
-  ge::OpDescPtr concatStaticDesc = std::make_shared<ge::OpDesc>(fusedDesc->GetName() + "/ConcatD", "ConcatD");
+  ge::OpDescPtr concatStaticDesc = std::make_shared<ge::OpDesc>(string("ConcatD/") + fusedDesc->GetName(), "ConcatD");
 
   for (int64_t i = 0; i < numSplitX; i++) {
     std::vector<int64_t> tempShape;

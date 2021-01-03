@@ -10,10 +10,10 @@
 using namespace ge;
 using namespace op;
 
+namespace fe{
 class dynamic_lstm_v2_fusion_test : public testing::Test {
 protected:
-    static void SetUpTestCase() {
-        
+    static void SetUpTestCase() { 
         std::cout << "dynamic_lstm_v2_fusion_test SetUp" << std::endl;
     }
 
@@ -32,28 +32,40 @@ TEST_F(dynamic_lstm_v2_fusion_test, dynamic_lstm_v2_fusion_test_1) {
     xData.update_input_desc_x(tensorDescX);
     xData.update_output_desc_y(tensorDescX);
 
-    auto wxData = op::Data("wxData");
+    auto wxData = op::Const("w_x");
     std::vector<int64_t> dims_w{1024, 512};
     ge::Shape shape_w(dims_w);
     ge::TensorDesc tensorDescW(shape_w, FORMAT_NCHW,  DT_FLOAT);
-    wxData.update_input_desc_x(tensorDescW);
+    Tensor wx;
+    float* wx_value = new float[1024*512];
+    wx.SetTensorDesc(tensorDescW);
+    wx.SetData((uint8_t*)wx_value, 1024*512*sizeof(float));
+    wxData.set_attr_value(wx);
     wxData.update_output_desc_y(tensorDescW);
 
-    auto whData = op::Data("whData");
+    auto whData = op::Const("w_h");
     std::vector<int64_t> dims_wh{1024, 256};
     ge::Shape shape_wh(dims_wh);
-    ge::TensorDesc tensorDescWh(shape_wh, FORMAT_NCHW,  DT_FLOAT);
-    whData.update_input_desc_x(tensorDescWh);
+    ge::TensorDesc tensorDescWh(shape_wh, FORMAT_NCHW, DT_FLOAT);
+    Tensor wh;
+    float* wh_value = new float[1024*256];
+    wh.SetTensorDesc(tensorDescWh);
+    wh.SetData((uint8_t*)wh_value, 1024*256*sizeof(float));
+    whData.set_attr_value(wh);
     whData.update_output_desc_y(tensorDescWh);
 
-    auto bData = op::Data("bData");
-    std::vector<int64_t> dims_b{1024,};
+    auto bData = op::Const("bias");
+    std::vector<int64_t> dims_b{1024};
     ge::Shape shape_b(dims_b);
-    ge::TensorDesc tensorDescB(shape_b, FORMAT_NCHW,  DT_FLOAT);
-    bData.update_input_desc_x(tensorDescB);
+    ge::TensorDesc tensorDescB(shape_b, FORMAT_NCHW, DT_FLOAT);
+    Tensor bias;
+    float* bias_value = new float[1024];
+    bias.SetTensorDesc(tensorDescB);
+    bias.SetData((uint8_t*)bias_value, 1024*sizeof(float));
+    bData.set_attr_value(bias);
     bData.update_output_desc_y(tensorDescB);
 
-    auto contData = op::Data("contData");
+    auto contData = op::Data("cont");
     std::vector<int64_t> dims_cont{75, 1};
     ge::Shape shape_cont(dims_cont);
     ge::TensorDesc tensorDescCont(shape_cont, FORMAT_NCHW,  DT_FLOAT);
@@ -78,11 +90,12 @@ TEST_F(dynamic_lstm_v2_fusion_test, dynamic_lstm_v2_fusion_test_1) {
     fe::FusionPassTestUtils::RunGraphFusionPass("DynamicLSTMFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
     bool findTranspose = false;
-    for (auto node: compute_graph_ptr->GetAllNodes()) {
-        std::cout << node->GetType() << std::endl;        
+    for (auto node: compute_graph_ptr->GetAllNodes()) {      
         if (node->GetType() == "DynamicLSTMV2") {
             findTranspose = true;
+            break;
         }
     }
-    EXPECT_EQ(findTranspose, false);
+    EXPECT_EQ(findTranspose, true);
+}
 }

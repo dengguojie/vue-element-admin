@@ -51,7 +51,8 @@ Status DynamicLSTMFusionPass::ProcessLSTMStatic(ge::NodePtr fusedNode, ge::NodeP
 
     // create the OpDescPtr for InnerProduct
     ge::OpDescPtr innerProductStaticDesc = nullptr;
-    FUSION_PASS_MAKE_SHARED((innerProductStaticDesc = std::make_shared<ge::OpDesc>(fusedDesc->GetName() + "/FullyConnection", "FullyConnection")), return INTERNAL_ERROR);
+    FUSION_PASS_MAKE_SHARED((innerProductStaticDesc =
+       std::make_shared<ge::OpDesc>(string("FullyConnection/") + fusedDesc->GetName(), "FullyConnection")), return INTERNAL_ERROR);
 
     ge::GeShape outputShape = inputTensorDesc.GetShape();
     std::vector<int64_t> dimsInputXShape;
@@ -65,6 +66,8 @@ Status DynamicLSTMFusionPass::ProcessLSTMStatic(ge::NodePtr fusedNode, ge::NodeP
     ge::InDataAnchorPtr inputWAnchorPtr0 = fusedNode->GetInDataAnchor(inputIndexInfo.wxStaticIndex);
     ge::OutDataAnchorPtr constAnchorPtr0 = inputWAnchorPtr0->GetPeerOutAnchor();
     ge::NodePtr inputWNode = constAnchorPtr0->GetOwnerNode();
+    Operator constWxStaticOp = OpDescUtils::CreateOperatorFromNode(inputWNode);
+    bool constAdjustFlag = false;
     vector<ge::GeTensorPtr> weights = ge::OpDescUtils::MutableWeights(inputWNode);
     if (weights.empty()) {
         OP_LOGE(FUSED_OP_TYPE.c_str(), "LSTM weights is null, fusion failed.");
@@ -72,51 +75,53 @@ Status DynamicLSTMFusionPass::ProcessLSTMStatic(ge::NodePtr fusedNode, ge::NodeP
     }
     ge::GeTensorPtr inputWConstGeTensor = weights[0];
     ge::GeTensorDesc inputWTensorDesc = inputWConstGeTensor->GetTensorDesc();
-    int32_t c0 = 16;
-    int32_t wRow = inputWTensorDesc.GetShape().GetDim(1);
-    int32_t wCol = inputWTensorDesc.GetShape().GetDim(0);
-    int32_t destWRow = (wRow + 15) / 16 * 16;
+    constWxStaticOp.GetAttr("const_adjust_flag", constAdjustFlag);
+    if (!constAdjustFlag) {
+        int32_t c0 = 16;
+        int32_t wRow = inputWTensorDesc.GetShape().GetDim(1);
+        int32_t wCol = inputWTensorDesc.GetShape().GetDim(0);
+        int32_t destWRow = (wRow + 15) / 16 * 16;
 
-    // there why
-    int32_t destWCol = 4 * ((wCol / 4 + c0 - 1) / c0 * c0);
-    std::vector<int64_t> dimsInputWDim;
+        // there why
+        int32_t destWCol = 4 * ((wCol / 4 + c0 - 1) / c0 * c0);
+        std::vector<int64_t> dimsInputWDim;
 
-    // no need padding
-    dimsInputWDim.push_back(destWCol);
-    dimsInputWDim.push_back(destWRow);
-    dimsInputWDim.push_back(1);
-    dimsInputWDim.push_back(1);
+        // no need padding
+        dimsInputWDim.push_back(destWCol);
+        dimsInputWDim.push_back(destWRow);
+        dimsInputWDim.push_back(1);
+        dimsInputWDim.push_back(1);
 
-    std::vector<int64_t> dimsOriInputWDim;
-    // no need padding
-    dimsOriInputWDim.push_back(wCol);
-    dimsOriInputWDim.push_back(wRow);
-    dimsOriInputWDim.push_back(1);
-    dimsOriInputWDim.push_back(1);
+        std::vector<int64_t> dimsOriInputWDim;
+        // no need padding
+        dimsOriInputWDim.push_back(wCol);
+        dimsOriInputWDim.push_back(wRow);
+        dimsOriInputWDim.push_back(1);
+        dimsOriInputWDim.push_back(1);
 
+        ge::GeShape dimsInputWShape(dimsInputWDim);
+        ge::GeShape dimsOriInputWShape(dimsOriInputWDim);
 
-    ge::GeShape dimsInputWShape(dimsInputWDim);
-    ge::GeShape dimsOriInputWShape(dimsOriInputWDim);
-
-    inputWTensorDesc.SetShape(dimsInputWShape);
-    inputWTensorDesc.SetOriginShape(dimsOriInputWShape);
-    inputWTensorDesc.SetFormat(ge::FORMAT_NCHW);
-    inputWTensorDesc.SetOriginFormat(ge::FORMAT_NCHW);
-    
+        inputWTensorDesc.SetShape(dimsInputWShape);
+        inputWTensorDesc.SetOriginShape(dimsOriInputWShape);
+        inputWTensorDesc.SetFormat(ge::FORMAT_NCHW);
+        inputWTensorDesc.SetOriginFormat(ge::FORMAT_NCHW);
+        fusedNode->GetInDataAnchor(inputIndexInfo.wxStaticIndex)
+            ->GetPeerOutAnchor()
+            ->GetOwnerNode()
+            ->GetOpDesc()
+            ->UpdateOutputDesc(0, inputWTensorDesc);
+        constWxStaticOp.SetAttr("const_adjust_flag", true);
+    }
     innerProductStaticDesc->AddInputDesc("w", inputWTensorDesc);
     inputWConstGeTensor->SetTensorDesc(inputWTensorDesc);
-    fusedNode->GetInDataAnchor(inputIndexInfo.wxStaticIndex)
-        ->GetPeerOutAnchor()
-        ->GetOwnerNode()
-        ->GetOpDesc()
-        ->UpdateOutputDesc(0, inputWTensorDesc);
-    
+
     // output todo shape product output
     ge::GeTensorDesc outputTensorDesc = ge::GeTensorDesc(outputShape, ge::FORMAT_NCHW, dataType);
     std::vector<int64_t> dimsY;
 
     dimsY.push_back(inputTensorDesc.GetShape().GetDim(0));
-    dimsY.push_back(destWCol);
+    dimsY.push_back(inputWTensorDesc.GetShape().GetDim(0));
 
     ge::GeShape dimsYShape(dimsY);
     outputTensorDesc.SetShape(dimsYShape);
@@ -139,13 +144,14 @@ Status DynamicLSTMFusionPass::ProcessLSTMStatic(ge::NodePtr fusedNode, ge::NodeP
     return SUCCESS;
 }
 
-
 ge::GeTensorPtr DynamicLSTMFusionPass::ProcessLSTMWxh(ge::NodePtr fusedNode, bool &failStatus, const InputIndexInfo &inputIndexInfo)
 {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "has enter process lstm wxh");
     ge::InDataAnchorPtr inputWxAnchorPtr0 = fusedNode->GetInDataAnchor(inputIndexInfo.wxIndex);
     ge::OutDataAnchorPtr constWxAnchorPtr0 = inputWxAnchorPtr0->GetPeerOutAnchor();
     ge::NodePtr inputWxNode = constWxAnchorPtr0->GetOwnerNode();
+    Operator constWxOp = OpDescUtils::CreateOperatorFromNode(inputWxNode);
+    bool constAdjustFlag = false;
     vector<ge::GeTensorPtr> weightsWx = ge::OpDescUtils::MutableWeights(inputWxNode);
     if (weightsWx.empty()) {
         failStatus = true;
@@ -153,7 +159,11 @@ ge::GeTensorPtr DynamicLSTMFusionPass::ProcessLSTMWxh(ge::NodePtr fusedNode, boo
         return nullptr;
     }
     ge::GeTensorPtr wxTensorPtr = weightsWx[0];
-
+    constWxOp.GetAttr("const_adjust_flag", constAdjustFlag);
+    if (constAdjustFlag) {
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "dynamic LSTM const_adjust_flag is true, no need adjust again.");
+      return wxTensorPtr;
+    }
     ge::InDataAnchorPtr inputWhAnchorPtr0 = fusedNode->GetInDataAnchor(inputIndexInfo.whIndex);
     ge::OutDataAnchorPtr constWhAnchorPtr0 = inputWhAnchorPtr0->GetPeerOutAnchor();
     ge::NodePtr inputWhNode = constWhAnchorPtr0->GetOwnerNode();
@@ -214,6 +224,7 @@ ge::GeTensorPtr DynamicLSTMFusionPass::ProcessLSTMWxh(ge::NodePtr fusedNode, boo
             *(dstWeight + wxRow * wxCol + i / whCol + whRow * (i % whCol)) = *(whData + i);
         }
         wxTensorPtr->SetData(reinterpret_cast<uint8_t *>(wxhMergeData.get()), (targetCol * wxRow) * sizeof(float));
+        constWxOp.SetAttr("const_adjust_flag", true);
     } else {
         OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's dtype is not in (float16, float32), fusion failed.", fusedDesc->GetName().c_str());
         failStatus = true;
