@@ -32,7 +32,10 @@ from impl.util.util_select_op_base import get_op_cal_info
 
 # available soc resources
 UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-L1_SIZE = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
+if tbe_platform.get_soc_spec("SOC_VERSION") not in ("Ascend920"):
+    L1_SIZE = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
+else:
+    L1_SIZE = 0
 CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 TOTAL_PARAMS = 255000
 INDICES_LINE = 64
@@ -958,8 +961,8 @@ def _kernel_ir(output, tensor_params, tensor_indices, axis):
                                                         tensor_indices.dtype)
 
         with tvm_ib.if_scope(block_index < core_num_one_more):
-            op_parameters['gm_offset'] = (block_index * row_num_each_core) * gather_len
-            op_parameters['output_offset'] = (block_index * row_num_each_core) * indices_len
+            op_parameters['gm_offset'] = (block_index * (row_num_each_core + 1)) * gather_len
+            op_parameters['output_offset'] = (block_index * (row_num_each_core + 1)) * indices_len
             _compute_axis_not_zero(output, tensor_params, tensor_indices,
                                    op_parameters, tvm_ib, row_num_each_core + 1, gather_len, indices_len)
         with tvm_ib.else_scope():
