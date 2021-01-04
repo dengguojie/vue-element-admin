@@ -768,4 +768,57 @@ COMMON_INFER_FUNC_REG(EmbeddingDenseGrad, g_embeddingDenseGradInferShape);
 // Registered verify function
 VERIFY_FUNC_REG(EmbeddingDenseGrad, EmbeddingDenseGradVerify);
 // ----------------EmbeddingDenseGrad END---------------------
+
+IMPLEMT_VERIFIER(CommonLSTM, CommonLSTMVerify) {
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(CommonLSTM, CommonLSTMInferShape) {
+  ge::TensorDesc inputXTensorDesc = op.GetInputDesc("x");
+  ge::TensorDesc inputWTensorDesc = op.GetInputDesc("w");
+  ge::Shape shapeX = inputXTensorDesc.GetShape();
+  ge::Shape shapeW = inputWTensorDesc.GetShape();
+  DataType inputXDtype = inputXTensorDesc.GetDataType();
+  TensorDesc outputYTensorDesc = op.GetOutputDesc("y");
+  TensorDesc outputHTensorDesc = op.GetOutputDesc("y_h");
+  TensorDesc outputCTensorDesc = op.GetOutputDesc("y_c");
+
+  int64_t dim_num = shapeX.GetDimNum();
+  int64_t batchSize = 0;
+  int64_t hiddenSize = 0;
+  int64_t numStep = 0;
+  int64_t numDirections = 0;
+  if (dim_num == 3) {
+    numStep = shapeX.GetDims().at(0);
+    batchSize = shapeX.GetDims().at(1);
+  } else {
+    OpsOneInputShapeErrReport(op.GetName(), "X Shape Dim", "The input shape of X not equal 3!");
+    OP_LOGE(op.GetName().c_str(), "The input shape of X not equal 3, please check!");
+    return GRAPH_FAILED;
+  }
+
+  // shapeW [num_directions, 4*hidden_size, input_size]
+  numDirections = shapeW.GetDims().at(0);
+  hiddenSize = shapeW.GetDims().at(1) / 4;
+
+  vector<int64_t> outputYDims = {numStep, numDirections, batchSize, hiddenSize};
+
+  vector<int64_t> outputHCDims = {numDirections, batchSize, hiddenSize};
+
+  outputYTensorDesc.SetShape(ge::Shape(outputYDims));
+  outputHTensorDesc.SetShape(ge::Shape(outputHCDims));
+  outputCTensorDesc.SetShape(ge::Shape(outputHCDims));
+
+  outputYTensorDesc.SetDataType(inputXDtype);
+  outputHTensorDesc.SetDataType(inputXDtype);
+  outputCTensorDesc.SetDataType(inputXDtype);
+
+  (void)op.UpdateOutputDesc("y", outputYTensorDesc);
+  (void)op.UpdateOutputDesc("y_h", outputHTensorDesc);
+  (void)op.UpdateOutputDesc("y_c", outputCTensorDesc);
+
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(CommonLSTM, CommonLSTMInferShape);
+VERIFY_FUNC_REG(CommonLSTM, CommonLSTMVerify);
 }  // namespace ge

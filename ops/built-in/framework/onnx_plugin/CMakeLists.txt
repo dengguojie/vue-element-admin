@@ -83,6 +83,7 @@ set(_onnx_plugins
   sum_plugin.cc
   threshold_relu_plugin.cc
   transpose_plugin.cc
+  common_lstm_plugin.cc
 )
 
 add_library(ops_all_onnx_plugin SHARED
