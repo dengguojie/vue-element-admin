@@ -18,7 +18,7 @@ depthwise_conv2d
 import json
 import te.platform as tbe_platform
 from te.utils import para_check
-from te.utils.error_manager import error_manager_conv2d
+from te.utils.error_manager import error_manager_cube
 from te.utils.error_manager import error_manager_util
 from te.utils import cce
 from te.lang.cce.te_compute.depthwise_conv2d_compute import depthwise_conv2d_compute
@@ -76,12 +76,12 @@ def _depthwise_conv2d_fusion_para(inputs, outputs):
         l1_fusion_type = -1
 
     if int(input_memory_type) not in (0, 1, 2):
-        error_manager_conv2d.raise_err_input_mem_type("depthwise_conv2d", input_memory_type)
+        error_manager_cube.raise_err_input_mem_type("depthwise_conv2d", input_memory_type)
     if int(output_memory_type) not in (0, 1, 2):
-        error_manager_conv2d.raise_err_output_mem_type("depthwise_conv2d", output_memory_type)
+        error_manager_cube.raise_err_output_mem_type("depthwise_conv2d", output_memory_type)
     if valid_shape and not slice_offset:
-        error_manager_conv2d.raise_err_specific_user("depthwise_conv2d",
-                                                     "if valid_shape exists slice_offset can not be []")
+        error_manager_cube.raise_err_specific_user("depthwise_conv2d",
+                                                   "if valid_shape exists slice_offset can not be []")
 
     fusion_para = {
         "input_memory_type": input_memory_type,
@@ -221,7 +221,7 @@ def _check_stride(strides, dim_n, dim_c, dim_h, dim_w):
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     if strides[dim_n] != 1 or strides[dim_c] != 1:
-        error_manager_conv2d.raise_err_specific_user("depthwise_conv2d", "stride only support 1 in N axis and C axis.")
+        error_manager_cube.raise_err_specific_user("depthwise_conv2d", "stride only support 1 in N axis and C axis.")
     if strides[dim_h] != strides[dim_w]:
         dict_args = {
             'errCode': 'E60002',

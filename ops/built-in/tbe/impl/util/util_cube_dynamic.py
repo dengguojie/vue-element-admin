@@ -23,7 +23,7 @@ import te
 from te.tvm import api as tvm
 import te.platform as tbe_platform
 from te.utils import para_check
-from te.utils.error_manager import error_manager_conv2d as err_man
+from te.utils.error_manager import error_manager_cube as err_man
 import te.lang.base as tbe_base
 
 N_DIM = 0

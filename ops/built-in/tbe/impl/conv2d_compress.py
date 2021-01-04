@@ -22,7 +22,7 @@ import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
-from te.utils.error_manager import error_manager_conv2d as err_man
+from te.utils.error_manager import error_manager_cube as err_man
 from impl.util import util_select_op_base
 from impl.util import util_conv2d
 

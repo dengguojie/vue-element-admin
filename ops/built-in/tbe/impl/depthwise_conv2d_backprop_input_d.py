@@ -19,7 +19,7 @@ gradients of depthwise convolution with respect to the input.
 import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils.error_manager import error_manager_util
-from te.utils.error_manager import error_manager_conv2d
+from te.utils.error_manager import error_manager_cube
 from te.lang.cce.te_compute.depthwise_conv2d_compute import depthwise_conv2d_backprop_input_d_compute
 from te.lang.cce.te_schedule.depthwise_conv2d_schedule import depthwise_conv2d_backprop_input_d_schedule
 from te import tvm
@@ -124,8 +124,8 @@ def _check_stride(strides, dim_s_h, dim_s_w, dim_s_n, dim_s_c):
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     if (strides[dim_s_n] != 1) or (strides[dim_s_c] != 1):
-        error_manager_conv2d.raise_err_specific_user("depthwise_backprob_input",
-                                                     "the N-dim and C-dim of stride must be equal to 1.")
+        error_manager_cube.raise_err_specific_user("depthwise_backprob_input",
+                                                   "the N-dim and C-dim of stride must be equal to 1.")
 
 
 # pylint: disable=locally-disabled, too-many-arguments

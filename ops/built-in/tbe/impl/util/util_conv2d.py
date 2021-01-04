@@ -15,7 +15,7 @@ from te.platform import cce_conf
 from te.platform import CUBE_MKN
 from topi.cce import util
 from topi.cce.util import check_load3d_w_out_1_support
-from te.utils.error_manager import error_manager_conv2d as err_man
+from te.utils.error_manager import error_manager_cube as err_man
 
 
 PAD_SHAPE_DIM = 2

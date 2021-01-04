@@ -19,7 +19,7 @@ depthwise_conv2d_backprop_filter_d
 import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils.error_manager import error_manager_util
-from te.utils.error_manager import error_manager_conv2d
+from te.utils.error_manager import error_manager_cube
 from te.lang.cce.te_compute.depthwise_conv2d_compute import depthwise_conv2d_backprop_filter_d_compute
 from te.lang.cce.te_schedule.depthwise_conv2d_schedule import depthwise_conv2d_backprop_filter_d_schedule
 from te import tvm
@@ -121,8 +121,8 @@ def _check_dilations(dilations, dim_n, dim_c, dim_h, dim_w):
     check dilations dimension
     """
     if dilations[dim_n] != 1 or dilations[dim_c] != 1:
-        error_manager_conv2d.raise_err_specific_user("depthwise_backprob_filter",
-                                                     "dilation only support 1 in N axis and C axis.")
+        error_manager_cube.raise_err_specific_user("depthwise_backprob_filter",
+                                                   "dilation only support 1 in N axis and C axis.")
     if dilations[dim_h] != 1 or dilations[dim_w] != 1:
         dict_args = {
             'errCode': 'E60023',

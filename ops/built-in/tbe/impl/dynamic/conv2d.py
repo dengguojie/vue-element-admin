@@ -24,7 +24,7 @@ import te.lang.dynamic as dynamic
 import te.platform as tbe_platform
 import te.lang.base as tbe_base
 from te.utils import para_check
-from te.utils.error_manager import error_manager_conv2d as err_man
+from te.utils.error_manager import error_manager_cube as err_man
 from te.utils.error_manager import error_manager_util
 from impl.util import fusion_util
 from impl.util import util_conv2d

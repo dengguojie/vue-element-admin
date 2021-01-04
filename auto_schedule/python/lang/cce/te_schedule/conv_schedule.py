@@ -31,7 +31,7 @@ from te.platform import CUBE_MKN
 from te.platform import cce_util
 from te.platform import get_soc_spec
 from te.platform.fusion_manager import get_fusion_build_cfg
-from te.utils.error_manager import error_manager_conv2d as err_man
+from te.utils.error_manager import error_manager_cube as err_man
 
 # tiling check
 TILING_AL1_SHAPWE_DIM = 4
