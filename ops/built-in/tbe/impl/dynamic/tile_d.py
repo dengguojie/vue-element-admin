@@ -91,13 +91,41 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
     -------
     None
     """
+    # Check not all shape is 1
     origin_multiples = list(multiples)
+    axis_not_multiple = 0
+    for multiples_i in origin_multiples:
+        if multiples_i == 1:
+            axis_not_multiple += 1
+    if axis_not_multiple == len(origin_multiples):
+        error_info = {}
+        error_info['errCode'] = para_check.OP_ERROR_CODE_005
+        error_info['op_name'] = 'tile_d'
+        error_info['param_name'] = 'axis_not_multiple'
+        error_info['min_len'] = '1'
+        error_info['max_len'] = str(len(origin_multiples) - 1)
+        error_info['length'] = str(axis_not_multiple)
+        raise RuntimeError(error_info, "In op[%s], the length of parameter[%s] be in the range of [%s, %s], but"
+                                       "actually is [%s]." % (error_info['op_name'], error_info['param_name'],
+                                                              error_info['min_len'], error_info['max_len'],
+                                                              error_info['length']))
+    
+    # Check support dtype
     input_dtype = input_x.get("dtype").lower()
     check_list = ("float16", "float32", "int32", "int8")
     para_check.check_dtype(input_dtype, check_list, param_name="input_x")
-    input_shape = list(input_x.get("shape"))
-    compile_shape = input_shape.copy()
+    
     input_range = list(input_x.get("range"))
+    input_shape = list(input_x.get("shape"))
+    
+    # Write unknown dim index into tiling_info
+    tiling_info = []
+    for idx, shape_i in enumerate(input_shape):
+        if shape_i == -1:
+            tiling_info.append(idx)
+    tiling_info.insert(0, len(tiling_info))
+
+    # Check len between input and multiples, the multiples len must not be less than input len
     if len(input_shape) > len(multiples):
         error_info = {}
         error_info['errCode'] = para_check.OP_ERROR_CODE_012
@@ -107,9 +135,11 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
         error_info['min_value'] = '1'
         error_info['real_value'] = str(len(input_shape))
         raise RuntimeError(error_info, "In op[%s], the num of dimensions of input[%s] should be in the range of "
-                                       "[%s, %s], but actually is [%s]." % (
-                                        error_info['op_name'], error_info['param_name'], error_info['min_value'],
-                                        error_info['max_value'], error_info['real_value']))
+                                       "[%s, %s], but actually is [%s]." % (error_info['op_name'], 
+                                                                            error_info['param_name'], 
+                                                                            error_info['min_value'],
+                                                                            error_info['max_value'], 
+                                                                            error_info['real_value']))
     if len(input_shape) < len(multiples):
         len_diff = len(multiples) - len(input_shape)
         input_shape = [1] * len_diff + input_shape
@@ -118,40 +148,28 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
     shape_adapt = []
     multiples_adapt = []
     range_adapt = []
+    multiples_align = []
     for shape_i, multiples_i, range_i in zip(input_shape, multiples, input_range):
         if multiples_i != 1 and shape_i != 1:
-            shape_adapt.append(1)
-            range_adapt.append((1, 1))
+            shape_adapt.extend([1, shape_i])
+            range_adapt.extend([(1, 1), range_i])
+            multiples_adapt.extend([multiples_i, 1])
+            multiples_align.extend([multiples_i, shape_i])
+        else:
+            shape_adapt.append(shape_i)
+            range_adapt.append(range_i)
             multiples_adapt.append(multiples_i)
-            multiples_i = 1
-        shape_adapt.append(shape_i)
-        range_adapt.append(range_i)
-        multiples_adapt.append(multiples_i)
+            multiples_align.append(multiples_i * shape_i)
+
+    tiling_info.extend(shape_adapt)
+    tiling_info.extend(multiples_align)
 
     input_x["shape"] = input_x["ori_shape"] = shape_adapt
     input_x["range"] = range_adapt
 
     with tbe_base.compute():
         shape = shape_util.variable_shape([input_x])[0]
-        axis_not_multiple = 0
-        for multiples_i in multiples_adapt:
-            if multiples_i == 1:
-                axis_not_multiple += 1
-        if axis_not_multiple == len(multiples_adapt):
-            error_info = {}
-            error_info['errCode'] = para_check.OP_ERROR_CODE_005
-            error_info['op_name'] = 'tile_d'
-            error_info['param_name'] = 'axis_not_multiple'
-            error_info['min_len'] = '1'
-            error_info['max_len'] = str(len(multiples_adapt) - 1)
-            error_info['length'] = str(axis_not_multiple)
-            raise RuntimeError(error_info, "In op[%s], the length of parameter[%s] be in the range of [%s, %s], but "
-                                           "actually is [%s]." % (
-                                            error_info['op_name'], error_info['param_name'], error_info['min_len'],
-                                            error_info['max_len'], error_info['length']))
-
         data = tvm.placeholder(shape, name="data", dtype=input_dtype)
-
         res = tile_d_compute(data, output_x, multiples_adapt, kernel_name)
 
     with tvm.target.cce():
@@ -161,8 +179,5 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
 
     tbe.build(sch, config)
 
-    len_diff = len(origin_multiples) - len(compile_shape)
-    compile_shape = [1] * len_diff + compile_shape
-    tbe_base.add_compile_info("_compile_shape", compile_shape)
-    tbe_base.add_compile_info("_origin_multiples", origin_multiples)
+    tbe_base.add_compile_info("_tiling_info", tiling_info)
     tbe_base.add_compile_info("_flag_info", [True, False, False, False, 1])

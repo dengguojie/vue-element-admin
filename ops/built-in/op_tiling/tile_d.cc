@@ -31,38 +31,32 @@ namespace optiling {
 
 bool TileDTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                  OpRunInfo& run_info) {
-  CHECK((op_info.find("_compile_shape") != op_info.end()),
-        "op [%s] : compile info not contain [_compile_shape]", op_type.c_str());
-  CHECK((op_info.find("_origin_multiples") != op_info.end()),
-        "op [%s] : compile info not contain [_origin_multiples]", op_type.c_str());
-
-  const std::vector<int64_t>& compile_shape = op_info["_compile_shape"];
-  const std::vector<int64_t> origin_multiples = op_info["_origin_multiples"];
+  CHECK((op_info.find("_tiling_info") != op_info.end()),
+        "op [%s] : compile info not contain [_tiling_info]", op_type.c_str());
+  const std::vector<int64_t>& tiling_info = op_info["_tiling_info"];
 
   CHECK(!op_paras.inputs.empty(), "op [%s] : op_paras.inputs cannot be empty", op_type.c_str());
   CHECK(!op_paras.inputs[0].tensor.empty(), "op [%s] : op_paras.inputs[0].tensor cannot be empty", op_type.c_str());
-  std::vector<int64_t> runtime_shape = op_paras.inputs[0].tensor[0].shape;
+  std::vector<int64_t> runtime_shape(op_paras.inputs[0].tensor[0].shape);
 
-  std::vector<int64_t> broadcast_input = {};
-  std::vector<int64_t> broadcast_multiples = {};
-
-  // align shape for multiples and input shapes
-  uint64_t len_diff = origin_multiples.size() - runtime_shape.size();
-  runtime_shape.insert(runtime_shape.begin(), len_diff, 1);
-
-  for (uint64_t i = 0; i < origin_multiples.size(); i++) {
-    if (compile_shape[i] != 1 && origin_multiples[i] != 1) {
-      broadcast_input.emplace_back(1);
-      broadcast_input.emplace_back(runtime_shape[i]);
-      broadcast_multiples.emplace_back(origin_multiples[i]);
-      broadcast_multiples.emplace_back(runtime_shape[i]);
-    } else {
-      broadcast_input.emplace_back(runtime_shape[i]);
-      broadcast_multiples.emplace_back(origin_multiples[i] * runtime_shape[i]);
+  // use assign init vector
+  size_t shape_size = (tiling_info.size() - tiling_info[0] - 1) / 2;
+  std::vector<int64_t> broadcast_input(shape_size);
+  std::vector<int64_t> broadcast_multiples(shape_size);
+  broadcast_input.assign(tiling_info.begin() + tiling_info[0] + 1, tiling_info.end() - shape_size);
+  broadcast_multiples.assign(tiling_info.end() - shape_size, tiling_info.end());
+  int64_t count = 1;
+  for (size_t i = 0; i < shape_size; i++) {
+    if (broadcast_input[i] == -1) {
+      broadcast_input[i] = broadcast_multiples[i] = runtime_shape[tiling_info[count]];
+      count++;
+    }
+    if (tiling_info[0] + 1 == count) {
+      break;
     }
   }
 
-  TeOpParas op_paras_tmp = op_paras;
+  TeOpParas op_paras_tmp = std::move(op_paras);
   // update new shape
   CHECK(!op_paras_tmp.inputs.empty(),
         "op [%s] : op_paras_tmp.inputs cannot be empty", op_type.c_str());
@@ -71,9 +65,7 @@ bool TileDTiling(const std::string& op_type, const TeOpParas& op_paras, const nl
   op_paras_tmp.inputs[0].tensor[0].shape = std::move(broadcast_input);
 
   // create other input multiples
-  TeOpTensorArg multiples_input;
-  multiples_input.arg_type = op_paras_tmp.inputs[0].arg_type;
-  multiples_input.tensor = op_paras_tmp.inputs[0].tensor;
+  TeOpTensorArg multiples_input(op_paras_tmp.inputs[0]);
   CHECK(!multiples_input.tensor.empty(),
         "op [%s] : multiples_input.tensor cannot be empty", op_type.c_str());
   multiples_input.tensor[0].shape = std::move(broadcast_multiples);
