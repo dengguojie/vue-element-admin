@@ -88,20 +88,24 @@ def l2_loss(x, y, kernel_name="l2_loss"):
     dtype_lower_x = dtype_x.lower()
     check_list_x = ("float16", "float32")
     check_dtype(dtype_lower_x, check_list_x, param_name="x")
+    x["rel_pos_to_reduce"] = "before"
+
     axes = []
     for i in range(len(shape)):
         axes.append(i)
     add_compile_info("_ori_axis", axes)
+    input_axis = {"shape": [len(axes), ], "value": axes, "rel_pos_to_reduce": "axis"}
+
     schedules = []
-    ins = classify([x, axes], Mode.REDUCE)
+    ins = classify([x, input_axis], Mode.REDUCE)
     tensors = []
 
     for (_x, axes) in ins:
         with tbe_base.compute():
-            shape_x = shape_util.variable_shape([_x])[0]
+            shape_x = shape_util.variable_shape([_x, axes], op_mode="reduce")[0]
             data_input_x = tvm.placeholder(shape_x, name="data_input_x",
                                            dtype=dtype_lower_x)
-            res = l2_loss_compute(data_input_x, axes, y)
+            res = l2_loss_compute(data_input_x, axes.get("value"), y)
             tensors.append([data_input_x, res])
         with tvm.target.cce():
             schedule = tbe.auto_schedule(res)

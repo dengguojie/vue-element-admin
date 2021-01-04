@@ -141,6 +141,8 @@ def reduce_mean_d(input_x, output_y, axes,
     dtype_lower = dtype.lower()
     check_list = ("float16", "float32", "int8", "uint8")
     para_check.check_dtype(dtype_lower, check_list)
+    input_x["rel_pos_to_reduce"] = "before"
+
     add_compile_info("_ori_axis", axes)
 
     shape = input_x["shape"]
@@ -150,18 +152,19 @@ def reduce_mean_d(input_x, output_y, axes,
     if hasattr(axes, 'index'):
         axes = list(axes)
     axes = shape_util.axis_check(shape_len, axes)
+    input_axis = {"shape": [len(axes), ], "value": axes, "rel_pos_to_reduce": "axis"}
 
     schedules = []
     tensors = []
-    ins = tbe_base.shape_classifier.classify([input_x, axes], tbe_base.shape_classifier.Mode.REDUCE)
+    ins = tbe_base.shape_classifier.classify([input_x, input_axis], tbe_base.shape_classifier.Mode.REDUCE)
     for (_input_x, _axes) in ins:
         with tbe_base.compute():
             # not support 5HD
             is_5hdc = False
-            shape_var_new = shape_util.variable_shape([_input_x])[0]
+            shape_var_new = shape_util.variable_shape([_input_x, _axes], op_mode="reduce")[0]
             data_input = tvm.placeholder(shape_var_new, name="data_input",
                                          dtype=dtype_lower)
-            res = reduce_mean_d_compute(data_input, output_y, _axes,
+            res = reduce_mean_d_compute(data_input, output_y, _axes.get("value"),
                                         keepdims, impl_mode=impl_mode,
                                         is_5hdc=is_5hdc)
             tensors.append([data_input, res])

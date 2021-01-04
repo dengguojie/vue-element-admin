@@ -93,6 +93,8 @@ def reduce_sum_d(x, y, axis=None, keepdims=None, kernel_name="reduce_sum_d"):
     dtype_lower = dtype.lower()
     check_list = ("float16", "float32")
     para_check.check_dtype(dtype_lower, check_list, param_name="x")
+    x["rel_pos_to_reduce"] = "before"
+
     add_compile_info("_ori_axis", axis)
 
     shape = x["shape"]
@@ -102,17 +104,18 @@ def reduce_sum_d(x, y, axis=None, keepdims=None, kernel_name="reduce_sum_d"):
     if hasattr(axis, 'index'):
         axis = list(axis)
     axis = shape_util.axis_check(shape_len, axis)
+    input_axis = {"shape": [len(axis), ], "value": axis, "rel_pos_to_reduce": "axis"}
 
     schedules = []
     tensors = []
-    ins = tbe_base.shape_classifier.classify([x, axis], tbe_base.shape_classifier.Mode.REDUCE)
+    ins = tbe_base.shape_classifier.classify([x, input_axis], tbe_base.shape_classifier.Mode.REDUCE)
 
     for (x, axis) in ins:
         with tbe_base.compute():
-            shape_var_new = shape_util.variable_shape([x])[0]
+            shape_var_new = shape_util.variable_shape([x, axis], op_mode="reduce")[0]
             data_input = tvm.placeholder(shape_var_new, name="data_input",
                                          dtype=dtype_lower)
-            res = reduce_sum_d_compute(data_input, y, axis, keepdims)
+            res = reduce_sum_d_compute(data_input, y, axis.get("value"), keepdims)
             tensors.append([data_input, res])
 
         with tvm.target.cce():

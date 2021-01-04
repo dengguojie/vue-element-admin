@@ -302,12 +302,15 @@ def refine_shapes_for_broadcast(shape1, shape2):
     return fused_shape1, fused_shape2
 
 
-def variable_shape(inputs: list, support_broadcast=False):
+def variable_shape(inputs: list, op_mode="elewise", support_broadcast=False):
     """
     :param inputs: all inputs
+    :param op_mode: elewise or reduce
     :param support_broadcast: whether to support broadcast
     :return:
     """
+    if op_mode == "reduce":
+        return _reduce_variable_shape(inputs)
 
     def _get_range_intersection(ranges):
         def _range_intersection(range_a, range_b):
@@ -430,12 +433,6 @@ def variable_shape(inputs: list, support_broadcast=False):
     current_compute = operation.get_context().get_current_compute()
     if current_compute:
         current_compute.add("mode", mode)
-        ori_axis = inputs[0].get("ori_axis")
-        if ori_axis is not None:
-            current_compute.add("ori_axis", ori_axis)
-        axis_dtype = inputs[0].get("axis_dtype")
-        if axis_dtype is not None:
-            current_compute.add("axis_dtype", axis_dtype)
     operation.get_context().add("support_broadcast", support_broadcast)
 
     shapes, ranges = _fill(inputs)
@@ -464,6 +461,75 @@ def variable_shape(inputs: list, support_broadcast=False):
             _suffix += 1
 
     return d_shapes
+
+
+def _reduce_variable_shape(inputs: list):
+    """
+    variable shape for reduce ops
+    """
+    inputs_before_reduce, inputs_after_reduce, input_axis = [], [], []
+    for single_input in inputs:
+        input_type = single_input.get("rel_pos_to_reduce")
+        if input_type == "axis":
+            input_axis.append(single_input)
+        elif input_type == "after":
+            inputs_after_reduce.append(single_input)
+        else:
+            inputs_before_reduce.append(single_input)
+
+    axis = input_axis[0].get("value")
+
+    if len(inputs) < 1:
+        return []
+    mode = inputs_before_reduce[0].get("mode")
+    if mode is None:
+        mode = para_check.ORIGINAL
+    operation.get_context().add("mode", mode)
+    current_compute = operation.get_context().get_current_compute()
+    if current_compute:
+        current_compute.add("mode", mode)
+        ori_axis = input_axis[0].get("ori_axis")
+        if ori_axis is not None:
+            current_compute.add("ori_axis", ori_axis)
+        axis_dtype = input_axis[0].get("axis_dtype")
+        if axis_dtype is not None:
+            current_compute.add("axis_dtype", axis_dtype)
+
+    shape_local = [x["shape"] for x in inputs_before_reduce]
+    range_local = [x.get("range") if x.get("range") else [(1, None)]*len(shape_local[0]) for x in inputs_before_reduce]
+    shape_before_reduce, shape_after_reduce = [], []
+    for index in range(len(shape_local[0])):
+        _var = None
+        if shape_local[0][index] == -1:
+            _var = operation.var("dim_" + str(index), range_local[0][index])
+            shape_before_reduce.append(_var)
+        else:
+            shape_before_reduce.append(shape_local[0][index])
+
+    def _gen_shape_after_reduce():
+        for idx in range(len(shape_before_reduce)):
+            if idx in axis:
+                if not len(inputs_after_reduce[0]["shape"]) == len(inputs_before_reduce[0]["shape"]):
+                    continue
+                else:
+                    shape_after_reduce.append(1)
+            else:
+                shape_after_reduce.append(shape_before_reduce[idx])
+
+    if inputs_after_reduce:
+        _gen_shape_after_reduce()
+
+    shape_out = []
+    for single_input in inputs:
+        input_type = single_input.get("rel_pos_to_reduce")
+        if input_type == "before":
+            shape_out.append(shape_before_reduce[:])
+        elif input_type == "after":
+            shape_out.append(shape_after_reduce[:])
+        else:
+            shape_out.append(input_axis[0].get("shape")[:])
+
+    return shape_out
 
 
 def simplify_axis_shape(shape, axis):
@@ -814,9 +880,6 @@ def get_shape_size(shape):
     """
     from functools import reduce
     product = reduce(lambda x, y: x * y, shape[:])
-    if product >= para_check.SHAPE_SIZE_LIMIT + 1:
-        raise RuntimeError(
-            "The shape size for operator has exceeded the maximum")
 
     return product
 

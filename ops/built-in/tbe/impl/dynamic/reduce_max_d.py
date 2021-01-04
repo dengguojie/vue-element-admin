@@ -89,6 +89,8 @@ def reduce_max_d(x, y, axes=None, keepdims=None, kernel_name="reduce_max_d"):
     dtype_lower = dtype.lower()
     check_list = ("float16", "float32", "int8", "uint8", "int32")
     para_check.check_dtype(dtype_lower, check_list)
+    x["rel_pos_to_reduce"] = "before"
+
     add_compile_info("_ori_axis", axes)
 
     shape = x["shape"]
@@ -98,17 +100,18 @@ def reduce_max_d(x, y, axes=None, keepdims=None, kernel_name="reduce_max_d"):
     if hasattr(axes, 'index'):
         axes = list(axes)
     axes = shape_util.axis_check(shape_len, axes)
+    input_axis = {"shape": [len(axes), ], "value": axes, "rel_pos_to_reduce": "axis"}
 
     schedules = []
     tensors = []
-    ins = tbe_base.shape_classifier.classify([x, axes], tbe_base.shape_classifier.Mode.REDUCE)
+    ins = tbe_base.shape_classifier.classify([x, input_axis], tbe_base.shape_classifier.Mode.REDUCE)
 
     for (x, axes) in ins:
         with tbe_base.compute():
-            shape_var_new = shape_util.variable_shape([x])[0]
+            shape_var_new = shape_util.variable_shape([x, axes], op_mode="reduce")[0]
             data_input = tvm.placeholder(shape_var_new, name="data_input",
                                          dtype=dtype_lower)
-            res = reduce_max_d_compute(data_input, y, axes, keepdims)
+            res = reduce_max_d_compute(data_input, y, axes.get("value"), keepdims)
             tensors.append([data_input, res])
 
         with tvm.target.cce():

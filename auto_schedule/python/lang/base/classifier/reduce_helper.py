@@ -23,6 +23,9 @@ from . import util
 COMMON = "common"
 REDUCE = "reduce"
 SPECIAL = "special"
+BEFORE = "before"
+AFTER = "after"
+AXIS = "axis"
 
 
 def is_const(shape):
@@ -82,7 +85,8 @@ def generate_in(pattern):
     input_x = {
         "shape": [-1] * len(pattern),
         "range": [(1, None)] * len(pattern),
-        "mode": SPECIAL
+        "mode": SPECIAL,
+        "rel_pos_to_reduce": BEFORE
     }
 
     reduce_axes = []
@@ -136,22 +140,43 @@ def inputs_classify(inputs):
     """
     classify inputs_before_reduce and inputs_after_reduce
     """
-    inputs_before_reduce, inputs_after_reduce, inputs_classification = [], [], []
+    inputs_before_reduce, inputs_after_reduce, input_axis, inputs_classification = [], [], [], []
     for single_input in inputs:
-        if single_input.get("is_after_reduce"):
-            inputs_after_reduce.append(single_input)
-            inputs_classification.append(1)
+        input_type = single_input.get("rel_pos_to_reduce")
+        if input_type == AXIS:
+            input_axis.append(deepcopy(single_input))
+            inputs_classification.append(AXIS)
+        elif input_type == AFTER:
+            inputs_after_reduce.append(deepcopy(single_input))
+            inputs_classification.append(AFTER)
         else:
-            inputs_before_reduce.append(single_input)
-            inputs_classification.append(0)
+            inputs_before_reduce.append(deepcopy(single_input))
+            inputs_classification.append(BEFORE)
 
-    return inputs_before_reduce, inputs_after_reduce, inputs_classification
+    return inputs_before_reduce, inputs_after_reduce, input_axis, inputs_classification
 
 
-def generate_reduce_input(inputs_before_reduce):
+def generate_reduce_input(inputs_before_reduce, inputs_after_reduce=None, reduce_axis=None, keep_dims=None):
     """
     obtain the shape and range to classify
     """
+    if inputs_after_reduce:
+        for single_input in inputs_after_reduce:
+            ori_shape = list(single_input["shape"])
+            ori_range = list(single_input.get("range") if single_input.get("range") else [(1, None)] * len(ori_shape))
+            for axis in reduce_axis:
+                # the dim corresponding to reduce_axis of input_after_reduce is not working in judging const and
+                # should be set to -1
+                if not keep_dims:
+                    ori_shape.insert(axis, -1)
+                    ori_range.insert(axis, (1, None))
+                else:
+                    ori_shape[axis] = -1
+                    ori_range[axis] = (1, None)
+            single_input["shape"] = ori_shape
+            single_input["range"] = ori_range
+        inputs_before_reduce.extend(inputs_after_reduce)
+
     shape_local = [x["shape"] for x in inputs_before_reduce]
     range_local = [x.get("range") if x.get("range") else [(1, None)]*len(shape_local[0]) for x in inputs_before_reduce]
 
@@ -176,6 +201,9 @@ def generate_reduce_input(inputs_before_reduce):
             return max([r[i][0] for r in range_local]), _select_min_upper_bound([r[i][1] for r in range_local])
 
     range_out = [_get_range(i) for i in range(len(range_local[0]))]
+    for index in range(len(shape_out)):
+        if range_out[index][0] == range_out[index][1]:
+            shape_out[index] = range_out[index][0]
 
     return {"shape": shape_out, "range": range_out}
 
@@ -194,10 +222,14 @@ def judge_keep_dims(inputs_before_reduce, inputs_after_reduce):
     return keep_dims
 
 
-def generate_ins_of_after_reduce(input_x, reduce_axis, keep_dims):
+def generate_ins_of_after_reduce(input_x, input_axis, keep_dims):
     """
     generate ins of inputs after reduce
     """
+    if isinstance(input_axis, dict):
+        reduce_axis = input_axis.get("value")
+    else:
+        reduce_axis = input_axis
     out_shape, out_range = [], []
     for i in range(len(input_x["shape"])):
         if i in reduce_axis:
@@ -210,40 +242,56 @@ def generate_ins_of_after_reduce(input_x, reduce_axis, keep_dims):
             out_shape.append(input_x["shape"][i])
             out_range.append(input_x["range"][i])
 
-    out_ins = {"shape": out_shape, "range": out_range, "mode": input_x["mode"]}
-    if input_x.get("ori_axis"):
-        out_ins["ori_axis"] = input_x["ori_axis"]
-    if input_x.get("axis_dtype"):
-        out_ins["axis_dtype"] = input_x["axis_dtype"]
-    out_ins["is_after_reduce"] = True
+    out_ins = {"shape": out_shape, "range": out_range,
+               "mode": input_x["mode"], "rel_pos_to_reduce": AFTER}
 
     return out_ins
 
 
-def generate_ins_of_all(ins_before_reduce, ins_after_reduce, inputs_classification, reduce_axes):
+def generate_ins_of_all(ins_before_reduce, ins_after_reduce, reduce_axis, inputs_classification):
     """
     generate ins of all inputs
     """
+    # const shape passes reduce_axis as a dict with the key "ori_axis" and var shape passes a list
+    if isinstance(reduce_axis, dict):
+        ins_axis = reduce_axis
+    else:
+        ins_axis = {"shape": [len(reduce_axis), ], "value": reduce_axis, "rel_pos_to_reduce": AXIS}
     ins = []
-    for i in inputs_classification:
-        if i:
+    for symbol in inputs_classification:
+        if symbol == AXIS:
+            ins.append(deepcopy(ins_axis))
+        elif symbol == AFTER:
             ins.append(deepcopy(ins_after_reduce))
         else:
             ins.append(deepcopy(ins_before_reduce))
-    ins.append(reduce_axes)
 
     return ins
 
 
-def refine_ins(ins):
+def refine_ins(ins_before_reduce, reduce_axis):
     """
     if reduce axis is None, should refine ins
     """
-    if not ins[-1]:
-        for input_x in ins[:-1]:
-            input_x["shape"] = [1] + input_x["shape"]
-            input_x["range"] = [(1, 1)] + input_x["range"]
-        ins[-1] = [0, ]
+    if not reduce_axis:
+        ins_before_reduce["shape"] = [1] + ins_before_reduce["shape"]
+        ins_before_reduce["range"] = [(1, 1)] + ins_before_reduce["range"]
+        reduce_axis.append(0)
+
+
+def ins_of_prebuild(ins, reduce_axis):
+    """
+    generate ins when build_config is "disable"
+    """
+    out_ins = []
+    for single in ins:
+        input_type = single.get("rel_pos_to_reduce")
+        if input_type == AXIS:
+            out_ins.append({"shape": [len(reduce_axis), ], "value": reduce_axis, "rel_pos_to_reduce": AXIS})
+        else:
+            out_ins.append(single)
+
+    return out_ins
 
 
 class ShapeSimplifier:

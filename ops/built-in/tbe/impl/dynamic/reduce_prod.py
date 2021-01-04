@@ -28,7 +28,6 @@ from te.utils.op_utils import REQUIRED_INPUT
 from te.utils.op_utils import REQUIRED_OUTPUT
 from te.utils.op_utils import OPTION_ATTR_BOOL
 from te.utils.op_utils import KERNEL_NAME
-from topi.cce import util as cce_util
 
 
 # 'pylint: disable=unused-argument,invalid-name
@@ -92,25 +91,26 @@ def reduce_prod(x, axes, y, keepdims=False, kernel_name="reduce_prod"):
     dtype_lower_x = dtype_x.lower()
     check_list_x = ("float16", "float32", "int8", "uint8")
     check_dtype(dtype_lower_x, check_list_x, param_name="x")
+    x["rel_pos_to_reduce"] = "before"
 
     dtype_axes = axes["dtype"]
     dtype_lower_axes = dtype_axes.lower()
     check_list_axes = ("int32", "int64")
     check_dtype(dtype_lower_axes, check_list_axes, param_name="axes")
+    axes["rel_pos_to_reduce"] = "axis"
 
     schedules = []
     ins = classify([x, axes], Mode.REDUCE)
     tensors = []
-    shape_axes = [1]  # fake node
-    data_input_axes = tvm.placeholder(shape_axes, name="data_input_axes",
-                                      dtype=dtype_lower_axes)
 
     for (_x, _axes) in ins:
         with tbe_base.compute():
-            shape_x = shape_util.variable_shape([_x])[0]
+            shape_x, shape_axes = shape_util.variable_shape([_x, _axes], op_mode="reduce")
             data_input_x = tvm.placeholder(shape_x, name="data_input_x",
                                            dtype=dtype_lower_x)
-            axes_d = cce_util.axis_check(len(shape_x), _axes)
+            data_input_axes = tvm.placeholder(shape_axes, name="data_input_axes",
+                                              dtype=dtype_lower_axes)
+            axes_d = shape_util.axis_check(len(shape_x), _axes.get("value"))
             res = reduce_prod_compute(data_input_x, axes_d, y, keepdims)
             tensors.append([data_input_x, data_input_axes, res])
 
@@ -122,4 +122,3 @@ def reduce_prod(x, axes, y, keepdims=False, kernel_name="reduce_prod"):
     config = {"name": kernel_name,
               "tensor_list": tensors}
     tbe.build(schedules, config)
-

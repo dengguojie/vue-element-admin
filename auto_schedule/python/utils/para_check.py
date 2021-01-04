@@ -1214,6 +1214,6 @@ def check_reduce_shape_rule(shape):
     :param shape: inout shape
     """
     # the shape of reduce axis must be less than MAX_REDUCE_SHAPE_NUM
-
+    warnings.warn("check_reduce_shape_rule is deprecated", DeprecationWarning)
     from functools import reduce
     product = reduce(lambda x, y: x * y, shape[:])  # product of all dimension

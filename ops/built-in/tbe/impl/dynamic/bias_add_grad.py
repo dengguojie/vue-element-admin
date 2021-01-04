@@ -167,17 +167,19 @@ def bias_add_grad(x, y, data_format, kernel_name="bias_add_grad"):
     data_format_tuple = ("NCHW", "NHWC")
     input_data_format = x.get("format").upper()
     check_format(data_format, data_format_tuple, param_name="x")
+    x["rel_pos_to_reduce"] = "before"
 
     g_shape_list = _infer_axes(input_data_format, data_format, shape)
     add_compile_info("_ori_axis", g_shape_list)
+    input_axis = {"shape": [len(g_shape_list), ], "value": g_shape_list, "rel_pos_to_reduce": "axis"}
     global REDUCE_LIST
-    ins = classify([x, g_shape_list], Mode.REDUCE)
+    ins = classify([x, input_axis], Mode.REDUCE)
     schedules, tensors = [], []
     for (_x, axes) in ins:
         with tbe_base.compute():
-            shape_x = shape_util.variable_shape([_x])[0]
+            shape_x = shape_util.variable_shape([_x, axes], op_mode="reduce")[0]
             input_data = tvm.placeholder(shape_x, name="input_data", dtype=dtype)
-            REDUCE_LIST = cce_util.axis_check(len(shape_x), axes)
+            REDUCE_LIST = cce_util.axis_check(len(shape_x), axes.get("value"))
 
             res = bias_add_grad_compute(input_data, y, data_format, kernel_name)
             tensors.append([input_data, res])
@@ -187,4 +189,3 @@ def bias_add_grad(x, y, data_format, kernel_name="bias_add_grad"):
 
     config = {"print_ir": False, "name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)
-

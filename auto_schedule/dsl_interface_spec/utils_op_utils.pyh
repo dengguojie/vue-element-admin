@@ -140,4 +140,4 @@ def broadcast_shapes(shape1, shape2, op_name=OP_NAME, param_name_input1='', para
 
 def refine_shapes_for_broadcast(shape1, shape2):
 
-def variable_shape(inputs: list, support_broadcast=False):
+def variable_shape(inputs: list, op_mode="elewise", support_broadcast=False):
