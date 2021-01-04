@@ -106,7 +106,9 @@ int32_t ConvTiling(const std::string& opType, const std::vector<int32_t>& curSha
   std::vector<std::string> varMap = opInfo.at("_vars")["10000"];
   std::string tilingID("0");
 
-  if (varMap.size() != 1) {
+  if (opInfo["tiling_type"] == "default_tiling") {
+    tilingID = opInfo["default_range"].begin().key();
+  } else if (varMap.size() != 1) {
     tilingID = ConvTilingNHW(curShape, opInfo);
   } else {
     tilingID = ConvTilingBatch(curShape, opInfo);
@@ -143,7 +145,7 @@ bool Conv2DTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   int32_t outW = opParas.outputs[0].tensor[0].shape[wDim];
 
   int32_t tilingID = ConvTiling(opType, {n, h, outH, w, outW}, opCompileInfo, runInfo);
-  
+
   GELOGD("tiling _data is %d, %d, %d, %d, %d, %d", tilingID, n, h, w, outH, outW);
 
   ByteBufferPut(runInfo.tiling_data, tilingID);

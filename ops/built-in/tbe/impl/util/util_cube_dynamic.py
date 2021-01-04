@@ -40,6 +40,8 @@ def ceil_div(x_1, x_2):
     ceil divide for inputs
     """
 
+    if x_1 is None:
+        return x_1
     if x_2 == 0:
         err_man.raise_err_specific("conv2d", "division by zero")
     return (x_1 + x_2 - 1) // x_2
@@ -84,8 +86,7 @@ def get_input_nchw(in_shape, in_format, in_range=()):
         in_range = [in_range[pos_n], in_range[pos_c], in_range[pos_h], in_range[pos_w]]
     # range in NC1HWC0 format sometimes
     elif len(in_range) == FORMAT_NC1HWC0_DIM:
-        in_range = [in_range[N_DIM],
-                    (in_shape[C_DIM], in_shape[C_DIM]), in_range[H_DIM], in_range[W_DIM]]
+        in_range = [in_range[N_DIM], (in_shape[C_DIM], in_shape[C_DIM]), in_range[H_DIM], in_range[W_DIM]]
 
     if in_range:
         return in_shape, [tuple(r) for r in in_range]
@@ -124,10 +125,12 @@ class CubeParaProcess:
                     self.op_type, "must specify range when shape is -1")
 
         h_range, w_range = dyn_range[H_DIM], dyn_range[W_DIM]
-        if h_range[0] < self.valid_paras.get("hw_min") or h_range[1] > self.valid_paras.get("hw_max"):
+        if (h_range[0] and h_range[0] < self.valid_paras.get("hw_min")) or (
+                h_range[1] and h_range[1] > self.valid_paras.get("hw_max")):
             err_man.raise_err_attr_range_invalid(
                 self.op_type, [self.valid_paras.get("hw_min"), self.valid_paras.get("hw_max")], name, h_range[0])
-        if w_range[0] < self.valid_paras.get("hw_min") or w_range[1] > self.valid_paras.get("hw_max"):
+        if (w_range[0] and w_range[0] < self.valid_paras.get("hw_min")) or (
+                w_range[1] and w_range[1] > self.valid_paras.get("hw_max")):
             err_man.raise_err_attr_range_invalid(
                 self.op_type, [self.valid_paras.get("hw_min"), self.valid_paras.get("hw_max")], name, w_range[0])
 
@@ -252,6 +255,8 @@ class Conv2dParaProcess(CubeParaProcess):
         """
 
         def _get_output(x_in, k_size, pads, stride, dilation):
+            if not x_in:
+                return x_in
             return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
 
         if DYNAMIC_FLAG in self.pads:

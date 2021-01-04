@@ -21,6 +21,7 @@ from collections import OrderedDict
 
 import te
 from te.tvm.expr import Expr
+from te.platform import cce_conf
 from te.domain.tiling.get_tiling import get_tiling
 
 from te.lang.base.operation_impl import register_tiling_case
@@ -135,14 +136,71 @@ class Conv2dTiling(CubeTilingOp):
         tiling = get_tiling(self.tiling_info)[0]
         return tiling
 
+    def get_default_tiling(self):
+        """
+        get default tiling
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        default tiling
+        """
+
+        def _handle_block_dim():
+            """
+            avoid cyclomatic complexity, handle block_dim
+            """
+            tiling["block_dim"] = [1, 1, 1, 1]
+            device_core_num = cce_conf.get_soc_spec("CORE_NUM")
+            if (self.a_info[0] > 1) and (device_core_num > 1):
+                if self.a_info[0] <= device_core_num:
+                    tiling["block_dim"][0] = self.a_info[0]
+                else:
+                    for i in range(device_core_num, 0, -1):
+                        if self.a_info[0] % i == 0:
+                            break
+                    tiling["block_dim"][0] = i
+            else:
+                tiling["block_dim"][0] = 1
+
+        tiling = {}
+
+        tiling_m = 1
+        tiling_k = 1
+        tiling_n = 1
+        tiling["AL1_shape"] = [self.b_info[2] * self.b_info[3] * utils.FP16_K, 1, 1, 1]
+        tiling["BL1_shape"] = None
+        tiling["AL0_matrix"] = [tiling_m, tiling_k, utils.FP16_M, utils.FP16_K, 1, 1]
+        tiling["BL0_matrix"] = [tiling_k, tiling_n, utils.FP16_N, utils.FP16_K, 1, 1]
+        tiling["CL0_matrix"] = [tiling_n, tiling_m, utils.FP16_M, utils.FP16_N, 1, 1]
+        tiling["CUB_matrix"] = [tiling_n, tiling_m, utils.FP16_M, utils.FP16_N, 1, 1]
+        tiling["AUB_shape"] = tiling["AL1_shape"]
+        tiling["manual_pingpong_buffer"] = {'AL1_pbuffer': 1,
+                                            'BL1_pbuffer': 1,
+                                            'AL0_pbuffer': 1,
+                                            'BL0_pbuffer': 1,
+                                            'CL0_pbuffer': 1,
+                                            'CUB_pbuffer': 1,
+                                            'UBG_pbuffer': 1,
+                                            'AUB_pbuffer': 1}
+        tiling["A_overhead_opt_flag"] = False
+        tiling["B_overhead_opt_flag"] = False
+        tiling["CUB_channel_wise_flag"] = True
+        tiling["n_bef_batch_flag"] = False
+        _handle_block_dim()
+
+        return tiling
+
     def get_batch_range(self, batch):
         """
         get batch covering range
         """
 
         if "batch_n" in self.var_map:
-            core_num = te.platform.cce_conf.SOC_VERSION_MAP.get(
-                te.platform.get_soc_spec("SOC_VERSION")).get("AiCore").get("AICoreNum")
+            core_num = cce_conf.get_soc_spec("CORE_NUM")
             if batch >= core_num:
                 return core_num, N_RANGE
             if core_num == N_BASE:
@@ -259,15 +317,15 @@ class Conv2dTiling(CubeTilingOp):
     def assembly_case(self, tiling, coverage, cnt):
         var_range = OrderedDict()
         if self.var_map.get("batch_n") is not None:
-            var_range['batch_n'] = (int(coverage[0]), int(coverage[1]))
+            var_range['batch_n'] = (coverage[0], coverage[1])
 
         if self.var_map.get("fmap_h") is not None:
-            var_range['fmap_h'] = (int(coverage[2]), int(coverage[3]))
+            var_range['fmap_h'] = (coverage[2], coverage[3])
             var_range['ho'] = (self.get_output_h(var_range['fmap_h'][0]),
                                self.get_output_h(var_range['fmap_h'][1]))
 
         if self.var_map.get("fmap_w") is not None:
-            var_range['fmap_w'] = (int(coverage[4]), int(coverage[5]))
+            var_range['fmap_w'] = (coverage[4], coverage[5])
             var_range['wo'] = (self.get_output_w(var_range['fmap_w'][0]),
                                self.get_output_w(var_range['fmap_w'][1]))
 
@@ -416,6 +474,8 @@ class Conv2dTiling(CubeTilingOp):
         calculate output h
         """
 
+        if not h_in:
+            return h_in
         if self.pad_mode == "VAR":
             return utils.icd(h_in, self.stride_h)
         return (h_in + self.cur_pads[2] + self.cur_pads[3] - self.dilate_h *
@@ -426,6 +486,8 @@ class Conv2dTiling(CubeTilingOp):
         calculate output w
         """
 
+        if not w_in:
+            return w_in
         if self.pad_mode == "VAR":
             return utils.icd(w_in, self.stride_w)
         return (w_in + self.cur_pads[0] + self.cur_pads[1] - self.dilate_w *

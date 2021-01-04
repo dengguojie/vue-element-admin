@@ -3629,32 +3629,29 @@ class CceConvOp:
                 return hi_max * w_in
 
             w_out = dim_map['out_img_height_width'][1]
-            _, fmap_c1, _, fmap_w, fmap_c0 = ConvParam.tiling_query_param.get("fmap_shape_nc1hwc0")
+            _, fmap_c1, fmap_h, fmap_w, fmap_c0 = ConvParam.tiling_query_param.get("fmap_shape_nc1hwc0")
 
             if tiling["AL1_shape"]:
                 al1_m = tiling["AL1_shape"][1] * c_tiling_factor[1]
-            else:
-                al1_m = int_ceil_div_tvm(dim_map["out_img_shape"][-2], al1_factor[1])
-                al1_m = int_ceil_div_tvm(al1_m, fmap_c0) * fmap_c0
-
-            if not l0a_load2d_flag:
-                if tiling["AL1_shape"] and ("fmap_h" in self._var_map or "fmap_w" in self._var_map):
-                    additional_rows = tvm.select(
-                        tvm.floormod(al1_m, w_out) == 0,
-                        0,
-                        tvm.select(tvm.floormod(al1_m * 2, w_out) == 0, 1, 2))
+                if not l0a_load2d_flag:
+                    if "fmap_h" in self._var_map or "fmap_w" in self._var_map:
+                        additional_rows = tvm.select(
+                            tvm.floormod(al1_m, w_out) == 0,
+                            0,
+                            tvm.select(tvm.floormod(al1_m * 2, w_out) == 0, 1, 2))
+                    elif "batch_n" in self._var_map:
+                        if al1_m % w_out == 0:
+                            additional_rows = 0
+                        elif al1_m * 2 % w_out == 0:
+                            additional_rows = 1
+                        else:
+                            additional_rows = 2
                     al1_m = modify_m_for_load3d(al1_m, fmap_w, w_out, additional_rows)
-                elif "batch_n" in self._var_map:
-                    if al1_m % w_out == 0 or (tiling.get("block_dim")[2] == 1 and not tiling['AL1_shape']):
-                        additional_rows = 0
-                    elif al1_m * 2 % w_out == 0:
-                        additional_rows = 1
-                    else:
-                        additional_rows = 2
-                    al1_m = modify_m_for_load3d(al1_m, fmap_w, w_out, additional_rows)
-            if tiling["AL1_shape"]:
                 al1_bound = al1_m * tiling["AL1_shape"][0] * fmap_c0
             else:
+                if strideh_opti_flag:
+                    fmap_h = (fmap_h - 1) // stride_h + 1
+                al1_m = fmap_h * fmap_w
                 al1_bound = al1_m * fmap_c1 * fmap_c0
 
             return al1_bound

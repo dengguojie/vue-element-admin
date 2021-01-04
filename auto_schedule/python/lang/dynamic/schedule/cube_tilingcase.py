@@ -83,13 +83,26 @@ class TilingSelection:
         tilings_cases: list, calculated tilings
         """
 
-        if self.op.op_type == "conv2d":
-            if "fmap_h" in self.op.var_map or "fmap_w" in self.op.var_map:
-                tiling_cases = self._calc_hw([target_area.get(key) for key in target_area])
-            elif "batch_n" in self.op.var_map:
-                tiling_cases = self._calc_batch([target_area.get("batch_n")])
+        def _handle_dynamic_nhw():
+            tgt_area = [*target_area.get("batch_n"), *target_area.get("fmap_h"), *target_area.get("fmap_w")]
+            if None in tgt_area:
+                seed_cnt = next(self.seed_cnt)
+                default_tiling = self.op.get_default_tiling()
+                tiling_cases = [self.op.assembly_case(default_tiling, tgt_area, seed_cnt)]
+                add_compile_info("tiling_type", "default_tiling")
+                add_compile_info("default_range", {str(seed_cnt): tgt_area})
             else:
-                raise RuntimeError("Only dynamic N/H/W is supported")
+                add_compile_info("tiling_type", "dynamic_tiling")
+                if "fmap_h" in self.op.var_map or "fmap_w" in self.op.var_map:
+                    tiling_cases = self._calc_hw([target_area.get(key) for key in target_area])
+                elif "batch_n" in self.op.var_map:
+                    tiling_cases = self._calc_batch([target_area.get("batch_n")])
+                else:
+                    raise RuntimeError("Only dynamic N/H/W is supported")
+            return tiling_cases
+
+        if self.op.op_type == "conv2d":
+            tiling_cases = _handle_dynamic_nhw()
         else:
             add_compile_info("dynamic_mode", self.op.dynamic_mode)
             if self.op.dynamic_mode == "dynamic_hw":
@@ -610,8 +623,7 @@ def _cal_overlap(rect1, rect2):
         (front, back, top, bottom, left, right) format
     """
     funcs = [max if i % 2 == 0 else min for i in range(len(rect1))]
-    intersection = [func(pos1, pos2) for func, pos1, pos2 in zip(funcs, rect1,
-                                                                 rect2)]
+    intersection = [func(pos1, pos2) for func, pos1, pos2 in zip(funcs, rect1, rect2)]
     overlaps = [0 if start > end else end - start + 1 for start, end in
                 zip(intersection[0::2], intersection[1::2])]
     overlap = reduce(lambda x, y: x * y, overlaps)

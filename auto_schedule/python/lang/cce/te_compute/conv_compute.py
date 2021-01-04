@@ -33,6 +33,7 @@ except ImportError:
 FMAP_HW_MIN = 1
 FMAP_W_MAX = 2**32-1
 FMAP_H_MAX = 100000
+DYNAMIC_FMAP_W_MAX = 4096
 
 FMAP_W_MIN_SPLIT_W = 1
 FMAP_W_MAX_SPLIT_W = 4294967295
@@ -244,42 +245,25 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         check_fm_w_flag = (int(shape_in[3]) < FMAP_HW_MIN or int(shape_in[3]) > FMAP_W_MAX) and not conv1d_split_w_flag
         return check_fm_w_flag
 
-    def _check_fmap_range(fmap_range):
+    def _check_fmap_range():
         """
         Check fmap range.
         """
 
-        def _check_h_range():
-            if "fmap_h" in ConvParam.var_map and dynamic_para:
-                range_value = "".join([str(FMAP_HW_MIN), ", ", str(FMAP_H_MAX)])
-                if int(fmap_range[1][0]) < FMAP_HW_MIN or int(fmap_range[1][1]) > FMAP_H_MAX:
-                    err_man.raise_err_attr_range_invalid("conv2d", range_value,
-                                                         "feature map H's range", fmap_range[0][1])
-            else:
-                if int(shape_in[2]) < FMAP_HW_MIN or int(shape_in[2]) > FMAP_H_MAX:
-                    range_value = "".join([str(FMAP_HW_MIN), ", ", str(FMAP_H_MAX)])
-                    err_man.raise_err_attr_range_invalid("conv2d", range_value, "feature map H", shape_in[2])
+        if int(shape_in[2]) < FMAP_HW_MIN or int(shape_in[2]) > FMAP_H_MAX:
+            range_value = "".join([str(FMAP_HW_MIN), ", ", str(FMAP_H_MAX)])
+            err_man.raise_err_attr_range_invalid("conv2d", range_value, "feature map H", shape_in[2])
 
-        def _check_w_range():
-            if "fmap_w" in ConvParam.var_map and dynamic_para:
-                range_value = "".join([str(FMAP_HW_MIN), ", ", str(FMAP_W_MAX)])
-                if int(fmap_range[2][0]) < FMAP_HW_MIN or int(fmap_range[2][1]) > FMAP_W_MAX:
-                    err_man.raise_err_attr_range_invalid("conv2d", range_value,
-                                                         "feature map W's range", fmap_range[1][1])
-            else:
-                if check_fm_w_flag_set():
-                    range_value = "".join([str(FMAP_HW_MIN), ", ", str(FMAP_W_MAX)])
-                    err_man.raise_err_attr_range_invalid("conv2d", range_value, "feature map W", shape_in[3])
-                if conv1d_split_w_flag and (shape_in[3] < FMAP_W_MIN_SPLIT_W or shape_in[3] > FMAP_W_MAX_SPLIT_W):
-                    range_value = "".join([str(FMAP_W_MIN_SPLIT_W), ", ", str(FMAP_W_MAX_SPLIT_W)])
-                    err_man.raise_err_attr_range_invalid("conv2d", range_value,
-                                                         "feature map W when split w", shape_in[3])
-        _check_h_range()
-        _check_w_range()
+        if check_fm_w_flag_set():
+            range_value = "".join([str(FMAP_HW_MIN), ", ", str(FMAP_W_MAX)])
+            err_man.raise_err_attr_range_invalid("conv2d", range_value, "feature map W", shape_in[3])
+        if conv1d_split_w_flag and (shape_in[3] < FMAP_W_MIN_SPLIT_W or shape_in[3] > FMAP_W_MAX_SPLIT_W):
+            range_value = "".join([str(FMAP_W_MIN_SPLIT_W), ", ", str(FMAP_W_MAX_SPLIT_W)])
+            err_man.raise_err_attr_range_invalid("conv2d", range_value,
+                                                 "feature map W when split w", shape_in[3])
 
-    fmap_range = None if dynamic_para is None else dynamic_para.get("fmap_range")
-    _check_fmap_range(fmap_range)
     if not dynamic_para:
+        _check_fmap_range()
         util.check_shape_rule(shape_in, CONV_SHAPE_DIM, CONV_SHAPE_DIM)
     util.check_shape_rule(shape_w, CONV_SHAPE_DIM, CONV_SHAPE_DIM)
 
@@ -374,25 +358,38 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
     shape_in_fusion_para_check[1] = shape_in_fusion_para_check[1]//groups
     fusion_para_check(fusion_para, pad_top, pad_bottom, shape_in_fusion_para_check)
 
-    # check for not bigger than L1
-    m_bit_ratio = {"float16": 2, "int8": 1}
-    if "fmap_w" in ConvParam.var_map and dynamic_para:
-        point_per_w = get_te_var("wo").get_bound()[1]
-        w_in = math.floor(config['mac'][0] / point_per_w) + 2
-        tmp = ((w_in - 1) * strideh + hk_dilation) * (dynamic_para.get("fmap_range")[2][1])
-        max_feature_map_l1 = ci0 * tmp * m_bit_ratio[w_dtype]
-        _l1_buffer_size_check(max_feature_map_l1, fusion_para, "dynamic")
-    else:
-        point_per_w = math.floor((w_i - wk_dilation + pad_left + pad_right) / stridew) + 1
-        w_in = math.floor(config['mac'][0] / point_per_w) + 2
-        tmp = ((int(w_in) - 1) * strideh + hk_dilation) * w_i
-        max_feature_map_l1 = ci0 * tmp * m_bit_ratio[w_dtype]
-        if conv1d_split_w_flag:
-            conv1d_filter_size = (shape_w[3] - 1) * wk_dilation + 1
-            conv1d_min_l1 = (config['mac'][0] - 1) * stridew + conv1d_filter_size
-            max_feature_map_l1 = ci0 * conv1d_min_l1 * m_bit_ratio[w_dtype]
-        if not load2d_split_w_flag_set():
-            _l1_buffer_size_check(max_feature_map_l1, fusion_para)
+    def _check_l1_size():
+        """
+        check for not bigger than L1
+        """
+
+        m_bit_ratio = {"float16": 2, "int8": 1}
+        if "fmap_w" in ConvParam.var_map and dynamic_para:
+            fmap_w_upper = get_te_var("fmap_w").get_bound()[1]
+            if fmap_w_upper:
+                wo_upper = get_te_var("wo").get_bound()[1]
+            else:
+                fmap_w_upper = DYNAMIC_FMAP_W_MAX
+                if isinstance(pad_left, tvm.expr.Expr):
+                    wo_upper = int_ceil_div(fmap_w_upper, stridew)
+                else:
+                    wo_upper = math.floor((fmap_w_upper - wk_dilation + pad_left + pad_right) / stridew) + 1
+            ho_upper = math.floor(config['mac'][0] / wo_upper) + 2
+            l1_m = ((ho_upper - 1) * strideh + hk_dilation) * fmap_w_upper
+            max_feature_map_l1 = ci0 * l1_m * m_bit_ratio[w_dtype]
+            _l1_buffer_size_check(max_feature_map_l1, fusion_para, "dynamic")
+        else:
+            point_per_w = math.floor((w_i - wk_dilation + pad_left + pad_right) / stridew) + 1
+            w_in = math.floor(config['mac'][0] / point_per_w) + 2
+            tmp = ((int(w_in) - 1) * strideh + hk_dilation) * w_i
+            max_feature_map_l1 = ci0 * tmp * m_bit_ratio[w_dtype]
+            if conv1d_split_w_flag:
+                conv1d_filter_size = (shape_w[3] - 1) * wk_dilation + 1
+                conv1d_min_l1 = (config['mac'][0] - 1) * stridew + conv1d_filter_size
+                max_feature_map_l1 = ci0 * conv1d_min_l1 * m_bit_ratio[w_dtype]
+            if not load2d_split_w_flag_set():
+                _l1_buffer_size_check(max_feature_map_l1, fusion_para)
+    _check_l1_size()
 
     return shape_in, shape_w
 
