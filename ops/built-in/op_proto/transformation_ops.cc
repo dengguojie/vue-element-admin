@@ -243,7 +243,7 @@ IMPLEMT_COMMON_INFERFUNC(SpaceToBatchNDInferShape) {
   auto node = NodeUtils::GetNodeFromOperator(op);
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto input_desc = op_info->MutableInputDesc("x");
-  auto input_dims = input_desc->MutableShape().GetDims();;
+  auto input_dims = input_desc->MutableShape().GetDims();
   auto input_dtype = input_desc->GetDataType();
 
   auto output_desc = op_info->MutableOutputDesc("y");
@@ -387,7 +387,7 @@ IMPLEMT_COMMON_INFERFUNC(SpaceToBatchNDDInferShape) {
   auto node = NodeUtils::GetNodeFromOperator(op);
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto input_desc = op_info->MutableInputDesc("x");
-  auto input_dims = input_desc->MutableShape().GetDims();;
+  auto input_dims = input_desc->MutableShape().GetDims();
   auto input_dtype = input_desc->GetDataType();
 
   auto output_desc = op_info->MutableOutputDesc("y");
@@ -495,7 +495,7 @@ IMPLEMT_COMMON_INFERFUNC(BatchToSpaceNDInferShape) {
   auto node = NodeUtils::GetNodeFromOperator(op);
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto input_desc = op_info->MutableInputDesc("x");
-  auto input_shape = input_desc->MutableShape().GetDims();;
+  auto input_shape = input_desc->MutableShape().GetDims();
   auto input_dtype = input_desc->GetDataType();
   auto output_desc = op_info->MutableOutputDesc("y");
   output_desc->SetDataType(input_dtype);
