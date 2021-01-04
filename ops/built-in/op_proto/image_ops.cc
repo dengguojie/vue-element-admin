@@ -1948,4 +1948,31 @@ INFER_FUNC_REG(Resize, ResizeNearestInferShape);
 // ---------------ResizeNearest Op End-------------------
 // ----------------Resize END---------------------
 
+// ----------------DecodeJpeg Op Start--------------------
+IMPLEMT_INFERFUNC(DecodeJpeg, DecodeJpegInfer) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  TensorDesc contents = op.GetInputDesc(0);
+  TensorDesc image = op.GetOutputDesc(0);
+  DataType input_data = contents.GetDataType();
+  if (input_data != DT_STRING) {
+    OP_LOGE(op_desc->GetName().c_str(), "Input data type must be string, dataType is [%d]", input_data);
+    return GRAPH_FAILED;
+  }
+  image.SetDataType(DT_UINT8);
+  std::vector<int64_t> image_shape({UNKNOWN_DIM, UNKNOWN_DIM, 3});
+  std::vector<std::pair<int64_t, int64_t>> image_range;
+  (void)image_range.emplace_back(std::make_pair(1, -1));
+  (void)image_range.emplace_back(std::make_pair(1, -1));
+  (void)image_range.emplace_back(std::make_pair(3, 3));
+  image.SetShape(Shape(image_shape));
+  image.SetShapeRange(image_range);
+  if (op.UpdateOutputDesc(0, image) != GRAPH_SUCCESS) {
+    OP_LOGE(op_desc->GetName().c_str(), "Fail to update output image.");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(DecodeJpeg, DecodeJpegInfer);
+//-----------------DecodeJpeg End--------------------------
 }  // namespace ge

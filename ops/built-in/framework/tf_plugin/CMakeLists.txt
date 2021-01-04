@@ -145,6 +145,7 @@ set(_tf_plugins
   diag_plugin.cc
   div_no_nan_plugin.cc
   div_plugin.cc
+  decode_jpeg_plugin.cc
   draw_bounding_boxes_plugin.cc
   drop_out_do_mask_plugin.cc
   dynamic_lstm_plugin.cc
