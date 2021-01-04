@@ -2131,7 +2131,7 @@ def general_schedule(
                         factor_len = (0 if unit[idx] == 1 else offset_idx)
                         c_offset = c_offset + axis[idx] * factor_len
                     sch[c_col].buffer_tile(
-                    (None, None),
+                    (None, 1),
                     (None, None),
                     (c_offset, tiling["CL0_matrix"][0]),
                     (None, None),
@@ -2141,7 +2141,7 @@ def general_schedule(
                     )
                     if c_add_bias is not None:
                         sch[c_add_bias].buffer_tile(
-                        (None, None),
+                        (None, 1),
                         (None, None),
                         (c_offset, tiling["CL0_matrix"][0]),
                         (None, None),

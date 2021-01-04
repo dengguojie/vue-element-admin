@@ -2591,7 +2591,7 @@ def opti_schedule(
             + noii_coefficient * noii_axis.var
         ) * no_coefficient
         sch[c_l0c].buffer_tile(
-            (None, None),
+            (None, 1),
             (None, None),
             (cub_buffertile_n_min, no_coefficient),
             (None, None),
@@ -2601,7 +2601,7 @@ def opti_schedule(
         )
         if c_add_bias is not None:
             sch[c_add_bias].buffer_tile(
-            (None, None),
+            (None, 1),
             (None, None),
             (cub_buffertile_n_min, no_coefficient),
             (None, None),
