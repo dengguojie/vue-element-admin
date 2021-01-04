@@ -165,17 +165,14 @@ def strided_slice_last_dim(input_shape, dtype, output_shape, begin, end, stride,
     input_data = tik_instance.Tensor(dtype, (input_size,), name="input_data",
                                      scope=tik.scope_gm)
 
-    input_ub_size = 0
-    output_ub_size = 0
+    input_ub_size0 = ((input_group_2 + type_block_num - 1) // type_block_num) * type_block_num
+    output_ub_size0 = ((output_group_2 + type_block_num - 1) // type_block_num) * type_block_num
 
-    if input_group_2 > input_group_1:
-        input_ub_size = ((input_group_2 + type_block_num - 1) // type_block_num) \
-                        * type_block_num
-        output_ub_size = ((output_group_2 + type_block_num - 1) // type_block_num) \
-                         * type_block_num
-    else:
-        input_ub_size = input_size // aicore_num // split_factor_group_1
-        output_ub_size = output_size // aicore_num // split_factor_group_1
+    input_ub_size1 = input_size // aicore_num // split_factor_group_1
+    output_ub_size1 = output_size // aicore_num // split_factor_group_1
+
+    input_ub_size = max(input_ub_size0, input_ub_size1)
+    output_ub_size = max(output_ub_size0, output_ub_size1)
 
     # ub_size change
     input_data_ub = tik_instance.Tensor(dtype,

@@ -354,7 +354,7 @@ def strided_slice_last_dim_one(input_shape, dtype, output_shape, begin, kernel_n
                     with tik_instance.if_scope(last_core_input_ub_data > 0):
                         tik_instance.data_move(input_ub_data,
                                                input_data[total_cycle * len_burst_one
-                                                          + loop_index * use_input_ub_size],
+                                                          + last_core_loop_index * use_input_ub_size],
                                                0, 1, last_core_input_ub_data_length, 0, 0)
                         with tik_instance.for_range(0, last_core_tail_max_use_number) as group:
                             with tik_instance.for_range(0, consecutive) as cur_num:
