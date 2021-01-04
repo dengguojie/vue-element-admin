@@ -1424,7 +1424,14 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             mode = 'f162f16'
         else:
             mode = 'f162f32'
+
+        if not ConvParam.v200_width_out_1_flag:
+            remove_pad_m = DIM_MAP["out_img_height_width"][0]*DIM_MAP["out_img_height_width"][1]
+        else: # invliad_data_rm uses removed_pad_m as the shape of UB tensor, so modify it to N*1 here
+            remove_pad_m = DIM_MAP["out_img_height_width"][0]*DIM_MAP["out_img_height_width"][1]//2
+
         offset_d = offset_x if is_support_v200() else 0
+
         c_col = tvm.compute(
             mad_shape,
             lambda group, batch, cout_1, howo, cout_0:
@@ -1443,7 +1450,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             name='mad1',
             tag=OP_TAG + "c_col",
             attrs={'mode': mode,
-                   'remove_pad_M': DIM_MAP["out_img_height_width"][0]*DIM_MAP["out_img_height_width"][1]})
+                   'remove_pad_M': remove_pad_m}) # used in Feature: invalid_data_rm
         return c_col
 
     def bias_add(in_tensor0, in_tensor1):
