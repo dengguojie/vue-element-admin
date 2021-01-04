@@ -177,7 +177,7 @@ class MsOpGenerator:
             testcase_name = testcase_struct['case_name']
             output_paths = []
             output_num = 0
-            for _ in testcase_struct['output_desc']:
+            for _ in testcase_struct['input_desc']:
                 output_data_name = testcase_struct['case_name'] + '_input_' \
                                    + str(output_num)
                 output_data_path = os.path.join("test_data/data/",
@@ -202,7 +202,7 @@ class MsOpGenerator:
                 tensor_desc = code_snippet.TESTCASE_TEST_TENSOR.format(
                     input_name=input_name)
                 tensor_list.append(tensor_desc)
-                bin_file = output_abs_paths[0]
+                bin_file = output_abs_paths[count_input-1]
                 ms_type = input_desc['type']
                 inputs += code_snippet.TESTCASE_TEST_NET_INPUT.format(
                     input_name=input_name,
