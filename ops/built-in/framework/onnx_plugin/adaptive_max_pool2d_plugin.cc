@@ -35,6 +35,27 @@ Status ParseParamsAdaptiveMaxPool2d(const Message* op_src, ge::Operator& op_dest
     OP_LOGE("AdaptiveMaxPool2d", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
+  std::vector<int> v_output_size = {};
+  bool set_output_size_flag = false;
+
+  for (const auto& attr : node->attribute()) {
+    if (attr.name() == "output_size" && attr.type() == ge::onnx::AttributeProto::INTS) {
+      if (attr.ints_size() == 2) {
+        for (int i = 0; i < attr.ints_size(); i++) {
+          v_output_size.push_back(attr.ints(i));
+          }
+        } else {
+          OP_LOGE("AdaptiveMaxPool2d", "length of output_size must be 2.");
+        }
+      set_output_size_flag = true;
+    }
+  }
+
+  if (set_output_size_flag) {
+    op_dest.SetAttr("output_size", v_output_size);
+  } else {
+    OP_LOGE("AdaptiveMaxPool2d", "onnx AdaptiveMaxPool2d op has no output_size attr.");
+  }
   return SUCCESS;
 }
 

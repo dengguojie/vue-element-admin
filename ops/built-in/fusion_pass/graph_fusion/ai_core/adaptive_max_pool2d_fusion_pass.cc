@@ -73,7 +73,6 @@ std::vector<int> compute_kernel(int input_size, int output_size){
   } else {
     for(kernel_size=(input_size / output_size + 1);kernel_size<=(input_size / output_size + 2);kernel_size++){
       for(stride_size=(input_size / output_size);stride_size<=(input_size / output_size + 1);stride_size++){
-        ceil_mode = 0;
         res0 = (input_size + 2 * padding_size - kernel_size) / stride_size + 1;
         if (res0 == output_size){
           return std::vector<int>{1, kernel_size, stride_size, padding_size, ceil_mode};
@@ -108,6 +107,11 @@ Status AdaptiveMaxPool2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   FUSION_PASS_CHECK(fusedDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(fusedNode);
+  std::vector<int> output_sizeList;
+  if (op.GetAttr("output_size", output_sizeList) != ge::GRAPH_SUCCESS){
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "GetOpAttr output_size failed");
+    return FAILED;
+  }
   ge::GeTensorDesc outputTensorDesc = fusedDesc->GetOutputDesc(0);
   ge::GeShape output_shape = outputTensorDesc.GetShape();
   ge::GeTensorDesc inputTensorDesc = fusedDesc->GetInputDesc(0);
@@ -121,25 +125,21 @@ Status AdaptiveMaxPool2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   if (input_format == ge::FORMAT_NHWC) {
     in_size_h = shape.GetDim(1);
     in_size_w = shape.GetDim(2);
-    out_size_h = output_shape.GetDim(1);
-    out_size_w = output_shape.GetDim(2);
     data_format = "NHWC";
   } else if (input_format == ge::FORMAT_NCHW) {
     in_size_h = shape.GetDim(2);
     in_size_w = shape.GetDim(3);
-    out_size_h = output_shape.GetDim(2);
-    out_size_w = output_shape.GetDim(3);
     data_format = "NCHW";
   } else if (input_format == ge::FORMAT_NCHW){
     in_size_h = shape.GetDim(1);
     in_size_w = shape.GetDim(2);
-    out_size_h = output_shape.GetDim(1);
-    out_size_w = output_shape.GetDim(2);
     data_format = "ND";
   } else {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "Not support this format!");
     return FAILED;
   }
+  out_size_h = output_sizeList[0];
+  out_size_w = output_sizeList[1];
   std::vector<int> flag_h;
   flag_h = compute_kernel(in_size_h, out_size_h);
   std::vector<int> flag_w;
@@ -164,20 +164,21 @@ Status AdaptiveMaxPool2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   padValue.push_back(flag_w[3]);
   padValue.push_back(flag_w[3]);
 
-  int ceilmodeValue = 1;
-  ceilmodeValue = flag_h[4];
+  int64_t ceilmodeValue = 1;
+  int64_t modeValue = 0;
+  std::vector<int> dilationValue = {1, 1, 1, 1};
 
   std::string poolingNodeName = fusedNode->GetName() + "_" + "pooling";
   std::shared_ptr<ge::OpDesc> poolingOpdesc = std::make_shared<ge::OpDesc>(poolingNodeName, POOLING_NODE);
   FUSION_PASS_CHECK(poolingOpdesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "poolingOpdesc is null, fusion failed."),
                     return PARAM_INVALID);
-
   FUSION_PASS_CHECK(poolingOpdesc->AddInputDesc(0, inputTensorDesc) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add poolingNode input desc failed."), return FAILED);
-
   FUSION_PASS_CHECK(poolingOpdesc->AddOutputDesc(outputTensorDesc) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add poolingNode output desc failed."), return FAILED);
-
+  FUSION_PASS_CHECK(ge::AttrUtils::SetInt(poolingOpdesc, "mode", modeValue) == ge::GRAPH_FAILED,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Set attr %s to node %s error", "mode", poolingOpdesc->GetName().c_str()),
+                    return FAILED);
   FUSION_PASS_CHECK(ge::AttrUtils::SetListInt(poolingOpdesc, "window", windowValue) == ge::GRAPH_FAILED,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Set attr %s to node %s error", "window", poolingOpdesc->GetName().c_str()),
                     return FAILED);
@@ -187,12 +188,19 @@ Status AdaptiveMaxPool2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   FUSION_PASS_CHECK(ge::AttrUtils::SetListInt(poolingOpdesc, "pad", padValue) == ge::GRAPH_FAILED,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Set attr %s to node %s error", "pad", poolingOpdesc->GetName().c_str()),
                     return FAILED);
-  FUSION_PASS_CHECK(ge::AttrUtils::SetInt(poolingOpdesc, "ceilmode", ceilmodeValue) == ge::GRAPH_FAILED,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Set attr %s to node %s error", "ceilmode", poolingOpdesc->GetName().c_str()),
+  FUSION_PASS_CHECK(ge::AttrUtils::SetInt(poolingOpdesc, "ceil_mode", ceilmodeValue) == ge::GRAPH_FAILED,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Set attr %s to node %s error", "ceil_mode", poolingOpdesc->GetName().c_str()),
                     return FAILED);
   FUSION_PASS_CHECK(ge::AttrUtils::SetStr(poolingOpdesc, "data_format", data_format) == ge::GRAPH_FAILED,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Set attr %s to node %s error", "data_format", poolingOpdesc->GetName().c_str()),
                     return FAILED);
+  FUSION_PASS_CHECK(ge::AttrUtils::SetBool(poolingOpdesc, "global_pooling", false) == ge::GRAPH_FAILED,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Set attr %s to node %s error", "global_pooling", poolingOpdesc->GetName().c_str()),
+                    return FAILED);
+  FUSION_PASS_CHECK(ge::AttrUtils::SetListInt(poolingOpdesc, "dilation", dilationValue) == ge::GRAPH_FAILED,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Set attr %s to node %s error", "dilation", poolingOpdesc->GetName().c_str()),
+                    return FAILED);
+
   ge::NodePtr poolingNode = graph.AddNode(poolingOpdesc);
   poolingNode->GetOpDesc()->SetType(POOLING_NODE);
   newNodes.push_back(poolingNode);
