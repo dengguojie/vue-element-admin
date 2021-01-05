@@ -187,16 +187,16 @@ REG_OP(DynamicRNNGrad)
 *@brief: DynamicRNN calculation.
 *@par Inputs:
 *ten inputs:
-*@li x:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
-*@li w:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_ZN_LSTM.
-*@li b:A 1D Tensor. Must be one of the following types: float16, float32. The format must be ND.
-*@li seq_length:A 1D Tensor. Must be one of the following types: int32. The format must be ND.
-*@li init_h:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
-*@li init_c:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
-*@li wci:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_ZN_LSTM.
-*@li wcf:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_ZN_LSTM.
-*@li wco:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_ZN_LSTM.
-*@li mask:A 1D Tensor. Must be one of the following types: uint8. The format must be ND . \n
+*@li x:A required 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
+*@li w:A required 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_ZN_LSTM.
+*@li b:A required 1D Tensor. Must be one of the following types: float16, float32. The format must be ND.
+*@li seq_length:A optional 1D Tensor. Must be one of the following types: int32. The format must be ND.
+*@li init_h:A optional 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
+*@li init_c:A optional 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
+*@li wci:A 4D optional Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_ZN_LSTM.
+*@li wcf:A 4D optional Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_ZN_LSTM.
+*@li wco:A 4D optional Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_ZN_LSTM.
+*@li mask:A 1D optional Tensor. Must be one of the following types: uint8. The format must be ND . \n
 
 *@par Attributes:
 *@li cell_type:An string identifying the cell type in the op. Default to "LSTM". Only LSTM is currently supported.
@@ -221,6 +221,8 @@ REG_OP(DynamicRNNGrad)
 *@li f:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 *@li o:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 *@li tanhct:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
+*@par Third-party framework compatibility:
+* Compatible with the TF operator LSTM.
 */
 REG_OP(DynamicRNN)
     .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT}))
