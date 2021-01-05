@@ -650,6 +650,8 @@ class CceConvOp:
         self._pre_relu_fused_flag = False
         self._fused_ahead_operand_num = 0
         self._v200_width_out_1_flag = False
+        self._quant_fusion_muti_groups_in_cl0 = False
+        self._filter_muti_groups_in = False
         self._flag_dict = {}
         self._lhisi_dequant_quant_para = {'deq_sqrt': False,
                                           'deq_relu': False,
@@ -1152,7 +1154,10 @@ class CceConvOp:
                         if "output_ub_4d" in lop["op"]:
                             elewise_read_select_flg = True
                     if elewise_read_select_flg:
-                        tiling_n = 2
+                        if self._quant_fusion_muti_groups_in_cl0:
+                            tiling_n = ConvParam.para_dict["cout1_opt"]*2
+                        else:
+                            tiling_n = 2
                         for m_ub_target in range(32, 0, -1):
                             hw_4d = (m_ub_target*m_bit_length['float16'])
                             bias_ub = 2*tiling_n*m_bit_length["float16"]*m_bit_ratio["int32"]
@@ -1169,6 +1174,22 @@ class CceConvOp:
                                 err_man.raise_err_specific("conv2d",
                                                            "Min tiling still exceed ub buffer, "
                                                            + "when fmap2 read select in")
+                    elif self._quant_fusion_muti_groups_in_cl0:
+                        tiling_n = ConvParam.para_dict["cout1_opt"]*2
+                        for m_ub_target in range(32, 0, -1):
+                            hw_4d = (m_ub_target*m_bit_length['float16'])
+                            bias_ub = 2*tiling_n*m_bit_length["float16"]*m_bit_ratio["int32"]
+                            deq_vector = tiling_n*m_bit_length["float16"]*m_bit_ratio["float16"]
+                            # ub size for c_ub when min tiling
+                            ub_4d = tiling_n*m_bit_length["float16"]*hw_4d*m_bit_ratio["float16"]
+                            # max quant fusion fused_coefficient is 4.5
+                            max_ub_feature_map = 5.5*ub_4d + deq_vector + bias_ub
+                            if max_ub_feature_map <= self._ub_size:
+                                break
+                            if m_ub_target == 1 and max_ub_feature_map > self._ub_size:
+                                err_man.raise_err_specific("conv2d",
+                                                           "Min tiling still exceed ub buffer, "
+                                                           + "quant fusion muti groups in cl0")
                     else:
                         m_ub_target = 32
                     return m_target if m_ub_target > m_target else m_ub_target
@@ -1217,7 +1238,13 @@ class CceConvOp:
                         break
                 tiling_m = fmap2_read_select(m_target)
                 tiling_k = 1
-                tiling_n = 2
+                if self._quant_fusion_muti_groups_in_cl0:
+                    tiling_n = ConvParam.para_dict["cout1_opt"]
+                    group_cl0 = 2
+                else:
+                    tiling_n = 2
+                    group_cl0 = 1
+
                 tiling["AL1_shape"] = [1, 1]
                 if self.unzip_parameters.get("weight_zip_flag") and \
                         cce_conf.get_soc_spec("SOC_VERSION") == "Hi3796CV300ES":
@@ -1230,8 +1257,8 @@ class CceConvOp:
                 else:
                     c_0 = 16
                 tiling["AL0_matrix"] = [tiling_m, tiling_k, 16, c_0]
-                tiling["BL0_matrix"] = [tiling_k, tiling_n, 16, c_0]
-                tiling["CL0_matrix"] = [tiling_n, tiling_m, 16, 16]
+                tiling["BL0_matrix"] = [tiling_k, tiling_n, 16, c_0, 1, 1]
+                tiling["CL0_matrix"] = [tiling_n, tiling_m, 16, 16, 1, group_cl0]
                 tiling["CUB_matrix"] = [tiling_n, tiling_m, 16, 16]
                 tiling["AUB_shape"] = [1, 1]
                 tiling["manual_pingpong_buffer"] = {'AL1_pbuffer': 1,
@@ -1274,7 +1301,7 @@ class CceConvOp:
                 """
                 if tiling_ok_flag and not ConvParam.tiling_query_param.get("default_tiling"):
                     tiling["AL0_matrix"] = tiling_new["AL0_matrix"][0:4]
-                    tiling["CL0_matrix"] = tiling_new["CL0_matrix"][0:5]
+                    tiling["CL0_matrix"] = tiling_new["CL0_matrix"][0:6]
                     tiling["CUB_matrix"] = tiling_new["CUB_matrix"][0:4]
                     tiling["A_overhead_opt_flag"] = tiling_new["A_overhead_opt_flag"]
                     tiling["B_overhead_opt_flag"] = tiling_new["B_overhead_opt_flag"]
@@ -1282,7 +1309,7 @@ class CceConvOp:
                     if tiling_new["BL0_matrix"] == []:
                         tiling["BL0_matrix"] = []
                     else:
-                        tiling["BL0_matrix"] = tiling_new["BL0_matrix"][0:4]
+                        tiling["BL0_matrix"] = tiling_new["BL0_matrix"][0:6]
 
                     tiling["manual_pingpong_buffer"] = tiling_new["manual_pingpong_buffer"]
                     tiling["n_bef_batch_flag"] = tiling_new["n_bef_batch_flag"]
@@ -2843,8 +2870,12 @@ class CceConvOp:
                                          run_once_axes=[m_outer_outer_inner,
                                                         m_outer_outer_outer_inner, boo])
                 sch[bl0].pragma(bl0.op.axis[0], "filter_reshape", 1)
-            elif tiling["BL0_matrix"]:
-                sch[bl0].compute_at(sch[c_col], coo)
+            # coi contains one group when tiling["CL0_matrix"][5] > 1 and BL0_matrix == [] means one group
+            elif tiling["BL0_matrix"] or (tiling["BL0_matrix"] == [] and tiling["CL0_matrix"][5] > 1):
+                if tiling["BL0_matrix"] and tiling['BL0_matrix'][5] > 1 and tiling["CL0_matrix"][5] == 1:
+                    sch[bl0].compute_at(sch[res_c], cout1_group_inner_outer)
+                else:
+                    sch[bl0].compute_at(sch[c_col], coo)
             else:
                 sch[bl0].compute_at(sch[res_c], cout1_group_inner_outer)
 
@@ -3729,6 +3760,9 @@ class CceConvOp:
             self._compute_at_axis = []
             self._compile_para = None
             self._preload = 0
+            if ConvParam.para_dict["cout1_opt"] % 2 == 1 and ConvParam.para_dict["group_opt"] > 1 and \
+            ("virtual_res" in res.op.name or res.dtype == "int8"):
+                self._quant_fusion_muti_groups_in_cl0 = True
 
         def set_overload_flag(overload_flag, param, noi):
             """
@@ -3792,7 +3826,6 @@ class CceConvOp:
                     reorder_flag = True
                 if self.unzip_parameters.get("weight_zip_flag"):
                     reorder_flag = False
-
                 return reorder_flag
 
             reorder_flag = set_reorder_flag()
@@ -3808,7 +3841,7 @@ class CceConvOp:
                 if reorder_flag:
                     if not self._l0b_first_flag:
                         sch[res_c].reorder(noo, m_outer_outer_outer_inner, noi, c_outer_outer_inner,
-                                           c_outer_outer_outer_inner, cout1_group_inner_inner, batch_inner_inner)
+                                           c_outer_outer_outer_inner, batch_inner_inner)
                     else:
                         sch[res_c].reorder(noo, m_outer_outer_outer_inner, noi, c_outer_outer_outer_inner)
                     if tiling["BL1_shape"]:
@@ -3817,10 +3850,9 @@ class CceConvOp:
                 else:
                     if not self._l0b_first_flag:
                         sch[res_c].reorder(noo, c_outer_outer_outer_inner, m_outer_outer_outer_inner,
-                                           c_outer_outer_inner, noi, cout1_group_inner_inner, batch_inner_inner)
+                                           c_outer_outer_inner, noi, batch_inner_inner)
                     else:
                         sch[res_c].reorder(noo, c_outer_outer_outer_inner, m_outer_outer_outer_inner, noi)
-
             return reorder_flag
 
         def handle_al1_compute_at_load3d():
@@ -3837,10 +3869,15 @@ class CceConvOp:
             """
             if tiling["AL1_shape"]:
                 if al1_factor[0] != 1:
+                    # to modify when pass solve the bug
                     sch[al1].compute_at(sch[c_col], al1_at_ccol_axis)
                     if not self._var_map:
-                        sch[fmap_col_before].compute_at(
-                            sch[c_col], al1_at_ccol_axis)
+                        sch[fmap_col_before].compute_at(sch[c_col], al1_at_ccol_axis)
+                # to modify when pass solve the bug
+                elif tiling["CL0_matrix"][5] > 1:
+                    sch[al1].compute_at(sch[c_col], al1_at_ccol_axis)
+                    if not self._var_map:
+                        sch[fmap_col_before].compute_at(sch[c_col], al1_at_ccol_axis)
                 else:
                     sch[al1].compute_at(sch[res_c], al1_at_c_axis)
                     if not self._var_map:
@@ -3854,10 +3891,21 @@ class CceConvOp:
                     sch[fmap_col_before].compute_at(
                         sch[res_c], al1_at_c_axis)
                 else:
+                    # wait for pass bug ok
                     if self._l1_fusion_type == 1:
-                        sch[al1].compute_at(sch[res_c], cout1_group_inner_outer)
+                        if tiling["CL0_matrix"][5] > 1:
+                            sch[al1].compute_at(sch[c_col], al1_at_ccol_axis)
+                            if not self._var_map:
+                                sch[fmap_col_before].compute_at(sch[c_col], al1_at_ccol_axis)
+                        else:
+                            sch[al1].compute_at(sch[res_c], cout1_group_inner_outer)
+                            if not self._var_map:
+                                sch[fmap_col_before].compute_at(sch[res_c], cout1_group_inner_outer)
+                    # wait for pass bug ok
+                    elif tiling["CL0_matrix"][5] > 1:
+                        sch[al1].compute_at(sch[c_col], al1_at_ccol_axis)
                         if not self._var_map:
-                            sch[fmap_col_before].compute_at(sch[res_c], cout1_group_inner_outer)
+                            sch[fmap_col_before].compute_at(sch[c_col], al1_at_ccol_axis)
                     else:
                         sch[al1].compute_at(sch[res_c], noo)
                         if not self._var_map:
@@ -3957,7 +4005,7 @@ class CceConvOp:
                 # split M -> M1 M0, then reorder
                 a2_axis, a3_axis = sch[c_col_bias].split(sch[c_col_bias].op.axis[3], config["mac"][0])
                 sch[c_col_bias].reorder(sch[c_col_bias].op.axis[0], sch[c_col_bias].op.axis[1],
-                    sch[c_col_bias].op.axis[2], a2_axis, a3_axis, sch[c_col_bias].op.axis[4])
+                                        sch[c_col_bias].op.axis[2], a2_axis, a3_axis, sch[c_col_bias].op.axis[4])
 
                 if tiling["CUB_channel_wise_flag"]:
                     sch[bias_ub].compute_at(sch[res_c], c_slice_axis)
@@ -4270,11 +4318,11 @@ class CceConvOp:
             if tiling["BL1_shape"] is None:
                 tiling["al1_batch"] = tiling["CL0_matrix"][4]
                 self._l0b_first_flag = True
-        tiling["CL0_matrix"] = tiling["CL0_matrix"][:4]
 
         filter_matrix = list(dim_map["filter_matrix_dim"])
         filter_matrix[1] = filter_matrix[1] // tiling["block_dim"][1]
-        if tiling["BL0_matrix"] == filter_matrix:
+        if tiling["BL0_matrix"][0:4] == filter_matrix and (len(tiling["BL0_matrix"]) > 5 \
+            and tiling["BL0_matrix"][5] == 1):
             tiling["BL0_matrix"] = []
         if tiling["BL0_matrix"] == [] and not self.unzip_parameters.get("weight_zip_flag"):
             if int_ceil_div(ConvParam.para_dict["group_opt"], tiling["block_dim"][3]) == 1:
@@ -4411,10 +4459,20 @@ class CceConvOp:
 
         c_tiling_factor = [tiling["CL0_matrix"][0],
                            tiling["CL0_matrix"][1]*tiling["CL0_matrix"][2]]
-        c_factor = [int_ceil_div(ConvParam.para_dict["cout1_opt"],
-                                 c_tiling_factor[0]),
-                    int_ceil_div(dim_map["out_img_shape"][2],
-                                 c_tiling_factor[1])]
+        if len(tiling["CL0_matrix"]) == 4:
+            tiling["CL0_matrix"] = tiling["CL0_matrix"] + [1] + [1]
+        elif len(tiling["CL0_matrix"]) == 5:
+            tiling["CL0_matrix"] = tiling["CL0_matrix"] + [1]
+        if len(tiling["BL0_matrix"]) == 4:
+            tiling["BL0_matrix"] = tiling["BL0_matrix"] + [1] + [1]
+        elif len(tiling["BL0_matrix"]) == 5:
+            tiling["BL0_matrix"] = tiling["BL0_matrix"] + [1]
+
+        if (tiling["BL0_matrix"] and tiling["BL0_matrix"][5] > 1) or tiling["CL0_matrix"][5] > 1:
+            c_factor = [1, int_ceil_div(dim_map["out_img_shape"][2], c_tiling_factor[1])]
+        else:
+            c_factor = [int_ceil_div(ConvParam.para_dict["cout1_opt"], c_tiling_factor[0]),
+                        int_ceil_div(dim_map["out_img_shape"][2], c_tiling_factor[1])]
 
         c_ub_tiling_factor = tiling["CUB_matrix"]
         c_ub_factor = [int_ceil_div(c_tiling_factor[0],
@@ -4547,12 +4605,31 @@ class CceConvOp:
 
             batch_inner_outer, batch_inner_inner = sch[sum_x_ub_rf].split(
                 sum_x_ub_rf.op.reduce_axis[0], tiling["al1_batch"])
-            # group split for sum_x_ub_rf
-            cout1_group_outer, cout1_group_inner = sch[sum_x_ub_rf].split(cout1_group_rf, nparts=block_dim[3])
-            cout1_group_inner_outer, cout1_group_inner_inner = sch[sum_x_ub_rf].split(
-                cout1_group_inner, 1)
+
             # group split for sum_x_global
             g_cout1_group_outer, g_cout1_group_inner = sch[sum_x_global].split(cout1_group, nparts=block_dim[3])
+            sch[sum_x_global].reorder(
+                sum_x_global.op.reduce_axis[0],
+                g_cout1_group_outer,
+                c_rf_outer_outer_outer_outer,
+                g_cout1_group_inner,
+                c_rf_outer_outer_inner,
+                c_rf_outer_outer_outer_inner,
+                c_rf_outer_inner,
+                sum_x_global.op.axis[1])
+
+            batch_fuse_channel = sch[sum_x_global].fuse(sum_x_global.op.reduce_axis[0], g_cout1_group_outer,
+                                                        c_rf_outer_outer_outer_outer)
+            sum_rf_compute_at_axis = batch_fuse_channel
+            if ConvParam.para_dict["group_opt"] > 1:
+                sum_rf_compute_at_axis = g_cout1_group_inner
+            if tiling["CUB_channel_wise_flag"]:
+                sum_rf_compute_at_axis = c_rf_outer_outer_outer_inner
+            sch[sum_x_ub_rf].compute_at(sch[sum_x_global], sum_rf_compute_at_axis)
+
+            # group split for sum_x_ub_rf
+            cout1_group_outer, cout1_group_inner = sch[sum_x_ub_rf].split(cout1_group_rf, nparts=1)
+            cout1_group_inner_outer, cout1_group_inner_inner = sch[sum_x_ub_rf].split(cout1_group_inner, 1)
 
             m_outer_inner_outer, m_outer_inner_inner = sch[sum_x_ub_rf].split(
                 sum_x_ub_rf.op.reduce_axis[3], nparts=1)
@@ -4592,24 +4669,8 @@ class CceConvOp:
                     m_outer_inner_inner,
                     sum_x_ub_rf.op.axis[2])
 
-            sch[sum_x_global].reorder(
-                sum_x_global.op.reduce_axis[0],
-                g_cout1_group_outer,
-                c_rf_outer_outer_outer_outer,
-                g_cout1_group_inner,
-                c_rf_outer_outer_inner,
-                c_rf_outer_outer_outer_inner,
-                c_rf_outer_inner,
-                sum_x_global.op.axis[1])
-
-            batch_fuse_channel = sch[sum_x_global].fuse(g_cout1_group_outer,
-                                                        sum_x_global.op.reduce_axis[0], c_rf_outer_outer_outer_outer)
             c_slice_axis = sum_x_ub_rf.op.reduce_axis[2]
             al1_at_c_axis = sum_x_ub_rf.op.reduce_axis[1]
-            sum_rf_compute_at_axis = batch_fuse_channel
-            if tiling["CUB_channel_wise_flag"]:
-                sum_rf_compute_at_axis = c_rf_outer_outer_outer_inner
-            sch[sum_x_ub_rf].compute_at(sch[sum_x_global], sum_rf_compute_at_axis)
             mc_flag = False
 
             blocks = block_dim[0]*block_dim[1]*block_dim[2]*block_dim[3]
@@ -4626,16 +4687,25 @@ class CceConvOp:
             res_c = sum_x_ub_rf
         else:
             if res_c.dtype == "int8" or "virtual_res" in res_c.op.name:
-                cout1_group, cout1_ori = sch[res_c].split(
-                    res_c.op.axis[1], factor=int_ceil_div(ConvParam.para_dict["cout1_opt"], 2))
+                if tiling["CL0_matrix"][5] > 1:
+                    cout1_group, cout1_ori = sch[res_c].split(
+                        res_c.op.axis[1], factor=ConvParam.para_dict["cout1_opt"]*tiling["CL0_matrix"][5]//2)
+                else:
+                    cout1_group, cout1_ori = sch[res_c].split(
+                        res_c.op.axis[1], factor=int_ceil_div(ConvParam.para_dict["cout1_opt"], 2))
             else:
                 cout1_group, cout1_ori = sch[res_c].split(
                     res_c.op.axis[1], factor=ConvParam.para_dict["cout1_opt"])
 
             if res_c.dtype == "int8" or "virtual_res" in res_c.op.name:
-                c_outer_outer, c_outer_inner = sch[res_c].split(cout1_ori, c_tiling_factor[0] // 2)
+                if tiling["CL0_matrix"][5] > 1:
+                    c_outer_outer, c_outer_inner = sch[res_c].split(
+                        cout1_ori, factor=ConvParam.para_dict["cout1_opt"]*tiling["CL0_matrix"][5]//2)
+                else:
+                    c_outer_outer, c_outer_inner = sch[res_c].split(cout1_ori, c_tiling_factor[0]//2)
             else:
-                c_outer_outer, c_outer_inner = sch[res_c].split(cout1_ori, c_tiling_factor[0])
+                c_outer_outer, c_outer_inner = sch[res_c].split(
+                    cout1_ori, c_tiling_factor[0])
 
             m_outer_outer, m_outer_inner = sch[res_c].split(
                 res_c.op.axis[2], c_tiling_factor[1])
@@ -4643,6 +4713,7 @@ class CceConvOp:
                                c_outer_inner, m_outer_inner)
             m_outer_outer_outer, m_outer_outer_inner = sch[res_c].split(
                 m_outer_outer, nparts=al1_factor[1])
+            # when group_cl0>1, c_factor[0] is 1 and bl1_factor[1] is 1
             c_outer_outer_outer, c_outer_outer_inner = sch[res_c].split(
                 c_outer_outer, nparts=bl1_factor[1])
 
@@ -4665,8 +4736,13 @@ class CceConvOp:
 
             batch_inner_outer, batch_inner_inner = sch[res_c].split(
                 batch_inner, tiling["al1_batch"])
-            cout1_group_inner_outer, cout1_group_inner_inner = sch[res_c].split(
-                cout1_group_inner, 1)
+
+            if tiling["CL0_matrix"][5] == 1 and tiling['BL0_matrix'] and tiling['BL0_matrix'][5] > 1:
+                cout1_group_inner_outer, cout1_group_inner_inner = sch[res_c].split(
+                    cout1_group_inner, factor=tiling['BL0_matrix'][5])
+            else:
+                cout1_group_inner_outer, cout1_group_inner_inner = sch[res_c].split(
+                    cout1_group_inner, 1)
             # split cout of res_c
             c_outer_outer_outer_outer, c_outer_outer_outer_inner = sch[
                 res_c].split(c_outer_outer_outer, nparts=block_dim[1])
@@ -4684,10 +4760,10 @@ class CceConvOp:
                                    c_outer_outer_outer_outer,
                                    m_outer_outer_outer_outer,
                                    cout1_group_inner_outer,
+                                   cout1_group_inner_inner,
                                    batch_inner_outer,
                                    c_outer_outer_outer_inner,
                                    m_outer_outer_outer_inner,
-                                   cout1_group_inner_inner,
                                    c_outer_outer_inner,
                                    m_outer_outer_inner,
                                    c_outer_inner,
@@ -4700,10 +4776,10 @@ class CceConvOp:
                                    c_outer_outer_outer_outer,
                                    m_outer_outer_outer_outer,
                                    cout1_group_inner_outer,
+                                   cout1_group_inner_inner,
                                    batch_inner_outer,
                                    c_outer_outer_outer_inner,
                                    m_outer_outer_outer_inner,
-                                   cout1_group_inner_inner,
                                    batch_inner_inner,
                                    c_outer_outer_inner)
             c_slice_axis = m_outer_outer_inner
@@ -4739,7 +4815,6 @@ class CceConvOp:
         if self._convbn1_flag:
             bido = noo
         reorder_flag = handle_res_c_reorder()
-
         batch_cout_reorder_flag = False
         if "n_bef_batch_flag" in tiling:
             if tiling["n_bef_batch_flag"] and (not reorder_flag) and \
@@ -4849,6 +4924,8 @@ class CceConvOp:
             coo, coi = sch[c_col].split(new_c_col_axis[1],
                                         tiling['BL0_matrix'][1])
 
+        if tiling["CL0_matrix"][5] > 1 and (tiling["BL0_matrix"] and tiling["BL0_matrix"][5] > 1):
+            ccol_g_o, ccol_g_i = sch[c_col].split(c_col.op.axis[0], factor=tiling["BL0_matrix"][5])
         # for reduce axis, al0 and bl0 should be the same
         k_outer_outer, k_outer_inner = sch[c_col].split(
             c_col.op.reduce_axis[0], tiling['AL0_matrix'][1])
@@ -4888,8 +4965,7 @@ class CceConvOp:
                                reduce_kk)
             sch[c_col].compute_at(sch[res_c], c_slice_axis)
         else:
-            sch[c_col].reorder(sch[c_col].op.axis[0],
-                               k_outer_outer,
+            sch[c_col].reorder(k_outer_outer,
                                coo,
                                boo,
                                cn_axis,
@@ -4898,8 +4974,22 @@ class CceConvOp:
                                nn_axis,
                                k_outer_inner,
                                reduce_kk)
-            sch[c_col].compute_at(sch[res_c], c_slice_axis)
-
+        if tiling["CL0_matrix"][5] > 1 and (tiling["BL0_matrix"] and tiling["BL0_matrix"][5] > 1):
+            if self._l0b_first_flag:
+                sch[c_col].reorder(ccol_g_o,
+                                   coo,
+                                   ccol_g_i,
+                                   k_outer_outer,
+                                   c_col_batch,
+                                   boo)
+            else:
+                sch[c_col].reorder(ccol_g_o,
+                                   c_col_batch,
+                                   coo,
+                                   ccol_g_i,
+                                   k_outer_outer,
+                                   boo)
+        sch[c_col].compute_at(sch[res_c], c_slice_axis)
         sch[fmap_col].compute_at(sch[c_col], boo)
 
         bl0_attach()
@@ -4959,7 +5049,7 @@ class CceConvOp:
             else:
                 nbuffer_flag_al1 = False
 
-        if "fmap_h" in self._var_map or "fmap_w" in self._var_map:
+        if "fmap_h" in self._var_map or "fmap_w" in self._var_map or tiling["CL0_matrix"][5] > 1:
             tiling["A_overhead_opt_flag"] = False
 
         if l0a_load2d_flag:
@@ -4999,8 +5089,13 @@ class CceConvOp:
                 if tiling["AL1_shape"]:
                     if al1_factor[0] != 1:
                         sch[al1].compute_at(sch[c_col], al1_at_ccol_axis)
+                    # to modify when pass solve the bug
+                    elif tiling["CL0_matrix"][5] > 1:
+                        sch[al1].compute_at(sch[c_col], al1_at_ccol_axis)
                     else:
                         sch[al1].compute_at(sch[res_c], al1_at_c_axis)
+                elif tiling["CL0_matrix"][5] > 1:
+                    sch[al1].compute_at(sch[c_col], al1_at_ccol_axis)
                 else:
                     sch[al1].compute_at(sch[res_c], noo)
         else:
@@ -5009,26 +5104,31 @@ class CceConvOp:
                     if al1_factor[0] != 1:
                         if int(k_outer_outer_inner_size % nbuffer_size) == 0 \
                                 and k_outer_outer_inner_size > nbuffer_size:
+                            # nbbufer only works here
                             sch[al1].compute_at(
                                 sch[c_col], k_outer_outer_inner_outer)
                             if not self._var_map:
                                 sch[fmap_col_before].compute_at(
                                     sch[c_col], k_outer_outer_inner_outer)
                         else:
+                            # nbbufer does not work
                             sch[al1].compute_at(sch[c_col], al1_at_ccol_axis)
                             if not self._var_map:
                                 sch[fmap_col_before].compute_at(
                                     sch[c_col], al1_at_ccol_axis)
                         sch[al1].allocate_at(sch[c_col], al1_at_ccol_axis)
                     else:
+                        # nbbufer does not work
                         sch[al1].compute_at(sch[res_c], noi)
                         if not self._var_map:
                             sch[fmap_col_before].compute_at(sch[res_c], noi)
                         sch[al1].allocate_at(sch[res_c], al1_at_c_axis)
                 else:
+                    # nbbufer does not work
                     sch[al1].compute_at(sch[res_c], noi)
                     if not self._var_map:
                         sch[fmap_col_before].compute_at(sch[res_c], noi)
+                    # moooin is 1 when AL1_shape is [], nbbufer does not work
                     sch[al1].allocate_at(sch[res_c], noo)
             else:
                 handle_al1_compute_at_load3d()
@@ -5041,7 +5141,8 @@ class CceConvOp:
             else:
                 sch[scale_ub].compute_at(sch[res_c], m_outer_outer_inner)
 
-        if self.unzip_parameters.get("weight_zip_flag") or (self._var_map and tiling["BL1_shape"] == []):
+        if self.unzip_parameters.get("weight_zip_flag") or (self._var_map and tiling["BL1_shape"] == []) \
+        or tiling["CL0_matrix"][5] > 1 or (tiling["BL0_matrix"] and tiling["BL0_matrix"][5] > 1):
             tiling["B_overhead_opt_flag"] = False
 
         out_extract_axis = -1
@@ -5064,12 +5165,19 @@ class CceConvOp:
         else:
             if tiling["BL1_shape"]:
                 if self._l0b_first_flag:
+                    # no use bl_shape should be None when _l0b_first_flag is true
                     sch[bl1].compute_at(sch[res_c], c_outer_outer_outer_inner)
                 else:
-                    if bl1_factor[0] != 1:
-                        sch[bl1].compute_at(sch[c_col], bl1_at_ccol_axis)
+                    if bl1_factor[0] != 1 or (bl1_factor[0] == 1 and tiling["CL0_matrix"][5] > 1):
+                        if bl1_factor[0] != 1:
+                            # ccol_g_i is under k_outer_outer
+                            sch[bl1].compute_at(sch[c_col], bl1_at_ccol_axis)
+                        else:
+                            sch[bl1].compute_at(sch[c_col], coo)
                         if not self._var_map and dim_map['out_img_shape'][2] > tiling["CL0_matrix"][1] * 16:
                             out_extract_axis = m_outer_outer_inner
+                    elif tiling["CL0_matrix"][5] == 1 and (tiling["BL0_matrix"] and tiling["BL0_matrix"][5] > 1):
+                        sch[bl1].compute_at(sch[res_c], cout1_group_inner_outer)
                     else:
                         sch[bl1].compute_at(sch[res_c], bl1_at_c_axis)
                         if not self._var_map and reorder_flag and al1_factor[1] > tiling["block_dim"][2]:
@@ -5079,7 +5187,11 @@ class CceConvOp:
                     out_extract_axis = noo
             else:
                 if self._l0b_first_flag:
+                    # no use bl_shape should be None when _l0b_first_flag is true
                     sch[bl1].compute_at(sch[res_c], c_outer_outer_outer_inner)
+                elif tiling["BL1_shape"] == [] and tiling["CL0_matrix"][5] > 1:
+                    # tiling["BL0_matrix"][5] must be 1
+                    sch[bl1].compute_at(sch[c_col], coo)
                 elif tiling["BL1_shape"] is not None:
                     sch[bl1].compute_at(sch[res_c], cout1_group_inner_outer)
                 else:
