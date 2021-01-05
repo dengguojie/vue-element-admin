@@ -259,7 +259,6 @@ set(fe_lxfusion_srcs
 set(_aic_srcs
   ${_common_srcs}
   ${_aicore_fusion_srcs}
-  ${fe_lxfusion_srcs}
 )
 
 set(_llt_aic_srcs
