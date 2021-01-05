@@ -40,7 +40,7 @@ set(_common_fusion_pass_dep
   -Wl,--no-as-needed
     graph
     register
-    slog
+    alog
     error_manager
     platform
     ascend_protobuf
@@ -251,16 +251,17 @@ set(_aicore_fusion_srcs
 
 set(ops_fusion_pass_path "${INSTALL_PATH}/opp/fusion_pass/built_in")
 
-
-set(_aic_srcs
-  ${_common_srcs}
-  ${_aicore_fusion_srcs}
-)
-
 set(fe_lxfusion_srcs
   ${FUSION_ENGINE_INCLUDE}/common/lxfusion_json_util.cc
   ${FUSION_ENGINE_INCLUDE}/common/op_slice_info.cc
 )
+
+set(_aic_srcs
+  ${_common_srcs}
+  ${_aicore_fusion_srcs}
+  ${fe_lxfusion_srcs}
+)
+
 set(_llt_aic_srcs
   ${_aic_srcs}
   ${fe_lxfusion_srcs}

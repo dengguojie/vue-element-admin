@@ -446,7 +446,7 @@ set(_ops_plugin_link_libs
   -Wl,--no-as-needed
   graph
   register
-  slog
+  alog
   error_manager
   te_fusion
   _caffe_parser

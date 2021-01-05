@@ -47,6 +47,7 @@ target_compile_options(constant_folding_ops PRIVATE
 target_compile_definitions(constant_folding_ops PRIVATE
     _FORTIFY_SOURCE=2
     google=ascend_private
+    LOG_CPP
 )
 
 target_link_options(constant_folding_ops PRIVATE
@@ -63,7 +64,7 @@ target_link_libraries(constant_folding_ops PRIVATE
     -Wl,--no-whole-archive
     ascend_protobuf_static
     -Wl,--no-as-needed
-    slog
+    alog
     graph
     register
     -ldl

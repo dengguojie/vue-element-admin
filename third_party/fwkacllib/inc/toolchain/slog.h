@@ -18,16 +18,28 @@
 #define D_SYSLOG_H_
 
 #ifdef __cplusplus
+#ifndef LOG_CPP
 extern "C" {
+#endif
 #endif // __cplusplus
 
 #ifndef LINUX
 #define LINUX 0
 #endif // LINUX
 
+#ifndef WIN
+#define WIN 1
+#endif
+
 #ifndef OS_TYPE
 #define OS_TYPE 0
 #endif // OS_TYPE
+
+#if (OS_TYPE == LINUX)
+#define DLL_EXPORT __attribute__((visibility("default")))
+#else
+#define DLL_EXPORT _declspec(dllexport)
+#endif
 
 /**
  * @ingroup slog
@@ -95,6 +107,7 @@ extern "C" {
 #define SECURITY_LOG_MASK   (0x00100000)
 #define RUN_LOG_MASK        (0x01000000)
 #define OPERATION_LOG_MASK  (0x10000000)
+#define RESERVERD_LENGTH 52
 
 typedef struct tagDCODE {
   const char *cName;
@@ -105,6 +118,18 @@ typedef struct tagKV {
   char *kname;
   char *value;
 } KeyValue;
+
+typedef enum {
+    APPLICATION = 0,
+    SYSTEM
+} ProcessType;
+
+typedef struct {
+    ProcessType type;
+    unsigned int pid;
+    unsigned int deviceId;
+    char reserved[RESERVERD_LENGTH];
+} LogAttr;
 
 /**
  * @ingroup slog
@@ -180,12 +205,11 @@ enum {
   INVLID_MOUDLE_ID
 };
 
-#if (OS_TYPE == LINUX)
 /**
  * @ingroup slog
  * @brief External log interface, which called by modules
  */
-extern void dlog_init(void);
+DLL_EXPORT void dlog_init(void);
 
 /**
  * @ingroup slog
@@ -195,7 +219,7 @@ extern void dlog_init(void);
  * @param [out]enableEvent: 1: enable; 0: disable
  * @return: module level(0: debug, 1: info, 2: warning, 3: error, 4: null output)
  */
-extern int dlog_getlevel(int moduleId, int *enableEvent);
+DLL_EXPORT int dlog_getlevel(int moduleId, int *enableEvent);
 
 /**
  * @ingroup slog
@@ -206,7 +230,7 @@ extern int dlog_getlevel(int moduleId, int *enableEvent);
  * @param [in]enableEvent: 1: enable; 0: disable, others:invalid
  * @return: 0: SUCCEED, others: FAILED
  */
-extern int dlog_setlevel(int moduleId, int level, int enableEvent);
+DLL_EXPORT int dlog_setlevel(int moduleId, int level, int enableEvent);
 
 /**
  * @ingroup slog
@@ -217,7 +241,15 @@ extern int dlog_setlevel(int moduleId, int level, int enableEvent);
  * @param [in]logLevel: eg: DLOG_EVENT/DLOG_ERROR/DLOG_WARN/DLOG_INFO/DLOG_DEBUG
  * @return: 1:enable, 0:disable
  */
-extern int CheckLogLevel(int moduleId, int logLevel);
+DLL_EXPORT int CheckLogLevel(int moduleId, int logLevel);
+
+/**
+ * @ingroup slog
+ * @brief DlogSetAttr: set log attr, default pid is 0, default device id is 0, default process type is APPLICATION
+ * @param [in]logAttr: attr info, include pid(must be larger than 0), process type and device id(chip ID)
+ * @return: 0: SUCCEED, others: FAILED
+ */
+DLL_EXPORT int DlogSetAttr(LogAttr logAttr);
 
 /**
  * @ingroup slog
@@ -343,7 +375,7 @@ extern int CheckLogLevel(int moduleId, int logLevel);
  * @ingroup slog
  * @brief DlogFlush: flush log buffer to file
  */
-void DlogFlush(void);
+DLL_EXPORT void DlogFlush(void);
 
 /**
  * @ingroup slog
@@ -357,12 +389,122 @@ void DlogEventInner(int moduleId, const char *fmt, ...);
 void DlogInner(int moduleId, int level, const char *fmt, ...);
 void DlogWithKVInner(int moduleId, int level, KeyValue *pstKVArray, int kvNum, const char *fmt, ...);
 
-#else
-_declspec(dllexport) void dlog_init(void);
-_declspec(dllexport) int dlog_getlevel(int moduleId, int *enableEvent);
-#endif // OS_TYPE
+#ifdef __cplusplus
+#ifndef LOG_CPP
+}
+#endif // LOG_CPP
+#endif // __cplusplus
+
+#ifdef LOG_CPP
+#ifdef __cplusplus
+extern "C" {
+#endif
+/**
+ * @ingroup slog
+ * @brief DlogGetlevelForC: get module loglevel and enableEvent
+ *
+ * @param [in]moduleId: moudule id(see slog.h, eg: CCE), others: invalid
+ * @param [out]enableEvent: 1: enable; 0: disable
+ * @return: module level(0: debug, 1: info, 2: warning, 3: error, 4: null output)
+ */
+DLL_EXPORT int DlogGetlevelForC(int moduleId, int *enableEvent);
+
+/**
+ * @ingroup slog
+ * @brief DlogSetlevelForC: set module loglevel and enableEvent
+ *
+ * @param [in]moduleId: moudule id(see slog.h, eg: CCE), -1: all modules, others: invalid
+ * @param [in]level: log level(0: debug, 1: info, 2: warning, 3: error, 4: null output)
+ * @param [in]enableEvent: 1: enable; 0: disable, others:invalid
+ * @return: 0: SUCCEED, others: FAILED
+ */
+DLL_EXPORT int DlogSetlevelForC(int moduleId, int level, int enableEvent);
+
+/**
+ * @ingroup slog
+ * @brief CheckLogLevelForC: check module level enable or not
+ * users no need to call it because all dlog interface(include inner interface) has already called
+ *
+ * @param [in]moduleId: module id, eg: CCE
+ * @param [in]logLevel: eg: DLOG_EVENT/DLOG_ERROR/DLOG_WARN/DLOG_INFO/DLOG_DEBUG
+ * @return: 1:enable, 0:disable
+ */
+DLL_EXPORT int CheckLogLevelForC(int moduleId, int logLevel);
+
+/**
+ * @ingroup slog
+ * @brief DlogSetAttrForC: set log attr, default pid is 0, default device id is 0, default process type is APPLICATION
+ * @param [in]logAttr: attr info, include pid(must be larger than 0), process type and device id(chip ID)
+ * @return: 0: SUCCEED, others: FAILED
+ */
+DLL_EXPORT int DlogSetAttrForC(LogAttr logAttr);
+
+/**
+ * @ingroup slog
+ * @brief DlogForC: print log, need caller to specify level
+ * call CheckLogLevelForC in advance to optimize performance, call interface with fmt input take time
+ *
+ * @param [in]moduleId: module id, eg: CCE
+ * @param [in]level(0: debug, 1: info, 2: warning, 3: error, 5: trace, 6: oplog, 16: event)
+ * @param [in]fmt: log content
+ */
+#define DlogForC(moduleId, level, fmt, ...)                                                 \
+  do {                                                                                  \
+    if(CheckLogLevelForC(moduleId, level) == 1) {                                           \
+        DlogInnerForC(moduleId, level, "[%s:%d]" fmt, __FILE__, __LINE__, ##__VA_ARGS__);   \
+     }                                                                                  \
+  } while (0)
+
+/**
+ * @ingroup slog
+ * @brief DlogSubForC: print log, need caller to specify level and submodule
+ * call CheckLogLevelForC in advance to optimize performance, call interface with fmt input take time
+ *
+ * @param [in]moduleId: module id, eg: CCE
+ * @param [in]submodule: eg: engine
+ * @param [in]level(0: debug, 1: info, 2: warning, 3: error, 5: trace, 6: oplog, 16: event)
+ * @param [in]fmt: log content
+ */
+#define DlogSubForC(moduleId, submodule, level, fmt, ...)                                                   \
+  do {                                                                                                  \
+    if(CheckLogLevelForC(moduleId, level) == 1) {                                                           \
+        DlogInnerForC(moduleId, level, "[%s:%d][%s]" fmt, __FILE__, __LINE__, submodule, ##__VA_ARGS__);    \
+    }                                                                                                   \
+  } while (0)
+
+/**
+ * @ingroup slog
+ * @brief DlogWithKVForC: print log, need caller to specify level and other paramters
+ * call CheckLogLevelForC in advance to optimize performance, call interface with fmt input take time
+ *
+ * @param [in]moduleId: module id, eg: CCE
+ * @param [in]level(0: debug, 1: info, 2: warning, 3: error, 5: trace, 6: oplog, 16: event)
+ * @param [in]pstKVArray: key-value array
+ * @param [in]kvNum: key-value element num in array
+ * @param [in]fmt: log content
+ */
+#define DlogWithKVForC(moduleId, level, pstKVArray, kvNum, fmt, ...)                                                \
+  do {                                                                                                          \
+    if(CheckLogLevelForC(moduleId, level) == 1) {                                                                   \
+        DlogWithKVInnerForC(moduleId, level, pstKVArray, kvNum, "[%s:%d]" fmt, __FILE__, __LINE__, ##__VA_ARGS__);  \
+    }                                                                                                           \
+  } while (0)
+
+/**
+ * @ingroup slog
+ * @brief DlogFlushForC: flush log buffer to file
+ */
+DLL_EXPORT void DlogFlushForC(void);
+
+/**
+ * @ingroup slog
+ * @brief Internal log interface, other modules are not allowed to call this interface
+ */
+void DlogInnerForC(int moduleId, int level, const char *fmt, ...);
+void DlogWithKVInnerForC(int moduleId, int level, KeyValue *pstKVArray, int kvNum, const char *fmt, ...);
 
 #ifdef __cplusplus
 }
-#endif // __cplusplus
+#endif
+#endif // LOG_CPP
 #endif // D_SYSLOG_H_

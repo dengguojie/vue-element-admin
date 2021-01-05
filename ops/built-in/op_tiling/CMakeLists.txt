@@ -76,7 +76,7 @@ set(_op_tiling_link_libs
   -Wl,--no-as-needed
     graph
     register
-    slog
+    alog
     error_manager
     ascend_protobuf
   -Wl,--as-needed

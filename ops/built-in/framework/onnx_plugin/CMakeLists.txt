@@ -115,7 +115,7 @@ target_link_libraries(ops_all_onnx_plugin PRIVATE
   -Wl,--no-as-needed
     graph
     register
-    slog
+    alog
     error_manager
     te_fusion
     _caffe_parser
