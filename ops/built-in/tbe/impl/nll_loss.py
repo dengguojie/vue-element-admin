@@ -626,6 +626,10 @@ class NllLossCompute:
                                 loop_offset + core_offset, self.avg_in_burst,
                                 avg_move_out_burst)
                         with self.tik_instance.else_scope():
+                            if self.reduction == "sum":
+                                lower_core_offset = self.avg_line * self.break_core + \
+                                                    self.move_last_line * \
+                                                    (cycle - self.break_core)
                             self._none_and_sum_compute_process(
                                 self.move_last_line, self.last_vmul_repeat,
                                 loop_offset+lower_core_offset,
@@ -1180,7 +1184,7 @@ def nll_loss(x, target, weight, y, total_weight, reduction="mean",
     weight : dict or None
         the length of shape only support one when weight is dict.
     y:dict
-        It’s a tensor with shape(minibatch, ) when reduction == ‘none’ and
+        It's a tensor with shape(minibatch, ) when reduction == 'none' and
         the input is 2D. Otherwise, the output is a scalar.
     total_weight:
         shape and dtype of output, should be same type as weight
