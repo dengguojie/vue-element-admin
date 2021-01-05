@@ -65,6 +65,9 @@ POOLING_2_2_WINDOW = 2
 # bind_buffer int32 limitation
 BIND_BUFFER_MAX = 2147483647
 
+#pre fusion ub_buffer size limit
+PRE_BUFFER_SIZE_MAX = 245760
+
 # fixed fusion list pattern
 PATTERN_UNKOWN = 100
 PATTERN_CONV_ONLY = 1
@@ -3904,6 +3907,16 @@ class CceConvOp:
             None
             """
             if self._pre_relu_fused_flag:
+                if aub_factor == [1, 1]:
+                    out_row_num = int_ceil_div(ConvParam.h_out, al1_factor[1])
+                    shape_w_nc1hwc0 = ConvParam.tiling_query_param["shape_w_nc1hwc0"]
+                    in_row_num = (out_row_num - 1)*ConvParam.stride_h + shape_w_nc1hwc0[2] + \
+                                                    (ConvParam.dilate_h - 1) - ConvParam.pad_h[0]
+                    fmap_shape_nc1hwc0 = ConvParam.tiling_query_param.get("fmap_shape_nc1hwc0")
+                    need_buffer_size = in_row_num*fmap_shape_nc1hwc0[3]*32
+                    if need_buffer_size > PRE_BUFFER_SIZE_MAX:
+                        aub_factor[1] = fmap_shape_nc1hwc0[2]
+
                 al1_k_outer, al1_k_inner = sch[al1].split(al1.op.axis[1], nparts=aub_factor[0])
                 if self._conv1d_split_w_flag:
                     al1_w_outer, al1_w_inner = sch[al1].split(al1.op.axis[3], nparts=aub_factor[1])
@@ -3934,7 +3947,7 @@ class CceConvOp:
                 else:
                     sch[sum_x_global].emit_insn(c_rf_outer_outer_inner, "dma_copy")
                 sch[sum_x_ub_rf].emit_insn(m_outer_inner_inner,
-                                           "vector_dichotomy_add_for_bn_reduce")
+                                              "vector_dichotomy_add_for_bn_reduce")
 
         def _handle_bias_compute_at():
             """
