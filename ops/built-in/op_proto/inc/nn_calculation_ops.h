@@ -374,11 +374,13 @@ REG_OP(BiasAddGrad)
     | Data Type | float16     | float16 | float16
     |           |-------------|---------|--------
     |           | float32     | float32 | float32
+    |           |-------------|---------|--------
+    |           | float64     | float64 | float64
     ------------|-------------|---------|--------
     | Format    | NCHW        | NCHW    | NCHW
     |           | NHWC        | HWCN    | NHWC
 @endverbatim
- * For float32 type, the actual calculation on the chip is based on
+ * For float32 and float64 type, the actual calculation on the chip is based on
  * float16.
  *\n
  *
@@ -424,7 +426,7 @@ REG_OP(BiasAddGrad)
     |                  | W        | [1, 255]
 
 @endverbatim
- * In Ascend910, out_backprop's H and W not support 1 when
+ * In Ascend910, fmap or out_backprop's H and W not support 1 when
  * fmap_h + pad_top + pad_bottom != (filter_height - 1) * dilation_h + 1
  *\n
  *
@@ -523,15 +525,11 @@ REG_OP(Conv2DBackpropInputD)
     ------------|---------|---------|---------|--------
     | Data Type | float16 | float16 | float16 | float16
     |           |---------|---------|---------|--------
-    |           | float32 | float32 | float32 | float32
-    |           |---------|---------|---------|--------
     |           | int8    | int8    | int32   | int32
     ------------|---------|---------|---------|--------
     | Format    | NCHW    | NCHW    | ND      | NCHW
-    |           | NHWC    | HWCN    |         | NHWC
 @endverbatim
- * For float32 type, the actual calculation on the chip is based on
- * float16. For int8, a dequant or requant operator must be followed.
+ * For int8, a dequant or requant operator must be followed.
  *\n
  *
 *@par Attributes:
@@ -577,7 +575,7 @@ REG_OP(Conv2DBackpropInputD)
     | Offset_x         |          | [-128, 127]
 
 @endverbatim
- * In Ascend910, out_backprop's H and W not support 1 when
+ * In Ascend910, fmap or out_backprop's H and W not support 1 when
  * fmap_h + pad_top + pad_bottom != (filter_height - 1) * dilation_h + 1
  *\n
  *
@@ -634,11 +632,13 @@ REG_OP(Deconvolution)
     | Data Type | float16 |    float16   | float16
     |           |---------|--------------|---------
     |           | float32 |    float32   | float32
+    |           |---------|--------------|---------
+    |           | float64 |    float64   | float64
     |-----------|---------|--------------|---------
     | Format    | NCHW    |     NCHW     | NCHW
     |           | NHWC    |     NHWC     | HWCN
 @endverbatim
- * For float32 type of x and outbackprop, the actual calculation on the chip
+ * For float32 and float64 type of x and outbackprop, the actual calculation on the chip
  * is based on float16.
  *\n
  *
@@ -1465,15 +1465,12 @@ REG_OP(Conv3DTransposeD)
     ------------|---------|---------|---------|--------
     | Data Type | float16 | float16 | float16 | float16
     |           |---------|---------|---------|--------
-    |           | float32 | float32 | float32 | float32
-    |           |---------|---------|---------|--------
     |           | int8    | int8    | int32   | int32
     ------------|---------|---------|---------|--------
     | Format    | NCHW    | NCHW    | ND      | NCHW
     |           | NHWC    | HWCN    |         | NHWC
 @endverbatim
- * For float32 type, the actual calculation on the chip is based on
- * float16. For int8, a dequant or requant operator must be followed.
+ * For int8, a dequant or requant operator must be followed.
  *\n
  *
 *@par Required Attributes:
@@ -1526,7 +1523,7 @@ REG_OP(Conv3DTransposeD)
     | Offset_x         |          | [-128, 127]
 
 @endverbatim
- * In Ascend910, out_backprop's H and W not support 1 when
+ * In Ascend910, fmap or out_backprop's H and W not support 1 when
  * fmap_h + pad_top + pad_bottom != (filter_height - 1) * dilation_h + 1
  *\n
  *
