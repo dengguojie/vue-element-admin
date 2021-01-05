@@ -117,8 +117,8 @@ class OpFileMindSpore(OPFile):
             data_types='\n    '.join(data_types_list))
 
         # 4.make op_info_register
-        tvm_placeholder_list =[]
-        datas_list =[]
+        tvm_placeholder_list = []
+        datas_list = []
         for data_count in range(len(list(self.op_info.parsed_input_info))):
             tvm_placeholder_list.append(op_tmpl.PY_MS_OP_INFO_REGISTER_TVM.format(
                 data_count=data_count+1))
