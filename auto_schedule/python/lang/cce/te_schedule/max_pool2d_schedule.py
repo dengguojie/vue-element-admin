@@ -299,8 +299,8 @@ def _set_round_emit_insn(round_mode):
     -------
     instruction
     """
-    if pver().is_mini_version():
-        # mini
+    if pver().is_mini_version() or pver().is_cloud_version():
+        # mini/cloud
         emit_insn_str = "vector_conv"
     else:
         if round_mode == "Round":
