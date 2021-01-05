@@ -31,7 +31,7 @@ class AvgPool3DGradFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
 
  private:
-  const string kFusedOpType = "AvgPool3DDGrad";
+  const string kFusedOpType = "AvgPool3DGradD";
 };
 } // namespace fe
 

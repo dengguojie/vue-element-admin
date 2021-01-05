@@ -777,6 +777,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
                    "conv3d_backprop_input_im2col_row_major": "a_col_before",
                    "conv3d_backprop_input_w_l1": "b_l1",
                    "conv3d_backprop_input_dy_l1": "a_l1",
+                   "conv3d_backprop_input_dy_l1_s1": "a_l1",
                    "conv3d_backprop_input_dy_filling": "a_filling",
                    "conv3d_backprop_input_dy_zero": "a_zero",
                    "elewise_binary_mul": "elewise_mul"}
@@ -1110,7 +1111,7 @@ class AutoScheduleOp:
             self.input_ops = []
             self.output_ops = []
             self._res_tensor = res_tensor
-            self._befor_conv_flag = False
+            self._before_conv_flag = False
             self.__scrapy_tensor_graph(self._res_tensor)
             self.__connect_op()
             self._end_op = self._get_op_by_tensor(self._res_tensor)
@@ -1135,8 +1136,8 @@ class AutoScheduleOp:
         tmp_op["src_buffer"] = list(operator.input_tensors)
 
         if "conv3d_backprop_input_A" in tmp_op["op"]:
-            self._befor_conv_flag = True
-        if self._befor_conv_flag:
+            self._before_conv_flag = True
+        if self._before_conv_flag:
             tmp_op["op"] = tmp_op["op"] + "_Before"
 
         return tmp_op

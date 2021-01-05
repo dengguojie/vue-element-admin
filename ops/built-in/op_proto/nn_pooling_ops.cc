@@ -43,6 +43,11 @@ namespace {
   constexpr size_t kAvgpool3DGradStridesDim = 3;
   constexpr size_t kAvgpool3DGradPadsDim = 6;
   constexpr size_t kAvgpool3DGradShapeDim = 6;
+  map<int, std::string> format2str = {
+    {ge::FORMAT_NCHW, "NCHW"}, {ge::FORMAT_NHWC, "NHWC"}, {ge::FORMAT_HWCN, "HWCN"},
+    {ge::FORMAT_DHWNC, "DHWNC"}, {ge::FORMAT_DHWCN, "DHWCN"}, {ge::FORMAT_NDHWC, "NDHWC"},
+    {ge::FORMAT_NCDHW, "NCDHWS"}
+  };
 }
 
 // Obtains the value of the attr.
@@ -2016,13 +2021,13 @@ IMPLEMT_VERIFIER(AvgPool3DGradD, AvgPool3DGradDVerify) {
     return GRAPH_FAILED;
   }
 
-  std::vector<int64_t> padding;
-  if (op.GetAttr("pads", padding) != GRAPH_SUCCESS) {
+  std::vector<int64_t> pads;
+  if (op.GetAttr("pads", pads) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Get pads failed!");
     return GRAPH_FAILED;
   }
-  if (padding.size() != kAvgpool3DGradPadsDim) {
-    OP_LOGE(op.GetName().c_str(), "pads size is not %zu.", kAvgpool3DGradPadsDim);
+  if (pads.size() != kAvgpool3DGradPadsDim) {
+    OP_LOGE(op.GetName().c_str(), "Attr pads size is not %zu.", kAvgpool3DGradPadsDim);
     return GRAPH_FAILED;
   }
 
@@ -2066,6 +2071,11 @@ IMPLEMT_INFERFUNC(AvgPool3DGradD, AvgPool3DGradDInferShape) {
   std::string data_format;
   if (op.GetAttr("data_format", data_format) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Get data_format failed!");
+    return GRAPH_FAILED;
+  }
+  if (data_format != "NDHWC" && data_format != "NCDHW") {
+    OP_LOGE(op.GetName().c_str(), "Attr data_format(%s) only support NDHWC or NCDHW.",
+            data_format.c_str());
     return GRAPH_FAILED;
   }
 
@@ -2151,12 +2161,12 @@ IMPLEMT_VERIFIER(AvgPool3DGrad, AvgPool3DGradVerify) {
     return GRAPH_FAILED;
   }
 
-  std::vector<int64_t> padding;
-  if (op.GetAttr("pads", padding) != GRAPH_SUCCESS) {
+  std::vector<int64_t> pads;
+  if (op.GetAttr("pads", pads) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Get pads failed!");
     return GRAPH_FAILED;
   }
-  if (padding.size() != kAvgpool3DGradPadsDim) {
+  if (pads.size() != kAvgpool3DGradPadsDim) {
     OP_LOGE(op.GetName().c_str(), "Attr:pads has an incorreted length");
     return GRAPH_FAILED;
   }
@@ -2174,10 +2184,35 @@ IMPLEMT_VERIFIER(AvgPool3DGrad, AvgPool3DGradVerify) {
   return GRAPH_SUCCESS;
 }
 
+void AvgPool3dGradCalcPads(const vector<int64_t> &grads_shape,
+                           const string &grads_format,
+                           const vector<int64_t> &fmap_shape,
+                           const string &fmap_format,
+                           const vector<int64_t> &ksize_hwd,
+                           const vector<int64_t> &strides_hwd,
+                           vector<int64_t> &pads) {
+  int64_t pads_d = 0;
+  int64_t pads_h = 0;
+  int64_t pads_w = 0;
+
+  pads_d = std::max((grads_shape[grads_format.find("D")] - 1) * strides_hwd[2] +
+                     ksize_hwd[2] - fmap_shape[fmap_format.find("D")], 0L);
+  pads_h = std::max((grads_shape[grads_format.find("H")] - 1) * strides_hwd[0] +
+                     ksize_hwd[0] - fmap_shape[fmap_format.find("H")], 0L);
+  pads_w = std::max((grads_shape[grads_format.find("W")] - 1) * strides_hwd[1] +
+                     ksize_hwd[1] - fmap_shape[fmap_format.find("W")], 0L);
+  pads[0] = pads_d / 2;
+  pads[1] = pads_d - pads[0];
+  pads[2] = pads_h / 2;
+  pads[3] = pads_h - pads[2];
+  pads[4] = pads_w / 2;
+  pads[5] = pads_w - pads[4];
+}
+
 IMPLEMT_INFERFUNC(AvgPool3DGrad, AvgPool3DGradInferShape) {
   Tensor orig_input_shape_tensor;
   if (op.GetInputConstData("orig_input_shape", orig_input_shape_tensor) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get constdata failed");
+    OP_LOGE(op.GetName().c_str(), "Get constdata failed.");
     return GRAPH_FAILED;
   }
 
@@ -2190,6 +2225,46 @@ IMPLEMT_INFERFUNC(AvgPool3DGrad, AvgPool3DGradInferShape) {
   output_desc.SetDataType(output_dtype);
   if (op.UpdateOutputDesc("output", output_desc) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> ksize = GetAttrValue(op, "ksize");
+  if (ksize.size() != kAvgpool3DGradKsizeDim) {
+    OP_LOGE(op.GetName().c_str(), "Attr:ksize has an incorrected length.");
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> strides = GetAttrValue(op,"strides");
+  if (strides.size() != kAvgpool3DGradStridesDim) {
+    OP_LOGE(op.GetName().c_str(), "Attr:strides has an incorrected length.");
+    return GRAPH_FAILED;
+  }
+
+  std::string padding;
+  if (op.GetAttr("padding", padding) == GRAPH_SUCCESS) {
+    if (padding != "SAME" && padding != "VALID") {
+      OP_LOGE(op.GetName().c_str(), "Padding pattern is incorrected, only support SAME and VALID.");
+      return GRAPH_FAILED;
+    }
+    vector<int64_t> pads(kAvgpool3DGradPadsDim, 0);
+    if (padding == "SAME") {
+      AvgPool3dGradCalcPads(op.GetInputDesc("grads").GetOriginShape().GetDims(),
+                            format2str[op.GetInputDesc("grads").GetFormat()],
+                            orig_input_shape,
+                            format2str[op.GetInputDesc("orig_input_shape").GetFormat()],
+                            ksize, strides,
+                            pads);
+    }
+    op.SetAttr("pads", pads);
+  }
+
+  std::vector<int64_t> pads;
+  if (op.GetAttr("pads", pads) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Get pads failed.");
+    return GRAPH_FAILED;
+  }
+  if (pads.size() != kAvgpool3DGradPadsDim) {
+    OP_LOGE(op.GetName().c_str(), "Attr pads has an incorrected length.");
     return GRAPH_FAILED;
   }
 

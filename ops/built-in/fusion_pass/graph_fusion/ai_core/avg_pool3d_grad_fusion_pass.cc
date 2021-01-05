@@ -74,11 +74,14 @@ bool TransformFormat(const vector<int64_t> &ori_shape, const string &ori_format,
   if (ori_shape.size() != tar_shape.size()) {
     return false;
   }
-
-  for (int i = 0; i < ori_shape.size(); ++i) {
-    tar_shape[i] = ori_shape[i];
+  for (uint32_t i = 0; i < tar_shape.size(); ++i) {
+    for (uint32_t j = 0; j < ori_shape.size(); ++j) {
+      if (tar_format[i] == ori_format[j]) {
+        tar_shape[i] = ori_shape[j];
+        break;
+      }
+    }
   }
-
   return true;
 }
 
@@ -124,12 +127,12 @@ void GenFilter(int64_t filter_size, float val, uint16_t *data)
 void GenMultiplies(const vector<int64_t> &input_shape, const vector<int64_t> &grads_shape,
                    const vector<int64_t> &ksize, const vector<int64_t> &strides,\
                    const vector<int64_t> &pads, bool ceil_mode, bool count_include_pad,
-                   int64_t size, float *data)
+                   int64_t size, uint16_t *data)
 {
   int64_t input_len_d = input_shape[1] + pads[0] + pads[1];
   int64_t input_len_h = input_shape[2] + pads[2] + pads[3];
   int64_t input_len_w = input_shape[3] + pads[4] + pads[5];
-
+  fp16_t tmp16;
   for (int64_t nn = 0, cnt = 0; nn < grads_shape[0]; ++nn) {
     for (int64_t dd = 0, d_st = 0; dd < grads_shape[1]; ++dd, d_st += strides[2]) {
       for (int64_t c1 = 0; c1 < grads_shape[2]; ++c1) {
@@ -150,15 +153,12 @@ void GenMultiplies(const vector<int64_t> &input_shape, const vector<int64_t> &gr
             }
 
             float tmp = 1.0 / (valid_d * valid_h * valid_w);
+            tmp16 = tmp;
             for (int c0 = 0; c0 < grads_shape[5]; ++c0) {
               FUSION_PASS_CHECK(cnt >= size,
                                 OP_LOGE("Multiplier size exceed"),
                                 return);
-              errno_t ret = memcpy_s(data + cnt, sizeof(float), &tmp, sizeof(float));
-              if (ret != EOK) {
-                OP_LOGE("avgpool3d_grad", "memcpy_s fail!");
-              }
-              cnt++;
+              data[cnt ++] = tmp16.val;
             }
           }
         }
@@ -187,7 +187,7 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
   std::string fusion_op_type = "AvgPool3DGradD";
   std::vector<PassAttrInfo> pass_info;
   ge::NodePtr fusion_node_ptr = nullptr;
-  PassAttrInfo orig_input_shape_attr = {1, "orig_input_shape", "SetListInt"};
+  PassAttrInfo orig_input_shape_attr = {0, "orig_input_shape", "SetListInt"};
   pass_info.push_back(orig_input_shape_attr);
   // const org input shape change to attr
   Status ret = PatternFusionUtil::ConstToAttrWithNode(graph, node_ptr, fusion_op_type, pass_info,
@@ -248,9 +248,9 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
 
   // determin whether to enter the vector impl.
   if (IsVectorImpl(orig_input_shape_formated, ksize, pads)) {
-    FUSION_PASS_CHECK(grads_ori_shape_vec[1] != 1 ||
-                        grads_ori_shape_vec[2] != 1 ||
-                        grads_ori_shape_vec[3] != 1,
+    FUSION_PASS_CHECK(grads_ori_shape_vec_formated[1] != 1 ||
+                        grads_ori_shape_vec_formated[2] != 1 ||
+                        grads_ori_shape_vec_formated[3] != 1,
                       OP_LOGE(kOpType.c_str(),
                               "global mode, grads shape is incorrected."),
                       return PARAM_INVALID);
@@ -264,7 +264,7 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
   } else if (IsPadsZero(pads) && !ceil_mode) {
     val = 1.0f / (ksize[0] * ksize[1] * ksize[2]);
   }
-  vector<int64_t> filter_shape_vec {(orig_input_shape[4] + kC0 - 1) / kC0 * ksize[0] * ksize[1] * ksize[2],
+  vector<int64_t> filter_shape_vec {(orig_input_shape_formated[4] + kC0 - 1) / kC0 * ksize[0] * ksize[1] * ksize[2],
                                     1, kC0, kC0};
   int64_t filter_size = 1;
   for (auto i: filter_shape_vec) {
@@ -284,7 +284,7 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
   GenFilter(filter_size, val, filter_mem.get());
   GeShape filter_shape(filter_shape_vec);
   GeTensorDesc filter_tensor_desc(filter_shape, FORMAT_FRACTAL_Z_3D, ge::DT_FLOAT16);
-  vector<int64_t> filter_ori_shape_vec = {ksize[2], ksize[0], ksize[1], 1, orig_input_shape[4]};
+  vector<int64_t> filter_ori_shape_vec = {ksize[2], ksize[0], ksize[1], 1, orig_input_shape_formated[4]};
   GeShape filter_ori_shape(filter_ori_shape_vec);
   filter_tensor_desc.SetOriginShape(filter_ori_shape);
   filter_tensor_desc.SetOriginFormat(FORMAT_DHWCN);
@@ -314,18 +314,18 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
       grads_size *= i;
     }
     GeTensorPtr multiplier_ptr;
-    shared_ptr<float> multiplies_mem(new (nothrow) float[grads_size],
-                                      default_delete<float[]>());
+    shared_ptr<uint16_t> multiplies_mem(new (nothrow) uint16_t[grads_size],
+                                      default_delete<uint16_t[]>());
     FUSION_PASS_CHECK(multiplies_mem.get() == nullptr, OP_LOGE(kFusedOpType.c_str(), "multiplies is NULL."),
                       return PARAM_INVALID);
-    GenMultiplies(orig_input_shape, grads_shape_vec, ksize, strides, pads, ceil_mode, count_include_pad, grads_size, multiplies_mem.get());
+    GenMultiplies(orig_input_shape_formated, grads_shape_vec, ksize, strides, pads, ceil_mode, count_include_pad, grads_size, multiplies_mem.get());
     GeShape mul_shape(grads_shape_vec);
-    GeTensorDesc mul_tensor_desc(mul_shape, FORMAT_NDC1HWC0, DT_FLOAT);
+    GeTensorDesc mul_tensor_desc(mul_shape, FORMAT_NDC1HWC0, DT_FLOAT16);
     mul_tensor_desc.SetOriginShape(GeShape(grads_ori_shape_vec_formated));
     mul_tensor_desc.SetOriginFormat(FORMAT_NDHWC);
     FUSION_PASS_MAKE_SHARED(
             (multiplier_ptr = std::make_shared<ge::GeTensor>(mul_tensor_desc, reinterpret_cast<uint8_t*>(multiplies_mem.get()),
-                                                             grads_size *sizeof(float))),
+                                                             grads_size *sizeof(uint16_t))),
             multiplier_ptr = nullptr;
             return PARAM_INVALID);
     weights.push_back(multiplier_ptr);

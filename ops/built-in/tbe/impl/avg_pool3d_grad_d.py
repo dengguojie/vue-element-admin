@@ -189,7 +189,7 @@ def avg_pool3d_grad_d(grads,
     _avg_pool3d_grad_check_rule(grads_shape, grads_dtype, ksize, strides, pads, kernel_name)
 
     strides_formated = _transform_shape_with_format(_STRIDE_SORCE_FORMAT,
-                                                    data_format,
+                                                    grads_ori_format,
                                                     [1, strides[2], strides[0], strides[1], 1],
                                                     _DATA_FORMAT_WHITE_LIST)
 
@@ -303,10 +303,8 @@ def avg_pool3d_grad_d(grads,
         mul_shape = multiplier.get("shape")
         multiplier = tvm.placeholder(mul_shape,
                                      name="multiplier",
-                                     dtype="float32")
-        mul_res = tbe.vmul(tbe.cast_to(grads, "float32"),
-                           multiplier)
-        mul_res = tbe.cast_to(mul_res, "float16")
+                                     dtype="float16")
+        mul_res = tbe.vmul(grads, multiplier)
         mul_res.op.attrs['ori_format'] = grads_ori_format
         mul_res.op.attrs['shape'] = grads_shape
         mul_res.op.attrs['ori_shape'] = grads_ori_shape

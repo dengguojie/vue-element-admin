@@ -227,8 +227,8 @@ REG_OP(AvgPool3DD)
 * @brief Computes AvgPool3DGrad function.
 
 * @par Inputs:
-* @li grads: An NDHWC tensor of type int32.
 * @li orig_input_shape: An NDHWC tensor of type float16, float32, or double.
+* @li grads: An NDHWC tensor of type int32.
 
 * @par Attributes:
 * @li ksize: List of ints that has length 1, 3 or 5. The size of the window for each dimension of the input tensor.
@@ -247,8 +247,8 @@ REG_OP(AvgPool3DD)
 */
 
 REG_OP(AvgPool3DGrad)
-    .INPUT(grads, TensorType({DT_INT32}))
     .INPUT(orig_input_shape, TensorType({DT_FLOAT16, DT_FLOAT32, DT_DOUBLE}))
+    .INPUT(grads, TensorType({DT_INT32}))
     .OUTPUT(output, TensorType({DT_FLOAT16, DT_FLOAT32, DT_DOUBLE}))
     .REQUIRED_ATTR(ksize, ListInt)
     .REQUIRED_ATTR(strides, ListInt)

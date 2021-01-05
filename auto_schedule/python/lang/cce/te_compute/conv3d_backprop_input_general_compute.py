@@ -20,6 +20,8 @@ from te.lang.cce.te_compute import conv3d_backprop_input_cube_util as conv3d_dx_
 from te.utils.error_manager import error_manager_util
 from te import tvm
 
+_PAD_MIN = 0
+_PAD_MAX = 255
 
 class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
     """
@@ -187,8 +189,8 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                    pad_left_before,
                    pad_right_after)
 
-        for i in new_pad:
-            if i < 0 or i > 255:
+        for i in new_pad[2:]:
+            if i < _PAD_MIN or i > _PAD_MAX:
                 dict_args = {
                     'errCode': 'E62006',
                     'error_desc': 'pad value in reverse process of convolution should be in [0,255]',

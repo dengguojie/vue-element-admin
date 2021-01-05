@@ -85,6 +85,7 @@ set(_tf_plugins
   avg_pool3d.cc
   avg_pool_grad_plugin.cc
   avg_pool_plugin.cc
+  avg_pool3d_grad_plugin.cc
   basic_lstm_cell_grad_plugin.cc
   basic_lstm_cell_plugin.cc
   batch_matmul_plugin.cc

@@ -34,12 +34,12 @@ _STRIDES_SHAPE_DIM = 5
 # the dim of dilations in conv_backprop must be 5
 _DILATIONS_SHAPE_DIM = 5
 
-# fmapH, fmapW must be in [2,4096]
-_FMAP_HW_MIN = 2
+# fmapH, fmapW must be in [1,4096]
+_FMAP_HW_MIN = 1
 _FMAP_HW_MAX = 4096
 
-# DeDy H,W must be in [2,4096]
-_DEDY_HW_MIN = 2
+# DeDy H,W must be in [1,4096]
+_DEDY_HW_MIN = 1
 _DEDY_HW_MAX = 4096
 
 # filterH, filterW must be in [1,255]
@@ -156,19 +156,15 @@ def conv3d_backprop_input_fusion_compute(filters, #pylint: disable=R0913,R0914
         shape_filter.append(i.value)
     filter_format = filters.op.attrs['ori_format']
 
-    shape_out_backprop_6hd = []
-    for i in out_backprop.shape:
-        shape_out_backprop_6hd.append(i.value)
-    shape_out_backprop = [shape_out_backprop_6hd[0],
-                          shape_out_backprop_6hd[1],
-                          shape_out_backprop_6hd[3],
-                          shape_out_backprop_6hd[4],
-                          shape_out_backprop_6hd[2] * shape_out_backprop_6hd[0]
-                          ]
+    shape_out_backprop = []
+    for i in out_backprop.op.attrs['ori_shape']:
+        shape_out_backprop.append(i.value)
+    out_backprop_format = out_backprop.op.attrs['ori_format']
+
     shape_filters, shape_out_backprop, shape_strides, shape_dilations, shape_res = \
         _get_ndhwc_shape(filter_format,
                          shape_filter,
-                         "NDHWC",
+                         out_backprop_format,
                          shape_out_backprop,
                          strides,
                          dilations,
@@ -595,15 +591,15 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     fmap_h_padding = fmap_h + pad_up + pad_down
     fmap_w_padding = fmap_w + pad_left + pad_right
 
-    # special cases
-    dedy_hw_min, fmap_hw_min = _DEDY_HW_MIN, _FMAP_HW_MIN
-    # limitation by chip:
-    # if kernel h,w in [1,11] and fmap h/w after padding equals to filter h/w
-    # load3d support h,w is 1
-    if (1 <= filter_h <= 11) and (1 <= filter_w <= 11) and (fmap_h_padding == filter_h
-        or fmap_w_padding == filter_w):
-        dedy_hw_min = 1
-        fmap_hw_min = 1
+    if fmap_h != 1 and fmap_w == 1:
+        # Chip Design demand fmap_w must larger than 2 when fmap != 1
+        dict_args = {
+            'errCode': 'E62006',
+            'error_desc': 'Chip Design demand input_size_w must >=2 when input_size_h != 1'
+        }
+        raise RuntimeError(dict_args,
+                           error_manager_util.get_error_message(dict_args))
+
     _check_shape_error()
 
     if stride_h > 1 or stride_w > 1:
@@ -613,9 +609,9 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
 
     # Dedy value limit
     _check_attr_range("Dedy's H after expands", dedy_h * stride_h,
-                      dedy_hw_min, _DEDY_HW_MAX)
+                      _DEDY_HW_MIN, _DEDY_HW_MAX)
     _check_attr_range("Dedy's W after expands", dedy_w * stride_w,
-                      dedy_hw_min, _DEDY_HW_MAX)
+                      _DEDY_HW_MIN, _DEDY_HW_MAX)
 
     # filter value limit
     _check_attr_range("filter's H", filter_h, _FILTER_HW_MIN, _FILTER_HW_MAX)
@@ -629,8 +625,8 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
                       _FILTER_HW_MIN, _KHWD_COEFF)
 
     # Fmap value limit
-    _check_attr_range("Fmap's H", fmap_h, fmap_hw_min, _FMAP_HW_MAX)
-    _check_attr_range("Fmap's W", fmap_w, fmap_hw_min, _FMAP_HW_MAX)
+    _check_attr_range("Fmap's H", fmap_h, _FMAP_HW_MIN, _FMAP_HW_MAX)
+    _check_attr_range("Fmap's W", fmap_w, _FMAP_HW_MIN, _FMAP_HW_MAX)
 
     # stride value limit
     _check_attr_range("stride's H", stride_h, _STRIDE_HW_MIN, _STRIDE_HW_MAX)
