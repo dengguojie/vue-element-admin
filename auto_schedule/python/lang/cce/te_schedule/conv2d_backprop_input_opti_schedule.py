@@ -1934,10 +1934,9 @@ def opti_schedule(
                 else int_ceil_div(l0c_factor[0], l0c_ub_parts[0])
             )
             cub_buffertile_n_min = (
-                (
                 go_coefficient * group_axis
-                + gi_coefficient * g_inner) * DIM_MAP["dx_6GD_shape"][2]
-                + bl1_at_c_axis.var * noo_coefficient
+                + gi_coefficient * g_inner) * DIM_MAP["dx_6GD_shape"][2] + (
+                bl1_at_c_axis.var * noo_coefficient
                 + noio_coefficient * noio_axis
                 + noii_coefficient * noii_axis.var
             ) * no_coefficient + nio_coefficient * l0c_n_inner_outer.var
