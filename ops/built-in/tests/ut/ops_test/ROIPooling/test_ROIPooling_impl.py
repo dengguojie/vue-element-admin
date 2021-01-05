@@ -25,7 +25,7 @@ case3 = {"params": [{"shape": (32,4,4,16,16), "dtype": "float16", "format": "NC1
                     {"shape": (32,4,16), "dtype": "float16", "format": "NCHW", "ori_shape": (32,2,16),"ori_format": "NCHW"},
                     {"shape": (32,4,16), "dtype": "float16", "format": "NCHW", "ori_shape": (32,2,16),"ori_format": "NCHW"},
                     {"shape": (32,4,4,16,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (32,4,4,16,16),"ori_format": "NCHW"},
-                    1, 1, 0.5, -0.5],
+                    10, 10, 0.5, -0.5],
          "case_name": "roi_pooling_3",
          "expect": "success",
          "format_expect": [],
@@ -37,5 +37,5 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 
 
 if __name__ == '__main__':
-    ut_case.run("Ascend910")
+    ut_case.run(["Ascend910","Ascend310","Ascend710"])
     exit(0)

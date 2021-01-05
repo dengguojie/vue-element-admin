@@ -35,9 +35,8 @@ INDEX_C1 = 1
 INDEX_H = 2
 INDEX_W = 3
 INDEX_C0 = 4
-
-FLOATMIN_DICT = {"float16": -6.55040e+04, "float32": -3.4028235e+38}
 TYPELEN_DICT = {"float16": 2, "float32": 4}
+
 
 def align(value, factor):
     """
@@ -1165,4 +1164,3 @@ class RoiClass():
         None
         """
         return
-

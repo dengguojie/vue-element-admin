@@ -308,18 +308,15 @@ class RoiClassL1(roi_pooling_base.RoiClass):
             bin_w = self.tik_instance.Scalar("int32")
             bin_h.set_as(self.roi_bin_h[ph_index, roi_index])
             bin_w.set_as(self.roi_bin_w[pw_index, roi_index])
-            with self.tik_instance.if_scope(tik.all(bin_h != 0, bin_w !=0)):
-                with self.tik_instance.for_range(0, bin_h) as b_h_index:
-                    with self.tik_instance.for_range(0, bin_w) as b_w_index:
-                        self.tik_instance.vec_max(self.fm_c0,
-                                                max_val,
-                                                max_val,
-                                                self.window_fm[b_h_index, b_w_index,
+            with self.tik_instance.for_range(0, bin_h) as b_h_index:
+                with self.tik_instance.for_range(0, bin_w) as b_w_index:
+                    self.tik_instance.vec_max(self.fm_c0,
+                                              max_val,
+                                              max_val,
+                                              self.window_fm[b_h_index, b_w_index,
                                                              0],
-                                                1,
-                                                8, 8, 8)
-            with self.tik_instance.else_scope():
-                self.tik_instance.vec_dup(self.fm_c0, max_val, 0, 1, 0)
+                                              1,
+                                              8, 8, 8)
 
             self.tik_instance.data_move(self.pooled_fm_for_a_roi[ph_index,
                                                                  pw_index, 0],
