@@ -2698,7 +2698,12 @@ static bool GetPadConv2D(ge::Operator& op, int32_t ih, int32_t iw, int32_t kh, i
       op.SetAttr("pads", pads_list);
     }
   }
-  if (padt < 0 || padb < 0 || padl < 0 || padr < 0) {
+  auto x_shape = op.GetInputDesc("x").GetShape().GetDims();
+  bool negative_pad = (padt < 0 || padb < 0 || padl < 0 || padr < 0);
+  bool unknown_rank = IsUnknownRankShape(x_shape);
+  bool unknown_shape = IsUnKnownShape(x_shape);
+
+  if ((!unknown_shape) && (!unknown_rank) && negative_pad) {
     OP_LOGE(op.GetName().c_str(),
             "pads should be positive, "
             " actual is [%d,%d,%d,%d].",
@@ -2918,7 +2923,8 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
 
   auto x_shape = x_tensor->MutableShape().GetDims();
   auto w_shape = w_tensor->MutableShape().GetDims();
-  if (x_shape.size() != 4 || w_shape.size() != 4) {
+  bool unknown_rank = IsUnknownRankShape(x_shape);
+  if ((!unknown_rank && x_shape.size() != 4) || w_shape.size() != 4) {
     return GRAPH_FAILED;
   }
   auto x_format = x_tensor->GetFormat();
@@ -2926,24 +2932,28 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
   CHECK_FORMAT(x_format);
   CHECK_FORMAT(w_format);
 
-  int32_t in = 0;
-  int32_t ic = 0;
-  int32_t ih = 0;
-  int32_t iw = 0;
+  int32_t in = -1;
+  int32_t ic = -1;
+  int32_t ih = -1;
+  int32_t iw = -1;
   int32_t kn = 0;
   int32_t kc = 0;
   int32_t kh = 0;
   int32_t kw = 0;
   if (x_format == FORMAT_NCHW) {
-    in = x_shape[0];
-    ic = x_shape[1];
-    ih = x_shape[2];
-    iw = x_shape[3];
+    if (!unknown_rank) {
+      in = x_shape[0];
+      ic = x_shape[1];
+      ih = x_shape[2];
+      iw = x_shape[3];
+    }
   } else if (x_format == FORMAT_NHWC) {
-    in = x_shape[0];
-    ic = x_shape[3];
-    ih = x_shape[1];
-    iw = x_shape[2];
+    if (!unknown_rank) {
+      in = x_shape[0];
+      ic = x_shape[3];
+      ih = x_shape[1];
+      iw = x_shape[2];
+    }
   } else {
     OP_LOGE(op.GetName().c_str(),
             "input x format should be NCHW or NHWC."
@@ -3033,7 +3043,7 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
 
   int64_t groups = 1;
   op.GetAttr("groups", groups);
-  if (ic != kc * groups) {
+  if ((!unknown_rank) && (ic != kc * groups)) {
     OP_LOGE(op.GetName().c_str(),
             "x channel should be equal to filter channel*groups. "
             "x format is: %s, filter format is: %s, "
@@ -3081,6 +3091,10 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
   int64_t iwPad = (iw + padl + padr - dilw * (kw - 1) - 1);
   int64_t oh = ihPad / strh + 1;
   int64_t ow = iwPad / strw + 1;
+  if (unknown_rank) {
+    oh = -1;
+    ow = -1;
+  }
   if ((ih > 0) && (kh > 0) && (iw > 0) && (kw > 0)) {
     if ((ihPad < 0) || (iwPad < 0)) {
       OP_LOGE(op.GetName().c_str(), "image size after padding should be greater than or equal to filter size.");
@@ -3130,20 +3144,6 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
 
   // set Range
   bool is_dynamic = false;
-  if (std::find(x_shape.begin(), x_shape.end(), -2) != x_shape.end()) {
-    OP_LOGE(op.GetName().c_str(), "not support -2 in fmap.");
-    map<string, string> err_map;
-    err_map["param"] = "x_shape";
-    err_map["op_name"] = op.GetName().c_str();
-    err_map["expected_value"] = "positive or -1";
-    err_map["input_value"] = std::to_string(x_shape[0]) + " " + \
-                             std::to_string(x_shape[1]) + " " + \
-                             std::to_string(x_shape[2]) + " " + \
-                             std::to_string(x_shape[3]);
-    std::string report_error_code = "E50029";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  }
   // when static op or dynamic op phase_running, is_dynamic == False
   if (std::find(x_shape.begin(), x_shape.end(), -1) != x_shape.end()) {
     is_dynamic = true;
@@ -3185,7 +3185,8 @@ IMPLEMT_VERIFIER(Conv2D, Conv2DVerify) {
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return GRAPH_FAILED;
   }
-  if (x_shape.size() != 4) {
+  bool unknown_rank = IsUnknownRankShape(x_shape);
+  if ((!unknown_rank) && (x_shape.size() != 4)) {
     if (x_shape.size() == 0) {
       OP_LOGE(op.GetName().c_str(), "input x shape is empty.");
       map<string, string> err_map;
@@ -4346,8 +4347,8 @@ static void set_deconvolution_out_shape_range(const std::string& pad_str,
     out_range[idx].second = high;
   } else {
     if (pad_str == "SAME") {
-      out_range[idx].first = stride * low;
-      out_range[idx].second = stride * high;
+      out_range[idx].first = stride * (low - 1) + 1;
+      out_range[idx].second = stride * (high - 1) + 1;
     } else {
       out_range[idx].first = stride * (low - 1) + kernel - pad;
       out_range[idx].second = stride * (high - 1) + kernel - pad;
@@ -4480,15 +4481,17 @@ IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return GRAPH_FAILED;
   }
-  int64_t oh;
-  int64_t ow;
   int khext = dilh * (kh - 1) + 1;
   int kwext = dilw * (kw - 1) + 1;
+  int64_t oh = strh * (ih - 1) + khext - padt - padb;
+  int64_t ow = strw * (iw - 1) + kwext - padl - padr;
   if (isDynamic) {
     // update pads list by padding[SAME,VALID]
     std::string pad_str;
     if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME") {
       op.SetAttr("pads", {-1, -1, -1, -1});
+      oh = strh * (ih - 1) + 1;
+      ow = strw * (iw - 1) + 1;
       OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in dynamic_shape");
     } else if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "VALID") {
       op.SetAttr("pads", {0, 0, 0, 0});

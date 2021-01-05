@@ -40,7 +40,7 @@ def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
         shape_x = inputs.get("ori_shape")
         shape_x = shape_util.scalar2tensor_one(shape_x)
         format_fm = inputs.get("ori_format")
-        if format_fm == "NCHW":
+        if format_fm == "NCHW" or shape_x == (-2,):
             shape_fm = shape_x
         elif format_fm == "NHWC":
             shape_fm = [shape_x[0], shape_x[3], shape_x[1], shape_x[2]]
@@ -61,7 +61,7 @@ def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
         else:
             err_man.raise_err_input_format_invalid("conv2d", "weights", \
                 ["NCHW", "NHWC", "HWCN"], format_w)
-        if shape_fm[1] <= 4:
+        if shape_fm != (-2,) and shape_fm[1] <= 4:
             c0_optim_flg = True
         if (shape_filter[2] == 1) and (shape_filter[3] == 1):
             c0_optim_flg = False
@@ -100,7 +100,7 @@ def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
                                                     format="NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0")
         else:
             # only dynamic_hw or dynamic_batch is supported by dynamic conv2d
-            if (shape_fm[0] == -1 and -1 not in shape_fm[1:]) or \
+            if (shape_fm == (-2,)) or (shape_fm[0] == -1 and -1 not in shape_fm[1:]) or \
                 (shape_fm[2] == -1 and shape_fm[3] == -1 and -1 not in shape_fm[:2]):
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                        datatype="float16",

@@ -224,6 +224,7 @@ class Conv2dParaProcess(CubeParaProcess):
         self.inputs = paras.get("inputs")
         self.weights = paras.get("weights")
         self.bias = paras.get("bias")
+        self.outputs = paras.get("outputs")
         self.data_format = paras.get("data_format")
         self.dtype = paras.get("inputs").get("dtype")
 
@@ -350,23 +351,28 @@ class Conv2dParaProcess(CubeParaProcess):
         w_shape = list(self.weights.get("ori_shape"))
         w_dtype = self.weights.get("dtype")
         w_format = self.weights.get("ori_format")
-
+        outputs_shape = list(self.outputs.get("ori_shape"))
         para_check.check_dtype_rule(self.dtype, self.valid_paras.get("valid_dtype"))
         para_check.check_dtype_rule(w_dtype, self.valid_paras.get("valid_dtype"))
         para_check.check_dtype_rule(self.paras.get("outputs").get("dtype"), self.valid_paras.get("valid_dtype"))
-        self.check_para_dim(in_shape, "in_shape")
         self.check_para_dim(w_shape, "weights")
         self.check_para_dim(self.strides, "strides")
         self.check_para_dim(self.dilations, "dilations")
         self.check_para_dim(self.pads, "pads")
         self.check_format(self.data_format, "input")
         self.check_format(w_format, "weights")
+        w_shape_nchw = get_input_nchw(w_shape, w_format)
+        if in_shape != [-2] or (outputs_shape != [DYNAMIC_FLAG, w_shape_nchw[N_DIM], DYNAMIC_FLAG, DYNAMIC_FLAG] and \
+            outputs_shape != [DYNAMIC_FLAG, DYNAMIC_FLAG, DYNAMIC_FLAG, w_shape_nchw[N_DIM]]):
+            self.check_para_dim(in_shape, "in_shape")
+            self.check_range_valid(in_shape, in_range, "fmap")
         if self.dtype != w_dtype:
             err_man.raise_err_specific_user("conv2d", "in_dtype != w_dtype")
         if in_format != self.data_format:
             err_man.raise_err_specific_user("conv2d", "in_format != data_format")
+        if in_shape != [-2] and DYNAMIC_FLAG not in in_shape[1:] and DYNAMIC_FLAG in self.pads:
+            err_man.raise_err_specific_user("conv2d", "pads not be [-1,-1,-1,-1],when only N dim is -1")
         para_check.check_kernel_name(self.paras.get("kernel_name"))
-        self.check_range_valid(in_shape, in_range, "fmap")
 
         return {"in_shape": in_shape, "in_range": in_range, "w_shape": w_shape, "w_format": w_format}
 
@@ -377,9 +383,15 @@ class Conv2dParaProcess(CubeParaProcess):
 
         ori_paras = self.check_paras()
         self.get_attr_nchw(self.data_format)
-        in_shape, in_range = get_input_nchw(ori_paras.get("in_shape"), self.data_format, ori_paras.get("in_range"))
+        in_shape = ori_paras.get("in_shape")
+        outputs_shape = list(self.outputs.get("ori_shape"))
         w_shape = get_input_nchw(ori_paras.get("w_shape"), ori_paras.get("w_format"))
-
+        if in_shape != [-2] or (outputs_shape != [DYNAMIC_FLAG, w_shape[N_DIM], DYNAMIC_FLAG, DYNAMIC_FLAG] and \
+            outputs_shape != [DYNAMIC_FLAG, DYNAMIC_FLAG, DYNAMIC_FLAG, w_shape[N_DIM]]):
+            in_shape, in_range = get_input_nchw(ori_paras.get("in_shape"), self.data_format, ori_paras.get("in_range"))
+        else:
+            in_shape = [DYNAMIC_FLAG, w_shape[C_DIM], DYNAMIC_FLAG, DYNAMIC_FLAG]
+            in_range = [(1, None), (w_shape[C_DIM], w_shape[C_DIM]), (1, None), (1, None)]
         y_range = self.get_y_range(w_shape, in_range)
         in_shape, w_shape, in_shape_nc1hwc0, w_shape_frac_z = self.calc_shape(
             in_shape, w_shape, in_range, y_range)
