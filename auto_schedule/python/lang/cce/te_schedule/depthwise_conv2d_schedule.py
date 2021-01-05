@@ -24,6 +24,7 @@ from te.tvm.schedule import create_schedule
 from te.tvm import api as tvm
 from te.platform import cce_params
 from te.platform import cce_conf
+from te.platform import cce_policy
 from te.lang.cce.te_schedule.util import L1CommonParam
 from te.lang.cce.te_compute.depthwise_conv2d_compute import DepthwiseConv2dParam
 
@@ -674,6 +675,13 @@ def _tiling_fetch_all(fmap_shape,
         "kernel_name": kernel_name.value
     }
 
+    soc_version = cce_conf.get_soc_spec("SOC_VERSION")
+    l1_size = cce_conf.get_soc_spec("L1_SIZE")
+    soc_version_list = ["Hi3796CV300ES", "Hi3796CV300CS"]
+    if l1_fusion_type == -1 and l1_size != 512 * 1024 and soc_version in soc_version_list:
+        cce_policy.set_L1_info("op_L1_space", 512 * 1024)
+    elif l1_fusion_type == -1 and l1_size != 1024 * 1024 and soc_version not in soc_version_list:
+        cce_policy.set_L1_info("op_L1_space", 1024 * 1024)
     tiling = get_tiling(info_dict)
     return tiling
 
@@ -1207,7 +1215,7 @@ def _elewise_deq_mul(out, tensor_dict):
         tensor_dict["flag_is_broadcast"] = True
     else:
         tensor_dict["float16_mul_input_tensor"] = out.op.input_tensors[1]
-    
+
     tensor_dict = _dequant_remove_pad(tensor_dict["dequant_remove_pad"], tensor_dict)
     tensor_dict["flag_is_dequant"] = False
     tensor_dict["flag_is_dequant_mul"] = True
@@ -1228,7 +1236,7 @@ def _elewise_deq2_mul(out, tensor_dict):
         tensor_dict["flag_is_broadcast"] = True
     else:
         tensor_dict["float16_mul_input_tensor"] = out.op.input_tensors[1]
-    
+
     tensor_dict = _dequant2_remove_pad(tensor_dict["dequant2_remove_pad"], tensor_dict)
     tensor_dict["flag_is_dequant2"] = False
     tensor_dict["flag_is_dequant2_mul"] = True
