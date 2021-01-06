@@ -60,6 +60,7 @@ HEAD_STRUCT_OP_SIZE_ONE = 1
 HEAD_STRUCT_OP_SIZE_TWO = 2
 DOUBLE_OUTPUT = 2
 SINGLE_OUTPUT = 1
+INDEX_0 = 0
 
 def get_next_op(op_list, current_op):
     """
@@ -77,6 +78,8 @@ def get_next_op(op_list, current_op):
     next op of current op
     """
     for output_desc in current_op[OUTPUT_DESC]:
+        if not output_desc:
+            continue
         for op_node in op_list:
             if op_node[TYPE_STR] == DATA:
                 continue
@@ -104,6 +107,8 @@ def get_pre_op(op_list, current_op):
     for input_desc in current_op[INPUT_DESC]:
         for op_node in op_list:
             for output_desc in op_node[OUTPUT_DESC]:
+                if not output_desc:
+                    continue
                 if output_desc[NAME_STR] == input_desc[NAME_STR] and\
                     op_node[TYPE_STR] != DATA:
                     return op_node
@@ -139,6 +144,8 @@ def total_struct_check(op_list, head_op, tail_op, head_struct_oplist, tail_op_li
     for op in op_list:
         if OUTPUT_DESC in op:
             for output_desc in op[OUTPUT_DESC]:
+                if not output_desc:
+                    continue
                 if L1_FUSION_TYPE in output_desc and output_desc[L1_FUSION_TYPE] != L1_FUSION_DISABLE:
                     return False
             if op[TYPE_STR] == DATA:
@@ -351,6 +358,8 @@ def add_rm_op_in_op_list(op_list, tail_op_list):
         if len(last_op[OUTPUT_DESC]) == DOUBLE_OUTPUT:
             last_op_desc_flag = True
             for output_desc in last_op[OUTPUT_DESC]:
+                if not output_desc:
+                    continue
                 for op in op_list:
                     if INPUT_DESC not in op:
                         continue
@@ -377,7 +386,7 @@ def add_rm_op_in_op_list(op_list, tail_op_list):
         rm_op[FUNC_NAME] = DATA_RM
         rm_op[INDEX] = rm_op[INDEX] * 2
         del rm_op[INPUT_DESC][0][OUTPUT_INDEX]
-        rm_op[OUTPUT_DESC][0][OUTPUT_INDEX] = 0
+        rm_op[OUTPUT_DESC][0][OUTPUT_INDEX] = INDEX_0
         rm_op[MODULE_NAME] = OP_MODULE
         rm_op[NAME_STR] = name
         if not rm_op[ORIGINAL_NAME]:
