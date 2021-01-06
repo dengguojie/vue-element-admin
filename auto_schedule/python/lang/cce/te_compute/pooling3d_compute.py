@@ -18,11 +18,8 @@ pooling3d compute
 import math
 from te import tvm
 from te.platform.cce_conf import get_soc_spec
+from te.tvm.dsl_source_info import source_info_decorator
 
-try:
-    from te.tvm.dsl_source_info import source_info_decorator
-except ImportError:
-    from .util import source_info_decorator
 
 _POOL3D_TAG = "pooling3d_"
 _DATA_MODE_CEIL = 0

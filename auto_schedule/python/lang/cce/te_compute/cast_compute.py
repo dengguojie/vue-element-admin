@@ -22,6 +22,7 @@ from te import tvm
 from te.platform import intrinsic_check_support
 from te.utils.error_manager.error_manager_util import get_error_message
 from te.utils.shape_util import shape_to_list
+from te.tvm.dsl_source_info import source_info_decorator
 from .util import auto_cast_tensor
 from .util import is_cast_support
 from .util import get_cast_type
@@ -30,10 +31,6 @@ from .util import dsl_support_dtype
 from .util import DTYPE_MAP
 from .util import in_dynamic_and_static_unify
 
-try:
-    from te.tvm.dsl_source_info import source_info_decorator
-except ImportError:
-    from .util import source_info_decorator
 
 NAME_INDEX = [0]
 

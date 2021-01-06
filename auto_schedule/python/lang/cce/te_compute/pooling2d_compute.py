@@ -26,15 +26,11 @@ from te.lang.cce.te_compute.common import img2col
 from te.lang.cce.te_compute.common import im2col_fractal
 from te.platform.cce_policy import get_L1_info
 from te.utils.error_manager.error_manager_util import get_error_message
+from te.tvm.dsl_source_info import source_info_decorator
 
 from .cast_compute import _cast
 from .max_pool2d_compute import max_pool2d
 from .avg_pool2d_compute import avg_pool2d
-
-try:
-    from te.tvm.dsl_source_info import source_info_decorator
-except ImportError:
-    from .util import source_info_decorator
 
 
 _SIZE_OF_FP16 = 2

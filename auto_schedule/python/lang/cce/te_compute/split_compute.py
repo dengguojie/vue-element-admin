@@ -22,11 +22,8 @@ import warnings
 
 import te.lang.cce
 from te import tvm
+from te.tvm.dsl_source_info import source_info_decorator
 
-try:
-    from te.tvm.dsl_source_info import source_info_decorator
-except ImportError:
-    from .util import source_info_decorator
 
 
 def _index_offset(shape, axis, offset, *index):

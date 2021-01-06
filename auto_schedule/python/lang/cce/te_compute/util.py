@@ -964,18 +964,6 @@ def _get_priority_flag_value(priority_flag):
     return priority_flag.value
 
 
-def source_info_decorator(depth=1):
-    def get_source_info_decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            f_return = func(*args, **kwargs)
-            return f_return
-
-        return wrapper
-
-    return get_source_info_decorator
-
-
 def in_dynamic_and_static_unify():
     """
     determine whether to perform the unification of dynamic and static shape

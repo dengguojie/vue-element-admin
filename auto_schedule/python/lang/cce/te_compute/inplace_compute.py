@@ -17,13 +17,10 @@ inplace compute
 """
 from te import tvm
 from te.utils.shape_util import shape_to_list
+from te.tvm.dsl_source_info import source_info_decorator
 from .util import dtype_check_decorator
 from .util import get_tvm_scalar
 
-try:
-    from te.tvm.dsl_source_info import source_info_decorator
-except ImportError:
-    from .util import source_info_decorator
 
 @source_info_decorator()
 @dtype_check_decorator

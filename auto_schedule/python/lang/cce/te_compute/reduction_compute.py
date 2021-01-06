@@ -23,6 +23,7 @@ from te.platform import intrinsic_check_support
 from te.platform import get_soc_spec
 from te.utils.error_manager.error_manager_util import get_error_message
 from te.utils.shape_util import shape_to_list
+from te.tvm.dsl_source_info import source_info_decorator
 from .cast_compute import _cast
 from .elewise_compute import vmuls
 from .util import refine_axis
@@ -33,10 +34,6 @@ from .util import auto_cast_tensor
 from .util import dsl_support_dtype
 from .util import in_dynamic_and_static_unify
 
-try:
-    from te.tvm.dsl_source_info import source_info_decorator
-except ImportError:
-    from .util import source_info_decorator
         
 # pylint: disable=too-many-branches
 @decorator

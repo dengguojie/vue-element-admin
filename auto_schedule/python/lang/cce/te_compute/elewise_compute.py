@@ -23,6 +23,7 @@ from te.lang.base.expr_compare import expr_equal as equal
 from te.platform.cce_conf import CceProductParams as pver
 from te.utils.error_manager.error_manager_util import get_error_message
 from te.utils.shape_util import shape_to_list
+from te.tvm.dsl_source_info import source_info_decorator
 
 from .cast_compute import _cast
 from .broadcast_compute import broadcast
@@ -35,11 +36,6 @@ from .util import _get_priority_flag_value
 from .util import dsl_check_support
 from .util import util_astype
 from .util import in_dynamic_and_static_unify
-
-try:
-    from te.tvm.dsl_source_info import source_info_decorator
-except ImportError:
-    from .util import source_info_decorator
 
 
 NAME_INDEX = [0]

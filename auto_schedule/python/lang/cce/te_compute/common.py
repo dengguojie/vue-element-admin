@@ -22,6 +22,7 @@ from te import platform as cceconf
 from te.platform import intrinsic_check_support
 from te.utils.error_manager.error_manager_util import get_error_message
 import te.platform.cce_params as cce_params
+from te.tvm.dsl_source_info import source_info_decorator
 from .depthwise_conv2d_compute import DepthwiseConv2dParam
 from .elewise_compute import vadds
 from .elewise_compute import vmuls
@@ -40,10 +41,6 @@ from .cast_compute import round_half_up
 from .util import check_input_tensor_shape
 from .util import DTYPE_MAP
 
-try:
-    from te.tvm.dsl_source_info import source_info_decorator
-except ImportError:
-    from .util import source_info_decorator
 
 _BLOCK_SIZE = cce_params.BLOCK_REDUCE
 _BLOCK_INT8_SIZE = cce_params.BLOCK_REDUCE_INT8
