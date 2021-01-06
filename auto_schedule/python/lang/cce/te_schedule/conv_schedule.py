@@ -3995,7 +3995,7 @@ class CceConvOp:
                 else:
                     sch[sum_x_global].emit_insn(c_rf_outer_outer_inner, "dma_copy")
                 sch[sum_x_ub_rf].emit_insn(m_outer_inner_inner,
-                                              "vector_dichotomy_add_for_bn_reduce")
+                                           "vector_dichotomy_add_for_bn_reduce")
 
         def _handle_bias_compute_at():
             """
