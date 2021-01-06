@@ -382,10 +382,6 @@ set(_tf_plugins
   tensor_array_size_plugin.cc
   tensor_array_write_plugin.cc
   tensorflow_fusion_op_parser_util.cc
-  tensorflow_segment_mean_plugin.cc
-  tensorflow_segment_min_plugin.cc
-  tensorflow_segment_prod_plugin.cc
-  tensorflow_segment_sum_plugin.cc
   tensor_scatter_add_plugin.cc
   tensor_scatter_sub_plugin.cc
   tensor_scatter_update_plugin.cc
