@@ -122,37 +122,44 @@ IMPLEMT_INFERFUNC(CompareAndBitpack, CompareAndBitpackInfer) {
 INFER_FUNC_REG(CompareAndBitpack, CompareAndBitpackInfer);
 
 IMPLEMT_INFERFUNC(Bincount, BincountInfer) {
-  Shape unused;
-  if (WithRank(op.GetInputDesc(1), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input size must be a Scalar.");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  op_desc->SetOpInferDepends({"size"});
+
+  GeShape unused;
+  auto size_desc = op_desc->MutableInputDesc(1);
+  if (WithRank(size_desc, 0, unused) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Input size must be a Scalar.");
     return GRAPH_FAILED;
   }
 
   Tensor tensor;
-  if (op.GetInputConstData("size", tensor) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Fail to get the constdata of input size.");
-    return GRAPH_FAILED;
-  }
-
   int64_t bins;
-  if (MakeDimForScalarInput(tensor, bins, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Fail to get dim from tensor of input size.");
-    return GRAPH_FAILED;
+  if (op.GetInputConstData("size", tensor) != GRAPH_SUCCESS) {
+    bins = UNKNOWN_DIM;
   }
 
-  if (bins < 0) {
-    OP_LOGE(op.GetName().c_str(), "The value of input size must be non-negative.");
-    return GRAPH_FAILED;
+  if (bins != UNKNOWN_DIM) {
+    if (MakeDimForScalarInput(tensor, bins, op.GetName().c_str()) !=
+        GRAPH_SUCCESS) {
+      OP_LOGE(op.GetName().c_str(),
+              "Fail to get dim from tensor of input size.");
+
+      return GRAPH_FAILED;
+    }
   }
+
   Shape bins_shape;
   if (Vector(bins, bins_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Fail to gen vector shape according dim bins.");
+    OP_LOGE(op.GetName().c_str(),
+            "Fail to gen vector shape according dim bins.");
     return GRAPH_FAILED;
   }
-  TensorDesc bins_desc = op.GetOutputDesc("bins");
-  bins_desc.SetShape(bins_shape);
-  bins_desc.SetDataType(op.GetInputDesc(2).GetDataType());
-  return op.UpdateOutputDesc("bins", bins_desc);
+
+  auto bins_desc = op_desc->MutableOutputDesc(0);
+  bins_desc->SetShape(GeShape(bins_shape.GetDims()));
+  bins_desc->SetDataType(op_desc->MutableInputDesc(2)->GetDataType());
+
+  return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(Bincount, BincountInfer);

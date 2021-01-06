@@ -31,38 +31,38 @@
 
 namespace ge {
 IMPLEMT_INFERFUNC(AdjustHue, AdjustHueInfer) {
-  auto tensor = op.get_input_desc_images();
-  Shape out;
-  if (WithRankAtLeast(tensor, 3, out, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input images at least 3-D.");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto images_desc = op_desc->MutableInputDesc(0);
+
+  GeShape out;
+  if (WithRankAtLeast(images_desc, 3, out) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Input images at least 3-D.");
     return GRAPH_FAILED;
   }
 
-  DataType type = op.GetInputDesc("images").GetDataType();
+  auto y_desc = op_desc->MutableOutputDesc(0);
+  y_desc->SetShape(out);
+  y_desc->SetDataType(images_desc->GetDataType());
 
-  TensorDesc y_desc = op.GetOutputDesc("y");
-  y_desc.SetShape(Shape(out));
-  y_desc.SetDataType(type);
-  op.UpdateOutputDesc("y", y_desc);
   return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(AdjustHue, AdjustHueInfer);
 
 IMPLEMT_INFERFUNC(AdjustSaturation, AdjustSaturationInfer) {
-  auto tensor = op.get_input_desc_images();
-  Shape out;
-  if (WithRankAtLeast(tensor, 3, out, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input images at least 3-D.");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto images_desc = op_desc->MutableInputDesc(0);
+
+  GeShape out;
+  if (WithRankAtLeast(images_desc, 3, out) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Input images at least 3-D.");
     return GRAPH_FAILED;
   }
 
-  DataType type = op.GetInputDesc("images").GetDataType();
+  auto y_desc = op_desc->MutableOutputDesc(0);
+  y_desc->SetShape(out);
+  y_desc->SetDataType(images_desc->GetDataType());
 
-  TensorDesc y_desc = op.GetOutputDesc("y");
-  y_desc.SetShape(Shape(out));
-  y_desc.SetDataType(type);
-  op.UpdateOutputDesc("y", y_desc);
   return GRAPH_SUCCESS;
 }
 

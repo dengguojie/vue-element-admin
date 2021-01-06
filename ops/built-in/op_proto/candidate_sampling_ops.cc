@@ -23,6 +23,7 @@
 #include "inc/candidate_sampling_ops.h"
 #include "common/inc/op_log.h"
 #include "candidate_sampling_shape_fns.h"
+#include "util/util.h"
 
 namespace ge {
 
@@ -142,79 +143,81 @@ IMPLEMT_INFERFUNC(ComputeAccidentalHits, ComputeAccidentalHitsInfer) {
   int64_t num_true = 0;
   op.GetAttr("num_true", num_true);
 
-  Shape true_classes;
-  if (WithRank(op.GetInputDesc(0), 2, true_classes, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input true_classes must be 2-D.");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto true_classes_desc = op_desc->MutableInputDesc(0);
+  op_desc->SetOpInferDepends({"true_classes", "sampled_candidates"});
+
+  GeShape true_classes;
+  if (WithRank(true_classes_desc, 2, true_classes) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Input true_classes must be 2-D.");
     return GRAPH_FAILED;
   }
 
-  if (op.GetInputDesc(0).GetShape().GetDim(1) != num_true) {
-    OP_LOGE(op.GetName().c_str(), "input true_classes dim[1] must equal to attr num_true.");
+  if (true_classes_desc->GetShape().GetDim(1) != num_true) {
+    OP_LOGE(op.GetName().c_str(),
+            "Input true_classes dim[1] must equal to attr num_true.");
     return GRAPH_FAILED;
   }
 
-  Shape sampled_candidates;
-  if (WithRank(op.GetInputDesc(1), 1, sampled_candidates, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input sampled_candidates must be 1-D.");
+  auto sampled_candidates_desc = op_desc->MutableInputDesc(1);
+  GeShape sampled_candidates;
+  if (WithRank(sampled_candidates_desc, 1, sampled_candidates) !=
+      GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Input sampled_candidates must be 1-D.");
     return GRAPH_FAILED;
-  }
-
-  Tensor true_classes_tensor;
-  if (op.GetInputConstData("true_classes", true_classes_tensor) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Fail to get the constdata of input true_classes.");
-    return GRAPH_FAILED;
-  }
-  int64_t true_classes_size = op.GetInputDesc(0).GetShape().GetShapeSize();
-  const int64_t* first_shape_data = reinterpret_cast<const int64_t*>(true_classes_tensor.GetData());
-
-  Tensor sampled_candidates_tensor;
-  if (op.GetInputConstData("sampled_candidates", sampled_candidates_tensor) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Fail to get the constdata of input sampled_candidates.");
-    return GRAPH_FAILED;
-  }
-  int64_t sampled_candidates_size = op.GetInputDesc(1).GetShape().GetShapeSize();
-  std::set<int64_t> sampled_candidates_data;
-  const int64_t* second_shape_data = reinterpret_cast<const int64_t*>(sampled_candidates_tensor.GetData());
-  for (int64_t i = 0; i < sampled_candidates_size; i++) {
-    sampled_candidates_data.insert(second_shape_data[i]);
   }
 
   int64_t count = 0;
-  for (int64_t j = 0; j < true_classes_size; j++) {
-    auto search = sampled_candidates_data.find(first_shape_data[j]);
-    if (search != sampled_candidates_data.end()) {
-      count++;
+  Tensor true_classes_tensor;
+  if (op.GetInputConstData("true_classes", true_classes_tensor) !=
+      GRAPH_SUCCESS) {
+    count = UNKNOWN_DIM;
+  }
+  int64_t true_classes_size = op.GetInputDesc(0).GetShape().GetShapeSize();
+  const int64_t* first_shape_data =
+      reinterpret_cast<const int64_t*>(true_classes_tensor.GetData());
+
+  Tensor sampled_candidates_tensor;
+  if (op.GetInputConstData("sampled_candidates", sampled_candidates_tensor) !=
+      GRAPH_SUCCESS) {
+    count = UNKNOWN_DIM;
+  }
+
+  if (count != UNKNOWN_DIM) {
+    std::set<int64_t> sampled_candidates_data;
+    int64_t sampled_candidates_size =
+        sampled_candidates_desc->GetShape().GetShapeSize();
+    const int64_t* second_shape_data =
+        reinterpret_cast<const int64_t*>(sampled_candidates_tensor.GetData());
+    for (int64_t i = 0; i < sampled_candidates_size; i++) {
+      sampled_candidates_data.insert(second_shape_data[i]);
+    }
+
+    for (int64_t j = 0; j < true_classes_size; j++) {
+      auto search = sampled_candidates_data.find(first_shape_data[j]);
+      if (search != sampled_candidates_data.end()) {
+        count++;
+      }
     }
   }
+
   Shape v_dims;
   if (Vector(count, v_dims) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Fial to gen vDims.");
+    OP_LOGE(op.GetName().c_str(), "Fail to gen vDims.");
     return GRAPH_FAILED;
   }
 
-  TensorDesc indices_desc = op.GetOutputDesc("indices");
-  indices_desc.SetShape(Shape(v_dims));
-  indices_desc.SetDataType(DT_INT32);
-  if (op.UpdateOutputDesc("indices", indices_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output indices.");
-    return GRAPH_FAILED;
-  }
+  auto indices_desc = op_desc->MutableOutputDesc(0);
+  indices_desc->SetShape(GeShape(v_dims.GetDims()));
+  indices_desc->SetDataType(DT_INT32);
 
-  TensorDesc ids_desc = op.GetOutputDesc("ids");
-  ids_desc.SetShape(Shape(v_dims));
-  ids_desc.SetDataType(DT_INT64);
-  if (op.UpdateOutputDesc("ids", ids_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output ids.");
-    return GRAPH_FAILED;
-  }
+  auto ids_desc = op_desc->MutableOutputDesc(1);
+  ids_desc->SetShape(GeShape(v_dims.GetDims()));
+  ids_desc->SetDataType(DT_INT64);
 
-  TensorDesc weights_desc = op.GetOutputDesc("weights");
-  weights_desc.SetShape(Shape(v_dims));
-  weights_desc.SetDataType(DT_FLOAT);
-  if (op.UpdateOutputDesc("weights", weights_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output weights.");
-    return GRAPH_FAILED;
-  }
+  auto weights_desc = op_desc->MutableOutputDesc(2);
+  weights_desc->SetShape(GeShape(v_dims.GetDims()));
+  weights_desc->SetDataType(DT_FLOAT);
 
   return GRAPH_SUCCESS;
 }
