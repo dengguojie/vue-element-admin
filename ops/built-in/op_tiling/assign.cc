@@ -87,10 +87,10 @@ bool AssignTiling(const std::string& op_type, const TeOpParas& op_paras, const n
     }
 
     int64_t ele_per_block = BLOCK_SIZE / ele_size;
-    int64_t block_count = (value_num + ele_per_block - 1) / ele_per_block; 
+    int64_t block_count = (value_num + ele_per_block - 1) / ele_per_block;
 
     int64_t sigment_total = (block_count + CORE_MINIMUM_NUM - 1) / CORE_MINIMUM_NUM;
-    int64_t sigment_per_core = (sigment_total + core_num - 1) / core_num; 
+    int64_t sigment_per_core = (sigment_total + core_num - 1) / core_num;
 
     int64_t core_used_num = sigment_per_core == 0 ? 1 : (sigment_total + sigment_per_core - 1) / sigment_per_core;
     int64_t block_per_core = sigment_per_core * CORE_MINIMUM_NUM;

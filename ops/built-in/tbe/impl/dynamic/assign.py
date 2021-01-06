@@ -45,9 +45,11 @@ class Assign:
 
         # check dtype
         para_check.check_dtype(self.ref_dtype,
-                               ("float16", "float32", "int8", "int32", "int64", "uint8"), param_name="ref")
+                               ("float16", "float32", "int8", "int32", "int64", "uint8",
+                                "int16", "uint16", "uint32", "uint64"), param_name="ref")
         para_check.check_dtype(self.value_dtype,
-                               ("float16", "float32", "int8", "int32", "int64", "uint8"), param_name="value")
+                               ("float16", "float32", "int8", "int32", "int64", "uint8",
+                                "int16", "uint16", "uint32", "uint64"), param_name="value")
         if self.ref_dtype != self.value_dtype:
             error_manager_vector.raise_err_inputs_dtype_not_equal("Assign", "ref", "value",
                                                                   self.ref_dtype, self.value_dtype)
@@ -56,11 +58,11 @@ class Assign:
         self.ai_core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
         self.ub_size_bytes = (tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) - RESERVED_UB_SIZE)
 
-        if self.ref_dtype == "int8" or self.ref_dtype == "uint8":
+        if self.ref_dtype in ("int8", "uint8"):
             self.ele_per_block = 32
-        elif self.ref_dtype == "float16":
+        elif self.ref_dtype in ("float16", "int16", "uint16"):
             self.ele_per_block = 16
-        elif self.ref_dtype == "float32" or self.ref_dtype == "int32":
+        elif self.ref_dtype in ("float32", "int32", "uint32"):
             self.ele_per_block = 8
         else:
             self.ele_per_block = 4
