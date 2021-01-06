@@ -23,6 +23,7 @@ from te.platform import cce_params
 from te.lang.cce.te_compute import common
 from te.utils import para_check
 from te.utils.error_manager import error_manager_util as err_mana
+from topi.cce.util import check_load3d_w_out_1_support
 
 BLOCK_SIZE = cce_params.BLOCK_REDUCE
 BLOCK_INT8_SIZE = cce_params.BLOCK_REDUCE_INT8
@@ -414,15 +415,66 @@ def depthwise_conv2d_compute(fmap,
             "fmap_l1_addr_flag": -1,
             "fmap_l1_valid_size": -1
         }
-    DepthwiseConv2dParam.fusion_para = l1_fusion_para
-    fmap_select, fmap_select_h, fmap_select_w = _fusion_fmap_select(fmap, l1_fusion_para)
-
-    pad_top, pad_bottom, pad_left, pad_right = pad
-    full_height = fmap_select_h + pad_top + pad_bottom
-    full_width = fmap_select_w + pad_left + pad_right
 
     effective_filter_h = (kernel_h - 1) * dilation_h + 1
     effective_filter_w = (kernel_w - 1) * dilation_w + 1
+
+    def _check_h_w_out(fmap_h, fmap_w, kernel_h, kernel_w, effective_filter_h,
+                       effective_filter_w, pad, stride_h, stride_w):
+        pad_top, pad_bottom, pad_left, pad_right = pad
+        fmap_h_with_pad = fmap_h + pad_top + pad_bottom
+        fmap_w_with_pad = fmap_w + pad_left + pad_right
+        output_h = (fmap_h_with_pad - effective_filter_h) // stride_h + 1
+        output_w = (fmap_w_with_pad - effective_filter_w) // stride_w + 1
+
+        load2d_pass_flag = (kernel_h, kernel_w) == (1, 1) and (stride_h, stride_w) == (1, 1) and pad == (0, 0, 0, 0)
+        # output_w = 1 case only support load2d or (chips in [Ascend310,
+        # Hi3796CV300CS] and fmap_w with padding equals
+        # kernel_w after dilation)
+        hout_equal_1 = fmap_h + pad_top + pad_bottom - effective_filter_h == 0
+        wout_equal_1 = fmap_w + pad_left + pad_right - effective_filter_w == 0
+        wout_equal_1_pass_flag = wout_equal_1 \
+            if check_load3d_w_out_1_support() else load2d_pass_flag
+        # Ascend910 supports w_out equals 1 and h_out equals 1
+        out_both_equal_1_pass_flag = hout_equal_1 and wout_equal_1
+
+        # can`t support output_h and output_w are less than 1
+        if int(output_h) < 1 or int(output_w) < 1:
+            dict_args = {
+                'errCode': 'E60039',
+                'op_name': 'depthwise_conv2d',
+                'attr_name': 'output_h',
+                'param_name': 'output',
+                'comparator': 'not less',
+                'expected_value': '1',
+                'input_value': str(output_h),
+            }
+            raise RuntimeError(dict_args, err_mana.get_error_message(dict_args))
+        
+        # if output_w is equal to 1, wout_equal_1 or load2d_pass_flag must be true
+        elif int(output_w) == 1:
+            if not (wout_equal_1_pass_flag or out_both_equal_1_pass_flag):
+                dict_args = {
+                    'errCode': 'E60039',
+                    'op_name': 'depthwise_conv2d',
+                    'attr_name': 'output_w',
+                    'param_name': 'output',
+                    'comparator': 'greater',
+                    'expected_value': '1',
+                    'input_value': str(output_w),
+                }
+            raise RuntimeError(dict_args, err_mana.get_error_message(dict_args))
+
+        else:
+            pass
+    _check_h_w_out(fmap_h, fmap_w, kernel_h, kernel_w, effective_filter_h,
+                   effective_filter_w, pad, stride_h, stride_w)
+
+    DepthwiseConv2dParam.fusion_para = l1_fusion_para
+    fmap_select, fmap_select_h, fmap_select_w = _fusion_fmap_select(fmap, l1_fusion_para)
+    pad_top, pad_bottom, pad_left, pad_right = pad
+    full_height = fmap_select_h + pad_top + pad_bottom
+    full_width = fmap_select_w + pad_left + pad_right
     output_h = (full_height - effective_filter_h) // stride_h + 1
     output_w = (full_width - effective_filter_w) // stride_w + 1
 
