@@ -267,7 +267,9 @@ class Conv3dBackpropFilter:
             }
             raise RuntimeError(args_dict,
                                error_manager_util.get_error_message(args_dict))
-        is_lhisi_version = tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS")
+        is_lhisi_version = tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
+                                                                        "Hi3796CV300CS",
+                                                                        "SD3403")
         if is_lhisi_version and self.res_dtype != "float16":
             args_dict = {
                 'errCode': 'E60005',

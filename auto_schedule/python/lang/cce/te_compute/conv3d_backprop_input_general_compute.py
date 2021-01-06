@@ -278,7 +278,8 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
         """
         c_dtype = "float32"
         if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
-                                                        "Hi3796CV300CS"):
+                                                        "Hi3796CV300CS",
+                                                        "SD3403"):
             c_dtype = "float16"
         dx_col = super(DeConvPattern, self).generate_c(dy_col,
                                                        w_col,

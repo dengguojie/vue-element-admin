@@ -400,7 +400,8 @@ def _get_mad_dtype(w_dtype):
     if w_dtype == 'int8':
         mad_dtype = "int32"
     elif tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
-                                                      "Hi3796CV300CS"):
+                                                      "Hi3796CV300CS",
+                                                      "SD3403"):
         mad_dtype = "float16"
 
     return mad_dtype

@@ -684,7 +684,8 @@ def _conv3d_backprop_filter_cce(shape_x,
     None
     """
     if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
-                                                    "Hi3796CV300CS"):
+                                                    "Hi3796CV300CS",
+                                                    "SD3403"):
         res_dtype = "float16"
 
     res = _check_conv3dbp_filter_params(shape_x, shape_out_backprop,
