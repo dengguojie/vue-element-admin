@@ -389,10 +389,11 @@ class ConcatV2:
 
     def _concat_compute_tensor_inner_dim(self, out_dim_idx, inner_dim_split_idx, tensor_index):
         inner_dims, output_idx = self.tiling_param.get_dims(tensor_index)
-        with self.tik_instance.if_scope(inner_dims % self.ele_each_block == 0):
-            self._concat_tensor_align_inner_dim(out_dim_idx, inner_dim_split_idx, tensor_index)
-        with self.tik_instance.else_scope():
-            self._concat_tensor_not_align_inner_dim(out_dim_idx, inner_dim_split_idx, tensor_index)
+        with self.tik_instance.if_scope(inner_dims > 0):
+            with self.tik_instance.if_scope(inner_dims % self.ele_each_block == 0):
+                self._concat_tensor_align_inner_dim(out_dim_idx, inner_dim_split_idx, tensor_index)
+            with self.tik_instance.else_scope():
+                self._concat_tensor_not_align_inner_dim(out_dim_idx, inner_dim_split_idx, tensor_index)
 
     def _concat_tensor_align_inner_dim(self, out_dim_idx, inner_dim_split_idx, tensor_index):
         inst = self.tik_instance
@@ -513,12 +514,13 @@ class ConcatV2:
                         for index, input_tensor in enumerate(input_tensors):
                             in_ub = in_ub_list[index % len(in_ub_list)]
                             inner_dims, output_idx = self.tiling_param.get_dims(index)
-                            input_start_addr = row_each_core * core_idx * inner_dims
-                            input_addr = input_start_addr + loop_idx * row_each_copy * inner_dims
-                            gm2ub(inst, in_ub, input_tensor[input_addr:], do_lines * inner_dims)
-                            inst.data_move(out_ub[output_idx:], in_ub, 0, do_lines,
-                                           inner_dims // self.ele_each_block,
-                                           0, (output_inner_dims - inner_dims) // self.ele_each_block)
+                            with inst.if_scope(inner_dims > 0):
+                                input_start_addr = row_each_core * core_idx * inner_dims
+                                input_addr = input_start_addr + loop_idx * row_each_copy * inner_dims
+                                gm2ub(inst, in_ub, input_tensor[input_addr:], do_lines * inner_dims)
+                                inst.data_move(out_ub[output_idx:], in_ub, 0, do_lines,
+                                               inner_dims // self.ele_each_block,
+                                               0, (output_inner_dims - inner_dims) // self.ele_each_block)
                         ub2gm(inst, output_tensor[output_addr:], out_ub, do_lines * output_inner_dims)
                 ping_pong_func(loop_idx * 2, in_ub_list1, out_ub1)
                 ping_pong_func(loop_idx * 2 + 1, in_ub_list2, out_ub2)
@@ -542,37 +544,39 @@ class ConcatV2:
                 output_start_addr = row_each_core * core_idx * output_inner_dims
                 for index, input_tensor in enumerate(input_tensors):
                     inner_dims, output_idx = self.tiling_param.get_dims(index)
-                    input_start_addr = row_each_core * core_idx * inner_dims
-                    row_each_copy = ub_len // inner_dims
-                    with inst.if_scope(row_each_copy != 0):
-                        copy_len = row_each_copy * inner_dims
-                        copy_loops = ceil_div(row_each_core, row_each_copy)
-                        copy_rows = inst.Scalar(dtype="int64", name="copy_rows", init_value=row_each_copy)
-                        burst = inner_dims // self.ele_each_block
-                        dst_stride = (output_inner_dims - inner_dims) // self.ele_each_block
-                        with inst.for_range(0, copy_loops) as copy_idx:
-                            with inst.if_scope(copy_idx * row_each_copy + row_each_copy > row_each_core):
-                                copy_rows.set_as(row_each_core - copy_idx * row_each_copy)
-                            gm2ub(inst, in_out_ub, input_tensor[input_start_addr + copy_len * copy_idx],
-                                  copy_rows * inner_dims)
-                            _data_move_all_align(inst, output_tensor[output_start_addr +
-                                                                     row_each_copy * output_inner_dims * copy_idx +
-                                                                     output_idx:],
-                                                 in_out_ub, copy_rows, burst, dst_stride)
-                    with inst.else_scope():
-                        copy_loops = inner_dims // ub_len
-                        with inst.for_range(0, row_each_core) as row_idx:
-                            in_row_start_addr = input_start_addr + row_idx * inner_dims
-                            out_row_start_addr = output_start_addr + row_idx * output_inner_dims
-                            with inst.for_range(0, copy_loops) as idx:
-                                gm2ub(inst, in_out_ub, input_tensor[in_row_start_addr + ub_len * idx:], ub_len)
-                                ub2gm(inst, output_tensor[out_row_start_addr + output_idx + ub_len * idx:],
-                                      in_out_ub, ub_len)
-                            tail_len = inner_dims % ub_len
-                            with inst.if_scope(tail_len > 0):
-                                gm2ub(inst, in_out_ub, input_tensor[in_row_start_addr + ub_len * copy_loops:], tail_len)
-                                ub2gm(inst, output_tensor[out_row_start_addr + output_idx + ub_len * copy_loops:],
-                                      in_out_ub, tail_len)
+                    with inst.if_scope(inner_dims > 0):
+                        input_start_addr = row_each_core * core_idx * inner_dims
+                        row_each_copy = ub_len // inner_dims
+                        with inst.if_scope(row_each_copy != 0):
+                            copy_len = row_each_copy * inner_dims
+                            copy_loops = ceil_div(row_each_core, row_each_copy)
+                            copy_rows = inst.Scalar(dtype="int64", name="copy_rows", init_value=row_each_copy)
+                            burst = inner_dims // self.ele_each_block
+                            dst_stride = (output_inner_dims - inner_dims) // self.ele_each_block
+                            with inst.for_range(0, copy_loops) as copy_idx:
+                                with inst.if_scope(copy_idx * row_each_copy + row_each_copy > row_each_core):
+                                    copy_rows.set_as(row_each_core - copy_idx * row_each_copy)
+                                gm2ub(inst, in_out_ub, input_tensor[input_start_addr + copy_len * copy_idx],
+                                      copy_rows * inner_dims)
+                                _data_move_all_align(inst, output_tensor[output_start_addr +
+                                                                         row_each_copy * output_inner_dims * copy_idx +
+                                                                         output_idx:],
+                                                     in_out_ub, copy_rows, burst, dst_stride)
+                        with inst.else_scope():
+                            copy_loops = inner_dims // ub_len
+                            with inst.for_range(0, row_each_core) as row_idx:
+                                in_row_start_addr = input_start_addr + row_idx * inner_dims
+                                out_row_start_addr = output_start_addr + row_idx * output_inner_dims
+                                with inst.for_range(0, copy_loops) as idx:
+                                    gm2ub(inst, in_out_ub, input_tensor[in_row_start_addr + ub_len * idx:], ub_len)
+                                    ub2gm(inst, output_tensor[out_row_start_addr + output_idx + ub_len * idx:],
+                                          in_out_ub, ub_len)
+                                tail_len = inner_dims % ub_len
+                                with inst.if_scope(tail_len > 0):
+                                    gm2ub(inst, in_out_ub, input_tensor[in_row_start_addr + ub_len * copy_loops:],
+                                          tail_len)
+                                    ub2gm(inst, output_tensor[out_row_start_addr + output_idx + ub_len * copy_loops:],
+                                          in_out_ub, tail_len)
 
     def _concat_large_inner_not_all_align(self, core_idx):
         inst = self.tik_instance
@@ -670,37 +674,38 @@ class ConcatV2:
             out_start_idx.set_as(out_row_start_idx)
             for index, input_tensor in enumerate(tensors):
                 inner_dim, output_idx = self.tiling_param.get_dims(index)
-                in_start_idx = inner_dim * row_idx
-                with inst.if_scope(ub_data_count >= self.ele_each_block):
-                    ub2gm(inst, output_tensor[out_start_idx:], out_ub, ub_data_count)
-                    ub_data_count.set_as(0)
-
-                with inst.if_scope(ub_data_count == 0):
-                    out_start_idx.set_as(out_row_start_idx + output_idx)
-
-                with inst.if_scope(inner_dim < self.ele_each_block):
-                    gm2ub(inst, tmp_ub, input_tensor[in_start_idx:], inner_dim)
-                    with inst.for_range(0, inner_dim) as scalar_idx:
-                        out_ub[ub_data_count] = tmp_ub[scalar_idx]
-                        ub_data_count.set_as(ub_data_count + 1)
-
-                with inst.else_scope():
-                    with inst.if_scope(ub_data_count > 0):
+                with inst.if_scope(inner_dim > 0):
+                    in_start_idx = inner_dim * row_idx
+                    with inst.if_scope(ub_data_count >= self.ele_each_block):
                         ub2gm(inst, output_tensor[out_start_idx:], out_ub, ub_data_count)
                         ub_data_count.set_as(0)
+
+                    with inst.if_scope(ub_data_count == 0):
                         out_start_idx.set_as(out_row_start_idx + output_idx)
 
-                    loops = ceil_div(inner_dim, ub_length)
-                    with inst.for_range(0, loops, name="inner_loop") as idx:
-                        in_start_idx = ub_length * idx + inner_dim * row_idx
-                        out_start_idx.set_as(ub_length * idx + out_row_start_idx + output_idx)
-                        count = inst.Scalar("int64", name="count")
-                        count.set_as(inner_dim * (1 + row_idx) - in_start_idx)
-                        with inst.if_scope(count > ub_length):
-                            count.set_as(ub_length)
+                    with inst.if_scope(inner_dim < self.ele_each_block):
+                        gm2ub(inst, tmp_ub, input_tensor[in_start_idx:], inner_dim)
+                        with inst.for_range(0, inner_dim) as scalar_idx:
+                            out_ub[ub_data_count] = tmp_ub[scalar_idx]
+                            ub_data_count.set_as(ub_data_count + 1)
 
-                        gm2ub(inst, out_ub, input_tensor[in_start_idx:], count)
-                        ub2gm(inst, output_tensor[out_start_idx:], out_ub, count)
+                    with inst.else_scope():
+                        with inst.if_scope(ub_data_count > 0):
+                            ub2gm(inst, output_tensor[out_start_idx:], out_ub, ub_data_count)
+                            ub_data_count.set_as(0)
+                            out_start_idx.set_as(out_row_start_idx + output_idx)
+
+                        loops = ceil_div(inner_dim, ub_length)
+                        with inst.for_range(0, loops, name="inner_loop") as idx:
+                            in_start_idx = ub_length * idx + inner_dim * row_idx
+                            out_start_idx.set_as(ub_length * idx + out_row_start_idx + output_idx)
+                            count = inst.Scalar("int64", name="count")
+                            count.set_as(inner_dim * (1 + row_idx) - in_start_idx)
+                            with inst.if_scope(count > ub_length):
+                                count.set_as(ub_length)
+
+                            gm2ub(inst, out_ub, input_tensor[in_start_idx:], count)
+                            ub2gm(inst, output_tensor[out_start_idx:], out_ub, count)
 
             with inst.if_scope(ub_data_count > 0):
                 ub2gm(inst, output_tensor[out_start_idx:], out_ub, ub_data_count)
@@ -716,59 +721,61 @@ class ConcatV2:
             last_idx = len(self.input_tensors) - 1
             input_tensor = self.input_tensors[last_idx]
             inner_dim, output_idx = self.tiling_param.get_dims(last_idx)
-            out_start_idx = inst.Scalar("int64", name="ub_data_count")
-            ub_data_count = inst.Scalar("int32", name="ub_data_count")
-            tmp_ub = inst.Tensor(self.dtype, (self.ele_each_block,), scope=tik.scope_ubuf, name="tmp_ub")
-            out_start_idx.set_as(row_idx * output_inner_len + output_idx)
-            with inst.if_scope(inner_dim < self.ele_each_block):
-                gm2ub(inst, out_ub, input_tensor[inner_dim * row_idx], inner_dim)
-                ub_data_count.set_as(inner_dim)
-                pad_count = inst.Scalar("int32", name="pad_count")
-                pad_count.set_as(self.ele_each_block - inner_dim)
-                loops = ceil_div(pad_count, output_inner_len)
-                with inst.for_range(0, loops) as loop:
-                    new_out_dim_idx = row_idx + loop
-                    with inst.if_scope(new_out_dim_idx < out_dims):
-                        for idx, tmp_tensor in enumerate(self.input_tensors):
-                            temp_inner_dims, _ = self.tiling_param.get_dims(idx)
-                            with inst.if_scope(ub_data_count < self.ele_each_block):
-                                gm2ub(inst, tmp_ub, tmp_tensor[(row_idx + loop + 1) * temp_inner_dims],
-                                      self.ele_each_block)
-                                with inst.for_range(0, temp_inner_dims) as scalar_idx:
+            with inst.if_scope(inner_dim > 0):
+                out_start_idx = inst.Scalar("int64", name="ub_data_count")
+                ub_data_count = inst.Scalar("int32", name="ub_data_count")
+                tmp_ub = inst.Tensor(self.dtype, (self.ele_each_block,), scope=tik.scope_ubuf, name="tmp_ub")
+                out_start_idx.set_as(row_idx * output_inner_len + output_idx)
+                with inst.if_scope(inner_dim < self.ele_each_block):
+                    gm2ub(inst, out_ub, input_tensor[inner_dim * row_idx], inner_dim)
+                    ub_data_count.set_as(inner_dim)
+                    pad_count = inst.Scalar("int32", name="pad_count")
+                    pad_count.set_as(self.ele_each_block - inner_dim)
+                    loops = ceil_div(pad_count, output_inner_len)
+                    with inst.for_range(0, loops) as loop:
+                        new_out_dim_idx = row_idx + loop
+                        with inst.if_scope(new_out_dim_idx < out_dims):
+                            for idx, tmp_tensor in enumerate(self.input_tensors):
+                                temp_inner_dims, _ = self.tiling_param.get_dims(idx)
+                                with inst.if_scope(temp_inner_dims > 0):
                                     with inst.if_scope(ub_data_count < self.ele_each_block):
-                                        out_ub[ub_data_count] = tmp_ub[scalar_idx]
-                                        ub_data_count.set_as(ub_data_count + 1)
+                                        gm2ub(inst, tmp_ub, tmp_tensor[(row_idx + loop + 1) * temp_inner_dims],
+                                              self.ele_each_block)
+                                        with inst.for_range(0, temp_inner_dims) as scalar_idx:
+                                            with inst.if_scope(ub_data_count < self.ele_each_block):
+                                                out_ub[ub_data_count] = tmp_ub[scalar_idx]
+                                                ub_data_count.set_as(ub_data_count + 1)
 
-                ub2gm(inst, output_tensor[out_start_idx:], out_ub, inner_dim)
-            with inst.else_scope():
-                loops = ceil_div(inner_dim, ub_length)
-                with inst.for_range(0, loops, name="inner_loop") as idx:
-                    in_start_idx = (ub_length * idx + inner_dim * row_idx)
-                    out_start_idx.set_as(ub_length * idx + output_inner_len * row_idx + output_idx)
-                    count = inner_dim * (row_idx + 1) - in_start_idx
-                    with inst.if_scope(count > ub_length):
-                        gm2ub(inst, out_ub, input_tensor[in_start_idx:], ub_length)
-                        ub2gm(inst, output_tensor[out_start_idx:], out_ub, ub_length)
-                    with inst.else_scope():
-                        with inst.if_scope(idx > 0):
-                            align_count = self._get_ceil_32bytes_count(count)
-                            redundant_cnt = (align_count - count)
-                            new_in_start_index = in_start_idx - redundant_cnt
-                            new_out_start_index = out_start_idx - redundant_cnt
-                            gm2ub(inst, out_ub, input_tensor[new_in_start_index:], count)
-                            ub2gm(inst, output_tensor[new_out_start_index:], out_ub, count)
+                    ub2gm(inst, output_tensor[out_start_idx:], out_ub, inner_dim)
+                with inst.else_scope():
+                    loops = ceil_div(inner_dim, ub_length)
+                    with inst.for_range(0, loops, name="inner_loop") as idx:
+                        in_start_idx = (ub_length * idx + inner_dim * row_idx)
+                        out_start_idx.set_as(ub_length * idx + output_inner_len * row_idx + output_idx)
+                        count = inner_dim * (row_idx + 1) - in_start_idx
+                        with inst.if_scope(count > ub_length):
+                            gm2ub(inst, out_ub, input_tensor[in_start_idx:], ub_length)
+                            ub2gm(inst, output_tensor[out_start_idx:], out_ub, ub_length)
                         with inst.else_scope():
-                            gm2ub(inst, out_ub, input_tensor[in_start_idx:], self.ele_each_block)
-                            ub2gm(inst, output_tensor[out_start_idx:], out_ub, self.ele_each_block)
-                            in_start_idx += self.ele_each_block
-                            out_start_idx += self.ele_each_block
-                            align_count = self._get_ceil_32bytes_count(count - self.ele_each_block)
-                            redundant_cnt = align_count - count + self.ele_each_block
-                            new_in_start_index = in_start_idx - redundant_cnt
-                            new_out_start_index = out_start_idx - redundant_cnt
-                            with inst.if_scope(align_count > 0):
-                                gm2ub(inst, out_ub, input_tensor[new_in_start_index:], align_count)
-                                ub2gm(inst, output_tensor[new_out_start_index:], out_ub, align_count)
+                            with inst.if_scope(idx > 0):
+                                align_count = self._get_ceil_32bytes_count(count)
+                                redundant_cnt = (align_count - count)
+                                new_in_start_index = in_start_idx - redundant_cnt
+                                new_out_start_index = out_start_idx - redundant_cnt
+                                gm2ub(inst, out_ub, input_tensor[new_in_start_index:], count)
+                                ub2gm(inst, output_tensor[new_out_start_index:], out_ub, count)
+                            with inst.else_scope():
+                                gm2ub(inst, out_ub, input_tensor[in_start_idx:], self.ele_each_block)
+                                ub2gm(inst, output_tensor[out_start_idx:], out_ub, self.ele_each_block)
+                                in_start_idx += self.ele_each_block
+                                out_start_idx += self.ele_each_block
+                                align_count = self._get_ceil_32bytes_count(count - self.ele_each_block)
+                                redundant_cnt = align_count - count + self.ele_each_block
+                                new_in_start_index = in_start_idx - redundant_cnt
+                                new_out_start_index = out_start_idx - redundant_cnt
+                                with inst.if_scope(align_count > 0):
+                                    gm2ub(inst, out_ub, input_tensor[new_in_start_index:], align_count)
+                                    ub2gm(inst, output_tensor[new_out_start_index:], out_ub, align_count)
 
     def _concat_small_inner_each_core_multi_line(self, core_idx, out_dims, ub_can_copy_lines):
         inst = self.tik_instance
@@ -865,28 +872,30 @@ class ConcatV2:
         with inst.for_range(0, self.ele_each_block - 1) as ii:
             for index, input_tensor in enumerate(tensors):
                 inner_dim, output_idx = self.tiling_param.get_dims(index)
-                cur_out_ub = ub_list[index % len(ub_list)]
-                gm2ub(inst, cur_out_ub, input_tensor[inner_dim * ii], inner_dim)
-                ub2gm(inst, output_tensor[output_inner_len * ii + output_idx], cur_out_ub, inner_dim)
+                with inst.if_scope(inner_dim > 0):
+                    cur_out_ub = ub_list[index % len(ub_list)]
+                    gm2ub(inst, cur_out_ub, input_tensor[inner_dim * ii], inner_dim)
+                    ub2gm(inst, output_tensor[output_inner_len * ii + output_idx], cur_out_ub, inner_dim)
 
         ii = self.ele_each_block - 1
         for index, input_tensor in enumerate(tensors):
             inner_dim, output_idx = self.tiling_param.get_dims(index)
-            align_size = ceil_div(inner_dim, self.ele_each_block) * self.ele_each_block
-            with inst.if_scope(tik.any(lines > self.ele_each_block, output_idx + align_size <= output_inner_len)):
-                burst = ceil_div(inner_dim, self.ele_each_block)
-                cur_out_ub = ub_list[index % len(ub_list)]
-                gm2ub(inst, cur_out_ub, input_tensor[inner_dim * ii], inner_dim, burst)
-                ub2gm(inst, output_tensor[output_inner_len * ii + output_idx], cur_out_ub, inner_dim, burst)
-            with inst.else_scope():
-                reserve_count = align_size - inner_dim
-                burst = ceil_div(align_size, self.ele_each_block)
-                gm2ub(inst, tmp_ub, input_tensor[inner_dim * ii - reserve_count], align_size, burst)
-                gm2ub(inst, out_ub, output_tensor[output_inner_len * ii + output_idx - reserve_count],
-                      align_size, burst)
-                _concat_ub_vadd(inst, out_ub, tmp_ub, reserve_count, reserve_count, inner_dim, 1, 0, 0)
-                ub2gm(inst, output_tensor[output_inner_len * ii + output_idx - reserve_count], out_ub,
-                      align_size, burst)
+            with inst.if_scope(inner_dim > 0):
+                align_size = ceil_div(inner_dim, self.ele_each_block) * self.ele_each_block
+                with inst.if_scope(tik.any(lines > self.ele_each_block, output_idx + align_size <= output_inner_len)):
+                    burst = ceil_div(inner_dim, self.ele_each_block)
+                    cur_out_ub = ub_list[index % len(ub_list)]
+                    gm2ub(inst, cur_out_ub, input_tensor[inner_dim * ii], inner_dim, burst)
+                    ub2gm(inst, output_tensor[output_inner_len * ii + output_idx], cur_out_ub, inner_dim, burst)
+                with inst.else_scope():
+                    reserve_count = align_size - inner_dim
+                    burst = ceil_div(align_size, self.ele_each_block)
+                    gm2ub(inst, tmp_ub, input_tensor[inner_dim * ii - reserve_count], align_size, burst)
+                    gm2ub(inst, out_ub, output_tensor[output_inner_len * ii + output_idx - reserve_count],
+                          align_size, burst)
+                    _concat_ub_vadd(inst, out_ub, tmp_ub, reserve_count, reserve_count, inner_dim, 1, 0, 0)
+                    ub2gm(inst, output_tensor[output_inner_len * ii + output_idx - reserve_count], out_ub,
+                          align_size, burst)
 
     def _concat_with_vnchwconv(self, core_idx, out_dims, ub_len):
         need_recover = False
