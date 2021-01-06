@@ -40,6 +40,149 @@ MEMORY_L2 = 2
 L1FUSION_INPUT_CTR = 2
 DECONV_SHAPE_DIM = 4
 
+# the shape dim limited
+INOUT_HW_MIN = 1
+INOUT_HW_MAX = 4096
+FILTER_HW_MIN = 1
+FILTER_HW_MAX = 255
+STRIDE_HW_MIN = 1
+STRIDE_HW_MAX = 63
+DILATION_HW_MIN = 1
+DILATION_HW_MAX = 255
+CONV1D_W_MAX = 2147483647
+
+
+def _check_attr_range(attr_name, attr_value, attr_min, attr_max):
+    """
+    check the value in the range: [attr_min, attr_max]
+    """
+    if attr_value < attr_min or attr_value > attr_max:
+        args_dict = {
+            "errCode": "E60011",
+            "range": "[{},{}]".format(attr_min, attr_max),
+            "attr_name": attr_name,
+            "value": attr_value
+        }
+        raise RuntimeError(args_dict, 
+                           error_manager.get_error_message(args_dict))
+
+
+def _check_param(  # pylint: disable=invalid-name,R0913,R0914,W0613
+    x,
+    weight,
+    y,
+    strides,
+    pads,
+    dilations,
+    data_format,
+    offset_x):
+    """
+    the params check of deconvolution
+    """
+    ori_shape_x = x.get("ori_shape")
+    ori_shape_filters = weight.get("ori_shape")
+    ori_shape_res = y.get("ori_shape")
+    x_dtype = x.get("dtype").lower()
+    ori_format_x = x.get("ori_format")
+    ori_format_filters = weight.get("ori_format")
+    ori_format_res = y.get("ori_format")
+
+    # only quantify with offset
+    if x_dtype != "int8" and offset_x != 0:
+        reason = "when x_dtype is fp16, offset_x must be 0"
+        args_dict = {"errCode": "E60108", "reason": reason}
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+
+    if len(strides) == DECONV_SHAPE_DIM:
+        h_index = data_format.find("H")
+        w_index = data_format.find("W")
+        strides = [strides[h_index], strides[w_index]]
+
+    shape_filters = util_deconv_comm.get_filter_shape(ori_format_filters, ori_shape_filters)
+    shape_x = util_deconv_comm.get_shape_out_backprop(ori_format_x, ori_shape_x)
+    shape_res = util_deconv_comm.get_shape_res(ori_format_res, ori_shape_res)
+    dilations = util_deconv_comm.get_shape_dilation(ori_format_x, dilations)
+
+    if dilations[0] != 1 or dilations[1] != 1:
+        args_dict = {
+            "errCode": "E60023",
+            "dilation_n": dilations[0],
+            "dilation_c": dilations[1]
+        }
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+
+    _check_attr_range("the h of filter", shape_filters[2], FILTER_HW_MIN, FILTER_HW_MAX)
+    _check_attr_range("the w of filter", shape_filters[3], FILTER_HW_MIN, FILTER_HW_MAX)
+
+    _check_attr_range("the h of stride", strides[0], STRIDE_HW_MIN, STRIDE_HW_MAX)
+    _check_attr_range("the w of stride", strides[1], STRIDE_HW_MIN, STRIDE_HW_MAX)
+
+    _check_attr_range("the h of dilations", dilations[2], DILATION_HW_MIN, DILATION_HW_MAX)
+    _check_attr_range("the w of dilations", dilations[3], DILATION_HW_MIN, DILATION_HW_MAX)
+
+    fmap_h, fmap_w = shape_res[2:]
+    dedy_h, dedy_w = shape_x[2:]
+    filter_h, filter_w = shape_filters[2:]
+    filter_h_dilation = (filter_h - 1)*dilations[2] + 1
+    filter_w_dilation = (filter_w - 1)*dilations[3] + 1
+    pads = util_deconv_comm.get_padlist(pads, shape_res, strides, shape_filters, dilations)
+    fmap_h_pad = fmap_h + pads[0] + pads[1]
+    fmap_w_pad = fmap_w + pads[2] + pads[3]
+
+    if ((fmap_h_pad - filter_h_dilation)//strides[0] + 1) != dedy_h:
+        args_dict = {"errCode": "E60024"}
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+    if ((fmap_w_pad - filter_w_dilation)//strides[1] + 1) != dedy_w:
+        args_dict = {"errCode": "E60025"}
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+
+    inout_limit_min = INOUT_HW_MIN
+    inout_limit_max = INOUT_HW_MAX
+    if fmap_h_pad == 1 and filter_h_dilation == 1 and strides[0] == 1:
+        inout_limit_max = CONV1D_W_MAX
+
+    _check_attr_range("the h of fmap(output)", fmap_h, inout_limit_min, inout_limit_max)
+    _check_attr_range("the w of fmap(output)", fmap_w, inout_limit_min, inout_limit_max)
+
+    _check_attr_range("the h of dedy(input) after expands", dedy_h * strides[0], inout_limit_min, inout_limit_max)
+
+    if filter_h == 1 and filter_w == 1:
+        _check_attr_range("the w of dedy after expands",
+                          dedy_w * strides[0] * strides[1], inout_limit_min, inout_limit_max)
+    else:
+        _check_attr_range("the w of dedy after expands",
+                          dedy_w * strides[1], inout_limit_min, inout_limit_max)
+
+
+def check_supported(  # pylint: disable=invalid-name,R0913,R0914,W0613
+    x,
+    weight,
+    bias,
+    offset_w,
+    y,
+    strides,
+    pads,
+    dilations=(1, 1, 1, 1),
+    groups=1,
+    data_format="NCHW",
+    offset_x=0,
+    kernel_name="deconvolution"):
+    """
+    the h and w of x or y must be in [1, 4096]
+    the h and w of weight or dilations must be in [1, 255]
+    the h and w of strides must be in [1, 63]
+    the n and c of dilations must be 1
+    the h and w must meet: 
+       hi - (hk - 1)*dk + 1 + padh // strideh = ho
+       wi - (wk - 1)*wk + 1 + padw // stridew = wo
+    """
+    try:
+        _check_param(x, weight, y, strides, pads, dilations, data_format, offset_x)
+        return True
+    except Exception as e:
+        print(e)
+        return False
+
 
 def _cal_min_l1space(x,  # pylint: disable=invalid-name
                      weight, y, strides, dilations, pads):

@@ -30,6 +30,71 @@ MAX_INT32_LENGTH = 2147483647
 L1FUSION_INPUT_CTR = 2
 
 
+def _check_param(input_x1, input_x2, bias, trans_a, trans_b):
+    """
+    the params check of gemm
+    """
+    shape_a = input_x1.get("ori_shape")
+    shape_b = input_x2.get("ori_shape")
+    bias_shape = bias.get("ori_shape")
+
+    if len(shape_a) != 2:
+        args_dict = {
+            "errCode": "E60006",
+            "param_name": "a",
+            "expected_length": "2",
+            "length": "{}".format(len(shape_a)),
+        }
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+    if len(shape_b) != 2:
+        args_dict = {
+            "errCode": "E60006",
+            "param_name": "b",
+            "expected_length": "2",
+            "length": "{}".format(len(shape_b)),
+        }
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+
+    km_shape = shape_a[0] if trans_a else shape_a[1]
+    m_shape = shape_a[1] if trans_a else shape_a[0]
+    kn_shape = shape_b[1] if trans_b else shape_b[0]
+    n_shape = shape_b[0] if trans_b else shape_b[1]
+    if km_shape != kn_shape:
+        args_dict = {"errCode": "E60009", "a_1d": km_shape, "b_0d": kn_shape}
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+    if list(bias_shape) != [m_shape, n_shape]:
+        args_dict = {
+                "errCode": "E60000",
+                "param_name": "c shape",
+                "expected_value": str([m_shape, n_shape]),
+                "input_value": "{}".format(bias_shape),
+            }
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+
+
+def check_supported(  # pylint: disable=I0011, R0913, R0914
+    input_x1,
+    input_x2,
+    bias,
+    alpha,
+    beta,
+    output_y=None,
+    trans_a=False,
+    trans_b=False,
+    kernel_name="gemm"):
+    """
+    the k-dims of input_x1 must be equal with that of input_x2
+    the m-dims of input_x1 must be equal with that of bias
+    the n-dims of input_x2 must be equal with that of bias
+    """
+    try:
+        _check_param(input_x1, input_x2, bias, trans_a, trans_b)
+        return True
+    except Exception as e:
+        print(e)
+        return False
+
+
 def op_select_format(  # pylint: disable=too-many-arguments
     input_x1,
     input_x2,

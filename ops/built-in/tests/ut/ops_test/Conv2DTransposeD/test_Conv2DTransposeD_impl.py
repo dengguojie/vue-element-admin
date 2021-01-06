@@ -106,8 +106,19 @@ def _gen_conv2d_transpose_op_case():
         ut_case.add_case(["Ascend910"], _gen_conv2d_transpose_case(*test_case))
 
 
-_gen_conv2d_transpose_op_case()
+def test_op_check_supported(test_arg):
+    from impl.conv2d_transpose_d import check_supported
+    x = {"ori_shape": (1, 32, 3, 3), "dtype": "float16", "ori_format": "NCHW"}
+    filter = {"ori_shape": (32, 16, 1, 1), "dtype": "float16", "ori_format": "NCHW"}
+    bias = None
+    y = {"ori_shape": (1, 16, 5, 5), "dtype": "float16", "ori_format": "NCHW"}
+    input_size = (1, 16, 5, 5)
+    check_supported(x, filter, bias, None, y, input_size, (1, 1, 2, 2), (0, 0, 0, 0),
+                    dilations=(1, 1, 1, 1), groups=1, data_format="NCHW", output_padding=(0, 0, 0, 0),
+                    offset_x=0, kernel_name="deconvolution")
 
+_gen_conv2d_transpose_op_case()
+ut_case.add_cust_test_func(test_func=test_op_check_supported)
 
 if __name__ == "__main__":
     ut_case.run(["Ascend910"])
