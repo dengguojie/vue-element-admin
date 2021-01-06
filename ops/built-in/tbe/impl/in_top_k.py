@@ -163,6 +163,7 @@ def _in_top_k_special_k(predictions, targets, k, kernel_name):
     prediction_dtype = "float32"
     target_dtype = "int32"
     precision_dtype = "uint8"
+    column = predictions_shape[1]
     if k <= 0:
         element = 0
     else:
@@ -185,18 +186,74 @@ def _in_top_k_special_k(predictions, targets, k, kernel_name):
                                            scope=tik.scope_ubuf)
 
     prediction_ub = tik_instance.Tensor(precision_dtype, (8, ), name="prediction_ub", scope=tik.scope_ubuf)
-    target_ub = tik_instance.Tensor(target_dtype, (8, ), name="target_ub", scope=tik.scope_ubuf)
+    target_ub = tik_instance.Tensor(target_dtype, (BLOCK_SIZE, ), name="target_ub", scope=tik.scope_ubuf)
 
     tik_instance.data_move(prediction_ub, prediction_tensor, 0, 1, 1, 0, 0)
 
-    tik_instance.data_move(target_ub, target_tensor, 0, 1, 1, 0, 0)
-
     tik_instance.vector_dup(BLOCK_SIZE, tensor_ub, element, 1, 1, 1)
-    tik_instance.vconv(BLOCK_SIZE, '', tensor_output_ub, tensor_ub, 1, 1, 1, 8, 8)
+    tensor_zeros = tik_instance.Tensor(shape=(BLOCK_SIZE, ), dtype="float16", name="tensor_zeros", scope=tik.scope_ubuf)
+    tik_instance.vector_dup(BLOCK_SIZE, tensor_zeros, 0, 1, 1, 1)
+
+    tensor_ub_sel = tik_instance.Tensor("float16", (BLOCK_SIZE, ), name="tensor_ub_sel", scope=tik.scope_ubuf)
+    if k >= column:
+        src = tik_instance.Tensor(shape=(16, ), dtype="float16", scope=tik.scope_ubuf, name="src")
+        tik_instance.vector_dup(16, src, 0, 1, 1, 8)
+        dst_ub = tik_instance.Tensor(shape=(BLOCK_SIZE, ), dtype="int32", scope=tik.scope_ubuf, name="dst_ub")
+        dst_ub1 = tik_instance.Tensor(shape=(BLOCK_SIZE, ), dtype="float16", scope=tik.scope_ubuf, name="dst_ub1")
+    else:
+        tik_instance.data_move(target_ub, target_tensor, 0, 1, 1, 0, 0)
+        tik_instance.vconv(BLOCK_SIZE, '', tensor_output_ub, tensor_ub, 1, 1, 1, 8, 8)
     with tik_instance.for_range(0, copy_repeat_times) as i:
+        if k >= column:
+            tik_instance.data_move(target_ub, target_tensor[i * BLOCK_SIZE], 0, 1, 4, 0, 0)
+            invalid_mask = calc_invalid_mask(tik_instance, target_ub, BLOCK_SIZE, column, src, dst_ub, dst_ub1, 0)
+            tik_instance.vsel(BLOCK_SIZE, 0, tensor_ub_sel, invalid_mask, tensor_zeros, tensor_ub, 1, 1, 1, 1)
+            invalid_mask = calc_invalid_mask(tik_instance, target_ub, BLOCK_SIZE, column, src, dst_ub, dst_ub1, 1)
+            tik_instance.vsel(BLOCK_SIZE, 0, tensor_ub_sel, invalid_mask, tensor_zeros, tensor_ub_sel, 1, 1, 1, 1)
+            tik_instance.vconv(BLOCK_SIZE, '', tensor_output_ub, tensor_ub_sel, 1, 1, 1, 8, 8)
         tik_instance.data_move(tensor_output[i * BLOCK_SIZE], tensor_output_ub, 0, 1, 1, 0, 0)
     tik_instance.BuildCCE(kernel_name=kernel_name, inputs=[prediction_tensor, target_tensor], outputs=[tensor_output])
     return tik_instance
+
+
+def calc_invalid_mask(tik_instance, target_ub, mask_len, column, src, dst_ub, dst_ub1, flag):
+    """
+    the calc_invalid_mask function
+
+    Parameters
+    ----------
+    tik_instance: tik_instance
+    target_ub: dict of target_ub
+               include keys(shape and dtype)
+    mask_len: mask_len
+    column: column
+    src: dict of src
+         include keys(shape and dtype)
+    dst_ub: dict of dst_ub
+            include keys(shape and dtype)
+    dst_ub1: dict of dst_ub1
+             include keys(shape and dtype)
+    flag: 0:  target_ub >= column
+          1:  target_ub < 0
+    Returns
+    -------
+    mask: cmpmask
+    """
+    repeat_time = 1
+    deq_scale = 1.0
+    if flag == 0:
+        src1 = tik_instance.Tensor(shape=(mask_len, ), dtype="int32", scope=tik.scope_ubuf, name="src1")
+        tik_instance.vector_dup(mask_len, src1, column, 1, 1, 8)
+        tik_instance.vsub(mask_len, dst_ub, target_ub, src1, 1, 1, 1, 1, 8, 8, 8)
+        tik_instance.vconv(mask_len, 'none', dst_ub1, dst_ub, repeat_time, 1, 1, 4, 8, deq_scale)
+        mask = tik_instance.vcmp_ge(mask_len, dst_ub1, src, 1, 0)
+        return mask
+    else:
+        target_conv_ub = tik_instance.Tensor(shape=(mask_len, ), dtype="float16", scope=tik.scope_ubuf,
+                                             name="target_conv_ub")
+        tik_instance.vconv(mask_len, 'none', target_conv_ub, target_ub, repeat_time, 1, 1, 4, 8, deq_scale)
+        mask = tik_instance.vcmp_lt(mask_len, target_conv_ub, src, 1, 0)
+        return mask
 
 
 # pylint: disable=too-many-locals,too-many-branches,too-many-statements
@@ -286,6 +343,8 @@ def _in_top_k_inter_process(shape_info, tensor, tik_instance, k):
         with tik_instance.for_range(0, core_row_num) as i:
             scalar_target = tik_instance.Scalar(target_dtype, "scalar_target")
             scalar_target.set_as(target_ub[i])
+            with tik_instance.if_scope(tik.any(scalar_target < 0, scalar_target >= column)):
+                scalar_target.set_as(0)
             scalar_value = tik_instance.Scalar(prediction_dtype)
             scalar_value.set_as(prediction_tensor_ub[i, scalar_target])
             tik_instance.vector_dup(half_mask_value, data_ub[i * column_aligned], scalar_value, column_reduce_times, 1,
@@ -298,6 +357,8 @@ def _in_top_k_inter_process(shape_info, tensor, tik_instance, k):
         with tik_instance.for_range(0, core_row_num) as i:
             scalar_target = tik_instance.Scalar(target_dtype, "scalar_target")
             scalar_target.set_as(target_ub[i])
+            with tik_instance.if_scope(tik.any(scalar_target < 0, scalar_target >= column)):
+                scalar_target.set_as(0)
             scalar_value = tik_instance.Scalar(prediction_dtype)
             scalar_value.set_as(prediction_tensor_ub[i * column_aligned + scalar_target])
             tik_instance.vector_dup(column_reduce_remainder, data_ub[i * column_aligned], scalar_value, 1, 1, 1, 0)
@@ -530,11 +591,23 @@ def _in_top_k_inter_process(shape_info, tensor, tik_instance, k):
 
     cmp_times = int(row_nums // BLOCK_SIZE)
     cmp_rem = int(row_nums % BLOCK_SIZE)
+    src = tik_instance.Tensor(shape=(16, ), dtype="float16", scope=tik.scope_ubuf, name="src")
+    tik_instance.vector_dup(16, src, 0, 1, 1, 8)
+    dst_ub = tik_instance.Tensor(shape=(BLOCK_SIZE, ), dtype="int32", scope=tik.scope_ubuf, name="dst_ub")
+    dst_ub1 = tik_instance.Tensor(shape=(BLOCK_SIZE, ), dtype="float16", scope=tik.scope_ubuf, name="dst_ub1")
     if cmp_times > 0:
         with tik_instance.for_range(0, cmp_times) as i:
             cmp_mask = tik_instance.vcmp_gt(BLOCK_SIZE, tensor_bool[i * BLOCK_SIZE], tensor_zeros, 1, 1)
             tik_instance.vsel(BLOCK_SIZE, 0, data_bool_ub[i * BLOCK_SIZE], cmp_mask, tensor_ones, tensor_zeros, 1, 1, 1,
                               1)
+            invalid_mask = calc_invalid_mask(tik_instance, target_ub[i * BLOCK_SIZE], BLOCK_SIZE, column, src, dst_ub,
+                                             dst_ub1, 0)
+            tik_instance.vsel(BLOCK_SIZE, 0, data_bool_ub[i * BLOCK_SIZE], invalid_mask, tensor_zeros,
+                              data_bool_ub[i * BLOCK_SIZE], 1, 1, 1, 1)
+            invalid_mask = calc_invalid_mask(tik_instance, target_ub[i * BLOCK_SIZE], BLOCK_SIZE, column, src, dst_ub,
+                                             dst_ub1, 1)
+            tik_instance.vsel(BLOCK_SIZE, 0, data_bool_ub[i * BLOCK_SIZE], invalid_mask, tensor_zeros,
+                              data_bool_ub[i * BLOCK_SIZE], 1, 1, 1, 1)
             tik_instance.vconv(BLOCK_SIZE, '', tensor_output_ub[i * BLOCK_SIZE], data_bool_ub[i * BLOCK_SIZE], 1, 1, 1,
                                8, 8)
 
@@ -542,6 +615,14 @@ def _in_top_k_inter_process(shape_info, tensor, tik_instance, k):
         cmp_mask = tik_instance.vcmp_gt(cmp_rem, tensor_bool[cmp_times * BLOCK_SIZE], tensor_zeros, 1, 1)
         tik_instance.vsel(cmp_rem, 0, data_bool_ub[cmp_times * BLOCK_SIZE], cmp_mask, tensor_ones, tensor_zeros, 1, 1,
                           1, 1)
+        invalid_mask = calc_invalid_mask(tik_instance, target_ub[cmp_times * BLOCK_SIZE], cmp_rem, column, src, dst_ub,
+                                         dst_ub1, 0)
+        tik_instance.vsel(cmp_rem, 0, data_bool_ub[cmp_times * BLOCK_SIZE], invalid_mask, tensor_zeros,
+                          data_bool_ub[cmp_times * BLOCK_SIZE], 1, 1, 1, 1)
+        invalid_mask = calc_invalid_mask(tik_instance, target_ub[cmp_times * BLOCK_SIZE], cmp_rem, column, src, dst_ub,
+                                         dst_ub1, 1)
+        tik_instance.vsel(cmp_rem, 0, data_bool_ub[cmp_times * BLOCK_SIZE], invalid_mask, tensor_zeros,
+                          data_bool_ub[cmp_times * BLOCK_SIZE], 1, 1, 1, 1)
         tik_instance.vconv(cmp_rem, '', tensor_output_ub[cmp_times * BLOCK_SIZE], data_bool_ub[cmp_times * BLOCK_SIZE],
                            1, 1, 1, 8, 8)
     return tensor_output_ub
@@ -620,27 +701,13 @@ def _in_top_k_column_process(shape_info, tensor, tik_instance):
 
     half_sub = tik_instance.Tensor("float16", (shape[0], shape[1] * carry), name="half_sub", scope=tik.scope_ubuf)
 
-    half_remainder_mask = int((column - (split_column_nums - 1) * column_size) % half_mask_value)
-    half_repeat = int((column - (split_column_nums - 1) * column_size) // half_mask_value)
-
-    if half_remainder_mask != 0:
-        index = half_repeat * half_mask_value
-        column_remainder = tik_instance.Scalar("int64")
-        with tik_instance.if_scope(inner_loop == split_column_nums - 1):
-            if half_repeat_times > 0:
-                tik_instance.vsub(half_mask_value, prediction_tensor_ub, prediction_tensor_ub, data_ub, half_repeat, 1,
-                                  1, 1, 8, 8, 8)
-            column_remainder.set_as(half_remainder_mask)
-            tik_instance.vsub(column_remainder, prediction_tensor_ub[index], prediction_tensor_ub[index],
-                              data_ub[index], 1, 1, 1, 1, 8, 8, 8)
+    if half_repeat_times != 0:
+        tik_instance.vsub(half_mask_value, prediction_tensor_ub, prediction_tensor_ub, data_ub, half_repeat_times, 1,
+                          1, 1, 8, 8, 8)
     if half_tail_mask != 0:
-        with tik_instance.if_scope(inner_loop < split_column_nums - 1):
-            if half_repeat_times > 0:
-                tik_instance.vsub(half_mask_value, prediction_tensor_ub, prediction_tensor_ub, data_ub,
-                                  half_repeat_times, 1, 1, 1, 8, 8, 8)
-            index = half_repeat_times * half_mask_value
-            tik_instance.vsub(half_tail_mask, prediction_tensor_ub[index], prediction_tensor_ub[index], data_ub[index],
-                              1, 1, 1, 1, 8, 8, 8)
+        index = half_repeat_times * half_mask_value
+        tik_instance.vsub(half_tail_mask, prediction_tensor_ub[index], prediction_tensor_ub[index], data_ub[index], 1,
+                          1, 1, 1, 8, 8, 8)
 
     repeat_times = int((carry * column_num) // mask_value)
     tail_mask = int((carry * column_num) % mask_value)
@@ -1069,7 +1136,7 @@ def _in_top_k_column_inner_loop(shape_info, tensor, tik_instance, k):
     prediction_dtype = "float32"
     target_dtype = "int32"
     element_bytes = 4
-    block_element = BLOCK_SIZE / element_bytes
+    block_element = BLOCK_SIZE // element_bytes
 
     target_ub = tik_instance.Tensor(target_dtype, (block_element, ), name="target_ub", scope=tik.scope_ubuf)
     data_temp_ub = tik_instance.Tensor(prediction_dtype, (block_element, ), name="data_temp_ub", scope=tik.scope_ubuf)
@@ -1080,6 +1147,8 @@ def _in_top_k_column_inner_loop(shape_info, tensor, tik_instance, k):
     tik_instance.data_move(target_ub, target_tensor[index], 0, 1, 1, 0, 0)
     scalar_target = tik_instance.Scalar(target_dtype, "scalar_target")
     scalar_target.set_as(target_ub[0])
+    with tik_instance.if_scope(tik.any(scalar_target < 0, scalar_target >= column)):
+        scalar_target.set_as(0)
     index = core_loop * single_core_times * column + column * outer_loop
     tik_instance.data_move(data_temp_ub, prediction_tensor[index + scalar_target], 0, 1, 1, 0, 0)
 
@@ -1133,9 +1202,19 @@ def _in_top_k_column_inner_loop(shape_info, tensor, tik_instance, k):
     ones_half.set_as(1)
     tik_instance.vector_dup(1, tensor_ones, ones_half, 1, 1, 1, 0)
 
+    src = tik_instance.Tensor(shape=(16, ), dtype="float16", scope=tik.scope_ubuf, name="src2")
+    tik_instance.vector_dup(16, src, 0, 1, 1, 8)
+    dst_ub = tik_instance.Tensor(shape=(BLOCK_SIZE, ), dtype="int32", scope=tik.scope_ubuf, name="dst_ub")
+    dst_ub1 = tik_instance.Tensor(shape=(BLOCK_SIZE, ), dtype="float16", scope=tik.scope_ubuf, name="dst_ub1")
     data_bool_ub = tik_instance.Tensor("float16", (1, ), name="data_bool_ub", scope=tik.scope_ubuf)
     cmp_mask = tik_instance.vcmp_lt(1, tensor_sub_half, tensor_zeros, 1, 1)
     tik_instance.vsel(1, 0, data_bool_ub, cmp_mask, tensor_ones, tensor_zeros, 1, 1, 1, 1)
+    invalid_mask = calc_invalid_mask(tik_instance, target_ub, block_element, column, src, dst_ub,
+                                     dst_ub1, 0)
+    tik_instance.vsel(1, 0, data_bool_ub, invalid_mask, tensor_zeros, data_bool_ub, 1, 1, 1, 1)
+    invalid_mask = calc_invalid_mask(tik_instance, target_ub, block_element, column, src, dst_ub,
+                                     dst_ub1, 1)
+    tik_instance.vsel(1, 0, data_bool_ub, invalid_mask, tensor_zeros, data_bool_ub, 1, 1, 1, 1)
     tik_instance.vconv(1, '', tensor_output_ub_temp, data_bool_ub, 1, 1, 1, 8, 8)
 
     return tensor_output_ub_temp
