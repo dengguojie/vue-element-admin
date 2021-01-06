@@ -988,7 +988,8 @@ class ReduceAtomicSchedule(_VectorSchedule):
         """
         :return:
         """
-        max_ub_count = self._get_max_ub_count()
+        # Normal Use _get_max_ub_count() for max_ub_count
+        max_ub_count = self.graph_info.max_single_tensor_ub_size
         tensor_space = max_ub_count
         for tensor in self._cache_read_tensors_and_buffer_map:
             read_buffer = self._cache_read_tensors_and_buffer_map[tensor]

@@ -155,6 +155,9 @@ class ComputeGraphInfo:
         soc_ub_size = get_soc_spec("UB_SIZE")
         soc_ub_size = soc_ub_size // 2
         total_width = 8
+        reduce_tensor = list(self.reduce_tensor_set)[0]
+        if reduce_tensor.dtype in ["float16"]:
+            total_width = 4
         if not total_width:
             raise RuntimeError("Could not get compute width")
         max_bound = total_width * 128
