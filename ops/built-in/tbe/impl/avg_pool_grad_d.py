@@ -116,9 +116,14 @@ def _parameter_check(shape_in, shape_k, shape_out, dtype, strides, padding):
     dilated_w = wo * strides[1] - (strides[1] - 1)
     max_dh_in_l1 = (l1_size // 2 - hk * wk * BLOCK_SIZE * BLOCK_SIZE * data_size) // (data_size * dilated_w *
                                                                                       BLOCK_SIZE)
+    l1_load_kernel = True
     if max_dh_in_l1 < BLOCK_SIZE:
-        error_manager_vector.raise_err_specific_reson(
-            "avg_pool_grad_d", "L1's memory space must be enough to support dilated_h tiling with 16!")
+        l1_load_kernel = False
+        max_dh_in_l1 = (l1_size // 2) // (data_size * dilated_w * BLOCK_SIZE)
+        if max_dh_in_l1 < BLOCK_SIZE:
+            error_manager_vector.raise_err_specific_reson(
+                "avg_pool_grad_d", "L1's memory space must be enough to support dilated_h tiling with 16!")
+
     # limiting eque get_tiling, but tile_m get max(1024)
     # 3*max_h_in_ub*out_w+(max_h_in_ub*stride-(stride-1))*dila_w < (ub_size/2-tile_m*BLOCK_SIZE)/BLOCK_SIZE
     # max_h_in_ub*out_w+(max_h_in_ub*stride-(stride-1))*dila_w < X
@@ -145,6 +150,8 @@ def _parameter_check(shape_in, shape_k, shape_out, dtype, strides, padding):
             'op_name': 'avg_pool_grad_d',
         }
         raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+
+    return l1_load_kernel
 
 
 # pylint: disable=too-many-locals
@@ -327,7 +334,7 @@ def _avg_pool_grad_tiling(input_w, input_h, out_shape, res, stride):
 
 
 # pylint: disable=too-many-locals,too-many-statements
-def _avg_pool_grad_schedule(res):
+def _avg_pool_grad_schedule(res, l1_load_kernel):
     """
     the tiling avg pool grad schedule
     """
@@ -417,6 +424,8 @@ def _avg_pool_grad_schedule(res):
     s[dout_cbuf_row_major].compute_at(s[res], conv_hcut_o)
     s[dout_cbuf_nc1hwc0].compute_at(s[res], conv_hcut_o)
     s[weight_cbuf].compute_at(s[res], conv_hcut_o)
+    if not l1_load_kernel:
+        s[weight_cbuf].compute_inline()
 
     dout_dilated_w = dout_dilated_shape[4]
     ub_l1hcut_o, ub_l1hcut_i = s[dout_cbuf_nc1hwc0].split(dout_cbuf_nc1hwc0.op.axis[3], factor=tile_dile_h_ub)
@@ -627,7 +636,7 @@ def avg_pool_grad_d(input_grad,
         # strides dim is two
         strides = stride_h, stride_w
 
-        _parameter_check(shape_in, shape_k, shape_out, dtype, strides, padding)
+        l1_load_kernel = _parameter_check(shape_in, shape_k, shape_out, dtype, strides, padding)
 
         shape_in = shape_in_n, shape_in_c1, 1, shape_in_h, shape_in_w, shape_in_c0
         shape_k = (shape_out_c1, kernel_h * kernel_w, 1, BLOCK_SIZE, BLOCK_SIZE)
@@ -639,7 +648,7 @@ def avg_pool_grad_d(input_grad,
         res = avg_pool_grad_compute(shape_in, kernel_placeholder, dout_placeholder, vealuemean_placeholder,
                                     [kernel_h, kernel_w], strides, padding)
 
-        s = _avg_pool_grad_schedule(res)
+        s = _avg_pool_grad_schedule(res, l1_load_kernel)
 
         with tbe_platform.build_config:
             tvm.build(s, [dout_placeholder, vealuemean_placeholder, kernel_placeholder, res], "cce", name=kernel_name)
