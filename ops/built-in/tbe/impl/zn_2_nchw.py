@@ -540,21 +540,21 @@ def _tranpose_notchange_last_two(data, shape_5hd, dst_shape_full, dst_shape,
                              lambda ins, outs: five_2_four._more_dim_ir(outs[0],
                                                                         ins[0],
                                                                         max_dim,
-                                                                        shape_all),
+                                                                        shape_all, 1),
                              name="res", dtype=dtype)
         elif branch == "one_dim":
             res = tvm.extern(dst_shape_full, [res_5hd],
                              lambda ins, outs: five_2_four._one_dim_ir(outs[0],
                                                                        ins[0],
                                                                        max_dim,
-                                                                       shape_all),
+                                                                       shape_all, 1),
                              name="res", dtype=dtype)
         else:
             res = tvm.extern(dst_shape_full, [res_5hd],
                              lambda ins, outs: five_2_four._split_dim_ir(outs[0],
                                                                          ins[0],
                                                                          max_dim,
-                                                                         shape_all),
+                                                                         shape_all, 1),
                              name="res", dtype=dtype)
     else:
         branch_fp16 = five_2_four._get_ir_branch_fp16(dst_shape_full, dtype, shape_all)
@@ -563,12 +563,12 @@ def _tranpose_notchange_last_two(data, shape_5hd, dst_shape_full, dst_shape,
                              lambda ins, outs: five_2_four._more_dim_ir_fp16(outs[0],
                                                                              ins[0],
                                                                              max_dim,
-                                                                             shape_all),
+                                                                             shape_all, 1),
                              name="res", dtype=dtype)
         else:
             res = tvm.extern(dst_shape_full, [res_5hd],
                              lambda ins, outs: five_2_four._split_dim_ir_fp16(
-                                 outs[0], ins[0], max_dim, shape_all),
+                                 outs[0], ins[0], max_dim, shape_all, 1),
                              name="res", dtype=dtype)
 
     # delete the lines: res_end = tvm.extern(dst_shape, [res],
@@ -772,13 +772,14 @@ def zn_2_nchw(src, dst, src_format, dst_format, kernel_name='zn_2_nchw'):
         n_true = _ceil_fill(n_i, n_ni)
         shape_zn = [c_1, h_i, w_i, n_true, c_0]
         shape_5hd = [n_true, c_1, h_i, w_i, c_0]
+        shape_5hd_1 = [n_i, c_1, h_i, w_i, c_0]
 
         data = tvm.placeholder(shape_zn, dtype=dtype, name="data")
 
         max_dim = max(dst_shape)
-        shape_all = functools.reduce(lambda x, y: x * y, shape_5hd[:])
+        shape_all = functools.reduce(lambda x, y: x * y, shape_5hd_1[:])
         perm = [3, 0, 1, 2, 4]
-        dst_shape_full = [n_true, c_i, h_i, w_i]
+        dst_shape_full = [n_i, c_i, h_i, w_i]
         sch, tensor_list = _tranpose_notchange_last_two(data, shape_5hd,
                                                         dst_shape_full,
                                                         dst_shape,

@@ -92,7 +92,7 @@ def _get_scalar_dtype():
 
 
 # pylint: disable=locally-disabled,too-many-locals,too-many-nested-blocks
-def _get_param_more_dim(tvm_ib, src_shape, dtype, max_dim, shape_all):
+def _get_param_more_dim(tvm_ib, src_shape, dtype, max_dim, shape_all, is_zn2nchw=0):
     """
     calculate parameters for more dim ir builder make function
 
@@ -108,7 +108,10 @@ def _get_param_more_dim(tvm_ib, src_shape, dtype, max_dim, shape_all):
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
     ub_ele = ub_bytes // float_size
     dim_ele = functools_reduce(lambda x, y: x*y, src_shape[2:])
-    num_dim_in_data = functools_reduce(lambda x, y: x*y, src_shape[0:2])
+    if is_zn2nchw:
+        num_dim_in_data = shape_all // dim_ele
+    else:
+        num_dim_in_data = functools_reduce(lambda x, y: x*y, src_shape[0:2])
     num_dim_one_core = ub_ele // dim_ele
     num_dim_one_group = num_dim_one_core*device_core_num
     num_group_index = num_dim_in_data // num_dim_one_group
@@ -500,14 +503,14 @@ def _func_more_dim(args):
                                     0, 1, 1, 0, 0))
 
 
-def _more_dim_ir(dst, data, max_dim, shape_all):
+def _more_dim_ir(dst, data, max_dim, shape_all, is_zn2nchw=0):
     """
     function of making ir node builder for more dim scene
 
     """
     tvm_ib = tvm.ir_builder.create()
     param = _get_param_more_dim(tvm_ib, data.shape, dst.dtype,
-                                max_dim, shape_all)
+                                max_dim, shape_all, is_zn2nchw)
 
     data_ub = _new_alloc(tvm_ib, dst.dtype,
                          param.get('num_dim_one_core')*param.get("dim_ele"),
@@ -562,7 +565,7 @@ def _more_dim_ir(dst, data, max_dim, shape_all):
     return tvm_ib.get()
 
 
-def _get_param_one_dim(tvm_ib, src_shape, dtype, max_dim, shape_all):
+def _get_param_one_dim(tvm_ib, src_shape, dtype, max_dim, shape_all, is_zn2nchw=0):
     """
     calculate parameters for one dim ir builder make function
 
@@ -575,7 +578,10 @@ def _get_param_one_dim(tvm_ib, src_shape, dtype, max_dim, shape_all):
     float_size = cce.cce_intrin.get_bit_len(dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
     dim_ele = functools_reduce(lambda x, y: x*y, src_shape[2:])
-    num_dim_in_data = functools_reduce(lambda x, y: x*y, src_shape[0:2])
+    if is_zn2nchw:
+        num_dim_in_data = shape_all // dim_ele
+    else:
+        num_dim_in_data = functools_reduce(lambda x, y: x*y, src_shape[0:2])
     num_row_in_dim = functools_reduce(lambda x, y: x*y, src_shape[2:4])
     num_dim_one_core = 1
     num_dim_one_group = num_dim_one_core*device_core_num
@@ -851,14 +857,14 @@ def _func_one_dim(args_one_dim):
         _ub_gm_one_dim(args)
 
 
-def _one_dim_ir(dst, data, max_dim, shape_all):
+def _one_dim_ir(dst, data, max_dim, shape_all, is_zn2nchw=0):
     """
     function of making ir node builder for one dim scene
 
     """
     tvm_ib = tvm.ir_builder.create()
     param = _get_param_one_dim(tvm_ib, data.shape, dst.dtype,
-                               max_dim, shape_all)
+                               max_dim, shape_all, is_zn2nchw)
     data_ub = _new_alloc(tvm_ib, dst.dtype,
                          param.get('num_dim_one_core')*param.get("dim_ele"),
                          "data_ub", scope=cce.scope_ubuf)
@@ -894,7 +900,7 @@ def _one_dim_ir(dst, data, max_dim, shape_all):
     return tvm_ib.get()
 
 
-def _get_param_split_dim(tvm_ib, src_shape, dtype, max_dim, shape_all):
+def _get_param_split_dim(tvm_ib, src_shape, dtype, max_dim, shape_all, is_zn2nchw=0):
     """
     calculate parameters for split dim ir builder make function
 
@@ -913,8 +919,12 @@ def _get_param_split_dim(tvm_ib, src_shape, dtype, max_dim, shape_all):
     ub_ele = ub_bytes // float_size
     num_row_one_core = ((ub_ele // (c_0 + 1)) // cp_align_len)*cp_align_len
     num_row_one_group = num_row_one_core*device_core_num
-    num_row_in_data = _ceil_fill(h_i*w_i, cp_align_len) * \
-                      functools_reduce(lambda x, y: x*y, src_shape[0:2])
+    if is_zn2nchw:
+        num_row_in_data = _ceil_fill(h_i*w_i, cp_align_len) * \
+                          (shape_all // functools_reduce(lambda x, y: x*y, src_shape[2:]))
+    else:
+        num_row_in_data = _ceil_fill(h_i*w_i, cp_align_len) * \
+                          functools_reduce(lambda x, y: x*y, src_shape[0:2])
     num_group_index = num_row_in_data // num_row_one_group
     num_group_mod = num_row_in_data % num_row_one_group
 
@@ -1515,14 +1525,14 @@ def _func_split_dim(args):
             _ub_gm_split_dim_one(args)
 
 
-def _split_dim_ir(dst, data, max_dim, shape_all):
+def _split_dim_ir(dst, data, max_dim, shape_all, is_zn2nchw=0):
     """
     function of making ir node builder for split dim scene
 
     """
     tvm_ib = tvm.ir_builder.create()
     param = _get_param_split_dim(tvm_ib, data.shape, dst.dtype,
-                                 max_dim, shape_all)
+                                 max_dim, shape_all, is_zn2nchw)
     c_0 = 16
     data_ub = _new_alloc(tvm_ib, dst.dtype, param.get('num_row_one_core')*c_0,
                          "data_ub", scope=cce.scope_ubuf)
@@ -1579,7 +1589,7 @@ def _split_dim_ir(dst, data, max_dim, shape_all):
 
 # pylint: disable = locally-disabled,too-many-arguments
 def _get_param_more_dim_fp16(tvm_ib, src_shape, dst_shape, dtype,
-                             max_dim, shape_all):
+                             max_dim, shape_all, is_zn2nchw=0):
     """
     calculate parameters for float16 more dim ir builder make function
 
@@ -1599,7 +1609,10 @@ def _get_param_more_dim_fp16(tvm_ib, src_shape, dst_shape, dtype,
     src_dim_space = _ceil_fill(h_i*w_i, c_0)*c_0
     src_dim_space_bytes = src_dim_space*float_size
 
-    num_dim_in_data = functools_reduce(lambda x, y: x*y, src_shape[0:2])
+    if is_zn2nchw:
+        num_dim_in_data = shape_all // functools_reduce(lambda x, y: x*y, src_shape[2:])
+    else:
+        num_dim_in_data = functools_reduce(lambda x, y: x*y, src_shape[0:2])
     num_dim_one_core = ub_half // src_dim_space_bytes
     num_dim_one_group = num_dim_one_core*device_core_num
     num_group_index = num_dim_in_data // num_dim_one_group
@@ -2171,14 +2184,14 @@ def _func_more_dim_ir_fp16(args):
                         0, 1, len_burst_core, 0, 0))
 
 
-def _more_dim_ir_fp16(dst, data, max_dim, shape_all):
+def _more_dim_ir_fp16(dst, data, max_dim, shape_all, is_zn2nchw=0):
     """
     function of making ir node builder for more dim float16 scene
 
     """
     tvm_ib = tvm.ir_builder.create()
     param = _get_param_more_dim_fp16(tvm_ib, data.shape, dst.shape,
-                                     dst.dtype, max_dim, shape_all)
+                                     dst.dtype, max_dim, shape_all, is_zn2nchw)
     input_ub = _new_alloc(tvm_ib, dst.dtype,
                           param.get('num_dim_one_core')*param.get(
                               "src_dim_space"),
@@ -2234,7 +2247,7 @@ def _more_dim_ir_fp16(dst, data, max_dim, shape_all):
 
 
 def _get_param_split_dim_fp16(tvm_ib, src_shape, dst_shape,
-                              dtype, max_dim, shape_all):
+                              dtype, max_dim, shape_all, is_zn2nchw=0):
     """
     calculate parameters for split dim float16 ir builder make function
 
@@ -2257,8 +2270,12 @@ def _get_param_split_dim_fp16(tvm_ib, src_shape, dst_shape,
     row_bytes = c_0*float_size
     num_row_one_core = (ub_half // row_bytes // c_0)*c_0
     num_row_one_group = num_row_one_core*device_core_num
-    num_row_in_data = _ceil_fill(h_i*w_i, c_0) \
-                      * functools_reduce(lambda x, y: x*y, src_shape[0:2])
+    if is_zn2nchw:
+        num_row_in_data = _ceil_fill(h_i*w_i, c_0) \
+                          * (shape_all // functools_reduce(lambda x, y: x*y, src_shape[2:]))
+    else:
+        num_row_in_data = _ceil_fill(h_i*w_i, c_0) \
+                          * functools_reduce(lambda x, y: x*y, src_shape[0:2])
     num_group_index = num_row_in_data // num_row_one_group
     num_group_mod = num_row_in_data - num_row_one_group*num_group_index
 
@@ -2709,7 +2726,7 @@ def _func_split_dim_ir_fp16(args):
             _ub_res_to_gm_three(args)
 
 
-def _split_dim_ir_fp16(dst, data, max_dim, shape_all):
+def _split_dim_ir_fp16(dst, data, max_dim, shape_all, is_zn2nchw=0):
     """
     function of making ir node builder for split dim float16 scene
 
@@ -2717,7 +2734,7 @@ def _split_dim_ir_fp16(dst, data, max_dim, shape_all):
     tvm_ib = tvm.ir_builder.create()
     c_0 = 16
     param = _get_param_split_dim_fp16(tvm_ib, data.shape, dst.shape,
-                                      dst.dtype, max_dim, shape_all)
+                                      dst.dtype, max_dim, shape_all, is_zn2nchw)
     input_ub = _new_alloc(tvm_ib, dst.dtype,
                           param.get('num_row_one_core')*c_0,
                           "input_ub", scope=cce.scope_ubuf)
