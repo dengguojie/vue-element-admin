@@ -647,6 +647,12 @@ class Dilation2D(Dilation2DBase):
 
         self.ho_start, self.ho_end, self.wo_start, self.wo_end = self.get_mid_ho_wo_range()
         self.tiling_params = {}
+        pad_flag = self.pad_left != 0 or self.pad_right != 0
+        move_flag = False
+        if pad_flag and self.w_in >= 16:
+            move_flag = True
+        self.move_by_row = move_flag
+        self.pad_w = self.pad_left + self.pad_right + self.w_in
 
     def do_tiling(self, tiling_shape, ub_size):
         """
@@ -823,6 +829,23 @@ class Dilation2D(Dilation2DBase):
         else:
             self.cut_w(ub_list, offset_list, num, out_offset)
 
+    def move_data(self, x_ub, ub_offset, x_index, n_burst):
+        """
+        move data from gm to ub
+        """
+        if self.move_by_row:
+            with self.instance.if_scope(tik.any(n_burst > 4095, self.w_in > 65535)):
+                with self.instance.for_range(0, n_burst) as h_i:
+                    self.instance.data_move(x_ub[ub_offset + h_i * self.pad_w * self.c0],
+                                            self.x_gm[x_index + h_i * self.w_in * self.c0], 0, 1,
+                                            self.w_in, 0, 0)
+            with self.instance.else_scope():
+                self.instance.data_move(x_ub[ub_offset], self.x_gm[x_index], 0, n_burst, self.w_in, 0,
+                                        self.pad_w - self.w_in)
+        else:
+            ub_index = ub_offset - self.pad_left * self.c0
+            self.instance.data_move(x_ub[ub_index], self.x_gm[x_index], 0, 1, n_burst * self.w_in, 0, 0)
+
     def expand_row(self, ub_list, h_in, start_list):
         """
         expand data by filter row, reduce row and reduce col
@@ -836,39 +859,55 @@ class Dilation2D(Dilation2DBase):
         blk_stride_list = [1, x_stride, 1]
 
         with self.instance.if_scope(tik.all(h_in >= 0, h_in < self.h_in)):
-            if self.wo_start > 0:
-                left_size = self.wo_start * w_size
-                self.vector_dup(expand_start, expand_ub, left_size, MIN_VAL)
-            if self.w_out - self.wo_end > 0:
-                right_size = (self.w_out - self.wo_end) * w_size
-                start_index = expand_start + self.wo_end * w_size
-                self.vector_dup(start_index, expand_ub, right_size, MIN_VAL)
-
-            if self.wo_start > 0:
-                for wo_i in range(0, self.wo_start):
-                    w_beg = wo_i * self.stride_w - self.pad_left
-                    fw_i = (self.pad_left - wo_i * self.stride_w + self.rate_w - 1) // self.rate_w
-                    num = self.filter_w - fw_i
-                    l_x = x_start + (w_beg + fw_i * self.rate_w) * self.c0
-                    l_expand = expand_start + wo_i * w_size + fw_i * self.c0
-                    l_filter = filter_start + fw_i * self.c0
-                    self.vector_add([l_expand, l_x, l_filter], ub_list, 1,
-                                    rep_stride_list, blk_stride_list, num * self.c0)
-            if self.wo_end - self.wo_start > 0:
-                mid_x = x_start + (self.wo_start * self.stride_w - self.pad_left) * self.c0
-                mid_expand = expand_start + self.wo_start * w_size
-                mid_filter = filter_start
-                self.vector_add([mid_expand, mid_x, mid_filter], ub_list, self.wo_end - self.wo_start,
+            if self.move_by_row:
+                self.vector_add(start_list, ub_list, self.w_out,
                                 rep_stride_list, blk_stride_list, self.filter_w * self.c0)
-            if self.w_out - self.wo_end > 0:
-                for wo_i in range(self.wo_end, self.w_out):
-                    w_beg = wo_i * self.stride_w - self.pad_left
-                    end = (self.w_in - w_beg + self.rate_w - 1) // self.rate_w
-                    r_x = x_start + w_beg * self.c0
-                    r_expand = expand_start + wo_i * w_size
-                    r_filter = filter_start
-                    self.vector_add([r_expand, r_x, r_filter], ub_list, 1,
-                                    rep_stride_list, blk_stride_list, end * self.c0)
+                if self.wo_start > 0:
+                    for wo_i in range(0, self.wo_start):
+                        fw_i = (self.pad_left - wo_i * self.stride_w + self.rate_w - 1) // self.rate_w
+                        l_expand = expand_start + wo_i * w_size
+                        self.vector_dup(l_expand, expand_ub, fw_i * self.c0, MIN_VAL)
+                if self.w_out - self.wo_end > 0:
+                    for wo_i in range(self.wo_end, self.w_out):
+                        w_beg = wo_i * self.stride_w - self.pad_left
+                        end = (self.w_in - w_beg + self.rate_w - 1) // self.rate_w
+                        num = self.filter_w - end
+                        r_expand = expand_start + wo_i * w_size + end * self.c0
+                        self.vector_dup(r_expand, expand_ub, num * self.c0, MIN_VAL)
+            else:
+                if self.wo_start > 0:
+                    left_size = self.wo_start * w_size
+                    self.vector_dup(expand_start, expand_ub, left_size, MIN_VAL)
+                if self.w_out - self.wo_end > 0:
+                    right_size = (self.w_out - self.wo_end) * w_size
+                    start_index = expand_start + self.wo_end * w_size
+                    self.vector_dup(start_index, expand_ub, right_size, MIN_VAL)
+
+                if self.wo_start > 0:
+                    for wo_i in range(0, self.wo_start):
+                        w_beg = wo_i * self.stride_w - self.pad_left
+                        fw_i = (self.pad_left - wo_i * self.stride_w + self.rate_w - 1) // self.rate_w
+                        num = self.filter_w - fw_i
+                        l_x = x_start + (w_beg + fw_i * self.rate_w) * self.c0
+                        l_expand = expand_start + wo_i * w_size + fw_i * self.c0
+                        l_filter = filter_start + fw_i * self.c0
+                        self.vector_add([l_expand, l_x, l_filter], ub_list, 1,
+                                        rep_stride_list, blk_stride_list, num * self.c0)
+                if self.wo_end - self.wo_start > 0:
+                    mid_x = x_start + (self.wo_start * self.stride_w - self.pad_left) * self.c0
+                    mid_expand = expand_start + self.wo_start * w_size
+                    mid_filter = filter_start
+                    self.vector_add([mid_expand, mid_x, mid_filter], ub_list, self.wo_end - self.wo_start,
+                                    rep_stride_list, blk_stride_list, self.filter_w * self.c0)
+                if self.w_out - self.wo_end > 0:
+                    for wo_i in range(self.wo_end, self.w_out):
+                        w_beg = wo_i * self.stride_w - self.pad_left
+                        end = (self.w_in - w_beg + self.rate_w - 1) // self.rate_w
+                        r_x = x_start + w_beg * self.c0
+                        r_expand = expand_start + wo_i * w_size
+                        r_filter = filter_start
+                        self.vector_add([r_expand, r_x, r_filter], ub_list, 1,
+                                        rep_stride_list, blk_stride_list, end * self.c0)
         with self.instance.else_scope():
             self.vector_dup(expand_start, expand_ub, h_size, MIN_VAL)
 
@@ -923,8 +962,10 @@ class Dilation2D(Dilation2DBase):
         c1_size = self.h_out * self.w_out * self.filter_w * self.c0
         h_size = self.w_out * self.filter_w * self.c0
 
-        self.instance.data_move(x_ub, self.x_gm[n_offset * self.x_offset_list[0]], 0, 1,
-                                n_num * self.x_offset_list[0] // self.block_size, 0, 0)
+        ub_offset = self.pad_left * self.c0
+        x_index = n_offset * self.x_offset_list[0]
+        w_in = self.pad_w if self.move_by_row else self.w_in
+        self.move_data(x_ub, ub_offset, x_index, n_num * self.c1 * self.h_in)
 
         with self.instance.for_range(0, self.filter_h) as fh_i:
             with self.instance.for_range(0, n_num * self.c1 * self.h_out) as id:
@@ -933,7 +974,9 @@ class Dilation2D(Dilation2DBase):
                 ho_i = id % (self.c1 * self.h_out) % self.h_out
                 h_in = ho_i * self.stride_h - self.pad_top + fh_i * self.rate_h
                 expand_start = (fh_i % 2) * fh_size + n_i * n_size + c1_i * c1_size + ho_i * h_size
-                x_start = n_i * self.x_offset_list[0] + c1_i * self.x_offset_list[1] + h_in * self.x_offset_list[2]
+                x_start = n_i * self.c1 * self.h_in * w_in * self.c0 + \
+                          c1_i * self.h_in * w_in * self.c0 + \
+                          h_in * w_in * self.c0
                 if not self.tiling_params["is_filter_all"]:
                     gm_index = c1_i * self.filter_offset_list[1] + fh_i * self.filter_offset_list[2]
                     self.instance.data_move(filter_ub, self.filter_gm[gm_index],
@@ -958,8 +1001,10 @@ class Dilation2D(Dilation2DBase):
         c1_size = self.h_out * self.w_out * self.filter_w * self.c0
         h_size = self.w_out * self.filter_w * self.c0
 
-        self.instance.data_move(x_ub, self.x_gm[n_offset * self.x_offset_list[0] + c1_offset * self.x_offset_list[1]],
-                                0, 1, c1_num * self.x_offset_list[1] // self.block_size, 0, 0)
+        ub_offset = self.pad_left * self.c0
+        x_index = n_offset * self.x_offset_list[0] + c1_offset * self.x_offset_list[1]
+        w_in = self.pad_w if self.move_by_row else self.w_in
+        self.move_data(x_ub, ub_offset, x_index, c1_num * self.h_in)
 
         with self.instance.for_range(0, self.filter_h) as fh_i:
             with self.instance.for_range(0, c1_num * self.h_out) as id:
@@ -967,7 +1012,8 @@ class Dilation2D(Dilation2DBase):
                 ho_i = id % self.h_out
                 h_in = ho_i * self.stride_h - self.pad_top + fh_i * self.rate_h
                 expand_start = (fh_i % 2) * fh_size + c1_i * c1_size + ho_i * h_size
-                x_start = c1_i * self.x_offset_list[1] + h_in * self.x_offset_list[2]
+                x_start = c1_i * self.h_in * w_in * self.c0 + \
+                          h_in * w_in * self.c0
                 if not self.tiling_params["is_filter_all"]:
                     gm_index = ((c1_offset + c1_i) % self.c1) * self.filter_offset_list[1] + fh_i * \
                                self.filter_offset_list[2]
@@ -1007,10 +1053,10 @@ class Dilation2D(Dilation2DBase):
         with self.instance.if_scope(h_len > h_max):
             h_len.set_as(h_max)
 
+        w_in = self.pad_w if self.move_by_row else self.w_in
         x_index = n_offset * self.x_offset_list[0] + c1_offset * self.x_offset_list[1] + h_beg * self.x_offset_list[2]
-        ub_index = x_h_offset * self.x_offset_list[2]
-        self.instance.data_move(x_ub[ub_index], self.x_gm[x_index],
-                                0, 1, h_len * self.x_offset_list[2] // self.block_size, 0, 0)
+        ub_offset = x_h_offset * w_in * self.c0 + self.pad_left * self.c0
+        self.move_data(x_ub, ub_offset, x_index, h_len)
         if not self.tiling_params["is_filter_all"]:
             self.instance.data_move(filter_ub, self.filter_gm[c1_offset * self.filter_offset_list[1]],
                                     0, 1, self.filter_offset_list[1] // self.block_size, 0, 0)
@@ -1020,7 +1066,7 @@ class Dilation2D(Dilation2DBase):
                 ho_i = h_offset + h_i
                 h_in = ho_i * self.stride_h - self.pad_top + fh_i * self.rate_h
                 expand_start = (fh_i % 2) * fh_size + h_i * h_size
-                x_start = (h_i * self.stride_h + fh_i * self.rate_h) * self.x_offset_list[2]
+                x_start = (h_i * self.stride_h + fh_i * self.rate_h) * w_in * self.c0
                 if self.tiling_params["is_filter_all"]:
                     filter_start = c1_offset * self.filter_offset_list[1] + fh_i * self.filter_offset_list[2]
                 else:
@@ -1128,42 +1174,21 @@ class Dilation2D(Dilation2DBase):
                 filter_start = fh_i * self.filter_offset_list[2]
 
             with self.instance.if_scope(tik.all(h_in >= 0, h_in < self.h_in)):
-                if self.pad_left > 0:
-                    with self.instance.if_scope(left_end > left_start):
-                        left_size = (left_end - left_start) * w_size
-                        self.vector_dup(expand_start, expand_ub, left_size, MIN_VAL)
-                if self.pad_right > 0:
-                    with self.instance.if_scope(right_end > right_start):
-                        right_size = (right_end - right_start) * w_size
-                        start_index = expand_start + (right_start - w_offset) * w_size
-                        self.vector_dup(start_index, expand_ub, right_size, MIN_VAL)
-
+                self.vector_add([expand_start, x_start, filter_start], ub_list, w_num,
+                                rep_stride_list, blk_stride_list, self.filter_w * self.c0)
                 if self.pad_left > 0:
                     with self.instance.if_scope(left_end > left_start):
                         with self.instance.for_range(left_start, left_end) as wo_i:
                             fw_i = (self.pad_left - wo_i * self.stride_w + self.rate_w - 1) // self.rate_w
-                            num = self.filter_w - fw_i
-                            l_x = x_start + (wo_i - w_offset) * self.stride_w * self.c0 + \
-                                  fw_i * self.rate_w * self.c0
-                            l_expand = expand_start + (wo_i - w_offset) * w_size + fw_i * self.c0
-                            l_filter = filter_start + fw_i * self.c0
-                            self.vector_add([l_expand, l_x, l_filter], ub_list, 1,
-                                            rep_stride_list, blk_stride_list, num * self.c0)
-                with self.instance.if_scope(mid_end > mid_start):
-                    mid_x = x_start + (mid_start - w_offset) * self.stride_w * self.c0
-                    mid_expand = expand_start + (mid_start - w_offset) * w_size
-                    mid_filter = filter_start
-                    self.vector_add([mid_expand, mid_x, mid_filter], ub_list, mid_end - mid_start,
-                                    rep_stride_list, blk_stride_list, self.filter_w * self.c0)
+                            l_expand = expand_start + (wo_i - w_offset) * w_size
+                            self.vector_dup(l_expand, expand_ub, fw_i * self.c0, MIN_VAL)
                 if self.pad_right > 0:
                     with self.instance.if_scope(right_end > right_start):
                         with self.instance.for_range(right_start, right_end) as wo_i:
                             end = (self.w_in - (wo_i * self.stride_w - self.pad_left) + self.rate_w - 1) // self.rate_w
-                            r_x = x_start + (wo_i - w_offset) * self.stride_w * self.c0
-                            r_expand = expand_start + (wo_i - w_offset) * w_size
-                            r_filter = filter_start
-                            self.vector_add([r_expand, r_x, r_filter], ub_list, 1,
-                                            rep_stride_list, blk_stride_list, end * self.c0)
+                            num = self.filter_w - end
+                            r_expand = expand_start + (wo_i - w_offset) * w_size + end * self.c0
+                            self.vector_dup(r_expand, expand_ub, num * self.c0, MIN_VAL)
             with self.instance.else_scope():
                 self.vector_dup(expand_start, expand_ub, w_num * w_size, MIN_VAL)
             self.reduce_h(fh_i, fh_size, expand_ub)
