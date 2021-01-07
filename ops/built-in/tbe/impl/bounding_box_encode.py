@@ -194,7 +194,7 @@ class BoundingBoxEncode():
         else:
             each_core_calcul_num = data_in_number - each_core_start_addr * (
                 self.core_num - 1)
-            if each_core_start_addr % self.data_num_in_each_block != 0:
+            if each_core_calcul_num % self.data_num_in_each_block != 0:
                 each_core_calcul_num = (
                     each_core_calcul_num // self.data_num_in_each_block + 1
                 ) * self.data_num_in_each_block
