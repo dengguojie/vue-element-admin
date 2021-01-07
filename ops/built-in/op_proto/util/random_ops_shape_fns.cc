@@ -24,11 +24,14 @@
 
 namespace ge {
 graphStatus RandomShape(Operator& op, const std::string& shape_name, const std::string out_name) {
+  std::vector<std::string> input_infer_depends = {shape_name};
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  op_desc->SetOpInferDepends(input_infer_depends);
   Tensor tensor;
   if (op.GetInputConstData(shape_name, tensor) != GRAPH_SUCCESS) {
-    std::string info = ": GetInputConstData failed.";
-    OP_LOGE(op.GetName().c_str(), "%s", info.c_str());
-    return GRAPH_FAILED;
+    TensorDesc output_desc = op.GetOutputDesc(out_name);
+    output_desc.SetShape(ge::Shape(ge::UNKNOWN_RANK));
+    return op.UpdateOutputDesc(out_name, output_desc);
   }
   Shape shape;
   if (MakeShapeFromShapeTensor(tensor, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {

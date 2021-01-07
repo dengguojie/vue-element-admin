@@ -177,9 +177,16 @@ IMPLEMT_INFERFUNC(InvertPermutation, InvertPermutationInfer) {
     return GRAPH_FAILED;
   }
 
+  std::vector<std::pair<int64_t, int64_t>> x_range;
+  auto status = op.GetInputDesc("x").GetShapeRange(x_range);
+  if (status != GRAPH_SUCCESS) {
+    return status;
+  }
+
   DataType type = op.GetInputDesc("x").GetDataType();
   TensorDesc y_desc = op.GetOutputDesc("y");
   y_desc.SetShape(op.GetInputDesc(0).GetShape());
+  y_desc.SetShapeRange(x_range);
   y_desc.SetDataType(type);
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
