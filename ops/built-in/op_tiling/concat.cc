@@ -38,13 +38,13 @@ static vector<vector<int64_t>> GetInputShapes(const TeOpParas& paras) {
     }
 
     if (input.arg_type == TA_LIST) {
-      OP_LOGI("concat", "TA_LIST");
+      OP_LOGD("concat", "TA_LIST");
       for (const auto& tensor : input.tensor) {
-        shapes.push_back(tensor.shape);
+        shapes.emplace_back(tensor.shape);
       }
     } else if (input.arg_type == TA_SINGLE) {
-      OP_LOGI("concat", "TA_SINGLE");
-      shapes.push_back(input.tensor[0].shape);
+      OP_LOGD("concat", "TA_SINGLE");
+      shapes.emplace_back(input.tensor[0].shape);
     }
   }
 
@@ -209,7 +209,7 @@ static bool GetCompileInfo(const nlohmann::json& op_info, const std::string& nam
  */
 bool ConcatV2Tiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& op_info,
                     OpRunInfo& runInfo) {
-  OP_LOGI(opType.c_str(), "ConcatV2Tiling running.");
+  OP_LOGD(opType.c_str(), "ConcatV2Tiling running.");
 
   vector<vector<int64_t>> input_shapes = GetInputShapes(opParas);
   if (input_shapes.empty()) {
@@ -267,7 +267,7 @@ bool ConcatV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
   // workspace, null for tik op
   std::vector<int64_t> workspace;
   runInfo.workspaces = workspace;
-  OP_LOGI(opType.c_str(), "tiling run success.");
+  OP_LOGD(opType.c_str(), "tiling run success.");
 
   return true;
 }
