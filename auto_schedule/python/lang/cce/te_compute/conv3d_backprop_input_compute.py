@@ -51,8 +51,8 @@ _KHWD_COEFF = 343
 _DEFAULT_MAX_SHAPE_NUM = 1000000
 
 # dilation must be in [1,255]
-DILATION_HW_MIN = 1
-DILATION_HW_MAX = 255
+_DILATION_HW_MIN = 1
+_DILATION_HW_MAX = 255
 
 # the bytes length of several dtype
 _BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
@@ -337,8 +337,8 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
                       _STRIDE_HW_MIN, _STRIDE_SIZE_HWD_MAX)
 
     # dilation value limit
-    _check_attr_range("dilation's H", dilation_h, DILATION_HW_MIN, DILATION_HW_MAX)
-    _check_attr_range("dilation's W", dilation_w, DILATION_HW_MIN, DILATION_HW_MAX)
+    _check_attr_range("dilation's H", dilation_h, _DILATION_HW_MIN, _DILATION_HW_MAX)
+    _check_attr_range("dilation's W", dilation_w, _DILATION_HW_MIN, _DILATION_HW_MAX)
 
     # Dedy value limit
     _check_attr_range("Dedy's H after expands", dedy_h * stride_h,
