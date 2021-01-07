@@ -55,7 +55,7 @@ def op_select_format(x, segment_ids, num_segments, y,
         input2_dtype = "int32,int32,int32,int32,int32,int32"
         input2_format = "ND,ND,ND,ND,ND,ND"
     elif input_dtype not in ("int8", "uint8") and len(segment_ids_shape) == 1 and not atomic_add:
-        input0_dtype = "float16,float16,,int32,int32"
+        input0_dtype = "float16,float16,int32,int32"
         input0_format = "NC1HWC0,ND,NC1HWC0,ND"
         input1_dtype = "int32,int32,int32,int32"
         input1_format = "ND,ND,ND,ND"
