@@ -98,12 +98,10 @@ COMMON_INFER_FUNC_REG(SigmoidCrossEntropyWithLogitsGrad, SigmoidCrossEntropyWith
 
 // -------------------SigmoidCrossEntropyWithLogits---------------------
 IMPLEMT_COMMON_INFERFUNC(SigmoidCrossEntropyWithLogitsInferShape) {
-  bool is_dynamic_output = true;
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "predict", "target", "loss", is_dynamic_output)) {
-    return GRAPH_FAILED;
+  if (TwoInOneOutDynamicInferNoBroadcast(op, "predict", "target", {"loss"})) {
+    return GRAPH_SUCCESS;
   }
-
-  return GRAPH_SUCCESS;
+  return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(SigmoidCrossEntropyWithLogits, SigmoidCrossEntropyWithLogitsInferShape);
