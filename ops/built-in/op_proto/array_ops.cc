@@ -1904,30 +1904,39 @@ IMPLEMT_INFERFUNC(Empty, EmptyInfer) {
 INFER_FUNC_REG(Empty, EmptyInfer);
 
 IMPLEMT_INFERFUNC(LowerBound, LowerBoundInfer) {
-  auto sorted_x_tensor = op.get_input_desc_sorted_x();
-  auto values_tensor = op.get_input_desc_values();
+  TensorDesc sorted_x_desc = op.GetInputDesc("sorted_x");
+  TensorDesc values_desc = op.GetInputDesc("values");
   Shape unused_shape;
-  if (WithRank(sorted_x_tensor, 2, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    ShapeErrReport(0, op.GetName(), DebugString(sorted_x_tensor.GetShape().GetDims()), "2D");
-    OP_LOGE(op.GetName().c_str(), "Input sorted_inputs rank must be 2.");
+  if (WithRank(sorted_x_desc, 2, unused_shape, op.GetName().c_str()) !=
+      GRAPH_SUCCESS) {
+    ShapeErrReport(0, op.GetName(),
+                   DebugString(sorted_x_desc.GetShape().GetDims()), "2D");
+    OP_LOGE(op.GetName().c_str(), "Input [sorted_x] rank must be 2.");
     return GRAPH_FAILED;
   }
-
-  if (WithRank(values_tensor, 2, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    ShapeErrReport(1, op.GetName(), DebugString(values_tensor.GetShape().GetDims()), "2D");
-    OP_LOGE(op.GetName().c_str(), "Input values rank must be 2.");
+  if (WithRank(values_desc, 2, unused_shape, op.GetName().c_str()) !=
+      GRAPH_SUCCESS) {
+    ShapeErrReport(1, op.GetName(),
+                   DebugString(values_desc.GetShape().GetDims()), "2D");
+    OP_LOGE(op.GetName().c_str(), "Input [values] rank must be 2.");
     return GRAPH_FAILED;
   }
 
   DataType out_type;
   if (op.GetAttr("out_type", out_type) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get Attr out_type error.");
+    OpsGetAttrErrReport(op.GetName(), "out_type");
+    OP_LOGE(op.GetName().c_str(), "Get attr [out_type] failed.");
     return GRAPH_FAILED;
   }
-  TensorDesc y_tensor = op.GetOutputDesc("y");
-  y_tensor.SetDataType(out_type);
-  y_tensor.SetShape(values_tensor.GetShape());
-  return op.UpdateOutputDesc("y", y_tensor);
+  TensorDesc y_desc = op.GetOutputDesc("y");
+  y_desc.SetDataType(out_type);
+  y_desc.SetShape(values_desc.GetShape());
+  if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
+    OpsOPUpdateErrReport(op.GetName(), "y");
+    OP_LOGE(op.GetName().c_str(), "Update [y] desc failed.");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(LowerBound, LowerBoundInfer);

@@ -58,6 +58,30 @@ graphStatus SetAttrsToShapesAndTypes(Operator& op,
   return GRAPH_SUCCESS;
 }
 
+graphStatus InferMapShapes(Operator& op,
+                           const std::string& dtypes,
+                           const std::string& out_name) {
+  std::vector<ge::DataType> list_type;
+  if (op.GetAttr(dtypes, list_type) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(op.GetName(), dtypes);
+    OP_LOGE(op.GetName().c_str(), "Get attr [%s] failed.", dtypes.c_str());
+    return GRAPH_FAILED;
+  }
+
+  for (size_t i = 0; i < list_type.size(); ++i) {
+    TensorDesc output_desc = op.GetDynamicOutputDesc(out_name, i);
+    output_desc.SetShape(Shape(ge::UNKNOWN_RANK));
+    output_desc.SetDataType(list_type[i]);
+    if (op.UpdateDynamicOutputDesc(out_name, i, output_desc) != GRAPH_SUCCESS) {
+      OpsOPUpdateErrReport(op.GetName(), out_name);
+      OP_LOGE(op.GetName().c_str(),
+              "Update [%s:%zu] desc failed.", out_name.c_str(), i);
+      return GRAPH_FAILED;
+    }
+  }
+  return GRAPH_SUCCESS;
+}
+
 graphStatus DequeueManyShape(Operator& op, const Shape& n_shape, const std::string& out_name) {
   auto operator_context = op.GetInferenceContext();
   std::vector<std::vector<ShapeAndType>> handle_shapes_and_types;
@@ -382,7 +406,12 @@ IMPLEMT_INFERFUNC(MapIncompleteSize, MapIncompleteSizeInfer) {
   TensorDesc output_desc = op.GetOutputDesc("size");
   output_desc.SetShape(scalar_shape);
   output_desc.SetDataType(DT_INT32);
-  return op.UpdateOutputDesc("size", output_desc);
+  if (op.UpdateOutputDesc("size", output_desc) != GRAPH_SUCCESS) {
+    OpsOPUpdateErrReport(op.GetName(), "size");
+    OP_LOGE(op.GetName().c_str(), "Update [size] desc failed.");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(MapIncompleteSize, MapIncompleteSizeInfer);
@@ -898,71 +927,19 @@ IMPLEMT_INFERFUNC(MapStage, MapStageInfer) {
 INFER_FUNC_REG(MapStage, MapStageInfer);
 
 IMPLEMT_INFERFUNC(MapUnstage, MapUnstageInfer) {
-  std::vector<ge::DataType> list_type;
-  if (op.GetAttr("dtypes", list_type) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to get attribute value.");
-    return GRAPH_FAILED;
-  }
-
-  size_t size = list_type.size();
-  graphStatus status;
-  for (size_t i = 1; i < size; ++i) {
-    TensorDesc output_desc = op.GetDynamicOutputDesc("values", i);
-    output_desc.SetShape(Shape(ge::UNKNOWN_SHAPE));
-    output_desc.SetDataType(list_type[i]);
-    status = op.UpdateDynamicOutputDesc("values", i, output_desc);
-    if (status != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "Failed to update values desc.");
-      return GRAPH_FAILED;
-    }
-  }
-  return GRAPH_SUCCESS;
+  return InferMapShapes(op, "dtypes", "values");
 }
 
 INFER_FUNC_REG(MapUnstage, MapUnstageInfer);
 
 IMPLEMT_INFERFUNC(MapUnstageNoKey, MapUnstageNoKeyInfer) {
-  std::vector<ge::DataType> list_type;
-  if (op.GetAttr("dtypes", list_type) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to get attribute value.");
-    return GRAPH_FAILED;
-  }
-  size_t size = list_type.size();
-  graphStatus status;
-  for (size_t i = 1; i < size; ++i) {
-    TensorDesc output_desc = op.GetDynamicOutputDesc("values", i);
-    output_desc.SetShape(Shape(ge::UNKNOWN_SHAPE));
-    output_desc.SetDataType(list_type[i]);
-    status = op.UpdateDynamicOutputDesc("values", i, output_desc);
-    if (status != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "Failed to update values desc.");
-      return GRAPH_FAILED;
-    }
-  }
-  return GRAPH_SUCCESS;
+  return InferMapShapes(op, "dtypes", "values");
 }
 
 INFER_FUNC_REG(MapUnstageNoKey, MapUnstageNoKeyInfer);
 
 IMPLEMT_INFERFUNC(MapPeek, MapPeekInfer) {
-  std::vector<ge::DataType> list_type;
-  if (op.GetAttr("dtypes", list_type) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to get attribute value.");
-    return GRAPH_FAILED;
-  }
-  size_t size = list_type.size();
-  graphStatus status;
-  for (size_t i = 1; i < size; ++i) {
-    TensorDesc output_desc = op.GetDynamicOutputDesc("values", i);
-    output_desc.SetShape(Shape(ge::UNKNOWN_SHAPE));
-    output_desc.SetDataType(list_type[i]);
-    status = op.UpdateDynamicOutputDesc("values", i, output_desc);
-    if (status != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "Failed to update values desc.");
-      return GRAPH_FAILED;
-    }
-  }
-  return GRAPH_SUCCESS;
+  return InferMapShapes(op, "dtypes", "values");
 }
 
 INFER_FUNC_REG(MapPeek, MapPeekInfer);
@@ -974,7 +951,8 @@ IMPLEMT_INFERFUNC(MapSize, MapSizeInfer) {
   output_desc.SetDataType(DT_INT32);
   output_desc.SetShape(scalar_shape);
   if (op.UpdateOutputDesc("size", output_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to update size desc.");
+    OpsOPUpdateErrReport(op.GetName(), "size");
+    OP_LOGE(op.GetName().c_str(), "Update [size] desc failed.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
