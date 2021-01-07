@@ -33,6 +33,26 @@ DEFAULT_MAX_SHAPE_NUM = 1000000
 # memory type
 L1FUSION_INPUT_CTR = 2
 
+# dilation must be in [1,255]
+DILATION_MIN = 1
+DILATION_MAX = 255
+
+# stride must be in [1,63]
+STRIDE_HW_MIN = 1
+STRIDE_HW_MAX = 63
+
+# pad must be in [0,255]
+PAD_MIN = 0
+PAD_MAX = 255
+
+# filterH, filterW must be in [1,255]
+FILTER_HW_MIN = 1
+FILTER_HW_MAX = 255
+
+INOUT_HW_MIN = 1
+INOUT_HW_MAX = 4096
+CONV1D_W_MAX = 2147483647
+
 
 def _cal_min_l1space(out_backprop,  # pylint: disable=invalid-name
                      weight, y, strides, dilations, pads):
@@ -122,7 +142,7 @@ def get_op_support_info( # pylint: disable=invalid-name,R0913,R0914,W0613
 
     strides: tuple/list of 4 integers
         filter move stride.
-    
+
     pads: tuple/list of 4 integers
         [pad_top, pad_bottom, pad_left, pad_right].
 
@@ -200,7 +220,6 @@ def get_op_support_info( # pylint: disable=invalid-name,R0913,R0914,W0613
     return op_cal_info_in_json
 
 
-
 def _check_conv2dbp_input_para(  # pylint: disable=W0622,C0103,R0913,R0914
     filter,
     out_backprop,
@@ -209,7 +228,7 @@ def _check_conv2dbp_input_para(  # pylint: disable=W0622,C0103,R0913,R0914
     strides,
     dilations,
     data_format,
-    topi_flag=0,
+    topi_flag=False,
 ):
     """
     check the inputpara and get input shape
@@ -239,14 +258,14 @@ def _check_conv2dbp_input_para(  # pylint: disable=W0622,C0103,R0913,R0914
         Default to "NHWC".
 
     topi_flag: input para from topi or compute
-        0: compute;1: topi. Default to 0.
+        False: compute; True: topi. Default to False.
 
     Returns
     -------
     res: the shape, strides, dilations
     """
 
-    if topi_flag == 1:
+    if topi_flag:
         ori_shape_filters = filter.get("ori_shape")
         ori_shape_out_backprop = out_backprop.get("ori_shape")
         ori_shape_res = y.get("ori_shape")
@@ -288,6 +307,168 @@ def _check_conv2dbp_input_para(  # pylint: disable=W0622,C0103,R0913,R0914
     dilations = util_deconv_comm.get_shape_dilation(data_format, dilations)
 
     return [shape_filters, shape_out_backprop, shape_res, strides, dilations]
+
+
+def _support_situation(  # pylint: disable=W0622,C0103,R0913,R0914
+    filter,
+    out_backprop,
+    y,
+    input_size,
+    strides,
+    pads,
+    dilations,
+    groups,
+    data_format,
+    kernel_name):
+
+    """
+    check the op support situation:
+
+    | Name             | Field    | Scope
+    -------------------|----------|--------------
+    | input_size       | H or W   | [1, 4096]
+    -------------------|----------|--------------
+    | Filter           | H or W   | [1, 255]
+    -------------------|----------|--------------
+    | out_backprop     | H or W   | [1, 4096]
+    -------------------|----------|--------------
+    | y(fmap)          | H or W   | [1, 4096]
+    -------------------|----------|--------------
+    | Stride           | H or W   | [1, 63]
+    -------------------|----------|--------------
+    | Dilation         | H or W   | [1, 255]
+
+    batch_input_size == batch_out_backprop
+    batch_filter == channel_out_backprop
+    channel_filter == channel_input_size * groups
+    out_backprop_height == (fmap_height + pad_top + pad_bottom -
+                          (dilation_h * (filter_height - 1) + 1))
+                           / stride_h + 1
+
+    out_backprop_width == (fmap_width + pad_left + pad_right -
+                         (dilation_w * (filter_width - 1) + 1))
+                          / stride_w + 1
+    """
+
+    para_check.check_kernel_name(kernel_name)
+    res = _check_conv2dbp_input_para(
+    filter,
+    out_backprop,
+    y,
+    input_size,
+    strides,
+    dilations,
+    data_format,
+    topi_flag=True,
+    )
+    shape_filters, shape_out_backprop, shape_res, strides, dilations = res
+
+    util_deconv_comm.check_equal_rule(shape_out_backprop[0], shape_res[0],
+                                      "batch of out_backprop", "batch of y")
+    util_deconv_comm.check_equal_rule(shape_out_backprop[1], shape_filters[0],
+                                      "channel of out_backprop", "batch of filter")
+    util_deconv_comm.check_equal_rule(shape_res[1], shape_filters[1] * groups,
+                                      "channel of y", "channel of filter * groups")
+    if groups == 0:
+        args_dict = {
+            "errCode": "E60108",
+            "reason": "groups can not be 0",
+        }
+        raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+    if shape_out_backprop[1] % groups != 0:
+        args_dict = {
+            "errCode": "E60108",
+            "reason": "channel of out_backprop % groups must be 0",
+        }
+        raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+    if input_size[1] % groups != 0:
+        args_dict = {
+            "errCode": "E60108",
+            "reason": "channel of y % groups must be 0",
+        }
+        raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+    util_deconv_comm.check_attr_range("dilations's H", dilations[2], DILATION_MIN, DILATION_MAX)
+    util_deconv_comm.check_attr_range("dilations's W", dilations[3], DILATION_MIN, DILATION_MAX)
+    util_deconv_comm.check_attr_range("strides's H", strides[0], STRIDE_HW_MIN, STRIDE_HW_MAX)
+    util_deconv_comm.check_attr_range("strides's W", strides[1], STRIDE_HW_MIN, STRIDE_HW_MAX)
+
+    util_deconv_comm.check_attr_range("filter's H", shape_filters[2], FILTER_HW_MIN, FILTER_HW_MAX)
+    util_deconv_comm.check_attr_range("filter's W", shape_filters[3], FILTER_HW_MIN, FILTER_HW_MAX)
+
+    pads = util_deconv_comm.get_padlist(pads, shape_res, strides, shape_filters, dilations)
+    pad_up, pad_down, pad_left, pad_right = pads
+    filter_h, filter_w = shape_filters[2:]
+    dedy_h, dedy_w = shape_out_backprop[2:]
+    fmap_h, fmap_w = shape_res[2:]
+
+    filter_h_dilation = (filter_h - 1) * dilations[2] + 1
+    filter_w_dilation = (filter_w - 1) * dilations[3] + 1
+    fmap_h_padding = fmap_h + pad_up + pad_down
+    fmap_w_padding = fmap_w + pad_left + pad_right
+    inout_w_max =  INOUT_HW_MAX
+    if fmap_h_padding == 1 and filter_h_dilation == 1 and strides[0] == 1:
+        inout_w_max = CONV1D_W_MAX
+
+    util_deconv_comm.check_attr_range("out_backprop's H", shape_out_backprop[2],
+                                      INOUT_HW_MIN, INOUT_HW_MAX)
+    util_deconv_comm.check_attr_range("out_backprop's W", shape_out_backprop[3],
+                                      INOUT_HW_MIN, inout_w_max)
+    util_deconv_comm.check_attr_range("y's H", shape_res[2], INOUT_HW_MIN, INOUT_HW_MAX)
+    util_deconv_comm.check_attr_range("y's W", shape_res[3], INOUT_HW_MIN, inout_w_max)
+    util_deconv_comm.check_attr_range("out_backprop's H after expands", dedy_h * strides[0],
+                                      INOUT_HW_MIN, INOUT_HW_MAX)
+    if filter_h == 1 and filter_w == 1:
+        util_deconv_comm.check_attr_range("out_backprop's W after expands",
+                                          dedy_w * strides[0] * strides[1],
+                                          INOUT_HW_MIN, inout_w_max)
+    else:
+        util_deconv_comm.check_attr_range("out_backprop's W after expands", dedy_w * strides[1],
+                                          INOUT_HW_MIN, inout_w_max)
+
+    if ((fmap_h - filter_h_dilation + pad_up + pad_down) // strides[0] + 1) != dedy_h:
+        args_dict = {
+            "errCode": "E60024",
+        }
+        raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+    if ((fmap_w - filter_w_dilation + pad_left + pad_right) // strides[1] + 1) != dedy_w:
+        args_dict = {
+            "errCode": "E60025",
+        }
+        raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+
+
+def check_supported(  # pylint: disable=W0622,C0103,R0913,R0914
+    filter,
+    out_backprop,
+    y,
+    input_size,
+    strides,
+    pads,
+    dilations=(1, 1, 1, 1),
+    groups=1,
+    data_format="NHWC",
+    kernel_name="conv2d_backprop_input",):
+
+    """
+    check the op support situation
+    """
+
+    try:
+        _support_situation(
+            filter,
+            out_backprop,
+            y,
+            input_size,
+            strides,
+            pads,
+            dilations,
+            groups,
+            data_format,
+            kernel_name)
+        return True
+    except RuntimeError as e:
+        print(e)
+        return False
 
 
 @para_check.check_op_params(
@@ -404,7 +585,7 @@ def conv2d_backprop_input_d(  # pylint: disable=W0622,C0103,R0913,R0914
         strides,
         dilations,
         data_format,
-        topi_flag=1,
+        topi_flag=True,
     )
     shape_filters, shape_out_backprop, shape_res, strides, dilations = res
 
@@ -497,7 +678,7 @@ def conv2d_backprop_input_d_compute(  # pylint: disable=C0103,W0622,R0913,R0914
         strides,
         dilations,
         data_format,
-        topi_flag=0,
+        topi_flag=False,
     )
     shape_filters, shape_out_backprop, shape_res, strides, dilations = res
 

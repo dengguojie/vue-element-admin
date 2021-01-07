@@ -114,6 +114,22 @@ def _gen_trans_data_case(
     }
 
 
+def test_op_check_supported(test_arg):
+	from impl.conv2d_backpropfilter_d import check_supported
+	out_backprop = {"ori_shape": (1, 32, 3, 3), "dtype": "float16", "ori_format": "NCHW"}
+	y = {"ori_shape": (32, 16, 1, 1), "dtype": "float16", "ori_format": "NCHW"}
+	x = {"ori_shape": (1, 16, 5, 5), "dtype": "float16", "ori_format": "NCHW"}
+	filter_size = (32, 16, 1, 1)
+	check_supported(x, out_backprop, y, input_size, (1, 1, 2, 2), (0, 0, 0, 0),
+	                dilations=(1, 1, 1, 1), groups=1, data_format="NCHW",
+	                kernel_name="conv2d_backprop_filter")
+
+
+
+def _gen_conv2d_bp_filter_check_support_case():
+    ut_case.add_cust_test_func("Ascend910A", test_func=test_op_check_supported)
+
+
 def _test_get_op_support_info(test_arg):
     op_info_testcases = conv2d_bp_filter_ut_testcase.op_support_info_testcase
     for testcase in op_info_testcases:
@@ -130,6 +146,7 @@ def _gen_conv2d_bp_filter_op_case():
 
 
 _gen_conv2d_bp_filter_op_case()
+_gen_conv2d_bp_filter_check_support_case
 
 
 if __name__ == "__main__":

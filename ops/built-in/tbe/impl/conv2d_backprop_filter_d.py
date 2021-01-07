@@ -287,19 +287,7 @@ def get_op_support_info(
     return op_cal_info_in_json
 
 
-@para_check.check_op_params(
-    para_check.REQUIRED_INPUT,
-    para_check.REQUIRED_INPUT,
-    para_check.REQUIRED_OUTPUT,
-    para_check.REQUIRED_ATTR_LIST_INT,
-    para_check.REQUIRED_ATTR_LIST_INT,
-    para_check.REQUIRED_ATTR_LIST_INT,
-    para_check.OPTION_ATTR_LIST_INT,
-    para_check.OPTION_ATTR_INT,
-    para_check.OPTION_ATTR_STR,
-    para_check.KERNEL_NAME,
-)
-def conv2d_backprop_filter_d(
+def check_supported(  # pylint: disable=W0622,C0103,R0913,R0914
     x,
     out_backprop,
     y,
@@ -309,49 +297,90 @@ def conv2d_backprop_filter_d(
     dilations=(1, 1, 1, 1),
     groups=1,
     data_format="NHWC",
-    kernel_name="conv2d_backprop_filter",
-):
+    kernel_name="conv2d_backprop_filter"):
+
     """
-    algorithm: conv2d_backprop_filter
+    check the op support situation:
 
-    Parameters
-    ----------
-    x: dict with keys(ori_shape, ori_format, shape, format, dtype)
-        input feature map tensor.
+    | Name             | Field    | Scope
+    -------------------|----------|--------------
+    | x                | H or W   | [1, 4096]
+    -------------------|----------|--------------
+    | out_backprop     | H or W   | [1, 4096]
+    -------------------|----------|--------------
+    | filter_size      | H or W   | [1, 255]
+    -------------------|----------|--------------
+    | y(filter)        | H or W   | [1, 255]
+    -------------------|----------|--------------
+    | Stride           | H or W   | [1, 63]
+    -------------------|----------|--------------
+    | Dilation         | H or W   | [1, 255]
 
-    out_backprop: dict with keys(ori_shape, ori_format, shape, format, dtype)
-        input weight tensor.
+    In Ascend910, out_backprop's H and W not support 1
+    when fmap_h + pad_top + pad_bottom != (filter_height - 1) * dilation_h + 1
+    batch_x == batch_out_backprop
+    batch_filter == channel_out_backprop
+    channel_filter == channel_x * groups
+    out_backprop_height == (fmap_height + pad_top + pad_bottom -
+                          (dilation_h * (filter_height - 1) + 1))
+                           / stride_h + 1
 
-    y: dict with keys(ori_shape, ori_format, shape, format, dtype)
-        output tensor, dtype must be assigned.
+    out_backprop_width == (fmap_width + pad_left + pad_right -
+                         (dilation_w * (filter_width - 1) + 1))
+                          / stride_w + 1
+    """
 
-    filter_size: tuple/list of 4 integers
-        The shape of filter. 4-D with shape [filter_height, filter_width, in_channels,
-        out_channels] or [out_channels, filter_height, filter_width, in_channels] or
-        [out_channels, in_channel, filter_height, filter_width].
+    try:
+        res = _check_shape_and_format(x,
+                                      out_backprop,
+                                      y,
+                                      filter_size,
+                                      strides,
+                                      pads,
+                                      dilations,
+                                      groups,
+                                      data_format)
+        [shape_x,
+         shape_out_backprop,
+         shape_res,
+         strides,
+         dilations,
+         x_dtype,
+         out_backprop_dtype,
+         res_dtype] = res
 
-    strides: tuple/list of 2 integers
-        filter move stride.
+        check_conv2dbp_filter_params(
+            shape_x,
+            shape_out_backprop,
+            filter_sizes,
+            strides,
+            pads,
+            dilations,
+            groups,
+            x_dtype,
+            out_backprop_dtype,
+            res_dtype,
+            kernel_name)
+        return True
+    except RuntimeError as e:
+        print(e)
+        return False
 
-    pads: tuple/list of 4 integers
-        [pad_top, pad_bottom, pad_left, pad_right].
 
-    dilations: tuple/list of 4 integers
-        filter expand size of dilated conv2d_backprop_filter. Default to (1, 1, 1, 1).
+def _check_shape_and_format(  # pylint: disable=W0622,C0103,R0913,R0914
+    x,
+    out_backprop,
+    y,
+    filter_size,
+    strides,
+    pads,
+    dilations,
+    groups,
+    data_format
+    ):
 
-    groups: int
-        param for group conv2d_backprop_filter. Default to 1.
-
-    data_format: str
-        input data format. Specify the data format of the input and output data.
-        Default to "NHWC".
-
-    kernel_name: str
-        kernel name. Default to "conv2d_backprop_filter".
-
-    Returns
-    -------
-    None
+    """
+    check the shape dims, format and get NCHW format shape
     """
 
     def _check_inputs_rules():
@@ -477,6 +506,101 @@ def conv2d_backprop_filter_d(
         )
         dict_args["format"] = ori_format_res
         raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+    return [shape_x,
+            shape_out_backprop,
+            shape_res,
+            strides,
+            dilations,
+            x_dtype,
+            out_backprop_dtype,
+            res_dtype]
+
+
+@para_check.check_op_params(
+    para_check.REQUIRED_INPUT,
+    para_check.REQUIRED_INPUT,
+    para_check.REQUIRED_OUTPUT,
+    para_check.REQUIRED_ATTR_LIST_INT,
+    para_check.REQUIRED_ATTR_LIST_INT,
+    para_check.REQUIRED_ATTR_LIST_INT,
+    para_check.OPTION_ATTR_LIST_INT,
+    para_check.OPTION_ATTR_INT,
+    para_check.OPTION_ATTR_STR,
+    para_check.KERNEL_NAME,
+)
+def conv2d_backprop_filter_d(
+    x,
+    out_backprop,
+    y,
+    filter_size,
+    strides,
+    pads,
+    dilations=(1, 1, 1, 1),
+    groups=1,
+    data_format="NHWC",
+    kernel_name="conv2d_backprop_filter",
+    ):
+    """
+    algorithm: conv2d_backprop_filter
+
+    Parameters
+    ----------
+    x: dict with keys(ori_shape, ori_format, shape, format, dtype)
+        input feature map tensor.
+
+    out_backprop: dict with keys(ori_shape, ori_format, shape, format, dtype)
+        input weight tensor.
+
+    y: dict with keys(ori_shape, ori_format, shape, format, dtype)
+        output tensor, dtype must be assigned.
+
+    filter_size: tuple/list of 4 integers
+        The shape of filter. 4-D with shape [filter_height, filter_width, in_channels,
+        out_channels] or [out_channels, filter_height, filter_width, in_channels] or
+        [out_channels, in_channel, filter_height, filter_width].
+
+    strides: tuple/list of 2 integers
+        filter move stride.
+
+    pads: tuple/list of 4 integers
+        [pad_top, pad_bottom, pad_left, pad_right].
+
+    dilations: tuple/list of 4 integers
+        filter expand size of dilated conv2d_backprop_filter. Default to (1, 1, 1, 1).
+
+    groups: int
+        param for group conv2d_backprop_filter. Default to 1.
+
+    data_format: str
+        input data format. Specify the data format of the input and output data.
+        Default to "NHWC".
+
+    kernel_name: str
+        kernel name. Default to "conv2d_backprop_filter".
+
+    Returns
+    -------
+    None
+    """
+
+    res = _check_shape_and_format(x,
+                                  out_backprop,
+                                  y,
+                                  filter_size,
+                                  strides,
+                                  pads,
+                                  dilations,
+                                  groups,
+                                  data_format)
+    [shape_x,
+     shape_out_backprop,
+     shape_res,
+     strides,
+     dilations,
+     x_dtype,
+     out_backprop_dtype,
+     res_dtype] = res
+
     _conv2d_backprop_filter_cce(
         shape_x,
         shape_out_backprop,
@@ -538,7 +662,7 @@ def check_conv2dbp_filter_params(
     out_backprop_dtype,
     res_dtype,
     kernel_name,
-):
+    ):
     """
     The params check function of conv2d_backprop_filter
 

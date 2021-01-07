@@ -199,7 +199,11 @@ def _lcm(param1, param2):
     return temp // param2
 
 
-def _check_equal_rule(param1, param2, param1_name, param2_name):
+def check_equal_rule(param1, param2, param1_name, param2_name):
+    """
+    param1 must equal to param2,
+    otherwise raise RuntimeError
+    """
     if param1 != param2:
         args_dict = {
                 "errCode": "E60002",
@@ -231,14 +235,14 @@ def calculate_group(out_backprop, input_size, w_shape_nchw, groups, filter_dtype
     c0_size = cce_params.C0_SIZE
     c0_size_k = cce_params.CUBE_MKN[filter_dtype]['mac'][1]
     #groups in w's N and dx's C, so dx_c_ori is filter_c, dy_c_ori is filter_N/groups.
-    _check_equal_rule(out_backprop[1],
-                      w_shape_nchw[0],
-                      "channel of out_backprop",
-                      "batch of filter")
-    _check_equal_rule(input_size[1],
-                      w_shape_nchw[1] * groups,
-                      "channel of y",
-                      "channel of filter * groups")
+    check_equal_rule(out_backprop[1],
+                     w_shape_nchw[0],
+                     "channel of out_backprop",
+                     "batch of filter")
+    check_equal_rule(input_size[1],
+                     w_shape_nchw[1] * groups,
+                     "channel of y",
+                     "channel of filter * groups")
     dx_c_ori = w_shape_nchw[1]
     dy_c_ori = w_shape_nchw[0] // groups
     filter_batch_ori = w_shape_nchw[0] // groups
@@ -382,6 +386,43 @@ def get_shape_res(ori_format_res, ori_shape_res):
     return shape_res
 
 
+def check_attr_range(attr_name, attr_value, attr_min=None, attr_max=None):
+    """
+    check the parameter size
+    """
+    if attr_min is None and attr_max is None:
+        return
+    if not attr_min is None:
+        if attr_value > attr_max:
+            args_dict = {
+                "errCode": "E60114",
+                "reason": "{} exceed max_value."
+                          " max_value={}.".format(attr_name, attr_max),
+                "value": "attr_value = {}".format(attr_value)
+            }
+            raise RuntimeError(args_dict,
+                               err_man.get_error_message(args_dict))
+    elif not attr_max is None:
+        if attr_value < attr_min:
+            args_dict = {
+                "errCode": "E60114",
+                "reason": "{} less than min_value. "
+                          "min_value={}.".format(attr_name, attr_min),
+                "value": "attr_value = {}".format(attr_value)
+            }
+            raise RuntimeError(args_dict,
+                               err_man.get_error_message(args_dict))
+    elif attr_value < attr_min or attr_value > attr_max:
+        args_dict = {
+            "errCode": "E60011",
+            "range": "[{},{}]".format(attr_min, attr_max),
+            "attr_name": attr_name,
+            "value": attr_value
+        }
+        raise RuntimeError(args_dict,
+                           err_man.get_error_message(args_dict))
+
+
 @para_check.check_input_type(  # pylint: disable=R0913, R0914, R0915
     (list, tuple), (list, tuple), (list, tuple),
     (list, tuple), (str, list, tuple), (list, tuple),
@@ -440,39 +481,6 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
     Returns : All transformed params.
     ----------
     """
-
-    def _check_attr_range(attr_name, attr_value, attr_min=None, attr_max=None):
-        if not attr_min and not attr_max:
-            return
-        if not attr_min:
-            if attr_value > attr_max:
-                args_dict = {
-                    "errCode": "E60114",
-                    "reason": "{} exceed max_value."
-                              " max_value={}.".format(attr_name, attr_max),
-                    "value": "attr_value = {}".format(attr_value)
-                }
-                raise RuntimeError(args_dict,
-                                   err_man.get_error_message(args_dict))
-        elif not attr_max:
-            if attr_value < attr_min:
-                args_dict = {
-                    "errCode": "E60114",
-                    "reason": "{} less than min_value. "
-                              "min_value={}.".format(attr_name, attr_min),
-                    "value": "attr_value = {}".format(attr_value)
-                }
-                raise RuntimeError(args_dict,
-                                   err_man.get_error_message(args_dict))
-        elif attr_value < attr_min or attr_value > attr_max:
-            args_dict = {
-                "errCode": "E60011",
-                "range": "[{},{}]".format(attr_min, attr_max),
-                "attr_name": attr_name,
-                "value": attr_value
-            }
-            raise RuntimeError(args_dict,
-                               err_man.get_error_message(args_dict))
 
     def _check_64bits_limitation(attr_name, attr_value, dtype=None):
         if dtype is None:
@@ -813,32 +821,32 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
         _check_shape_relation()
 
         # Dedy value limit
-        _check_attr_range("out_backprop's H after expands", dedy_h * stride_h,
-                        dedy_hw_min, dedy_hw_max)
+        check_attr_range("out_backprop's H after expands", dedy_h * stride_h,
+                         dedy_hw_min, dedy_hw_max)
         if filter_h == 1 and filter_w == 1:
-            _check_attr_range("out_backprop's W after expands",
-                            dedy_w * stride_w * stride_h,
-                            dedy_hw_min, dedy_hw_max)
+            check_attr_range("out_backprop's W after expands",
+                             dedy_w * stride_w * stride_h,
+                             dedy_hw_min, dedy_hw_max)
         else:
-            _check_attr_range("out_backprop's W after expands", dedy_w * stride_w,
-                            dedy_hw_min, dedy_hw_max)
+            check_attr_range("out_backprop's W after expands", dedy_w * stride_w,
+                             dedy_hw_min, dedy_hw_max)
 
     # filter value limit
-    _check_attr_range("filter's H", filter_h, FILTER_HW_MIN, FILTER_HW_MAX)
-    _check_attr_range("filter's W", filter_w, FILTER_HW_MIN, FILTER_HW_MAX)
+    check_attr_range("filter's H", filter_h, FILTER_HW_MIN, FILTER_HW_MAX)
+    check_attr_range("filter's W", filter_w, FILTER_HW_MIN, FILTER_HW_MAX)
 
     if dynamic_mode is None:
         # Fmap value limit
-        _check_attr_range("y's H", fmap_h, fmap_hw_min, fmap_hw_max)
-        _check_attr_range("y's W", fmap_w, fmap_hw_min, fmap_hw_max)
+        check_attr_range("y's H", fmap_h, fmap_hw_min, fmap_hw_max)
+        check_attr_range("y's W", fmap_w, fmap_hw_min, fmap_hw_max)
 
     # stride value limit
-    _check_attr_range("stride's H", stride_h, STRIDE_HW_MIN, STRIDE_HW_MAX)
-    _check_attr_range("stride's W", stride_w, STRIDE_HW_MIN, STRIDE_HW_MAX)
+    check_attr_range("stride's H", stride_h, STRIDE_HW_MIN, STRIDE_HW_MAX)
+    check_attr_range("stride's W", stride_w, STRIDE_HW_MIN, STRIDE_HW_MAX)
 
     # dilation value limit
-    _check_attr_range("dilations's H", dilation_h, DILATION_MIN, DILATION_MAX)
-    _check_attr_range("dilations's W", dilation_w, DILATION_MIN, DILATION_MAX)
+    check_attr_range("dilations's H", dilation_h, DILATION_MIN, DILATION_MAX)
+    check_attr_range("dilations's W", dilation_w, DILATION_MIN, DILATION_MAX)
 
     # Third : value check, Mainly required by the convolution rule
     if dynamic_mode != "dynamic_hw":
