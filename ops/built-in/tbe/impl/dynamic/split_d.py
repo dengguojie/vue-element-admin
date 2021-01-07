@@ -15,7 +15,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 split_d
 """
-import math
 from te import tik
 from te import platform as tbe_platform
 import te.lang.dynamic
@@ -37,7 +36,7 @@ EIGHT_BIT = 8
 BLOCK_BYTES = 32
 
 
-# pylint: disable=unused-argument,invalid-name
+# pylint: disable=unused-argument,invalid-name,no-self-use
 def op_select_format(x, y, split_dim, num_split, kernel_name="split_d"):
     """
     select format dynamically

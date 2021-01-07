@@ -38,7 +38,7 @@ LAST_ORDER = 13
 FIRST_FACTOR = -1.0 / 6.0
 
 
-# pylint: disable=invalid-name
+# pylint: disable=invalid-name,too-many-locals
 def _sin(x):
     """
     algorithm: sin

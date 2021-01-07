@@ -27,6 +27,7 @@ from impl.util import util_select_op_base
 
 
 # pylint: disable=redefined-outer-name, too-many-arguments, E1101
+# pylint: disable=unused-argument,too-many-locals
 def op_select_format(input_x, output_y, operation=1, axis=0, coeff=1.0, kernel_name="reduction"):
     """
     support to 5HD format

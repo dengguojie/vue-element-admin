@@ -23,7 +23,7 @@ from te.utils import shape_util
 from te import tvm
 
 
-# pylint: disable=locally-disabled,unused-argument
+# pylint: disable=locally-disabled,unused-argument,too-many-locals,redefined-argument-from-local
 def floor_div_compute(input_x, input_y, output_z, kernel_name='floor_div'):
     """
        floordiv compute

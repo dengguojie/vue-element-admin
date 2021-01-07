@@ -18,12 +18,13 @@ mul_no_nan
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
 from te.utils import para_check
 from te.utils import shape_util
+from topi import generic
+from topi.cce import util
 
 
+# pylint: disable=pointless-string-statement,unused-argument,invalid-name,too-many-locals
 @fusion_manager.register("mul_no_nan")
 def mul_no_nan_compute(input_x1, input_x2, output_y, kernel_name="mul_no_nan"):
     """

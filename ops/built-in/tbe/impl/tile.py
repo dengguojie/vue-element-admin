@@ -18,6 +18,7 @@ tile_d
 from te.utils import para_check
 
 
+# pylint: disable=unnecessary-pass
 # pylint: disable=unused-argument
 def check_supported(input_x, input_m, output_x, kernel_name="tile"):
     """

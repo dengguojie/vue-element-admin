@@ -33,12 +33,16 @@ SHAPE_SIZE_LIMIT = 200000000
 
 
 # pylint: disable = unused-argument
+# pylint: disable=too-many-arguments,too-many-locals
 def get_op_support_info(input_x,
                         output1,
                         output2,
                         attr1,
                         attr2=True,
                         kernel_name="square_sum_v2"):
+    """
+    get_op_support_info
+    """
     shape_x = shape_util.shape_to_list(input_x.get("shape"))
     axis_d = []
     for i, _ in enumerate(shape_x):

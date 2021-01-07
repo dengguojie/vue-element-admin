@@ -51,6 +51,7 @@ def _ceil_fill(value, block):
     return _ceil_div(value, block)*block
 
 
+# pylint: disable=unnecessary-comprehension,undefined-variable,inconsistent-return-statements
 def _get_vnchwconv_ub_size(col_size, dtype):
     """
     get the ubuf size for vnchwconv branch

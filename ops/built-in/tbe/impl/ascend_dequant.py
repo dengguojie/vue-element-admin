@@ -22,12 +22,13 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
-from impl import ascend_quant_util
 from te.utils import shape_util
+from impl import ascend_quant_util
 
 
 # pylint: disable=locally-disabled,too-many-arguments, unused-argument
 # pylint: disable=invalid-name,too-many-locals,unnecessary-lambda
+# pylint: disable=len-as-condition,too-many-branches,too-many-statements
 def _check_params(x, deq_scale, sqrt_mode, kernel_name):
     """
     check the parameters including shape, dtype, kernel_name, attr

@@ -15,16 +15,16 @@
 """
 fake_quant_with_min_max_vars_gradient
 """
+from functools import reduce as functools_reduce
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te.platform.cce_conf import api_check_support
-from topi import generic
-from topi.cce import util
-from functools import reduce as functools_reduce
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
+from topi import generic
+from topi.cce import util
 
 # value of default num_bits
 NUM_BITS_MIN = 2
@@ -85,7 +85,7 @@ def _bool_negate(input_bool):
     return output_bool
 
 
-# pylint: disable=locally-disabled,too-many-statements,too-many-locals
+# pylint: disable=locally-disabled,too-many-statements,too-many-locals,unused-variable
 def _nudged_min_max_compute(min_broadcast, max_broadcast, num_bits,
                             narrow_range):
     """

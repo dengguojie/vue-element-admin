@@ -25,6 +25,7 @@ from impl import ascend_quant_util as util
 
 # pylint: disable=too-many-arguments,invalid-name,unused-argument
 # pylint: disable=unnecessary-lambda
+# pylint: disable=too-many-locals
 def _check_params(x, y, scale, offset, sqrt_mode, kernel_name):
     """
     check the parameters including shape, dtype, kernel_name, attr.

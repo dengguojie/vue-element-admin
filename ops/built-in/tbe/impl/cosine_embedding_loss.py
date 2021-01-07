@@ -19,9 +19,9 @@ from functools import reduce
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
+from te import platform as cceconf
 from topi import generic
 from topi.cce import util
-from te import platform as cceconf
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals

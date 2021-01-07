@@ -46,6 +46,9 @@ UB_SIZE = MAX_ALLOW_UB if UB_SIZE > MAX_ALLOW_UB else UB_SIZE
 L1_SIZE = CceProductParams().getParams("L1_Buffer")
 
 
+# pylint: disable=too-many-lines,invalid-name,too-many-arguments,consider-using-in
+# pylint: disable=too-many-branches,too-many-instance-attributes,too-many-locals
+# pylint: disable=too-many-statements,no-self-use,too-few-public-methods
 def _ceil_div(value, factor):
     """
     caculate ceil value of div

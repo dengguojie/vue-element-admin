@@ -164,4 +164,3 @@ def log(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="log"):
               "tensor_list": tensors,
               "need_build": True}
     tbe.build(schedules, config)
-

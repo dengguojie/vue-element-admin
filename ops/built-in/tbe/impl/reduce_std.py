@@ -25,8 +25,12 @@ import te.platform as tbe_platform
 SHAPE_SIZE_LIMIT = 2147483648
 
 
+# pylint: disable=invalid-name,too-many-locals,unused-argument,too-many-arguments
 # Analysis parameter dim
 def reduce_std_check_dim(axis_dim, shape_x, dim):
+    """
+    reduce_std_check_dim
+    """
     dims = len(shape_x)
     if isinstance(dim, int):
         axis_dim.append(dim)

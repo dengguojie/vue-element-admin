@@ -27,6 +27,9 @@ SHAPE_SIZE_LIMIT = 2147483648
 # pylint: disable=too-many-instance-attributes,too-few-public-methods
 # pylint: disable=too-many-locals,too-many-statements,unused-variable
 def get_tensor_size_in_fp16(data_shape, data_type="float16"):
+    """
+    get_tensor_size_in_fp16
+    """
     data_size = functools.reduce(lambda x, y: x * y, data_shape)
     fp16_size = data_size
     if data_type == "float32":

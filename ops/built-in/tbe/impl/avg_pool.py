@@ -29,7 +29,9 @@ from impl.util import util_select_op_base
 AVG_KERNEL_SIZE_H_MUL_W = 255 #kernel_h * kernel_w
 AVG_KERNEL_SIZE = 20 # maximum ksieze
 
+
 # pylint: disable=locally-disabled,too-many-arguments
+# pylint: disable=invalid-name,redefined-builtin,too-many-locals,unused-argument,unused-variable,unnecessary-lambda
 def check_supported(x, filter, bias, y, ksize, strides,
                     padding="VALID", data_format="NHWC", offset_x=0,
                     kernel_name="avg_pool"):
@@ -117,7 +119,6 @@ def get_op_support_info(x, filter, bias, y, ksize, strides,
     op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_matrix, axis_reduce_list, 2, 0)
 
     return op_cal_info_in_json
-
 
 
 def _get_fusion_params(input_data, output_data, is_fused_compute=True):
@@ -214,7 +215,7 @@ def _avgpool_conv2d_fusion_para(inputs, outputs):
     return fusion_para
 
 
-## pylint: disable=locally-disabled,too-many-arguments
+# pylint: disable=locally-disabled,too-many-arguments
 def _pad_compute(padding, input_h, input_w, stride, window, dilations):
     """
     Calculate the pad value.

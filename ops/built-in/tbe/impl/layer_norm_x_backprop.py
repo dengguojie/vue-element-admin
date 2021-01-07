@@ -15,6 +15,7 @@
 """
 layer_norm_x_backprop
 """
+# pylint: disable=too-many-lines
 import operator
 
 from te import tvm

@@ -26,6 +26,7 @@ SCALER_NEGATIVE_ONE = -1
 
 
 # pylint: disable=locally-disabled,unused-argument
+# pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("reciprocal_grad")
 def reciprocal_grad_compute(input_y, input_dy, output_data,
                             kernel_name="reciprocal_grad"):

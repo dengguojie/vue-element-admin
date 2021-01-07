@@ -28,6 +28,7 @@ AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
 
 
 # pylint: disable=locally-disabled,too-many-lines,too-many-locals
+# pylint: disable=bad-option-value,no-else-return
 def _ceil_div(value, block):
     """
     integrate the input value by block

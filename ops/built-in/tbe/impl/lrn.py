@@ -38,6 +38,7 @@ C0_SIZE = 16
 
 
 # pylint: disable=unused-argument
+# pylint: disable=too-many-lines,inconsistent-return-statements,super-with-arguments
 def _lrn_parameter_check(input_data, depth_radius, norm_region, kernel_name):
     """
     _lrn_parameter_check

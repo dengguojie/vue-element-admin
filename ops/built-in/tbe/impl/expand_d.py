@@ -24,6 +24,7 @@ from te.utils.shape_util import broadcast_shapes
 NUM_ONE = 1
 
 
+# pylint: disable=invalid-name,unused-argument
 @fusion_manager.register("expand_d")
 def expand_compute(x,
                    y,

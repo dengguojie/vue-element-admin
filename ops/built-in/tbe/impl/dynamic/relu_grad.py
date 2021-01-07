@@ -30,6 +30,7 @@ from te.utils.error_manager import error_manager_vector
 from te.utils import shape_util
 
 
+# pylint: disable=too-many-locals,invalid-name
 def calculate_one_or_zero(input_tensor, dtype):
     """
     if input_tensor>0, then output is 1, or input_tensor <=0, then output is 0
@@ -181,4 +182,3 @@ def relu_grad(input_gradients, input_features, output_backprops, kernel_name="re
         schedules.append(sch)
     config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)
-

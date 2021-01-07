@@ -19,9 +19,10 @@ import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 from impl.util import util_apply_op_schedule
 from impl.util import util_compute
-from te.utils.error_manager import error_manager_vector
+
 
 CONST_ZERO = 0
 CONST_ONE = 1

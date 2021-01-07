@@ -26,7 +26,7 @@ from te.utils import shape_util
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=locally-disabled,too-many-locals,unused-variable
-
+# pylint: disable=too-many-statements
 
 def shape_broadcast(data_1, data_2):
     """

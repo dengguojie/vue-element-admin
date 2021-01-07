@@ -46,6 +46,7 @@ AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
 
 
 # pylint: disable=unused-argument,invalid-name
+# pylint: disable=trailing-whitespace,too-many-lines,no-else-return,consider-using-in,inconsistent-return-statements
 def get_op_support_info(x, y, begin, size, kernel_name="slice_d"):
     """
     get_op_support_info

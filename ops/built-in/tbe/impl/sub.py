@@ -24,6 +24,7 @@ from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# pylint: disable=unused-variable
 @tbe_platform.fusion_manager.fusion_manager.register("sub")
 def sub_compute(input_x, input_y, output_z, kernel_name="sub"):
     """

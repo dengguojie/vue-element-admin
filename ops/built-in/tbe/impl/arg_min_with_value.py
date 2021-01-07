@@ -121,6 +121,7 @@ def _param_check(shape_x, dtype_x, axis, kernel_name):
     axis = shape_util.axis_check(len(shape_x), axis)
 
 
+# pylint: disable=super-with-arguments
 class ArgminBase(object):
     """Function: use to store argminwithvalue base parameters
     """

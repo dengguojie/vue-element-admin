@@ -22,6 +22,7 @@ import topi
 
 
 # pylint: disable=too-many-statements
+# pylint: disable=no-else-return,too-many-locals
 def tanh_compute(shape, input_x, symbol, impl_mode="high_performance"):
     """
     tanh compute

@@ -15,6 +15,7 @@
 """
 resize_nearest_neighbor_v2_d
 """
+# pylint: disable=too-many-lines,too-many-return-statements
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
@@ -26,10 +27,9 @@ from te import tik
 from te import platform as tbe_platform
 from te.platform.cce_build import build_config
 from te.platform.cce_intrin_md import reset_mask_insn
-from topi.cce import util
-from impl.copy_only import copy_only
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.copy_only import copy_only
 
 # one block
 BLOCK_SIZE = 32

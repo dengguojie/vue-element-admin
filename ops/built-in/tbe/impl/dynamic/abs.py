@@ -108,4 +108,3 @@ def abs(x, y, kernel_name="abs"):
 
     config = {"print_ir": False, "name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)
-

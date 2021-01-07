@@ -198,4 +198,3 @@ def select(condition, x1, x2, y, kernel_name="select"):
                   "tensor_list": tensors}
 
     tbe.build(schedules, config)
-

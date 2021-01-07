@@ -16,9 +16,9 @@
 sparse_apply_proximal_adagrad_d.py
 """
 import te.platform as tbe_platform
-from impl.sparse_apply_common import SparseApply
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.sparse_apply_common import SparseApply
 
 
 # pylint: disable=too-many-instance-attributes

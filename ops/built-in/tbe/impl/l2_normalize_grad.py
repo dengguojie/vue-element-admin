@@ -183,4 +183,3 @@ def l2_normalize_grad(input_x,
     }
 
     tbe.cce_build_code(sch, config)
-

@@ -30,12 +30,12 @@ from te import tvm
 from te.platform.cce_build import build_config
 import te.platform.cce_params as cce_params
 from te.utils.op_utils import *
-from impl.hwc_2_chw import hwc_2_chw
 from te.utils.error_manager import error_manager_vector
 from impl.util.util_common import write_code
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
+from impl.hwc_2_chw import hwc_2_chw
 
 # General limitation of the size for input shape: 2**31 - 1
 SHAPE_SIZE_LIMIT = 2147483647
@@ -46,6 +46,12 @@ AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
 
 
 # pylint: disable = unused-argument
+# pylint: disable=too-many-lines,consider-using-in,too-many-boolean-expressions
+# pylint: disable=too-many-branches,too-many-statements,no-else-break,undefined-variable
+# pylint: disable=no-else-return,unnecessary-comprehension,inconsistent-return-statements
+# pylint: disable=too-many-nested-blocks,redeclared-assigned-name,consider-swap-variables
+# pylint: disable=chained-comparison
+
 def get_op_support_info(input_x, output_y, perm, kernel_name="transpose_d"):
     """
     get_op_support_info

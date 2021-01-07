@@ -32,6 +32,7 @@ UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 
 
 # pylint: disable = unused-argument,too-many-branches
+# pylint: disable=super-with-arguments
 def get_op_support_info(values, output_data, shape, num, kernel_name="parallel_concat"):
     """
     get_op_support_info

@@ -35,6 +35,7 @@ BLOCK_SIZE = 32
 
 
 # pylint: disable=locally-disabled,too-few-public-methods,too-many-instance-attributes
+# pylint: disable=super-with-arguments
 class MaxpoolGradCustom(argmax_cut_w.MaxpoolGardObject):
     """
     parameter for max_pool_grad_with_pool

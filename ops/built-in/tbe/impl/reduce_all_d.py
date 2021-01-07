@@ -27,6 +27,7 @@ SHAPE_SIZE_LIMIT = 2147483648
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("reduce_all_d")
 def reduce_all_d_compute(input_data, output_data, axes,
                          keepdims, kernel_name="reduce_all_d"):

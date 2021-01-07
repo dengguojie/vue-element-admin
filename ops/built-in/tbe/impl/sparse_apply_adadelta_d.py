@@ -16,11 +16,12 @@
 sparse_apply_adadelta_d
 """
 import te.platform as tbe_platform
-from impl.sparse_apply_common import SparseApply
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.sparse_apply_common import SparseApply
 
 
+# pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-locals,
 class SparseApplyAdadelta(SparseApply):
     """
         Function: use to store sparse_apply_adadelta base parameters

@@ -37,8 +37,6 @@ import operator
 from te import tvm
 import te.lang.cce as tbe
 import te.platform as tbe_platform
-from te.platform.fusion_manager import fusion_manager
-import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
@@ -47,7 +45,7 @@ NUM_ZERO = 0.0
 NUM_ONE = 1.0
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
+# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("elu_grad")
 def elu_grad_compute(grads, activations, y, kernel_name="elu_grad"):
     """

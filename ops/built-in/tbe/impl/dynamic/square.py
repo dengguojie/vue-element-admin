@@ -24,6 +24,7 @@ from te.utils import shape_util
 from te import tvm
 
 
+# pylint: disable=unused-argument,redefined-argument-from-local
 def square_compute(input_x, output_y, kernel_name="square"):
     """
     algorithm: square

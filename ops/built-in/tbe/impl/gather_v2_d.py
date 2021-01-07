@@ -42,6 +42,7 @@ INDICES_LINE = 64
 
 
 # pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-branches
+# pylint: disable=superfluous-parens
 def get_op_support_info(x, indices, y, axis=0, kernel_name="gather_v2_d"):
     """
     get_op_support_info

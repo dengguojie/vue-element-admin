@@ -15,19 +15,19 @@
 """
 five_2_four_int8
 """
+# pylint: disable=too-many-lines
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-import json
-import os
+
 from functools import reduce as functools_reduce
 
 from te import platform as tbe_platform
 from te import tvm
 from te.platform.cce_build import build_config
 import te.platform.cce_params as cce_params
-from topi.cce import util
 import te.lang.cce
+from topi.cce import util
 from impl.util.util_common import write_code
 
 

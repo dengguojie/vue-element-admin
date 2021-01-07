@@ -27,6 +27,7 @@ SCALAR_ONE = 1
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
+# pylint: disable=unused-variable
 @tbe_platform.fusion_manager.fusion_manager.register("softplus_grad")
 def softplus_grad_compute(input_gradients, input_features, output_backprops,
                           kernel_name="softplus_grad"):

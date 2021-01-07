@@ -16,13 +16,11 @@
 gather_d
 """
 from . import gather_v2
-from te import tvm
 import te.lang.dynamic
-from te import tik
-from te import platform as tbe_platform
 from te.utils import para_check
 
 
+# pylint: disable=invalid-name,unused-argument
 @te.op.register_operator("Gather")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)

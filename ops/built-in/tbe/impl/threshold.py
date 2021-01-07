@@ -29,6 +29,7 @@ SCALAR_POSITIVE_ONE = 1.0
 SCALAR_ZERO = 0.0
 
 
+# pylint: disable=redefined-outer-name
 @tbe_platform.fusion_manager.fusion_manager.register("threshold")
 def threshold_compute(input_x, input_y, output_y, kernel_name="threshold"):
     """

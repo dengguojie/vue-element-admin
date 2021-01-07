@@ -15,11 +15,11 @@
 """
 sign
 """
+from functools import reduce as reduceIns
+
 import te.lang.cce as tbe
 from te import tvm
 import te.lang.base as tbe_base
-from functools import reduce as reduceIns
-from topi import generic
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils.op_utils import KERNEL_NAME
@@ -29,9 +29,10 @@ from te.utils.op_utils import check_dtype
 from te.utils.op_utils import check_op_params
 from te.utils.op_utils import variable_shape
 import te.platform as tbe_platform
+from topi import generic
 
 
-# pylint: disable=unused-argument
+# pylint: disable=unused-argument,redefined-argument-from-local
 def sign_compute(input_x, output_y, kernel_name="sign"):
     """
     compute for sign
@@ -105,4 +106,3 @@ def sign(input_x, output_y, kernel_name="sign"):
               "tensor_list": tensors,
               "bool_storage_as_1bit": False}
     tbe.build(schedules, config)
-

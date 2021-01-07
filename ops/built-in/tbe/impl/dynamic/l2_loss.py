@@ -115,4 +115,3 @@ def l2_loss(x, y, kernel_name="l2_loss"):
     config = {"name": kernel_name,
               "tensor_list": tensors}
     tbe.build(schedules, config)
-

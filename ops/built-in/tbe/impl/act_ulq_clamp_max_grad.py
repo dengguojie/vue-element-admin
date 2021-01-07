@@ -27,6 +27,7 @@ from topi.cce import util
 SHAPE_SIZE_LIMIT = 2147483648
 
 
+# pylint: disable=unused-argument
 @fusion_manager.register('act_ulq_clamp_max_grad')
 def act_ulq_clamp_max_grad_compute(
     y_grad, clamp_max_mask, x_clamped_loss, output, kernel_name='act_ulq_clamp_max_grad'):

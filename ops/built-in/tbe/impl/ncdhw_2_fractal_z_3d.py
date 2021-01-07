@@ -15,6 +15,8 @@
 """
 ncdhw_2_fractal_z_3d
 """
+# pylint: disable=W0613
+# pylint: disable=wildcard-import,undefined-variable
 from functools import reduce as func_reduce
 from te import tik
 from te import platform as tbe_platform

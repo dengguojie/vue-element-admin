@@ -28,11 +28,18 @@ from te import platform as tbe_platform
 ALIGNMENT_BYTES = 32
 
 
+# pylint: disable=protected-access,invalid-name,unused-argument
 def _do_buffer_tile(self):
+    """
+    _do_buffer_tile
+    """
     self._elewise_binary_phony_as_output = False
 
 
 def _get_emit_insn_map(self):
+    """
+    _get_emit_insn_map
+    """
     self._insn_map = {"elewise_single_cast": "vector_conv",
                       "elewise_single_round_d": "vector_conv_round",
                       "elewise_single_trunc": "vector_conv_trunc",
@@ -147,6 +154,9 @@ def elewise_binary_phony_ex(stmt_op):
 
 @tbe_platform.fusion_manager.fusion_manager.register("fill_v2_d")
 def fill_v2_compute(data_x, x1, x2, y, kernel_name="fill_v2_d"):
+    """
+    fill_v2_compute
+    """
     # broadcast
     res = tbe.broadcast(tvm.const(x1), x2)
 

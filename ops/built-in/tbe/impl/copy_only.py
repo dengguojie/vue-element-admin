@@ -17,8 +17,8 @@ copy_only
 """
 from te.platform.fusion_manager import fusion_manager
 from te import tik
-from topi.cce import util
 from te import platform as tbe_platform
+from topi.cce import util
 
 
 def _apply_mem(tik_instance, dtype, shape, name, scope=tik.scope_ubuf):

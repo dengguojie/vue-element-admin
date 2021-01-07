@@ -40,7 +40,7 @@ from te.utils import para_check
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=consider-using-in,invalid-name,redefined-builtin
+# pylint: disable=consider-using-in,invalid-name,redefined-builtin,raise-missing-from
 @tbe_platform.fusion_manager.fusion_manager.register("fill_d")
 def _fill_compute(data_value, data_output, data_dims, kernel_name="fill_d"):
     """

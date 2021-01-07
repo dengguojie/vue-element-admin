@@ -32,6 +32,7 @@ FP32_MAX = 64
 MASK_MAX = 8
 
 
+# pylint: disable=super-with-arguments,undefined-variable,unused-variable
 class MaxpoolGardObject(MaxpoolGradBase):
     """
     parameter for max_pool_grad_with_pool

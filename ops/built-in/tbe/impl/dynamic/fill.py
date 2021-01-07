@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
+"""
+fill
+"""
 
 import te.lang.cce as tbe
 from te import tvm
@@ -21,6 +23,7 @@ from te.utils import shape_util
 from te.utils import para_check
 
 
+# pylint: disable=unused-argument,invalid-name,too-many-locals
 def fill_compute(dims, value, dtype, kernel_name="fill"):
     """
     calculating data

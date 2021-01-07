@@ -18,15 +18,11 @@ in_training_reduce_v2
 from __future__ import division
 
 import te.lang.cce
-import te.platform.cce_params as cce_params
-import te.platform.cce_emitinsn_params as cce_emitinsn_params
 
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from te.platform import cce_util
-from te.platform.cce_build import build_config
-from topi import generic
 from te.utils import para_check
+from topi import generic
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 

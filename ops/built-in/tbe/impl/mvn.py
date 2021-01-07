@@ -28,7 +28,11 @@ CONST_SQRT_ITER = 3
 
 
 # pylint: disable = unused-argument
+# pylint: disable=invalid-name,too-many-arguments
 def get_op_support_info(x, y, normalize_variance=True, across_channels=False, eps=1e-9, kernel_name="mvn"):
+    """
+    get_op_support_info
+    """
     format_x = x.get("format")
     axis_split_list = []
     if format_x == "NCHW":

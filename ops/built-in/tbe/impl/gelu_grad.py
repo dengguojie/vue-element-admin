@@ -23,7 +23,6 @@ import functools
 
 import te.lang.cce as tbe
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
@@ -43,6 +42,7 @@ MIN_FP32 = 2**(-126)
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# pylint: disable=too-many-locals
 def tanh_compute(input_x, output_y, kernel_name="tanh"):
     """
     algorithm: tanh

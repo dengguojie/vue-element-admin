@@ -17,7 +17,6 @@ unsorted_segment_sum
 """
 # pylint: disable=too-many-lines
 import te.lang.dynamic
-from te import tvm
 from te import tik
 from te import platform
 

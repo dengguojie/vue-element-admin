@@ -15,6 +15,7 @@
 """
 zn_2_hwcn
 """
+# pylint: disable=too-many-lines,unnecessary-comprehension,no-else-return
 from te import platform as tbe_platform
 from te.utils import para_check
 from te import tvm

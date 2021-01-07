@@ -17,13 +17,14 @@ strided write
 """
 from te import tvm
 from topi import generic
-from te.platform.fusion_manager import fusion_manager
 from topi.cce import util
+from te.platform.fusion_manager import fusion_manager
 
 
 STRIDED_WRITE_TAG = "strided_write"
 
 
+# pylint: disable=invalid-name,unnecessary-lambda,unused-argument,unused-variable
 def check_params(x, y, axis):
     """
     check the parameters including x, y, axis.

@@ -31,6 +31,7 @@ from impl.util.util_select_op_base import get_dynamic_param_in_json
 # pylint: disable=locally-disabled,too-many-locals,unused-variable
 # pylint: disable=locally-disabled,invalid-name,unidiomatic-typecheck
 # pylint: disable=locally-disabled,too-many-branches
+# pylint: disable=unnecessary-comprehension
 def _division_sixteen(shape):
 
     if len(shape) < 2:

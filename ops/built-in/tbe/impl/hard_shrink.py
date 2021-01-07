@@ -21,6 +21,7 @@ from te.utils import para_check
 from te.platform.fusion_manager import fusion_manager
 
 
+# pylint: disable=superfluous-parens,unused-argument
 @fusion_manager.register("hard_shrink")
 def hard_shrink_compute(input_x, output_y, lambd, kernel_name="hard_shrink"):
     """
@@ -78,13 +79,12 @@ def hard_shrink(input_x, output_y, lambd=0.5, kernel_name="hard_shrink"):
     para_check.check_shape(input_shape, param_name="input_x")
     check_tuple = ("float16", "float32")
     para_check.check_dtype(input_dtype, check_tuple, param_name="input_x")
-    
+
     if(lambd < 0):
         raise RuntimeError("Only support lambd >= 0 while lambd is {}.".format(lambd))
 
     data_input = tvm.placeholder(input_shape, name="data_input", dtype=input_dtype)
     res = hard_shrink_compute(data_input, output_y, lambd, kernel_name)
-
 
     with tvm.target.cce():
         schedule = tbe.auto_schedule(res)

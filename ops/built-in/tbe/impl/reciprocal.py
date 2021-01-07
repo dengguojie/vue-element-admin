@@ -15,7 +15,6 @@
 """
 reciprocal
 """
-import json
 import functools
 
 import te.lang.cce as tbe
@@ -29,6 +28,7 @@ SHAPE_SIZE_LIMIT = 2147483648  # shape limit
 
 
 # pylint: disable=redefined-builtin,unused-argument
+# pylint: disable=too-many-locals
 def op_select_format(input_x, output_y, kernel_name="reciprocal"):
     """
     Get support format according to input_x
@@ -91,6 +91,9 @@ def op_select_format(input_x, output_y, kernel_name="reciprocal"):
 
 @tbe_platform.fusion_manager.fusion_manager.register("reciprocal")
 def reciprocal_compute(input_x, output_y, kernel_name="reciprocal"):
+    """
+    reciprocal_compute
+    """
     if tbe_platform.api_check_support("te.lang.cce.vdiv", "float32"):
         dtype = input_x.dtype
         shape = shape_util.shape_to_list(input_x.shape)
@@ -148,4 +151,3 @@ def reciprocal(input_x, output_y, kernel_name="reciprocal"):
               "tensor_list": [data, res]}
 
     tbe.cce_build_code(sch, config)
-

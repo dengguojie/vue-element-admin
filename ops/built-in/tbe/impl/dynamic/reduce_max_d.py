@@ -23,7 +23,8 @@ from te.lang.base.operation import add_compile_info
 NONETYPE = type(None)
 
 
-# 'pylint: disable=unused-argument,invalid-name
+# pylint: disable=unused-argument,invalid-name
+# pylint: disable=redefined-argument-from-local
 def reduce_max_d_compute(x, y, axes=None, keepdims=None,
                          kernel_name="reduce_max_d"):
     """

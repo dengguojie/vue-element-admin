@@ -18,10 +18,9 @@
 max_pool_grad_with_argmaxv2
 """
 import math
-
+from te.utils import para_check
 from impl import max_pool_grad_with_argmax_cut_h_v2 as argmax_cut_h_v2
 from impl import max_pool_grad_with_argmax_v2_resnet50 as resnet50
-from te.utils import para_check
 
 # size of 5HD format
 DIM_5HD = 5

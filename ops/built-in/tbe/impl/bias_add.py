@@ -19,9 +19,9 @@ import te.lang.cce as tbe
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
-from impl.util import util_select_op_base
 from te.utils.error_manager import error_manager_vector
 import te.platform as tbe_platform
+from impl.util import util_select_op_base
 
 
 # pylint: disable=too-many-locals,redefined-builtin,unused-argument
@@ -329,4 +329,3 @@ def bias_add(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
         "name": kernel_name,
         "tensor_list": [data_x, bias, res]}
     tbe.cce_build_code(sch, config)
-

@@ -21,7 +21,6 @@ div
 import te.lang.cce as tbe
 from te import tvm
 from te import platform as tbe_platform
-from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils import shape_util
 

@@ -17,16 +17,21 @@ cumulativelogsumexp_d
 """
 from topi.cce import util
 from impl.cum_computer import get_computer_by_ctype
-from te.utils import para_check
 from impl.util import util_select_op_base
+from te.utils import para_check
+
 
 # the computer type
 COMPUTE_TYPE = "logsumexp"
 
 
 # pylint: disable = unused-argument
+# pylint: disable=invalid-name,too-many-arguments,consider-using-in
 def get_op_support_info(x, y, axis, exclusive=False, reverse=False,
                         kernel_name="cumulative_logsumexp_d"):
+    """
+    get_op_support_info
+    """
     format_x = x.get("format")
     shape = x.get("shape")
     if axis < 0:

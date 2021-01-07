@@ -19,8 +19,8 @@ import te.lang.cce as tbe
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
-from impl import reduce_min_d_tik
 import te.platform as tbe_platform
+from impl import reduce_min_d_tik
 
 
 # define the type of None

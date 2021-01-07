@@ -16,14 +16,15 @@
 strided read operator
 """
 from te import tvm
-from topi import generic
 from te.platform.fusion_manager import fusion_manager
+from topi import generic
 from topi.cce import util
 
 
 STRIDED_READ_TAG = "strided_read"
 
 
+# pylint: disable=invalid-name,unused-argument,unused-variable
 def check_params(x, y, axis):
     """
     check the parameters including x, y, axis.

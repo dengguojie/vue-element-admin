@@ -25,6 +25,7 @@ from te import tvm
 NONETYPE = type(None)
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name
+# pylint: disable=too-many-arguments
 @tbe_platform.fusion_manager.fusion_manager.register("reduce_sum_d")
 def reduce_sum_d_compute(x,
                          y,

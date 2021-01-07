@@ -18,7 +18,6 @@ fused_minimum_or_maximum_grad
 
 import te.lang.cce as tbe
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
@@ -27,6 +26,7 @@ from te.utils import shape_util
 SHAPE_SIZE_LIMIT = 2147483647
 
 
+# pylint: disable=arguments-out-of-order
 def _compare_value_int32(x_data, y_data, shape_dz):
     """
     The input data type of this function only support int32;

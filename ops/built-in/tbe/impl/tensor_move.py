@@ -15,10 +15,9 @@
 """
 tensor_move
 """
-from te.platform.fusion_manager import fusion_manager
 from te import tik
-from topi.cce import util
 from te import platform as tbe_platform
+from topi.cce import util
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
@@ -26,6 +25,9 @@ from impl.util.util_select_op_base import get_op_cal_info
 
 # pylint: disable = unused-argument
 def get_op_support_info(src, dst, kernel_name="tensor_move"):
+    """
+    get_op_support_info
+    """
     shape_x_len = len(src.get("shape"))
     axis_split_matrix=[]
     for i in range(0, shape_x_len):

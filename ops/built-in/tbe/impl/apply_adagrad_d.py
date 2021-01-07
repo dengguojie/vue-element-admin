@@ -193,4 +193,3 @@ def apply_adagrad_d(var,
               "tensor_list": list(inputlist) + list(res)}
 
     tbe.cce_build_code(sch, config)
-

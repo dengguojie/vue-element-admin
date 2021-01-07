@@ -30,6 +30,7 @@ MAX_REPEAT = 255
 MINI_UNIT = 32
 
 
+# pylint: disable=self-assigning-variable,inconsistent-return-statements,attribute-defined-outside-init
 def _get_output_shape(input_shape, paddings):
     """
     Derive the shape size of the output.

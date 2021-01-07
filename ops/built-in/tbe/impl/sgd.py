@@ -17,12 +17,12 @@ sgd
 """
 
 import te.platform as tbe_platform
-from impl.util.util_apply_op_schedule import ApplyOpConfig
-from impl.util.util_apply_op_schedule import common_apply_op_process
 from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util.util_apply_op_schedule import ApplyOpConfig
+from impl.util.util_apply_op_schedule import common_apply_op_process
 
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name,too-many-locals

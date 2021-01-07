@@ -38,6 +38,9 @@ def get_op_support_info(input_x,
                         attr1,
                         attr2=True,
                         kernel_name="square_sum_v1"):
+    """
+    get_op_support_info
+    """
     shape_x = shape_util.shape_to_list(input_x.get("shape"))
     axis_d = []
     for i, _ in enumerate(shape_x):
@@ -191,4 +194,3 @@ def square_sum_v1(input_x,
     config = {"name": kernel_name, "tensor_list": [data_input, res]}
 
     tbe.cce_build_code(sch, config)
-

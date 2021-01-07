@@ -40,7 +40,11 @@ SCALAR_ZREO = 0
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
+# pylint: disable=invalid-name
 def get_broadcast_shapes(input1, input2, input1_name, input2_name):
+    """
+    get_broadcast_shapes
+    """
     x0_shape = shape_util.shape_to_list(input1.shape)
     x1_shape = shape_util.shape_to_list(input2.shape)
     x0_shape, x1_shape, y_shape = broadcast_shapes(x0_shape, x1_shape, param_name_input1=input1_name,

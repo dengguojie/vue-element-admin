@@ -30,6 +30,7 @@ from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# pylint: disable=too-many-locals,invalid-name
 def sub_compute(input_x, input_y, output_z, kernel_name="sub"):
     """
     calculating data's sub, c = a - b

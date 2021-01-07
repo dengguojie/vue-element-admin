@@ -185,4 +185,3 @@ def greater(x, y, z, kernel_name="greater"):
 
     config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)
-

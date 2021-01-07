@@ -30,6 +30,7 @@ NEG_ONE = -1
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
+# pylint: disable=invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("softplus")
 def softplus_compute(input_x, y, kernel_name="softplus"):
     """
@@ -120,4 +121,3 @@ def softplus(x, y, kernel_name="softplus"):
     config = {"name": kernel_name,
               "tensor_list": [data, res]}
     tbe.cce_build_code(sch, config)
-

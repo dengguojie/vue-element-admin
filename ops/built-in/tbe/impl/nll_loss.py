@@ -15,11 +15,11 @@
 """
 nll_loss
 """
-# pylint: disable=ungrouped-imports,import-error
+# pylint: disable=too-many-lines
 import math
 from te import tik
-from topi.cce import util
 from te import platform as tbe_platform
+from topi.cce import util
 from impl.constant_util import MASK64
 
 DIM2 = 2

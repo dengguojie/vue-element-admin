@@ -23,6 +23,7 @@ strided_slice_grad
 
 
 # pylint: disable=unused-argument
+# pylint: disable=consider-using-in,unnecessary-pass
 def check_supported(shape, begin, end, strides, dy, output, begin_mask=0,
                     end_mask=0, ellipsis_mask=0, new_axis_mask=0, shrink_axis_mask=0,
                     kernel_name="strided_slice_grad"):

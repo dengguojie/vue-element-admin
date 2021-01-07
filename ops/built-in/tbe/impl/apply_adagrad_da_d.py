@@ -19,10 +19,10 @@ import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 from impl.util import util_apply_op_schedule
 from impl.util import util_build
 from impl.util import util_compute
-from te.utils.error_manager import error_manager_vector
 
 # scalar in apply_adagrad_da_d
 NUM_ONE = 1.0
@@ -33,6 +33,7 @@ NUM_M_ONE = -1.0
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=invalid-name,too-many-locals
+# pylint: disable=too-many-statements,wrong-import-order,ungrouped-imports
 @tbe_platform.fusion_manager.fusion_manager.register("apply_adagrad_da_d")
 def apply_adagrad_da_d_compute(var, gradient_accumulator,
                                gradient_squared_accumulator, grad,

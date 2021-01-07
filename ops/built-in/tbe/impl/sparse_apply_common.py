@@ -25,6 +25,7 @@ from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
+# pylint: disable=too-many-instance-attributes
 class SparseApply():
     """
     Base Class for sparse apply op

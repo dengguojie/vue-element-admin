@@ -54,6 +54,7 @@ TAYLOR_FOURTH = 1 / 24.0
 TAYLOR_SIXTH = 1 / 720.0
 
 
+# pylint: disable=too-many-locals
 def _cosh_taylor_compute(data):
     """
     Calculate cosh  = 1 + x^2( 1/2! + x^2( 1/4! + x^2/6!))

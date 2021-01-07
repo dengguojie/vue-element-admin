@@ -22,14 +22,15 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
-from impl.util import util_select_op_base
 from te.utils.error_manager import error_manager_vector
+from impl.util import util_select_op_base
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
 # pylint: disable = unused-argument
+# pylint: disable=invalid-name,redefined-builtin,too-many-statements
 def get_op_support_info(x, sum, square_sum,
                        kernel_name="bn_training_reduce"):
     """
@@ -616,11 +617,11 @@ def bn_training_reduce(x, sum, square_sum,
     if data_format == "NC1HWC0":
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)
-    else:        
+    else:
         auto_sch_choose = set(shape_x) == {1}
         if auto_sch_choose:
-             with tvm.target.cce():
-                 sch = tbe.auto_schedule(res)
+            with tvm.target.cce():
+                sch = tbe.auto_schedule(res)
         else:
             sch, tensor_list = bn_training_reduce_schedule_nd(res)
             with tbe_platform.cce_build.build_config:

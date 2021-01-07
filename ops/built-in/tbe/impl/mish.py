@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
+"""
+mish
+"""
 import functools
 
 import te.lang.cce as tbe
@@ -20,6 +23,7 @@ from te import tvm
 from te.utils import para_check
 
 
+# pylint: disable=unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("mish")
 def mish_compute(input_x, output_y, kernel_name="mish"):
     """

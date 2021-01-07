@@ -16,16 +16,19 @@
 gather
 """
 
-from impl.gather_v2_d import gather_v2_d
-from te.utils import shape_util
 from te.utils import para_check
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
+from impl.gather_v2_d import gather_v2_d
 
 
 # pylint: disable = unused-argument
+# pylint: disable=invalid-name
 def get_op_support_info(x, indices, y, validate_indices=True, kernel_name="gather"):
+    """
+    get_op_support_info
+    """
     format_x = x.get("format").upper()
     format_indices = indices.get("format").upper()
     shape_indices_len = len(indices.get("shape"))

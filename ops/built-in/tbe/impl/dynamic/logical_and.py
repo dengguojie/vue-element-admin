@@ -117,4 +117,3 @@ def logical_and(x1, x2, y, kernel_name="logical_and"):
     config = {"print_ir": False, "need_build": False, "name": kernel_name,
               "tensor_list": tensors}
     tbe.build(schedules, config)
-

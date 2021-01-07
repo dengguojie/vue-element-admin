@@ -43,6 +43,7 @@ CONFIG_BLOCK_SIZE = 128
 CONFIG_MATRIX = 256
 
 
+# pylint: disable=too-many-arguments
 def int_ceil_div(divisor_a, divisor_b):
     """
     round up function

@@ -23,7 +23,7 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=invalid-name, unused-argument
+# pylint: disable=invalid-name,unused-argument,unused-variable
 @tbe_platform.fusion_manager.fusion_manager.register("l2_loss")
 def l2_loss_compute(x, y, kernel_name="l2_loss"):
     """
@@ -96,4 +96,3 @@ def l2_loss(x, y, kernel_name="l2_loss"):
     config = {"name": kernel_name,
               "tensor_list": [data_input, res]}
     tbe.cce_build_code(sch, config)
-

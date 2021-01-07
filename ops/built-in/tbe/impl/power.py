@@ -26,6 +26,7 @@ from te.utils import para_check
 
 
 # pylint: diable=unused-argument,too-many-locals
+# pylint: disable=unrecognized-inline-option,unused-argument
 def positive_compute(base, power, version, input_dtype):
     """
     calculate power for positive elements of base tensor

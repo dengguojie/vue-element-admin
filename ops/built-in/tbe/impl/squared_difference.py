@@ -26,6 +26,7 @@ SHAPE_SIZE_LIMIT = 2147483648
 
 
 # pylint: disable=locally-disabled,too-many-locals,unused-argument
+# pylint: disable=invalid-name,unused-variable
 @tbe_platform.fusion_manager.fusion_manager.register("squared_difference")
 def squared_difference_compute(data_x, data_y, y, kernel_name="squared_difference"):
     """

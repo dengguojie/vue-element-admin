@@ -22,9 +22,9 @@ from __future__ import absolute_import
 from te import tvm
 import te.lang.cce
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
 from te.utils import para_check
 from te.utils import shape_util
+from topi import generic
 from topi.cce import util
 
 

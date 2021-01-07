@@ -20,8 +20,8 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
-from impl.util import util_select_op_base
 from te.utils.error_manager import error_manager_vector
+from impl.util import util_select_op_base
 
 
 # pylint: disable=locally-disabled,too-many-locals,unused-argument,invalid-name

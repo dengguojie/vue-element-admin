@@ -38,7 +38,8 @@ SCALAR_ONE = 1
 SCALAR_ZERO = 0
 
 
-# 'pylint: disable=unused-argument,invalid-name
+# pylint: disable=unused-argument,invalid-name
+# pylint: disable=too-many-locals,redefined-argument-from-local
 def _greater_equal_compare(data, shape, dtype, data_min):
     """
     greater equal compare.

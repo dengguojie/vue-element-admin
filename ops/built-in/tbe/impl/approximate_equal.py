@@ -31,6 +31,7 @@ __all__ = ["approximate_equal"]
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("approximate_equal")
 def approximate_equal_compute(input_x, input_y, output_z, tolerance,
                               kernel_name="approximate_equal"):

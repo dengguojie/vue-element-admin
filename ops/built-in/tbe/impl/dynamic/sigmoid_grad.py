@@ -30,6 +30,7 @@ SHAPE_SIZE_LIMIT = 2 ** 30
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# pylint: disable=invalid-name,too-many-locals,redefined-argument-from-local
 def sigmoid_grad_compute(x, y, z, kernel_name="sigmoid_grad"):
     """
     algorithm : sigmoid grad compute

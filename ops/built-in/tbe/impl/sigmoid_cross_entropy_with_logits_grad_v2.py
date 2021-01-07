@@ -24,7 +24,11 @@ from te.utils import para_check
 from te.utils import shape_util
 
 
+# pylint: disable=raise-missing-from,too-many-arguments,too-many-locals,unused-argument
 def _broadcast_shape_check(input_shape, target_shape):
+    """
+    _broadcast_shape_check
+    """
     try:
         shape_util.produce_shapes(input_shape, target_shape)
     except RuntimeError:
@@ -94,6 +98,9 @@ def sigmoid_cross_entropy_with_logits_grad_v2_compute(predict, target, dout, wei
 
 
 def optional_weight(tensor_list, predict_shape, dtype_list, weight, pos_weight):
+    """
+    optional_weight
+    """
     weight_data = None
     pos_weight_data = None
     if weight is not None:

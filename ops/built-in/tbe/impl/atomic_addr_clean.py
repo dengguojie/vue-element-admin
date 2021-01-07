@@ -28,6 +28,7 @@ MEMORY_CLEAR_UB_ZERO_BUFF = MEMORY_CLEAR_KB_NUM * MEMORY_CLEAR_ONE_KB
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals,too-many-arguments
+# pylint: disable=useless-object-inheritance
 def _ceil_align(ori_num, divider):
     """
     dst_num = (ori_num + divider -1) / divider * divider
@@ -239,6 +240,9 @@ class AtomicCleaner(object):
                         self.clean_workspace_single_core(data_size, data_addr[offset], zero_ub)
 
     def tik_instance_fun(self, kernel_name):
+        """
+        tik_instance_fun
+        """
         for idx in range(0, self.workspace_num):
             addr_gm = self.tik_instance.Tensor("float16",
                                                (self.workspace_sizes[idx] / 2,),

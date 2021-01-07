@@ -19,7 +19,6 @@ import functools
 
 import te.lang.cce as tbe
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
@@ -34,7 +33,7 @@ ONE_VALUE = 1
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
-# pylint: disable=locally-disabled,redefined-builtin,too-many-locals
+# pylint: disable=locally-disabled,redefined-builtin,too-many-locals,unused-variable
 def _less_compare_float32(data_x, data_y):
     """
     if x is less than y, then return 1, else return 0.

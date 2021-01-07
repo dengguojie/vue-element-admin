@@ -30,6 +30,7 @@ NEGATIVE_ONE = -1
 
 
 # pylint: disable=unused-argument,invalid-name,too-many-locals
+# pylint: disable=redefined-argument-from-local
 def leaky_relu_grad_compute(g, x, y, negative_slope=0,
                             kernel_name="leaky_relu_grad"):
     """

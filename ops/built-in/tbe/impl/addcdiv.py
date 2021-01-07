@@ -32,7 +32,11 @@ from impl.util.util_select_op_base import get_dynamic_param_in_json
 SHAPE_SIZE_LIMIT = 2147483648
 
 
+# pylint: disable=invalid-name,too-many-arguments,too-many-locals,unused-argument
 def op_select_format(input_data, x1, x2, value, y, kernel_name="addcdiv"):
+    """
+    op_select_format
+    """
     dtype_list = ["float16", "float32"]
     dtype_len = len(dtype_list)
 
@@ -78,6 +82,9 @@ def op_select_format(input_data, x1, x2, value, y, kernel_name="addcdiv"):
 
 
 def check_op_dtype(dtype_input, dtype_x1, dtype_x2, dtype_value):
+    """
+    check_op_dtype
+    """
     check_list = ["float16", "float32"]
     value_list = ["float16", "float32", "int32"]
     para_check.check_dtype(dtype_input, check_list)

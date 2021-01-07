@@ -48,6 +48,7 @@ CONST_ONE_NA = -1.0
 
 
 # pylint: disable=locally-disabled,invalid-name
+# pylint: disable=too-many-locals
 def _compute_m_t(m, beta, grad):
     beta_tmp = tvm.compute(m.shape,
                            lambda *indice: m(*indice) * beta[0],
@@ -224,4 +225,3 @@ def apply_power_sign_d(var,
                                                            reuse=('var', 'm'))
 
     util_apply_op_schedule.common_apply_op_process(util_apply_op_schedule.ApplyOpConfig(args, name), kernel_name)
-

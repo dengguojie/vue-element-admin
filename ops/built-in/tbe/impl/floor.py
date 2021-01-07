@@ -20,7 +20,6 @@ import functools
 from te import tvm
 import te.lang.cce as tbe
 from te import platform as tbe_platform
-from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 
 # pylint: disable=locally-disabled,unused-argument

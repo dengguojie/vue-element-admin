@@ -15,7 +15,8 @@
 """
 fractal_nz_2_nc1hwc0
 """
-from functools import reduce as functools_reduce
+# pylint: disable=W0614
+# pylint: disable=bad-option-value,wildcard-import,no-else-return,undefined-variable
 from te import platform as cce
 import te.platform.cce_params as cce_params
 from te import tik

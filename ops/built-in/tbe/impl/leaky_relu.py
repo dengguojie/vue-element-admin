@@ -20,11 +20,12 @@ from functools import reduce as reduceIns
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from topi import generic
 
 
+# pylint: disable=invalid-name,too-many-locals
 def get_fusion_params(x_tensor, y):
     """
     Get L1 fusion_params

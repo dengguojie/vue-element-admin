@@ -26,6 +26,7 @@ NoneType = type(None)
 
 
 # pylint: disable=unused-argument,invalid-name,unexpected-keyword-arg
+# pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("reduce_max_d")
 def reduce_max_d_compute(x, y, axis, keepdims, kernel_name="reduce_max_d"):
     """

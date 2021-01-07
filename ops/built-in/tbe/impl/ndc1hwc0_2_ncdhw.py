@@ -15,7 +15,8 @@
 """
 ndc1hwc0_2_ncdhw
 """
-from functools import reduce as functools_reduce
+# pylint: disable=W0613
+# pylint: disable=too-many-lines,wildcard-import,undefined-variable,chained-comparison
 from te import platform as cce
 import te.platform.cce_params as cce_params
 from te import tik

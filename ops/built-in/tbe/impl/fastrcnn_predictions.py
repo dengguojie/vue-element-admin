@@ -16,7 +16,6 @@ add_tik
 # pylint: disable=C0302
 # pylint: disable=R0913
 from te import tik
-from topi.cce import util
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
@@ -41,6 +40,7 @@ REC_FACTOR = 1/DOWN_FACTOR
 IF_USE_V200 = ("Ascend610", "Ascend615", "Ascend710", "Hi3796CV300ES", "Hi3796CV300CS")
 
 
+# pylint: disable=using-constant-test,too-many-locals
 def ceil_div(divisor_a, divisor_b):
     """
     round up function

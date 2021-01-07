@@ -15,7 +15,6 @@
 """
 assign
 """
-import functools
 import operator
 
 import te.platform as tbe_platform
@@ -24,6 +23,8 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
+
+# pylint: disable=unused-argument,invalid-name,consider-using-enumerate
 def _check_params(ref_shape, value_shape, dtype, kernel_name):
     """
     check the parameters including ref_shape, value_shape, dtype and kernel_name

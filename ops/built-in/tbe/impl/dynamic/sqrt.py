@@ -106,4 +106,3 @@ def sqrt(input_x, output_y, kernel_name="sqrt"):
     # build
     config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)
-

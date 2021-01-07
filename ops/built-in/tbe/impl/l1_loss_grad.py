@@ -24,8 +24,12 @@ from te.utils import shape_util
 from te.utils import para_check
 
 
+# pylint: disable=invalid-name,too-many-arguments,unused-argument,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("l1_loss_grad")
 def l1_loss_grad_compute(grad_out, predict, target, y, reduction="mean", kernel_name="l1_loss_grad"):
+    """
+    l1_loss_grad_compute
+    """
     predict_dtype = predict.dtype.lower()
     if predict_dtype == "float16":
         grad_out = tbe.cast_to(grad_out, "float32", False)

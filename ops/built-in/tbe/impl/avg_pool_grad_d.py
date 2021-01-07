@@ -42,7 +42,7 @@ STRIDES_DIM = 2
 DEVICE_CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
 
-# pylint: disable=invalid-name
+# pylint: disable=invalid-name,unused-argument
 def _ceil(x):
     """
     Return the least multiple of 16 integer number
@@ -652,4 +652,3 @@ def avg_pool_grad_d(input_grad,
 
         with tbe_platform.build_config:
             tvm.build(s, [dout_placeholder, vealuemean_placeholder, kernel_placeholder, res], "cce", name=kernel_name)
-

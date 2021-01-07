@@ -16,6 +16,7 @@
 bias_add_grad
 """
 # pylint: disable=locally-disabled,invalid-name
+# pylint: disable=unnecessary-comprehension,global-statement
 import te.lang.cce as tbe
 import te.lang.base as tbe_base
 from te import tvm

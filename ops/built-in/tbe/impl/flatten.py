@@ -20,7 +20,7 @@ from te.utils import para_check
 from impl import copy_only
 
 
-# pylint: disable = invalid-name
+# pylint: disable = invalid-name,unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def flatten(x, y, kernel_name="flatten"):
     """return a copy of the tensor collapsed into one dimension.

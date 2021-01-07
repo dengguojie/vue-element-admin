@@ -103,4 +103,3 @@ def relu6(input_x, output_y, kernel_name="relu6"):
 
     config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)
-

@@ -27,6 +27,7 @@ from impl.batch_multi_class_nms_topk import sort_with_ub
 
 # pylint: disable=too-many-lines,too-many-instance-attributes,too-many-statements
 # pylint: disable=too-many-arguments,unused-argument,too-many-locals,too-many-branches
+# pylint: disable=invalid-name
 # scaling factor
 DOWN_FACTOR = 0.10
 # process 128 proposals at a time
@@ -1780,4 +1781,3 @@ def batch_multi_class_non_max_suppression(boxes, scores, clip_window, num_valid_
                     _run_one_core(real_batch_idx, _core_idx)
 
     return nms.build_tik_instance(kernel_name)
-

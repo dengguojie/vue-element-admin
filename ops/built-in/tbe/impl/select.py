@@ -336,4 +336,3 @@ def select(condition, x1, x2, y, kernel_name="select"):
         config = {"name": kernel_name,
                   "tensor_list": [condition, input_x1, input_x2, res]}
     tbe.cce_build_code(sch, config)
-

@@ -19,7 +19,6 @@ import functools
 
 import te.lang.cce as tbe
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
@@ -27,7 +26,7 @@ from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
-# pylint: disable=locally-disabled,redefined-builtin,too-many-locals
+# pylint: disable=locally-disabled,redefined-builtin,too-many-locals,unused-variable
 @tbe_platform.fusion_manager.fusion_manager.register("fake_quant_with_min_max_args")
 def fake_quant_with_min_max_args_compute(x, y, min=-6, max=6, num_bits=8,
                                          narrow_range=False,

@@ -24,7 +24,8 @@ from te.utils import shape_util
 from impl.util import fusion_util
 
 
-# 'pylint: disable=unused-argument,invalid-name
+# pylint: disable=unused-argument,invalid-name
+# pylint: disable=redefined-builtin
 def bn_training_reduce_compute(x, sum, square_sum,
                                kernel_name="bn_training_reduce"):
     """

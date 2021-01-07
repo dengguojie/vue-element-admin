@@ -378,4 +378,3 @@ def apply_adam_d(var, m, v, beta1_power, beta2_power, lr, beta1, beta2, epsilon,
 
     config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)
-

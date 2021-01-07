@@ -17,13 +17,12 @@ ascend_dequant_s16
 """
 from functools import reduce as function_reduce
 
-from te import tvm
-import te.lang.cce
-from te.platform.fusion_manager import fusion_manager
+from impl import ascend_quant_util as util
 from topi import generic
+from te import tvm
+from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
-from impl import ascend_quant_util as util
 from te.utils import shape_util
 
 

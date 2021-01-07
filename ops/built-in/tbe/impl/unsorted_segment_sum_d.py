@@ -17,7 +17,7 @@
 """
 unsorted_segment_sum_d
 """
-# pylint: disable=locally-disabled,too-many-lines
+# pylint: disable=locally-disabled,too-many-lines,too-many-statements
 import operator
 from functools import reduce as functools_reduce
 

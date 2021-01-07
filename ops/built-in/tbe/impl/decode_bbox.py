@@ -41,6 +41,7 @@ CONFIG_BLOCK_SIZE = 128
 MATRIX = 256
 
 
+# pylint: disable=too-many-lines,unused-argument,super-with-arguments
 def get_op_support_info(box_predictions,
                         anchors,
                         decoded_boxes,

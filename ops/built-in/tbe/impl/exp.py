@@ -21,10 +21,10 @@ import functools
 import te.lang.cce as tbe
 from te import tvm
 import te.platform as tbe_platform
-from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 
 
+# pylint: disable=too-many-locals
 def isclose(valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
     """
     determines whether the values of two floating-point numbers are close or equal

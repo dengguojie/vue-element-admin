@@ -15,9 +15,8 @@
 """
 zn_2_hwcn_lstm
 """
-import math
-from functools import reduce as functools_reduce
-
+# pylint: disable=W0613
+# pylint: disable=wildcard-import,chained-comparison,redefined-outer-name,undefined-variable
 from te import tik
 from te import platform as tbe_platform
 from te.utils.op_utils import *

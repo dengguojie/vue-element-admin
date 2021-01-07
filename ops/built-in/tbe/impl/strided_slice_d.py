@@ -15,6 +15,7 @@
 """
 strided_slice_d
 """
+# pylint: disable=too-many-lines
 import copy
 import math
 import functools

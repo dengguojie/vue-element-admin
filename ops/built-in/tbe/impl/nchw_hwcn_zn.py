@@ -15,6 +15,7 @@
 """
 nchw_hwcn_zn
 """
+# pylint: disable=too-many-lines,wildcard-import,undefined-variable
 from __future__ import absolute_import
 import te.lang.cce
 from te import tvm
@@ -22,8 +23,8 @@ from te import platform as tvm_cce
 from te.platform import cce_params as param
 from te.platform import cce_intrin as intrin
 from te.platform import cce_util
-from topi import generic
 from te.utils.op_utils import *
+from topi import generic
 
 # pylint: disable=locally-disabled,too-many-lines,too-many-statements
 # pylint: disable=locally-disabled,too-many-locals,too-many-arguments

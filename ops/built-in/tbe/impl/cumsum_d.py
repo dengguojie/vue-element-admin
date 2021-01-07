@@ -25,7 +25,7 @@ from impl.util import util_select_op_base
 SUM_TYPE = "sum"
 
 
-# pylint: disable = unused-argument,too-many-arguments,invalid-name
+# pylint: disable = unused-argument,too-many-arguments,invalid-name,consider-using-in
 def get_op_support_info(x, y, axis=0, exclusive=False, reverse=False, kernel_name="cumsum_d"):
     """
     get_op_support_info

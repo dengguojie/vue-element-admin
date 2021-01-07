@@ -46,7 +46,7 @@ NUM_MINUS_ONE = -1
 NUM_ONE = 1
 
 
-# pylint: disable=unused-argument,invalid-name
+# pylint: disable=unused-argument,invalid-name,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("asin_grad")
 def asin_grad_compute(y, dy, z, kernel_name="asin_grad"):
     """

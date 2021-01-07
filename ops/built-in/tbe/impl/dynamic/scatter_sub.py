@@ -34,6 +34,7 @@ BLOCK_BYTES = 32
 
 # pylint: disable=too-many-arguments,too-many-instance-attributes,unused-argument
 # pylint: disable=too-many-public-methods
+# pylint: disable=attribute-defined-outside-init
 class ScatterSub():
     """
        Function: use to store scatter_sub base parameters

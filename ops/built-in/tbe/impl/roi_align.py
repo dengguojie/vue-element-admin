@@ -15,6 +15,7 @@
 """
 roi_align
 """
+# pylint: disable=too-many-lines
 import math
 
 import te.platform as tbe_platform

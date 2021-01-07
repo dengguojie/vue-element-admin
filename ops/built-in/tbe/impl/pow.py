@@ -22,6 +22,8 @@ from te.utils import shape_util
 from te import tvm
 from te.utils.error_manager import error_manager_vector
 
+
+# pylint: disable=invalid-name
 def _is_equal_zero(x):
     """
     if x==0,then return 1,else return 0.

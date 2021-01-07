@@ -15,6 +15,7 @@
 """
 dynamic operator
 """
+# pylint: disable=W0622
 from __future__ import absolute_import as _abs
 
 from .unsorted_segment_sum import unsorted_segment_sum
@@ -37,7 +38,7 @@ from .reduce_mean_d import reduce_mean_d
 from .conv2d import conv2d
 from .conv3d import conv3d
 from .dynamic_atomic_addr_clean import dynamic_atomic_addr_clean
-from . import sparse_apply_ftrl_d
+from .sparse_apply_ftrl_d import sparse_apply_ftrl_d
 from .div import div
 from .sqrt import sqrt
 from .square import square

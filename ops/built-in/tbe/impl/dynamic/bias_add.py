@@ -243,4 +243,3 @@ def bias_add(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
     config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)
     tbe_base.add_compile_info("_boardcast_bias_shape", shape_bias)
-

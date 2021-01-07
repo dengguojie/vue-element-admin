@@ -21,6 +21,7 @@ from te.utils import para_check
 import te.platform as tbe_platform
 
 
+# pylint: disable=too-many-locals,invalid-name,unused-argument,too-many-arguments
 @tbe_platform.fusion_manager.fusion_manager.register("smooth_l1_loss_grad_v2")
 def smooth_l1_loss_grad_v2_compute(input_predict,
                                    input_label,
@@ -96,7 +97,9 @@ def smooth_l1_loss_grad_v2_compute(input_predict,
                             para_check.KERNEL_NAME)
 def smooth_l1_loss_grad_v2(predict, label, dout, gradient, sigma=1.0, reduction='mean',
                            kernel_name="smooth_l1_loss_grad_v2"):
-
+    """
+    smooth_l1_loss_grad_v2
+    """
     # check input: predict label dout
     check_list = ("float16", "float32")
 

@@ -30,6 +30,7 @@ POS_TWO = 2
 
 
 # pylint: disable=too-many-instance-attributes,too-many-statements
+# pylint: disable=no-else-return
 class NORMALIZEBBOX():
     """
     Normalize the pre-selected box that passes through the NMS in Prediction

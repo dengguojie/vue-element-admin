@@ -26,6 +26,7 @@ SHAPE_SIZE_LIMIT = 2147483648  # shape limit
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=invalid-name,unused-variable,too-many-locals
+# pylint: disable=redefined-argument-from-local
 def maximum_compute(x1, x2, y, kernel_name="maximum"):
     """dynamic maximum compute
 

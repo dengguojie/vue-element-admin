@@ -18,8 +18,9 @@ check_valid
 import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
-from impl import common_util
 from te.utils.error_manager import error_manager_vector
+from impl import common_util
+
 
 # count of shape dim
 DIM_CNT = 2

@@ -23,13 +23,13 @@ import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
-from topi import generic
-from topi.cce import util
 from te.utils.error_manager import error_manager_vector
+from topi import generic
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=invalid-name,too-many-statements
+# pylint: disable=self-assigning-variable
 def check_window_rule(ksize, strides, padding_mode, pads, data_format, kernel_name):
     """
     check ksize and strides of window in pooling

@@ -15,12 +15,8 @@
 """
 gather_nd
 """
-from te import tvm
 import te.lang.dynamic
-from topi.cce import util
 from te import tik
-from te import platform as tbe_platform
-from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
@@ -1415,4 +1411,3 @@ def gather_nd(x_dict, indices_dict, y_dict, kernel_name="GatherNd"):
     """
     obj = GatherNd(x_dict, indices_dict, y_dict, kernel_name)
     return obj.gather_nd_compute()
-

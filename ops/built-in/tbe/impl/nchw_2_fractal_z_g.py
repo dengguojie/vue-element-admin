@@ -15,7 +15,6 @@
 """
 nchw_2_fractal_z_g
 """
-import functools
 import math
 from te import tik
 from te import platform as tbe_platform
@@ -29,6 +28,9 @@ OFFSET_2 = 0
 MAX_CORE_NUM = 32
 
 
+# pylint: disable=superfluous-parens,useless-object-inheritance,invalid-name
+# pylint: disable=too-many-instance-attributes,too-few-public-methods,unused-argument,no-self-use
+# pylint: disable=too-many-arguments,too-many-locals,useless-return,protected-access
 class Nchw2Fractalzg(object):
     """
     Nchw2Fractalzg

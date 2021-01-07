@@ -25,6 +25,7 @@ SIZE_SIXTEEN = 16
 
 
 # pylint: disable=too-many-locals,too-many-arguments,invalid-name,unused-argument
+# pylint: disable=simplifiable-if-statement,no-else-return
 def _prod(input_shape):
     """
     Calculate the product of all elements

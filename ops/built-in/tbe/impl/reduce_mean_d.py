@@ -15,6 +15,7 @@
 """
 reduce_mean_d
 """
+# pylint: disable=too-many-arguments,too-many-locals,global-statement
 import collections
 
 import te.lang.cce as tbe
@@ -143,7 +144,7 @@ def reduce_mean_d(input_x, output_y, axes,
     format_x = input_x.get("format")
     format_y = output_y.get("format")
     format_ori_y = output_y.get("ori_format")
-    
+
     para_check.check_shape(shape, param_name="input_x")
     check_list = ["float16", "float32"]
     shape_len = len(shape)

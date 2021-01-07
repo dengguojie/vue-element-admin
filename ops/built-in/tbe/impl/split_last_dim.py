@@ -933,4 +933,3 @@ class SplitWith5HD:
                 ub_offset \
                 + (repeat_loop*max_repeat_num + dup_tail)*8*ONE_BLOCK_FP16_SIZE
             _vector_dup(vec_offset, 1, dup_tail)
-

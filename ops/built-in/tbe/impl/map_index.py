@@ -19,6 +19,7 @@ from te import platform as tbe_platform
 from te.utils import para_check
 
 
+# pylint: disable=singleton-comparison
 def map_index_vec_dup(tik_instance, mask, dst, const, length):
     """
     :param tik_instance:

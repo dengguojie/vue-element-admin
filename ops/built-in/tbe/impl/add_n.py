@@ -25,6 +25,7 @@ from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("add_n")
 def add_n_compute_for_fusion(datas, output, tensor_num, kernel_name="add_n"):
     """

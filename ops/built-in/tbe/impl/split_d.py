@@ -640,4 +640,3 @@ def split_d(input_value, output_data, split_dim, num_split, kernel_name="split_d
 
     with tbe_platform.build_config:
         tvm.build(sch, build_list, "cce", name=kernel_name)
-

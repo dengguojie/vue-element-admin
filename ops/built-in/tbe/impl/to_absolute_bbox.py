@@ -30,6 +30,7 @@ POS_TWO = 2
 
 
 # pylint: disable=too-many-instance-attributes,too-many-statements
+# pylint: disable=no-else-return
 class ToAbsoluteBBox:
     """
     Absolute the box that passes through the NormalizeBBox in Prediction

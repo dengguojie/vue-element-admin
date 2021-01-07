@@ -24,6 +24,8 @@ from te.utils import para_check
 INF_FP32_VAL = 1e-10
 
 
+# pylint: disable=too-many-arguments,too-many-locals
+# pylint: disable=pointless-string-statement,no-else-return,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("hardtanh_grad")
 def hardtanh_grad_compute(input_result, input_grad, output_y, min_val=-1.0, max_val=1.0, kernel_name="hardtanh_grad"):
     """

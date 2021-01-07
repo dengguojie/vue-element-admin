@@ -28,6 +28,7 @@ SHAPE_SIZE_LIMIT = 2**30
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=locally-disabled,too-many-locals,too-many-statements
 # pylint: disable=locally-disabled,invalid-name,too-many-locals
+# pylint: disable=unused-variable
 def square_compute(x, kernel_name="square"):
     """
     calculating data's square,y= x*x

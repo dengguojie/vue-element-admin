@@ -15,11 +15,12 @@
 """
 internal data move
 """
+from te.utils import para_check
 from impl import load_to_l1
 from impl import store_to_gm
-from te.utils import para_check
 
 
+# pylint: disable=invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_STR, para_check.REQUIRED_ATTR_STR,
                             para_check.KERNEL_NAME)
@@ -52,4 +53,3 @@ def internal_data_move(x, y, src_buf, dst_buf,
         store_to_gm(x, y, kernel_name)
     else:
         raise RuntimeError("not support this kind of data move !")
-

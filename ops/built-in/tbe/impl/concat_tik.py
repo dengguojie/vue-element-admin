@@ -1687,4 +1687,3 @@ def check_dim_size_align(shape_list, axis, align_size):
             break
 
     return is_align
-

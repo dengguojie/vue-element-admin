@@ -25,7 +25,11 @@ PROD_TYPE = "prod"
 
 
 # pylint: disable = unused-argument
+# pylint: disable=invalid-name,too-many-arguments,consider-using-in
 def get_op_support_info(x, y, axis=0, exclusive=False, reverse=False, kernel_name="cumprod_d"):
+    """
+    get_op_support_info
+    """
     format_x = x.get("format")
     shape = x.get("shape")
     if axis < 0:

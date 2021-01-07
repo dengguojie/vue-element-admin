@@ -15,7 +15,6 @@
 """
 hwcn_2_fractal_z_g
 """
-import functools
 import math
 from te import tik
 from te import platform as tbe_platform
@@ -29,6 +28,11 @@ OFFSET_2 = 0
 MAX_CORE_NUM = 32
 
 
+# pylint: disable=superfluous-parens,useless-object-inheritance
+# pylint: invalid-name,too-many-instance-attributes,too-many-arguments
+# pylint: unused-variable,too-few-public-methods,too-many-statements
+# pylint: no-self-use,consider-using-enumerate,unused-argument,too-many-locals
+# pylint: singleton-comparison,useless-return,protected-access
 class Hwcn2Fractalzg(object):
     """
     Hwcn2Fractalzg
@@ -420,4 +424,3 @@ def hwcn_2_fractal_z_g(src, dst, src_format, dst_format, groups, kernel_name="hw
     tp = instance._tiling(shape_in, shape_out, groups)
     instance.compute(tp, data_in, data_out)
     tik_inst.BuildCCE(kernel_name=kernel_name, inputs=[data_in], outputs=[data_out])
-

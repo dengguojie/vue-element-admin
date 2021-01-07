@@ -25,6 +25,7 @@ PARA_LIST_LEN = 5
 
 
 # pylint: disable=locally-disabled,unused-argument,unnecessary-lambda
+# pylint: disable=no-else-break
 @fusion_manager.register("store_to_gm")
 def store_to_gm_compute(input_tensor, output_x, kernel_name="store_to_gm"):
     """
@@ -117,6 +118,3 @@ def store_to_gm(input_x, output_x, kernel_name="store_to_gm"):
 
     with build_config:
         tvm.build(sch, tensor_list, "cce", name=kernel_name)
-
-
-

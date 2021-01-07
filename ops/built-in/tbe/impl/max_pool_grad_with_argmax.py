@@ -51,6 +51,7 @@ MASK_MAX = 8
 
 
 # pylint: disable = unused-argument,too-many-arguments,invalid-name
+# pylint: disable=super-with-arguments
 def get_op_support_info(x, grad, argmax, y, ksize, strides, padding,
                         kernel_name="max_pool_grad_with_argmax"):
     """

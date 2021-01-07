@@ -31,7 +31,11 @@ MAX_MASK8 = 255
 
 
 # pylint: disable = unused-argument
+# pylint: disable=invalid-name,useless-object-inheritance,too-few-public-methods
 def get_op_support_info(x, y, concat_dim, kernel_name="concat_offset_d"):
+    """
+    get_op_support_info
+    """
     axis_split_matrix = None
     axis_reduce_list = None
     op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
@@ -109,6 +113,9 @@ def concat_offset_d_check(x, concat_dim, input0_rank, dict_num, kernel_name):
 
 
 class ConcatOffsetDCompute(object):
+    """
+    ConcatOffsetDCompute
+    """
     def __init__(self, concat_dim, input0_rank, dict_num, kernel_name):
         """
         init the input param

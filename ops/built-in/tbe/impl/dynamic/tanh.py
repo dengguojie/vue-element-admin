@@ -15,24 +15,24 @@
 """
 tanh
 """
-import te
+from functools import reduce as reduceIns
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 import te.lang.base as tbe_base
 from te import tvm
-from topi import generic
 from te.utils.op_utils import KERNEL_NAME
 from te.utils.op_utils import REQUIRED_INPUT
 from te.utils.op_utils import REQUIRED_OUTPUT
 from te.utils.op_utils import check_dtype
 from te.utils.op_utils import check_op_params
 from te.utils.op_utils import variable_shape
-from functools import reduce as reduceIns
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
+from topi import generic
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# pylint: disable=too-many-locals,invalid-name,redefined-argument-from-local
 def tanh_compute(input_x, output_y, kernel_name="tanh"):
     """
     algorithm: tanh

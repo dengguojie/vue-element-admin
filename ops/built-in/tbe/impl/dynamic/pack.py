@@ -21,6 +21,7 @@ from te.utils import para_check
 from impl.dynamic.concat_v2_d import concat_v2_d
 
 
+# pylint: disable=invalid-name
 @te.op.register_operator("Pack")
 @para_check.check_op_params(para_check.DYNAMIC_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
                             para_check.KERNEL_NAME)

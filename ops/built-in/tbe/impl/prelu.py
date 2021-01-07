@@ -23,6 +23,7 @@ from te.utils.error_manager import error_manager_vector
 from te import tvm
 
 
+# pylint: disable=unused-variable,too-many-branches,too-many-statements
 def reshape(tensor_in, new_shape):
     """
     :params:

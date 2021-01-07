@@ -39,6 +39,7 @@ SCALAR_ZERO = 0
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# pylint: disable=too-many-locals,redefined-argument-from-local
 def _less_compare(data, shape, dtype, data_min):
     """
     if x is less than y, then return 1, else return 0.

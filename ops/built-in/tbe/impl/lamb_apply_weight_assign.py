@@ -26,7 +26,7 @@ from .greater import greater_compute
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=locally-disabled,too-many-locals,unused-variable
-
+# pylint: disable=relative-beyond-top-level
 unuse_tensor = tvm.const(0, "float32")
 
 

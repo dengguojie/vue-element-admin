@@ -15,8 +15,8 @@
 """
 dropout_v2
 """
-from te.platform.fusion_manager import fusion_manager
 import functools
+from te.platform.fusion_manager import fusion_manager
 from te import tik
 from te import platform as cce
 
@@ -28,6 +28,9 @@ def _ceil_div(value, factor):
     return (value + factor - 1) // factor
 
 
+# pylint: disable=invalid-name,useless-object-inheritance,too-few-public-methods
+# pylint: too-many-instance-attributes,too-many-arguments,unused-argument,self-assigning-variable
+# pylint: attribute-defined-outside-init
 def _check_param_dtype(x, seed, y, mask, new_seed):
     if x.get("dtype") != y.get("dtype"):
         raise RuntimeError('dtype of input and output should be same')

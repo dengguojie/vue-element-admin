@@ -15,6 +15,7 @@
 """
 max_pool_v3_grad
 """
+# pylint: disable=too-many-lines
 import math
 from te import platform as tbe_platform
 from te import tik

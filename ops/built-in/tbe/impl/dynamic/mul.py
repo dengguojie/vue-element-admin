@@ -24,6 +24,7 @@ from te.lang.base.shape_classifier import Mode
 from te.utils import para_check
 
 
+# pylint: disable=unused-argument,too-many-locals,redefined-argument-from-local
 def mul_compute(input1, input2, output, kernel_name="mul"):
     """
     calculating data's mul, c = a * b

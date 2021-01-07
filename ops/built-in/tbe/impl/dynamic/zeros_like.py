@@ -15,11 +15,11 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 zeros_like
 """
+from functools import reduce as functools_reduce
 
 import te.lang.cce as tbe
 import te.lang.base as tbe_base
 from te import tvm
-from functools import reduce as functools_reduce
 from te.utils import para_check
 from te.utils import shape_util
 from te.lang.base.shape_classifier import classify

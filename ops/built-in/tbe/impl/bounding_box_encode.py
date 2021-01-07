@@ -39,12 +39,16 @@ BLOCK_SIZE = 32
 
 
 # pylint: disable = unused-argument
+# pylint: disable=too-many-arguments,singleton-comparison
 def get_op_support_info(anchorbox_in_dict,
                         ground_truth_in_dict,
                         delta_out_dict,
                         means_attrs=(0, 0, 0, 0),
                         stds_attrs=(1, 1, 1, 1),
                         kernel_name_val="bounding_box_encode"):
+    """
+    get_op_support_info
+    """
     axis_split_matrix=[[SplitInput([0, [0], [-1], [-1]], [1, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
     axis_reduce_list = None
     op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)

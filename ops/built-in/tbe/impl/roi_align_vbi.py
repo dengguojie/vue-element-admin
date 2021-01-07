@@ -62,6 +62,7 @@ FP_SIXTEEN_ONE_TIME = 128
 FP_32_ONE_TIME = 64
 
 
+# pylint: disable=super-with-arguments
 # pylint: disable=too-many-locals,too-many-arguments,too-many-statements,too-many-lines,unused-argument
 def _roi_align_perf_scale(tik_instance, rois, feature_map_h, feature_map_w):
     """

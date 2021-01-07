@@ -15,6 +15,8 @@
 """
 nc1hwc0_2_nz
 """
+# pylint: disable=W0613
+# pylint: disable=wildcard-import,undefined-variable
 from te import tik
 from te import platform as tbe_platform
 from te.utils.op_utils import *

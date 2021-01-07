@@ -29,6 +29,7 @@ MAX_SEGMENT_LEN = 2048*7
 OUT_MASK = 64
 
 
+# pylint: disable=super-with-arguments
 def _get_ceil_int(int1, int2):
     """Get Ceil Int
 

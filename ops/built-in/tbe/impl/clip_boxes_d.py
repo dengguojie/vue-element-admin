@@ -18,9 +18,8 @@ clip_boxes_d
 from te import tik
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
-from topi.cce import util
 from te import platform as tbe_platform
-
+from topi.cce import util
 from impl.util import util_select_op_base
 
 SHAPE_SIZE_LIMIT = 65500
@@ -38,6 +37,7 @@ CONFIG_UB_LIMITED = 4096
 IF_USE_V200 = ("Ascend610", "Ascend615", "Ascend710")
 
 
+# pylint: disable=unused-argument,super-with-arguments
 def get_op_support_info(boxes_input,
                         boxes_output,
                         img_size,

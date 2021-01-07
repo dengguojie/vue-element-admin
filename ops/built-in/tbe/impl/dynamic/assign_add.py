@@ -102,4 +102,3 @@ def assign_add(ref, value, output, kernel_name="assign_add"):
     # build
     config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)
-

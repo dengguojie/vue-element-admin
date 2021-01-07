@@ -15,6 +15,9 @@
 """
 space_to_depth
 """
+# pylint: disable=W0613
+# pylint: disable=too-many-lines,wildcard-import,undefined-variable
+# pylint: disable=inconsistent-return-statements,unused-variable,super-with-arguments
 from te import tik
 from te import platform as tbe_platform
 from te.utils.error_manager import error_manager_vector

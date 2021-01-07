@@ -18,7 +18,6 @@ lamb_next_right
 import te.lang.cce as tbe
 from te import tvm
 import te.platform as tbe_platform
-from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils import shape_util
 
@@ -26,6 +25,7 @@ from te.utils import shape_util
 # pylint: disable=locally-disabled,unused-variable,unused-argument
 # pylint: disable=locally-disabled,too-many-locals,too-many-arguments
 # pylint: disable=locally-disabled,invalid-name
+# pylint: disable=redeclared-assigned-name
 def shape_broadcast(data_1, data_2):
     """
     broadcast the two input

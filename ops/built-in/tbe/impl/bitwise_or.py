@@ -93,10 +93,10 @@ def bitwise_or(x1, x2, y, kernel_name="bitwise_or",):
         error_detail = "dtype of x1 and x2 should be same"
         error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "x1", "x2", error_detail)
 
-    shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
-                                                              shape_y,
-                                                              param_name_input1="x1",
-                                                              param_name_input2="x2")
+    shape_x, shape_y, _ = shape_util.broadcast_shapes(shape_x,
+                                                      shape_y,
+                                                      param_name_input1="x1",
+                                                      param_name_input2="x2")
     shape_x, shape_y = shape_util.refine_shapes_for_broadcast(shape_x, shape_y)
 
     if input_data_type == "int32":

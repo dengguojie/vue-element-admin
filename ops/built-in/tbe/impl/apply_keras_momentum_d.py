@@ -15,10 +15,9 @@
 """
 apply_keras_momentum_d
 """
-import te.platform as tbe_platform
 from impl.util.util_apply_op_schedule import ApplyOpConfig
 from impl.util.util_apply_op_schedule import common_apply_op_process
-
+import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check

@@ -30,6 +30,9 @@ from impl.dynamic.strided_slice import StridedSlice
 from impl.dynamic.strided_slice import ceil_32bytes_align_count
 
 
+# pylint: disable=undefined-variable
+# pylint: disable=too-many-instance-attributes,useless-object-inheritance
+# pylint: disable=too-many-arguments,unused-argument,unneeded-not,invalid-name
 def _data_move(tik_instance: tik.Tik, dest: tik.Tensor, src: tik.Tensor, count):
     dtype_size = common_util.get_data_size(src.dtype)
     burst = math.ceil(count * dtype_size / constant.BLOCK_SIZE)

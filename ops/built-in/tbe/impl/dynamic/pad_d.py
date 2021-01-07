@@ -16,7 +16,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 padD
 """
 from te import tik
-from te import platform as tbe_platform
 from te.utils.error_manager import error_manager_vector
 import te.lang.dynamic
 from impl.dynamic import pad_align
@@ -113,4 +112,3 @@ def pad_d(input_x, output_x, paddings, kernel_name="pad_d"):
     tik_obj = tik.Tik()
     pad = pad_common.PadInit(pads, src_dtype, kernel_name, tik_obj, True)
     return pad_compute(pad)
-

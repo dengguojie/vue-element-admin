@@ -15,6 +15,7 @@
 """
 nchw_2_fractal_z_c04
 """
+# pylint: disable=too-many-lines
 import functools
 
 import te.platform as tbe_platform

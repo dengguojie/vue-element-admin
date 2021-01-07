@@ -23,6 +23,7 @@ from te import tvm
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# pylint: disable=too-many-statements
 def tile_d_compute(data, output_x, multiples, kernel_name="tile_d"):
     """TVM calculation process, used for fusion operation.
 
@@ -109,15 +110,15 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
                                        "actually is [%s]." % (error_info['op_name'], error_info['param_name'],
                                                               error_info['min_len'], error_info['max_len'],
                                                               error_info['length']))
-    
+
     # Check support dtype
     input_dtype = input_x.get("dtype").lower()
     check_list = ("float16", "float32", "int32", "int8")
     para_check.check_dtype(input_dtype, check_list, param_name="input_x")
-    
+
     input_range = list(input_x.get("range"))
     input_shape = list(input_x.get("shape"))
-    
+
     # Write unknown dim index into tiling_info
     tiling_info = []
     for idx, shape_i in enumerate(input_shape):
@@ -135,10 +136,10 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
         error_info['min_value'] = '1'
         error_info['real_value'] = str(len(input_shape))
         raise RuntimeError(error_info, "In op[%s], the num of dimensions of input[%s] should be in the range of "
-                                       "[%s, %s], but actually is [%s]." % (error_info['op_name'], 
-                                                                            error_info['param_name'], 
+                                       "[%s, %s], but actually is [%s]." % (error_info['op_name'],
+                                                                            error_info['param_name'],
                                                                             error_info['min_value'],
-                                                                            error_info['max_value'], 
+                                                                            error_info['max_value'],
                                                                             error_info['real_value']))
     if len(input_shape) < len(multiples):
         len_diff = len(multiples) - len(input_shape)

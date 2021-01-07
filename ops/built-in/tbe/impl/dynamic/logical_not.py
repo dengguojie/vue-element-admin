@@ -104,4 +104,3 @@ def logical_not(x, y, kernel_name="logical_not"):
               "tensor_list": tensors,
               "bool_storage_as_1bit": False}
     tbe.build(schedules, config)
-

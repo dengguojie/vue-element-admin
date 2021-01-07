@@ -30,11 +30,12 @@ from te.utils.op_utils import variable_shape
 from te.utils.op_utils import refine_shapes_for_broadcast
 from te.utils.op_utils import broadcast_shapes
 from te.utils.error_manager import error_manager_vector
-from topi import generic
 from te.utils import shape_util
+from topi import generic
 
 
 # pylint: disable=too-many-arguments,unused-argument
+# pylint: disable=ttoo-many-locals,redefined-argument-from-local
 def relu6_grad_compute(input_grad, input_x, output_y, kernel_name="relu6_grad"):
     """
     Parameters
@@ -139,4 +140,3 @@ def relu6_grad(input_grad, input_x, output_y, kernel_name="relu6_grad"):
         schedules.append(sch)
     config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)
-

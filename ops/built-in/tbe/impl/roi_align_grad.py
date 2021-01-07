@@ -15,7 +15,7 @@
 """
 roi_align_grad
 """
-# pylint: disable=too-many-lines
+# pylint: disable=too-many-lines,unused-variable
 import te.platform as tbe_platform
 from te.utils import para_check
 from te import tik
@@ -1388,4 +1388,3 @@ def roi_align_grad(y_diff,
         spatial_scale, sample_num, output_grad_shape, kernel_name)
 
     return tik_instance
-

@@ -48,6 +48,7 @@ DEQ_SCALE = 1.0
 SCALAR_HALF = 0.5
 
 
+# pylint: disable=no-member,attribute-defined-outside-init,dangerous-default-value
 class DecodeBboxV2():
     """
        Function: use to store  base parameters
@@ -691,4 +692,3 @@ def decode_bbox_v2(boxes, anchors, y, scales=[1.0, 1.0, 1.0, 1.0],
     decode_bbox = DecodeBboxV2(boxes, anchors, scales, decode_clip,
                                reversed_box, kernel_name)
     decode_bbox.decode_bboxv2_compute()
-

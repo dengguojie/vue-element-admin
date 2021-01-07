@@ -50,6 +50,7 @@ L1_SIZE = tbe_platform.cce_conf.CceProductParams().getParams("L1_Buffer")
 
 
 # pylint: disable=unused-argument,invalid-name,too-many-arguments
+# pylint: disable=too-many-lines,unused-variable,singleton-comparison
 def get_op_support_info(x, y, argmax, ksize, strides, pads, dtype=DT_INT32,
                          dilation=(1, 1, 1, 1), ceil_mode=False,
                          kernel_name="max_pool_with_argmaxv2"):

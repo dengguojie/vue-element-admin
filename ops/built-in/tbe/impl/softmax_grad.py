@@ -23,6 +23,7 @@ from te import tvm
 
 
 # pylint: disable=locally-disabled,unused-argument
+# pylint: disable=unused-variable
 @tbe_platform.fusion_manager.fusion_manager.register("softmax_grad")
 def softmax_grad_compute(softmax, grad_softmax, grad_x,
                          kernel_name="softmax_grad"):

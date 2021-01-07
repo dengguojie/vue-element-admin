@@ -16,12 +16,12 @@
 dynamic relu
 """
 from __future__ import absolute_import
+from functools import reduce as reduceIns
 
 import te.lang.cce as tbe
 from te import tvm
 from te import platform as tbe_platform
 import te.lang.base as tbe_base
-from functools import reduce as reduceIns
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils import shape_util
@@ -32,8 +32,12 @@ from impl.util import fusion_util
 CONST_ZERO = 0
 
 
+# pylint: disable=invalid-name,unused-argument,redefined-argument-from-local
 @tbe_base.register_fusion_compute("Relu")
 def relu_fusion_compute(input_x, output_y, kernel_name="relu"):
+    """
+    relu_fusion_compute
+    """
     fusion_util.check_fusion_input([input_x])
 
     dict_x = fusion_util.extract_dict(input_x)

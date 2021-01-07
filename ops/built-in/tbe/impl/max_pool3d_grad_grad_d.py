@@ -16,8 +16,7 @@
 max_pool3d_grad_grad_d
 """
 # pylint: disable=E0401
-import time
-
+# pylint: disable=unreachable
 import te.lang.cce as tbe
 from te import tvm
 

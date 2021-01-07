@@ -22,6 +22,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 
 
+# pylint: disable=invalid-name,unused-argument
 @fusion_manager.register("muls")
 def muls_compute(x, scalar, kernel_name="muls"):
     """

@@ -21,10 +21,9 @@ import operator
 import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
-from impl.util import util_build
 from te.utils import para_check
-from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
+
 
 def _check_param(shape_var, shape_value, dtype_var, dtype_value, kernel_name):
     """

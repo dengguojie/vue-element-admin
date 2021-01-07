@@ -15,6 +15,7 @@
 """
 four_2_five
 """
+# pylint: disable=too-many-lines
 from __future__ import absolute_import
 
 from functools import reduce as functools_reduce

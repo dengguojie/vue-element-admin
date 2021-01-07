@@ -17,7 +17,6 @@ Compute gradients for a FakeQuantWithMinMaxVarsPerChannel operation.
 """
 import te.lang.cce as tbe
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
@@ -30,6 +29,7 @@ ZERO_VALUE = 0
 ONE_VALUE = 1
 
 
+# pylint: disable=unused-variable
 def _less_compare_float32(data_x, data_y):
     """
     if x is less than y, then return 1, else return 0.

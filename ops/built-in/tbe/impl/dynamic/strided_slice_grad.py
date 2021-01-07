@@ -32,7 +32,7 @@ INT64_BLOCK = 4
 # pylint: disable=too-many-locals, too-many-statements
 # pylint: disable=attribute-defined-outside-init, unused-argument
 # pylint: disable=attribute-defined-outside-init, chained-comparison
-
+# pylint: disable=consider-using-in,unused-variable
 
 def _check_mask(input_mask, is_shrink=False):
     """ Check whether the value of the input mask is 0.

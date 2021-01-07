@@ -15,6 +15,7 @@
 """
 five_2_four
 """
+# pylint: disable=too-many-lines
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function

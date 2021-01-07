@@ -24,6 +24,7 @@ RESERVE_SIZE = 2 * 1024
 PROPOSAL_NUM = 8
 
 
+# pylint: disable=invalid-name,too-many-arguments,too-many-locals,unused-argument
 def check(x, y, axis, kernel_name):
     """
     Function: Check parameters (eg: shape dtype etc).

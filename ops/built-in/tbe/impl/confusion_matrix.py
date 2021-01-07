@@ -44,7 +44,7 @@ BYTES_PER_BLOCK = 32
 FLOAT16_NUMS = 16
 
 
-# pylint: disable = unused-argument
+# pylint: disable = unused-argument,invalid-name
 def get_op_support_info(labels,
                         predictions,
                         weights,
@@ -54,6 +54,9 @@ def get_op_support_info(labels,
                         kernel_name="cce_confusion_matrix",
                         need_build=True,
                         need_print=False):
+    """
+    get_op_support_info
+    """
     axis_split_matrix = None
     axis_reduce_list = None
     op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)

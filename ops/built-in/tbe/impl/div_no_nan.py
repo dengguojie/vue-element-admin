@@ -17,7 +17,6 @@ div_no_nan
 """
 import te.lang.cce as tbe
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
 import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
@@ -121,9 +120,9 @@ def div_no_nan(input_x, input_y, output_z, kernel_name="div_no_nan"):
 
     for shape in (shape_x, shape_y):
         para_check.check_shape(shape, param_name="input_x")
-    shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y,
-                                                              param_name_input1="input_x",
-                                                              param_name_input2="input_y")
+    shape_x, shape_y, _ = shape_util.broadcast_shapes(shape_x, shape_y,
+                                                      param_name_input1="input_x",
+                                                      param_name_input2="input_y")
     input_dtype = dtype.lower()
     para_check.check_dtype(input_dtype, ("float16", "float32",
                               "int32", "int8", "uint8"), param_name="input_x")

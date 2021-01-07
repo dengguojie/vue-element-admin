@@ -16,6 +16,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 neg
 """
 from __future__ import absolute_import
+from functools import reduce as reduceIns
 
 import te.lang.cce as tbe
 from te import tvm
@@ -24,7 +25,6 @@ from te.utils import shape_util
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils import para_check
-from functools import reduce as reduceIns
 
 # define a scaler, value = -1
 SCALER_NEGATIVE_ONE = -1
@@ -32,7 +32,7 @@ SCALER_NEGATIVE_ONE = -1
 SCALER_NEGATIVE_ONE_FLOAT = -1.0
 
 
-# pylint: disable=locally-disabled,unused-argument
+# pylint: disable=locally-disabled,unused-argument,redefined-argument-from-local
 def neg_compute(input_x, output_y, kernel_name="neg"):
     """
     compute neg

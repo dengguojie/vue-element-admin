@@ -38,6 +38,7 @@ INDEX_W = 3
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-branches
+# pylint: disable=too-many-lines,pointless-string-statement,unnecessary-lambda
 def _check_parameters(min_size, max_size, img_h, img_w,
                       step_h, step_w, variance):
     if len(min_size) <= 0:

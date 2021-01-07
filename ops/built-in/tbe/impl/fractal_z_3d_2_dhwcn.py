@@ -15,6 +15,8 @@
 """
 fractal_z_3d_2_dhwcn
 """
+# pylint: disable=W0614
+# pylint: disable=bad-option-value,too-many-lines,wildcard-import,no-else-return,undefined-variable
 from functools import reduce as functools_reduce
 from te import platform as cce
 import te.platform.cce_params as cce_params

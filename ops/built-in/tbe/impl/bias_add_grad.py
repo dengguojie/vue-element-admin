@@ -26,7 +26,8 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
-# pylint: disable = unused-argument
+# pylint: disable=unused-argument
+# pylint: disable=invalid-name,unnecessary-comprehension
 def get_op_support_info(x, y, data_format, kernel_name="bias_add_grad"):
     """
     get_op_support_info

@@ -15,15 +15,15 @@
 """
 one_hot_d
 """
-# pylint: disable=too-many-lines
+# pylint: disable=too-many-lines,protected-access
 import functools
 
 import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
-from impl import transpose_d
 from te.utils.error_manager import error_manager_vector
+from impl import transpose_d
 from impl.util.util_common import write_code
 
 

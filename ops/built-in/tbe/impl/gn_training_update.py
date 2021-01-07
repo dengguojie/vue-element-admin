@@ -21,9 +21,9 @@ import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
+from topi import generic
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
-from topi import generic
 
 NONETYPE = type(None)
 

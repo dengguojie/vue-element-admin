@@ -55,6 +55,7 @@ def shape_broadcast(data_1, data_2):
     return data_1, data_2
 
 
+# pylint: disable=redeclared-assigned-name
 @tbe_platform.fusion_manager.fusion_manager.register("adam_apply_one_assign")
 def adam_apply_one_assign_compute(data_input0, data_input1, data_input2, data_input3,
                                   data_input4, data_input_mul, data_input_mul1,

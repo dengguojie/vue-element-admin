@@ -27,6 +27,7 @@ MIN_VAL = -65534.0
 
 # pylint: disable=invalid-name,too-many-arguments,unused-argument,too-many-instance-attributes
 # pylint: disable=too-many-locals,too-many-statements,too-many-lines,redefined-builtin
+# pylint: disable=super-with-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_BOOL,

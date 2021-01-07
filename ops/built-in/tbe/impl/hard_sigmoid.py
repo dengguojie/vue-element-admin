@@ -21,6 +21,7 @@ from te.utils import para_check
 from te.platform.fusion_manager import fusion_manager
 
 
+# pylint: disable=unused-argument
 @fusion_manager.register("hard_sigmoid")
 def hard_sigmoid_compute(input_x, output_y, alpha, beta, kernel_name="hard_sigmoid"):
     """

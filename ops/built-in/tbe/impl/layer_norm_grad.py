@@ -15,12 +15,12 @@
 """
 layer_norm_grad
 """
+# pylint: disable=global-statement
 import operator
 
 import te.lang.cce as tbe
 from te import tvm
 import te.platform as tbe_platform
-from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector

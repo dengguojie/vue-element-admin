@@ -19,6 +19,7 @@ nz_2_nd
 # pylint: disable=too-many-statements,too-many-locals,missing-function-docstring
 # pylint: disable=too-many-public-methods,unused-variable,invalid-name,no-self-use
 # pylint: disable=too-many-instance-attributes
+# pylint: disable=chained-comparison,attribute-defined-outside-init
 from functools import reduce as functools_reduce
 import math
 from te import platform as tbe_platform

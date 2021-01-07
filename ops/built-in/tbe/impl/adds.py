@@ -15,12 +15,14 @@
 """
 adds
 """
+from topi import generic
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
 from te.utils import para_check
 
+
+# pylint: disable=invalid-name,unused-argument
 @fusion_manager.register("adds")
 def adds_compute(x, scalar, kernel_name="adds"):
     """

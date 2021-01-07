@@ -23,9 +23,9 @@ from te.platform import cce_intrin as intrin
 from te.platform import cce_util
 
 
-#pylint: disable=too-many-lines,too-many-statements,too-few-public-methods
-#pylint: disable=too-many-locals,too-many-arguments,superfluous-parens
-#pylint: disable=too-many-branches
+# pylint: disable=too-many-lines,too-many-statements,too-few-public-methods
+# pylint: disable=too-many-locals,too-many-arguments,superfluous-parens
+# pylint: disable=too-many-branches,unnecessary-comprehension
 
 # parameter naming allocated UB
 OUTPUT_NAME_SUFFIX = [0]

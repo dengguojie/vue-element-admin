@@ -17,7 +17,6 @@ l2_normalize
 """
 import te.lang.cce as tbe
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
@@ -117,4 +116,3 @@ def l2_normalize(input_x, output_y, axis, epsilon, kernel_name="l2_normalize"):
     config = {"name": kernel_name, "tensor_list": [data_input, res]}
 
     tbe.cce_build_code(sch, config)
-

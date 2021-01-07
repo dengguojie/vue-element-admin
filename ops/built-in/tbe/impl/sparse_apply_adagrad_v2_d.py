@@ -15,9 +15,9 @@
 """
 sparse_apply_adagrad_v2_d
 """
-from impl.sparse_apply_common import SparseApply
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.sparse_apply_common import SparseApply
 
 
 class SparseApplyAdagrad(SparseApply):

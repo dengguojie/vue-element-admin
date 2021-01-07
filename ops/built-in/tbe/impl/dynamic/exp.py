@@ -28,6 +28,7 @@ import te.lang.base as tbe_base
 from te.utils.error_manager import error_manager_vector
 
 
+# pylint: disable=too-many-locals,redefined-argument-from-local
 def isclose(valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
     """
     determines whether the values of two floating-point numbers are close or equal

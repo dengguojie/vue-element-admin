@@ -745,4 +745,3 @@ class ConcatWith5HD:
                 _run_one_loop(tiling_ub_list_1, batch_offset_list,
                               offset * TRANSPOSE_SIZE,
                               1, copy_nchw_tail)
-

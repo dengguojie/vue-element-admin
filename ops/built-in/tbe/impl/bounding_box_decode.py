@@ -20,8 +20,8 @@ import functools
 import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
-from impl import constant_util as constant
 from te.utils.error_manager import error_manager_vector
+from impl import constant_util as constant
 
 
 # The maximum number of float16 data that can be

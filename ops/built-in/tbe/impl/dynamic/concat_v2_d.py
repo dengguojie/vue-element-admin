@@ -40,6 +40,8 @@ VNCHW_ELEMENT_FP16 = VNCHW_BLOCK_SIZE // 2
 DATA_MOVE_MAX_REPEAT = 4095
 DATA_MOVE_MAX_STRIDE = 65535
 
+
+# pylint: disable=too-many-lines,cell-var-from-loop
 def ceil_32bytes_align_count(count, dtype):
     """
     ceil_32bytes_align_count

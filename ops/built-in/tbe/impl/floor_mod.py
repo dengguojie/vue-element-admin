@@ -17,13 +17,13 @@ floor_mod
 """
 import te.lang.cce as tbe
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
+# pylint: disable=unused-variable
 @tbe_platform.fusion_manager.fusion_manager.register("floor_mod")
 def floor_mod_compute(x1, x2, y, kernel_name="floor_mod"):
     """

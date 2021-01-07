@@ -19,7 +19,6 @@ import functools
 
 import te.lang.cce as tbe
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
 
@@ -27,6 +26,7 @@ from te.utils import para_check
 CONST_1 = 1
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
+# pylint: disable=too-many-locals,unused-variable
 @tbe_platform.fusion_manager.fusion_manager.register("fast_gelu")
 def fast_gelu_compute(input_x, output_y, kernel_name="fast_gelu"):
     """
@@ -106,4 +106,3 @@ def fast_gelu(input_x, output_y, kernel_name="fast_gelu"):
               "tensor_list": [data, result]}
 
     tbe.cce_build_code(sch, config)
-

@@ -15,9 +15,7 @@
 """
 dynamic sparse_apply_ftrl_d
 """
-from te import tvm
 import te.lang.dynamic
-from topi.cce import util
 from te import tik
 from te import platform as tbe_platform
 from te.utils import para_check
@@ -51,6 +49,8 @@ MAX_SHAPE_SIZE = 2**31 - 1
 TYPE_LEN_DICT = {"float32": 4, "int32": 4, "int64": 8}
 
 
+# pylint: disable=unrecognized-inline-option,too-many-instance-attributes
+# pylint: disable=unused-variable,attribute-defined-outside-init,unused-argument
 def ceil_value(value, factor):
     """
     if not divide exactly then plus 1

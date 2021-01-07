@@ -22,6 +22,7 @@ from te.platform.fusion_manager import fusion_manager
 from te.utils.shape_util import broadcast_shapes, shape_to_list
 
 
+# pylint: disable=invalid-name,unused-argument,too-many-locals
 @fusion_manager.register("lerp")
 def lerp_compute(start, end, weight, y, kernel_name="lerp"):
     """

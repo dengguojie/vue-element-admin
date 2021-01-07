@@ -52,6 +52,7 @@ VALUE_ONE = 1
 PRE_NMS_TOPN = 1024
 
 
+# pylint: disable=super-with-arguments
 def check_param_range(param_name, min_value, max_value, real_value,
                       op_name='yolo_v2_detection_output_d'):
     """

@@ -23,7 +23,9 @@ from te.utils import para_check
 AVGV2_KERNEL_SIZE_H_MUL_W = 255 #kernel_h * kernel_w
 AVGV2_KERNEL_SIZE = 20 # maximum ksieze
 
+
 # pylint: disable=locally-disabled,too-many-arguments
+# pylint: disable=invalid-name,redefined-builtin,too-many-locals,unused-argument,no-else-raise,unnecessary-lambda
 def check_supported(x, filter, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 0, 0),
                     data_format="NCHW", global_pooling=False, ceil_mode=False,
                     exclusive=True, kernel_name="avg_pool_v2",
@@ -632,4 +634,3 @@ def avg_pool_v2(x, filter, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 
               "l1_fusion_option": is_l1fusion}
 
     tbe.cce_build_code(sch, config)
-

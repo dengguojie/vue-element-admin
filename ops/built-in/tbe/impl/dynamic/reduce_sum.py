@@ -31,7 +31,7 @@ from te.utils.op_utils import KERNEL_NAME
 NONETYPE = type(None)
 
 
-# 'pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=unused-argument,invalid-name,redefined-argument-from-local
 def reduce_sum_compute(x, axes, y, keepdims=None, kernel_name="reduce_sum"):
     """
     reduce_sum compute

@@ -20,8 +20,8 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
-from impl.util import util_select_op_base
 from te.utils.error_manager import error_manager_vector
+from impl.util import util_select_op_base
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
@@ -30,6 +30,7 @@ SCALAR_ONE = 1
 
 
 # pylint: disable = unused-argument
+# pylint: disable=invalid-name,too-many-arguments,consider-using-in
 def get_op_support_info(grads, x, batch_mean, batch_variance,
                             diff_scale, diff_offset, epsilon=0.0001,
                             kernel_name="bn_training_update_grad"):

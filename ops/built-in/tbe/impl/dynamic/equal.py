@@ -38,7 +38,8 @@ SCALAR_MUL_FP16 = 2 ** 12
 SCALAR_ONE = 1
 
 
-# 'pylint: disable=unused-argument,invalid-name
+# pylint: disable=unused-argument,invalid-name
+# pylint: disable=too-many-locals,redefined-argument-from-local
 def equal_compute(input_x, input_y, output_z, kernel_name="equal"):
     """
     compute for equal

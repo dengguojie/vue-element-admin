@@ -33,6 +33,7 @@ SCALAR_ONE = 1
 SCALAR_ZREO = 0
 
 
+# pylint: disable=redefined-builtin,too-many-arguments,too-many-locals,unused-argument
 def op_select_format(predict, target, weight, pos_weight, loss, reduction="mean",
                      kernel_name="sigmoid_cross_entropy_with_logits_v2"):
     """op_select_format.

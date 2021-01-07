@@ -15,7 +15,6 @@
 """
 iou
 """
-from te.platform.fusion_manager import fusion_manager
 from te import tik
 from te import platform as tbe_platform
 from te.utils import para_check
@@ -37,6 +36,9 @@ BBOX_SEGMENT = 4096 * 4
 
 # pylint: disable = unused-argument
 def get_op_support_info(bboxes, gtboxes, overlap, mode="iou", kernel_name="iou"):
+    """
+    get_op_support_info
+    """
     format_bboxes = bboxes.get("format").upper()
     format_gtboxes = gtboxes.get("format").upper()
     if format_bboxes == "ND" and format_gtboxes == "ND":

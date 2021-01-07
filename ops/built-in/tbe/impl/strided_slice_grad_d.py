@@ -32,6 +32,7 @@ BLOCK_SIZE = 32
 # pylint: disable=too-many-locals, too-many-statements
 # pylint: disable=attribute-defined-outside-init, unused-argument
 # pylint: disable=attribute-defined-outside-init, chained-comparison
+# pylint: disable=consider-using-in,protected-access
 class StridedSliceGradLastDimCompute(object):
     """
     the compute for stridedslicegrad in last dim situation
@@ -295,6 +296,9 @@ class StridedSliceGradLastDimCompute(object):
             self.compute_each_loop(move_product_offset + product_repeat * self.max_dim_product, product_tail)
 
     def compute_each_loop(self, move_product_offset, move_product_len):
+        """
+        compute_each_loop
+        """
         # vector dup 0 to x_ub
         repeat_loop = (move_product_len * self.input_dim_last) // (self.vector_mask * 255)
         if repeat_loop > 0:

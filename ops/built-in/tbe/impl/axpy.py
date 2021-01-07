@@ -21,9 +21,9 @@ from te import platform as tbe_platform
 from te.utils import shape_util
 from te.utils import para_check
 from te.platform.fusion_manager import fusion_manager
+from topi import generic
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
-from topi import generic
 
 # constant, value is 16
 SIZE_SIXTEEN = 16
@@ -606,4 +606,3 @@ def axpy(x1, x2, y, alpha, kernel_name="axpy"):
               "tensor_list": [data_input_x1, data_input_x2, res]}
 
     te.lang.cce.cce_build_code(schedule, config)
-

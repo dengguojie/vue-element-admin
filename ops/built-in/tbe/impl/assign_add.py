@@ -24,6 +24,8 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
+
+# pylint: disable=too-many-locals,invalid-name,unused-argument,unused-variable
 def _assign_add_int64_schedule(res, tensor_ref, tensor_val, res_add):
     """
     assignadd int64 schedule

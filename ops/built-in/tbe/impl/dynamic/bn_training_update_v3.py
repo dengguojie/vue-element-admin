@@ -26,6 +26,7 @@ from te.utils import shape_util
 from impl.util import fusion_util
 
 
+# pylint: disable=redefined-builtin
 def _check_shape_5hd(shape_x, shape_sum, shape_square_sum,
                      shape_scale, shape_offset):
     if len(shape_x) != 5 or len(shape_sum) != 5 \
@@ -65,7 +66,7 @@ def _check_dtype(dtype_x, dtype_sum, dtype_square_sum,
     para_check.check_dtype(dtype_offset, ("float32",))
 
 
-# 'pylint: disable=unused-argument,invalid-name,too-many-arguments,too-many-locals
+# pylint: disable=unused-argument,invalid-name,too-many-arguments,too-many-locals
 def bn_training_update_v3_compute(x, sum, square_sum, scale, offset,
                                   y, batch_mean, batch_variance,
                                   reserve_1, reserve_2, epsilon,

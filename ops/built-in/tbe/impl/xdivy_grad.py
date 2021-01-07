@@ -23,6 +23,7 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
+# pylint: disable=unused-argument
 # pylint: disable=invalid-name
 def _broadcast_gradient_args(x, y):
     """

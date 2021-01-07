@@ -19,10 +19,10 @@ import te.lang.cce as tbe
 from te import tvm
 from te import platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
-from impl.util.util_select_op_base import gen_param
-from impl.util.util_select_op_base import get_dynamic_param_in_json
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import gen_param
+from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 
 # pylint: disable=too-few-public-methods

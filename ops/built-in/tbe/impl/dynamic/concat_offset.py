@@ -29,6 +29,7 @@ MAX_INPUT_RANK = 64
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name
 # pylint: disable=locally-disabled,too-many-instance-attributes
+# pylint: disable=useless-object-inheritance
 class ConcatOffsetCompute(object):
     """
     Function: use to store ConcatOffset base fuction
@@ -165,4 +166,3 @@ def concat_offset(concat_dim, x, y, kernel_name="concat_offset"):
     concat_object = ConcatOffsetCompute(concat_dim, x, kernel_name)
 
     concat_object.run_build_cce()
-

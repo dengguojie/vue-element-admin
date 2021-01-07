@@ -25,6 +25,7 @@ from impl import common_util
 
 
 # pylint: disable=too-many-instance-attributes,too-few-public-methods
+# pylint: disable=super-with-arguments
 class SSDDectionParamInit():
     """
     define SSDDectionParamInit class

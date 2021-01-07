@@ -17,8 +17,7 @@ four_2_five_int8
 """
 from __future__ import absolute_import
 from functools import reduce as function_reduce
-import json
-import os
+
 from te.platform import insn_cmd
 from te import tvm
 from te import platform as tbe_platform
@@ -36,9 +35,9 @@ OUTPUT_NAME_SUFFIX = [0]
 UB_NAME_SUFFIX = [0]
 
 
-#pylint: disable=too-many-lines,too-many-statements,too-few-public-methods
-#pylint: disable=too-many-locals,too-many-arguments,superfluous-parens
-#pylint: disable=too-many-branches
+# pylint: disable=too-many-lines,too-many-statements,too-few-public-methods
+# pylint: disable=too-many-locals,too-many-arguments,superfluous-parens
+# pylint: disable=too-many-branches
 class FormatTransferParams():
     """
     :param object

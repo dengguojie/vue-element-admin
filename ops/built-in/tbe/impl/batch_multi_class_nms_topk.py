@@ -239,4 +239,3 @@ def sort_with_ub(instance: tik.Tik, src_ub_list, dst_ub, sorted_num):
     valid_bit = 2 ** ub_count - 1
     instance.vmrgsort4(dst_ub, src_ub_list, element_count_list,
                        False, valid_bit, repeat_times=1)
-

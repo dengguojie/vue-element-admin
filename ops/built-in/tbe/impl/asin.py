@@ -30,10 +30,10 @@ asin
   Constraint :
     [1] All : shape size limit is 2147483648.
 """
+from impl.util import util_compute
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
-from impl.util import util_compute
 from te.utils import para_check
 from te.utils import shape_util
 

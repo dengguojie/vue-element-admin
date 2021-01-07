@@ -23,6 +23,7 @@ from te.utils.error_manager import error_manager_vector
 from te import tvm
 
 
+# pylint: disable=unused-variable
 def check_inputs_shape(features_shape, weights_shape, input_format):
     """
     check input para
@@ -376,4 +377,3 @@ def prelu_grad(input_gradients,
     config = {"name": kernel_name, "tensor_list": tensor_list}
 
     tbe.cce_build_code(sch, config)
-

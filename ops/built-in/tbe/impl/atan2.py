@@ -38,8 +38,8 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
-from impl.util import util_compute
 from te.utils.error_manager import error_manager_vector
+from impl.util import util_compute
 
 CONST_POS_ONE = 1.0
 CONST_NA_ONE = -1.0
@@ -58,6 +58,7 @@ CONST_ONE = 1
 TAYLOR = (1.0, -1.0 / 3, 1.0 / 5, -1.0 / 7, 1.0 / 9, -1.0 / 11, 1.0 / 13)
 
 
+# pylint: disable=too-many-locals,unused-variable
 def _do_taylor(input_data):
     """
     Algorithm:

@@ -24,6 +24,7 @@ import te.platform as tbe_platform
 NEG_LN_2 = - 0.69314718055994530941723212145818
 
 
+# pylint: disable=too-many-locals,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("softplus_v2")
 def softplus_v2_compute(input_features, beta, threshold, kernel_name="softplus_v2"):
     """

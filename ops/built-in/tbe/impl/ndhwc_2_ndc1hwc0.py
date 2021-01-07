@@ -19,6 +19,7 @@ from te.utils import para_check
 from impl import four_2_five
 
 
+# pylint: disable=chained-comparison
 def _check_parameters(src, dst, src_format, dst_format, kernel_name):
     """
     check the parameters including src_shape, dst_shape,

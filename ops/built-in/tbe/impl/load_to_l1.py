@@ -82,6 +82,3 @@ def load_to_l1(input_x, output_x, kernel_name="load_to_l1"):
 
     with build_config:
         tvm.build(sch, tensor_list, "cce", name=kernel_name)
-
-
-

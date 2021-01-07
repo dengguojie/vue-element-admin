@@ -21,6 +21,7 @@ from te.utils import para_check
 
 
 # pylint: disable=unused-argument,invalid-name
+# pylint: disable=inconsistent-return-statements,no-else-return
 def check_supported(x, indices, v, y, kernel_name="inplace_update"):
     """
     To check whether the AICORE operator can support the shape of indices or not

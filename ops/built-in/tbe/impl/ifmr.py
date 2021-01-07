@@ -40,6 +40,8 @@ MAX_BINS = 8192
 MAX_STEPS = 4096
 ESP = 1.192092896e-07
 
+
+# pylint: disable=unused-argument
 class Barrier:
     """this class should be part of tik."""
     def emit(self, tik_inst, stmt):

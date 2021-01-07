@@ -17,8 +17,9 @@ hwcn_2_fractal_z_c04
 """
 from functools import reduce as functools_reduce
 from te import platform as tbe_platform
-from topi.cce import util
 from te import tik
+from topi.cce import util
+
 
 # available ub size
 TOTAL_UB_MEMORY = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)

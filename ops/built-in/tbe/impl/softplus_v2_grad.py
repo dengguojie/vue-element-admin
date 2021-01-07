@@ -22,6 +22,7 @@ import te.platform as tbe_platform
 from te.utils.shape_util import broadcast_shapes, shape_to_list
 
 
+# pylint: disable=too-many-locals,too-many-arguments,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("softplus_v2_grad")
 def softplus_v2_grad_compute(input_gradients, input_features, beta, threshold):
     """

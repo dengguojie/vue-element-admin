@@ -28,6 +28,7 @@ SCALAR_ONE = 1
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
+# pylint: disable=invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("softsign")
 def softsign_compute(input_x, y, kernel_name="softsign"):
     """

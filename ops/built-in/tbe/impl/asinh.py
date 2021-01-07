@@ -72,7 +72,7 @@ FLOAT_16_MAX = 32768
 MIN_FP16 = 2**(-24)
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("asinh")
 def asinh_compute_mini(input_x, output_y, kernel_name="asinh"):
     """

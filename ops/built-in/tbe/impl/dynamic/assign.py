@@ -172,4 +172,3 @@ def assign(ref, value, output, kernel_name="assign"):
     """
     obj = Assign(ref, value, output, kernel_name)
     obj.assign_compute()
-

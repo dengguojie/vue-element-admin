@@ -26,6 +26,7 @@ from te.utils.error_manager import error_manager_vector
 
 # pylint: disable=too-few-public-methods,too-many-statements,too-many-branches,no-self-use
 # pylint: disable=too-many-instance-attributes,unused-argument,too-many-lines
+# pylint: disable=too-many-lines,too-many-locals,too-many-statements,unused-variable
 def _ceil_div(num, divisor):
     """calcu use _ceil_div
 

@@ -24,7 +24,7 @@ from te.lang.base.shape_classifier import Mode
 from te.utils import para_check
 
 
-# pylint: disable=unused-argument,invalid-name
+# pylint: disable=unused-argument,invalid-name,redefined-argument-from-local
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals
 def logical_or_compute(x1, x2, y, kernel_name="logical_or"):
     """

@@ -29,6 +29,7 @@ from te.utils.error_manager import error_manager_vector
 
 # pylint: disable=locally-disabled,too-many-arguments
 # pylint: disable=unused-argument,invalid-name
+# pylint: disable=too-many-locals,redefined-argument-from-local
 def real_div_compute(x1, x2, y, kernel_name="real_div", impl_mode="high_performance"):
     """
     calculating data's realdiv, c = a / b

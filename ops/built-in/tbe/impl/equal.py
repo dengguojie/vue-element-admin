@@ -18,7 +18,6 @@ equal
 from te import tvm
 import te.lang.cce as tbe
 import te.platform as tbe_platform
-from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils import shape_util
 
@@ -40,6 +39,7 @@ SCALAR_ONE = 1
 MAX_SHAPE_NUM = 10000000
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
+# pylint: disable=unused-variable
 @tbe_platform.fusion_manager.fusion_manager.register("equal")
 def equal_compute(input_x, input_y, output_z, kernel_name="equal"):
     """

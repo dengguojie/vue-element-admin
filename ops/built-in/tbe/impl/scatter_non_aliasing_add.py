@@ -33,6 +33,7 @@ MAX_CORE_NUMBER = 65536
 
 
 # pylint: disable=too-many-instance-attributes,too-few-public-methods
+# pylint: disable=useless-object-inheritance
 class ScatterNonAliasingAdd(object):
     """
        Function: use to store scatter base parameters

@@ -25,7 +25,7 @@ from impl.util import util_select_op_base
 
 
 # pylint: disable=locally-disabled,invalid-name,too-many-arguments,too-many-locals
-# pylint: disable=unused-argument
+# pylint: disable=unused-argument,too-many-branches
 def check_supported(x, boxes, box_index, y, crop_size, extrapolation_value,
                     method, kernel_name="crop_and_resize"):
     """To check whether the AICORE operator can support the length of w/h or not

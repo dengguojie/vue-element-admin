@@ -21,14 +21,13 @@ import functools
 
 import te.lang.cce as tbe
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 from te.utils import para_check
-from te.utils import error_manager
 
 CONST_1 = 1
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
+# pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("fast_gelu_grad")
 def fast_gelu_grad_compute(input_dy, input_x, output_z,
                            kernel_name="fast_gelu_grad"):

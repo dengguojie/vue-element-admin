@@ -22,6 +22,7 @@ MAX_REPEAT = 255
 BLOCK_SIZE = 32
 
 
+# pylint: disable=too-many-arguments,too-many-locals,too-many-statements
 def set_vector_dup(obj, num_data, number):
     """
     num_data: volume of vec_dup.
@@ -235,7 +236,9 @@ def _data_move_last_dim(obj, in_num, src_gm, dst_gm):
 
 
 def tik_max(obj, top, bottom, max_num):
-
+    """
+    tik_max
+    """
     with obj.tik_instance.if_scope(top >= bottom):
         max_num.set_as(top)
     with obj.tik_instance.else_scope():
@@ -418,6 +421,9 @@ def _recursion_compute(obj, blk_idx):
 
 
 def align_compute(obj, blk_idx):
+    """
+    align_compute
+    """
     # =================
     # circulation layer
     # =================

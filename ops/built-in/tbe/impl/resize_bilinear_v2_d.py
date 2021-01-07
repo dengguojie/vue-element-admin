@@ -26,11 +26,10 @@ from te.platform.cce_conf import CceProductParams
 from te.platform import cce_params as param
 from te.platform.fusion_manager import fusion_manager
 from te.utils.op_utils import *
-from impl.resize_bilinear_tik import ResizeBilinear
-from impl.resize_bilinear_tik import resize_bilinear
-# pylint: disable=ungrouped-imports
 from te.lang.cce.te_compute import irbuilder_api as kernel_api
 from te.utils.error_manager import error_manager_vector
+from impl.resize_bilinear_tik import ResizeBilinear
+from impl.resize_bilinear_tik import resize_bilinear
 
 # H, W size threshold 256
 HW_SIZE_256 = 256
@@ -51,6 +50,7 @@ SCALAR_MUL2_FP32 = 2**26
 
 
 # pylint: disable=invalid-name,too-many-locals,too-many-lines
+# pylint: disable=too-many-lines,undefined-variable,
 def check_whether_error(output_num, scale):
     """
     check_whether_error

@@ -25,6 +25,7 @@ from te.utils import shape_util
 from te import tvm
 
 
+# pylint: disable=unused-argument,too-many-locals,redefined-argument-from-local,unused-variable,too-many-statements
 def add_n_compute(datas, output, tensor_num, kernel_name="add_n"):
     """
     calculating data's adds, z = a + b + c...

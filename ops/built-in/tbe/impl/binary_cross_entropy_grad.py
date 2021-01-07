@@ -242,4 +242,3 @@ def binary_cross_entropy_grad(
         }
 
     tbe.cce_build_code(sch, config)
-

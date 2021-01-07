@@ -24,6 +24,7 @@ from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=invalid-name
+# pylint: disable=unused-argument
 def broadcast_gradient_args(x, y):
     """
     Return the reduction indices for computing gradients of

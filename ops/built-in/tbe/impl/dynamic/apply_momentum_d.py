@@ -210,7 +210,6 @@ def apply_momentum_d(var,
             sch = tbe.auto_schedule(res)
         schedules.append(sch)
 
-    #build
+    # build
     config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)
-

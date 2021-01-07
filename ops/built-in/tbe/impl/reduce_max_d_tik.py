@@ -34,6 +34,7 @@ MAX_SEGMENT_LEN = 2048*7
 OUT_MASK = 64
 
 
+# pylint: disable=super-with-arguments,no-self-use
 def _get_ceil_int(int1, int2):
     """Get Ceil Int
 
@@ -409,6 +410,9 @@ class Argmax(ArgmaxBase):
             _run(_loop_segment_tail, _loop_segment)
 
     def get_half_max(self, tik_instance, vmax_ub, vector_num):
+        """
+        get_half_max
+        """
         if vector_num == 1:
             return 1
         output_num = vector_num // 2

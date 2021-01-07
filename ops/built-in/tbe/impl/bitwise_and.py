@@ -109,10 +109,10 @@ def bitwise_and(x1, x2, y, kernel_name="bitwise_and"):
     None
     """
     shape_x, shape_y, dtype = _check_parameters(x1, x2, y, kernel_name)
-    shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
-                                                              shape_y,
-                                                              param_name_input1="x1",
-                                                              param_name_input2="x2")
+    shape_x, shape_y, _ = shape_util.broadcast_shapes(shape_x,
+                                                      shape_y,
+                                                      param_name_input1="x1",
+                                                      param_name_input2="x2")
     shape_x, shape_y = shape_util.refine_shapes_for_broadcast(shape_x, shape_y)
 
     if dtype == "int32":

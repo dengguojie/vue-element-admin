@@ -28,6 +28,7 @@ from impl.util.util_common import write_code
 UB_SIZE_B = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 
 
+# pylint: disable=unnecessary-comprehension,protected-access,unused-argument
 def _ceil_div(value, block):
     """
     integrate the input value by block

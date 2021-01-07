@@ -17,11 +17,10 @@ resize_nearest_neighbor_v2_grad_d
 """
 # pylint: disable=too-many-lines
 from te import tik
-from topi.cce import util
 from te import platform as tbe_platform
-from impl.resize_nearest_neighbor_grad_d_h import resize_nearest_neighbor_grad_d_h
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.resize_nearest_neighbor_grad_d_h import resize_nearest_neighbor_grad_d_h
 
 # C0 size
 C0_SIZE = 16
@@ -33,6 +32,7 @@ SLICE_THRE = 160 * 1024 // (16 * 4)
 
 # pylint: disable-msg=too-many-arguments,too-many-locals,too-many-statements
 # pylint: disable-msg=invalid-name,unused-argument
+# pylint: disable=too-many-branches
 def clear_ub(tik_instance, dst_ub):
     """clear ub to zero
 

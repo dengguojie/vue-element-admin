@@ -44,7 +44,7 @@ from te.utils.error_manager import error_manager_vector
 CONST_ONE = 1
 
 
-# pylint: disable=unused-argument,invalid-name
+# pylint: disable=unused-argument,invalid-name,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("atan_grad")
 def atan_grad_compute(y, dy, z, kernel_name="atan_grad"):
     """

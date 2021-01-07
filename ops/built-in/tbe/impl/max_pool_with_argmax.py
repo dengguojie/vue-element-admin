@@ -50,6 +50,7 @@ L1_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.L1_SIZE)
 
 
 # pylint: disable=unused-argument,too-many-arguments
+# pylint: disable=too-many-lines,unused-variable
 def get_op_support_info(input_x, output_y, output_argmax, ksize, strides,
                         padding, kernel_name="max_pool_with_argmax"):
     """

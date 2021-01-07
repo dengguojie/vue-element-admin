@@ -18,7 +18,6 @@ compress_fully_connection
 from __future__ import absolute_import
 import te.lang.cce
 from te import tvm
-from topi.cce import util
 from te.utils import para_check
 from te.platform.fusion_manager import fusion_manager
 from topi import generic

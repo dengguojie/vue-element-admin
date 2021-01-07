@@ -53,6 +53,7 @@ from impl import hwcn_2_fractal_z_g
 
 
 # pylint: disable=locally-disabled,redefined-builtin,too-many-statements
+# pylint: disable=too-many-arguments
 def check_whether_2d(format, input_dict):
     """Check whether the 4D is 2D extend to 4D
 

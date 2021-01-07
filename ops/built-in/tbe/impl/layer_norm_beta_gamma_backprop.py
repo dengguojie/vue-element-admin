@@ -15,6 +15,7 @@
 """
 layer_norm_beta_gamma_backprop
 """
+# pylint: disable=too-many-lines
 import operator
 import te.lang.cce as tbe
 

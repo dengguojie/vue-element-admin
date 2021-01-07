@@ -27,6 +27,7 @@ SHAPE_SIZE_LIMIT = 2147483648
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# pylint: disable=too-many-locals,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("tanh")
 def tanh_compute(input_x, output_y, kernel_name="tanh"):
     """

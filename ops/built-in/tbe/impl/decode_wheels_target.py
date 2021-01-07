@@ -34,6 +34,7 @@ MAXTRIX = 256
 MAXTRIX_DATA = 512
 
 
+# pylint: disable=super-with-arguments
 def int_ceil_div(divisor_a, divisor_b):
     """
     round up function

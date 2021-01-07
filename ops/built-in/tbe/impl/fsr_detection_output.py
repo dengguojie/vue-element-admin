@@ -48,6 +48,7 @@ DATA_EIGHT = 8
 DATA_ONE = 1
 
 
+# pylint: disable=too-many-lines,unused-argument,too-many-instance-attributes,too-few-public-methods
 def get_op_support_info(rois_dic, bbox_delta_dic, score_dic, im_info_dic,
                         actual_rois_num_dic, actual_bbox_num_dic, box_dic,
                         num_classes, score_threshold, iou_threshold, batch_rois=1,

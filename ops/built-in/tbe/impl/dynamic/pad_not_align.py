@@ -22,6 +22,7 @@ MAX_REPEAT = 255
 BLOCK_SIZE = 32
 
 
+# pylint: disable=too-many-locals,too-many-arguments,too-many-statements
 def set_vector_dup(obj, num_data, number):
     """
     Re:
@@ -178,6 +179,9 @@ def _do_vec_dup(pattern, obj, max_num, blk_idx, mark, axis):
 
 
 def _copy_gm2buf(obj, in_num, src_ub, src_gm):
+    """
+    _copy_gm2buf
+    """
     # ub must can be save all_data
     obj.tik_instance.data_move(obj.buf[src_ub],
                                obj.input_gm[src_gm],
@@ -187,6 +191,9 @@ def _copy_gm2buf(obj, in_num, src_ub, src_gm):
 
 
 def _copy_buf2buf(obj, n_burst, burst_len, src_stride, dst_stride, src_ub, dst_ub):
+    """
+    _copy_buf2buf
+    """
     obj.tik_instance.data_move(obj.buf[dst_ub],
                                obj.buf[src_ub],
                                0, n_burst, burst_len,
@@ -318,7 +325,9 @@ def _data_move_last_dim(obj, in_num, src_gm, dst_gm, max_num):
 
 
 def tik_max(obj, top, bottom, max_num):
-
+    """
+    tik_max
+    """
     max_num.set_as(bottom)
     with obj.tik_instance.if_scope(top > bottom):
         max_num.set_as(top)
@@ -517,7 +526,9 @@ def _recursion_compute(obj, blk_idx):
 
 
 def not_align_compute(obj, blk_idx):
-
+    """
+    not_align_compute
+    """
     # =================
     # circulation layer
     # =================

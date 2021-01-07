@@ -19,7 +19,6 @@ import te.lang.cce as tbe
 from te import platform as tbe_platform
 import te.lang.base as tbe_base
 from te import tvm
-from te.utils import shape_util
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils import shape_util
@@ -27,6 +26,7 @@ from te.utils import para_check
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name
+# pylint: disable=too-many-locals,redefined-argument-from-local
 def floor_mod_compute(x1, x2, y, kernel_name="floor_mod"):
     """
     Compute remainder of division

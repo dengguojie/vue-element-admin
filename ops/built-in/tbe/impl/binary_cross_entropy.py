@@ -20,8 +20,8 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
-from impl.util import util_select_op_base
 from te.utils.error_manager import error_manager_vector
+from impl.util import util_select_op_base
 
 
 # eps value
@@ -301,4 +301,3 @@ def binary_cross_entropy(x, y, weight, output,
                                   data_weight, res]}
 
     tbe.cce_build_code(schedule, config)
-

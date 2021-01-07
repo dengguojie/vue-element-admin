@@ -20,7 +20,6 @@ import functools
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te.utils import para_check
-from te.utils import shape_util
 from te import tvm
 
 # shape limit for aicore equals 2**31

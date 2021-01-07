@@ -50,6 +50,7 @@ SCALAR_ZERO = 0
 
 
 # pylint: disable = unused-argument,invalid-name,unused-variable
+# pylint: disable=too-many-lines,inconsistent-return-statements
 def get_op_support_info(x,
                         y,
                         nbins,

@@ -62,6 +62,7 @@ def _get_ceil_int(int1, int2):
 
 
 # pylint: disable=unused-argument,invalid-name,useless-object-inheritance
+# pylint: disable=super-with-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def arg_max_d(x, y, dimension, kernel_name="arg_max_d"):
@@ -1589,4 +1590,3 @@ def get_align_num(dim_size, align_size):
             break
 
     return align_num
-

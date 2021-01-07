@@ -113,6 +113,7 @@ def check_result(shape_x, shape_y, shape_z):
         raise RuntimeError("n dimension of inputs should in [1, 65500]")
 
 
+# pylint: disable=super-with-arguments
 class Tiling:
     """
     calculating the shape

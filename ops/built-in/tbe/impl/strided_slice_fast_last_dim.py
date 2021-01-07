@@ -20,7 +20,11 @@ from te import platform as tbe_platform
 
 
 # pylint: disable=too-many-locals,too-many-branches,too-many-statements
+# pylint: disable=chained-comparison
 def strided_slice_last_dim_only(input_shape, dtype, output_shape, begin, kernel_name):
+    """
+    strided_slice_last_dim_only
+    """
     vmul_support = tbe_platform.cce_conf.api_check_support("tik.vmul", "float32")
     if not vmul_support:
         return False
