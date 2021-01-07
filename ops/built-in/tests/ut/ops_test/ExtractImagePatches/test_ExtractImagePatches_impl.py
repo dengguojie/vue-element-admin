@@ -16,6 +16,7 @@ ExtractImagePatches ut case
 import numpy as np
 from op_test_frame.common import precision_info
 from op_test_frame.ut import OpUT
+
 ut_case = OpUT("ExtractImagePatches", "impl.extract_image_patches", "extract_image_patches")
 
 case1 = {
@@ -32,13 +33,9 @@ case1 = {
         "ori_shape": (1, 2, 4, 1),
         "ori_format": "NHWC"
     }, (1, 2, 2, 1), (1, 3, 3, 1), (1, 3, 3, 1), "SAME"],
-    "case_name":
-    "extract_image_patches_1",
-    "expect":
-    RuntimeError,
+    "expect": RuntimeError,
     "format_expect": [],
-    "support_expect":
-    True
+    "support_expect": True
 }
 case2 = {
     "params": [{
@@ -54,13 +51,9 @@ case2 = {
         "ori_shape": (1, 2, 10, 1),
         "ori_format": "NHWC"
     }, (1, 4, 4, 1), (1, 3, 3, 1), (1, 3, 3, 1), "SAME"],
-    "case_name":
-    "extract_image_patches_2",
-    "expect":
-    RuntimeError,
+    "expect": RuntimeError,
     "format_expect": [],
-    "support_expect":
-    True
+    "support_expect": True
 }
 case3 = {
     "params": [{
@@ -76,13 +69,9 @@ case3 = {
         "ori_shape": (2, 8, 1, 576),
         "ori_format": "NHWC"
     }, (1, 3, 3, 1), (1, 2, 2, 1), (1, 3, 3, 1), "SAME"],
-    "case_name":
-    "extract_image_patches_3",
-    "expect":
-    RuntimeError,
+    "expect": RuntimeError,
     "format_expect": [],
-    "support_expect":
-    True
+    "support_expect": True
 }
 case4 = {
     "params": [{
@@ -98,18 +87,134 @@ case4 = {
         "ori_shape": (2, 4, 1, 256),
         "ori_format": "NHWC"
     }, (1, 2, 2, 1), (1, 4, 4, 1), (1, 3, 3, 1), "SAME"],
-    "case_name":
-    "extract_image_patches_4",
-    "expect":
-    RuntimeError,
+    "expect": RuntimeError,
     "format_expect": [],
-    "support_expect":
-    True
+    "support_expect": True
 }
-ut_case.add_case(["Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend710", "Ascend910"], case4)
+case5 = {
+    "params": [{
+        "shape": (1, 319, 319, 16),
+        "dtype": "float16",
+        "format": "NHWC",
+        "ori_shape": (1, 319, 319, 16),
+        "ori_format": "NHWC"
+    }, {
+        "shape": (1, 40, 40, 258064),
+        "dtype": "float16",
+        "format": "NHWC",
+        "ori_shape": (1, 40, 40, 258064),
+        "ori_format": "NHWC"
+    }, (1, 127, 127, 1), (1, 8, 8, 1), (1, 1, 1, 1), "SAME"],
+    "expect": "success",
+    "format_expect": [],
+    "support_expect": True
+}
+
+case6 = {
+    "params": [{
+        "shape": (1, 319, 319, 1),
+        "dtype": "float16",
+        "format": "NHWC",
+        "ori_shape": (1, 319, 319, 1),
+        "ori_format": "NHWC"
+    }, {
+        "shape": (1, 40, 40, 16129),
+        "dtype": "float16",
+        "format": "NHWC",
+        "ori_shape": (1, 40, 40, 16129),
+        "ori_format": "NHWC"
+    }, (1, 127, 127, 1), (1, 8, 8, 1), (1, 1, 1, 1), "SAME"],
+    "expect": "success",
+    "format_expect": [],
+    "support_expect": True
+}
+
+case7 = {
+    "params": [{
+        "shape": (68, 60, 104, 92),
+        "dtype": "float16",
+        "format": "NHWC",
+        "ori_shape": (68, 60, 104, 92),
+        "ori_format": "NHWC"
+    }, {
+        "shape": (1, 40, 40, 16),
+        "dtype": "float16",
+        "format": "NHWC",
+        "ori_shape": (1, 40, 40, 16),
+        "ori_format": "NHWC"
+    }, (1, 3, 1, 1), (1, 1, 2, 1), (1, 1, 2, 1), "VALID"],
+    "expect": "success",
+    "format_expect": [],
+    "support_expect": True
+}
+
+case8 = {
+    "params": [{
+        "shape": (1, 80, 80, 16),
+        "dtype": "float16",
+        "format": "NHWC",
+        "ori_shape": (1, 80, 80, 16),
+        "ori_format": "NHWC"
+    }, {
+        "shape": (1, 10, 10, 256),
+        "dtype": "float16",
+        "format": "NHWC",
+        "ori_shape": (1, 10, 10, 256),
+        "ori_format": "NHWC"
+    }, (1, 4, 4, 1), (1, 8, 8, 1), (1, 1, 1, 1), "VALID"],
+    "expect": "success",
+    "format_expect": [],
+    "support_expect": True
+}
+
+case9 = {
+    "params": [{
+        "shape": (1, 80, 80, 1),
+        "dtype": "float16",
+        "format": "NHWC",
+        "ori_shape": (1, 80, 80, 1),
+        "ori_format": "NHWC"
+    }, {
+        "shape": (1, 10, 10, 16),
+        "dtype": "float16",
+        "format": "NHWC",
+        "ori_shape": (1, 10, 10, 16),
+        "ori_format": "NHWC"
+    }, (1, 4, 4, 1), (1, 8, 8, 1), (1, 1, 1, 1), "VALID"],
+    "expect": "success",
+    "format_expect": [],
+    "support_expect": True
+}
+
+case10 = {
+    "params": [{
+        "shape": (2, 154, 441, 1),
+        "dtype": "float16",
+        "format": "NHWC",
+        "ori_shape": (2, 154, 441, 1),
+        "ori_format": "NHWC"
+    }, {
+        "shape": (1, 10, 10, 16),
+        "dtype": "float16",
+        "format": "NHWC",
+        "ori_shape": (1, 10, 10, 16),
+        "ori_format": "NHWC"
+    }, (1, 1, 4, 1), (1, 25, 26, 1), (1, 3, 1, 1), "VALID"],
+    "expect": "success",
+    "format_expect": [],
+    "support_expect": True
+}
+
+ut_case.add_case(["Ascend710", "Ascend910A"], case1)
+ut_case.add_case(["Ascend710", "Ascend910A"], case2)
+ut_case.add_case(["Ascend710", "Ascend910A"], case3)
+ut_case.add_case(["Ascend710", "Ascend910A"], case4)
+ut_case.add_case(["Ascend710", "Ascend910A"], case5)
+ut_case.add_case(["Ascend710", "Ascend910A"], case6)
+ut_case.add_case(["Ascend710", "Ascend910A"], case7)
+ut_case.add_case(["Ascend710", "Ascend910A"], case8)
+ut_case.add_case(["Ascend710", "Ascend910A"], case9)
+ut_case.add_case(["Ascend710", "Ascend910A"], case10)
 
 
 def extract_image_patches_produce(in_x, conv_param, src_type):
@@ -230,9 +335,9 @@ ut_case.add_precision_case(
             "param_type": "output"
         }, (1, 3, 3, 1), (1, 1, 1, 1), (1, 2, 2, 1), "VALID"],
         "calc_expect_func":
-        calc_expect_func,
+            calc_expect_func,
         "precision_standard":
-        precision_info.PrecisionStandard(0.001, 0.001)
+            precision_info.PrecisionStandard(0.001, 0.001)
     })
 
 ut_case.add_precision_case(
@@ -254,9 +359,9 @@ ut_case.add_precision_case(
             "param_type": "output"
         }, (1, 3, 3, 1), (1, 1, 1, 1), (1, 2, 2, 1), "VALID"],
         "calc_expect_func":
-        calc_expect_func,
+            calc_expect_func,
         "precision_standard":
-        precision_info.PrecisionStandard(0.001, 0.001)
+            precision_info.PrecisionStandard(0.001, 0.001)
     })
 
 ut_case.add_precision_case(
@@ -278,9 +383,9 @@ ut_case.add_precision_case(
             "param_type": "output"
         }, (1, 4, 4, 1), (1, 1, 1, 1), (1, 2, 2, 1), "VALID"],
         "calc_expect_func":
-        calc_expect_func,
+            calc_expect_func,
         "precision_standard":
-        precision_info.PrecisionStandard(0.001, 0.001)
+            precision_info.PrecisionStandard(0.001, 0.001)
     })
 
 ut_case.add_precision_case(
@@ -302,9 +407,9 @@ ut_case.add_precision_case(
             "param_type": "output"
         }, (1, 2, 2, 1), (1, 1, 1, 1), (1, 2, 2, 1), "VALID"],
         "calc_expect_func":
-        calc_expect_func,
+            calc_expect_func,
         "precision_standard":
-        precision_info.PrecisionStandard(0.001, 0.001)
+            precision_info.PrecisionStandard(0.001, 0.001)
     })
 
 # if __name__ == '__main__':
