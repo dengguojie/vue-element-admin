@@ -463,7 +463,7 @@ def depthwise_conv2d_compute(fmap,
                     'expected_value': '1',
                     'input_value': str(output_w),
                 }
-            raise RuntimeError(dict_args, err_mana.get_error_message(dict_args))
+                raise RuntimeError(dict_args, err_mana.get_error_message(dict_args))
 
         else:
             pass
