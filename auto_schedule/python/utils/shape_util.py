@@ -325,7 +325,7 @@ def variable_shape(inputs: list, op_mode="elewise", support_broadcast=False):
         return reduce(_range_intersection, ranges)
 
     def _update_range(shapes, ranges):
-        def _fixed_shape_range():
+        def _fixed_shape_range(shapes, ranges):
             for _range in ranges:
                 for i, (r0, r1) in enumerate(_range):
                     if r0 is None:
@@ -339,7 +339,7 @@ def variable_shape(inputs: list, op_mode="elewise", support_broadcast=False):
                     elif r0 == r1:
                         _shape[i] = r0
 
-        _fixed_shape_range()
+        _fixed_shape_range(shapes, ranges)
         t_shapes = list(map(list, zip(*shapes)))
         t_ranges = list(map(list, zip(*ranges)))
         for _shape, _range in zip(t_shapes, t_ranges):
@@ -361,7 +361,8 @@ def variable_shape(inputs: list, op_mode="elewise", support_broadcast=False):
                         _range[i] = mied_range
         shapes = list(map(list, zip(*t_shapes)))
         ranges = list(map(list, zip(*t_ranges)))
-        _fixed_shape_range()
+        _fixed_shape_range(shapes, ranges)
+        return shapes, ranges
 
     def _get_dim(_i, _shapes):
         return max([s[_i] for s in _shapes])
@@ -381,7 +382,7 @@ def variable_shape(inputs: list, op_mode="elewise", support_broadcast=False):
         if support_broadcast:
             dim_length = max([len(s["shape"]) for s in _inputs])
             shapes, ranges = _complete(_inputs)
-            _update_range(shapes, ranges)
+            shapes, ranges = _update_range(shapes, ranges)
             return shapes, ranges
 
         _shapes, _ranges = [], []
