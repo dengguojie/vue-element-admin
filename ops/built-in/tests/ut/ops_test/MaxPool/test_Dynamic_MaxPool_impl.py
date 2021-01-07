@@ -21,30 +21,30 @@ ut_case.add_case("all",
 ut_case.add_case("all",
                  gen_dynamic_maxpool_case((-1,-1,-1,-1,-1),(-1,-1,-1,-1,-1),(-1,-1,-1,-1),(-1,-1,-1,-1),
                                           ((1, None),(1, None),(1, None),(1, None),(1, None)),((1, None),(1, None),(1, None),(1, None),(1, None)),
-                                          "NC1HWC0","NHWC","float16",[1,2,2,1],[1,2,2,1],"SAME","NHWC","max_pool_case", "success"))
+                                          "NC1HWC0","NHWC","float16",[1,1,1,1],[1,2,2,1],"SAME","NHWC","max_pool_case", "success"))
 ut_case.add_case("all",
                  gen_dynamic_maxpool_case((-1,-1,-1,-1,-1),(-1,-1,-1,-1,-1),(-1,-1,-1,-1),(-1,-1,-1,-1),
                                           ((1, None),(1, None),(1, None),(1, None),(1, None)),((1, None),(1, None),(1, None),(1, None),(1, None)),
-                                          "NC1HWC0","NHWC","float16",[1,32,32,1],[1,32,32,1],"SAME","NHWC","max_pool_case", "success"))
+                                          "NC1HWC0","NHWC","float16",[1,1,1,1],[1,1,256,1],"SAME","NHWC","max_pool_case", "success"))
 ut_case.add_case("all",
                  gen_dynamic_maxpool_case((-1,-1,-1,-1,-1),(-1,-1,-1,-1,-1),(-1,-1,-1,-1),(-1,-1,-1,-1),
                                           ((1, None),(1, None),(1, None),(1, None),(1, None)),((1, None),(1, None),(1, None),(1, None),(1, None)),
-                                          "NC1HWC0","NCHW","float16",[1,1,1,1],[1,1,1,1],"VALID","NCHW","max_pool_case", "success"))
+                                          "NC1HWC0","NCHW","float16",[1,1,2,2],[1,1,1,2],"VALID","NCHW","max_pool_case", "success"))
 ut_case.add_case("all",
                  gen_dynamic_maxpool_case((-1,-1,-1,-1,-1),(-1,-1,-1,-1,-1),(-1,-1,-1,-1),(-1,-1,-1,-1),
                                           ((1, None),(1, None),(1, None),(1, None),(1, None)),((1, None),(1, None),(1, None),(1, None),(1, None)),
-                                          "NC1HWC0","NCHW","float16",[1,1,3,3],[1,1,3,3],"VALID","NCHW","max_pool_case", "success"))
+                                          "NC1HWC0","NCHW","float16",[1,1,2,2],[1,1,2,3],"VALID","NCHW","max_pool_case", "success"))
 ut_case.add_case("all",
                  gen_dynamic_maxpool_case((-1,-1,-1,-1,-1),(-1,-1,-1,-1,-1),(-1,-1,-1,-1),(-1,-1,-1,-1),
                                           ((1, None),(1, None),(1, None),(1, None),(1, None)),((1, None),(1, None),(1, None),(1, None),(1, None)),
-                                          "NC1HWC0","NCHW","float16",[1,1,25,25],[1,1,25,25],"VALID","NCHW","max_pool_case", "success"))
+                                          "NC1HWC0","NCHW","float16",[1,1,2,2],[1,1,3,256],"VALID","NCHW","max_pool_case", "success"))
 ut_case.add_case("all",
                  gen_dynamic_maxpool_case((-1,-1,-1,-1,-1),(-1,-1,-1,-1,-1),(-1,-1,-1,-1),(-1,-1,-1,-1),
                                           ((1, None),(1, None),(1, None),(1, None),(1, None)),((1, None),(1, None),(1, None),(1, None),(1, None)),
                                           "ND","NHWC","float16",[1,1,1,1],[1,1,1,1],"SAME","NHWC","max_pool_case", RuntimeError))
 ut_case.add_case("all",
                  gen_dynamic_maxpool_case((-1,-1,-1,-1),(-1,-1,-1,-1),(-1,-1,-1,-1),(-1,-1,-1,-1),
-                                          ((1, None),(1, None),(1, None),(1, None),(1, None)),((1, None),(1, None),(1, None),(1, None),(1, None)),
+                                          ((1, None),(1, None),(1, None),(1, None)),((1, None),(1, None),(1, None),(1, None)),
                                           "NC1HWC0","NHWC","float16",[1,1,1,1],[1,1,1,1],"SAME","NHWC","max_pool_case", RuntimeError))
 ut_case.add_case("all",
                  gen_dynamic_maxpool_case((-1,-1,-1,-1,-1),(-1,-1,-1,-1,-1),(-1,-1,-1,-1),(-1,-1,-1,-1),

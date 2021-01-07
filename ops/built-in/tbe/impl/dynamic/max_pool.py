@@ -366,7 +366,9 @@ class MaxPool:
         # if call 'reduce_max_rh', blk and rep must less than or equal to 255
         # if call 'reduce_max_rw', blk must less than or equal to 31, because 'rep = blk * 8'
         if self.ksize_w == 1:
-            if self.strides_w <= 255:
+            if self.strides_w == self.ksize_w:
+                self.reduce_max_rw(ub_y, ub_x, ub_x, repeat_p * self.size_w, self.strides_w, self.strides_w)
+            elif self.strides_w <= 255:
                 with self.tik_instance.if_scope(
                         tik.all(repeat_p >= self.repeat_w, self.output_w <= 255, self.pad_w <= 255)):
                     self.reduce_max_rh(ub_y, ub_x, ub_x, repeat_p, self.size_w, self.strides_w, self.strides_w,
@@ -384,7 +386,12 @@ class MaxPool:
                     self.reduce_max_rw(ub_y[self.offset_dst:], ub_x[self.offset_src0:], ub_x[self.offset_src0:],
                                        self.size_w, self.strides_w, self.strides_w)
         else:
-            if self.strides_w <= 255:
+            if self.strides_w == self.ksize_w:
+                self.reduce_max_rw(ub_y, ub_x, ub_x[C_ZERO:], repeat_p * self.size_w, self.strides_w, self.strides_w)
+                with self.tik_instance.for_range(0, self.ksize_w - 2) as idx:
+                    self.offset_w.set_as((idx + 2) * C_ZERO)
+                    self.reduce_max_rw(ub_y, ub_x[self.offset_w:], ub_y, repeat_p * self.size_w, self.strides_w, 1)
+            elif self.strides_w <= 255:
                 with self.tik_instance.if_scope(
                         tik.all(repeat_p >= self.repeat_w, self.output_w <= 255, self.pad_w <= 255)):
                     self.reduce_max_rh(ub_y, ub_x, ub_x[C_ZERO:], repeat_p, self.size_w, self.strides_w, self.strides_w,
@@ -419,36 +426,45 @@ class MaxPool:
         # if call 'reduce_max_rh', blk and rep must less than or equal to 255
         # if call 'reduce_max_rw', blk must less than or equal to 31, because 'rep = blk * 8'
         if self.ksize_h == 1:
-            with self.tik_instance.if_scope(
-                    tik.all(repeat_o >= self.repeat_w, self.output_w <= 255, self.rep_blk_h <= 255)):
-                self.reduce_max_rh(ub_x, ub_y, ub_y, repeat_o, self.size_w, 1, 1, self.output_w, self.rep_blk_h,
-                                   self.rep_blk_h)
-            with self.tik_instance.else_scope():
-                with self.tik_instance.for_range(0, repeat_o) as h_idx:
-                    self.offset_dst.set_as(h_idx * self.size_w)
-                    self.offset_src0.set_as(h_idx * self.strides_h * self.size_w)
-                    self.reduce_max_rw(ub_x[self.offset_dst:], ub_y[self.offset_src0:], ub_y[self.offset_src0:],
-                                       self.size_w, 1, 1)
+            if self.strides_h == 1:
+                self.reduce_max_rw(ub_x, ub_y, ub_y, repeat_o * self.size_w, 1, 1)
+            else:
+                with self.tik_instance.if_scope(
+                        tik.all(repeat_o >= self.repeat_w, self.output_w <= 255, self.rep_blk_h <= 255)):
+                    self.reduce_max_rh(ub_x, ub_y, ub_y, repeat_o, self.size_w, 1, 1, self.output_w, self.rep_blk_h,
+                                       self.rep_blk_h)
+                with self.tik_instance.else_scope():
+                    with self.tik_instance.for_range(0, repeat_o) as h_idx:
+                        self.offset_dst.set_as(h_idx * self.size_w)
+                        self.offset_src0.set_as(h_idx * self.strides_h * self.size_w)
+                        self.reduce_max_rw(ub_x[self.offset_dst:], ub_y[self.offset_src0:], ub_y[self.offset_src0:],
+                                           self.size_w, 1, 1)
         else:
-            with self.tik_instance.if_scope(
-                    tik.all(repeat_o >= self.repeat_w, self.output_w <= 255, self.rep_blk_h <= 255)):
-                self.reduce_max_rh(ub_x, ub_y, ub_y[self.size_w:], repeat_o, self.size_w, 1, 1, self.output_w,
-                                   self.rep_blk_h, self.rep_blk_h)
+            if self.strides_h == 1:
+                self.reduce_max_rw(ub_x, ub_y, ub_y[self.size_w], repeat_o * self.size_w, 1, 1)
                 with self.tik_instance.for_range(0, self.ksize_h - 2) as idx:
                     self.offset_h.set_as((idx + 2) * self.size_w)
-                    self.reduce_max_rh(ub_x, ub_y[self.offset_h:], ub_x, repeat_o, self.size_w, 1, 1, self.output_w,
-                                       self.rep_blk_h, self.output_w)
-            with self.tik_instance.else_scope():
-                with self.tik_instance.for_range(0, repeat_o) as h_idx:
-                    self.offset_dst.set_as(h_idx * self.size_w)
-                    self.offset_src0.set_as(h_idx * self.strides_h * self.size_w)
-                    self.offset_src1.set_as(self.offset_src0 + self.size_w)
-                    self.reduce_max_rw(ub_x[self.offset_dst:], ub_y[self.offset_src0:], ub_y[self.offset_src1:],
-                                       self.size_w, 1, 1)
+                    self.reduce_max_rw(ub_x, ub_y[self.offset_h:], ub_x, repeat_o * self.size_w, 1, 1)
+            else:
+                with self.tik_instance.if_scope(
+                        tik.all(repeat_o >= self.repeat_w, self.output_w <= 255, self.rep_blk_h <= 255)):
+                    self.reduce_max_rh(ub_x, ub_y, ub_y[self.size_w:], repeat_o, self.size_w, 1, 1, self.output_w,
+                                       self.rep_blk_h, self.rep_blk_h)
                     with self.tik_instance.for_range(0, self.ksize_h - 2) as idx:
-                        self.offset_h.set_as(self.offset_src0 + (idx + 2) * self.size_w)
-                        self.reduce_max_rw(ub_x[self.offset_dst:], ub_y[self.offset_h:], ub_x[self.offset_dst:],
+                        self.offset_h.set_as((idx + 2) * self.size_w)
+                        self.reduce_max_rh(ub_x, ub_y[self.offset_h:], ub_x, repeat_o, self.size_w, 1, 1, self.output_w,
+                                           self.rep_blk_h, self.output_w)
+                with self.tik_instance.else_scope():
+                    with self.tik_instance.for_range(0, repeat_o) as h_idx:
+                        self.offset_dst.set_as(h_idx * self.size_w)
+                        self.offset_src0.set_as(h_idx * self.strides_h * self.size_w)
+                        self.offset_src1.set_as(self.offset_src0 + self.size_w)
+                        self.reduce_max_rw(ub_x[self.offset_dst:], ub_y[self.offset_src0:], ub_y[self.offset_src1:],
                                            self.size_w, 1, 1)
+                        with self.tik_instance.for_range(0, self.ksize_h - 2) as idx:
+                            self.offset_h.set_as(self.offset_src0 + (idx + 2) * self.size_w)
+                            self.reduce_max_rw(ub_x[self.offset_dst:], ub_y[self.offset_h:], ub_x[self.offset_dst:],
+                                               self.size_w, 1, 1)
 
     def tiling_c_dim_core_nc(self, core_idx, core_ele):
         """Tiling c1 dim
@@ -465,33 +481,26 @@ class MaxPool:
         self.burst_len_out.set_as(self.output_h * self.output_w)
         # vector_dup_discrete -> vector_dup_continuous
         self.size.set_as(self.pad_h * self.pad_w * C_ZERO)
-        # other params from h and w dim
-        with self.tik_instance.if_scope(tik.all(self.pad_h <= self.input_h, self.pad_w <= self.input_w)):
-            self.repeat_3.set_as(0)
+        # other params from h dim
+        with self.tik_instance.if_scope(self.pad_h <= self.input_h):
             self.nburst.set_as(self.pad_h)
-            self.burst_len_in.set_as(self.pad_w)
-            self.src_stride.set_as(self.input_w - self.pad_w)
-            self.dst_stride.set_as(0)
-        with self.tik_instance.if_scope(tik.all(self.pad_h > self.input_h, self.pad_w <= self.input_w)):
-            self.repeat_3.set_as(0)
+        with self.tik_instance.else_scope():
             self.nburst.set_as(self.input_h)
+        # other params from w dim
+        with self.tik_instance.if_scope(self.pad_w <= self.input_w):
+            self.repeat_3.set_as(0)
             self.burst_len_in.set_as(self.pad_w)
             self.src_stride.set_as(self.input_w - self.pad_w)
             self.dst_stride.set_as(0)
-        with self.tik_instance.if_scope(tik.all(self.pad_h <= self.input_h, self.pad_w > self.input_w)):
+        with self.tik_instance.else_scope():
             self.repeat_3.set_as(self.pad_h - 1)
-            self.nburst.set_as(self.pad_h)
             self.burst_len_in.set_as(self.input_w)
             self.src_stride.set_as(0)
             self.dst_stride.set_as(self.pad_r + self.pad_l)
-        with self.tik_instance.if_scope(tik.all(self.pad_h > self.input_h, self.pad_w > self.input_w)):
-            self.repeat_3.set_as(self.input_h - 1)
-            self.nburst.set_as(self.input_h)
-            self.burst_len_in.set_as(self.input_w)
-            self.src_stride.set_as(0)
-            self.dst_stride.set_as(self.pad_r + self.pad_l)
+
         # ub operate
         with self.tik_instance.new_stmt_scope():
+
             def _inner(ele_idx, ub_x, ub_y):
                 self.offset_in.set_as((core_idx * self.one_core_ele + ele_idx) * self.input_h * self.input_w * C_ZERO)
                 self.offset_out.set_as(
@@ -541,34 +550,42 @@ class MaxPool:
         # vector_dup_discrete -> vector_dup_continuous
         self.size.set_as(self.len_h * self.pad_w * C_ZERO)
         # other params form h dim
-        with self.tik_instance.if_scope(tik.all(self.before_h < self.pad_t, self.after_h > self.pad_t)):
+        with self.tik_instance.if_scope(self.before_h < self.pad_t):
             self.size_1.set_as((self.pad_t - self.before_h) * self.pad_w * C_ZERO + self.pad_l * C_ZERO)
-            self.offset_2.set_as(self.len_h * self.pad_w * C_ZERO - self.pad_r * C_ZERO)
-            self.size_2.set_as(self.pad_r * C_ZERO)
             self.offset_3.set_as(self.size_1 + self.input_w * C_ZERO)
-            self.repeat_3.set_as(self.after_h - self.pad_t - 1)
-            self.size_3.set_as((self.pad_r + self.pad_l) * C_ZERO)
             self.offset.set_as(0)
-            self.nburst.set_as(self.after_h - self.pad_t)
-        with self.tik_instance.if_scope(tik.all(self.before_h >= self.pad_t, self.after_h <= self.pad_h - self.pad_b)):
+            with self.tik_instance.if_scope(self.after_h <= self.pad_h - self.pad_b):
+                self.offset_2.set_as(self.len_h * self.pad_w * C_ZERO - self.pad_r * C_ZERO)
+                self.size_2.set_as(self.pad_r * C_ZERO)
+                self.repeat_3.set_as(self.after_h - self.pad_t - 1)
+                self.size_3.set_as((self.pad_r + self.pad_l) * C_ZERO)
+                self.nburst.set_as(self.after_h - self.pad_t)
+            with self.tik_instance.else_scope():
+                self.offset_2.set_as((self.pad_h - self.pad_b - self.before_h) * self.pad_w * C_ZERO -
+                                     self.pad_r * C_ZERO)
+                self.size_2.set_as((self.after_h - (self.pad_h - self.pad_b)) * self.pad_w * C_ZERO +
+                                   self.pad_r * C_ZERO)
+                self.repeat_3.set_as(self.input_h - 1)
+                self.size_3.set_as((self.pad_r + self.pad_l) * C_ZERO)
+                self.nburst.set_as(self.input_h)
+        with self.tik_instance.else_scope():
             self.size_1.set_as(self.pad_l * C_ZERO)
-            self.offset_2.set_as(self.len_h * self.pad_w * C_ZERO - self.pad_r * C_ZERO)
-            self.size_2.set_as(self.pad_r * C_ZERO)
             self.offset_3.set_as(self.size_1 + self.input_w * C_ZERO)
-            self.repeat_3.set_as(self.len_h - 1)
-            self.size_3.set_as((self.pad_r + self.pad_l) * C_ZERO)
             self.offset.set_as((self.before_h - self.pad_t) * self.input_w * C_ZERO)
-            self.nburst.set_as(self.len_h)
-        with self.tik_instance.if_scope(
-                tik.all(self.before_h < self.pad_h - self.pad_b, self.after_h > self.pad_h - self.pad_b)):
-            self.size_1.set_as(self.pad_l * C_ZERO)
-            self.offset_2.set_as((self.pad_h - self.pad_b - self.before_h) * self.pad_w * C_ZERO - self.pad_r * C_ZERO)
-            self.size_2.set_as(self.pad_r * C_ZERO + (self.after_h - (self.pad_h - self.pad_b)) * self.pad_w * C_ZERO)
-            self.offset_3.set_as(self.size_1 + self.input_w * C_ZERO)
-            self.repeat_3.set_as(self.pad_h - self.pad_b - self.before_h - 1)
-            self.size_3.set_as((self.pad_r + self.pad_l) * C_ZERO)
-            self.offset.set_as((self.before_h - self.pad_t) * self.input_w * C_ZERO)
-            self.nburst.set_as(self.pad_h - self.pad_b - self.before_h)
+            with self.tik_instance.if_scope(self.after_h <= self.pad_h - self.pad_b):
+                self.offset_2.set_as(self.len_h * self.pad_w * C_ZERO - self.pad_r * C_ZERO)
+                self.size_2.set_as(self.pad_r * C_ZERO)
+                self.repeat_3.set_as(self.len_h - 1)
+                self.size_3.set_as((self.pad_r + self.pad_l) * C_ZERO)
+                self.nburst.set_as(self.len_h)
+            with self.tik_instance.else_scope():
+                self.offset_2.set_as((self.pad_h - self.pad_b - self.before_h) * self.pad_w * C_ZERO -
+                                     self.pad_r * C_ZERO)
+                self.size_2.set_as((self.after_h - (self.pad_h - self.pad_b)) * self.pad_w * C_ZERO +
+                                   self.pad_r * C_ZERO)
+                self.repeat_3.set_as(self.pad_h - self.pad_b - self.before_h - 1)
+                self.size_3.set_as((self.pad_r + self.pad_l) * C_ZERO)
+                self.nburst.set_as(self.pad_h - self.pad_b - self.before_h)
         # other params form w dim
         with self.tik_instance.if_scope(self.pad_w <= self.input_w):
             self.burst_len_in.set_as(self.pad_w)
@@ -578,8 +595,10 @@ class MaxPool:
             self.burst_len_in.set_as(self.input_w)
             self.src_stride.set_as(0)
             self.dst_stride.set_as(self.pad_r + self.pad_l)
+
         # ub operate
         with self.tik_instance.new_stmt_scope():
+
             def _inner(ele_idx, ub_x, ub_y):
                 self.offset_in.set_as((core_idx * self.one_core_ele + ele_idx) * self.input_h * self.input_w * C_ZERO +
                                       self.offset)
@@ -632,110 +651,81 @@ class MaxPool:
             # len_h equal to ksize_h
             self.before_h.set_as(h_idx * self.h_factor * self.strides_h)
             self.after_h = self.before_h + self.ksize_h
-            with self.tik_instance.if_scope(tik.all(self.before_h < self.pad_t, self.after_h > self.pad_t)):
+            with self.tik_instance.if_scope(self.before_h < self.pad_t):
+                # other params form h dim
                 self.size_1.set_as((self.pad_t - self.before_h) * self.len_w * C_ZERO)
                 self.offset_2.set_as(0)
                 self.size_2.set_as(0)
                 self.repeat_3.set_as(self.after_h - self.pad_t)
                 self.nburst.set_as(self.after_h - self.pad_t)
-                with self.tik_instance.if_scope(tik.all(self.before_w < self.pad_l, self.after_w > self.pad_l)):
-                    self.offset_3.set_as(self.size_1)
-                    self.size_3.set_as((self.pad_l - self.before_w) * C_ZERO)
-                    self.offset.set_as(0)
-                    self.offset_ub.set_as(self.size_1 + (self.pad_l - self.before_w) * C_ZERO)
-                    self.burst_len_in.set_as(self.after_w - self.pad_l)
-                    self.src_stride.set_as(self.input_w - (self.after_w - self.pad_l))
-                    self.dst_stride.set_as(self.pad_l - self.before_w)
-                with self.tik_instance.if_scope(
-                        tik.all(self.before_w >= self.pad_l, self.after_w <= self.pad_w - self.pad_r)):
-                    self.offset_3.set_as(0)
-                    self.size_3.set_as(0)
+                # other params form w dim
+                with self.tik_instance.if_scope(self.before_w < self.pad_l):
+                    with self.tik_instance.if_scope(self.after_w <= self.pad_w - self.pad_r):
+                        self.offset_3.set_as(self.size_1)
+                        self.size_3.set_as((self.pad_l - self.before_w) * C_ZERO)
+                        self.offset.set_as(0)
+                        self.offset_ub.set_as(self.size_1 + (self.pad_l - self.before_w) * C_ZERO)
+                        self.burst_len_in.set_as(self.after_w - self.pad_l)
+                        self.src_stride.set_as(self.input_w - (self.after_w - self.pad_l))
+                        self.dst_stride.set_as(self.pad_l - self.before_w)
+                with self.tik_instance.else_scope():
                     self.offset.set_as((self.before_w - self.pad_l) * C_ZERO)
                     self.offset_ub.set_as(self.size_1)
-                    self.burst_len_in.set_as(self.len_w)
-                    self.src_stride.set_as(self.input_w - self.len_w)
-                    self.dst_stride.set_as(0)
-                with self.tik_instance.if_scope(
-                        tik.all(self.before_w < self.pad_w - self.pad_r, self.after_w > self.pad_w - self.pad_r)):
-                    self.offset_3.set_as(self.size_1 + (self.pad_w - self.pad_r - self.before_w) * C_ZERO)
-                    self.size_3.set_as((self.after_w - (self.pad_w - self.pad_r)) * C_ZERO)
-                    self.offset.set_as((self.before_w - self.pad_l) * C_ZERO)
-                    self.offset_ub.set_as(self.size_1)
-                    self.burst_len_in.set_as(self.pad_w - self.pad_r - self.before_w)
-                    self.src_stride.set_as(self.before_w - self.pad_l)
-                    self.dst_stride.set_as(self.after_w - (self.pad_w - self.pad_r))
-            with self.tik_instance.if_scope(
-                    tik.all(self.before_h >= self.pad_t, self.after_h <= self.pad_h - self.pad_b)):
+                    with self.tik_instance.if_scope(self.after_w <= self.pad_w - self.pad_r):
+                        self.offset_3.set_as(0)
+                        self.size_3.set_as(0)
+                        self.burst_len_in.set_as(self.len_w)
+                        self.src_stride.set_as(self.input_w - self.len_w)
+                        self.dst_stride.set_as(0)
+                    with self.tik_instance.else_scope():
+                        self.offset_3.set_as(self.size_1 + (self.pad_w - self.pad_r - self.before_w) * C_ZERO)
+                        self.size_3.set_as((self.after_w - (self.pad_w - self.pad_r)) * C_ZERO)
+                        self.burst_len_in.set_as(self.pad_w - self.pad_r - self.before_w)
+                        self.src_stride.set_as(self.before_w - self.pad_l)
+                        self.dst_stride.set_as(self.after_w - (self.pad_w - self.pad_r))
+            with self.tik_instance.else_scope():
+                # other params form h dim
                 self.size_1.set_as(0)
-                self.offset_2.set_as(0)
-                self.size_2.set_as(0)
-                self.repeat_3.set_as(self.ksize_h)
-                self.nburst.set_as(self.ksize_h)
-                with self.tik_instance.if_scope(tik.all(self.before_w < self.pad_l, self.after_w > self.pad_l)):
-                    self.offset_3.set_as(0)
-                    self.size_3.set_as((self.pad_l - self.before_w) * C_ZERO)
-                    self.offset.set_as((self.before_h - self.pad_t) * self.input_w * C_ZERO)
-                    self.offset_ub.set_as(self.size_3)
-                    self.burst_len_in.set_as(self.after_w - self.pad_l)
-                    self.src_stride.set_as(self.input_w - (self.after_w - self.pad_l))
-                    self.dst_stride.set_as(self.pad_l - self.before_w)
-                with self.tik_instance.if_scope(
-                        tik.all(self.before_w >= self.pad_l, self.after_w <= self.pad_w - self.pad_r)):
-                    self.offset_3.set_as(0)
-                    self.size_3.set_as(0)
+                with self.tik_instance.if_scope(self.after_h <= self.pad_h - self.pad_b):
+                    self.offset_2.set_as(0)
+                    self.size_2.set_as(0)
+                    self.repeat_3.set_as(self.ksize_h)
+                    self.nburst.set_as(self.ksize_h)
+                with self.tik_instance.else_scope():
+                    self.offset_2.set_as((self.pad_h - self.pad_b - self.before_h) * self.len_w * C_ZERO)
+                    self.size_2.set_as((self.after_h - (self.pad_h - self.pad_b)) * self.len_w * C_ZERO)
+                    self.repeat_3.set_as(self.pad_h - self.pad_b - self.before_h)
+                    self.nburst.set_as(self.pad_h - self.pad_b - self.before_h)
+                # other params form w dim
+                with self.tik_instance.if_scope(self.before_w < self.pad_l):
+                    with self.tik_instance.if_scope(self.after_w <= self.pad_w - self.pad_r):
+                        self.offset_3.set_as(0)
+                        self.size_3.set_as((self.pad_l - self.before_w) * C_ZERO)
+                        self.offset.set_as((self.before_h - self.pad_t) * self.input_w * C_ZERO)
+                        self.offset_ub.set_as(self.size_3)
+                        self.burst_len_in.set_as(self.after_w - self.pad_l)
+                        self.src_stride.set_as(self.input_w - (self.after_w - self.pad_l))
+                        self.dst_stride.set_as(self.pad_l - self.before_w)
+                with self.tik_instance.else_scope():
                     self.offset.set_as((self.before_h - self.pad_t) * self.input_w * C_ZERO +
                                        (self.before_w - self.pad_l) * C_ZERO)
                     self.offset_ub.set_as(0)
-                    self.burst_len_in.set_as(self.len_w)
-                    self.src_stride.set_as(self.input_w - self.len_w)
-                    self.dst_stride.set_as(0)
-                with self.tik_instance.if_scope(
-                        tik.all(self.before_w < self.pad_w - self.pad_r, self.after_w > self.pad_w - self.pad_r)):
-                    self.offset_3.set_as((self.pad_w - self.pad_r - self.before_w) * C_ZERO)
-                    self.size_3.set_as((self.after_w - (self.pad_w - self.pad_r)) * C_ZERO)
-                    self.offset.set_as((self.before_h - self.pad_t) * self.input_w * C_ZERO +
-                                       (self.before_w - self.pad_l) * C_ZERO)
-                    self.offset_ub.set_as(0)
-                    self.burst_len_in.set_as(self.pad_w - self.pad_r - self.before_w)
-                    self.src_stride.set_as(self.before_w - self.pad_l)
-                    self.dst_stride.set_as(self.after_w - (self.pad_w - self.pad_r))
-            with self.tik_instance.if_scope(
-                    tik.all(self.before_h < self.pad_h - self.pad_b, self.after_h > self.pad_h - self.pad_b)):
-                self.size_1.set_as(0)
-                self.offset_2.set_as((self.pad_h - self.pad_b - self.before_h) * self.len_w * C_ZERO)
-                self.size_2.set_as((self.after_h - (self.pad_h - self.pad_b)) * self.len_w * C_ZERO)
-                self.repeat_3.set_as(self.pad_h - self.pad_b - self.before_h)
-                self.nburst.set_as(self.pad_h - self.pad_b - self.before_h)
-                with self.tik_instance.if_scope(tik.all(self.before_w < self.pad_l, self.after_w > self.pad_l)):
-                    self.offset_3.set_as(0)
-                    self.size_3.set_as((self.pad_l - self.before_w) * C_ZERO)
-                    self.offset.set_as((self.before_h - self.pad_t) * self.input_w * C_ZERO)
-                    self.offset_ub.set_as(self.size_3)
-                    self.burst_len_in.set_as(self.after_w - self.pad_l)
-                    self.src_stride.set_as(self.input_w - (self.after_w - self.pad_l))
-                    self.dst_stride.set_as(self.pad_l - self.before_w)
-                with self.tik_instance.if_scope(
-                        tik.all(self.before_w >= self.pad_l, self.after_w <= self.pad_w - self.pad_r)):
-                    self.offset_3.set_as(0)
-                    self.size_3.set_as(0)
-                    self.offset.set_as((self.before_h - self.pad_t) * self.input_w * C_ZERO +
-                                       (self.before_w - self.pad_l) * C_ZERO)
-                    self.offset_ub.set_as(0)
-                    self.burst_len_in.set_as(self.len_w)
-                    self.src_stride.set_as(self.input_w - self.len_w)
-                    self.dst_stride.set_as(0)
-                with self.tik_instance.if_scope(
-                        tik.all(self.before_w < self.pad_w - self.pad_r, self.after_w > self.pad_w - self.pad_r)):
-                    self.offset_3.set_as((self.pad_w - self.pad_r - self.before_w) * C_ZERO)
-                    self.size_3.set_as((self.after_w - (self.pad_w - self.pad_r)) * C_ZERO)
-                    self.offset.set_as((self.before_h - self.pad_t) * self.input_w * C_ZERO +
-                                       (self.before_w - self.pad_l) * C_ZERO)
-                    self.offset_ub.set_as(0)
-                    self.burst_len_in.set_as(self.pad_w - self.pad_r - self.before_w)
-                    self.src_stride.set_as(self.before_w - self.pad_l)
-                    self.dst_stride.set_as(self.after_w - (self.pad_w - self.pad_r))
+                    with self.tik_instance.if_scope(self.after_w <= self.pad_w - self.pad_r):
+                        self.offset_3.set_as(0)
+                        self.size_3.set_as(0)
+                        self.burst_len_in.set_as(self.len_w)
+                        self.src_stride.set_as(self.input_w - self.len_w)
+                        self.dst_stride.set_as(0)
+                    with self.tik_instance.else_scope():
+                        self.offset_3.set_as((self.pad_w - self.pad_r - self.before_w) * C_ZERO)
+                        self.size_3.set_as((self.after_w - (self.pad_w - self.pad_r)) * C_ZERO)
+                        self.burst_len_in.set_as(self.pad_w - self.pad_r - self.before_w)
+                        self.src_stride.set_as(self.before_w - self.pad_l)
+                        self.dst_stride.set_as(self.after_w - (self.pad_w - self.pad_r))
+
             # ub operate
             with self.tik_instance.new_stmt_scope():
+
                 def _inner(ele_idx, ub_x, ub_y):
                     self.offset_in.set_as((core_idx * self.one_core_ele + ele_idx) * self.input_h * self.input_w *
                                           C_ZERO + self.offset)
