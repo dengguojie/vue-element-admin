@@ -24,6 +24,7 @@ if(BUILD_OPEN_PROJECT)
     ${GTEST_INCLUDE}
     ${OP_TEST_PLUFIN_AND_PROTO_INCLUDE}
     ${METADEF_INCLUDE}/graph
+    ${METADEF_INCLUDE}/inc/external/graph
   )
   target_compile_definitions(ops_cpp_proto_utest PRIVATE
     _GLIBCXX_USE_CXX11_ABI=0

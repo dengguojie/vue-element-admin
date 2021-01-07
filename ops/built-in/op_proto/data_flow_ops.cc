@@ -826,7 +826,8 @@ IMPLEMT_INFERFUNC(TensorArrayScatter, TensorArrayScatterInfer) {
 
   std::string err_msg;
   for (int i = 0; i < indices_rank; i++) {
-    if (value_shape.GetDim(i) != indices_shape.GetDim(i)) {
+    if ((value_shape.GetDim(i) >= 0) && (indices_shape.GetDim(i) >= 0) &&
+        (value_shape.GetDim(i) != indices_shape.GetDim(i))) {
       err_msg = ConcatString(i, "th dim of input value shape", DebugString(value_shape.GetDims()),
                              " must equal to that of input indices shape", DebugString(indices_shape.GetDims()));
       InferShapeOtherErrReport(op.GetName(), ConcatString("the ", err_msg));
