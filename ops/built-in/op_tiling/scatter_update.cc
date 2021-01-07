@@ -72,7 +72,6 @@ void CalRunningParams(ScatterUpdateTilingParams& runParams, int64_t indicesNum, 
                       int64_t updateDataNum, int64_t maxIndice, int64_t ubSize, int64_t coreNum, int64_t varSize,
                       int64_t indicesSize, int64_t varDataEachBlock) {
   int64_t updateSizeByte = varSize * updatesNum;
-  int64_t indicesSizeByte = indicesSize * indicesNum;
   int64_t halfUbSize = ubSize / 2;
   runParams.updatesLoopNum = updateDataNum / (halfUbSize / varSize);
   runParams.updatesLastNum = updateDataNum % (halfUbSize / varSize);

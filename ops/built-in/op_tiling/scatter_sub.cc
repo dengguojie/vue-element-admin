@@ -97,7 +97,6 @@ void CalNotAtomicBranchRunningParams(ScatterSubTilingParams& runParams, int64_t 
   int64_t varAllSizeByte = varSize * varNum;
   int64_t varSizeByte = varSize * runParams.indiceStep * updateDataNum;
   int64_t updateSizeByte = varSize * updatesNum;
-  int64_t indicesSizeByte = indicesSize * indicesNum;
   int64_t varUbSize = ubSize / 8 * 3;
   int64_t indicesUbSize = ubSize / 8 * 2;
   runParams.varLoopNum = varNum / (varUbSize / varSize);

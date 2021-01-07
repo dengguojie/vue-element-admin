@@ -151,7 +151,6 @@ void CalNotAtomicBranchRunningParams(ScatterNdTilingParams& runParams, int64_t v
   int64_t varAllSizeByte = updatesSize * varNum;
   int64_t varSizeByte = updatesSize * runParams.indiceStep * updateDataNum;
   int64_t updateSizeByte = updatesSize * updatesNum;
-  int64_t indicesSizeByte = indicesSize * indicesNum;
   int64_t varUbSize = ubSize / 8 * 3;
   int64_t indicesUbSize = ubSize / 8 * 2;
   runParams.varLoopNum = varNum / (varUbSize / updatesSize);
@@ -223,7 +222,7 @@ void SetRuningParams(const ScatterNdTilingParams& params, OpRunInfo& runInfo) {
   ByteBufferPut(runInfo.tiling_data, params.maxIndice);
   ByteBufferPut(runInfo.tiling_data, params.varEachCoreData);
   ByteBufferPut(runInfo.tiling_data, params.indicesLastDim);
-  for (int64_t i = 0; i < params.varOffSet.size(); i++) {
+  for (size_t i = 0; i < params.varOffSet.size(); i++) {
     ByteBufferPut(runInfo.tiling_data, params.varOffSet[i]);
   }
   ByteBufferPut(runInfo.tiling_data, params.varEachCoreSetZeroLoopNum);
@@ -250,7 +249,7 @@ void PrintTilingParams(const ScatterNdTilingParams& params) {
   GELOGD("op [ScatterNdTiling] : maxIndice=%ld.", params.maxIndice);
   GELOGD("op [ScatterNdTiling] : varEachCoreData=%ld.", params.varEachCoreData);
   GELOGD("op [ScatterNdTiling] : indicesLastDim=%ld.", params.indicesLastDim);
-  for (int64_t i = 0; i < params.varOffSet.size(); i++) {
+  for (size_t i = 0; i < params.varOffSet.size(); i++) {
     GELOGD("op [ScatterNdTiling] : varOffSet[%ld]=%ld.", i, params.varOffSet[i]);
   }
   GELOGD("op [ScatterNdTiling] : varEachCoreSetZeroLoopNum=%ld.", params.varEachCoreSetZeroLoopNum);
@@ -398,7 +397,7 @@ bool ScatterNdTiling(const std::string& opType, const TeOpParas& opParas, const 
   int64_t varNum = std::accumulate(outShape.begin(), outShape.end(), 1, std::multiplies<int>());
   int64_t indicesNum = std::accumulate(indicesShape.begin(), indicesShape.end(), 1, std::multiplies<int>());
   int64_t updatesNum = std::accumulate(updatesShape.begin(), updatesShape.end(), 1, std::multiplies<int>());
-  int64_t updateDataNum = (outShape.size() == indicesShape.back()) ? 1 : (std::accumulate(outShape.begin() +
+  int64_t updateDataNum = ((int32_t)outShape.size() == indicesShape.back()) ? 1 : (std::accumulate(outShape.begin() +
                            indicesShape.back(), outShape.end(), 1, std::multiplies<int>()));
   int64_t maxIndice = std::accumulate(outShape.begin(), outShape.end() - (outShape.size() - indicesShape.back()),
                                       1, std::multiplies<int>());

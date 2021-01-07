@@ -386,6 +386,7 @@ void padCommon::_MaxDup(PadDTilingParams& params, int64_t idx) {
     CirDupVol = (params.top_vol[i] >= params.bottom_vol[i]) ? params.top_vol[i] : params.bottom_vol[i];
     if (CirDupVol > 0) {
       CirPos = i;
+      GELOGD("CirPos: [%d].", CirPos);
       break;
     }
   }

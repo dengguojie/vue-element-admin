@@ -104,7 +104,6 @@ void CalAtomicBranchRunningParams(ScatterAddTilingParams& runParams, int64_t ind
                                   int64_t updateDataNum, int64_t ubSize, int64_t varSize, int64_t indicesSize,
                                   int64_t varDataEachBlock) {
   int64_t updateSizeByte = varSize * updatesNum;
-  int64_t indicesSizeByte = indicesSize * indicesNum;
   int64_t halfUbSize = ubSize / 2;
   runParams.updatesLoopNum = updateDataNum / (halfUbSize / varSize);
   runParams.updatesLastNum = updateDataNum % (halfUbSize / varSize);
@@ -141,7 +140,6 @@ void CalNotAtomicBranchRunningParams(ScatterAddTilingParams& runParams, int64_t 
   int64_t varAllSizeByte = varSize * varNum;
   int64_t varSizeByte = varSize * runParams.indiceStep * updateDataNum;
   int64_t updateSizeByte = varSize * updatesNum;
-  int64_t indicesSizeByte = indicesSize * indicesNum;
   int64_t varUbSize = ubSize / 8 * 3;
   int64_t indicesUbSize = ubSize / 8 * 2;
   runParams.varLoopNum = varNum / (varUbSize / varSize);
@@ -215,9 +213,9 @@ void SetRuningParams(const ScatterAddTilingParams& params, OpRunInfo& runInfo) {
 }
 
 void PrintTilingParams(const ScatterAddTilingParams& params) {
-  GELOGD("op [ScatterAddTiling] : tilingMode=%ld.", params.tilingMode);
-  GELOGD("op [ScatterAddTiling] : indiceStep=%ld.", params.indiceStep);
-  GELOGD("op [ScatterAddTiling] : coreNum=%ld.", params.coreNum);
+  GELOGD("op [ScatterAddTiling] : tilingMode=%ld. ", params.tilingMode);
+  GELOGD("op [ScatterAddTiling] : indiceStep=%ld. ", params.indiceStep);
+  GELOGD("op [ScatterAddTiling] : coreNum=%ld. ", params.coreNum);
   GELOGD("op [ScatterAddTiling] : updatesDataNum=%ld.", params.updatesDataNum);
   GELOGD("op [ScatterAddTiling] : indicesLoopNum=%ld.", params.indicesLoopNum);
   GELOGD("op [ScatterAddTiling] : indicesLastNum=%ld.", params.indicesLastNum);

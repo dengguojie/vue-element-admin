@@ -505,7 +505,6 @@ bool GatherV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
   int64_t halfUbIndicesElem = halfUbSize / indicesDSize;
   int64_t indicesNumPerLoop = halfUbIndicesElem;
   int64_t halfRemainUbSize = (availableUbSize - PARAMS_CACHED_UB) / 2;
-  int64_t halfRemainIndicesElem = halfRemainUbSize / indicesDSize;
   int64_t halfRemainParamsElem = halfRemainUbSize / paramsDSize;
   int64_t halfUbParamsElem = halfUbSize / paramsDSize;
 

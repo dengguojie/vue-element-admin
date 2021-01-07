@@ -390,7 +390,6 @@ void Reduce::ProcessReorderAxis(int32_t fused_type) {
    * ReorderShape: |a0,a1,a2|r0,r1,r2,r3|a3
    *                                   |---> last_reduce_axis_idx
    * */
-  int32_t reorder_pos = 0;
   int32_t block_tiling_axis = tilingInfo.block_tiling_axis;
   int32_t last_reduce_axis_idx = reduce_axis.back();
   reorderInfo.reorder_input_shape.resize(input_shape.size());
@@ -406,7 +405,7 @@ void Reduce::ProcessReorderAxis(int32_t fused_type) {
   int pos_a = 0;
 
   // [0: last_reduce_axis_idx]
-  for (size_t i = 0; i <= last_reduce_axis_idx; i++) {
+  for (int32_t i = 0; i <= last_reduce_axis_idx; i++) {
     if (reduce_flag[i] == 1) {
       if (fused_type == FUSED_REDUCE_AXIS && i < block_tiling_axis) {
         reorderInfo.fused_block_tiling_axis.emplace_back(pos_r);
@@ -426,7 +425,7 @@ void Reduce::ProcessReorderAxis(int32_t fused_type) {
 
   // order last non axis, maybe several axis
   for (size_t i = last_reduce_axis_idx + 1; i < input_shape.size(); i++) {
-    if (fused_type == FUSED_NON_REDUCE_AXIS && i < block_tiling_axis) {
+    if (fused_type == FUSED_NON_REDUCE_AXIS && (int32_t)i < block_tiling_axis) {
       reorderInfo.fused_block_tiling_axis.emplace_back(pos_r);
     }
     reorderInfo.reorder_input_shape[pos_r] = input_shape[i];
