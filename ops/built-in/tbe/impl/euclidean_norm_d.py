@@ -15,6 +15,7 @@
 """
 euclidean_norm_d
 """
+# pylint: disable=W0613,W0401
 import te.lang.cce
 from te import tvm
 from te.utils.op_utils import *

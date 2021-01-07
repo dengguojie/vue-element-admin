@@ -15,6 +15,7 @@
 """
 nchw_hwcn_zn
 """
+# pylint: disable=W0613
 # pylint: disable=too-many-lines,wildcard-import,undefined-variable
 from __future__ import absolute_import
 import te.lang.cce

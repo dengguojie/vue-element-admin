@@ -15,6 +15,7 @@
 """
 dhwcn_2_fractal_z_3d
 """
+# pylint: disable=W0613,W0401
 from functools import reduce as functools_reduce
 
 from te import tik

@@ -15,13 +15,12 @@
 """
 transpose_d
 """
+# pylint: disable=W0613,W0401,C0302
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import json
 import operator
-import os
 from functools import reduce as functools_reduce
 
 from te import platform as cce
