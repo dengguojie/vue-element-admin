@@ -134,7 +134,7 @@ class BroadcastElewiseClassifier:
                     raise RuntimeError(dict_args, get_error_message(dict_args))
                 for i, r in enumerate(_range):
                     if 1 in r:
-                        if r[1] < mied_range[1]:
+                        if r[1] < mied_range[0]:
                             _range[i] = (1, 1)
                         elif r[1] > mied_range[1]:
                             _range[i] = (1, mied_range[1])
