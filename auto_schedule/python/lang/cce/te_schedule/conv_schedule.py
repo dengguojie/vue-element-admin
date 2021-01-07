@@ -2915,7 +2915,6 @@ class CceConvOp:
             """
             set corresponding scope for quant bias related stage
             """
-            bias = tensor_map["int32_bias"]
             bias_l0c = tensor_map["bias_l0c"]
             c_col_bias = tensor_map["c_col_bias"]
             bias_ub_brc = None
