@@ -39,13 +39,14 @@ def set_default_para():
     """
     set default parameter value
     """
-
-    res_dtype = "float16"
-    optim_dict = {"c0_optim_flg": False}
-    fusion_para = {"input_memory_type": 0, "output_memory_type": 0,
-                   "valid_shape": (), "slice_offset": (),
-                   "l1_fusion_type": -1}
-    return res_dtype, optim_dict, fusion_para
+    default_para = {}
+    default_para["res_dtype"] = "float16"
+    default_para["optim_dict"] = {"c0_optim_flg": False}
+    default_para["fusion_para"] = {"input_memory_type": 0, "output_memory_type": 0,
+                                   "valid_shape": (), "slice_offset": (),
+                                   "l1_fusion_type": -1}
+    default_para["ori_shape"] = [0, 0, 0, 0]
+    return default_para
 
 
 @tbe_base.register_fusion_compute("Conv2D")
@@ -108,12 +109,14 @@ def _conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dil
     tvm compute
     """
 
-    res_dtype, optim_dict, fusion_para = set_default_para()
+    default_para = set_default_para()
+    if not outputs.get("ori_shape"):
+        outputs["ori_shape"] = default_para["ori_shape"]
     ori_paras = {
         "inputs": inputs, "weights": weights, "bias": bias, "offset_w": offset_w,
         "outputs": outputs, "strides": strides, "pads": pads, "dilations": dilations,
         "groups": groups, "data_format": data_format, "offset_x": offset_x,
-        "kernel_name": kernel_name, "optim_dict": optim_dict,
+        "kernel_name": kernel_name, "optim_dict": default_para.get("optim_dict"),
     }
 
     conv_para = Conv2dParaProcess(ori_paras)
@@ -129,8 +132,8 @@ def _conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dil
                        "filter_h": paras.get("w_shape")[H_DIM],
                        "filter_w": paras.get("w_shape")[W_DIM],
                        "offset_x": offset_x,
-                       "res_dtype": res_dtype,
-                       "fusion_para": fusion_para,
+                       "res_dtype": default_para.get("res_dtype"),
+                       "fusion_para": default_para.get("fusion_para"),
                        "kernel_name": kernel_name,
                        "group": conv_para.groups,
                        "enlarge": paras.get("group_para").get("enlarge"),
@@ -140,7 +143,7 @@ def _conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dil
                        "a_shape": paras.get("in_shape_nc1hwc0"),
                        "weight_fracz_shape": paras.get("w_shape_frac_z"),
                        "weight_ori_shape_nchw": paras.get("w_shape")},
-                      optim_dict=optim_dict,
+                      optim_dict=default_para.get("optim_dict"),
                       dsl_flag=dsl_flag)
 
     if conv_para.bias is not None:

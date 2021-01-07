@@ -30,6 +30,7 @@ N_DIM = 0
 C_DIM = 1
 H_DIM = 2
 W_DIM = 3
+RANGE_DIM_LEN = 2
 FORMAT_NCHW_DIM = 4
 FORMAT_NC1HWC0_DIM = 5
 DYNAMIC_FLAG = -1
@@ -74,25 +75,6 @@ def pos_from_format(ele_format):
     return pos_n, pos_c, pos_h, pos_w
 
 
-def get_input_nchw(in_shape, in_format, in_range=()):
-    """
-    get input shape and range of nchw format
-    """
-
-    pos_n, pos_c, pos_h, pos_w = pos_from_format(in_format)
-    in_shape = [in_shape[pos_n], in_shape[pos_c], in_shape[pos_h], in_shape[pos_w]]
-
-    if len(in_range) == FORMAT_NCHW_DIM:
-        in_range = [in_range[pos_n], in_range[pos_c], in_range[pos_h], in_range[pos_w]]
-    # range in NC1HWC0 format sometimes
-    elif len(in_range) == FORMAT_NC1HWC0_DIM:
-        in_range = [in_range[N_DIM], (in_shape[C_DIM], in_shape[C_DIM]), in_range[H_DIM], in_range[W_DIM]]
-
-    if in_range:
-        return in_shape, [tuple(r) for r in in_range]
-    return in_shape
-
-
 class CubeParaProcess:
     """
     class of param check and preprocess for dynamic cube ops
@@ -106,7 +88,7 @@ class CubeParaProcess:
         self.dilations = paras.get("dilations")
         self.op_type = None
         self.valid_paras = {
-            "hw_min": 1,
+            "nhw_min": 1,
             "hw_max": 4096,
             "valid_format": {"weights": ("NCHW", "NHWC", "HWCN"),
                              "input": ("NCHW", "NHWC"),
@@ -114,32 +96,45 @@ class CubeParaProcess:
             "valid_dtype": ("float16",)
         }
 
-    def check_range_valid(self, shape, dyn_range, name):
+    def check_range_valid(self, shape, dyn_range, name, in_format):
         """
         check if the range is valid
         """
 
-        for _, dim in enumerate(zip(shape, dyn_range)):
-            if dim[0] == DYNAMIC_FLAG and not dim[1]:
-                err_man.raise_err_specific_user(
-                    self.op_type, "must specify range when shape is -1")
+        def _check_range(in_range, dim):
+            dim_valid_dict = {
+                N_DIM: (self.valid_paras.get("nhw_min"), None),
+                H_DIM: (self.valid_paras.get("nhw_min"), self.valid_paras.get("hw_max")),
+                W_DIM: (self.valid_paras.get("nhw_min"), self.valid_paras.get("hw_max"))
+            }
+            if in_range:
+                valid_lower, valid_upper = dim_valid_dict.get(dim)
+                if len(in_range) != RANGE_DIM_LEN:
+                    err_man.raise_err_specific_user(self.op_type, "each dimension of range must be 2.")
+                if not in_range[0] or in_range[0] < valid_lower:
+                    err_man.raise_err_attr_range_invalid(
+                        self.op_type, [valid_lower, valid_upper], name, in_range[0])
+                if in_range[1]:
+                    if valid_upper and in_range[1] > valid_upper:
+                        err_man.raise_err_attr_range_invalid(
+                            self.op_type, [valid_lower, valid_upper], name, in_range[1])
+                    if in_range[0] > in_range[1]:
+                        err_man.raise_err_specific_user(self.op_type, "upper bound must be greater than lower bound.")
 
-        h_range, w_range = dyn_range[H_DIM], dyn_range[W_DIM]
-        if (h_range[0] and h_range[0] < self.valid_paras.get("hw_min")) or (
-                h_range[1] and h_range[1] > self.valid_paras.get("hw_max")):
-            err_man.raise_err_attr_range_invalid(
-                self.op_type, [self.valid_paras.get("hw_min"), self.valid_paras.get("hw_max")], name, h_range[0])
-        if (w_range[0] and w_range[0] < self.valid_paras.get("hw_min")) or (
-                w_range[1] and w_range[1] > self.valid_paras.get("hw_max")):
-            err_man.raise_err_attr_range_invalid(
-                self.op_type, [self.valid_paras.get("hw_min"), self.valid_paras.get("hw_max")], name, w_range[0])
+        if shape[C_DIM] == DYNAMIC_FLAG:
+            err_man.raise_err_specific_user(self.op_type, "dynamic c dimension is not supported yet.")
+        for index, dim in enumerate(zip(shape, dyn_range)):
+            if dim[0] == DYNAMIC_FLAG:
+                if not dim[1]:
+                    err_man.raise_err_specific_user(self.op_type, "must specify range when shape is -1")
+                _check_range(dim[1], index)
 
     def check_para_dim(self, seq, seq_name):
         """
         check if the sequence is four-dimensional
         """
 
-        if len(seq) != 4:
+        if len(seq) != FORMAT_NCHW_DIM:
             err_man.raise_err_should_be_4d(self.op_type, seq_name)
 
     def check_format(self, param_format, param_name):
@@ -167,6 +162,25 @@ class CubeParaProcess:
             err_man.raise_err_specific_user(self.op_type, f"need to pass ori_format in {para_name}")
         if need_range and not para.get("range"):
             err_man.raise_err_specific_user(self.op_type, f"need to pass range in {para_name}")
+
+    def get_input_nchw(self, in_shape, in_format, in_range=()):
+        """
+        get input shape and range of nchw format
+        """
+
+        pos_n, pos_c, pos_h, pos_w = pos_from_format(in_format)
+        in_shape = [in_shape[pos_n], in_shape[pos_c], in_shape[pos_h], in_shape[pos_w]]
+
+        if in_range:
+            if len(in_range) == FORMAT_NCHW_DIM:
+                in_range = [in_range[pos_n], in_range[pos_c], in_range[pos_h], in_range[pos_w]]
+            # range in NC1HWC0 format sometimes
+            elif len(in_range) == FORMAT_NC1HWC0_DIM:
+                in_range = [in_range[N_DIM], (in_shape[C_DIM], in_shape[C_DIM]), in_range[H_DIM], in_range[W_DIM]]
+            else:
+                err_man.raise_err_specific_user(self.op_type, "dimension of range should be 4 or 5.")
+            return in_shape, [tuple(r) if r else r for r in in_range]
+        return in_shape
 
     def get_attr_nchw(self, in_format):
         """
@@ -228,7 +242,7 @@ class Conv2dParaProcess(CubeParaProcess):
         self.data_format = paras.get("data_format")
         self.dtype = paras.get("inputs").get("dtype")
 
-    def check_support_valid(self, in_shape):
+    def check_support_valid(self, in_shape, w_shape):
         """
         check whether dynamic shape is supported for conv2d
         """
@@ -243,9 +257,12 @@ class Conv2dParaProcess(CubeParaProcess):
         if self.paras.get("offset_w"):
             err_man.raise_err_specific_user(
                 self.op_type, "offset_w is not supported in dynamic shape yet.")
-        if in_shape[C_DIM] == -1:
+        if DYNAMIC_FLAG not in in_shape:
             err_man.raise_err_specific_user(
-                self.op_type, "dynamic c dimension is not supported yet.")
+                self.op_type, "need at least one dimension is a variable.")
+        if DYNAMIC_FLAG in w_shape:
+            err_man.raise_err_specific_user(
+                self.op_type, "dynamic weight is not supported yet.")
         if self.dilations[H_DIM] != 1 or self.dilations[W_DIM] != 1:
             err_man.raise_err_specific_user(
                 self.op_type, "dilations is not supported in dynamic shape yet.")
@@ -345,67 +362,60 @@ class Conv2dParaProcess(CubeParaProcess):
 
         self.check_input_dict(self.inputs, "inputs", True)
         self.check_input_dict(self.weights, "weights", False)
+        para_check.check_dtype_rule(self.dtype, self.valid_paras.get("valid_dtype"))
+        para_check.check_dtype_rule(self.weights.get("dtype"), self.valid_paras.get("valid_dtype"))
+        para_check.check_dtype_rule(self.paras.get("outputs").get("dtype"), self.valid_paras.get("valid_dtype"))
+        if self.dtype != self.weights.get("dtype"):
+            err_man.raise_err_specific_user("conv2d", "in_dtype != w_dtype")
+        self.check_format(self.data_format, "input")
+        self.check_format(self.weights.get("ori_format"), "weights")
+        if self.inputs.get("ori_format") != self.data_format:
+            err_man.raise_err_specific_user("conv2d", "in_format != data_format")
+        para_check.check_kernel_name(self.paras.get("kernel_name"))
+
         in_shape = list(self.inputs.get("ori_shape"))
         in_range = self.inputs.get("range")
-        in_format = self.inputs.get("ori_format")
         w_shape = list(self.weights.get("ori_shape"))
-        w_dtype = self.weights.get("dtype")
-        w_format = self.weights.get("ori_format")
         outputs_shape = list(self.outputs.get("ori_shape"))
-        para_check.check_dtype_rule(self.dtype, self.valid_paras.get("valid_dtype"))
-        para_check.check_dtype_rule(w_dtype, self.valid_paras.get("valid_dtype"))
-        para_check.check_dtype_rule(self.paras.get("outputs").get("dtype"), self.valid_paras.get("valid_dtype"))
         self.check_para_dim(w_shape, "weights")
         self.check_para_dim(self.strides, "strides")
         self.check_para_dim(self.dilations, "dilations")
         self.check_para_dim(self.pads, "pads")
-        self.check_format(self.data_format, "input")
-        self.check_format(w_format, "weights")
-        w_shape_nchw = get_input_nchw(w_shape, w_format)
-        if in_shape != [-2] or (outputs_shape != [DYNAMIC_FLAG, w_shape_nchw[N_DIM], DYNAMIC_FLAG, DYNAMIC_FLAG] and \
-            outputs_shape != [DYNAMIC_FLAG, DYNAMIC_FLAG, DYNAMIC_FLAG, w_shape_nchw[N_DIM]]):
-            self.check_para_dim(in_shape, "in_shape")
-            self.check_range_valid(in_shape, in_range, "fmap")
-        if self.dtype != w_dtype:
-            err_man.raise_err_specific_user("conv2d", "in_dtype != w_dtype")
-        if in_format != self.data_format:
-            err_man.raise_err_specific_user("conv2d", "in_format != data_format")
-        if in_shape != [-2] and DYNAMIC_FLAG not in in_shape[1:] and DYNAMIC_FLAG in self.pads:
-            err_man.raise_err_specific_user("conv2d", "pads not be [-1,-1,-1,-1],when only N dim is -1")
-        para_check.check_kernel_name(self.paras.get("kernel_name"))
+        w_shape_nchw = self.get_input_nchw(w_shape, self.weights.get("ori_format"))
 
-        return {"in_shape": in_shape, "in_range": in_range, "w_shape": w_shape, "w_format": w_format}
+        if in_shape == [-2] and (outputs_shape == [DYNAMIC_FLAG, w_shape_nchw[N_DIM], DYNAMIC_FLAG, DYNAMIC_FLAG] or
+                                 outputs_shape == [DYNAMIC_FLAG, DYNAMIC_FLAG, DYNAMIC_FLAG, w_shape_nchw[N_DIM]]):
+            in_shape_nchw = [DYNAMIC_FLAG, w_shape_nchw[C_DIM], DYNAMIC_FLAG, DYNAMIC_FLAG]
+            in_range_nchw = [(1, None), (w_shape_nchw[C_DIM], w_shape_nchw[C_DIM]), (1, None), (1, None)]
+        else:
+            self.check_para_dim(in_shape, "in_shape")
+            in_shape_nchw, in_range_nchw = self.get_input_nchw(in_shape, self.data_format, in_range)
+            self.check_range_valid(in_shape_nchw, in_range_nchw, "fmap", self.data_format)
+
+        self.check_support_valid(in_shape_nchw, w_shape_nchw)
+        self.get_attr_nchw(self.data_format)
+        y_range = self.get_y_range(w_shape_nchw, in_range_nchw)
+        in_shape_nchw, w_shape_nchw, in_shape_nc1hwc0, w_shape_frac_z = self.calc_shape(
+            in_shape_nchw, w_shape_nchw, in_range_nchw, y_range)
+        self.calc_pads(in_shape_nc1hwc0, w_shape_nchw)
+        group_para = self.set_group_para(in_shape_nchw, w_shape_nchw, self.dtype)
+
+        return {"in_shape_nc1hwc0": in_shape_nc1hwc0, "w_shape_frac_z": w_shape_frac_z,
+                "w_shape": w_shape_nchw, "group_para": group_para}
 
     def config_paras(self):
         """
         config paras and placeholders
         """
 
-        ori_paras = self.check_paras()
-        self.get_attr_nchw(self.data_format)
-        in_shape = ori_paras.get("in_shape")
-        outputs_shape = list(self.outputs.get("ori_shape"))
-        w_shape = get_input_nchw(ori_paras.get("w_shape"), ori_paras.get("w_format"))
-        if in_shape != [-2] or (outputs_shape != [DYNAMIC_FLAG, w_shape[N_DIM], DYNAMIC_FLAG, DYNAMIC_FLAG] and \
-            outputs_shape != [DYNAMIC_FLAG, DYNAMIC_FLAG, DYNAMIC_FLAG, w_shape[N_DIM]]):
-            in_shape, in_range = get_input_nchw(ori_paras.get("in_shape"), self.data_format, ori_paras.get("in_range"))
-        else:
-            in_shape = [DYNAMIC_FLAG, w_shape[C_DIM], DYNAMIC_FLAG, DYNAMIC_FLAG]
-            in_range = [(1, None), (w_shape[C_DIM], w_shape[C_DIM]), (1, None), (1, None)]
-        y_range = self.get_y_range(w_shape, in_range)
-        in_shape, w_shape, in_shape_nc1hwc0, w_shape_frac_z = self.calc_shape(
-            in_shape, w_shape, in_range, y_range)
-        self.calc_pads(in_shape_nc1hwc0, w_shape)
-        self.check_support_valid(in_shape)
-        group_para = self.set_group_para(in_shape, w_shape, self.dtype)
-
-        input_tensor = tvm.placeholder(in_shape_nc1hwc0, name="Fmap", dtype=self.dtype)
-        weight_tensor = tvm.placeholder(w_shape_frac_z, name="Filter", dtype=self.dtype)
+        param = self.check_paras()
+        input_tensor = tvm.placeholder(param.get("in_shape_nc1hwc0"), name="Fmap", dtype=self.dtype)
+        weight_tensor = tvm.placeholder(param.get("w_shape_frac_z"), name="Filter", dtype=self.dtype)
         if self.bias:
-            bias_tensor = tvm.placeholder((w_shape[N_DIM],), name="bias_tensor", dtype=self.dtype)
+            bias_tensor = tvm.placeholder((param.get("w_shape")[N_DIM],), name="bias_tensor", dtype=self.dtype)
         else:
             bias_tensor = None
 
         return {"input_tensor": input_tensor, "weight_tensor": weight_tensor, "bias_tensor": bias_tensor,
-                "w_shape": w_shape, "in_shape_nc1hwc0": in_shape_nc1hwc0, "w_shape_frac_z": w_shape_frac_z,
-                "group_para": group_para}
+                "w_shape": param.get("w_shape"), "in_shape_nc1hwc0": param.get("in_shape_nc1hwc0"),
+                "w_shape_frac_z": param.get("w_shape_frac_z"), "group_para": param.get("group_para")}

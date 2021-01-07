@@ -749,12 +749,6 @@ class CceConvOp:
                 wout, factor = factor, (wout % factor)
             return tmp // factor
 
-        def int_ceil_div_tvm(num_a, num_b):
-            """
-            tvm.floordiv result
-            """
-            return tvm.floordiv((num_a + num_b - 1), num_b)
-
         def check_tiling(tiling, w_dtype, fmap_shape_nc1hwc0):
             """
             default tiling check
