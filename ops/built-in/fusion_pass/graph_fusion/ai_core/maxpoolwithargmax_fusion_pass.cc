@@ -339,6 +339,9 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
         ge::GeShape inputTransDataShape(input_tshape);
         ge::GeTensorDesc inputTransDataDesc = ge::GeTensorDesc(inputTransDataShape, ge::FORMAT_NC1HWC0, ge::DT_FLOAT);
         inputTransDataDesc.SetShape(inputTransDataShape);
+        inputTransDataDesc.SetOriginFormat(outputMaskDesc.GetOriginFormat());
+        inputTransDataDesc.SetOriginShape(outputMaxDesc.GetOriginShape());
+        inputTransDataDesc.SetOriginDataType(outputMaxDesc.GetOriginDataType());
         transDataOpdesc->AddInputDesc("src", inputTransDataDesc);
         transDataOpdesc->AddOutputDesc("dst", outputTransDataDesc);
         /* Add Node into graph */
