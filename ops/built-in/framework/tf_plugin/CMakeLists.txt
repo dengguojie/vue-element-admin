@@ -463,6 +463,8 @@ if(ENABLE_TEST STREQUAL "")
   )
 
   target_compile_options(ops_all_plugin PRIVATE
+    "-fno-common"
+    "-fno-strict-aliasing"
     -O2
     -Werror
     -Wno-deprecated-declarations
