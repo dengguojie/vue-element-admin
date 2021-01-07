@@ -32,63 +32,34 @@ def op_select_format(x, segment_ids, num_segments, y,
     """
     segment_ids_shape = list(segment_ids.get("shape"))
     atomic_add = platform.api_check_support("tik.set_atomic_add")
-    input_dtype = x.get("dtype").lower()
-    if input_dtype in ("int8", "uint8") and atomic_add and len(segment_ids_shape) == 1:
-        input0_dtype = "float,float"
-        input0_format = "NC1HWC0,ND"
-        input1_dtype = "int32,int32"
-        input1_format = "ND,ND"
-        input2_dtype = "int32,int32"
-        input2_format = "ND,ND"
-    elif input_dtype in ("int8", "uint8") and len(segment_ids_shape) == 1 and not atomic_add:
-        input0_dtype = "float16,float16"
-        input0_format = "NC1HWC0,ND"
-        input1_dtype = "int32,int32"
-        input1_format = "ND,ND"
-        input2_dtype = "int32,int32"
-        input2_format = "ND,ND"
-    elif input_dtype not in ("int8", "uint8") and len(segment_ids_shape) == 1 and atomic_add:
+    if len(segment_ids_shape) == 1 and atomic_add:
         input0_dtype = "float16,float16,float,float,int32,int32"
         input0_format = "NC1HWC0,ND,NC1HWC0,ND,NC1HWC0,ND"
         input1_dtype = "int32,int32,int32,int32,int32,int32"
         input1_format = "ND,ND,ND,ND,ND,ND"
         input2_dtype = "int32,int32,int32,int32,int32,int32"
         input2_format = "ND,ND,ND,ND,ND,ND"
-    elif input_dtype not in ("int8", "uint8") and len(segment_ids_shape) == 1 and not atomic_add:
+    elif len(segment_ids_shape) == 1 and not atomic_add:
         input0_dtype = "float16,float16,int32,int32"
         input0_format = "NC1HWC0,ND,NC1HWC0,ND"
         input1_dtype = "int32,int32,int32,int32"
         input1_format = "ND,ND,ND,ND"
         input2_dtype = "int32,int32,int32,int32"
         input2_format = "ND,ND,ND,ND"
-    elif input_dtype not in ("int8", "uint8") and len(segment_ids_shape) > 1 and not atomic_add:
+    elif len(segment_ids_shape) > 1 and not atomic_add:
         input0_dtype = "float16,int32"
         input0_format = "ND,ND"
         input1_dtype = "int32,int32"
         input1_format = "ND,ND"
         input2_dtype = "int32,int32"
         input2_format = "ND,ND"
-    elif input_dtype not in ("int8", "uint8") and len(segment_ids_shape) > 1 and atomic_add:
+    else:
         input0_dtype = "float16,int32,float"
         input0_format = "ND,ND,ND"
         input1_dtype = "int32,int32,int32"
         input1_format = "ND,ND,ND"
         input2_dtype = "int32,int32,int32"
         input2_format = "ND,ND,ND"
-    elif input_dtype in ("int8", "uint8") and len(segment_ids_shape) > 1 and atomic_add:
-        input0_dtype = "float"
-        input0_format = "ND"
-        input1_dtype = "int32"
-        input1_format = "ND"
-        input2_dtype = "int32"
-        input2_format = "ND"
-    else:
-        input0_dtype = "float16"
-        input0_format = "ND"
-        input1_dtype = "int32"
-        input1_format = "ND"
-        input2_dtype = "int32"
-        input2_format = "ND"
 
     input0 = gen_param(classify="input0", name="x",
                        datatype=input0_dtype,
@@ -125,11 +96,14 @@ def check_supported(x, segment_ids, num_segments, y,
     shape_seg = num_segments.get("ori_shape")
     shapey = y.get("ori_shape")
     id_dtype = segment_ids.get("dtype").lower()
+    x_dtype = x.get("dtype").lower()
     dynamicx = True
     dynamicid = True
     dynamic_seg = True
     dynamicy = True
     if id_dtype != "int32":
+        return False
+    if x_dtype in ("int8", "uint8"):
         return False
     for i in range(len(shapex)):
         if shapex[i] == -2:
