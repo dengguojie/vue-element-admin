@@ -222,6 +222,7 @@ set(_tf_plugins
   leaky_relu_plugin.cc
   less_equal_plugin.cc
   less_plugin.cc
+  list_plugin.cc
   lin_space_plugin.cc
   log1p_plugin.cc
   logical_and_plugin.cc

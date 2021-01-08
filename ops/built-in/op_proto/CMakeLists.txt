@@ -65,6 +65,7 @@ set(_op_proto_srcs
   image_ops.cc
   internal_ops.cc
   linalg_ops.cc
+  list_ops.cc
   logging_ops.cc
   lookup_ops.cc
   math_ops.cc

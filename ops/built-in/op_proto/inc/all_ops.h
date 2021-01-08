@@ -39,6 +39,7 @@
 #include "image_ops.h"
 #include "internal_ops.h"
 #include "linalg_ops.h"
+#include "list_ops.h"
 #include "logging_ops.h"
 #include "lookup_ops.h"
 #include "math_ops.h"
