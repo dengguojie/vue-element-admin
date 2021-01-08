@@ -207,16 +207,16 @@ def conv2d(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
 
     Parameters
     ----------
-    inputs: dict with keys(shape and dtype)
+    inputs: dict with keys(ori_shape, ori_format and dtype)
         input 4d feature map tensor
-    weights: dict with keys(shape and dtype)
+    weights: dict with keys(ori_shape, ori_format and dtype)
         input 4d weight tensor
-    outputs: dict with keys(shape and dtype)
-        output tensor, dtype must be assigned
-    bias: dict with keys(shape and dtype) or None
+    bias: dict or None
         input bias tensor
-    offset_w: keys(shape and dtype) or None
+    offset_w: dict or None
         input offset_w tensor
+    outputs: dict with keys(dtype)
+        output tensor
     strides: tuple/list of 4 integers
         stride on H/W, format sensitive
     pads: tuple/list of 4 integers
@@ -226,7 +226,8 @@ def conv2d(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
     groups: int
         param for group covolution
     data_format: string
-        input data format
+        input data format, determine the effective dimension(H/W)
+        value of strides and dilations
     offset_x: int
         offset of fmap
     kernel_name: str
@@ -235,6 +236,33 @@ def conv2d(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
     Returns
     -------
     None
+
+    Examples
+    --------
+    float16_with_bias = [
+        {'ori_shape': (4, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'},
+        {'ori_shape': (1, 1, 16, 1), 'ori_format': 'HWCN', 'dtype': 'float16'},
+        {},
+        None,
+        {'dtype': 'float16'},
+        (1, 2, 2, 1),
+        (0, 0, 0, 0),
+        (1, 3, 3, 1),
+        1,
+        'NHWC']
+    int8_without_bias = [
+        {'ori_shape': (4, 32, 64, 64), 'ori_format': 'NCHW', 'dtype': 'int8'},
+        {'ori_shape': (1, 32, 1, 1), 'ori_format': 'NCHW', 'dtype': 'int8'},
+        None,
+        None,
+        {'dtype': 'int32'},
+        (1, 1, 2, 2),
+        (0, 0, 0, 0),
+        (1, 1, 3, 3),
+        1,
+        'NCHW']
+    conv2d(*float16_with_bias)
+    conv2d(*int8_without_bias)
     """
     in_dtype = inputs.get("dtype")
     w_dtype = weights.get("dtype")
