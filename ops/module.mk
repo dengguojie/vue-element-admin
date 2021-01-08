@@ -373,6 +373,7 @@ LOCAL_SRC_FILES := \
         built-in/op_tiling/conv3d.cc \
         built-in/op_tiling/conv2d_backprop_input.cc \
         built-in/op_tiling/conv2d_backprop_filter.cc \
+        built-in/op_tiling/conv2d_transpose.cc \
         built-in/op_tiling/concat.cc \
         built-in/op_tiling/strided_slice.cc \
         built-in/op_tiling/slice.cc \

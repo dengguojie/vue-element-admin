@@ -72,6 +72,7 @@ from .sqrt_grad import sqrt_grad
 from .zeros_like import zeros_like
 from .conv2d_backprop_input import conv2d_backprop_input
 from .conv2d_backprop_filter import conv2d_backprop_filter
+from .conv2d_transpose import conv2d_transpose
 from .mat_mul import mat_mul
 from .batch_matmul import batch_matmul
 from .batch_matmul_v2 import batch_matmul_v2
