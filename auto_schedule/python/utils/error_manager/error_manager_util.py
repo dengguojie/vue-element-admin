@@ -56,3 +56,12 @@ def raise_runtime_error(dict_args):
     """
     raise RuntimeError(dict_args,
                        get_error_message(dict_args))
+
+
+def raise_runtime_error_cube(args_dict, msg):
+    """
+    raise runtime error
+    :param args_dict: input dict
+    :param msg: error message
+    """
+    raise RuntimeError(args_dict, msg)

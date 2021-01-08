@@ -16,6 +16,7 @@
 error manager conv2d.
 """
 from te.utils.error_manager.error_manager_util import get_error_message
+from te.utils.error_manager.error_manager_util import raise_runtime_error_cube
 
 
 def raise_err_input_params_not_expected(op_name, param_name,
@@ -37,7 +38,7 @@ def raise_err_input_params_not_expected(op_name, param_name,
         "input_value": input_value
     }
     msg = get_error_message(args_dict)
-    raise RuntimeError(args_dict, msg)
+    raise_runtime_error_cube(args_dict, msg)
 
 
 def raise_err_input_params_not_supported(op_name, scale_value, sqrt_mode):
@@ -57,7 +58,7 @@ def raise_err_input_params_not_supported(op_name, scale_value, sqrt_mode):
         "input_value": sqrt_mode
     }
     msg = get_error_message(args_dict)
-    raise RuntimeError(args_dict, msg)
+    raise_runtime_error_cube(args_dict, msg)
 
 
 def raise_err_input_format_invalid(op_name, param_name,
@@ -79,7 +80,7 @@ def raise_err_input_format_invalid(op_name, param_name,
         "format": input_format
     }
     msg = get_error_message(args_dict)
-    raise RuntimeError(args_dict, msg)
+    raise_runtime_error_cube(args_dict, msg)
 
 
 def raise_err_attr_range_invalid(op_name, attr_range, attr_name, value):
@@ -100,7 +101,7 @@ def raise_err_attr_range_invalid(op_name, attr_range, attr_name, value):
         "value": value
     }
     msg = get_error_message(args_dict)
-    raise RuntimeError(args_dict, msg)
+    raise_runtime_error_cube(args_dict, msg)
 
 
 def raise_err_should_4d(op_name, param_name):
@@ -116,7 +117,7 @@ def raise_err_should_4d(op_name, param_name):
         "param_name": param_name
     }
     msg = get_error_message(args_dict)
-    raise RuntimeError(args_dict, msg)
+    raise_runtime_error_cube(args_dict, msg)
 
 
 def raise_err_specific(op_name, reason):
@@ -132,7 +133,7 @@ def raise_err_specific(op_name, reason):
         "reason": reason
     }
     msg = get_error_message(args_dict)
-    raise RuntimeError(args_dict, msg)
+    raise_runtime_error_cube(args_dict, msg)
 
 
 def raise_err_common(op_name, reason, value):
@@ -150,7 +151,7 @@ def raise_err_common(op_name, reason, value):
         "value": value
     }
     msg = get_error_message(args_dict)
-    raise RuntimeError(args_dict, msg)
+    raise_runtime_error_cube(args_dict, msg)
 
 
 def raise_err_should_be_4d(op_name, param_name):
@@ -166,7 +167,7 @@ def raise_err_should_be_4d(op_name, param_name):
         "param_name": param_name
     }
     msg = get_error_message(args_dict)
-    raise RuntimeError(args_dict, msg)
+    raise_runtime_error_cube(args_dict, msg)
 
 
 def raise_err_specific_user(op_name, reason):
@@ -182,7 +183,7 @@ def raise_err_specific_user(op_name, reason):
         "reason": reason
     }
     msg = get_error_message(args_dict)
-    raise RuntimeError(args_dict, msg)
+    raise_runtime_error_cube(args_dict, msg)
 
 
 def raise_err_input_mem_type(op_name, input_memory_type):
@@ -198,7 +199,7 @@ def raise_err_input_mem_type(op_name, input_memory_type):
         "input_memory_type": input_memory_type
     }
     msg = get_error_message(args_dict)
-    raise RuntimeError(args_dict, msg)
+    raise_runtime_error_cube(args_dict, msg)
 
 
 def raise_err_output_mem_type(op_name, output_memory_type):
@@ -214,7 +215,7 @@ def raise_err_output_mem_type(op_name, output_memory_type):
         "output_memory_type": output_memory_type
     }
     msg = get_error_message(args_dict)
-    raise RuntimeError(args_dict, msg)
+    raise_runtime_error_cube(args_dict, msg)
 
 
 def raise_err_check_the_validity_of_variable(op_name, sence_params,
@@ -236,7 +237,7 @@ def raise_err_check_the_validity_of_variable(op_name, sence_params,
         "param_2": param_2
     }
     msg = get_error_message(args_dict)
-    raise RuntimeError(args_dict, msg)
+    raise_runtime_error_cube(args_dict, msg)
 
 
 def raise_err_check_the_validity_of_one_variable(op_name,
@@ -257,7 +258,7 @@ def raise_err_check_the_validity_of_one_variable(op_name,
         "param_1": param_1
     }
     msg = get_error_message(args_dict)
-    raise RuntimeError(args_dict, msg)
+    raise_runtime_error_cube(args_dict, msg)
 
 
 def raise_err_specific_input_shape(op_name, reason):
@@ -273,7 +274,7 @@ def raise_err_specific_input_shape(op_name, reason):
         "reason": reason
     }
     msg = get_error_message(args_dict)
-    raise RuntimeError(args_dict, msg)
+    raise_runtime_error_cube(args_dict, msg)
 
 
 def raise_err_value_or_format_invalid(op_name, param_name,
@@ -295,7 +296,7 @@ def raise_err_value_or_format_invalid(op_name, param_name,
         "condition": condition
     }
     msg = get_error_message(args_dict)
-    raise RuntimeError(args_dict, msg)
+    raise_runtime_error_cube(args_dict, msg)
 
 
 def raise_err_equal_invalid(op_name, param_name_1, param_name_2):
@@ -314,7 +315,7 @@ def raise_err_equal_invalid(op_name, param_name_1, param_name_2):
         "param_name_2": param_name_2
     }
     msg = get_error_message(args_dict)
-    raise RuntimeError(args_dict, msg)
+    raise_runtime_error_cube(args_dict, msg)
 
 
 def raise_err_scene_limitation(op_name, scene, param_name, claim):
@@ -334,7 +335,7 @@ def raise_err_scene_limitation(op_name, scene, param_name, claim):
         "claim": claim
     }
     msg = get_error_message(args_dict)
-    raise RuntimeError(args_dict, msg)
+    raise_runtime_error_cube(args_dict, msg)
 
 
 def raise_err_check_type(op_name, param_name, optype_1, optype_2):
@@ -356,7 +357,7 @@ def raise_err_check_type(op_name, param_name, optype_1, optype_2):
         "optype_2": optype_2
     }
     msg = get_error_message(args_dict)
-    raise RuntimeError(args_dict, msg)
+    raise_runtime_error_cube(args_dict, msg)
 
 
 def raise_err_scene_equal_limitation(op_name, param_1, param_2):
@@ -374,7 +375,7 @@ def raise_err_scene_equal_limitation(op_name, param_1, param_2):
         "optype_2": param_2
     }
     msg = get_error_message(args_dict)
-    raise RuntimeError(args_dict, msg)
+    raise_runtime_error_cube(args_dict, msg)
 
 
 def raise_err_contain_key_invalid(op_name, param_name, key):
@@ -393,7 +394,7 @@ def raise_err_contain_key_invalid(op_name, param_name, key):
         "key": key
     }
     msg = get_error_message(args_dict)
-    raise RuntimeError(args_dict, msg)
+    raise_runtime_error_cube(args_dict, msg)
 
 
 def raise_invalid_range(op_name, attr_name, attr_range, name):
@@ -414,4 +415,262 @@ def raise_invalid_range(op_name, attr_name, attr_range, name):
         "name": name,
     }
     msg = get_error_message(args_dict)
-    raise RuntimeError(args_dict, msg)
+    raise_runtime_error_cube(args_dict, msg)
+
+
+def raise_err_tiling_type_invalid(expect_value, real_value):
+    """
+    the tiling_type is error, only support [%s], but tiling_type is [%s]. %
+    (expect_value,real_value)
+    :param expect_value
+    :param real_value
+    :return
+    """
+    args_dict = {
+        "errCode": "E68000",
+        "expect_value": expect_value,
+        "real_value": real_value,
+    }
+    msg = get_error_message(args_dict)
+    raise_runtime_error_cube(args_dict, msg)
+
+
+def raise_err_info_dict_type_invalid(real_value):
+    """
+    info_dict should be dict, but the input type is [%s]. %
+    (real_value)
+    :param real_value
+    :return
+    """
+    args_dict = {
+        "errCode": "E68001",
+        "real_value": real_value,
+    }
+    msg = get_error_message(args_dict)
+    raise_runtime_error_cube(args_dict, msg)
+
+
+def raise_err_miss_keyword_invalid(keyword):
+    """
+    the keyword [%s] is missing in input params. %
+    (keyword)
+    :param keyword
+    :return
+    """
+    args_dict = {
+        "errCode": "E68002",
+        "keyword": keyword,
+    }
+    msg = get_error_message(args_dict)
+    raise_runtime_error_cube(args_dict, msg)
+
+
+def raise_err_input_invalid(expect_value, real_value):
+    """
+    only support: [%s], but the input is [%s]. %
+    (expect_value,real_value)
+    :param expect_value
+    :param real_value
+    :return
+    """
+    args_dict = {
+        "errCode": "E68003",
+        "expect_value": expect_value,
+        "real_value": real_value,
+    }
+    msg = get_error_message(args_dict)
+    raise_runtime_error_cube(args_dict, msg)
+
+
+def raise_err_param_type_invalid(expect_value, real_value):
+    """
+    the type of param is illegal, only support [%s], but the type of param is [%s]. %
+    (expect_value,real_value)
+    :param expect_value
+    :param real_value
+    :return
+    """
+    args_dict = {
+        "errCode": "E68004",
+        "expect_value": expect_value,
+        "real_value": real_value,
+    }
+    msg = get_error_message(args_dict)
+    raise_runtime_error_cube(args_dict, msg)
+
+
+def raise_err_param_length_invalid(expect_value, real_value):
+    """
+    the length of param is illegal, only support [%s], but the length of param is [%s]. %
+    (expect_value,real_value)
+    :param expect_value
+    :param real_value
+    :return
+    """
+    args_dict = {
+        "errCode": "E68005",
+        "expect_value": expect_value,
+        "real_value": real_value,
+    }
+    msg = get_error_message(args_dict)
+    raise_runtime_error_cube(args_dict, msg)
+
+
+def raise_err_input_not_support_invalid(not_expect_value, real_value):
+    """
+    the input param is illegal, don't support [%s], but the param is [%s]. %
+    (not_expect_value,real_value)
+    :param not_expect_value
+    :param real_value
+    :return
+    """
+    args_dict = {
+        "errCode": "E68006",
+        "not_expect_value": not_expect_value,
+        "real_value": real_value,
+    }
+    msg = get_error_message(args_dict)
+    raise_runtime_error_cube(args_dict, msg)
+
+
+def raise_err_input_only_support_invalid(expect_value, real_value):
+    """
+    the input param is illegal, only support [%s], but the param is [%s]. %
+    (expect_value,real_value)
+    :param expect_value
+    :param real_value
+    :return
+    """
+    args_dict = {
+        "errCode": "E68007",
+        "expect_value": expect_value,
+        "real_value": real_value,
+    }
+    msg = get_error_message(args_dict)
+    raise_runtime_error_cube(args_dict, msg)
+
+
+def raise_err_valid_size_invalid(fm_l1_valid_size, fm_shape_size):
+    """
+    the fm_l1_valid_size must be 1/2, 3/4, 1 times fm_shape_size, but fm_l1_valid_size is [%s], fm_shape_size is [%s]. %
+    (fm_l1_valid_size,fm_shape_size)
+    :param fm_l1_valid_size
+    :param fm_shape_size
+    :return
+    """
+    args_dict = {
+        "errCode": "E68008",
+        "fm_l1_valid_size": fm_l1_valid_size,
+        "fm_shape_size": fm_shape_size,
+    }
+    msg = get_error_message(args_dict)
+    raise_runtime_error_cube(args_dict, msg)
+
+
+def raise_err_current_value_invalid(current_value):
+    """
+    when it is tuning tiling mode, illegal current input params is: [%s]. %
+    (current_value)
+    :param current_value
+    :return
+    """
+    args_dict = {
+        "errCode": "E68009",
+        "current_value": current_value,
+    }
+    msg = get_error_message(args_dict)
+    raise_runtime_error_cube(args_dict, msg)
+
+
+def raise_err_previous_value_invalid(previous_value):
+    """
+    when it is tuning tiling mode, illegal previous input params is: [%s]. %
+    (previous_value)
+    :param previous_value
+    :return
+    """
+    args_dict = {
+        "errCode": "E68010",
+        "previous_value": previous_value,
+    }
+    msg = get_error_message(args_dict)
+    raise_runtime_error_cube(args_dict, msg)
+
+
+def raise_err_previous_current_value_invalid(previous_value, current_value):
+    """
+    tiling params is changed, previous input is [%s], current input is [%s]. %
+    (previous_value,current_value)
+    :param previous_value
+    :param current_value
+    :return
+    """
+    args_dict = {
+        "errCode": "E68011",
+        "previous_value": previous_value,
+        "current_value": current_value,
+    }
+    msg = get_error_message(args_dict)
+    raise_runtime_error_cube(args_dict, msg)
+
+
+def raise_err_tuning_tiling_invalid(real_value):
+    """
+    tiling mode is not tuning tiling, current is [%s]. %
+    (real_value)
+    :param real_value
+    :return
+    """
+    args_dict = {
+        "errCode": "E68012",
+        "real_value": real_value,
+    }
+    msg = get_error_message(args_dict)
+    raise_runtime_error_cube(args_dict, msg)
+
+
+def raise_err_return_tiling_invalid(real_value):
+    """
+    only support legal tiling, but the return value of tiling is [%s]. %
+    (real_value)
+    :param real_value
+    :return
+    """
+    args_dict = {
+        "errCode": "E68013",
+        "real_value": real_value,
+    }
+    msg = get_error_message(args_dict)
+    raise_runtime_error_cube(args_dict, msg)
+
+
+def raise_err_dynamic_tiling_mode_invalid(real_value):
+    """
+    the tiling_type is error, dynamic shape not support [%s]. %
+    (real_value)
+    :param real_value
+    :return
+    """
+    args_dict = {
+        "errCode": "E68014",
+        "real_value": real_value,
+    }
+    msg = get_error_message(args_dict)
+    raise_runtime_error_cube(args_dict, msg)
+
+
+def raise_err_return_value_invalid(expect_value, real_value):
+    """
+    only support [%s], but the type of return value is [%s]. %
+    (expect_value,real_value)
+    :param expect_value
+    :param real_value
+    :return
+    """
+    args_dict = {
+        "errCode": "E68015",
+        "expect_value": expect_value,
+        "real_value": real_value,
+    }
+    msg = get_error_message(args_dict)
+    raise_runtime_error_cube(args_dict, msg)
