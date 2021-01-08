@@ -574,6 +574,18 @@ DSL_CHECK_SUPPORT_MAP = {
     },
 }
 
+UNIFY_DSL_CHECK_SUPPORT_MAP = {
+    "reduce_prod": {
+        "AllSoc": ("float16",),
+        VERSION_MINI: ("float16", "float32"),
+        VERSION_CLOUD: ("float16", "float32"),
+        VERSION_MINI_NG1: ("float16", "float32"),
+        VERSION_MINI_NG1M: ("float16", "float32"),
+        VERSION_MINI_NG1PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
+    },
+}
+
 
 def dsl_support_dtype(dsl_name):
     """
@@ -585,7 +597,11 @@ def dsl_support_dtype(dsl_name):
     if dsl_name in ("reduce_sum", "sum"):
         dsl_name = "reduce_sum"
 
-    all_support_dtype = DSL_CHECK_SUPPORT_MAP.get(dsl_name)
+    if in_dynamic_and_static_unify() and dsl_name in UNIFY_DSL_CHECK_SUPPORT_MAP:
+        all_support_dtype = UNIFY_DSL_CHECK_SUPPORT_MAP.get(dsl_name)
+    else:
+        all_support_dtype = DSL_CHECK_SUPPORT_MAP.get(dsl_name)
+
     if all_support_dtype is None:
         return []
 
@@ -612,7 +628,11 @@ def dsl_check_support(dsl_api, dtype=None):
     if dsl_name in ("reduce_sum", "sum"):
         dsl_name = "reduce_sum"
 
-    all_support_dtype = DSL_CHECK_SUPPORT_MAP.get(dsl_name)
+    if in_dynamic_and_static_unify() and dsl_name in UNIFY_DSL_CHECK_SUPPORT_MAP:
+        all_support_dtype = UNIFY_DSL_CHECK_SUPPORT_MAP.get(dsl_name)
+    else:
+        all_support_dtype = DSL_CHECK_SUPPORT_MAP.get(dsl_name)
+
     if all_support_dtype is None:
         return False
 
