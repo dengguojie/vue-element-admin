@@ -768,7 +768,6 @@ def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
 
     _, _, fmap_d, fmap_h, fmap_w = shape_fm
     _, _, filter_d, filter_h, filter_w = shape_filter
-
     pad_d = [pads[0], pads[1]]
     _check_d_dimension(fmap_d, filter_d, pad_d, stride_dhw[0], dilation_dhw[0])
 
@@ -783,16 +782,21 @@ def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
     block_size_m = tbe_platform.CUBE_MKN[fmp_dtype]['mac'][0]
 
     # calculated by h_i and w_i
-    h_out = (fmap_h + (pad_h[0] + pad_h[1]) - filter_h) // stride_dhw[1] + 1
-    w_out = (fmap_w + (pad_w[0] + pad_w[1]) - filter_w) // stride_dhw[2] + 1
-    d_out = (fmap_d + (pad_d[0] + pad_d[1]) - filter_d) // stride_dhw[0] + 1
+    dilation_d, dilation_h, dilation_w = dilation_dhw
+    filter_dilated_d = (filter_d - 1) * dilation_d + 1
+    filter_dilated_h = (filter_h - 1) * dilation_h + 1
+    filter_dilated_w = (filter_w - 1) * dilation_w + 1
 
-    load2d_pass_flag = ((filter_d == 1) and (filter_h == 1) and (filter_w == 1) and
+    h_out = (fmap_h + (pad_h[0] + pad_h[1]) - filter_dilated_h) // stride_dhw[1] + 1
+    w_out = (fmap_w + (pad_w[0] + pad_w[1]) - filter_dilated_w) // stride_dhw[2] + 1
+    d_out = (fmap_d + (pad_d[0] + pad_d[1]) - filter_dilated_d) // stride_dhw[0] + 1
+
+    load2d_pass_flag = ((filter_dilated_d == 1) and (filter_dilated_h == 1) and (filter_dilated_w == 1) and
                         (list(pads) == [0, 0, 0, 0, 0, 0]) and
                         (list(stride_dhw) == [1, 1, 1]))
 
     #  Chip Design demand only h_dimesion constraint
-    only_fhkh_pass_flag = ((1 <= filter_h <= 11) and
+    only_fhkh_pass_flag = ((1 <= filter_dilated_h <= 11) and
                            (stride_dhw[1] == 1) and
                            (h_out == 1))
 
@@ -809,13 +813,12 @@ def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
                                error_manager_util.get_error_message(dict_args))
 
     # check for not bigger than L1
-    _, dilation_h, dilation_w = dilation_dhw
     l1_buffer_size = tbe_platform.get_soc_spec("L1_SIZE")
     m_bit_ratio = {"float16": 2, "int8": 1}
-    point_per_w = ((fmap_w - (filter_w - 1) * dilation_w + 1) +
+    point_per_w = ((fmap_w - filter_dilated_w) +
                    pad_w[0] + pad_w[1]) // stride_dhw[2] + 1
     w_in = block_size_m // point_per_w + 2
-    tmp = ((w_in - 1) * stride_dhw[1] + (filter_h - 1) * dilation_h + 1) * fmap_w
+    tmp = ((w_in - 1) * stride_dhw[1] + filter_dilated_h) * fmap_w
     max_feature_map_l1 = block_size_k * tmp * m_bit_ratio[w_dtype]
 
     if max_feature_map_l1 > l1_buffer_size:

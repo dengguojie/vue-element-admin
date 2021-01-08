@@ -229,6 +229,68 @@ def conv3d_backprop_input_fusion_compute(filters, #pylint: disable=R0913,R0914
     return dedx
 
 
+def check_supported(filters, # pylint: disable=R0913,R0914
+                    out_backprop, y_input, input_sizes, strides,
+                    pads, dilations=(1, 1, 1, 1, 1), groups=1,
+                    data_format="NDHWC",
+                    kernel_name="conv3d_backprop_input"):
+    """
+    Check support for Conv3D_backprop_input. Detailed information is given below:
+    
+    The D dimension of dilation should = 1.
+    The H and W dimension of dilation should be in range [1, 255]
+    The D,H or W dimension of the filter should be in range [1, 255]
+    The padding in each dimension should be in range [0, 255]
+    The D,H or W dimension of the stride should be in range [1, 63]
+    The filter's H * filter 's W should < 256
+    The filter's H * W * D should < 343
+    The stride's H * W should < 256
+    The stride's H * W * D should < 343
+
+    The channel dimension of feature map should = the filter's channel dimension * groups
+    The out_backprop's channel dimension should = the filter's batch dimensionss
+    The filter's batch dimension should = the out_backprop's batch dimension
+    The D,H or W dimension of the feature map after padding should > the filter's corresponding dimension after dilation
+    The out_backprop's H * stride's H should < 4096
+    The out_backprop's W * stride's W should < 4096
+    If the output H dimension is not 1, the output W dimension should > 2
+
+    """
+    ori_shape_filters = filters.get("ori_shape")
+    ori_shape_out_backprop = out_backprop.get("ori_shape")
+    ori_shape_res = input_sizes
+    ori_shape_strides = strides
+    ori_shape_dilations = dilations
+
+    filters_dtype = filters.get("dtype")
+    out_backprop_dtype = out_backprop.get("dtype")
+    res_dtype = y_input.get("dtype")
+
+    ori_format_filters = filters.get("ori_format")
+    ori_format_out_backprop = data_format
+    ori_format_res = data_format
+
+    try:
+        shape_filters, shape_out_backprop, shape_strides, shape_dilations, shape_res = \
+        _get_ndhwc_shape(ori_format_filters,
+                         ori_shape_filters,
+                         ori_format_out_backprop,
+                         ori_shape_out_backprop,
+                         ori_shape_strides,
+                         ori_shape_dilations,
+                         ori_format_res,
+                         ori_shape_res)
+        check_conv3dbp_input_params(shape_filter, shape_out_backprop,
+                                    input_sizes, strides, pads, groups,
+                                    dilations, filter_dtype,
+                                    out_backprop_dtype,
+                                    res_dtype, kernel_name)
+        return True
+    except Exception as e:
+        print(e)
+        return False
+
+
 @para_check.check_op_params(
     para_check.REQUIRED_INPUT,
     para_check.REQUIRED_INPUT,

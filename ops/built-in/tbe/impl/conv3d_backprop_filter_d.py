@@ -81,66 +81,65 @@ _PADDING_VAILD = [0, 0, 0, 0, 0, 0]
 _PADDING_SUPPORT = ('SAME', 'VALID')
 
 
-@para_check.check_op_params(
-    para_check.REQUIRED_INPUT,
-    para_check.REQUIRED_INPUT,
-    para_check.REQUIRED_OUTPUT,
-    para_check.REQUIRED_ATTR_LIST_INT,
-    para_check.REQUIRED_ATTR_LIST_INT,
-    para_check.REQUIRED_ATTR_LIST_INT,
-    para_check.REQUIRED_ATTR_LIST_INT,
-    para_check.REQUIRED_ATTR_INT,
-    para_check.REQUIRED_ATTR_STR,
-    para_check.KERNEL_NAME,
-)
-def conv3d_backprop_filter_d(x_dict,
-                             out_backprop,
-                             y_dict,
-                             filter_size,
-                             strides,
-                             pads,
-                             dilations=(1, 1, 1, 1, 1),
-                             groups=1,
-                             data_format='NDHWC',
-                             kernel_name="conv3d_backprop_filter"):
+def check_supported(x_dict,
+                    out_backprop,
+                    y_dict,
+                    filter_size,
+                    strides,
+                    pads,
+                    dilations=(1, 1, 1, 1, 1),
+                    groups=1,
+                    data_format='NDHWC',
+                    kernel_name="conv3d_backprop_filter"):
     """
-    algorithm: conv3d_backprop_filter
+    Check support for Conv3D_backprop_filter. Detailed information is given below:
+    
+    The D dimension of dilation should = 1.
+    The H and W dimension of dilation should be in range [1, 255]
+    The D,H or W dimension of the filter should be in range [1, 255]
+    The padding in each dimension should be in range [0, 255]
+    
+    The fmap's h,w,d dimension should be in [1, 4096]
+    If filter h,w in [1,11] and fmap h/w after padding equals to filter h/w, the out_backprop's h,w,d dimension should be in range [2, 4096]
+    
+    The D,H or W dimension of the stride should be in range [1, 63]
 
-    Parameters
-    ----------
-    x_dict: A dict with keys(shape and dtype)
-        Input feature map tensor
+    The channel dimension of feature map should = the filter's channel dimension * groups
+    The out_backprop's channel dimension should = the filter's batch dimensionss
+    The filter's batch dimension should = the out_backprop's batch dimension
+    The D,H or W dimension of the feature map after padding should > the filter's corresponding dimension after dilation
+    The out_backprop's H * stride's H should < 4096
+    The out_backprop's W * stride's W should < 4096
+    If the output H dimension is not 1, the output W dimension should > 2
+    """
+    
+    try:
+        processed_res = _process_input(x_dict, out_backprop, y_dict, filter_size,
+                                       strides, pads, dilations, groups, data_format, kernel_name)
+                                   
+        shape_x, shape_out_backprop, shape_res, strides, pads, groups, dilations, x_dtype,\
+                                    out_backprop_dtype, res_dtype, kernel_name = processed_res
+        _check_conv3dbp_filter_params(shape_x, shape_out_backprop,
+            filter_sizes, strides, pads, groups, dilations, x_dtype,
+            out_backprop_dtype, res_dtype, kernel_name)
+        return True
+    except Exception as e:
+        print(e)
+        return False
+    
 
-    out_backprop: A dict with keys(shape and dtype)
-        Gradients tensor
-
-    y_dict: A dict with keys(shape and dtype)
-        Output tensor, dtype must be assigned
-
-    filter_size: The shape of filter
-        5-D with shape [batch, depth, channels, height, weight]
-
-    strides: A tuple/list of 5 integers
-        Filter move stride
-
-    pads: A tuple/list of 6 integers
-        [pad_front, pad_back, pad_top, pad_bottom, pad_left, pad_right]
-
-    dilations: A tuple/list of 5 integers
-        Filter expand size of dilated conv3d_backprop_filter, default value is (1, 1, 1, 1, 1)
-
-    groups: Int
-        Param for group covolution, default value is 1
-
-    data_format: Str
-        An optional string from: "NDHWC", "NCDHW". Defaults to "NDHWC"
-
-    kernel_name: Str
-        Kernel name, default value is "conv3d_backprop_filter"
-
-    Returns
-    -------
-    None
+def _process_input(x_dict,
+                   out_backprop,
+                   y_dict,
+                   filter_size,
+                   strides,
+                   pads,
+                   dilations=(1, 1, 1, 1, 1),
+                   groups=1,
+                   data_format='NDHWC',
+                   kernel_name="conv3d_backprop_filter"):
+    """
+    Process input Data for Conv3d_backprop_filter_d
     """
     def _check_inputs_rules():
         if (not isinstance(ori_shape_out_backprop, (tuple, list))) or len(ori_shape_out_backprop) != 5:
@@ -222,36 +221,7 @@ def conv3d_backprop_filter_d(x_dict,
             args_dict = {'errCode': 'E62501', 'param_name': 'pads'}
             raise RuntimeError(args_dict,
                                error_manager_util.get_error_message(args_dict))
-
-    def _normalize_shape_ndchw(ori_shape, ori_format, format_list,
-                               param_name='input_param'):
-        """
-        Normalizing the shape to NDCHW
-        """
-        if ori_format not in format_list:
-            args_dict = {
-                'errCode': 'E60008',
-                'param_name': param_name,
-                'expected_format_list': ','.join(format_list),
-                'format': ori_format
-            }
-            raise RuntimeError(args_dict,
-                               error_manager_util.get_error_message(args_dict))
-
-        n_index = ori_format.find('N')
-        d_index = ori_format.find('D')
-        c_index = ori_format.find('C')
-        h_index = ori_format.find('H')
-        w_index = ori_format.find('W')
-
-        new_shape = [
-            ori_shape[n_index], ori_shape[d_index],
-            ori_shape[c_index], ori_shape[h_index],
-            ori_shape[w_index]
-        ]
-
-        return new_shape
-
+                               
     ori_shape_x = x_dict.get("ori_shape")
     ori_shape_out_backprop = out_backprop.get("ori_shape")
     ori_shape_res = y_dict.get("ori_shape")
@@ -291,11 +261,112 @@ def conv3d_backprop_filter_d(x_dict,
     shape_res = _normalize_shape_ndchw(ori_shape_res,
                                        ori_format_res,
                                        res_format_list,
-                                       'y')
+                                       'y') 
+    return (shape_x, shape_out_backprop, shape_res,
+            strides, pads, groups, dilations, x_dtype,
+            out_backprop_dtype, res_dtype, kernel_name)
+
+
+def _normalize_shape_ndchw(ori_shape, ori_format, format_list,
+                           param_name='input_param'):
+        """
+        Normalizing the shape to NDCHW
+        """
+        if ori_format not in format_list:
+            args_dict = {
+                'errCode': 'E60008',
+                'param_name': param_name,
+                'expected_format_list': ','.join(format_list),
+                'format': ori_format
+            }
+            raise RuntimeError(args_dict,
+                               error_manager_util.get_error_message(args_dict))
+
+        n_index = ori_format.find('N')
+        d_index = ori_format.find('D')
+        c_index = ori_format.find('C')
+        h_index = ori_format.find('H')
+        w_index = ori_format.find('W')
+
+        new_shape = [
+            ori_shape[n_index], ori_shape[d_index],
+            ori_shape[c_index], ori_shape[h_index],
+            ori_shape[w_index]
+        ]
+
+        return new_shape
+
+
+@para_check.check_op_params(
+    para_check.REQUIRED_INPUT,
+    para_check.REQUIRED_INPUT,
+    para_check.REQUIRED_OUTPUT,
+    para_check.REQUIRED_ATTR_LIST_INT,
+    para_check.REQUIRED_ATTR_LIST_INT,
+    para_check.REQUIRED_ATTR_LIST_INT,
+    para_check.REQUIRED_ATTR_LIST_INT,
+    para_check.REQUIRED_ATTR_INT,
+    para_check.REQUIRED_ATTR_STR,
+    para_check.KERNEL_NAME,
+)
+def conv3d_backprop_filter_d(x_dict,
+                             out_backprop,
+                             y_dict,
+                             filter_size,
+                             strides,
+                             pads,
+                             dilations=(1, 1, 1, 1, 1),
+                             groups=1,
+                             data_format='NDHWC',
+                             kernel_name="conv3d_backprop_filter"):
+    """
+    algorithm: conv3d_backprop_filter
+
+    Parameters
+    ----------
+    x_dict: A dict with keys(shape and dtype)
+        Input feature map tensor
+
+    out_backprop: A dict with keys(shape and dtype)
+        Gradients tensor
+
+    y_dict: A dict with keys(shape and dtype)
+        Output tensor, dtype must be assigned
+
+    filter_size: The shape of filter
+        5-D with shape [batch, depth, channels, height, weight]
+
+    strides: A tuple/list of 5 integers
+        Filter move stride
+
+    pads: A tuple/list of 6 integers
+        [pad_front, pad_back, pad_top, pad_bottom, pad_left, pad_right]
+
+    dilations: A tuple/list of 5 integers
+        Filter expand size of dilated conv3d_backprop_filter, default value is (1, 1, 1, 1, 1)
+
+    groups: Int
+        Param for group covolution, default value is 1
+
+    data_format: Str
+        An optional string from: "NDHWC", "NCDHW". Defaults to "NDHWC"
+
+    kernel_name: Str
+        Kernel name, default value is "conv3d_backprop_filter"
+
+    Returns
+    -------
+    None
+    """
+    processed_res = _process_input(x_dict, out_backprop, y_dict, filter_size,
+                                   strides, pads, dilations, groups, data_format, kernel_name)
+                                   
+    shape_x, shape_out_backprop, shape_res, strides, pads, groups, dilations, x_dtype,\
+                                out_backprop_dtype, res_dtype, kernel_name = processed_res
 
     _conv3d_backprop_filter_cce(shape_x, shape_out_backprop, shape_res,
-                               strides, pads, groups, dilations, x_dtype,
-                               out_backprop_dtype, res_dtype, kernel_name)
+                                strides, pads, groups, dilations, x_dtype,
+                                out_backprop_dtype, res_dtype, kernel_name)
 
 
 @para_check.check_input_type((list, tuple), (list, tuple), (list, tuple),
@@ -391,30 +462,7 @@ def _check_conv3dbp_filter_params(
             raise RuntimeError(args_dict,
                                error_manager_util.get_error_message(args_dict))
 
-    def _check_attr_groups():
-        fmap_channel = shape_x[2]
-        dedy_channel = shape_out_backprop[2]
-        if groups < 1 or groups > fmap_channel or groups > dedy_channel:
-            dict_args = {
-                'errCode': 'E50060',
-                'description': "Group must not be larger than feature map's"
-                               " and filter's channel"
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
-
-        if fmap_channel % groups != 0 or dedy_channel % groups != 0:
-            dict_args = {
-                'errCode': 'E50060',
-                'description': "Feature map's or filter's channel"
-                               " must be divisible by group"
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
-
-
     _check_attr_pads()
-    _check_attr_groups()
 
     # dilations check
     para_check.check_shape_rule(dilations, _CONV3D_BACKPROP_SHAPE_DIM,
@@ -459,6 +507,7 @@ def _check_conv3dbp_filter_params(
 
     group_dict = util_common.calculate_group(fmap_channel, dedy_channel,
                                              groups, _C0, _C0)
+
     filter_d_dilation = (filter_d - 1) * dilation_d + 1
     filter_h_dilation = (filter_h - 1) * dilation_h + 1
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
@@ -635,16 +684,16 @@ def _check_conv3dbp_filter_params(
                              (list, tuple), (str, list, tuple), int,
                              (list, tuple), str, str, str, str)
 def _conv3d_backprop_filter_cce(shape_x,
-                               shape_out_backprop,
-                               filter_sizes,
-                               strides,
-                               pads,
-                               groups=1,
-                               dilations=(1, 1, 1, 1, 1),
-                               x_dtype='float16',
-                               out_backprop_dtype='float16',
-                               res_dtype='float32',
-                               kernel_name="_conv3d_backprop_filter_cce"):
+                                shape_out_backprop,
+                                filter_sizes,
+                                strides,
+                                pads,
+                                groups=1,
+                                dilations=(1, 1, 1, 1, 1),
+                                x_dtype='float16',
+                                out_backprop_dtype='float16',
+                                res_dtype='float32',
+                                kernel_name="_conv3d_backprop_filter_cce"):
     """
     Topi interface of conv3d backprop filter
 
@@ -695,6 +744,7 @@ def _conv3d_backprop_filter_cce(shape_x,
                                        kernel_name)
     (shape_x, shape_out_backprop, filter_sizes, strides, pads, dilations,
      x_dtype, out_backprop_dtype, res_dtype, kernel_name, group_dict) = res
+
     fmap_batch, fmap_depth, fmap_channel, fmap_h, fmap_w = shape_x
     dedy_batch, dedy_d, dedy_channel, dedy_h, dedy_w = shape_out_backprop
 

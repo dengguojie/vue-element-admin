@@ -249,45 +249,15 @@ class Conv3dBackpropFilter:
 
         """
         # check of data type
-        if self.fmap_dtype != "float16":
-            args_dict = {
-                'errCode': 'E60005',
-                'param_name': 'fmap_dtype',
-                'expected_dtype_list': 'float16',
-                'dtype': str(self.fmap_dtype)
-            }
-            raise RuntimeError(args_dict,
-                               error_manager_util.get_error_message(args_dict))
-        if self.grads_dtype != "float16":
-            args_dict = {
-                'errCode': 'E60005',
-                'param_name': 'grads_dtype',
-                'expected_dtype_list': 'float16',
-                'dtype': str(self.grads_dtype)
-            }
-            raise RuntimeError(args_dict,
-                               error_manager_util.get_error_message(args_dict))
+        para_check.check_dtype_rule(self.fmap_dtype, ('float16'), "fmap")
+        para_check.check_dtype_rule(self.grads_dtype, ('float16'), "grads")
         is_lhisi_version = tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
                                                                         "Hi3796CV300CS",
                                                                         "SD3403")
-        if is_lhisi_version and self.res_dtype != "float16":
-            args_dict = {
-                'errCode': 'E60005',
-                'param_name': 'res_dtype_lhisi',
-                'expected_dtype_list': 'float16',
-                'dtype': str(self.res_dtype)
-            }
-            raise RuntimeError(args_dict,
-                               error_manager_util.get_error_message(args_dict))
-        if not is_lhisi_version and self.res_dtype != "float32":
-            args_dict = {
-                'errCode': 'E60005',
-                'param_name': 'res_dtype',
-                'expected_dtype_list': 'float32',
-                'dtype': str(self.res_dtype)
-            }
-            raise RuntimeError(args_dict,
-                               error_manager_util.get_error_message(args_dict))
+        if is_lhisi_version:
+            para_check.check_dtype_rule(self.res_dtype, ('float16'), "res_dtype_lhisi")
+        else:
+            para_check.check_dtype_rule(self.res_dtype, ('float32'), "res_dtype")
 
         # check shape
         # each element must be positive int

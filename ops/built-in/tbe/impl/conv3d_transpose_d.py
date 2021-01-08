@@ -235,75 +235,14 @@ def get_op_support_info(out_backprop,
     return op_cal_info_in_json
 
 
-@para_check.check_op_params(
-    para_check.REQUIRED_INPUT,
-    para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
-    para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
-    para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
-    para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
-    para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_STR,
-    para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_INT,
-    para_check.KERNEL_NAME)
-
-
-def conv3d_transpose_d(out_backprop, filters, # pylint: disable=R0913,R0914
-                       bias, offset_w, y_input, input_sizes,
-                       strides, pads, dilations=(1, 1, 1, 1, 1), groups=1,
-                       data_format="NDHWC",
-                       output_padding=[0, 0, 0, 0, 0],
-                       offset_x=0, kernel_name="conv3d_transpose"):
+def _process_and_check_input(out_backprop, filters, # pylint: disable=R0913,R0914
+                             bias, offset_w, y_input, input_sizes,
+                             strides, pads, dilations=(1, 1, 1, 1, 1), groups=1,
+                             data_format="NDHWC",
+                             output_padding=[0, 0, 0, 0, 0],
+                             offset_x=0, kernel_name="conv3d_transpose"):
     """
-    algorithm: conv3d_transpose
-
-    Parameters
-    ----------
-    out_backprop: A dict with keys(shape and dtype)
-        The shape of gradients
-
-    filters: A dict with keys(shape and dtype)
-        Input weight tensor
-
-    bias: A dict with keys(shape and dtype) or None
-        Input bias tensor
-
-    offset_w: A dict with keys(shape and dtype) or None
-        Input offset_w tensor
-
-    y_input: A dict with keys(shape and dtype)
-       Conv3d_transpose output tensor, dtype must be assigned
-
-    input_sizes: The shape of feature map
-        5-D with shape [batch, depth, height, weight, channels]
-
-    strides: A tuple/list of 5 integers
-        Filter move stride
-
-    pads: A tuple/list of 6 integers
-        [pad_front, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
-
-    dilations: A tuple/list of 5 integers
-        Filter expand size of dilated conv3d_transpose, default value is (1, 1, 1, 1, 1)
-
-    groups: Int of blocked connections from input channels to output channels
-        Default value is 1
-
-    data_format: The data format of the input and output data
-        Default format is "NDHWC"
-
-    output_padding: The size will be added in the output shape
-        Default value is [0, 0, 0, 0, 0]
-
-    offset_x: Int
-        Input offset_x value, default value is 0
-
-    kernel_name: Str
-        Kernel name, default value is "conv3d_transpose"
-
-    Returns
-    -------
-    None
     """
-
     ori_shape_filters = filters.get("ori_shape")
     ori_shape_out_backprop = out_backprop.get("ori_shape")
     ori_shape_res = input_sizes
@@ -423,18 +362,122 @@ def conv3d_transpose_d(out_backprop, filters, # pylint: disable=R0913,R0914
         }
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
+    return (shape_filters, shape_out_backprop, shape_res, shape_strides, pads, 
+            groups, shape_dilations, filters_dtype, out_backprop_dtype, res_dtype, kernel_name)
+
+
+def check_supported(out_backprop, filters, # pylint: disable=R0913,R0914
+                    bias, offset_w, y_input, input_sizes,
+                    strides, pads, dilations=(1, 1, 1, 1, 1), groups=1,
+                    data_format="NDHWC",
+                    output_padding=[0, 0, 0, 0, 0],
+                    offset_x=0, kernel_name="conv3d_transpose"):
+    """
+    The Check condition is the same as Conv3d_backprop_input_d.
+    """
+    try:
+        (shape_filters, shape_out_backprop, shape_res, shape_strides,
+        pads, groups, shape_dilations, filters_dtype, out_backprop_dtype,
+        res_dtype, kernel_name) = _process_and_check_input(
+                                      out_backprop, filters,
+                                      bias, offset_w, y_input, input_sizes,
+                                      strides, pads, dilations, groups,
+                                      data_format, output_padding, offset_x, kernel_name)
+        check_conv3dbp_input_params(shape_filter, shape_out_backprop,
+                                    input_sizes, strides, pads, groups, dilations,
+                                    filter_dtype, out_backprop_dtype,
+                                    res_dtype, kernel_name)
+        return True
+    except Exception as e:
+        print(e)
+        return False
+
+
+@para_check.check_op_params(
+    para_check.REQUIRED_INPUT,
+    para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
+    para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
+    para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
+    para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
+    para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_STR,
+    para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_INT,
+    para_check.KERNEL_NAME)
+def conv3d_transpose_d(out_backprop, filters, # pylint: disable=R0913,R0914
+                       bias, offset_w, y_input, input_sizes,
+                       strides, pads, dilations=(1, 1, 1, 1, 1), groups=1,
+                       data_format="NDHWC",
+                       output_padding=[0, 0, 0, 0, 0],
+                       offset_x=0, kernel_name="conv3d_transpose"):
+    """
+    algorithm: conv3d_transpose
+
+    Parameters
+    ----------
+    out_backprop: A dict with keys(shape and dtype)
+        The shape of gradients
+
+    filters: A dict with keys(shape and dtype)
+        Input weight tensor
+
+    bias: A dict with keys(shape and dtype) or None
+        Input bias tensor
+
+    offset_w: A dict with keys(shape and dtype) or None
+        Input offset_w tensor
+
+    y_input: A dict with keys(shape and dtype)
+       Conv3d_transpose output tensor, dtype must be assigned
+
+    input_sizes: The shape of feature map
+        5-D with shape [batch, depth, height, weight, channels]
+
+    strides: A tuple/list of 5 integers
+        Filter move stride
+
+    pads: A tuple/list of 6 integers
+        [pad_front, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
+
+    dilations: A tuple/list of 5 integers
+        Filter expand size of dilated conv3d_transpose, default value is (1, 1, 1, 1, 1)
+
+    groups: Int of blocked connections from input channels to output channels
+        Default value is 1
+
+    data_format: The data format of the input and output data
+        Default format is "NDHWC"
+
+    output_padding: The size will be added in the output shape
+        Default value is [0, 0, 0, 0, 0]
+
+    offset_x: Int
+        Input offset_x value, default value is 0
+
+    kernel_name: Str
+        Kernel name, default value is "conv3d_transpose"
+
+    Returns
+    -------
+    None
+    """
+    (shape_filters, shape_out_backprop, shape_res, shape_strides,
+        pads, groups, shape_dilations, filters_dtype, out_backprop_dtype,
+        res_dtype, kernel_name) = _process_and_check_input(
+                                      out_backprop, filters,
+                                      bias, offset_w, y_input, input_sizes,
+                                      strides, pads, dilations, groups,
+                                      data_format, output_padding, offset_x, kernel_name)
 
     _conv3d_transpose_cce(shape_filters,
-                         shape_out_backprop,
-                         shape_res,
-                         shape_strides,
-                         pads,
-                         groups,
-                         shape_dilations,
-                         filters_dtype,
-                         out_backprop_dtype,
-                         res_dtype,
-                         kernel_name)
+                          shape_out_backprop,
+                          shape_res,
+                          shape_strides,
+                          pads,
+                          groups,
+                          shape_dilations,
+                          filters_dtype,
+                          out_backprop_dtype,
+                          res_dtype,
+                          kernel_name)
 
 
 @para_check.check_input_type((list, tuple), (list, tuple), (list, tuple),
