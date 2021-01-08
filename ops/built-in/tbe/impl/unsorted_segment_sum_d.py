@@ -77,7 +77,7 @@ def op_select_format(x, segment_ids, y, num_segments,
         input1_dtype = "int32,int32"
         input1_format = "ND,ND"
         input0_ori_dtype = "float16,float16,float,float,int32,int32"
-        input0_ori_format = "NC1HWC0,ND,NC1HWC0,ND,NC1HWC0,NDD"
+        input0_ori_format = "NC1HWC0,ND,NC1HWC0,ND,NC1HWC0,ND"
         input1_ori_dtype = "int32,int32,int32,int32,int32,int32"
         input1_ori_format = "ND,ND,ND,ND,ND,ND"
     elif len(segment_ids_shape) > 1 and not atomic_add:
