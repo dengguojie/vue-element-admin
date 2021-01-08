@@ -24,6 +24,11 @@ from te import tvm
 
 _NUM_3 = 3
 _DEFAULT_TILING_FLAG = 32
+_FUSION_NODE_WHITELIST = [
+    "conv3d_backprop_input_dy_filling",
+    "conv3d_backprop_input_w_l1",
+    "conv3d_backprop_input_dy_l1_s1",
+    "conv3d_backprop_input_c_ub_vn"]
 
 
 def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
@@ -154,7 +159,6 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         return a_l1_h_outer
 
     def _multi_core():  # pylint:disable=R0914
-        nonlocal g_axis
         block_dim = tiling['block_dim']
         group_dim = tiling['g_dim']
         batch_dim, n_dim, m_dim, d_dim = block_dim
@@ -168,12 +172,12 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
             # split m axis
             multicore_m, al1_at_ddr_m_outer_inner = sch[c_ddr].split(al1_at_ddr_m_outer, nparts=m_dim)
             # split g axis
-            multicore_group, g_axis = sch[c_ddr].split(g_axis, nparts=group_dim)
+            multicore_group, g_axis_inner = sch[c_ddr].split(g_axis, nparts=group_dim)
             # reorder
             sch[c_ddr].reorder(
                 multicore_group,
                 multicore_batch, multicore_d,
-                multicore_n, multicore_m, g_axis,
+                multicore_n, multicore_m, g_axis_inner,
                 batch_outer_inner,
                 c_ddr_deep_outer_inner,
                 bl1_at_ddr_n_outer_inner,
@@ -193,12 +197,12 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
             bind_out, _ = sch[c_ddr].split(batch_outer_outer, 1)
             blockidx = tvm.thread_axis("blockIdx.x")
             sch[c_ddr].bind(bind_out, blockidx)
-
+            g_axis_inner = g_axis
             c_ddr_deep_outer_inner = c_ddr_deep_outer
             bl1_at_ddr_n_outer_inner = bl1_at_ddr_n_outer
             al1_at_ddr_m_outer_inner = al1_at_ddr_m_outer
         return (batch_outer_inner, c_ddr_deep_outer_inner, bl1_at_ddr_n_outer_inner, al1_at_ddr_m_outer_inner,
-            g_axis, blockidx, blocks)
+                g_axis_inner, blockidx, blocks)
 
     def _tiling_check():
         _tiling_check_none()
@@ -364,9 +368,11 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         stride_d = c_ddr.op.attrs["stride_d"].value
         group_dict = c_ddr.op.attrs["group_dict"]
         kernel_d, _, _ = list(i.value for i in c_ddr.op.attrs["kernels"])
+        c_ub_vn = tensor_map.get("c_ub_vn")
         c_fill_zero = tensor_map.get("c_fill_zero")
         c_ub = tensor_map.get("c_ub")
         sch[c_fill_zero].set_scope(tbe_platform.scope_ubuf)
+        sch[c_ub_vn].set_scope(tbe_platform.scope_ubuf)
         c_col = tensor_map.get("c_col")
         a_col = tensor_map.get("a_col")
         a_col_before = tensor_map.get("a_col_before")
@@ -376,7 +382,8 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         b_ddr = b_l1.op.input_tensors[0]  # weight in ddr
         a_col_before = a_col.op.input_tensors[0]  # im2col_row_major in L1
         dilation = list(i.value for i in a_col_before.op.attrs["dilation"])
-
+        tensor_map['c_fill_zero'] = c_fill_zero
+        tensor_map['c_ub_vn'] = c_ub_vn
         tensor_map['c_ub'] = c_ub
         tensor_map['c_col'] = c_col
         tensor_map['a_col'] = a_col
@@ -581,6 +588,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
             sch[b_l1].compute_at(sch[c_col], bl1_at_l0c_axis)
         sch[c_ub].compute_at(sch[c_ddr], cddr_m_outer_inner)
         sch[c_fill_zero].compute_at(sch[c_ddr], cddr_m_outer_inner)
+        sch[c_ub_vn].compute_at(sch[c_ddr], cddr_m_outer_inner)
         sch[c_col].compute_at(sch[c_ddr], col_at_ddr_axis)
         sch[a_col].compute_at(sch[c_col], c_col_m_outer)
         if not tiling['BL0_matrix'] and not tiling['BL1_shape']:
@@ -617,6 +625,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         if cub_pbuffer == 2:
             sch[c_ub].double_buffer()
             sch[c_fill_zero].double_buffer()
+            sch[c_ub_vn].double_buffer()
 
     def _default_tiling():
         tiling = {}
@@ -752,13 +761,13 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
             sch[c_col].emit_insn(
                 c_col_deep_inner, "mad", mad_dict)
 
-        sch[c_fill_zero].reused_by(c_ub)
+        sch[c_ub].reused_by(c_fill_zero, c_ub_vn)
         sch[c_fill_zero].emit_insn(sch[c_fill_zero].op.axis[0], "vector_dup")
+        sch[c_ub_vn].emit_insn(sch[c_ub_vn].op.axis[0], "phony_insn")
         sch[c_ub].emit_insn(sch[c_ub].op.axis[0], "dma_copy")
         sch[c_ddr].emit_insn(cddr_n_for_cub, "dma_copy")
 
     def _redefine_doublebuffer():
-        nonlocal al1_pbuffer, bl1_pbuffer, bl0_pbuffer
         if tiling.get("AL1_shape") == []:
             al1_pbuffer = 1
         if tiling.get("BL1_shape") == []:
@@ -771,6 +780,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         tensor_map = {}
         tag_map = {"conv3d_backprop_input_dx_filing_zero": "c_fill_zero",
                    "conv3d_backprop_input_c_ub": "c_ub",
+                   "conv3d_backprop_input_c_ub_vn": "c_ub_vn",
                    "conv3d_backprop_input_mad": "c_col",
                    "conv3d_backprop_input_im2col_fractal": "a_col",
                    "conv3d_backprop_input_w_col": "b_col",
@@ -793,9 +803,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
                 tensor_map[tag_map[op["op"]]] = op["dst_buffer"]
             tmp_read_map = []
             for nop in op["next_op"]:
-                if (nop["op"] == "conv3d_backprop_input_dy_filling" or
-                        nop["op"] == "conv3d_backprop_input_w_l1" or
-                        nop["op"] == "conv3d_backprop_input_dy_l1_s1"):
+                if (nop["op"] in _FUSION_NODE_WHITELIST):
                     continue
                 else:
                     tmp_read_map.append(nop["dst_buffer"])
@@ -817,9 +825,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         for lop in input_ops:
             if "conv3d_backprop_input_" in lop["op"]:
                 continue
-            if (lop["next_op"][0]["op"] == "conv3d_backprop_input_dy_filling" or
-                    lop["next_op"][0]["op"] == "conv3d_backprop_input_w_l1" or
-                    lop["next_op"][0]["op"] == "conv3d_backprop_input_dy_l1_s1"):
+            if (lop["next_op"][0]["op"] in _FUSION_NODE_WHITELIST):
                 continue
 
             sch[lop["cache_buffer"]].emit_insn(lop["cache_buffer"].op.axis[0],
@@ -833,9 +839,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         for lop in input_ops:
             if "conv3d_backprop_input_" in lop["op"]:
                 continue
-            if (lop["next_op"][0]["op"] == "conv3d_backprop_input_dy_filling" or
-                    lop["next_op"][0]["op"] == "conv3d_backprop_input_w_l1" or
-                    lop["next_op"][0]["op"] == "conv3d_backprop_input_dy_l1_s1"):
+            if (lop["next_op"][0]["op"] in _FUSION_NODE_WHITELIST):
                 continue
             sch[lop["cache_buffer"]].compute_at(sch[compute_at_buffer[0]],
                                                 compute_at_axis[0])
@@ -846,6 +850,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
     tensor_map, body_ops, input_ops = _get_op_infor(color_op)
     dsl_flag = True if "elewise_mul" in tensor_map.keys() else False
     tensor_attr, group_dict = _fetch_tensor_info()
+    c_ub_vn = tensor_map.get("c_ub_vn")
     c_ub = tensor_map.get("c_ub")
     c_col = tensor_map.get("c_col")
     a_col = tensor_map.get("a_col")
@@ -1027,6 +1032,12 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         (1, tbe_platform.CUBE_MKN[c_ub.dtype]["mac"][0]),
         (1, tbe_platform.CUBE_MKN[c_ub.dtype]["mac"][2]))
     sch[c_fill_zero].buffer_align(
+        (1, 1),
+        (1, 1),
+        (1, 1),
+        (1, tbe_platform.CUBE_MKN[c_ub.dtype]["mac"][0]),
+        (1, tbe_platform.CUBE_MKN[c_ub.dtype]["mac"][2]))
+    sch[c_ub_vn].buffer_align(
         (1, 1),
         (1, 1),
         (1, 1),

@@ -304,7 +304,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
 
         # sd>kd,add0
         if self._stride_d >= self._kernel_d:
-            dx_ub = tvm.compute(
+            dx_filing_zero = tvm.compute(
                 (dx_batch, dx_deep, dx_cin1, dx_hw, dx_c0),
                 lambda dx_batch_idx, dx_deep_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
                 tvm.select(
@@ -313,31 +313,36 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                             self._kernel_d) >= 0,
                             dx_deep_idx +
                             self._pad_head >= self._stride_d * self.dy_d),
-                    tvm.const(0, dtype="float16"),
-                    dx_ub[dx_batch_idx, dx_deep_idx,
-                          dx_cin1_idx, dx_hw_idx, dx_cin0_idx]),
+                    tvm.const(0, dtype="float16")),
                 name="dx_filing_zero",
                 tag=self.op_tag + "dx_filing_zero"
             )
         else:
-            dx_ub = tvm.compute(
+            dx_filing_zero = tvm.compute(
                 (dx_batch, dx_deep, dx_cin1, dx_hw, dx_c0),
                 lambda dx_batch_idx, dx_deep_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
                 tvm.select(
                     dx_deep_idx + self._pad_head >=
                     self._stride_d * (self.dy_d - 1) + self._kernel_d,
-                    tvm.const(0, dtype="float16"),
-                    dx_ub[dx_batch_idx, dx_deep_idx,
-                          dx_cin1_idx, dx_hw_idx, dx_cin0_idx]),
+                    tvm.const(0, dtype="float16")),
                 name="dx_filing_zero",
                 tag=self.op_tag + "dx_filing_zero"
             )
 
+        dx_ub_vn = tvm.compute(
+            (dx_batch, dx_deep, dx_cin1, dx_hw, dx_c0),
+            lambda dx_batch_idx, dx_deep_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
+            dx_ub[dx_batch_idx, dx_deep_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx] +
+            dx_filing_zero[dx_batch_idx, dx_deep_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx],
+            name="c_ub_vn",
+            tag=self.op_tag + "c_ub_vn"
+        )
+
         dx_ddr = tvm.compute(
             out_shape,
             lambda dx_batch_idx, dx_deep_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
-            dx_ub[dx_batch_idx, dx_deep_idx,
-                  dx_cin1_idx, dx_hw_idx, dx_cin0_idx],
+            dx_ub_vn[dx_batch_idx, dx_deep_idx,
+                     dx_cin1_idx, dx_hw_idx, dx_cin0_idx],
             name="c_ddr",
             tag="c_ddr",
             attrs={"output_shape": self.output_shape,
