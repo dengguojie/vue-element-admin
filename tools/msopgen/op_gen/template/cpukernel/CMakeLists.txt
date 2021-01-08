@@ -99,6 +99,12 @@ set(ASCEND_OPP_PATH $ENV{ASCEND_OPP_PATH})
 if("x${ASCEND_OPP_PATH}" STREQUAL "x")
         message(FATAL_ERROR "ENV ASCEND_OPP_PATH is not set")
 endif()
+
+set(ASCEND_AICPU_PATH $ENV{ASCEND_AICPU_PATH})
+if("x${ASCEND_AICPU_PATH}" STREQUAL "x")
+        message(FATAL_ERROR "ENV ASCEND_AICPU_PATH is not set")
+endif()
+
 include_directories(${ASCEND_OPP_PATH}/op_impl/built-in/aicpu/aicpu_kernel/inc)
 
 # travers subdirectory
@@ -109,8 +115,18 @@ set(LIBRARY_OUTPUT_PATH ${AICPU_OP_IMPL_OUT_DIR})
 set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 add_library(${AICPU_KERNEL_TARGET} SHARED ${KERNELS_SRCS})
 
-target_link_libraries(${AICPU_KERNEL_TARGET} PRIVATE
-    -Wl,--whole-archive
-    ${ASCEND_OPP_PATH}/op_impl/built-in/aicpu/aicpu_kernel/lib/libcpu_kernels_context.a
-    -Wl,--no-whole-archive
-)
+if(EXISTS "${ASCEND_OPP_PATH}/op_impl/built-in/aicpu/aicpu_kernel/lib/device/libcpu_kernels_context.so")
+    target_link_libraries(${AICPU_KERNEL_TARGET} PRIVATE
+        -Wl,--whole-archive
+        ${ASCEND_OPP_PATH}/op_impl/built-in/aicpu/aicpu_kernel/lib/device/libcpu_kernels_context.so
+        -Wl,--no-whole-archive
+    )
+else()
+    if(EXISTS "${ASCEND_AICPU_PATH}/opp/op_impl/built-in/aicpu/aicpu_kernel/lib/libcpu_kernels_context.a")
+        target_link_libraries(${AICPU_KERNEL_TARGET} PRIVATE
+            -Wl,--whole-archive
+            ${ASCEND_AICPU_PATH}/opp/op_impl/built-in/aicpu/aicpu_kernel/lib/libcpu_kernels_context.a
+            -Wl,--no-whole-archive
+        )
+    endif()
+endif()
