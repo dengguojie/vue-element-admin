@@ -768,6 +768,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         sch[c_ddr].emit_insn(cddr_n_for_cub, "dma_copy")
 
     def _redefine_doublebuffer():
+        nonlocal al1_pbuffer, bl1_pbuffer, bl0_pbuffer
         if tiling.get("AL1_shape") == []:
             al1_pbuffer = 1
         if tiling.get("BL1_shape") == []:
