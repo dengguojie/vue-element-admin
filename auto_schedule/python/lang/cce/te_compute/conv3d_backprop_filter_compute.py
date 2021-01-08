@@ -281,7 +281,7 @@ class Conv3dBackpropFilter:
         # individual range check
         if not self.flag_all_one_case:
             if not self.flag_load3d_special_case:
-                _check_variable_range(grads_depth, 2, 4096,
+                _check_variable_range(grads_depth, 1, 4096,
                                      "depth of out_backprop")
                 _check_variable_range(grads_height, 2, 4096,
                                      "height of out_backprop")

@@ -156,13 +156,13 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                     kernel_cout1_idx,
                     ho_idx,
                     wo_idx,
-                    kernel_cout0_idx:
+                    kernel_cout0_idx:tvm.select(kernel_cout1_idx < kernel_cout1,
                     dy_filling[batch_idx,
                                dy_deep,
                                kernel_cout1_idx,
                                ho_idx,
                                wo_idx,
-                               kernel_cout0_idx],
+                               kernel_cout0_idx]),
                     name="dy_l1",
                     tag=self.op_tag + "dy_l1")
 
@@ -173,12 +173,13 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                 dy_filling_l1 = tvm.compute(
                     shape_dy_filling_l1,
                     lambda batch_idx, dy_deep, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx:
+                    tvm.select(kernel_cout1_idx < kernel_cout1,
                     dy_filling[batch_idx,
                                dy_deep,
                                kernel_cout1_idx,
                                ho_idx,
                                wo_idx,
-                               kernel_cout0_idx],
+                               kernel_cout0_idx]),
                     name="dy_l1",
                     tag=self.op_tag + "dy_l1")
 
