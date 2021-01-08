@@ -32,7 +32,6 @@ from impl.util.util_select_op_base import get_dynamic_param_in_json
 SHAPE_SIZE_LIMIT = 2147483648
 
 
-# pylint: disable=invalid-name,too-many-arguments,too-many-locals,unused-argument
 def op_select_format(input_data, x1, x2, value, y, kernel_name="addcdiv"):
     """
     op_select_format
@@ -168,13 +167,13 @@ def addcdiv(input_data, x1, x2, value, y=None, kernel_name="addcdiv"):
 
     para_check.check_kernel_name(kernel_name)
 
-    shape_x2, shape_input, shape_max = broadcast_shapes(shape_x2, shape_input)
-    para_check.check_tensor_shape_size(shape_max)
-    shape_input, _, shape_max = broadcast_shapes(shape_input, shape_max)
-    para_check.check_tensor_shape_size(shape_max)
+    shape_x1, shape_x2, shape_max1 = broadcast_shapes(shape_x1, shape_x2)
+    shape_input, _, shape_max = broadcast_shapes(shape_input, shape_max1)
     shape_x1, _, _ = broadcast_shapes(shape_x1, shape_max)
     shape_x2, _, _ = broadcast_shapes(shape_x2, shape_max)
     shape_value, _, _ = broadcast_shapes(shape_value, shape_max)
+    para_check.check_shape_size(shape_max)
+
     data_input = tvm.placeholder(shape_input, name="data_input", dtype=dtype_input)
     data_x1 = tvm.placeholder(shape_x1, name="data_x1", dtype=dtype_x1)
     data_x2 = tvm.placeholder(shape_x2, name="data_x2", dtype=dtype_x2)

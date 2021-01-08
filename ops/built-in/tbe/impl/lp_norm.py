@@ -47,7 +47,8 @@ def lp_norm0_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     Compute norm for p = 0.
     When p = 0, lp_norm equals the number of nonzero-elements
     """
-
+    if ("910" in _CCE_PLAT) and x_type == "float16":
+        abs_x = tbe.cast_to(abs_x, "float32", False)
     if _CCE_PLAT == 'Ascend310' and x_type == "float32":
         abs_x = tbe.cast_to(abs_x, "float16", False)
     zero_tensor = tbe.vmuls(abs_x, tvm.const(0, dtype=x_type))
