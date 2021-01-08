@@ -108,6 +108,8 @@ target_include_directories(ops_all_caffe_plugin PRIVATE
 )
 
 target_compile_options(ops_all_caffe_plugin PRIVATE
+  "-fno-common"
+  "-fno-strict-aliasing"
   -O2
   -Werror
   -Wno-deprecated-declarations

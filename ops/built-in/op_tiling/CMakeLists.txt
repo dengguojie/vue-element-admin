@@ -102,6 +102,7 @@ if(ENABLE_TEST STREQUAL "")
   # to solve the compile warnings in fp16_t.cc
   target_compile_options(optiling PRIVATE
     "-fno-strict-aliasing"
+    "-fno-common"
   )
 
   if(BUILD_OPEN_PROJECT)

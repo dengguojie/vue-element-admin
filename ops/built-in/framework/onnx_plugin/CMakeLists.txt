@@ -104,6 +104,8 @@ target_include_directories(ops_all_onnx_plugin PRIVATE
 )
 
 target_compile_options(ops_all_onnx_plugin PRIVATE
+  "-fno-common"
+  "-fno-strict-aliasing"
   -O2
   -Werror
   -Wno-deprecated-declarations
