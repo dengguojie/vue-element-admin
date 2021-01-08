@@ -294,7 +294,7 @@ def _check_attr(direction, cell_depth, keep_prob, cell_clip, num_proj, time_majo
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
-# pylint: disable=too-many-function-args,too-many-statements
+# pylint: disable=too-many-function-args,too-many-statements,unused-argument
 def dynamic_gru(input_x, weight, bias, cw, cb,
                 seq_length, init_h,
                 y, output_h,

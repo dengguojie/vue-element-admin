@@ -153,6 +153,8 @@ def _get_tiling(in_x, hidden_size):
         return 1, hidden_size, in_x, hidden_size, 1, hidden_size, in_x, hidden_size
 
     n_cut = 256 // hidden_size if hidden_size <= 256 else 1
+    while hidden_size % n_cut != 0 and n_cut != 1:
+        n_cut -= 1
     k_cut = 128 // n_cut if n_cut <= 128 else 1
     return 1, n_cut, k_cut, k_cut, 1, n_cut, k_cut, k_cut
 
@@ -329,7 +331,7 @@ class ReuseType(enum.Enum):
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_STR,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
-# pylint: disable=too-many-function-args,too-many-statements
+# pylint: disable=too-many-function-args,too-many-statements,unused-argument
 def dynamic_gru_v2(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_length, init_h,
                    y, output_h, update, reset, new, hidden_new,
                    direction="UNIDIRECTIONAL", cell_depth=1, keep_prob=1.0,
@@ -1053,6 +1055,11 @@ def _dynamic_gru_v2_inner(input_list, custom_list):
         sch[update_h_gm].bind(update_h_gm_m_outer, tvm.thread_axis("blockIdx.x"))
     else:
         core_num = tbe_platform.get_soc_spec("CORE_NUM")
+        update_h_gm_m_outer_size = (m_size + factor_l1_m - 1) // factor_l1_m
+        update_h_gm_o_outer_size = (hidden_size + factor_l1_n - 1) // factor_l1_n
+        fused_axis_size = update_h_gm_o_outer_size * update_h_gm_m_outer_size
+        while fused_axis_size % core_num != 0 and core_num != 1:
+            core_num -= 1
         sch[update_h_gm].reorder(update_h_gm_t_outer,
                                  update_h_gm_t_inner,
                                  update_h_gm_m_outer,

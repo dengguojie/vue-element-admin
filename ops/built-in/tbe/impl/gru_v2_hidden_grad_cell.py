@@ -24,7 +24,7 @@ from impl.tik_op_base import TikOpBase
 OP_NAME = "GRUV2HiddenGradCell"
 
 
-# pylint: disable=too-many-arguments
+# pylint: disable=too-many-arguments,invalid-name
 def _check_dtype(dh_pre_t, h, dy, dh, update, reset, new, hidden_new):
     """
     check parameters type
@@ -292,7 +292,7 @@ class GRUHiddenGradCell(TikOpBase):
 
 
 # pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
-# pylint: disable=too-many-locals,invalid-name,too-many-arguments
+# pylint: disable=too-many-locals,invalid-name,too-many-arguments,unused-argument
 def gru_v2_hidden_grad_cell(dh_pre_t, h, dy, dh, update, reset, new, hidden_new,
                             dh_prev, dgate_h, dnt_x, t_state=0, gate_order="zrh",
                             kernel_name="gru_hidden_grad_cell"):

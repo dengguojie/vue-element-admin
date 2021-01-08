@@ -305,13 +305,13 @@ def matmul_compute(tensor_weight, tensor_d_h2, tensor_dy, tensor_i2, tensor_list
         tensor_list["tensor_d_gate_cast"] = tensor_d_gate_cast
         tensor_d_gate = tensor_d_gate_cast
     para_dict = {
-            "trans_a": True,
-            "trans_b": False,
-            "format_a": "FRACTAL_NZ",
-            "format_b": "FRACTAL_NZ",
-            "dst_dtype": dst_type
+        "trans_a": True,
+        "trans_b": False,
+        "format_a": "FRACTAL_NZ",
+        "format_b": "FRACTAL_NZ",
+        "dst_dtype": dst_type
         }
-    matmul_res_gm = tbe.gemm(tensor_a=tensor_d_gate, tensor_b=tensor_weight, para_dict=para_dict)
+    matmul_res_gm = tbe.gemm(tensor_d_gate, tensor_weight, para_dict)
 
     matmul_res = matmul_res_gm.op.input_tensors[0]
     tensor_list["matmul_res"] = matmul_res
