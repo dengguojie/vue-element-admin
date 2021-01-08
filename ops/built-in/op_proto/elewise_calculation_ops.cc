@@ -437,20 +437,6 @@ VERIFY_FUNC_REG(Equal, EqualVerify);
 COMMON_INFER_FUNC_REG(Exp, OneInOneOutCommonInferShape);
 // ----------------Exp END-------------------
 
-// ----------------Expm1-------------------
-IMPLEMT_COMMON_INFERFUNC(Expm1InferShape) {
-  Shape x_shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(x_shape);
-  tensordesc_output.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(Expm1, Expm1InferShape);
-// --------------Expm1 END-----------------
-
 // ----------------------Inv----------------------
 IMPLEMT_COMMON_INFERFUNC(InvInferShape) {
   Shape x_shape = op.GetInputDesc("x").GetShape();
@@ -516,25 +502,6 @@ VERIFY_FUNC_REG(LessEqual, LessEqualVerify);
 // ----------------Log1p-------------------
 COMMON_INFER_FUNC_REG(Log1p, OneInOneOutCommonInferShape);
 // --------------Log1p END-----------------
-
-// ------------------Mod--------------------
-IMPLEMT_VERIFIER(Mod, ModVerify) {
-  if (!CheckTwoInputDtypeSame(op, "x1", "x2")) {
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
-IMPLEMT_COMMON_INFERFUNC(ModInferShape) {
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(Mod, ModInferShape);
-VERIFY_FUNC_REG(Mod, ModVerify);
-// ----------------Mod END---------------
 
 // -------------------NotEqual----------------------
 IMPLEMT_VERIFIER(NotEqual, NotEqualVerify) {
@@ -617,63 +584,6 @@ VERIFY_FUNC_REG(NotEqual, NotEqualVerify);
 // ----------------Neg-------------------
 COMMON_INFER_FUNC_REG(Neg, OneInOneOutCommonInferShape);
 // ---------------Neg EDN-----------------
-
-// -----------------TruncateDiv------------------
-IMPLEMT_VERIFIER(TruncateDiv, TruncateDivVerify) {
-  if (!CheckTwoInputDtypeSame(op, "x1", "x2")) {
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
-IMPLEMT_COMMON_INFERFUNC(TruncateDivInferShape) {
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(TruncateDiv, TruncateDivInferShape);
-VERIFY_FUNC_REG(TruncateDiv, TruncateDivVerify);
-// -----------------TruncateDiv END----------------
-
-// --------------Xdivy----------------
-IMPLEMT_VERIFIER(Xdivy, XdivyVerify) {
-  if (!CheckTwoInputDtypeSame(op, "x1", "x2")) {
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
-IMPLEMT_COMMON_INFERFUNC(XdivyInferShape) {
-  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
-    return GRAPH_SUCCESS;
-  }
-  return GRAPH_FAILED;
-}
-
-COMMON_INFER_FUNC_REG(Xdivy, XdivyInferShape);
-VERIFY_FUNC_REG(Xdivy, XdivyVerify);
-// ------------Xdivy END----------------
-
-// ------------Xlogy-------------------
-IMPLEMT_VERIFIER(Xlogy, XlogyVerify) {
-  if (!CheckTwoInputDtypeSame(op, "x1", "x2")) {
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
-IMPLEMT_COMMON_INFERFUNC(XlogyInferShape) {
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(Xlogy, XlogyInferShape);
-VERIFY_FUNC_REG(Xlogy, XlogyVerify);
-// ------------Xlogy END----------------
 
 // ------------------DivNoNan-----------------------
 IMPLEMT_VERIFIER(DivNoNan, DivNoNanVerify) {
@@ -1081,10 +991,6 @@ COMMON_INFER_FUNC_REG(AssignSub, ELMTWISE_INFER_SHAPEANDTYPE("var", "var"));
 COMMON_INFER_FUNC_REG(Atanh, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
 // --------------Atanh END-----------------
 
-// ----------------Asinh-------------------
-COMMON_INFER_FUNC_REG(Asinh, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
-// --------------Asinh END-----------------
-
 // ----------------Atan-------------------
 COMMON_INFER_FUNC_REG(Atan, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
 // --------------Atan END-----------------
@@ -1131,18 +1037,6 @@ IMPLEMT_VERIFIER(AcoshGrad, AcoshGradVerify) {
 COMMON_INFER_FUNC_REG(AcoshGrad, ELMTWISE_INFER_SHAPEANDTYPE("y", "z"));
 VERIFY_FUNC_REG(AcoshGrad, AcoshGradVerify);
 // --------------AcoshGrad END-----------------
-
-// ----------------AsinhGrad-------------------
-IMPLEMT_VERIFIER(AsinhGrad, AsinhGradVerify) {
-  if (!CheckTwoInputDtypeSame(op, "y", "dy")) {
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(AsinhGrad, ELMTWISE_INFER_SHAPEANDTYPE("y", "z"));
-VERIFY_FUNC_REG(AsinhGrad, AsinhGradVerify);
-// --------------AsinhGrad END-----------------
 
 // ----------------AtanGrad-------------------
 IMPLEMT_VERIFIER(AtanGrad, AtanGradVerify) {
@@ -1776,20 +1670,6 @@ COMMON_INFER_FUNC_REG(FakeQuantWithMinMaxVarsPerChannelGradient, FakeQuantWithMi
 VERIFY_FUNC_REG(FakeQuantWithMinMaxVarsPerChannelGradient, FakeQuantWithMinMaxVarsPerChannelGradientVerify);
 // ----------------FakeQuantWithMinMaxVarsPerChannelGradient--------------------
 
-// ----------------Floor-------------------
-IMPLEMT_COMMON_INFERFUNC(FloorInferShape) {
-  Shape x_shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(x_shape);
-  tensordesc_output.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(Floor, FloorInferShape);
-// ---------------Floor END-----------------
-
 // -------------------FloorDiv-----------------------
 IMPLEMT_VERIFIER(FloorDiv, FloorDivVerify) {
   if (!CheckTwoInputDtypeSame(op, "x1", "x2")) {
@@ -1837,18 +1717,6 @@ VERIFY_FUNC_REG(Pow, PowVerify);
 // ----------------Round-------------------------------------
 COMMON_INFER_FUNC_REG(Round, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
 // ----------------Round END---------------------------------
-
-// ----------------TruncateMod-------------------------------
-IMPLEMT_COMMON_INFERFUNC(TruncateModInferShape) {
-  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y") == false) {
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(TruncateMod, TruncateModInferShape);
-
-// ----------------TruncateMod END---------------------------------
 
 // ---------------------------------ArgMin--------------------------------------
 IMPLEMT_COMMON_INFERFUNC(ArgMinInferShape) {
@@ -4184,5 +4052,139 @@ IMPLEMT_COMMON_INFERFUNC(LerpInferShape) {
 COMMON_INFER_FUNC_REG(Lerp, LerpInferShape);
 VERIFY_FUNC_REG(Lerp, LerpVerify);
 // ----------------Lerp END---------------------
+// ----------------Asinh-------------------
+IMPLEMT_COMMON_INFERFUNC(AsinhInferShape) {
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(Asinh, AsinhInferShape);
+// --------------Asinh END-----------------
+
+// ------------------Mod--------------------
+IMPLEMT_VERIFIER(Mod, ModVerify) {
+  if (!CheckTwoInputDtypeSame(op, "x1", "x2")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+VERIFY_FUNC_REG(Mod, ModVerify);
+
+IMPLEMT_COMMON_INFERFUNC(ModInferShape) {
+  bool is_dynamic_output = true; 
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", is_dynamic_output)) {
+    return GRAPH_FAILED;
+	}
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(Mod, ModInferShape);
+// ----------------Mod END---------------
+
+// --------------Xdivy-------------------
+IMPLEMT_VERIFIER(Xdivy, XdivyVerify) {
+  if (!CheckTwoInputDtypeSame(op, "x1", "x2")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(XdivyInferShape) {
+  bool is_dynamic_output = true; 
+  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", is_dynamic_output)) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+
+COMMON_INFER_FUNC_REG(Xdivy, XdivyInferShape);
+VERIFY_FUNC_REG(Xdivy, XdivyVerify);
+// ------------Xdivy END-----------------
+
+// ------------Xlogy---------------------
+IMPLEMT_VERIFIER(Xlogy, XlogyVerify) {
+  if (!CheckTwoInputDtypeSame(op, "x1", "x2")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(XlogyInferShape) {
+  bool is_dynamic_output = true; 
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", is_dynamic_output)) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(Xlogy, XlogyInferShape);
+VERIFY_FUNC_REG(Xlogy, XlogyVerify);
+// ------------Xlogy END------------------
+
+// ----------------AsinhGrad-------------------
+IMPLEMT_VERIFIER(AsinhGrad, AsinhGradVerify) {
+  if (!CheckTwoInputDtypeSame(op, "y", "dy")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+VERIFY_FUNC_REG(AsinhGrad, AsinhGradVerify);
+IMPLEMT_COMMON_INFERFUNC(AsinhGradInferShape) {
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "y", "dy", "z", is_dynamic_output)) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(AsinhGrad, AsinhGradInferShape);
+// --------------AsinhGrad END-----------------
+
+// -----------------TruncateDiv--------------------
+IMPLEMT_COMMON_INFERFUNC(TruncateDivInferShape) {
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", is_dynamic_output)) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(TruncateDiv, TruncateDivInferShape);
+// -----------------TruncateDiv END----------------
+
+// ----------------TruncateMod---------------------
+IMPLEMT_COMMON_INFERFUNC(TruncateModInferShape) {
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", is_dynamic_output)) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(TruncateMod, TruncateModInferShape);
+// ----------------TruncateMod END-----------------
+
+// ----------------Floor---------------------
+IMPLEMT_COMMON_INFERFUNC(FloorInferShape) {
+  OP_LOGI(op.GetName().c_str(), "Enter FloorInferShape");
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(Floor, FloorInferShape);
+// ----------------Floor END-----------------
+
+// ----------------Expm1---------------------
+IMPLEMT_COMMON_INFERFUNC(Expm1InferShape) {
+  OP_LOGI(op.GetName().c_str(), "Enter Expm1InferShape");
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(Expm1, Expm1InferShape);
+// ----------------Expm1 END-----------------
+
 
 }  // namespace ge

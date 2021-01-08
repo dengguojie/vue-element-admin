@@ -434,14 +434,6 @@ COMMON_INFER_FUNC_REG(ReluGradV2, ReluGradV2InferShape);
 
 // ----------------ReluGradV2 END-----------------
 
-IMPLEMT_VERIFIER(LeakyRelu, LeakyReluVerify) {
-  OP_LOGI(op.GetName().c_str(), "enter LeakyRelu verify");
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(LeakyRelu, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
-VERIFY_FUNC_REG(LeakyRelu, LeakyReluVerify);
-
 // ----------------LeakyReluGrad-------------------
 IMPLEMT_VERIFIER(LeakyReluGrad, LeakyReluGradVerify) {
   OP_LOGI(op.GetName().c_str(), "enter LeakyReluGrad verify");
@@ -804,4 +796,14 @@ IMPLEMT_COMMON_INFERFUNC(SigmoidInferShape) {
 COMMON_INFER_FUNC_REG(Sigmoid, SigmoidInferShape);
 // ----------------Sigmoid Op End---------------
 
+// ----------------LeakyRelu--------------------
+IMPLEMT_COMMON_INFERFUNC(LeakyReluInferShape) {
+  OP_LOGI(op.GetName().c_str(), "Enter LeakyReluInferShape");
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(LeakyRelu, LeakyReluInferShape);
+// ----------------LeakyRelu END-----------------
 }  // namespace ge

@@ -118,3 +118,14 @@ from .sigmoid import sigmoid
 from .sin import sin
 from .sinh import sinh
 from .tan import tan
+from .asinh import asinh
+from .asinh_grad import asinh_grad
+from .expm1 import expm1
+from .floor import floor
+from .leaky_relu import leaky_relu
+from .mod import mod
+from .power import power
+from .truncate_div import truncate_div
+from .truncate_mod import truncate_mod
+from .xdivy import xdivy
+from .xlogy import xlogy

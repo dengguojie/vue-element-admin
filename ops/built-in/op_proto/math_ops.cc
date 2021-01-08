@@ -25,34 +25,23 @@
 #include "util/util.h"
 #include "util/error_util.h"
 namespace ge {
-IMPLEMT_INFERFUNC(Power, PowerInfer) {
-  OP_LOGI(op.GetName().c_str(), "Enter PowerInfer.");
 
-  TensorDesc tensordesc_input = op.GetInputDesc("x");
-  Shape input_shape = tensordesc_input.GetShape();
-  DataType input_dtype = tensordesc_input.GetDataType();
-  Format input_format = tensordesc_input.GetFormat();
-
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(input_shape);
-  tensordesc_output.SetDataType(input_dtype);
-  tensordesc_output.SetFormat(input_format);
-
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
-
-  OP_LOGI(op.GetName().c_str(), "Exit PowerInfer.");
-
-  return GRAPH_SUCCESS;
-}
-
+// ---------Power-------------------
 IMPLEMT_VERIFIER(Power, PowerVerify) {
-  OP_LOGI(op.GetName().c_str(), "Enter PowerVerify.");
-  return GRAPH_SUCCESS;
+    OP_LOGI(op.GetName().c_str(), "Enter PowerVerify.");
+    return GRAPH_SUCCESS;
 }
-
-INFER_FUNC_REG(Power, PowerInfer);
-
 VERIFY_FUNC_REG(Power, PowerVerify);
+
+IMPLEMT_COMMON_INFERFUNC(PowerInferShape) {
+  OP_LOGI(op.GetName().c_str(), "Enter PowerInferShape");
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(Power, PowerInferShape);
+// ---------Power End---------------
 
 IMPLEMT_INFERFUNC(Igamma, IgammaInfer) {
   DataType a_type = op.GetInputDesc("a").GetDataType();
