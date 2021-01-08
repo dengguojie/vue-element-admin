@@ -1486,7 +1486,10 @@ REG_OP(DecodeBboxV2)
 *
 *@par Outputs:
 * @li y1: A Tensor. Must have the same type as x.
-* @li y2: A Tensor. Indices of y1 in x.Dtype must be int32.
+* @li y2: A Tensor. Indices of y1 in x. Dtype must be int32.
+*
+*@attention Constraints:
+* The upper limit of data on the direction axis is 7040.
 */
 REG_OP(Sort)
     .INPUT(x, TensorType({ DT_FLOAT16 }))
