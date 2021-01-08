@@ -56,12 +56,39 @@ case5 = {"params": [{"shape": (1, 2, 3, 16), "dtype": "float16", "format": "ND",
          "expect": RuntimeError,
          "support_expect": True}
 
+case6 = {"params": [{"shape": (1, 216, 216, 64), "dtype": "float32", "format": "ND", "ori_shape": (1, 216, 216, 64),"ori_format": "ND"}, #x
+                    {"shape": (1, 64, 216, 216), "dtype": "float32", "format": "ND", "ori_shape": (1, 64, 216, 216),"ori_format": "ND"},
+                    (0, 3, 1, 2),
+                    ],
+         "case_name": "TransposeD_6",
+         "expect": RuntimeError,
+         "support_expect": True}
+
+case7 = {"params": [{"shape": (1, 432, 432, 2), "dtype": "float32", "format": "ND", "ori_shape": (1, 432, 432, 2),"ori_format": "ND"}, #x
+                    {"shape": (1, 432, 2, 432), "dtype": "float32", "format": "ND", "ori_shape": (1, 432, 2, 432),"ori_format": "ND"},
+                    (0, 1, 3, 2),
+                    ],
+         "case_name": "TransposeD_7",
+         "expect": RuntimeError,
+         "support_expect": True}
+
+case8 = {"params": [{"shape": (1, 256, 108, 108), "dtype": "float32", "format": "ND", "ori_shape": (1, 256, 108, 108),"ori_format": "ND"}, #x
+                    {"shape": (1, 108, 108, 256), "dtype": "float32", "format": "ND", "ori_shape": (1, 108, 108, 256),"ori_format": "ND"},
+                    (0, 2, 3, 1),
+                    ],
+         "case_name": "TransposeD_8",
+         "expect": RuntimeError,
+         "support_expect": True}
+
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
+ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case6)
+ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case7)
+ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case8)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910","Ascend310","Ascend710"])

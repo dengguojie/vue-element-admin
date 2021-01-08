@@ -355,6 +355,17 @@ def _get_factor_multi_core(ele_zero, ele_cnt, total_ele, no_remainder):
     return split_factor
 
 
+def _renew_core_num(shape):
+    if shape in [[1, 2916, 256], [1, 2916, 512], [1, 46656, 64], [1, 46656, 128], [1, 46656, 256],
+                 [1, 11664, 128], [1, 11664, 256], [1, 186624, 2], [1, 128, 46656], [1, 256, 11664],
+                 [1, 512, 2916], [1, 2, 186624], [432, 432, 2], [432, 2, 432]] and \
+            not cce.cce_conf.intrinsic_check_support("Intrinsic_vln", "float32"):
+        device_core_num = 1
+    else:
+        device_core_num = AICORE_NUM
+    return device_core_num
+
+
 # pylint: disable=locally-disabled, too-many-locals, too-many-branches
 def _tilling_axis_multi_core_fuse(shape, dtype):
     """
@@ -18974,7 +18985,8 @@ def _two_little_fp32(dst, data):
 
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    device_core_num = AICORE_NUM
+    data_shape = [int(x) for x in data.shape]
+    device_core_num = _renew_core_num(data_shape)
     ub_bytes = UB_SIZE_B - 64
     ub_ele = (ub_bytes // 2 // float_size // 128) * 128
 
@@ -19184,7 +19196,8 @@ def _two_split_row_fp32(dst, data):
     n_i, col_len, row_len = data.shape
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    device_core_num = AICORE_NUM
+    data_shape = [int(x) for x in data.shape]
+    device_core_num = _renew_core_num(data_shape)
     ub_bytes = UB_SIZE_B - 64
     ub_ele = (ub_bytes // 2 // float_size // 128) * 128
 
@@ -19590,7 +19603,8 @@ def _two_split_col_fp32(dst, data):
 
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    device_core_num = AICORE_NUM
+    data_shape = [int(x) for x in data.shape]
+    device_core_num = _renew_core_num(data_shape)
     ub_bytes = UB_SIZE_B - 64
     ub_ele = (ub_bytes // 2 // float_size // 128) * 128
 
@@ -20037,7 +20051,8 @@ def _two_large_fp32(dst, data):
 
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    device_core_num = AICORE_NUM
+    data_shape = [int(x) for x in data.shape]
+    device_core_num = _renew_core_num(data_shape)
     ub_bytes = UB_SIZE_B - 64
     ub_ele = (ub_bytes // 2 // float_size // 128) * 128
 
@@ -23476,8 +23491,7 @@ def _choose_branch_two_fp32(shape, dtype):
     new_space_split_row_fp32 = col_len * 8 * 2 * 8
     new_space_split_col_fp32 = row_len * 8 * 2 * 8
 
-    device_core_num = AICORE_NUM
-
+    device_core_num = _renew_core_num(shape)
     if dim_ele < cp_align_len:
         return "little"
     elif space_ele <= ub_ele:
