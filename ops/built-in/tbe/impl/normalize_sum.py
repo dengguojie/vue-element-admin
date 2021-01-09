@@ -142,7 +142,7 @@ def normalize_sum(x1, y, across_spatial=True, kernel_name="normalize_sum"):
     para_check.check_shape(shape_1, param_name="x1")
 
     cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
-    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
+    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         # hisi es, cs
         para_check.check_dtype(dtype_1, ("int8", "float16",), param_name="x1")
     else:

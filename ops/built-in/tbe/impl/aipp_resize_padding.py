@@ -552,9 +552,9 @@ def aipp_compute(input_tensor, input_shape, input_format,
         cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
 
         if cur_cce_product not in ["Ascend310", "Ascend910", "Ascend610", "Ascend710",
-                                   "Ascend615", "Hi3796CV300ES", "Hi3796CV300CS"]:
+                                   "Ascend615", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
             cause_dec = "Only support is Ascend310, Ascend610, Ascend710, Ascend615 " \
-                        "Hi3796CV300ES and Hi3796CV300CS, " \
+                        "Hi3796CV300ES, Hi3796CV300CS and SD3403" \
                         "cur_cce_product is %s" % cur_cce_product
             aipp_comm.raise_runtime_error(cause_dec)
 
@@ -619,7 +619,7 @@ def aipp_compute(input_tensor, input_shape, input_format,
                         (aipp_config.get('csc_switch') == 1):
                     spr1 = tvm.const(1 << 63, dtype="uint64")
                 else:
-                    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+                    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                         if aipp_config.get('input_format') in \
                                 ["YUV420SP_U8", "YUYV_U8",
                                  "YUV422SP_U8", "AYUV444_U8"]:
@@ -670,7 +670,7 @@ def aipp_compute(input_tensor, input_shape, input_format,
                                 output_buf, output_format)
                 scfIncVscl = 0
                 scfIncHscl = 0
-                if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+                if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                     spr13 = 0
                     spr16 = 0
                     if "resize" in aipp_config and \
@@ -713,9 +713,9 @@ def aipp_compute(input_tensor, input_shape, input_format,
                     with ib.new_scope():
                         output_cb_buf, output_ub_buf = \
                             aipp_comm.new_alloc(ib, dtype,
-                                                C1*l1_image_buf_max*C0)
+                                                C1 * l1_image_buf_max * C0)
 
-                        if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+                        if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                             spr12 = 0
                             spr15 = 0
                             if ("resize") not in aipp_config or \
@@ -860,7 +860,7 @@ def aipp_compute(input_tensor, input_shape, input_format,
                             output_offset = n1*C1*H*W*C0 + \
                                             C1*(h1*tiling_h)*output_w*C0
                             resize_input_h_stat_pos = 0
-                            if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+                            if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                                 spr12 = 0
                                 spr15 = 0
                                 if "resize" not in aipp_config or \
@@ -970,9 +970,9 @@ def aipp_compute(input_tensor, input_shape, input_format,
                                      (right_padding_size & 0xff) << 45
                             output_h = tail_h
                             output_offset = \
-                                n1*C1*H*W*C0 + C1*(h_loop_const*tiling_h)*output_w*C0
+                                n1 * C1 * H * W * C0 + C1 * (h_loop_const * tiling_h) * output_w * C0
 
-                            if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+                            if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                                 spr12 = 0
                                 spr15 = 0
                                 if ("resize") not in aipp_config or \

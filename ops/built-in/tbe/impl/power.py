@@ -288,7 +288,7 @@ def power(input_x, output_y, power=1.0, scale=1.0,
     data_input = tvm.placeholder(fuseshape, name="data_input", dtype=input_dtype)
 
     cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
-    if cur_cce_product in ("Ascend310", "Hi3796CV300ES", "Hi3796CV300CS"):
+    if cur_cce_product in ("Ascend310", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         if input_dtype == "float32":
             error_info = {'errCode': 'E80008', 'param_name': 'input_x', 'op_name': 'power', 'expect_value': "float16",
                           'real_value': input_dtype}

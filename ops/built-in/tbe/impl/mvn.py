@@ -88,7 +88,7 @@ def _check_dtype(input_dtype):
     """
 
     if tbe_platform.get_soc_spec("SOC_VERSION") in (
-            "Hi3796CV300ES", "Hi3796CV300CS"):
+            "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         if input_dtype == "float32":
             error_info = {'errCode': 'E81006', 'param_name': 'dtype', 'op_name': 'mvn', 'real_value': input_dtype}
             raise RuntimeError("In op[%s], Hi3796CV300ES is not supported while the [%s] of input is [%s]."
@@ -164,7 +164,7 @@ def mvn_compute(x, y, normalize_variance, across_channels,
             y_add = tbe.vadds(y_sqrt, eps)
             res = tbe.vdiv(mean_sub, y_add)
         elif tbe_platform.get_soc_spec("SOC_VERSION") in (
-                "Hi3796CV300ES", "Hi3796CV300CS"):
+                "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             y_sqrt = tbe.vsqrt(var, priority_flag=1)
             y_add = tbe.vadds(y_sqrt, eps)
             res = tbe.vdiv(mean_sub, y_add)

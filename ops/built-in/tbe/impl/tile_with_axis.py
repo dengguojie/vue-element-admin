@@ -67,7 +67,7 @@ def op_select_format(input_x, output_y, tiles, axis=1, kernel_name="tile_with_ax
     if ((ori_format == "NHWC" and axis != 3) or (ori_format == "NCHW" and axis != 1)) and \
             len(ori_shape) == 4:
         # NC1HWC0+ND
-        if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
+        if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             # fp16
             input0 = gen_param(
                 classify="input0", name="x",
@@ -97,7 +97,7 @@ def op_select_format(input_x, output_y, tiles, axis=1, kernel_name="tile_with_ax
                        "NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0")
     else:
         # ND
-        if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
+        if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             # fp16
             input0 = gen_param(
                 classify="input0", name="x",

@@ -181,7 +181,7 @@ class ShuffleChannel:
         dtype_flag = self.dtype in ["int16", "float16", "int32", "float32"]
         dtype_cs_flag = self.dtype in ["int16", "float16", "int32"]
         v200_flag = tbe_platform.get_soc_spec("SOC_VERSION") in ("Ascend710", "Ascend610", "Ascend615")
-        cs_flag = tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300CS",)
+        cs_flag = tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300CS", "SD3403")
         block_num, ub_size = self.get_ub_block_size(self.dsize * 2)
         shape = self.input_dict.get("x").get("shape")
         num = shape[1] * shape[2] * shape[3]

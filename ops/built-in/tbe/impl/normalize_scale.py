@@ -82,7 +82,7 @@ def normalize_scale_compute(x1, x2, x3, y,
 
     # set intermediate dtype
     cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
-    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
+    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         # hisi es, cs
         intermediate_dtype = "float16"
         dtype_cast_mapping = {"int8": "float16"}
@@ -196,7 +196,7 @@ def _check_dtype(dtype_1, dtype_3):
     """
 
     cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
-    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
+    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         # hisi es, cs
         para_check.check_dtype(dtype_1, ("int8", "float16",), param_name="x1")
         para_check.check_dtype(dtype_3, ("int8", "float16",), param_name="x3")

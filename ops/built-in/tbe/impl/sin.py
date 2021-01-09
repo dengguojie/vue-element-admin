@@ -19,9 +19,9 @@ import functools
 
 import te.lang.cce as tbe
 import te.platform as tbe_platform
+from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
-from te import tvm
 
 # define a string name of "float16"
 FLOAT_16 = "float16"

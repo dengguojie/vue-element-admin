@@ -174,7 +174,7 @@ def _float16_process(data, dst_type):
 
     if dst_type == "uint8":
         if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in \
-            ("Ascend310", "Hi3796CV300ES", "Hi3796CV300CS"):
+            ("Ascend310", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             return tbe.cast_to(data, "uint8", True)
         data_int32 = tbe.cast_to(data, "int32")
         data_fp16 = tbe.cast_to(data_int32, "float16")

@@ -34,9 +34,9 @@ relu
 """
 import te.lang.cce as tbe
 import te.platform as tbe_platform
+from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
-from te import tvm
 
 # const value
 CONST_ZERO = 0

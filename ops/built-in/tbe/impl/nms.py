@@ -463,7 +463,7 @@ def get_batch_id(tik_instance, ret_ub, dtype, batch_id, num):
     """
 
     with tik_instance.if_scope(True):
-        if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300CS",):
+        if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300CS", "SD3403"):
             src_scalar = tik_instance.Scalar(dtype="int32", init_value=batch_id)
             to_dst_scalar = tik_instance.Scalar(dtype="float32")
             dst_scalar = tik_instance.Scalar(dtype="float16")
@@ -705,7 +705,7 @@ def nms_output_tiling_postproposal(tik_instance, inputs, input_index,
             tiling*16*8*size//32, 0, 0)
         post_proposal_nms_extract(tik_instance, ret_ub, select_proposal_ub,
                                   tiling)
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300CS",):
+        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300CS", "SD3403"):
             src_scalar = tik_instance.Scalar(dtype="int32", init_value=class_index)
             to_dst_scalar = tik_instance.Scalar(dtype="float32")
             dst_scalar = tik_instance.Scalar(dtype="float16")
@@ -805,7 +805,7 @@ def nms_output_tiling_tail_postproposal(tik_instance, inputs, input_index,
     post_proposal_nms_extract(tik_instance, ret_ub, select_proposal_ub,
                               tiling)
 
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300CS",):
+    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300CS", "SD3403"):
         src_scalar = tik_instance.Scalar(dtype="int32", init_value=class_index)
         to_dst_scalar = tik_instance.Scalar(dtype="float32")
         dst_scalar = tik_instance.Scalar(dtype="float16")
@@ -897,9 +897,9 @@ def nms_output_postproposal(input_data, post_nms_topn, selected_count,
 
         tik_instance.data_move(
             select_proposal_ub, temp_proposal_out[batch_index, 0, 0], 0, 1,
-            ((post_nms_topn+15)//16*16*8*size)//32, 0, 0)
+            ((post_nms_topn + 15) // 16 * 16 * 8 * size) // 32, 0, 0)
 
-        if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300CS",):
+        if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300CS", "SD3403"):
             src_scalar = tik_instance.Scalar(dtype="int32", init_value=class_index)
             to_dst_scalar = tik_instance.Scalar(dtype="float32")
             dst_scalar = tik_instance.Scalar(dtype="float16")
@@ -1152,6 +1152,7 @@ def cce_nms(input_data, temp_proposal_out, proposal_box, proposal_actual_num,
                     with tik_instance.new_stmt_scope():
                         if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
                                                                                  "Hi3796CV300CS",
+                                                                                 "SD3403"
                                                                                  "Ascend610",
                                                                                  "Ascend710",
                                                                                  "Ascend615"):
@@ -1164,6 +1165,7 @@ def cce_nms(input_data, temp_proposal_out, proposal_box, proposal_actual_num,
                     with tik_instance.new_stmt_scope():
                         if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
                                                                                  "Hi3796CV300CS",
+                                                                                 "SD3403"
                                                                                  "Ascend610",
                                                                                  "Ascend710",
                                                                                  "Ascend615"):

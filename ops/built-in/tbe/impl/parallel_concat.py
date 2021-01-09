@@ -17,10 +17,9 @@ parallel_concat
 """
 # pylint: disable=import-error
 import functools
-
+from te import tik
 import te.platform as tbe_platform
 from te.utils import para_check
-from te import tik
 from te.utils.error_manager import error_manager_vector
 from impl import common_util
 from impl.util.util_select_op_base import SplitInput

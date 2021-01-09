@@ -30,7 +30,7 @@ def check_input_format(input_format):
     """
     if input_format not in ["YUV420SP_U8", "RGB888_U8", "XRGB8888_U8", "ARGB8888_U8", "YUYV_U8",
                             "YUV422SP_U8", "AYUV444_U8", "YUV400_U8"]:
-        cause_desc = "Hi3796CV300CS only support YUV420SP_U8, RGB888_U8, XRGB8888_U8, XRGB8888_U8, " \
+        cause_desc = "Hi3796CV300CS and SD3403 only support YUV420SP_U8, RGB888_U8, XRGB8888_U8, XRGB8888_U8, " \
                      "YUYV_U8, YUV422SP_U8, AYUV444_U8, YUV400_U8, current input format is %s" % input_format
         aipp_comm.raise_runtime_error(cause_desc)
 
@@ -145,7 +145,7 @@ def set_spr0_spr1(ib, x_buf, x_dic, input_format, box_index_reg):
             x_buf.access_ptr('r', offset=box_index_reg[0]*(2*src_h*src_w)))
 
     cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
-    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
         if input_format in ["YUV420SP_U8", "YUYV_U8", "YUV422SP_U8", "AYUV444_U8"]:
             spr1 = tvm.const(1 << 63, dtype="uint64")
 
@@ -628,8 +628,8 @@ def target_crop_and_resize(x_dic, boxes_dic, box_index_dic, y_dic,
     """
 
     cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
-    if cur_cce_product not in ["Hi3796CV300CS"]:
-        cause_desc = "TargetCropAndResize only support Hi3796CV300CS"
+    if cur_cce_product not in ["Hi3796CV300CS", "SD3403"]:
+        cause_desc = "TargetCropAndResize only support Hi3796CV300CS and SD3403"
         aipp_comm.raise_runtime_error(cause_desc)
 
     x_shape = x_dic.get('shape')

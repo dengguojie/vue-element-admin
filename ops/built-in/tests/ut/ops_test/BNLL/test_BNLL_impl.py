@@ -76,7 +76,7 @@ ut_case.add_precision_case("Ascend910", precision_case1)
 ut_case.add_precision_case("Ascend910", precision_case2)
 ut_case.add_precision_case("Ascend910", precision_case3)
 ut_case.add_precision_case("Ascend910", precision_case4)
-ut_case.add_precision_case("Ascend910", precision_case5)
+ut_case.add_precision_case("Hi3796CV300CS", precision_case5)
 
 
-
+ut_case.run("Ascend910")

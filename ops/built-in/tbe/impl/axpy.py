@@ -87,7 +87,7 @@ def op_select_format(input_x, input_y, output_z, alpha, kernel_name="axpy"):
 
     format_4d_list = ["NCHW", "NHWC", "HWCN"]
     cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
+    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         dtype_list = ["float16", "int32"]
     else:
         dtype_list = ["float16", "float32", "int32"]
@@ -606,3 +606,4 @@ def axpy(x1, x2, y, alpha, kernel_name="axpy"):
               "tensor_list": [data_input_x1, data_input_x2, res]}
 
     te.lang.cce.cce_build_code(schedule, config)
+

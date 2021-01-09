@@ -143,7 +143,7 @@ class MapIndexProcess:
             # sub_value trans to FP16
             sub_fp16 = tik_instance.Tensor("float16", [max], name="sub_fp16", scope=tik.scope_ubuf)
             map_index_vec_dup(tik_instance, 128, sub_fp16, 1, max)
-            if tik_name in ["Hi3796CV300CS"]:
+            if tik_name in ["Hi3796CV300CS", "SD3403"]:
                 sub_int16 = tik_instance.Tensor("int16", [max], name="sub_int16", scope=tik.scope_ubuf)
                 tik_instance.vcbd(64, sub_int16, sub_value, max // 64, 1, 1, 4, 8)
                 tik_instance.vconv(128, "", sub_fp16, sub_int16, max // 128, 1, 1, 8, 8)

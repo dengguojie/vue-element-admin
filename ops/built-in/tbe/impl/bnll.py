@@ -76,7 +76,7 @@ def _bnll_computer(input_x, product):
     """
     dtype = input_x.dtype
 
-    if dtype == "float16" and product not in ("Hi3796CV300ES", "Hi3796CV300CS"):
+    if dtype == "float16" and product not in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         input_x = tbe.cast_to(input_x, "float32")
         d_dtype = "float32"
     else:
@@ -84,7 +84,7 @@ def _bnll_computer(input_x, product):
 
     res = _bnll_compute(input_x, d_dtype)
 
-    if dtype == "float16" and product not in ("Hi3796CV300ES", "Hi3796CV300CS"):
+    if dtype == "float16" and product not in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         res = tbe.cast_to(res, "float16")
 
     return res
@@ -117,7 +117,7 @@ def bnll(input_x, output_y, kernel_name="bnll"):
     check_list = ("float16", "float32")
     para_check.check_dtype(input_dtype, check_list, param_name="x")
     product = tbe_platform.get_soc_spec("SOC_VERSION")
-    if product in ["Ascend310", "Hi3796CV300ES", "Hi3796CV300CS"] and \
+    if product in ["Ascend310", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"] and \
         input_dtype == "float32":
         error_info = {'errCode': 'E80008', 'param_name': 'input_x', 'op_name': 'bnll', 'expect_value': "float16",
                       'real_value': input_dtype}

@@ -17,8 +17,8 @@ yolo_v3_cls_prob
 """
 # pylint: disable=ungrouped-imports,import-error,too-many-branches
 import te.platform as tbe_platform
-from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from te.utils import para_check
 from impl import common_util
 from impl import constant_util as constant
 from impl import yolo_v3_correct_region_box
@@ -798,7 +798,7 @@ def check_param(input_dict):
     max_box_number_per_batch = input_dict.get("max_box_number_per_batch")
     dtype = input_dict.get("box1_info").get("dtype")
     if tbe_platform.get_soc_spec("SOC_VERSION") in (
-            "Hi3796CV300ES", "Hi3796CV300CS") \
+            "Hi3796CV300ES", "Hi3796CV300CS", "SD3403") \
             or dtype == constant.DATA_TYPE_FP32:
         if pre_nms_topn > PRE_NMS_TOPN // 2:
             check_param_range("pre_nms_topn", 1, PRE_NMS_TOPN // 2 - 1, pre_nms_topn)

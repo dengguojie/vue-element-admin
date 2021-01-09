@@ -107,7 +107,7 @@ def _check_yolo_param(check_dic_dic, param_dic, kernel_name_check):
         para_check.check_dtype(dtype.lower(), ["float16"], param_name="output1")
     elif project_name in ("Ascend910",):
         para_check.check_dtype(dtype.lower(), ["float16"], param_name="output1")
-    elif project_name in ("Hi3796CV300ES", "Hi3796CV300CS"):
+    elif project_name in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         para_check.check_dtype(dtype.lower(), ["float16"], param_name="output1")
     elif project_name in ("Ascend610", "Ascend710"):
         para_check.check_dtype(dtype.lower(), ["float16", "float32"], param_name="output1")

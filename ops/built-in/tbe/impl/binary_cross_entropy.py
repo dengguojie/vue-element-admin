@@ -20,8 +20,8 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
-from te.utils.error_manager import error_manager_vector
 from impl.util import util_select_op_base
+from te.utils.error_manager import error_manager_vector
 
 
 # eps value
@@ -80,7 +80,7 @@ def op_select_format(x, y, weight, output,
         is_support_5hd = True
 
     cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
+    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         dtype_base = ["float16"]
     else:
         dtype_base = ["float16", "float"]
@@ -301,3 +301,4 @@ def binary_cross_entropy(x, y, weight, output,
                                   data_weight, res]}
 
     tbe.cce_build_code(schedule, config)
+

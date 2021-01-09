@@ -18,9 +18,8 @@ arg_max_with_kd
 # pylint: disable=too-many-lines,import-error
 import te.platform as tbe_platform
 from te import tik
-from te.utils import para_check
 from te.utils import shape_util
-
+from te.utils import para_check
 from impl.util import util_select_op_base
 
 # define a scalar for fp16 minimal
@@ -188,7 +187,7 @@ def op_select_format(x, indices, values, axis=AXIS_DEFAULT, out_max_val=False, t
             len(ori_shape) == 4 and axis != AXIS_DEFAULT:
         # NC1HWC0+ND
         if tbe_platform.get_soc_spec("SOC_VERSION") not in \
-                ("Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
+                ("Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             # fp16/fp32
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                    datatype="float16,float,float16,float",
@@ -223,7 +222,7 @@ def op_select_format(x, indices, values, axis=AXIS_DEFAULT, out_max_val=False, t
     else:
         # ND
         if tbe_platform.get_soc_spec("SOC_VERSION") not in \
-                ("Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
+                ("Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             # fp16/fp32
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                    datatype="float16,float",
@@ -470,7 +469,7 @@ class ArgMax():
 
         self.product_ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 
-        if self.version in ("Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS") and \
+        if self.version in ("Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403") and \
                 self.dtype_x == "float32":
             raise RuntimeError("Only support float16 in mini/cloud/hisi-es/hisi-cs")
 

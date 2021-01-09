@@ -76,7 +76,8 @@ def _is_support_v200_instruction():
     if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Ascend710",
                                                              "Ascend610",
                                                              "Ascend615",
-                                                             "Hi3796CV300CS"):
+                                                             "Hi3796CV300CS",
+                                                             "SD3403"):
         return True
     return False
 

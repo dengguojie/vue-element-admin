@@ -20,9 +20,9 @@ aipp
 import json
 
 import te.platform as tbe_platform
+from te import tvm
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
-from te import tvm
 
 from impl import aipp_comm
 from impl import aipp_resize_padding
@@ -102,7 +102,7 @@ def aipp_compute(input_data, input_dync_param, output_data,
             aipp_map["spr_1"] = tvm.const(1 << 63, dtype="uint64")
         else:
             aipp_map["spr_1"] = tvm.const(0 << 63, dtype="uint64")
-            if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+            if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                 if aipp_config.get('input_format') in ["YUV420SP_U8", "YUYV_U8", "YUV422SP_U8", "AYUV444_U8"]:
                     aipp_map["spr_1"] = tvm.const(1 << 63, dtype="uint64")
 
@@ -236,9 +236,9 @@ def aipp_compute_single(input_tensor, input_shape, input_format, output_data, ai
         cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
 
         if cur_cce_product not in ["Ascend310", "Ascend910", "Ascend610", "Ascend710",
-                                   "Ascend615", "Hi3796CV300ES", "Hi3796CV300CS"]:
+                                   "Ascend615", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
             cause_desc = "Only support is Ascend310,Ascend610,Ascend710,Ascend615," \
-                        "Hi3796CV300ES,Hi3796CV300CS. " \
+                        "Hi3796CV300ES,Hi3796CV300CS, SD3403." \
                         "cur_cce_product is %s" % cur_cce_product
             aipp_comm.raise_runtime_error(cause_desc)
 
@@ -339,7 +339,7 @@ def aipp_compute_single(input_tensor, input_shape, input_format, output_data, ai
                             (aipp_config.get('csc_switch') == 1):
                         spr1 = tvm.const(1 << 63, dtype="uint64")
                     else:
-                        if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+                        if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                             if aipp_config.get('input_format') in \
                                     ["YUV420SP_U8", "YUYV_U8",
                                      "YUV422SP_U8", "AYUV444_U8"]:
@@ -384,7 +384,7 @@ def aipp_compute_single(input_tensor, input_shape, input_format, output_data, ai
                     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_0", spr0))
                     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_1", spr1))
 
-                    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+                    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                         spr13 = 0
                         spr15 = 0
                         spr16 = 0
@@ -400,7 +400,7 @@ def aipp_compute_single(input_tensor, input_shape, input_format, output_data, ai
                                 aipp_comm.new_alloc(ib, dtype,
                                                     l1_image_buf_max * c0)
 
-                            if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+                            if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                                 spr12 = 0
                                 spr12 = \
                                     ((load_image_h - 1)) | \
@@ -525,7 +525,7 @@ def aipp_compute_single(input_tensor, input_shape, input_format, output_data, ai
                                     # ib.scope_attr(output_ub_buf.data,
                                     # "double_buffer_scope", 1)
 
-                                    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+                                    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                                         spr12 = 0
                                         spr12 = tbe_platform.get_const((tiling_h - 1) | (tiling_w - 1) << 16)
                                         ib.emit(tvm.call_extern(
@@ -639,7 +639,7 @@ def aipp_compute_single(input_tensor, input_shape, input_format, output_data, ai
                                     # ib.scope_attr(output_ub_buf.data,
                                     # "double_buffer_scope", 1)
 
-                                    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+                                    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                                         spr12 = 0
                                         spr12 = \
                                             ((tiling_h - 1) | (tail_w - 1) << 16)
@@ -738,7 +738,7 @@ def aipp_compute_single(input_tensor, input_shape, input_format, output_data, ai
                                     # ib.scope_attr(output_ub_buf.data,
                                     # "double_buffer_scope", 1)
 
-                                    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+                                    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                                         spr12 = 0
                                         spr12 = \
                                             ((tail_h - 1) | (tiling_w - 1) << 16)
@@ -879,12 +879,12 @@ def aipp(input_data, input_dync_param, output_data, aipp_config_json, kernel_nam
     if aipp_mode not in ['static', 'dynamic']:
         error_manager_vector.raise_err_input_value_invalid('aipp', 'aipp_mode', "static, dynamic", aipp_mode)
 
+    input_format = input_data.get('format')
     input_shape = input_data.get('shape')
     input_dtype = input_data.get('dtype')
-    input_format = input_data.get('format')
-    output_dtype = output_data.get('dtype')
-    output_shape = output_data.get('shape')
     output_format = output_data.get('format')
+    output_shape = output_data.get('shape')
+    output_dtype = output_data.get('dtype')
 
     para_check.check_shape(input_shape, param_name="input_data")
 
@@ -897,9 +897,9 @@ def aipp(input_data, input_dync_param, output_data, aipp_config_json, kernel_nam
     cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
 
     if output_format == "NC1HWC0_C04":
-        if cur_cce_product not in ["Ascend610", "Ascend710", "Ascend615", "Hi3796CV300CS"]:
+        if cur_cce_product not in ["Ascend610", "Ascend710", "Ascend615", "Hi3796CV300CS", "SD3403"]:
             cause_desc = "output_format is NC1HWC0_C04 only support Ascend610, Ascend710, " \
-                         "Ascend615, Hi3796CV300CS!"
+                         "Ascend615, Hi3796CV300CS, SD3403!"
             aipp_comm.raise_runtime_error(cause_desc)
         if output_shape[4] != 4:
             cause_dec = "when output_format is NC1HWC0_C04, c0[%d] must be 4" % \
@@ -918,10 +918,10 @@ def aipp(input_data, input_dync_param, output_data, aipp_config_json, kernel_nam
 
         para_check.check_dtype(input_dync_param_dtype, ["uint8"], param_name="input_dync_param_dtype")
         if cur_cce_product not in ["Ascend310", "Ascend910", "Ascend610", "Ascend710", "Ascend615",
-                                   "Hi3796CV300ES", "Hi3796CV300CS"]:
+                                   "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
             cause_desc = "dynamic aipp only support " \
                          "Ascend310, Ascend610, Ascend710, Ascend615, " \
-                         "Hi3796CV300ES and Hi3796CV300CS"
+                         "Hi3796CV300ES, Hi3796CV300CS and SD3403"
             aipp_comm.raise_runtime_error(cause_desc)
 
         if output_format == "NC1HWC0_C04":

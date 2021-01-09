@@ -20,9 +20,9 @@ prior_box_d
 import math
 
 import te.platform as tbe_platform
+from te import tvm
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
-from te import tvm
 
 
 # size of 5HD format

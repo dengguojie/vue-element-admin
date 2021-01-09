@@ -20,8 +20,8 @@ import functools
 
 from te import tvm
 from te import platform as tbe_platform
-from te.utils import para_check
 from te.utils import shape_util
+from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from impl.util import util_common
 from impl.util import util_select_op_base
@@ -1190,7 +1190,7 @@ def op_select_format(x, indices, y, axis=0, kernel_name="gather_v2_d"):
         ["float", "float16", "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "bool"]
     other_data_type = ["float", "float16", "int16", "int32", "uint16", "uint32"]
     cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
+    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         base_data_type.remove("float")
         other_data_type.remove("float")
 

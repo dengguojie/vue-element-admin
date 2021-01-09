@@ -27,7 +27,4 @@ ut_case.add_case(["Ascend910", "Hi3796CV300ES"],
                                      False, 0.5, [0.1, 0.1, 0.2, 0.2], "prior_fp16_3", "success"))
 
 
-if __name__ == '__main__':
-    #ut_case.run("Ascend910")
-    ut_case.run(["Ascend910","Ascend310","Ascend710","Hi3796CV300ES"])
-    exit(0)
+ut_case.run(["Ascend910", "Ascend310", "Ascend710", "Hi3796CV300ES"])

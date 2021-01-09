@@ -1476,7 +1476,7 @@ class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
         """
         iou_num = PRE_NMS_TOPN
         if tbe_platform.get_soc_spec("SOC_VERSION") in (
-                "Hi3796CV300ES", "Hi3796CV300CS") or \
+                "Hi3796CV300ES", "Hi3796CV300CS", "SD3403") or \
                 self.dtype == constant.DATA_TYPE_FP32:
             iou_num = iou_num // 2
             with self.instance.if_scope(selected_class > iou_num):

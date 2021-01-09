@@ -767,7 +767,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                             "reg_mov",
                                             tvm.call_extern("uint64", "reg", tmp[0]),
                                             p_ub_buf.access_ptr('r', offset=aipp_comm.HEAD_OFFSET_CSC_SWITCH)))
-                    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+                    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                         spr[1] = tvm.const(1 << 63, dtype="uint64") | uv_addr
                     else:
                         spr[1] = (tmp[0] & 0x1) << 63 | uv_addr
@@ -835,7 +835,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                             "reg_mov",
                                             tvm.call_extern("uint64", "reg", tmp[0]),
                                             p_ub_buf.access_ptr('r', offset=aipp_comm.HEAD_OFFSET_CSC_SWITCH)))
-                    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+                    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                         spr[1] = tvm.const(1 << 63, dtype="uint64")
                     else:
                         spr[1] = (tmp[0] & 0x1) << 63
@@ -859,7 +859,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                             "reg_mov",
                                             tvm.call_extern("uint64", "reg", tmp[0]),
                                             p_ub_buf.access_ptr('r', offset=aipp_comm.HEAD_OFFSET_CSC_SWITCH)))
-                    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+                    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                         spr[1] = tvm.const(1 << 63, dtype="uint64") | uv_addr
                     else:
                         spr[1] = (tmp[0] & 0x1) << 63 | uv_addr
@@ -879,7 +879,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                             "reg_mov",
                                             tvm.call_extern("uint64", "reg", tmp[0]),
                                             p_ub_buf.access_ptr('r', offset=aipp_comm.HEAD_OFFSET_CSC_SWITCH)))
-                    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+                    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                         spr[1] = tvm.const(1, dtype="uint64") << 63
                     else:
                         spr[1] = (tmp[0] & 0x1) << 63
@@ -900,7 +900,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                 aipp_comm.set_spr_dync_in_batch(ib, dtype, p_ub_buf, spr, tmp)
 
                 resize[0] = tvm.const(0, dtype="uint64")
-                if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+                if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                     scfIncVscl[0] = tvm.const(0, dtype="uint64")
                     scfIncHscl[0] = tvm.const(0, dtype="uint64")
 
@@ -1029,7 +1029,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                             aipp_comm.new_alloc(ib, dtype,
                                                 l1_image_buf_max * C0)
 
-                        if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+                        if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                             spr[15] = tvm.const(0, dtype="uint64")
                             with ib.if_scope(resize[0] == 1):
                                 spr[12] = (resize_output_h[0] - tvm.const(1, dtype="uint64")) | \
@@ -1126,7 +1126,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                             output_offset = n1*C1*H*W*C0 + \
                                             C1*(h1*tiling_h)*output_w*C0
 
-                            if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+                            if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                                 with ib.if_scope(resize[0] == 1):
                                     spr[12] = tvm.const(tiling_h - 1, dtype="uint64") |\
                                               (resize_output_w[0] - tvm.const(1, dtype="uint64")) << 16
@@ -1229,9 +1229,9 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                      (padding_info[3] & 0xff) << 45
                             output_h = tail_h[0]
                             output_offset = \
-                                n1*C1*H*W*C0 + C1*(h_loop[0]*tiling_h)*output_w*C0
+                                n1 * C1 * H * W * C0 + C1 * (h_loop[0] * tiling_h) * output_w * C0
 
-                            if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+                            if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                                 with ib.if_scope(resize[0] == 1):
                                     spr[12] = (tail_h[0] - tvm.const(1, dtype="uint64")) | \
                                               (resize_output_w[0] - tvm.const(1, dtype="uint64")) << 16

@@ -394,7 +394,7 @@ def set_spr_dync(ib, param_buf, dtype, cur_cce_product):
                             p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_INPUT_FORMAT)))
 
     input_format_tmp[0] = tmp[0]
-    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
         # the value of input_format:YUV420SP_U8
         with ib.if_scope(input_format_tmp[0] == 1):
             _set_spr2_spr4_lhisi_dync_by_yuv(ib, dtype, spr, p_ub_buf, tmp)
@@ -668,7 +668,7 @@ def set_spr2_spr9(ib, aipp_config, dtype, cur_cce_product, output_format="NC1HWC
     :return:
     """
 
-    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
         spr2 = 0
         if aipp_config.get('input_format') in \
                 ["YUV420SP_U8", "YUYV_U8", "YUV422SP_U8",
@@ -972,7 +972,7 @@ def get_spr2_spr9(aipp_config, dtype, cur_cce_product, output_format,
     :return:
     """
 
-    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
         spr2 = 0
         if aipp_config.get('input_format') in \
                 ["YUV420SP_U8", "YUYV_U8", "YUV422SP_U8",
@@ -1530,7 +1530,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                           aipp_config.get('input_format'))
             raise_runtime_error(cause_desc)
 
-        if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+        if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
             if aipp_config.get('input_format') in \
                     ["YUV420SP_U8", "YUV400_U8", "YUV422SP_U8", "RAW10",
                      "RAW12", "RAW16", "uint16"]:
@@ -1638,9 +1638,9 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                     raise_runtime_error(cause_desc)
 
         if ('resize' in aipp_config and aipp_config.get('resize') == 1):
-            if cur_cce_product not in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+            if cur_cce_product not in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                 cause_desc = "resize only support " \
-                             "Hi3796CV300ES and Hi3796CV300CS"
+                             "Hi3796CV300ES, Hi3796CV300CS and SD3403"
                 raise_runtime_error(cause_desc)
 
             if ("resize_input_h") not in aipp_config:
@@ -1749,7 +1749,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                     cause_desc = "after padding, aipp output w[%d] should " \
                                  "be less than or eaqual to 1080" % w
                     raise_runtime_error(cause_desc)
-            if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+            if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                 if w > 4096:
                     cause_desc = "after padding, aipp output w[%d] should " \
                                  "be less than or eaqual to 4096" % w
@@ -1902,12 +1902,12 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                          "current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 
-    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
         if aipp_config.get('input_format') not in \
                 ["YUV420SP_U8", "RGB888_U8", "XRGB8888_U8", "ARGB8888_U8",
                  "YUYV_U8", "YUV422SP_U8", "AYUV444_U8", "YUV400_U8", "RAW10",
                  "RAW12", "RAW16", "uint16"]:
-            cause_desc = "Hi3796CV300ES and Hi3796CV300CS only support " \
+            cause_desc = "Hi3796CV300ES, Hi3796CV300CS and SD3403 only support " \
                          "YUV420SP_U8, RGB888_U8, XRGB8888_U8, XRGB8888_U8, " \
                          "YUYV_U8, YUV422SP_U8, AYUV444_U8, YUV400_U8, " \
                          "RAW10, RAW12, RAW16, current input format is %s" % \
@@ -1933,7 +1933,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                          (w, aipp_config.get('src_image_size_w'))
             raise_runtime_error(cause_desc)
 
-        if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+        if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
             if aipp_config.get('input_format') in \
                 ["YUV420SP_U8", "YUV400_U8", "YUV422SP_U8", "RAW10",
                  "RAW12", "RAW16", "uint16"]:
@@ -2108,7 +2108,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                               0, 255)
 
     if 'raw_rgbir_to_f16_n' in aipp_config:
-        if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS"]:
+        if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
             check_param_range('raw_rgbir_to_f16_n',
                               aipp_config.get('raw_rgbir_to_f16_n'), 0, 15)
         elif cur_cce_product in ["Ascend615"]:

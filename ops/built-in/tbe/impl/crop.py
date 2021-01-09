@@ -860,7 +860,7 @@ def op_select_format(x, size, y, axis=2, offsets=(0), kernel_name="crop"):
 
     dtype_out = dtype_base
     cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
-    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
+    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         dtype_out = dtype_lhisi
 
     if axis < 0:

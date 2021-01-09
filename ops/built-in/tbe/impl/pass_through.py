@@ -18,7 +18,6 @@ pass_through
 # pylint: disable=too-many-arguments,unused-argument
 import te.platform as tbe_platform
 from te.utils import para_check
-
 from impl import pass_through_forward
 from impl import pass_through_backward
 from impl.util import util_select_op_base
@@ -48,7 +47,7 @@ def op_select_format(in_dic, filter_dic, out_dic,
     """
     product_version = tbe_platform.get_soc_spec("SOC_VERSION")
     if len(filter_dic['shape']) != 0:
-        if product_version in ("Hi3796CV300ES", "Hi3796CV300CS"):
+        if product_version in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             dtype0 = "float16, int8, uint8, int16, uint16, int32, uint32, int64, uint64"
             dtype1 = "float16, float16, float16, float16, float16, float16, float16, float16, float16"
             dformat0 = "NC1HWC0, NHWC, NHWC, NHWC, NHWC, NHWC, NHWC, NHWC, NHWC"
@@ -61,7 +60,7 @@ def op_select_format(in_dic, filter_dic, out_dic,
             dformat1 = "FRACTAL_Z, FRACTAL_Z, FRACTAL_Z, FRACTAL_Z, FRACTAL_Z, \
                         FRACTAL_Z, FRACTAL_Z, FRACTAL_Z, FRACTAL_Z, FRACTAL_Z"
     else:
-        if product_version in ("Hi3796CV300ES", "Hi3796CV300CS"):
+        if product_version in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             dtype0 = "float16, int8, uint8, int16, uint16, int32, uint32, int64, uint64"
             dtype1 = "float16, float16, float16, float16, float16, float16, float16, float16, float16"
             dformat0 = "NHWC, NHWC, NHWC, NHWC, NHWC, NHWC, NHWC, NHWC, NHWC"

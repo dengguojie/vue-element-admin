@@ -14,10 +14,9 @@ http://www.apache.org/licenses/LICENSE-2.0
 prior_box_d_v2
 """
 
-from te import platform as tbe_platform
-from topi.cce import util
-from te import tik
 import math
+from te import tik
+from te import platform as tbe_platform
 from te.utils import para_check
 
 

@@ -180,7 +180,7 @@ class DetectionOutput(ClsProbComputer):
                                              scope=cce_params.scope_gm)
 
         if cce_conf.get_soc_spec("SOC_VERSION") not in (
-                "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS") \
+                "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403") \
                 and self.obj_data.size // (8 * self.dsize) > self.max_ub_num:
             each_loop = (8 * self.dsize)
             shape = (self.obj_data.size // each_loop +
@@ -266,7 +266,7 @@ class DetectionOutput(ClsProbComputer):
         """
         index_ub = None
         if cce_conf.get_soc_spec("SOC_VERSION") in (
-                "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
+                "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             index_ub = self.instance.Tensor("int32", (PRE_NMS_TOPN,),
                                             name="index_ub",
                                             scope=cce_params.scope_ubuf)
@@ -303,7 +303,7 @@ class DetectionOutput(ClsProbComputer):
                                             scope=cce_params.scope_ubuf)
         mask = None
         if cce_conf.get_soc_spec("SOC_VERSION") not in (
-                "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
+                "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             dtype = "uint16"
             if self.dtype == constant.DATA_TYPE_FP32:
                 dtype = "uint32"
@@ -327,7 +327,7 @@ class DetectionOutput(ClsProbComputer):
                                            name="xyhw_ub",
                                            scope=cce_params.scope_ubuf)
             if cce_conf.get_soc_spec("SOC_VERSION") not in (
-                    "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
+                    "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 self.filter_obj(mask, xyhw_ub, param)
             loop_cycle, ub_num, last_ub_num = self.get_loop_param(
                 param["index_offset"])
@@ -336,7 +336,7 @@ class DetectionOutput(ClsProbComputer):
             param["last_ub_num"] = last_ub_num
             param["image_ub"] = image_ub
             if cce_conf.get_soc_spec("SOC_VERSION") in (
-                    "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
+                    "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 self.get_xyhw_by_index(xyhw_ub, param)
             x1y1x2y2_ub = self.instance.Tensor(self.dtype, (4, PRE_NMS_TOPN),
                                                name="x1y1x2y2_ub",
@@ -345,7 +345,7 @@ class DetectionOutput(ClsProbComputer):
             with self.instance.if_scope(param["count"] > 0):
                 self.get_x1y1x2y2(xyhw_ub, x1y1x2y2_ub, param)
                 if cce_conf.get_soc_spec("SOC_VERSION") in (
-                        "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
+                        "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                     self.concatx1y1x2y2(x1y1x2y2_ub, proposals_ub, param)
 
             self.process_each_class(proposals_ub, mask, param)
@@ -965,7 +965,7 @@ class DetectionOutput(ClsProbComputer):
                     self.set_class_nms(param)
 
             if cce_conf.get_soc_spec("SOC_VERSION") in (
-                    "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
+                    "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 self.instance.vconcat(param["proposals_ub"],
                                       param["classes_ub_nms"],
                                       PRE_NMS_TOPN // 16, 4)
@@ -1119,7 +1119,7 @@ class DetectionOutput(ClsProbComputer):
         """
         repeats = get_vector_repeat_times(self.instance, param["obj_total"])
         if cce_conf.get_soc_spec("SOC_VERSION") in (
-                "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
+                "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             loop_start = self.instance.Scalar("int32")
             loop_start.set_as(param["count_offset"])
             with self.instance.for_range(loop_start, param["count"]) as index:
@@ -1233,7 +1233,7 @@ class DetectionOutput(ClsProbComputer):
                               PRE_NMS_TOPN * 8 * self.dsize // 256, 8)
         with self.instance.new_stmt_scope():
             if cce_conf.get_soc_spec("SOC_VERSION") in (
-                    "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS"):
+                    "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 self.class_filter(selected_tmp, proposals_ub, selected_class, param)
             else:
                 self.class_filter_v200(selected_tmp, selected_class, param)
@@ -1438,7 +1438,7 @@ class DetectionOutput(ClsProbComputer):
         """
         iou_num = PRE_NMS_TOPN
         if cce_conf.get_soc_spec("SOC_VERSION") in (
-                "Hi3796CV300ES", "Hi3796CV300CS") or \
+                "Hi3796CV300ES", "Hi3796CV300CS", "SD3403") or \
                 self.dtype == constant.DATA_TYPE_FP32:
             iou_num = iou_num // 2
             with self.instance.if_scope(selected_class > iou_num):

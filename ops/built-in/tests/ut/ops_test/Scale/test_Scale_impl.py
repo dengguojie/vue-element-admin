@@ -87,3 +87,5 @@ ut_case.add_precision_case("Ascend910", precision_case1)
 ut_case.add_precision_case("Ascend910", precision_case2)
 
 
+
+ut_case.run("Ascend910")

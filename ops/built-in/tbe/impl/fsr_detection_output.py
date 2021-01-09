@@ -18,9 +18,8 @@ fsr_detection_output
 import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
-
-from impl import nms
 from impl import topk
+from impl import nms
 from impl import constant_util as constant
 from impl.util import util_select_op_base
 
@@ -2092,7 +2091,7 @@ class FsrProcess:
                                DATA_EIGHT),
             name="mem_swap", scope=tik.scope_gm, is_workspace=True)
 
-        if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS"):
+        if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             self.pre_nms_topn = 3000
         else:
             if self.input_dtype == "float32":

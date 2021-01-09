@@ -16,9 +16,10 @@
 upsample
 """
 import te.platform as tbe_platform
+from te import tvm
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
-from te import tvm
+
 
 # size of 5HD format
 DIM_5HD = 5
@@ -47,7 +48,7 @@ def _check_shape_dtype_format(input_shape, input_dtype, input_format, stride_h, 
 
     para_check.check_shape([n, c1, h * stride_h, w * stride_w, c0])
     product = tbe_platform.get_soc_spec("SOC_VERSION")
-    product_list = ["Hi3796CV300ES", "Hi3796CV300CS"]
+    product_list = ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]
     if product in product_list:
         check_list = ["float16"]
     else:

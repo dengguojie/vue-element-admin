@@ -183,7 +183,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     ori_input_format = input_x.get("ori_format")
     if length_x_ori == 2:
         if check_axis_is_last(shape_x_ori, axis) and shape_x_ori[0] != 1:
-            if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
+            if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                        datatype="float16,float16,float16",
                                                        format="FRACTAL_NZ,NC1HWC0,ND")
@@ -205,7 +205,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                                                         datatype="float16,float16,float16,float,float",
                                                         format="FRACTAL_NZ,NC1HWC0,ND,ND,NC1HWC0")
         else:
-            if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
+            if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                        datatype="float16,float16",
                                                        format="NC1HWC0,ND")
@@ -227,7 +227,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                                                         datatype="float16,float16,float,float",
                                                         format="NC1HWC0,ND,ND,NC1HWC0")
     elif length_x_ori > 2 and (shape_x_ori[-1] % 16 != 0 or shape_x_ori[-2] % 16 != 0):
-        if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
+        if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                    datatype="float16,float16,float16",
                                                    format="NC1HWC0,NDC1HWC0,ND")
@@ -278,7 +278,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                                                         datatype="float16,float16,float,float,float16,float",
                                                         format="NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
     else:
-        if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
+        if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                    datatype="float16,float16,float16,float16",
                                                    format="FRACTAL_NZ,NC1HWC0,ND,NDC1HWC0")
@@ -769,7 +769,7 @@ def check_isusefp32(shape, dtype):
         use_fp32 = True
         return use_fp32
     tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
+    if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         use_fp32 = False
         return use_fp32
     if shape[1] * shape[4] * 4 > UB_SIZE_LIMIT:
@@ -787,7 +787,7 @@ def check_nz_isusefp32(shape, dtype):
         use_fp32 = True
         return use_fp32
     tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
+    if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         use_fp32 = False
         return use_fp32
     if shape[0] * shape[3] * 4 > UB_SIZE_LIMIT:

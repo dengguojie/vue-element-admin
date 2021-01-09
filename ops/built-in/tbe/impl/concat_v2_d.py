@@ -137,7 +137,7 @@ def op_select_format(input_values,
         ["float", "float16", "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "bool"]
     other_data_type = ["float", "float16", "int16", "int32", "uint16", "uint32"]
     cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
+    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         base_data_type.remove("float")
         other_data_type.remove("float")
 

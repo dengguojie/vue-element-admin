@@ -1108,7 +1108,7 @@ def basic_lstm_cell_v2(x=None, cont=None, w_xc_x_static=None,
     None
     """
     product_version = tbe_platform.get_soc_spec("SOC_VERSION")
-    if product_version in ("Hi3796CV300ES"):
+    if product_version in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         is_hisi_es = True
         is_mini = False
     else:
