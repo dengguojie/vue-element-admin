@@ -70,14 +70,14 @@ def _shape_check(shape_x1, shape_x2, shape_tgt):
 
 def _dtype_check(input_dtype_x1, input_dtype_x2, target_dtype, reduction):
     # cast_to not support "int16", "int64", ISA not support float64(double)
-    x_check_list = ["int8", "uint8", "int32", "float16", "float32"]
+    x_check_list = ["int32", "float16", "float32"]
     if not input_dtype_x1 in x_check_list:
         raise RuntimeError("x1 dtype %s not support" % input_dtype_x1)
     if not input_dtype_x2 in x_check_list:
         raise RuntimeError("x2 dtype %s not support" % input_dtype_x2)
 
     # cast_to not support "int16", "int64", "uint8" can't indicate -1
-    tgt_check_list = ["int8", "int32", "float16", "float32"]
+    tgt_check_list = ["int32", "float16", "float32"]
     if not target_dtype in tgt_check_list:
         raise RuntimeError("target dtype %s not support" % target_dtype)
 
