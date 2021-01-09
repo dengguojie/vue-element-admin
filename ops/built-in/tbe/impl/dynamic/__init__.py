@@ -78,6 +78,8 @@ from .batch_matmul import batch_matmul
 from .batch_matmul_v2 import batch_matmul_v2
 from .sub import sub
 from .transpose_d import transpose_d
+from .trans_data import trans_data
+from .trans_data_rnn import trans_data_rnn
 from .unpack import unpack
 from .top_k_d import top_k_d
 from .top_k_v2_d import top_k_v2_d

@@ -55,6 +55,8 @@ set(_optiling_files
   tiling_dispatch.cc
   top_k.cc
   transpose_d.cc
+  trans_data.cc
+  trans_data_negative_target_tc.cc
   unpack.cc
   unsorted_segment_sum.cc
   gemm.cc
