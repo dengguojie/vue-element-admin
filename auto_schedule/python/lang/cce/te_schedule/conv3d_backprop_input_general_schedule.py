@@ -545,7 +545,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         c_ub_size = cub_tiling_nc_factor * cub_tiling_mc_factor * c0_size**2 * cub_pbuffer * 2
 
         ub_size = tbe_platform.get_soc_spec("UB_SIZE")
-        if (dedy_ub_size + dy_filing_size + c_ub_size) > ub_size:
+        if (dedy_ub_size * (fused_num + 1) + dy_filing_size + c_ub_size) > ub_size:
             return True
 
         return False
@@ -554,7 +554,7 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         if _check_exceed_l1_buffer(howo_size):
             return True
 
-        if stride_h > 1 or stride_w > 1:
+        if stride_h > 1 or stride_w > 1 or dsl_flag:
             if _check_exceed_ub_buffer():
                 return True
 

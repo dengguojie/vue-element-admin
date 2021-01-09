@@ -25,7 +25,9 @@ from te.utils.error_manager import error_manager_vector
 from te.utils.error_manager import error_manager_util
 from impl.conv3d_backprop_input_d import conv3d_backprop_input_fusion_compute
 
+_BLOCK_SIZE = 16
 _C0_SIZE = tbe_platform.C0_SIZE
+_UB_FUSED_OP_NUM = 2
 _FMAP_TARGET_FORMAT = "NDHWC"
 _GRADS_TARGET_FORMAT = "NDHWC"
 _GRADS_FORMAT_WHITE_LIST = ["NCDHW", "NDHWC"]
@@ -73,6 +75,20 @@ def _check_window_rule(ksize, strides, pads):
                                                                  6,
                                                                  len(pads))
 
+def _check_ub_limitation(input_shape, strides):
+    w_value = input_shape[3] * strides[1]
+
+    aub_size_min = input_shape[3] * _BLOCK_SIZE * 2
+    aub_filling_size_min = w_value * _BLOCK_SIZE * 2
+    cub_size_min = _BLOCK_SIZE * _BLOCK_SIZE * 2
+    ub_size = tbe_platform.get_soc_spec("UB_SIZE")
+
+    if (aub_size_min * _UB_FUSED_OP_NUM + aub_filling_size_min + cub_size_min) > ub_size:
+        dict_args = {
+            'errCode': 'E60119'
+        }
+        raise RuntimeError(dict_args,
+                            error_manager_util.get_error_message(dict_args))
 
 #pylint: disable=too-many-arguments,unused-argument,invalid-name
 def _avg_pool3d_grad_check_rule(input_shape, input_dtype, ksize, strides, pads, kernel_name):
@@ -195,7 +211,7 @@ def avg_pool3d_grad_d(grads,
 
     if strides_formated is None:
         dict_args = {
-            'errCode': 'E60008',
+            'errCode': 'E62002',
             'param_name': 'data_format',
             'expected_format_list': ",".join(_DATA_FORMAT_WHITE_LIST),
             'format': data_format
@@ -208,7 +224,7 @@ def avg_pool3d_grad_d(grads,
                                                              _DATA_FORMAT_WHITE_LIST)
     if orig_input_shape_formated is None:
         dict_args = {
-            'errCode': 'E60008',
+            'errCode': 'E62002',
             'param_name': 'data_format',
             'expected_format_list': ",".join(_DATA_FORMAT_WHITE_LIST),
             'format': data_format
@@ -221,12 +237,14 @@ def avg_pool3d_grad_d(grads,
                                                             _GRADS_FORMAT_WHITE_LIST)
     if grads_ori_shape_formated is None:
         dict_args = {
-            'errCode': 'E60008',
+            'errCode': 'E62002',
             'param_name': 'grads',
             'expected_format_list': ",".join(_GRADS_FORMAT_WHITE_LIST),
             'format': grads_ori_format
         }
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+
+    _check_ub_limitation(grads_ori_shape_formated, strides)
 
     if ceil_mode:
         pads = _correct_pads(grads_ori_shape_formated, orig_input_shape_formated,
