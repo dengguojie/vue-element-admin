@@ -426,6 +426,16 @@ class CaseDesign:
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_INVALID_DATA_ERROR)
 
+    @staticmethod
+    def _append_input_desc_to_case(json_obj, index, input_case_list, case):
+        for input_index, input_case in enumerate(input_case_list):
+            if json_obj[INPUT_DESC][input_index].get('name'):
+                input_name = \
+                    json_obj[INPUT_DESC][input_index].get('name')[0]
+                input_case[index].update({'name': input_name})
+
+            case[INPUT_DESC].append(input_case[index])
+
     def generate_cases(self):
         """
         Generate test case by json file
@@ -497,8 +507,8 @@ class CaseDesign:
                                 'case_name': prefix + '%03d' % case_idx}
                     if len(attr_list) > 0:
                         case[ATTR] = attr_list
-                    for input_case in input_case_list:
-                        case[INPUT_DESC].append(input_case[index])
+                    self._append_input_desc_to_case(json_obj, index,
+                                                    input_case_list, case)
                     output_index = index
                     if index >= len(output_case_list[0]):
                         output_index = index % len(output_case_list)

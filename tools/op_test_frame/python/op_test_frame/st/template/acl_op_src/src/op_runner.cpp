@@ -25,17 +25,25 @@ OpRunner::OpRunner(OpTestDesc *opDesc) : opDesc_(opDesc)
 
 OpRunner::~OpRunner()
 {
-    for (size_t i = 0; i < numInputs_; ++i) {
+    for (size_t i = 0; i < inputBuffers_.size(); ++i) {
         (void)aclDestroyDataBuffer(inputBuffers_[i]);
-        (void)aclrtFree(devInputs_[i]);
+    }
+    for (size_t i = 0; i < devInputs_.size(); ++i) {
+        if (devInputs_[i] != nullptr) {
+            (void)aclrtFree(devInputs_[i]);
+        }
         if (g_isDevice) {
-            (void)aclrtFree(hostInputs_[i]);
+            if (hostInputs_[i] != nullptr) {
+                (void)aclrtFree(hostInputs_[i]);
+            }
         } else {
-            (void)aclrtFreeHost(hostInputs_[i]);
+            if (hostInputs_[i] != nullptr) {
+                (void)aclrtFreeHost(hostInputs_[i]);
+            }
         }
     }
 
-    for (size_t i = 0; i < numOutputs_; ++i) {
+    for (size_t i = 0; i < outputBuffers_.size(); ++i) {
         (void)aclDestroyDataBuffer(outputBuffers_[i]);
         (void)aclrtFree(devOutputs_[i]);
         if (g_isDevice) {
@@ -48,35 +56,52 @@ OpRunner::~OpRunner()
 
 bool OpRunner::Init()
 {
+    bool InputInitResult = InputsInit();
+    bool OutputInitResult = OutputsInit();
+    if (InputInitResult && OutputInitResult) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool OpRunner::InputsInit()
+{
     for (size_t i = 0; i < numInputs_; ++i) {
         auto size = GetInputSize(i);
+        // if size is zero, input is an optional
         void *devMem = nullptr;
-        if (aclrtMalloc(&devMem, size, ACL_MEM_MALLOC_NORMAL_ONLY) != ACL_ERROR_NONE) {
-            ERROR_LOG("Malloc device memory for input[%zu] failed", i);
-            return false;
+        if (size != 0) {
+            if (aclrtMalloc(&devMem, size, ACL_MEM_MALLOC_NORMAL_ONLY) != ACL_ERROR_NONE) {
+                ERROR_LOG("Malloc device memory for input[%zu] failed", i);
+                return false;
+            }
+            devInputs_.emplace_back(devMem);
+            void *hostMem = nullptr;
+            if (g_isDevice) {
+                if (aclrtMalloc(&hostMem, size, ACL_MEM_MALLOC_NORMAL_ONLY) != ACL_ERROR_NONE) {
+                    ERROR_LOG("Malloc device memory for input[%zu] failed", i);
+                    return false;
+                }
+            } else {
+                if (aclrtMallocHost(&hostMem, size) != ACL_ERROR_NONE) {
+                    ERROR_LOG("Malloc device memory for input[%zu] failed", i);
+                    return false;
+                }
+            }
+            if (hostMem == nullptr) {
+                ERROR_LOG("Malloc memory for input[%zu] failed", i);
+                return false;
+            }
+            hostInputs_.emplace_back(hostMem);
         }
-        devInputs_.emplace_back(devMem);
         inputBuffers_.emplace_back(aclCreateDataBuffer(devMem, size));
-
-        void *hostMem = nullptr;
-        if (g_isDevice) {
-            if (aclrtMalloc(&hostMem, size, ACL_MEM_MALLOC_NORMAL_ONLY) != ACL_ERROR_NONE) {
-                ERROR_LOG("Malloc device memory for input[%zu] failed", i);
-                return false;
-            }
-        } else {
-            if (aclrtMallocHost(&hostMem, size) != ACL_ERROR_NONE) {
-                ERROR_LOG("Malloc device memory for input[%zu] failed", i);
-                return false;
-            }
-        }
-        if (hostMem == nullptr) {
-            ERROR_LOG("Malloc memory for input[%zu] failed", i);
-            return false;
-        }
-        hostInputs_.emplace_back(hostMem);
     }
+    return true;
+}
 
+bool OpRunner::OutputsInit()
+{
     for (size_t i = 0; i < numOutputs_; ++i) {
         auto size = GetOutputSize(i);
         void *devMem = nullptr;
@@ -105,7 +130,6 @@ bool OpRunner::Init()
         }
         hostOutputs_.emplace_back(hostOutput);
     }
-
     return true;
 }
 
@@ -204,7 +228,7 @@ size_t OpRunner::GetOutputSize(size_t index) const
 
 bool OpRunner::RunOp()
 {
-    for (size_t i = 0; i < numInputs_; ++i) {
+    for (size_t i = 0; i < devInputs_.size(); ++i) {
         auto size = GetInputSize(i);
         aclrtMemcpyKind kind = ACL_MEMCPY_HOST_TO_DEVICE;
         if (g_isDevice) {

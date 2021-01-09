@@ -36,6 +36,16 @@ public:
     bool Init();
 
     /**
+    * @brief InputsInit op runner
+    */
+    bool InputsInit();
+
+    /**
+    * @brief OutputsInit op runner
+    */
+    bool OutputsInit();
+
+    /**
      * @brief Get number of inputs
      * @return number of inputs
      */
@@ -98,8 +108,8 @@ public:
     template<typename T>
     T *GetInputBuffer(size_t index)
     {
-        if (index >= numInputs_) {
-            ERROR_LOG("index out of range. index = %zu, numInputs = %zu", index, numInputs_);
+        if (index >= hostInputs_.size()) {
+            ERROR_LOG("index out of range. index = %zu, numInputs = %zu", index, hostInputs_.size());
             return nullptr;
         }
         return reinterpret_cast<T *>(hostInputs_[index]);

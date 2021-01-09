@@ -58,6 +58,10 @@ bool SetInputData(OpRunner &runner)
 {
     for (size_t i = 0; i < runner.NumInputs(); ++i) {
         size_t fileSize;
+        if (runner.GetOpTestDesc().inputFilePath[i] == "") {
+            INFO_LOG("Input[%zu] is an optional input.", i);
+            continue;
+        }
         std::string filePath = runner.GetOpTestDesc().inputFilePath[i] + ".bin";
         bool result = ReadFile(filePath, fileSize, runner.GetInputBuffer<void>(i), runner.GetInputSize(i));
         if (!result) {

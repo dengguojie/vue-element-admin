@@ -37,6 +37,10 @@ OpTestDesc &OpTestDesc::AddInputTensorDesc(aclDataType dataType,
         ERROR_LOG("dims is nullptr while numDims > 0");
         return *this;
     }
+    if (format == ACL_FORMAT_UNDEFINED) {
+        inputDesc.push_back(aclCreateTensorDesc(ACL_DT_UNDEFINED, 0, nullptr, ACL_FORMAT_UNDEFINED));
+        return *this;
+    }
     inputDesc.push_back(aclCreateTensorDesc(dataType, numDims, dims, format));
     return *this;
 }

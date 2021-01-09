@@ -67,6 +67,7 @@ PYTEST_INI_RELATIVE_PATH = "/src/pytest.ini"
 INPUT_SUFFIX_LIST = ['.ini', '.py']
 FILE_AUTHORITY = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR
 FOLDER_MASK = 0o700
+TYPE_UNDEFINED = "UNDEFINED"
 
 WRITE_FLAGS = os.O_WRONLY | os.O_CREAT
 WRITE_MODES = stat.S_IWUSR | stat.S_IRUSR
@@ -82,7 +83,9 @@ DTYPE_TO_NUMPY_MAP = {
     'uint16': np.uint16,
     'uint32': np.uint32,
     'uint64': np.uint64,
-    'bool': np.bool
+    'bool': np.bool,
+    'UNDEFINED': 'UNDEFINED',
+    'RESERVED': 'RESERVED'
 }
 
 DTYPE_TO_MINDSPORE_MAP = {
@@ -146,7 +149,9 @@ FORMAT_LIST = ['NCHW', 'NHWC', 'ND', 'NC1HWC0', 'FRACTAL_Z', 'NC1C0HWPAD',
                'DECONV_SP_STRIDE8_TRANS', 'NC1KHKWHWC0', 'BN_WEIGHT',
                'FILTER_HWCK', 'HWCN', 'LOOKUP_LOOKUPS', 'LOOKUP_KEYS',
                'LOOKUP_VALUE', 'LOOKUP_OUTPUT', 'LOOKUP_HITS', 'MD', 'NDHWC',
-               'C1HWNCoC0', 'FRACTAL_NZ']
+               'C1HWNCoC0', 'FRACTAL_NZ', 'UNDEFINED', 'RESERVED']
+
+OPTIONAL_TYPE_LIST = ['UNDEFINED', 'RESERVED']
 
 
 def create_attr_value_str(attr_value):

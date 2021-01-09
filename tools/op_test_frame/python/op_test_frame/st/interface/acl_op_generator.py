@@ -34,9 +34,12 @@ def _create_acl_op_json_content(testcase_list):
         if "input_desc" in testcase_struct.keys():
             tmp_dic['input_desc'] = []
             for input_desc_input_dic in testcase_struct['input_desc']:
-                input_desc_dic = {'format': input_desc_input_dic['format'],
-                                  'type': input_desc_input_dic['type'],
-                                  'shape': input_desc_input_dic['shape']}
+                input_desc_dic = {'format': input_desc_input_dic.get('format'),
+                                  'type': input_desc_input_dic.get('type'),
+                                  'shape': input_desc_input_dic.get('shape')}
+                if input_desc_input_dic.get('name'):
+                    input_desc_dic.update(
+                        {'name': input_desc_input_dic.get('name')})
                 tmp_dic['input_desc'].append(input_desc_dic)
 
         # process output desc
@@ -93,9 +96,16 @@ def _create_exact_testcase_content(testcase_struct):
     input_data_type_list = []
     input_format_list = []
     for input_desc_dic in testcase_struct['input_desc']:
-        input_shape_list.append(input_desc_dic['shape'])
-        input_data_type_list.append(input_desc_dic['type'])
-        input_format_list.append(input_desc_dic['format'])
+        if input_desc_dic.get('format') in utils.OPTIONAL_TYPE_LIST or \
+                input_desc_dic.get('type') == utils.TYPE_UNDEFINED:
+            input_desc_dic['shape'] = []
+            input_shape_list.append(input_desc_dic['shape'])
+            input_data_type_list.append("DT_UNDEFINED")
+            input_format_list.append("UNDEFINED")
+        else:
+            input_shape_list.append(input_desc_dic['shape'])
+            input_data_type_list.append(input_desc_dic['type'])
+            input_format_list.append(input_desc_dic['format'])
 
     input_shape_data = utils.format_list_str(input_shape_list)
     input_data_type = utils.map_to_acl_datatype_enum(input_data_type_list)
@@ -103,7 +113,12 @@ def _create_exact_testcase_content(testcase_struct):
 
     input_file_path_list = []
     input_num = 0
-    for _ in testcase_struct['input_desc']:
+    for input_desc_dic in testcase_struct['input_desc']:
+        if input_desc_dic.get('format') in utils.OPTIONAL_TYPE_LIST or \
+                input_desc_dic.get('type') == utils.TYPE_UNDEFINED:
+            input_data_path = ""
+            input_file_path_list.append(input_data_path)
+            continue
         input_data_name = testcase_struct['case_name'] + '_input_' + str(
             input_num)
         input_data_path = os.path.join("test_data", "data", input_data_name)

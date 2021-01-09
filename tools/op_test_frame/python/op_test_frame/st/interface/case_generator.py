@@ -358,6 +358,44 @@ class CaseGenerator:
             return self._generate_base_case_from_model(base_case, True)
         return [base_case]
 
+    def _generate_optional_input_desc(self, value, base_case):
+        input_name = [value.get('name')]
+        input_format = ["UNDEFINED"]
+        input_dtype = ["UNDEFINED"]
+        if self.input_file_path.endswith(".py"):
+            input_desc = {'type': input_dtype,
+                          'shape': [],
+                          'data_distribute': ['uniform'],
+                          'value_range': [[0.1, 1.0]]}
+        else:
+            input_desc = {'format': input_format,
+                          'type': input_dtype,
+                          'shape': [],
+                          'data_distribute': ['uniform'],
+                          'value_range': [[0.1, 1.0]]}
+            input_desc.update({'name': input_name})
+        base_case['input_desc'].append(input_desc)
+
+    def _generate_input_desc(self, value, base_case):
+        input_name = [value.get('name')]
+        input_format = [] if len(value['format']) == 0 else \
+            list(set(value['format'].split(',')))
+        input_dtype = [] if len(value['dtype']) == 0 else \
+            list(set(value['dtype'].split(',')))
+        if self.input_file_path.endswith(".py"):
+            input_desc = {'type': input_dtype,
+                          'shape': [],
+                          'data_distribute': ['uniform'],
+                          'value_range': [[0.1, 1.0]]}
+        else:
+            input_desc = {'format': input_format,
+                          'type': input_dtype,
+                          'shape': [],
+                          'data_distribute': ['uniform'],
+                          'value_range': [[0.1, 1.0]]}
+            input_desc.update({'name': input_name})
+        base_case['input_desc'].append(input_desc)
+
     def _generate_aicore_base_case(self):
         if self.input_file_path.endswith(".py"):
             base_case = {'case_name': 'Test_' + self.op_type.replace('/', '_')
@@ -373,19 +411,10 @@ class CaseGenerator:
 
         for (key, value) in list(self.op_info.items()):
             if key.startswith(INI_INPUT):
-                input_format = [] if len(value['format']) == 0 else \
-                    list(set(value['format'].split(',')))
-                input_dtype = [] if len(value['dtype']) == 0 else \
-                    list(set(value['dtype'].split(',')))
-                if self.input_file_path.endswith(".py"):
-                    input_desc = {'type': input_dtype,
-                                  'shape': [], 'data_distribute': ['uniform'],
-                                  'value_range': [[0.1, 1.0]]}
+                if value.get('paramType') == 'optional':
+                    self._generate_optional_input_desc(value, base_case)
                 else:
-                    input_desc = {'format': input_format, 'type': input_dtype,
-                                  'shape': [], 'data_distribute': ['uniform'],
-                                  'value_range': [[0.1, 1.0]]}
-                base_case['input_desc'].append(input_desc)
+                    self._generate_input_desc(value, base_case)
             elif key.startswith(INI_OUTPUT):
                 output_format = [] if len(value['format']) == 0 else \
                     list(set(value['format'].split(',')))

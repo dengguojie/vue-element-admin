@@ -137,10 +137,12 @@ class DataGenerator:
                 'Start to generate the data for %s.' % case_name)
             for index, input_desc in enumerate(case['input_desc']):
                 range_min, range_max = input_desc['value_range']
+                if input_desc.get('type') in utils.OPTIONAL_TYPE_LIST:
+                    continue
                 if case.get('st_mode') == "ms_python_train":
-                    dtype = utils.DTYPE_TO_MINDSPORE_MAP[input_desc['type']]
+                    dtype = utils.DTYPE_TO_MINDSPORE_MAP[input_desc.get('type')]
                 else:
-                    dtype = utils.DTYPE_TO_NUMPY_MAP[input_desc['type']]
+                    dtype = utils.DTYPE_TO_NUMPY_MAP[input_desc.get('type')]
                 file_path = os.path.join(
                     self.output_path,
                     case_name + '_input_' + str(index) + '.bin')
