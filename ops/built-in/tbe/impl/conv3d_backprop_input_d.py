@@ -235,9 +235,9 @@ def check_supported(filters, # pylint: disable=R0913,R0914
                     data_format="NDHWC",
                     kernel_name="conv3d_backprop_input"):
     """
-    Check support for Conv3D_backprop_input. Detailed information is given below:
-    
-    The D dimension of dilation should = 1.
+    Check support for Conv3DBackpropInputD. Detailed information is given below:
+
+    The H and W dimension of input_sizes should be in range [1, 4096]
     The H and W dimension of dilation should be in range [1, 255]
     The D,H or W dimension of the filter should be in range [1, 255]
     The padding in each dimension should be in range [0, 255]
@@ -246,14 +246,15 @@ def check_supported(filters, # pylint: disable=R0913,R0914
     The filter's H * W * D should < 343
     The stride's H * W should < 256
     The stride's H * W * D should < 343
-
-    The channel dimension of feature map should = the filter's channel dimension * groups
+    The groups should <= the out_backprop's and the filter's channel dimension
+    The out_backprop's channel dimension or filter's channel dimension must be divisible by groups
+    The channel dimension of out_backprop should = the filter's channel dimension * groups
     The out_backprop's channel dimension should = the filter's batch dimensionss
     The filter's batch dimension should = the out_backprop's batch dimension
     The D,H or W dimension of the feature map after padding should > the filter's corresponding dimension after dilation
     The out_backprop's H * stride's H should < 4096
     The out_backprop's W * stride's W should < 4096
-    If the output H dimension is not 1, the output W dimension should > 2
+    If the output H dimension is not 1, the output W dimension should >= 2
 
     """
     ori_shape_filters = filters.get("ori_shape")
@@ -280,9 +281,9 @@ def check_supported(filters, # pylint: disable=R0913,R0914
                          ori_shape_dilations,
                          ori_format_res,
                          ori_shape_res)
-        check_conv3dbp_input_params(shape_filter, shape_out_backprop,
-                                    input_sizes, strides, pads, groups,
-                                    dilations, filter_dtype,
+        check_conv3dbp_input_params(shape_filters, shape_out_backprop,
+                                    shape_res, shape_strides, pads, groups,
+                                    shape_dilations, filters_dtype,
                                     out_backprop_dtype,
                                     res_dtype, kernel_name)
         return True

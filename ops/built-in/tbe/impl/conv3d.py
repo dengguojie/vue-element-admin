@@ -951,19 +951,18 @@ def check_supported(fmap,
     """
     Check support for Conv3D operator. Detailed information is given below:
 
-    The D dimension of dilation should = 1.
     The H and W dimension of dilation should be in range [1, 255]
     The D,H or W dimension of the filter should be in range [1, 255]
     The padding in each dimension should be in range [0, 255]
     The D,H or W dimension of the stride should be in range [1, 63]
 
-    The groups should >= the feature map's and the filter's channel dimension
+    The groups should <= the feature map's and the filter's channel dimension
     Feature map's channel dimension or filter's channel dimension must be divisible by groups
     The channel dimension of the feature map should = filter's channel dimesion * groups
     The D,H or W dimension of the feature map after padding should > the filter's corresponding dimension after dilation
     The padding in each dimension should < the filter's corresponding dimension after dilation
     
-    If the output H dimension is not 1, the output W dimension should > 2
+    If the output H dimension is not 1, the output W dimension should >= 2
     The feature map size in L1 buffer should < the chip's L1 buffer size
     """
     fmp_shape = fmap.get("ori_shape")

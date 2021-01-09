@@ -33,6 +33,17 @@ def _run_api_end_with_d(
             pads, dilations, groups, data_format, offset_x]
 
 
+def test_op_check_supported(test_arg):
+    from impl.conv3d import check_supported
+    fmap = {'ori_shape': (2, 32, 15, 4098, 18), 'shape': (2, 32, 15, 4098, 18),
+        'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    (fmap, weight, bias, offset_w, output, strides,
+            pads, dilations, groups, data_format, _) = _run_api_end_with_d(fmap = fmap)
+    check_supported(fmap, weight, bias, offset_w, output, strides, pads, dilations, groups, data_format)
+
+
+ut_case.add_cust_test_func(test_func=test_op_check_supported)
+
 # test_conv3dbp_succ_d
 case1 = _run_api_end_with_d()
 
@@ -160,6 +171,7 @@ ut_case.add_case(["Ascend910", "Ascend310"],
 
 ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case16, RuntimeError, "case14", True))
+
 
 if __name__ == '__main__':
     ut_case.run()

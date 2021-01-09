@@ -35,6 +35,16 @@ def _run_api_end_with_d(
             pads, dilations, groups, data_format]
 
 
+def test_op_check_supported(test_arg):
+    from impl.conv3d_backprop_input_d import check_supported
+    input_sizes = (1, 16, 120, 176, 16)
+    (filters, out_backprop, y_input, input_sizes, strides,
+                    pads, dilations, groups, data_format) = _run_api_end_with_d(input_sizes=input_sizes)
+    check_supported(filters, out_backprop, y_input, input_sizes, strides,
+                    pads, dilations, groups, data_format)
+
+
+ut_case.add_cust_test_func(test_func=test_op_check_supported)
 # test_conv3dbp_succ_d
 case1 = _run_api_end_with_d()
 

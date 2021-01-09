@@ -1063,8 +1063,8 @@ REG_OP(DeformableConv2D)
  * @li data_format: An optional string from: "NDHWC", "NCDHW".
  * Defaults to "NDHWC". Specify the data format of the input and output data.
  * @li dilations: A list of 5 integers. Specifies the dilation factor for each
- * dimension of "x", now only support [1,1,1,1,1]
- * The N and C dimensions must be 1. Has the same format as "x".
+ * dimension of "x".
+ * The N, C and D dimensions must be 1. Has the same format as "x".
  * @li offset_x: An optional int. Input offset, used for quantized inference.
  * Defaults to 0. Reserved . \n
 
@@ -1110,8 +1110,8 @@ REG_OP(Conv3D)
 
 *@par Required Attributes:
  * @li strides: A list of 5 integers. Specifies the stride of the sliding window
- * for each dimension of "x".
- * The N and C dimensions must be 1. Has the same format as "x".
+ * for each dimension of "out_backprop".
+ * The N and C dimensions must be 1. Has the same format as "out_backprop".
  * @li pads: A list of 6 integers.
  * Supports only padding along the D, H and W dimensions in sequence of head,
  * tail, top, bottom, left and right . \n
@@ -1123,10 +1123,11 @@ REG_OP(Conv3D)
  * @li data_format: An optional string from: "NDHWC", "NCDHW".
  * Defaults to "NDHWC". Specify the data format of the input and output data.
  * @li dilations: A tuple/list of 5 integers, The dilation factor for each
- * dimension of the input, now only support [1,1,1,1,1]
+ * dimension of the input.
+ * The N, C and D dimensions must be 1. Has the same format as "out_backprop".
 
 *@par Outputs:
- * y: A Tensor. Has the same type as filter,and has same format as input_size
+ * y: A Tensor. Has the same type as filter,and has same format as "input_size"
 
 *@par Third-party framework compatibility
  * Compatible with Tensorflow's conv3d_backprop_input
@@ -1154,8 +1155,8 @@ REG_OP(Conv3DBackpropInput)
 
 *@par Required Attributes:
  * @li strides: A list of 5 integers. Specifies the stride of the sliding window
- * for each dimension of "x".
- * The N and C dimensions must be 1. Has the same format as "x".
+ * for each dimension of "out_backprop".
+ * The N and C dimensions must be 1. Has the same format as "out_backprop".
  * @li pads: A list of 6 integers. Supports only padding along the D, H and W
  * dimensions in sequence of head, tail, top, bottom, left and right.
  * @li input_size: A tuple/list of type int32, int64. An integer vector
@@ -1170,9 +1171,10 @@ REG_OP(Conv3DBackpropInput)
  * @li data_format: An optional string from: "NDHWC", "NCDHW".
  * Defaults to "NDHWC". Specify the data format of the input and output data.
  * @li dilations: A tuple/list of 5 integers, The dilation factor for each
- * dimension of input, now only support [1,1,1,1,1]
+ * dimension of input.
+ * The N, C and D dimensions must be 1. Has the same format as "out_backprop".
 *@par Outputs:
- * y: A Tensor. Has the same type and data format as out_backprop.
+ * y: A Tensor. Has the same type and data format as "out_backprop".
 *@par Third-party framework compatibility
  * Compatible with Tensorflow's conv3d_backprop_input
 
@@ -1262,14 +1264,15 @@ REG_OP(LSTM)
 *@par Attributes:
  * Three attributes:
  * @li dilations: A tuple/list of 5 integers, The dilation factor for each
- * dimension of input, now only support [1,1,1,1,1].
+ * dimension of input.
+ * The N, C and D dimensions must be 1. Has the same format as "x".
  * @li groups: Number of blocked connections from input channels to output
  * channels. Reserved.
  * @li data_format: An optional string from: "NDHWC", "NCDHW".
  * Defaults to "NDHWC". Specify the data format of the input and output data.
 
 *@par Outputs:
- * y: A Tensor that has the same type as x
+ * y: A Tensor that has the same type as "x"
  * and the format is NDHWC, NCDHW or DHWCN.
 *@par Third-party framework compatibility
  * Compatible with Tensorflow's conv3d_backprop_filter
@@ -1313,7 +1316,8 @@ REG_OP(Conv3DBackpropFilter)
 *@par Attributes:
  * Three attributes:
  * @li dilations: A tuple/list of 5 integers, The dilation factor for each
- * dimension of input, now only support [1,1,1,1,1].
+ * dimension of input.
+ * The N, C and D dimensions must be 1. Has the same format as "x".
  * @li groups: Number of blocked connections from input channels to output
  * channels. Reserved.
  * @li data_format: An optional string from: "NDHWC", "NCDHW".
@@ -1367,13 +1371,14 @@ REG_OP(Conv3DBackpropFilterD)
  * @li groups: Number of blocked connections from input channels to output
  * channels. Reserved.
  * @li dilations: A tuple/list of 5 integers,
- * The dilation factor for each dimension of input, now only support [1,1,1,1,1]
+ * The dilation factor for each dimension of input.
+ * The N, C and D dimensions must be 1. Has the same format as "x".
  * @li data_format: An optional string from: "NDHWC", "NCDHW".
  * Defaults to "NDHWC". Specify the data format of the input and output data.
  * @li output_padding: The size will be added in the output shape.
  * @li offset_x: Input offset_x value. Reserved.
 *@par Outputs:
- * y: A Tensor. Has the same type and format as x.
+ * y: A Tensor. Has the same type and format as "x".
 */
 REG_OP(Conv3DTranspose)
     .INPUT(input_size, TensorType({DT_INT32, DT_INT64}))
@@ -1414,7 +1419,8 @@ REG_OP(Conv3DTranspose)
 *@par Attributes:
  * Five attributes:
  * @li dilations: A tuple/list of 5 integers, The dilation factor for each
- * dimension of input, now only support [1,1,1,1,1]
+ * dimension of input.
+ * The N, C and D dimensions must be 1. Has the same format as "x".
  * @li groups: Number of blocked connections from input channels to output
  * channels. Reserved.
  * @li data_format: An optional string from: "NDHWC", "NCDHW".
@@ -1422,7 +1428,7 @@ REG_OP(Conv3DTranspose)
  * @li output_padding: The size will be added in the output shape.
  * @li offset_x: Input offset_x value. Reserved.
 *@par Outputs:
- * y: A Tensor. Has the same type and format as x.
+ * y: A Tensor. Has the same type and format as "x".
 *@par Restrictions:
 * Warning: THIS FUNCTION IS DEPRECATED. Please use Conv3DTranspose instead.
 */
