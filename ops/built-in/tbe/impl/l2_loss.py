@@ -20,10 +20,12 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 from impl.util import util_common
 from impl.util import util_select_op_base
-from te.utils.error_manager import error_manager_vector
 
+
+# pylint: disable=invalid-name,unused-argument,unused-variable,too-many-locals
 def op_select_format(x, y, kernel_name="l2_loss"):
     """
     select format dynamically
@@ -91,7 +93,6 @@ def op_select_format(x, y, kernel_name="l2_loss"):
     return param_dynamic_in_json
 
 
-# pylint: disable=invalid-name,unused-argument,unused-variable
 @tbe_platform.fusion_manager.fusion_manager.register("l2_loss")
 def l2_loss_compute(x, y, kernel_name="l2_loss"):
     """
