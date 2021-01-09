@@ -525,7 +525,7 @@ IMPLEMT_INFERFUNC(TensorArrayConcat, TensorArrayConcatInfer) {
   TensorDesc value_desc = op.GetOutputDesc("value");
   value_desc.SetDataType(type);
   // unknown rank
-  value_desc.SetShape(Shape(ge::UNKNOWN_SHAPE));
+  value_desc.SetShape(Shape(ge::UNKNOWN_RANK));
   if (op.UpdateOutputDesc("value", value_desc) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "TensorArrayConcat: update value desc failed");
     return GRAPH_FAILED;

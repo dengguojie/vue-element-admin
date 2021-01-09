@@ -963,7 +963,7 @@ REG_OP(TensorArrayConcat)
         DT_QUINT8, DT_QINT32}))
     .OUTPUT(lengths, TensorType({DT_INT64}))
     .REQUIRED_ATTR(dtype, Type)
-    .ATTR(element_shape_except0, ListInt, ge::UNKNOWN_SHAPE)
+    .ATTR(element_shape_except0, ListInt, ge::UNKNOWN_RANK)
     .OP_END_FACTORY_REG(TensorArrayConcat)
 
 /**
