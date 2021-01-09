@@ -39,23 +39,17 @@ def sign_compute(input_x, output_y, kernel_name="sign"):
     dtype = input_x.dtype.lower()
     shape = shape_util.shape_to_list(input_x.shape)
     if dtype == "float32":
-        data_min = tbe.broadcast(tvm.const(SCALAR_MIN_FP32, dtype=dtype),
-                                 shape, dtype)
-        neg_data_min = tbe.broadcast(tvm.const(NEG_SCALAR_MIN_FP32, dtype=dtype),
-                                     shape, dtype)
+        data_min = tvm.const(SCALAR_MIN_FP32, dtype=dtype)
+        neg_data_min = tvm.const(NEG_SCALAR_MIN_FP32, dtype=dtype)
     elif dtype == "float16":
-        data_min = tbe.broadcast(tvm.const(SCALAR_MIN_FP16, dtype=dtype),
-                                 shape, dtype)
-        neg_data_min = tbe.broadcast(tvm.const(NEG_SCALAR_MIN_FP16, dtype=dtype),
-                                     shape, dtype)
+        data_min = tvm.const(SCALAR_MIN_FP16, dtype=dtype)
+        neg_data_min = tvm.const(NEG_SCALAR_MIN_FP16, dtype=dtype)
     else:
-        data_min = tbe.broadcast(tvm.const(1, dtype=dtype),
-                                 shape, dtype)
-        neg_data_min = tbe.broadcast(tvm.const(-1, dtype=dtype),
-                                     shape, dtype)
+        data_min = tvm.const(1, dtype=dtype)
+        neg_data_min = tvm.const(-1, dtype=dtype)
 
-    vmax = tbe.vmax(input_x, neg_data_min)
-    vmin = tbe.vmin(vmax, data_min)
+    vmax = tbe.vmaxs(input_x, neg_data_min)
+    vmin = tbe.vmins(vmax, data_min)
     if dtype == "float32":
         # max num of float32 is 2**126
         max_support_fp32 = tvm.const(2 ** 62, dtype=dtype)
