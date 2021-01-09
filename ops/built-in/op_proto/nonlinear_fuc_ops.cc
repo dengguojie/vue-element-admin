@@ -106,7 +106,9 @@ IMPLEMT_COMMON_INFERFUNC(TanhGradInferShape) {
   TensorDesc tensordesc_output = op.GetOutputDesc("z");
   tensordesc_output.SetShape(op.GetInputDesc("y").GetShape());
   tensordesc_output.SetDataType(op.GetInputDesc("y").GetDataType());
-
+  std::vector<std::pair<int64_t, int64_t>> shape_range_x;
+  op.GetInputDesc("y").GetShapeRange(shape_range_x);
+  tensordesc_output.SetShapeRange(shape_range_x);
   (void)op.UpdateOutputDesc("z", tensordesc_output);
   return GRAPH_SUCCESS;
 }

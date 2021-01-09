@@ -134,7 +134,7 @@ def asin_grad(y, dy, z, kernel_name="asin_grad"):
                                error_info['param2_dtype']))
 
     # get 2 input tensors: data_y, data_dy
-    ins = classify([y, dy], Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([y, dy], Mode.ELEWISE)
     schedules, tensors = [], []
 
     for (_y, _dy) in ins:

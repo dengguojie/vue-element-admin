@@ -130,3 +130,7 @@ from .truncate_div import truncate_div
 from .truncate_mod import truncate_mod
 from .xdivy import xdivy
 from .xlogy import xlogy
+from .atan import atan
+from .atanh import atanh
+from .atan_grad import atan_grad
+from .tanh_grad import tanh_grad

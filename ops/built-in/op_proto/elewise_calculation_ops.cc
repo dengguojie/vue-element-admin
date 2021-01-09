@@ -988,11 +988,23 @@ COMMON_INFER_FUNC_REG(AssignSub, ELMTWISE_INFER_SHAPEANDTYPE("var", "var"));
 // ----------------AssignSub END-------------------
 
 // ----------------Atanh-------------------
-COMMON_INFER_FUNC_REG(Atanh, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
+IMPLEMT_COMMON_INFERFUNC(AtanhInferShape) {
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(Atanh, AtanhInferShape);
 // --------------Atanh END-----------------
 
-// ----------------Atan-------------------
-COMMON_INFER_FUNC_REG(Atan, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
+// ----------------Atan--------------------
+IMPLEMT_COMMON_INFERFUNC(AtanInferShape) {
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(Atan, AtanInferShape);
 // --------------Atan END-----------------
 
 // ----------------Atan2-------------------
@@ -1039,15 +1051,15 @@ VERIFY_FUNC_REG(AcoshGrad, AcoshGradVerify);
 // --------------AcoshGrad END-----------------
 
 // ----------------AtanGrad-------------------
-IMPLEMT_VERIFIER(AtanGrad, AtanGradVerify) {
-  if (!CheckTwoInputDtypeSame(op, "y", "dy")) {
+IMPLEMT_COMMON_INFERFUNC(AtanGradInferShape) {
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "y", "dy", "z", is_dynamic_output)) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
 }
 
-COMMON_INFER_FUNC_REG(AtanGrad, ELMTWISE_INFER_SHAPEANDTYPE("y", "z"));
-VERIFY_FUNC_REG(AtanGrad, AtanGradVerify);
+COMMON_INFER_FUNC_REG(AtanGrad, AtanGradInferShape);
 // --------------AtanGrad END-----------------
 
 // -------------------ApproximateEqual----------------------
