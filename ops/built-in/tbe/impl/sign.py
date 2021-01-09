@@ -24,7 +24,10 @@ from te.utils import shape_util
 from te import tvm
 from te.utils.error_manager import error_manager_vector
 
-SHAPE_SIZE_LIMIT = 2147483648  # shape limit
+NEG_SCALAR_MIN_FP16 = -(2 ** (-24))
+NEG_SCALAR_MIN_FP32 = -(2 ** (-126))
+SCALAR_MIN_FP16 = 2 ** (-24)
+SCALAR_MIN_FP32 = 2 ** (-126)
 
 
 # pylint: disable=unused-argument
@@ -33,29 +36,48 @@ def sign_compute(input_x, output_y, kernel_name="sign"):
     """
     compute for sign
     """
-    inp_dtype = input_x.dtype
-    fp16_max = tvm.const(32768, dtype=inp_dtype)
-    fp16_min = tvm.const(2**(-15), dtype=inp_dtype)
-    data_tmp = input_x
-    if inp_dtype == "float16":
-        data_tmp = tbe.round_to(input_x, 0.5, -0.5)
+    dtype = input_x.dtype.lower()
+    shape = shape_util.shape_to_list(input_x.shape)
+    if dtype == "float32":
+        data_min = tbe.broadcast(tvm.const(SCALAR_MIN_FP32, dtype=dtype),
+                                 shape, dtype)
+        neg_data_min = tbe.broadcast(tvm.const(NEG_SCALAR_MIN_FP32, dtype=dtype),
+                                     shape, dtype)
+    elif dtype == "float16":
+        data_min = tbe.broadcast(tvm.const(SCALAR_MIN_FP16, dtype=dtype),
+                                 shape, dtype)
+        neg_data_min = tbe.broadcast(tvm.const(NEG_SCALAR_MIN_FP16, dtype=dtype),
+                                     shape, dtype)
+    else:
+        data_min = tbe.broadcast(tvm.const(1, dtype=dtype),
+                                 shape, dtype)
+        neg_data_min = tbe.broadcast(tvm.const(-1, dtype=dtype),
+                                     shape, dtype)
 
-    new_data = tbe.vmuls(data_tmp, fp16_max)
-    tmp2 = tbe.vabs(new_data)
-    anuminate = tbe.vadds(tmp2, fp16_min)
-    rec = tbe.vrec(anuminate)
-    fp16_res = tbe.vmul(new_data, rec)
-    int_res = tbe.round(fp16_res)
-    res = tbe.cast_to(int_res, inp_dtype)
+    vmax = tbe.vmax(input_x, neg_data_min)
+    vmin = tbe.vmin(vmax, data_min)
+    if dtype == "float32":
+        # max num of float32 is 2**126
+        max_support_fp32 = tvm.const(2 ** 62, dtype=dtype)
+        res_mul1 = tbe.vmuls(vmin, max_support_fp32)
+        res_mul2 = tbe.vmuls(res_mul1, max_support_fp32)
+        res = tbe.vmuls(res_mul2, tvm.const(2 ** 2, dtype=dtype))
+    elif dtype == "float16":
+        # max num of float16 is 2**24
+        # but cce can only support 2**12, so use 12/12 to adaptor 24
+        max_support_fp16 = tvm.const(2 ** 12, dtype=dtype)
+        res_mul1 = tbe.vmuls(vmin, max_support_fp16)
+        res = tbe.vmuls(res_mul1, max_support_fp16)
+    else:
+        res = vmin
     return res
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def sign(input_x, output_y, kernel_name="sign"):
     """
-                                 x*32768
-    algrithm: sign = round(-------------------------)
-                            2 ** (-15) + |x*32768|
+    algrithm: if input_x < 0 output_y=0,input_x > 0 output_y=1
+    if input_x=0 output_y=0
 
     Parameters
     ----------

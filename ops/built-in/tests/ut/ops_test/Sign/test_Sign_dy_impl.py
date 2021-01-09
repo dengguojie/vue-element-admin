@@ -1,29 +1,33 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import te
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("Sign", "impl.dynamic.sign", "sign")
 
+def gen_dynamic_sign_case(shape_x, range_x, dtype_val, format,
+                          ori_shape_x, kernel_name_val, expect):
 
-def gen_dynamic_dict_list(_shape, _range, _dtype, _list_num, _format="ND"):
-    _dict = {"shape": _shape, "dtype": _dtype, "format": _format, "ori_shape": _shape,"ori_format": _format, "range":_range}
+    return {"params": [{"shape": shape_x, "dtype": dtype_val,
+                        "range": range_x, "format": format,
+                        "ori_shape": ori_shape_x, "ori_format": format},
+                       {"shape": shape_x, "dtype": dtype_val,
+                        "range": range_x, "format": format,
+                        "ori_shape": ori_shape_x, "ori_format": format}],
+            "case_name": kernel_name_val,
+            "expect": expect,
+            "format_expect": [],
+            "support_expect": True}
 
-    dict_list = [_dict for _ in range(_list_num)]
-    return dict_list
-
-case1 = {"params": [{"shape": (-1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),"ori_format": "ND", "range":[(1, 100)]},
-                    {"shape": (-1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),"ori_format": "ND", "range":[(1, 100)]},
-                    ],
-         "case_name": "abs_dynamic_1",
-         "expect": "success",
-         "format_expect": [],
-         "support_expect": True}
-
-ut_case.add_case(["Ascend910", "Ascend310"], case1)
-# ut_case.add_case(["Ascend310"], case2)
+ut_case.add_case("Ascend910A",
+                 gen_dynamic_sign_case((-1,),
+                                       [(1,None)],
+                                       "float32", "ND",
+                                       (-1,),
+                                       "dynamic_sign_float32_ND",
+                                       "success"))
 
 if __name__ == '__main__':
+    import te
     with te.op.dynamic():
-        ut_case.run("Ascend310")
-
+        ut_case.run("Ascend910A")
+    exit(0)

@@ -7,60 +7,35 @@ import os
 
 ut_case = ElementwiseOpUT("Sign", None, None)
 
-# ============ auto gen ["Ascend910"] test cases start ===============
-ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], (1,))
-ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], (1, 1))
-ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], (16, 32))
-ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], (16, 2, 32))
-# ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], (16, 2, 4, 32))
-# ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], (512, 1024))
-# ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], (2, 1024))
-# ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], (4096, 1024))
-# ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], (32, 128, 1024))
-# ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], (100, 100))
-# ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], (1, 512, 1))
-# ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], (1, 16, 512, 512))
-# ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], (9973, 1))
-# ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], (1024, 1024, 256))
-# ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], (11, 33))
-# ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], (10, 12))
-# ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], (10, 13))
 
-# ============ auto gen ["Ascend910"] test cases end =================
+# ============ auto gen ["Ascend910"] test cases start ===============
+ut_case.add_elewise_case_simple(["Ascend910A"], ["float16", "float32", "int32"], (1,))
+
+
+# ============ auto gen [""] test cases end =================
 
 def calc_expect_func(x, y):
-    x_shape = x.get("shape")
-    x_value = x.get("value")
+    x_value = x['value']
 
-    dtype = x["dtype"]
-    if dtype == "fp16" or dtype == "float16":
-        s_type = np.float16
-    elif dtype == "fp32" or dtype == "float32":
-        s_type = np.float32
-    elif dtype == "int32":
-        s_type = np.int32
-    else:
-        raise RuntimeError("unsupported dtype:%s " % dtype)
-
-    res = np.sign(x_value).astype(s_type)
+    res = np.sign(x_value)
     return res
 
-ut_case.add_precision_case("all", {"params": [{"shape": (1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND", "param_type": "input"},
+ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND", "param_type": "input"},
                                               {"shape": (1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND", "param_type": "output"},
                                               ],
                                    "calc_expect_func": calc_expect_func,
                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
                                    })
 
-ut_case.add_precision_case("all", {"params": [{"shape": (2, 16, 32), "dtype": "float32", "format": "ND", "ori_shape": (2, 16, 32),"ori_format": "ND", "param_type": "input"},
-                                              {"shape": (2, 16, 32), "dtype": "float32", "format": "ND", "ori_shape": (2, 16, 32),"ori_format": "ND", "param_type": "output"},
+ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (2, 16, 32), "dtype": "int32", "format": "ND", "ori_shape": (2, 16, 32),"ori_format": "ND", "param_type": "input"},
+                                              {"shape": (2, 16, 32), "dtype": "int32", "format": "ND", "ori_shape": (2, 16, 32),"ori_format": "ND", "param_type": "output"},
                                               ],
                                    "calc_expect_func": calc_expect_func,
                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
                                    })
 
-ut_case.add_precision_case("all", {"params": [{"shape": (1, 24, 1, 256), "dtype": "int32", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "input"},
-                                              {"shape": (1, 24, 1, 256), "dtype": "int32", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "output"},
+ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (1, 24, 1, 256), "dtype": "float32", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "input"},
+                                              {"shape": (1, 24, 1, 256), "dtype": "float32", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "output"},
                                               ],
                                    "calc_expect_func": calc_expect_func,
                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
@@ -72,5 +47,5 @@ ut_case.add_precision_case("all", {"params": [{"shape": (1, 24, 1, 256), "dtype"
 if __name__ == '__main__':
     user_home_path = os.path.expanduser("~")
     simulator_lib_path = os.path.join(user_home_path, ".mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")
-    ut_case.run(["Ascend910"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
+    ut_case.run(["Ascend910A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
 
