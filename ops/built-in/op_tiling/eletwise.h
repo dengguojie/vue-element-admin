@@ -84,6 +84,7 @@ public:
   void CalcKey();
   bool CalcConstKey();
   bool WriteTilingData(OpRunInfo& run_info);
+  bool UpdateTiling();
   bool DoTiling();
   bool IsNeedDoubleBuffer();
 
@@ -100,6 +101,8 @@ private:
   std::string in_type;
   std::string out_type;
   int32_t key{0};
+  int64_t output_size{1};
+  int64_t multi_core_output{1};
   int32_t block_axis{-1};
   int32_t ub_axis{-1};
   int32_t block_dims{1};

@@ -379,7 +379,7 @@ bool Eletwise::CalcTiling() {
   compileInfo.core_num = base_info[3];
   max_available_ub =
           (((compileInfo.ub_size / compileInfo.coexisting_quantity) / BLOCK_SIZE) * BLOCK_SIZE) / compileInfo.max_dtype;
-  int64_t output_size = std::accumulate(output_shape.begin(), output_shape.end(), 1, std::multiplies<int64_t>());
+  output_size = std::accumulate(output_shape.begin(), output_shape.end(), 1, std::multiplies<int64_t>());
   CHECK_LE(output_size, INT32_MAX, "op [%s] : The output shape is too large", op_type.c_str());
   const int64_t multi_core_threshold = 1024;
   if (output_size < multi_core_threshold) {
@@ -402,12 +402,23 @@ bool Eletwise::DoBlockTiling() {
     block_factor = std::ceil(output_shape[0] * 1.0 / cur_core);
     block_factor = std::ceil(block_factor * 1.0 / ele_in_block) * ele_in_block;
     block_dims = std::ceil(output_shape[0] * 1.0 / block_factor);
+    multi_core_output = output_shape[0];
     output_shape[0] = block_factor;
   } else {
     for (size_t i = 0; i < output_shape.size(); i++) {
       if (output_shape[i] > cur_core) {
+        int32_t factor = std::ceil(output_shape[i] * 1.0 / cur_core);
+        int32_t under = output_size / (block_dims * output_shape[i]);
+        multi_core_output = output_shape[i];
+        int32_t multi_core_tail = output_shape[i] % factor;
+        if (multi_core_tail > 0 && (under * multi_core_tail < ele_in_block)) {
+          block_axis = i;
+          block_factor = output_shape[i];
+          break;
+        }
         block_axis = i;
-        block_factor = std::ceil(output_shape[i] * 1.0 / cur_core);
+
+        block_factor = factor;
         block_dims *= std::ceil(output_shape[i] * 1.0 / block_factor);
         output_shape[i] = block_factor;
         break;
@@ -614,6 +625,39 @@ bool Eletwise::IsNeedDoubleBuffer() {
    ((s_pattern == Pattern::COMMON_BROADCAST) && (output_shape[1] >= max_available_ub));
 }
 
+bool Eletwise::UpdateTiling() {
+  output_shape[block_axis] = multi_core_output;
+  int32_t ele_in_block = BLOCK_SIZE / GetTypeSize(out_type);
+  ele_in_block = (out_type == "uint1") ? ele_in_block * UINT1_FACTOR : ele_in_block;
+  int64_t under_core = std::accumulate(output_shape.begin() + (block_axis + 1),
+          output_shape.end(), 1, std::multiplies<int64_t>());
+  int32_t multi_core_tail = multi_core_output % block_factor;
+  bool only_single_core = false;
+  if (ub_axis == block_axis && under_core < ele_in_block) {
+    int32_t block_ub_tail = block_factor % ub_factor;
+    int32_t block_tail_ub_tail = multi_core_tail % ub_factor;
+    only_single_core = (block_ub_tail > 0 && block_ub_tail * under_core < ele_in_block) ||
+            (block_tail_ub_tail > 0 && block_tail_ub_tail * under_core < ele_in_block);
+  } else if (ub_axis != block_axis) {
+    if (under_core < ele_in_block) {
+      only_single_core = (block_factor * under_core < ele_in_block) ||
+              (multi_core_tail > 0 && (multi_core_tail * under_core < ele_in_block));
+    }
+    int64_t under_ub = std::accumulate(output_shape.begin() + (ub_axis + 1),
+            output_shape.end(), 1, std::multiplies<int64_t>());
+    if (under_ub < ele_in_block) {
+      int32_t ub_tail = output_shape[ub_axis] % ub_factor;
+      only_single_core = only_single_core || (ub_factor * under_ub < ele_in_block) ||
+              (ub_tail > 0 && (ub_tail * under_ub < ele_in_block));
+    }
+  }
+  if (only_single_core) {
+    block_axis = 0;
+    block_factor = output_shape[0];
+  }
+  return true;
+}
+
 bool Eletwise::DoTiling() {
   GELOGI("op [%s]: tiling running", op_type.c_str());
   bool ret = true;
@@ -633,6 +677,7 @@ bool Eletwise::DoTiling() {
                  * BLOCK_SIZE) / compileInfo.max_dtype;
       }
       ret = ret && DoUbTiling();
+      ret = ret && UpdateTiling();
     } else {
       if (output_shape.size() == 1) {
         ub_axis = 0;
