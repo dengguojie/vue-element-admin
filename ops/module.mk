@@ -386,6 +386,7 @@ LOCAL_SRC_FILES := \
         built-in/op_tiling/split_d.cc \
         built-in/op_tiling/select.cc \
         built-in/op_tiling/bias_add.cc \
+        built-in/op_tiling/bias_add_grad.cc \
         built-in/op_tiling/assign.cc \
         built-in/op_tiling/strided_slice_grad.cc \
         built-in/op_tiling/fill.cc \

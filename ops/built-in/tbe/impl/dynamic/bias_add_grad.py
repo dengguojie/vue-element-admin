@@ -34,7 +34,7 @@ from te.lang.base.operation import add_compile_info
 from te.utils.error_manager import error_manager_vector
 from te.utils import shape_util
 from topi.cce import util as cce_util
-
+from impl.util import util_common
 
 REDUCE_LIST = None
 
@@ -156,6 +156,8 @@ def bias_add_grad(x, y, data_format, kernel_name="bias_add_grad"):
     -------
     None
     """
+    x = util_common.update_shape_base_other_format_dynamic(x)
+    y = util_common.update_shape_base_other_format_dynamic(y)
     shape = x.get("shape")
     if len(shape) < 2:
         error_detail = "cce_bias_add_grad only support shape larger than 2D"

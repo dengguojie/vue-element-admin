@@ -18,9 +18,9 @@ util_common
 import os
 import json
 import itertools
+import math
 from te.utils.error_manager import error_manager_util
 from te import platform as tbe_platform
-
 
 PAD_MIN = 0
 # the dim of most parameters in conv3d is 5
@@ -256,6 +256,70 @@ def update_shape_base_other_format(input_dict):
     return input_dict
 
 
+# pylint: disable=too-many-locals
+def update_shape_base_other_format_dynamic(input_dict):
+    """
+    update_axis_for_other_format_dynamic: when format is changed, the axis will be updated
+    """
+    ori_shape = input_dict.get("ori_shape")
+    ori_format = input_dict.get("ori_format")
+    input_shape = input_dict.get("shape")
+    input_format = input_dict.get("format")
+    input_range = input_dict.get("range")
+
+    if input_format in ("FRACTAL_Z", "FRACTAL_Z_3D"):
+        # when FRACTAL_Z, mean: C1HWNiNoC0
+        # when FRACTAL_Z_3D, mean: DC1HWNiNoC0
+        if len(input_shape) == 4:
+            # fe will reshape the C1HWNiNoC0/DC1HWNiNoC0 to 4s = (C1HW)NiNoC0/(DC1HW)NiNoC0
+            # now will reshape to 6d/7d = C1HWNiNoC0/DC1HWNiNoC0
+            dict_zip_shape = dict(zip(list(ori_format), ori_shape))
+            shape_h_dim = dict_zip_shape["H"]
+            shape_w_dim = dict_zip_shape["W"]
+
+            if shape_h_dim <= 0 or shape_w_dim <= 0 or input_shape[0] <= 0:
+                shape_c1_dim = -1
+                temp_range = [(1, None)]
+                if shape_h_dim > 0 and shape_w_dim > 0:
+                    upper = None if input_range[0][1] is None else int(
+                        math.ceil(input_range[0][1] / (shape_h_dim * shape_w_dim)))
+                    lower = 1 if int(math.floor(input_range[0][0] / (shape_h_dim * shape_w_dim))) == 0 else int(
+                        math.floor(input_range[0][0] / (shape_h_dim * shape_w_dim)))
+                    temp_range = [(lower, upper)]
+            else:
+                shape_c1_dim = input_shape[0] // (shape_h_dim * shape_w_dim)
+                temp_range = [(shape_c1_dim, shape_c1_dim)]
+
+            for dim in [shape_h_dim, shape_w_dim]:
+                temp_range.append((1, None) if dim == -1 else (dim, dim))
+            input_range = temp_range + list(input_range[1:])
+
+            new_shape = [shape_c1_dim, shape_h_dim, shape_w_dim] + list(input_shape[1:])
+
+            if input_format == "FRACTAL_Z_3D":
+                shape_d_dim = dict_zip_shape["D"]
+                if shape_d_dim <= 0 or new_shape[0] <= 0:
+                    shape_c1_dim = -1
+                    temp_range = [(1, None)]
+                    if shape_d_dim > 0:
+                        upper = None if input_range[0][1] is None else int(math.ceil(input_range[0][1] / shape_d_dim))
+                        lower = 1 if int(math.floor(input_range[0][0] / shape_d_dim)) == 0 else int(
+                            math.floor(input_range[0][0] /shape_d_dim))
+                        temp_range = [(lower, upper)]
+                else:
+                    shape_c1_dim = new_shape[0] // shape_d_dim
+                    temp_range = [(shape_c1_dim, shape_c1_dim)]
+
+                temp_range.insert(0, (1, None) if shape_d_dim == -1 else (shape_d_dim, shape_d_dim))
+                input_range = temp_range + input_range[1:]
+                new_shape = [shape_d_dim] + [shape_c1_dim, shape_h_dim, shape_w_dim] + list(input_shape[1:])
+
+            input_dict["shape"] = new_shape
+            input_dict["range"] = input_range
+
+    return input_dict
+
+
 def get_fused_format_str(format_char_list):
     """
     get_fused_format from char
@@ -266,7 +330,7 @@ def get_fused_format_str(format_char_list):
     format_iter = itertools.permutations(format_char_list, len(format_char_list))
     format_char_list = list(format_iter)
     format_str_list = []
-    for i, char_list in enumerate(format_char_list):
+    for _, char_list in enumerate(format_char_list):
         format_str_list.append(''.join(list(char_list)))
 
     return format_str_list
