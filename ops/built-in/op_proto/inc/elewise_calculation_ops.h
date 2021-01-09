@@ -3626,6 +3626,30 @@ REG_OP(Lerp)
     .INPUT(weight, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OP_END_FACTORY_REG(Lerp)
+
+/**
+*@brief Hardmax(element in input, axis) = 1 if the element is the first maximum value along the specified axis, 0
+*otherwise The input does not need to explicitly be a 2D vector.The "axis" attribute indicates the dimension along
+*which Hardmax will be performed.The output tensor has the same shape and contains the Hardmax values of the
+*corresponding input.
+*
+*@par inputs
+*one input including:
+*@li x: input A Tensor.Must be one of the following types:float32,float16
+*
+*@par Attributes:
+*@li axis:A required int attribute that decides which dimension will be used to cal the hard_max
+*
+*@par output:
+*one output including:
+*@li y:A Tensor of the same type as x
+*
+*/
+REG_OP(HardMax)
+    .INPUT(x, TensorType({ DT_FLOAT16, DT_FLOAT }))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .ATTR(axis, Int, -1)
+    .OP_END_FACTORY_REG(HardMax)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_ELEWISE_CALCULATION_OPS_H_

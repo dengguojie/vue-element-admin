@@ -4198,5 +4198,36 @@ IMPLEMT_COMMON_INFERFUNC(Expm1InferShape) {
 COMMON_INFER_FUNC_REG(Expm1, Expm1InferShape);
 // ----------------Expm1 END-----------------
 
+// ---------------HardMax Begin-----------------
+IMPLEMT_COMMON_INFERFUNC(HardMaxInferShape)
+{
+    ge::TensorDesc input_desc = op.GetInputDesc(0);
+    ge::TensorDesc output_desc = op.GetOutputDesc(0);
+    output_desc.SetShape(input_desc.GetShape());
+    output_desc.SetFormat(input_desc.GetFormat());
+    output_desc.SetDataType(input_desc.GetDataType());
+    op.UpdateOutputDesc("y", output_desc);
+    return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(HardMax, HardMaxVerify)
+{
+    int dimension = -1;
+    auto ret = op.GetAttr("axis", dimension);
+    if (ret != ge::GRAPH_SUCCESS) {
+        OP_LOGE("HardMaxVerify", "OP GetAttr axis fail.");
+        return GRAPH_FAILED;
+        }
+    ge::TensorDesc input_desc = op.GetInputDesc(0);
+    ge::DataType data_type = input_desc.GetDataType();
+    if (data_type != DT_FLOAT16 && data_type != DT_FLOAT) {
+        OP_LOGE("HardMaxVerify", "Input DataType is not fp16 or fp32");
+        return GRAPH_FAILED;
+        }
+    return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(HardMax, HardMaxInferShape);
+VERIFY_FUNC_REG(HardMax, HardMaxVerify);
+// ---------------HardMax END-------------------
 
 }  // namespace ge
