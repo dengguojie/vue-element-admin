@@ -20,7 +20,75 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
+from impl.util import util_common
+from impl.util import util_select_op_base
 from te.utils.error_manager import error_manager_vector
+
+def op_select_format(x, y, kernel_name="l2_loss"):
+    """
+    select format dynamically
+    """
+    input_ori_shape = x.get("ori_shape")
+    input_ori_format = x.get("ori_format")
+    input_ori_shape = shape_util.scalar2tensor_one(input_ori_shape)
+    align_len = 16
+    # charge whether support 5HD 5HD
+    hd_support_format = \
+        util_common.get_fused_format_str(["N", "C", "H", "W"]) + \
+        util_common.get_fused_format_str(["N", "D", "C", "H", "W"])
+    is_support_hd = False
+    is_support_fz = False
+    if len(input_ori_format) == len(input_ori_shape) and input_ori_format in hd_support_format:
+        is_shape_c_align = input_ori_shape[input_ori_format.index("C")] % align_len == 0
+        is_shape_n_align = input_ori_shape[input_ori_format.index("N")] % align_len == 0
+        if is_shape_c_align:
+            is_support_hd = True
+        if is_shape_n_align and is_shape_c_align:
+            is_support_fz = True
+    # charge whether support FRACTAL_NZ
+    is_support_nz = False
+    if len(input_ori_shape) >= 2:
+        is_neg_one_dim_align = input_ori_shape[-1] % align_len == 0
+        is_neg_two_dim_align = input_ori_shape[-2] % align_len == 0
+        if is_neg_one_dim_align and is_neg_two_dim_align:
+            is_support_nz = True
+
+    base_data_type = ["float", "float16"]
+    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
+        base_data_type.remove("float")
+
+    dtype_base_out = base_data_type.copy()
+    format_base_out = ["ND"] * len(base_data_type) + ["C1HWNCoC0"] * len(base_data_type)
+    dtype_base_out = dtype_base_out + base_data_type
+    if is_support_hd:
+        other_format = "NC1HWC0" if len(input_ori_shape) == 4 else "NDC1HWC0"
+        dtype_base_out = dtype_base_out + base_data_type
+        format_base_out = format_base_out + [other_format] * len(base_data_type)
+    if is_support_nz:
+        other_format = "FRACTAL_NZ"
+        dtype_base_out = dtype_base_out + base_data_type
+        format_base_out = format_base_out + [other_format] * len(base_data_type)
+    if is_support_fz:
+        other_format = "FRACTAL_Z" if len(input_ori_shape) == 4 else "FRACTAL_Z_3D"
+        dtype_base_out = dtype_base_out + base_data_type
+        format_base_out = format_base_out + [other_format] * len(base_data_type)
+
+    dtype_base_in = dtype_base_out.copy()
+    if tbe_platform.api_check_support("tik.set_atomic_add"):
+        dtype_base_out = ["float" for _ in dtype_base_out]
+    if util_common.is_dynamic_input(x):
+        dtype_base_out = dtype_base_in
+    input0 = util_select_op_base.gen_param(
+        classify="input0", name="x", datatype=dtype_base_in,
+        format=format_base_out, unknownshape_format=format_base_out)
+    output0 = util_select_op_base.gen_param(
+        classify="output0", name="y", datatype=dtype_base_out,
+        format=["ND"] * len(dtype_base_out), unknownshape_format=["ND"] * len(dtype_base_out))
+    param_list = [input0, output0]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+
+    return param_dynamic_in_json
 
 
 # pylint: disable=invalid-name,unused-argument,unused-variable
