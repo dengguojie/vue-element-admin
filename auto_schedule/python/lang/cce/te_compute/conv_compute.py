@@ -2099,6 +2099,14 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
 
         return dsl_flag, optim_dict
 
+    def _handle_fp16_bias_add(conv_res, bias_tensor, bias_tensor_flag, dsl_flag):
+        """
+        calculate res of bias_add in fp16
+        """
+        if bias_tensor_flag and ((not ConvParam.var_map) or (ConvParam.var_map and not dsl_flag)):
+            res = bias_add(conv_res, bias_tensor)
+            return res
+        return conv_res
 
     ConvParam.set_default()
     ConvParam.dynamic_para = _get_dynamic_para()
@@ -2191,12 +2199,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             conv_res = remove_padded_column(conv_res, remove_padded_column_shape)
             res = conv_res
 
-        if ConvParam.var_map:
-            if bias_tensor_flag and not dsl_flag:
-                res = bias_add(conv_res, bias_tensor)
-        elif bias_tensor_flag:
-            fp16_bias_res = bias_add(conv_res, bias_tensor)
-            res = fp16_bias_res
+        res = _handle_fp16_bias_add(conv_res, bias_tensor, bias_tensor_flag, dsl_flag)
 
     _save_tiling_info_dict(shape_fmap_nc1hwc0, shape_w_nc1hwc0, list(res.shape),
                            in_dtype, w_dtype, res_dtype, bias_tensor_flag, kernel_name)
