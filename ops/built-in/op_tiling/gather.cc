@@ -39,6 +39,8 @@ const int64_t RESERVED_UB_SIZE = 6 * 1024;
 const int64_t TILING_MODE_1 = 1;
 // params is cache in UB
 const int64_t TILING_MODE_4 = 4;
+// params is cache in L1
+const int64_t TILING_MODE_13 = 13;
 
 // 2. one params row size is greater than or equal to 32B
 // paramsRow is not 32B aligned
@@ -257,7 +259,7 @@ bool GetGatherCompileParams(const std::string& opType, const nlohmann::json& opC
   return true;
 }
 
-// compute tiling params for tiling_mode 1&4
+// compute tiling params for tiling_mode 1&4&13
 void GatherBlockLessForIndicesTiling(GatherTilingParams& runParams, int64_t& indicesNumPerLoop, int64_t& resUbSize,
                                      int64_t& paramsDSize, int64_t& blockNum) {
   runParams.indices_loop_num = runParams.indices_num_each_core / indicesNumPerLoop;
@@ -314,6 +316,18 @@ void GatherBlockAlignForIndicesTiling(GatherTilingParams& runParams, int64_t& in
   runParams.inner_loop_num_last = runParams.indices_row_num_last / runParams.row_num_last_ub;
   if (runParams.indices_row_num_last % runParams.row_num_last_ub != 0) {
     runParams.row_num_last_tail_ub = runParams.indices_row_num_last % runParams.row_num_last_ub;
+  }
+}
+
+void GatherCalNeedCore(int64_t& needCore, int64_t& indicesEachCore, int64_t& indicesRemain,
+                       int64_t& indicesNum, int64_t& paramsRow, int64_t& paramsDSize) {
+  while (needCore > 1) {
+    needCore = needCore / 2;
+    indicesEachCore = indicesNum / needCore;
+    indicesRemain = indicesNum % needCore;
+    if (indicesEachCore * paramsRow * paramsDSize > BLOCK_SIZE) {
+      break;
+    }
   }
 }
 
@@ -446,16 +460,17 @@ bool GatherTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   if (runParams.paramsRow * paramsDSize < BLOCK_SIZE) {
     if (paramsTotalCeil <= PARAMS_CACHED_UB / paramsDSize) {
       runParams.tilingMode = TILING_MODE_4;
+    } else if (paramsTotalCeil <= l1Size / paramsDSize && runParams.indicesNum >= 1600) {
+      runParams.tilingMode = TILING_MODE_13;
     } else {
       runParams.tilingMode = TILING_MODE_1;
     }
 
     if ((runParams.paramsRow < BLOCK_SIZE) &&
         runParams.indices_num_each_core * runParams.paramsRow * paramsDSize <= BLOCK_SIZE) {
-      runParams.need_core_num = 1;
-      runParams.tail_process_core = 0;
-      runParams.indices_num_each_core = runParams.indicesNum;
-      runParams.indices_num_remaining = 0;
+      GatherCalNeedCore(runParams.need_core_num, runParams.indices_num_each_core,
+                        runParams.indices_num_remaining, runParams.indicesNum,
+                        runParams.paramsRow, paramsDSize);
     }
 
     if (runParams.tilingMode == TILING_MODE_4) {
