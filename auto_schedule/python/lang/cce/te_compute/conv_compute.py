@@ -2191,7 +2191,10 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             conv_res = remove_padded_column(conv_res, remove_padded_column_shape)
             res = conv_res
 
-        if bias_tensor_flag:
+        if ConvParam.var_map:
+            if bias_tensor_flag and not dsl_flag:
+                res = bias_add(conv_res, bias_tensor)
+        elif bias_tensor_flag:
             fp16_bias_res = bias_add(conv_res, bias_tensor)
             res = fp16_bias_res
 
@@ -2203,6 +2206,8 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
 
     if dsl_flag:
         res_c = remove_pad_fp16_dsl(res, conv_shape, invalid_data_rm_flag)
+        if ConvParam.var_map and bias_tensor_flag:
+            res_c = bias_add(res_c, bias_tensor)
         return res_c
 
     res_remove_pad = remove_pad(res, conv_shape)
