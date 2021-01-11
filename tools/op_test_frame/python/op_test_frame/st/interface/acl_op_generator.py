@@ -24,34 +24,40 @@ except (ImportError,) as import_error:
         "[acl_op_generator]Unable to import module: %s." % str(import_error))
 
 
+def _get_desc_dic(tmp_dic, key_desc, testcase_struct):
+    tmp_dic[key_desc] = []
+    for desc_dic in testcase_struct.get(key_desc):
+        if desc_dic.get('ori_format') and \
+                desc_dic.get('ori_shape'):
+            res_desc_dic = {
+                'format': desc_dic.get('format'),
+                'origin_format': desc_dic.get('ori_format'),
+                'type': desc_dic.get('type'),
+                'shape': desc_dic.get('shape'),
+                'origin_shape': desc_dic.get('ori_shape')}
+        else:
+            res_desc_dic = {
+                'format': desc_dic.get('format'),
+                'type': desc_dic.get('type'),
+                'shape': desc_dic.get('shape')}
+        # Add name field for input*.paramType = optional scenarios.
+        if desc_dic.get('name'):
+            res_desc_dic.update(
+                {'name': desc_dic.get('name')})
+        tmp_dic[key_desc].append(desc_dic)
+
+
 def _create_acl_op_json_content(testcase_list):
     content = []
     for testcase_struct in testcase_list:
         # init dic with op name
         tmp_dic = {'op': testcase_struct['op']}
-
         # process input desc
         if "input_desc" in testcase_struct.keys():
-            tmp_dic['input_desc'] = []
-            for input_desc_input_dic in testcase_struct['input_desc']:
-                input_desc_dic = {'format': input_desc_input_dic.get('format'),
-                                  'type': input_desc_input_dic.get('type'),
-                                  'shape': input_desc_input_dic.get('shape')}
-                if input_desc_input_dic.get('name'):
-                    input_desc_dic.update(
-                        {'name': input_desc_input_dic.get('name')})
-                tmp_dic['input_desc'].append(input_desc_dic)
-
+            _get_desc_dic(tmp_dic, "input_desc", testcase_struct)
         # process output desc
         if "output_desc" in testcase_struct.keys():
-            tmp_dic['output_desc'] = []
-            for output_desc_input_dic in testcase_struct['output_desc']:
-                output_desc_dic = {
-                    'format': output_desc_input_dic['format'],
-                    'type': output_desc_input_dic['type'],
-                    'shape': output_desc_input_dic['shape']}
-                tmp_dic['output_desc'].append(output_desc_dic)
-
+            _get_desc_dic(tmp_dic, "output_desc", testcase_struct)
         # process attr
         if "attr" in testcase_struct.keys():
             tmp_dic['attr'] = []

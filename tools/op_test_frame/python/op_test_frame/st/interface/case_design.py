@@ -27,11 +27,67 @@ ST_MODE = 'st_mode'
 REQUIRED_KEYS = [OP, INPUT_DESC, OUTPUT_DESC, CASE_NAME]
 ATTR_REQUIRED_KEYS = ["name", "type", "value"]
 SUPPORT_TYPE_LIST = list(utils.ATTR_TYPE_MAP.values())
-
-INPUT_CROSS_LIST = ['format', 'type', 'shape', 'data_distribute', 'value_range']
-OUTPUT_CROSS_LIST = ['format', 'type', 'shape']
+# due to orthogonal combination, type need to behind shape.
+INPUT_CROSS_LIST = ['format', 'shape', 'type', 'data_distribute', 'value_range']
+# due to orthogonal combination, type need to behind shape, also.
+OUTPUT_CROSS_LIST = ['format', 'shape', 'type']
 MS_INPUT_CROSS_LIST = ['type', 'shape', 'data_distribute', 'value_range']
 MS_OUTPUT_CROSS_LIST = ['type', 'shape']
+
+
+def get_ori_filed_data(input_or_out_desc):
+    ori_filed_list = []
+    if input_or_out_desc.get('ori_format'):
+        if isinstance(input_or_out_desc.get('ori_format'), str):
+            ori_format_list = [input_or_out_desc.get('ori_format')]
+        if isinstance(input_or_out_desc.get('ori_format'), list):
+            ori_format_list = input_or_out_desc.get('ori_format')
+        ori_filed_list.append(ori_format_list)
+        if len(ori_format_list) != len(input_or_out_desc.get('format')):
+            utils.print_error_log('please checkout, teh length of format and ori_format must be the same.')
+            raise utils.OpTestGenException(
+                utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+    if input_or_out_desc.get('ori_shape'):
+        ori_shape_list = [input_or_out_desc.get('ori_shape')]
+        ori_filed_list.append(ori_shape_list)
+    if len(ori_filed_list) == 1:
+        utils.print_error_log('please checkout, ori_format and ori_shape is exist at the same time.')
+        raise utils.OpTestGenException(
+            utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+    return ori_filed_list
+
+
+def combine_ori_field_to_cross(tensor, cross_key_list):
+    cross_list = []
+    ori_field_cross_key_list = []
+    for key in cross_key_list:
+        # copy cross_key_list to ori_field_cross_key_list
+        ori_field_cross_key_list.append(key)
+        if key == 'format' or key == 'shape':
+            continue
+        cross_list.append(tensor.get(key))
+    # insert ori_format, and ori_format needs to close format
+    ori_field_cross_key_list.insert(1, 'ori_format')
+    # orthogonal combination of format and ori_format
+    combine_format_ori_format_list = list(zip(tensor.get('format'), tensor.get('ori_format')))
+    # insert ori_shape, and ori_shape needs to close shape
+    ori_field_cross_key_list.insert(3, 'ori_shape')
+    # orthogonal combination of shape and ori_shape
+    combine_shape_ori_shape_list = list(zip(tensor.get('shape'), tensor.get('ori_shape')))
+    # orthonormalize format_ori_format, shape_ori_shape, and other filed: 'type', etc.
+    combine_cross_list = [list(x) for x in
+                          itertools.product(combine_format_ori_format_list, combine_shape_ori_shape_list, *cross_list)]
+    result_cross_list = []
+    for each_cross_list in combine_cross_list:
+        data_list = []
+        for filed_data in each_cross_list:
+            if isinstance(filed_data, tuple):
+                for data in filed_data:
+                    data_list.append(data)
+            else:
+                data_list.append(filed_data)
+        result_cross_list.append(data_list)
+    return ori_field_cross_key_list, result_cross_list
 
 
 class CaseDesign:
@@ -264,10 +320,21 @@ class CaseDesign:
                     self._check_range_value_valid(item)
             else:
                 value_range_list = [[0.1, 1.0]]
-            one_input_desc = {'format': format_list, 'type': type_list,
-                              'shape': shape_list,
-                              'value_range': value_range_list,
-                              'data_distribute': data_distribute_list}
+            ori_filed_list = get_ori_filed_data(input_desc)
+            if ori_filed_list:
+                # add ori_format and ori_shape for one_input_desc
+                one_input_desc = {'format': format_list,
+                                  'ori_format': ori_filed_list[0],
+                                  'type': type_list,
+                                  'shape': shape_list,
+                                  'ori_shape': ori_filed_list[1],
+                                  'value_range': value_range_list,
+                                  'data_distribute': data_distribute_list}
+            else:
+                one_input_desc = {'format': format_list, 'type': type_list,
+                                  'shape': shape_list,
+                                  'value_range': value_range_list,
+                                  'data_distribute': data_distribute_list}
             input_desc_list.append(one_input_desc)
             for item in one_input_desc.values():
                 if len(item) > 1:
@@ -330,8 +397,17 @@ class CaseDesign:
                 output_desc, 'shape', OUTPUT_DESC)
             for item in shape_list:
                 self._check_shape_valid(item)
-            one_output_desc = {'format': format_list, 'type': type_list,
-                               'shape': shape_list}
+            ori_filed_list = get_ori_filed_data(output_desc)
+            if ori_filed_list:
+                # add ori_format and ori_shape for one_output_desc
+                one_output_desc = {'format': format_list,
+                                   'ori_format': ori_filed_list[0],
+                                   'type': type_list,
+                                   'shape': shape_list,
+                                   'ori_shape': ori_filed_list[1]}
+            else:
+                one_output_desc = {'format': format_list, 'type': type_list,
+                                   'shape': shape_list}
             output_desc_list.append(one_output_desc)
             for item in one_output_desc.values():
                 if len(item) > 1:
@@ -401,15 +477,24 @@ class CaseDesign:
         total_case_list = []
         for tensor in tensor_list:
             cross_list = []
-            for key in cross_key_list:
-                cross_list.append(tensor[key])
-            cross_list = [list(x) for x in itertools.product(*cross_list)]
             case_list = []
-            for case in cross_list:
-                cur_params = {cross_key_list[x]: case[x] for x, _ in
-                              enumerate(cross_key_list)}
-                case_list.append(cur_params)
-            total_case_list.append(case_list)
+            ori_filed_list = get_ori_filed_data(tensor)
+            if ori_filed_list:
+                ori_field_cross_key_list, result_cross_list = combine_ori_field_to_cross(tensor, cross_key_list)
+                for case in result_cross_list:
+                    cur_params = {ori_field_cross_key_list[x]: case[x] for x, _ in
+                                  enumerate(ori_field_cross_key_list)}
+                    case_list.append(cur_params)
+                total_case_list.append(case_list)
+            else:
+                for key in cross_key_list:
+                    cross_list.append(tensor[key])
+                cross_list = [list(x) for x in itertools.product(*cross_list)]
+                for case in cross_list:
+                    cur_params = {cross_key_list[x]: case[x] for x, _ in
+                                  enumerate(cross_key_list)}
+                    case_list.append(cur_params)
+                total_case_list.append(case_list)
         return total_case_list
 
     def _check_required_key_valid(self, json_obj, required_key_list, tensor):
