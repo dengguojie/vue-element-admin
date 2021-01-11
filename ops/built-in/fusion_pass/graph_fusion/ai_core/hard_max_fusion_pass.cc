@@ -19,7 +19,7 @@
   * \brief hard_max fusion pass
   */
   
-#include "hardmax_fusion_pass.h"
+#include "hard_max_fusion_pass.h"
  
 #include <vector>
 #include <memory>
