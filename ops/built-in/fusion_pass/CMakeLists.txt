@@ -248,6 +248,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/threshold_relu_fusion_pass.cc
   graph_fusion/ai_core/sigmoid_cross_entropy_with_logits_v2_fusion_pass.cc
   graph_fusion/ai_core/conv2dbackprop_filter_mul_fusion_pass.cc
+  graph_fusion/ai_core/square_sum_v2_fusion_pass.cc
   graph_fusion/ai_core/conv3d_bp_filter_group_fusion_pass.cc
 )
 
