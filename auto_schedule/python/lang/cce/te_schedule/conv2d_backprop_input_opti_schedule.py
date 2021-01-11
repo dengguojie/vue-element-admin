@@ -42,6 +42,7 @@ CUB_BUFFER_LIMIT = 4096
 TENSOR_MAP = {}
 TILING = {}
 DIM_MAP = {}
+DOUBLE_TENSOR_OUT = []
 
 FUSION_DX_DRELU = "dx+drelu"
 FUSION_DX_ELEWISE = "dx+elewise"
@@ -74,7 +75,7 @@ FUSION_TYPE_2_NUM = {
 BRC_STANDARD_BLOCK_SIZE = 16
 
 
-class DeconvParam:
+class DeconvParam(object):
     """
     class of DeconvTilingParam
     """
@@ -97,6 +98,37 @@ class DeconvParam:
         get value by key
         """
         return DeconvParam.para_map.get(key, None)
+
+
+def _get_all_tensors(res):
+    """
+    get all tensor
+    :param res: tensor
+    :return: list
+    """
+
+    all_tensor = dict()
+    leaf_tensor = dict()
+
+    def get(tensor):
+        """
+        find all tensor
+        :param tensor: c_gm
+        :return: all tensor
+        """
+        tensor_list = tensor.op.input_tensors
+        for one_tensor in tensor_list:
+            if not one_tensor.op.input_tensors:
+                leaf_tensor[one_tensor.op.name] = tensor
+            # check which tensor has not been checked
+            if one_tensor.op.name not in all_tensor:
+                all_tensor[one_tensor.op.name] = one_tensor
+                if one_tensor.op.tag == "conv2d_backprop_input_opti":
+                    continue
+                get(one_tensor)
+
+    get(res)
+    return all_tensor, leaf_tensor
 
 
 def _raise_dx_opti_err(msg):
@@ -144,23 +176,27 @@ def _print_ir_conv(process, sch):
 
 def _calc_double_op_num(fusion_type):
     if fusion_type in (FUSION_DX_DEQUANT_QUANT, FUSION_DX_DEQUANT, FUSION_DX_REQUANT):
-        double_op_num = 0.125
+        double_op_num = 0
         if fusion_type == FUSION_DX_DEQUANT_QUANT:
             double_op_num += 4
         elif fusion_type == FUSION_DX_DEQUANT:
-            if "dequant_relu" in TENSOR_MAP or "dequant_sqrt" in TENSOR_MAP:
-                double_op_num += 1
-            elif TENSOR_MAP.get("input_tensor"):
-                double_op_num += 1
-        else:
-            pass
+            for ub_tensor in TENSOR_MAP.get("elewise_tensor"):
+                if "dequant2" in ub_tensor.op.name or "dequant_relu" in ub_tensor.op.name:
+                    double_op_num = 1
+            for ub_tensor in TENSOR_MAP.get("elewise_tensor"):
+                if len(ub_tensor.op.input_tensors) > 1 and "dequant2" not in ub_tensor.op.name:
+                    double_op_num += 1
+            double_op_num = min(2, double_op_num)
+        double_op_num += 0.125
         FUSION_TYPE_2_OPERAND_NUM[fusion_type] = double_op_num
     if fusion_type == FUSION_DX_ELEWISE:
         double_op_num = 0
+        for ub_tensor in TENSOR_MAP.get("ub_list"):
+            if len(ub_tensor.op.input_tensors) > 1:
+                double_op_num += 1
+        double_op_num = min(2, double_op_num)
         if "bias_add_vector" in TENSOR_MAP:
             double_op_num += 0.125
-        if TENSOR_MAP.get("input_tensor_list"):
-            double_op_num += 1
         FUSION_TYPE_2_OPERAND_NUM[fusion_type] = double_op_num
 
 
@@ -547,7 +583,7 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
     get tilling parameter from get_tilling and check all parameter
     """
 
-    def handle_quant_tiling():
+    def _handle_quant_tiling():
         if fusion_type in (FUSION_DX_DEQUANT_QUANT, FUSION_DX_REQUANT):
             TILING["CL0_matrix"][0] //= 2
             if TILING["CL0_matrix"][0] == 0:
@@ -718,7 +754,7 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
             is_conv1d_bool
         )
 
-    handle_quant_tiling()
+    _handle_quant_tiling()
 
 
 def _get_bias_flag():
@@ -744,86 +780,43 @@ def _get_src_tensor(tensor, index):
     return None
 
 
-def _quant_tensor_info(dx_res, quant_para):
+def _quant_tensor_info(all_tensor, leaf_tensor, dx_res, quant_para):
     """
     check dequant + quant
     """
 
-    def input_tensor_info(tensor_info):
-        input_tensor = _get_src_tensor(tensor_info, 0)
-        if not input_tensor.op.input_tensors:
-            input_cache_buffer.append([input_tensor, tensor_info])
-            tensor_info = _get_src_tensor(tensor_info, 1)
-        else:
-            input_tensor = _get_src_tensor(tensor_info, 1)
-            input_cache_buffer.append([input_tensor, tensor_info])
-            tensor_info = _get_src_tensor(tensor_info, 0)
-        return tensor_info
-
     DeconvParam.update_para_map("FUSION_TYPE", FUSION_DX_DEQUANT_QUANT)
     quant_para["q_round"] = dx_res.op.attrs["round_mode"].value
-    temp_tensor = dx_res
+
     elewise_cache_list = []
     input_cache_buffer = []
 
-    while temp_tensor.op.input_tensors:
-        if temp_tensor.op.name == "cast_i8_ub":
-            TENSOR_MAP["cast_i8_ub"] = temp_tensor
-        elif "reform" in temp_tensor.op.name:
-            TENSOR_MAP["reform_op"] = temp_tensor
-        elif temp_tensor.op.name in ("scale_sqrt_ub", "offset_ub", "dequant_relu"):
-            elewise_cache_list.append(temp_tensor)
-        elif temp_tensor.op.name == "input_ub":
-            TENSOR_MAP["input_ub"] = temp_tensor
-            if temp_tensor.op.attrs["c_out"].value % 2:
+    for key, value in all_tensor.items():
+        if "reform" in key:
+            TENSOR_MAP["reform_op"] = value
+        elif key == "input_ub":
+            TENSOR_MAP[key] = value
+            if value.op.attrs["c_out"].value % 2:
                 quant_para["q_padding"] = True
-        elif len(temp_tensor.op.input_tensors) == 2 and "elewise" in temp_tensor.op.tag:
-            temp_tensor = input_tensor_info(temp_tensor)
-            continue
-        elif "elewise" in temp_tensor.op.tag:
-            elewise_cache_list.append(temp_tensor)
-        elif "dequant2" in temp_tensor.op.tag:
-            TENSOR_MAP["dequant_sqrt"] = temp_tensor
-        elif temp_tensor.op.tag in ("dequant_vector", "dequant1_vector"):
-            TENSOR_MAP["deq"] = _get_src_tensor(temp_tensor, 1)
-            TENSOR_MAP["c_ub"] = temp_tensor
-            quant_para["deq_vector"] = True
-        elif temp_tensor.op.tag in ("dequant_scale", "dequant1_scale"):
-            TENSOR_MAP["deq"] = _get_src_tensor(temp_tensor, 1)
-            TENSOR_MAP["c_ub"] = temp_tensor
-        elif "dequant_remove_pad" in temp_tensor.op.tag:
-            TENSOR_MAP["dequant_remove_pad"] = temp_tensor
-        temp_tensor = _get_src_tensor(temp_tensor, 0)
+        elif key == "cast_i8_ub":
+            TENSOR_MAP[key] = value
+        elif key in ("dequant", "dequant1"):
+            TENSOR_MAP["deq"] = _get_src_tensor(value, 1)
+            TENSOR_MAP["c_ub"] = value
+            if "vector" in value.op.tag:
+                quant_para["deq_vector"] = True
+        elif not value.op.input_tensors:
+            if "dequant" not in leaf_tensor.get(key).op.name:
+                input_cache_buffer.append([value, leaf_tensor.get(key)])
+        elif value.op.tag != "conv2d_backprop_input_opti":
+            elewise_cache_list.append(value)
+
     TENSOR_MAP["elewise_tensor"] = elewise_cache_list
     TENSOR_MAP["input_tensor"] = input_cache_buffer
     return quant_para
 
 
-def _dequant_tensor_info(dx_res, quant_para):
-    """
-    check dequant
-    """
-    DeconvParam.update_para_map("FUSION_TYPE", FUSION_DX_DEQUANT)
-    temp_tensor = dx_res
-    while temp_tensor.op.input_tensors:
-        if "dequant2" in temp_tensor.op.tag:
-            TENSOR_MAP["dequant_sqrt"] = temp_tensor
-        elif temp_tensor.op.tag in ("dequant_vector", "dequant1_vector"):
-            TENSOR_MAP["deq"] = _get_src_tensor(temp_tensor, 1)
-            TENSOR_MAP["c_ub"] = temp_tensor
-            quant_para["deq_vector"] = True
-        elif temp_tensor.op.tag in ("dequant_scale", "dequant1_scale"):
-            TENSOR_MAP["deq"] = _get_src_tensor(temp_tensor, 1)
-            TENSOR_MAP["c_ub"] = temp_tensor
-        elif temp_tensor.op.name == "dequant_relu":
-            TENSOR_MAP["dequant_relu"] = temp_tensor
-        elif "dequant_remove_pad" in temp_tensor.op.tag:
-            TENSOR_MAP["dequant_remove_pad"] = temp_tensor
-        temp_tensor = _get_src_tensor(temp_tensor, 0)
-    return quant_para
-
-
-def _requant_tesnor_info(dx_res, quant_para):
+def _requant_tensor_info(dx_res, quant_para):
     """
     check requant
     """
@@ -836,40 +829,26 @@ def _requant_tesnor_info(dx_res, quant_para):
     return quant_para
 
 
-def _dequant_elewise_infor(dx_res, quant_para):
+def _dequant_elewise_info(all_tensor, leaf_tensor, quant_para):
     """
     check dequant + elewise
     """
-    temp_tensor = dx_res
     elewise_cache_list = []
     input_cache_buffer = []
-    while temp_tensor.op.input_tensors:
-        if "dequant" in temp_tensor.op.tag:
+
+    for key, value in all_tensor.items():
+        if key in ("dequant", "dequant1"):
             DeconvParam.update_para_map("FUSION_TYPE", FUSION_DX_DEQUANT)
-        if len(temp_tensor.op.input_tensors) == 2 and "elewise" in temp_tensor.op.tag:
-            input_tensor = _get_src_tensor(temp_tensor, 0)
-            if not input_tensor.op.input_tensors:
-                input_cache_buffer.append([input_tensor, temp_tensor])
-                temp_tensor = _get_src_tensor(temp_tensor, 1)
-                continue
-            input_tensor = _get_src_tensor(temp_tensor, 1)
-            input_cache_buffer.append([input_tensor, temp_tensor])
-        elif "elewise" in temp_tensor.op.tag:
-            elewise_cache_list.append(temp_tensor)
-        elif "dequant2" in temp_tensor.op.tag:
-            TENSOR_MAP["dequant_sqrt"] = temp_tensor
-        elif temp_tensor.op.tag in ("dequant_vector", "dequant1_vector"):
-            TENSOR_MAP["deq"] = _get_src_tensor(temp_tensor, 1)
-            TENSOR_MAP["c_ub"] = temp_tensor
-            quant_para["deq_vector"] = True
-        elif temp_tensor.op.tag in ("dequant_scale", "dequant1_scale"):
-            TENSOR_MAP["deq"] = _get_src_tensor(temp_tensor, 1)
-            TENSOR_MAP["c_ub"] = temp_tensor
-        elif temp_tensor.op.name == "dequant_relu":
-            TENSOR_MAP["dequant_relu"] = temp_tensor
-        elif "dequant_remove_pad" in temp_tensor.op.tag:
-            TENSOR_MAP["dequant_remove_pad"] = temp_tensor
-        temp_tensor = _get_src_tensor(temp_tensor, 0)
+            TENSOR_MAP["deq"] = _get_src_tensor(value, 1)
+            TENSOR_MAP["c_ub"] = value
+            if "vector" in value.op.tag:
+                quant_para["deq_vector"] = True
+        elif not value.op.input_tensors:
+            if "dequant" not in leaf_tensor.get(key).op.name:
+                input_cache_buffer.append([value, leaf_tensor.get(key)])
+        elif value.op.tag != "conv2d_backprop_input_opti":
+            elewise_cache_list.append(value)
+
     if DeconvParam.get_para_map("FUSION_TYPE") == FUSION_DX_DEQUANT:
         TENSOR_MAP["elewise_tensor"] = elewise_cache_list
         TENSOR_MAP["input_tensor"] = input_cache_buffer
@@ -889,14 +868,14 @@ def _check_quant_fusion(dx_res):
         "q_round": None,
         "q_padding": False
     }
+    all_tensor, leaf_tensor = _get_all_tensors(dx_res)
+
     if dx_res.op.tag == "quant":
-        quant_para = _quant_tensor_info(dx_res, quant_para)
-    elif "dequant" in dx_res.op.tag:
-        quant_para = _dequant_tensor_info(dx_res, quant_para)
+        quant_para = _quant_tensor_info(all_tensor, leaf_tensor, dx_res, quant_para)
     elif "requant_remove_pad" in dx_res.op.tag:
-        quant_para = _requant_tesnor_info(dx_res, quant_para)
+        quant_para = _requant_tensor_info(dx_res, quant_para)
     else:
-        quant_para = _dequant_elewise_infor(dx_res, quant_para)
+        quant_para = _dequant_elewise_info(all_tensor, leaf_tensor, quant_para)
 
     return quant_para
 
@@ -946,85 +925,49 @@ def _set_data_layout(
         check fusion type and set buffer
         """
 
-        def handle_elewise_tensor():
-            elewise_tensor = fusion_tensor_map.get("elewise_tensor")
-            if elewise_tensor:
-                for elewise_tensor_mem in elewise_tensor:
-                    if elewise_tensor_mem.op.tag != res.op.tag:
-                        sch[elewise_tensor_mem].set_scope(cce_params.scope_ubuf)
+        def _handle_elewise_tensor():
+            deq_ub_read = [fusion_tensor_map.get("c_ub")]
+            for elewise_tensor_mem in fusion_tensor_map.get("elewise_tensor"):
+                if elewise_tensor_mem.op.tag != res.op.tag:
+                    sch[elewise_tensor_mem].set_scope(cce_params.scope_ubuf)
+                if "dequant2" in elewise_tensor_mem.op.name:
+                    deq_ub_read.append(elewise_tensor_mem)
 
-            input_tensor = fusion_tensor_map.get("input_tensor")
-            if input_tensor:
-                for input_tensor_mem in input_tensor:
-                    if input_tensor_mem[1].op.tag != res.op.tag:
-                        sch[input_tensor_mem[1]].set_scope(cce_params.scope_ubuf)
-                        input_tensor_ub = sch.cache_read(
-                            input_tensor_mem[0],
-                            cce_params.scope_ubuf,
-                            input_tensor_mem[1]
-                        )
-                    else:
-                        input_tensor_ub = sch.cache_read(
-                            input_tensor_mem[0], cce_params.scope_ubuf, c_ub_res
-                        )
-                    input_tensor_mem[0] = input_tensor_ub
-
-        def handle_deq_tensor():
             deq_scale = fusion_tensor_map.get("deq")
-
-            if "dequant_sqrt" in fusion_tensor_map:
-                dequant_sqrt = fusion_tensor_map.get("dequant_sqrt")
-                if (
-                    "c_ub_res" in fusion_tensor_map
-                    and c_ub_res.op.tag == dequant_sqrt.op.tag
-                ):
-                    dequant_sqrt = c_ub_res
-                deq_ub = sch.cache_read(
-                    deq_scale,
-                    cce_params.scope_ubuf,
-                    [fusion_tensor_map.get("c_ub"), dequant_sqrt]
-                )
-            else:
-                deq_ub = sch.cache_read(
-                    deq_scale, cce_params.scope_ubuf, fusion_tensor_map.get("c_ub")
-                )
+            deq_ub = sch.cache_read(deq_scale, cce_params.scope_ubuf, deq_ub_read)
             fusion_tensor_map["deq"] = deq_ub
 
-        def handle_elewise_fusion():
+            input_list = []
+            for input_tensor_mem in fusion_tensor_map.get("input_tensor"):
+                if input_tensor_mem[1].op.tag != res.op.tag:
+                    input_tensor_des = input_tensor_mem[1]
+                else:
+                    input_tensor_des = c_ub_res
+                input_tensor_ub = sch.cache_read(input_tensor_mem[0], cce_params.scope_ubuf, input_tensor_des)
+                input_list.append(input_tensor_ub)
+            fusion_tensor_map["input_tensor"] =input_list
+
+        def _handle_elewise_fusion():
             DeconvParam.update_para_map("FUSION_TYPE", FUSION_DX_ELEWISE)
-            temp_tensor = res
             input_tensor_list = []
             ub_list = []
             c_ub_res = sch.cache_write(res, cce_params.scope_ubuf)
-            while temp_tensor.op.input_tensors:
-                if len(temp_tensor.op.input_tensors) == 2:
-                    if temp_tensor != res:
-                        sch[temp_tensor].set_scope(cce_params.scope_ubuf)
-                        input_tensor_des = temp_tensor
-                    else:
-                        input_tensor_des = c_ub_res
-                    ub_list.append(input_tensor_des)
-                    input_tensor = temp_tensor.op.input_tensors[0]
-                    if not input_tensor:
-                        temp_tensor = temp_tensor.op.input_tensors[1]
-                    else:
-                        input_tensor = temp_tensor.op.input_tensors[1]
-                        temp_tensor = temp_tensor.op.input_tensors[0]
-                    input_tensor_ub = sch.cache_read(
-                        input_tensor, cce_params.scope_ubuf, [input_tensor_des]
-                    )
-                    input_tensor_list.append(input_tensor_ub)
-                    continue
-                if temp_tensor.op.tag == "conv2d_backprop_input_opti":
-                    tensor_dx_gm = temp_tensor
-                    sch[tensor_dx_gm].compute_inline()
-                    break
-                if temp_tensor != res:
-                    sch[temp_tensor].set_scope(cce_params.scope_ubuf)
-                    ub_list.append(temp_tensor)
+            all_tensor, leaf_tensor = _get_all_tensors(res)
+            for key, value in all_tensor.items():
+                if value.op.tag == "conv2d_backprop_input_opti":
+                    tensor_dx_gm = value
+                    sch[value].compute_inline()
+                elif value.op.input_tensors:
+                    sch[value].set_scope(cce_params.scope_ubuf)
+                    ub_list.append(value)
                 else:
-                    ub_list.append(c_ub_res)
-                temp_tensor = temp_tensor.op.input_tensors[0]
+                    if leaf_tensor.get(key).op.tag == res.op.tag:
+                        input_tensor_des = c_ub_res
+                    else:
+                        input_tensor_des = leaf_tensor.get(value.op.name)
+                    input_tensor_ub = sch.cache_read(value, cce_params.scope_ubuf, input_tensor_des)
+                    input_tensor_list.append(input_tensor_ub)
+            ub_list.append(c_ub_res)
             fusion_tensor_map["input_tensor_list"] = input_tensor_list
             fusion_tensor_map["ub_list"] = ub_list
             fusion_tensor_map["fusion_dx_gm"] = tensor_dx_gm
@@ -1035,22 +978,15 @@ def _set_data_layout(
             FUSION_DX_DEQUANT_QUANT,
             FUSION_DX_REQUANT
         ):
-            if (
-                res.op.tag != "dequant_remove_pad"
-                and DeconvParam.get_para_map("FUSION_TYPE") == FUSION_DX_DEQUANT
-            ):
+            if res.op.tag != "dequant_remove_pad" and DeconvParam.get_para_map("FUSION_TYPE") == FUSION_DX_DEQUANT:
                 c_ub_res = sch.cache_write(res, cce_params.scope_ubuf)
-                fusion_tensor_map["c_ub_res"] = c_ub_res
+                fusion_tensor_map["elewise_tensor"].append(c_ub_res)
 
             for tensor in fusion_tensor_map:
-                if (
-                    tensor not in ("elewise_tensor", "input_tensor", "deq")
-                    and res.op.tag != fusion_tensor_map[tensor].op.tag
-                ):
+                if tensor not in ("elewise_tensor", "input_tensor", "deq"):
                     sch[fusion_tensor_map[tensor]].set_scope(cce_params.scope_ubuf)
 
-            handle_elewise_tensor()
-            handle_deq_tensor()
+            _handle_elewise_tensor()
             tensor_dx_gm = fusion_tensor_map["c_ub"].op.input_tensors[0]
         elif res.op.tag == "emit_insn_elewise_multiple_sel|bool":
             drelu_gm = res
@@ -1078,7 +1014,7 @@ def _set_data_layout(
             fusion_tensor_map["fusion_dx_gm"] = tensor_dx_gm  # inter_gm
         # dx+add
         elif "elewise" in res.op.tag:
-            tensor_dx_gm = handle_elewise_fusion()
+            tensor_dx_gm = _handle_elewise_fusion()
         elif res.op.tag == "conv2d_backprop_input_opti":
             DeconvParam.update_para_map("FUSION_TYPE", FUSION_NONE)
             tensor_dx_gm = res
@@ -1213,7 +1149,7 @@ def _set_data_layout(
             a_l0a_before = None
         return dedy_col, dedy, a_l0a_before
 
-    def al1_buffer_align():
+    def _al1_buffer_align():
         storage_align_size = 256
         if dedy_col.dtype == "int8":
             storage_align_size = 512
@@ -1294,7 +1230,7 @@ def _set_data_layout(
         DIM_MAP["img_shape"] = shape_to_list(TENSOR_MAP["img_placehold"].shape)
     else:
         DIM_MAP["img_shape"] = [int(i) for i in TENSOR_MAP["img_placehold"].shape]
-    al1_buffer_align()
+    _al1_buffer_align()
 
     TENSOR_MAP["a_l1"] = dedy_col
     sch[a_l0a].set_scope(cce_params.scope_ca)
@@ -1971,43 +1907,25 @@ def opti_schedule(
     def _attach_ub(fusion_type):
         def _attach_ub_quant():
             ub_attach_list = [
-                "dequant_relu",
-                "dequant_sqrt",
                 "input_ub",
                 "deq",
                 "reform_op",
-                "quant_vmuls",
-                "quant_vadds",
                 "cast_i8_ub",
                 "data_transfer"
             ]
             for tensor in TENSOR_MAP:
-                if (
-                    tensor == "dequant_remove_pad"
-                    and c_gm.op.tag != TENSOR_MAP[tensor].op.tag
-                ):
-                    sch[TENSOR_MAP[tensor]].compute_inline()
-                elif tensor == "elewise_tensor":
-                    tensor_list = TENSOR_MAP[tensor]
-                    for elewise_tensor in tensor_list:
-                        if elewise_tensor.op.tag != c_gm.op.tag:
+                if tensor == "elewise_tensor":
+                    for elewise_tensor in TENSOR_MAP[tensor]:
+                        if "broadcast" in elewise_tensor.op.tag or elewise_tensor.op.tag == "dequant_remove_pad":
+                            sch[elewise_tensor].compute_inline()
+                        else:
                             sch[elewise_tensor].compute_at(sch[c_gm], l0c_m_inner_outer)
                 elif tensor == "input_tensor":
-                    tensor_list = TENSOR_MAP[tensor]
-                    for input_tensor in tensor_list:
-                        sch[input_tensor[0]].compute_at(sch[c_gm], l0c_m_inner_outer)
-                        if input_tensor[1].op.tag != c_gm.op.tag:
-                            sch[input_tensor[1]].compute_at(
-                                sch[c_gm], l0c_m_inner_outer
-                            )
+                    for input_tensor in TENSOR_MAP[tensor]:
+                        sch[input_tensor].compute_at(sch[c_gm], l0c_m_inner_outer)
                 elif tensor == "input_ub" and not quan_para["q_padding"]:
                     sch[TENSOR_MAP[tensor]].compute_inline()
-                elif (
-                    tensor in ub_attach_list
-                    and c_gm.op.tag != TENSOR_MAP[tensor].op.tag
-                ):
-                    sch[TENSOR_MAP[tensor]].compute_at(sch[c_gm], l0c_m_inner_outer)
-                elif tensor == "c_ub_res":
+                elif tensor in ub_attach_list:
                     sch[TENSOR_MAP[tensor]].compute_at(sch[c_gm], l0c_m_inner_outer)
 
         def _attach_ub_bias():
@@ -2053,14 +1971,18 @@ def opti_schedule(
             for input_tensor in TENSOR_MAP["input_tensor_list"]:
                 sch[input_tensor].compute_at(sch[c_gm], l0c_m_inner_outer)
             for ub_tensor in TENSOR_MAP["ub_list"]:
-                sch[ub_tensor].compute_at(sch[c_gm], l0c_m_inner_outer)
+                if "broadcast" in ub_tensor.op.tag:
+                    sch[ub_tensor].compute_inline()
+                else:
+                    sch[ub_tensor].compute_at(sch[c_gm], l0c_m_inner_outer)
         elif fusion_type in (
             FUSION_DX_DEQUANT,
             FUSION_DX_DEQUANT_QUANT,
             FUSION_DX_REQUANT
         ):
             _attach_ub_quant()
-
+            for double_out_tensor_mem in DOUBLE_TENSOR_OUT:
+                sch[double_out_tensor_mem].compute_at(sch[c_gm], l0c_m_inner_outer)
         _attach_ub_bias()
 
         if dilate_ub is not None:
@@ -2168,6 +2090,9 @@ def opti_schedule(
             elif fusion_type == FUSION_DX_ELEWISE:
                 for ub_tensor in TENSOR_MAP["ub_list"]:
                     sch[ub_tensor].double_buffer()
+                for input_tensor in TENSOR_MAP["input_tensor_list"]:
+                    sch[input_tensor].double_buffer()
+                    sch[input_tensor].preload()
 
     def _do_reused_by(fusion_type):
         if dilate_ub is not None:
@@ -2186,16 +2111,17 @@ def opti_schedule(
         elif fusion_type == FUSION_DX_ELEWISE:
             iv_c_gm = calc_info_of_iter_vars(sch[c_gm])
             len_axis = iv_c_gm[-2][1].extent
-            for ub_tensor in TENSOR_MAP["ub_list"]:
-                len_align = (
-                    tvm.min(
-                        len_axis, dx_output_ub.shape[2] - l0c_m_outer.var * len_axis
+            if FUSION_TYPE_2_OPERAND_NUM.get(fusion_type) < 1:
+                for ub_tensor in TENSOR_MAP["ub_list"]:
+                    len_align = (
+                        tvm.min(
+                            len_axis, dx_output_ub.shape[2] - l0c_m_outer.var * len_axis
+                        )
+                        * ub_tensor.op.axis[3].dom.extent
                     )
-                    * ub_tensor.op.axis[3].dom.extent
-                )
 
-                sch[ub_tensor].bind_buffer(ub_tensor.op.axis[1], len_align, 0)
-                sch[dx_output_ub].reused_by(ub_tensor)
+                    sch[ub_tensor].bind_buffer(ub_tensor.op.axis[1], len_align, 0)
+                    sch[dx_output_ub].reused_by(ub_tensor)
 
     def _fusion_intrin_mapping(fusion_type):  # pylint: disable=R0915
         def _add_res_ub_insn():
@@ -2206,34 +2132,21 @@ def opti_schedule(
 
         def _quant_vector_insn():
             for tensor_name in TENSOR_MAP:
-                if (
-                    "dequant" in tensor_name
-                    and tensor_name != "dequant_remove_pad"
-                    and dx_res.op.tag != TENSOR_MAP[tensor_name].op.tag
-                ):
-                    sch[TENSOR_MAP[tensor_name]].emit_insn(
-                        TENSOR_MAP[tensor_name].op.axis[0], "vector_auto"
-                    )
-                elif tensor_name == "c_ub_res":
-                    sch[TENSOR_MAP[tensor_name]].emit_insn(
-                        TENSOR_MAP[tensor_name].op.axis[0], "vector_auto"
-                    )
-                elif tensor_name == "reform_op":
+                if tensor_name == "reform_op":
                     reform_ub = TENSOR_MAP[tensor_name]
                     ndim = len(sch[reform_ub].op.axis)
                     coo, _ = sch[reform_ub].split(
                         sch[reform_ub].op.axis[ndim - 1],
                         cce_params.CUBE_MKN["float16"]["mac"][1]
                     )
-                    axis_list = sch[reform_ub].op.axis[0 : ndim - 1]
+                    axis_list = sch[reform_ub].op.axis[0:ndim - 1]
                     sch[reform_ub].reorder(coo, *axis_list)
                     sch[reform_ub].emit_insn(sch[reform_ub].op.axis[2], "vector_auto")
                 elif tensor_name == "elewise_tensor":
                     for elewise_tensor in TENSOR_MAP[tensor_name]:
-                        if elewise_tensor.op.tag != dx_res.op.tag:
-                            sch[elewise_tensor].emit_insn(
-                                elewise_tensor.op.axis[0], "vector_auto"
-                            )
+                        sch[elewise_tensor].emit_insn(
+                            elewise_tensor.op.axis[0], "vector_auto"
+                        )
 
         def _quant_copy_insn():
             for tensor_name in TENSOR_MAP:
@@ -2243,12 +2156,8 @@ def opti_schedule(
                     )
                 elif tensor_name == "input_tensor":
                     for input_tensor in TENSOR_MAP[tensor_name]:
-                        if input_tensor[1].op.tag != dx_res.op.tag:
-                            sch[input_tensor[1]].emit_insn(
-                                input_tensor[1].op.axis[0], "vector_auto"
-                            )
-                        sch[input_tensor[0]].emit_insn(
-                            input_tensor[0].op.axis[0], "dma_copy"
+                        sch[input_tensor].emit_insn(
+                            input_tensor.op.axis[0], "dma_copy"
                         )
                 elif tensor_name == "data_transfer":
                     c_ub_reform = TENSOR_MAP[tensor_name]
@@ -2316,7 +2225,7 @@ def opti_schedule(
             _quant_ub_insn()
 
     def _intrin_mapping(fusion_type):  # pylint: disable=R0915,R0912
-        def l1fusion_intrin():
+        def _l1fusion_intrin():
             valid_shape = DeconvParam.get_para_map("valid_shape")
             slice_offset = DeconvParam.get_para_map("slice_offset")
             if TILING["AL1_shape"] is not None:
@@ -2357,7 +2266,7 @@ def opti_schedule(
                 align_length = c_gm.op.attrs["HWC0"]
                 sch[c_gm].bind_buffer(c_gm.op.axis[1], align_length, 0)
 
-        l1fusion_intrin()
+        _l1fusion_intrin()
         sch[b_l1].emit_insn(b_l1.op.axis[0], "dma_copy")
         sch[b_l0b].emit_insn(b_l0b.op.axis[0], "dma_copy")
 
@@ -2369,7 +2278,12 @@ def opti_schedule(
             if c_ub is not None:
                 sch[c_ub].emit_insn(c_ub.op.axis[0], "dma_copy")
 
-        sch[c_gm].emit_insn(l0c_n_inner_inner, "dma_copy")
+        if DOUBLE_TENSOR_OUT:
+            for double_out_tensor_mem in DOUBLE_TENSOR_OUT:
+                sch[double_out_tensor_mem].emit_insn(double_out_tensor_mem.op.axis[0], "dma_copy")
+            sch[c_gm].emit_insn(l0c_n_inner_inner, "phony_insn")
+        else:
+            sch[c_gm].emit_insn(l0c_n_inner_inner, "dma_copy")
 
         if dilate_ub is not None:
             filling_zero_ub = TENSOR_MAP["tensor_fillling_zero"]
@@ -2448,7 +2362,7 @@ def opti_schedule(
         _print_ir_conv("intrin mapping", sch)
 
     def _get_al1_bound():
-        def int_ceil_div_tvm(num_a, num_b):
+        def _int_ceil_div_tvm(num_a, num_b):
             return tvm.floordiv((num_a + num_b - 1), num_b)
 
         dedy_shape_nc1hwc0 = DIM_MAP["img_shape"]
@@ -2460,7 +2374,7 @@ def opti_schedule(
         else:
             al1_bound = (
                 dedy_shape_nc1hwc0[1]
-                * int_ceil_div_tvm(
+                * _int_ceil_div_tvm(
                     dedy_shape_nc1hwc0[2] * dedy_shape_nc1hwc0[3], tiling_m0
                 )
                 * tiling_m0
@@ -2495,6 +2409,10 @@ def opti_schedule(
             res_before_write_select = res.op.input_tensors[0]
         else:
             res_before_write_select = res
+        if res_before_write_select.op.tag == "conv_virtual_res":
+            DOUBLE_TENSOR_OUT.append(res_before_write_select.op.input_tensors[0])
+            DOUBLE_TENSOR_OUT.append(res_before_write_select.op.input_tensors[1])
+            res_before_write_select = res_before_write_select.op.input_tensors[0]
         return res_before_write_select
 
     def _get_fusion_type(fusion_type):
@@ -2661,7 +2579,7 @@ def opti_schedule(
     )
 
     _get_tiling(
-        tensor, fusion_type, kernel_name, is_conv1d_bool, dynamic_para, tiling_case
+        dx_res_write, fusion_type, kernel_name, is_conv1d_bool, dynamic_para, tiling_case
     )
 
     # get factor and parts from tiling
@@ -2838,4 +2756,5 @@ def opti_schedule(
     TILING.clear()
     DIM_MAP.clear()
     TENSOR_MAP.clear()
+    DOUBLE_TENSOR_OUT.clear()
     return sch
