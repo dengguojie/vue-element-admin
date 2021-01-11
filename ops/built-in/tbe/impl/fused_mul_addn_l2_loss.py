@@ -15,6 +15,7 @@
 """
 fused_mul_addn_l2_loss
 """
+import functools
 import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
@@ -164,9 +165,12 @@ def fused_mul_addn_l2loss(input_x, input_y, input_z, output_x, output_y, kernel_
         if not tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
             error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'input_x', ('float16', ), dtype_x)
 
-    weight = tvm.placeholder(shape_x, name="weight", dtype=dtype_x)
-    weight_grad = tvm.placeholder(shape_y, name="weight_grad", dtype=dtype_y)
-    const_input = tvm.placeholder(shape_z, name="const_input", dtype=dtype_z)
+    fused_x_shape = [functools.reduce(lambda a, b: a * b, shape_x[:])]
+    fused_y_shape = [functools.reduce(lambda a, b: a * b, shape_y[:])]
+    fused_z_shape = [functools.reduce(lambda a, b: a * b, shape_z[:])]
+    weight = tvm.placeholder(fused_x_shape, name="weight", dtype=dtype_x)
+    weight_grad = tvm.placeholder(fused_y_shape, name="weight_grad", dtype=dtype_y)
+    const_input = tvm.placeholder(fused_z_shape, name="const_input", dtype=dtype_z)
 
     res1, res2 = fused_mul_addn_l2loss_compute(weight, const_input, weight_grad)
     res_list = [res1, res2]
