@@ -23,7 +23,6 @@
  
 #include <vector>
 #include <memory>
-#include "common/fe_log.h"
 #include "fp16_t.hpp"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/graph_utils.h"
