@@ -30,7 +30,7 @@ _BLOCK_SIZE = 16
 _DATA_SIZE_LIMIT_INT64 = 9223372036864776807
 
 
-def _check_shape_rule(shape, dim, formats, name):
+def _check_shape_rule(shape, dim, name):
     """
     check shape
 
@@ -54,7 +54,7 @@ def _check_shape_rule(shape, dim, formats, name):
                                error_manager_util.get_error_message(args_dict))
 
 
-def _check_attr_rule(attr, dim, attr_limit, formats, name):
+def _check_attr_rule(attr, dim, attr_limit, name):
     """
     check attribute
 
@@ -261,9 +261,9 @@ class Conv3dBackpropFilter:
 
         # check shape
         # each element must be positive int
-        _check_shape_rule(self.shape_x_6hd, 6, "NDC1HWC0", "x")
-        _check_shape_rule(self.shape_grads_6hd, 6, "NDC1HWC0", "out_backprop")
-        _check_shape_rule(self.weight_shape, 5, "NDCHW", "filter_sizes")
+        _check_shape_rule(self.shape_x_6hd, 6, "x")
+        _check_shape_rule(self.shape_grads_6hd, 6, "out_backprop")
+        _check_shape_rule(self.weight_shape, 5, "filter_sizes")
 
         _, grads_depth, _, grads_height, grads_width, _ = self.shape_grads_6hd
         _, fmap_depth, _, fmap_height, fmap_width, _ = self.shape_x_6hd
@@ -301,10 +301,8 @@ class Conv3dBackpropFilter:
         _check_variable_range(kernel_height, 1, 256, "height of filter")
         _check_variable_range(kernel_width, 1, 256, "width of filter")
 
-        _check_attr_rule(self.stride, 3, [1, 63],
-                         "[strideD, strideH, strideW]", "stride")
-        _check_attr_rule(self.pad, 6, [0, 255],
-                        "[front,back,up,down,left,right]", "pad")
+        _check_attr_rule(self.stride, 3, [1, 63], "stride")
+        _check_attr_rule(self.pad, 6, [0, 255], "pad")
         return True
 
     def _deconv_dw_input_check_2(self):
@@ -460,7 +458,7 @@ class Conv3dBackpropFilter:
         _check_addressing_rule(kernel_fractal, 4, _DATA_SIZE_LIMIT_INT64)
         return True
 
-    def _deconv_dw_access(self):
+    def deconv_dw_access(self):
         """
         complete compute generation, including input check,
         compute definition and result record
@@ -497,6 +495,7 @@ class Conv3dBackpropFilter:
 
                 """
                 group_dict = self.group_dict
+                grads_c1 = self.shape_grads_6hd[2]
                 (group_indices, batch_indices, grads_c1_indices,
                  hw_mad_1_indices, grads_c0_indices, hw_mad_0_indices) = indices
 
@@ -507,8 +506,9 @@ class Conv3dBackpropFilter:
                 grads_hw_index = hw_mad_1_indices * _BLOCK_SIZE + hw_mad_0_indices
                 grads_c0_index = grads_c0_indices
 
-                return grads_2_matrix(batch_size_index, grads_channel_1_index,
-                                      grads_hw_index, grads_c0_index)
+                return tvm.select(tvm.all(grads_channel_1_index < grads_c1),
+                    grads_2_matrix(batch_size_index, grads_channel_1_index,
+                                   grads_hw_index, grads_c0_index))
 
             return tvm.compute(grads_shape_fractal,
                                lambda *indices:
@@ -1012,7 +1012,7 @@ def _conv3d_backprop_filter_compute(input_x,
 
     padding : 6-D shape, specifies in up/down/left/right dimension
 
-    group_dict ： groups information
+    group_dict : groups information
 
     dilations : 5-D shape, specifies in batch/channel/depth/height/width dimension
 
@@ -1038,7 +1038,7 @@ def _conv3d_backprop_filter_compute(input_x,
                                             dilations=dilations,
                                             res_dtype=res_dtype,
                                             kernel_name=kernel_name)
-    deconv_dw_object._deconv_dw_access()
+    deconv_dw_object.deconv_dw_access()
 
     return deconv_dw_object.res_tensor
 
