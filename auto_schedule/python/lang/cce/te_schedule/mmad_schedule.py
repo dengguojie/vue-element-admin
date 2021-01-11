@@ -46,6 +46,7 @@ DEQ_SCALE_CHILD_LIST = [
 
 DOUBLE_VALUE = 2
 CORE_NUM_THRITY = 30
+CORE_NUM_EIGHT = 8
 
 def gemm_para_check(gm_shape, l1_tiling_shape, l0_tiling_shape):
     """
@@ -267,6 +268,16 @@ def get_cloud_shape_map():
 
     return shape_map
 
+def get_mdc_shape_map():
+    """
+    the knowledge of matmul schedule tiling
+    """
+    shape_map = {(1024, 768, 768, -1, 4): "256_768_384_128_256_128_2_2",
+                 (1024, 768, 768, -1, 6): "256_768_384_128_256_128_2_2"
+                 }
+
+    return shape_map
+
 
 def get_core_map():
     """
@@ -404,6 +415,8 @@ def get_knowledge_tiling(shape_tiling_args, is_b_nz, tiling_shape):
             shape_map = get_mini_frac_shape_map()
     elif core_num == CORE_NUM_THRITY:
         shape_map = get_cloud_shape_map()
+    elif core_num == CORE_NUM_EIGHT:
+        shape_map = get_mdc_shape_map()
     if shape_map.get(shape_args) is not None:
         tiling_shape = shape_map[shape_args]
     else:
