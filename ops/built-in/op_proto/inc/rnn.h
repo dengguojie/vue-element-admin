@@ -910,6 +910,56 @@ REG_OP(CommonLSTM)
     .REQUIRED_ATTR(hidden_size, Int)
     .ATTR(input_forget, Int, 0)
     .OP_END_FACTORY_REG(CommonLSTM)
+
+/**
+* @brief Common GRU calculation.
+
+* @par Inputs:
+* Eight inputs, including:
+* @li x: The input sequences packed (and pontentially padded) into on 3D Tesnor(float16). The format must be FRACTAL_NZ 
+* @li w: The weight tensor for the gates is 3D Tensor(float16). The format must be FRACTAL_Z
+* @li r: The recurrence weight tesnor is 3D Tensor(float16). The format must be FRACTAL_Z
+* @li b: The bias tensor for the gates. The format must be ND
+* @li sequence_lens: Optional tensor specifying lengths of sequences(int32). The format must be ND
+* @li init_h: Optional initial value of the hidden(float16,float32). The format must be FRACTAL_NZ
+
+* @par Attributes:
+* @li activation_alpha: Optional scaling values used by some activation functions.  \n
+
+* @li activation_beta: Optional scaling values used by some activation functions.  \n
+
+* @li activations: A list of 2 (or 4 if bidirectional) activation functions for update, reset, and hidden gates.  \n
+
+* @li clip: Cell clip threshold. \n
+
+* @li direction: Specify if the RNN is forward, reverse, or bidirectional. \n
+
+* @li hidden_size: Number of neurons in the hidden layer. \n
+
+* @li linear_before_reset: When computing the output of the hidden gate, apply the linear transformation before multiplying by the output of the reset gate. \n
+
+* @par Outputs:
+* @li y: A Tensor that concats all the intermediate output values of the hidden(float16,float32). The format must be FRACTAL_NZ
+
+* @li y_h: The last output value of the hidden(float16,float32). The format must be FRACTAL_NZ
+*/
+REG_OP(CommonGRU)
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(w, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(r, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OPTIONAL_INPUT(b, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OPTIONAL_INPUT(sequence_lens, TensorType({DT_INT32}))
+    .OPTIONAL_INPUT(initial_h, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(y_h, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .ATTR(activation_alpha, ListFloat, {})
+    .ATTR(activation_beta , ListFloat, {})
+    .ATTR(activations , ListString, {})
+    .ATTR(clip, Float, -1.0)
+    .ATTR(direction, String, "forward")
+    .REQUIRED_ATTR(hidden_size, Int)
+    .ATTR(linear_before_reset , Int, 0)
+    .OP_END_FACTORY_REG(CommonGRU)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_RNN_H_

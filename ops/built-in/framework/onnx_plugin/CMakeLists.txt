@@ -38,6 +38,7 @@ set(_onnx_plugins
   gather_plugin.cc
   gemm_plugin.cc
   global_average_pool_plugin.cc
+  gru_plugin.cc
   max_pool_plugin.cc
   mul_plugin.cc
   pad_plugin.cc

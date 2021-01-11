@@ -144,6 +144,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/gather_v2_fusion_pass.cc
   graph_fusion/ai_core/gelu_fusion_pass.cc
   graph_fusion/ai_core/gemm_transpose_fusion_pass.cc
+  graph_fusion/ai_core/gru_fusion_pass.cc
   graph_fusion/ai_core/hostbn_fusion_pass.cc
   graph_fusion/ai_core/hostin_fusion_pass.cc
   graph_fusion/ai_core/keep_ratio_resize_bilinear_fusion_pass.cc

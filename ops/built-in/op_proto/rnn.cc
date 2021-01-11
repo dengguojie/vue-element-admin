@@ -653,7 +653,6 @@ INFER_FUNC_REG(DynamicGRUV2, DynamicGRUV2InferShape);
 VERIFY_FUNC_REG(DynamicGRUV2, DynamicGRUV2Verify);
 
 IMPLEMT_VERIFIER(DynamicGRUV2Grad, DynamicGRUV2GradVerify) {
-
   return GRAPH_SUCCESS;
 }
 
@@ -821,4 +820,56 @@ IMPLEMT_INFERFUNC(CommonLSTM, CommonLSTMInferShape) {
 }
 INFER_FUNC_REG(CommonLSTM, CommonLSTMInferShape);
 VERIFY_FUNC_REG(CommonLSTM, CommonLSTMVerify);
+
+IMPLEMT_INFERFUNC(CommonGRU, CommonGRUInferShape) {
+  TensorDesc x_tensor_desc = op.GetInputDesc("x");
+  TensorDesc w_tensor_desc = op.GetInputDesc("w");
+  TensorDesc r_tensor_desc = op.GetInputDesc("r");
+  Shape shape_x = x_tensor_desc.GetShape();
+  Shape shape_w = w_tensor_desc.GetShape();
+
+  DataType bias_dtype = DT_FLOAT;
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  if (op_desc->MutableInputDesc("b") != nullptr) {
+    bias_dtype = op.GetInputDesc("b").GetDataType();
+  } else if (op_desc->MutableInputDesc("init_h") != nullptr) {
+    bias_dtype = op.GetInputDesc("init_h").GetDataType();
+  }
+
+  TensorDesc y_tensor_desc = op.GetOutputDesc("y");
+  TensorDesc y_h_tensor_desc = op.GetOutputDesc("y_h");
+
+  int64_t dim_num = shape_x.GetDimNum();
+  if (dim_num != 3) {
+    OP_LOGE(op.GetName().c_str(), "The dimension count of x should be 3, please check!");
+    OpsOneInputShapeErrReport(op.GetName(), "x", "The dimension count of x should be 3");
+    return GRAPH_FAILED;
+  }
+
+  int64_t seq_length = shape_x.GetDims().at(0);
+  int64_t batch_size = shape_x.GetDims().at(1);
+  int64_t num_directions = shape_w.GetDims().at(0);
+  int64_t hidden_size = shape_w.GetDims().at(1  ) / 3;
+
+  vector<int64_t> y_dims = {seq_length, num_directions, batch_size, hidden_size};
+  vector<int64_t> y_h_dims = {seq_length, batch_size, hidden_size};
+
+  y_tensor_desc.SetShape(Shape(y_dims));
+  y_h_tensor_desc.SetShape(Shape(y_h_dims));
+
+  y_tensor_desc.SetDataType(bias_dtype);
+  y_h_tensor_desc.SetDataType(bias_dtype);
+
+  (void) op.UpdateOutputDesc("y", y_tensor_desc);
+  (void) op.UpdateOutputDesc("y_h", y_h_tensor_desc);
+
+  w_tensor_desc.SetFormat(FORMAT_HWCN);
+  r_tensor_desc.SetFormat(FORMAT_HWCN);
+  (void) op.UpdateInputDesc("w", w_tensor_desc);
+  (void) op.UpdateInputDesc("r", r_tensor_desc);
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(CommonGRU, CommonGRUInferShape);
 }  // namespace ge
