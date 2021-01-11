@@ -328,10 +328,7 @@ def compress_fully_connection_compute(
     out_type = y.get('dtype')
     out_format = y.get('format')
     quantize_params = None
-    attrs = {
-        "offset_w": offset_w,
-        "offset_x": offset_x
-    }
+
     if format_out is not None:
         out_format = format_out
     if offset_w is not None:
@@ -343,11 +340,12 @@ def compress_fully_connection_compute(
             "format_a": format_a,
             "format_b": format_b,
             "dst_dtype": out_type,
-            "tensor_bias": b,
+            "tensor_c": b,
             "quantize_params": quantize_params,
             "format_out": out_format,
             "compress_index": compress_index,
-            "attrs": attrs,
+            "offset_a": offset_x,
+            "offset_b": offset_w,
             "kernel_name": kernel_name
         }
     result = te.lang.cce.gemm(tensor_a=x, tensor_b=w, para_dict=para_dict)

@@ -271,10 +271,7 @@ def fully_connection_compute(x, w, b, offset_w, y, num_output, transpose, axis, 
 
     out_type = y.get('dtype')
     out_format = y.get('format')
-    attrs = {
-        "offset_w": offset_w,
-        "offset_x": offset_x
-    }
+
     if format_out is not None:
         out_format = format_out
     if offset_w is not None:
@@ -282,14 +279,15 @@ def fully_connection_compute(x, w, b, offset_w, y, num_output, transpose, axis, 
                                                       "For FullyConnection, tensor offset_w must be None!")
 
     para_dict = {
-            "tensor_bias": b,
             "trans_a": trans_a,
             "trans_b": transpose,
             "format_a": format_a,
             "format_b": format_b,
             "dst_dtype": out_type,
+            "tensor_c": b,
             "format_out": out_format,
-            "attrs": attrs
+            "offset_a": offset_x,
+            "offset_b": offset_w,
         }
     result = tbe.gemm(tensor_a=x, tensor_b=w, para_dict=para_dict)
     return result

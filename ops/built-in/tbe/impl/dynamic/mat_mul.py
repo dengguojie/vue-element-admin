@@ -285,7 +285,7 @@ def _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y, trans_a, tran
         "format_a": "FRACTAL_NZ",
         "format_b": "FRACTAL_NZ",
         "dst_dtype": dtype_out,
-        "tensor_bias": tensor_bias,
+        "tensor_c": tensor_bias,
         "kernel_name": kernel_name
     }
     op_res = tbe.gemm(tensor_x1, tensor_x2, para_dict)
@@ -336,7 +336,7 @@ def mat_mul_fuse_compute(input_x1, input_x2, bias, offset_w, output_y,
         "trans_b": trans_b,
         "format_a": "FRACTAL_NZ",
         "format_b": "FRACTAL_NZ",
-        "tensor_bias": bias,
+        "tensor_c": bias,
         "kernel_name": kernel_name
     }
     op_res = tbe.gemm(input_x1, input_x2, para_dict)

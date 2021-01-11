@@ -929,7 +929,6 @@ def gemm(  # pylint: disable=I0011, R0913, R0914
             shape_bias_temp, name="tensor_bias", dtype=dst_dtype
         )
         para_dict = {
-            "tensor_bias": tensor_bias,
             "alpha": tensor_alpha,
             "beta": tensor_beta,
             "trans_a": trans_a,
@@ -937,6 +936,7 @@ def gemm(  # pylint: disable=I0011, R0913, R0914
             "format_a": format_a,
             "format_b": format_b,
             "dst_dtype": dst_dtype,
+            "tensor_c": tensor_bias,
             "kernel_name": kernel_name
         }
         result = tbe.gemm(tensor_a=tensor_a, tensor_b=tensor_b, para_dict=para_dict)

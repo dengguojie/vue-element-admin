@@ -524,9 +524,9 @@ def gemm(tensor_a, tensor_b, para_dict):
         caculating matrix multiplication with bias, C = A*B + bias
 
     Parameters:
-    tensor_a : the first tensor a
+    tensor_a: the first tensor a
 
-    tensor_b : second tensor b with the same type and shape with a
+    tensor_b: second tensor b with the same type and shape with a
 
               If tensor_a/tensor_b is int8/uint8,then L0A must be 16*32,L0B
               must be 32*16.
@@ -592,7 +592,7 @@ def _check_shape_align(shape, factor):
     return is_align
 
 def _get_block(dtype):
-        """
+    """
         Get the number of elements in one block
         1 block = 32 byte
 
@@ -602,15 +602,15 @@ def _get_block(dtype):
             block_reduce
             block_in
             block_out
-        """
-        if dtype == "float16":
-            block_reduce = cce_params.BLOCK_REDUCE
-        else:
-            block_reduce = cce_params.BLOCK_REDUCE_INT8
+    """
+    if dtype == "float16":
+        block_reduce = cce_params.BLOCK_REDUCE
+    else:
+        block_reduce = cce_params.BLOCK_REDUCE_INT8
 
-        block_in = cce_params.BLOCK_IN
-        block_out = cce_params.BLOCK_OUT
-        return block_reduce, block_in, block_out
+    block_in = cce_params.BLOCK_IN
+    block_out = cce_params.BLOCK_OUT
+    return block_reduce, block_in, block_out
 
 
 def _get_tensor_c_ub(  # pylint: disable=too-many-arguments
@@ -693,16 +693,15 @@ class GEMMComputeParam:
 
 class GEMMCompute:
     """
-    algorithm: gemm and matmul
-    for gemm:
-        calculating matrix multiplication, C = alpha_num*A*B + beta_num*C
-    for matmul:
-        caculating matrix multiplication with bias, C = A*B + bias
+    algorithm: General Matrix multiplication
+    A' = transpose(A) if transA else A
+    B' = transpose(B) if transB else B
+    Compute Y = alpha * A' * B' + beta * C
 
     Parameters:
-    tensor_a : the first tensor a
+    tensor_a: the first tensor a
 
-    tensor_b : second tensor b with the same type and shape with a
+    tensor_b: second tensor b with the same type and shape with a
 
               If tensor_a/tensor_b is int8/uint8,then L0A must be 16*32,L0B
               must be 32*16.
@@ -712,21 +711,21 @@ class GEMMCompute:
               16*32 in gm/L1,then it is 32*16 in L0B.
 
     para_dict:
-        alpha: scalar used for multiplication
+        alpha: multiplier for the product of input tensors A * B.
 
-        beta: scalar used for multiplication
+        beta: multiplier for input tensor C.
 
-        trans_a : if True, a needs to be transposed
+        trans_a: if True, a needs to be transposed
 
-        trans_b : if True, b needs to be transposed
+        trans_b: if True, b needs to be transposed
 
-        format_a : the format of tensor a
+        format_a: the format of tensor a
 
-        format_b : the format of tensor b
+        format_b: the format of tensor b
 
         dst_dtype: output data type,support "float16" "float32", default is "float16"
 
-        tensor_bias :the bias with used to init L0C for tensor c
+        tensor_c: the tensor c
 
         format_out: output format, now support ND,Nz
 
@@ -757,9 +756,9 @@ class GEMMCompute:
             scale_drq: scale placeholder for requantization or dequantization
             offset_drq: scale placeholder for requantization or dequantization
 
-        attrs:
-            offset_x: the offset for fmap
-            offset_w: the offset for w
+        offset_a: the offset for tensor a
+            
+        offset_b: the offset for tensor b
 
         compress_index: index for compressed wights, None means not compress wights, now only for matmul
 
@@ -769,7 +768,7 @@ class GEMMCompute:
     def __init__(self, tensor_a, tensor_b, para_dict):
         self.tensor_a = tensor_a
         self.tensor_b = tensor_b
-        self.tensor_bias = para_dict.get("tensor_bias")
+        self.tensor_bias = para_dict.get("tensor_c")
         self.alpha = para_dict.get("alpha")
         self.beta = para_dict.get("beta")
         self.trans_a = para_dict.get("trans_a", False)
@@ -780,9 +779,25 @@ class GEMMCompute:
         self.quantize_params = para_dict.get("quantize_params")
         self.format_out = para_dict.get("format_out")
         self.compress_index = para_dict.get("compress_index")
-        self.attrs = para_dict.get("attrs", {})
+        self.attrs = self._get_matmul_attrs(para_dict)
         self.kernel_name = para_dict.get("kernel_name", "gemm")
         self._get_matmul_flag()
+
+    def _get_matmul_attrs(self, para_dict):
+        """
+        Get attrs for matmul compute
+        Input: para_dict
+        ---------------------------------
+        Return: attrs
+        """
+        attrs = dict()
+        offset_x = para_dict.get("offset_a")
+        offset_w = para_dict.get("offset_b")
+        if offset_x:
+            attrs["offset_x"] = offset_x
+        if offset_w:
+            attrs["offset_w"] = offset_w
+        return attrs
 
     def _get_tensor_alpha_beta(self):
         """
@@ -2010,7 +2025,7 @@ class GEMMCompute:
             reduce_kb
             reduce_kp
             tensor_alpha_ub: tensor alpha in ub
-            tensor_beta_bias_ub : tensor beta*bias in ub
+            tensor_beta_bias_ub: tensor beta*bias in ub
         ---------------------------------
         Input:
             tensor_c_gm
@@ -2259,20 +2274,20 @@ class GEMMCompute:
         Return: result
         """
         if self.matmul_flag and not in_dynamic():
-            result = matmul(tensor_a=self.tensor_a,
-                            tensor_b=self.tensor_b,
-                            trans_a=self.trans_a,
-                            trans_b=self.trans_b,
-                            format_a=self.format_a,
-                            format_b=self.format_b,
-                            dst_dtype=self.dst_dtype,
-                            tensor_bias=self.tensor_bias,
-                            quantize_params=self.quantize_params,
-                            format_out=self.format_out,
-                            compress_index=self.compress_index,
-                            attrs=self.attrs,
-                            kernel_name=self.kernel_name)
+            tensor_y = matmul(tensor_a=self.tensor_a,
+                              tensor_b=self.tensor_b,
+                              trans_a=self.trans_a,
+                              trans_b=self.trans_b,
+                              format_a=self.format_a,
+                              format_b=self.format_b,
+                              dst_dtype=self.dst_dtype,
+                              tensor_bias=self.tensor_bias,
+                              quantize_params=self.quantize_params,
+                              format_out=self.format_out,
+                              compress_index=self.compress_index,
+                              attrs=self.attrs,
+                              kernel_name=self.kernel_name)
         else:
             self._get_tensor_alpha_beta()
-            result = self._gemm_compute()
-        return result
+            tensor_y = self._gemm_compute()
+        return tensor_y

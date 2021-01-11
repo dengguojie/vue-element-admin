@@ -354,22 +354,19 @@ def mat_mul_compute(input_x1,
     dst_dtype = output_y.get("dtype").lower()
     src_dtype = input_x1.dtype.lower()
 
-    attrs = {
-        "offset_w": offset_w,
-        "offset_x": offset_x
-    }
     if offset_w is not None:
         error_manager_vector.raise_err_specific_reson("mat_mul",
                                                       "For MatMul, tensor offset_w must be None!")
 
     para_dict = {
-            "tensor_bias": bias,
             "trans_a": trans_a_local,
             "trans_b": trans_b_local,
             "format_a": format_a,
             "format_b": format_b,
+            "tensor_c": bias,
             "dst_dtype": dst_dtype,
-            "attrs": attrs,
+            "offset_a": offset_x,
+            "offset_b": offset_w,
             "kernel_name": kernel_name
         }
     result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
@@ -435,22 +432,19 @@ def mat_mul_compute_self(input_x1,
 
     dst_dtype = output_y.get("dtype").lower()
 
-    attrs = {
-        "offset_w": offset_w,
-        "offset_x": offset_x
-    }
     if offset_w is not None:
         error_manager_vector.raise_err_specific_reson("mat_mul",
                                                       "For MatMul, tensor offset_w must be None!")
 
     para_dict = {
-            "tensor_bias": bias,
             "trans_a": trans_a_local,
             "trans_b": trans_b_local,
             "format_a": format_a,
             "format_b": format_b,
+            "tensor_c": bias,
             "dst_dtype": dst_dtype,
-            "attrs": attrs,
+            "offset_a": offset_x,
+            "offset_b": offset_w,
             "kernel_name": kernel_name
         }
     result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)

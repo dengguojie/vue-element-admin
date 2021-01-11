@@ -415,12 +415,12 @@ def batch_matmul_compute(input_x, input_y, bias=None, output_z={}, trans_a=False
     src_dtype = input_x.dtype.lower()
     
     para_dict = {
-            "tensor_bias": bias,
             "trans_a": trans_a_local,
             "trans_b": trans_b_local,
             "format_a": format_a,
             "format_b": format_b,
             "dst_dtype": dst_dtype,
+            "tensor_c": bias,
             "kernel_name": kernel_name
         }
     result = tbe.gemm(tensor_a=input_x, tensor_b=input_y, para_dict=para_dict)
@@ -483,12 +483,12 @@ def batch_matmul_compute_self(input_x, input_y, bias=None, output_z={}, trans_a=
     dst_dtype = output_z.get("dtype").lower()
 
     para_dict = {
-            "tensor_bias": bias,
             "trans_a": trans_a_local,
             "trans_b": trans_b_local,
             "format_a": format_a,
             "format_b": format_b,
             "dst_dtype": dst_dtype,
+            "tensor_c": bias,
             "kernel_name": kernel_name
         }
     result = tbe.gemm(tensor_a=input_x, tensor_b=input_y, para_dict=para_dict)
