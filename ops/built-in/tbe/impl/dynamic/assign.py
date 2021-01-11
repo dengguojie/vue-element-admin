@@ -28,8 +28,6 @@ MAX_INT32 = 2 ** 31 - 1
 TILING_ARG_NUM = 16
 # reserved ub size
 RESERVED_UB_SIZE = 8 * 1024
-# MAX REPEAT NUM
-MAX_REPEAT_NUM = 254
 
 
 # pylint: disable=too-many-instance-attributes
@@ -57,6 +55,7 @@ class Assign:
 
         self.ai_core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
         self.ub_size_bytes = (tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) - RESERVED_UB_SIZE)
+        self.max_burst_len = self.ub_size_bytes // (2*32) # 2 means double buffer, 32 means one burst of UB is 32B
 
         if self.ref_dtype in ("int8", "uint8"):
             self.ele_per_block = 32
@@ -67,8 +66,7 @@ class Assign:
         else:
             self.ele_per_block = 4
 
-        self.max_block_num = MAX_REPEAT_NUM
-        self.max_ele_num = self.max_block_num * self.ele_per_block
+        self.max_tensor_size = self.max_burst_len * self.ele_per_block
 
         self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
         self.ref_gm = self.tik_instance.Tensor(self.ref_dtype, (MAX_INT32,), name="ref_gm", scope=tik.scope_gm)
@@ -92,35 +90,31 @@ class Assign:
         self.block_per_core.set_as(self.tiling_ub[1])
         self.block_tail_core.set_as(self.tiling_ub[2])
 
-    def _init_ub_tensor(self):
-        """
-        compute the ub size of tensors
-        """
-        self.value_ub = self.tik_instance.Tensor(self.value_dtype, (self.max_ele_num,),
-                                                 name="value_ub", scope=tik.scope_ubuf)
-        self.out_ub = self.tik_instance.Tensor(self.ref_dtype, (self.max_ele_num,),
-                                               name="out_ub", scope=tik.scope_ubuf)
-
-    def _run_one_loop(self, gm_offset, block_num):
-        self.tik_instance.data_move(self.value_ub, self.value_gm[gm_offset], 0, 1, block_num, 0, 0)
-        self.tik_instance.data_move(self.out_gm[gm_offset], self.value_ub, 0, 1, block_num, 0, 0)
+    def _run_one_loop(self, gm_offset, burst_len, value_ub):
+        self.tik_instance.data_move(value_ub, self.value_gm[gm_offset], 0, 1, burst_len, 0, 0)
+        self.tik_instance.data_move(self.out_gm[gm_offset], value_ub, 0, 1, burst_len, 0, 0)
 
     def run_one_core(self, _core_idx, block_num):
         """
         run assign in one core
         """
-        copy_loop = block_num // self.max_block_num
-        copy_tail = block_num % self.max_block_num
+        copy_loop = block_num // self.max_burst_len
+        copy_tail = block_num % self.max_burst_len
 
-        with self.tik_instance.for_range(0, copy_loop) as _copy_idx:
-            copy_gm_offset = _core_idx * self.block_per_core + _copy_idx * self.max_block_num
+        with self.tik_instance.for_range(0, copy_loop, thread_num=2) as _copy_idx:
+            copy_gm_offset = _core_idx * self.block_per_core + _copy_idx * self.max_burst_len
             copy_gm_offset = copy_gm_offset * self.ele_per_block
-            self._run_one_loop(copy_gm_offset, self.max_block_num)
+            value_ub = self.tik_instance.Tensor(self.value_dtype, (self.max_tensor_size,),
+                                                name="value_ub", scope=tik.scope_ubuf)
+            self._run_one_loop(copy_gm_offset, self.max_burst_len, value_ub)
 
         with self.tik_instance.if_scope(copy_tail > 0):
-            copy_gm_offset = _core_idx * self.block_per_core + copy_loop * self.max_block_num
+            value_ub = self.tik_instance.Tensor(self.value_dtype, (self.max_tensor_size,),
+                                                name="value_ub", scope=tik.scope_ubuf)
+            copy_gm_offset = _core_idx * self.block_per_core + copy_loop * self.max_burst_len
             copy_gm_offset = copy_gm_offset * self.ele_per_block
-            self._run_one_loop(copy_gm_offset, copy_tail)
+
+            self._run_one_loop(copy_gm_offset, copy_tail, value_ub)
 
     def assign_compute(self):
         """
@@ -131,7 +125,6 @@ class Assign:
                                                       name="tiling_ub", scope=tik.scope_ubuf)
             self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 2, 0, 0)
             self._tiling_args()
-            self._init_ub_tensor()
 
             with self.tik_instance.if_scope(_core_idx < (self.core_used_num - 1)):
                 self.run_one_core(_core_idx, self.block_per_core)
