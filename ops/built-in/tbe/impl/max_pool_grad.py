@@ -1740,12 +1740,12 @@ class MaxpoolGrad:
                                                             each_process_wi * C0 // 8, 0, 0)
 
                         with self.tik_instance.else_scope():
-                            overlap_burst = self.stride_w * each_process_wo * C0
+                            overlap_burst.set_as(self.stride_w * each_process_wo * C0)
                             with self.tik_instance.if_scope(cut_wo_nums_index == cut_wo_nums - 1):
-                                overlap_burst = min(
+                                overlap_burst.set_as(min(
                                     (self.wi + pad_left + pad_right -
                                      (each_process_wi + self.stride_w * each_process_wo * (cut_wo_nums - 2))) * C0,
-                                    self.stride_w * each_process_wo * C0)
+                                    self.stride_w * each_process_wo * C0))
                             start_pos = (each_process_wi - self.stride_w * each_process_wo) * C0
                             with self.tik_instance.for_range(0, self.kh - self.stride_h) as index_khs:
                                 self.tik_instance.data_move(
@@ -1965,8 +1965,8 @@ class MaxpoolGrad:
                                              col2img_fp32_ub.dtype)
                     else:
                         if self.kh > self.stride_h:
-                            overlap_burst = min((self.wi + pad_left + pad_right - self.stride_w * each_process_wo *
-                                                 (cut_wo_nums - 1)) * C0, each_process_wi * C0)
+                            overlap_burst.set_as(min((self.wi + pad_left + pad_right - self.stride_w * each_process_wo *
+                                                 (cut_wo_nums - 1)) * C0, each_process_wi * C0))
                             with self.tik_instance.for_range(0, self.kh - self.stride_h) as index_s:
                                 self.tik_instance.data_move(
                                     overlap_l1[index_s * overlap_l1_w +
@@ -1994,10 +1994,10 @@ class MaxpoolGrad:
                                                             each_process_remain_wi * C0 // 8, 0, 0)
                         else:
                             start_pos = (each_process_wi - self.stride_w * each_process_wo) * C0
-                            overlap_burst = min(
+                            overlap_burst.set_as(min(
                                 (self.wi + pad_left + pad_right - (each_process_wi + self.stride_w * each_process_wo *
                                                                    (cut_wo_nums - 1))) * C0,
-                                self.stride_w * remain_wo_nums * C0)
+                                self.stride_w * remain_wo_nums * C0))
                             with self.tik_instance.for_range(0, self.kh - self.stride_h) as index_khs:
                                 self.tik_instance.data_move(
                                     col2img_fp32_ub[index_khs * each_process_wi * C0 + start_pos],
@@ -2170,9 +2170,9 @@ class MaxpoolGrad:
                         self.offset_gm.set_as(self.offset_gm + mov_len_h * last_valid_wi * C0)
 
                 if self.kh > self.stride_h:
-                    overlap_burst = min(
+                    overlap_burst.set_as(min(
                         (self.wi + pad_left + pad_right - self.stride_w * each_process_wo * cut_wo_nums) * C0,
-                        each_process_remain_wi * C0)
+                        each_process_remain_wi * C0))
                     with self.tik_instance.for_range(0, self.kh - self.stride_h) as index_s:
                         self.tik_instance.data_move(
                             overlap_l1[index_s * overlap_l1_w + cut_wo_nums * each_process_wo * self.stride_w * C0],
