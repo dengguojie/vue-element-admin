@@ -62,7 +62,7 @@ def _apply_for_new_alloc(ib_, dtype, buf_len, align_size, scope=tbe_platform.sco
     :param scope : cce scope
     :return: new buffer
     """
-    shape_x = (_ceil_fill(buf_len, align_size), )
+    shape_x = (_ceil_fill(buf_len, align_size),)
     buf_var = ib_.allocate(dtype, shape_x, name="tmp_buf", scope=scope)
     tmp_buffer = tvm.decl_buffer(shape_x, buf_var.dtype, name="tmp_buf", scope=tbe_platform.scope_ubuf, data=buf_var)
     return tmp_buffer
@@ -73,6 +73,7 @@ class _BasicParams():
     """
     parameters for Segment
     """
+
     def __init__(self, ib_, dtype):
         self.ib_ = ib_
         self.dtype = dtype
@@ -82,7 +83,7 @@ class _BasicParams():
         self.unified_buffer_len = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) // self.type_size
         self.vec_align_len = tbe_platform.VECTOR_INST_BLOCK_WIDTH // self.type_size
         self.uint8_max_value = 255
-        self.last_block = ib_.allocate("int32", (1, ), name="last_block", scope=tbe_platform.scope_reg)
+        self.last_block = ib_.allocate("int32", (1,), name="last_block", scope=tbe_platform.scope_reg)
 
         self.device_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         self.block = tvm.thread_axis("blockIdx.x")
@@ -266,20 +267,24 @@ def _all_in_fun(six2four, input_gm, output_gm, params):
         core_out_len = core_cal_num * channel0
 
         if channel % channel0 != 0:
-            out_begin_offset = params.ib_.allocate("int32", (1, ),
+            out_begin_offset = params.ib_.allocate("int32", (1,),
                                                    name="out_begin_offset",
                                                    scope=tbe_platform.scope_reg)
             out_begin_offset[0] = (out_begin // channel1) * c0_pad_len
             core_out_len -= ((out_end // channel1) * c0_pad_len - out_begin_offset[0])
+            temp_flag = params.ib_.allocate("int32", (1,), name="temp_flag", scope=tbe_platform.scope_reg)
+            temp_flag[0] = tvm.const(1, dtype="int32")
             pad_len = _ceil_fill(core_out_len, params.cp_align_len) - core_out_len
             with params.ib_.for_range(0, params.cp_align_len, for_type="serial", name="j") as j:
-                i = out_begin + j + core_cal_num
-                _do_data_copy(i, j + core_cal_num)
+                with params.ib_.if_scope(temp_flag[0] == tvm.const(1, dtype="int32")):
+                    i = out_begin + j + core_cal_num
+                    _do_data_copy(i, j + core_cal_num)
 
-                real_pad_len = ((i + 1) * channel0 - ((i + 1) // channel1) * c0_pad_len) - (
-                    (out_begin + core_cal_num) * channel0 - ((out_begin + core_cal_num) // channel1) * c0_pad_len)
-                with params.ib_.if_scope(real_pad_len >= pad_len):
-                    params.ib_.emit(tvm.intrin.call_extern(params.dtype, 'break'))
+                    real_pad_len = ((i + 1) * channel0 - ((i + 1) // channel1) * c0_pad_len) - (
+                            (out_begin + core_cal_num) * channel0 - (
+                            (out_begin + core_cal_num) // channel1) * c0_pad_len)
+                    with params.ib_.if_scope(real_pad_len >= pad_len):
+                        temp_flag[0] = tvm.const(0, dtype="int32")
 
         num_cp = _ceil_div(core_out_len, params.cp_align_len)
         output_offset = out_begin * channel0 - (out_begin // channel1) * c0_pad_len
@@ -385,28 +390,35 @@ def _multi_in_multi_out_fun(six2four, input_gm, output_gm, params):
         core_out_len = sub_num * channel0
 
         if channel % channel0 != 0 and tail_core:
-            out_begin_offset = params.ib_.allocate("int32", (1, ),
+            out_begin_offset = params.ib_.allocate("int32", (1,),
                                                    name="out_begin_offset",
                                                    scope=tbe_platform.scope_reg)
             out_begin_offset[0] = (out_begin // channel1) * c0_pad_len
             core_out_len -= ((
-                (out_begin + block_index * len_params["one_output_num"] + sub_num) // channel1) * c0_pad_len -
+                                     (out_begin + block_index * len_params[
+                                         "one_output_num"] + sub_num) // channel1) * c0_pad_len -
                              out_begin_offset[0])
+
+            temp_flag = params.ib_.allocate("int32", (1,), name="temp_flag", scope=tbe_platform.scope_reg)
+            temp_flag[0] = tvm.const(1, dtype="int32")
             pad_len = _ceil_fill(core_out_len, params.cp_align_len) - core_out_len
             with params.ib_.for_range(0, params.cp_align_len, for_type="serial", name="j") as sub_i:
-                i = out_begin + block_index * len_params["one_output_num"] + sub_i + sub_num
-                _do_data_copy(i, sub_i + sub_num, out_begin + block_index * len_params["one_output_num"], c0_pad_len)
+                with params.ib_.if_scope(temp_flag[0] == tvm.const(1, dtype="int32")):
+                    i = out_begin + block_index * len_params["one_output_num"] + sub_i + sub_num
+                    _do_data_copy(i, sub_i + sub_num, out_begin + block_index * len_params["one_output_num"],
+                                  c0_pad_len)
 
-                real_pad_len = ((i + 1) * channel0 - ((i + 1) // channel1) * c0_pad_len) - (
-                    (out_begin + block_index * len_params["one_output_num"] + sub_num) * channel0 -
-                    ((out_begin + block_index * len_params["one_output_num"] + sub_num) // channel1) * c0_pad_len)
+                    real_pad_len = ((i + 1) * channel0 - ((i + 1) // channel1) * c0_pad_len) - (
+                            (out_begin + block_index * len_params["one_output_num"] + sub_num) * channel0 -
+                            ((out_begin + block_index * len_params[
+                                "one_output_num"] + sub_num) // channel1) * c0_pad_len)
 
-                with params.ib_.if_scope(real_pad_len >= pad_len):
-                    params.ib_.emit(tvm.intrin.call_extern(params.dtype, 'break'))
+                    with params.ib_.if_scope(real_pad_len >= pad_len):
+                        temp_flag[0] = tvm.const(0, dtype="int32")
 
         num_cp = _ceil_div(core_out_len, params.cp_align_len)
         out_gm_offset = (out_begin + block_index * len_params["one_output_num"]) * channel0 - (
-            (out_begin + block_index * len_params["one_output_num"]) // channel1) * c0_pad_len
+                (out_begin + block_index * len_params["one_output_num"]) // channel1) * c0_pad_len
         params.ib_.emit(
             tvm.intrin.call_extern(params.dtype, 'copy_ubuf_to_gm', output_gm.access_ptr("rw", offset=out_gm_offset),
                                    params.output_ub.access_ptr("r", offset=0), 0, 1, num_cp, 0, 0))
@@ -480,6 +492,7 @@ class _Six2FourParam():
     """
     parameters for Segment
     """
+
     def __init__(self, input_shape, channel_4d):
         self.input_shape = input_shape
 
