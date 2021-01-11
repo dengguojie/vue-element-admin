@@ -81,12 +81,16 @@ def op_select_format(x, y, kernel_name="l2_loss"):
         dtype_base_out = ["float" for _ in dtype_base_out]
     if util_common.is_dynamic_input(x):
         dtype_base_out = dtype_base_in
+    dtype_in_str = ','.join(dtype_base_in)
+    dtype_out_str = ','.join(dtype_base_out)
+    format_str = ','.join(format_base_out)
+    nd_format_str = ','.join(["ND"] * len(dtype_base_out))
     input0 = util_select_op_base.gen_param(
-        classify="input0", name="x", datatype=dtype_base_in,
-        format=format_base_out, unknownshape_format=format_base_out)
+        classify="input0", name="x", datatype=dtype_in_str,
+        format=format_str, unknownshape_format=format_str)
     output0 = util_select_op_base.gen_param(
-        classify="output0", name="y", datatype=dtype_base_out,
-        format=["ND"] * len(dtype_base_out), unknownshape_format=["ND"] * len(dtype_base_out))
+        classify="output0", name="y", datatype=dtype_out_str,
+        format=nd_format_str, unknownshape_format=nd_format_str)
     param_list = [input0, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
