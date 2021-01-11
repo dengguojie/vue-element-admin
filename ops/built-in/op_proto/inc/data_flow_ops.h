@@ -999,7 +999,7 @@ REG_OP(TensorArrayGather)
         DT_STRING, DT_COMPLEX64, DT_COMPLEX128, DT_QINT8,
         DT_QUINT8, DT_QINT32}))
     .REQUIRED_ATTR(dtype, Type)
-    .ATTR(element_shape, ListInt, ge::UNKNOWN_SHAPE)
+    .ATTR(element_shape, ListInt, ge::UNKNOWN_RANK)
     .OP_END_FACTORY_REG(TensorArrayGather)
 
 /**

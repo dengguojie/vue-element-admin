@@ -782,7 +782,7 @@ IMPLEMT_INFERFUNC(TensorArrayRead, TensorArrayReadInfer) {
     Shape output_shape = shapes_and_types.at(0).at(0).GetShape();
     output_desc.SetShape(output_shape);
   } else {
-    output_desc.SetShape(Shape({ge::UNKNOWN_DIM}));
+    output_desc.SetShape(Shape(ge::UNKNOWN_RANK));
   }
 
   if (op.UpdateOutputDesc("y", output_desc) != GRAPH_SUCCESS) {
