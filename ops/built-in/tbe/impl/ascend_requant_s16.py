@@ -193,6 +193,13 @@ def _check_params(x, req_scale, x1, y, y1, dual_output, relu_flag, kernel_name):
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "req_scale", detail)
 
 
+def get_op_support_info(x, req_scale, x1, y, y1, dual_output=False, relu_flag=False, kernel_name="ascend_requant_s16"):
+    """
+    get split info
+    """
+    return util.get_quant_support_info(x, x1=x1, dual_output=dual_output)
+
+
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_OUTPUT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
