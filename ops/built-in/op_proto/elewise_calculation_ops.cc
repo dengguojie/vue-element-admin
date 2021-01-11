@@ -2922,16 +2922,7 @@ VERIFY_FUNC_REG(ArgMaxWithK, ArgMaxWithKVerify);
 IMPLEMT_VERIFIER(Muls, MulsVerify) {
   return GRAPH_SUCCESS;
 }
-IMPLEMT_INFERFUNC(Muls, MulsInferShape) {
-  auto x_shape = op.GetInputDesc("x").GetShape().GetDims();
-  DataType x_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc y_desc = op.GetOutputDesc("y");
-  y_desc.SetShape(ge::Shape(x_shape));
-  y_desc.SetDataType(x_dtype);
-  (void)op.UpdateOutputDesc("y", y_desc);
-  return GRAPH_SUCCESS;
-}
-INFER_FUNC_REG(Muls, MulsInferShape);
+COMMON_INFER_FUNC_REG(Muls, OneInOneOutCommonInferShape);
 VERIFY_FUNC_REG(Muls, MulsVerify);
 // ------------Muls Op End----------------
 
