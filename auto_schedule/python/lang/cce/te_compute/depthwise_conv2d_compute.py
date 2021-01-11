@@ -62,7 +62,7 @@ def _check_support_v200():
     False: Other version
     """
     soc_version = cce_conf.get_soc_spec("SOC_VERSION")
-    if soc_version in ("Ascend710", "Ascend610", "Ascend615", "Hi3796CV300CS"):
+    if soc_version in ("Ascend710", "Ascend610", "Ascend615", "Hi3796CV300CS", "SD3403"):
         return True
     return False
 

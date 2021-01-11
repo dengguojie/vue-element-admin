@@ -677,7 +677,7 @@ def _tiling_fetch_all(fmap_shape,
 
     soc_version = cce_conf.get_soc_spec("SOC_VERSION")
     l1_size = cce_conf.get_soc_spec("L1_SIZE")
-    soc_version_list = ["Hi3796CV300ES", "Hi3796CV300CS"]
+    soc_version_list = ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]
     if l1_fusion_type == -1 and l1_size != 512 * 1024 and soc_version in soc_version_list:
         cce_policy.set_L1_info("op_L1_space", 512 * 1024)
     elif l1_fusion_type == -1 and l1_size != 1024 * 1024 and soc_version not in soc_version_list:
