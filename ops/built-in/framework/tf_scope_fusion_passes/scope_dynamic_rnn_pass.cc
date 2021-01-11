@@ -714,7 +714,7 @@ void ScopeDynamicRNNPass::GenerateFusionResultForMultiNetease(const Scope* scope
   auto concat_0 = fusion_rlt->AddInnerNode("concat_0", "ConcatV2");
   ret = concat_0->InsertInput("weight_0", 0)
           .InsertInput("weight_1", 0)
-          .InsertInput("concat_axis", 1)
+          .InsertInput("concat_axis", 0)
           .InsertOutput("DynamicRNN_0", 1)
           .BuildInnerNode();
   CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
