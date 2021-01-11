@@ -113,6 +113,7 @@ set(_tf_plugins
   case_plugin.cc
   cast_plugin.cc
   ceil_plugin.cc
+  centralization.cc
   clip_boxes_plugin.cc
   clip_by_value_plugin.cc
   concat_offset_plugin.cc

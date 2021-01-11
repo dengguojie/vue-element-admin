@@ -249,6 +249,17 @@ COMMON_INFER_FUNC_REG(SoftmaxCrossEntropyWithLogits, SoftmaxCrossEntropyWithLogi
 VERIFY_FUNC_REG(SoftmaxCrossEntropyWithLogits, SoftmaxCrossEntropyWithLogitsVerify);
 // ----------------SoftmaxCrossEntropyWithLogits END---------------------
 
+// ----------------Centralization-------------------
+IMPLEMT_COMMON_INFERFUNC(CentralizationInferShape) {
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+
+COMMON_INFER_FUNC_REG(Centralization, CentralizationInferShape);
+// ----------------Centralization END-------------------
+
 // -----------------------------SoftmaxGrad------------------------------
 IMPLEMT_COMMON_INFERFUNC(SoftmaxGradInferShape) {
   if (InferShapeAndTypeTwoInOneOutBroadcast(op, "softmax", "grad_softmax", "grad_x")) {

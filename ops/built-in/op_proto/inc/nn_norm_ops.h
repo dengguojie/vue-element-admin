@@ -1186,6 +1186,26 @@ REG_OP(SmoothL1LossV2)
     .OP_END_FACTORY_REG(SmoothL1LossV2)
 
 /**
+* @brief Computes Centralization. result = x - mean(x, axes)
+
+* @par Inputs:
+* @li x: An ND tensor of type float16, float32.
+* @par Attributes:
+* @li axes: The dimensions to reduce. Must be one of the following types: int, list, tuple, NoneType.
+* Must be in the range [-rank(x), rank(x)).
+* @par Outputs:
+* @li y: A Tensor. Has the same type as "x". \n
+
+* @par Third-party framework compatibility
+* custom operator \n
+*/
+REG_OP(Centralization)
+    .INPUT(x, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .OUTPUT(y, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .ATTR(axes, ListInt, {-1})
+    .OP_END_FACTORY_REG(Centralization)
+
+/**
 * @brief Computes gradients of sigmoid_cross_entropy_with_logits_v2.
 
 * @par Inputs:
