@@ -1742,10 +1742,10 @@ class MaxpoolGrad:
                         with self.tik_instance.else_scope():
                             overlap_burst.set_as(self.stride_w * each_process_wo * C0)
                             with self.tik_instance.if_scope(cut_wo_nums_index == cut_wo_nums - 1):
-                                overlap_burst.set_as(min(
-                                    (self.wi + pad_left + pad_right -
-                                     (each_process_wi + self.stride_w * each_process_wo * (cut_wo_nums - 2))) * C0,
-                                    self.stride_w * each_process_wo * C0))
+                                overlap_burst.set_as(
+                                    min((self.wi + pad_left + pad_right -
+                                         (each_process_wi + self.stride_w * each_process_wo * (cut_wo_nums - 2))) * C0,
+                                        self.stride_w * each_process_wo * C0))
                             start_pos = (each_process_wi - self.stride_w * each_process_wo) * C0
                             with self.tik_instance.for_range(0, self.kh - self.stride_h) as index_khs:
                                 self.tik_instance.data_move(
@@ -1965,8 +1965,9 @@ class MaxpoolGrad:
                                              col2img_fp32_ub.dtype)
                     else:
                         if self.kh > self.stride_h:
-                            overlap_burst.set_as(min((self.wi + pad_left + pad_right - self.stride_w * each_process_wo *
-                                                 (cut_wo_nums - 1)) * C0, each_process_wi * C0))
+                            overlap_burst.set_as(
+                                min((self.wi + pad_left + pad_right - self.stride_w * each_process_wo *
+                                     (cut_wo_nums - 1)) * C0, each_process_wi * C0))
                             with self.tik_instance.for_range(0, self.kh - self.stride_h) as index_s:
                                 self.tik_instance.data_move(
                                     overlap_l1[index_s * overlap_l1_w +
@@ -1994,10 +1995,10 @@ class MaxpoolGrad:
                                                             each_process_remain_wi * C0 // 8, 0, 0)
                         else:
                             start_pos = (each_process_wi - self.stride_w * each_process_wo) * C0
-                            overlap_burst.set_as(min(
-                                (self.wi + pad_left + pad_right - (each_process_wi + self.stride_w * each_process_wo *
-                                                                   (cut_wo_nums - 1))) * C0,
-                                self.stride_w * remain_wo_nums * C0))
+                            overlap_burst.set_as(
+                                min((self.wi + pad_left + pad_right -
+                                     (each_process_wi + self.stride_w * each_process_wo * (cut_wo_nums - 1))) * C0,
+                                    self.stride_w * remain_wo_nums * C0))
                             with self.tik_instance.for_range(0, self.kh - self.stride_h) as index_khs:
                                 self.tik_instance.data_move(
                                     col2img_fp32_ub[index_khs * each_process_wi * C0 + start_pos],
@@ -2170,9 +2171,9 @@ class MaxpoolGrad:
                         self.offset_gm.set_as(self.offset_gm + mov_len_h * last_valid_wi * C0)
 
                 if self.kh > self.stride_h:
-                    overlap_burst.set_as(min(
-                        (self.wi + pad_left + pad_right - self.stride_w * each_process_wo * cut_wo_nums) * C0,
-                        each_process_remain_wi * C0))
+                    overlap_burst.set_as(
+                        min((self.wi + pad_left + pad_right - self.stride_w * each_process_wo * cut_wo_nums) * C0,
+                            each_process_remain_wi * C0))
                     with self.tik_instance.for_range(0, self.kh - self.stride_h) as index_s:
                         self.tik_instance.data_move(
                             overlap_l1[index_s * overlap_l1_w + cut_wo_nums * each_process_wo * self.stride_w * C0],
@@ -2435,29 +2436,31 @@ class MaxpoolGrad:
                                 shape_hi += (self.hi - ho_inner * self.stride_h * ho_outer)
                             shape = (shape_ho, self.wo, shape_hi, self.wi)
 
-                            need_cut_l1, need_cut_ho, need_cut_wo, each_process_ho, each_process_wo = \
-                                self._tilling_factor((shape_hi, self.wi, C0), self.pad)
+                            with self.tik_instance.if_scope(each_process_hi_block > 0):
+                                need_cut_l1, need_cut_ho, need_cut_wo, each_process_ho, each_process_wo = \
+                                    self._tilling_factor((shape_hi, self.wi, C0), self.pad)
 
-                            if need_cut_l1 and need_cut_ho and need_cut_wo:
-                                self._tilling_l1_ho_wo(each_process_wo, n_index, c1_index, each_process_ho_block,
-                                                       each_process_hi_block, mov_len_ho, mov_len_hi,
-                                                       actual_start_ho_index, actual_start_hi_index, start_threshold,
-                                                       offset_gm_block, shape, pad)
-                            elif need_cut_l1 and need_cut_ho:
-                                self._tilling_l1_ho_only(each_process_ho, n_index, c1_index, each_process_ho_block,
-                                                         each_process_hi_block, mov_len_ho, mov_len_hi,
-                                                         actual_start_ho_index, actual_start_hi_index, start_threshold,
-                                                         offset_gm_block, shape, pad)
+                                if need_cut_l1 and need_cut_ho and need_cut_wo:
+                                    self._tilling_l1_ho_wo(each_process_wo, n_index, c1_index, each_process_ho_block,
+                                                           each_process_hi_block, mov_len_ho, mov_len_hi,
+                                                           actual_start_ho_index, actual_start_hi_index,
+                                                           start_threshold, offset_gm_block, shape, pad)
+                                elif need_cut_l1 and need_cut_ho:
+                                    self._tilling_l1_ho_only(each_process_ho, n_index, c1_index, each_process_ho_block,
+                                                             each_process_hi_block, mov_len_ho, mov_len_hi,
+                                                             actual_start_ho_index, actual_start_hi_index,
+                                                             start_threshold, offset_gm_block, shape, pad)
 
-                            elif need_cut_ho:
-                                self._tilling_ho_only(each_process_ho, n_index, c1_index, each_process_ho_block,
-                                                      each_process_hi_block, mov_len_ho, mov_len_hi,
-                                                      actual_start_ho_index, actual_start_hi_index, start_threshold,
-                                                      offset_gm_block, shape, pad)
-                            else:
-                                self._not_tilling(n_index, c1_index, each_process_ho_block, each_process_hi_block,
-                                                  mov_len_ho, mov_len_hi, actual_start_ho_index, actual_start_hi_index,
-                                                  start_threshold, offset_gm_block, shape, pad)
+                                elif need_cut_ho:
+                                    self._tilling_ho_only(each_process_ho, n_index, c1_index, each_process_ho_block,
+                                                          each_process_hi_block, mov_len_ho, mov_len_hi,
+                                                          actual_start_ho_index, actual_start_hi_index, start_threshold,
+                                                          offset_gm_block, shape, pad)
+                                else:
+                                    self._not_tilling(n_index, c1_index, each_process_ho_block, each_process_hi_block,
+                                                      mov_len_ho, mov_len_hi, actual_start_ho_index,
+                                                      actual_start_hi_index, start_threshold, offset_gm_block, shape,
+                                                      pad)
 
             else:
                 nc1 = self.n * self.c1
