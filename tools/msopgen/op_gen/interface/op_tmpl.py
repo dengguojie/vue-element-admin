@@ -158,8 +158,7 @@ REGISTER_CUSTOM_OP("{name}")
 {right_braces} // namespace domi
 """
 
-PLUGIN_CMAKLIST = """
-# Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
+PLUGIN_CMAKLIST = """# Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
 aux_source_directory(. SRCS)
 message(STATUS "SRCS = ${SRCS}")
 
@@ -173,10 +172,15 @@ endif()
 set(LIBRARY_OUTPUT_PATH ${TF_PLUGIN_TARGET_OUT_DIR})
 
 add_library(${TF_PLUGIN_TARGET} SHARED ${SRCS})
+
+target_compile_definitions(${TF_PLUGIN_TARGET} PRIVATE
+    google=ascend_private
+)
+
+target_link_libraries(${TF_PLUGIN_TARGET} ${ASCEND_INC}/../lib64/libgraph.so)
 """
 
-CAFFE_PLUGIN_CMAKLIST = """
-# Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
+CAFFE_PLUGIN_CMAKLIST = """# Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
 
 aux_source_directory(. SRCS)
 aux_source_directory(./proto/caffe PROTO_SRCS)
@@ -370,10 +374,10 @@ opInfo.engine=DNN_VM_AICPU
 opInfo.flagPartial=False
 opInfo.computeCost=100
 opInfo.flagAsync=False
-opInfo.opKernelLib=AICPUKernel
-opInfo.kernelSo=libaicpu_kernels.so
-opInfo.functionName={op_type}
-opInfo.userDefined=False
+opInfo.opKernelLib=CUSTAICPUKernel
+opInfo.kernelSo=libcust_aicpu_kernels.so
+opInfo.functionName=RunCpuKernel
+opInfo.workspaceSize=1024
 """
 # =============================================
 # ==================6.AICPU impl cc file==================
@@ -382,7 +386,7 @@ AICPU_IMPL_CPP_STRING = """
  * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
  * Description: implement of {op_type}
  */
-#include "{fix_op_type}_kernel.h"
+#include "{fix_op_type}_kernels.h"
 
 namespace  {left_braces}
 const char *{op_type_upper} = "{op_type}";

@@ -50,7 +50,7 @@ class OpFileAiCpu(OPFile):
             left_braces=utils.LEFT_BRACES,
             right_braces=utils.RIGHT_BRACES)
         impl_dir = os.path.join(self.output_path, 'cpukernel', 'impl')
-        cc_path = os.path.join(impl_dir, op_info.fix_op_type + '_kernel.cc')
+        cc_path = os.path.join(impl_dir, op_info.fix_op_type + '_kernels.cc')
         # create dir and write impl file
         utils.make_dirs(impl_dir)
         utils.write_files(cc_path, cc_str)
@@ -62,7 +62,7 @@ class OpFileAiCpu(OPFile):
             left_braces=utils.LEFT_BRACES,
             right_braces=utils.RIGHT_BRACES)
         impl_dir = os.path.join(self.output_path, 'cpukernel', 'impl')
-        h_path = os.path.join(impl_dir, op_info.fix_op_type + '_kernel.h')
+        h_path = os.path.join(impl_dir, op_info.fix_op_type + '_kernels.h')
         # create dir and write impl file
         utils.make_dirs(impl_dir)
         utils.write_files(h_path, h_str)
