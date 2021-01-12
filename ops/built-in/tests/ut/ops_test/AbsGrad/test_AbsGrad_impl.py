@@ -16,6 +16,8 @@ AbsGrad ut case
 from op_test_frame.ut import OpUT
 from op_test_frame.common import precision_info
 import numpy as np
+
+
 ut_case = OpUT("AbsGrad", None, None)
 
 case1 = {"params": [{"shape": (10,10241), "dtype": "float16", "format": "ND", "ori_shape": (10,10241),"ori_format": "ND"}, #x

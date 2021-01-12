@@ -136,3 +136,8 @@ from .atan import atan
 from .atanh import atanh
 from .atan_grad import atan_grad
 from .tanh_grad import tanh_grad
+from .abs_grad import abs_grad
+from .acos_grad import acos_grad
+from .acosh_grad import acosh_grad
+from .mul_no_nan import mul_no_nan
+from .reduce_max import reduce_max

@@ -1026,17 +1026,25 @@ COMMON_INFER_FUNC_REG(Atan2, Atan2InferShape);
 VERIFY_FUNC_REG(Atan2, Atan2Verify);
 // --------------Atan2 END-----------------
 
-// ----------------AcosGrad-------------------
+// --------------AcosGrad----------------
 IMPLEMT_VERIFIER(AcosGrad, AcosGradVerify) {
   if (!CheckTwoInputDtypeSame(op, "y", "dy")) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
 }
-
-COMMON_INFER_FUNC_REG(AcosGrad, ELMTWISE_INFER_SHAPEANDTYPE("y", "z"));
 VERIFY_FUNC_REG(AcosGrad, AcosGradVerify);
-// --------------AcosGrad END-----------------
+
+IMPLEMT_COMMON_INFERFUNC(AcosGradInferShape) {
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "y", "dy", "z", is_dynamic_output)) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(AcosGrad, AcosGradInferShape);
+// ------------AcosGrad END----------------
 
 // ----------------AcoshGrad-------------------
 IMPLEMT_VERIFIER(AcoshGrad, AcoshGradVerify) {
@@ -1045,9 +1053,17 @@ IMPLEMT_VERIFIER(AcoshGrad, AcoshGradVerify) {
   }
   return GRAPH_SUCCESS;
 }
-
-COMMON_INFER_FUNC_REG(AcoshGrad, ELMTWISE_INFER_SHAPEANDTYPE("y", "z"));
 VERIFY_FUNC_REG(AcoshGrad, AcoshGradVerify);
+
+IMPLEMT_COMMON_INFERFUNC(AcoshGradInferShape) {
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "y", "dy", "z", is_dynamic_output)) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(AcoshGrad, AcoshGradInferShape);
 // --------------AcoshGrad END-----------------
 
 // ----------------AtanGrad-------------------
@@ -2961,75 +2977,31 @@ COMMON_INFER_FUNC_REG(Fills, FillsInferShape);
 // Registered verify function
 VERIFY_FUNC_REG(Fills, FillsVerify);
 // -----------fills Op End----------------
-// -----------mul_no_nan start----------------
-bool InferShapeAndTypeMulNoNan(Operator& op, const string& input_name1, const string& input_name2,
-                               const string& output_name) {
-  // vOutputDesc.push_back(op.GetInputDesc(0));
-  TensorDesc vOutputDesc = op.GetOutputDesc(output_name);
 
-  DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
-  Format input_format = op.GetInputDesc(input_name1).GetFormat();
-  ge::Shape shapeX = op.GetInputDesc(input_name1).GetShape();
-  ge::Shape shapeY = op.GetInputDesc(input_name2).GetShape();
-  std::vector<int64_t> dimsX = shapeX.GetDims();
-  std::vector<int64_t> dimsY = shapeY.GetDims();
-  if (dimsX.size() < dimsY.size()) {
-    std::vector<int64_t> dimsTmp = dimsX;
-    dimsX = dimsY;
-    dimsY = dimsTmp;
-  }
-
-  // pad 1 for small shape
-  if (dimsX.size() != dimsY.size()) {
-    int dec = dimsX.size() - dimsY.size();
-    for (int i = 0; i < dec; i++) {
-      dimsY.insert(dimsY.begin(), (int64_t)1);
-    }
-  }
-
-  std::vector<int64_t> dimVec;
-  for (size_t i = 0; i < dimsX.size(); i++) {
-    if ((dimsX[i] != dimsY[i]) && (dimsX[i] != 1) && (dimsY[i] != 1)) {
-      OP_LOGE(op.GetName().c_str(), "The %s's dimensions does not match the broadcast rule(%lu %lu).",
-              op.GetName().c_str(), dimsX[i], dimsY[i]);
-      return false;
-    }
-
-    int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
-    dimVec.push_back(dims);
-  }
-  ge::Shape outputShape = ge::Shape(dimVec);
-
-  vOutputDesc.SetShape(outputShape);
-  vOutputDesc.SetDataType(input_dtype);
-  vOutputDesc.SetFormat(input_format);
-  op.UpdateOutputDesc(output_name, vOutputDesc);
-
-  return true;
-}
-
+// --------------MulNoNan
 IMPLEMT_VERIFIER(MulNoNan, MulNoNanVerify) {
-  DataType input_type_x1 = op.GetInputDesc("x1").GetDataType();
-  DataType input_type_x2 = op.GetInputDesc("x2").GetDataType();
-  if (input_type_x1 != input_type_x2) {
-    OP_LOGE(op.GetName().c_str(), "The %s op dtype is not same, type1:%d, type2:%d", op.GetName().c_str(),
-            input_type_x1, input_type_x2);
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
+	DataType input_type_x1 = op.GetInputDesc("x1").GetDataType();
+	DataType input_type_x2 = op.GetInputDesc("x2").GetDataType();
+	if (input_type_x1 != input_type_x2) {
+		OP_LOGE(op.GetName().c_str(),
+			"The %s op dtype is not same, type1:%d, type2:%d",
+			op.GetName().c_str(), input_type_x1, input_type_x2);
+		return GRAPH_FAILED;
+	}
+	return GRAPH_SUCCESS;
 }
-// Obtains the processing function of the output tensor description.
-IMPLEMT_COMMON_INFERFUNC(MulNoNanInferShape) {
-  if (InferShapeAndTypeMulNoNan(op, "x1", "x2", "y")) {
-    return GRAPH_SUCCESS;
-  }
-  return GRAPH_FAILED;
-}
-// Registered inferfunction
-COMMON_INFER_FUNC_REG(MulNoNan, MulNoNanInferShape);
-// Registered verify function
 VERIFY_FUNC_REG(MulNoNan, MulNoNanVerify);
-// -----------mul_no_nan Op End----------------
+
+IMPLEMT_COMMON_INFERFUNC(MulNoNanInferShape) {
+	bool is_dynamic_output = true;
+	if(InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", 
+											is_dynamic_output)) {
+		return GRAPH_SUCCESS;
+	}
+	return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(MulNoNan, MulNoNanInferShape);
+// ------------MulNoNan END
 
 // ----------------------Axpy--------------------------
 IMPLEMT_VERIFIER(Axpy, AxpyVerify) {

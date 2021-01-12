@@ -1,0 +1,129 @@
+# Copyright 2021 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+"""
+abs_grad
+
+  Op_description :
+    Computes gradients for abs operation
+
+    # abs_grad(
+    #   y,
+    #   dy,
+    #   z,
+    #   kernel_name="cce_abs_grad")
+
+  Supportive_dtype_format :
+    ['float16', 'float32']
+    ['ALL']
+
+  Constraint :
+    [1] All : 'y' and 'dy' must have the same type and shape.
+    [2] All : shape size limit is 2147483648.
+"""
+import operator
+
+import functools
+import math
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+import te.lang.base as tbe_base
+from te.lang.base.shape_classifier import classify
+from te.lang.base.shape_classifier import Mode
+from te import tvm
+from te.utils import para_check
+from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
+
+SHAPE_SIZE_LIMIT = 2147483648
+
+
+# pylint: disable=unused-argument,too-many-locals,invalid-name
+@tbe_platform.fusion_manager.fusion_manager.register("abs_grad")
+def abs_grad_compute(y, dy, z, kernel_name="abs_grad"):
+    """
+    do abs_grad compute
+    Parameters:
+    ----------------
+    y: input tensor y
+    dy: input tensor dy
+    z: output dict
+    kernel_name: cce kernel name, default value is "abs_grad"
+    return: data_dy * sign(data_y)
+    ----------------
+    """
+
+    dtype = dy.dtype
+
+    if dtype == "float16":
+        fp_max = tvm.const(2 ** 15, dtype)
+        fp_min = tvm.const(2 ** (-15), dtype)
+    else:
+        fp_max = tvm.const(2 ** 62, dtype)
+        fp_min = tvm.const(2 ** (-127), dtype)
+    new_data = tbe.vmuls(y, fp_max)
+    abs_data = tbe.vabs(new_data)
+    denominator = tbe.vadds(abs_data, fp_min)
+    res = tbe.vdiv(new_data, denominator)
+    res = tbe.round(res)
+    data1_res = tbe.vmul(res, dy)
+    return data1_res
+
+
+# pylint: disable=invalid-name
+@tbe_base.register_operator("AbsGrad")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
+def abs_grad(y, dy, z, kernel_name="abs_grad"):
+    """
+    do element-wise abs_grad operation between two input tensors
+
+    Parameters:
+    ----------
+    y : dict of y, include shape and dtype, dtype support float16, float32
+
+    dy : dict of dy, include shape and dtype, dtype support float16, float32
+
+    z : dict of z, include shape and dtype, dtype support float16, float32
+
+    kernel_name : cce kernel name, default value is "abs_grad"
+    -------
+    """
+
+    # get the shape and dtype for input_1,input_2
+    dtype_y = y.get("dtype").lower()
+    dtype_dy = dy.get("dtype").lower()
+    check_list = ("float16", "float32")
+    para_check.check_dtype(dtype_y, check_list, param_name="y")
+    para_check.check_dtype(dtype_dy, check_list, param_name="dy")
+
+    ins = classify([y, dy], Mode.ELEWISE)
+    schedules, tensors = [], []
+
+    for (input_y, input_dy) in ins:
+        with tbe_base.compute():
+            shape_y, shape_dy = shape_util.variable_shape([input_y, input_dy], support_broadcast=True)
+            # shape_y, shape_dy = shape_util.refine_shapes_for_broadcast(shape_y, shape_dy)
+            shape_y, _ = shape_util.refine_shape_axes(shape_y, [])
+            shape_dy, _ = shape_util.refine_shape_axes(shape_dy, [])
+            data_y = tvm.placeholder(shape_y, name="data_y", dtype=dtype_y)
+            data_dy = tvm.placeholder(shape_dy, name="data_dy", dtype=dtype_dy)
+            res = abs_grad_compute(data_y, data_dy, z, kernel_name)
+            tensors.append([data_y, data_dy, res])
+        with tvm.target.cce():
+            sch = tbe.auto_schedule(res)
+        schedules.append(sch)
+
+    config = {"name": kernel_name, "tensor_list": tensors}
+    tbe.build(schedules, config)

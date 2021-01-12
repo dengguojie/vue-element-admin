@@ -1,0 +1,153 @@
+# Copyright 2021 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+"""
+dynamic acos_grad
+
+  Op_description :
+    Computes gradients for Acos operation
+
+    # acos_grad(
+    #   y,
+    #   dy,
+    #   z,
+    #   kernel_name="acos_grad")
+
+  Supportive_dtype_format :
+    ['float16', 'float32']
+    ['ALL']
+
+  Constraint :
+    [1] All : 'y' and 'dy' must have the same type and shape.
+    [2] All : shape size limit is 2147483648.
+"""
+import operator
+
+import te.lang.cce as tbe
+import te.platform as tbe_platform
+from te import tvm
+from te.utils import para_check
+from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
+
+from te.lang.base.shape_classifier import Mode
+from te.lang.base.shape_classifier import classify
+import te.lang.base as tbe_base
+
+
+# newton eqation is x1 = x0(3-a*(x0^2))/2
+NUM_MINUS_ONE = -1
+NUM_ONE = 1
+
+
+# pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals,invalid-name
+@tbe_platform.fusion_manager.fusion_manager.register("acos_grad")
+def acos_grad_compute(y, dy, z, kernel_name="acos_grad"):
+    """
+    do acos_grad compute with sqrt and div
+    Parameters:
+    ----------------
+    y: input tensor y
+    dy: input tensor dy
+    z: output dict
+    kernel_name: cce kernel name, default value is "acos_grad"
+    return: dy * (- 1 / (1 - data_y^2)^1/2)
+    ----------------
+    """
+
+    dtype = y.dtype
+    dtype_1 = dtype
+    if dtype == "float16" and \
+            tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+        y = tbe.cast_to(y, "float32")
+        dy = tbe.cast_to(dy, "float32")
+        dtype = "float32"
+
+    data1_square = tbe.vmul(y, y)
+    data1_square = tbe.vmuls(data1_square, tvm.const(NUM_MINUS_ONE, dtype=dtype))
+    data1_square = tbe.vadds(data1_square, tvm.const(NUM_ONE, dtype=dtype))
+
+    data1_reciprocal = tbe.vsqrt(data1_square, 1)
+    data1_reciprocal = tbe.vdiv(dy, data1_reciprocal)
+    res = tbe.vmuls(data1_reciprocal, tvm.const(NUM_MINUS_ONE, dtype=dtype))
+
+    if dtype_1 == "float16":
+        res = tbe.cast_to(res, "float16")
+    return res
+
+
+@tbe_base.register_operator("AcosGrad")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
+def acos_grad(y, dy, z, kernel_name="acos_grad"):
+    """
+    do element-wise acos_grad operation between two input tensors
+
+    Parameters:
+    ----------
+    y : dict of y, include shape and dtype, dtype support float16, float32
+
+    dy : dict of dy, include shape and dtype, dtype support float16, float32
+
+    z : dict of z, include shape and dtype, dtype support float16, float32
+
+    kernel_name : cce kernel name, default value is "acos_grad"
+    -------
+    """
+
+    # get the shape and dtype for input_1,input_2
+    shape_y = y.get("shape")
+    shape_dy = dy.get("shape")
+    dtype = y.get("dtype")
+    dtype1 = dy.get("dtype")
+
+    # raise runtimeerror if the input paras are invalid
+    check_list = ("float16", "float32")
+    para_check.check_dtype(dtype, check_list, param_name="y")
+    para_check.check_dtype(dtype1, check_list, param_name="dy")
+    para_check.check_elewise_shape_range([y, dy],
+                                         support_broadcast=True)
+    dtype = dtype.lower()
+    dtype1 = dtype1.lower()
+
+    
+
+
+    if not operator.eq(shape_y, shape_dy):
+        error_detail = "shape of y and dy should be same"
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "y", "dy", error_detail)
+    if dtype != dtype1:
+        error_detail = "dtype of y and dy should be same"
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "y", "dy", error_detail)
+
+    ins = classify([y, dy], Mode.ELEWISE)
+    schedules, tensors = [], []
+    
+    for (y, dy) in ins:
+        with tbe_base.compute():
+            # shape
+            shape_x1, shape_x2 = shape_util.variable_shape([y, dy], support_broadcast=True)
+            shape_x1, shape_x2 = shape_util.refine_shapes_for_broadcast(shape_x1, shape_x2)
+            # mul_compute
+            data_x1 = tvm.placeholder(shape_x1, dtype=dtype, name="data_x1")
+            data_x2 = tvm.placeholder(shape_x2, dtype=dtype1, name="data_x2")
+            res = acos_grad_compute(data_x1, data_x2, z, kernel_name)
+            tensors.append((data_x1, data_x2, res))
+        with tvm.target.cce():
+            sch = tbe.auto_schedule(res)
+        schedules.append(sch)
+
+    # build
+    config = {"name": kernel_name, "tensor_list": tensors}
+    tbe.build(schedules, config)
