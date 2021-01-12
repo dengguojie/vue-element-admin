@@ -15,13 +15,13 @@
 """
 dynamic muls
 """
+from functools import reduce as reduceIns
 import te.lang.cce
 from te import tvm
-from te.utils import para_check
 import te.lang.base as tbe_base
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
-from functools import reduce as reduceIns
+from te.utils import para_check
 from te.utils import shape_util
 
 def muls_compute(x, scalar, kernel_name="muls"):
