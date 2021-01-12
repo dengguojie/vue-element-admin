@@ -13,6 +13,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 dynamic_rnn
 """
+# pylint: disable=too-many-lines
 import operator
 
 import numpy as np
@@ -44,12 +45,17 @@ from te.tvm.schedule import create_schedule
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
+# pylint: disable=invalid-name
 def sigmoid(x):
+    """
+    sigmoid
+    """
+
     s = 1 / (1 + np.exp(-x))
     return s
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals
+# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,too-many-nested-blocks,invalid-name
 def matrix_to_zZ(matrix, shape, dtype):
     """
     ND(m, k) to zZ
@@ -88,7 +94,7 @@ def matrix_to_zZ(matrix, shape, dtype):
     return tmp
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals
+# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
 def matrix_to_nZ(matrix, shape, dtype):
     """
     ND(k, n) to nZ
@@ -128,11 +134,12 @@ def matrix_to_nZ(matrix, shape, dtype):
     return tmp
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals
+# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
 def matrix_to_zN(matrix, shape, dtype):
     """
     ND(m, n) to zN
     """
+
     h = shape[-2]
     w = shape[-1]
     tmp = np.zeros(np.prod(shape), dtype=dtype)
@@ -143,7 +150,7 @@ def matrix_to_zN(matrix, shape, dtype):
                 for j in range(0, w):
                     tmp[idx] = matrix[batch][0][idx]
                     idx = idx + 1
-        elif (w == 1):
+        elif w == 1:
             for batch in range(np.prod(shape[:-2])):
                 for i in range(0, h):
                     tmp[idx] = matrix[batch][idx][0]
@@ -175,14 +182,18 @@ def matrix_to_zN(matrix, shape, dtype):
     return tmp
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals
+# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,too-many-nested-blocks,invalid-name
 def maxtrix_zN_reverse(matrix, shape, dtype):
+    """
+    maxtrix zN reverse
+    """
+
     idx = 0
     j_outer, i_outer, i_inner, j_inner = shape[-4], shape[-3], shape[-2], shape[-1]
     h = i_outer * i_inner
     w = j_outer * j_inner
 
-    if len(shape) is 5:
+    if len(shape) == 5:
         batch_shape = shape[0]
         tmp = np.zeros((batch_shape, h, w), dtype=dtype)
         for batch in range(batch_shape):
@@ -192,7 +203,7 @@ def maxtrix_zN_reverse(matrix, shape, dtype):
                         for jj in range(0, j_inner):
                             tmp[batch][i * 16 + ii][j * 16 + jj] = matrix[idx]
                             idx = idx + 1
-    elif len(shape) is 4:
+    elif len(shape) == 4:
         tmp = np.zeros((h, w), dtype=dtype)
         for j in range(0, j_outer):
             for i in range(0, i_outer):
@@ -203,52 +214,19 @@ def maxtrix_zN_reverse(matrix, shape, dtype):
 
     return tmp
 
-    idx = 0
-    if len(shape) == 2:
-        h = shape[0] * 16
-        tmp = np.zeros((h, 1), dtype=dtype)
-        for i in range(0, h // 16):
-            tmp[idx][0] = matrix[idx]
-            idx = idx + 1
-    if len(shape) == 3:
-        batch = shape[0]
-        h = shape[1] * 16
-        tmp = np.zeros((batch, h, 1), dtype=dtype)
-        for batch in range(np.prod(shape[:-2])):
-            for i in range(0, h):
-                tmp[batch][i][0] = matrix[idx]
-                idx = idx + 1
-    elif len(shape) == 4:
-        h, w = shape[0] * 16, shape[1] * 16
-        tmp = np.zeros((h, w), dtype=dtype)
-        for i in range(0, h // 16):
-            for j in range(0, w // 16):
-                for jj in range(0, 16):
-                    for ii in range(0, 16):
-                        tmp[i * 16 + ii][j * 16 + jj] = matrix[idx]
-                        idx = idx + 1
-    elif len(shape) == 5:
-        batch = shape[0]
-        h, w = shape[1] * 16, shape[2] * 16
-        tmp = np.zeros((batch, h, w), dtype=dtype)
-        for batch in range(0, np.prod(shape[:-4])):
-            for i in range(0, h // 16):
-                for j in range(0, w // 16):
-                    for jj in range(0, 16):
-                        for ii in range(0, 16):
-                            tmp[batch][i * 16 + ii][j * 16 + jj] = matrix[idx]
-                            idx = idx + 1
-    return tmp
 
-
+# pylint: disable=too-many-nested-blocks,invalid-name
 def maxtrix_nZ_reverse(matrix, shape, dtype):
+    """
+    maxtrix nZ reverse
+    """
 
     idx = 0
     i_outer, j_outer, j_inner, i_inner = shape[-4], shape[-3], shape[-2], shape[-1]
     h = i_outer * i_inner
     w = j_outer * j_inner
 
-    if len(shape) is 5:
+    if len(shape) == 5:
         batch_shape = shape[0]
         tmp = np.zeros((batch_shape, h, w), dtype=dtype)
         for batch in range(batch_shape):
@@ -258,7 +236,7 @@ def maxtrix_nZ_reverse(matrix, shape, dtype):
                         for ii in range(0, i_inner):
                             tmp[batch][i * 16 + ii][j * 16 + jj] = matrix[idx]
                             idx = idx + 1
-    elif len(shape) is 4:
+    elif len(shape) == 4:
         tmp = np.zeros((h, w), dtype=dtype)
         for i in range(0, i_outer):
             for j in range(0, j_outer):
@@ -270,8 +248,8 @@ def maxtrix_nZ_reverse(matrix, shape, dtype):
     return tmp
 
 
-# pylint: disable=too-many-arguments,too-many-locals,invalid-name
-# pylint: disable=too-many-function-args,too-many-statements
+# pylint: disable=too-many-arguments,too-many-locals,unbalanced-tuple-unpacking
+# pylint: disable=too-many-function-args,too-many-statements,unused-argument,invalid-name
 def dynamic_rnn_np(input_data_list,
                    input_x,
                    weight,
@@ -306,6 +284,7 @@ def dynamic_rnn_np(input_data_list,
     """
     for RL Tune gen golden
     """
+
     shape_x_input = input_x.get("shape")
     shape_w_input = weight.get("shape")
     shape_output = output_h.get("shape")
@@ -341,8 +320,8 @@ def dynamic_rnn_np(input_data_list,
     c_new = c_data.astype(src_type)
 
     t = t_size + 1
-    for i in range(t - 1):
-        x_new = np.concatenate((x_data[i], h_new), axis=1)
+    for var in range(t - 1):
+        x_new = np.concatenate((x_data[var], h_new), axis=1)
 
         res = np.matmul(x_new, w_data).astype("float32")
 
@@ -365,7 +344,7 @@ def dynamic_rnn_np(input_data_list,
         h_new = c_tmph * res_o
         h_new = h_new.astype('float32')
 
-        if i == 0:
+        if var == 0:
             output_h = h_new
             output_c = c_new
             output_i = res_i
@@ -529,7 +508,7 @@ def get_lstm_tiling():
     return (1, 1, 12, 1, 1, 12)
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals
+# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name,invalid-name
 def check_prama_dtype(input_x, weight, bias, init_h, init_c, y, output_h,
                       output_c, i, j, f, o, tanhc):
     """
@@ -576,7 +555,7 @@ def check_prama_dtype(input_x, weight, bias, init_h, init_c, y, output_h,
     if tanhc["dtype"] != bias_dtype:
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "tanhc dtype is not the same as bias dtype !")
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals
+# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name,invalid-name
 def check_prama_shape(input_x, weight, bias, seq_length, init_h, init_c,
                       wci, wcf, wco, mask, y, output_h, output_c, i, j, f, o,
                       tanhc):
@@ -710,6 +689,7 @@ def check_attr(cell_type, direction, cell_depth, use_peephole, keep_prob,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
 # pylint: disable=too-many-function-args,too-many-statements
+# pylint: disable=unused-argument
 def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                 wco, mask, y, output_h, output_c, i, j, f, o, tanhc,
                 cell_type="LSTM", direction="UNIDIRECTIONAL", cell_depth=1,
@@ -759,7 +739,8 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
 
     tik_instance = Tik(Dprofile())
 
-    sync = tik_instance.Tensor(shape=(128,), dtype="int64", scope=scope_gm, name='sync', is_workspace=True, is_atomic_add=True)
+    sync = tik_instance.Tensor(shape=(128,), dtype="int64", scope=scope_gm, name='sync',
+                               is_workspace=True, is_atomic_add=True)
 
     input_x = tik_instance.Tensor(shape=shape_x, dtype=input_dtype,
                                   scope=scope_gm, name='input_x')
@@ -829,74 +810,62 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
         with tik_instance.for_range(0, loop_m) as loop_j:
 
             input_x_var = input_x[loop_i * cut_t: loop_i * cut_t + cut_t,
-                          :,
-                          loop_j * cut_m: loop_j * cut_m + cut_m,
-                          :, :]
+                                  :,
+                                  loop_j * cut_m: loop_j * cut_m + cut_m,
+                                  :, :]
 
             if is_global_init:
                 s_init_c_gm_var = s_init_c_gm[:, :,
-                                  loop_j * cut_m: loop_j * cut_m + cut_m,
-                                  :, :]
+                                              loop_j * cut_m: loop_j * cut_m + cut_m,
+                                              :, :]
                 s_init_h_gm_var = s_init_h_gm[:, :,
-                                  loop_j * cut_m: loop_j * cut_m + cut_m,
-                                  :, :]
+                                              loop_j * cut_m: loop_j * cut_m + cut_m,
+                                              :, :]
             else:
                 s_init_c_gm_var = None
                 s_init_h_gm_var = None
 
-            state_h_last = update_h_gm[
-                           loop_i * cut_t - last: loop_i * cut_t + cut_t - last:,
-                           :, loop_j * cut_m: loop_j * cut_m + cut_m, :, :]
-            state_c_last = update_c_gm[
-                           loop_i * cut_t - last: loop_i * cut_t + cut_t - last:,
-                           :,
-                           loop_j * cut_m: loop_j * cut_m + cut_m,
-                           :, :]
+            state_h_last = update_h_gm[loop_i * cut_t - last: loop_i * cut_t + cut_t - last:,
+                                       :, loop_j * cut_m: loop_j * cut_m + cut_m, :, :]
+            state_c_last = update_c_gm[loop_i * cut_t - last: loop_i * cut_t + cut_t - last:,
+                                       :,
+                                       loop_j * cut_m: loop_j * cut_m + cut_m,
+                                       :, :]
 
-            update_h_gm_var = update_h_gm[
-                              loop_i * cut_t: loop_i * cut_t + cut_t,
-                              :,
-                              loop_j * cut_m: loop_j * cut_m + cut_m,
-                              :,
-                              :]
-            update_c_gm_var = update_c_gm[
-                              loop_i * cut_t: loop_i * cut_t + cut_t,
-                              :,
-                              loop_j * cut_m: loop_j * cut_m + cut_m,
-                              :,
-                              :]
-            update_h_gm_as_y_var = update_h_gm_as_y[
-                                   loop_i * cut_t: loop_i * cut_t + cut_t:,
-                                   :,
-                                   loop_j * cut_m: loop_j * cut_m + cut_m,
-                                   :, :]
+            update_h_gm_var = update_h_gm[loop_i * cut_t: loop_i * cut_t + cut_t,
+                                          :,
+                                          loop_j * cut_m: loop_j * cut_m + cut_m,
+                                          :, :]
+            update_c_gm_var = update_c_gm[loop_i * cut_t: loop_i * cut_t + cut_t,
+                                          :,
+                                          loop_j * cut_m: loop_j * cut_m + cut_m,
+                                          :, :]
+            update_h_gm_as_y_var = update_h_gm_as_y[loop_i * cut_t: loop_i * cut_t + cut_t:,
+                                                    :,
+                                                    loop_j * cut_m: loop_j * cut_m + cut_m,
+                                                    :, :]
 
             if is_gate_output:
-                f_t_sigmoid_gm_var = f_t_sigmoid_gm[
-                                     loop_i * cut_t: loop_i * cut_t + cut_t,
-                                     :,
-                                     loop_j * cut_m: loop_j * cut_m + cut_m,
-                                     :, :]
-                i_t_sigmoid_gm_var = i_t_sigmoid_gm[
-                                     loop_i * cut_t: loop_i * cut_t + cut_t,
-                                     :,
-                                     loop_j * cut_m: loop_j * cut_m + cut_m,
-                                     :, :]
-                o_t_sigmoid_gm_var = o_t_sigmoid_gm[
-                                     loop_i * cut_t: loop_i * cut_t + cut_t,
-                                     :,
-                                     loop_j * cut_m: loop_j * cut_m + cut_m,
-                                     :, :]
-                j_t_tanh_gm_var = j_t_tanh_gm[
-                                  loop_i * cut_t: loop_i * cut_t + cut_t,
-                                  :,
-                                  loop_j * cut_m: loop_j * cut_m + cut_m,
-                                  :, :]
-                c_t_tanh_gm_var = c_t_tanh_gm[
-                                  loop_i * cut_t: loop_i * cut_t + cut_t,
-                                  :,
-                                  loop_j * cut_m: loop_j * cut_m + cut_m,
-                                  :, :]
+                f_t_sigmoid_gm_var = f_t_sigmoid_gm[loop_i * cut_t: loop_i * cut_t + cut_t,
+                                                    :,
+                                                    loop_j * cut_m: loop_j * cut_m + cut_m,
+                                                    :, :]
+                i_t_sigmoid_gm_var = i_t_sigmoid_gm[loop_i * cut_t: loop_i * cut_t + cut_t,
+                                                    :,
+                                                    loop_j * cut_m: loop_j * cut_m + cut_m,
+                                                    :, :]
+                o_t_sigmoid_gm_var = o_t_sigmoid_gm[loop_i * cut_t: loop_i * cut_t + cut_t,
+                                                    :,
+                                                    loop_j * cut_m: loop_j * cut_m + cut_m,
+                                                    :, :]
+                j_t_tanh_gm_var = j_t_tanh_gm[loop_i * cut_t: loop_i * cut_t + cut_t,
+                                              :,
+                                              loop_j * cut_m: loop_j * cut_m + cut_m,
+                                              :, :]
+                c_t_tanh_gm_var = c_t_tanh_gm[loop_i * cut_t: loop_i * cut_t + cut_t,
+                                              :,
+                                              loop_j * cut_m: loop_j * cut_m + cut_m,
+                                              :, :]
             else:
                 f_t_sigmoid_gm_var = None
                 i_t_sigmoid_gm_var = None
@@ -912,7 +881,7 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                 output_list = [update_h_gm_var, update_c_gm_var,
                                update_h_gm_as_y_var, i_t_sigmoid_gm_var,
                                j_t_tanh_gm_var, f_t_sigmoid_gm_var,
-                               o_t_sigmoid_gm_var, c_t_tanh_gm_var];
+                               o_t_sigmoid_gm_var, c_t_tanh_gm_var]
             else:
                 output_list = [update_h_gm_var, update_c_gm_var,
                                update_h_gm_as_y_var]
@@ -946,6 +915,10 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
 
 
 def dynamic_rnn_tik(input_list, custom_list):
+    """
+    inside part of tik loop
+    :return:
+    """
     input_x = input_list[0]
     weight = input_list[1]
     bias = input_list[2]
@@ -967,11 +940,15 @@ def dynamic_rnn_tik(input_list, custom_list):
 
 
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
-# pylint: disable=too-many-statements
+# pylint: disable=too-many-statements,unnecessary-lambda
 def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                      s_state_h_gm_last, s_state_c_gm_last, sync0,
                      is_gate_output, is_first_round, is_global_init,
                      forget_bias):
+    """
+    implement of dynamic rnn
+    :return:
+    """
 
     shape_x_input = input_x.shape
     shape_w_input = weight.shape
@@ -1365,8 +1342,8 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
             for in_tensor in cur_tensor.op.input_tensors:
                 if in_tensor not in visited_list:
                     stack.append(in_tensor)
-                    if "elewise" in in_tensor.op.tag or "broadcast" == in_tensor.op.tag:
-                        if in_tensor.name.endswith("_drnn_cast") :
+                    if "elewise" in in_tensor.op.tag or in_tensor.op.tag == "broadcast":
+                        if in_tensor.name.endswith("_drnn_cast"):
                             continue
                         if in_tensor.name in ["s_state_h_ub", "s_state_c_ub"]:
                             continue

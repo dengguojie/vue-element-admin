@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 from op_test_frame.ut import OpUT
-ut_case = OpUT("DynamicRNN", None, None)
+ut_case = OpUT("DynamicRNN", "impl.dynamic_rnn", "dynamic_rnn")
 
 def gen_dynamic_rnn_case(shape_x, shape_w, shape_b, shape_output, dtype, init_from_gm, gate_output, expect, case_name_val):
     if not init_from_gm:
@@ -48,12 +48,11 @@ def gen_dynamic_rnn_case(shape_x, shape_w, shape_b, shape_output, dtype, init_fr
 case1 = gen_dynamic_rnn_case((1,64,2,16,16), (96,128,16,16), (128*16,), (1,32,2,16,16), "float16", True, True,
                              "success", "dynamic_rnn_1")
 
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 
 if __name__ == '__main__':
-    # ut_case.run()
-    ut_case.run("Ascend910")
+    ut_case.run("Ascend910A")
     exit(0)
 
 
