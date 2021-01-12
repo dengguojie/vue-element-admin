@@ -49,8 +49,8 @@ if(BUILD_OPEN_PROJECT)
   )
 elseif(OPS_UT_YELLOW)
   set(PROTO_LIST
-    "${TOP_DIR}/cann/ops/proto/insert_op.proto"
-    "${TOP_DIR}/cann/ops/proto/task.proto"
+    "${TOP_DIR}/metadef/proto/insert_op.proto"
+    "${TOP_DIR}/metadef/proto/task.proto"
   )
   protobuf_generate(ops PROTO_SRCS PROTO_HDRS ${PROTO_LIST})
   file(GLOB_RECURSE graph_fusion_srcs "${TOP_DIR}/cann/ops/built-in/fusion_pass/graph_fusion/ai_core/*.cc")
