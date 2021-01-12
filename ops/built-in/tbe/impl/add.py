@@ -215,6 +215,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
         format_list_input0 = format_list
         format_list_input1 = format_list
         format_list_output = format_list
+        unknownshape_format_list = ["ND"] * len(dtype_total)
 
     # NZ+ND,ND+ND,5HD+5HD,FZ+FZ,ND+NZ
     elif len(shape_x) >= 2 and len(shape_y) >= 2 and ((_can_division_sixteen(shape_x) and
@@ -249,6 +250,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
             format_list_input0 = format_list1
             format_list_input1 = format_list0
             format_list_output = format_list0
+        unknownshape_format_list = ["ND"] * len(dtype_total)
 
     elif add_nd_nz or add_nz_nd:
         for dtype in dtype_list:
@@ -270,6 +272,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
             format_list_input0 = format_list1
             format_list_input1 = format_list0
             format_list_output = format_list0
+        unknownshape_format_list = ["ND"] * len(dtype_total)
 
     # 5HD+scalar,ND+ND,FZ+scalar
     elif len(shape_x) >= 2 and len(shape_y) == 1 and shape_y[0] == 1:
@@ -289,6 +292,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
         format_list_input0 = format_list0
         format_list_input1 = format_list1
         format_list_output = format_list0
+        unknownshape_format_list = ["ND"] * len(dtype_total)
 
     # ND+ND,scalar+5HD,scalar+FZ
     elif len(shape_y) >= 2 and len(shape_x) == 1 and shape_x[0] == 1:
@@ -307,6 +311,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
         format_list_input0 = format_list1
         format_list_input1 = format_list0
         format_list_output = format_list0
+        unknownshape_format_list = ["ND"] * len(dtype_total)
     # ND+ND,5HD+5HD
     else:
         if len(shape_x) == 1 and len(shape_y) == 1 and shape_x[0] % 16 == 0 and shape_y[0] % 16 == 0:
@@ -356,6 +361,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
         format_list_input0 = format_list
         format_list_input1 = format_list
         format_list_output = format_list
+        unknownshape_format_list = ["ND"] * len(dtype_total)
 
     if _can_broadcast(shape_x, shape_y) and len(shape_x) != len(shape_y):
         x_format = input_x.get("ori_format")
@@ -370,13 +376,25 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
                 format_list_input0 = format_list_input0 + [item] * len(dtype_list)
                 format_list_input1 = format_list_input1 + [item] * len(dtype_list)
                 format_list_output = format_list_output + [item] * len(dtype_list)
+            unknownshape_format_list = ["ND"] * len(dtype_total)
 
-    input0 = util_select_op_base.gen_param(classify="input0", name="x1", datatype=",".join(dtype_total),
-                                           format=",".join(format_list_input0))
-    input1 = util_select_op_base.gen_param(classify="input1", name="x2", datatype=",".join(dtype_total),
-                                           format=",".join(format_list_input1))
-    output0 = util_select_op_base.gen_param(classify="output0", name="y", datatype=",".join(dtype_total),
-                                            format=",".join(format_list_output))
+    if -1 in shape_x or -1 in shape_y:
+        input0 = util_select_op_base.gen_param(classify="input0", name="x1", datatype=",".join(dtype_total),
+                                               format=",".join(format_list_input0),
+                                               unknownshape_format=",".join(unknownshape_format_list))
+        input1 = util_select_op_base.gen_param(classify="input1", name="x2", datatype=",".join(dtype_total),
+                                               format=",".join(format_list_input1),
+                                               unknownshape_format=",".join(unknownshape_format_list))
+        output0 = util_select_op_base.gen_param(classify="output0", name="y", datatype=",".join(dtype_total),
+                                                format=",".join(format_list_output),
+                                                unknownshape_format=",".join(unknownshape_format_list))
+    else:
+        input0 = util_select_op_base.gen_param(classify="input0", name="x1", datatype=",".join(dtype_total),
+                                               format=",".join(format_list_input0))
+        input1 = util_select_op_base.gen_param(classify="input1", name="x2", datatype=",".join(dtype_total),
+                                               format=",".join(format_list_input1))
+        output0 = util_select_op_base.gen_param(classify="output0", name="y", datatype=",".join(dtype_total),
+                                                format=",".join(format_list_output))
 
     param_list = [input0, input1, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)

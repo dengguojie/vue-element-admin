@@ -26,107 +26,7 @@ from impl.util import fusion_util
 SHAPE_SIZE_LIMIT = 2147483648
 SIZE_SIXTEEN = 16
 
-
 # pylint: disable=too-many-locals,unused-variable,invalid-name
-def _can_division_sixteen(shape):
-    if shape[-1] == 0 or shape[-2] == 0:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_009
-        error_info['op_name'] = 'add'
-        error_info['rule_desc'] = "The last two dim shape can not be zero at" \
-                                  "the same time."
-        error_info['param_name1'] = 'shape[-1]'
-        error_info['param_name2'] = 'shape[-2]'
-        error_info['param1_value'] = str(shape[-1])
-        error_info['param2_value'] = str(shape[-2])
-        raise RuntimeError(error_info, "Op[%s] has rule: %s, "
-                                       "but [%s] is [%s], [%s] is [%s]." % (
-                               error_info['op_name'], error_info['rule_desc'],
-                               error_info['param_name1'],
-                               error_info['param1_value'],
-                               error_info['param_name2'],
-                               error_info['param2_value']))
-
-    if shape[-1] % SIZE_SIXTEEN == 0 and shape[-2] % SIZE_SIXTEEN == 0:
-        return True
-
-    return False
-
-
-def _add_check_format(x, y):
-    format_pattern = 0
-    shape1 = x.get("shape")
-    shape2 = y.get("shape")
-    list_format = [x.get("format"), y.get("format")]
-    shape1 = shape_util.scalar2tensor_one(shape1)
-    shape2 = shape_util.scalar2tensor_one(shape2)
-    check_list = [["FRACTAL_NZ", "ND"], ["ND", "FRACTAL_NZ"]]
-    if list_format == check_list[0] and (
-            len(shape2) != 1 or (len(shape2) == 1 and shape2[0] != 1)):
-        format_pattern = 1
-    elif list_format == check_list[1] and (
-            len(shape1) != 1 or (len(shape1) == 1 and shape1[0] != 1)):
-        format_pattern = 2
-
-    return format_pattern
-
-
-def _infer_shape(format_pattern, x, y):
-    shape_x = x.get("shape")
-    shape_y = y.get("shape")
-    shape_x = shape_util.scalar2tensor_one(shape_x)
-    shape_y = shape_util.scalar2tensor_one(shape_y)
-
-    if format_pattern == 1:
-        shape_x, shape_y, shape_max = \
-            shape_util.broadcast_shapes(shape_x, shape_y,
-                                        param_name_input1="input_x",
-                                        param_name_input2="input_y")
-
-        if shape_y[-2] == 1 and shape_y[-1] == shape_x[-1]:
-            shape_y.append(1)
-            shape_y.append(1)
-            shape_y[-3] = 1
-            shape_y[-1] = shape_x[-1]
-            shape_y[-4] = shape_x[-4]
-
-        elif shape_y[-2] == shape_x[-2] and shape_y[-1] == 1:
-            shape_y.append(1)
-            shape_y.append(1)
-            shape_y[-4] = 1
-            shape_y[-2] = shape_x[-2]
-            shape_y[-3] = shape_x[-3]
-
-        elif shape_y[-2] == shape_y[-1] == 1:
-            shape_y.append(1)
-            shape_y.append(1)
-
-    elif format_pattern == 2:
-        shape_x, shape_y, shape_max = \
-            shape_util.broadcast_shapes(shape_x, shape_y,
-                                        param_name_input1="input_x",
-                                        param_name_input2="input_y")
-        if shape_x[-2] == 1 and shape_x[-1] == shape_y[-1]:
-            shape_x.append(1)
-            shape_x.append(1)
-            shape_x[-3] = 1
-            shape_x[-1] = shape_y[-1]
-            shape_x[-4] = shape_y[-4]
-
-        elif shape_x[-2] == shape_y[-2] and shape_x[-1] == 1:
-            shape_x.append(1)
-            shape_x.append(1)
-            shape_x[-4] = 1
-            shape_x[-2] = shape_y[-2]
-            shape_x[-3] = shape_y[-3]
-
-        elif shape_x[-2] == shape_x[-1] == 1:
-            shape_x.append(1)
-            shape_x.append(1)
-
-    return shape_x, shape_y
-
-
 @tbe_base.register_fusion_compute("Add")
 def add_fusion_compute(input_x, input_y, output_z, kernel_name="add"):
     """
@@ -221,31 +121,9 @@ def add(input_x, input_y, output_z, kernel_name="add"):
         error_info['param_name2'] = 'y_dtype'
         error_info['param1_dtype'] = str(x_dtype)
         error_info['param2_dtype'] = str(y_dtype)
-        raise RuntimeError(error_info,
-                           "In op[%s], the parameter[%s][%s] are not equal in"
-                           "dtype with dtype[%s][%s]" % (error_info['op_name'],
-                                                         error_info[
-                                                             'param_name1'],
-                                                         error_info[
-                                                             'param_name2'],
-                                                         error_info[
-                                                             'param1_dtype'],
-                                                         error_info[
-                                                             'param2_dtype']))
-
-    # format_pattern = 1  Nz and vector
-    # format_pattern = 2  vector and Nz
-    # format_pattern = 0  Nz scalar  Nz Nz  ND ND
-    format_pattern = _add_check_format(input_x, input_y)
-
-    # infer shape for supporting add
-    shape_x, shape_y = _infer_shape(format_pattern, input_x, input_y)
-    shape_x = shape_util.scalar2tensor_one(shape_x)
-    shape_y = shape_util.scalar2tensor_one(shape_y)
-
-    # normalize shape
-    input_x["shape"] = shape_x
-    input_y["shape"] = shape_y
+        raise RuntimeError(error_info, "In op[%s], the parameter[%s][%s] is not equal in dtype with dtype[%s][%s]" % (
+            error_info['op_name'], error_info['param_name1'], error_info['param_name2'], error_info['param1_dtype'],
+            error_info['param2_dtype']))
 
     ins = tbe_base.classify([input_x, input_y], tbe_base.Mode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
