@@ -74,18 +74,14 @@ bool InferShapeForMaximumAndMinimum(Operator& op) {
     return false;
   }
   if (attr_grad_x) {
-    TensorDesc input_tensor_desc_x1 = op.GetInputDesc("x1");
-    TensorDesc y_desc1 = op.GetOutputDesc("y1");
-    y_desc1.SetShape(input_tensor_desc_x1.GetShape());
-    y_desc1.SetDataType(input_tensor_desc_x1.GetDataType());
-    (void)op.UpdateOutputDesc("y1", y_desc1);
+    if(!OneInOneOutDynamicInfer(op,"x1",{"y1"})){
+        return false;
+    }
   }
   if (attr_grad_y) {
-    TensorDesc input_tensor_desc_x2 = op.GetInputDesc("x2");
-    TensorDesc y_desc2 = op.GetOutputDesc("y2");
-    y_desc2.SetShape(input_tensor_desc_x2.GetShape());
-    y_desc2.SetDataType(input_tensor_desc_x2.GetDataType());
-    (void)op.UpdateOutputDesc("y2", y_desc2);
+    if(!OneInOneOutDynamicInfer(op,"x2",{"y2"})){
+        return false;
+    }
   }
 
   return true;

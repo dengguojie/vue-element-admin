@@ -141,3 +141,5 @@ from .acos_grad import acos_grad
 from .acosh_grad import acosh_grad
 from .mul_no_nan import mul_no_nan
 from .reduce_max import reduce_max
+from .maximum_grad import maximum_grad
+from .minimum_grad import minimum_grad
