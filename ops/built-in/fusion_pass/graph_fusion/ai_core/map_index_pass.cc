@@ -85,7 +85,7 @@ Status MapIndexFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   int64_t dataSeqLength = dataSeqShape[0];
   if (PatternFusionUtil::IsUnknownShape(xLength) || PatternFusionUtil::IsUnknownShape(dataSeqLength)) {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "MapIndexFusionPass cannot be applied for unknown shape.");
-    return NOT_CHANGED;
+    return FAILED;
   }
   int64_t number = ((dataSeqLength / xLength + 7) / 8) * 8;
   int64_t dataSeqNewLength = number * xLength;

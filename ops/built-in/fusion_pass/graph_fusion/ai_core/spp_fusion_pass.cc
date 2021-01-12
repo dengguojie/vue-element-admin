@@ -55,7 +55,7 @@ Status SPPPass::MakePoolingLayer(ge::OpDescPtr& poolingOpDesc, const ge::GeTenso
     auto dim = shapeDims[i];
     if (PatternFusionUtil::IsUnknownShape(dim)) {
       OP_LOGE(FUSED_OP_TYPE.c_str(), "SPPPass cannot be applied for unknown shape.");
-      return NOT_CHANGED;
+      return FAILED;
     }
   }
   int64_t num_bins = pow(2, hyramidLevel);
@@ -161,7 +161,7 @@ Status SPPPass::MakeConcatLayer(ge::OpDescPtr& concatOpDesc, vector<ge::OpDescPt
       auto dim = shapeDims[i];
       if (PatternFusionUtil::IsUnknownShape(dim)) {
         OP_LOGE(FUSED_OP_TYPE.c_str(), "SPPPass cannot be applied for unknown shape.");
-        return NOT_CHANGED;
+        return FAILED;
       }
     }
     batchNum = shapeDims[0];

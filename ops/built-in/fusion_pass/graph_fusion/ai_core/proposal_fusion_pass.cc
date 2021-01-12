@@ -164,7 +164,7 @@ Status ProposalFusionPass::GenerateAnchorsFp16(uint16_t* output1, ge::NodePtr pr
       PatternFusionUtil::IsUnknownShape(height) ||
       PatternFusionUtil::IsUnknownShape(width)) {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "ProposalFusionPass cannot be applied for unknown shape.");
-    return NOT_CHANGED;
+    return FAILED;
   }
 
   // get anchor_base_size and feat_stride

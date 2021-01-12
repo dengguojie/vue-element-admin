@@ -368,7 +368,7 @@ Status RNNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
     if (PatternFusionUtil::IsUnknownShape(inputWTensorDesc.GetShape().GetDim(1)) ||
         PatternFusionUtil::IsUnknownShape(inputWTensorDesc.GetShape().GetDim(0))) {
       OP_LOGE(FUSED_OP_TYPE.c_str(), "RNNFusionPass cannot be applied for unknown shape.");
-      return NOT_CHANGED;
+      return FAILED;
     }
 
     // x_static->innerproduct
@@ -452,7 +452,7 @@ Status RNNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
       PatternFusionUtil::IsUnknownShape(whohhTensorDesc.GetShape().GetDim(0)) ||
       PatternFusionUtil::IsUnknownShape(whohhTensorDesc.GetShape().GetDim(1))) {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "RNNFusionPass cannot be applied for unknown shape.");
-    return NOT_CHANGED;
+    return FAILED;
   }
 
   vector<ge::NodePtr> rnnCellNode =

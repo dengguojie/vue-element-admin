@@ -150,7 +150,7 @@ Status PassThroughFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
 
   if (PatternFusionUtil::IsUnknownShape(passThroughInputDimInfo[inChannelIdx])) {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "PassThroughFusionPass cannot be applied for unknown shape.");
-    return NOT_CHANGED;
+    return FAILED;
   }
 
   FUSION_PASS_CHECK(

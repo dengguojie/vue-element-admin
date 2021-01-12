@@ -551,7 +551,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     if (PatternFusionUtil::IsUnknownShape(shapeInput0.GetDim(2)) ||
         PatternFusionUtil::IsUnknownShape(shapeInput0.GetDim(3))) {
       OP_LOGE(FUSED_OP_TYPE.c_str(), "ALSTMFusionPass cannot be applied for unknown shape.");
-      return NOT_CHANGED;
+      return FAILED;
     }
     last_dim_value = shapeInput0.GetDim(2) * shapeInput0.GetDim(3);
   }

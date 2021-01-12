@@ -645,7 +645,7 @@ Status PoolingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   if (PatternFusionUtil::IsUnknownShape(inputH) ||
       PatternFusionUtil::IsUnknownShape(inputC)) {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "PoolingFusionPass cannot be applied for unknown shape.");
-    return NOT_CHANGED;
+    return FAILED;
   }
 
   // get windowsize
@@ -736,7 +736,7 @@ Status PoolingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     ge::NodePtr nextNode = nextInDataAnchor->GetOwnerNode();
     if(nextNode->GetOpDesc()->GetType() == "Eltwise") {
       OP_LOGI(FUSED_OP_TYPE.c_str(), "pooling node is eltwise's input , not support to call conv2d!");
-      return NOT_CHANGED;
+      return FAILED;
     }
   }
 
@@ -777,7 +777,7 @@ Status PoolingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
         vector<int64_t> dimMul = mulShape.GetDims();
         if (dimMul.size() >= 2 && PatternFusionUtil::IsUnknownShape(dimMul[1])) {
           OP_LOGE(FUSED_OP_TYPE.c_str(), "PoolingFusionPass cannot be applied for unknown shape.");
-          return NOT_CHANGED;
+          return FAILED;
         }
         ge::NodePtr mulNode = AddMul(graph, poolingNode);
         FUSION_PASS_CHECK(mulNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mulNode is null, AddMul failed."),
@@ -789,7 +789,7 @@ Status PoolingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
             auto dim = dimOut[i];
             if (PatternFusionUtil::IsUnknownShape(dim)) {
               OP_LOGE(FUSED_OP_TYPE.c_str(), "PoolingFusionPass cannot be applied for unknown shape.");
-              return NOT_CHANGED;
+              return FAILED;
             }
           }
         }
