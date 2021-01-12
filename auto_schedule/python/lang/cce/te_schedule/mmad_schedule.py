@@ -391,7 +391,7 @@ def is_lhisi_cs_version():
     False: Other version
     """
     soc_version = get_soc_spec("SOC_VERSION")
-    if soc_version in ["Hi3796CV300CS"]:
+    if soc_version in ["Hi3796CV300CS", "SD3403"]:
         return True
     return False
 
