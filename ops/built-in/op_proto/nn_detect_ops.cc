@@ -1517,4 +1517,80 @@ IMPLEMT_COMMON_INFERFUNC(IouInferShape) {
 COMMON_INFER_FUNC_REG(PtIou, IouInferShape);
 // ----------------PTIou-------------------
 
+
+// ----------------NonMaxSuppressionV6-------------------
+
+    std::int64_t GetDimN(const vector<int64_t> &shapes) {
+        auto shapeLens = shapes.size();
+        std::int64_t dimNum = 1;
+        for (auto i = 0; i < shapeLens; i++) {
+            dimNum = dimNum * shapes[i];
+        }
+        return dimNum;
+    }
+
+    IMPLEMT_COMMON_INFERFUNC(NonMaxSuppressionV6InferShape) {
+
+        std::int64_t max_out_num = 0;
+        Tensor max_out_tensor;
+        if (op.GetInputConstData("max_output_size", max_out_tensor) == GRAPH_SUCCESS) {
+            auto size_data = reinterpret_cast<const int32_t *>(max_out_tensor.GetData());
+            max_out_num = static_cast<int64_t>(size_data[0]);
+        } else {
+            return GRAPH_FAILED;
+        }
+        auto score_shape = op.GetInputDesc("scores").GetShape().GetDims();
+        std::int64_t batch_size = 0;
+        std::int64_t class_size = 0;
+        std::int64_t total_size = 0;
+
+        batch_size = score_shape[0];
+        class_size = score_shape[1];
+        total_size = GetDimN(score_shape);
+
+        std::int64_t max_box_size = 0;
+        max_box_size = batch_size*class_size*max_out_num;
+        if (max_box_size > total_size){
+            max_box_size = total_size;
+        }
+        op.SetAttr("max_boxes_size",max_box_size);
+        std::int64_t index_last_dim = 3;
+        vector<int64_t> selected_indices_shape;
+        selected_indices_shape.push_back(max_box_size);
+        selected_indices_shape.push_back(index_last_dim);
+
+        TensorDesc selected_index = op.GetOutputDesc("selected_indices");
+        selected_index.SetShape(ge::Shape(selected_indices_shape));
+        selected_index.SetDataType(DT_INT32);
+        (void)op.UpdateOutputDesc("selected_indices",selected_index);
+
+        return GRAPH_SUCCESS;
+    }
+
+
+    IMPLEMT_VERIFIER(NonMaxSuppressionV6, NonMaxSuppressionV6Verify) {
+        return GRAPH_SUCCESS;
+    }
+
+    COMMON_INFER_FUNC_REG(NonMaxSuppressionV6, NonMaxSuppressionV6InferShape);
+    VERIFY_FUNC_REG(NonMaxSuppressionV6, NonMaxSuppressionV6Verify);
+
+    // ----------------NonMaxSuppressionV6-------------------
+
+// ----------------NonMaxSuppressionV7-------------------
+
+    IMPLEMT_COMMON_INFERFUNC(NonMaxSuppressionV7InferShape) {
+        return GRAPH_SUCCESS;
+    }
+
+    IMPLEMT_VERIFIER(NonMaxSuppressionV7, NonMaxSuppressionV7Verify) {
+        return GRAPH_SUCCESS;
+    }
+    COMMON_INFER_FUNC_REG(NonMaxSuppressionV7, NonMaxSuppressionV7InferShape);
+    VERIFY_FUNC_REG(NonMaxSuppressionV7, NonMaxSuppressionV7Verify);
+
+// ----------------NonMaxSuppressionV7-------------------
+
+
+
 }  // namespace ge
