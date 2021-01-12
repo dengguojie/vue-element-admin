@@ -66,7 +66,7 @@ namespace fe {
         return SUCCESS;
     }
 
-    int64_t GetDimN(const vector<int64_t> &shapes) {
+    int64_t GetNmsDims(const vector<int64_t> &shapes) {
         auto shapeLens = shapes.size();
         int64_t dimNum = 1;
         for (auto i = 0; i < shapeLens; i++) {
@@ -112,7 +112,7 @@ namespace fe {
                                                       ge::GeTensorPtr &assitIndexValuePtr, 
                                                       ge::GeTensorDesc &IdxValueTensorDesc) const 
     {
-        int64_t IdxValueDimNum = GetDimN(IdxValueTensorShape);
+        int64_t IdxValueDimNum = GetNmsDims(IdxValueTensorShape);
         vector<float> index_id(IdxValueDimNum);
         AssistIndexGen(IdxValueTensorShape, index_id);
         // for (int64_t i = 0; i<IdxValueDimNum; i++) {

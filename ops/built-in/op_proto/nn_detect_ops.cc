@@ -1520,7 +1520,7 @@ COMMON_INFER_FUNC_REG(PtIou, IouInferShape);
 
 // ----------------NonMaxSuppressionV6-------------------
 
-    std::int64_t GetDimN(const vector<int64_t> &shapes) {
+    std::int64_t GetNmsDimN(const vector<int64_t> &shapes) {
         auto shapeLens = shapes.size();
         std::int64_t dimNum = 1;
         for (auto i = 0; i < shapeLens; i++) {
@@ -1546,7 +1546,7 @@ COMMON_INFER_FUNC_REG(PtIou, IouInferShape);
 
         batch_size = score_shape[0];
         class_size = score_shape[1];
-        total_size = GetDimN(score_shape);
+        total_size = GetNmsDimN(score_shape);
 
         std::int64_t max_box_size = 0;
         max_box_size = batch_size*class_size*max_out_num;
