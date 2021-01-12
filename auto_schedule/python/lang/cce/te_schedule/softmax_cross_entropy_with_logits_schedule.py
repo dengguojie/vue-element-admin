@@ -403,7 +403,7 @@ def dma_copy_softmax_cewl(tensor_op):
                 ib_expr.emit(tvm.call_extern(
                     dtype, "reg_mov",
                     tmp_buf_2.access_ptr("rw", offset=_loop),
-                    tmp_buf.access_ptr("r", offset=res_offset)
+                    tmp_buf.access_ptr("r", offset=res_offset + _loop)
                 ))
 
             ib_expr.emit(
@@ -436,11 +436,7 @@ def get_npart_factor(n_h_w, dtype_bytes, block_dim):
     if n_h_w*dtype_bytes >= block_dim*32:
         npart_factor = block_dim
     else:
-        npart_factor = n_h_w*dtype_bytes // 32
-
-    if block_dim == 30 and npart_factor != 0:
-        while n_h_w % npart_factor != 0:
-            npart_factor -= 1
+        npart_factor = n_h_w * dtype_bytes // 32
 
     if block_dim == 32 and npart_factor != 0:
         if n_h_w in softmax_cross_logits_nhw:
@@ -550,8 +546,6 @@ def logits_2d_schedule(res, input_tensors):  # pylint: disable=unused-argument
         while 0 < block_split_inner_size < min_num_size_one_core:
             npart_factor -= 1
 
-            while n_h_w % npart_factor != 0:
-                npart_factor -= 1
             block_split_inner_size = n_h_w // npart_factor
 
         if npart_factor <= 1:
@@ -565,15 +559,10 @@ def logits_2d_schedule(res, input_tensors):  # pylint: disable=unused-argument
                     block_split_inner_size * c_size * dtype_bytes < threshold_size and \
                     npart_factor > 1:
                 npart_factor -= 1
-                while npart_factor > 0 and n_h_w % npart_factor > 1:
-                    npart_factor -= 1
                 if npart_factor > 0:
                     block_split_inner_size = n_h_w // npart_factor
 
     else:
-        while n_h_w % npart_factor != 0:
-            npart_factor -= 1
-
         if npart_factor <= 1:
             return None, []
 
@@ -584,6 +573,13 @@ def logits_2d_schedule(res, input_tensors):  # pylint: disable=unused-argument
         if block_split_inner_size * c_size * dtype_bytes < threshold_size:
             npart_factor = 1
             block_split_inner_size = n_h_w // npart_factor
+
+    feature_shape = [i.value for i in input_tensors[0].shape]
+    label_shape = [i.value for i in input_tensors[1].shape]
+    broadcast_a_to_b_flag = any(feature_shape[i] < label_shape[i] for i in range(len(feature_shape)))
+    csize_not_align_shape_flag = c_size % min_num_size_one_core != 0
+    if broadcast_a_to_b_flag and csize_not_align_shape_flag:
+        return None, []
 
     split_factor, npart_factor = get_ub_tiling_2d(
         shape, npart_factor, block_split_inner_size,
@@ -910,9 +906,8 @@ def get_ub_tiling_2d(shape, npart_factor, block_tiling_inner_loop,
     one_block_size = 32
     byte_size_fp32 = 4
     if shape_c > threshold_size and\
-            shape_c*byte_size_fp32 % one_block_size != 0:
-        if shape_nhw % npart_factor == 0 and \
-                shape_nhw // npart_factor >= min_num_size_one_core:
+            shape_c * byte_size_fp32 % one_block_size != 0:
+        if shape_nhw // npart_factor >= min_num_size_one_core:
             return 1, npart_factor
         return 1, 1
 
@@ -1025,8 +1020,6 @@ def logits_nchw_schedule(res, input_tensors):
             npart_factor = block_dim
         elif shape_w % block_dim == 0:
             npart_factor = block_dim
-            while shape_h % npart_factor != 0:
-                npart_factor -= 1
         else:
             return None, []
 
@@ -1132,21 +1125,18 @@ def _get_tiling_large_axis_workspace(shape, dtype):
     else:
         block_factor = batch
         for i in range(batch, min_num_size_one_core - 1, -1):
+            block_factor = i
             if (batch + i - 1) // i > core_num:
                 break
-            block_factor = i
 
         # for odd size
         if block_factor == batch:
-            if batch > core_num*min_num_size_one_core:
+            if batch > core_num * min_num_size_one_core:
                 block_factor = (batch + core_num - 1) // core_num
             else:
                 block_factor = min_num_size_one_core
 
-        # for when block tile ub, ub nums not 32B aligned case.
-        block_factor = (block_factor + min_num_size_one_core - 1) // min_num_size_one_core * min_num_size_one_core
-
-        block_outer = (batch + block_factor - 1) // block_factor
+        block_outer = min((batch + block_factor - 1) // block_factor, core_num)
 
     # ub tiling
     c_size = shape[1]
@@ -1342,7 +1332,7 @@ def logits_2d_schedule_large_axis_workspace(res, input_tensors):
 
     # compute_at code
     add_0_axis_0_o, add_0_axis_0_n1_o = s[add_0].split(add_0_axis_0_o,
-                                                       factor=block_factor)
+                                                       nparts=block_outer)
 
     s[data_labels_ub_001].compute_at(s[add_0], add_0_axis_1_n1_o)
     s[data_labels_ub_000].compute_at(s[reduce_2_ub], reduce_2_ub_reduce_axis_0_o)
