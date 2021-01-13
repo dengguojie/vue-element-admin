@@ -40,11 +40,11 @@ def _get_desc_dic(tmp_dic, key_desc, testcase_struct):
                 'format': desc_dic.get('format'),
                 'type': desc_dic.get('type'),
                 'shape': desc_dic.get('shape')}
-        # Add name field for input*.paramType = optional scenarios.
+        # Add name field for input*.paramType = optional scenarios
         if desc_dic.get('name'):
             res_desc_dic.update(
                 {'name': desc_dic.get('name')})
-        tmp_dic[key_desc].append(desc_dic)
+        tmp_dic[key_desc].append(res_desc_dic)
 
 
 def _create_acl_op_json_content(testcase_list):

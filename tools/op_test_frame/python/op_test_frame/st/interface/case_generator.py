@@ -359,7 +359,7 @@ class CaseGenerator:
         return [base_case]
 
     def _generate_input_desc(self, value, base_case):
-        input_name = [value.get('name')]
+        input_name = value.get('name')
         if value.get('paramType') == 'optional':
             input_format = ["UNDEFINED"]
             input_dtype = ["UNDEFINED"]

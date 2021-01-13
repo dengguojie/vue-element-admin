@@ -290,6 +290,39 @@ class CaseDesign:
                 raise utils.OpTestGenException(
                     utils.OP_TEST_GEN_INVALID_DATA_ERROR)
 
+    @staticmethod
+    def _check_ori_format_list_str_valid(dic_desc):
+        ori_format_list = []
+        if isinstance(dic_desc.get('ori_format'), str):
+            ori_format_list = [dic_desc.get('ori_format')]
+        if isinstance(dic_desc.get('ori_format'), list):
+            ori_format_list = dic_desc.get('ori_format')
+        return ori_format_list
+
+    @staticmethod
+    def _check_ori_filed_length_valid(ori_list, comapre_list, ori_filed, compare_filed):
+        if len(ori_list) != len(comapre_list):
+            utils.print_error_log('please checkout, teh length of %s and %s must be the same.' %(compare_filed, ori_filed))
+            raise utils.OpTestGenException(
+                utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+        return
+
+    def _get_ori_filed_data(self, input_or_out_desc, key_desc, format_list, shape_list):
+        ori_filed_list = []
+        if input_or_out_desc.get('ori_format'):
+            ori_format_list = self._check_ori_format_list_str_valid(input_or_out_desc)
+            self._check_ori_filed_length_valid(ori_format_list, format_list, "ori_format", "format")
+            ori_filed_list.append(ori_format_list)
+        if input_or_out_desc.get('ori_shape'):
+            ori_shape_list = self._check_list_list_valid(input_or_out_desc, 'ori_shape', key_desc)
+            self._check_ori_filed_length_valid(ori_shape_list, shape_list, "ori_shape", "shape")
+            ori_filed_list.append(ori_shape_list)
+        if len(ori_filed_list) == 1:
+            utils.print_error_log('please checkout, ori_format and ori_shape is exist at the same time.')
+            raise utils.OpTestGenException(
+                utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+        return ori_filed_list
+
     def _make_input_desc_list(self, json_obj):
         input_desc_list = []
         if len(json_obj[INPUT_DESC]) == 0:
@@ -320,7 +353,7 @@ class CaseDesign:
                     self._check_range_value_valid(item)
             else:
                 value_range_list = [[0.1, 1.0]]
-            ori_filed_list = get_ori_filed_data(input_desc)
+            ori_filed_list = self._get_ori_filed_data(input_desc, INPUT_DESC, format_list, shape_list)
             if ori_filed_list:
                 # add ori_format and ori_shape for one_input_desc
                 one_input_desc = {'format': format_list,
@@ -397,7 +430,7 @@ class CaseDesign:
                 output_desc, 'shape', OUTPUT_DESC)
             for item in shape_list:
                 self._check_shape_valid(item)
-            ori_filed_list = get_ori_filed_data(output_desc)
+            ori_filed_list = self._get_ori_filed_data(output_desc, OUTPUT_DESC, format_list, shape_list)
             if ori_filed_list:
                 # add ori_format and ori_shape for one_output_desc
                 one_output_desc = {'format': format_list,
@@ -478,8 +511,7 @@ class CaseDesign:
         for tensor in tensor_list:
             cross_list = []
             case_list = []
-            ori_filed_list = get_ori_filed_data(tensor)
-            if ori_filed_list:
+            if tensor.get('ori_format') and tensor.get('ori_shape'):
                 ori_field_cross_key_list, result_cross_list = combine_ori_field_to_cross(tensor, cross_key_list)
                 for case in result_cross_list:
                     cur_params = {ori_field_cross_key_list[x]: case[x] for x, _ in
@@ -516,7 +548,7 @@ class CaseDesign:
         for input_index, input_case in enumerate(input_case_list):
             if json_obj[INPUT_DESC][input_index].get('name'):
                 input_name = \
-                    json_obj[INPUT_DESC][input_index].get('name')[0]
+                    json_obj[INPUT_DESC][input_index].get('name')
                 input_case[index].update({'name': input_name})
 
             case[INPUT_DESC].append(input_case[index])

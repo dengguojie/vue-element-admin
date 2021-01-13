@@ -23,6 +23,7 @@ __version__ = "0.1"
 class BinaryDistribution(Distribution):
     def has_ext_modules(self):
         return True
+
     def is_pure(self):
         return False
 
