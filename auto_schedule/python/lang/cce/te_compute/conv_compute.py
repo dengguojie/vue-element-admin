@@ -80,6 +80,21 @@ def is_support_v200():
     return False
 
 
+def is_support_v220():
+    """
+    Check if Ascend920A version.
+
+    Returns
+    -------
+    True: Ascend920A version.
+    False: other version.
+    """
+    soc_version = cce_conf.get_soc_spec("SOC_VERSION")
+    if soc_version == "Ascend920":
+        return True
+    return False
+
+
 def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
                      pad_left, pad_right, strideh, stridew, in_dtype, w_dtype, fusion_para,
                      optim_dict=None, dilateh=1, dilatew=1, dynamic_para=None, groups=1):
@@ -303,14 +318,12 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         if isinstance(pad_top, tvm.expr.Expr) or isinstance(pad_bottom, tvm.expr.Expr) or \
                 isinstance(pad_left, tvm.expr.Expr) or isinstance(pad_right, tvm.expr.Expr):
             return
-        if pad_top < PAD_MIN or pad_bottom < PAD_MIN or \
-                pad_top > PAD_MAX or pad_bottom > PAD_MAX:
+        if pad_top < PAD_MIN or pad_bottom < PAD_MIN or pad_top > PAD_MAX or pad_bottom > PAD_MAX:
             range_value = "".join([str(PAD_MIN), ", ", str(PAD_MAX)])
             actual_value = "".join([str(pad_top), ", ", str(pad_bottom)])
             err_man.raise_err_attr_range_invalid("conv2d", range_value,
                                                  "pad_top or pad_bottom", actual_value)
-        if pad_left < PAD_MIN or pad_right < PAD_MIN or \
-                pad_left > PAD_MAX or pad_right > PAD_MAX:
+        if pad_left < PAD_MIN or pad_right < PAD_MIN or pad_left > PAD_MAX or pad_right > PAD_MAX:
             range_value = "".join([str(PAD_MIN), ", ", str(PAD_MAX)])
             actual_value = "".join([str(pad_left), ", ", str(pad_right)])
             err_man.raise_err_attr_range_invalid("conv2d", range_value,
@@ -517,12 +530,12 @@ def conv_compress(inputs, weight_compress, compress_index, compress_index_shape,
     ConvParam.compress_tiling_k = compress_tiling_k
     ConvParam.compress_tiling_n_frac = compress_tiling_n_frac
     ConvParam.compress_tiling_frac = compress_tiling_frac
-    weight = tvm.compute(weight_compress_shape, \
-        lambda i, j, k, l: tvm.unzip(compress_index((j // \
-            compress_tiling_n * compress_tiling_n_frac + \
-            i // compress_tiling_k) * compress_tiling_frac * 8), \
-        weight_compress(i, j, k, l)), \
-        name='weight_unzip')
+    weight = tvm.compute(weight_compress_shape,
+                         lambda i, j, k, l:
+                         tvm.unzip(compress_index((j // compress_tiling_n * compress_tiling_n_frac + \
+                                                   i // compress_tiling_k) * compress_tiling_frac * 8),
+                                   weight_compress(i, j, k, l)),
+                         name='weight_unzip')
     res = conv(inputs, weight, para_dict, optim_dict, dsl_flag)
     return res
 
@@ -546,9 +559,9 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
     -------
     tensor: res
     """
-    def _v200_l0c2ub(c_col, res_dtype):
+    def _quant_l0c2ub_compute(c_col, res_dtype):
         """
-        This is l0c to ub in v200 version.
+        This is l0c to ub in quant conv.
         """
         height_out = ConvParam.h_out
         width_out = ConvParam.w_out
@@ -560,14 +573,16 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         cout1_opt = ConvParam.para_dict["cout1_opt"]
         final_c_ub_shape = (ConvParam.para_dict["a_shape"][0],
                             DIM_MAP["out_img_shape"][1], howo_mad, config['mac'][2])
-        c_ub = tvm.compute(final_c_ub_shape, lambda batch, cout1, howo, cout0: \
+        c_ub = tvm.compute(final_c_ub_shape,
+                           lambda batch, cout1, howo, cout0:
                            c_col(0 if group == 1 else cout1 // cout1_opt,
                                  batch,
                                  cout1 if group == 1 else cout1 % cout1_opt,
-                                 howo, cout0).astype(res_dtype), \
+                                 howo, cout0).astype(res_dtype),
                            name='C_UB',
                            tag=OP_TAG + "C_UB")
-        TENSOR_MAP["c_ub"] = c_ub
+        if not is_support_v220():
+            TENSOR_MAP["c_ub"] = c_ub
         return c_ub
 
     def _fmap_ddr2l1(fmap, fmap_shape, strideh_opti_flag, valid_shape):
@@ -713,9 +728,10 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                         _, _, h_offset, _, _ = offset
                 else:
                     h_offset = 0
-                al1_load2d = tvm.compute(shape_al1_load2d, \
-                    lambda n, c1, m, c0: fmap(n, c1, (m // feature_map_w) + h_offset, m % feature_map_w, c0), \
-                    name=OP_TAG + "al1_load2d")
+                al1_load2d = tvm.compute(shape_al1_load2d,
+                                         lambda n, c1, m, c0:
+                                         fmap(n, c1, (m // feature_map_w) + h_offset, m % feature_map_w, c0),
+                                         name=OP_TAG + "al1_load2d")
                 TENSOR_MAP["al1_load2d"] = al1_load2d
 
                 shape_al0_load2d = (
@@ -727,10 +743,13 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                     CUBE_MKN[fmap.dtype]["mac"][0],
                     in_channel_c0)
 
-                al0_load2d = tvm.compute(shape_al0_load2d, \
-                    lambda group, n, m_1, c1, m_0, c0: al1_load2d(n, group*ConvParam.para_dict["c1_opt"]+c1, \
-                        m_0 + CUBE_MKN[fmap.dtype]["mac"][0]*m_1, c0), \
-                    name=OP_TAG + "al0_load2d")
+                al0_load2d = tvm.compute(shape_al0_load2d,
+                                         lambda group, n, m_1, c1, m_0, c0:
+                                         al1_load2d(n,
+                                                    group*ConvParam.para_dict["c1_opt"] + c1,
+                                                    m_0 + CUBE_MKN[fmap.dtype]["mac"][0]*m_1,
+                                                    c0),
+                                         name=OP_TAG + "al0_load2d")
                 TENSOR_MAP["al0_load2d"] = al0_load2d
 
                 c_col = mad(mad_shape, al0_load2d, weight, config, mad_dtype)
@@ -744,7 +763,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             """
             l0a_load2d_flag = False
             if (list(padding) == [0, 0, 0, 0]) and (stride == (1, 1) \
-                and w_dtype == "float16") and (filter_h*filter_w == 1):
+                    and w_dtype == "float16") and (filter_h*filter_w == 1):
                 l0a_load2d_flag = True
                 optim_dict["c0_optim_flg"] = False
 
@@ -775,19 +794,17 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                                                filter_h,
                                                filter_w,
                                                in_channel_c0_row_major_res)
-                fmap_im2col_row_major_res = \
-                    _v100_cal_im2col_row_major(fmap,
-                                               fmap_im2col_row_major_shape,
-                                               fmap_l1,
-                                               [filter_w, padding, stride,
-                                                dilate, strideh_opti_flag])
+                fmap_im2col_row_major_res = _v100_cal_im2col_row_major(fmap,
+                                                                       fmap_im2col_row_major_shape,
+                                                                       fmap_l1,
+                                                                       [filter_w, padding, stride,
+                                                                        dilate, strideh_opti_flag])
 
                 # im2col
                 # small-z-big-Z
                 howo_mad = (height_out*width_out + block_size_m - 1) // block_size_m*block_size_m
-                k_size = \
-                (in_channel_c0_row_major_res*in_channel_c1*filter_h*filter_w \
-                    + block_size_k - 1) // block_size_k
+                k_size = (in_channel_c0_row_major_res*in_channel_c1*filter_h*filter_w + block_size_k - 1) // \
+                         block_size_k
                 fmap_im2col_fractal_shape = (ConvParam.para_dict["group_opt"],
                                              ConvParam.para_dict["a_shape"][0],
                                              howo_mad // block_size_m,
@@ -800,18 +817,15 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
 
                 if is_support_v200() and not c04_v100_flag:
                     in_channel_c0 = data.shape[4].value
-                    input_k_block = \
-                    (in_channel_c1*filter_h*filter_w*in_channel_c0 + block_size_k - 1) // block_size_k * block_size_k
-                    row_major_reshape_shape = \
-                    (ConvParam.para_dict["group_opt"], batch_size, howo_mad, input_k_block)
-                    row_major_reshape_res = \
-                        _im2col_row_major_reshape(row_major_reshape_shape,
-                                                  fmap_im2col_row_major_res,
-                                                  fmap.dtype)
-                    fmap_im2col_fractal_res = \
-                        _im2col_fractal_v200(fmap_im2col_fractal_shape,
-                                             row_major_reshape_res,
-                                             config)
+                    input_k_block = (in_channel_c1*filter_h*filter_w*in_channel_c0 + block_size_k - 1) // \
+                                    block_size_k*block_size_k
+                    row_major_reshape_shape = (ConvParam.para_dict["group_opt"], batch_size, howo_mad, input_k_block)
+                    row_major_reshape_res = _im2col_row_major_reshape(row_major_reshape_shape,
+                                                                      fmap_im2col_row_major_res,
+                                                                      fmap.dtype)
+                    fmap_im2col_fractal_res = _im2col_fractal_v200(fmap_im2col_fractal_shape,
+                                                                   row_major_reshape_res,
+                                                                   config)
                     TENSOR_MAP["row_major_reshape_res"] = row_major_reshape_res
                 TENSOR_MAP["fmap_im2col_fractal_res"] = fmap_im2col_fractal_res
             else:
@@ -824,8 +838,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                                              block_size_m,
                                              block_size_k)
                 if not strideh_opti_flag:
-                    img2col_para = (fmap, filter_h, filter_w, padding, stride,
-                                    width_out)
+                    img2col_para = (fmap, filter_h, filter_w, padding, stride, width_out)
                 else:
                     img2col_para = (fmap_l1, filter_h, filter_w, padding, (1, stride_w), width_out)
                 fmap_im2col_fractal_res = img2col(fmap_im2col_fractal_shape, img2col_para)
@@ -845,27 +858,33 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             if bias_optimize_flag:
                 bias_ub_brc_shape = list(mad_shape)
                 bias_ub_brc_shape[3] = bias_ub_brc_shape[3] // 16
-                bias_ub_brc = tvm.compute(bias_ub_brc_shape, \
-                    lambda group, i, j, k, l: bias_ub(group * bias_ub_brc_shape[2] * config['mac'][2] \
-                    + j * config['mac'][2] + l), \
+                bias_ub_brc = tvm.compute(
+                    bias_ub_brc_shape,
+                    lambda group, i, j, k, l:
+                    bias_ub(group * bias_ub_brc_shape[2] * config['mac'][2] + j * config['mac'][2] + l),
                     name=OP_TAG + 'bias_ub_brc')
-                bias_l0c = tvm.compute(mad_shape, lambda group, i1, j1, k_1, l1:
-                                       bias_ub_brc(group, i1, j1, k_1 // 16, l1),
-                                       name=OP_TAG + 'bias_l0c')
+                bias_l0c = tvm.compute(
+                    mad_shape,
+                    lambda group, i1, j1, k_1, l1:
+                    bias_ub_brc(group, i1, j1, k_1 // 16, l1),
+                    name=OP_TAG + 'bias_l0c')
                 TENSOR_MAP["bias_ub_brc"] = bias_ub_brc
                 TENSOR_MAP["bias_l0c"] = bias_l0c
             else:
-                bias_l0c = \
-                    tvm.compute(mad_shape, lambda group, i1, j1, k_1, l1:
-                                bias_ub(group * mad_shape[2] * config['mac'][2] + j1 * config['mac'][2] + l1),
-                                name=OP_TAG + 'bias_l0c')
+                bias_l0c = tvm.compute(
+                    mad_shape,
+                    lambda group, i1, j1, k_1, l1:
+                    bias_ub(group * mad_shape[2] * config['mac'][2] + j1 * config['mac'][2] + l1),
+                    name=OP_TAG + 'bias_l0c')
                 TENSOR_MAP["bias_l0c"] = bias_l0c
 
             TENSOR_MAP["bias_optimize_flag"] = bias_optimize_flag
 
-            c_col = tvm.compute(mad_shape, lambda *index:
-                                bias_l0c(*index) + TENSOR_MAP["c_col"](*index),
-                                name=OP_TAG + 'c_col_bias')
+            c_col = tvm.compute(
+                mad_shape,
+                lambda *index:
+                bias_l0c(*index) + TENSOR_MAP["c_col"](*index),
+                name=OP_TAG + 'c_col_bias')
             TENSOR_MAP["c_col_bias"] = c_col
             TENSOR_MAP["bias_ub"] = bias_ub
             return bias_l0c, c_col
@@ -878,8 +897,8 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         out_channel_c0 = weight_shape[2]
         out_channel = out_channel_c1*out_channel_c0
 
-        strideh_opti_flag = (filter_h == 1 and stride_h > 1) \
-            and not optim_dict["c0_optim_flg"] and sum(ConvParam.para_dict['pad_h'] + ConvParam.para_dict['pad_w']) == 0
+        strideh_opti_flag = (filter_h == 1 and stride_h > 1) and not optim_dict["c0_optim_flg"] and \
+            sum(ConvParam.para_dict['pad_h'] + ConvParam.para_dict['pad_w']) == 0
 
         if ConvParam.fusion_para.get("l1_fusion_type") == 1:
             # for L1  breadth fusion, fmap must load all at once
@@ -945,7 +964,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             DIM_MAP["out_img_shape"] = (
                 ConvParam.para_dict["a_shape"][0],
                 int_ceil_div(ConvParam.para_dict["weight_ori_shape_nchw"][0], 16),
-                ConvParam.h_out*ConvParam.w_out//2,
+                ConvParam.h_out*ConvParam.w_out // 2,
                 16)
         ConvParam.conv_shape = DIM_MAP["out_img_shape"]
         filter_shape = [out_channel, filter_h, filter_w, 1]
@@ -976,10 +995,10 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         ConvParam.tensor_map = TENSOR_MAP
         return c_col
 
-    def conv_and_quant_compute(data, weight, mad_dtype, res_dtype, stride_h, \
-        stride_w, dilate_h, dilate_w, filter_h, filter_w, bias=False, \
-        no_vector=False, tiling=None, conv_fused_flag=False, \
-        optim_dict=None, kernel_name=None):
+    def cub_fp16_compute(data, weight, mad_dtype, res_dtype, stride_h,
+                         stride_w, dilate_h, dilate_w, filter_h, filter_w, bias=False,
+                         no_vector=False, tiling=None, conv_fused_flag=False,
+                         optim_dict=None, kernel_name=None):
         """
         conv
 
@@ -1053,23 +1072,24 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
 
         group = ConvParam.para_dict["group"]
 
-        c_ub = tvm.compute(final_c_ub_shape, lambda batch, cout1, howo, cout0: \
+        c_ub = tvm.compute(final_c_ub_shape,
+                           lambda batch, cout1, howo, cout0:
                            c_col(0 if group == 1 else cout1 // cout1_opt,
                                  batch,
                                  cout1 if group == 1 else cout1 % cout1_opt,
-                                 howo, cout0).astype(res_dtype), \
-                           name='C_UB', tag=OP_TAG + "C_UB", \
-                           attrs={
-                               'no_vector': no_vector, \
-                               'sqrt': False, \
-                               'res_dtype': res_dtype, \
-                               'kernel_h': filter_h, \
-                               'kernel_w': filter_w, \
-                               'padding': padding, \
-                               'stride': stride, \
-                               'dilate': dilate, \
-                               'width_out': width_out, \
-                               'kernel_name': kernel_name})
+                                 howo, cout0).astype(res_dtype),
+                           name='C_UB',
+                           tag=OP_TAG + "C_UB",
+                           attrs={'no_vector': no_vector,
+                                  'sqrt': False,
+                                  'res_dtype': res_dtype,
+                                  'kernel_h': filter_h,
+                                  'kernel_w': filter_w,
+                                  'padding': padding,
+                                  'stride': stride,
+                                  'dilate': dilate,
+                                  'width_out': width_out,
+                                  'kernel_name': kernel_name})
 
         filter_shape = [out_channel, filter_h, filter_w, 1]
         dim_map1 = im2col_dim(shape_to_list(fmap.shape), filter_shape,
@@ -1078,7 +1098,8 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         dim_map_copy = DIM_MAP.copy()
         dim_map_copy.update(dim_map1)
 
-        TENSOR_MAP["c_ub"] = c_ub
+        if not is_support_v220():
+            TENSOR_MAP["c_ub"] = c_ub
         TENSOR_MAP["conv_vector_fused_flag"] = conv_fused_flag
         ConvParam.tensor_map = TENSOR_MAP
         ConvParam.dim_map.update(dim_map_copy)
@@ -1177,28 +1198,29 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         else:
             out_w = ConvParam.var_map['wo']
 
-        fmap_valid_dim = (batch, out_h*out_w, \
-            ConvParam.para_dict["c1_opt"]*img_shape[-1]*filter_shape[-2]*filter_shape[-3])
+        fmap_valid_dim = (batch,
+                          out_h*out_w,
+                          ConvParam.para_dict["c1_opt"]*img_shape[-1]*filter_shape[-2]*filter_shape[-3])
 
-        fmap_matrix_dim = (batch, \
-            ((fmap_valid_dim[-2] + mac_dim[0] - 1) // mac_dim[0]), \
-            ((fmap_valid_dim[-1] + mac_dim[1] - 1) // mac_dim[1]), \
-            mac_dim[0], mac_dim[1])
+        fmap_matrix_dim = (batch,
+                           ((fmap_valid_dim[-2] + mac_dim[0] - 1) // mac_dim[0]),
+                           ((fmap_valid_dim[-1] + mac_dim[1] - 1) // mac_dim[1]),
+                           mac_dim[0],
+                           mac_dim[1])
 
         filter_valid_dim = (ConvParam.para_dict["c1_opt"]*filter_shape[-3]*filter_shape[-2]
                             * img_shape[-1], filter_shape[-4]*filter_shape[-1])
 
-        filter_matrix_dim = ((filter_valid_dim[-2] + mac_dim[1] - 1) \
-            // mac_dim[1], \
-            (filter_valid_dim[-1] + mac_dim[2] - 1) // mac_dim[2], \
-            mac_dim[2], mac_dim[1])
+        filter_matrix_dim = ((filter_valid_dim[-2] + mac_dim[1] - 1) // mac_dim[1],
+                             (filter_valid_dim[-1] + mac_dim[2] - 1) // mac_dim[2],
+                             mac_dim[2],
+                             mac_dim[1])
 
         img_shape_single_group = img_shape
         img_shape_single_group[1] = ConvParam.para_dict["c1_opt"]
-        return {
-            "img_shape": img_shape_single_group,
-            "fmap_matrix_dim": fmap_matrix_dim,
-            "filter_matrix_dim": filter_matrix_dim}
+        return {"img_shape": img_shape_single_group,
+                "fmap_matrix_dim": fmap_matrix_dim,
+                "filter_matrix_dim": filter_matrix_dim}
 
     def im2col_row_major(fmap_im2col_vm_shape, fmap, kernel_w, padding, stride, dilate, compute_dtype):
         """
@@ -1264,13 +1286,15 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                 tvm.const(offset_x, compute_dtype),
                 fmap(batch,
                      cin_1 + group * ConvParam.para_dict["c1_opt"],
-                     h_index - padding_top + offset, \
+                     h_index - padding_top + offset,
                      w_index - padding_left, cin_0))
 
-        return tvm.compute(fmap_im2col_vm_shape, lambda group, batch, howo, cin_1, k_h, k_w, cin_0:
+        return tvm.compute(fmap_im2col_vm_shape,
+                           lambda group, batch, howo, cin_1, k_h, k_w, cin_0:
                            __im2col_row_major_indices(group, batch, howo, cin_1, k_h, k_w, cin_0,
                                                       fmap, kernel_w, padding, stride, dilate),
-                           name='im2col_row_major', tag=OP_TAG + 'im2col_row_major')
+                           name='im2col_row_major',
+                           tag=OP_TAG + 'im2col_row_major')
 
     def im2col_fractal(fmap_im2col_shape, fmap, config, compute_dtype):
         """
@@ -1329,9 +1353,9 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                 fmap(group, batch, hw_index,
                      c1_index, kh_index, kw_index, c0_index))
 
-        return tvm.compute(fmap_im2col_shape, lambda group, batch, m_1, k_1, m_0, k_0:
-                           __im2col_fractal_indices(group, batch, m_1, k_1, m_0,
-                                                    k_0, fmap),
+        return tvm.compute(fmap_im2col_shape,
+                           lambda group, batch, m_1, k_1, m_0, k_0:
+                           __im2col_fractal_indices(group, batch, m_1, k_1, m_0, k_0, fmap),
                            name='im2col_fractal',
                            tag=OP_TAG + 'im2col_fractal')
 
@@ -1352,12 +1376,13 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         """
         _, _, howo, input_c1, filter_h, filter_w, input_c0 = fmap_row_major.shape
         row_major_reshape = tvm.compute(
-            fmap_im2col_shape, lambda group, i, j, k: tvm.select(
-                tvm.all(k < input_c1*filter_h*filter_w*input_c0, j < howo),
-                fmap_row_major(group, i, j, k // (filter_h*filter_w*input_c0),
-                               k // (filter_w*input_c0) % filter_h,
-                               k // (input_c0) % (filter_w),
-                               k % input_c0), tvm.const(0.0, compute_dtype)),
+            fmap_im2col_shape,
+            lambda group, i, j, k:
+            tvm.select(tvm.all(k < input_c1*filter_h*filter_w*input_c0, j < howo),
+                       fmap_row_major(group, i, j, k // (filter_h*filter_w*input_c0),
+                                      k // (filter_w*input_c0) % filter_h,
+                                      k // (input_c0) % (filter_w),
+                                      k % input_c0), tvm.const(0.0, compute_dtype)),
             name="row_major_reshape",
             tag=OP_TAG + 'row_major_reshape')
 
@@ -1425,7 +1450,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         if not ConvParam.v200_width_out_1_flag:
             remove_pad_m = DIM_MAP["out_img_height_width"][0]*DIM_MAP["out_img_height_width"][1]
         else: # invliad_data_rm uses removed_pad_m as the shape of UB tensor, so modify it to N*1 here
-            remove_pad_m = DIM_MAP["out_img_height_width"][0]*DIM_MAP["out_img_height_width"][1]//2
+            remove_pad_m = DIM_MAP["out_img_height_width"][0]*DIM_MAP["out_img_height_width"][1] // 2
 
         offset_d = offset_x if is_support_v200() else 0
 
@@ -1473,12 +1498,12 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         TENSOR_MAP["bias_ub"] = bias_ub
 
         with tvm.tag_scope('conv_vector_bias_add'):
-            c_add_vector = \
-                tvm.compute(out_shape, lambda *indice: in_tensor0(*indice) + \
-                    bias_ub(indice[1]*CUBE_MKN[in_tensor0.dtype]['mac'][2] \
-                        + indice[3]), \
-                    name='bias_add_vector' + "_cc_" + str(NAME_INDEX[0]), \
-                    attrs={'width_out': in_tensor0.op.attrs["width_out"]})
+            c_add_vector = tvm.compute(
+                out_shape,
+                lambda *indice:
+                in_tensor0(*indice) + bias_ub(indice[1]*CUBE_MKN[in_tensor0.dtype]['mac'][2] + indice[3]),
+                name='bias_add_vector' + "_cc_" + str(NAME_INDEX[0]),
+                attrs={'width_out': in_tensor0.op.attrs["width_out"]})
         return c_add_vector
 
     def remove_pad(res, conv_shape):
@@ -1630,12 +1655,11 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         check_dtype_list = ('int8', "float16")
         util.check_dtype_rule(data.dtype, check_dtype_list)
 
-        block_size_k = 4 \
-            if optim_dict["c0_optim_flg"] and is_support_v200() and optim_dict["use_v200_c04_flg"] \
+        block_size_k = 4 if optim_dict["c0_optim_flg"] and is_support_v200() and optim_dict["use_v200_c04_flg"] \
             else CUBE_MKN[data.dtype]['mac'][1]
         if data.shape[4].value != block_size_k:
-            err_man.raise_err_scene_equal_limitation("conv2d", \
-                "the last dim of first Input parameter", str(block_size_k))
+            err_man.raise_err_scene_equal_limitation("conv2d",
+                                                     "the last dim of first Input parameter", str(block_size_k))
 
     def check_weight(weight):
         """
@@ -1651,8 +1675,8 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         block_size_k = CUBE_MKN[weight.dtype]['mac'][1]
 
         if weight.shape[3].value != block_size_k:
-            err_man.raise_err_scene_equal_limitation("conv2d", \
-                "the last dim of first Input parameter", str(block_size_k))
+            err_man.raise_err_scene_equal_limitation("conv2d",
+                                                     "the last dim of first Input parameter", str(block_size_k))
 
     def _save_conv_param():
         """
@@ -1837,9 +1861,9 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         Set this flag to define whether is doing conv1d.
         """
         if not ConvParam.var_map and data.shape[2].value == 1 \
-        and para_dict.get("filter_h") == 1 \
-        and (pad_top + pad_bottom) == 0 and \
-        not load2d_to_load3d_flag:
+            and para_dict.get("filter_h") == 1 \
+            and (pad_top + pad_bottom) == 0 and \
+            not load2d_to_load3d_flag:
             ConvParam.conv1d_split_w_flag = True
 
     def _v200_width_out_1_flag_set():
@@ -1970,7 +1994,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         for i in padded_column_shape:
             true_conv_shape.append(i)
         if v200_width_out_1_flag:
-            true_conv_shape[-2] = true_conv_shape[-2]//2
+            true_conv_shape[-2] = true_conv_shape[-2] // 2
         true_conv_shape = tuple(true_conv_shape)
         params_dict = {"remove_padded_column_in_next_op": ConvParam.v200_width_out_1_flag,
                        "true_conv_shape": true_conv_shape}
@@ -2171,31 +2195,31 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
 
     if in_dtype == "int8":  # quant
         if dsl_flag:  # quant fusion
-            conv_res = _cube_compute(data, weight, mad_dtype, \
-                tiling=ConvParam.tiling, optim_dict=optim_dict, bias=bias_tensor)
+            conv_res = _cube_compute(data, weight, mad_dtype,
+                                     tiling=ConvParam.tiling, optim_dict=optim_dict, bias=bias_tensor)
             remove_pad_params = calculate_remove_pad_params(conv_shape, ConvParam.v200_width_out_1_flag)
-            res_remove_pad = remove_pad_quant_dsl(conv_res, conv_shape, invalid_data_rm_flag, \
-                params_dict=remove_pad_params)
+            res_remove_pad = remove_pad_quant_dsl(conv_res, conv_shape, invalid_data_rm_flag,
+                                                  params_dict=remove_pad_params)
             return res_remove_pad
         # quant single op
-        conv_res = _cube_compute(data, weight, mad_dtype, tiling=ConvParam.tiling,
-                                 optim_dict=optim_dict, bias=bias_tensor)
-        res = _v200_l0c2ub(conv_res, res_dtype)
+        conv_res = _cube_compute(data, weight, mad_dtype,
+                                 tiling=ConvParam.tiling, optim_dict=optim_dict, bias=bias_tensor)
+        res = _quant_l0c2ub_compute(conv_res, res_dtype)
         if ConvParam.v200_width_out_1_flag:
             remove_padded_column_shape = conv_shape.copy()
-            remove_padded_column_shape[-2] = remove_padded_column_shape[-2]//2
+            remove_padded_column_shape[-2] = remove_padded_column_shape[-2] // 2
             res = remove_padded_column(res, remove_padded_column_shape)
     else:  # float
         no_vector_flag = (not dsl_flag) and (not bias_tensor_flag) # no vec calculation in UB
-        conv_res = conv_and_quant_compute(
-            data, weight, mad_dtype, res_dtype, stride_h, stride_w, dilate_h, dilate_w, filter_h, filter_w,
-            bias=False, no_vector=no_vector_flag, tiling=ConvParam.tiling, conv_fused_flag=dsl_flag,
-            optim_dict=optim_dict, kernel_name=kernel_name)
+        conv_res = cub_fp16_compute(data, weight, mad_dtype, res_dtype, stride_h, stride_w,
+                                    dilate_h, dilate_w, filter_h, filter_w,
+                                    bias=False, no_vector=no_vector_flag, tiling=ConvParam.tiling,
+                                    conv_fused_flag=dsl_flag, optim_dict=optim_dict, kernel_name=kernel_name)
         res = conv_res
 
         if ConvParam.v200_width_out_1_flag:
             remove_padded_column_shape = conv_shape.copy()
-            remove_padded_column_shape[-2] = remove_padded_column_shape[-2]//2
+            remove_padded_column_shape[-2] = remove_padded_column_shape[-2] // 2
             conv_res = remove_padded_column(conv_res, remove_padded_column_shape)
             res = conv_res
 
@@ -2205,7 +2229,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                            in_dtype, w_dtype, res_dtype, bias_tensor_flag, kernel_name)
 
     if ConvParam.v200_width_out_1_flag:
-        conv_shape[-2] = conv_shape[-2]//2
+        conv_shape[-2] = conv_shape[-2] // 2
 
     if dsl_flag:
         res_c = remove_pad_fp16_dsl(res, conv_shape, invalid_data_rm_flag)

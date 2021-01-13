@@ -19,6 +19,7 @@ import re
 from enum import Enum
 from te.lang.cce.te_compute.conv_compute import ConvParam
 from te.lang.cce.te_compute.conv_compute import is_support_v200
+from te.lang.cce.te_compute.conv_compute import is_support_v220
 from te.lang.cce.te_compute.elewise_compute import vmul
 from te.lang.cce.te_compute.max_pool2d_3_2_fusion_compute import MaxPoolParam
 from te.lang.cce.te_schedule import util
@@ -845,7 +846,19 @@ class CceConvOp:
                                                    "only support one core tiling "
                                                    + "in L1 Fusion situation")
 
-            def handle_inner_batch():
+            def check_cub_tiling(tiling):
+                """
+                check Cub tiling in not v220 situation.
+                """
+                if is_support_v220():
+                    if tiling["CUB_matrix"] is not None:
+                        pass
+                else:
+                    if len(tiling["CUB_matrix"]) != TILING_CUB_MATRIX_DIM:
+                        err_man.raise_err_value_or_format_invalid("conv2d",
+                                                                  "CUB_matrix dim", str(TILING_CUB_MATRIX_DIM), "")
+
+            def check_innerbatch_tiling():
                 """
                 avoid cyclomatic complexity, check tiling in inner_batch situation
                 """
@@ -888,9 +901,7 @@ class CceConvOp:
                 err_man.raise_err_value_or_format_invalid("conv2d",
                                                           "CL0_matrix dim", str(TILING_CL0_MATRIX_DIM), "")
 
-            if len(tiling["CUB_matrix"]) != TILING_CUB_MATRIX_DIM:
-                err_man.raise_err_value_or_format_invalid("conv2d",
-                                                          "CUB_matrix dim", str(TILING_CUB_MATRIX_DIM), "")
+            check_cub_tiling(tiling)
 
             if len(tiling["block_dim"]) != TILING_BLOCK_DIM_DIM:
                 err_man.raise_err_value_or_format_invalid("conv2d",
@@ -914,10 +925,9 @@ class CceConvOp:
             elif w_dtype == "int8":
                 check_tiling_m_k_int8(tiling)
             else:
-                err_man.raise_err_value_or_format_invalid("conv2d",
-                                                          "weight", "float16 or int8", "")
+                err_man.raise_err_value_or_format_invalid("conv2d", "weight", "float16 or int8", "")
 
-            handle_inner_batch()
+            check_innerbatch_tiling()
 
             return True
 
@@ -1126,6 +1136,61 @@ class CceConvOp:
                 tiling_new = get_tiling(info_dict)
                 return tiling_new
 
+            def handle_v220_tiling():
+                """
+                get tiling in v220 situation
+
+                """
+                in_mem = list(map(int, self._input_memory_type))
+                out_mem = list(map(int, self._output_memory_type))
+                pooling_shape = [0, 0]
+                pooling_stride = [0, 0]
+
+                c_dtype = res_dtype
+
+                fused_coefficient = [0, 0, 0]
+                fused_channel_wise = [0, 0, 0]
+
+                fusion_type_new = fusion_type
+
+                # group conv,send one group_opt a,b,c shape to tiling
+                group_opt = ConvParam.para_dict["group_opt"]
+                c_shape_opt = c_shape
+                c_shape_opt[1] = ConvParam.para_dict["cout1_opt"]
+                info_dict = {"op_type": 'conv2d',
+                             "a_shape": fmap_shape_nc1hwc0,
+                             "b_shape": shape_w_nc1hwc0,
+                             "c_shape": c_shape_opt,
+                             "a_dtype": in_dtype,
+                             "b_dtype": w_dtype,
+                             "c_dtype": c_dtype,
+                             "mad_dtype": mad_dtype,
+                             "pad": [ConvParam.pad_w[0], ConvParam.pad_w[1],
+                                     ConvParam.pad_h[0], ConvParam.pad_h[1]],
+                             "stride": [ConvParam.stride_h,
+                                        ConvParam.stride_w],
+                             "dilation": [ConvParam.dilate_h,
+                                          ConvParam.dilate_w],
+                             "group": group_opt,
+                             "bias_flag": bias_flag,
+                             "fused_coefficient": fused_coefficient,
+                             "fused_channel_wise": fused_channel_wise,
+                             "in_fm_memory_type": in_mem,
+                             "out_fm_memory_type": out_mem,
+                             "l1_fusion_type": self._l1_fusion_type,
+                             "fm_l1_valid_size": self._fmap_l1_valid_size,
+                             "fusion_type": fusion_type_new,
+                             "reserved_ub": 0,
+                             "fused_ub_cl0": 0,
+                             "kernel_name": ConvParam.kernel_name,
+                             "pooling_shape": pooling_shape,
+                             "pooling_stride": pooling_stride,
+                             "special_mode": {},
+                             "placeholder_fmap_5hd_shape": list(ConvParam.dim_map["fmap_5hd_shape"])}
+
+                tiling_new = get_tiling(info_dict)
+                return tiling_new
+
             def get_default_tiling():
                 """
                 function: get default_tiling
@@ -1273,6 +1338,24 @@ class CceConvOp:
                 _handle_block_dim()
                 return tiling
 
+            def get_c_shape():
+                """
+                get c_shape according to whether it is v220 version.
+                """
+                if is_support_v220():
+                    _, batch_out, c1_out, _, c0_out = list(tensor_map["c_col"].shape)
+                    c_shape = [batch_out, c1_out, h_out, w_out, c0_out]
+                else:
+                    c_ub_shape = list(tensor_map["c_ub"].shape)
+                    c_shape = [c_ub_shape[0], c_ub_shape[1], h_out, w_out, c_ub_shape[3]]
+                    if self._var_map:
+                        c_shape = list(c_shape)
+                    else:
+                        c_shape = list(map(int, c_shape))
+                        if self._v200_width_out_1_flag:
+                            c_shape[-2] = c_shape[-2] // 2
+                return c_shape
+
             def get_reserved_ub():
                 """
                 get reserved_ub for tiling parameter
@@ -1296,9 +1379,12 @@ class CceConvOp:
                 if tiling_ok_flag and not ConvParam.tiling_query_param.get("default_tiling"):
                     tiling["AL0_matrix"] = tiling_new["AL0_matrix"][0:4]
                     tiling["CL0_matrix"] = tiling_new["CL0_matrix"][0:6]
-                    tiling["CUB_matrix"] = tiling_new["CUB_matrix"][0:4]
+
                     tiling["A_overhead_opt_flag"] = tiling_new["A_overhead_opt_flag"]
                     tiling["B_overhead_opt_flag"] = tiling_new["B_overhead_opt_flag"]
+
+                    if not is_support_v220():
+                        tiling["CUB_matrix"] = tiling_new["CUB_matrix"][0:4]
 
                     if tiling_new["BL0_matrix"] == []:
                         tiling["BL0_matrix"] = []
@@ -1354,9 +1440,7 @@ class CceConvOp:
                 return int_ceil_div(int(dtype_res.group(1)),
                                     int(base_res.group(1)))
 
-
-            fmap_shape_nc1hwc0 = ConvParam.tiling_query_param[
-                "fmap_shape_nc1hwc0"]
+            fmap_shape_nc1hwc0 = ConvParam.tiling_query_param["fmap_shape_nc1hwc0"]
             shape_w_nc1hwc0 = ConvParam.tiling_query_param["shape_w_nc1hwc0"]
             if self._var_map:
                 fmap_shape_nc1hwc0 = list(fmap_shape_nc1hwc0)
@@ -1373,16 +1457,7 @@ class CceConvOp:
             w_out = ConvParam.w_out
             h_out = ConvParam.h_out
 
-            c_ub_shape = list(tensor_map["c_ub"].shape)
-            c_shape = [c_ub_shape[0], c_ub_shape[1],
-                       h_out, w_out, c_ub_shape[3]]
-            if self._var_map:
-                c_shape = list(c_shape)
-            else:
-                c_shape = list(map(int, c_shape))
-                if self._v200_width_out_1_flag:
-                    c_shape[-2] = c_shape[-2]//2
-
+            c_shape = get_c_shape()
             reserved_ub = get_reserved_ub()
             fused_ub_cl0 = get_fused_ub_cl0()
 
@@ -1496,6 +1571,8 @@ class CceConvOp:
                                                 reserved_ub)
             elif self._var_map:
                 tiling_new = self._tiling_case
+            elif is_support_v220():
+                tiling_new = handle_v220_tiling()
             else:
                 cub_channel_coefficient = get_cub_channel_wise()
                 fused_channel_wise = [0, 0, cub_channel_coefficient]
@@ -1515,8 +1592,7 @@ class CceConvOp:
             """
             self._fused_double_operand_num = self._op_graph.fused_double_operand_num
 
-            if self._fused_flag and (not self.conv_pool_fused_flag) \
-            and (not self.conv_pool_2_2_fused_flag):
+            if self._fused_flag and (not self.conv_pool_fused_flag) and (not self.conv_pool_2_2_fused_flag):
                 if len(self._op_graph.body_ops) < SMALL_GRAPH_OP_NUM:
                     analyze_data_dependence()
             else:
@@ -2510,7 +2586,8 @@ class CceConvOp:
                 sch[bl0].emit_insn(bl0.op.axis[0], 'dma_copy')
 
             # pragma for v100 quant
-            pragma_v100_quant()
+            if not is_support_v220():
+                pragma_v100_quant()
 
             _handle_v200_emit_insn()
 
@@ -4047,6 +4124,9 @@ class CceConvOp:
         if is_support_v200() or tensor_map['c_col'].dtype != "int32":
             self._lhisi_data_flow_type = None
 
+        if is_support_v220():
+            delete_op("convolution_C_UB", self._op_graph.body_ops, sch)
+
         def process_data_rm():
             """
             Process tensors that need to be inlined when invalid conv2d remove pad.
@@ -4254,7 +4334,7 @@ class CceConvOp:
         w_out = ConvParam.w_out
         _align_fmap_col_before(l0a_load2d_flag, w_out)
 
-        if self.conv_pool_fused_flag:
+        if self.conv_pool_fused_flag or is_support_v220():
             pass
         elif self.conv_pool_2_2_fused_flag:
             sch[c_ub].buffer_align((1, 1),
@@ -4268,8 +4348,9 @@ class CceConvOp:
 
         has_vector_flag = False
 
-        if not (ConvParam.res_dtype == 'int32') \
-                and not self.conv_pool_fused_flag \
+        if is_support_v220():
+            pass
+        elif not (ConvParam.res_dtype == 'int32') and not self.conv_pool_fused_flag \
                 and not self.conv_pool_2_2_fused_flag:
             has_vector_flag = (c_ub.op.attrs['no_vector'].value == 0)
 
@@ -4347,7 +4428,8 @@ class CceConvOp:
             bl0 = sch.cache_read(bl1, cce.scope_cb, [c_col])
 
         sch[c_col].set_scope(cce.scope_cc)
-        sch[c_ub].set_scope(cce.scope_ubuf)
+        if not is_support_v220():
+            sch[c_ub].set_scope(cce.scope_ubuf)
 
         if l0a_load2d_flag:
             fmap_col = al0
@@ -4467,12 +4549,13 @@ class CceConvOp:
             c_factor = [int_ceil_div(ConvParam.para_dict["cout1_opt"], c_tiling_factor[0]),
                         int_ceil_div(dim_map["out_img_shape"][2], c_tiling_factor[1])]
 
-        c_ub_tiling_factor = tiling["CUB_matrix"]
-        c_ub_factor = [int_ceil_div(c_tiling_factor[0],
-                                    c_ub_tiling_factor[0]),
-                       int_ceil_div(
-                           c_tiling_factor[1],
-                           c_ub_tiling_factor[1]*c_ub_tiling_factor[2])]
+        if not is_support_v220():
+            c_ub_tiling_factor = tiling["CUB_matrix"]
+            c_ub_factor = [int_ceil_div(c_tiling_factor[0],
+                                        c_ub_tiling_factor[0]),
+                           int_ceil_div(
+                               c_tiling_factor[1],
+                               c_ub_tiling_factor[1]*c_ub_tiling_factor[2])]
 
         if self.conv_pool_fused_flag or self.conv_pool_2_2_fused_flag:
             c_tiling_factor[1] = pooling_out[1]
@@ -4833,69 +4916,71 @@ class CceConvOp:
             build_config["sync_mode"] = 3
 
         # ============ tile cub ========================
-        c_outer_inner_outer, c_outer_inner_inner = sch[
-            res_c].split(c_outer_inner, nparts=c_ub_factor[0])
+        if is_support_v220():
+            c_pragma_axis = c_outer_inner
+        else:
+            c_outer_inner_outer, c_outer_inner_inner = sch[res_c].split(c_outer_inner, nparts=c_ub_factor[0])
 
-        if not self._l0b_first_flag:
-            sch[res_c].reorder(c_outer_inner_outer, m_outer_inner_outer,
-                               c_outer_inner_inner, m_outer_inner_inner)
-        # v200 compute_at
-        if self._v200_data_flow_type in (DataFlowType.S16ELTWISES8,
-                                         DataFlowType.S16ELTWISES8S16):
-            sch[c_ub_reform].compute_at(
-                self._schedule[res_c], m_outer_inner_outer)
-            compute_at_list = ["requant_s16_vaddrelu", "requant_s16_vadd",
-                               "requant_s16_vector", "requant_s16_scale",
-                               "dequant_s16_vector", "dequant_s16_scale",
-                               "res_remove_pad_s16", "res_remove_pad_u8"]
-            for lop in self._op_graph.body_ops:
-                if lop["op"] in compute_at_list:
-                    self._schedule[lop["dst_buffer"]].compute_at(
-                        self._schedule[res_c], m_outer_inner_outer)
-                if lop["dst_buffer"].op.name in ("output_ub_4d", "output_ub_5d"):
-                    v200_fm2_cache_buffer.append(lop["dst_buffer"])
+            if not self._l0b_first_flag:
+                sch[res_c].reorder(c_outer_inner_outer, m_outer_inner_outer,
+                                   c_outer_inner_inner, m_outer_inner_inner)
+            # v200 compute_at
+            if self._v200_data_flow_type in (DataFlowType.S16ELTWISES8,
+                                             DataFlowType.S16ELTWISES8S16):
+                sch[c_ub_reform].compute_at(
+                    self._schedule[res_c], m_outer_inner_outer)
+                compute_at_list = ["requant_s16_vaddrelu", "requant_s16_vadd",
+                                   "requant_s16_vector", "requant_s16_scale",
+                                   "dequant_s16_vector", "dequant_s16_scale",
+                                   "res_remove_pad_s16", "res_remove_pad_u8"]
+                for lop in self._op_graph.body_ops:
+                    if lop["op"] in compute_at_list:
+                        self._schedule[lop["dst_buffer"]].compute_at(
+                            self._schedule[res_c], m_outer_inner_outer)
+                    if lop["dst_buffer"].op.name in ("output_ub_4d", "output_ub_5d"):
+                        v200_fm2_cache_buffer.append(lop["dst_buffer"])
 
-            for buffer_fm2 in v200_fm2_cache_buffer:
-                sch[buffer_fm2].compute_at(self._schedule[res_c], c_slice_axis)
+                for buffer_fm2 in v200_fm2_cache_buffer:
+                    sch[buffer_fm2].compute_at(self._schedule[res_c], c_slice_axis)
 
-        if self._v200_data_flow_type == DataFlowType.V200_GENERAL_FUSION:
-            handle_lhisi_fuse_compute_at()
+            if self._v200_data_flow_type == DataFlowType.V200_GENERAL_FUSION:
+                handle_lhisi_fuse_compute_at()
 
-        if self._v200_data_flow_type:
-            for buffer_data in v200_cache_buffer:
-                # deq_scale/req_scale/bias_s16
-                if buffer_data.dtype in ("uint64", "int16"):
-                    if tiling.get("CUB_channel_wise_flag"):
-                        sch[buffer_data].compute_at(sch[res_c], c_slice_axis)
+            if self._v200_data_flow_type:
+                for buffer_data in v200_cache_buffer:
+                    # deq_scale/req_scale/bias_s16
+                    if buffer_data.dtype in ("uint64", "int16"):
+                        if tiling.get("CUB_channel_wise_flag"):
+                            sch[buffer_data].compute_at(sch[res_c], c_slice_axis)
+                        else:
+                            sch[buffer_data].compute_at(self._schedule[res_c], bido)
+                    # input_y in conv + dequant + add + quant
+                    elif buffer_data.dtype == "float16":
+                        sch[buffer_data].compute_at(
+                            self._schedule[res_c], c_slice_axis)
                     else:
-                        sch[buffer_data].compute_at(self._schedule[res_c], bido)
-                # input_y in conv + dequant + add + quant
-                elif buffer_data.dtype == "float16":
-                    sch[buffer_data].compute_at(
+                        pass
+
+            # v100 compute_at
+            elif self._lhisi_data_flow_type:
+                handle_lhisi_fuse_compute_at()
+                for buffer_eltwise in v100_cache_buffer:
+                    sch[buffer_eltwise].compute_at(
                         self._schedule[res_c], c_slice_axis)
-                else:
-                    pass
 
-        # v100 compute_at
-        elif self._lhisi_data_flow_type:
-            handle_lhisi_fuse_compute_at()
-            for buffer_eltwise in v100_cache_buffer:
-                sch[buffer_eltwise].compute_at(
-                    self._schedule[res_c], c_slice_axis)
+            if self._l0b_first_flag:
+                sch[c_ub].reorder(c_ub.op.axis[1], c_ub.op.axis[0],
+                                  c_ub.op.axis[2], c_ub.op.axis[3])
+            sch[c_ub].compute_at(sch[res_c], m_outer_inner_outer)  # k.inner.outer
 
-        if self._l0b_first_flag:
-            sch[c_ub].reorder(c_ub.op.axis[1], c_ub.op.axis[0],
-                              c_ub.op.axis[2], c_ub.op.axis[3])
-        sch[c_ub].compute_at(sch[res_c], m_outer_inner_outer)  # k.inner.outer
+            if self._convbn1_flag:
+                d_pad = tensor_map["C"]
+                sch[d_pad].set_scope(cce.scope_ubuf)
+                sch[d_pad].compute_at(sch[res_c], m_outer_inner_outer)
+            c_pragma_axis = c_outer_inner_inner
 
-        if self._convbn1_flag:
-            d_pad = tensor_map["C"]
-            sch[d_pad].set_scope(cce.scope_ubuf)
-            sch[d_pad].compute_at(sch[res_c], m_outer_inner_outer)
-        c_pragma_axis = c_outer_inner_inner
-
-        if self._l0b_first_flag and not self._convbn1_flag:
-            c_pragma_axis = batch_inner_inner
+            if self._l0b_first_flag and not self._convbn1_flag:
+                c_pragma_axis = batch_inner_inner
         # ============ tile c_col =======================
         self._compute_at_buffer.append(res_c)
         self._compute_at_axis.append(c_slice_axis)
@@ -5234,7 +5319,9 @@ class CceConvOp:
                     sch[lop["dst_buffer"]].compute_inline()
                 if "fusion_fmap_select" in lop["op"]:
                     continue
-                if self._convbn1_flag:
+                if is_support_v220():
+                    self.__pragma_for_op(lop, fmap, c_pragma_axis=c_pragma_axis, tiling=tiling)
+                elif self._convbn1_flag:
                     self.__pragma_for_op(lop, fmap, c_ub, None, d_pad, c_pragma_axis=c_pragma_axis, tiling=tiling)
                 else:
                     self.__pragma_for_op(lop, fmap, c_ub, c_pragma_axis=c_pragma_axis, tiling=tiling)
