@@ -922,6 +922,7 @@ IMPLEMT_VERIFIER(MatMulV2, MatMulV2Verify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
+  OP_LOGD(op.GetName().c_str(), "[MatMulV2 Infershape] Start matmul infershape.");
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   auto tensordesc_output = op_desc->MutableOutputDesc("y");
   auto tensordesc_x1 = op_desc->MutableInputDesc("x1");
@@ -930,10 +931,11 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
   auto shape_x1 = tensordesc_x1->GetShape();
   auto shape_x2 = tensordesc_x2->GetShape();
   auto dtype = tensordesc_x1->GetDataType();
+  OP_LOGD(op.GetName().c_str(), "[MatMulV2 Infershape] Check the input dtype.");
   if (dtype == DT_FLOAT) {
     OP_LOGW(op.GetName().c_str(), "[Plugin][WARNING]MatMul fp32 op has poor performance!");
   }
-
+  OP_LOGD(op.GetName().c_str(), "[MatMulV2 Infershape] Check the input shape length.");
   if (shape_x1.GetDims() != UNKNOWN_RANK && shape_x1.GetDims().size() != 2 && shape_x1.GetDims().size() != 4) {
     OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]Matmul the first input dims is not 2 or 4!");
     return GRAPH_FAILED;
@@ -943,20 +945,25 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
 
   std::vector<int64_t> shape_out;
   std::vector<std::pair<int64_t, int64_t>> shape_range_out;
+  OP_LOGD(op.GetName().c_str(), "[MatMulV2 Infershape] Check the transpose attr.");
   if (GRAPH_SUCCESS != GetMatMulOutputShape(op, shape_out, shape_range_out, "transpose", false)) {
     return GRAPH_FAILED;
   }
-
+  OP_LOGD(op.GetName().c_str(), "[MatMulV2 Infershape] The transpose attr is Ok.");
   ge::GeShape shape_out_desc{shape_out};
   auto input_format = FORMAT_ND;
   auto input_format_1 = FORMAT_ND;
+  OP_LOGD(op.GetName().c_str(), "[MatMulV2 Infershape] Start to set input1 Format in infershape.");
   tensordesc_x1->SetFormat(input_format_1);
   tensordesc_x1->SetOriginFormat(input_format_1);
+  OP_LOGD(op.GetName().c_str(), "[MatMulV2 Infershape] Start to set input2 Format in infershape.");
   tensordesc_x2->SetFormat(input_format);
   tensordesc_x2->SetOriginFormat(input_format);
+  OP_LOGD(op.GetName().c_str(), "[MatMulV2 Infershape] Start to set output shape.");
   tensordesc_output->SetShape(shape_out_desc);
   tensordesc_output->SetOriginShape(shape_out_desc);
   tensordesc_output->SetShapeRange(shape_range_out);
+  OP_LOGD(op.GetName().c_str(), "[MatMulV2 Infershape] Start to set output Format in infershape.");
   tensordesc_output->SetFormat(input_format_1);
   tensordesc_output->SetOriginFormat(input_format_1);
   if (tensordesc_x1->GetDataType() == ge::DT_INT8) {
@@ -964,20 +971,20 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
   } else {
     tensordesc_output->SetDataType(tensordesc_x1->GetDataType());
   }
+  OP_LOGD(op.GetName().c_str(), "[MatMulV2 Infershape] End MatMulV2 infershape.");
   return GRAPH_SUCCESS;
 }
 IMPLEMT_INFERFORMAT_FUNC(MatMulV2, MatMulV2InferFormat) {
   OP_LOGD(op.GetName().c_str(), "[MatMulV2 Inferformat] Finaly input format is %d", FORMAT_ND);
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
 
-  ge::TensorDesc tensordesc_input = op.GetInputDesc("x1");
-  tensordesc_input.SetOriginFormat(FORMAT_ND);
-  tensordesc_input.SetFormat(FORMAT_ND);
-  (void)op.UpdateInputDesc("x1", tensordesc_input);
+  auto tensordesc_input = op_desc->MutableInputDesc("x1");
+  tensordesc_input->SetOriginFormat(FORMAT_ND);
+  tensordesc_input->SetFormat(FORMAT_ND);
 
-  ge::TensorDesc tensordesc_input_2 = op.GetInputDesc("x2");
-  tensordesc_input_2.SetOriginFormat(FORMAT_ND);
-  tensordesc_input_2.SetFormat(FORMAT_ND);
-  (void)op.UpdateInputDesc("x2", tensordesc_input_2);
+  auto tensordesc_input_2 = op_desc->MutableInputDesc("x2");
+  tensordesc_input_2->SetOriginFormat(FORMAT_ND);
+  tensordesc_input_2->SetFormat(FORMAT_ND);
 
   return GRAPH_SUCCESS;
 }
