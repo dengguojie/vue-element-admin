@@ -127,14 +127,14 @@ class SparseTensor {
    */
   template <typename IndiceT, typename ValueT>
   uint32_t ToDense(Tensor *output) {
-    KERNEL_LOG_INFO("start to execute ToDense.");
+    KERNEL_LOG_INFO("Start to execute ToDense.");
     if (output == nullptr || output->GetData() == nullptr) {
-      KERNEL_LOG_ERROR("output tensor is nullptr.");
+      KERNEL_LOG_ERROR("Output tensor is nullptr.");
       return KERNEL_STATUS_INNER_ERROR;
     }
     EigenTensor outputET(output, output->GetData());
     if (!ValidateToDense(output)) {
-      KERNEL_LOG_ERROR("validate to dense param failed.");
+      KERNEL_LOG_ERROR("Validate to dense param failed.");
       return KERNEL_STATUS_INNER_ERROR;
     }
     auto output_t = outputET.flat<ValueT>();
@@ -159,12 +159,12 @@ class SparseTensor {
         ix += strides[d] * ix_n_d;
       }
       if (invalid_dims) {
-        KERNEL_LOG_ERROR("sparse to dense got invalid dims.");
+        KERNEL_LOG_ERROR("Sparse to dense got invalid dims.");
         return KERNEL_STATUS_INNER_ERROR;
       }
       output_t(ix) = vals_t(n);
     }
-    KERNEL_LOG_INFO("execute ToDense end.");
+    KERNEL_LOG_INFO("Execute ToDense end.");
     return KERNEL_STATUS_OK;
   }
 

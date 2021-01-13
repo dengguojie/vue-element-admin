@@ -79,6 +79,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/mul.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cast.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/random_uniform.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/sparse_to_dense_kernels.cc
 )
 
 set(cpu_kernels_llt_src
@@ -155,6 +156,7 @@ set(_cpu_kernels_ut_files
   testcase/mul_utest.cpp
   testcase/cast_utest.cpp
   testcase/random_uniform_utest.cpp
+  testcase/sparse_to_dense_kernel_utest.cpp
 )
 
 add_executable(cpu_kernels_ut
