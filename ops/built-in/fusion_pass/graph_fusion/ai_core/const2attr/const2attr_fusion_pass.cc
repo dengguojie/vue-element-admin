@@ -193,6 +193,16 @@ REGISTER_CONST2ATTR("CropAndResizeD")
     .NeedCheckSupported(true)
     .SetConstToAttr(3, "crop_size", "SetListInt");
 
+REGISTER_CONST2ATTR("BatchToSpaceD")
+    .OriginOpType("BatchToSpace")
+    .NeedCheckSupported(true)
+    .SetConstToAttr(1, "crops", "SetListInt");
+
+REGISTER_CONST2ATTR("SpaceToBatchD")
+    .OriginOpType("SpaceToBatch")
+    .NeedCheckSupported(true)
+    .SetConstToAttr(1, "paddings", "SetListInt");
+
 REGISTER_CONST2ATTR("BroadcastToD")
     .OriginOpType("BroadcastTo")
     .NeedCheckSupported(true)
@@ -203,9 +213,9 @@ REGISTER_CONST2ATTR("BroadcastToD")
 //  .SetConstToAttr(3, "momentum", "SetFloat");
 
 REGISTER_CONST2ATTR("ConcatOffsetD")
-     .OriginOpType("ConcatOffset")
-     .NeedCheckSupported(true)
-     .SetConstToAttr(0, "concat_dim", "SetInt");
+    .OriginOpType("ConcatOffset")
+    .NeedCheckSupported(true)
+    .SetConstToAttr(0, "concat_dim", "SetInt");
 
 REGISTER_CONST2ATTR("Conv2DBackpropFilterD")
     .OriginOpType("Conv2DBackpropFilter")
@@ -406,13 +416,7 @@ REGISTER_CONST2ATTR("CumulativeLogsumexpD")
     .NeedCheckSupported(true)
     .SetConstToAttr(1, "axis", "SetInt");
 
-REGISTER_CONST2ATTR("FillV2D")
-    .OriginOpType("FillV2")
-    .NeedCheckSupported(true)
-    .SetConstToAttr(0, "dims", "SetListInt");
+REGISTER_CONST2ATTR("FillV2D").OriginOpType("FillV2").NeedCheckSupported(true).SetConstToAttr(0, "dims", "SetListInt");
 
-REGISTER_CONST2ATTR("ExpandD")
-    .OriginOpType("Expand")
-    .NeedCheckSupported(true)
-    .SetConstToAttr(1, "shape", "SetListInt");
+REGISTER_CONST2ATTR("ExpandD").OriginOpType("Expand").NeedCheckSupported(true).SetConstToAttr(1, "shape", "SetListInt");
 }  // namespace fe

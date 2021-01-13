@@ -110,6 +110,7 @@ TEST_F(MaxPoolProto, maxpool_proto_2) {
   op.set_attr_padding(pad_mode);
   op.set_attr_data_format(data_format);
   auto ret = op.InferShapeAndType();
+  ret = op.VerifyAllAttr(true);
 
   // check result
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
@@ -137,6 +138,7 @@ TEST_F(MaxPoolProto, maxpool_proto_3) {
   op.set_attr_padding(pad_mode);
   op.set_attr_data_format(data_format);
   auto ret = op.InferShapeAndType();
+  ret = op.VerifyAllAttr(true);
 
   // check result
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
@@ -163,6 +165,7 @@ TEST_F(MaxPoolProto, maxpool_proto_4) {
   op.set_attr_padding(pad_mode);
   op.set_attr_data_format(data_format);
   auto ret = op.InferShapeAndType();
+  ret = op.VerifyAllAttr(true);
 
   // check result
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
@@ -190,6 +193,7 @@ TEST_F(MaxPoolProto, maxpool_proto_5) {
   op.set_attr_padding(pad_mode);
   op.set_attr_data_format(data_format);
   auto ret = op.InferShapeAndType();
+  ret = op.VerifyAllAttr(true);
 
   // check result
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
@@ -216,6 +220,7 @@ TEST_F(MaxPoolProto, maxpool_proto_6) {
   op.set_attr_strides(stride_list);
   op.set_attr_data_format(data_format);
   auto ret = op.InferShapeAndType();
+  ret = op.VerifyAllAttr(true);
 
   // check result
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
@@ -242,6 +247,7 @@ TEST_F(MaxPoolProto, maxpool_proto_7) {
   op.set_attr_strides(stride_list);
   op.set_attr_padding(pad_mode);
   auto ret = op.InferShapeAndType();
+  ret = op.VerifyAllAttr(true);
 
   // check result
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
@@ -269,6 +275,7 @@ TEST_F(MaxPoolProto, maxpool_proto_8) {
   op.set_attr_padding(pad_mode);
   op.set_attr_data_format(data_format);
   auto ret = op.InferShapeAndType();
+  ret = op.VerifyAllAttr(true);
 
   // check result
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
@@ -296,6 +303,7 @@ TEST_F(MaxPoolProto, maxpool_proto_9) {
   op.set_attr_padding(pad_mode);
   op.set_attr_data_format(data_format);
   auto ret = op.InferShapeAndType();
+  ret = op.VerifyAllAttr(true);
 
   // check result
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
@@ -323,6 +331,7 @@ TEST_F(MaxPoolProto, maxpool_proto_10) {
   op.set_attr_padding(pad_mode);
   op.set_attr_data_format(data_format);
   auto ret = op.InferShapeAndType();
+  ret = op.VerifyAllAttr(true);
 
   // check result
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
@@ -349,6 +358,7 @@ TEST_F(MaxPoolProto, maxpool_proto_11) {
   op.set_attr_padding(pad_mode);
   op.set_attr_data_format(data_format);
   auto ret = op.InferShapeAndType();
+  ret = op.VerifyAllAttr(true);
 
   // check result
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
