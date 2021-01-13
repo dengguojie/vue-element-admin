@@ -736,7 +736,7 @@ Status PoolingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     ge::NodePtr nextNode = nextInDataAnchor->GetOwnerNode();
     if(nextNode->GetOpDesc()->GetType() == "Eltwise") {
       OP_LOGI(FUSED_OP_TYPE.c_str(), "pooling node is eltwise's input , not support to call conv2d!");
-      return FAILED;
+      return NOT_CHANGED;
     }
   }
 

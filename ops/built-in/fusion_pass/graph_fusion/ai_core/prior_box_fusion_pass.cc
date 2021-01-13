@@ -53,12 +53,12 @@ Status BoxValueGenFP16(vector<int64_t> dimInfo, vector<float> data, uint16_t* ou
   int64_t nInput = dimInfo[0];
   int64_t cInput = dimInfo[1];
   int64_t hInput = dimInfo[2];
-  int64_t wInInput = dimInfo[3];
+  int64_t wInput = dimInfo[3];
 
   int64_t nOutput = nInput;
   int64_t cOutput = cInput;
   int64_t hOutput = hInput;
-  int64_t wOutput = wInInput;
+  int64_t wOutput = wInput;
 
   // set output data
   int64_t outOffsetPoint = 0;
