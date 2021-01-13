@@ -18,9 +18,9 @@ batch_matmul_vector
 from te import tvm
 import te.platform as tbe_platform
 from te.utils import shape_util
+from impl.util.util_common import write_code
 from .transpose_d import _do_storage_align
 from .transpose_d import _tilling_axis_not_last
-from impl.util.util_common import write_code
 
 
 # pylint: disable=locally-disabled,unnecessary-lambda,too-many-locals
@@ -1099,7 +1099,7 @@ def _tranpose_notchange_last(data, shape_res, perm, dtype):
         get the flag for permutation according to perm
 
         """
-        flag = [i for i in perm]
+        flag = [i for i in perm]# pylint: disable=unnecessary-comprehension
         for i, item in enumerate(perm):
             flag[item] = i
 
@@ -1301,7 +1301,7 @@ def matmul_vector_cce(shape_a, shape_b, src_type, trans_a, trans_b,
         else:
             build_list = [tensor_a, tensor_b, the_result, tensor_a_gm, tensor_b_gm]
 
-    from te.platform.cce_build import build_config
+    from te.platform.cce_build import build_config# pylint: disable=import-outside-toplevel
     with build_config:
         tvm.lower(schedule, build_list, simple_mode=True)
     with build_config:

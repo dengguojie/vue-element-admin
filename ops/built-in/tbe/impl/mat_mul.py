@@ -16,7 +16,6 @@
 matmul
 """
 import te.lang.cce as tbe
-from te.platform.fusion_manager import fusion_manager
 import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
@@ -128,7 +127,7 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
                     error_manager_vector.raise_err_input_shape_invalid(
                         "mat_mul", "bias", error_detail)
         elif shape_bias_length == shape_len:
-            if [i for i in shape_bias[-2:]] != [m_shape, n_shape]:
+            if [i for i in shape_bias[-2:]] != [m_shape, n_shape]:# pylint: disable=unnecessary-comprehension
                 error_detail = "non broadcast bias shape must be same as output shape"
                 error_manager_vector.raise_err_input_shape_invalid(
                     "mat_mul", "bias", error_detail)
@@ -292,7 +291,7 @@ def check_supported(input_x1,
     return res
 
 
-# pylint: disable=locally-disabled, too-many-arguments
+# pylint: disable=locally-disabled, too-many-arguments,unexpected-keyword-arg,no-value-for-parameter
 # pylint: disable=locally-disabled, simplifiable-if-expression
 # pylint: disable=too-many-locals, too-many-statements, dangerous-default-value
 @tbe_platform.fusion_manager.fusion_manager.register("mat_mul")
@@ -352,28 +351,28 @@ def mat_mul_compute(input_x1,
         trans_b_local = trans_b
 
     dst_dtype = output_y.get("dtype").lower()
-    src_dtype = input_x1.dtype.lower()
+
 
     if offset_w is not None:
         error_manager_vector.raise_err_specific_reson("mat_mul",
                                                       "For MatMul, tensor offset_w must be None!")
 
     para_dict = {
-            "trans_a": trans_a_local,
-            "trans_b": trans_b_local,
-            "format_a": format_a,
-            "format_b": format_b,
-            "tensor_c": bias,
-            "dst_dtype": dst_dtype,
-            "offset_a": offset_x,
-            "offset_b": offset_w,
-            "kernel_name": kernel_name
+        "trans_a": trans_a_local,
+        "trans_b": trans_b_local,
+        "format_a": format_a,
+        "format_b": format_b,
+        "tensor_c": bias,
+        "dst_dtype": dst_dtype,
+        "offset_a": offset_x,
+        "offset_b": offset_w,
+        "kernel_name": kernel_name
         }
     result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
 
     return result
 
-
+# pylint: disable=simplifiable-if-expression,unexpected-keyword-arg,no-value-for-parameter
 def mat_mul_compute_self(input_x1,
                          input_x2,
                          bias,
@@ -437,15 +436,15 @@ def mat_mul_compute_self(input_x1,
                                                       "For MatMul, tensor offset_w must be None!")
 
     para_dict = {
-            "trans_a": trans_a_local,
-            "trans_b": trans_b_local,
-            "format_a": format_a,
-            "format_b": format_b,
-            "tensor_c": bias,
-            "dst_dtype": dst_dtype,
-            "offset_a": offset_x,
-            "offset_b": offset_w,
-            "kernel_name": kernel_name
+        "trans_a": trans_a_local,
+        "trans_b": trans_b_local,
+        "format_a": format_a,
+        "format_b": format_b,
+        "tensor_c": bias,
+        "dst_dtype": dst_dtype,
+        "offset_a": offset_x,
+        "offset_b": offset_w,
+        "kernel_name": kernel_name
         }
     result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
 

@@ -22,12 +22,12 @@ from te import tvm
 from te import platform as cce
 from te.platform.cce_build import build_config
 from te.platform import insn_cmd
+import topi
+from impl.util.util_common import write_code
 
 from .transpose_d import _do_storage_align
 from .transpose_d import _tilling_axis_not_last
-from impl.util.util_common import write_code
 
-import topi
 
 
 # pylint: disable=locally-disabled,unnecessary-lambda,too-many-locals,too-many-statements,too-many-lines,too-many-branches
@@ -264,11 +264,11 @@ def _matmul_new_km_kn_cce(tensor_a, tensor_b, tensor_bais, src_type):
     else:
         tensor_bais_ub = None
 
-    tensor_temp_a, tensor_temp_b, tensor_result_ub_cast, tensor_temp_bias, the_result_mul_ub,\
-                        the_result_ub, the_result_bais_ub, the_result = _compute_for_km_kn(
-                                                                        tensor_a_ub, tensor_b_ub,
-                                                                        shape_a, shape_b,
-                                                                        tensor_bais_ub, src_type)
+    tensor_temp_a, tensor_temp_b, tensor_result_ub_cast,\
+    tensor_temp_bias, the_result_mul_ub,\
+    the_result_ub, the_result_bais_ub, the_result = _compute_for_km_kn(tensor_a_ub, tensor_b_ub,
+                                                                       shape_a, shape_b,
+                                                                       tensor_bais_ub, src_type)
 
     shape_schedule = (shape_a[1], shape_b[1], shape_a[0])
     schedule = _schedule_large_km_kn(shape_schedule, (the_result, tensor_a_ub, tensor_b_ub,
@@ -1301,7 +1301,7 @@ def _tranpose_notchange_last(data, shape_res, perm, dtype):
         get the flag for permutation according to perm
 
         """
-        flag = [i for i in perm]
+        flag = [i for i in perm]# pylint: disable=unnecessary-comprehension
         for i, item in enumerate(perm):
             flag[item] = i
 

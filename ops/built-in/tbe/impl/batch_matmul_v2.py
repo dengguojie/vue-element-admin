@@ -21,9 +21,9 @@ import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 from impl import batch_matmul_vector
 from impl.util import util_select_op_base
-from te.utils.error_manager import error_manager_vector
 
 # General limitation of the size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -32,7 +32,7 @@ DYNAMIC_UNRANK = [-2]
 ND_LENGTH = 2
 
 
-# pylint: disable=locally-disabled,too-many-arguments
+# pylint: disable=locally-disabled,too-many-arguments,unnecessary-comprehension
 # pylint: disable=too-many-branches, too-many-statements, too-many-locals
 def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
     """
@@ -183,7 +183,7 @@ def _get_input_shape(shape_x):
         res.append(dim_b)
     return res
 
-
+# pylint: disable=too-many-return-statements
 def _check_batch_range(input_x, input_y):
     """
     Check the batch shape and range legal
@@ -259,27 +259,27 @@ def op_select_format(input_x, input_y, bias=None, output_z={}, trans_a=False,
     else:
         if src_dtype == "float16":
             input0 = util_select_op_base.gen_param(classify="input0", name="x1",
-                                                datatype="float16,float16",
-                                                format="FRACTAL_NZ,FRACTAL_NZ")
+                                                   datatype="float16,float16",
+                                                   format="FRACTAL_NZ,FRACTAL_NZ")
             input1 = util_select_op_base.gen_param(classify="input1", name="x2",
-                                                datatype="float16,float16",
-                                                format="FRACTAL_NZ,FRACTAL_NZ")
+                                                   datatype="float16,float16",
+                                                   format="FRACTAL_NZ,FRACTAL_NZ")
             input2 = util_select_op_base.gen_param(classify="input2", name="bias",
-                                                datatype="float16,float",
-                                                format="ND,ND")
+                                                   datatype="float16,float",
+                                                   format="ND,ND")
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                     datatype="float16,float",
                                                     format="FRACTAL_NZ,FRACTAL_NZ")
         else:
             input0 = util_select_op_base.gen_param(classify="input0", name="x1",
-                                                datatype="float16,float,float,int32,int32",
-                                                format="FRACTAL_NZ,NHWC,ND,NHWC,ND")
+                                                   datatype="float16,float,float,int32,int32",
+                                                   format="FRACTAL_NZ,NHWC,ND,NHWC,ND")
             input1 = util_select_op_base.gen_param(classify="input1", name="x2",
-                                                datatype="float16,float,float,int32,int32",
-                                                format="FRACTAL_NZ,NHWC,ND,NHWC,ND")
+                                                   datatype="float16,float,float,int32,int32",
+                                                   format="FRACTAL_NZ,NHWC,ND,NHWC,ND")
             input2 = util_select_op_base.gen_param(classify="input2", name="bias",
-                                                datatype="float16,float,float,int32,int32",
-                                                format="ND,NHWC,ND,NHWC,ND")
+                                                   datatype="float16,float,float,int32,int32",
+                                                   format="ND,NHWC,ND,NHWC,ND")
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                     datatype="float16,float,float,int32,int32",
                                                     format="FRACTAL_NZ,NHWC,ND,NHWC,ND")
@@ -291,8 +291,8 @@ def op_select_format(input_x, input_y, bias=None, output_z={}, trans_a=False,
 
 
 # pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=too-many-arguments, no-member
-# pylint: disable=too-many-statements, unused-argument
+# pylint: disable=too-many-arguments,no-member,no-else-return
+# pylint: disable=too-many-statements, unused-argument,too-many-return-statements
 def check_supported(input_x, input_y, bias=None, output_z={}, trans_a=False,
                     trans_b=False, kernel_name="matmul"):
     """
@@ -357,7 +357,7 @@ def check_supported(input_x, input_y, bias=None, output_z={}, trans_a=False,
                 return False
     return True
 
-
+# pylint: disable=simplifiable-if-expression,unexpected-keyword-arg,no-value-for-parameter
 @tbe_platform.fusion_manager.fusion_manager.register("batch_matmul")
 def batch_matmul_compute(input_x, input_y, bias=None, output_z={}, trans_a=False,
                          trans_b=False, kernel_name="matmul"):
@@ -412,22 +412,22 @@ def batch_matmul_compute(input_x, input_y, bias=None, output_z={}, trans_a=False
     else:
         trans_b_local = trans_b
     dst_dtype = output_z.get("dtype").lower()
-    src_dtype = input_x.dtype.lower()
-    
+
+
     para_dict = {
-            "trans_a": trans_a_local,
-            "trans_b": trans_b_local,
-            "format_a": format_a,
-            "format_b": format_b,
-            "dst_dtype": dst_dtype,
-            "tensor_c": bias,
-            "kernel_name": kernel_name
+        "trans_a": trans_a_local,
+        "trans_b": trans_b_local,
+        "format_a": format_a,
+        "format_b": format_b,
+        "dst_dtype": dst_dtype,
+        "tensor_c": bias,
+        "kernel_name": kernel_name
         }
     result = tbe.gemm(tensor_a=input_x, tensor_b=input_y, para_dict=para_dict)
 
     return result
 
-
+# pylint: disable=simplifiable-if-expression,unexpected-keyword-arg,no-value-for-parameter
 def batch_matmul_compute_self(input_x, input_y, bias=None, output_z={}, trans_a=False,
                               trans_b=False, kernel_name="matmul"):
     """
@@ -483,13 +483,13 @@ def batch_matmul_compute_self(input_x, input_y, bias=None, output_z={}, trans_a=
     dst_dtype = output_z.get("dtype").lower()
 
     para_dict = {
-            "trans_a": trans_a_local,
-            "trans_b": trans_b_local,
-            "format_a": format_a,
-            "format_b": format_b,
-            "dst_dtype": dst_dtype,
-            "tensor_c": bias,
-            "kernel_name": kernel_name
+        "trans_a": trans_a_local,
+        "trans_b": trans_b_local,
+        "format_a": format_a,
+        "format_b": format_b,
+        "dst_dtype": dst_dtype,
+        "tensor_c": bias,
+        "kernel_name": kernel_name
         }
     result = tbe.gemm(tensor_a=input_x, tensor_b=input_y, para_dict=para_dict)
 

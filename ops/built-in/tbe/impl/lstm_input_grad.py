@@ -14,7 +14,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 lstm_grad
 """
 
-# pylint: disable=locally-disabled,import-error,unused-import,ungrouped-imports
+# pylint: disable=locally-disabled,import-error,unused-import,ungrouped-imports,too-many-lines
 from te.lang.cce import vmul
 from te.lang.cce import vadd
 from te.lang.cce import gemm
@@ -36,6 +36,7 @@ C0 = 16
 
 
 # pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments
+# pylint: disable=simplifiable-if-expression,unexpected-keyword-arg,no-value-for-parameter
 def matmul_compute(tensor_d_gate, tensor_w, tensor_list, emit_list, scope_list, cast_type):
     """
     matmul_compute for compute dx dh
@@ -58,11 +59,11 @@ def matmul_compute(tensor_d_gate, tensor_w, tensor_list, emit_list, scope_list, 
         dst_type = "float16"
 
     para_dict = {
-            "trans_a": True,
-            "trans_b": False,
-            "format_a": "FRACTAL_NZ",
-            "format_b": "FRACTAL_NZ",
-            "dst_dtype": dst_type,
+        "trans_a": True,
+        "trans_b": False,
+        "format_a": "FRACTAL_NZ",
+        "format_b": "FRACTAL_NZ",
+        "dst_dtype": dst_type,
         }
     matmul_res_gm = gemm(tensor_a=tensor_d_gate_fp16, tensor_b=tensor_w_fp16, para_dict=para_dict)
 
@@ -99,7 +100,7 @@ def matmul_compute(tensor_d_gate, tensor_w, tensor_list, emit_list, scope_list, 
     return tensor_dx, tensor_dh, tensor_list, emit_list, scope_list
 
 
-# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments
+# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments,unused-argument
 def elewise_compute_for_gate(tensor_c, tensor_d_ht, tensor_d_ht_1, tensor_d_ht_1_ct,
                              tensor_d_ct, tensor_it, tensor_it_dup, tensor_jt,
                              tensor_ft, tensor_ot, tensor_tanh_ct, tensor_d_ht_ct, tensor_ot_ct,
@@ -110,8 +111,8 @@ def elewise_compute_for_gate(tensor_c, tensor_d_ht, tensor_d_ht_1, tensor_d_ht_1
     elewise_compute for compute dgate result
     """
 
-    if tensor_tanh_ct is None:
-        tensor_tanh_ct = sigmod_compute(tensor_c, tensor_list, emit_list)
+
+
 
     shape_list = [1, tensor_ot.shape[1].value, tensor_ot.shape[2].value,
                   tensor_ot.shape[3].value, tensor_ot.shape[4].value]
@@ -346,7 +347,7 @@ def elewise_compute_for_gate(tensor_c, tensor_d_ht, tensor_d_ht_1, tensor_d_ht_1
     return result_tensor, scope_list, tensor_list, emit_list
 
 
-# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments
+# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments,unused-argument
 def copy_input_to_ub_compute(is_last_time, tensor_c, tensor_d_ht, tensor_d_ht_1,
                              tensor_d_ct, tensor_it, tensor_jt,
                              tensor_ft, tensor_ot, tensor_tanh_ct,
@@ -616,7 +617,7 @@ def basic_lstm_cell_compute(tensor_w, tensor_c, tensor_d_ht, tensor_d_ht_1,
     return build_list, tensor_input_list, tensor_output_list, tensor_list, emit_list, scope_list
 
 
-# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments
+# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments,import-outside-toplevel,undefined-variable
 def matmul_schedule(sch, matmul_res, tensor_list, tiling_info, cast_type):
     """
     :param sch:
@@ -730,7 +731,7 @@ def matmul_schedule(sch, matmul_res, tensor_list, tiling_info, cast_type):
     return sch
 
 
-# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments
+# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments,unused-argument
 def schedule_for_cell(tensor_input_list, tensor_list, tensor_output_list, emit_list, scope_list, build_list, cast_type):
     """
     return the schedule object for the compute process
@@ -796,8 +797,8 @@ def schedule_for_cell(tensor_input_list, tensor_list, tensor_output_list, emit_l
 
     return sch
 
-
-# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments
+# pylint: disable=redefined-outer-name
+# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments,unnecessary-semicolon
 def get_tiling(input_size, output_size, n):
     """
     return the tiling result
@@ -903,8 +904,8 @@ def do_cell_process(input_list, is_extent_buffer):
 
     return tensor_output_list, sch
 
-
-# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments
+# pylint: disable=unused-argument
+# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments,import-outside-toplevel
 def lstm_input_grad(w, init_c, c, dy, dh, dc, i, j,
                     f, o, tanhct, dx,
                     dh_prev, dc_prev, dgate,

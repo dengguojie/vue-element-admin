@@ -232,6 +232,7 @@ class LstmCellGrad(LstmCellGradInput):
         -------
         None
         """
+        # pylint: disable=super-with-arguments
         super(LstmCellGrad,
               self).__init__(cell_state, dht_out, dht, dct, inpute_gate,
                              forget_gate, update_gate, output_gate, tanh_ct,
@@ -706,7 +707,7 @@ class LstmCellGrad(LstmCellGradInput):
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
-# pylint: disable=unused-argument,too-many-arguments,invalid-name
+# pylint: disable=unused-argument,too-many-arguments,invalid-name,too-many-locals
 def basic_lstm_cell_c_state_grad_v2(c,
                                     dy,
                                     dh,
@@ -768,7 +769,7 @@ def basic_lstm_cell_c_state_grad_v2(c,
     it = i
     jt = j
     ft = f
-    ot =o
+    ot = o
 
     lstm_cell_grad = LstmCellGrad(c, dht_out, dht, dct, it, ft, jt, ot, tanhct,
                                   kernel_name)

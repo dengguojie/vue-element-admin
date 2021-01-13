@@ -28,7 +28,7 @@ C0 = 16
 
 
 # pylint: disable=locally-disabled,unnecessary-lambda,too-many-locals,no-else-return,too-many-lines
-# pylint: too-many-arguments,cell-var-from-loop
+# pylint: disable=too-many-arguments,cell-var-from-loop,too-many-arguments,cell-var-from-loop
 def handle_static(w_xc_x_static, gate_shape, build_list, product_info,
                   tensor_list, scope_list, operation_list):
     """
@@ -278,7 +278,7 @@ def basic_lstm_cell_v2_compute(x, cont, w_xc_x_static, w_xh, bias, h_t, c_t,
     scope_list["tensor_ct_ub_fake_true"] = tbe_platform.scope_ubuf
     # calc tanh(ct)
     tanh_res, tanh_operation, tanh_scope = tanh_compute.tanh_compute(gate_shape, tensor_ct_ub_fake_true,
-                                                        "ct", impl_mode)
+                                                                     "ct", impl_mode)
     tensor_list.update(tanh_res)
     operation_list.update(tanh_operation)
     scope_list.update(tanh_scope)
@@ -310,7 +310,7 @@ def basic_lstm_cell_v2_compute(x, cont, w_xc_x_static, w_xh, bias, h_t, c_t,
 
 
 # pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
-# pylint: too-many-locals,invalid-name,too-many-arguments
+# pylint: disable=too-many-locals,invalid-name,too-many-arguments
 def get_matmul_tensor(x, cont, h_t, w_xh, bias,
                       expose_hidden, build_list, is_hisi_es,
                       tensor_list, scope_list, operation_list):
@@ -515,7 +515,7 @@ def get_matmul_tensor(x, cont, h_t, w_xh, bias,
 
 
 # pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
-# pylint: too-many-locals,invalid-name,too-many-arguments
+# pylint: disable=too-many-locals,invalid-name,too-many-arguments
 def newton_iteration(shape, tensor_x_rec,
                      tensor_x, symbol, tensor_list, scope_list, operation_list):
     """
@@ -558,7 +558,7 @@ def newton_iteration(shape, tensor_x_rec,
 
 
 # pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
-# pylint: too-many-locals,invalid-name,too-many-arguments
+# pylint: disable=too-many-locals,invalid-name,too-many-arguments
 def sigmoid(shape, tensor_allgate_ub, tensor_one,
             product_info, symbol, tensor_list, scope_list, operation_list):
     """
@@ -640,7 +640,7 @@ def sigmoid(shape, tensor_allgate_ub, tensor_one,
 
 
 # pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda,too-many-locals
-# pylint: invalid-name,too-many-arguments,consider-using-in
+# pylint: disable=invalid-name,too-many-arguments,consider-using-in,superfluous-parens
 def basiclstm_cell_v2_check(x, w_xc_x_static, h, c, w_xh, h_t, c_t,
                             expose_hidden, num_output, product_info):
     """
@@ -653,41 +653,41 @@ def basiclstm_cell_v2_check(x, w_xc_x_static, h, c, w_xh, h_t, c_t,
     n_dim = shape_x[1]
     intput_dim = shape_x[0]
     output_dim = shape_h[0]
-    if num_output != 0 and num_output != output_dim * C0:
+    if num_output not in (0, output_dim * C0):
         error_manager_vector.raise_err_input_value_invalid("BasicLSTMCellV2",
-                                    "num_output", output_dim * C0, num_output)
+                                                           "num_output", output_dim * C0, num_output)
 
     if x["dtype"] != "float16" or w_xh["dtype"] != "float16":
         error_detail = "the dtype of x and w_xh should be float16"
         error_manager_vector.raise_err_two_input_dtype_invalid("BasicLSTMCellV2",
-                                     "x", "w_xh", error_detail)
+                                                               "x", "w_xh", error_detail)
     if w_xh["shape"][0] != output_dim + intput_dim or w_xh["shape"][1] != 4 * output_dim:
         error_detail = "shape_w_xh[0] should be equal to output_dim plus input_dim %d," \
                        "shape_w_xh[1] should be equal to 4 * output_dim %d" \
                         %(output_dim + intput_dim, 4 * output_dim)
         error_manager_vector.raise_err_input_shape_invalid("BasicLSTMCellV2",
-                                    "w_xh", error_detail)
+                                                           "w_xh", error_detail)
     if expose_hidden:
         if h is None or c is None:
             rule_desc = "h, c can not be None when expose_hidden is True"
             param_value = "%s, c is %s" % (str(h), str(c))
-            error_manager_vector.raise_err_check_params_rules("BasicLSTMCellV2", 
-                                        rule_desc, "h", param_value)
+            error_manager_vector.raise_err_check_params_rules("BasicLSTMCellV2",
+                                                              rule_desc, "h", param_value)
         if h["dtype"] not in dtype_all or c["dtype"] not in dtype_all:
             error_detail = "h,c only support (%s)"% (dtype_str)
             error_manager_vector.raise_err_two_input_dtype_invalid("BasicLSTMCellV2",
-                                        "h", "c", error_detail)
+                                                                   "h", "c", error_detail)
         if h["shape"][0] != output_dim or h["shape"][1] != n_dim or \
                 c["shape"][0] != output_dim or c["shape"][1] != n_dim:
             error_detail = "shape_h[0] and shape_c[0] should be equal to output_dim %d," \
                           "shape_h[1] and shape_c[1] should be equal to n_dim %d" \
                            % (output_dim, n_dim)
             error_manager_vector.raise_err_input_shape_invalid("BasicLSTMCellV2",
-                                        "h or c", error_detail)
+                                                               "h or c", error_detail)
     if h_t["dtype"] not in dtype_all or c_t["dtype"] not in dtype_all:
         error_detail = "h_t, c_t only support (%s)" % (dtype_str)
         error_manager_vector.raise_err_two_input_dtype_invalid("BasicLSTMCellV2", "h_t", "c_t",
-                                                            error_detail)
+                                                               error_detail)
     if c_t["shape"][0] != output_dim or c_t["shape"][1] != n_dim or shape_h[1] != n_dim:
         error_detail = "shape_c_t[0] should be equal to output_dim %d," \
                        "shape_c_t[1] and shape_h[1] should be equal to n_dim %d" \
@@ -696,17 +696,18 @@ def basiclstm_cell_v2_check(x, w_xc_x_static, h, c, w_xh, h_t, c_t,
     if w_xc_x_static is not None:
         if w_xc_x_static["dtype"] not in dtype_all:
             error_manager_vector.raise_err_input_dtype_not_supported("BasicLSTMCellV2",
-                                            "w_xc_x_static", dtype_str, w_xc_x_static["dtype"])
+                                                                     "w_xc_x_static", dtype_str,
+                                                                     w_xc_x_static["dtype"])
         if w_xc_x_static["shape"][1] != n_dim or w_xc_x_static["shape"][0] != 4 * output_dim:
             error_detail = "shape_w_xc_x_static[0] should be equal to 4*output_dim %d," \
                        "shape_w_xc_x_static[1] should be equal to n_dim %d" \
                         % (4 * output_dim, n_dim)
             error_manager_vector.raise_err_input_shape_invalid("BasicLSTMCellV2",
-                                            "w_xc_x_static", error_detail)
+                                                               "w_xc_x_static", error_detail)
 
 
 # pylint: disable=locally-disabled,too-many-statements,too-many-branches,unnecessary-lambda,too-many-locals
-# pylint: invalid-name,too-many-arguments
+# pylint: disable=invalid-name,too-many-arguments,unused-argument,superfluous-parens
 def basic_lstm_cell_v2_schedule(tensor_list, scope_list,
                                 operation_list, build_list,
                                 product_info, tilling_info, kernel_name):
@@ -724,7 +725,7 @@ def basic_lstm_cell_v2_schedule(tensor_list, scope_list,
                         key != "tensor_h_cont_ub" and key != "ft_cont_ub_true":
             s[tensor_list[key]].emit_insn(s[tensor_list[key]].op.axis[0], operation_list[key])
 
-        if key == "tensor_h_cont_ub" or key == "ft_cont_ub_true":
+        if key in ("tensor_h_cont_ub", "ft_cont_ub_true"):
             s[tensor_list[key]].reorder(tensor_list[key].op.axis[1], tensor_list[key].op.axis[2],
                                         tensor_list[key].op.axis[0], tensor_list[key].op.axis[3])
             s[tensor_list[key]].emit_insn(s[tensor_list[key]].op.axis[0], operation_list[key])
@@ -918,6 +919,9 @@ def get_high_precision_list():
 
 
 def get_tilling(x, h_t, product_info, mini_core):
+    """
+    return the tilling info for schedule in cell.
+    """
     block_num = tbe_platform.CceProductParams().getParams("Device_core_num")
     if block_num != 1:
         block_num = mini_core
@@ -1029,7 +1033,7 @@ def get_tilling(x, h_t, product_info, mini_core):
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-branches,unnecessary-lambda,too-many-locals
-# pylint: invalid-name,too-many-arguments
+# pylint: disable=invalid-name,too-many-arguments,superfluous-parens
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
                             para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
