@@ -62,7 +62,7 @@ def cumulative_logsumexp_d(x, y, axis, exclusive=False, reverse=False,
 
     Parameters
     ----------
-    x: dict, shape and dtype, must be in ('float16', 'float32', 'float64')
+    x: dict, shape and dtype, must be in ('float16', 'float32')
     y: the dict of output
     axis: a number of int32 or int 64, cumulative axis, must be in the range
     [-rank(x), rank(x))

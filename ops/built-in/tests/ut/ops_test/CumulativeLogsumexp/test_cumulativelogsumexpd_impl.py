@@ -228,5 +228,13 @@ ut_case.add_case("Ascend910", {
     "expect": RuntimeError
 })
 
-
+ut_case.add_case("Ascend310", {
+    "params": [
+        {"shape": (10, 12, 13, 15, 223), "dtype": "float16", "format": "ND",
+         "ori_shape": (10, 12, 13, 15, 223), "ori_format": "ND"},
+        {"shape": (10, 12, 13, 15, 223), "dtype": "float16", "format": "ND",
+         "ori_shape": (10, 12, 13, 15, 223), "ori_format": "ND"},
+        1, False, False],
+    "expect": "success"
+})
 
