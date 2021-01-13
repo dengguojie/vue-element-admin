@@ -45,7 +45,7 @@ BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
 def calc_conv2dbp_input(outs, option=None):
     mode = DynamicConv2dBpInputParams.dynamic_mode
     var_names = {'dynamic_batch': ('batch_n', ), 'dynamic_hw': ('dx_h', 'dx_w')}
-    tgt_area = [get_te_var(v).get_bound() for v in var_names[mode]]
+    tgt_area = [tuple(get_te_var(v).get_bound()) for v in var_names[mode]]
     info = DynamicConv2dBpInputParams.tiling_info_dict
 
     tiling_op = Conv2dBpInputTiling(info, mode)

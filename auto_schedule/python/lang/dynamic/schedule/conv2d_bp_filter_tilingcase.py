@@ -45,7 +45,7 @@ def calc_conv2dbp_filter(outs, option=None):
     mode = DynamicParams.dynamic_mode
     var_names = {'dynamic_batch': ('batch', ),
                  'dynamic_hw': ('fmap_h', 'fmap_w')}
-    tgt_area = [get_te_var(v).get_bound() for v in var_names[mode]]
+    tgt_area = [tuple(get_te_var(v).get_bound()) for v in var_names[mode]]
     info = DynamicParams.tiling_info_dict
 
     tiling_op = Conv2dBpFilterTiling(info, mode)

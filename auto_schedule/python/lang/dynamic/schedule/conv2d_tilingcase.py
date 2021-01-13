@@ -65,7 +65,7 @@ def calc_conv2d(outs, option=None):
                   "fmap_w": conv_info.get("a_shape")[3]}
     for var_name in var_names:
         if get_te_var(var_name):
-            tgt_area[var_name] = get_te_var(var_name).get_bound()
+            tgt_area[var_name] = tuple(get_te_var(var_name).get_bound())
         else:
             tgt_area[var_name] = (int(shape_dict.get(var_name)), int(shape_dict.get(var_name)))
 
