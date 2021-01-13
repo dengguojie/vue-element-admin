@@ -637,12 +637,17 @@ IMPLEMT_VERIFIER(ReciprocalGrad, ReciprocalGradVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(ReciprocalGradInferShape) {
-  Shape y_shape = op.GetInputDesc("y").GetShape();
-  DataType input_dtype = op.GetInputDesc("y").GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("z");
-  tensordesc_output.SetShape(y_shape);
-  tensordesc_output.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("z", tensordesc_output);
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "y", "dy", "z")) {
+    return GRAPH_FAILED;
+  }
+
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto vec_y = op_desc->MutableOutputDesc("z")->MutableShape().GetDims();
+  if (IsUnknownRankShape(vec_y) || IsUnknownVec(vec_y)) {
+    if (!InferShapeRangeTwoInOneOutBroadcase(op, "y", "dy", "z")) {
+      return GRAPH_FAILED;
+    }
+  }
   return GRAPH_SUCCESS;
 }
 
@@ -1012,11 +1017,14 @@ IMPLEMT_VERIFIER(Atan2, Atan2Verify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(Atan2InferShape) {
-  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
-    return GRAPH_SUCCESS;
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", is_dynamic_output)) {
+    return GRAPH_FAILED;
   }
-  return GRAPH_FAILED;
+
+  return GRAPH_SUCCESS;
 }
+
 
 COMMON_INFER_FUNC_REG(Atan2, Atan2InferShape);
 VERIFY_FUNC_REG(Atan2, Atan2Verify);

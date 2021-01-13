@@ -143,3 +143,5 @@ from .mul_no_nan import mul_no_nan
 from .reduce_max import reduce_max
 from .maximum_grad import maximum_grad
 from .minimum_grad import minimum_grad
+from .atan2 import atan2
+from .reciprocal_grad import reciprocal_grad

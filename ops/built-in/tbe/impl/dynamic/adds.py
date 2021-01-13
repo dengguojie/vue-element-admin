@@ -1,4 +1,4 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
+# Copyright 2021 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 """
 dynamic adds
 """
+import functools
 import te.lang.cce as tbe
 import te.lang.base as tbe_base
 from te import tvm
@@ -75,7 +76,9 @@ def adds(x, y, value, kernel_name="adds"):
     for (_x,) in ins:
         with tbe_base.compute():
             shape = shape_util.variable_shape([_x])
-            data_input = tvm.placeholder(shape, name="data_input", dtype=dtype)
+            fuseshape = [1]
+            fuseshape[0] = functools.reduce(lambda x, y: x * y, shape[0])
+            data_input = tvm.placeholder(fuseshape, name="data_input", dtype=dtype)
             scalar = tvm.const(value, dtype=dtype)
             res = adds_compute(data_input, scalar)
             tensors.append([data_input, res])
