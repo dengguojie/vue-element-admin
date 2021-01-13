@@ -1435,11 +1435,6 @@ IMPLEMT_VERIFIER(SpaceToBatch, SpaceToBatchVerify) {
   auto input_format = input_desc->GetFormat();
 
   if (!IsUnknownRankShape(input_dims)) {
-    // check input format
-    if ((input_format != FORMAT_NHWC) || (input_format != FORMAT_NCHW)) {
-      OP_LOGE(op.GetName().c_str(), "input_format not support in (NHWC, NCHW)!");
-      return GRAPH_FAILED;
-    }
     // check input shape
     if (input_dims.size() < 4) {
       OP_LOGE(op.GetName().c_str(), "input_shape size must be greater and equal to four!");
@@ -1690,11 +1685,6 @@ IMPLEMT_VERIFIER(BatchToSpace, BatchToSpaceVerify) {
   auto input_format = input_desc->GetFormat();
 
   if (!IsUnknownRankShape(input_dims)) {
-    // check input format
-    if ((input_format != FORMAT_NHWC) || (input_format != FORMAT_NCHW)) {
-      OP_LOGE(op.GetName().c_str(), "input_format not support in (NHWC, NCHW)!");
-      return GRAPH_FAILED;
-    }
     // check input shape
     if (input_dims.size() < 4) {
       OP_LOGE(op.GetName().c_str(), "input_shape size must be greater and equal to four!");
