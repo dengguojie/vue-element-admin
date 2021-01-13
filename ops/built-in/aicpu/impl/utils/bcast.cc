@@ -34,7 +34,7 @@ uint32_t Bcast::GenerateBcastInfo(const CalcInfo &calc_info) {
   x_reshape_ = shape_x;
   y_reshape_ = shape_y;
   shape_out_ = shape_out;
-  if (shape_x.empty() && shape_y.empty()) {
+  if (shape_x.empty() && shape_y.empty() && shape_out.empty()) {
     // Eigen support scalar
     return KERNEL_STATUS_OK;
   }

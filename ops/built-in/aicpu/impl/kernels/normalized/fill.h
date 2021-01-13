@@ -14,29 +14,37 @@
  * limitations under the License.
  */
 
-#ifndef AICPU_KERNELS_NORMALIZED_RANDOM_UNIFORM_H_
-#define AICPU_KERNELS_NORMALIZED_RANDOM_UNIFORM_H_
-#define EIGEN_USE_THREADS
-#define EIGEN_USE_SIMPLE_THREAD_POOL
+#ifndef AICPU_KERNELS_NORMALIZED_FILL_H_
+#define AICPU_KERNELS_NORMALIZED_FILL_H_
 
 #include "cpu_kernel.h"
 
 namespace aicpu {
-class RandomUniformCpuKernel : public CpuKernel {
+class FillCpuKernel : public CpuKernel {
  public:
-  RandomUniformCpuKernel() = default;
-  ~RandomUniformCpuKernel() override = default;
+  FillCpuKernel() = default;
+  ~FillCpuKernel() override = default;
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
   /**
-   * @brief generate data from Eigen
-   * @param ctx cpu kernel context
-   * @param output using to output data
+   * @brief calc dims from input dims tensor
+   * @param dims_tensor input dims tensor
+   * @param dims output shape dims
    * @return status if success
    */
   template <typename T>
-  void Generate(CpuKernelContext &ctx, Tensor *output);
+  uint32_t CalcDims(const Tensor *dims_tensor, std::vector<int64_t> &dims);
+
+  /**
+   * @brief fill output from input value
+   * @param ctx cpu kernel context
+   * @param output output Tensor
+   * @param value input value
+   * @return status if success
+   */
+  template <typename T, int32_t OPTION>
+  uint32_t Assign(CpuKernelContext &ctx, const Tensor *output, const T &value);
 };
 }  // namespace aicpu
-#endif  // AICPU_KERNELS_NORMALIZED_RANDOM_UNIFORM_H_
+#endif  // AICPU_KERNELS_NORMALIZED_FILL_H_

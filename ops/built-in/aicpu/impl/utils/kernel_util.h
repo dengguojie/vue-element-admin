@@ -34,6 +34,7 @@ const uint32_t kSecondInputIndex = 1;
 const uint32_t kFirstOutputIndex = 0;
 const uint32_t kDynamicInput = -1;
 const uint32_t kDynamicOutput = -2;
+const uint64_t kEigenAlignmentBytes = 16;
 
 /**
  * @brief get debug string of vector
@@ -118,6 +119,13 @@ uint32_t NormalMathCheck(CpuKernelContext &ctx);
 uint32_t NormalCheck(CpuKernelContext &ctx,
                      const uint32_t inputs_num,
                      const uint32_t outputs_num);
+
+/**
+ * @brief check if addr is aligned
+ * @param addr address for check
+ * @return true: aligned, false: not aligned
+ */
+bool AddrAlignedCheck(const void *addr, uint64_t alignment = kEigenAlignmentBytes);
 
 /**
  * @brief get data type from string

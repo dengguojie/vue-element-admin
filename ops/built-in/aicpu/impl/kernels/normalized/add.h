@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef _AICPU_KERNELS_NORMALIZED_ADD_H_
-#define _AICPU_KERNELS_NORMALIZED_ADD_H_
+#ifndef AICPU_KERNELS_NORMALIZED_ADD_H_
+#define AICPU_KERNELS_NORMALIZED_ADD_H_
 #define EIGEN_USE_THREADS
 #define EIGEN_USE_SIMPLE_THREAD_POOL
 
@@ -32,18 +32,26 @@ class AddCpuKernel : public CpuKernel {
 
  private:
   /**
-   *@brief compute for all types
-   *@param ctx cpu kernel context
-   *@return int: status if success 
-  */
+   * @brief compute for all types
+   * @param ctx cpu kernel context
+   * @return status if success
+   */
   template <typename T>
   static uint32_t AddCompute(CpuKernelContext &ctx);
+
   /**
-   *@brief Eigen calculate for all types
-   *@param calc_info data used to calculate
-  */
-  template <int32_t RANK, typename T>
+   * @brief Check if input&output addr is aligned
+   * @param calc_info data used to calculate
+   * @return true: aligned, false: not aligned
+   */
+  static bool AlignedCheck(const CalcInfo &calc_info);
+
+  /**
+   * @brief Eigen calculate for all types
+   * @param calc_info data used to calculate
+   */
+  template <int32_t RANK, typename T, int32_t OPTION>
   static void AddCalculate(CalcInfo &calc_info);
 };
 }  // namespace aicpu
-#endif  // _AICPU_KERNELS_NORMALIZED_ADD_H_
+#endif  // AICPU_KERNELS_NORMALIZED_ADD_H_

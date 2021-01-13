@@ -19,34 +19,36 @@
 #include "utils/eigen_tensor.h"
 #include "utils/kernel_util.h"
 
-
 namespace {
-const char *kMul = "Mul";
+constexpr char *kMul = "Mul";
 
-#define MUL_COMPUTE_CASE(DTYPE, TYPE)                 \
-  case (DTYPE): {                                     \
-    if (MulCompute<TYPE>(ctx) != KERNEL_STATUS_OK) {  \
-      KERNEL_LOG_ERROR("Mul kernel compute failed."); \
-      return KERNEL_STATUS_PARAM_INVALID;             \
-    }                                                 \
-    break;                                            \
+#define MUL_COMPUTE_CASE(DTYPE, TYPE)                     \
+  case (DTYPE): {                                         \
+    if (MulCompute<TYPE>(ctx) != KERNEL_STATUS_OK) {      \
+      KERNEL_LOG_ERROR("Mul kernel compute failed.");     \
+      return KERNEL_STATUS_PARAM_INVALID;                 \
+    }                                                     \
+    break;                                                \
   }
 
-#define MUL_CALCULATE_CASE(RANK, T)   \
-  case (RANK): {                      \
-    MulCalculate<RANK, T>(calc_info); \
-    break;                            \
+#define MUL_CALCULATE_CASE(RANK, T)                       \
+  case (RANK): {                                          \
+    if (AlignedCheck(calc_info)) {                        \
+      MulCalculate<RANK, T, Eigen::Aligned>(calc_info);   \
+    } else {                                              \
+      MulCalculate<RANK, T, Eigen::Unaligned>(calc_info); \
+    }                                                     \
+    break;                                                \
   }
 }
 
 namespace aicpu {
 uint32_t MulCpuKernel::Compute(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("MulCpuKernel start.");
   if (NormalMathCheck(ctx) != KERNEL_STATUS_OK) {
-    KERNEL_LOG_ERROR("Check mul %s failed.", ctx.GetOpType().c_str());
+    KERNEL_LOG_ERROR("Mul kernel normal check failed.");
     return KERNEL_STATUS_PARAM_INVALID;
   }
-  //choose compute function depend on dataType
+  // choose compute function depend on dataType
   auto data_type =
       static_cast<DataType>(ctx.Input(kFirstInputIndex)->GetDataType());
   switch (data_type) {
@@ -82,18 +84,18 @@ uint32_t MulCpuKernel::MulCompute(CpuKernelContext &ctx) {
   KERNEL_CHECK_NULLPTR(calc_info.output->GetData(), KERNEL_STATUS_PARAM_INVALID,
                        "Get output data failed")
   KERNEL_LOG_INFO(
-      "Mul %s, input[0]: size is [%llu]; input[1]: size is [%llu]; output: "
+      "Mul kernel, input[0]: size is [%llu]; input[1]: size is [%llu]; output: "
       "size is [%llu].",
-      ctx.GetOpType().c_str(), calc_info.input_0->GetDataSize(),
-      calc_info.input_1->GetDataSize(), calc_info.output->GetDataSize());
-  //broadcast input
+      calc_info.input_0->GetDataSize(), calc_info.input_1->GetDataSize(),
+      calc_info.output->GetDataSize());
+  // broadcast input
   Bcast bcast;
   if (bcast.GenerateBcastInfo(calc_info) != KERNEL_STATUS_OK) {
     KERNEL_LOG_ERROR("Generate broadcast info failed.");
     return KERNEL_STATUS_PARAM_INVALID;
   }
   (void)bcast.GetBcastVec(calc_info);
- //choose eigen calculate function depend on rank of input
+ // choose eigen calculate function depend on rank of input
   switch (static_cast<int32_t>(calc_info.shape_out.size())) {
     case 0: {
       T v0 = *(reinterpret_cast<const T *>(calc_info.input_0->GetData()));
@@ -117,18 +119,39 @@ uint32_t MulCpuKernel::MulCompute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-template <int32_t RANK, typename T>
+bool MulCpuKernel::AlignedCheck(const CalcInfo &calc_info) {
+  return AddrAlignedCheck(calc_info.input_0->GetData()) &&
+         AddrAlignedCheck(calc_info.input_1->GetData()) &&
+         AddrAlignedCheck(calc_info.output->GetData());
+}
+
+template <int32_t RANK, typename T, int32_t OPTION>
 void MulCpuKernel::MulCalculate(CalcInfo &calc_info) {
-  Eigen::TensorMap<Eigen::Tensor<T, 1>> eigen_input_0(
+  Eigen::TensorMap<Eigen::Tensor<T, 1>, OPTION> input_0(
       static_cast<T *>(calc_info.input_0->GetData()),
       calc_info.input_0->GetTensorShape()->NumElements());
-  Eigen::TensorMap<Eigen::Tensor<T, 1>> eigen_input_1(
+  Eigen::TensorMap<Eigen::Tensor<T, 1>, OPTION> input_1(
       static_cast<T *>(calc_info.input_1->GetData()),
       calc_info.input_1->GetTensorShape()->NumElements());
-  Eigen::TensorMap<Eigen::Tensor<T, 1>> eigen_output(
+  Eigen::TensorMap<Eigen::Tensor<T, 1>, OPTION> output(
       static_cast<T *>(calc_info.output->GetData()),
       calc_info.output->GetTensorShape()->NumElements());
-  
+
+  Eigen::ThreadPool thread_pool(kThreadNum);
+  Eigen::ThreadPoolDevice thread_pool_device(&thread_pool, kThreadNum);
+
+  if (calc_info.input_0->GetTensorShape()->GetDimSizes().empty()) {
+    T v0 = *(reinterpret_cast<const T *>(calc_info.input_0->GetData()));
+    output.device(thread_pool_device) = v0 * input_1;
+    return;
+  }
+
+  if (calc_info.input_1->GetTensorShape()->GetDimSizes().empty()) {
+    T v1 = *(reinterpret_cast<const T *>(calc_info.input_1->GetData()));
+    output.device(thread_pool_device) = input_0 * v1;
+    return;
+  }
+
   std::reverse(calc_info.reshape_0.begin(), calc_info.reshape_0.end());
   std::reverse(calc_info.reshape_1.begin(), calc_info.reshape_1.end());
   std::reverse(calc_info.shape_out.begin(), calc_info.shape_out.end());
@@ -148,11 +171,9 @@ void MulCpuKernel::MulCalculate(CalcInfo &calc_info) {
     bcast_1[i] = calc_info.bcast_1[i];
   }
 
-  Eigen::ThreadPool thread_pool(kThreadNum);
-  Eigen::ThreadPoolDevice thread_pool_device(&thread_pool, kThreadNum);
-  eigen_output.reshape(shape_out).device(thread_pool_device) =
-      eigen_input_0.reshape(reshape_0).broadcast(bcast_0) *
-      eigen_input_1.reshape(reshape_1).broadcast(bcast_1);
+  output.reshape(shape_out).device(thread_pool_device) =
+      input_0.reshape(reshape_0).broadcast(bcast_0) *
+      input_1.reshape(reshape_1).broadcast(bcast_1);
 }
 
 REGISTER_CPU_KERNEL(kMul, MulCpuKernel);

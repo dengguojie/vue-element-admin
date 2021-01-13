@@ -123,6 +123,10 @@ uint32_t NormalCheck(CpuKernelContext &ctx,
   return KERNEL_STATUS_OK;
 }
 
+bool AddrAlignedCheck(const void *addr, uint64_t alignment) {
+  return reinterpret_cast<uint64_t>(reinterpret_cast<uintptr_t>(addr)) % alignment == 0;
+}
+
 DataType DType(std::string dtype_str) {
   auto iter = dtype_maps.find(dtype_str);
   if (iter != dtype_maps.end()) {

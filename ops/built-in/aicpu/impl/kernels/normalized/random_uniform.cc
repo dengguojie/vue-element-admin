@@ -20,22 +20,24 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *kRandomUniform = "RandomUniform";
+constexpr char *kRandomUniform = "RandomUniform";
 
-#define RANDOM_UNIFORM_GENERATE_CASE(DTYPE, TYPE)                                \
-  case (DTYPE): {                                                                \
-    if (Generate<TYPE>(ctx, output) != KERNEL_STATUS_OK) {                       \
-      KERNEL_LOG_ERROR("Generate random_distribution failed, data_type is [%u]", \
-                       DTYPE);                                                   \
-      return KERNEL_STATUS_PARAM_INVALID;                                        \
-    }                                                                            \
-    break;                                                                       \
+#define RANDOM_UNIFORM_GENERATE_CASE(DTYPE, TYPE)                     \
+  case (DTYPE): {                                                     \
+    Generate<TYPE>(ctx, output);                                      \
+    break;                                                            \
   }
+
+#define RANDOM_UNIFORM_EIGEN_TENSOR_ASSIGN_CASE(ALIGNMENT_TYPE)       \
+  Eigen::TensorMap<Eigen::Tensor<T, 1>, ALIGNMENT_TYPE> eigen_output( \
+      static_cast<T *>(output->GetData()),                            \
+      output->GetTensorShape()->NumElements());                       \
+  eigen_output.device(device) = eigen_output.random(                  \
+      Eigen::internal::UniformRandomGenerator<T>(final_seed));
 }
 
 namespace aicpu {
 uint32_t RandomUniformCpuKernel::Compute(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("RandomUniformCpuKernel start.");
   auto attr_value = ctx.GetAttr("dtype");
   KERNEL_CHECK_NULLPTR(attr_value, KERNEL_STATUS_PARAM_INVALID,
                        "Get attr[dtype] failed")
@@ -50,7 +52,7 @@ uint32_t RandomUniformCpuKernel::Compute(CpuKernelContext &ctx) {
         data_type, output->GetDataType());
     return KERNEL_STATUS_PARAM_INVALID;
   }
-  //choose random data generate function depend on dataType
+  // choose random data generate function depend on dataType
   switch (data_type) {
     RANDOM_UNIFORM_GENERATE_CASE(DT_FLOAT16, Eigen::half)
     RANDOM_UNIFORM_GENERATE_CASE(DT_FLOAT, float)
@@ -65,7 +67,7 @@ uint32_t RandomUniformCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t RandomUniformCpuKernel::Generate(CpuKernelContext &ctx, Tensor *output) {
+void RandomUniformCpuKernel::Generate(CpuKernelContext &ctx, Tensor *output) {
   int64_t final_seed = 0;
   auto attr_seed = ctx.GetAttr("seed");
   if (attr_seed != nullptr) {
@@ -80,13 +82,11 @@ uint32_t RandomUniformCpuKernel::Generate(CpuKernelContext &ctx, Tensor *output)
 
   Eigen::ThreadPool pool(kThreadNum);
   Eigen::ThreadPoolDevice device(&pool, kThreadNum);
-  Eigen::TensorMap<Eigen::Tensor<T, 1>> eigen_output(
-      static_cast<T *>(output->GetData()),
-      output->GetTensorShape()->NumElements());
-  eigen_output.device(device) = eigen_output.random(
-      Eigen::internal::UniformRandomGenerator<T>(final_seed));
-
-  return KERNEL_STATUS_OK;
+  if (AddrAlignedCheck(output->GetData())) {
+    RANDOM_UNIFORM_EIGEN_TENSOR_ASSIGN_CASE(Eigen::Aligned);
+  } else {
+    RANDOM_UNIFORM_EIGEN_TENSOR_ASSIGN_CASE(Eigen::Unaligned);
+  }
 }
 
 REGISTER_CPU_KERNEL(kRandomUniform, RandomUniformCpuKernel);
