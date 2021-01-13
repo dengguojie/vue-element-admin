@@ -34,7 +34,8 @@ graphStatus SetAttrsToShapesAndTypes(Operator& op,
                                      const std::string& shapes) {
   std::vector<DataType> elem_types;
   if (op.GetAttr(dtypes, elem_types) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get attr [%s] failed", dtypes.c_str());
+    OpsGetAttrErrReport(op.GetName(), dtypes);
+    OP_LOGE(op.GetName().c_str(), "Get attr [%s] failed.", dtypes.c_str());
     return GRAPH_FAILED;
   }
   Operator::OpListListInt elem_shapes;
@@ -82,33 +83,44 @@ graphStatus InferMapShapes(Operator& op,
   return GRAPH_SUCCESS;
 }
 
-graphStatus DequeueManyShape(Operator& op, const Shape& n_shape, const std::string& out_name) {
+graphStatus DequeueManyShape(Operator& op,
+                             const Shape& n_shape,
+                             const std::string& out_name) {
   auto operator_context = op.GetInferenceContext();
   std::vector<std::vector<ShapeAndType>> handle_shapes_and_types;
   handle_shapes_and_types = operator_context->GetInputHandleShapesAndTypes();
 
   std::vector<ge::DataType> component_types;
   if (op.GetAttr("component_types", component_types) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr component_types failed");
+    OpsGetAttrErrReport(op.GetName(), "component_types");
+    OP_LOGE(op.GetName().c_str(), "Get attr [component_types] failed.");
     return GRAPH_FAILED;
   }
+
+  graphStatus output_status = GRAPH_SUCCESS;
   size_t num_outputs_data = component_types.size();
-  if ((handle_shapes_and_types.size() != 0) && (handle_shapes_and_types[0].size() != 0) &&
+  if ((handle_shapes_and_types.size() != 0) &&
+      (handle_shapes_and_types[0].size() != 0) &&
       (handle_shapes_and_types[0].size() == num_outputs_data)) {
     for (size_t i = 0; i < handle_shapes_and_types[0].size(); ++i) {
       Shape comibined_shape;
       Shape handle_shape = handle_shapes_and_types[0][i].GetShape();
-      graphStatus concatenate_status = Concatenate(n_shape, handle_shape, comibined_shape);
+      graphStatus concatenate_status = Concatenate(n_shape,
+                                                   handle_shape,
+                                                   comibined_shape);
       if (concatenate_status != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "concatenate failed");
+        InferShapeOtherErrReport(op.GetName(), "concatenate failed");
+        OP_LOGE(op.GetName().c_str(), "Concatenate failed.");
         return GRAPH_FAILED;
       }
       TensorDesc output_desc = op.GetDynamicOutputDesc(out_name, i);
       output_desc.SetShape(comibined_shape);
       output_desc.SetDataType(component_types[i]);
-      graphStatus output_status = op.UpdateDynamicOutputDesc(out_name, i, output_desc);
+      output_status = op.UpdateDynamicOutputDesc(out_name, i, output_desc);
       if (output_status != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "update %s:%d failed", out_name.c_str(), i);
+        OpsOPUpdateErrReport(op.GetName(), out_name);
+        OP_LOGE(op.GetName().c_str(), "Update [%s:%d] desc failed.",
+                out_name.c_str(), i);
         return GRAPH_FAILED;
       }
     }
@@ -117,9 +129,11 @@ graphStatus DequeueManyShape(Operator& op, const Shape& n_shape, const std::stri
       TensorDesc output_desc = op.GetDynamicOutputDesc(out_name, i);
       output_desc.SetShape(Shape(ge::UNKNOWN_RANK));
       output_desc.SetDataType(component_types[i]);
-      graphStatus output_status = op.UpdateDynamicOutputDesc(out_name, i, output_desc);
+      output_status = op.UpdateDynamicOutputDesc(out_name, i, output_desc);
       if (output_status != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "update %s:%d failed", out_name.c_str(), i);
+        OpsOPUpdateErrReport(op.GetName(), out_name);
+        OP_LOGE(op.GetName().c_str(), "Update [%s:%d] desc failed.",
+                out_name.c_str(), i);
         return GRAPH_FAILED;
       }
     }
@@ -129,13 +143,14 @@ graphStatus DequeueManyShape(Operator& op, const Shape& n_shape, const std::stri
 }  // namespace
 
 IMPLEMT_INFERFUNC(QueueIsClosed, QueueIsClosedInfer) {
-  TensorDesc is_closed_desc = op.GetOutputDesc("is_closed");
-  DataType is_closed_type = DT_BOOL;
-  is_closed_desc.SetShape(Shape());
-  is_closed_desc.SetDataType(is_closed_type);
-  graphStatus output_status = op.UpdateOutputDesc("is_closed", is_closed_desc);
-  if (output_status != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update is_closed failed");
+  Shape scalar_shape;
+  (void)Scalar(scalar_shape);
+  TensorDesc output_desc = op.GetOutputDesc("is_closed");
+  output_desc.SetShape(scalar_shape);
+  output_desc.SetDataType(DT_BOOL);
+  if (op.UpdateOutputDesc("is_closed", output_desc) != GRAPH_SUCCESS) {
+    OpsOPUpdateErrReport(op.GetName(), "is_closed");
+    OP_LOGE(op.GetName().c_str(), "Update [is_closed] desc failed.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -144,17 +159,13 @@ IMPLEMT_INFERFUNC(QueueIsClosed, QueueIsClosedInfer) {
 INFER_FUNC_REG(QueueIsClosed, QueueIsClosedInfer);
 
 IMPLEMT_INFERFUNC(QueueSize, QueueSizeInfer) {
-  Shape shape;
-  auto handle_desc = op.GetInputDesc(0);
-  shape = handle_desc.GetShape();
-
+  Shape input_shape = op.GetInputDesc("handle").GetShape();
   TensorDesc size_desc = op.GetOutputDesc("size");
-  DataType size_type = DT_INT32;
-  size_desc.SetShape(shape);
-  size_desc.SetDataType(size_type);
-  graphStatus output_status = op.UpdateOutputDesc("size", size_desc);
-  if (output_status != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update size failed");
+  size_desc.SetShape(input_shape);
+  size_desc.SetDataType(DT_INT32);
+  if (op.UpdateOutputDesc("size", size_desc) != GRAPH_SUCCESS) {
+    OpsOPUpdateErrReport(op.GetName(), "size");
+    OP_LOGE(op.GetName().c_str(), "Update [size] desc failed.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -167,9 +178,9 @@ IMPLEMT_INFERFUNC(FIFOQueue, FIFOQueueInfer) {
   DataType output_type = DT_RESOURCE;
   output_desc.SetShape(Shape());
   output_desc.SetDataType(output_type);
-  graphStatus output_status = op.UpdateOutputDesc("handle", output_desc);
-  if (output_status != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update handle failed");
+  if (op.UpdateOutputDesc("handle", output_desc) != GRAPH_SUCCESS) {
+    OpsOPUpdateErrReport(op.GetName(), "handle");
+    OP_LOGE(op.GetName().c_str(), "Update [handle] desc failed.");
     return GRAPH_FAILED;
   }
   return SetAttrsToShapesAndTypes(op, "component_types", "shapes");
@@ -178,6 +189,28 @@ IMPLEMT_INFERFUNC(FIFOQueue, FIFOQueueInfer) {
 INFER_FUNC_REG(FIFOQueue, FIFOQueueInfer);
 
 IMPLEMT_INFERFUNC(QueueEnqueue, QueueEnqueueInfer) {
+  auto context = op.GetInferenceContext();
+  std::vector<std::vector<ShapeAndType>> input_shapes_and_types;
+  input_shapes_and_types = context->GetInputHandleShapesAndTypes();
+  size_t components_size = op.GetInputsSize() - 1;
+  if ((input_shapes_and_types.size() != 0) &&
+      (input_shapes_and_types[0].size() != 0) &&
+      (input_shapes_and_types[0].size() == components_size)) {
+    return GRAPH_SUCCESS;
+  }
+
+  std::vector<ShapeAndType> handle_shapes_and_types;
+  handle_shapes_and_types.reserve(components_size);
+  for (size_t i = 0; i < components_size; ++i) {
+    const TensorDesc input_desc = op.GetDynamicInputDesc("components", i);
+    Shape elem_shape(input_desc.GetShape());
+    DataType elem_type(input_desc.GetDataType());
+    ShapeAndType shape_and_type(elem_shape, elem_type);
+    handle_shapes_and_types.emplace_back(std::move(shape_and_type));
+  }
+  std::vector<std::vector<ShapeAndType>> output_shapes_and_types(2);
+  output_shapes_and_types[0] = handle_shapes_and_types;
+  context->SetOutputHandleShapesAndTypes(output_shapes_and_types);
   return GRAPH_SUCCESS;
 }
 
@@ -196,14 +229,15 @@ IMPLEMT_INFERFUNC(QueueDequeue, QueueDequeueInfer) {
 
   std::vector<ge::DataType> component_types;
   if (op.GetAttr("component_types", component_types) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr component_types failed");
+    OpsGetAttrErrReport(op.GetName(), "component_types");
+    OP_LOGE(op.GetName().c_str(), "Get attr [component_types] failed.");
     return GRAPH_FAILED;
   }
 
+  graphStatus output_status = GRAPH_SUCCESS;
   size_t num_outputs_data = component_types.size();
-  graphStatus output_status;
-
-  if ((handle_shapes_and_types.size() != 0) && (handle_shapes_and_types[0].size() != 0) &&
+  if ((handle_shapes_and_types.size() != 0) &&
+      (handle_shapes_and_types[0].size() != 0) &&
       (handle_shapes_and_types[0].size() == num_outputs_data)) {
     for (size_t i = 0; i < handle_shapes_and_types[0].size(); ++i) {
       TensorDesc output_desc = op.GetDynamicOutputDesc("components", i);
@@ -211,7 +245,9 @@ IMPLEMT_INFERFUNC(QueueDequeue, QueueDequeueInfer) {
       output_desc.SetDataType(component_types[i]);
       output_status = op.UpdateDynamicOutputDesc("components", i, output_desc);
       if (output_status != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "update %s:%d failed", "components", i);
+        OpsOPUpdateErrReport(op.GetName(), "components");
+        OP_LOGE(op.GetName().c_str(), "Update [%s:%d] desc failed.",
+                "components", i);
         return GRAPH_FAILED;
       }
     }
@@ -222,7 +258,9 @@ IMPLEMT_INFERFUNC(QueueDequeue, QueueDequeueInfer) {
       output_desc.SetDataType(component_types[i]);
       output_status = op.UpdateDynamicOutputDesc("components", i, output_desc);
       if (output_status != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "update %s:%d failed", "components", i);
+        OpsOPUpdateErrReport(op.GetName(), "components");
+        OP_LOGE(op.GetName().c_str(), "Update [%s:%d] desc failed.",
+                "components", i);
         return GRAPH_FAILED;
       }
     }
@@ -239,7 +277,9 @@ IMPLEMT_INFERFUNC(QueueDequeueMany, QueueDequeueManyInfer) {
     const uint8_t* n = n_tensor.GetData();
     const int32_t* n_data = reinterpret_cast<const int32_t*>(n);
     if (*n_data < 0) {
-      OP_LOGE(op.GetName().c_str(), "Input n must >= 0, but got [%d]", *n_data);
+      OpsAttrValueErrReport(op.GetName(), "n", ">=0", std::to_string(*n_data));
+      OP_LOGE(op.GetName().c_str(), "Input [n] must >= 0, but got [%d].",
+              *n_data);
       return GRAPH_FAILED;
     }
     n_shape = Shape({*n_data});
@@ -968,7 +1008,8 @@ IMPLEMT_INFERFUNC(RandomShuffleQueue, RandomShuffleQueueInfer) {
   handle_desc.SetShape(scalar_shape);
   handle_desc.SetDataType(DT_RESOURCE);
   if (op.UpdateOutputDesc("handle", handle_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update handle desc failed");
+    OpsOPUpdateErrReport(op.GetName(), "handle");
+    OP_LOGE(op.GetName().c_str(), "update [handle] desc failed");
     return GRAPH_FAILED;
   }
   return SetAttrsToShapesAndTypes(op, "component_types", "shapes");
@@ -1230,7 +1271,8 @@ IMPLEMT_INFERFUNC(PaddingFIFOQueue, PaddingFIFOQueueInfer) {
   output_desc.SetShape(Shape());
   output_desc.SetDataType(DT_RESOURCE);
   if (op.UpdateOutputDesc("handle", output_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update handle desc failed.");
+    OpsOPUpdateErrReport(op.GetName(), "handle");
+    OP_LOGE(op.GetName().c_str(), "update [handle] desc failed.");
     return GRAPH_FAILED;
   }
   return SetAttrsToShapesAndTypes(op, "component_types", "shapes");
@@ -1243,7 +1285,8 @@ IMPLEMT_INFERFUNC(PriorityQueue, PriorityQueueInfer) {
   output_desc.SetShape(Shape());
   output_desc.SetDataType(DT_RESOURCE);
   if (op.UpdateOutputDesc("handle", output_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update handle desc failed.");
+    OpsOPUpdateErrReport(op.GetName(), "handle");
+    OP_LOGE(op.GetName().c_str(), "update [handle] desc failed.");
     return GRAPH_FAILED;
   }
   return SetAttrsToShapesAndTypes(op, "component_types", "shapes");
