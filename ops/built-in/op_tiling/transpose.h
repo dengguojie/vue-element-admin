@@ -24,9 +24,11 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <queue>
+#include <memory>
 #include <nlohmann/json.hpp>
 #include "graph/debug/ge_log.h"
-#include "op_tiling.h"
+#include "register/op_tiling.h"
 
 namespace optiling {
 
@@ -34,6 +36,8 @@ namespace optiling {
 #define BYTES_PER_BLOCK 32
 #define UB_REORDER_FACTOR 33
 #define ELE_NUM_PER_BLOCK_FP16 16
+#define ELE_NUM_PER_BLOCK_FP32 8
+#define ELE_NUM_PER_BLOCK_INT64 4
 /*
  * 4 * 32 block = 4KB, this value should be consistent with the variable in transpose.py
  * 1KB : reserved
@@ -42,16 +46,84 @@ namespace optiling {
  * 4KB : reserved
  */
 #define UB_RESERVED_BLOCK_SIZE 4 * 32
-#define LAST_AXIS_HUGE_THRESHOLD 1000
+#define LAST_AXIS_BLOCK_ALIGN_HUGE_THRESHOLD 4096 //unit B
+#define LAST_AXIS_NOT_BLOCK_ALIGN_HUGE_THRESHOLD 128 //unit B
+#define WORKSPACE_MAX_SIZE 16 * 1024 * 1024 * 1024 // 16GB
+#define UB_CAP_BLOCKS 7800 // for 310 256 - 8 = 248KB = 7936 Blocks
+
 #define STRIDE_BOUNDARY 65535
 #define NBURST_BOUNDARY 4095
-#define MAX_COL_FP16_VNCHWCONV_FULL    496
-#define MAX_COL_FP16_VNCHWCONV_PARTIAL 256 
+#define ACCU_BLOCK_SIZE 128 // keep same with transpose.py , not gt 240 for both 310 and 910
+#define ACCU_BLOCK_SIZE_IDENTICAL 1024
+
+#define MAX_COL_FP16_VNCHWCONV_FULL    256 // verify 128 is better than 248 //496
+#define MAX_COL_FP16_VNCHWCONV_PARTIAL 256
 #define MAX_ROW_FP16_VNCHWCONV_FULL    128
+#define UB_SIZE_1_16_FP16              3968 // 3968 * 33 < 256 * 1024
+#define SMALL_SHAPE_SIZE_THRESHOLD     1024
 
 enum TransposeScenario {
-    e_last_axis_transposed = 0,
-    e_last_axis_not_transposed = 1
+    SCENARIO_0 = 0,     //identical shape
+    SCENARIO_1 = 1,     //huge last axis and not transpose
+    SCENARIO_2 = 2,     //last axis not transpose
+    SCENARIO_6 = 6,     //small shape
+    SCENARIO_7 = 7,     //last axis transpose
+};
+
+enum SubScenarioLastAxisTrans {
+    LAST_AXIS_TR_COMMON = 0,
+    LAST_AXIS_TR_F2T = 1, // fat 2 thin
+    LAST_AXIS_TR_T2F = 2, // thin 2 fat
+};
+
+struct SplitParam {
+    int64_t nFactor;
+    int64_t colFactor;
+    int64_t rowFactor;
+
+    SplitParam() {
+        nFactor  = 1;
+        colFactor = 1;
+        rowFactor = 1;
+    }
+
+    void Set(int64_t n, int64_t c, int64_t r) {
+        nFactor = n;
+        colFactor = c;
+        rowFactor = r;
+    }
+};
+
+struct NCR {
+    vector<int64_t> n;
+    vector<int64_t> col;
+    vector<int64_t> row;
+    int64_t nVol;
+    int64_t cVol;
+    int64_t rVol;
+};
+
+class TilingModel {
+public:
+    TilingModel(int64_t p, int col , int row, SubScenarioLastAxisTrans scenario, std::string name) : priority(p),
+                                                                 maxCol(col),
+                                                                 maxRow(row),
+                                                                 subScenario(scenario),
+                                                                 modelName(name) {}
+    virtual void Decision(int64_t coreNum, const NCR & ncr) = 0;
+    SplitParam sp;
+    NCR ncr;
+    int64_t priority;
+    int64_t maxCol; //unit: bytes
+    int64_t maxRow;
+    SubScenarioLastAxisTrans  subScenario;
+    std::string modelName;
+};
+
+struct TMCompare {
+    bool operator()(const std::shared_ptr<TilingModel> & lhs, const std::shared_ptr<TilingModel> & rhs) const {
+        return lhs->priority > rhs->priority;
+    }
 };
 
 struct ShapeInfo {
@@ -60,49 +132,203 @@ struct ShapeInfo {
     std::vector<int64_t> perm;
     std::vector<int64_t> reducedInShape;
     std::vector<int64_t> reducedOutShape;
-    std::vector<int64_t> reducedOutShapeAxis8;
     std::vector<int64_t> reducedPerm;
     std::vector<int64_t> reducedPermGrad;
-    TransposeScenario scenario;
+
     int64_t dim;
     int64_t totalVolumeLogic;
     int64_t totalVolumeActual;
-    int64_t volumePerCore;
     int64_t identical;
+    int64_t lastAxisLen;
+    int64_t lastAxisBurstLen;
+    int64_t elePerBlock;
+    int64_t eleLenInBytes;
+    int64_t alignElement; //unit: element number padding.  eg. dtype=float, axis[0]= 11, alignElement=8-(11-8)%8=5
     bool isLastAxisTranspose;
     bool isLastAxisHuge;
+    TransposeScenario scenario;
+
     ShapeInfo() : reducedPermGrad(TRANSPOSE_MAX_AXIS_NUM, 0) {
-        scenario = e_last_axis_transposed;
         dim = 0;
         totalVolumeLogic = 0;
         totalVolumeActual = 0;
-        volumePerCore = 0;
         identical = 0;
+        lastAxisLen = 0;
+        lastAxisBurstLen = 0;
+        elePerBlock = 8;
+        eleLenInBytes = 0;
+        alignElement = 0;
         isLastAxisTranspose = false;
         isLastAxisHuge = false;
+        scenario = SCENARIO_0;
     }
 };
 
-
 struct CompilerInfo {
     int64_t coreNum;
+    int64_t usedCoreNum;
     int64_t ubSize; //unit: block
     int64_t ubSizeCouldUse;//unit: block
     std::string dType;
     std::string opType;
     CompilerInfo() {
         coreNum = 0;
+        usedCoreNum = 0;
         ubSize = 0;
         ubSizeCouldUse = 0;
     }
 };
 
+struct LastAxisNTLoopInfo {
+    int64_t headMajorLoop;
+    int64_t headMajorNum;
+    int64_t headTailNum;
+
+    int64_t bodyLoopNum;
+    int64_t bodyMajorLoop;
+    int64_t bodyMajorNum;
+    int64_t bodyTailNum;
+
+    int64_t tailMajorLoop;
+    int64_t tailMajorNum;
+    int64_t tailTailNum;
+
+    LastAxisNTLoopInfo() {
+        headMajorLoop = 0;
+        headMajorNum = 0;
+        headTailNum = 0;
+
+        bodyLoopNum = 0;
+        bodyMajorLoop = 0;
+        bodyMajorNum = 0;
+        bodyTailNum = 0;
+
+        tailMajorLoop = 0;
+        tailMajorNum = 0;
+        tailTailNum = 0;
+    }
+};
+
+struct WorkspaceInfo {
+    int64_t loop;
+    int64_t repeat1;
+    int64_t repeat2;
+    int64_t repeat3;
+
+    WorkspaceInfo() {
+        loop = 0;
+        repeat1 = 0;
+        repeat2 = 0;
+        repeat3 = 0;
+    }
+};
+
+struct IdenticalInfo {
+    int64_t base;
+    int64_t eleNum;
+    int64_t majorLoop;
+    int64_t majorNum;
+    int64_t tailNum;
+    int64_t notAlignEle;
+
+    IdenticalInfo() {
+        base = 0;
+        eleNum = 0;
+        majorLoop = 0;
+        majorNum = 0;
+        tailNum = 0;
+        notAlignEle = 0;
+    }
+};
+
+struct InfoPerCoreLastAxisNT {
+    int64_t base;
+    int64_t num;
+    int64_t initTuple[TRANSPOSE_MAX_AXIS_NUM];
+    LastAxisNTLoopInfo loopInfo;
+    WorkspaceInfo workspaceInfo;
+    InfoPerCoreLastAxisNT() {
+        base = 0;
+        num = 0;
+        for (int64_t i = 0; i < TRANSPOSE_MAX_AXIS_NUM; i++) {
+            initTuple[i] = 0;
+        }
+    }
+};
+
+struct InfoN {
+    int64_t loopOnN;
+    int64_t nOffsetLogic;
+    int64_t nOffsetActual;
+    std::vector<int64_t> initNTuple;
+
+    InfoN() {
+        loopOnN = 0;
+        nOffsetLogic = 0;
+        nOffsetActual = 0;
+        initNTuple.resize(TRANSPOSE_MAX_AXIS_NUM, 0);
+    }
+};
+
+struct InfoCol {
+    int64_t colPerMC;
+    int64_t colBlockPerMC;
+    int64_t loopOnMC;
+    int64_t colTC;
+    int64_t colBlockTC;
+    int64_t colOffset;
+    int64_t backStepLeft;
+    std::vector<int64_t> initDstTuple;
+    std::vector<int64_t> tailDstTuple;
+
+    InfoCol() {
+        colPerMC = 0;
+        colBlockPerMC  = 0;
+        loopOnMC = 0;
+        colTC = 0;
+        colBlockTC = 0;
+        colOffset = 0;
+        backStepLeft = 0;
+        initDstTuple.resize(TRANSPOSE_MAX_AXIS_NUM, 0);
+        tailDstTuple.resize(TRANSPOSE_MAX_AXIS_NUM, 0);
+    }
+};
+
+struct InfoRow {
+    int64_t rowPerMR;
+    int64_t rowBlockPerMR;
+    int64_t loopOnMR;
+    int64_t rowTR;
+    int64_t rowBlockTR;
+    int64_t rowOffset;
+    int64_t backStepUp;
+    std::vector<int64_t> initSrcTuple;
+    std::vector<int64_t> tailSrcTuple;
+
+    InfoRow() {
+        rowPerMR = 0;
+        rowBlockPerMR = 0;
+        loopOnMR = 0;
+        rowTR = 0;
+        rowBlockTR = 0;
+        rowOffset = 0;
+        backStepUp = 0;
+        initSrcTuple.resize(TRANSPOSE_MAX_AXIS_NUM, 0);
+        tailSrcTuple.resize(TRANSPOSE_MAX_AXIS_NUM, 0);
+    }
+};
+
+struct InfoPerCore {
+    InfoN infoN;
+    InfoCol infoCol;
+    InfoRow infoRow;
+};
+
 struct RuntimeInfo {
     /*
-     *
      * last axis not transposed
-     *
      */
+    int64_t byWorkspace;
     int64_t ubReorderFactor;
     int64_t ubThreshold; //unit: block number
     int64_t fp16Offset1;
@@ -117,6 +343,9 @@ struct RuntimeInfo {
     int64_t srcStrideWorkspace;
     int64_t dstStrideWorkspace;
     int64_t workspaceSizeInBytes;
+    int64_t srcStrideLogic;
+    int64_t backNum;
+    int64_t skipEle;
     std::vector<std::pair<int64_t,int64_t>> initRanges;
     std::vector<std::pair<int64_t,int64_t>> extendRanges;
     std::vector<int64_t> dstBaseAddr;
@@ -125,43 +354,58 @@ struct RuntimeInfo {
     std::vector<int64_t> dirtyDataStartAddrPerCore;
 
     /*
+     * scenario_0: identical
+     */
+    std::vector<IdenticalInfo> infoPerCoreIdentical;
+
+    /*
+     * scenario_1: last axis huge not transposed
+     */
+    std::vector<InfoPerCoreLastAxisNT> infoPerCoreLastAxisNT;
+
+
+    /*
      *
      * last axis transposed
      *
      */
-    std::vector<int64_t> colElePerMC;
-    std::vector<int64_t> colBlockPerMC;
-    std::vector<int64_t> loopOnMC;
-    std::vector<int64_t> colEleTC;
-    std::vector<int64_t> colBlockTC;
-    std::vector<int64_t> colOffset;
+    std::vector<int64_t> colPerm;
+    std::vector<int64_t> rowPerm;
+    vector<NCR> ncrs;
+    NCR ncr;
+    SplitParam sp;
+    //priority_queue top() return const reference, unique_ptr no copy ctro
+    std::priority_queue<std::shared_ptr<TilingModel>, std::vector<std::shared_ptr<TilingModel>>, TMCompare> pqtm;
 
-    std::vector<int64_t> rowPerMR;
-    std::vector<int64_t> rowBlockPerMR;
-    std::vector<int64_t> loopOnMR;
-    std::vector<int64_t> rowTR;
-    std::vector<int64_t> rowBlockTR;
-    std::vector<int64_t> rowOffset;
+    int64_t nJumpAxisNum;
+    int64_t srcJumpAxisNum;
+    int64_t dstJumpAxisNum;
+    int64_t rPartVol;
 
-    std::vector<int64_t> backStepUp;
-    std::vector<int64_t> backStepLeft;
+    std::vector<InfoN> infoN;
+    std::vector<InfoCol> infoCol;
+    std::vector<InfoRow> infoRow;
 
-    vector<vector<int64_t>> initJumpCounter;
-    vector<vector<int64_t>> tailJumpCounter;
+    std::vector<InfoPerCore> infoPerCore;
+
+    std::vector<std::pair<int64_t, int64_t>> nRange;
+    std::vector<std::pair<int64_t, int64_t>> colRange;
+    std::vector<std::pair<int64_t, int64_t>> rowRange;
+
+    int64_t nJumpFactor[TRANSPOSE_MAX_AXIS_NUM];
+    int64_t nJumpStride[TRANSPOSE_MAX_AXIS_NUM];
+    int64_t nJumpFactorMod[TRANSPOSE_MAX_AXIS_NUM];
 
     int64_t srcJumpFactor[TRANSPOSE_MAX_AXIS_NUM];
-    int64_t srcJumpFactorMod[TRANSPOSE_MAX_AXIS_NUM];
     int64_t srcJumpStride[TRANSPOSE_MAX_AXIS_NUM];
-    int64_t dstJumpStride;
-    int64_t srcJumpAxisNum;
+    int64_t srcJumpFactorMod[TRANSPOSE_MAX_AXIS_NUM];
 
-    std::vector<int64_t> rowPerCore;
+    int64_t dstJumpFactor[TRANSPOSE_MAX_AXIS_NUM];
+    int64_t dstJumpStride[TRANSPOSE_MAX_AXIS_NUM];
+    int64_t dstJumpFactorMod[TRANSPOSE_MAX_AXIS_NUM];
 
     RuntimeInfo() {
-        /*
-         *
-         *
-         */
+        byWorkspace = 0;
         ubReorderFactor = 1;
         ubThreshold = 1;
         fp16Offset1 = 0;
@@ -176,70 +420,40 @@ struct RuntimeInfo {
         srcStrideWorkspace = 0;
         dstStrideWorkspace = 0;
         workspaceSizeInBytes = 0;
-        /*
-         *
-         *
-         */
-        dstJumpStride = 1;
+        srcStrideLogic = 0;
+        backNum = 0;
+        skipEle = 0;
+        nJumpAxisNum = 0;
         srcJumpAxisNum = 0;
+        dstJumpAxisNum = 0;
+        rPartVol = 0;
+
         for (int i = 0; i < TRANSPOSE_MAX_AXIS_NUM; i++) {
+            nJumpFactor[i] = 0;
+            nJumpStride[i] = 0;
+            nJumpFactorMod[i] = 1;
             srcJumpFactor[i] = 0;
-            srcJumpFactorMod[i] = 1;
             srcJumpStride[i] = 0;
+            srcJumpFactorMod[i] = 1;
+            dstJumpFactor[i] = 0;
+            dstJumpStride[i] = 0;
+            dstJumpFactorMod[i] = 1;
         }
     }
 };
-
-
-struct LevelInfo {
-    int64_t nBurst;
-    int64_t nBurstTail;
-    int64_t burstLen; //unit: block number
-    int64_t burstLenTail; //unit: block number, only used for shape indetical scenario
-    int64_t alignElement; //unit: element number padding.  eg. dtype=float, axis[0]= 11, alignElement=8-(11-8)%8=5
-    int64_t byWorkspace;
-    int64_t elementNumPerBurst;
-    int64_t srcStride;
-    int64_t identicalLoopNum;//used only for shape identical scenario
-    int64_t levelLoopNum[TRANSPOSE_MAX_AXIS_NUM];
-    int64_t srcGapPerRound[TRANSPOSE_MAX_AXIS_NUM];
-    int64_t hasTail[TRANSPOSE_MAX_AXIS_NUM];
-    bool allLevelOneInUb;
-    vector<int64_t> dstLevelAccuVolume;
-    vector<int64_t> srcLevelAccuVolume;
-    LevelInfo() : dstLevelAccuVolume(TRANSPOSE_MAX_AXIS_NUM, 1),
-                  srcLevelAccuVolume(TRANSPOSE_MAX_AXIS_NUM, 1) {
-        nBurst = 1;
-        nBurstTail = 0;
-        burstLen = 0;
-        burstLenTail = 0;
-        alignElement = 0;
-        byWorkspace = 0;
-        elementNumPerBurst = 0;
-        srcStride = 0;
-        identicalLoopNum = 0;
-        allLevelOneInUb = true;
-        for(int i = 0; i < TRANSPOSE_MAX_AXIS_NUM; i++) {
-            levelLoopNum[i] = 1;
-            srcGapPerRound[i] = 0;
-            hasTail[i] = 0;
-        }
-    }
-};
-
 
 void ReduceAxis(const std::string & opType,
-                const CompilerInfo & compilerInfo,
+                CompilerInfo & compilerInfo,
                 ShapeInfo & shapeInfo);
 
 void RemoveAxis(ShapeInfo & shapeInfo);
 
 void MergeAxis(ShapeInfo & shapeInfo);
 
-bool TransposeCalcTilingData(const CompilerInfo & compilerInfo,
+bool TransposeCalcTilingData(const std::string &opType,
+                             const CompilerInfo & compilerInfo,
                              const ShapeInfo & shapeInfo,
-                             RuntimeInfo & runtimeInfo,
-                             LevelInfo & levelInfo);
+                             RuntimeInfo & runtimeInfo);
 
 /*
  * @brief: tiling function of op

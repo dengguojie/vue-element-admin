@@ -55,6 +55,7 @@ set(_optiling_files
   tiling_dispatch.cc
   top_k.cc
   transpose_d.cc
+  transpose.cc
   trans_data.cc
   trans_data_negative_target_tc.cc
   unpack.cc
