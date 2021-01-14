@@ -1808,12 +1808,14 @@ IMPLEMT_COMMON_INFERFUNC(UnpackInferShape) {
   OP_LOGI(op.GetName().c_str(), "UnpackInferShape function start!");
   std::vector<std::pair<int64_t, int64_t>> x_range;
   std::vector<std::pair<int64_t, int64_t>> out_range;
-  Shape output_shape;
+  std::vector<int64_t> output_vec;
+  std::vector<GeTensorDescPtr> output_ptrs;
 
-  Shape shape_x = op.GetInputDesc("x").GetShape();
-  op.GetInputDesc("x").GetShapeRange(x_range);
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto tensordesc_x = op_info->MutableInputDesc("x");
+  std::vector<int64_t> shape_x = tensordesc_x->MutableShape().GetDims();
+  tensordesc_x->GetShapeRange(x_range);
+  DataType input_dtype = tensordesc_x->GetDataType();
 
   // check value of aixs and num
   int64_t axis{0};
@@ -1822,16 +1824,23 @@ IMPLEMT_COMMON_INFERFUNC(UnpackInferShape) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr ConstValue axis failed!");
     return GRAPH_FAILED;
   }
-
   int64_t num{0};
   if (op.GetAttr("num", num) != GRAPH_SUCCESS) {
     OpsGetAttrErrReport(op.GetName(), "num");
     OP_LOGE(op.GetName().c_str(), "GetOpAttr ConstValue num failed!");
     return GRAPH_FAILED;
   }
+  output_ptrs.resize(num);
+  if (num != op_info->GetAllOutputsDescSize()) {
+    OP_LOGE(op.GetName().c_str(), "Value of attr num should equals to outputs count!");
+    return GRAPH_FAILED;
+  }
+  for (int i = 0; i < num; i++) {
+    output_ptrs[i] = op_info->MutableOutputDesc(i);
+  }
 
-  if (RankKnown(shape_x)) {
-    int64_t x_dims = shape_x.GetDimNum();
+  if (!IsUnknownRankShape(shape_x)) {
+    int64_t x_dims = static_cast<int64_t>(shape_x.size());
     int64_t real_axis = (axis >= 0) ? axis : axis + x_dims;
     if (real_axis < 0 || real_axis >= x_dims) {
       OpsInputShapeDimErrReport(op.GetName(), "Axis", ConcatString(x_dims), ConcatString(0), ConcatString(real_axis));
@@ -1839,28 +1848,21 @@ IMPLEMT_COMMON_INFERFUNC(UnpackInferShape) {
       return GRAPH_FAILED;
     }
     // infer output shape
-    std::vector<int64_t> output_vec;
     for (int64_t i = 0; i < x_dims; i++) {
       if (i != real_axis) {
-        output_vec.push_back(shape_x.GetDim(i));
+        output_vec.push_back(shape_x[i]);
         if (static_cast<int64_t>(x_range.size()) == x_dims) {
           out_range.push_back(x_range[i]);
         }
       }
     }
-    output_shape = Shape(output_vec);
   } else {
-    Shape unknown_shape(UNKNOWN_SHAPE);
-    output_shape = unknown_shape;
+    output_vec = UNKNOWN_SHAPE;
   }
   for (int64_t i = 0; i < num; i++) {
-    tensordesc_output.SetShape(output_shape);
-    tensordesc_output.SetShapeRange(out_range);
-    tensordesc_output.SetDataType(input_dtype);
-    if (op.UpdateDynamicOutputDesc("y", i, tensordesc_output) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
-      return GRAPH_FAILED;
-    }
+    output_ptrs[i]->SetShape(GeShape(output_vec));
+    output_ptrs[i]->SetShapeRange(out_range);
+    output_ptrs[i]->SetDataType(input_dtype);
   }
   OP_LOGI(op.GetName().c_str(), "UnpackInferShape function End!");
   return GRAPH_SUCCESS;

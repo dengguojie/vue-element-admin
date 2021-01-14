@@ -2212,9 +2212,10 @@ COMMON_INFER_FUNC_REG(OneHot, OneHotInferShape);
 
 // ----------------TopKD Op Start-------------------
 IMPLEMT_COMMON_INFERFUNC(TopKDInferShape) {
-  TensorDesc input_tensor_desc = op.GetInputDesc("x");
-  TensorDesc value_tensor_desc = op.GetOutputDesc("values");
-  TensorDesc indice_tensor_desc = op.GetOutputDesc("indices");
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto output_v_desc = op_info->MutableOutputDesc("values");
+  auto output_i_desc = op_info->MutableOutputDesc("indices");
 
   int32_t k;
   if (op.GetAttr("k", k) != GRAPH_SUCCESS) {
@@ -2222,7 +2223,7 @@ IMPLEMT_COMMON_INFERFUNC(TopKDInferShape) {
     return GRAPH_FAILED;
   }
 
-  std::vector<int64_t> dims_in = input_tensor_desc.GetShape().GetDims();
+  std::vector<int64_t> dims_in = input_desc->MutableShape().GetDims();
   int32_t dim_size = dims_in.size();
   if (dim_size <= 0) {
     OP_LOGE(op.GetName().c_str(), "The dims_in size should more than 0!");
@@ -2244,27 +2245,18 @@ IMPLEMT_COMMON_INFERFUNC(TopKDInferShape) {
   dims_in[sorted_axis] = k;
 
   std::vector<std::pair<int64_t, int64_t>> shape_range;
-  input_tensor_desc.GetShapeRange(shape_range);
+  input_desc->GetShapeRange(shape_range);
   if (shape_range.size() > 0) {
     shape_range[sorted_axis].second = k;
   }
+  output_v_desc->SetShape(GeShape(dims_in));
+  output_v_desc->SetShapeRange(shape_range);
+  output_v_desc->SetDataType(input_desc->GetDataType());
 
-  value_tensor_desc.SetShape(ge::Shape(dims_in));
-  value_tensor_desc.SetShapeRange(shape_range);
-  value_tensor_desc.SetDataType(input_tensor_desc.GetDataType());
+  output_i_desc->SetShape(GeShape(dims_in));
+  output_i_desc->SetShapeRange(shape_range);
+  output_i_desc->SetDataType(DT_INT32);
 
-  if (op.UpdateOutputDesc("values", value_tensor_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update values failed!");
-    return GRAPH_FAILED;
-  }
-  indice_tensor_desc.SetShape(ge::Shape(dims_in));
-  indice_tensor_desc.SetShapeRange(shape_range);
-  indice_tensor_desc.SetDataType(DT_INT32);
-
-  if (op.UpdateOutputDesc("indices", indice_tensor_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update indices failed!");
-    return GRAPH_FAILED;
-  }
   return GRAPH_SUCCESS;
 }
 
@@ -2277,9 +2269,11 @@ IMPLEMT_VERIFIER(TopK, TopKVerify) { return GRAPH_SUCCESS; }
 IMPLEMT_COMMON_INFERFUNC(TopKInferShape) {
   const vector<string> depend_names = {"k"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
-  TensorDesc input_tensor_desc = op.GetInputDesc("x");
-  TensorDesc value_tensor_desc = op.GetOutputDesc("values");
-  TensorDesc indice_tensor_desc = op.GetOutputDesc("indices");
+
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto output_v_desc = op_info->MutableOutputDesc("values");
+  auto output_i_desc = op_info->MutableOutputDesc("indices");
 
   Tensor k_tensor;
   bool unkonwn_dim_flag{false};
@@ -2303,7 +2297,7 @@ IMPLEMT_COMMON_INFERFUNC(TopKInferShape) {
     }
   }
 
-  std::vector<int64_t> dims_in = input_tensor_desc.GetShape().GetDims();
+  std::vector<int64_t> dims_in = input_desc->MutableShape().GetDims();
   int32_t dim_size = dims_in.size();
   if (dim_size <= 0) {
     OP_LOGE(op.GetName().c_str(), "The dims_in size should more than 0!");
@@ -2323,7 +2317,7 @@ IMPLEMT_COMMON_INFERFUNC(TopKInferShape) {
     }
   }
   std::vector<std::pair<int64_t, int64_t>> shape_range;
-  input_tensor_desc.GetShapeRange(shape_range);
+  input_desc->GetShapeRange(shape_range);
   if (shape_range.size() > 0) {
     if (k > 0) {
       shape_range[sorted_axis].first = k;
@@ -2341,24 +2335,14 @@ IMPLEMT_COMMON_INFERFUNC(TopKInferShape) {
   }
   dims_in[sorted_axis] = k;
 
-  value_tensor_desc.SetShape(Shape(dims_in));
-  value_tensor_desc.SetShapeRange(shape_range);
-  value_tensor_desc.SetDataType(input_tensor_desc.GetDataType());
-  if (op.UpdateOutputDesc("values", value_tensor_desc) != GRAPH_SUCCESS) {
-    OpsOPUpdateErrReport(op.GetName(), "values");
-    OP_LOGE(op.GetName().c_str(), "Update values failed!");
-    return GRAPH_FAILED;
-  }
+  output_v_desc->SetShape(GeShape(dims_in));
+  output_v_desc->SetShapeRange(shape_range);
+  output_v_desc->SetDataType(input_desc->GetDataType());
 
-  indice_tensor_desc.SetShape(Shape(dims_in));
-  indice_tensor_desc.SetShapeRange(shape_range);
-  indice_tensor_desc.SetDataType(DT_INT32);
+  output_i_desc->SetShape(GeShape(dims_in));
+  output_i_desc->SetShapeRange(shape_range);
+  output_i_desc->SetDataType(DT_INT32);
 
-  if (op.UpdateOutputDesc("indices", indice_tensor_desc) != GRAPH_SUCCESS) {
-    OpsOPUpdateErrReport(op.GetName(), "indices");
-    OP_LOGE(op.GetName().c_str(), "Update indices failed!");
-    return GRAPH_FAILED;
-  }
   return GRAPH_SUCCESS;
 }
 
