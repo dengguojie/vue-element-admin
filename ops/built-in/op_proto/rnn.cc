@@ -590,7 +590,7 @@ IMPLEMT_INFERFUNC(DynamicGRUV2, DynamicGRUV2InferShape) {
   Shape shape_x = x_tensor_desc.GetShape();
   Shape shape_w_hidden = w_hidden_tensor_desc.GetShape();
 
-  DataType bias_dtype = DT_FLOAT;
+  DataType bias_dtype = x_tensor_desc.GetDataType();
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   if (op_desc->MutableInputDesc("bias_input") != nullptr) {
     bias_dtype = op.GetInputDesc("bias_input").GetDataType();

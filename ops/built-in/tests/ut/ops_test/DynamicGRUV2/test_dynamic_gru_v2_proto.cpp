@@ -100,7 +100,7 @@ TEST_F(DynamicGruV2Test, dynamic_gru_v2_test_case_3) {
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
     auto output_desc = op.GetOutputDesc("y");
-    EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
+    EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
     std::vector<int64_t> expected_output_shape = {t, batch, hidden_size};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
     EXPECT_EQ(op.GetInputDesc("weight_input").GetFormat(), ge::FORMAT_HWCN);
