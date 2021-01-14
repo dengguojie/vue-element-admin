@@ -229,7 +229,7 @@ Status AvgPool1DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
     auto dim = avgpool1d_dim_info[i];
     if (PatternFusionUtil::IsUnknownShape(dim)) {
       OP_LOGE(kFusedOpType.c_str(), "AvgPool1DFusionPass cannot be applied for unknown shape.");
-      return NOT_CHANGED;
+      return GRAPH_FAILED;
     }
   }
   int64_t w_output = CalWoutput(avgpool1d_dim_info[3], pads[0], pads[1], k_size, strides, ceil_mode);

@@ -276,7 +276,7 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
   int32_t* orig_input_shape_const_tensor_ptr = (int32_t*)orig_input_shape_const_tensor.GetData();
   if (PatternFusionUtil::IsUnknownShape(dim_info[0])) {
     OP_LOGE(kFusedOpType.c_str(), "AvgPoolGradFusionPass cannot be applied for unknown shape.");
-    return NOT_CHANGED;
+    return GRAPH_FAILED;
   }
   if (dim_info[0] != 4) {
     OP_LOGW(kFusedOpType.c_str(), "The orig_input_shape must be list of 4.");
@@ -291,7 +291,7 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
     auto dim = avg_pool_dim_info[i];
     if (PatternFusionUtil::IsUnknownShape(dim)) {
       OP_LOGE(kFusedOpType.c_str(), "AvgPoolGradFusionPass cannot be applied for unknown shape.");
-      return NOT_CHANGED;
+      return GRAPH_FAILED;
     }
   }
   if (k_size.size() != 4) {

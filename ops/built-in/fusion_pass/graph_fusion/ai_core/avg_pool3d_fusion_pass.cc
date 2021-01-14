@@ -264,7 +264,7 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
       PatternFusionUtil::IsUnknownShape(fmap_n) ||
       PatternFusionUtil::IsUnknownShape(fmap_c)) {
     OP_LOGE(kFusedOpType.c_str(), "AvgPool3DFusionPass cannot be applied for unknown shape.");
-    return NOT_CHANGED;
+    return GRAPH_FAILED;
   }
 
   int64_t fmap_c1 = (fmap_c + kC0 - 1) / kC0;
