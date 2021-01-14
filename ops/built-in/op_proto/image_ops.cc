@@ -499,8 +499,8 @@ IMPLEMT_INFERFUNC(ResizeNearestNeighborV2Grad, ResizeNearestNeighborV2GradInfer)
   auto y_desc = op_desc->MutableOutputDesc(0);
   auto size_desc = op_desc->MutableInputDesc(1);
   auto grads_desc = op_desc->MutableInputDesc(0);
-  if (op.GetInputDesc("grads").GetShape().GetShapeSize() == UNKNOWN_DIM || 
-      op.GetInputDesc("size").GetShape().GetShapeSize() == UNKNOWN_DIM) {
+  if (op.GetInputDesc(0).GetShape().GetShapeSize() == UNKNOWN_DIM || 
+      op.GetInputDesc(1).GetShape().GetShapeSize() == UNKNOWN_DIM) {
     y_desc->SetShape(GeShape({UNKNOWN_DIM}));
     y_desc->SetDataType(grads_desc->GetDataType());
     return GRAPH_SUCCESS;
@@ -511,19 +511,19 @@ IMPLEMT_INFERFUNC(ResizeNearestNeighborV2Grad, ResizeNearestNeighborV2GradInfer)
 
   GeShape grads_shape;
   if (WithRank(grads_desc, 4, grads_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input grads must be 4-D, real rank is %lld", grads_desc->GetShape().GetDimNum());
+    OP_LOGE(op_desc->GetName().c_str(), "Input grads must be 4-D, real rank is [%lld]", grads_desc->GetShape().GetDimNum());
     return GRAPH_PARAM_INVALID;
   }
 
   GeShape size_shape;
   if (WithRank(size_desc, 1, size_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input size must be 1-D, real rank is %lld", size_desc->GetShape().GetDimNum());
+    OP_LOGE(op_desc->GetName().c_str(), "Input size must be 1-D, real rank is [%lld]", size_desc->GetShape().GetDimNum());
     return GRAPH_PARAM_INVALID;
   }
 
   auto size_dims = size_shape.GetDims();
   if (size_dims[0] != 2 && size_dims[0] != UNKNOWN_DIM) {
-    OP_LOGE(op.GetName().c_str(), "input size must be 1-D of 2 elements, real dim size is %lld", size_dims[0]);
+    OP_LOGE(op_desc->GetName().c_str(), "Input size must be 1-D of 2 elements, real dim size is [%lld]", size_dims[0]);
     return GRAPH_PARAM_INVALID;
   }
 
@@ -531,7 +531,11 @@ IMPLEMT_INFERFUNC(ResizeNearestNeighborV2Grad, ResizeNearestNeighborV2GradInfer)
   auto size_width = UNKNOWN_DIM;
   Tensor size_tensor;
   if (op.GetInputConstData("size", size_tensor) == GRAPH_SUCCESS) {
-    auto size_data = reinterpret_cast<const int32_t*>(size_tensor.GetData());
+    auto size_data = size_tensor.GetData();
+    if (size_data == nullptr) {
+      OP_LOGE(op_desc->GetName().c_str(), "Get size data failed");
+      return GRAPH_PARAM_INVALID;
+    }
     size_height = static_cast<int64_t>(size_data[0]);
     size_width = static_cast<int64_t>(size_data[1]);
   }
@@ -550,7 +554,8 @@ IMPLEMT_INFERFUNC(ResizeNearestNeighborV2Grad, ResizeNearestNeighborV2GradInfer)
     output_dims.push_back(size_width);
     output_dims.push_back(grads_dims[3]);
   } else {
-    OP_LOGE(op.GetName().c_str(), "Not supported this format: %d", input_format);
+    OP_LOGE(op_desc->GetName().c_str(), "Not supported this format: [%d]", input_format);
+    return GRAPH_PARAM_INVALID;
   }
   GeShape output_shape(output_dims);
   if (ShapeFullyDefined(output_shape) == false) {
