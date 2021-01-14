@@ -68,6 +68,7 @@ elseif(OPS_UT_YELLOW)
     ${TOP_DIR}/lib_sec/include
     ${TOP_DIR}/cann/ops/common/inc
     ${TOP_DIR}/third_party/json/include
+    ${TOP_DIR}/cann/ops/built-in
   )
   target_compile_options(ut_ops_cpp_op_tiling PRIVATE
     -g3
