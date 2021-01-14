@@ -38,8 +38,10 @@ def op_select_format(x, y, kernel_name="l2_loss"):
     hd_support_format = \
         util_common.get_fused_format_str(["N", "C", "H", "W"]) + \
         util_common.get_fused_format_str(["N", "D", "C", "H", "W"])
-    is_support_hd = False
-    is_support_fz = False
+    # current support all foramt
+    is_support_hd = True
+    # current support all foramt
+    is_support_fz = True
     if len(input_ori_format) == len(input_ori_shape) and input_ori_format in hd_support_format:
         is_shape_c_align = input_ori_shape[input_ori_format.index("C")] % align_len == 0
         is_shape_n_align = input_ori_shape[input_ori_format.index("N")] % align_len == 0
@@ -48,7 +50,8 @@ def op_select_format(x, y, kernel_name="l2_loss"):
         if is_shape_n_align and is_shape_c_align:
             is_support_fz = True
     # charge whether support FRACTAL_NZ
-    is_support_nz = False
+    # current support all foramt
+    is_support_nz = True
     if len(input_ori_shape) >= 2:
         is_neg_one_dim_align = input_ori_shape[-1] % align_len == 0
         is_neg_two_dim_align = input_ori_shape[-2] % align_len == 0
@@ -64,7 +67,7 @@ def op_select_format(x, y, kernel_name="l2_loss"):
     format_base_out = ["ND"] * len(base_data_type) + ["C1HWNCoC0"] * len(base_data_type)
     dtype_base_out = dtype_base_out + base_data_type
     if is_support_hd:
-        other_format = "NC1HWC0" if len(input_ori_shape) == 4 else "NDC1HWC0"
+        other_format = "NC1HWC0" if len(input_ori_shape) != 5 else "NDC1HWC0"
         dtype_base_out = dtype_base_out + base_data_type
         format_base_out = format_base_out + [other_format] * len(base_data_type)
     if is_support_nz:
@@ -72,12 +75,13 @@ def op_select_format(x, y, kernel_name="l2_loss"):
         dtype_base_out = dtype_base_out + base_data_type
         format_base_out = format_base_out + [other_format] * len(base_data_type)
     if is_support_fz:
-        other_format = "FRACTAL_Z" if len(input_ori_shape) == 4 else "FRACTAL_Z_3D"
+        other_format = "FRACTAL_Z" if len(input_ori_shape) != 5 else "FRACTAL_Z_3D"
         dtype_base_out = dtype_base_out + base_data_type
         format_base_out = format_base_out + [other_format] * len(base_data_type)
 
     dtype_base_in = dtype_base_out.copy()
-    if tbe_platform.api_check_support("tik.set_atomic_add"):
+    if tbe_platform.api_check_support("tik.set_atomic_add") \
+        and tbe_platform.api_check_support("te.lang.cce.vmul", "float32"):
         dtype_base_out = ["float" for _ in dtype_base_out]
     if util_common.is_dynamic_input(x):
         dtype_base_out = dtype_base_in
