@@ -14,7 +14,7 @@
 # ============================================================================
 
 set(_proto_srcs
-  "${METADEF_INCLUDE}/register/proto/onnx/ge_onnx.proto"
+  "${METADEF_DIR}/proto/onnx/ge_onnx.proto"
 )
 
 protobuf_generate(opp _proto_cc _proto_h ${_proto_srcs})

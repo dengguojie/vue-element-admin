@@ -14,17 +14,17 @@
 # ============================================================================
 
 set(_proto_srcs
-  "${METADEF_INCLUDE}/register/proto/tensorflow/versions.proto"
-  "${METADEF_INCLUDE}/register/proto/tensorflow/resource_handle.proto"
-  "${METADEF_INCLUDE}/register/proto/tensorflow/tensor_shape.proto"
-  "${METADEF_INCLUDE}/register/proto/tensorflow/function.proto"
-  "${METADEF_INCLUDE}/register/proto/tensorflow/node_def.proto"
-  "${METADEF_INCLUDE}/register/proto/tensorflow/graph.proto"
-  "${METADEF_INCLUDE}/register/proto/tensorflow/tensor.proto"
-  "${METADEF_INCLUDE}/register/proto/tensorflow/attr_value.proto"
-  "${METADEF_INCLUDE}/register/proto/tensorflow/graph_library.proto"
-  "${METADEF_INCLUDE}/register/proto/tensorflow/types.proto"
-  "${METADEF_INCLUDE}/register/proto/tensorflow/op_def.proto"
+  "${METADEF_DIR}/proto/tensorflow/versions.proto"
+  "${METADEF_DIR}/proto/tensorflow/resource_handle.proto"
+  "${METADEF_DIR}/proto/tensorflow/tensor_shape.proto"
+  "${METADEF_DIR}/proto/tensorflow/function.proto"
+  "${METADEF_DIR}/proto/tensorflow/node_def.proto"
+  "${METADEF_DIR}/proto/tensorflow/graph.proto"
+  "${METADEF_DIR}/proto/tensorflow/tensor.proto"
+  "${METADEF_DIR}/proto/tensorflow/attr_value.proto"
+  "${METADEF_DIR}/proto/tensorflow/graph_library.proto"
+  "${METADEF_DIR}/proto/tensorflow/types.proto"
+  "${METADEF_DIR}/proto/tensorflow/op_def.proto"
 )
 
 protobuf_generate(opp _proto_cc _proto_h ${_proto_srcs})

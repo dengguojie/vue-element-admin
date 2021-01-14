@@ -14,7 +14,7 @@
 # ============================================================================
 
 set(_proto_srcs
-  "${METADEF_INCLUDE}/common/proto/insert_op.proto"
+  "${METADEF_DIR}/proto/insert_op.proto"
 )
 
 # the output path of generated files

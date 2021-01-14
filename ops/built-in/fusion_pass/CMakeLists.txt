@@ -14,7 +14,7 @@
 # ============================================================================
 
 set(_proto_srcs
-  "${METADEF_INCLUDE}/common/proto/task.proto"
+  "${METADEF_DIR}/proto/task.proto"
 )
 
 protobuf_generate(opp _proto_cc _proto_h ${_proto_srcs})
