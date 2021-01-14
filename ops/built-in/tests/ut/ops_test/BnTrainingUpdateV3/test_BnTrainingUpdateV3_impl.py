@@ -63,13 +63,29 @@ case3 = {"params": [{"shape": (1,4,4,16,16), "dtype": "float16", "format": "NC1H
          "case_name": "BnTrainingUpdateV3_3",
          "expect": RuntimeError,
          "support_expect": True}
+case4 = {"params": [{"shape": (1,1,4,4,16,16), "dtype": "float32", "format": "NDC1HWC0", "ori_shape": (1,1,4,4,16,16),"ori_format": "NDC1HWC0"},
+                    {"shape": (1,1,4,4,16,16), "dtype": "float32", "format": "NDC1HWC0", "ori_shape": (1,1,4,4,16,16),"ori_format": "NDC1HWC0"},
+                    {"shape": (1,1,4,4,16,16), "dtype": "float32", "format": "NDC1HWC0", "ori_shape": (1,1,4,4,16,16),"ori_format": "NDC1HWC0"},
+                    {"shape": (1,1,4,4,16,16), "dtype": "float32", "format": "NDC1HWC0", "ori_shape": (1,1,4,4,16,16),"ori_format": "NDC1HWC0"},
+                    {"shape": (1,1,4,4,16,16), "dtype": "float32", "format": "NDC1HWC0", "ori_shape": (1,1,4,4,16,16),"ori_format": "NDC1HWC0"},
+                    {"shape": (1,1,4,4,16,16), "dtype": "float32", "format": "NDC1HWC0", "ori_shape": (1,1,4,4,16,16),"ori_format": "NDC1HWC0"},
+                    {"shape": (1,1,4,4,16,16), "dtype": "float32", "format": "NDC1HWC0", "ori_shape": (1,1,4,4,16,16),"ori_format": "NDC1HWC0"},
+                    {"shape": (1,1,4,4,16,16), "dtype": "float32", "format": "NDC1HWC0", "ori_shape": (1,1,4,4,16,16),"ori_format": "NDC1HWC0"},
+                    {"shape": (1,1,4,4,16,16), "dtype": "float32", "format": "NDC1HWC0", "ori_shape": (1,1,4,4,16,16),"ori_format": "NDC1HWC0"},
+                    {"shape": (1,1,4,4,16,16), "dtype": "float32", "format": "NDC1HWC0", "ori_shape": (1,1,4,4,16,16),"ori_format": "NDC1HWC0"},
+                    0.00001,
+                    ],
+         "case_name": "BnTrainingUpdateV3_14",
+         "expect": "success",
+         "support_expect": True}
 
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
+ut_case.add_case(["Ascend910A"], case1)
+ut_case.add_case(["Ascend910A"], case2)
+ut_case.add_case(["Ascend910A"], case3)
+ut_case.add_case(["Ascend910A"], case4)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910","Ascend310","Ascend710"])
+    ut_case.run(["Ascend910A","Ascend310","Ascend710"])
     exit(0)
 

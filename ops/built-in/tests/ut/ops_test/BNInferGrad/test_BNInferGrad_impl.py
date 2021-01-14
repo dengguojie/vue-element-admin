@@ -19,8 +19,17 @@ case2 = {"params": [{"shape": (1, 1, 1, 1, 16), "dtype": "float32", "format": "N
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
+case3 = {"params": [{"shape": (1,1, 1, 1, 1, 16), "dtype": "float32", "format": "NDC1HWC0", "ori_shape": (1, 1,1, 1, 1, 16),"ori_format": "NDC1HWC0"},
+                    {"shape": (1,1, 1, 1, 1, 16), "dtype": "float32", "format": "NDC1HWC0", "ori_shape": (1,1, 1, 1, 1, 16),"ori_format": "NDC1HWC0"},
+                    {"shape": (1,1, 1, 1, 1, 16), "dtype": "float32", "format": "NDC1HWC0", "ori_shape": (1,1, 1, 1, 1, 16),"ori_format": "NDC1HWC0"},
+                    {"shape": (1,1, 1, 1, 1, 16), "dtype": "float32", "format": "NDC1HWC0", "ori_shape": (1,1, 1, 1, 1, 16),"ori_format": "NDC1HWC0"}],
+         "case_name": "BnInferGrad_2",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}         
+ut_case.add_case(["Ascend910A"], case1)
+ut_case.add_case(["Ascend910A"], case2)
+ut_case.add_case(["Ascend910A"], case3)
 
 if __name__ == "__main__":
     # ut_case.run()

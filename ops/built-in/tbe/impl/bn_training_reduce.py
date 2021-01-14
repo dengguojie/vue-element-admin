@@ -72,14 +72,14 @@ def op_select_format(x, sum, square_sum,
     # support 5HD + 5HD
     else:
         input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                               datatype="float16, float",
-                                               format="NC1HWC0, NC1HWC0")
+                                               datatype="float16, float, float16, float",
+                                               format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0")
         output0 = util_select_op_base.gen_param(classify="output0", name="sum",
-                                                datatype="float, float",
-                                                format="NC1HWC0, NC1HWC0")
+                                                datatype="float, float, float, float",
+                                                format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0")
         output1 = util_select_op_base.gen_param(classify="output1", name="square_sum",
-                                                datatype="float, float",
-                                                format="NC1HWC0, NC1HWC0")
+                                                datatype="float, float, float, float",
+                                                format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0")
 
     param_list = [input0, output0, output1]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
@@ -102,9 +102,9 @@ def _check_format(data_format, origin_foramt):
     -------
     None
     """
-    if data_format.upper() not in ("NC1HWC0", "NCHW"):
+    if data_format.upper() not in ("NC1HWC0", "NCHW", "NDC1HWC0"):
         error_manager_vector.raise_err_specific_reson("bn_training_reduce",
-                                                      "The data format only supports NC1HWC0 and NCHW.")
+                                                      "The data format only supports NC1HWC0, NDC1HWC0 and NCHW.")
     if data_format.upper() == "NCHW":
         if origin_foramt not in ("NCHW",):
             error_manager_vector.raise_err_specific_reson("bn_training_reduce",
@@ -567,7 +567,7 @@ def bn_training_reduce_compute(x, sum, square_sum,
     if x.dtype == "float16":
         x = tbe.cast_to(x, "float32")
     data_format = sum.get("format")
-    if data_format == "NC1HWC0":
+    if data_format in ("NC1HWC0", "NDC1HWC0"):
         res = _reduce_compute_5hd(x)
     else:
         res = _reduce_compute_nd(x, sum)
@@ -609,12 +609,16 @@ def bn_training_reduce(x, sum, square_sum,
     data_format = x.get("format")
     origin_format = x.get("ori_format")
     _check_format(data_format, origin_format)
-
-    x_input = tvm.placeholder(shape_x, name="x_input", dtype=dtype_x.lower())
+    if data_format == "NDC1HWC0":
+        shape_x = [shape_x[0] * shape_x[1], shape_x[2], shape_x[3], shape_x[4], shape_x[5]]
+        x_input = tvm.placeholder(shape_x, name="x_input", dtype=dtype_x.lower())
+        sum["format"] = "NDC1HWC0"
+    else:
+        x_input = tvm.placeholder(shape_x, name="x_input", dtype=dtype_x.lower())
 
     res = bn_training_reduce_compute(x_input, sum, square_sum,
                                      kernel_name=kernel_name)
-    if data_format == "NC1HWC0":
+    if data_format in ("NC1HWC0", "NDC1HWC0"):
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)
     else:
@@ -632,3 +636,4 @@ def bn_training_reduce(x, sum, square_sum,
     config = {"name": kernel_name,
               "tensor_list": tensor_list}
     tbe.cce_build_code(sch, config)
+
