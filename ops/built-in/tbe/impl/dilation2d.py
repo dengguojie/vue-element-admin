@@ -927,13 +927,13 @@ class Dilation2D(Dilation2DBase):
         """
         maximize data by col, MAX(col1,col2)
         """
-        reduce_index = 0
+        start = ((self.filter_h - 1) % 2) * fh_size
+        reduce_index = start
         if self.filter_w > 1:
             num = min(8, 255 // self.filter_w)
             rep_stride_list = [num, num * self.filter_w, num * self.filter_w]
             blk_stride_list = [1, self.filter_w, self.filter_w]
             ub_list = [expand_ub, expand_ub, expand_ub]
-            start = ((self.filter_h - 1) % 2) * fh_size
             max_start = (self.filter_h % 2) * fh_size
             index_list = [max_start, max_start + fw_size, start]
             self.vector_max(fw_size, num, ub_list,
