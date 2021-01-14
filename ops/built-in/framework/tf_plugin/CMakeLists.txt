@@ -205,6 +205,7 @@ set(_tf_plugins
   hvd_all_reduce_plugin.cc
   hvd_broadcast_plugin.cc
   if_plugin.cc
+  ifmr_plugin.cc
   inplace_add_plugin.cc
   inplace_sub_plugin.cc
   inplace_update_plugin.cc
