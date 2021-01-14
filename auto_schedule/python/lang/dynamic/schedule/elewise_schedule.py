@@ -16,6 +16,7 @@
 elewise schedule
 """
 from typing import Optional
+from copy import deepcopy
 
 from te import tvm
 from te.lang.base import op_tiling
@@ -303,19 +304,33 @@ class ElewiseSchedule:
 
     def _calc_tiling_const(self):
         res = self._out
-        shape = util.shape_to_list(res.shape)
+        output_shape = util.shape_to_list(res.shape)
+        inputs = []
+        input_shapes = []
+        max_dim_length = len(output_shape)
+        for _input in self._input_tensors:
+            input_shape = util.shape_to_list(_input.shape)
+            inputs.append({"shape": input_shape, "dtype": _input.dtype})
+            input_shapes.append([1] * (max_dim_length - len(input_shape)) + input_shape)
+        outputs = [{"shape": output_shape, "dtype": res.dtype}]
+        if len(inputs) == 0:
+            inputs = deepcopy(outputs)
+            max_dim_length = 0
+
+        input_shapes = list(map(list, zip(*input_shapes)))
+        broadcast_axis = [False] * max_dim_length
+        for i in range(max_dim_length - 1, -1, -1):
+            if any([input_shapes[i][0] != s for s in input_shapes[i]]):
+                broadcast_axis[i] = True
+
         base_info = {"000": [self._ub_size, self._max_dtype_bytes, self._coexisting_quantity, util.get_core_num()]}
         const_compile_info = {
             CompileInfo.ONLY_CONST_TILING: True,
             CompileInfo.BASE_INFO: base_info,
+            CompileInfo.BROADCAST_AXIS: broadcast_axis,
         }
-        const_compile_info = {**const_compile_info, **get_compile_info()}
-        inputs = []
-        for _input in self._input_tensors:
-            inputs.append({"shape": util.shape_to_list(_input.shape), "dtype": _input.dtype})
-        outputs = [{"shape": shape, "dtype": res.dtype}]
-        if len(inputs) == 0:
-            inputs = outputs.copy
+        const_compile_info.update(get_compile_info())
+
         op_type = operation.get_context().get_op_type()
         run_info = op_tiling.do_op_tiling(op_type, const_compile_info, inputs, outputs)
         tiling_format = {

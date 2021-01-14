@@ -134,12 +134,13 @@ bool Eletwise::TrySwitchToPerfPattern() {
   }
   int32_t pattern_key = 0;
   int32_t base = 100;
+  size_t b_axis = 0;
   for (size_t i = 0; i < fused_shape_x.size(); i++) {
     if (fused_shape_x[i] == fused_shape_y[i]) {
       pattern_key += base;
     } else {
       pattern_key += (base * BROADCAST_BASE_KEY);
-      broadcast_aixs = i;
+      b_axis = i;
     }
     base /= 10;
   }
@@ -154,6 +155,7 @@ bool Eletwise::TrySwitchToPerfPattern() {
       input_shapes[1][i] = fused_shape_y[i];
       output_shape.push_back(std::max(input_shapes[0][i], input_shapes[1][i]));
     }
+    broadcast_axis[b_axis] = true;
   }
   return true;
 }
@@ -204,6 +206,7 @@ bool Eletwise::MulTrySwitchToPerfPattern() {
   if (fusion_length <= (MAX_PATTERN_DIM - 1)) {
     int32_t pattern_key = 0;
     int32_t base = 100;
+    size_t b_axis = 0;
     for (size_t i = 0; i <= fusion_length; i++) {
       bool is_broadcast = false;
       int64_t shape = fusion_shapes[0][i];
@@ -215,7 +218,7 @@ bool Eletwise::MulTrySwitchToPerfPattern() {
       }
       if (is_broadcast) {
         pattern_key += (base * BROADCAST_BASE_KEY);
-        broadcast_aixs = i;
+        b_axis = i;
       } else {
         pattern_key += base;
       }
@@ -234,6 +237,7 @@ bool Eletwise::MulTrySwitchToPerfPattern() {
         }
         output_shape.push_back(max_output);
       }
+      broadcast_axis[b_axis] = true;
     }
   }
   return true;
@@ -273,8 +277,15 @@ bool Eletwise::GetCompletedShapes() {
 
 bool Eletwise::GenerateOutputShape() {
   bool ret = true;
+  broadcast_axis.fill(false);
   if (only_const_tiling) {
     output_shape = op_paras.outputs[0].tensor[0].shape;
+    CHECK((op_info.find("_broadcast_axis") != op_info.end()), "op [%s] : compile info not contain [_broadcast_axis]",
+        op_type.c_str());
+    const std::vector<bool>& b_axis = op_info["_broadcast_axis"];
+    for (size_t i = 0; i < b_axis.size(); i++) {
+      broadcast_axis[i] = b_axis[i];
+    }
   } else if (compileInfo.is_support_broadcast) {
     ret = GetCompletedShapes();
     if (input_num == SPECIAL_BROADCAST_INPUT_NUMS) {
@@ -321,7 +332,7 @@ bool Eletwise::BroadcastShapes() {
     }
     output_shape.push_back(max_output);
     if (min_output == 1 && max_output != 1) {
-      broadcast_aixs = i;
+      broadcast_axis[i] = true;
     }
   }
   return true;
@@ -350,7 +361,7 @@ bool Eletwise::RefineShapesForBroadcast() {
     }
     output_shape.push_back(max_output);
     if (min_output == 1 && max_output != 1) {
-      broadcast_aixs = i;
+      broadcast_axis[i] = true;
     }
   }
   return true;
@@ -454,11 +465,12 @@ bool Eletwise::DoUbTiling() {
     int32_t ele_in_block = BLOCK_SIZE / GetTypeSize(in_type);
     ele_in_block = (in_type == "uint1") ? ele_in_block * UINT1_FACTOR : ele_in_block;
     for (int32_t i = shape_len; i >= block_axis; i--) {
-      if (broadcast_aixs == i && broadcast_aixs != shape_len) {
+      if (broadcast_axis[i] && i != shape_len) {
         bool is_cut_under_b = (under_ub_shape > N_LAST_BROADCAST_THRESHOLD ||
-                               (under_ub_shape > (ele_in_block * 2) && output_shape[i] < ele_in_block)) &&
+                               (under_ub_shape > (ele_in_block * LAST_AND_N_LAST_FACTOR) &&
+                                output_shape[i] < (ele_in_block * LAST_AND_N_LAST_BASE))) &&
                               under_ub_shape % ele_in_block != 0 &&
-			      under_ub_shape >= BLOCK_SIZE / GetTypeSize(out_type);
+                              under_ub_shape >= BLOCK_SIZE / GetTypeSize(out_type);
         if (is_cut_under_b) {
           ub_axis = i + 1;
           ub_factor = output_shape[i + 1];

@@ -33,6 +33,7 @@ REDUCE = "reduce"
 SPECIAL = "special"
 SPECIAL_SCALAR = "special_scalar"
 CONST = "const"
+STATIC = "static"
 ORIGINAL = "original"
 DB_KEY = 10000
 
@@ -97,7 +98,7 @@ def calc(outs, option=None):
         return _base_key
 
     base_key = calc_base_key()
-    if mode == CONST:
+    if mode == CONST or operation.get_context().get_mode() == STATIC:
         return _const_tiling(base_key)
 
     # db handle

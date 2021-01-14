@@ -34,6 +34,8 @@ namespace optiling {
 const int32_t BLOCK_SIZE = 32;
 const int32_t DOUBLE_BUFFER_SIZE = 2;
 const int32_t N_LAST_BROADCAST_THRESHOLD = 512;
+const int32_t LAST_AND_N_LAST_FACTOR = 7;
+const float LAST_AND_N_LAST_BASE = 1.5;
 const int32_t MAX_PATTERN_DIM = 3;
 const int32_t SPECIAL_BROADCAST_INPUT_NUMS = 2;
 const int32_t BROADCAST_BASE_KEY = 2;
@@ -108,7 +110,7 @@ private:
   int32_t block_dims{1};
   int32_t ub_factor{1};
   int32_t block_factor{1};
-  int32_t broadcast_aixs{-1};
+  std::array<bool, MAX_DIM_LEN> broadcast_axis{};
   int32_t block_axis_output{-1};
   Pattern s_pattern{Pattern::ORIGINAL};
   std::array<std::array<int64_t, MAX_DIM_LEN>, MAX_INPUT_NUMS> input_shapes{};

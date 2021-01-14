@@ -52,6 +52,7 @@ class CompileInfo:
     BLOCK_DIMS = "_block_dims"
     ATOMIC_FLAGS = "_atomic_flags"
     ONLY_CONST_TILING = "_only_const_tiling"
+    BROADCAST_AXIS = "_broadcast_axis"
 
 
 FAKE_NODE_TAG = "elewise_empty_intrin"
