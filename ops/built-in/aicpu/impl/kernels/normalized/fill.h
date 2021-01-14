@@ -35,16 +35,6 @@ class FillCpuKernel : public CpuKernel {
    */
   template <typename T>
   uint32_t CalcDims(const Tensor *dims_tensor, std::vector<int64_t> &dims);
-
-  /**
-   * @brief fill output from input value
-   * @param ctx cpu kernel context
-   * @param output output Tensor
-   * @param value input value
-   * @return status if success
-   */
-  template <typename T, int32_t OPTION>
-  uint32_t Assign(CpuKernelContext &ctx, const Tensor *output, const T &value);
 };
 }  // namespace aicpu
 #endif  // AICPU_KERNELS_NORMALIZED_FILL_H_

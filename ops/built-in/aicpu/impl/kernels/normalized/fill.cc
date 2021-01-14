@@ -35,18 +35,19 @@ constexpr char *kFill = "Fill";
 #define FILL_GENERATE_CASE(DTYPE, TYPE)                                       \
   case (DTYPE): {                                                             \
     auto value = *(reinterpret_cast<const TYPE *>(value_tensor->GetData()));  \
-    uint32_t ret = 0;                                                         \
     if (AddrAlignedCheck(output->GetData())) {                                \
-      ret = Assign<TYPE, Eigen::Aligned>(ctx, output, value);                 \
+      FILL_EIGEN_TENSOR_ASSIGN_CASE(TYPE, Eigen::Aligned)                     \
     } else {                                                                  \
-      ret = Assign<TYPE, Eigen::Unaligned>(ctx, output, value);               \
-    }                                                                         \
-    if (ret != KERNEL_STATUS_OK) {                                            \
-      KERNEL_LOG_ERROR("Fill kernel calculate failed");                       \
-      return KERNEL_STATUS_PARAM_INVALID;                                     \
+      FILL_EIGEN_TENSOR_ASSIGN_CASE(TYPE, Eigen::Unaligned)                   \
     }                                                                         \
     break;                                                                    \
   }
+
+#define FILL_EIGEN_TENSOR_ASSIGN_CASE(TYPE, ALIGNMENT_TYPE)                   \
+  Eigen::TensorMap<Eigen::Tensor<TYPE, 1>, ALIGNMENT_TYPE> eigen_output(      \
+      static_cast<TYPE *>(output->GetData()),                                 \
+      output->GetTensorShape()->NumElements());                               \
+  eigen_output.setConstant(value);
 }
 
 namespace aicpu {
@@ -133,19 +134,6 @@ uint32_t FillCpuKernel::CalcDims(const Tensor *dims_tensor, std::vector<int64_t>
   }
 
   return KERNEL_STATUS_OK;
-}
-
-template <typename T, int32_t OPTION>
-uint32_t FillCpuKernel::Assign(CpuKernelContext &ctx, const Tensor *output, const T &value) {
-  Eigen::TensorMap<Eigen::Tensor<T, 1>, OPTION> eigen_output(static_cast<T *>(output->GetData()),
-                                                             output->GetTensorShape()->NumElements());
-  auto shard_fill = [&](size_t start, size_t end) {
-    Eigen::TensorMap<Eigen::Tensor<T, 1>, OPTION> output_shard(eigen_output.data() + start,
-                                                               end - start);
-    output_shard.setConstant(value);
-  };
-
-  return CpuKernelUtils::ParallelFor(ctx, output->GetTensorShape()->NumElements(), 1, shard_fill);
 }
 
 REGISTER_CPU_KERNEL(kFill, FillCpuKernel);
