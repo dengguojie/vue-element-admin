@@ -584,6 +584,15 @@ UNIFY_DSL_CHECK_SUPPORT_MAP = {
         VERSION_MINI_NG1PG2: ("float16", "float32"),
         VERSION_SHISI: ("float16",),
     },
+    "vsel": {
+        "AllSoc": ("float16",),
+        VERSION_MINI: ("float16",),
+        VERSION_CLOUD: ("float16",),
+        VERSION_MINI_NG1: ("float16", "float32"),
+        VERSION_MINI_NG1M: ("float16", "float32"),
+        VERSION_MINI_NG1PG2: ("float16", "float32"),
+        VERSION_SHISI: ("float16",),
+    },
 }
 
 
@@ -685,6 +694,33 @@ def dtype_check_decorator(func, *args, **kwargs):
                                           "tvm.tensor, while type is [%s]" % type(args[0])
             raise RuntimeError(dict_args, get_error_message(dict_args))
         judge_dtype = args[0].dtype
+
+    # skip dtype check condition
+    def _is_skip_dtype_check(func_name, args):
+        if in_dynamic_and_static_unify():
+            # dynamic vsel skip two scalar inputs
+            return func_name == "vsel" and \
+                   not isinstance(args[1], tvm.tensor.Tensor) and \
+                   not isinstance(args[2], tvm.tensor.Tensor)
+
+        # not dynamic skip vcmp vsel vcmpsel
+        return func_name in ("vcmp", "vsel", "vcmpsel")
+
+    if _is_skip_dtype_check(func_name, args):
+        return func(*args, **kwargs)
+
+    # get vsel lhs or rhs dtype if tensor
+    def _get_vsel_dtype(lhs, rhs):
+        tmp_type = None
+        if isinstance(lhs, tvm.tensor.Tensor):
+            tmp_type = lhs.dtype
+        elif isinstance(rhs, tvm.tensor.Tensor):
+            tmp_type = rhs.dtype
+        return tmp_type
+
+    # handle vsel
+    if func_name == "vsel":
+        judge_dtype = _get_vsel_dtype(args[1], args[2])
 
     if not dsl_check_support("te.lang.cce."+func_name, judge_dtype):
         dict_args = dict()
