@@ -68,6 +68,25 @@ ut_case.add_case("all",
                       "format": "ND", "ori_format": "ND"},
                      "gather_nd_04", RuntimeError))
 
+ut_case.add_case("all",
+                 gen_gather_nd_case(
+                     {"shape": (16, 3, 3), "dtype": "int32", "ori_shape": (16, 3, 3),
+                      "format": "ND", "ori_format": "ND"},
+                     {"shape": (33, 3), "dtype": "int32", "ori_shape": (33, 3),
+                      "format": "ND", "ori_format": "ND"},
+                     {"shape": (33, 3), "dtype": "int32", "ori_shape": (33, 3),
+                      "format": "ND", "ori_format": "ND"},
+                     "gather_nd_05", "success"))
+
+ut_case.add_case("all",
+                 gen_gather_nd_case(
+                     {"shape": (127, 4, 2, 2, 2, 2), "dtype": "int32", "ori_shape": (127, 4, 2, 2, 2, 2),
+                      "format": "ND", "ori_format": "ND"},
+                     {"shape": (190000, 6), "dtype": "int32", "ori_shape": (190000, 6),
+                      "format": "ND", "ori_format": "ND"},
+                     {"shape": (190000, 1), "dtype": "int32", "ori_shape": (190000, 1),
+                      "format": "ND", "ori_format": "ND"},
+                     "gather_nd_06", "success"))
 def calc_expect_func(dict_data, dict_indices, dict_out):
     shape_indices = dict_indices["value"].shape
     shape_indices_ele = list(shape_indices[:-1]) + list(dict_data["value"].shape[shape_indices[-1]:])
