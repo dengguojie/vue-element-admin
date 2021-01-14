@@ -274,6 +274,20 @@ bool Conv2DGroupFusionPass::Relink(ge::NodePtr &convNode, ge::NodePtr &splitNode
   return true;
 }
 
+bool Conv2DGroupFusionPass::IsVariableOrDataNode(const ge::NodePtr &convInputNode) {
+  if (convInputNode->GetType() == "Variable") {
+    return true;
+  }
+  else if (convInputNode->GetType() == "Data") {
+    string data_real_type;
+    if (ge::NodeUtils::GetConstOpType(convInputNode, data_real_type)) {
+      return false;
+    }
+    return true;
+  }
+  return false;
+}
+
 Status Conv2DGroupFusionPass::CloneAndLinkQuants(ge::ComputeGraph &graph, const ge::NodePtr &splitNode, const int64_t &group,
                                                  vector<ge::NodePtr> &newConvNodes) {
 
@@ -524,8 +538,7 @@ Status Conv2DGroupFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   if (groups == inChn && groups == outChn) {
     return ProcessDepthwiseConv(convNode);
   } else if (inChn % groups == 0 && outChn % groups == 0) {
-    if (convNode->GetInAllNodes().at(1)->GetType() == "Variable" ||
-        convNode->GetInAllNodes().at(1)->GetType() == "Data") {
+    if (IsVariableOrDataNode(convNode->GetInAllNodes().at(1))) {
       return ProcessGroupConv(graph, convNode);
     } else {
       return PatternFusionUtil::ProcessGroupPadding(graph, convNode, groups);

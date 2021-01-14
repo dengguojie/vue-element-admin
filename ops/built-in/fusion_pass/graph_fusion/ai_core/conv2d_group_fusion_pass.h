@@ -41,6 +41,7 @@ class Conv2DGroupFusionPass : public PatternFusionBasePass {
                           ge::GeTensorDesc &newConvOutDesc, ge::NodePtr &concatNode);
   bool Relink(ge::NodePtr &convNode, ge::NodePtr &splitNode, vector<ge::NodePtr> &newConvNodes,
               ge::NodePtr &concatNode);
+  bool IsVariableOrDataNode(const ge::NodePtr &convInputNode);
   Status CloneAndLinkQuants(ge::ComputeGraph &graph, const ge::NodePtr &splitNode, const int64_t &group,
                             vector<ge::NodePtr> &newConvNodes);
   Status SplitDequant(ge::ComputeGraph &graph, const ge::NodePtr &concatNode, const int64_t &group,
