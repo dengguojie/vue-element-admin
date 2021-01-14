@@ -2037,8 +2037,9 @@ def bn_update_schedule(res, input_tensors):
     is_general_sch = is_update_v3 or \
         ((not is_param_buffer_reuse or
           is_can_use_conditional_exec) and
-         h_size*w_size*c0_size > size_one_core_threshold)
+         h_size * w_size * c0_size > size_one_core_threshold)
     block_split_size = 1
+    special_need_condition = False
     if is_general_sch:
         block_split_axis = 0
         core_num = cceconf.get_soc_spec("CORE_NUM")
@@ -2086,6 +2087,13 @@ def bn_update_schedule(res, input_tensors):
             fused_axis = need_fuse_list[0]
             for i in range(1, len(need_fuse_list)):
                 fused_axis = sch[phony_out].fuse(fused_axis, need_fuse_list[i])
+    elif batch == 24 and c1_size < 24 <= core_num:
+        cut_mode = "cut_batch"
+        special_need_condition = True
+        block_split_axis = 0
+        res_block_outer, res_block_inner = sch[phony_out].split(phony_out.op.axis[0], nparts=24)
+        block_split_inner_size = shape_x[block_split_axis] // 24
+        fused_axis = res_block_outer
     else:
         cut_mode = None
         block_split_axis = 1
@@ -2248,14 +2256,19 @@ def bn_update_schedule(res, input_tensors):
     for i in mid_out_tensor_list:
         sch[i].emit_insn(i.op.axis[0], "dma_copy")
 
-        is_need_add_condition = not is_update_v3 and \
-            is_can_use_conditional_exec
+        is_need_add_condition = not is_update_v3 and (is_can_use_conditional_exec or special_need_condition)
         if is_need_add_condition:
             if index in (2, 3):
-                condition = \
-                    _get_update_condition(
-                        cut_mode, block, core_num, shape_x,
-                        block_split_axis, block_split_size)
+                if special_need_condition:
+                    condition = \
+                        _get_update_condition(
+                            cut_mode, block, 24, shape_x,
+                            block_split_axis, block_split_size)
+                else:
+                    condition = \
+                        _get_update_condition(
+                            cut_mode, block, core_num, shape_x,
+                            block_split_axis, block_split_size)
 
                 if condition:
                     sch[i].set_store_predicate(condition)

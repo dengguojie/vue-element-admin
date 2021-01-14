@@ -1193,7 +1193,7 @@ def schedule_cut_batch(sch_list, res, shape_input, ub_split_reduce_axis,
                        mid_out_read_buffer_map, mid_tensor_buffer_map,
                        final_out_tensor_list,
                        broadcast_tensor_buffers, is_keep_dim,
-                       is_do_double_buffer):
+                       is_do_double_buffer, special_sign):
     """
     cut batch
     """
@@ -1211,6 +1211,8 @@ def schedule_cut_batch(sch_list, res, shape_input, ub_split_reduce_axis,
     final_out_tensor = final_out_tensor_list[0]
 
     core_num = cceconf.get_soc_spec("CORE_NUM")
+    if special_sign:
+        core_num = 24
     final_out_tensor_block_outer, _ = \
         sch[final_out_tensor].split(
             final_out_tensor.op.reduce_axis[0], nparts=core_num)
@@ -1509,6 +1511,8 @@ def bn_update_grad_schedule(res, input_tensors):
         pass
     elif batch >= core_num:
         pass
+    elif batch == 24 and core_num > 24:
+        pass
     else:
         sch = tvm.create_schedule(
             [out.op for out in final_out_tensor_list])
@@ -1557,6 +1561,7 @@ def bn_update_grad_schedule(res, input_tensors):
 
     batch = shape_x[0]
     c1_size = shape_x[1]
+    special_sign = False
     if c1_size >= core_num:
         schedule_cut_c1(sch_list, shape_x, ub_split_axis, split_factor,
                         input_tensor_buffer_map, mid_out_read_buffer_map,
@@ -1585,7 +1590,15 @@ def bn_update_grad_schedule(res, input_tensors):
                            mid_out_read_buffer_map, mid_tensor_buffer_map,
                            final_out_tensor_list,
                            broadcast_tensor_buffers,
-                           is_keep_dim, is_do_double_buffer)
+                           is_keep_dim, is_do_double_buffer, special_sign)
+    elif batch == 24 and core_num > 24:
+        special_sign = True
+        schedule_cut_batch(sch_list, res, shape_x, ub_split_reduce_axis,
+                           split_factor, input_tensor_buffer_map,
+                           mid_out_read_buffer_map, mid_tensor_buffer_map,
+                           final_out_tensor_list,
+                           broadcast_tensor_buffers,
+                           is_keep_dim, is_do_double_buffer, special_sign)
     else:
         schedule_cut_general(sch_list, shape_x, ub_split_reduce_axis,
                              split_factor, input_tensor_buffer_map,
