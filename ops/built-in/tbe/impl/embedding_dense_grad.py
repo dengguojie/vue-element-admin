@@ -59,7 +59,7 @@ class EmbeddingDenseGrad():
         self.indices_shape = indices["shape"]
         self.dtype_indices = indices.get("dtype")
         self.embedding_dim = grad["shape"][-1]
-        self.tik_instance = tik.Tik(tik.Dprofile('v100', 'cloud'))
+        self.tik_instance = tik.Tik(tik.Dprofile())
         self.num_weights = num_weights
         self.padding_idx = padding_idx
         self.scale_grad_by_freq = scale_grad_by_freq
@@ -161,6 +161,8 @@ class EmbeddingDenseGrad():
         self.vector_max_repeat = 255
         self.vec_max_grad_element = self.vector_max_repeat * self.vector_mask_max_grad
         # Create a new space to initialize grad_weight
+        if self.num_weights // self.aicore_num == 0:
+            self.aicore_num = 1
         with self.tik_instance.for_range(0, self.aicore_num, block_num=self.aicore_num) as index:
             self.begin = index * self.num_weights // self.aicore_num
             with self.tik_instance.if_scope(index == self.aicore_num - 1):
