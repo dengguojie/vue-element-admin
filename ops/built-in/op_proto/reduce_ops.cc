@@ -869,30 +869,9 @@ IMPLEMT_COMMON_INFERFUNC(BNTrainingReduceInferShape) {
       OP_LOGE(op.GetName().c_str(), "Input x rank[%d] can only support 2-4 when NCHW.", shapeVector.size());
       return GRAPH_FAILED;
     }
-  } else if (format == FORMAT_NDHWC) {
-    if (dimNum == 5) {
-      oShapeVector.push_back(shapeVector[4]);
-    } else {
-      OpsInputShapeDimErrReport(op.GetName(), "x", "5", "5", ConcatString(dimNum));
-      OP_LOGE(op.GetName().c_str(), "Input x rank[%d] can only support 5 when NDHWC.", shapeVector.size());
-      return GRAPH_FAILED;
-    }
-  } else if (format == FORMAT_NDC1HWC0) {
-    if (dimNum == 6) {
-      oShapeVector.push_back(1);
-      oShapeVector.push_back(1);
-      oShapeVector.push_back(shapeVector[2]);
-      oShapeVector.push_back(1);
-      oShapeVector.push_back(1);
-      oShapeVector.push_back(shapeVector[5]);
-    } else {
-      OpsInputShapeDimErrReport(op.GetName(), "x", "6", "6", ConcatString(dimNum));
-      OP_LOGE(op.GetName().c_str(), "Input x rank[%d] can only support 5 when NDC1HWC0.", shapeVector.size());
-      return GRAPH_FAILED;
-    }
   } else {
     OpsInputFormatErrReport(op.GetName().c_str(), "inputFormat", "NCHW or NHWC", ConcatString(format));
-    OP_LOGE(op.GetName().c_str(), "This op can only support NCHW and NHWC and NDHWC NDC1HWC0.");
+    OP_LOGE(op.GetName().c_str(), "This op can only support NCHW and NHWC.");
     return GRAPH_FAILED;
   }
 

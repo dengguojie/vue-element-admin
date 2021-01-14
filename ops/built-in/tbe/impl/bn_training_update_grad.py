@@ -105,23 +105,23 @@ def op_select_format(grads, x, batch_mean, batch_variance,
                                                 format="NCHW, NCHW,NC1HWC0,NC1HWC0")
     else:
         input0 = util_select_op_base.gen_param(classify="input0", name="grads",
-                                               datatype="float16,float,float16,float",
-                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                                               datatype="float16,float",
+                                               format="NC1HWC0,NC1HWC0")
         input1 = util_select_op_base.gen_param(classify="input1", name="x",
-                                               datatype="float16,float,float16,float",
-                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                                               datatype="float16,float",
+                                               format="NC1HWC0,NC1HWC0")
         input2 = util_select_op_base.gen_param(classify="input2", name="batch_mean",
-                                               datatype="float,float,float,float",
-                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                                               datatype="float,float",
+                                               format="NC1HWC0,NC1HWC0")
         input3 = util_select_op_base.gen_param(classify="input3", name="batch_variance",
-                                               datatype="float,float,float,float",
-                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                                               datatype="float,float",
+                                               format="NC1HWC0,NC1HWC0")
         output0 = util_select_op_base.gen_param(classify="output0", name="diff_scale",
-                                                datatype="float,float,float,float",
-                                                format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                                                datatype="float,float",
+                                                format="NC1HWC0,NC1HWC0")
         output1 = util_select_op_base.gen_param(classify="output1", name="diff_offset",
-                                                datatype="float,float,float,float",
-                                                format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                                                datatype="float,float",
+                                                format="NC1HWC0,NC1HWC0")
 
     param_list = [input0, input1, input2, input3, output0, output1]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
@@ -143,8 +143,8 @@ def _check_format_nd(data_format, origin_foramt):
     -------
     None
     """
-    if data_format.upper() not in ("NC1HWC0", "NDC1HWC0", "NCHW"):
-        error_reson = "The data format only supports NC1HWC0 and NCHW and NDC1HWC0."
+    if data_format.upper() not in ("NC1HWC0", "NCHW"):
+        error_reson = "The data format only supports NC1HWC0 and NCHW."
         error_manager_vector.raise_err_specific_reson("bn_training_update_grad", error_reson)
     if data_format.upper() == "NCHW":
         if origin_foramt not in ("NCHW",):
@@ -220,7 +220,7 @@ def bn_training_update_grad_compute(grads, x, batch_mean, batch_variance,
     return res_list
 
 
-def _check_shape(shape_grads, shape_x, shape_batch_mean, shape_batch_variance, data_format):
+def _check_shape(shape_grads, shape_x, shape_batch_mean, shape_batch_variance):
     """
     Function to check if the shape is in line with norms.
 
@@ -242,42 +242,19 @@ def _check_shape(shape_grads, shape_x, shape_batch_mean, shape_batch_variance, d
     para_check.check_shape(shape_x, param_name="x")
     para_check.check_shape(shape_batch_mean, param_name="batch_mean")
     para_check.check_shape(shape_batch_variance, param_name="batch_variance")
-    dim_c1 = 0
-    dim_c0 = 0
-    n = 0
-    h = 0
-    w = 0
-    c1 = 0
-    c0 = 0
-    if data_format == "NC1HWC0":
-        dim_c1 = shape_grads[1]
-        dim_c0 = shape_grads[4]
-        n = shape_batch_mean[0]
-        h = shape_batch_mean[2]
-        w = shape_batch_mean[3]
-        c1 = shape_batch_mean[1]
-        c0 = shape_batch_mean[4]
-    else:
-        dim_c1 = shape_grads[2]
-        dim_c0 = shape_grads[5]
-        n = shape_batch_mean[0]* shape_batch_mean[1]
-        h = shape_batch_mean[3]
-        w = shape_batch_mean[4]
-        c1 = shape_batch_mean[2]
-        c0 = shape_batch_mean[5]
+    dim_c1 = shape_grads[1]
+    dim_c0 = shape_grads[4]
 
-    if len(shape_grads) not in (5, 6) or len(shape_x) not in (5, 6):
-        error_manager_vector.raise_err_specific_reson("bn_training_update_grad", "This operator can only"
-                                                                                 "support 5D and 6D")
+    if len(shape_grads) != 5 or len(shape_x) != 5:
+        error_manager_vector.raise_err_specific_reson("bn_training_update_grad", "This operator can only support 5D")
     if dim_c0 != 16:
         error_manager_vector.raise_err_specific_reson("bn_training_update_grad", "shape_grads last dim must be 16")
-    if len(shape_batch_mean) not in (5, 6) or len(shape_batch_variance) not in (5, 6):
-        error_manager_vector.raise_err_specific_reson("bn_training_update_grad",
-                                                      "This operator can only support 5D and 6D")
-    if n != 1 or h != 1 or w != 1:
+    if len(shape_batch_mean) != 5 or len(shape_batch_variance) != 5:
+        error_manager_vector.raise_err_specific_reson("bn_training_update_grad", "This operator can only support 5D")
+    if shape_batch_mean[0] != 1 or shape_batch_mean[2] != 1 or shape_batch_mean[3] != 1:
         error_manager_vector.raise_err_specific_reson("bn_training_update_grad",
                                                       "Dimensions except Dimension C must be one for shape_batch_mean")
-    if c1 != dim_c1 or c0 != dim_c0:
+    if shape_batch_mean[1] != dim_c1 or shape_batch_mean[4] != dim_c0:
         error_manager_vector.raise_err_specific_reson("bn_training_update_grad", "Dimension C must be equal")
 
 
@@ -340,9 +317,9 @@ def bn_training_update_grad(grads, x, batch_mean, batch_variance,
     ori_format = grads.get("ori_format")
     _check_format_nd(data_format, ori_format)
 
-    if data_format in ("NC1HWC0", "NDC1HWC0"):
+    if data_format == "NC1HWC0":
         _check_shape(shape_grads, shape_x,
-                     shape_batch_mean, shape_batch_variance, data_format)
+                     shape_batch_mean, shape_batch_variance)
     else:
         shape_list = [1, 1, 1, 1]
         shape_list[1] = shape_x[1]
@@ -351,17 +328,14 @@ def bn_training_update_grad(grads, x, batch_mean, batch_variance,
 
     shape_util.compare_tensor_dict_key(grads, x, "shape")
     shape_util.compare_tensor_dict_key(batch_mean, batch_variance, "shape")
-    if data_format == "NDC1HWC0":
-        shape_grads = [shape_grads[0] * shape_grads[1], shape_grads[2], shape_grads[3], shape_grads[4], shape_grads[5]]
-        shape_batch_mean = [shape_batch_mean[0] * shape_batch_mean[1], shape_batch_mean[2],
-                            shape_batch_mean[3], shape_batch_mean[4], shape_batch_mean[5]]
+
     grads_input = tvm.placeholder(shape_grads, name="grads_input",
                                   dtype=input_grads_dtype)
-    x_input = tvm.placeholder(shape_grads, name="x_input", dtype=input_x_dtype)
+    x_input = tvm.placeholder(shape_x, name="x_input", dtype=input_x_dtype)
     batch_mean_input = tvm.placeholder(shape_batch_mean,
                                        name="batch_mean_input",
                                        dtype=batch_mean_dtype)
-    batch_variance_input = tvm.placeholder(shape_batch_mean,
+    batch_variance_input = tvm.placeholder(shape_batch_variance,
                                            name="batch_variance_input",
                                            dtype=batch_variance_dtype)
 
@@ -377,4 +351,3 @@ def bn_training_update_grad(grads, x, batch_mean, batch_variance,
     config = {"name": kernel_name,
               "tensor_list": tensor_list}
     tbe.cce_build_code(sch, config)
-

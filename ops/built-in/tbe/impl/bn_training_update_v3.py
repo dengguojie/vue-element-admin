@@ -26,7 +26,7 @@ from te.utils.error_manager import error_manager_vector
 # pylint: disable=locally-disabled,too-many-locals,unused-argument,invalid-name
 # pylint: disable=locally-disabled,too-many-arguments,redefined-builtin
 def _check_shape(shape_x, shape_sum, shape_square_sum,
-                 shape_scale, shape_offset, format):
+                 shape_scale, shape_offset):
     """
     Function to check if the shape is in line with norms.
 
@@ -62,37 +62,26 @@ def _check_shape(shape_x, shape_sum, shape_square_sum,
     para_check.check_shape_rule(shape_offset)
     para_check.check_tensor_shape_size(shape_offset)
 
-    if len(shape_x) not in (5, 6) or len(shape_sum) not in (5, 6) \
-            or len(shape_square_sum) not in (5, 6) or len(shape_scale) not in (5, 6) \
-            or len(shape_offset) not in (5, 6):
-        error_reson = "The data format is 5HD, but some input's shape length is not 5 or 6"
+    if len(shape_x) != 5 or len(shape_sum) != 5 \
+            or len(shape_square_sum) != 5 or len(shape_scale) != 5 \
+            or len(shape_offset) != 5:
+        error_reson = "The data format is 5HD, but some input's shape length is not 5"
         error_manager_vector.raise_err_specific_reson("bn_training_update_v3", error_reson)
-    dim_c1 = 0
-    dim_c0 = 0
-    c1 = 0
-    c0 = 0
-    if format == "NC1HWC0":
-        dim_c1 = shape_x[1]
-        dim_c0 = shape_x[4]
-        c1 = 1
-        c0 = 4
-    else:
-        dim_c1 = shape_x[2]
-        dim_c0 = shape_x[5]
-        c1 = 2
-        c0 = 5
 
-    if shape_sum[c1] != dim_c1 or shape_sum[c0] != dim_c0:
+    dim_c1 = shape_x[1]
+    dim_c0 = shape_x[4]
+
+    if shape_sum[1] != dim_c1 or shape_sum[4] != dim_c0:
         error_manager_vector.raise_err_specific_reson("bn_training_update_v3",
                                                       "Dimension C of x and sum must be equal")
-    if shape_square_sum[c1] != dim_c1 or shape_square_sum[c0] != dim_c0:
+    if shape_square_sum[1] != dim_c1 or shape_square_sum[4] != dim_c0:
         error_manager_vector.raise_err_specific_reson("bn_training_update_v3",
                                                       "Dimension C of x and square_sum must be equal")
-    if shape_scale[c1] != dim_c1 or shape_scale[c0] != dim_c0:
-        error_manager_vector.raise_err_specific_reson("bn_training_update_v3",
+    if shape_scale[1] != dim_c1 or shape_scale[4] != dim_c0:
+        error_manager_vector.raise_err_specific_reson("bn_training_update_v2",
                                                       "Dimension C of x and scale must be equal")
-    if shape_offset[c1] != dim_c1 or shape_offset[c0] != dim_c0:
-        error_manager_vector.raise_err_specific_reson("bn_training_update_v3",
+    if shape_offset[1] != dim_c1 or shape_offset[4] != dim_c0:
+        error_manager_vector.raise_err_specific_reson("bn_training_update_v2",
                                                       "Dimension C of x and offset must be equal")
 
 
@@ -278,19 +267,12 @@ def bn_training_update_v3(x, sum, square_sum, scale, offset,
     dtype_square_sum = square_sum.get("dtype")
     dtype_scale = scale.get("dtype")
     dtype_offset = offset.get("dtype")
-    format = x.get("format")
 
     _check_shape(shape_x, shape_sum, shape_square_sum,
-                 shape_scale, shape_offset, format)
+                 shape_scale, shape_offset)
 
     _check_dtype(dtype_x, dtype_sum, dtype_square_sum,
                  dtype_scale, dtype_offset)
-    if format == "NDC1HWC0":
-        shape_x = [shape_x[0] * shape_x[1], shape_x[2], shape_x[3], shape_x[4], shape_x[5]]
-        shape_square_sum = [shape_square_sum[0] * shape_square_sum[1], shape_square_sum[2],
-                            shape_square_sum[3], shape_square_sum[4], shape_square_sum[5]]
-        shape_sum = [shape_sum[0] * shape_sum[1], shape_sum[2],
-                            shape_sum[3], shape_sum[4], shape_sum[5]]
 
     x_input = tvm.placeholder(shape_x, name="x_input", dtype=dtype_x.lower())
     sum_input = tvm.placeholder(shape_sum, name="sum_input",
@@ -317,4 +299,3 @@ def bn_training_update_v3(x, sum, square_sum, scale, offset,
     config = {"name": kernel_name,
               "tensor_list": tensor_list}
     tbe.cce_build_code(sch, config)
-

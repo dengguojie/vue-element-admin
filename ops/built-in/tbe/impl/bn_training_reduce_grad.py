@@ -90,29 +90,29 @@ def op_select_format(grads, x, diff_scale, diff_offset, scale,
     # support 5HD + 5HD
     else:
         input0 = util_select_op_base.gen_param(classify="input0", name="grads",
-                                               datatype="float16,float,float16,float",
-                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                                               datatype="float16,float",
+                                               format="NC1HWC0,NC1HWC0")
         input1 = util_select_op_base.gen_param(classify="input1", name="x",
-                                               datatype="float16,float,float16,float",
-                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                                               datatype="float16,float",
+                                               format="NC1HWC0,NC1HWC0")
         input2 = util_select_op_base.gen_param(classify="input2", name="diff_scale",
-                                               datatype="float,float,float,float",
-                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                                               datatype="float,float",
+                                               format="NC1HWC0,NC1HWC0")
         input3 = util_select_op_base.gen_param(classify="input3", name="diff_offset",
-                                               datatype="float,float,float,float",
-                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                                               datatype="float,float",
+                                               format="NC1HWC0,NC1HWC0")
         input4 = util_select_op_base.gen_param(classify="input4", name="scale",
-                                               datatype="float,float,float,float",
-                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                                               datatype="float,float",
+                                               format="NC1HWC0,NC1HWC0")
         input5 = util_select_op_base.gen_param(classify="input5", name="batch_mean",
-                                               datatype="float,float,float,float",
-                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                                               datatype="float,float",
+                                               format="NC1HWC0,NC1HWC0")
         input6 = util_select_op_base.gen_param(classify="input6", name="batch_variance",
-                                               datatype="float,float,float,float",
-                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                                               datatype="float,float",
+                                               format="NC1HWC0,NC1HWC0")
         output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                datatype="float16,float,float16,float",
-                                                format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                                                datatype="float16,float",
+                                                format="NC1HWC0,NC1HWC0")
 
     param_list = [input0, input1, input2, input3,
                   input4, input5, input6, output0]
@@ -135,9 +135,9 @@ def _check_format_nd(data_format, origin_foramt):
     -------
     None
     """
-    if data_format.upper() not in ("NC1HWC0", "NCHW", "NDC1HWC0"):
+    if data_format.upper() not in ("NC1HWC0", "NCHW"):
         error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad",
-                                                      "The data format only supports NC1HWC0,NDC1HWC0,and NCHW.")
+                                                      "The data format only supports NC1HWC0 and NCHW.")
     if data_format.upper() == "NCHW":
         if origin_foramt not in ("NCHW",):
             error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad",
@@ -230,7 +230,7 @@ def bn_training_reduce_grad_compute(grads, x, diff_scale, diff_offset, scale,
     return res
 
 
-def _check_shape(shape_grads, shape_diff_scale, data_format):
+def _check_shape(shape_grads, shape_diff_scale):
     """
     Function to check if the shape is in line with norms.
 
@@ -245,34 +245,23 @@ def _check_shape(shape_grads, shape_diff_scale, data_format):
     None
     """
     para_check.check_shape(shape_grads, param_name="grads")
-    para_check.check_shape(shape_diff_scale, param_name="diff_scale")
-    dim_c0 = 0
-    dim_c1 = 0
-    if data_format == "NDC1HWC0":
-        dim_c1 = shape_grads[2]
-        dim_c0 = shape_grads[5]
-        n_shape = shape_diff_scale[0] * shape_diff_scale[1]
-        if n_shape != 1 or shape_diff_scale[3] != 1 or shape_diff_scale[4] != 1:
-            error_reson = "Dimensions except Dimension C must be one for shape_diff_scale"
-            error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
-        if shape_diff_scale[2] != dim_c1 or shape_diff_scale[5] != dim_c0:
-            error_reson = "Dimension C must be equal"
-            error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
-    else:
-        dim_c1 = shape_grads[1]
-        dim_c0 = shape_grads[4]
-        if shape_diff_scale[0] != 1 or shape_diff_scale[2] != 1 or shape_diff_scale[3] != 1:
-            error_reson = "Dimensions except Dimension C must be one for shape_diff_scale"
-            error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
-        if shape_diff_scale[1] != dim_c1 or shape_diff_scale[4] != dim_c0:
-            error_reson = "Dimension C must be equal"
-            error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
 
-    if len(shape_grads) not in (5, 6) or len(shape_diff_scale) not in (5, 6):
-        error_reson = "This operator can only support 5D,6D, but some input's shape length is not 5 or 6"
+    para_check.check_shape(shape_diff_scale, param_name="diff_scale")
+
+    dim_c1 = shape_grads[1]
+    dim_c0 = shape_grads[4]
+
+    if len(shape_grads) != 5 or len(shape_diff_scale) != 5:
+        error_reson = "This operator can only support 5D, but some input's shape length is not 5"
         error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
     if dim_c0 != 16:
         error_reson = "shape_grads last dim must be 16"
+        error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
+    if shape_diff_scale[0] != 1 or shape_diff_scale[2] != 1 or shape_diff_scale[3] != 1:
+        error_reson = "Dimensions except Dimension C must be one for shape_diff_scale"
+        error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
+    if shape_diff_scale[1] != dim_c1 or shape_diff_scale[4] != dim_c0:
+        error_reson = "Dimension C must be equal"
         error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
 
 
@@ -367,8 +356,8 @@ def bn_training_reduce_grad(grads, x, diff_scale, diff_offset, scale,
     ori_format = grads.get("ori_format").upper()
     _check_format_nd(data_format, ori_format)
 
-    if data_format in ("NC1HWC0", "NDC1HWC0"):
-        _check_shape(shape_grads, shape_diff_scale, data_format)
+    if data_format == "NC1HWC0":
+        _check_shape(shape_grads, shape_diff_scale)
     else:
         shape_list = [1, 1, 1, 1]
         shape_list[1] = shape_x[1]
@@ -377,24 +366,22 @@ def bn_training_reduce_grad(grads, x, diff_scale, diff_offset, scale,
         shape_scale = shape_list
         shape_batch_mean = shape_list
         shape_batch_variance = shape_list
-    if data_format == "NDC1HWC0":
-        shape_grads = [shape_grads[0] * shape_grads[1], shape_grads[2], shape_grads[3], shape_grads[4], shape_grads[5]]
-        shape_scale = [shape_scale[0] * shape_scale[1], shape_scale[2], shape_scale[3], shape_scale[4], shape_scale[5]]
+
     grads_input = tvm.placeholder(shape_grads, name="grads_input",
                                   dtype=input_grads_dtype)
-    x_input = tvm.placeholder(shape_grads, name="x_input", dtype=x_dtype)
-    diff_scale_input = tvm.placeholder(shape_scale,
+    x_input = tvm.placeholder(shape_x, name="x_input", dtype=x_dtype)
+    diff_scale_input = tvm.placeholder(shape_diff_scale,
                                        name="diff_scale_input",
                                        dtype=diff_scale_dtype)
-    diff_offset_input = tvm.placeholder(shape_scale,
+    diff_offset_input = tvm.placeholder(shape_diff_offset,
                                         name="diff_offset_input",
                                         dtype=diff_offset_dtype)
     scale_input = tvm.placeholder(shape_scale, name="scale_input",
                                   dtype=scale_dtype)
-    batch_mean_input = tvm.placeholder(shape_scale,
+    batch_mean_input = tvm.placeholder(shape_batch_mean,
                                        name="batch_mean_input",
                                        dtype=batch_mean_dtype)
-    batch_variance_input = tvm.placeholder(shape_scale,
+    batch_variance_input = tvm.placeholder(shape_batch_variance,
                                            name="batch_variance_input",
                                            dtype=batch_variance_dtype)
 
@@ -410,4 +397,3 @@ def bn_training_reduce_grad(grads, x, diff_scale, diff_offset, scale,
     config = {"name": kernel_name,
               "tensor_list": tensor_list}
     tbe.cce_build_code(sch, config)
-

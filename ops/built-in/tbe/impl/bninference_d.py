@@ -42,7 +42,7 @@ def _format_check(arg_input):
     None
     """
     format_data = arg_input.get("format")
-    excepted_format_list = ["ND", "NC1HWC0", "NCHW", "NHWC", "NDC1HWC0"]
+    excepted_format_list = ["ND", "NC1HWC0", "NCHW", "NHWC"]
     para_check.check_format(format_data, excepted_format_list, param_name="arg_input")
 
 
@@ -94,9 +94,9 @@ def _check_shape_dims(shape, data_format):
     -------
     None
     """
-    if data_format in ("NC1HWC0", "NDC1HWC0"):
-        if len(shape) not in (5, 6):
-            error_detail = "bninference only support 5D or 6D Tensor"
+    if data_format == "NC1HWC0":
+        if len(shape) != 5:
+            error_detail = "bninference only support 5D Tensor"
             error_manager_vector.raise_err_input_shape_invalid("bninference", "input_x",
                                                             error_detail)
 
@@ -542,7 +542,7 @@ def _para_check(x, mean, variance, scale, use_global_stats, kernel_name):
     para_shape_check(x, mean, variance, scale, format_x)
 
 
-def get_param_scale_shape(shape_x, shape_scale, format_x):
+def get_param_scale_shape(shape_x, shape_scale):
     """
     Function to calculate the shape of scale.
 
@@ -565,8 +565,6 @@ def get_param_scale_shape(shape_x, shape_scale, format_x):
         shape = [1] * length_x
     else:
         shape = list(shape_scale)
-    if format_x == "NDC1HWC0":
-        shape = [shape_scale[0] * shape_scale[1], shape_scale[2], shape_scale[3], shape_scale[4], shape_scale[5]]
 
     return shape
 
@@ -597,10 +595,6 @@ def gen_tensor(x, mean, variance, scale, offect):
             index_c = 0
         else:
             index_c = 3
-    elif format_x == "NDC1HWC0":
-        c1 = shape_x[2]
-        c0 = shape_x[5]
-        shape_x = [shape_x[0] * shape_x[1], shape_x[2], shape_x[3], shape_x[4], shape_x[5]]
     else:
         c1 = shape_x[1]
         c0 = shape_x[4]
@@ -641,7 +635,7 @@ def gen_tensor(x, mean, variance, scale, offect):
     offset_input = None
     if len(shape_scale) > 0:
         dtype_scale = scale.get("dtype")
-        shape_scale_new = get_param_scale_shape(shape_x, shape_scale, format_x)
+        shape_scale_new = get_param_scale_shape(shape_x, shape_scale)
         attr_scale, l1_fusion_type = get_l1_paras(scale)
         is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
         scale_input = tvm.placeholder(shape_scale_new, name="scale_input",
@@ -738,4 +732,3 @@ def bninference_d(x, mean, variance, scale, offect, y, momentum, epsilon,
               "tensor_list": tensor_list,
               "l1_fusion_option": is_l1_depth_fusion}
     tbe.cce_build_code(sch, config)
-
