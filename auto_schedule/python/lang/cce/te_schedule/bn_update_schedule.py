@@ -630,13 +630,16 @@ def _gn_update_sch_norm_do_compute_at(
         sch, res_out, mean_compute_at_axis, res_ub_outer,
         input_tensor_buffer_tensor_map, shape_x_tensor_list,
         mid_tensor_buffer_tensor_map, mid_out_tensor_list,
-        mid_out_tensor_read_buffer_map):
+        mid_out_tensor_read_buffer_map,
+        is_block_conflict, shape_x, group_nums, format_input):
+    need_buffer_tile_tensors = []
 
     for i in input_tensor_buffer_tensor_map:
         input_tensor_buffer = input_tensor_buffer_tensor_map[i]
         if i not in shape_x_tensor_list:
             sch[input_tensor_buffer].compute_at(sch[res_out],
                                                 mean_compute_at_axis)
+            need_buffer_tile_tensors.append(input_tensor_buffer)
         else:
             sch[input_tensor_buffer].compute_at(sch[res_out], res_ub_outer)
 
@@ -645,28 +648,52 @@ def _gn_update_sch_norm_do_compute_at(
         if i not in shape_x_tensor_list:
             sch[mid_tensor_buffer].compute_at(sch[res_out],
                                               mean_compute_at_axis)
+            need_buffer_tile_tensors.append(mid_tensor_buffer)
         else:
             sch[mid_tensor_buffer].compute_at(sch[res_out], res_ub_outer)
 
     for i in mid_out_tensor_list:
         if i not in shape_x_tensor_list:
             sch[i].compute_at(sch[res_out], mean_compute_at_axis)
+            need_buffer_tile_tensors.append(i)
         else:
             sch[i].compute_at(sch[res_out], res_ub_outer)
+
     for i in mid_out_tensor_read_buffer_map:
         mid_out_buffer = mid_out_tensor_read_buffer_map[i]
         if i not in shape_x_tensor_list:
             sch[mid_out_buffer].compute_at(sch[res_out],
                                            mean_compute_at_axis)
+            need_buffer_tile_tensors.append(mid_out_buffer)
         else:
             sch[mid_out_buffer].compute_at(sch[res_out], res_ub_outer)
+
+    def _do_buffer_tile():
+        if is_block_conflict:
+            tile_values = []
+            batch_size = shape_x[0]
+            # need do buffer_tile
+            if format_input == FORMAT_NCHW:
+                tile_values = \
+                    ([0, batch_size], [0, group_nums],
+                    [None, None], [None, None], [None, None])
+            else:
+                tile_values = \
+                    ([0, batch_size], [None, None], [None, None],
+                    [0, group_nums], [None, None])
+
+            for tensor in need_buffer_tile_tensors:
+                sch[tensor].buffer_tile(*tile_values)
+
+    _do_buffer_tile()
 
 
 def _gn_update_sch_do_compute_at(
         sch, res_out, res_out_ub, mean_compute_at_axis, res_ub_outer,
         input_tensor_buffer_tensor_map, shape_x_tensor_list,
         mid_tensor_buffer_tensor_map, mid_out_tensor_list,
-        mid_out_tensor_read_buffer_map, one_block_more_than_max_ub):
+        mid_out_tensor_read_buffer_map, one_block_more_than_max_ub,
+        is_block_conflict, shape_x, group_nums, format_input):
     """
     gn_update schedule do compute_at
     """
@@ -681,7 +708,8 @@ def _gn_update_sch_do_compute_at(
             sch, res_out, mean_compute_at_axis, res_ub_outer,
             input_tensor_buffer_tensor_map, shape_x_tensor_list,
             mid_tensor_buffer_tensor_map, mid_out_tensor_list,
-            mid_out_tensor_read_buffer_map)
+            mid_out_tensor_read_buffer_map,
+            is_block_conflict, shape_x, group_nums, format_input)
 
     sch[res_out_ub].compute_at(sch[res_out], res_ub_outer)
 
@@ -765,7 +793,7 @@ def _check_is_block_conflict(block_axis, block_factor,
             if block_axis == 1:
                 if block_factor * DTYPE_WIDTH_MAP[dtype] * 2 < 32:
                     is_block_conflict = True
-            elif block_axis == 2:
+            elif block_axis >= 2:
                 is_block_conflict = True
         else:
             if block_axis in [1, 2]:
@@ -1031,27 +1059,17 @@ def _cal_gn_update_tiling(shape_x, group_nums, format_input, max_ub_count):
                                  format_input, dtype_mean)
 
     is_need_reorder = False
-    if is_block_conflict:
-        block_axis, block_factor, is_need_reorder = \
-            _recal_block_tiling(
-                shape_x, block_axis, block_factor, max_ub_count,
-                group_nums, format_input, dtype_mean, core_num)
-        ub_axis, ub_factor = _get_ub_tiling(block_axis, block_factor)
 
     return block_axis, block_factor, ub_axis, \
            ub_factor, is_block_conflict, is_need_reorder
 
 
 def _gn_update_schedule_do_tiling(
-        sch, shape_x, sum_input, dtype, res_out):
+        sch, shape_x, group_nums, format_input, dtype, res_out):
     """
     gn_update schedule do tiling
     """
     max_ub_count = get_max_ub_count(dtype, GN_TYPE)
-    shape_sum = te.lang.cce.util.shape_to_list(sum_input.shape)
-
-    group_nums, format_input = \
-        _get_gn_update_group_nums(shape_x, shape_sum)
 
     block_axis, block_factor, ub_axis, \
         ub_factor, is_block_conflict, is_need_reorder = \
@@ -1139,7 +1157,7 @@ def _gn_update_schedule_do_tiling(
                 fused_axis, nparts=1)
 
     return mean_compute_at_axis, bind_block_axis, res_ub_outer, \
-        res_ub_inner, need_db, one_block_more_than_max_ub
+        res_ub_inner, need_db, one_block_more_than_max_ub, is_block_conflict
 
 
 def _gn_update_schedule_do_emit_insn(
@@ -1249,16 +1267,24 @@ def gn_update_schedule(res, input_tensors):
 
     dtype = x_input.dtype.lower()
 
+    sum_input = input_tensors[0]
+    shape_sum = te.lang.cce.util.shape_to_list(sum_input.shape)
+
+    group_nums, format_input = \
+        _get_gn_update_group_nums(shape_x, shape_sum)
+
     mean_compute_at_axis, block_axis, res_ub_outer, \
-        res_ub_inner, need_db, one_block_more_than_max_ub = \
+        res_ub_inner, need_db, one_block_more_than_max_ub, \
+        is_block_conflict = \
         _gn_update_schedule_do_tiling(
-            sch, shape_x, input_tensors[0], dtype, res_out)
+            sch, shape_x, group_nums, format_input, dtype, res_out)
 
     _gn_update_sch_do_compute_at(
         sch, res_out, res_out_ub, mean_compute_at_axis, res_ub_outer,
         input_tensor_buffer_tensor_map, shape_x_tensor_list,
         mid_tensor_buffer_tensor_map, mid_out_tensor_list,
-        mid_out_tensor_read_buffer_map, one_block_more_than_max_ub)
+        mid_out_tensor_read_buffer_map, one_block_more_than_max_ub,
+        is_block_conflict, shape_x, group_nums, format_input)
 
     _gn_update_schedule_do_emit_insn(
         sch, res_out, res_out_ub, res_ub_inner,
