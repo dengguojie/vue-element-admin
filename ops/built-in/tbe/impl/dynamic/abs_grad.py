@@ -77,6 +77,7 @@ def abs_grad_compute(y, dy, z, kernel_name="abs_grad"):
     denominator = tbe.vadds(abs_data, fp_min)
     res = tbe.vdiv(new_data, denominator)
     res = tbe.round(res)
+    res = tbe.cast_to(res, dtype)
     data1_res = tbe.vmul(res, dy)
     return data1_res
 

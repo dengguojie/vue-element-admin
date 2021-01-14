@@ -284,22 +284,29 @@ IMPLEMT_INFERFUNC(BNInference, BNInferenceInferShape) {
 INFER_FUNC_REG(BNInference, BNInferenceInferShape);
 VERIFY_FUNC_REG(BNInference, BNInferenceVerify);
 
+// ----------------------BNInferenceD
 IMPLEMT_VERIFIER(BNInferenceD, BNInferenceDVerify) {
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_INFERFUNC(BNInferenceD, BNInferenceDInferShape) {
-  auto x_shape = op.GetInputDesc("x").GetShape().GetDims();
-  DataType x_dtype = op.GetInputDesc("x").GetDataType();
-
-  TensorDesc y_desc = op.GetOutputDesc("y");
-  y_desc.SetShape(ge::Shape(x_shape));
-  y_desc.SetDataType(x_dtype);
-  (void)op.UpdateOutputDesc("y", y_desc);
+  std::string data_format;
+  if (op.GetAttr("data_format", data_format) == GRAPH_SUCCESS) {
+    if (data_format != "NHWC" && data_format != "NCHW") {
+      string expected_format_list = ConcatString("NHWC, NCHW");
+      OpsInputFormatErrReport(op.GetName(), "data_format", expected_format_list, data_format);
+      OP_LOGE(op.GetName().c_str(), "data_format only support 'NHWC' and 'NCHW'.");
+      return GRAPH_FAILED;
+    }
+  }
+  if (!OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(BNInferenceD, BNInferenceDInferShape);
 VERIFY_FUNC_REG(BNInferenceD, BNInferenceDVerify);
+// ----------------------BNInferenceD END
 
 }  // namespace ge

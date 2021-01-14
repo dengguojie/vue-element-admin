@@ -19,6 +19,7 @@ set(_optiling_files
   ../fusion_pass/common/fp16_t.cc
   assign.cc
   bias_add.cc
+  bninference_d.cc
   concat.cc
   concat_offset.cc
   conv2d_backprop_filter.cc
