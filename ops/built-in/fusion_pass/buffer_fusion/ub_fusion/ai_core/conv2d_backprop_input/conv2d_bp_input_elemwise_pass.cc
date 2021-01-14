@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-/*!
+/*
  * \file conv2d_bp_input_elemwise_pass.cpp
  * \brief tbe conv2d_backprop_input + elemwise ops fusion pattern
  */
@@ -28,7 +28,8 @@ namespace fe {
 
 static const char PATTERN_DX[] = "conv2dbackpropinput";
 static const char PATTERN_ELEM[] = "elemwise";
-static vector<string> typelist = {"Relu", "LeakyRelu"};
+static const char PATTERN_OTHER_INPUT[] = "InputData";
+static vector<string> typelist = {"Relu", "LeakyRelu", "PRelu"};
 /*
  * @brief:  define conv2dbackpropinput op fusion pattern
  *
@@ -38,7 +39,7 @@ static vector<string> typelist = {"Relu", "LeakyRelu"};
  * 3. output desc can not be itself.
  *
  *    conv2d_backprop_input --> elemwise
- *    now only supporse relu/leakyrelu
+ *    now only supporse relu/leakyrelu/prelu
  * @return BufferFusionPattern: return all valid patterns.
  */
 vector<BufferFusionPattern*> TbeDxElemwisePass::DefinePatterns() {
@@ -54,6 +55,20 @@ vector<BufferFusionPattern*> TbeDxElemwisePass::DefinePatterns() {
       .SetOutputs(PATTERN_DX, {PATTERN_ELEM});
   patterns.push_back(pattern);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "End to define %s pass pattern.", pass_name.c_str());
+
+  string pass_name0 = "TbeDxElemwiseFusion0";
+  BufferFusionPattern* pattern0 = new (std::nothrow) BufferFusionPattern(pass_name0);
+  FUSION_PASS_CHECK((pattern0 == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", pass_name0.c_str());
+
+  pattern0->AddOpDesc(PATTERN_DX, {OP_PATTERN_CONV_BACKPROP_INPUT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(PATTERN_ELEM, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(PATTERN_OTHER_INPUT, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .SetHead({PATTERN_DX})
+      .SetOutputs(PATTERN_DX, {PATTERN_ELEM})
+      .SetOutputs(PATTERN_OTHER_INPUT, {PATTERN_ELEM});
+  patterns.push_back(pattern0);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "End to define %s pass pattern.", pass_name0.c_str());
 
   return patterns;
 }
@@ -80,20 +95,20 @@ Status TbeDxElemwisePass::GetFusionNodes(const BufferFusionMapping& mapping, vec
     }
   }
   for (auto& item : mapping) {
-    // judge LeakyRelu/Relu node
+    // judge LeakyRelu/Relu/Prelu node
     if (item.first->desc_name == PATTERN_ELEM) {
       for (auto& node : item.second) {
         vector<string>::iterator ret;
         ret = find(typelist.begin(), typelist.end(), node->GetType());
         if (ret != typelist.end()) {
           OP_LOGD(FUSED_OP_TYPE.c_str(),
-                  "relu or leakly_relu is vaild, "
+                  "relu or leakly_relu or prelu is vaild, "
                   "support ub fusion.");
         } else {
           fusion_nodes.clear();
           OP_LOGW(FUSED_OP_TYPE.c_str(),
                   "relu is not vaild, only support "
-                  "Relu or LeakyRelu.");
+                  "Relu or LeakyRelu or Prelu.");
           return SUCCESS;
         }
       }

@@ -207,7 +207,7 @@ deconvolution_ut_case = [
 
 deconvolution_ut_fusion_case = [
     # soc dtype, dedy_shape, filter_shape, dedx_shape, padding, stride, dilution, bias_flag, fusionpass
-    # the deconv+relu
+    # the deconv+relu(prelu)
     (
         ["Ascend310", "Ascend710", "Ascend910"],
         "float16",
@@ -232,7 +232,20 @@ deconvolution_ut_fusion_case = [
         True,
         ["relu"],
     ),
-    # deconv + dequant [dquant, sqrt, vector_mode, relu_mode]
+    (
+        ["Ascend310", "Ascend710", "Ascend910"],
+        "float16",
+        (1, 16, 5, 5),
+        (16, 16, 3, 3),
+        (1, 16, 5, 5),
+        (1, 1, 1, 1),
+        (1, 1),
+        (1, 1),
+        True,
+        ["prelu"],
+    ),
+
+    # deconv + dequant + (prelu) [dquant, sqrt, vector_mode, relu_mode]
     (
         ["Ascend310"],
         "int8",
@@ -269,7 +282,19 @@ deconvolution_ut_fusion_case = [
         True,
         ["dequant", False, True, True],
     ),
-    # deconv + dequant + quant [quant, sqrt, vector_mode, relu_mode, sqrt, scalar, offset]
+    (
+        ["Ascend310"],
+        "int8",
+        (1, 32, 3, 3),
+        (32, 16, 1, 1),
+        (1, 16, 3, 3),
+        (0, 0, 0, 0),
+        (1, 1),
+        (1, 1),
+        True,
+        ["dequant_prelu", False, True, True],
+    ),
+    # deconv + dequant + (leckyrelu, prelu) + quant [quant, sqrt, vector_mode, relu_mode, sqrt, scalar, offset]
     (
         ["Ascend310"],
         "int8",
@@ -305,6 +330,30 @@ deconvolution_ut_fusion_case = [
         (1, 1),
         True,
         ["quant", True, True, False, True, 0.2, 0],
+    ),
+    (
+        ["Ascend310"],
+        "int8",
+        (1, 32, 3, 3),
+        (32, 32, 3, 3),
+        (1, 32, 3, 3),
+        (1, 1, 1, 1),
+        (1, 1),
+        (1, 1),
+        True,
+        ["dequant_leckyrelu_quant", False, False, False, False, 1.1, -7],
+    ),
+    (
+        ["Ascend310"],
+        "int8",
+        (1, 32, 3, 3),
+        (32, 32, 3, 3),
+        (1, 32, 3, 3),
+        (1, 1, 1, 1),
+        (1, 1),
+        (1, 1),
+        True,
+        ["dequant_prelu_quant_double", False, False, False, False, 1.1, -7],
     ),
     # deconv + requant  [requant, vector_mode, relu_mode]
     (

@@ -1593,16 +1593,18 @@ def general_schedule(
             sch_agent.same_attach(a_ub, a_filling)
 
     def _attach_bias():
+        split_bias_flag = tiling.get("CUB_channel_wise_flag")
         if c_add_bias is not None:
             sch_agent.same_attach(c_add_bias, c_col)
             sch_agent.same_attach(bias_l0c, c_col)
             sch_agent.same_attach(bias_ub_brc, c_col)
+            if bias_ub is not None and split_bias_flag:
+                sch_agent.same_attach(bias_ub, c_col)
 
-        split_bias_flag = tiling.get("CUB_channel_wise_flag")
-        if bias_ub is not None and split_bias_flag:
-            sch_agent.same_attach(bias_ub, c_ub)
         if bias_add_vector is not None:
             sch_agent.same_attach(bias_add_vector, c_ub)
+            if bias_ub is not None and split_bias_flag:
+                sch_agent.same_attach(bias_ub, c_ub)
 
     def _do_l1andub_process():
         if al1_tilling_k < bl1_tilling_k:

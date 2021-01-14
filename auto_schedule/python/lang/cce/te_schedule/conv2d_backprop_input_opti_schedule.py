@@ -1939,7 +1939,7 @@ def opti_schedule(
 
             if bias_ub_brc is not None:
                 if split_bias_flag:
-                    sch[bias_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
+                    sch[bias_ub].compute_at(sch[c_gm], c_slice_axis)
                 else:
                     sch[bias_ub].compute_at(sch[c_gm], batch_in_out_axis)
 

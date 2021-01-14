@@ -66,6 +66,7 @@ set(_aicore_fusion_srcs
   buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_conv_relu_maxpooling_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_fusion_rule.cc
   buffer_fusion/ub_fusion/ai_core/conv2d_backprop_input/conv2d_bp_input_elemwise_pass.cc
+  buffer_fusion/ub_fusion/ai_core/conv2d_backprop_input/conv2d_bp_input_dequant_elemwise_quant_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv3d/conv3d_elemwise_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/conv2d_dequant_add_mul_quant_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/conv2d_writeselect_stridewrite_pass.cc

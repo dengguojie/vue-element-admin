@@ -11,6 +11,7 @@ from impl.ascend_quant import ascend_quant_compute
 from impl.ascend_requant import ascend_requant_compute
 from impl.deconvolution import deconvolution_compute
 from impl.leaky_relu import leaky_relu_compute
+from impl.prelu import prelu_compute
 from op_test_frame.ut import OpUT
 from te import tvm
 from te.lang.cce import cce_build_code
@@ -241,7 +242,15 @@ def test_deconvolution_fusion(case):
             channel_in = case[4][1]
             if fusion_para[0] == "relu":
                 out = leaky_relu_compute(out, None)
-            elif fusion_para[0] in ("dequant", "quant"):
+            elif fusion_para[0] == "prelu":
+                weight_shape = [1] * len(out.shape)
+                weight_shape[1] = out.shape[1]
+                weight_shape[-1] = out.shape[-1]
+                weight_input = tvm.placeholder(weight_shape, name='weight_input', dtype="float16", )
+                tensor_list.append(weight_input)
+                out = prelu_compute(out, weight_input, None)
+            elif fusion_para[0] in ("dequant", "quant", "dequant_prelu",
+                                    "dequant_leckyrelu_quant", "dequant_prelu_quant_double"):
                 if fusion_para[2]:
                     shape_deq = (1, _ceil(channel_in, 16), 1, 1, 16)
                 else:
@@ -256,7 +265,19 @@ def test_deconvolution_fusion(case):
                 out = ascend_dequant_compute(
                     out, deq_tensor, None, fusion_para[1], fusion_para[3]
                 )
-                if fusion_para[0] == "quant":
+
+                if fusion_para[0] in ("dequant_prelu", "dequant_prelu_quant_double"):
+                    weight_shape = [1] * len(out.shape)
+                    weight_shape[1] = out.shape[1]
+                    weight_shape[-1] = out.shape[-1]
+                    weight_input = tvm.placeholder(weight_shape, name='weight_input', dtype="float16", )
+                    tensor_list.append(weight_input)
+                    out = prelu_compute(out, weight_input, None)
+                    prelu_out = out
+                elif fusion_para[0] == "dequant_leckyrelu_quant":
+                    out = leaky_relu_compute(out, None, negative_slope=0.1)
+
+                if fusion_para[0] in ("quant", "dequant_leckyrelu_quant", "dequant_prelu_quant_double"):
                     out = ascend_quant_compute(
                         out, None, fusion_para[5], fusion_para[6], fusion_para[4]
                     )
@@ -273,8 +294,11 @@ def test_deconvolution_fusion(case):
                 )
                 tensor_list.append(deq_tensor)
                 out = ascend_requant_compute(out, deq_tensor, None, fusion_para[2])
-
-            tensor_list.append(out)
+            if fusion_para[0] == "dequant_prelu_quant_double":
+                out = [prelu_out, out]
+                tensor_list.extend(out)
+            else:
+                tensor_list.append(out)
             sch = auto_schedule(out)
             config = {
                 "print_ir": False,
