@@ -72,8 +72,9 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in, shape_out):
     do c1hwc0 to chw transfer by multiple core on axis hw
     """
 
-    axis_c1, axis_hw, axis_c0 = shape_in
-    axis_c = shape_out[0]
+    axis_n, axis_c1, axis_h, axis_w, axis_c0 = shape_in
+    axis_c = shape_out[1]
+    axis_hw = axis_h * axis_w
     hw_size = axis_hw
     dtype_len = _get_dtype_factor(data_in.dtype)
     ele_count_per_block = BLOCK_BYTE_SIZE // dtype_len
@@ -97,7 +98,7 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in, shape_out):
     with tik_inst.for_range(0, core_num, block_num=core_num) as block_idx:
 
         # pylint: disable=too-many-locals,too-many-statements
-        def _hw_transfer_process(axis_c1_index, sub_hw_len):
+        def _hw_transfer_process(axis_n_index, axis_c1_index, sub_hw_len):
             """
             process of hw transfer
             """
@@ -113,7 +114,7 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in, shape_out):
                 inner_hw_left = inner_hw_len % ele_count_per_block
                 back_len = inner_hw_left - ele_count_per_block
 
-                in_offset = (axis_c1_index * axis_hw +
+                in_offset = (axis_n_index * axis_c1 * axis_hw + axis_c1_index * axis_hw +
                              sub_hw_lp_idx * sub_hw_per_loop + block_idx * per_core_hw_cnt) * axis_c0
                 if inner_hw_block_cnt:
                     tik_inst.data_move(in_ub, data_in[in_offset],
@@ -136,7 +137,7 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in, shape_out):
                                    repeat_cnt, dst_stride, src_stride)
 
                 # move data to gm
-                out_offset = (axis_c1_index * axis_c0 * axis_hw +
+                out_offset = (axis_n_index * axis_c * axis_hw + axis_c1_index * axis_c0 * axis_hw +
                               sub_hw_lp_idx * sub_hw_per_loop + block_idx * per_core_hw_cnt)
                 with tik_inst.new_stmt_scope():
                     c0_lp_cnt = tik_inst.Scalar()
@@ -172,11 +173,12 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in, shape_out):
             if sub_hw_left:
                 _inner_hw_transfer(sub_hw_lp_cnt, sub_hw_left)
 
-        with tik_inst.for_range(0, axis_c1) as axis_c1_idx:
-            with tik_inst.if_scope(block_idx == core_num - 1):
-                _hw_transfer_process(axis_c1_idx, last_core_hw_cnt)
-            with tik_inst.else_scope():
-                _hw_transfer_process(axis_c1_idx, per_core_hw_cnt)
+        with tik_inst.for_range(0, axis_n) as axis_n_idx:
+            with tik_inst.for_range(0, axis_c1) as axis_c1_idx:
+                with tik_inst.if_scope(block_idx == core_num - 1):
+                    _hw_transfer_process(axis_n_idx, axis_c1_idx, last_core_hw_cnt)
+                with tik_inst.else_scope():
+                    _hw_transfer_process(axis_n_idx, axis_c1_idx, per_core_hw_cnt)
 
 
 def c1hwc0_2_chw_compute(tik_inst, data_in, data_out):

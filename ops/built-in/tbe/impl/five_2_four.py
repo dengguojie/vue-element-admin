@@ -9915,12 +9915,10 @@ def five_2_four(src, dst, src_format, dst_format, kernel_name='five_2_four'):
         five_2_four_v200_fp32fp16(src, dst, src_format, dst_format, kernel_name)
     # Notes: vbi only supported by 1951
     elif dst_format.lower() == "nchw" and \
-            not tbe_platform.cce_conf.api_check_support("te.lang.cce.vaddrelu", "float32") and \
+            not tbe_platform.cce_conf.intrinsic_check_support("Intrinsic_vln", "float32") and \
             not tbe_platform.cce_conf.intrinsic_check_support("Intrinsic_vbi", "float16") and \
-            dtype == "float16" and src_shape == [1,3,53,90,16] and dst_shape == [1,39,53,90]:
-        new_src_shape = [3, 53*90, 16]
-        new_dst_shape = [39, 53*90]
-        c1hwc0_2_chw(new_src_shape, new_dst_shape, dtype, kernel_name)
+            dtype == "float16" and src_shape[2] * src_shape[3] >= 64:
+        c1hwc0_2_chw(src_shape, dst_shape, dtype, kernel_name)
     else:
         if dst_format.lower() == "nchw":
             n_i, c_i, h_i, w_i = dst_shape
