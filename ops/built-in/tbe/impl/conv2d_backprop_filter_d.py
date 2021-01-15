@@ -329,7 +329,10 @@ def check_supported(  # pylint: disable=W0622,C0103,R0913,R0914
                          (dilation_w * (filter_width - 1) + 1))
                           / stride_w + 1
     """
-
+    shape_x = x.get("ori_shape")
+    dynamic_flag = any([i < 0 for i in shape_x])
+    if dynamic_flag:
+        return True
     try:
         res = _check_shape_and_format(x,
                                       out_backprop,
@@ -352,7 +355,7 @@ def check_supported(  # pylint: disable=W0622,C0103,R0913,R0914
         check_conv2dbp_filter_params(
             shape_x,
             shape_out_backprop,
-            filter_sizes,
+            shape_res,
             strides,
             pads,
             dilations,
@@ -815,14 +818,6 @@ def check_conv2dbp_filter_params(
         dict_args["dilation_c"] = str(dilation_c)
         raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
 
-    # detype chek
-    x_dtype = x_dtype.lower()
-    out_backprop_dtype = out_backprop_dtype.lower()
-    res_dtype = res_dtype.lower()
-    para_check.check_dtype_rule(x_dtype, ["float16"])
-    para_check.check_dtype_rule(out_backprop_dtype, ["float16"])
-    para_check.check_dtype_rule(res_dtype, ["float32", "float16"])
-
     # Second : Furture Check, Mainly required by SRS
     # ===========================================================
     # the relation limits between shape
@@ -1086,6 +1081,14 @@ def _conv2d_backprop_filter_cce(
             dict_args["reason"] = "Division by zero"
             raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
         return (x_1 + x_2 - 1) // x_2
+
+    # dtype chek
+    x_dtype = x_dtype.lower()
+    out_backprop_dtype = out_backprop_dtype.lower()
+    res_dtype = res_dtype.lower()
+    para_check.check_dtype_rule(x_dtype, ["float16"])
+    para_check.check_dtype_rule(out_backprop_dtype, ["float16"])
+    para_check.check_dtype_rule(res_dtype, ["float32", "float16"])
 
     res = check_conv2dbp_filter_params(
         shape_x,

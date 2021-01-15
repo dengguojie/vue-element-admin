@@ -146,7 +146,7 @@ def _check_dynamic_mode(shape_x1, shape_x2):
 
     if all([i != DYNAMIC_FLAG for i in shape_x1]) and all([i != DYNAMIC_FLAG for i in shape_x2]):
         error_manager_vector.raise_err_specific_reson(
-            "batch_matmul", "dynamic must at least one of m,k,n"
+            "batch_matmul", "dynamic must at least one of batch, m, k, n"
         )
 
 

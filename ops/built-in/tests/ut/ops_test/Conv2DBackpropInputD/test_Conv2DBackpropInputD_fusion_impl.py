@@ -201,15 +201,38 @@ def _test_conv2d_bp_input_slice(
 
     return _test_conv2d_bp_input_slice
 def test_op_check_supported(test_arg):
-	from impl.conv2d_backprop_input_d import check_supported
-	out_backprop = {"ori_shape": (1, 32, 3, 3), "dtype": "float16", "ori_format": "NCHW"}
-	filter = {"ori_shape": (32, 16, 1, 1), "dtype": "float16", "ori_format": "NCHW"}
-	y = {"ori_shape": (1, 16, 5, 5), "dtype": "float16", "ori_format": "NCHW"}
-	input_size = (1, 16, 5, 5)
-	check_supported(filter, out_backprop, y, input_size, (1, 1, 2, 2), (0, 0, 0, 0),
-	                dilations=(1, 1, 1, 1), groups=1, data_format="NCHW",
-	                kernel_name="conv2d_backprop_input")
-	
+    from impl.conv2d_backprop_input_d import check_supported
+    out_backprop = {"ori_shape": (1, 32, 3, 3), "dtype": "float16", "ori_format": "NCHW"}
+    filter = {"ori_shape": (32, 16, 1, 1), "dtype": "float16", "ori_format": "NCHW"}
+    y = {"ori_shape": (1, 16, 5, 5), "dtype": "float16", "ori_format": "NCHW"}
+    input_size = (1, 16, 5, 5)
+    check_supported(filter, out_backprop, y, input_size, (1, 1, 2, 2), (0, 0, 0, 0),
+                    dilations=(1, 1, 1, 1), groups=1, data_format="NCHW",
+                    kernel_name="conv2d_backprop_input")
+
+
+def test_op_check_supported_dynamic(test_arg):
+    from impl.conv2d_backprop_input_d import check_supported
+    out_backprop = {"ori_shape": (1, 32, -1, -1), "dtype": "float16", "ori_format": "NCHW"}
+    filter = {"ori_shape": (32, 16, 1, 1), "dtype": "float16", "ori_format": "NCHW"}
+    y = {"ori_shape": (1, 16, 5, 5), "dtype": "float16", "ori_format": "NCHW"}
+    input_size = (1, 16, 5, 5)
+    check_supported(filter, out_backprop, y, input_size, (1, 1, 2, 2), (0, 0, 0, 0),
+                    dilations=(1, 1, 1, 1), groups=1, data_format="NCHW",
+                    kernel_name="conv2d_backprop_input")
+
+def test_op_check_supported_error(test_arg):
+    from impl.conv2d_backprop_input_d import check_supported
+    out_backprop = {"ori_shape": (1, 32, 3, 3), "dtype": "float16", "ori_format": "NCHW"}
+    filter = {"ori_shape": (32, 16, 1, 1), "dtype": "float16", "ori_format": "NCHW"}
+    y = {"ori_shape": (1, 16, 5, 5), "dtype": "float16", "ori_format": "NCHW"}
+    input_size = (1, 16, 5, 5)
+    try:
+        check_supported(filter, out_backprop, y, input_size, (1, 1, 2, 2), (0, 0, 0, 0),
+                        dilations=(1, 1, 1, 1), groups=0, data_format="NCHW",
+                        kernel_name="conv2d_backprop_input")
+    except RuntimeError:
+        pass
 
 def _gen_conv2d_bp_input_op_fusion_case():
     for fusion_case in conv2d_bp_input_ut_testcase.conv2d_bp_input_fusion_testcase:
@@ -227,6 +250,8 @@ def _gen_conv2d_bp_input_op_slice_case():
 
 def _gen_conv2d_bp_input_check_support_case():
     ut_case.add_cust_test_func("Ascend910A", test_func=test_op_check_supported)
+    ut_case.add_cust_test_func("Ascend910A", test_func=test_op_check_supported_dynamic)
+    ut_case.add_cust_test_func("Ascend910A", test_func=test_op_check_supported_error)
 
 _gen_conv2d_bp_input_op_fusion_case()
 _gen_conv2d_bp_input_op_slice_case()

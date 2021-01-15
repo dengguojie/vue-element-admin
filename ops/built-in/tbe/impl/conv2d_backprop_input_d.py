@@ -320,36 +320,9 @@ def _support_situation(  # pylint: disable=W0622,C0103,R0913,R0914
     groups,
     data_format,
     kernel_name):
-
     """
-    check the op support situation:
-
-    | Name             | Field    | Scope
-    -------------------|----------|--------------
-    | input_size       | H or W   | [1, 4096]
-    -------------------|----------|--------------
-    | Filter           | H or W   | [1, 255]
-    -------------------|----------|--------------
-    | out_backprop     | H or W   | [1, 4096]
-    -------------------|----------|--------------
-    | y(fmap)          | H or W   | [1, 4096]
-    -------------------|----------|--------------
-    | Stride           | H or W   | [1, 63]
-    -------------------|----------|--------------
-    | Dilation         | H or W   | [1, 255]
-
-    batch_input_size == batch_out_backprop
-    batch_filter == channel_out_backprop
-    channel_filter == channel_input_size * groups
-    out_backprop_height == (fmap_height + pad_top + pad_bottom -
-                          (dilation_h * (filter_height - 1) + 1))
-                           / stride_h + 1
-
-    out_backprop_width == (fmap_width + pad_left + pad_right -
-                         (dilation_w * (filter_width - 1) + 1))
-                          / stride_w + 1
+    check the op support situation
     """
-
     para_check.check_kernel_name(kernel_name)
     res = _check_conv2dbp_input_para(
     filter,
@@ -374,19 +347,19 @@ def _support_situation(  # pylint: disable=W0622,C0103,R0913,R0914
             "errCode": "E60108",
             "reason": "groups can not be 0",
         }
-        raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
     if shape_out_backprop[1] % groups != 0:
         args_dict = {
             "errCode": "E60108",
             "reason": "channel of out_backprop % groups must be 0",
         }
-        raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
     if input_size[1] % groups != 0:
         args_dict = {
             "errCode": "E60108",
             "reason": "channel of y % groups must be 0",
         }
-        raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
     util_deconv_comm.check_attr_range("dilations's H", dilations[2], DILATION_MIN, DILATION_MAX)
     util_deconv_comm.check_attr_range("dilations's W", dilations[3], DILATION_MIN, DILATION_MAX)
     util_deconv_comm.check_attr_range("strides's H", strides[0], STRIDE_HW_MIN, STRIDE_HW_MAX)
@@ -429,12 +402,12 @@ def _support_situation(  # pylint: disable=W0622,C0103,R0913,R0914
         args_dict = {
             "errCode": "E60024",
         }
-        raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
     if ((fmap_w - filter_w_dilation + pad_left + pad_right) // strides[1] + 1) != dedy_w:
         args_dict = {
             "errCode": "E60025",
         }
-        raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
 
 
 def check_supported(  # pylint: disable=W0622,C0103,R0913,R0914
@@ -448,11 +421,38 @@ def check_supported(  # pylint: disable=W0622,C0103,R0913,R0914
     groups=1,
     data_format="NHWC",
     kernel_name="conv2d_backprop_input",):
-
     """
-    check the op support situation
-    """
+    check the op support situation:
 
+    | Name             | Field    | Scope
+    -------------------|----------|--------------
+    | input_size       | H or W   | [1, 4096]
+    -------------------|----------|--------------
+    | Filter           | H or W   | [1, 255]
+    -------------------|----------|--------------
+    | out_backprop     | H or W   | [1, 4096]
+    -------------------|----------|--------------
+    | y(fmap)          | H or W   | [1, 4096]
+    -------------------|----------|--------------
+    | Stride           | H or W   | [1, 63]
+    -------------------|----------|--------------
+    | Dilation         | H or W   | [1, 255]
+
+    batch_input_size == batch_out_backprop
+    batch_filter == channel_out_backprop
+    channel_filter == channel_input_size * groups
+    out_backprop_height == (fmap_height + pad_top + pad_bottom -
+                          (dilation_h * (filter_height - 1) + 1))
+                           / stride_h + 1
+
+    out_backprop_width == (fmap_width + pad_left + pad_right -
+                         (dilation_w * (filter_width - 1) + 1))
+                          / stride_w + 1
+    """
+    shape_backprop = out_backprop.get("ori_shape")
+    dynamic_flag = any([i < 0 for i in shape_backprop])
+    if dynamic_flag:
+        return True
     try:
         _support_situation(
             filter,
