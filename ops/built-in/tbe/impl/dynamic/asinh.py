@@ -441,7 +441,7 @@ def asinh(input_x, output_y, kernel_name="asinh"):
             data_input = tvm.placeholder(fuseshape, dtype = dtype_input,
                                          name = "data_input")
             res = asinh_compute_cloud(data_input, output_y, kernel_name)
-            tensor.append([data_input, res])
+            tensors.append([data_input, res])
             
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)
