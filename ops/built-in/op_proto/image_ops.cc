@@ -1980,4 +1980,100 @@ IMPLEMT_INFERFUNC(DecodeJpeg, DecodeJpegInfer) {
 
 INFER_FUNC_REG(DecodeJpeg, DecodeJpegInfer);
 //-----------------DecodeJpeg End--------------------------
+
+//-----------------DenseImageWarp Op Start-----------------
+IMPLEMT_INFERFUNC(DenseImageWarp, DenseImageWarpInfer) {
+  auto image_desc = op.GetInputDesc("image");
+  auto image_shape = image_desc.GetShape();
+  auto image_dtype = image_desc.GetDataType();
+
+  auto y_desc = op.GetOutputDesc("y");
+  y_desc.SetShape(image_shape);
+  y_desc.SetDataType(image_dtype);
+
+  if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "fail to update output y_desc");
+    return GRAPH_FAILED;
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(DenseImageWarp, DenseImageWarpVerify) {
+  auto image_desc = op.GetInputDesc("image");
+  auto flow_desc = op.GetInputDesc("flow");
+  auto image_shape = image_desc.GetShape().GetDims();
+  auto flow_shape = flow_desc.GetShape().GetDims();
+
+  auto image_format = image_desc.GetFormat();
+  auto flow_format = flow_desc.GetFormat();
+  if (image_format != FORMAT_NHWC || flow_format != FORMAT_NHWC) {
+    OP_LOGE(op.GetName().c_str(),
+            "Input image and flow both should be NHWC format");
+    return GRAPH_FAILED;
+  }
+
+  if (image_shape.size() != 4 || flow_shape.size() != 4) {
+    OP_LOGE(op.GetName().c_str(),
+            "Input image and flow both should be 4d, actual are %d, %d",
+            (int)image_shape.size(), (int)flow_shape.size());
+    return GRAPH_FAILED;
+  }
+
+  if (flow_shape[3] != 2) {
+    OP_LOGE(op.GetName().c_str(),
+            "Input flow channel should be 2, actual is %d", flow_shape[3]);
+    return GRAPH_FAILED;
+  }
+
+  if (flow_shape[0] != image_shape[0] || flow_shape[1] != image_shape[1] ||
+      flow_shape[2] != image_shape[2]) {
+    OP_LOGE(op.GetName().c_str(),
+            "Input flow batch, height and width should be same as input image");
+    return GRAPH_FAILED;
+  }
+
+  if (image_shape[1] < 2 || image_shape[2] < 2) {
+    OP_LOGE(op.GetName().c_str(),
+            "Input image height and width should not be less than 2");
+    return GRAPH_FAILED;
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(DenseImageWarp, DenseImageWarpInfer);
+VERIFY_FUNC_REG(DenseImageWarp, DenseImageWarpVerify);
+
+IMPLEMT_INFERFUNC(DenseImageWarpGrad, DenseImageWarpGradInfer) {
+  auto image_desc = op.GetInputDesc("image");
+  auto image_shape = image_desc.GetShape();
+  auto image_dtype = image_desc.GetDataType();
+  auto flow_desc = op.GetInputDesc("flow");
+  auto flow_shape = flow_desc.GetShape();
+  auto flow_dtype = flow_desc.GetDataType();
+
+  auto grad_image_desc = op.GetOutputDesc("grad_image");
+  grad_image_desc.SetShape(image_shape);
+  grad_image_desc.SetDataType(image_dtype);
+  auto grad_flow_desc = op.GetOutputDesc("grad_flow");
+  grad_flow_desc.SetShape(flow_shape);
+  grad_flow_desc.SetDataType(flow_dtype);
+
+  if (op.UpdateOutputDesc("grad_image", grad_image_desc) != GRAPH_SUCCESS ||
+      op.UpdateOutputDesc("grad_flow", grad_flow_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "fail to update output desc.");
+    return GRAPH_FAILED;
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(DenseImageWarpGrad, DenseImageWarpGradVerify) {
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(DenseImageWarpGrad, DenseImageWarpGradInfer);
+VERIFY_FUNC_REG(DenseImageWarpGrad, DenseImageWarpGradVerify);
+//-----------------DenseImageWarp Op End-------------------
 }  // namespace ge

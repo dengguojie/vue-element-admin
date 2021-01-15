@@ -1443,5 +1443,41 @@ REG_OP(DecodeJpeg)
     .ATTR(acceptable_fraction, Float, 1.0)
     .ATTR(dct_method, String, "")
     .OP_END_FACTORY_REG(DecodeJpeg)
+
+/**
+*@brief Image warping using per-pixel flow vectors. \n
+
+*@par Inputs:
+*@li images: 4-D Tensor with shape `[batch, height, width, channels]`.
+*@li flow: 4-D Tensor with shape `[batch, height, width, 2]`. \n
+
+*@par Outputs:
+*y: Returns 4-D with the same shape and dtype as `images`. \n
+*/
+REG_OP(DenseImageWarp)
+    .INPUT(image, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .INPUT(flow, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .OP_END_FACTORY_REG(DenseImageWarp)
+
+/**
+*@brief Computes the gradients of DenseImageWarp with respect to image and flow. \n
+
+*@par Inputs:
+*@li grad: gradients with respect to DenseImageWarp output.
+*@li images: 4-D Tensor with shape `[batch, height, width, channels]`.
+*@li flow: 4-D Tensor with shape `[batch, height, width, 2]`. \n
+
+*@par Outputs:
+*grad_image: Returns 4-D with the same shape and dtype as `images`.
+*grad_flow: Returns 4-D with the same shape and dtype as `flow`. \n
+*/
+REG_OP(DenseImageWarpGrad)
+    .INPUT(grad, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .INPUT(image, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .INPUT(flow, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .OUTPUT(grad_image, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .OUTPUT(grad_flow, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .OP_END_FACTORY_REG(DenseImageWarpGrad)
 }  // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_IMAGE_OPS_H_

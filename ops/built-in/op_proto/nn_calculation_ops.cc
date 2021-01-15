@@ -7883,6 +7883,58 @@ IMPLEMT_VERIFIER(DeformableOffsets, DeformableOffsetsVerify) {
 INFER_FUNC_REG(DeformableOffsets, DeformableOffsetsInfer);
 VERIFY_FUNC_REG(DeformableOffsets, DeformableOffsetsVerify);
 
+IMPLEMT_INFERFUNC(DeformableOffsetsGrad, DeformableOffsetsGradInfer) {
+  auto x_desc = op.GetInputDesc("x");
+  auto offsets_desc = op.GetInputDesc("offsets");
+  auto grad_x_desc = op.GetOutputDesc("grad_x");
+  auto grad_offsets_desc = op.GetOutputDesc("grad_offsets");
+
+  auto x_format = x_desc.GetFormat();
+  auto offsets_format = offsets_desc.GetFormat();
+  auto grad_x_format = grad_x_desc.GetFormat();
+  auto grad_offsets_format = grad_offsets_desc.GetFormat();
+  CHECK_FORMAT(x_format)
+  CHECK_FORMAT(offsets_format)
+  CHECK_FORMAT(grad_x_format)
+  CHECK_FORMAT(grad_offsets_format)
+  std::string x_format_str = format2str[x_format];
+  std::string offsets_format_str = format2str[offsets_format];
+  std::string grad_x_format_str = format2str[grad_x_format];
+  std::string grad_offsets_format_str = format2str[grad_offsets_format];
+  if (x_format_str != grad_x_format_str) {
+    OP_LOGE(op.GetName().c_str(), "Grad_x format should be same as input x format");
+    return GRAPH_FAILED;
+  }
+  if (offsets_format_str != grad_offsets_format_str) {
+    OP_LOGE(op.GetName().c_str(), "Grad_x format should be same as input x format");
+    return GRAPH_FAILED;
+  }
+
+  auto x_shape = x_desc.GetShape();
+  auto x_dtype = x_desc.GetDataType();
+  auto offsets_shape = offsets_desc.GetShape();
+  auto offsets_dtype = offsets_desc.GetDataType();
+  grad_x_desc.SetShape(x_shape);
+  grad_x_desc.SetDataType(x_dtype);
+  grad_offsets_desc.SetShape(offsets_shape);
+  grad_offsets_desc.SetDataType(offsets_dtype);
+
+  if (op.UpdateOutputDesc("grad_x", grad_x_desc) != GRAPH_SUCCESS ||
+      op.UpdateOutputDesc("grad_offsets", grad_offsets_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "fail to update output desc");
+    return GRAPH_FAILED;
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(DeformableOffsetsGrad, DeformableOffsetsGradVerify) {
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(DeformableOffsetsGrad, DeformableOffsetsGradInfer);
+VERIFY_FUNC_REG(DeformableOffsetsGrad, DeformableOffsetsGradVerify);
+
 IMPLEMT_COMMON_INFERFUNC(DilationInferShape)
 {
     auto x_desc = op.GetInputDesc("x");

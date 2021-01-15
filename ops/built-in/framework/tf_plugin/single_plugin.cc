@@ -1329,4 +1329,18 @@ REGISTER_CUSTOM_OP("DeformableOffsetsGrad")
     .OriginOpType("DeformableOffsetsGrad")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
+
+// register DenseImageWarp op to GE
+REGISTER_CUSTOM_OP("DenseImageWarp")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("DenseImageWarp")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register DenseImageWarpGrad op to GE
+REGISTER_CUSTOM_OP("DenseImageWarpGrad")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("DenseImageWarpGrad")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
 }  // namespace domi
