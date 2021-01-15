@@ -68,12 +68,12 @@ def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
         # format NC1HWC0_C04 can only be used at first conv layer
         # for those soc using NC1HWC0_C04, ensure is_first_layer == 1
         if not inputs.get("is_first_layer") and tbe_platform.get_soc_spec("SOC_VERSION") \
-                in ("Ascend710", "Ascend615", "Ascend610", "Hi3796CV300CS"):
+                in ("Ascend710", "Ascend615", "Ascend610", "Hi3796CV300CS", "SD3403"):
             c0_optim_flg = False
         if c0_optim_flg:
             use_v200_c04_flag = False
             if tbe_platform.get_soc_spec("SOC_VERSION") in \
-                    ("Ascend710", "Ascend615", "Ascend610", "Hi3796CV300CS"):
+                    ("Ascend710", "Ascend615", "Ascend610", "Hi3796CV300CS", "SD3403"):
                 use_v200_c04_flag = util_conv2d.use_v200_c04_check(shape_fm, shape_filter, params)
             if use_v200_c04_flag:
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
@@ -375,8 +375,8 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
     # fix the weight's channel=cin_ori
     shape_w[1] = shape_in[1]
     weight_ori_shape_nchw = shape_w
-    cin_ori = shape_in[1]//groups
-    cout_ori = shape_w[0]//groups
+    cin_ori = shape_in[1] // groups
+    cout_ori = shape_w[0] // groups
     shape_in, shape_w = util_conv2d.conv_layer_cce_para_check(shape_in, shape_w, padh, padw,
                                                               strideh, stridew, in_dtype, w_dtype,
                                                               res_dtype, offset_w_dtype, bias,

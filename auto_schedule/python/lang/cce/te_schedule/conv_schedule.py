@@ -1482,7 +1482,7 @@ class CceConvOp:
 
                     """
                     if self.unzip_parameters.get("weight_zip_flag") and \
-                            cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS"):
+                            cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                         compress_fusion_flag = self.unzip_parameters.get("compress_flag")
                         compress_fusion_flag = compress_fusion_flag << WEIGHT_UNZIP_FUSION_TYPE_BIT
                         fusion_type_new = fusion_type + compress_fusion_flag

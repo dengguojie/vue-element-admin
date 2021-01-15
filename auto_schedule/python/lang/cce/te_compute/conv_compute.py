@@ -2056,7 +2056,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         if "mad_dtype" not in para_dict:
             if weight.dtype == "int8":
                 mad_dtype = "int32"
-            elif cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS"):
+            elif cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 mad_dtype = "float16"
             else:
                 mad_dtype = "float32"
