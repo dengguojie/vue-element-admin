@@ -28,11 +28,20 @@ from impl.util.util_select_op_base import get_op_cal_info
 
 # pylint: disable = unused-argument,invalid-name
 # pylint: disable = too-many-arguments,too-many-locals,redefined-builtin
-def get_op_support_info(x, sum, square_sum,
-                        scale, offset, mean,
-                        variance, y, mean_out,
-                        variance_out, batch_mean,
-                        batch_variance, factor, epsilon,
+def get_op_support_info(x,
+                        sum,
+                        square_sum,
+                        scale,
+                        offset,
+                        mean,
+                        variance,
+                        y,
+                        mean_out,
+                        variance_out,
+                        batch_mean,
+                        batch_variance,
+                        factor,
+                        epsilon,
                         kernel_name="bn_training_update"):
     """
     get_op_support_info
@@ -53,8 +62,7 @@ def get_op_support_info(x, sum, square_sum,
 
 # pylint: disable=locally-disabled,too-many-arguments,redefined-builtin
 # pylint: disable=locally-disabled,invalid-name,too-many-locals,unused-argument
-def _check_shape(shape_x, shape_sum, shape_square_sum, shape_scale,
-                 shape_offset, shape_mean, shape_variance):
+def _check_shape(shape_x, shape_sum, shape_square_sum, shape_scale, shape_offset, shape_mean, shape_variance, format):
     """
     Function to check if the shape is in line with norms.
 
@@ -87,34 +95,43 @@ def _check_shape(shape_x, shape_sum, shape_square_sum, shape_scale,
     para_check.check_shape(shape_mean, param_name="mean")
     para_check.check_shape(shape_variance, param_name="variance")
 
-    if len(shape_x) != 5 or len(shape_sum) != 5 or len(shape_square_sum) != 5 or len(shape_scale) != 5:
-        error_reson = "This operator can only support 5D, but some input's shape length is not 5"
+    if len(shape_x) not in (5, 6) or len(shape_sum) not in (5, 6) or len(shape_square_sum) not in (5, 6) or \
+            len(shape_scale) not in (5, 6):
+        error_reson = "This operator can only support 5D or 6D, but some input's shape length is not 5 or 6"
         error_manager_vector.raise_err_specific_reson("bn_training_update", error_reson)
-    if len(shape_offset) != 5 or len(shape_mean) != 5 or len(shape_variance) != 5:
-        error_reson = "This operator can only support 5D, but some input's shape length is not 5"
+    if len(shape_offset) not in (5, 6) or len(shape_mean) not in (5, 6) or len(shape_variance) not in (5, 6):
+        error_reson = "This operator can only support 5D or 6, but some input's shape length is not 5 or 6"
         error_manager_vector.raise_err_specific_reson("bn_training_update", error_reson)
-
-    dim_c1 = shape_x[1]
-    dim_c0 = shape_x[4]
-
-    if shape_sum[1] != dim_c1 or shape_sum[4] != dim_c0:
+    dim_c1 = 0
+    dim_c0 = 0
+    i = 0
+    j = 0
+    if format == "NC1HWC0":
+        dim_c1 = shape_x[1]
+        dim_c0 = shape_x[4]
+        i = 1
+        j = 4
+    else:
+        dim_c1 = shape_x[2]
+        dim_c0 = shape_x[5]
+        i = 2
+        j = 5
+    if shape_sum[i] != dim_c1 or shape_sum[j] != dim_c0:
         error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and sum must be equal")
-    if shape_square_sum[1] != dim_c1 or shape_square_sum[4] != dim_c0:
+    if shape_square_sum[i] != dim_c1 or shape_square_sum[j] != dim_c0:
         error_manager_vector.raise_err_specific_reson("bn_training_update",
                                                       "Dimension C of x and square_sum must be equal")
-    if shape_scale[1] != dim_c1 or shape_scale[4] != dim_c0:
+    if shape_scale[i] != dim_c1 or shape_scale[j] != dim_c0:
         error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and scale must be equal")
-    if shape_offset[1] != dim_c1 or shape_offset[4] != dim_c0:
+    if shape_offset[i] != dim_c1 or shape_offset[j] != dim_c0:
         error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and offset must be equal")
-    if shape_mean[1] != dim_c1 or shape_mean[4] != dim_c0:
+    if shape_mean[i] != dim_c1 or shape_mean[j] != dim_c0:
         error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and mean must be equal")
-    if shape_variance[1] != dim_c1 or shape_variance[4] != dim_c0:
-        error_manager_vector.raise_err_specific_reson("bn_training_update",
-                                                      "Dimension C of x and variance must be equal")
+    if shape_variance[i] != dim_c1 or shape_variance[j] != dim_c0:
+        error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and mean must be equal")
 
 
-def _check_dtype(dtype_x, dtype_sum, dtype_square_sum, dtype_scale,
-                 dtype_offset, dtype_mean, dtype_variance):
+def _check_dtype(dtype_x, dtype_sum, dtype_square_sum, dtype_scale, dtype_offset, dtype_mean, dtype_variance):
     """
     Function to check if the dtype is in line with norms.
 
@@ -149,11 +166,20 @@ def _check_dtype(dtype_x, dtype_sum, dtype_square_sum, dtype_scale,
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("bn_training_update")
-def bn_training_update_compute(x, sum, square_sum,
-                               scale, offset, mean,
-                               variance, y, mean_out,
-                               variance_out, batch_mean,
-                               batch_variance, factor, epsilon,
+def bn_training_update_compute(x,
+                               sum,
+                               square_sum,
+                               scale,
+                               offset,
+                               mean,
+                               variance,
+                               y,
+                               mean_out,
+                               variance_out,
+                               batch_mean,
+                               batch_variance,
+                               factor,
+                               epsilon,
                                kernel_name="bn_training_update"):
     """
     algorithm: fused_batch_norm_v2
@@ -257,11 +283,20 @@ def bn_training_update_compute(x, sum, square_sum,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
-def bn_training_update(x, sum, square_sum,
-                       scale, offset, mean,
-                       variance, y, mean_out,
-                       variance_out, batch_mean,
-                       batch_variance, factor, epsilon,
+def bn_training_update(x,
+                       sum,
+                       square_sum,
+                       scale,
+                       offset,
+                       mean,
+                       variance,
+                       y,
+                       mean_out,
+                       variance_out,
+                       batch_mean,
+                       batch_variance,
+                       factor,
+                       epsilon,
                        kernel_name="bn_training_update"):
     """
     algorithm: fused_batch_norm_v2
@@ -325,39 +360,54 @@ def bn_training_update(x, sum, square_sum,
     dtype_offset = offset.get("dtype")
     dtype_mean = mean.get("dtype")
     dtype_variance = variance.get("dtype")
+    format = x.get("format")
 
-    _check_shape(shape_x, shape_sum, shape_square_sum, shape_scale,
-                 shape_offset, shape_mean, shape_variance)
-    _check_dtype(dtype_x, dtype_sum, dtype_square_sum, dtype_scale,
-                 dtype_offset, dtype_mean, dtype_variance)
-
+    _check_shape(shape_x, shape_sum, shape_square_sum, shape_scale, shape_offset, shape_mean, shape_variance, format)
+    _check_dtype(dtype_x, dtype_sum, dtype_square_sum, dtype_scale, dtype_offset, dtype_mean, dtype_variance)
+    if format == "NDC1HWC0":
+        shape_x = [shape_x[0] * shape_x[1], shape_x[2], shape_x[3], shape_x[4], shape_x[5]]
+        shape_sum = [shape_sum[0] * shape_sum[1], shape_sum[2], shape_sum[3], shape_sum[4], shape_sum[5]]
+        shape_square_sum = [
+            shape_square_sum[0] * shape_square_sum[1], shape_square_sum[2], shape_square_sum[3], shape_square_sum[4],
+            shape_square_sum[5]
+        ]
+        shape_scale = [shape_scale[0] * shape_scale[1], shape_scale[2], shape_scale[3], shape_scale[4], shape_scale[5]]
+        shape_offset = [
+            shape_offset[0] * shape_offset[1], shape_offset[2], shape_offset[3], shape_offset[4], shape_offset[5]
+        ]
+        shape_mean = [shape_mean[0] * shape_mean[1], shape_mean[2], shape_mean[3], shape_mean[4], shape_mean[5]]
+        shape_variance = [
+            shape_variance[0] * shape_variance[1], shape_variance[2], shape_variance[3], shape_variance[4],
+            shape_variance[5]
+        ]
     x_input = tvm.placeholder(shape_x, name="x_input", dtype=dtype_x.lower())
-    sum_input = tvm.placeholder(shape_sum, name="sum_input",
-                                dtype=dtype_sum.lower())
-    square_sum_input = tvm.placeholder(shape_square_sum,
-                                       name="square_sum_input",
-                                       dtype=dtype_square_sum.lower())
-    scale_input = tvm.placeholder(shape_scale, name="scale_input",
-                                  dtype=dtype_scale.lower())
-    offset_input = tvm.placeholder(shape_offset, name="offset_input",
-                                   dtype=dtype_offset.lower())
-    mean_input = tvm.placeholder(shape_mean, name="mean_input",
-                                 dtype=dtype_mean.lower())
-    variance_input = tvm.placeholder(shape_variance, name="variance_input",
-                                     dtype=dtype_variance.lower())
+    sum_input = tvm.placeholder(shape_sum, name="sum_input", dtype=dtype_sum.lower())
+    square_sum_input = tvm.placeholder(shape_square_sum, name="square_sum_input", dtype=dtype_square_sum.lower())
+    scale_input = tvm.placeholder(shape_scale, name="scale_input", dtype=dtype_scale.lower())
+    offset_input = tvm.placeholder(shape_offset, name="offset_input", dtype=dtype_offset.lower())
+    mean_input = tvm.placeholder(shape_mean, name="mean_input", dtype=dtype_mean.lower())
+    variance_input = tvm.placeholder(shape_variance, name="variance_input", dtype=dtype_variance.lower())
 
-    res = bn_training_update_compute(x_input, sum_input, square_sum_input,
-                                     scale_input, offset_input, mean_input,
-                                     variance_input, y, mean_out,
-                                     variance_out, batch_mean,
-                                     batch_variance, factor,
-                                     epsilon, kernel_name=kernel_name)
+    res = bn_training_update_compute(x_input,
+                                     sum_input,
+                                     square_sum_input,
+                                     scale_input,
+                                     offset_input,
+                                     mean_input,
+                                     variance_input,
+                                     y,
+                                     mean_out,
+                                     variance_out,
+                                     batch_mean,
+                                     batch_variance,
+                                     factor,
+                                     epsilon,
+                                     kernel_name=kernel_name)
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
 
-    tensor_list = [x_input, sum_input, square_sum_input, scale_input,
-                   offset_input, mean_input, variance_input] + list(res)
+    tensor_list = [x_input, sum_input, square_sum_input, scale_input, offset_input, mean_input, variance_input
+                  ] + list(res)
 
-    config = {"name": kernel_name,
-              "tensor_list": tensor_list}
+    config = {"name": kernel_name, "tensor_list": tensor_list}
     tbe.cce_build_code(sch, config)

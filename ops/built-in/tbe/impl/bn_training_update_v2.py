@@ -65,29 +65,29 @@ def op_select_format(x, sum, square_sum, scale, offset,
     # support 5HD + 5HD
     else:
         input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                               datatype="float16,float",
-                                               format="NC1HWC0,NC1HWC0")
+                                               datatype="float16,float,float16,float",
+                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
         input1 = util_select_op_base.gen_param(classify="input1", name="sum",
-                                               datatype="float,float",
-                                               format="NC1HWC0,NC1HWC0")
+                                               datatype="float,float,float,float",
+                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
         input2 = util_select_op_base.gen_param(classify="input2", name="square_sum",
-                                               datatype="float,float",
-                                               format="NC1HWC0,NC1HWC0")
+                                               datatype="float,float,float,float",
+                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
         input3 = util_select_op_base.gen_param(classify="input3", name="scale",
-                                               datatype="float,float",
-                                               format="NC1HWC0,NC1HWC0")
+                                               datatype="float,float,float,float",
+                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
         input4 = util_select_op_base.gen_param(classify="input4", name="offset",
-                                               datatype="float,float",
-                                               format="NC1HWC0,NC1HWC0")
+                                               datatype="float,float,float,float",
+                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
         output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                datatype="float16,float",
-                                                format="NC1HWC0,NC1HWC0")
+                                                datatype="float16,float,float,float",
+                                                format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
         output1 = util_select_op_base.gen_param(classify="output1", name="batch_mean",
-                                                datatype="float,float",
-                                                format="NC1HWC0,NC1HWC0")
+                                                datatype="float,float,float,float",
+                                                format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
         output2 = util_select_op_base.gen_param(classify="output2", name="batch_variance",
-                                                datatype="float,float",
-                                                format="NC1HWC0,NC1HWC0")
+                                                datatype="float,float,float,float",
+                                                format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
 
     param_list = [input0, input1, input2, input3,
                   input4, output0, output1, output2]
@@ -111,8 +111,8 @@ def _check_format(data_format, origin_foramt):
     -------
     None
     """
-    if data_format.upper() not in ("NC1HWC0", "NCHW"):
-        error_reson = "The data format only supports NC1HWC0 and NCHW."
+    if data_format.upper() not in ("NC1HWC0", "NCHW", "NDC1HWC0"):
+        error_reson = "The data format only supports NC1HWC0 and NCHW and NDC1HWC0."
         error_manager_vector.raise_err_specific_reson("bn_training_update_v2", error_reson)
     if data_format.upper() == "NCHW":
         if origin_foramt not in ("NCHW",):
@@ -122,7 +122,7 @@ def _check_format(data_format, origin_foramt):
 
 # pylint: disable=locally-disabled,too-many-arguments
 def _check_shape(shape_x, shape_sum, shape_square_sum,
-                 shape_scale, shape_offset):
+                 shape_scale, shape_offset, data_format):
     """
     Function to check if the shape is in line with norms.
 
@@ -149,24 +149,35 @@ def _check_shape(shape_x, shape_sum, shape_square_sum,
     para_check.check_shape(shape_scale, param_name="scale")
     para_check.check_shape(shape_offset, param_name="offset")
 
-    if len(shape_x) != 5 or len(shape_sum) != 5 \
-            or len(shape_square_sum) != 5 or len(shape_scale) != 5 \
-            or len(shape_offset) != 5:
-        error_reson = "The data format is 5HD, but some input's shape length is not 5"
+    if len(shape_x) not in (5, 6) or len(shape_sum) not in (5, 6) \
+            or len(shape_square_sum) not in (5, 6) or len(shape_scale) not in (5, 6) \
+            or len(shape_offset) not in (5, 6):
+        error_reson = "The data format is 5HD or 6HD, but some input's shape length is not 5 or 6"
         error_manager_vector.raise_err_specific_reson("bn_training_update_v2", error_reson)
+    dim_c1 = 0
+    dim_c0 = 0
+    c1 = 0
+    c0 = 0
+    if data_format == "NC1HWC0":
+        dim_c1 = shape_x[1]
+        dim_c0 = shape_x[4]
+        c1 = 1
+        c0 = 4
+    else:
+        dim_c1 = shape_x[2]
+        dim_c0 = shape_x[5]
+        c1 = 2
+        c0 = 5
 
-    dim_c1 = shape_x[1]
-    dim_c0 = shape_x[4]
-
-    if shape_sum[1] != dim_c1 or shape_sum[4] != dim_c0:
+    if shape_sum[c1] != dim_c1 or shape_sum[c0] != dim_c0:
         error_manager_vector.raise_err_specific_reson("bn_training_update_v2", "Dimension C of x and sum must be equal")
-    if shape_square_sum[1] != dim_c1 or shape_square_sum[4] != dim_c0:
+    if shape_square_sum[c1] != dim_c1 or shape_square_sum[c0] != dim_c0:
         error_manager_vector.raise_err_specific_reson("bn_training_update_v2",
                                                       "Dimension C of x and square_sum must be equal")
-    if shape_scale[1] != dim_c1 or shape_scale[4] != dim_c0:
+    if shape_scale[c1] != dim_c1 or shape_scale[c0] != dim_c0:
         error_manager_vector.raise_err_specific_reson("bn_training_update_v2",
                                                       "Dimension C of x and scale must be equal")
-    if shape_offset[1] != dim_c1 or shape_offset[4] != dim_c0:
+    if shape_offset[c1] != dim_c1 or shape_offset[c0] != dim_c0:
         error_manager_vector.raise_err_specific_reson("bn_training_update_v2",
                                                       "Dimension C of x and offset must be equal")
 
@@ -356,9 +367,9 @@ def bn_training_update_v2(x, sum, square_sum, scale, offset,
 
     _check_format(data_format, origin_format)
 
-    if data_format == "NC1HWC0":
+    if data_format in ("NC1HWC0", "NDC1HWC0"):
         _check_shape(shape_x, shape_sum, shape_square_sum,
-                     shape_scale, shape_offset)
+                     shape_scale, shape_offset, data_format)
     else:
         shape_list = [1, 1, 1, 1]
         shape_list[1] = shape_x[1]
@@ -367,6 +378,11 @@ def bn_training_update_v2(x, sum, square_sum, scale, offset,
 
     _check_dtype(dtype_x, dtype_sum, dtype_square_sum,
                  dtype_scale, dtype_offset)
+    if data_format == "NDC1HWC0":
+        shape_x = [shape_x[0] * shape_x[1], shape_x[2], shape_x[3], shape_x[4], shape_x[5]]
+        shape_sum = [shape_sum[0] * shape_sum[1], shape_sum[2], shape_sum[3], shape_sum[4], shape_sum[5]]
+        shape_square_sum = [shape_square_sum[0] * shape_square_sum[1], shape_square_sum[2],
+                            shape_square_sum[3], shape_square_sum[4], shape_square_sum[5]]
 
     x_input = tvm.placeholder(shape_x, name="x_input", dtype=dtype_x.lower())
     sum_input = tvm.placeholder(shape_sum, name="sum_input",
@@ -392,3 +408,4 @@ def bn_training_update_v2(x, sum, square_sum, scale, offset,
     config = {"name": kernel_name,
               "tensor_list": tensor_list}
     tbe.cce_build_code(sch, config)
+
