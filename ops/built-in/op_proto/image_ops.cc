@@ -527,11 +527,11 @@ IMPLEMT_INFERFUNC(ResizeNearestNeighborV2Grad, ResizeNearestNeighborV2GradInfer)
     return GRAPH_PARAM_INVALID;
   }
 
-  auto size_height = UNKNOWN_DIM;
-  auto size_width = UNKNOWN_DIM;
+  int64_t size_height = UNKNOWN_DIM;
+  int64_t size_width = UNKNOWN_DIM;
   Tensor size_tensor;
   if (op.GetInputConstData("size", size_tensor) == GRAPH_SUCCESS) {
-    auto size_data = size_tensor.GetData();
+    auto size_data = reinterpret_cast<const int32_t*>(size_tensor.GetData());
     if (size_data == nullptr) {
       OP_LOGE(op_desc->GetName().c_str(), "Get size data failed");
       return GRAPH_PARAM_INVALID;
