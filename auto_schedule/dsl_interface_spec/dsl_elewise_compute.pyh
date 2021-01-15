@@ -16,7 +16,7 @@ def vexp(raw_tensor):
 
 def vabs(raw_tensor):
 
-def vrec(raw_tensor):
+def vrec(raw_tensor, priority_flag=1):
 
 def vrelu(raw_tensor):
 

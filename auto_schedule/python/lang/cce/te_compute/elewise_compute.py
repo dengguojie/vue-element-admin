@@ -709,13 +709,14 @@ def vabs(raw_tensor):
 @source_info_decorator()
 @_auto_cast_of_elewise
 @dtype_check_decorator
-def vrec(raw_tensor):
+def vrec(raw_tensor, priority_flag=1):
     """
     calculate vrec(raw_tensor)
 
     Parameters
     ----------
     raw_tensor : wrapped_tensor or tvm.tensor
+    priority_flag: priority flag, only support 1(precision), 0(performance)
 
     Returns
     -------
@@ -723,7 +724,7 @@ def vrec(raw_tensor):
     """
     dtype = raw_tensor.dtype
 
-    return __single_elewise_op(raw_tensor, dtype, 'elewise_single_rec')
+    return __single_elewise_op(raw_tensor, dtype, 'elewise_single_rec', args=[priority_flag])
 
 
 def _check_multi_compute_pattern(pattern, *tensors):
@@ -1064,7 +1065,14 @@ def __single_elewise_op(input_tensor, dtype, op_name, args=None):
     with tvm.tag_scope(op_name):
         tmp = tvm.compute(shape, lambda_func, name=name)
 
+    # vrec don't need newton iter scene
+    # 1. vrec interface parameter priority_flag is set 0(high performance)
+    is_use_newton_iter = False
     if op_name == "elewise_single_rec":
+        if not (args is not None and _get_priority_flag_value(args[0]) == 0.0):
+            is_use_newton_iter = True
+
+    if is_use_newton_iter:
         def __get_newton_iter_num():
             newton_iter_num = 2
             if pver().is_mini_version():
