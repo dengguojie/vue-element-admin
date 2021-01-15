@@ -20,6 +20,16 @@ def gen_transpose_case(dynamic_input_shapes, ori_input_shapes, dtype, perm_shape
 ut_case.add_case(["Ascend910", "Ascend310"], gen_transpose_case((-1, -1), (66, 2), "float32", (0, 1), "case_1", "success"))
 
 
+def test_op_check_supported(test_arg):
+    from impl.transpose import check_supported
+    input_x  = {'ori_shape': (-1, -1), 'shape': (2, 3), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    perm  = {'ori_shape': (-1), 'shape': (2), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    output_y  = {'ori_shape': (-1, -1), 'shape': (3, 2), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    check_supported(input_x, perm, output_y)
+
+
+ut_case.add_cust_test_func(test_func=test_op_check_supported)
+
 if __name__ == '__main__':
     with te.op.dynamic():
         ut_case.run("Ascend910")
