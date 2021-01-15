@@ -956,9 +956,17 @@ IMPLEMT_COMMON_INFERFUNC(GatherV2InferShape) {
       max_second = max_second > range_tmp[i].second ? max_second : range_tmp[i].second;
     }
 
+    std::pair<int64_t, int64_t> rank_unkown(1, -1);
+    int count_rank_x = std::count(shape_range_x.begin(), shape_range_x.end(), rank_unkown);
+    int count_rank_indices = std::count(shape_range_indices.begin(), shape_range_indices.end(), rank_unkown);
+
     for (int i = 0; i < rank_x + rank_indices - 1; i++) {
       y_shape.push_back(-1);
-      out_range.push_back(std::pair<int64_t, int64_t>(min_first, max_second));
+      if (count_rank_x > 0 || count_rank_indices > 0) {
+        out_range.push_back(std::pair<int64_t, int64_t>(1, -1));
+      } else {
+        out_range.push_back(std::pair<int64_t, int64_t>(min_first, max_second));
+      }
     }
 
     y_desc->SetDataType(x_desc->GetDataType());
