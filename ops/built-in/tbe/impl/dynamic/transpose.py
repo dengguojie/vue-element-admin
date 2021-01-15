@@ -825,6 +825,7 @@ class Transpose(object):
         self._copy_common_s2(tp, ub_input, steps, accu_blocks, tp.head_major_loop, tp.head_major_num, tp.head_tail_num)
 
     def _copy_body_s2_aligned(self, tp, ub_input, steps, accu_blocks):
+        #with self.tik_inst.new_stmt_scope(disable_sync=True):
         with self.tik_inst.for_range(0, tp.body_loop):
             self._copy_common_s2(tp, ub_input, steps, accu_blocks, tp.body_major_loop,
                                  tp.body_major_num, tp.body_tail_num)
@@ -1250,7 +1251,36 @@ class Transpose(object):
     # C:   major_col_tail_batch
     # D:   tail_col_tail_batch
 
-    def _reorder_university(self, tp, ub_input, ub_offset, is_tc=False, is_tr=False):
+    def _reorder_s7_b16(self, tp, ub_input, ub_offset, is_tc=False, is_tr=False):
+        tp.fp16_offset_1.set_as(248 * 256)
+        ub_input_fp16 = ub_input.reinterpret_cast_to("float16")
+
+        with self.tik_inst.if_scope(is_tc == True):
+            tp.col_reorder.set_as(tp.col_tc)
+        with self.tik_inst.else_scope():
+            tp.col_reorder.set_as(tp.col_per_mc)
+
+        with self.tik_inst.if_scope(is_tr == True):
+            tp.row_reorder.set_as(tp.row_tr)
+        with self.tik_inst.else_scope():
+            tp.row_reorder.set_as(tp.row_per_mr)
+
+        repeat_cnt = tp.col_reorder // EPB16
+        with self.tik_inst.for_range(0, tp.row_reorder // EPB16) as loop:
+            src_addr_list = [ub_input_fp16[loop * tp.col_reorder * EPB16 + tp.col_reorder * i] for i in range(EPB16)]
+            dst_addr_list = [ub_input_fp16[tp.fp16_offset_1 + loop * EPB16 + ROW_UNIT * i] for i in range(EPB16)]
+
+            with self.tik_inst.if_scope(repeat_cnt == 1):
+                tp.src_stride_reorder.set_as(0)
+                tp.dst_stride_reorder.set_as(0)
+            with self.tik_inst.else_scope():
+                tp.src_stride_reorder.set_as(1)
+                tp.dst_stride_reorder.set_as(ROW_UNIT)
+
+            self.tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt,
+                                    tp.dst_stride_reorder, tp.src_stride_reorder)
+
+    def _reorder_s7_b32(self, tp, ub_input, ub_offset, is_tc=False, is_tr=False):
         tp.fp16_offset_1.set_as(248 * 256)
 
         with self.tik_inst.if_scope(is_tc == True):
@@ -1267,7 +1297,6 @@ class Transpose(object):
         inner_hw_len = 16 // self.fp16_times
         fp16_inner_hwc_len = 8 * tp.col_reorder * self.fp16_times
         ub_input_fp16 = ub_input.reinterpret_cast_to("float16")
-        ub_input_fp32 = ub_input.reinterpret_cast_to("float32")
 
         # first vnchwconv
         src_addr_list = [ub_input_fp16[fp16_inner_hwc_len * i] for i in range(EPB16)]
@@ -1290,7 +1319,6 @@ class Transpose(object):
                                ub_input_fp16[tp.fp16_offset_1 + i * tp.col_reorder * self.fp16_times * EPB16],
                                0, tp.col_reorder, self.fp16_times, 0, (inner_hw_len - 1) * self.fp16_times)
 
-
         # second vnchwconv
         src_addr_list = [ub_input_fp16[EPB16 * i] for i in range(EPB16)]
         dst_addr_list = [ub_input_fp16[tp.fp16_offset_1 + EPB16 * i] for i in range(EPB16)]
@@ -1302,6 +1330,12 @@ class Transpose(object):
             tp.dst_stride_reorder.set_as(16)
         self.tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt,
                                 tp.dst_stride_reorder, tp.src_stride_reorder)
+
+    def _reorder_s7(self, tp, ub_input, ub_offset, is_tc=False, is_tr=False):
+        with self.tik_inst.if_scope(self.fp16_times == 2):#fp32/int32
+            self._reorder_s7_b32(tp, ub_input, ub_offset, is_tc, is_tr)
+        with self.tik_inst.else_scope():#fp16/int16
+            self._reorder_s7_b16(tp, ub_input, ub_offset, is_tc, is_tr)
 
     def _copy_in_major_col_major_row(self, tp, ub_input, ub_offset, ln, lc, lr):
         ub_offset.set_as(0)
@@ -1363,7 +1397,7 @@ class Transpose(object):
         #with self.tik_inst.new_stmt_scope(disable_sync=True):
         with self.tik_inst.for_range(0, tp.col_per_mc) as col_id:
             self.tik_inst.data_move(self.data_out[self._get_dst_addr(tp, ln, lc, lr, col_id, 0, 0)],
-                                    ub_input[tp.fp16_offset_1 // self.fp16_times + col_id * tp.row_per_mr],
+                                    ub_input[tp.fp16_offset_1 // self.fp16_times + col_id * ROW_UNIT],
                                     0, 1, tp.row_per_mr // self.ele_per_block, 0, 0)
             self._update_tuple(tp.dst_axis_num, tp.rt_dst_tuple, tp.dst_jump_factor)
 
@@ -1381,7 +1415,7 @@ class Transpose(object):
             with self.tik_inst.if_scope(col_id >= tp.back_step_left):
                 self.tik_inst.data_move(self.data_out[self._get_dst_addr(tp, ln, lc, lr, col_id,
                                                                          tp.back_step_left, 0)],
-                                        ub_input[tp.fp16_offset_1 // self.fp16_times + col_id * tp.row_per_mr],
+                                        ub_input[tp.fp16_offset_1 // self.fp16_times + col_id * ROW_UNIT],
                                         0, 1, tp.row_per_mr // self.ele_per_block, 0, 0)
             self._update_tuple(tp.dst_axis_num, tp.rt_dst_tuple, tp.dst_jump_factor)
 
@@ -1411,15 +1445,17 @@ class Transpose(object):
             self.tik_inst.vnchwconv(False, False, dst_list_intermediate, src_list, ub_offset, EPB16, 1)
 
         #step2. move output elements together
-        with self.tik_inst.if_scope(mode == 999):
-            #t2f
+        with self.tik_inst.if_scope(mode == 0):
+            #f2t
+            #with self.tik_inst.new_stmt_scope(disable_sync=True):
             with self.tik_inst.for_range(0, row_ele_num) as i:
                 self.tik_inst.data_move(ub_input_fp16[tp.fp16_offset_2 + i * self.fp16_times * EPB16],
                                         ub_input_fp16[tp.fp16_offset_1 + i * col_ele_num * self.fp16_times * EPB16],
                                         0, col_ele_num, self.fp16_times,
-                                        row_ele_num * self.fp16_times - self.fp16_times, 0)
+                                        0, row_ele_num * self.fp16_times - self.fp16_times)
         with self.tik_inst.else_scope():
-            #f2t
+            #t2f
+            #with self.tik_inst.new_stmt_scope(disable_sync=True):
             with self.tik_inst.for_range(0, col_ele_num) as i:
                 self.tik_inst.data_move(ub_input_fp16[tp.fp16_offset_2 + i * row_ele_num * self.fp16_times * EPB16],
                                         ub_input_fp16[tp.fp16_offset_1 + i * self.fp16_times * EPB16],
@@ -1439,6 +1475,7 @@ class Transpose(object):
     def _copy_in_major_col_f2t(self, tp, ub_input, ub_offset, ln, lc):
         ub_offset.set_as(0)
         self._init_src_tuple(tp)
+        #with self.tik_inst.new_stmt_scope(disable_sync=True):
         with self.tik_inst.for_range(0, tp.row_per_mr) as line:
             self.tik_inst.data_move(ub_input[ub_offset * self.ele_per_block],
                                     self.data_in[self._get_src_addr(tp, ln, lc, 0, 0)],
@@ -1454,6 +1491,7 @@ class Transpose(object):
     def _copy_in_tail_col_f2t(self, tp, ub_input, ub_offset, ln, lc):
         ub_offset.set_as(0)
         self._init_src_tuple(tp)
+        #with self.tik_inst.new_stmt_scope(disable_sync=True):
         with self.tik_inst.for_range(0, tp.row_per_mr) as line:
             self.tik_inst.data_move(ub_input[ub_offset * self.ele_per_block],
                                     self.data_in[self._get_src_addr(tp, ln, lc, 0, tp.back_step_left)],
@@ -1476,6 +1514,7 @@ class Transpose(object):
 
     def _copy_out_major_row_t2f(self, tp, ub_input, ub_offset, ln, lr):
         self._init_dst_tuple(tp)
+        #with self.tik_inst.new_stmt_scope(disable_sync=True):
         with self.tik_inst.for_range(0, tp.col_per_mc) as col_id:
             self.tik_inst.data_move(self.data_out[self._get_dst_addr(tp, ln, 0, lr, col_id, 0, 0)],
                                     ub_input[col_id * tp.row_per_mr],
@@ -1492,6 +1531,7 @@ class Transpose(object):
 
     def _copy_out_tail_row_t2f(self, tp, ub_input, ub_offset, ln, lr):
         self._init_dst_tuple(tp)
+        #with self.tik_inst.new_stmt_scope(disable_sync=True):
         with self.tik_inst.for_range(0, tp.col_per_mc) as col_id:
             self.tik_inst.data_move(self.data_out[self._get_dst_addr(tp, ln, 0, lr, col_id, 0, tp.back_step_up)],
                                     ub_input[col_id * tp.row_tr],
@@ -1512,14 +1552,14 @@ class Transpose(object):
                 with self.tik_inst.for_range(0, tp.loop_on_mr) as lr:
                     self._restore_dst_tuple(tp)
                     self._copy_in_major_col_major_row(tp, ub_input, ub_offset, ln, lc, lr)
-                    self._reorder_university(tp, ub_input, ub_offset, False, False)
+                    self._reorder_s7(tp, ub_input, ub_offset, False, False)
                     self._copy_out_major_col_major_row(tp, ub_input, ub_offset, ln, lc, lr)
 
                 with self.tik_inst.if_scope(tp.row_tr != 0):
                     self._tail_src_tuple(tp)
                     self._restore_dst_tuple(tp)
                     self._copy_in_major_col_tail_row(tp, ub_input, ub_offset, ln, lc, tp.loop_on_mr)
-                    self._reorder_university(tp, ub_input, ub_offset, False, True)
+                    self._reorder_s7(tp, ub_input, ub_offset, False, True)
                     self._copy_out_major_col_tail_row(tp, ub_input, ub_offset, ln, lc, tp.loop_on_mr)
                 self._backup_dst_tuple(tp)
 
@@ -1528,7 +1568,7 @@ class Transpose(object):
                 with self.tik_inst.for_range(0, tp.loop_on_mr) as lr:
                     self._tail_dst_tuple(tp)
                     self._copy_in_tail_col_major_row(tp, ub_input, ub_offset, ln, tp.loop_on_mc, lr)
-                    self._reorder_university(tp, ub_input, ub_offset, True, False)
+                    self._reorder_s7(tp, ub_input, ub_offset, True, False)
                     self._copy_out_tail_col_major_row(tp, ub_input, ub_offset, ln, tp.loop_on_mc, lr)
 
             with self.tik_inst.if_scope(tp.col_tc != 0):
@@ -1536,7 +1576,7 @@ class Transpose(object):
                     self._tail_src_tuple(tp)
                     self._tail_dst_tuple(tp)
                     self._copy_in_tail_col_tail_row(tp, ub_input, ub_offset, ln, tp.loop_on_mc, tp.loop_on_mr)
-                    self._reorder_university(tp, ub_input, ub_offset, True, True)
+                    self._reorder_s7(tp, ub_input, ub_offset, True, True)
                     self._copy_out_tail_col_tail_row(tp, ub_input, ub_offset, ln, tp.loop_on_mc, tp.loop_on_mr)
             self._update_tuple(tp.n_axis_num, tp.rt_n_tuple, tp.n_jump_factor)
 

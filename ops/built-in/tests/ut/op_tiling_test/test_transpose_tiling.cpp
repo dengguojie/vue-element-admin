@@ -222,7 +222,8 @@ TEST_F(TransposeTilingTest, stride_lt_65535) {
     ShapeInfo shapeInfo;
     RuntimeInfo runtimeInfo;
     compilerInfo.coreNum = 32;
-    compilerInfo.dType ="float";
+    compilerInfo.dType ="float32";
+    compilerInfo.fp16Times = 2;
 
     shapeInfo.inShape.push_back(7000);
     shapeInfo.inShape.push_back(32768);
@@ -242,7 +243,9 @@ TEST_F(TransposeTilingTest, stride_gt_65535) {
     CompilerInfo compilerInfo;
     ShapeInfo shapeInfo;
     RuntimeInfo runtimeInfo;
-    compilerInfo.coreNum = 32; compilerInfo.dType ="float";
+    compilerInfo.coreNum = 32;
+    compilerInfo.dType ="float32";
+    compilerInfo.fp16Times = 2;
 
     shapeInfo.inShape.push_back(7000);
     shapeInfo.inShape.push_back(32768);
@@ -263,7 +266,7 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose_2d) {
     ShapeInfo shapeInfo;
     RuntimeInfo runtimeInfo;
     compilerInfo.coreNum = 32;
-    compilerInfo.dType ="float";
+    compilerInfo.dType ="float32";
 
     shapeInfo.inShape.push_back(7000);
     shapeInfo.inShape.push_back(6000);
@@ -305,7 +308,8 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose_with_multi_src_axis) {
     ShapeInfo shapeInfo;
     RuntimeInfo runtimeInfo;
     compilerInfo.coreNum = 32;
-    compilerInfo.dType ="float";
+    compilerInfo.dType ="float32";
+    compilerInfo.fp16Times = 2;
 
     shapeInfo.inShape.push_back(4);
     shapeInfo.inShape.push_back(128);
@@ -360,7 +364,8 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose_with_tail_row) {
     ShapeInfo shapeInfo;
     RuntimeInfo runtimeInfo;
     compilerInfo.coreNum = 32;
-    compilerInfo.dType ="float";
+    compilerInfo.dType ="float32";
+    compilerInfo.fp16Times = 2;
 
     shapeInfo.inShape.push_back(5);
     shapeInfo.inShape.push_back(128);
@@ -421,7 +426,8 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose_col_and_row_with_multi_axis
     ShapeInfo shapeInfo;
     RuntimeInfo runtimeInfo;
     compilerInfo.coreNum = 32;
-    compilerInfo.dType ="float";
+    compilerInfo.dType ="float32";
+    compilerInfo.fp16Times = 2;
 
     shapeInfo.inShape.push_back(2);
     shapeInfo.inShape.push_back(3);
@@ -483,7 +489,8 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose) {
     ShapeInfo shapeInfo;
     RuntimeInfo runtimeInfo;
     compilerInfo.coreNum = 32;
-    compilerInfo.dType ="float";
+    compilerInfo.dType ="float32";
+    compilerInfo.fp16Times = 2;
 
     shapeInfo.inShape.push_back(5);
     shapeInfo.inShape.push_back(6);
@@ -531,7 +538,8 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose_t2f) {
     ShapeInfo shapeInfo;
     RuntimeInfo runtimeInfo;
     compilerInfo.coreNum = 32;
-    compilerInfo.dType ="float";
+    compilerInfo.dType ="float32";
+    compilerInfo.fp16Times = 2;
 
     shapeInfo.inShape.push_back(20000);
     shapeInfo.inShape.push_back(7);
@@ -551,7 +559,8 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose_f2t) {
     ShapeInfo shapeInfo;
     RuntimeInfo runtimeInfo;
     compilerInfo.coreNum = 32;
-    compilerInfo.dType ="float";
+    compilerInfo.dType ="float32";
+    compilerInfo.fp16Times = 2;
 
     shapeInfo.inShape.push_back(2);
     shapeInfo.inShape.push_back(30000);
@@ -571,7 +580,8 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose_check_jump_stride) {
     ShapeInfo shapeInfo;
     RuntimeInfo runtimeInfo;
     compilerInfo.coreNum = 32;
-    compilerInfo.dType ="float";
+    compilerInfo.dType ="float32";
+    compilerInfo.fp16Times = 2;
 
     shapeInfo.inShape.push_back(3);
     shapeInfo.inShape.push_back(4);

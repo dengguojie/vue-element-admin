@@ -1219,7 +1219,7 @@ static void SplitColByFactor(const CompilerInfo & compilerInfo, RuntimeInfo & ru
 
     for (int64_t i = 0; i < factor; i++) {
         int64_t col = runtimeInfo.colRange[i].second;
-        if (col >= 8) {
+        if (col >= elePerBlock) {
             if (col != 0) {
                 int64_t k = col % elePerBlock;
                 if (k != 0) {
@@ -1267,7 +1267,7 @@ static void SplitRowByFactor(const CompilerInfo & compilerInfo, RuntimeInfo & ru
      */
     for (int64_t i = 0; i < factor; i++) {
         int64_t row = runtimeInfo.rowRange[i].second;
-        if (row >= 8) {
+        if (row >= elePerBlock) {
             if (row != 0) {
                 int64_t k = row % elePerBlock;
                 if (k != 0) {
@@ -1581,9 +1581,9 @@ public:
     Model005() : TilingModel(5, 0, 0, LAST_AXIS_TR_F2T, "Model005_f2t") {}
     void Decision(int64_t coreNum, const NCR & n) {
         maxCol = Align16(UB_SIZE_1_16_FP16, n.rVol, UB_SIZE_1_16_FP16);
-        if ((n.cVol >= 128 * coreNum) && (n.rVol <= 16)) {
+        if ((n.cVol >= 128 * coreNum) && (n.rVol <= 8)) {
             sp.Set(1, coreNum, 1);
-        } else if ((n.cVol > 8) && (n.rVol <= 16)) {
+        } else if ((n.cVol > 8) && (n.rVol <= 8)) {
             if (n.nVol > coreNum) {
                 sp.Set(coreNum, 1, 1);
             } else {
@@ -1616,6 +1616,112 @@ public:
     }
 };
 
+class Model001_b16 : public TilingModel {
+public:
+    Model001_b16() : TilingModel(1, MAX_COL_FP16_VNCHWCONV_FULL, 128, LAST_AXIS_TR_COMMON, "Model001_b16") {}
+    void Decision(int64_t coreNum, const NCR & n) {
+        bool res = ((n.nVol >= coreNum) && (n.cVol >= 64) && (n.rVol >= 64));
+        if (res) {
+            sp.Set(coreNum, 1, 1);
+        } else {
+            priority =  INVALID_SPLIT;
+        }
+        ncr = n;
+    }
+};
+
+class Model002_b16 : public TilingModel {
+public:
+    Model002_b16() : TilingModel(2, MAX_COL_FP16_VNCHWCONV_FULL, 128, LAST_AXIS_TR_COMMON, "Model002_b16") {}
+    void Decision(int64_t coreNum, const NCR & n) {
+        bool res = ((n.cVol >= 64) && (n.rVol >= 64 * coreNum));
+        if (res) {
+            sp.Set(1, 1, coreNum);
+        } else {
+            priority =  INVALID_SPLIT;
+        }
+        ncr = n;
+    }
+};
+
+class Model003_b16 : public TilingModel {
+public:
+    Model003_b16() : TilingModel(3, MAX_COL_FP16_VNCHWCONV_FULL, 128, LAST_AXIS_TR_COMMON, "Model003_b16") {}
+    void Decision(int64_t coreNum, const NCR & n) {
+        bool res = ((n.cVol >= 64 * coreNum) && (n.rVol >= 64));
+        if (res) {
+            sp.Set(1, coreNum, 1);
+        } else {
+            priority =  INVALID_SPLIT;
+        }
+        ncr = n;
+    }
+};
+
+class Model004_b16 : public TilingModel {
+public:
+    Model004_b16() : TilingModel(4, MAX_COL_FP16_VNCHWCONV_FULL, 128, LAST_AXIS_TR_COMMON, "Model004_b16") {}
+    void Decision(int64_t coreNum, const NCR & n) {
+        if (n.nVol >= coreNum ) {
+            if (n.cVol >= 16 && n.rVol >= 16) {
+                sp.Set(coreNum, 1, 1);
+            } else {
+                priority =  INVALID_SPLIT;
+            }
+        } else {
+            if (n.cVol < 16 || n.rVol < 16) {
+                priority =  INVALID_SPLIT;
+            } else {
+                if (n.cVol > n.rVol) {
+                    sp.Set(n.nVol, coreNum / n.nVol, 1);
+                } else {
+                    sp.Set(n.nVol, 1, coreNum / n.nVol);
+                }
+            }
+        }
+        ncr = n;
+    }
+};
+class Model005_b16 : public TilingModel {
+public:
+    Model005_b16() : TilingModel(5, 0, 0, LAST_AXIS_TR_F2T, "Model005_b16_f2t") {}
+    void Decision(int64_t coreNum, const NCR & n) {
+        maxCol = Align16(UB_SIZE_1_16_FP16, n.rVol, UB_SIZE_1_16_FP16);
+        if ((n.cVol >= 256 * coreNum) && (n.rVol <= 16)) {
+            sp.Set(1, coreNum, 1);
+        } else if ((n.cVol > 16) && (n.rVol <= 16)) {
+            if (n.nVol > coreNum) {
+                sp.Set(coreNum, 1, 1);
+            } else {
+                sp.Set(n.nVol, coreNum / n.nVol, 1);
+            }
+        } else {
+            priority =  INVALID_SPLIT;
+        }
+        ncr = n;
+    }
+};
+
+class Model006_b16 : public TilingModel {
+public:
+    Model006_b16() : TilingModel(6, 0, 0, LAST_AXIS_TR_T2F, "Model006_b16_t2f") {}
+    void Decision(int64_t coreNum, const NCR & n) {
+        maxRow = Align16(UB_SIZE_1_16_FP16, n.cVol, UB_SIZE_1_16_FP16);
+        if ((n.cVol <= 16) && (n.rVol >= 256 * coreNum)) {
+            sp.Set(1, 1, coreNum);
+        } else if ((n.cVol < 16) && (n.rVol >= 16)) {
+            if (n.nVol > coreNum) {
+                sp.Set(coreNum, 1, 1);
+            } else {
+                sp.Set(n.nVol, 1, coreNum / n.nVol);
+            }
+        } else {
+            priority =  INVALID_SPLIT;
+        }
+        ncr = n;
+    }
+};
+
 static void MakeNCRDecision(const CompilerInfo & compilerInfo,
                             const ShapeInfo & shapeInfo,
                             RuntimeInfo & runtimeInfo) {
@@ -1627,13 +1733,24 @@ static void MakeNCRDecision(const CompilerInfo & compilerInfo,
         runtimeInfo.pqtm.push(model);\
     }
 
-    for (int64_t i = 0; i < runtimeInfo.ncrs.size(); i++)  {
-        ADD_MODEL(Model001);
-        ADD_MODEL(Model002);
-        ADD_MODEL(Model003);
-        ADD_MODEL(Model004);
-        ADD_MODEL(Model005);
-        ADD_MODEL(Model006);
+    if (compilerInfo.fp16Times == 2) {
+        for (int64_t i = 0; i < runtimeInfo.ncrs.size(); i++)  {
+            ADD_MODEL(Model001);
+            ADD_MODEL(Model002);
+            ADD_MODEL(Model003);
+            ADD_MODEL(Model004);
+            ADD_MODEL(Model005);
+            ADD_MODEL(Model006);
+        }
+    } else {
+        for (int64_t i = 0; i < runtimeInfo.ncrs.size(); i++)  {
+            ADD_MODEL(Model001_b16);
+            ADD_MODEL(Model002_b16);
+            ADD_MODEL(Model003_b16);
+            ADD_MODEL(Model004_b16);
+            ADD_MODEL(Model005_b16);
+            ADD_MODEL(Model006_b16);
+        }
     }
 }
 
@@ -1741,6 +1858,7 @@ bool GetCompileParams(const string & opType, const nlohmann::json &opCompileInfo
     info.ubSize = allVars["ub_size"].get<std::int64_t>();
     info.ubSizeCouldUse = info.ubSize - UB_RESERVED_BLOCK_SIZE;
     info.dType = allVars["dtype"].get<std::string>();
+    info.fp16Times = (SizeofDType(info.dType) + 1) / 2; //add 1 for int8
 
     OP_LOGD(opType.c_str(), "GetCompileParams, coreNum[%d], ubSize[%d] blocks, dType[%s].",
            info.coreNum, info.ubSize, info.dType.c_str());
