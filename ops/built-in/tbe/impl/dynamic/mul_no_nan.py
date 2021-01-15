@@ -110,7 +110,8 @@ def mul_no_nan(x1, x2, y, kernel_name="mul_no_nan"):
     shape_x1 = x1.get("shape")
     shape_x2 = x2.get("shape")
 
-    shape_x, shape_y, shape_max = broadcast_shapes(shape_x1, shape_x2, param_name_input1="x1", param_name_input2="x2")
+    shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x1, shape_x2,
+        param_name_input1="x1", param_name_input2="x2")
     if shape_x[-1] == 1 and shape_y[-1] == 1 and shape_max[-1] == 1:
         shape_x = shape_x if len(shape_x) == 1 else shape_x[:-1]
         shape_y = shape_y if len(shape_y) == 1 else shape_y[:-1]

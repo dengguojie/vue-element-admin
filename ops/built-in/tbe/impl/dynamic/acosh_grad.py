@@ -42,6 +42,9 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
+from te.lang.base.shape_classifier import classify
+from te.lang.base.shape_classifier import Mode
+import te.lang.base as tbe_base
 NUM_ONE = 1
 NUM_TWO = 2
 NUM_REPEAT = 0.125

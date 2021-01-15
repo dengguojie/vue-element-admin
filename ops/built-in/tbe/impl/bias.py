@@ -18,9 +18,10 @@ bias
 import te.lang.cce as tbe
 from te import tvm
 from te import platform as tbe_platform
+from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
-from te.platform.fusion_manager import fusion_manager
+from impl.util import util_common
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 
@@ -72,9 +73,9 @@ def op_select_format(x, bias, y, axis=1, num_axes=1, bias_from_blob=True,
         format_bias = "NC1HWC0,NC1HWC0,ND,ND"
         format_bias_hisi = "NC1HWC0,ND"
 
-    if length_x_ori == 4:
+    if length_x_ori == 4 and not util_common.is_dynamic_input([x, bias]):
         # NC1HWC0+ND
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
+        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS"):
             input0 = gen_param(classify="input0", name="x", datatype="float16,float16",
                                format="NC1HWC0,ND")
             input1 = gen_param(classify="input1", name="bias", datatype="float16,float16",
@@ -90,7 +91,7 @@ def op_select_format(x, bias, y, axis=1, num_axes=1, bias_from_blob=True,
                                 format="NC1HWC0,NC1HWC0,ND,ND")
     else:
         # ND+ND
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
+        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS"):
             input0 = gen_param(classify="input0", name="x", datatype="float16",
                                format="ND")
             input1 = gen_param(classify="input1", name="bias", datatype="float16",
@@ -322,7 +323,7 @@ def _check_dtype(dtype_x, dtype_bias):
     -------
     None
     """
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
+    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS"):
         if dtype_x == "float32" or dtype_bias == "float32":
             error_detail = "float32 is not support in HISI"
             error_manager_vector.raise_err_two_input_dtype_invalid("bias", "x", "bias",

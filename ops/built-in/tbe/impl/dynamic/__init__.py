@@ -22,6 +22,7 @@ from .unsorted_segment_sum import unsorted_segment_sum
 from .gather_nd import gather_nd
 from .gather import gather
 from .gather_v2 import gather_v2
+from .bias import bias
 from .bninference_d import bninference_d
 from .scatter_nd import scatter_nd
 from .scatter_add import scatter_add

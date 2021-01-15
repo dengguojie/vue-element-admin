@@ -18,6 +18,7 @@ set(_optiling_files
   ../op_proto/util/error_util.cc
   ../fusion_pass/common/fp16_t.cc
   assign.cc
+  bias.cc
   bias_add.cc
   bninference_d.cc
   concat.cc

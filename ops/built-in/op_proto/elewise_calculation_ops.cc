@@ -2557,14 +2557,17 @@ VERIFY_FUNC_REG(FusedMulAddNL2loss, FusedMulAddNL2lossVerify);
 // ----------------FusedMulAddNL2loss end-------------------
 // ---------------------------------Bias----------------------------------
 IMPLEMT_INFERFUNC(Bias, BiasInferShape) {
-  OP_LOGI("Bias", "infer shape begin---");
+  OP_LOGI("Bias", "bias infer shape begin---%d", op.GetInputDesc("bias").GetShape().GetDims().size());
   DataType dtype_x = op.GetInputDesc("x").GetDataType();
   ge::Shape shape_x = op.GetInputDesc("x").GetShape();
   std::vector<int64_t> dims_x = shape_x.GetDims();
+  std::vector<std::pair<int64_t, int64_t>> input_range;
+  op.GetInputDesc("x").GetShapeRange(input_range);
   // set output
   TensorDesc output_desc = op.GetOutputDesc("y");
   output_desc.SetShape(shape_x);
   output_desc.SetDataType(dtype_x);
+  output_desc.SetShapeRange(input_range);
   (void)op.UpdateOutputDesc("y", output_desc);
 
   int64_t axis;
@@ -2601,39 +2604,47 @@ IMPLEMT_INFERFUNC(Bias, BiasInferShape) {
     }
 
     std::vector<int64_t> dims_bias_tmp = shape_bias.GetDims();
+    std::vector<std::pair<int64_t, int64_t>> range_bias_new;
+    op.GetInputDesc("bias").GetShapeRange(range_bias_new);
     if (bias_from_blob) {
       if (num_axes == -1) {
         for (int64_t i = 0; i < axis_; i++) {
           dims_bias_tmp.insert(dims_bias_tmp.begin(), (int64_t)1);
+          range_bias_new.insert(range_bias_new.begin(), {1, 1});
         }
       } else if (num_axes > 0) {
         int64_t left_length = length_x - num_axes - axis_;
         for (int64_t i = 0; i < axis_; i++) {
           dims_bias_tmp.insert(dims_bias_tmp.begin(), (int64_t)1);
+          range_bias_new.insert(range_bias_new.begin(), {1, 1});
         }
         for (int64_t i = 0; i < left_length; i++) {
           dims_bias_tmp.push_back((int64_t)1);
+          range_bias_new.push_back({1, 1});
         }
       }
     } else {
       int64_t left_length = length_x - length_bias - axis_;
       for (int64_t i = 0; i < axis_; i++) {
         dims_bias_tmp.insert(dims_bias_tmp.begin(), (int64_t)1);
+        range_bias_new.insert(range_bias_new.begin(), {1, 1});
       }
       for (int64_t i = 0; i < left_length; i++) {
         dims_bias_tmp.push_back((int64_t)1);
+        range_bias_new.push_back({1, 1});
       }
     }
 
     // update bias shape
     ge::Shape output_bias_shape = ge::Shape(dims_bias_tmp);
     TensorDesc bias_desc = op.GetInputDesc("bias");
+    
     bias_desc.SetShape(output_bias_shape);
     bias_desc.SetOriginShape(output_bias_shape);
+    bias_desc.SetShapeRange(range_bias_new);
     (void)op.UpdateInputDesc("bias", bias_desc);
   }
 
-  OP_LOGI("Bias", "infer shape end---");
   return GRAPH_SUCCESS;
 }
 
@@ -2696,14 +2707,6 @@ IMPLEMT_VERIFIER(Bias, BiasVerify) {
                               "length_bias", ConcatString(length_bias));
         return GRAPH_FAILED;
       }
-      for (int64_t i = 0; i < bias_num; i++) {
-        if (dims_x[axis_ + i] != dims_bias[i]) {
-          OP_LOGE("[ERROR] dimensions shape_x and shape_bias must be equal");
-          OpsInputShapeErrReport(op.GetName(), "The dimensions of shape_x and shape_bias must be equal",
-                              "shape_bias's dimension", ConcatString(dims_bias[i]));
-          return GRAPH_FAILED;
-        }
-      }
     } else if (num_axes == 0) {
       if (bias_dim_num != 0) {
         OP_LOGE("[ERROR] bias must be a scalar ");
@@ -2723,14 +2726,6 @@ IMPLEMT_VERIFIER(Bias, BiasVerify) {
                               "length_bias", ConcatString(length_bias));
         return GRAPH_FAILED;
       }
-      for (int64_t i = 0; i < num_axes; i++) {
-        if (dims_x[axis_ + i] != dims_bias[i]) {
-          OP_LOGE("[ERROR] dimensions shape_x and shape_bias must be equal");
-          OpsInputShapeErrReport(op.GetName(), "The dimensions of shape_x and shape_bias must be equal",
-                              "shape_bias's dimension", ConcatString(dims_bias[i]));
-          return GRAPH_FAILED;
-        }
-      }
     }
   } else {
     if (bias_dim_num != 0) {
@@ -2740,17 +2735,8 @@ IMPLEMT_VERIFIER(Bias, BiasVerify) {
         OpsOneInputShapeErrReport(op.GetName(), "bias", "Bias shape extends x_shape when applied");
         return GRAPH_FAILED;
       }
-      for (int64_t i = 0; i < length_bias; i++) {
-        if (dims_x[axis_ + i] != dims_bias[i]) {
-          OP_LOGE("[ERROR] dimensions shape_x and shape_bias must be equal");
-          OpsInputShapeErrReport(op.GetName(), "The dimensions of shape_x and shape_bias must be equal",
-                              "shape_bias's dimension", ConcatString(dims_bias[i]));
-          return GRAPH_FAILED;
-        }
-      }
     }
   }
-
   return GRAPH_SUCCESS;
 }
 
