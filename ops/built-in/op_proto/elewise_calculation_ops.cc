@@ -697,9 +697,11 @@ IMPLEMT_VERIFIER(ClipByValue, ClipByValueVerify) {
 
 IMPLEMT_COMMON_INFERFUNC(ClipByValueInferShape) {
   Shape input_shape = op.GetInputDesc("x").GetShape();
+  Shape input_ori_shape = op.GetInputDesc("x").GetOriginShape();
   DataType input_dtype = op.GetInputDesc("x").GetDataType();
   TensorDesc td = op.GetOutputDesc("y");
   td.SetShape(Shape(input_shape));
+  td.SetOriginShape(Shape(input_ori_shape));
   td.SetDataType(input_dtype);
   (void)op.UpdateOutputDesc("y", td);
   return GRAPH_SUCCESS;
