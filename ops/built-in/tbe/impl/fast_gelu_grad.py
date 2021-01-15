@@ -30,7 +30,8 @@ CONST_1 = 1
 # pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("fast_gelu_grad")
 def fast_gelu_grad_compute(input_dy, input_x, output_z,
-                           kernel_name="fast_gelu_grad"):
+                           kernel_name="fast_gelu_grad",
+                           impl_mode="high_performance"):
     """
     algorithm: fast_gelu_grad
     calculating: dy*res'
@@ -82,15 +83,21 @@ def fast_gelu_grad_compute(input_dy, input_x, output_z,
     div_down_i = tbe.vadds(exp_x, const_3)
     div_down = tbe.vmul(div_down_i, div_down_i)
 
-    result_temp = tbe.vdiv(div_up, div_down)
+    if impl_mode == "high_performance":
+        div_down_rec = tbe.vrec(div_down, priority_flag=0)
+    else:
+        div_down_rec = tbe.vrec(div_down, priority_flag=1)
+    result_temp = tbe.vmul(div_up, div_down_rec)
+
     result = tbe.vmul(input_dy, result_temp)
     return result
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
-def fast_gelu_grad(input_dy, input_x, output_z,
-                   kernel_name="fast_gelu_grad"):
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME,
+                            para_check.OPTION_ATTR_STR)
+def fast_gelu_grad(input_dy, input_x, output_z, kernel_name="fast_gelu_grad",
+                   impl_mode="high_performance"):
     """
     algorithm: fast_gelu_grad
     calculating: dy*res'
@@ -130,7 +137,7 @@ def fast_gelu_grad(input_dy, input_x, output_z,
     fuseshape[0] = functools.reduce(lambda x, y: x*y, shape_dy)
     data_dy = tvm.placeholder(fuseshape, name="data_dy", dtype=input_dtype)
     data_x = tvm.placeholder(fuseshape, name="data_x", dtype=input_dtype)
-    res = fast_gelu_grad_compute(data_dy, data_x, output_z, kernel_name)
+    res = fast_gelu_grad_compute(data_dy, data_x, output_z, kernel_name, impl_mode)
 
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)

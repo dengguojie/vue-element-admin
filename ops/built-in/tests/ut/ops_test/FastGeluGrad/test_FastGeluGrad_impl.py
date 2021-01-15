@@ -47,7 +47,7 @@ ut_case.add_precision_case("all", {"params": [{"shape": (1, 1), "dtype": "float1
                                               {"shape": (1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND", "param_type": "output"},
                                               ],
                                    "calc_expect_func": calc_expect_func,
-                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                   "precision_standard": precision_info.PrecisionStandard(0.01, 0.01)
                                    })
 
 ut_case.add_precision_case("all", {"params": [{"shape": (3, 16, 32), "dtype": "float16", "format": "ND", "ori_shape": (3, 16, 32),"ori_format": "ND", "param_type": "input"},
@@ -55,7 +55,7 @@ ut_case.add_precision_case("all", {"params": [{"shape": (3, 16, 32), "dtype": "f
                                               {"shape": (3, 16, 32), "dtype": "float16", "format": "ND", "ori_shape": (3, 16, 32),"ori_format": "ND", "param_type": "output"},
                                               ],
                                    "calc_expect_func": calc_expect_func,
-                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                   "precision_standard": precision_info.PrecisionStandard(0.01, 0.01)
                                    })
 
 ut_case.add_precision_case("all", {"params": [{"shape": (1, 3, 100, 16), "dtype": "float16", "format": "ND", "ori_shape": (1, 3, 100, 16),"ori_format": "ND", "param_type": "input"},
@@ -63,6 +63,6 @@ ut_case.add_precision_case("all", {"params": [{"shape": (1, 3, 100, 16), "dtype"
                                               {"shape": (1, 3, 100, 16), "dtype": "float16", "format": "ND", "ori_shape": (1, 3, 100, 16),"ori_format": "ND", "param_type": "output"},
                                               ],
                                    "calc_expect_func": calc_expect_func,
-                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                   "precision_standard": precision_info.PrecisionStandard(0.01, 0.01)
                                    })
 

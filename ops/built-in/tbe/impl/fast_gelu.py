@@ -28,7 +28,8 @@ CONST_1 = 1
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
 # pylint: disable=too-many-locals,unused-variable
 @tbe_platform.fusion_manager.fusion_manager.register("fast_gelu")
-def fast_gelu_compute(input_x, output_y, kernel_name="fast_gelu"):
+def fast_gelu_compute(input_x, output_y, kernel_name="fast_gelu",
+                      impl_mode="high_performance"):
     """
     mathematical formula of fast_gelu(x):
     fast_gelu(x) = xe^(0.851x)(x-|x|)/(1+e^(-1.702|x|))
@@ -62,14 +63,19 @@ def fast_gelu_compute(input_x, output_y, kernel_name="fast_gelu"):
     exp_pn_x = tbe.vexp(mul_pn_x)
     div_up = tbe.vmul(input_x, exp_pn_x)
 
-    result = tbe.vdiv(div_up, div_down)
+    if impl_mode == "high_performance":
+        div_down_rec = tbe.vrec(div_down, priority_flag=0)
+    else:
+        div_down_rec = tbe.vrec(div_down, priority_flag=1)
+    result = tbe.vmul(div_up, div_down_rec)
 
     return result
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.KERNEL_NAME)
-def fast_gelu(input_x, output_y, kernel_name="fast_gelu"):
+                            para_check.KERNEL_NAME, para_check.OPTION_ATTR_STR)
+def fast_gelu(input_x, output_y, kernel_name="fast_gelu",
+              impl_mode="high_performance"):
     """
     mathematical formula of fast_gelu(x):
     Parameters
@@ -96,7 +102,7 @@ def fast_gelu(input_x, output_y, kernel_name="fast_gelu"):
     fuseshape = [1]
     fuseshape[0] = functools.reduce(lambda x, y: x*y, shape)
     data = tvm.placeholder(fuseshape, name="data", dtype=input_dtype)
-    result = fast_gelu_compute(data, output_y, kernel_name)
+    result = fast_gelu_compute(data, output_y, kernel_name, impl_mode)
 
     with tvm.target.cce():
         sch = tbe.auto_schedule(result)
