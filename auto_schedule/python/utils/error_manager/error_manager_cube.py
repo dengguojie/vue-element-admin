@@ -29,9 +29,6 @@ def raise_err_one_para(err_code, op_name, para1):
     E62501: "In op[%s], [%s] should be 6d list"
     E62509: "In op[%s], the type of axis of [%s] must be positive int."
     E62511: "In op[%s], C0 must be 16,  but actually it is [%s]."
-    :param op_name
-    :param reason
-    :return
     """
     args_dict = {
         "errCode": err_code,
@@ -58,9 +55,6 @@ def raise_err_two_paras(err_code, op_name, para1, para2):
             backpropagation it should be [%s], but actually it is [%s]."
     E62506: "In op[%s], the  Dedy's channel must be equal to the Filter's channel in
             backpropagation it should be [%s], but actually it is [%s]."
-    :param op_name
-    :param reason
-    :return
     """
     args_dict = {
         "errCode": err_code,
@@ -80,9 +74,6 @@ def raise_err_three_paras(err_code, op_name, para1, para2, para3):
     E62305: "In op[%s], the value of [%s] should be [%s], but it is  [%s]."
     E62507: "In op[%s], the [%s] dim of Filter(after dilation) must be less than
             the corresponding dim of input(after padding), they are [%s] and [%s]."
-    :param op_name
-    :param reason
-    :return
     """
     args_dict = {
         "errCode": err_code,
@@ -99,9 +90,6 @@ def raise_err_four_paras(err_code, op_name, para1, para2, para3, para4):
     """
     E62003: "In op[%s], the size of [%s] on [%s] dimension should be in range [%s],
             but it is [%s]."
-    :param op_name
-    :param reason
-    :return
     """
     args_dict = {
         "errCode": err_code,

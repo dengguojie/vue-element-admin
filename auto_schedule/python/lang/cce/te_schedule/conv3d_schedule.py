@@ -21,9 +21,10 @@ from te.lang.cce.te_compute import conv3d_compute
 from te.lang.cce.te_compute import util as te_util
 from te.domain.tiling.get_tiling import get_tiling
 from te.utils.error_manager import error_manager_util
+from te.utils.error_manager import error_manager_cube as cube_err
 
 # tiling check
-_TILING_L1_SHAPWE_DIM = 4
+_TILING_L1_SHAPE_DIM = 4
 _TILING_AL0_MATRIX_DIM = [6]
 _TILING_BL0_MATRIX_DIM = [6, 0]
 _TILING_CL0_MATRIX_DIM = [6]
@@ -145,20 +146,10 @@ class CceConv3dOp:
         if tiling["BL1_shape"]:
             if len(tiling["BL1_shape"]) > 1:
                 if c_factor[0] % tiling["BL1_shape"][1] != 0:
-                    dict_args = {
-                        'errCode': 'E62301',
-                        'second_value_BL1': str(tiling["BL1_shape"][1])
-                    }
-                    raise RuntimeError(dict_args,
-                                       error_manager_util.get_error_message(dict_args))
+                    cube_err.raise_err_one_para('E62301', 'conv3d', str(tiling["BL1_shape"][1]))
 
                 if tiling["BL1_shape"][1] > 1 and tiling["BL1_shape"][1] % 2 != 0:
-                    dict_args = {
-                        'errCode': 'E62302',
-                        'second_value_BL1': str(tiling["BL1_shape"][1])
-                    }
-                    raise RuntimeError(dict_args,
-                                       error_manager_util.get_error_message(dict_args))
+                    cube_err.raise_err_one_para('E62302', 'conv3d', str(tiling["BL1_shape"][1]))
 
             if len(tiling["BL1_shape"]) == 1:
                 tiling["BL1_shape"] = tiling["BL1_shape"] + [1]
@@ -172,13 +163,7 @@ class CceConv3dOp:
         outer_factor = max(al1_factor[0], bl1_factor[0])
         inner_factor = min(al1_factor[0], bl1_factor[0])
         if outer_factor % inner_factor != 0:
-            dict_args = {
-                'errCode': 'E62303',
-                'AL1_shape': str(al1_factor[0]),
-                'BL1_shape': str(bl1_factor[0]),
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+            cube_err.raise_err_two_paras('E62303', 'conv3d', str(al1_factor[0]), str(bl1_factor[0]))
 
         return al1_factor, bl1_factor
 
@@ -520,15 +505,9 @@ class CceConv3dOp:
 
         l1_shape = ["AL1_shape", "BL1_shape"]
         for shape in l1_shape:
-            if tiling[shape] and len(tiling[shape]) != _TILING_L1_SHAPWE_DIM:
-                dict_args = {
-                    'errCode': 'E62304',
-                    'param_name': l1_shape,
-                    'expect_value': str(_TILING_L1_SHAPWE_DIM),
-                    'value': str(len(tiling[shape]))
-                }
-                raise RuntimeError(dict_args,
-                    error_manager_util.get_error_message(dict_args))
+            if tiling[shape] and len(tiling[shape]) != _TILING_L1_SHAPE_DIM:
+                cube_err.raise_err_three_paras('E62304', 'conv3d', shape,
+                        str(_TILING_L1_SHAPE_DIM), str(len(tiling[shape])))
 
         matrix_list = [
             "AL0_matrix", "BL0_matrix", "CL0_matrix", "CUB_matrix", "block_dim"
@@ -539,14 +518,8 @@ class CceConv3dOp:
         ]
         for matrix, dim in zip(matrix_list, matrix_dim):
             if len(tiling[matrix]) not in dim:
-                dict_args = {
-                    'errCode': 'E62304',
-                    'param_name': matrix,
-                    'expect_value': str(dim[0]),
-                    'value': str(len(tiling[matrix]))
-                }
-                raise RuntimeError(dict_args,
-                    error_manager_util.get_error_message(dict_args))
+                cube_err.raise_err_three_paras('E62304', 'conv3d', matrix,
+                        str(dim[0]), str(len(tiling[matrix])))
 
         matrix_cab = ["CL0_matrix", "AL0_matrix", "BL0_matrix"]
         for index0, index1 in zip(matrix_list[0:3], matrix_cab):

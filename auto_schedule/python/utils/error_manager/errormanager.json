@@ -592,22 +592,22 @@
     {
         "errCode": "E62301",
         "errMessage": "In op[%s], the second value of BL1_shape should be a factor of  the block num, actual input is [%s].",
-        "argList": "op_name,second_value_BL1"
+        "argList": "op_name,para1"
     },
     {
         "errCode": "E62302",
         "errMessage": "In op[%s], the second value of BL1_shape should be even number, but actually it is [%s].",
-        "argList": "op_name,second_value_BL1"
+        "argList": "op_name,para1"
     },
     {
         "errCode": "E62303",
         "errMessage": "In op[%s], the value of AL1_shape & BL1_shape are  not reasonable, which are [%s] and [%s].",
-        "argList": "op_name, AL1_shape,BL1_shape"
+        "argList": "op_name,para1,para2"
     },
     {
         "errCode": "E62304",
         "errMessage": "In op[%s], the dim of [%s] should be [%s], but it is  [%s].",
-        "argList": "op_name,param_name,expect_value,value"
+        "argList": "op_name,para1,para2,para3"
     },
     {
         "errCode": "E62305",
