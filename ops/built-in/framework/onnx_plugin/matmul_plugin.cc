@@ -18,8 +18,8 @@
 
 namespace domi {
 using NodeProto = ge::onnx::NodeProto;
-Status ParseParamsMatMul(const Message *op_src, ge::Operator &op_dest) {
-  const NodeProto *node = reinterpret_cast<const NodeProto *>(op_src);
+Status ParseParamsMatMul(const Message* op_src, ge::Operator& op_dest) {
+  const NodeProto* node = reinterpret_cast<const NodeProto*>(op_src);
   if (node == nullptr) {
     OP_LOGE("MatMul", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
@@ -28,16 +28,16 @@ Status ParseParamsMatMul(const Message *op_src, ge::Operator &op_dest) {
   bool trans_a = false;
   bool trans_b = false;
 
-  op_dest.SetAttr("transpose_x1", trans_a);
-  op_dest.SetAttr("transpose_x2", trans_b);
+  op_dest.SetAttr("adj_x1", trans_a);
+  op_dest.SetAttr("adj_x2", trans_b);
 
   return SUCCESS;
 }
 
 // register MatMul op info to GE
-REGISTER_CUSTOM_OP("MatMul")
-  .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::11::MatMul")
-  .ParseParamsFn(ParseParamsMatMul)
-  .ImplyType(ImplyType::TVM);
+REGISTER_CUSTOM_OP("BatchMatMul")
+    .FrameworkType(ONNX)
+    .OriginOpType("ai.onnx::11::MatMul")
+    .ParseParamsFn(ParseParamsMatMul)
+    .ImplyType(ImplyType::TVM);
 }  // namespace domi
