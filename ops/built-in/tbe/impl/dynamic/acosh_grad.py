@@ -180,9 +180,6 @@ def acosh_grad(y, dy, z, kernel_name="acosh_grad"):
     dtype = dtype.lower()
     dtype_dy = dtype_dy.lower()
 
-    if not operator.eq(shape_y, shape_dy):
-        error_detail = "shape of y and dy should be same"
-        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "y", "dy", error_detail)
     if dtype != dtype_dy:
         error_detail = "dtype of y and dy should be same"
         error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "y", "dy", error_detail)
