@@ -2488,7 +2488,7 @@ def opti_schedule(
         param.pragma(overload_axis, "json_info_cache_read_mode", cache_read_mode)
 
     def _buffer_tile_loc_c1():
-        no_coefficient = (l0c_factor[0] * 2 if c_gm.dtype == "int8" else l0c_factor[0])
+        no_coefficient = (l0c_factor[0] * 2 if dx_res_write.dtype == "int8" else l0c_factor[0])
         noo_coefficient_unzero = int_ceil_div(
                 int_ceil_div(DIM_MAP["dx_6GD_shape"][2], l0c_factor[0]), bl1_parts[1]
             )
@@ -2555,7 +2555,7 @@ def opti_schedule(
         TENSOR_MAP.get("c_l0c"),
         TENSOR_MAP.get("c_gm")
     )
-    if c_gm.dtype == "int8":
+    if dx_res_write.dtype == "int8":
         # In quant or requant scenes, co of ddr is 32, c1_ddr is c1_loc//2
         DIM_MAP["dx_6GD_shape"][2] = (DIM_MAP["dx_6GD_shape"][2] + 1) // 2
         DIM_MAP["dx_6GD_shape"][5] = DIM_MAP["dx_6GD_shape"][5] * 2

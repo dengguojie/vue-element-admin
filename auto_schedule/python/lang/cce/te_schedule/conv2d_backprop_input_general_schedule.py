@@ -2110,7 +2110,7 @@ def general_schedule(
                     offset = axis_offset[0:c1_idx + 1]
                     c_offset = 0
                     for idx in range(c1_idx + 1):
-                        offset_idx = (offset[idx] * 2 if c_ddr.dtype == "int8" else offset[idx])
+                        offset_idx = (offset[idx] * 2 if deconv_res.dtype == "int8" else offset[idx])
                         factor_len = (0 if unit[idx] == 1 else offset_idx)
                         c_offset = c_offset + axis[idx] * factor_len
                     sch[c_col].buffer_tile(
