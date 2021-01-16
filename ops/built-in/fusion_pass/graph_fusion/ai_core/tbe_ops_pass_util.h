@@ -28,5 +28,7 @@
 
 bool HasUnKnowDimShape(const ge::NodePtr &node_ptr);
 void ClearOpInferDepends(const ge::NodePtr& node_ptr);
+bool IsUnknownShape(const std::vector<int64_t>& shape);
+void RemoveInputDesc(ge::OpDescPtr op_desc, uint32_t index);
 
 #endif //TBE_OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_TBE_OPS_PASS_UTIL_H_

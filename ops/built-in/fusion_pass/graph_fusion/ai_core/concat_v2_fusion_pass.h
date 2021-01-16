@@ -30,6 +30,9 @@ class ConcatExt2FusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
 
  private:
+  void UpdateInputName(ge::OpDescPtr& input_desc_ptr);
+
+ private:
   const string FUSED_OP_TYPE = "ConcatV2D";
 };
 

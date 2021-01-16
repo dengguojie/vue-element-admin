@@ -585,6 +585,9 @@ class ConcatV2:
             in_out_ub = inst.Tensor(dtype=self.dtype, shape=(ub_len,), scope=tik.scope_ubuf, name="in_out_ub")
             with inst.if_scope(row_each_core * core_idx < out_dims):
                 output_start_addr = row_each_core * core_idx * output_inner_dims
+                core_do_rows = inst.Scalar(dtype="int64", name="core_do_rows", init_value=row_each_core)
+                with inst.if_scope(core_do_rows + row_each_core * core_idx > out_dims):
+                    core_do_rows.set_as(out_dims - row_each_core * core_idx)
                 for index, input_tensor in enumerate(input_tensors):
                     inner_dims, output_idx = self.tiling_param.get_dims(index)
                     with inst.if_scope(inner_dims > 0):
@@ -592,13 +595,13 @@ class ConcatV2:
                         row_each_copy = ub_len // inner_dims
                         with inst.if_scope(row_each_copy != 0):
                             copy_len = row_each_copy * inner_dims
-                            copy_loops = ceil_div(row_each_core, row_each_copy)
+                            copy_loops = ceil_div(core_do_rows, row_each_copy)
                             copy_rows = inst.Scalar(dtype="int64", name="copy_rows", init_value=row_each_copy)
                             burst = inner_dims // self.ele_each_block
                             dst_stride = (output_inner_dims - inner_dims) // self.ele_each_block
                             with inst.for_range(0, copy_loops) as copy_idx:
-                                with inst.if_scope(copy_idx * row_each_copy + row_each_copy > row_each_core):
-                                    copy_rows.set_as(row_each_core - copy_idx * row_each_copy)
+                                with inst.if_scope(copy_idx * row_each_copy + row_each_copy > core_do_rows):
+                                    copy_rows.set_as(core_do_rows - copy_idx * row_each_copy)
                                 gm2ub(inst, in_out_ub, input_tensor[input_start_addr + copy_len * copy_idx],
                                       copy_rows * inner_dims)
                                 _data_move_all_align(inst, output_tensor[output_start_addr +
@@ -607,7 +610,7 @@ class ConcatV2:
                                                      in_out_ub, copy_rows, burst, dst_stride)
                         with inst.else_scope():
                             copy_loops = inner_dims // ub_len
-                            with inst.for_range(0, row_each_core) as row_idx:
+                            with inst.for_range(0, core_do_rows) as row_idx:
                                 in_row_start_addr = input_start_addr + row_idx * inner_dims
                                 out_row_start_addr = output_start_addr + row_idx * output_inner_dims
                                 with inst.for_range(0, copy_loops) as idx:

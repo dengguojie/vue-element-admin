@@ -19,6 +19,7 @@
  */
 #include "tbe_ops_pass_util.h"
 
+#include <algorithm>
 #include <vector>
 #include <string>
 #include "graph/utils/op_desc_utils.h"
@@ -72,5 +73,30 @@ void ClearOpInferDepends(const ge::NodePtr &node_ptr) {
   op_desc->SetOpInferDepends(dummyVec);
 }
 
+bool IsUnknownShape(const std::vector<int64_t>& shape) {
+  if (shape == ge::UNKNOWN_RANK) {
+    return true;
+  }
 
+  auto found = std::find(shape.begin(), shape.end(), ge::UNKNOWN_DIM);
+  return found != shape.end();
+}
+
+void RemoveInputDesc(ge::OpDescPtr op_desc, uint32_t index) {
+  auto& input_name_index_map = op_desc->MutableAllInputName();
+  auto found = input_name_index_map.end();
+  for (auto iter = input_name_index_map.begin(); iter != input_name_index_map.end(); ++iter) {
+    if (iter->second == index) {
+      found = iter;
+    } else if (iter->second > index) {
+      iter->second--;
+    }
+  }
+
+  if (found != input_name_index_map.end()) {
+    input_name_index_map.erase(found);
+  }
+
+  ge::OpDescUtils::ClearInputDesc(op_desc, index);
+}
 

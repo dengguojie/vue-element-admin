@@ -39,6 +39,17 @@ using namespace ge;
 namespace fe {
 static const char* FUSED_NODE = "Concat";
 static const std::string PATTERN_FUSEDNODE = "FusedNodeConcat";
+
+void ConcatFusionPass::UpdateInputName(ge::OpDescPtr& input_desc_ptr) {
+  auto input_count = input_desc_ptr->GetAllInputsSize();
+  map<string, uint32_t> name_index_map;
+  string name = "x";
+  for (size_t i = 0; i < input_count; ++i) {
+    name_index_map.insert({name + std::to_string(i), i});
+  }
+  input_desc_ptr->UpdateInputName(name_index_map);
+}
+
 vector<FusionPattern*> ConcatFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("ConcatFusionPass");
@@ -100,7 +111,7 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
                                                        fused_node->GetInDataAnchor(whereI[i] - i)) != SUCCESS,
 
                            OP_LOGE(FUSED_OP_TYPE.c_str(),"Remove edge failed."), return FAILED);
-          OpDescUtils::ClearInputDesc(fusedDesc, whereI[i] - i);
+          RemoveInputDesc(fusedDesc, whereI[i] - i);
           ge::NodeUtils::ClearInDataAnchor(fused_node,fused_node->GetInDataAnchor(whereI[i] - i));
       }
   }
@@ -132,7 +143,7 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
     ge::AttrUtils::SetInt(ConcatdBaseDesc, "concat_dim", concat_dim);
 
     for (int64_t c = inputs_num - 1; c >= nodes_num; c--) {
-      OpDescUtils::ClearInputDesc(ConcatdBaseDesc, c);
+      RemoveInputDesc(ConcatdBaseDesc, c);
     }
 
     ge::NodePtr concatd_base_node = graph.AddNode(ConcatdBaseDesc);
@@ -160,14 +171,14 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
 
         if (i == 0) {
           for (int64_t a = inputs_num - 1; a >= NeedTangent; a--) {
-            OpDescUtils::ClearInputDesc(ConcatdDesc, a);
+            RemoveInputDesc(ConcatdDesc, a);
           }
         } else {
           for (int64_t a = i * NeedTangent - 1; a >= 0; a--) {
-            OpDescUtils::ClearInputDesc(ConcatdDesc, a);
+            RemoveInputDesc(ConcatdDesc, a);
           }
           for (int64_t a = inputs_num - (NeedTangent * i + 1); a >= NeedTangent; a--) {
-            OpDescUtils::ClearInputDesc(ConcatdDesc, a);
+            RemoveInputDesc(ConcatdDesc, a);
           }
         }
         ge::NodePtr concatd_node = graph.AddNode(ConcatdDesc);
@@ -191,11 +202,15 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
           ge::TensorDesc ConcatDInputTensor_1 = op1.GetDynamicInputDesc("x", 63 * i + n);
           ge::Shape ConcatDInputShape_1 = ConcatDInputTensor_1.GetShape();
           int64_t dim_axis_value = ConcatDInputShape_1.GetDim(axis);
-          if (PatternFusionUtil::IsUnknownShape(dim_axis_value)) {
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "ZConcatFusionPass cannot be applied for unknown shape.");
-            return NOT_CHANGED;
+          if (PatternFusionUtil::IsUnknownShape(size)) {
+            continue;
           }
-          size += dim_axis_value;
+
+          if (PatternFusionUtil::IsUnknownShape(dim_axis_value)) {
+            size = dim_axis_value;
+          } else {
+            size += dim_axis_value;
+          }
         }
         ge::GeTensorDesc ConcatDOutputTensor_1 = ConcatdDesc->GetOutputDesc(0);
         ge::GeShape ConcatDOutputShape_1 = ConcatDOutputTensor_1.GetShape();
@@ -203,6 +218,7 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
         ConcatDOutputTensor_1.SetShape(ConcatDOutputShape_1);
         ConcatDOutputTensor_1.SetOriginShape(ConcatDOutputShape_1);
         ConcatdDesc->UpdateOutputDesc(0, ConcatDOutputTensor_1);
+        UpdateInputName(ConcatdDesc);
         ConcatdBaseDesc->UpdateInputDesc(i, ConcatDOutputTensor_1);
         // infershape end
         FUSION_PASS_CHECK(
@@ -233,7 +249,7 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
         LastConcatDDesc->SetType("ConcatD");
 
         for (int64_t b = inputs_num - last_node_inputs_num - 1; b >= 0; b--) {
-          OpDescUtils::ClearInputDesc(LastConcatDDesc, b);
+          RemoveInputDesc(LastConcatDDesc, b);
         }
         ge::NodePtr last_concatd_node = graph.AddNode(LastConcatDDesc);
         FUSION_PASS_CHECK(last_concatd_node == nullptr,
@@ -260,11 +276,15 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
           ge::TensorDesc ConcatDInputTensor_2 = op2.GetDynamicInputDesc("x", n + 63 * i);
           ge::Shape ConcatDInputShape_2 = ConcatDInputTensor_2.GetShape();
           int64_t dim_axis_value = ConcatDInputShape_2.GetDim(axis);
-          if (PatternFusionUtil::IsUnknownShape(dim_axis_value)) {
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "ZConcatFusionPass cannot be applied for unknown shape.");
-            return NOT_CHANGED;
+          if (PatternFusionUtil::IsUnknownShape(size)) {
+            continue;
           }
-          size += dim_axis_value;
+
+          if (PatternFusionUtil::IsUnknownShape(dim_axis_value)) {
+            size = dim_axis_value;
+          } else {
+            size += dim_axis_value;
+          }
         }
         ge::GeTensorDesc ConcatDOutputTensor_2 = LastConcatDDesc->GetOutputDesc(0);
         ge::GeShape ConcatDOutputShape_2 = ConcatDOutputTensor_2.GetShape();
@@ -272,6 +292,7 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
         ConcatDOutputTensor_2.SetShape(ConcatDOutputShape_2);
         ConcatDOutputTensor_2.SetOriginShape(ConcatDOutputShape_2);
         LastConcatDDesc->UpdateOutputDesc(0, ConcatDOutputTensor_2);
+        UpdateInputName(LastConcatDDesc);
         ConcatdBaseDesc->UpdateInputDesc(i, ConcatDOutputTensor_2);
         // the last_node infershape end
         FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(last_concatd_node->GetOutDataAnchor(0),
@@ -292,6 +313,7 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
         }
       }
     }
+    UpdateInputName(ConcatdBaseDesc);
   }
 
   for (auto inAnchor : fused_node->GetAllInDataAnchors()) {

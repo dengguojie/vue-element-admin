@@ -75,6 +75,14 @@ Status SplitFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   splitAttrInfo.push_back(split_dim);
   FUSION_PASS_CHECK(fused_node1 == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed"),
                     return PARAM_INVALID);
+  int64_t num_split;
+  ge::AttrUtils::GetInt(fused_node1->GetOpDesc(), "num_split", num_split);
+  ge::GeTensorDesc SplitInputTensor = fused_node1->GetOpDesc()->GetInputDesc("x");
+  ge::GeShape input_shape = SplitInputTensor.GetShape();
+  if (IsUnknownShape(input_shape.GetDims()) && num_split > 63) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "ZSplitFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
 
   Status ret = PatternFusionUtil::ConstToAttrWithNode(graph, fused_node1, fusionOpType, splitAttrInfo, fused_node);
   if (ret != SUCCESS) {
@@ -88,7 +96,6 @@ Status SplitFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
                     return PARAM_INVALID);
 
   // A maximum of 63 tensors are supported in mini mode.
-  int64_t num_split;
   ge::AttrUtils::GetInt(fusedDesc, "num_split", num_split);
   FUSION_PASS_CHECK(num_split <= 63,
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "The amount of num_split of SplitD node is less than 63."),
@@ -117,10 +124,7 @@ Status SplitFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     if (split_dim < 0) {
       split_dim += dimnum;
     }
-    if (PatternFusionUtil::IsUnknownShape(SplitDInputShape.GetDim(split_dim))) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "ZSplitFusionPass cannot be applied for unknown shape.");
-      return NOT_CHANGED;
-    }
+
     small_split_size = SplitDInputShape.GetDim(split_dim) / num_split;
     for (int64_t x = 0; x < num_split; x++) {
       size_splits.push_back(small_split_size);
