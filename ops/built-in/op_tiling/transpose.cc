@@ -1600,7 +1600,7 @@ class Model006 : public TilingModel {
 public:
     Model006() : TilingModel(6, 0, 0, LAST_AXIS_TR_T2F, "Model006_t2f") {}
     void Decision(int64_t coreNum, const NCR & n) {
-        maxRow = Align16(UB_SIZE_1_16_FP16, n.cVol, UB_SIZE_1_16_FP16) / 2; //TODO div 2
+        maxRow = Align16(UB_SIZE_1_16_FP16, n.cVol, UB_SIZE_1_16_FP16) / 2;
         if ((n.cVol < 8) && (n.rVol >= 128 * coreNum)) {
             sp.Set(1, 1, coreNum);
         } else if ((n.cVol < 8) && (n.rVol >= 8)) {
@@ -1773,6 +1773,18 @@ static void Composite(RuntimeInfo & runtimeInfo, int64_t coreNum) {
     }
 }
 
+static bool IsScenario7Accept(const RuntimeInfo & runtimeInfo) {
+    priority_queue<shared_ptr<TilingModel>, vector<shared_ptr<TilingModel>>, TMCompare> pqtm = runtimeInfo.pqtm;
+    if (pqtm.empty()) {
+        return false;
+    }
+    shared_ptr<TilingModel> tm = pqtm.top();
+    if (tm->priority == INVALID_SPLIT) {
+        return false;
+    }
+    return true;
+}
+
 static bool TilingDataScenario7(const CompilerInfo & compilerInfo,
                                          const ShapeInfo & shapeInfo,
                                          RuntimeInfo & runtimeInfo) {
@@ -1793,14 +1805,31 @@ static bool TilingDataScenario7(const CompilerInfo & compilerInfo,
 
     Composite(runtimeInfo, compilerInfo.coreNum);
 
-    return true;
+    return IsScenario7Accept(runtimeInfo);
+
 }
 
-bool TransposeCalcTilingData(const string & opType,
-                             const CompilerInfo & compilerInfo,
-                             const ShapeInfo & shapeInfo,
-                             RuntimeInfo & runtimeInfo) {
+static void ScenarioGuaranteed(const CompilerInfo &compilerInfo, ShapeInfo &shapeInfo, RuntimeInfo &runtimeInfo) {
+    Reshape(shapeInfo);
+    shapeInfo.scenario = SCENARIO_2;
+    shapeInfo.isLastAxisHuge = true;
+    TilingDataScenario2(compilerInfo, shapeInfo, runtimeInfo);
+}
+
+static bool IsSpecificShape(const ShapeInfo &shapeInfo) {
+    return false;
+}
+
+bool TransposeCalcTilingData(const string &opType,
+                             const CompilerInfo &compilerInfo,
+                             ShapeInfo &shapeInfo,
+                             RuntimeInfo &runtimeInfo) {
     bool res = true;
+    if (IsSpecificShape(shapeInfo)) {
+        ScenarioGuaranteed(compilerInfo, shapeInfo, runtimeInfo);
+        return true;
+    }
+
     switch (shapeInfo.scenario) {
         case SCENARIO_0:
             res = TilingDataScenario0(compilerInfo, shapeInfo, runtimeInfo);
@@ -1824,8 +1853,13 @@ bool TransposeCalcTilingData(const string & opType,
             break;
         case SCENARIO_7:
             res = TilingDataScenario7(compilerInfo, shapeInfo, runtimeInfo);
-            PrintTilingInfoScenario7(compilerInfo, shapeInfo, runtimeInfo);
-            OP_LOGD(opType.c_str(), "%s", PrintTilingInfoScenario7(compilerInfo, shapeInfo, runtimeInfo).c_str());
+            if (res == false) {
+                ScenarioGuaranteed(compilerInfo, shapeInfo, runtimeInfo);
+                OP_LOGD(opType.c_str(), "%s", PrintTilingInfoScenario2(compilerInfo, shapeInfo, runtimeInfo).c_str());
+            } else {
+                PrintTilingInfoScenario7(compilerInfo, shapeInfo, runtimeInfo);
+                OP_LOGD(opType.c_str(), "%s", PrintTilingInfoScenario7(compilerInfo, shapeInfo, runtimeInfo).c_str());
+            }
         default:
             break;
     }

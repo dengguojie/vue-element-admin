@@ -454,7 +454,7 @@ void MergeAxis(ShapeInfo & shapeInfo);
 
 bool TransposeCalcTilingData(const std::string &opType,
                              const CompilerInfo & compilerInfo,
-                             const ShapeInfo & shapeInfo,
+                             ShapeInfo & shapeInfo,
                              RuntimeInfo & runtimeInfo);
 
 /*
