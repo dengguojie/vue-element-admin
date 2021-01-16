@@ -139,11 +139,9 @@ def asin_grad(y, dy, z, kernel_name="asin_grad"):
 
     for (_y, _dy) in ins:
         with tbe_base.compute():
-            shape_y, shape_dy = shape_util.variable_shape([_y, _dy], support_broadcast=True)
-            shape_y, _ = shape_util.refine_shape_axes(shape_y, [])
-            shape_dy, _ = shape_util.refine_shape_axes(shape_dy, [])
+            shape_y, shape_dy = shape_util.variable_shape([_y, _dy], support_broadcast=False)
             data_y = tvm.placeholder(shape_y, name="data_y", dtype=dtype_y)
-            data_dy = tvm.placeholder(shape_y, name="data_dy", dtype=dtype_y)
+            data_dy = tvm.placeholder(shape_dy, name="data_dy", dtype=dtype_y)
             res = asin_grad_compute(data_y, data_dy, z, kernel_name)
 
             tensors.append([data_y, data_dy, res])

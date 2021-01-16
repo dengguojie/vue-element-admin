@@ -78,9 +78,6 @@ def cos_compute(input_x, output_y, kernel_name="cos"):
     iter_list = (4, 6, 8, 10, 12, 14)
     for i in iter_list:
         iter_value = tbe.vmuls(tbe.vmul(input_x_power, iter_value), -1.0 / (i * (i - 1)))
-        iter_value = tbe.vmuls(tbe.vmul(input_x_power, iter_value), -1.0 / (i * (i - 1)))
-        iter_value = tbe.vmuls(tbe.vmul(input_x_power, iter_value), -1.0 / (i * (i - 1)))
-        iter_value = tbe.vmuls(tbe.vmul(input_x_power, iter_value), -1.0 / (i * (i - 1)))
         res = tbe.vadd(res, iter_value)
 
     # cast the dtype to float16

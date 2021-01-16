@@ -20,24 +20,23 @@ from te import tvm
 import te.lang.cce as tbe
 import te.lang.base as tbe_base
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
 from te.utils.op_utils import REQUIRED_INPUT
 from te.utils.op_utils import OPTION_OUTPUT
 from te.utils.op_utils import KERNEL_NAME
 from te.utils.op_utils import check_op_params
 from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_format
 from te.utils import para_check
 from te.utils import shape_util
 from te.lang.base.shape_classifier import Mode
 from te.lang.base.shape_classifier import classify
 
 
+# pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals
 @fusion_manager.register("mul_no_nan")
 def mul_no_nan_compute(input_x1, input_x2, output_y, kernel_name="mul_no_nan"):
     """
     calculating data
+    np.where(np.equal(y, 0.), np.zeros((), dtype=dtype), np.multiply(x, y))
 
     Parameters
     ----------
@@ -54,17 +53,13 @@ def mul_no_nan_compute(input_x1, input_x2, output_y, kernel_name="mul_no_nan"):
     -------
     output tensor
     """
-    """
-    np.where(np.equal(y, 0.), np.zeros((), dtype=dtype), np.multiply(x, y))
-    """
     src_dtype = input_x1.dtype.lower()
     shape_x1 = te.lang.cce.util.shape_to_list(input_x1.shape)
     shape_x2 = te.lang.cce.util.shape_to_list(input_x2.shape)
 
-    shape_x1, shape_x2, shape_max = shape_util.broadcast_shapes(shape_x1, shape_x2, 
-                                                        param_name_input1="shape_x1", 
-                                                        param_name_input2="shape_x2")
-    util.check_shape_size(shape_max, SHAPE_SIZE_LIMIT)
+    shape_x1, shape_x2, shape_max = shape_util.broadcast_shapes(shape_x1, shape_x2,
+                                                                param_name_input1="shape_x1",
+                                                                param_name_input2="shape_x2")
     input_x1 = tbe.broadcast(input_x1, shape_max)
     input_x2 = tbe.broadcast(input_x2, shape_max)
 
@@ -79,6 +74,7 @@ def mul_no_nan_compute(input_x1, input_x2, output_y, kernel_name="mul_no_nan"):
     return res
 
 
+@tbe_base.register_operator("MulNoNan")
 @check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, OPTION_OUTPUT, KERNEL_NAME)
 def mul_no_nan(x1, x2, y, kernel_name="mul_no_nan"):
     """
@@ -110,19 +106,12 @@ def mul_no_nan(x1, x2, y, kernel_name="mul_no_nan"):
     shape_x1 = x1.get("shape")
     shape_x2 = x2.get("shape")
 
-    shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x1, shape_x2,
-        param_name_input1="x1", param_name_input2="x2")
-    if shape_x[-1] == 1 and shape_y[-1] == 1 and shape_max[-1] == 1:
-        shape_x = shape_x if len(shape_x) == 1 else shape_x[:-1]
-        shape_y = shape_y if len(shape_y) == 1 else shape_y[:-1]
-        shape_max = shape_max if len(shape_max) == 1 else shape_max[:-1]
-
     ins = classify([x1, x2], Mode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
-    for (x1, x2) in ins:
+    for (_x1, _x2) in ins:
         with tbe_base.compute():
             # shape
-            shape_x1, shape_x2 = shape_util.variable_shape([x1, x2], support_broadcast=True)
+            shape_x1, shape_x2 = shape_util.variable_shape([_x1, _x2], support_broadcast=True)
             shape_x1, shape_x2 = shape_util.refine_shapes_for_broadcast(shape_x1, shape_x2)
             # mul_compute
             data_x1 = tvm.placeholder(shape_x1, dtype=inputx1_data_type, name="data_x1")
@@ -136,5 +125,3 @@ def mul_no_nan(x1, x2, y, kernel_name="mul_no_nan"):
     # build
     config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)
-    
- 

@@ -51,7 +51,6 @@ def reciprocal_grad_compute(input_y, input_dy, output_data,
     res: TVM tensor
         the result of compute
     """
-    
     shape_y = shape_util.shape_to_list(input_y.shape)
     dtype = input_y.dtype
 
@@ -84,8 +83,8 @@ def reciprocal_grad_compute(input_y, input_dy, output_data,
 
 
 @tbe_base.register_operator("ReciprocalGrad")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, 
-                            para_check.REQUIRED_INPUT, 
+@para_check.check_op_params(para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def reciprocal_grad(input_y, input_dy, output_data,
@@ -117,13 +116,12 @@ def reciprocal_grad(input_y, input_dy, output_data,
     check_list = ("float16", "float32", "int32", "int8")
     para_check.check_dtype(dtype_y, check_list, param_name="input_y")
     schedules, tensors = [], []
-    ins = classify([input_y, input_dy], Mode.ELEWISE_WITH_BROADCAST)
-    for (input_y, input_dy) in ins:
+    ins = classify([input_y, input_dy], Mode.ELEWISE)
+    for (_input_y, _input_dy) in ins:
         with tbe_base.compute():
-            shape_y, shape_dy = shape_util.variable_shape([input_y, input_dy], support_broadcast=True)
-            reshape_y, reshape_dy = shape_util.refine_shapes_for_broadcast(shape_y, shape_dy)
-            data_y = tvm.placeholder(reshape_y, name="data_y", dtype=dtype_y)
-            data_dy = tvm.placeholder(reshape_dy, name="data_dy", dtype=dtype_dy)
+            shape_y, shape_dy = shape_util.variable_shape([_input_y, _input_dy], support_broadcast=False)
+            data_y = tvm.placeholder(shape_y, name="data_y", dtype=dtype_y)
+            data_dy = tvm.placeholder(shape_dy, name="data_dy", dtype=dtype_dy)
             res = reciprocal_grad_compute(data_y, data_dy, output_data, kernel_name)
             tensors.append([data_y, data_dy, res])
         with tvm.target.cce():

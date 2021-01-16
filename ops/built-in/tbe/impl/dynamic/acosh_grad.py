@@ -151,6 +151,7 @@ def acosh_grad_compute(y, dy, z, kernel_name="acos_grad"):
     return res
 
 
+@tbe_base.register_operator("AcoshGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def acosh_grad(y, dy, z, kernel_name="acosh_grad"):

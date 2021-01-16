@@ -86,6 +86,7 @@ def sinh_compute(input_data, output_data, kernel_name="sinh"):
     return res
 
 
+@tbe_base.register_operator("Sinh")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def sinh(input_data, output_data, kernel_name="sinh"):
     """
