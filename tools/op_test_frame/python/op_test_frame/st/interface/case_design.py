@@ -35,28 +35,6 @@ MS_INPUT_CROSS_LIST = ['type', 'shape', 'data_distribute', 'value_range']
 MS_OUTPUT_CROSS_LIST = ['type', 'shape']
 
 
-def get_ori_filed_data(input_or_out_desc):
-    ori_filed_list = []
-    if input_or_out_desc.get('ori_format'):
-        if isinstance(input_or_out_desc.get('ori_format'), str):
-            ori_format_list = [input_or_out_desc.get('ori_format')]
-        if isinstance(input_or_out_desc.get('ori_format'), list):
-            ori_format_list = input_or_out_desc.get('ori_format')
-        ori_filed_list.append(ori_format_list)
-        if len(ori_format_list) != len(input_or_out_desc.get('format')):
-            utils.print_error_log('please checkout, teh length of format and ori_format must be the same.')
-            raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_INVALID_DATA_ERROR)
-    if input_or_out_desc.get('ori_shape'):
-        ori_shape_list = [input_or_out_desc.get('ori_shape')]
-        ori_filed_list.append(ori_shape_list)
-    if len(ori_filed_list) == 1:
-        utils.print_error_log('please checkout, ori_format and ori_shape is exist at the same time.')
-        raise utils.OpTestGenException(
-            utils.OP_TEST_GEN_INVALID_DATA_ERROR)
-    return ori_filed_list
-
-
 def combine_ori_field_to_cross(tensor, cross_key_list):
     cross_list = []
     ori_field_cross_key_list = []
@@ -302,7 +280,9 @@ class CaseDesign:
     @staticmethod
     def _check_ori_filed_length_valid(ori_list, comapre_list, ori_filed, compare_filed):
         if len(ori_list) != len(comapre_list):
-            utils.print_error_log('please checkout, teh length of %s and %s must be the same.' %(compare_filed, ori_filed))
+            utils.print_error_log('please checkout, teh length of %s and %s '
+                                  'must be the same.' % (compare_filed,
+                                                         ori_filed))
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_INVALID_DATA_ERROR)
         return
