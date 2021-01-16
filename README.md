@@ -32,6 +32,9 @@
     ```
     git clone --recursive https://gitee.com/ascend/canndev.git
     cd canndev
+    git checkout development
+    git submodule init
+    git submodule update
     ```
 
 2. 在`canndev`根目录下执行下列命令即可进行编译。
