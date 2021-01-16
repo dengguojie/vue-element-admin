@@ -131,6 +131,10 @@ class DataGenerator:
         """
         utils.check_path_valid(self.output_path, True)
         for case in self.case_list:
+            # support no input scene
+            if len(case.get('input_desc')) < 1:
+                utils.print_info_log("There is no inputs, skip generate input data.")
+                return
             case_name = case['case_name']
             calc_func_params_tmp = list()
             utils.print_info_log(

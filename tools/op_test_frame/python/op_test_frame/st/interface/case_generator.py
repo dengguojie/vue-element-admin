@@ -300,7 +300,7 @@ class CaseGenerator:
                 if 'format' in op_info:
                     format_list = op_info["format"].split(",")
                     self._check_op_info_list_valid(
-                        format_list, utils.FORMAT_LIST,
+                        format_list, list(utils.FORMAT_ENUM_MAP.keys()),
                         op_info_key + '.format')
 
                     if current_dtype_count != len(format_list):
@@ -416,7 +416,6 @@ class CaseGenerator:
                 if 'attr' not in base_case:
                     base_case['attr'] = []
                 base_case['attr'].append(self._make_attr(key, value))
-        self._check_desc_valid(base_case, 'input_desc')
         self._check_desc_valid(base_case, 'output_desc')
 
         # generate base case from model

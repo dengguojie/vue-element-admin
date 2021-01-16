@@ -326,13 +326,12 @@ class CaseDesign:
     def _make_input_desc_list(self, json_obj):
         input_desc_list = []
         if len(json_obj[INPUT_DESC]) == 0:
-            utils.print_error_log(
-                'The value of "input_desc" is empty. Please modify it in '
-                'file %s.' % self.current_json_path)
-            raise utils.OpTestGenException(utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+            utils.print_warn_log(
+                'The value of "input_desc" is empty.')
+            return input_desc_list
         for input_desc in json_obj[INPUT_DESC]:
             format_list = self._check_list_str_valid(
-                input_desc, 'format', utils.FORMAT_LIST, INPUT_DESC)
+                input_desc, 'format', list(utils.FORMAT_ENUM_MAP.keys()), INPUT_DESC)
             type_list = self._check_list_str_valid(
                 input_desc, 'type', list(utils.DTYPE_TO_NUMPY_MAP.keys()),
                 INPUT_DESC)
@@ -422,7 +421,7 @@ class CaseDesign:
             raise utils.OpTestGenException(utils.OP_TEST_GEN_INVALID_DATA_ERROR)
         for output_desc in json_obj[OUTPUT_DESC]:
             format_list = self._check_list_str_valid(
-                output_desc, 'format', utils.FORMAT_LIST, OUTPUT_DESC)
+                output_desc, 'format', list(utils.FORMAT_ENUM_MAP.keys()), OUTPUT_DESC)
             type_list = self._check_list_str_valid(
                 output_desc, 'type', list(utils.DTYPE_TO_NUMPY_MAP.keys()),
                 OUTPUT_DESC)
@@ -472,6 +471,8 @@ class CaseDesign:
         return output_desc_list
 
     def _check_value_number_valid(self, input_desc_list, output_desc_list):
+        if len(input_desc_list) < 1:
+            return
         key = 'format'
         count = len(input_desc_list[0][key])
         self._check_number_match(key, count, input_desc_list)
@@ -545,6 +546,9 @@ class CaseDesign:
 
     @staticmethod
     def _append_input_desc_to_case(json_obj, index, input_case_list, case):
+        # check input_case_list for support no input scene
+        if len(input_case_list) < 1:
+            return
         for input_index, input_case in enumerate(input_case_list):
             if json_obj[INPUT_DESC][input_index].get('name'):
                 input_name = \
@@ -552,6 +556,13 @@ class CaseDesign:
                 input_case[index].update({'name': input_name})
 
             case[INPUT_DESC].append(input_case[index])
+
+    @staticmethod
+    def _get_count(input_case_list, output_case_list):
+        # for support no inputs
+        if len(input_case_list) > 1:
+            return len(input_case_list[0])
+        return len(output_case_list[0])
 
     def generate_cases(self):
         """
@@ -603,7 +614,7 @@ class CaseDesign:
                         input_desc_list, INPUT_CROSS_LIST)
                     output_case_list = self._cross_tensor(
                         output_desc_list, OUTPUT_CROSS_LIST)
-                count = len(input_case_list[0])
+                count = self._get_count(input_case_list, output_case_list)
                 prefix = json_obj[CASE_NAME].replace('/', '_') + '_'
                 if self.multi:
                     if json_obj.get(ST_MODE) == "ms_python_train":

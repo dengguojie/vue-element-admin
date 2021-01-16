@@ -142,14 +142,53 @@ ATTR_MEMBER_VAR_MAP = {
 DATA_DISTRIBUTION_LIST = ['uniform', 'normal', 'beta', 'laplace', 'triangular',
                           'relu', 'sigmoid', 'softmax', 'tanh']
 
-FORMAT_LIST = ['NCHW', 'NHWC', 'ND', 'NC1HWC0', 'FRACTAL_Z', 'NC1C0HWPAD',
-               'NHWC1C0', 'FSR_NCHW', 'FRACTAL_DECONV', 'C1HWNC0',
-               'FRACTAL_DECONV_TRANSPOSE', 'FRACTAL_DECONV_SP_STRIDE_TRANS',
-               'NC1HWC0_C04', 'FRACTAL_Z_C04', 'CHWN',
-               'DECONV_SP_STRIDE8_TRANS', 'NC1KHKWHWC0', 'BN_WEIGHT',
-               'FILTER_HWCK', 'HWCN', 'LOOKUP_LOOKUPS', 'LOOKUP_KEYS',
-               'LOOKUP_VALUE', 'LOOKUP_OUTPUT', 'LOOKUP_HITS', 'MD', 'NDHWC',
-               'C1HWNCoC0', 'FRACTAL_NZ', 'UNDEFINED', 'RESERVED']
+# the map according to graph/types.h
+FORMAT_ENUM_MAP = {
+    "UNDEFINED": -1,
+    "NCHW": 0,   # NCHW
+    "NHWC": 1,   # NHWC
+    "ND": 2,        # Nd Tensor
+    "NC1HWC0": 3,    # NC1HWC0
+    "FRACTAL_Z": 4,  # FRACTAL_Z
+    "NC1C0HWPAD": 5,
+    "NHWC1C0": 6,
+    "FSR_NCHW": 7,
+    "FRACTAL_DECONV": 8,
+    "C1HWNC0": 9,
+    "FRACTAL_DECONV_TRANSPOSE": 10,
+    "FRACTAL_DECONV_SP_STRIDE_TRANS": 11,
+    "NC1HWC0_C04": 12,    # NC1HWC0, C0 is 4
+    "FRACTAL_Z_C04": 13,  # FRACZ, C0 is 4
+    "CHWN": 14,
+    "FRACTAL_DECONV_SP_STRIDE8_TRANS": 15,
+    "HWCN": 16,
+    "NC1KHKWHWC0": 17,  # KH,KW kernel h& kernel w maxpooling max output format
+    "BN_WEIGHT": 18,
+    "FILTER_HWCK": 19,  # filter input tensor format
+    "HASHTABLE_LOOKUP_LOOKUPS": 20,
+    "HASHTABLE_LOOKUP_KEYS": 21,
+    "HASHTABLE_LOOKUP_VALUE": 22,
+    "HASHTABLE_LOOKUP_OUTPUT": 23,
+    "HASHTABLE_LOOKUP_HITS": 24,
+    "C1HWNCoC0": 25,
+    "MD": 26,
+    "NDHWC": 27,
+    "FRACTAL_ZZ": 28,
+    "FRACTAL_NZ": 29,
+    "NCDHW": 30,
+    "DHWCN": 31,  # 3D filter input tensor format
+    "NDC1HWC0": 32,
+    "FRACTAL_Z_3D": 33,
+    "CN": 34,
+    "NC": 35,
+    "DHWNC": 36,
+    "FRACTAL_Z_3D_TRANSPOSE": 37,  # 3D filter(transpose) input tensor format
+    "FRACTAL_ZN_LSTM": 38,
+    "FRACTAL_Z_G": 39,
+    "RESERVED": 40,
+    "ALL": 41,
+    "NULL": 42
+}
 
 OPTIONAL_TYPE_LIST = ['UNDEFINED', 'RESERVED']
 
@@ -234,7 +273,7 @@ def map_to_acl_format_enum(format_list):
     result_str = ""
     acl_format_list = []
     for acl_format in format_list:
-        acl_format_list.append("ACL_FORMAT_" + str(acl_format).upper())
+        acl_format_list.append("(aclFormat)" + str(FORMAT_ENUM_MAP.get(acl_format)))
     result_str += ", ".join(acl_format_list)
     return result_str
 
