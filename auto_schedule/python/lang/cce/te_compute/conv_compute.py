@@ -694,7 +694,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
 
             offset = ConvParam.fusion_para.get("slice_offset")
             input_memory_type = ConvParam.fusion_para.get("input_memory_type")
-            if offset and input_memory_type != 1:
+            if valid_shape and input_memory_type != 1:
                 if TENSOR_MAP["strideh_opti_flag"] or TENSOR_MAP["l0a_load2d_flag"]:
                     # do it in _fmap_ddr2l1
                     pass
