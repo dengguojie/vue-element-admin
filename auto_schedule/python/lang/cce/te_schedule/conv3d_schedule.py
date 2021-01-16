@@ -1379,9 +1379,9 @@ class CceConv3dOp:
         # --------------------------tile res_c------------------------
         # to split G
         group_dict = tensor_map["group_dict"]
-
-        c_outer_g, c_outer_inner = sch[res_c].split(res_c.op.axis[1], c_tiling_factor[0])
-        c_outer_g, c_outer_outer = sch[res_c].split(c_outer_g, nparts=group_dict["real_g"])
+        cout1_g = group_dict["cout_g"] // n_0
+        c_outer_g, c_outer = sch[res_c].split(res_c.op.axis[1], cout1_g)
+        c_outer_outer, c_outer_inner = sch[res_c].split(c_outer, c_tiling_factor[0])
         c_outer_g_outer, c_outer_g_inner = sch[res_c].split(c_outer_g, nparts=tiling["g_dim"])
 
         m_outer_outer, m_outer_inner = sch[res_c].split(res_c.op.axis[2], c_tiling_factor[1])
@@ -1483,23 +1483,6 @@ class CceConv3dOp:
         compute_at_axis.append(m_outer_inner_outer)
 
         sch[c_col].compute_at(sch[res_c], c_slice_axis)
-
-        def _n_buffer_tile():
-            # get C index from fused axis
-            c_oooo = (block // block_dim[2]) % block_dim[1]
-            factor_oooo = res_c.shape[1].value // group_dict["real_g"] // block_dim[1]
-            # factor of c_outer_outer_inner is the size of loop c_outer_outer_outer_inner and Nc
-            factor_oooi = res_c.shape[1].value // group_dict["real_g"] // c_tiling_factor[0] // \
-                          bl1_factor[1] * tiling["CL0_matrix"][0]
-            n_axis = c_oooo * factor_oooo + c_outer_outer_outer_inner * factor_oooi + c_outer_outer_inner * \
-                     tiling["CL0_matrix"][0]
-            n_extent = tiling["CL0_matrix"][0]
-            # The last two axis seems to be reduce K axis
-            sch[c_col].buffer_tile((None, None), (None, None),
-                                   (n_axis, n_extent), (None, None),
-                                   (None, None), (None, None), (None, None))
-
-        # This is not used for now : _n_buffer_tile()
 
         def _bias_compute_at():
             if 'bias' in tensor_map.keys() and opti_flag:
@@ -1672,15 +1655,15 @@ class CceConv3dOp:
             "coo": coo,
             "bl1_at_ccol_axis": bl1_at_ccol_axis,
             "bl1_at_c_axis": bl1_at_c_axis,
-            "bido": bido
+            "c_outer_g_inner": c_outer_g_inner
         }
         allocate_bl1_axis = {
             "bl1_at_ccol_axis": bl1_at_ccol_axis,
             "bl1_at_c_axis": bl1_at_c_axis,
-            "bido": bido
+            "c_outer_g_inner": c_outer_g_inner
         }
         run_once_bl1_axis = {"m_outer_outer_inner": m_outer_outer_inner}
-        bl1_index_dict = {0: "bl1_at_ccol_axis", 1: "bl1_at_c_axis", 2: "bido"}
+        bl1_index_dict = {0: "bl1_at_ccol_axis", 1: "bl1_at_c_axis", 2: "c_outer_g_inner"}
         self._set_bl1_at_axis(reorder_flag, tiling, bl1_factor,
                               compute_bl1_axis, run_once_bl1_axis,
                               allocate_bl1_axis, bl1_index_dict, buffer_dict,
