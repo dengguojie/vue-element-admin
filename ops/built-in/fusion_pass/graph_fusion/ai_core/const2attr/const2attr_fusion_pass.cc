@@ -33,7 +33,7 @@
 #include <vector>
 
 namespace fe {
-REGISTER_PASS("AAConstToAttrPass", BUILT_IN_GRAPH_PASS, Const2AttrFusionPass);
+REGISTER_PASS("ConstToAttrPass", BUILT_IN_GRAPH_PASS, Const2AttrFusionPass);
 
 vector<FusionPattern*> Const2AttrFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -133,7 +133,7 @@ Status Const2AttrFusionPass::Run(ge::ComputeGraph& graph, OpsKernelInfoStorePtr 
   FusionInfo fusionInfo(graph.GetSessionID(), to_string(graph.GetGraphID()), GetName(), matchTimes, effectTimes);
   FusionStatisticRecorder::Instance().UpdateGraphFusionMatchTimes(fusionInfo);
   FusionStatisticRecorder::Instance().UpdateGraphFusionEffectTimes(fusionInfo);
-  OP_LOGD("AAConstToAttrPass",
+  OP_LOGD("ConstToAttrPass",
           "SessionId[%d], GraphId[%d], GraphFusionPass[%s]: pattern=undefined, matchedTimes=%d, effectedTimes=%d.",
           graph.GetSessionID(), graph.GetGraphID(), GetName().c_str(), matchTimes, effectTimes);
 

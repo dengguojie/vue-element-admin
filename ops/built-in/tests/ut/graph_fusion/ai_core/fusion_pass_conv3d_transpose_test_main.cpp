@@ -73,7 +73,7 @@ TEST_F(conv3d_transpose_fusion_test, conv3d_transpose_fusion_test_1) {
 
     ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-    fe::FusionPassTestUtils::RunGraphFusionPass("AAConstToAttrPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+    fe::FusionPassTestUtils::RunGraphFusionPass("ConstToAttrPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
     bool findD = false;
     for (auto node: compute_graph_ptr->GetAllNodes()) {
