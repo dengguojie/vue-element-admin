@@ -951,21 +951,10 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
   }
   OP_LOGD(op.GetName().c_str(), "[MatMulV2 Infershape] The transpose attr is Ok.");
   ge::GeShape shape_out_desc{shape_out};
-  auto input_format = FORMAT_ND;
-  auto input_format_1 = FORMAT_ND;
-  OP_LOGD(op.GetName().c_str(), "[MatMulV2 Infershape] Start to set input1 Format in infershape.");
-  tensordesc_x1->SetFormat(input_format_1);
-  tensordesc_x1->SetOriginFormat(input_format_1);
-  OP_LOGD(op.GetName().c_str(), "[MatMulV2 Infershape] Start to set input2 Format in infershape.");
-  tensordesc_x2->SetFormat(input_format);
-  tensordesc_x2->SetOriginFormat(input_format);
   OP_LOGD(op.GetName().c_str(), "[MatMulV2 Infershape] Start to set output shape.");
   tensordesc_output->SetShape(shape_out_desc);
   tensordesc_output->SetOriginShape(shape_out_desc);
   tensordesc_output->SetShapeRange(shape_range_out);
-  OP_LOGD(op.GetName().c_str(), "[MatMulV2 Infershape] Start to set output Format in infershape.");
-  tensordesc_output->SetFormat(input_format_1);
-  tensordesc_output->SetOriginFormat(input_format_1);
   if (tensordesc_x1->GetDataType() == ge::DT_INT8) {
     tensordesc_output->SetDataType(ge::DT_INT32);
   } else {
@@ -1116,7 +1105,6 @@ graphStatus CommonBatchMatMulInferShape(const Operator &op) {
 
   tensordesc_out->SetShape(ge::GeShape(shape_out));
   tensordesc_out->SetShapeRange(shape_range_out);
-  tensordesc_out->SetFormat(tensordesc_x1.GetFormat());
   tensordesc_out->SetDataType(tensordesc_x1.GetDataType());
   return GRAPH_SUCCESS;
 }
