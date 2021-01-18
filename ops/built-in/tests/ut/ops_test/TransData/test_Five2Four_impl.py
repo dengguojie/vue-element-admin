@@ -42,7 +42,7 @@ ut_case.add_case(["Ascend910"],
                  gen_trans_data_case((2, 2, 9, 11, 16), (2, 29, 9, 11),
                                      "float16", "nchw_8", "success", "NCHW"))
 ut_case.add_case(["Ascend910", "Ascend310"],
-                 gen_trans_data_case((3, 4, 83, 111, 16), (3, 61, 83, 111),
+                 gen_trans_data_case((2, 4, 65, 65, 16), (2, 58, 65, 65),
                                      "float16", "nchw_9", "success", "NCHW"))
 ut_case.add_case(["Ascend910"],
                  gen_trans_data_case((3, 2, 4, 5, 16), (3, 4, 5, 19),

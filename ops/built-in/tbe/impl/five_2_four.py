@@ -9917,7 +9917,15 @@ def five_2_four(src, dst, src_format, dst_format, kernel_name='five_2_four'):
     elif dst_format.lower() == "nchw" and \
             not tbe_platform.cce_conf.intrinsic_check_support("Intrinsic_vln", "float32") and \
             not tbe_platform.cce_conf.intrinsic_check_support("Intrinsic_vbi", "float16") and \
-            dtype == "float16" and src_shape[2] * src_shape[3] >= 64:
+            dtype == "float16" and \
+            src_shape in [[1, 4, 65, 65, 16], [1, 8, 33, 33, 16], [1, 15, 17, 17, 16], [1, 1, 65, 65, 16],
+                          [2, 4, 65, 65, 16], [2, 8, 33, 33, 16], [2, 15, 17, 17, 16], [2, 1, 65, 65, 16],
+                          [4, 4, 65, 65, 16], [4, 8, 33, 33, 16], [4, 15, 17, 17, 16], [4, 1, 65, 65, 16],
+                          [8, 4, 65, 65, 16], [8, 8, 33, 33, 16], [8, 15, 17, 17, 16], [8, 1, 65, 65, 16]] and \
+            dst_shape in [[1, 58, 65, 65], [1, 116, 33, 33], [1, 232, 17, 17], [1, 2, 65, 65],
+                          [2, 58, 65, 65], [2, 116, 33, 33], [2, 232, 17, 17], [2, 2, 65, 65],
+                          [4, 58, 65, 65], [4, 116, 33, 33], [4, 232, 17, 17], [4, 2, 65, 65],
+                          [8, 58, 65, 65], [8, 116, 33, 33], [8, 232, 17, 17], [8, 2, 65, 65]]:
         c1hwc0_2_chw(src_shape, dst_shape, dtype, kernel_name)
     else:
         if dst_format.lower() == "nchw":
