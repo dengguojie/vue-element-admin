@@ -15,7 +15,6 @@
 """
 dynamic mul_no_nan
 """
-import te.lang.cce
 from te import tvm
 import te.lang.cce as tbe
 import te.lang.base as tbe_base
@@ -53,9 +52,8 @@ def mul_no_nan_compute(input_x1, input_x2, output_y, kernel_name="mul_no_nan"):
     -------
     output tensor
     """
-    src_dtype = input_x1.dtype.lower()
-    shape_x1 = te.lang.cce.util.shape_to_list(input_x1.shape)
-    shape_x2 = te.lang.cce.util.shape_to_list(input_x2.shape)
+    shape_x1 = shape_util.shape_to_list(input_x1.shape)
+    shape_x2 = shape_util.shape_to_list(input_x2.shape)
 
     shape_x1, shape_x2, shape_max = shape_util.broadcast_shapes(shape_x1, shape_x2,
                                                                 param_name_input1="shape_x1",
@@ -63,14 +61,7 @@ def mul_no_nan_compute(input_x1, input_x2, output_y, kernel_name="mul_no_nan"):
     input_x1 = tbe.broadcast(input_x1, shape_max)
     input_x2 = tbe.broadcast(input_x2, shape_max)
 
-    mul_res = te.lang.cce.vmul(input_x1, input_x2)
-    zero = tvm.const(0, dtype=src_dtype)
-    zeros = te.lang.cce.broadcast(zero, shape_max)
-    res = te.lang.cce.vcmpsel(input_x2,
-                              zeros,
-                              operation='eq',
-                              slhs=zeros,
-                              srhs=mul_res)
+    res = tbe.vmul(input_x1, input_x2)
     return res
 
 
