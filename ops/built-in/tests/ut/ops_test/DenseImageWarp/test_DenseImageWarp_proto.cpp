@@ -28,15 +28,6 @@ TEST_F(DenseImageWarpProtoTest, dense_image_warp_test) {
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
 
-TEST_F(DenseImageWarpProtoTest, dense_image_warp_test_format) {
-    ge::op::DenseImageWarp op;
-    op.UpdateInputDesc("image", create_desc_with_ori({4, 16, 64, 3}, ge::DT_FLOAT, ge::FORMAT_NHWC, {4, 16, 64, 3}, ge::FORMAT_NHWC));
-    op.UpdateInputDesc("flow", create_desc_with_ori({4, 2, 16, 64}, ge::DT_FLOAT, ge::FORMAT_NCHW, {4, 2, 16, 64}, ge::FORMAT_NCHW));
-
-    auto status = op.VerifyAllAttr(true);
-    EXPECT_EQ(status, ge::GRAPH_FAILED);
-}
-
 TEST_F(DenseImageWarpProtoTest, dense_image_warp_test_flow) {
     ge::op::DenseImageWarp op;
     op.UpdateInputDesc("image", create_desc_with_ori({4, 16, 64, 3}, ge::DT_FLOAT, ge::FORMAT_NHWC, {4, 16, 64, 3}, ge::FORMAT_NHWC));

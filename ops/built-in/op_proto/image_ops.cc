@@ -2005,14 +2005,6 @@ IMPLEMT_VERIFIER(DenseImageWarp, DenseImageWarpVerify) {
   auto image_shape = image_desc.GetShape().GetDims();
   auto flow_shape = flow_desc.GetShape().GetDims();
 
-  auto image_format = image_desc.GetFormat();
-  auto flow_format = flow_desc.GetFormat();
-  if (image_format != FORMAT_NHWC || flow_format != FORMAT_NHWC) {
-    OP_LOGE(op.GetName().c_str(),
-            "Input image and flow both should be NHWC format");
-    return GRAPH_FAILED;
-  }
-
   if (image_shape.size() != 4 || flow_shape.size() != 4) {
     OP_LOGE(op.GetName().c_str(),
             "Input image and flow both should be 4d, actual are %d, %d",
