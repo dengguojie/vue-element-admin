@@ -17,7 +17,7 @@ inplace
 """
 from te import tvm
 from te.tvm.dsl_source_info import source_info_decorator
-from .utils import shape_to_list
+from .util import shape_to_list
 from .util import dtype_check_decorator
 from .util import get_tvm_scalar
 
