@@ -1977,33 +1977,50 @@ def general_schedule(
                         kernel_h + (al1_m // output_shape[3]) - 1,
                         kernel_h + (al1_m // output_shape[3]) + 1)
             al1_w = a_ddr.shape[3] * stride_w
-            return al1_h * al1_w
+            return al1_h, al1_w
 
         def _get_al1_bound():
             if len(tiling["AL1_shape"]) != 0:
                 k_al1, multi_m_al1 = tiling["AL1_shape"][:2]
                 al1_m = multi_m_al1 * cl0_tiling_mc * cl0_tiling_m0
                 al1_c = k_al1 // kernel_h // kernel_w
-                al1_bound = al1_c * _get_al1_m_extent(al1_m)
-            elif dynamic_mode == "dynamic_batch":
+                al1_h, al1_w = _get_al1_m_extent(al1_m)
+                al1_bound = al1_c * al1_h * al1_w
+            else:
                 al1_m = _ceil(a_l1.shape[2] * a_l1.shape[3], cl0_tiling_m0) * cl0_tiling_m0
                 al1_c = al1_co1 * al1_co0
                 al1_bound = al1_c * al1_m
-            else:
-                al1_m = (
-                    _ceil(
-                        c_l0c_hw,
-                        (cce_params.CUBE_MKN[c_col.dtype]["mac"][0] * cl0_tiling_mc)
-                    )
-                    * al0_tiling_ma
-                    * al0_tiling_m0
-                )
-                al1_c = al1_co1 * al1_co0
-                al1_bound = al1_c * _get_al1_m_extent(al1_m)
+                al1_h, al1_w = a_l1.shape[2], a_l1.shape[3]
 
-            return al1_bound
+            return al1_bound, al1_h
 
-        sch[a_l1].set_storage_bound(_get_al1_bound())
+        def _set_aub_bound(al1_h):
+            _, _, _, dx_w, _ = output_shape
+            if stride_h > 1 or stride_w > 1:
+                aub_co0 = cce_params.CUBE_MKN[c_col.dtype]["mac"][1]
+                aub_tiling_k, aub_tiling_m, _, _ = tiling.get("AUB_shape")
+                aub_co1 = aub_tiling_k // (kernel_h * kernel_w * aub_co0)
+                aub_filling_w = dy_w * stride_w
+                aub_h = (aub_tiling_m + stride_h - 1) // stride_h
+                al1_m = _ceil(a_l1.shape[2] * a_l1.shape[3], cl0_tiling_m0) * cl0_tiling_m0
+                if len(tiling["AL1_shape"]) != 0:
+                    k_al1, multi_m_al1 = tiling["AL1_shape"][:2]
+                    al1_m = multi_m_al1 * cl0_tiling_mc * cl0_tiling_m0
+                # for aub_tiling_m is 1, then aub_h must be 1
+                if aub_tiling_m != 1:
+                    aub_h = tvm.select(
+                            tvm.all((tvm.floormod(al1_h, stride_h) == 0).asnode(),
+                                    (tvm.floormod(al1_m, dx_w) == 0).asnode()),
+                            aub_h,
+                            aub_h + 1)
+                a_filling_bound = aub_co1 * aub_tiling_m * aub_filling_w * aub_co0
+                aub_bound = aub_co1 * aub_h * dy_w * aub_co0
+                sch[a_filling].set_storage_bound(a_filling_bound)
+                sch[a_ub].set_storage_bound(aub_bound)
+
+        al1_bound, al1_h = _get_al1_bound()
+        sch[a_l1].set_storage_bound(al1_bound)
+        _set_aub_bound(al1_h)
         if dynamic_mode == "dynamic_hw":
             sch.set_var_range(a_ddr.shape[2], *var_range.get("dedy_h"))
             sch.set_var_range(a_ddr.shape[3], *var_range.get("dedy_w"))
@@ -2016,12 +2033,17 @@ def general_schedule(
         sch.disable_allocate(cce_params.scope_ca)
         sch.disable_allocate(cce_params.scope_cb)
         sch.disable_allocate(cce_params.scope_cc)
+        sch.disable_allocate(cce_params.scope_ubuf)
 
         sch[a_l1].mem_unique()
         sch[a_col].mem_unique()
         sch[b_l1].mem_unique()
         sch[b_col].mem_unique()
         sch[c_col].mem_unique()
+        sch[c_ub].mem_unique()
+        if stride_h > 1 or stride_w > 1:
+            sch[a_filling].mem_unique()
+            sch[a_ub].mem_unique()
 
     def _handle_workspace():
         l1_tensor_map = {}

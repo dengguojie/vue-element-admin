@@ -858,7 +858,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
         "in_fm_memory_type": [],
         "out_fm_memory_type": [],
         "l1_fusion_type": -1,
-        "fusion_type": 0,
+        "fusion_type": 1,
         "kernel_name": kernel_name,
         "dynamic_shape_flag": True
     }

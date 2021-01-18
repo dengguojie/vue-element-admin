@@ -20,6 +20,7 @@ from collections import OrderedDict
 from functools import reduce
 
 from te.tvm.expr import Expr
+from te.platform import cce_conf
 from te.domain.tiling.get_tiling import get_tiling
 
 from te.lang.base.operation_impl import register_tiling_case
@@ -98,9 +99,40 @@ class Conv2dBpInputTiling(CubeTilingOp):
             # current kernel_info out
             t_h, t_w = self._get_input_h(tiling_mess["C_shape"][2]), \
                 self._get_input_w(tiling_mess["C_shape"][3])
-            if t_h == tiling_mess["A_shape"][2] and t_w == tiling_mess["A_shape"][3]:
+            if t_h == tiling_mess["A_shape"][2] and t_w == tiling_mess["A_shape"][3]\
+                                                and self.check_tiling_ub(tiling_mess):
                 res_list.append(tiling_mess)
         return res_list
+
+    def check_tiling_ub(self, tiling_mess):
+        """
+        Check if tiling in repository ub space is legal
+
+        Parameters
+        ----------
+        tiling_mess: shape and tiling retrieved from repository
+
+        Returns
+        -------
+        tiling_valid_flag: If true means it's legal
+        """
+
+        tiling = tiling_mess.get('tiling')
+        if (self.stride_h > 1 or self.stride_w > 1) and tiling.get("AUB_shape"):
+            cub_size = (reduce(lambda x, y: x * y, tiling.get("CUB_matrix"))
+                        * tiling.get("manual_pingpong_buffer").get("CUB_pbuffer")
+                        * BIT_RATIO_DICT.get(self.c_type))
+            aub_tiling_k, aub_tiling_m, _, _ = tiling.get("AUB_shape")
+            aub_co1 = aub_tiling_k // (self.b_info[2] * self.b_info[3] * utils.FP16_K)
+            aub_w = tiling_mess["A_shape"][3] * self.stride_w
+            aub_h = (aub_tiling_m + self.stride_h - 1) // self.stride_h
+            aub_db = tiling.get("manual_pingpong_buffer").get("AUB_pbuffer")
+            aub_bit = BIT_RATIO_DICT.get(self.a_type)
+            aub_size = aub_co1 * aub_h * tiling_mess["A_shape"][3] * utils.FP16_K * aub_db * aub_bit
+            aub_filling_size = aub_co1 * aub_tiling_m * aub_w * utils.FP16_K * aub_db * aub_bit
+            if (cub_size + aub_size + aub_filling_size) > cce_conf.get_soc_spec("UB_SIZE"):
+                return False
+        return True
 
     def get_costmodel_tiling(self, shape):
         """
