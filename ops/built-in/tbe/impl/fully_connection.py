@@ -86,6 +86,32 @@ def op_select_format(x, w, b, offset_w, y, num_output, transpose, axis, offset_x
                      kernel_name="fully_connection"):
     """
     select format dynamically
+    op_select_format support desc:
+        1. when attribute axis is 1, index 0 of input x's ori_shape is 1 or
+           input y's ori_shape is 4.
+           The Op FullyConnection can support
+                NC1HWC0 + FRACTAL_Z + NC1HWC0 + ND = NC1HWC0
+
+           for example:
+           inputs:
+             x        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
+             w        ori shape = [16, 16, 16, 16] ori_format = "NCHW"
+             b        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
+             offset_w ori shape = [2] ori_format = "ND"
+           outputs:
+             y        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
+
+        2. In other scenes, The Op FullConnection can support
+                FRACTAL_NZ + FRACTAL_Z + NC1HWC0 + ND = FRACTAL_NZ
+
+           for example:
+           inputs:
+             x        ori shape = [16, 16, 16, 16] ori_format = "NCHW"
+             w        ori shape = [16, 16, 16, 16] ori_format = "NCHW"
+             b        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
+             offset_w ori shape = [2] ori_format = "ND"
+           outputs:
+             y        ori shape = [16, 16, 16, 16] ori_format = "NCHW"
     """
     shape_x_ori = x.get("ori_shape")
     length_x_ori = len(shape_x_ori)

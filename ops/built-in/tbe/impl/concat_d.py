@@ -60,6 +60,43 @@ def op_select_format(input_values, output_data, concat_dim,
                      kernel_name="concat"):
     """
     select format dynamically
+    op_select_format support desc:
+        1. When input ori_format is in ["NDCHW", "HWCN", "NCHW"],
+           and ori_format indexed by concat_dim is not C or N.
+           When all of input's shape is same, and C axis is in [2, 4, 8].
+           Or all of input's shape is not same, C axis of output is
+           greater then or equal to 16
+           The Op ConcatD can support
+           NC1HWC0, NDC1HWC0
+
+           for example:
+           inputs:
+             x        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
+           outputs:
+             y        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
+
+        2. When input ori_format is in ["NDCHW", "HWCN", "NCHW"],
+           and ori_format indexed by concat_dim is not C.
+           The Op ConcatD can support
+           HWCN, NCHW, NDCHW
+
+           for example:
+           inputs:
+             x        ori shape = [16, 16, 16, 16] ori_format = "NCHW"
+           outputs:
+             y        ori shape = [16, 16, 16, 16] ori_format = "NCHW"
+
+
+        3. When length of input is greater then or equal to 2,
+           concat_dim is the last dimension or second-to-last index.
+           The Op ConcatD can support
+           ND
+
+           for example:
+           inputs:
+             x        ori shape = [16, 16, 16, 16] ori_format = "ND"
+           outputs:
+             y        ori shape = [16, 16, 16, 16] ori_format = "ND"
     """
     return concat_v2_op_select_format(input_values, output_data, concat_dim, kernel_name)
 

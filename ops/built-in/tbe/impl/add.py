@@ -85,23 +85,27 @@ def _can_broadcast(shape1, shape2):
 # pylint: disable=too-many-statements,too-many-boolean-expressions,consider-using-enumerate
 def op_select_format(input_x, input_y, output_z, kernel_name="add"):
     """
-    select format dynamically, supporting dynamic shape format selecting.
+    select format dynamically
+    op_select_format support desc:
+        1. when input x's ori_shape is 4, and bias's shape is not 1.
+           The Op Bias can support
+           ND + ND = ND,
+           NC1HWC0 + NC1HWC0 = NC1HWC0,
 
-    Parameters
-    ----------
-    input_x: dict
-        dict of input_x, include keys(shape and dtype).
-    input_y: dict
-        dict of input_y, include keys(shape and dtype).
-    output_z: dict
-        dict of output_z, include keys(shape and dtype).
-    kernel_name: str
-        kernel name, default value is 'add'
+           for example:
+           inputs:
+             x        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
+             bias     ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
+           outputs:
+             y        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
 
-    Returns:
-    -------
-    param_dynamic_in_json: dict
-        dict of param_dynamic.
+        2. In other scenes, all input(x, bias) only support ND,
+           for example:
+           inputs:
+             x        ori shape = [2] ori_format = "ND"
+             bias     ori shape = [2] ori_format = "ND"
+           outputs:
+             y        ori shape = [2] ori_format = "ND"
     """
     shape_x = input_x.get("ori_shape")
     shape_y = input_y.get("ori_shape")

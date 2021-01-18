@@ -32,29 +32,27 @@ from impl.util.util_select_op_base import get_dynamic_param_in_json
 def op_select_format(x, bias, y, axis=1, num_axes=1, bias_from_blob=True,
                      kernel_name="bias"):
     """
-    select format dynamically, supporting dynamic shape format selecting
+    select format dynamically
+    op_select_format support desc:
+        1. when input x's ori_shape is 4, and bias's shape is not 1.
+           The Op Bias can support
+           ND + ND = ND,
+           NC1HWC0 + NC1HWC0 = NC1HWC0,
 
-    Parameters
-    ----------
-    x: dict
-        dict of x, include keys(shape and dtype).
-    bias: dict
-        dict of bias, include keys(shape and dtype).
-    y: dict
-        dict of y, include keys(shape and dtype).
-    axis : int
-        A int num indicates shape of bias when bias is from bottom.
-    num_axes: int
-        A int num indicates shape of bias when bias is from blob.
-    bias_from_blob:
-        A bool value indicates bias is from blob or bottom.
-    kernel_name: str
-        kernel name, default value is 'bias'
+           for example:
+           inputs:
+             x        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
+             bias     ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
+           outputs:
+             y        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
 
-    Returns:
-    -------
-    param_dynamic_in_json: dict
-        dict of param_dynamic.
+        2. In other scenes, all input(x, bias) only support ND,
+           for example:
+           inputs:
+             x        ori shape = [2] ori_format = "ND"
+             bias     ori shape = [2] ori_format = "ND"
+           outputs:
+             y        ori shape = [2] ori_format = "ND"
     """
     shape_x_ori = x.get("ori_shape")
     shape_x = x.get("shape")
