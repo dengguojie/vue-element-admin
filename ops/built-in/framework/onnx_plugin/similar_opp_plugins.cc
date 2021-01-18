@@ -74,4 +74,5 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Identity, Identity);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Where, SelectV2);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Range, Range);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Expand, Expand);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::ScatterND, TensorScatterUpdate);
 }  // namespace domi
