@@ -50,7 +50,7 @@ setup(name='te',
         'psutil',
       ],
       packages=find_packages(),
-      package_data={'te': include_files},
+      package_data={'te': include_files, 'tbe': ['common/utils/errormgr/errormanager.json']},
       distclass=BinaryDistribution,
       url='https://github.com/apache/incubator-tvm',
       **setup_kwargs)
