@@ -2254,7 +2254,7 @@ bool TransposeTiling(const std::string &opType,
     CompilerInfo compilerInfo;
     ShapeInfo shapeInfo;
     RuntimeInfo runtimeInfo;
-    const char * pInputX = NULL;
+    //const char * pInputX = NULL;
     int64_t inputLen = 0;
     int64_t reserved = 0;
 
@@ -2267,9 +2267,11 @@ bool TransposeTiling(const std::string &opType,
     if (CheckTensorShape(opType, shapeInfo) == false) {
         return false;
     }
+    /*
     if (GetInputX(opType, opParas, pInputX, inputLen) == false) {
         return false;
     }
+    */
 
     ReduceAxis(opType, compilerInfo, shapeInfo);
 
