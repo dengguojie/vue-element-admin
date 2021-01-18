@@ -461,7 +461,6 @@ def test_conv2d_v200(test_arg):
                     data_flow_fution_type_map_bias_false["unknown"])
             assert auto_sch_res.fusion_type == fution_type
 
-
         return sch, tensor_list
 
 

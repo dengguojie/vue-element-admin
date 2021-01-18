@@ -39,7 +39,6 @@ def test_conv2d_v200(test_arg):
 
     sys.path.append("./llt/ops/ut/testcase_python/")
 
-
     testcases = {
         "op_name": "conv_v200",
         "all": {
@@ -75,8 +74,6 @@ def test_conv2d_v200(test_arg):
             "conv_v200_s32in_elt_s8f16out3": ((1, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 3, 0, 1, 0, 0, 1, -128),
 
             "conv_v200_s32in_elt_f16out1": ((1, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 4, 0, 1, 0, 0, 0, 0),
-
-
         }
     }
 

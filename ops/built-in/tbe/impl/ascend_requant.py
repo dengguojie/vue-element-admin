@@ -179,6 +179,8 @@ def _deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, relu_fla
         group = x.op.input_tensors[0].shape[0].value
         x_shape_list = shape_util.shape_to_list(x.op.input_tensors[0].shape)
         cout1_opt = x_shape_list[2]
+        # shape of req_scale is [1, true_cout1, 1, 1, c0], req_compute shouldn't exceed true_cout1
+        true_cout1 = x.op.attrs["conv_shape"][1] # output shape of conv, conv_shape = [batch, true_cout1, ho*wo, c0]
 
         def lambda_func(batch, cout1, howo, cout0):
             new_indice = [0] * 5
@@ -188,14 +190,14 @@ def _deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, relu_fla
 
             if tensor_flag:
                 return tvm.select(
-                    cout1 < x_shape_list[0] * x_shape_list[2],
+                    cout1 < true_cout1,
                     tvm.vdeq_cast(
                         x.op.input_tensors[0](0 if group == 1 else cout1 // cout1_opt,
                                               batch,
                                               cout1 if group == 1 else cout1 % cout1_opt, howo, cout0),
                         req_scale(*new_indice), "int8", do_relu=relu_flag),
                     tvm.const(0, dtype="int8"))
-            return tvm.select(cout1 < x_shape_list[0] * x_shape_list[2],
+            return tvm.select(cout1 < true_cout1,
                               tvm.deq_cast(
                                   x.op.input_tensors[0](0 if group == 1 else cout1 // cout1_opt,
                                                         batch,
