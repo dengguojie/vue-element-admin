@@ -143,10 +143,10 @@ static void VectorSub(vector<int64_t> a, vector<int64_t> b, vector<int64_t> &c) 
 }
 
 static void VectorAdd(vector<int64_t> a, vector<int64_t> b, vector<int64_t> &c) {
-    for (int i = 0; i < a.size(); i++) {
+    for (size_t i = 0; i < a.size(); i++) {
         c.push_back(a[i]);
     }
-    for (int i = 0; i < b.size(); i++) {
+    for (size_t i = 0; i < b.size(); i++) {
         c.push_back(b[i]);
     }
 }
@@ -247,7 +247,7 @@ static bool GetShapePerm(const string & opType, const TeOpParas & paras, ShapeIn
     }
 
     int32_t size = std::get<1>(paras.const_inputs.at("perm"));
-    for (int32_t i = 0; i < size/sizeof(int32_t); i++) {
+    for (size_t i = 0; i < size/sizeof(int32_t); i++) {
         shapeInfo.perm.push_back(pPerm[i]);
     }
 
@@ -347,7 +347,7 @@ static int64_t CalcTotalVolumeActual(const std::vector<int64_t> & reducedInShape
  */
 static void CalcReducePermGrad(const vector<int64_t> & reducedPerm , vector<int64_t> & reducedPermGrad) {
     vector<pair<int32_t, int32_t>> sortedList;
-    for (int32_t i = 0; i < reducedPerm.size(); i++) {
+    for (size_t i = 0; i < reducedPerm.size(); i++) {
         sortedList.push_back({i, reducedPerm[i]});
     }
 
@@ -355,13 +355,13 @@ static void CalcReducePermGrad(const vector<int64_t> & reducedPerm , vector<int6
         return lhs.second < rhs.second;
     });
 
-    for (int32_t i = 0; i < sortedList.size(); i++) {
+    for (size_t i = 0; i < sortedList.size(); i++) {
          reducedPermGrad[i] = (sortedList[i].first);
     }
 }
 
 static bool IsIdentical(const ShapeInfo & shapeInfo) {
-    for(int64_t i = 0; i < shapeInfo.reducedPerm.size(); i++) {
+    for(size_t i = 0; i < shapeInfo.reducedPerm.size(); i++) {
         if(shapeInfo.reducedPerm[i] != i) {
             return false;
         }
@@ -406,7 +406,7 @@ void RemoveAxis(ShapeInfo & shapeInfo) {
         if (shapeInfo.inShape[i] != 1) {
             shape.push_back(shapeInfo.inShape[i]);
         }else {
-            for (int64_t j = 0 ; j < shapeInfo.perm.size(); j++) {
+            for (size_t j = 0 ; j < shapeInfo.perm.size(); j++) {
                 if (shapeInfo.perm[j] == i) {
                     delPerm.push_back(shapeInfo.perm[j]);
                 }
@@ -417,7 +417,7 @@ void RemoveAxis(ShapeInfo & shapeInfo) {
 
     for (int64_t i = 0; i < dim; i++) {
         bool delFlag = false;
-        for(int64_t j = 0; j < delPerm.size(); j++) {
+        for(size_t j = 0; j < delPerm.size(); j++) {
             if (shapeInfo.perm[i] == delPerm[j]) {
                 delFlag = true;
             }
@@ -427,8 +427,8 @@ void RemoveAxis(ShapeInfo & shapeInfo) {
         }
     }
 
-    for (int64_t i = 0; i < delPerm.size(); i++) {
-        for (int64_t j = 0; j < newPerm.size(); j++) {
+    for (size_t i = 0; i < delPerm.size(); i++) {
+        for (size_t j = 0; j < newPerm.size(); j++) {
             if (newPerm[j] > delPerm[i]) {
                 newPerm[j] = newPerm[j] - 1;
             }
@@ -472,7 +472,7 @@ void MergeAxis(ShapeInfo & shapeInfo) {
     newPerm.resize(dimIndex + 1);
     newShape.resize(dimIndex + 1);
     dimIndex = 0;
-    for (int i = 0; i < newDimPosition.size(); ++i) {
+    for (size_t i = 0; i < newDimPosition.size(); ++i) {
         if (newDimPosition[i] >= 0) {
             int newPermIndex = newDimPosition[i];
             newPerm[dimIndex] = newPermIndex;
@@ -1304,7 +1304,7 @@ static void SplitRowByFactor(const CompilerInfo & compilerInfo, RuntimeInfo & ru
 }
 
 static int64_t GetPermIndex(const vector<int64_t> & perm, int p) {
-   for (int64_t i = 0; i < perm.size(); i++)  {
+   for (size_t i = 0; i < perm.size(); i++)  {
        if (perm[i] == p) return i;
    }
    return 0;
@@ -1347,7 +1347,7 @@ void CalcJumpInfo(RuntimeInfo & runtimeInfo,
     // 3. dst jump
     vector<int64_t> permDecrease = tm->ncr.col;
     std::sort(permDecrease.begin(), permDecrease.end(), std::greater<int64_t>());
-    for (int64_t i = 0; i < permDecrease.size(); i++) {
+    for (size_t i = 0; i < permDecrease.size(); i++) {
         int64_t p = permDecrease[i];
         int64_t index = GetPermIndex(perm, p);
         runtimeInfo.dstJumpFactor[i] = inShape[p];
@@ -1358,11 +1358,11 @@ void CalcJumpInfo(RuntimeInfo & runtimeInfo,
 
 static bool IsContiguousIndex(const vector<int64_t> & perm, vector<int64_t> partialPerm) {
     vector<int64_t> index;
-    for (int64_t i = 0; i < partialPerm.size(); i++) {
+    for (size_t i = 0; i < partialPerm.size(); i++) {
         index.push_back(GetPermIndex(perm, partialPerm[i]));
     }
     sort(index.begin(), index.end());
-    for (int64_t i = 0; i < index.size() - 1 ; i++) {
+    for (size_t i = 0; i < index.size() - 1 ; i++) {
         if (index[i] + 1 != index[i + 1]) {
             return false;
         }
@@ -1372,7 +1372,7 @@ static bool IsContiguousIndex(const vector<int64_t> & perm, vector<int64_t> part
 
 static bool IsContiguousPerm(const vector<int64_t> & perm, vector<int64_t> partialPerm) {
     sort(partialPerm.begin(), partialPerm.end());
-    for (int i = 0; i < partialPerm.size() - 1 ; i++) {
+    for (size_t i = 0; i < partialPerm.size() - 1 ; i++) {
         if (partialPerm[i] + 1 != partialPerm[i + 1]) {
             return false;
         }
@@ -1382,7 +1382,7 @@ static bool IsContiguousPerm(const vector<int64_t> & perm, vector<int64_t> parti
 
 static bool IsContainTailAxis(const vector<int64_t> & perm, const vector<int64_t> & col) {
     int lastAxis = perm.size() - 1;
-    for(int i = 0; i < col.size(); i++) {
+    for(size_t i = 0; i < col.size(); i++) {
         if (lastAxis == col[i]) return true;
     }
     return false;
@@ -1447,20 +1447,20 @@ static void FixNCRSeq(const vector<int64_t> & perm,
     nt.swap(n);
     ct.swap(col);
     rt.swap(row);
-    for (int64_t i = 0; i < perm.size(); i++) {
-        for(int64_t j = 0; j < nt.size(); j++) {
+    for (size_t i = 0; i < perm.size(); i++) {
+        for(size_t j = 0; j < nt.size(); j++) {
            if (perm[i] == nt[j]) {
                n.push_back(perm[i]);
                continue;
            }
         }
-        for(int64_t j = 0; j < ct.size(); j++) {
+        for(size_t j = 0; j < ct.size(); j++) {
            if (perm[i] == ct[j]) {
                col.push_back(perm[i]);
                continue;
            }
         }
-        for(int64_t j = 0; j < rt.size(); j++) {
+        for(size_t j = 0; j < rt.size(); j++) {
            if (perm[i] == rt[j]) {
                row.push_back(perm[i]);
            }
@@ -1471,7 +1471,7 @@ static void FixNCRSeq(const vector<int64_t> & perm,
 static int64_t CalcVolumeByPartialPerm(const ShapeInfo & shapeInfo,
                                        const vector<int64_t> & partialPerm) {
     int64_t vol = 1;
-    for (int64_t i = 0; i < partialPerm.size(); i++) {
+    for (size_t i = 0; i < partialPerm.size(); i++) {
         vol *= shapeInfo.reducedInShape[partialPerm[i]];
     }
     return vol;
@@ -1734,7 +1734,7 @@ static void MakeNCRDecision(const CompilerInfo & compilerInfo,
     }
 
     if (compilerInfo.fp16Times == 2) {
-        for (int64_t i = 0; i < runtimeInfo.ncrs.size(); i++)  {
+        for (size_t i = 0; i < runtimeInfo.ncrs.size(); i++)  {
             ADD_MODEL(Model001);
             ADD_MODEL(Model002);
             ADD_MODEL(Model003);
@@ -1743,7 +1743,7 @@ static void MakeNCRDecision(const CompilerInfo & compilerInfo,
             ADD_MODEL(Model006);
         }
     } else {
-        for (int64_t i = 0; i < runtimeInfo.ncrs.size(); i++)  {
+        for (size_t i = 0; i < runtimeInfo.ncrs.size(); i++)  {
             ADD_MODEL(Model001_b16);
             ADD_MODEL(Model002_b16);
             ADD_MODEL(Model003_b16);
@@ -1942,13 +1942,13 @@ static void SerializeScenario0(OpRunInfo &runInfo,
     headVec[1] = fixedVec.size();
     headVec[2] = perCoreLen;
 
-    for (int i = 0; i < headVec.size(); i++) {
+    for (size_t i = 0; i < headVec.size(); i++) {
         ByteBufferPut(runInfo.tiling_data, headVec[i]);
     }
-    for (int i = 0; i < fixedVec.size(); i++) {
+    for (size_t i = 0; i < fixedVec.size(); i++) {
         ByteBufferPut(runInfo.tiling_data, fixedVec[i]);
     }
-    for (int i = 0; i < perCoreVec.size(); i++) {
+    for (size_t i = 0; i < perCoreVec.size(); i++) {
         ByteBufferPut(runInfo.tiling_data, perCoreVec[i]);
     }
 
@@ -2008,13 +2008,13 @@ static void SerializeScenario1(OpRunInfo &runInfo,
     headVec[1] = fixedVec.size();
     headVec[2] = perCoreLen;
 
-    for (int i = 0; i < headVec.size(); i++) {
+    for (size_t i = 0; i < headVec.size(); i++) {
         ByteBufferPut(runInfo.tiling_data, headVec[i]);
     }
-    for (int i = 0; i < fixedVec.size(); i++) {
+    for (size_t i = 0; i < fixedVec.size(); i++) {
         ByteBufferPut(runInfo.tiling_data, fixedVec[i]);
     }
-    for (int i = 0; i < perCoreVec.size(); i++) {
+    for (size_t i = 0; i < perCoreVec.size(); i++) {
         ByteBufferPut(runInfo.tiling_data, perCoreVec[i]);
     }
 
@@ -2094,13 +2094,13 @@ static void SerializeScenario2(OpRunInfo &runInfo,
     headVec[1] = fixedVec.size();
     headVec[2] = perCoreLen;
 
-    for (int i = 0; i < headVec.size(); i++) {
+    for (size_t i = 0; i < headVec.size(); i++) {
         ByteBufferPut(runInfo.tiling_data, headVec[i]);
     }
-    for (int i = 0; i < fixedVec.size(); i++) {
+    for (size_t i = 0; i < fixedVec.size(); i++) {
         ByteBufferPut(runInfo.tiling_data, fixedVec[i]);
     }
-    for (int i = 0; i < perCoreVec.size(); i++) {
+    for (size_t i = 0; i < perCoreVec.size(); i++) {
         ByteBufferPut(runInfo.tiling_data, perCoreVec[i]);
     }
 
@@ -2203,13 +2203,13 @@ static void SerializeScenario7(OpRunInfo &runInfo,
     headVec[1] = fixedVec.size();
     headVec[2] = perCoreLen;
 
-    for (int i = 0; i < headVec.size(); i++) {
+    for (size_t i = 0; i < headVec.size(); i++) {
         ByteBufferPut(runInfo.tiling_data, headVec[i]);
     }
-    for (int i = 0; i < fixedVec.size(); i++) {
+    for (size_t i = 0; i < fixedVec.size(); i++) {
         ByteBufferPut(runInfo.tiling_data, fixedVec[i]);
     }
-    for (int i = 0; i < perCoreVec.size(); i++) {
+    for (size_t i = 0; i < perCoreVec.size(); i++) {
         ByteBufferPut(runInfo.tiling_data, perCoreVec[i]);
     }
 
