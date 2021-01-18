@@ -47,6 +47,14 @@ case6 = {"params": [{"shape": (34,2,1,1,16), "dtype": "float16", "format": "NCHW
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+case7 = {"params": [{"shape": (1088,188,3,72,16), "dtype": "float32", "format": "NC1HWC0", "ori_shape": (1088,3008,3,72),"ori_format": "NCHW"},
+                    {"shape": (1088,188,2,2,16), "dtype": "float32", "format": "NCHW", "ori_shape": (1088,3008,2,2),"ori_format": "NCHW"},
+                    (2, 2), False, False],
+         "case_name": "resize_nearest_neighbor_v2_d_7",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
@@ -54,6 +62,7 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
 
 if __name__ == '__main__':
     ut_case.run()

@@ -1024,7 +1024,8 @@ def resize_nearest_neighbor_v2_d_compute(images,
             one_core_loop = (resize.output_h + core_number - 1) // core_number
 
         with ib.for_range(0, one_core_loop) as loop_idx:
-            src_reg = _apply_reg_buffer(ib, "int32", [2], name="src_reg")
+            scalar_dtype = "int32" if tvm.api_config.query_bit_width() == 32 else "int64"
+            src_reg = _apply_reg_buffer(ib, scalar_dtype, [2], name="src_reg")    
             ub_int32_h = _apply_store_buffer(
                 ib,
                 "int32", [resize.c0],
