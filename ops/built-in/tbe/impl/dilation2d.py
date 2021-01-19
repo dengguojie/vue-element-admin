@@ -439,16 +439,16 @@ class Dilation2DBase:
                 offset = loop_repeat * 255 * one_cnt + loop_remainder * one_cnt
                 self.instance.vec_dup(remainder, ub_buf[start_index + offset], val, 1, 8)
         else:
-            repeat = self.instance.Scalar("uint32", name="dup_repeat")
+            loop_remainder_s = self.instance.Scalar("uint32", name="dup_loop_remainder")
             mask = self.instance.Scalar("uint32", name="dup_mask")
-            repeat.set_as(loop_remainder)
+            loop_remainder_s.set_as(loop_remainder)
             mask.set_as(remainder)
             with self.instance.for_range(0, loop_repeat) as l_i:
                 offset_repeat = l_i * one_cnt * 255
                 self.instance.vec_dup(one_cnt, ub_buf[start_index + offset_repeat], val, self.repeat_max, 8)
             with self.instance.if_scope(loop_remainder > 0):
                 offset_remainder = loop_repeat * one_cnt * 255
-                self.instance.vec_dup(one_cnt, ub_buf[start_index + offset_remainder], val, repeat, 8)
+                self.instance.vec_dup(one_cnt, ub_buf[start_index + offset_remainder], val, loop_remainder_s, 8)
             with self.instance.if_scope(remainder > 0):
                 offset = loop_repeat * 255 * one_cnt + loop_remainder * one_cnt
                 self.instance.vec_dup(mask, ub_buf[start_index + offset], val, 1, 8)
@@ -482,8 +482,8 @@ class Dilation2DBase:
                               [t_dst_start, t_src0_start, t_src1_start],
                               repeat_tail, rep_stride_list, blk_stride_list)
         else:
-            repeat = self.instance.Scalar("uint32", name="add_repeat")
-            repeat.set_as(repeat_tail)
+            repeat_tail_s = self.instance.Scalar("uint32", name="add_repeat_tail")
+            repeat_tail_s.set_as(repeat_tail)
             with self.instance.for_range(0, repeat_loop) as l_i:
                 l_dst_start = dst_start + l_i * 255 * dst_rep_stride * self.c0
                 l_src0_start = src0_start + l_i * 255 * src0_rep_stride * self.c0
@@ -497,7 +497,7 @@ class Dilation2DBase:
                 t_src1_start = src1_start + repeat_loop * 255 * src1_rep_stride * self.c0
                 self.mask_add([mask_loop, mask_tail, mask_max], ub_list,
                               [t_dst_start, t_src0_start, t_src1_start],
-                              repeat, rep_stride_list, blk_stride_list)
+                              repeat_tail_s, rep_stride_list, blk_stride_list)
 
     def mask_add(self, mask_list, ub_list, start_list, repeat, rep_stride_list, blk_stride_list):
         """
@@ -591,9 +591,9 @@ class Dilation2DBase:
                                    dst_blk_stride, src0_blk_stride, src1_blk_stride,
                                    dst_rep_stride, src0_rep_stride, src1_rep_stride)
         else:
-            repeat = self.instance.Scalar("uint32", name="max_repeat")
+            loop_remainder_s = self.instance.Scalar("uint32", name="max_loop_remainder")
             mask = self.instance.Scalar("uint32", name="max_mask")
-            repeat.set_as(loop_remainder)
+            loop_remainder_s.set_as(loop_remainder)
             mask.set_as(remainder)
             with self.instance.for_range(0, loop_repeat) as l_i:
                 dst_index = dst_start + l_i * 255 * dst_rep_stride * self.c0
@@ -610,7 +610,7 @@ class Dilation2DBase:
                 src1_index = src1_start + loop_repeat * 255 * src1_rep_stride * self.c0
                 self.instance.vmax(one_cnt,
                                    dst_ub[dst_index], src0_ub[src0_index], src1_ub[src1_index],
-                                   repeat,
+                                   loop_remainder_s,
                                    dst_blk_stride, src0_blk_stride, src1_blk_stride,
                                    dst_rep_stride, src0_rep_stride, src1_rep_stride)
             with self.instance.if_scope(remainder > 0):
