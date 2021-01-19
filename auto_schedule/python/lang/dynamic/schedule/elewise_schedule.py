@@ -90,6 +90,7 @@ class ElewiseSchedule:
         self._broadcast_tensors = set()
         self._absorbable_broadcast_tensors = set()
         self._compute_inline_broadcast = set()
+        self._broadcast_axis_num = {}
 
         self._dtypes = set()
         self._max_dtype_bytes = 4
@@ -155,10 +156,10 @@ class ElewiseSchedule:
         self._calc_cache_write()
         self._do_cache_write()
 
+        self._set_scope()
+
         self._calc_storage_bound()
         self._do_storage_bound()
-
-        self._set_scope()
 
         self._calc_tiling()
         self._do_tiling()
@@ -203,6 +204,15 @@ class ElewiseSchedule:
                 return True
             return False
 
+        def _no_broadcast(_src_shapes, _dst_shapes):
+            _src_shapes = util.shape_to_list(_src_shapes)
+            _dst_shapes = util.shape_to_list(_dst_shapes)
+            broadcast_num = 0
+            for x, y in zip(_src_shapes, _dst_shapes):
+                if not expr_equal(x, y):
+                    broadcast_num += 1
+            return broadcast_num
+
         self._out_tensors = set(self._outs)
 
         visited_tensors = set()
@@ -228,6 +238,15 @@ class ElewiseSchedule:
         for tensor_i in self._broadcast_tensors:
             if match_scalar_scene(tensor_i):
                 self._absorbable_broadcast_tensors.add(tensor_i)
+
+        ub_idx = 0
+        if self._tiling_strategy == TilingStrategy.ONE_CUT:
+            ub_idx = self._tiling_case["ub_tiling_axis"]
+        for tensor_i in self._broadcast_tensors - self._absorbable_broadcast_tensors:
+            if tensor_i.op.tag != "broadcast":
+                src_shapes = tensor_i.op.input_tensors[0].shape[ub_idx:]
+                dst_shapes = tensor_i.shape[ub_idx:]
+                self._broadcast_axis_num[tensor_i] = _no_broadcast(src_shapes, dst_shapes)
 
     def _calc_cache_read(self):
         self._cache_read_tensors.update(self._input_tensors)
@@ -452,31 +471,25 @@ class ElewiseSchedule:
         def _no_broadcast(_src_shapes, _dst_shapes):
             _src_shapes = util.shape_to_list(_src_shapes)
             _dst_shapes = util.shape_to_list(_dst_shapes)
-            is_no_broadcast = True
             for x, y in zip(_src_shapes, _dst_shapes):
-                if x != y:
-                    is_no_broadcast = False
-                    break
-            return is_no_broadcast
+                if not expr_equal(x, y):
+                    return False
+            return True
 
         self._compute_inline_tensors = \
             self._absorbable_broadcast_tensors.copy()
-        if self._tiling_strategy == TilingStrategy.ONE_CUT:
-            ub_idx = self._tiling_case["ub_tiling_axis"]
-            for tensor_i in self._broadcast_tensors:
-                if tensor_i.op.tag != "broadcast":
-                    src_shapes = tensor_i.op.input_tensors[0].shape[ub_idx:]
-                    dst_shapes = tensor_i.shape[ub_idx:]
-                    if _no_broadcast(src_shapes, dst_shapes):
-                        self._compute_inline_broadcast.add(tensor_i)
         if self._tiling_strategy == TilingStrategy.CONST:
             ub_idx = self._ub_split_axis
-            for tensor_i in self._broadcast_tensors:
+            for tensor_i in self._broadcast_tensors - self._absorbable_broadcast_tensors:
                 if tensor_i.op.tag != "broadcast":
                     src_shapes = tensor_i.op.input_tensors[0].shape[ub_idx:]
                     dst_shapes = tensor_i.shape[ub_idx:]
                     if _no_broadcast(src_shapes, dst_shapes):
                         self._compute_inline_tensors.add(tensor_i)
+        else:
+            for tensor_i in self._broadcast_axis_num:
+                if self._broadcast_axis_num[tensor_i] == 0:
+                    self._compute_inline_broadcast.add(tensor_i)
 
     def _do_compute_inline(self):
         sch = self._schedule
@@ -570,17 +583,22 @@ class ElewiseSchedule:
         for tensor_i, param in self._emit_insn_map.items():
             if len(param) > 2:
                 sch[tensor_i].emit_insn(param[0], param[2])
-            if param[1] == "unknown_broadcast":
-                if self._tiling_strategy == TilingStrategy.NONE_CUT:
-                    u_idx = 0
-                else:
+            compile_broadcast_no_inline = (param[1] == "unified_broadcast" and \
+                                          self._broadcast_axis_num.get(tensor_i, 0) > 1)
+            if param[1] == "unknown_broadcast"  or compile_broadcast_no_inline:
+                u_idx = 0
+                if self._tiling_strategy != TilingStrategy.NONE_CUT:
                     u_idx = self._tiling_case["ub_tiling_axis"]
                 src_shapes = tensor_i.op.input_tensors[0].shape[u_idx:]
                 tensor_bound = int(self._tensor_space // DTYPE_BYTE_MAPPING[tensor_i.dtype])
                 src_shape = tvm.expr.Call('handle', 'tvm_tuple', src_shapes,
                                           tvm.expr.Call.PureIntrinsic, None, 0)
-                sch[tensor_i].emit_insn(param[0], param[1],
-                                        attrs=dict(src_shape=src_shape, storage_bound=[tensor_bound]))
+                attrs = {}
+                if compile_broadcast_no_inline:
+                    attrs = dict(storage_bound=[tensor_bound])
+                if param[1] == "unknown_broadcast":
+                    attrs = dict(src_shape=src_shape, storage_bound=[tensor_bound])
+                sch[tensor_i].emit_insn(param[0], param[1], attrs)
             else:
                 if self._is_db and tensor_i in self._out_tensors and self._is_pure_eletwise:
                     sch[tensor_i].emit_insn(param[0], param[1], attrs=dict(no_overlap=0))
@@ -692,6 +710,9 @@ class ElewiseSchedule:
                 _current_space = len(dependent_map) + 1
             if util.need_extent_node(_tensor) and _tensor not in self._compute_inline_broadcast:
                 _current_space += 1
+            if util.get_dsl_insn(_tensor) == "unified_broadcast" and \
+               self._broadcast_axis_num.get(_tensor, 0) > 1:
+                _current_space += 1
             if util.need_temp_space(_tensor) or _need_external_space(_tensor):
                 self._ub_size -= self._correct_factor * BLOCK_SIZE_BYTE
 
@@ -746,6 +767,9 @@ class ElewiseSchedule:
             if util.need_temp_space(self._out) or _need_external_space(self._out):
                 self._ub_size -= self._correct_factor * BLOCK_SIZE_BYTE
             if util.need_extent_node(self._out):
+                current_space += 1
+            if util.get_dsl_insn(self._out) == "unified_broadcast" and \
+               self._broadcast_axis_num.get(self._out, 0) > 1:
                 current_space += 1
             coexisting_quantities.append(current_space)
 
