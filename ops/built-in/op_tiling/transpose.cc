@@ -793,9 +793,9 @@ static string PrintTilingInfoScenario7(const CompilerInfo & compilerInfo,
     logStr += "\n\n";
 
     logStr += "nJumpAxisNum  srcJumpAxisNum  dstJumpAxisNum  nJumpFactor         nJumpStride         ";
-    logStr += "srcJumpFactor       srcJumpStride       dstJumpFactor       dstJumpStride\n";
+    logStr += "srcJumpFactor       srcJumpStride       dstJumpFactor       dstJumpStride       rPartVol\n";
     logStr += "------------------------------------------------------------------------------------------------------";
-    logStr += "----------------------------------------------------------------------------\n";
+    logStr += "----------------------------------------------------------------------------------------------\n";
     logStr += to_string(runtimeInfo.nJumpAxisNum, 14);
     logStr += to_string(runtimeInfo.srcJumpAxisNum, 16);
     logStr += to_string(runtimeInfo.dstJumpAxisNum, 16);
@@ -805,6 +805,7 @@ static string PrintTilingInfoScenario7(const CompilerInfo & compilerInfo,
     logStr += arr_to_string(runtimeInfo.srcJumpStride, runtimeInfo.srcJumpAxisNum, 20);
     logStr += arr_to_string(runtimeInfo.dstJumpFactor,runtimeInfo.dstJumpAxisNum, 20);
     logStr += arr_to_string(runtimeInfo.dstJumpStride, runtimeInfo.dstJumpAxisNum, 20);
+    logStr += to_string(runtimeInfo.rPartVol, 16);
     logStr += "\n\n";
 
     logStr += "loopN  nOffsetActual  initNTuple          colPerMC  loopMC  colTC  colOffset  bsl  ";

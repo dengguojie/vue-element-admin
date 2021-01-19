@@ -927,6 +927,90 @@ class Transpose(object):
             tp.rt_src_tuple[i].set_as(tp.tail_src_tuple[i])
 
     def _update_tuple(self, axis_num, rt_tuple, jump_factor):
+        with self.tik_inst.if_scope(axis_num == 7):
+            with self.tik_inst.if_scope(rt_tuple[0] == jump_factor[0] - 1):
+                rt_tuple[0].set_as(0)
+                with self.tik_inst.if_scope(rt_tuple[1] == jump_factor[1] - 1):
+                    rt_tuple[1].set_as(0)
+                    with self.tik_inst.if_scope(rt_tuple[2] == jump_factor[2] - 1):
+                        rt_tuple[2].set_as(0)
+                        with self.tik_inst.if_scope(rt_tuple[3] == jump_factor[3] - 1):
+                            rt_tuple[3].set_as(0)
+                            with self.tik_inst.if_scope(rt_tuple[4] == jump_factor[4] - 1):
+                                rt_tuple[4].set_as(0)
+                                with self.tik_inst.if_scope(rt_tuple[5] == jump_factor[5] - 1):
+                                    rt_tuple[5].set_as(0)
+                                    rt_tuple[6].set_as(rt_tuple[6] + 1)
+                                with self.tik_inst.else_scope():
+                                    rt_tuple[5].set_as(rt_tuple[5] + 1)
+                            with self.tik_inst.else_scope():
+                                rt_tuple[4].set_as(rt_tuple[4] + 1)
+                        with self.tik_inst.else_scope():
+                            rt_tuple[3].set_as(rt_tuple[3] + 1)
+                    with self.tik_inst.else_scope():
+                        rt_tuple[2].set_as(rt_tuple[2] + 1)
+                with self.tik_inst.else_scope():
+                    rt_tuple[1].set_as(rt_tuple[1] + 1)
+            with self.tik_inst.else_scope():
+                rt_tuple[0].set_as(rt_tuple[0] + 1)
+
+        with self.tik_inst.if_scope(axis_num == 6):
+            with self.tik_inst.if_scope(rt_tuple[0] == jump_factor[0] - 1):
+                rt_tuple[0].set_as(0)
+                with self.tik_inst.if_scope(rt_tuple[1] == jump_factor[1] - 1):
+                    rt_tuple[1].set_as(0)
+                    with self.tik_inst.if_scope(rt_tuple[2] == jump_factor[2] - 1):
+                        rt_tuple[2].set_as(0)
+                        with self.tik_inst.if_scope(rt_tuple[3] == jump_factor[3] - 1):
+                            rt_tuple[3].set_as(0)
+                            with self.tik_inst.if_scope(rt_tuple[4] == jump_factor[4] - 1):
+                                rt_tuple[4].set_as(0)
+                                rt_tuple[5].set_as(rt_tuple[5] + 1)
+                            with self.tik_inst.else_scope():
+                                rt_tuple[4].set_as(rt_tuple[4] + 1)
+                        with self.tik_inst.else_scope():
+                            rt_tuple[3].set_as(rt_tuple[3] + 1)
+                    with self.tik_inst.else_scope():
+                        rt_tuple[2].set_as(rt_tuple[2] + 1)
+                with self.tik_inst.else_scope():
+                    rt_tuple[1].set_as(rt_tuple[1] + 1)
+            with self.tik_inst.else_scope():
+                rt_tuple[0].set_as(rt_tuple[0] + 1)
+
+        with self.tik_inst.if_scope(axis_num == 5):
+            with self.tik_inst.if_scope(rt_tuple[0] == jump_factor[0] - 1):
+                rt_tuple[0].set_as(0)
+                with self.tik_inst.if_scope(rt_tuple[1] == jump_factor[1] - 1):
+                    rt_tuple[1].set_as(0)
+                    with self.tik_inst.if_scope(rt_tuple[2] == jump_factor[2] - 1):
+                        rt_tuple[2].set_as(0)
+                        with self.tik_inst.if_scope(rt_tuple[3] == jump_factor[3] - 1):
+                            rt_tuple[3].set_as(0)
+                            rt_tuple[4].set_as(rt_tuple[4] + 1)
+                        with self.tik_inst.else_scope():
+                            rt_tuple[3].set_as(rt_tuple[3] + 1)
+                    with self.tik_inst.else_scope():
+                        rt_tuple[2].set_as(rt_tuple[2] + 1)
+                with self.tik_inst.else_scope():
+                    rt_tuple[1].set_as(rt_tuple[1] + 1)
+            with self.tik_inst.else_scope():
+                rt_tuple[0].set_as(rt_tuple[0] + 1)
+
+        with self.tik_inst.if_scope(axis_num == 4):
+            with self.tik_inst.if_scope(rt_tuple[0] == jump_factor[0] - 1):
+                rt_tuple[0].set_as(0)
+                with self.tik_inst.if_scope(rt_tuple[1] == jump_factor[1] - 1):
+                    rt_tuple[1].set_as(0)
+                    with self.tik_inst.if_scope(rt_tuple[2] == jump_factor[2] - 1):
+                        rt_tuple[2].set_as(0)
+                        rt_tuple[3].set_as(rt_tuple[3] + 1)
+                    with self.tik_inst.else_scope():
+                        rt_tuple[2].set_as(rt_tuple[2] + 1)
+                with self.tik_inst.else_scope():
+                    rt_tuple[1].set_as(rt_tuple[1] + 1)
+            with self.tik_inst.else_scope():
+                rt_tuple[0].set_as(rt_tuple[0] + 1)
+
         with self.tik_inst.if_scope(axis_num == 3):
             with self.tik_inst.if_scope(rt_tuple[0] == jump_factor[0] - 1):
                 rt_tuple[0].set_as(0)
@@ -1165,7 +1249,7 @@ class Transpose(object):
 
     def _tail_dst_addr_f2t(self, tp, ln): #need merge
         with self.tik_inst.if_scope(tp.dst_axis_num == 7):
-            tp.rt_dst_addr.set_as(tp.tail_dst_tuple[0] * tp.dst_jump_stride[0] +\
+            tp.rt_dst_addr.set_as(tp.n_offset_actual + tp.tail_dst_tuple[0] * tp.dst_jump_stride[0] +\
                                   tp.tail_dst_tuple[1] * tp.dst_jump_stride[1] +\
                                   tp.tail_dst_tuple[2] * tp.dst_jump_stride[2] +\
                                   tp.tail_dst_tuple[3] * tp.dst_jump_stride[3] +\
@@ -1174,7 +1258,7 @@ class Transpose(object):
                                   tp.tail_dst_tuple[6] * tp.dst_jump_stride[6] + ln * tp.right_part_vol)
 
         with self.tik_inst.if_scope(tp.dst_axis_num == 6):
-            tp.rt_dst_addr.set_as(tp.tail_dst_tuple[0] * tp.dst_jump_stride[0] +\
+            tp.rt_dst_addr.set_as(tp.n_offset_actual + tp.tail_dst_tuple[0] * tp.dst_jump_stride[0] +\
                                   tp.tail_dst_tuple[1] * tp.dst_jump_stride[1] +\
                                   tp.tail_dst_tuple[2] * tp.dst_jump_stride[2] +\
                                   tp.tail_dst_tuple[3] * tp.dst_jump_stride[3] +\
@@ -1182,29 +1266,29 @@ class Transpose(object):
                                   tp.tail_dst_tuple[5] * tp.dst_jump_stride[5] + ln * tp.right_part_vol)
 
         with self.tik_inst.if_scope(tp.dst_axis_num == 5):
-            tp.rt_dst_addr.set_as(tp.tail_dst_tuple[0] * tp.dst_jump_stride[0] +\
+            tp.rt_dst_addr.set_as(tp.n_offset_actual + tp.tail_dst_tuple[0] * tp.dst_jump_stride[0] +\
                                   tp.tail_dst_tuple[1] * tp.dst_jump_stride[1] +\
                                   tp.tail_dst_tuple[2] * tp.dst_jump_stride[2] +\
                                   tp.tail_dst_tuple[3] * tp.dst_jump_stride[3] +\
                                   tp.tail_dst_tuple[4] * tp.dst_jump_stride[4] + ln * tp.right_part_vol)
 
         with self.tik_inst.if_scope(tp.dst_axis_num == 4):
-            tp.rt_dst_addr.set_as(tp.tail_dst_tuple[0] * tp.dst_jump_stride[0] +\
+            tp.rt_dst_addr.set_as(tp.n_offset_actual + tp.tail_dst_tuple[0] * tp.dst_jump_stride[0] +\
                                   tp.tail_dst_tuple[1] * tp.dst_jump_stride[1] +\
                                   tp.tail_dst_tuple[2] * tp.dst_jump_stride[2] +\
                                   tp.tail_dst_tuple[3] * tp.dst_jump_stride[3] + ln * tp.right_part_vol)
 
         with self.tik_inst.if_scope(tp.dst_axis_num == 3):
-            tp.rt_dst_addr.set_as(tp.tail_dst_tuple[0] * tp.dst_jump_stride[0] +\
+            tp.rt_dst_addr.set_as(tp.n_offset_actual + tp.tail_dst_tuple[0] * tp.dst_jump_stride[0] +\
                                   tp.tail_dst_tuple[1] * tp.dst_jump_stride[1] +\
                                   tp.tail_dst_tuple[2] * tp.dst_jump_stride[2] + ln * tp.right_part_vol)
 
         with self.tik_inst.if_scope(tp.dst_axis_num == 2):
-            tp.rt_dst_addr.set_as(tp.tail_dst_tuple[0] * tp.dst_jump_stride[0] +\
+            tp.rt_dst_addr.set_as(tp.n_offset_actual + tp.tail_dst_tuple[0] * tp.dst_jump_stride[0] +\
                                   tp.tail_dst_tuple[1] * tp.dst_jump_stride[1] + ln * tp.right_part_vol)
 
         with self.tik_inst.if_scope(tp.dst_axis_num == 1):
-            tp.rt_dst_addr.set_as(tp.tail_dst_tuple[0] * tp.dst_jump_stride[0] + ln * tp.right_part_vol)
+            tp.rt_dst_addr.set_as(tp.n_offset_actual + tp.tail_dst_tuple[0] * tp.dst_jump_stride[0] + ln * tp.right_part_vol)
 
     def _update_dst_addr_f2t(self, tp):
         tp.rt_dst_addr.set_as(tp.rt_dst_addr + tp.col_per_mc * tp.row_per_mr)
