@@ -140,8 +140,7 @@ class AscendRTSApi:
         model_so_list = {
             "pv": ("lib_pvmodel.so", "libtsch.so", "libnpu_drv_pvmodel.so", "libruntime_cmodel.so"),
             "ca": ("libcamodel.so", "libtsch_camodel.so", "libnpu_drv_camodel.so", "libruntime_camodel.so"),
-            "tm": ("libpem_davinci.so", "libcamodel.so", "libtsch_camodel.so", "libnpu_drv_camodel.so",
-                   "libruntime_camodel.so")
+            "tm": ("libpem_davinci.so", "libtsch.so", "libnpu_drv_pvmodel.so", "libruntime_cmodel.so")
         }
         simulator_so_list = model_so_list[simulator_mode]
         so_full_path_list = []
