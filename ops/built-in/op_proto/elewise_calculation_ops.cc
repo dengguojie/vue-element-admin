@@ -499,7 +499,7 @@ VERIFY_FUNC_REG(LessEqual, LessEqualVerify);
 COMMON_INFER_FUNC_REG(Log1p, OneInOneOutCommonInferShape);
 // --------------Log1p END-----------------
 
-// -------------------NotEqual----------------------
+// -------------------NotEqual--------------------
 IMPLEMT_VERIFIER(NotEqual, NotEqualVerify) {
   if (!CheckTwoInputDtypeSame(op, "x1", "x2")) {
     return GRAPH_FAILED;
@@ -508,74 +508,25 @@ IMPLEMT_VERIFIER(NotEqual, NotEqualVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(NotEqualInferShape) {
-  Shape x_shape = op.GetInputDesc("x1").GetShape();
-  Shape y_shape = op.GetInputDesc("x2").GetShape();
-  TensorDesc td = op.GetOutputDesc("y");
-  std::vector<int64_t> dims_x = x_shape.GetDims();
-  std::vector<int64_t> dims_y = y_shape.GetDims();
-  if (dims_x.size() < dims_y.size()) {
-    std::vector<int64_t> dims_tmp = dims_x;
-    dims_x = dims_y;
-    dims_y = dims_tmp;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
+    return GRAPH_FAILED;
   }
 
-  if (dims_x.size() != dims_y.size()) {
-    int dec = dims_x.size() - dims_y.size();
-    for (int i = 0; i < dec; i++) {
-      dims_y.insert(dims_y.begin(), (int64_t)1);
-    }
-  }
-
-  std::vector<int64_t> dim_vec;
-  for (size_t i = 0; i < dims_x.size(); i++) {
-    if ((dims_x[i] != dims_y[i]) && (dims_x[i] != 1) && (dims_y[i] != 1) && (dims_x[i] != -1) && (dims_y[i] != -1)) {
-      OpsInputShapeBroadcastErrReport(op.GetName(), "x1", "x2", ConcatString(dims_x[i]), ConcatString(dims_y[i]));
-      OP_LOGE(op.GetName().c_str(),
-              "The %s op dimensions does not "
-              "match the broadcast rule(%lu %lu).",
-              op.GetName().c_str(), dims_x[i], dims_y[i]);
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto vec_y = op_desc->MutableOutputDesc("y")->MutableShape().GetDims();
+  if (IsUnknownRankShape(vec_y) || IsUnknownVec(vec_y)) {
+    if (!InferShapeRangeTwoInOneOutBroadcase(op, "x1", "x2", "y")) {
       return GRAPH_FAILED;
     }
-    if ((dims_x[i] == -1) && (dims_y[i] != -1)) {
-      if (dims_y[i] > 1) {
-        int64_t dims = dims_x[i] > dims_y[i] ? dims_x[i] : dims_y[i];
-        dim_vec.push_back(dims);
-      } else if (dims_y[i] == 1) {
-        int64_t dims = dims_x[i] > dims_y[i] ? dims_x[i] : dims_y[i];
-        dim_vec.push_back(dims);
-        dim_vec[i] = -1;
-      }
-    } else if ((dims_x[i] != -1) && (dims_y[i] == -1)) {
-      if (dims_x[i] > 1) {
-        int64_t dims = dims_x[i] > dims_y[i] ? dims_x[i] : dims_y[i];
-        dim_vec.push_back(dims);
-      } else if (dims_x[i] == 1) {
-        int64_t dims = dims_x[i] > dims_y[i] ? dims_x[i] : dims_y[i];
-        dim_vec.push_back(dims);
-        dim_vec[i] = -1;
-      }
-    } else {
-      if ((dims_x[i] == -1) && (dims_y[i] == -1)) {
-        int64_t dims = dims_x[i] > dims_y[i] ? dims_x[i] : dims_y[i];
-        dim_vec.push_back(dims);
-        dim_vec[i] = -1;
-      } else {
-        int64_t dims = dims_x[i] > dims_y[i] ? dims_x[i] : dims_y[i];
-        dim_vec.push_back(dims);
-      }
-    }
   }
 
-  td.SetShape(Shape(dim_vec));
-  td.SetDataType(DT_BOOL);
-  (void)op.UpdateOutputDesc("y", td);
-
+  op_desc->MutableOutputDesc("y")->SetDataType(DT_BOOL);
   return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(NotEqual, NotEqualInferShape);
 VERIFY_FUNC_REG(NotEqual, NotEqualVerify);
-// -------------------NotEqual END---------------------
+// ------------------NotEqual END--------------------
 
 // ----------------Neg-------------------
 COMMON_INFER_FUNC_REG(Neg, OneInOneOutCommonInferShape);
