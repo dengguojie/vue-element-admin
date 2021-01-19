@@ -79,7 +79,21 @@ class Conv3dTiling(CubeTilingOp):
 
     def get_repo_tiling(self):
         tiling_list = get_tiling(self.tiling_info)
-        return tiling_list
+        res_list = []
+        for tiling in tiling_list:
+            t_padh, t_padt, t_padu, t_padd, t_padl, t_padr = tiling.get('pad')
+            t_out_d = (tiling.get('A_shape')[1] + t_padh + t_padt - self.dilation_d * (self.k_d - 1) - 1) \
+                      // self.stride_d + 1
+            t_out_h = (tiling.get('A_shape')[3] + t_padu + t_padd - self.dilation_h * (self.k_h - 1) - 1) \
+                      // self.stride_h + 1
+            t_out_w = (tiling.get('A_shape')[4] + t_padl + t_padr - self.dilation_w * (self.k_w - 1) - 1) \
+                      // self.stride_w + 1
+            out_d = self._get_output_d(tiling.get('A_shape')[1])
+            out_h = self._get_output_h(tiling.get('A_shape')[3])
+            out_w = self._get_output_w(tiling.get('A_shape')[4])
+            if out_d == t_out_d and out_h == t_out_h and out_w == t_out_w:
+                res_list.append(tiling)
+        return res_list
 
     def get_costmodel_tiling(self, shape):
         """
