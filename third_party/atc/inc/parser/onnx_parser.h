@@ -14,13 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef INC_EXTERNAL_ACL_PARSER_TENSORFLOW_H_
-#define INC_EXTERNAL_ACL_PARSER_TENSORFLOW_H_
-
-#include <atomic>
-#include <memory>
-#include <string>
-#include <vector>
+#ifndef INC_EXTERNAL_PARSER_ONNX_PARSER_H_
+#define INC_EXTERNAL_PARSER_ONNX_PARSER_H_
 
 #include "graph/ascend_string.h"
 #include "graph/ge_error_codes.h"
@@ -28,9 +23,12 @@
 #include "graph/types.h"
 
 namespace ge {
-graphStatus aclgrphParseTensorFlow(const char *model_file, ge::Graph &graph);
-graphStatus aclgrphParseTensorFlow(const char *model_file,
-                                   const std::map<ge::AscendString, ge::AscendString> &parser_params, ge::Graph &graph);
+graphStatus aclgrphParseONNX(const char *model_file,
+                             const std::map<ge::AscendString, ge::AscendString> &parser_params, ge::Graph &graph);
+
+graphStatus aclgrphParseONNXFromMem(const char *buffer, size_t size,
+                                    const std::map<ge::AscendString, ge::AscendString> &parser_params,
+                                    ge::Graph &graph);
 }  // namespace ge
 
-#endif  // INC_EXTERNAL_ACL_PARSER_TENSORFLOW_H_
+#endif  // INC_EXTERNAL_PARSER_ONNX_PARSER_H_

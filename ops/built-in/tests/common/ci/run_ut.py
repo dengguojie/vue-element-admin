@@ -19,9 +19,9 @@ flags.DEFINE_string("simulator_mode", None, "simulator_mode")
 flags.DEFINE_string("simulator_lib_path", None, "simulator_lib_path")
 
 cur_dir = os.path.realpath(__file__)
-repo_root = os.path.sep.join(cur_dir.split(os.path.sep)[:-6])
-ini_cfg_root = os.path.join(repo_root, "ops", "built-in", "tbe", "op_info_cfg", "ai_core")
-impl_file_root = os.path.join(repo_root, "ops", "built-in", "tbe", "impl")
+repo_root = os.path.sep.join(cur_dir.split(os.path.sep)[:-7])
+ini_cfg_root = os.path.join(repo_root, "cann", "ops", "built-in", "tbe", "op_info_cfg", "ai_core")
+impl_file_root = os.path.join(repo_root, "cann", "ops", "built-in", "tbe", "impl")
 
 
 def get_op_info_from_ini_file(ini_file_full_path, no_sep_module_map: Dict[str, str]):
@@ -233,11 +233,6 @@ def get_change_file_op(change_file_list):
     return effect_ops
 
 
-# op_file_map()
-# check_op_not_used_file()
-# git_file_list = ("/home/allan/tewsp/repo_simple/ops/built-in/tbe/impl/add.py",)
-# print(get_change_file_op(git_file_list))
-
 class ChangeFileInfo:
     def __init__(self, ops_files=[], op_test_frame_files=[], tbe_files=[], llt_files=[], model_files=[],
                  other_files=[]):
@@ -267,8 +262,8 @@ class ChangeFileInfo:
 def get_changed_file():
     change_files_list_f = os.path.join(repo_root, "vendor", "hisi", "llt", "ci", "script", "changed_files_list")
     if not os.path.exists(change_files_list_f):
-        print("[ERROR] vendor/hisi/llt/ci/script/changed_files_list is not exist.")
-        return None
+        print("[WARNING] vendor/hisi/llt/ci/script/changed_files_list is not exist, use default")
+        change_files_list_f = os.path.join(os.path.dirname(__file__), "default_chnage_file.txt")
     with open(change_files_list_f) as c_f:
         lines = c_f.readlines()
     ops_files = []
@@ -361,7 +356,7 @@ def accurate_ops_file_change(change_file_info: ChangeFileInfo, op_type_list):
     impl_files = []
     for ops_file in ops_file_list:
         ops_file = str(ops_file).strip()
-        if ops_file.startswith("built-in/tbe/impl"):
+        if ops_file.startswith("ops/built-in/tbe/impl"):
             ops_file = os.path.join(repo_root, "ops", ops_file)
             if ops_file not in impl_files:
                 impl_files.append(ops_file)

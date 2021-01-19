@@ -89,12 +89,7 @@ set(_onnx_plugins
   non_max_suppression_plugin.cc
 )
 
-add_library(ops_all_onnx_plugin SHARED
-  ${_onnx_plugins}
-  ${_proto_h}
-)
-
-target_include_directories(ops_all_onnx_plugin PRIVATE
+set(_ops_all_onnx_plugin_include
   ${OPS_INCLUDE}
   ${FWKACLLIB_INCLUDE}
   ${METADEF_INCLUDE}
@@ -106,40 +101,74 @@ target_include_directories(ops_all_onnx_plugin PRIVATE
   ${OPS_DIR}/built-in/op_proto/inc
 )
 
-target_compile_options(ops_all_onnx_plugin PRIVATE
-  "-fno-common"
-  "-fno-strict-aliasing"
-  -O2
-  -Werror
-  -Wno-deprecated-declarations
-  -Dgoogle=ascend_private
-)
-
-target_link_libraries(ops_all_onnx_plugin PRIVATE
-  $<BUILD_INTERFACE:intf_pub>
+set(_ops_all_onnx_plugin_link_libs
   -Wl,--no-as-needed
-    graph
-    register
-    alog
-    error_manager
-    te_fusion
-    _caffe_parser
-    ascend_protobuf
+  graph
+  register
+  alog
+  error_manager
+  te_fusion
+  _caffe_parser
+  ascend_protobuf
   -Wl,--as-needed
-    c_sec
+  c_sec
 )
 
-if(BUILD_OPEN_PROJECT)
-  set(ONNX_PLUGIN_PATH "${INSTALL_PATH}/opp/framework/built-in/onnx")
-  cann_install(
-    TARGET      ops_all_onnx_plugin
-    FILES       $<TARGET_FILE:ops_all_onnx_plugin>
-    DESTINATION "${ONNX_PLUGIN_PATH}"
+
+if(ENABLE_TEST STREQUAL "")
+  add_library(ops_all_onnx_plugin SHARED
+    ${_onnx_plugins}
+    ${_proto_h}
   )
+
+  target_include_directories(ops_all_onnx_plugin PRIVATE
+    ${_ops_all_onnx_plugin_include}
+  )
+
+  target_compile_options(ops_all_onnx_plugin PRIVATE
+    "-fno-common"
+    "-fno-strict-aliasing"
+    -O2
+    -Werror
+    -Wno-deprecated-declarations
+    -Dgoogle=ascend_private
+  )
+
+  target_link_libraries(ops_all_onnx_plugin PRIVATE
+    $<BUILD_INTERFACE:intf_pub>
+    ${_ops_all_onnx_plugin_link_libs}
+  )
+
+  if(BUILD_OPEN_PROJECT)
+    set(ONNX_PLUGIN_PATH "${INSTALL_PATH}/opp/framework/built-in/onnx")
+    cann_install(
+      TARGET      ops_all_onnx_plugin
+      FILES       $<TARGET_FILE:ops_all_onnx_plugin>
+      DESTINATION "${ONNX_PLUGIN_PATH}"
+    )
+  else()
+    install(
+      TARGETS ops_all_onnx_plugin OPTIONAL
+      EXPORT  ops_all_onnx_plugin-targets
+      LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
+    )
+  endif()
 else()
-  install(
-    TARGETS ops_all_onnx_plugin OPTIONAL
-    EXPORT  ops_all_onnx_plugin-targets
-    LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
-  )
+  add_library(ops_all_onnx_plugin_llt STATIC
+    ${_onnx_plugins}
+    ${_proto_h}
+    )
+  target_include_directories(ops_all_onnx_plugin_llt PUBLIC
+    ${_ops_all_onnx_plugin_include}
+    )
+  target_compile_options(ops_all_onnx_plugin_llt PUBLIC
+    -O0
+    -Dgoogle=ascend_private
+    )
+  target_link_libraries(ops_all_onnx_plugin_llt
+    PRIVATE
+    $<BUILD_INTERFACE:intf_llt_pub>
+    PUBLIC
+    ${_ops_all_onnx_plugin_link_libs}
+    )
 endif()
