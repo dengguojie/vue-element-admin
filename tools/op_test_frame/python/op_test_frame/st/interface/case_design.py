@@ -487,7 +487,13 @@ class CaseDesign:
                     utils.OP_TEST_GEN_INVALID_DATA_ERROR)
 
     @staticmethod
-    def _cross_tensor(tensor_list, cross_key_list):
+    def _check_cur_params_undefined(cur_params):
+        if cur_params.get('format') in utils.OPTIONAL_TYPE_LIST:
+            cur_params['type'] = utils.TYPE_UNDEFINED
+        if cur_params.get('type') == utils.TYPE_UNDEFINED:
+            cur_params['format'] = utils.TYPE_UNDEFINED
+
+    def _cross_tensor(self, tensor_list, cross_key_list):
         total_case_list = []
         for tensor in tensor_list:
             cross_list = []
@@ -506,6 +512,7 @@ class CaseDesign:
                 for case in cross_list:
                     cur_params = {cross_key_list[x]: case[x] for x, _ in
                                   enumerate(cross_key_list)}
+                    self._check_cur_params_undefined(cur_params)
                     case_list.append(cur_params)
                 total_case_list.append(case_list)
         return total_case_list
