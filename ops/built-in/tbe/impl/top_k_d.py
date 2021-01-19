@@ -1488,6 +1488,10 @@ def check_supported(input_tensor,
                     kernel_name='top_k'):
     """
     check whether ai_core is supported
+    max last dim should exist and max last dim of input_tensor should <= 1024 * 2048 and k
+    should <= 4096 and last dim of input_tensor should <= 1458176 and k should <= 5120
+    sorted should == True
+    input size > 32768 and k > 0 and k < 16 three conditions cannot be met at the same time
     """
     shape = input_tensor.get("shape")
     sorted_axis = dim

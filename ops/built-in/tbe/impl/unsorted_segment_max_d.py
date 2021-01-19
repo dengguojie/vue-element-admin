@@ -34,6 +34,10 @@ UB_SIZE_MAX = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 def check_supported(x, segment_ids, y, num_segments, kernel_name="unsorted_segment_max_d"):
     """
     fusion pass test if num_segments is int32
+    num_segments should > 0 and x's first dim != segment_ids's first dim
+    (num_segments + x's first dim) * BLOCK_LENGTH + (
+        (BLOCK_LENGTH / 2 - x's first dim % (BLOCK_LENGTH / 4)) + x's first dim) * (BLOCK_LENGTH / 8)
+    should <= UB_SIZE_MAX / 2
     """
     shape = x.get("shape")
     dtype = x.get("dtype").lower()

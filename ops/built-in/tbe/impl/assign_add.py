@@ -152,23 +152,6 @@ def _check_param(shape_ref, shape_val, dtype_ref, dtype_value, kernel_name):
         error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "ref", "value", error_detail)
 
 
-# pylint: disable=unused-argument
-def check_supported(ref, value, output, kernel_name="assign_add"):
-    """
-    verify the types of assign_add supported by tbe
-    """
-    ref_type = ref.get("dtype").lower()
-    ref_shape = ref.get("shape")
-    ref_shape_size = functools.reduce(lambda x, y: x * y, ref_shape)
-    check_result = True
-
-    check_list = ("float16", "float32", "int8", "uint8", "int32", "int64")
-    if ref_type not in check_list:
-        return False
-
-    return check_result
-
-
 # pylint: disable=locally-disabled,too-many-arguments, unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)

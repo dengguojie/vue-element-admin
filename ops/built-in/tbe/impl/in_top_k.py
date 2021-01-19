@@ -52,21 +52,6 @@ def get_op_support_info(predictions, targets, precision, k, kernel_name="in_top_
     return op_cal_info_in_json
 
 
-# pylint: disable=unused-argument
-def check_supported(predictions, targets, precision, k, kernel_name='in_top_k'):
-    """
-    support aicpu route
-    """
-    prediction_dtype = predictions.get("dtype").lower()
-    target_dtype = targets.get("dtype").lower()
-    if prediction_dtype != "float32":
-        return False
-    if target_dtype != "int32":
-        return False
-
-    return True
-
-
 # pylint: disable=unused-argument,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
