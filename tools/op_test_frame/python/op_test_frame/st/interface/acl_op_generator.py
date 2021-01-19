@@ -27,8 +27,8 @@ except (ImportError,) as import_error:
 def _get_desc_dic(tmp_dic, key_desc, testcase_struct):
     tmp_dic[key_desc] = []
     for desc_dic in testcase_struct.get(key_desc):
-        if desc_dic.get('ori_format') and \
-                desc_dic.get('ori_shape'):
+        if desc_dic.get('ori_format') is not None and \
+                desc_dic.get('ori_shape') is not None:
             res_desc_dic = {
                 'format': desc_dic.get('format'),
                 'origin_format': desc_dic.get('ori_format'),

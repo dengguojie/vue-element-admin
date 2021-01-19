@@ -289,11 +289,11 @@ class CaseDesign:
 
     def _get_ori_filed_data(self, input_or_out_desc, key_desc, format_list, shape_list):
         ori_filed_list = []
-        if input_or_out_desc.get('ori_format'):
+        if input_or_out_desc.get('ori_format') is not None:
             ori_format_list = self._check_ori_format_list_str_valid(input_or_out_desc)
             self._check_ori_filed_length_valid(ori_format_list, format_list, "ori_format", "format")
             ori_filed_list.append(ori_format_list)
-        if input_or_out_desc.get('ori_shape'):
+        if input_or_out_desc.get('ori_shape') is not None:
             ori_shape_list = self._check_list_list_valid(input_or_out_desc, 'ori_shape', key_desc)
             self._check_ori_filed_length_valid(ori_shape_list, shape_list, "ori_shape", "shape")
             ori_filed_list.append(ori_shape_list)
