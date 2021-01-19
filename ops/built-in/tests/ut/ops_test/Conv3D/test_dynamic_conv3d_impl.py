@@ -71,7 +71,7 @@ fmap = {'ori_shape': (-1, 8, 60, 88), 'shape': (-1, 8, 60, 88),
 case7 = _run_api_end_with_d(fmap=fmap)
 
 # test_conv3d_invalid_pad_length
-pads = (0, 0, 0, 0, 0)
+pads = (0, -1, -1, -1, 0)
 case8 = _run_api_end_with_d(pads=pads)
 
 # test_conv3d_invalid_weight
@@ -135,61 +135,120 @@ strides = (1, 1, 1, 2, 1)
 pads=[-1, -1, -1, -1, -1, -1]
 data_format="NCDHW"
 case18 = _run_api_end_with_d(fmap=fmap, weight=weight, output=output, strides=strides, pads=pads, data_format=data_format)
+
+# test_conv3d_invalid_stride_shape
+strides = (1, 0, 1, 1, 1)
+case19 = _run_api_end_with_d(strides=strides)
+
+# test_conv3d_invalid_stride_shape
+strides = (1, 1, 0, 1, 1)
+case20 = _run_api_end_with_d(strides=strides)
+
+# test_conv3d_invalid_stride_shape
+strides = (1, 1, 1, 0, 1)
+case21 = _run_api_end_with_d(strides=strides)
+
+# test_conv3d_invalid_weight
+weight = {'ori_shape': (257, 2, 2, 32, 64), 'shape': (257, 2, 2, 32, 64),
+        'ori_format': 'DHWCN', 'format': 'DHWCN', 'dtype': 'float16'}
+case22 = _run_api_end_with_d(weight=weight)
+
+# test_conv3d_invalid_weight
+weight = {'ori_shape': (2, 257, 2, 32, 64), 'shape': (2, 257, 2, 32, 64),
+        'ori_format': 'DHWCN', 'format': 'DHWCN', 'dtype': 'float16'}
+case23 = _run_api_end_with_d(weight=weight)
+
+# test_conv3d_invalid_dilations
+dilations = (1, 0, 1, 1, 1)
+case24 = _run_api_end_with_d(dilations=dilations)
+
+# test_conv3d_invalid_pad_length
+pads = (256, 256, 256, 256, 256, 256)
+case25 = _run_api_end_with_d(pads=pads)
+
+# test_conv3d_invalid_fmap_shape
+pads = (2, 2, 256, 256, 256, 256)
+case26 = _run_api_end_with_d(pads=pads)
+
 # Add test Cases
 # Params is the input params of the operator.
-ut_case.add_case(["Ascend910"],
+ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case1, "success", "dynamic_case1", True))
 
-ut_case.add_case(["Ascend910"],
+ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case2, "success", "dynamic_case2", True))
 
-ut_case.add_case(["Ascend910"],
+ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case3, RuntimeError, "dynamic_case3", True))
 
-ut_case.add_case(["Ascend910"],
+ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case4, RuntimeError, "dynamic_case4", True))
 
-ut_case.add_case(["Ascend910"],
+ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case5, RuntimeError, "dynamic_case5", True))
 
-ut_case.add_case(["Ascend910"],
+ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case6, RuntimeError, "dynamic_case6", True))
 
-ut_case.add_case(["Ascend910"],
+ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case7, RuntimeError, "dynamic_case7", True))
 
-ut_case.add_case(["Ascend910"],
+ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case8, RuntimeError, "dynamic_case8", True))
 
-ut_case.add_case(["Ascend910"],
+ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case9, RuntimeError, "dynamic_case9", True))
 
-ut_case.add_case(["Ascend910"],
+ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case10, RuntimeError, "dynamic_case10", True))
 
-ut_case.add_case(["Ascend910"],
+ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case11, RuntimeError, "dynamic_case11", True))
 
-ut_case.add_case(["Ascend910"],
+ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case12, RuntimeError, "dynamic_case12", True))
 
-ut_case.add_case(["Ascend910"],
+ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case13, RuntimeError, "dynamic_case13", True))
 
-ut_case.add_case(["Ascend910"],
+ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case14, RuntimeError, "dynamic_case14", True))
 
-ut_case.add_case(["Ascend910"],
+ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case15, RuntimeError, "dynamic_case15", True))
 
-ut_case.add_case(["Ascend910"],
+ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case16, RuntimeError, "dynamic_case16", True))
 
-ut_case.add_case(["Ascend910"],
+ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case17, "success", "dynamic_case17", True))
 
-ut_case.add_case(["Ascend910"],
+ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case18, "success", "dynamic_case18", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case19, RuntimeError, "dynamic_case19", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case20, RuntimeError, "dynamic_case20", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case21, RuntimeError, "dynamic_case21", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case22, RuntimeError, "dynamic_case22", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case23, RuntimeError, "dynamic_case23", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case24, RuntimeError, "dynamic_case24", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case25, RuntimeError, "dynamic_case25", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case26, RuntimeError, "dynamic_case26", True))
 
 if __name__ == '__main__':
     with te.op.dynamic:

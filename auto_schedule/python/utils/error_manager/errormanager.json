@@ -572,7 +572,7 @@
     {
         "errCode": "E62003",
         "errMessage": "In op[%s], the size of [%s] on [%s] dimension should be in range [%s], but it is [%s].",
-        "argList": "op_name,param_name,dim,range,actual_value"
+        "argList": "op_name,para1,para2,para3,para4"
     },
     {
         "errCode": "E62004",

@@ -81,7 +81,7 @@ fmap = {'ori_shape': (1, 8, 60, 88), 'shape': (1, 8, 60, 88),
 case7 = _run_api_end_with_d(fmap=fmap)
 
 # test_conv3d_invalid_pad_length
-pads = (0, 0, 0, 0, 0)
+pads = (0, -1, -1, -1, 0)
 case8 = _run_api_end_with_d(pads=pads)
 
 # test_conv3d_invalid_weight
@@ -121,6 +121,54 @@ case15 = _run_api_end_with_d(fmap=fmap)
 weight = {'ori_shape': (2, 2, 2, 32, 64), 'shape': (2, 2, 2, 32, 64),
         'ori_format': 'NDCHW', 'format': 'NDCHW', 'dtype': 'float16'}
 case16 = _run_api_end_with_d(weight=weight)
+
+# test_conv3d_invalid_stride_shape
+strides = (1, 0, 1, 1, 1)
+case17 = _run_api_end_with_d(strides=strides)
+
+# test_conv3d_invalid_stride_shape
+strides = (1, 1, 0, 1, 1)
+case18 = _run_api_end_with_d(strides=strides)
+
+# test_conv3d_invalid_stride_shape
+strides = (1, 1, 1, 0, 1)
+case19 = _run_api_end_with_d(strides=strides)
+
+# test_conv3d_invalid_weight
+weight = {'ori_shape': (257, 2, 2, 32, 64), 'shape': (257, 2, 2, 32, 64),
+        'ori_format': 'DHWCN', 'format': 'DHWCN', 'dtype': 'float16'}
+case20 = _run_api_end_with_d(weight=weight)
+
+# test_conv3d_invalid_weight
+weight = {'ori_shape': (2, 257, 2, 32, 64), 'shape': (2, 257, 2, 32, 64),
+        'ori_format': 'DHWCN', 'format': 'DHWCN', 'dtype': 'float16'}
+case21 = _run_api_end_with_d(weight=weight)
+
+# test_conv3d_invalid_dilations
+dilations = (1, 0, 1, 1, 1)
+case22 = _run_api_end_with_d(dilations=dilations)
+
+# test_conv3d_invalid_pad_length
+pads = (256, 256, 256, 256, 256, 256)
+case23 = _run_api_end_with_d(pads=pads)
+
+# test_conv3d_invalid_fmap_shape
+fmap = {'ori_shape': (1, 8, 60, 4098, 32), 'shape': (1, 8, 60, 4098, 32),
+        'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16'}
+case24 = _run_api_end_with_d(fmap=fmap)
+
+fmap = {'ori_shape': (1, 8, 4098, 88, 32), 'shape': (1, 8, 4098, 88, 32),
+        'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16'}
+case25 = _run_api_end_with_d(fmap=fmap)
+
+# test_conv3d_invalid_weight
+weight = {'ori_shape': (2, 2, 257, 32, 64), 'shape': (2, 2, 257, 32, 64),
+        'ori_format': 'DHWCN', 'format': 'DHWCN', 'dtype': 'float16'}
+case26 = _run_api_end_with_d(weight=weight)
+
+# test_conv3d_invalid_pad_length
+pads = (3, 3, 256, 256, 256, 256)
+case27 = _run_api_end_with_d(pads=pads)
 
 # Add test Cases
 # Params is the input params of the operator.
@@ -172,6 +220,38 @@ ut_case.add_case(["Ascend910", "Ascend310"],
 ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case16, RuntimeError, "case14", True))
 
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case17, RuntimeError, "dynamic_case17", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case18, RuntimeError, "dynamic_case18", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case19, RuntimeError, "dynamic_case19", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case20, RuntimeError, "dynamic_case20", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case21, RuntimeError, "dynamic_case21", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case22, RuntimeError, "dynamic_case22", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case23, RuntimeError, "dynamic_case23", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case24, RuntimeError, "dynamic_case24", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case25, RuntimeError, "dynamic_case25", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case26, RuntimeError, "dynamic_case26", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case27, RuntimeError, "dynamic_case27", True))
 
 if __name__ == '__main__':
     ut_case.run()

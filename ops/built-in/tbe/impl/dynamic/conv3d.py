@@ -26,6 +26,7 @@ import te.platform as tbe_platform
 import te.lang.base as tbe_base
 from te.utils import para_check
 from te.utils.error_manager import error_manager_util
+from te.utils.error_manager import error_manager_cube as cube_err
 from impl.util import util_common
 
 BIAS_LENGTH = 1
@@ -69,70 +70,28 @@ def _common_check(shape_filter, stride_dhw):
     _, _, filter_d, filter_h, filter_w = shape_filter
     stride_d, stride_h, stride_w = stride_dhw
     if filter_d < FILTER_DHW_MIN or filter_d > FILTER_DHW_MAX:
-        dict_args = {
-            'errCode': 'E62003',
-            'param_name': 'weight',
-            'dim': 'D',
-            'range': '[{}, {}]'.format(FILTER_DHW_MIN, FILTER_DHW_MAX),
-            'actual_value': str(filter_d)
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        cube_err.raise_err_four_paras('E62003', 'conv3d', 'weight', 'D',
+            '[{}, {}]'.format(FILTER_DHW_MIN, FILTER_DHW_MAX), str(filter_d))
 
     if stride_d < STRIDE_MIN or stride_d > STRIDE_MAX:
-        dict_args = {
-            'errCode': 'E62003',
-            'param_name': 'stride',
-            'dim': 'D',
-            'range': '[{}, {}]'.format(STRIDE_MIN, STRIDE_MAX),
-            'actual_value': str(stride_d),
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        cube_err.raise_err_four_paras('E62003', 'conv3d', 'stride', 'D',
+            '[{}, {}]'.format(STRIDE_MIN, STRIDE_MAX), str(stride_d))
 
     if filter_h < FILTER_DHW_MIN or filter_h > FILTER_DHW_MAX:
-        dict_args = {
-            'errCode': 'E62003',
-            'param_name': 'filter',
-            'dim': 'H',
-            'range': '[{}, {}]'.format(FILTER_DHW_MIN, FILTER_DHW_MAX),
-            'actual_value': str(filter_h)
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        cube_err.raise_err_four_paras('E62003', 'conv3d', 'filter', 'H',
+            '[{}, {}]'.format(FILTER_DHW_MIN, FILTER_DHW_MAX), str(filter_h))
 
     if stride_h < STRIDE_MIN or stride_h > STRIDE_MAX:
-        dict_args = {
-            'errCode': 'E62003',
-            'param_name': 'stride',
-            'dim': 'H',
-            'range': '[{}, {}]'.format(STRIDE_MIN, STRIDE_MAX),
-            'actual_value': 'stride_h = {}'.format(stride_h)
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        cube_err.raise_err_four_paras('E62003', 'conv3d', 'stride', 'H',
+            '[{}, {}]'.format(FILTER_DHW_MIN, FILTER_DHW_MAX), str(stride_h))
 
     if filter_w < FILTER_DHW_MIN or filter_w > FILTER_DHW_MAX:
-        dict_args = {
-            'errCode': 'E62003',
-            'param_name': 'filter',
-            'dim': 'W',
-            'range': '[{}, {}]'.format(FILTER_DHW_MIN, FILTER_DHW_MAX),
-            'actual_value': str(filter_w)
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        cube_err.raise_err_four_paras('E62003', 'conv3d', 'filter', 'W',
+            '[{}, {}]'.format(FILTER_DHW_MIN, FILTER_DHW_MAX), str(filter_w))
 
     if stride_w < STRIDE_MIN or stride_w > STRIDE_MAX:
-        dict_args = {
-            'errCode': 'E62003',
-            'param_name': 'stride',
-            'dim': 'W',
-            'range': '[{}, {}]'.format(STRIDE_MIN, STRIDE_MAX),
-            'actual_value': str(stride_w)
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        cube_err.raise_err_four_paras('E62003', 'conv3d', 'stride', 'W',
+            '[{}, {}]'.format(STRIDE_MIN, STRIDE_MAX), str(stride_w))
 
 
 def _check_d_dimension(fmap_d, filter_d, pad_d, stride_d, dilation_d):
@@ -146,16 +105,9 @@ def _check_d_dimension(fmap_d, filter_d, pad_d, stride_d, dilation_d):
                            error_manager_util.get_error_message(dict_args))
 
     if pad_d[0] < PAD_MIN or pad_d[1] < PAD_MIN or pad_d[0] > PAD_MAX or pad_d[1] > PAD_MAX:
-        dict_args = {
-            'errCode': 'E62003',
-            'param_name': 'pad',
-            'dim': 'D',
-            'range': '[{}, {}]'.format(PAD_MIN, PAD_MAX),
-            'actual_value': 'pad_d[0] = {}, pad_d[1] = {}'.format(pad_d[0],
-                                                                  pad_d[1])
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        cube_err.raise_err_four_paras('E62003', 'conv3d', 'pad', 'D',
+            '[{}, {}]'.format(PAD_MIN, PAD_MAX),
+            'pad_d[0] = {}, pad_d[1] = {}'.format(pad_d[0], pad_d[1]))
 
     if pad_d[0] >= filter_d or pad_d[1] >= filter_d:
         dict_args = {
@@ -170,27 +122,13 @@ def _check_d_dimension(fmap_d, filter_d, pad_d, stride_d, dilation_d):
 
 def _check_h_dimension(fmap_h, filter_h, pad_h, stride_h, dilation_h):
     if fmap_h < FMAP_HW_MIN or fmap_h > FMAP_HW_MAX:
-        dict_args = {
-            'errCode': 'E62003',
-            'param_name': 'input',
-            'dim': 'H',
-            'range': '[{}, {}]'.format(FMAP_HW_MIN, FMAP_HW_MAX),
-            'actual_value': str(fmap_h)
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        cube_err.raise_err_four_paras('E62003', 'conv3d', 'input', 'H',
+            '[{}, {}]'.format(FMAP_HW_MIN, FMAP_HW_MAX), str(fmap_h))
 
     if pad_h[0] < PAD_MIN or pad_h[1] < PAD_MIN or pad_h[0] > PAD_MAX or pad_h[1] > PAD_MAX:
-        dict_args = {
-            'errCode': 'E62003',
-            'param_name': 'pad',
-            'dim': 'H',
-            'range': '[{}, {}]'.format(PAD_MIN, PAD_MAX),
-            'actual_value': 'pad_h[0] = {}, pad_h[1] = {}'.format(pad_h[0],
-                                                                  pad_h[1])
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        cube_err.raise_err_four_paras('E62003', 'conv3d', 'pad', 'H',
+            '[{}, {}]'.format(PAD_MIN, PAD_MAX),
+            'pad_h[0] = {}, pad_h[1] = {}'.format(pad_h[0], pad_h[1]))
 
     if (fmap_h + pad_h[0] + pad_h[1]) < ((filter_h - 1) * dilation_h + 1):
         # Chip Design demand, Load3D
@@ -214,27 +152,13 @@ def _check_h_dimension(fmap_h, filter_h, pad_h, stride_h, dilation_h):
 
 def _check_w_dimension(fmap_w, filter_w, pad_w, stride_w, dilation_w):
     if fmap_w < FMAP_HW_MIN or fmap_w > FMAP_HW_MAX:
-        dict_args = {
-            'errCode': 'E62003',
-            'param_name': 'input',
-            'dim': 'W',
-            'range': '[{}, {}]'.format(FMAP_HW_MIN, FMAP_HW_MAX),
-            'actual_value': str(fmap_w)
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        cube_err.raise_err_four_paras('E62003', 'conv3d', 'input', 'W',
+            '[{}, {}]'.format(FMAP_HW_MIN, FMAP_HW_MAX), str(fmap_w))
 
     if pad_w[0] < PAD_MIN or pad_w[1] < PAD_MIN or pad_w[0] > PAD_MAX or pad_w[1] > PAD_MAX:
-        dict_args = {
-            'errCode': 'E62003',
-            'param_name': 'pad',
-            'dim': 'W',
-            'range': '[{}, {}]'.format(PAD_MIN, PAD_MAX),
-            'actual_value': 'pad_w[0] = {}, pad_w[1] = {}'
-                            .format(pad_w[0], pad_w[1])
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        cube_err.raise_err_four_paras('E62003', 'conv3d', 'pad', 'W',
+            '[{}, {}]'.format(PAD_MIN, PAD_MAX),
+            'pad_w[0] = {}, pad_w[1] = {}'.format(pad_w[0], pad_w[1]))
 
     if filter_w > (fmap_w + pad_w[0] + pad_w[1]):
         # Chip Design demand, Load3D
@@ -431,6 +355,7 @@ def _get_attrs(strides, dilations, data_format):
     stride_dhw = [strides[pos_d], strides[pos_h], strides[pos_w]]
 
     return stride_dhw, dilation_dhw
+
 
 def _format_normalize(fmp_format, w_format, fmp_shape, w_shape, strides,
                       dilations):
@@ -873,16 +798,9 @@ def _calc_pads(fmap_shape_ndc1hwc0, shape_filter, stride_dhw, dilation_dhw, pads
         return pad_head, pad_tail, pad_up, pad_down, pad_left, pad_right
     else:
         if pads[0] < PAD_MIN or pads[1] < PAD_MIN or pads[0] > PAD_MAX or pads[1] > PAD_MAX:
-            dict_args = {
-                'errCode': 'E62003',
-                'param_name': 'pad',
-                'dim': 'D',
-                'range': '[{}, {}]'.format(PAD_MIN, PAD_MAX),
-                'actual_value': 'pads[0] = {}, pads[1] = {}'.format(pads[0],
-                                                                    pads[1])
-            }
-            raise RuntimeError(dict_args,
-                            error_manager_util.get_error_message(dict_args))
+            cube_err.raise_err_four_paras('E62003', 'conv3d', 'pad', 'D',
+                '[{}, {}]'.format(PAD_MIN, PAD_MAX),
+                'pads[0] = {}, pads[1] = {}'.format(pads[0], pads[1]))
 
         if pads[0] >= filter_d or pads[1] >= filter_d:
             dict_args = {
@@ -895,16 +813,9 @@ def _calc_pads(fmap_shape_ndc1hwc0, shape_filter, stride_dhw, dilation_dhw, pads
                             error_manager_util.get_error_message(dict_args))
 
         if pads[2] < PAD_MIN or pads[3] < PAD_MIN or pads[2] > PAD_MAX or pads[3] > PAD_MAX:
-            dict_args = {
-                'errCode': 'E62003',
-                'param_name': 'pad',
-                'dim': 'H',
-                'range': '[{}, {}]'.format(PAD_MIN, PAD_MAX),
-                'actual_value': 'pads[2] = {}, pads[3] = {}'.format(pads[2],
-                                                                    pads[3])
-            }
-            raise RuntimeError(dict_args,
-                            error_manager_util.get_error_message(dict_args))
+            cube_err.raise_err_four_paras('E62003', 'conv3d', 'pad', 'H',
+                '[{}, {}]'.format(PAD_MIN, PAD_MAX),
+                'pads[2] = {}, pads[3] = {}'.format(pads[2], pads[3]))
 
         if pads[2] >= filter_h or pads[3] >= filter_h:
             dict_args = {
@@ -916,16 +827,9 @@ def _calc_pads(fmap_shape_ndc1hwc0, shape_filter, stride_dhw, dilation_dhw, pads
                             error_manager_util.get_error_message(dict_args))
 
         if pads[4] < PAD_MIN or pads[5] < PAD_MIN or pads[4] > PAD_MAX or pads[5] > PAD_MAX:
-            dict_args = {
-                'errCode': 'E62003',
-                'param_name': 'pad',
-                'dim': 'W',
-                'range': '[{}, {}]'.format(PAD_MIN, PAD_MAX),
-                'actual_value': 'pads[4] = {}, pads[5] = {}'
-                                .format(pads[4], pads[5])
-            }
-            raise RuntimeError(dict_args,
-                            error_manager_util.get_error_message(dict_args))
+            cube_err.raise_err_four_paras('E62003', 'conv3d', 'pad', 'W',
+                '[{}, {}]'.format(PAD_MIN, PAD_MAX),
+                'pads[4] = {}, pads[5] = {}'.format(pads[4], pads[5]))
 
         if pads[4] >= filter_w or pads[5] >= filter_w:
             dict_args = {
