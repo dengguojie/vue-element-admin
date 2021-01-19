@@ -19,6 +19,7 @@ dynamic operator
 from __future__ import absolute_import as _abs
 
 from .unsorted_segment_sum import unsorted_segment_sum
+from .div_no_nan import div_no_nan
 from .gather_nd import gather_nd
 from .gather import gather
 from .gather_v2 import gather_v2
