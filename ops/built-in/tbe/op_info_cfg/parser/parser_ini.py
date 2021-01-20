@@ -73,7 +73,7 @@ def check_op_info(tbe_ops):
     ----------------
     """
     print("\n\n==============check valid for ops info start==============")
-    not_valid_op=[]
+    not_valid_op = []
     required_op_input_info_keys = ["paramType", "name"]
     required_op_output_info_keys = ["paramType", "name"]
     shape_type_valid_value = ["fix", "range", "list"]
@@ -87,7 +87,7 @@ def check_op_info(tbe_ops):
         for op_info_key in op:
             if op_info_key.startswith("input"):
                 op_input_info = op[op_info_key]
-                missing_keys=[]
+                missing_keys = []
                 for  required_op_input_info_key in required_op_input_info_keys:
                     if not required_op_input_info_key in op_input_info:
                         missing_keys.append(required_op_input_info_key)
@@ -101,7 +101,7 @@ def check_op_info(tbe_ops):
                         is_valid = False
             if op_info_key.startswith("output"):
                 op_input_info = op[op_info_key]
-                missing_keys=[]
+                missing_keys = []
                 for  required_op_input_info_key in required_op_output_info_keys:
                     if not required_op_input_info_key in op_input_info:
                         missing_keys.append(required_op_input_info_key)
