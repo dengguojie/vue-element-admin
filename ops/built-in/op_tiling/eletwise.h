@@ -41,6 +41,8 @@ const int32_t SPECIAL_BROADCAST_INPUT_NUMS = 2;
 const int32_t BROADCAST_BASE_KEY = 2;
 const size_t MAX_DIM_LEN = 16;
 const int32_t UINT1_FACTOR = 8;
+const int32_t ELEWISE_REPEATE_NUMS = 128;
+const int32_t ELEWISE_UINT1_REPEATE_NUMS = 256;
 const size_t MAX_INPUT_NUMS = 70;
 
 struct CompileInfo {

@@ -410,6 +410,7 @@ bool Eletwise::DoBlockTiling() {
       return -1;
     }
     CHECK((!output_shape.empty()), "op [%s] : output shape cannot be empty", op_type.c_str())
+    ele_in_block = (out_type == "uint1") ? ELEWISE_UINT1_REPEATE_NUMS : ELEWISE_REPEATE_NUMS;
     block_factor = std::ceil(output_shape[0] * 1.0 / cur_core);
     block_factor = std::ceil(block_factor * 1.0 / ele_in_block) * ele_in_block;
     block_dims = std::ceil(output_shape[0] * 1.0 / block_factor);
@@ -449,8 +450,7 @@ bool Eletwise::DoUbTiling() {
     ub_factor = static_cast<int32_t>(output_shape[0]);
     limit = std::min(limit, split_factors[compileInfo.max_dtype]);
     if (limit < ub_factor) {
-      int32_t ele_in_block = BLOCK_SIZE / GetTypeSize(out_type);
-      ele_in_block = (out_type == "uint1") ? ele_in_block * UINT1_FACTOR : ele_in_block;
+      int32_t ele_in_block = (out_type == "uint1") ? ELEWISE_UINT1_REPEATE_NUMS : ELEWISE_REPEATE_NUMS;
       int32_t ub_for_num = std::ceil(ub_factor * 1.0 / limit);
       int32_t adjust_factor = std::ceil(ub_factor * 1.0 / ub_for_num);
       int32_t align_factor = std::ceil(adjust_factor * 1.0 / ele_in_block);
