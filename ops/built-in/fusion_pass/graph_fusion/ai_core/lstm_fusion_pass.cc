@@ -144,7 +144,24 @@ ge::GeTensorDesc ALSTMFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t n
       ->GetOpDesc()
       ->UpdateOutputDesc(0, inputWTensorDesc);
     constWxStaticOp.SetAttr("const_adjust_flag", true);
+
+    unique_ptr<float[]> wStaticPaddData(new (std::nothrow) float[destWCol * destWRow]());
+    auto retMem = memset_s(wStaticPaddData.get(), destWCol * destWRow, 0, destWCol * destWRow);
+    FUSION_PASS_CHECK(retMem != EOK, OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to operate const zero memset_s function!"),
+                      failStatus = true);
+    float* wStaticOriData = (float*)inputWConstGeTensor->GetData().data();
+    float* wStaticWeight = wStaticPaddData.get();
+    int32_t singleDestCol = ((wCol / 4 + c0 - 1) / c0 * c0);
+    for (int i = 0; i < 4; i++){
+      for (int j = 0; j < (wCol / 4); j++){
+        for (int k = 0; k < wRow; k++){
+          *(wStaticWeight + i * singleDestCol * destWRow + j * destWRow + k) =*(wStaticOriData + i * (wCol / 4)*wRow + j * wRow + k);
+        }
+      }
+    }
+    inputWConstGeTensor->SetData(reinterpret_cast<uint8_t*>(wStaticPaddData.get()), (destWCol * destWRow) * sizeof(float));
   }
+
   innerProductStaticDesc->AddInputDesc("w", inputWTensorDesc);
   inputWConstGeTensor->SetTensorDesc(inputWTensorDesc);
 
