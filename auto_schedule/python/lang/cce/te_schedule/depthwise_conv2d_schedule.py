@@ -2332,6 +2332,15 @@ def _set_sch_int32_phase3(tensor_dict, sch, attrs_dict, res_cut_dict, out):
                 sch[tensor_dict["rec_5"]].emit_insn(sch[tensor_dict["rec_5"]].op.axis[0], 'vector_auto')
                 sch[tensor_dict["rec_4"]].emit_insn(sch[tensor_dict["rec_4"]].op.axis[0], 'vector_auto')
                 sch[tensor_dict["rec_3"]].emit_insn(sch[tensor_dict["rec_3"]].op.axis[0], 'vector_auto')
+                if cce_conf.is_v200_version_new():
+                    sch[tensor_dict["rec_2"]].emit_insn(sch[tensor_dict["rec_2"]].op.axis[0],
+                                                        'vector_auto')
+                    sch[tensor_dict["rec_1"]].emit_insn(sch[tensor_dict["rec_1"]].op.axis[0],
+                                                        'vector_auto')
+                    sch[tensor_dict["rec_0"]].emit_insn(sch[tensor_dict["rec_0"]].op.axis[0],
+                                                        'vector_auto')
+                    sch[tensor_dict["rec_n"]].emit_insn(sch[tensor_dict["rec_n"]].op.axis[0],
+                                                        'vector_auto')
                 sch[tensor_dict["muls"]].emit_insn(sch[tensor_dict["muls"]].op.axis[0], 'vector_auto')
                 sch[tensor_dict["add_2"]].emit_insn(sch[tensor_dict["add_2"]].op.axis[0], 'vector_auto')
                 sch[tensor_dict["exp"]].emit_insn(sch[tensor_dict["exp"]].op.axis[0], 'vector_auto')
@@ -2390,6 +2399,15 @@ def _avoid_complexity_mul(out, tensor_dict, attrs_dict, sch):
             sch[tensor_dict["rec_4"]].compute_inline()
             sch[tensor_dict["rec_3"]].set_scope(cce_params.scope_ubuf)
             sch[tensor_dict["rec_3"]].compute_inline()
+            if cce_conf.is_v200_version_new():
+                sch[tensor_dict["rec_2"]].set_scope(cce_params.scope_ubuf)
+                sch[tensor_dict["rec_2"]].compute_inline()
+                sch[tensor_dict["rec_1"]].set_scope(cce_params.scope_ubuf)
+                sch[tensor_dict["rec_1"]].compute_inline()
+                sch[tensor_dict["rec_0"]].set_scope(cce_params.scope_ubuf)
+                sch[tensor_dict["rec_0"]].compute_inline()
+                sch[tensor_dict["rec_n"]].set_scope(cce_params.scope_ubuf)
+                sch[tensor_dict["rec_n"]].compute_inline()
             sch[tensor_dict["muls"]].set_scope(cce_params.scope_ubuf)
             sch[tensor_dict["muls"]].compute_inline()
             sch[tensor_dict["exp"]].set_scope(cce_params.scope_ubuf)
@@ -2665,6 +2683,15 @@ def _relu_mul_handle(out, sch, attrs_dict, tensor_dict, res_cut_dict):
                 sch[tensor_dict["rec_5"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
                 sch[tensor_dict["rec_4"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
                 sch[tensor_dict["rec_3"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
+                if cce_conf.is_v200_version_new():
+                    sch[tensor_dict["rec_2"]].compute_at(sch[attrs_dict["out"]], 
+                                                         res_cut_dict["res_mcut_iio"])
+                    sch[tensor_dict["rec_1"]].compute_at(sch[attrs_dict["out"]], 
+                                                         res_cut_dict["res_mcut_iio"])
+                    sch[tensor_dict["rec_0"]].compute_at(sch[attrs_dict["out"]], 
+                                                         res_cut_dict["res_mcut_iio"])
+                    sch[tensor_dict["rec_n"]].compute_at(sch[attrs_dict["out"]], 
+                                                         res_cut_dict["res_mcut_iio"])
                 sch[tensor_dict["muls"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
                 sch[tensor_dict["add_2"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
                 sch[tensor_dict["exp"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
