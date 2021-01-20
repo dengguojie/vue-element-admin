@@ -1849,7 +1849,8 @@ def general_schedule(
             "conv_fm_c1": a_l1.shape[1],
             "conv_fm_h": a_l1.shape[2],
             "conv_fm_w": a_l1.shape[3],
-            "conv_fm_c0": a_l1.shape[4]
+            "conv_fm_c0": a_l1.shape[4],
+            "group_flag": 1
         }
         if stride_h == 1 and stride_w == 1:
             sch[a_l1].emit_insn(a_l1.op.axis[0], "dma_copy", setfmatrix_dict)

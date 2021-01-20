@@ -701,6 +701,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             setfmatrix_dict_0["conv_fm_c"] = featuremap_channel
             setfmatrix_dict_0["conv_fm_h"] = featuremap_height
             setfmatrix_dict_0["conv_fm_w"] = featuremap_width
+            setfmatrix_dict_0["group_flag"] = 1
 
             if self.dynamic_mode and not flag_all_one_case:
                 setfmatrix_dict_0["set_fmatrix"] = 0

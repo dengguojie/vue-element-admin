@@ -888,6 +888,7 @@ class CceConv3dOp:
                 'conv_fm_h': fmap.shape[3],
                 'conv_fm_w': fmap.shape[4],
                 'conv_fm_c0': fmap.shape[5],
+                'group_flag': 1
             }
             if self._tensor_map["opti_h_flag"]:
                 im2col_attr["conv_stride_h"] = 1
