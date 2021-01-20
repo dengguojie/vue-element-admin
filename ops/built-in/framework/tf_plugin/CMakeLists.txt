@@ -282,6 +282,8 @@ set(_tf_plugins
   partitioned_call_plugin.cc
   population_count_plugin.cc
   pow_plugin.cc
+  prelu_grad_plugin.cc
+  prelu_plugin.cc
   quantized_resize_bilinear_plugin.cc
   queue_close_plugin.cc
   queue_dequeue_many_plugin.cc
