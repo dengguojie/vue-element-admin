@@ -219,12 +219,9 @@ def asinh_grad(y, dy, z, kernel_name="cce_asinh_grad"):
 
     for (input_y, input_dy) in ins:
         with tbe_base.compute():
-            shape_y, shape_dy = \
-                shape_util.variable_shape([input_y, input_dy], support_broadcast=True)
-            shape_y, _ = shape_util.refine_shape_axes(shape_y, [])
-            shape_dy, _ = shape_util.refine_shape_axes(shape_dy, [])
+            shape_y, shape_dy = shape_util.variable_shape([input_y, input_dy], support_broadcast=False)
             data_y = tvm.placeholder(shape_y, name="data_y", dtype=dtype_y)
-            data_dy = tvm.placeholder(shape_y, name="data_dy", dtype=dtype_y)
+            data_dy = tvm.placeholder(shape_dy, name="data_dy", dtype=dtype_dy)
             res = asinh_grad_compute(data_y, data_dy, z, kernel_name)
 
             tensors.append([data_y, data_dy, res])

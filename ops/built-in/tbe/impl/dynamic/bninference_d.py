@@ -44,13 +44,20 @@ def _fused_scale_bias_compute(x, mean, variance, scale, bias):
     res: TVM tensor list
         the result of scale compute
     """
-    shape_x = shape_util.shape_to_list(x.shape)
     dtype_x = x.dtype
     dtype_scale = scale.dtype
     dtype_bias = bias.dtype
-    mean_broadcast = tbe.broadcast(mean, shape_x)
-    var_broadcast = tbe.broadcast(variance, shape_x)
-    mean_add = tbe.vadd(x, mean_broadcast)
+
+    shape_x = shape_util.shape_to_list(x.shape)
+    shape_mean = shape_util.shape_to_list(mean.shape)
+    shape_x, shape_mean, shape_max = shape_util.broadcast_shapes(shape_x, shape_mean,
+        param_name_input1="x", param_name_input2="mean")
+
+    x_broadcast = tbe.broadcast(x, shape_max)
+    mean_broadcast = tbe.broadcast(mean, shape_max)
+    var_broadcast = tbe.broadcast(variance, shape_max)
+
+    mean_add = tbe.vadd(x_broadcast, mean_broadcast)
     res_y = tbe.vmul(var_broadcast, mean_add)
 
     is_cast = False
@@ -64,8 +71,8 @@ def _fused_scale_bias_compute(x, mean, variance, scale, bias):
         if dtype_bias == "float16":
             bias = tbe.cast_to(bias, "float32")
 
-    scale_broad = tbe.broadcast(scale, shape_x)
-    bias_broad = tbe.broadcast(bias, shape_x)
+    scale_broad = tbe.broadcast(scale, shape_max)
+    bias_broad = tbe.broadcast(bias, shape_max)
 
     res_tmp = tbe.vmul(res_y, scale_broad)
     res = tbe.vadd(res_tmp, bias_broad)
@@ -93,13 +100,19 @@ def _fused_scale_compute(x, mean, variance, scale):
     res: TVM tensor list
         the result of scale compute
     """
-    shape_x = shape_util.shape_to_list(x.shape)
     dtype_x = x.dtype
     dtype_scale = scale.dtype
 
-    mean_broadcast = tbe.broadcast(mean, shape_x)
-    var_broadcast = tbe.broadcast(variance, shape_x)
-    mean_add = tbe.vadd(x, mean_broadcast)
+    shape_x = shape_util.shape_to_list(x.shape)
+    shape_mean = shape_util.shape_to_list(mean.shape)
+    shape_x, shape_mean, shape_max = shape_util.broadcast_shapes(shape_x, shape_mean,
+        param_name_input1="x", param_name_input2="mean")
+
+    x_broadcast = tbe.broadcast(x, shape_max)
+    mean_broadcast = tbe.broadcast(mean, shape_max)
+    var_broadcast = tbe.broadcast(variance, shape_max)
+
+    mean_add = tbe.vadd(x_broadcast, mean_broadcast)
     res_y = tbe.vmul(var_broadcast, mean_add)
 
     is_cast = False
@@ -112,7 +125,7 @@ def _fused_scale_compute(x, mean, variance, scale):
         if dtype_scale == "float16":
             scale = tbe.cast_to(scale, 'float32')
 
-    scale_broad = tbe.broadcast(scale, shape_x)
+    scale_broad = tbe.broadcast(scale, shape_max)
 
     res = tbe.vmul(res_y, scale_broad)
 
@@ -140,10 +153,17 @@ def _fused_compute(x, mean, variance):
     """
     shape_x = shape_util.shape_to_list(x.shape)
     shape_mean = shape_util.shape_to_list(mean.shape)
-    mean_broadcast = tbe.broadcast(mean, shape_x)
-    var_broadcast = tbe.broadcast(variance, shape_x)
-    mean_add = tbe.vadd(x, mean_broadcast)
+
+    shape_x, shape_mean, shape_max = shape_util.broadcast_shapes(shape_x, shape_mean,
+        param_name_input1="x", param_name_input2="mean")
+
+    x_broadcast = tbe.broadcast(x, shape_max)
+    mean_broadcast = tbe.broadcast(mean, shape_max)
+    var_broadcast = tbe.broadcast(variance, shape_max)
+
+    mean_add = tbe.vadd(x_broadcast, mean_broadcast)
     res_y = tbe.vmul(var_broadcast, mean_add)
+
     return res_y
 
 
@@ -189,8 +209,8 @@ def bninference_d_compute(x, mean, variance, scale, bias, y,
     l1_fusion_type = x.op.attrs["L1_fusion_type"].value if "L1_fusion_type" in x.op.attrs else -1
     if l1_fusion_type != -1 and y.get("format").upper() != 'NC1HWC0':
         shape_rule = "when L1_FUSION is enabled for the bninference operator, the input format must be 5HD"
-        error_manager_vector.raise_err_check_params_rules("bninference_d", shape_rule, "x",
-                                                                        y.get("format").upper())
+        error_manager_vector.raise_err_check_params_rules("bninference_d",
+            shape_rule, "x", y.get("format").upper())
 
     fusion_params = get_fusion_params(x, mean, variance, scale, bias, fuse_y)
 
@@ -272,7 +292,7 @@ def get_fusion_params(x, mean, variance, scale, bias, y):
     return fusion_params
 
 
-def brodcast_inputs_shape(x, mean, variance, scale, offect):
+def brodcast_inputs_shape(x, mean, variance, scale, offset):
     """
     :param x:x tensor
     :param mean: mean tensor
@@ -286,7 +306,7 @@ def brodcast_inputs_shape(x, mean, variance, scale, offect):
     """
     shape_x = x.get("shape")
     format_x = x.get("format")
-    dtype_x = x.get("dtype")
+
     if format_x in ("ND", "NCHW"):
         if len(shape_x) == 1:
             index_c = 0
@@ -313,39 +333,35 @@ def brodcast_inputs_shape(x, mean, variance, scale, offect):
         shape_variance = [1, c1, 1, 1, c0]
 
     shape_scale = {}
-    shape_offect = {}
+    shape_offset = {}
     if scale is not None:
         shape_scale = scale.get("shape")
-    if offect is not None and bool(offect):
-        shape_offect = offect.get("shape")
+    if offset is not None and bool(offset):
+        shape_offset = offset.get("shape")
 
     is_l1_depth_fusion = False
 
-    attr_x, l1_fusion_type = get_l1_paras(x)
+    _, l1_fusion_type = get_l1_paras(x)
     is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
-    attr_mean, l1_fusion_type = get_l1_paras(mean)
+    _, l1_fusion_type = get_l1_paras(mean)
     is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
-    attr_variance, l1_fusion_type = get_l1_paras(variance)
+    _, l1_fusion_type = get_l1_paras(variance)
     is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
 
-    scale_input = None
     shape_scale_new = None
-    offset_input = None
-    shape_offect_new = None
-    
+    shape_offset_new = None
+
     if len(shape_scale) > 0:
-        dtype_scale = scale.get("dtype")
         shape_scale_new = get_param_scale_shape(shape_x, shape_scale)
-        attr_scale, l1_fusion_type = get_l1_paras(scale)
+        _, l1_fusion_type = get_l1_paras(scale)
         is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
 
-        if len(shape_offect) > 0:
-            dtype_offect = offect.get("dtype")
-            shape_offect_new = shape_scale_new
-            attr_offect, l1_fusion_type = get_l1_paras(offect)
+        if len(shape_offset) > 0:
+            shape_offset_new = shape_scale_new
+            _, l1_fusion_type = get_l1_paras(offset)
             is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
 
-    return shape_x, shape_mean, shape_variance, shape_scale_new, shape_offect_new, is_l1_depth_fusion
+    return shape_x, shape_mean, shape_variance, shape_scale_new, shape_offset_new, is_l1_depth_fusion
 
 
 def get_param_scale_shape(shape_x, shape_scale):
@@ -384,10 +400,12 @@ def get_l1_paras(x):
     addr_type = x.get("addr_type", 0)
     valid_shape = x.get("valid_shape", [])
     slice_offset = x.get("slice_offset", [])
-    attr_x = {"addr_type": addr_type,
-              "valid_shape": valid_shape,
-              "slice_offset": slice_offset,
-              "L1_fusion_type": l1_fusion_type}
+    attr_x = {
+        "addr_type": addr_type,
+        "valid_shape": valid_shape,
+        "slice_offset": slice_offset,
+        "L1_fusion_type": l1_fusion_type
+    }
     return attr_x, l1_fusion_type
 
 
@@ -398,7 +416,7 @@ def get_l1_paras(x):
                             para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_FLOAT,
                             para_check.REQUIRED_ATTR_BOOL, para_check.REQUIRED_ATTR_INT,
                             para_check.KERNEL_NAME)
-def bninference_d(x, mean, variance, scale, offect, y, momentum, epsilon,
+def bninference_d(x, mean, variance, scale, offset, y, momentum, epsilon,
                   use_global_stats, mode, kernel_name="bninference"):
     """
 
@@ -434,7 +452,7 @@ def bninference_d(x, mean, variance, scale, offect, y, momentum, epsilon,
     # check format
     format_x = x.get("format")
     format_data = x.get("format")
-    excepted_format_list = ["NC1HWC0", "NCHW", "NHWC"]
+    excepted_format_list = ["ND", "NC1HWC0", "NCHW", "NHWC"]
     para_check.check_format(format_data, excepted_format_list, param_name="x")
 
     # check dtype
@@ -454,30 +472,28 @@ def bninference_d(x, mean, variance, scale, offect, y, momentum, epsilon,
     if scale is not None:
         dtype_scale = scale.get("dtype")
         para_check.check_dtype(dtype_scale.lower(), checklist, param_name="scale")
-    if offect is not None and bool(offect):
-        dtype_offect = offect.get("dtype")
-        para_check.check_dtype(dtype_offect.lower(), checklist, param_name="offect")
+    if offset is not None and bool(offset):
+        dtype_offset = offset.get("dtype")
+        para_check.check_dtype(dtype_offset.lower(), checklist, param_name="offset")
 
     # brodcast inputs shape
-    shape_x, shape_mean, shape_variance, shape_scale, shape_offect, is_l1_depth_fusion = brodcast_inputs_shape(x, mean,
-        variance, scale, offect)
+    shape_x, shape_mean, shape_variance, _, _, is_l1_depth_fusion = brodcast_inputs_shape(x, mean,
+        variance, scale, offset)
 
     x["shape"] = shape_x
 
     # compute mean shape
     mean["shape"] = shape_mean
+
+    tbe_base.add_compile_info("_boardcast_mean_shape", shape_mean)
+
     mean_range = []
     for i, _range in enumerate(x["range"]):
         _range = (shape_mean[i], shape_mean[i]) if shape_mean[i] != -1 else _range
         mean_range.append(_range)
     mean["range"] = tuple(mean_range)
-    tbe_base.add_compile_info("_boardcast_mean_shape", shape_mean)
 
     variance["shape"] = shape_variance
-
-    if offect is None and scale is not None:
-        scale["shape"] = shape_scale
-        offect["shape"] = shape_offect
 
     # op compute and schedule
     ins = classify([x, mean], Mode.ELEWISE_WITH_BROADCAST)
@@ -489,7 +505,6 @@ def bninference_d(x, mean, variance, scale, offect, y, momentum, epsilon,
         # op compute
         with tbe_base.compute():
             # get all dynamic tensor shape
-            # shape_x, shape_mean = shape_util.variable_shape([x_input, mean_input], support_broadcast=False)
             shape_x, shape_mean = shape_util.variable_shape([x_input, mean_input], support_broadcast=True)
             shape_x, shape_mean = shape_util.refine_shapes_for_broadcast(shape_x, shape_mean)
 
@@ -499,16 +514,21 @@ def bninference_d(x, mean, variance, scale, offect, y, momentum, epsilon,
             data_variance = tvm.placeholder(shape_mean, name="data_variance", dtype=dtype_variance)
 
             # add all tensors
-            if offect is None and scale is None:
+            if scale is not None and offset is not None:
+                data_scale = tvm.placeholder(shape_mean, name="data_scale", dtype=dtype_scale)
+                data_offset = tvm.placeholder(shape_mean, name="data_offset", dtype=dtype_offset)
+                res = bninference_d_compute(data_x, data_mean, data_variance, data_scale, data_offset,
+                                            y, momentum, epsilon, use_global_stats, mode)
+                tensor_list = [data_x, data_mean, data_variance, data_scale, data_offset, res]
+            elif scale is not None and offset is None:
+                data_scale = tvm.placeholder(shape_mean, name="data_scale", dtype=dtype_scale)
+                res = bninference_d_compute(data_x, data_mean, data_variance, data_scale, None,
+                                            y, momentum, epsilon, use_global_stats, mode)
+                tensor_list = [data_x, data_mean, data_variance, data_scale, res]
+            else:
                 res = bninference_d_compute(data_x, data_mean, data_variance, None, None,
-                                            y, momentum, epsilon, use_global_stats, mode)
+                                                y, momentum, epsilon, use_global_stats, mode)
                 tensor_list = [data_x, data_mean, data_variance, res]
-            elif offect is None and scale is not None:
-                data_scale = tvm.placeholder(shape_scale, name="data_scale", dtype=dtype_scale)
-                data_offect = tvm.placeholder(shape_offect, name="data_offect", dtype=dtype_offect)
-                res = bninference_d_compute(data_x, data_mean, data_variance, data_scale, data_offect,
-                                            y, momentum, epsilon, use_global_stats, mode)
-                tensor_list = [data_x, data_mean, data_variance, data_scale, data_offect, res]
 
             tensors.append(tensor_list)
 
