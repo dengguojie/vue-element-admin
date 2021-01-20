@@ -455,7 +455,7 @@ def reget_tensor_list(outs):
                 out_fp16_addr = DDR_SCOPE
 
             res_out_fp16 = tvm.compute(out_fp16.shape,
-                                       lambda i, j, k, l: out_fp16(i, j, k, l),
+                                       lambda *indice: out_fp16(*indice),
                                        name='res_out_fp16',
                                        tag='res_out_fp16',
                                        attrs={"addr_type": out_fp16_addr})
@@ -468,14 +468,24 @@ def reget_tensor_list(outs):
 
         if "write_select" in out_fp16.op.tag:
             ConvParam.tensor_map["deq_fp16_ws_flag"] = True
-
-        virtual_res = tvm.compute(out_s8.shape,
-                                  lambda i, j, k, l:
-                                  out_s8(i, j, k, l) +
-                                  res_out_fp16(i, (j*32 + l) // 16, k,
-                                               (j*32 + l) % 16),
-                                  name='conv_virtual_res',
-                                  tag="conv_virtual_res")
+        if len(out_s8.shape) == 4: # batch, cout1, hout*wout, cout0
+            virtual_res = tvm.compute(out_s8.shape,
+                                      lambda i, j, k, l:
+                                      out_s8(i, j, k, l) +
+                                      res_out_fp16(i, (j*32 + l) // 16, k,
+                                                   (j*32 + l) % 16),
+                                      name='conv_virtual_res',
+                                      tag="conv_virtual_res")
+        elif len(out_s8.shape) == 5: # batch, cout1, hout, wout, cout0
+            virtual_res = tvm.compute(out_s8.shape,
+                                      lambda i, j, h, w, l:
+                                      out_s8(i, j, h, w, l) +
+                                      res_out_fp16(i, (j*32 + l) // 16, h, w,
+                                                   (j*32 + l) % 16),
+                                      name='conv_virtual_res',
+                                      tag="conv_virtual_res")
+        else:
+            err_man.raise_err_specific("double out", "invalid double out shape")
         ConvParam.tensor_map["virtual_res"] = virtual_res
 
         outputs = [virtual_res, res_out_fp16, out_s8]
