@@ -78,11 +78,19 @@ case5 = {"params": [{"shape": (1, 21, 568, 568), "dtype": "int32", "format": "NC
          "format_expect": [],
          "support_expect": True}
 
+def test_get_op_support_info(test_arg):
+    from impl.crop import get_op_support_info
+    get_op_support_info({"shape": (1, 3, 568, 568), "dtype": "int32", "format": "ND", "ori_shape": (1, 3, 568, 568), "ori_format": "ND"},
+                        {"shape": (1, 3, 500, 500), "dtype": "int32", "format": "ND", "ori_shape": (1, 3, 500, 500), "ori_format": "ND"},
+                        {"shape": (1, 3, 500, 500), "dtype": "int32", "format": "ND", "ori_shape": (1, 3, 500, 500), "ori_format": "ND"},
+                        2, [0, 0, 0, 0])
+
 ut_case.add_case("all", case1)
 ut_case.add_case("all", case2)
 ut_case.add_case("all", case3)
 ut_case.add_case("all", case4)
 ut_case.add_case("all", case5)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 
 ut_case.add_precision_case("all",
                            gen_crop_precision_case((10000, 4, 5, 6), (1849, 1, 1, 1), "float16", "success", 0,
