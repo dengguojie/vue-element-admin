@@ -2298,6 +2298,14 @@ REG_OP(CacheRemoteIndexToLocal)
   .OUTPUT(local_idx, TensorType({DT_INT64}))
   .OP_END_FACTORY_REG(CacheRemoteIndexToLocal)
 
+REG_OP(DynamicGetNext)
+  .INPUT(x, TensorType::ALL())
+  .DYNAMIC_OUTPUT(y, TensorType::ALL())
+  .ATTR(output_types, ListType, {})
+  .ATTR(output_shapes, ListListInt, {{}, {}})
+  .ATTR(_dynamic_graph_execute_mode, String, "lazy_recompile")
+  .ATTR(_getnext_inputs_shape_range, String, "")
+  .OP_END_FACTORY_REG(DynamicGetNext)
 }   // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_DATA_FLOW_OPS_H_

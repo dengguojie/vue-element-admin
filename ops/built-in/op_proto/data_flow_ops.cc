@@ -25,6 +25,8 @@
 #include "util/common_shape_fns.h"
 #include "util/util.h"
 #include "util/error_util.h"
+#include "securec.h"
+#include <regex>
 
 namespace ge {
 static std::map<std::string, std::vector<ShapeAndType>> shape_and_type_map;
@@ -1863,6 +1865,185 @@ IMPLEMT_INFERFUNC(OutfeedEnqueueOp, OutfeedEnqueueInfer) {
 }
 
 INFER_FUNC_REG(OutfeedEnqueueOp, OutfeedEnqueueInfer);
+
+int32_t Split(const std::string &s, std::vector<std::string> &result, const char *delchar) {
+  if (s.empty()) { return 0; }
+  result.clear();
+  char *buffer = new (std::nothrow) char[s.size() + 1];
+  if (buffer == nullptr) {
+    return -1;
+  }
+  buffer[s.size()] = '\0';
+  errno_t e = strcpy_s(buffer, s.size() + 1, s.c_str());
+  if (e != EOK) {
+    delete[] buffer;
+    return -1;
+  }
+  char *p_tmp = nullptr;
+  char *p = strtok_s(buffer, delchar, &p_tmp);
+  if (p != nullptr) {
+    do { result.emplace_back(p); } while ((p = strtok_s(nullptr, delchar, &p_tmp)));
+  }
+  delete[] buffer;
+  return 0;
+}
+
+IMPLEMT_INFERFUNC(DynamicGetNext, DynamicGetNextInfer) {
+  Shape unused_shape;
+  if (WithRank(op.GetInputDesc("x"), 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Input x must be 0-D");
+    return GRAPH_FAILED;
+  }
+
+  std::vector<ge::DataType> output_types;
+  if (op.GetAttr("output_types", output_types) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Op get attr output_types failed");
+    return GRAPH_FAILED;
+  }
+
+  std::vector<std::vector<int64_t>> output_shapes;
+  if (op.GetAttr("output_shapes", output_shapes) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Op get attr output_shapes failed");
+    return GRAPH_FAILED;
+  }
+
+  std::string dynamic_graph_execute_mode;
+  if (op.GetAttr("_dynamic_graph_execute_mode", dynamic_graph_execute_mode) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Op get attr _dynamic_graph_execute_mode failed");
+    return GRAPH_FAILED;
+  }
+
+  std::string getnext_inputs_shape_range;
+  if (op.GetAttr("_getnext_inputs_shape_range", getnext_inputs_shape_range) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Op get attr _getnext_inputs_shape_range failed");
+    return GRAPH_FAILED;
+  }
+
+  if (dynamic_graph_execute_mode != "lazy_recompile" && dynamic_graph_execute_mode != "dynamic_execute") {
+    OP_LOGE(op.GetName().c_str(), "Op get attr _dynamic_graph_execute_mode : [%s] is invailed",
+            dynamic_graph_execute_mode.c_str());
+    return GRAPH_FAILED;
+  }
+
+  std::vector<std::vector<std::pair<int64_t, int64_t>>> shape_ranges;
+  if (dynamic_graph_execute_mode == "dynamic_execute") {
+    std::string regex_format = std::string("(\\[(((\\d+|(\\d+~\\d+)),{1})*)(\\d+|(\\d+~\\d+))\\],{1})*") +
+                               std::string("\\[(((\\d+|(\\d+~\\d+)),{1})*)(\\d+|(\\d+~\\d+))\\]");
+    std::regex r(regex_format, std::regex_constants::ECMAScript);
+    if (!regex_match(getnext_inputs_shape_range, r)) {
+      OP_LOGE(op.GetName().c_str(),
+              "The format of _getnext_inputs_shape_range is incorrect, and the parsing failed");
+      return GRAPH_FAILED;
+    }
+    std::vector<std::string> shape_range_strings;
+    int32_t res = Split(getnext_inputs_shape_range,
+                        shape_range_strings, "]"); // shape_range_strings = [128,3~5,2~128,1],[128]
+    if (res != 0) {
+      OP_LOGE(op.GetName().c_str(),
+              "Split _getnext_inputs_shape_range failed");
+      return GRAPH_FAILED;
+    }
+
+    for (auto shape_range_string : shape_range_strings) {
+      if (shape_range_string.find("[") == 0) {
+        shape_range_string.erase(0, 1);
+      } else if (shape_range_string.find(",[") == 0) {
+        shape_range_string.erase(0, 2);
+      } else {
+        OP_LOGE(op.GetName().c_str(),
+                "The format of _getnext_inputs_shape_range is incorrect, and the parsing failed");
+        return GRAPH_FAILED;
+      }
+      // shape_range_string = 128,3~5,2~128,1
+      std::vector<std::string> single_shape_ranges;
+      std::vector<std::pair<int64_t, int64_t>> pair_shape_ranges;
+      res = Split(shape_range_string, single_shape_ranges, ",");
+      if (res != 0) {
+        OP_LOGE(op.GetName().c_str(),
+                "Split _getnext_inputs_shape_range failed");
+        return GRAPH_FAILED;
+      }
+      for (auto single_shape_range : single_shape_ranges) {
+        std::vector<std::string> tmp;
+        res = Split(single_shape_range, tmp, "~");
+        if (res != 0) {
+          OP_LOGE(op.GetName().c_str(),
+                  "Split _getnext_inputs_shape_range failed");
+          return GRAPH_FAILED;
+        }
+        if (tmp.size() > 2 || tmp.size() <= 0) {
+          OP_LOGE(op.GetName().c_str(),
+                  "The format of _getnext_inputs_shape_range is incorrect, and the parsing failed");
+          return GRAPH_FAILED;
+        }
+        pair_shape_ranges.push_back(tmp.size() == 1 ? \
+                      std::pair<int64_t, int64_t>{ atoi(tmp[0].c_str()), atoi(tmp[0].c_str()) } : \
+                      std::pair<int64_t, int64_t>{ atoi(tmp[0].c_str()), atoi(tmp[1].c_str()) });
+      }
+      shape_ranges.push_back(pair_shape_ranges);
+    }
+
+    if (shape_ranges.size() != output_shapes.size()) {
+      OP_LOGE(op.GetName().c_str(), "The _getnext_inputs_shape_range and output_shapes should be the same length.");
+      return GRAPH_FAILED;
+    }
+    for (int i = 0; i < shape_ranges.size(); i++) {
+      if (shape_ranges[i].size() != output_shapes[i].size()) {
+        OP_LOGE(op.GetName().c_str(),
+                "The _getnext_inputs_shape_range and output_shapes at [%d] should be the same length.", i);
+        return GRAPH_FAILED;
+      }
+    }
+  }
+
+  if (output_types.size() != output_shapes.size()) {
+    OP_LOGE(op.GetName().c_str(), "The output_types and output_shapes should be the same length.");
+    return GRAPH_FAILED;
+  }
+
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  graphStatus output_status;
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  for (int i = 0; i < output_shapes.size(); i++) {
+    GeTensorDescPtr y_desc = op_desc->MutableOutputDesc("y");
+    TensorDesc output_desc = op.GetDynamicOutputDesc("y", i);
+    Shape shape(output_shapes[i]);
+    output_desc.SetShape(Shape(output_shapes[i]));
+    output_desc.SetDataType(output_types[i]);
+    if (RankKnown(shape)) {
+      auto dims = shape.GetDims();
+      bool shape_fully_defined = true;
+      for (const int64_t& dim : dims) {
+        if (dim == UNKNOWN_DIM) {
+          shape_fully_defined = false;
+          break;
+        }
+      }
+      if (!shape_fully_defined) {
+        std::vector<std::pair<int64_t, int64_t>> shape_range;
+        for (int j = 0; j < dims.size(); j++) {
+          int64_t dim = dims[j];
+          if (dynamic_graph_execute_mode == "lazy_recompile") {
+            shape_range.push_back(dim == UNKNOWN_DIM ? std::pair<int64_t, int64_t>{1, -1} : \
+                                                       std::pair<int64_t, int64_t>{dim, dim});
+          } else {
+            shape_range.push_back(shape_ranges[i][j]);
+          }
+        }
+        output_desc.SetShapeRange(shape_range);
+      }
+    }
+    output_status = op.UpdateDynamicOutputDesc("y", i, output_desc);
+    if (output_status != GRAPH_SUCCESS) {
+      OP_LOGE(op.GetName().c_str(), "Update [%s] [%d] failed", "y", i);
+      return GRAPH_FAILED;
+    }
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(DynamicGetNext, DynamicGetNextInfer);
 
 // --------------------------------LruCache-------------------------------------
 IMPLEMT_COMMON_INFERFUNC(LruCacheInferShape) {
