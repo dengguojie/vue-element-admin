@@ -48,6 +48,18 @@ def select_compute(condition, x1, x2, y, kernel_name="select"):
     res: TVM tensor
         the result of compute
     """
+    shape1 = shape_util.shape_to_list(x1.shape)
+    shape2 = shape_util.shape_to_list(x2.shape)
+    shape1 = shape_util.scalar2tensor_one(shape1)
+
+    shape2 = shape_util.scalar2tensor_one(shape2)
+
+    shape1, shape2, shape_max = shape_util.broadcast_shapes(shape1, shape2, param_name_input1="x1",
+                                                            param_name_input2="x2")
+
+    x1 = tbe.broadcast(x1, shape_max)
+    x2 = tbe.broadcast(x2, shape_max)
+
     res = tbe.vsel(condition, x1, x2)
     return res
 
