@@ -808,4 +808,20 @@ IMPLEMT_COMMON_INFERFUNC(LeakyReluInferShape) {
 }
 COMMON_INFER_FUNC_REG(LeakyRelu, LeakyReluInferShape);
 // ----------------LeakyRelu END-----------------
+
+// ----------------LogSigmoid--------------------
+IMPLEMT_COMMON_INFERFUNC(LogSigmoidInferShape) {
+  Shape input_shape = op.GetInputDesc("x").GetShape();
+  TensorDesc output_desc = op.GetOutputDesc("y");
+  output_desc.SetShape(input_shape);
+  DataType input_dtype = op.GetInputDesc("x").GetDataType();
+  output_desc.SetDataType(input_dtype);
+  Format input_format = op.GetInputDesc("x").GetFormat();
+  output_desc.SetFormat(input_format);
+  (void)op.UpdateOutputDesc("y", output_desc);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(LogSigmoid, LogSigmoidInferShape);
+
 }  // namespace ge
