@@ -70,6 +70,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/identity.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/reshape.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/round.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/strided_slice.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/less.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/logging.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/top_k.cc
@@ -148,6 +149,7 @@ set(_cpu_kernels_ut_files
   testcase/identity_utest.cpp
   testcase/reshape_utest.cpp
   testcase/round_utest.cpp
+  testcase/strided_slice_utest.cpp
   testcase/less_kernel_utest.cpp
   testcase/logging_kernel_utest.cpp
   testcase/top_k_utest.cpp
