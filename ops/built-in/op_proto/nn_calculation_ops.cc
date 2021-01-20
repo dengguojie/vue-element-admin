@@ -53,6 +53,8 @@ namespace {
   const int32_t kConv3dDataSlice = 6;
   const int32_t kDeformDimSizeLimit = 4;
   const int32_t kDeformKsizeLimit = 2;
+  const int64_t kDynamicRangeLowerBound = 1; 
+  const int64_t kDynamicRangeUpperBound = 4096;
 }
 
 // ----------------LSTM begin-------------------
@@ -4859,8 +4861,8 @@ static void SetConv3dOutShapeDimRange(const std::string& padding,
   int32_t kernel = attr_params["kernel"];
   int64_t low = fm_range[idx].first;
   int64_t high = fm_range[idx].second;
-  if (low == 1 && high == -1) {
-    out_range[idx].first = low;
+  if (high == -1) {
+    out_range[idx].first = std::max(low, kDynamicRangeLowerBound);
     out_range[idx].second = high;
   } else {
     if (padding == "SAME") {
@@ -4870,6 +4872,9 @@ static void SetConv3dOutShapeDimRange(const std::string& padding,
       out_range[idx].first = (low + pad - dilation * (kernel - 1) - 1) / stride + 1;
       out_range[idx].second = (high + pad - dilation * (kernel - 1) - 1) / stride + 1;
     }
+
+    out_range[idx].first = std::max(out_range[idx].first, kDynamicRangeLowerBound);
+    out_range[idx].second = std::min(out_range[idx].second, kDynamicRangeUpperBound);
   }
 }
 

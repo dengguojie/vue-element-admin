@@ -380,6 +380,56 @@ TEST_F(Conv3DProtoTest, conv3d_Dilation_h_Not_EQ_1_Failed){
     EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
+TEST_F(Conv3DProtoTest, conv3d_dynamic_dhw_normal){
+    ge::op::Conv3D op;
+    op.UpdateInputDesc("x", create_desc_with_ori(
+      {1, -1, -1, -1, 32}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {1, -1, -1, -1, 32}, ge::FORMAT_NDHWC));
+    op.UpdateInputDesc("filter", create_desc_with_ori(
+      {2, 3, 3, 32, 64}, ge::DT_FLOAT16, ge::FORMAT_DHWCN,
+      {2, 3, 3, 32, 64}, ge::FORMAT_DHWCN));
+    op.UpdateOutputDesc("y", create_desc_with_ori(
+      {1, -1, -1, -1, 64}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {1, -1, -1, -1, 64}, ge::FORMAT_NDHWC));
+
+    op.SetAttr("strides", {1, 1, 1, 1, 1});
+    op.SetAttr("pads", {0, 1, 1, 1, 1, 1});
+    op.SetAttr("dilations", {1, 1, 1, 1, 1});
+    std::vector<std::pair<int64_t, int64_t>> fm_range = {{1, 1}, {40, 50}, {10, 20}, {10, 20}, {32, 32}};
+    auto x_tensor = op.get_input_desc_x();
+    x_tensor.SetShapeRange(fm_range);
+    op.update_input_desc_x(x_tensor);
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(Conv3DProtoTest, conv3d_dynamic_dhw_high_unlimited){
+    ge::op::Conv3D op;
+    op.UpdateInputDesc("x", create_desc_with_ori(
+      {1, -1, -1, -1, 32}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {1, -1, -1, -1, 32}, ge::FORMAT_NDHWC));
+    op.UpdateInputDesc("filter", create_desc_with_ori(
+      {2, 3, 3, 32, 64}, ge::DT_FLOAT16, ge::FORMAT_DHWCN,
+      {2, 3, 3, 32, 64}, ge::FORMAT_DHWCN));
+    op.UpdateOutputDesc("y", create_desc_with_ori(
+      {1, -1, -1, -1, 64}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {1, -1, -1, -1, 64}, ge::FORMAT_NDHWC));
+
+    op.SetAttr("strides", {1, 1, 1, 1, 1});
+    op.SetAttr("pads", {0, 1, 1, 1, 1, 1});
+    op.SetAttr("dilations", {1, 1, 1, 1, 1});
+    std::vector<std::pair<int64_t, int64_t>> fm_range = {{1, 1}, {1, -1}, {1, -1}, {1, -1}, {32, 32}};
+    auto x_tensor = op.get_input_desc_x();
+    x_tensor.SetShapeRange(fm_range);
+    op.update_input_desc_x(x_tensor);
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
 // infer data slice --- empty query
 TEST_F(Conv3DProtoTest, conv3d_infer_data_slice_query_empty){
     ge::op::Conv3D op;
