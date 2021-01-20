@@ -13,6 +13,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 dynamic_lstm_v2
 """
+# pylint: disable=too-many-lines
 import operator
 
 from te.lang.cce import broadcast
@@ -43,6 +44,7 @@ from te.tvm.schedule import create_schedule
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
+#pylint: disable=invalid-name
 def sigmoid_compute(input_x):
     """
     calculating sigmoid
@@ -194,7 +196,7 @@ def get_emit_insn_map(tensor):
     return insn
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals
+# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,unused-argument
 def check_prama_dtype(input_x, weight, bias, h0, c0, y, output_h, output_c):
     """
     check parameters dtype
@@ -203,7 +205,7 @@ def check_prama_dtype(input_x, weight, bias, h0, c0, y, output_h, output_c):
     pass
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals
+# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,unused-argument
 def check_prama_shape(input_x, weight, bias, cont, h0, c0, wci,
                       wcf, wco, mask, y, output_h, output_c):
     """
@@ -212,7 +214,7 @@ def check_prama_shape(input_x, weight, bias, cont, h0, c0, wci,
     pass
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals
+# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,unused-argument
 def check_attr(cell_type, direction, cell_depth, use_peephole, keep_prob,
                cell_clip, num_proj, time_major, activation):
     """
@@ -230,7 +232,7 @@ def check_attr(cell_type, direction, cell_depth, use_peephole, keep_prob,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
-# pylint: disable=too-many-function-args,too-many-statements
+# pylint: disable=too-many-function-args,too-many-statements,unused-argument
 def dynamic_lstm_v2(input_x, weight, bias, cont, w_xc_x_static, h0, c0, wci, wcf,
                 wco, mask, y, output_h, output_c, last_output_h, last_output_c,
                 num_output=0, expose_hidden=False, need_output_last=False, forget_bias=0.0,
@@ -489,7 +491,7 @@ def dynamic_rnn_tik_high_precision(input_list, custom_list):
 
 
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
-# pylint: disable=too-many-statements
+# pylint: disable=too-many-statements,unnecessary-lambda
 def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, static, s_init_h_gm, s_init_c_gm,
                      s_state_h_gm_last, s_state_c_gm_last, sync0, is_first_round, is_global_init,
                      has_static, need_output_last):
@@ -528,8 +530,7 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, static,
     if is_first_round:
         if is_global_init:
             s_state_h_ub = tvm.compute(shape_h,
-                                       lambda _, i, j, k, l: s_init_h_gm[
-                                           0, i, j, k, l], name="s_init_h")
+                                       lambda _, i, j, k, l: s_init_h_gm[0, i, j, k, l], name="s_init_h")
             s_state_c_ub = tvm.compute(shape_i,
                                        lambda _, i, j, k, l: s_init_c_gm[0, i, j, k, l], name='s_init_c')
         else:
@@ -546,15 +547,17 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, static,
                             tag="broadcast")
     else:
         s_state_h_ub = tvm.compute(shape_h,
-                                   lambda _, i, j, k, l: s_state_h_gm_last[
-                                       0, i, j, k, l], name="s_state_h_ub")
+                                   lambda _, i, j, k, l: s_state_h_gm_last[0, i, j, k, l],
+                                    name="s_state_h_ub")
         s_state_c_ub = tvm.compute(shape_i,
-                                   lambda _, i, j, k, l: s_state_c_gm_last[
-                                       0, i, j, k, l], name="s_state_c_ub")
+                                   lambda _, i, j, k, l: s_state_c_gm_last[0, i, j, k, l],
+                                    name="s_state_c_ub")
     
     # handle cont mul h  caffe
     tmp_shape = [1, 1, (seq_length.shape[1] + 15) // 16, 16, 1]
-    tensor_seq_length_ub = tvm.compute(tmp_shape, lambda i, j, l, m, n: seq_length[l, m], name='tensor_seq_length_ub')
+    tensor_seq_length_ub = tvm.compute(
+        tmp_shape, lambda i, j, l, m, n: seq_length[0, l * 16 + m], name='tensor_seq_length_ub'
+        )
     tensor_seq_length_bc_ub = broadcast(tensor_seq_length_ub, shape_h)
     s_state_h_mul_cont_ub = vmul(s_state_h_ub, tensor_seq_length_bc_ub)
     
@@ -1025,7 +1028,7 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, static,
     return return_list, s
 
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
-# pylint: disable=too-many-statements
+# pylint: disable=too-many-statements,unnecessary-lambda
 def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, static, s_init_h_gm, s_init_c_gm,
                      s_state_h_gm_last, s_state_c_gm_last, sync0, is_first_round, is_global_init,
                      has_static, need_output_last):
@@ -1089,7 +1092,9 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, static, s
     
     # handle cont mul h  caffe
     tmp_shape = [1, 1, (seq_length.shape[1] + 15) // 16, 16, 1]
-    tensor_seq_length_ub = tvm.compute(tmp_shape, lambda i, j, l, m, n: seq_length[l, m], name='tensor_seq_length_ub')
+    tensor_seq_length_ub = tvm.compute(
+        tmp_shape, lambda i, j, l, m, n: seq_length[0, l * 16 + m], name='tensor_seq_length_ub'
+        )
     tensor_seq_length_bc_ub = broadcast(tensor_seq_length_ub, shape_h)
     s_state_h_mul_cont_ub_tmp = vmul(s_state_h_ub, tensor_seq_length_bc_ub)
     s_state_h_mul_cont_ub = s_state_h_mul_cont_ub_tmp
@@ -1186,32 +1191,57 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, static, s
                     lambda t, i, j, k, l: c_ub_bias(t, o_t_index, i, j, k, l),
                     name="o_t",
                     tag="split_com")
-        shape_static = (1, n_size, m_size, 16, 16)
+
         output_dim = shape_i[1]
-        tensor_static_ub_fp16 = tvm.compute(shape_static, lambda _, j, k, l, m: static(j, k, l, m),
-         name="tensor_static_ub")
-        tensor_static_ub = tensor_static_ub_fp16
+        tensor_static_it_ub_fp16 = tvm.compute(shape_i, lambda _, j, k, l, m: static(j, k, l, m),
+         name="tensor_static_it_ub_fp16")
+        tensor_static_ft_ub_fp16 = tvm.compute(shape_i, lambda _, j, k, l, m: static(j, k + output_dim, l, m),
+         name="tensor_static_ft_ub_fp16")
+        tensor_static_ot_ub_fp16 = tvm.compute(shape_i, lambda _, j, k, l, m: static(j, k + 2 * output_dim, l, m),
+         name="tensor_static_ot_ub_fp16")
+        tensor_static_jt_ub_fp16 = tvm.compute(shape_i, lambda _, j, k, l, m: static(j, k + 3 * output_dim, l, m),
+         name="tensor_static_jt_ub_fp16")
+
+        tensor_static_it_ub = tensor_static_it_ub_fp16
+        tensor_static_ft_ub = tensor_static_ft_ub_fp16
+        tensor_static_ot_ub = tensor_static_ot_ub_fp16
+        tensor_static_jt_ub = tensor_static_jt_ub_fp16
         if fp16_input_output:
-            tensor_static_ub_fp32 = tvm.compute(
-                shape_static, lambda *indices: tensor_static_ub_fp16(*indices).astype('float32'),
-                name="tensor_static_ub_fp32_drnn_cast", tag="elewise_single_cast"
+            tensor_static_it_ub_fp32 = tvm.compute(
+                shape_i, lambda *indices: tensor_static_it_ub_fp16(*indices).astype('float32'),
+                name="tensor_static_it_ub_fp32_drnn_cast", tag="elewise_single_cast"
             )
-            tensor_static_ub = tensor_static_ub_fp32
+            tensor_static_it_ub = tensor_static_it_ub_fp32
+            tensor_static_ft_ub_fp32 = tvm.compute(
+                shape_i, lambda *indices: tensor_static_ft_ub_fp16(*indices).astype('float32'),
+                name="tensor_static_ft_ub_fp32_drnn_cast", tag="elewise_single_cast"
+            )
+            tensor_static_ft_ub = tensor_static_ft_ub_fp32
+            tensor_static_ot_ub_fp32 = tvm.compute(
+                shape_i, lambda *indices: tensor_static_ot_ub_fp16(*indices).astype('float32'),
+                name="tensor_static_ot_ub_fp32_drnn_cast", tag="elewise_single_cast"
+            )
+            tensor_static_ot_ub = tensor_static_ot_ub_fp32
+            tensor_static_jt_ub_fp32 = tvm.compute(
+                shape_i, lambda *indices: tensor_static_jt_ub_fp16(*indices).astype('float32'),
+                name="tensor_static_jt_ub_fp32_drnn_cast", tag="elewise_single_cast"
+            )
+            tensor_static_jt_ub = tensor_static_jt_ub_fp32
 
         it_add_static = tvm.compute(
-            shape_i, lambda t, i, j, k, l: i_t(t, i, j, k, l) + tensor_static_ub(t, i, j, k, l),
+            shape_i, lambda t, i, j, k, l: i_t(t, i, j, k, l) + tensor_static_it_ub(t, i, j, k, l),
             name='it_add_static', tag='elewise_binary_add'
         )
         ft_add_static = tvm.compute(
-            shape_i, lambda t, i, j, k, l: f_t(t, i, j, k, l) + tensor_static_ub(t, i + output_dim, j, k, l),
+            shape_i, lambda t, i, j, k, l: f_t(t, i, j, k, l) + tensor_static_ft_ub(t, i, j, k, l),
             name='ft_add_static', tag='elewise_binary_add'
         )
         ot_add_static = tvm.compute(
-            shape_i, lambda t, i, j, k, l: o_t(t, i, j, k, l) + tensor_static_ub(t, i + output_dim * 2, j, k, l),
+            shape_i, lambda t, i, j, k, l: o_t(t, i, j, k, l) + tensor_static_ot_ub(t, i, j, k, l),
             name='ot_add_static', tag='elewise_binary_add'
         )
         jt_add_static = tvm.compute(
-            shape_i, lambda t, i, j, k, l: j_t(t, i, j, k, l) + tensor_static_ub(t, i + output_dim * 3, j, k, l),
+            shape_i, lambda t, i, j, k, l: j_t(t, i, j, k, l) + tensor_static_jt_ub(t, i, j, k, l),
             name='jt_add_static', tag='elewise_binary_add'
         )
         f_t_sigmoid = sigmoid_compute(ft_add_static)
@@ -1443,9 +1473,15 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, static, s
     
     s[a_ub].set_scope(scope_ubuf)
     if has_static:
-        s[tensor_static_ub_fp16].set_scope(scope_ubuf)
+        s[tensor_static_it_ub_fp16].set_scope(scope_ubuf)
+        s[tensor_static_ft_ub_fp16].set_scope(scope_ubuf)
+        s[tensor_static_ot_ub_fp16].set_scope(scope_ubuf)
+        s[tensor_static_jt_ub_fp16].set_scope(scope_ubuf)
         if fp16_input_output:
-            s[tensor_static_ub_fp32].set_scope(scope_ubuf)
+            s[tensor_static_it_ub_fp32].set_scope(scope_ubuf)
+            s[tensor_static_ft_ub_fp32].set_scope(scope_ubuf)
+            s[tensor_static_ot_ub_fp32].set_scope(scope_ubuf)
+            s[tensor_static_jt_ub_fp32].set_scope(scope_ubuf)
     
     if need_output_last:
         s[last_update_c_back].set_scope(scope_ubuf)
@@ -1557,7 +1593,9 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, static, s
     s[s_state_c_ub].compute_at(s[update_h_gm], vn_o_inner)
     s[s_state_h_ub].compute_at(s[update_h_gm], vn_o_inner)
     s[tensor_seq_length_ub_bc_conv].compute_at(s[update_h_gm], vn_o_inner)
-
+    s[tensor_seq_length_ub].compute_at(s[update_h_gm], vn_o_inner)
+    s[tensor_seq_length_bc_ub].compute_at(s[update_h_gm], vn_o_inner)
+    s[s_state_h_mul_cont_ub_tmp].compute_at(s[update_h_gm], vn_o_inner)    
     s[barrier_tensor].compute_at(s[update_h_gm], vn_o_inner)
 
     for tensor in elewise_tensors:
@@ -1631,11 +1669,23 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, static, s
         s[bias_ub_fp32].emit_insn(bias_ub_fp32.op.axis[0], 'vector_conv')
     
     if has_static:
-        s[tensor_static_ub_fp16].emit_insn(tensor_static_ub_fp16.op.axis[0], 'dma_copy')
-        s[tensor_static_ub_fp16].compute_at(s[update_h_gm], vn_o_inner)
+        s[tensor_static_it_ub_fp16].emit_insn(tensor_static_it_ub_fp16.op.axis[3], 'dma_copy')
+        s[tensor_static_ft_ub_fp16].emit_insn(tensor_static_ft_ub_fp16.op.axis[3], 'dma_copy')
+        s[tensor_static_ot_ub_fp16].emit_insn(tensor_static_ot_ub_fp16.op.axis[3], 'dma_copy')
+        s[tensor_static_jt_ub_fp16].emit_insn(tensor_static_jt_ub_fp16.op.axis[3], 'dma_copy')
+        s[tensor_static_it_ub_fp16].compute_at(s[update_h_gm], vn_o_inner)
+        s[tensor_static_ft_ub_fp16].compute_at(s[update_h_gm], vn_o_inner)
+        s[tensor_static_ot_ub_fp16].compute_at(s[update_h_gm], vn_o_inner)
+        s[tensor_static_jt_ub_fp16].compute_at(s[update_h_gm], vn_o_inner)
         if fp16_input_output:
-            s[tensor_static_ub_fp32].emit_insn(tensor_static_ub_fp32.op.axis[0], 'vector_conv')
-            s[tensor_static_ub_fp32].compute_at(s[update_h_gm], vn_o_inner)
+            s[tensor_static_it_ub_fp32].emit_insn(tensor_static_it_ub_fp32.op.axis[3], 'vector_conv')
+            s[tensor_static_ft_ub_fp32].emit_insn(tensor_static_ft_ub_fp32.op.axis[3], 'vector_conv')
+            s[tensor_static_ot_ub_fp32].emit_insn(tensor_static_ot_ub_fp32.op.axis[3], 'vector_conv')
+            s[tensor_static_jt_ub_fp32].emit_insn(tensor_static_jt_ub_fp32.op.axis[3], 'vector_conv')
+            s[tensor_static_it_ub_fp32].compute_at(s[update_h_gm], vn_o_inner)
+            s[tensor_static_ft_ub_fp32].compute_at(s[update_h_gm], vn_o_inner)
+            s[tensor_static_ot_ub_fp32].compute_at(s[update_h_gm], vn_o_inner)
+            s[tensor_static_jt_ub_fp32].compute_at(s[update_h_gm], vn_o_inner)
 
     mad_dict = {"mad_pattern":0, "k_outer":[l1_k_outer, l0_k_outer]}
     s[c_l0c].emit_insn(l0_n_inner, 'mad', mad_dict)
