@@ -24,7 +24,7 @@
 #include "register/scope/scope_fusion_pass_register.h"
 
 namespace ge {
-static const char* const kScopeType = "DynamicLSTM";
+static const char* const kScopeType = "DynamicRNN";
 static const char* const kLstmCellTanhType = "general_basic_lstm_cell_tanh";
 static const char* const kLstmCellReluType = "general_basic_lstm_cell_relu";
 static const char* const kLstmCellRelu6Type = "general_basic_lstm_cell_relu6";
@@ -33,7 +33,7 @@ static const char* const kFwWhileType = "fw_while";
 static const char* const kBwWhileType = "bw_while";
 static const char* const kRnnWhileType = "rnn_while";
 static const char* const kWhileType = "while";
-static const char* const kOpType = "DynamicLSTM";
+static const char* const kOpType = "DynamicRNN";
 static const char* const kTranspose = "transpose";
 
 std::vector<ScopeFusionPatterns> ScopeDynamicLSTMPass::DefinePatterns() {
