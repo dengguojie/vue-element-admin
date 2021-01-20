@@ -2564,47 +2564,69 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
     shape = lhs.shape
 
     def _get_cmpvs_lambda_func(operation, lhs, rhs):
-        if operation == 'lt':
-            lambda_func = lambda *indice: lhs(*indice) < rhs
-        elif operation == 'gt':
-            lambda_func = lambda *indice: lhs(*indice) > rhs
-        elif operation == 'le':
-            lambda_func = lambda *indice: lhs(*indice) <= rhs
-        elif operation == 'ge':
-            lambda_func = lambda *indice: lhs(*indice) >= rhs
-        elif operation == 'eq':
-            lambda_func = lambda *indice: tvm.expr.EQ(lhs(*indice), rhs)
-        elif operation == 'ne':
-            lambda_func = lambda *indice: tvm.expr.NE(lhs(*indice), rhs)
+        if in_dynamic_and_static_unify():
+            dynamic_cmpvs_lambda_func_dict = {
+                'lt': lambda *indice: (lhs(*indice) < rhs).astype("uint1"),
+                'gt': lambda *indice: (lhs(*indice) > rhs).astype("uint1"),
+                'le': lambda *indice: (lhs(*indice) <= rhs).astype("uint1"),
+                'ge': lambda *indice: (lhs(*indice) >= rhs).astype("uint1"),
+                'eq': lambda *indice: (tvm.expr.EQ(lhs(*indice), rhs)).astype("uint1"),
+                'ne': lambda *indice: (tvm.expr.NE(lhs(*indice), rhs)).astype("uint1")
+            }
+            lambda_func = dynamic_cmpvs_lambda_func_dict[operation]
         else:
-            dict_args = dict()
-            dict_args["errCode"] = "E90002"
-            dict_args["detailed_cause"] = "vcmp do not support the " \
-                                          "input op_name: %s" % operation
-            raise RuntimeError(dict_args, get_error_message(dict_args))
+            if operation == 'lt':
+                lambda_func = lambda *indice: lhs(*indice) < rhs
+            elif operation == 'gt':
+                lambda_func = lambda *indice: lhs(*indice) > rhs
+            elif operation == 'le':
+                lambda_func = lambda *indice: lhs(*indice) <= rhs
+            elif operation == 'ge':
+                lambda_func = lambda *indice: lhs(*indice) >= rhs
+            elif operation == 'eq':
+                lambda_func = lambda *indice: tvm.expr.EQ(lhs(*indice), rhs)
+            elif operation == 'ne':
+                lambda_func = lambda *indice: tvm.expr.NE(lhs(*indice), rhs)
+            else:
+                dict_args = dict()
+                dict_args["errCode"] = "E90002"
+                dict_args["detailed_cause"] = "vcmp do not support the " \
+                                              "input op_name: %s" % operation
+                raise RuntimeError(dict_args, get_error_message(dict_args))
         return lambda_func
 
     def _get_cmpv_lambda_func(operation, lhs, rhs):
-        if operation == 'lt':
-            lambda_func = lambda *indice: lhs(*indice) < rhs(*indice)
-        elif operation == 'gt':
-            lambda_func = lambda *indice: lhs(*indice) > rhs(*indice)
-        elif operation == 'le':
-            lambda_func = lambda *indice: lhs(*indice) <= rhs(*indice)
-        elif operation == 'ge':
-            lambda_func = lambda *indice: lhs(*indice) >= rhs(*indice)
-        elif operation == 'eq':
-            lambda_func = lambda *indice: \
-                tvm.expr.EQ(lhs(*indice), rhs(*indice))
-        elif operation == 'ne':
-            lambda_func = lambda *indice: \
-                tvm.expr.NE(lhs(*indice), rhs(*indice))
+        if in_dynamic_and_static_unify():
+            dynamic_cmpv_lambda_func_dict = {
+                'lt': lambda *indice: (lhs(*indice) < rhs(*indice)).astype("uint1"),
+                'gt': lambda *indice: (lhs(*indice) > rhs(*indice)).astype("uint1"),
+                'le': lambda *indice: (lhs(*indice) <= rhs(*indice)).astype("uint1"),
+                'ge': lambda *indice: (lhs(*indice) >= rhs(*indice)).astype("uint1"),
+                'eq': lambda *indice: (tvm.expr.EQ(lhs(*indice), rhs(*indice))).astype("uint1"),
+                'ne': lambda *indice: (tvm.expr.NE(lhs(*indice), rhs(*indice))).astype("uint1")
+            }
+            lambda_func = dynamic_cmpv_lambda_func_dict[operation]
         else:
-            dict_args = dict()
-            dict_args["errCode"] = "E90002"
-            dict_args["detailed_cause"] = "vcmp do not support the " \
-                                          "input op_name: %s" % operation
-            raise RuntimeError(dict_args, get_error_message(dict_args))
+            if operation == 'lt':
+                lambda_func = lambda *indice: lhs(*indice) < rhs(*indice)
+            elif operation == 'gt':
+                lambda_func = lambda *indice: lhs(*indice) > rhs(*indice)
+            elif operation == 'le':
+                lambda_func = lambda *indice: lhs(*indice) <= rhs(*indice)
+            elif operation == 'ge':
+                lambda_func = lambda *indice: lhs(*indice) >= rhs(*indice)
+            elif operation == 'eq':
+                lambda_func = lambda *indice: \
+                    tvm.expr.EQ(lhs(*indice), rhs(*indice))
+            elif operation == 'ne':
+                lambda_func = lambda *indice: \
+                    tvm.expr.NE(lhs(*indice), rhs(*indice))
+            else:
+                dict_args = dict()
+                dict_args["errCode"] = "E90002"
+                dict_args["detailed_cause"] = "vcmp do not support the " \
+                                              "input op_name: %s" % operation
+                raise RuntimeError(dict_args, get_error_message(dict_args))
         return lambda_func
 
     cmp_op = "elewise_binary_vcmpv_" + operation
