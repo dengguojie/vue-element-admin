@@ -330,6 +330,7 @@ def calc_expect_func(x_weight_input, weight_hidden, bias_hidden, seq_length, ini
 def get_params(t_size, m_size, hidden_size, bias_dtype, data_range=[0.01, 0.1], init_data_range=[0.01, 0.1]):
     dtype = 'float16'
     shape_w2 = [hidden_size, 3*hidden_size, 16, 16]
+    shape_seq = [m_size * 16,]
     shape_c = [t_size, hidden_size, m_size, 16, 16]
     shape_c_1 = [1, hidden_size, m_size, 16, 16]
     shape_bias = [3* hidden_size*16,]
@@ -338,6 +339,7 @@ def get_params(t_size, m_size, hidden_size, bias_dtype, data_range=[0.01, 0.1], 
     cache = {"shape":shape_x_weight_input, "dtype":'float32', "param_type": "input", "value_range": data_range, "ori_format": "NC1HWC0", "format": "NC1HWC0", "ori_shape": shape_c}
     w2 = {"shape":shape_w2, "dtype":dtype, "param_type": "input", "value_range": data_range, "ori_format": "NC1HWC0", "format": "NC1HWC0", "ori_shape": shape_c}
     b2 = {"shape":shape_bias, "dtype":bias_dtype, "param_type": "input", "value_range": data_range, "ori_format": "NC1HWC0", "format": "NC1HWC0", "ori_shape": shape_c}
+    seq = {"shape":shape_seq, "dtype":'int32', "param_type": "input", "value_range": data_range, "ori_format": "NC1HWC0", "format": "NC1HWC0", "ori_shape": shape_c}
     s_init_h_gm = {"shape":shape_c_1, "dtype":bias_dtype, "param_type": "input", "value_range": init_data_range, "ori_format": "NC1HWC0", "format": "NC1HWC0", "ori_shape": shape_c}
     output_y = {"shape":shape_c, "dtype":bias_dtype, "param_type": "output", "ori_format": "NC1HWC0", "format": "NC1HWC0", "ori_shape": shape_c}
     output_h = {"shape":shape_c, "dtype":bias_dtype, "param_type": "output", "ori_format": "NC1HWC0", "format": "NC1HWC0", "ori_shape": shape_c}
@@ -345,18 +347,24 @@ def get_params(t_size, m_size, hidden_size, bias_dtype, data_range=[0.01, 0.1], 
     r = {"shape":shape_c, "dtype":bias_dtype, "param_type": "output", "ori_format": "NC1HWC0", "format": "NC1HWC0", "ori_shape": shape_c}
     n = {"shape":shape_c, "dtype":bias_dtype, "param_type": "output", "ori_format": "NC1HWC0", "format": "NC1HWC0", "ori_shape": shape_c}
     hn = {"shape":shape_c, "dtype":bias_dtype, "param_type": "output", "ori_format": "NC1HWC0", "format": "NC1HWC0", "ori_shape": shape_c}
-    return cache, w2, b2, s_init_h_gm, output_y, output_h, i, r, n, hn
+    return cache, w2, b2, seq, s_init_h_gm, output_y, output_h, i, r, n, hn
 
 
 # for cov
-cache, w2, b2, s_init_h_gm, output_y, output_h, i, r, n, hn = get_params(t_size=2, m_size=1, hidden_size=32, bias_dtype='float32')
+cache, w2, b2, seq, s_init_h_gm, output_y, output_h, i, r, n, hn = get_params(t_size=2, m_size=1, hidden_size=32, bias_dtype='float32')
+ut_case.add_case("all", {
+    "params": [cache, w2, b2, seq, None, output_y, output_h, None, None, None, None]
+})
 ut_case.add_case("all", {
     "params": [cache, w2, b2, None, None, output_y, output_h, None, None, None, None]
 })
 ut_case.add_case("all", {
+    "params": [cache, w2, b2, seq, s_init_h_gm, output_y, output_h, i, r, n, hn]
+})
+ut_case.add_case("all", {
     "params": [cache, w2, b2, None, s_init_h_gm, output_y, output_h, i, r, n, hn]
 })
-cache, w2, b2, s_init_h_gm, output_y, output_h, i, r, n, hn = get_params(t_size=2, m_size=1, hidden_size=32, bias_dtype='float16')
+cache, w2, b2, seq, s_init_h_gm, output_y, output_h, i, r, n, hn = get_params(t_size=2, m_size=1, hidden_size=32, bias_dtype='float16')
 ut_case.add_case("all", {
     "params": [cache, w2, b2, None, None, output_y, output_h, None, None, None, None, "UNIDIRECTIONAL", 1, 1.0, -1.0, 0, True, "tanh", "rzh"]
 })
@@ -399,11 +407,7 @@ ut_case.add_case("all", {
     "params": [cache, w2, b2, None, None, output_y, output_h, None, None, None, None, "UNIDIRECTIONAL", 1, 1.0, -1.0, 0, True, "tanh", "zrh", False],
     "expect": RuntimeError
 })
-ut_case.add_case("all", {
-    "params": [cache, w2, b2, b2, None, output_y, output_h, None, None, None, None],
-    "expect": RuntimeError
-})
-cache, w2, b2, s_init_h_gm, output_y, output_h, i, r, n, hn = get_params(t_size=2, m_size=1, hidden_size=32, bias_dtype='float16')
+cache, w2, b2, seq, s_init_h_gm, output_y, output_h, i, r, n, hn = get_params(t_size=2, m_size=1, hidden_size=32, bias_dtype='float16')
 r["shape"] = [0]
 ut_case.add_case("all", {
     "params": [cache, w2, b2, None, None, output_y, output_h, r, i, n, hn],
@@ -425,7 +429,7 @@ ut_case.add_case("all", {
     "params": [cache, w2, b2, None, None, r, output_h, i, i, n, hn],
     "expect": RuntimeError
 })
-cache, w2, b2, s_init_h_gm, output_y, output_h, i, r, n, hn = get_params(t_size=2, m_size=1, hidden_size=32, bias_dtype='float16')
+cache, w2, b2, seq, s_init_h_gm, output_y, output_h, i, r, n, hn = get_params(t_size=2, m_size=1, hidden_size=32, bias_dtype='float16')
 b2["shape"] = [0]
 ut_case.add_case("all", {
     "params": [cache, w2, b2, None, None, output_y, output_h, i, r, n, hn],
@@ -435,7 +439,7 @@ ut_case.add_case("all", {
     "params": [cache, w2, b2, None, None, output_y, output_h, i, r, n, hn],
     "expect": RuntimeError
 })
-cache, w2, b2, s_init_h_gm, output_y, output_h, i, r, n, hn = get_params(t_size=2, m_size=1, hidden_size=32, bias_dtype='float16')
+cache, w2, b2, seq, s_init_h_gm, output_y, output_h, i, r, n, hn = get_params(t_size=2, m_size=1, hidden_size=32, bias_dtype='float16')
 w2["shape"] = [0,0,0]
 ut_case.add_case("all", {
     "params": [cache, w2, b2, None, None, output_y, output_h, i, r, n, hn],
@@ -445,13 +449,13 @@ ut_case.add_case("all", {
     "params": [cache, w2, b2, None, None, output_y, output_h, i, r, n, hn],
     "expect": RuntimeError
 })
-cache, w2, b2, s_init_h_gm, output_y, output_h, i, r, n, hn = get_params(t_size=2, m_size=1, hidden_size=32, bias_dtype='float16')
+cache, w2, b2, seq, s_init_h_gm, output_y, output_h, i, r, n, hn = get_params(t_size=2, m_size=1, hidden_size=32, bias_dtype='float16')
 w2["shape"][1] = 1
 ut_case.add_case("all", {
     "params": [cache, w2, b2, None, None, output_y, output_h, i, r, n, hn],
     "expect": RuntimeError
 })
-cache, w2, b2, s_init_h_gm, output_y, output_h, i, r, n, hn = get_params(t_size=2, m_size=1, hidden_size=32, bias_dtype='float16')
+cache, w2, b2, seq, s_init_h_gm, output_y, output_h, i, r, n, hn = get_params(t_size=2, m_size=1, hidden_size=32, bias_dtype='float16')
 r["dtype"] = 'float32'
 ut_case.add_case("all", {
     "params": [cache, w2, b2, None, None, output_y, output_h, i, r, n, hn],

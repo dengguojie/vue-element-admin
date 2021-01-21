@@ -211,6 +211,11 @@ def _check_param(x_weight_input, weight_hidden, bias_hidden, seq_length,
                                                           "x_weight_input.shape[2] == output_h.shape[2]",
                                                           "output_h.shape[2]", output_h["shape"][2])
 
+    if seq_length is not None and seq_length["shape"][0] != output_h["shape"][2] * 16:
+        error_manager_vector.raise_err_check_params_rules("DynamicGRUV2Hidden",
+                                                          "seq_length.shape[0] == output_h.shape[2] * 16",
+                                                          "seq_length.shape[0]", output_h["shape"][2])
+
     # k_size
     if weight_hidden["shape"][0] != output_h["shape"][1]:
         error_manager_vector.raise_err_check_params_rules("DynamicGRUV2Hidden",
@@ -248,11 +253,6 @@ def _check_param(x_weight_input, weight_hidden, bias_hidden, seq_length,
     if hidden_new is not None and not operator.eq(output_h["shape"], hidden_new["shape"]):
         error_manager_vector.raise_err_check_params_rules("DynamicGRUV2Hidden", "hidden_new.shape == output_h.shape",
                                                           "hidden_new.shape", str(hidden_new["shape"]))
-
-    # check unsupported parameters
-    if seq_length is not None:
-        error_manager_vector.raise_err_check_params_rules("DynamicGRUV2Hidden", "seq_length == None",
-                                                          "seq_length", str(seq_length))
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
@@ -293,21 +293,21 @@ def dynamic_gru_v2_hidden(x_weight_input, weight_hidden, bias_hidden, seq_length
     if is_m_full_core and is_weight_all_in_l1:
         is_sync = False
         reuse_type = ReuseType.REUSE_ALL
-        _solution(bias_hidden, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type)
+        _solution(bias_hidden, seq_length, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type)
     else:
         is_w_in_l1_cut_core = weight_size / hidden_size * math.ceil(hidden_size / core_num) < l1_size * 0.75
         if is_w_in_l1_cut_core:
             is_sync = True
             reuse_type = ReuseType.REUSE_AFTERCUT
-            _solution(bias_hidden, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type)
+            _solution(bias_hidden, seq_length, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type)
         else:
             is_sync = True
             reuse_type = ReuseType.NO_REUSE
-            _solution(bias_hidden, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type)
+            _solution(bias_hidden, seq_length, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type)
 
 
 # pylint: disable=invalid-name,too-many-statements
-def _solution(bias_hidden, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type):
+def _solution(bias_hidden, seq_length, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type):
     """
     solutions of op
     :return:
@@ -338,6 +338,9 @@ def _solution(bias_hidden, init_h, y, update, gate_order, kernel_name, is_sync, 
         bias2 = tik_instance.Tensor(shape=shape_bias, dtype=bias_dtype, scope=tik.scope_gm, name="bias2")
     else:
         bias2 = None
+    if seq_length is not None:
+        seq_len = tik_instance.Tensor(shape=seq_length.get("shape"), scope=tik.scope_gm,
+                                      dtype="int32", name='seq_length')
     if is_global_init:
         s_init_h_gm = tik_instance.Tensor(shape=shape_h_init, dtype=bias_dtype, scope=tik.scope_gm, name="s_init_h_gm")
     update_h_gm = tik_instance.Tensor(shape=shape_h, dtype=bias_dtype, scope=tik.scope_gm, name="update_h_gm")
@@ -353,6 +356,8 @@ def _solution(bias_hidden, init_h, y, update, gate_order, kernel_name, is_sync, 
     build_input_list = [x_weight_input, weight2]
     if has_bias_hidden:
         build_input_list.append(bias2)
+    if seq_length is not None:
+        build_input_list.append(seq_len)
     if is_global_init:
         build_input_list.append(s_init_h_gm)
     build_output_list = [update_y_gm, update_h_gm]

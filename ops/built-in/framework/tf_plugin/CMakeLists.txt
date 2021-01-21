@@ -154,6 +154,10 @@ set(_tf_plugins
   dynamic_lstm_plugin.cc
   dynamic_plugin.cc
   dynamic_rnn_plugin.cc
+  dynamic_rnn_tf_plugin.cc
+  dynamic_rnn_grad_plugin.cc
+  dynamic_gruv2_plugin.cc
+  dynamic_gruv2_grad_plugin.cc
   dilation2d_plugin.cc
   elu_grad_plugin.cc
   elu_plugin.cc

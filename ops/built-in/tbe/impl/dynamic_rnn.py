@@ -575,6 +575,12 @@ def check_prama_shape(input_x, weight, bias, seq_length, init_h, init_c,
     if (bias["shape"][0] + 15) // 16 != weight["shape"][1]:
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "w, b shape is wrong, please check!")
 
+    # seq_length
+    if seq_length is not None and seq_length["shape"][0] != output_h["shape"][2] * 16:
+        error_manager_vector.raise_err_check_params_rules("DynamicRNN",
+                                                          "seq_length.shape[0] == output_h.shape[2] * 16",
+                                                          "seq_length.shape[0]", output_h["shape"][2])
+
     # check init
     if (init_h is None and init_c is not None) or (
             init_h is not None and init_c is None):
@@ -625,9 +631,6 @@ def check_prama_shape(input_x, weight, bias, seq_length, init_h, init_c,
                                                       "y, output_h shape is different, please check!")
 
     # check unsupport pramas
-    if seq_length is not None:
-        error_manager_vector.raise_err_specific_reson("DynamicRNN", "seq_length only support None, please check!")
-
     if wci is not None:
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "wci only support None, please check!")
 
@@ -748,7 +751,9 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                                  scope=scope_gm, name='weight')
     bias = tik_instance.Tensor(shape=shape_bias, scope=scope_gm,
                                dtype=bias_dtype, name='bias')
-
+    if seq_length is not None:
+        seq_len = tik_instance.Tensor(shape=seq_length.get("shape"), scope=scope_gm,
+                                      dtype="int32", name='seq_length')
     if is_global_init:
         s_init_h_gm = tik_instance.Tensor(shape=shape_hc_init,
                                           dtype=input_dtype,
@@ -783,10 +788,12 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                                           scope=scope_gm,
                                           name='c_t_tanh_gm')
 
+    build_input_list = [input_x, weight, bias]
+    if seq_length is not None:
+        build_input_list.append(seq_len)
     if is_global_init:
-        build_input_list = [input_x, weight, bias, s_init_h_gm, s_init_c_gm]
-    else:
-        build_input_list = [input_x, weight, bias]
+        build_input_list.append(s_init_h_gm)
+        build_input_list.append(s_init_c_gm)
 
     if is_gate_output:
         build_output_list = [update_h_gm_as_y, update_h_gm, update_c_gm,

@@ -195,8 +195,8 @@ def _check_dtype(x, weight_input, weight_hidden, bias_input, bias_hidden,
 
 
 # pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
-def _check_param(x, weight_input, weight_hidden, bias_input, bias_hidden,
-                 seq_length, y, output_h, update, reset, new, hidden_new):
+def _check_param(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_length,
+                 y, output_h, update, reset, new, hidden_new):
     """
     check parameters
     :return:
@@ -210,6 +210,11 @@ def _check_param(x, weight_input, weight_hidden, bias_input, bias_hidden,
     if x["shape"][2] != output_h["shape"][2]:
         error_manager_vector.raise_err_check_params_rules("DynamicGRUV2", "x.shape[2] == output_h.shape[2]",
                                                           "output_h.shape[2]", output_h["shape"][2])
+
+    if seq_length is not None and seq_length["shape"][0] != output_h["shape"][2] * 16:
+        error_manager_vector.raise_err_check_params_rules("DynamicGRUV2",
+                                                          "seq_length.shape[0] == output_h.shape[2] * 16",
+                                                          "seq_length.shape[0]", output_h["shape"][2])
 
     # k_size
     if weight_input["shape"][0] != x["shape"][1]:
@@ -240,6 +245,7 @@ def _check_param(x, weight_input, weight_hidden, bias_input, bias_hidden,
                                                           "(bias_hidden.shape[0] + 15) // 16 == weight_hidden.shape[1]",
                                                           "bias_hidden.shape[0]", bias_hidden["shape"][0])
 
+
     # check output
     if not operator.eq(output_h["shape"], y["shape"]):
         error_manager_vector.raise_err_check_params_rules("DynamicGRUV2", "y.shape == output_h.shape",
@@ -260,11 +266,6 @@ def _check_param(x, weight_input, weight_hidden, bias_input, bias_hidden,
     if hidden_new is not None and not operator.eq(output_h["shape"], hidden_new["shape"]):
         error_manager_vector.raise_err_check_params_rules("DynamicGRUV2", "hidden_new.shape == output_h.shape",
                                                           "hidden_new.shape", str(hidden_new["shape"]))
-
-    # check unsupported parameters
-    if seq_length is not None:
-        error_manager_vector.raise_err_check_params_rules("DynamicGRUV2", "seq_length == None",
-                                                          "seq_length", str(seq_length))
 
 
 # pylint: disable=too-many-arguments,too-many-branches,too-many-locals
@@ -343,8 +344,8 @@ def dynamic_gru_v2(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_
     """
     _check_dtype(x, weight_input, weight_hidden, bias_input, bias_hidden,
                  init_h, y, output_h, update, reset, new, hidden_new)
-    _check_param(x, weight_input, weight_hidden, bias_input, bias_hidden,
-                 seq_length, y, output_h, update, reset, new, hidden_new)
+    _check_param(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_length,
+                 y, output_h, update, reset, new, hidden_new)
     check_gru_v2_attr("DynamicGRUV2", direction, cell_depth, keep_prob,
                       cell_clip, num_proj, time_major, activation, gate_order, reset_after)
 
@@ -364,21 +365,24 @@ def dynamic_gru_v2(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_
     if is_m_full_core and is_weight_all_in_l1:
         is_sync = False
         reuse_type = ReuseType.REUSE_ALL
-        _solution(x, bias_input, bias_hidden, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type)
+        _solution(x, bias_input, bias_hidden, seq_length, init_h, y, update, gate_order,
+                  kernel_name, is_sync, reuse_type)
     else:
         is_w_in_l1_cut_core = weight_size / hidden_size * math.ceil(hidden_size / core_num) < l1_size * 0.75
         if is_w_in_l1_cut_core:
             is_sync = True
             reuse_type = ReuseType.REUSE_AFTERCUT
-            _solution(x, bias_input, bias_hidden, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type)
+            _solution(x, bias_input, bias_hidden, seq_length, init_h, y, update, gate_order,
+                      kernel_name, is_sync, reuse_type)
         else:
             is_sync = False
             reuse_type = ReuseType.NO_REUSE
-            _solution(x, bias_input, bias_hidden, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type)
+            _solution(x, bias_input, bias_hidden, seq_length, init_h, y, update, gate_order,
+                      kernel_name, is_sync, reuse_type)
 
 
 # pylint: disable=invalid-name,too-many-statements
-def _solution(x, bias_input, bias_hidden, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type):
+def _solution(x, bias_input, bias_hidden, seq_length, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type):
     """
     solutions of op
     :return:
@@ -418,6 +422,9 @@ def _solution(x, bias_input, bias_hidden, init_h, y, update, gate_order, kernel_
         bias2 = tik_instance.Tensor(shape=shape_bias, dtype=bias_dtype, scope=tik.scope_gm, name="bias2")
     else:
         bias2 = None
+    if seq_length is not None:
+        seq_len = tik_instance.Tensor(shape=seq_length.get("shape"), scope=tik.scope_gm,
+                                      dtype="int32", name='seq_length')
     if is_global_init:
         s_init_h_gm = tik_instance.Tensor(shape=shape_h_init, dtype=bias_dtype, scope=tik.scope_gm, name="s_init_h_gm")
     update_h_gm = tik_instance.Tensor(shape=shape_h, dtype=bias_dtype, scope=tik.scope_gm, name="update_h_gm")
@@ -435,6 +442,8 @@ def _solution(x, bias_input, bias_hidden, init_h, y, update, gate_order, kernel_
         build_input_list.append(bias1)
     if has_bias_hidden:
         build_input_list.append(bias2)
+    if seq_length is not None:
+        build_input_list.append(seq_len)
     if is_global_init:
         build_input_list.append(s_init_h_gm)
     build_output_list = [update_y_gm, update_h_gm]
