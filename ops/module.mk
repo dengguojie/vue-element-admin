@@ -43,6 +43,7 @@ PLUGIN_SHARED_LIBS := \
 OPS_PKG_SHARED_LIBS := \
         libops_all_plugin \
         aic-ascend910-ops-info.json \
+        aic-ascend920-ops-info.json \
         aic-ascend310-ops-info.json \
         aic-ascend710-ops-info.json \
         aic-ascend610-ops-info.json \
@@ -509,6 +510,24 @@ include $(BUILD_SYSTEM)/base_rules.mk
 $(LOCAL_BUILT_MODULE):
 	@mkdir -p $(dir $@)
 	@./cann/ops/built-in/tbe/scripts/compile_tbe_info.sh $(product) ascend910
+	@echo $@
+	@echo $(HOST_OUT_INTERMEDIATES)/$(notdir $@)
+	@cp $(HOST_OUT_INTERMEDIATES)/$(notdir $@) $@
+	@echo $(HOST_OUT_INTERMEDIATES)
+
+#########################################
+
+########################################
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := aic-ascend920-ops-info.json
+
+include $(BUILD_SYSTEM)/base_rules.mk
+
+$(LOCAL_BUILT_MODULE):
+	@mkdir -p $(dir $@)
+	@./cann/ops/built-in/tbe/scripts/compile_tbe_info.sh $(product) ascend920
 	@echo $@
 	@echo $(HOST_OUT_INTERMEDIATES)/$(notdir $@)
 	@cp $(HOST_OUT_INTERMEDIATES)/$(notdir $@) $@
