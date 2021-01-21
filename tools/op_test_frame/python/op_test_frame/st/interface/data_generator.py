@@ -139,6 +139,8 @@ class DataGenerator:
             calc_func_params_tmp = list()
             utils.print_info_log(
                 'Start to generate the data for %s.' % case_name)
+            param_info = ""
+            param_info_list = []
             for index, input_desc in enumerate(case['input_desc']):
                 range_min, range_max = input_desc['value_range']
                 if input_desc.get('type') in utils.OPTIONAL_TYPE_LIST:
@@ -177,10 +179,20 @@ class DataGenerator:
                             file_path, error))
                     raise utils.OpTestGenException(
                         utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+                param_info_list.append("{input_name}".format(
+                    input_name=input_desc.get('name')))
             # get attr param
             if case.get('attr'):
                 for index, attr in enumerate(case['attr']):
-                    calc_func_params_tmp.append({'value': attr.get('value')})
+                    calc_func_params_tmp.append(attr.get('value'))
+                    param_info_list.append("{attr_name}".format(
+                        attr_name=attr.get('name')))
+            if case.get("calc_expect_func_file") \
+                    and case.get("calc_expect_func_file_func"):
+                param_info += ', '.join(param_info_list)
+                utils.print_info_log(
+                    "Input parameters of the comparison function: %s(%s)"
+                    % (case.get("calc_expect_func_file_func"), param_info))
             expect_data_paths = self._generate_expect_data(
                 case, calc_func_params_tmp)
             # deal with report
