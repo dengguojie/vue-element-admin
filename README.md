@@ -12,7 +12,7 @@
 
 ##### 发布包安装
 
-`canndev`包含在[昇腾软件包](https://ascend.huawei.com/#/software/cann)中，当软件包安装完毕后，`canndev`便可以被使用。
+`canndev`包含在[CANN软件包](https://ascend.huawei.com/#/software/cann)中，当软件包安装完毕后，`canndev`便可以被使用。
 
 ##### 源码安装
 
