@@ -40,6 +40,23 @@ case3 = {"params": [{"shape": (4032, 64), "dtype": "int32", "format": "ND", "ori
          "expect": "success",
          "support_expect": True}
 
+case9 = {"params": [{"shape": (1,32,2,2,1920,960), "dtype": "float16", "format": "ND", "ori_shape": (1,32,2,2,1920,960),"ori_format": "ND"}, #x
+                    {"shape": (1,32,1920,2,960,2), "dtype": "int32", "format": "ND", "ori_shape":(1,32,1920,2,960,2),"ori_format": "ND"},
+                    (0,1,4,2,5,3),
+                    ],
+         "case_name": "TransposeD_9",
+         "expect": "success",
+         "support_expect": True}
+
+case10 = {"params": [{"shape": (1,32,2,2,960,960), "dtype": "float16", "format": "ND", "ori_shape": (1,32,2,2,960,960),"ori_format": "ND"}, #x
+                    {"shape": (1,32,960,2,960,2), "dtype": "int32", "format": "ND", "ori_shape":(1,32,960,2,960,2),"ori_format": "ND"},
+                    (0,1,4,2,5,3),
+                    ],
+         "case_name": "TransposeD_10",
+         "expect": "success",
+         "support_expect": True}
+
+
 case4 = {"params": [{"shape": (1, 2, 3, 16), "dtype": "float16", "format": "ND", "ori_shape": (1, 2, 3, 16),"ori_format": "ND"}, #x
                     {"shape": (1, 2, 3, 16), "dtype": "float16", "format": "ND", "ori_shape": (1, 2, 3, 16),"ori_format": "ND"},
                     (1, 0, 2),
@@ -89,6 +106,8 @@ ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case6)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case7)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case8)
+ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case9)
+ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case10)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910","Ascend310","Ascend710"])
