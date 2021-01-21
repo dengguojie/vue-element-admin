@@ -391,7 +391,7 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
         util_conv2d.lcm(util_conv2d.lcm(cin_ori, c0_val)//cin_ori, util_conv2d.lcm(cout_ori, 16)//cout_ori), groups)
     c1_opt = math.ceil(cin_ori*enlarge/c0_val)
     cout1_opt = math.ceil(cout_ori*enlarge/16)
-    group_opt = math.ceil(groups/enlarge)
+    group_opt = math.ceil(groups / enlarge)
     c1in_ori_align = math.ceil(cin_ori*groups/c0_val)
 
     _, _, filter_h, filter_w = shape_w

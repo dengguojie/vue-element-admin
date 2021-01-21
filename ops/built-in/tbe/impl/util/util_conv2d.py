@@ -704,7 +704,7 @@ def conv_layer_cce_shape_calc(shape_in, shape_w, in_dtype, \
     block_size_k = tbe_platform.CUBE_MKN[in_dtype]['mac'][1]
     if optim_dict["c0_optim_flg"] and optim_dict["use_v200_c04_flg"] \
             and tbe_platform.get_soc_spec("SOC_VERSION") in \
-            ("Ascend710", "Ascend615", "Ascend610", "Hi3796CV300CS"):
+            ("Ascend710", "Ascend615", "Ascend610", "Hi3796CV300CS", "SD3403"):
         block_size_k = 4
     fmap_shape_nc1hwc0 = (shape_in[0], c1in_ori_align,
                           shape_in[2], shape_in[3], block_size_k)
