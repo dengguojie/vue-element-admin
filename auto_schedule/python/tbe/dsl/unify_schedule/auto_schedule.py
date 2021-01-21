@@ -24,7 +24,6 @@ from te.lang.base import operation_impl as operation
 from topi import generic
 
 
-@tvm.target.generic_func
 def auto_schedule(outs, option=None):
     """Entry of auto-Schedule.
 
@@ -40,12 +39,3 @@ def auto_schedule(outs, option=None):
         The computation schedule for the op.
     """
     pass
-
-
-@auto_schedule.register("cce")
-@generic.auto_schedule.register("cce")
-def _schedule_cce(outs, option=None):
-    if operation.get_context():
-        return dynamic.schedule_cce(outs, option)
-
-    return static.schedule_cce(outs, option)

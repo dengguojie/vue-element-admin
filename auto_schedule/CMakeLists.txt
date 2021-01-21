@@ -29,17 +29,9 @@ if(EXISTS "${tbe_whl}")
   # copy and replace
   set(_purelib_path "${_tmp_path}/te-0.4.0.data/purelib")
   set(_pkg_path "${_purelib_path}/te")
-  set(_pkg_path_tbe "${_purelib_path}/tbe")
   add_custom_target(copy_tbe ALL DEPENDS unzip_tbe)
   add_custom_command(TARGET copy_tbe
-    COMMAND cp -rf ${CMAKE_CURRENT_SOURCE_DIR}/python/lang ${_pkg_path}
-    COMMAND cp -rf ${CMAKE_CURRENT_SOURCE_DIR}/python/utils ${_pkg_path}
-    COMMAND mkdir -p ${_pkg_path_tbe}
-    COMMAND mkdir -p ${_pkg_path_tbe}/common
-    COMMAND cp -rf ${CMAKE_CURRENT_SOURCE_DIR}/python/tbe/dsl ${_pkg_path_tbe}
-    COMMAND cp -rf ${CMAKE_CURRENT_SOURCE_DIR}/python/tbe/common/utils ${_pkg_path_tbe}/common
-    COMMAND cp -f ${CMAKE_CURRENT_SOURCE_DIR}/python/tbe/__init__.py ${_pkg_path_tbe}
-    COMMAND cp -f ${CMAKE_CURRENT_SOURCE_DIR}/python/tbe/common/__init__.py ${_pkg_path_tbe}/common
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/python" "${_pkg_path}"
     COMMAND ${CMAKE_COMMAND} -E copy "${AUTO_SCH_PATH}/setup.py" "${AUTO_SCH_PATH}/LICENSE" "${_purelib_path}"
     COMMENT "Copying auto schedule"
   )
