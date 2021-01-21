@@ -22,7 +22,7 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 # max int64 value
-MAX_INT64_VALUE = 2**64 - 1
+MAX_INT64_VALUE = 2 ** 64 - 1
 # tiling param num
 TILING_ARG_NUM = 28
 # reserved ub size
@@ -31,6 +31,14 @@ RESERVED_UB_SIZE = 8 * 1024
 EIGHT_BIT = 8
 # bytes of one block
 BLOCK_BYTES = 32
+# the vector size is 256B
+VECTOR_BYTE_SIZE = 256
+
+def ceil_div(value_x, value_y):
+    """
+    do ceil division
+    """
+    return (value_x + value_y - 1) // value_y
 
 # pylint: disable=too-many-arguments,too-many-instance-attributes,unused-argument
 # pylint: disable=too-many-public-methods
@@ -38,7 +46,7 @@ BLOCK_BYTES = 32
 class ScatterNd():
     """
        Function: use to store scatter_nd base parameters
-       Modify : 2020-12-01
+       Modify : 2021-01-21
     """
     # pylint: disable=too-many-statements
     def __init__(self, indices, x, shape, y, kernel_name):
@@ -81,20 +89,18 @@ class ScatterNd():
             self.indices_dtype) // EIGHT_BIT
         self.updates_data_each_block = BLOCK_BYTES // self.updates_dtype_bytes_size
         self.indices_data_each_block = BLOCK_BYTES // self.indices_dtype_bytes_size
+        self.data_num_one_repeat = VECTOR_BYTE_SIZE // self.updates_dtype_bytes_size
         self.support_atomic = 0
 
         if tbe_platform.api_check_support("tik.set_atomic_add") and self.updates_dtype == "float32":
             self.support_atomic = 1
             self.updates_ub_num = self.ub_size_bytes // 2 // self.updates_dtype_bytes_size
             self.indices_ub_num = self.ub_size_bytes // 2 // self.indices_dtype_bytes_size
-            self.out_gm = self.tik_instance.Tensor(self.updates_dtype, (MAX_INT64_VALUE, ),
-                                                   name="out_gm", scope=tik.scope_gm, is_atomic_add=True)
         else:
             self.var_ub_num = self.ub_size_bytes // 8 * 3 // self.updates_dtype_bytes_size
             self.updates_ub_num = self.ub_size_bytes // 8 * 3 // self.updates_dtype_bytes_size
             self.indices_ub_num = self.ub_size_bytes // 4 // self.indices_dtype_bytes_size
-            self.out_gm = self.tik_instance.Tensor(self.updates_dtype, (MAX_INT64_VALUE, ), name="out_gm",
-                                                   scope=tik.scope_gm)
+
             self.var_ub = None
             self.var_tile_ub = None
             self.updates_tile_ub = None
@@ -103,10 +109,8 @@ class ScatterNd():
             self.last_var_num = None
             self.var_offset = None
 
-        if self.updates_dtype in ("float32", "int32"):
-            self.data_num_one_repeat = 64
-        else:
-            self.data_num_one_repeat = 128
+        self.out_gm = self.tik_instance.Tensor(self.updates_dtype, (MAX_INT64_VALUE, ), name="out_gm",
+                                               scope=tik.scope_gm, is_atomic_add=True)
 
         self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM, ), name="tiling_gm", scope=tik.scope_gm)
         self.shape_gm = self.tik_instance.Tensor("int32", (MAX_INT64_VALUE, ), name="shape_gm", scope=tik.scope_gm)
@@ -121,7 +125,6 @@ class ScatterNd():
         self.core_loop_index = None
         self.var_value = None
         self.update_value = None
-        self.indices_burst_len = None
         self.updates_burst_len = None
         self.indices_tmp = None
         self.offset = None
@@ -245,8 +248,6 @@ class ScatterNd():
         self.var_value.set_as(0)
         self.update_value = self.tik_instance.Scalar(self.updates_dtype, name="update_value")
         self.update_value.set_as(0)
-        self.indices_burst_len = self.tik_instance.Scalar("int32", name="indices_burst_len")
-        self.indices_burst_len.set_as(0)
         self.updates_burst_len = self.tik_instance.Scalar("int32", name="updates_burst_len")
         self.updates_burst_len.set_as(0)
         self.indices_tmp = self.tik_instance.Scalar("int32", name="indices_tmp")
@@ -294,27 +295,22 @@ class ScatterNd():
         -------
         None
         """
-        with self.tik_instance.if_scope(indice_num % self.indices_data_each_block == 0):
-            self.indices_burst_len.set_as(indice_num // self.indices_data_each_block)
-        with self.tik_instance.else_scope():
-            self.indices_burst_len.set_as((indice_num // self.indices_data_each_block) + 1)
-        with self.tik_instance.if_scope(indice_num == 1):
-            self.tik_instance.data_move(self.indices_ub, self.indices_gm, 0, 1,
-                                        self.indices_burst_len, 0, 0)
-        with self.tik_instance.else_scope():
-            self.tik_instance.data_move(self.indices_ub, self.indices_gm[indices_in_index], 0, 1,
-                                        self.indices_burst_len, 0, 0)
+        indices_burst_len = ceil_div(indice_num, self.indices_data_each_block)
+        self.tik_instance.data_move(self.indices_ub, self.indices_gm[indices_in_index], 0, 1,
+                                    indices_burst_len, 0, 0)
         indices_in_index = indices_in_index // self.indices_last_dim
 
         if tbe_platform.api_check_support("tik.set_atomic_add") and self.updates_dtype == "float32":
             with self.tik_instance.if_scope(self.tiling_mode == 1):
                 self.traversing_updates_32b_aligned_and_ub_enough_atomic(indices_in_index, indice_num)
-            with self.tik_instance.if_scope(tik.any(self.tiling_mode == 2, self.tiling_mode == 5)):
-                self.circulate_indices(indices_in_index, indice_num)
+            with self.tik_instance.if_scope(self.tiling_mode == 2):
+                self.circulate_indices(indices_in_index, indice_num, 2)
             with self.tik_instance.if_scope(self.tiling_mode == 3):
                 self.traversing_updates_single_core_and_ub_enough_atomic(indices_in_index, indice_num)
             with self.tik_instance.if_scope(self.tiling_mode == 4):
                 self.traversing_updates_single_core_and_ub_not_enough_atomic(indices_in_index, indice_num)
+            with self.tik_instance.if_scope(self.tiling_mode == 5):
+                self.circulate_indices(indices_in_index, indice_num, 5)
         else:
             with self.tik_instance.if_scope(self.tiling_mode == 6):
                 self.traversing_32b_aligned_ub_store_all_var_and_update(indices_in_index, indice_num)
@@ -322,8 +318,8 @@ class ScatterNd():
                 self.traversing_32b_aligned_ub_store_all_var(indices_in_index, indice_num)
             with self.tik_instance.if_scope(self.tiling_mode == 8):
                 self.traversing_32b_aligned_ub_store_all_update(indices_in_index, indice_num)
-            with self.tik_instance.if_scope(tik.any(self.tiling_mode == 9, self.tiling_mode == 14)):
-                self.circulate_indices_not_atomic(indices_in_index, indice_num)
+            with self.tik_instance.if_scope(self.tiling_mode == 9):
+                self.circulate_indices_not_atomic(indices_in_index, indice_num, 9)
             with self.tik_instance.if_scope(self.tiling_mode == 10):
                 self.traversing_less_than_one_block_single_core_var_and_update(indices_in_index, indice_num)
             with self.tik_instance.if_scope(self.tiling_mode == 11):
@@ -332,8 +328,12 @@ class ScatterNd():
                 self.traversing_less_than_one_block_single_core_update(indices_in_index, indice_num)
             with self.tik_instance.if_scope(self.tiling_mode == 13):
                 self.traversing_less_than_one_block_ub_not_enough(indices_in_index, indice_num)
+            with self.tik_instance.if_scope(self.tiling_mode == 14):
+                self.circulate_indices_not_atomic(indices_in_index, indice_num, 14)
+            with self.tik_instance.if_scope(self.tiling_mode == 15):
+                self.circulate_indices_not_atomic(indices_in_index, indice_num, 15)
 
-    def circulate_indices(self, indices_in_index, indice_num):
+    def circulate_indices(self, indices_in_index, indice_num, mode):
         """
         Circulate the index in the indices
 
@@ -343,6 +343,8 @@ class ScatterNd():
             Indices index on GM
         indice_num: int32
             the number of indexes in the indices on UB
+        mode: int32
+            which branch
         Returns
         -------
         None
@@ -351,35 +353,33 @@ class ScatterNd():
             self.get_var_read_index(indices_ub_index)
             with self.tik_instance.if_scope(self.core_loop_index * self.indice_step <= self.var_read_index):
                 with self.tik_instance.if_scope((self.core_loop_index + 1) * self.indice_step > self.var_read_index):
-                    self.traversing_updates(indices_ub_index, indices_in_index)
+                    self.var_read_index.set_as(self.var_read_index * self.update_data_num)
+                    update_loop_index = (indices_in_index + indices_ub_index) * self.update_data_num
+                    self.traversing_updates(update_loop_index, mode)
 
-    def traversing_updates(self, indices_ub_index, indices_in_index):
+    def traversing_updates(self, update_loop_index, mode):
         """
         Traversing the index in the updates
 
         Parameters
         ----------
-        indices_ub_index: int32
-            Indices index on UB
-        indices_in_index: int32
-            Indices index on GM
+        update_loop_index: int32
+            Updates index on UB
+        mode: int32
+            which branch
         Returns
         -------
         None
         """
-        with self.tik_instance.if_scope(self.updates_loop_num > 0):
-            with self.tik_instance.for_range(
-                    0, self.updates_loop_num) as updates_loop_index:
-                self.update_var((indices_in_index + indices_ub_index) * self.update_data_num + updates_loop_index *
-                                self.updates_ub_num, self.updates_ub_num, self.var_read_index * self.update_data_num +
-                                updates_loop_index * self.updates_ub_num)
+        with self.tik_instance.for_range(0, self.updates_loop_num) as updates_loop_index:
+            self.update_var(update_loop_index + updates_loop_index * self.updates_ub_num, self.updates_ub_num,
+                            self.var_read_index + updates_loop_index * self.updates_ub_num, mode)
 
         with self.tik_instance.if_scope(self.updates_last_num > 0):
-            self.update_var((indices_in_index + indices_ub_index) * self.update_data_num + self.updates_loop_num *
-                            self.updates_ub_num, self.updates_last_num, self.var_read_index * self.update_data_num +
-                            self.updates_loop_num * self.updates_ub_num)
+            self.update_var(update_loop_index + self.updates_loop_num * self.updates_ub_num, self.updates_last_num,
+                            self.var_read_index + self.updates_loop_num * self.updates_ub_num, mode)
 
-    def update_var(self, updates_loop_index, update_num, var_loop_index):
+    def update_var(self, updates_loop_index, update_num, var_loop_index, mode):
         """
         Update the update fragment corresponding to the index
 
@@ -395,33 +395,41 @@ class ScatterNd():
         -------
         None
         """
-        with self.tik_instance.if_scope(update_num % self.updates_data_each_block == 0):
+        if mode == 2:
             self.updates_burst_len.set_as(update_num // self.updates_data_each_block)
-        with self.tik_instance.else_scope():
-            self.updates_burst_len.set_as(update_num // self.updates_data_each_block + 1)
-        self.tik_instance.data_move(self.updates_ub, self.updates_gm[updates_loop_index],
-                                    0, 1, self.updates_burst_len, 0, 0)
-
-        with self.tik_instance.if_scope(update_num % self.updates_data_each_block == 0):
+            self.tik_instance.data_move(self.updates_ub, self.updates_gm[updates_loop_index],
+                                        0, 1, self.updates_burst_len, 0, 0)
             self.tik_instance.set_atomic_add(1)
             self.tik_instance.data_move(self.out_gm[var_loop_index], self.updates_ub, 0, 1,
                                         self.updates_burst_len, 0, 0)
             self.tik_instance.set_atomic_add(0)
-        with self.tik_instance.else_scope():
-            self.tik_instance.set_atomic_add(1)
-            self.tik_instance.data_move(self.out_gm[var_loop_index], self.updates_ub, 0, 1,
-                                        self.updates_burst_len-1, 0, 0)
-            self.tik_instance.set_atomic_add(0)
-            with self.tik_instance.for_range(0, self.updates_data_each_block) as updates_ub_index:
-                self.update_value.set_as(self.updates_ub[update_num - self.updates_data_each_block + updates_ub_index])
-                self.updates_tile_ub[updates_ub_index].set_as(self.update_value)
-            self.tik_instance.vec_muls(self.updates_data_each_block - self.update_data_num %
-                                       self.updates_data_each_block, self.updates_tile_ub, self.updates_tile_ub,
-                                       0, 1, 8, 8)
-            self.tik_instance.set_atomic_add(1)
-            self.tik_instance.data_move(self.out_gm[var_loop_index + update_num - self.updates_data_each_block],
-                                        self.updates_tile_ub, 0, 1, 1, 0, 0)
-            self.tik_instance.set_atomic_add(0)
+
+        if mode == 5:
+            self.updates_burst_len.set_as(ceil_div(update_num, self.updates_data_each_block))
+            self.tik_instance.data_move(self.updates_ub, self.updates_gm[updates_loop_index],
+                                        0, 1, self.updates_burst_len, 0, 0)
+
+            with self.tik_instance.if_scope(update_num % self.updates_data_each_block == 0):
+                self.tik_instance.set_atomic_add(1)
+                self.tik_instance.data_move(self.out_gm[var_loop_index], self.updates_ub, 0, 1,
+                                            self.updates_burst_len, 0, 0)
+                self.tik_instance.set_atomic_add(0)
+            with self.tik_instance.else_scope():
+                self.tik_instance.set_atomic_add(1)
+                self.tik_instance.data_move(self.out_gm[var_loop_index], self.updates_ub, 0, 1,
+                                            self.updates_burst_len - 1, 0, 0)
+                self.tik_instance.set_atomic_add(0)
+                with self.tik_instance.for_range(0, self.updates_data_each_block) as updates_ub_index:
+                    self.update_value.set_as(self.updates_ub[update_num - self.updates_data_each_block +
+                                                             updates_ub_index])
+                    self.updates_tile_ub[updates_ub_index].set_as(self.update_value)
+                self.tik_instance.vec_muls(self.updates_data_each_block - self.update_data_num %
+                                           self.updates_data_each_block, self.updates_tile_ub, self.updates_tile_ub,
+                                           0, 1, 8, 8)
+                self.tik_instance.set_atomic_add(1)
+                self.tik_instance.data_move(self.out_gm[var_loop_index + update_num - self.updates_data_each_block],
+                                            self.updates_tile_ub, 0, 1, 1, 0, 0)
+                self.tik_instance.set_atomic_add(0)
 
     def traversing_updates_32b_aligned_and_ub_enough_atomic(self, indices_in_index, indice_num):
         """
@@ -469,10 +477,8 @@ class ScatterNd():
 
         with self.tik_instance.for_range(0, indice_num // self.indices_last_dim) as indices_ub_index:
             self.get_var_read_index(indices_ub_index)
-            with self.tik_instance.for_range(0, self.updates_data_each_block) as updates_ub_index:
-                self.update_value.set_as(self.updates_ub[(indices_in_index + indices_ub_index) *
-                                                         self.update_data_num + updates_ub_index])
-                self.updates_tile_ub[updates_ub_index].set_as(self.update_value)
+            self.tik_instance.data_move(self.updates_tile_ub, self.updates_gm[(indices_in_index + indices_ub_index) *
+                                                                              self.update_data_num], 0, 1, 1, 0, 0)
             self.tik_instance.vec_muls(self.updates_data_each_block, self.zero_ub, self.updates_tile_ub, 0, 1, 8, 8)
             self.tik_instance.vec_add(self.update_data_num, self.zero_ub, self.zero_ub,
                                       self.updates_tile_ub, 1, 8, 8, 8)
@@ -495,7 +501,7 @@ class ScatterNd():
         -------
         None
         """
-        with self.tik_instance.for_range(0, indice_num //  self.indices_last_dim) as indices_ub_index:
+        with self.tik_instance.for_range(0, indice_num // self.indices_last_dim) as indices_ub_index:
             self.get_var_read_index(indices_ub_index)
             self.tik_instance.data_move(self.updates_tile_ub,
                                         self.updates_gm[(indices_in_index + indices_ub_index) * self.update_data_num],
@@ -574,7 +580,7 @@ class ScatterNd():
                                                                       self.update_data_num], 255, 8, 8, 8)
                             self.var_offset.set_as(255 * self.data_num_one_repeat)
                             self.last_var_num.set_as(self.update_data_num - 255 * self.data_num_one_repeat)
-                        self.repeat.set_as(self.last_var_num  // self.data_num_one_repeat)
+                        self.repeat.set_as(self.last_var_num // self.data_num_one_repeat)
                         self.mask.set_as(self.last_var_num % self.data_num_one_repeat)
                         self.tik_instance.vec_add(self.data_num_one_repeat,
                                                   self.var_ub[(self.var_read_index - self.indice_step *
@@ -661,11 +667,12 @@ class ScatterNd():
 
         with self.tik_instance.for_range(0, indice_num // self.indices_last_dim) as indices_ub_index:
             self.get_var_read_index(indices_ub_index)
-            self.tik_instance.data_move(self.updates_ub,
-                                        self.updates_gm[(indices_in_index + indices_ub_index) * self.update_data_num],
-                                        0, 1, self.update_data_num // self.updates_data_each_block, 0, 0)
             with self.tik_instance.if_scope(self.core_loop_index * self.indice_step <= self.var_read_index):
                 with self.tik_instance.if_scope(max_indice > self.var_read_index):
+                    self.tik_instance.data_move(self.updates_ub,
+                                                self.updates_gm[(indices_in_index + indices_ub_index) *
+                                                                self.update_data_num],
+                                                0, 1, self.update_data_num // self.updates_data_each_block, 0, 0)
                     with self.tik_instance.if_scope(self.update_data_num >= self.data_num_one_repeat):
                         with self.tik_instance.if_scope(self.update_data_num >= self.data_num_one_repeat * 255):
                             self.tik_instance.vec_add(self.data_num_one_repeat,
@@ -676,7 +683,7 @@ class ScatterNd():
                                                       self.updates_ub, 255, 8, 8, 8)
                             self.var_offset.set_as(255 * self.data_num_one_repeat)
                             self.last_var_num.set_as(self.update_data_num - 255 * self.data_num_one_repeat)
-                        self.repeat.set_as(self.last_var_num  // self.data_num_one_repeat)
+                        self.repeat.set_as(self.last_var_num // self.data_num_one_repeat)
                         self.mask.set_as(self.last_var_num % self.data_num_one_repeat)
                         self.tik_instance.vec_add(self.data_num_one_repeat,
                                                   self.var_ub[(self.var_read_index - self.indice_step *
@@ -741,7 +748,7 @@ class ScatterNd():
                                                                       self.update_data_num], 255, 8, 8, 8)
                             self.var_offset.set_as(255 * self.data_num_one_repeat)
                             self.last_var_num.set_as(self.update_data_num - 255 * self.data_num_one_repeat)
-                        self.repeat.set_as(self.last_var_num  // self.data_num_one_repeat)
+                        self.repeat.set_as(self.last_var_num // self.data_num_one_repeat)
                         self.mask.set_as(self.last_var_num % self.data_num_one_repeat)
                         self.tik_instance.vec_add(self.data_num_one_repeat, self.var_ub[self.var_offset],
                                                   self.var_ub[self.var_offset],
@@ -764,7 +771,7 @@ class ScatterNd():
                     self.tik_instance.data_move(self.out_gm[self.var_read_index * self.update_data_num],
                                                 self.var_ub, 0, 1, updates_burst_len, 0, 0)
 
-    def circulate_indices_not_atomic(self, indices_in_index, indice_num):
+    def circulate_indices_not_atomic(self, indices_in_index, indice_num, mode):
         """
         Circulate the index in the indices
 
@@ -783,53 +790,78 @@ class ScatterNd():
             with self.tik_instance.if_scope(self.core_loop_index * self.indice_step <= self.var_read_index):
                 with self.tik_instance.if_scope((self.core_loop_index + 1) * self.indice_step > self.var_read_index):
                     self.var_read_index.set_as(self.var_read_index * self.update_data_num)
-                    self.traversing_var(indices_in_index, indices_ub_index)
+                    update_in_index = (indices_in_index + indices_ub_index) * self.update_data_num
+                    if mode == 9:
+                        self.traversing_var_mode9(update_in_index)
+                    if mode == 14:
+                        self.traversing_var_mode14(update_in_index)
+                    if mode == 15:
+                        self.traversing_var_mode15(update_in_index)
 
-    def traversing_var(self, indices_in_index, indices_ub_index):
+    def traversing_var_mode9(self, update_in_index):
         """
-        Traversing the index in the updates
+        Traversing the index in the updates of branch 9
 
         Parameters
         ----------
-        indices_ub_index: int32
-            Indices index on UB
-        indices_in_index: int32
-            Indices index on GM
+        update_in_index: int32
+            Updates index on GM
         Returns
         -------
         None
         """
-        update_in_index = (indices_in_index + indices_ub_index) * self.update_data_num
-        with self.tik_instance.if_scope(self.var_loop_num > 0):
-            with self.tik_instance.for_range(
-                    0, self.var_loop_num) as var_loop_index:
-                self.move_var(self.var_read_index + var_loop_index * self.var_ub_num,
-                              self.var_ub_num, update_in_index + var_loop_index * self.var_ub_num)
+        with self.tik_instance.for_range(0, self.var_loop_num) as var_loop_index:
+            self.move_var(self.var_read_index + var_loop_index * self.var_ub_num,
+                          self.var_ub_num, update_in_index + var_loop_index * self.var_ub_num, 9)
 
         with self.tik_instance.if_scope(self.var_last_num > 0):
-            with self.tik_instance.if_scope(self.var_last_num % self.updates_data_each_block == 0):
-                self.move_var(self.var_read_index + self.var_loop_num * self.var_ub_num,
-                              self.var_last_num, update_in_index + self.var_loop_num * self.var_ub_num)
-            with self.tik_instance.else_scope():
-                with self.tik_instance.if_scope(self.var_loop_num == 0):
-                    var_last_num_once = self.var_last_num // self.updates_data_each_block * self.updates_data_each_block
-                    self.move_var(self.var_read_index, var_last_num_once, update_in_index)
-                    var_last_num_twice = self.var_last_num - var_last_num_once
-                    self.move_var_tail(self.var_read_index + self.var_last_num - self.updates_data_each_block,
-                                       var_last_num_twice, update_in_index + self.var_last_num -
-                                       self.updates_data_each_block, self.updates_data_each_block)
-                with self.tik_instance.else_scope():
-                    with self.tik_instance.if_scope(self.var_last_num % self.updates_data_each_block == 0):
-                        self.var_last_num_off.set_as(self.var_last_num // self.updates_data_each_block *
-                                                     self.updates_data_each_block)
-                    with self.tik_instance.else_scope():
-                        self.var_last_num_off.set_as((self.var_last_num // self.updates_data_each_block + 1) *
-                                                     self.updates_data_each_block)
-                    self.move_var_tail(self.var_read_index+self.update_data_num - self.var_last_num_off,
-                                       self.var_last_num, update_in_index + self.update_data_num -
-                                       self.var_last_num_off, self.var_last_num_off)
+            self.move_var(self.var_read_index + self.var_loop_num * self.var_ub_num,
+                          self.var_last_num, update_in_index + self.var_loop_num * self.var_ub_num, 9)
 
-    def move_var(self, var_in_index, var_num, update_in_index):
+    def traversing_var_mode14(self, update_in_index):
+        """
+        Traversing the index in the updates of branch 14
+
+        Parameters
+        ----------
+        update_in_index: int32
+            Updates index on GM
+        Returns
+        -------
+        None
+        """
+        var_last_num_once = self.var_last_num // self.updates_data_each_block * self.updates_data_each_block
+        self.move_var(self.var_read_index, var_last_num_once, update_in_index, 14)
+        var_last_num_twice = self.var_last_num - var_last_num_once
+        self.move_var_tail(self.var_read_index + self.var_last_num - self.updates_data_each_block,
+                           var_last_num_twice, update_in_index + self.var_last_num -
+                           self.updates_data_each_block, self.updates_data_each_block, 14)
+        self.tik_instance.data_move(self.out_gm[self.var_read_index], self.var_ub, 0, 1,
+                                    var_last_num_once // self.updates_data_each_block, 0, 0)
+
+    def traversing_var_mode15(self, update_in_index):
+        """
+        Traversing the index in the updates of branch 15
+
+        Parameters
+        ----------
+        update_in_index: int32
+            Updates index on GM
+        Returns
+        -------
+        None
+        """
+        with self.tik_instance.for_range(0, self.var_loop_num) as var_loop_index:
+            self.move_var(self.var_read_index + var_loop_index * self.var_ub_num,
+                          self.var_ub_num, update_in_index + var_loop_index * self.var_ub_num, 15)
+
+        self.var_last_num_off.set_as((self.var_last_num // self.updates_data_each_block + 1) *
+                                     self.updates_data_each_block)
+        self.move_var_tail(self.var_read_index + self.update_data_num - self.var_last_num_off,
+                           self.var_last_num, update_in_index + self.update_data_num -
+                           self.var_last_num_off, self.var_last_num_off, 15)
+
+    def move_var(self, var_in_index, var_num, update_in_index, mode):
         """
         Traversing the var
 
@@ -858,7 +890,7 @@ class ScatterNd():
                                           self.var_ub, self.updates_ub, 255, 8, 8, 8)
                 self.var_offset.set_as(255 * self.data_num_one_repeat)
                 self.last_var_num.set_as(var_num - 255 * self.data_num_one_repeat)
-            self.repeat.set_as(self.last_var_num  // self.data_num_one_repeat)
+            self.repeat.set_as(self.last_var_num // self.data_num_one_repeat)
             self.mask.set_as(self.last_var_num % self.data_num_one_repeat)
             self.tik_instance.vec_add(self.data_num_one_repeat, self.var_ub[self.var_offset],
                                       self.var_ub[self.var_offset], self.updates_ub[self.var_offset],
@@ -870,12 +902,12 @@ class ScatterNd():
                                           self.updates_ub[self.data_num_one_repeat * self.repeat + self.var_offset],
                                           1, 8, 8, 8)
         with self.tik_instance.else_scope():
-            self.tik_instance.vec_add(self.mask, self.var_ub,
-                                      self.var_ub,
-                                      self.updates_ub, 1, 8, 8, 8)
-        self.tik_instance.data_move(self.out_gm[var_in_index], self.var_ub, 0, 1, var_burst_len, 0, 0)
+            self.tik_instance.vec_add(self.mask, self.var_ub, self.var_ub, self.updates_ub, 1, 8, 8, 8)
 
-    def move_var_tail(self, var_in_index, var_num, update_in_index, var_forward_offset):
+        if mode in (9, 15):
+            self.tik_instance.data_move(self.out_gm[var_in_index], self.var_ub, 0, 1, var_burst_len, 0, 0)
+
+    def move_var_tail(self, var_in_index, var_num, update_in_index, var_forward_offset, mode):
         """
         Traversing the var tail
 
@@ -893,38 +925,44 @@ class ScatterNd():
         -------
         None
         """
-        with self.tik_instance.if_scope(var_num % self.updates_data_each_block == 0):
-            self.var_burst_len.set_as(var_num // self.updates_data_each_block)
-        with self.tik_instance.else_scope():
-            self.var_burst_len.set_as((var_num // self.updates_data_each_block) + 1)
-        self.tik_instance.data_move(self.var_ub, self.out_gm[var_in_index], 0, 1, self.var_burst_len, 0, 0)
-        self.tik_instance.data_move(self.updates_ub, self.updates_gm[update_in_index], 0, 1, self.var_burst_len, 0, 0)
-        self.last_var_num.set_as(var_forward_offset)
-        self.var_offset.set_as(0)
+        if mode == 14:
+            self.tik_instance.data_move(self.var_tile_ub, self.out_gm[var_in_index], 0, 1, 1, 0, 0)
+            self.tik_instance.data_move(self.updates_tile_ub, self.updates_gm[update_in_index], 0, 1, 1, 0, 0)
+            self.tik_instance.vec_add(self.updates_data_each_block, self.var_tile_ub, self.var_tile_ub,
+                                      self.updates_tile_ub, 1, 8, 8, 8)
+            self.tik_instance.data_move(self.out_gm[var_in_index], self.var_tile_ub, 0, 1, 1, 0, 0)
 
-        with self.tik_instance.if_scope(var_forward_offset >= self.data_num_one_repeat):
-            with self.tik_instance.if_scope(var_forward_offset >= self.data_num_one_repeat * 255):
+        if mode == 15:
+            self.var_burst_len.set_as((var_num // self.updates_data_each_block) + 1)
+            self.tik_instance.data_move(self.var_ub, self.out_gm[var_in_index], 0, 1, self.var_burst_len, 0, 0)
+            self.tik_instance.data_move(self.updates_ub, self.updates_gm[update_in_index], 0, 1,
+                                        self.var_burst_len, 0, 0)
+            self.last_var_num.set_as(var_forward_offset)
+            self.var_offset.set_as(0)
+
+            with self.tik_instance.if_scope(var_forward_offset >= self.data_num_one_repeat):
+                with self.tik_instance.if_scope(var_forward_offset >= self.data_num_one_repeat * 255):
+                    self.tik_instance.vector_dup(var_forward_offset - var_num, self.updates_ub, 0, 1, 1, 8)
+                    self.tik_instance.vec_add(self.data_num_one_repeat, self.var_ub,
+                                              self.var_ub, self.updates_ub, 255, 8, 8, 8)
+                    self.var_offset.set_as(255 * self.data_num_one_repeat)
+                    self.last_var_num.set_as(var_forward_offset - 255 * self.data_num_one_repeat)
+                self.repeat.set_as(self.last_var_num // self.data_num_one_repeat)
+                self.mask.set_as(self.last_var_num - self.repeat * self.data_num_one_repeat)
                 self.tik_instance.vector_dup(var_forward_offset - var_num, self.updates_ub, 0, 1, 1, 8)
-                self.tik_instance.vec_add(self.data_num_one_repeat, self.var_ub,
-                                          self.var_ub, self.updates_ub, 255, 8, 8, 8)
-                self.var_offset.set_as(255 * self.data_num_one_repeat)
-                self.last_var_num.set_as(var_forward_offset - 255 * self.data_num_one_repeat)
-            self.repeat.set_as(self.last_var_num // self.data_num_one_repeat)
-            self.mask.set_as(self.last_var_num - self.repeat * self.data_num_one_repeat)
-            self.tik_instance.vector_dup(var_forward_offset - var_num, self.updates_ub, 0, 1, 1, 8)
-            self.tik_instance.vec_add(self.data_num_one_repeat, self.var_ub[self.var_offset],
-                                      self.var_ub[self.var_offset], self.updates_ub[self.var_offset],
-                                      self.repeat, 8, 8, 8)
-            with self.tik_instance.if_scope(self.mask != 0):
-                self.tik_instance.vec_add(self.mask, self.var_ub[self.data_num_one_repeat * self.repeat +
-                                                                 self.var_offset],
-                                          self.var_ub[self.data_num_one_repeat * self.repeat + self.var_offset],
-                                          self.updates_ub[self.data_num_one_repeat * self.repeat +self.var_offset],
-                                          1, 8, 8, 8)
-        with self.tik_instance.else_scope():
-            self.tik_instance.vector_dup(var_forward_offset - var_num, self.updates_ub, 0, 1, 1, 8)
-            self.tik_instance.vec_add(var_forward_offset, self.var_ub, self.var_ub, self.updates_ub, 1, 8, 8, 8)
-        self.tik_instance.data_move(self.out_gm[var_in_index], self.var_ub, 0, 1, self.var_burst_len, 0, 0)
+                self.tik_instance.vec_add(self.data_num_one_repeat, self.var_ub[self.var_offset],
+                                          self.var_ub[self.var_offset], self.updates_ub[self.var_offset],
+                                          self.repeat, 8, 8, 8)
+                with self.tik_instance.if_scope(self.mask != 0):
+                    self.tik_instance.vec_add(self.mask, self.var_ub[self.data_num_one_repeat * self.repeat +
+                                                                     self.var_offset],
+                                              self.var_ub[self.data_num_one_repeat * self.repeat + self.var_offset],
+                                              self.updates_ub[self.data_num_one_repeat * self.repeat + self.var_offset],
+                                              1, 8, 8, 8)
+            with self.tik_instance.else_scope():
+                self.tik_instance.vector_dup(var_forward_offset - var_num, self.updates_ub, 0, 1, 1, 8)
+                self.tik_instance.vec_add(var_forward_offset, self.var_ub, self.var_ub, self.updates_ub, 1, 8, 8, 8)
+            self.tik_instance.data_move(self.out_gm[var_in_index], self.var_ub, 0, 1, self.var_burst_len, 0, 0)
 
     def traversing_less_than_one_block_single_core_var_and_update(self, indices_in_index, indice_num):
         """
@@ -1130,7 +1168,7 @@ class ScatterNd():
                 self.tik_instance.vector_dup(self.data_num_one_repeat, self.var_ub, 0, 255, 8, 8)
                 self.var_offset.set_as(255 * self.data_num_one_repeat)
                 self.last_var_num.set_as(var_num - 255 * self.data_num_one_repeat)
-            self.repeat.set_as(self.last_var_num  // self.data_num_one_repeat)
+            self.repeat.set_as(self.last_var_num // self.data_num_one_repeat)
             self.mask.set_as(self.last_var_num % self.data_num_one_repeat)
             self.tik_instance.vector_dup(self.data_num_one_repeat, self.var_ub[self.var_offset],
                                          0, self.repeat, 8, 8)
@@ -1178,10 +1216,9 @@ class ScatterNd():
         None
         """
         max_indices_ub_num = self.indices_ub_num // self.indices_last_dim * self.indices_last_dim
-        with self.tik_instance.if_scope(self.indices_loop_num > 0):
-            with self.tik_instance.for_range(
-                    0, self.indices_loop_num) as indices_loop_index:
-                self.move_indices(indices_loop_index * max_indices_ub_num, max_indices_ub_num)
+
+        with self.tik_instance.for_range(0, self.indices_loop_num) as indices_loop_index:
+            self.move_indices(indices_loop_index * max_indices_ub_num, max_indices_ub_num)
 
         with self.tik_instance.if_scope(self.indices_last_num > 0):
             self.move_indices(self.indices_loop_num * max_indices_ub_num, self.indices_last_num)
@@ -1203,17 +1240,14 @@ class ScatterNd():
                                                       scope=tik.scope_ubuf)
             self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 7, 0, 0)
             self.tiling_args()
+
             with self.tik_instance.if_scope(self.core_num > 1):
                 with self.tik_instance.if_scope(core_index < self.core_num):
                     self.init_ub_tensor()
                     self.core_loop_index.set_as(core_index)
-                    if not (tbe_platform.api_check_support("tik.set_atomic_add") and self.updates_dtype == "float32"):
-                        self.traversing_var_mul_core()
                     self.traversing_indices()
             with self.tik_instance.else_scope():
                 self.init_ub_tensor()
-                if not (tbe_platform.api_check_support("tik.set_atomic_add") and self.updates_dtype == "float32"):
-                    self.traversing_var_single_core()
                 self.traversing_indices()
 
     def scatter_nd_operator(self):

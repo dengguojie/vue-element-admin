@@ -57,8 +57,10 @@ const int64_t TILING_MODE_11 = 11;
 const int64_t TILING_MODE_12 = 12;
 // updateDataNum is less than 1 block, ub can't store all var and updates, not atomic
 const int64_t TILING_MODE_13 = 13;
-// updateDataNum is more than 1 block, not atomic
+// updateDataNum is more than 1 block, not atomic, and less than updateubnum
 const int64_t TILING_MODE_14 = 14;
+// updateDataNum is more than 1 block, not atomic, and more than updateubnum
+const int64_t TILING_MODE_15 = 15;
 
 struct ScatterNdTilingParams {
   int64_t tilingMode;
@@ -185,7 +187,11 @@ void CalNotAtomicBranchRunningParams(ScatterNdTilingParams& runParams, int64_t v
         runParams.tilingMode = TILING_MODE_13;
     }
   } else {
-      runParams.tilingMode = TILING_MODE_14;
+      if (updateDataNum / (varUbSize / updatesSize) == 0) {
+        runParams.tilingMode = TILING_MODE_14;
+      } else {
+        runParams.tilingMode = TILING_MODE_15;
+      }
   }
 
   runParams.varEachCoreData = runParams.indiceStep * runParams.updatesDataNum;
@@ -198,7 +204,8 @@ void CalNotAtomicBranchRunningParams(ScatterNdTilingParams& runParams, int64_t v
   runParams.varLastCoreSetZeroLoopNum = varLastCoreData / (varUbSize / updatesSize);
   runParams.varLastCoreSetZeroLastNum = varLastCoreData % (varUbSize / updatesSize);
 
-  if (runParams.tilingMode == TILING_MODE_9 || runParams.tilingMode == TILING_MODE_14) {
+  if (runParams.tilingMode == TILING_MODE_9 || runParams.tilingMode == TILING_MODE_14 ||
+      runParams.tilingMode == TILING_MODE_15) {
     runParams.varLoopNum = updateDataNum / (varUbSize / updatesSize);
     runParams.varLastNum = updateDataNum % (varUbSize / updatesSize);
   }
