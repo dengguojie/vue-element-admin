@@ -433,39 +433,45 @@ IMPLEMT_INFERFUNC(SparseFillEmptyRows, SparseFillEmptyRowsInfer) {
   GeShape indices_shape;
   auto indices_desc = op_desc->MutableInputDesc(0);
   if (WithRank(indices_desc, 2, indices_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input indices must be 2-D");
+    OP_LOGE(op.GetName().c_str(), "Input indices must be 2-D");
     return GRAPH_FAILED;
   }
 
   GeShape values_shape;
   auto values_desc = op_desc->MutableInputDesc(1);
   if (WithRank(values_desc, 1, values_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input values must be 1-D");
+    OP_LOGE(op.GetName().c_str(), "Input values must be 1-D");
     return GRAPH_FAILED;
   }
 
   GeShape dense_shape;
   auto dense_desc = op_desc->MutableInputDesc(2);
   if (WithRank(dense_desc, 1, dense_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input dense_shape must be 1-D");
+    OP_LOGE(op.GetName().c_str(), "Input dense_shape must be 1-D");
     return GRAPH_FAILED;
   }
 
   GeShape default_value_shape;
   auto default_value_desc = op_desc->MutableInputDesc(3);
   if (WithRank(default_value_desc, 0, default_value_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input default_value must be 0-D");
+    OP_LOGE(op.GetName().c_str(), "Input default_value must be 0-D");
     return GRAPH_FAILED;
   }
 
   int64_t num_dim = 0;
-  if (Merge(indices_shape.GetDim(0), values_shape.GetDim(0), num_dim) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Merge two dimension error.");
-    return GRAPH_FAILED;
+  if (indices_shape.GetDim(0) == UNKNOWN_DIM) {
+    num_dim = UNKNOWN_DIM;
+  } else {
+    if (Merge(indices_shape.GetDim(0), values_shape.GetDim(0), num_dim) !=
+        GRAPH_SUCCESS) {
+      OP_LOGE(op.GetName().c_str(), "Merge two dimension error.");
+      return GRAPH_FAILED;
+    }
   }
 
   int64_t unuse_dim = 0;
-  if (Merge(indices_shape.GetDim(1), dense_shape.GetDim(0), unuse_dim) != GRAPH_SUCCESS) {
+  if (Merge(indices_shape.GetDim(1), dense_shape.GetDim(0), unuse_dim) !=
+      GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Merge two dimension error.");
     return GRAPH_FAILED;
   }
@@ -483,8 +489,10 @@ IMPLEMT_INFERFUNC(SparseFillEmptyRows, SparseFillEmptyRowsInfer) {
   if (!ShapeFullyDefined(y_indices_shape)) {
     std::vector<std::pair<int64_t, int64_t>> indices_range;
     for (const int64_t& indices_dim : y_indices_shape.GetDims()) {
-      indices_range.push_back(indices_dim == UNKNOWN_DIM ? std::pair<int64_t, int64_t>{1, -1} :
-                                                           std::pair<int64_t, int64_t>{indices_dim, indices_dim});
+      indices_range.push_back(
+          indices_dim == UNKNOWN_DIM
+              ? std::pair<int64_t, int64_t>{1, -1}
+              : std::pair<int64_t, int64_t>{indices_dim, indices_dim});
     }
     y_indices_desc->SetShapeRange(indices_range);
   }
@@ -497,8 +505,10 @@ IMPLEMT_INFERFUNC(SparseFillEmptyRows, SparseFillEmptyRowsInfer) {
   if (!ShapeFullyDefined(y_value_shape)) {
     std::vector<std::pair<int64_t, int64_t>> value_range;
     for (const int64_t& value_dim : y_value_shape.GetDims()) {
-      value_range.push_back(value_dim == UNKNOWN_DIM ? std::pair<int64_t, int64_t>{1, -1} :
-                                                       std::pair<int64_t, int64_t>{value_dim, value_dim});
+      value_range.push_back(
+          value_dim == UNKNOWN_DIM
+              ? std::pair<int64_t, int64_t>{1, -1}
+              : std::pair<int64_t, int64_t>{value_dim, value_dim});
     }
     y_indices_desc->SetShapeRange(value_range);
   }
@@ -508,13 +518,16 @@ IMPLEMT_INFERFUNC(SparseFillEmptyRows, SparseFillEmptyRowsInfer) {
 
   Shape const_dense_shape;
   Tensor dense_shape_tensor;
-  if (op.GetInputConstData("dense_shape", dense_shape_tensor) == GRAPH_SUCCESS) {
-    if (MakeShapeFromShapeTensor(dense_shape_tensor, const_dense_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (op.GetInputConstData("dense_shape", dense_shape_tensor) ==
+      GRAPH_SUCCESS) {
+    if (MakeShapeFromShapeTensor(dense_shape_tensor, const_dense_shape,
+                                 op.GetName().c_str()) != GRAPH_SUCCESS) {
       OP_LOGE(op.GetName().c_str(), "MakeShapeFromShapeTensor error.");
       return GRAPH_FAILED;
     }
   } else {
-    OP_LOGI(op.GetName().c_str(), "get dense_shape from const data failed, using unknown shape");
+    OP_LOGI(op.GetName().c_str(),
+            "Get dense_shape from const data failed, using unknown shape");
     std::vector<int64_t> const_dense_dims{ge::UNKNOWN_DIM};
     const_dense_shape = Shape(const_dense_dims);
   }
@@ -525,8 +538,10 @@ IMPLEMT_INFERFUNC(SparseFillEmptyRows, SparseFillEmptyRowsInfer) {
   if (!ShapeFullyDefined(indicator_shape)) {
     std::vector<std::pair<int64_t, int64_t>> indicator_range;
     for (const int64_t& indicator_dim : indicator_shape.GetDims()) {
-      indicator_range.push_back(indicator_dim == UNKNOWN_DIM ? std::pair<int64_t, int64_t>{1, -1} :
-                                std::pair<int64_t, int64_t>{indicator_dim, indicator_dim});
+      indicator_range.push_back(
+          indicator_dim == UNKNOWN_DIM
+              ? std::pair<int64_t, int64_t>{1, -1}
+              : std::pair<int64_t, int64_t>{indicator_dim, indicator_dim});
     }
     y_indices_desc->SetShapeRange(indicator_range);
   }
