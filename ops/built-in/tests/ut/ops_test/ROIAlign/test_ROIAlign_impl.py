@@ -23,6 +23,6 @@ case1 = {"params": [{"shape": (1,16,38,64,16), "dtype": "float32", "format": "NH
          "support_expect": True}
 
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910", "Hi3796CV300CS"], case1)
 
-# ut_case.run(["Ascend310"])
+ut_case.run(["Ascend310", "Ascend710", "Ascend910", "Hi3796CV300CS"])

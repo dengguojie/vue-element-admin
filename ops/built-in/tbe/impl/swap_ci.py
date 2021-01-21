@@ -168,9 +168,8 @@ class SwapClass():
         -------
         None
         """
-        product_name = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
-        if product_name in (tbe_platform.ASCEND_310, tbe_platform.ASCEND_910, tbe_platform.HI3796CV300ES,
-                            tbe_platform.HI3796CV300CS):
+        product_name = tbe_platform.get_soc_spec("SOC_VERSION")
+        if product_name in ("Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             para_check.check_dtype(self.dtype.lower(), ["float16"], param_name="input_x")
             para_check.check_dtype(self.y_dtype.lower(), ["float16"], param_name="input_y")
         else:

@@ -52,8 +52,8 @@ def check_param(x_dic, y_dic, param_dic, kernel_name):
     para_check.check_shape(x_shape_val, param_name="input_x")
     para_check.check_shape(y_shape_val, param_name="input_y")
 
-    tik_name = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
-    if tik_name in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS):
+    tik_name = tbe_platform.get_soc_spec("SOC_VERSION")
+    if tik_name in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         para_check.check_dtype(dtype_val.lower(), ["float16"], param_name="input_x")
     else:
         para_check.check_dtype(dtype_val.lower(), ["float16", "float32"], param_name="input_x")

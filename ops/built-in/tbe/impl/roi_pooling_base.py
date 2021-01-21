@@ -648,8 +648,9 @@ class RoiClass():
                                           self.proposal_num_per_tiling],
                                          name="bin_w_fp16",
                                          scope=tbe_platform.scope_ubuf)
-            if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in (tbe_platform.HI3796CV300CS,
-                                                                       tbe_platform.HI3796CV300ES):
+            if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in ("Hi3796CV300ES",
+                                                                       "Hi3796CV300CS",
+                                                                       "SD3403"):
                 src_scalar = self.tik_instance.Scalar(dtype="int32")
                 to_dst_scalar = self.tik_instance.Scalar(dtype="float32")
                 to_dst_scalar_16 = self.tik_instance.Scalar(dtype="float16")
@@ -773,7 +774,7 @@ class RoiClass():
                                           self.proposal_num_per_tiling],
                                          name="bin_w_fp16",
                                          scope=tbe_platform.scope_ubuf)
-            if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in (tbe_platform.HI3796CV300CS,):
+            if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in ("Hi3796CV300CS", "SD3403"):
                 src_scalar = self.tik_instance.Scalar(dtype="int32")
                 to_dst_scalar = self.tik_instance.Scalar(dtype="float32")
                 to_dst_scalar_16 = self.tik_instance.Scalar(dtype="float16")

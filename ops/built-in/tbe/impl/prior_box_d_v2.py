@@ -84,10 +84,10 @@ def prior_box_d_v2(feature, img, boxes, y, min_size, max_size, img_h=0,
     # compute number of looping
     move_num = boxes_shape[0] * boxes_shape[1] * boxes_shape[2] * boxes_shape[3]
 
-    burse_len = math.ceil(move_num / data_each_block)
+    burse_length = math.ceil(move_num / data_each_block)
     result_ub_size = UB_SIZE / 4
 
-    loop_num = math.ceil((burse_len * block_bite_size) / result_ub_size)
+    loop_num = math.ceil((burse_length * block_bite_size) / result_ub_size)
 
     output_data_ub = tik_instance.Tensor(boxes_type, (result_ub_size,), name="output_data_ub",
                                          scope=tik.scope_ubuf)
@@ -104,7 +104,7 @@ def prior_box_d_v2(feature, img, boxes, y, min_size, max_size, img_h=0,
 
     # Move value from boxes to ub, then move it to y
     offset = int(result_ub_size / block_bite_size)
-    last_offset = burse_len - offset * (loop_num - 1)
+    last_offset = burse_length - offset * (loop_num - 1)
 
     with tik_instance.for_range(0, loop_num) as i0:
         with tik_instance.if_scope(i0 < loop_num - 1):

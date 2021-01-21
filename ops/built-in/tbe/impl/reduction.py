@@ -63,8 +63,9 @@ def op_select_format(input_x, output_y, operation=1, axis=0, coeff=1.0, kernel_n
     if len(input_ori_shape) < 4:
         is_support_5hd = False
 
-    if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in (tbe_platform.HI3796CV300ES,
-                                                               tbe_platform.HI3796CV300CS):
+    if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
+                                                    "Hi3796CV300CS",
+                                                    "SD3403"):
         dtype_base = ["float16"]
     else:
         dtype_base = ["float16", "float32"]
@@ -106,7 +107,7 @@ def reduction_compute(data_info, product_verion, operation, axis, coeff):
     input_data_dtype = data_info.get("dtype")
     mean_size = input_data.op.attrs["mean_size"].value
 
-    if product_verion not in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS):
+    if product_verion not in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         if input_data_dtype == "float16":
             input_data = tbe.cast_to(input_data, "float32")
 
@@ -132,7 +133,7 @@ def reduction_compute(data_info, product_verion, operation, axis, coeff):
         size_reci = float(mean_size ** (-0.5))
         res = tbe.vmuls(res, size_reci)
 
-    if product_verion not in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS):
+    if product_verion not in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         if input_data_dtype == "float16":
             res = tbe.cast_to(res, "float16")
 
@@ -159,7 +160,7 @@ def reduction(input_x, output_y, operation=1, axis=0, coeff=1.0, kernel_name="re
     -------
     None
     """
-    cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
 
     # input_x's shape check
     ori_shape = list(input_x.get("ori_shape"))
@@ -168,7 +169,7 @@ def reduction(input_x, output_y, operation=1, axis=0, coeff=1.0, kernel_name="re
     # input_x' dtype check
     inp_dtype = input_x.get("dtype").lower()
     para_check.check_dtype(inp_dtype, ("float16", "float32"), param_name="input_x")
-    if cce_product in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS) and inp_dtype == "float32":
+    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403") and inp_dtype == "float32":
         error_info = {'errCode': 'E81006',
                       'param_name': 'dtype',
                       'op_name': 'reduction',

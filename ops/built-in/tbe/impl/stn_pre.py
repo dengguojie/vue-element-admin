@@ -88,7 +88,7 @@ class SpatialTransformer:
 
         self.tik_instance = tik.Tik(tik.Dprofile())
         self.soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
-        self.calc_by_fp16 = self.soc_version in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS)
+        self.calc_by_fp16 = self.soc_version in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403")
         self.ai_core_num = tik.Dprofile().get_aicore_num()
 
         ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) // 2
@@ -620,7 +620,7 @@ class SpatialTransformer:
         ceil_w_ub = self.tik_instance.Tensor(
             'float16', (128,), name='ceil_w_ub', scope=tbe_platform.scope_ubuf
         )
-        if self.soc_version == tbe_platform.HI3796CV300CS:
+        if self.soc_version in ("Hi3796CV300CS", "SD3403"):
             ceil_w_ub_int16 = self.tik_instance.Tensor('int16', (128,),
                                                        name='ceil_w_ub_int16', scope=tbe_platform.scope_ubuf)
             self.tik_instance.vcbd(64, ceil_w_ub_int16, ceil_w_ub_int32, 2, 1, 1, 4, 8)
@@ -640,7 +640,7 @@ class SpatialTransformer:
         ceil_h_ub = self.tik_instance.Tensor(
             'float16', (128,), name='ceil_h_ub', scope=tbe_platform.scope_ubuf
         )
-        if self.soc_version == tbe_platform.HI3796CV300CS:
+        if self.soc_version in ("Hi3796CV300CS", "SD3403"):
             ceil_h_ub_int16 = self.tik_instance.Tensor('int16', (128,),
                                                        name='ceil_h_ub_int16', scope=tbe_platform.scope_ubuf)
             self.tik_instance.vcbd(64, ceil_h_ub_int16, ceil_h_ub_int32, 2, 1, 1, 4, 8)
@@ -660,7 +660,7 @@ class SpatialTransformer:
             'float16', (128,), name='floor_w_ub', scope=tbe_platform.scope_ubuf
         )
         self.tik_instance.vec_conv(64, 'floor', floor_w_ub_int32, origin_w_or_res_ub, 2, 8, 4)
-        if self.soc_version == tbe_platform.HI3796CV300CS:
+        if self.soc_version in ("Hi3796CV300CS", "SD3403"):
             floor_w_ub_int16 = self.tik_instance.Tensor('int16', (128,),
                                                         name='floor_w_ub_int16', scope=tbe_platform.scope_ubuf)
             self.tik_instance.vcbd(64, floor_w_ub_int16, floor_w_ub_int32, 2, 1, 1, 4, 8)
@@ -680,7 +680,7 @@ class SpatialTransformer:
         floor_h_fp16_ub = self.tik_instance.Tensor(
             'float16', (128,), name='floor_h_fp16_ub', scope=tbe_platform.scope_ubuf
         )
-        if self.soc_version == tbe_platform.HI3796CV300CS:
+        if self.soc_version in ("Hi3796CV300CS", "SD3403"):
             floor_h_ub_int16 = self.tik_instance.Tensor('int16', (128,),
                                                         name='floor_h_ub_int16', scope=tbe_platform.scope_ubuf)
             self.tik_instance.vcbd(64, floor_h_ub_int16, floor_h_ub_int32, 2, 1, 1, 4, 8)

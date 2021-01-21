@@ -464,8 +464,9 @@ class RoiOneC0Class(roi_pooling_base.RoiClass):
             "double_buffer_non_reuse": True,
             "out_of_bound_sync_check": True
         }
-        if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in (tbe_platform.HI3796CV300CS,
-                                                                   tbe_platform.HI3796CV300ES):
+        if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in ("Hi3796CV300ES",
+                                                                   "Hi3796CV300CS",
+                                                                   "SD3403"):
             if self.roi_actual_num_effect:
                 self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                            inputs=(self.x,

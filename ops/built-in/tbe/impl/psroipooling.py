@@ -273,7 +273,7 @@ class PsroiClass():
         self.aicore_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
         self.is_hisi_cs = False
-        if self.dtype == FP16 and product_name in (tbe_platform.HI3796CV300CS,):
+        if self.dtype == FP16 and product_name in ("Hi3796CV300CS", "SD3403"):
             self.is_hisi_cs = True
 
         self.roi_num_step = self.vec_elem_num

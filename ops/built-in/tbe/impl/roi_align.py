@@ -276,7 +276,7 @@ class RoiAlign:
         :param block_left:
         :return:
         """
-        cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+        cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
 
         rois_index = self.tik_inst.Scalar("int32")
         rois_process_num = self.tik_inst.Scalar("int32")
@@ -403,7 +403,7 @@ class RoiAlign:
                                         scope=tbe_platform.scope_ubuf, name="n_grid_h")
         n_grid_w = self.tik_inst.Tensor("int32", (128, ), \
                                         scope=tbe_platform.scope_ubuf, name="n_grid_w")
-        if cce_product not in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS):
+        if cce_product not in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             roi_gridh_fp32 = self.tik_inst.Tensor("float32", (128, ), \
                                                   scope=tbe_platform.scope_ubuf, name="roi_gridh_fp32")
             roi_gridw_fp32 = self.tik_inst.Tensor("float32", (128, ), \
@@ -441,7 +441,7 @@ class RoiAlign:
             with self.tik_inst.for_range(0, 128) as i:
                 index_arr_int32[i].set_as(i)
 
-            if cce_product == tbe_platform.HI3796CV300CS:
+            if cce_product in ("Hi3796CV300CS", "SD3403"):
                 index_arr_int16 = self.tik_inst.Tensor("int16", (ROINUM, ), name="index_arr_int16",
                                                        scope=tbe_platform.scope_ubuf)
                 self.tik_inst.vcbd(64, index_arr_int16, index_arr_int32, 2, 1, 1, 4, 8)
@@ -753,7 +753,7 @@ class RoiAlign:
                                                name="roi_buf2_ub", scope=tbe_platform.scope_ubuf)
             transpose_ub = self.tik_inst.Tensor("float16", (16, 16), \
                                                 name="transpose_ub", scope=tbe_platform.scope_ubuf)
-            if cce_product not in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS):
+            if cce_product not in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 x_end_fp32_ub = self.tik_inst.Tensor("float32", (ROINUM,), \
                                                      name="x_end_fp32_ub", scope=tbe_platform.scope_ubuf)
                 y_end_fp32_ub = self.tik_inst.Tensor("float32", (ROINUM,), \
@@ -836,7 +836,7 @@ class RoiAlign:
 
             spatial_scale_fp32 = self.flowtable_scale_fp32[0]
             dtype_num = 1
-            if cce_product not in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS):
+            if cce_product not in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 # fp16->fp32
                 self.tik_inst.vec_conv(64, 'none', x_start_fp32_ub, roi_buf1_ub[0, 0], \
                                        2, 8, 4)
@@ -876,7 +876,7 @@ class RoiAlign:
             self.tik_inst.vec_muls(64 * dtype_num, y_end_fp32_ub, y_end_fp32_ub, \
                                    spatial_scale_fp32, 2 // dtype_num, 8, 8)
 
-            if cce_product not in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS):
+            if cce_product not in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 # height and width of each RoI
                 # h == yEndFp32
                 self.tik_inst.vec_sub(64, y_end_fp32_ub, y_end_fp32_ub, \
@@ -909,7 +909,7 @@ class RoiAlign:
             self.tik_inst.vec_sel(128, 0, roi_w_ub, sel, cmp_buf, roi_w_ub, \
                                   1, 8, 8, 8)
 
-            if cce_product not in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS):
+            if cce_product not in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 # fp16->fp32
                 self.tik_inst.vec_conv(64, 'none', gird_w_fp32_ub, roi_w_ub, \
                                        2, 8, 4)
@@ -922,7 +922,7 @@ class RoiAlign:
             scaleGW_fp32 = self.flowtable_scale_fp32[4]
 
             if sample_ratio > 0:
-                if cce_product not in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS):
+                if cce_product not in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                     self.tik_inst.vec_muls(64, roi_gridw_fp32, gird_w_fp32_ub, \
                                            scaleGW_fp32, 2, 8, 8)
                     self.tik_inst.vec_muls(64, roi_gridh_fp32, gird_h_fp32_ub, \
@@ -948,7 +948,7 @@ class RoiAlign:
                 self.tik_inst.vec_conv(64, 'ceil', n_grid_h_int_ub, roi_bin_h_ub, \
                                        2, 8, 4)
 
-                if cce_product == tbe_platform.HI3796CV300CS:
+                if cce_product in ("Hi3796CV300CS", "SD3403"):
                     n_grid_w_int16 = self.tik_inst.Tensor("int16", (ROINUM, ), \
                                                           name="n_grid_w_int16", scope=tbe_platform.scope_ubuf)
                     n_grid_h_int16 = self.tik_inst.Tensor("int16", (ROINUM, ), \
@@ -973,7 +973,7 @@ class RoiAlign:
                 self.tik_inst.vec_rec(128, n_grid_rec_h_ub, n_grid_h_ub, \
                                       1, 8, 8)
 
-                if cce_product not in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS):
+                if cce_product not in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                     self.tik_inst.vec_mul(128, roi_gridw, roi_bin_w_ub, \
                                           n_grid_rec_w_ub, 1, 8, 8, 8)
                     self.tik_inst.vec_mul(128, roi_gridh, roi_bin_h_ub, \
@@ -1024,7 +1024,7 @@ class RoiAlign:
         tik_instance = self.tik_inst
         cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
         dtype_num = 1
-        if cce_product not in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS):
+        if cce_product not in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             index_arr_fp32 = tik_instance.Tensor("float32", (ROINUM, ), \
                                                  name="index_arr", scope=tbe_platform.scope_ubuf)
             xpos_fp32 = tik_instance.Tensor("float32", (ROINUM, ), \
@@ -1109,7 +1109,7 @@ class RoiAlign:
         yhigh_neg_cmp = tik_instance.Tensor("float16", (ROINUM, ), \
                                             name="xhigh_neg_cmp", scope=tbe_platform.scope_ubuf)
 
-        if cce_product not in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS):
+        if cce_product not in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             delta_w = tik_instance.Scalar("float32", name="delta_w")
             delta_h = tik_instance.Scalar("float32", name="delta_h")
             w0 = tik_instance.Scalar("float32", name="w0")
@@ -1130,7 +1130,7 @@ class RoiAlign:
         # as the indexAddr is set to a vector
         # which contains 128 elements.
         # convXt = CalcXtForOneSrcVectorOP(1, 1, 8, 4, 2)
-        if cce_product not in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS):
+        if cce_product not in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             tik_instance.vec_conv(MASK_FP32, 'none', index_arr_fp32, \
                                   index_arr, 2, 8, 4)   # fp16 -> fp32
 
@@ -1151,7 +1151,7 @@ class RoiAlign:
         tik_instance.vec_adds(MASK_FP32 * dtype_num, ypos_fp32, ypos_fp32, h0, \
                               2 // dtype_num, 8, 8)
 
-        if cce_product not in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS):
+        if cce_product not in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             # deqXt = CalcXtForOneSrcVectorOP(1, 1, 4, 8, 2)
             tik_instance.vec_conv(MASK_FP32, 'none', xpos, xpos_fp32, \
                                   2, 4, 8)  # fp32 -> fp16
@@ -1169,7 +1169,7 @@ class RoiAlign:
             tik_instance.vec_conv(MASK_FP32, 'floor', ylow_int, ypos_fp32, \
                                   2, 8, 4)   # fp16  -> int32
 
-        if cce_product == tbe_platform.HI3796CV300CS:
+        if cce_product in ("Hi3796CV300CS", "SD3403"):
             xlow_int16 = self.tik_inst.Tensor("int16", (ROINUM, ), \
                                               name="xlow_int16", scope=tbe_platform.scope_ubuf)
             ylow_int16 = self.tik_inst.Tensor("int16", (ROINUM, ), \
@@ -1202,7 +1202,7 @@ class RoiAlign:
         tik_instance.vec_adds(MASK_FP16, xhigh, xlow, ONE, 1, 8, 8)
         tik_instance.vec_adds(MASK_FP16, yhigh, ylow, ONE, 1, 8, 8)
 
-        if cce_product not in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS):
+        if cce_product not in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             # lx, ly, hx, hy are the weights for interpolation
             # convXt = CalcXtForOneSrcVectorOP(1, 1, 8, 4, 2)
             tik_instance.vec_conv(MASK_FP32, 'none', xlow_fp32, xlow, \
@@ -1670,7 +1670,7 @@ def _get_roi_align_perf_scale_for_zero_v200(tik_instance, roi_fp32_fm_index, pro
                                   8 // dtype_num)
 
         if suppot_vconv is False and dtype == "float32":
-            if cce_product == tbe_platform.HI3796CV300CS:
+            if cce_product in ("Hi3796CV300CS", "SD3403"):
                 tik_instance.vcbd(64, grid_w_int16, grid_w_int32, 2, 1, 1, 4, 8)
                 tik_instance.vec_conv(128, '', grid_w_fp16, grid_w_int16, 1, 8, 8)
                 tik_instance.vcbd(64, grid_h_int16, grid_h_int32, 2, 1, 1, 4, 8)
@@ -1691,7 +1691,7 @@ def _get_roi_align_perf_scale_for_zero_v200(tik_instance, roi_fp32_fm_index, pro
                 tik_instance.vec_conv(64, "", grid_h_fp32, grid_h_int32, 2,
                                       8 // dtype_num, 8)
             else:
-                if cce_product == tbe_platform.HI3796CV300CS:
+                if cce_product in ("Hi3796CV300CS", "SD3403"):
                     tik_instance.vcbd(64, grid_w_int16, grid_w_int32, 2, 1, 1, 4, 8)
                     tik_instance.vec_conv(128, '', grid_w_fp32, grid_w_int16, 1, 8, 8)
                     tik_instance.vcbd(64, grid_h_int16, grid_h_int32, 2, 1, 1, 4, 8)
@@ -1868,7 +1868,7 @@ def _get_roi_align_perf_scale_for_zero(tik_instance, proposal, proposals_ub_x0,
                                   8 // dtype_num)
 
         if suppot_vconv is False and dtype == "float32":
-            if cce_product == tbe_platform.HI3796CV300CS:
+            if cce_product in ("Hi3796CV300CS", "SD3403"):
                 tik_instance.vcbd(64, grid_w_int16, grid_w_int32, 2, 1, 1, 4, 8)
                 tik_instance.vec_conv(128, '', grid_w_fp16, grid_w_int16, 1, 8, 8)
                 tik_instance.vcbd(64, grid_h_int16, grid_h_int32, 2, 1, 1, 4, 8)
@@ -1889,7 +1889,7 @@ def _get_roi_align_perf_scale_for_zero(tik_instance, proposal, proposals_ub_x0,
                 tik_instance.vec_conv(64, "", grid_h_fp32, grid_h_int32, 2,
                                       8 // dtype_num, 8)
             else:
-                if cce_product == tbe_platform.HI3796CV300CS:
+                if cce_product in ("Hi3796CV300CS", "SD3403"):
                     tik_instance.vcbd(64, grid_w_int16, grid_w_int32, 2, 1, 1, 4, 8)
                     tik_instance.vec_conv(128, '', grid_w_fp32, grid_w_int16, 1, 8, 8)
                     tik_instance.vcbd(64, grid_h_int16, grid_h_int32, 2, 1, 1, 4, 8)
@@ -1984,7 +1984,7 @@ def _get_grid_weight_per_roi(tik_instance, roi_bin_h_fp32_value,
         tmp_float32 = tik_instance.Tensor(
             dtype, [1], name="tmp_float32", scope=tbe_platform.scope_ubuf)
         tmp_int32[0].set_as(pool_n)
-        if cce_product == tbe_platform.HI3796CV300CS:
+        if cce_product in ("Hi3796CV300CS", "SD3403"):
             tmp_int16 = tik_instance.Tensor(
                 "int16", [1], name="tmp_int16", scope=tbe_platform.scope_ubuf)
             tik_instance.vcbd(1, tmp_int16, tmp_int32, 1, 1, 1, 4, 8)
@@ -2029,7 +2029,7 @@ def _get_grid_weight_per_roi(tik_instance, roi_bin_h_fp32_value,
             "int32", [1], name="tmp_int32", scope=tbe_platform.scope_ubuf)
         tmp_int32[0].set_as(grid_n)
         if dtype == "float32":
-            if cce_product == tbe_platform.HI3796CV300CS:
+            if cce_product in ("Hi3796CV300CS", "SD3403"):
                 tmp_int16 = tik_instance.Tensor(
                     "int16", [1], name="tmp_int16", scope=tbe_platform.scope_ubuf)
                 tik_instance.vcbd(1, tmp_int16, tmp_int32, 1, 1, 1, 4, 8)
@@ -2038,7 +2038,7 @@ def _get_grid_weight_per_roi(tik_instance, roi_bin_h_fp32_value,
                 tik_instance.vec_conv(1, "", tmp_float16, tmp_int32, 1, 4, 8, 1.0)
             tik_instance.vec_conv(1, "", const_value_fp32, tmp_float16, 1, 8, 4)
         else:
-            if cce_product == tbe_platform.HI3796CV300CS:
+            if cce_product in ("Hi3796CV300CS", "SD3403"):
                 tmp_int16 = tik_instance.Tensor(
                     "int16", [1], name="tmp_int16", scope=tbe_platform.scope_ubuf)
                 tik_instance.vcbd(1, tmp_int16, tmp_int32, 1, 1, 1, 4, 8)
@@ -2100,7 +2100,7 @@ def _get_grid_weight_per_roi(tik_instance, roi_bin_h_fp32_value,
                          const_value_fp32, 1, 8, 8, 0)
 
     if vconvf_suppot is False and dtype == "float32":
-        if cce_product == tbe_platform.HI3796CV300CS:
+        if cce_product in ("Hi3796CV300CS", "SD3403"):
             roi_bin_ph_gh_ly_int16 = tik_instance.Tensor(
                 "int16", [1], name="roi_bin_ph_gh_ly_int16", scope=tbe_platform.scope_ubuf)
             tik_instance.vcbd(1, roi_bin_ph_gh_ly_int16, roi_bin_ph_gh_ly_int32, 1, 1, 1, 4, 8)
@@ -2116,7 +2116,7 @@ def _get_grid_weight_per_roi(tik_instance, roi_bin_h_fp32_value,
                                   roi_bin_ph_gh_ly_int32[0],
                                   1, 8 // dtype_num, 8)
         else:
-            if cce_product == tbe_platform.HI3796CV300CS:
+            if cce_product in ("Hi3796CV300CS", "SD3403"):
                 roi_bin_ph_gh_ly_int16 = tik_instance.Tensor(
                     "int16", [1], name="roi_bin_ph_gh_ly_int16", scope=tbe_platform.scope_ubuf)
                 tik_instance.vcbd(1, roi_bin_ph_gh_ly_int16, roi_bin_ph_gh_ly_int32[0], 1, 1, 1, 4, 8)
@@ -2690,8 +2690,7 @@ def _bilinear_interpolate(tik_instance, x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo,
 
                     cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
 
-                    if (cce_product in (tbe_platform.ASCEND_610, tbe_platform.ASCEND_710,
-                                        tbe_platform.HI3796CV300CS)) \
+                    if (cce_product in ("Ascend610", "Ascend710", "Hi3796CV300CS", "SD3403")) \
                             and (dtype == "float16") and (fm_c1 >= 8):
                         c1_block_num = (fm_c1 + 7) // 8
                         vbi_weights = _prepare_vbi_xm(tik_instance, h_y, l_y, h_x, l_x, c1_block_num)
@@ -2785,7 +2784,7 @@ def _get_grid_weight(tik_instance, grid_w, grid_h, rois_start_w, rois_start_h,
                 "float16", (128,),
                 name="const_value_0_127_float",
                 scope=tbe_platform.scope_ubuf)
-            if cce_product == tbe_platform.HI3796CV300CS:
+            if cce_product in ("Hi3796CV300CS", "SD3403"):
                 const_value_0_127_int16 = tik_instance.Tensor("int16", (ROINUM, ), \
                                                               name="const_value_0_127_int16",
                                                               scope=tbe_platform.scope_ubuf)
@@ -2800,7 +2799,7 @@ def _get_grid_weight(tik_instance, grid_w, grid_h, rois_start_w, rois_start_h,
                                   const_value_0_127_float,
                                   2, 8, 4)
         else:
-            if cce_product == tbe_platform.HI3796CV300CS:
+            if cce_product in ("Hi3796CV300CS", "SD3403"):
                 const_value_0_127_int16 = tik_instance.Tensor("int16", (ROINUM, ), \
                                                               name="const_value_0_127_int16",
                                                               scope=tbe_platform.scope_ubuf)
@@ -2907,7 +2906,7 @@ def _get_grid_weight(tik_instance, grid_w, grid_h, rois_start_w, rois_start_h,
         dtype, [128], name="tmp_fp32", scope=tbe_platform.scope_ubuf)
 
     if vconv_f322s32f_suppot is False and dtype == "float32":
-        if cce_product == tbe_platform.HI3796CV300CS:
+        if cce_product in ("Hi3796CV300CS", "SD3403"):
             x_lo_int16 = tik_instance.Tensor("int16", (ROINUM, ), \
                                              name="x_lo_int16", scope=tbe_platform.scope_ubuf)
             tik_instance.vcbd(64, x_lo_int16, x_lo, 2, 1, 1, 4, 8)
@@ -2920,7 +2919,7 @@ def _get_grid_weight(tik_instance, grid_w, grid_h, rois_start_w, rois_start_h,
         if dtype == "float32":
             tik_instance.vec_conv(64, "", tmp_fp32, x_lo, 2, 8, 8)
         else:
-            if cce_product == tbe_platform.HI3796CV300CS:
+            if cce_product in ("Hi3796CV300CS", "SD3403"):
                 x_lo_int16 = tik_instance.Tensor("int16", (ROINUM, ), \
                                                  name="x_lo_int16", scope=tbe_platform.scope_ubuf)
                 tik_instance.vcbd(64, x_lo_int16, x_lo, 2, 1, 1, 4, 8)
@@ -2933,7 +2932,7 @@ def _get_grid_weight(tik_instance, grid_w, grid_h, rois_start_w, rois_start_h,
                          2 // dtype_num, 8, 8, 8)
 
     if vconv_f322s32f_suppot is False and dtype == "float32":
-        if cce_product == tbe_platform.HI3796CV300CS:
+        if cce_product in ("Hi3796CV300CS", "SD3403"):
             y_lo_int16 = tik_instance.Tensor("int16", (ROINUM, ), \
                                              name="y_lo_int16", scope=tbe_platform.scope_ubuf)
             tik_instance.vcbd(64, y_lo_int16, y_lo, 2, 1, 1, 4, 8)
@@ -2947,7 +2946,7 @@ def _get_grid_weight(tik_instance, grid_w, grid_h, rois_start_w, rois_start_h,
         if dtype == "float32":
             tik_instance.vec_conv(64, "", tmp_fp32, y_lo, 2, 8, 8)
         else:
-            if cce_product == tbe_platform.HI3796CV300CS:
+            if cce_product in ("Hi3796CV300CS", "SD3403"):
                 y_lo_int16 = tik_instance.Tensor("int16", (ROINUM, ), \
                                                  name="y_lo_int16", scope=tbe_platform.scope_ubuf)
                 tik_instance.vcbd(64, y_lo_int16, y_lo, 2, 1, 1, 4, 8)

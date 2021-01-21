@@ -147,8 +147,8 @@ def _prior_box_check(feature, img, data_h, data_w, min_size, max_size,
     feature_dtype = dtype.lower()
     feature_format = feature.get("format")
 
-    product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
-    if product in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS):
+    product = tbe_platform.get_soc_spec("SOC_VERSION")
+    if product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         check_list = ["float16"]
     else:
         check_list = ["float16", "float32"]

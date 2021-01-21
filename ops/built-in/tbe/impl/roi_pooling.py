@@ -325,8 +325,7 @@ def _safe_check(dicts, kernel_name):
     y_shape = dicts[3].get("shape")
 
     tik_name_check = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
-    if tik_name_check in (tbe_platform.ASCEND_310, tbe_platform.ASCEND_910,
-                          tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS):
+    if tik_name_check in ("Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         para_check.check_dtype(x_dtype, ["float16"], param_name="input_x")
         para_check.check_dtype(rois_dtype, ["float16"], param_name="input_rois")
     else:
