@@ -52,7 +52,7 @@ def clip_by_value_compute(input_t, clip_value_min, clip_value_max, output_t,
     input_shape = shape_util.shape_to_list(input_t.shape)
     shape_min_org = shape_util.shape_to_list(clip_value_min.shape)
     shape_max_org = shape_util.shape_to_list(clip_value_max.shape)
-    input_shape, shape_max_org, shape_broadcast = \
+    _, _, shape_broadcast = \
         shape_util.broadcast_shapes(input_shape, shape_max_org, param_name_input1="input_t",
                                     param_name_input2="clip_value_max")
 
@@ -63,7 +63,7 @@ def clip_by_value_compute(input_t, clip_value_min, clip_value_max, output_t,
         input_t = tbe.broadcast(input_t, shape_broadcast)
 
     res_min = tbe.vmin(input_t, clip_value_max)
-    shape_min_org, shape_broadcast, shape_broadcast2 = \
+    _, _, shape_broadcast2 = \
         shape_util.broadcast_shapes(shape_min_org, shape_broadcast, param_name_input1="clip_value_min",
                                     param_name_input2="input_t_broadcast")
 
@@ -122,30 +122,13 @@ def clip_by_value(input_t, clip_value_min, clip_value_max,
         shape_util.broadcast_shapes(shape_min, shape_broadcast, param_name_input1="clip_value_min",
                                     param_name_input2="input_t_broadcast")
 
-    shape_broadcast2 = shape_util.shape_refine(shape_broadcast2)
     para_check.check_shape(shape_x, param_name="input_t")
-    shape_x = shape_util.shape_refine(shape_x)
-    if len(shape_x) != len(shape_broadcast2) and len(shape_x) == 1:
-        list_min = [1]*(len(shape_broadcast2) - 1)
-        shape_x = shape_x + list_min
-
     data_x = tvm.placeholder(shape_x, name="data_x", dtype=input_dtype)
 
     data_value = {}
     para_check.check_shape(shape_min, param_name="clip_value_min")
-    shape_min = shape_util.shape_refine(shape_min)
-    if len(shape_min) != len(shape_broadcast2) and len(shape_min) == 1:
-        list_min = [1]*(len(shape_broadcast2) - 1)
-        shape_min = shape_min + list_min
-
     data_value["min"] = tvm.placeholder(shape_min, name="data_min", dtype=input_dtype)
-
     para_check.check_shape(shape_max, param_name="clip_value_max")
-    shape_max = shape_util.shape_refine(shape_max)
-    if len(shape_max) != len(shape_broadcast2) and len(shape_max) == 1:
-        list_max = [1]*(len(shape_broadcast2) - 1)
-        shape_max = shape_max + list_max
-
     data_value["max"] = tvm.placeholder(shape_max, name="data_max", dtype=input_dtype)
 
     res = clip_by_value_compute(data_x, data_value["min"], data_value["max"], output_t, kernel_name)
