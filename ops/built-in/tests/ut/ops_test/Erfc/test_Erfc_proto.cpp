@@ -1,21 +1,21 @@
 #include <gtest/gtest.h>
 #include <iostream>
 #include "op_proto_test_util.h"
-#include "elewise_calculation_ops.h"
+#include "math_ops.h"
 
-class cos : public testing::Test {
+class erfc : public testing::Test {
  protected:
   static void SetUpTestCase() {
-    std::cout << "cos Proto Test SetUp" << std::endl;
+    std::cout << "erfc Proto Test SetUp" << std::endl;
   }
 
   static void TearDownTestCase() {
-    std::cout << "cos Proto Test TearDown" << std::endl;
+    std::cout << "erfc Proto Test TearDown" << std::endl;
   }
 };
 
-TEST_F(cos, cos_infershape_diff_test){
-  ge::op::Cos op;
+TEST_F(erfc, erfc_infershape_diff_test){
+  ge::op::Erfc op;
   op.UpdateInputDesc("x", create_desc({4, 3, 4}, ge::DT_FLOAT16));
   
   auto ret = op.InferShapeAndType();
@@ -27,8 +27,8 @@ TEST_F(cos, cos_infershape_diff_test){
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
 
-TEST_F(cos, cos_infershape_same_test){
-  ge::op::Cos op;
+TEST_F(erfc, erfc_infershape_same_test){
+  ge::op::Erfc op;
   op.UpdateInputDesc("x", create_desc({1, 3, 4}, ge::DT_FLOAT16));
 
   auto ret = op.InferShapeAndType();
@@ -39,4 +39,3 @@ TEST_F(cos, cos_infershape_same_test){
   std::vector<int64_t> expected_output_shape = {1, 3, 4};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
-

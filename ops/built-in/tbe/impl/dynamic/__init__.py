@@ -150,3 +150,5 @@ from .minimum_grad import minimum_grad
 from .atan2 import atan2
 from .reciprocal_grad import reciprocal_grad
 from .not_equal import not_equal
+from .erf import erf
+from .erfc import erfc

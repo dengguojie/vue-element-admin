@@ -382,27 +382,23 @@ INFER_FUNC_REG(GetDynamicDims, GetDynamicDimsInfer);
 
 // ----------------Erf-------------------
 IMPLEMT_COMMON_INFERFUNC(ErfInferShape) {
-  Shape x_shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(x_shape);
-  tensordesc_output.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
-  return GRAPH_SUCCESS;
+  OP_LOGI(op.GetName().c_str(), "Enter ErfInferShape");
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(Erf, ErfInferShape);
-// --------------Erf END-----------------
+// --------------Erf END------------------
 
 // ----------------Erfc-------------------
 IMPLEMT_COMMON_INFERFUNC(ErfcInferShape) {
-  Shape x_shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(x_shape);
-  tensordesc_output.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
-  return GRAPH_SUCCESS;
+  OP_LOGI(op.GetName().c_str(), "Enter ErfcInferShape");
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(Erfc, ErfcInferShape);
