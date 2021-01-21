@@ -19,6 +19,7 @@ set(local_kernels_src_files
     kernels/normalized/mul.cc
     kernels/normalized/random_uniform.cc
     kernels/normalized/fill.cc
+    kernels/normalized/equal.cc
     utils/sparse_group.cc
     utils/eigen_tensor.cc
     utils/kernel_util.cc
