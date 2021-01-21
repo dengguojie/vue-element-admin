@@ -17,14 +17,19 @@ transpose
 """
 
 # pylint: disable=unused-argument
-def check_supported(input_x, output_y, perm, kernel_name="transpose_d"):
+def check_supported(input_x, perm, output_y, kernel_name="dynamic_transpose"):
     """
-    when input is -1 dynamic shape and the dim len is more than three, aicore can not support
+    dynamic transpose is selected when any condition is true
+        -1 in input_x shape
+        -1 in output_y shape
+        -2 in input_x shape
     """
     x_shape = input_x.get("ori_shape")
+    y_shape = output_y.get("ori_shape")
     x_dtype = input_x.get("dtype")
 
-    if -1 in x_shape and x_dtype in ("float", "float32", "int32", "uint32"):
+    if (-1 in x_shape or -1 in y_shape or -2 in x_shape) and\
+            x_dtype in ("float", "float32", "int32", "uint32", "int16", "uint16", "float16"):
         return True
 
     return False

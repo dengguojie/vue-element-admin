@@ -506,8 +506,8 @@ class Transpose(object):
         self.ub_size_64 = self._get_ub_size_by_int64()
         self.ub_input_64 = self.tik_inst.Tensor("int64", (self.ub_size_64,), tik.scope_ubuf, "ub_input")
         tik_inst.data_move(self.ub_input_64, self.data_tiling, 0, 1, TILING_HEAD_LEN, 0, 0)
-        self.barrier_workspace = tik_inst.Tensor("int64", (BARRIER_INT_LEN * CORE_NUM,), tik.scope_gm,
-                "barrier_workspace", is_workspace=True, is_atomic_add=True)
+        #self.barrier_workspace = tik_inst.Tensor("int64", (BARRIER_INT_LEN * CORE_NUM,), tik.scope_gm,
+        #        "barrier_workspace", is_workspace=True, is_atomic_add=True)
         self.tiling_reg_list = [self.tik_inst.Scalar("int64") for i in range(TILING_MAX_PARAM_NUM)]
         self.element_per_block = self._element_per_block(self.x_dtype)
         self.fp16_times = self._sizeof_dtype(x_dtype) // self._sizeof_dtype("float16") # fp32/int32:2  fp16/int16:1
