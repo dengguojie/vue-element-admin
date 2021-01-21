@@ -29,7 +29,7 @@
 #include "graph/utils/node_utils.h"
 #include "graph/utils/attr_utils.h"
 #include "graph/debug/ge_attr_define.h"
-
+#include "external/graph/operator_factory.h"
 #include "op_log.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "securec.h"
@@ -185,6 +185,15 @@ Status SparseSoftMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   }
   // OPTYPE
   SoftMax->SetType("SoftmaxCrossEntropyWithLogits");
+  auto realFusedOp = ge::OperatorFactory::CreateOperator("realFusedOp", "SoftmaxCrossEntropyWithLogits");
+  if (realFusedOp.IsEmpty()) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "create fusion node %s failed", "SoftmaxCrossEntropyWithLogits");
+    return FAILED;
+  }
+  auto realFusedOpDescPtr = ge::OpDescUtils::GetOpDescFromOperator(realFusedOp);
+  realFusedOp.BreakConnect();
+  SoftMax->AddInferFunc(realFusedOpDescPtr->GetInferFunc());
+
   // ADD one node(SoftMaxNode)
   ge::NodePtr SoftMaxNode = graph.AddNode(SoftMax);
   fusionNodes.push_back(SoftMaxNode);
