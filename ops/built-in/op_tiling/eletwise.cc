@@ -689,7 +689,10 @@ bool Eletwise::DoTiling() {
                  * BLOCK_SIZE) / compileInfo.max_dtype;
       }
       ret = ret && DoUbTiling();
-      ret = ret && UpdateTiling();
+      // skip one dim
+      if (output_shape.size() != 1) {
+          ret = ret && UpdateTiling();
+      }
     } else {
       if (output_shape.size() == 1) {
         ub_axis = 0;
