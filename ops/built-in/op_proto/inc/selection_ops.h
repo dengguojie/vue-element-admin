@@ -2103,6 +2103,34 @@ REG_OP(StridedSliceV2)
     .OUTPUT(y, TensorType::BasicType())
     .OP_END_FACTORY_REG(StridedSliceV2)
 
+/**
+*@brief Fills the elements of the input tensor with value val by selecting the indices in the order given in index. \n
+
+*@par Inputs:
+*Three inputs, including:
+* @li x: A tensor. Must be one of the following types:
+*     float16, float32, int32. \n
+*@li assist1: A tensor. Must be one of the following types:
+*     float16, float32, int32. \n
+*@li assist2: A tensor. Must be one of the following types:
+*     float16, float32, int32. \n
+
+* @par Attributes:
+* @li dim: A required int. Used to select the dimension of this tensor. \n
+
+*@par Outputs:
+*y: A Tensor with the same type and shape of input_x's. \n
+
+*@par Third-party framework compatibility
+*Compatible with the Pytorch operator IndexFill. \n
+*/
+REG_OP(IndexFillD)
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32}))
+    .INPUT(assist1, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32}))
+    .INPUT(assist2, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32}))
+    .REQUIRED_ATTR(dim, Int)
+    .OP_END_FACTORY_REG(IndexFillD)
 } // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_SELECTION_OPS_H_
