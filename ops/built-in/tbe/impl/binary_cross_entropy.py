@@ -35,27 +35,14 @@ NoneType = type(None)
 def op_select_format(x, y, weight, output,
                      reduction="mean",
                      kernel_name="binary_cross_entropy"):
-    """op_select_format.
-
-    Parameters
-    ----------
-    x: dict
-        the dict of input tensor.
-    y: list or tuple
-        the list of output tensor.
-    weight :
-        a manual rescaling weight given to the loss of each batch element.
-        If given, has to be a Tensor of size nbatch
-    output :
-        loss result after compute
-    reduction :
-        reduce configuration parameter: mean/sum/none. Default: mean
-    kernel_name : str
-        kernel name, default value is "binary_cross_entropy"
-
-    Returns
-    -------
-    None.
+    """
+    1. when input x's ori_shape is 4D and the ori_format in ["NCHW", "NHWC"],
+    and the dim C of x's ori_shape can be divisible by 16. The Op
+    BinaryCrossEntropy can support ND and NC1HWC0.
+    > for example:
+    > x : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
+    > y : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
+    > weight : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
     """
     is_support_5hd = True
     support_ori_format = ["NCHW", "NHWC"]

@@ -31,54 +31,30 @@ VALUE_ONE = 1
 # pylint: disable=locally-disabled,too-many-statements,too-many-branches
 def op_select_format(condition, x1, x2, y, kernel_name="select"):
     """
-    select format dynamically
-    op_select_format support desc:
-        1. when all input(condition, x1, x2) have the same ori_shape, ori_format,
-           and the format is in ["NCHW", "NHWC", "HWCN"] or ["NDHWC", "DHWCN", "NCDHW"]
-           the Op Select can support
-                ND + ND + ND = ND,
-                FRACTAL_NZ + FRACTAL_NZ + FRACTAL_NZ = FRACTAL_NZ,
-                NC1HWC0(NDC1HWC0) + NC1HWC0(NDC1HWC0) + NC1HWC0(NDC1HWC0) = NC1HWC0(NDC1HWC0),
-                FRACTAL_Z(FRACTAL_Z_3D) + FRACTAL_Z(FRACTAL_Z_3D) + FRACTAL_Z(FRACTAL_Z_3D) = FRACTAL_Z(FRACTAL_Z_3D),
+    1. when all input(condition, x1, x2) have the same ori_shape, ori_format,
+       and the format is in ["NCHW", "NHWC", "HWCN"] or ["NDHWC", "DHWCN", "NCDHW"],
+       the Op Select can support ND, FRACTAL_NZ, NC1HWC0 and FRACTAL_Z.
+    > for example:
+    > conditon : Tensor (shape=(16, 16, 16, 16), "NCHW")
+    > x1 : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+    > x2 : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+    > the Op Select can process with NC1HWC0:
+    > conditon : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
+    > x1 : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
+    > x2 : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
 
-           for example:
-           inputs:
-             conditon ori shape = [16, 16, 16, 16] ori_format = "NCHW"
-             x1       ori shape = [16, 16, 16, 16] ori_format = "NCHW"
-             x2       ori shape = [16, 16, 16, 16] ori_format = "NCHW"
-           outputs:
-             y2       ori shape = [16, 16, 16, 16] ori_format = "NCHW"
-
-           the Op Select can process with NC1HWC0:
-             conditon shape = [16, 1, 16, 16, 16] format = "NC1HWC0"
-             x1       shape = [16, 1, 16, 16, 16] format = "NC1HWC0"
-             x2       shape = [16, 1, 16, 16, 16] format = "NC1HWC0"
-           outputs:
-             y2       shape = [16, 1, 16, 16, 16] format = "NC1HWC0"
-
-        2. when all input(x1, x2) have the same ori_shape, ori_format,
-           and the format is in ["NCHW", "NHWC", "HWCN"] or ["NDHWC", "DHWCN", "NCDHW"]
-           and conditon is a scaler
-           he Op Select can support
-                ND + ND + ND = ND,
-                ND + FRACTAL_NZ + FRACTAL_NZ = FRACTAL_NZ,
-                ND + NC1HWC0(NDC1HWC0) + NC1HWC0(NDC1HWC0) = NC1HWC0(NDC1HWC0),
-                ND + FRACTAL_Z(FRACTAL_Z_3D) + FRACTAL_Z(FRACTAL_Z_3D) = FRACTAL_Z(FRACTAL_Z_3D),
-           for example:
-           inputs:
-             conditon ori shape = [] ori_format = "NCHW"
-             x1       ori shape = [16, 16, 16, 16] ori_format = "NCHW"
-             x2       ori shape = [16, 16, 16, 16] ori_format = "NCHW"
-           outputs:
-             y2       ori shape = [16, 16, 16, 16] ori_format = "NCHW"
-
-           the Op Select can process with NC1HWC0:
-             conditon shape = [] format = "NCHW"
-             x1       shape = [16, 1, 16, 16, 16] format = "NC1HWC0"
-             x2       shape = [16, 1, 16, 16, 16] format = "NC1HWC0"
-           outputs:
-             y2       shape = [16, 1, 16, 16, 16] format = "NC1HWC0"
-
+    2. when all input(x1, x2) have the same ori_shape, ori_format, and the
+       format is in ["NCHW", "NHWC", "HWCN"] or ["NDHWC", "DHWCN", "NCDHW"],
+       and conditon is a scaler. The Op Select can support ND, FRACTAL_NZ,
+       NC1HWC0 and FRACTAL_Z.
+    > for example:
+    > conditon : Tensor of (shape=(2), "NCHW")
+    > x1 : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+    > x2 : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+    > the Op Select can process with NC1HWC0:
+    > conditon : Tensor of (shape=(2), "NCHW")
+    > x1 : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
+    > x2 : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
     """
     shape_condition = condition.get("ori_shape")
     shape_x1 = x1.get("ori_shape")

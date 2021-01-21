@@ -32,27 +32,16 @@ from impl.util.util_select_op_base import get_dynamic_param_in_json
 def op_select_format(x, bias, y, axis=1, num_axes=1, bias_from_blob=True,
                      kernel_name="bias"):
     """
-    select format dynamically
-    op_select_format support desc:
-        1. when input x's ori_shape is 4, and bias's shape is not 1.
-           The Op Bias can support
-           ND + ND = ND,
-           NC1HWC0 + NC1HWC0 = NC1HWC0,
+    1. when input x's ori_shape is 4, and bias's shape is not 1. The
+       Op Bias can support ND and NC1HWC0.
+    > for example:
+    > x : Tensor of (shape=(16, 16, 16, 16, 16), "NC1HWC0")
+    > bias : Tensor of (shape=(16, 16, 16, 16, 16), "NC1HWC0")
 
-           for example:
-           inputs:
-             x        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
-             bias     ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
-           outputs:
-             y        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
-
-        2. In other scenes, all input(x, bias) only support ND,
-           for example:
-           inputs:
-             x        ori shape = [2] ori_format = "ND"
-             bias     ori shape = [2] ori_format = "ND"
-           outputs:
-             y        ori shape = [2] ori_format = "ND"
+    2. In other scenes, all input(x, bias) only support ND.
+    > for example:
+    > x : Tensor of (shape=(2), "ND")
+    > bias : Tensor of (shape=(2), "ND")
     """
     shape_x_ori = x.get("ori_shape")
     shape_x = x.get("shape")

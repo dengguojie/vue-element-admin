@@ -48,7 +48,19 @@ def check_param_range(param_name, min_value, max_value, real_value, op_name='ssd
 def op_select_format(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True,
                      kernel_name="scale"):
     """
-    select format dynamically
+    1. when length of input x's ori_shape is 4. The Op
+    Scale can support NC1HWC0.
+    > for example:
+    > x : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+    > scale : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+    > the Op Scale can process with NC1HWC0:
+    > x : Tensor of (shape=(16, 1, 16, 16, 16) ,"NC1HWC0")
+    > scale : Tensor of (shape=(16, 1, 16, 16, 16) ,"NC1HWC0")
+    
+    2. In other scenes, the Op Select can support ND.
+    > for example:
+    > x : Tensor of (shape=(2), "ND")
+    > scale : Tensor of (shape=(2), "ND")
     """
     shape_x_ori = x.get("ori_shape")
     shape_x = x.get("shape")

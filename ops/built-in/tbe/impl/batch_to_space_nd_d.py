@@ -515,7 +515,13 @@ def get_op_support_info(x, y, block_shape, crops, kernel_name="batch_to_space_nd
 
 
 def op_select_format(x, y, block_shape, crops, kernel_name="batch_to_space_nd_d"):
-    """op select format.
+    """
+    1. when x's ori_format is in ["NDHWC", "NCDHW"], the Op BatchToSpaceNDD
+    can support NDC1HWC0.
+    > for example:
+    > x : Tensor of (shape=(16, 1, 1, 16, 16, 16), "NDC1HWC0")
+    the Op Select can process with NC1HWC0:
+    > x : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
     """
     dtype = "float16, float"
     input_format = "NC1HWC0, NC1HWC0"

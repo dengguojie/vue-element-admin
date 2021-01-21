@@ -28,25 +28,21 @@ from impl.util import util_select_op_base
 # pylint: disable=too-many-statements,too-many-branches,invalid-name
 def op_select_format(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
     """
-    select format dynamically, supporting dynamic shape format selecting
+    1. when the length of x's ori_shape is less than or equal
+    to 4 and the first element of the shape of bias is a multiple
+    of 16. The Op BiasAdd can support NC1HWC0, NCHW and NHWC.
+    > for example:
+    > x : Tensor of (shape=(16, 16, 16, 16), "NHWC")
+    > bias : Tensor of (shape=(16, 16, 16, 16), "NHWC")
+    > The Op BiasAdd can process with NC1HWC0
+    > x : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
+    > bias : Tensor of (shape=(2), "ND")
 
-    Parameters
-    ----------
-    x: dict
-        dict of x, include keys(shape and dtype).
-    bias: dict
-        dict of bias, include keys(shape and dtype).
-    y: dict
-        dict of y, include keys(shape and dtype).
-    data_format: A string.
-                'N...C' and 'NC...' are supported.
-    kernel_name: str
-        kernel name, default value is 'bias'
-
-    Returns:
-    -------
-    param_dynamic_in_json: dict
-        dict of param_dynamic.
+    2. when the length of x's ori_shape is greater then 4 and
+    the first element of the shape of bias is a multiple of 16.
+    The Op BiasAdd can support NDHWC, NCDHW, NDC1HWC0.
+    > x : Tensor of (shape=(16, 1, 16, 16, 16), "NDHWC")
+    > bias : Tensor of (shape=(2), "ND")
     """
     shape_bias = bias.get("shape")
     ori_shape_x = x.get("ori_shape")
