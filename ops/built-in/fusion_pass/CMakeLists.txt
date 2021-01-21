@@ -111,7 +111,6 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/const2attr/const2attr_fusion_pass.cc
   graph_fusion/ai_core/confusion_softmax_grad_fusion_pass.cc
   graph_fusion/ai_core/conv2dbackprop_dilation_fusion_pass.cc
-  graph_fusion/ai_core/conv2d_group_fusion_pass.cc
   graph_fusion/ai_core/conv_add_fusion_pass.cc
   graph_fusion/ai_core/conv_batchnorm_fusion_pass.cc
   graph_fusion/ai_core/conv_fusion_pass_base.cc
@@ -123,7 +122,6 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/deconv_weight_trans_fusion_pass.cc
   graph_fusion/ai_core/deformable_conv2d_fusion_pass.cc
   graph_fusion/ai_core/derelu_fusion_pass.cc
-  graph_fusion/ai_core/dw_group_fusion_pass.cc
   graph_fusion/ai_core/diag_fusion_pass.cc
   graph_fusion/ai_core/diag_part_fusion_pass.cc
   graph_fusion/ai_core/dynamic_lstm_fusion_pass.cc
