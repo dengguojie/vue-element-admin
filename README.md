@@ -12,7 +12,7 @@
 
 ##### 发布包安装
 
-`canndev`包含在[昇腾软件包](https://www.huaweicloud.com/ascend/resource/Software)中，当软件包安装完毕后，`canndev`便可以被使用。
+`canndev`包含在[昇腾软件包](https://ascend.huawei.com/#/software/cann)中，当软件包安装完毕后，`canndev`便可以被使用。
 
 ##### 源码安装
 
@@ -22,7 +22,7 @@
 - `CMake >= 3.14.0`
 - `Python 3.7.x`
 
-注：`canndev`的编译**依赖升腾软件包**（开发者套件中的`ATC`包）,请先在社区下载。
+注：`canndev`的编译**依赖昇腾软件包**（开发者套件中的`ATC`包）,请先在社区下载。
 
 详细的安装步骤可以参考`Wiki`[环境准备](https://gitee.com/ascend/canndev/wikis)章节。
 
