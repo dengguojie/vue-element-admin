@@ -70,8 +70,13 @@ main() {
   local task_type="$1"
   local pr_file="$2"
   if [[ ! -f "${pr_file}" ]]; then
-    echo "[Info] pr_file contains nothing,install all st case"
-    install_all_stest
+    if [[ "${task_type}" == "st" ]]; then
+      echo "[Info] pr_file contains nothing,install all st case"
+      install_all_stest
+    else
+      echo "[ERROR] A input file that contains files changed is required"
+      exit $STATUS_SUCCESS
+    fi
   else
     install_stest "${task_type}" "${pr_file}"
   fi
