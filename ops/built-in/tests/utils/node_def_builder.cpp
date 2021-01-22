@@ -16,6 +16,7 @@ namespace aicpu {
 
 NodeDefBuilder::NodeDefBuilder(NodeDef *nodeDef, std::string name, std::string opName) {
 	nodeDef_ = nodeDef;
+	name_ = name;
 	nodeDef_->SetOpType(opName);
 }
 
@@ -26,6 +27,7 @@ void NodeDefBuilder::BuildNodeFromInputOutputNode(const InputOutputNode& node, b
 	} else {
 		tensor = nodeDef_->AddOutputs();
 	}
+	aicpu::CpuKernelUtils::SetTensorName(node.node, tensor);
 	tensor->SetDataType(node.dType);
 	auto shape = tensor->GetTensorShape();
 	shape->SetDimSizes(node.dims);

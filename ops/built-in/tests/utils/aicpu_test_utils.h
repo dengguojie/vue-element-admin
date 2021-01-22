@@ -26,8 +26,8 @@ bool CompareResult(T output[], T expect_output[], uint64_t num) {
     if (output[i] != expect_output[i]) {
       std::cout << "output[" << i << "] = ";
       std::cout << output[i];
-      std::cout << "expect_output[" << i << "] =";
-      std::cout << expect_output[i];
+      std::cout << ", expect_output[" << i << "] = ";
+      std::cout << expect_output[i] << std::endl;
       result = false;
     }
   }

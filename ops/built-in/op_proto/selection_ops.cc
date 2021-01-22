@@ -4083,6 +4083,18 @@ static graphStatus UpdateParams1(
     struct SliceParametersFormal &slice_params_output_formal) {
   ge::Shape shape = op.GetInputDesc("x").GetShape();
   size_t dim_num = shape.GetDimNum();
+  std::vector<std::string> input_infer_depends = {"begin", "end"};
+  ge::OpDescPtr slice_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto strides_desc = slice_desc->MutableInputDesc(slice_desc->GetInputIndexByName("strides"));
+  if (strides_desc != nullptr) {
+    input_infer_depends.push_back("strides");
+  }
+
+  auto axes_desc = slice_desc->MutableInputDesc(slice_desc->GetInputIndexByName("axes"));
+  if (axes_desc != nullptr) {
+    input_infer_depends.push_back("axes");
+  }
+  slice_desc->SetOpInferDepends(input_infer_depends);
 
   if (GRAPH_FAILED == GetStridedSliceInfer(op, slice_params_output,
                                            slice_params_output_formal)) {
@@ -4094,9 +4106,7 @@ static graphStatus UpdateParams1(
   // get axes and permute others attr
   Tensor axes_tensor;
   vector<int64_t> axes_list;
-  ge::OpDescPtr slice_desc = OpDescUtils::GetOpDescFromOperator(op);
-  if (slice_desc->MutableInputDesc(slice_desc->GetInputIndexByName("axes")) !=
-      nullptr) {
+  if (axes_desc != nullptr) {
     if (op.GetInputConstData("axes", axes_tensor) != GRAPH_SUCCESS) {
       OP_LOGE(op.GetName().c_str(), "Get constValue failed of [axes]");
       return GRAPH_FAILED;
@@ -4224,8 +4234,9 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV2InferShape) {
 
   if (UpdateParams1(op, slice_params_output, slice_params_output_formal) !=
       GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update params failed!");
-    return GRAPH_FAILED;
+    TensorDesc output_desc = op.GetOutputDesc("y");
+    output_desc.SetShape(ge::Shape(ge::UNKNOWN_RANK));
+    return op.UpdateOutputDesc("y", output_desc);
   }
 
   op.SetAttr("begin", slice_params_output.begin_list);
