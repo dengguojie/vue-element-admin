@@ -8,7 +8,100 @@
 					"ND"
 				],
 				"type":[
-					"float",
+					"float"
+				],
+				"shape":[
+					1
+				],
+				"value_range":[
+					[
+						0.1,
+						1.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			},
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float"
+				],
+				"shape":[
+					32,
+					32
+				],
+				"value_range":[
+					[
+						0.1,
+						1.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			},
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float"
+				],
+				"shape":[
+					32,
+					32
+				],
+				"value_range":[
+					[
+						0.1,
+						1.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			}
+		],
+		"output_desc":[
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float"
+				],
+				"shape":[
+					32,
+					32
+				]
+			}
+		],
+		"attr":[
+			{
+				"name":"reduction",
+				"value":"mean",
+				"type":"string"
+			},
+			{
+				"name":"log_target",
+				"value":false,
+				"type":"bool"
+			}
+		]
+	},
+	{
+		"case_name":"Test_KlDivLossGrad_002",
+		"op":"KlDivLossGrad",
+		"input_desc":[
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
 					"float16"
 				],
 				"shape":[
@@ -29,7 +122,6 @@
 					"ND"
 				],
 				"type":[
-					"float",
 					"float16"
 				],
 				"shape":[
@@ -51,7 +143,6 @@
 					"ND"
 				],
 				"type":[
-					"float",
 					"float16"
 				],
 				"shape":[
@@ -75,7 +166,6 @@
 					"ND"
 				],
 				"type":[
-					"float",
 					"float16"
 				],
 				"shape":[

@@ -9,7 +9,69 @@
 					"NCHW"
 				],
 				"type":[
-					"float16",
+					"float16"
+				],
+				"shape":[
+					128,
+					3,
+					24,
+					24
+				],
+				"value_range":[
+					[
+						0.1,
+						1.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			}
+		],
+		"output_desc":[
+			{
+				"format":[
+					"NCHW"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+					128,
+					3,
+					24,
+					10
+				]
+			}
+		],
+		"attr":[
+			{
+				"name":"start",
+				"value":7,
+				"type":"int"
+			},
+			{
+				"name":"end",
+				"value":17,
+				"type":"int"
+			},
+			{
+				"name":"stride",
+				"value":1,
+				"type":"int"
+			}
+		]
+	},
+	{
+		"case_name":"Test_SliceLastDim_002",
+		"op":"SliceLastDim",
+		"calc_expect_func_file":"",
+		"input_desc":[
+			{
+				"format":[
+					"NCHW"
+				],
+				"type":[
 					"float"
 				],
 				"shape":[
@@ -35,7 +97,6 @@
 					"NCHW"
 				],
 				"type":[
-					"float16",
 					"float"
 				],
 				"shape":[

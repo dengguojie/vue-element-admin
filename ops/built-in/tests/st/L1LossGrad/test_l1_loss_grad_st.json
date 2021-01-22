@@ -8,17 +8,11 @@
 					"ND"
 				],
 				"type":[
-					"float",
-					"float16"
+					"float"
 				],
 				"shape":[
 					[
 						10
-					],
-					[
-						17,
-						15,
-						13
 					]
 				],
 				"value_range":[
@@ -36,17 +30,11 @@
 					"ND"
 				],
 				"type":[
-					"float",
-					"float16"
+					"float"
 				],
 				"shape":[
 					[
 						10
-					],
-					[
-						17,
-						15,
-						13
 					]
 				],
 				"value_range":[
@@ -64,17 +52,11 @@
 					"ND"
 				],
 				"type":[
-					"float",
-					"float16"
+					"float"
 				],
 				"shape":[
 					[
 						10
-					],
-					[
-						17,
-						15,
-						13
 					]
 				],
 				"value_range":[
@@ -94,17 +76,11 @@
 					"ND"
 				],
 				"type":[
-					"float",
-					"float16"
+					"float"
 				],
 				"shape":[
 					[
 						10
-					],
-					[
-						17,
-						15,
-						13
 					]
 				]
 			}
@@ -126,13 +102,683 @@
 					"ND"
 				],
 				"type":[
-					"float",
 					"float16"
 				],
 				"shape":[
 					[
 						10
-					],
+					]
+				],
+				"value_range":[
+					[
+						0.1,
+						1.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			},
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+					[
+						10
+					]
+				],
+				"value_range":[
+					[
+						0.1,
+						1.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			},
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+					[
+						10
+					]
+				],
+				"value_range":[
+					[
+						0.1,
+						1.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			}
+		],
+		"output_desc":[
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+					[
+						10
+					]
+				]
+			}
+		],
+		"attr":[
+			{
+				"name":"reduction",
+				"value":"mean",
+				"type":"string"
+			}
+		]
+	},
+	{
+		"case_name":"Test_L1LossGrad_003",
+		"op":"L1LossGrad",
+		"input_desc":[
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float"
+				],
+				"shape":[
+					[
+						10
+					]
+				],
+				"value_range":[
+					[
+						-5.0,
+						5.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			},
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float"
+				],
+				"shape":[
+					[
+						10
+					]
+				],
+				"value_range":[
+					[
+						-5.0,
+						5.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			},
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float"
+				],
+				"shape":[
+					[
+						10
+					]
+				],
+				"value_range":[
+					[
+						-5.0,
+						5.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			}
+		],
+		"output_desc":[
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float"
+				],
+				"shape":[
+					[
+						10
+					]
+				]
+			}
+		],
+		"attr":[
+			{
+				"name":"reduction",
+				"value":"none",
+				"type":"string"
+			}
+		]
+	},
+	{
+		"case_name":"Test_L1LossGrad_004",
+		"op":"L1LossGrad",
+		"input_desc":[
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+					[
+						10
+					]
+				],
+				"value_range":[
+					[
+						-5.0,
+						5.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			},
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+					[
+						10
+					]
+				],
+				"value_range":[
+					[
+						-5.0,
+						5.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			},
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+					[
+						10
+					]
+				],
+				"value_range":[
+					[
+						-5.0,
+						5.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			}
+		],
+		"output_desc":[
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+					[
+						10
+					]
+				]
+			}
+		],
+		"attr":[
+			{
+				"name":"reduction",
+				"value":"none",
+				"type":"string"
+			}
+		]
+	},
+	{
+		"case_name":"Test_L1LossGrad_005",
+		"op":"L1LossGrad",
+		"input_desc":[
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float"
+				],
+				"shape":[
+					[
+						10
+					]
+				],
+				"value_range":[
+					[
+						-5.0,
+						5.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			},
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float"
+				],
+				"shape":[
+					[
+						10
+					]
+				],
+				"value_range":[
+					[
+						-5.0,
+						5.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			},
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float"
+				],
+				"shape":[
+					[
+						10
+					]
+				],
+				"value_range":[
+					[
+						-5.0,
+						5.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			}
+		],
+		"output_desc":[
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float"
+				],
+				"shape":[
+					[
+						10
+					]
+				]
+			}
+		],
+		"attr":[
+			{
+				"name":"reduction",
+				"value":"sum",
+				"type":"string"
+			}
+		]
+	},
+	{
+		"case_name":"Test_L1LossGrad_006",
+		"op":"L1LossGrad",
+		"input_desc":[
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+					[
+						10
+					]
+				],
+				"value_range":[
+					[
+						-5.0,
+						5.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			},
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+					[
+						10
+					]
+				],
+				"value_range":[
+					[
+						-5.0,
+						5.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			},
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+					[
+						10
+					]
+				],
+				"value_range":[
+					[
+						-5.0,
+						5.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			}
+		],
+		"output_desc":[
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+					[
+						10
+					]
+				]
+			}
+		],
+		"attr":[
+			{
+				"name":"reduction",
+				"value":"sum",
+				"type":"string"
+			}
+		]
+	},
+	{
+		"case_name":"Test_L1LossGrad_007",
+		"op":"L1LossGrad",
+		"input_desc":[
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float"
+				],
+				"shape":[
+					[
+						17,
+						15,
+						13
+					]
+				],
+				"value_range":[
+					[
+						0.1,
+						1.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			},
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float"
+				],
+				"shape":[
+					[
+						17,
+						15,
+						13
+					]
+				],
+				"value_range":[
+					[
+						0.1,
+						1.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			},
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float"
+				],
+				"shape":[
+					[
+						17,
+						15,
+						13
+					]
+				],
+				"value_range":[
+					[
+						0.1,
+						1.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			}
+		],
+		"output_desc":[
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float"
+				],
+				"shape":[
+					[
+						17,
+						15,
+						13
+					]
+				]
+			}
+		],
+		"attr":[
+			{
+				"name":"reduction",
+				"value":"mean",
+				"type":"string"
+			}
+		]
+	},
+	{
+		"case_name":"Test_L1LossGrad_008",
+		"op":"L1LossGrad",
+		"input_desc":[
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+					[
+						17,
+						15,
+						13
+					]
+				],
+				"value_range":[
+					[
+						0.1,
+						1.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			},
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+					[
+						17,
+						15,
+						13
+					]
+				],
+				"value_range":[
+					[
+						0.1,
+						1.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			},
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+					[
+						17,
+						15,
+						13
+					]
+				],
+				"value_range":[
+					[
+						0.1,
+						1.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			}
+		],
+		"output_desc":[
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+					[
+						17,
+						15,
+						13
+					]
+				]
+			}
+		],
+		"attr":[
+			{
+				"name":"reduction",
+				"value":"mean",
+				"type":"string"
+			}
+		]
+	},
+	{
+		"case_name":"Test_L1LossGrad_009",
+		"op":"L1LossGrad",
+		"input_desc":[
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float"
+				],
+				"shape":[
 					[
 						17,
 						15,
@@ -154,13 +800,9 @@
 					"ND"
 				],
 				"type":[
-					"float",
-					"float16"
+					"float"
 				],
 				"shape":[
-					[
-						10
-					],
 					[
 						17,
 						15,
@@ -182,13 +824,9 @@
 					"ND"
 				],
 				"type":[
-					"float",
-					"float16"
+					"float"
 				],
 				"shape":[
-					[
-						10
-					],
 					[
 						17,
 						15,
@@ -212,13 +850,9 @@
 					"ND"
 				],
 				"type":[
-					"float",
-					"float16"
+					"float"
 				],
 				"shape":[
-					[
-						10
-					],
 					[
 						17,
 						15,
@@ -236,7 +870,7 @@
 		]
 	},
 	{
-		"case_name":"Test_L1LossGrad_003",
+		"case_name":"Test_L1LossGrad_010",
 		"op":"L1LossGrad",
 		"input_desc":[
 			{
@@ -244,13 +878,9 @@
 					"ND"
 				],
 				"type":[
-					"float",
 					"float16"
 				],
 				"shape":[
-					[
-						10
-					],
 					[
 						17,
 						15,
@@ -272,13 +902,9 @@
 					"ND"
 				],
 				"type":[
-					"float",
 					"float16"
 				],
 				"shape":[
-					[
-						10
-					],
 					[
 						17,
 						15,
@@ -300,13 +926,9 @@
 					"ND"
 				],
 				"type":[
-					"float",
 					"float16"
 				],
 				"shape":[
-					[
-						10
-					],
 					[
 						17,
 						15,
@@ -330,13 +952,213 @@
 					"ND"
 				],
 				"type":[
-					"float",
 					"float16"
 				],
 				"shape":[
 					[
-						10
-					],
+						17,
+						15,
+						13
+					]
+				]
+			}
+		],
+		"attr":[
+			{
+				"name":"reduction",
+				"value":"none",
+				"type":"string"
+			}
+		]
+	},
+	{
+		"case_name":"Test_L1LossGrad_011",
+		"op":"L1LossGrad",
+		"input_desc":[
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float"
+				],
+				"shape":[
+					[
+						17,
+						15,
+						13
+					]
+				],
+				"value_range":[
+					[
+						-5.0,
+						5.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			},
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float"
+				],
+				"shape":[
+					[
+						17,
+						15,
+						13
+					]
+				],
+				"value_range":[
+					[
+						-5.0,
+						5.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			},
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float"
+				],
+				"shape":[
+					[
+						17,
+						15,
+						13
+					]
+				],
+				"value_range":[
+					[
+						-5.0,
+						5.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			}
+		],
+		"output_desc":[
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float"
+				],
+				"shape":[
+					[
+						17,
+						15,
+						13
+					]
+				]
+			}
+		],
+		"attr":[
+			{
+				"name":"reduction",
+				"value":"sum",
+				"type":"string"
+			}
+		]
+	},
+	{
+		"case_name":"Test_L1LossGrad_012",
+		"op":"L1LossGrad",
+		"input_desc":[
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+					[
+						17,
+						15,
+						13
+					]
+				],
+				"value_range":[
+					[
+						-5.0,
+						5.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			},
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+					[
+						17,
+						15,
+						13
+					]
+				],
+				"value_range":[
+					[
+						-5.0,
+						5.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			},
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+					[
+						17,
+						15,
+						13
+					]
+				],
+				"value_range":[
+					[
+						-5.0,
+						5.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			}
+		],
+		"output_desc":[
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
 					[
 						17,
 						15,

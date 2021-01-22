@@ -52,6 +52,10 @@ install_stest() {
   done
 }
 
+install_all_stest() {
+  cp -rf "${OPS_ST_SOURCE_DIR}/" "${TEST_INSTALL_PATH}"
+}
+
 install_script() {
   echo "[INFO] install run_ops_test.sh"
   cp -f "${CUR_PATH}/util/run_ops_st.sh" "${TEST_BIN_PATH}"
@@ -66,10 +70,11 @@ main() {
   local task_type="$1"
   local pr_file="$2"
   if [[ ! -f "${pr_file}" ]]; then
-    echo "[ERROR] A input file that contains files changed is required"
-    exit $STATUS_SUCCESS
+    echo "[Info] pr_file contains nothing,install all st case"
+    install_all_stest
+  else
+    install_stest "${task_type}" "${pr_file}"
   fi
-  install_stest "${task_type}" "${pr_file}"
   install_script
   install_package
 }

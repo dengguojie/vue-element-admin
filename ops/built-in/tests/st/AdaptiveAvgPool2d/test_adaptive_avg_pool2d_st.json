@@ -8,7 +8,61 @@
 					"ND"
 				],
 				"type":[
-					"float16",
+					"float16"
+				],
+				"shape":[
+					1,
+					1,
+					7,
+					7
+				],
+				"value_range":[
+					[
+						0.1,
+						1.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			}
+		],
+		"output_desc":[
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+					1,
+					1,
+					4,
+					4
+				]
+			}
+		],
+		"attr":[
+			{
+				"name":"output_size",
+				"value":[
+					4,
+					4
+				],
+				"type":"list_int"
+			}
+		]
+	},
+	{
+		"case_name":"Test_AdaptiveAvgpool2d_002",
+		"op":"AdaptiveAvgPool2d",
+		"input_desc":[
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
 					"float"
 				],
 				"shape":[
@@ -34,7 +88,6 @@
 					"ND"
 				],
 				"type":[
-					"float16",
 					"float"
 				],
 				"shape":[
