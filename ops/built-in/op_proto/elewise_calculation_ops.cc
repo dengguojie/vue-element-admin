@@ -3744,7 +3744,7 @@ VERIFY_FUNC_REG(MaskedScale, MaskedScaleVerify);
 
 // ----------------AbsGrad-------------------
 IMPLEMT_VERIFIER(AbsGrad, AbsGradVerify) {
-  if (!CheckInputsShapeDtypeSame(op, "y", "dy")) {
+  if (!CheckTwoInputDtypeSame(op, "y", "dy")) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -3983,7 +3983,7 @@ COMMON_INFER_FUNC_REG(Asinh, AsinhInferShape);
 
 // ------------------Mod--------------------
 IMPLEMT_VERIFIER(Mod, ModVerify) {
-  if (!CheckInputsShapeDtypeSame(op, "x1", "x2")) {
+  if (!CheckTwoInputDtypeSame(op, "x1", "x2")) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
