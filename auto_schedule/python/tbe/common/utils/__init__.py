@@ -19,26 +19,8 @@ from . import const
 
 from . import log
 
-from .para_check import SHAPE_SIZE_LIMIT
-from .para_check import SHAPE_SIZE_ZERO
-from .para_check import DIM_LIMIT
-from .para_check import MIN_UNKNOWN_SHAPE_RANK
-from .para_check import MAX_UNKNOWN_SHAPE_NUM
-from .para_check import DEFAULT_MIN_SHAPE_DIM
-from .para_check import DEFAULT_MAX_SHAPE_DIM
-from .para_check import DEFAULT_MAX_SHAPE_NUM
-from .para_check import RANK_ZERO
-from .para_check import RANK_LIMIT
-from .para_check import ZERO_DIM
 from .para_check import NONE_TYPE
-from .para_check import MAX_KERNEL_NAME_LEN
 from .para_check import KERNEL_NAME
-from .para_check import CONST
-from .para_check import SPECIAL
-from .para_check import ORIGINAL
-from .para_check import SPECIAL_SCALAR
-from .para_check import COMMON
-from .para_check import BROADCAST
 from .para_check import REQUIRED_INPUT
 from .para_check import OPTION_INPUT
 from .para_check import DYNAMIC_INPUT
@@ -91,12 +73,7 @@ from .para_check import OP_ERROR_CODE_024
 from .para_check import OP_ERROR_CODE_025
 from .para_check import OP_ERROR_CODE_026
 from .para_check import OP_ERROR_CODE_027
-from .para_check import OpParamInfoKey
-from .para_check import TensorFormat
-from .para_check import ALL_FORMAT_LIST
 from .para_check import ALL_DTYPE_LIST
-from .para_check import OP_NAME
-from .para_check import PARAM_NAME
 from .para_check import check_op_params
 from .para_check import check_shape
 from .para_check import check_dtype
