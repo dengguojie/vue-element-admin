@@ -88,18 +88,6 @@ class TensorImpl {
   uint64_t GetDataSize() const;
 
   /*
-   * get name of tensor.
-   * @return std::string: tensor name
-   */
-  std::string GetName() const;
-
-  /*
-   * set name of tensor.
-   * @param name: tensor name
-   */
-  void SetName(const std::string &name);
-
-  /*
    * calculate data size by tensor shape.
    * @return success->not less than 0, failed->less than 0
    */

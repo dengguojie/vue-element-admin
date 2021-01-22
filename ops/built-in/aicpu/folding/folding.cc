@@ -39,10 +39,8 @@ const char *kVtTensor = "VT_TENSOR";
 const char *kVtListTensor = "VT_LIST_TENSOR";
 
 void ConvertGeToAicpuTensor(const ge::GeTensorDesc &tensor_desc,
-                            const std::string &tensor_name,
                             const ge::Tensor &ge_tensor,
                             std::shared_ptr<aicpu::Tensor> &aicpu_tensor) {
-  aicpu::CpuKernelUtils::SetTensorName(tensor_name, aicpu_tensor);
   aicpu_tensor->SetDataType(
       static_cast<aicpu::DataType>(tensor_desc.GetDataType()));
   aicpu_tensor->SetData(const_cast<uint8_t *>(ge_tensor.GetData()));
@@ -54,9 +52,6 @@ void ConvertGeToAicpuTensor(const ge::GeTensorDesc &tensor_desc,
     shape->SetDimSizes(shape_dims);
     shape->SetFormat(static_cast<aicpu::Format>(tensor_desc.GetFormat()));
   }
-  CPU_LOG_INFO("Op set tensor[%s], tensor info[type:%d, data:%p, size:%llu].",
-               tensor_name.c_str(), tensor_desc.GetDataType(),
-               ge_tensor.GetData(), ge_tensor.GetSize());
 }
 
 int32_t AddStringAttrToNodeDef(ge::Operator &op, const std::string &name,
@@ -354,12 +349,9 @@ __attribute__((visibility("default"))) int32_t CpuConstantFoldingCompute(
       op_desc, -1, "Op[%s] get op desc from operator failed.", op_type.c_str())
 
   node_def->SetOpType(op_type);
-  size_t input_size = op_desc->GetAllInputsSize();
+  size_t input_size = op_desc->GetInputsSize();
   for (size_t i = 0; i < input_size; ++i) {
-    ge::GeTensorDescPtr input_desc = op_desc->MutableInputDesc(i);
-    if (input_desc == nullptr) {
-      continue;
-    }
+    ge::GeTensorDesc input_desc = op_desc->GetInputDesc(i);
     std::string input_name = op_desc->GetInputNameByIndex(i);
     auto iter = inputs.find(input_name);
     if (iter == inputs.end()) {
@@ -372,7 +364,7 @@ __attribute__((visibility("default"))) int32_t CpuConstantFoldingCompute(
     CPU_CHECK_NULLPTR_WARN(input_tensor, -1,
                            "Op[%s] node def add input[%zu] failed.",
                            op_type.c_str(), i)
-    ConvertGeToAicpuTensor(*input_desc, input_name, iter->second, input_tensor);
+    ConvertGeToAicpuTensor(input_desc, iter->second, input_tensor);
   }
 
   size_t output_size = op_desc->GetOutputsSize();
@@ -390,8 +382,7 @@ __attribute__((visibility("default"))) int32_t CpuConstantFoldingCompute(
     CPU_CHECK_NULLPTR_WARN(output_tensor, -1,
                            "Op[%s] node def add input[%zu] failed.",
                            op_type.c_str(), i)
-    ConvertGeToAicpuTensor(output_desc, output_name, iter->second,
-                           output_tensor);
+    ConvertGeToAicpuTensor(output_desc, iter->second, output_tensor);
   }
 
   auto attrs = op.GetAllAttrNamesAndTypes();

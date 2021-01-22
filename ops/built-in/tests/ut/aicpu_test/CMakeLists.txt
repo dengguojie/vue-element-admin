@@ -80,7 +80,6 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/mul.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cast.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/random_uniform.cc
-  ${CPU_KERNELS_DIR}/kernels/normalized/strided_slice_v2.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/sparse_to_dense_kernels.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/fill.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/equal.cc
@@ -161,7 +160,6 @@ set(_cpu_kernels_ut_files
   testcase/mul_utest.cpp
   testcase/cast_utest.cpp
   testcase/random_uniform_utest.cpp
-  testcase/strided_slice_v2_utest.cpp
   testcase/sparse_to_dense_kernel_utest.cpp
   testcase/fill_utest.cpp
   testcase/euqal_utest.cpp
