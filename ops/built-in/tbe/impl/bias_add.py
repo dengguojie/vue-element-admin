@@ -149,7 +149,7 @@ def op_select_format(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
 
     param_list = [input0, input1, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
-    print(param_dynamic_in_json)
+    
     return param_dynamic_in_json
 
 @tbe_platform.fusion_manager.fusion_manager.register("bias_add")
