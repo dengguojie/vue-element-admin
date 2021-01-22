@@ -93,19 +93,19 @@ def op_select_format(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
                                                     format="NC1HWC0, NC1HWC0, NCHW, NCHW, NCHW, NHWC,"
                                                            "NHWC, NHWC")
         else:
-            # NCHW+NCHW NHWC+NHWC
+            # ND+ND
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                   datatype="int32, float16, float, int32, float16, float",
-                                                   format="NCHW, NCHW, NCHW, NHWC, NHWC, NHWC",
-                                                   unknownshape_format="NCHW, NCHW, NCHW, NHWC, NHWC, NHWC")
+                                                   datatype="int32, float16, float",
+                                                   format="ND, ND, ND",
+                                                   unknownshape_format="ND, ND, ND")
             input1 = util_select_op_base.gen_param(classify="input1", name="bias",
-                                                   datatype="int32, float16, float, int32, float16, float",
-                                                   format="NCHW, NCHW, NCHW, NHWC, NHWC, NHWC",
-                                                   unknownshape_format="NCHW, NCHW, NCHW, NHWC, NHWC, NHWC")
+                                                   datatype="int32, float16, float",
+                                                   format="ND, ND, ND",
+                                                   unknownshape_format="ND, ND, ND")
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                    datatype="int32, float16, float, int32, float16, float",
-                                                    format="NCHW, NCHW, NCHW, NHWC, NHWC, NHWC",
-                                                    unknownshape_format="NCHW, NCHW, NCHW, NHWC, NHWC, NHWC")
+                                                    datatype="int32, float16, float",
+                                                    format="ND, ND, ND",
+                                                    unknownshape_format="ND, ND, ND")
     else:
         if shape_bias[0] % c0 == 0:
             # NDHWC+NDHWC NCDHW+NCDHW NDC1HWC0+NDC1HWC0
