@@ -17,6 +17,7 @@ set(local_kernels_src_files
     kernels/normalized/cast.cc
     kernels/normalized/add.cc
     kernels/normalized/mul.cc
+    kernels/normalized/strided_slice_v2.cc
     kernels/normalized/random_uniform.cc
     kernels/normalized/fill.cc
     kernels/normalized/equal.cc
