@@ -400,6 +400,10 @@ def proposal_d(cls_prob_dic, bbox_delta_dic, im_info_dic, rpn_bbox_dic,
     tik_instance = tik.Tik(tik.Dprofile())
     tik_name = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
     _check_datatype(input_dtype)
+    if actual_rois_num_dic is not None and bool(actual_rois_num_dic):
+        output_actual_rois_num = 1
+    else:
+        output_actual_rois_num = 0
 
     if min_size <= 0:
         error_info = {'errCode': para_check.OP_ERROR_CODE_002,
