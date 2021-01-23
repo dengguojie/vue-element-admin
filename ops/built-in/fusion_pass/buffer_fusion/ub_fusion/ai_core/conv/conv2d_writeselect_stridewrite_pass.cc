@@ -127,7 +127,7 @@ void TbeConv2dWrtselStridewrtPass::SetSplitInfo(const BufferFusionMapping &mappi
     }
   }
 
-  int32_t axis;
+  int32_t axis = 0;
   vector<ge::NodePtr> stride_write_nodes = GetMatchedNodesByDescName(kPatternStridedWrite, mapping);
   for (auto stride_write_node : stride_write_nodes) {
     AttrUtils::GetInt(stride_write_node->GetOpDesc(), "axis", axis);
@@ -145,7 +145,7 @@ void TbeConv2dWrtselStridewrtPass::SetSplitInfo(const BufferFusionMapping &mappi
   auto split_maps = op_calc_info.GetAxisSplitMapVec();
   int h_axis = 2;
   int w_axis = 3;
-  DelSplitInfoByAxis(split_maps, axis);  
+  DelSplitInfoByAxis(split_maps, axis);
   DelSplitInfoByAxis(split_maps, h_axis);
   DelSplitInfoByAxis(split_maps, w_axis);
   if (existed_quant) {
