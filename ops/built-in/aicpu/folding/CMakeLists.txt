@@ -45,7 +45,6 @@ target_compile_options(constant_folding_ops PRIVATE
 )
 
 target_compile_definitions(constant_folding_ops PRIVATE
-    _GLIBCXX_USE_CXX11_ABI=0
     _FORTIFY_SOURCE=2
     google=ascend_private
     LOG_CPP

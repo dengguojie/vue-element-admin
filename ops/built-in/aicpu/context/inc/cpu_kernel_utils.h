@@ -45,16 +45,6 @@ class AICPU_VISIBILITY CpuKernelUtils {
   static std::shared_ptr<TensorImpl> GetImpl(const Tensor *tensor);
 
   /*
-   * get tensor name.
-   */
-  static std::string GetTensorName(const Tensor *tensor);
-
-  /*
-   * set tensor name.
-   */
-  static void SetTensorName(const std::string &name, std::shared_ptr<Tensor> &tensor);
-
-  /*
    * create Tensor shape.
    * @return std::shared_ptr<TensorShape>: TensorShape ptr
    */
