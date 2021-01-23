@@ -13,10 +13,8 @@
 # limitations under the License.
 # ============================================================================
 """
-batch_normalization_forward_training_reduce
+softmax_cross_entropy_with_logits op schedule
 """
-from __future__ import absolute_import
-
 import math
 
 import te.lang.cce
@@ -31,6 +29,7 @@ from .util import gen_reversed_subgraph_list
 from .util import DTYPE_WIDTH_MAP
 
 softmax_cross_logits_nhw = [11842605]
+softmax_cross_logits_nd = [2105352]
 
 
 def get_mask_fp16_skip_one(length):
@@ -437,6 +436,11 @@ def get_npart_factor(n_h_w, dtype_bytes, block_dim):
         npart_factor = block_dim
     else:
         npart_factor = n_h_w * dtype_bytes // 32
+
+    if block_dim == 30 and npart_factor != 0:
+        if n_h_w in softmax_cross_logits_nd:
+            while n_h_w % npart_factor != 0:
+                npart_factor -= 1
 
     if block_dim == 32 and npart_factor != 0:
         if n_h_w in softmax_cross_logits_nhw:
