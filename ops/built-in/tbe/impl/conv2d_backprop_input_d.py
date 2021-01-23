@@ -163,15 +163,6 @@ def get_op_support_info( # pylint: disable=invalid-name,R0913,R0914,W0613
     -------
     res: the json of op info with split
     """
-    dtype_out_backprop = out_backprop.get("dtype")
-    if dtype_out_backprop != "float16":
-        dict_args = {
-            "errCode": "E60005",
-            "param_name": "out_backprop",
-            "expected_dtype_list": "[float16]",
-            "dtype": "{}".format(dtype_out_backprop)
-        }
-        raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
     h_pos = data_format.find("H")
     w_pos = data_format.find("W")
     shape_filters = util_deconv_comm.get_filter_shape(filter.get("ori_format"),

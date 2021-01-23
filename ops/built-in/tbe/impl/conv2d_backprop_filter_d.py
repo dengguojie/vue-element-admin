@@ -247,15 +247,6 @@ def get_op_support_info(
     """
 
     format_x = x.get("format")
-    dtype_x = x.get("dtype")
-    if dtype_x != "float16":
-        dict_args = {
-            "errCode": "E60005",
-            "param_name": "x",
-            "expected_dtype_list": "[float16]",
-            "dtype": "{}".format(dtype_x)
-        }
-        raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
     axis_reduce_list = None
     if format_x == "NC1HWC0":
         # only Cout1 can be cut
