@@ -32,7 +32,10 @@ N_DIM = 0
 C_DIM = 1
 H_DIM = 2
 W_DIM = 3
+H_DIM_2D = 0
+W_DIM_2D = 1
 RANGE_DIM_LEN = 2
+FORMAT_HW_DIM = 2
 FORMAT_NCHW_DIM = 4
 FORMAT_NC1HWC0_DIM = 5
 DYNAMIC_FLAG = -1
@@ -625,5 +628,58 @@ class Conv2dTransposeParaProcess(Conv2dBackpropParaProcess):
             bias_tensor = None
 
         return {"x_tensor": x_tensor, "filter_tensor": filter_tensor, "input_tensor": input_tensor,
+                "bias_tensor": bias_tensor, "filter_shape": param.get("filter_shape"),
+                "input_size": param.get("input_size"), "group_para": param.get("group_para")}
+
+
+class DeconvolutionParaProcess(Conv2dBackpropParaProcess):
+    """
+    class of param check and preprocess for dynamic deconvolution
+    """
+
+    def __init__(self, paras):
+        super().__init__(paras)
+        self.op_type = "deconvolution"
+        self.out_backprop = paras.get("x")
+        self.valid_paras = {
+            "nhw_min": 1,
+            "hw_max": 4096,
+            "valid_format": {"weights": ("NCHW",),
+                             "input": ("NCHW",),
+                             "output": ("NCHW",)},
+            "valid_dtype": ("float16",)
+        }
+
+    def check_support_valid(self, in_shape, w_shape):
+        """
+        check whether dynamic shape is supported for deconvolution
+        """
+        super().check_support_valid(in_shape, w_shape)
+        if self.paras.get("offset_w"):
+            err_man.raise_err_specific_user(
+                self.op_type, "offset_w is not supported in dynamic shape yet.")
+        if self.paras.get("offset_x") != 0:
+            err_man.raise_err_specific_user(
+                self.op_type, "offset_x is not supported in dynamic shape yet.")
+
+    def config_paras(self):
+        """
+        check original paras
+        """
+        if len(self.strides) != FORMAT_HW_DIM:
+            err_man.raise_err_specific_user(
+                self.op_type, "length of stride in deconvolution should be 2.")
+        self.strides = [1, 1, self.strides[H_DIM_2D], self.strides[W_DIM_2D]]
+
+        param = super().check_paras()
+
+        x_tensor = tvm.placeholder(param.get("dy_shape_nc1hwc0"), name="dedy", dtype=self.dtype)
+        filter_tensor = tvm.placeholder(param.get("filter_shape_frac_z"), name="filter", dtype=self.dtype)
+        if self.paras.get("bias"):
+            bias_tensor = tvm.placeholder((param.get("filter_shape")[N_DIM],), name="tensor_bias", dtype=self.dtype)
+        else:
+            bias_tensor = None
+
+        return {"x_tensor": x_tensor, "filter_tensor": filter_tensor, 
                 "bias_tensor": bias_tensor, "filter_shape": param.get("filter_shape"),
                 "input_size": param.get("input_size"), "group_para": param.get("group_para")}

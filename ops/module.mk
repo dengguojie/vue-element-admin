@@ -367,6 +367,7 @@ LOCAL_SRC_FILES := \
         built-in/op_tiling/reduce_tiling.cc \
         built-in/op_tiling/tiling_dispatch.cc \
         built-in/op_tiling/sparse_apply_ftrl_d.cc \
+        built-in/op_tiling/deconvolution.cc \
         built-in/op_tiling/dynamic_atomic_addr_clean.cc \
         built-in/op_tiling/sparse_apply_proximal_adagrad_d.cc \
         built-in/op_tiling/conv_tiling.cc \

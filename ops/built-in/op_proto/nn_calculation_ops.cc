@@ -4332,30 +4332,26 @@ IMPLEMT_INFER_DATA_SLICE(Deconvolution, DeconvolutionInferDataSlice) {
   return GRAPH_FAILED;
 }
 
-static void set_deconvolution_out_shape_range(const std::string& pad_str,
-                    size_t idx,
-                    const vector<int32_t>& attrParams,
-                    const std::vector<std::pair<int64_t, int64_t>>& fm_range,
-                    std::vector<std::pair<int64_t, int64_t>>& out_range) {
+static void set_deconvolution_out_shape_range(size_t idx,
+                                              const vector<int32_t>& attrParams,
+                                              const std::vector<std::pair<int64_t, int64_t>>& fm_range,
+                                              std::vector<std::pair<int64_t, int64_t>>& out_range) {
   size_t attrIdx = 0;
   int32_t stride = attrParams[attrIdx++];
   int32_t kernel = attrParams[attrIdx++];
   int32_t pad = attrParams[attrIdx++];
-  int32_t low = fm_range[idx].first;
-  int32_t high = fm_range[idx].second;
+  int64_t low = fm_range[idx].first;
+  int64_t high = fm_range[idx].second;
 
-  if (low == 1 && high == -1) {
-    out_range[idx].first = low;
+  if (high == -1) {
+    out_range[idx].first = std::max(low, kDynamicRangeLowerBound);
     out_range[idx].second = high;
   } else {
-    if (pad_str == "SAME") {
-      out_range[idx].first = stride * (low - 1) + 1;
-      out_range[idx].second = stride * (high - 1) + 1;
-    } else {
-      out_range[idx].first = stride * (low - 1) + kernel - pad;
-      out_range[idx].second = stride * (high - 1) + kernel - pad;
-    }
+    out_range[idx].first = stride * (low - 1) + kernel - pad;
+    out_range[idx].second = stride * (high - 1) + kernel - pad;
   }
+  out_range[idx].first = std::max(out_range[idx].first, kDynamicRangeLowerBound);
+  out_range[idx].second = std::min(out_range[idx].second, kDynamicRangeUpperBound);
 }
 
 IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
@@ -4372,32 +4368,25 @@ IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
   CHECK_FORMAT(xFormat);
   CHECK_FORMAT(wFormat);
   bool isDynamic = false;
+  bool unknownRank = IsUnknownRankShape(xShape);
   if (std::find(xShape.begin(), xShape.end(), -1) != xShape.end()) {
     isDynamic = true;
   }
-  if (std::find(xShape.begin(), xShape.end(), -2) != xShape.end()) {
-    OP_LOGE(op.GetName().c_str(), "not support -2 in out_backprop.");
-    map<string, string> err_map;
-    err_map["param"] = "xShape";
-    err_map["op_name"] = op.GetName().c_str();
-    err_map["expected_value"] = "positive or -1";
-    std::string reportErrorCode = "E50029";
-    ErrorManager::GetInstance().ReportErrMessage(reportErrorCode, err_map);
-    return GRAPH_FAILED;
-  }
-  int32_t in = 0;
-  int32_t ic = 0;
-  int32_t ih = 0;
-  int32_t iw = 0;
+  int32_t in = -1;
+  int32_t ic = -1;
+  int32_t ih = -1;
+  int32_t iw = -1;
   int32_t kn = 0;
   int32_t kc = 0;
   int32_t kh = 0;
   int32_t kw = 0;
   if (xFormat == FORMAT_NCHW) {
-    in = xShape[0];
-    ic = xShape[1];
-    ih = xShape[2];
-    iw = xShape[3];
+    if (!unknownRank) {
+      in = xShape[0];
+      ic = xShape[1];
+      ih = xShape[2];
+      iw = xShape[3];
+    }
   } else {
     OP_LOGE(op.GetName().c_str(),
             "input x format should be NCHW"
@@ -4439,7 +4428,7 @@ IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
   }
   OP_LOGI(op.GetName().c_str(), "groups is %lld", groups);
 
-  if (ic != kn) {
+  if ((!unknownRank) && (ic != kn)) {
     OP_LOGE(op.GetName().c_str(),
             "input x channel should be equal to filter. "
             "x format is: %d, filter format is: %d "
@@ -4487,25 +4476,17 @@ IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
   int kwext = dilw * (kw - 1) + 1;
   int64_t oh = strh * (ih - 1) + khext - padt - padb;
   int64_t ow = strw * (iw - 1) + kwext - padl - padr;
+  if (unknownRank) {
+    oh = -1;
+    ow = -1;
+  }
   if (isDynamic) {
-    // update pads list by padding[SAME,VALID]
-    std::string pad_str;
-    if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME") {
-      op.SetAttr("pads", {-1, -1, -1, -1});
-      oh = strh * (ih - 1) + 1;
-      ow = strw * (iw - 1) + 1;
-      OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in dynamic_shape");
-    } else if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "VALID") {
-      op.SetAttr("pads", {0, 0, 0, 0});
-      OP_LOGD(op.GetName().c_str(), "set pads to {0, 0, 0, 0} when padding is VALID in dynamic_shape");
-    }
     size_t idxC = 1;
     size_t idxH = 2;
     size_t idxW = 3;
     OP_LOGD(op.GetName().c_str(),"dynamic shape set range");
     std::vector<std::pair<int64_t, int64_t>> x_range;
     xTensor->GetShapeRange(x_range);
-    std::vector<std::pair<int64_t, int64_t>> y_range(x_range);
     if (ih == -1) {
       oh = -1;
     }
@@ -4513,24 +4494,26 @@ IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
       ow = -1;
     }
     if (!x_range.empty() && x_range.size() > idxW) {
+      std::vector<std::pair<int64_t, int64_t>> y_range(x_range);
       y_range[idxC].first = (int64_t)kc * groups;
       y_range[idxC].second = (int64_t)kc * groups;
+      y_range[idxH].first = oh;
+      y_range[idxH].second = oh;
+      y_range[idxW].first = ow;
+      y_range[idxW].second = ow;
       if (ih == -1) {
         vector<int32_t> attr_params_h = {strh, khext, padt + padb};
-        set_deconvolution_out_shape_range(pad_str, idxH, attr_params_h, x_range, y_range);
+        set_deconvolution_out_shape_range(idxH, attr_params_h, x_range, y_range);
       }
       if (iw == -1) {
         vector<int32_t> attr_params_w = {strw, kwext, padl + padr};
-        set_deconvolution_out_shape_range(pad_str, idxW, attr_params_w, x_range, y_range);
+        set_deconvolution_out_shape_range(idxW, attr_params_w, x_range, y_range);
       }
+      for (size_t i = 0; i < y_range.size(); i++) {
+        OP_LOGD(op.GetName().c_str(), "output Range[%u] is (%lld, %lld)", i, y_range[i].first, y_range[i].second);
+      }
+      yTensor->SetShapeRange(y_range);
     }
-    for (size_t i = 0; i < y_range.size(); i++) {
-      OP_LOGD(op.GetName().c_str(), "output Range[%u] is (%lld, %lld)", i, y_range[i].first, y_range[i].second);
-    }
-    yTensor->SetShapeRange(y_range);
-  } else {
-    oh = strh * (ih - 1) + khext - padt - padb;
-    ow = strw * (iw - 1) + kwext - padl - padr;
   }
   vector<int64_t> y_shape;
   auto yFormat = yTensor->GetFormat();
@@ -4576,7 +4559,8 @@ IMPLEMT_VERIFIER(Deconvolution, DeconvolutionVerify) {
 
   auto x_shape = x_tensor.GetShape().GetDims();
   auto w_shape = w_tensor.GetShape().GetDims();
-  if (x_shape.size() != 4) {
+  bool unknownRank = IsUnknownRankShape(x_shape);
+  if ((!unknownRank) && (x_shape.size() != 4)) {
     OP_LOGE(op.GetName().c_str(), "input x shape should be 4d.");
     string xvalue = ConcatString(x_shape.size());
     map<string, string> err_map;

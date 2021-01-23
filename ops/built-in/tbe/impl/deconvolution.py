@@ -176,6 +176,10 @@ def check_supported(  # pylint: disable=invalid-name,R0913,R0914,W0613
        hi - (hk - 1)*dk + 1 + padh // strideh = ho
        wi - (wk - 1)*wk + 1 + padw // stridew = wo
     """
+    shape_x = x.get("ori_shape")
+    dynamic_flag = any([i < 0 for i in shape_x])
+    if dynamic_flag:
+        return True
     try:
         _check_param(x, weight, y, strides, pads, dilations, data_format, offset_x)
         return True

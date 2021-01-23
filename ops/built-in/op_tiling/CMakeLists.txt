@@ -30,6 +30,7 @@ set(_optiling_files
   conv3d.cc
   conv_tiling.cc
   cube_tiling.cc
+  deconvolution.cc
   dynamic_atomic_addr_clean.cc
   eletwise.cc
   fill.cc
