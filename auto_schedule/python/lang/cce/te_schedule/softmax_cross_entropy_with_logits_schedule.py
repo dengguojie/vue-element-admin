@@ -68,7 +68,7 @@ def reset_mask_insn(ib_expr, type_, bits=128, mask_func=None):
 
 
 # pylint: disable=too-many-locals
-@tvm.register_func("tvm.intrin.cce.reg_mov_single")
+#@tvm.register_func("tvm.intrin.cce.reg_mov_single")
 def reg_mov_single(stmt_op):
     """
     elewise_binary_phony which will eliminate its second input tensor
@@ -84,7 +84,7 @@ def reg_mov_single(stmt_op):
     return ir_builder.get()
 
 
-@tvm.register_func("tvm.intrin.cce.reduce_last_axis_reduce_sum_2")
+#@tvm.register_func("tvm.intrin.cce.reduce_last_axis_reduce_sum_2")
 def reduce_last_axis_reduce_sum_2(tensor_op):
     """
     reduce last axis reduce sum 2
@@ -92,7 +92,7 @@ def reduce_last_axis_reduce_sum_2(tensor_op):
     return reduce_last_axis_max_and_sum(tensor_op, "vcadd")
 
 
-@tvm.register_func("tvm.intrin.cce.reduce_last_axis_reduce_max_2")
+#@tvm.register_func("tvm.intrin.cce.reduce_last_axis_reduce_max_2")
 def reduce_last_axis_reduce_max_2(tensor_op):
     """
     reduce last axis reduce max 2
@@ -303,7 +303,7 @@ def reduce_last_axis_max_and_sum(tensor_op, intrin_cmd):
     return ib_expr.get()
 
 
-@tvm.register_func("tvm.intrin.cce.dma_copy_softmax_cewl")
+#@tvm.register_func("tvm.intrin.cce.dma_copy_softmax_cewl")
 def dma_copy_softmax_cewl(tensor_op):
     """
     dma copy for softmax cewl

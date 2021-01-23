@@ -17,7 +17,7 @@ build
 """
 from __future__ import absolute_import as _abs
 
-import te.lang.cce as static
+from tbe.dsl.static_schedule.cce_schedule import cce_build_code as static_build
 from te.lang.base import operation_impl as operation
 
 from .unify_auto_schedule import build as dynamic_build
@@ -36,4 +36,4 @@ def build(sch, config_map=None):
     tensors = config_map.get("tensor_list", [])
     if len(tensors) == 1 and isinstance(tensors[0], (tuple, list)):
         config_map["tensor_list"] = tensors[0]
-    return static.cce_build_code(sch, config_map)
+    return static_build(sch, config_map)

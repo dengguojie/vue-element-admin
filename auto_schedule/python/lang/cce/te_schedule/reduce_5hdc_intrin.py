@@ -38,13 +38,13 @@ INTRIN_MAPPING_NORMAL = {
 }
 
 
-@tvm.register_func("tvm.intrin.cce.5hdc_reduce_min")
+#@tvm.register_func("tvm.intrin.cce.5hdc_reduce_min")
 def reduce_5hdc_reduce_min(stmt):
     """5HDC reduce for reduce_min"""
     return reduce_5hdc(stmt, "min")
 
 
-@tvm.register_func("tvm.intrin.cce.5hdc_reduce_max")
+#@tvm.register_func("tvm.intrin.cce.5hdc_reduce_max")
 def reduce_5hdc_reduce_max(stmt):
     """5HDC reduce for reduce_min"""
     return reduce_5hdc(stmt, "max")

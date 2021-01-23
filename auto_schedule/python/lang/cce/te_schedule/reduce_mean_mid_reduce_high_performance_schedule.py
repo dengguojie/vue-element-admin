@@ -24,7 +24,7 @@ from te.platform import cce_util
 from te.utils.error_manager.error_manager_util import get_error_message
 
 
-@tvm.register_func("tvm.intrin.cce.dichotomy_reduce_block_mean")
+#@tvm.register_func("tvm.intrin.cce.dichotomy_reduce_block_mean")
 def dichotomy_reduce_block_mean(stmt_op):  # pylint: disable=too-many-locals
     """Collapse second input tensor to one repeat and use vcadd to calculate sum to output"""
     # Get input and output buffers

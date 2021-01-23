@@ -22,7 +22,7 @@ from te.platform.cce_intrin_md import reset_mask_insn
 from te.platform import cce_util
 
 
-@tvm.register_func("tvm.intrin.cce.dma_copy_matmul_transpose")
+#@tvm.register_func("tvm.intrin.cce.dma_copy_matmul_transpose")
 def dma_copy_matmul_transpose(stmt):
     """dma_copy for Matmul + ConfusionTranspose"""
     return dma_copy_mmad_transpose(stmt, "matmul_transpose")

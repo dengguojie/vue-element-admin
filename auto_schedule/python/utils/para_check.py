@@ -150,387 +150,10 @@ def check_op_params(*type_args, **type_kwargs):
     """
     check op params
     """
-    input_params = [REQUIRED_INPUT, OPTION_INPUT, DYNAMIC_INPUT]
-    output_params = [REQUIRED_OUTPUT, OPTION_OUTPUT, DYNAMIC_OUTPUT]
-    required_attr_params = [REQUIRED_ATTR_STR, REQUIRED_ATTR_FLOAT,
-                            REQUIRED_ATTR_INT, REQUIRED_ATTR_BOOL,
-                            REQUIRED_ATTR_TYPE, REQUIRED_ATTR_LIST_INT,
-                            REQUIRED_ATTR_LIST_BOOL, REQUIRED_ATTR_LIST_FLOAT,
-                            REQUIRED_ATTR_LIST_LIST_INT]
-    list_type_attr = [REQUIRED_ATTR_LIST_BOOL, REQUIRED_ATTR_LIST_INT,
-                      REQUIRED_ATTR_LIST_FLOAT, REQUIRED_ATTR_LIST_LIST_INT,
-                      OPTION_ATTR_LIST_BOOL, OPTION_ATTR_LIST_INT,
-                      OPTION_ATTR_LIST_FLOAT, OPTION_ATTR_LIST_LIST_INT]
-
-    def _check_input_output_key(op_param, param_name, op_name=OP_NAME):
-        # check all necessary information
-        # (shape, format, ori_shape, ori_format, dtype)
-        if not isinstance(op_param, dict):
-            error_info = {
-                'errCode': OP_ERROR_CODE_003, 'op_name': op_name,
-                'param_name': param_name, 'param_type': 'dict',
-                'actual_type': op_param.__class__.__name__}
-            raise RuntimeError(
-                error_info,
-                "In op[%s], the parameter[%s]'s type should be [%s], "
-                "but actually is [%s]." % (error_info['op_name'],
-                                           error_info['param_name'],
-                                           error_info['param_type'],
-                                           error_info['actual_type']))
-        error_info = {}
-
-        if OpParamInfoKey.SHAPE.value not in op_param.keys():
-            error_info['key'] = OpParamInfoKey.SHAPE.value
-        elif OpParamInfoKey.FORMAT.value not in op_param.keys():
-            error_info['key'] = OpParamInfoKey.FORMAT.value
-        elif OpParamInfoKey.ORI_SHAPE.value not in op_param.keys():
-            error_info['key'] = OpParamInfoKey.ORI_SHAPE.value
-        elif OpParamInfoKey.ORI_FORMAT.value not in op_param.keys():
-            error_info['key'] = OpParamInfoKey.ORI_FORMAT.value
-        elif OpParamInfoKey.D_TYPE.value not in op_param.keys():
-            error_info['key'] = OpParamInfoKey.D_TYPE.value
-        elif operation.in_dynamic():
-            if OpParamInfoKey.RANGE.value not in op_param.keys():
-                error_info['key'] = OpParamInfoKey.RANGE.value
-
-        if "key" in error_info.keys():
-            error_info['errCode'] = OP_ERROR_CODE_004
-            error_info['op_name'] = op_name
-            error_info['param_name'] = param_name
-            raise RuntimeError(
-                error_info,
-                "In op[%s], the input[%s] does not contain the item[%s]."
-                % (error_info['op_name'], error_info['param_name'],
-                   error_info['key']))
-
-    def _check_input_output_dict(op_param, param_name, op_name=OP_NAME):
-        _check_input_output_key(op_param, param_name, op_name)
-        if operation.in_dynamic():
-            _check_range(op_param[OpParamInfoKey.SHAPE.value],
-                         op_param[OpParamInfoKey.RANGE.value],
-                         param_name=param_name)
-        check_shape(op_param[OpParamInfoKey.SHAPE.value],
-                    param_name=param_name)
-        check_shape(op_param[OpParamInfoKey.ORI_SHAPE.value],
-                    param_name=param_name)
-
-        if op_param[OpParamInfoKey.FORMAT.value] not in ALL_FORMAT_LIST:
-            error_info = {
-                'errCode': OP_ERROR_CODE_015, 'op_name': op_name,
-                'param_name': param_name,
-                'excepted_format_list': ",".join(ALL_FORMAT_LIST),
-                'format': op_param[OpParamInfoKey.FORMAT.value]}
-
-            raise RuntimeError(
-                error_info,
-                "In op[%s], the format of input[%s] should be one of [%s],"
-                " but actually is [%s]."
-                % (error_info['op_name'], error_info['param_name'],
-                   error_info['excepted_format_list'], error_info['format']))
-
-        if op_param[OpParamInfoKey.ORI_FORMAT.value] not in ALL_FORMAT_LIST:
-            error_info = {
-                'errCode': OP_ERROR_CODE_014, 'op_name': op_name,
-                'param_name': param_name,
-                'excepted_format_list': ",".join(ALL_FORMAT_LIST),
-                'format': op_param[OpParamInfoKey.ORI_FORMAT.value]}
-            raise RuntimeError(
-                error_info,
-                "In op[%s], the ori format of input[%s] should be one of [%s]"
-                ", but actually is [%s]."
-                % (error_info['op_name'],
-                   error_info['param_name'], ",".join(ALL_FORMAT_LIST),
-                   error_info['format']))
-
-        if not isinstance(op_param[OpParamInfoKey.D_TYPE.value], str):
-            error_info = {
-                'errCode': OP_ERROR_CODE_003, 'op_name': op_name,
-                'param_name': param_name, 'param_type': 'str',
-                'actual_type':
-                    op_param[OpParamInfoKey.D_TYPE.value].__class__.__name__}
-            raise RuntimeError(
-                error_info,
-                "In op[%s], the parameter[%s]'s type should be [%s],  "
-                "but actually is [%s]."
-                % (error_info['op_name'], error_info['param_name'],
-                   error_info['param_type'], error_info['actual_type']))
-
-        if op_param[OpParamInfoKey.D_TYPE.value] is None or \
-                op_param[OpParamInfoKey.D_TYPE.value].lower() not in \
-                ALL_DTYPE_LIST:
-            error_info = {
-                'errCode': OP_ERROR_CODE_008, 'op_name': op_name,
-                'param_name': param_name,
-                'excepted_dtype_list': ",".join(ALL_DTYPE_LIST),
-                'dtype': op_param[OpParamInfoKey.D_TYPE.value]}
-            raise RuntimeError(
-                error_info,
-                "In op[%s], the parameter[%s]'s dtype should be one of [%s], "
-                "but actually is [%s]."
-                % (error_info['op_name'], error_info['param_name'],
-                   error_info['excepted_dtype_list'], error_info['dtype']))
-
-    def _check_input(op_param, param_name, param_type, op_name=OP_NAME):
-        if param_type == REQUIRED_INPUT:
-            error_info = {
-                'errCode': OP_ERROR_CODE_001, 'op_name': op_name,
-                'param_name': param_name}
-            if op_param is None:
-                raise RuntimeError(
-                    error_info,
-                    "In op[%s], the mandatory parameter[%s] is missed."
-                    % (error_info['op_name'], error_info['param_name']))
-            _check_input_output_dict(op_param, param_name, op_name)
-        elif param_type == OPTION_INPUT:
-            if op_param is not None:
-                _check_input_output_dict(op_param, param_name, op_name)
-        else:
-            if not isinstance(op_param, (list, tuple)):
-                error_info = {
-                    'errCode': OP_ERROR_CODE_003, 'op_name': op_name,
-                    'param_name': param_name, 'param_type': "list truple",
-                    'actual_type': op_param.__class__.__name__}
-                raise RuntimeError(
-                    error_info,
-                    "In op[%s], the parameter[%s]'s type should be [%s],  "
-                    "but actually is [%s]."
-                    % (op_name, param_name, error_info['param_type'],
-                       error_info['actual_type']))
-            if not op_param:
-                error_info = {
-                    'errCode': OP_ERROR_CODE_001, 'op_name': op_name,
-                    'param_name': param_name}
-                raise RuntimeError(
-                    error_info,
-                    "In op[%s], the mandatory parameter[%s] is missed."
-                    % (op_name, param_name))
-            for one_input in op_param:
-                _check_input_output_dict(one_input, param_name, op_name)
-
-    def _check_output(op_param, param_name, param_type, op_name=OP_NAME):
-        if param_type == REQUIRED_OUTPUT:
-            if op_param is None:
-                error_info = {
-                    'errCode': OP_ERROR_CODE_001, 'op_name': op_name,
-                    'param_name': param_name}
-                raise RuntimeError(
-                    error_info,
-                    "In op[%s], the mandatory parameter[%s] is missed."
-                    % (op_name, param_name))
-
-            _check_input_output_dict(op_param, param_name, op_name)
-        elif param_type == OPTION_OUTPUT:
-            if op_param is not None:
-                _check_input_output_dict(op_param, param_name, op_name)
-        else:
-            if not isinstance(op_param, (list, tuple)):
-                error_info = {
-                    'errCode': OP_ERROR_CODE_003, 'op_name': op_name,
-                    'param_name': param_name, 'param_type': "list tuple",
-                    'actual_type': op_param.__class__.__name__}
-                raise RuntimeError(
-                    error_info,
-                    "In op[%s], the parameter[%s]'s type should be [%s],  "
-                    "but actually is [%s]."
-                    % (op_name, param_name, error_info['param_type'],
-                       error_info['actual_type']))
-            if not op_param:
-                error_info = {
-                    'errCode': OP_ERROR_CODE_001, 'op_name': op_name,
-                    'param_name': param_name}
-                raise RuntimeError(
-                    error_info,
-                    "In op[%s], the mandatory  parameter[%s] is missed."
-                    % (op_name, param_name))
-            for one_input in op_param:
-                _check_input_output_dict(one_input, param_name, op_name)
-
-    def _check_attr_type(op_param, param_name, py_type, py_type_name,
-                         op_name=OP_NAME):
-        if not isinstance(op_param, py_type):
-            error_info = {
-                'errCode': OP_ERROR_CODE_003, 'op_name': op_name,
-                'param_name': param_name, 'param_type': str(py_type),
-                'actual_type': op_param.__class__.__name__}
-            raise RuntimeError(
-                error_info,
-                "In op[%s], the parameter[%s]'s type should be [%s],"
-                " but actually is [%s]."
-                % (error_info['op_name'], error_info['param_name'],
-                   error_info['param_type'], error_info['actual_type']))
-        if py_type_name == "float":
-            if math.isinf(op_param) or math.isnan(op_param):
-                error_info = {
-                    'errCode': OP_ERROR_CODE_000, 'op_name': op_name,
-                    'param_name': param_name,
-                    'excepted_value': "float range data",
-                    'real_value': str(op_param)}
-                raise RuntimeError(
-                    error_info,
-                    "In op[%s], the parameter[%s] should be [%s], "
-                    "but actually is [%s]."
-                    % (error_info['op_name'], error_info['param_name'],
-                       error_info['excepted_value'], error_info['real_value']))
-
-    def _check_list_attr(op_param, param_name, param_type, op_name=OP_NAME):
-        if not isinstance(op_param, (list, tuple)):
-            error_info = {
-                'errCode': OP_ERROR_CODE_003, 'op_name': op_name,
-                'param_name': param_name, 'param_type': "list tuple",
-                'actual_type': op_param.__class__.__name__}
-            raise RuntimeError(
-                error_info,
-                "In op[%s], the parameter[%s]'s type should be [%s],"
-                "  but actually is [%s]."
-                % (error_info['op_name'], error_info['param_name'],
-                   error_info['param_type'], error_info['actual_type']))
-
-        if param_type in [REQUIRED_ATTR_LIST_BOOL, OPTION_ATTR_LIST_BOOL]:
-            for one_attr in op_param:
-                _check_attr_type(one_attr, param_name, bool, "bool", op_name)
-
-        if param_type in [REQUIRED_ATTR_LIST_INT, OPTION_ATTR_LIST_INT]:
-            for one_attr in op_param:
-                _check_attr_type(one_attr, param_name, int, "int", op_name)
-
-        if param_type in [REQUIRED_ATTR_LIST_FLOAT, OPTION_ATTR_LIST_FLOAT]:
-            for one_attr in op_param:
-                _check_attr_type(one_attr, param_name, float, "float", op_name)
-
-        if param_type in [REQUIRED_ATTR_LIST_LIST_INT,
-                          OPTION_ATTR_LIST_LIST_INT]:
-            for one_attr in op_param:
-                if not isinstance(one_attr, (list, tuple)):
-                    error_info = {
-                        'errCode': OP_ERROR_CODE_003, 'op_name': op_name,
-                        'param_name': param_name, 'param_type': "list tuple",
-                        'actual_type': op_param.__class__.__name__}
-                    raise RuntimeError(
-                        error_info,
-                        "In op[%s], the parameter[%s]'s type should be [%s],"
-                        " but actually is [%s]."
-                        % (error_info['op_name'], error_info['param_name'],
-                           error_info['param_type'], error_info['actual_type']))
-
-                for ele in one_attr:
-                    _check_attr_type(ele, param_name, int, "int",  op_name)
-
-    def _check_attr(op_param, param_name, param_type, op_name=OP_NAME):
-        if op_param is None and param_type in required_attr_params:
-            error_info = {'errCode': OP_ERROR_CODE_001, 'op_name': op_name,
-                          'param_name': param_name}
-            raise RuntimeError(
-                error_info,
-                "In op[%s], the mandatory parameter[%s] is missed."
-                % (op_name, param_name))
-        if not op_param:
-            return
-
-        if param_type in [REQUIRED_ATTR_INT, OPTION_ATTR_INT]:
-            _check_attr_type(op_param, param_name, int, "int", op_name)
-
-        if param_type in [REQUIRED_ATTR_FLOAT, OPTION_ATTR_FLOAT]:
-            _check_attr_type(op_param, param_name, float, "float", op_name)
-
-        if param_type in [REQUIRED_ATTR_STR, OPTION_ATTR_STR]:
-            _check_attr_type(op_param, param_name, str, "string", op_name)
-
-        if param_type in [REQUIRED_ATTR_BOOL, OPTION_ATTR_BOOL]:
-            _check_attr_type(op_param, param_name, bool, "bool", op_name)
-
-        if param_type in [REQUIRED_ATTR_TYPE, OPTION_ATTR_TYPE]:
-            if op_param not in ALL_DTYPE_LIST:
-                error_info = {
-                    'errCode': OP_ERROR_CODE_003, 'op_name': op_name,
-                    'param_name': param_name,
-                    'param_type': " ".join(ALL_DTYPE_LIST),
-                    'actual_type': op_param.__class__.__name__}
-                raise RuntimeError(
-                    error_info,
-                    "In op[%s], the parameter[%s]'s dtype "
-                    "should be one of [%s], but actually is [%s]."
-                    % (error_info['op_name'], error_info['param_name'],
-                       error_info['param_type'], error_info['actual_type']))
-
-        if param_type in list_type_attr:
-            _check_list_attr(op_param, param_name, param_type, op_name)
-
-    def _check_kernel_name(kernel_name, param_name, op_name):
-        """
-        check kernel_name
-        """
-        if not isinstance(kernel_name, str):
-            error_info = {
-                'errCode': OP_ERROR_CODE_003, 'op_name': op_name,
-                'param_name': param_name, 'param_type': "str",
-                'actual_type': kernel_name.__class__.__name__}
-            raise RuntimeError(
-                error_info,
-                "In op[%s], the parameter[%s]'s type should be [%s], "
-                "but actually is [%s]."
-                % (error_info['op_name'], error_info['param_name'],
-                   error_info['param_type'], error_info['actual_type']))
-
-        if len(kernel_name) > MAX_KERNEL_NAME_LEN:
-            error_info = {
-                'errCode': OP_ERROR_CODE_002, 'op_name': op_name,
-                'param_name': param_name, 'min_value': '0',
-                'max_value': str(MAX_KERNEL_NAME_LEN),
-                'real_value': str(len(kernel_name))}
-            raise RuntimeError(
-                error_info,
-                "In op[%s], the parameter[%s] should be in "
-                "the range of [%s, %s], but actually is [%s]."
-                % (error_info['op_name'], error_info['param_name'],
-                   error_info['min_value'], error_info['max_value'],
-                   error_info['real_value']))
-
-        pattern = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
-        if not pattern.match(kernel_name):
-            error_info = {'errCode': OP_ERROR_CODE_020, 'op_name': op_name}
-            raise RuntimeError(
-                error_info,
-                "In op[%s],kernel_name can only contain letters, numbers and "
-                "underscores, and begin with underscores or letters"
-                % (error_info['op_name']))
-
-    def _check_one_op_param(op_param, param_name, param_type, op_name=OP_NAME):
-
-        if param_type in input_params:
-            _check_input(op_param, param_name, param_type, op_name)
-        elif param_type in output_params:
-            _check_output(op_param, param_name, param_type, op_name)
-        elif param_type == KERNEL_NAME:
-            if op_param is None:
-                return
-            _check_kernel_name(op_param, param_name, op_name)
-        else:  # else is attr_params:
-            _check_attr(op_param, param_name, param_type, op_name)
-
-    def _out_wrapper(func):
-        formal_parameter = func.__code__.co_varnames
-        formal_parameter_list = list(zip(formal_parameter, type_args))
-
-        @wraps(func)
-        def _in_wrapper(*args, **kwargs):
-            for i, one_args in enumerate(args):
-                op_name = func.__name__
-                _check_one_op_param(one_args, formal_parameter_list[i][0],
-                                    formal_parameter_list[i][1], op_name)
-
-            for arg_key in kwargs:
-                op_name = func.__name__
-                for name_type in formal_parameter_list:
-                    if arg_key == name_type[0]:
-                        _check_one_op_param(kwargs[arg_key], arg_key,
-                                            name_type[1], op_name)
-                        break
-
-            return func(*args, **kwargs)
-
-        return _in_wrapper
-
-    return _out_wrapper
+    warnings.warn("te.utils.para_check is expired, please replace it with tbe.common.utils.para_check",
+                  DeprecationWarning)
+    from tbe.common.utils import check_op_params
+    return check_op_params(*type_args, **type_kwargs)
 
 
 def _check_range(shape, shape_range, min_dim=0, max_dim=RANK_LIMIT,
@@ -639,60 +262,10 @@ def check_shape(shape, min_dim=0, max_dim=DIM_LIMIT, min_rank=0,
     """
     check shape size
     """
-    if not isinstance(shape, (tuple, list)):
-        error_info = {'errCode': OP_ERROR_CODE_003, 'op_name': OP_NAME,
-                      'param_name': param_name,
-                      'param_type': "list tuple",
-                      'actual_type': shape.__class__.__name__}
-        raise RuntimeError(
-            error_info,
-            "In op, the parameter[%s]'s type should be [%s], "
-            "but actually is [%s]."
-            % (error_info['param_name'], error_info['param_type'],
-               error_info['actual_type']))
-
-    for dim in shape:
-        if not isinstance(dim, int):
-            error_info = {'errCode': OP_ERROR_CODE_003, 'op_name': OP_NAME,
-                          'param_name': param_name,
-                          'param_type': 'int',
-                          'actual_type': dim.__class__.__name__}
-            raise RuntimeError(
-                error_info,
-                "In op, the parameter[%s]'s type should be [%s],  "
-                "but actually is [%s]."
-                % (error_info['param_name'], error_info['param_type'],
-                   error_info['actual_type']))
-
-    if operation.in_dynamic():
-        _check_dynamic_shape(shape, max_dim, max_rank, param_name)
-    else:
-        _check_shape_range(max_rank, min_rank, param_name, shape)
-
-        for _, dim in enumerate(shape):
-            if dim < min_dim:
-                error_info = {'errCode': OP_ERROR_CODE_002, 'op_name': OP_NAME,
-                              'param_name': param_name,
-                              'min_value': min_dim,
-                              'real_value': dim}
-                raise RuntimeError(
-                    error_info,
-                    "In op, the dim value[%s] should more than [%s],"
-                    " but actually is [%s]."
-                    % (error_info['param_name'], min_dim, dim))
-        if shape:
-            shape_size = _reduce(lambda x, y: x * y, shape[:])
-        else:
-            shape_size = 1
-        if shape_size < min_size:
-            error_info = {'errCode': OP_ERROR_CODE_011, 'op_name': OP_NAME,
-                          'param_name': param_name,
-                          'min_value': min_size, 'real_value': shape_size}
-            raise RuntimeError(
-                error_info,
-                "In op, the shape size(product of all dimensions) of "
-                "input[%s] should more than [%s], but actually is [%s]."
-                % (error_info['min_value'], min_size, shape_size))
+    warnings.warn("te.utils.para_check is expired, please replace it with tbe.common.utils.para_check",
+                  DeprecationWarning)
+    from tbe.common.utils import check_shape
+    return check_shape(shape, min_dim, max_dim, min_rank, max_rank, min_size, max_size, param_name)
 
 
 def _check_shape_range(max_rank, min_rank, param_name, shape):
@@ -712,33 +285,10 @@ def check_dtype(dtype, check_list=ALL_DTYPE_LIST, param_name=PARAM_NAME):
     """
     The common check rule for tensor dtype
     """
-    if dtype is None:
-        error_info = {'errCode': OP_ERROR_CODE_007, 'op_name': OP_NAME,
-                      'param_name': param_name}
-        raise RuntimeError(error_info,
-                           "In op, the input[%s]'s dtype could not be none."
-                           % (error_info['param_name']))
-
-    if not isinstance(dtype, str):
-        error_info = {'errCode': OP_ERROR_CODE_003, 'op_name': OP_NAME,
-                      'param_name': param_name, 'param_type': 'str',
-                      'actual_type': dtype.__class__.__name__}
-        raise RuntimeError(
-            error_info,
-            "In op, the parameter[%s]'s type should be [%s],  "
-            "but actually is [%s]."
-            % (error_info['param_name'], error_info['param_type'],
-               error_info['actual_type']))
-    if dtype.lower() not in check_list:
-        error_info = {'errCode': OP_ERROR_CODE_008, 'op_name': OP_NAME,
-                      'param_name': param_name,
-                      'excepted_dtype_list': check_list, 'dtype': dtype.lower()}
-        raise RuntimeError(
-            error_info,
-            "In op, the parameter[%s]'s dtype should be one of [%s]"
-            ", but actually is [%s]."
-            % (error_info['param_name'], error_info['excepted_dtype_list'],
-               error_info['dtype']))
+    warnings.warn("te.utils.para_check is expired, please replace it with tbe.common.utils.para_check",
+                  DeprecationWarning)
+    from tbe.common.utils import check_dtype
+    return check_dtype(dtype, check_list, param_name)
 
 
 def check_format(data_format, check_list=None, param_name=PARAM_NAME):
@@ -746,27 +296,10 @@ def check_format(data_format, check_list=None, param_name=PARAM_NAME):
     The common check rule for tensor dtype
     """
 
-    if check_list is None:
-        check_list = ALL_FORMAT_LIST
-    if data_format is None:
-        error_info = {'errCode': OP_ERROR_CODE_017, 'op_name': OP_NAME,
-                      'param_name': param_name}
-        raise RuntimeError(
-            error_info,
-            "In op, the input[%s]'s format could not be none"
-            % (error_info['param_name']))
-
-    if data_format not in check_list:
-        error_info = {'errCode': OP_ERROR_CODE_015, 'op_name': OP_NAME,
-                      'param_name': param_name,
-                      'excepted_format_list': ",".join(check_list),
-                      'format': data_format}
-        raise RuntimeError(
-            error_info,
-            "In op, the format of input[%s] should be one of [%s], "
-            "but actually is [%s]."
-            % (error_info['param_name'], error_info['excepted_format_list'],
-               error_info['format']))
+    warnings.warn("te.utils.para_check is expired, please replace it with tbe.common.utils.para_check",
+                  DeprecationWarning)
+    from tbe.common.utils import check_format
+    return check_format(data_format, check_list, param_name)
 
 
 def check_elewise_shape_range(inputs: list, support_broadcast=False):
@@ -775,86 +308,10 @@ def check_elewise_shape_range(inputs: list, support_broadcast=False):
     :param inputs: list, all inputs of operator
     :return:
     """
-    if not operation.in_dynamic():
-        return
-
-    def _has_intersection(range0, range1):
-        _range0 = list(range0)
-        _range1 = list(range1)
-        if _range0[1] is None:
-            _range0[1] = MAX_UNKNOWN_SHAPE_NUM
-        if _range1[1] is None:
-            _range1[1] = MAX_UNKNOWN_SHAPE_NUM
-        return max(_range0[0], _range1[0]) <= min(_range0[1], _range1[1])
-
-    def _check_range_relu(shape_x, shape_y, range_x, range_y):
-        size_x = len(shape_x)
-        size_y = len(shape_y)
-        min_size = min(size_x, size_y)
-        for i in range(1, min_size + 1):
-            if len(range_x[-i]) != 2 or len(range_y[-i]) != 2:
-                err_info = {'errCode': OP_ERROR_CODE_023,
-                            'op_name': operation.get_context().get_op_type(),
-                            'param_name': PARAM_NAME}
-                raise RuntimeError(
-                    err_info,
-                    "In op[%s],the range of each element must be two"
-                    % (err_info['op_name']))
-            if support_broadcast:
-                if (shape_x[-i] != 1 and shape_y[-i] != 1) and \
-                        not (_has_intersection(range_x[-i], range_y[-i])
-                             or range_x[-i][0] <= 1 or range_y[-i][0] <= 1):
-                    err_info = {'errCode': OP_ERROR_CODE_024,
-                                'op_name': operation.get_context().get_op_type(),
-                                'param_name': PARAM_NAME}
-                    raise RuntimeError(
-                        err_info,
-                        "In op[%s],the range at the same location "
-                        "must have intersections" % (err_info['op_name']))
-            else:
-                if not _has_intersection(range_x[-i], range_y[-i]):
-                    err_info = {'errCode': OP_ERROR_CODE_024,
-                                'op_name': operation.get_context().get_op_type(),
-                                'param_name': PARAM_NAME}
-                    raise RuntimeError(
-                        err_info,
-                        "In op[%s],the range at the same location "
-                        "must have intersections" % (err_info['op_name']))
-
-    if len(inputs) <= 1:
-        return
-    last_shape = None
-    last_range = None
-    inputs_keys = (OpParamInfoKey.SHAPE.value, OpParamInfoKey.RANGE.value)
-    for index, _input in enumerate(inputs):
-        if not isinstance(_input, dict):
-            error_info = {'errCode': OP_ERROR_CODE_003,
-                          'op_name': operation.get_context().get_op_type(),
-                          'param_name': PARAM_NAME, 'param_type': 'dict',
-                          'actual_type': _input.__class__.__name__}
-            raise RuntimeError(
-                error_info,
-                "In op[%s], the parameter[%s]'s type should be [%s],  "
-                "but actually is [%s]."
-                % (error_info['op_name'], error_info['param_name'],
-                   error_info['param_type'], error_info['actual_type']))
-        for key in inputs_keys:
-            if key not in _input.keys():
-                error_info = {'errCode': OP_ERROR_CODE_004,
-                              'op_name': operation.get_context().get_op_type(),
-                              'param_name': PARAM_NAME,
-                              'key': OpParamInfoKey.RANGE.value}
-                raise RuntimeError(
-                    error_info,
-                    "In op[%s], the input[%s] does not contain the item[%s]."
-                    % (error_info['op_name'], error_info['param_name'],
-                       error_info['key']))
-        shape = _input.get("shape")
-        _range = _input.get("range")
-        if index > 0:
-            _check_range_relu(shape, last_shape, _range, last_range)
-        last_shape = shape
-        last_range = _range
+    warnings.warn("te.utils.para_check is expired, please replace it with tbe.common.utils.para_check",
+                  DeprecationWarning)
+    from tbe.common.utils import check_elewise_shape_range
+    return check_elewise_shape_range(inputs, support_broadcast)
 
 
 def _check_input_type_dict(input_dict, input_key, input_name):
@@ -915,166 +372,30 @@ def check_input_type(*type_args, **type_kwargs):
     check input parameter type
     """
 
-    def out_wrapper(func):
-        """
-        out_wrapper
-
-        :param func: func
-        :return: None
-        """
-        formal_parameter = func.__code__.co_varnames
-        formal_parameter_list = list(zip(formal_parameter, type_args))
-
-        @wraps(func)
-        def in_wrapper(*args, **kwargs):
-            """
-            in_wrapper
-            :param args: args
-            :param kwargs: kwargs
-            :return: None
-            """
-            for i in range(len(args)):
-                # add for new input dict, if dict, will check shape and dtype
-                if isinstance(args[i], dict):
-                    _check_input_type_dict(args[i], args[i].keys(),
-                                          formal_parameter_list[i][0])
-                if not isinstance(args[i], formal_parameter_list[i][1]):
-                    args_dict = {
-                        "errCode": "E60038",
-                        "desc":
-                            "Input parameter type error, expected type is {}, "
-                            "actual input is {}".format(
-                                formal_parameter_list[i][1],
-                                type(args[i])
-                            )
-                    }
-                    raise RuntimeError(
-                        args_dict,
-                        error_manager.get_error_message(args_dict)
-                    )
-            for i in kwargs:
-                for j in formal_parameter_list:
-                    if i in j:
-                        if not isinstance(kwargs[i], j[1]):
-                            args_dict = {
-                                "errCode": "E60038",
-                                "desc":
-                                    "Input {} type error, "
-                                    "expected type is {}, actual input is {}".format(
-                                        i,
-                                        j[1],
-                                        type(kwargs[i])
-                                    )
-                            }
-                            raise RuntimeError(
-                                args_dict,
-                                error_manager.get_error_message(args_dict)
-                            )
-                        break
-            return func(*args, **kwargs)
-
-        return in_wrapper
-
-    return out_wrapper
+    warnings.warn("te.utils.para_check is expired, please replace it with tbe.common.utils.para_check",
+                  DeprecationWarning)
+    from tbe.common.utils import check_input_type
+    return check_input_type(*type_args, **type_kwargs)
 
 
 def check_dtype_rule(dtype, check_list, param_name="default"):
     """
     The common check rule for tensor dtype
     """
-    if dtype is None:
-        args_dict = {
-            "errCode": "E60038",
-            "desc": "dtype is None"
-        }
-        raise RuntimeError(
-            args_dict,
-            error_manager.get_error_message(args_dict)
-        )
-
-    if dtype.lower() not in check_list:
-        if param_name == "default":
-            args_dict = {
-                "errCode": "E60038",
-                "desc": "The data type is not supported. Please check the data type"
-            }
-            raise RuntimeError(
-                args_dict,
-                error_manager.get_error_message(args_dict)
-            )
-        else:
-            args_dict = {
-                "errCode": "E60005",
-                "param_name": param_name,
-                "expected_dtype_list": "{}".format(check_list),
-                "dtype": "{}".format(dtype.lower()),
-            }
-            raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+    warnings.warn("te.utils.para_check is expired, please replace it with tbe.common.utils.para_check",
+                  DeprecationWarning)
+    from tbe.common.utils import check_dtype_rule
+    return check_dtype_rule(dtype, check_list, param_name)
 
 
 def check_shape_rule(shape, min_dim=None, max_dim=None, max_shape_num=None):
     """
     The common check rule for tensor shape
     """
-    if min_dim is None:
-        min_dim = DEFAULT_MIN_SHAPE_DIM
-
-    if max_dim is None:
-        max_dim = DEFAULT_MAX_SHAPE_DIM
-
-    if max_shape_num is None:
-        max_shape_num = DEFAULT_MAX_SHAPE_NUM
-
-    if not isinstance(shape, (tuple, list)):
-        args_dict = {
-            "errCode": "E60037",
-            "param_name": "shape",
-            "type_list": "[tuple, list]",
-            "type": "{}".format(type(shape))
-        }
-        raise RuntimeError(
-            args_dict,
-            error_manager.get_error_message(args_dict)
-        )
-
-    if len(shape) < min_dim or len(shape) > max_dim:
-        args_dict = {
-            "errCode": "E60011",
-            "attr_name": "shape dim",
-            "range": "[{}, {}]".format(min_dim, max_dim),
-            "value": "{}".format(len(shape))
-        }
-        raise RuntimeError(
-            args_dict,
-            error_manager.get_error_message(args_dict)
-        )
-
-    for i in range(len(shape)):
-        if type(shape[i]) != int:
-            args_dict = {
-                "errCode": "E60037",
-                "param_name": "shape axis",
-                "type_list": "[int]",
-                "type": "{}".format(type(shape[i]))
-            }
-            raise RuntimeError(
-                args_dict,
-                error_manager.get_error_message(args_dict)
-            )
-        if shape[i] <= 0:
-            args_dict = {
-                "errCode": "E60039",
-                "attr_name": "axis",
-                "param_name": "shape",
-                "comparator": "more",
-                "expected_value": "0",
-                "input_value": "{}".format(shape[i])
-            }
-            raise RuntimeError(
-                args_dict,
-                error_manager.get_error_message(args_dict)
-            )
-
+    warnings.warn("te.utils.para_check is expired, please replace it with tbe.common.utils.para_check",
+                  DeprecationWarning)
+    from tbe.common.utils import check_shape_rule
+    return check_shape_rule(shape, min_dim, max_dim, max_shape_num)
 
 def check_kernel_name(kernel_name):
     """
@@ -1086,68 +407,18 @@ def check_kernel_name(kernel_name):
     -------
     None
     """
-    if kernel_name is None:
-        return
-
-    if not isinstance(kernel_name, str):
-        try:
-            kernel_name = str(kernel_name)
-        except ValueError:
-            args_dict = {
-                "errCode": "E60037",
-                "param_name": "kernel_name",
-                "type_list": "[str, None]",
-                "type": "{}".format(type(kernel_name))
-            }
-            raise RuntimeError(
-                args_dict,
-                error_manager.get_error_message(args_dict)
-            )
-
-    if len(kernel_name) > MAX_KERNEL_NAME_LEN:
-        args_dict = {
-            "errCode": "E60039",
-            "attr_name": "length",
-            "param_name": "kernel_name",
-            "comparator": "less",
-            "expected_value": "{}".format(MAX_KERNEL_NAME_LEN),
-            "input_value": "{}".format(len(kernel_name))
-        }
-        raise RuntimeError(
-            args_dict,
-            error_manager.get_error_message(args_dict)
-        )
-
-    pattern = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
-    if not pattern.match(kernel_name):
-        args_dict = {
-            "errCode": "E60038",
-            "desc": "kernel_name can only contain letters, numbers and underscores,"
-                    "and begin with underscores or letters"
-        }
-        raise RuntimeError(
-            args_dict,
-            error_manager.get_error_message(args_dict)
-        )
+    warnings.warn("te.utils.para_check is expired, please replace it with tbe.common.utils.para_check",
+                  DeprecationWarning)
+    from tbe.common.utils import check_kernel_name
+    return check_kernel_name(kernel_name)
 
 
 def check_and_init_5hdc_reduce_support(input_tensor, axis):
     """5HD Special param for 5hd schedule"""
-    if "format" in input_tensor and input_tensor["format"] == "NC1HWC0" and \
-            1 in axis and 4 in axis and input_tensor["dtype"] == "float16":
-        if "ori_shape" in input_tensor and "ori_format" in input_tensor:
-            return True
-        else:
-            args_dict = {
-                "errCode": "E60040",
-                "param_name": "input tensor",
-                "attr_name": "ori_shape and ori_format"
-            }
-            raise RuntimeError(
-                args_dict,
-                error_manager.get_error_message(args_dict)
-            )
-    return False
+    warnings.warn("te.utils.para_check is expired, please replace it with tbe.common.utils.para_check",
+                  DeprecationWarning)
+    from tbe.common.utils import check_and_init_5hdc_reduce_support
+    return check_and_init_5hdc_reduce_support(input_tensor, axis)
 
 
 def is_scalar(shape):
@@ -1160,10 +431,10 @@ def is_scalar(shape):
     -------
     True or False
     """
-    if isinstance(shape, (list, tuple)):
-        if len(shape) == 1 and shape[0] == 1:
-            return True
-    return False
+    warnings.warn("te.utils.para_check is expired, please replace it with tbe.common.utils.para_check",
+                  DeprecationWarning)
+    from tbe.common.utils import is_scalar 
+    return is_scalar(shape)
 
 
 def check_shape_size(shape, limit=SHAPE_SIZE_LIMIT+1):
@@ -1178,21 +449,10 @@ def check_shape_size(shape, limit=SHAPE_SIZE_LIMIT+1):
     -------
     None
     """
-    from functools import reduce
-    product = reduce(lambda x, y: x * y, shape[:])  # product of all dimension
-    if product >= limit:
-        args_dict = {
-            "errCode": "E60039",
-            "attr_name": "size",
-            "param_name": "shape",
-            "comparator": "less",
-            "expected_value": "{}".format(limit),
-            "input_value": "{}".format(product)
-        }
-        raise RuntimeError(
-            args_dict,
-            error_manager.get_error_message(args_dict)
-        )
+    warnings.warn("te.utils.para_check is expired, please replace it with tbe.common.utils.para_check",
+                  DeprecationWarning)
+    from tbe.common.utils import check_shape_size
+    return check_shape_size(shape, limit)
 
 
 def check_tensor_shape_size(shape):

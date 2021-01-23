@@ -15,10 +15,69 @@
 """
 comput schedule init
 """
-from .te_compute.broadcast_compute import broadcast
-from .te_compute.cast_compute import ceil, floor, round, trunc
-from .te_compute.common import round_to, cast_to, cast_to_round, calculate_one_or_zero
-from .te_compute.concat_compute import concat
+from .api import broadcast
+from .api import ceil
+from .api import floor
+from .api import round
+from .api import trunc
+from .api import round_to
+from .api import cast_to
+from .api import concat
+from .api import vmuls
+from .api import vadds
+from .api import vlog
+from .api import vexp
+from .api import vabs
+from .api import vrec
+from .api import vrelu
+from .api import vnot
+from .api import vsqrt
+from .api import vrsqrt
+from .api import vdiv
+from .api import vmul
+from .api import vadd
+from .api import vsub
+from .api import vmin
+from .api import vmax
+from .api import vor
+from .api import vand
+from .api import vaxpy
+from .api import vmla
+from .api import vmadd
+from .api import vmaddrelu
+from .api import vmaxs
+from .api import vmins
+from .api import vcmp
+from .api import vlogic
+from .api import vsel
+from .api import vcmpsel
+from .api import vmod
+from .api import vlrelu
+from .api import vaddrelu
+from .api import vsubrelu
+from .api import sum
+from .api import reduce_min
+from .api import reduce_max
+from .api import reduce_prod
+from .api import pooling2d
+from .api import pooling3d
+from .api import max_pooling3d_grad_grad
+from .api import inplace_add
+from .api import inplace_sub
+from .api import inplace_update
+from .api import split
+from .api import split_compute_com
+from .api import split_schedule_com
+from .api import tuple_sum
+from .api import unsorted_segment_max
+from .api import unsorted_segment_min
+from .api import unsorted_segment_sum
+from .api import unsorted_segment_mean
+from .api import unsorted_segment_prod
+from .api import cce_build_code
+from .api import auto_schedule
+
+from .te_compute.common import cast_to_round, calculate_one_or_zero
 from .te_compute.conv_compute import conv
 from .te_compute.conv_compute import ConvParam
 from .te_compute.depthwise_conv2d_compute import depthwise_conv2d_backprop_filter_d_compute
@@ -31,31 +90,14 @@ from .te_compute.conv_compute import is_support_v200
 from .te_compute.max_pool2d_3_2_fusion_compute import MaxPoolParam
 from .te_compute.max_pool2d_3_2_fusion_compute import max_pool_compute
 from .te_compute.dim_conv import compute_four2five, compute_five2four
-from .te_compute.elewise_compute import vmuls, vadds, vlog, vexp, vabs, vrec, \
-    vrelu, vnot, vsqrt, vrsqrt, vdiv, vmul, vadd, vsub, vmin, vmax, vor, vand, vaxpy, \
-    vmla, vmadd, vmaddrelu, vmaxs, vmins, vcmp, vlogic, vsel, vcmpsel, vmod, \
-    vlrelu, vaddrelu, vsubrelu
-from .te_compute.reduction_compute import sum, reduce_min, reduce_max, \
-    reduce_prod, tuple_sum
-from .te_compute.segment_compute import unsorted_segment_max, \
-    unsorted_segment_min, unsorted_segment_sum, unsorted_segment_mean, \
-    unsorted_segment_prod
 from .te_compute import util
-from .te_schedule import cce_build_code
 from .te_compute.mmad_compute import matmul
 from .te_compute.mmad_compute import get_matmul_performance_format
 from .te_compute.gemm_compute import gemm
-from .te_compute.pooling2d_compute import pooling2d
 from .te_compute.pooling2d_compute import get_caffe_out_size_and_pad
-from .te_compute.pooling3d_compute import pooling3d
-from .te_compute.pooling3d_max_grad_grad_compute import max_pooling3d_grad_grad
 from .te_compute.pooling3d_max_grad_grad_compute import pooling3d_max_grad_grad
 from .te_compute.conv2d_backprop_filter_compute import conv2d_backprop_filter_compute
 from .te_compute.conv2d_backprop_input_compute import conv2d_backprop_input_compute
-from .te_compute.split_compute import split
-from .te_compute.split_compute import split_compute_com
-from .te_schedule.split_schedule import split_schedule_com
-from .te_compute.inplace_compute import inplace_add, inplace_sub, inplace_update
 from .te_compute.conv3d_compute import conv3d
 from .te_compute.conv3d_backprop_input_compute import conv3d_dx
 from .te_compute.conv3d_backprop_filter_compute import conv3d_dw
@@ -65,6 +107,6 @@ from .te_schedule.conv_schedule import CceConvOp, AutoScheduleOp
 from .te_schedule.cce_schedule import reget_tensor_list, get_op_info
 
 from .te_schedule.cce_schedule import schedule_cce
-from te.utils.cce import auto_schedule, build
+from te.utils.cce import build
 from .te_compute.dilation_compute import dilation_compute
 from .te_schedule.dilation_schedule import dilation_schedule

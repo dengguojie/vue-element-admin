@@ -1922,7 +1922,7 @@ def calculate_last_axis_ub_tiling(shape,
     return (outer, inner, ret_axis)
 
 
-@tvm.register_func("tvm.intrin.cce.reduce_last_axis_enhance_reduce_sum")
+#@tvm.register_func("tvm.intrin.cce.reduce_last_axis_enhance_reduce_sum")
 def reduce_last_axis_enhance_reduce_sum(tensor_op):
     """
     reduce last axis reduce sum enhance
@@ -1930,7 +1930,7 @@ def reduce_last_axis_enhance_reduce_sum(tensor_op):
     return reduce_last_axis_enhance(tensor_op, "vadd")
 
 
-@tvm.register_func("tvm.intrin.cce.reduce_last_axis_enhance_reduce_max")
+#@tvm.register_func("tvm.intrin.cce.reduce_last_axis_enhance_reduce_max")
 def reduce_last_axis_enhance_reduce_max(tensor_op):
     """
     reduce last axis reduce max enhance
@@ -1938,7 +1938,7 @@ def reduce_last_axis_enhance_reduce_max(tensor_op):
     return reduce_last_axis_enhance(tensor_op, "vmax")
 
 
-@tvm.register_func("tvm.intrin.cce.reduce_last_axis_enhance_reduce_min")
+#@tvm.register_func("tvm.intrin.cce.reduce_last_axis_enhance_reduce_min")
 def reduce_last_axis_enhance_reduce_min(tensor_op):
     """
     reduce last axis reduce min enhance
@@ -2399,7 +2399,7 @@ def reset_mask_insn_using_mask(ir_builder, type_, mask1, mask2):
         tvm.const(mask2, dtype="uint64")))
 
 
-@tvm.register_func("tvm.intrin.cce.vector_reduce_sum_softmax_fractalz_vcadd")
+#@tvm.register_func("tvm.intrin.cce.vector_reduce_sum_softmax_fractalz_vcadd")
 def vector_reduce_sum_softmax_fractalz_vcadd(
         tensor_op):  # pylint: disable=too-many-branches, too-many-statements
     """
@@ -2543,7 +2543,7 @@ def vector_reduce_sum_softmax_fractalz_vcadd(
     return stmt
 
 
-@tvm.register_func("tvm.intrin.cce.vector_reduce_sum_softmax_fractalz")
+#@tvm.register_func("tvm.intrin.cce.vector_reduce_sum_softmax_fractalz")
 def reduce_sum_softmax_fractalz(tensor_op):
     """
     reduce sum of softmax_fractalz
@@ -2551,7 +2551,7 @@ def reduce_sum_softmax_fractalz(tensor_op):
     return vector_reduce_softmax_fractalz(tensor_op, "vadd")
 
 
-@tvm.register_func("tvm.intrin.cce.vector_reduce_max_softmax_fractalz")
+#@tvm.register_func("tvm.intrin.cce.vector_reduce_max_softmax_fractalz")
 def reduce_max_softmax_fractalz(tensor_op):
     """
     reduce max of softmax_fractalz
@@ -2559,7 +2559,7 @@ def reduce_max_softmax_fractalz(tensor_op):
     return vector_reduce_softmax_fractalz(tensor_op, "vmax")
 
 
-@tvm.register_func("tvm.intrin.cce.vector_reduce_min_softmax_fractalz")
+#@tvm.register_func("tvm.intrin.cce.vector_reduce_min_softmax_fractalz")
 def reduce_min_softmax_fractalz(tensor_op):
     """
     reduce min of softmax_fractalz

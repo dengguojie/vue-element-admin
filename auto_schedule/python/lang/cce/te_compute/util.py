@@ -808,7 +808,12 @@ def shape_to_list(shape):
     """
     translate tvm.shape to list type in python
     """
-    return shape_util.shape_to_list(shape)
+    import warnings
+    warnings.warn(
+        "te.lang.cce.te_compute.shape_to_list is expired, please replace it with tbe.common.utils.shape_to_list", 
+        DeprecationWarning)
+    import tbe.common.utils
+    return tbe.common.utils.shape_to_list(shape)
 
 
 def int_ceil_div(num_a, num_b):

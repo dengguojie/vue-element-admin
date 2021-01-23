@@ -672,7 +672,7 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
 ###############################################################################
 
 
-@tvm.register_func("tvm.intrin.cce.unified_broadcast")
+#@tvm.register_func("tvm.intrin.cce.unified_broadcast")
 def unified_broadcast(stmt_op):  # pylint: disable=too-many-locals, too-many-statements
     """Universal broadcast operation"""
 

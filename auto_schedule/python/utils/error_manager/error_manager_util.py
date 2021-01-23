@@ -17,6 +17,7 @@ error manager util
 """
 import json
 import os
+import warnings
 
 
 def get_error_message(args):
@@ -26,27 +27,11 @@ def get_error_message(args):
     :return: string
             formatted message
     """
-    error_code = args.get("errCode")
-    file_name = os.path.dirname(os.path.abspath(__file__))
-    with open("{}/errormanager.json".format(file_name)) as file_content:
-        data = json.load(file_content)
-        error_dict = {}
-        for error_message in data:
-            error_dict[error_message['errCode']] = error_message
-        error_json = error_dict
-    error_stmt = error_json.get(error_code)
-    if error_stmt is None:
-        return "errCode = {} has not been defined".format(error_code)
-    arg_list = error_stmt.get("argList").split(",")
-    arg_value = []
-    for arg_name in arg_list:
-        if arg_name.strip() not in args:
-            arg_value.append("")
-        else:
-            arg_value.append(args.get(arg_name.strip()))
-    msg = error_json.get(error_code).get("errMessage") % tuple(arg_value)
-    msg = msg.replace("[]", "")
-    return msg
+    warnings.warn("te.utils.error_manager is expired, please replace it with tbe.common.utils.errormgr",
+                  DeprecationWarning)
+    from tbe.common.utils.errormgr import get_error_message
+    return get_error_message(args)
+
 
 
 def raise_runtime_error(dict_args):
@@ -54,8 +39,10 @@ def raise_runtime_error(dict_args):
     raise runtime error
     :param dict_args: error message dict
     """
-    raise RuntimeError(dict_args,
-                       get_error_message(dict_args))
+    warnings.warn("te.utils.error_manager is expired, please replace it with tbe.common.utils.errormgr",
+                  DeprecationWarning)
+    from tbe.common.utils.errormgr import raise_runtime_error
+    return raise_runtime_error(dict_args)
 
 
 def raise_runtime_error_cube(args_dict, msg):
@@ -64,4 +51,7 @@ def raise_runtime_error_cube(args_dict, msg):
     :param args_dict: input dict
     :param msg: error message
     """
-    raise RuntimeError(args_dict, msg)
+    warnings.warn("te.utils.error_manager is expired, please replace it with tbe.common.utils.errormgr",
+                  DeprecationWarning)
+    from tbe.common.utils.errormgr import raise_runtime_error_cube
+    return raise_runtime_error_cube(args_dict, msg)
