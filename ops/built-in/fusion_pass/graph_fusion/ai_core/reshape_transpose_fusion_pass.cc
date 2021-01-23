@@ -106,7 +106,7 @@ Status ReshapeTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   } else if (reshapeDimInfo.size() >= 2) {
     if (PatternFusionUtil::IsUnknownShape(reshapeDimInfo[reshapeDimInfo.size() - 1]) ||
         PatternFusionUtil::IsUnknownShape(reshapeDimInfo[reshapeDimInfo.size() - 2])) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "ReshapeTransposeFusionPass cannot be applied for unknown shape.");
+      OP_LOGI(FUSED_OP_TYPE.c_str(), "ReshapeTransposeFusionPass cannot be applied for unknown shape.");
       return NOT_CHANGED;
     }
     if (reshapeDimInfo[reshapeDimInfo.size() - 1] % 16 != 0 || reshapeDimInfo[reshapeDimInfo.size() - 2] % 16 != 0) {
