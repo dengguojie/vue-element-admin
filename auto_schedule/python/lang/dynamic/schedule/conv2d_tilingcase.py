@@ -141,7 +141,7 @@ class Conv2dTiling(CubeTilingOp):
 
         def _handle_block_dim():
             """
-            avoid cyclomatic complexity, handle block_dim
+            handle block_dim
             """
             tiling["block_dim"] = [1, 1, 1, 1]
             device_core_num = utils.CORE_NUM
@@ -149,10 +149,10 @@ class Conv2dTiling(CubeTilingOp):
                 if self.a_info[0] <= device_core_num:
                     tiling["block_dim"][0] = self.a_info[0]
                 else:
-                    for i in range(device_core_num, 0, -1):
-                        if self.a_info[0] % i == 0:
+                    for core_num in range(device_core_num, 0, -1):
+                        if self.a_info[0] % core_num == 0:
                             break
-                    tiling["block_dim"][0] = i
+                    tiling["block_dim"][0] = core_num
             else:
                 tiling["block_dim"][0] = 1
 

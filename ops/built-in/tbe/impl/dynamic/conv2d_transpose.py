@@ -10,12 +10,8 @@ from __future__ import absolute_import
 
 from te import tvm
 import te.lang.cce as tbe
-import te.platform as tbe_platform
 import te.lang.base as tbe_base
 from te.utils import para_check
-from te.utils import error_manager
-from te.utils.error_manager import error_manager_util
-import impl.util.util_deconv_comm as comm
 from impl.util.util_cube_dynamic import Conv2dTransposeParaProcess
 from impl.util.util_cube_dynamic import set_default_para
 

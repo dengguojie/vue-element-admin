@@ -39,6 +39,7 @@ FORMAT_HW_DIM = 2
 FORMAT_NCHW_DIM = 4
 FORMAT_NC1HWC0_DIM = 5
 DYNAMIC_FLAG = -1
+DIM_TO_NAME = {0: "N", 2: "H", 3: "W"}
 
 
 def ceil_div(x_1, x_2):
@@ -145,11 +146,11 @@ class CubeParaProcess:
                     err_man.raise_err_specific_user(self.op_type, "each dimension of range must be 2.")
                 if not in_range[0] or in_range[0] < valid_lower:
                     err_man.raise_err_attr_range_invalid(
-                        self.op_type, [valid_lower, valid_upper], name, in_range[0])
+                        self.op_type, [valid_lower, valid_upper], DIM_TO_NAME[dim] + " of " + name, in_range[0])
                 if in_range[1]:
                     if valid_upper and in_range[1] > valid_upper:
                         err_man.raise_err_attr_range_invalid(
-                            self.op_type, [valid_lower, valid_upper], name, in_range[1])
+                            self.op_type, [valid_lower, valid_upper], DIM_TO_NAME[dim] + " of " + name, in_range[1])
                     if in_range[0] > in_range[1]:
                         err_man.raise_err_specific_user(self.op_type, "upper bound must be greater than lower bound.")
 
@@ -552,12 +553,16 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         self.check_support_valid(dy_shape_nchw, filter_shape_nchw)
         self.get_attr_nchw(self.data_format)
 
+
         output_range = copy.deepcopy(dy_range_nchw)
-        if filter_shape_nchw[H_DIM] == 1 and filter_shape_nchw[W_DIM] == 1:
-            output_range[W_DIM] = (output_range[W_DIM][0],
-                                   output_range[W_DIM][1] * self.strides[H_DIM] * self.strides[W_DIM])
-        else:
-            output_range[W_DIM] = (output_range[W_DIM][0], output_range[W_DIM][1] * self.strides[W_DIM])
+        if output_range[H_DIM][1]:
+            output_range[H_DIM] = (output_range[H_DIM][0], output_range[H_DIM][1] * self.strides[H_DIM])
+        if output_range[W_DIM][1]:
+            if filter_shape_nchw[H_DIM] == 1 and filter_shape_nchw[W_DIM] == 1:
+                output_range[W_DIM] = (output_range[W_DIM][0],
+                                       output_range[W_DIM][1] * self.strides[H_DIM] * self.strides[W_DIM])
+            else:
+                output_range[W_DIM] = (output_range[W_DIM][0], output_range[W_DIM][1] * self.strides[W_DIM])
         self.check_range_valid(dy_shape_nchw, output_range, "out_backprop", self.data_format)
 
         dy_shape_nchw, filter_shape_nchw, input_size_nchw, dy_shape_nc1hwc0, filter_shape_frac_z = self._calc_shape(
@@ -600,7 +605,7 @@ class Conv2dTransposeParaProcess(Conv2dBackpropParaProcess):
 
     def check_support_valid(self, in_shape, w_shape):
         """
-        check whether dynamic shape is supported for conv2d
+        check whether dynamic shape is supported for conv2d_transpose
         """
         super().check_support_valid(in_shape, w_shape)
         if self.paras.get("offset_w"):

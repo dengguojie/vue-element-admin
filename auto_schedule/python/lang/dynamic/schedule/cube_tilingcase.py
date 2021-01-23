@@ -115,7 +115,6 @@ class CubeTilingOp:
             return wi_min, wi_max
         return fmap_w, fmap_w
 
-    @abstractmethod
     def check_tiling_match(self, tiling, current_w, current_h):
         pass
 
@@ -825,4 +824,8 @@ class TilingUtils:
         upper round
         """
         return TilingUtils.icd(num_a, num_b) * num_b
+
+    @staticmethod
+    def trans_to_int(num):
+        return num if not num else int(num)
 

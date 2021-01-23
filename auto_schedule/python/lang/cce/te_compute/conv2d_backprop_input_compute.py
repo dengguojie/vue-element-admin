@@ -520,7 +520,8 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
         else:
             dx_w = input_sizes[3]
             dy_w = shape_to_list(out_backprop.shape)[3]
-
+        if not dy_w:
+            return
         c0_size_k = cce_params.CUBE_MKN[filters.dtype]["mac"][1]
         bl1_size = (
             filter_h_dilation
@@ -594,14 +595,14 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
             dy_w_upper, dx_w_upper = dedy_w_bound[1], dx_w_bound[1]
         else:
             dy_w_upper, dx_w_upper = dy_w, dx_w
-        fmap_size = dx_batch_upper * _align(dx_c, dedy_k0) * dx_h_upper * dx_w_upper
-        dedy_size = dy_batch_upper * dy_c1 * dy_h_upper * dy_w_upper * dy_c0
-
+        if dy_batch_upper and dy_h_upper and dy_w_upper:
+            fmap_size = dx_batch_upper * _align(dx_c, dedy_k0) * dx_h_upper * dx_w_upper
+            dedy_size = dy_batch_upper * dy_c1 * dy_h_upper * dy_w_upper * dy_c0
+            _check_64bits_limitation(fmap_size, dtype=res_dtype)
+            _check_64bits_limitation(dedy_size, dtype=out_backprop.dtype)
         filter_size = (
                           _align(dy_c1_extend, w_k0) * _align(dx_c1_extend, w_n0)
                       ) * filter_h * filter_w * g_extend
-        _check_64bits_limitation(fmap_size, dtype=res_dtype)
-        _check_64bits_limitation(dedy_size, dtype=out_backprop.dtype)
         _check_64bits_limitation(filter_size, dtype=filters.dtype)
 
     if "dx_h" not in var_map and "dx_w" not in var_map:
@@ -843,6 +844,9 @@ class DynamicConv2dBpInputParams:  # pylint: disable=R0903
     """
     Dynamic Conv2dBpInput Params
     """
+
+    def __init__(self):
+        pass
 
     tiling_info_dict = {}
     var_map = {}

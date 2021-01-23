@@ -42,6 +42,18 @@ BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
 
 @register_tiling_case(pattern=Pattern.CONV2D_BACKPROP_INPUT)
 def calc_conv2dbp_input(outs, option=None):
+    """
+    tiling_case func for dynamic shape conv2d_bp_input
+
+    Parameters
+    ----------
+    outs : tvm tensor or list of tvm tensor, results for tvm compute
+
+    Returns
+    -------
+    list of dict, each dict for a tiling case
+    """
+
     var_names = ("batch_n", "dx_h", "dx_w")
     conv_info = DynamicConv2dBpInputParams.tiling_info_dict
     tgt_area = {}
@@ -89,6 +101,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
         -------
         tiling: shape and tiling retrieved from repository
         """
+
         tiling_list = get_tiling(self.tiling_info)
         res_list = []
         for tiling_mess in tiling_list:
@@ -151,6 +164,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
         -------
         tiling: tiling retrieved by cost model
         """
+
         if "batch_n" in self.var_map:
             self.a_info[0] = shape if isinstance(shape, int) else shape[0]
             self.c_info[0] = shape if isinstance(shape, int) else shape[0]
@@ -247,17 +261,33 @@ class Conv2dBpInputTiling(CubeTilingOp):
         return tiling_range
 
     def assembly_case(self, tiling, coverage, cnt):
+        """
+        Configure dict of tiling strategy and coverage
+
+        Parameters
+        ----------
+        tiling: dict, tiling from repository or cost model
+
+        coverage: list of tuple, coverage of tiling
+
+        cnt: serial number of tiling
+
+        Returns
+        -------
+        dict: describe a tiling strategy
+        """
+
         var_range = OrderedDict()
         if "batch_n" in self.var_map:
-            var_range['batch_n'] = (int(coverage[0]), int(coverage[1]))
+            var_range['batch_n'] = (utils.trans_to_int(coverage[0]), utils.trans_to_int(coverage[1]))
         if "dedy_h" in self.var_map:
-            dx_h_low, dx_h_high = int(coverage[2]), int(coverage[3])
+            dx_h_low, dx_h_high = utils.trans_to_int(coverage[2]), utils.trans_to_int(coverage[3])
             dedy_h_low = self.get_output_h(dx_h_low)
             dedy_h_high = self.get_output_h(dx_h_high)
             var_range['dx_h'] = (dx_h_low, dx_h_high)
             var_range['dedy_h'] = (dedy_h_low, dedy_h_high)
         if "dedy_w" in self.var_map:
-            dx_w_low, dx_w_high = int(coverage[4]), int(coverage[5])
+            dx_w_low, dx_w_high = utils.trans_to_int(coverage[4]), utils.trans_to_int(coverage[5])
             dedy_w_low = self.get_output_w(dx_w_low)
             dedy_w_high = self.get_output_w(dx_w_high)
             var_range['dx_w'] = (dx_w_low, dx_w_high)
@@ -265,73 +295,82 @@ class Conv2dBpInputTiling(CubeTilingOp):
 
         return {"key": cnt, "tiling_strategy": tiling, "var_range": var_range}
 
+    def get_default_tiling(self):
+        """
+        get default tiling for unlimited range or special case
+
+        Returns
+        -------
+        dict: default tiling for conv2d_bp_input
+        """
+
+        tiling = {}
+        _, _, k_w, k_h, _ = self.b_info
+        bit_dir = {
+            "float32": 16,
+            "int32": 16,
+            "float16": 16,
+            "int8": 32,
+        }
+        atype = self.tiling_info["A_dtype"]
+        btype = self.tiling_info["B_dtype"]
+        if atype in bit_dir.keys():
+            k_al1 = k_w * k_h * 16
+            k_al0 = bit_dir[atype]
+        else:
+            # default value 32
+            k_al1 = 32
+            k_al0 = 32
+
+        if btype in bit_dir.keys():
+            k_bl1 = bit_dir[atype]
+            k_bl0 = bit_dir[atype]
+        else:
+            # default value 32
+            k_bl1 = 32
+            k_bl0 = 32
+
+        if self.tiling_info["strideH_expand"] > 1 \
+                or self.tiling_info["strideW_expand"] > 1:
+            tiling["AUB_shape"] = [k_w * k_h * 16, 1, 1, 1]
+            tiling["BUB_shape"] = None
+        else:
+            tiling["AUB_shape"] = None
+            tiling["BUB_shape"] = None
+
+        tiling["AL1_shape"] = [k_al1, 1, 1, 1]
+        tiling["BL1_shape"] = [k_bl1, 1, 1, 1]
+        tiling["AL0_matrix"] = [1, 1, 16, k_al0, 1, 1]
+        tiling["BL0_matrix"] = [1, 1, 16, k_bl0, 1, 1]
+        tiling["CL0_matrix"] = [1, 1, 16, 16, 1, 1]
+        tiling["CUB_matrix"] = [1, 1, 16, 16, 1, 1]
+        tiling["block_dim"] = [1, 1, 1, 1]
+        tiling["n_bef_batch_flag"] = 0
+        tiling["n_bef_group_flag"] = 0
+        tiling["batch_bef_group_fla"] = 0
+        tiling["A_overhead_opt_flag"] = 0
+        tiling["B_overhead_opt_flag"] = 0
+        tiling["AUB_channel_wise_flag"] = None
+        tiling["BUB_channel_wise_flag"] = None
+        tiling["CUB_channel_wise_flag"] = None
+        tiling["manual_pingpong_buffer"] = {
+            'AUB_pbuffer': 1,
+            'BUB_pbuffer': 1,
+            'AL1_pbuffer': 1,
+            'BL1_pbuffer': 1,
+            'AL0_pbuffer': 1,
+            'BL0_pbuffer': 1,
+            'CL0_pbuffer': 1,
+            'CUB_pbuffer': 1,
+            'UBG_pbuffer': 1,
+        }
+        return tiling
+
     def _check_and_set_default_tiling(self, tiling_in):
         if tiling_in.get("tiling").get("AL0_matrix")[2] == 32:
-            tiling = {}
-            _, _, k_w, k_h, _ = self.b_info
-            bit_dir = {
-                "float32": 16,
-                "int32": 16,
-                "float16": 16,
-                "int8": 32,
-            }
-            atype = self.tiling_info["A_dtype"]
-            btype = self.tiling_info["B_dtype"]
-            if atype in bit_dir.keys():
-                k_al1 = k_w * k_h * 16
-                k_al0 = bit_dir[atype]
-            else:
-                # default value 32
-                k_al1 = 32
-                k_al0 = 32
-
-            if btype in bit_dir.keys():
-                k_bl1 = bit_dir[atype]
-                k_bl0 = bit_dir[atype]
-            else:
-                # default value 32
-                k_bl1 = 32
-                k_bl0 = 32
-
-            if self.tiling_info["strideH_expand"] > 1 \
-                    or self.tiling_info["strideW_expand"] > 1:
-                tiling["AUB_shape"] = [k_w * k_h * 16, 1, 1, 1]
-                tiling["BUB_shape"] = None
-            else:
-                tiling["AUB_shape"] = None
-                tiling["BUB_shape"] = None
-
-            tiling["AL1_shape"] = [k_al1, 1, 1, 1]
-            tiling["BL1_shape"] = [k_bl1, 1, 1, 1]
-            tiling["AL0_matrix"] = [1, 1, 16, k_al0, 1, 1]
-            tiling["BL0_matrix"] = [1, 1, 16, k_bl0, 1, 1]
-            tiling["CL0_matrix"] = [1, 1, 16, 16, 1, 1]
-            tiling["CUB_matrix"] = [1, 1, 16, 16, 1, 1]
-            tiling["block_dim"] = [1, 1, 1, 1]
-            tiling["n_bef_batch_flag"] = 0
-            tiling["n_bef_group_flag"] = 0
-            tiling["batch_bef_group_fla"] = 0
-            tiling["A_overhead_opt_flag"] = 0
-            tiling["B_overhead_opt_flag"] = 0
-            tiling["AUB_channel_wise_flag"] = None
-            tiling["BUB_channel_wise_flag"] = None
-            tiling["CUB_channel_wise_flag"] = None
-            tiling["manual_pingpong_buffer"] = {
-                'AUB_pbuffer': 1,
-                'BUB_pbuffer': 1,
-                'AL1_pbuffer': 1,
-                'BL1_pbuffer': 1,
-                'AL0_pbuffer': 1,
-                'BL0_pbuffer': 1,
-                'CL0_pbuffer': 1,
-                'CUB_pbuffer': 1,
-                'UBG_pbuffer': 1,
-            }
-            tiling = {"tiling": tiling, "A_shape": self.a_info,
+            tiling_in = {"tiling": self.get_default_tiling(), "A_shape": self.a_info,
                         "B_shape": self.b_info, "C_shape": self.c_info}
-        else:
-            return tiling_in
-        return tiling
+        return tiling_in
 
     def _get_calc_info(self):
         self._convert_type(self.a_info, self.b_info, self.c_info)
