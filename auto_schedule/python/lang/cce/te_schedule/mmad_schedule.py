@@ -273,6 +273,7 @@ def get_mdc_shape_map():
     the knowledge of matmul schedule tiling
     """
     shape_map = {(1024, 768, 768, -1, 4): "256_768_384_128_256_128_2_2",
+                 (1024, 768, 3072, 1, 6): "128_384_32_128_96_32_3_2",
                  (1024, 768, 768, -1, 6): "256_768_384_128_256_128_2_2"
                  }
 
@@ -1477,6 +1478,7 @@ def mmad_schedule(res, sch_list):
     m_l0_shape = int(tiled_shape[3])
     k_l0_shape = int(tiled_shape[4])
     n_l0_shape = int(tiled_shape[5])
+    open_double_buffer_dirct = (int(tiled_shape[6]) == 3)
 
     src_shape = [m_shape, k_shape, n_shape]
     m_l0_shape, k_l0_shape, n_l0_shape = get_special_l0_factor(
@@ -2584,7 +2586,7 @@ def mmad_schedule(res, sch_list):
 
             sch[tensor_a_l0a].double_buffer()
             sch[tensor_b_l0b].double_buffer()
-            if tensor_b_reuse == 0 and tensor_a_reuse == 0:
+            if (tensor_b_reuse == 0 and tensor_a_reuse == 0) or open_double_buffer_dirct:
                 if l0c_enable_db:
                     sch[tensor_c].double_buffer()
 
